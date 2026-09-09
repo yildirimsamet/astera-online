@@ -265,8 +265,7 @@ export async function launchPirateRaid(
     const homeMinutes = fleetTravelExact(
       reach,
       requested,
-      fleetSpeedMult(origin.orbit),
-      tech,
+      { boost: fleetSpeedMult(origin.orbit), tech },
     );
     assertSeasonOpenThrough(origin, addMinutes(resolveAt, homeMinutes));
 
@@ -719,8 +718,7 @@ async function turnForHome(
   const back = fleetTravelExact(
     distance(meet, origin),
     survivors,
-    fleetSpeedMult(await orbitOf(tx, raid.planetId)),
-    raid.tech ?? {},
+    { boost: fleetSpeedMult(await orbitOf(tx, raid.planetId)), tech: raid.tech ?? {} },
   );
   const homeAt = addMinutes(origin.now, back);
 

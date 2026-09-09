@@ -221,8 +221,16 @@ export const ECON = {
    *   · the vault floor stays `protectedShare` OF the store, so the protected and
    *     the RAIDABLE amounts both grow with it. A raid is worth more flying, which
    *     is the direction D161 asked for.
+   *
+   * 2.5 → 3.125 AT D181, a flat +25% at every level on the owner's instruction and
+   * ahead of a fuller look at the economy. It lands here rather than on the ladder
+   * precisely because of the separation above: the owner wants deeper stores, not a
+   * different Vault. Every consequence D171 measured moves with it in the same
+   * direction — the works fall further below the store, `costAlloy / storageCap`
+   * falls further from the crossing, and the floor stays the same SHARE of a bigger
+   * pile, so both the protected and the raidable amounts grow.
    */
-  storageScale: 2.5,
+  storageScale: 3.125,
 
   /**
    * Hours the works hold before they STOP. D16.
@@ -1682,14 +1690,19 @@ export const ANTI_STRATEGIC = {
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
   /**
-   * ABOUT THREE FIFTHS OF WHAT IT DESTROYS, SET BY HAND. D170, owner figures.
+   * ABOUT THREE FIFTHS OF WHAT IT STOPS, SET BY HAND. D170/D179, owner figures.
    *
    * The battery and the weapon are priced against EACH OTHER rather than
-   * separately — that is the whole interlock. A cheap defence throws D113's work
-   * away; a defence nobody can afford leaves a 71,000-resource strike
-   * unanswerable. It read 13,600 / 13,600 / 1,560, about 40% of a Death Star, and
-   * the owner's figures take it to roughly 60%: loading a battery is now a real
-   * share of the thing it exists to stop, and spending the shot costs something.
+   * separately — that is the whole interlock, and it is the reason this number may
+   * never be edited alone. A cheap defence throws D113's work away; a defence
+   * nobody can afford leaves the strike unanswerable.
+   *
+   * THE FLOOR IS THE ONE RULE THAT CANNOT BEND: answering a strike must cost LESS
+   * than making one. Above that line the battery is a defender's investment; at or
+   * past it an attacker drains a defender simply by launching, and firing becomes
+   * profitable without ever landing. D179 halved the weapon to 32,500, so 41,000
+   * would have crossed exactly that line — the battery follows it down to 20,500,
+   * holding the same ~63% share it has had since D170.
    *
    * FINAL FIGURES, like `DEATH_STAR.cost` and the research tables. No tempo scale
    * runs on top of them — what the sheet quotes is what a person typed — so the
@@ -1697,12 +1710,13 @@ export const ANTI_STRATEGIC = {
    *
    * It still reloads in half the time the weapon takes to build, because a
    * defender who spent their shot should not be defenceless for the rest of the
-   * hour. `interceptor-cost.test.ts` holds the ratio against the weapon.
+   * hour. `interceptor-cost.test.ts` holds the ratio against the weapon and
+   * `strategic-strike.test.ts` holds the floor.
    */
   cost: {
-    alloy: 22_000,
-    crystal: 16_000,
-    deuterium: 3000,
+    alloy: 11_000,
+    crystal: 8_000,
+    deuterium: 1_500,
   },
   buildMinutes: 30,
 } as const;
@@ -2652,22 +2666,23 @@ export const MULTI_WORLD = {
    * How long a struck world is dark: no production, no regeneration, no
    * collection, no purchase, no launch. TWO HOURS AT D113, from six.
    *
-   * SPLIT BY WORLD KIND AT D167, and the asymmetry is the whole feature. A capital
-   * keeps the two hours it has had since D113 — it can be devastated repeatedly and
-   * never lost, because "capitals cannot be captured" is a locked constraint and a
-   * long enough outage would be that rule reinterpreted as "captured slowly".
+   * ONE FIGURE AGAIN AT D179, AND THE COLLAPSE IS THE POINT. D167 split this by
+   * world kind — two hours for a capital, eight for a colony — because for a colony
+   * the window had become a DEADLINE: land a ship inside it or the world stops
+   * being yours. Eight hours was sized to be answerable, not to be endured.
    *
-   * A COLONY GETS EIGHT, because for a colony the window is now a DEADLINE rather
-   * than an outage: put a ship on it before the clock runs out or it stops being
-   * yours (`endRecovery`). Two hours is a punishment a commander can sleep through;
-   * eight is one they have to answer, and answering is the entire decision the
-   * feature exists to create. It is also long enough that somebody struck at
-   * midnight has a real chance of waking up inside it.
+   * THE DEADLINE IS GONE (D179, owner instruction after sustained player
+   * complaint), so the reason for the asymmetry went with it. What is left is an
+   * OUTAGE, and an outage is the same injury whichever world takes it: two hours in
+   * the dark with the bays sealed. Written as one number rather than two identical
+   * ones, because two would only be waiting to drift apart.
    *
-   * The old note said this was "the window a second impact has to arrive in to take
-   * control". That route is gone: D167 stopped the weapon capturing anything.
+   * IT IS ALSO THE DEFENDER'S SHIELD NOW, and that is deliberate rather than
+   * accidental: `startAttack` refuses a raid on a recovering world, so a commander
+   * whose fleet just survived a strike (D179 stopped the weapon destroying it)
+   * cannot be picked off while they are unable to launch or spend.
    */
-  recoveryMinutes: { capital: 2 * 60, colony: 8 * 60 },
+  recoveryMinutes: 2 * 60,
   settlement: {
     cost: {
       alloy: scalePrice(2000, ECONOMY_TEMPO.fixedPrice),
@@ -2730,23 +2745,27 @@ export const DEATH_STAR = {
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
   /**
-   * SET BY HAND, NOT SCALED. D167 — owner figures, and the exception is deliberate.
+   * SET BY HAND, NOT SCALED. D167/D179 — owner figures, and the exception is
+   * deliberate.
    *
    * Everything else in this file is priced through `scalePrice` so a tempo change
-   * carries it. This weapon is priced against WHAT IT DOES, and at D167 what it does
-   * changed completely: it no longer hands the attacker a world. It makes a
-   * commander lose one, and the world it opens is open to everybody — so the buyer
-   * is paying to put somebody else's colony on the table, not to buy a planet. That
-   * is a judgement about the galaxy rather than about the economy's pace, so the
-   * number is written out where it can be read and argued with.
+   * carries it. This weapon is priced against WHAT IT DOES, which is a judgement
+   * about the galaxy rather than about the economy's pace, so the number is written
+   * out where it can be read and argued with.
+   *
+   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction. What it does
+   * shrank first: D167 priced it at "put somebody else's colony on the table for
+   * the whole galaxy", and D179 took that away along with the fleet it used to
+   * destroy. The buyer now takes NOTHING home — no loot, no Dominion, no world —
+   * so what is left to pay for is denial, and denial alone is worth less.
+   *
+   * MEASURED BEFORE THE CUT, against a full store: the strike still destroys about
+   * 102,000 at a Core 12 world and about 420,000 at a Core 17 one. So this is not a
+   * weak weapon being propped up; it is a weapon whose entire return is the damage,
+   * priced so that firing it is a decision a commander makes more than once a
+   * season. `ANTI_STRATEGIC.cost` moved with it and must keep moving with it.
    */
-  /*
-    ALLOY CUT 40k → 35k ON OWNER INSTRUCTION. Set by hand, as D167 requires: this
-    figure is never scaled, so it is the one number that has to move when the
-    weapon is meant to become reachable a little sooner. Crystal and Deuterium are
-    untouched — the change is one column wide.
-  */
-  cost: { alloy: 35_000, crystal: 25_000, deuterium: 6_000 },
+  cost: { alloy: 20_000, crystal: 10_000, deuterium: 2_500 },
   buildMinutes: 60,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,

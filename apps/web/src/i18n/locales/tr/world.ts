@@ -148,7 +148,7 @@ export const focus = {
     kindNeutral: "Tarafsız",
     capitalProtected: "Ele geçirilemez ana gezegen",
     capitalProtectedHint:
-      "Ölüm Yıldızı evdeki gemileri, topları ve bina siparişlerini yok eder; depodaki ve üretim havuzundaki kaynakları yarıya indirir, Çekirdeği bir ve Aegis’i iki seviye düşürür. Ana gezegenin kontrolü asla el değiştirmez.",
+      "Ölüm Yıldızı bina siparişlerini yok eder; depodaki ve üretim havuzundaki kaynakları yarıya indirir, Çekirdeği bir ve Aegis’i iki seviye düşürür. Gemilere ve toplara dokunmaz, kontrol asla el değiştirmez.",
     capitalRecovering: "Ana gezegen harap · ele geçirilemez",
     capitalRecoveringHint:
       "Tekrar vurabilirsin: kalanın yarısı da gider ve toparlanma baştan başlar; kontrol yine el değiştirmez.",
@@ -186,7 +186,7 @@ export const focus = {
     claimCloses: "{{duration}} sonra kapanır",
     claimRaidStillOpen: "Tekrar akın yapılabilir; açık hakkın süresi uzamaz.",
     claimDeathStarConsequence:
-      "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Hiçbir dünyayı ele geçirmez: süre dolarken üzerinde gemi bulunmayan koloni artık kimsenin olmaz.",
+      "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Hiçbir dünyayı ele geçirmez, kimseye de kaybettirmez — dünya kararır ve geri döner.",
     openColonySlot: "Koloni yuvası",
     colonySlotExplain:
       "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken en güçlü Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
@@ -212,11 +212,11 @@ export const focus = {
     arrivesIn: "{{duration}} içinde varır",
     deathStarRoute: "Bu darbe ne yapar",
     /** Savunanın yarıştığı saat, sonunda tükenen şeyin adıyla. D167. */
-    recoveryBreach: "Toparlanma açığı · düşme süresi",
+    recoveryBreach: "Toparlanma · dünya karanlıkta",
     occupationProtected: "İşgal koruması",
     protectedFor: "{{duration}} boyunca vurulamaz veya ele geçirilemez.",
     firstImpact: "Hasar + {{duration}} karanlık",
-    secondImpact: "Gemi gönderilmezse · dünya sahipsiz kalır",
+    secondImpact: "Süre dolar · dünya olduğu gibi kalır",
     deathStarReadyRequirement: "Ölüm Yıldızı hazır",
     deathStarReadyExplain:
       "Darbe için çıkış gezegeninde tamamlanmış bir Ölüm Yıldızı bekliyor olmalı.",
@@ -228,19 +228,18 @@ export const focus = {
      * dünya kaybettirebilecek tek kural bu.
      */
     recoveryDropWarning:
-      "{{duration}} kaldı. Süre dolmadan buraya bir gemi indir, yoksa bu koloni senin olmaktan çıkar — ikinci bir darbeye gerek yok.",
+      "{{duration}} kaldı. O ana kadar hiçbir şey üretilmez ve hiçbir şey kalkamaz. Dünya senin kalır, filon da yerinde.",
 
     /** Üretim kartıyla aynı gerçekler, tetiği çeken kişinin diliyle. D113/D55. */
     strikeTitle: "Bu darbe ne yapar",
-    strikeFleet: "Yerdeki bütün gemiler ve toplar yok olur",
+    strikeFleet: "Yerdeki bütün gemiler ve toplar sağ kalır — darbe hiçbir filoyu öldürmez",
     strikeStock: "Depo ve üretim havuzundaki kaynakların yarısı yok olur",
     strikeCore: "Komuta Çekirdeği bir seviye iner; yeni sınırı aşan binalar da düşer",
     strikeAegis: "Aegis {{levels}} seviye iner ve kalkan sıfırlanır",
     strikeDark:
       "{{duration}} boyunca üretim, toplama, inşa, sipariş verme ve fırlatma durur",
-    strikeCapture: "Komutanı bu süre dolmadan bir gemi indirmezse dünya kimsenin olmaz",
     strikeNoCapture:
-      "Ana gezegen tekrar harap edilebilir ama asla kaybedilmez",
+      "Hiçbir dünya kaybedilmez — yalnızca tekrar harap edilebilir",
     eyebrow: "Sahibi: {{owner}}",
     location: "Dünya · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */

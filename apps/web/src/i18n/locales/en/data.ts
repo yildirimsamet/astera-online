@@ -588,6 +588,7 @@ export const units = {
   imminent: 'any moment',
   hoursMinutes: '{{h}}h {{m}}m',
   minutesSeconds: '{{m}}m {{s}}s',
+  hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',
   seconds: '{{s}}s',
   daysHours: '{{d}}d {{h}}h',
   minutes: '{{m}}m',

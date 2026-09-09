@@ -63,10 +63,16 @@ export const prospectorHoldMult = (tech: TechLevels): number =>
  * loot: this is the only economy project that moves ARR directly. It is the
  * smallest for that reason, and the band is measured rather than assumed.
  *
- * It does NOT touch `transferCargoCapacity`, which counts only Courier, Wayfarer
- * and Atlas moving ore between a commander's own worlds. Those are two different questions —
- * what a raid can carry away, and what a logistics run can move — and they were
- * deliberately separated long before this existed.
+ * IT LIFTS `transferCargoCapacity` TOO, SINCE D180 (owner instruction). It did not
+ * for a long time: that figure counts only Courier, Wayfarer and Atlas moving ore
+ * between a commander's own worlds, and "what a raid can carry away" was held to be
+ * a different question from "what a logistics run can move". The two still count
+ * different rosters and always will — but they no longer sit on different ladders,
+ * because a project called Cargo Holds that leaves an Atlas carrying exactly what
+ * it carried yesterday reads as a bug from every seat in the game.
+ *
+ * SO ONE MULTIPLIER FEEDS BOTH, and this function is the whole of it. Anything
+ * that grows a hold reads `cargoMult`; nothing else may express the ladder.
  */
 export const cargoMult = (tech: TechLevels): number =>
   ladderAt(RESEARCH_TECH.cargoLadder, tech.CARGO_HOLDS ?? 0);

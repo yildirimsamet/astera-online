@@ -6,17 +6,20 @@ import {
   exposureMinutes,
   fleetCargo,
   fleetCount,
-  fleetSpeed,
+  fleetPace,
+  fleetSpeedMult,
   fleetTravelExact,
   interceptOrbit,
   missionFuel,
   transferCargoCapacity,
   travelMinutes,
   type Fleet,
+  type FlightModifiers,
   type HullId,
   type MobileHullId,
   type OrbitElements,
   type ResearchProjectId,
+  type SatelliteSet,
   type TechLevels,
   type Vec3,
 } from '@astera/rules';
@@ -70,23 +73,36 @@ export interface Route {
 export const homeDefenceAfter = (homeFleet: Fleet, ground: Fleet, sending: Fleet): number =>
   Math.max(0, fleetCount(homeFleet) - fleetCount(sending)) + fleetCount(ground);
 
+/**
+ * WHAT THE LAUNCH SHEET PROMISES, AND IT HAS TO BE WHAT THE SERVER WILL DO. D180.
+ *
+ * `mods` replaced a bare `tech`, and the reason is a bug that shipped for as long
+ * as propulsion has existed. This function took the commander's ladders, handed
+ * them to `fleetCargo`, and then computed the FLIGHT without them — quoting the
+ * catalogue speed of a commander with no research and no Beacon. At the top of the
+ * ladder that is DOUBLE the real minutes, on the one screen where a player commits
+ * a fleet they cannot recall.
+ *
+ * ONE ARGUMENT CARRIES BOTH USES so they cannot come apart again: whatever answers
+ * "how fast" also answers "how much", and a caller cannot supply one and forget
+ * the other.
+ */
 export function planRoute(
   origin: Vec3,
   target: Vec3,
   sending: Fleet,
   homeFleet: Fleet,
   ground: Fleet,
-  /** The commander's own ladders, so the preview quotes what the server will do. T8. */
-  tech: TechLevels,
+  mods: FlightModifiers,
 ): Route {
   const dist = distance(origin, target);
-  const oneWay = fleetSpeed(sending) > 0 ? fleetTravelExact(dist, sending) : 0;
+  const oneWay = fleetPace(sending, mods) > 0 ? fleetTravelExact(dist, sending, mods) : 0;
 
   return {
     distance: dist,
     oneWayMinutes: oneWay,
     exposureMinutes: exposureMinutes(oneWay),
-    cargo: fleetCargo(sending, tech),
+    cargo: fleetCargo(sending, mods.tech),
     fuel: missionFuel(sending, dist, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
   };
@@ -132,17 +148,21 @@ export interface PirateReach {
  * understate a short one on the last surface before a fleet stops being
  * recallable.
  *
- * The return leg is the same client-side approximation `planRoute` makes for a
- * world — catalogue speeds, no Beacon, no Propulsion — so the two sheets quote
- * exposure to the same standard. The OUTBOUND minute is better than that: it is
- * the server's own figure.
+ * BOTH LEGS ARE NOW QUOTED AT THE COMMANDER'S REAL PACE. D180. This note used to
+ * say the return was "the same client-side approximation `planRoute` makes for a
+ * world — catalogue speeds, no Beacon, no Propulsion", which described the bug
+ * rather than a decision: `planRoute` was wrong, and consistency with it was
+ * inflating the one figure this sheet exists to state honestly. The OUTBOUND
+ * minute is still better than a local solve — it is the server's own answer to a
+ * rendezvous with a moving target — and the way home is now solved with the same
+ * modifiers the server will use.
  */
 export function planPirateRoute(
   reach: readonly PirateReach[],
   sending: Fleet,
   homeFleet: Fleet,
   ground: Fleet,
-  tech: TechLevels,
+  mods: FlightModifiers,
 ): Route | null {
   const slowest = slowestHullIn(sending);
   if (slowest === null) return null;
@@ -152,8 +172,8 @@ export function planPirateRoute(
   return {
     distance: quoted.distance,
     oneWayMinutes: quoted.minutes,
-    exposureMinutes: quoted.minutes + fleetTravelExact(quoted.distance, sending),
-    cargo: fleetCargo(sending, tech),
+    exposureMinutes: quoted.minutes + fleetTravelExact(quoted.distance, sending, mods),
+    cargo: fleetCargo(sending, mods.tech),
     fuel: missionFuel(sending, quoted.distance, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
     // The slowest selected ship's own meeting point — the one the wing flies to.
@@ -177,11 +197,15 @@ export function planPirateRoute(
  * point handed back is a GAME-unit position, which is what `GalaxyCanvas`'s `aim`
  * prop takes and converts once.
  *
- * THE SPEED IS THE SERVER'S OWN EXPRESSION — `fleetSpeed(sending, tech)` times the
- * origin's Beacon multiplier. `planRoute` deliberately quotes catalogue speeds for
- * a world because a straight line is forgiving of a few per cent; a rendezvous is
- * not, since a different speed meets the merchant at a different POINT on its
- * circle, and the disc would draw a mark the launch does not use.
+ * THE SPEED IS THE SERVER'S OWN EXPRESSION — `fleetPace`, the ladder and the
+ * Beacon together. This lane was the only one that got it right; the note here
+ * used to add that `planRoute` "deliberately quotes catalogue speeds for a world
+ * because a straight line is forgiving of a few per cent", which was a rationalised
+ * bug — the error reached a DOUBLING at the top of the propulsion ladder. D180
+ * fixed the world lane and every other preview to this lane's standard. A
+ * rendezvous was never forgiving of it either: a different speed meets the
+ * merchant at a different POINT on its circle, and the disc would draw a mark the
+ * launch does not use.
  *
  * `null` means there is no meeting to be had before the window shuts, which is the
  * same refusal `launchTrade` gives (`CANNOT_INTERCEPT`) — so an absent route is a
@@ -195,11 +219,9 @@ export function planTradeRoute(
   sending: Fleet,
   homeFleet: Fleet,
   ground: Fleet,
-  tech: TechLevels,
-  /** `fleetSpeedMult` of the origin's effective orbit — a Beacon, or 1. */
-  speedMult = 1,
+  mods: FlightModifiers,
 ): Route | null {
-  const speed = fleetSpeed(sending, tech) * speedMult;
+  const speed = fleetPace(sending, mods);
   if (!(speed > 0)) return null;
 
   const hit = interceptOrbit(
@@ -221,7 +243,7 @@ export function planTradeRoute(
     all three — quoting only the two flights would understate the bet on the one
     surface where it stops being recallable.
   */
-  const home = fleetTravelExact(reach, sending, speedMult, tech);
+  const home = fleetTravelExact(reach, sending, mods);
   return {
     distance: reach,
     oneWayMinutes: hit.flightMinutes,
@@ -229,15 +251,15 @@ export function planTradeRoute(
     /**
      * A CONVOY IS MEASURED IN TRANSPORTS, NOT IN LOOT ROOM. D156 · D166.
      *
-     * This read `fleetCargo`, which is a RAID's loot ceiling: it counts every hull
-     * and is lifted by cargo research. The server sizes a trade run with
-     * `transferCargoCapacity` — dedicated transports only — so the field carried a
-     * figure nothing would honour. Nothing read it yet, which is exactly why it had
-     * to be fixed now: the first surface to print it would have shown an inflated
-     * hold, taken the player's "Send", and been refused `CARGO_CAPACITY` with
-     * nothing on screen saying why.
+     * This read `fleetCargo`, which is a RAID's loot ceiling: it counts every hull.
+     * The server sizes a trade run with `transferCargoCapacity` — dedicated
+     * transports only — so the field carried a figure nothing would honour.
+     *
+     * THE ROSTER IS STILL THE DIFFERENCE; THE LADDER NO LONGER IS. Since D180
+     * `CARGO_HOLDS` lifts both, so this passes the commander's own tech and quotes
+     * the hold the server will actually check against.
      */
-    cargo: transferCargoCapacity(sending),
+    cargo: transferCargoCapacity(sending, mods.tech),
     fuel: missionFuel(sending, reach, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
     rendezvous: hit.at,
@@ -267,9 +289,19 @@ function slowestHullIn(sending: Fleet): HullId | null {
  * How far away a planet is *for this player right now* — at the speed of the
  * slowest ship they currently have at home. Distance in map units is not a
  * decision; "you would be gone 41 minutes" is.
+ *
+ * AND "RIGHT NOW" INCLUDES THEIR RESEARCH. D180 — it read the catalogue, so a
+ * commander who had doubled their engines was still shown the pace they flew at on
+ * day one, on the first surface that tells them whether a world is worth opening a
+ * sheet for.
  */
-export function reachMinutes(origin: Vec3, target: Vec3, homeFleet: Fleet): number | null {
-  const speed = fleetSpeed(homeFleet);
+export function reachMinutes(
+  origin: Vec3,
+  target: Vec3,
+  homeFleet: Fleet,
+  mods: FlightModifiers,
+): number | null {
+  const speed = fleetPace(homeFleet, mods);
   if (speed <= 0) return null;
   return travelMinutes(distance(origin, target), speed);
 }
@@ -286,6 +318,38 @@ export const waspMinutes = (origin: Vec3, target: Vec3): number =>
  * the sheet. D27 added one ground hull and proved how easy that is to miss.
  */
 export const MOBILE: readonly MobileHullId[] = MOBILE_HULLS;
+
+/**
+ * WHAT A WORLD LENDS EVERY FLEET THAT LEAVES IT — in one place. D180.
+ *
+ * A wing's real pace is its slowest hull times the commander's `SHIP_PROPULSION`
+ * ladder times the BEACON standing over the origin world. The client had both
+ * facts in the planet payload all along — `research` and `orbit` — and passed
+ * neither, because `fleetTravelExact` let it. Every preview quoted a commander who
+ * had bought nothing.
+ *
+ * THIS IS THE ONLY PLACE THE CLIENT ANSWERS THAT QUESTION. A screen that needs a
+ * flight time reads it here rather than composing `techOf` and `fleetSpeedMult`
+ * itself, so a surface added next year cannot get half of it — which is precisely
+ * how four surfaces got none of it.
+ */
+export function flightModifiers(
+  view: {
+    research: readonly { id: ResearchProjectId; level?: number; completed?: boolean }[];
+    orbit: SatelliteSet;
+    /**
+     * What is actually up there right now, when the payload distinguishes it from
+     * what the world owns. `?? orbit` is the shape the two call sites that already
+     * got this right were using, kept here so it is stated once.
+     */
+    effectiveOrbit?: SatelliteSet;
+  },
+): FlightModifiers {
+  return {
+    boost: fleetSpeedMult(view.effectiveOrbit ?? view.orbit),
+    tech: techOf(view),
+  };
+}
 
 /**
  * The commander's research levels, read off a planet payload. T8.

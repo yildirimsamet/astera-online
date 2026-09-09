@@ -218,7 +218,7 @@ export async function launchTrade(
       the same shape `TransferSheet` already has, and the same refusal, because
       "resources need a transport hull" is one sentence in this game and not two.
     */
-    const hold = transferCargoCapacity(requested);
+    const hold = transferCargoCapacity(requested, tech);
     if (!TRANSFER_CARGO_HULLS.some((id) => (requested[id] ?? 0) > 0)) {
       throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a transport hull', 400);
     }
@@ -287,7 +287,7 @@ export async function launchTrade(
     assertFuel(fuel, origin.deuterium, order.give.deuterium);
 
     const arriveAt = atMinute(origin.seasonStart, hit.meetsAtMinutes);
-    const homeMinutes = fleetTravelExact(reach, requested, fleetSpeedMult(origin.orbit), tech);
+    const homeMinutes = fleetTravelExact(reach, requested, { boost: fleetSpeedMult(origin.orbit), tech });
     assertSeasonOpenThrough(origin, addMinutes(dockEndsAt(arriveAt), homeMinutes));
 
     const [run] = await tx
@@ -424,8 +424,7 @@ export async function resolveTradeArrival(
   const back = fleetTravelExact(
     distance(meet, origin),
     aboard,
-    fleetSpeedMult(await orbitOf(tx, run.planetId)),
-    tech,
+    { boost: fleetSpeedMult(await orbitOf(tx, run.planetId)), tech },
   );
   /*
     ANCHORED ON THE ROW'S OWN INSTANTS, NEVER ON THE CLOCK THAT WOKE THE WORKER.

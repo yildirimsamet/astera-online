@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UNAIDED,
   ALL_HULLS,
   COMBAT,
   GROUND_HULLS,
@@ -231,9 +232,9 @@ describe('Fleet V2 catalog contract — D148', () => {
     if (!dart || !courier || !citadel) throw new Error('missing Fleet V2 derived-mechanic fixture');
 
     const mixedFleet: Record<string, number> = { DART: 2, COURIER: 3, CITADEL: 1 };
-    expect(fleetSpeed(mixedFleet)).toBe(Math.min(dart.speed, courier.speed, citadel.speed));
+    expect(fleetSpeed(mixedFleet, UNAIDED.tech)).toBe(Math.min(dart.speed, courier.speed, citadel.speed));
     expect(fleetCargo(mixedFleet, {})).toBe(2 * dart.cargo + 3 * courier.cargo + citadel.cargo);
-    expect(transferCargoCapacity(mixedFleet)).toBe(3 * courier.cargo);
+    expect(transferCargoCapacity(mixedFleet, {})).toBe(3 * courier.cargo);
     expect(courier.cargo).toBeGreaterThan(dart.cargo);
 
     for (const id of fleetV2Ids) {

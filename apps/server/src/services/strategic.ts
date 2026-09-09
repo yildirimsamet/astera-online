@@ -1,9 +1,9 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
-  ALL_HULLS,
   ANTI_STRATEGIC,
   BUILDING_IDS,
   DEATH_STAR,
+  MULTI_WORLD,
   interceptionRange,
   strategicStockpile,
   buildingCost,
@@ -15,7 +15,6 @@ import {
   type BuildingId,
   type Fleet,
   type Resources,
-  recoveryMinutesFor,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -26,7 +25,6 @@ import {
   planets,
   satellites,
   strategicAssets,
-  units,
   type StrategicDestroyedOrder,
   type StrategicLevelChange,
 } from '../db/schema.js';
@@ -35,7 +33,7 @@ import { schedule } from '../worker/queue.js';
 import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
 import { advanceNeutralEconomy } from './neutral.js';
-import { capitalPlanet, lockWorlds, releasePlanetControl } from './ownership.js';
+import { capitalPlanet, lockWorlds } from './ownership.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -74,7 +72,25 @@ import { refreshSensorEpoch } from './sensorHistory.js';
 const CORE_BOUND_BUILDINGS = [
   'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
 ] as const;
-const DESTROYED_HOME = ALL_HULLS;
+/*
+  AND THE FLEET IS NOT TOUCHED EITHER. D179, owner instruction.
+
+  `DESTROYED_HOME = ALL_HULLS` stood here and the delete that read it took every
+  hull standing at home — the defender's whole standing force, on any world, the
+  Prospector included. It was the strike's largest single number and the loudest
+  thing about it, and it is gone.
+
+  WHAT REPLACES IT IS THE OUTAGE. The ships survive but may not move: the recovery
+  window seals the bays through `assertWorldOperational`, and `startAttack` refuses
+  a raid on a recovering world, so for two hours the fleet is present, safe and
+  useless. That is the shape the owner asked for — the commander keeps what they
+  built and loses the tempo.
+
+  NOTHING IS EXEMPTED, NEUTRALS INCLUDED. A garrison on a world nobody holds
+  survives a strike too, so softening a fortified neutral with a rocket before
+  settling it is no longer a play. That was weighed and chosen: one sentence the
+  whole galaxy can hold beats an exception nobody would find.
+*/
 const BUILDING_TYPES = new Set<string>(BUILDING_IDS);
 const isBuildingId = (value: string): value is BuildingId => BUILDING_TYPES.has(value);
 
@@ -544,22 +560,21 @@ export async function applyDeathStarStrike(
     bufferDeuterium: advancedTarget?.bufferDeuterium ?? target.bufferDeuterium,
   };
 
-  const [buildingRows, aegisRows, homeRows] = await Promise.all([
+  const [buildingRows, aegisRows] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, target.id)),
     tx.select().from(satellites).where(and(
       eq(satellites.planetId, target.id),
       eq(satellites.type, 'AEGIS'),
     )),
-    tx.select().from(units).where(and(
-      eq(units.planetId, target.id),
-      eq(units.location, 'home'),
-      inArray(units.hull, [...DESTROYED_HOME]),
-    )),
   ]);
+  /*
+    ALWAYS EMPTY SINCE D179, AND KEPT RATHER THAN DELETED. The impact record, the
+    chronicle and the defender's report all carry this field; emptying it at the
+    source retires the behaviour in ONE place and leaves every reader working. A
+    reader that must not draw an empty list already checks, because a strike on a
+    world with no ships on it has always produced exactly this.
+  */
   const destroyedFleet: Fleet = {};
-  for (const row of homeRows) {
-    if (row.count > 0) destroyedFleet[row.hull] = row.count;
-  }
 
   const coreBefore = buildingRows.find((row) => row.type === 'CORE')?.level ?? 0;
   const coreAfter = Math.max(0, coreBefore - 1);
@@ -642,13 +657,6 @@ export async function applyDeathStarStrike(
     .set({ level: sql`GREATEST(0, ${satellites.level} - ${DEATH_STAR.aegisLevelsLost})` })
     .where(and(eq(satellites.planetId, target.id), eq(satellites.type, 'AEGIS')));
   await tx
-    .delete(units)
-    .where(and(
-      eq(units.planetId, target.id),
-      eq(units.location, 'home'),
-      inArray(units.hull, [...DESTROYED_HOME]),
-    ));
-  await tx
     .update(neutralPlanetState)
     .set({ claimUntil: null })
     .where(eq(neutralPlanetState.planetId, target.id));
@@ -672,20 +680,24 @@ export async function applyDeathStarStrike(
   await refreshSensorEpoch(tx, target.id, mission.arriveAt);
 
   /**
-   * THE STRIKE STARTS A DEADLINE. IT NEVER TAKES A WORLD. D167.
+   * THE STRIKE STARTS AN OUTAGE. IT NEVER TAKES A WORLD AND NEVER LOSES ONE. D179.
    *
-   * D105/D113 handed a colony to the attacker when a second impact landed inside
-   * the recovery window, and that whole branch is gone on the owner's instruction.
-   * What the weapon buys now is time pressure on somebody else: a struck colony is
-   * dark for eight hours (`recoveryMinutesFor`), and if its commander does not put
-   * a ship on it before the clock runs out, `endRecovery` releases it to NOBODY —
-   * neutral again, buildings and stock untouched, open to whoever gets there.
+   * The route this line has walked is worth keeping: D105/D113 handed a colony to
+   * the attacker when a second impact landed inside the window; D167 removed that
+   * and made the window a DEADLINE instead, releasing an unanswered colony to
+   * nobody; D179 removes the deadline too, on the owner's instruction after
+   * sustained player complaint.
    *
-   * `recoveryReliefAt` IS CLEARED HERE, and that is the rule the owner asked for in
-   * as many words: a commander who saved this colony an hour ago has to save it
-   * again. The answer belongs to the strike it answered, not to the world.
+   * SO NOTHING HAPPENS AT THE END OF THIS CLOCK EXCEPT THE LIGHTS COMING BACK ON.
+   * Every world keeps its controller through a strike and out the other side —
+   * capital, colony and neutral alike — and `MULTI_WORLD.recoveryMinutes` is the
+   * same two hours for all three, because an outage does not care what kind of
+   * world it is darkening.
+   *
+   * `recoveryReliefAt` IS NO LONGER WRITTEN BY ANYTHING and is cleared here only so
+   * a row stamped before this shipped cannot outlive the rule it belonged to.
    */
-  const recoveryUntil = addMinutes(now, recoveryMinutesFor(target.kind));
+  const recoveryUntil = addMinutes(now, MULTI_WORLD.recoveryMinutes);
   await tx
     .update(planets)
     .set({ recoveryUntil, protectedUntil: null, recoveryReliefAt: null })
@@ -790,23 +802,23 @@ export async function abandonDeathStarBuild(
 }
 
 /**
- * THE END OF THE WINDOW, AND FOR A COLONY IT IS A VERDICT. D167.
+ * THE END OF THE WINDOW, AND IT IS HOUSEKEEPING AGAIN. D179.
  *
- * This used to be housekeeping: clear the flag, resume what was paused. It is now
- * the moment a struck COLONY is either kept or lost, because the owner's rule is
- * that the recovery window is a deadline rather than an outage — put a ship on the
- * world before the clock runs out or it stops being yours.
+ * D167 made this a VERDICT: a struck colony whose commander had landed no ship
+ * inside the window stopped being theirs here, released to nobody. D179 deletes
+ * that on the owner's instruction, and what is deleted is the whole branch — the
+ * `recoveryReliefAt` read that decided it, the `releasePlanetControl` call that
+ * carried it out, and the fall-through that handled losing the race to it.
  *
- * WHAT DECIDES IT IS `recoveryReliefAt`, stamped by a transfer landing and cleared
- * by every strike, so the answer belongs to the strike it answered. A commander who
- * saved this colony from the last rocket has to save it from the next one.
+ * SO NO WORLD EVER CHANGES HANDS HERE. Not a colony, not a capital, not a neutral.
+ * The window ends, the flag clears, a paused strategic build picks up where it was
+ * stopped, and the world is exactly as its commander left it two hours earlier
+ * minus what the impact itself took.
  *
- * A CAPITAL IS NEVER RELEASED — the locked constraint, kept literally rather than
- * reinterpreted as "captured slowly" — and neither is a world nobody holds.
- *
- * THE ROW IS READ AND WRITTEN UNDER THE SAME `recoveryUntil` GUARD the clear
- * already used, so a redelivered `recovery_end` cannot release a world twice or
- * release one whose window has since been restarted by a second strike.
+ * THE `recoveryUntil` GUARD STAYS, and it is still doing real work: `recovery_end`
+ * can be redelivered, and a second strike inside the window restarts the clock and
+ * schedules a second event. Matching on the exact instant is what keeps the FIRST
+ * event from ending a window the SECOND one now owns.
  */
 export async function endRecovery(
   tx: Tx,
@@ -815,45 +827,6 @@ export async function endRecovery(
   now: Date,
 ): Promise<boolean> {
   const until = new Date(expectedUntil);
-  const [before] = await tx
-    .select({
-      kind: planets.kind,
-      controllerPlayerId: planets.controllerPlayerId,
-      reliefAt: planets.recoveryReliefAt,
-      recoveryUntil: planets.recoveryUntil,
-    })
-    .from(planets)
-    .where(eq(planets.id, planetId));
-  const unanswered = before?.kind === 'COLONY'
-    && before.controllerPlayerId !== null
-    && before.recoveryUntil !== null
-    && before.recoveryUntil.getTime() === until.getTime()
-    /*
-      NO RELIEF AT ALL IS THE WHOLE TEST. The stamp is written only while the window
-      is open and cleared by every strike, so its mere presence already means "for
-      this rocket" — an extra comparison against `until` would be dead code
-      pretending to be a guard.
-    */
-    && before.reliefAt === null;
-
-  if (unanswered) {
-    const released = await releasePlanetControl(tx, {
-      planetId,
-      expectedControllerPlayerId: before.controllerPlayerId!,
-      now,
-    });
-    if (released) {
-      await resumePausedAsset(tx, planetId, await seasonOf(tx, planetId), now);
-      return true;
-    }
-    /*
-      THE WORLD CHANGED HANDS BETWEEN THE READ AND THE WRITE, so there is nothing to
-      release — and this must NOT return early. `recovery_end` fires once; leaving
-      without clearing `recoveryUntil` would strand the world dark for the rest of
-      the season with no event left to wake it. Fall through and end the window.
-    */
-  }
-
   const ended = await tx
     .update(planets)
     .set({ recoveryUntil: null, recoveryReliefAt: null, lastTickAt: now })
@@ -862,16 +835,6 @@ export async function endRecovery(
   if (!ended[0]) return false;
   await resumePausedAsset(tx, planetId, ended[0].seasonId, now);
   return true;
-}
-
-/** The season a world belongs to. Never changes after creation. */
-async function seasonOf(tx: Tx, planetId: string): Promise<string> {
-  const [row] = await tx
-    .select({ seasonId: planets.seasonId })
-    .from(planets)
-    .where(eq(planets.id, planetId));
-  if (!row) throw new Error('planet vanished mid-transaction');
-  return row.seasonId;
 }
 
 export async function endOccupation(

@@ -141,9 +141,12 @@ export const GROUND_HULLS: readonly GroundHullId[] = ALL_HULLS.filter(
  * no way to withdraw from. A penalty with no decision attached to it is not a
  * risk, and this game charges for risks it lets you take.
  *
- * A DEATH STAR STILL TAKES THEM (`DESTROYED_HOME`), and that is the point. The
- * difference between a raid and a strike has to be legible somewhere, and "the
- * strike reaches things a raid cannot" is the cleanest place to put it.
+ * AND NEITHER DOES A DEATH STAR, SINCE D179. This note said the opposite — that a
+ * strike still took them, and that "the strike reaches things a raid cannot" was
+ * where the difference between the two had to be legible. The owner removed fleet
+ * damage from the strike entirely, so the difference now lives where it belongs:
+ * a raid fights and takes loot, a strike levels buildings and stores and takes
+ * nothing home. No craft standing at a world can be destroyed without a battle.
  *
  * A LIST RATHER THAN A NAME, so a second civilian craft is excluded the day it is
  * added rather than the day somebody notices it has been fighting.
@@ -423,8 +426,16 @@ export function fleetHp(fleet: Fleet): number {
   return hp;
 }
 
-/** A fleet travels at the speed of its slowest ship. Zero if it cannot travel. */
-export function fleetSpeed(fleet: Fleet, tech: TechLevels = {}): number {
+/**
+ * A fleet travels at the speed of its slowest ship. Zero if it cannot travel.
+ *
+ * `tech` IS REQUIRED, AND THAT IS THE WHOLE GUARD. D180. It defaulted to `{}`, so
+ * a caller that forgot it was quoted the catalogue speed of a commander with no
+ * propulsion — up to half the real pace, silently. Callers that genuinely have no
+ * commander pass `UNAIDED.tech` and say so; `fleetPace` is the composed answer
+ * most callers actually want.
+ */
+export function fleetSpeed(fleet: Fleet, tech: TechLevels): number {
   let s = Infinity;
   for (const id of MOBILE_HULLS) {
     if ((fleet[id] ?? 0) > 0) {
@@ -441,9 +452,9 @@ export function fleetSpeed(fleet: Fleet, tech: TechLevels = {}): number {
  * smallest and dearest of the three economy ladders — it is the only one that
  * moves raid returns directly.
  *
- * Not `transferCargoCapacity`, which counts only dedicated Fleet V2 transports moving ore
- * between a commander's own worlds. Two different questions, deliberately kept
- * apart: what a raid carries away, and what a logistics run can move.
+ * Not `transferCargoCapacity`, which counts only dedicated Fleet V2 transports
+ * moving ore between a commander's own worlds. Two different ROSTERS — a Dart
+ * raises this and not that — but since D180 the same `cargoMult` ladder lifts both.
  */
 export function fleetCargo(fleet: Fleet, tech: TechLevels): number {
   let c = 0;

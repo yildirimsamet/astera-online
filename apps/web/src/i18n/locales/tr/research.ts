@@ -101,11 +101,11 @@ export const research = {
   holdsDetail:
     "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2,6 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır.",
   cargoName: "Gemi Ambarları",
-  cargoTag: "Akınlar daha çok getirir",
+  cargoTag: "Her ambar daha çok taşır",
   cargoRole:
-    "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
+    "Akın ganimetini, dünyalar arası transferi ve ticaret konvoyunu birlikte artırır; asteroit madenciliğinin kendi kademesi vardır.",
   cargoDetail:
-    "Her kademe hareketli filonun akında taşıyabileceği ganimeti artırır. Savaş sonunda açık stok kaldığında işe yarar; barışçıl transferleri ve asteroit madenciliğini etkilemez.",
+    "Her kademe gemilerinin taşıdığını artırır: hareketli filonun akın ganimetini ve dünyaların arasında cevher taşıyan ya da tüccarla ticaret yapan her Kurye, Seyyah ve Atlas'ın ambarını. Kazıcıların kendi kademesi Kazıcı Ambarları'dır.",
 
   engineeringName: "Yıldız Gemisi Mühendisliği",
   engineeringTag: "Üst seviye gemileri açar",

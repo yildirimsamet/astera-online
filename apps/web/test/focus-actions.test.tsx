@@ -8,7 +8,6 @@ import {
   MULTI_WORLD,
   distance,
   missionFuel,
-  recoveryMinutesFor,
 } from '@astera/rules';
 import { duration } from '../src/lib/time.js';
 import { resetClock } from '../src/lib/clock.js';
@@ -285,6 +284,12 @@ describe('the focus rail’s two commitments', () => {
    * five consequences, and both read their figures from the rules rather than
    * from a sentence somebody typed.
    */
+  /**
+   * WHAT AN IMPACT DOES, AFTER D179 TOOK ITS TEETH OUT. Two of these lines used to
+   * assert the opposite: that every ship on the ground dies, and that a colony
+   * whose commander lands nothing is lost. Both are gone, so both are asserted the
+   * other way round — a surface that still said either would be the game lying.
+   */
   it('spells out what an impact does on both the colony route and the capital card', () => {
     const Wrapper = harness();
     const props = {
@@ -306,22 +311,23 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
-    expect(screen.getByText(/every ship and gun on the ground is destroyed/i)).toBeInTheDocument();
+    expect(screen.getByText(/every ship and gun on the ground survives/i)).toBeInTheDocument();
     expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
     expect(screen.getByText(/command core loses a level/i)).toBeInTheDocument();
     expect(screen.getByText(
       new RegExp(`aegis loses ${String(DEATH_STAR.aegisLevelsLost)} levels`, 'i'),
     )).toBeInTheDocument();
     /*
-      THE WINDOW IS THE WORLD'S OWN, AND THIS PANEL IS ALWAYS LOOKING AT A COLONY —
-      a capital returns before the guide is drawn. D167 split the two: eight hours
-      here, two for a capital, both off `recoveryMinutesFor`.
+      ONE WINDOW FOR EVERY KIND OF WORLD SINCE D179, off `MULTI_WORLD.recoveryMinutes`.
+      D167 had split it — eight hours for a colony against a capital's two — to make
+      a deadline answerable, and the deadline is gone.
     */
     expect(screen.getByText(
-      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(recoveryMinutesFor('COLONY'))}`, 'i'),
+      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
     )).toBeInTheDocument();
-    // And the consequence is a DROP, not a transfer: the weapon takes nothing.
-    expect(screen.getByText(/lands no ship before that window closes/i)).toBeInTheDocument();
+    // And there is no consequence beyond the outage: nothing moves, nothing dies.
+    expect(screen.getByText(/no world is ever lost/i)).toBeInTheDocument();
+    expect(screen.queryByText(/becomes nobody/i)).toBeNull();
 
     view.rerender(
       <Wrapper>
@@ -330,8 +336,9 @@ describe('the focus rail’s two commitments', () => {
     );
     expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
     expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
-    // A capital gets the opposite closing line, because it can never be taken.
-    expect(screen.getByText(/never lost/i)).toBeInTheDocument();
+    // ONE closing line for every world since D179 — the capital branch is not a
+    // different sentence any more, which is the point of dropping `capturable`.
+    expect(screen.getByText(/no world is ever lost/i)).toBeInTheDocument();
     expect(screen.queryByText(/takes control/i)).toBeNull();
   });
 

@@ -33,22 +33,24 @@ const projectAt = (id: string): RuntimeProject | undefined =>
 const researchEffectAt = (id: string, level: number): number =>
   (rules.researchEffectAt as unknown as (project: string, rung: number) => number)(id, level);
 
+/*
+  NO CAST NEEDED SINCE D180. `fleetSpeed`'s `tech` lost its default and became a
+  required parameter, so the shipped signature and the one this contract asserts
+  are now the same shape — which is the assertion.
+*/
 const fleetSpeedAt = (fleet: Record<string, number>, tech: TechLevels = {}): number =>
-  (rules.fleetSpeed as unknown as (
-    manifest: Record<string, number>,
-    levels: TechLevels,
-  ) => number)(fleet, tech);
+  rules.fleetSpeed(fleet, tech);
 
+/**
+ * THE SHIPPED SIGNATURE, AND IT CHANGED AT D180. The two optional modifiers became
+ * one required `FlightModifiers`, so the runtime shape this contract asserts moved
+ * with it — which is exactly what a contract test is for.
+ */
 const fleetTravelAt = (
   distance: number,
   fleet: Record<string, number>,
   tech: TechLevels = {},
-): number => (rules.fleetTravelExact as unknown as (
-  span: number,
-  manifest: Record<string, number>,
-  boost: number,
-  levels: TechLevels,
-) => number)(distance, fleet, 1, tech);
+): number => rules.fleetTravelExact(distance, fleet, { boost: 1, tech });
 
 describe('Fleet V2 research effects — D148', () => {
   it('has a neutral value for every hull when no Fleet V2 research is held', () => {

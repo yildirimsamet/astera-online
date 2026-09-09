@@ -100,7 +100,6 @@ import {
   type AsteroidSpec,
   type Resources,
   type ResearchProjectId,
-  recoveryMinutesFor,
 } from '@astera/rules';
 import {
   ARCHETYPES,
@@ -1002,7 +1001,7 @@ function trySettleNeutral(p: SimPlayer, n: SimNeutralWorld, t: number, world: Wo
   const cost = MULTI_WORLD.settlement.cost;
   if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
   const fleet: Fleet = { [transportHull]: transports };
-  const flight = fleetTravelExact(distance(p, n), fleet, 1, p.tech);
+  const flight = fleetTravelExact(distance(p, n), fleet, { boost: 1, tech: p.tech });
   const arriveAt = t + flight;
   if (arriveAt > n.claimUntil) return;
   p.alloy -= cost.alloy;
@@ -1042,7 +1041,7 @@ function tryNeutralRaid(p: SimPlayer, t: number, world: World): void {
       kind: 'neutral_attack',
       ownerId: p.id,
       targetId: n.id,
-      arriveAt: t + fleetTravelExact(distance(p, n), send, 1, p.tech),
+      arriveAt: t + fleetTravelExact(distance(p, n), send, { boost: 1, tech: p.tech }),
       fleet: send,
       returning: false,
     });
@@ -1069,7 +1068,7 @@ function tryTransferToColony(p: SimPlayer, t: number, world: World): void {
     kind: 'transfer',
     ownerId: p.id,
     targetId: colony.id,
-    arriveAt: t + fleetTravelExact(distance(p, colony), { [transportHull]: 1 }, 1, p.tech),
+    arriveAt: t + fleetTravelExact(distance(p, colony), { [transportHull]: 1 }, { boost: 1, tech: p.tech }),
     transportHull,
     cargo,
   });
@@ -1152,9 +1151,7 @@ function applyStrategicDamage(n: SimNeutralWorld, t: number): void {
     n.buildings[type] = Math.min(n.buildings[type], core);
   }
   n.aegis = Math.max(0, n.aegis - DEATH_STAR.aegisLevelsLost);
-  n.fleet = Object.fromEntries(
-    fleetEntries(n.fleet).filter(([hull]) => hull === 'PROSPECTOR'),
-  );
+  // D179: the strike destroys no fleet, on any kind of world. The garrison stands.
   n.claimUntil = null;
   n.lastTick = t;
 }
@@ -1182,7 +1179,7 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
       world.strategicMissions.push({
         ...mission,
         id: world.nextStrategicMissionId++,
-        arriveAt: t + fleetTravelExact(distance(p, target), mission.fleet, 1, p.tech),
+        arriveAt: t + fleetTravelExact(distance(p, target), mission.fleet, { boost: 1, tech: p.tech }),
         returning: true,
       });
       return;
@@ -1224,7 +1221,9 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
         ownerId: p.id,
         targetId: target.id,
         arriveAt: t + fleetTravelExact(
-          distance(p, target), result.attackerSurvivors, 1, p.tech,
+          distance(p, target),
+          result.attackerSurvivors,
+          { boost: 1, tech: p.tech },
         ),
         fleet: result.attackerSurvivors,
         returning: true,
@@ -1279,11 +1278,10 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
   } else {
     /*
       A SIMULATED STRIKE ONLY EVER LANDS ON A NEUTRAL, which takes the short window
-      since D167 — there is no commander to answer a deadline and no control to
-      lose. The colony branch is not reachable here, and the drop itself is not
-      modelled: no simulated bot ever relieves a world.
+      since D167, and since D179 there is only one window for every kind of world
+      anyway. The drop it used to race is gone entirely.
     */
-    target.recoveryUntil = t + recoveryMinutesFor('NEUTRAL');
+    target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
     world.strategic.deathStar.firstHits++;
   }
 }

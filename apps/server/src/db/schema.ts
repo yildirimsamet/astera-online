@@ -716,18 +716,17 @@ export const planets = pgTable('planets', {
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
   /**
-   * WHEN A SHIP LAST LANDED HERE DURING A RECOVERY. D167.
+   * DEAD SINCE D179, AND KEPT ONLY SO OLD ROWS CAN BE CLEARED.
    *
-   * A struck COLONY is on a deadline, not merely an outage: if its commander puts
-   * no ship on it before `recoveryUntil`, `endRecovery` releases the world. This is
-   * how that question is answered — stamped by a transfer arrival, cleared by every
-   * strike, so "was this world answered for" is one column and one comparison.
+   * D167 put a struck COLONY on a deadline rather than an outage: land no ship
+   * before `recoveryUntil` and `endRecovery` released the world. This column was
+   * the answer to "was this world answered for" — stamped by a transfer arrival,
+   * cleared by every strike.
    *
-   * IT MEASURES THE ANSWER, NOT THE LEFTOVERS. Counting hulls at the end would
-   * have been one fewer column and the wrong question: a strike destroys every home
-   * hull, so a relief wing that arrived and then flew on to do something else would
-   * read as no relief at all. The commander showed up; that is the fact being
-   * recorded.
+   * D179 removed the deadline on the owner's instruction, so nothing writes it any
+   * more. `applyDeathStarStrike` and `endRecovery` still CLEAR it, so a row stamped
+   * before that shipped cannot outlive the rule it belonged to. The column goes in
+   * a later migration; dropping it is not worth a migration of its own.
    */
   recoveryReliefAt: timestamp('recovery_relief_at', { withTimezone: true }),
   protectedUntil: timestamp('protected_until', { withTimezone: true }),

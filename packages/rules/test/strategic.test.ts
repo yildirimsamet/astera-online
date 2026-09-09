@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { generateGalaxy, pickSpawnSlot, type PlanetSlot } from '../src/galaxy.js';
 import { GALAXY, MULTI_WORLD, SERVERS } from '../src/constants.js';
 import { ECONOMY_TEMPO, scaleResources } from '../src/tempo.js';
-import { distance, fleetTravelExact } from '../src/travel.js';
+import { UNAIDED, distance, fleetTravelExact } from '../src/travel.js';
 import { MOBILE_HULLS } from '../src/hulls.js';
 import {
   GALAXY_SPAN,
@@ -57,10 +57,10 @@ describe('multi-world strategic rules', () => {
    */
   it('defines the widest settlement flight as exactly one spherical diameter', () => {
     expect(GALAXY_SPAN).toBe(2 * GALAXY.radius);
-    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet))
+    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED))
       .toBeLessThanOrEqual(SETTLEMENT_CLAIM_MINUTES);
     // And no wider than it has to be: one whole minute of rounding, never two.
-    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet))
+    expect(fleetTravelExact(GALAXY_SPAN, settlementFleet, UNAIDED))
       .toBeGreaterThan(SETTLEMENT_CLAIM_MINUTES - 1);
   });
 
@@ -74,7 +74,7 @@ describe('multi-world strategic rules', () => {
         (capital) => neutrals.map((neutral) => distance(capital, neutral.slot)),
       ));
       // Strictly inside: `launchSettlement` refuses an arrival AT the boundary.
-      expect(fleetTravelExact(worst, settlementFleet)).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
+      expect(fleetTravelExact(worst, settlementFleet, UNAIDED)).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
     }
   });
 
@@ -107,9 +107,9 @@ describe('multi-world strategic rules', () => {
 
   it('counts cargo space from Courier, Wayfarer and Atlas only', () => {
     expect(TRANSFER_CARGO_HULLS).toEqual(['COURIER', 'WAYFARER', 'ATLAS']);
-    expect(transferCargoCapacity({ DART: 99, WAYFARER: 1, COURIER: 2, ATLAS: 1 }))
-      .toBe(transferCargoCapacity({ WAYFARER: 1, COURIER: 2, ATLAS: 1 }));
-    expect(transferCargoCapacity({ DART: 99 })).toBe(0);
+    expect(transferCargoCapacity({ DART: 99, WAYFARER: 1, COURIER: 2, ATLAS: 1 }, {}))
+      .toBe(transferCargoCapacity({ WAYFARER: 1, COURIER: 2, ATLAS: 1 }, {}));
+    expect(transferCargoCapacity({ DART: 99 }, {})).toBe(0);
   });
 
   it('selects exactly 30/15/6 stable unique neutral slots after all 300 capitals', () => {
@@ -216,7 +216,7 @@ describe('multi-world strategic rules', () => {
 describe('the ore carriers a transfer may use', () => {
   it('names exactly the hulls that add cargo capacity, and no others', () => {
     for (const id of MOBILE_HULLS) {
-      const carries = transferCargoCapacity({ [id]: 1 }) > 0;
+      const carries = transferCargoCapacity({ [id]: 1 }, {}) > 0;
       expect(carries).toBe((TRANSFER_CARGO_HULLS as readonly string[]).includes(id));
     }
   });

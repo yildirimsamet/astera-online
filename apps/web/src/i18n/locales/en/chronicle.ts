@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'A decisive raid opened a public settlement race for this world.',
   deathStarImpact: 'Death Star impact at {{planet}}',
   deathStarOutcome: {
-    FIRST_STRIKE: 'The world entered recovery. A second impact may transfer control.',
+    FIRST_STRIKE: 'The world was stripped and went dark. Its control cannot change.',
     CAPITAL_STRIKE: 'The capital was devastated and entered recovery. Its control cannot change.',
-    CAPTURED: 'The second impact transferred control of the world.',
+    CAPTURED: 'The world was stripped and went dark. Its control cannot change.',
     INEFFECTIVE: 'Protection or target state absorbed the strike without effect.',
   },
   controlTransfer: '{{planet}} changed control',

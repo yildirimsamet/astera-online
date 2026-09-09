@@ -7,6 +7,7 @@ import {
   HULLS,
   distance,
   engagementEndsAt,
+  UNAIDED,
   fleetTravelExact,
   travelExact,
 } from '@astera/rules';
@@ -240,7 +241,7 @@ describe('launching a fleet', () => {
       const launch = await launchAttack(f.db, attacker, defender, { DART: 10 }, f.clock);
       const [a] = await f.db.select().from(planets).where(eq(planets.id, attacker));
       const [b] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      const oneWay = fleetTravelExact(distance(a!, b!), { DART: 10 });
+      const oneWay = fleetTravelExact(distance(a!, b!), { DART: 10 }, UNAIDED);
       expect(launch.exposureMinutes).toBe(oneWay * 2);
     });
 
@@ -285,12 +286,12 @@ describe('launching a fleet', () => {
         f.db.select().from(missions).where(eq(missions.id, launch.missionId)).then((rows) => rows[0]!),
       ]);
       const tech = { SHIP_PROPULSION: 5 } as const;
-      const expected = fleetTravelExact(distance(origin, target), { DART: 10 }, 1, tech);
+      const expected = fleetTravelExact(distance(origin, target), { DART: 10 }, { boost: 1, tech });
       const actual = (launch.arriveAt.getTime() - departedAt.getTime()) / 60_000;
 
       expect(mission.tech).toMatchObject(tech);
       expect(Math.abs(actual - expected)).toBeLessThan(1 / 60_000);
-      expect(actual).toBeLessThan(fleetTravelExact(distance(origin, target), { DART: 10 }));
+      expect(actual).toBeLessThan(fleetTravelExact(distance(origin, target), { DART: 10 }, UNAIDED));
     });
 
     /**

@@ -98,6 +98,40 @@ export function duration(minutes: number): string {
 }
 
 /**
+ * THE SAME DURATION, TO THE SECOND. D182 — owner instruction.
+ *
+ * `duration` above rounds to whole minutes, which is right nearly everywhere: a
+ * build queue, a research rung and a recovery window are all things a player waits
+ * out rather than times. A FLIGHT is not. It arrives at an authoritative instant,
+ * the defender's warning counts down to that instant, and "12d" for a flight of
+ * 12d 41sn is a rounding the launch sheet cannot afford — it is the one screen
+ * where the difference is part of the decision.
+ *
+ * SO THIS IS A SEPARATE FUNCTION RATHER THAN A FLAG ON THAT ONE. Seconds belong
+ * only where somebody is timing something, and a boolean parameter would spread
+ * them by accident to every surface that passed it through.
+ *
+ * IT STOPS AT A DAY, where the seconds become noise and the width stops being
+ * worth it — the same days-and-hours shape `duration` uses. Seconds are padded so
+ * the figure does not change width as it counts, on a screen 375px wide.
+ */
+export function durationPrecise(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes * 60));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h >= 24) {
+    return i18n.t('units.daysHours', { d: Math.floor(h / 24), h: h % 24 });
+  }
+  const seconds = String(s).padStart(2, '0');
+  if (h > 0) {
+    return i18n.t('units.hoursMinutesSeconds', { h, m: String(m).padStart(2, '0'), s: seconds });
+  }
+  if (m > 0) return i18n.t('units.minutesSeconds', { m, s: seconds });
+  return i18n.t('units.seconds', { s });
+}
+
+/**
  * HOW LONG UNTIL SOMETHING OPENS — AND IT NEVER READS ZERO.
  *
  * Owner report: *"Araştırmalarda ve bazı butonların üstünde '0d sonra

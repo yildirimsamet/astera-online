@@ -573,11 +573,13 @@ describe('committing a fleet at a pirate', () => {
     const user = userEvent.setup();
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
-    expect(screen.getByText('12m')).toBeInTheDocument();
+    // TO THE SECOND SINCE D182: this figure is the arrival instant a commander is
+    // committing to, so the sheet stopped rounding it to the whole minute.
+    expect(screen.getByText('12m 00s')).toBeInTheDocument();
 
     // Add the slow hull and the whole wing flies at its rendezvous instead.
     await user.click(screen.getByRole('button', { name: /max.*rampart/i }));
-    expect(screen.getByText('44m')).toBeInTheDocument();
+    expect(screen.getByText('44m 00s')).toBeInTheDocument();
   });
 
   /**

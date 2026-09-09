@@ -106,17 +106,28 @@ describe('the economy ladders', () => {
     });
 
     /**
-     * AND LEAVES WORLD TRANSFERS ALONE. `transferCargoCapacity` answers a different
-     * question — what a logistics run between a commander's own worlds can move —
-     * and the two were separated long before this ladder existed.
+     * AND RAISES A TRANSFER AND A TRADE CONVOY BY THE SAME FACTOR. D180.
+     *
+     * This test read "does not touch a transfer between your own worlds" and
+     * asserted `transferCargoCapacity.length === 1` — the ladder was not even a
+     * parameter there, which the comment called "the point". The owner reversed it:
+     * a project called Cargo Holds that leaves an Atlas carrying exactly what it
+     * carried yesterday reads as a bug from every seat in the game.
+     *
+     * THE ROSTERS STAY DIFFERENT, THE LADDER DOES NOT. `fleetCargo` counts every
+     * hull that flies and `transferCargoCapacity` counts the three dedicated
+     * transports, and that distinction is asserted next door in
+     * `transfer-cargo.test.ts`. What is asserted here is that one `cargoMult`
+     * moves both, by the same factor, so they can never drift.
      */
-    it('does not touch a transfer between your own worlds', () => {
+    it('raises a transfer between your own worlds by the same factor', () => {
       const fleet = { WAYFARER: 4, COURIER: 2 };
-      expect(transferCargoCapacity(fleet)).toBe(transferCargoCapacity(fleet));
-      const before = transferCargoCapacity(fleet);
+      const before = transferCargoCapacity(fleet, {});
+      const after = transferCargoCapacity(fleet, { CARGO_HOLDS: max });
       expect(before).toBeGreaterThan(0);
-      // The ladder is not a parameter here at all, which is the point.
-      expect(transferCargoCapacity.length).toBe(1);
+      expect(after).toBeGreaterThan(before);
+      expect(after / before)
+        .toBeCloseTo(fleetCargo(fleet, { CARGO_HOLDS: max }) / fleetCargo(fleet, {}), 2);
     });
   });
 

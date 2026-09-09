@@ -28,6 +28,7 @@ import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
+import { flightModifiers } from '../lib/navigation.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -137,7 +138,15 @@ export function TransferSheet({
   const transfer = useTransfer(planet.planet.id);
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
-  const capacity = transferCargoCapacity(fleet);
+  /**
+   * THE ORIGIN'S OWN MODIFIERS — the ladder and the Beacon. D180.
+   *
+   * `capacity` moves with `CARGO_HOLDS` and the ETA moves with `SHIP_PROPULSION`;
+   * both were quoting a commander who had bought neither, and the server has always
+   * applied both. One value so a screen cannot pick up one and miss the other.
+   */
+  const mods = flightModifiers(planet);
+  const capacity = transferCargoCapacity(fleet, mods.tech);
   const loaded = resourcesTotal(cargo);
   const targetOwned = targetPlanet
     ? {
@@ -166,7 +175,7 @@ export function TransferSheet({
   const prospectorsFit = targetPlanet === undefined
     || (fleet.PROSPECTOR ?? 0) <= prospectorRoom(targetProspectors);
   /** Does this world own an ore carrier at all — a different problem from not loading one. */
-  const ownsCarrier = transferCargoCapacity(planet.fleet) > 0;
+  const ownsCarrier = transferCargoCapacity(planet.fleet, mods.tech) > 0;
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
     (Object.keys(planet.fleet) as HullId[]).map((id) => [
       id,
@@ -179,8 +188,8 @@ export function TransferSheet({
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
   const eta = useMemo(
-    () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet) : 0,
-    [fleet, span],
+    () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, mods) : 0,
+    [fleet, span, mods],
   );
   /**
    * WHAT THE FLIGHT ITSELF BURNS, AND IT WAS NOWHERE ON THIS SCREEN. T6.
@@ -220,7 +229,7 @@ export function TransferSheet({
     const room = Math.max(0, planet.planet.deuterium - missionFuel(next, span, 1));
     setCargo((current) => fitCargo(
       { ...current, deuterium: Math.min(current.deuterium, room) },
-      transferCargoCapacity(next),
+      transferCargoCapacity(next, mods.tech),
     ));
   };
 

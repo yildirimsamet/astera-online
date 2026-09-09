@@ -231,8 +231,8 @@ describe('a convoy sent to the merchant', () => {
 
     // A single Courier carries the OFFER twice over and the haul not at all.
     const tooSmall: Fleet = { COURIER: 2 };
-    expect(transferCargoCapacity(tooSmall)).toBeGreaterThan(quote.outboundVolume);
-    expect(transferCargoCapacity(tooSmall)).toBeLessThan(quote.requiredHold);
+    expect(transferCargoCapacity(tooSmall, {})).toBeGreaterThan(quote.outboundVolume);
+    expect(transferCargoCapacity(tooSmall, {})).toBeLessThan(quote.requiredHold);
     await armed({ COURIER: 2, ATLAS: 15 });
     await expect(
       launchTrade(
@@ -245,7 +245,7 @@ describe('a convoy sent to the merchant', () => {
 
     // The wing that can bring it home flies.
     const big: Fleet = { ATLAS: 15 };
-    expect(transferCargoCapacity(big)).toBeGreaterThanOrEqual(quote.requiredHold);
+    expect(transferCargoCapacity(big, {})).toBeGreaterThanOrEqual(quote.requiredHold);
     const launch = await launchTrade(
       f.db,
       mine,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HULLS,
+  UNAIDED,
   distance,
   exposureMinutes,
   fleetCargo,
@@ -24,26 +25,26 @@ const THERE = { x: 300, y: 0, z: 400 }; // 500 units away
 describe('the launch preview', () => {
   it('agrees with the rules the server will use', () => {
     const sending = { DART: 10 };
-    const route = planRoute(HERE, THERE, sending, { DART: 20 }, {}, {});
+    const route = planRoute(HERE, THERE, sending, { DART: 20 }, {}, UNAIDED);
 
     expect(route.distance).toBe(distance(HERE, THERE));
-    expect(route.oneWayMinutes).toBe(fleetTravelExact(route.distance, sending));
+    expect(route.oneWayMinutes).toBe(fleetTravelExact(route.distance, sending, UNAIDED));
     expect(route.exposureMinutes).toBe(exposureMinutes(route.oneWayMinutes));
   });
 
   it('counts what is left at home, including ground defence', () => {
-    const route = planRoute(HERE, THERE, { DART: 12 }, { DART: 20, COURIER: 2 }, { BASTION: 3 }, {});
+    const route = planRoute(HERE, THERE, { DART: 12 }, { DART: 20, COURIER: 2 }, { BASTION: 3 }, UNAIDED);
     // 20 + 2 at home, 12 leave, 3 Bastions never leave.
     expect(route.homeDefenceAfter).toBe(13);
   });
 
   it('reports an undefended planet when everything is sent', () => {
-    const route = planRoute(HERE, THERE, { DART: 20 }, { DART: 20 }, {}, {});
+    const route = planRoute(HERE, THERE, { DART: 20 }, { DART: 20 }, {}, UNAIDED);
     expect(route.homeDefenceAfter).toBe(0);
   });
 
   it('never reports negative defence if the fleet drifts under it', () => {
-    const route = planRoute(HERE, THERE, { DART: 40 }, { DART: 20 }, {}, {});
+    const route = planRoute(HERE, THERE, { DART: 40 }, { DART: 20 }, {}, UNAIDED);
     expect(route.homeDefenceAfter).toBe(0);
   });
 
@@ -52,31 +53,31 @@ describe('the launch preview', () => {
    * decision. The preview has to show that, or Bulwarks look free.
    */
   it('slows the whole fleet to its slowest hull', () => {
-    const fast = planRoute(HERE, THERE, { DART: 10 }, { DART: 10, RAMPART: 1 }, {}, {});
-    const heavy = planRoute(HERE, THERE, { DART: 10, RAMPART: 1 }, { DART: 10, RAMPART: 1 }, {}, {});
+    const fast = planRoute(HERE, THERE, { DART: 10 }, { DART: 10, RAMPART: 1 }, {}, UNAIDED);
+    const heavy = planRoute(HERE, THERE, { DART: 10, RAMPART: 1 }, { DART: 10, RAMPART: 1 }, {}, UNAIDED);
 
     expect(heavy.oneWayMinutes).toBeGreaterThan(fast.oneWayMinutes);
     expect(heavy.exposureMinutes).toBe(heavy.oneWayMinutes * 2);
   });
 
   it('adds combat-hull cargo and the larger dedicated Courier capacity', () => {
-    const combat = planRoute(HERE, THERE, { DART: 10 }, { DART: 10, COURIER: 2 }, {}, {});
-    const withCargo = planRoute(HERE, THERE, { DART: 10, COURIER: 2 }, { DART: 10, COURIER: 2 }, {}, {});
+    const combat = planRoute(HERE, THERE, { DART: 10 }, { DART: 10, COURIER: 2 }, {}, UNAIDED);
+    const withCargo = planRoute(HERE, THERE, { DART: 10, COURIER: 2 }, { DART: 10, COURIER: 2 }, {}, UNAIDED);
 
     expect(withCargo.cargo - combat.cargo).toBe(2 * HULLS.COURIER.cargo);
     expect(combat.cargo).toBe(10 * HULLS.DART.cargo);
   });
 
   it('reports no exposure at all when nothing has been chosen yet', () => {
-    const route = planRoute(HERE, THERE, {}, { DART: 20 }, {}, {});
+    const route = planRoute(HERE, THERE, {}, { DART: 20 }, {}, UNAIDED);
     expect(route.oneWayMinutes).toBe(0);
     expect(route.exposureMinutes).toBe(0);
     expect(route.homeDefenceAfter).toBe(20);
   });
 
   it('has no reach at all with an empty hangar', () => {
-    expect(reachMinutes(HERE, THERE, {})).toBeNull();
-    expect(reachMinutes(HERE, THERE, { BASTION: 5 })).toBeNull();
+    expect(reachMinutes(HERE, THERE, {}, UNAIDED)).toBeNull();
+    expect(reachMinutes(HERE, THERE, { BASTION: 5 }, UNAIDED)).toBeNull();
   });
 });
 
@@ -112,28 +113,28 @@ describe('the launch preview for something on an orbit', () => {
    * wing will actually fly to.
    */
   it('carries the rendezvous of the ship the wing flies at', () => {
-    expect(planPirateRoute(reach, { DART: 10, RAMPART: 1 }, { DART: 20, RAMPART: 1 }, {}, {})
+    expect(planPirateRoute(reach, { DART: 10, RAMPART: 1 }, { DART: 20, RAMPART: 1 }, {}, UNAIDED)
       ?.rendezvous).toEqual({ x: 0, y: 0, z: 1400 });
-    expect(planPirateRoute(reach, { DART: 10 }, { DART: 20, RAMPART: 1 }, {}, {})
+    expect(planPirateRoute(reach, { DART: 10 }, { DART: 20, RAMPART: 1 }, {}, UNAIDED)
       ?.rendezvous).toEqual({ x: 900, y: 0, z: 0 });
   });
 
   it('quotes the server\'s own solve for the slowest ship selected', () => {
     // A Rampart is slower than a Dart, so the whole wing flies at its rendezvous.
-    const route = planPirateRoute(reach, { DART: 10, RAMPART: 1 }, { DART: 20, RAMPART: 1 }, {}, {});
+    const route = planPirateRoute(reach, { DART: 10, RAMPART: 1 }, { DART: 20, RAMPART: 1 }, {}, UNAIDED);
     expect(route?.oneWayMinutes).toBe(31);
     expect(route?.distance).toBe(1400);
 
     // Leave the Rampart behind and the fleet catches the earlier rendezvous.
-    const faster = planPirateRoute(reach, { DART: 10 }, { DART: 20, RAMPART: 1 }, {}, {});
+    const faster = planPirateRoute(reach, { DART: 10 }, { DART: 20, RAMPART: 1 }, {}, UNAIDED);
     expect(faster?.oneWayMinutes).toBe(12);
     expect(faster?.distance).toBe(900);
   });
 
   it('adds a real return leg rather than doubling the chase', () => {
     const sending = { DART: 10 };
-    const route = planPirateRoute(reach, sending, { DART: 20 }, {}, {});
-    const home = fleetTravelExact(900, sending);
+    const route = planPirateRoute(reach, sending, { DART: 20 }, {}, UNAIDED);
+    const home = fleetTravelExact(900, sending, UNAIDED);
     expect(route?.exposureMinutes).toBeCloseTo(12 + home, 6);
     // And that is emphatically not the world sheet's answer.
     expect(route?.exposureMinutes).not.toBeCloseTo(exposureMinutes(12), 6);
@@ -148,20 +149,20 @@ describe('the launch preview for something on an orbit', () => {
    * a launch the server then rejects outright.
    */
   it('refuses when the slowest ship selected cannot make the rendezvous', () => {
-    expect(planPirateRoute(reach, { CITADEL: 1 }, { CITADEL: 1 }, {}, {})).toBeNull();
+    expect(planPirateRoute(reach, { CITADEL: 1 }, { CITADEL: 1 }, {}, UNAIDED)).toBeNull();
     // Nothing selected is not a refusal, it is simply nothing to quote yet.
-    expect(planPirateRoute(reach, {}, { DART: 20 }, {}, {})).toBeNull();
+    expect(planPirateRoute(reach, {}, { DART: 20 }, {}, UNAIDED)).toBeNull();
   });
 
   it('charges fuel over the leg the server solved, both ways', () => {
     const sending = { DART: 10 };
-    const route = planPirateRoute(reach, sending, { DART: 20 }, {}, {});
+    const route = planPirateRoute(reach, sending, { DART: 20 }, {}, UNAIDED);
     expect(route?.fuel).toBe(missionFuel(sending, 900, 2));
   });
 
   it('counts the garrison exactly as a raid on a world does', () => {
     const route = planPirateRoute(
-      reach, { DART: 12 }, { DART: 20, COURIER: 2 }, { BASTION: 3 }, {},
+      reach, { DART: 12 }, { DART: 20, COURIER: 2 }, { BASTION: 3 }, UNAIDED,
     );
     expect(route?.homeDefenceAfter).toBe(13);
     expect(route?.cargo).toBe(fleetCargo({ DART: 12 }, {}));

@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TRADE, quoteTrade, transferCargoCapacity } from '@astera/rules';
+import { TRADE, UNAIDED, quoteTrade, transferCargoCapacity } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { PlanetView } from '../src/api/schemas.js';
@@ -127,7 +127,7 @@ describe('planTradeRoute', () => {
       { ATLAS: 12 },
       { ATLAS: 12 },
       {},
-      {},
+      UNAIDED,
     );
     expect(route).not.toBeNull();
     expect(route?.oneWayMinutes).toBeGreaterThan(0);
@@ -147,7 +147,7 @@ describe('planTradeRoute', () => {
       { ATLAS: 12 },
       { ATLAS: 12 },
       {},
-      {},
+      UNAIDED,
     );
     expect(route).toBeNull();
   });
@@ -160,7 +160,7 @@ describe('planTradeRoute', () => {
       {},
       { ATLAS: 12 },
       {},
-      {},
+      UNAIDED,
     )).toBeNull();
   });
 
@@ -172,7 +172,7 @@ describe('planTradeRoute', () => {
       { ATLAS: 12 },
       { ATLAS: 12 },
       {},
-      {},
+      UNAIDED,
     );
     expect(route?.fuel).toBeGreaterThan(0);
   });
@@ -324,7 +324,7 @@ describe('why a full store still buys so little', () => {
     expect(legs).toHaveTextContent(/home/i);
     // Through the shared formatter, so the assertion reads the grouped figure a
     // player sees rather than the raw one.
-    expect(legs).toHaveTextContent(full(transferCargoCapacity({ ATLAS: 1 })));
+    expect(legs).toHaveTextContent(full(transferCargoCapacity({ ATLAS: 1 }, {})));
   });
 
   it('says the return leg is the limit when the return leg is the limit', async () => {
@@ -370,7 +370,7 @@ describe('the ceiling says what it is', () => {
   it('states what the ceiling buys, so its last digits are not a mystery', async () => {
     sheet({ planet: trader({ fleet: { ATLAS: 1 } }, { alloy: 50_000 }) });
     await userEvent.setup().click(screen.getByRole('button', { name: /max atlas/i }));
-    const hold = transferCargoCapacity({ ATLAS: 1 });
+    const hold = transferCargoCapacity({ ATLAS: 1 }, {});
     const top = Number(screen.getByTestId('trade-offer').textContent.replace(/\D/g, ''));
     expect(top).toBeLessThanOrEqual(hold);
     // 5,940 alloy is exactly 66 deuterium, and the line has to say so.
@@ -390,7 +390,7 @@ describe('the ceiling says what it is', () => {
     setAmount(/alloy to give/i, 50_000);
     // The hold, not the store — a Courier carries 700 and the offer has to fit in it.
     expect(Number(screen.getByTestId('trade-offer').textContent.replace(/\D/g, '')))
-      .toBeLessThanOrEqual(transferCargoCapacity({ COURIER: 1 }));
+      .toBeLessThanOrEqual(transferCargoCapacity({ COURIER: 1 }, {}));
     expect(commit()).toBeEnabled();
   });
 

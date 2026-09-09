@@ -34,7 +34,7 @@ import {
  */
 
 const RATE = TRADE.rate;
-const hold = (fleet: Fleet): number => transferCargoCapacity(fleet);
+const hold = (fleet: Fleet): number => transferCargoCapacity(fleet, {});
 
 describe('which good the ask is dragged by', () => {
   /*

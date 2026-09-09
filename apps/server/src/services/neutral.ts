@@ -334,8 +334,7 @@ export async function resolveNeutralBattle(
     const home = fleetTravelExact(
       mission.distance,
       result.attackerSurvivors,
-      fleetSpeedMult(attackerOrbit),
-      mission.tech ?? {},
+      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {} },
     );
     const arriveAt = addMinutes(clock.now(), home);
     const [returnMission] = await tx.insert(missions).values({
@@ -386,8 +385,7 @@ export async function returnAttackUntouched(
     fleetTravelExact(
       mission.distance,
       fleet,
-      fleetSpeedMult(attackerOrbit),
-      mission.tech ?? {},
+      { boost: fleetSpeedMult(attackerOrbit), tech: mission.tech ?? {} },
     ),
   );
   const [ret] = await tx.insert(missions).values({

@@ -25,11 +25,16 @@ describe('the calibrated economy tempo', () => {
   it('keeps the upgrade curve inside a raidable storage profile', () => {
     expect(ECON.costBase / 52).toBe(1.05);
     expect(ECON.costMult).toBe(1.54);
-    // D169 replaced the pair with the owner's table — three hours before a Vault
-    // exists, forty at the top — and D171 scaled what a step is worth by 2.5 so
-    // the works can always be banked. See `ECON.storageScale`.
-    expect(storageHours(0)).toBe(7.5);
-    expect(storageHours(20)).toBe(100);
+    /*
+      D169 replaced the pair with the owner's table — three hours before a Vault
+      exists, forty at the top — and D171 scaled what a step is worth so the works
+      can always be banked. D181 lifted that scale 25% and these two figures moved
+      with it, which is why they are now derived: this test is about the COST
+      curve staying inside a raidable store, and the store's absolute depth is
+      `storage-lift.test.ts`'s claim, not this one's.
+    */
+    expect(storageHours(0)).toBeCloseTo(3 * ECON.storageScale, 10);
+    expect(storageHours(20)).toBeCloseTo(40 * ECON.storageScale, 10);
   });
 
   it('keeps the opening in minutes and both meanings of L12 inside one to two hours', () => {
@@ -85,7 +90,7 @@ describe('the calibrated economy tempo', () => {
       weapon is set by hand against what it now DOES, so it is written out here and
       pinned here rather than derived from a base nobody would recognise.
     */
-    expect(DEATH_STAR.cost).toEqual({ alloy: 35_000, crystal: 25_000, deuterium: 6_000 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 20_000, crystal: 10_000, deuterium: 2_500 });
     expect(CLAN.creationCost).toEqual({ alloy: 8500, crystal: 5100, deuterium: 0 });
   });
 

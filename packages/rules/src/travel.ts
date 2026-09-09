@@ -45,28 +45,70 @@ export function travelMinutes(dist: number, speed: number): number {
 }
 
 /**
- * A fleet flies at its slowest hull, times whatever its home planet lends it.
+ * EVERYTHING ABOUT A FLIGHT THAT IS NOT THE SHIP. D180.
  *
- * `boost` is the BEACON's doing (D25) and defaults to 1, so every existing caller
- * reads the same number it always did. It multiplies SPEED rather than dividing
- * time, because that is what a navigation beacon does to a ship. With D121's
- * launch overhead gone the two are now arithmetically identical, and it stays this
- * way round because it is the honest description of what a beacon does.
+ * A wing moves at its slowest hull's catalogue speed times two things that hull
+ * knows nothing about: the commander's `SHIP_PROPULSION` ladder, and the BEACON
+ * standing over the world it launched from (D25). Both are real, both are large —
+ * propulsion alone is four rungs of +25% to a DOUBLING — and neither is visible
+ * from the fleet you are holding.
+ *
+ * THEY ARE ONE REQUIRED ARGUMENT BECAUSE THEY WERE TWO OPTIONAL ONES.
+ * `fleetTravelExact(dist, fleet, boost = 1, tech = {})` read beautifully and
+ * failed silently: a caller that forgot the last two arguments got a plausible
+ * number that was up to twice too long, with no error anywhere. Four client
+ * surfaces did exactly that for as long as propulsion has existed — and one of
+ * them, `settlementCanArrive`, turned the wrong minutes into a REFUSAL, telling
+ * commanders they could not reach a claim window they could comfortably reach.
+ *
+ * SO THE DEFAULTS ARE GONE. A new caller cannot compile without saying which
+ * flight this is, and `UNAIDED` is how one that belongs to no commander says so in
+ * a word. A silent wrong answer is replaced by a type error, which is the only
+ * kind of guard that survives the next feature.
  */
+export interface FlightModifiers {
+  /** The Beacon over the world this wing left. `1` when there is none. */
+  readonly boost: number;
+  /** The commander's own ladders — frozen at launch for an attacker (D137). */
+  readonly tech: TechLevels;
+}
+
+/**
+ * A FLIGHT NOBODY IS FLYING. Named rather than written out as `{ boost: 1, tech:
+ * {} }`, so the handful of legitimate uses are greppable and everything else has
+ * to justify itself.
+ *
+ * Legitimate means the question genuinely has no commander behind it: a
+ * galaxy-wide constant derived from the map (`SETTLEMENT_CLAIM_MINUTES`), or a
+ * catalogue comparison between two hulls. It is NEVER the right answer for a
+ * number a specific player is about to act on.
+ */
+export const UNAIDED: FlightModifiers = { boost: 1, tech: {} };
+
+/**
+ * HOW FAST THIS WING ACTUALLY MOVES, and the only place the two modifiers meet.
+ *
+ * Speed is multiplied rather than time divided, because that is what a beacon and
+ * an engine do to a ship. With D121's launch overhead gone the two are
+ * arithmetically identical, and it stays this way round because it is the honest
+ * description of what is happening.
+ */
+export const fleetPace = (fleet: Fleet, mods: FlightModifiers): number =>
+  fleetSpeed(fleet, mods.tech) * mods.boost;
+
+/** One-way flight time for a wing, unrounded. */
 export const fleetTravelExact = (
   dist: number,
   fleet: Fleet,
-  boost = 1,
-  tech: TechLevels = {},
-): number => travelExact(dist, fleetSpeed(fleet, tech) * boost);
+  mods: FlightModifiers,
+): number => travelExact(dist, fleetPace(fleet, mods));
 
 /** The same fleet trip rounded up for a human-facing whole-minute quote. */
 export const fleetTravelMinutes = (
   dist: number,
   fleet: Fleet,
-  boost = 1,
-  tech: TechLevels = {},
-): number => Math.ceil(fleetTravelExact(dist, fleet, boost, tech));
+  mods: FlightModifiers,
+): number => Math.ceil(fleetTravelExact(dist, fleet, mods));
 
 /** Minutes the origin planet is left weakened: out, plus back. */
 export const exposureMinutes = (oneWay: number): number => oneWay * 2;

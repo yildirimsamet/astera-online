@@ -1,6 +1,7 @@
 import { HULLS } from './hulls.js';
 import { GALAXY, MULTI_WORLD } from './constants.js';
-import { fleetTravelExact } from './travel.js';
+import { cargoMult, type TechLevels } from './tech.js';
+import { UNAIDED, fleetTravelExact } from './travel.js';
 import type { PlanetSlot } from './galaxy.js';
 import type {
   Fleet,
@@ -51,9 +52,17 @@ export const GALAXY_SPAN = 2 * GALAXY.radius;
  * wins, so distance decides the RACE while no longer deciding who may enter it.
  */
 export const SETTLEMENT_CLAIM_MINUTES = Math.ceil(
-  fleetTravelExact(GALAXY_SPAN, {
-    [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports,
-  }),
+  fleetTravelExact(
+    GALAXY_SPAN,
+    { [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports },
+    /*
+      UNAIDED, AND THAT IS THE POINT (D180). This window has to contain the worst
+      settlement flight the map can produce, so it is measured at catalogue speed —
+      no Beacon, no Propulsion. A commander who has either gets the difference as
+      slack, which is the correct direction for a floor to be wrong in.
+    */
+    UNAIDED,
+  ),
 );
 
 /** Capacity is deliberately stepwise and derived from the strongest controlled Core. */
@@ -95,11 +104,28 @@ export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
  */
 export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
 
-/** Only dedicated transports count when moving resources between owned worlds. */
-export function transferCargoCapacity(fleet: Fleet): number {
+/**
+ * WHAT THIS COMMANDER CAN MOVE BETWEEN THEIR OWN WORLDS — and what a trade convoy
+ * is sized by. Only the dedicated transports count.
+ *
+ * `CARGO_HOLDS` LIFTS THIS TOO, SINCE D180 (owner instruction). It used to lift
+ * `fleetCargo` alone, on the reasoning that a raid's loot ceiling and a logistics
+ * run are different questions. They are — the two count different rosters, and
+ * still do — but they are not different LADDERS: a commander who buys a project
+ * called Cargo Holds and finds their Atlas carrying exactly what it carried
+ * yesterday has learned that the game lied to them, not that raid economics are
+ * subtle.
+ *
+ * `tech` IS REQUIRED for the same reason it is required on `fleetSpeed`: an
+ * optional one would let the next caller quote an unbuffed hold by omission, and
+ * this figure is a REFUSAL as well as a label — `launchTrade` and `launchTransfer`
+ * both reject a load above it. One multiplier, `cargoMult`, floored after the
+ * multiply exactly as `fleetCargo` floors it, so the two can never round apart.
+ */
+export function transferCargoCapacity(fleet: Fleet, tech: TechLevels): number {
   let capacity = 0;
   for (const id of TRANSFER_CARGO_HULLS) capacity += (fleet[id] ?? 0) * HULLS[id].cargo;
-  return capacity;
+  return Math.floor(capacity * cargoMult(tech));
 }
 
 export const resourcesTotal = (cargo: Resources): number =>

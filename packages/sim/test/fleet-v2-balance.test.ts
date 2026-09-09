@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UNAIDED,
   COMBAT_HULLS,
   HULLS,
   RESEARCH_TECH,
@@ -93,8 +94,8 @@ describe('Fleet V2 all-pairs calibration — D148', () => {
 describe('Fleet V2 mission-profile calibration — D148', () => {
   it('keeps Tempest as the combat speed ceiling and the heavy siege visibly slower', () => {
     expect(HULLS.TEMPEST.speed).toBe(Math.max(...COMBAT_HULLS.map((id) => HULLS[id].speed)));
-    const fast = fleetTravelExact(800, { TEMPEST: 10 });
-    const heavy = fleetTravelExact(800, { CITADEL: 10 });
+    const fast = fleetTravelExact(800, { TEMPEST: 10 }, UNAIDED);
+    const heavy = fleetTravelExact(800, { CITADEL: 10 }, UNAIDED);
     expect(fast).toBeLessThan(heavy);
     expect(exposureMinutes(fast)).toBeLessThan(exposureMinutes(heavy));
     expect(radarLead(400, 800, fast)).toBeLessThan(radarLead(400, 800, heavy));
@@ -105,8 +106,8 @@ describe('Fleet V2 mission-profile calibration — D148', () => {
     expect(HULLS.ATLAS.cargo / value('ATLAS')).toBeGreaterThan(
       HULLS.COURIER.cargo / value('COURIER'),
     );
-    expect(fleetTravelExact(800, { COURIER: 2 }))
-      .toBeLessThan(fleetTravelExact(800, { ATLAS: 1 }));
+    expect(fleetTravelExact(800, { COURIER: 2 }, UNAIDED))
+      .toBeLessThan(fleetTravelExact(800, { ATLAS: 1 }, UNAIDED));
     expect(fleetCargo({ ATLAS: 1 }, {})).toBeGreaterThan(fleetCargo({ COURIER: 2 }, {}));
   });
 

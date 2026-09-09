@@ -1,5 +1,4 @@
-import { MULTI_WORLD } from './constants.js';
-import type { PlanetKind, Vec3 } from './types.js';
+import type { Vec3 } from './types.js';
 
 /**
  * THE ONE LEG EVERY SCREEN DRAWS. D106.
@@ -360,18 +359,3 @@ export function sensorLeadOnVisualLeg(
 
   return Math.min(1, (range - destinationClearance) / legLength) * oneWayMinutes;
 }
-
-/**
- * HOW LONG THIS WORLD STAYS DARK AFTER A STRIKE. D167.
- *
- * The one place a world's KIND becomes a recovery window, so the server, the
- * client's warning copy and the simulator cannot disagree about a clock the player
- * is being asked to race.
- *
- * A NEUTRAL WORLD TAKES THE CAPITAL'S SHORT WINDOW, and that is not an oversight.
- * The long one exists to give a commander time to answer a threat to something they
- * hold; a world nobody holds has nobody to answer and nothing to lose, so the long
- * clock would only be a longer wait for whoever is trying to take it.
- */
-export const recoveryMinutesFor = (kind: PlanetKind): number =>
-  (kind === 'COLONY' ? MULTI_WORLD.recoveryMinutes.colony : MULTI_WORLD.recoveryMinutes.capital);

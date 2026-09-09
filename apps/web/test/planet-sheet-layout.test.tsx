@@ -164,10 +164,21 @@ describe('what a Death Star strike actually does', () => {
     }
   });
 
-  it('names both recovery windows and what the colony loses', () => {
-    const released = i18n.t('planet.deathStar.effectRelease');
-    expect(released).toMatch(/8/);
+  /**
+   * ONE WINDOW, AND WHAT SURVIVES IT. D179.
+   *
+   * This read "names both recovery windows and what the colony loses" and asserted
+   * an 8 in the released line. There is no colony drop and no second window: the
+   * card now states the two hours and the fleet that lives through them.
+   */
+  it('names the one recovery window and says the fleet survives it', () => {
     expect(i18n.t('planet.deathStar.effectDark')).toMatch(/2/);
+    for (const forbidden of ['sahipsiz', 'released', '8 saat', '8 hours']) {
+      expect(i18n.t('planet.deathStar.effectDark').toLowerCase()).not.toContain(forbidden);
+      expect(i18n.t('planet.deathStar.effectCapital').toLowerCase()).not.toContain(forbidden);
+    }
+    // The fleet line is the reversal, so it is asserted rather than assumed.
+    expect(i18n.t('planet.deathStar.effectFleet').toLowerCase()).toMatch(/kal|surviv|stand/);
   });
 
   /**

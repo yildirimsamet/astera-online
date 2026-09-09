@@ -39,9 +39,9 @@ export const planet = {
     build: "Build",
     started: "Death Star construction started",
     dangerHint:
-      "A one-way planet-breaker. It takes nothing: it darkens a world and starts a clock. A colony not saved inside it is released to nobody.",
+      "A one-way planet-breaker. It takes nothing and it loses nobody a world: it strips a world and darkens it for two hours.",
     readyHint:
-      "Armed. Select any enemy world. Eight hours of recovery for a colony, two for a capital; a capital is never lost.",
+      "Armed. Select any enemy world. Two hours of recovery, whatever it is; no world ever changes hands.",
     needProtocol: "Protocol",
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
@@ -57,18 +57,16 @@ export const planet = {
      * what makes it a decision rather than a hope.
      */
     effectsTitle: "What one impact does",
-    effectFleet: "Destroys every ship and gun standing on the world",
+    effectFleet: "Leaves every ship and gun on the world standing — the strike never touches a fleet",
     effectStock: "Destroys half of everything stored and in the works",
     effectCore:
       "Takes one level off the Command Core and lowers buildings above the new Core ceiling",
     effectAegis:
       "Takes {{levels}} levels off the Aegis, and drops the shield to nothing",
     effectDark:
-      "Darkens a colony for 8 hours and a capital for 2: no production, collection, construction, orders or launches",
-    /** D167: a strike starts a DEADLINE, never an acquisition. */
-    effectRelease:
-      "A colony with no ship landed inside those 8 hours is released to nobody — taken by no one, open to anyone",
-    effectCapital: "A capital is never lost; it only sits dark for 2 hours",
+      "Darkens the world for 2 hours: no production, collection, construction, orders or launches",
+    /** D179: the strike is an OUTAGE. No world is lost and no fleet dies. */
+    effectCapital: "No world ever changes hands, capital or colony; the clock simply runs out",
     effectSurvives:
       "Buildings within the new Core ceiling, all research and other orbital hardware survive",
   },
@@ -254,8 +252,8 @@ export const planet = {
     holdsTag: "Mining craft carry more",
     holdsRole: "Raises every Prospector hold and multiplies with the Derrick’s 2.6× capacity bonus",
     cargoName: "Cargo Holds",
-    cargoTag: "Raids carry more home",
-    cargoRole: "Raises what a fleet can loot · does not change world transfers",
+    cargoTag: "Every hold carries more",
+    cargoRole: "Raises raid loot, world transfers and trade convoys alike",
     synthesisName: "Deuterium Synthesis",
     synthesisTag: "Raises the Refinery ceiling",
     synthesisRole:

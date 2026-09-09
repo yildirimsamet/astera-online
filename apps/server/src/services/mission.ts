@@ -6,6 +6,7 @@ import {
   distance,
   engagementEndsAt,
   fleetCount,
+  UNAIDED,
   fleetSpeed,
   fleetSpeedMult,
   fleetTravelExact,
@@ -127,7 +128,15 @@ export async function launchAttack(
         throw new GameError('NOT_ENOUGH_SHIPS', `Not enough ${hull} at home`, 400, { hull });
       }
     }
-    if (fleetSpeed(requested) <= 0) {
+    /*
+      CAN THIS WING MOVE AT ALL — a question research cannot answer. D180.
+
+      `UNAIDED.tech` deliberately: propulsion is a MULTIPLIER, so it can never lift
+      a zero, and a ground-only or empty fleet is immobile at every rung of the
+      ladder. Asked before the commander's research is loaded, and correct there.
+      The pace that the arrival is actually built from reads the real tech below.
+    */
+    if (fleetSpeed(requested, UNAIDED.tech) <= 0) {
       throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     }
 
@@ -308,7 +317,7 @@ export async function launchAttack(
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
     const tech = await techOf(tx, origin.playerId);
-    const oneWay = fleetTravelExact(dist, requested, fleetSpeedMult(origin.orbit), tech);
+    const oneWay = fleetTravelExact(dist, requested, { boost: fleetSpeedMult(origin.orbit), tech });
     const arriveAt = addMinutes(origin.now, oneWay);
     /**
      * THE ENGAGEMENT. D44.

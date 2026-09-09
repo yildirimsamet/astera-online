@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UNAIDED,
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
@@ -129,10 +130,10 @@ describe('D152 Ship Propulsion ladder', () => {
   /** A fleet still flies at its slowest hull; the research lifts that hull. */
   it('halves the flight of a maxed fleet without erasing its composition', () => {
     const fleet = { DART: 3, CITADEL: 1 };
-    expect(fleetSpeed(fleet)).toBe(HULLS.CITADEL.speed);
+    expect(fleetSpeed(fleet, UNAIDED.tech)).toBe(HULLS.CITADEL.speed);
     expect(fleetSpeed(fleet, { SHIP_PROPULSION: 4 })).toBeCloseTo(HULLS.CITADEL.speed * 2, 12);
-    expect(fleetTravelExact(600, fleet, 1, { SHIP_PROPULSION: 4 }))
-      .toBeCloseTo(fleetTravelExact(600, fleet) / 2, 12);
+    expect(fleetTravelExact(600, fleet, { boost: 1, tech: { SHIP_PROPULSION: 4 } }))
+      .toBeCloseTo(fleetTravelExact(600, fleet, UNAIDED) / 2, 12);
     expect(fleetSpeed(fleet, { SHIP_PROPULSION: 4 }))
       .toBeLessThan(fleetSpeed({ DART: 3 }, { SHIP_PROPULSION: 4 }));
   });

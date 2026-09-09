@@ -159,7 +159,7 @@ export const focus = {
     kindNeutral: "Neutral",
     capitalProtected: "Uncapturable capital",
     capitalProtectedHint:
-      "A Death Star halves its stores, destroys every craft at home and takes a level off its Core; control never changes.",
+      "A Death Star halves its stores and takes a level off its Core. It destroys no craft and control never changes.",
     capitalRecovering: "Capital devastated · uncapturable",
     capitalRecoveringHint:
       "You may strike again: half of what is LEFT goes and the recovery restarts; control still cannot change.",
@@ -198,7 +198,7 @@ export const focus = {
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
     claimDeathStarConsequence:
-      "A Death Star clears this claim and starts {{duration}} of recovery. It takes no world: a colony left without ships when the window closes simply stops belonging to anyone.",
+      "A Death Star clears this claim and starts {{duration}} of recovery. It takes no world and loses nobody one — the world goes dark, and comes back.",
     openColonySlot: "Colony slot",
     colonySlotExplain:
       "Needed only for step 3. Your strongest Command Core must provide an unused colony slot when the founding fleet leaves.",
@@ -224,39 +224,38 @@ export const focus = {
     arrivesIn: "Arrives {{duration}}",
     deathStarRoute: "What a strike does",
     /** The clock a defender is racing, named for what runs out at the end of it. */
-    recoveryBreach: "Recovery breach · drop deadline",
+    recoveryBreach: "Recovery · world dark",
     occupationProtected: "Occupation protection",
     protectedFor: "Cannot be struck or captured for {{duration}}.",
     firstImpact: "Damage + {{duration}} dark",
-    secondImpact: "No ships sent · the world is nobody's",
+    secondImpact: "The clock runs out · the world is unchanged",
     deathStarReadyRequirement: "Death Star ready",
     deathStarReadyExplain:
       "A strike needs a completed Death Star waiting at the launch world.",
     /**
-     * THE ONE THING A DEFENDER HAS TO KNOW, WHERE THEY ARE LOOKING AT IT. D167.
+     * WHAT THE CLOCK ACTUALLY COSTS, WHERE THE DEFENDER IS LOOKING AT IT. D179.
      *
-     * It replaces three requirement chips that described the capture route: an
-     * open colony slot, a ready weapon, an arrival before the window shut, none of
-     * which exist any more. A rule the player cannot see is not a usable rule, and
-     * this is the only rule left on this panel that can cost them a world.
+     * It read "land a ship here or this colony stops being yours" until D179
+     * removed the drop. There is nothing to race any more, so the line states the
+     * real price instead — the world produces nothing and can launch nothing — and
+     * says the one thing a struck commander most needs to hear.
      */
     recoveryDropWarning:
-      "{{duration}} left. Land a ship here before the clock runs out or this colony stops being yours — no second strike required.",
+      "{{duration}} left. Nothing is produced and nothing can launch until then. The world stays yours and your fleet is intact.",
 
     /**
      * THE SAME FACTS AS THE FORGE CARD, WRITTEN FOR THE PERSON PULLING THE
      * TRIGGER. D113, and D55: two surfaces, two sets of words, nothing shared.
      */
     strikeTitle: "What this impact does",
-    strikeFleet: "Every ship and gun on the ground is destroyed",
+    strikeFleet: "Every ship and gun on the ground survives — a strike never kills a fleet",
     strikeStock: "Half the resources in storage and the Works are destroyed",
     strikeCore: "The Command Core loses a level",
     strikeAegis:
       "The Aegis loses {{levels}} levels and the shield drops to nothing",
     strikeDark:
       "Production, collection, construction, new orders and launches stop for {{duration}}",
-    strikeCapture: "If its commander lands no ship before that window closes, the world becomes nobody's",
-    strikeNoCapture: "A capital can be devastated again, but is never lost",
+    strikeNoCapture: "No world is ever lost — it can only be devastated again",
     eyebrow: "Held by {{owner}}",
     location: "World · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */

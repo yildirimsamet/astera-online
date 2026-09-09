@@ -4,19 +4,19 @@ import {
   TRANSFER_CARGO_HULLS,
   fleetCount,
   fleetPower,
-  fleetSpeedMult,
   quoteTrade,
   transferCargoCapacity,
   type Fleet,
   type HullId,
   type Resources,
+  type TechLevels,
   type TradeQuote,
 } from '@astera/rules';
 import { useLaunchTrade } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
-import { planTradeRoute, techOf } from '../lib/navigation.js';
+import { flightModifiers, planTradeRoute } from '../lib/navigation.js';
 import {
   balanceTake,
   dearestFirst,
@@ -152,11 +152,10 @@ export function TradeSheet({
   const now = useNow(5_000);
   const nowMinutes = (now - seasonStart.getTime()) / 60_000;
 
-  const tech = techOf(planet);
-  const speedMult = fleetSpeedMult(planet.effectiveOrbit ?? planet.orbit);
+  const mods = flightModifiers(planet);
 
   const { rate } = merchant;
-  const hold = transferCargoCapacity(fleet);
+  const hold = transferCargoCapacity(fleet, mods.tech);
 
   /*
     SOLVED ON EVERY RENDER, DELIBERATELY UNMEMOISED — the same as `LaunchSheet`.
@@ -178,8 +177,7 @@ export function TradeSheet({
     fleet,
     planet.fleet,
     planet.ground,
-    tech,
-    speedMult,
+    mods,
   );
   const fuel = route?.fuel ?? 0;
 
@@ -287,7 +285,7 @@ export function TradeSheet({
   const setShip = (hull: HullId, value: number): void => {
     const available = planet.fleet[hull] ?? 0;
     const next = { ...fleet, [hull]: Math.max(0, Math.min(available, value)) };
-    const room = transferCargoCapacity(next);
+    const room = transferCargoCapacity(next, mods.tech);
     const ceiling = largestOffer(store, room, give, rate);
     setFleet(next);
     if (offer >= top) setOffer(ceiling);
@@ -445,7 +443,7 @@ export function TradeSheet({
                   <span className="name block truncate text-bone">{hullLabel(id)}</span>
                   <span className="num mt-1 block text-label text-dim">
                     {held > 0
-                      ? t('trade.carrierRoom', { count: held, volume: full(holdOf(id)) })
+                      ? t('trade.carrierRoom', { count: held, volume: full(holdOf(id, mods.tech)) })
                       : t('trade.hullNone')}
                   </span>
                 </span>
@@ -741,8 +739,14 @@ export function TradeSheet({
   );
 }
 
-/** What one of each carrier adds to the hold — stated on its own row, not inferred. */
-const holdOf = (id: HullId): number => transferCargoCapacity({ [id]: 1 });
+/**
+ * What one of each carrier adds to the hold — stated on its own row, not inferred.
+ *
+ * TAKES THE COMMANDER'S TECH SINCE D180: `CARGO_HOLDS` lifts this figure, so a row
+ * quoting the catalogue would disagree with the convoy total printed above it on
+ * the same screen.
+ */
+const holdOf = (id: HullId, tech: TechLevels): number => transferCargoCapacity({ [id]: 1 }, tech);
 
 function Figure({
   label,

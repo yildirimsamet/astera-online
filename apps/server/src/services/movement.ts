@@ -189,12 +189,19 @@ export async function launchTransfer(
   validateTransferFleet(fleet);
   validateResources(cargo);
   if (originPlanetId === targetPlanetId) throw new GameError('SELF_TRANSFER', 'Choose another world');
-  if (resourcesTotal(cargo) > transferCargoCapacity(fleet)) {
-    throw new GameError('CARGO_CAPACITY', 'Cargo exceeds dedicated transport capacity', 400);
-  }
-  if (resourcesTotal(cargo) > 0 && transferCargoCapacity(fleet) <= 0) {
-    throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a transport hull', 400);
-  }
+  /*
+    THE HOLD IS CHECKED INSIDE THE LOCK, NOT HERE. D180.
+
+    It used to be checked in this preamble, which was correct only while a hold was
+    a property of the HULLS alone. `CARGO_HOLDS` now lifts `transferCargoCapacity`,
+    so the answer depends on the commander's research — and research is a row that
+    another transaction can be completing right now. Read out here it would be read
+    before the world is locked and before the economy is advanced, which is the one
+    ordering this codebase does not allow (lock → advance → validate → mutate).
+
+    So the two refusals moved down, beside the fuel and resource checks, where
+    `techOf` has already run under the lock.
+  */
 
   return db.transaction(async (tx) => {
     await lockWorlds(tx, [originPlanetId, targetPlanetId]);
@@ -206,6 +213,30 @@ export async function launchTransfer(
       throw new GameError('PLANET_NOT_OWNED', 'Target is not yours', 403);
     }
     if (target.seasonId !== origin.seasonId) throw new GameError('CROSS_SEASON', 'Another galaxy', 403);
+    const tech = await techOf(tx, ownerPlayerId);
+    /*
+      THE HOLD, AND IT IS ASKED FIRST OF THE THINGS THAT CAN REFUSE. D181.
+
+      Both refusals are the same two sentences they always were, and they used to
+      sit in the pre-transaction preamble. `CARGO_HOLDS` now lifts the figure, so
+      the answer depends on a research row another transaction can be completing —
+      which puts it inside the lock, after `techOf`, or the check reads a value it
+      does not hold.
+
+      IT STAYS AHEAD OF THE STORE CHECKS, and that ordering is deliberate rather
+      than incidental: "your ships cannot carry this" is a fact about the request
+      and "you do not have this" is a fact about the world, and a commander who is
+      wrong about both should be told the one they can fix by changing the form in
+      front of them. Dropped to the bottom it read `INSUFFICIENT_RESOURCES` for an
+      overloaded convoy.
+    */
+    const hold = transferCargoCapacity(fleet, tech);
+    if (resourcesTotal(cargo) > hold) {
+      throw new GameError('CARGO_CAPACITY', 'Cargo exceeds dedicated transport capacity', 400);
+    }
+    if (resourcesTotal(cargo) > 0 && hold <= 0) {
+      throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a transport hull', 400);
+    }
     if (origin.alloy < cargo.alloy || origin.crystal < cargo.crystal || origin.deuterium < cargo.deuterium) {
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
@@ -231,8 +262,7 @@ export async function launchTransfer(
       `assertFuel` is that sum, and it is now the only place any launch states it.
     */
     assertFuel(fuel, origin.deuterium, cargo.deuterium);
-    const tech = await techOf(tx, ownerPlayerId);
-    const oneWay = fleetTravelExact(dist, fleet, fleetSpeedMult(origin.orbit), tech);
+    const oneWay = fleetTravelExact(dist, fleet, { boost: fleetSpeedMult(origin.orbit), tech });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
     assertSeasonOpenThrough(origin, arriveAt);
@@ -326,7 +356,7 @@ export async function launchSettlement(
     */
     assertFuel(fuel, origin.deuterium, cost.deuterium);
     const tech = await techOf(tx, ownerPlayerId);
-    const oneWay = fleetTravelExact(dist, fleet, 1, tech);
+    const oneWay = fleetTravelExact(dist, fleet, { boost: 1, tech });
     const arriveAt = addMinutes(origin.now, oneWay);
     if (arriveAt >= neutral.state.claimUntil) {
       throw new GameError('RECOVERY_WINDOW_TOO_SHORT', 'The claim closes before arrival', 409, {
@@ -406,8 +436,7 @@ async function rerouteToSafeHome(
   const oneWay = fleetTravelExact(
     dist,
     mission.fleet,
-    fleetSpeedMult(homeOrbit),
-    mission.tech ?? {},
+    { boost: fleetSpeedMult(homeOrbit), tech: mission.tech ?? {} },
   );
   if (!Number.isFinite(oneWay)) throw new Error('rerouted transfer has no mobile craft');
   const arriveAt = addMinutes(now, oneWay);
@@ -478,26 +507,18 @@ export async function resolveTransfer(
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.id, mission.fleet);
   const cargo = mission.cargo ?? EMPTY;
-  /**
-   * A SHIP LANDING ON A DARK WORLD IS THE ANSWER TO A DEADLINE. D167.
-   *
-   * A struck colony is released at the end of its recovery window unless its
-   * commander put a ship on it, and this is where that is recorded. It is stamped
-   * only while the window is actually open and only for a flight carrying craft —
-   * cargo alone is a delivery, not a defence, and the owner's instruction was
-   * about sending a fleet.
-   *
-   * The stamp is cleared by every strike, so it can only ever answer the rocket
-   * that is currently overhead.
-   */
-  const answersRecovery = fleetCount(mission.fleet) > 0
-    && target.recoveryUntil !== null
-    && target.recoveryUntil > now;
+  /*
+    THERE IS NO DEADLINE TO ANSWER ANY MORE. D179.
+
+    A ship landing on a dark world used to stamp `recoveryReliefAt` here, and that
+    stamp was the difference between keeping a struck colony and losing it at the
+    end of the window. D179 removed the loss, so the stamp answers a question
+    nobody asks: a landing on a recovering world is now an ordinary delivery.
+  */
   await tx.update(planets).set({
     alloy: sql`${planets.alloy} + ${cargo.alloy}`,
     crystal: sql`${planets.crystal} + ${cargo.crystal}`,
     deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
-    ...(answersRecovery ? { recoveryReliefAt: now } : {}),
   }).where(eq(planets.id, target.id));
   return 'DELIVERED';
 }

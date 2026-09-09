@@ -15,9 +15,9 @@ import {
   telescopeSlots,
   transferCargoCapacity,
   MOBILE_HULLS,
+  UNAIDED,
   type Fleet,
   type HullId,
-  recoveryMinutesFor,
 } from '@astera/rules';
 import type {
   AsteroidView,
@@ -50,7 +50,7 @@ import {
 } from '../lib/dossier.js';
 import { countdown, duration, staleness, useNow } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
-import { reachMinutes } from '../lib/navigation.js';
+import { flightModifiers, reachMinutes } from '../lib/navigation.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
@@ -455,7 +455,7 @@ export function PlanetFocus({
   }
 
   const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
-  const reach = reachMinutes(planet.planet.position, target.position, planet.fleet);
+  const reach = reachMinutes(planet.planet.position, target.position, planet.fleet, flightModifiers(planet));
   const away = target.fleet?.status === 'AWAY';
   const known = headline(read, target);
   const originRecovering = Boolean(
@@ -479,9 +479,20 @@ export function PlanetFocus({
     ? null
     : target.neutral?.claimUntil ?? null;
   const claimActive = Boolean(claimUntil && claimUntil.getTime() > now);
+  /*
+    THE FIGURE THAT DECIDES WHETHER THE SHEET OFFERS THE RACE AT ALL. D180.
+
+    `settlementCanArrive` below is built from this, so an inflated number was not a
+    wrong label — it was a REFUSAL, telling a commander with a doubled engine that
+    they could not reach a claim window they could comfortably reach. It quoted
+    catalogue speed until this line took the modifiers.
+
+    `boost: 1` mirrors `launchSettlement` exactly; see the note in `SettlementSheet`.
+  */
   const settlementEta = fleetTravelExact(
     distance(planet.planet.position, target.position),
     { COURIER: MULTI_WORLD.settlement.transports },
+    { boost: 1, tech: flightModifiers(planet).tech },
   );
   const settlementCanArrive = Boolean(
     claimUntil && now + settlementEta * 60_000 < claimUntil.getTime(),
@@ -898,7 +909,7 @@ function OwnedPlanetFocus({
 }) {
   const { t } = useTranslation();
   const routeDistance = distance(origin.planet.position, target.position);
-  const reach = reachMinutes(origin.planet.position, target.position, origin.fleet);
+  const reach = reachMinutes(origin.planet.position, target.position, origin.fleet, flightModifiers(origin));
   const originRecovering = Boolean(
     origin.planet.recoveryUntil && origin.planet.recoveryUntil.getTime() > now,
   );
@@ -1069,15 +1080,18 @@ function Requirement({
  * the crosshair, not about the weapon on your own pad.
  */
 /**
- * WHAT A STRIKE ACTUALLY DOES, AND FOR A COLONY THE LAST LINE IS THE FEATURE. D167.
+ * WHAT A STRIKE ACTUALLY DOES, AND SINCE D179 THAT IS ALL IT DOES.
  *
- * `capturable` used to mean "a second rocket can take this world". It means the
- * world can be LOST now: a struck colony whose commander sends no ship before the
- * window closes stops being theirs and belongs to nobody. The window itself is the
- * world's own (`recoveryMinutesFor`) — eight hours for a colony, two for a capital
- * — so the sentence and the clock can never disagree.
+ * AND THE `capturable` PROP IS GONE WITH IT. D179.
+ *
+ * It meant "a second rocket can take this world" until D167, then "this world can
+ * be LOST if nobody answers" until D179 removed the deadline. What was left was a
+ * boolean choosing between two phrasings of "nothing happens" — a difference the
+ * component still LOOKED like it was drawing, which is exactly how the next author
+ * learns a rule that does not exist. There is one closing line now because there
+ * is one rule: a strike is an OUTAGE, on every kind of world.
  */
-function StrikeEffects({ capturable }: { capturable: boolean }) {
+function StrikeEffects() {
   const { t } = useTranslation();
   const lines = [
     t('focus.planet.strikeFleet'),
@@ -1085,7 +1099,7 @@ function StrikeEffects({ capturable }: { capturable: boolean }) {
     t('focus.planet.strikeCore'),
     t('focus.planet.strikeAegis', { levels: DEATH_STAR.aegisLevelsLost }),
     t('focus.planet.strikeDark', {
-      duration: duration(recoveryMinutesFor(capturable ? 'COLONY' : 'CAPITAL')),
+      duration: duration(MULTI_WORLD.recoveryMinutes),
     }),
   ];
   return (
@@ -1101,7 +1115,7 @@ function StrikeEffects({ capturable }: { capturable: boolean }) {
         {/* What the SECOND one does, which is the only reason to plan a first. */}
         <li className="flex gap-2 text-caption text-dim">
           <span aria-hidden className="text-faint">▪</span>
-          <span>{t(capturable ? 'focus.planet.strikeCapture' : 'focus.planet.strikeNoCapture')}</span>
+          <span>{t('focus.planet.strikeNoCapture')}</span>
         </li>
       </ul>
     </div>
@@ -1196,7 +1210,7 @@ function StrategicWorldGuide({
             </span>
           )}
         </div>
-        <StrikeEffects capturable={false} />
+        <StrikeEffects />
       </div>
     );
   }
@@ -1364,7 +1378,7 @@ function StrategicWorldGuide({
             <p className="flex items-start gap-2">
               <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
               <span>{t('focus.planet.claimDeathStarConsequence', {
-                duration: duration(recoveryMinutesFor('COLONY')),
+                duration: duration(MULTI_WORLD.recoveryMinutes),
               })}</span>
             </p>
           </div>
@@ -1403,7 +1417,7 @@ function StrategicWorldGuide({
             onToggle={() => { toggleStep('strike-1'); }}
             number="1"
             label={t('focus.planet.firstImpact', {
-              duration: duration(recoveryMinutesFor('COLONY')),
+              duration: duration(MULTI_WORLD.recoveryMinutes),
             })}
             danger
           />
@@ -1419,7 +1433,7 @@ function StrategicWorldGuide({
       )}
       {/* A capital never reaches this guide — it returns above — so this is always
           a colony, and a colony is the world that can actually be lost. */}
-      {!protectedState && <StrikeEffects capturable />}
+      {!protectedState && <StrikeEffects />}
       {/*
         THE THREE CHIPS HERE WERE THE CAPTURE GATES — an open colony slot, a ready
         weapon, a flight that lands before the window shuts — and D167 removed the
@@ -2333,7 +2347,16 @@ export function TradeFocus({
     by building a transport. `services/trade.ts` answers them separately
     (`EMPTY_FLEET` against `TRANSFER_NEEDS_CARGO_HULL`) and so does this.
   */
-  const hasCarrier = transferCargoCapacity(fleetAtHome) > 0;
+  /*
+    IS THERE A CARRIER AT ALL — a question no ladder can answer. D180.
+
+    `UNAIDED.tech` deliberately, and it is the same argument `startAttack` makes for
+    `fleetSpeed`: `cargoMult` is a multiplier of at least 1, so it cannot turn a
+    zero hold into a positive one or the reverse. This rail asks whether the
+    commander OWNS a transport, never how much it holds — the figure itself is
+    quoted on `TradeSheet`, which does read their research.
+  */
+  const hasCarrier = transferCargoCapacity(fleetAtHome, UNAIDED.tech) > 0;
   /*
     "YOU HAVE NONE" AND "YOURS ARE OUT" ARE NOT THE SAME SENTENCE. Owner report: a
     commander who had just sent their only Atlas at this merchant was told
@@ -2342,7 +2365,7 @@ export function TradeFocus({
     other by waiting for one to land, and a rail that cannot tell them apart sends
     a player to the shipyard to buy what they already own.
   */
-  const carriersAway = !hasCarrier && transferCargoCapacity(fleetAway) > 0;
+  const carriersAway = !hasCarrier && transferCargoCapacity(fleetAway, UNAIDED.tech) > 0;
   const tooLate = reach === null;
 
   return (

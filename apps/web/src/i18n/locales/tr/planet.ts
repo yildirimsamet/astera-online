@@ -39,9 +39,9 @@ export const planet = {
     build: "Üret",
     started: "Ölüm Yıldızı üretimi başladı",
     dangerHint:
-      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz: dünyayı karartır ve bir süre başlatır. Koloni o süre içinde kurtarılmazsa sahipsiz kalır.",
+      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz, kimseye dünya kaybettirmez: dünyayı soyar ve iki saat karartır.",
     readyHint:
-      "Silahlı. Herhangi bir düşman dünyasını seç. Koloniye 8, ana gezegene 2 saatlik toparlanma verir; ana gezegen asla elden çıkmaz.",
+      "Silahlı. Herhangi bir düşman dünyasını seç. Hangi dünya olursa olsun 2 saat toparlanma; hiçbir dünya el değiştirmez.",
     needProtocol: "Protokol",
     needCore: "Çekirdek {{level}}. seviye",
     needShipyard: "Tersane {{level}}. seviye",
@@ -50,17 +50,15 @@ export const planet = {
 
     /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113 · D167. */
     effectsTitle: "Tek darbe ne yapar",
-    effectFleet: "Dünyada duran bütün gemileri ve topları yok eder",
+    effectFleet: "Dünyada duran gemi ve topların hepsi yerinde kalır — darbe filoya hiç dokunmaz",
     effectStock: "Depo ve üretim havuzundaki kaynakların yarısını yok eder",
     effectCore:
       "Komuta Çekirdeği’ni bir seviye indirir; yeni Çekirdek sınırını aşan binalar da bu seviyeye düşer",
     effectAegis: "Aegis’i {{levels}} seviye indirir ve kalkanı sıfırlar",
     effectDark:
-      "Koloniyi 8, ana gezegeni 2 saat karartır: üretim, toplama, inşa, sipariş ve fırlatma durur",
-    /** D167: darbe ele geçirmez, SÜRE başlatır. Kaçırılan sürenin bedeli bu. */
-    effectRelease:
-      "Koloniye o 8 saat içinde tek gemi inmezse dünya sahipsiz kalır — kimseye geçmez, herkese açılır",
-    effectCapital: "Ana gezegen asla elden çıkmaz; yalnız 2 saat karanlıkta kalır",
+      "Dünyayı 2 saat karartır: üretim, toplama, inşa, sipariş ve fırlatma durur",
+    /** D179: darbe bir KESİNTİdir. Dünya da filo da kaybedilmez. */
+    effectCapital: "Ana gezegen olsun koloni olsun hiçbir dünya el değiştirmez; süre biter, o kadar",
     effectSurvives:
       "Yeni Çekirdek sınırını aşmayan binalar, araştırmalar ve diğer yörünge donanımları korunur",
   },
@@ -247,9 +245,9 @@ export const planet = {
     holdsRole:
       "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
     cargoName: "Gemi Ambarları",
-    cargoTag: "Akınlar daha çok getirir",
+    cargoTag: "Her ambar daha çok taşır",
     cargoRole:
-      "Akın filosunun taşıyabileceği ganimeti artırır; dünyalar arası transferi ve asteroit madenciliğini etkilemez.",
+      "Akın ganimetini, dünyalar arası transferi ve ticaret konvoyunu birlikte artırır.",
     synthesisName: "Döteryum Sentezi",
     synthesisTag: "Rafineri seviye sınırını yükseltir",
     synthesisRole:

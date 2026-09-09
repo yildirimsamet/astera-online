@@ -317,8 +317,7 @@ export async function quoteClanAid(
   const ordinary = fleetTravelExact(
     distance(origin, target),
     input.fleet,
-    fleetSpeedMult(orbit),
-    tech,
+    { boost: fleetSpeedMult(orbit), tech },
   );
   const travelMinutes = clanAidTravelMinutes(ordinary);
   const season = await db.select({ endsAt: seasons.endsAt }).from(seasons)
@@ -327,8 +326,7 @@ export async function quoteClanAid(
   const returnMinutes = clanAidTravelMinutes(fleetTravelExact(
     distance(target, origin),
     input.fleet,
-    fleetSpeedMult(orbit),
-    tech,
+    { boost: fleetSpeedMult(orbit), tech },
   ));
   const arriveAt = addMinutes(input.now, travelMinutes);
   const returnAt = addMinutes(arriveAt, returnMinutes);
@@ -448,7 +446,7 @@ export async function launchClanAid(
   // A resource delivery always comes home; a ship gift has only its outbound leg.
   const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);
   assertFuel(fuel, origin.deuterium, input.cargo.deuterium);
-  const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, boost, tech));
+  const oneWay = clanAidTravelMinutes(fleetTravelExact(dist, input.fleet, { boost: boost, tech }));
   if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel', 400);
   const capitalWorld = lockedWorlds.get(capital.id);
   if (!capitalWorld) throw new Error('sender capital lock vanished');
@@ -456,8 +454,7 @@ export async function launchClanAid(
   const returnMinutes = clanAidTravelMinutes(fleetTravelExact(
     returnDistance,
     input.fleet,
-    boost,
-    tech,
+    { boost: boost, tech },
   ));
   const arriveAt = addMinutes(origin.now, oneWay);
   assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));

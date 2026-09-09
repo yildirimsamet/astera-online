@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  UNAIDED,
   ABUSE,
   ALL_HULLS,
   BUILDING_IDS,
@@ -390,15 +391,15 @@ describe('fleet arithmetic', () => {
    * the launch sheet promises would be a lie.
    */
   it('travels at the speed of its slowest mobile hull', () => {
-    expect(fleetSpeed({ DART: 1 })).toBe(HULLS.DART.speed);
-    const mixed = fleetSpeed({ DART: 1, WAYFARER: 1 });
+    expect(fleetSpeed({ DART: 1 }, UNAIDED.tech)).toBe(HULLS.DART.speed);
+    const mixed = fleetSpeed({ DART: 1, WAYFARER: 1 }, UNAIDED.tech);
     expect(mixed).toBe(Math.min(HULLS.DART.speed, HULLS.WAYFARER.speed));
     expect(mixed).toBeLessThanOrEqual(HULLS.DART.speed);
   });
 
   it('cannot travel at all with nothing in it, or with only ground units', () => {
-    expect(fleetSpeed({})).toBe(0);
-    for (const id of GROUND_HULLS) expect(fleetSpeed({ [id]: 5 })).toBe(0);
+    expect(fleetSpeed({}, UNAIDED.tech)).toBe(0);
+    for (const id of GROUND_HULLS) expect(fleetSpeed({ [id]: 5 }, UNAIDED.tech)).toBe(0);
   });
 
   /**
@@ -407,7 +408,7 @@ describe('fleet arithmetic', () => {
    * fleet crawling at Wayfarer speed.
    */
   it('ignores a hull listed at zero', () => {
-    expect(fleetSpeed({ DART: 2, WAYFARER: 0 })).toBe(HULLS.DART.speed);
+    expect(fleetSpeed({ DART: 2, WAYFARER: 0 }, UNAIDED.tech)).toBe(HULLS.DART.speed);
   });
 
   /**
@@ -420,10 +421,10 @@ describe('fleet arithmetic', () => {
    */
   it('keeps the exact fleet instant separate from the rounded display quote', () => {
     const halfway = (HULLS.DART.speed * 2.5) / TRAVEL.distanceFactor;
-    const exact = fleetTravelExact(halfway, { DART: 2 });
+    const exact = fleetTravelExact(halfway, { DART: 2 }, UNAIDED);
     expect(exact).toBeCloseTo(2.5, 12);
     expect(exact).not.toBe(Math.ceil(exact));
-    expect(fleetTravelMinutes(halfway, { DART: 2 })).toBe(Math.ceil(exact));
+    expect(fleetTravelMinutes(halfway, { DART: 2 }, UNAIDED)).toBe(Math.ceil(exact));
   });
 
   it('reports losses as before minus after, never a negative', () => {
@@ -739,7 +740,7 @@ describe('the fleet type', () => {
     const empty: Fleet = {};
     const zeroed: Fleet = Object.fromEntries(ALL_HULLS.map((id) => [id, 0]));
     expect(fleetHp(zeroed)).toBe(fleetHp(empty));
-    expect(fleetSpeed(zeroed)).toBe(fleetSpeed(empty));
+    expect(fleetSpeed(zeroed, UNAIDED.tech)).toBe(fleetSpeed(empty, UNAIDED.tech));
     expect(fleetDiff(zeroed, empty)).toEqual(fleetDiff(empty, empty));
   });
 });

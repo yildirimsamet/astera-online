@@ -897,8 +897,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       const home = fleetTravelExact(
         mission.distance,
         result.attackerSurvivors,
-        fleetSpeedMult(attackerOrbit),
-        attackerTech,
+        { boost: fleetSpeedMult(attackerOrbit), tech: attackerTech },
       );
       const arriveAt = addMinutes(defender.now, home);
       const [ret] = await tx

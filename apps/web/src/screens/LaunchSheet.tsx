@@ -15,13 +15,13 @@ import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
-import { duration, staleness } from '../lib/time.js';
+import { duration, durationPrecise, staleness } from '../lib/time.js';
 import {
   MOBILE,
   homeDefenceAfter,
   planPirateRoute,
   planRoute,
-  techOf,
+  flightModifiers,
 } from '../lib/navigation.js';
 import { familyGroups } from '../lib/roster.js';
 import { useAccordion } from '../lib/accordion.js';
@@ -114,9 +114,9 @@ export function LaunchSheet({
   const lesson = useAcademyLesson();
 
   const pirate = target.kind === 'pirate' ? target.pirate : null;
-  // The commander's own ladders, off the payload, so the preview quotes exactly
-  // what the server will charge and carry. T8.
-  const tech = techOf(planet);
+  // The commander's own ladders AND the origin's Beacon, off the payload, so the
+  // preview quotes exactly what the server will charge, carry and fly. T8 · D180.
+  const mods = flightModifiers(planet);
   /**
    * THE LEG, AND ONLY ITS OUTBOUND HALF DIFFERS.
    *
@@ -128,9 +128,9 @@ export function LaunchSheet({
    * refusal the launch will make.
    */
   const planned = target.kind === 'pirate'
-    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, tech)
+    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, mods)
     : planRoute(
-        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, tech,
+        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, mods,
       );
   const route = lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
@@ -629,11 +629,20 @@ export function LaunchSheet({
         deuterium short or a thousand.
       */}
       <div className="mt-6 grid grid-cols-3 gap-2">
+        {/*
+          THE ONE FIGURE ON THIS SCREEN QUOTED TO THE SECOND. D182, owner request.
+
+          A raid lands at an authoritative instant and the whole game is built on
+          being there for it, so a flight rounded to the minute hides up to
+          fifty-nine seconds of the thing the player is actually committing to.
+          `durationPrecise` rather than `duration`, and only here — the exposure
+          figure below is a shape of the bet, not a moment to be at.
+        */}
         <Figure
           label={t('launch.oneWay')}
           value={
             route !== null && route.oneWayMinutes > 0
-              ? duration(route.oneWayMinutes)
+              ? durationPrecise(route.oneWayMinutes)
               : t('launch.oneWayUnknown')
           }
           tone={tooLate ? 'threat' : undefined}

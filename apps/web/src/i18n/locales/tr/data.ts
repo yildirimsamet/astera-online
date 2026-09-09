@@ -665,6 +665,7 @@ export const units = {
   imminent: 'birazdan',
   hoursMinutes: '{{h}}s {{m}}d',
   minutesSeconds: '{{m}}d {{s}}sn',
+  hoursMinutesSeconds: '{{h}}s {{m}}d {{s}}sn',
   seconds: '{{s}}sn',
   daysHours: '{{d}}g {{h}}s',
   minutes: '{{m}}d',

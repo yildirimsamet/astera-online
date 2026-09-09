@@ -105,10 +105,10 @@ export const research = {
   holdsDetail:
     "Each rung increases how much every Prospector can return with. The bonus multiplies with the Derrick satellite, so research and orbital hardware reward the same mining plan.",
   cargoName: "Cargo Holds",
-  cargoTag: "Raids carry more home",
-  cargoRole: "Raises raid loot capacity without changing world transfers or asteroid mining",
+  cargoTag: "Every hold carries more",
+  cargoRole: "Raises raid loot, world transfers and trade convoys alike · asteroid mining is its own ladder",
   cargoDetail:
-    "Each rung increases raid cargo across your mobile fleet. It helps when exposed stock remains after a battle; peaceful transfers and asteroid mining are unchanged.",
+    "Each rung increases what your ships carry: raid loot across the whole mobile fleet, and the hold of every Courier, Wayfarer and Atlas moving ore between your worlds or trading with a merchant. Prospectors have their own ladder in Prospector Holds.",
 
   engineeringName: "Starship Engineering",
   engineeringTag: "Opens advanced hull tiers",

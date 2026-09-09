@@ -747,8 +747,10 @@ function DeathStarForge({
  * WHAT AN IMPACT DOES, ON THE CARD THAT SELLS IT. D113.
  *
  * The forge said "devastates" and left the rest to be discovered by being on the
- * receiving end. Five consequences and one survival line, every number read from
- * `DEATH_STAR` and `recoveryMinutesFor` so the card cannot drift from the strike.
+ * receiving end. Every number is read from `DEATH_STAR` and
+ * `MULTI_WORLD.recoveryMinutes` so the card cannot drift from the strike — which
+ * matters more since D179, when the strike stopped destroying fleets and stopped
+ * being able to lose anybody a world. Two of these lines used to say the opposite.
  */
 function DeathStarEffects() {
   const { t } = useTranslation();
@@ -770,8 +772,7 @@ function DeathStarEffects() {
     t('planet.deathStar.effectCore'),
     t('planet.deathStar.effectAegis', { levels: DEATH_STAR.aegisLevelsLost }),
     t('planet.deathStar.effectDark'),
-    /* D167: the strike takes nothing — it starts a clock, and this is its price. */
-    t('planet.deathStar.effectRelease'),
+    /* D179: the strike takes nothing and loses nobody a world. It is an outage. */
     t('planet.deathStar.effectCapital'),
   ];
   /**

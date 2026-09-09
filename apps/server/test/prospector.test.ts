@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { DEATH_STAR, PROSPECTOR } from '@astera/rules';
+import { PROSPECTOR } from '@astera/rules';
 import {
   battleReports,
   debrisFields,
@@ -499,7 +499,17 @@ describe('a Prospector does not fight', () => {
     expect(await f.db.select().from(debrisFields)).toHaveLength(0);
   });
 
-  it('still loses them to a Death Star', async () => {
+  /**
+   * AND KEEPS THEM THROUGH A DEATH STAR TOO, SINCE D179.
+   *
+   * This test read "still loses them to a Death Star" and was the one place the
+   * difference between a raid and a strike was written down: a raid could not
+   * reach a miner, a strike could. D179 removed fleet damage from the strike
+   * entirely, on the owner's instruction, so there is no longer any way for a
+   * craft standing at home to be destroyed without a battle — and the miner is
+   * covered by the same sentence as everything else.
+   */
+  it('keeps them through a Death Star as well', async () => {
     await giveUnits(f.db, defender, { DART: 2, PROSPECTOR: PROSPECTOR.max });
     await setLevel(f.db, defender, 'CORE', 5);
     await f.db.insert(strategicAssets).values({
@@ -513,7 +523,7 @@ describe('a Prospector does not fight', () => {
     f.clock.set(launched.arriveAt);
     await workerFor(f).tick();
 
-    expect(await prospectorsAt(f, defender)).toBe(0);
-    expect(DEATH_STAR.requiredCore).toBeGreaterThan(0);
+    expect(await prospectorsAt(f, defender)).toBe(PROSPECTOR.max);
+    expect(await homeFleetAt(f, defender)).toMatchObject({ DART: 2 });
   });
 });

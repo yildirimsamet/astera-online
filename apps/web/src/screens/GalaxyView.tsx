@@ -47,15 +47,15 @@ import { SituationGuide } from '../ui/SituationGuide.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { activeTradeShip } from '../lib/trade.js';
-import { planTradeRoute, techOf } from '../lib/navigation.js';
+import { flightModifiers, planTradeRoute } from '../lib/navigation.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
   MOBILE_HULLS,
   distance,
   engagementEndsAt,
-  fleetSpeedMult,
   interceptAsteroid,
+  UNAIDED,
   transferCargoCapacity,
   travelMinutes,
   type MobileHullId,
@@ -580,7 +580,7 @@ export function GalaxyView({
     if (!tradeShip || !planet.data || !season.data) return null;
     const home = planet.data;
     const carriers = MOBILE_HULLS.filter(
-      (hull) => (home.fleet[hull] ?? 0) > 0 && transferCargoCapacity({ [hull]: 1 }) > 0,
+      (hull) => (home.fleet[hull] ?? 0) > 0 && transferCargoCapacity({ [hull]: 1 }, UNAIDED.tech) > 0,
     );
     const quickest = carriers.reduce<MobileHullId | null>(
       (best, hull) => (best === null || HULLS[hull].speed > HULLS[best].speed ? hull : best),
@@ -594,8 +594,7 @@ export function GalaxyView({
       { [quickest]: 1 },
       home.fleet,
       home.ground,
-      techOf(home),
-      fleetSpeedMult(home.effectiveOrbit ?? home.orbit),
+      flightModifiers(home),
     );
     return route?.oneWayMinutes ?? null;
   }, [tradeShip, planet.data, season.data, tradeMinute]);
