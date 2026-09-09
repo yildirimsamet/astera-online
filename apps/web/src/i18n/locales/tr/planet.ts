@@ -39,7 +39,7 @@ export const planet = {
     build: "Üret",
     started: "Ölüm Yıldızı üretimi başladı",
     dangerHint:
-      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz, kimseye dünya kaybettirmez: dünyayı soyar ve iki saat karartır.",
+      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz, kimseye dünya kaybettirmez: yıkar ve iki saat karartır.",
     readyHint:
       "Silahlı. Herhangi bir düşman dünyasını seç. Hangi dünya olursa olsun 2 saat toparlanma; hiçbir dünya el değiştirmez.",
     needProtocol: "Protokol",

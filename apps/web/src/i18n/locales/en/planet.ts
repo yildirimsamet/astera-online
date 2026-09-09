@@ -39,7 +39,7 @@ export const planet = {
     build: "Build",
     started: "Death Star construction started",
     dangerHint:
-      "A one-way planet-breaker. It takes nothing and it loses nobody a world: it strips a world and darkens it for two hours.",
+      "A one-way planet-breaker. It takes nothing and it loses nobody a world: it destroys, and it darkens, for two hours.",
     readyHint:
       "Armed. Select any enemy world. Two hours of recovery, whatever it is; no world ever changes hands.",
     needProtocol: "Protocol",

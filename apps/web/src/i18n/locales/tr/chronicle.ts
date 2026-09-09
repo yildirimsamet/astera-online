@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'Kesin bir akın, bu dünya için herkese açık bir yerleşim yarışı başlattı.',
   deathStarImpact: '{{planet}} üzerinde Ölüm Yıldızı darbesi',
   deathStarOutcome: {
-    FIRST_STRIKE: 'Dünya soyuldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
+    FIRST_STRIKE: 'Dünya harap oldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
     CAPITAL_STRIKE: 'Ana gezegen harap oldu ve toparlanmaya girdi. Kontrolü el değiştiremez.',
-    CAPTURED: 'Dünya soyuldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
+    CAPTURED: 'Dünya harap oldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
     INEFFECTIVE: 'Koruma veya hedef durumu darbeyi etkisiz bıraktı.',
   },
   controlTransfer: '{{planet}} el değiştirdi',
