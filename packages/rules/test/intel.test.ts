@@ -1,10 +1,13 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  massMediumValue,
   HULLS,
   GALAXY,
   SENSOR,
   bearingBetween,
   clarityState,
+  classReading,
   massClass,
   radarRevealsComposition,
   radarRevealsSize,
@@ -147,6 +150,148 @@ describe('probes', () => {
       expect(b.mid).toBeLessThanOrEqual(b.high);
       expect(b.low).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+/**
+ * A BAND THAT SAYS "BETWEEN" HAS TO BE BETWEEN. D199.
+ *
+ * The old band moved its CENTRE by the error and then drew the width around the
+ * moved centre, so the floor always sat under the truth and the ceiling did not:
+ * at a par probe roughly one reading in six put the real figure ABOVE the top
+ * number. A commander who sent a wing one and a half times the ceiling was flying
+ * at something the report had told them could not be there.
+ *
+ * The width is unchanged — the same `(1 + e) / (1 − e)` ratio every accuracy has
+ * always bought — so a better Shipyard still buys exactly what it bought.
+ */
+describe('a probe band', () => {
+  it('always contains the truth, at every accuracy a probe can have', () => {
+    fc.assert(fc.property(
+      fc.double({ min: 0, max: 5_000_000, noNaN: true }),
+      fc.double({ min: INTEL.accuracyMin, max: INTEL.accuracyMax, noNaN: true }),
+      fc.integer(),
+      (truth, accuracy, seed) => {
+        const band = fuzzBand(truth, accuracy, mulberry32(seed));
+        return band.low <= truth && truth <= band.high;
+      },
+    ), { numRuns: 3000 });
+  });
+
+  it('keeps the width each accuracy has always bought', () => {
+    for (const accuracy of [0.31, 0.43, 0.55, 0.67, 0.79, 0.91]) {
+      const e = 1 - accuracy;
+      const bought = (1 + e) / (1 - e);
+      for (let seed = 1; seed <= 50; seed++) {
+        const b = fuzzBand(1_000_000, accuracy, mulberry32(seed));
+        expect(b.high / b.low, `accuracy ${String(accuracy)}`).toBeCloseTo(bought, 2);
+      }
+    }
+  });
+
+  it('is a single number when the probe is perfect', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      expect(fuzzBand(61_000, 1, mulberry32(seed))).toMatchObject({ low: 61_000, high: 61_000 });
+    }
+  });
+
+  /** Otherwise the band's shape would be a reading of its own, and nobody paid for it. */
+  it('does not give away where inside the band the truth sits', () => {
+    let lowerHalf = 0;
+    let upperHalf = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const b = fuzzBand(100_000, 0.55, mulberry32(seed));
+      const position = Math.log(100_000 / b.low) / Math.log(b.high / b.low);
+      if (position < 0.5) lowerHalf++;
+      else upperHalf++;
+    }
+    expect(lowerHalf).toBeGreaterThan(140);
+    expect(upperHalf).toBeGreaterThan(140);
+  });
+
+  /**
+   * ONE DRAW, AS BEFORE. `resolveProbe` rolls detection on the same stream after
+   * the bands, so a band that drew twice would change which probes get caught.
+   */
+  it('draws exactly one number from the stream', () => {
+    let draws = 0;
+    const counting = () => {
+      draws++;
+      return 0.37;
+    };
+    fuzzBand(40_000, 0.55, counting);
+    expect(draws).toBe(1);
+  });
+
+  it('reads nothing as exactly nothing', () => {
+    expect(fuzzBand(0, INTEL.accuracyMin, mulberry32(3))).toMatchObject({ low: 0, high: 0, mid: 0 });
+  });
+});
+
+/**
+ * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
+ *
+ * Research and the counter cycle move a fight by about the same amount, and the
+ * probe showed one of them and hid the other. A commander who cannot learn what a
+ * world flies has one rational fleet — an even mix — and the counter cycle stops
+ * being a decision. So a par probe says which class holds the majority, a good one
+ * says the split, and a weak one says nothing.
+ */
+describe('a probe reading the shape of a wall', () => {
+  const par = probeAccuracy(3, 3);
+  const weak = probeAccuracy(2, 3);
+  const good = probeAccuracy(5, 3);
+
+  it('says nothing fires when nothing does, however weak the probe', () => {
+    for (const accuracy of [weak, par, good]) {
+      expect(classReading({}, accuracy)).toEqual({ kind: 'NONE' });
+      expect(classReading({ ATLAS: 6, COURIER: 2 }, accuracy)).toEqual({ kind: 'NONE' });
+    }
+  });
+
+  it('cannot tell the shape through a Veil stronger than the Shipyard that sent it', () => {
+    expect(classReading({ BASTION: 4, DART: 2 }, weak)).toEqual({ kind: 'UNREAD' });
+  });
+
+  it('names the class holding more than half at a par probe', () => {
+    // 12,000 of Bastion against 720 of Dart.
+    expect(classReading({ BASTION: 4, DART: 2 }, par)).toEqual({ kind: 'DOMINANT', cls: 'BULWARK' });
+  });
+
+  it('says no class dominates when none holds more than half', () => {
+    // Exactly half is not a majority: 3,000 of Bastion, 3,000 of Thorn.
+    expect(classReading({ BASTION: 1, THORN: 4 }, par)).toEqual({ kind: 'EVEN' });
+  });
+
+  it('gives the split, in tens that add up to a hundred, to a good probe', () => {
+    expect(classReading({ BASTION: 1, THORN: 4 }, good)).toEqual({
+      kind: 'SHARES',
+      shares: { SKIRMISHER: 50, BULWARK: 50, LANCE: 0 },
+    });
+    fc.assert(fc.property(
+      fc.record({
+        DART: fc.integer({ min: 0, max: 40 }),
+        TALON: fc.integer({ min: 0, max: 40 }),
+        SENTINEL: fc.integer({ min: 0, max: 40 }),
+        BASTION: fc.integer({ min: 0, max: 10 }),
+        ATLAS: fc.integer({ min: 0, max: 10 }),
+      }),
+      (fleet) => {
+        const reading = classReading(fleet, good);
+        if (reading.kind === 'NONE') return true;
+        if (reading.kind !== 'SHARES') return false;
+        const parts = Object.values(reading.shares);
+        return parts.reduce((a, b) => a + b, 0) === 100 && parts.every((p) => p % 10 === 0);
+      },
+    ));
+  });
+
+  it('counts the guns and never the transports', () => {
+    // Transports are worth far more than the Darts and fire nothing.
+    expect(classReading({ DART: 3, ATLAS: 10 }, good)).toEqual({
+      kind: 'SHARES',
+      shares: { SKIRMISHER: 100, BULWARK: 0, LANCE: 0 },
+    });
   });
 });
 
@@ -427,13 +572,13 @@ describe('what the disc itself discloses — D123', () => {
   describe('the silhouette', () => {
     it('reads a scout party as light and a committed fleet as heavy', () => {
       expect(massClass({ DART: 1 })).toBe('LIGHT');
-      expect(massClass({ STRONGHOLD: 40 })).toBe('HEAVY');
+      expect(massClass({ STRONGHOLD: 100 })).toBe('HEAVY');
     });
 
     it('steps exactly where the constants say, and nowhere else', () => {
       const perDart = HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium;
-      const justUnder = Math.floor((SENSOR.massMedium - 1) / perDart);
-      const justOver = Math.ceil(SENSOR.massMedium / perDart);
+      const justUnder = Math.floor((massMediumValue() - 1) / perDart);
+      const justOver = Math.ceil(massMediumValue() / perDart);
 
       expect(massClass({ DART: justUnder })).toBe('LIGHT');
       expect(massClass({ DART: justOver })).toBe('MEDIUM');
@@ -441,7 +586,7 @@ describe('what the disc itself discloses — D123', () => {
 
     it('measures value, not hull count — six Strongholds are not six Darts', () => {
       expect(massClass({ DART: 6 })).toBe('LIGHT');
-      expect(massClass({ STRONGHOLD: 6 })).toBe('MEDIUM');
+      expect(massClass({ STRONGHOLD: 12 })).toBe('MEDIUM');
     });
 
     /**

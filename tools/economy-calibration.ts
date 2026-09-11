@@ -134,6 +134,7 @@ const BASE_RESEARCH_COSTS: Record<ResearchProjectId, Resources> = {
   DEATH_STAR_PROTOCOL: { alloy: 11_000, crystal: 3600, deuterium: 900 },
   DEUTERIUM_SYNTHESIS: { alloy: 400, crystal: 700, deuterium: 0 },
   YARD_AUTOMATION: { alloy: 900, crystal: 500, deuterium: 0 },
+  AI_ROBOTS: { alloy: 1050, crystal: 580, deuterium: 0 },
   PROSPECTOR_HOLDS: { alloy: 700, crystal: 900, deuterium: 0 },
   CARGO_HOLDS: { alloy: 1400, crystal: 1100, deuterium: 0 },
   STARSHIP_ENGINEERING: { alloy: 1980, crystal: 1170, deuterium: 0 },

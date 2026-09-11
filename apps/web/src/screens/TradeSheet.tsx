@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import {
   TRANSFER_CARGO_HULLS,
   fleetCount,
-  fleetPower,
+  combatValue,
+  garrisonOf,
   quoteTrade,
   transferCargoCapacity,
   type Fleet,
@@ -90,7 +91,7 @@ const EMPTY: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 /**
  * A part's share of a whole, clamped, with an empty origin drawing nothing.
  *
- * A world whose every craft is already away has no defence power at all, and
+ * A world whose every craft is already away has no firepower at all, and
  * dividing by it would put `NaN%` into a style attribute.
  */
 const share = (part: number, whole: number): number =>
@@ -305,8 +306,9 @@ export function TradeSheet({
       Math.max(0, (planet.fleet[id] ?? 0) - (fleet[id] ?? 0)),
     ]),
   ), [fleet, planet.fleet]);
-  const holdingPower = fleetPower({ ...remainingFleet, ...planet.ground });
-  const powerNow = fleetPower({ ...planet.fleet, ...planet.ground });
+  // Firepower, the one force unit the launch sheet and a probe use. D199.
+  const holdingPower = combatValue(garrisonOf(remainingFleet, planet.ground));
+  const powerNow = combatValue(garrisonOf(planet.fleet, planet.ground));
 
   /*
     WHY THE OFFER STOPS WHERE IT DOES, IN WORDS. The report's "maximumum ne belli
@@ -494,7 +496,7 @@ export function TradeSheet({
         value={give}
         onSelect={pickGive}
       />
-      <label className="mt-2 block rounded-chip border border-line-soft bg-deep/55 px-3 py-3">
+      <label className="plate plate-inset mt-2 block rounded-chip px-3 py-3">
         <span className="flex items-center gap-2">
           <img
             src={RESOURCE_ART[give]}
@@ -552,7 +554,7 @@ export function TradeSheet({
       </h3>
       <div
         data-testid="trade-split"
-        className="mt-2 rounded-chip border border-line-soft bg-deep/55 px-3 py-3"
+        className="plate plate-inset mt-2 rounded-chip px-3 py-3"
       >
         {/*
           BOTH ENDS OF THE SWAP, READ OFF ONE CONTROL. The units are already bought;

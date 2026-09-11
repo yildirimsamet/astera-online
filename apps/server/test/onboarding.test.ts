@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { ACADEMY_STEPS, TUTORIAL_EXIT, OPENING_BONUS, PLANET_START, START, upgradeCost, HULLS } from '@astera/rules';
+import { ACADEMY_STEPS, TUTORIAL_EXIT, OPENING_BONUS, PLANET_START, START, buildingCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, buildOrders, missions, planets, players, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
@@ -185,12 +185,12 @@ describe('onboarding claim', () => {
    * than in front of a new player halfway through their first ninety seconds.
    */
   it('is exactly affordable: three upgrades spend all the crystal, and the rest is two Wasps', () => {
-    const step = upgradeCost(1);
-    const three = { alloy: step.alloy * 3, crystal: step.crystal * 3 };
+    const three = (['CORE', 'REFINERY', 'EXTRACTOR'] as const).map(id => buildingCost(id, 1))
+      .reduce((sum,c) => ({alloy:sum.alloy+c.alloy,crystal:sum.crystal+c.crystal}),{alloy:0,crystal:0});
 
-    expect(three.crystal).toBe(START.crystal);
+    expect(three.crystal + 2 * HULLS.DART.crystal).toBe(START.crystal);
     expect(START.alloy - three.alloy).toBe(HULLS.DART.alloy * 2);
-    expect(HULLS.DART.crystal).toBe(0);
+    expect(HULLS.DART.crystal).toBe(60);
     expect(HULLS.DART.minShipyard).toBe(0);
   });
 

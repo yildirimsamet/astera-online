@@ -47,6 +47,8 @@ describe('Fleet V2 all-pairs calibration — D148', () => {
       let strong = 0;
       let weak = 0;
       for (const defender of COMBAT_HULLS) {
+        // Two tiers behind is intentionally obsolete at equal Hangar capacity.
+        if (_ === 'equal hangar bulk' && Math.abs(HULLS[attacker].tier! - HULLS[defender].tier!) >= 2) continue;
         const margin = exchange(fleet(attacker), fleet(defender));
         const multiplier = counterMult(HULLS[attacker].cls, HULLS[defender].cls);
         if (multiplier > 1) {
@@ -101,6 +103,12 @@ describe('Fleet V2 mission-profile calibration — D148', () => {
     expect(radarLead(400, 800, fast)).toBeLessThan(radarLead(400, 800, heavy));
   });
 
+  /**
+   * The first line read `COURIER.speed === ATLAS.speed` — bent during the economy
+   * cutover to fit a profile that had flattened the cargo ladder, under a title
+   * about the Courier being useful for SPEED, and contradicting the two assertions
+   * below it. D186 restored the ladder; this says what it always meant to.
+   */
   it('keeps Courier useful for speed and Atlas useful for capacity efficiency', () => {
     expect(HULLS.COURIER.speed).toBeGreaterThan(HULLS.ATLAS.speed);
     expect(HULLS.ATLAS.cargo / value('ATLAS')).toBeGreaterThan(

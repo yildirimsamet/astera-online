@@ -12,10 +12,9 @@ export const vocabulary = {
     CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings, construction speed and the world\'s orbit, flight and ground-defence capacity', detail: 'No other building can rise above the Command Core. Raising it shortens building and research time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. It produces no ore or combat power by itself.' },
     REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage', detail: 'Each level increases passive alloy income and the amount that can be stored. Alloy pays for most construction and hulls, so this shortens many future waits.' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
-    VAULT: { name: 'Vault', tag: 'Keeps ore safe from raids', role: 'Stock a raid can never reach', detail: 'It raises the protected floor and the storage ceiling. Raiders can take only what remains above that floor; the Vault does not fight them.' },
-    SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add neither hangar room nor queue slots.' },
+    VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Sets how many hours of its own production each resource can hold. It also keeps the bottom 10%, capped at 8 hours of production, safe from raids.', detail: 'Every level makes the store deeper: each resource holds that many hours of its OWN hourly output, which is why the alloy and crystal ceilings differ. Its second job is protection — a raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource\'s production. The Store does not fight and does not reduce incoming damage.' },
+    SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add no queue slots.' },
     DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: 'Deuterium per hour and fuel storage · its ceiling is set by Deuterium Synthesis', detail: 'Each level increases passive Deuterium production and the amount that can be stored. Deuterium fuels fleet launches; research the next Deuterium Synthesis rung when the Refinery reaches its level ceiling.' },
-    HANGAR: { name: 'Hangar', tag: 'Sets how big a fleet fits', role: 'Room for craft · a fleet is bounded by this, not by your purse', detail: 'Every mobile hull consumes hangar space according to its bulk, including craft away from home. Raise this before ordering a fleet the planet cannot hold.' },
   },
 
   instrument: {
@@ -209,15 +208,44 @@ export const vocabulary = {
       pitch: 'Crushes an Aegis without turning bonus damage into unit kills. Weak when no shield is standing.',
       detail: 'Its specialist charge deals five times normal effect to an active Aegis. Once the shield falls, that bonus does not spill into ships or guns, so unshielded targets waste its premium.',
     },
+    /** D200. `{{salvage}}` is `SALVAGE.perCollector`, filled in by `names.ts`. */
+    GARBAGE_COLLECTOR: {
+      name: 'Garbage Collector',
+      tag: 'Lifts {{salvage}} of wreck',
+      role: 'Special support hull: fires nothing, and collects wreck after the battle it flew into.',
+      pitch: 'Flies behind the line like a transport and takes the last shots. Keep warships beside it — once they fall, it is prey.',
+      detail: 'When the battle ends, every collector still alive lifts up to {{salvage}} of the wreck — in the wreck’s own mix of alloy, crystal and deuterium — before the rest drifts as a public field. The haul lands in storage with the fleet. It adds nothing to the hold, cannot fly without a warship, cannot be sent at a wreck field or an asteroid, and collects nothing while defending.',
+    },
     CATACLYSM: {
       name: 'Cataclysm', tag: 'Capital striker', role: 'Tier-four attack peak; powerful, costly and deliberately slow.',
       pitch: 'Exceptional concentrated damage without immunity to counters.',
       detail: 'A capital Lance hull behind Engineering, Power and Armor. Its efficiency is higher, but Bulwark-class defence remains a better answer than mirroring it.',
     },
+    CORSAIR: {
+      name: 'Corsair',
+      tag: 'Capital raider',
+      role: 'The top tier\'s only Skirmisher — what breaks a Bulwark wall.',
+      pitch: 'The fastest hull in the game carrying the heaviest guns; it holds little and drinks hard.',
+      detail: 'The Corsair is the only tier-four answer to a Bulwark. Until it arrived, breaking a Citadel wall meant building tier-three Tempests. It is brittle against Lances and burns the most fuel per unit of its own value.',
+    },
     CITADEL: {
       name: 'Citadel', tag: 'Capital fortress', role: 'Tier-four durability peak and the slowest mobile commitment.',
       pitch: 'The strongest wall, paid for in cost and exposure time.',
       detail: 'A capital Bulwark hull behind Engineering, Armor and Power. It anchors defence but remains vulnerable to Skirmisher counters.',
+    },
+    PALADIN: {
+      name: 'Paladin',
+      tag: 'Capital escort',
+      role: 'The middle ground between Citadel and Cataclysm: real guns and real armour.',
+      pitch: 'It holds less than a Citadel, fires far more, and costs less than either.',
+      detail: 'The Paladin is Bulwark-class, so it stops Lances and falls to Skirmishers. It spends the premium a Citadel pays for armour on weapons instead — the only option between the two extremes of tier four.',
+    },
+    ARGOSY: {
+      name: 'Argosy',
+      tag: 'Capital hauler',
+      role: 'The deepest hold and the slowest hull in the game.',
+      pitch: 'Carries what a squadron of Atlases carries, and can outrun nothing at all.',
+      detail: 'The Argosy is tier four\'s transport. Support class, so it is shielded while combat hulls live and defenceless once the line is gone. The merchant\'s pace is tied to this hull: the slowest hold in the catalogue sets it.',
     },
     BASTION: {
       name: 'Bastion',
@@ -231,14 +259,14 @@ export const vocabulary = {
       tag: 'Light ground guns',
       role: 'Ground defence · light, cheap, and never leaves',
       pitch: 'Low-cost ground defence with an advantage against Bulwarks; vulnerable to Lances.',
-      detail: 'Thorns never leave the planet. Their Skirmisher class gives them an advantage against Bulwark-class hulls, while Lance-class hulls receive the advantage against them. They use ground capacity rather than Hangar space; 60% of destroyed ground guns are restored after combat, rounded down.',
+      detail: 'Thorns never leave the planet. Their Skirmisher class gives them an advantage against Bulwark-class hulls, while Lance-class hulls receive the advantage against them. They use ground capacity; 60% of destroyed ground guns are restored after combat, rounded down.',
     },
     PROSPECTOR: {
       name: 'Prospector',
       tag: 'Mines asteroids',
       role: 'Mines asteroids with a base hold of 300 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 300; a Derrick and Prospector Holds research can improve them. Each world may own at most two. It uses Hangar room but never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 300; a Derrick and Prospector Holds research can improve them. Each world may own at most two. It never joins raids or home defence.',
     },
   },
 
@@ -288,8 +316,8 @@ export const gains = {
     storage: 'Storage {{now}} → {{next}}',
   },
   vault: {
-    label: 'Vault capacity',
-    value: '{{alloy}} alloy · {{crystal}} crystal · {{deuterium}} Deuterium',
+    label: 'Store depth',
+    value: '{{store}}h store · {{safe}}h protected',
   },
   shipyard: {
     accuracyLabel: 'Probe accuracy',
@@ -359,10 +387,6 @@ export const gains = {
     next: '{{factor}}× faster',
     unlocks: 'Out and back — a shorter window with your defence away from home',
   },
-  hangar: {
-    label: 'Fleet room',
-    value: '{{room}}',
-  },
   /** Every research row names the quantity or permission the player actually buys. */
   research: {
     powerLabel: 'Warship attack',
@@ -381,6 +405,7 @@ export const gains = {
     groundLabel: 'Ground defence strength',
     groundScope: '{{bastion}} and {{thorn}} on every world you hold.',
     yardLabel: 'Ship build time',
+    robotsLabel: 'Structure build time',
     holdsLabel: 'Prospector hold',
     holdsScope: 'Multiplies with a Derrick in orbit.',
     cargoLabel: 'Raid cargo',
@@ -506,10 +531,14 @@ export const notifications = {
   spoilAlloy: '+{{amount}} alloy',
   spoilCrystal: '+{{amount}} crystal',
   spoilDeuterium: '+{{amount}} Deuterium',
+  /** What a raid's Garbage Collectors lifted off the wreck — never counted as loot. D200. */
+  spoilSalvage: '+{{amount}} salvage',
 
   fleetFallback: 'Your fleet is home.',
   fleetHomeLooted: 'Fleet home{{where}} · {{count}} ships · +{{amount}} looted',
   fleetHomeEmpty: 'Fleet home{{where}} · {{count}} ships · empty-handed',
+  /** Nothing looted, but the collectors' salvage follows it — so not "empty-handed". */
+  fleetHomeBare: 'Fleet home{{where}} · {{count}} ships',
   /**
    * THE MERCHANT'S OWN HOMECOMING. D166.
    *
@@ -533,6 +562,7 @@ export const notifications = {
   targetGoneDebris: 'The wreck field was already picked clean · {{count}} drills turning back',
   pirateHome: 'Raiders home · {{count}} ships · +{{amount}} looted',
   pirateHomeEmpty: 'Raiders home · {{count}} ships · empty-handed',
+  pirateHomeBare: 'Raiders home · {{count}} ships',
   pirateHomeTowed_looted: 'Raiders home · {{count}} ships · +{{amount}} looted · {{hull}} captured',
   pirateHomeTowed_empty: 'Raiders home · {{count}} ships · {{hull}} captured',
   fleetFrom: ' from {{origin}}',

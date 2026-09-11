@@ -1,5 +1,6 @@
 import {
   ALL_HULLS,
+  SALVAGE,
   type BuildingId,
   type HullClass,
   type HullId,
@@ -7,6 +8,7 @@ import {
   type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
+import { compact } from '../lib/format.js';
 import i18n from './index.js';
 
 /**
@@ -68,11 +70,19 @@ export const combatClassLabel = (cls: HullClass): string =>
 export const combatClassTag = (cls: HullClass): string =>
   i18n.t(`vocabulary.combatClass.${cls}.tag`);
 
+/**
+ * THE RULES' NUMBERS A HULL'S COPY MAY QUOTE, filled in here rather than typed into
+ * a locale file, so the sentence and the constant cannot part company. Every hull
+ * gets the same map; a sentence that does not name a figure simply ignores it.
+ */
+const hullFigures = () => ({ salvage: compact(SALVAGE.perCollector) });
+
 export const hullLabel = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.name`);
-export const hullTag = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.tag`);
-export const hullRole = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.role`);
-export const hullPitch = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.pitch`);
-export const hullDetail = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.detail`);
+export const hullTag = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.tag`, hullFigures());
+export const hullRole = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.role`, hullFigures());
+export const hullPitch = (id: HullId): string => i18n.t(`vocabulary.hull.${id}.pitch`, hullFigures());
+export const hullDetail = (id: HullId): string =>
+  i18n.t(`vocabulary.hull.${id}.detail`, hullFigures());
 
 const HULL_IDS = new Set<string>(ALL_HULLS);
 const INSTRUMENT_IDS = new Set<string>(['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL']);
@@ -133,6 +143,7 @@ const RESEARCH_NAME_KEY = {
   DEATH_STAR_PROTOCOL: 'research.deathStarName',
   DEUTERIUM_SYNTHESIS: 'research.synthesisName',
   YARD_AUTOMATION: 'research.yardName',
+  AI_ROBOTS: 'research.robotsName',
   PROSPECTOR_HOLDS: 'research.holdsName',
   CARGO_HOLDS: 'research.cargoName',
   STARSHIP_ENGINEERING: 'research.engineeringName',

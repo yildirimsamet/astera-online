@@ -29,7 +29,7 @@ const status: MiningStatusView = {
   derrick: false,
   craftSpeed: 330,
   craftHold: 100,
-  derrickHold: 150,
+  craftReadyAt: null, derrickHold: 150,
   runs: [],
   isotopes: [],
 };

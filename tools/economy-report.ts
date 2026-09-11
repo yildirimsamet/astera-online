@@ -5,7 +5,7 @@ import {
   ANTI_STRATEGIC, BUILDING_IDS, DEATH_STAR, HULLS, INSTRUMENT_IDS,
   INSTRUMENT_MAX_LEVEL, PROBE, RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS,
   SATELLITE_IDS, alloyRate, buildingCost, buildMinutes, crystalRate,
-  defenceMinutes, deuteriumRate, flightSlots, groundSlots, hangarCapacity,
+  defenceMinutes, deuteriumRate, flightSlots, groundSlots,
   hullBulk, instrumentCost, radarRange, researchEffectAt,
   researchMinutes, satelliteCost, satelliteSlots, sensorReach, shieldHp,
   shipMinutes, storageHours, telescopeCooldownHours, telescopeSlots,
@@ -17,7 +17,7 @@ type Cell = string | number;
 interface Sheet { name: string; rows: Cell[][] }
 const trBuilding: Record<BuildingId, string> = {
   CORE: 'Komuta Çekirdeği', REFINERY: 'Alaşım Rafinerisi', EXTRACTOR: 'Kristal Ocağı',
-  VAULT: 'Kasa', SHIPYARD: 'Tersane', HANGAR: 'Hangar', DEUTERIUM_PLANT: 'Döteryum Rafinerisi',
+  VAULT: 'Depo', SHIPYARD: 'Tersane', DEUTERIUM_PLANT: 'Döteryum Rafinerisi',
 };
 const trInstrument: Record<InstrumentId, string> = {
   TELESCOPE: 'Teleskop', RADAR: 'Radar', AEGIS: 'Aegis', VEIL: 'Perde',
@@ -26,6 +26,7 @@ const trResearch: Record<ResearchProjectId, string> = {
   ISOTOPE_SPECTROMETRY: 'İzotop Spektrometrisi', DENSE_FUEL_CELLS: 'Yoğun Yakıt Hücreleri',
   GRAVITIC_CHARGES: 'Gravitik Yükler', DEATH_STAR_PROTOCOL: 'Ölüm Yıldızı Protokolü',
   DEUTERIUM_SYNTHESIS: 'Döteryum Sentezi', YARD_AUTOMATION: 'Tersane Otomasyonu',
+  AI_ROBOTS: 'Yapay Zekâ Robotları',
   PROSPECTOR_HOLDS: 'Kazıcı Ambarları', CARGO_HOLDS: 'Gemi Ambarları',
   STARSHIP_ENGINEERING: 'Yıldız Gemisi Mühendisliği', SHIP_POWER: 'Gemi Gücü',
   SHIP_ARMOR: 'Gemi Zırhı', SHIP_PROPULSION: 'Gemi İtkisi',
@@ -48,7 +49,6 @@ const effect = (id: BuildingId, level: number): string => {
     case 'EXTRACTOR': return `${f.format(crystalRate(level))} Kristal/saat`;
     case 'VAULT': return `${f.format(storageHours(level))} saatlik depo kapasitesi`;
     case 'SHIPYARD': return `Gemi üretim hızı ${f.format(yardThroughput(level))} kaynak/dk; sonda doğruluğu/gizliliği artar`;
-    case 'HANGAR': return `${hangarCapacity(level)} Hangar alanı`;
     case 'DEUTERIUM_PLANT': return `${f.format(deuteriumRate(level))} Döteryum/saat (Sentez tavanı ayrıca gerekir)`;
   }
 };
@@ -57,6 +57,7 @@ const researchEffect = (id: ResearchProjectId, level: number): string => {
   if (['SHIP_POWER', 'SHIP_ARMOR', 'EMPLACEMENT_DOCTRINE'].includes(id)) return `Temel ilgili istatistik çarpanı ×${f.format(value)}`;
   if (id === 'SHIP_PROPULSION') return `18 hareketli gövdenin hız çarpanı ×${f.format(value)}`;
   if (id === 'YARD_AUTOMATION') return `Hareketli gemi süresi çarpanı ×${f.format(value)} (daha düşük daha hızlı)`;
+  if (id === 'AI_ROBOTS') return `İnşaat sırası süre çarpanı ×${f.format(value)} (daha düşük daha hızlı)`;
   if (id === 'PROSPECTOR_HOLDS') return `Kazıcı ambar çarpanı ×${f.format(value)}`;
   if (id === 'CARGO_HOLDS') return `Akın ganimet ambar çarpanı ×${f.format(value)}`;
   if (id === 'DEUTERIUM_SYNTHESIS') return `Döteryum Rafinerisi tavanı ${value}`;
@@ -79,14 +80,14 @@ export function buildEconomyReportXml(): string {
   for (const id of BUILDING_IDS) for (let target = 1; target <= 20; target++) {
     const from = target - 1; const cost = buildingCost(id, from);
     const core = id === 'CORE' ? Math.max(1, from) : target;
-    buildings.push([id, trBuilding[id], target, `${from} → ${target}`, ...res(cost), Number(buildMinutes(cost, core).toFixed(2)), effect(id, target), id === 'DEUTERIUM_PLANT' ? `Komuta Çekirdeği ≥ ${target}; Döteryum Sentezi tavanı ≥ ${target} (Sentez ${Math.ceil(target / 3)})` : id === 'CORE' ? 'Diğer tüm binaların seviyesi Çekirdeği geçemez' : `Komuta Çekirdeği ≥ ${target}`]);
+    buildings.push([id, trBuilding[id], target, `${from} → ${target}`, ...res(cost), Number(buildMinutes(cost, core, {}).toFixed(2)), effect(id, target), id === 'DEUTERIUM_PLANT' ? `Komuta Çekirdeği ≥ ${target}; Döteryum Sentezi tavanı ≥ ${target} (Sentez ${Math.ceil(target / 3)})` : id === 'CORE' ? 'Diğer tüm binaların seviyesi Çekirdeği geçemez' : `Komuta Çekirdeği ≥ ${target}`]);
   }
   const instruments: Cell[][] = [['Kod', 'Cihaz', 'Hedef seviye', 'Geçiş', 'Alaşım', 'Kristal', 'Döteryum', 'Referans süre (dk)', 'Bu seviyede sağlanan', 'Koşul/not']];
   for (const id of INSTRUMENT_IDS) {
     const max = INSTRUMENT_MAX_LEVEL[id] ?? 20;
     for (let target = 1; target <= max; target++) {
       const cost = instrumentCost(id, target - 1);
-      instruments.push([id, trInstrument[id], target, `${target - 1} → ${target}`, ...res(cost), Number(buildMinutes(cost, 1).toFixed(2)), instrumentEffect(id, target), ['TELESCOPE', 'RADAR'].includes(id) ? 'Yörüngede Anten (Uplink) gerekir' : 'Komuta Çekirdeği bina tavanı yok; 20’de raporlama sınırı']);
+      instruments.push([id, trInstrument[id], target, `${target - 1} → ${target}`, ...res(cost), Number(buildMinutes(cost, 1, {}).toFixed(2)), instrumentEffect(id, target), ['TELESCOPE', 'RADAR'].includes(id) ? 'Yörüngede Anten (Uplink) gerekir' : 'Komuta Çekirdeği bina tavanı yok; 20’de raporlama sınırı']);
     }
   }
   const research: Cell[][] = [['Kod', 'Araştırma', 'Hedef seviye', 'Geçiş', 'Alaşım', 'Kristal', 'Döteryum', 'Referans süre (dk)', 'Bu seviyede sağlanan', 'Koşul/not']];
@@ -108,7 +109,7 @@ export function buildEconomyReportXml(): string {
   const satellites: Cell[][] = [['Kod', 'Yörünge varlığı', 'Seviye', 'Alaşım', 'Kristal', 'Döteryum', 'Referans süre (dk)', 'Sağladığı', 'Koşul/not']];
   for (const id of SATELLITE_IDS) {
     const c = satelliteCost(id); const d = id === 'FOUNDRY' ? 'Bu dünyanın üç üretimini %6 artırır' : id === 'UPLINK' ? 'Teleskop ve Radarı açar' : id === 'DERRICK' ? 'Kazıcı ambarı ×2,6; hızı ×1,5' : 'Bu dünyadan kalkan filoların hızı ×1,3';
-    satellites.push([id, ({ FOUNDRY: 'Körük', UPLINK: 'Anten', DERRICK: 'Matkap', BEACON: 'Kılavuz' } as Record<string, string>)[id], 1, ...res(c), Number(buildMinutes(c, 1).toFixed(2)), d, 'Yörünge yuvası gerekir: Çekirdek 1/3/5/9’da sırasıyla 1/2/3/4 yuva']);
+    satellites.push([id, ({ FOUNDRY: 'Körük', UPLINK: 'Anten', DERRICK: 'Matkap', BEACON: 'Kılavuz' } as Record<string, string>)[id], 1, ...res(c), Number(buildMinutes(c, 1, {}).toFixed(2)), d, 'Yörünge yuvası gerekir: Çekirdek 1/3/5/9’da sırasıyla 1/2/3/4 yuva']);
   }
   const readme: Cell[][] = [
     ['Astera Online — Ekonomi ve Üretim Raporu', ''],

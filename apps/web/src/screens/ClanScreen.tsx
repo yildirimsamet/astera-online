@@ -29,6 +29,7 @@ import {
   useClanEvents,
   useClanHome,
   useClanLeaderboard,
+  useClanProfile,
   useClanStrength,
   useGalaxy,
   useLeaderboard,
@@ -48,6 +49,7 @@ import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { serverNow } from '../lib/clock.js';
+import { techOf } from '../lib/navigation.js';
 import { full, signed } from '../lib/format.js';
 import { duration, minutesUntil, useNow } from '../lib/time.js';
 import { useWorld } from '../api/world.js';
@@ -71,6 +73,7 @@ import {
   Plate,
   PriceTag,
   Section,
+  Sheet,
   Segmented,
   Stat,
   Unreachable,
@@ -285,6 +288,8 @@ function ClanOutside({
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  /** Which clan's public profile is open. D183 — null is the directory itself. */
+  const [inspecting, setInspecting] = useState<string | null>(null);
   const [hostileRequest, setHostileRequest] = useState<string | null>(null);
   const now = useNow(30_000);
   const locked = recruitmentLocked(home, now);
@@ -449,27 +454,46 @@ function ClanOutside({
               return (
                 <li key={clan.id}>
                   <Plate className="px-2 py-2">
-                    <div className="flex items-start gap-2">
-                      <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-crystal">
-                        <ClanIcon className="size-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Chip tone="crystal">[{clan.tag}]</Chip>
-                          <strong className="name truncate text-bone">{clan.name}</strong>
+                    {/*
+                      THE ROW IS THE DOOR. D183, owner report: *"Bir klan'a tıklayıp
+                      incelenmiyor. Sıradan bir kullanıcı bir klanda kimler var onu
+                      bile göremiyor."*
+
+                      The row used to be a card with one control on it — Apply —
+                      which asks a commander to join five strangers on the strength
+                      of a member count. Pressing the row itself opens the profile,
+                      the same grammar every other list in the game uses (D118: a
+                      thing is focused before it is committed to), and Apply lives
+                      in both places because the decision can be made from either.
+                    */}
+                    <button
+                      type="button"
+                      className="w-full text-left"
+                      aria-label={t('clan.directory.inspect', { clan: clan.name })}
+                      onClick={() => { setInspecting(clan.id); }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-crystal">
+                          <ClanIcon className="size-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Chip tone="crystal">[{clan.tag}]</Chip>
+                            <strong className="name truncate text-bone">{clan.name}</strong>
+                          </div>
+                          <p className="mt-2 text-caption leading-relaxed text-dim">
+                            {clan.description || t('clan.noDescription')}
+                          </p>
+                          <p className="mt-2 text-label text-faint">
+                            {t('clan.directory.meta', {
+                              leader: clan.leaderName,
+                              members: clan.memberCount,
+                              score: clan.score === 0 ? full(0) : signed(clan.score),
+                            })}
+                          </p>
                         </div>
-                        <p className="mt-2 text-caption leading-relaxed text-dim">
-                          {clan.description || t('clan.noDescription')}
-                        </p>
-                        <p className="mt-2 text-label text-faint">
-                          {t('clan.directory.meta', {
-                            leader: clan.leaderName,
-                            members: clan.memberCount,
-                            score: clan.score === 0 ? full(0) : signed(clan.score),
-                          })}
-                        </p>
                       </div>
-                    </div>
+                    </button>
                     <Button
                       full
                       className="mt-2"
@@ -514,7 +538,132 @@ function ClanOutside({
       </Section>
 
       <FoundClan home={home} actions={actions} />
+
+      {inspecting !== null && (
+        <ClanProfile
+          clanId={inspecting}
+          applying={actions.apply.isPending}
+          canApply={!locked}
+          applied={pendingApplications.has(inspecting)}
+          onApply={() => {
+            actions.apply.mutate(inspecting, {
+              onSuccess: () => {
+                setNotice(t('clan.directory.applied'));
+                setInspecting(null);
+              },
+            });
+          }}
+          onClose={() => { setInspecting(null); }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * ONE CLAN, AND WHO IS IN IT. D183.
+ *
+ * The directory answers "which clans exist"; this answers the question a commander
+ * about to apply is actually asking — who are these people, and how are they
+ * doing. Both facts are already galaxy-wide on the ladder (D76); collecting them
+ * under the clan is what makes them a decision rather than trivia.
+ *
+ * NO WORLDS, ANYWHERE ON IT. Where a member lives is a probe's product (D127), and
+ * the payload does not carry one — this is stated here as well because a roster is
+ * exactly the surface somebody would later "helpfully" add a position to.
+ */
+function ClanProfile({
+  clanId,
+  canApply,
+  applied,
+  applying,
+  onApply,
+  onClose,
+}: {
+  clanId: string;
+  canApply: boolean;
+  applied: boolean;
+  applying: boolean;
+  onApply: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const profile = useClanProfile(clanId);
+  const clan = profile.data;
+  const atCapacity = clan !== undefined && clan.memberCount >= CLAN.maxMembers;
+
+  return (
+    <Sheet
+      eyebrow={t('clan.profile.eyebrow')}
+      title={clan ? `[${clan.tag}] ${clan.name}` : t('clan.profile.loading')}
+      onClose={onClose}
+      footer={clan && (
+        <Button
+          full
+          variant={canApply && clan.recruiting && !atCapacity && !applied ? 'primary' : 'ghost'}
+          ariaLabel={t('clan.directory.applyTo', { clan: clan.name })}
+          disabled={!canApply || !clan.recruiting || atCapacity || applied || applying}
+          onClick={onApply}
+        >
+          {applied
+            ? t('clan.directory.pending')
+            : atCapacity
+              ? t('clan.directory.full')
+              : clan.recruiting
+                ? t('clan.directory.apply')
+                : t('clan.directory.closed')}
+        </Button>
+      )}
+    >
+      {profile.isError ? (
+        <Unreachable
+          what={t('clan.profile.eyebrow')}
+          onRetry={() => { void profile.refetch(); }}
+        />
+      ) : !clan ? (
+        <Waiting>{t('clan.profile.loading')}</Waiting>
+      ) : (
+        <>
+          <p className="text-caption leading-relaxed text-dim">
+            {clan.description || t('clan.noDescription')}
+          </p>
+          <p className="mt-2 text-label text-faint">
+            {t('clan.directory.meta', {
+              leader: clan.leaderName,
+              members: clan.memberCount,
+              score: clan.score === 0 ? full(0) : signed(clan.score),
+            })}
+          </p>
+          <h3 className="legend mt-4 mb-2">
+            {t('clan.profile.roster', { count: clan.members.length })}
+          </h3>
+          {/*
+            ONE LINE PER COMMANDER: who they are, what seat they hold, and their
+            Dominion. Three facts, one row — the compact directive, and the same
+            shape the clan's own Strength tab already lists its crew in.
+          */}
+          <ol className="flex flex-col gap-1">
+            {clan.members.map((mate) => (
+              <li
+                key={mate.playerId}
+                data-clan-member={mate.playerId}
+                className="flex items-baseline justify-between gap-2 border-b border-line-soft pb-1 last:border-0"
+              >
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <strong className="name truncate text-bone">{mate.username}</strong>
+                  {mate.role === 'LEADER' && (
+                    <span className="legend text-crystal">{t('clan.profile.leader')}</span>
+                  )}
+                </span>
+                <span className="num shrink-0 text-caption text-dim">
+                  {mate.dominion === 0 ? full(0) : signed(mate.dominion)}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </Sheet>
   );
 }
 
@@ -1368,7 +1517,13 @@ function ClanAidPanel({
     : null;
   const payloadKey = payload ? JSON.stringify(payload) : '';
   const quote = quotedKey === payloadKey ? actions.quoteAid.data : undefined;
-  const cargoCapacity = clanTransferCargoCapacity(fleet);
+  /*
+    CARGO HOLDS LIFTS THIS HOLD TOO, SINCE D197. The sheet has to quote the figure
+    the server will check, so it reads the same research the server does —
+    `techOf` off the origin world's own payload, which is where the client learns
+    a commander's levels at all.
+  */
+  const cargoCapacity = clanTransferCargoCapacity(fleet, origin ? techOf(origin) : {});
   const cargoUsed = resourceTotal(cargo);
   const originHasCargo = origin !== undefined
     && cargo.alloy <= origin.planet.alloy

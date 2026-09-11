@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
 import { limbTexture, softGlow } from './Environment.jsx';
 import { fireTexture, smokeTexture } from './vfx.js';
-import { STANCE_LIGHT, isRivalNode, type PlanetNode, type Stance } from './scene.js';
+import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
+import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
 import { serverNow } from '../lib/clock.js';
 
@@ -36,14 +37,12 @@ interface Group {
 export function PlanetField({
   nodes,
   selectedId,
-  rivalPlanetId,
-  rivalPlayerId,
+  rivals,
   onSelect,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
-  rivalPlanetId: string | null;
-  rivalPlayerId: string | null;
+  rivals: readonly RivalMark[];
   onSelect: (id: string) => void;
 }) {
   // One bucket per distinct render, so each bucket can be a single instanced draw.
@@ -68,8 +67,7 @@ export function PlanetField({
       <Highlights
         nodes={nodes}
         selectedId={selectedId}
-        rivalPlanetId={rivalPlanetId}
-        rivalPlayerId={rivalPlayerId}
+        rivals={rivals}
       />
     </>
   );
@@ -595,13 +593,12 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
 function Highlights({
   nodes,
   selectedId,
-  rivalPlanetId,
-  rivalPlayerId,
+  rivals,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
-  rivalPlanetId: string | null;
-  rivalPlayerId: string | null;
+  /** Up to `RIVAL.max` marks, each carrying the slot its colour comes from. D183. */
+  rivals: readonly RivalMark[];
 }) {
   const camera = useThree((state) => state.camera);
   const viewportHeight = useThree((state) => state.size.height);
@@ -611,7 +608,7 @@ function Highlights({
       || node.isOwned
       || node.isClanmate
       || node.stance === 'window'
-      || isRivalNode(node, rivalPlanetId, rivalPlayerId)
+      || rivalSlotOf(node, rivals) !== null
       || node.state.kind === 'RECOVERY'
       || hasVisibleClaim(node, now),
   );
@@ -649,7 +646,7 @@ function Highlights({
           camera={camera}
           viewportHeight={viewportHeight}
           selected={node.id === selectedId}
-          rival={!node.isClanmate && isRivalNode(node, rivalPlanetId, rivalPlayerId)}
+          rivalSlot={node.isClanmate ? null : rivalSlotOf(node, rivals)}
           ally={node.isClanmate}
           claim={hasVisibleClaim(node, now)}
           recovering={node.state.kind === 'RECOVERY'}
@@ -665,8 +662,45 @@ export function hasVisibleClaim(node: PlanetNode, now: number): boolean {
     && Boolean(node.claimUntil && node.claimUntil.getTime() > now);
 }
 
-const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
+export const MARK_COLOUR = { self: '#8fd6ea', window: '#5ad39b', other: '#e8e3d6' } as const;
 export const CLANMATE_COLOUR = '#5ad39b';
+
+/**
+ * ONE COLOUR PER RIVAL SLOT. D183, owner instruction: *"Farklı renklerde olsun."*
+ *
+ * Five marks that all looked the same would be five reticles and no information —
+ * the point of raising the ceiling is being able to tell WHICH neighbour a mark is
+ * about at a glance, without opening anything.
+ *
+ * NONE OF THEM IS A COLOUR THE DISC ALREADY SPENDS. Green is a clanmate and an
+ * open window, blue is the commander's own worlds, and the recovery red is its own
+ * alarm — a rival hue that collided with any of those would turn the one control
+ * that says "watch this" into a control that says something else. The first is the
+ * orange-red the single mark has always been, so a commander who had one before
+ * D183 sees it unchanged.
+ *
+ * ORDERED BY SLOT because the slot IS the identity of a mark: the first mark a
+ * commander places is always the first colour, whatever they clear afterwards.
+ */
+export const RIVAL_COLOURS = [
+  '#ff6b43',
+  '#f2c14e',
+  '#c86bff',
+  '#ff5fa2',
+  '#8b8bff',
+] as const;
+
+/**
+ * The colour a slot draws in — and never nothing.
+ *
+ * A slot outside the palette cannot happen (the server allocates the lowest free
+ * index under `RIVAL.max`), but a mark drawn in `undefined` would be an invisible
+ * reticle rather than a loud one, which is the worst way for that to fail.
+ */
+export const rivalColour = (slot: number): string =>
+  RIVAL_COLOURS[
+    Number.isFinite(slot) && slot > 0 ? Math.trunc(slot) % RIVAL_COLOURS.length : 0
+  ]!;
 
 /**
  * Where the selection ring stands off, as a multiple of the world's radius.
@@ -900,7 +934,7 @@ function Ring({
   camera,
   viewportHeight,
   selected,
-  rival,
+  rivalSlot,
   ally,
   claim,
   recovering,
@@ -909,7 +943,8 @@ function Ring({
   camera: THREE.Camera;
   viewportHeight: number;
   selected: boolean;
-  rival: boolean;
+  /** Which of the commander's marks this world wears, or null for none. D183. */
+  rivalSlot: number | null;
   ally: boolean;
   claim: boolean;
   recovering: boolean;
@@ -932,8 +967,9 @@ function Ring({
   const colour =
     ally
       ? CLANMATE_COLOUR
-      : rival
-      ? '#ff6b43'
+      : rivalSlot !== null
+      // The mark's own colour, off its stored slot — never its place in a list. D183.
+      ? rivalColour(rivalSlot)
       : recovering
         ? '#ff405b'
         : claim
@@ -1015,7 +1051,7 @@ function Ring({
         )
       )}
 
-      {rival && (
+      {rivalSlot !== null && (
         <group>
           <mesh>
             <ringGeometry args={[node.radius * 1.48, node.radius * 1.53, 64]} />

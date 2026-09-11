@@ -125,9 +125,10 @@ export const focus = {
       unsurveyedTitle: "Bu dünyada koloni kur",
       race: "Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
       noRecall:
-        "Koloni gemileri geri çağrılamaz. Başkası önce kazanırsa Kuryelerin ve kuruluş yükün geri döner; harcanan yakıt dönmez.",
+        "Koloni gemileri geri çağrılamaz. Koloniyi sen kurarsan ücret harcanır ve gezegene yalnızca kuruluş yükü iner. Başkası önce kazanırsa Kuryelerin, yükün ve ücretin geri döner; harcanan yakıt dönmez.",
       transports: "Koloni gemileri",
       foundingCargo: "Kuruluş yükü",
+      foundingFee: "Kuruluş ücreti",
       cargoValue: "{{alloy}} Alaşım · {{crystal}} Kristal",
       fuel: "Uçuş yakıtı",
       arrives: "Varış süresi",
@@ -137,6 +138,25 @@ export const focus = {
     },
     deathStar: "Ölüm Yıldızı",
     deathStarStrike: "Ölüm Yıldızı · harap et",
+
+    /**
+     * DARBENİN İKİNCİ VURUŞU. Sahip raporu: *"yanlışlıkla"*.
+     *
+     * Bir komutanın yaptığı en pahalı tek eylem, silahı tüketiyor ve komşusu sıradan
+     * bir akın olan dört düğmelik bir sırada tek levha olarak duruyordu. DÜNYAYI
+     * adıyla söyler, çünkü yanlış dokunuş onu yanlış dünyaya yollar; ve roketi
+     * savunmak yerine karartmayı söyler — darbenin ne yaptığı anlatısı, onu üreten
+     * tezgâhın yanına aittir.
+     */
+    strikeConfirm: {
+      eyebrow: "Stratejik darbe",
+      title: "{{world}} harap edilecek",
+      lead: "Ölüm Yıldızı darbeyle birlikte tükenir. Geri çağrılamaz ve hiçbir şey onu geri getirmez.",
+      outage: "Karanlık",
+      keeps: "Dünya komutanında kalır ve orada duran bütün filolar sağ çıkar.",
+      commit: "Darbeyi başlat",
+      back: "Vazgeç",
+    },
     deathStarUnavailable: "Hazır Ölüm Yıldızı yok",
     deathStarProtected: "Ölüm Yıldızı · hedef korumada",
     deathStarNeedBay: "Ölüm Yıldızı · rampalar dolu",
@@ -230,21 +250,24 @@ export const focus = {
     recoveryDropWarning:
       "{{duration}} kaldı. O ana kadar hiçbir şey üretilmez ve hiçbir şey kalkamaz. Dünya senin kalır, filon da yerinde.",
 
-    /** Üretim kartıyla aynı gerçekler, tetiği çeken kişinin diliyle. D113/D55. */
-    strikeTitle: "Bu darbe ne yapar",
-    strikeFleet: "Yerdeki bütün gemiler ve toplar sağ kalır — darbe hiçbir filoyu öldürmez",
-    strikeStock: "Depo ve üretim havuzundaki kaynakların yarısı yok olur",
-    strikeCore: "Komuta Çekirdeği bir seviye iner; yeni sınırı aşan binalar da düşer",
-    strikeAegis: "Aegis {{levels}} seviye iner ve kalkan sıfırlanır",
-    strikeDark:
-      "{{duration}} boyunca üretim, toplama, inşa, sipariş verme ve fırlatma durur",
-    strikeNoCapture:
-      "Hiçbir dünya kaybedilmez — yalnızca tekrar harap edilebilir",
     eyebrow: "Sahibi: {{owner}}",
     location: "Dünya · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */
     unsurveyedEyebrow: "Dünya · keşfedilmemiş",
-    unsurveyedTitle: "Buraya kimse bakmadı",
+    unsurveyedTitle: "Buraya daha önce bakmadın",
+    /**
+     * BANDIN, SİSİN KANITLAYABİLDİĞİ YARISI. D168 · D127.
+     *
+     * Kısa hâli düğmenin üstünde ve TEK SATIR olmak zorunda — 350 pikselde bu
+     * denetime kalan yer ~129 piksel. Uzun hâli erişilebilir ad, yani anlatacak
+     * yeri olan yer. İkisi de yalnız "hedef fazla gelişmiş" der; "fazla zayıf"
+     * yönünü sis kanıtlayamaz, o yüzden sunucunun reddine bırakılır.
+     */
+    attackOutOfBandShort: "Çok gelişmiş",
+    attackOutOfBand:
+      "Bu komutan senden fazla gelişmiş — akın için gelişim farkı en fazla bir kademe olabilir",
+    attackProtected: "Korumalı — bu dünyaya henüz akın edilemez",
+    attackProtectedShort: "Korumalı · {{duration}}",
     attackShort: "Saldır",
     probeShort: "Sonda",
     probeCoolingShort: "{{duration}} sonra",
@@ -310,6 +333,7 @@ export const focus = {
     noCraft: "Evde Kazıcı yok",
     tooLate: "Sen varmadan gitmiş olur",
     researchNeeded: "Önce İzotop Spektrometrisi araştır",
+    resting: "Araçlar dinleniyor · {{duration}}",
     send: "{{count}} gönder · {{duration}}",
     oreLeft: "Kalan cevher",
     leavesIn: "Diskten çıkışına",
@@ -349,6 +373,7 @@ export const focus = {
     stateInbound: "gidiyor",
     noCraft: "Evde Kazıcı yok",
     tooLate: "Sen varmadan dağılır",
+    resting: "Araçlar dinleniyor · {{duration}}",
     send: "{{count}} gönder · {{duration}}",
     alloyLeft: "Kalan alaşım",
     crystalLeft: "Kalan kristal",
@@ -424,9 +449,9 @@ export const focus = {
       "Korsanı ve uçurduğu gemileri görüyorsun. Nereden geldiği ve yörüngesi görünmez — korsan bir konumdur, bir rota değil.",
     working: "Çalışıyor",
     craftCount: "{{count}} gemi",
-    massLight: "Küçük temas",
-    massMedium: "Kayda değer güç",
-    massHeavy: "Ağır güç",
+    massLight: "Küçük filo",
+    massMedium: "Orta büyüklükte filo",
+    massHeavy: "Büyük filo",
     massHint: "Yalnızca büyüklük — bu mesafeden döküm alınamaz.",
     inboundHint:
       "Radar bunun dünyalarından birine yöneldiğini ayırt etti. Varış süresi ayrı bir zamanlı uyarıyla bildirilir.",
@@ -475,7 +500,6 @@ export const pirate = {
   max: "Tüm {{name}} gemilerini gönder",
   maxShort: "Tümü",
   noShipsAtHome: "Bu dünyada gönderilecek gemi yok.",
-  leftAtHome: "Evde kalan savunma gücü: {{power}}",
   eyebrowUnknown: "Tanımlanamayan temas",
   pickShips: "En az bir gemi seç",
   fuelCost: "Yakıt {{amount}} döteryum",
@@ -489,6 +513,7 @@ export const pirate = {
   leavesIn: "Bölgeden ayrılmasına",
   reach: "{{duration}} sonra yetişir",
   reachLabel: "Varışın",
+  strengthLabel: "Ateş gücü",
   tooLate: "Yetişemeden bölgeden ayrılır",
   unreachable: "Bu dünyadaki hiçbir gemi ona yetişemez",
   alreadyRaiding: "Bu dünyadan zaten bir akın yolda",

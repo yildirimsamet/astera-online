@@ -1,14 +1,22 @@
-import { fleetCount } from '@astera/rules';
+import {
+  HULLS,
+  combatValue,
+  coreTier,
+  fleetCount,
+  fleetEntries,
+  garrisonOf,
+  unarmedCount,
+} from '@astera/rules';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
 import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
-import { powerOf } from '../lib/gains.js';
 import { countdown, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
+import { ShieldIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
 /**
@@ -19,7 +27,7 @@ import { PlanetSigil } from './PlanetSigil.js';
  * A player who buys a satellite should see it appear overhead, and that is the
  * entire feedback loop for a screen full of purchases.
  *
- * Underneath: POWER and output, then three verdicts. "None" is a verdict. "0
+ * Underneath: FIREPOWER and output, then three verdicts. "None" is a verdict. "0
  * ground units" is a number the player still has to interpret.
  */
 export function PlanetHero({
@@ -41,8 +49,6 @@ export function PlanetHero({
     ? planet.planet.disruptedUntil.getTime() - now
     : 0;
 
-  const ground = fleetCount(planet.ground);
-  const home = fleetCount(planet.fleet);
   const exposed = Math.max(
     0,
     planet.planet.alloy
@@ -70,19 +76,23 @@ export function PlanetHero({
           data-planet-subject
           className="flex items-center gap-2 border-b border-line-soft pb-1"
         >
-          <div className="relative grid size-20 shrink-0 place-items-center" aria-hidden>
-            <span
-              className={`absolute top-0 size-2.5 ${
-                planet.planet.kind === 'COLONY'
-                  ? 'rotate-180 bg-opportunity [clip-path:polygon(50%_0,100%_100%,0_100%)]'
-                  : 'rotate-45 border border-crystal bg-crystal/30'
-              }`}
-            />
-            <PlanetSigil
-              seed={planet.planet.id}
-              size={68}
-              shielded={planet.planet.shield > 0}
-            />
+          {/* The portrait and the one fact about it that is not drawn. */}
+          <div data-planet-portrait className="shrink-0">
+            <div className="relative grid size-20 place-items-center" aria-hidden>
+              <span
+                className={`absolute top-0 size-2.5 ${
+                  planet.planet.kind === 'COLONY'
+                    ? 'rotate-180 bg-opportunity [clip-path:polygon(50%_0,100%_100%,0_100%)]'
+                    : 'rotate-45 border border-crystal bg-crystal/30'
+                }`}
+              />
+              <PlanetSigil
+                seed={planet.planet.id}
+                size={68}
+                shielded={planet.planet.shield > 0}
+              />
+            </div>
+            <TierMark planet={planet} />
           </div>
           <div className="min-w-0">
             <p className={`name truncate ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
@@ -93,7 +103,7 @@ export function PlanetHero({
           <Readouts planet={planet} />
         </div>
         
-        <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
+        <Verdicts planet={planet} exposed={exposed} />
         {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
       </div>
     );
@@ -109,7 +119,8 @@ export function PlanetHero({
         occupying the screen alone.
       */}
       <div className="flex items-center gap-2">
-        <div className="relative flex size-[152px] shrink-0 items-center justify-center">
+        <div data-planet-portrait className="shrink-0">
+        <div className="relative flex size-[152px] items-center justify-center">
           <div
             className="pointer-events-none absolute inset-[-14px]"
             style={{
@@ -140,6 +151,8 @@ export function PlanetHero({
 
           <PlanetSigil seed={planet.planet.id} size={100} shielded={planet.planet.shield > 0} />
         </div>
+        <TierMark planet={planet} />
+        </div>
 
         <div className="min-w-0 flex-1">
           <p className={`legend mb-1 ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
@@ -149,8 +162,7 @@ export function PlanetHero({
             {planet.planet.name}
           </h1>
           <div className="plate plate-inset mt-2 px-3 py-2">
-            <p className="legend">{t('planetHero.power')}</p>
-            <p className="readout mt-1 text-body text-bone">{full(powerOf(planet))}</p>
+            <Firepower planet={planet} />
           </div>
           <div className="mt-2 flex gap-2">
             <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
@@ -164,18 +176,72 @@ export function PlanetHero({
       </div>
 
       {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
-      <Verdicts planet={planet} ground={ground} home={home} exposed={exposed} />
+      <Verdicts planet={planet} exposed={exposed} />
     </div>
   );
 }
 
 /**
- * POWER and output.
+ * THE WORLD'S OWN TIER, UNDER ITS PORTRAIT. Owner report.
  *
- * Power is everything this planet is worth — buildings, satellites, ships and
- * stock. It answers "am I getting stronger", and without it a player has no way to
- * feel a season of investment.
+ * *"Benim gezegenlerimin tier'ı kaç görebileceğim bir alan yok."* — and there was
+ * not. The tier is the figure the whole galaxy is sorted by: the disc draws a
+ * world's size from it (D34), every dossier prints a foreign world's, the
+ * leaderboard prints a rival's — and the planet sheet, the surface a commander
+ * spends the session on, printed nothing about their own.
+ *
+ * THAT IS THE WRONG WAY ROUND FOR D168 ABOVE ALL. The attack band is measured on
+ * the tallest Core a commander holds ANYWHERE, so "which of my worlds is my
+ * tallest, and what tier does that make me" is a question the rule asks of the
+ * player. A commander whose colony has grown past their capital could not see
+ * that it had — which is exactly the confusion a live player reported.
+ *
+ * IT IS A CAPTION, NOT A HEADING. Micro type under the portrait: the picture says
+ * WHICH world, this says how far along it is, and anything larger would compete
+ * with the world's own name two centimetres away.
  */
+function TierMark({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  return (
+    <p data-planet-tier className="legend mt-1 text-center text-micro">
+      {t('planetHero.tier', { tier: coreTier(planet.buildings.CORE ?? 0) })}
+    </p>
+  );
+}
+
+/**
+ * THE WORLD'S FIREPOWER — WHAT AN ENEMY PROBE MEASURES ABOUT IT. D199.
+ *
+ * This was "Power", and Power was `wealth()`: buildings, satellites, ships and the
+ * STORE. It ranked nothing and taught the opposite of the game — it fell while a
+ * building was under construction, fell when the fleet flew, and grew while ore
+ * waited to be raided. Owner: *"hiç bir halt anlamıyor."*
+ *
+ * Firepower is the one force unit every surface is written in: what the hulls and
+ * guns in this world's defending line cost, transports and miners left out. It is
+ * the figure a rival's probe reports about this world, so the commander learns the
+ * scale on the one world they know exactly — "mine reads 12k; a world that reads
+ * 12k is a world like mine".
+ */
+function Firepower({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {/*
+        NO GLYPH HERE, ON PURPOSE. Measured at 350: the icon widened this plate by
+        twenty pixels, and the plate's width comes out of the world's kind label
+        beside the portrait, which was already cut. The launch sheet's heading has
+        the room and carries the glyph; this carries the word.
+      */}
+      <p className="legend">{t('planetHero.firepower')}</p>
+      <p data-testid="planet-firepower" className="readout mt-1 text-body text-bone">
+        {full(combatValue(garrisonOf(planet.fleet, planet.ground)))}
+      </p>
+    </>
+  );
+}
+
+/** Firepower and output. */
 function Readouts({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   return (
@@ -183,7 +249,7 @@ function Readouts({ planet }: { planet: PlanetView }) {
       30px WAS A POSTER, NOT A READOUT. Owner directive: *"gereksiz büyük fontlar."*
 
       `--text-readout` exists for a figure that is the entire point of its screen —
-      a season score on the recap. Standing power is the first of FOUR readings in
+      a season score on the recap. Firepower is the first of FOUR readings in
       this block, and at 30px it made the other three look like footnotes to it
       while eating a fifth of the sheet before a commander reached anything they
       could press. `--text-figure` is 21px, still the largest thing here, and it
@@ -191,8 +257,7 @@ function Readouts({ planet }: { planet: PlanetView }) {
     */
     <div className="flex items-stretch gap-1 ml-auto">
       <div className="plate plate-inset flex-1 px-2 py-2 min-w-[80px]">
-        <p className="legend">{t('planetHero.power')}</p>
-        <p className="readout mt-1 text-body text-bone">{full(powerOf(planet))}</p>
+        <Firepower planet={planet} />
       </div>
       <div className="plate plate-inset flex-1 px-2 py-2 min-w-[100px]">
         <p className="legend">{t('planetHero.perHour')}</p>
@@ -220,36 +285,40 @@ function Disrupted({ ms }: { ms: number }) {
 
 function Verdicts({
   planet,
-  ground,
-  home,
   exposed,
 }: {
   planet: PlanetView;
-  ground: number;
-  home: number;
   exposed: number;
 }) {
   const { t } = useTranslation();
   const shield = planet.planet.shield;
   const shieldMax = planet.planet.shieldMax;
   const shieldShare = shieldMax > 0 ? shield / shieldMax : 0;
+  /*
+    WHAT STANDS, NEVER A JUDGEMENT THE SHEET CANNOT MAKE. D199.
+
+    It said Thin under five ground guns and Held at five or more — at every stage of
+    every season, against any raid, and counting only the guns. "Held" against
+    what? The honest verdicts are "nothing here can fire" and what is actually in
+    the line; how strong that is, is the firepower figure beside it.
+  */
+  const line = garrisonOf(planet.fleet, planet.ground);
+  const armed = combatValue(line) > 0;
+  const ships = fleetEntries(planet.fleet).reduce((sum, [id, n]) => sum + (HULLS[id].atk > 0 ? n : 0), 0);
+  const guns = fleetCount(planet.ground);
+  const unarmed = unarmedCount(line);
+  const standing = [
+    ships > 0 ? t('planetHero.defenceShips', { count: ships }) : null,
+    guns > 0 ? t('planetHero.defenceGuns', { count: guns }) : null,
+  ].filter((part): part is string => part !== null).join(' · ');
   return (
     <div className="grid grid-cols-2 gap-2">
       <Verdict
+        testId="planet-defence"
         label={t('planetHero.defence')}
-        value={
-          ground === 0
-            ? t('planetHero.defenceNone')
-            : ground < 5
-              ? t('planetHero.defenceThin')
-              : t('planetHero.defenceHeld')
-        }
-        detail={
-          ground === 0
-            ? t('planetHero.defenceShipsOnly', { count: home })
-            : t('planetHero.defenceOnGround', { count: ground })
-        }
-        tone={ground === 0 ? 'gap' : ground < 5 ? 'warn' : 'good'}
+        value={armed ? standing : t('planetHero.defenceNone')}
+        detail={unarmed > 0 ? t('planetHero.defenceUnarmed', { count: unarmed }) : undefined}
+        tone={armed ? 'neutral' : 'gap'}
       />
       <Verdict
         label={t('planetHero.shield')}
@@ -298,46 +367,140 @@ function Verdicts({
   );
 }
 
+/**
+ * ONE BAR PER RESOURCE, AND THE SAFE PART IS A BLOCK WITH THE VAULT ON IT. D190.
+ *
+ * The report came in three rounds and each one was right.
+ *
+ *   1. *"Kullanıcılar kasa logic'ini anlamakta güçlük çekiyor. Sanıyorlar ki
+ *      sadece belirli bir miktar kaynağı korur. Deponun kapasitesini arttırdığını
+ *      bilmiyor."* The card showed three numbers and all three were the FLOOR, so
+ *      that is the only thing it could teach.
+ *   2. *"Görsel olarak da anlayamıyor. Bu oyunu 50 yaşındaki insanlar bile
+ *      oynuyor."* Words were not going to fix a picture.
+ *   3. *"İşaretli dilim hiç ama hiç belli olmuyor ki."* — with a screenshot. Also
+ *      right: a 1px ring on a five-pixel segmented cell is nothing, and the store
+ *      in that screenshot was ten times over its ceiling, so every cell was lit
+ *      and there was no shape left to read at all.
+ *
+ * SO THE PROTECTED PART IS ONE CONTINUOUS BLOCK, not a run of cells, in bone
+ * against the resource hue, with the VAULT'S OWN GLYPH sitting on it. The glyph is
+ * the association the whole report is about: this block is the Vault's doing.
+ * Segmented cells are the right language for a quantity you count; a rule you have
+ * to recognise wants a shape you cannot mistake for the fill beside it.
+ *
+ * FULL WIDTH, THREE ROWS. Three columns left each bar about a hundred pixels, so
+ * the protected slice was fifteen and could not carry a mark of any kind. Stacked,
+ * the slice is around thirty-six and the block reads at a glance — for the same
+ * height, because the columns were two lines each anyway.
+ *
+ * OVER-CAPACITY IS DRAWN RATHER THAN CLAMPED AWAY, and it is common: a fresh world
+ * opens holding 1,500 alloy against a 1,575 ceiling and outgrows it within the
+ * day. The fill pins at the end with a hard cap mark, and the pale block still
+ * says how little of that pile a raid cannot reach — which is exactly the moment a
+ * commander should be thinking about the Vault.
+ */
+function StoreBar({ held, cap, safe, tone }: {
+  held: number; cap: number; safe: number; tone: 'alloy' | 'crystal' | 'deuterium';
+}) {
+  const CELLS = 12;
+  const room = Math.max(1, cap);
+  const lit = Math.round(Math.min(1, held / room) * CELLS);
+  /*
+    THE BRACKET CLOSES ON A CELL BOUNDARY, never between two. A box that ends
+    halfway through a square reads as a rendering fault; one that encloses a whole
+    number of them reads as a count, which is what it is.
+
+    At least one cell whenever there is any protection at all — the floor is 15% of
+    the store, so it rounds to two of twelve, and a zone drawn as nothing is a zone
+    the player is entitled to think does not exist.
+  */
+  const safeCells = safe > 0 ? Math.max(1, Math.round(Math.min(1, safe / room) * CELLS)) : 0;
+  const over = held > cap + 0.5;
+  const hue = tone === 'alloy' ? 'bg-alloy' : tone === 'crystal' ? 'bg-crystal' : 'bg-deuterium';
+
+  return (
+    <span className="relative block min-w-0 flex-1 pt-2.5">
+      <span className="relative flex h-[7px] gap-px">
+        {Array.from({ length: CELLS }, (_, i) => (
+          <span
+            key={i}
+            className={`flex-1 rounded-cell ${i < lit ? hue : 'bg-line/70'}`}
+            style={{ opacity: i < lit ? 0.9 : 1 }}
+          />
+        ))}
+        {over && <span aria-hidden className="absolute -right-0.5 -top-0.5 h-[11px] w-[3px] rounded-cell bg-bone/90" />}
+      </span>
+      {/*
+        THE PROTECTED ZONE IS A BRACKET AROUND THE CELLS, NOT A DIFFERENT FILL.
+        Owner sketch: enclose the safe part with a line and put a shield over it.
+
+        Better than the fill it replaces, and for a reason worth keeping: a
+        recoloured segment competes with the fill for the same reading — is that
+        ore, or is that a rule? — while a line drawn AROUND a region annotates it
+        without pretending to be a quantity. The bracket sits proud of the cells on
+        every side so it reads as a marking laid on top, and the shield hangs above
+        it where nothing else is drawn.
+      */}
+      {safeCells > 0 && (
+        <>
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -bottom-[3px] left-[-2px] top-[7px] rounded-cell border border-bone/85"
+            style={{ width: `calc(${String((safeCells / CELLS) * 100)}% + 3px)` }}
+          />
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-0 -translate-x-1/2 text-bone"
+            style={{ left: `${String((safeCells / CELLS) * 50)}%` }}
+          >
+            <ShieldIcon className="size-2.5" />
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
 function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number }) {
   const { t } = useTranslation();
-  const protectedStock = planet.planet.vaultProtected;
-  const resources = [
-    { id: 'alloy', amount: protectedStock.alloy, tone: 'text-alloy' },
-    { id: 'crystal', amount: protectedStock.crystal, tone: 'text-crystal' },
-    { id: 'deuterium', amount: protectedStock.deuterium, tone: 'text-deuterium' },
+  const p = planet.planet;
+  const safe = p.vaultProtected;
+  const rows = [
+    { id: 'alloy', held: p.alloy, cap: p.alloyCap, safe: safe.alloy },
+    { id: 'crystal', held: p.crystal, cap: p.crystalCap, safe: safe.crystal },
+    { id: 'deuterium', held: p.deuterium, cap: p.deuteriumCap, safe: safe.deuterium },
   ] as const;
 
   return (
     <div className="plate plate-inset col-span-2 flex flex-col gap-1.5 px-3 py-2">
-      {/*
-        ONE HEADING, ONE MEANING — AND THE SENTENCE IS GONE.
-
-        The header read "VAULT · SAFE" on the left and "463 exposed" on the right,
-        two opposite claims sharing one line, and under the figures sat "A raid
-        cannot touch these amounts", which is the left half of that header said
-        again in words. Three statements of one fact.
-
-        What is left says the fact once and shows the OTHER half beside it: this
-        much is safe, that much is not. Two figures, one rule, no prose.
-      */}
       <div className="flex items-baseline justify-between gap-2">
-        <p className="legend">{t('planetHero.vaultSafe')}</p>
+        <p className="legend">{t('planetHero.storeLabel')}</p>
         <p className={`num text-label ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
           {t('planetHero.atRiskValue', { amount: compact(exposed) })}
         </p>
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        {resources.map(({ id, amount, tone }) => (
+      <div className="flex flex-col gap-1.5">
+        {rows.map(({ id, held, cap, safe: safeAmount }) => (
           <div
             key={id}
-            className="plate plate-sunk flex min-w-0 items-center gap-2 rounded-chip px-2 py-2"
-            aria-label={t(`planetHero.${id}Safe`, { amount: full(amount) })}
+            className="flex min-w-0 items-center gap-2"
+            aria-label={t(`planetHero.${id}Store`, {
+              held: full(Math.floor(held)),
+              cap: full(cap),
+              safe: full(safeAmount),
+            })}
           >
             <img src={RESOURCE_ART[id]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
-            <span className={`num truncate text-caption ${tone}`}>{compact(amount)}</span>
+            <span className="num w-[86px] shrink-0 truncate text-caption text-bone">
+              {compact(Math.floor(held))}
+              <span className="text-faint">{`/${compact(cap)}`}</span>
+            </span>
+            <StoreBar held={held} cap={cap} safe={safeAmount} tone={id} />
           </div>
         ))}
       </div>
+      <p className="text-micro leading-snug text-faint">{t('planetHero.storeRule')}</p>
     </div>
   );
 }
@@ -378,14 +541,16 @@ function Verdict({
   value,
   detail,
   tone,
+  testId,
 }: {
   label: string;
   value: string;
-  detail: ReactNode;
+  detail?: ReactNode;
   tone: keyof typeof TONE;
+  testId?: string;
 }) {
   return (
-    <div className="plate plate-inset px-3 py-2">
+    <div data-testid={testId} className="plate plate-inset px-3 py-2">
       <p className="legend">{label}</p>
       {/* A verdict is a WORD — "Weak", "None". A word does not need 18px to land,
          and at 18px two of them beside a 30px figure read as a third heading level

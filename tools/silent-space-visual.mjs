@@ -1,4 +1,4 @@
-/** Exercises the real modal at 375×812 against explicit UI fixtures; no worlds are moved. */
+/** Exercises the real modal at 350×812 against explicit UI fixtures; no worlds are moved. */
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 
@@ -7,7 +7,7 @@ export async function verifySilentSpace(out) {
   const browser = await chromium.launch();
   try {
     for (const language of ['tr', 'en']) {
-      const page = await browser.newPage({ viewport: { width: 375, height: 812 }, locale: language });
+      const page = await browser.newPage({ viewport: { width: 350, height: 812 }, locale: language });
       const errors = [];
       page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
       await page.route('**/silent-space-visual', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html>
@@ -40,7 +40,7 @@ createRoot(document.getElementById('root')).render(React.createElement(Demo));
       await page.evaluate(() => document.fonts.ready);
       const measure = async () => {
         const box = await modal.boundingBox();
-        if (!box || box.x < 0 || box.x + box.width > 375 || box.y < 0 || box.y + box.height > 812) throw new Error('Modal exceeds the phone viewport');
+        if (!box || box.x < 0 || box.x + box.width > 350 || box.y < 0 || box.y + box.height > 812) throw new Error('Modal exceeds the phone viewport');
         if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Horizontal overflow');
       };
       await measure();
@@ -64,7 +64,7 @@ createRoot(document.getElementById('root')).render(React.createElement(Demo));
       await measure();
       await page.screenshot({ path: `${out}/${language}-queued.png` });
       if (errors.length) throw new Error(errors.join('\n'));
-      console.log(`${language}: notice, dismissal, reopen, error and queued verified at 375×812`);
+      console.log(`${language}: notice, dismissal, reopen, error and queued verified at 350×812`);
       await page.close();
     }
   } finally { await browser.close(); }

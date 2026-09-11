@@ -1,5 +1,5 @@
-import { ACADEMY_STEPS, ACADEMY_FLIGHT_DISTANCE, ACADEMY_LEG_SECONDS, PROSPECTOR, academyMinedOre, engagementEndsAt, fleetEntries, academyPirateHomecoming } from '@astera/rules';
-import type { MiningView, PendingThread } from '../api/schemas.js';
+import { ACADEMY_STEPS, ACADEMY_FLIGHT_DISTANCE, ACADEMY_LEG_SECONDS, ENGAGEMENT_STANDOFF, PROSPECTOR, academyMinedOre, engagementEndsAt, fleetEntries, visualLeg, academyPirateHomecoming } from '@astera/rules';
+import type { Contact, MiningView, PendingThread } from '../api/schemas.js';
 import type { AcademyWorld } from './academyWorld.js';
 
 /** Authored local targets appear only when their lesson starts. */
@@ -136,7 +136,8 @@ export function academyMining(w: AcademyWorld, now: number): MiningView & { isot
   const runs = [...w.journeys, ...(w.flight ? [w.flight] : [])].filter((f) => f.kind === 'mine');
   return {
     derrick: false, craftSpeed: PROSPECTOR.speed, craftHold: PROSPECTOR.hold,
-    derrickHold: PROSPECTOR.hold, isotopes: [], debris: [], nextFieldChangeAt: null,
+    // The lesson's rock is a real flight, so nothing is ever resting here. D183.
+    derrickHold: PROSPECTOR.hold, craftReadyAt: null, isotopes: [], debris: [], nextFieldChangeAt: null,
     asteroids: standing ? [{
       id: ACADEMY_ROCK, level: 1, ore: 120, oreRemaining: 120,
       crystalShare: 0.3, radius: academyTarget(w).x, period: 1e9, phase: 0, inclination: 0,
@@ -150,6 +151,66 @@ export function academyMining(w: AcademyWorld, now: number): MiningView & { isot
       minedAlloy: now >= f.arriveAt ? mined.alloy : 0, minedCrystal: now >= f.arriveAt ? mined.crystal : 0, minedDeuterium: 0,
     })),
   };
+}
+
+/**
+ * THE LESSON'S OWN TRAFFIC, AND THE PIRATE TURNS TO FACE THE WING. D183.
+ *
+ * Owner report: *"Onboarding korsan savaşı aşamasında, savaş animasyonu oynarken
+ * korsan olan gemi yani Warden ateş ederken bizim filomuza doğru dönmüyor."*
+ *
+ * THE LIVE LANE FIXED THIS AT D150 AND THE LESSON NEVER GOT IT.
+ * `projectGalaxyTraffic` publishes a fighting pirate's `engagement.target` as the
+ * ATTACKER's hold point, in as many words: aimed at its own position "the client
+ * skipped its `lookAt` entirely and the crew sat through the fight pointing
+ * wherever the orbit had last left them, with no round crossing the gap because
+ * there was no gap." The Academy serves its own payload and carried no
+ * `engagement` at all, so it reproduced exactly the bug the live game had fixed.
+ *
+ * THE HOLD IS THE SHARED ONE. `visualLeg(..., ENGAGEMENT_STANDOFF)` is the same
+ * call the server makes, so the gap the two formations fire across is the same gap
+ * on both lanes rather than a number invented for the lesson.
+ *
+ * It is a function so it can be tested and so the payload has one statement — the
+ * fetch stub used to build this object inline, which is how it came to be missing
+ * a field the renderer needs.
+ */
+export function academyTraffic(w: AcademyWorld, now: number): Contact[] {
+  if (!targetStanding(w, 'pirate', now)) return [];
+  const at = academyTarget(w);
+  const flight = w.flight;
+  const fighting = flight !== null
+    && flight.kind === 'pirate'
+    && now >= flight.arriveAt
+    && now < engagementEndsAt(flight.arriveAt);
+
+  return [{
+    id: 'academy-pirate',
+    kind: 'pirate',
+    fleet: { WARDEN: 1 },
+    level: 1,
+    from: at,
+    to: at,
+    landing: true,
+    startAt: w.preview.season.startsAt,
+    endAt: w.preview.season.endsAt,
+    ...(fighting
+      ? {
+        engagement: {
+          arriveAt: new Date(flight.arriveAt),
+          endsAt: new Date(engagementEndsAt(flight.arriveAt)),
+          // Where the wing is holding — short of the meeting point, on the line
+          // it flew in on. Exactly what `traffic.ts` publishes for a live fight.
+          target: visualLeg(
+            w.preview.reserved.position,
+            at,
+            0,
+            ENGAGEMENT_STANDOFF,
+          ).to,
+        },
+      }
+      : {}),
+  }];
 }
 
 export function academyPirates(w: AcademyWorld) {

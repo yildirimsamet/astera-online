@@ -19,6 +19,7 @@ import {
 import type {
   CombatRound,
   BuildQueueId,
+  ClassReading,
   Fleet,
   Grade,
   HullId,
@@ -182,6 +183,21 @@ export const accounts = pgTable('accounts', {
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),
   uniqueIndex('accounts_username_idx').on(t.username),
+  check(
+    'accounts_lifetime_dominion_range_check',
+    sql`(NOT (${t.lifetime} ? 'dominionTaken') OR (
+        jsonb_typeof(${t.lifetime} -> 'dominionTaken') = 'number'
+        AND (${t.lifetime} ->> 'dominionTaken')::numeric
+          = trunc((${t.lifetime} ->> 'dominionTaken')::numeric)
+        AND (${t.lifetime} ->> 'dominionTaken')::numeric BETWEEN 0 AND 9007199254740991
+      ))
+      AND (NOT (${t.lifetime} ? 'dominionLost') OR (
+        jsonb_typeof(${t.lifetime} -> 'dominionLost') = 'number'
+        AND (${t.lifetime} ->> 'dominionLost')::numeric
+          = trunc((${t.lifetime} ->> 'dominionLost')::numeric)
+        AND (${t.lifetime} ->> 'dominionLost')::numeric BETWEEN 0 AND 9007199254740991
+      ))`,
+  ),
 ]);
 
 export type FeedbackKind = 'BUG' | 'SUGGESTION' | 'PRAISE';
@@ -328,7 +344,7 @@ export const seasonResults = pgTable('season_results', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   accountId: uuid('account_id').notNull().references(() => accounts.id),
   finalRank: integer('final_rank').notNull(),
-  dominion: real('dominion').notNull(),
+  dominion: bigint('dominion', { mode: 'number' }).notNull(),
   damageDealt: real('damage_dealt').notNull().default(0),
   damageTaken: real('damage_taken').notNull().default(0),
   rivalName: text('rival_name'),
@@ -340,6 +356,21 @@ export const seasonResults = pgTable('season_results', {
   primaryKey({ columns: [t.seasonId, t.accountId] }),
   uniqueIndex('season_results_cycle_account_idx').on(t.cycleId, t.accountId),
   index('season_results_account_idx').on(t.accountId, t.createdAt),
+  check(
+    'season_results_dominion_range_check',
+    sql`${t.dominion} BETWEEN -9007199254740991 AND 9007199254740991`,
+  ),
+  check(
+    'season_results_recap_clan_dominion_range_check',
+    sql`(${t.recap} #> '{clan,dominion}') IS NULL
+      OR (
+        jsonb_typeof(${t.recap} #> '{clan,dominion}') = 'number'
+        AND (${t.recap} #>> '{clan,dominion}')::numeric
+          = trunc((${t.recap} #>> '{clan,dominion}')::numeric)
+        AND (${t.recap} #>> '{clan,dominion}')::numeric
+          BETWEEN -9007199254740991 AND 9007199254740991
+      )`,
+  ),
 ]);
 
 /* ── the season world ───────────────────────────────────────── */
@@ -354,8 +385,8 @@ export const players = pgTable('players', {
   mainEnteredAt: timestamp('main_entered_at', { withTimezone: true }),
   name: text('name').notNull(),
   /** Dominion is the ladder: taken − lost. Stored as two counters. */
-  dominionTaken: real('dominion_taken').notNull().default(0),
-  dominionLost: real('dominion_lost').notNull().default(0),
+  dominionTaken: bigint('dominion_taken', { mode: 'number' }).notNull().default(0),
+  dominionLost: bigint('dominion_lost', { mode: 'number' }).notNull().default(0),
   /** Denormalised for the rank floor check and the Wealth display. */
   wealth: real('wealth').notNull().default(0),
   joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
@@ -377,10 +408,22 @@ export const players = pgTable('players', {
   lastClanSeenAt: timestamp('last_clan_seen_at', { withTimezone: true }),
   /** Leave, kick and disband all close recruitment actions for one day. D114. */
   clanLockedUntil: timestamp('clan_locked_until', { withTimezone: true }),
-  /** One identity anchor for this season; no power, and no FK so reclaim stays possible. D91. */
-  rivalPlanetId: uuid('rival_planet_id'),
-  /** Commander identity survives a target colony changing hands. D97. */
-  rivalPlayerId: uuid('rival_player_id'),
+  /**
+   * THE FIRST DAY IN THIS GALAXY, DURING WHICH NOBODY MAY RAID THIS COMMANDER.
+   * D183, owner instruction, reversing D14's removal of newcomer grace.
+   *
+   * NULL MEANS NO SHIELD, and that is also what dropping it writes. A commander who
+   * takes a shot gives it up (`SHIELD_WOULD_DROP` asks first, once), so this column
+   * answers "has this commander committed to the war" with a presence rather than
+   * with a date comparison somebody forgets to make.
+   *
+   * ON THE PLAYER, NEVER ON A WORLD. A per-world shield would be bought with a
+   * colony — settle a fresh one and hide a fleet behind its untouchable sky — which
+   * is the exact hole D168 moved the attack band onto the commander to close.
+   * `planets.protectedUntil` remains what it always was: the occupation window on
+   * one captured world.
+   */
+  newcomerShieldUntil: timestamp('newcomer_shield_until', { withTimezone: true }),
   /**
    * Which unlocks this player has already been SHOWN.
    *
@@ -410,6 +453,11 @@ export const players = pgTable('players', {
   uniqueIndex('players_account_idx').on(t.accountId),
   index('players_ladder_idx').on(t.seasonId, t.dominionTaken, t.dominionLost),
   index('players_active_idx').on(t.seasonId, t.lastActiveAt),
+  check(
+    'players_dominion_range_check',
+    sql`${t.dominionTaken} BETWEEN 0 AND 9007199254740991
+      AND ${t.dominionLost} BETWEEN 0 AND 9007199254740991`,
+  ),
 ]);
 
 export type ReturnApplicationStatus = 'QUEUED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'SEASON_ENDED';
@@ -450,8 +498,8 @@ export const clans = pgTable('clans', {
   tag: text('tag').notNull(),
   description: text('description').notNull().default(''),
   recruiting: boolean('recruiting').notNull().default(true),
-  dominionTaken: real('dominion_taken').notNull().default(0),
-  dominionLost: real('dominion_lost').notNull().default(0),
+  dominionTaken: bigint('dominion_taken', { mode: 'number' }).notNull().default(0),
+  dominionLost: bigint('dominion_lost', { mode: 'number' }).notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   disbandedAt: timestamp('disbanded_at', { withTimezone: true }),
 }, (t) => [
@@ -461,6 +509,11 @@ export const clans = pgTable('clans', {
   check('clans_name_length_check', sql`char_length(${t.name}) BETWEEN 3 AND 24`),
   check('clans_tag_check', sql`${t.tag} ~ '^[A-Z0-9]{2,5}$'`),
   check('clans_description_length_check', sql`char_length(${t.description}) <= 160`),
+  check(
+    'clans_dominion_range_check',
+    sql`${t.dominionTaken} BETWEEN 0 AND 9007199254740991
+      AND ${t.dominionLost} BETWEEN 0 AND 9007199254740991`,
+  ),
 ]);
 
 /** Active membership is represented by `left_at IS NULL`; old rows remain an audit. */
@@ -885,7 +938,19 @@ export const missions = pgTable('missions', {
   targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
   fleet: jsonb('fleet').$type<Fleet>().notNull(),
   loot: jsonb('loot').$type<Resources>(),
+  /**
+   * WRECK, NOT LOOT. D200.
+   *
+   * What the wing's surviving Garbage Collectors lifted off the battle they flew
+   * into, set on the return leg only. A column of its own because the two go
+   * different places on landing: `loot` was taken FROM a commander, feeds the
+   * clan's docked share (D114) and was priced into Dominion; this was taken from
+   * a public wreck, is Wealth and nothing else (D2), and lands whole.
+   */
+  salvage: jsonb('salvage').$type<Resources>(),
   cargo: jsonb('cargo').$type<Resources>(),
+  /** Founding fee held until success; returned on failure. Null on older missions. */
+  settlementEscrow: jsonb('settlement_escrow').$type<Resources>(),
   distance: real('distance').notNull(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
@@ -1029,12 +1094,61 @@ export const clanScoreEvents = pgTable('clan_score_events', {
   missionId: uuid('mission_id').notNull(),
   clanId: uuid('clan_id').notNull().references(() => clans.id),
   side: text('side').$type<'ATTACK' | 'DEFENCE'>().notNull(),
-  dominionDelta: real('dominion_delta').notNull(),
+  dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   uniqueIndex('clan_score_events_source_idx').on(t.missionId, t.clanId, t.side),
   index('clan_score_events_clan_idx').on(t.clanId, t.createdAt),
   check('clan_score_events_side_check', sql`${t.side} IN ('ATTACK', 'DEFENCE')`),
+  check(
+    'clan_score_events_dominion_range_check',
+    sql`${t.dominionDelta} BETWEEN -9007199254740991 AND 9007199254740991`,
+  ),
+]);
+
+/**
+ * Durable score journal, independent of player-facing reports and live identities.
+ *
+ * Reclaim deletes missions, players and their reports. These snapshot ids carry no
+ * foreign keys on purpose, so an opponent's surviving ledger can still be
+ * reproduced at season freeze after either seat has been reclaimed.
+ */
+export const dominionEvents = pgTable('dominion_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  missionId: uuid('mission_id').notNull(),
+  attackerPlayerId: uuid('attacker_player_id').notNull(),
+  defenderPlayerId: uuid('defender_player_id').notNull(),
+  rulesetVersion: integer('ruleset_version').notNull(),
+  eligible: boolean('eligible').notNull(),
+  lootValue: bigint('loot_value', { mode: 'number' }),
+  attackerLossValue: bigint('attacker_loss_value', { mode: 'number' }),
+  defenderLossValue: bigint('defender_loss_value', { mode: 'number' }),
+  rawExchange: bigint('raw_exchange', { mode: 'number' }),
+  transfer: bigint('transfer', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('dominion_events_mission_idx').on(t.missionId),
+  index('dominion_events_season_idx').on(t.seasonId),
+  check(
+    'dominion_events_audit_check',
+    sql`${t.rulesetVersion} > 0 AND (
+      (${t.eligible} = false
+        AND ${t.transfer} = 0
+        AND ${t.lootValue} IS NULL
+        AND ${t.attackerLossValue} IS NULL
+        AND ${t.defenderLossValue} IS NULL
+        AND ${t.rawExchange} IS NULL)
+      OR (${t.eligible} = true
+        AND ${t.lootValue} BETWEEN 0 AND 9007199254740991
+        AND ${t.attackerLossValue} BETWEEN 0 AND 9007199254740991
+        AND ${t.defenderLossValue} BETWEEN 0 AND 9007199254740991
+        AND ${t.rawExchange} BETWEEN -9007199254740991 AND 9007199254740991
+        AND ${t.transfer} BETWEEN -9007199254740991 AND 9007199254740991
+        AND ${t.rawExchange} = ${t.lootValue} + ${t.defenderLossValue} - ${t.attackerLossValue}
+        AND (${t.rulesetVersion} < 7 OR ${t.rawExchange} = ${t.transfer}))
+    )`,
+  ),
 ]);
 
 /** A strategic asset belongs to its current planet and transfers with it. D97. */
@@ -1237,8 +1351,19 @@ export const battleReports = pgTable('battle_reports', {
    * REPELLED raid inheriting a deadline an earlier raid had already set.
    */
   disruptedMinutes: real('disrupted_minutes').notNull().default(0),
-  /** Value of the wreckage this fight left in orbit, before anyone harvested it. */
+  /**
+   * Value of the wreckage this fight left in orbit, before anyone harvested it.
+   * Since D200, what is left AFTER the attacker's collectors lifted their share —
+   * the public field, and nothing a player can no longer fly out and take.
+   */
   wreckValue: real('wreck_value').notNull().default(0),
+  /**
+   * What the attacker's surviving Garbage Collectors lifted before the field
+   * formed. D200. Zeros on every report without one, and on every report written
+   * before the hull existed.
+   */
+  salvage: jsonb('salvage').$type<Resources>().notNull()
+    .default({ alloy: 0, crystal: 0, deuterium: 0 }),
   /** True only when surviving cargo, rather than exposed stock, capped the haul. D94. */
   cargoLimited: boolean('cargo_limited').notNull().default(false),
   /** Auditable combat telemetry; reserved for the Breacher decision, not an unlock yet. */
@@ -1253,7 +1378,15 @@ export const battleReports = pgTable('battle_reports', {
    * before this column existed cannot be reconstructed; the client omits the line
    * rather than inventing a figure.
    */
-  dominionSwing: real('dominion_swing'),
+  dominionSwing: bigint('dominion_swing', { mode: 'number' }),
+  /** Frozen scoring rule and its realised inputs. Null together on legacy/non-player reports. */
+  dominionRuleVersion: integer('dominion_rule_version'),
+  dominionLootValue: bigint('dominion_loot_value', { mode: 'number' }),
+  dominionAttackerLossValue: bigint('dominion_attacker_loss_value', { mode: 'number' }),
+  dominionDefenderLossValue: bigint('dominion_defender_loss_value', { mode: 'number' }),
+  dominionRawExchange: bigint('dominion_raw_exchange', { mode: 'number' }),
+  /** True when scored, false for a competition-exempt operator battle, null on legacy reports. */
+  dominionEligible: boolean('dominion_eligible'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
@@ -1271,6 +1404,47 @@ export const battleReports = pgTable('battle_reports', {
           AND ${t.pirateRaidId} IS NOT NULL
           AND ${t.missionId} IS NULL
           AND ${t.targetPlanetId} IS NULL)`,
+  ),
+  check(
+    'battle_reports_dominion_audit_check',
+    sql`(${t.dominionEligible} IS NULL
+          AND ${t.dominionRuleVersion} IS NULL
+          AND ${t.dominionLootValue} IS NULL
+          AND ${t.dominionAttackerLossValue} IS NULL
+          AND ${t.dominionDefenderLossValue} IS NULL
+          AND ${t.dominionRawExchange} IS NULL)
+        OR (${t.dominionEligible} = false
+          AND ${t.targetKind} = 'PLAYER'
+          AND ${t.dominionSwing} = 0
+          AND ${t.dominionRuleVersion} IS NULL
+          AND ${t.dominionLootValue} IS NULL
+          AND ${t.dominionAttackerLossValue} IS NULL
+          AND ${t.dominionDefenderLossValue} IS NULL
+          AND ${t.dominionRawExchange} IS NULL)
+        OR (${t.dominionEligible} = true
+          AND ${t.targetKind} = 'PLAYER'
+          AND ${t.dominionRuleVersion} > 0
+          AND ${t.dominionLootValue} >= 0
+          AND ${t.dominionAttackerLossValue} >= 0
+          AND ${t.dominionDefenderLossValue} >= 0
+          AND ${t.dominionRawExchange} = ${t.dominionLootValue}
+            + ${t.dominionDefenderLossValue} - ${t.dominionAttackerLossValue}
+          AND ${t.dominionSwing} IS NOT NULL
+          AND (${t.dominionRuleVersion} < 7
+            OR ${t.dominionRawExchange} = ${t.dominionSwing}))`,
+  ),
+  check(
+    'battle_reports_dominion_range_check',
+    sql`(${t.dominionSwing} IS NULL
+          OR ${t.dominionSwing} BETWEEN -9007199254740991 AND 9007199254740991)
+      AND (${t.dominionLootValue} IS NULL
+          OR ${t.dominionLootValue} BETWEEN 0 AND 9007199254740991)
+      AND (${t.dominionAttackerLossValue} IS NULL
+          OR ${t.dominionAttackerLossValue} BETWEEN 0 AND 9007199254740991)
+      AND (${t.dominionDefenderLossValue} IS NULL
+          OR ${t.dominionDefenderLossValue} BETWEEN 0 AND 9007199254740991)
+      AND (${t.dominionRawExchange} IS NULL
+          OR ${t.dominionRawExchange} BETWEEN -9007199254740991 AND 9007199254740991)`,
   ),
 ]);
 
@@ -1385,6 +1559,18 @@ export const probeReports = pgTable('probe_reports', {
   deuteriumStock: jsonb('deuterium_stock').$type<{ low: number; high: number }>(),
   defence: jsonb('defence').$type<{ low: number; high: number }>().notNull(),
   fleetSize: jsonb('fleet_size').$type<{ low: number; high: number }>().notNull(),
+  /**
+   * THE THREE READINGS D199 ADDED, each null on a report written before it.
+   *
+   *   · `classReading` — the counter-cycle shape of what fires, as far as this
+   *     probe's accuracy could tell (`classReading` in the rules).
+   *   · `shield` — the Aegis charge at arrival, after its regeneration.
+   *   · `unarmed` — hulls in the defending line that fire nothing: a DECISIVE raid
+   *     still has to sink every one.
+   */
+  classReading: jsonb('class_reading').$type<ClassReading>(),
+  shield: jsonb('shield').$type<{ low: number; high: number }>(),
+  unarmed: jsonb('unarmed').$type<{ low: number; high: number }>(),
   fleetHome: boolean('fleet_home').notNull(),
   strategicStatus: text('strategic_status').$type<'READY' | 'BUILDING' | 'NONE' | 'UNKNOWN'>(),
   /** Whether the target's radar caught it — the observer learns this too. */
@@ -1422,7 +1608,7 @@ export const probeReports = pgTable('probe_reports', {
     /**
      * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D124.
      *
-     * A 25% multiplier nobody can see would silently eat the value of every
+     * A 56% multiplier (D169) nobody can see would silently eat the value of every
      * scouting flight, and D124 is blunt: a rule the player cannot SEE is not a
      * rule. So the doctrines are a PROBE product — earned, never public — and
      * they freeze at the look like everything else here. Absent on reports
@@ -1542,6 +1728,41 @@ export const watches = pgTable('watches', {
 }, (t) => [
   primaryKey({ columns: [t.observerPlanetId, t.slot] }),
   index('watches_observer_player_idx').on(t.observerPlayerId),
+]);
+
+/**
+ * THE COMMANDERS THIS ONE IS KEEPING AN EYE ON. D183.
+ *
+ * It was two columns on `players` — one planet, one commander — and D183 raised
+ * the ceiling to `RIVAL.max` on the owner's instruction, which a pair of columns
+ * cannot express. A row per mark, with the SLOT stored, because the slot is what
+ * the disc draws the colour from: a mark that changed colour when an unrelated one
+ * was cleared would be a different bookmark every time the list moved.
+ *
+ * NO FOREIGN KEY ON THE PLANET, deliberately, and the reason is D91's: a world can
+ * be reclaimed, and a mark is a memory rather than a reference. The commander id
+ * is the load-bearing half anyway — D97, a marked colony changing hands must not
+ * silently re-point the mark at its new owner.
+ *
+ * IT GRANTS NOTHING AND REVEALS NOTHING. Exactly as the columns it replaces: D127
+ * still decides what any of these worlds will tell the marker, and `isRivalNode`
+ * refuses to draw a reticle on a world outside current sight.
+ */
+export const playerRivals = pgTable('player_rivals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  /** Where the mark was placed. The anchor a player recognises, never the rule. */
+  planetId: uuid('planet_id').notNull(),
+  /** Who it is really about. Survives that world changing hands. D97. */
+  targetPlayerId: uuid('target_player_id').notNull(),
+  /** 0..RIVAL.max-1. Fixed for the life of the mark, because it IS the colour. */
+  slot: integer('slot').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  /** One mark per commander marked: pressing a second world of theirs is the same mark. */
+  uniqueIndex('player_rivals_target_idx').on(t.playerId, t.targetPlayerId),
+  /** And one mark per colour, which is what makes the slot a colour at all. */
+  uniqueIndex('player_rivals_slot_idx').on(t.playerId, t.slot),
 ]);
 
 /**
@@ -1720,6 +1941,11 @@ export const pirateRaids = pgTable('pirate_raids', {
   /** NULL until it turns for home; NULL for ever if nothing survived. */
   homeAt: timestamp('home_at', { withTimezone: true }),
   loot: jsonb('loot').$type<Resources>(),
+  /**
+   * Wreck the squadron's Garbage Collectors lifted at the rendezvous. D200.
+   * NULL when none came home — and on every raid written before the hull existed.
+   */
+  salvage: jsonb('salvage').$type<Resources>(),
   /** One hull towed home from a DECISIVE win, or NULL. */
   capturedHull: text('captured_hull').$type<HullId>(),
 }, (t) => [

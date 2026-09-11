@@ -19,6 +19,10 @@ export const statusBar = {
   menuHint: 'Komutan {{name}}; istihbarat, liderlik tablosu, ödüller ve hesap',
   menuWaiting: '{{count}} ödül bekliyor',
   clanWaiting: '{{count}} klan gelişmesi bekliyor',
+  newcomerShield: {
+    label: 'Akın kalkanı',
+    hint: '{{duration}} boyunca sana akın yapılamaz',
+  },
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
     label: 'Rampa',
@@ -69,9 +73,9 @@ export const pendingStrip = {
   /** Aynı uyarı, araç senin diskinde görünürken. D162. */
   incomingVisible: 'Yaklaşan tehdit · sensörlerinde — bakmak için dokun',
   incomingFrom: '{{origin}} yönünden geliyor',
-  massLight: 'Küçük bir güç geliyor',
-  massMedium: 'Kayda değer bir güç geliyor',
-  massHeavy: 'Ağır bir güç geliyor',
+  massLight: 'Küçük bir filo geliyor',
+  massMedium: 'Orta büyüklükte bir filo geliyor',
+  massHeavy: 'Büyük bir filo geliyor',
 } as const;
 
 export const signals = {
@@ -170,7 +174,7 @@ export const menu = {
   volumeLabel: 'Müzik seviyesi',
   volumeValue: '%{{volume}}',
   /**
-   * ÇÖZÜNÜRLÜK. Üç kademe, her biri tek kelime — üçü yan yana 375 piksele sığmak
+   * ÇÖZÜNÜRLÜK. Üç kademe, her biri tek kelime — üçü yan yana 350 piksele sığmak
    * zorunda. Altındaki cümle seçili kademenin kendisine ait: kademenin adı ne
    * kazandırdığını söylemiyor, cümle söylüyor.
    */

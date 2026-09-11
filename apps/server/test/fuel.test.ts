@@ -118,6 +118,7 @@ describe('fuel', () => {
   });
 
   it('charges a transfer for the one leg it flies', async () => {
+    await setLevel(f.db, target, 'HANGAR', 1);
     await f.db
       .update(planets)
       .set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' })

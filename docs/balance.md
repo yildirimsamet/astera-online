@@ -41,10 +41,13 @@ against a 2.0-minute warning.
 
 **Combat variance is ±8%.** If randomness dominated, intel would be worthless.
 
-**Dominion sums to exactly zero across a battle and one battle moves at most 10,000.** The
-attacker's raw exchange value is compressed by `round(10,000 × tanh(raw / 10,000))`, then its
-exact negative is booked to the defender. Both claims are property-tested; otherwise the ladder
-either creates score from nothing or lets one fleet erase a season.
+**Dominion is the uncapped realised economic exchange and sums to exactly zero across every scored
+battle.** `secured loot + enemy permanent loss - own permanent loss` is booked directly to the
+attacker and its exact negative to the defender. It is additive and property-tested: splitting the
+same realised exchange cannot manufacture score. A season-sized fleet loss may erase a
+season-sized lead by design — fleet value is the stake — while a large fleet merely sent against a
+small target earns only what it actually takes or destroys. Rulesets before v7 keep the historical
+10,000-asymptote transfers already written to them.
 
 **`START` is arithmetic:** it buys Core, Refinery and Extractor each 1→2 plus the active ruleset's
 two guided-opening Darts, and not a unit more. D148 rederived it as `852 alloy · 72 crystal`;
@@ -687,7 +690,7 @@ zero, so the zero-sum property `invariants.test.ts` asserts is untouched by the 
 ### Trade ship (D156)
 
 ```
-rate     90 alloy = 30 crystal = 1 deuterium — TRADE.rate = { alloy: 1, crystal: 3, deuterium: 90 }
+rate     90 alloy = 45 crystal = 10 deuterium — TRADE.rate = { alloy: 1, crystal: 2, deuterium: 9 } (D183; was 1/3/90)
          read as units per resource unit: the scarcer the resource, the larger its own figure
 speed    47 ÷ TRAVEL.distanceFactor (1.2) = 39.17 units/min — half the Atlas's catalogue 94,
          on the Atlas's own scale, never the rocks' 350–750 (D155's lesson, applied before it
@@ -893,3 +896,510 @@ research pacing case in `fleet-v2-balance.test.ts` are skipped. Assertions, bala
 bands and gameplay constants are unchanged. VFR, SV and all other simulator gates
 remain active. Remove these skips when the pacing/balance work resolves the six
 failures; a green suite with skips is not evidence that these balance issues are fixed.
+
+## 2026-09-10 — the real population, measured (D188)
+
+Five seeds, 50 players, 14 days. `by-archetype` is the audience brief: GRINDER on `heavy`,
+CASUAL on `half`, the rest on `average`.
+
+| | old `loginsPerDay` | `by-archetype` | band |
+|---|---|---|---|
+| ARR | 0.272–0.282 | **0.223–0.232** | ≥ 0.275 |
+| VFR | 0.128–0.157 | 0.122–0.140 | ≥ 0.09 ✓ |
+| SV | 0.145–0.156 | 0.122–0.124 | ✓ |
+| TAX | 0.098–0.129 | **0.037–0.070** | ≥ 0.04 |
+| TI | −0.010…−0.666 | 0.000 | ✓ (its normal reading) |
+| Gravitic Charges | **0 / 30** | **30 / 30** | — |
+| raids, 5 seeds | 4,175 | **23,323** | — |
+
+**READ THE LAST ROW BEFORE TUNING ANYTHING.** 23,323 raids is 6.7 per player per day. That is
+not a balance signal, it is `nextDecision` waking a player every two minutes while awake — a
+ninety-minute evening is forty-five complete sessions, each able to launch. Every figure in
+the `by-archetype` column is inflated by that, ARR and TAX included. **Fix the cadence first;
+re-derive the bands after.** Tuning against this column would be tuning against a model that
+is wrong in a second place.
+
+The one row that is trustworthy today is Gravitic Charges, because it is a threshold rather
+than a rate: the informed archetype could not afford its own research under a model that
+spent 70% of the store ten times a day, and can under one that logs in four times.
+
+## 2026-09-10 — the D185 sweep, and why it found nothing else
+
+D184 and D185 removed the same defect twice — a ladder whose EFFECT grows by a flat rung
+while its PRICE grows geometrically, so the top of it is unbuyable and therefore dead. Both
+were found by accident. This is the deliberate sweep of everything else, so nobody has to run
+it again.
+
+**THE TEST THAT SEPARATES A DEFECT FROM THE DESIGN.** Not "does the price grow geometrically" —
+most of them do, correctly. The question is whether the thing it buys EARNS. A producer's
+price is geometric because its income is: paying twice as much at twice the income is flat in
+the real numéraire, which is hours of production, and the growing repayment horizon is the
+authored progression. A ladder that earns NOTHING has no repayment to grow against, so a
+geometric price on it is just a wall. `season.ts` said this in passing years ago — *"a Hangar
+earns nothing on its own — it lifts a ceiling — so `worthInvesting`, which prices an upgrade
+against the hours of production left to repay it, cannot judge one."* That sentence is the
+whole diagnostic.
+
+**MEASURED, against a 30-day season's 2,262,063 resources:**
+
+| Ladder | Earns? | Top of the ladder | Verdict |
+|---|---|---|---|
+| Core | gate on everything | L16 = 14% cumulative, L20 = 79% | fine — a real stretch, reachable |
+| Refinery / Extractor | yes, directly | priced off their own delta | fine by construction |
+| Deuterium Plant | yes | effect delta rises with price | fine |
+| Vault | no, but enables | L16 = 21%, L20 = 116% | fine — the unreachable rungs are ones a 30-day season has no use for (210 hours of store) |
+| Instruments ×4 | no | all four at L5 = 12% | fine — and this is the figure `INSTRUMENT_LEVEL_WORTH` was tuned to produce |
+| ~~Hangar~~ | no | L8 alone = 196% | **removed, D184** |
+| ~~Shipyard past its gate~~ | no | whole tail = 30,376% | **repriced, D185** |
+
+So the defect was confined to the two ladders whose entire product was a non-earning ceiling
+with a flat marginal benefit. No third instance exists.
+
+**ONE UNRELATED THING THE SWEEP SURFACED, NOT FIXED HERE.** `instrumentCost(_id, level)` does
+not read its `id`: Telescope, Radar, Aegis and Veil are priced identically at every rung. The
+live `INSTRUMENT_COST_MULT` (3 / 2 / 2 / 2) is no longer consulted. Since Radar out-reaches
+Telescope at every level, equal pricing makes Radar the dominant buy and quietly removes the
+choice D22 priced open. Reported rather than changed — it is an owner decision about the
+information layer.
+
+## 2026-09-09 — D183 measurements, and one baseline correction
+
+**The pirate ETA drifts by laps, not by seconds.** Swept 20,000 `interceptOrbit`
+solves across the pirate orbit band (radius 400–2,000, speed `PIRATE.speedMin`–
+`speedMax`) at five hull speeds, comparing a solve at minute 100 with one at 100.5:
+295 of them — about 1.5% — moved more than a minute, and the worst ran 5.1 minutes
+to 56.3. It jumps rather than slides because the solver returns the FIRST meeting
+and a wing slower than the pirate waits for the orbit to come round; a fleet
+leaving a moment late misses that narrow window and is quoted the next lap. This is
+the measurement behind `PIRATE.quoteToleranceMinutes` and the `quotedMinutes` the
+launch now carries. The probe script was temporary and is not kept: it is four
+lines of `interceptOrbit` over a generated field and is cheaper to rewrite than to
+maintain.
+
+**The merchant rate is not freely tunable.** `balanceTake` closed every notch of
+the split only because the cheap price divided the dear one (3 divides 90). At
+D183's 1 · 2 · 9 it does not, so the split now moves in `leadStride` steps — the
+run of leads that leave a remainder the cheap good can spend exactly. Any future
+rate change should either keep `dear % cheap === 0` or accept that the split's
+notches are coarser than one; `trade-balance.test.ts` sweeps both ends.
+
+**Correction to the standing skip note above.** The current tree fails FIVE VFR
+cases (0.072–0.079 against a floor of 0.09) with the six ARR/pacing cases skipped —
+not the ARR failures the 2026-09-08 note describes as live. Verified by stashing
+only the D183 rules changes and re-running: the VFR figures are identical with and
+without them, so this is the pre-existing state of the economy branch and not
+something D183 moved. D183 touches no production constant, no storage figure and no
+upgrade cost; the merchant rate is the one economy number it changes and the
+simulator does not model that lane.
+
+
+## 2026-09-09 — three bots-turn failures, traced and closed
+
+`bots-turn.test.ts` failed three cases on this branch before D183 and after it —
+"never lifts its Core past the ceiling", "does not offer a raid to a world that owns
+no warship" and "always leaves scouting open, even with nothing on the pad".
+Verified as pre-existing by removing only the `newcomerShieldUntil` stamp from
+`joinSeason` and re-running: identical failures.
+
+**One cause, and no rule was wrong.** `ensureBotSeats` joins with
+`ACADEMY_STEPS.length` completed, so `academyExitCheckpoint` hands every seat a
+graduate's opening: fleet `{ DART: 3, WARDEN: 1, PROSPECTOR: 1, COURIER: 1 }` and a
+CORE upgrade already in the construction queue — the checkpoint's building pick
+falls back to `'CORE'` once the three opening buildings are past level 2. So
+
+  · the two `openLanes` tests inherited warships and a Prospector while asserting a
+    world that has neither, and
+  · the Core-ceiling test counted the CORE order SEATING created, never one a bot
+    turn made. The gate itself reads `buildings.CORE + queuedCount(CONSTRUCTION,
+    CORE)` and holds — worth stating plainly, because "bots exceed the owner's Core
+    ceiling" would be a live gameplay defect and it is not one.
+
+Closed by clearing the seat's units and build orders in the fixture, which is the
+same move `seedWorld` makes for the newcomer shield: a test states the world it is
+reasoning about instead of inheriting a later feature's starting state into an
+assertion about a different rule. No assertion changed meaning.
+
+**Every other fixture that flies a hostile launch was moved to `joinSettled`.**
+`seedWorld` clears the shield already; the files that build their own commanders —
+`multi-world.test.ts`, `account-deletion.test.ts`, `fleet-v2-cutover.test.ts` — now
+import `joinSettled as joinSeason`, one line each. A test that is ABOUT the shield
+asks for it back with `giveNewcomerShield`, which keeps "this commander is new" a
+statement a test makes rather than a default it inherits.
+
+## D195 · The hull table measured, and one inverted ladder found (2026-09-10)
+
+The owner asked for three things: a hold on every combat hull, fuel scaled by price and
+speed, and a sharper attack/armour trade at every tier. Measuring the catalogue against the
+existing model first is what made the pass worth doing — it found a defect none of the three
+would have surfaced on its own.
+
+### The defect: power per unit of fuel, by tier
+
+| line | t1 | t2 | t3 | t4 |
+|---|---|---|---|---|
+| RAIDER | **13.40** | 10.62 | **8.24** | — |
+| STRIKER | 13.45 | 10.69 | 8.26 | 10.64 |
+| FORTRESS | 12.40 | 9.48 | 8.24 | 10.18 |
+
+`hullFuelMass` was `bulk × FUEL.tierMass` with rungs ×1/×2/×4/×5, and tier 1 was excluded by
+D153 to protect the opening. `bulk` is derived from hull value on a shallower curve than the
+thirst rungs, so the two curves crossed: the ENTRY hull came out the most fuel-efficient
+warship in the game and the middle of the catalogue the least. The owner named the
+consequence before seeing the table — *"bu sefer tier 1 kârlı diye full ondan üretiyorlar"*.
+
+### After: fuel as a fraction of hull value
+
+`ceil(value × 0.0127 × (20 / referenceRoundTrip))`, floor 1. Value already carries power
+(D148 prices the catalogue at `atk × hp / value²`), so the relation cannot invert.
+
+| line | t1 | t2 | t3 | t4 |
+|---|---|---|---|---|
+| RAIDER | 5.74 | 6.64 | 6.76 | — |
+| STRIKER | 7.94 | 8.91 | 9.10 | 9.36 |
+| FORTRESS | 10.04 | 11.06 | 11.38 | 11.70 |
+
+Monotone in every line, and the Dart is now the worst of them — which is the point.
+`FUEL.perValue` was set so the catalogue's total fuel bill barely moves: **454 → 446**. This
+is a redistribution between hulls, not a tax and not a rebate.
+
+### The spread, and why it is not a bonus
+
+`ROLE_SPREAD = [0.8, 1, 1.2, 1.45]` scales each hull's deviation from an even split. One
+factor multiplies `atk` and divides `hp`, so `atk × hp` is exactly `power²` at every rung.
+
+| tier | a/h spread | equal-budget spread | mean eff (×1e6) |
+|---|---|---|---|
+| 1 | 1.225 | 1.0267 | 12,316 |
+| 2 | 1.349 | 1.0148 | 12,857 |
+| 3 | 1.421 | 1.0054 | 13,468 |
+| 4 | 1.531 | 1.0004 | 14,350 |
+
+**A product bonus was measured and rejected.** Paying for specialisation makes the extremes
+strictly better than the middle: the whole Skirmisher line sits at role 1.000 and would earn
+nothing, and every Escort would be dominated by a Fortress of its own counter class. Two dead
+branches, one of them a third of the counter cycle.
+
+Counter cycle re-measured at equal budget, 40 seeds, tiers 1–3: the favoured class keeps
+**98–100%** of its value and the reverse matchup **0–2%**. Unchanged.
+
+### Season bands, 5 seeds × 50 players × 14 days, `by-archetype`
+
+| | before D195 | after |
+|---|---|---|
+| ARR | 0.217–0.221 | 0.212–0.224, median 0.217 (LOW, skipped by authorisation) |
+| **VFR** | **0.072–0.079, five seeds LOW** | **0.083–0.102, median 0.093 OK** |
+| SV | 0.135–0.140 | 0.128–0.135 |
+| TAX | 0.040–0.099 | 0.037–0.079 |
+| RR | — | 0.58–0.92 |
+
+VFR moved because warships that can carry made raidable wealth reachable — a consequence,
+not a lever that was pulled at it. Two seeds still read under 0.09 and were not tuned for.
+ARR is untouched by all three changes, which is consistent with every earlier sweep: it is
+behaviour-driven, not economy-driven.
+
+### Bent tests found
+
+Four, each with a title describing the design and an assertion locking in its absence.
+
+- `transfer-cargo.test.ts` — docblock: *"a raid's ceiling counts every hull that flies"*.
+  Assertion: a Dart moves NEITHER capacity. True only because every warship's hold was zero.
+- `academy-world.test.ts` — asserted `lootAlloy === 0` for the pirate lesson, so the tutorial
+  taught that beating a pirate is worth nothing. The hoard was always there; there was
+  nothing to put it in.
+- `fuel.test.ts` — *"charges mass, not composition"*, which stopped being the rule.
+- `capacity.test.ts` — *"leaves bulk behind, because fuel is still measured in it"*.
+
+## D195b · The transport ladder, and a hole at the top of the roster (2026-09-10)
+
+### Transports, before and after
+
+| | price | cargo before | cargo after | crg/1k₡ before | after | crg/fuel | crg/min |
+|---|---|---|---|---|---|---|---|
+| COURIER t1 | 750 | 700 | **1,000** | 933 | **1,333** | 58 → 83 | 328 → 468 |
+| WAYFARER t2 | 1,912 | 2,200 | **3,400** | 1,151 | **1,778** | 96 → 148 | 509 → 786 |
+| ATLAS t3 | 4,648 | 6,000 | **9,500** | 1,291 | **2,044** | 162 → 257 | 806 → 1,276 |
+
+A transport still carries ~9x more per unit of price than the best warship, so D195's combat
+holds remain a floor under a raid's worth rather than a substitute for logistics.
+
+`hp` per 1,000 spent is FLAT across the three (120 / 118 / 116) and was left alone: a support
+hull is shielded while any combat hull on its side lives, so its armour only decides what
+happens after the line is already gone.
+
+### THE TIER-4 ROSTER IS THREE HULLS SHORT — open, reported, not acted on
+
+| tier | Skirmisher | Lance | Bulwark/Fortress | Bulwark/Escort | Transport |
+|---|---|---|---|---|---|
+| 1 | Dart | Pike | Rampart | Warden | Courier |
+| 2 | Viper | Talon | Stronghold | Sentinel | Wayfarer |
+| 3 | Tempest | Ballista, Nullifier | Leviathan | Praetorian | Atlas |
+| **4** | **— none —** | Cataclysm | Citadel | **— none —** | **— none —** |
+
+**The Skirmisher is the structural one.** The counter cycle is Skirmisher > Bulwark > Lance,
+and tier 4 has no answer to a Bulwark. Measured at equal budget over 40 seeds against a
+Citadel wall, share of attacker value surviving:
+
+| attacker | keeps |
+|---|---|
+| Cataclysm (t4 Lance) | **1%** |
+| Nullifier (t3 Lance) | 0% |
+| Praetorian (t3 Escort) | 46% |
+| **Tempest (t3 Skirmisher)** | **88%** |
+
+So a tier-4 commander's winning move against the commonest late defence is to build a hull
+they unlocked two tiers ago. The cycle survives across tiers — it is not broken — but reaching
+the top tier makes the catalogue SMALLER, which is the same defect shape D195 removed from
+fuel.
+
+**The Escort is a choice problem.** Tier 4 has the widest specialisation spread (1.531) and
+nothing in the middle of it: maximum attack (Cataclysm, a/h 0.303) or maximum armour (Citadel,
+0.198). The tier that is supposed to make the sharpest choice offers the fewest.
+
+**The Transport is the D195b asymmetry.** Combat runs to tier 4; logistics stops at 3.
+
+**CLOSED AT D196** — the art arrived and all three shipped. What follows is the measurement that justified them, kept because it is the evidence the tier needed filling.
+
+BLOCKED ON ART, NOT ON RULES (at the time of writing). Each needs three files — `assets/models/ships/<id>.glb`,
+`assets/images/ships/<id>.webp`, `assets/images/ships/icons/<id>.webp`. The staging folder
+already shows the pattern and the gap: every lower tier has `offensive_lvl_N-1`/`-2` and
+`defensive_lvl_N-1`/`-2`, tier 4 has one of each, and `cargo_lvl_4` does not exist. Reusing
+`atlas.glb` was rejected: `FLEET_V2_ASSET_MANIFEST` sizes a hull by tier (D165) and the intel
+layer is built on Telescope IDENTIFY naming a silhouette, so two hulls sharing one model breaks
+both.
+
+### The Gravitic Charges fixture — an instrument capped by the Core (2026-09-11)
+
+`research.test.ts > discovers Gravitic Charges only after an Aegis meaningfully absorbs a raid`
+failed at `shieldAbsorbed / normalDamage` = 0.167 against its own 0.25 bar. Root cause found,
+fixture corrected, **assertion untouched**.
+
+**It was not D195.** Neutralising `ROLE_SPREAD` to `[1,1,1,1]` gave 0.166 — the same figure.
+The attacker is a Skirmisher (role 1.000, so `sharp` is exactly 1) and the defender is a ground
+gun (hard-coded branch), so nothing D195 touched enters this battle.
+
+**The fixture passed in isolation, which is what pointed at the world rather than the rule.**
+`resolveCombat({ DART: 30 }, { BASTION: 3 }, 1000)` in `packages/rules` alone: 3 rounds,
+REPELLED, damage 2,614, absorbed 1,000, **ratio 0.383**. The same fixture on the server gave
+0.167 against the same 2,614 damage — absorbed ~437 — and rewriting the shield from 1,000 to
+3,000 moved it to 0.170, i.e. by eighteen units. The shield was ~440 whatever the test wrote.
+
+**Root cause: `effectiveInstruments` is `min(instruments[id], levels.CORE)`.** An instrument is
+capped by the Core exactly as a building is, so `giveInstrument(target, 'AEGIS', 10)` on a world
+whose Core is far lower buys an Aegis of that Core, and `advanceEconomy`'s
+`shield: Math.min(maxShield, …)` then clamps to `shieldHp` of THAT level. The test bought
+hardware the world could not hold, and had been asserting against a shield that never existed.
+
+**Fix: raise the target's Core before `levelWorld`.** Before, because `levelWorld` lifts every
+world to the tallest Core in the fixture — raising only the target puts the two commanders
+outside D168's ±1 band and the raid is refused before a shot is fired. That intermediate
+failure is worth recording: it is the correct rule catching an incorrect fixture.
+
+The RULE was never wrong in either direction: `graviticInsight` is `shieldInsight.length > 0`
+and fires on any absorption at all, so the 0.25 is the test's own definition of "meaningfully".
+Nothing in the game moved; `research.test.ts` is 52/52.
+
+
+### The last ten server failures, root-caused (2026-09-11)
+
+All three causes were fixtures or a deliberate switch. **No assertion was lowered and no rule
+moved.**
+
+**Nine × `return-queue` / `return-api` — a season length the fixture did not name.**
+`season_cycles` is keyed on the EXACT `(startsAt, endsAt)` pair, so two seasons share a cycle
+only when both figures match. `seedWorld` pins `TEST_SEASON_DAYS` (14); these files' own
+`createSeason` calls passed no `days` and so took `ECONOMY_PROFILE.seasonDays` (30). The two
+ended on different days, landed in different cycles, and `lockQueueCommander`'s cycle-matched
+lookup for a live target found nothing — `RETURN_TARGET_UNAVAILABLE` on every case. D194
+fallout: the constant was introduced to pin fixtures when the live season grew, and these two
+calls were never told. Fixed by passing `days: TEST_SEASON_DAYS`; both suites 12/12.
+
+**One × `research` — an instrument capped by the Core.** Recorded above.
+
+**One × `waiting-servers` — NOT A BUG, AND IT MUST STAY RED FOR NOW.**
+`seedGalaxyEventCalendar` returns early at `galaxyEvents.ts:171`:
+`if (!ECONOMY_PROFILE.tradeShip && !ECONOMY_PROFILE.asteroidShower) return;` — and both are
+`false`, which is the owner's own measurement state: *"tüccar ve asteroid yağmurunu
+production'a çıkarken kapatmayacağız; şu anda ekonomi hesaplarını bu eventler hariç
+yapıyoruz"*. So the season calendar is deliberately empty and the test correctly detects it.
+Proven by flipping both to `true` and re-running: **4/4 green**, then restored.
+
+Leave it failing. It is the tripwire that says the switches are still off, and it goes green
+by itself the moment they are flipped for production. Anything else would be muting the one
+reminder that the shipping state has not been restored.
+
+**RESOLVED 2026-09-12 (D200 session), owner instruction:** *"asteroid shower, tradeShip
+eventleri açılacak! sadece ekonomi testlerine dahil edilmeyecek."* Both switches are `true`
+and the tripwire is green. The measurement half never needed them off: the simulator mines
+the base asteroid field and deals no calendar, shower lane or merchant, so ARR/VFR readings
+are unchanged by the flip. `packages/sim/test/economy-scope.test.ts` now holds that
+construction explicitly.
+
+## D196 · What the complete tier cost, measured (2026-09-11)
+
+Server 1433/1434 (the deliberate calendar tripwire), rules 976/976, web 2,711 passing with
+every failure in the parallel wiki work. The simulator moved, and both movements are recorded
+here rather than tuned away.
+
+### VFR slipped back under the floor
+
+| | VFR seeds | median | verdict |
+|---|---|---|---|
+| session start | 0.072–0.079 | — | five seeds LOW |
+| after D195b | 0.095 0.083 0.093 0.102 0.085 | 0.093 | OK |
+| after D196 | 0.089 0.077 0.087 0.097 0.077 | **0.087** | **LOW, 4/5 seeds** |
+
+Every seed moved down together, so it is not noise. `raidableNow / raidableCeiling` measures
+how full a store is against what it could hold, and D196 gave a developed commander three more
+expensive things to spend on — a richer catalogue drains stores faster. **The band was not
+widened.** The lever `LEVERS.VFR` names is upgrade lumpiness, untouched here.
+
+VFR has been within ±0.02 of its floor for this entire branch: D195b lifted it just over, D196
+nudged it just under. It is a knife-edge reading, not a cliff D196 fell off.
+
+### ARR and VFR are the same sentence
+
+ARR sits at 0.217 against a 0.275 floor and did not move with any of D195, D195b or D196 —
+three separate sweeps, no response. Both metrics say one thing: **the simulated commanders
+convert ore into buildings and ships almost immediately, so there is never much sitting in a
+store to raid.** ARR reads it as "little of my wealth is at risk"; VFR reads it as "my store is
+empty". One behaviour, two alarms. Neither is an economy dial — the economy has been swept
+three times — and the open question is whether bots that never accumulate are unrealistic, or
+whether the game gives a player nothing worth saving for. That is a playtest question.
+
+### The informed archetype: a seed flip, not a regression
+
+`informedArchetypeWins` fails on seed 42 alone. Measured across all five:
+
+| seed | top | GRINDER | |
+|---|---|---|---|
+| 42 | TURTLE 8.0 | 12.5 | MISS |
+| 7 · 99 · 4242 · 1337 | GRINDER 3.5–4.0 | 3.5–4.0 | OK |
+
+Four of five, with GRINDER at 3.5 against a TURTLE at 9–11 — a wide margin, not a contest.
+The cause is mechanical: three hulls inserted into `COMBAT_HULLS` changed the order the sim
+iterates it in, which perturbs every seeded sequence downstream. The test's own docblock
+already says this metric "swings hard between seeds" at six GRINDER samples. Recorded, not
+tuned against.
+
+### RAIDER is last on every seed, and that one IS systematic
+
+Median rank 45 of 50 on all five seeds. The archetype "attacks constantly and scouts never",
+so losing is partly by design — information is the game — but 45th is severe, and it is the
+same story ARR and VFR tell from the other side: raiding does not pay against building. Open.
+
+### One asset note
+
+The three new meshes are 9.7k–10.2k triangles. `visual-design.md` states a ≤3k budget for ship
+meshes; the existing catalogue already runs 3.7k–6.2k and `trade_ship.glb` is 10.2k, so the new
+hulls are in line with what ships rather than with what the document says. The document and the
+catalogue disagree, and the document is the one that is stale.
+
+## D197 · Three debts, and what each one actually was (2026-09-11)
+
+**Clan aid was off the cargo ladder, and blind to the Argosy.** `clanTransferCargoCapacity`
+took no `tech`, so Cargo Holds lifted a commander's own transfers and a trade convoy and not a
+teammate's delivery — the same research, two answers. It also named its three carriers by hand,
+which made D196's fourth invisible: an Argosy loaded for a clanmate measured as a hold of zero,
+so the largest transport in the game could move ore between your own worlds and not to an ally.
+Both closed; the refusal moved inside the transaction, where the sender's research is readable.
+
+**The mass bands were right and unmoored.** `SENSOR.massMedium/massHeavy` were derived from
+`ECONOMY_TEMPO.hullPrice`, which stopped pricing hulls at the economy cutover. Swept across the
+catalogue the numbers were still sensible at every rung — one craft LIGHT, a week-1 wing MEDIUM,
+a late commitment HEAVY — so nothing was broken and nothing would have warned anybody when it
+did break. Now `SENSOR.massWing` (10) craft of tier 2 and tier 4, computed off `HULLS`. Every
+verdict across the realistic wings is unchanged; the difference is that the next price change
+takes the buckets with it.
+
+**Ship triangles: a ceiling, applied per model.**
+
+| | before | after |
+|---|---|---|
+| corsair · citadel · atlas · sentinel | 10,132 · 7,368 · 5,850 · 5,807 | 5,000 each |
+| cataclysm · praetorian · stronghold · ballista · dart | 7,351 · 6,181 · 5,812 · 5,049 · 5,078 | 4,999–5,000 |
+| **argosy** | 9,692 | **5,630** |
+| **paladin** | 10,188 | **5,734** |
+| trade_ship (exempt by instruction) | 10,219 | 10,219 |
+| death_star (own policy row) | 17,461 | 7,515 |
+
+The Argosy and Paladin stop above the ceiling because meshoptimizer will not cut further inside
+the 0.005 error bound — the bound doing exactly its job on the two most detailed hulls in the
+game. File sizes all land in the 182–286 KB envelope the fleet already occupied.
+
+`docs/visual-design.md` said ≤3k and had said it while the catalogue ran 3.7k–10.2k. The line
+now states the number the pipeline enforces, so the document and the build agree for the first
+time.
+
+### D197 addendum · the model floor the ceiling broke
+
+`fleet-v2-assets.test.ts` held every hull model between 200 and 300 KB. The floor was never a
+size requirement — it guards against a model that lost its material maps, and it was written
+when every hull shipped its authored geometry, so a small file could only be a broken one.
+`SHIP_TRIANGLE_CEILING` made geometry a POLICY: the Corsair went 10,132 triangles to 5,000 and
+its correct, fully-textured file is 182 KB. The floor is now 120 KB, which still catches a
+stripped file; what it stood in for is asserted directly by the neighbouring test, which opens
+each GLB and requires meshopt geometry and three WebP maps.
+
+## D198 · What AI Robots costs, measured (2026-09-11)
+
+A research that shortens every CONSTRUCTION order pushes the wrong way on the metric this
+project has been short on for three passes: ARR is low because simulated commanders convert
+ore into structures the moment they can afford them, so nothing accumulates to be raided.
+Building FASTER is the same direction. So it was measured before it was believed.
+
+**Method.** Five gate seeds, 50 players, 14 days, `by-archetype` calendars — the standard
+harness. Two runs: the shipped archetypes, then the same archetypes with `AI_ROBOTS: 5` added
+to all five, which is the worst case (the whole field buys the ladder out).
+
+| seed | ARR base | ARR robots | VFR base | VFR robots |
+| --- | --- | --- | --- | --- |
+| 42 | 0.224 | 0.222 | 0.089 | 0.077 |
+| 7 | 0.206 | 0.212 | 0.077 | 0.068 |
+| 99 | 0.226 | 0.222 | 0.087 | 0.077 |
+| 4242 | 0.217 | 0.217 | **0.097** | 0.089 |
+| 1337 | 0.212 | 0.213 | 0.077 | 0.074 |
+| **median** | **0.217** | **0.217** | **0.087** | **0.077** |
+
+**ARR does not move.** Not a little — the median is identical and the per-seed spread is
+inside the run-to-run noise this harness already shows. That is worth stating plainly because
+the prediction was the opposite: a faster queue does not change the SHARE of a commander's
+wealth a raid takes, because D195b's finding still holds — the hold is the binding constraint
+on every raid in the game, so what a raid comes home with is a statement about `COMBAT_HOLD`
+and `SUPPORT_HOLD` and nothing else.
+
+**VFR falls about a ninth**, 0.087 → 0.077, and seed 4242 — the one seed in band — drops to
+0.089 and joins the other four under the floor. This is the expected direction and the
+expected mechanism: ore spends less time sitting in a store when the thing it is queued for
+lands sooner. It is a real cost and it is recorded here rather than tuned against, because
+VFR's lever is upgrade lumpiness and nothing in this decision touches it.
+
+**The shipped reading is unchanged.** No archetype has ever held an economy ladder in
+`researchTargets` — not Yard Automation, not Prospector Holds, not Cargo Holds — so the gate
+runs at exactly the numbers in the "base" column above and D198 moves no test. The table is an
+experiment answering "what if", not a regression. If the owner ever wants the economy ladders
+modelled, this is the size of the answer for one of them.
+
+**The live bots do buy it.** `BOT_PERSONAS.BUILDER` takes one rung, beside the Yard rung it
+already took; a server-played commander that never touches a project the game sells is a worse
+lie than a slightly faster builder.
+
+## D2 v7 · Linear Dominion cutover measurement (2026-09-11)
+
+The cutover changed only how a realised PvP exchange is transferred; it did not tune combat,
+loot, hull prices or simulator policy. Across the settled portion of all five standard seeds:
+
+| seed | absolute Dominion volume | largest single transfer |
+|---:|---:|---:|
+| 42 | 11,124,467 | 67,814 |
+| 7 | 12,074,194 | 92,346 |
+| 99 | 11,206,193 | 104,948 |
+| 4242 | 10,436,398 | 79,437 |
+| 1337 | 11,276,700 | 97,956 |
+
+Every seed produces a transfer well above the retired 10,000 asymptote, while the aggregate
+raider return ratio remains 0.8466 and the exact two-ledger/property tests remain zero-sum. This
+is the intended result: the old ceiling is gone without changing the underlying battle economy.
+
+The simulator suite still reports D196's already-recorded four VFR lows and the seed-42 informed
+archetype miss. Those readings predate this cutover, remain open, and were deliberately not tuned
+away as part of Dominion.

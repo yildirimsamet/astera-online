@@ -7,6 +7,7 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
+import { UpgradeRow } from '../src/ui/UpgradeRow.js';
 
 /**
  * WHERE EACH HULL IS, ON ITS OWN ROW. Owner report: the line that read
@@ -14,7 +15,7 @@ import i18n from '../src/i18n/index.js';
  *
  * It had, and deliberately: it printed "(Home: 1, Away: 0)" beside every hull
  * while the gain line two rows down said "You have 1 → 2", which is the same fact
- * twice and left the NAME about fifty pixels at 375. The owner wants both halves
+ * twice and left the NAME about fifty pixels at 350. The owner wants both halves
  * back, so the fix is the WIDTH rather than the information — one compact line,
  * both figures, and no parentheses or labels spelling out what the numbers are.
  */
@@ -22,7 +23,7 @@ import i18n from '../src/i18n/index.js';
 const rich = (fleet: Record<string, number>, away: Record<string, number>): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 4 },
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
       orbitSlots: 3,
       fleet,
       fleetAway: away,
@@ -99,5 +100,57 @@ describe('a hull row says where its craft are', () => {
   it('is short enough to leave the name its width', () => {
     expect(i18n.t('planet.reach.hullLocationCounts', { home: 12, away: 12 }).length)
       .toBeLessThanOrEqual(14);
+  });
+
+  /**
+   * THE NAME LINE ANSWERS "WHAT IS IT" AND "WHERE IS IT" TOGETHER. Owner
+   * instruction: *"Dart (Lv1) - 3 in 4 out"*.
+   *
+   * Both halves used to sit on the SUPPORT line under the name, beside the class
+   * chip and the flavour tag — so a commander scanning a banded list read four
+   * hull names down the first line and had to drop to a second, dimmer line for
+   * the two facts that decide anything. Identity and holding are one glance.
+   *
+   * A HULL HAS NO LEVEL, SO THE TIER TAKES THE SLOT the numeral occupies on a
+   * building row. It is the same fact the rank badge draws on the disc and the
+   * same one `FLEET_V2_ASSET_MANIFEST` sizes the model by; the row was the only
+   * surface in the game that never stated it.
+   */
+  it('states the tier and the holding on the name line', async () => {
+    const view = await show({ DART: 3 }, { DART: 4 });
+    const line = rowFor(view, 'DART').querySelector<HTMLElement>('[data-row-line="name"]')!;
+    expect(line).toHaveTextContent(i18n.t('planet.reach.hullTier', { tier: 1 }));
+    expect(line).toHaveTextContent(i18n.t('planet.reach.hullLocationCounts', { home: 3, away: 4 }));
+  });
+
+  it('gives each tier its own mark', async () => {
+    const view = await show({ DART: 1, VIPER: 1, TEMPEST: 1, CATACLYSM: 1 }, {});
+    for (const [hull, tier] of [['DART', 1], ['VIPER', 2], ['TEMPEST', 3], ['CATACLYSM', 4]] as const) {
+      expect(rowFor(view, hull).querySelector<HTMLElement>('[data-row-line="name"]'), hull)
+        .toHaveTextContent(i18n.t('planet.reach.hullTier', { tier }));
+    }
+  });
+
+  /**
+   * A GUN AND A PROSPECTOR HAVE NO TIER, and an empty mark is worse than none.
+   * Asserted on the component, because the two guns and the Prospector are not in
+   * the `reach` group this file renders — a fixture that had to pull in another
+   * band to prove a negative would be testing the band, not the mark.
+   */
+  it('draws no tier mark on a hull that has none', () => {
+    const view = render(
+      <UpgradeRow
+        name="Thorn"
+        nameAside="2 in · 0 out"
+        role="ground gun"
+        cost={{ alloy: 600, crystal: 150 }}
+        held={{ alloy: 900, crystal: 900 }}
+        verb="build"
+        onAct={() => undefined}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(view.queryByTestId('hull-tier')).toBeNull();
+    expect(view.getByTestId('hull-where')).toHaveTextContent('2 in · 0 out');
   });
 });

@@ -12,7 +12,7 @@ import {
   SENSOR,
   CLAN, DEATH_STAR, DISRUPTION, GALAXY_EVENTS, REWARD_CHAINS, SHIELD, TRADE, alloyRate, flightSlots,
   groundLoad,
-  groundSlots, hangarCapacity, hangarLoad, rewardId, shieldHp,
+  groundSlots, rewardId, shieldHp,
   asteroidPosition,
   vaultProtects,
   TRAFFIC,
@@ -27,6 +27,7 @@ import {
   notifications,
   pirateRaids,
   planets,
+  probeReports,
   shards,
   seasons,
   strategicAssets,
@@ -317,8 +318,6 @@ describe('every payload the client parses', () => {
       design is that they do not share.
     */
     expect(parsed.capacity).toEqual({
-      hangar: hangarCapacity(parsed.buildings.HANGAR ?? 0),
-      hangarUsed: hangarLoad(parsed.fleet),
       ground: groundSlots(core ?? 0),
       groundUsed: groundLoad(parsed.ground),
     });
@@ -497,7 +496,21 @@ describe('every payload the client parses', () => {
 
     expect(clanBadgeSchema.parse(await get('/api/clan/badge')).membership?.tag).toBe('ORB');
     expect(clanHomeSchema.parse(await get('/api/clan/me')).state).toBe('MEMBER');
-    expect(publicClanSchema.parse(await get(`/api/clans/${founded.clanId}`)).tag).toBe('ORB');
+    /*
+      A CLAN IS A PUBLIC INSTITUTION, AND ITS ROSTER IS PART OF IT. D183, owner
+      report: *"Sıradan bir kullanıcı bir klanda kimler var onu bile göremiyor."*
+
+      Names and score only. Commander identity and Dominion are already galaxy-wide
+      on `/api/leaderboard` (D76), so this reveals nothing new — what it does is
+      collect it under the clan somebody is deciding whether to apply to. WORLDS
+      are the line: where a member lives is a probe's product (D127) and stays off
+      this payload however public the clan is.
+    */
+    const profile = publicClanSchema.parse(await get(`/api/clans/${founded.clanId}`));
+    expect(profile.tag).toBe('ORB');
+    expect(profile.members.map((member) => member.role)).toContain('LEADER');
+    expect(profile.members).toHaveLength(profile.memberCount);
+    expect(JSON.stringify(profile)).not.toContain('planet');
     expect(clanDirectorySchema.parse(await get('/api/clans')).clans[0]?.tag).toBe('ORB');
     expect(clanLeaderboardSchema.parse(await get('/api/clans/leaderboard')).clans[0]?.self).toBe(true);
     expect(galaxySchema.parse(await get('/api/galaxy')).planets.find((planet) => planet.id === mine)?.clan?.tag)
@@ -705,6 +718,22 @@ describe('every payload the client parses', () => {
     const parsed = miningStatusSchema.parse(await get('/api/mining/status'));
     expect(parsed.isotopes, 'spectrometry is held, so the anomalies must be readable')
       .not.toEqual([]);
+  });
+
+  /**
+   * THE COOLDOWN HAS TO REACH THE SCREEN, OR IT IS NOT A RULE. D183 · D124.
+   *
+   * The refusal alone would be "a timer with nothing on screen", which is what
+   * `PROSPECTOR.returnSpeedFactor`'s note refuses outright. The instant is on the
+   * private mining payload so the send control is dead before it is pressed, and
+   * this asserts it survives the client's own parser — the same silent-shape
+   * failure this file was written for.
+   */
+  it('GET /api/mining/status carries when this world\'s drills are free again', async () => {
+    const parsed = miningStatusSchema.parse(await get('/api/mining/status'));
+    expect('craftReadyAt' in parsed).toBe(true);
+    // Nothing has flown, so nothing is resting: null is the ordinary answer.
+    expect(parsed.craftReadyAt).toBeNull();
   });
 
   it('GET /api/mining/field and /status preserve the public/private split', async () => {
@@ -951,9 +980,30 @@ describe('every payload the client parses', () => {
     f.clock.set(new Date(season!.startsAt.getTime() + found!.minute * 60_000));
     await giveUnits(f.db, f.planetIds[0]!, { DART: 20 });
 
+    /*
+      THE QUOTE RIDES THE BODY, AND THE BODY IS `.strict()`. D183.
+
+      The launch carries the flight time the player was looking at so the server can
+      refuse a rendezvous that has moved onto another lap of the orbit. A strict
+      parser rejects any field it does not declare, so a client that sends this
+      against a server that does not know it gets a 400 on the one irreversible
+      control in the game — which is exactly the silent shape drift this file exists
+      to catch. The quote is taken from the SAME `GET /api/pirates` reach table the
+      client reads, which is what makes this a contract test rather than a guess:
+      the two ends agree about where a quote comes FROM, not merely about a type.
+      `pirate-raid.test.ts` holds the tolerance itself.
+    */
+    const target = pirateId(season!.asteroidKey, found!.index);
+    const listed = piratesSchema.parse(await get('/api/pirates'));
+    const quoted = listed.pirates
+      .find((contact) => contact.id === target)
+      ?.reach.find((entry) => entry.hull === 'DART');
+    expect(quoted, 'the reach table the client quotes from has no Dart row').toBeDefined();
+
     const parsed = pirateRaidSchema.parse(await post('/api/pirates/raid', {
-      pirateId: pirateId(season!.asteroidKey, found!.index),
+      pirateId: target,
       fleet: { DART: 20 },
+      quotedMinutes: quoted!.minutes,
     }));
     expect(parsed.fleet).toEqual({ DART: 20 });
     expect(parsed.fuel).toBeGreaterThan(0);
@@ -1193,6 +1243,44 @@ describe('every payload the client parses', () => {
       .toBe(true);
   });
 
+  /**
+   * THE THREE READINGS D199 ADDED REACH THE CLIENT TOO — and a report written before
+   * them says nothing rather than zero. An absent shield band is "never measured";
+   * `{ low: 0, high: 0 }` is "measured, and empty", and a launch sheet that could not
+   * tell the two apart would draw an undefended world out of a missing field.
+   */
+  it('GET /api/intel delivers the shape, the charge and the unarmed hulls — and omits them on an old report', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+    await giveUnits(f.db, theirs, { BASTION: 2, DART: 3, ATLAS: 2 });
+    await grant(f.db, mine, 20_000, 5_000);
+    await setLevel(f.db, mine, 'SHIPYARD', 4);
+
+    const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    const worker = new EventWorker(
+      f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent,
+    );
+    f.clock.advance(launch.flightMinutes * 3);
+    await worker.tick();
+    f.clock.advance(launch.flightMinutes * 3);
+    await worker.tick();
+
+    const fresh = intelSchema.parse(await get('/api/intel'))
+      .probeReports.find((r) => r.targetPlanetId === theirs);
+    expect(fresh?.classReading).toEqual({ kind: 'SHARES', shares: { SKIRMISHER: 20, BULWARK: 80, LANCE: 0 } });
+    // This fixture hands the target an Aegis 1 at full charge (see `beforeEach`).
+    expect(fresh?.shield).toEqual({ low: shieldHp(1), high: shieldHp(1) });
+    expect(fresh?.unarmed).toEqual({ low: 2, high: 2 });
+
+    // The same report as it would have been written before D199.
+    await f.db.update(probeReports).set({ classReading: null, shield: null, unarmed: null });
+    const old = intelSchema.parse(await get('/api/intel'))
+      .probeReports.find((r) => r.targetPlanetId === theirs);
+    expect(old).toBeDefined();
+    expect(old).not.toHaveProperty('classReading');
+    expect(old).not.toHaveProperty('shield');
+    expect(old).not.toHaveProperty('unarmed');
+  });
+
   it('GET /api/chronicle parses every public event variant', async () => {
     const [planetId] = f.planetIds as [string];
     const identity = { planetName: 'Kestrel', commanderName: 'Tester0' };
@@ -1231,7 +1319,10 @@ describe('every payload the client parses', () => {
 
   it('POST /api/rival parses', async () => {
     const parsed = rivalSetSchema.parse(await post('/api/rival', { planetId: f.planetIds[1] }));
-    expect(parsed.rivalPlanetId).toBe(f.planetIds[1]);
+    // The whole set comes back, so the disc never has to work out what changed. D183.
+    expect(parsed.rivals).toContainEqual(
+      expect.objectContaining({ planetId: f.planetIds[1], slot: 0 }),
+    );
   });
 
   /**
@@ -1407,6 +1498,8 @@ describe('every payload the client parses', () => {
       await post(`/api/planets/${origin}/death-star/build`, {}),
     );
     expect(built.planet.strategic?.status).toBe('BUILDING');
+    // The whole pad reaches the client, not just its headline (T11 stockpile).
+    expect(built.planet.deathStars?.map((asset) => asset.id)).toEqual([built.assetId]);
 
     await f.db.update(strategicAssets)
       .set({ status: 'READY', readyAt: f.clock.now(), remainingSeconds: 0 })

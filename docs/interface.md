@@ -44,7 +44,9 @@ player is meant to act on, they need to be able to answer:
 units that nothing else in the game ever expressed the player's own fleet in. There was
 nothing on any screen to compare it against, so it was trivia with a provenance stamp.
 `ForceCompare` exists to put both sides on one axis. **A number with no second number is not
-information.**
+information.** (D183 made the band `combatValue` — what can fire. D199 found the axis still
+answered nothing: it names the unit Firepower on every surface, states the reader's own world in
+it, and draws where the wing stops clearing and breaking the wall, from the battle engine.)
 
 ### 2 · Predictability — can the player anticipate the outcome?
 
@@ -78,7 +80,7 @@ should I use it* is missing from the surface, not from the player.
 Scroll is a cost. So is a tap, and so is a screen change. Ten items a player wants to
 COMPARE, at one screen each, is a different product from the same ten at two screens.
 
-On a 375-wide phone, density and screen economy outrank decorative whitespace — but not
+On a 350-wide phone, density and screen economy outrank decorative whitespace — but not
 blindly: **space must carry a purpose.** The 74px art socket earns its height (a render at
 40px reads as a favicon); a paragraph under a collapsed band does not.
 
@@ -123,15 +125,24 @@ reports follow the same order without widening their existing fog projection.
 ### I0 · Strategic state is read from shape before copy
 
 The disc uses one persistent visual grammar wherever ownership can change: a cyan diamond
-means your protected capital, a cyan triangle means your colony, an orange four-tick reticle
-means every world controlled by your marked Rival, green means a neutral claim is open, and
-red cracks/smoke mean a world is in Death Star recovery. Labels repeat the world kind and
-state, but they are confirmation rather than the only explanation.
+means your protected capital, a cyan triangle means your colony, a four-tick reticle means
+every world controlled by a marked Rival, green means a neutral claim is open, and red
+cracks/smoke mean a world is in Death Star recovery. Labels repeat the world kind and state,
+but they are confirmation rather than the only explanation.
 
-Ownership also reads as topology (D122). Thin, curved white filaments connect every pair of
-worlds controlled by the caller and remain visible without a selection. Focusing any foreign,
-player-controlled world temporarily draws the same topology for that commander; focusing a
-neutral world draws none. These filaments are the only white connectors on the disc. Telescope
+**A commander may keep up to five Rival marks, and each keeps its own colour** (D183). The
+reticle, the world label and the menu row all draw from `RIVAL_COLOURS` off the mark's stored
+SLOT, so the colour is what tells five marks apart everywhere they appear — a mark whose hue
+came from its position in a list would be a different bookmark every time an unrelated one was
+cleared. None of the five is a colour the disc already spends: green is a clanmate and an open
+window, cyan is your own worlds, and the recovery red is its own alarm.
+
+Ownership also reads as topology (D122). Thin, curved white filaments join a commander's worlds
+whenever one of them is focused; focusing a neutral world draws none. The shape is a STAR from
+the capital, which says the true thing — a colony belongs to a capital — and where the capital
+has not been found it is a nearest-neighbour CHAIN instead (D183): the relationship is public on
+every world, only the centre is not, and a chain claims no hierarchy while a star hung off a
+colony would. These filaments are the only white connectors on the disc. Telescope
 watches remain silent and spatially unmarked: their targets are listed in Intel, never tethered
 to the observing world on the map.
 
@@ -277,6 +288,34 @@ Any ship quantity committed from a build or combat launch sheet uses the same
 four-part control: minus, a read-only exact figure, plus and Max. Minus and plus
 move by one, including for large fleets; fixed rungs may not make an intermediate
 quantity unreachable.
+
+### I3a · The press that spends is never also the press that chose
+
+Owner report, twice in one message: *"Queue'daki bir item'ı iptal ederken onay modal'ı çıkmalı,
+kaynağın yarısının gideceği bildirilmeli"* and *"ölüm yıldızı yollama butonuna da onay gelmeli,
+yanlışlıkla"*.
+
+I3 says the row scans and the sheet commits, and almost every surface obeyed it — a raid picks
+its fleet on a sheet, a settlement states its convoy on one. Two controls did not, and both
+destroyed something permanently on one tap of a small target:
+
+- **The queue's cancel** is a 20px glyph in the corner of a build segment that is itself
+  pressable, and it burns half of what the order cost (`BUILD.cancelRefund`). The figure lived
+  on a `title` attribute — a hover tooltip, on a game budgeted for a phone — so on the target
+  device the price was not merely unconfirmed, it was never on screen at all.
+- **The Death Star strike** is the most expensive single action a commander takes and consumes
+  the weapon, offered as one slab in a wrapped row of four whose neighbour is an ordinary raid.
+
+The rule: **if there is no surface between choosing a thing and spending it, that surface is a
+`Confirm`.** It is an ordinary `Sheet` — same entrance, head, scrim and commit slab — because it
+IS a decision surface, and one arriving as a browser dialog would be its own inconsistency.
+
+It states what is DESTROYED first and in the threat ink. A refund figure alone reads as a gain:
+the player is being handed resources, and nothing says the larger number went up in smoke to hand
+them over. What survives is the quieter second line.
+
+It is not for everything destructive. A raid is committed on its own full sheet already; asking
+again would be asking twice for one decision.
 
 ### I3b · The merchant is a rail, and the swap is a sheet (D156)
 

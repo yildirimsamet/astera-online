@@ -14,7 +14,7 @@ import { planetView } from './fixtures.js';
 /**
  * WHAT THE FOCUS RAIL SPENDS THE SCREEN ON. Owner report, with screenshots.
  *
- * Two things filled a 375-wide phone and neither earned it:
+ * Two things filled a 350-wide phone and neither earned it:
  *
  *   · THREE FULL-WIDTH SLABS stacked down the rail, one of which existed only to
  *     announce a weapon the commander does not own. `interface.md` I1 says an
@@ -179,7 +179,7 @@ describe('an unknown fact states itself; its sales pitch waits to be asked for',
   /**
    * A dossier can hold four gaps at once and each drew a label, the fact, a
    * two-line paragraph on why it matters, and a full-width control. Four of those
-   * is most of a 375-wide screen spent on things the commander does NOT know,
+   * is most of a 350-wide screen spent on things the commander does NOT know,
    * above the two commitments that act on it.
    *
    * The same division the route steps take, for the same reason: PROSE folds,

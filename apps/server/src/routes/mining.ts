@@ -10,6 +10,7 @@ import {
   launchMining,
   projectIsotopeKnowledge,
   projectPrivateMiningView,
+  prospectorsRestingUntil,
   projectVisibleDebris,
 } from '../services/mining.js';
 import { projectPlayerAsteroidField } from '../services/asteroidField.js';
@@ -142,6 +143,9 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         runs,
         await techOf(app.db, first.playerId),
         first.asteroidKey,
+        // The SELECTED world's rest, like the hardware above it — a squadron
+        // resting at the capital never holds a colony's own drills. D183.
+        await prospectorsRestingUntil(app.db, first.planetId, app.clock.now()),
       ),
     };
   };

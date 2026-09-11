@@ -117,6 +117,7 @@ describe('a raid tells both sides', () => {
     await affiliate(f, 0, 'WAR');
     await affiliate(f, 1, 'GRD');
     await giveUnits(f.db, attacker, { DART: 40 });
+    await f.db.update(planets).set({ deuterium: 1000 }).where(eq(planets.id, attacker));
     f.clock.advance(300);
     const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
@@ -185,6 +186,7 @@ describe('a raid tells both sides', () => {
   /** Idempotent by `(player, kind, refId)`, so a redelivered arrival says it once. */
   it('says it once however many times the arrival is delivered', async () => {
     await giveUnits(f.db, attacker, { DART: 40 });
+    await f.db.update(planets).set({ deuterium: 1000 }).where(eq(planets.id, attacker));
     f.clock.advance(300);
     const launch = await launchAttack(f.db, attacker, defender, { DART: 40 }, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
@@ -232,6 +234,7 @@ describe('the radar warning', () => {
     // The purse raises the defender's Core past the attacker's tier band. D168.
     await levelWorld(f.db, f.planetIds);
     await giveUnits(f.db, attacker, { DART: 40 });
+    await f.db.update(planets).set({ deuterium: 1000 }).where(eq(planets.id, attacker));
     f.clock.advance(300);
   });
 
@@ -736,6 +739,7 @@ describe('a raid on an unclaimed world', () => {
 
     await setLevel(db, joined.planetId, 'CORE', 8);
     await giveUnits(db, joined.planetId, { DART: 60 });
+    await db.update(planets).set({ deuterium: 1000 }).where(eq(planets.id, joined.planetId));
     const launch = await launchAttack(db, joined.planetId, caretaker!.id, { DART: 60 }, clock);
     clock.set(settledAt(launch.arriveAt));
     await new EventWorker(db, clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent).tick();

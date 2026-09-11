@@ -1,14 +1,15 @@
-import { yardSpeedMult } from './tech.js';
+import { HULLS } from './hulls.js';
+import type { HullId } from './types.js';
+import { profileIncome, profileBuilding, profileInvoice, profileHull } from './economy-profile.js';
+import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import {
   BUILD,
   DISRUPTION,
   DEUTERIUM,
   ECON,
-  EMPLACEMENT,
-  HANGAR,
   INSTRUMENT_COST_MULT,
-  INSTRUMENT_LEVEL_WORTH,
+  EMPLACEMENT,
   SATELLITES,
   SEASON,
   SHIELD,
@@ -83,18 +84,6 @@ export const satelliteSlots = (coreLevel: number): number =>
  * the mechanic can never read as a wall to somebody who has just arrived.
  */
 /**
- * HOW MUCH FLEET A HANGAR HOLDS. T4. See the `HANGAR` block for the fitting.
- *
- * Linear, because the thing it bounds is linear: a fleet is a sum of hulls and a
- * ceiling on it should read as a number of ships, not as a curve nobody can hold in
- * their head. The Core gate on every building is what makes this bite — a Hangar
- * may never reach its Core's level, so the ceiling is a property of how developed a
- * world is rather than of how much ore went into one row.
- */
-export const hangarCapacity = (hangarLevel: number): number =>
-  HANGAR.base + Math.max(0, hangarLevel) * HANGAR.perLevel;
-
-/**
  * HOW MANY EMPLACEMENTS A COMMAND CORE STANDS. T4b. See the `EMPLACEMENT` block.
  *
  * Read off the CORE and not off a building of its own: a seventh building for this
@@ -144,10 +133,10 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
 export const alloyRate = (level: number): number =>
-  ECON.alloyBase * level * Math.pow(ECON.alloyMult, level);
+  profileIncome(level).alloy;
 
 export const crystalRate = (level: number): number =>
-  ECON.crystalBase * level * Math.pow(ECON.crystalMult, level);
+  profileIncome(level).crystal;
 
 /** Cost to go from `level` to `level + 1`. */
 export function upgradeCost(level: number): Resources {
@@ -175,111 +164,48 @@ export function upgradeCost(level: number): Resources {
  * from Vault 0 to Vault 1. The figures are the owner's own table, typed rather
  * than generated, and `test/vault-table` holds every cell.
  */
-const VAULT_PRICE: readonly Resources[] = [
-  { alloy: 200, crystal: 100, deuterium: 0 },
-  { alloy: 300, crystal: 150, deuterium: 0 },
-  { alloy: 450, crystal: 225, deuterium: 0 },
-  { alloy: 675, crystal: 338, deuterium: 0 },
-  { alloy: 1013, crystal: 506, deuterium: 0 },
-  { alloy: 1519, crystal: 760, deuterium: 0 },
-  { alloy: 2280, crystal: 1140, deuterium: 0 },
-  { alloy: 3417, crystal: 1520, deuterium: 0 },
-  { alloy: 5126, crystal: 2280, deuterium: 0 },
-  { alloy: 7689, crystal: 3845, deuterium: 0 },
-  { alloy: 11_533, crystal: 5767, deuterium: 0 },
-  { alloy: 17_300, crystal: 8650, deuterium: 0 },
-  { alloy: 25_950, crystal: 12_975, deuterium: 0 },
-  { alloy: 38_925, crystal: 19_463, deuterium: 0 },
-  { alloy: 58_388, crystal: 29_194, deuterium: 0 },
-  { alloy: 87_582, crystal: 43_791, deuterium: 0 },
-  { alloy: 131_373, crystal: 65_687, deuterium: 0 },
-  { alloy: 197_060, crystal: 98_530, deuterium: 0 },
-  { alloy: 295_590, crystal: 147_795, deuterium: 0 },
-  { alloy: 443_385, crystal: 221_693, deuterium: 0 },
-];
-
-/** The table's own growth, used to continue it past its end. 1.5x a level. */
-const VAULT_PRICE_GROWTH = 1.5;
-
-/** What it costs to reach one Vault level, table first and its own curve after. */
-function vaultCost(level: number): Resources {
-  const index = Math.max(0, Math.floor(level));
-  const inTable = VAULT_PRICE[index];
-  if (inTable !== undefined) return inTable;
-  /*
-    The Command Core has no ceiling, so the Vault has none either and the table
-    has to continue rather than clamp — a clamped price would make every level
-    past the twentieth the cheapest purchase on the world.
-  */
-  const last = VAULT_PRICE[VAULT_PRICE.length - 1] ?? { alloy: 0, crystal: 0, deuterium: 0 };
-  const beyond = Math.pow(VAULT_PRICE_GROWTH, index - VAULT_PRICE.length + 1);
-  return {
-    alloy: Math.round(last.alloy * beyond),
-    crystal: Math.round(last.crystal * beyond),
-    deuterium: 0,
-  };
-}
-
-/**
- * THE DEUTERIUM PLANT'S PREMIUM AT ONE LEVEL. D170.
- *
- * Five times an ordinary building at the opening, decaying geometrically toward
- * `plantCostFloor` — so the rungs a commander buys while deuterium is new carry
- * the change and the late rungs stay on a curve that is already steep.
- */
-const plantCostMultiplier = (level: number): number => {
-  const past = Math.max(0, Math.floor(level) - DEUTERIUM.plantCostFullLevels + 1);
-  return DEUTERIUM.plantCostFloor
-    + (DEUTERIUM.plantCostOpening - DEUTERIUM.plantCostFloor)
-      * Math.pow(DEUTERIUM.plantCostDecay, past);
-};
-
-/** Cost to raise one building, including the Hangar's strategic-room premium. */
 export function buildingCost(type: BuildingId, level: number): Resources {
-  if (type === 'VAULT') return vaultCost(level);
-  if (type === 'DEUTERIUM_PLANT') {
-    const base = upgradeCost(level);
-    const premium = plantCostMultiplier(level);
-    return {
-      alloy: Math.round(base.alloy * premium),
-      crystal: Math.round(base.crystal * premium),
-      deuterium: 0,
-    };
-  }
-  const base = upgradeCost(level);
-  const multiplier = type === 'HANGAR' ? HANGAR.costMultiplier : 1;
-  return {
-    alloy: base.alloy * multiplier,
-    crystal: base.crystal * multiplier,
-    deuterium: base.deuterium * multiplier,
-  };
+  return profileBuilding(type, level + 1).cost;
 }
 
 /**
- * Cost to take an instrument from `level` to `level + 1`. D22.
+ * Cost to take an instrument from `level` to `level + 1`. D22 · D191.
  *
  * A building's price with the instrument's own multiplier on it. Price is the only
  * gate on an instrument — any of the four, in any order, at any time — so it is
  * what has to make choosing between them cost something.
+ *
+ * THE `id` WENT UNREAD FOR A RELEASE and all four cost the same. That is not a
+ * neutral simplification: Radar out-reaches Telescope at every level, so at one
+ * price Radar is strictly the better buy and the choice this function exists to
+ * price stops being one. `INSTRUMENT_COST_MULT` had carried the differential since
+ * D22 and the economy cutover stopped consulting it.
+ *
+ * THE RATIO IS RESTORED AND THE LEVEL IS NOT RAISED. The three detectors keep the
+ * price the flat formula gave them and the Telescope is dearer against them, in the
+ * 3 : 2 the constant authored. Lifting the whole layer instead is measured to push
+ * wealth into buildings — the one holding a raid can never reach — which drops ARR,
+ * and ARR is the open band. A differential costs nothing there; a level does.
  */
 export function instrumentCost(id: InstrumentId, level: number): Resources {
-  const mult = INSTRUMENT_COST_MULT[id];
-  // An instrument level is worth more than one building level, because there are
-  // only five of them against a building's twelve-plus. D30.
-  const base = upgradeCost(level * INSTRUMENT_LEVEL_WORTH);
+  const base = profileInvoice(profileIncome(Math.min(30, (level + 1) * 2)),
+    { alloy: 0.8 * 2 ** level, crystal: 1.2 * 2 ** level, deuterium: 0 });
+  // Normalised on the cheap three, so this reads as "the Telescope is dearer"
+  // rather than "everything went up".
+  const mult = INSTRUMENT_COST_MULT[id] / INSTRUMENT_COST_MULT.RADAR;
   return {
-    alloy: Math.round(base.alloy * mult),
-    crystal: Math.round(base.crystal * mult),
+    alloy: Math.ceil(base.alloy * mult),
+    crystal: Math.ceil(base.crystal * mult),
     deuterium: 0,
   };
 }
 
 /** What a satellite costs. Flat — it is bought once and never raised. D25. */
-export const satelliteCost = (id: SatelliteId): Resources => ({
-  alloy: SATELLITES[id].alloy,
-  crystal: SATELLITES[id].crystal,
-  deuterium: 0,
-});
+export const satelliteCost = (id: SatelliteId): Resources => {
+  const effort = { UPLINK: 0.5, FOUNDRY: 4, DERRICK: 4, BEACON: 5 }[id];
+  return profileInvoice(profileIncome(id === 'UPLINK' ? 1 : 6),
+    { alloy: effort, crystal: effort, deuterium: 0 });
+};
 
 /** Everything sunk into a building to reach `level`. Feeds the Wealth display. */
 export function investedInBuilding(level: number, type?: BuildingId): number {
@@ -311,7 +237,7 @@ export function investedInInstrument(id: InstrumentId, level: number): number {
 
 /** What a satellite in orbit is worth. One purchase, so one price. */
 export const investedInSatellite = (id: SatelliteId): number =>
-  SATELLITES[id].alloy + SATELLITES[id].crystal;
+  satelliteCost(id).alloy + satelliteCost(id).crystal;
 
 /**
  * Hours of production the STORE holds, and the Vault is what makes it taller.
@@ -382,7 +308,7 @@ export const collectorCap = (ratePerHour: number): number =>
  * measurement it is held against.
  */
 export const deuteriumRate = (level: number): number =>
-  level <= 0 ? 0 : ECON.deuteriumBase * level * Math.pow(ECON.deuteriumMult, level);
+  profileIncome(Math.max(0, level)).deuterium;
 
 /**
  * DEUTERIUM ARRIVES TWO WAYS, SO THE CEILING IS SIZED FROM BOTH. T5, corrected.
@@ -434,7 +360,7 @@ export const deuteriumCollectorCap = (
  * accident, which a second exported function would not have.
  */
 export const protectedHours = (vaultLevel: number): number =>
-  storageHours(vaultLevel) * ECON.protectedShare;
+  Math.min(ECON.protectedHoursCap, storageHours(vaultLevel) * ECON.protectedShare);
 
 /**
  * WHAT THE VAULT KEEPS SAFE, PER RESOURCE, IN HOURS OF THAT RESOURCE'S OWN
@@ -539,9 +465,44 @@ export const defenceThroughput = (shipyardLevel: number): number =>
  *
  * Every one of these is capped, so nothing in the game can ever take longer than
  * `BUILD.capMinutes` however dear it gets.
+ *
+ * THE INSTRUMENT AND SATELLITE HALF OF THE CONSTRUCTION QUEUE. `buildingMinutes`
+ * is the other; both take `tech` and both apply `robotSpeedMult`, because a queue
+ * where two of three kinds feel a research is worse than one where none does.
+ *
+ * `tech` is REQUIRED, for the reason written over `shipMinutes`: a silently
+ * neutral default is how a multiplier ends up honoured on the server and
+ * forgotten in the preview.
  */
-export const buildMinutes = (cost: Resources, coreLevel: number): number =>
-  Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel));
+export const buildMinutes = (
+  cost: Resources,
+  coreLevel: number,
+  tech: TechLevels,
+): number =>
+  Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel))
+    * robotSpeedMult(tech);
+
+/**
+ * WHAT A BUILDING'S TIMER ACTUALLY READS, AND THE ONLY THING THAT MAY BE QUOTED.
+ * D198.
+ *
+ * `profileBuilding().minutes` is authored design work — the reference the economy
+ * tools measure against — and it knows nothing about a commander. This is the
+ * quote: the same figure after whatever that commander has automated. Server,
+ * client and simulator all come through here, so the three cannot disagree.
+ *
+ * THE DISCOUNT LANDS AFTER THE CEILING, unlike `shipMinutes`, and that asymmetry
+ * is deliberate rather than an oversight to be tidied up. `research.ts` already
+ * records what a multiplier inside a clamp costs — at `BUILD.capMinutes` "further
+ * cost stops being felt as time at all" — and a commander who bought five rungs
+ * and watched a Core timer refuse to move would be reading exactly that defect.
+ * The cap bounds the WORK; the robots shorten what comes out of it.
+ */
+export const buildingMinutes = (
+  id: BuildingId,
+  level: number,
+  tech: TechLevels,
+): number => profileBuilding(id, level).minutes * robotSpeedMult(tech);
 
 /**
  * Yard time, after whatever the commander has automated. T8.
@@ -838,4 +799,10 @@ export function minutesUntilCollectorFull(
   const room = collectorCap(ratePerHour) - buffer;
   if (room <= 0) return null;
   return (room / ratePerHour) * 60;
+}
+
+/** Physical hull workload, shared by the real queue and its UI quote. */
+export function hullWorkMinutes(id: HullId, count: number, yard: number, tech: TechLevels): number {
+  if (!Number.isInteger(count) || count < 1 || !Number.isInteger(yard) || yard < 0) throw new Error('Invalid hull work');
+  return profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard) * yardSpeedMult(tech);
 }

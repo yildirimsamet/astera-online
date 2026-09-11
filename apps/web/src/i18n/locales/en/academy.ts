@@ -43,7 +43,6 @@ export const academy = {
     "fleet": "Fleet turns your resources into ships, exploration and attacks. Tap the Fleet tab.",
     "shipyard": "The Shipyard builds your fleet. Upgrade it to level 1.",
     "shipyardReward": "Claim your Shipyard reward.",
-    "hangar": "The Hangar limits the total bulk of your fleet, including ships away on missions.",
     "darts": "Build two Darts. These light combat ships will take on a pirate.",
     "pirate": "Select the nearby pirate and send both Darts. A launched fleet cannot be recalled.",
     "pirateReport": "Your fleet is home. Open its battle notification, inspect the losses and loot, then close the report.",

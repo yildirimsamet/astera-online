@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { DESTINATION, Signals } from '../src/shell/Signals.js';
 import { describeNotification } from '../src/lib/notifications.js';
 import type { NotificationView } from '../src/api/schemas.js';
-import { nextPanelStop } from '../src/shell/panelRoute.js';
+import { keepsPlanetGroup, nextPanelStop, rivalMenuRows } from '../src/shell/panelRoute.js';
 
 /**
  * A NOTIFICATION IS A DOOR, AND EVERY ONE OF THEM HAS TO OPEN. D121.
@@ -286,5 +286,106 @@ describe('where a notification takes you', () => {
     ]);
     expect(DESTINATION.season_ended).toBeUndefined();
     expect(onOpen).not.toHaveBeenCalled();
+  });
+});
+
+
+/**
+ * WHICH TAB THE PLANET SHEET OPENS ON, AND WHY IT WAS NOT THE SAME ONE TWICE.
+ * D183, owner report: *"Gezegenime tıklayınca açılan menü üretim tab'ı ile
+ * açılsın. Şuanda kafasına göre takılıyor. Bir başka açılıyor bir başka."*
+ *
+ * D170 already made Production the default and let a CALLER name a tab instead —
+ * a research requirement pointing at the Core, an Intel screen pointing at the
+ * orbit. That request was cleared when the panel closed, and only then: a reader
+ * who went from Intel's "install a Telescope" to the Signals shelf and then tapped
+ * a world of their own never passed through `null`, so the orbit request was still
+ * standing and the sheet opened on a tab nobody had asked for that time.
+ *
+ * A REQUEST BELONGS TO THE PANEL IT WAS MADE FOR. Anywhere else it is stale, and a
+ * default that is only sometimes the default is not a default — it is the guessing
+ * D170 removed, arriving through a different door.
+ */
+describe('a requested planet tab', () => {
+  it('is kept only while the planet sheet is the panel it was made for', () => {
+    expect(keepsPlanetGroup('planet')).toBe(true);
+  });
+
+  it('is dropped by every other shelf, and by closing', () => {
+    for (const panel of ['intel', 'report', 'research', 'chronicle', 'clan', null] as const) {
+      expect(keepsPlanetGroup(panel), String(panel)).toBe(false);
+    }
+  });
+});
+
+/**
+ * THE MENU AND THE DISC MUST NAME THE SAME THING. D183 · D97.
+ *
+ * A mark is about a COMMANDER; the world in it is only where the press landed, so
+ * `rivalSlotOf` draws the reticle on every world that commander controls and
+ * follows them when a marked colony changes hands. The menu row was resolving the
+ * mark by its anchor WORLD instead, which splits the two apart in exactly the case
+ * D97 exists for: capture the anchor and the row names its new owner — somebody the
+ * commander never marked — while the disc correctly marks the original commander's
+ * remaining worlds.
+ *
+ * AND "LOST" IS ABOUT THE COMMANDER TOO. A mark is lost when none of that
+ * commander's worlds are on the caller's disc, not when one particular world is
+ * missing from it.
+ */
+describe('resolving a rival mark for the menu', () => {
+  const world = (id: string, playerId: string | null, name: string) => ({
+    id,
+    name,
+    owner: playerId === null ? 'Neutral' : `Commander ${playerId}`,
+    ...(playerId === null
+      ? { controller: { kind: 'NEUTRAL' as const, tier: 1 as const } }
+      : { controller: { kind: 'PLAYER' as const, playerId, displayName: `Commander ${playerId}` } }),
+  });
+
+  it('names the marked commander, not whoever holds the anchor world now', () => {
+    const rows = rivalMenuRows(
+      [{ planetId: 'taken', playerId: 'sable', slot: 0 }],
+      [world('taken', 'nova', 'Grimhold'), world('their-colony', 'sable', 'Orrery-8')],
+    );
+    expect(rows).toEqual([
+      { planetId: 'their-colony', slot: 0, owner: 'Commander sable', name: 'Orrery-8', lost: false },
+    ]);
+  });
+
+  it('prefers the world the mark was placed on while it is still theirs', () => {
+    const rows = rivalMenuRows(
+      [{ planetId: 'their-capital', playerId: 'sable', slot: 1 }],
+      [world('their-colony', 'sable', 'Orrery-8'), world('their-capital', 'sable', 'Bastion')],
+    );
+    expect(rows[0]).toMatchObject({ planetId: 'their-capital', name: 'Bastion' });
+  });
+
+  it('is lost only when none of that commander’s worlds are on the disc', () => {
+    const rows = rivalMenuRows(
+      [{ planetId: 'gone', playerId: 'sable', slot: 2 }],
+      [world('mine', 'me', 'Kestrel-12')],
+    );
+    expect(rows[0]).toMatchObject({ planetId: 'gone', slot: 2, lost: true });
+  });
+
+  /** A neutral world names no commander, so it can never satisfy a mark. */
+  it('does not resolve a mark against a caretaker world', () => {
+    const rows = rivalMenuRows(
+      [{ planetId: 'gone', playerId: 'sable', slot: 0 }],
+      [world('neutral', null, 'Waypoint')],
+    );
+    expect(rows[0]?.lost).toBe(true);
+  });
+
+  it('keeps the marks in slot order, so the legend never reshuffles', () => {
+    const rows = rivalMenuRows(
+      [
+        { planetId: 'b', playerId: 'two', slot: 3 },
+        { planetId: 'a', playerId: 'one', slot: 0 },
+      ],
+      [world('a', 'one', 'A'), world('b', 'two', 'B')],
+    );
+    expect(rows.map((row) => row.slot)).toEqual([0, 3]);
   });
 });

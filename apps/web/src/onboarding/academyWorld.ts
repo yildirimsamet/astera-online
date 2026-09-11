@@ -1,6 +1,6 @@
 import {
   ACADEMY_STEPS, academyCheckpoint, buildingCost, buildMinutes, HULLS,
-  instrumentCost, shipMinutes, hangarLoad, hangarCapacity, groundSlots, shieldHp, SHIELD, wealth,
+  instrumentCost, shipMinutes, groundSlots, shieldHp, SHIELD, wealth,
   type AcademyCheckpoint, type AcademyStepId,
   academyFuel, academyPirateBattle, academyPirateLoot, academyRaidBattle, academyRaidLoot,
   ACADEMY_LEG_SECONDS, academyLessonFleet, academyOrderSeconds, fleetEntries, flightSlots, type Fleet,
@@ -50,7 +50,8 @@ export function academyPreview(now: number): Preview {
     season: {
       seasonId: 'academy', shard: 'ACADEMY', seed: 1, status: 'ACTIVE',
       startsAt: new Date(now), endsAt: new Date(now + 86_400_000),
-      playerCap: 1, players: 1,
+      // Nothing to watch in a lesson with one world in it. D183.
+      playerCap: 1, players: 1, rivals: [], shieldUntil: null,
     },
     galaxy: {
       you: { planetId: reserved.id, playerId: 'academy-commander' },
@@ -100,7 +101,8 @@ export function beginAcademyOrder(w: AcademyWorld, action: AcademyStepId, now: n
   }
   const minutes = order.queue === 'YARD'
     ? shipMinutes(order.cost, state.buildings.SHIPYARD, {})
-    : buildMinutes(order.cost, state.buildings.CORE);
+    // The Academy world holds no research, so the construction ladder is neutral.
+    : buildMinutes(order.cost, state.buildings.CORE, {});
   // Short authored pacing is local to Academy; live rule clocks are untouched.
   const endsAt = now + academyOrderSeconds(minutes) * 1000;
   const resources = {
@@ -214,7 +216,6 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
       }),
     },
     capacity: {
-      hangar: hangarCapacity(state.buildings.HANGAR), hangarUsed: hangarLoad(state.fleet),
       ground: groundSlots(state.buildings.CORE), groundUsed: 0,
     },
   };

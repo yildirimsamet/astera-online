@@ -3,14 +3,13 @@ import {
   HULLS,
   OPENING_BONUS,
   PLANET_START,
-  hangarCapacity,
   PROBE,
   START,
   START_BUILDINGS,
   SENSOR,
   asteroidPosition,
   generateGalaxy,
-  upgradeCost,
+  buildingCost,
 } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import {
@@ -92,7 +91,7 @@ const previewOf = (planets: Preview['galaxy']['planets'] = []): Preview => ({
     status: 'live',
     startsAt: new Date(Date.now() - HOUR),
     endsAt: new Date(Date.now() + 14 * 24 * HOUR),
-    playerCap: 50,
+    rivals: [], shieldUntil: null, playerCap: 50,
     players: 38,
   },
   galaxy: {
@@ -191,7 +190,7 @@ describe('the opening budget', () => {
 
   it('spends every last unit of the grant on three upgrades and two Darts', () => {
     const three = opened();
-    expect(three.crystal).toBe(0);
+    expect(three.crystal).toBe(2 * HULLS.DART.crystal);
     expect(three.alloy).toBe(HULLS.DART.alloy * 2);
 
     const armed = build(three, 'DART', 2);
@@ -209,9 +208,9 @@ describe('the opening budget', () => {
    * REHEARSAL, the beat is lying and this is where it is caught. The cushion (D58)
    * does not reach here: it is added to the real planet, not to this one.
    */
-  it('leaves nothing for a probe after the three construction commitments', () => {
+  it('leaves nothing for a probe after the complete opening purchases', () => {
     const three = opened();
-    expect(three.crystal).toBeLessThan(PROBE.crystal);
+    expect(build(three, 'DART', 2).crystal).toBeLessThan(PROBE.crystal);
   });
 
   it('refuses a fourth construction order because the real queue is three deep', () => {
@@ -234,7 +233,8 @@ describe('the opening budget', () => {
       alloy: 100_000_000,
       crystal: 100_000_000,
     };
-    expect(refusesBuild(world, 'DART', hangarCapacity(0) + 1)).toBe('HANGAR_FULL');
+    // D184: a warship has no ceiling, so the only room refusal left is the ground's.
+    expect(refusesBuild(world, 'DART', 5_000)).toBe(null);
   });
 
   it('records what was pressed, in order, and nothing else', () => {
@@ -250,7 +250,7 @@ describe('the opening budget', () => {
   it('changes nothing at all when a press is refused', () => {
     const w = openWorld(previewOf());
     expect(upgrade(w, 'REFINERY')).toBe(w);
-    expect(build(w, 'PIKE', 1)).toBe(w);
+    expect(build(w, 'CATACLYSM', 1)).toBe(w);
     expect(w.intents).toEqual([]);
   });
 });
@@ -297,7 +297,7 @@ describe('the planet it renders', () => {
 
   it('prices the next upgrade the way the server does', () => {
     const view = planetOf(openWorld(previewOf()));
-    expect(view.nextCosts.CORE).toEqual(upgradeCost(START_BUILDINGS.CORE));
+    expect(view.nextCosts.CORE).toEqual(buildingCost('CORE', START_BUILDINGS.CORE));
     expect(view.planet.vaultFloor).toBeGreaterThanOrEqual(0);
   });
 

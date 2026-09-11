@@ -1,5 +1,9 @@
 import {
   buildMinutes,
+  buildingMinutes,
+  hullWorkMinutes,
+  type HullId,
+  type ResearchProjectId,
   defenceMinutes,
   researchMinutes,
   shipMinutes,
@@ -115,7 +119,19 @@ export function orderMinutes(
   cost: Resources,
   view: OrderTimingSource,
   count = 1,
+  subject?: { building: BuildingId; level: number } | { research: ResearchProjectId; level: number } | { hull: HullId },
 ): number {
+  if (subject && 'building' in subject) {
+    // `buildingMinutes`, not `profileBuilding().minutes`: the latter is the design
+    // reference and carries no commander's research. Mirrors `build.ts`. D198.
+    return buildingMinutes(subject.building, subject.level, techOf({ research: research(view) }));
+  }
+  if (subject && 'research' in subject) {
+    // The subject supplies the row's identity; the live clock still comes from
+    // its bill and this world's current Core, exactly as it does on the server.
+    return researchMinutes(cost, levelOf(view, 'CORE'));
+  }
+  if (subject && 'hull' in subject) return hullWorkMinutes(subject.hull, count, projectedShipyard(view), techOf({ research: research(view) }));
   const priced: Resources = count === 1
     ? cost
     : { alloy: cost.alloy * count, crystal: cost.crystal * count, deuterium: cost.deuterium * count };
@@ -124,7 +140,7 @@ export function orderMinutes(
     case 'BUILDING':
     case 'INSTRUMENT':
     case 'SATELLITE':
-      return buildMinutes(priced, projectedCore(view));
+      return buildMinutes(priced, projectedCore(view), techOf({ research: research(view) }));
     case 'HULL':
       return shipMinutes(priced, projectedShipyard(view), techOf({ research: research(view) }));
     case 'DEFENCE':

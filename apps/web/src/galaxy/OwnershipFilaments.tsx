@@ -30,18 +30,14 @@ export interface OwnershipPair {
  * One thread from the capital to each of its colonies.
  *
  * A commander always has exactly one capital — it can be devastated but never
- * captured — so the hub is never ambiguous. Returning nothing when there is no
- * capital in the set is the honest fallback rather than picking an arbitrary hub:
- * a star drawn around the wrong centre would state a relationship that is not
- * there.
+ * captured — so the hub is never ambiguous when it is in the set at all.
  */
 const starFromCapital = (
+  capital: PlanetNode,
   nodes: readonly PlanetNode[],
   kind: OwnershipPair['kind'],
-): OwnershipPair[] => {
-  const capital = nodes.find((node) => node.isCapital);
-  if (!capital) return [];
-  return nodes
+): OwnershipPair[] =>
+  nodes
     .filter((node) => node.id !== capital.id)
     .map((node) => ({
       key: `${kind}:${capital.id}:${node.id}`,
@@ -49,6 +45,65 @@ const starFromCapital = (
       to: node,
       kind,
     }));
+
+/**
+ * WHAT IS DRAWN WHEN THE CAPITAL HAS NOT BEEN FOUND. D183, owner report:
+ * *"Komutanın ana gezegenini bilmiyorum ama birden fazla kolonisini biliyorum: bu
+ * durumda bir kolonisine tıklayınca diğerleri arasında tül bağı gözükmüyor.
+ * İstiyorum ki koloniler birbirine bağlansın — ana gezegeni leak etmeyecek
+ * şekilde."*
+ *
+ * This used to return nothing, and the note called that "the honest fallback". It
+ * was honest about the wrong thing: what is unknown is where the CENTRE is, not
+ * whether these worlds belong together — both of them name the same controller,
+ * publicly, and the player can already read it one world at a time. Drawing
+ * nothing hid a fact they had; it did not protect one they lacked. And it is the
+ * commonest case in a fogged galaxy, not the guard the note treated it as.
+ *
+ * A CHAIN, WHICH IS NEITHER OF THE TWO SHAPES THAT WOULD BE WRONG. A star needs a
+ * centre and the only honest centre is the capital — hanging one off a colony
+ * would state that the others belong to it. A complete graph is a MESH, which
+ * reads as a network of routes, and this file exists to not say that. A chain
+ * claims no hierarchy and adds no endpoint: it says "these are one commander's",
+ * which is exactly what is known.
+ *
+ * NEAREST NEIGHBOUR FROM A FIXED START, so the threads run between worlds that are
+ * actually near each other instead of crossing the disc, and so the same set of
+ * worlds always produces the same threads whatever order the payload lists them
+ * in — an unstable chain would re-draw itself on every refetch.
+ *
+ * IT LEAKS NOTHING. Every world here is one the caller has already resolved; the
+ * unfound capital contributes no endpoint, no direction and no gap in the line.
+ */
+const chainAcross = (
+  nodes: readonly PlanetNode[],
+  kind: OwnershipPair['kind'],
+): OwnershipPair[] => {
+  const ordered = [...nodes].sort((a, b) => a.id.localeCompare(b.id));
+  const first = ordered[0];
+  if (!first || ordered.length < 2) return [];
+
+  const left = ordered.slice(1);
+  const pairs: OwnershipPair[] = [];
+  let current = first;
+  while (left.length > 0) {
+    let best = 0;
+    let bestGap = Infinity;
+    for (let i = 0; i < left.length; i += 1) {
+      const node = left[i]!;
+      const gap = (node.position[0] - current.position[0]) ** 2
+        + (node.position[1] - current.position[1]) ** 2
+        + (node.position[2] - current.position[2]) ** 2;
+      if (gap < bestGap) {
+        bestGap = gap;
+        best = i;
+      }
+    }
+    const next = left.splice(best, 1)[0]!;
+    pairs.push({ key: `${kind}:${current.id}:${next.id}`, from: current, to: next, kind });
+    current = next;
+  }
+  return pairs;
 };
 
 /**
@@ -89,7 +144,17 @@ export function ownershipPairs(
     (node) => node.intel === 'RESOLVED'
       && node.controllerPlayerId === selected.controllerPlayerId,
   );
-  return starFromCapital(theirs, selected.isOwned ? 'own' : 'selected');
+  const kind = selected.isOwned ? 'own' : 'selected';
+  /*
+    THE CAPITAL TAKES THE CENTRE WHEN IT IS THERE, and a chain says what is known
+    when it is not (D183). The two shapes are not interchangeable: a star states
+    "these colonies belong to that capital", a chain states only "these are one
+    commander's", and the second is all a fogged galaxy has earned.
+  */
+  const capital = theirs.find((node) => node.isCapital);
+  return capital
+    ? starFromCapital(capital, theirs, kind)
+    : chainAcross(theirs, kind);
 }
 
 /**

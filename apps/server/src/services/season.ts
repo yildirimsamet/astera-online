@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import {
+  ECONOMY_PROFILE,
   GALAXY,
   MULTI_WORLD,
   SEASON,
@@ -115,7 +116,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
   const cap = input.playerCap ?? SERVERS.capacity;
   const name = input.shardName ?? input.shardCode;
   const ordinal = input.ordinal ?? incidentalOrdinal(input.shardCode);
-  const days = input.days ?? SEASON.days;
+  const days = input.days ?? ECONOMY_PROFILE.seasonDays;
   const endsAt = input.endsAt ?? addMinutes(input.startsAt, days * 24 * 60);
   const initializedAt = input.initializedAt ?? input.startsAt;
   // Exact period grouping preserves legacy clocks; never round a remaining duration.

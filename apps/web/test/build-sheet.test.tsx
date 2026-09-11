@@ -2,12 +2,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PROSPECTOR, groundSlots, hangarCapacity, hullBulk, hullFuelRate } from '@astera/rules';
+import {
+  DEATH_STAR,
+  PROSPECTOR,
+  groundSlots,
+  hullBulk,
+  hullFuelRate,
+} from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
+import { duration } from '../src/lib/time.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -31,7 +38,7 @@ const rich = (
 ): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 0 },
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
       orbitSlots: 3,
       fleet: {},
       fleetAway: {},
@@ -62,7 +69,7 @@ vi.mock('../src/api/queries.js', async () => {
     useInstallSatellite: () => ({ mutate: vi.fn(), isPending: false }),
     useRaiseInstrument: () => ({ mutate: vi.fn(), isPending: false }),
     useCancelBuildOrder: () => ({ mutate: cancelOrder, isPending: false }),
-    useBuildDeathStar: () => ({ mutate: vi.fn(), isPending: false }),
+    useBuildDeathStar: () => ({ mutate: buildDeathStar, isPending: false }),
     useBuildInterceptor: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
@@ -71,6 +78,7 @@ let current: PlanetView = rich();
 type MutationMock = (variables: unknown, options?: unknown) => void;
 
 const build = vi.fn<MutationMock>();
+const buildDeathStar = vi.fn<MutationMock>();
 const cancelOrder = vi.fn<MutationMock>();
 const upgrade = vi.fn<MutationMock>();
 const completeResearch = vi.fn<MutationMock>();
@@ -124,6 +132,115 @@ describe('strategic hardware hierarchy', () => {
     if (!forge || !tabs) throw new Error('strategic state and tabs must both render');
     expect(forge.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  /**
+   * THE STOCKPILE IS AN ACTION, NOT ONLY A RULES NUMBER.
+   *
+   * The server has always admitted a second weapon after the research, but the
+   * forge hid its build control as soon as ANY weapon existed. That made the
+   * researched capacity unreachable from the only surface that builds one.
+   */
+  it('offers the second weapon while one slot in a researched stockpile is free', async () => {
+    buildDeathStar.mockClear();
+    const base = rich();
+    const ready = {
+      id: 'asset-ready',
+      status: 'READY' as const,
+      readyAt: new Date(),
+      remainingSeconds: 0,
+    };
+    const view = show(
+      {
+        buildings: { CORE: DEATH_STAR.requiredCore, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: DEATH_STAR.requiredShipyard },
+        research: base.research.map((project) =>
+          project.id === 'DEATH_STAR_PROTOCOL' || project.id === 'STRATEGIC_STOCKPILE'
+            ? { ...project, level: 1, discovered: true, completed: true, available: false }
+            : project),
+        strategic: ready,
+        deathStars: [ready],
+      },
+      'reach',
+      {
+        deuterium: DEATH_STAR.cost.deuterium * 2,
+        deuteriumCap: DEATH_STAR.cost.deuterium * 4,
+      },
+    );
+
+    const forge = view.container.querySelector<HTMLElement>('[data-strategic-state="READY"]');
+    expect(forge).not.toBeNull();
+    expect(forge).toHaveAttribute('data-strategic-count', '1');
+    expect(forge).toHaveAttribute('data-strategic-capacity', '2');
+    const button = within(forge!).getByRole('button', { name: 'Build' });
+    expect(button).toBeEnabled();
+
+    await userEvent.click(button);
+    expect(buildDeathStar).toHaveBeenCalledOnce();
+  });
+
+  /**
+   * A READY FIRST WEAPON MUST NOT HIDE THE SECOND ONE STILL BEING BUILT.
+   * `remainingSeconds` is a frozen build-duration field; `readyAt` is the live
+   * clock, so halfway through a build must draw halfway rather than two percent.
+   */
+  it('shows both weapons and derives the active build progress from readyAt', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    try {
+      const ready = {
+        id: 'asset-ready',
+        status: 'READY' as const,
+        readyAt: new Date('2026-09-11T11:00:00.000Z'),
+        remainingSeconds: 0,
+      };
+      const building = {
+        id: 'asset-building',
+        status: 'BUILDING' as const,
+        readyAt: new Date(Date.now() + DEATH_STAR.buildMinutes * 30_000),
+        // Deliberately frozen at the full duration, exactly as the server stores it.
+        remainingSeconds: DEATH_STAR.buildMinutes * 60,
+      };
+      const view = show({
+        strategic: ready,
+        deathStars: [ready, building],
+      });
+
+      const forge = view.container.querySelector<HTMLElement>('[data-strategic-state="READY"]');
+      expect(forge).toHaveAttribute('data-strategic-count', '2');
+      expect(forge).toHaveTextContent(/1 ready.*1 building/i);
+      expect(forge?.querySelector<HTMLElement>('[data-strategic-progress]'))
+        .toHaveStyle({ width: '50%' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /** A ready first slot must not suppress the wake-up for the second slot. */
+  it('refetches when a second stockpiled weapon reaches its readyAt', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
+    refetch.mockClear();
+    try {
+      const ready = {
+        id: 'asset-ready',
+        status: 'READY' as const,
+        readyAt: new Date(Date.now() - 60_000),
+        remainingSeconds: 0,
+      };
+      const building = {
+        id: 'asset-building',
+        status: 'BUILDING' as const,
+        readyAt: new Date(Date.now() + 2_000),
+        remainingSeconds: DEATH_STAR.buildMinutes * 60,
+      };
+      const view = show({ strategic: ready, deathStars: [ready, building] });
+
+      act(() => { vi.advanceTimersByTime(2_051); });
+      expect(refetch).toHaveBeenCalledOnce();
+      view.unmount();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('the two build queues', () => {
@@ -174,12 +291,22 @@ describe('the two build queues', () => {
     // Both lanes now say when their work ends, which no screen used to carry.
     expect(queues.querySelectorAll('[data-lane-ends]')).toHaveLength(2);
 
+    /*
+      THE PRICE MOVED FROM A TOOLTIP TO A SHEET. Owner report.
+
+      It used to be a `title` attribute reading "Refund: 50 alloy · …" — a hover
+      tooltip, on a game budgeted for a 350pt phone, where no such thing exists.
+      So the half this control destroys was not merely unconfirmed on the target
+      device, it never appeared at all. `irreversible-confirm.test.tsx` holds the
+      sheet's own grammar; what this asserts is the wiring: one press asks, the
+      confirmation fires, and the right order id reaches the mutation.
+    */
     const [cancel] = within(queues).getAllByRole('button', { name: /^Cancel / });
-    expect(cancel).toHaveAttribute(
-      'title',
-      'Refund: 50 alloy · 22 crystal · 1 Deuterium',
-    );
+    expect(cancel).not.toHaveAttribute('title');
     await userEvent.click(cancel!);
+    expect(cancelOrder, 'the first press cancelled without asking').not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByTestId('confirm-commit'));
     expect(cancelOrder).toHaveBeenCalledOnce();
     expect(cancelOrder.mock.calls[0]?.[0]).toBe('construction-1');
     expectMutationCallbacks(cancelOrder.mock.calls[0]?.[1]);
@@ -336,7 +463,7 @@ describe('fleet holdings beside each hull name', () => {
    *
    * It used to print "(Home: 5, Away: 6)" beside the name while the gain line two
    * rows down said "You have 5 → 6" — the same fact twice, and between them they
-   * left the NAME about fifty pixels at 375px. The owner's screenshot showed the
+   * left the NAME about fifty pixels at 350px. The owner's screenshot showed the
    * result: "E...", "P...", "K...".
    *
    * Away is the half a commander cannot read anywhere else on this screen, so away
@@ -394,32 +521,25 @@ describe('the quantity picker', () => {
     await userEvent.click(screen.getByRole('button', { name: /build 2/i }));
     expect(build).toHaveBeenCalledWith({ hull: 'DART', count: 2 }, expect.anything());
   });
-  it('shows the Hangar and never offers more ships than fit', async () => {
-    const hangar = hangarCapacity(0);
-    show({
-      fleet: { DART: hangar - 1 },
-      capacity: {
-        hangar,
-        hangarUsed: hangar - 1,
-        ground: groundSlots(6),
-        groundUsed: 0,
-      },
-    });
-
-    expect(screen.getByRole('heading', { name: 'Hangar' })).toBeInTheDocument();
+  /**
+   * THE CEILING THIS REPLACES. D184.
+   *
+   * This screen used to refuse the "+" once a world's Hangar was one hull from
+   * full, and drew the room as a bar. The Hangar is gone: a fleet is braked by the
+   * purse, so the stepper keeps climbing and there is no room card on a warship's
+   * sheet at all. A gun still has one, and the case below it proves that.
+   */
+  it('never refuses a warship for room, however many are already standing', async () => {
+    show({ fleet: { DART: 5_000 }, capacity: { ground: groundSlots(6), groundUsed: 0 } });
     await openSheet('Dart');
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('1');
-    expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
-    /*
-      THE SENTENCE BECAME A PICTURE. Owner instruction: this line used to carry the
-      hull's footprint, the load and the ceiling as text, and none of the three
-      questions it answers could be answered from it at a glance. `CapacityBar`
-      draws them — so what is asserted here is the ANSWER the player came for,
-      which is how many more fit. The block that drew one hull's own width was
-      removed on owner instruction; the bar and this count are the whole card.
-    */
-    const room = document.querySelector('[data-fits]');
-    expect(room).toHaveTextContent('1');
+    expect(screen.getByRole('button', { name: /more dart/i })).toBeEnabled();
+    expect(document.querySelector('[data-fits]')).toBeNull();
+  });
+
+  it('still draws the room a gun answers to', async () => {
+    show({ capacity: { ground: groundSlots(6), groundUsed: 0 } }, 'defend');
+    await openSheet('Thorn');
+    expect(document.querySelector('[data-fits]')).not.toBeNull();
   });
 
   it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
@@ -486,6 +606,54 @@ describe('the quantity picker', () => {
     show({ fleet: { PROSPECTOR: 1 } });
     await openSheet('Prospector');
     expect(screen.getByText(new RegExp(`1 of ${String(PROSPECTOR.max)} held`, 'i'))).toBeInTheDocument();
+  });
+
+  /**
+   * THE THIRD BERTH IS BOUGHT, AND THIS SCREEN IS WHERE IT IS SPENT. D170.
+   *
+   * `prospectorCeiling` has read the third rung of Prospector Holds since D170 and
+   * `buildUnits` has honoured it — the picker did not, so the commander who paid
+   * 6,000 alloy for the berth met a row that still said "2 / 2 · limit". Every
+   * figure this row states — the ceiling, the offer, the held-of-max line — is the
+   * commander's ceiling now, never the bare constant.
+   */
+  const withHolds = (
+    level: number,
+    over: Partial<Omit<PlanetView, 'planet'>> = {},
+  ): Partial<Omit<PlanetView, 'planet'>> => ({
+    research: rich().research.map((project) => (
+      project.id === 'PROSPECTOR_HOLDS' ? { ...project, level } : project
+    )),
+    ...over,
+  });
+
+  it('offers the third berth the third rung of Prospector Holds bought', async () => {
+    show(withHolds(3));
+    await openSheet('Prospector');
+    await userEvent.setup().click(screen.getByRole('button', { name: /max prospector/i }));
+    expect(screen.getByRole('textbox', { name: /prospector quantity/i }))
+      .toHaveValue(String(PROSPECTOR.max + 1));
+  });
+
+  it('states the bought ceiling on the row rather than the bare constant', () => {
+    show(withHolds(3, { fleet: { PROSPECTOR: PROSPECTOR.max + 1 } }));
+    const row = screen.getByRole('heading', { name: 'Prospector' })
+      .closest('#row-PROSPECTOR');
+    if (!(row instanceof HTMLElement)) throw new Error('Prospector row must render');
+    expect(within(row).getByRole('status')).toHaveTextContent(
+      new RegExp(`${String(PROSPECTOR.max + 1)} / ${String(PROSPECTOR.max + 1)}.*limit`, 'i'),
+    );
+  });
+
+  it('still holds a commander at two while the rung is unbought', () => {
+    show(withHolds(2, { fleet: { PROSPECTOR: PROSPECTOR.max } }));
+    const row = screen.getByRole('heading', { name: 'Prospector' })
+      .closest('#row-PROSPECTOR');
+    if (!(row instanceof HTMLElement)) throw new Error('Prospector row must render');
+    expect(within(row).queryByRole('button', { name: /build/i })).toBeNull();
+    expect(within(row).getByRole('status')).toHaveTextContent(
+      new RegExp(`${String(PROSPECTOR.max)} / ${String(PROSPECTOR.max)}.*limit`, 'i'),
+    );
   });
 
   /**
@@ -635,15 +803,17 @@ describe('the fuel a craft burns', () => {
  * broke wherever the corner happened to be narrow; a fixed grid is the same shape
  * on every hull, which is the property that makes two cards comparable at a glance.
  */
-describe('the room a craft takes in a hangar', () => {
+describe('the room a craft takes', () => {
   it('states the bulk the order is already capped by', async () => {
     show();
     await openSheet('Dart');
 
     const room = document.querySelector('.stat-room');
-    expect(room, 'the craft sheet says nothing about hangar room').not.toBeNull();
+    expect(room, 'the craft sheet says nothing about the hull\'s bulk').not.toBeNull();
     expect(room).toHaveTextContent(String(hullBulk('DART')));
-    expect(room).toHaveTextContent(/hangar/i);
+    // D184: the Hangar is gone, so bulk is named for what it still measures —
+    // the fuel a hull burns and the ground it stands on.
+    expect(room).toHaveTextContent(/bulk/i);
   });
 
   it('grows with the hull, so two cards can be compared', async () => {
@@ -661,5 +831,53 @@ describe('the room a craft takes in a hangar', () => {
     expect(strip).not.toBeNull();
     expect(strip).toHaveClass('stats-card');
     expect(strip?.querySelectorAll('.stat')).toHaveLength(6);
+  });
+});
+
+/**
+ * THE QUEUED LEVEL, AND WHY THE TIME HAS TO READ THE SAME ONE THE PRICE DOES.
+ *
+ * `useBuildingAction` computes two levels: `level`, what stands today, and
+ * `actionLevel`, what an order placed now would find once everything ahead of it
+ * in the CONSTRUCTION queue has finished. The PRICE has always used the second
+ * (`buildingCost(id, nextLevel)`) — and the TIME used the first.
+ *
+ * With nothing queued they are the same number and nothing showed. With a Core
+ * already building, the row quoted the price of Core 8 beside the timer of Core 7,
+ * and the server — which reads `context.projected.buildings[type]` for both —
+ * committed to neither. That is the exact contradiction `lib/orderTime.ts` exists
+ * to prevent, and D198 made it worse by putting a research multiplier on the same
+ * figure: one wrong level now scales a discount too.
+ */
+describe('a building already in the queue', () => {
+  it('quotes the price and the timer off the same projected level', async () => {
+    const { buildingCost, buildingMinutes } = await import('@astera/rules');
+    const now = Date.now();
+    const view = show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
+      queues: {
+        CONSTRUCTION: [{
+          id: 'construction-1',
+          queue: 'CONSTRUCTION',
+          slot: 0,
+          kind: 'BUILDING',
+          subject: 'REFINERY',
+          count: 1,
+          startedAt: new Date(now - 10_000),
+          finishesAt: new Date(now + 50_000),
+          cost: buildingCost('REFINERY', 3),
+        }],
+        YARD: [],
+      },
+    }, 'grow');
+
+    await openAllBands(screen, userEvent);
+    const row = view.container.querySelector('#row-REFINERY');
+    expect(row).not.toBeNull();
+    // The order ahead lands Refinery 4, so a second order buys Refinery 5 — which
+    // is the level the PRICE on this same row is already quoting.
+    const spoken = within(row as HTMLElement).getByTestId('order-time').textContent;
+    expect(spoken).toContain(duration(buildingMinutes('REFINERY', 5, {})));
+    expect(spoken).not.toContain(duration(buildingMinutes('REFINERY', 4, {})));
   });
 });

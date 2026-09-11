@@ -17,6 +17,7 @@ import {
   TEST_DATABASE_URL,
   giveInstrument,
   giveSatellite,
+  fuelUp,
   giveUnits,
   grant,
   levelWorld,
@@ -353,6 +354,13 @@ describe('the return payload', () => {
        * attacker out is what makes the fleet actually far away.
        */
       await placeAt(f.db, theirs, { x: radarRange(3) + 100 });
+      /*
+        AND A TANK. D195 priced fuel off hull VALUE instead of D153's tier rung,
+        roughly doubling what a tier-1 wing burns, so the fixture's default no
+        longer covers this leg. `fuelUp` exists for a test that is about something
+        other than fuel — here, a radar window and a return leg's pace.
+      */
+      await fuelUp(f.db, theirs);
       await sendAtThem();
 
       const payload = await buildReturnPayload(f.db, myPlayer, f.clock);

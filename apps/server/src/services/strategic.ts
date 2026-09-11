@@ -34,6 +34,7 @@ import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
 import { advanceNeutralEconomy } from './neutral.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
+import { assertNewcomerShields } from './player.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -61,16 +62,16 @@ import { refreshSensorEpoch } from './sensorHistory.js';
  * required it to.
  */
 /*
-  THE HANGAR IS CLAMPED WITH THE REST, AND IT DESTROYS NOTHING. T4.
+  EVERY REMAINING BUILDING IS CLAMPED, AND THE STRIKE DESTROYS NOTHING. T4.
 
-  A strike drops the Core, and no building may stand above it — so a Hangar does
+  A strike drops the Core, and no building may stand above it — so a Yard does
   fall, and the world can land under its own fleet. That overflow is legal by
   design: the rule is that nothing NEW comes in, never that something already
   there goes. A strike that also deleted the ships it left no room for would be
   doing the one thing the whole capacity design refuses.
 */
 const CORE_BOUND_BUILDINGS = [
-  'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+  'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
 ] as const;
 /*
   AND THE FLEET IS NOT TOUCHED EITHER. D179, owner instruction.
@@ -148,10 +149,10 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
      * SERIAL, AND THAT IS THE WHOLE BALANCE OF THE STOCKPILE. T11.
      *
      * The second weapon starts when the first is finished, never beside it — so two
-     * weapons still cost two hours and what the research removes is the CHORE of
-     * being at the keyboard at the exact minute. Built in parallel it would be a
-     * same-hour double strike, and D113 already turns two hits inside a recovery
-     * window into a colony changing hands.
+     * weapons still cost two full builds and what the research removes is the CHORE
+     * of being at the keyboard at the exact minute. Built in parallel it would be a
+     * same-hour double strike: the bait and the blow D139 prices one charge against
+     * arriving together for the price of one wait.
      */
     const queueHead = live.reduce<Date>(
       (latest, row) => (row.readyAt && row.readyAt > latest ? row.readyAt : latest),
@@ -304,6 +305,8 @@ export async function launchDeathStar(
   targetPlanetId: string,
   clock: Clock,
   expectedPlayerId?: string,
+  /** The commander has been told this spends their own first-day shield. D183. */
+  acknowledgeShieldLoss?: boolean,
 ) {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot target your own world', 400);
@@ -344,6 +347,26 @@ export async function launchDeathStar(
         until: target.protectedUntil.toISOString(),
       });
     }
+
+    /**
+     * THE FIRST-DAY SHIELD BINDS THE HEAVIEST WEAPON TOO. D183.
+     *
+     * A strike is the loudest thing one commander can do to another, so a shield
+     * that stopped raids and not this would be a shield that stopped nothing worth
+     * stopping. The two refusals are ordered exactly as `startAttack` orders them —
+     * the target's first, because giving up your own day to hit somebody who cannot
+     * be hit spends a position for nothing.
+     *
+     * A strike also SPENDS the attacker's shield, and for the same reason a raid
+     * does: this is reaching out, and the galaxy may reach back.
+     */
+    await assertNewcomerShields(tx, {
+      attackerPlayerId: origin.playerId,
+      defenderPlayerId: target.controllerPlayerId,
+      now: origin.now,
+      acknowledgeShieldLoss: acknowledgeShieldLoss ?? false,
+    });
+
     /**
      * A STRIKE IS NEVER AN ACQUISITION ANY MORE. D167 — owner instruction.
      *
@@ -766,7 +789,13 @@ export async function finishDeathStarBuild(tx: Tx, assetId: string, expectedRead
     .returning({ planetId: strategicAssets.planetId, type: strategicAssets.type });
 }
 
-/** A permanently failed strategic build is a system fault, so it costs nothing. */
+/**
+ * A permanently failed strategic build is a system fault, so it costs nothing.
+ *
+ * EITHER KIND, AT ITS OWN PRICE. The weapon and the interception charge share one
+ * completion event and so one abandon path, and this refunded the weapon's price
+ * for both — a charge that failed for good paid 44,291 and got 73,815 back.
+ */
 export async function abandonDeathStarBuild(
   db: Db,
   assetId: string,
@@ -779,18 +808,19 @@ export async function abandonDeathStarBuild(
       .where(eq(strategicAssets.id, assetId));
     if (!identity) return false;
     const planet = await loadLocked(tx, identity.planetId, clock, { requireLive: false });
-    const failed = await tx
+    const [failed] = await tx
       .update(strategicAssets)
       .set({ status: 'CONSUMED', readyAt: null, remainingSeconds: 0 })
       .where(and(
         eq(strategicAssets.id, assetId),
         eq(strategicAssets.status, 'BUILDING'),
       ))
-      .returning({ id: strategicAssets.id });
-    if (failed.length === 0) return false;
-    planet.alloy += DEATH_STAR.cost.alloy;
-    planet.crystal += DEATH_STAR.cost.crystal;
-    planet.deuterium += DEATH_STAR.cost.deuterium;
+      .returning({ type: strategicAssets.type });
+    if (!failed) return false;
+    const paid = failed.type === 'INTERCEPTOR' ? ANTI_STRATEGIC.cost : DEATH_STAR.cost;
+    planet.alloy += paid.alloy;
+    planet.crystal += paid.crystal;
+    planet.deuterium += paid.deuterium;
     await saveResources(tx, planet.planetId, {
       alloy: planet.alloy,
       crystal: planet.crystal,

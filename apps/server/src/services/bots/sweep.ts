@@ -112,6 +112,23 @@ export async function ensureBotSeats(
             lastActiveAt: new Date(
               clock.now().getTime() - (SERVERS.onlineWindowMinutes + 1) * 60_000,
             ),
+            /*
+              AND NO FIRST-DAY SHIELD. D183.
+
+              `joinSeason` grants one to every commander, which is the rule and is
+              about a PERSON: it buys a beginner a day to build before the galaxy
+              can reach them, and it is given up by choosing to fire. A bot makes no
+              such choice and loses nothing by being raided — what a shield on one
+              would actually do is remove twelve targets from the disc for a day,
+              on exactly the day a new commander has the fewest of them.
+
+              This is the bot's own manners again (D159), the same shape as the
+              newcomer grace and the Core-floor band: the server's commanders hold
+              themselves to the rules people are protected BY, and claim none of the
+              protections for themselves. `raidCandidates` still refuses a shielded
+              PERSON, so nothing here lets a bot reach one.
+            */
+            newcomerShieldUntil: null,
           })
           .where(eq(players.accountId, profile.accountId));
         seated++;

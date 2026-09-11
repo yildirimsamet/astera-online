@@ -7,6 +7,7 @@ import {
   useMusicEnabled,
   useMusicVolume,
 } from '../lib/music.js';
+import { rivalColour } from '../galaxy/PlanetField.jsx';
 import { serverNow } from '../lib/clock.js';
 import { haptic } from '../lib/haptics.js';
 import { untilReady } from '../lib/time.js';
@@ -70,8 +71,7 @@ export function MenuPanel({
   ended = false,
   hasSeasonResult = false,
   inSilentSpace = false,
-  rival = null,
-  rivalLost = false,
+  rivals = [],
   onFocusRival,
   onClearRival,
   onOpen,
@@ -85,10 +85,23 @@ export function MenuPanel({
   ended?: boolean;
   hasSeasonResult?: boolean;
   inSilentSpace?: boolean;
-  rival?: { owner: string; name: string } | null;
-  rivalLost?: boolean;
-  onFocusRival?: () => void;
-  onClearRival?: () => void;
+  /**
+   * EVERY MARK THIS COMMANDER IS KEEPING, IN SLOT ORDER. D183.
+   *
+   * `lost` is a mark whose world is no longer on the disc — reclaimed, wiped, or
+   * simply out of the payload. It gets a row that clears THAT mark and nothing
+   * else; the old single-mark version cleared the whole set, which with five marks
+   * would throw away four bookmarks to tidy one.
+   */
+  rivals?: readonly {
+    planetId: string;
+    slot: number;
+    owner: string;
+    name: string;
+    lost: boolean;
+  }[];
+  onFocusRival?: (planetId: string) => void;
+  onClearRival?: (planetId: string) => void;
   onOpen: (panel: Panel) => void;
   onSignOut: () => void;
   onReplayAcademy?: () => void;
@@ -136,22 +149,36 @@ export function MenuPanel({
             }}
           />
         )}
-        {rival && onFocusRival && (
-          <MenuRow
-            icon={<GalaxyIcon className="size-5" />}
-            label={t('menu.rivalLabel', { commander: rival.owner })}
-            hint={t('menu.rivalHint', { planet: rival.name })}
-            onClick={onFocusRival}
-          />
-        )}
-        {rivalLost && onClearRival && (
-          <MenuRow
-            icon={<GalaxyIcon className="size-5" />}
-            label={t('menu.rivalLostLabel')}
-            hint={t('menu.rivalLostHint')}
-            onClick={onClearRival}
-          />
-        )}
+        {/*
+          ONE ROW PER MARK, WEARING ITS OWN COLOUR. D183.
+
+          The dot is the whole identity of the row: it is the same hue the reticle
+          on the disc is drawn in, so a commander reading the menu and a commander
+          reading the map are looking at one thing. A row for a mark whose world has
+          gone clears that mark alone — the old single-mark version sent `null`,
+          which with five marks would throw four bookmarks away to tidy one.
+        */}
+        {rivals.map((mark) => (
+          mark.lost
+            ? onClearRival && (
+              <MenuRow
+                key={mark.planetId}
+                icon={<RivalDot slot={mark.slot} />}
+                label={t('menu.rivalLostLabel')}
+                hint={t('menu.rivalLostHint')}
+                onClick={() => { onClearRival(mark.planetId); }}
+              />
+            )
+            : onFocusRival && (
+              <MenuRow
+                key={mark.planetId}
+                icon={<RivalDot slot={mark.slot} />}
+                label={t('menu.rivalLabel', { commander: mark.owner })}
+                hint={t('menu.rivalHint', { planet: mark.name })}
+                onClick={() => { onFocusRival(mark.planetId); }}
+              />
+            )
+        ))}
         <MenuRow
           icon={<BellIcon className="size-5" />}
           label={t('menu.announcementsLabel')}
@@ -325,6 +352,25 @@ export function MenuPanel({
  * dot, because there is room here for the number and the header's dot has already
  * done the job of saying THAT something is waiting.
  */
+/**
+ * A MARK'S COLOUR, AS THE ROW'S ICON. D183.
+ *
+ * The same hue the reticle is drawn in on the disc, so the menu and the map are
+ * one thing rather than two lists that happen to agree. A dot rather than a glyph
+ * because the colour IS the content — a galaxy icon in five colours would spend a
+ * row's icon slot saying "galaxy" five times.
+ */
+function RivalDot({ slot }: { slot: number }) {
+  return (
+    <span
+      aria-hidden
+      data-rival-dot={slot}
+      className="block size-3 rounded-full"
+      style={{ backgroundColor: rivalColour(slot) }}
+    />
+  );
+}
+
 function MenuRow({
   icon,
   label,
@@ -364,7 +410,7 @@ function MenuRow({
         THE HINT IS THE ACCESSIBLE NAME, NOT A SECOND LINE. Owner directive:
         *"gereksiz fazla yazı yerine tasarımın kendini anlattığı ... temiz premium."*
 
-        Seven of these at two lines each is most of a 375-wide phone spent on a
+        Seven of these at two lines each is most of a 350-wide phone spent on a
         menu, and the second line was explaining destinations that name themselves:
         "Leaderboard" does not need a sentence under it, and the icon and chevron
         have already said the rest.

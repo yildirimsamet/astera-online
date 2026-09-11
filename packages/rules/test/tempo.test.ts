@@ -1,157 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BUILD,
-  CLAN,
-  DEATH_STAR,
-  ECON,
-  ECONOMY_TEMPO,
-  HULLS,
-  MULTI_WORLD,
-  PROBE,
-  RESEARCH_PROJECTS,
-  rewardPurse,
-  satelliteCost,
-  buildMinutes,
-  plantCeiling,
-  researchMinutes,
-  shipMinutes,
-  storageCap,
-  alloyRate,
-  storageHours,
-  upgradeCost,
-} from '../src/index.js';
+import { ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, MULTI_WORLD, PROBE,
+  profileBuilding, profileResearch, hullWorkMinutes, RESEARCH_PROJECTS,
+  storageCap, alloyRate, buildingCost, satelliteCost } from '../src/index.js';
 
-describe('the calibrated economy tempo', () => {
-  it('keeps the upgrade curve inside a raidable storage profile', () => {
-    expect(ECON.costBase / 52).toBe(1.05);
-    expect(ECON.costMult).toBe(1.54);
-    /*
-      D169 replaced the pair with the owner's table — three hours before a Vault
-      exists, forty at the top — and D171 scaled what a step is worth so the works
-      can always be banked. D181 lifted that scale 25% and these two figures moved
-      with it, which is why they are now derived: this test is about the COST
-      curve staying inside a raidable store, and the store's absolute depth is
-      `storage-lift.test.ts`'s claim, not this one's.
-    */
-    expect(storageHours(0)).toBeCloseTo(3 * ECON.storageScale, 10);
-    expect(storageHours(20)).toBeCloseTo(40 * ECON.storageScale, 10);
+describe('monthly economy tempo', () => {
+  it('uses a thirty-day deadline and preserves early work', () => {
+    expect(SEASON.days).toBe(30);
+    expect(ECONOMY_PROFILE.progressionDays).toBe(SEASON.days);
+    expect(profileBuilding('CORE', 2).minutes).toBe(2.72);
+    expect(profileBuilding('CORE', 12).minutes).toBeLessThan(60);
   });
-
-  it('keeps the opening in minutes and both meanings of L12 inside one to two hours', () => {
-    const intoL2 = buildMinutes(upgradeCost(1), 1);
-    const intoL12 = buildMinutes(upgradeCost(11), 11);
-    const outOfL12 = buildMinutes(upgradeCost(12), 12);
-
-    expect(intoL2).toBeGreaterThanOrEqual(1);
-    expect(intoL2).toBeLessThanOrEqual(3);
-    expect(intoL12).toBeGreaterThanOrEqual(60);
-    expect(intoL12).toBeLessThanOrEqual(120);
-    expect(outOfL12).toBeGreaterThanOrEqual(60);
-    expect(outOfL12).toBeLessThanOrEqual(120);
-  });
-
-  /**
-   * ONE LEVEL BEHIND THE CORE, NOT THREE. D169.
-   *
-   * The Vault used to be a convenience on top of a store that already held fifteen
-   * hours, so a commander three levels behind on it was still fine. The table made
-   * the Vault the store itself, and a commander who ignores it stalls — which is
-   * the point of the change, not a side effect of it. The measurement is the same
-   * measurement; what it assumes about a developed world moved with the building.
-   */
-  it('never creates an upgrade a developed Vault cannot hold', () => {
-    for (let level = 1; level <= 20; level += 1) {
-      const vault = Math.max(0, level - 1);
-      expect(upgradeCost(level).alloy, `L${String(level)} at Vault ${String(vault)}`)
-        .toBeLessThanOrEqual(storageCap(alloyRate(level), vault));
+  it('keeps reachable producer investments within storage', () => {
+    for (let level = 1; level <= 20; level++) {
+      expect(buildingCost('REFINERY', level).alloy).toBeLessThanOrEqual(storageCap(alloyRate(level), level - 1));
     }
+    // The works cap is a different contract and `economy.test.ts` owns it; a copy
+    // here only ever went stale, which is what it did.
   });
-
-  it('makes ordinary hull crafting about 50% slower while keeping it usable', () => {
-    expect(HULLS.DART.alloy).toBe(300);
-    expect(shipMinutes(HULLS.DART, 0, {})).toBeGreaterThan(1);
-    expect(shipMinutes(HULLS.DART, 0, {})).toBeLessThan(2);
-    expect(shipMinutes(HULLS.CITADEL, HULLS.CITADEL.minShipyard, {})).toBeGreaterThan(10);
-    expect(shipMinutes(HULLS.CITADEL, HULLS.CITADEL.minShipyard, {})).toBeLessThan(15);
-  });
-
-  it('applies each price class deliberately instead of one accidental global multiplier', () => {
-    expect(HULLS.DART.alloy).toBe(300);
-    // D170 took deuterium off the Courier entirely: a world makes none of its own
-    // until the research and the plant, and the entry transport is the first thing
-    // a commander builds. Its Alloy and Crystal classes are untouched.
-    expect(HULLS.COURIER.deuterium).toBe(0);
-    expect(satelliteCost('UPLINK')).toEqual({ alloy: 1125, crystal: 375, deuterium: 0 });
-    expect(satelliteCost('FOUNDRY')).toEqual({ alloy: 3400, crystal: 1190, deuterium: 0 });
-    expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 3400, crystal: 1700, deuterium: 0 });
-    /*
-      THE ONE PRICE THAT IS NOT SCALED, AND IT IS DELIBERATE. D167 — owner figures.
-      A tempo change moves everything priced through `scalePrice`; the strategic
-      weapon is set by hand against what it now DOES, so it is written out here and
-      pinned here rather than derived from a base nobody would recognise.
-    */
-    expect(DEATH_STAR.cost).toEqual({ alloy: 20_000, crystal: 10_000, deuterium: 2_500 });
-    expect(CLAN.creationCost).toEqual({ alloy: 8500, crystal: 5100, deuterium: 0 });
-  });
-
-  it('keeps action rewards and the scouting entry price as intentional exceptions', () => {
-    expect(PROBE).toMatchObject({ alloy: 50, crystal: 30 });
-    // Crystal follows the INCOME share, which D161 moved from ~35% to ~44%.
-    // D172 adds authored Academy tiers, Vault, pirate victories and Aegis L3/L5;
-    // existing tiers are not rescaled and the shared purse ceiling is unchanged.
-    expect(rewardPurse()).toEqual({ alloy: 18_950, crystal: 8445, deuterium: 0 });
-  });
-
-  it('keeps the strategic asset timer fixed outside ordinary yard crafting', () => {
-    expect(DEATH_STAR.buildMinutes).toBe(60);
-  });
-
-  it('keeps seasonal research below the construction cap', () => {
-    for (const project of Object.values(RESEARCH_PROJECTS)) {
-      const core = project.requiredCore ?? 6;
-      for (let level = 1; level <= project.maxLevel; level++) {
-        /*
-          A LADDER IS PRICED AGAINST THE CORE ITS OWN RUNG IMPLIES.
-
-          The flat default of six is the Core a commander plausibly holds when they
-          buy a one-off permission. A rung is different: nobody buys Deuterium
-          Synthesis 5 at Core 6, because the plant it opens cannot be built there
-          at all. Measured at six the top rung reads exactly at the clamp, which is
-          a figure from a world that cannot exist.
-        */
-        /*
-          A LADDER IS PRICED AGAINST THE CORE ITS OWN RUNG IMPLIES.
-
-          The flat default of six is the Core a commander plausibly holds when they
-          buy a one-off permission. A rung is different: nobody buys the fifth rung
-          of anything at Core 6 — the Deuterium Refinery it opens cannot even be
-          built there, and a doctrine's top rung is a season's project. Measured at
-          six, every top rung reads exactly at the clamp, which is a figure from a
-          world that does not exist. Two Core levels per rung is the honest proxy,
-          and the refinery gets the exact answer its own ceiling gives.
-        */
-        const at = project.maxLevel > 1
-          ? Math.max(core + 2 * (level - 1), plantCeiling(level) + 1)
-          : core;
-        expect(researchMinutes(project.costAt(level), at), `${project.id} L${String(level)}`)
-          .toBeLessThan(BUILD.capMinutes);
+  it('prices work independently of resources and keeps the evening playable', () => {
+    expect(hullWorkMinutes('DART', 1, 0, {})).toBe(2);
+    expect(hullWorkMinutes('CITADEL', 1, 6, {})).toBeCloseTo(35 / 1.72);
+    for (const p of Object.values(RESEARCH_PROJECTS)) {
+      for (let level = 1; level <= p.maxLevel; level++) {
+        expect(profileResearch(p.id, level).minutes).toBeLessThanOrEqual(480);
       }
     }
+    expect(DEATH_STAR.buildMinutes).toBe(60);
   });
-
-  it('exposes every chosen lever through one profile', () => {
-    expect(ECONOMY_TEMPO.passiveIncome).toBe(0.70);
-    expect(ECONOMY_TEMPO.upgradePrice).toBe(1.05);
-    expect(ECONOMY_TEMPO.upgradeGrowth).toBe(1.54);
-    expect(ECONOMY_TEMPO.storageHours).toBe(1.10);
-    expect(ECONOMY_TEMPO.hullPrice).toBe(1.25);
-    expect(ECONOMY_TEMPO.hullCrystalPrice).toBe(1.25 * 1.15);
-    expect(ECONOMY_TEMPO.fixedPrice).toBe(1.70);
-    expect(ECONOMY_TEMPO.gatewayPrice).toBe(1.25);
-    expect(ECONOMY_TEMPO.deuteriumPrice).toBe(1.30);
-    expect(ECONOMY_TEMPO.constructionBase).toBe(40);
-    expect(ECONOMY_TEMPO.researchWork).toBe(0.62);
-    expect(BUILD.conBase).toBe(ECONOMY_TEMPO.constructionBase);
-    expect(BUILD.yardBase).toBe(ECONOMY_TEMPO.yardBase);
+  it('keeps entry purchases reachable and founding capital separate', () => {
+    expect(HULLS.DART.alloy).toBe(300);
+    expect(satelliteCost('UPLINK')).toEqual({ alloy: 50, crystal: 25, deuterium: 0 });
+    expect(MULTI_WORLD.settlement.charge).toEqual({ alloy: 1000, crystal: 500, deuterium: 0 });
+    expect(PROBE.alloy).toBe(50);
   });
 });

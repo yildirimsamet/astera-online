@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { GALAXY_EVENTS, MULTI_WORLD, TRADE } from '@astera/rules';
+import { GALAXY_EVENTS, MULTI_WORLD, SEASON, TRADE } from '@astera/rules';
 import { FixedClock, minutesSince } from '../src/clock.js';
 import {
   galaxyEventOccurrences,
@@ -218,8 +218,18 @@ describe('persisted galaxy events', () => {
     const showers = occurrences.filter((row) => row.kind === 'ASTEROID_SHOWER');
     const merchants = occurrences.filter((row) => row.kind === 'TRADE_SHIP');
 
-    expect(showers).toHaveLength(14 * 5);
-    expect(merchants).toHaveLength(14 * 4);
+    /*
+      DERIVED FROM THE SEASON, NOT TYPED. D191.
+
+      These read `14 * 5` and `14 * 4` — the season length written out as a
+      literal. The season is thirty days now and the calendar dutifully dealt 150
+      showers, so the only thing that failed was the arithmetic in the test. A
+      per-day rate asserted against a hard-coded span measures the span, which is
+      not what this test is about.
+    */
+    const days = SEASON.days;
+    expect(showers).toHaveLength(days * 5);
+    expect(merchants).toHaveLength(days * 4);
     expect(lifecycle).toHaveLength(occurrences.length * 2);
     // Sequence is per kind now, so uniqueness is asserted inside each lane.
     expect(new Set(showers.map((row) => row.sequence)).size).toBe(showers.length);
@@ -709,3 +719,4 @@ describe('persisted galaxy events', () => {
     expect(await merchants()).toEqual([]);
   });
 });
+

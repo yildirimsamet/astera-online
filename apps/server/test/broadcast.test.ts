@@ -182,12 +182,25 @@ describe('the shard broadcast', () => {
       slot: 0,
       targetPlanetId: f.planetIds[0]!,
     });
-    await giveUnits(f.db, f.planetIds[0]!, { DART: 6 });
+    /*
+      A RAID BRINGS A CARRIER, BECAUSE A WARSHIP NO LONGER CARRIES. D194.
+
+      This sent five Darts and expected the ladder to move. It used to: a Dart held
+      35 of cargo and a Viper 55, so any wing came home with something and
+      `bookBattle` — which prices Dominion off the HAUL — had a figure to work
+      with. The economy cutover set every combat hull's cargo to zero, so five
+      Darts now take nothing however much is sitting exposed, the exchange comes
+      out at exactly zero, and no score is published because none changed.
+
+      The fleet is what changed, not the rule. A raid that means to take something
+      packs a hold, and that is what this test flies now.
+    */
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 6, COURIER: 1 });
     const { arriveAt } = await launchAttack(
       f.db,
       f.planetIds[0]!,
       f.planetIds[1]!,
-      { DART: 5 },
+      { DART: 5, COURIER: 1 },
       f.clock,
     );
 

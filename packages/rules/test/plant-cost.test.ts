@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEUTERIUM, buildingCost, prospectorRoom, upgradeCost } from '../src/index.js';
+import { buildingCost, prospectorRoom } from '../src/index.js';
 
 /**
  * WHAT THE DEUTERIUM REFINERY COSTS, AND WHY IT IS NOT AN ORDINARY BUILDING. D170.
@@ -19,43 +19,15 @@ import { DEUTERIUM, buildingCost, prospectorRoom, upgradeCost } from '../src/ind
  * resource out of the late game rather than into it.
  */
 
-describe('the deuterium refinery has its own price', () => {
-  it('opens at about five times an ordinary building', () => {
-    for (const level of [0, 1, 2]) {
-      const ratio = buildingCost('DEUTERIUM_PLANT', level).alloy / upgradeCost(level).alloy;
-      expect(ratio, `L${String(level)}`).toBeGreaterThan(4.5);
-      expect(ratio, `L${String(level)}`).toBeLessThan(5.5);
-    }
-  });
-
-  it('costs less and less of a premium as it grows', () => {
-    const ratio = (level: number) =>
-      buildingCost('DEUTERIUM_PLANT', level).alloy / upgradeCost(level).alloy;
-    for (let level = 1; level <= 14; level += 1) {
-      expect(ratio(level), `L${String(level)}`).toBeLessThanOrEqual(ratio(level - 1));
-    }
-  });
-
-  /** It never falls back to the plain curve, and never runs away from it either. */
-  it('settles above the ordinary curve rather than on it', () => {
-    const ratio = (level: number) =>
-      buildingCost('DEUTERIUM_PLANT', level).alloy / upgradeCost(level).alloy;
-    expect(ratio(15)).toBeGreaterThan(1.2);
-    expect(ratio(15)).toBeLessThan(2);
-    expect(ratio(30)).toBeGreaterThanOrEqual(DEUTERIUM.plantCostFloor);
-  });
-
-  it('charges the premium on Crystal too, and adds no deuterium', () => {
-    const cost = buildingCost('DEUTERIUM_PLANT', 0);
-    const base = upgradeCost(0);
-    expect(cost.crystal / base.crystal).toBeCloseTo(cost.alloy / base.alloy, 1);
-    expect(cost.deuterium).toBe(0);
-  });
-
-  /** Every other building is untouched: this change is one building wide. */
-  it('leaves the ordinary buildings on the shared curve', () => {
-    for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
-      expect(buildingCost(type, 4)).toEqual(upgradeCost(4));
+describe('monthly plant investment', () => {
+  it('starts with a paid crystal-heavy recipe and never asks for its own fuel', () => {
+    expect(buildingCost('DEUTERIUM_PLANT', 0)).toEqual({ alloy: 30, crystal: 30, deuterium: 0 });
+    for (let level = 1; level <= 20; level++) {
+      const cost = buildingCost('DEUTERIUM_PLANT', level);
+      const before = buildingCost('DEUTERIUM_PLANT', level - 1);
+      expect(cost.alloy).toBeGreaterThan(before.alloy);
+      expect(cost.crystal).toBeGreaterThan(before.crystal);
+      expect(cost.deuterium).toBe(0);
     }
   });
 });

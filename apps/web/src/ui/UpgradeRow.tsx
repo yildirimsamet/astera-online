@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import type { Gain } from '../lib/gains.js';
 
@@ -45,12 +45,45 @@ export interface Blocked {
   onFix?: () => void;
 }
 
+/**
+ * A NAME THAT WOULD BE CUT IS CONDENSED INSTEAD. D200.
+ *
+ * The owner's rule is that a truncated label is worse than a small one, and until
+ * the Garbage Collector every name on this row happened to fit its ~130px beside
+ * the level and the home/away counts. "GARBAGE COLLECTOR" is two pixels over on a
+ * real phone. So the face narrows along its own width axis — the condensation
+ * `.legend` already wears — and ONLY when the natural width would be cut: every
+ * name that fits is drawn exactly as before, and the ellipsis stays as the last
+ * resort for a name no condensation can save.
+ *
+ * Measured at the natural width every time (the attribute is cleared first), so a
+ * shorter name or a wider screen never inherits the last verdict. The box's width
+ * comes from the row, not the text, so narrowing the face cannot feed back into
+ * the observer that triggered it.
+ */
+function useCondensedWhenCut(ref: RefObject<HTMLHeadingElement | null>, text: string): void {
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const fit = () => {
+      element.removeAttribute('data-fit');
+      if (element.scrollWidth > element.clientWidth) element.setAttribute('data-fit', 'condensed');
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const watch = new ResizeObserver(fit);
+    watch.observe(element);
+    return () => { watch.disconnect(); };
+  }, [ref, text]);
+}
+
 export function UpgradeRow({
   art,
   mark,
   name,
   nameAside,
   nameBadge,
+  tierMark,
   level,
   maxLevel,
   tag,
@@ -81,6 +114,16 @@ export function UpgradeRow({
   name: string;
   /** Compact state that belongs beside the name, such as home/away hull counts. */
   nameAside?: string;
+  /**
+   * THE RUNG A HULL SITS ON, WHERE A BUILDING WOULD PRINT ITS LEVEL. D195c, owner
+   * instruction: *"gemilerin adlarının yanına ufak bir font ile Lv1, Lv2..."*.
+   *
+   * It takes the same slot as `level` and never appears with it, because the two
+   * answer the same question about two different things — a building is at a rung
+   * it climbed, a hull was BUILT at one. A hull with no tier (the two guns, the
+   * Prospector) passes nothing rather than a blank mark.
+   */
+  tierMark?: string;
   /**
    * A MARK BESIDE THE NAME, where the row's own taxonomy is not the whole story.
    *
@@ -160,6 +203,8 @@ export function UpgradeRow({
   flash?: boolean;
 }) {
   const { t } = useTranslation();
+  const nameRef = useRef<HTMLHeadingElement>(null);
+  useCondensedWhenCut(nameRef, name);
   const shortAlloy = Math.max(0, cost.alloy - held.alloy);
   const shortCrystal = Math.max(0, cost.crystal - held.crystal);
   const shortDeuterium = Math.max(0, (cost.deuterium ?? 0) - (held.deuterium ?? 0));
@@ -305,7 +350,7 @@ export function UpgradeRow({
           {/*
             LINE ONE IS THE NAME'S, AND NOTHING ELSE MAY SPEND IT. D109 · owner report.
 
-            At 375px this column has about 241px, which is roughly twenty-four
+            At 350px this column has about 241px, which is roughly twenty-four
             characters. The class chip and the home/away counts were both put on
             this line and between them left "E...", "P..." and "K..." where a ship's
             name should have been — the exact failure this component's docblock was
@@ -316,7 +361,7 @@ export function UpgradeRow({
             of naming the thing rather than a fact about it.
           */}
           <div data-row-line="name" className="flex min-w-0 items-baseline gap-2">
-            <h3 className="name min-w-0 flex-1 truncate">{name}</h3>
+            <h3 ref={nameRef} className="name min-w-0 flex-1 truncate">{name}</h3>
             {/*
               A LADDER IS DRAWN; A LEVEL IS WRITTEN.
 
@@ -333,6 +378,28 @@ export function UpgradeRow({
               <span className={`num shrink-0 text-label text-faint ${flash ? 'pop inline-block' : ''}`}>
                 L{level}
               </span>
+            ) : tierMark ? (
+              <span data-testid="hull-tier" className="num shrink-0 text-micro text-faint">
+                {tierMark}
+              </span>
+            ) : null}
+            {/*
+              AND WHERE ITS CRAFT ARE, ON THE SAME LINE. Owner instruction — the
+              counts were on the support line under the name, beside the class chip
+              and the flavour tag, so identity and holding took two reads. They are
+              one question: *"Dart (Lv1) - 3 in 4 out"*.
+
+              It is `shrink-0` against a `truncate` name, which is the right way
+              round: a long hull name losing its tail still reads, and a half-drawn
+              count does not.
+            */}
+            {nameAside ? (
+              <span
+                data-testid="hull-where"
+                className="num shrink-0 whitespace-nowrap text-micro text-faint"
+              >
+                {nameAside}
+              </span>
             ) : null}
           </div>
           {/*
@@ -344,17 +411,9 @@ export function UpgradeRow({
             whatever is left and truncates, which is the right thing to lose: it is
             flavour, and the chip beside it is the rule.
           */}
-          {nameBadge === undefined && nameAside === undefined && !tag ? null : (
+          {nameBadge === undefined && !tag ? null : (
               <div data-row-line="support" className="flex min-w-0 items-center gap-1.5">
                 {nameBadge}
-                {nameAside ? (
-                  <span
-                    data-testid="hull-where"
-                    className="num shrink-0 whitespace-nowrap text-micro text-faint"
-                  >
-                    {nameAside}
-                  </span>
-                ) : null}
                 {tag ? (
                   <p className="min-w-0 truncate text-caption leading-snug text-dim">{tag}</p>
                 ) : null}
@@ -546,7 +605,7 @@ export function Band({
    * MAKES THE BAND AN ACCORDION. Owner instruction.
    *
    * Nineteen hull rows at ~98px is nearly two thousand pixels — about four screens
-   * of a 375-wide phone before a commander has seen the catalogue once, and the
+   * of a 350-wide phone before a commander has seen the catalogue once, and the
    * same list is what an attack sheet asks them to choose a wing from under a
    * clock. Folding costs nothing that the row height would not cost far more of:
    * the art stays at the 74px `visual-design.md` requires, and the bands the player

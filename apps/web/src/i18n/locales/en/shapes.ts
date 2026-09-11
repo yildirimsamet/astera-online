@@ -61,20 +61,42 @@ export const counter = {
   multiplier: '×{{mult}}',
   matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, ×{{mult}} damage',
   cycleLabel: 'Skirmisher beats Bulwark, Bulwark beats Lance, Lance beats Skirmisher',
-  /** Above the two bars on the launch sheet. */
-  compareHeading: 'Your fleet against theirs',
+  /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
+  compareHeading: 'Firepower',
   compareYours: 'Sending',
   compareTheirs: 'Standing there',
   /** The reading has an age and a width, and both are the fact. */
-  compareRecord: '{{source}}, {{age}} old',
+  compareRecord: '{{source}}, {{age}}',
   compareLive: '{{source}}, read now',
   compareUnknown: 'Never measured',
   compareUnknownWhy: 'A probe would put a number on this side of the bar.',
   compareLabel: 'You are sending {{yours}}; the last reading of their world was {{theirs}}',
-  /** What the player is looking at, in the one sentence that must not overclaim. */
-  compareNote: 'Resource value, both sides. It does not include the counter cycle.',
-  mixHeading: 'What is standing there',
+  /**
+   * WHAT THE FIGURE AND THE LINES ARE, ONE TAP DEEP. D199.
+   *
+   * The figure is what the hulls and guns that can fire cost — D183 took the
+   * transports out of it. The lines are the battle engine run on this wing against
+   * every wall the reading allows, so they include the counter cycle, research and
+   * a known shield; what they leave out is said, never implied.
+   */
+  compareRuleToggle: 'What is this?',
+  compareRule:
+    'Firepower is what the hulls and guns that can fire cost — both sides on one scale. The lines come from the battle itself: your ships, your research, and what the probe saw of theirs — shield, research and the shape of the wall. Below the first line this wing clears the wall; below the second it breaks it. The ±8% roll is left out, and the reading may be old.',
+  linesClears: 'Clears below {{at}}',
+  linesBreaks: 'breaks below {{at}}',
+  lineJoin: ' · ',
+  lossLabel: 'Expected loss {{share}}',
+  /** What the lines could not see, and what is already known about the reading. D199. */
+  noteShieldUnmeasured: 'Shield charge not measured',
+  noteShapeUnread: 'Shape of the wall not read',
+  noteUnarmedUnknown: 'Transports not counted',
+  noteUnarmed_one: '{{band}} transport stands in the line',
+  noteUnarmed_other: '{{band}} transports stand in the line',
+  noteSeen: 'Your probe was seen',
+  noteSomeAway: 'Some of their fleet was out at the look',
+  noteTelescopeAway: 'Telescope: their fleet is out now',
+  noteTelescopeHome: 'Telescope: their fleet is home',
+  noteLastRaid: 'Last raid sank mostly {{class}}',
   mixMostly: 'Mostly {{class}}',
   mixEven: 'No single class dominates',
-  mixFrom: 'From {{source}}, {{age}} old',
 } as const;

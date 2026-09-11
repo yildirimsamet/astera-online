@@ -156,7 +156,7 @@ function CrashScreen({ record, onReload }: { record: CrashRecord; onReload: () =
 
         {open && (
           /*
-            Its own scroll box, both ways. A stack trace is wider than 375px and
+            Its own scroll box, both ways. A stack trace is wider than 350px and
             longer than the screen, and the page body must never scroll sideways.
           */
           <pre className="mt-3 max-h-56 w-full overflow-auto whitespace-pre-wrap break-words rounded-cell bg-black/30 p-2 text-left text-micro text-faint">

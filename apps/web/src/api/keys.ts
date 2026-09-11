@@ -26,6 +26,8 @@ export const keys = {
   clanStrength: ['clan', 'strength'],
   clanDirectory: (search: string) => ['clan', 'directory', search.trim()] as const,
   clanLeaderboard: ['clan', 'leaderboard'],
+  /** One clan's public profile — the roster somebody is deciding against. D183. */
+  clanProfile: (clanId: string) => ['clan', 'profile', clanId] as const,
   clanEvents: ['clan', 'events'],
   clanDepot: ['clan', 'depot'],
   clanAid: ['clan', 'aid'],

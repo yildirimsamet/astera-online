@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { asc, eq } from 'drizzle-orm';
 import { ALL_HULLS, MULTI_WORLD, SERVERS } from '@astera/rules';
 import {
+  galaxyEventOccurrences,
   scheduledEvents,
   seasonResults,
   seasons,
@@ -11,6 +12,7 @@ import {
   buildOrders,
   battleReports,
   debrisFields,
+  dominionEvents,
   pirateRaids,
   pirateState,
   playerResearch,
@@ -22,7 +24,7 @@ import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { launchProbe } from '../src/services/intel.js';
 import { planetView } from '../src/services/planetView.js';
 import { rewardsView } from '../src/services/rewards.js';
-import { latestSeasonResult } from '../src/services/season.js';
+import { createSeason, latestSeasonResult } from '../src/services/season.js';
 import { onBuildComplete, onSeasonEnd, onSeasonRollover } from '../src/worker/handlers.js';
 import {
   seedWorld,
@@ -41,6 +43,25 @@ describe('season lifecycle', () => {
 
   beforeEach(async () => {
     f = await seedWorld(3, 4242, { pirates: true });
+  });
+
+  it('defaults to a thirty-day season with a real end and rollover', async () => {
+    const { season } = await createSeason(f.db, { shardCode: 'MONTHLY-30', seed: 951, startsAt: f.clock.now() });
+    expect(season.endsAt.getTime() - season.startsAt.getTime()).toBe(30 * 86400000);
+    const events = await f.db.select().from(scheduledEvents).where(eq(scheduledEvents.seasonId, season.id));
+    expect(events.filter(e => e.kind === 'season_end')).toHaveLength(1);
+    expect(events.filter(e => e.kind === 'season_rollover')).toHaveLength(1);
+    /*
+      AND ITS PUBLIC CALENDAR, BOTH KINDS. Owner instruction, 2026-09-12: the
+      Asteroid Shower and the merchant ship on (they are kept out of the economy
+      MEASUREMENT, not out of the game). This asserted zero while the two switches
+      were a measurement state; a season now opens with every window dealt.
+    */
+    const occurrences = await f.db.select().from(galaxyEventOccurrences)
+      .where(eq(galaxyEventOccurrences.seasonId, season.id));
+    expect(occurrences.some((o) => o.kind === 'ASTEROID_SHOWER')).toBe(true);
+    expect(occurrences.some((o) => o.kind === 'TRADE_SHIP')).toBe(true);
+    expect(events.filter(e => e.kind === 'galaxy_event_start')).toHaveLength(occurrences.length);
   });
 
   const seasonEndEvent = async () => {
@@ -134,6 +155,101 @@ describe('season lifecycle', () => {
       shard: 'EU-TEST-4242',
     });
     expect(latest?.shardName).toBeTruthy();
+  });
+
+  it('refuses to freeze a v7 season whose Dominion ledger cannot be reproduced from its journal', async () => {
+    await f.db
+      .update(seasons)
+      .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    await f.db
+      .update(players)
+      .set({ dominionTaken: 1 })
+      .where(eq(players.id, f.playerIds[0]!));
+    const event = await seasonEndEvent();
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    f.clock.set(season!.endsAt);
+
+    await expect(onSeasonEnd({ db: f.db, clock: f.clock }, event))
+      .rejects.toThrow(/Dominion audit failed/);
+
+    const [after] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    expect(after!.status).toBe('live');
+    expect(await f.db.select().from(seasonResults)).toHaveLength(0);
+  });
+
+  it('freezes v7 from the durable Dominion journal even when player-facing reports are gone', async () => {
+    await f.db
+      .update(seasons)
+      .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    await f.db.update(players).set({ dominionTaken: 70 })
+      .where(eq(players.id, f.playerIds[0]!));
+    await f.db.update(players).set({ dominionLost: 70 })
+      .where(eq(players.id, f.playerIds[1]!));
+    await f.db.insert(dominionEvents).values({
+      seasonId: f.seasonId,
+      missionId: crypto.randomUUID(),
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+      eligible: true,
+      lootValue: 20,
+      attackerLossValue: 50,
+      defenderLossValue: 100,
+      rawExchange: 70,
+      transfer: 70,
+      createdAt: f.clock.now(),
+    });
+    expect(await f.db.select().from(battleReports)).toHaveLength(0);
+
+    const event = await seasonEndEvent();
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    f.clock.set(season!.endsAt);
+    await onSeasonEnd({ db: f.db, clock: f.clock }, event);
+
+    const [after] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    expect(after!.status).toBe('frozen');
+    const results = await f.db.select().from(seasonResults)
+      .where(eq(seasonResults.seasonId, f.seasonId));
+    expect(results.map((row) => row.dominion).sort((a, b) => b - a)).toEqual([70, 0, -70]);
+  });
+
+  it('freezes after an operator battle and leaves the operator out of final ranks', async () => {
+    await f.db
+      .update(seasons)
+      .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    await f.db.insert(dominionEvents).values({
+      seasonId: f.seasonId,
+      missionId: crypto.randomUUID(),
+      attackerPlayerId: f.playerIds[0]!,
+      defenderPlayerId: f.playerIds[1]!,
+      rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+      eligible: false,
+      transfer: 0,
+      createdAt: f.clock.now(),
+    });
+    const [operator] = await f.db.select({ username: accounts.username })
+      .from(accounts)
+      .where(eq(accounts.id, f.accountIds[0]!));
+    const event = await seasonEndEvent();
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    f.clock.set(season!.endsAt);
+
+    await onSeasonEnd({
+      db: f.db,
+      clock: f.clock,
+      adminUsernames: new Set([operator!.username]),
+    }, event);
+
+    const [after] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    expect(after!.status).toBe('frozen');
+    const results = await f.db.select().from(seasonResults)
+      .where(eq(seasonResults.seasonId, f.seasonId));
+    expect(results).toHaveLength(2);
+    expect(results.map((result) => result.accountId)).not.toContain(f.accountIds[0]);
+    expect(results.map((result) => result.dominion)).toEqual([0, 0]);
   });
 
   it('keeps a frozen galaxy readable but refuses further mutation', async () => {

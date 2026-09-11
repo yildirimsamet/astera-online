@@ -4,7 +4,7 @@ import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { planets, players } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { TEST_SEASON_DAYS, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 import { returnStatusSchema } from '../../web/src/api/schemas.js';
 let f: Fixture;
 let built: ReturnType<typeof buildApp>;
@@ -19,7 +19,18 @@ beforeEach(async () => {
 afterEach(async () => { await built.close(); });
 afterAll(async () => { await (await testDb()).close(); });
 async function move() {
-  const waiting = await createSeason(f.db, { shardCode: 'WAIT-API', role: 'WAITING', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1 });
+  /*
+    THE SEASON LENGTH HAS TO MATCH `seedWorld`'S, OR THERE IS NO RETURN GALAXY.
+
+    `season_cycles` is keyed on the EXACT `(startsAt, endsAt)` pair, so two seasons
+    share a cycle only when both figures match. `seedWorld` pins `TEST_SEASON_DAYS`
+    (14) while this call took `ECONOMY_PROFILE.seasonDays` (30), so the two ended on
+    different days, landed in different cycles, and `lockQueueCommander`'s
+    `cycleId`-matched lookup for a live target found nothing — every case in this
+    file failed with RETURN_TARGET_UNAVAILABLE. D194 fallout: the constant was
+    introduced to pin fixtures when the live season grew, and this call was not told.
+  */
+  const waiting = await createSeason(f.db, { days: TEST_SEASON_DAYS, shardCode: 'WAIT-API', role: 'WAITING', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1 });
   await f.db.update(players).set({ seasonId: waiting.season.id, placementVersion: 1 });
   await f.db.update(planets).set({ seasonId: waiting.season.id });
 }

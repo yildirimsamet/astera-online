@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { createDb, type Db } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { loadEnv, type Env } from '../src/env.js';
@@ -11,6 +11,7 @@ import {
   buildOrders,
   debrisFields,
   planets,
+  players,
   researchOrders,
   scheduledEvents,
   seasons,
@@ -20,6 +21,9 @@ import { applyBuildCompletion } from '../src/services/buildQueue.js';
 import { privateAsteroidField } from '../src/services/asteroidField.js';
 import { privatePirateField } from '../src/services/pirateField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
+
+/** The length every test world opens at. Named so a test can match a period on purpose. D194. */
+export const TEST_SEASON_DAYS = 14;
 
 export const TEST_DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgres://astera:astera@localhost:5433/astera_test';
@@ -86,7 +90,7 @@ export async function truncateAll(db: Db): Promise<void> {
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
              clan_ceasefires, clan_memberships, clans,
-             strategic_interceptions, strategic_impacts, battle_reports,
+             strategic_interceptions, strategic_impacts, dominion_events, battle_reports,
              scheduled_events, research_orders, build_orders, strategic_assets, missions, mining_runs,
              asteroid_claims, pirate_raids, pirate_state, trade_runs, units,
              galaxy_event_occurrences, galaxy_events,
@@ -237,6 +241,7 @@ export async function seedWorld(
   const start = new Date('2026-01-01T00:00:00.000Z');
   const clock = new FixedClock(start);
   const { season } = await createSeason(db, {
+    days: TEST_SEASON_DAYS,
     shardCode: `EU-TEST-${seed}`,
     seed,
     startsAt: start,
@@ -258,6 +263,22 @@ export async function seedWorld(
     playerIds.push(joined.playerId);
     planetIds.push(joined.planetId);
   }
+
+  /**
+   * A SEEDED WORLD IS A SETTLED ONE, SO THE NEWCOMER SHIELD COMES OFF. D183.
+   *
+   * `joinSeason` stamps every commander with a day of it, which is the rule and is
+   * also the wrong starting state for almost every test in this suite: these
+   * fixtures exist to exercise raids, captures and strikes, and a shield would make
+   * each of them refuse before reaching the thing under test. `mission.test.ts`
+   * already advanced its clock past D14's old grace for exactly this reason.
+   *
+   * The shield's OWN tests put it back with `giveNewcomerShield`, which is the
+   * honest shape: a fixture states the world it is describing, and a rule is tested
+   * by asking for it rather than by being left switched on everywhere.
+   */
+  await db.update(players).set({ newcomerShieldUntil: null })
+    .where(inArray(players.id, playerIds));
 
   /**
    * PUT THE TEST WORLD IN ONE NEIGHBOURHOOD.
@@ -633,4 +654,46 @@ export async function giveResearch(
       target: [playerResearch.playerId, playerResearch.projectId],
       set: { level },
     });
+}
+
+
+/**
+ * PUT A COMMANDER BACK UNDER THE NEWCOMER SHIELD. D183.
+ *
+ * `seedWorld` clears it, because a seeded world is a settled one. A test about the
+ * shield asks for it here, which keeps "this commander is new" a statement the test
+ * makes rather than a default it inherits.
+ */
+export async function giveNewcomerShield(
+  db: Db,
+  playerId: string,
+  until: Date,
+): Promise<void> {
+  await db.update(players).set({ newcomerShieldUntil: until })
+    .where(eq(players.id, playerId));
+}
+
+
+/**
+ * JOIN A SEASON AS A SETTLED COMMANDER. D183.
+ *
+ * `joinSeason` stamps `ABUSE.newcomerShieldHours` of first-day shield on everybody,
+ * which is the rule. It is also the wrong starting state for almost every test in
+ * this suite: these fixtures exist to exercise raids, captures and strikes, and a
+ * shield refuses each of them before the thing under test is reached.
+ *
+ * The shield's OWN tests use `joinSeason` directly and `giveNewcomerShield` to put
+ * it back, which is the honest split: a fixture states the world it is describing,
+ * and a rule is asked for rather than inherited.
+ */
+export async function joinSettled(
+  db: Db,
+  accountId: string,
+  seasonId: string,
+  clock: FixedClock,
+): ReturnType<typeof joinSeason> {
+  const joined = await joinSeason(db, accountId, seasonId, clock);
+  await db.update(players).set({ newcomerShieldUntil: null })
+    .where(eq(players.id, joined.playerId));
+  return joined;
 }

@@ -3,6 +3,7 @@ import {
   GALAXY,
   GALAXY_EVENTS,
   HULLS,
+  SUPPORT_HULLS,
   TRADE,
   TRAVEL,
   distance,
@@ -74,13 +75,21 @@ const laneFor = (seed: number, days = 3): TradeShipSpec[] => {
  * which is why the return leg, not the outbound one, is what these tests hold.
  */
 describe('the trade rate', () => {
-  it('prices ninety alloy, thirty crystal and one deuterium the same', () => {
-    // The owner's rate, stated in the only place it can be read wrong: units.
+  it('prices ninety alloy, forty-five crystal and ten deuterium the same', () => {
+    /*
+      THE OWNER'S RATE, 90:45:10, STATED IN THE ONLY PLACE IT CAN BE READ WRONG.
+
+      It was 90:30:1 at D156, which made one Deuterium worth ninety Alloy — the
+      merchant was the cheapest Deuterium in the game by an order of magnitude and
+      a single Atlas of isotope paid for a whole fleet. Ten Deuterium to ninety
+      Alloy is a nine-to-one premium instead of ninety-to-one: still the scarcest
+      thing on the counter, no longer a printing press.
+    */
     expect(tradeUnits(res(90, 0, 0), TRADE.rate)).toBe(90);
-    expect(tradeUnits(res(0, 30, 0), TRADE.rate)).toBe(90);
-    expect(tradeUnits(res(0, 0, 1), TRADE.rate)).toBe(90);
+    expect(tradeUnits(res(0, 45, 0), TRADE.rate)).toBe(90);
+    expect(tradeUnits(res(0, 0, 10), TRADE.rate)).toBe(90);
     expect(tradeUnits(NOTHING, TRADE.rate)).toBe(0);
-    expect(tradeUnits(res(1, 1, 1), TRADE.rate)).toBe(1 + 3 + 90);
+    expect(tradeUnits(res(1, 1, 1), TRADE.rate)).toBe(1 + 2 + 9);
   });
 
   it('is the rate the galaxy-event calendar hands to a live occurrence', () => {
@@ -93,38 +102,38 @@ describe('quoting a swap', () => {
     /*
       THE RETURN LEG IS THE DECISION, and this example is why the feature exists.
 
-      One thousand Deuterium is ninety thousand units, and ninety thousand units
-      buys sixty thousand Alloy plus ten thousand Crystal. The convoy that carries
-      the offer out needs room for 1,000; the convoy that brings the goods home
-      needs room for 70,000. Sizing a wing against the OUTBOUND leg is the mistake
-      the quote exists to prevent, so `requiredHold` states the larger of the two.
+      Ten thousand Deuterium is ninety thousand units, and ninety thousand units
+      buys sixty thousand Alloy plus fifteen thousand Crystal. The convoy that
+      carries the offer out needs room for 10,000; the convoy that brings the goods
+      home needs room for 75,000. Sizing a wing against the OUTBOUND leg is the
+      mistake the quote exists to prevent, so `requiredHold` states the larger.
     */
-    const quote = quoteTrade(res(0, 0, 1000), res(60_000, 10_000, 0), TRADE.rate);
+    const quote = quoteTrade(res(0, 0, 10_000), res(60_000, 15_000, 0), TRADE.rate);
 
     expect(quote.refusal).toBeNull();
     expect(quote.offerUnits).toBe(90_000);
     expect(quote.askUnits).toBe(90_000);
     expect(quote.leftoverUnits).toBe(0);
-    expect(quote.outboundVolume).toBe(1_000);
-    expect(quote.returnVolume).toBe(70_000);
-    expect(quote.requiredHold).toBe(70_000);
+    expect(quote.outboundVolume).toBe(10_000);
+    expect(quote.returnVolume).toBe(75_000);
+    expect(quote.requiredHold).toBe(75_000);
     expect(quote.requiredHold).toBe(quote.returnVolume);
   });
 
   it('works the rate in the other direction too', () => {
-    const quote = quoteTrade(res(9_000, 0, 0), res(0, 0, 100), TRADE.rate);
+    const quote = quoteTrade(res(9_000, 0, 0), res(0, 0, 1_000), TRADE.rate);
     expect(quote.refusal).toBeNull();
     expect(quote.offerUnits).toBe(9_000);
     expect(quote.askUnits).toBe(9_000);
     expect(quote.requiredHold).toBe(9_000);
     expect(quote.outboundVolume).toBe(9_000);
-    expect(quote.returnVolume).toBe(100);
+    expect(quote.returnVolume).toBe(1_000);
   });
 
   it('shows what the merchant keeps rather than rounding it away', () => {
     // D124: a rule the player cannot see is not a usable rule. An offer worth
     // more than the ask is legal, and the difference is stated, never silent.
-    const quote = quoteTrade(res(0, 0, 10), res(450, 0, 0), TRADE.rate);
+    const quote = quoteTrade(res(0, 0, 100), res(450, 0, 0), TRADE.rate);
     expect(quote.refusal).toBeNull();
     expect(quote.offerUnits).toBe(900);
     expect(quote.askUnits).toBe(450);
@@ -134,11 +143,11 @@ describe('quoting a swap', () => {
   it('refuses an empty offer, an empty ask and an offer that cannot pay', () => {
     expect(quoteTrade(NOTHING, res(90, 0, 0), TRADE.rate).refusal).toBe('EMPTY_GIVE');
     expect(quoteTrade(res(90, 0, 0), NOTHING, TRADE.rate).refusal).toBe('EMPTY_WANT');
-    // 89 Alloy is 89 units and 30 Crystal costs 90 — one unit short.
-    expect(quoteTrade(res(89, 0, 0), res(0, 30, 0), TRADE.rate).refusal)
+    // 89 Alloy is 89 units and 45 Crystal costs 90 — one unit short.
+    expect(quoteTrade(res(89, 0, 0), res(0, 45, 0), TRADE.rate).refusal)
       .toBe('INSUFFICIENT_OFFER');
     // Exactly enough is not insufficient.
-    expect(quoteTrade(res(90, 0, 0), res(0, 30, 0), TRADE.rate).refusal).toBeNull();
+    expect(quoteTrade(res(90, 0, 0), res(0, 45, 0), TRADE.rate).refusal).toBeNull();
   });
 
   it('refuses a self-swap, which only burns cargo', () => {
@@ -149,7 +158,7 @@ describe('quoting a swap', () => {
     */
     expect(quoteTrade(res(1_000, 0, 0), res(900, 0, 0), TRADE.rate).refusal)
       .toBe('OVERLAPPING_RESOURCE');
-    expect(quoteTrade(res(0, 0, 10), res(60, 30, 0), TRADE.rate).refusal).toBeNull();
+    expect(quoteTrade(res(0, 0, 100), res(600, 150, 0), TRADE.rate).refusal).toBeNull();
     // A zero on one side is not an overlap: asking for none of what you gave is fine.
     expect(quoteTrade(res(1_000, 0, 0), res(0, 300, 0), TRADE.rate).refusal).toBeNull();
   });
@@ -157,9 +166,9 @@ describe('quoting a swap', () => {
   it('refuses an amount that is not a whole non-negative number', () => {
     expect(quoteTrade(res(0, 0, 1.5), res(90, 0, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
     expect(quoteTrade(res(90, 0, 0), res(0, 0.5, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
-    expect(quoteTrade(res(-90, 0, 0), res(0, 30, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
-    expect(quoteTrade(res(90, 0, 0), res(0, -30, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
-    expect(quoteTrade(res(Number.NaN, 0, 0), res(0, 30, 0), TRADE.rate).refusal)
+    expect(quoteTrade(res(-90, 0, 0), res(0, 45, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
+    expect(quoteTrade(res(90, 0, 0), res(0, -45, 0), TRADE.rate).refusal).toBe('BAD_AMOUNT');
+    expect(quoteTrade(res(Number.NaN, 0, 0), res(0, 45, 0), TRADE.rate).refusal)
       .toBe('BAD_AMOUNT');
     // There is no quote to state when the numbers are not numbers.
     const bad = quoteTrade(res(0, 0, 1.5), res(90, 0, 0), TRADE.rate);
@@ -173,7 +182,7 @@ describe('quoting a swap', () => {
 
   it('measures both legs with the same arithmetic every cargo hold uses', () => {
     const give = res(120, 40, 3);
-    const want = res(0, 30, 1);
+    const want = res(0, 45, 10);
     const quote = quoteTrade(give, want, TRADE.rate);
     expect(quote.outboundVolume).toBe(resourcesTotal(give));
     expect(quote.returnVolume).toBe(resourcesTotal(want));
@@ -182,7 +191,7 @@ describe('quoting a swap', () => {
 });
 
 describe('the merchant on its orbit', () => {
-  it('flies at half an Atlas, on the Atlas\'s own scale', () => {
+  it('flies at half the slowest hold, on that hull\'s own scale', () => {
     /*
       D155'S LESSON, APPLIED BEFORE IT COULD BE REPEATED.
 
@@ -192,12 +201,21 @@ describe('the merchant on its orbit', () => {
       game turned out to be slower than the thing it was chasing. The anchor is
       asserted against `HULLS` so the constant cannot drift off the catalogue.
     */
-    expect(TRADE.speed * 2 * TRAVEL.distanceFactor).toBeCloseTo(HULLS.ATLAS.speed, 9);
+    /*
+      AND THE ANCHOR IS THE SLOWEST HOLD, NOT A NAMED HULL. D186 reads it off
+      `SUPPORT_ROUND_TRIP.at(-1)` precisely so the ladder and the merchant move
+      together — D196 added a fourth transport and the merchant slowed with it,
+      without a constant being retyped. Asserting `HULLS.ATLAS` by name was the
+      version of this that would have gone stale, and did.
+    */
+    const holds = SUPPORT_HULLS.filter((id) => HULLS[id].profile === 'TRANSPORT');
+    const slowest = holds.reduce((a, b) => (HULLS[a].speed <= HULLS[b].speed ? a : b));
+    expect(TRADE.speed * 2 * TRAVEL.distanceFactor).toBeCloseTo(HULLS[slowest].speed, 9);
 
     // Every cargo hull LEADS the merchant, so the convoy is a choice of hold size
     // rather than a question of whether you can catch it at all.
-    for (const id of ['COURIER', 'WAYFARER', 'ATLAS'] as const) {
-      expect(HULLS[id].speed / TRAVEL.distanceFactor).toBeGreaterThan(TRADE.speed);
+    for (const id of holds) {
+      expect(HULLS[id].speed / TRAVEL.distanceFactor, id).toBeGreaterThan(TRADE.speed);
     }
   });
 

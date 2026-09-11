@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { TRADE, quoteTrade, resourcesTotal, transferCargoCapacity, type Fleet } from '@astera/rules';
+import { tradeRateSchema } from '../src/api/schemas.js';
 import {
   balanceTake,
   dearestFirst,
   largestOffer,
+  leadStride,
   offerCeiling,
   offerStep,
 } from '../src/lib/trade.js';
@@ -52,28 +54,39 @@ describe('which good the ask is dragged by', () => {
 });
 
 describe("the owner's worked example", () => {
+  /*
+    THE EXAMPLE, RESTATED ON D183'S RATE. The owner's worked case was written
+    against 1 · 3 · 90 — "180 alloy is two deuterium, drag it to one and the rest
+    comes home as thirty crystal" — and every number in it is a function of the
+    rate rather than of the rule. At 1 · 2 · 9, 180 alloy is twenty deuterium and
+    the crystal that absorbs one notch of that is nine. The RULE the example is
+    really about is unchanged: the dear good leads, the cheap good absorbs, and the
+    merchant keeps nothing.
+  */
   const fleet: Fleet = { ATLAS: 1 };
   const units = 180 * RATE.alloy;
+  const top = Math.floor(units / RATE.deuterium);
 
-  it('tops the ask up to two deuterium on its own', () => {
+  it('tops the ask up to the whole offer in deuterium on its own', () => {
     const want = balanceTake(units, 'alloy', Infinity, RATE, hold(fleet));
-    expect(want).toEqual({ alloy: 0, crystal: 0, deuterium: 2 });
+    expect(want).toEqual({ alloy: 0, crystal: 0, deuterium: top });
   });
 
   it('pays the rest in crystal the moment the deuterium is dragged down', () => {
-    const want = balanceTake(units, 'alloy', 1, RATE, hold(fleet));
-    expect(want).toEqual({ alloy: 0, crystal: 30, deuterium: 1 });
+    const want = balanceTake(units, 'alloy', top - 2, RATE, hold(fleet));
+    expect(want).toEqual({ alloy: 0, crystal: RATE.deuterium, deuterium: top - 2 });
   });
 
   it('pays all of it in crystal at the bottom of the slider', () => {
     const want = balanceTake(units, 'alloy', 0, RATE, hold(fleet));
-    expect(want).toEqual({ alloy: 0, crystal: 60, deuterium: 0 });
+    expect(want).toEqual({ alloy: 0, crystal: units / RATE.crystal, deuterium: 0 });
   });
 
   it('leaves the merchant nothing, wherever the slider sits', () => {
-    for (let lead = 0; lead <= 2; lead += 1) {
+    for (let lead = 0; lead <= top; lead += 1) {
       const want = balanceTake(units, 'alloy', lead, RATE, hold(fleet));
-      expect(quoteTrade({ alloy: 180, crystal: 0, deuterium: 0 }, want, RATE).leftoverUnits).toBe(0);
+      expect(quoteTrade({ alloy: 180, crystal: 0, deuterium: 0 }, want, RATE).leftoverUnits)
+        .toBe(0);
     }
   });
 });
@@ -144,8 +157,16 @@ describe('the largest offer a convoy can make', () => {
   it('is bounded by the bulkiest haul it could be asked for, not by the store', () => {
     const room = hold({ ATLAS: 1 });
     const top = largestOffer(2_000, room, 'deuterium', RATE);
-    // The store holds 2,000; the convoy is what stops it, and it stops it here.
-    expect(top).toBe(Math.floor(room / RATE.deuterium));
+    /*
+      The store holds 2,000; the convoy is what stops it, and it stops it here —
+      ON THE OFFER'S OWN STRIDE. This used to assert the raw `floor(room / rate)`
+      and passed by coincidence: at the old 6,000 hold that figure happened to land
+      on the stride, and at D195b's 9,500 it does not. An offer that ignored the
+      stride is exactly what D183 removed — it strands a scrap the counter keeps.
+    */
+    const step = offerStep('deuterium', RATE);
+    expect(top).toBe(Math.floor(Math.floor(room / RATE.deuterium) / step) * step);
+    expect(top % step).toBe(0);
 
     const bulkiest = balanceTake(top * RATE.deuterium, 'deuterium', 0, RATE, room);
     const quote = quoteTrade({ alloy: 0, crystal: 0, deuterium: top }, bulkiest, RATE);
@@ -157,7 +178,7 @@ describe('the largest offer a convoy can make', () => {
       would clamp the answer back down to the room and report a fit that is really a
       refusal — testing the guard instead of the rule it guards.
     */
-    expect(((top + 1) * RATE.deuterium) / RATE.alloy).toBeGreaterThan(room);
+    expect(((top + step + 1) * RATE.deuterium) / RATE.alloy).toBeGreaterThan(room);
   });
 
   it('is bounded by the store when the store is the smaller wall', () => {
@@ -193,17 +214,32 @@ describe('the counter never keeps a scrap, and never rounds one off', () => {
    */
   const room = hold({ COURIER: 1, WAYFARER: 1 });
 
+  /*
+    OFF THE RATE, NOT OFF REMEMBERED NUMBERS. These read 90 / 30 / 1, which were
+    the answers for 1 · 3 · 90 and stopped being answers at D183's 1 · 2 · 9. What
+    the rule actually says is "one whole unit of the dearest good this offer buys",
+    and stated that way the assertion survives the next rate change too.
+  */
   it('moves the offer in whole units of the dearest good it buys', () => {
-    expect(offerStep('alloy', RATE)).toBe(90);
-    expect(offerStep('crystal', RATE)).toBe(30);
-    expect(offerStep('deuterium', RATE)).toBe(1);
+    for (const give of ['alloy', 'crystal', 'deuterium'] as const) {
+      const step = offerStep(give, RATE);
+      const [dear] = dearestFirst(give, RATE);
+      expect(step, give).toBeGreaterThan(0);
+      // One step of the offer is a whole number of the dear good — that is the rule.
+      expect((step * RATE[give]) % RATE[dear], give).toBe(0);
+      // And the SMALLEST such step: a coarser grid would cost the player offers.
+      for (let smaller = 1; smaller < step; smaller += 1) {
+        expect((smaller * RATE[give]) % RATE[dear], `${give} ${String(smaller)}`)
+          .not.toBe(0);
+      }
+    }
   });
 
   it('takes the top of the slider as pure deuterium, with no crystal tail', () => {
     const top = largestOffer(50_000, room, 'alloy', RATE);
     const want = balanceTake(top * RATE.alloy, 'alloy', Infinity, RATE, room);
     expect(want.crystal).toBe(0);
-    expect(want.deuterium).toBe(top / 90);
+    expect(want.deuterium).toBe((top * RATE.alloy) / RATE.deuterium);
   });
 
   it('is exact at every notch of the split, not only at the ends', () => {
@@ -215,6 +251,34 @@ describe('the counter never keeps a scrap, and never rounds one off', () => {
       expect(quote.leftoverUnits, `lead ${String(lead)}`).toBe(0);
       expect(quote.refusal, `lead ${String(lead)}`).toBeNull();
     }
+  });
+
+  /**
+   * AND THE SPLIT SNAPS TO A NOTCH THAT CLOSES, WHATEVER IT IS DRAGGED TO. D183.
+   *
+   * While the cheap price divided the dear one (1 · 3 · 90) every lead closed and
+   * the stride was one. At 1 · 2 · 9 it is not: nine is odd, so taking a single
+   * deuterium out of an even pile of units leaves an odd one and a unit no good can
+   * spend. `leadStride` is the run of leads that do close, and `balanceTake` rounds
+   * onto it — the promise is that the merchant keeps nothing, not that the slider
+   * lands on the exact integer a thumb stopped at.
+   */
+  it('rounds the split onto a notch rather than keeping the scrap', () => {
+    const stride = leadStride('alloy', RATE);
+    expect(stride).toBeGreaterThan(0);
+    const units = offerStep('alloy', RATE) * RATE.alloy * 2;
+    for (let lead = 0; lead <= units / RATE.deuterium; lead += 1) {
+      const want = balanceTake(units, 'alloy', lead, RATE, room);
+      // Never above what was asked for, and never a scrap left on the counter.
+      expect(want.deuterium, `lead ${String(lead)}`).toBeLessThanOrEqual(lead);
+      expect(want.deuterium * RATE.deuterium + want.crystal * RATE.crystal).toBe(units);
+    }
+  });
+
+  /** A rate whose cheap price divides its dear one is untouched: every lead closes. */
+  it('leaves a divisible rate on a stride of one, exactly as before', () => {
+    expect(leadStride('alloy', { alloy: 1, crystal: 3, deuterium: 90 })).toBe(1);
+    expect(leadStride('crystal', { alloy: 1, crystal: 3, deuterium: 90 })).toBe(1);
   });
 });
 
@@ -310,12 +374,19 @@ describe('the smallest offer worth making', () => {
  */
 describe('why the offer stops where it does', () => {
   it('names the wall that actually set the ceiling', () => {
-    const hold = 6_000;
-    const store = 100;
+    /*
+      THE STORE IS BIG AND THE CONVOY IS SMALL. The figures were 6,000 of hold
+      against 100 deuterium, which was convoy-bound at 1 · 3 · 90 (a hundred
+      deuterium is 9,000 units and 9,000 alloy does not fit in 6,000) and is store-
+      bound at D183's 1 · 2 · 9. The CASE is "the convoy is the shorter of the two",
+      so the store moves rather than the assertion.
+    */
+    const hold = 600;
+    const store = 100_000;
     const capped = offerCeiling(store, hold, 'deuterium', RATE);
 
     expect(capped.top).toBe(largestOffer(store, hold, 'deuterium', RATE));
-    // The convoy cannot carry the crystal home, and that — not the store — is it.
+    // The convoy cannot carry the alloy home, and that — not the store — is it.
     expect(capped.top).toBeLessThan(store);
     expect(capped.wall).toBe('hold');
   });
@@ -335,6 +406,50 @@ describe('why the offer stops where it does', () => {
           expect(capped.top).toBe(largestOffer(store, hold, give, RATE));
           if (capped.wall === 'store') expect(capped.top).toBeLessThanOrEqual(store);
         }
+      }
+    }
+  });
+});
+
+
+/**
+ * THE SPLIT'S ARITHMETIC ASSUMES WHOLE PRICES, AND THE BOUNDARY HAS TO SAY SO.
+ * D183.
+ *
+ * `leadStride` divides the cheap price by `gcd(dear, cheap)`, and a greatest common
+ * divisor of two fractions is not a number anybody should reason about — a rate of
+ * 1.5 would produce a stride that snaps the split onto positions which leave a
+ * remainder, quietly reintroducing the scrap the whole mechanism exists to prevent.
+ *
+ * `TRADE.rate` is authored as whole numbers and the occurrence freezes what it was
+ * dealt, so this is unreachable in practice. It is asserted anyway because the
+ * schema is the boundary, and "the code happens to only ever be called correctly"
+ * is exactly the assumption that stops being true when somebody edits the table.
+ */
+describe('what the counter requires of a rate', () => {
+  it('is whole numbers, at the wire and in the table', () => {
+    for (const good of ['alloy', 'crystal', 'deuterium'] as const) {
+      expect(Number.isInteger(RATE[good]), good).toBe(true);
+      expect(RATE[good]).toBeGreaterThan(0);
+    }
+    // The parser refuses a fraction rather than handing one to `gcd`.
+    expect(() => tradeRateSchema.parse({ alloy: 1.5, crystal: 2, deuterium: 9 })).toThrow();
+    expect(() => tradeRateSchema.parse({ alloy: 0, crystal: 2, deuterium: 9 })).toThrow();
+    expect(tradeRateSchema.parse({ ...RATE })).toEqual({ ...RATE });
+  });
+
+  /** Whatever the whole-number rate, a stride is a usable positive step. */
+  it('produces a workable stride for every whole rate', () => {
+    for (const rate of [
+      { alloy: 1, crystal: 2, deuterium: 9 },
+      { alloy: 1, crystal: 3, deuterium: 90 },
+      { alloy: 1, crystal: 1, deuterium: 1 },
+      { alloy: 2, crystal: 7, deuterium: 13 },
+    ]) {
+      for (const give of ['alloy', 'crystal', 'deuterium'] as const) {
+        const stride = leadStride(give, rate);
+        expect(Number.isInteger(stride), `${give} of ${JSON.stringify(rate)}`).toBe(true);
+        expect(stride).toBeGreaterThan(0);
       }
     }
   });

@@ -37,6 +37,8 @@ export const research = {
 
   act: "Araştır",
   complete: "araştırıldı",
+  rowRunning: "Araştırılıyor",
+  rowQueued: "Sırada",
 
   needCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
   queueFull:
@@ -80,7 +82,7 @@ export const research = {
   deathStarRole:
     "Komuta Çekirdeği 12 ve Tersane 5 olan bir dünyada, tek kullanımlık Ölüm Yıldızı inşa etmeni sağlar. Ana gezegen ele geçirilemez.",
   deathStarDetail:
-    "Her atış bir Ölüm Yıldızı tüketir. İlk darbe yerdeki tüm filoyu ve devam eden bina siparişlerini yok eder; depo ile üretim havuzundaki kaynakların yarısını siler, Komuta Çekirdeğini bir, Aegis’i iki seviye düşürür ve sınırı aşan binaları yeni Çekirdek seviyesine indirir. Dünya iki saat üretim yapamaz, kaynak toplayamaz, sipariş veremez veya araç fırlatamaz. Bu toparlanma süresi içinde ele geçirme emriyle yapılan ikinci darbe, yalnız koloni veya tarafsız dünyayı ele geçirir.",
+    "Her atış bir Ölüm Yıldızı tüketir. Depo ile üretim havuzundaki kaynakların yarısını siler; Komuta Çekirdeği’ni bir, Aegis’i iki seviye düşürür, binaları yeni Çekirdek sınırına indirir ve devam eden bina işlerini iadesiz iptal eder. Bütün filolar yerinde kalır ve dünya hiçbir zaman el değiştirmez. Dünya iki saat üretim yapamaz, kaynak toplayamaz, sipariş veremez veya araç fırlatamaz.",
 
   synthesisName: "Döteryum Sentezi",
   synthesisTag: "Rafineri seviye sınırını yükseltir",
@@ -94,6 +96,12 @@ export const research = {
     "Hareketli gemilerin üretim süresini kısaltır; yer savunmalarını ve üretim sırası kapasitesini etkilemez.",
   yardDetail:
     "Her kademe bundan sonra vereceğin bütün hareketli gemi siparişlerini, Kazıcı dâhil, tüm dünyalarında daha çabuk bitirir. Yer savunmalarını hızlandırmaz; kaynak bedelini düşürmez ve Tersane sırasına yeni yuva eklemez.",
+  robotsName: "Yapay Zekâ Robotları",
+  robotsTag: "Yapıları daha hızlı kurar",
+  robotsRole:
+    "İnşaat sırasına giren her şeyin süresini kısaltır; gemileri ve yer savunmalarını etkilemez.",
+  robotsDetail:
+    "Her kademe bütün dünyalarında İnşaat sırasına vereceğin her siparişi daha çabuk bitirir: binalar, enstrümanlar ve uydular. Gemileri hızlandırmaz — o Tersane Otomasyonu'nun işidir; kaynak bedelini düşürmez ve sıraya yeni yuva eklemez.",
   holdsName: "Kazıcı Ambarları",
   holdsTag: "Kazıcılar daha çok taşır",
   holdsRole:

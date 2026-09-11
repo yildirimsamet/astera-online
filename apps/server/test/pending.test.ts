@@ -15,6 +15,7 @@ import { EventWorker } from '../src/worker/loop.js';
 import {
   giveInstrument,
   giveSatellite,
+  fuelUp,
   giveUnits,
   grant,
   placeAt,
@@ -316,6 +317,15 @@ describe('what is in flight', () => {
     await giveSatellite(w.db, slowAt, 'UPLINK');
     await giveUnits(w.db, fastFrom, { DART: 20 });
     await giveUnits(w.db, slowFrom, { RAMPART: 4 });
+    /*
+      AND A TANK, BECAUSE THIS IS NOT A TEST ABOUT FUEL. D195 priced fuel off hull
+      VALUE instead of D153's tier rung, which roughly doubled what a tier-1 wing
+      burns, and a `seedWorld` default that covered the old figure no longer covers
+      a long leg. `fuelUp` exists for exactly this: a suite about radar geometry
+      should fail on radar geometry.
+    */
+    await fuelUp(w.db, fastFrom);
+    await fuelUp(w.db, slowFrom);
     w.clock.advance(200);
 
     const fast = await launchAttack(w.db, fastFrom, fastAt, { DART: 20 }, w.clock);

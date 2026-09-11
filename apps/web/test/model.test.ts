@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { noseBearing, noseVector, orientedCraft, posedCraft, turnOnto } from '../src/galaxy/model.js';
+import { MOBILE_HULLS } from '@astera/rules';
 import {
   CRAFT_MODELS,
   HULL_MODEL,
@@ -339,7 +340,7 @@ describe('the facing table', () => {
       rotation: [-13, 180, 0],
       height: 0.21 / 2.5,
     });
-    expect(Object.keys(MODEL_POSE)).toHaveLength(18);
+    expect(Object.keys(MODEL_POSE)).toHaveLength(MOBILE_HULLS.length);
   });
 
   /**

@@ -16,6 +16,7 @@ import {
   InstallIcon,
   LockIcon,
   RaiseIcon,
+  SalvageIcon,
   SendIcon,
   SpeedIcon,
   UnlockIcon,
@@ -293,6 +294,7 @@ export function StatStrip({
   cargo,
   fuel,
   room,
+  salvage,
   size = 'row',
 }: {
   atk: number;
@@ -322,9 +324,19 @@ export function StatStrip({
    * decision left to make there.
    */
   room?: number;
+  /**
+   * WRECK THIS HULL LIFTS AFTER A FIGHT — `salvageCapacity`. D200.
+   *
+   * Takes the CARGO cell rather than adding a seventh: a hull that lifts wreck
+   * carries nothing, so "Cargo —" beside it would be the one fact on the strip
+   * that is true and useless, and the card keeps its fixed shape. Absent or zero
+   * for every other hull, which reads its hold exactly as it always did.
+   */
+  salvage?: number;
   size?: 'row' | 'card';
 }) {
   const big = size === 'card';
+  const lifts = salvage !== undefined && salvage > 0;
 
   return (
     <div className={`stats ${big ? 'stats-card' : ''}`}>
@@ -352,14 +364,24 @@ export function StatStrip({
         text={speed === 0 ? i18n.t('action.statSpeedFixed') : undefined}
         big={big}
       />
-      <Stat
-        icon={<CargoIcon className={big ? 'size-5' : 'size-4'} />}
-        tone="cargo"
-        label={i18n.t('action.statCargo')}
-        value={cargo}
-        text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
-        big={big}
-      />
+      {lifts ? (
+        <Stat
+          icon={<SalvageIcon className={big ? 'size-5' : 'size-4'} />}
+          tone="salvage"
+          label={i18n.t('action.statSalvage')}
+          value={salvage}
+          big={big}
+        />
+      ) : (
+        <Stat
+          icon={<CargoIcon className={big ? 'size-5' : 'size-4'} />}
+          tone="cargo"
+          label={i18n.t('action.statCargo')}
+          value={cargo}
+          text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
+          big={big}
+        />
+      )}
       {room !== undefined && (
         <Stat
           icon={<HangarIcon className={big ? 'size-5' : 'size-4'} />}
@@ -396,7 +418,7 @@ function Stat({
   big,
 }: {
   icon: ReactNode;
-  tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'fuel' | 'room';
+  tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'salvage' | 'fuel' | 'room';
   label: string;
   value: number;
   text?: string;
@@ -426,7 +448,7 @@ export function Price({
    *
    * `stack` is the original and belongs where the price sits in a corner with
    * height to spare — the build sheet's art well. It was also, silently, what
-   * every LIST ROW got, and on a three-resource hull at 375px that turned the
+   * every LIST ROW got, and on a three-resource hull at 350px that turned the
    * right-hand column into four stacked lines and dragged the row's height with
    * it. A row has the width for one line and should use it.
    */
@@ -439,7 +461,7 @@ export function Price({
   return (
     <span
       data-layout={layout}
-      className={`price ${layout === 'stack' ? '!grid grid-rows-1' : 'flex-wrap justify-end'}`}
+      className={`price ${layout === 'stack' ? '!grid grid-rows-1' : '!gap-1 ml-auto justify-end'}`}
     >
       <span className={`price-part ${shortAlloy ? 'price-short' : ''}`}>
         <Mark of="alloy" />

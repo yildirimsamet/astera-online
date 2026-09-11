@@ -3,6 +3,8 @@ import {
   COMBAT,
   alloyRate,
   computeLoot,
+  crystalRate,
+  deuteriumRate,
   protectedHours,
   raidableStock,
   storageCap,
@@ -70,10 +72,41 @@ describe('raidableStock', () => {
     expect(raidableStock(stock, buffer, floor, 'REPELLED')).toBe(0);
   });
 
-  it('counts deuterium, which the vault never covers', () => {
-    const withFuel = { ...stock, deuterium: 3_000 };
-    expect(raidableStock(withFuel, buffer, floor, 'DECISIVE'))
-      .toBeGreaterThan(raidableStock(stock, buffer, floor, 'DECISIVE'));
+  /**
+   * THE VAULT COVERS DEUTERIUM TOO, AND IT ALWAYS SAID SO. D187.
+   *
+   * This test's title used to read "which the vault never covers", written when
+   * `vaultProtects` returned a deuterium floor of ZERO — not as a rule about fuel,
+   * but because deuterium had no passive rate to take hours of. T5 gave it one and
+   * the floor appeared on its own, exactly as that function's own comment says.
+   * `computeLoot` was never told: it subtracted the alloy and crystal floors and
+   * exposed the whole fuel store.
+   *
+   * WHAT MADE IT A DEFECT RATHER THAN A CHOICE is that the figure is PUBLISHED.
+   * `planetView` sends `vaultProtected.deuterium` and `PlanetHero` draws it under a
+   * heading meaning "a raid cannot touch these amounts". A rule the player can SEE
+   * that is not real is worse than one they cannot see at all.
+   */
+  it('covers deuterium by its own production floor, like the other two', () => {
+    const floorD = floor.deuterium;
+    expect(floorD).toBeGreaterThan(0);
+
+    // Everything under the floor is untouchable.
+    const under = { ...stock, deuterium: Math.floor(floorD / 2) };
+    expect(computeLoot(under, buffer, floor, 'DECISIVE', Number.MAX_SAFE_INTEGER).deuterium)
+      .toBe(0);
+
+    // Only the overflow is exposed, at the grade's share — the alloy rule exactly.
+    const over = { ...stock, deuterium: floorD + 1_000 };
+    expect(computeLoot(over, buffer, floor, 'DECISIVE', Number.MAX_SAFE_INTEGER).deuterium)
+      .toBe(Math.floor(1_000 * COMBAT.lootDecisive));
+  });
+
+  /** The works are the other half of D16: the vault never reaches uncollected fuel. */
+  it('still exposes uncollected fuel, which the vault cannot reach', () => {
+    const works = { ...buffer, deuterium: 2_000 };
+    expect(computeLoot(stock, works, floor, 'DECISIVE', Number.MAX_SAFE_INTEGER).deuterium)
+      .toBe(Math.floor(2_000 * COMBAT.lootDecisive * COMBAT.lootBufferShare));
   });
 });
 
@@ -123,5 +156,59 @@ describe('what the vault keeps safe', () => {
     const full = storageCap(alloyRate(refinery), vault);
     const floor = vaultProtects(vault, refinery, refinery, 0);
     expect(floor.alloy / full).toBeLessThan(0.18);
+  });
+});
+
+/**
+ * A RAID ON AN ABSENT COMMANDER MUST BRING SOMETHING HOME. D193.
+ *
+ * Measured before this rule existed: against a world with NO defence at all, whose
+ * commander had been out of the house for a full working day, a raid carried home
+ * NOTHING from Vault 11 onward — and raising the attacker's hold to twenty-four
+ * thousand changed nothing, because the vault floor covered the entire absence. A
+ * commander learns that in two attempts and never flies a third, which is the
+ * quiet death of the whole information layer: nobody scouts for a target that
+ * cannot pay.
+ *
+ * THE MECHANISM WAS THE FLOOR'S SHAPE, not its size. It is a share of STORAGE
+ * HOURS, and storage runs from three hours to forty while a working day stays
+ * eleven — so protection outgrows the absence it is supposed to leave exposed.
+ * `ECON.protectedShare` at 0.15 crossed eleven hours at Vault 11, which is the
+ * middle of a season.
+ *
+ * This is the guard, written as the player's own question: I was at work, somebody
+ * came, did they get anything?
+ */
+describe('a working day is not fully protected', () => {
+  /** The audience is out of the house from eight until seven. D188. */
+  const WORKDAY = 11;
+
+  it('leaves a working day partly exposed at every Vault level a season reaches', () => {
+    for (const vault of [4, 7, 11, 14, 17, 20]) {
+      expect(protectedHours(vault), `Vault ${String(vault)}`).toBeLessThan(WORKDAY);
+    }
+  });
+
+  it('pays a raid on an undefended world at every stage', () => {
+    const stages: [level: number, vault: number, plant: number][] = [
+      [7, 7, 4], [11, 11, 6], [13, 13, 7], [15, 14, 8],
+    ];
+    for (const [level, vault, plant] of stages) {
+      const stock = {
+        alloy: alloyRate(level) * WORKDAY,
+        crystal: crystalRate(level) * WORKDAY,
+        deuterium: deuteriumRate(plant) * WORKDAY,
+      };
+      const floor = vaultProtects(vault, level, level, plant);
+      const haul = raidableStock(stock, { alloy: 0, crystal: 0, deuterium: 0 }, floor, 'DECISIVE');
+      expect(haul, `Core ${String(level)} / Vault ${String(vault)}`).toBeGreaterThan(0);
+    }
+  });
+
+  /** And the vault still does its job: most of a full store stays out of reach. */
+  it('still protects the commander who is merely asleep', () => {
+    for (const vault of [7, 11, 14]) {
+      expect(protectedHours(vault)).toBeGreaterThan(3);
+    }
   });
 });

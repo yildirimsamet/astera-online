@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, HULLS, SEASON, distance, hangarCapacity, missionFuel } from '@astera/rules';
+import { CLAN, HULLS, SEASON, distance, missionFuel } from '@astera/rules';
 import {
   attackCommitments,
   battleReports,
@@ -45,6 +45,7 @@ import {
   claimClanLoot,
   clanPurseForPlayer,
   readClanDepot,
+  recordClanBattleScore,
 } from '../src/services/clanLoot.js';
 import { launchAttack } from '../src/services/mission.js';
 import { readBattleReports } from '../src/services/reports.js';
@@ -570,8 +571,7 @@ describe('ruleset-v3 clans', () => {
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
-    await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
-    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 100 });
     await giveUnits(f.db, f.planetIds[0]!, { COURIER: 1 });
     const payload = {
       senderPlayerId: f.playerIds[0]!,
@@ -594,14 +594,21 @@ describe('ruleset-v3 clans', () => {
     });
   });
 
-  it('quotes and refuses an aid fleet that cannot fit in the destination Hangar', async () => {
+  /**
+   * THE REFUSAL THIS REPLACES. D184.
+   *
+   * Aid used to be quoted against the destination's Hangar and refused when it
+   * would not fit. There is no such ceiling now, so a gift always lands — which is
+   * the only honest answer for a convoy that cannot be recalled once it is away.
+   * The berth cap below is the refusal that remains.
+   */
+  it('lands an aid fleet however full the destination already is', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
-    await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
-    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 5_000 });
     await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const payload = {
       senderPlayerId: f.playerIds[0]!,
@@ -613,9 +620,9 @@ describe('ruleset-v3 clans', () => {
     };
 
     await expect(quoteClanAid(f.db, { ...payload, now: f.clock.now() }))
-      .resolves.toMatchObject({ canLand: false });
+      .resolves.toMatchObject({ canLand: true });
     await expect(f.db.transaction((tx) => launchClanAid(tx, { ...payload, clock: f.clock })))
-      .rejects.toMatchObject({ code: 'CLAN_AID_CANNOT_LAND' });
+      .resolves.toBeTruthy();
   });
 
   it('revalidates advanced ship gifts against the recipient research', async () => {
@@ -644,13 +651,19 @@ describe('ruleset-v3 clans', () => {
       .resolves.toMatchObject({ canLand: true });
   });
 
-  it('returns aid intact when the destination fills while it is flying', async () => {
+  /**
+   * THE OTHER HALF OF THE SAME REFUSAL. D184.
+   *
+   * A destination could fill while the convoy was in the air, and the aid turned
+   * round. Nothing fills any more, so the gift arrives — an empty convoy is a
+   * one-way ship gift, so the Courier stays where it landed.
+   */
+  it('delivers aid even when the destination filled while it was flying', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
-    await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 0);
     await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
@@ -661,27 +674,19 @@ describe('ruleset-v3 clans', () => {
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
-    await giveUnits(f.db, f.planetIds[1]!, { DART: hangarCapacity(0) });
+    await giveUnits(f.db, f.planetIds[1]!, { DART: 5_000 });
 
     f.clock.set(new Date(launch.arriveAt));
     await workerFor(f).tick();
+
     const [commitment] = await f.db.select().from(clanAidCommitments)
       .where(eq(clanAidCommitments.missionId, launch.missionId));
-    expect(commitment?.status).toBe('RETURNING');
-    const [back] = await f.db.select().from(missions).where(and(
-      eq(missions.parentMissionId, launch.missionId),
-      eq(missions.status, 'in_flight'),
-    ));
-    expect(back).toBeDefined();
-
-    f.clock.set(back!.arriveAt);
-    await workerFor(f).tick();
-    const home = await f.db.select().from(units).where(and(
-      eq(units.planetId, f.planetIds[0]!),
+    expect(commitment?.status).toBe('DELIVERED');
+    const landed = await f.db.select().from(units).where(and(
+      eq(units.planetId, f.planetIds[1]!),
       eq(units.hull, 'COURIER'),
-      eq(units.location, 'home'),
     ));
-    expect(home.reduce((sum, row) => sum + row.count, 0)).toBe(2);
+    expect(landed.reduce((sum, row) => sum + row.count, 0)).toBe(1);
   });
 
   it('returns the complete convoy when the recipient disables aid before arrival', async () => {
@@ -778,6 +783,52 @@ describe('ruleset-v3 clans', () => {
     }));
     expect(claimed.claimed.alloy + claimed.claimed.crystal).toBeGreaterThan(0);
     expect(claimed.remaining).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
+  });
+
+  /**
+   * THE CLAN SPLITS LOOT, NEVER SALVAGE. D200 · D114.
+   *
+   * The docked share is a share of what a raid took FROM a commander. What a
+   * Garbage Collector lifted came off a public wreck, so it lands whole in the flying
+   * commander's store — the shares are sized off the loot alone, exactly as before.
+   */
+  it('never splits a Garbage Collector’s salvage into the clan’s docked shares', async () => {
+    const f = await setup(3);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    f.clock.advance(CLAN.adaptationMinutes);
+    await giveUnits(f.db, f.planetIds[2]!, { DART: 60 });
+    const wing = { DART: 250, COURIER: 2, GARBAGE_COLLECTOR: 1 };
+    await giveUnits(f.db, f.planetIds[0]!, wing);
+    const launch = await launchAttack(
+      f.db, f.planetIds[0]!, f.planetIds[2]!, wing, f.clock, f.playerIds[0],
+    );
+    f.clock.set(settledAt(launch.arriveAt));
+    await workerFor(f).tick();
+    const [report] = await f.db.select().from(battleReports)
+      .where(eq(battleReports.missionId, launch.missionId));
+    const salvage = report!.salvage;
+    expect(salvage.alloy + salvage.crystal).toBeGreaterThan(0);
+
+    const [returnMission] = await f.db.select().from(missions).where(and(
+      eq(missions.parentMissionId, launch.missionId),
+      eq(missions.kind, 'return'),
+    ));
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    f.clock.set(returnMission!.arriveAt);
+    await workerFor(f).tick();
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+
+    const shares = await f.db.select().from(clanLootShares)
+      .where(eq(clanLootShares.sourceMissionId, launch.missionId));
+    expect(shares).toHaveLength(2);
+    const sharedAlloy = shares.reduce((sum, share) => sum + share.alloy, 0);
+    const sharedCrystal = shares.reduce((sum, share) => sum + share.crystal, 0);
+    expect(sharedAlloy).toBeLessThanOrEqual(Math.floor(report!.loot.alloy * CLAN.raidLootShare));
+    // What stayed with the raider: the loot less the shares, plus every unit of salvage.
+    expect(after!.alloy - before!.alloy).toBeCloseTo(report!.loot.alloy - sharedAlloy + salvage.alloy, 3);
+    expect(after!.crystal - before!.crystal)
+      .toBeCloseTo(report!.loot.crystal - sharedCrystal + salvage.crystal, 3);
   });
 
   it('serializes simultaneous loot returns against each personal purse ceiling', async () => {
@@ -967,6 +1018,73 @@ describe('ruleset-v3 clans', () => {
     expect(await f.db.select().from(clans)).toHaveLength(0);
     expect(await f.db.select().from(clanMemberships)).toHaveLength(0);
     expect(await f.db.select().from(seasonResults)).toHaveLength(2);
+  });
+
+  it('does not deadlock two opposite clan score updates', async () => {
+    const f = await setup(2);
+    const first = await foundClan(f, 0);
+    const secondActor = await clanActor(f.db, f.accountIds[1]!);
+    const second = await f.db.transaction((tx) => createClan(tx, {
+      actor: secondActor,
+      name: 'Perigee Watch',
+      tag: 'PW',
+      description: '',
+      recruiting: true,
+      clock: f.clock,
+    }));
+    const [lowerClanId, higherClanId] = [first.result.clanId, second.clanId].sort() as [
+      string,
+      string,
+    ];
+    const [mission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'attack',
+      status: 'resolved',
+      ownerPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { DART: 1 },
+      distance: 1,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+    }).returning();
+    await f.db.insert(attackCommitments).values({
+      seasonId: f.seasonId,
+      missionId: mission!.id,
+      attackerPlayerId: f.playerIds[0]!,
+      targetPlayerId: f.playerIds[1]!,
+      attackerScoreClanId: higherClanId,
+      defenderScoreClanId: lowerClanId,
+      launchedAt: f.clock.now(),
+      expiresAt: new Date(f.clock.now().getTime() + CLAN.attackWindowMinutes * 60_000),
+    });
+
+    let announceLowerLocked!: () => void;
+    const lowerLocked = new Promise<void>((resolve) => { announceLowerLocked = resolve; });
+    let competeForHigher!: () => void;
+    const compete = new Promise<void>((resolve) => { competeForHigher = resolve; });
+    const forwardScoreOrder = f.db.transaction(async (tx) => {
+      await tx.select({ id: clans.id }).from(clans)
+        .where(eq(clans.id, lowerClanId)).for('update');
+      announceLowerLocked();
+      await compete;
+      await tx.select({ id: clans.id }).from(clans)
+        .where(eq(clans.id, higherClanId)).for('update');
+    });
+    await lowerLocked;
+
+    const reverseScore = f.db.transaction((tx) => recordClanBattleScore(tx, {
+      missionId: mission!.id,
+      seasonId: f.seasonId,
+      attackerDelta: 50,
+      defenderDelta: -50,
+      at: f.clock.now(),
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    competeForHigher();
+
+    const outcomes = await Promise.allSettled([forwardScoreOrder, reverseScore]);
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
   });
 
   /**

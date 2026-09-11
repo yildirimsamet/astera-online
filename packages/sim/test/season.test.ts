@@ -37,6 +37,15 @@ const CFG = {
     slotPool: 200,
     neutralCounts: { 1: 10, 2: 5, 3: 2 },
   },
+  /**
+   * THE AUDIENCE, NOT AN ASYNC-ERA LOGIN COUNT. D188/D189.
+   *
+   * Every band below used to be measured on `loginsPerDay` — a commander waking
+   * ten times a day including four in the morning — which is not the population
+   * this game is for. `by-archetype` runs each habit on its own briefed calendar
+   * (10/15/15/90, weekends longer) at the ten-minute cadence D189 measured.
+   */
+  activityProfiles: 'by-archetype',
 } as const;
 
 const RUNS = SEEDS.map((seed) => {
@@ -115,11 +124,17 @@ describe.each(RUNS)('season on seed $seed', ({ world, medians }) => {
 
   it('dominion is zero-sum across the whole galaxy', () => {
     const total = world.players.reduce((s, p) => s + p.ledger.taken - p.ledger.lost, 0);
-    expect(Math.abs(total)).toBeLessThan(1);
+    expect(total).toBe(0);
   });
 });
 
 describe('pooled across all five seeds', () => {
+  it('records uncapped, season-sized Dominion transfers', () => {
+    const settled = RUNS.flatMap((run) => run.settledStats);
+    expect(settled.reduce((sum, day) => sum + day.dominionVolume, 0)).toBeGreaterThan(0);
+    expect(Math.max(...settled.map((day) => day.largestDominionSwing))).toBeGreaterThan(10_000);
+  });
+
   it.each(POOLED)('%s holds its band', (key) => {
     const m = median(RUNS.map((r) => r.medians[key]));
     const v = verdict(key, m);
@@ -271,7 +286,7 @@ describe('VFR still catches a vault that covers everything', () => {
   const planet = (over: Partial<SimPlayer>): SimPlayer => ({
       id: 0, name: 'T', type: 'TURTLE', x: 0, y: 0, z: 0,
       buildings: {
-        CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0,
+        CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0,
       },
       instruments: {}, orbit: [], fleet: {}, ground: {},
       queues: { CONSTRUCTION: [], YARD: [], RESEARCH: [] },
@@ -322,7 +337,7 @@ describe('VFR still catches a vault that covers everything', () => {
       const floor = vaultProtects(8, 8, 8, 0);
       return planet({
         buildings: {
-          CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0,
+          CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0,
         },
         alloy: floor.alloy * 0.9,
         crystal: floor.crystal * 0.9,

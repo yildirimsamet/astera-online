@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import {
   SATELLITE_IDS,
   alloyRate,
@@ -23,6 +23,11 @@ import {
   players,
   satellites,
 } from '../db/schema.js';
+import {
+  compareDominionScoresDescending,
+  dominionPodium,
+  playerDominionSql,
+} from './dominion.js';
 
 /**
  * EVERY WORLD IN A SEASON, AT THE DETAIL EVERYBODY IS ENTITLED TO.
@@ -175,8 +180,23 @@ export async function publicWorlds(
       clanName: clans.name,
       clanTag: clans.tag,
       // Left-joined, so a neutral world genuinely answers NULL here.
-      playerScore: sql<number | null>`round(${players.dominionTaken} - ${players.dominionLost})`,
+      playerScore: playerDominionSql,
       playerJoinedAt: players.joinedAt,
+      /**
+       * THE COMMANDER'S FIRST-DAY SHIELD, AS A PROPERTY OF EVERY WORLD THEY HOLD.
+       * D183.
+       *
+       * PUBLIC ON PURPOSE, and it is the only way the rule can work: D124 —
+       * "a rule the player cannot see is not a usable rule". A raider who cannot
+       * tell a shielded commander from a reachable one discovers the rule by
+       * committing a fleet and being refused, which is an error message rather
+       * than a rule.
+       *
+       * IT REVEALS NOTHING ELSE. That a commander joined recently is already
+       * readable from the ladder and from an undeveloped Core; what this adds is
+       * the one fact a launch decision turns on, and it expires on its own.
+       */
+      playerShieldUntil: players.newcomerShieldUntil,
     })
     .from(planets)
     .leftJoin(players, eq(planets.controllerPlayerId, players.id))
@@ -214,18 +234,20 @@ export async function publicWorlds(
   const commanders = new Map<string, { score: number; joinedAt: Date }>();
   for (const row of rows) {
     const playerId = row.planet.controllerPlayerId;
-    if (!playerId || row.playerScore === null || !row.playerJoinedAt) continue;
+    if (!playerId || !row.playerJoinedAt) continue;
     commanders.set(playerId, { score: row.playerScore, joinedAt: row.playerJoinedAt });
   }
-  const dominionRanks = new Map(
-    [...commanders]
-      .sort(([leftId, left], [rightId, right]) =>
-        right.score - left.score
-        || left.joinedAt.getTime() - right.joinedAt.getTime()
-        || leftId.localeCompare(rightId))
-      .slice(0, 3)
-      .map(([playerId], index) => [playerId, (index + 1) as 1 | 2 | 3] as const),
-  );
+  const dominionRanks = planetIds === undefined
+    ? new Map(
+        [...commanders]
+          .sort(([leftId, left], [rightId, right]) =>
+            compareDominionScoresDescending(left.score, right.score)
+            || left.joinedAt.getTime() - right.joinedAt.getTime()
+            || leftId.localeCompare(rightId))
+          .slice(0, 3)
+          .map(([playerId], index) => [playerId, (index + 1) as 1 | 2 | 3] as const),
+      )
+    : await dominionPodium(db, seasonId, new Set());
 
   return rows.map((r) => {
     const core = levels.get(`${r.planet.id}:CORE`) ?? 0;
@@ -240,10 +262,24 @@ export async function publicWorlds(
           playerId: r.planet.controllerPlayerId!,
           displayName: r.ownerName ?? 'Unknown commander',
         };
+    /*
+      THE THREE STATES A WORLD CAN BE IN, AND THE ORDER IS THE SEVERITY.
+
+      RECOVERY is a world that has been struck and is dark; PROTECTED is a world
+      that cannot be raided. The second now has two sources — an occupation window
+      on one captured world (`protectedUntil`), and its commander's first-day
+      shield (D183) — and they mean the same thing to a raider, so they wear the
+      same badge and the later of the two is the one that is drawn.
+    */
+    const shieldedUntil = [
+      r.planet.protectedUntil,
+      r.planet.kind === 'NEUTRAL' ? null : r.playerShieldUntil,
+    ].filter((at): at is Date => at !== null && at > now)
+      .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     const state = r.planet.recoveryUntil && r.planet.recoveryUntil > now
       ? { kind: 'RECOVERY' as const, until: r.planet.recoveryUntil }
-      : r.planet.protectedUntil && r.planet.protectedUntil > now
-        ? { kind: 'PROTECTED' as const, until: r.planet.protectedUntil }
+      : shieldedUntil
+        ? { kind: 'PROTECTED' as const, until: shieldedUntil }
         : { kind: 'NORMAL' as const };
     return {
       id: r.planet.id,

@@ -102,7 +102,7 @@ export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
  * NOT the same list as `CLAN_TRANSFERABLE_HULLS`, and not the same as clan aid's
  * carriers (the same three dedicated transports — see `clanTransferCargoCapacity`).
  */
-export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
+export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'] as const;
 
 /**
  * WHAT THIS COMMANDER CAN MOVE BETWEEN THEIR OWN WORLDS — and what a trade convoy

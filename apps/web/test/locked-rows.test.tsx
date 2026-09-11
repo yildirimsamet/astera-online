@@ -59,7 +59,7 @@ const sweep = (): Shut[] => {
   const shut: Shut[] = [];
   for (const tab of TABS) {
     current = planetView(
-      { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, HANGAR: 0 } },
+      { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 } },
       { alloy: 0, crystal: 0, deuterium: 0 },
     );
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -132,7 +132,7 @@ describe('pressing the reason', () => {
   };
 
   const bare = planetView(
-    { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, HANGAR: 0 } },
+    { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 } },
     { alloy: 0, crystal: 0, deuterium: 0 },
   );
 

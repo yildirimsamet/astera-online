@@ -309,25 +309,37 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   }));
 }
 
-/** A Rival is a commander; the chosen planet is only the backwards-compatible anchor. */
-export function isRivalNode(
+/**
+ * WHICH RIVAL SLOT THIS WORLD WEARS, OR NULL. D183.
+ *
+ * A Rival is a COMMANDER; the world in the mark is only where the press landed
+ * (D97), so every world a marked commander controls wears the reticle and the mark
+ * follows them when a marked colony changes hands.
+ *
+ * THE SLOT RATHER THAN A BOOLEAN, because there are up to `RIVAL.max` marks now
+ * and each one has its own colour. The slot is stored on the mark for exactly this
+ * reason: a hue read off a position in the array would change every time an
+ * unrelated mark was cleared, and a bookmark that changes colour is a different
+ * bookmark.
+ *
+ * A WORLD YOU CANNOT SEE NEVER WEARS THE RETICLE. D127, owner's instruction.
+ * The commander branch is safe on its own — an unresolved world carries no
+ * `controllerPlayerId`, so it cannot match. The PLANET branch is not: it matches
+ * on id, which is published in every state, so a Rival pinned by world would have
+ * been marked across the fog. That is a live answer to "where do they live", which
+ * is exactly what D127 made something you have to go and find.
+ */
+export function rivalSlotOf(
   node: PlanetNode,
-  rivalPlanetId: string | null,
-  rivalPlayerId: string | null,
-): boolean {
-  /**
-   * A WORLD YOU CANNOT SEE NEVER WEARS THE RETICLE. D127, owner's instruction.
-   *
-   * The player branch is safe on its own — an unresolved world carries no
-   * `controllerPlayerId`, so it cannot match. The PLANET branch is not: it matches
-   * on id, which is published in every state, so a Rival pinned by world would
-   * have been marked across the fog. That is a live answer to "where do they
-   * live", which is exactly what D127 made something you have to go and find.
-   */
-  if (node.intel === 'UNKNOWN') return false;
-  return rivalPlayerId !== null
-    ? node.controllerPlayerId === rivalPlayerId
-    : node.id === rivalPlanetId;
+  rivals: readonly { planetId: string; playerId: string; slot: number }[],
+): number | null {
+  if (node.intel === 'UNKNOWN') return null;
+  const mark = rivals.find((candidate) => (
+    node.controllerPlayerId !== undefined
+      ? candidate.playerId === node.controllerPlayerId
+      : candidate.planetId === node.id
+  ));
+  return mark ? mark.slot : null;
 }
 
 /* ── things in flight ───────────────────────────────────────── */

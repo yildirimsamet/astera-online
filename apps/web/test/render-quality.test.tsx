@@ -148,7 +148,14 @@ describe('the canvas spends what the preset says', () => {
    */
   it('replaces the composer when the resolution ceiling changes', () => {
     const composer = canvas.slice(canvas.indexOf('<EffectComposer'));
-    expect(composer.slice(0, composer.indexOf('>'))).toMatch(/key=\{preset\.dprCap\}/);
+    /*
+      THE CEILING IS IN THE KEY; IT IS NO LONGER THE WHOLE KEY. A lost WebGL
+      context is the second thing that has to rebuild this composer — a phone
+      that backgrounds the tab hands back a NEW context, and every render target
+      the old one allocated died with the old one (`gpuContext.ts`). So the
+      assertion is that the ceiling participates, not that it is alone.
+    */
+    expect(composer.slice(0, composer.indexOf('>'))).toMatch(/key=\{[^}]*preset\.dprCap/);
   });
 });
 

@@ -4,7 +4,8 @@ export type HullId =
   | 'DART' | 'PIKE' | 'RAMPART' | 'WARDEN' | 'COURIER'
   | 'VIPER' | 'TALON' | 'STRONGHOLD' | 'SENTINEL' | 'WAYFARER'
   | 'TEMPEST' | 'BALLISTA' | 'LEVIATHAN' | 'PRAETORIAN' | 'ATLAS' | 'NULLIFIER'
-  | 'CATACLYSM' | 'CITADEL'
+  | 'GARBAGE_COLLECTOR'
+  | 'CATACLYSM' | 'CORSAIR' | 'CITADEL' | 'PALADIN' | 'ARGOSY'
   | 'BASTION' | 'THORN'
   | 'PROSPECTOR';
 
@@ -50,6 +51,8 @@ export type ShipTier = 1 | 2 | 3 | 4;
 export type HullFamily = 'OFFENSIVE' | 'DEFENSIVE' | 'CARGO' | 'SPECIALIST' | 'PRESERVED';
 export type HullProfile =
   | 'RAIDER' | 'STRIKER' | 'FORTRESS' | 'ESCORT' | 'TRANSPORT' | 'SHIELD_BREAKER'
+  /** Lifts a share of its own battle's wreck on the way home. D200. */
+  | 'COLLECTOR'
   | 'EMPLACEMENT' | 'MINER';
 
 /**
@@ -62,17 +65,18 @@ export type HullProfile =
  * on read; nothing writes one.
  */
 /**
- * THE HANGAR IS THE SIXTH, AND IT IS APPENDED. T4.
+ * THE HANGAR WAS THE SIXTH, AND IT IS GONE. D184.
  *
  * `buildings.type` is plain text with no constraint and `buildingLevelsFrom` reads
- * a missing row as level 0, so a sixth building needs no migration and no backfill:
- * every existing world reads Hangar 0 on its next load. Appending rather than
- * inserting keeps that true for anything that has ever persisted an index.
+ * an unknown row as nothing, so dropping one needs no enum migration: a stale
+ * `HANGAR` row is simply never asked for again. The migration deletes those rows
+ * anyway, because a row nothing can price is a row that will confuse the next
+ * person to read the table.
  */
 export type BuildingId =
-  | 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'HANGAR' | 'DEUTERIUM_PLANT';
+  | 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'DEUTERIUM_PLANT';
 export const BUILDING_IDS = [
-  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
 ] as const;
 /**
  * TWO KINDS OF HARDWARE, AND THEY ARE NOT ALIKE. D25.
@@ -161,7 +165,8 @@ export type ResearchProjectId =
   | 'SHIP_PROPULSION'
   | 'EMPLACEMENT_DOCTRINE'
   | 'INTERCEPTION_GRID'
-  | 'STRATEGIC_STOCKPILE';
+  | 'STRATEGIC_STOCKPILE'
+  | 'AI_ROBOTS';
 export const RESEARCH_PROJECT_IDS = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
@@ -187,6 +192,8 @@ export const RESEARCH_PROJECT_IDS = [
   /** The two strategic projects: one stops a weapon, one keeps a second on the pad. T10/T11. */
   'INTERCEPTION_GRID',
   'STRATEGIC_STOCKPILE',
+  /** The surface's own build-speed ladder, and the Yard's opposite number. D198. */
+  'AI_ROBOTS',
 ] as const;
 
 export interface ResearchRequirement {

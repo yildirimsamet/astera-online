@@ -124,6 +124,39 @@ const POLICY = {
 
 const DEFAULT_POLICY = { texture: 512, simplify: false };
 
+/**
+ * THE TRIANGLE CEILING FOR ANYTHING THAT FLIES. D197, owner instruction:
+ * *"5bin üçgeni aşan gemilerin üçgen sayısını ~5bin'e çek. (Tüccar gemisi hariç)"*
+ *
+ * `visual-design.md` has always stated a ship budget and the catalogue has always
+ * ignored it: entries arrive between 3.7k and 10.2k triangles because that is what
+ * the renders export at, and `ships` policy said `simplify: false` on the
+ * reasoning that a hull is "the one thing a player watches long enough to notice a
+ * bad silhouette". True, and it is also the reason the cut is worth making
+ * CAREFULLY rather than not at all — a phone drawing a dozen craft at once pays
+ * for every triangle, and half of these are spent on panel grooves that are
+ * sub-pixel in flight.
+ *
+ * APPLIED IN THE RUN LOOP, NOT IN A POLICY ROW, so a `PATH_POLICY` entry that
+ * exists to tune a TEXTURE cannot silently drop the ceiling — three ships already
+ * have such a row, and losing the cap for them is exactly the kind of quiet
+ * exception this pipeline has been bitten by before.
+ *
+ * THE RATIO IS PER MODEL, because a ceiling is not a ratio: at 10,188 triangles a
+ * Paladin needs a 49% cut and a Ballista at 5,049 needs 1%. `error` is tighter
+ * than anything else in this file (0.005 against the satellites' 0.01) for the
+ * same reason the ships were exempt in the first place — the silhouette is the
+ * asset.
+ */
+const SHIP_TRIANGLE_CEILING = 5_000;
+
+/**
+ * THE MERCHANT IS EXEMPT BY INSTRUCTION. It is the one craft in the game nobody
+ * owns and everybody watches arrive — a public event with its own arrival window —
+ * so it is looked at differently from a hull in a formation.
+ */
+const UNCAPPED_CRAFT = new Set(['ships/trade_ship.glb']);
+
 const PATH_POLICY = {
   // The strategic craft is shown larger than a normal hull, but its raw Tripo
   // sphere spends 17k triangles and a 4K plate on grooves that collapse below a
@@ -135,6 +168,15 @@ const PATH_POLICY = {
   'ships/pike.glb': { texture: 800, simplify: false },
   'ships/praetorian.glb': { texture: 736, simplify: false },
   'ships/citadel.glb': { texture: 752, simplify: false },
+  /*
+    D200. At the ceiling's own 0.005 the simplifier stalls at 7,182 of 9,810 — its
+    arms and claws are long thin runs the error bound will not collapse — so this
+    row carries the cut itself at 0.01, where it lands on 4,994. 736 is the plate
+    that keeps the result inside the 300 KB envelope (768 lands at 301).
+  */
+  'ships/garbage-collector.glb': {
+    texture: 736, simplify: true, ratio: SHIP_TRIANGLE_CEILING / 9_810, error: 0.01,
+  },
 };
 
 /**
@@ -161,6 +203,11 @@ const policyFor = (relPath) => {
 
 const inspectOnly = process.argv.includes('--inspect');
 const fleetV2Only = process.argv.includes('--fleet-v2');
+/**
+ * `--only=ships/garbage-collector.glb` optimises that one source and nothing else,
+ * so adding a hull does not re-encode every approved model beside it.
+ */
+const onlyPath = process.argv.find((arg) => arg.startsWith('--only='))?.slice('--only='.length);
 
 function walk(dir) {
   const found = [];
@@ -221,6 +268,10 @@ if (fleetV2Only) {
   );
 }
 
+if (onlyPath !== undefined) {
+  sources = sources.filter((source) => relative(SOURCE, source).replaceAll('\\', '/') === onlyPath);
+}
+
 if (sources.length === 0) {
   console.log(`No .glb files under ${SOURCE}.`);
   process.exit(0);
@@ -235,7 +286,20 @@ for (const source of sources) {
     continue;
   }
 
-  const policy = policyFor(relative(SOURCE, source));
+  const rel = relative(SOURCE, source).replaceAll('\\', '/');
+  const base = policyFor(relative(SOURCE, source));
+  /*
+    A ship over the ceiling is cut to it, whatever its policy row says about
+    textures. Anything already under it is left exactly alone: a 1% trim buys
+    nothing and spends silhouette.
+  */
+  const capped = rel.startsWith('ships/')
+    && !UNCAPPED_CRAFT.has(rel)
+    && !base.simplify
+    && before.triangles > SHIP_TRIANGLE_CEILING;
+  const policy = capped
+    ? { ...base, simplify: true, ratio: SHIP_TRIANGLE_CEILING / before.triangles, error: 0.005 }
+    : base;
 
   mkdirSync(dirname(target), { recursive: true });
   execFileSync(

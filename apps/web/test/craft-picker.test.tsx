@@ -44,9 +44,15 @@ const shell = {
   busy: false,
   open: true,
   onToggle: vi.fn(),
+  /** Nothing resting, unless a case says otherwise. D183. */
+  craftReadyAt: null,
 };
 
-const rockPanel = (craftAvailable: number, onSend: (n: number) => void) =>
+const rockPanel = (
+  craftAvailable: number,
+  onSend: (n: number) => void,
+  craftReadyAt: Date | null = null,
+) =>
   render(
     <AsteroidFocus
       rock={ROCK}
@@ -61,10 +67,15 @@ const rockPanel = (craftAvailable: number, onSend: (n: number) => void) =>
       run={undefined}
       onSend={onSend}
       {...shell}
+      craftReadyAt={craftReadyAt}
     />,
   );
 
-const wreckPanel = (craftAvailable: number, onSend: (n: number) => void) =>
+const wreckPanel = (
+  craftAvailable: number,
+  onSend: (n: number) => void,
+  craftReadyAt: Date | null = null,
+) =>
   render(
     <DebrisFocus
       field={FIELD}
@@ -76,6 +87,7 @@ const wreckPanel = (craftAvailable: number, onSend: (n: number) => void) =>
       run={undefined}
       onSend={onSend}
       {...shell}
+      craftReadyAt={craftReadyAt}
     />,
   );
 
@@ -150,6 +162,43 @@ describe.each([
     panel(0, vi.fn());
     expect(options()).toHaveLength(0);
     expect(screen.getByRole('button', { name: /No .*at home/i })).toBeDisabled();
+  });
+});
+
+/**
+ * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183 · D124.
+ *
+ * A wreck field over the commander's own world is a zero-length leg, so every
+ * brake mining has evaluates to nothing and the field is emptied by tapping. The
+ * server rests the craft for a minute when they land — and a lockout the player
+ * cannot see is exactly the "timer with nothing on screen" that
+ * `PROSPECTOR.returnSpeedFactor` refuses. So the rail states the wait, both rails,
+ * and the control is dead before it is ever pressed.
+ */
+describe.each([
+  ['an asteroid', rockPanel],
+  ['a wreck field', wreckPanel],
+])('craft resting after a free trip, at %s', (_name, panel) => {
+  const RESTING = new Date(Date.now() + 45_000);
+
+  it('refuses the launch and names the wait rather than the craft count', () => {
+    panel(3, vi.fn(), RESTING);
+    const send = screen.getByRole('button', { name: /Craft resting/i });
+    expect(send).toBeDisabled();
+    // The picker is not the thing that is wrong, so it is not the thing removed:
+    // a commander can still see what they WOULD send when the minute is up.
+    expect(options()).toHaveLength(3);
+  });
+
+  it('offers the launch again the moment the rest is behind them', () => {
+    panel(3, vi.fn(), new Date(Date.now() - 1_000));
+    expect(sendButton()).toBeEnabled();
+  });
+
+  it('is silent when nothing is resting', () => {
+    panel(3, vi.fn(), null);
+    expect(screen.queryByText(/Craft resting/i)).toBeNull();
+    expect(sendButton()).toBeEnabled();
   });
 });
 

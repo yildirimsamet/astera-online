@@ -6,7 +6,7 @@
  * demektir. Türkçe okuyan biri bunu "Dart"tan çıkaramaz, "Ok"dan çıkarır.
  * Seçimler sözlük karşılığı değil, Türkçede aynı askerî tınıyı veren adlar:
  *
- *   Dart → Ok · Lance → Mızrak · Bulwark → Siper · Courier → Kurye
+ *   Dart → Ok · Lance → Mızrak · Bulwark → Sur · Courier → Kurye
  *   Bastion → Tabya · Thorn → Kirpi · Prospector → Kazıcı
  *
  * "Tabya" ve "Kurye" gerçek Türkçe askerî ve denizcilik terimleri; oyuncunun
@@ -51,28 +51,22 @@ export const vocabulary = {
       detail: 'Her seviye, havuzda biriken saatlik kristali ve depoya sığan toplam kristali artırır. Kristal özellikle gelişmiş gemilerde, gezegen cihazlarında ve araştırmalarda kullanılır; bu nedenle üretim artışı ileri gelişim adımlarını hızlandırır.',
     },
     VAULT: {
-      name: 'Kasa',
-      tag: 'Akına karşı korur',
-      role: 'Kaynaklarının bir bölümünü akınlardan korur ve depo kapasitesini büyütür.',
-      detail: 'Kasa, her kaynak için akınların erişemeyeceği korumalı miktarı ve toplam depo kapasitesini artırır. Saldırgan yalnız koruma sınırının üstünde kalan kaynakları yağmalayabilir. Kasa çatışmaya katılmaz ve gelen hasarı azaltmaz.',
+      name: 'Depo',
+      tag: 'Depo kapasitesini büyütür',
+      role: 'Her kaynağın kaç saatlik üretimini tutabildiğini belirler. Ayrıca en alttaki %10\'luk dilimi, en fazla 8 saatlik üretim olmak üzere, akınlara karşı korur.',
+      detail: 'Deponun derinliğini seviye seviye büyütür: her kaynak, kendi saatlik üretiminin bu kadar saatlik miktarını tutar — bu yüzden alaşım ve kristal tavanları farklıdır. İkinci işi korumadır: akınlar, deponun en alttaki %10\'u ile o kaynağın 8 saatlik üretiminden hangisi daha azsa ona erişemez. Depo çatışmaya katılmaz ve gelen hasarı azaltmaz.',
     },
     SHIPYARD: {
       name: 'Tersane',
       tag: 'Yeni gemileri açar',
       role: 'Yeni gemileri açar; gemi ve yer savunması üretimini hızlandırır, sondalarını geliştirir.',
-      detail: 'Seviye yükseldikçe yeni gemi sınıfları açılır; gemiler ve yer savunmaları daha kısa sürede tamamlanır. Yüksek Tersane seviyesi sondalarının daha doğru bilgi toplamasını ve rakip Radarlarına daha zor yakalanmasını sağlar. Hangar kapasitesini veya üretim sırası uzunluğunu artırmaz.',
+      detail: 'Seviye yükseldikçe yeni gemi sınıfları açılır; gemiler ve yer savunmaları daha kısa sürede tamamlanır. Yüksek Tersane seviyesi sondalarının daha doğru bilgi toplamasını ve rakip Radarlarına daha zor yakalanmasını sağlar. Üretim sırası uzunluğunu artırmaz.',
     },
     DEUTERIUM_PLANT: {
       name: 'Döteryum Rafinerisi',
       tag: 'Döteryum üretir',
       role: 'Saatlik Döteryum üretimini ve Döteryum deposunun kapasitesini artırır; seviye sınırını Döteryum Sentezi belirler.',
       detail: 'Her seviye, filo uçuşlarında harcanan Döteryumun saatlik üretimini ve depoya sığan miktarını artırır. Yapabileceğin Rafineri seviyesi, Komuta Çekirdeğinin yanında Döteryum Sentezi araştırmana da bağlıdır; sınırdaysan araştırmayı bir kademe ilerletmelisin.',
-    },
-    HANGAR: {
-      name: 'Hangar',
-      tag: 'Filonun sığacağı yeri belirler',
-      role: 'Bu dünyaya bağlı hareketli gemilerin toplam kapasitesini belirler.',
-      detail: 'Her hareketli gemi, maliyetinden türetilen büyüklüğü kadar Hangar alanı kullanır. Uçuşta olan gemiler de çıkış dünyalarının kapasitesinde sayılmaya devam eder. Yeni sipariş ancak tamamlandığında bütün gemiler Hangara sığacaksa verilebilir.',
     },
   },
 
@@ -174,28 +168,28 @@ export const vocabulary = {
       tag: 'Kırılgan hızlı akıncı',
       role: 'Giriş seviyesindeki en hızlı savaş gövdesidir; dayanım yerine kısa görev süresi sunar.',
       pitch: 'Hızla vurup döner, fakat yoğun ateş altında çabuk dağılır.',
-      detail: 'Ok, kısa akınlar ve ağır gövdelere karşı hızlı karşılık vermek için tasarlanmış ucuz bir Çevik sınıf gemidir. Hızı ev savunmasının dışarıda kaldığı süreyi azaltır; ince gövdesi ise yanlış istihbaratı pahalıya çevirir.',
+      detail: 'Ok, kısa akınlar ve ağır gövdelere karşı hızlı karşılık vermek için tasarlanmış ucuz bir Akıncı sınıfı gemidir. Hızı ev savunmasının dışarıda kaldığı süreyi azaltır; ince gövdesi ise yanlış istihbaratı pahalıya çevirir.',
     },
     PIKE: {
       name: 'Kargı',
       tag: 'Giriş seviye taarruz gemisi',
-      role: 'Bedeline göre yüksek saldırı üretir; dayanıklı Siper sınıfı hedeflere karşı verimsizdir.',
+      role: 'Bedeline göre yüksek saldırı üretir; dayanıklı Sur sınıfı hedeflere karşı verimsizdir.',
       pitch: 'Kaynağının büyük bölümünü hayatta kalmaya değil hasara ayırır.',
-      detail: 'Kargı, Çevik gemileri ve Kirpileri avlayan Mızrak sınıfı bir saldırı gövdesidir. Sur ve Tabya doğal karşılığıdır; bu yüzden yalnız Kargıdan oluşan bir filonun rakip tarafından okunabilir ve etkili bir cevabı vardır.',
+      detail: 'Kargı, Akıncı gemilerini ve Kirpileri avlayan Mızrak sınıfı bir saldırı gövdesidir. Sur ve Tabya doğal karşılığıdır; bu yüzden yalnız Kargıdan oluşan bir filonun rakip tarafından okunabilir ve etkili bir cevabı vardır.',
     },
     RAMPART: {
       name: 'Sur',
       tag: 'Giriş seviye kale gemisi',
       role: 'Ucuz dayanıklılık sağlar, fakat bulunduğu bütün filonun uçuşunu yavaşlatır.',
-      pitch: 'Mızrak ateşini iyi karşılar; Çevik sürülere karşı açık verir.',
-      detail: 'Sur, saldırı yerine gövde dayanımına yatırım yapan yavaş bir Siper sınıfı hat gemisidir. Yolculuk süresinin önemsiz, filonun ayakta kalmasının önemli olduğu kuşatma ve savunma görevlerinde değer kazanır.',
+      pitch: 'Mızrak ateşini iyi karşılar; Akıncı sürülerine karşı açık verir.',
+      detail: 'Sur, saldırı yerine gövde dayanımına yatırım yapan yavaş bir Sur sınıfı hat gemisidir. Yolculuk süresinin önemsiz, filonun ayakta kalmasının önemli olduğu kuşatma ve savunma görevlerinde değer kazanır.',
     },
     WARDEN: {
       name: 'Muhafız',
       tag: 'Hareketli refakatçi',
       role: 'Sur kadar yavaşlamadan karma filolara dengeli koruma sağlar.',
       pitch: 'Kale gövdesinden daha az dayanır; karşılığında hız ve saldırı kazanır.',
-      detail: 'Muhafız, en yavaş uçuş profilini kabul etmeden koruma isteyen filolar için giriş seviyesinde bir Siper refakatçisidir. Sur daha sağlam ve ucuz bir duvar olarak kalırken Muhafız tempo isteyen karma filolarda yer bulur.',
+      detail: 'Muhafız, en yavaş uçuş profilini kabul etmeden koruma isteyen filolar için giriş seviyesinde bir Sur refakatçisidir. Sur daha sağlam ve ucuz bir duvar olarak kalırken Muhafız tempo isteyen karma filolarda yer bulur.',
     },
     COURIER: {
       name: 'Kurye',
@@ -209,28 +203,28 @@ export const vocabulary = {
       tag: 'Verimli akıncı',
       role: 'Okun hız planını korurken ikinci seviyede daha iyi dayanım sunar.',
       pitch: 'Hızlı filo fikrini sürdürür ve kırılganlık bedelini biraz azaltır.',
-      detail: 'Engerek araştırma istemeyen ikinci seviye bir Çevik gemidir. Ok daha ucuz ve daha hızlı kalır; Engerek ise daha büyük bir yatırımı eşit maliyette daha iyi savaş verimine ve hata payına dönüştürür.',
+      detail: 'Engerek araştırma istemeyen ikinci seviye bir Akıncı gemisidir. Ok daha ucuz ve daha hızlı kalır; Engerek ise daha büyük bir yatırımı eşit maliyette daha iyi savaş verimine ve hata payına dönüştürür.',
     },
     TALON: {
       name: 'Pençe',
       tag: 'Ağır taarruz gemisi',
       role: 'Orta hızda, ikinci seviyeye ait saldırı odaklı bir Mızrak gövdesidir.',
       pitch: 'Kargının ucuz rolünü silmeden daha verimli yoğun hasar üretir.',
-      detail: 'Pençe, gelişmiş tersanelerin saldırı gemisidir. Daha yüksek verimi yanlış hedef seçimini telafi etmez; Siper sınıfı doğal karşılar seviye üstünlüğünden daha belirleyici olmaya devam eder.',
+      detail: 'Pençe, gelişmiş tersanelerin saldırı gemisidir. Daha yüksek verimi yanlış hedef seçimini telafi etmez; Sur sınıfı doğal karşılar seviye üstünlüğünden daha belirleyici olmaya devam eder.',
     },
     STRONGHOLD: {
       name: 'Hisar',
       tag: 'Ağır hat gemisi',
       role: 'İkinci seviyenin en yüksek dayanımını sunar; ağır, yavaş ve pahalıdır.',
       pitch: 'Varış süresinden çok hayatta kalmak önemliyse sağlam bir duvar kurar.',
-      detail: 'Hisar, kale profiline sahip bir Siper gövdesidir. Yüksek dayanımı filonun hattını sabitler; buna karşılık uzun uçuş süresi ve Çevik sınıf karşıları rakibe açık ve kullanılabilir cevaplar bırakır.',
+      detail: 'Hisar, kale profiline sahip bir Sur gövdesidir. Yüksek dayanımı filonun hattını sabitler; buna karşılık uzun uçuş süresi ve Akıncı sınıfı karşıları rakibe açık ve kullanılabilir cevaplar bırakır.',
     },
     SENTINEL: {
       name: 'Nöbetçi',
       tag: 'İkinci seviye refakatçi',
       role: 'Karma filolar için daha hızlı ve saldırgan bir savunma refakatçisidir.',
       pitch: 'Kale dayanımının bir bölümünü filo temposu ve saldırıyla değiştirir.',
-      detail: 'Nöbetçi, nakliye gemilerini Hisarın ağır uçuş profiline mahkûm etmeden koruyan hareketli bir Siper gövdesidir. Saf kuşatmada Hisar, hızlı karma görevlerde Nöbetçi daha anlamlıdır.',
+      detail: 'Nöbetçi, nakliye gemilerini Hisarın ağır uçuş profiline mahkûm etmeden koruyan hareketli bir Sur gövdesidir. Saf kuşatmada Hisar, hızlı karma görevlerde Nöbetçi daha anlamlıdır.',
     },
     WAYFARER: {
       name: 'Seyyah',
@@ -242,7 +236,7 @@ export const vocabulary = {
     TEMPEST: {
       name: 'Kasırga',
       tag: 'İleri seviye hızlı akıncı',
-      role: 'Araştırmayla açılan ve savaş gemileri içinde hız tavanını belirleyen Çevik gövdedir.',
+      role: 'Araştırmayla açılan ve savaş gemileri içinde hız tavanını belirleyen Akıncı gövdesidir.',
       pitch: 'Geç oyunda yüksek hız ve verim sunar, fakat hâlâ bir hat gemisi değildir.',
       detail: 'Kasırga, Yıldız Gemisi Mühendisliği ve Gemi Gücü gerektiren ileri seviye bir akıncıdır. Kırılgan profilini koruduğu için alt seviye duvarlar ve doğru sınıf karşıları anlamını yitirmez.',
     },
@@ -258,14 +252,14 @@ export const vocabulary = {
       tag: 'İleri seviye kale',
       role: 'Çok yüksek hat dayanımını düşük hız ve uzun görev süresi karşılığında verir.',
       pitch: 'Her uçuşu uzun bir taahhüde dönüştüren geç oyun duvarıdır.',
-      detail: 'Leviathan, Yıldız Gemisi Mühendisliği ve Gemi Zırhı ile açılan üçüncü seviye bir kaledir. Çok güçlü gövdesine rağmen Çevik sınıf gemiler hâlâ ona karşı en verimli cevaptır.',
+      detail: 'Leviathan, Yıldız Gemisi Mühendisliği ve Gemi Zırhı ile açılan üçüncü seviye bir kaledir. Çok güçlü gövdesine rağmen Akıncı sınıfı gemiler hâlâ ona karşı en verimli cevaptır.',
     },
     PRAETORIAN: {
       name: 'Praetoryen',
       tag: 'İleri seviye refakatçi',
       role: 'Değerli karma filolar için dayanıklı ve hareketli koruma sağlar.',
       pitch: 'Leviathandan az dayanır, karşılığında karma filo temposunu korur.',
-      detail: 'Praetoryen, Yıldız Gemisi Mühendisliği ve Gemi Zırhı isteyen üçüncü seviye Siper refakatçisidir. Yük gemilerini korurken filoyu mümkün olan en yavaş tercihe dönüştürmez.',
+      detail: 'Praetoryen, Yıldız Gemisi Mühendisliği ve Gemi Zırhı isteyen üçüncü seviye Sur refakatçisidir. Yük gemilerini korurken filoyu mümkün olan en yavaş tercihe dönüştürmez.',
     },
     ATLAS: {
       name: 'Atlas',
@@ -281,40 +275,69 @@ export const vocabulary = {
       pitch: 'Aegis’i ezer; uzmanlık hasarı gemi veya yer savunmasına taşmaz.',
       detail: 'Söndürücünün uzmanlık yükü aktif Aegis’e normal etkinin beş katını uygular. Kalkan düştüğünde artan özel hasar gemilere veya toplara geçmez; bu yüzden kalkansız hedefler pahalı uzmanlığını boşa çıkarır.',
     },
+    /** D200. `{{salvage}}` `SALVAGE.perCollector`'dır; `names.ts` doldurur. */
+    GARBAGE_COLLECTOR: {
+      name: 'Hurdacı',
+      tag: 'Enkazdan {{salvage}} toplar',
+      role: 'Özel destek gemisi: ateş etmez, katıldığı savaştan sonra enkaz toplar.',
+      pitch: 'Yük gemisi gibi hattın arkasında uçar, son atışları o yer. Yanında savaş gemisi tut; onlar düşünce hedef olur.',
+      detail: 'Savaş bittiğinde hayatta kalan her Hurdacı enkazdan en fazla {{salvage}} toplar; alaşım, kristal ve döteryumu enkazdaki oranlarıyla alır, kalanı herkese açık enkaz alanı olarak yörüngede kalır. Topladığı filoyla birlikte depoya iner. Ambara bir şey eklemez, savaş gemisi olmadan uçamaz, enkaz alanına veya asteroide gönderilemez ve savunmadayken toplama yapmaz.',
+    },
     CATACLYSM: {
       name: 'Kıyamet',
       tag: 'Başkent taarruz gemisi',
       role: 'Dördüncü seviyenin saldırı zirvesidir; güçlü, pahalı ve bilinçli olarak yavaştır.',
       pitch: 'Sınıf karşılarına bağışıklık kazanmadan olağanüstü yoğun hasar üretir.',
-      detail: 'Kıyamet; Mühendislik, Güç ve Zırh araştırmalarının arkasındaki başkent tipi Mızrak gövdesidir. Verimi yüksektir, ancak doğru Siper savunması onu kopyalamaktan hâlâ daha iyi bir cevaptır.',
+      detail: 'Kıyamet; Mühendislik, Güç ve Zırh araştırmalarının arkasındaki başkent tipi Mızrak gövdesidir. Verimi yüksektir, ancak doğru Sur savunması onu kopyalamaktan hâlâ daha iyi bir cevaptır.',
+    },
+    CORSAIR: {
+      name: 'Korsan',
+      tag: 'Başkent akıncı gemisi',
+      role: 'Üst seviyenin tek Akıncı gövdesi: Sur duvarını kıran şey budur.',
+      pitch: 'Oyunun en hızlı gövdesini en ağır silahla birleştirir; az taşır, çok yakar.',
+      detail: 'Korsan; dördüncü seviyede Sur sınıfına cevap veren tek gemidir. O gelene kadar bir Kale duvarını kırmanın yolu üçüncü seviye Fırtına üretmekti. Mızrak sınıfı karşısında kırılgandır ve kilometre başına en pahalı yakıtı içer.',
     },
     CITADEL: {
       name: 'Kale',
       tag: 'Başkent kale gemisi',
       role: 'Dördüncü seviyenin dayanım zirvesi ve en yavaş hareketli taahhüdüdür.',
       pitch: 'Oyundaki en güçlü duvarı maliyet ve uzun açıkta kalma süresiyle satın alır.',
-      detail: 'Kale; Mühendislik, Zırh ve Güç araştırmalarının arkasındaki başkent tipi Siper gövdesidir. Savunmayı sabitler, fakat Çevik sınıf karşılarına ve uzun görev süresinin yarattığı fırsat penceresine açıktır.',
+      detail: 'Kale; Mühendislik, Zırh ve Güç araştırmalarının arkasındaki başkent tipi Sur gövdesidir. Savunmayı sabitler, fakat Akıncı sınıfı karşılarına ve uzun görev süresinin yarattığı fırsat penceresine açıktır.',
+    },
+    PALADIN: {
+      name: 'Palatin',
+      tag: 'Başkent refakat gemisi',
+      role: 'Kale ile Kıyamet arasındaki orta yol: gerçek top ve gerçek zırh.',
+      pitch: 'Kale kadar dayanmaz ama çok daha fazla ateş eder ve daha ucuza gelir.',
+      detail: 'Palatin; Sur sınıfıdır, yani Mızrakları durdurur ve Akıncı gövdelerine yem olur. Kale zırhı için ödediği primi burada silaha çevirir; dördüncü seviyenin iki ucu arasındaki tek seçenektir.',
+    },
+    ARGOSY: {
+      name: 'Argosi',
+      tag: 'Başkent yük gemisi',
+      role: 'Oyundaki en derin ambar ve en yavaş gövde.',
+      pitch: 'Bir seferde bir Atlas filosunun taşıdığını taşır; karşılığında hiçbir şeyden kaçamaz.',
+      detail: 'Argosi; dördüncü seviyenin nakliyesidir. Destek sınıfı olduğu için savaş gemileri hayattayken korunur, hat düştüğünde savunmasızdır. Tüccarın hızı bu gövdeye bağlıdır: filodaki en yavaş ambar tüccarın hızını belirler.',
     },
     BASTION: {
       name: 'Tabya',
       tag: 'Ağır yer topu',
       role: 'Yer savunması. Gezegenden asla ayrılmaz.',
-      pitch: 'Kargı, Pençe ve Söndürücü ağırlıklı saldırılara dayanır; Çevik sınıf filolara karşı zayıftır.',
-      detail: 'Tabya gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Siper sınıfında olduğu için Mızrak sınıfına karşı güçlü, Çevik sınıfa karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
+      pitch: 'Kargı, Pençe ve Söndürücü ağırlıklı saldırılara dayanır; Akıncı sınıfı filolara karşı zayıftır.',
+      detail: 'Tabya gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Sur sınıfında olduğu için Mızrak sınıfına karşı güçlü, Akıncı sınıfına karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
     },
     THORN: {
       name: 'Kirpi',
       tag: 'Hafif yer topu',
       role: 'Yer savunması. Ucuz, hafif ve hiç kalkmaz.',
-      pitch: 'Siper sınıfı gemilere karşı etkili, düşük maliyetli savunmadır; Mızrak sınıfına karşı zayıftır.',
-      detail: 'Kirpi gezegenden ayrılamaz ve Hangar yerine yer savunması kapasitesini kullanır. Çevik sınıfta olduğu için Siperlere karşı güçlü, Mızraklara karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
+      pitch: 'Sur sınıfı gemilere karşı etkili, düşük maliyetli savunmadır; Mızrak sınıfına karşı zayıftır.',
+      detail: 'Kirpi gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Akıncı sınıfında olduğu için Surlara karşı güçlü, Mızraklara karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
     },
     PROSPECTOR: {
       name: 'Kazıcı',
       tag: 'Asteroit kazar',
       role: 'Asteroitlerden cevher getirir; taban ambarı 300’dür ve akın filosuna katılamaz.',
       pitch: 'Hareketli bir asteroidi yakalar, taşıyabildiği cevheri üretim havuzuna getirir. Savaş veya transfer görevi yapmaz.',
-      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban hızı 825, taban ambarı 300’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya en fazla iki Kazıcı tutabilir. Hangar alanı kullanır ancak normal akınlara katılmaz ve ev savunmasında savaşmaz.',
+      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban hızı 825, taban ambarı 300’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya en fazla iki Kazıcı tutabilir. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
     },
   },
 
@@ -365,8 +388,8 @@ export const gains = {
     storage: 'Depo {{now}} → {{next}}',
   },
   vault: {
-    label: 'Kasa kapasitesi',
-    value: '{{alloy}} alaşım · {{crystal}} kristal · {{deuterium}} Döteryum',
+    label: 'Depo derinliği',
+    value: '{{store}} sa depo · {{safe}} sa korumalı',
   },
   shipyard: {
     accuracyLabel: 'Sonda isabeti',
@@ -436,10 +459,6 @@ export const gains = {
     next: '{{factor}}× hızlı',
     unlocks: 'Gidiş de dönüş de kısalır, savunman evde olmadan geçen süre azalır',
   },
-  hangar: {
-    label: 'Filo yeri',
-    value: '{{room}}',
-  },
   research: {
     powerLabel: 'Savaş gemisi saldırısı',
     powerScope:
@@ -457,6 +476,7 @@ export const gains = {
     groundLabel: 'Yer savunması gücü',
     groundScope: 'Elindeki her dünyadaki {{bastion}} ve {{thorn}}.',
     yardLabel: 'Gemi yapım süresi',
+    robotsLabel: 'Yapı kurulum süresi',
     holdsLabel: 'Kazıcı ambarı',
     holdsScope: 'Yörüngedeki Matkap ile çarpılarak birlikte uygulanır.',
     cargoLabel: 'Akın yükü',
@@ -492,7 +512,7 @@ export const directives = {
   undefendedAction: 'Savunma kur',
 
   exposedTitle: 'Senden {{amount}} alınabilir',
-  exposedDetail: 'Kasan {{now}} koruyor, bir üst seviyesi {{next}} koruyacak.',
+  exposedDetail: 'Depon {{now}} koruyor, bir üst seviyesi {{next}} koruyacak.',
   exposedAction: 'Kasayı yükselt',
 
   scannedTitle_one: 'Biri seni taradı',
@@ -581,10 +601,12 @@ export const notifications = {
   spoilAlloy: '+{{amount}} alaşım',
   spoilCrystal: '+{{amount}} kristal',
   spoilDeuterium: '+{{amount}} Döteryum',
+  spoilSalvage: '+{{amount}} hurda',
 
   fleetFallback: 'Filon evde.',
   fleetHomeLooted: 'Filo evde{{where}} · {{count}} gemi · +{{amount}} ganimet',
   fleetHomeEmpty: 'Filo evde{{where}} · {{count}} gemi · eli boş',
+  fleetHomeBare: 'Filo evde{{where}} · {{count}} gemi',
   /**
    * THE MERCHANT'S OWN HOMECOMING. D166.
    *
@@ -608,6 +630,7 @@ export const notifications = {
   targetGoneDebris: 'Enkaz sahası çoktan toplanmış · {{count}} kazıcı geri dönüyor',
   pirateHome: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet',
   pirateHomeEmpty: 'Akın filosu evde · {{count}} gemi · eli boş',
+  pirateHomeBare: 'Akın filosu evde · {{count}} gemi',
   pirateHomeTowed_looted: 'Akın filosu evde · {{count}} gemi · +{{amount}} ganimet · {{hull}} ele geçirildi',
   pirateHomeTowed_empty: 'Akın filosu evde · {{count}} gemi · {{hull}} ele geçirildi',
   fleetFrom: ' ({{origin}} dönüşü)',

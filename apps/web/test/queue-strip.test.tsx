@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILD } from '@astera/rules';
@@ -131,11 +131,20 @@ describe('the queue strip', () => {
    * three columns of a phone screen on every order, forever, to offer something a
    * player does once in a session.
    */
-  it('cancels from the segment itself', async () => {
+  it('cancels from the segment itself, once the commander has confirmed', async () => {
     const onCancel = vi.fn();
     const one = order();
     const view = strip([one], { onCancel });
     await userEvent.click(view.container.querySelector<HTMLElement>('[data-cancel]')!);
+    /*
+      THE MARK ASKS; IT DOES NOT SPEND. Owner report. Half of what the order cost
+      is destroyed here (`BUILD.cancelRefund`) from a 20px glyph in the corner of
+      a segment that is itself pressable, and the figure used to live on a `title`
+      attribute — a hover tooltip, on a phone. `irreversible-confirm.test.tsx`
+      holds what the sheet has to say; this holds that the strip still cancels.
+    */
+    expect(onCancel).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByTestId('confirm-commit'));
     expect(onCancel).toHaveBeenCalledWith(one);
   });
 

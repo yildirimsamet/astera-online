@@ -19,6 +19,7 @@ export { PriceTag, Amount } from './PriceTag.js';
 export { SectionHead, Section, Chip, EmptyState, Skeleton, SkeletonText, Waiting, Note, Unreachable, type ChipTone } from './Surface.js';
 export { GradeStamp, wentYourWay } from './GradeStamp.js';
 export { Sheet } from './Sheet.js';
+export { Confirm, ConfirmLine } from './Confirm.js';
 export { Segmented, type Segment } from './Segmented.js';
 export { useCountUp, useJump } from './useCountUp.js';
 export { useOwnPress } from './useOwnPress.js';

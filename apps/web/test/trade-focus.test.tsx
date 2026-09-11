@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TRADE, type Fleet } from '@astera/rules';
+import { TRADE, type Fleet
+} from '@astera/rules';
+import { rateAnchor } from '../src/lib/trade.js';
 import { TradeFocus } from '../src/galaxy/FocusPanel.js';
 import type { TradeShipEvent } from '../src/lib/trade.js';
 import i18n from '../src/i18n/index.js';
@@ -78,9 +80,20 @@ describe('the merchant rail', () => {
     const table = screen.getByTestId('trade-rate');
     // Three rows, one per resource, each a drawn quantity rather than a sentence.
     expect(table.querySelectorAll('[data-rate-row]')).toHaveLength(3);
-    // 90 alloy = 30 crystal = 1 deuterium, off the published rate and nowhere else.
-    expect(table).toHaveTextContent('90');
-    expect(table).toHaveTextContent('30');
+    /*
+      OFF THE PUBLISHED RATE AND NOWHERE ELSE. These were literals — 90 and 30, the
+      answers for 1 · 3 · 90 — which is the one thing the rail must not be: the
+      whole point of drawing the rate is that it comes from `TRADE.rate`, so a rate
+      change moves the picture rather than making the test a second source of truth.
+    */
+    const anchor = rateAnchor(TRADE.rate);
+    for (const good of ['alloy', 'crystal', 'deuterium'] as const) {
+      const amount = anchor / TRADE.rate[good];
+      // Whole numbers only: a resource that exists in whole units is never drawn
+      // as a fraction, which is what an anchor of one deuterium would produce.
+      expect(Number.isInteger(amount), good).toBe(true);
+      expect(table).toHaveTextContent(String(amount));
+    }
   });
 
   it('states how long the window has left', () => {

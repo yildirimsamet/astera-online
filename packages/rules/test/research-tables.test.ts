@@ -1,93 +1,81 @@
 import { describe, expect, it } from 'vitest';
 import {
-  RESEARCH_CRYSTAL_UPLIFT,
   RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   RESEARCH_PROJECT_IDS,
   RESEARCH_TECH,
-  researchBaseCostAt,
   cargoMult,
   hullTech,
   prospectorHoldMult,
   researchEffectAt,
+  robotSpeedMult,
   yardSpeedMult,
 } from '../src/index.js';
 import type { ResearchProjectId } from '../src/index.js';
 
-/**
- * THE OWNER'S PRICE AND EFFECT TABLES, TYPED OUT ONCE AND ASSERTED HERE.
- *
- * Eight projects were re-priced by hand rather than by formula, and their effects
- * with them. A generated ladder is only honest while the generator agrees with the
- * intent; these are the intent, so the table is the test and the code is what has
- * to match it — not the other way round.
- *
- * The figures are the owner's BASE: no tempo scale and no Crystal mix runs on top
- * of them, which is exactly what the exemption in `research.ts` is for.
- *
- * ONE THING DOES SIT ON TOP, AND ONLY ONE. A later owner instruction raised the
- * Crystal on every research rung in the game by a quarter, and the only place all
- * fifteen projects meet — eight hand-priced, seven generated and Crystal-biased —
- * is where their price is quoted. So the Alloy and Deuterium cells below are read
- * literally and the Crystal cell is compared against `RESEARCH_CRYSTAL_UPLIFT`,
- * applied here rather than retyped, so the table on screen stays the table the
- * owner chose and the quote is still asserted cell by cell.
- */
-
+/** Monthly recipe fixtures. Effects remain the authored ladders; Propulsion now caps at 1.5. */
 type Rung = readonly [alloy: number, crystal: number, deuterium: number, effect?: number];
 
 const TABLES: Partial<Record<ResearchProjectId, readonly Rung[]>> = {
   YARD_AUTOMATION: [
-    [1500, 850, 0, 0.90],
-    [3500, 2000, 0, 0.85],
-    [7500, 4000, 0, 0.80],
-    [16_500, 9000, 0, 0.75],
-    [30_500, 17_000, 0, 0.70],
+    [7897, 6075, 0, 0.9],
+    [14214, 10934, 0, 0.85],
+    [25584, 19680, 0, 0.8],
+    [46051, 35424, 0, 0.75],
+    [82892, 63763, 0, 0.7],
+  ],
+  /** The surface's ladder: Yard Automation's family, a sixth dearer at every rung. D198. */
+  AI_ROBOTS: [
+    [9213, 7087, 0, 0.95],
+    [16583, 12756, 0, 0.9],
+    [29848, 22960, 0, 0.85],
+    [53726, 41328, 0, 0.8],
+    [96707, 74390, 0, 0.75],
   ],
   PROSPECTOR_HOLDS: [
-    [1500, 1000, 0, 1.25],
-    [3500, 2250, 0, 1.50],
-    [6000, 3500, 0, 1.75],
-    [10_000, 7500, 0, 2.00],
-    [15_000, 10_000, 0, 2.50],
+    [6230, 4793, 0, 1.25],
+    [11214, 8627, 0, 1.5],
+    [20185, 15527, 0, 1.75],
+    [36333, 27949, 0, 2.0],
+    [65400, 50308, 0, 2.5],
   ],
   CARGO_HOLDS: [
-    [2500, 1500, 0, 1.25],
-    [5000, 3500, 0, 1.50],
-    [7500, 5000, 0, 1.75],
-    [10_000, 7500, 0, 2.00],
-    [12_500, 10_000, 0, 2.50],
+    [6230, 4793, 0, 1.25],
+    [11214, 8627, 0, 1.5],
+    [20185, 15527, 0, 1.75],
+    [36333, 27949, 0, 2.0],
+    [65400, 50308, 0, 2.5],
   ],
   STARSHIP_ENGINEERING: [
-    [5000, 3500, 0, 1],
-    [7500, 5000, 500, 2],
+    [17059, 13122, 0, 1.0],
+    [64092, 49302, 0, 2.0],
   ],
   SHIP_POWER: [
-    [4500, 2500, 0, 1.05],
-    [7500, 4500, 250, 1.10],
-    [11_500, 6500, 500, 1.15],
-    [17_500, 10_500, 750, 1.20],
-    [26_000, 15_500, 1000, 1.25],
+    [6824, 5249, 61, 1.05],
+    [15694, 12073, 141, 1.1],
+    [24658, 18968, 221, 1.15],
+    [56714, 43626, 507, 1.2],
+    [130441, 100339, 1165, 1.25],
   ],
   SHIP_ARMOR: [
-    [4500, 2500, 0, 1.05],
-    [7500, 4500, 250, 1.10],
-    [11_500, 6500, 500, 1.15],
-    [17_500, 10_500, 750, 1.20],
-    [26_000, 15_500, 1000, 1.25],
+    [4662, 3586, 42, 1.05],
+    [10721, 8247, 96, 1.1],
+    [24658, 18968, 221, 1.15],
+    [56714, 43626, 507, 1.2],
+    [130441, 100339, 1165, 1.25],
   ],
   SHIP_PROPULSION: [
-    [4500, 2500, 0, 1.25],
-    [7500, 4500, 500, 1.50],
-    [11_500, 6500, 750, 1.75],
-    [17_500, 10_500, 1000, 2.00],
+    [3885, 2988, 84, 1.125],
+    [8158, 6275, 175, 1.25],
+    [17131, 13177, 368, 1.375],
+    [35974, 27672, 771, 1.5],
   ],
   EMPLACEMENT_DOCTRINE: [
-    [4500, 2500, 0, 1.05],
-    [7500, 4500, 250, 1.10],
-    [11_500, 6500, 500, 1.15],
-    [17_500, 10_500, 750, 1.20],
-    [26_000, 15_500, 1000, 1.25],
+    [3108, 2391, 42, 1.05],
+    [6526, 5020, 88, 1.1],
+    [13705, 10542, 184, 1.15],
+    [28779, 22138, 386, 1.2],
+    [60435, 46489, 810, 1.25],
   ],
 };
 
@@ -103,7 +91,7 @@ describe('the re-priced research tables', () => {
         it(`quotes the table price at L${String(level)}`, () => {
           expect(RESEARCH_PROJECTS[id].costAt(level)).toEqual({
             alloy,
-            crystal: Math.round(crystal * RESEARCH_CRYSTAL_UPLIFT),
+            crystal,
             deuterium,
           });
         });
@@ -122,6 +110,19 @@ describe('the effects behind the tables', () => {
     expect(yardSpeedMult({ YARD_AUTOMATION: 1 })).toBeCloseTo(0.90, 10);
     expect(yardSpeedMult({ YARD_AUTOMATION: 5 })).toBeCloseTo(0.70, 10);
     expect(yardSpeedMult({ YARD_AUTOMATION: 99 })).toBeCloseTo(0.70, 10);
+  });
+
+  /**
+   * The two build queues, side by side. Neither may reach into the other's lane:
+   * a project that shortened both would leave one of them nothing to sell.
+   */
+  it('shaves the surface by a twentieth at the first rung and by a quarter at the last', () => {
+    expect(robotSpeedMult({ AI_ROBOTS: 0 })).toBe(1);
+    expect(robotSpeedMult({ AI_ROBOTS: 1 })).toBeCloseTo(0.95, 10);
+    expect(robotSpeedMult({ AI_ROBOTS: 5 })).toBeCloseTo(0.75, 10);
+    expect(robotSpeedMult({ AI_ROBOTS: 99 })).toBeCloseTo(0.75, 10);
+    expect(robotSpeedMult({ YARD_AUTOMATION: 5 })).toBe(1);
+    expect(yardSpeedMult({ AI_ROBOTS: 5 })).toBe(1);
   });
 
   it('lifts a prospector hold to two and a half', () => {
@@ -154,38 +155,15 @@ describe('the effects behind the tables', () => {
   });
 });
 
-describe('the Crystal uplift the owner asked for', () => {
-  /**
-   * A QUARTER MORE CRYSTAL ON EVERY RUNG IN THE GAME, not only on the eight
-   * hand-priced ladders. Owner instruction.
-   *
-   * The two families reach their price by different roads — eight are typed out
-   * final and exempt from the Crystal bias, seven are generated, tempo-scaled and
-   * biased — so a change made in either table alone would have moved half the
-   * research screen and left the other half where it was. `withResearchCostMix`
-   * is the one place both roads end, and that is where the uplift is applied.
-   *
-   * Asserted as a RATIO against the pre-uplift price rather than as a list of new
-   * numbers, so this keeps meaning the same thing when a rung is re-priced.
-   */
-  it('raises Crystal on every project, and touches nothing else', () => {
+describe('monthly research recipes', () => {
+  it('charges whole resources at every reachable level', () => {
     for (const id of RESEARCH_PROJECT_IDS) {
-      const levels = RESEARCH_MAX_LEVEL[id];
-      for (let level = 1; level <= levels; level++) {
-        const quoted = RESEARCH_PROJECTS[id].costAt(level);
-        const base = researchBaseCostAt(id, level);
-        expect(quoted.crystal, `${id} L${String(level)} Crystal`)
-          .toBe(Math.round(base.crystal * RESEARCH_CRYSTAL_UPLIFT));
-        expect(quoted.alloy, `${id} L${String(level)} Alloy moved`).toBe(base.alloy);
-        expect(quoted.deuterium, `${id} L${String(level)} Deuterium moved`).toBe(base.deuterium);
+      for (let level = 1; level <= RESEARCH_MAX_LEVEL[id]; level++) {
+        const cost = RESEARCH_PROJECTS[id].costAt(level);
+        expect(cost.alloy).toBeGreaterThan(0);
+        expect(cost.crystal).toBeGreaterThan(0);
+        for (const value of Object.values(cost)) expect(Number.isSafeInteger(value)).toBe(true);
       }
     }
-  });
-
-  it('is an increase, not a rounding accident', () => {
-    expect(RESEARCH_CRYSTAL_UPLIFT).toBeGreaterThan(1);
-    // A project with real Crystal must actually cost more than it did.
-    const before = researchBaseCostAt('YARD_AUTOMATION', 1).crystal;
-    expect(RESEARCH_PROJECTS.YARD_AUTOMATION.costAt(1).crystal).toBeGreaterThan(before);
   });
 });

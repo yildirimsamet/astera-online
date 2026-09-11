@@ -1,4 +1,5 @@
-import { DEBRIS, GALAXY, PROSPECTOR, SEASON } from './constants.js';
+import { monthlySupply } from './monthly-supply.js';
+import { DEBRIS, GALAXY, PROSPECTOR, SEASON, SERVERS } from './constants.js';
 import { prospectorHoldMult, type TechLevels } from './tech.js';
 import { mulberry32, seededFrom } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
@@ -289,6 +290,17 @@ export function generateAsteroidSchedule(
     baseCount,
   );
 
+  // Cap each resource/day together so the rock's visible composition stays truthful.
+  for (let day = 0; day < SEASON.days; day++) {
+    const today = asteroids.filter(r => Math.floor(r.appearsAt / 1440) === day);
+    const budget = monthlySupply('mining', day, SERVERS.capacity);
+    const total = today.reduce((sum, r) => ({ alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
+      crystal: sum.crystal + r.ore * r.crystalShare, deuterium: sum.deuterium + r.ore * r.deuteriumShare }),
+    { alloy: 0, crystal: 0, deuterium: 0 });
+    const factor = Math.min(1, ...(['alloy', 'crystal', 'deuterium'] as const)
+      .map(k => total[k] > 0 ? budget[k] / total[k] : 1));
+    for (const rock of today) rock.ore = Math.floor(rock.ore * factor);
+  }
   return asteroids;
 }
 
@@ -807,6 +819,44 @@ export const prospectorReturnSpeed = (orbit: SatelliteSet): number =>
  */
 export const prospectorHold = (orbit: SatelliteSet, tech: TechLevels): number =>
   PROSPECTOR.hold * drillHoldMult(orbit) * prospectorHoldMult(tech);
+
+/**
+ * WAS THIS TRIP TOO SHORT TO HAVE COST ANYTHING? D183.
+ *
+ * Every brake on mining is written against a DISTANCE — `returnSpeedFactor` scales
+ * one, a flight bay is held for the length of one, and `PROSPECTOR.max` rations
+ * craft that are away for one. A raid resolved over the commander's own world
+ * leaves its wreckage at that world, so a salvage run's leg is zero units and all
+ * three evaluate to nothing. This is the predicate that notices.
+ *
+ * THE OUTBOUND LEG, because that is the trip the player chose; the way home is
+ * derived from it by a fixed ratio, so measuring both would be measuring one fact
+ * twice. A leg that is not a number is not short — a missing figure must never
+ * become a lockout.
+ */
+export const shortProspectorTrip = (outboundMinutes: number): boolean =>
+  Number.isFinite(outboundMinutes) && outboundMinutes < PROSPECTOR.shortTripMinutes;
+
+/**
+ * WHEN CRAFT THAT LANDED FROM SUCH A TRIP MAY LAUNCH AGAIN — or null, which is
+ * every ordinary run in the game. D183.
+ *
+ * AN INSTANT RATHER THAN A DURATION, like every other clock here: the client draws
+ * countdowns against `serverNow()` (D51), and a duration would have to be re-based
+ * by whoever received it — which is how two surfaces start disagreeing about the
+ * same wait.
+ *
+ * Null on anything that is not a pair of finite numbers. A NaN in a timestamp
+ * renders as a countdown that never ends, and this function is read on both sides
+ * of the wire.
+ */
+export const prospectorReadyAt = (
+  outboundMinutes: number,
+  homeAtMs: number,
+): number | null =>
+  shortProspectorTrip(outboundMinutes) && Number.isFinite(homeAtMs)
+    ? homeAtMs + PROSPECTOR.shortTripCooldownMinutes * 60_000
+    : null;
 
 /**
  * A joining player takes the free slot furthest from everyone already placed, so

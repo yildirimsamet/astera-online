@@ -211,7 +211,7 @@ async function raiseOneBuilding(
       WHERE THEY STOP. Owner decision: a middle ceiling.
 
       The Core is the ceiling over everything else, so capping it caps the world —
-      no separate rule is needed for the Refinery, the Hangar or the orbit slots.
+      no separate rule is needed for the Refinery or the orbit slots.
       Twelve tireless commanders with no ceiling would own the top of a ladder that
       exists for the people playing.
     */
@@ -306,9 +306,9 @@ async function buyShips(
 ): Promise<void> {
   if (view.queues.YARD.length >= BUILD.queueDepth) return;
 
+  // D184: the Hangar is gone, so the brake here is the same one a player feels —
+  // the value ceiling above and the alloy budget below, never a building's refusal.
   const owned = fleetValue(view.fleet) + fleetValue(view.fleetAway);
-  const room = view.capacity.hangar - view.capacity.hangarUsed;
-  if (room <= 0) return;
 
   // A rock needs a craft, and this is the only thing that buys one.
   const prospectors = (view.fleet.PROSPECTOR ?? 0) + (view.fleetAway.PROSPECTOR ?? 0)
@@ -336,7 +336,6 @@ async function buyShips(
     const spend = (budget * share * wobble) / total;
     const n = Math.min(
       Math.floor(spend / Math.max(1, spec.alloy)),
-      room,
       spec.crystal > 0 ? Math.floor(view.planet.crystal / spec.crystal) : Number.MAX_SAFE_INTEGER,
       spec.deuterium > 0 ? Math.floor((view.planet.deuterium * 0.5) / spec.deuterium) : Number.MAX_SAFE_INTEGER,
     );
@@ -453,6 +452,8 @@ async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24
       x: planets.x, y: planets.y, z: planets.z,
       playerId: planets.controllerPlayerId,
       joinedAt: players.joinedAt,
+      /** The commander's first day here, which no launch may cross. D183. */
+      shieldUntil: players.newcomerShieldUntil,
       protectedUntil: planets.protectedUntil,
       recoveryUntil: planets.recoveryUntil,
     })
@@ -604,6 +605,14 @@ export async function raidCandidates(
     */
     if ((known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff) continue;
     if (world.protectedUntil && world.protectedUntil > now) continue;
+    /*
+      THE FIRST-DAY SHIELD BINDS THE SERVER'S OWN COMMANDERS TOO. D183.
+
+      `startAttack` would refuse the launch anyway; skipping here is what stops a
+      bot spending its turn on a target it cannot have — and what keeps a shielded
+      newcomer's first day quiet rather than merely un-hit.
+    */
+    if (world.shieldUntil && world.shieldUntil > now) continue;
     if (world.recoveryUntil && world.recoveryUntil > now) continue;
     if (world.playerId !== null && !withinTierBand(myPeak, peaks.get(world.playerId) ?? 1)) continue;
 
@@ -665,8 +674,20 @@ async function sendRaid(
 
   const send = raidingWing(view.fleet, 0.6 + rng() * 0.3);
   if (Object.keys(send).length === 0) return;
+  /*
+    A BOT SPENDS ITS OWN FIRST-DAY SHIELD LIKE ANYBODY ELSE. D183.
+
+    The server's commanders join through `joinSeason` and are stamped with the same
+    day of shield, so without this a bot's first turns would be refused with
+    `SHIELD_WOULD_DROP` and spent on nothing — and a galaxy's opening day would go
+    quiet, which is the opposite of what D159 put bots there for.
+
+    Acknowledging is also the only symmetric answer: a bot that raids becomes
+    raidable, on exactly the terms a person does. Nothing here is a bot exemption —
+    it is a bot taking the same decision with the same price.
+  */
   await attempt(did, 'attack', log, () =>
-    launchAttack(db, seat.planetId, pick.planetId, send, clock, seat.playerId));
+    launchAttack(db, seat.planetId, pick.planetId, send, clock, seat.playerId, true));
 }
 
 /** Every commander in this galaxy the server is playing. */

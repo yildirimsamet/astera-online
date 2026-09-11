@@ -13,8 +13,6 @@ import {
   dominion,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
   instrumentCost,
   productionMult,
   satelliteCost,
@@ -65,6 +63,41 @@ import {
  * view that disagrees with the database in a way nothing would catch until the
  * next refetch silently corrected it on screen.
  */
+type StrategicRow = typeof strategicAssets.$inferSelect;
+
+const PAD_RANK: Record<StrategicRow['status'], number> = {
+  READY: 0,
+  BUILDING: 1,
+  PAUSED: 2,
+  LAUNCHED: Number.MAX_SAFE_INTEGER,
+  CONSUMED: Number.MAX_SAFE_INTEGER,
+};
+
+/**
+ * THE ORDER A PAD FLIES IN. T11.
+ *
+ * What can launch first, then what finishes first: READY before BUILDING before
+ * PAUSED, each by the instant it became (or will become) ready. The stockpile
+ * puts two weapons on one pad, so "the weapon" is no longer a single row — and
+ * the NEWEST row, which is what this used to report, is exactly the wrong one:
+ * a second weapon queued behind a ready one hid it from its owner and from the
+ * strike control that reads the head of this list.
+ */
+function padOrder(a: StrategicRow, b: StrategicRow): number {
+  const rank = (row: StrategicRow) => PAD_RANK[row.status];
+  const when = (row: StrategicRow) => row.status === 'PAUSED'
+    ? row.remainingSeconds ?? 0
+    : (row.readyAt ?? row.startedAt).getTime();
+  return rank(a) - rank(b) || when(a) - when(b) || a.id.localeCompare(b.id);
+}
+
+const strategicView = (row: StrategicRow) => ({
+  id: row.id,
+  status: row.status,
+  readyAt: row.readyAt,
+  remainingSeconds: row.remainingSeconds,
+});
+
 export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   const p = await loadLocked(tx, planetId, clock, { requireLive: false });
   /**
@@ -84,12 +117,12 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       eq(strategicAssets.type, type),
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
     ))
-    .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id))
-    .limit(1);
-  const [[player], [strategic], [interceptor], queued, researchQueue, colonies] = await Promise.all([
+    .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id));
+  const [[player], weapons, [interceptor], queued, researchQueue, colonies] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
     strategicOfType('DEATH_STAR'),
-    strategicOfType('INTERCEPTOR'),
+    // `maxCharges` is one, so the newest charge is the only charge.
+    strategicOfType('INTERCEPTOR').limit(1),
     tx
       .select()
       .from(buildOrders)
@@ -98,6 +131,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     activeResearchOrders(tx, p.playerId),
     colonyStanding(tx, p.playerId),
   ]);
+  const pad = weapons.toSorted(padOrder);
 
   /**
    * THE RATES THE ECONOMY ACTUALLY RUNS AT — Foundry included. D52a.
@@ -248,23 +282,12 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
         .map(buildOrderView),
       YARD: queued.filter((order) => order.queue === 'YARD').map(buildOrderView),
     },
-    strategic: strategic
-      ? {
-          id: strategic.id,
-          status: strategic.status,
-          readyAt: strategic.readyAt,
-          remainingSeconds: strategic.remainingSeconds,
-        }
-      : null,
+    /** The head of `deathStars`: the weapon that can fly soonest. */
+    strategic: pad[0] ? strategicView(pad[0]) : null,
+    /** Every weapon on this world's pad, in `padOrder`. Up to the stockpile's two. T11. */
+    deathStars: pad.map(strategicView),
     /** The anti-strategic charge, which is its own asset and its own answer. T10. */
-    interceptor: interceptor
-      ? {
-          id: interceptor.id,
-          status: interceptor.status,
-          readyAt: interceptor.readyAt,
-          remainingSeconds: interceptor.remainingSeconds,
-        }
-      : null,
+    interceptor: interceptor ? strategicView(interceptor) : null,
     colonies,
     fleet: p.homeFleet,
     ground: p.ground,
@@ -298,14 +321,12 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * greys the option and prints the figures rather than discovering the rule
      * through a toast.
      *
-     * The loads are counted over every unit row this world owns — `fleet` is only
-     * what is standing on the ground, and both ceilings are rules about ownership.
-     * Without that, a world whose fleet was out raiding would be offered room it
-     * does not have.
+     * The load is counted over every unit row this world owns — `fleet` is only
+     * what is standing on the ground, and the ceiling is a rule about ownership.
+     * Without that, a world whose guns were somehow away would be offered room it
+     * does not have. D184 left one ceiling here; the fleet no longer has one.
      */
     capacity: {
-      hangar: hangarCapacity(p.buildings.HANGAR),
-      hangarUsed: hangarLoad(owned),
       ground: groundSlots(p.buildings.CORE),
       groundUsed: groundLoad(owned),
     },

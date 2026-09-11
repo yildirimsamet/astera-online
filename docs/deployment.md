@@ -1224,6 +1224,58 @@ ssh yildirim@hoofywood.com \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts reward 'WARRIOR'"
 ```
 
+### Erasing one person who asked to be erased
+
+A separate, explicitly authorized owner operation, and the only one that removes an account.
+`reclaim` takes a season presence and keeps the account because the commander is expected
+back; this takes the person. There is no route and no UI: what is being confirmed is a human
+request that no server-side check can verify.
+
+Dry run first — it prints who would go and everything they hold, because the one failure this
+command must not have is deleting the wrong person on a name collision:
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  delete-account 'nosferatu'
+# reads: WOULD DELETE … / worlds … / Nothing was written.
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  delete-account 'nosferatu' --yes
+```
+
+**Take a fresh dump and rehearse it on a restored copy first.** There is no undo: the command
+runs in one transaction against a live world, and the nightly dump is the whole of the way
+back. Restore into a disposable database exactly as step 5 does, run the command there, and
+compare the conservation query below before touching production.
+
+**A CAPTURED COLONY IS HANDED BACK, NOT DELETED.** A colony deleted outright is a world that
+has left the galaxy — one fewer thing to fight over for the rest of the season, and
+`neutrals + colonies = 51` permanently red on every later deploy. The command re-seeds each
+colony's address from the season's own generator: same slot, same tier, same profile seed,
+same name it was born with. An address the generator never put a neutral at — a Silent Space
+departure site — is left empty, because re-seeding one there would make a 52nd world. Verify
+with the conservation query in "Live galaxy acceptance"; the capital count falls by one and
+the caretaker pool does not move.
+
+**IT TAKES OTHER PEOPLE'S HISTORY WITH IT, and that is stated rather than hidden.** Every
+`battle_report` naming this commander goes, on both sides, and so does every probe reading and
+telescope watch other commanders held on the removed world. It is the same trade a wipe and a
+reclaim each make, it is the only one the schema allows, and the person asked. Count it before
+running, so the answer is a number rather than a surprise:
+
+```sql
+SELECT count(*) FROM battle_reports
+ WHERE attacker_player_id = :player OR defender_player_id = :player;
+```
+
+It refuses, in words rather than a constraint name, on: anything still in the air
+(`WORLD_BUSY` — let it land and run again), a commander the server plays (`BOT_ACCOUNT` — use
+`pnpm bots retire`), an author of public news (`ANNOUNCEMENT_AUTHOR`), an account with Silent
+Space move history other return addresses hang off (`TRANSFER_HISTORY`), and a queued return
+application (`RETURN_QUEUED`). Nothing is written on any of them.
+
 ## Remaining operational gaps
 
 - `deploy/deploy.sh` is not a production release gate; the manual sequence remains canonical.

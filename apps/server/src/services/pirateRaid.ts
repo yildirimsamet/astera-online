@@ -3,6 +3,7 @@ import {
   DEBRIS,
   HULLS,
   MOBILE_HULLS,
+  PIRATE,
   distance,
   engagementEndsAt,
   fleetCargo,
@@ -20,6 +21,7 @@ import {
   pirateStats,
   resolveCombat,
   seededFrom,
+  settleWreck,
   pirateZone,
   type Fleet,
   type HullId,
@@ -149,6 +151,23 @@ export async function launchPirateRaid(
   fleet: Fleet,
   clock: Clock,
   expectedPlayerId?: string,
+  /**
+   * THE FLIGHT TIME THE PLAYER WAS LOOKING AT WHEN THEY PRESSED. D183.
+   *
+   * Owner report: *"Gönderirken 10dk yazıyordu, gönderme tuşuna bastım 40dk'ya
+   * çıktı."* The rendezvous table on `/api/pirates` is an instantaneous solve, and
+   * a quote that is even half a minute old drifts past a minute about 1.5% of the
+   * time — worst measured case 5.1 minutes to 56.3. It JUMPS rather than slides
+   * because `interceptOrbit` finds the FIRST meeting: a wing slower than the pirate
+   * waits for the orbit to come round, and a fleet leaving a moment too late misses
+   * that narrow window and is quoted the next lap.
+   *
+   * A raid cannot be recalled (P3), so this is the one surface that must never
+   * commit a fleet to a number the player never saw. Optional because a caller may
+   * genuinely not have one (the simulator, a bot, an older client); when it is
+   * given, the launch is refused rather than flown at a different answer.
+   */
+  quotedMinutes?: number,
 ): Promise<PirateRaidLaunch> {
   const requested: Fleet = {};
   for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
@@ -245,6 +264,27 @@ export async function launchPirateRaid(
         'CANNOT_INTERCEPT',
         'It will be gone before your fleet could reach it',
         409,
+      );
+    }
+
+    /*
+      AND IT IS THE MEETING THE PLAYER READ. D183.
+
+      Checked here, before a bay, a hull or a drop of fuel is committed, so a
+      refusal costs nothing and can simply be re-read. The refusal NAMES the new
+      minute: a commander told only "that moved" learns nothing, and the number
+      they need is the one this transaction just solved for.
+    */
+    if (
+      quotedMinutes !== undefined
+      && Number.isFinite(quotedMinutes)
+      && Math.abs(hit.flightMinutes - quotedMinutes) > PIRATE.quoteToleranceMinutes
+    ) {
+      throw new GameError(
+        'RENDEZVOUS_MOVED',
+        'That pirate has moved on its orbit. Check the new flight time before you commit.',
+        409,
+        { minutes: Math.round(hit.flightMinutes * 10) / 10 },
       );
     }
 
@@ -405,7 +445,7 @@ export async function resolvePirateArrival(
       callsign: pirateCallsign(key, raid.pirateIndex),
       ships: fleetCount(attacking),
     }, origin.now);
-    await turnForHome(tx, raid, attacking, origin, null, null);
+    await turnForHome(tx, raid, attacking, origin, null, null, null);
     return;
   }
 
@@ -470,7 +510,7 @@ async function settleArrival(
       level: spec.level,
       ships: fleetCount(attacking),
     }, now);
-    await turnForHome(tx, raid, attacking, origin, null, null);
+    await turnForHome(tx, raid, attacking, origin, null, null, null);
     return;
   }
 
@@ -579,9 +619,18 @@ async function settleArrival(
    * carries its own position now: there is no planet under this battle, and the
    * old row could only say "over that world".
    */
-  const wreckValue =
-    (flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses)) * DEBRIS.share;
-  await createVoidDebris(tx, raid, result.attackerLosses, result.defenderLosses, now);
+  /*
+    AND THE SQUADRON'S COLLECTORS TAKE THEIR SHARE BEFORE THE FIELD IS PUBLIC. D200.
+    Settled once, so the report, the field and the leg home read one remainder.
+    A squadron annihilated here has no collector left to lift anything.
+  */
+  const { salvage, field: wreck } = settleWreck(
+    voidWreck(result.attackerLosses, result.defenderLosses),
+    result.attackerSurvivors,
+  );
+  const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
+  const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
+  await createVoidDebris(tx, raid, wreck, now);
 
   await tx.insert(battleReports).values({
     seasonId: raid.seasonId,
@@ -610,7 +659,8 @@ async function settleArrival(
     defenderFleet: crew,
     defenceSalvage: {},
     disruptedMinutes: 0,
-    wreckValue: wreckValue >= DEBRIS.minimum ? wreckValue : 0,
+    wreckValue,
+    salvage,
     cargoLimited,
     shieldAbsorbed: 0,
     /**
@@ -637,6 +687,13 @@ async function settleArrival(
       lootAlloy: loot?.alloy ?? 0,
       lootCrystal: loot?.crystal ?? 0,
       lootDeuterium: loot?.deuterium ?? 0,
+      ...(lifted
+        ? {
+            salvageAlloy: salvage.alloy,
+            salvageCrystal: salvage.crystal,
+            salvageDeuterium: salvage.deuterium,
+          }
+        : {}),
       unitsLost: fleetCount(result.attackerLosses),
       shipsHome: fleetCount(result.attackerSurvivors),
       ...(captured ? { capturedHull: captured } : {}),
@@ -653,6 +710,7 @@ async function settleArrival(
     origin,
     loot ? { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium } : null,
     captured,
+    lifted ? salvage : null,
   );
 }
 
@@ -702,12 +760,14 @@ async function turnForHome(
   origin: LockedPlanet,
   loot: Resources | null,
   captured: HullId | null,
+  /** What its Garbage Collectors lifted at the rendezvous, or null. D200. */
+  salvage: Resources | null,
 ): Promise<void> {
   if (fleetCount(survivors) === 0) {
     await clearRaidUnits(tx, raid.planetId, raid.id);
     await tx
       .update(pirateRaids)
-      .set({ status: 'done', loot, capturedHull: captured, homeAt: null })
+      .set({ status: 'done', loot, salvage, capturedHull: captured, homeAt: null })
       .where(eq(pirateRaids.id, raid.id));
     await recomputeWealth(tx, raid.planetId);
     await recomputePlayerWealth(tx, raid.ownerPlayerId);
@@ -728,7 +788,7 @@ async function turnForHome(
 
   await tx
     .update(pirateRaids)
-    .set({ loot, capturedHull: captured, homeAt })
+    .set({ loot, salvage, capturedHull: captured, homeAt })
     .where(eq(pirateRaids.id, raid.id));
 
   await schedule(tx, {
@@ -753,7 +813,7 @@ export interface PirateRaidDelivery {
  * Loot lands in STORAGE — it was taken, not produced, so the collector has nothing
  * to do with it. A captured hull joins the garrison alongside them.
  *
- * A CAPTURED HULL LANDS EVEN OVER HANGAR CAPACITY, and that is D133 stated rather
+ * A CAPTURED HULL ALWAYS LANDS. D133 stated rather
  * than an oversight: no cap deletes overflow created by survivors or capture; it
  * only blocks new INGRESS. A return leg that could be refused for being too full
  * would evaporate the one thing this whole feature exists to hand over.
@@ -805,10 +865,12 @@ export async function resolvePirateReturn(
   await setUnits(tx, destinationPlanetId, merged, 'home', raid.ownerPlayerId);
 
   const loot = raid.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
+  // The wreck its collectors lifted lands beside the hoard, whole. D200.
+  const salvage = raid.salvage;
   await saveResources(tx, destinationPlanetId, {
-    alloy: home.alloy + loot.alloy,
-    crystal: home.crystal + loot.crystal,
-    deuterium: home.deuterium + loot.deuterium,
+    alloy: home.alloy + loot.alloy + (salvage?.alloy ?? 0),
+    crystal: home.crystal + loot.crystal + (salvage?.crystal ?? 0),
+    deuterium: home.deuterium + loot.deuterium + (salvage?.deuterium ?? 0),
   });
 
   /*
@@ -828,6 +890,13 @@ export async function resolvePirateReturn(
       lootAlloy: loot.alloy,
       lootCrystal: loot.crystal,
       lootDeuterium: loot.deuterium,
+      ...(salvage
+        ? {
+            salvageAlloy: salvage.alloy,
+            salvageCrystal: salvage.crystal,
+            salvageDeuterium: salvage.deuterium,
+          }
+        : {}),
       ...(raid.capturedHull ? { capturedHull: raid.capturedHull } : {}),
     },
     at: home.now,
@@ -859,7 +928,7 @@ const flyingMaterial = (fleet: Fleet, material: 'alloy' | 'crystal' | 'deuterium
     .reduce((sum, [id, n]) => sum + n * HULLS[id][material], 0);
 
 /**
- * THE WRECK FIELD A PIRATE BATTLE LEAVES, AT THE RENDEZVOUS.
+ * THE WRECK A PIRATE BATTLE MAKES, AT THE RENDEZVOUS.
  *
  * Both sides, priced by `DEBRIS.share` off the same two loss lists the report
  * carries — a pirate's hulls are ordinary Fleet V2 hulls and there is no reason
@@ -867,30 +936,38 @@ const flyingMaterial = (fleet: Fleet, material: 'alloy' | 'crystal' | 'deuterium
  *
  * SPLIT BY MATERIAL rather than dumped into alloy, the same way both world-battle
  * paths do it: what a Prospector brings back has to resemble what died.
- *
- * `DEBRIS.minimum` IS THE SAME FLOOR EVERY OTHER FIELD ANSWERS TO. Below it there
- * is no row at all, so a skirmish does not litter the disc with fields worth less
- * than the flight out to them.
  */
-async function createVoidDebris(
-  tx: Tx,
-  raid: PirateRaidRow,
-  attackerLosses: Fleet,
-  pirateLosses: Fleet,
-  now: Date,
-): Promise<void> {
-  const wreck =
-    (flyingValue(attackerLosses) + flyingValue(pirateLosses)) * DEBRIS.share;
-  if (wreck < DEBRIS.minimum) return;
-
+function voidWreck(attackerLosses: Fleet, pirateLosses: Fleet): Resources {
   const alloy = flyingMaterial(attackerLosses, 'alloy') + flyingMaterial(pirateLosses, 'alloy');
   const crystal =
     flyingMaterial(attackerLosses, 'crystal') + flyingMaterial(pirateLosses, 'crystal');
   const deuterium =
     flyingMaterial(attackerLosses, 'deuterium') + flyingMaterial(pirateLosses, 'deuterium');
   const total = alloy + crystal + deuterium;
-  if (total <= 0) return;
+  if (total <= 0) return { alloy: 0, crystal: 0, deuterium: 0 };
+  const wreck =
+    (flyingValue(attackerLosses) + flyingValue(pirateLosses)) * DEBRIS.share;
+  return {
+    alloy: (wreck * alloy) / total,
+    crystal: (wreck * crystal) / total,
+    deuterium: (wreck * deuterium) / total,
+  };
+}
 
+/**
+ * THE FIELD WHAT IS LEFT OF IT BECOMES — `settleWreck`'s answer, never re-derived.
+ *
+ * `DEBRIS.minimum` IS THE SAME FLOOR EVERY OTHER FIELD ANSWERS TO, applied to what
+ * the collectors left. Below it there is no row at all, so a skirmish does not
+ * litter the disc with fields worth less than the flight out to them.
+ */
+async function createVoidDebris(
+  tx: Tx,
+  raid: PirateRaidRow,
+  field: Resources | null,
+  now: Date,
+): Promise<void> {
+  if (!field) return;
   await tx.insert(debrisFields).values({
     seasonId: raid.seasonId,
     planetId: null,
@@ -898,9 +975,9 @@ async function createVoidDebris(
     y: raid.interceptY,
     z: raid.interceptZ,
     pirateRaidId: raid.id,
-    alloy: (wreck * alloy) / total,
-    crystal: (wreck * crystal) / total,
-    deuterium: (wreck * deuterium) / total,
+    alloy: field.alloy,
+    crystal: field.crystal,
+    deuterium: field.deuterium,
     createdAt: now,
   });
 }

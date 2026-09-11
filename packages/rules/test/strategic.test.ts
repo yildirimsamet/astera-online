@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateGalaxy, pickSpawnSlot, type PlanetSlot } from '../src/galaxy.js';
 import { GALAXY, MULTI_WORLD, SERVERS } from '../src/constants.js';
-import { ECONOMY_TEMPO, scaleResources } from '../src/tempo.js';
 import { UNAIDED, distance, fleetTravelExact } from '../src/travel.js';
 import { MOBILE_HULLS } from '../src/hulls.js';
 import {
@@ -39,11 +38,9 @@ function centroidDistance(slots: readonly PlanetSlot[]): number {
 
 describe('multi-world strategic rules', () => {
   it('prices a settlement as the Economy v2 two-Courier commitment', () => {
-    expect(MULTI_WORLD.settlement).toEqual({
-      cost: scaleResources(
-        { alloy: 2000, crystal: 1000, deuterium: 0 },
-        ECONOMY_TEMPO.fixedPrice,
-      ),
+    expect(MULTI_WORLD.settlement).toMatchObject({
+      cost: { alloy: 800, crystal: 400, deuterium: 0 },
+      charge: { alloy: 1000, crystal: 500, deuterium: 0 },
       transportHull: 'COURIER',
       transports: 2,
     });
@@ -105,10 +102,12 @@ describe('multi-world strategic rules', () => {
       .toEqual(['UNGUARDED', 'GUARDED', 'FORTIFIED']);
   });
 
-  it('counts cargo space from Courier, Wayfarer and Atlas only', () => {
-    expect(TRANSFER_CARGO_HULLS).toEqual(['COURIER', 'WAYFARER', 'ATLAS']);
-    expect(transferCargoCapacity({ DART: 99, WAYFARER: 1, COURIER: 2, ATLAS: 1 }, {}))
-      .toBe(transferCargoCapacity({ WAYFARER: 1, COURIER: 2, ATLAS: 1 }, {}));
+  /** The DEDICATED transports and nothing else — one per tier since D196. */
+  it('counts cargo space from the dedicated transports only', () => {
+    expect(TRANSFER_CARGO_HULLS).toEqual(['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY']);
+    const loaded = { WAYFARER: 1, COURIER: 2, ATLAS: 1, ARGOSY: 1 };
+    expect(transferCargoCapacity({ DART: 99, ...loaded }, {}))
+      .toBe(transferCargoCapacity(loaded, {}));
     expect(transferCargoCapacity({ DART: 99 }, {})).toBe(0);
   });
 

@@ -23,6 +23,10 @@ export const statusBar = {
   menuHint: 'Commander {{name}} — intel, leaderboard, rewards, account',
   menuWaiting: '{{count}} rewards waiting',
   clanWaiting: '{{count}} clan updates waiting',
+  newcomerShield: {
+    label: 'Raid shield',
+    hint: 'You cannot be raided for {{duration}}',
+  },
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
     label: 'Bays',
@@ -97,9 +101,9 @@ export const pendingStrip = {
    * before it is a grudge.
    */
   incomingFrom: 'Inbound from {{origin}}',
-  massLight: 'Light force inbound',
-  massMedium: 'Sizeable force inbound',
-  massHeavy: 'Heavy force inbound',
+  massLight: 'Small fleet inbound',
+  massMedium: 'Mid-sized fleet inbound',
+  massHeavy: 'Large fleet inbound',
 } as const;
 
 export const signals = {
@@ -210,7 +214,7 @@ export const menu = {
   volumeLabel: 'Music volume',
   volumeValue: '{{volume}}%',
   /**
-   * RESOLUTION. Three rungs, one word each — all three share a 375-wide row. The
+   * RESOLUTION. Three rungs, one word each — all three share a 350-wide row. The
    * line beneath belongs to the chosen rung: a rung's name does not say what it
    * buys, and the sentence does.
    */

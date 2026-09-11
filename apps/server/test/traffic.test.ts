@@ -308,7 +308,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     midFlight((await strangersFight()).arriveAt);
     const [contact] = await fetchContacts();
 
-    expect(contact?.mass).toBe('LIGHT');
+    expect(contact?.mass).toBe('MEDIUM');
     expect(contact?.fleet).toEqual({ DART: 30 });
     // Not reconstructed in the renderer — exact on the wire after sight earned it.
     expect(await raw()).toContain('DART');
@@ -316,8 +316,8 @@ describe('galaxy traffic — motion in public, intent in private', () => {
 
   /** Three steps, so the disc says "something big" without saying what. */
   it('reads a serious fleet as a heavier silhouette', async () => {
-    await giveUnits(f.db, a, { RAMPART: 80 });
-    midFlight((await launchAttack(f.db, a, b, { RAMPART: 80 }, f.clock)).arriveAt);
+    await giveUnits(f.db, a, { RAMPART: 200 });
+    midFlight((await launchAttack(f.db, a, b, { RAMPART: 200 }, f.clock)).arriveAt);
 
     expect((await fetchContacts())[0]?.mass).toBe('HEAVY');
   });
@@ -627,7 +627,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       'to',
     ]);
     expect(contact?.fleet).toEqual({ DART: 30 });
-    expect(contact?.mass).toBe('LIGHT');
+    expect(contact?.mass).toBe('MEDIUM');
     expect(contact?.route).toBeUndefined();
     expect(contact?.minutesRemaining).toBeUndefined();
   });

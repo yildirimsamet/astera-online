@@ -311,6 +311,30 @@ export async function claimClanLoot(
   };
 }
 
+/** Lock launch-snapshotted clan ledgers in the global stable order. */
+export async function lockClanBattleScore(
+  tx: Tx,
+  missionId: string,
+): Promise<void> {
+  const [commitment] = await tx.select({
+    attackerClanId: attackCommitments.attackerScoreClanId,
+    defenderClanId: attackCommitments.defenderScoreClanId,
+  }).from(attackCommitments).where(eq(attackCommitments.missionId, missionId));
+  if (!commitment) return;
+  const clanIds = [commitment.attackerClanId, commitment.defenderClanId]
+    .filter((clanId): clanId is string => clanId !== null)
+    .filter((clanId, index, ids) => ids.indexOf(clanId) === index)
+    .sort();
+  for (const clanId of clanIds) {
+    await tx.select({ id: clans.id }).from(clans)
+      // Dominion changes no key column. NO KEY UPDATE still serializes score
+      // writers and conflicts with clan management's stronger UPDATE lock, but
+      // remains compatible with the KEY SHARE a concurrent launch takes for its
+      // immutable clan foreign-key snapshots.
+      .where(eq(clans.id, clanId)).for('no key update');
+  }
+}
+
 /** Books the two immutable launch snapshots into the cached clan ladder. */
 export async function recordClanBattleScore(
   tx: Tx,
@@ -322,6 +346,9 @@ export async function recordClanBattleScore(
     at: Date;
   },
 ): Promise<void> {
+  // Settlement normally pre-locks these before its player rows. Keep this here
+  // as well so every direct caller uses the same stable clan order.
+  await lockClanBattleScore(tx, input.missionId);
   const [commitment] = await tx.select().from(attackCommitments)
     .where(eq(attackCommitments.missionId, input.missionId));
   if (!commitment) return;
@@ -332,7 +359,13 @@ export async function recordClanBattleScore(
     commitment.defenderScoreClanId
       ? { clanId: commitment.defenderScoreClanId, side: 'DEFENCE' as const, delta: input.defenderDelta }
       : null,
-  ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  ]
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    // Two different members can resolve opposite-direction battles between the
+    // same clans at once. Directional ATTACK→DEFENCE order would then lock A→B
+    // in one transaction and B→A in the other. A stable clan-id order keeps the
+    // immutable events and their cached ledgers in one PostgreSQL lock order.
+    .sort((left, right) => left.clanId.localeCompare(right.clanId));
   let changed = false;
   for (const entry of entries) {
     const inserted = await tx.insert(clanScoreEvents).values({

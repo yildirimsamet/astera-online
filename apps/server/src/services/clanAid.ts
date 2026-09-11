@@ -17,6 +17,7 @@ import {
   type Fleet,
   type HullId,
   type Resources,
+  type TechLevels,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -154,9 +155,21 @@ const assertAidPayload = (fleet: Fleet, cargo: Resources): void => {
   if (!clanTransferFleetIsValid(fleet)) {
     throw new GameError('BAD_CLAN_AID_FLEET', 'Choose at least one eligible mobile ship', 400);
   }
-  if (resourcesTotal(cargo) > clanTransferCargoCapacity(fleet)) {
+};
+
+/**
+ * THE HOLD REFUSAL, AND IT IS SEPARATE BECAUSE IT NEEDS THE COMMANDER. D197.
+ *
+ * Since Cargo Holds lifts a clan delivery too, the capacity is a function of the
+ * sender's research — so it cannot be answered in the payload preamble, which runs
+ * before anything is read. D181 already states the rule this follows: a hold
+ * refusal is validated INSIDE the transaction, never in a pre-transaction preamble.
+ */
+const assertAidCapacity = (fleet: Fleet, cargo: Resources, tech: TechLevels): void => {
+  const capacity = clanTransferCargoCapacity(fleet, tech);
+  if (resourcesTotal(cargo) > capacity) {
     throw new GameError('CLAN_AID_CARGO_CAPACITY', 'Only transport hulls carry clan resources', 400, {
-      capacity: clanTransferCargoCapacity(fleet),
+      capacity,
     });
   }
 };
@@ -352,7 +365,7 @@ export async function quoteClanAid(
       total: ordinaryBays.total + CLAN.extraAidBays,
       available: clanBayAvailable(ordinaryBays.total, ordinaryBays.used, true),
     },
-    cargoCapacity: clanTransferCargoCapacity(input.fleet),
+    cargoCapacity: clanTransferCargoCapacity(input.fleet, tech),
     value,
     /**
      * REMAINING, AND NEVER THE CEILING IT WAS TAKEN FROM. D114.
@@ -442,6 +455,8 @@ export async function launchClanAid(
   }
   const boost = fleetSpeedMult(origin.orbit);
   const tech = await techOf(tx, input.senderPlayerId);
+  // Cargo Holds lifts this delivery (D197), so the hold is only knowable here.
+  assertAidCapacity(input.fleet, input.cargo, tech);
   const dist = distance(origin, target);
   // A resource delivery always comes home; a ship gift has only its outbound leg.
   const fuel = missionFuel(input.fleet, dist, delivery ? 2 : 1);

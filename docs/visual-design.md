@@ -140,7 +140,7 @@ type choice, and `test/viewport-zoom.test.ts` asserts it.
 
 ### The screen every layout is budgeted against
 
-**375 x 812 CSS pixels, portrait.** Owner instruction. This is the narrow end of the iPhone line
+**350 x 812 CSS pixels, portrait.** Owner instruction. This is the narrow end of the iPhone line
 and it is the width a layout must survive, not the width it should merely prefer. `tools/visual.mjs`
 runs at exactly this figure; it ran at 390 until D157, and those fifteen pixels were enough to hide
 a truncation that was live on the real target — a shipyard row whose name read "Tempest" in every
@@ -150,7 +150,7 @@ The budget a full-width `UpgradeRow` actually has, so a new element on it can be
 
 | Consumed by                | px    |
 | -------------------------- | ----- |
-| Screen                     | 375   |
+| Screen                     | 350   |
 | Row padding (`px-3`, both) | −24   |
 | Art socket + gap           | −86   |
 | Chevron / action + gap     | −24   |
@@ -185,7 +185,10 @@ a list.
 - **The clarity ramp is reserved.** `FULL → CLEAR → INTERMITTENT → DEGRADED → BLIND` fades
   toward the background, so an unreliable reading is literally harder to see. Nothing outside
   the intel layer may use those five values.
-- **Commit styling is reserved for the irreversible.** Launching, and nothing else.
+- **Commit styling is reserved for the irreversible.** Launching, and nothing else. And the
+  other half of that rule is `interface.md` I3a: an irreversible thing also gets a SECOND BEAT.
+  A control that looks like a commitment and still fires on the first tap only warns the players
+  who already knew.
 - **Icons carry shape; the interface carries colour.** Hue already means category, so a
   coloured icon competes with the one thing colour is for.
 - Near-black ground. Density with structure. No ornament that carries no information.
@@ -195,6 +198,45 @@ electric-blue emissive panels, amber emissive on alloy and the vault, crystallin
 molten-orange veining in raw alloy.
 
 > **The test:** does this look like a real game, or like a website that happens to contain one?
+
+### How the palette is actually held — channels, one lamp, and cool ink
+
+Owner direction, from a plate study they authored themselves. Three rules, and each of them
+replaced a habit that had grown quietly across the stylesheet.
+
+**A hue is stated once, as a channel.** `--ch-crystal: 91 210 255` in `styles.css` is a bare
+`R G B` triple, so any surface can write `rgb(var(--ch-crystal) / 40%)` and get the same cyan at
+whatever weight it needs. Before this the same cyan was written out thirteen times, one red
+lived under two different triplets, and the machined edge appeared sixteen times — a hue spread
+over sixteen literals is a hue nobody can change. Five channels exist: crystal, threat,
+opportunity, alloy, edge, plus the three plate depths. `apps/web/test/palette.test.ts` refuses
+the old literals.
+
+**The four lit states are one mechanism.** `plate-lit`, `plate-threat`, `plate-opportunity` and
+`plate-alloy` each say `--plate-accent: var(--ch-…)` and nothing else; one shared rule builds
+the wash, the edge, the inner light and the throw from that variable. This fixed two live
+faults: `lit` and `alloy` had colour only on their one-pixel outline, so on a 350px screen
+"selected" and "armed" arrived as a hairline; and `threat` and `opportunity` each mixed their
+own tinted black metal, which said the same thing a second time in a colour the palette never
+authored. One metal now, and the hue arrives entirely as light falling on it.
+
+**A class that resolves to nothing is the drift's other half.** Tailwind emits nothing for an
+unknown token and a browser drops an unknown class in silence, so a surface simply renders
+without the thing its author believed they wrote. Four were live in shipped screens —
+`plate-crystal` (the lit tone is `plate-lit`), `rounded-panel`, `text-muted`, `text-amber` — and
+the settlement confirmation, one of the game's commitment surfaces, had been shipping as a flat
+unlit box for as long as it existed. Alongside them, "a recessed card inside a sheet" was written
+out three more times as `bg-deep/55`, `bg-deep/90` and `bg-void/15`, beside the `plate-inset`
+that already is that object. That is the owner's *"some opaque, some slightly transparent"*, in
+the source that produces it. `apps/web/test/surface-vocabulary.test.ts` refuses both.
+
+**The ink is cool and the metal is translucent.** `--color-bone` was a warm paper white
+(#e9e4d8) on the argument that the one thing on screen which is not machinery should not be
+machine-coloured. Every surface it sits on is lit by a cold instrument, so the warm white read
+as an aged screenshot rather than as a lit deck; #f3f7ff belongs to the same light as the plate
+under it, and is brighter on a near-black ground into the bargain. The plate body carries an
+alpha at every depth for the reason in I5 — the galaxy never closes — but the `backdrop-filter`
+that would make it literal glass is refused: it re-blurs the live canvas per plate per frame.
 
 ## When to ask for an asset
 
@@ -281,7 +323,7 @@ The sixteen planet PNGs are **renders, not textures**. They cannot be wrapped on
 |---|---|
 | Planet surface maps | Equirectangular colour maps, 2:1, 2048×1024 (4096×2048 master). Optional roughness/normal |
 | Starfield / nebula environment | Equirectangular `.hdr` or `.exr`, 4K master → 2K web |
-| Ship meshes | `.glb`, Draco-compressed, KTX2 textures, ≤3k triangles, one LOD below |
+| Ship meshes | `.glb`, meshopt-compressed, WebP textures, **≤5k triangles** (`SHIP_TRIANGLE_CEILING`, enforced by `tools/models.mjs`), one LOD below |
 
 Blender is the right tool for all of these, and the same masters can re-render the 2D art.
 

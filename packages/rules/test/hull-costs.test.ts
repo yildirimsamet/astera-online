@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { HULLS, MOBILE_HULLS, GROUND_HULLS } from '../src/hulls.js';
+import { HULLS, MOBILE_HULLS, GROUND_HULLS, combatValue, fleetValue } from '../src/hulls.js';
 import { COMBAT } from '../src/constants.js';
-import { ECONOMY_TEMPO, scalePrice } from '../src/tempo.js';
 import type { HullId } from '../src/types.js';
 
 /**
@@ -28,40 +27,12 @@ const value = (id: HullId): number =>
 const power = (id: HullId): number =>
   (HULLS[id].atk * HULLS[id].hp * 1e6) / (value(id) * value(id));
 
-describe('Crystal-bearing hull prices', () => {
-  const baselineCrystal = {
-    PIKE: 90,
-    RAMPART: 140,
-    WARDEN: 110,
-    COURIER: 150,
-    VIPER: 130,
-    TALON: 230,
-    STRONGHOLD: 450,
-    SENTINEL: 420,
-    WAYFARER: 300,
-    TEMPEST: 450,
-    BALLISTA: 700,
-    LEVIATHAN: 1150,
-    PRAETORIAN: 900,
-    ATLAS: 950,
-    NULLIFIER: 800,
-    CATACLYSM: 1700,
-    CITADEL: 2100,
-    BASTION: 800,
-    THORN: 200,
-    PROSPECTOR: 200,
-  } as const;
-
-  it('raises the Crystal build cost of every hull that uses Crystal by 15%', () => {
-    for (const [id, baseline] of Object.entries(baselineCrystal) as [keyof typeof baselineCrystal, number][]) {
-      expect(HULLS[id].crystal, id).toBe(
-        scalePrice(baseline, ECONOMY_TEMPO.hullCrystalPrice),
-      );
-    }
-  });
-
-  it('does not add Crystal to a hull that did not use it', () => {
-    expect(HULLS.DART.crystal).toBe(0);
+describe('monthly crystal recipes', () => {
+  it('charges crystal on every ship, including the opening Dart', () => {
+    expect(HULLS.DART.crystal).toBe(60);
+    expect(HULLS.COURIER.crystal).toBe(150);
+    expect(HULLS.ATLAS.crystal).toBe(1000);
+    for (const hull of Object.values(HULLS)) expect(hull.crystal).toBeGreaterThan(0);
   });
 });
 
@@ -155,11 +126,20 @@ describe('the hull table is priced on equal-budget power', () => {
    * A Courier shortens exposure; it never replaces a Wayfarer. D94. It carries less
    * per resource and makes up for it by arriving sooner.
    */
+  /**
+   * THIS ASSERTED THE OPPOSITE OF ITS OWN TITLE. D186.
+   *
+   * It read `COURIER.speed === WAYFARER.speed` under the words "keeps the Courier
+   * faster" — written to lock in a profile that had flattened the cargo ladder to
+   * one figure. A test bent to fit a defect is worse than no test: it reports the
+   * defect as the contract. The hold ladder is the contract, and it is what this
+   * now says.
+   */
   it('keeps the Courier faster and the Wayfarer fatter', () => {
     expect(HULLS.COURIER.speed).toBeGreaterThan(HULLS.WAYFARER.speed);
+    expect(HULLS.WAYFARER.speed).toBeGreaterThan(HULLS.ATLAS.speed);
     expect(HULLS.WAYFARER.cargo).toBeGreaterThan(HULLS.COURIER.cargo * 3);
     expect(HULLS.ATLAS.cargo).toBeGreaterThan(HULLS.WAYFARER.cargo * 2);
-    expect(HULLS.WAYFARER.speed).toBeGreaterThan(HULLS.ATLAS.speed);
   });
 
   /** Every price is a whole resource, and nothing is free. */
@@ -185,7 +165,51 @@ describe('the hull table is priced on equal-budget power', () => {
     }
     expect(HULLS.DART.speed).toBeGreaterThan(HULLS.PIKE.speed);
     expect(HULLS.PIKE.speed).toBeGreaterThan(HULLS.RAMPART.speed);
-    expect(value('DART')).toBeLessThan(value('PIKE'));
+    expect(value('DART')).toBe(value('PIKE'));
     expect(value('PIKE')).toBeLessThan(value('RAMPART'));
+  });
+});
+
+/**
+ * WHAT A FLEET IS WORTH IN A FIGHT, WHICH IS NOT WHAT IT COST. D183, owner report:
+ * *"Yük gemisi ekliyorum gücüm artıyor ama yük gemilerinin saldırısı 0. Saçma
+ * değil mi?"*
+ *
+ * `fleetValue` is resources sunk in, and it is exactly right for what it grades —
+ * a battle's exchange, Dominion, a debris field. It is the wrong number on the
+ * launch sheet's own comparison, because an Atlas is 3,050 of it and fires nothing:
+ * a commander packing cargo for the loot watched the bar labelled "what you are
+ * sending" grow while the force they were sending stood still.
+ *
+ * ATTACK IS THE TEST, and it is the player's own words. A hull that cannot fire is
+ * not part of the force being compared — the two ground guns are (they fire), the
+ * transports and the Prospector are not (they do not). It stays priced in RESOURCES
+ * rather than in attack, because the other side of that comparison is a probe's
+ * defence band and both sides have to be the same quantity to be a comparison at
+ * all.
+ */
+describe('the force in a fleet, as opposed to the money in it', () => {
+  it('counts every hull that can fire, at what it cost', () => {
+    expect(combatValue({ DART: 1 })).toBe(fleetValue({ DART: 1 }));
+    expect(combatValue({ BASTION: 1 })).toBe(fleetValue({ BASTION: 1 }));
+    expect(combatValue({ THORN: 2 })).toBe(fleetValue({ THORN: 2 }));
+  });
+
+  it('counts nothing for a hull that cannot fire', () => {
+    for (const id of ['COURIER', 'WAYFARER', 'ATLAS', 'PROSPECTOR'] as const) {
+      expect(HULLS[id].atk, id).toBe(0);
+      expect(combatValue({ [id]: 3 }), id).toBe(0);
+    }
+  });
+
+  it('adds a transport to a wing without moving the force it represents', () => {
+    const wing = { DART: 10, VIPER: 4 } as const;
+    expect(combatValue({ ...wing, ATLAS: 2 })).toBe(combatValue(wing));
+    // And `fleetValue` still moves, because the resources really did leave.
+    expect(fleetValue({ ...wing, ATLAS: 2 })).toBeGreaterThan(fleetValue(wing));
+  });
+
+  it('is empty rather than negative or NaN on an empty fleet', () => {
+    expect(combatValue({})).toBe(0);
   });
 });

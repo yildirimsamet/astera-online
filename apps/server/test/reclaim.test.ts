@@ -7,10 +7,12 @@ import {
   battleReports,
   buildings,
   debrisFields,
+  dominionEvents,
   miningRuns,
   missions,
   notifications,
   planets,
+  playerRivals,
   players,
   probeReports,
   rewardGrants,
@@ -114,6 +116,65 @@ describe('reclaiming idle seats', () => {
   });
 
   /* ── what it frees ─────────────────────────────────────────── */
+
+  /**
+   * A RECLAIM MUST SURVIVE EVERY ROW THAT POINTS AT A COMMANDER. D183.
+   *
+   * `player_rivals.player_id` references `players.id`, so a commander who was
+   * keeping a Rival mark cannot be deleted while it stands — the same foreign-key
+   * trap the note above `playerResearch` records, and the same failure mode: the
+   * sweep throws, the seat is never freed, and a galaxy slowly fills with worlds
+   * nobody is playing.
+   *
+   * THE OTHER SIDE IS NOT A CONSTRAINT AND MUST STILL BE CLEANED. A mark pointing
+   * AT the reclaimed commander (`target_player_id`) has no foreign key by design —
+   * a mark is a memory rather than a reference (D91) — so nothing stops it becoming
+   * a mark on a commander who no longer exists. `rivalSlotOf` never matches it, so
+   * it is invisible AND it holds one of five slots for the rest of the season.
+   */
+  it('frees a seat whose commander was keeping a Rival mark', async () => {
+    await f.db.insert(playerRivals).values({
+      playerId: f.playerIds[0]!,
+      planetId: f.planetIds[1]!,
+      targetPlayerId: f.playerIds[1]!,
+      slot: 0,
+    });
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+    expect(result.failed).toBe(0);
+    expect(result.reclaimed).toHaveLength(1);
+    expect(await gone(idle)).toBe(true);
+    expect(await f.db.select().from(playerRivals)).toHaveLength(0);
+  });
+
+  it('clears the marks other commanders were keeping ON the reclaimed one', async () => {
+    // Two survivors both watching the commander who is about to be reclaimed.
+    await f.db.insert(playerRivals).values([
+      {
+        playerId: f.playerIds[1]!,
+        planetId: idle,
+        targetPlayerId: f.playerIds[0]!,
+        slot: 0,
+      },
+      {
+        playerId: f.playerIds[2]!,
+        planetId: idle,
+        targetPlayerId: f.playerIds[0]!,
+        slot: 3,
+      },
+    ]);
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+    expect(result.reclaimed).toHaveLength(1);
+    /*
+      A SLOT HELD BY A MARK NOBODY CAN SEE IS A SLOT LOST FOR THE SEASON. The disc
+      matches a mark by commander id and that commander is gone, so the reticle is
+      never drawn — while `RIVAL.max` still counts the row.
+    */
+    expect(await f.db.select().from(playerRivals)).toHaveLength(0);
+  });
 
   it('leaves a galaxy where everybody is still playing completely alone', async () => {
     const before = await planetsLeft();
@@ -409,6 +470,7 @@ describe('reclaiming idle seats', () => {
 
     // There is genuinely something to trip over.
     expect((await f.db.select().from(battleReports)).length).toBeGreaterThan(0);
+    expect(await f.db.select().from(dominionEvents)).toHaveLength(1);
 
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
     const result = await reclaimIdleSeats(f.db, f.clock);
@@ -419,6 +481,9 @@ describe('reclaiming idle seats', () => {
     expect(await f.db.select().from(missions)).toHaveLength(0);
     expect(await f.db.select().from(debrisFields).where(eq(debrisFields.planetId, idle))).toHaveLength(0);
     expect(await f.db.select().from(battleReports)).toHaveLength(0);
+    // The user-facing report goes with its deleted identities; the score journal
+    // has no such foreign keys and remains available for season reconciliation.
+    expect(await f.db.select().from(dominionEvents)).toHaveLength(1);
     // No orphaned planet wake-ups. Galaxy-owned season beats and deadlines must
     // survive reclaiming an individual seat.
     const remainingEvents = await f.db.select().from(scheduledEvents);

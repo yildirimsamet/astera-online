@@ -129,17 +129,27 @@ export const reports = {
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'From pirates',
   pirateCapturedNote:
-    'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to — even over Hangar capacity — and it does not count as one you built.',
+    'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to, and it does not count as one you built.',
   youHeld: 'You held. They now know how much you had waiting.',
   youFell: 'You did not hold.',
   /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */
   shipsLost: 'Ships lost',
   haul: 'What came home',
   haulLost: 'What they took',
+  /** What your Garbage Collectors lifted — beside the haul, never inside it. D200. */
+  salvageHaul: 'Salvaged from the wreck',
   roundsLabel: 'Rounds',
   taken: 'Taken',
   lost: 'Lost',
   dominion: 'Dominion',
+  dominionBreakdown: {
+    title: 'How Dominion moved',
+    lootGained: 'Secured loot',
+    lootLost: 'Loot taken from you',
+    enemyLosses: 'Enemy permanent losses',
+    ownLosses: 'Your permanent losses',
+    total: 'Dominion exchange',
+  },
   clansAtLaunch: 'Clans when this fleet launched',
   yourClan: 'Your side',
   theirClan: 'Their side',
@@ -346,6 +356,8 @@ export const reports = {
     salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage and are standing again.',
     worksTheirs: 'Their works are offline for {{duration}}. Nothing is being produced there.',
     worksYours: 'Your works were knocked offline for {{duration}}.',
+    /** The defender's copy of what the raider's collectors lifted. D200. */
+    salvageTheirs: 'Their Garbage Collectors lifted {{amount}} of the wreckage before it could drift.',
     wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
     /** The same field, read from the world it is drifting over. */
     wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',
@@ -436,8 +448,18 @@ export const dossier = {
   stockNote: 'What a decisive raid could carry off. The vault floor is not in it, and your own holds may cap it further.',
   stockCaught: 'Their radar caught the probe — they know somebody looked.',
   stockClean: 'The probe got in and out unnoticed.',
-  defenceLabel: 'Defence value',
-  defenceNote: 'What was standing on the planet when the probe passed.',
+  /** The one force unit, D199 — what the hulls and guns that can fire cost. */
+  defenceLabel: 'Firepower',
+  defenceNote: 'What could fire on the world when the probe passed.',
+  defenceRatio: 'About ×{{ratio}} what stands on {{world}}.',
+  shapeLabel: 'Shape of the wall',
+  shapeNote: 'By value, of what can fire. More than half is a majority.',
+  shapeUnread: 'Not read',
+  shapeUnreadNote: 'Their Veil is stronger than the Shipyard that sent the probe.',
+  shieldLabel: 'Shield charge',
+  shieldNote: 'Takes a raid’s fire before any hull does, and refills over the hours.',
+  unarmedLabel: 'Unarmed in the line',
+  unarmedNote: 'They fire nothing, and a clean sweep must still sink every one.',
   shipsLabel: 'Ships counted',
   shipsAllHome: 'Everything they own was home.',
   shipsSomeOut: 'Some of their ships were out.',
@@ -476,12 +498,12 @@ export const dossier = {
   doctrinesNoneNote: 'They had researched nothing into their hulls when the probe looked.',
 
   surfaceGapLabel: 'Everything about this world',
-  surfaceGapMissing: 'Nobody has ever looked here',
+  surfaceGapMissing: 'You have never seen this world',
   surfaceGapWhy:
     'You cannot see who holds it, how far along they are or what is in orbit. A probe brings all of it back at once.',
 
   probeGapLabel: 'Resources and defence',
-  probeGapMissing: 'Nothing has ever looked closely',
+  probeGapMissing: 'You have never looked closely',
   probeGapAged: 'Your reading of this world has aged out',
   probeGapWhy:
     'You are about to bet a fleet on what is down there. A probe turns that guess into a range.',

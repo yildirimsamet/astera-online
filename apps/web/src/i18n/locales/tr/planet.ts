@@ -18,11 +18,14 @@ export const planet = {
     building: "Yükleniyor · {{duration}}",
     paused: "Toparlanma sırasında yükleme durdu",
     ready: "Bir mühimmat yüklü",
+    noRadar: "Yüklü · Radar çemberi devre dışı",
     build: "Mühimmat yükle",
     started: "Mühimmat yükleniyor",
     hint: "Zamanlı Radar çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımladığı ilk Ölüm Yıldızı’nı imha eder. Ateşlendiğinde tükenir.",
     readyHint:
       "Hazır. Radar önleme çemberine giren veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder.",
+    noRadarHint:
+      "Mühimmat yüklü kalır ancak bu dünyanın Radar önleme çemberi yoktur. Anten’i ve Radar 3’ü yeniden etkinleştir; başka bir dünyandaki Teleskop görüşü yine ateşlemeyi başlatabilir.",
     needResearch: "Önleme Ağı",
     needRadar: "Radar {{level}}. seviye",
     needUplink: "Yörüngede Anten",
@@ -36,6 +39,7 @@ export const planet = {
     building: "Üretiliyor · {{duration}}",
     paused: "Toparlanma sırasında üretim duraklatıldı",
     ready: "Fırlatmaya hazır",
+    stock: "{{ready}} hazır · {{building}} üretimde · {{held}}/{{capacity}}",
     build: "Üret",
     started: "Ölüm Yıldızı üretimi başladı",
     dangerHint:
@@ -46,7 +50,7 @@ export const planet = {
     needCore: "Çekirdek {{level}}. seviye",
     needShipyard: "Tersane {{level}}. seviye",
     needOperational: "Dünya çalışır durumda",
-    buildTime: "60 dk · tek silah · geri çağrılamaz",
+    buildTime: "{{duration}} · tek silah · geri çağrılamaz",
 
     /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113 · D167. */
     effectsTitle: "Tek darbe ne yapar",
@@ -104,12 +108,27 @@ export const planet = {
       "İade: {{alloy}} alaşım · {{crystal}} kristal · {{deuterium}} döteryum",
     cancelled:
       "Sipariş iptal edildi · {{alloy}} alaşım, {{crystal}} kristal ve {{deuterium}} döteryum geri geldi",
+
+    /**
+     * İPTALİN İKİNCİ VURUŞU. Sahip raporu.
+     *
+     * İptalin bedeli bir `title` niteliğindeydi — telefonda var olmayan bir üstüne
+     * gelme ipucu — yani yanan yarı yalnızca onaysız değildi, hiç ekrana çıkmıyordu.
+     * Önce YOK OLANI söyler: tek başına iade rakamı kazanç gibi okunur, çünkü
+     * oyuncunun eline kaynak veriliyor.
+     */
+    confirm: {
+      eyebrow: "Siparişi iptal et",
+      lead: "Bu siparişin bedelinin %{{share}}'i yok olur. Kalanı hemen geri gelir.",
+      lost: "Yok olan",
+      kept: "Geri gelen",
+      progress: "Üzerinde yapılan iş de gider — yeniden sipariş sıfırdan başlar.",
+      commit: "Siparişi iptal et",
+      back: "Vazgeç",
+    },
   },
 
   capacity: {
-    hangarBand: "Filo alanı",
-    hangarUse:
-      "Hangar alanı {{used}} / {{total}}. Bu dünyadan ayrılmış gemiler de kendi yerini kullanmaya devam eder.",
     hullUse:
       "Her biri {{bulk}} yer kullanır · sıra bitince {{used}} / {{total}} bağlı.",
     full: "Yer yok: {{total}} alanın {{used}} kadarı bağlı. Önce ilgili kapasiteyi yükselt.",
@@ -117,13 +136,13 @@ export const planet = {
 
   roles: {
     vault:
-      "Her kaynak için korumalı bir miktar belirler. Bu sınırın üstünde kalan stok akınlarda yağmalanabilir.",
+      "Her kaynağın kaç saatlik üretimini tutabildiğini belirler; en alttaki %10'luk dilim, en fazla 8 saatlik üretim olmak üzere, akınlara karşı korumalıdır.",
     shipyard:
       "Yeni gemi sınıflarını açar; gemi ve yer savunması üretimini hızlandırır, sondalarının başarı ihtimalini artırır.",
     refinery:
-      "Saatlik alaşım üretimini ve alaşım depo kapasitesini artırır. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
+      "Saatlik alaşım üretimini artırır; depo saat cinsinden olduğu için tuttuğu alaşım da onunla büyür. Binaların ve gemilerin çoğu bu kaynağı kullanır.",
     extractor:
-      "Saatlik kristal üretimini ve kristal depo kapasitesini artırır. Gelişmiş gemiler, cihazlar ve araştırmalar kristal kullanır.",
+      "Saatlik kristal üretimini artırır; depo saat cinsinden olduğu için tuttuğu kristal da onunla büyür. Gelişmiş gemiler, cihazlar ve araştırmalar kristal kullanır.",
     coreCapped_one:
       "{{count}} bina mevcut Çekirdek sınırına ulaştı; Çekirdeği yükseltmeden ilerleyemez.",
     coreCapped_other:
@@ -141,16 +160,16 @@ export const planet = {
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
     groundBand: "Yerdekiler (kapasite komuta çekirdeği ile artar)",
     groundNote:
-      "Gezegenden ayrılmazlar. Kirpi Siper sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
+      "Gezegenden ayrılmazlar. Kirpi Sur sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:
-      "Hafif yer savunmasıdır. Siper sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
+      "Hafif yer savunmasıdır. Sur sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
     thornStanding:
-      "Yerde {{count}} tane var. Siper sınıfına güçlü, Mızrak sınıfına zayıf.",
+      "Yerde {{count}} tane var. Sur sınıfına güçlü, Mızrak sınıfına zayıf.",
     thornGain: "Kirpi",
     bastionNone:
-      "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Çevik sınıfa karşı zayıftır.",
+      "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Akıncı sınıfına karşı zayıftır.",
     bastionStanding:
-      "Yerde {{count}} tane var. Mızrak sınıfına güçlü, Çevik sınıfa zayıf. Yok edilen yer toplarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.",
+      "Yerde {{count}} tane var. Mızrak sınıfına güçlü, Akıncı sınıfına zayıf. Yok edilen yer toplarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.",
     groundGain: "Yerdeki birlik",
     aegisPointer: "Kalkan bir donanım; <0>{{name}}</0> Yörünge sekmesinde.",
   },
@@ -229,7 +248,7 @@ export const planet = {
       "Her dünyada iki Ölüm Yıldızı hazır tutabilirsin. İkincisi, birincinin üretimi bittikten sonra aynı bedel ve süreyle kurulur.",
     waspDoctrineName: "Atmaca Doktrini",
     lanceDoctrineName: "Mızrak/Delici Doktrini",
-    bulwarkDoctrineName: "Siper Doktrini",
+    bulwarkDoctrineName: "Sur Doktrini",
     groundDoctrineName: "Tabya/Kirpi Doktrini",
     generalName: "Silah ve Zırh",
     generalTag: "Sahip olduğun her gövdeyi geliştirir",
@@ -278,6 +297,7 @@ export const planet = {
     ownedGain: "Elinde",
     hullAwayCount: "{{count}} dışarıda",
     hullLocationCounts: "{{home}} ev · {{away}} dış",
+    hullTier: "Lv{{tier}}",
     prospectorLimit: "{{owned}} / {{max}} · sınır",
   },
 
@@ -389,7 +409,8 @@ export const action = {
   statSpeedFixed: "sabit",
   statCargo: "Ambar",
   statCargoNone: "—",
-  statRoom: "Hangar",
+  statSalvage: "Hurda",
+  statRoom: "Hacim",
   statFuel: "Yakıt",
   statFuelRate: "{{value}} /1b",
   statFuelNone: "—",
@@ -398,16 +419,26 @@ export const action = {
 export const planetHero = {
   capital: "Ana gezegen",
   colony: "Koloni gezegeni",
-  power: "Güç",
+  /**
+   * DÜNYANIN KENDİ KADEMESİ, PORTRESİNİN ALTINDA. Sahip raporu.
+   *
+   * Kademe, bütün galaksinin sıralandığı sayı — disk dünyanın boyunu ondan
+   * çizer, her dosya onu yazar ve D168'den beri kimin kiminle dövüşebileceğini
+   * o belirler. Oyuncunun KENDİ dünyaları dışında her yerde görünüyordu.
+   */
+  tier: "{{tier}}. kademe",
+  firepower: "Ateş gücü",
   perHour: "Saatte",
   perHourSuffix: "/sa",
   disrupted: "Akın yedin, üretim durdu · {{countdown}}",
   defence: "Savunma",
   defenceNone: "Yok",
-  defenceThin: "Zayıf",
-  defenceHeld: "Sağlam",
-  defenceShipsOnly: "sadece {{count}} gemi",
-  defenceOnGround: "yerde {{count}} tane",
+  defenceShips_one: "{{count}} gemi",
+  defenceShips_other: "{{count}} gemi",
+  defenceGuns_one: "{{count}} top",
+  defenceGuns_other: "{{count}} top",
+  defenceUnarmed_one: "hatta {{count}} yük gemisi",
+  defenceUnarmed_other: "hatta {{count}} yük gemisi",
   fleetAway: "Havada {{count}} tane",
   shield: "Kalkan",
   shieldNone: "Yok",
@@ -416,6 +447,11 @@ export const planetHero = {
   shieldMeter: "Aegis kalkan doluluğu",
   shieldRegen: "+{{amount}}/sa · birliklerden önce",
   vaultSafe: "Kasada güvende",
+  storeLabel: "Depo",
+  storeRule: "Depo seviyesi bu çubukların uzunluğunu belirler; kalkanlı kutu akına karşı korumalı dilimdir.",
+  alloyStore: "{{held}} / {{cap}} alaşım, {{safe}} kadarı korumalı",
+  crystalStore: "{{held}} / {{cap}} kristal, {{safe}} kadarı korumalı",
+  deuteriumStore: "{{held}} / {{cap}} döteryum, {{safe}} kadarı korumalı",
   alloySafe: "{{amount}} alaşım güvende",
   crystalSafe: "{{amount}} kristal güvende",
   deuteriumSafe: "{{amount}} döteryum güvende",
@@ -458,6 +494,7 @@ export const launch = {
   /** Bir dünyaya yapılan akın ateş edebilmeli. Sunucu da bunu reddediyor. */
   noEscort: "Bir savaş gemisi ekle",
   cargo: "Ambar",
+  salvage: "Hurdacıların sağ kalırsa enkazdan en fazla {{amount}} toplar",
   distance: "Mesafe",
   fleetHeading: "Filo",
   atHome: "evde {{count}}",
@@ -469,16 +506,12 @@ export const launch = {
   quantity: "{{name}} adedi",
   max: "{{name}} için en fazla",
   maxShort: "En fazla",
-  /** Garnizon çubuğu bir resim; ekran okuyucu için kurulan cümle bu. */
-  defenceReading:
-    "Evde {{holds}} savunma gücü kalır; {{leaves}} kadarı bu filoyla gider",
-  hangarLabel: "Hangar",
-  hangarNote:
-    "Filo göndermek yer açmaz. Havadaki gemiler hâlâ bu dünyaya aittir.",
   noShips:
     "Evde gemi yok. Tersanede yap ya da dışarıdakilerin dönmesini bekle.",
   warning:
     "Bunu geri çağıramazsın. Kalktıktan sonra aşağıda ne olduğunu ancak inişini izleyerek öğrenirsin; o dönene kadar gezegeninde {{count}} birlik kalıyor.",
+  shieldWarning:
+    "Bu akın ilk gün kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   fleetsave: "Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.",
 } as const;
 
@@ -489,7 +522,7 @@ export const transfer = {
   eta: "Varış",
   capacity: "Yük",
   fleet: "Gemiler",
-  homeDefence: "Çıkış dünyasında {{ships}} gemi kalır · {{power}} savunma gücü",
+  homeDefence: "Çıkış dünyasında {{ships}} gemi kalır · {{power}} ateş gücü",
   cargo: "Kaynaklar",
   alloy: "Alaşım",
   crystal: "Kristal",
@@ -505,7 +538,6 @@ export const transfer = {
   holdNoCarrier:
     "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah veya Atlas yok.",
   /** Hedefin yer çubuğunun altyazısı; sayıları çubuğun kendisi çiziyor. */
-  destinationLabel: "Hedef hangarı",
   /** Gemi sayısını gösteren işaretlerin ekran okuyucu karşılığı. */
   hullPacked: "{{held}} {{name}} içinden {{packed}} tanesi yüklendi",
   /** Yük sürgüsünün altındaki çubuğun altyazısı: bu transferle giden. */

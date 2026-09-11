@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+
+/** Raw bulk of a wing. The Hangar that used to meter it is gone (D184); fuel still reads it. */
+const fleetBulk = (fleet: Record<string, number | undefined>): number =>
+  Object.entries(fleet).reduce((sum, [id, n]) => sum + (n ?? 0) * hullBulk(id as never), 0);
 import {
   FUEL,
   GALAXY_SPAN,
@@ -7,10 +11,10 @@ import {
   PLANET_START,
   deuteriumRate,
   fuelMass,
-  hangarLoad,
   hullBulk,
   hullFuelMass,
   hullFuelRate,
+  hullRoundTrip,
   missionFuel,
   type Fleet,
   type MobileHullId,
@@ -47,17 +51,19 @@ describe('mission fuel', () => {
   });
 
   /**
-   * TWO FLEETS OF THE SAME MASS AT THE SAME TIER BURN THE SAME FUEL, whatever they
-   * are made of. `bulk` is derived from hull value, so within a tier this is the
-   * same statement as "the Hangar caps military, not composition" — one quantity
-   * doing one job in two places, which is why they share it. Across tiers it is
-   * D153's thirst multiplier that separates them, and nothing else.
+   * A FLEET'S THIRST IS THE SUM OF ITS HULLS' AND NOTHING ELSE. D195 replaced
+   * D153's `bulk x tierMass` with a fraction of hull VALUE, so composition now
+   * decides the bill — a Rampart costs more to move than a Dart because it is worth
+   * more to field, which is the whole point of the change. What survives from the
+   * old statement is the part that matters to a caller: no mix is cheaper than the
+   * hulls in it, so a commander can price a wing one hull at a time and add up.
    */
-  it('charges mass, not composition, inside a tier', () => {
-    const darts: Fleet = { DART: hullBulk('RAMPART') };
-    const bulwark: Fleet = { RAMPART: 1 };
-    expect(hangarLoad(darts)).toBe(hangarLoad(bulwark));
-    expect(missionFuel(darts, NEIGHBOUR, 2)).toBe(missionFuel(bulwark, NEIGHBOUR, 2));
+  it('adds up hull by hull, with no discount for the mix', () => {
+    const mixed: Fleet = { DART: 3, RAMPART: 2, CITADEL: 1 };
+    expect(fuelMass(mixed)).toBe(
+      3 * hullFuelMass('DART') + 2 * hullFuelMass('RAMPART') + hullFuelMass('CITADEL'),
+    );
+    expect(fuelMass({ DART: 10 })).toBe(10 * fuelMass({ DART: 1 }));
   });
 
   it('never asks for a fraction, and never for less than a drop per leg', () => {
@@ -79,7 +85,11 @@ describe('mission fuel', () => {
      * launch would teach panic instead.
      */
     it('gives a fresh commander a real run of early launches', () => {
-      const early = missionFuel({ DART: 10 }, NEIGHBOUR, 2);
+      // The fleet the opening actually hands over, not a wing five times its size:
+      // ten Darts is 2,400 alloy past the first hour, so measuring the granted TANK
+      // against a fleet nobody is granted was the pairing that made D153 believe it
+      // needed a tier-1 exemption to protect the opening.
+      const early = missionFuel({ DART: 2 }, NEIGHBOUR, 2);
       expect(PLANET_START.deuterium / early).toBeGreaterThanOrEqual(8);
       // ...and not so many that the lesson never arrives.
       expect(PLANET_START.deuterium / early).toBeLessThan(40);
@@ -111,7 +121,7 @@ describe('mission fuel', () => {
 
   it('is one dial, and it is the one named for the job', () => {
     expect(FUEL.scale).toBeGreaterThan(0);
-    expect(missionFuel({ DART: FUEL.scale }, 1, 1)).toBe(1);
+    expect(missionFuel({ DART: FUEL.scale }, 1, 1)).toBe(hullFuelMass('DART'));
     expect(HULLS.DART.speed).toBeGreaterThan(0);
   });
 });
@@ -174,74 +184,83 @@ describe('fuel per craft', () => {
 });
 
 /**
- * THIRST IS A TIER PROPERTY. D153, owner instruction.
+ * WHAT ONE CRAFT COSTS TO MOVE, AND WHY IT IS NOT A LADDER ANY MORE. D153 · D195.
  *
- * THE REPORT: ships burned almost no deuterium. Fuel is mass × distance and mass is
- * `bulk`, which is derived from hull VALUE — so a late fleet already cost more to
- * move than an early one, but only in proportion to what it cost to build, and a
- * refinery that covered the opening covered the endgame too. Deuterium was a lesson
- * in the first hour and then a rounding error, which is the one thing T6 was added
- * to prevent.
+ * D153 charged `bulk x tierMass` with the rungs x1/x2/x4/x5 and excluded tier 1 by
+ * instruction, to protect the opening. Measured across the whole catalogue at D195,
+ * power per unit of fuel came out 13.4 / 10.6 / 8.2 / 10.6 from tier 1 to tier 4 —
+ * so the ENTRY hull was the most fuel-efficient warship in the game and the middle
+ * of the catalogue the least. The owner named the consequence: *"bu sefer tier 1
+ * karli diye full ondan uretiyorlar"*. A ladder whose protected rung is also its
+ * efficient rung deletes everything above it.
  *
- * SO THE LADDER IS A THIRST LADDER: ×1, ×2, ×4, ×5 on the tier's own fuel mass. The
- * opening is untouched by instruction — a fresh commander's Darts, Pikes and
- * Couriers are all tier 1, so `PLANET_START.deuterium` still covers the same run of
- * launches and the chain the opening teaches ("I have fuel, it is running out, I
- * need a refinery") arrives at exactly the same moment it always did.
+ * SO THERE IS NO LADDER AND NOTHING TO EXCLUDE. Fuel is a fixed fraction of what
+ * the hull cost, tilted by how fast it flies. Value already carries power — D148
+ * prices the catalogue at `atk x hp / value^2` — so charging against value charges
+ * against power, monotonically, with no rung to sit on for a discount.
  *
- * IT IS A SEPARATE NUMBER FROM `bulk` AND IT HAS TO BE. Bulk is Hangar ROOM, priced
- * off hull value so that capacity caps how much military a world holds without
- * caring which hulls it is made of (T4). Folding thirst into it would re-rate every
- * hull against the Hangar as a side effect of a fuel change, and nothing in the hull
- * table would show it. Two numbers, one derived from the other, one job each.
- *
- * WHAT IT DOES NOT TOUCH: prices are still `atk × hp / value²` and do not read fuel;
- * combat, the counter cycle and the 25% research ceiling are untouched; speed is
- * still explicitly not in the fuel model (T6 · D152). A tier-4 fleet is not weaker,
- * it is dearer to fly — which is a decision about WHEN to commit it, taken with the
- * tank in front of you.
+ * `bulk` SURVIVES AS GROUND ROOM AND NOTHING ELSE. The Hangar that metered it is
+ * gone (D184) and fuel no longer reads it, so the two can no longer re-rate each
+ * other; `groundSlots` is its last consumer.
  */
-describe('D153 fuel by hull tier', () => {
-  const LADDER: Readonly<Record<1 | 2 | 3 | 4, number>> = { 1: 1, 2: 2, 3: 4, 4: 5 };
+describe('D195 fuel by hull value', () => {
+  const value = (id: MobileHullId): number =>
+    HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
 
-  it('multiplies each tier\'s fuel mass by its own rung, and nothing else', () => {
+  /**
+   * ONE HULL IS OUTSIDE THIS, BY NAME AND BY INSTRUCTION. D200: the owner set the
+   * Garbage Collector's thirst by hand (`SALVAGE.fuelMass`, *"19.1 döteryum yakıt
+   * çok. 10 yap."*). The exception is asserted to be exactly that one hull, so a
+   * second can only join it by changing this line on purpose.
+   */
+  it('charges a fixed fraction of hull value, tilted by the hull\'s own trip', () => {
+    const handSet = MOBILE_HULLS.filter((id) => HULLS[id].profile === 'COLLECTOR');
+    expect(handSet).toEqual(['GARBAGE_COLLECTOR']);
     for (const id of MOBILE_HULLS) {
-      const tier = HULLS[id].tier;
-      const rung = tier === null ? 1 : LADDER[tier];
-      expect(hullFuelMass(id), id).toBe(hullBulk(id) * rung);
+      if (handSet.includes(id)) continue;
+      const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip);
+      expect(hullFuelMass(id), id).toBe(
+        Math.max(1, Math.ceil(value(id) * FUEL.perValue * thirst)),
+      );
     }
-  });
-
-  /** Tier 1 was excluded by instruction: the opening must cost what it always did. */
-  it('leaves the opening exactly where it was', () => {
-    for (const id of MOBILE_HULLS.filter((hull) => HULLS[hull].tier === 1)) {
-      expect(hullFuelMass(id), id).toBe(hullBulk(id));
-    }
-    expect(missionFuel({ DART: 10 }, NEIGHBOUR, 2)).toBe(2);
-    expect(PLANET_START.deuterium / missionFuel({ DART: 10 }, NEIGHBOUR, 2))
-      .toBeGreaterThanOrEqual(8);
   });
 
   /**
-   * THE POINT, AS A COMPARISON A COMMANDER CAN FEEL: the same Hangar room in tier-4
-   * hulls costs five times the deuterium to move that it does in tier-1 hulls. The
-   * room is the same, so this is thirst and nothing else — the fleet that fits is
-   * not the fleet you can afford to fly.
+   * THE DEFECT D195 EXISTS TO REMOVE. Within one design line, a hull that is worth
+   * more to field must never be cheaper to move per unit of power than the hull
+   * below it. This is the assertion that would have caught D153's inversion.
    */
-  it('charges five times as much to move the same room at the top tier', () => {
-    const room = hullBulk('CITADEL');
-    const early: Fleet = { DART: room };
-    const late: Fleet = { CITADEL: 1 };
-    expect(hangarLoad(early)).toBe(hangarLoad(late));
-    expect(fuelMass(late)).toBe(fuelMass(early) * LADDER[4]);
-    expect(missionFuel(late, NEIGHBOUR, 2)).toBe(missionFuel(early, NEIGHBOUR, 2) * LADDER[4]);
+  it('never gets more fuel-efficient at a lower tier, in any line', () => {
+    const lines = ['RAIDER', 'STRIKER', 'FORTRESS', 'ESCORT'] as const;
+    for (const profile of lines) {
+      const line = MOBILE_HULLS.filter((id) => HULLS[id].profile === profile)
+        .sort((a, b) => (HULLS[a].tier ?? 0) - (HULLS[b].tier ?? 0));
+      for (let i = 1; i < line.length; i += 1) {
+        const before = Math.sqrt(HULLS[line[i - 1]!].atk * HULLS[line[i - 1]!].hp)
+          / hullFuelMass(line[i - 1]!);
+        const after = Math.sqrt(HULLS[line[i]!].atk * HULLS[line[i]!].hp)
+          / hullFuelMass(line[i]!);
+        expect(after, `${profile}: ${line[i - 1]!} -> ${line[i]!}`).toBeGreaterThan(before);
+      }
+    }
   });
 
-  it('rises with the tier at every rung', () => {
-    const perRoom = (id: MobileHullId): number => hullFuelMass(id) / hullBulk(id);
-    expect(perRoom('DART')).toBeLessThan(perRoom('VIPER'));
-    expect(perRoom('VIPER')).toBeLessThan(perRoom('TEMPEST'));
-    expect(perRoom('TEMPEST')).toBeLessThan(perRoom('CITADEL'));
+  /** And the entry hull is the worst of them, which is what stops the tier-1 swarm. */
+  it('leaves the cheapest warship the least fuel-efficient one', () => {
+    const power = (id: MobileHullId): number =>
+      Math.sqrt(HULLS[id].atk * HULLS[id].hp) / hullFuelMass(id);
+    const warships = MOBILE_HULLS.filter((id) => HULLS[id].atk > 0);
+    for (const id of warships) {
+      if (id === 'DART') continue;
+      expect(power(id), id).toBeGreaterThan(power('DART'));
+    }
+  });
+
+  it('drinks more the faster it flies, at equal value', () => {
+    // Pike and Warden cost exactly the same to build and fly different trips.
+    expect(value('PIKE')).toBe(value('WARDEN'));
+    expect(hullRoundTrip('PIKE')!).toBeLessThan(hullRoundTrip('WARDEN')!);
+    expect(hullFuelMass('PIKE')).toBeGreaterThan(hullFuelMass('WARDEN'));
   });
 
   /** A gun that never travels has no thirst, whatever it weighs on the ground. */
@@ -251,14 +270,18 @@ describe('D153 fuel by hull tier', () => {
     expect(fuelMass({ BASTION: 5, THORN: 5 })).toBe(0);
   });
 
+  /** Nothing that flies is ever free to move, however cheap it is. */
+  it('never charges a mobile hull nothing', () => {
+    for (const id of MOBILE_HULLS) expect(hullFuelMass(id), id).toBeGreaterThanOrEqual(1);
+  });
+
   /**
-   * THE HANGAR DID NOT MOVE, and this is the assertion that keeps it that way. Bulk
-   * is room; fuel mass is thirst. The day someone folds the multiplier back into
-   * `BULK` this test is what fails.
+   * BULK DID NOT MOVE, and this is the assertion that keeps it that way. It is
+   * ground room now; the day someone folds thirst back into it this test fails.
    */
-  it('leaves Hangar room untouched', () => {
+  it('leaves raw bulk untouched', () => {
     for (const id of MOBILE_HULLS) {
-      expect(hangarLoad({ [id]: 1 }), id).toBe(hullBulk(id));
+      expect(fleetBulk({ [id]: 1 }), id).toBe(hullBulk(id));
     }
   });
 

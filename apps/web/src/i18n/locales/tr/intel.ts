@@ -116,16 +116,25 @@ export const reports = {
   /** Ödül: oyunda inşa etmediğin bir gövdeye açılan tek kapı. */
   pirateCaptured: 'Korsanlardan kaçırıldı.',
   pirateCapturedNote:
-    'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna katılır — Hangar kapasitesi dolu olsa bile — ve inşa ettiğin gemilerden sayılmaz.',
+    'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna katılır ve inşa ettiğin gemilerden sayılmaz.',
   youHeld: 'Dayandın. Artık onlar da seni beklerken elinde ne olduğunu biliyor.',
   youFell: 'Dayanamadın.',
   shipsLost: 'Kaybettiğin gemi',
   haul: 'Eve dönen',
   haulLost: 'Götürdükleri',
+  salvageHaul: 'Enkazdan toplanan',
   roundsLabel: 'Raunt',
   taken: 'Alınan',
   lost: 'Kaybedilen',
   dominion: 'Hâkimiyet',
+  dominionBreakdown: {
+    title: 'Hâkimiyet nasıl değişti',
+    lootGained: 'Güvenceye alınan ganimet',
+    lootLost: 'Senden alınan ganimet',
+    enemyLosses: 'Düşmanın kalıcı kaybı',
+    ownLosses: 'Senin kalıcı kaybın',
+    total: 'Hâkimiyet transferi',
+  },
   clansAtLaunch: 'Bu filo yola çıktığındaki klanlar',
   yourClan: 'Senin tarafın',
   theirClan: 'Karşı taraf',
@@ -184,7 +193,7 @@ export const reports = {
   theirBoardFloorNote:
     'Dayandılar; yani bu, yok ettiğin şey — ellerinde olan değil. Savaş ölenleri bildirir; kalanı sayan şey sondadır.',
   theirBoardNothing: 'Hiçbir şey yok edemedin',
-  theirBoardArrived: 'Üzerine gelen güç',
+  theirBoardArrived: 'Üzerine gelen filo',
   theirBoardArrivedNote:
     'Tek el ateş etmemiş gövdeler dahil, filonun tamamı. Gelişini kendi gözünle gördün; kırmızı olan, geri dönen kısmı.',
   groundHeading: 'Yer savunması',
@@ -300,6 +309,7 @@ export const reports = {
     salvaged_other: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Bu sürede kaynak üretilmiyor.',
     worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
+    salvageTheirs: 'Hurdacıları, enkaz dağılmadan {{amount}} değerinde hurda topladı.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
     /** Anılacak bir yörünge yok: alan, boşlukta, randevu noktasında duruyor. */
@@ -376,11 +386,20 @@ export const dossier = {
   fleetGapSlots: '{{count}} yuvanın hepsi dolu; birini kaydırman gerek',
 
   stockLabel: 'Şu an yağmalanabilir',
-  stockNote: 'Kesin zaferle taşınabilecek miktar. Kasa tabanı buna dahil değil; kendi ambarın daha da kısabilir.',
+  stockNote: 'Kesin zaferle taşınabilecek miktar. Depo tabanı buna dahil değil; kendi ambarın daha da kısabilir.',
   stockCaught: 'Radarları sondayı yakaladı; birinin baktığını biliyorlar.',
   stockClean: 'Sonda girip çıktı, kimse fark etmedi.',
-  defenceLabel: 'Savunma değeri',
-  defenceNote: 'Sonda geçerken gezegende ne duruyorsa o.',
+  defenceLabel: 'Ateş gücü',
+  defenceNote: 'Sonda geçerken gezegende ateş edebilen ne varsa o.',
+  defenceRatio: '{{world}} üzerindekinin yaklaşık {{ratio}} katı.',
+  shapeLabel: 'Savunma dağılımı',
+  shapeNote: 'Ateş edebilenlerin değerine göre. Yarıdan fazlası ağırlıktır.',
+  shapeUnread: 'Okunamadı',
+  shapeUnreadNote: 'Veil’leri sondayı gönderen tersaneden güçlü.',
+  shieldLabel: 'Kalkan gücü',
+  shieldNote: 'Akının ateşini gövdelerden önce emer ve saatler içinde dolar.',
+  unarmedLabel: 'Savunmadaki silahsız gemi',
+  unarmedNote: 'Ateş etmezler, ama temiz zafer için hepsi batırılmalı.',
   shipsLabel: 'Sayılan gemi',
   shipsAllHome: 'Sayılan gemilerin tamamı evdeydi.',
   shipsSomeOut: 'Gemilerinin bir kısmı dışarıdaydı.',
@@ -407,12 +426,12 @@ export const dossier = {
   doctrinesNoneNote: 'Sonda anında tamamlanmış muharebe araştırmaları yoktu.',
 
   surfaceGapLabel: 'Gezegen kimliği ve gelişimi',
-  surfaceGapMissing: 'Buraya bugüne kadar kimse bakmadı',
+  surfaceGapMissing: 'Bu dünyayı hiç görmedin',
   surfaceGapWhy:
     'Kimin elinde, ne kadar gelişmiş, yörüngesinde ne var; hiçbirini göremiyorsun. Bir sonda hepsini tek seferde getirir.',
 
   probeGapLabel: 'Kaynak ve savunma',
-  probeGapMissing: 'Buraya hiç yakından bakan olmadı',
+  probeGapMissing: 'Buraya daha önce yakından bakmadın',
   probeGapAged: 'Bu dünyaya dair okuman eskidi',
   probeGapWhy:
     'Aşağıda ne olduğunu bilmeden koca bir filoyu riske atacaksın. Sonda, o tahmini hiç değilse bir aralığa indirir.',

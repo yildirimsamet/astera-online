@@ -28,7 +28,7 @@ import { HULL_ART } from './assets.js';
  * and thumbnails rather than on the type.
  *
  * WRAPPED, NOT GRIDDED. A grid pays the widest name's width for every hull; a wrap
- * lets "Ok" cost two characters and fits five or six chips on a 375px line where
+ * lets "Ok" cost two characters and fits five or six chips on a 350px line where
  * three cards used to sit.
  *
  * DRAWN, NOT WRITTEN, because D142 says quantities a player must judge are drawn:

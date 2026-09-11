@@ -4,12 +4,24 @@ import { players, returnApplications, seasons, shards } from '../src/db/schema.j
 import { createSeason } from '../src/services/season.js';
 import { cancelReturn, enqueueReturn } from '../src/services/returnQueue.js';
 import { Presence } from '../src/services/presence.js';
-import { seedWorld, testDb, type Fixture } from './helpers.js';
+import { TEST_SEASON_DAYS, seedWorld, testDb, type Fixture } from './helpers.js';
 
 let f: Fixture;
 beforeEach(async () => {
   f = await seedWorld(2);
+  /*
+    THE SEASON LENGTH HAS TO MATCH `seedWorld`'S, OR THERE IS NO RETURN GALAXY.
+
+    `season_cycles` is keyed on the EXACT `(startsAt, endsAt)` pair, so two seasons
+    share a cycle only when both figures match. `seedWorld` pins `TEST_SEASON_DAYS`
+    (14) while this call took `ECONOMY_PROFILE.seasonDays` (30), so the two ended on
+    different days, landed in different cycles, and `lockQueueCommander`'s
+    `cycleId`-matched lookup for a live target found nothing — every case in this
+    file failed with RETURN_TARGET_UNAVAILABLE. D194 fallout: the constant was
+    introduced to pin fixtures when the live season grew, and this call was not told.
+  */
   const waiting = await createSeason(f.db, {
+    days: TEST_SEASON_DAYS,
     shardCode: 'WAIT-QUEUE', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1,
   });
   await f.db.update(shards).set({ role: 'WAITING' }).where(eq(shards.id, waiting.shard.id));

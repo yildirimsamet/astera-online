@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { coreTier, distance } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
@@ -8,10 +8,7 @@ import {
   clans,
   planets,
   players,
-  seasons,
-  shards,
 } from '../db/schema.js';
-import { GameError } from '../services/planet.js';
 import { readTelescopes } from '../services/intel.js';
 import {
   projectGalaxyTraffic,
@@ -24,6 +21,11 @@ import { sensorHistoryForPlayer } from '../services/sensorHistory.js';
 import { readClanPresence } from '../services/clan.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { locationIsKnown } from '../services/locationSight.js';
+import {
+  applyDominionPodium,
+  dominionPodium,
+  playerDominionSql,
+} from '../services/dominion.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -62,7 +64,13 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const hiddenAdminPlayerIds = new Set(
       [...adminPlayerIds].filter((playerId) => playerId !== self.playerId),
     );
-    const worlds = allWorlds.filter((world) =>
+    const publicPodium = adminPlayerIds.size === 0
+      ? null
+      : await dominionPodium(app.db, self.seasonId, adminPlayerIds);
+    const rankedWorlds = publicPodium === null
+      ? allWorlds
+      : applyDominionPodium(allWorlds, publicPodium);
+    const worlds = rankedWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !hiddenAdminPlayerIds.has(world.controller.playerId));
     const mineSet = new Set(self.planetIds);
@@ -337,19 +345,13 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
   app.get('/api/leaderboard', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
 
-    const [[galaxy], sensors, remembered, adminPlayerIds] = await Promise.all([
-      app.db
-        .select({ capacity: shards.playerCap })
-        .from(seasons)
-        .innerJoin(shards, eq(seasons.shardId, shards.id))
-        .where(eq(seasons.id, self.seasonId)),
+    const [sensors, remembered, adminPlayerIds] = await Promise.all([
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.rememberedFor(self.playerId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
     ]);
-    if (!galaxy) throw new GameError('SEASON_NOT_FOUND', 'Galaxy not found', 404);
 
-    const score = sql<number>`round(${players.dominionTaken} - ${players.dominionLost})`;
+    const score = playerDominionSql;
     const rows = await app.db
       .select({
         playerId: players.id,
@@ -381,11 +383,9 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
       )
       .where(eq(players.seasonId, self.seasonId))
-      .orderBy(desc(score), asc(players.joinedAt), asc(players.id))
-      .limit(galaxy.capacity);
+      .orderBy(desc(score), asc(players.joinedAt), asc(players.id));
 
-    const visibleRows = rows.filter((entry) =>
-      entry.playerId === self.playerId || !adminPlayerIds.has(entry.playerId));
+    const visibleRows = rows.filter((entry) => !adminPlayerIds.has(entry.playerId));
     const ladder = visibleRows.map((entry, i) => {
       const isSelf = entry.playerId === self.playerId;
       const resolved = isSelf || sensors.some((post) => distance(

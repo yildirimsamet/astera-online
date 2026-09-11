@@ -165,15 +165,26 @@ describe('the orbit surface', () => {
     expect(screen.getByText(/\+48\/h/i)).toBeInTheDocument();
   });
 
-  it('shows exactly which resources the Vault currently protects', () => {
+  /**
+   * THE CARD STATES THE CEILING, NOT JUST THE FLOOR. D190, owner report.
+   *
+   * It used to read "600 alloy safe" and nothing else, so a commander learned —
+   * correctly, from what was in front of them — that the Vault is a box holding
+   * 600 alloy. The store's capacity, which is the Vault's real product, was not on
+   * the card at any level. A fixed-width bar cannot show a ceiling moving, so the
+   * capacity has to be WRITTEN; this is the assertion that keeps it written.
+   */
+  it('states what is stored, what the store holds, and what is safe', () => {
     show({}, 'defend', {
+      alloy: 500, crystal: 90, deuterium: 0,
+      alloyCap: 4_000, crystalCap: 2_000, deuteriumCap: 300,
       vaultFloor: 720,
       vaultProtected: { alloy: 600, crystal: 120, deuterium: 0 },
       vaultCapacity: { alloy: 800, crystal: 160, deuterium: 0 },
     });
-    expect(screen.getByLabelText('600 alloy safe')).toBeInTheDocument();
-    expect(screen.getByLabelText('120 crystal safe')).toBeInTheDocument();
-    expect(screen.getByLabelText('0 deuterium safe')).toBeInTheDocument();
+    expect(screen.getByLabelText('500 of 4,000 alloy, 600 protected')).toBeInTheDocument();
+    expect(screen.getByLabelText('90 of 2,000 crystal, 120 protected')).toBeInTheDocument();
+    expect(screen.getByLabelText('0 of 300 deuterium, 0 protected')).toBeInTheDocument();
   });
 
   it('names the Core level that opens the next slot, rather than only refusing', () => {

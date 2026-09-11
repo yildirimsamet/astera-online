@@ -1,7 +1,16 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { INTEL, PROBE, SENSOR, detectChance } from '@astera/rules';
+import {
+  INTEL,
+  PROBE,
+  SENSOR,
+  combatValue,
+  detectChance,
+  fleetValue,
+  raidableStock,
+  vaultProtects,
+} from '@astera/rules';
 import {
   accounts,
   missions,
@@ -21,6 +30,7 @@ import {
   readTelescopes,
 } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
+import { withPlanetLock } from '../src/services/planet.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   giveUnits,
@@ -433,6 +443,53 @@ describe('the information layer', () => {
     });
 
     /**
+     * THE DEFENCE BAND IS THE FORCE, NOT THE FURNITURE. D183, owner report against
+     * the launch sheet's own comparison: *"Yük gemisi ekliyorum gücüm artıyor ama
+     * yük gemilerinin saldırısı 0. Saçma değil mi?"*
+     *
+     * The same question is on this side of the wire. `fleetValue(homeFleet)` priced
+     * a world's "defence" off every hull standing there — a hangar of Atlases and a
+     * pair of Prospectors read as a fortress, and a probe sold that reading for
+     * fifty alloy. `combatValue` counts the hulls that can fire, which is what the
+     * raid is actually going to meet, and it is the same quantity the sheet now
+     * measures the attacking wing in: two numbers a commander can put beside each
+     * other and be right.
+     *
+     * The band is still FUZZED and still aged — nothing about what a probe costs or
+     * how sure it is has moved.
+     */
+    it('prices a world’s defence off what can fire, not off what is parked', async () => {
+      await grant(f.db, theirs, 60_000, 6_000);
+      /*
+        A HANGAR THAT IS MOSTLY TRANSPORT. Six Atlases and two Prospectors are the
+        most expensive things standing here and not one of them fires; twenty Darts
+        are the whole of what a raid would actually meet.
+
+        NO VEIL AND A DEVELOPED SHIPYARD, so `probeAccuracy` clamps at 1 and the
+        band has no width — the assertion is then about WHICH hulls were counted
+        rather than about where a fuzz landed.
+      */
+      const line = { DART: 20 } as const;
+      await giveUnits(f.db, theirs, { ...line, ATLAS: 6, PROSPECTOR: 2 });
+      await setLevel(f.db, mine, 'SHIPYARD', 4);
+
+      const scout = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(scout.arriveAt);
+      await worker(f).tick();
+
+      const [report] = await f.db.select().from(probeReports);
+      expect(report).toBeDefined();
+      expect(report!.accuracy).toBe(1);
+      expect(report!.defence.high).toBeCloseTo(combatValue(line), 6);
+      expect(report!.defence.high).toBeLessThan(
+        fleetValue({ ...line, ATLAS: 6, PROSPECTOR: 2 }),
+      );
+      // The FLEET SIZE is a count of craft and DOES include them — "how many ships
+      // are there" is a different question from "how much of it shoots".
+      expect(report!.fleetSize.high).toBeCloseTo(28, 6);
+    });
+
+    /**
      * WHAT A RAID COULD TAKE, NOT WHAT THE WORLD IS HOLDING. Owner report:
      * *"gezegende 50k kaynak gözüküyor ama dalıyom 300 alloy alıyorum. Böyle
      * saçmalık olmaz. Yağmalanabilir kaynak aralığını vermeli."*
@@ -524,6 +581,143 @@ describe('the information layer', () => {
 
       const [report] = await f.db.select().from(probeReports);
       expect(report!.fleetHome).toBe(false);
+    });
+
+    /** A probe arriving now, at a Shipyard that clamps accuracy to 1 — a band with no width. */
+    const exactProbe = async () => {
+      await setLevel(f.db, mine, 'SHIPYARD', 4);
+      const scout = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(scout.arriveAt);
+      await worker(f).tick();
+      const [report] = await f.db.select().from(probeReports);
+      expect(report!.accuracy).toBe(1);
+      return report!;
+    };
+
+    /** The world as a raid landing at this instant would find it — locked and ticked. */
+    const standingNow = () => withPlanetLock(f.db, theirs, f.clock, (_tx, p) => Promise.resolve({
+      raidable: raidableStock(
+        { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium },
+        { alloy: p.bufferAlloy, crystal: p.bufferCrystal, deuterium: p.bufferDeuterium },
+        vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT),
+        'DECISIVE',
+      ),
+      shield: p.shield,
+    }));
+
+    /**
+     * WHAT A PROBE MEASURES IS THE WORLD AT THE MOMENT IT ARRIVES. D199.
+     *
+     * A world's row is written when something happens to it, and between writes
+     * its works go on producing. The probe read the row as it lay, so a world left
+     * alone for five hours reported the ore of five hours ago — and the raid that
+     * followed, which does tick the world, found more than the report said could
+     * be there. "Between" has to mean between.
+     */
+    it('bands the raidable stock as a raid landing now would find it', async () => {
+      await grant(f.db, theirs, 20_000, 5_000);
+      f.clock.advance(6 * 60);
+      await f.db.update(planets).set({
+        bufferAlloy: 0,
+        bufferCrystal: 0,
+        bufferDeuterium: 0,
+        lastTickAt: new Date(f.clock.now().getTime() - 5 * 3_600_000),
+      }).where(eq(planets.id, theirs));
+
+      const report = await exactProbe();
+      const { raidable } = await standingNow();
+      expect(report.stock.low).toBeLessThanOrEqual(raidable);
+      expect(report.stock.high).toBeGreaterThanOrEqual(raidable);
+      expect(report.stock.high - report.stock.low).toBeLessThanOrEqual(1);
+    });
+
+    /**
+     * THE AEGIS, AS IT STANDS. D199.
+     *
+     * The charge decides how much of a raid's first volleys land at all — a 2,000
+     * shield on a 12,000 wall moves a clean sweep from half as much again to more
+     * than twice — and the attacker's only view of it was a dome with no number.
+     * Read after its regeneration, like the stock, because the row keeps the value
+     * it was last written at.
+     */
+    it('reads the Aegis charge as it stands when the probe arrives', async () => {
+      await giveInstrument(f, theirs, 'AEGIS', 6);
+      f.clock.advance(6 * 60);
+      await f.db.update(planets).set({
+        shield: 0,
+        lastTickAt: new Date(f.clock.now().getTime() - 60 * 60_000),
+      }).where(eq(planets.id, theirs));
+
+      const report = await exactProbe();
+      const { shield } = await standingNow();
+      expect(shield).toBeGreaterThan(0);
+      expect(report.shield).toBeDefined();
+      expect(report.shield!.low).toBeLessThanOrEqual(shield);
+      expect(report.shield!.high).toBeGreaterThanOrEqual(shield);
+    });
+
+    it('reads a world without an Aegis as holding no charge', async () => {
+      const report = await exactProbe();
+      expect(report.shield).toEqual({ low: 0, high: 0 });
+    });
+
+    /**
+     * THE TRANSPORTS IN THE LINE, ON THEIR OWN. D199.
+     *
+     * They fire nothing, so the firepower band leaves them out — and a DECISIVE
+     * raid must still sink every one. Six Atlases alone read as an empty world and
+     * send eight Darts home with nothing.
+     */
+    it('counts the unarmed hulls in the line apart from what fires', async () => {
+      await giveUnits(f.db, theirs, { DART: 4, ATLAS: 6, PROSPECTOR: 2 });
+      const report = await exactProbe();
+      expect(report.unarmed).toEqual({ low: 6, high: 6 });
+      expect(report.defence.high).toBe(combatValue({ DART: 4 }));
+    });
+
+    /**
+     * THE SHAPE OF THE WALL, AS FAR AS THE PROBE CAN TELL. D199.
+     *
+     * Research and the counter cycle move a fight by about the same amount; the
+     * probe used to show only the first. Gated by the same accuracy that fuzzes the
+     * bands, so the Veil is what buys a wall its privacy.
+     */
+    describe('the shape of the wall', () => {
+      const wall = { BASTION: 4, DART: 2 } as const;
+
+      it('names the majority class at a par probe', async () => {
+        await giveUnits(f.db, theirs, wall);
+        await giveInstrument(f, theirs, 'VEIL', 3);
+        const scout = await launchProbe(f.db, mine, theirs, f.clock);
+        f.clock.set(scout.arriveAt);
+        await worker(f).tick();
+        const [report] = await f.db.select().from(probeReports);
+        expect(report!.classReading).toEqual({ kind: 'DOMINANT', cls: 'BULWARK' });
+      });
+
+      it('reads nothing through a Veil stronger than the Shipyard', async () => {
+        await giveUnits(f.db, theirs, wall);
+        await giveInstrument(f, theirs, 'VEIL', 4);
+        const scout = await launchProbe(f.db, mine, theirs, f.clock);
+        f.clock.set(scout.arriveAt);
+        await worker(f).tick();
+        const [report] = await f.db.select().from(probeReports);
+        expect(report!.classReading).toEqual({ kind: 'UNREAD' });
+      });
+
+      it('gives a good probe the split in tens', async () => {
+        await giveUnits(f.db, theirs, wall);
+        await giveInstrument(f, theirs, 'VEIL', 3);
+        await setLevel(f.db, mine, 'SHIPYARD', 5);
+        const scout = await launchProbe(f.db, mine, theirs, f.clock);
+        f.clock.set(scout.arriveAt);
+        await worker(f).tick();
+        const [report] = await f.db.select().from(probeReports);
+        expect(report!.classReading).toEqual({
+          kind: 'SHARES',
+          shares: { SKIRMISHER: 10, BULWARK: 90, LANCE: 0 },
+        });
+      });
     });
   });
 

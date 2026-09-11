@@ -14,9 +14,9 @@ const combat = [
   'DART', 'PIKE', 'RAMPART', 'WARDEN',
   'VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL',
   'TEMPEST', 'BALLISTA', 'LEVIATHAN', 'PRAETORIAN', 'NULLIFIER',
-  'CATACLYSM', 'CITADEL',
+  'CATACLYSM', 'CORSAIR', 'CITADEL', 'PALADIN',
 ] as const;
-const cargo = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
+const cargo = ['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'] as const;
 
 describe('Fleet V2 simulator contract — D148', () => {
   it('derives the combat pool without admitting transports', () => {

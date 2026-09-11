@@ -47,7 +47,7 @@ export interface CrashRecord {
   readonly stack: string | null;
   readonly componentStack: string | null;
   readonly agent: string | null;
-  /** `375x812`. Which phone, in the one number the layout is budgeted against. */
+  /** `350x812`. Which phone, in the one number the layout is budgeted against. */
   readonly viewport: string | null;
 }
 

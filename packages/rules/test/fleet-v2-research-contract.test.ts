@@ -124,20 +124,20 @@ describe('Fleet V2 research effects — D148', () => {
   });
 
   /** D152 replaced the old ten-percent ceiling with a doubling over four rungs. */
-  it('caps Propulsion at a doubling of speed and at nothing else', () => {
+  it('caps Propulsion at fifty percent more speed and at nothing else', () => {
     const max = rules.RESEARCH_TECH.propulsionMaxLevel;
     const atMax = hullTechAt({ SHIP_PROPULSION: max }, 'DART').speed;
     const beyond = hullTechAt({ SHIP_PROPULSION: 99 }, 'DART').speed;
 
     expect(max).toBe(4);
-    expect(atMax).toBeCloseTo(2, 12);
+    expect(atMax).toBeCloseTo(1.5, 12);
     expect(beyond).toBe(atMax);
-    expect(hullTechAt({ SHIP_PROPULSION: 1 }, 'DART').speed).toBeCloseTo(1.25, 12);
+    expect(hullTechAt({ SHIP_PROPULSION: 1 }, 'DART').speed).toBeCloseTo(1.125, 12);
 
     const fleet = { DART: 2, CITADEL: 1 };
     const baseFleetSpeed = fleetSpeedAt(fleet);
     expect(fleetSpeedAt(fleet, { SHIP_PROPULSION: max }))
-      .toBeCloseTo(baseFleetSpeed * 2, 12);
+      .toBeCloseTo(baseFleetSpeed * 1.5, 12);
     expect(fleetTravelAt(600, fleet, { SHIP_PROPULSION: max }))
       .toBeLessThan(fleetTravelAt(600, fleet));
   });

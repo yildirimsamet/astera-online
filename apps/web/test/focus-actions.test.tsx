@@ -3,7 +3,6 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  DEATH_STAR,
   GALAXY_SPAN,
   MULTI_WORLD,
   distance,
@@ -81,12 +80,12 @@ const intel: IntelView = {
   probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
 
-const show = (over: Partial<IntelView> = {}) => {
+const show = (over: Partial<IntelView> = {}, world: Partial<GalaxyPlanet> = {}) => {
   const Wrapper = harness();
   render(
     <Wrapper>
       <PlanetFocus
-        target={target()}
+        target={target(world)}
         planet={mine}
         intel={{ ...intel, ...over }}
         reports={[]}
@@ -120,12 +119,92 @@ describe('the focus rail’s two commitments', () => {
     expect(attack!.className).toContain('slab-commit');
   });
 
+  /**
+   * A WORLD THAT CANNOT BE RAIDED SAYS SO ON THE CONTROL. D124 · D183.
+   *
+   * The shield is published as `state: PROTECTED` on every world its commander
+   * holds precisely so a raider can tell before committing — and the rail offered
+   * the button anyway, so the only way to learn the rule was to pick a fleet, press
+   * Send, and read `NEWCOMER_SHIELDED`. That is an error message rather than a
+   * rule, which is the failure D124 names and the exact reason the state is public
+   * at all. The Death Star control has refused `PROTECTED` since D98; the ordinary
+   * raid is the loud one and refused nothing.
+   *
+   * IT STAYS VISIBLE AND CARRIES THE REASON (`interface.md` I1): a control that
+   * simply vanishes teaches nothing about why.
+   */
+  it('refuses a raid on a protected world, on the control itself', () => {
+    show({}, { state: { kind: 'PROTECTED', until: new Date(NOW + 6 * 3_600_000) } });
+    const attack = document.querySelector('[data-attack]');
+    expect(attack, 'the attack control is not on the rail at all').not.toBeNull();
+    expect(attack).toBeDisabled();
+    expect(attack!.textContent).toMatch(/protected|shielded/i);
+  });
+
+  /** A probe is not a raid: looking is untouched, which is the whole rule. */
+  it('still offers a probe at a protected world', () => {
+    show({}, { state: { kind: 'PROTECTED', until: new Date(NOW + 6 * 3_600_000) } });
+    expect(screen.getByRole('button', { name: /probe/i })).toBeEnabled();
+  });
+
+  /** An expired shield is no shield: the boundary belongs to the galaxy. */
+  it('offers the raid again once the window has passed', () => {
+    show({}, { state: { kind: 'PROTECTED', until: new Date(NOW - 1_000) } });
+    expect(document.querySelector('[data-attack]')).toBeEnabled();
+  });
+
   it('marks sending a probe with a glyph as well as a word', () => {
     show();
     const probe = screen.getByRole('button', { name: /probe/i });
     expect(probe.querySelector('svg')).not.toBeNull();
     // Not the commit weight: a probe is a spend, not the irreversible bet.
     expect(probe.className).not.toContain('slab-commit');
+  });
+
+  /**
+   * THE PAD MAY HOLD A READY WEAPON AND A NEWER BUILD AT ONCE.
+   *
+   * During a rolling deploy the compatibility headline can still describe the
+   * newer build. The full pad is authoritative: if any weapon in it is READY,
+   * the strike control must not claim there is none.
+   */
+  it('enables a strike when any weapon in the stockpile is ready', () => {
+    const Wrapper = harness();
+    const ready = {
+      id: 'weapon-ready',
+      status: 'READY' as const,
+      readyAt: new Date(NOW),
+      remainingSeconds: 0,
+    };
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()}
+          planet={{
+            ...mine,
+            strategic: {
+              id: 'weapon-building',
+              status: 'BUILDING',
+              readyAt: new Date(NOW + 60_000),
+              remainingSeconds: 60,
+            },
+            deathStars: [ready],
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    expect(document.querySelector('[data-death-star]')).toBeEnabled();
   });
 
   it('shows a current clanmate identity without offering hostile controls', () => {
@@ -276,72 +355,35 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByRole('button', { name: /death star.*target protected/i })).toBeDisabled();
-  });
-
-  /**
-   * D113. The rail said "Damage" then "Control transfers" — the sequence, never
-   * the effect — and the capital card said nothing at all. Both now carry the
-   * five consequences, and both read their figures from the rules rather than
-   * from a sentence somebody typed.
-   */
-  /**
-   * WHAT AN IMPACT DOES, AFTER D179 TOOK ITS TEETH OUT. Two of these lines used to
-   * assert the opposite: that every ship on the ground dies, and that a colony
-   * whose commander lands nothing is lost. Both are gone, so both are asserted the
-   * other way round — a surface that still said either would be the game lying.
-   */
-  it('spells out what an impact does on both the colony route and the capital card', () => {
-    const Wrapper = harness();
-    const props = {
-      planet: mine,
-      intel,
-      reports: [],
-      now: NOW,
-      onClose: vi.fn(),
-      onAttack: vi.fn(),
-      onDeathStar: vi.fn(),
-      onInstallTelescope: vi.fn(),
-      onLaunched: vi.fn(),
-      open: true,
-      onToggle: vi.fn(),
-    };
-    const view = render(
-      <Wrapper>
-        <PlanetFocus {...props} target={target({ kind: 'COLONY', state: { kind: 'NORMAL' } })} />
-      </Wrapper>,
-    );
-    expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
-    expect(screen.getByText(/every ship and gun on the ground survives/i)).toBeInTheDocument();
-    expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
-    expect(screen.getByText(/command core loses a level/i)).toBeInTheDocument();
-    expect(screen.getByText(
-      new RegExp(`aegis loses ${String(DEATH_STAR.aegisLevelsLost)} levels`, 'i'),
-    )).toBeInTheDocument();
-    /*
-      ONE WINDOW FOR EVERY KIND OF WORLD SINCE D179, off `MULTI_WORLD.recoveryMinutes`.
-      D167 had split it — eight hours for a colony against a capital's two — to make
-      a deadline answerable, and the deadline is gone.
-    */
-    expect(screen.getByText(
-      new RegExp(`production, collection, construction, new orders and launches stop for ${duration(MULTI_WORLD.recoveryMinutes)}`, 'i'),
-    )).toBeInTheDocument();
-    // And there is no consequence beyond the outage: nothing moves, nothing dies.
-    expect(screen.getByText(/no world is ever lost/i)).toBeInTheDocument();
-    expect(screen.queryByText(/becomes nobody/i)).toBeNull();
 
     view.rerender(
       <Wrapper>
-        <PlanetFocus {...props} target={target({ kind: 'CAPITAL', state: { kind: 'NORMAL' } })} />
+        <PlanetFocus
+          {...props}
+          target={target({
+            kind: 'NEUTRAL',
+            controller: { kind: 'NEUTRAL', tier: 1 },
+            state: { kind: 'PROTECTED', until: new Date(NOW - 1) },
+          })}
+        />
       </Wrapper>,
     );
-    expect(screen.getByText(/what this impact does/i)).toBeInTheDocument();
-    expect(screen.getByText(/half the resources in storage and the Works are destroyed/i)).toBeInTheDocument();
-    // ONE closing line for every world since D179 — the capital branch is not a
-    // different sentence any more, which is the point of dropping `capturable`.
-    expect(screen.getByText(/no world is ever lost/i)).toBeInTheDocument();
-    expect(screen.queryByText(/takes control/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /death star/i })).toBeEnabled();
   });
 
+  /**
+   * THE IMPACT ESSAY IS NOT TESTED HERE ANY MORE BECAUSE IT IS NOT DRAWN HERE.
+   *
+   * This file held a test that the colony route and the capital card each spell
+   * out the five things a strike does. The owner removed that essay from the
+   * world focus sheet: it argued for a weapon the panel already refuses to offer
+   * a commander who owns none (see `focus-density.test.tsx`), and it did so on
+   * the one surface an attack is chosen from, above the intel it is chosen with.
+   *
+   * The facts still exist beside the thing that fires them — the forge card,
+   * D55/D113. What replaced the test is in `focus-sheet-owner-fixes.test.tsx`:
+   * no essay, and the strike route and control still on the panel.
+   */
   it('offers a destructive Death Star strike against an uncapturable capital', () => {
     const Wrapper = harness();
     render(
@@ -434,7 +476,7 @@ describe('the focus rail’s two commitments', () => {
    *
    * This case used to assert both halves: the strategic capture route AND a
    * full-width disabled slab reading "No Death Star ready". The owner's rail
-   * screenshot is three stacked slabs on a 375-wide phone, one of which exists
+   * screenshot is three stacked slabs on a 350-wide phone, one of which exists
    * only to announce a weapon they have never built.
    *
    * The two halves answer different questions and only one of them was earning
@@ -608,11 +650,11 @@ describe('the focus rail’s two commitments', () => {
     expect(raidStep).toHaveAttribute('aria-current', 'step');
     expect(within(raidStep as HTMLElement).getByText('Raid fleet')).toBeInTheDocument();
     expect(raidStep).not.toHaveTextContent('2 Couriers');
-    expect(raidStep).not.toHaveTextContent(compact(MULTI_WORLD.settlement.cost.crystal));
+    expect(raidStep).not.toHaveTextContent(compact(MULTI_WORLD.settlement.charge.crystal));
     expect(raidStep).not.toHaveTextContent('Flight bay');
     expect(within(colonyStep as HTMLElement).getByRole('button', { name: '2 Couriers' }))
       .toBeInTheDocument();
-    expect(within(colonyStep as HTMLElement).getByText(compact(MULTI_WORLD.settlement.cost.crystal)))
+    expect(within(colonyStep as HTMLElement).getByText(compact(MULTI_WORLD.settlement.charge.crystal)))
       .toBeInTheDocument();
   });
 
@@ -898,9 +940,15 @@ describe('the focus rail on an unsurveyed world', () => {
     expect(screen.queryByText(/^Neutral$/i)).not.toBeInTheDocument();
   });
 
-  it('says nobody has looked here instead of showing an empty commander', () => {
+  /**
+   * A GAP IS THE READER'S OWN IGNORANCE. It read "Nobody has looked here", which
+   * is a claim about every commander in the galaxy and therefore one no commander
+   * can hold — the inversion of the fog rule this panel exists to serve.
+   */
+  it('says the commander has never looked here, not that nobody has', () => {
     openOn({});
-    expect(screen.getByText(/nobody has looked here/i)).toBeInTheDocument();
+    expect(screen.getByText(/you have never looked here/i)).toBeInTheDocument();
+    expect(screen.queryByText(/nobody has looked here/i)).toBeNull();
     expect(screen.getByText(/unsurveyed/i)).toBeInTheDocument();
   });
 

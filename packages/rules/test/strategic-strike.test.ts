@@ -47,8 +47,8 @@ describe('how long a struck world stays dark', () => {
  */
 describe('what the strategic pair costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 20_000, crystal: 10_000, deuterium: 2_500 });
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 11_000, crystal: 8_000, deuterium: 1_500 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 47_887, crystal: 23_944, deuterium: 1_984 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 28_733, crystal: 14_367, deuterium: 1_191 });
   });
 
   it('never lets stopping a strike cost more than making one', () => {
@@ -73,9 +73,13 @@ describe('what the strategic pair costs', () => {
    * so the weapon is worth materially less than it was and is priced under half of
    * the D167 figure — the owner's number, not a derived one.
    */
-  it('is cheaper than it was when it could lose somebody a colony', () => {
-    expect(total(DEATH_STAR.cost)).toBeLessThan(total({
-      alloy: 35_000, crystal: 25_000, deuterium: 6_000,
-    }) / 2);
+  /**
+   * ONE HOUR, owner instruction: *"ölüm yıldızı üretim süresi 1 saat olmalı"*. A
+   * working-tree retune had taken it to four; the battery follows at half, because
+   * the reload rule below is the interlock and not a second figure.
+   */
+  it('prices the reusable defence reload at half the weapon work', () => {
+    expect(DEATH_STAR.buildMinutes).toBe(60);
+    expect(ANTI_STRATEGIC.buildMinutes).toBe(DEATH_STAR.buildMinutes / 2);
   });
 });

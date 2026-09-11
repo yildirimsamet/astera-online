@@ -2,6 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, type ComponentRef, type RefObject
 import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
+import { useGpuContext } from './gpuContext.js';
 import * as THREE from 'three';
 import type {
   AsteroidView,
@@ -9,6 +10,7 @@ import type {
   GalaxyPlanet,
   MiningRun,
   PendingThread,
+  RivalMark,
   StrategicInterception,
   StrategicInterceptionImpact,
 } from '../api/schemas.js';
@@ -47,7 +49,7 @@ import {
   StrategicInterceptions,
   strategicInterceptionMissilePosition,
 } from './StrategicInterception.jsx';
-import { PlanetField } from './PlanetField.jsx';
+import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
@@ -58,7 +60,7 @@ import {
   activeWorldPosition,
   asteroidWorldPosition,
   contactPosition,
-  isRivalNode,
+  rivalSlotOf,
   legStandoff,
   planetNodes,
   rendezvousMarks,
@@ -203,8 +205,8 @@ export interface GalaxyCanvasProps {
   aegisLevel: number;
   seasonStart: Date | undefined;
   /** The one commander whose history is pinned for this season. */
-  rivalPlanetId?: string | null;
-  rivalPlayerId?: string | null;
+  /** Up to `RIVAL.max` marks, each carrying the slot its colour comes from. D183. */
+  rivals?: readonly RivalMark[];
   focus: Focus | null;
   onFocus: (focus: Focus | null) => void;
   /** Bumped by the HOME button to re-centre on the player's own world. */
@@ -289,8 +291,7 @@ export function GalaxyCanvas({
   activePlanetId = null,
   aegisLevel,
   seasonStart,
-  rivalPlanetId = null,
-  rivalPlayerId = null,
+  rivals = EMPTY_RIVALS,
   focus,
   onFocus,
   homeSignal,
@@ -505,6 +506,15 @@ export function GalaxyCanvas({
   const quality = useRenderQuality();
   const preset = QUALITY_PRESETS[quality];
 
+  /**
+   * SURVIVING THE PHONE TAKING THE GPU BACK. See `gpuContext.ts` for the crash
+   * this answers — a backgrounded Chrome drops the WebGL context, and the first
+   * render afterwards dereferenced null inside `EffectComposer` and took the
+   * whole app down. `live` gates the composer; `epoch` rebuilds it on the far
+   * side, because a restored context is a new one.
+   */
+  const gpu = useGpuContext();
+
   return (
     <Canvas
       frameloop="demand"
@@ -571,6 +581,11 @@ export function GalaxyCanvas({
          */
         gl.outputColorSpace = THREE.SRGBColorSpace;
         gl.toneMappingExposure = 1;
+        /*
+          A LOST CONTEXT IS ROUTINE ON A PHONE AND USED TO BE A CRASH. Nothing in
+          this app listened for it; `gpuContext.ts` carries the whole account.
+        */
+        gpu.watch(gl.domElement);
       }}
       onPointerMissed={() => {
         /**
@@ -662,8 +677,7 @@ export function GalaxyCanvas({
         <PlanetField
           nodes={nodes}
           selectedId={selectedId}
-          rivalPlanetId={rivalPlanetId}
-          rivalPlayerId={rivalPlayerId}
+          rivals={rivals}
           onSelect={(id) => {
             // D56. Absent means every world, which is the game; the rehearsal
             // narrows it per beat so a step cannot be finished on the wrong world.
@@ -729,8 +743,7 @@ export function GalaxyCanvas({
         <Labels
           nodes={nodes}
           selectedId={selectedId}
-          rivalPlanetId={rivalPlanetId}
-          rivalPlayerId={rivalPlayerId}
+          rivals={rivals}
         />
         <Preload all />
         <FirstFrame onDrawn={() => { sceneReady.current = true; onReady?.(); }} />
@@ -757,8 +770,20 @@ export function GalaxyCanvas({
         subtree's passive effects, which is where the composer is constructed — so
         the replacement reads the ratio that is already in force.
       */}
+      {/*
+        NOT MOUNTED AGAINST A DEAD CONTEXT, and the gate rather than a prop is
+        the point: the crash is inside `EffectComposer.setRenderer`, which runs
+        when the element is constructed. A composer that merely knew the context
+        was gone would already have dereferenced the null.
+
+        The epoch joins the key for the same reason the resolution ceiling is
+        there — a restored context is a NEW one, and every render target the old
+        composer allocated belonged to the one that died.
+      */}
+      <RedrawOnRestore epoch={gpu.epoch} />
+      {gpu.live && (
       <EffectComposer
-        key={preset.dprCap}
+        key={`${String(preset.dprCap)}-${String(gpu.epoch)}`}
         enableNormalPass={false}
         frameBufferType={THREE.HalfFloatType}
         /*
@@ -784,6 +809,7 @@ export function GalaxyCanvas({
         />
         <Vignette eskil={false} offset={0.24} darkness={0.7} />
       </EffectComposer>
+      )}
 
       {/*
         THE LESSON'S TAP TARGET, ON THE SUBJECT RATHER THAN ON THE MIDDLE.
@@ -844,6 +870,9 @@ export function GalaxyCanvas({
  * camera moves every frame, and re-rendering the label set at frame rate would put
  * a list rebuild on the disc's own budget. Nothing above this re-renders at all.
  */
+/** A stable empty set: a fresh array each render would move a prop identity. */
+const EMPTY_RIVALS: readonly RivalMark[] = [];
+
 const LABEL_BOX = { w: 132, h: 46 };
 /** Past this the type is smaller than the disc's own dust. */
 const LABEL_MAX_RANGE = 60;
@@ -851,14 +880,13 @@ const LABEL_MAX_RANGE = 60;
 function labelRank(
   node: PlanetNode,
   selectedId: string | null,
-  rivalPlanetId: string | null,
-  rivalPlayerId: string | null,
+  rivals: readonly RivalMark[],
 ): number {
   if (node.id === selectedId) return 0;
   if (node.isOwned) return 1;
   if (node.isClanmate) return 2;
   if (node.dominionRank) return 3;
-  if (isRivalNode(node, rivalPlanetId, rivalPlayerId)) return 4;
+  if (rivalSlotOf(node, rivals) !== null) return 4;
   if (node.state.kind === 'RECOVERY') return 5;
   if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 5;
   return 6;
@@ -867,13 +895,11 @@ function labelRank(
 function Labels({
   nodes,
   selectedId,
-  rivalPlanetId,
-  rivalPlayerId,
+  rivals,
 }: {
   nodes: readonly PlanetNode[];
   selectedId: string | null;
-  rivalPlanetId: string | null;
-  rivalPlayerId: string | null;
+  rivals: readonly RivalMark[];
 }) {
   const { t } = useTranslation();
   /**
@@ -902,7 +928,7 @@ function Labels({
       || node.isClanmate
       || Boolean(node.dominionRank)
       || node.stance === 'window'
-      || isRivalNode(node, rivalPlanetId, rivalPlayerId)
+      || rivalSlotOf(node, rivals) !== null
       || node.state.kind === 'RECOVERY'
       || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()))),
   );
@@ -926,8 +952,7 @@ function Labels({
    */
   const ordered = [...marked].sort(
     (a, b) =>
-      labelRank(a, selectedId, rivalPlanetId, rivalPlayerId)
-      - labelRank(b, selectedId, rivalPlanetId, rivalPlayerId),
+      labelRank(a, selectedId, rivals) - labelRank(b, selectedId, rivals),
   );
 
   const boxes = useRef(new Map<string, HTMLElement | null>());
@@ -1045,8 +1070,15 @@ function Labels({
               </span>
               {node.isOwned && <span className="text-crystal">· {t('galaxy.owned')}</span>}
               {node.isClanmate && <span className="text-opportunity">· {t('galaxy.clanmate')}</span>}
-              {isRivalNode(node, rivalPlanetId, rivalPlayerId) && (
-                <span className="text-alloy-glow">· {t('galaxy.rival')}</span>
+              {rivalSlotOf(node, rivals) !== null && (
+                /*
+                  THE LABEL WEARS THE MARK'S OWN COLOUR TOO. D183 — the reticle on
+                  the body and the word on the label have to agree, or the colour
+                  stops being the thing that tells five marks apart.
+                */
+                <span style={{ color: rivalColour(rivalSlotOf(node, rivals) ?? 0) }}>
+                  · {t('galaxy.rival')}
+                </span>
               )}
               {node.state.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
               {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
@@ -1737,6 +1769,26 @@ function AmbientTicker() {
  *
  * Fires once and never again. A cover that can come back is a flash.
  */
+/**
+ * ONE FRAME AFTER THE GPU COMES BACK.
+ *
+ * `frameloop` is `demand`, so this scene draws only when something asks it to.
+ * A phone that dropped the WebGL context and got a new one has nothing asking:
+ * `gpuContext.ts` stops the crash, and without this the reward for surviving it
+ * is a still picture of whatever the last frame before the loss happened to be.
+ *
+ * The epoch is the trigger rather than the flag, because it moves exactly once
+ * per restore. Mounted outside the composer's own gate so it is here to fire
+ * when the composer comes back.
+ */
+function RedrawOnRestore({ epoch }: { epoch: number }) {
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    invalidate();
+  }, [epoch, invalidate]);
+  return null;
+}
+
 function FirstFrame({ onDrawn }: { onDrawn: () => void }) {
   const fired = useRef(false);
   useFrame(() => {

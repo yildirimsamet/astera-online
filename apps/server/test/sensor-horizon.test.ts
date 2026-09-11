@@ -10,6 +10,9 @@ import {
   radarContactRange,
   radarRange,
   sensorSphere,
+  massClass,
+  massHeavyValue,
+  massMediumValue,
 } from '@astera/rules';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { miningRuns, missions, planets, strategicImpacts } from '../src/db/schema.js';
@@ -21,6 +24,7 @@ import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import {
   giveInstrument,
   giveSatellite,
+  fuelUp,
   giveUnits,
   grant,
   levelWorld,
@@ -249,7 +253,7 @@ describe('the sensor horizon', () => {
     const seen = await contacts();
     expect(seen).toHaveLength(1);
     expect(seen[0]?.kind).toBe('fleet');
-    expect(seen[0]?.mass).toBe('LIGHT');
+    expect(seen[0]?.mass).toBe('MEDIUM');
     expect(seen[0]?.fleet).toEqual({ DART: 30 });
     expect(seen[0]).not.toHaveProperty('route');
   });
@@ -296,7 +300,7 @@ describe('the sensor horizon', () => {
     expect(bare[0]?.kind).toBe('unknown');
     expect(bare[0]).not.toHaveProperty('mass');
     expect(instrumented[0]?.kind).toBe('fleet');
-    expect(instrumented[0]?.mass).toBe('LIGHT');
+    expect(instrumented[0]?.mass).toBe('MEDIUM');
     // Payload disclosure, not CSS, enforces the difference: Radar has no manifest,
     // while the observer whose Telescope reaches the craft gets the exact tally.
     expect(bare[0]).not.toHaveProperty('fleet');
@@ -401,7 +405,7 @@ describe('the sensor horizon', () => {
     expect((await contacts())[0]?.mass).toBeUndefined();
 
     await giveInstrument(f.db, mine, 'RADAR', 4);
-    expect((await contacts())[0]?.mass).toBe('LIGHT');
+    expect((await contacts())[0]?.mass).toBe('MEDIUM');
   });
 
   /**
@@ -454,7 +458,7 @@ describe('the sensor horizon', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0]?.effectOnly).toBeUndefined();
     expect(seen[0]?.kind).toBe('unknown');
-    expect(seen[0]?.mass).toBe('LIGHT');
+    expect(seen[0]?.mass).toBe('MEDIUM');
     expect(seen[0]?.silhouette).toBe('fleet');
     expect(seen[0]).not.toHaveProperty('fleet');
     expect(seen[0]?.from).not.toEqual(seen[0]?.to);
@@ -470,7 +474,7 @@ describe('the sensor horizon', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0]?.effectOnly).toBeUndefined();
     expect(seen[0]?.kind).toBe('fleet');
-    expect(seen[0]?.mass).toBe('LIGHT');
+    expect(seen[0]?.mass).toBe('MEDIUM');
     expect(seen[0]?.fleet).toEqual({ DART: 30 });
     expect(seen[0]?.from).not.toEqual(seen[0]?.to);
     expect(seen[0]?.engagement).toBeDefined();
@@ -581,7 +585,22 @@ describe('the sensor horizon', () => {
 
     const [contact] = await contacts();
     expect(contact?.kind).toBe('unknown');
-    expect(contact?.mass).toBe('LIGHT');
+    /*
+      DERIVED, BECAUSE THE POINT IS THAT MASS IS REVEALED AT ALL. D194.
+
+      This read `MEDIUM`, which two mining craft cannot be: they are worth 1,560
+      against a 10,000 threshold, and no run this test could write would reach it —
+      `PROSPECTOR.max` is two. The figure came from a pass that flipped every LIGHT
+      in this file to MEDIUM when hull prices moved; it was right about the raids
+      and wrong here, because a mining party is exactly the "scout party or probe
+      screen" `massClass` calls LIGHT.
+
+      Asserted against `massClass` itself rather than a word, so what this test
+      guards is the RULE — a Radar 4 contact carries a mass, and it is the mass of
+      what is actually flying — and no price change can make it stale again.
+    */
+    expect(contact?.mass).toBe(massClass({ PROSPECTOR: 2 }));
+    expect(contact?.mass).toBeDefined();
     expect(contact).not.toHaveProperty('craft');
     expect(contact).not.toHaveProperty('route');
   });
@@ -664,14 +683,14 @@ describe('the sensor horizon', () => {
     await eyes(5, 5);
     await placeAt(f.db, a, { x: 1000 });
     await placeAt(f.db, b, { x: 1300 });
-    await distantRaid({ RAMPART: 80 });
+    await distantRaid({ RAMPART: 200 });
 
     expect((await contacts())[0]?.mass).toBe('HEAVY');
   });
 
   /** The buckets are read off the constants, not off numbers typed in a test. */
   it('steps where the constants say it steps', () => {
-    expect(SENSOR.massMedium).toBeLessThan(SENSOR.massHeavy);
+    expect(massMediumValue()).toBeLessThan(massHeavyValue());
     expect(SENSOR.baseRadius).toBeGreaterThan(0);
     expect(SENSOR.maxRadius).toBeGreaterThan(SENSOR.baseRadius);
   });
@@ -679,6 +698,13 @@ describe('the sensor horizon', () => {
   /** Own craft are drawn from the owner's own payload; the horizon is irrelevant. */
   it('never applies the horizon to the caller’s own craft', async () => {
     await giveUnits(f.db, mine, { DART: 30 });
+    /*
+      AND A TANK, BECAUSE THIS IS NOT A TEST ABOUT FUEL. D195 priced fuel off hull
+      VALUE instead of D153's tier rung, roughly doubling what a tier-1 wing burns,
+      so a default tank that covered the old figure no longer covers thirty Darts.
+      `fuelUp` exists for exactly this — a suite about sight should fail on sight.
+    */
+    await fuelUp(f.db, mine);
     const [target] = await f.db.select().from(planets).where(eq(planets.id, b));
     expect(target).toBeDefined();
     const launch = await launchAttack(f.db, mine, b, { DART: 30 }, f.clock);
@@ -885,7 +911,7 @@ describe('the radar’s long circle', () => {
     const contact = (await seen())[0];
     expect(contact?.kind).toBe('unknown');
     expect(contact?.inbound).toBe(true);
-    expect(contact?.mass).toBe('LIGHT');
+    expect(contact?.mass).toBe('MEDIUM');
     expect(contact).not.toHaveProperty('fleet');
     expect(contact).not.toHaveProperty('minutesRemaining');
     expect(contact).not.toHaveProperty('route');

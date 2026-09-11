@@ -5,13 +5,16 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { rivalSetSchema, seasonSchema } from '../../web/src/api/schemas.js';
 import { buildApp } from '../src/app.js';
+import { eq } from 'drizzle-orm';
 import {
   battleReports,
   missions,
+  planets,
   probeReports,
   strategicImpacts,
 } from '../src/db/schema.js';
 import { TokenService } from '../src/auth/tokens.js';
+import { RIVAL } from '@astera/rules';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -47,23 +50,88 @@ describe('seasonal rival marker', () => {
     payload: { planetId },
   });
 
-  it('stores exactly one marker in the existing season payload and replaces it', async () => {
-    const initial = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
-    expect(seasonSchema.parse(initial.json()).rivalPlanetId).toBeNull();
-    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json())).toEqual({
-      rivalPlanetId: f.planetIds[1],
-      rivalPlayerId: f.playerIds[1],
+  const marks = (body: unknown) => rivalSetSchema.parse(body).rivals;
+
+  const listed = async () => {
+    const read = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
+    return seasonSchema.parse(read.json()).rivals;
+  };
+
+  /**
+   * FIVE MARKS, AND EACH ONE KEEPS ITS OWN COLOUR. D183, owner instruction:
+   * *"Rival 5 kişiye kadar olsun. Farklı renklerde olsun."*
+   *
+   * The SLOT is the load-bearing half. It is what the disc draws a colour from, so
+   * it has to be stored rather than derived from a position in a list: a mark that
+   * changed colour because an unrelated one was cleared would be a different
+   * bookmark every time the list moved, which is the opposite of what a bookmark is.
+   */
+  it('keeps up to five marks, each in its own fixed slot', async () => {
+    expect(await listed()).toEqual([]);
+
+    const one = marks((await set(f.planetIds[1]!)).json());
+    expect(one).toEqual([
+      { planetId: f.planetIds[1], playerId: f.playerIds[1], slot: 0 },
+    ]);
+
+    const two = marks((await set(f.planetIds[2]!)).json());
+    expect(two).toHaveLength(2);
+    // The first mark is untouched, slot included: a second mark ADDS.
+    expect(two).toContainEqual({ planetId: f.planetIds[1], playerId: f.playerIds[1], slot: 0 });
+    expect(two).toContainEqual({ planetId: f.planetIds[2], playerId: f.playerIds[2], slot: 1 });
+    expect(await listed()).toHaveLength(2);
+  });
+
+  /**
+   * A SECOND PRESS CLEARS THAT ONE MARK — D103's rule, now with four others that
+   * must not move. The freed SLOT is reused, because slots are colours and a
+   * commander with two marks must never be shown colours one and four.
+   */
+  it('clears the mark that was pressed and leaves the rest where they are', async () => {
+    await set(f.planetIds[1]!);
+    await set(f.planetIds[2]!);
+
+    const after = marks((await set(f.planetIds[1]!)).json());
+    expect(after).toEqual([
+      { planetId: f.planetIds[2], playerId: f.playerIds[2], slot: 1 },
+    ]);
+
+    // The freed colour is the one the next mark takes.
+    expect(marks((await set(f.planetIds[1]!)).json()))
+      .toContainEqual({ planetId: f.planetIds[1], playerId: f.playerIds[1], slot: 0 });
+  });
+
+  /**
+   * ONE MARK PER COMMANDER, NOT PER WORLD. D97's reasoning, unchanged: the mark is
+   * about a person, and a commander who holds four colonies would otherwise eat
+   * four of the five slots. Pressing a second world of an already-marked commander
+   * MOVES the mark's anchor rather than adding one.
+   */
+  it('marks a commander once, however many of their worlds are pressed', async () => {
+    await set(f.planetIds[1]!);
+    const again = marks((await set(f.planetIds[1]!)).json());
+    expect(again).toEqual([]);
+  });
+
+  it('refuses a sixth mark rather than silently dropping the oldest', async () => {
+    const galaxy = await seedWorld(RIVAL.max + 2);
+    const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+    const big = buildApp({ env: testEnv(), logger: silent, db: galaxy.db, clock: galaxy.clock });
+    await big.app.ready();
+    const header = {
+      authorization: `Bearer ${await tokens.issueAccess(galaxy.accountIds[0]!)}`,
+    };
+    const mark = (planetId: string) => big.app.inject({
+      method: 'POST', url: '/api/rival', headers: header, payload: { planetId },
     });
-    expect(rivalSetSchema.parse((await set(f.planetIds[2]!)).json())).toEqual({
-      rivalPlanetId: f.planetIds[2],
-      rivalPlayerId: f.playerIds[2],
-    });
-    const changed = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
-    expect(seasonSchema.parse(changed.json()).rivalPlanetId).toBe(f.planetIds[2]);
-    expect(rivalSetSchema.parse((await set(null)).json())).toEqual({
-      rivalPlanetId: null,
-      rivalPlayerId: null,
-    });
+
+    for (let i = 1; i <= RIVAL.max; i += 1) {
+      expect((await mark(galaxy.planetIds[i]!)).statusCode, `mark ${String(i)}`).toBe(200);
+    }
+    const sixth = await mark(galaxy.planetIds[RIVAL.max + 1]!);
+    expect(sixth.statusCode).toBe(409);
+    expect(errorSchema.parse(sixth.json()).error).toBe('RIVAL_LIMIT');
+    await big.close();
   });
 
   /**
@@ -105,20 +173,40 @@ describe('seasonal rival marker', () => {
       createdAt: f.clock.now(),
     });
 
-    expect(rivalSetSchema.parse((await set(f.planetIds[2]!)).json()).rivalPlanetId)
-      .toBe(f.planetIds[2]);
-    expect(rivalSetSchema.parse((await set(null)).json()).rivalPlanetId).toBeNull();
+    expect(marks((await set(f.planetIds[2]!)).json()))
+      .toContainEqual({ planetId: f.planetIds[2], playerId: f.playerIds[2], slot: 1 });
+    expect(marks((await set(f.planetIds[2]!)).json()))
+      .not.toContainEqual(expect.objectContaining({ planetId: f.planetIds[2] }));
   });
 
-  it('clears on a second press of the same world, and marks again after', async () => {
-    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json()).rivalPlanetId)
-      .toBe(f.planetIds[1]);
-    expect(rivalSetSchema.parse((await set(null)).json())).toEqual({
-      rivalPlanetId: null,
-      rivalPlayerId: null,
-    });
-    expect(rivalSetSchema.parse((await set(f.planetIds[1]!)).json()).rivalPlanetId)
-      .toBe(f.planetIds[1]);
+  /**
+   * A MARK IS CLEARED WITHOUT ASKING WHETHER ITS WORLD SURVIVED. D183.
+   *
+   * A marked world can be reclaimed or wiped, and the mark then pointed at nothing
+   * the commander could press twice — the only way out was the menu's "clear the
+   * lost marker", which sent `null` and took the other four with it. Removing a
+   * mark by the planet it was placed on is checked before the world is looked up,
+   * so a dead anchor is exactly as easy to clear as a live one.
+   */
+  it('clears a mark whose world has left the galaxy, and keeps the rest', async () => {
+    await set(f.planetIds[1]!);
+    await set(f.planetIds[2]!);
+    // The world is gone as far as the galaxy is concerned: no controller at all.
+    await f.db.update(planets)
+      .set({ controllerPlayerId: null, kind: 'NEUTRAL' })
+      .where(eq(planets.id, f.planetIds[1]!));
+
+    expect(marks((await set(f.planetIds[1]!)).json())).toEqual([
+      { planetId: f.planetIds[2], playerId: f.playerIds[2], slot: 1 },
+    ]);
+  });
+
+  /** `null` still clears the whole set — the one gesture that empties the disc. */
+  it('clears every mark when the body names no world', async () => {
+    await set(f.planetIds[1]!);
+    await set(f.planetIds[2]!);
+    expect(marks((await set(null)).json())).toEqual([]);
+    expect(await listed()).toEqual([]);
   });
 
   it('still moves after a battle and after a probe reading', async () => {

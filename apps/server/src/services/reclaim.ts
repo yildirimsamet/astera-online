@@ -27,10 +27,12 @@ import {
   planets,
   planetResearch,
   playerResearch,
+  playerRivals,
   players,
   probeReports,
   probeWorldMemories,
   requestLog,
+  researchOrders,
   rewardGrants,
   satellites,
   sensorEpochs,
@@ -45,6 +47,7 @@ import {
   watches,
 } from '../db/schema.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
+import { addDominionCounters } from './dominion.js';
 
 /**
  * RECLAIMING THE SEAT OF A COMMANDER WHO STOPPED COMING BACK. Owner instruction.
@@ -123,7 +126,7 @@ export interface ReclaimResult {
  * elsewhere — and a harvest run pointed at either is a flight that must be left
  * alone.
  */
-async function commanderRows(
+export async function commanderRows(
   tx: Tx,
   planetIds: string[],
   playerId: string,
@@ -231,7 +234,7 @@ async function commanderRows(
  * commander who has been gone three days. A false negative costs somebody their
  * fleet.
  */
-async function busy(
+export async function busy(
   tx: Tx,
   planetIds: string[],
   playerId: string,
@@ -305,8 +308,8 @@ async function foldRecord(
       lifetime: {
         ...prior,
         seasons: (prior.seasons ?? 0) + 1,
-        dominionTaken: (prior.dominionTaken ?? 0) + row.taken,
-        dominionLost: (prior.dominionLost ?? 0) + row.lost,
+        dominionTaken: addDominionCounters(prior.dominionTaken ?? 0, row.taken),
+        dominionLost: addDominionCounters(prior.dominionLost ?? 0, row.lost),
         bestWealth: Math.max(prior.bestWealth ?? 0, row.wealth),
       },
     })
@@ -324,7 +327,7 @@ async function foldRecord(
  * it. `wipeAllServers` learned this the hard way and could not reset any galaxy
  * where a battle had ever happened.
  */
-async function demolish(
+export async function demolish(
   tx: Tx,
   planetIds: string[],
   playerId: string,
@@ -412,12 +415,25 @@ async function demolish(
         eq(strategicImpacts.defenderPlayerId, playerId),
       ),
     );
+  /**
+   * BY PLAYER **OR** BY WORLD **OR** BY MISSION, AND THE LAST TWO WERE MISSING.
+   *
+   * A raid on a CARETAKER world writes a report with an attacker and NO defender,
+   * bound to the world and to the mission that flew there. Capture that world
+   * afterwards — which is the ordinary way a colony is acquired — and the report
+   * now names a planet and a mission this function deletes while matching neither
+   * player key. `missions` then fails on `battle_reports_mission_id_missions_id_fk`
+   * and the seat can never be reclaimed again. Found on the live EU-1 database:
+   * three reports of that exact shape stood over one commander's colony.
+   */
   await tx
     .delete(battleReports)
     .where(
       or(
         eq(battleReports.attackerPlayerId, playerId),
         eq(battleReports.defenderPlayerId, playerId),
+        inArray(battleReports.targetPlanetId, planetIds),
+        ...(missionIds.length > 0 ? [inArray(battleReports.missionId, missionIds)] : []),
       ),
     );
   await tx.delete(chatMessages).where(eq(chatMessages.authorPlayerId, playerId));
@@ -474,6 +490,21 @@ async function demolish(
   if (buildOrderIds.length > 0) {
     await tx.delete(buildOrders).where(inArray(buildOrders.id, buildOrderIds));
   }
+  /**
+   * AND THE COMMANDER-WIDE QUEUE, WHICH THIS SWEPT NEITHER HALF OF. T7/D134.
+   *
+   * `research_orders` points at the commander AND at the world that paid for the
+   * project, both `ON DELETE no action`. Research moved off the planet when D134
+   * made it commander-wide and this function was never taught the new table, so
+   * every seat with a single completed project would have failed on
+   * `research_orders_player_id_players_id_fk` — the same never-reclaimable outage
+   * `debris_fields` and `trade_runs` each caused once. It has not fired only
+   * because the sweep is switched off in production.
+   */
+  await tx.delete(researchOrders).where(or(
+    eq(researchOrders.playerId, playerId),
+    inArray(researchOrders.fundingPlanetId, planetIds),
+  ));
   if (missionIds.length > 0) await tx.delete(missions).where(inArray(missions.id, missionIds));
 
   await tx.delete(units).where(or(
@@ -510,6 +541,26 @@ async function demolish(
     on the planet and the one below is the commander themself; this belongs between.
   */
   await tx.delete(playerResearch).where(eq(playerResearch.playerId, playerId));
+  /*
+    THE RIVAL MARKS, BOTH DIRECTIONS, AND ONLY ONE OF THEM IS A CONSTRAINT. D183.
+
+    `player_rivals.player_id` references `players.id`, so a commander who was
+    KEEPING a mark cannot be deleted while it stands — exactly the trap the note
+    above `player_research` records, with exactly the same consequence: the sweep
+    throws, the seat is never freed, and the galaxy fills with worlds nobody plays.
+
+    `target_player_id` has NO foreign key, deliberately — a mark is a memory rather
+    than a reference (D91) — so nothing would stop marks pointing AT this commander
+    from outliving them. They have to go too, and for a reason the constraint would
+    never have caught: the disc matches a mark by commander id, so a mark on a
+    commander who no longer exists is never drawn, while `RIVAL.max` keeps counting
+    it. An invisible row would quietly cost its owner one of five slots for the rest
+    of the season.
+  */
+  await tx.delete(playerRivals).where(or(
+    eq(playerRivals.playerId, playerId),
+    eq(playerRivals.targetPlayerId, playerId),
+  ));
   await tx.delete(players).where(eq(players.id, playerId));
 }
 

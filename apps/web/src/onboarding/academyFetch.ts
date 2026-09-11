@@ -3,7 +3,7 @@ import { ACADEMY_STEPS, REWARD_CHAINS, rewardId, findRewardTier, coreTier, PROSP
 import type { RewardsView } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { academyPlanet, advanceAcademy, beginAcademyOrder, beginAcademyFlight, completeAcademyLesson, type AcademyWorld } from './academyWorld.js';
-import { academyPending, academyMining, academyPirates, academyTarget, academySightWorlds, atLesson, targetStanding, ACADEMY_ROCK, ACADEMY_TARGET_ID } from './academyViews.js';
+import { academyPending, academyMining, academyPirates, academyTarget, academyTraffic, academySightWorlds, atLesson, ACADEMY_ROCK, ACADEMY_TARGET_ID } from './academyViews.js';
 
 /** D172. Production screens, private state. There is deliberately no network
  * fallback, even for an unsupported read or a malformed mutation.
@@ -58,11 +58,10 @@ export function academyFetch(
               }))
               : [])],
           });
-          case '/api/galaxy/traffic': return reply({ contacts: targetStanding(world, 'pirate', time) ? [{
-            id: 'academy-pirate', kind: 'pirate', fleet: { WARDEN: 1 }, level: 1,
-            from: academyTarget(world), to: academyTarget(world), landing: true,
-            startAt: world.preview.season.startsAt, endAt: world.preview.season.endsAt,
-          }] : [] });
+          // One statement of the lesson's traffic, `engagement` included — built
+          // inline here until D183, which is how it came to be missing the field
+          // that turns the pirate to face the wing shooting at it.
+          case '/api/galaxy/traffic': return reply({ contacts: academyTraffic(world, time) });
           case '/api/session/pending': return reply({ pending: academyPending(world, time) });
           case '/api/rewards': return reply(academyRewards(world));
           case '/api/reports': return reply({ reports: world.reports, rivals: [] });

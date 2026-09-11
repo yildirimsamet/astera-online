@@ -145,7 +145,7 @@ describe('Academy ownership and progression', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close report' }));
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ step: world.step + 1 }));
   });
-  it.each(['deuterium', 'foundry', 'uplink', 'radar', 'veil', 'thorn', 'bastion', 'hangar'] as const)('frames %s without a hand and offers a pulsing Continue', (id) => {
+  it.each(['deuterium', 'foundry', 'uplink', 'radar', 'veil', 'thorn', 'bastion'] as const)('frames %s without a hand and offers a pulsing Continue', (id) => {
     lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === id)));
     expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')).toBeNull();
     expect(document.querySelector('[data-tutorial-intro]')).toBeInTheDocument();

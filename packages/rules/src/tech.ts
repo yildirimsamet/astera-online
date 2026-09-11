@@ -44,6 +44,27 @@ export const yardSpeedMult = (tech: TechLevels): number =>
   ladderAt(RESEARCH_TECH.yardSpeedLadder, tech.YARD_AUTOMATION ?? 0);
 
 /**
+ * HOW MUCH FASTER THE SURFACE BUILDS. D198, owner instruction.
+ *
+ * THE RULE IS THE QUEUE, NOT A LIST OF STRUCTURES. Everything ordered into
+ * CONSTRUCTION comes out sooner — six buildings, four instruments, four
+ * satellites — and nothing else does. A commander never has to learn which
+ * fourteen; they watch which queue the row goes into, which the sheet already
+ * tells them.
+ *
+ * The owner's own list named twelve of the fourteen and left out the Derrick and
+ * the Beacon. Honouring that literally would have put two exceptions in the game
+ * with no reason anything on screen could state, which is D124 read backwards.
+ *
+ * IT IS THE YARD PROJECT'S OPPOSITE NUMBER AND NEVER ITS OVERLAP.
+ * `yardSpeedMult` shaves hulls; this shaves the surface. One project doing both
+ * would make the other pointless — so `shipMinutes` must never read this, and
+ * `construction-speed.test.ts` holds that in both directions.
+ */
+export const robotSpeedMult = (tech: TechLevels): number =>
+  ladderAt(RESEARCH_TECH.robotSpeedLadder, tech.AI_ROBOTS ?? 0);
+
+/**
  * HOW MUCH MORE ONE MINING CRAFT CARRIES. T8.
  *
  * MULTIPLICATIVE WITH THE DERRICK, and that is a decision rather than an accident.
@@ -142,7 +163,7 @@ export function hullTech(
 /**
  * The doctrines a probe brings home. T9 · D124.
  *
- * A 25% multiplier nobody can see would silently eat the value of every scouting
+ * A 56% multiplier (D169) nobody can see would silently eat the value of every scouting
  * flight, and D124 is blunt about it: a rule the player cannot SEE is not a rule.
  * This is the list that goes into the silhouette — frozen at the look and stale
  * from then on, exactly like everything else D127 put there.

@@ -38,7 +38,7 @@ describe('Academy uses the production API locally', () => {
     f.tick();
     const notification = (await f.api.notifications()).notifications[0]!;
     expect(notification.seen).toBe(false);
-    expect(notification.payload).toMatchObject({ shipsHome: 2 });
+    expect(notification.payload).toMatchObject({ shipsHome: 3 });
     expect(await f.api.markSeen(['unknown'])).toEqual({ marked: 0 });
     expect(await f.api.markSeen([notification.id])).toEqual({ marked: 1 });
     expect((await f.api.notifications()).notifications[0]?.seen).toBe(true);
@@ -57,7 +57,7 @@ describe('Academy uses the production API locally', () => {
     f.tick();
     const reports = await f.api.reports();
     expect(reports.reports).toHaveLength(1);
-    expect(reports.reports[0]).toMatchObject({ grade: 'DECISIVE', yourLosses: { DART: 1 } });
+    expect(reports.reports[0]).toMatchObject({ grade: 'DECISIVE', yourLosses: {} });
   });
   it('launches a miner and then the cargo-supported raid through ordinary routes', async () => {
     const f = fixture('mine');

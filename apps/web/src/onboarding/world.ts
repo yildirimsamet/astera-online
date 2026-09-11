@@ -18,8 +18,6 @@ import {
   flightSlots,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
   hullBulk,
   instrumentCost,
   productionMult,
@@ -117,7 +115,6 @@ export function openWorld(preview: Preview): RehearsalWorld {
 export type Refusal =
   | 'CORE_CEILING'
   | 'GROUND_SLOTS_FULL'
-  | 'HANGAR_FULL'
   | 'INSUFFICIENT_RESOURCES'
   | 'QUEUE_FULL'
   | 'SHIPYARD_TOO_LOW';
@@ -171,12 +168,9 @@ export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Re
       .filter((order) => order.kind === 'HULL')
       .map((order) => [order.subject, queuedCount(w, 'YARD', 'HULL', order.subject)]),
   );
-  const capacity = spec.ground
-    ? groundSlots(w.buildings.CORE)
-    : hangarCapacity(w.buildings.HANGAR);
-  const used = spec.ground ? groundLoad(queued) : hangarLoad(queued);
-  if (used + hullBulk(hull) * count > capacity) {
-    return spec.ground ? 'GROUND_SLOTS_FULL' : 'HANGAR_FULL';
+  // Only emplacements answer to a ceiling. D184.
+  if (spec.ground && groundLoad(queued) + hullBulk(hull) * count > groundSlots(w.buildings.CORE)) {
+    return 'GROUND_SLOTS_FULL';
   }
   return null;
 }
@@ -367,8 +361,6 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     fleetAway: {},
     flight: { used: 0, total: flightSlots(w.buildings.CORE) },
     capacity: {
-      hangar: hangarCapacity(w.buildings.HANGAR),
-      hangarUsed: 0,
       ground: groundSlots(w.buildings.CORE),
       groundUsed: 0,
     },

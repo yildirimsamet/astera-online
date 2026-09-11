@@ -1,20 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   COMBAT_HULLS,
   HULLS,
+  dominantClass,
   fleetCount,
-  fleetValue,
+  combatValue,
+  forecastLines,
+  forecastLoss,
   hullFuelRate,
+  salvageCapacity,
+  shieldHp,
+  wallKnowledgeOf,
   type Fleet,
+  type ForecastInput,
   type MobileHullId,
 } from '@astera/rules';
-import { useLaunch, useRaidPirate } from '../api/queries.js';
-import type { GalaxyPlanet, IntelView, PirateContact, PlanetView } from '../api/schemas.js';
-import { hullLabel } from '../i18n/names.js';
+import { useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
+import type { GalaxyPlanet, IntelView, PirateContact, PlanetView, Report } from '../api/schemas.js';
+import { combatClassLabel, hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
+import { fieldedAtLeast, recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
 import { duration, durationPrecise, staleness } from '../lib/time.js';
 import {
   MOBILE,
@@ -29,10 +36,10 @@ import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import { StatStrip } from '../ui/Action.js';
 import { Band } from '../ui/UpgradeRow.js';
-import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
+import { SalvageIcon } from '../ui/icons/index.js';
 import { ClassChip } from '../ui/CounterMark.js';
 import { ForceCompare, type ForceReading } from '../ui/ForceCompare.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -48,8 +55,7 @@ import { describe, useToast } from '../ui/Toast.js';
  * focus rail, and that second surface quietly dropped most of what makes this
  * screen a decision rather than a form — the hull stats a counter cycle is chosen
  * with, the cargo the haul is capped by, the fuel drawn against the tank, the
- * hangar, the ships already away, and the confirmation step with the fleetsave
- * line on it.
+ * ships already away, and the confirmation step with the fleetsave line on it.
  *
  * THE FOG SHAPE IS THE SAME TOO, which is what makes one component honest rather
  * than merely convenient. A world is RESOLVED or UNKNOWN; a pirate is IDENTIFIED
@@ -76,6 +82,7 @@ export function LaunchSheet({
   target,
   planet,
   intel,
+  reports = [],
   onClose,
   onLaunched,
   onAim,
@@ -92,6 +99,11 @@ export function LaunchSheet({
    * honest picture and the reason to buy one.
    */
   intel?: IntelView | undefined;
+  /**
+   * The commander's battle reports, for what the last raid at this world sank. D199.
+   * Optional: a sheet opened before they load simply has one note fewer.
+   */
+  reports?: readonly Report[];
   onClose: () => void;
   onLaunched: () => void;
   /**
@@ -112,11 +124,29 @@ export function LaunchSheet({
   const [sending, setSending] = useState<Fleet>({});
   const [confirming, setConfirming] = useState(false);
   const lesson = useAcademyLesson();
+  /**
+   * THE COMMANDER'S OWN FIRST-DAY SHIELD, IF THEY STILL HAVE ONE. D183.
+   *
+   * A raid at a WORLD spends it; a pirate is not a commander and costs nothing
+   * (`assertNewcomerShields` takes a `defenderPlayerId` and a pirate has none), so
+   * the price is only ever quoted on the lane that actually charges it.
+   *
+   * Read off the season payload rather than the planet's, because the shield
+   * belongs to the commander and not to the world the fleet is leaving — the same
+   * reason D168 measures the attack band on the commander.
+   */
+  const season = useSeason();
+  const shieldUntil = season.data?.shieldUntil ?? null;
+  const spendsShield = target.kind === 'world'
+    && shieldUntil !== null
+    && shieldUntil.getTime() > serverNow();
 
   const pirate = target.kind === 'pirate' ? target.pirate : null;
   // The commander's own ladders AND the origin's Beacon, off the payload, so the
   // preview quotes exactly what the server will charge, carry and fly. T8 · D180.
-  const mods = flightModifiers(planet);
+  // Kept per payload: the forecast below keys on `mods.tech`, and a fresh object
+  // every render would re-run a few dozen battles for nothing. D199.
+  const mods = useMemo(() => flightModifiers(planet), [planet]);
   /**
    * THE LEG, AND ONLY ITS OUTBOUND HALF DIFFERS.
    *
@@ -153,6 +183,8 @@ export function LaunchSheet({
   }, [onAim, aim?.x, aim?.y, aim?.z]);
 
   const total = fleetCount(sending);
+  /** Wreck the chosen collectors can lift, if they come through the fight. D200. */
+  const salvageRoom = salvageCapacity(sending);
   /**
    * A LAUNCH TAKES A FLIGHT BAY, and this screen never said so. D28.
    *
@@ -282,11 +314,19 @@ export function LaunchSheet({
   /**
    * WHAT IS STANDING AT THE TARGET, ON THE AXIS THE FLEET IS MEASURED IN.
    *
-   * `fleetValue` on both sides, because that is the one quantity a commander can
+   * `combatValue` on both sides, because that is the one quantity a commander can
    * already read of somebody else's world: a probe's defence band IS
-   * `fleetValue(homeFleet)`, fuzzed at the look. Until now nothing in the game
+   * `combatValue(homeFleet)`, fuzzed at the look. Until now nothing in the game
    * expressed the player's own ships in the same units, so the band was a figure
    * with nothing to be compared to.
+   *
+   * WHAT CAN FIRE, NOT WHAT IT COST. D183, owner report: *"Yük gemisi ekliyorum
+   * gücüm artıyor ama yük gemilerinin saldırısı 0."* Both sides read `fleetValue`
+   * until then — resources sunk in — so packing an Atlas for the loot grew the bar
+   * labelled "Sending" without adding a shot to what was sent. `combatValue` is the
+   * same resource scale over the hulls that fire, on both sides at once: changing
+   * one of them alone would have made the comparison a category error instead of a
+   * misleading one.
    *
    * THE TWO TARGET KINDS ARE HONESTLY DIFFERENT HERE, and the difference is the
    * whole economy of the intel layer:
@@ -301,14 +341,17 @@ export function LaunchSheet({
    * the target is undefended, on the one screen where that mistake cannot be taken
    * back.
    */
+  const report = target.kind === 'world'
+    ? intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.world.id)
+    : undefined;
   const opposing: ForceReading | null = (() => {
     if (target.kind === 'pirate') {
       const roster = target.pirate.fleet;
       if (!roster) return null;
-      const exact = fleetValue(roster);
+      // The same axis as the wing's, so the two bars are one comparison. D183.
+      const exact = combatValue(roster);
       return { low: exact, high: exact, source: sourceLabel('public'), ageMinutes: null };
     }
-    const report = intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.world.id);
     if (!report) return null;
     return {
       low: report.defence.low,
@@ -317,6 +360,113 @@ export function LaunchSheet({
       ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000),
     };
   })();
+
+  /**
+   * EVERYTHING THIS COMMANDER HOLDS ABOUT THE WALL, AS THE BATTLE ENGINE READS IT.
+   * D199.
+   *
+   * Their own research (frozen at launch, so today's is the one), and whatever the
+   * probe brought home: the wall's shape, the Aegis charge, the transports in the
+   * line and the doctrine. A pirate under Telescope sight is the crew itself. What
+   * is missing is left to the forecast's own range rather than guessed — an unread
+   * wall widens the lines, it does not move them.
+   */
+  /*
+    KEYED ON WHAT IT READS, NOT ON THE TARGET OBJECT. The parent builds `target` as a
+    fresh literal every render and a pirate's entry is rebuilt on every poll as it
+    moves; its crew is kept by the query's structural sharing while it is unchanged,
+    and so is the probe report.
+  */
+  const isPirate = target.kind === 'pirate';
+  const pirateCrew = target.kind === 'pirate' ? target.pirate.fleet : undefined;
+  const pirateHandicap = target.kind === 'pirate' ? target.pirate.damageMult : undefined;
+  /*
+    AN UNMEASURED DOME IS ANYTHING UP TO THE MOST THIS WORLD CAN HOLD. The dome is
+    public and so is the Core that caps its Aegis (a caretaker's Aegis stops at 3,
+    under every tier's Core), so a charge nobody read runs from empty to that. It
+    was counted as empty, which drew the kindest lines while a note said "not
+    measured".
+  */
+  const domeCeiling = target.kind === 'world' && target.world.shielded ? shieldHp(target.world.coreLevel) : 0;
+  const forecastInput = useMemo<ForecastInput>(() => {
+    const none = { low: 0, high: 0 };
+    if (isPirate) {
+      return {
+        attackerTech: mods.tech,
+        defenderTech: {},
+        ...(pirateHandicap === undefined ? {} : { defenderDamageMult: pirateHandicap }),
+        shield: none,
+        unarmed: none,
+        wall: pirateCrew ? { kind: 'EXACT', fleet: pirateCrew } : { kind: 'UNKNOWN' },
+      };
+    }
+    return {
+      attackerTech: mods.tech,
+      defenderTech: report?.doctrines ?? {},
+      shield: report?.shield ?? { low: 0, high: domeCeiling },
+      unarmed: report?.unarmed ?? none,
+      wall: wallKnowledgeOf(report?.classReading),
+    };
+  }, [isPirate, pirateCrew, pirateHandicap, report, mods.tech, domeCeiling]);
+
+  /*
+    A FEW DOZEN BATTLES PER READING, SO IT WAITS FOR THE THUMB. The picker renders
+    the new count first and the lines follow in the deferred pass; on a phone a "+"
+    must never stall behind a forecast.
+
+    AND ONLY AGAINST A READING. With nobody having looked, every input about the
+    wall — research, dome, transports — is a guess, and the guess was always the
+    kindest wall there is. The lines are what a probe buys; before one, the box says
+    "never measured" and nothing else.
+  */
+  const settled = useDeferredValue(sending);
+  const hasReading = opposing !== null;
+  const lines = useMemo(
+    () => (hasReading && fleetCount(settled) > 0 ? forecastLines(settled, forecastInput) : null),
+    [hasReading, settled, forecastInput],
+  );
+  const loss = useMemo(
+    () => (lines !== null && opposing !== null
+      ? forecastLoss(settled, { low: opposing.low, high: opposing.high }, forecastInput)
+      : null),
+    [lines, settled, opposing?.low, opposing?.high, forecastInput],
+  );
+
+  /**
+   * WHAT THE LINES COULD NOT SEE, AND WHAT THIS COMMANDER ALREADY PAID TO KNOW.
+   * D199.
+   *
+   * Each phrase changes how the band is read and none opens anything new: the probe
+   * says whether it was caught and whether ships were out, the Telescope says where
+   * they are now, and the last raid here says what died. The gaps are stated so a
+   * narrow line is never mistaken for a certain one.
+   */
+  const notes: string[] = [];
+  if (target.kind === 'world') {
+    const world = target.world;
+    if (world.shielded && !report?.shield) notes.push(t('counter.noteShieldUnmeasured'));
+    if (report) {
+      const shape = report.classReading;
+      if (!shape || shape.kind === 'UNREAD') notes.push(t('counter.noteShapeUnread'));
+      if (!report.unarmed) notes.push(t('counter.noteUnarmedUnknown'));
+      else if (report.unarmed.high > 0) {
+        const { low, high } = report.unarmed;
+        notes.push(t('counter.noteUnarmed', {
+          count: high,
+          band: low === high ? String(high) : `${String(low)}${t('units.rangeJoin')}${String(high)}`,
+        }));
+      }
+      if (report.detected) notes.push(t('counter.noteSeen'));
+      if (!report.fleetHome) notes.push(t('counter.noteSomeAway'));
+    }
+    if (world.fleet?.status === 'AWAY') notes.push(t('counter.noteTelescopeAway'));
+    else if (world.fleet?.status === 'HOME') notes.push(t('counter.noteTelescopeHome'));
+    const fought = fieldedAtLeast(reports, world.id);
+    const mostly = fought ? dominantClass(fought.fleet) : null;
+    if (mostly !== null && mostly !== 'SUPPORT') {
+      notes.push(t('counter.noteLastRaid', { class: combatClassLabel(mostly) }));
+    }
+  }
 
   /**
    * ONE HULL'S ROW IN THE PICKER: the ship, the four numbers, and the stepper.
@@ -329,9 +479,9 @@ export function LaunchSheet({
     /**
      * WHAT IS STANDING HERE, AND WHAT THIS LESSON WILL LET YOU SPEND.
      *
-     * They are different numbers and the row needs both. `available` is the truth
-     * about the hangar and it is what the row prints; `pickable` is the lesson's
-     * ceiling and it is what the stepper obeys.
+     * They are different numbers and the row needs both. `available` is what is
+     * actually standing here and it is what the row prints; `pickable` is the
+     * lesson's ceiling and it is what the stepper obeys.
      *
      * A hull the lesson does not want keeps its row with every control dead —
      * owner correction, and the better reading. Hiding the captured Warden made
@@ -395,6 +545,7 @@ export function LaunchSheet({
                 hp={HULLS[hull].hp}
                 speed={HULLS[hull].speed}
                 cargo={HULLS[hull].cargo}
+                salvage={salvageCapacity({ [hull]: 1 })}
                 fuel={hullFuelRate(hull)}
               />
             </div>
@@ -521,7 +672,27 @@ export function LaunchSheet({
               onClick={() => {
                 if (pirate) {
                   raid.mutate(
-                    { pirateId: pirate.id, fleet: sending },
+                    {
+                      pirateId: pirate.id,
+                      fleet: sending,
+                      /*
+                        THE MINUTE ON THIS SCREEN RIDES THE LAUNCH. D183.
+
+                        A pirate's rendezvous is an instantaneous solve, and a table
+                        even half a minute old can name a different lap of the orbit
+                        — the owner's report was ten minutes becoming forty. The
+                        server refuses rather than flying a fleet at an answer nobody
+                        read, and a raid cannot be recalled, so this is the one
+                        surface where that guarantee has to be paid for.
+
+                        `undefined` when the lesson has overridden the figure: the
+                        Academy quotes its own flight time and the live server would
+                        rightly refuse it.
+                      */
+                      ...(lesson || route === null
+                        ? {}
+                        : { quotedMinutes: route.oneWayMinutes }),
+                    },
                     {
                       onSuccess: (result) => {
                         say(t('pirate.send', {
@@ -540,7 +711,19 @@ export function LaunchSheet({
                 }
                 if (target.kind !== 'world') return;
                 launch.mutate(
-                  { targetPlanetId: target.world.id, fleet: sending },
+                  {
+                    targetPlanetId: target.world.id,
+                    fleet: sending,
+                    /*
+                      THE ANSWER TO A QUESTION THAT HAS ALREADY BEEN ASKED. D183.
+
+                      The confirmation step above states the price in words; this is
+                      the commander's yes to it. Sent only when there is actually a
+                      shield to spend, so a launch that costs nothing carries no
+                      acknowledgement of a cost.
+                    */
+                    ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
+                  },
                   {
                     onSuccess: (result) => {
                       say(
@@ -612,11 +795,39 @@ export function LaunchSheet({
         the picker exactly as the bar above it does — pressing "+" moves both, which
         is the same cause and effect in two different currencies.
 
-        It states no verdict. The reading is stale, fuzzed and blind to the counter
-        cycle, and a sheet that answered "will I win" would end the bet the whole
-        game is built on.
+        It states no verdict. Since D199 it draws where this wing stops clearing and
+        stops breaking a wall — the battle engine's own lines, counter cycle and a
+        known shield included — but the reading stays stale and fuzzed and the roll
+        is left out, and a sheet that answered "will I win" would end the bet the
+        whole game is built on.
       */}
-      <ForceCompare yours={fleetValue(sending)} theirs={opposing} />
+      {/*
+        THE COMPARISON AND WHAT THE TRIP COSTS, IN ONE BOX. D183, owner correction:
+        *"aynı kutunun içinde altında olsun. güç gösteren kutu sticky, sheet'te
+        scroll yapınca yakıt gösteren alan sayfanın üstünde kalıyor."*
+
+        The fuel meter was moved up to sit under this box and that was still wrong:
+        the box is `sticky`, so a sibling scrolls out from under a header that stays
+        pinned. The two figures a wing is adjusted against — the force it represents
+        and the deuterium it burns — both move on the same "+", so they travel
+        together or they are not a comparison at all.
+      */}
+      <ForceCompare yours={combatValue(sending)} theirs={opposing} lines={lines} loss={loss} notes={notes}>
+        {(route !== null) || planet.capacity ? (
+          <div data-launch-meters className="mt-2 gap-2">
+            {route !== null && (
+              <div className="min-w-[9rem] flex-1 flex items-center">
+                <SpendBar
+                  stock={planet.planet.deuterium}
+                  spend={route.fuel}
+                  tone="deuterium"
+                  label={t('launch.fuel')}
+                />
+              </div>
+            )}
+          </div>
+        ) : null}
+      </ForceCompare>
 
       {/*
         THE FLIGHT, IN THREE FIGURES AND ONE PICTURE.
@@ -628,7 +839,8 @@ export function LaunchSheet({
         a figure that went red with no way of telling whether the player was ten
         deuterium short or a thousand.
       */}
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      {/* Marked so the sheet's block ORDER can be pinned by a test. D183. */}
+      <div data-launch-figures className="mt-6 grid grid-cols-3 gap-2">
         {/*
           THE ONE FIGURE ON THIS SCREEN QUOTED TO THE SECOND. D182, owner request.
 
@@ -661,60 +873,30 @@ export function LaunchSheet({
         affordable at all. IDENTIFIED only — a Radar return has no level to read it
         from, and inventing one here would sell a reading nobody bought.
       */}
+      {/*
+        WHAT THE COLLECTORS WILL LIFT, IF THEY LIVE. D200.
+
+        One line, and only when a collector is in the wing: the hold figure above
+        says nothing about it (a collector carries no cargo), and a hull whose whole
+        purpose is a number the launch never states is a rule the player cannot see
+        (D124). "Up to", because it is a ceiling on a wreck nobody has made yet — a
+        collector that dies, or a fight that kills little, lifts less.
+      */}
+      {salvageRoom > 0 && (
+        <p
+          data-testid="launch-salvage"
+          className="mt-3 flex items-center gap-2 text-caption leading-snug text-alloy"
+        >
+          <SalvageIcon className="size-4 shrink-0" />
+          {t('launch.salvage', { amount: compact(salvageRoom) })}
+        </p>
+      )}
       {pirate?.damageMult !== undefined && (
         <p className="mt-3 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
           {t('pirate.damagePenalty', {
             percent: Math.round((1 - pirate.damageMult) * 100),
           })}
         </p>
-      )}
-      {/*
-        THE TWO METERS SHARE A ROW. Owner directive: *"gereksiz progress bar
-        tasarımları ile dikey alanı uzatıyoruz."*
-
-        Fuel and hangar are the same SHAPE of fact — a quantity against a ceiling —
-        and they were stacked as two full-width blocks, one of them inside a plate
-        of its own, for a total of four bars down a sheet that already carries the
-        force comparison. Side by side they are the same two readings in half the
-        height, and putting them level also states the thing the stack never did:
-        these are the two limits on the same launch, and either can be the one that
-        stops it.
-
-        They wrap back to full width below ~320px, which is the right degradation —
-        a bar too narrow to read is worse than a bar on its own line.
-      */}
-      {(route !== null) || planet.capacity ? (
-        <div data-launch-meters className="mt-2 gap-2">
-          {route !== null && (
-            <div className="min-w-[9rem] flex-1 flex items-center">
-              <SpendBar
-                stock={planet.planet.deuterium}
-                spend={route.fuel}
-                tone="deuterium"
-                label={t('launch.fuel')}
-              />
-            </div>
-          )}
-          {planet.capacity && (
-            <div className="min-w-[9rem] flex-1">
-              <CapacityBar
-                className='px-0'
-                total={planet.capacity.hangar}
-                used={planet.capacity.hangarUsed}
-                incoming={0}
-                label={t('launch.hangarLabel')}
-              />
-            </div>
-          )}
-        </div>
-      ) : null}
-      {/*
-        THE RULE NO PICTURE CAN CARRY: a fleet in the air still occupies this
-        world's hangar, so launching frees nothing. One micro line under both
-        meters rather than a caption belonging to one of them.
-      */}
-      {planet.capacity && (
-        <p className="mt-2 text-micro leading-snug text-faint">{t('launch.hangarNote')}</p>
       )}
 
       <div className="mt-6">
@@ -831,6 +1013,21 @@ export function LaunchSheet({
           <p className="mt-6 text-body leading-relaxed text-threat-ink">
             {t('launch.warning', { count: holding })}
           </p>
+          {/*
+            AND THE SECOND THING THIS PRESS COSTS. D183, owner instruction: *"Kişi
+            kendisi saldırı yapmak isterse uyarı verilir ve kabul ederse kalkanı
+            kalkar."*
+
+            Beside the exposure warning rather than in a dialogue of its own,
+            because they are two halves of one price — what this launch costs at
+            home, and what it costs for the rest of the day. A commander reading
+            them apart is reading half a decision.
+          */}
+          {spendsShield && (
+            <p data-shield-warning className="mt-2 text-body leading-relaxed text-alloy">
+              {t('launch.shieldWarning')}
+            </p>
+          )}
           {/*
             THE CHEAPEST DEPTH IN THE GAME. D28.
 

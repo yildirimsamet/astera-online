@@ -20,7 +20,9 @@ export * from './fuel.js';
 export * from './tech.js';
 export * from './travel.js';
 export * from './combat.js';
+export * from './forecast.js';
 export * from './loot.js';
+export * from './salvage.js';
 export * from './intel.js';
 export * from './sight.js';
 export * from './score.js';
@@ -38,3 +40,5 @@ export * from './returnQueue.js';
 export * from './inactivity.js';
 export * from './waitingPlacement.js';
 export * from './returnPlacement.js';
+
+export * from './economy-profile.js';

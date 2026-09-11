@@ -1,4 +1,5 @@
-import { PIRATE, SEASON } from './constants.js';
+import { monthlySupply } from './monthly-supply.js';
+import { PIRATE, SEASON, SERVERS, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { orbitPosition } from './galaxy.js';
@@ -77,7 +78,19 @@ function poolFor(level: PirateLevel): readonly MobileHullId[] {
     bare `tier <= level` is a type error against null and would have been `true`
     at runtime, which is how a ground emplacement ends up in a fleet that flies.
   */
-  return MOBILE_HULLS.filter((id) => (HULLS[id].tier ?? Infinity) <= level);
+  /*
+    AND NEVER A GARBAGE COLLECTOR. D200.
+
+    A pirate is re-derived from the season key on every read, so a hull that joins
+    this pool re-deals every roster at or above its tier IN A LIVE SEASON — under
+    crews commanders have already shot pieces off, with raids in the air aimed at
+    them. The pool is therefore the catalogue as it stood before the collector, and
+    `garbage-collector.test.ts` holds the recorded rosters to the byte. It would be
+    a poor crewman anyway: a pirate never flies home, so it never collects.
+  */
+  return MOBILE_HULLS.filter(
+    (id) => (HULLS[id].tier ?? Infinity) <= level && HULLS[id].profile !== 'COLLECTOR',
+  );
 }
 
 /** The hulls that both fight and belong to this exact level. */
@@ -332,6 +345,7 @@ export function generatePirateSchedule(
   const pirates: PirateSpec[] = [];
   if (count <= 0) return pirates;
 
+  const remaining = Array.from({ length: SEASON.days }, (_, day) => monthlySupply('pirates', day, SERVERS.capacity));
   const interval = span / count;
   for (let laneIndex = 0; laneIndex < count; laneIndex++) {
     const radius = orbitRadius(rng(), PIRATE.orbitMin, PIRATE.orbitMax);
@@ -347,11 +361,21 @@ export function generatePirateSchedule(
     const ascendingNode = rng() * Math.PI * 2;
     const roster = pirateRoster(level, rng);
 
+    const budget = remaining[Math.floor(appearsAt / 1440)];
+    const hoard = pirateHoard(roster);
+    // Conservative cap: even repeated decisive encounters cannot capture more than
+    // the original crew. Pirate-created wreckage is external supply as well.
+    const liability = { ...hoard };
+    for (const [id, amount] of fleetEntries(roster)) {
+      for (const k of ['alloy', 'crystal', 'deuterium'] as const) liability[k] += HULLS[id][k] * amount * (1 + DEBRIS.share);
+    }
+    if (!budget || (['alloy', 'crystal', 'deuterium'] as const).some(k => liability[k] > budget[k])) continue;
+    for (const k of ['alloy', 'crystal', 'deuterium'] as const) budget[k] -= liability[k];
     pirates.push({
-      index: indexOffset + laneIndex,
+      index: indexOffset + pirates.length,
       level,
       roster,
-      hoard: pirateHoard(roster),
+      hoard,
       radius,
       period: (2 * Math.PI * radius) / speed,
       phase,
@@ -363,5 +387,17 @@ export function generatePirateSchedule(
     });
   }
 
+  // Rationing must not spend the entire day's opportunities in its first hour.
+  for (let day = 0; day < SEASON.days; day++) {
+    const today = pirates.filter(p => Math.floor(p.appearsAt / 1440) === day);
+    const start = Math.max(day * 1440, appearsAtOffset);
+    const end = Math.min((day + 1) * 1440, appearsAtOffset + span);
+    today.forEach((p, i) => {
+      const life = p.expiresAt - p.appearsAt;
+      const jitter = p.appearsAt % 1;
+      p.appearsAt = start + (i + jitter) * (end - start) / today.length;
+      p.expiresAt = p.appearsAt + life;
+    });
+  }
   return pirates;
 }

@@ -35,6 +35,7 @@ import {
   clanKickSchema,
   clanLeadershipSchema,
   clanLeaderboardSchema,
+  publicClanSchema,
   clanLeaveSchema,
   clanRequestAcceptedSchema,
   clanRequestClosedSchema,
@@ -448,6 +449,10 @@ export class Api {
     return this.send(`/api/clans?${query.toString()}`, clanDirectorySchema);
   };
   clanLeaderboard = () => this.send('/api/clans/leaderboard', clanLeaderboardSchema);
+
+  /** One clan's public profile, roster included. D183. */
+  clan = (clanId: string) =>
+    this.send(`/api/clans/${encodeURIComponent(clanId)}`, publicClanSchema);
   clanEvents = (before?: string) => this.send(
     `/api/clan/events?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     clanEventsPageSchema,
@@ -577,12 +582,25 @@ export class Api {
     });
 
   /** IRREVERSIBLE. There is no recall endpoint, by design. */
-  launch = (originOrTargetPlanetId: string, targetOrFleet: string | Fleet, explicitFleet?: Fleet) =>
+  /**
+   * `acknowledgeShieldLoss` is the commander saying they have read what this costs
+   * THEM. D183 — a raid launched under the first-day shield spends it, and the
+   * server refuses once with `SHIELD_WOULD_DROP` rather than spending it silently.
+   */
+  launch = (
+    originOrTargetPlanetId: string,
+    targetOrFleet: string | Fleet,
+    explicitFleet?: Fleet,
+    acknowledgeShieldLoss?: boolean,
+  ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
-      body: explicitFleet
-        ? { originPlanetId: originOrTargetPlanetId, targetPlanetId: targetOrFleet, fleet: explicitFleet }
-        : { targetPlanetId: originOrTargetPlanetId, fleet: targetOrFleet },
+      body: {
+        ...(explicitFleet
+          ? { originPlanetId: originOrTargetPlanetId, targetPlanetId: targetOrFleet, fleet: explicitFleet }
+          : { targetPlanetId: originOrTargetPlanetId, fleet: targetOrFleet }),
+        ...(acknowledgeShieldLoss ? { acknowledgeShieldLoss: true } : {}),
+      },
     });
 
   watch = (targetPlanetId: string, slot: number, observerPlanetId?: string) =>
@@ -663,10 +681,28 @@ export class Api {
   );
 
   /** IRREVERSIBLE, like every launch. The server has no recall. P3. */
-  raidPirate = (pirateId: string, fleet: Fleet, originPlanetId?: string) =>
+  /**
+   * `quotedMinutes` is the flight time the player was LOOKING AT. D183.
+   *
+   * The rendezvous table is an instantaneous solve and a stale one can name a
+   * different lap of the orbit entirely — 5.1 minutes to 56.3 in the worst measured
+   * case. A raid cannot be recalled, so the launch carries the quote and the server
+   * refuses rather than flying the fleet at an answer nobody read.
+   */
+  raidPirate = (
+    pirateId: string,
+    fleet: Fleet,
+    originPlanetId?: string,
+    quotedMinutes?: number,
+  ) =>
     this.send('/api/pirates/raid', pirateRaidSchema, {
       method: 'POST',
-      body: { pirateId, fleet, ...(originPlanetId ? { originPlanetId } : {}) },
+      body: {
+        pirateId,
+        fleet,
+        ...(originPlanetId ? { originPlanetId } : {}),
+        ...(quotedMinutes !== undefined ? { quotedMinutes } : {}),
+      },
     });
 
   /**

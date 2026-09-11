@@ -20,6 +20,7 @@ import { createSeason, liveSeason } from '../services/season.js';
 import { restampFutureOccurrences } from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
+import { deleteAccount, describeAccount } from '../services/accountDeletion.js';
 import {
   bootstrapServers,
   listServers,
@@ -39,6 +40,12 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
+season delete-account NAME [--yes] ERASE ONE PERSON at their own request: the
+                                   account, the commander, the capital and every
+                                   row either was the reason for. A captured
+                                   colony is handed back to the galaxy as the
+                                   caretaker world it was born as. Dry run unless
+                                   --yes. Refuses while anything is in the air.
 season restamp [--yes] [options]    re-deal the effect of every window of ONE event
                                    kind that has NOT opened yet, from today's
                                    rules. Dry run unless --yes; opened windows are
@@ -298,6 +305,55 @@ async function main(): Promise<void> {
           result.already
             ? `${result.player} already has ${id}. Nothing written.`
             : `${result.player} may now claim ${id}.`,
+        );
+        return;
+      }
+
+      /**
+       * ERASING ONE PERSON WHO ASKED TO BE ERASED.
+       *
+       * A COMMAND RATHER THAN A ROUTE, and rather than a sweep, for two reasons:
+       * a player deletes themselves roughly never, and the thing being confirmed
+       * is a HUMAN REQUEST that no server-side check can verify. The operator read
+       * the message; the server can only be told the answer.
+       *
+       * Dry run by default. It prints who would go and what they hold, because the
+       * one failure this command must never have is deleting the wrong person on a
+       * name collision — and the operator is typing a name they read in a message,
+       * not a uuid.
+       */
+      case 'delete-account': {
+        const name = positionals[1];
+        if (name === undefined) throw new Error('Which commander? season delete-account NAME');
+
+        if (values.yes !== true) {
+          const found = await describeAccount(db, name);
+          if (!found) throw new Error(`No commander named ${name}`);
+          console.log(
+            [
+              `WOULD DELETE  ${found.account}  (login ${found.username})`,
+              `joined        ${found.createdAt.toISOString()}`,
+              `worlds        ${
+                found.worlds.length === 0
+                  ? '(none)'
+                  : found.worlds
+                    .map((world) => `${world.name} [${world.kind} @${String(world.slotIndex)}]`)
+                    .join(', ')
+              }`,
+              '',
+              'Nothing was written. Re-run with --yes to erase this person.',
+            ].join('\n'),
+          );
+          return;
+        }
+
+        const result = await deleteAccount(db, systemClock, name);
+        console.log(
+          [
+            `deleted      ${result.account} (login ${result.username})`,
+            `worlds gone  ${result.worldsRemoved.join(', ') || '(none)'}`,
+            `given back   ${result.coloniesReturned.join(', ') || '(none)'}`,
+          ].join('\n'),
         );
         return;
       }

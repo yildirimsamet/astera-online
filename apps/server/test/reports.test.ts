@@ -5,8 +5,8 @@ import { eq, sql } from 'drizzle-orm';
 import {
   COMBAT,
   DEBRIS,
-  DOMINION_TRANSFER_SCALE,
   HULLS,
+  MULTI_WORLD,
   fleetCount,
   type HullId,
 } from '@astera/rules';
@@ -18,6 +18,7 @@ import {
   missions,
   planets,
   players,
+  seasons,
   strategicImpacts,
 } from '../src/db/schema.js';
 import { buildApp } from '../src/app.js';
@@ -87,6 +88,14 @@ interface ReportView {
   lootCrystal: number;
   /** Null on reports written before the swing was recorded. */
   dominion: number | null;
+  /** Null on legacy reports; all terms are signed from the caller's side. */
+  dominionBreakdown: {
+    ruleVersion: number;
+    lootValue: number;
+    enemyPermanentLossValue: number;
+    ownPermanentLossValue: number;
+    rawExchange: number;
+  } | null;
   shieldAbsorbed: number;
   /** Derived from immutable round telemetry; null for a legacy report. */
   shieldBefore: number | null;
@@ -206,18 +215,58 @@ describe('battle reports', () => {
    * salvages back out of the wreckage.
    */
   it('reports a dominion swing that sums to zero and matches the ladder', async () => {
+    await f.db
+      .update(seasons)
+      .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
     await raid();
     const [attacker] = await reportsFor(0);
     const [defender] = await reportsFor(1);
 
     expect(attacker!.dominion).not.toBeNull();
-    expect(attacker!.dominion! + defender!.dominion!).toBeCloseTo(0, 5);
-    expect(Math.abs(attacker!.dominion!)).toBeLessThanOrEqual(DOMINION_TRANSFER_SCALE);
-
-    const { players } = await import('../src/db/schema.js');
-    const { eq } = await import('drizzle-orm');
+    expect(attacker!.dominion! + defender!.dominion!).toBe(0);
     const [me] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
-    expect(attacker!.dominion).toBeCloseTo(me!.dominionTaken - me!.dominionLost, 4);
+    expect(attacker!.dominion).toBe(me!.dominionTaken - me!.dominionLost);
+
+    const breakdown = attacker!.dominionBreakdown!;
+    expect(breakdown.ruleVersion).toBe(MULTI_WORLD.dominionLinearRulesetVersion);
+    expect(Number.isSafeInteger(breakdown.lootValue)).toBe(true);
+    expect(Number.isSafeInteger(breakdown.enemyPermanentLossValue)).toBe(true);
+    expect(Number.isSafeInteger(breakdown.ownPermanentLossValue)).toBe(true);
+    expect(breakdown.rawExchange).toBe(attacker!.dominion);
+    expect(breakdown.rawExchange).toBe(
+      breakdown.lootValue
+      + breakdown.enemyPermanentLossValue
+      - breakdown.ownPermanentLossValue,
+    );
+    expect(defender!.dominionBreakdown).toEqual({
+      ruleVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+      lootValue: -breakdown.lootValue,
+      enemyPermanentLossValue: breakdown.ownPermanentLossValue,
+      ownPermanentLossValue: breakdown.enemyPermanentLossValue,
+      rawExchange: defender!.dominion,
+    });
+    for (const view of [attacker!, defender!]) {
+      const detail = view.dominionBreakdown!;
+      expect(
+        detail.lootValue + detail.enemyPermanentLossValue - detail.ownPermanentLossValue,
+      ).toBe(detail.rawExchange);
+    }
+  });
+
+  it('keeps the linear equation card off legacy bounded reports', async () => {
+    await f.db
+      .update(seasons)
+      .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion - 1 })
+      .where(eq(seasons.id, f.seasonId));
+    await raid();
+
+    const [stored] = await f.db.select().from(battleReports);
+    expect(stored!.dominionRuleVersion).toBe(MULTI_WORLD.dominionLinearRulesetVersion - 1);
+    expect(stored!.dominionRawExchange).not.toBeNull();
+    const [view] = await reportsFor(0);
+    expect(view!.dominion).not.toBeNull();
+    expect(view!.dominionBreakdown).toBeNull();
   });
 
   it('names the opponent — being raided reveals the raider', async () => {
@@ -802,7 +851,7 @@ describe('what a battle leaves behind', () => {
     const before = await f.db.select().from(players);
     const total = (rows: typeof before): number =>
       rows.reduce((s, p) => s + p.dominionTaken - p.dominionLost, 0);
-    expect(Math.abs(total(before))).toBeLessThan(0.001);
+    expect(total(before)).toBe(0);
 
     // Harvest the whole field and check again: taking wreckage must not move it.
     const [field] = await f.db.select().from(debrisFields);
@@ -815,8 +864,8 @@ describe('what a battle leaves behind', () => {
     await worker().tick();
 
     const after = await f.db.select().from(players);
-    expect(Math.abs(total(after))).toBeLessThan(0.001);
-    expect(total(after)).toBeCloseTo(total(before), 5);
+    expect(total(after)).toBe(0);
+    expect(total(after)).toBe(total(before));
   });
 
   it('a harvest brings salvage home into the works, and takes a bay', async () => {

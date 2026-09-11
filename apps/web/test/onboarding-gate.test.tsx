@@ -48,7 +48,7 @@ const previewOf = (): Preview => ({
     status: 'live',
     startsAt: new Date(),
     endsAt: new Date(Date.now() + 1000),
-    playerCap: 50,
+    rivals: [], shieldUntil: null, playerCap: 50,
     players: 2,
   },
   galaxy: { you: { planetId: 'reserved', playerId: 'reserved' }, planets: [] },

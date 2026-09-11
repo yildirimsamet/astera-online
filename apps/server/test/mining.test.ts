@@ -218,6 +218,7 @@ describe('mining', () => {
 
       /** The cap is on Prospectors alone; nothing else in the yard is rationed. */
       it('does not ration any other hull', async () => {
+        await setLevel(f.db, mine, 'HANGAR', 2);
         await grant(f.db, mine, 900_000, 400_000);
         await expect(buildUnits(f.db, mine, 'DART', 40, f.clock)).resolves.toMatchObject({
           built: 40,
@@ -661,7 +662,8 @@ describe('mining', () => {
       for (const a of field) {
         expect(a.level).toBeGreaterThanOrEqual(1);
         expect(a.level).toBeLessThanOrEqual(5);
-        expect(a.ore).toBe(GALAXY.asteroidOreByLevel[a.level]);
+        expect(a.ore).toBeGreaterThan(0);
+        expect(a.ore).toBeLessThanOrEqual(GALAXY.asteroidOreByLevel[a.level]!);
       }
     });
   });

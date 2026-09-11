@@ -281,7 +281,7 @@ function Portrait({ item, level, name }: { item: ItemRef; level: number; name: s
     /*
       160px, NOT 192. `visual-design.md` puts a sheet portrait at 96–150px and the
       art inside this is 144 — the extra 48px was empty frame above and below it,
-      which on a 375-wide phone is a sixth of the screen spent on nothing.
+      which on a 350-wide phone is a sixth of the screen spent on nothing.
     */
     <div className="item-portrait flex h-40 items-center justify-center overflow-hidden">
       <span aria-hidden className="item-portrait-orbit" />

@@ -90,6 +90,49 @@ DPR stays fixed during camera interaction: thin trails, hull silhouettes and sta
 must never blur under the player's finger. Scene motion is rendered consistently on
 every client so timing-dependent tactical effects cannot silently disappear.
 
+## The GPU can be taken away, and the scene has to come back
+
+Reported live from an Android phone, Chrome 151, 360x738 — background the tab, come
+back a while later:
+
+```
+TypeError: Cannot read properties of null (reading 'alpha')
+    at addPass …
+```
+
+A mobile browser may drop the WebGL context to reclaim GPU memory. That is routine
+and every phone does it. What made it a crash is one line in `postprocessing`
+(`EffectComposer.setRenderer`):
+
+```js
+const alpha = renderer.getContext().getContextAttributes().alpha;
+```
+
+`getContextAttributes()` returns **null** on a lost context — the WebGL spec, not a
+library bug — so the first render that constructs a composer against the dead
+context dereferences null and the whole app unmounts into the crash screen. Nothing
+in `apps/web/src` had ever listened for `webglcontextlost`.
+
+Three rules follow, and `galaxy/gpuContext.ts` plus `test/gpu-context.test.ts` hold
+all three:
+
+- **Cancel the loss.** `webglcontextrestored` is dispatched only if the
+  `webglcontextlost` handler called `preventDefault()`. A listener that merely
+  records the loss trades a crash for a permanently black scene.
+- **Do not mount a composer against a dead context.** The crash is in the
+  construction path, so the element must not exist while the context is gone — a
+  prop telling a composer the context is dead has already dereferenced the null.
+- **A restored context is a NEW one.** Every render target the old composer
+  allocated died with it, so the composer is rebuilt: `epoch` joins the resolution
+  ceiling in its React key. And `frameloop` is `demand`, so a frame has to be asked
+  for on the far side or the reward for surviving is a still picture.
+
+Reproduce it with `WEBGL_lose_context` — take the extension handle **before** the
+loss, since `getExtension` returns null on a dead context too — then resize the
+viewport, which is what a returning tab does and what re-runs the composer's memo.
+Verified both ways on the real disc: the crash reproduces with the guard removed
+and does not with it in place.
+
 ## Required acceptance frames
 
 Each implementation item retains a before/after pair with identical viewport and

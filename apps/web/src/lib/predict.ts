@@ -3,19 +3,17 @@ import {
   BUILDING_IDS,
   HULLS,
   INSTRUMENT_IDS,
-  PROSPECTOR,
   RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   SATELLITE_IDS,
   buildingCost,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
   hullBulk,
   hullBuildable,
   instrumentCost,
   instrumentMaxed,
+  prospectorRoom,
   satelliteSlots,
   satelliteCost,
   seeingUnlocked,
@@ -138,7 +136,6 @@ export function projectedQueueState(
       EXTRACTOR: view.buildings.EXTRACTOR ?? 0,
       VAULT: view.buildings.VAULT ?? 0,
       SHIPYARD: view.buildings.SHIPYARD ?? 0,
-      HANGAR: view.buildings.HANGAR ?? 0,
       DEUTERIUM_PLANT: view.buildings.DEUTERIUM_PLANT ?? 0,
     },
     instruments: { ...view.instruments },
@@ -284,21 +281,31 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
   /**
    * A PROSPECTOR IS CAPPED BY WHAT YOU OWN, NOT BY WHAT IS AT HOME.
    *
-   * `PROSPECTOR.max` counts craft wherever they are, which is why the payload
-   * carries `fleetAway` at all. Predicting past that cap would offer a fourth
-   * drill and then take it away.
+   * The ceiling counts craft wherever they are, which is why the payload carries
+   * `fleetAway` at all. Predicting past it would offer a drill and then take it
+   * away.
+   *
+   * AND THE CEILING IS BOUGHT. D170 gave the third rung of Prospector Holds a
+   * third berth, and this read the bare `PROSPECTOR.max` — so the one screen a
+   * commander buys craft from refused the berth they had just paid 6,000 alloy
+   * for, while `buildUnits` on the server would have allowed it. An optimistic
+   * frame STRICTER than the server is worse than one that is looser: the control
+   * never offers the purchase, so the refusal can never be discovered.
+   *
+   * `prospectorRoom` is the single statement of the arithmetic (D131), and `tech`
+   * is the projected ladder — the same one the buildability gate above reads, so
+   * a rung queued this frame counts here exactly as it counts there.
    */
   const owned = projected.units[hull] ?? 0;
-  if (hull === 'PROSPECTOR' && owned + count > PROSPECTOR.max) return null;
+  if (hull === 'PROSPECTOR' && count > prospectorRoom(owned, tech)) return null;
 
-  // The order must fit the same ownership pool the server checks. Projected
-  // units include every earlier Yard order, so two individually legal taps cannot
-  // optimistically walk through the ceiling together.
-  const capacity = spec.ground
-    ? view.capacity?.ground ?? groundSlots(view.buildings.CORE ?? 0)
-    : view.capacity?.hangar ?? hangarCapacity(view.buildings.HANGAR ?? 0);
-  const used = spec.ground ? groundLoad(projected.units) : hangarLoad(projected.units);
-  if (used + hullBulk(hull) * count > capacity) return null;
+  // Only emplacements answer to a ceiling (D184), and the order must fit the same
+  // ownership pool the server checks. Projected units include every earlier Yard
+  // order, so two individually legal taps cannot optimistically walk through it.
+  if (spec.ground) {
+    const capacity = view.capacity?.ground ?? groundSlots(view.buildings.CORE ?? 0);
+    if (groundLoad(projected.units) + hullBulk(hull) * count > capacity) return null;
+  }
 
   const next = spend(view, cost);
   return appendOrder(next, 'YARD', 'HULL', hull, count, cost);

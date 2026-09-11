@@ -27,7 +27,14 @@ import {
   useLaunchDeathStar,
   useSettlement,
 } from '../api/queries.js';
-import type { AsteroidView, HistoricalSeasonResult, MiningRun, MiningView } from '../api/schemas.js';
+import type {
+  AsteroidView,
+  GalaxyPlanet,
+  HistoricalSeasonResult,
+  MiningRun,
+  MiningView,
+  RivalMark,
+} from '../api/schemas.js';
 import { GalaxyCanvas } from '../galaxy/GalaxyCanvas.jsx';
 import {
   AsteroidFocus,
@@ -48,6 +55,7 @@ import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { activeTradeShip } from '../lib/trade.js';
 import { flightModifiers, planTradeRoute } from '../lib/navigation.js';
+import { outOfBandAbove } from '../lib/band.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
@@ -110,6 +118,7 @@ import {
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
 import type { StripFocus } from '../shell/PendingStrip.js';
+import { keepsPlanetGroup, rivalMenuRows } from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
@@ -327,8 +336,17 @@ export function GalaxyView({
   );
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
 
+  /*
+    A REQUESTED TAB BELONGS TO THE PANEL IT WAS MADE FOR. D183.
+
+    This read `panel === null`, and a reader rarely closes anything: Intel's
+    "install a Telescope" asks for the orbit, the reader crosses to the Signals
+    shelf, then taps a world of their own — the panel never passed through `null`,
+    so the orbit request was still standing and the sheet opened on a tab nobody
+    had asked for that time. `keepsPlanetGroup` is the single statement of it.
+  */
   useEffect(() => {
-    if (panel === null) setRequestedPlanetGroup(null);
+    if (!keepsPlanetGroup(panel)) setRequestedPlanetGroup(null);
   }, [panel]);
 
   /**
@@ -925,8 +943,7 @@ export function GalaxyView({
         activePlanetId={activePlanetId}
         aegisLevel={planet.data?.instruments.AEGIS ?? 0}
         {...(season.data ? { seasonStart: season.data.startsAt } : { seasonStart: undefined })}
-        rivalPlanetId={season.data?.rivalPlanetId ?? null}
-        rivalPlayerId={season.data?.rivalPlayerId ?? null}
+        rivals={season.data?.rivals ?? []}
         focus={focus}
         onReady={onReady}
         onFocus={onFocus}
@@ -1119,13 +1136,14 @@ export function GalaxyView({
             selected.controller?.kind === 'PLAYER'
               ? rival.playerId === selected.controller.playerId
               : rival.planetId === selected.id)}
-          isRival={
-            (season.data?.rivalPlayerId != null
-              && selected.controller?.kind === 'PLAYER'
-              && selected.controller.playerId === season.data.rivalPlayerId)
-            || (season.data?.rivalPlayerId == null
-              && season.data?.rivalPlanetId === selected.id)
-          }
+          /*
+            WHICH MARK THIS WORLD WEARS, IF ANY. D183.
+
+            The rail reads the slot rather than a boolean so it can draw the mark's
+            own colour beside the control — five identical reticles would be five
+            marks and no information.
+          */
+          rivalSlot={rivalSlotFor(season.data?.rivals ?? [], selected)}
           now={now}
           settlementInFlight={settlementInFlight}
           onClose={close}
@@ -1151,6 +1169,14 @@ export function GalaxyView({
           onSettle={() => {
             setSettlingTargetId(selected.id);
           }}
+          /*
+            THE HALF OF D168 THE DISC CAN PROVE. `lib/band.ts` carries the whole
+            argument; what matters here is that this screen is already holding
+            every world the caller can see, so the answer costs one pass and no
+            request. It only ever refuses "further developed than you" — the
+            other direction is unprovable through fog and stays with the server.
+          */
+          outOfBand={outOfBandAbove(planets, selected)}
           onDeathStar={() => {
             deathStar.mutate(selected.id, {
               onSuccess: () => {
@@ -1462,16 +1488,22 @@ export function GalaxyView({
             ended={season.data?.status === 'frozen'}
             inSilentSpace={returnStatus.data?.placement?.role === 'WAITING'}
             hasSeasonResult={recapResult != null}
-            rival={planets.find((world) => world.id === season.data?.rivalPlanetId) ?? null}
-            rivalLost={season.data?.rivalPlanetId != null && !planets.some((world) => world.id === season.data?.rivalPlanetId)}
-            onFocusRival={() => {
-              const rival = planets.find((world) => world.id === season.data?.rivalPlanetId);
-              if (!rival) return;
+            /*
+              EVERY MARK, IN SLOT ORDER, WITH ITS WORLD RESOLVED WHERE THERE IS ONE.
+              D183.
+
+              A mark whose world is not on the disc is `lost` — reclaimed, wiped, or
+              simply outside this payload — and gets a row that clears THAT mark. The
+              single-mark version sent `null`, which now empties the whole set and
+              would throw four bookmarks away to tidy one.
+            */
+            rivals={rivalMenuRows(season.data?.rivals ?? [], planets)}
+            onFocusRival={(planetId) => {
               onPanel(null);
-              focusPlanet(rival.id);
+              focusPlanet(planetId);
             }}
-            onClearRival={() => {
-              setRival.mutate(null, {
+            onClearRival={(planetId) => {
+              setRival.mutate(planetId, {
                 onSuccess: () => { say(t('menu.rivalCleared')); },
                 onError: (error) => { say(describe(error), 'error'); },
               });
@@ -1676,6 +1708,7 @@ export function GalaxyView({
           target={{ kind: 'world', world: selected }}
           planet={planet.data}
           intel={intel.data}
+          reports={reports.data?.reports ?? []}
           onClose={() => {
             setAttacking(false);
           }}
@@ -1897,6 +1930,25 @@ function PirateFocusHost({
   );
 }
 
+/**
+ * WHICH MARK A FOCUSED WORLD WEARS, OR NULL. D183.
+ *
+ * The rail is handed a `GalaxyPlanet` rather than a scene node, so this asks the
+ * same question `rivalSlotOf` asks of the disc and asks it the same way: the
+ * COMMANDER first (a mark follows them across every world they hold, D97), the
+ * world only where there is no commander to read.
+ */
+function rivalSlotFor(
+  rivals: readonly RivalMark[],
+  world: GalaxyPlanet,
+): number | null {
+  const holder = world.controller?.kind === 'PLAYER' ? world.controller.playerId : null;
+  const mark = rivals.find((candidate) => (
+    holder !== null ? candidate.playerId === holder : candidate.planetId === world.id
+  ));
+  return mark ? mark.slot : null;
+}
+
 function AsteroidFocusHost({
   rock,
   runs,
@@ -1986,6 +2038,8 @@ function AsteroidFocusHost({
       reachMinutes={reach}
       worksRoom={worksRoom}
       run={runForPlanetTarget(runs, p?.id, { kind: 'asteroid', id: rock.id })}
+      /** D183: the selected world's rest, published on the private mining view. */
+      craftReadyAt={mining?.craftReadyAt ?? null}
       onClose={onClose}
       busy={busy}
       open={open}
@@ -2073,6 +2127,8 @@ function DebrisFocusHost({
       reachMinutes={reach}
       worksRoom={worksRoom}
       run={runForPlanetTarget(runs, p?.id, { kind: 'debris', id: field.id })}
+      /** The lane the rule exists for: a field over your own world. D183. */
+      craftReadyAt={mining?.craftReadyAt ?? null}
       busy={busy}
       open={open}
       onToggle={onToggle}

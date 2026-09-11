@@ -2,14 +2,13 @@ import {
   HULLS,
   buildingCost,
   buildMinutes,
+  buildingMinutes,
   collect,
-  defenceMinutes,
+  hullWorkMinutes,
   instrumentCost,
   instrumentMaxed,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
   hullBulk,
   plantCeiling,
   productionMult,
@@ -18,7 +17,6 @@ import {
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
-  shipMinutes,
   type BuildingId,
   type HullId,
   type InstrumentId,
@@ -194,7 +192,9 @@ export async function placeBuildingUpgrade(
     subject: type,
     count: 1,
     cost,
-    minutes: buildMinutes(cost, context.projected.buildings.CORE),
+    // `buildingMinutes`, never `profileBuilding().minutes`: the latter is the
+    // design reference and knows nothing about what this commander automated. D198.
+    minutes: buildingMinutes(type, level + 1, asTech(context.projected.research)),
   });
   return level + 1;
 }
@@ -280,38 +280,33 @@ export async function placeUnitBuild(
   }
 
   /**
-   * TWO CEILINGS, TWO POOLS, AND THE ORDER IS CHARGED TO EXACTLY ONE OF THEM. T4.
+   * ONLY THE GROUND HAS A CEILING. D184.
    *
-   * Ships answer to the Hangar and emplacements to the Command Core, deliberately:
-   * one shared pool would bind attack and defence to a single slider and collapse
-   * two decisions into one. The split is read off `spec.ground`, the same field
-   * that already decides how long the order takes to build.
+   * The Hangar is gone, so a fleet is braked by what it costs, what it burns and
+   * what it loses rather than by a building whose only product was a refusal.
+   * Emplacements keep theirs: a gun never moves, salvages at 60% and leaves no
+   * wreckage, so an uncapped wall inside D168's tier band would be a world nobody
+   * legally able to attack it could break.
    *
    * Counted over `projected.units`, so what is already in this queue counts. Two
    * orders that each fit and together do not must be refused on the second, or the
-   * ceiling is a suggestion anybody walks past by tapping twice. Only THIS queue is
-   * projected — a Hangar rising in CONSTRUCTION cannot honestly hand room to a hull
-   * that may finish first in YARD.
+   * ceiling is a suggestion anybody walks past by tapping twice.
    *
    * Inside the planet row lock, the same check-then-act shape `assertFreeBay` and
    * the Prospector cap already take.
    */
-  const needed = hullBulk(hull) * count;
-  const capacity = spec.ground
-    ? groundSlots(context.projected.buildings.CORE)
-    : hangarCapacity(context.projected.buildings.HANGAR);
-  const used = spec.ground
-    ? groundLoad(context.projected.units)
-    : hangarLoad(context.projected.units);
-  if (used + needed > capacity) {
-    throw new GameError(
-      spec.ground ? 'GROUND_SLOTS_FULL' : 'HANGAR_FULL',
-      spec.ground
-        ? `This world stands ${String(capacity)} of ground defence and holds ${String(used)}.`
-        : `Your Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
-      409,
-      { capacity, used, needed },
-    );
+  if (spec.ground) {
+    const needed = hullBulk(hull) * count;
+    const capacity = groundSlots(context.projected.buildings.CORE);
+    const used = groundLoad(context.projected.units);
+    if (used + needed > capacity) {
+      throw new GameError(
+        'GROUND_SLOTS_FULL',
+        `This world stands ${String(capacity)} of ground defence and holds ${String(used)}.`,
+        409,
+        { capacity, used, needed },
+      );
+    }
   }
 
   const cost = {
@@ -324,9 +319,7 @@ export async function placeUnitBuild(
     subject: hull,
     count,
     cost,
-    minutes: spec.ground
-      ? defenceMinutes(cost, context.projected.buildings.SHIPYARD)
-      : shipMinutes(cost, context.projected.buildings.SHIPYARD, tech),
+    minutes: hullWorkMinutes(hull, count, context.projected.buildings.SHIPYARD, tech),
   });
 }
 
@@ -407,7 +400,9 @@ export async function raiseInstrument(
       subject: type,
       count: 1,
       cost,
-      minutes: buildMinutes(cost, context.projected.buildings.CORE),
+      minutes: buildMinutes(
+        cost, context.projected.buildings.CORE, asTech(context.projected.research),
+      ),
     });
 
     return { type, level: level + 1, planet: await planetView(tx, planetId, clock) };
@@ -456,7 +451,9 @@ export async function installSatellite(
       subject: type,
       count: 1,
       cost,
-      minutes: buildMinutes(cost, context.projected.buildings.CORE),
+      minutes: buildMinutes(
+        cost, context.projected.buildings.CORE, asTech(context.projected.research),
+      ),
     });
     return { type, slot, planet: await planetView(tx, planetId, clock) };
   }, expectedPlayerId);

@@ -6,7 +6,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
-import type { GalaxyPlanet, IntelView, PlanetView, RivalSummary } from '../src/api/schemas.js';
+import type {
+  GalaxyPlanet,
+  IntelView,
+  PlanetView,
+  RivalMark,
+  RivalSummary,
+} from '../src/api/schemas.js';
 import { PlanetFocus } from '../src/galaxy/FocusPanel.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
@@ -44,12 +50,17 @@ const rival: RivalSummary = {
 
 function show(isRival = false) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
-  const setRival = vi.spyOn(api, 'setRival').mockImplementation((planetId) => Promise.resolve({
-    rivalPlanetId: planetId,
-    rivalPlayerId: planetId === null ? null : 'rival-player',
+  /*
+    THE SERVER TOGGLES AND ANSWERS WITH THE WHOLE SET. D183 — the press sends the
+    same world both ways, so this stub reads the standing set rather than the body.
+  */
+  const setRival = vi.spyOn(api, 'setRival').mockImplementation(() => Promise.resolve({
+    rivals: isRival ? [] : [{ planetId: target.id, playerId: 'rival-player', slot: 0 }],
   }));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(keys.season, { rivalPlanetId: isRival ? target.id : null });
+  client.setQueryData(keys.season, {
+    rivals: isRival ? [{ planetId: target.id, playerId: 'rival-player', slot: 0 }] : [],
+  });
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>
       <ApiProvider api={api}><ToastProvider>{children}</ToastProvider></ApiProvider>
@@ -58,7 +69,8 @@ function show(isRival = false) {
   render(
     <Wrapper>
       <PlanetFocus
-        target={target} planet={mine} intel={intel} reports={[]} rival={rival} isRival={isRival}
+        target={target} planet={mine} intel={intel} reports={[]} rival={rival}
+        rivalSlot={isRival ? 0 : null}
         now={NOW.getTime()} onClose={vi.fn()} onAttack={vi.fn()} onInstallTelescope={vi.fn()}
         onLaunched={vi.fn()} open onToggle={vi.fn()}
       />
@@ -80,15 +92,22 @@ describe('Rival dossier', () => {
     const { client, setRival } = show(false);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Mark rival' }));
     await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
-    expect(client.getQueryData<{ rivalPlanetId: string | null }>(keys.season)?.rivalPlanetId).toBe(target.id);
-    expect(client.getQueryData<{ rivalPlayerId: string | null }>(keys.season)?.rivalPlayerId).toBe('rival-player');
+    expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals)
+      .toEqual([{ planetId: target.id, playerId: 'rival-player', slot: 0 }]);
   });
 
+  /**
+   * CLEARING SENDS THE SAME WORLD, NOT `null`. D183.
+   *
+   * The press is a toggle on the server now, and `null` became the gesture that
+   * empties the WHOLE set — sending it from here to clear one mark would take the
+   * other four with it.
+   */
   it('clears the marker without deleting the encounter history', async () => {
     const { client, setRival } = show(true);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Rival' }));
-    await waitFor(() => { expect(setRival).toHaveBeenCalledWith(null); });
-    expect(client.getQueryData<{ rivalPlanetId: string | null }>(keys.season)?.rivalPlanetId).toBeNull();
+    await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
+    expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals).toEqual([]);
     expect(screen.getByText('4 encounters have made this more than a single raid.')).toBeInTheDocument();
   });
 });

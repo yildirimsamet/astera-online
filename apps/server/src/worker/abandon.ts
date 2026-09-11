@@ -1,18 +1,25 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { fleetCount, fleetEntries, type Fleet } from '@astera/rules';
+import { deuteriumOf, fleetCount, fleetEntries, type Fleet } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import { miningRuns, missions, planets, units } from '../db/schema.js';
 import type { EventRow } from './queue.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { notify } from '../services/notifications.js';
-import { setUnits } from '../services/planet.js';
+import {
+  lockSeason,
+  recomputePlayerWealth,
+  recomputeWealth,
+  setUnits,
+} from '../services/planet.js';
 import { publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { abandonBuildOrder } from '../services/buildQueue.js';
 import { abandonResearchOrder } from '../services/research.js';
 import { abandonDeathStarBuild } from '../services/strategic.js';
 import { abandonTradeRun } from '../services/trade.js';
+import { allocateClanLoot } from '../services/clanLoot.js';
+import { capitalPlanet } from '../services/ownership.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -84,6 +91,15 @@ async function tellThemItCameBack(
 
 async function abandonMission(db: Db, missionId: string, at: Date): Promise<boolean> {
   return db.transaction(async (tx) => {
+    // Discover the parent lock without treating an unlocked read as authority.
+    // The live row is claimed again below, after the season lock, exactly like
+    // the ordinary arrival path.
+    const [candidate] = await tx
+      .select({ seasonId: missions.seasonId })
+      .from(missions)
+      .where(eq(missions.id, missionId));
+    if (!candidate) return false;
+    await lockSeason(tx, candidate.seasonId);
     const [mission] = await tx
       .update(missions)
       .set({ status: 'cancelled' })
@@ -92,22 +108,65 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
     // Already resolved by a retry that won, or already abandoned. Nothing to undo.
     if (!mission) return false;
 
-    const home = ownerOf(mission);
-    const stranded = await fleetOfMission(tx, home, mission.id);
+    const storagePlanetId = ownerOf(mission);
+    const capital = await capitalPlanet(tx, mission.ownerPlayerId);
+    // A recall is the same read/merge/write as a normal landing. Without these
+    // locks a concurrent build or return can commit between the read and upsert,
+    // and one of the two fleets disappears. Lock both possible destinations in
+    // the same sorted-world order launches already use; taking the player first
+    // would invert that order and deadlock a launch.
+    for (const planetId of [...new Set([storagePlanetId, capital.id])].sort()) {
+      const [world] = await tx
+        .select({ id: planets.id })
+        .from(planets)
+        .where(eq(planets.id, planetId))
+        .for('update');
+      if (!world) throw new Error('mission world vanished before abandonment');
+    }
+    // Revalidate after the locks. A colony may have changed hands while the leg
+    // was airborne; the capital cannot, and is the deterministic safe fallback.
+    const [preferred] = await tx
+      .select({ id: planets.id })
+      .from(planets)
+      .where(and(
+        eq(planets.id, storagePlanetId),
+        eq(planets.controllerPlayerId, mission.ownerPlayerId),
+      ));
+    const destinationPlanetId = preferred?.id ?? capital.id;
+    const stranded = await fleetOfMission(tx, storagePlanetId, mission.id);
     if (fleetEntries(stranded).length > 0) {
       const current = await tx
         .select()
         .from(units)
-        .where(and(eq(units.planetId, home), eq(units.location, 'home')));
+        .where(and(eq(units.planetId, destinationPlanetId), eq(units.location, 'home')));
       const merged: Fleet = {};
       for (const u of current) merged[u.hull] = u.count;
       for (const [hull, n] of fleetEntries(stranded)) merged[hull] = (merged[hull] ?? 0) + n;
-      await clearMissionUnits(tx, home, mission.id);
-      await setUnits(tx, home, merged, 'home');
+      await clearMissionUnits(tx, storagePlanetId, mission.id);
+      await setUnits(tx, destinationPlanetId, merged, 'home', mission.ownerPlayerId);
     }
+    // A return leg carries loot that was already removed from the defender and
+    // priced into Dominion. A server-side abandonment is still a safe landing:
+    // preserve the ordinary clan split and deposit the remainder instead of
+    // deleting the economic half of an already-recorded exchange.
+    // And the wreck its Garbage Collectors lifted, which rides the same leg and is
+    // the commander's whole — never the clan's share (D200, see `settleReturn`).
+    if (mission.kind === 'return' && (mission.loot || mission.salvage)) {
+      const landedLoot = mission.loot ? await allocateClanLoot(tx, mission, at) : null;
+      const salvage = mission.salvage;
+      await tx.update(planets).set({
+        alloy: sql`${planets.alloy} + ${(landedLoot?.alloy ?? 0) + (salvage?.alloy ?? 0)}`,
+        crystal: sql`${planets.crystal} + ${(landedLoot?.crystal ?? 0) + (salvage?.crystal ?? 0)}`,
+        deuterium: sql`${planets.deuterium} + ${
+          (landedLoot ? deuteriumOf(landedLoot) : 0) + (salvage ? deuteriumOf(salvage) : 0)
+        }`,
+      }).where(eq(planets.id, destinationPlanetId));
+    }
+    await recomputePlayerWealth(tx, mission.ownerPlayerId);
+    if (destinationPlanetId !== storagePlanetId) await recomputeWealth(tx, storagePlanetId);
     await tellThemItCameBack(
       tx,
-      home,
+      destinationPlanetId,
       fleetCount(stranded),
       mission.id,
       at,

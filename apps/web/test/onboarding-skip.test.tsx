@@ -42,7 +42,7 @@ const preview = (): Preview => ({
     status: 'live',
     startsAt: new Date('2026-08-30T10:00:00Z'),
     endsAt: new Date('2026-09-13T10:00:00Z'),
-    playerCap: 50,
+    rivals: [], shieldUntil: null, playerCap: 50,
     players: 2,
   },
   galaxy: { you: { planetId: 'reserved', playerId: 'reserved' }, planets: [] },

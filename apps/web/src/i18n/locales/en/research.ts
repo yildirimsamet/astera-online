@@ -45,6 +45,15 @@ export const research = {
 
   act: "Research",
   complete: "researched",
+  /**
+   * WHAT IS HAPPENING TO A PROJECT ALREADY BOUGHT. D183.
+   *
+   * Two words, two states: the clock is paying for one of them and the other is
+   * waiting in a line of three. A row that said "1 order queued" for both hid the
+   * only fact a commander choosing what to buy next needs.
+   */
+  rowRunning: "Researching",
+  rowQueued: "In queue",
 
   needCore: "Raise Command Core to L{{level}}",
   queueFull: "3 research projects are already queued. Wait for one to finish before adding another.",
@@ -85,7 +94,7 @@ export const research = {
   deathStarRole:
     "Lets a world with Command Core 12 and Shipyard 5 build the single-use Death Star. A capital can never be captured.",
   deathStarDetail:
-    "Every strike consumes one Death Star. A first hit destroys every fleet at home and every pending building order, removes half the resources in storage and the Works, lowers the Command Core by one level and Aegis by two, and clamps other buildings to the new Core ceiling. For two hours the world cannot produce, collect, place orders or launch. A second hit ordered to capture inside that recovery window can transfer only a colony or neutral world.",
+    "Every strike consumes one Death Star. It removes half the resources in storage and the Works, lowers the Command Core by one level and Aegis by two, clamps buildings to the new Core ceiling, and cancels building work without a refund. Every fleet remains standing and the world never changes hands. For two hours the world cannot produce, collect, place orders or launch.",
 
   synthesisName: "Deuterium Synthesis",
   synthesisTag: "Raises the Refinery ceiling",
@@ -99,6 +108,12 @@ export const research = {
     "Shortens mobile-craft build time without affecting ground guns or Yard capacity",
   yardDetail:
     "Each rung reduces the time of every future mobile-craft order across your worlds, including Prospectors. It does not speed up ground defences, reduce resource prices or add Yard queue slots.",
+  robotsName: "AI Robots",
+  robotsTag: "Builds structures faster",
+  robotsRole:
+    "Shortens everything in the Construction queue without affecting ships or ground guns",
+  robotsDetail:
+    "Each rung finishes every future Construction order across your worlds sooner: buildings, instruments and satellites alike. It does not speed up ships \u2014 that is Yard Automation \u2014 and it neither reduces resource prices nor adds queue slots.",
   holdsName: "Prospector Holds",
   holdsTag: "Mining craft carry more",
   holdsRole: "Raises every Prospector hold; the Derrick’s capacity bonus applies on top",

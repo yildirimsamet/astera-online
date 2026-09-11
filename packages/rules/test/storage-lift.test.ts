@@ -19,19 +19,19 @@ import { ECON, alloyRate, collectorCap, storageCap, storageHours } from '../src/
  *     protected and the raidable pile together and moves no ratio. `raidable.test.ts`
  *     holds that band and must stay green without being touched.
  */
-const OLD_SCALE = 2.5;
+const MONTHLY_SCALE = 5.25;
 
 describe('the uniform storage lift', () => {
   it('is one dial, and the Vault’s own progression is untouched', () => {
-    expect(ECON.storageScale).toBeCloseTo(OLD_SCALE * 1.25, 10);
+    expect(ECON.storageScale).toBeCloseTo(MONTHLY_SCALE, 10);
     expect(ECON.storageHoursLadder[0]).toBe(3);
     expect(ECON.storageHoursLadder[1]).toBe(4);
   });
 
-  it('lifts every level by exactly a quarter, table and extrapolation alike', () => {
+  it('keeps the monthly scale uniform across the table and extrapolation', () => {
     for (const level of [0, 1, 5, 10, ECON.storageHoursLadder.length - 1, 40]) {
       const shape = storageHours(level) / ECON.storageScale;
-      expect(storageHours(level)).toBeCloseTo(shape * OLD_SCALE * 1.25, 8);
+      expect(storageHours(level)).toBeCloseTo(shape * MONTHLY_SCALE, 8);
     }
   });
 

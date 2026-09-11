@@ -1,4 +1,5 @@
 import {
+  robotSpeedMult,
   yardSpeedMult,
   strategicStockpile,
   prospectorHoldMult,
@@ -11,9 +12,10 @@ import {
   SATELLITES,
   alloyRate,
   crystalRate,
+  protectedHours,
+  storageHours,
   deuteriumRate,
   deuteriumStorageCap,
-  hangarCapacity,
   instrumentMaxed,
   probeAccuracy,
   radarRange,
@@ -23,7 +25,6 @@ import {
   shieldHp,
   storageCap,
   vaultProtects,
-  wealth,
   type BuildingId,
   type BuildingLevels,
   type InstrumentId,
@@ -48,45 +49,22 @@ import { compact, full, percent } from './format.js';
  * actually pulls a player up a tech tree.
  */
 /**
- * POWER — everything this planet is worth, at what it cost.
+ * `powerOf` IS GONE. D199.
  *
- * Computed here rather than read from `score.wealth`, which the server only
- * refreshes when something is bought. A brand-new commander with twelve Wasps and
- * two working buildings would otherwise be shown a Power of zero, which is both
- * wrong and the single most discouraging number the interface could produce.
+ * It was the planet sheet's "Power" — `wealth()`, the store included — and it
+ * taught the opposite of the game: it fell while a building was under construction,
+ * fell when the fleet flew, and rose while ore waited to be raided. The sheet now
+ * states the world's firepower, the one force unit every surface is written in.
  */
-/** Every building level, defaulted — the shape `buildingGain` and `powerOf` need. */
+/** Every building level, defaulted — the shape `buildingGain` needs. */
 export const levelsOf = (planet: PlanetView): BuildingLevels => ({
   CORE: planet.buildings.CORE ?? 0,
   REFINERY: planet.buildings.REFINERY ?? 0,
   EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
   VAULT: planet.buildings.VAULT ?? 0,
   SHIPYARD: planet.buildings.SHIPYARD ?? 0,
-  HANGAR: planet.buildings.HANGAR ?? 0,
   DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
 });
-
-export function powerOf(planet: PlanetView): number {
-  const buildings: BuildingLevels = {
-    CORE: planet.buildings.CORE ?? 0,
-    REFINERY: planet.buildings.REFINERY ?? 0,
-    EXTRACTOR: planet.buildings.EXTRACTOR ?? 0,
-    VAULT: planet.buildings.VAULT ?? 0,
-    SHIPYARD: planet.buildings.SHIPYARD ?? 0,
-    HANGAR: planet.buildings.HANGAR ?? 0,
-    DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
-  };
-  return wealth({
-    buildings,
-    instruments: planet.instruments,
-    satellites: planet.orbit,
-    fleet: planet.fleet,
-    ground: planet.ground,
-    alloy: planet.planet.alloy,
-    crystal: planet.planet.crystal,
-    deuterium: planet.planet.deuterium,
-  });
-}
 
 /** Every player-facing sensor reach is the finite, server-enforced value. */
 const rangeWord = (units: number): string =>
@@ -206,28 +184,34 @@ export function buildingGain(
        * moved, the row states the ceiling instead, exactly as the Shipyard row
        * switches to Veils once its accuracy figure flattens.
        */
-      /*
-        THE STORAGE FALLBACK IS GONE, because the case it existed for cannot
-        happen any more. D169 made the vault floor a SHARE of the store rather
-        than its own hour figure, so every Vault level moves the protected amount
-        by construction — the row can no longer quote the same pair twice, which
-        is the failure this branch was written to avoid. `gains.vault.storeLabel`
-        and `storeValue` went with it.
-      */
+      /**
+        THE STORE IS THE HEADLINE, AND ITS ABSENCE WAS A REAL COMPREHENSION BUG.
+        D190, owner report: *"kullanıcılar kasa logic'ini anlamakta güçlük çekiyor.
+        Sanıyorlar ki sadece belirli bir miktar kaynağı korur. Deponun kapasitesini
+        arttırdığını bilmiyor, anlayamıyorlar."*
+
+        This row used to carry both jobs. D169 removed the store half to fix a
+        different fault — a row that could quote an unchanged protected pair — and
+        took with it the only place in the game that said a Vault deepens the STORE.
+        The docblock above survived saying "it sets how tall the STORE is" while the
+        screen no longer did, and the producers' own role strings claim the storage
+        credit, so a player is actively taught the wrong owner.
+
+        BOTH FIGURES ARE QUOTED IN HOURS, which is the fix and not a formatting
+        choice. The Vault's effect is ONE number — hours — shared by all three
+        resources; each resource's amount is that number times its OWN rate, which
+        is why the protected alloy and the protected crystal differ and why that
+        difference is otherwise mystifying. Two moving numbers on one line: how deep
+        the store is, and how much of it a raid cannot reach.
+       */
+      const hours = (level_: number) => i18n.t('gains.vault.value', {
+        store: full(Math.round(storageHours(level_))),
+        safe: full(Math.round(protectedHours(level_))),
+      });
       return {
         label: i18n.t('gains.vault.label'),
-        // The resources stay separate. Adding them into one number erases the
-        // rule the player is deciding against: each has its own protected floor.
-        now: i18n.t('gains.vault.value', {
-          alloy: full(current.alloy),
-          crystal: full(current.crystal),
-          deuterium: full(current.deuterium),
-        }),
-        next: i18n.t('gains.vault.value', {
-          alloy: full(raised.alloy),
-          crystal: full(raised.crystal),
-          deuterium: full(raised.deuterium),
-        }),
+        now: hours(level),
+        next: hours(next),
         resourcePair: {
           now: current,
           next: raised,
@@ -273,20 +257,6 @@ export function buildingGain(
           : {}),
       };
     }
-    /**
-     * ROOM, IN THE UNIT THE PLAYER READS EVERYWHERE ELSE. T4.
-     *
-     * The figure is deliberately the same one the ship rows and the order refusal
-     * use, so "84 / 200" on the fleet readout and "200 → 360" here are visibly the
-     * same quantity. A capacity sold in a different unit from the one it is spent
-     * in is a capacity nobody can plan against.
-     */
-    case 'HANGAR':
-      return {
-        label: i18n.t('gains.hangar.label'),
-        now: i18n.t('gains.hangar.value', { room: hangarCapacity(level) }),
-        next: i18n.t('gains.hangar.value', { room: hangarCapacity(next) }),
-      };
     /** An hourly rate, in the same shape the other two producers are sold in. T5. */
     case 'DEUTERIUM_PLANT':
       return {
@@ -609,6 +579,12 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         i18n.t('gains.research.yardLabel'),
         // A shorter build is a NEGATIVE multiplier; the player feels a saving.
         (rung) => 1 - yardSpeedMult({ YARD_AUTOMATION: rung }),
+      );
+    /** The surface's own speed ladder, read the same way the Yard's is. D198. */
+    case 'AI_ROBOTS':
+      return step(
+        i18n.t('gains.research.robotsLabel'),
+        (rung) => 1 - robotSpeedMult({ AI_ROBOTS: rung }),
       );
     case 'PROSPECTOR_HOLDS':
       return step(

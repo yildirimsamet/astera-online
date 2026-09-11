@@ -80,6 +80,15 @@ const launchBody = z.object({
     (f) => Object.values(f).some((n) => n > 0),
     'Send at least one ship',
   ),
+  /**
+   * THE COMMANDER HAS READ WHAT THIS COSTS THEM. D183.
+   *
+   * Not client-authored state: it grants nothing and decides nothing. The launch
+   * refuses once with `SHIELD_WOULD_DROP`, the surface asks, and this is the answer
+   * coming back — a first-day shield spent without being offered is a shield the
+   * player did not choose to spend.
+   */
+  acknowledgeShieldLoss: z.boolean().optional(),
 }).strict();
 
 export function registerPlanetRoutes(app: FastifyInstance): void {
@@ -305,6 +314,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.fleet,
       app.clock,
       owner.playerId,
+      body.acknowledgeShieldLoss ?? false,
     );
   });
 
@@ -312,6 +322,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     const body = z.object({
       originPlanetId: z.string().uuid(),
       targetPlanetId: z.string().uuid(),
+      /** The same acknowledgement the raid lane takes, for the same reason. D183. */
+      acknowledgeShieldLoss: z.boolean().optional(),
     }).strict().parse(req.body);
     const owner = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchDeathStar(
@@ -320,6 +332,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.targetPlanetId,
       app.clock,
       owner.playerId,
+      body.acknowledgeShieldLoss ?? false,
     );
   });
 

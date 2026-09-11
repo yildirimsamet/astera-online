@@ -67,6 +67,33 @@ export const errors = {
   TIER_BAND: "That commander's total strength is far above your own",
   TIER_BAND_WEAK: "That commander's total strength is far below your own",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',
+  /**
+   * THE TWO SIDES OF THE FIRST-DAY SHIELD. D183.
+   *
+   * The first is a refusal about THEM and nothing closes it but time. The second is
+   * a price on YOU, and the launch sheet asks before it is ever seen — it reaches a
+   * player only when a client is behind or a launch is made from somewhere the
+   * question was not asked, so it has to state the whole rule on its own.
+   */
+  NEWCOMER_SHIELDED: 'That commander is in their first day here and cannot be raided yet',
+  /**
+   * A SIXTH MARK, AND A SQUADRON THAT ONLY JUST LANDED. D183.
+   *
+   * Both surfaces disable their control before either can be reached — the disc
+   * knows how many marks are standing, the rail draws the rest as a countdown — so
+   * these carry a client one deploy behind rather than the ordinary case.
+   */
+  RIVAL_LIMIT: 'You are already watching {{max}} commanders. Clear one first.',
+  PROSPECTORS_RESTING: 'Those craft only just landed. They are ready again shortly.',
+  SHIELD_WOULD_DROP: 'This gives up your own first-day shield. Confirm to send anyway.',
+  /**
+   * THE RENDEZVOUS MOVED WHILE THE PLAYER WAS DECIDING. D183.
+   *
+   * Names the fresh minute, because a commander told only "that moved" learns
+   * nothing — and the number they need is the one the refusal just solved for. The
+   * screen behind it has already refetched, so pressing again is the whole fix.
+   */
+  RENDEZVOUS_MOVED: 'It has moved along its orbit — the flight is now {{minutes}}m. Check it and send again.',
   /* Raised by the transfer lane with no detail and by the trade lane with one, so
      it is written without interpolation: a placeholder rendered raw on the older
      caller is worse than a sentence that fits both. */
@@ -153,7 +180,6 @@ export const errors = {
   PROBE_COOLDOWN: 'You looked at that world too recently. Another probe in {{minutes}} min.',
   PROSPECTOR_CAP: 'You may hold {{max}} Prospectors, and you have {{have}}.',
   PROSPECTOR_CAP_atLimit: 'You already have {{max}} Prospectors. That is the limit.',
-  HANGAR_FULL: 'Hangar full: {{used}} / {{capacity}} space used; this order needs {{needed}}.',
   GROUND_SLOTS_FULL: 'Ground emplacements full: {{used}} / {{capacity}} space used; this order needs {{needed}}.',
   INSUFFICIENT_FUEL: 'Not enough deuterium: that launch needs {{needed}} and you have {{have}}.',
   QUEUE_FULL: 'The {{queue}} queue is full',
@@ -190,7 +216,6 @@ export const errors = {
   SHIPYARD_TOO_LOW: 'Needs Shipyard L{{level}}',
   SLOT_COOLING: 'That slot is still realigning — {{minutes}} minutes left',
   TARGET_PROSPECTOR_CAP: 'That world may hold {{max}} Prospectors, and it has {{have}}.',
-  TARGET_HANGAR_FULL: 'That world’s Hangar is full: {{used}} / {{capacity}} space used; this fleet needs {{needed}}.',
   UNAUTHENTICATED: 'Sign in first',
   UNKNOWN: 'Something went wrong',
   USERNAME_TAKEN: 'That name is already flying',

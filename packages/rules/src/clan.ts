@@ -1,16 +1,15 @@
+import { TRANSFER_CARGO_HULLS } from './strategic.js';
+import { cargoMult } from './tech.js';
+import type { TechLevels } from './tech.js';
 import { ALL_HULLS, HULLS, MOBILE_HULLS, fleetEntries } from './hulls.js';
-import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
+import { profileInvoice, profileIncome } from './economy-profile.js';
 import type { Fleet, Resources } from './types.js';
 
 /** The complete, deliberately bounded clan ruleset. D114. */
 export const CLAN = {
   maxMembers: 5,
   founderCoreLevel: 7,
-  creationCost: {
-    alloy: scalePrice(5_000, ECONOMY_TEMPO.fixedPrice),
-    crystal: scalePrice(3_000, ECONOMY_TEMPO.fixedPrice),
-    deuterium: 0,
-  },
+  creationCost: profileInvoice(profileIncome(6), { alloy: 8, crystal: 8, deuterium: 0 }),
   nameMinChars: 3,
   nameMaxChars: 24,
   tagMinChars: 2,
@@ -124,11 +123,33 @@ export function clanTransferFleetIsValid(fleet: Fleet): boolean {
   return count > 0;
 }
 
-/** Only dedicated transports carry resources on clan aid. */
-export function clanTransferCargoCapacity(fleet: Fleet): number {
-  return finiteFloor(fleet.COURIER ?? 0) * HULLS.COURIER.cargo
-    + finiteFloor(fleet.WAYFARER ?? 0) * HULLS.WAYFARER.cargo
-    + finiteFloor(fleet.ATLAS ?? 0) * HULLS.ATLAS.cargo;
+/**
+ * Only dedicated transports carry resources on clan aid.
+ *
+ * READ OFF `TRANSFER_CARGO_HULLS`, NEVER RETYPED. The three carriers used to be
+ * named here by hand, and D196's fourth arrived invisible: an Argosy loaded with
+ * ore for a teammate measured as a hold of ZERO, so the largest transport in the
+ * game could move ore between a commander's own worlds and not to an ally. One
+ * list, both lanes, or the next hull repeats it.
+ *
+ * IT TAKES `CARGO_HOLDS` SINCE D197, closing the inconsistency D181 recorded and
+ * left open. D181's own argument applies here unchanged — a commander who buys a
+ * project called Cargo Holds and watches a hold carry exactly what it carried
+ * yesterday has not learned a subtlety, they have learned the game lied — and
+ * leaving clan aid out made that lie smaller rather than gone: the hold grew for
+ * your own worlds and not for a teammate's.
+ *
+ * ONE MULTIPLIER, FLOOR AFTER THE MULTIPLY, exactly as the other two capacities do
+ * it, so the three can never round apart. `tech` is REQUIRED for the reason D180
+ * gives about flight modifiers: an optional argument is how a caller silently
+ * keeps the unlifted number.
+ */
+export function clanTransferCargoCapacity(fleet: Fleet, tech: TechLevels): number {
+  const base = TRANSFER_CARGO_HULLS.reduce(
+    (sum, id) => sum + finiteFloor(fleet[id] ?? 0) * HULLS[id].cargo,
+    0,
+  );
+  return Math.floor(base * cargoMult(tech));
 }
 
 /** Full value of a ship gift; resource-delivery commitments use cargo alone. */

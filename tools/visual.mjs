@@ -32,17 +32,17 @@ if (process.argv.includes('--academy')) {
 const WEB = process.env.WEB ?? 'http://localhost:5173';
 const OUT = process.argv[2] ?? 'out/visual';
 /**
- * THE TARGET SCREEN, AND IT IS 375 WIDE. Owner instruction.
+ * THE TARGET SCREEN, AND IT IS 350 WIDE. Owner instruction.
  *
  * This harness ran at 390 for most of the project's life, which is fifteen pixels
  * wider than the phone the game is actually designed against — and fifteen pixels
  * is precisely the margin that hides a truncation. A shipyard row whose name read
  * "Tempest" in every screenshot ever taken here read "T..." on the real target.
  *
- * 375 x 667 is the narrow end of the iPhone line and the figure every layout in
+ * 350 x 667 is the narrow end of the iPhone line and the figure every layout in
  * `docs/visual-design.md` is budgeted against. Widen it only if that budget moves.
  */
-const PHONE = { width: 375, height: 812 };
+const PHONE = { width: 350, height: 812 };
 
 await mkdir(OUT, { recursive: true });
 
@@ -176,7 +176,7 @@ if (process.argv.includes('--onboarding')) {
     await page.locator('#planet-tab-defend[aria-selected="true"]').waitFor();
     await shot('onboarding-next-action');
     if (problems.length) throw new Error(problems.join('\n'));
-    console.log('  PASS  skipped opening reaches a readable, clickable next action at 375px');
+    console.log('  PASS  skipped opening reaches a readable, clickable next action at 350px');
   } finally {
     await browser.close();
   }

@@ -1,14 +1,16 @@
 import { and, eq, gte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { SERVERS } from '@astera/rules';
+import { RIVAL, SERVERS } from '@astera/rules';
 import {
   planets,
+  playerRivals,
   players,
   seasonResults,
   seasons,
   shards,
 } from '../db/schema.js';
+import type { Queryable } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
@@ -31,8 +33,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         season: seasons,
         shard: shards,
         accountId: players.accountId,
-        rivalPlanetId: players.rivalPlanetId,
-        rivalPlayerId: players.rivalPlayerId,
+        playerId: players.id,
+        shieldUntil: players.newcomerShieldUntil,
       })
       .from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id))
@@ -119,27 +121,50 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       online: active?.n ?? 0,
       onlineToday: seenToday?.n ?? 0,
       result: result ?? null,
-      rivalPlanetId: row.rivalPlanetId,
-      rivalPlayerId: row.rivalPlayerId,
+      /** Up to `RIVAL.max` marks, each carrying the slot the disc colours it by. D183. */
+      rivals: await rivalsOf(app.db, row.playerId),
+      /**
+       * THE COMMANDER'S OWN FIRST-DAY SHIELD. D183.
+       *
+       * Null once it is spent or expired, which is also the ordinary state. On this
+       * payload because the launch surface has to say what a raid COSTS before it is
+       * pressed — a shield spent without being offered is a shield the player did not
+       * choose to spend, and `SHIELD_WOULD_DROP` is the refusal that would otherwise
+       * be the first they heard of it.
+       */
+      shieldUntil: row.shieldUntil !== null && row.shieldUntil > app.clock.now()
+        ? row.shieldUntil
+        : null,
     };
   });
 
   /**
-   * THE ONE WORLD A COMMANDER IS WATCHING, AND IT IS FREE TO MOVE. D103.
+   * THE COMMANDERS THIS ONE IS WATCHING, AND THE MARKS ARE FREE TO MOVE. D103 · D183.
    *
    * The mark used to COMMIT: the first probe, battle or Death Star between the two
    * commanders froze it for the rest of the season, and every later press of the
    * control was answered with `RIVAL_COMMITTED`. Owner instruction reverses that —
    * players disliked it, and it was the wrong shape for what the mark is. A Rival
    * is a bookmark on a disc of three hundred worlds, not a declaration; a second
-   * press of the same world clears it, and any world may be marked at any time.
+   * press of the same commander clears it, and any world may be marked at any time.
    *
-   * The encounter history that check read is untouched. Battles, strikes and probe
+   * AND THERE ARE UP TO `RIVAL.max` OF THEM NOW. D183, owner instruction. One mark
+   * is the right shape for a duel and the wrong one for the game being played: a
+   * commander with three colonies has three neighbours worth watching before they
+   * have an enemy, and the single mark meant choosing which of them to forget.
+   *
+   * THE PRESS IS A TOGGLE ON THE COMMANDER, NOT ON THE WORLD. D97's reasoning: the
+   * mark is about a person, and a commander who holds four colonies would otherwise
+   * eat four of the five slots. Pressing any world of an already-marked commander
+   * clears that mark.
+   *
+   * A FULL SET REFUSES RATHER THAN EVICTING. Silently dropping the oldest would
+   * make a control that is supposed to remember things forget one without saying
+   * so — the exact failure a bookmark cannot have.
+   *
+   * The encounter history the old lock read is untouched. Battles, strikes and probe
    * readings are still recorded, because the reports, the dossier and the recap are
    * built on them — nothing reads them to refuse anything any more.
-   *
-   * The two refusals that remain are about targets that cannot exist: your own
-   * world, and a world outside your galaxy.
    */
   app.post('/api/rival', { preHandler: requireAuth }, async (req) => {
     const body = z.object({ planetId: z.string().uuid().nullable() }).strict().parse(req.body);
@@ -153,37 +178,124 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         .limit(1);
       if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
 
-      if (body.planetId !== null) {
-        const [target] = await tx
-          .select({ id: planets.id, playerId: planets.controllerPlayerId })
-          .from(planets)
-          .where(and(
-            eq(planets.id, body.planetId),
-            eq(planets.seasonId, me.seasonId),
-            sql`${planets.controllerPlayerId} IS NOT NULL`,
-          ))
-          .limit(1);
-        if (!target) {
-          throw new GameError('RIVAL_NOT_VISIBLE', 'That world is not in your galaxy', 404);
-        }
-        if (target.playerId === me.playerId) {
-          throw new GameError('RIVAL_SELF', 'You cannot mark your own world as a rival', 400);
-        }
-        if (!target.playerId) {
-          throw new GameError('RIVAL_NOT_VISIBLE', 'That world has no commander', 404);
-        }
-        await tx.update(players).set({
-          rivalPlanetId: body.planetId,
-          rivalPlayerId: target.playerId,
-        }).where(eq(players.id, me.playerId));
-        return { rivalPlanetId: body.planetId, rivalPlayerId: target.playerId };
+      // `null` empties the disc — the one gesture that clears every mark at once.
+      if (body.planetId === null) {
+        await tx.delete(playerRivals).where(eq(playerRivals.playerId, me.playerId));
+        return { rivals: [] };
       }
 
-      await tx
-        .update(players)
-        .set({ rivalPlanetId: null, rivalPlayerId: null })
-        .where(eq(players.id, me.playerId));
-      return { rivalPlanetId: null, rivalPlayerId: null };
+      /*
+        CLEARING A MARK NEVER ASKS WHETHER THE WORLD IS STILL THERE.
+
+        A marked world can be reclaimed or wiped from the galaxy, and the mark then
+        pointed at nothing the commander could press twice — the only way out was
+        the menu's "clear the lost marker", which sent `null` and took the other
+        four with it. Removing a mark by the planet it was placed on is checked
+        FIRST, so a dead anchor is exactly as easy to clear as a live one.
+      */
+      const byAnchor = await tx
+        .delete(playerRivals)
+        .where(and(
+          eq(playerRivals.playerId, me.playerId),
+          eq(playerRivals.planetId, body.planetId),
+        ))
+        .returning({ slot: playerRivals.slot });
+      if (byAnchor.length > 0) return { rivals: await rivalsOf(tx, me.playerId) };
+
+      const [target] = await tx
+        .select({ id: planets.id, playerId: planets.controllerPlayerId })
+        .from(planets)
+        .where(and(
+          eq(planets.id, body.planetId),
+          eq(planets.seasonId, me.seasonId),
+          sql`${planets.controllerPlayerId} IS NOT NULL`,
+        ))
+        .limit(1);
+      if (!target) {
+        throw new GameError('RIVAL_NOT_VISIBLE', 'That world is not in your galaxy', 404);
+      }
+      if (target.playerId === me.playerId) {
+        throw new GameError('RIVAL_SELF', 'You cannot mark your own world as a rival', 400);
+      }
+      if (!target.playerId) {
+        throw new GameError('RIVAL_NOT_VISIBLE', 'That world has no commander', 404);
+      }
+
+      /*
+        THE WHOLE SET, UNDER THE COMMANDER'S OWN ROW LOCK.
+
+        `FOR UPDATE` above is on `players`, so two presses from one account
+        serialise here rather than racing for a slot — which is what the unique
+        index on `(player_id, slot)` would otherwise have to catch as an error.
+      */
+      const held = await tx
+        .select({ targetPlayerId: playerRivals.targetPlayerId, slot: playerRivals.slot })
+        .from(playerRivals)
+        .where(eq(playerRivals.playerId, me.playerId));
+
+      const already = held.find((mark) => mark.targetPlayerId === target.playerId);
+      if (already) {
+        await tx.delete(playerRivals).where(and(
+          eq(playerRivals.playerId, me.playerId),
+          eq(playerRivals.targetPlayerId, target.playerId),
+        ));
+        return { rivals: await rivalsOf(tx, me.playerId) };
+      }
+
+      if (held.length >= RIVAL.max) {
+        throw new GameError(
+          'RIVAL_LIMIT',
+          `You are already watching ${String(RIVAL.max)} commanders. Clear one first.`,
+          409,
+          { max: RIVAL.max },
+        );
+      }
+
+      /*
+        THE LOWEST FREE SLOT, BECAUSE A SLOT IS A COLOUR.
+
+        Not `held.length`: clearing the second of three marks would then hand the
+        next one a colour already on the disc. The lowest free index also means a
+        commander with two marks is shown the first two colours rather than the
+        first and the fourth, which is what makes the set read as a set.
+      */
+      const taken = new Set(held.map((mark) => mark.slot));
+      let slot = 0;
+      while (taken.has(slot)) slot += 1;
+
+      await tx.insert(playerRivals).values({
+        playerId: me.playerId,
+        planetId: body.planetId,
+        targetPlayerId: target.playerId,
+        slot,
+      });
+      return { rivals: await rivalsOf(tx, me.playerId) };
     });
   });
+}
+
+/**
+ * EVERY MARK THIS COMMANDER IS KEEPING, IN SLOT ORDER. D183.
+ *
+ * Slot order rather than insertion order so a legend, a rail and the disc all list
+ * them the same way — the slot is the mark's identity, so it is also its place.
+ */
+async function rivalsOf(
+  db: Queryable,
+  playerId: string,
+): Promise<{ planetId: string; playerId: string; slot: number }[]> {
+  const rows = await db
+    .select({
+      planetId: playerRivals.planetId,
+      targetPlayerId: playerRivals.targetPlayerId,
+      slot: playerRivals.slot,
+    })
+    .from(playerRivals)
+    .where(eq(playerRivals.playerId, playerId))
+    .orderBy(playerRivals.slot);
+  return rows.map((row) => ({
+    planetId: row.planetId,
+    playerId: row.targetPlayerId,
+    slot: row.slot,
+  }));
 }

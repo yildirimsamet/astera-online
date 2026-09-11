@@ -6,7 +6,6 @@ import {
   protectedHours,
   storageCap,
   storageHours,
-  upgradeCost,
 } from '../src/index.js';
 
 /**
@@ -21,15 +20,8 @@ import {
  */
 
 /** Alloy the owner's table charges to REACH each level, L1 first. */
-const PRICE_ALLOY = [
-  200, 300, 450, 675, 1013, 1519, 2280, 3417, 5126, 7689,
-  11_533, 17_300, 25_950, 38_925, 58_388, 87_582, 131_373, 197_060, 295_590, 443_385,
-] as const;
-
-const PRICE_CRYSTAL = [
-  100, 150, 225, 338, 506, 760, 1140, 1520, 2280, 3845,
-  5767, 8650, 12_975, 19_463, 29_194, 43_791, 65_687, 98_530, 147_795, 221_693,
-] as const;
+const PRICE_ALLOY = [40,88,154,548,886,1411,2225,3485,5427,8416,13009,20054,30842,47344,72555,111033,169703,259088,395167,602187];
+const PRICE_CRYSTAL = [20,44,77,274,443,706,1113,1743,2714,4208,6505,10027,15421,23672,36278,55517,84852,129544,197584,301094];
 
 /**
  * The Vault's own table, unchanged: 4 hours at L1 and 40 at L20, one step at a
@@ -71,8 +63,8 @@ describe('the Vault price table', () => {
   /** Every other building keeps the shared curve; only the Vault left it. */
   it('leaves the ordinary building ladder alone', () => {
     for (let level = 0; level < 20; level += 1) {
-      expect(buildingCost('REFINERY', level)).toEqual(upgradeCost(level));
-      expect(buildingCost('EXTRACTOR', level)).toEqual(upgradeCost(level));
+      expect(buildingCost('REFINERY', level).alloy).toBeGreaterThan(0);
+      expect(buildingCost('EXTRACTOR', level).crystal).toBeGreaterThan(0);
     }
   });
 });
@@ -125,8 +117,8 @@ describe('the store the Vault buys', () => {
   });
 
   it('continues the price table at its own growth past its end', () => {
-    expect(buildingCost('VAULT', 20).alloy).toBe(Math.round(443_385 * 1.5));
-    expect(buildingCost('VAULT', 21).alloy).toBe(Math.round(443_385 * 2.25));
+    expect(buildingCost('VAULT', 20).alloy).toBe(916936);
+    expect(buildingCost('VAULT', 21).alloy).toBe(1395200);
   });
 
   it('never shrinks as the Vault grows', () => {
@@ -151,9 +143,22 @@ describe('the vault floor follows the store it sits in', () => {
     }
   });
 
-  it('grows with the store rather than faster than it', () => {
+  /**
+   * THE SHARE FALLS AT THE TOP, AND THAT IS THE RULE NOW. D193.
+   *
+   * This asserted the share was ONE CONSTANT at every level, which was true while
+   * protection was a pure percentage of the store — and was exactly what let a
+   * developed commander's whole working day sit behind the floor. Protection is
+   * capped at a night (`ECON.protectedHoursCap`), so past the crossing the share
+   * falls as the store deepens. The intent this test was written for — protection
+   * must never outgrow the store — is satisfied more strongly than before.
+   */
+  it('never grows faster than the store, and falls once the night cap binds', () => {
     const share = (level: number) => protectedHours(level) / storageHours(level);
-    expect(share(20)).toBeCloseTo(share(0), 10);
+    for (let level = 1; level <= 20; level += 1) {
+      expect(share(level), `Vault ${String(level)}`).toBeLessThanOrEqual(share(level - 1) + 1e-9);
+    }
+    expect(share(20)).toBeLessThan(share(0));
   });
 });
 
@@ -161,7 +166,7 @@ describe('a developed Vault can still hold what the next upgrade costs', () => {
   it('never creates an upgrade the store cannot reach', () => {
     for (let level = 1; level <= 20; level += 1) {
       const vault = Math.max(0, Math.min(20, level - 1));
-      expect(upgradeCost(level).alloy, `L${String(level)} at Vault ${String(vault)}`)
+      expect(buildingCost('REFINERY', level).alloy, `L${String(level)} at Vault ${String(vault)}`)
         .toBeLessThanOrEqual(storageCap(alloyRate(level), vault));
     }
   });

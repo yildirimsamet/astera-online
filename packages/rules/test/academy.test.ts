@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACADEMY_STEPS, academyCheckpoint, TUTORIAL_EXIT, academyRaidBattle, academyRaidLoot, academyPirateLoot, academyMinedOre, ACADEMY_FLIGHT_DISTANCE, academyOrderSeconds } from '../src/academy.js';
 import { PLANET_START, START_BUILDINGS } from '../src/constants.js';
-import { hangarCapacity, hangarLoad } from '../src/index.js';
 import { academyExitCheckpoint, academyLessonFleet, academyPirateHomecoming, academyPirateBattle } from '../src/academy.js';
 
 describe('the authored Academy boundary', () => {
@@ -38,7 +37,7 @@ describe('the authored Academy boundary', () => {
   });
   it('starts from ordinary low-level buildings and preserves the neutral grant', () => {
     expect(academyCheckpoint(0).buildings).toEqual(START_BUILDINGS);
-    expect(PLANET_START).toEqual({ alloy: 1218, crystal: 233, deuterium: 40 });
+    expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });
     expect(academyCheckpoint(0).resources.alloy).toBeLessThanOrEqual(PLANET_START.alloy);
     expect(academyCheckpoint(0).resources.crystal).toBeLessThanOrEqual(PLANET_START.crystal);
   });
@@ -47,7 +46,6 @@ describe('the authored Academy boundary', () => {
       const state = academyCheckpoint(step);
       for (const amount of Object.values(state.resources)) expect(amount).toBeGreaterThanOrEqual(0);
       for (const level of Object.values(state.buildings)) expect(level).toBeLessThanOrEqual(state.buildings.CORE);
-      expect(hangarLoad(state.fleet)).toBeLessThanOrEqual(hangarCapacity(state.buildings.HANGAR));
       expect(new Set(state.claimedRewards).size).toBe(state.claimedRewards.length);
       state.buildings.CORE = 99;
       expect(academyCheckpoint(step).buildings.CORE).not.toBe(99);
@@ -56,7 +54,7 @@ describe('the authored Academy boundary', () => {
   it('keeps the taught buildings, survivors, miner and cargo and a paid real queue', () => {
     expect(TUTORIAL_EXIT.buildings).toMatchObject({ CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 });
     expect(TUTORIAL_EXIT.instruments.AEGIS).toBe(1);
-    expect(TUTORIAL_EXIT.fleet).toMatchObject({ DART: 3, WARDEN: 1, PROSPECTOR: 1, COURIER: 1 });
+    expect(TUTORIAL_EXIT.fleet).toMatchObject({ DART: (academyPirateHomecoming().DART ?? 0) + 2, WARDEN: 1, PROSPECTOR: 1, COURIER: 1 });
     expect(TUTORIAL_EXIT.builtEver.DART).toBe(4);
     expect(TUTORIAL_EXIT.claimedRewards).toEqual(expect.arrayContaining(['EXTRACTOR:2', 'VAULT:1', 'AEGIS:1', 'PIRATE:1', 'SHIPS:2', 'MINE:1']));
     expect(TUTORIAL_EXIT.queue?.building).toBe('CORE');

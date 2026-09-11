@@ -1,0 +1,1 @@
+ALTER TABLE "players" ADD COLUMN "newcomer_shield_until" timestamp with time zone;

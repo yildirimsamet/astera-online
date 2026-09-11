@@ -1,3 +1,4 @@
+import { MONTHLY_REFERENCE } from './economy-profile.js';
 import type { Resources } from './types.js';
 
 /**
@@ -357,6 +358,17 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
     tiers: [{ goal: 1, reward: reward(1000, 500) }],
   },
 };
+
+// Allocate the season purse once. IDs, goals and account grants keep their existing identity.
+const seasonChains = REWARD_CHAIN_IDS.map(id => CHAINS[id]).filter(c => c.scope === 'season');
+const rewardWeight = seasonChains.reduce((sum, c) => sum + c.tiers.reduce((n, _, i) => n + i + 1, 0), 0);
+for (const chain of seasonChains) {
+  CHAINS[chain.id] = { ...chain, tiers: chain.tiers.map((tier, i) => ({ ...tier, reward: {
+    alloy: Math.floor(MONTHLY_REFERENCE.alloy * 0.03 * (i + 1) / rewardWeight),
+    crystal: Math.floor(MONTHLY_REFERENCE.crystal * 0.03 * (i + 1) / rewardWeight),
+    deuterium: 0,
+  } })) };
+}
 
 export const REWARD_CHAINS: readonly RewardChain[] = REWARD_CHAIN_IDS.map((id) => CHAINS[id]);
 

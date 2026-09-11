@@ -48,7 +48,8 @@ describe('an Aegis without a defending line', () => {
   /** And a battle with units in it grades exactly as it always did. */
   it('changes nothing about a fight that had units', () => {
     const withUnits = resolveCombat({ DART: 30 }, { THORN: 6 }, 0, flat(), NO_TECH);
-    expect(withUnits.grade).toBe('PARTIAL');
+    expect(withUnits.grade).toBe('DECISIVE');
+    expect(withUnits.rounds.length).toBeGreaterThan(0);
     const repel = resolveCombat({ DART: 2 }, { CITADEL: 4 }, 0, flat(), NO_TECH);
     expect(repel.grade).toBe('REPELLED');
   });

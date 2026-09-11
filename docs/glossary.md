@@ -6,10 +6,12 @@ often you will hit them.
 
 ## Score and standing
 
-**Dominion** — The season ladder. Each battle starts from `loot + enemy unit value destroyed −
-own unit value destroyed`, then posts `round(10,000 × tanh(raw / 10,000))` to the attacker and
-the exact negative to the defender. Zero-sum across the galaxy; only combat generates it; one
-battle moves at most 10,000. A player who never fights scores exactly 0.
+**Dominion** — The season ladder. In v7 and later each scored battle posts `secured player loot +
+enemy permanent unit loss − own permanent unit loss` directly to the attacker and the exact
+negative to the defender. The transfer is integer, linear, additive and uncapped; fleet merely
+sent, fuel, wreckage and free ground-defence salvage do not count. Only player combat generates
+it, and a player who never fights scores exactly 0. Pre-v7 seasons retain their historical
+10,000-asymptote rule without repricing.
 
 **Wealth** — Net worth: everything you own, valued at what it cost. **Displayed, never
 ranked.** It includes unclaimed personal clan-loot shares. It was the ladder for most of the
@@ -142,10 +144,10 @@ no combat happens at the rendezvous and no Dominion moves either way. D156.
 Three windows a Türkiye day, never overlapping, each announced to the whole galaxy the instant it
 opens and never a moment before. D149/D156.
 
-**Trade rate** — the merchant's one published exchange price: 90 alloy = 30 crystal = 1
-deuterium, frozen on the occurrence a convoy launches against regardless of when the constant
-table next moves. No haggling, no order book, and no price that shifts with how much the galaxy
-has already sold it. D156.
+**Trade rate** — the merchant's one published exchange price: 90 alloy = 45 crystal = 10
+deuterium (`TRADE.rate`, read as units per resource unit; D183 moved it from 90 : 30 : 1,
+where one deuterium bought ninety alloy and made the lane a printing press). Frozen per
+occurrence at calendar time, so a live season keeps the rate it was dealt.
 
 **Trade convoy** — the cargo fleet sent to a trade ship. Sized by `requiredHold`, the larger of
 what it carries out and what it carries home — a small offer buying a large haul still needs room

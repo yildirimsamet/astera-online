@@ -48,6 +48,12 @@ describe('what the Cargo Holds ladder lifts', () => {
    * they share, not the rosters they count: a raid's ceiling counts every hull that
    * flies, and a logistics run counts the three dedicated transports. A Dart moves
    * the first and not the second, and that is still the whole distinction.
+   *
+   * THE SECOND ASSERTION USED TO SAY THE OPPOSITE, and it passed for one reason:
+   * `profileHull` overwrote every warship's authored hold with zero, so a Dart moved
+   * NEITHER figure and the distinction this test is named for could not be observed.
+   * D195 gave the warships their holds back, which is what makes the sentence above
+   * true for the first time. Same design, an assertion that now measures it.
    */
   it('still counts only the dedicated transports', () => {
     const withEscort = { ...BASE, DART: 20 };

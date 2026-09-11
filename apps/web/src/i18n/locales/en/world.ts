@@ -136,9 +136,10 @@ export const focus = {
       unsurveyedTitle: "Found this world",
       race: "The first valid two-Courier fleet to arrive takes the world.",
       noRecall:
-        "Colony ships cannot be recalled. If another commander wins first, your Couriers and founding cargo return; spent fuel does not.",
+        "Colony ships cannot be recalled. If you found the colony, the fee is spent and only the founding cargo lands. If another commander wins first, your Couriers, cargo and fee return; spent fuel does not.",
       transports: "Colony ships",
       foundingCargo: "Founding cargo",
+      foundingFee: "Founding fee",
       cargoValue: "{{alloy}} Alloy · {{crystal}} Crystal",
       fuel: "Flight fuel",
       arrives: "Arrives in",
@@ -148,6 +149,25 @@ export const focus = {
     },
     deathStar: "Death Star",
     deathStarStrike: "Death Star · devastate",
+
+    /**
+     * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
+     *
+     * The most expensive single action a commander takes, consuming the weapon,
+     * offered as one slab in a wrapped row of four whose neighbour is an ordinary
+     * raid. It names the WORLD, because a mis-tap sends it to the wrong one, and
+     * it states the outage rather than arguing for the rocket — the essay about
+     * what a strike does belongs beside the forge that builds one.
+     */
+    strikeConfirm: {
+      eyebrow: "Strategic strike",
+      title: "Devastate {{world}}",
+      lead: "The Death Star is consumed by the strike. It cannot be recalled and nothing brings it back.",
+      outage: "Darkness",
+      keeps: "The world stays with its commander and every fleet standing there survives.",
+      commit: "Launch the strike",
+      back: "Hold fire",
+    },
     deathStarUnavailable: "No Death Star ready",
     deathStarProtected: "Death Star · target protected",
     deathStarNeedBay: "Death Star · flight bays full",
@@ -243,26 +263,34 @@ export const focus = {
     recoveryDropWarning:
       "{{duration}} left. Nothing is produced and nothing can launch until then. The world stays yours and your fleet is intact.",
 
-    /**
-     * THE SAME FACTS AS THE FORGE CARD, WRITTEN FOR THE PERSON PULLING THE
-     * TRIGGER. D113, and D55: two surfaces, two sets of words, nothing shared.
-     */
-    strikeTitle: "What this impact does",
-    strikeFleet: "Every ship and gun on the ground survives — a strike never kills a fleet",
-    strikeStock: "Half the resources in storage and the Works are destroyed",
-    strikeCore: "The Command Core loses a level",
-    strikeAegis:
-      "The Aegis loses {{levels}} levels and the shield drops to nothing",
-    strikeDark:
-      "Production, collection, construction, new orders and launches stop for {{duration}}",
-    strikeNoCapture: "No world is ever lost — it can only be devastated again",
     eyebrow: "Held by {{owner}}",
     location: "World · {{planet}}",
     /** A world outside every reach and never probed. It has no other name. D127. */
     unsurveyedEyebrow: "World · unsurveyed",
-    unsurveyedTitle: "Nobody has looked here",
+    unsurveyedTitle: "You have never looked here",
     /* Paired side by side on the rail, so the verb is the label and the cost is
        its own micro line. See `ProbeControl`. */
+    /**
+     * A WORLD THAT CANNOT BE RAIDED YET. D183.
+     *
+     * Names the CLOCK rather than the rule: "Protected · 4h" is something a
+     * commander can plan against, where "that commander is new" is trivia about
+     * somebody else. One label for both sources of the state — an occupation window
+     * and a first-day shield mean the same thing to a raider.
+     */
+    /**
+     * THE HALF OF THE BAND FOG CAN PROVE. D168 · D127.
+     *
+     * The short form rides the control and must be ONE LINE — about 129px at
+     * 350. The long form is the accessible name, where there is room to say why.
+     * Both state only "too developed": the "too weak" direction cannot be proved
+     * from a fogged disc, so it stays with the server's refusal.
+     */
+    attackOutOfBandShort: "Too developed",
+    attackOutOfBand:
+      "That commander is further developed than you — a raid spans at most one tier",
+    attackProtected: "Protected — this world cannot be raided yet",
+    attackProtectedShort: "Protected · {{duration}}",
     attackShort: "Attack",
     probeShort: "Probe",
     probeCoolingShort: "Probe in {{duration}}",
@@ -333,6 +361,14 @@ export const focus = {
     noCraft: "No Prospectors at home",
     tooLate: "It will be gone before you arrive",
     researchNeeded: "Research Isotope Spectrometry first",
+    /**
+     * THE MINUTE AFTER A TRIP THAT COST NOTHING. D183.
+     *
+     * The wait is the whole message, so the wait is the whole sentence — a rail
+     * that spent a line explaining the rule would be a paragraph doing a design's
+     * job. Where the rule came from belongs in the docs, not on the control.
+     */
+    resting: "Craft resting · {{duration}}",
     send: "Send {{count}} · {{duration}}",
     oreLeft: "Ore left",
     leavesIn: "Leaves in",
@@ -373,6 +409,7 @@ export const focus = {
     stateInbound: "inbound",
     noCraft: "No craft at home",
     tooLate: "It will be gone before you arrive",
+    resting: "Craft resting · {{duration}}",
     send: "Send {{count}} · {{duration}}",
     alloyLeft: "Alloy left",
     crystalLeft: "Crystal left",
@@ -463,9 +500,9 @@ export const focus = {
      * is out there — and the word chosen has to make clear it is an estimate, or
      * the interface is quietly claiming a precision the payload does not have.
      */
-    massLight: "Light contact",
-    massMedium: "Sizeable force",
-    massHeavy: "Heavy force",
+    massLight: "Small fleet",
+    massMedium: "Mid-sized fleet",
+    massHeavy: "Large fleet",
     massHint: "Size only — no manifest at this range.",
     inboundHint:
       "Radar knows it is aimed at one of your worlds. Its arrival time is delivered separately as a timed warning.",
@@ -522,7 +559,6 @@ export const pirate = {
   max: "Send every {{name}}",
   maxShort: "Max",
   noShipsAtHome: "No ships at this world to send.",
-  leftAtHome: "Defence left at home: {{power}} power",
   eyebrowUnknown: "Unidentified contact",
   pickShips: "Pick at least one ship",
   fuelCost: "Fuel {{amount}} deuterium",
@@ -536,6 +572,14 @@ export const pirate = {
   leavesIn: "Leaves in",
   reach: "Reaches it in {{duration}}",
   reachLabel: "You arrive in",
+  /**
+   * WHAT THE CREW IS WORTH, ON THE SHEET'S OWN AXIS. D183.
+   *
+   * "Strength" rather than "value": both numbers on the comparison a tap later are
+   * resource value, and a rail that named the unit would be explaining arithmetic
+   * where the player only needs to know which figure is bigger.
+   */
+  strengthLabel: "Firepower",
   tooLate: "It leaves the area before you could reach it",
   unreachable: "Nothing at this world could catch it",
   alreadyRaiding: "This world already has a raid out there",

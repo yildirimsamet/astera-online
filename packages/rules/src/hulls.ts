@@ -1,3 +1,4 @@
+import { profileHull } from './economy-profile.js';
 import { COMBAT, PROSPECTOR } from './constants.js';
 import { cargoMult, hullTech } from './tech.js';
 import type { TechLevels } from './tech.js';
@@ -54,10 +55,57 @@ export const HULLS: Record<HullId, Hull> = {
   PRAETORIAN: { id: 'PRAETORIAN', name: 'Praetorian', tier: 3, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 240, hp: 451, speed: 144, cargo: 110, alloy: scalePrice(2500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(900, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(150, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
   ATLAS: { id: 'ATLAS', name: 'Atlas', tier: 3, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT', atk: 0, hp: 800, speed: 94, cargo: 6000, alloy: scalePrice(2100, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(950, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(200, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'SHIP_PROPULSION', level: 2 }], ground: false },
   NULLIFIER: { id: 'NULLIFIER', name: 'Nullifier', tier: 3, family: 'SPECIALIST', profile: 'SHIELD_BREAKER', cls: 'LANCE', atk: 140, hp: 308, speed: 119, cargo: 20, alloy: scalePrice(1600, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(140, ECONOMY_TEMPO.hullPrice), minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }, { project: 'GRAVITIC_CHARGES', level: 1 }], ground: false },
+  /**
+   * THE GARBAGE COLLECTOR. D200, owner instruction.
+   *
+   * Flies WITH a fleet and nowhere else: SUPPORT class, so it eats the last shots —
+   * covered while any combat hull on its side lives, prey once they are gone — and
+   * it fires nothing. What it is for happens after the fight: every one that
+   * survives lifts up to `SALVAGE.perCollector` of that battle's wreck on the way
+   * home (`settleWreck`). It cannot be sent at a field or a rock on its own; the
+   * attack lane refuses a wing with no combat hull and the mining lane is a
+   * Prospector's alone.
+   *
+   * THE PRICE IS THE OWNER'S AND IS NEVER SCALED — 10k alloy, 5k crystal — so
+   * `profileHull` carries it through rather than re-deriving it from a tier. It
+   * fires nothing, so `atk × hp / value²` has nothing to price. Its hold is zero
+   * on purpose: the salvage is not cargo, and the loot ceiling never sees it.
+   */
+  GARBAGE_COLLECTOR: { id: 'GARBAGE_COLLECTOR', name: 'Garbage Collector', tier: 3, family: 'SPECIALIST', profile: 'COLLECTOR', cls: 'SUPPORT', atk: 0, hp: 540, speed: 151, cargo: 0, alloy: 10_000, crystal: 5_000, deuterium: 0, minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }], ground: false },
 
   CATACLYSM: { id: 'CATACLYSM', name: 'Cataclysm', tier: 4, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 800, hp: 448, speed: 106, cargo: 160, alloy: scalePrice(4200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1700, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(325, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 4 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
+  /**
+   * THE TOP TIER'S SKIRMISHER, AND THE REASON THE TIER EXISTS AT ALL. D196.
+   *
+   * Until it arrived, tier 4 held a Lance and a Fortress and nothing that beat a
+   * Bulwark — so the answer to a Citadel wall was a tier-THREE Tempest, which kept
+   * 88% of its value at equal budget where a Cataclysm kept 1%. Reaching the top
+   * made the catalogue smaller. Every figure below is `profileHull`'s, not a hand
+   * number: this entry carries identity, gates and role, and the shared economy
+   * prices it like everything else.
+   */
+  CORSAIR: { id: 'CORSAIR', name: 'Corsair', tier: 4, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 360, hp: 1331, speed: 202, cargo: 285, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 2 }, { project: 'SHIP_PROPULSION', level: 4 }], ground: false },
   CITADEL: { id: 'CITADEL', name: 'Citadel', tier: 4, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 300, hp: 1656, speed: 56, cargo: 180, alloy: scalePrice(5000, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(2100, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(300, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 4 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
-
+  /**
+   * THE TOP TIER'S ESCORT — the middle of a spread that had only its two ends. D196.
+   *
+   * `ROLE_SPREAD` is widest at tier 4 (1.531), and until this hull the choice there
+   * was maximum attack (Cataclysm, a/h 0.303) or maximum armour (Citadel, 0.198)
+   * with nothing between them. The tier meant to make the sharpest choice offered
+   * the fewest. Bulwark-class like the Citadel, so it answers a Lance and falls to
+   * a Skirmisher; cheaper than one, because it buys guns with the armour it gives up.
+   */
+  PALADIN: { id: 'PALADIN', name: 'Paladin', tier: 4, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 339, hp: 1413, speed: 121, cargo: 475, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 2 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  /**
+   * THE TOP TIER'S TRANSPORT. D196, closing D195b's asymmetry: combat ran to tier 4
+   * and logistics stopped at 3, so a Cataclysm fleet escorted an Atlas.
+   *
+   * The slowest hull in the game and the deepest hold — `SUPPORT_ROUND_TRIP`'s
+   * fourth rung is 38 minutes, which is what buys the 26,000. D195's two rules are
+   * at their extreme here: nothing carries more and nothing drinks less per unit of
+   * its own price.
+   */
+  ARGOSY: { id: 'ARGOSY', name: 'Argosy', tier: 4, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT', atk: 0, hp: 1350, speed: 79, cargo: 26000, alloy: scalePrice(9000, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(2600, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(130, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_PROPULSION', level: 2 }], ground: false },
   /**
    * THE HEAVY GUN. Bulwark-class, so a Skirmisher swarm overwhelms it and a Lance
    * breaks against it. Expensive, slow to accumulate, and what a planet buys when
@@ -99,6 +147,8 @@ export const HULLS: Record<HullId, Hull> = {
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */
 export const ALL_HULLS: readonly HullId[] = Object.keys(HULLS) as HullId[];
+// Preserve identities, gates and roles; apply the shared economy before deriving any catalog views.
+for (const id of ALL_HULLS) HULLS[id] = profileHull(HULLS[id]);
 export const MOBILE_HULLS: readonly MobileHullId[] = ALL_HULLS.filter(
   (id): id is MobileHullId => !HULLS[id].ground && id !== 'PROSPECTOR',
 );
@@ -230,33 +280,28 @@ export const prospectorCeiling = (tech: TechLevels = {}): number =>
  * hangar figure they can hold in their head. Rounding is the only licence taken and
  * `test/capacity.test.ts` holds it inside 15%.
  */
-const BULK_UNIT = HULLS.DART.alloy + HULLS.DART.crystal + HULLS.DART.deuterium;
 const BULK: Record<HullId, number> = Object.fromEntries(
-  ALL_HULLS.map((id) => [
-    id,
-    Math.max(1, Math.round(
-      (HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium) / BULK_UNIT,
-    )),
-  ]),
+  ALL_HULLS.map(id => [id, profileHull(HULLS[id]).bulk]),
 ) as Record<HullId, number>;
-
 export const hullBulk = (id: HullId): number => BULK[id];
 
 /**
- * Room this fleet takes in a HANGAR. Emplacements are not in it.
+ * THE ROUND TRIP THIS HULL WAS PRICED AGAINST. D195.
  *
- * Two named functions rather than one that sums whatever it is handed, because a
- * caller passing the wrong half is exactly the failure this code base has already
- * shipped once (D131): a rule honoured on one path and forgotten on another. Here
- * the split is in the function name, so there is no half to pass.
+ * `profileHull` derives a hull's SPEED from a class round trip — 15 minutes for a
+ * Skirmisher, 20 for a Lance, 25 for a Bulwark, its own rung for a transport — and
+ * since D195 the same figure sets how much it CARRIES and how much it DRINKS. It
+ * is exported the way `hullBulk` is, and for the same reason: it is profile-derived
+ * rather than authored, so a parallel table of "how fast is this thing" would drift
+ * from the speed it is supposed to describe the first time either moved.
+ *
+ * `null` for anything with no class trip — the two guns and the Prospector.
  */
-export function hangarLoad(fleet: Fleet): number {
-  let load = 0;
-  for (const [id, count] of fleetEntries(fleet)) {
-    if (!HULLS[id].ground) load += count * BULK[id];
-  }
-  return load;
-}
+const ROUND_TRIP: Record<HullId, number | null> = Object.fromEntries(
+  ALL_HULLS.map(id => [id, profileHull(HULLS[id]).referenceRoundTrip]),
+) as Record<HullId, number | null>;
+export const hullRoundTrip = (id: HullId): number | null => ROUND_TRIP[id];
+
 
 /** Room this fleet takes on the GROUND. Nothing that flies is in it. */
 export function groundLoad(fleet: Fleet): number {
@@ -345,6 +390,55 @@ export function fleetValue(fleet: Fleet): number {
 }
 
 /**
+ * WHAT A FLEET IS WORTH IN A FIGHT, WHICH IS NOT WHAT IT COST. D183, owner report:
+ * *"Yük gemisi ekliyorum gücüm artıyor ama yük gemilerinin saldırısı 0. Saçma
+ * değil mi?"*
+ *
+ * `fleetValue` is resources sunk in, and it is exactly right for what it grades —
+ * a battle's exchange, Dominion, the size of a debris field. It is the wrong number
+ * on a screen that says "this is the force you are sending", because an Atlas is
+ * 3,050 of it and fires nothing: a commander packing cargo for the loot watched
+ * that bar grow while the force they were sending stood still.
+ *
+ * ATTACK IS THE TEST, and it is the owner's own words. A hull that cannot fire is
+ * not part of the force being compared — the two ground guns are (they fire), the
+ * three transports and the Prospector are not (they do not). Derived from `atk`
+ * rather than from a list, so a fourth transport is excluded the day it is added
+ * rather than the day somebody notices it inflating a comparison.
+ *
+ * STILL PRICED IN RESOURCES. The other side of that comparison is a probe's
+ * defence band, and two quantities in different units are not a comparison at all
+ * (`ForceCompare`'s whole reason for existing). What changes is WHICH hulls are
+ * counted, never the scale they are counted on.
+ */
+export function combatValue(fleet: Fleet): number {
+  let v = 0;
+  for (const [id, n] of fleetEntries(fleet)) {
+    const h = HULLS[id];
+    if (h.atk <= 0) continue;
+    v += n * (h.alloy + h.crystal + h.deuterium);
+  }
+  return v;
+}
+
+/**
+ * THE HULLS IN A LINE THAT FIRE NOTHING. D199.
+ *
+ * `combatValue`'s other half. A transport at home stands in the defending line —
+ * a DECISIVE raid has to sink it — while adding nothing to the firepower a probe
+ * reports, so a world of Atlases reads as undefended and still sends a small raid
+ * home empty. Pass it a line built by `garrisonOf`; the test is `atk`, exactly as
+ * `combatValue`'s is, so the two can never count the same hull twice or not at all.
+ */
+export function unarmedCount(fleet: Fleet): number {
+  let n = 0;
+  for (const [id, count] of fleetEntries(fleet)) {
+    if (HULLS[id].atk <= 0) n += count;
+  }
+  return n;
+}
+
+/**
  * HOW A FLEET IS SPLIT ACROSS THE COUNTER CYCLE, as shares of its VALUE.
  *
  * The axis is deliberate. `fleetValue` is the one quantity a commander can already
@@ -404,20 +498,6 @@ export function dominantClass(fleet: Fleet): HullClass | null {
     }
   }
   return tied ? null : best;
-}
-
-/**
- * Rough combat heft. ADVISORY ONLY — it ignores the counter matrix, so a Dart swarm
- * and 1 Bastion read as near-equal while one annihilates the other. Never grade
- * an outcome with this; grading uses fleetValue.
- */
-export function fleetPower(fleet: Fleet): number {
-  let p = 0;
-  for (const [id, n] of fleetEntries(fleet)) {
-    const h = HULLS[id];
-    p += n * h.atk * h.hp;
-  }
-  return p / 1000;
 }
 
 export function fleetHp(fleet: Fleet): number {

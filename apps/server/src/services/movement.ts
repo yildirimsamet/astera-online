@@ -6,8 +6,6 @@ import {
   fleetCount,
   fleetSpeedMult,
   fleetTravelExact,
-  hangarCapacity,
-  hangarLoad,
   missionFuel,
   prospectorCeiling,
   prospectorRoom,
@@ -19,7 +17,7 @@ import {
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, missions, neutralPlanetState, planets, units } from '../db/schema.js';
+import { missions, neutralPlanetState, planets, units } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
@@ -95,7 +93,7 @@ async function reserveFleet(
 }
 
 export interface LandingBlock {
-  code: 'TARGET_PROSPECTOR_CAP' | 'TARGET_HANGAR_FULL';
+  code: 'TARGET_PROSPECTOR_CAP';
   message: string;
   params: Record<string, number>;
 }
@@ -158,22 +156,6 @@ export async function landingBlock(
     }
   }
 
-  const incoming = hangarLoad(fleet);
-  if (incoming > 0) {
-    const [row] = await tx
-      .select({ level: buildings.level })
-      .from(buildings)
-      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'HANGAR')));
-    const capacity = hangarCapacity(row?.level ?? 0);
-    const used = hangarLoad(owned);
-    if (used + incoming > capacity) {
-      return {
-        code: 'TARGET_HANGAR_FULL',
-        message: `That world's Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
-        params: { capacity, used, needed: incoming },
-      };
-    }
-  }
   return null;
 }
 
@@ -337,7 +319,7 @@ export async function launchSettlement(
     if ((origin.homeFleet[transportHull] ?? 0) < transports) {
       throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement transports are missing', 409);
     }
-    const cost = MULTI_WORLD.settlement.cost;
+    const cost = MULTI_WORLD.settlement.charge;
     if (origin.alloy < cost.alloy || origin.crystal < cost.crystal) {
       throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement resources are missing', 409);
     }
@@ -371,7 +353,8 @@ export async function launchSettlement(
       originPlanetId,
       targetPlanetId,
       fleet,
-      cargo: cost,
+      cargo: MULTI_WORLD.settlement.cost,
+      settlementEscrow: MULTI_WORLD.settlement.fee,
       tech,
       distance: dist,
       departAt: origin.now,
@@ -448,6 +431,7 @@ async function rerouteToSafeHome(
     targetPlanetId: homeId,
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
+    settlementEscrow: mission.settlementEscrow,
     tech: mission.tech,
     distance: dist,
     departAt: now,
@@ -506,7 +490,9 @@ export async function resolveTransfer(
   }
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.id, mission.fleet);
-  const cargo = mission.cargo ?? EMPTY;
+  const stock = mission.cargo ?? EMPTY;
+  const escrow = mission.settlementEscrow ?? EMPTY;
+  const cargo = { alloy: stock.alloy + escrow.alloy, crystal: stock.crystal + escrow.crystal, deuterium: stock.deuterium + escrow.deuterium };
   /*
     THERE IS NO DEADLINE TO ANSWER ANY MORE. D179.
 
@@ -547,6 +533,13 @@ export async function resolveSettlement(
   });
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.world.id, mission.fleet);
+  // The fee is consumed by success; the capital is delivered once under the mission lock.
+  const cargo = mission.cargo ?? EMPTY;
+  await tx.update(planets).set({
+    alloy: sql`${planets.alloy} + ${cargo.alloy}`,
+    crystal: sql`${planets.crystal} + ${cargo.crystal}`,
+    deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
+  }).where(eq(planets.id, target.world.id));
   await schedule(tx, {
     seasonId: mission.seasonId,
     kind: 'occupation_end',

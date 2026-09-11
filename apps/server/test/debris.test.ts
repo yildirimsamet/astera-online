@@ -4,6 +4,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import {
   DEBRIS,
   HULLS,
+  PROSPECTOR,
   debrisRemaining,
   fleetEntries,
   type Fleet,
@@ -20,7 +21,7 @@ import {
   units,
 } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
-import { launchHarvest, visibleDebris } from '../src/services/mining.js';
+import { launchHarvest, prospectorsRestingUntil, visibleDebris } from '../src/services/mining.js';
 import { createSeason } from '../src/services/season.js';
 import { collectWorks } from '../src/services/build.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -133,6 +134,153 @@ describe('wreck fields', () => {
     const [done] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, runId));
     return { alloy: done!.minedAlloy, crystal: done!.minedCrystal };
   };
+
+  /**
+   * THE TRIP THAT COST NOTHING TO MAKE. D183, owner report:
+   * *"Kendi gezegenimde oluşan debris'i kazıcılarımla tak tak tak sürekli
+   * beklemeden toplayabiliyorum."*
+   *
+   * A battle over a commander's own world leaves its wreckage AT that world, so
+   * the salvage leg is ZERO units long — and every brake mining has is a function
+   * of a distance. `returnSpeedFactor` scales one, the flight bay is held for the
+   * length of one, and `PROSPECTOR.max` rations craft that are AWAY for one. At
+   * zero all three are free, and a field over your own world comes home by tapping.
+   *
+   * The cooldown is measured from the LANDING, not from the launch: it is what the
+   * trip earned, not a window it has to fit inside. And it is a refusal the launch
+   * makes — a client that offers it anyway is corrected here, which is Principle 1.
+   */
+  it('locks the craft for a minute after a trip too short to have cost anything', async () => {
+    const field = await fight();
+    await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+    await collectWorks(f.db, mine, f.clock);
+
+    // The field sits on the origin world itself, so the leg is zero.
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    expect(run.flightMinutes).toBeLessThan(PROSPECTOR.shortTripMinutes);
+
+    const [out] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(out!.arriveAt);
+    await worker().tick();
+    const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(back!.homeAt!);
+    await worker().tick();
+
+    // Landed, and refused — with the instant it becomes possible, never a bare no.
+    const readyAt = back!.homeAt!.getTime() + PROSPECTOR.shortTripCooldownMinutes * 60_000;
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).rejects.toMatchObject({
+      code: 'PROSPECTORS_RESTING',
+      params: { readyAt: new Date(readyAt).toISOString() },
+    });
+
+    // A second later it is still refused; a second past the instant it is not.
+    f.clock.set(new Date(readyAt - 1000));
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).rejects.toMatchObject({
+      code: 'PROSPECTORS_RESTING',
+    });
+    f.clock.set(new Date(readyAt + 1000));
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).resolves.toMatchObject({
+      craft: 1,
+    });
+  });
+
+  /**
+   * A SEASON OF FINISHED RUNS COSTS THIS QUESTION NOTHING. D183.
+   *
+   * `prospectorsRestingUntil` runs on every launch AND on every read of
+   * `/api/mining/status`, which is a poll. Asked as "the latest short run this
+   * world ever flew" it has to sort every finished run the world owns — hundreds by
+   * the end of a season, on a query nobody notices getting slower.
+   *
+   * A cooldown can only ever be set by a run that landed inside the cooldown
+   * window, so that bound belongs IN the query. The assertion is behavioural rather
+   * than a timing: an old short run must not resurrect a rest that has long since
+   * expired, which is the same thing the bound guarantees.
+   */
+  it('is not resurrected by a short trip from earlier in the season', async () => {
+    const field = await fight();
+    await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+    await collectWorks(f.db, mine, f.clock);
+
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    const [out] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(out!.arriveAt);
+    await worker().tick();
+    const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(back!.homeAt!);
+    await worker().tick();
+
+    // Hours later that landing decides nothing, however short the leg was.
+    f.clock.advance(6 * 60);
+    expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toBeNull();
+  });
+
+  /**
+   * AND THE COOLDOWN BELONGS TO THE WORLD THAT FLEW IT, NOT TO THE GALAXY.
+   *
+   * Craft are counted per world (`PROSPECTOR.max` is "a property of the WORLD"),
+   * so a squadron resting at the capital must never hold a colony's own drills on
+   * the ground. A lockout that leaked across a holding would punish the third
+   * world for what the first one did.
+   */
+  it('rests only the world whose craft made the short trip', async () => {
+    const field = await fight();
+    await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+    await giveUnits(f.db, third, { PROSPECTOR: 1 });
+    await collectWorks(f.db, mine, f.clock);
+    await collectWorks(f.db, third, f.clock);
+
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    const [out] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(out!.arriveAt);
+    await worker().tick();
+    const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(back!.homeAt!);
+    await worker().tick();
+
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).rejects.toMatchObject({
+      code: 'PROSPECTORS_RESTING',
+    });
+    // The neighbour's own drill is untouched — a different world, a different leg.
+    await expect(launchHarvest(f.db, third, field.id, 1, f.clock)).resolves.toMatchObject({
+      craft: 1,
+    });
+  });
+
+  /**
+   * A REAL TRIP EARNS NO LOCKOUT, and this is the assertion that keeps the rule
+   * from becoming a general mining cooldown — which `returnSpeedFactor` refuses in
+   * as many words. Only the leg that cost nothing is charged for.
+   */
+  it('leaves an ordinary trip free to launch again the moment it lands', async () => {
+    const field = await fight();
+    await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+    await collectWorks(f.db, mine, f.clock);
+
+    /*
+      Move the wreckage out to a real distance, and only just: the round trip has
+      to clear a minute outbound and still land inside `DEBRIS.decayMinutes`, or
+      the assertion at the end is about a field that faded rather than about a
+      squadron that is free.
+    */
+    await f.db
+      .update(debrisFields)
+      .set({ x: 1_500 })
+      .where(eq(debrisFields.id, field.id));
+
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    expect(run.flightMinutes).toBeGreaterThan(PROSPECTOR.shortTripMinutes);
+    const [out] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(out!.arriveAt);
+    await worker().tick();
+    const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    f.clock.set(back!.homeAt!);
+    await worker().tick();
+
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).resolves.toMatchObject({
+      craft: 1,
+    });
+  });
 
   /**
    * THE LATE ARRIVAL.

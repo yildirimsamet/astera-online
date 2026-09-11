@@ -257,7 +257,7 @@ function constructionOrder(
   subject: BuildingId | InstrumentId | SatelliteId,
   cost: Resources,
 ): SimOrder {
-  const minutes = buildMinutes(cost, projected.buildings.CORE);
+  const minutes = buildMinutes(cost, projected.buildings.CORE, {});
   const startsAt = state.queues.CONSTRUCTION.at(-1)?.readyAt ?? now;
   return {
     queue: 'CONSTRUCTION',

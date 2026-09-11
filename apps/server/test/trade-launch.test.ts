@@ -221,13 +221,21 @@ describe('a convoy sent to the merchant', () => {
    */
   it('sizes the hold by the RETURN leg, not by the offer', async () => {
     const merchant = await merchantUp();
-    const give = RES(0, 0, 1_000);
-    const want = RES(90_000);
+    /*
+      OFF THE RATE, NOT OFF REMEMBERED FIGURES. These were 1,000 deuterium for
+      90,000 alloy, which is the arithmetic of 90 : 30 : 1 and stopped balancing at
+      D183's 90 : 45 : 10. The CASE — a small offer buying a haul far too big for
+      the convoy that carries the offer out — is what the test is about, so it is
+      derived and survives the next rate change too.
+    */
+    const offered = 1_000;
+    const give = RES(0, 0, offered);
+    const want = RES((offered * TRADE.rate.deuterium) / TRADE.rate.alloy);
     const quote = quoteTrade(give, want, TRADE.rate);
     expect(quote.refusal).toBeNull();
-    expect(quote.outboundVolume).toBe(1_000);
-    expect(quote.returnVolume).toBe(90_000);
-    expect(quote.requiredHold).toBe(90_000);
+    expect(quote.outboundVolume).toBe(offered);
+    expect(quote.returnVolume).toBe(want.alloy);
+    expect(quote.requiredHold).toBe(want.alloy);
 
     // A single Courier carries the OFFER twice over and the haul not at all.
     const tooSmall: Fleet = { COURIER: 2 };
@@ -281,13 +289,28 @@ describe('a convoy sent to the merchant', () => {
     // Exactly enough for the flight, and the offer is the whole tank as well.
     const tank = fuel + 500;
     await f.db.update(planets).set({ deuterium: tank }).where(eq(planets.id, mine));
-    // Bought in Crystal so the haul fits the hold: this test is about the tank.
+    /*
+      BOUGHT IN ALLOY, AND THAT IS THE POINT OF THE CHOICE RATHER THAN A DETAIL.
+
+      This test is about the TANK, so the swap itself must never be the thing that
+      refuses. Alloy is the merchant's unit price of one, so any whole number of
+      deuterium buys a whole number of it — asking in Crystal at D183's 9 : 2 leaves
+      a half-crystal on an odd offer and the quote refuses `BAD_AMOUNT` before the
+      fuel is ever weighed. The haul still fits the hold: four Atlases carry far
+      more than this offer is worth.
+    */
     const give = RES(0, 0, tank - fuel + 1);
     await expect(
       launchTrade(
         f.db,
         mine,
-        { occurrenceId: merchant.occurrenceId, fleet, give, want: RES(0, give.deuterium * 30) },
+        {
+          occurrenceId: merchant.occurrenceId,
+          fleet,
+          give,
+          // At the published rate, whatever that rate is. D183.
+          want: RES((give.deuterium * TRADE.rate.deuterium) / TRADE.rate.alloy),
+        },
         f.clock,
       ),
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
@@ -301,7 +324,7 @@ describe('a convoy sent to the merchant', () => {
         occurrenceId: merchant.occurrenceId,
         fleet,
         give: legal,
-        want: RES(0, legal.deuterium * 30),
+        want: RES((legal.deuterium * TRADE.rate.deuterium) / TRADE.rate.alloy),
       },
       f.clock,
     );

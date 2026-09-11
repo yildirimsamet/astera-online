@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lt, notInArray, or } from 'drizzle-orm';
 import type { Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
@@ -9,6 +9,7 @@ import {
   type GalaxyEventLifecyclePayload,
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
+import { playerDominionSql } from './dominion.js';
 import { GameError } from './planet.js';
 
 export interface GalaxyEventPayloadByKind {
@@ -72,8 +73,12 @@ export async function publicPlanetIdentity(tx: Tx, planetId: string) {
 }
 
 /** The same public ordering as `/api/leaderboard`, including both tie-breakers. */
-export async function publicDominionLeader(tx: Tx, seasonId: string) {
-  const score = sql<number>`round(${players.dominionTaken} - ${players.dominionLost})`;
+export async function publicDominionLeader(
+  tx: Tx,
+  seasonId: string,
+  excludedPlayerIds: ReadonlySet<string> = new Set(),
+) {
+  const score = playerDominionSql;
   const [row] = await tx
     .select({
       planetId: planets.id,
@@ -86,7 +91,12 @@ export async function publicDominionLeader(tx: Tx, seasonId: string) {
       and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
     )
     .innerJoin(accounts, eq(players.accountId, accounts.id))
-    .where(eq(players.seasonId, seasonId))
+    .where(and(
+      eq(players.seasonId, seasonId),
+      excludedPlayerIds.size > 0
+        ? notInArray(players.id, [...excludedPlayerIds])
+        : undefined,
+    ))
     .orderBy(desc(score), asc(players.joinedAt), asc(players.id))
     .limit(1);
   return row;

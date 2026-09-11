@@ -688,7 +688,9 @@ describe('reaching the way out', () => {
           galaxy="Vantage"
           shard="EU-1"
           endsAt={null}
-          rival={{ owner: 'Sable', name: 'Orrery-8' }}
+          rivals={[{
+            planetId: 'orrery-8', slot: 0, owner: 'Sable', name: 'Orrery-8', lost: false,
+          }]}
           onFocusRival={onFocusRival}
           onOpen={vi.fn()}
           onSignOut={vi.fn()}
@@ -704,7 +706,9 @@ describe('reaching the way out', () => {
           galaxy="Vantage"
           shard="EU-1"
           endsAt={null}
-          rivalLost
+          rivals={[{
+            planetId: 'orrery-8', slot: 0, owner: 'Sable', name: 'Orrery-8', lost: true,
+          }]}
           onClearRival={onClearRival}
           onOpen={vi.fn()}
           onSignOut={vi.fn()}
@@ -738,6 +742,9 @@ function planetPayload() {
       bufferCrystalCap: 224,
       bufferDeuteriumCap: 112,
       vaultFloor: 300,
+      // The header draws the protected zone on each store meter (D190), so this
+      // is part of the minimum now.
+      vaultProtected: { alloy: 236, crystal: 118, deuterium: 0 },
       shield: 0,
       disruptedUntil: null,
     },

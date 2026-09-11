@@ -20,7 +20,8 @@ import {
   deuteriumCollectorCap,
   deuteriumRate,
   deuteriumStorageCap,
-  defenceMinutes,
+  hullWorkMinutes,
+  profileResearch,
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
@@ -32,6 +33,7 @@ import {
   bookBattle,
   buildingCost,
   buildMinutes,
+  buildingMinutes,
   canAttack,
   collect,
   computeLoot,
@@ -51,8 +53,6 @@ import {
   generateGalaxy,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
   hullBulk,
   hullBuildable,
   missionFuel,
@@ -73,12 +73,10 @@ import {
   prospectorReturnSpeed,
   prospectorSpeed,
   travelExact,
-  researchMinutes,
   satelliteCost,
   satelliteSlots,
   seeingUnlocked,
   shieldHp,
-  shipMinutes,
   storageCap,
   travelMinutes,
   worthInvesting,
@@ -108,8 +106,10 @@ import {
   type CargoHullId,
   type CombatHullId,
   type Composition,
+  militaryShareAt,
 } from './archetypes.js';
 import { measure, type Invariants } from './invariants.js';
+import { nextDecision, type ActivityProfile } from './player-calendar.js';
 
 export interface SimPlayer {
   id: number;
@@ -252,6 +252,7 @@ export type StrategicMission =
       ownerId: number;
       targetId: number;
       arriveAt: number;
+      returning?: boolean;
     }
   | {
       id: number;
@@ -295,6 +296,9 @@ export interface StrategicDiagnostics {
 
 export interface DayStats {
   attacks: number;
+  /** Sum of absolute scored exchanges; compression cannot hide behind a net total. */
+  dominionVolume: number;
+  largestDominionSwing: number;
   lootValue: number;
   attackerLossValue: number;
   defenderLossValue: number;
@@ -305,7 +309,8 @@ export interface DayStats {
 }
 
 export const freshStats = (): DayStats => ({
-  attacks: 0, lootValue: 0, attackerLossValue: 0, defenderLossValue: 0,
+  attacks: 0, dominionVolume: 0, largestDominionSwing: 0,
+  lootValue: 0, attackerLossValue: 0, defenderLossValue: 0,
   disruptedMinutes: 0,
   byGrade: { DECISIVE: 0, PARTIAL: 0, REPELLED: 0 },
   scoutedAttacks: 0, scoutedGain: 0, scoutedLoss: 0,
@@ -316,6 +321,9 @@ export interface SimConfig {
   players: number;
   days: number;
   seed: number;
+  /** Opt-in calendar experiment; cyclic assignment independent of spending policy. Legacy cadence remains the default. */
+  activityProfiles?: readonly ActivityProfile[] | 'by-archetype';
+  spendingArchetype?: ArchetypeName;
   /** Experiment-only redistribution; total hull prices never move. */
   hullCrystalShare?: 0.25 | 0.30 | 0.35;
   /** Balance-lab override only; omitted means the live rules price. */
@@ -362,6 +370,8 @@ export interface CrystalDiagnostics {
 }
 
 export interface World {
+  activityProfiles?: readonly ActivityProfile[] | 'by-archetype';
+  activityDecisions: number;
   players: SimPlayer[];
   missions: Mission[];
   miningRuns: MiningRun[];
@@ -396,6 +406,27 @@ export interface World {
 
 /* ── setup ─────────────────────────────────────────────────────── */
 
+
+/**
+ * WHICH CALENDAR THIS PLAYER WAKES ON, or null for the async-era login count. D188.
+ *
+ * Two modes on purpose. An explicit LIST is a controlled experiment — hold the
+ * spending policy still with `spendingArchetype` and vary only how often people
+ * look — and keeps the round robin those experiments were written against.
+ * `'by-archetype'` is the honest default: the habit already says how engaged a
+ * commander is, so it says which calendar they keep.
+ */
+const calendarProfile = (
+  cfg: { activityProfiles?: readonly ActivityProfile[] | 'by-archetype' },
+  type: ArchetypeName,
+  index: number,
+): ActivityProfile | null => {
+  const spec = cfg.activityProfiles;
+  if (spec === 'by-archetype') return ARCHETYPES[type].activity;
+  if (!spec?.length) return null;
+  return spec[index % spec.length]!;
+};
+
 export function buildWorld(cfg: SimConfig): World {
   const rng = mulberry32(cfg.seed);
   const galaxy = generateGalaxy(cfg.seed, cfg.players);
@@ -411,7 +442,7 @@ export function buildWorld(cfg: SimConfig): World {
   const players: SimPlayer[] = galaxy.slots.map((slot, i) => ({
     id: i,
     name: `P${String(i).padStart(3, '0')}`,
-    type: names[i] ?? 'CASUAL',
+    type: cfg.spendingArchetype ?? names[i] ?? 'CASUAL',
     x: slot.x, y: slot.y, z: slot.z,
     buildings: { ...START_BUILDINGS },
     instruments: {},
@@ -425,7 +456,9 @@ export function buildWorld(cfg: SimConfig): World {
     alloy: PLANET_START.alloy, crystal: PLANET_START.crystal, deuterium: PLANET_START.deuterium,
     bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0,
     shield: 0, lastTick: 0, joinedAt: 0, disruptedUntil: 0,
-    nextLogin: Math.floor(rng() * 240),
+    nextLogin: calendarProfile(cfg, cfg.spendingArchetype ?? names[i] ?? 'CASUAL', i) === null
+      ? Math.floor(rng() * 240)
+      : nextDecision(calendarProfile(cfg, cfg.spendingArchetype ?? names[i] ?? 'CASUAL', i)!, -1, cfg.days),
     ledger: emptyLedger(),
     attacks: [], scoutsSent: 0,
     lootToday: 0, lossToday: 0, disruptedToday: 0,
@@ -500,6 +533,8 @@ export function buildWorld(cfg: SimConfig): World {
     rng,
     miningRng: mulberry32((cfg.seed ^ 0x51f15e5d) >>> 0),
     totalMinutes: cfg.days * 1440,
+    ...(cfg.activityProfiles?.length ? { activityProfiles: cfg.activityProfiles } : {}),
+    activityDecisions: 0,
     ...(cfg.hullCrystalShare === undefined ? {} : { hullCrystalShare: cfg.hullCrystalShare }),
     spectrometryCrystalCost:
       cfg.spectrometryCrystalCost ?? RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1).crystal,
@@ -597,9 +632,6 @@ export function projectedBuildState(
   }
   return projected;
 }
-
-/** How full a Hangar has to be before a bot spends a level on the next one. */
-const HANGAR_PRESSURE = 0.8;
 
 const queuedHullCount = (p: SimPlayer, hull: HullId): number =>
   p.queues.YARD
@@ -751,14 +783,13 @@ function trySynthesis(p: SimPlayer, t: number, world: World): void {
   if (rung > 0 && p.buildings.DEUTERIUM_PLANT < plantCeiling(rung)) return;
   const cost = project.costAt(rung + 1);
   if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
-  const projected = projectedBuildState(p, world, 'RESEARCH');
   const placed = enqueueSimBuild(p, t, world, {
     queue: 'RESEARCH',
     kind: 'RESEARCH',
     subject: 'DEUTERIUM_SYNTHESIS',
     count: rung + 1,
     cost,
-    minutes: researchMinutes(cost, projected.buildings.CORE),
+    minutes: profileResearch('DEUTERIUM_SYNTHESIS', rung + 1).minutes,
   });
   if (placed) spendCrystal(world, 'research', cost.crystal);
 }
@@ -803,13 +834,12 @@ function enqueueHullOrder(
     together do not would end the season with a fleet the live game refuses, and
     every band measured off it would be measuring a different game.
   */
-  const needed = hullBulk(hull) * count;
+  // D184: the Hangar is gone, so only emplacements answer to a ceiling. A fleet is
+  // braked by price, fuel and loss — the same three a real commander feels.
   if (HULLS[hull].ground) {
+    const needed = hullBulk(hull) * count;
     const load = groundLoad(p.fleet) + queuedYardBulk(p, true);
     if (load + needed > groundSlots(p.buildings.CORE)) return false;
-  } else {
-    const load = ownedHangarLoad(p, world) + queuedYardBulk(p, false);
-    if (load + needed > hangarCapacity(p.buildings.HANGAR)) return false;
   }
   const unit = hullPrice(world, hull);
   const cost = {
@@ -817,9 +847,7 @@ function enqueueHullOrder(
     crystal: unit.crystal * count,
     deuterium: unit.deuterium * count,
   };
-  const minutes = HULLS[hull].ground
-    ? defenceMinutes(cost, p.buildings.SHIPYARD)
-    : shipMinutes(cost, p.buildings.SHIPYARD, p.tech);
+  const minutes = hullWorkMinutes(hull, count, p.buildings.SHIPYARD, p.tech);
   const placed = enqueueSimBuild(p, t, world, {
     queue: 'YARD',
     kind: 'HULL',
@@ -950,7 +978,7 @@ const coloniesOf = (world: World, playerId: number): SimNeutralWorld[] =>
 function strategicReservations(world: World, playerId: number): number {
   return world.strategicMissions.filter((mission) =>
     mission.ownerId === playerId
-    && (mission.kind === 'settlement'
+    && ((mission.kind === 'settlement' && !mission.returning)
       || (mission.kind === 'death_star' && mission.captureIntent)),
   ).length;
 }
@@ -998,15 +1026,17 @@ function trySettleNeutral(p: SimPlayer, n: SimNeutralWorld, t: number, world: Wo
   if (n.claimUntil === null || n.claimUntil <= t || !canReserveColony(world, p)) return;
   const { transportHull, transports } = MULTI_WORLD.settlement;
   if (world.strategicRng() >= 0.18 || (p.fleet[transportHull] ?? 0) < transports) return;
-  const cost = MULTI_WORLD.settlement.cost;
+  const cost = MULTI_WORLD.settlement.charge;
   if (p.alloy < cost.alloy || p.crystal < cost.crystal || p.deuterium < cost.deuterium) return;
   const fleet: Fleet = { [transportHull]: transports };
   const flight = fleetTravelExact(distance(p, n), fleet, { boost: 1, tech: p.tech });
   const arriveAt = t + flight;
-  if (arriveAt > n.claimUntil) return;
+  const fuel = world.activityProfiles ? missionFuel(fleet, distance(p, n), 1) : 0;
+  if (p.deuterium < cost.deuterium + fuel) return;
+  if (world.activityProfiles ? arriveAt >= n.claimUntil : arriveAt > n.claimUntil) return;
   p.alloy -= cost.alloy;
   p.crystal -= cost.crystal;
-  p.deuterium -= cost.deuterium;
+  p.deuterium -= cost.deuterium + fuel;
   p.fleet[transportHull] = (p.fleet[transportHull] ?? 0) - transports;
   world.strategicMissions.push({
     id: world.nextStrategicMissionId++,
@@ -1034,14 +1064,18 @@ function tryNeutralRaid(p: SimPlayer, t: number, world: World): void {
     // T3 is intentionally not a blind farm: only the informed archetype models a
     // probe/counter-composition decision, and still demands a wide safety margin.
     if (!neutralRaidEligible(n.tier, p.type, attackValue, defenceValue)) continue;
-
+    const fuel = world.activityProfiles ? missionFuel(send, distance(p, n), 2) : 0;
+    if (p.deuterium < fuel) continue;
+    p.deuterium -= fuel;
     for (const [hull, count] of fleetEntries(send)) p.fleet[hull] = (p.fleet[hull] ?? 0) - count;
     world.strategicMissions.push({
       id: world.nextStrategicMissionId++,
       kind: 'neutral_attack',
       ownerId: p.id,
       targetId: n.id,
-      arriveAt: t + fleetTravelExact(distance(p, n), send, { boost: 1, tech: p.tech }),
+      // This simulator event resolves the fight; include the server's engagement.
+      arriveAt: t + fleetTravelExact(distance(p, n), send, { boost: 1, tech: p.tech })
+        + (world.activityProfiles ? COMBAT.engagementSeconds / 60 : 0),
       fleet: send,
       returning: false,
     });
@@ -1085,10 +1119,8 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
       .sort((a, b) => Number(b.recoveryUntil > t) - Number(a.recoveryUntil > t)
         || distance(p, a) - distance(p, b) || a.id - b.id)[0];
     if (!target) return;
-    const captureIntent = target.recoveryUntil > t;
-    if (captureIntent && !canReserveColony(world, p)) return;
+    const captureIntent = false;
     const arriveAt = t + travelMinutes(distance(p, target), DEATH_STAR.speed);
-    if (captureIntent && arriveAt >= target.recoveryUntil) return;
     world.deathStars.delete(p.id);
     world.strategicMissions.push({
       id: world.nextStrategicMissionId++,
@@ -1119,7 +1151,7 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
       subject: 'DEATH_STAR_PROTOCOL',
       count: 1,
       cost: research,
-      minutes: researchMinutes(research, projected.buildings.CORE),
+      minutes: profileResearch('DEATH_STAR_PROTOCOL', 1).minutes,
     });
     if (placed) spendCrystal(world, 'research', research.crystal);
     return;
@@ -1212,7 +1244,9 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     // D112: a closed window reopens; a live one is never pushed back.
     if (result.grade === 'DECISIVE' && (target.claimUntil === null || target.claimUntil <= t)) {
       target.claimUntil = t + SETTLEMENT_CLAIM_MINUTES;
-      trySettleNeutral(p, target, t, world);
+      // A completed battle is not a player command. Calendar-mode settlement is
+      // considered by runStrategicSession at the next actual online decision.
+      if (!world.activityProfiles) trySettleNeutral(p, target, t, world);
     }
     if (fleetValue(result.attackerSurvivors) > 0) {
       world.strategicMissions.push({
@@ -1234,17 +1268,32 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
   }
   if (mission.kind === 'settlement') {
     const { transportHull, transports } = MULTI_WORLD.settlement;
-    if (target.controllerId === null && target.claimUntil !== null && target.claimUntil >= t) {
+    if (mission.returning) {
+      p.fleet[transportHull] = (p.fleet[transportHull] ?? 0) + transports;
+      // Server reroutes through resolveTransfer, whose delivery may exceed storage.
+      p.alloy += MULTI_WORLD.settlement.charge.alloy;
+      p.crystal += MULTI_WORLD.settlement.charge.crystal;
+      p.deuterium += MULTI_WORLD.settlement.charge.deuterium;
+      return;
+    }
+    if (target.controllerId === null && target.claimUntil !== null
+      && (world.activityProfiles ? target.claimUntil > t : target.claimUntil >= t)) {
       target.controllerId = p.id;
       target.claimUntil = null;
       target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
+      target.alloy += MULTI_WORLD.settlement.cost.alloy;
+      target.crystal += MULTI_WORLD.settlement.cost.crystal;
+      target.deuterium += MULTI_WORLD.settlement.cost.deuterium;
       target.fleet[transportHull] = (target.fleet[transportHull] ?? 0) + transports;
       world.strategic.colonizedAt[target.tier].push(t);
+    } else if (world.activityProfiles) {
+      world.strategicMissions.push({ ...mission, id: world.nextStrategicMissionId++, returning: true,
+        arriveAt: t + fleetTravelExact(distance(p, target), { [transportHull]: transports }, { boost: 1, tech: p.tech }) });
     } else {
       p.fleet[transportHull] = (p.fleet[transportHull] ?? 0) + transports;
-      p.alloy += MULTI_WORLD.settlement.cost.alloy;
-      p.crystal += MULTI_WORLD.settlement.cost.crystal;
-      p.deuterium += MULTI_WORLD.settlement.cost.deuterium;
+      p.alloy += MULTI_WORLD.settlement.charge.alloy;
+      p.crystal += MULTI_WORLD.settlement.charge.crystal;
+      p.deuterium += MULTI_WORLD.settlement.charge.deuterium;
     }
     return;
   }
@@ -1268,22 +1317,10 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     world.strategic.deathStar.misses++;
     return;
   }
-  const second = mission.captureIntent && target.recoveryUntil > t;
   applyStrategicDamage(target, t);
-  if (second) {
-    target.controllerId = p.id;
-    target.recoveryUntil = 0;
-    target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
-    world.strategic.deathStar.captures++;
-  } else {
-    /*
-      A SIMULATED STRIKE ONLY EVER LANDS ON A NEUTRAL, which takes the short window
-      since D167, and since D179 there is only one window for every kind of world
-      anyway. The drop it used to race is gone entirely.
-    */
-    target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
-    world.strategic.deathStar.firstHits++;
-  }
+  target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
+  world.strategic.deathStar.firstHits++;
+
 }
 
 export function runStrategicSession(p: SimPlayer, t: number, world: World): void {
@@ -1564,36 +1601,32 @@ const ownedProspectors = (p: SimPlayer, world: World): number =>
     .reduce((sum, run) => sum + run.craft, 0);
 
 /** Home plus every outbound/return stack still owned by this commander. */
+/**
+ * EVERY ONE THIS COMMANDER OWNS, WHEREVER IT IS. D191.
+ *
+ * A craft in the air is still owned, so a cap that counts only what is standing at
+ * home is a cap a commander walks past by launching. This counted the ordinary
+ * mission list and NOT `strategicMissions`, so a Nullifier away on a neutral raid
+ * was invisible to its own two-craft gate and the bot bought a third: measured,
+ * seven of twenty-nine holders ended a season with three.
+ *
+ * The deleted `ownedHangarLoad` walked both lists for exactly this reason. This is
+ * the same lesson D131 records — a rule honoured on one path and forgotten on
+ * another is the failure mode this code base has already shipped once.
+ */
 const ownedMissionHull = (p: SimPlayer, world: World, hull: MobileHullId): number =>
   (p.fleet[hull] ?? 0)
   + world.missions
     .filter((mission) => mission.from === p.id)
-    .reduce((sum, mission) => sum + (mission.fleet[hull] ?? 0), 0);
-
-/**
- * ROOM THIS COMMANDER'S CRAFT TAKE UP, wherever they are. T4.
- *
- * The server counts every unit row a world owns, home or away, because a ceiling a
- * launch could empty is not a ceiling. A bot that could dodge the Hangar by having
- * its fleet in the air would model a game nobody is playing, and the gate would be
- * measured against fleets the live rules refuse to build.
- */
-function ownedHangarLoad(p: SimPlayer, world: World): number {
-  let load = hangarLoad(p.fleet);
-  for (const mission of world.missions) {
-    if (mission.from === p.id) load += hangarLoad(mission.fleet);
-  }
-  for (const mission of world.strategicMissions) {
+    .reduce((sum, mission) => sum + (mission.fleet[hull] ?? 0), 0)
+  + world.strategicMissions.reduce(
     // Only the neutral raid carries craft; a settlement and a transfer carry ore.
-    if (mission.ownerId === p.id && mission.kind === 'neutral_attack') {
-      load += hangarLoad(mission.fleet);
-    }
-  }
-  for (const run of world.miningRuns) {
-    if (run.playerId === p.id) load += run.craft * hullBulk('PROSPECTOR');
-  }
-  return load;
-}
+    (sum, mission) => sum + (mission.ownerId === p.id && mission.kind === 'neutral_attack'
+      ? mission.fleet[hull] ?? 0
+      : 0),
+    0,
+  );
+
 
 /** Buy at most one per login, preserving the rules-level two-craft ownership cap. */
 function tryBuyProspector(p: SimPlayer, t: number, world: World): void {
@@ -1648,7 +1681,7 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
       subject: id,
       count: next,
       cost,
-      minutes: researchMinutes(cost, projected.buildings.CORE),
+      minutes: profileResearch(id, next).minutes,
     });
     if (placed) spendCrystal(world, 'research', cost.crystal);
     return;
@@ -1862,22 +1895,10 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       const projected = projectedBuildState(p, world, 'CONSTRUCTION');
       const lvl = projected.buildings[key];
       if (key !== 'CORE' && lvl >= projected.buildings.CORE) continue;
-      /*
-        ROOM IS BOUGHT WHEN IT IS NEEDED, not because it is next on a list. T4.
-
-        A Hangar earns nothing on its own — it lifts a ceiling — so `worthInvesting`
-        below, which prices an upgrade against the hours of PRODUCTION left to repay
-        it, cannot judge one. The demand test is the honest substitute: raise it once
-        the fleet is actually pressing against what the world can hold. Without this a
-        bot buys capacity for ships it never builds and the gate measures the cost of
-        a mistake no real commander makes.
-      */
-      if (key === 'HANGAR'
-        && ownedHangarLoad(p, world) < hangarCapacity(lvl) * HANGAR_PRESSURE) continue;
       // The plant answers to its research rung as well as to the Core. T5.
       if (key === 'DEUTERIUM_PLANT' && lvl >= plantCeiling(synthesisRung(p))) continue;
       const cost = buildingCost(key, lvl);
-      const minutes = buildMinutes(cost, projected.buildings.CORE);
+      const minutes = buildingMinutes(key, lvl + 1, projected.research);
       const readyAt = nextSimBuildReadyAt(p, 'CONSTRUCTION', t, minutes);
 
       // A building only earns after it exists. The old instant model could use the
@@ -1894,7 +1915,9 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
           projected.buildings.EXTRACTOR,
         );
         if (producerAt < lvl) continue;
-        const producerMinutes = buildMinutes(buildingCost('REFINERY', producerAt), lvl + 1);
+        const producerMinutes = buildingMinutes(
+          'REFINERY', producerAt + 1, projected.research,
+        );
         const producerReadyAt = readyAt
           + Math.max(1, Math.ceil(producerMinutes * 60)) / 60;
         productiveHours = Math.max(0, (world.totalMinutes - producerReadyAt) / 60);
@@ -1965,8 +1988,10 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
        * galaxy's military fell by a sixth, and raid returns with it, while the bots
        * appeared to be reserving their military budget the whole time.
        */
-      const keepAlloy = p.alloy * a.militaryShare;
-      const keepCrystal = p.crystal * a.militaryShare;
+      // D192: the reserve follows development, not a fixed habit fraction.
+      const reserve = militaryShareAt(p.type, p.buildings.CORE);
+      const keepAlloy = p.alloy * reserve;
+      const keepCrystal = p.crystal * reserve;
       if (p.alloy - cost.alloy < keepAlloy) continue;
       if (p.crystal - cost.crystal < keepCrystal) continue;
 
@@ -1976,7 +2001,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         subject: id,
         count: 1,
         cost,
-        minutes: buildMinutes(cost, projected.buildings.CORE),
+        minutes: buildMinutes(cost, projected.buildings.CORE, projected.research),
       });
       if (placed) {
         spendCrystal(world, 'hardware', cost.crystal);
@@ -2020,7 +2045,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
       enqueueHullOrder(p, 'NULLIFIER', 1, t, world, 'combat');
     }
 
-    const budget = p.alloy * a.militaryShare;
+    const budget = p.alloy * militaryShareAt(p.type, p.buildings.CORE);
     const ordinaryHulls = COMBAT_HULLS.filter((hull) => hull !== 'NULLIFIER');
     const affordableHulls = ordinaryHulls.filter((hull) => {
       const price = hullPrice(world, hull);
@@ -2117,7 +2142,20 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
   if (rng() < a.attackChance) tryAttack(p, t, world, rng);
   if (world.strategicEnabled) runStrategicSession(p, t, world);
 
-  p.nextLogin = t + Math.max(20, Math.round((1440 / a.loginsPerDay) * (0.6 + rng() * 0.8)));
+  if (world.activityProfiles) {
+    world.activityDecisions++;
+    // An explicit list is a controlled experiment and keeps its round robin; the
+    // default is the habit's own calendar, because the archetype IS the engagement
+    // model and `p.id % list.length` could hand the GRINDER twenty minutes a day. D188.
+    p.nextLogin = nextDecision(
+      world.activityProfiles === 'by-archetype'
+        ? a.activity
+        : world.activityProfiles[p.id % world.activityProfiles.length]!,
+      t, world.totalMinutes / 1440,
+    );
+  } else {
+    p.nextLogin = t + Math.max(20, Math.round((1440 / a.loginsPerDay) * (0.6 + rng() * 0.8)));
+  }
 }
 
 function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
@@ -2384,11 +2422,19 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   const added = Math.max(0, def.disruptedUntil - Math.max(wasUntil, t));
   def.disruptedToday += added;
 
-  bookBattle(atk.ledger, def.ledger, loot.alloy + loot.crystal + loot.deuterium, r);
+  const dominionSwing = bookBattle(
+    atk.ledger,
+    def.ledger,
+    loot.alloy + loot.crystal + loot.deuterium,
+    r,
+    MULTI_WORLD.rulesetVersion,
+  );
 
   const lootValue = loot.alloy + loot.crystal + loot.deuterium;
   const gained = lootValue + r.defenderLossValue;
   stats.attacks++;
+  stats.dominionVolume += Math.abs(dominionSwing);
+  stats.largestDominionSwing = Math.max(stats.largestDominionSwing, Math.abs(dominionSwing));
   stats.lootValue += lootValue;
   stats.attackerLossValue += r.attackerLossValue;
   stats.defenderLossValue += r.defenderLossValue;

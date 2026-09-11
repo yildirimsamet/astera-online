@@ -281,6 +281,22 @@ export function AegisIcon(props: IconProps) {
   );
 }
 
+/**
+ * A PLAIN SHIELD, AND IT IS NOT THE AEGIS. D190.
+ *
+ * `AegisIcon` is a dome over a baseline and belongs to the instrument of that
+ * name. This is the ordinary shield every player already reads as "this part
+ * cannot be taken", and it marks the vault floor on a store bar — a different
+ * promise, kept by a different building, so it gets a different mark.
+ */
+export function ShieldIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 3.6 5.2 6.3v5.4c0 4 2.8 7.1 6.8 8.7 4-1.6 6.8-4.7 6.8-8.7V6.3Z" />
+    </Glyph>
+  );
+}
+
 /** A circle whose right half dissolves. You become unreadable — it hides, never lies. */
 export function VeilIcon(props: IconProps) {
   return (
@@ -917,6 +933,25 @@ export function HangarIcon(props: IconProps) {
       <path d="M3 20V11a9 9 0 0 1 18 0v9" />
       <path d="M3 20h18" />
       <path d="M9 20v-5a3 3 0 0 1 6 0v5" />
+    </Glyph>
+  );
+}
+
+/**
+ * SALVAGE — what a Garbage Collector lifts off a wreck. D200.
+ *
+ * A claw closing on a broken plate: the hull's own silhouette is its two grabbing
+ * arms, and the jagged piece under them is the one shape the wreck rings on the disc
+ * are made of. Deliberately unlike `CargoIcon`'s crate — a hold is what a raid takes
+ * from a store, and this is what gets picked out of the debris.
+ */
+export function SalvageIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M12 3v4.5" />
+      <path d="M12 7.5 7 11v3.2l2.2 1.6" />
+      <path d="M12 7.5l5 3.5v3.2l-2.2 1.6" />
+      <path d="m8.4 21 2.1-3.3 1.9 1.1 1.4-1.7L16 21Z" />
     </Glyph>
   );
 }

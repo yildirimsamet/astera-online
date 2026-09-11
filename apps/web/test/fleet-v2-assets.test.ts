@@ -64,9 +64,11 @@ describe('Fleet V2 canonical assets', () => {
       expect(asset.model).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+\.glb$/);
       expect(`${asset.card} ${asset.icon} ${asset.model}`).not.toMatch(/new_test|shiled|lvl_/i);
     }
-    expect(new Set(entries.map(({ card }) => card)).size).toBe(18);
-    expect(new Set(entries.map(({ icon }) => icon)).size).toBe(18);
-    expect(new Set(entries.map(({ model }) => model)).size).toBe(18);
+    // UNIQUENESS is the claim, so the count is read off the manifest rather than
+    // typed: two hulls sharing one card is the bug, not a particular roster size.
+    expect(new Set(entries.map(({ card }) => card)).size).toBe(entries.length);
+    expect(new Set(entries.map(({ icon }) => icon)).size).toBe(entries.length);
+    expect(new Set(entries.map(({ model }) => model)).size).toBe(entries.length);
   });
 
   it('resolves every canonical render, icon and model inside mobile transfer budgets', () => {
@@ -74,7 +76,21 @@ describe('Fleet V2 canonical assets', () => {
       for (const [kind, url, minKb, maxKb] of [
         ['card', asset.card, 0, 160],
         ['icon', asset.icon, 0, 40],
-        ['model', asset.model, 200, 300],
+        /*
+          THE FLOOR WAS 200 KB AND D197 CHANGED WHAT IT MEASURED.
+
+          It was never a size requirement — it is a guard against a model that
+          lost its material maps, written when every hull shipped its authored
+          geometry and a file could only be small by being broken. `SHIP_TRIANGLE_CEILING`
+          made geometry a POLICY: the Corsair went 10,132 triangles to 5,000 on the
+          owner's instruction and its correct, fully-textured file is 182 KB.
+
+          So the floor moves to where it still catches a stripped file and no
+          longer catches a deliberately simplified one. The thing it was standing
+          in for is asserted directly by the next test, which opens each GLB and
+          requires meshopt geometry and three WebP maps.
+        */
+        ['model', asset.model, 120, 300],
       ] as const) {
         const path = served(url);
         expect(existsSync(path), `${id} ${kind} is missing: ${url}`).toBe(true);
@@ -135,8 +151,12 @@ describe('Fleet V2 canonical assets', () => {
       PRAETORIAN: { rotation: [0, 0, 0], height: 0.16 },
       ATLAS: { rotation: [-15, 0, 0], height: 0.12 },
       NULLIFIER: { rotation: [12, 0, 0], height: 0 },
+      GARBAGE_COLLECTOR: { rotation: [0, 0, 0], height: 0.12 },
       CATACLYSM: { rotation: [11.5, 0, 90], height: 0.13 },
+      CORSAIR: { rotation: [0, 0, 0], height: 0.14 },
       CITADEL: { rotation: [-13, 180, 0], height: 0.21 },
+      PALADIN: { rotation: [0, 0, 0], height: 0.13 },
+      ARGOSY: { rotation: [0, 0, 0], height: 0.12 },
     });
   });
 
@@ -145,7 +165,8 @@ describe('Fleet V2 canonical assets', () => {
       DART: '-x', PIKE: '+x', RAMPART: '+x', WARDEN: '+x', COURIER: '+x',
       VIPER: '+x', TALON: '+x', STRONGHOLD: '+z', SENTINEL: '+z', WAYFARER: '+x',
       TEMPEST: '+x', BALLISTA: '+z', LEVIATHAN: '+x', PRAETORIAN: '+z', ATLAS: '+z',
-      NULLIFIER: '-x', CATACLYSM: '-x', CITADEL: '-z',
+      NULLIFIER: '-x', GARBAGE_COLLECTOR: '+z', CATACLYSM: '-x', CORSAIR: '+z',
+      CITADEL: '-z', PALADIN: '+z', ARGOSY: '+z',
     } as const;
     expect(Object.fromEntries(
       Object.entries(manifest ?? {}).map(([id, asset]) => [id, asset.facing]),

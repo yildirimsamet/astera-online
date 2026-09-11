@@ -1,6 +1,7 @@
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import {
+  MULTI_WORLD,
   PIRATE,
   deuteriumOf,
   type CombatRound,
@@ -27,6 +28,7 @@ import {
   type StrategicLevelChange,
 } from '../db/schema.js';
 import { pirateCallsign, privatePirateField } from './pirateField.js';
+import { addDominionCounters } from './dominion.js';
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -176,6 +178,14 @@ export interface BattleReportView {
    * rather than showing a figure it would have had to guess.
    */
   dominion: number | null;
+  /** The auditable v7 equation, signed and named from the caller's perspective. */
+  dominionBreakdown: {
+    ruleVersion: number;
+    lootValue: number;
+    enemyPermanentLossValue: number;
+    ownPermanentLossValue: number;
+    rawExchange: number;
+  } | null;
   /** Damage the defender's Aegis soaked before anything reached a hull. Both sides watched it. */
   shieldAbsorbed: number;
   /** Immutable Aegis charge at contact and after the last round; null on legacy reports. */
@@ -204,6 +214,16 @@ export interface BattleReportView {
   disruptedMinutes: number;
   /** What the fight left in orbit for whoever gets there first. Zero when no field formed. */
   wreckValue: number;
+  /**
+   * WHAT THE ATTACKER'S GARBAGE COLLECTORS LIFTED BEFORE THE FIELD FORMED. D200.
+   *
+   * To BOTH sides, unsigned, and it is no disclosure: the collectors were in the
+   * roster the defender watched arrive (D164), the wreck is public (D32), and the
+   * lift happened in orbit over the defender's own world. Without it a defender who
+   * lost a fleet reads a wreck line far smaller than the fleet, with nothing to say
+   * why. Zeros when nothing was lifted.
+   */
+  salvage: Resources;
   /** Public identities frozen when the attack left, not mutable current membership. */
   attackerClan: { id: string; name: string; tag: string } | null;
   defenderClan: { id: string; name: string; tag: string } | null;
@@ -477,6 +497,30 @@ async function readBattleReportsIn(
      */
     const dominion =
       row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
+    const hasDominionAudit =
+      row.dominionRuleVersion !== null
+      && row.dominionRuleVersion >= MULTI_WORLD.dominionLinearRulesetVersion
+      && row.dominionLootValue !== null
+      && row.dominionAttackerLossValue !== null
+      && row.dominionDefenderLossValue !== null
+      && row.dominionRawExchange !== null;
+    const dominionBreakdown = hasDominionAudit
+      ? attacking
+        ? {
+            ruleVersion: row.dominionRuleVersion!,
+            lootValue: row.dominionLootValue!,
+            enemyPermanentLossValue: row.dominionDefenderLossValue!,
+            ownPermanentLossValue: row.dominionAttackerLossValue!,
+            rawExchange: row.dominionRawExchange!,
+          }
+        : {
+            ruleVersion: row.dominionRuleVersion!,
+            lootValue: -row.dominionLootValue!,
+            enemyPermanentLossValue: row.dominionAttackerLossValue!,
+            ownPermanentLossValue: row.dominionDefenderLossValue!,
+            rawExchange: -row.dominionRawExchange!,
+          }
+      : null;
     const commitment = row.missionId === null
       ? undefined
       : commitmentByMission.get(row.missionId);
@@ -567,6 +611,7 @@ async function readBattleReportsIn(
       lootCrystal: attacking ? row.loot.crystal : -row.loot.crystal,
       lootDeuterium: attacking ? deuteriumOf(row.loot) : -deuteriumOf(row.loot),
       dominion,
+      dominionBreakdown,
       shieldAbsorbed: row.shieldAbsorbed,
       shieldBefore: firstRound?.shieldBefore ?? null,
       shieldAfter: lastRound?.shieldAfter ?? null,
@@ -581,6 +626,11 @@ async function readBattleReportsIn(
       */
       disruptedMinutes: row.disruptedMinutes,
       wreckValue: row.wreckValue,
+      salvage: {
+        alloy: row.salvage.alloy,
+        crystal: row.salvage.crystal,
+        deuterium: deuteriumOf(row.salvage),
+      },
       attackerClan: commitment?.attackerClanId
         ? clanById.get(commitment.attackerClanId) ?? null
         : null,
@@ -660,8 +710,16 @@ async function readBattleReportsIn(
     current.battles += 1;
     current.attacks += attacking ? 1 : 0;
     current.defences += attacking ? 0 : 1;
-    current.dominionGained += Math.max(0, signed);
-    current.dominionLost += Math.max(0, -signed);
+    current.dominionGained = addDominionCounters(
+      current.dominionGained,
+      Math.max(0, signed),
+      'Rival Dominion gained total',
+    );
+    current.dominionLost = addDominionCounters(
+      current.dominionLost,
+      Math.max(0, -signed),
+      'Rival Dominion lost total',
+    );
     // Rows are newest-first: fill this once with the latest useful composition.
     if (current.lastKnownFleet === null && hasKnownFleet) {
       current.lastKnownFleet = theirs;

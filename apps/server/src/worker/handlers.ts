@@ -1,8 +1,8 @@
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import {
-  ANTI_STRATEGIC,
   PROBE,
   applyDisruption,
+  battleDominion,
   disruptionMinutes,
   bookBattle,
   computeLoot,
@@ -16,23 +16,16 @@ import {
   garrisonOf,
   distance,
   massClass,
-  interceptionRange,
-  orbitStandoff,
-  pointAlong,
   radarRange,
   radarRevealsOrigin,
-  sensorSphere,
   seededFrom,
-  sphereEntryFraction,
-  surfaceStandoff,
-  visualLeg,
-  worldRadius,
   DEBRIS,
   HULLS,
   NON_COMBATANT_HULLS,
   SEASON,
   SERVERS,
   resolveCombat,
+  settleWreck,
   travelExact,
   vaultProtects,
   type Fleet,
@@ -46,8 +39,10 @@ import {
   buildings,
   buildOrders,
   clanMemberships,
+  clanScoreEvents,
   clans,
   debrisFields,
+  dominionEvents,
   miningRuns,
   missions,
   neutralPlanetState,
@@ -90,7 +85,6 @@ import {
 import {
   LEAD_TOLERANCE,
   inboundRadarLead,
-  interceptBefore,
   nextInboundRadarCheck,
   recheckRadarLegsForWorld,
   wakeStrategicInterceptions,
@@ -102,7 +96,7 @@ import {
   publicPlanetIdentity,
   recordGalaxyEvent,
 } from '../services/chronicle.js';
-import { publish, publishShard, publishStrategicSight } from '../stream/bus.js';
+import { publish, publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { wipeAllServers } from '../services/servers.js';
 import { schedule, type EventRow } from './queue.js';
@@ -113,6 +107,13 @@ import {
   finishDeathStarBuild,
 } from '../services/strategic.js';
 import { resolveSettlement, resolveTransfer } from '../services/movement.js';
+import {
+  fireInterception,
+  interceptOwedShot,
+  interceptionLeg,
+  nextCheckAt,
+  triggerAt,
+} from '../services/strategicInterception.js';
 import { safeHomePlanet } from '../services/ownership.js';
 import {
   reinforceNeutral,
@@ -120,13 +121,25 @@ import {
   returnAttackUntouched,
 } from '../services/neutral.js';
 import { applyBuildCompletion } from '../services/buildQueue.js';
-import { allocateClanLoot, recordClanBattleScore } from '../services/clanLoot.js';
+import {
+  allocateClanLoot,
+  lockClanBattleScore,
+  recordClanBattleScore,
+} from '../services/clanLoot.js';
+import {
+  assertClanDominionLedgers,
+  assertDominionLedgers,
+  dominionScore,
+} from '../services/dominion.js';
+import { adminPlayerIdsInSeason } from '../services/admin.js';
 import { resolveClanAid } from '../services/clanAid.js';
 import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
 
 export interface HandlerContext {
   db: Db;
   clock: Clock;
+  /** Out-of-band operator identities never participate in the competitive ledger. */
+  adminUsernames?: ReadonlySet<string>;
 }
 
 export type Handler = (ctx: HandlerContext, event: EventRow) => Promise<void>;
@@ -147,10 +160,21 @@ async function claimMission(tx: Tx, missionId: string) {
   return rows[0] ?? null;
 }
 
-async function ledgerOf(tx: Tx, playerId: string): Promise<Ledger & { id: string }> {
-  const [row] = await tx.select().from(players).where(eq(players.id, playerId));
-  if (!row) throw new Error(`player ${playerId} vanished`);
-  return { id: row.id, taken: row.dominionTaken, lost: row.dominionLost };
+/** Lock every Dominion ledger in one stable player-id order. */
+async function lockLedgers(
+  tx: Tx,
+  playerIds: readonly string[],
+): Promise<Map<string, Ledger & { id: string }>> {
+  const ids = [...new Set(playerIds)].sort();
+  if (ids.length === 0) return new Map();
+  const rows = await tx
+    .select({ id: players.id, taken: players.dominionTaken, lost: players.dominionLost })
+    .from(players)
+    .where(inArray(players.id, ids))
+    .orderBy(players.id)
+    .for('update');
+  if (rows.length !== ids.length) throw new Error('mission player vanished before arrival');
+  return new Map(rows.map((row) => [row.id, row]));
 }
 
 async function saveLedger(tx: Tx, ledger: Ledger & { id: string }): Promise<void> {
@@ -169,12 +193,12 @@ async function saveLedger(tx: Tx, ledger: Ledger & { id: string }): Promise<void
  * ledgers, the report, and the return leg. Either all of it happened or none of
  * it did — there is no state in which a fleet has fought but not come home.
  */
-export const onMissionArrival: Handler = async ({ db, clock }, event) => {
+export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = new Set() }, event) => {
   const missionId = event.refId;
   if (!missionId) throw new Error('mission_arrival without refId');
 
   await db.transaction(async (tx) => {
-    await lockSeason(tx, event.seasonId);
+    const season = await lockSeason(tx, event.seasonId);
     const mission = await claimMission(tx, missionId);
     if (!mission) return; // already resolved by another worker
 
@@ -234,6 +258,13 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     }
 
     if (mission.kind === 'death_star') {
+      /*
+        A SHOT A LATE QUEUE STILL OWES COMES FIRST. If the weapon stood in a ring
+        or a Telescope's sight with a charge ready before this instant, it died
+        there and never arrives — see `interceptOwedShot`. On a punctual worker
+        the event already fired and this mission never reached here in flight.
+      */
+      if (await interceptOwedShot(tx, mission)) return;
       const result = await applyDeathStarStrike(tx, mission, clock.now());
       // Core loss changes the drawn endpoint and may cap Radar/Telescope. Wake
       // every other inbound leg now so none keeps an obsolete crossing time.
@@ -573,12 +604,20 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
     const [targetWorld] = await tx
       .select({
         kind: planets.kind,
+        controllerPlayerId: planets.controllerPlayerId,
         recoveryUntil: planets.recoveryUntil,
         protectedUntil: planets.protectedUntil,
       })
       .from(planets)
       .where(eq(planets.id, mission.targetPlanetId));
     if (!targetWorld) throw new Error('attack target vanished');
+    // Ownership can change after launch. A fleet that reaches a world its own
+    // commander now controls has no opponent and therefore no score exchange;
+    // send it home intact instead of fighting itself or poisoning the retry queue.
+    if (targetWorld.controllerPlayerId === mission.ownerPlayerId) {
+      await returnAttackUntouched(tx, mission, clock);
+      return;
+    }
     if (
       (targetWorld.recoveryUntil !== null && targetWorld.recoveryUntil > clock.now())
       || (targetWorld.protectedUntil !== null && targetWorld.protectedUntil > clock.now())
@@ -618,6 +657,38 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       });
       return;
     }
+
+    if (!targetWorld.controllerPlayerId) {
+      throw new Error('player attack target has no controller');
+    }
+    const adminPlayerIds = await adminPlayerIdsInSeason(
+      tx,
+      mission.seasonId,
+      adminUsernames,
+    );
+    const scoreEligible =
+      !adminPlayerIds.has(mission.ownerPlayerId)
+      && !adminPlayerIds.has(targetWorld.controllerPlayerId);
+    // Clan management takes a clan row before its player rows. Pre-lock the
+    // score snapshots in stable order, then take player ledgers, so settlement
+    // follows season→planet→clan→player everywhere and cannot form a cycle.
+    if (scoreEligible) await lockClanBattleScore(tx, mission.id);
+    // Launches already hold their sorted planet rows before player state. This
+    // remains after every clan row above, and every player is locked by id, so a
+    // launch cannot hold one half of the order while settlement holds the other.
+    // Different colonies of one defender meet here and cannot overwrite scores.
+    const lockedLedgers = await lockLedgers(tx, [
+      mission.ownerPlayerId,
+      targetWorld.controllerPlayerId,
+    ]);
+    const attackerLedger = lockedLedgers.get(mission.ownerPlayerId);
+    const defenderLedger = lockedLedgers.get(targetWorld.controllerPlayerId);
+    if (!attackerLedger || !defenderLedger) {
+      throw new Error('battle controller changed before its player lock');
+    }
+    const leaderBefore = await publicDominionLeader(tx, mission.seasonId, adminPlayerIds);
+    const before = attackerLedger.taken - attackerLedger.lost;
+    const defenderBefore = defenderLedger.taken - defenderLedger.lost;
 
     const defender = await loadLocked(tx, mission.targetPlanetId, clock);
     const attackerHomeId = await safeHomePlanet(tx, mission.ownerPlayerId, mission.originPlanetId);
@@ -740,35 +811,46 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           : defender.disruptedUntil,
     });
 
-    const attackerLedger = await ledgerOf(tx, mission.ownerPlayerId);
-    const defenderLedger = await ledgerOf(tx, defender.playerId);
-    const leaderBefore = await publicDominionLeader(tx, mission.seasonId);
-    const before = attackerLedger.taken - attackerLedger.lost;
-    const defenderBefore = defenderLedger.taken - defenderLedger.lost;
-    bookBattle(
-      attackerLedger,
-      defenderLedger,
-      loot.alloy + loot.crystal + loot.deuterium,
-      result,
-    );
-    // Measured from the ledger itself rather than recomputed, so the report can
-    // never disagree with the ladder about what a battle was worth.
-    const dominionSwing = attackerLedger.taken - attackerLedger.lost - before;
-    const defenderDominionSwing = defenderLedger.taken - defenderLedger.lost - defenderBefore;
-    await saveLedger(tx, attackerLedger);
-    await saveLedger(tx, defenderLedger);
-    await recordClanBattleScore(tx, {
-      missionId: mission.id,
-      seasonId: mission.seasonId,
-      attackerDelta: dominionSwing,
-      defenderDelta: defenderDominionSwing,
-      at: defender.now,
-    });
+    const dominionBreakdown = scoreEligible
+      ? battleDominion(
+          loot.alloy + loot.crystal + loot.deuterium,
+          result,
+          season.rulesetVersion,
+        )
+      : null;
+    const dominionSwing = dominionBreakdown?.transfer ?? 0;
+    const defenderDominionSwing = -dominionSwing;
+    if (scoreEligible) {
+      bookBattle(
+        attackerLedger,
+        defenderLedger,
+        loot.alloy + loot.crystal + loot.deuterium,
+        result,
+        season.rulesetVersion,
+      );
+    }
     if (
-      Math.round(before) !== Math.round(attackerLedger.taken - attackerLedger.lost)
-      || Math.round(defenderBefore) !== Math.round(defenderLedger.taken - defenderLedger.lost)
+      attackerLedger.taken - attackerLedger.lost - before !== dominionSwing
+      || defenderLedger.taken - defenderLedger.lost - defenderBefore !== defenderDominionSwing
     ) {
-      await publishShard(tx, mission.seasonId, 'score');
+      throw new Error('Dominion ledger movement disagrees with its battle breakdown');
+    }
+    if (scoreEligible) {
+      await saveLedger(tx, attackerLedger);
+      await saveLedger(tx, defenderLedger);
+      await recordClanBattleScore(tx, {
+        missionId: mission.id,
+        seasonId: mission.seasonId,
+        attackerDelta: dominionSwing,
+        defenderDelta: defenderDominionSwing,
+        at: defender.now,
+      });
+      if (
+        before !== attackerLedger.taken - attackerLedger.lost
+        || defenderBefore !== defenderLedger.taken - defenderLedger.lost
+      ) {
+        await publishShard(tx, mission.seasonId, 'score');
+      }
     }
 
     /**
@@ -778,9 +860,28 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
      * nothing: the debris row still uses this same figure a few lines down. What
      * it buys is a report that can say what the fight left in orbit — which is
      * the one consequence of a battle that belongs to whoever gets there first.
+     *
+     * AND THE COLLECTORS TAKE THEIR SHARE BEFORE IT IS ANYBODY'S. D200. The
+     * attacker's surviving Garbage Collectors lift from the wreck at this instant —
+     * the instant their return leg departs — and `settleWreck` hands back what is
+     * left as the public field. Split the way the hulls were priced, so each
+     * recovered material keeps the composition of the craft that actually died.
      */
-    const wreckValue =
-      (flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses)) * DEBRIS.share;
+    const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
+    const made = totalRaw * DEBRIS.share;
+    const share = (raw: number): number => (totalRaw > 0 ? made * (raw / totalRaw) : 0);
+    const { salvage, field: wreck } = settleWreck(
+      {
+        alloy: share(flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses)),
+        crystal: share(flyingCrystal(result.attackerLosses) + flyingCrystal(result.defenderLosses)),
+        deuterium: share(
+          flyingDeuterium(result.attackerLosses) + flyingDeuterium(result.defenderLosses),
+        ),
+      },
+      result.attackerSurvivors,
+    );
+    const wreckValue = wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0;
+    const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
 
     await tx.insert(battleReports).values({
       seasonId: mission.seasonId,
@@ -815,10 +916,31 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         : Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
       // Below `DEBRIS.minimum` no field is written at all, so the report says
       // none rather than advertising wreckage nobody can fly out and collect.
-      wreckValue: wreckValue >= DEBRIS.minimum ? wreckValue : 0,
+      wreckValue,
+      salvage,
       cargoLimited,
       shieldAbsorbed,
       dominionSwing,
+      dominionRuleVersion: dominionBreakdown?.rulesetVersion ?? null,
+      dominionLootValue: dominionBreakdown?.lootValue ?? null,
+      dominionAttackerLossValue: dominionBreakdown?.attackerLossValue ?? null,
+      dominionDefenderLossValue: dominionBreakdown?.defenderPermanentLossValue ?? null,
+      dominionRawExchange: dominionBreakdown?.rawExchange ?? null,
+      dominionEligible: scoreEligible,
+      createdAt: defender.now,
+    });
+    await tx.insert(dominionEvents).values({
+      seasonId: mission.seasonId,
+      missionId,
+      attackerPlayerId: mission.ownerPlayerId,
+      defenderPlayerId: defender.playerId,
+      rulesetVersion: season.rulesetVersion,
+      eligible: scoreEligible,
+      lootValue: dominionBreakdown?.lootValue ?? null,
+      attackerLossValue: dominionBreakdown?.attackerLossValue ?? null,
+      defenderLossValue: dominionBreakdown?.defenderPermanentLossValue ?? null,
+      rawExchange: dominionBreakdown?.rawExchange ?? null,
+      transfer: dominionSwing,
       createdAt: defender.now,
     });
 
@@ -843,19 +965,12 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
      * taken FROM anybody, so crediting it to the ladder would create score from
      * nothing and break the zero-sum guarantee D2 rests on.
      *
-     * `wreckValue` is priced above the battle report, which carries the same figure.
+     * `wreck` is priced above the battle report, which carries the same figure —
+     * after the collectors, so the field and the report name the same remainder.
      */
     let wreckFieldId: string | null = null;
-    if (wreckValue >= DEBRIS.minimum) {
-      // Split the way the hulls were priced, so each recovered material keeps the
-      // composition of the craft that actually died.
-      const alloyRaw = flyingAlloy(result.attackerLosses) + flyingAlloy(result.defenderLosses);
-      const crystalRaw =
-        flyingCrystal(result.attackerLosses) + flyingCrystal(result.defenderLosses);
-      const deuteriumRaw =
-        flyingDeuterium(result.attackerLosses) + flyingDeuterium(result.defenderLosses);
-      const totalRaw = flyingValue(result.attackerLosses) + flyingValue(result.defenderLosses);
-      const [wreck] = await tx
+    if (wreck) {
+      const [row] = await tx
         .insert(debrisFields)
         .values({
           seasonId: mission.seasonId,
@@ -866,13 +981,13 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           y: defender.y,
           z: defender.z,
           missionId,
-          alloy: totalRaw > 0 ? wreckValue * (alloyRaw / totalRaw) : 0,
-          crystal: totalRaw > 0 ? wreckValue * (crystalRaw / totalRaw) : 0,
-          deuterium: totalRaw > 0 ? wreckValue * (deuteriumRaw / totalRaw) : 0,
+          alloy: wreck.alloy,
+          crystal: wreck.crystal,
+          deuterium: wreck.deuterium,
           createdAt: defender.now,
         })
         .returning({ id: debrisFields.id });
-      wreckFieldId = wreck?.id ?? null;
+      wreckFieldId = row?.id ?? null;
     }
 
     await clearMissionUnits(tx, mission.originPlanetId, missionId);
@@ -910,6 +1025,8 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
           targetPlanetId: mission.originPlanetId,
           fleet: result.attackerSurvivors,
           loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+          // Beside the loot, never inside it: wreck is Wealth, not an exchange. D200.
+          salvage: lifted ? salvage : null,
           tech: mission.tech,
           distance: mission.distance,
           departAt: defender.now,
@@ -970,7 +1087,7 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
       }
     }
 
-    const leaderAfter = await publicDominionLeader(tx, mission.seasonId);
+    const leaderAfter = await publicDominionLeader(tx, mission.seasonId, adminPlayerIds);
     if (leaderAfter && leaderAfter.planetId !== leaderBefore?.planetId) {
       await recordGalaxyEvent(tx, {
         seasonId: mission.seasonId,
@@ -1067,6 +1184,14 @@ export const onMissionArrival: Handler = async ({ db, clock }, event) => {
         lootAlloy: loot.alloy,
         lootCrystal: loot.crystal,
         lootDeuterium: loot.deuterium,
+        // Only when something was lifted: a raid with no collector reads as it always did.
+        ...(lifted
+          ? {
+              salvageAlloy: salvage.alloy,
+              salvageCrystal: salvage.crystal,
+              salvageDeuterium: salvage.deuterium,
+            }
+          : {}),
         unitsLost: fleetCount(result.attackerLosses),
         shipsHome: fleetCount(result.attackerSurvivors),
         dominion: dominionSwing,
@@ -1156,13 +1281,23 @@ async function settleReturn(
   await setUnits(tx, destinationPlanetId, merged, 'home', mission.ownerPlayerId);
 
   const landedLoot = mission.loot ? await allocateClanLoot(tx, mission, at) : null;
-  if (landedLoot) {
+  /**
+   * AND THE WRECK THE COLLECTORS LIFTED, WHOLE. D200.
+   *
+   * Never through `allocateClanLoot`. The clan's docked share is a share of what a
+   * raid took FROM a commander (D114); this was lifted off a public wreck, so it is
+   * the flying commander's and lands in their store beside the loot.
+   */
+  const salvage = mission.salvage;
+  if (landedLoot || salvage) {
     await tx
       .update(planets)
       .set({
-        alloy: sql`${planets.alloy} + ${landedLoot.alloy}`,
-        crystal: sql`${planets.crystal} + ${landedLoot.crystal}`,
-        deuterium: sql`${planets.deuterium} + ${deuteriumOf(landedLoot)}`,
+        alloy: sql`${planets.alloy} + ${(landedLoot?.alloy ?? 0) + (salvage?.alloy ?? 0)}`,
+        crystal: sql`${planets.crystal} + ${(landedLoot?.crystal ?? 0) + (salvage?.crystal ?? 0)}`,
+        deuterium: sql`${planets.deuterium} + ${
+          (landedLoot ? deuteriumOf(landedLoot) : 0) + (salvage ? deuteriumOf(salvage) : 0)
+        }`,
       })
       .where(eq(planets.id, destinationPlanetId));
   }
@@ -1189,6 +1324,13 @@ async function settleReturn(
         lootAlloy: landedLoot?.alloy ?? 0,
         lootCrystal: landedLoot?.crystal ?? 0,
         lootDeuterium: landedLoot ? deuteriumOf(landedLoot) : 0,
+        ...(salvage
+          ? {
+              salvageAlloy: salvage.alloy,
+              salvageCrystal: salvage.crystal,
+              salvageDeuterium: deuteriumOf(salvage),
+            }
+          : {}),
       },
       at,
       refId: mission.id,
@@ -1495,7 +1637,7 @@ export const onSeasonAct: Handler = async ({ db }, event) => {
 /* ── season freeze ─────────────────────────────────────────── */
 
 /** Freeze one galaxy and preserve the identity/story that survives its world. D85. */
-export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
+export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set() }, event) => {
   const seasonId = event.refId ?? event.seasonId;
   if (seasonId !== event.seasonId) throw new Error('season_end refId does not match its season');
 
@@ -1563,7 +1705,7 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
       return;
     }
 
-    const roster = await tx
+    const allRoster = await tx
       .select({
         playerId: players.id,
         accountId: players.accountId,
@@ -1580,8 +1722,21 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
       .where(eq(players.seasonId, seasonId));
+    const adminPlayerIds = await adminPlayerIdsInSeason(tx, seasonId, adminUsernames);
+    const roster = allRoster.filter((player) => !adminPlayerIds.has(player.playerId));
     const cycleSeasons = tx.select({ id: seasons.id }).from(seasons).where(eq(seasons.cycleId, season.cycleId));
-    const [reports, impacts, clanRows, membershipRows] = await Promise.all([
+    const [scoreEvents, reports, impacts, clanRows, clanEvents, membershipRows] = await Promise.all([
+      tx.select({
+        attackerPlayerId: dominionEvents.attackerPlayerId,
+        defenderPlayerId: dominionEvents.defenderPlayerId,
+        dominionSwing: dominionEvents.transfer,
+        dominionRuleVersion: dominionEvents.rulesetVersion,
+        dominionLootValue: dominionEvents.lootValue,
+        dominionAttackerLossValue: dominionEvents.attackerLossValue,
+        dominionDefenderLossValue: dominionEvents.defenderLossValue,
+        dominionRawExchange: dominionEvents.rawExchange,
+        dominionEligible: dominionEvents.eligible,
+      }).from(dominionEvents).where(inArray(dominionEvents.seasonId, cycleSeasons)),
       tx.select().from(battleReports).where(inArray(battleReports.seasonId, cycleSeasons)),
       tx.select().from(strategicImpacts).where(inArray(strategicImpacts.seasonId, cycleSeasons)),
       tx.select({
@@ -1592,24 +1747,40 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
         lost: clans.dominionLost,
         createdAt: clans.createdAt,
       }).from(clans).where(and(eq(clans.seasonId, seasonId), isNull(clans.disbandedAt))),
+      tx.select({
+        clanId: clanScoreEvents.clanId,
+        dominionDelta: clanScoreEvents.dominionDelta,
+      }).from(clanScoreEvents).where(eq(clanScoreEvents.seasonId, seasonId)),
       tx.select({ playerId: clanMemberships.playerId, clanId: clanMemberships.clanId })
         .from(clanMemberships)
         .where(and(eq(clanMemberships.seasonId, seasonId), isNull(clanMemberships.leftAt))),
     ]);
-    const identity = new Map(roster.map((row) => [row.playerId, row]));
-    const ranked = [...roster].sort((a, b) =>
-      Math.round(b.taken - b.lost) - Math.round(a.taken - a.lost)
-      || a.joinedAt.getTime() - b.joinedAt.getTime()
-      || a.playerId.localeCompare(b.playerId));
-    const rankedClans = [...clanRows].sort((a, b) =>
-      Math.round(b.taken - b.lost) - Math.round(a.taken - a.lost)
-      || a.createdAt.getTime() - b.createdAt.getTime()
-      || a.id.localeCompare(b.id));
+    assertDominionLedgers(roster, scoreEvents, season.rulesetVersion);
+    assertClanDominionLedgers(
+      clanRows.map((clan) => ({ clanId: clan.id, taken: clan.taken, lost: clan.lost })),
+      clanEvents,
+      season.rulesetVersion,
+    );
+    const identity = new Map(allRoster.map((row) => [row.playerId, row]));
+    const ranked = [...roster].sort((a, b) => {
+      const left = dominionScore(a.taken, a.lost);
+      const right = dominionScore(b.taken, b.lost);
+      return left === right
+        ? a.joinedAt.getTime() - b.joinedAt.getTime() || a.playerId.localeCompare(b.playerId)
+        : right > left ? 1 : -1;
+    });
+    const rankedClans = [...clanRows].sort((a, b) => {
+      const left = dominionScore(a.taken, a.lost);
+      const right = dominionScore(b.taken, b.lost);
+      return left === right
+        ? a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id)
+        : right > left ? 1 : -1;
+    });
     const clanRecapById = new Map(rankedClans.map((clan, index) => [clan.id, {
       name: clan.name,
       tag: clan.tag,
       finalRank: index + 1,
-      dominion: Math.round(clan.taken - clan.lost),
+      dominion: dominionScore(clan.taken, clan.lost),
       topThree: index < 3,
     }]));
     const clanIdByPlayer = new Map(membershipRows.map((membership) => [
@@ -1658,7 +1829,7 @@ export const onSeasonEnd: Handler = async ({ db, clock }, event) => {
       const rival = rivalEntry
         ? { commanderName: identity.get(rivalEntry[0])?.commanderName ?? 'Unknown commander', battles: rivalEntry[1] }
         : null;
-      const dominion = player.taken - player.lost;
+      const dominion = dominionScore(player.taken, player.lost);
       const finalRank = index + 1;
       const title = finalRank === 1
         ? `Sovereign of ${shardLabel}`
@@ -1849,15 +2020,10 @@ export const onNeutralReinforce: Handler = async ({ db, clock }, event) => {
 };
 
 /**
- * A strategic weapon may be engaged in exactly two ways:
- *
- *   1. the TARGET world's effective Radar is L3+ and the weapon has crossed that
- *      Radar rung; L1/L2 deliberately have no interception circle;
- *   2. the weapon is IDENTIFIED by the Telescope sight of ANY world controlled by
- *      the defender.
- *
- * A ready charge still belongs to the target world. Seeing a weapon from a colony
- * does not teleport that colony's ammunition to the capital.
+ * THE ON-TIME SHOT. Where a weapon can be engaged, and the shot itself, live in
+ * `services/strategicInterception.ts` — this wakes at each boundary the weapon
+ * has not crossed yet and fires the moment it stands in a zone with a charge
+ * ready. A shot the queue was too late to take here is settled by the arrival.
  */
 export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
   const missionId = event.refId;
@@ -1872,105 +2038,22 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
     if (mission?.status !== 'in_flight' || mission.kind !== 'death_star') return;
 
     const now = clock.now();
-    const remaining = (mission.arriveAt.getTime() - now.getTime()) / 60_000;
-    // Already over the target: the strike is resolving and there is nothing to stop.
-    if (remaining <= 0) return;
+    // Already over the target: the arrival owns the weapon now, and settles any
+    // shot this check was too late to take (`interceptOwedShot`).
+    if (mission.arriveAt.getTime() <= now.getTime()) return;
 
-    const [target] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
-    // A caretaker world has no commander, no research and nothing to fire.
-    if (!target?.controllerPlayerId) return;
+    const leg = await interceptionLeg(tx, mission);
+    if (!leg) return;
 
-    const [ownedWorlds, [origin]] = await Promise.all([
-      tx.select({
-        id: planets.id,
-        x: planets.x,
-        y: planets.y,
-        z: planets.z,
-      }).from(planets).where(eq(planets.controllerPlayerId, target.controllerPlayerId)),
-      tx.select().from(planets).where(eq(planets.id, mission.originPlanetId)),
-    ]);
-    if (!origin) return;
-
-    const worldIds = [...new Set([
-      mission.originPlanetId,
-      mission.targetPlanetId,
-      ...ownedWorlds.map((world) => world.id),
-    ])];
-    const [coreRows, levels] = await Promise.all([
-      tx.select({ planetId: buildings.planetId, level: buildings.level })
-        .from(buildings)
-        .where(and(inArray(buildings.planetId, worldIds), eq(buildings.type, 'CORE'))),
-      instrumentLevels(tx, worldIds),
-    ]);
-
-    const coreByPlanet = new Map(coreRows.map((row) => [row.planetId, row.level]));
-    const originPoint = { x: origin.x, y: origin.y, z: origin.z };
-    const targetPoint = { x: target.x, y: target.y, z: target.z };
-    const timedLeg = {
-      from: originPoint,
-      to: targetPoint,
-      originCoreLevel: coreByPlanet.get(origin.id) ?? 1,
-      targetCoreLevel: coreByPlanet.get(target.id) ?? 1,
-      oneWayMinutes: (mission.arriveAt.getTime() - mission.departAt.getTime()) / 60_000,
-    };
-    const drawnLeg = visualLeg(
-      originPoint,
-      targetPoint,
-      surfaceStandoff(worldRadius(timedLeg.originCoreLevel)),
-      orbitStandoff(worldRadius(timedLeg.targetCoreLevel)),
-    );
-    const totalMs = Math.max(1, mission.arriveAt.getTime() - mission.departAt.getTime());
-    const progress = (now.getTime() - mission.departAt.getTime()) / totalMs;
-    const currentPoint = pointAlong(drawnLeg.from, drawnLeg.to, progress);
-
-    // `interceptionRange` is zero at L1/L2. Do not replace this with the wider
-    // contact radius: detection and anti-strategic engagement are separate rules.
-    const reach = interceptionRange(levelOf(levels, target.id, 'RADAR'));
-    const radarLead = reach > 0 ? inboundRadarLead(reach, timedLeg) : 0;
-    const radarEligible = radarLead > 0 && remaining <= radarLead + LEAD_TOLERANCE;
-    const telescopeSpheres = ownedWorlds.flatMap((world) => {
-      const telescope = levelOf(levels, world.id, 'TELESCOPE');
-      // The general sight model has a naked-eye floor for drawing nearby craft.
-      // This rule explicitly requires Telescope sight, so no installed/effective
-      // Telescope means no optical interception sphere.
-      return telescope <= 0 ? [] : [sensorSphere(
-        { x: world.x, y: world.y, z: world.z },
-        telescope,
-        0,
-        world.id,
-      )];
-    });
-    // The crossing solver resolves to milliseconds while positions are continuous.
-    // One game unit is less than a second on this leg and prevents an exact edge
-    // from being rounded a fraction outside and then losing its only event.
-    const telescopeEligible = telescopeSpheres.some(
-      (sphere) => distance(sphere.at, currentPoint) <= sphere.identify + 1,
-    );
-
-    if (!radarEligible && !telescopeEligible) {
-      const candidates: { at: Date; radar: boolean }[] = [];
-      if (radarLead > 0) {
-        const crossing = addMinutes(mission.arriveAt, -radarLead);
-        if (crossing.getTime() > now.getTime()) candidates.push({ at: crossing, radar: true });
-      }
-      const remainingFraction = Math.max(0, 1 - Math.max(0, Math.min(1, progress)));
-      for (const sphere of telescopeSpheres) {
-        const fraction = sphereEntryFraction(currentPoint, drawnLeg.to, sphere.at, sphere.identify);
-        if (fraction === null || fraction <= 0) continue;
-        const at = new Date(now.getTime() + totalMs * remainingFraction * fraction);
-        if (at.getTime() > now.getTime() && at.getTime() < mission.arriveAt.getTime()) {
-          candidates.push({ at, radar: false });
-        }
-      }
-      const next = candidates.toSorted((a, b) => a.at.getTime() - b.at.getTime())[0];
+    const trigger = triggerAt(leg, now);
+    if (!trigger) {
+      const next = nextCheckAt(leg, now);
       if (next) {
         await schedule(tx, {
           seasonId: mission.seasonId,
           kind: 'strategic_intercept',
           refId: missionId,
-          // Radar shares a boundary with its warning and must win that ordering.
-          // Telescope has no competing siren and fires on the exact sight edge.
-          resolveAt: next.radar ? interceptBefore(next.at) : next.at,
+          resolveAt: next,
         });
       }
       return;
@@ -1984,118 +2067,20 @@ export const onStrategicIntercept: Handler = async ({ db, clock }, event) => {
       research exists to send two — and the queue is drained with `SKIP LOCKED` by a
       worker that production runs as its own service. Read without the lock, both
       handlers selected the same READY row and both wrote CONSUMED over it, and one
-      charge killed two Death Stars. D139's whole balance is that a loaded defender
-      stops the FIRST and the stockpile is the reply.
-
-      The guarded update is what makes it safe even if the lock is ever lost: the
-      second writer updates nothing, `returning()` comes back empty, and its own
-      strike goes on to land.
+      charge killed two Death Stars.
     */
     const [charge] = await tx
       .select({ id: strategicAssets.id })
       .from(strategicAssets)
       .where(and(
-        eq(strategicAssets.planetId, target.id),
+        eq(strategicAssets.planetId, leg.target.id),
         eq(strategicAssets.type, 'INTERCEPTOR'),
         eq(strategicAssets.status, 'READY'),
       ))
       .limit(1)
       .for('update');
     if (!charge) return;
-
-    const spent = await tx
-      .update(strategicAssets)
-      .set({ status: 'CONSUMED', missionId })
-      .where(and(
-        eq(strategicAssets.id, charge.id),
-        eq(strategicAssets.status, 'READY'),
-      ))
-      .returning({ id: strategicAssets.id });
-    if (!spent[0]) return;
-    const claimed = await tx
-      .update(missions)
-      .set({ status: 'resolved' })
-      .where(and(eq(missions.id, missionId), eq(missions.status, 'in_flight')))
-      .returning({ id: missions.id });
-    if (!claimed[0]) return;
-    await tx
-      .update(strategicAssets)
-      .set({ status: 'CONSUMED' })
-      .where(and(eq(strategicAssets.missionId, missionId), eq(strategicAssets.type, 'DEATH_STAR')));
-
-    /*
-      FIRE IMMEDIATELY; LET THE FLIGHT PROVIDE THE REACTION WINDOW.
-
-      Delaying launch would make a ready defence look inert and could let the
-      Death Star arrive while its counter was deliberately waiting. The missile
-      instead takes eight seconds to meet it. If a charge becomes ready inside
-      those final eight seconds, clamp the cinematic to the remaining journey so
-      the interception can never explode after the strike's original arrival.
-    */
-    const flightMs = Math.min(
-      ANTI_STRATEGIC.flightSeconds * 1_000,
-      mission.arriveAt.getTime() - now.getTime(),
-    );
-    const impactAt = new Date(now.getTime() + flightMs);
-    const impactProgress = (impactAt.getTime() - mission.departAt.getTime()) / totalMs;
-    const collision = pointAlong(drawnLeg.from, drawnLeg.to, impactProgress);
-    await tx.insert(strategicInterceptions).values({
-      seasonId: mission.seasonId,
-      missionId,
-      attackerPlayerId: mission.ownerPlayerId,
-      defenderPlayerId: target.controllerPlayerId,
-      targetPlanetId: target.id,
-      chargeId: charge.id,
-      trigger: radarEligible ? 'RADAR' : 'TELESCOPE',
-      launchAt: now,
-      impactAt,
-      launchX: target.x,
-      launchY: target.y,
-      launchZ: target.z,
-      deathStarFromX: currentPoint.x,
-      deathStarFromY: currentPoint.y,
-      deathStarFromZ: currentPoint.z,
-      collisionX: collision.x,
-      collisionY: collision.y,
-      collisionZ: collision.z,
-    });
-    await schedule(tx, {
-      seasonId: mission.seasonId,
-      kind: 'strategic_intercept_impact',
-      refId: missionId,
-      resolveAt: impactAt,
-    });
-
-    /*
-      THE LAUNCH INSTANT IS NOT A GALAXY-WIDE FACT. D139.
-
-      A shard `impact` here told every connected commander that a hidden weapon
-      had just been intercepted, eight seconds before the public Chronicle moment.
-      Address the two participants and only effective-Telescope witnesses instead;
-      each recipient still refetches in time to see the rocket leave the planet.
-    */
-    const witnessWorlds = await tx
-      .select({
-        id: planets.id,
-        controllerPlayerId: planets.controllerPlayerId,
-        x: planets.x,
-        y: planets.y,
-        z: planets.z,
-      })
-      .from(planets)
-      .where(and(
-        eq(planets.seasonId, mission.seasonId),
-        isNotNull(planets.controllerPlayerId),
-      ));
-    const witnessLevels = await instrumentLevels(tx, witnessWorlds.map((world) => world.id));
-    const audience = new Set([mission.ownerPlayerId, target.controllerPlayerId]);
-    for (const world of witnessWorlds) {
-      const telescope = levelOf(witnessLevels, world.id, 'TELESCOPE');
-      if (telescope <= 0 || !world.controllerPlayerId) continue;
-      const sight = sensorSphere({ x: world.x, y: world.y, z: world.z }, telescope, 0, world.id);
-      if (distance(sight.at, collision) <= sight.identify) audience.add(world.controllerPlayerId);
-    }
-    for (const playerId of audience) await publishStrategicSight(tx, playerId);
+    await fireInterception(tx, leg, charge.id, now, trigger, { claimMission: true });
   });
 };
 

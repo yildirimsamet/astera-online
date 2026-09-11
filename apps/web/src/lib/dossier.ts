@@ -1,6 +1,9 @@
 import {
   ALL_HULLS,
+  COMBAT_CLASSES,
+  combatValue,
   distance,
+  garrisonOf,
   telescopeSlots,
   telescopeWatchRange,
   withinTelescopeRange,
@@ -15,7 +18,8 @@ import type {
   RivalSummary,
 } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
-import { hullLabel, researchName, satelliteLabel } from '../i18n/names.js';
+import { combatClassLabel, hullLabel, researchName, satelliteLabel } from '../i18n/names.js';
+import { decimal } from './format.js';
 
 /**
  * WHAT YOU KNOW, AND HOW YOU KNOW IT.
@@ -137,6 +141,35 @@ const band = (low: number, high: number): string =>
     ? String(Math.round(low))
     : `${Math.round(low)}${i18n.t('units.rangeJoin')}${Math.round(high)}`;
 
+/**
+ * "0.5–1.0" — a ratio band, one decimal below ten and whole above it. Under a tenth
+ * it is "<0.1": rounding printed "0.0" for a band above zero, which read as "they
+ * have nothing" on a world that has something.
+ */
+const ratioBand = (low: number, high: number): string => {
+  const one = (r: number) => (r >= 10 ? String(Math.round(r)) : r < 0.1 ? `<${decimal(0.1, 1)}` : decimal(r, 1));
+  return one(low) === one(high) ? one(high) : `${one(low)}${i18n.t('units.rangeJoin')}${one(high)}`;
+};
+
+type ProbeShape = NonNullable<IntelView['probeReports'][number]['classReading']>;
+
+/** A probe's reading of the wall's shape, in the player's words. D199. */
+function shapeValue(shape: ProbeShape): string {
+  switch (shape.kind) {
+    case 'DOMINANT':
+      return i18n.t('counter.mixMostly', { class: combatClassLabel(shape.cls) });
+    case 'SHARES':
+      return COMBAT_CLASSES
+        .filter((cls) => shape.shares[cls] > 0)
+        .map((cls) => `${combatClassLabel(cls)} ${i18n.t('units.percent', { value: shape.shares[cls] })}`)
+        .join(' · ');
+    case 'UNREAD':
+      return i18n.t('dossier.shapeUnread');
+    default:
+      return i18n.t('counter.mixEven');
+  }
+}
+
 /** "3 Wasp · 1 Lance", in the fixed hull order so it reads the same every time. */
 export function describeFleet(fleet: Fleet): string {
   const parts: string[] = [];
@@ -154,7 +187,7 @@ export function describeFleet(fleet: Fleet): string {
  * there and never a ceiling. Phrased that way in the UI too: "at least", because
  * quietly presenting a floor as a total is how a player loses a fleet.
  */
-function fieldedAtLeast(reports: readonly Report[], planetId: string): {
+export function fieldedAtLeast(reports: readonly Report[], planetId: string): {
   fleet: Fleet;
   atMinutes: number;
 } | null {
@@ -368,6 +401,16 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       }`,
     });
 
+    /*
+      FIREPOWER, AGAINST THE ONE FIGURE THE READER HOLDS EXACTLY. D199.
+
+      "Defence value 11,400 – 13,900" was correct, sourced and aged, and the owner
+      reported that nobody knew what it meant. It is firepower — the one unit every
+      surface is written in — and the ratio to the reader's own world is what makes
+      it a size rather than a number. Left off when their own world has nothing
+      that fires, because "×∞" is not a comparison.
+    */
+    const mine = combatValue(garrisonOf(planet.fleet, planet.ground));
     facts.push({
       key: 'defence',
       label: i18n.t('dossier.defenceLabel'),
@@ -375,8 +418,54 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       source: 'probe',
       ageMinutes: age,
       accuracy: report.accuracy,
-      note: i18n.t('dossier.defenceNote'),
+      note: mine > 0
+        ? `${i18n.t('dossier.defenceNote')} ${i18n.t('dossier.defenceRatio', {
+          ratio: ratioBand(report.defence.low / mine, report.defence.high / mine),
+          world: planet.planet.name,
+        })}`
+        : i18n.t('dossier.defenceNote'),
     });
+
+    /*
+      THE THREE READINGS THAT MAKE A FIREPOWER FIGURE A FIGHT. D199.
+
+      Each is drawn only when it was taken — an old report has none of them and
+      prints none, rather than zeros it never measured.
+    */
+    const shape = report.classReading;
+    if (shape && shape.kind !== 'NONE') {
+      facts.push({
+        key: 'shape',
+        label: i18n.t('dossier.shapeLabel'),
+        value: shapeValue(shape),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: shape.kind === 'UNREAD' ? i18n.t('dossier.shapeUnreadNote') : i18n.t('dossier.shapeNote'),
+      });
+    }
+    if (report.shield) {
+      facts.push({
+        key: 'shield',
+        label: i18n.t('dossier.shieldLabel'),
+        value: band(report.shield.low, report.shield.high),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t('dossier.shieldNote'),
+      });
+    }
+    if (report.unarmed && report.unarmed.high > 0) {
+      facts.push({
+        key: 'unarmed',
+        label: i18n.t('dossier.unarmedLabel'),
+        value: band(report.unarmed.low, report.unarmed.high),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t('dossier.unarmedNote'),
+      });
+    }
 
     facts.push({
       key: 'ships',

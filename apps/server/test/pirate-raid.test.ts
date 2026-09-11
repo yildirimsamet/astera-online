@@ -1,10 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import {
   DEBRIS,
   HULLS,
+  PIRATE,
   fleetCount,
   gradeMultiplier,
   fleetEntries,
@@ -122,6 +123,67 @@ describe('a raid at a pirate', () => {
   beforeEach(async () => {
     f = await seedWorld(2, 4242, { pirates: true });
     mine = f.planetIds[0]!;
+  });
+
+  /**
+   * THE FLEET GOES TO THE MEETING THE PLAYER READ, OR IT DOES NOT GO. D183.
+   *
+   * Owner report: *"Bir kullanıcı gönderirken 10dk yazıyordu, gönderme tuşuna
+   * bastım 40dk'ya çıktı."* Measured across 20,000 solves, a quote half a minute
+   * old drifts past a minute about 1.5% of the time and the worst case ran 5.1
+   * minutes to 56.3 — because `interceptOrbit` finds the FIRST meeting, and a wing
+   * slower than the pirate waits for the orbit rather than chasing it. Leave a
+   * moment too late and that narrow window is missed; the answer is the next lap.
+   *
+   * A RAID CANNOT BE RECALLED (P3), so committing a fleet to a number the player
+   * never saw is the one thing this surface may not do. The quote rides the launch
+   * and the server refuses when its own solve has moved past
+   * `PIRATE.quoteToleranceMinutes` — naming the new minute, so the refusal is also
+   * the fresh reading.
+   */
+  it('refuses a raid whose rendezvous has moved past the quote the player read', async () => {
+    const target = await findVisible();
+    const fleet = await armed();
+
+    // A quote from a different lap: far enough out to be a different decision.
+    await expect(
+      launchPirateRaid(f.db, mine, target.id, fleet, f.clock, undefined, 0.01),
+    ).rejects.toMatchObject({ code: 'RENDEZVOUS_MOVED' });
+
+    // Nothing was spent, and no bay was taken: a refused launch is not a launch.
+    expect(await baysInUse(f.db, mine)).toBe(0);
+  });
+
+  it('accepts a quote that is merely a little stale', async () => {
+    const target = await findVisible();
+    const fleet = await armed();
+    const truth = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+    const minutes = (truth.arriveAt.getTime() - f.clock.now().getTime()) / 60_000;
+
+    // Undo it and fly again with a quote inside the tolerance.
+    await f.db.delete(pirateRaids);
+    await f.db.delete(units).where(sql`${units.location} <> 'home'`);
+    await giveUnits(f.db, mine, fleet);
+    await grant(f.db, mine, 200_000, 40_000);
+
+    const again = await launchPirateRaid(
+      f.db,
+      mine,
+      target.id,
+      fleet,
+      f.clock,
+      undefined,
+      minutes + PIRATE.quoteToleranceMinutes * 0.5,
+    );
+    expect(again.raidId).toBeTypeOf('string');
+  });
+
+  /** No quote is the old behaviour, and it stays: a caller may simply not have one. */
+  it('flies without a quote at all', async () => {
+    const target = await findVisible();
+    const fleet = await armed();
+    const flown = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+    expect(flown.raidId).toBeTypeOf('string');
   });
 
   it('takes a flight bay, both legs of fuel, and leaves the world reading AWAY', async () => {

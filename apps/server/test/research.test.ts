@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { DEUTERIUM, HULLS, RESEARCH_PROJECTS } from '@astera/rules';
+import { DEUTERIUM, HULLS, RESEARCH_PROJECTS, researchMinutes } from '@astera/rules';
 import { atMinute } from '../src/clock.js';
 import {
   battleReports,
@@ -110,6 +110,28 @@ describe('the seasonal frontier', () => {
       completed: true,
       available: false,
     });
+  });
+
+  it('uses the funding world Command Core to shorten research', async () => {
+    const slowWorld = f.planetIds[0]!;
+    const fastWorld = f.planetIds[1]!;
+    const project = RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY;
+    const cost = project.costAt(1);
+    f.clock.advance(project.availableAtMinutes);
+    await grant(f.db, slowWorld, cost.alloy, cost.crystal);
+    await grant(f.db, fastWorld, cost.alloy, cost.crystal);
+    await setLevel(f.db, slowWorld, 'CORE', 1);
+    await setLevel(f.db, fastWorld, 'CORE', 10);
+
+    await completeResearch(f.db, slowWorld, 'ISOTOPE_SPECTROMETRY', f.clock);
+    await completeResearch(f.db, fastWorld, 'ISOTOPE_SPECTROMETRY', f.clock);
+
+    const rows = await f.db.select().from(researchOrders);
+    const slow = rows.find((row) => row.fundingPlanetId === slowWorld)!;
+    const fast = rows.find((row) => row.fundingPlanetId === fastWorld)!;
+    expect(slow.remainingSeconds).toBe(Math.ceil(researchMinutes(cost, 1) * 60));
+    expect(fast.remainingSeconds).toBe(Math.ceil(researchMinutes(cost, 10) * 60));
+    expect(fast.remainingSeconds).toBeLessThan(slow.remainingSeconds);
   });
 
   it('serialises racing taps so the project cannot be paid twice', async () => {
@@ -225,6 +247,26 @@ describe('the seasonal frontier', () => {
     const crystalBudget = RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1).crystal
       + RESEARCH_PROJECTS.GRAVITIC_CHARGES.costAt(1).crystal;
     await grant(f.db, mine, 30_000, crystalBudget);
+    /*
+      AN INSTRUMENT IS CAPPED BY THE CORE, AND THIS FIXTURE NEVER RAISED IT.
+
+      `effectiveInstruments` is `min(instruments[id], levels.CORE)`, so asking for
+      an Aegis 10 on a world whose Core is far lower buys an Aegis of that Core —
+      and `advanceEconomy` then clamps the shield to `shieldHp` of THAT level. The
+      1,000 written on the next line never existed at fight time: measured, the
+      battle ran against roughly 440, and writing 3,000 instead moved the absorbed
+      figure by eighteen. The test was asserting against a shield it did not have.
+
+      Verified in isolation: the fixture as NAMED — thirty Darts, three Bastions, a
+      1,000 shield — resolves in `packages/rules` at ratio 0.383, comfortably past
+      the 0.25 below. Nothing about the rule moved; the world could not hold the
+      hardware the test bought it.
+
+      IT GOES BEFORE `levelWorld`, which lifts every world to the TALLEST Core in
+      the fixture. Raising only the target puts the two commanders outside D168's
+      +/-1 band and the raid is refused before a shot is fired.
+    */
+    await setLevel(f.db, target, 'CORE', 10);
     await levelWorld(f.db, f.planetIds);
     await giveUnits(f.db, mine, { DART: 30 });
     await giveUnits(f.db, target, { BASTION: 3 });
@@ -779,7 +821,7 @@ describe('the deuterium refinery', () => {
  * side, and between them they say one thing: every figure belongs to the moment
  * its own decision was made.
  *
- * AND THEY HAVE TO BE VISIBLE. A 25% multiplier nobody can see silently eats the
+ * AND THEY HAVE TO BE VISIBLE. A 56% multiplier (D169) nobody can see silently eats the
  * value of every scouting flight, which D124 forbids outright — so a probe brings
  * them home, frozen at the look like the rest of the silhouette.
  */

@@ -100,6 +100,93 @@ export function orbitFromRows(
     .map(([, type]) => type as SatelliteId);
 }
 
+/**
+ * What a world's installed rows add up to, as every read of the world sees it.
+ *
+ * Stored hardware is a physical slot sequence too. SQL row order is not a contract;
+ * using the same projection as the effective prefix prevents Core damage from making
+ * a different satellite active on different reads.
+ */
+export function hardwareOf(
+  rows: readonly { slot: number; type: string; level: number }[],
+  levels: BuildingLevels,
+) {
+  const { instruments } = installedFrom(rows);
+  const storedOrbit = orbitFromRows(rows, Number.MAX_SAFE_INTEGER);
+  const orbit = orbitFromRows(rows, levels.CORE);
+  const effectiveInstruments = Object.fromEntries(
+    INSTRUMENT_IDS.map((id) => [
+      id,
+      (id === 'TELESCOPE' || id === 'RADAR') && !orbit.includes('UPLINK')
+        ? 0
+        : Math.min(instruments[id] ?? 0, levels.CORE),
+    ]),
+  ) as InstrumentLevels;
+  return { instruments, effectiveInstruments, orbit, storedOrbit };
+}
+
+/**
+ * WHERE A WORLD'S ECONOMY STANDS AT `requestedNow`, COMPUTED AND NEVER WRITTEN. D199.
+ *
+ * `loadLocked` writes what this returns; a probe reads it and writes nothing. One
+ * piece of arithmetic for both, so a report and the raid that follows it cannot
+ * look at two different worlds — which they did while the probe read the row as it
+ * lay, hours of production short of what the raid then found.
+ *
+ * A world in recovery is frozen where it stands, and a season that has ended stops
+ * the clock at its end.
+ */
+export function economyAt(
+  row: typeof planets.$inferSelect,
+  levels: BuildingLevels,
+  hardware: { effectiveInstruments: InstrumentLevels; orbit: SatelliteSet },
+  season: Pick<typeof seasons.$inferSelect, 'startsAt' | 'endsAt' | 'status'>,
+  requestedNow: Date,
+) {
+  const now = season.status === 'live' || requestedNow <= season.endsAt
+    ? requestedNow
+    : season.endsAt;
+  const nowMinutes = minutesSince(season.startsAt, now);
+
+  const recovering = row.recoveryUntil !== null && row.recoveryUntil > now;
+  const state = recovering ? {
+    alloy: row.alloy,
+    crystal: row.crystal,
+    deuterium: row.deuterium,
+    bufferAlloy: row.bufferAlloy,
+    bufferCrystal: row.bufferCrystal,
+    bufferDeuterium: row.bufferDeuterium,
+    shield: row.shield,
+    lastTickMinutes: nowMinutes,
+  } : advanceEconomy(
+    {
+      alloy: row.alloy,
+      crystal: row.crystal,
+      deuterium: row.deuterium,
+      bufferAlloy: row.bufferAlloy,
+      bufferCrystal: row.bufferCrystal,
+      bufferDeuterium: row.bufferDeuterium,
+      shield: row.shield,
+      lastTickMinutes: minutesSince(season.startsAt, row.lastTickAt),
+      disruptedUntilMinutes: row.disruptedUntil
+        ? minutesSince(season.startsAt, row.disruptedUntil)
+        : 0,
+    },
+    {
+      refineryLevel: levels.REFINERY,
+      extractorLevel: levels.EXTRACTOR,
+      plantLevel: levels.DEUTERIUM_PLANT,
+      // The store's ceiling scales with the Vault now, so `collect()` needs it.
+      vaultLevel: levels.VAULT,
+      aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
+      // A Foundry lifts the rate, and therefore the caps that follow from it. D25.
+      production: productionMult(hardware.orbit),
+    },
+    nowMinutes,
+  );
+  return { state, now, nowMinutes };
+}
+
 /** Rows to levels, with every building present at zero and nothing else present. */
 function buildingLevelsFrom(rows: readonly { type: string; level: number }[]): BuildingLevels {
   const levels = Object.fromEntries(BUILDING_IDS.map((b) => [b, 0])) as BuildingLevels;
@@ -267,21 +354,7 @@ export async function loadLocked(
   ]);
 
   const levels = buildingLevelsFrom(buildingRows);
-
-  const { instruments } = installedFrom(satelliteRows);
-  // Stored hardware is a physical slot sequence too. SQL row order is not a
-  // contract; using the same projection as the effective prefix prevents Core
-  // damage from making a different satellite active on different reads.
-  const storedOrbit = orbitFromRows(satelliteRows, Number.MAX_SAFE_INTEGER);
-  const orbit = orbitFromRows(satelliteRows, levels.CORE);
-  const effectiveInstruments = Object.fromEntries(
-    INSTRUMENT_IDS.map((id) => [
-      id,
-      (id === 'TELESCOPE' || id === 'RADAR') && !orbit.includes('UPLINK')
-        ? 0
-        : Math.min(instruments[id] ?? 0, levels.CORE),
-    ]),
-  ) as InstrumentLevels;
+  const { instruments, effectiveInstruments, orbit, storedOrbit } = hardwareOf(satelliteRows, levels);
 
   const homeFleet: Fleet = {};
   const ground: Fleet = {};
@@ -290,47 +363,12 @@ export async function loadLocked(
     (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
-  const requestedNow = clock.now();
-  const now = season.status === 'live' || requestedNow <= season.endsAt
-    ? requestedNow
-    : season.endsAt;
-  const nowMinutes = minutesSince(season.startsAt, now);
-
-  const recovering = row.recoveryUntil !== null && row.recoveryUntil > now;
-  const advanced = recovering ? {
-    alloy: row.alloy,
-    crystal: row.crystal,
-    deuterium: row.deuterium,
-    bufferAlloy: row.bufferAlloy,
-    bufferCrystal: row.bufferCrystal,
-    bufferDeuterium: row.bufferDeuterium,
-    shield: row.shield,
-    lastTickMinutes: nowMinutes,
-  } : advanceEconomy(
-    {
-      alloy: row.alloy,
-      crystal: row.crystal,
-      deuterium: row.deuterium,
-      bufferAlloy: row.bufferAlloy,
-      bufferCrystal: row.bufferCrystal,
-      bufferDeuterium: row.bufferDeuterium,
-      shield: row.shield,
-      lastTickMinutes: minutesSince(season.startsAt, row.lastTickAt),
-      disruptedUntilMinutes: row.disruptedUntil
-        ? minutesSince(season.startsAt, row.disruptedUntil)
-        : 0,
-    },
-    {
-      refineryLevel: levels.REFINERY,
-      extractorLevel: levels.EXTRACTOR,
-      plantLevel: levels.DEUTERIUM_PLANT,
-      // The store's ceiling scales with the Vault now, so `collect()` needs it.
-      vaultLevel: levels.VAULT,
-      aegisLevel: effectiveInstruments.AEGIS ?? 0,
-      // A Foundry lifts the rate, and therefore the caps that follow from it. D25.
-      production: productionMult(orbit),
-    },
-    nowMinutes,
+  const { state: advanced, now, nowMinutes } = economyAt(
+    row,
+    levels,
+    { effectiveInstruments, orbit },
+    season,
+    clock.now(),
   );
 
   if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
@@ -570,7 +608,7 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
         eq(missions.ownerPlayerId, playerId),
       )),
     tx
-      .select({ cargo: missions.cargo, loot: missions.loot })
+      .select({ cargo: missions.cargo, loot: missions.loot, salvage: missions.salvage })
       .from(missions)
       .where(and(eq(missions.ownerPlayerId, playerId), eq(missions.status, 'in_flight'))),
     tx
@@ -625,8 +663,11 @@ export async function recomputePlayerWealth(tx: Tx, playerId: string): Promise<n
   for (const mission of cargoMissions) {
     const cargo = mission.cargo;
     const loot = mission.loot;
+    // The wreck a return leg's collectors lifted is owned in the air as surely as its loot. D200.
+    const salvage = mission.salvage;
     if (cargo) value += cargo.alloy + cargo.crystal + cargo.deuterium;
     if (loot) value += loot.alloy + loot.crystal + loot.deuterium;
+    if (salvage) value += salvage.alloy + salvage.crystal + salvage.deuterium;
   }
   // Queueing changes where value sits, never whether the commander owns it. D4.
   for (const order of committedBuilds) {

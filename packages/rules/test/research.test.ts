@@ -1,40 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEUTERIUM,
-  ECONOMY_TEMPO,
   RESEARCH_PROJECTS,
   RESEARCH_PROJECT_IDS,
   claimOre,
   isotopeProfile,
   researchAvailable,
-  RESEARCH_CRYSTAL_UPLIFT,
   researchCostMix,
-  scalePrice,
-  type ResearchProjectId,
 } from '../src/index.js';
-
-const researchPrice = (base: { alloy: number; crystal: number; deuterium: number }) => ({
-  alloy: scalePrice(base.alloy, ECONOMY_TEMPO.fixedPrice),
-  crystal: scalePrice(base.crystal, ECONOMY_TEMPO.fixedPrice),
-  deuterium: scalePrice(base.deuterium, ECONOMY_TEMPO.deuteriumPrice),
-});
-/**
- * The price a project actually SHIPS at: tempo, then the Crystal bias, then the
- * owner's Crystal uplift.
- *
- * The uplift belongs here rather than in each expectation. These tests are about
- * the MIX — that a frontier project is Crystal-weighted — and a later instruction
- * that raised Crystal everywhere by a quarter did not change that claim, only the
- * figure it lands on. Baking the new number into each `toEqual` would have hidden
- * a second multiplication inside a test whose whole subject is the first one.
- */
-const mixedResearchPrice = (
-  id: ResearchProjectId,
-  base: { alloy: number; crystal: number; deuterium: number },
-) => {
-  const mixed = researchCostMix(id, researchPrice(base));
-  return { ...mixed, crystal: Math.round(mixed.crystal * RESEARCH_CRYSTAL_UPLIFT) };
-};
 
 describe('research resource mix', () => {
   const unchanged = new Set([
@@ -48,6 +21,8 @@ describe('research resource mix', () => {
     'SHIP_ARMOR',
     'SHIP_PROPULSION',
     'EMPLACEMENT_DOCTRINE',
+    // D198 arrived on an authored table too, so it inherits the same exemption.
+    'AI_ROBOTS',
   ]);
 
   it('moves every level of every non-exempt project toward Crystal', () => {
@@ -72,23 +47,9 @@ describe('research resource mix', () => {
 });
 
 describe('the two-project frontier', () => {
-  it('ships the Crystal-weighted frontier research prices as one table', () => {
-    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1))
-      .toEqual(mixedResearchPrice('ISOTOPE_SPECTROMETRY', {
-        alloy: 0, crystal: 900, deuterium: 0,
-      }));
-    expect(RESEARCH_PROJECTS.DENSE_FUEL_CELLS.costAt(1))
-      .toEqual(mixedResearchPrice('DENSE_FUEL_CELLS', {
-        alloy: 0, crystal: 1400, deuterium: 150,
-      }));
-    expect(RESEARCH_PROJECTS.GRAVITIC_CHARGES.costAt(1))
-      .toEqual(mixedResearchPrice('GRAVITIC_CHARGES', {
-        alloy: 0, crystal: 1900, deuterium: 350,
-      }));
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1))
-      .toEqual(mixedResearchPrice('DEATH_STAR_PROTOCOL', {
-        alloy: 11_000, crystal: 3600, deuterium: 900,
-      }));
+  it('prices the monthly frontier permissions', () => {
+    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 3586, deuterium: 0 });
+    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 47200, deuterium: 3000 });
   });
 
   it('opens spectroscopy on the shared season clock, never on a private timer', () => {
@@ -204,15 +165,9 @@ describe('the levelled research model', () => {
     }
   });
 
-  it('applies the Crystal-weighted mix to first-level permissions', () => {
-    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1))
-      .toEqual(mixedResearchPrice('ISOTOPE_SPECTROMETRY', {
-        alloy: 0, crystal: 900, deuterium: 0,
-      }));
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1))
-      .toEqual(mixedResearchPrice('DEATH_STAR_PROTOCOL', {
-        alloy: 11_000, crystal: 3600, deuterium: 900,
-      }));
+  it('prices the monthly frontier permissions', () => {
+    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 3586, deuterium: 0 });
+    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 47200, deuterium: 3000 });
   });
 
   /** A price is asked for by TARGET level, so level one is what an unowned project costs. */

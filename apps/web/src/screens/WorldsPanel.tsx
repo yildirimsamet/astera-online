@@ -130,7 +130,7 @@ export function WorldsPanel({
         <section className="plate mb-3 px-3 py-3">
           <h2 className="legend mb-2">{t('worlds.sendTitle')}</h2>
           {/*
-            ONE LINE, TWO ENDS, AN ARROW BETWEEN THEM. At 375px two selects and a
+            ONE LINE, TWO ENDS, AN ARROW BETWEEN THEM. At 350px two selects and a
             glyph fit across the sheet with room to spare, and the arrow is the
             whole explanation — a labelled pair stacked in a column would spend
             four rows saying what one row draws.

@@ -55,8 +55,119 @@ const read = (r: ProbeReport | null, world = target()) =>
 const fact = (r: ProbeReport | null, key: string) =>
   read(r).facts.find((f) => f.key === key);
 
+/**
+ * FIREPOWER, AND WHAT MAKES IT A FIGHT. D199.
+ *
+ * The defence band was printed as "Defence value" beside nothing — the owner's
+ * report, word for word, was that nobody knew what it meant. It is the firepower
+ * of what stood there, the one unit every surface is written in, and the one
+ * figure the reader holds exactly for comparison is the firepower on their own
+ * world. D199 also delivers the three readings that turn a firepower figure into a
+ * fight: the shape of the wall, the Aegis charge and the unarmed hulls in the line.
+ */
+describe('firepower and what makes it a fight', () => {
+  const armedReader = (r: ProbeReport) =>
+    dossier({
+      target: target(),
+      planet: planetView({ fleet: { DART: 10 } }),
+      intel: intelWith(r),
+      reports: [],
+      now: NOW,
+    }).facts;
+
+  it('names the defence band Firepower', () => {
+    expect(fact(report(), 'defence')?.label).toBe('Firepower');
+  });
+
+  it('compares it with the firepower standing on the reader’s own world', () => {
+    // Ten Darts are 3,600 of firepower; the band is half that to all of it.
+    const note = armedReader(report({ defence: { low: 1_800, high: 3_600 } }))
+      .find((f) => f.key === 'defence')?.note;
+    expect(note).toMatch(/×0\.5–1\.0/);
+    expect(note).toMatch(/Kestrel-12/);
+  });
+
+  it('offers no ratio against a world with nothing that fires', () => {
+    const note = dossier({
+      target: target(),
+      planet: planetView({ fleet: {} }),
+      intel: intelWith(report({ defence: { low: 1_800, high: 3_600 } })),
+      reports: [],
+      now: NOW,
+    }).facts.find((f) => f.key === 'defence')?.note;
+    expect(note).not.toMatch(/×/);
+  });
+
+  /** Found in review: a band far under the reader's world printed "×0.0" — a zero for a band above zero. */
+  it('never prints a zero ratio for a band that is above zero', () => {
+    const note = armedReader(report({ defence: { low: 100, high: 300 } }))
+      .find((f) => f.key === 'defence')?.note;
+    expect(note).toMatch(/×<0\.1 /);
+    expect(note).not.toMatch(/0\.0/);
+  });
+
+  describe('the shape of the wall', () => {
+    it('names a majority class', () => {
+      expect(fact(report({ classReading: { kind: 'DOMINANT', cls: 'BULWARK' } }), 'shape')?.value)
+        .toBe('Mostly Bulwark');
+    });
+
+    it('says when no class holds a majority', () => {
+      expect(fact(report({ classReading: { kind: 'EVEN' } }), 'shape')?.value)
+        .toBe('No single class dominates');
+    });
+
+    it('prints a split, leaving out the classes that are not there', () => {
+      const shares = { SKIRMISHER: 10, BULWARK: 90, LANCE: 0 };
+      expect(fact(report({ classReading: { kind: 'SHARES', shares } }), 'shape')?.value)
+        .toBe('Skirmisher 10% · Bulwark 90%');
+    });
+
+    it('says a weak probe could not read it, and why', () => {
+      const shape = fact(report({ classReading: { kind: 'UNREAD' } }), 'shape');
+      expect(shape?.value).toBe('Not read');
+      expect(shape?.note).toMatch(/veil/i);
+    });
+
+    it('draws nothing where nothing fires, or where the reading was never taken', () => {
+      expect(fact(report({ classReading: { kind: 'NONE' } }), 'shape')).toBeUndefined();
+      expect(fact(report(), 'shape')).toBeUndefined();
+    });
+  });
+
+  describe('the Aegis charge', () => {
+    it('prints the band the probe read, dated like every probe line', () => {
+      const shield = fact(report({ shield: { low: 1_200, high: 2_600 } }), 'shield');
+      expect(shield?.value).toBe('1200–2600');
+      expect(shield?.source).toBe('probe');
+    });
+
+    it('says nothing when the reading was never taken', () => {
+      expect(fact(report(), 'shield')).toBeUndefined();
+    });
+
+    /** One quantity, one name: the launch note and the battle report both say "Shield charge". */
+    it('names it as the battle report does', () => {
+      expect(fact(report({ shield: { low: 1_200, high: 2_600 } }), 'shield')?.label).toBe('Shield charge');
+    });
+  });
+
+  describe('the unarmed hulls in the line', () => {
+    it('prints them when there are any', () => {
+      const unarmed = fact(report({ unarmed: { low: 6, high: 6 } }), 'unarmed');
+      expect(unarmed?.value).toBe('6');
+      expect(unarmed?.note).toMatch(/sink/i);
+    });
+
+    it('stays quiet about a line with none, and about a reading never taken', () => {
+      expect(fact(report({ unarmed: { low: 0, high: 0 } }), 'unarmed')).toBeUndefined();
+      expect(fact(report(), 'unarmed')).toBeUndefined();
+    });
+  });
+});
+
 describe('what a probe brings home', () => {
-  /** T9 · D137. A 25% multiplier nobody can see is a rule that does not exist. */
+  /** T9 · D137. A 56% multiplier (D169) nobody can see is a rule that does not exist. */
   describe('combat doctrine', () => {
     it('names every doctrine the probe found, with its level', () => {
       const found = fact(report({ doctrines: { SHIP_POWER: 2, STARSHIP_ENGINEERING: 1 } }), 'doctrines');

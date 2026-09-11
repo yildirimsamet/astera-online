@@ -119,6 +119,7 @@ async function main(): Promise<void> {
         scan_events,
         strategic_interceptions,
         strategic_impacts,
+        dominion_events,
         battle_reports,
         scheduled_events,
         strategic_assets,

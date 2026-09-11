@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILD,
   HULLS,
+  RESEARCH_PROJECTS,
   buildMinutes,
   buildingCost,
   defenceMinutes,
@@ -104,13 +105,34 @@ describe('the projection the server prices against', () => {
 describe('orderMinutes agrees with the rules the server charges', () => {
   it('prices a building against the projected Core', () => {
     const cost = buildingCost('REFINERY', 6);
-    expect(orderMinutes('BUILDING', cost, planet())).toBe(buildMinutes(cost, 5));
+    expect(orderMinutes('BUILDING', cost, planet())).toBe(buildMinutes(cost, 5, {}));
+  });
+
+  /**
+   * THE ROBOTS REACH THE CLIENT'S QUOTE TOO. D198.
+   *
+   * This module's only job is agreeing with the server, and the server reads the
+   * commander's research through `asTech(context.projected.research)`. A client
+   * that quoted the undiscounted figure would contradict the queue the moment the
+   * order landed — which is the one failure this file exists to prevent.
+   */
+  it('shortens a construction quote by the commander-held rung', () => {
+    const cost = buildingCost('REFINERY', 6);
+    const robots = planet({
+      research: [{ id: 'AI_ROBOTS', level: 5, completed: true }],
+    });
+    expect(orderMinutes('BUILDING', cost, robots))
+      .toBeCloseTo(buildMinutes(cost, 5, {}) * 0.75, 10);
+    expect(orderMinutes('INSTRUMENT', cost, robots))
+      .toBeCloseTo(buildMinutes(cost, 5, {}) * 0.75, 10);
+    expect(orderMinutes('SATELLITE', cost, robots))
+      .toBeCloseTo(buildMinutes(cost, 5, {}) * 0.75, 10);
   });
 
   it('prices an instrument and a satellite as construction too', () => {
     const cost = { alloy: 900, crystal: 400, deuterium: 0 };
-    expect(orderMinutes('INSTRUMENT', cost, planet())).toBe(buildMinutes(cost, 5));
-    expect(orderMinutes('SATELLITE', cost, planet())).toBe(buildMinutes(cost, 5));
+    expect(orderMinutes('INSTRUMENT', cost, planet())).toBe(buildMinutes(cost, 5, {}));
+    expect(orderMinutes('SATELLITE', cost, planet())).toBe(buildMinutes(cost, 5, {}));
   });
 
   it('prices a warship against the Shipyard, through the yard multiplier', () => {
@@ -140,9 +162,21 @@ describe('orderMinutes agrees with the rules the server charges', () => {
   it('prices research against the Core, on its own shorter clock', () => {
     const cost = { alloy: 2000, crystal: 1500, deuterium: 0 };
     expect(orderMinutes('RESEARCH', cost, planet())).toBe(researchMinutes(cost, 5));
-    expect(orderMinutes('RESEARCH', cost, planet())).toBeLessThan(buildMinutes(cost, 5));
+    expect(orderMinutes('RESEARCH', cost, planet())).toBeLessThan(buildMinutes(cost, 5, {}));
     expect(orderMinutes('RESEARCH', cost, planet()))
-      .toBeCloseTo(buildMinutes(cost, 5) * BUILD.researchTimeMult, 6);
+      .toBeCloseTo(buildMinutes(cost, 5, {}) * BUILD.researchTimeMult, 6);
+  });
+
+  it('keeps the Core acceleration when a research row supplies its subject', () => {
+    const project = RESEARCH_PROJECTS.DEUTERIUM_SYNTHESIS;
+    const cost = project.costAt(1);
+    const subject = { research: 'DEUTERIUM_SYNTHESIS' as const, level: 1 };
+    const slow = orderMinutes('RESEARCH', cost, planet({ buildings: { CORE: 1 } }), 1, subject);
+    const fast = orderMinutes('RESEARCH', cost, planet({ buildings: { CORE: 10 } }), 1, subject);
+
+    expect(slow).toBe(researchMinutes(cost, 1));
+    expect(fast).toBe(researchMinutes(cost, 10));
+    expect(fast).toBeLessThan(slow);
   });
 
   /**
@@ -160,7 +194,7 @@ describe('orderMinutes agrees with the rules the server charges', () => {
     });
     expect(orderMinutes('RESEARCH', cost, view)).toBe(researchMinutes(cost, 5));
     // ...while a building on the same screen DOES take the queued level.
-    expect(orderMinutes('BUILDING', cost, view)).toBe(buildMinutes(cost, 6));
+    expect(orderMinutes('BUILDING', cost, view)).toBe(buildMinutes(cost, 6, {}));
   });
 
   /** The commander's yard automation is theirs, and the preview must spend it. */

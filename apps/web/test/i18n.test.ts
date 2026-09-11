@@ -66,6 +66,18 @@ const tags = (text: string): Set<string> =>
 const ENGLISH = flatten(en);
 const TURKISH = flatten(tr);
 
+describe('the Store protection promise', () => {
+  it('states the live ten-percent, eight-hour rule on both decision surfaces', () => {
+    for (const locale of [en, tr]) {
+      for (const copy of [locale.vocabulary.building.VAULT.role, locale.vocabulary.building.VAULT.detail, locale.planet.roles.vault]) {
+        expect(copy).toMatch(/10/);
+        expect(copy).toMatch(/8/);
+        expect(copy).not.toMatch(/15/);
+      }
+    }
+  });
+});
+
 const RESEARCH_DETAIL_KEYS = {
   ISOTOPE_SPECTROMETRY: 'isotopeDetail',
   DENSE_FUEL_CELLS: 'denseDetail',
@@ -73,6 +85,7 @@ const RESEARCH_DETAIL_KEYS = {
   DEATH_STAR_PROTOCOL: 'deathStarDetail',
   DEUTERIUM_SYNTHESIS: 'synthesisDetail',
   YARD_AUTOMATION: 'yardDetail',
+  AI_ROBOTS: 'robotsDetail',
   PROSPECTOR_HOLDS: 'holdsDetail',
   CARGO_HOLDS: 'cargoDetail',
   SHIP_POWER: 'powerDetail',
@@ -92,21 +105,16 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
-  // "Hangar" is the established Turkish aviation term as well as the English
-  // one; replacing it only to make the strings differ would make the translation
-  // less natural.
-  'vocabulary.building.HANGAR.name',
-  // Same word, same reason, on the launch sheet's room bar.
-  'launch.hangarLabel',
-  // And on the craft sheet's room figure, which names the same building.
-  'action.statRoom',
-  // A bare numeric placeholder has no language to translate. The label beside it
-  // carries the Turkish wording.
-  'gains.hangar.value',
   // The build-time tag is the formatted duration and nothing else — `duration()`
   // is what speaks Turkish here. Its accessible name, `upgradeRow.takesLabel`, is
   // the sentence, and that one IS translated.
   'upgradeRow.takes',
+  // "Lv3" IS A MARK, NOT A WORD. It is two Latin letters and a numeral, and it
+  // means the same thing to a Turkish reader as it does to an English one —
+  // "Sv3" would be a translation of the abbreviation rather than of the fact, and
+  // the fact is the tier. The rank badge on the disc draws the same figure as
+  // stars, in no language at all.
+  'planet.reach.hullTier',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',
@@ -125,6 +133,12 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // A multiplication sign and a placeholder. The verdict beside it — Güçlü, Zayıf,
   // Eşit — is what carries the Turkish, and that one is translated.
   'counter.multiplier',
+  // The dot between the two firepower lines and between the notes under them.
+  // Punctuation; the lines and notes it separates are translated. D199.
+  'counter.lineJoin',
+  // "Probe, 2m ago" — the source and the age are both translated where they are
+  // made; the comma between them is all this string holds. D199.
+  'counter.compareRecord',
   'units.plus',
   'units.minus',
   'units.millions',
@@ -263,7 +277,7 @@ describe('decision sheets explain every item', () => {
     }
   });
 
-  it('has a substantial, unique explanation for all fifteen research projects', () => {
+  it('has a substantial, unique explanation for every research project', () => {
     expect(Object.keys(RESEARCH_DETAIL_KEYS).sort()).toEqual([...RESEARCH_PROJECT_IDS].sort());
     for (const locale of [en, tr]) {
       const seen = new Set<string>();
@@ -289,12 +303,25 @@ describe('decision sheets explain every item', () => {
     expect(en.research.yardDetail).toContain('does not speed up ground defences');
     expect(tr.research.yardDetail).toContain('Yer savunmalarını hızlandırmaz');
 
+    // And the robots are its opposite number: the surface, never the yard. D198.
+    expect(en.research.robotsDetail).toContain('does not speed up ships');
+    expect(tr.research.robotsDetail).toContain('Gemileri hızlandırmaz');
+
     // Strategic stock is capped independently on every world.
     expect(en.research.stockpileDetail).toContain('on each world');
     expect(tr.research.stockpileDetail).toContain('her dünya için');
 
+    // Build duration comes from the rule, never from a translated literal.
+    expect(en.planet.deathStar.buildTime).toContain('{{duration}}');
+    expect(tr.planet.deathStar.buildTime).toContain('{{duration}}');
+
     // The weapon itself is consumed; there is no separately built charge.
     expect(en.research.deathStarDetail).not.toContain('separate charge');
+    // D179 retired fleet destruction and capture. The project must not sell either old effect.
+    expect(en.research.deathStarDetail).not.toMatch(/destroys every fleet|capture/i);
+    expect(tr.research.deathStarDetail).not.toMatch(/tüm filoyu|ele geçir/i);
+    expect(en.research.deathStarDetail).toContain('never changes hands');
+    expect(tr.research.deathStarDetail).toContain('el değiştirmez');
     expect(tr.research.deathStarDetail).not.toContain('ayrı hazırlanan');
     expect(en.research.deathStarDetail).toContain('two hours');
     expect(tr.research.deathStarDetail).toContain('iki saat');

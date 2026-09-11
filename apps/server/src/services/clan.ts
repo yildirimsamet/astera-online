@@ -38,6 +38,7 @@ import {
   planets,
   players,
   seasons,
+  type ClanMembershipRole,
 } from '../db/schema.js';
 import { publishPrivate, publishShard, type ClanPrivateEventKind } from '../stream/bus.js';
 import {
@@ -57,6 +58,7 @@ import {
   saveResources,
 } from './planet.js';
 import { planetView } from './planetView.js';
+import { clanDominionSql, dominionScore, playerDominionSql } from './dominion.js';
 
 export interface ClanActor {
   playerId: string;
@@ -261,7 +263,7 @@ async function publishClan(
   }
 }
 
-const clanScoreSql = sql<number>`round(${clans.dominionTaken} - ${clans.dominionLost})`;
+const clanScoreSql = clanDominionSql;
 
 export interface PublicClanView {
   id: string;
@@ -272,6 +274,27 @@ export interface PublicClanView {
   leaderName: string;
   memberCount: number;
   score: number;
+  /**
+   * WHO IS IN IT — on the profile, never on the listing. D183.
+   *
+   * A clan is a public institution and its roster is part of what it is: the one
+   * fact somebody deciding whether to apply actually needs, and the directory
+   * offered a member count with no way to see past it.
+   *
+   * NOTHING NEW IS REVEALED. Commander identity and Dominion are galaxy-wide on
+   * `/api/leaderboard` (D76); this collects them under the clan they belong to.
+   * WORLDS ARE THE LINE and they are not here — where a member lives is a probe's
+   * product (D127), and a roster must never become a free address book.
+   *
+   * Empty on the listing, deliberately: five names per row down a scrolling
+   * directory is a wall rather than a list, and the profile is one tap away.
+   */
+  members: {
+    playerId: string;
+    username: string;
+    role: ClanMembershipRole;
+    dominion: number;
+  }[];
 }
 
 export async function listPublicClans(
@@ -314,7 +337,15 @@ export async function listPublicClans(
       .limit(input.limit),
     db.select({ value: count() }).from(clans).where(where),
   ]);
-  return { clans: rows, total: totals[0]?.value ?? 0 };
+  /*
+    THE LISTING CARRIES NO ROSTER. D183 — five names per row down a scrolling
+    directory is a wall rather than a list, and the profile is one tap away. The
+    field is present and empty so both payloads parse with one schema.
+  */
+  return {
+    clans: rows.map((row) => ({ ...row, members: [] })),
+    total: totals[0]?.value ?? 0,
+  };
 }
 
 export async function publicClan(
@@ -344,7 +375,33 @@ export async function publicClan(
     .where(and(eq(clans.id, clanId), eq(clans.seasonId, actor.seasonId), isNull(clans.disbandedAt)))
     .groupBy(clans.id);
   if (!row) throw new GameError('CLAN_NOT_FOUND', 'No such active clan', 404);
-  return row;
+
+  /*
+    THE ROSTER, IN THE ORDER THE CLAN ITSELF USES. D183.
+
+    `slot` is the seat, so leader-first falls out of it rather than being sorted
+    for — the same order `readClanPresence` lists teammates in, which is what stops
+    the profile and the clan's own screen disagreeing about who is where.
+
+    NO WORLDS. `clan_memberships` joins straight to `players` and `accounts` here
+    and deliberately not to `planets`: where a member lives is a probe's product
+    (D127), and this payload is public to anyone in the galaxy.
+  */
+  const members = await db
+    .select({
+      playerId: clanMemberships.playerId,
+      username: accounts.displayName,
+      role: clanMemberships.role,
+      // The same expression the chronicle and the ladder use: taken minus lost. D76.
+      dominion: playerDominionSql,
+    })
+    .from(clanMemberships)
+    .innerJoin(players, eq(players.id, clanMemberships.playerId))
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .where(and(eq(clanMemberships.clanId, clanId), isNull(clanMemberships.leftAt)))
+    .orderBy(asc(clanMemberships.slot));
+
+  return { ...row, members };
 }
 
 export async function clanLeaderboard(
@@ -573,7 +630,7 @@ export async function readClanHome(db: Db, accountId: string, now: Date) {
       tag: clan.tag,
       description: clan.description,
       recruiting: clan.recruiting,
-      score: Math.round(clan.dominionTaken - clan.dominionLost),
+      score: dominionScore(clan.dominionTaken, clan.dominionLost),
       role: membership.role,
       matureAt: membership.matureAt.toISOString(),
       mature: membership.matureAt <= now,

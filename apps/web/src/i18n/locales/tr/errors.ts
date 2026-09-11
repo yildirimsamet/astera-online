@@ -63,6 +63,11 @@ export const errors = {
   TIER_BAND: 'Bu komutanın toplam gücü senden fazla yüksek',
   TIER_BAND_WEAK: 'Bu komutanın toplam gücü senden fazla düşük',
   CANNOT_INTERCEPT: 'Araçların yetişemeden diskten çıkacak',
+  NEWCOMER_SHIELDED: 'O komutan galaksideki ilk gününde; henüz akın edilemez',
+  RIVAL_LIMIT: 'Zaten {{max}} komutanı izliyorsun. Önce birini kaldır.',
+  PROSPECTORS_RESTING: 'Araçların henüz indi; birazdan yeniden hazır olacak.',
+  SHIELD_WOULD_DROP: 'Bu akın kendi ilk gün kalkanını bitirir. Yine de göndermek için onayla.',
+  RENDEZVOUS_MOVED: 'Yörüngesinde ilerledi — uçuş süresi artık {{minutes}}dk. Kontrol edip tekrar gönder.',
   /* Raised by the transfer lane with no detail and by the trade lane with one, so
      it is written without interpolation: a placeholder rendered raw on the older
      caller is worse than a sentence that fits both. */
@@ -149,7 +154,6 @@ export const errors = {
   PROBE_COOLDOWN: 'O dünyaya az önce baktın; yeni sonda {{minutes}} dakika sonra gönderilebilir.',
   PROSPECTOR_CAP: 'En fazla {{max}} Kazıcı tutabilirsin, elinde {{have}} tane var.',
   PROSPECTOR_CAP_atLimit: 'Elinde zaten {{max}} Kazıcı var; sınır bu.',
-  HANGAR_FULL: 'Hangar dolu: {{capacity}} yerin {{used}} kadarı kullanımda; bu sipariş {{needed}} yer istiyor.',
   GROUND_SLOTS_FULL: 'Yer savunması dolu: {{capacity}} yerin {{used}} kadarı kullanımda; bu sipariş {{needed}} yer istiyor.',
   INSUFFICIENT_FUEL: 'Döteryum yetmiyor: bu kalkış {{needed}} istiyor, elinde {{have}} var.',
   QUEUE_FULL: '{{queue}} üretim sırası dolu',
@@ -180,7 +184,6 @@ export const errors = {
   SHIPYARD_TOO_LOW: '{{level}}. seviye Tersane gerekiyor',
   SLOT_COOLING: 'O yuva hâlâ yeniden kuruluyor; {{minutes}} dakika kaldı',
   TARGET_PROSPECTOR_CAP: 'O dünya en fazla {{max}} Kazıcı tutabilir; hâlihazırda {{have}} tane var.',
-  TARGET_HANGAR_FULL: 'O dünyanın Hangarı dolu: {{capacity}} yerin {{used}} kadarı kullanımda; bu filo {{needed}} yer istiyor.',
   UNAUTHENTICATED: 'Önce giriş yap',
   UNKNOWN: 'Bir şeyler ters gitti',
   USERNAME_TAKEN: 'Bu ad kullanılıyor',

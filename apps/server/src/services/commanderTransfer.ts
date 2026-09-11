@@ -5,7 +5,7 @@ import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEli
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, debrisFields, mainVacancies,
-  miningRuns, missions, planets, players, probeWorldMemories, researchOrders, returnApplications,
+  miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns } from '../db/schema.js';
 import { loadLocked } from './planet.js';
 import { lockAdmission } from './returnQueue.js';
@@ -206,6 +206,23 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         ...(returning ? { mainEnteredAt: now } : {}),
         ...(membership ? { clanLockedUntil: new Date(Math.max(player.clanLockedUntil?.getTime() ?? 0, now.getTime() + CLAN.membershipLockMinutes * 60_000)) } : {}),
       }).where(eq(players.id, playerId));
+      /*
+        THE RIVAL MARKS DO NOT COME ALONG. D183.
+
+        A mark names a COMMANDER, and a commander who is not in this galaxy is not
+        on this disc — `rivalSlotOf` matches by controller id, so a mark that
+        crossed with its owner would never be drawn again while still counting
+        against `RIVAL.max`. A commander back from Silent Space would find their
+        bookmarks gone AND their five slots spent.
+
+        Both directions, exactly as `demolish` clears them: what this commander was
+        watching, and what other commanders were watching about them. The second set
+        belongs to people who stayed, and the thing they were watching has left.
+      */
+      await tx.delete(playerRivals).where(or(
+        eq(playerRivals.playerId, playerId),
+        eq(playerRivals.targetPlayerId, playerId),
+      ));
       for (const event of events) await tx.update(scheduledEvents).set({ seasonId: target.id }).where(eq(scheduledEvents.id, event.id));
       for (const w of worlds) await refreshSensorEpoch(tx, w.id, now);
       for (const observer of observers) await publishSight(tx, observer.id);

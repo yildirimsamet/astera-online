@@ -89,7 +89,7 @@ export function registerIntelRoutes(app: FastifyInstance): void {
          * could not read either one anywhere in the game.
          *
          *   · `doctrines` is what the target has researched into their hulls. It is
-         *     worth up to a 25% combat multiplier, and `CLAUDE.md` requires in as
+         *     worth up to a 56% combat multiplier (D169), and `CLAUDE.md` requires in as
          *     many words that combat-relevant doctrine be PROBE-VISIBLE (D137). It
          *     was probe-collected and invisible, which is the opposite.
          *   · `interceptor` is whether that world can shoot a strategic weapon down
@@ -110,6 +110,15 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.interceptor === undefined
           ? {}
           : { interceptor: r.report.silhouette.interceptor }),
+        /*
+          THE THREE READINGS D199 ADDED — the shape of what fires, the Aegis charge
+          and the unarmed hulls in the line. ABSENT on a report written before them,
+          never defaulted: `{ low: 0, high: 0 }` means "measured, and empty", and a
+          launch sheet must not draw an undefended world out of a missing field.
+        */
+        ...(r.report.classReading ? { classReading: r.report.classReading } : {}),
+        ...(r.report.shield ? { shield: r.report.shield } : {}),
+        ...(r.report.unarmed ? { unarmed: r.report.unarmed } : {}),
         detected: r.report.detected,
       })),
       probeCost: { alloy: PROBE.alloy, crystal: PROBE.crystal, deuterium: 0 },

@@ -1,4 +1,5 @@
-import type { BuildingId, InstrumentId, Resources, SatelliteId, ShipTier } from './types.js';
+import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
+import type { BuildingId, InstrumentId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /**
@@ -230,45 +231,34 @@ export const ECON = {
    * falls further from the crossing, and the floor stays the same SHARE of a bigger
    * pile, so both the protected and the raidable amounts grow.
    */
-  storageScale: 3.125,
+  storageScale: 5.25,
 
   /**
-   * Hours the works hold before they STOP. D16.
+   * Hours the works hold before they STOP. D16, restored to ten at D190.
    *
-   * Production does not flow into storage on its own: it fills a buffer inside
-   * the Refinery and the Extractor, and when that buffer is full the works stand
-   * idle until the player empties them. One tap, and they start again.
+   * Production does not flow into storage on its own: it fills a buffer inside the
+   * Refinery and the Extractor, and when that buffer is full the works stand idle
+   * until the player empties them. One tap, and they start again. Nothing is ever
+   * LOST to a full works — `collect` takes `min(buffer, room)` and leaves the
+   * remainder where it is — so this dial costs unmade production, never stored ore.
    *
-   * TEN HOURS IS A NIGHT PLUS A MARGIN, and it is the single number that decides
-   * whether the casual player is excluded. Measured across a 14-day season: a
-   * commander who opens the game twice a day throws away 28.8% of their
-   * production against an active player's 6.5%. That gap IS the effort gradient,
-   * and it is deliberately set at the harsher end because everything else in this
-   * economy is generous to the casual player. Raise it to 12 and the waste goes
-   * to nearly zero.
+   * TEN HOURS IS A NIGHT PLUS A MARGIN, and it is the number that decides whether a
+   * working commander's midday check-in has a job. The audience is out of the house
+   * for eleven hours; at twelve the check-in bought nothing, at ten the last hour of
+   * the working day is only produced if somebody looked. D16 measured the same
+   * figure from the other side: a commander who opens the game twice a day throws
+   * away 28.8% of their production against an active player's 6.5%, and that gap IS
+   * the effort gradient. Raise it to twelve and the waste goes to nearly zero — the
+   * economy cutover did exactly that, and this restores it.
+   *
+   * IT MUST STAY SMALLER THAN THE STORE AT EVERY VAULT LEVEL, INCLUDING ZERO. That
+   * is D171's rule, and the reason cutting this alone was once refused: a works
+   * bigger than the store strands ore it cannot bank — a salvage haul with nowhere
+   * to land on a young world, a clan share refused for want of room. Ten against a
+   * Vault-0 store of 15.75 clears it at both ends; `economy.test.ts` holds the whole
+   * ladder.
    */
-  /**
-   * LEFT AT TEN THROUGH D169, AND THE REASON IS WORTH WRITING DOWN.
-   *
-   * The works sit in FRONT of storage, and the old rule was that they must hold
-   * less than the store they feed — measured at Vault 0, the tightest the store
-   * ever was. The owner's storage table opens at three hours, so ten no longer
-   * clears that bar and the obvious move was to cut it with the store.
-   *
-   * CUTTING IT ALONE WOULD HAVE BEEN THE WRONG MOVE, and D169 was right to refuse:
-   * `collect` takes `min(buffer, room)` and leaves the remainder in the works, so
-   * nothing is ever lost to a full store — only left where it is. A two-hour works
-   * would have thrown away no ore and cost the game a great deal: 1,200 alloy of
-   * battle salvage with nowhere to land on a young world, a clan share refused for
-   * want of room, an eight-hour absence that stops producing after two.
-   *
-   * D171 FIXED IT FROM BOTH ENDS INSTEAD. The store grew by `ECON.storageScale`
-   * and the works came down to six, so the works are now smaller than the store at
-   * every Vault level INCLUDING ZERO — 6 against 7.5 — and everything a world
-   * produces can be banked. Six hours still holds a salvage haul and an overnight
-   * absence. Moving one dial was the wrong fix; moving both was the right one.
-   */
-  collectorHours: 6,
+  collectorHours: ECONOMY_PROFILE.collectorHours,
 
   /**
    * THE VAULT FLOOR IS DENOMINATED IN HOURS OF THAT RESOURCE'S OWN PRODUCTION,
@@ -347,11 +337,53 @@ export const ECON = {
    * ceiling are both true by construction now rather than by measurement, which is
    * the only way a derived constant stops being a trap.
    *
-   * 0.15 is the middle of what the old pair actually measured — 11% at Vault 0
-   * rising to 18% at Vault 20 — so the protected SHARE is unchanged on average and
-   * no longer grows as a season goes on, which D161 called backwards.
+   * 0.15 WAS THE MIDDLE OF WHAT THE OLD PAIR MEASURED and it was measured against
+   * the wrong thing. 0.10 AT D193, owner instruction, and the reason is the one
+   * number this share was never checked against: THE WORKING DAY.
+   *
+   * The audience is out of the house for eleven hours (D188). A share of STORAGE
+   * HOURS grows with the store — three hours to forty across the ladder — while
+   * that absence stays eleven, so protection eventually covers the whole of it. At
+   * 0.15 the crossing is Vault 11, the middle of a season, and past it a raid on a
+   * world with NO DEFENCE AT ALL whose commander was at work carried home NOTHING.
+   * Measured, and raising the attacker's hold to twenty-four thousand changed
+   * nothing, because the hold was never the binding constraint.
+   *
+   * A commander learns that in two attempts and never flies a third, which is the
+   * quiet death of the information layer: nobody pays for a probe to find a target
+   * that cannot pay. It is also why `ARR` would not move for any economy dial —
+   * fleets are not held because raids do not pay.
+   *
+   * AT 0.10 THE FLOOR STAYS UNDER ELEVEN HOURS AT EVERY VAULT LEVEL A SEASON
+   * REACHES, so an absence is always partly exposed, and a raid returns roughly
+   * half an hour of the target's production — a quarter of that again with
+   * `CARGO_HOLDS` bought. It pays the fuel and the risk; it does not out-earn a
+   * building, which is the whole point: this is a development game with raiding in
+   * it. `raidable.test.ts` holds both halves.
    */
-  protectedShare: 0.15,
+  protectedShare: 0.10,
+
+  /**
+   * AND IT NEVER COVERS MORE THAN A NIGHT. D193.
+   *
+   * A SHARE ALONE CANNOT STATE THIS RULE, which is why lowering it only moved the
+   * problem: the store runs from three hours to forty and the commander's absence
+   * does not, so any fixed percentage eventually covers the whole of it. At 0.15
+   * the crossing was Vault 11; at 0.10 it is Vault 15. Later is not fixed.
+   *
+   * Eight hours is a NIGHT, and that is the promise in words: sleep and your ore is
+   * safe; go to work and some of it is not. Under the eleven-hour working day D188
+   * measured, so an absence is always partly exposed — at Vault 20 the store holds
+   * 210 hours and eight of them are covered, which is under four per cent and
+   * therefore still inside D61's half-a-store and D161's fifth-of-a-store ceilings
+   * by a wide margin.
+   *
+   * THE VAULT DOES NOT STOP SELLING ANYTHING. Its first job is DEPTH (D190) and
+   * that grows for ever; this caps only the second. A commander who wants more ore
+   * out of reach buys a bigger store and keeps less of it collected, which is a
+   * decision rather than a level.
+   */
+  protectedHoursCap: 8,
   /**
    * The floor a brand-new planet gets, in alloy, before the hours rule outgrows it
    * — cut a quarter with the two hour figures above at D161, so the opening's
@@ -519,10 +551,10 @@ export const START = {
    * The figure moved because `costBase` and `costMult` did. The DERIVATION did
    * not, and `test/invariants.test.ts` still holds this to it exactly.
    */
-  alloy:
-    3 * Math.round(ECON.costBase * ECON.costMult)
-    + 2 * scalePrice(240, ECONOMY_TEMPO.hullPrice),
-  crystal: 3 * Math.round(ECON.crystalCostBase * ECON.crystalCostMult),
+  alloy: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
+    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.alloy, 600),
+  crystal: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
+    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.crystal, 120),
   deuterium: 0,
 } as const satisfies Resources;
 
@@ -559,8 +591,8 @@ export const OPENING_BONUS = {
    * any future rate change, and it stays the same thing — an evening's output the
    * commander did not have to wait for.
    */
-  alloy: Math.round(4 * ECON.alloyBase * ECON.alloyMult),
-  crystal: Math.round(4 * ECON.crystalBase * ECON.crystalMult),
+  alloy: 1500 - START.alloy,
+  crystal: 400 - START.crystal,
   /**
    * THE STARTING TANK. T6.
    *
@@ -574,7 +606,7 @@ export const OPENING_BONUS = {
    * A figure written as "ten launches" stops meaning ten launches the first time
    * `FUEL.scale` moves.
    */
-  deuterium: 40,
+  deuterium: 50,
 } as const satisfies Resources;
 
 /**
@@ -616,13 +648,6 @@ export const START_BUILDINGS = {
   SHIPYARD: 0,
   /** No plant, and no research to allow one. Deuterium is earned before it flows. */
   DEUTERIUM_PLANT: 0,
-  /**
-   * ZERO, AND `HANGAR.base` IS WHY THAT IS SAFE. A world opens with no Hangar and
-   * still has to keep a fleet, so the ladder starts at a real figure rather than
-   * at nothing — see the block. A base of zero would lock the game shut on the
-   * first Wasp anybody bought.
-   */
-  HANGAR: 0,
 } as const satisfies Record<BuildingId, number>;
 
 /**
@@ -716,8 +741,23 @@ export const START_BUILDINGS = {
  * THAT ARGUMENT IS REASONED, NOT MEASURED. It is the single most likely thing in
  * the rewrite to fail the five-seed gate. If it does, put it back to 1.
  */
+/**
+ * DEAD SINCE THE ECONOMY PROFILE LANDED, AND KEPT FOR ITS MEASUREMENTS. D187.
+ *
+ * `instrumentCost` no longer reads this or `INSTRUMENT_COST_MULT` below — it prices
+ * every instrument from `profileIncome((level + 1) * 2)` against `2 ** level` hours.
+ * The tables above are eight seasons of measurement and are the reason this is not
+ * simply deleted, but nothing in the running game consults either constant.
+ *
+ * THE MEASUREMENT STILL APPLIES TO THE PRICE THAT REPLACED THEM, and points at the
+ * open ARR problem: four instruments at L5 now cost 276,848 — MORE than the 235,962
+ * the table above records as failing ARR on every seed. Re-pricing the information
+ * layer is an owner decision (see `docs/balance.md`, 2026-09-10), so this is
+ * reported here rather than changed.
+ */
 export const INSTRUMENT_LEVEL_WORTH = 2;
 
+/** Dead with `INSTRUMENT_LEVEL_WORTH`; `instrumentCost` ignores its `id` entirely. */
 export const INSTRUMENT_COST_MULT = {
   TELESCOPE: 3,
   RADAR: 2,
@@ -1013,7 +1053,7 @@ export const COMBAT = {
  * moves through it instead of being swallowed by it.
  */
 export const TRAVEL = {
-  distanceFactor: 1.2,
+  distanceFactor: ECONOMY_PROFILE.distanceFactor,
 } as const;
 
 /**
@@ -1112,6 +1152,21 @@ export const INTEL = {
   accuracySlope: 0.12,
   accuracyMin: 0.3,
   accuracyMax: 1.0,
+
+  /**
+   * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
+   *
+   * A par probe — the sending Shipyard level with the target's Veil — names the
+   * class holding the majority; one two rungs ahead reads the whole split, the
+   * same bar `DEATH_STAR.probeVisibilityAccuracy` sets for seeing a weapon on the
+   * pad. Anything weaker reads no shape at all.
+   */
+  classMajorityAccuracy: 0.55,
+  classSharesAccuracy: 0.75,
+  /** "Mostly Bulwark" means MORE than half the firepower. Exactly half is no majority. */
+  classMajority: 0.5,
+  /** The split is printed in these steps and always adds up to a hundred. */
+  classShareStep: 10,
 
   /** Clarity 0: a reading refreshes at most this often... */
   intermittentRefreshMin: 20,
@@ -1326,8 +1381,25 @@ export const SENSOR = {
    * Read against `fleetValue`, which is the quantity the hull table is priced on,
    * so the buckets move with prices instead of drifting away from them.
    */
-  massMedium: scalePrice(8_000, ECONOMY_TEMPO.hullPrice),
-  massHeavy: scalePrice(40_000, ECONOMY_TEMPO.hullPrice),
+  /**
+   * HOW MANY CRAFT MAKE A WING, AND WHICH TIER EACH WORD MEANS. D197.
+   *
+   * These replaced `scalePrice(8_000 / 40_000, ECONOMY_TEMPO.hullPrice)`, which had
+   * stopped tracking anything: `ECONOMY_TEMPO.hullPrice` ceased pricing hulls when
+   * the executable economy took over, so two figures that the docblock above
+   * promises "move with prices" were frozen against a table that had moved. The
+   * figures were still RIGHT — swept across the whole catalogue — and nothing
+   * connected them to it, which is a trap rather than a bug: the next price change
+   * would have moved every hull and left both buckets behind, in silence.
+   *
+   * The thresholds themselves are `massMediumValue()` and `massHeavyValue()` in
+   * `intel.ts`, because a value read off `HULLS` cannot be computed in this file —
+   * the hull table imports it. What stays here is the DIAL: a wing is ten craft,
+   * and the words separate which tier those ten are.
+   */
+  massWing: 10,
+  massMediumTier: 2,
+  massHeavyTier: 4,
 } as const;
 
 /**
@@ -1490,41 +1562,6 @@ export const PROBE = {
  * so the ceiling a developed miner reaches is where it always was.
  */
 /**
- * HOW MUCH FLEET A WORLD MAY KEEP. T4.
- *
- * Nothing bounded a fleet but a purse, so the only question a rich commander ever
- * faced was "how many more can I afford" — the wealth ladder D2 exists to refuse,
- * arriving through the shipyard instead of the score. The owner's brief was exact:
- * unlimited or far too many should not be buildable, and enough or a little more
- * should be.
- *
- * MEASURED, NOT GUESSED. Across the five gate seasons a commander ends with a
- * median 470 units of room in ships, 2,150 at the ninetieth percentile and 3,370 at
- * the very top, against a median Command Core of 14. The ladder below is fitted to
- * that shape:
- *
- *   Hangar 0    100    the opening fleet still fits, but expansion presses early
- *   Hangar 2    260    the median commander must invest deliberately
- *   Hangar 12  1060    the top tenth no longer gets a mostly unused warehouse
- *   Hangar 14  1220    the ceiling at Core 15 remains finite and meaningful
- *
- * So a casual player never meets it, a fleet player spends real levels on it, and
- * unbounded accumulation stops. THE BINDING CONSTRAINT IS THE CORE, not the price:
- * no building may reach its Core's level, so the ceiling is set by how developed
- * a world is rather than by how much ore was poured into one building.
- *
- * `base` IS NOT OPTIONAL AND MAY NOT BE ZERO. `START_BUILDINGS.HANGAR` is 0 and a
- * fresh world must be able to keep the ships its opening grant buys; the neutral
- * templates are seeded at Hangar 0 too and the tier-3 garrison alone is 70 units.
- */
-export const HANGAR = {
-  base: 100,
-  perLevel: 80,
-  /** Hangar room is a strategic ceiling, so each rung costs twice an ordinary building. */
-  costMultiplier: 2,
-} as const;
-
-/**
  * HOW MANY EMPLACEMENTS A WORLD MAY STAND. T4b.
  *
  * This ships with the Hangar and cannot be deferred, because the Hangar is what
@@ -1604,6 +1641,15 @@ const ladderTop = (ladder: readonly number[]): number => ladder[ladder.length - 
 
 /** Build time left on the yard, by rung. Three tenths off at the top. */
 const YARD_SPEED_LADDER = [0.90, 0.85, 0.80, 0.75, 0.70] as const;
+/**
+ * Build time left on the SURFACE, by rung. A quarter off at the top. D198.
+ *
+ * The Yard's opposite number, and deliberately the shallower of the two. It
+ * reaches further — six buildings, four instruments and four satellites, on every
+ * world a commander holds — and a Command Core that lands sooner brings forward
+ * everything standing behind it, so the same figure would not be the same price.
+ */
+const ROBOT_SPEED_LADDER = [0.95, 0.90, 0.85, 0.80, 0.75] as const;
 /** What one mining craft carries, by rung. */
 const HOLD_LADDER = [1.25, 1.50, 1.75, 2.00, 2.50] as const;
 /** What one hull carries home from a raid, by rung. */
@@ -1623,8 +1669,9 @@ export const RESEARCH_TECH = {
   engineeringMaxLevel: 2,
   weaponMaxLevel: FLEET_STAT_LADDER.length,
   economyMaxLevel: YARD_SPEED_LADDER.length,
-  /** The five tables above, and they are the only statement of each effect. */
+  /** The six tables above, and they are the only statement of each effect. */
   yardSpeedLadder: YARD_SPEED_LADDER,
+  robotSpeedLadder: ROBOT_SPEED_LADDER,
   holdLadder: HOLD_LADDER,
   cargoLadder: CARGO_LADDER,
   fleetStatLadder: FLEET_STAT_LADDER,
@@ -1650,7 +1697,7 @@ export const RESEARCH_TECH = {
    * research is a `hullTech` factor and those three are not Fleet V2 hulls, which
    * is the same boundary D101 drew when it named what took the disc's factor.
    */
-  propulsionPerLevel: 0.25,
+  propulsionPerLevel: ECONOMY_PROFILE.propulsionPerLevel,
   /** Rungs on Propulsion. Its own, because speed takes no share of `powerCeiling`. */
   propulsionMaxLevel: 4,
 } as const;
@@ -1658,7 +1705,7 @@ export const RESEARCH_TECH = {
 /**
  * THE WEAPON THAT ANSWERS THE WEAPON. T10.
  *
- * A Death Star is 33,000 resources, an hour of build, a Command Core of twelve, a
+ * A Death Star is 73,815 resources, an hour of build, a Command Core of twelve, a
  * Shipyard of five and the whole Frontier chain. An interceptor that stopped it
  * cheaply would throw every bit of D113's work away, so the two are priced against
  * each other rather than separately.
@@ -1668,7 +1715,7 @@ export const RESEARCH_TECH = {
  * many words. The timed radar ring is already drawn on the disc (D126), so a weapon
  * dying on it is a rule with a picture: the explosion happens in space, over the
  * ring, beside the world; the Radar rung suddenly buys something enormous; and an
- * attacker who scouts can read the reach and price the risk before spending 33,000.
+ * attacker who scouts can read the reach and price the risk before spending 73,815.
  *
  * ONE CHARGE, AND THE NUMBER IS THE WHOLE INTERLOCK. At two, a loaded defender is
  * immune to a commander who may only stockpile two weapons, and the Death Star
@@ -1700,9 +1747,8 @@ export const ANTI_STRATEGIC = {
    * THE FLOOR IS THE ONE RULE THAT CANNOT BEND: answering a strike must cost LESS
    * than making one. Above that line the battery is a defender's investment; at or
    * past it an attacker drains a defender simply by launching, and firing becomes
-   * profitable without ever landing. D179 halved the weapon to 32,500, so 41,000
-   * would have crossed exactly that line — the battery follows it down to 20,500,
-   * holding the same ~63% share it has had since D170.
+   * profitable without ever landing. The owner's table puts the battery at 44,291
+   * against a 73,815 weapon — about 60%, inside the band both tests hold.
    *
    * FINAL FIGURES, like `DEATH_STAR.cost` and the research tables. No tempo scale
    * runs on top of them — what the sheet quotes is what a person typed — so the
@@ -1711,12 +1757,14 @@ export const ANTI_STRATEGIC = {
    * It still reloads in half the time the weapon takes to build, because a
    * defender who spent their shot should not be defenceless for the rest of the
    * hour. `interceptor-cost.test.ts` holds the ratio against the weapon and
-   * `strategic-strike.test.ts` holds the floor.
+   * `strategic-strike.test.ts` holds the floor and the half. Typed rather than
+   * read off `DEATH_STAR.buildMinutes` only because that object is declared
+   * below this one; the test is what keeps the two in step.
    */
   cost: {
-    alloy: 11_000,
-    crystal: 8_000,
-    deuterium: 1_500,
+    alloy: 28_733,
+    crystal: 14_367,
+    deuterium: 1_191,
   },
   buildMinutes: 30,
 } as const;
@@ -1724,36 +1772,50 @@ export const ANTI_STRATEGIC = {
 export const FUEL = {
   scale: 10_000,
   /**
-   * HOW THIRSTY EACH SHIP TIER IS, ON ITS OWN FUEL MASS. D153, owner instruction.
+   * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
+   * D153's tier ladder outright.
    *
-   * THE REPORT WAS THAT SHIPS BURNED ALMOST NOTHING. Fuel is mass × distance and
-   * mass was `bulk`, which is derived from hull VALUE — so a late fleet already
-   * cost more to move than an early one, but only in proportion to what it cost to
-   * BUILD. A refinery that covered the opening covered the endgame too, and
-   * deuterium went from being the lesson of the first hour to a rounding error,
-   * which is the one outcome T6 exists to prevent.
+   * D153 charged `bulk x tierMass` with the rungs x1/x2/x4/x5, and the tier-1 rung
+   * of x1 was written as a protection for the opening. Measured at D195 it was
+   * doing the opposite of its job: power per unit of fuel ran 13.4 at tier 1, 10.6
+   * at tier 2, 8.2 at tier 3 and 10.6 at tier 4, so the ENTRY hull was the most
+   * fuel-efficient warship in the game and the mid-game the least. The owner named
+   * the consequence exactly — *"bu sefer tier 1 karli diye full ondan uretiyorlar"*
+   * — and a ladder that makes the cheapest hull the efficient one is a ladder that
+   * deletes the catalogue above it.
    *
-   * TIER 1 IS EXCLUDED BY INSTRUCTION, and that is the load-bearing half of the
-   * ladder. Every hull a fresh commander can build is tier 1, so
-   * `PLANET_START.deuterium` still covers exactly the run of launches it did, and
-   * the chain the opening teaches — "I have fuel, it is running out, I need a
-   * refinery, the refinery needs research" — arrives at the same moment it always
-   * did. The rungs above it are where the tank starts deciding things.
+   * SO FUEL IS PRICED OFF THE HULL, NOT OFF ITS TIER. What a craft costs to move is
+   * a fixed fraction of what it cost to build, which makes the relation monotone by
+   * construction: no rung can ever out-run the power it is charged against, and
+   * there is no tier to sit on for a discount. The ladder is gone; there is nothing
+   * left to exclude tier 1 from.
    *
-   * IT MULTIPLIES FUEL MASS, NEVER `bulk`. Bulk is Hangar ROOM (T4), priced off
-   * hull value so capacity caps how much military a world may hold without caring
-   * which hulls it is made of. Folding thirst into it would re-rate every hull
-   * against the Hangar as a side effect of a fuel change, with nothing in the hull
-   * table to show it. Two numbers, one derived from the other, one job each — and
-   * the consequence a player feels is the good one: the fleet that FITS is not the
-   * fleet you can afford to fly.
+   * THE VALUE IS SET SO THE GALAXY'S TOTAL FUEL BILL DOES NOT MOVE. This is a
+   * redistribution between hulls, not a new tax and not a rebate: the same
+   * deuterium leaves the same fleets, and it leaves them in proportion to what they
+   * are worth instead of in proportion to a rung.
    *
-   * STILL NOT SPEED, and still not a price. `atk × hp / value²` does not read fuel,
-   * the counter cycle is untouched, and D152's speed lift takes no part in this. A
-   * tier-4 fleet is not weaker for being thirsty; it is dearer to commit, which is
-   * a decision taken with the tank in front of you.
+   * IT STILL MULTIPLIES FUEL MASS AND NOTHING ELSE. `bulk` survives as GROUND ROOM
+   * (`groundSlots`) and is no longer the fuel basis for anything that flies, so the
+   * two can no longer re-rate each other. Prices are still `atk x hp / value^2` and
+   * do not read fuel; the counter cycle and the research ceiling are untouched.
    */
-  tierMass: { 1: 1, 2: 2, 3: 4, 4: 5 } as Readonly<Record<ShipTier, number>>,
+  perValue: 0.0127,
+  /**
+   * THE ROUND TRIP A FUEL CHARGE IS NEUTRAL AT. D195, owner instruction.
+   *
+   * *"hizli olanlar biraz daha cok yaksin, yavaslar biraz daha az"* — so thirst is
+   * scaled by `pivotRoundTrip / referenceRoundTrip`, and this is the trip that
+   * scales by exactly one. It is the LANCE's own figure, the middle of the three
+   * combat classes, so the Skirmisher pays 4/3 and the Bulwark 4/5 around a centre
+   * that is a real hull's number rather than an average of them.
+   *
+   * D153 said fuel is explicitly NOT speed, and that is now half-reversed by
+   * instruction. The reasoning D153 gave still holds for DISTANCE — a slow hull
+   * already pays by being slow — which is why the factor is small and bounded by
+   * the three authored trips instead of being a free function of `speed`.
+   */
+  pivotRoundTrip: 20,
   /**
    * THE SPAN A PER-CRAFT FUEL FIGURE IS QUOTED OVER. Owner report — a ship card
    * has to say what one of these costs to fly.
@@ -1810,6 +1872,13 @@ export const PROSPECTOR = {
    * timer with nothing on screen — which is the one thing the product's second
    * test forbids outright.
    *
+   * THAT ARGUMENT HAS EXACTLY ONE HOLE, AND D183 PATCHES IT. Every brake named
+   * above is a function of DISTANCE, and a battle over your own world leaves its
+   * wreckage at zero distance — so the ratio scales nothing, the bay is held for
+   * nothing, and the craft are never away. `shortTripMinutes` is the width of that
+   * hole and `shortTripCooldownMinutes` is what fills it; both are below, and the
+   * cooldown is DRAWN, which is what the objection above actually asks for.
+   *
    * THE SALVAGE RUN PAYS IT TOO. Owner decision. `resolveMiningArrival` turns both
    * kinds of run around through the same line, so a wreck field is not a faster
    * way home than a rock.
@@ -1835,6 +1904,39 @@ export const PROSPECTOR = {
    * flight are still owned, and a cap that a launch could dodge is not a cap.
    */
   max: 2,
+  /**
+   * A TRIP SHORTER THAN THIS COST THE COMMANDER NOTHING TO MAKE. D183.
+   *
+   * Owner report: *"Kendi gezegenimde oluşan debris'i kazıcılarımla tak tak tak
+   * sürekli beklemeden toplayabiliyorum."* A raid resolved over your own world
+   * drops its wreckage AT your own world, so the salvage leg is zero units long —
+   * and every brake mining has is written against a distance. `returnSpeedFactor`
+   * scales one, the flight bay is held for the length of one, and `max` rations
+   * craft that are AWAY for one. At zero all three are free, and the field comes
+   * home by tapping.
+   *
+   * ONE MINUTE, AND IT IS THE OUTBOUND LEG THAT IS MEASURED — the trip the player
+   * actually chose, from which the way home is derived. On the ordinary field this
+   * is nothing: the nearest rock band starts at 400 units and a bare Prospector
+   * covers that in about half an hour, so no rock run has ever come close to the
+   * line. It exists for the case where the target is where the craft already is.
+   */
+  shortTripMinutes: 1,
+  /**
+   * AND HOW LONG THE CRAFT ARE HELD FOR HAVING MADE ONE. D183.
+   *
+   * A SEPARATE FIGURE FROM `shortTripMinutes` on purpose. "Too short to have cost
+   * anything" and "how long that answer lasts" are different questions, and one
+   * constant answering both is how a later tuning pass changes a rule while
+   * appearing to change a number.
+   *
+   * A minute is the smallest lockout that reads as one on screen, and it is the
+   * whole brake: the run itself is still free, still public, and still landing ore
+   * in the works. What it ends is the tap-tap-tap — one salvage cycle a minute
+   * instead of as many as a thumb can manage, which puts a field over a world back
+   * on the same clock a field in open space was always on.
+   */
+  shortTripCooldownMinutes: 1,
   /**
    * THE RUNG THAT BUYS A THIRD CRAFT. D170, owner request.
    *
@@ -1941,6 +2043,55 @@ export const ABUSE = {
    * commander off a fresh one, and `bashLimit` only caps repetition inside it.
    */
   tierBand: 1,
+
+  /**
+   * HOW LONG A COMMANDER'S FIRST DAY IN A GALAXY IS SAFE. D183, owner instruction:
+   * *"Server'a da gezegenini yeni oluşturan herkes: ilk 1 gün saldırılamaz kalkanı
+   * olmalı... Bu ilk kez gelen kullanıcılar için değil, herkes için, her sezon."*
+   *
+   * THIS REVERSES D14, AND THE ARGUMENT IT REVERSES IS STILL TRUE. That decision
+   * removed a four-hour shield because "a world where a new arrival is untouchable
+   * is a world where the first hours are safe, and this game's first hours are
+   * supposed to teach you that they are not". The cost is real and it is paid on
+   * purpose, because the shield is no longer a gift — it is a POSITION. Taking a
+   * shot drops it (`SHIELD_WOULD_DROP` asks first, once), so the commander who
+   * wants a dangerous first day makes it dangerous and the one who wants to build
+   * gets a day to build. What D14 refused was a beginner who could not be reached;
+   * what this is, is a beginner who has chosen not to reach out yet.
+   *
+   * TWENTY-FOUR HOURS BECAUSE THAT IS THE SESSION SHAPE. This game is played in
+   * gaps: a shorter window expires while the commander is asleep and protects the
+   * hours they were not there for, which is the opposite of what it is for.
+   *
+   * IT IS THE COMMANDER'S, NOT THE WORLD'S — a per-world shield would be bought
+   * with a colony, the exact hole D168 moved the attack band onto the commander to
+   * close.
+   */
+  newcomerShieldHours: 24,
+} as const;
+
+/**
+ * THE MARKS A COMMANDER MAY KEEP ON THE DISC. D183, owner instruction:
+ * *"Rival 5 kişiye kadar olsun. Farklı renklerde olsun. İnsanlar birden fazla
+ * kişiyi işaretlemek istiyor."*
+ *
+ * D103 made the mark free to move — a bookmark rather than a declaration — and
+ * left it at ONE. That is the right shape for a duel and the wrong one for the
+ * game actually being played: a commander with three colonies has three
+ * neighbours worth watching before they have an enemy, and the one mark meant
+ * choosing which of them to forget.
+ *
+ * FIVE, WHICH IS THE CLAN'S OWN NUMBER (`CLAN.maxMembers`) AND NOT BY ACCIDENT.
+ * The ceiling exists so the disc stays readable: every mark is a reticle, a
+ * colour and a place in a legend, and a disc of three hundred worlds where
+ * twenty wear one is a disc with no marks on it at all. Five is a set a player
+ * can hold in their head, which is the whole job of a bookmark.
+ *
+ * The mark still buys nothing and reveals nothing — it is a memory aid, and D127
+ * still decides what any of those worlds will tell you.
+ */
+export const RIVAL = {
+  max: 5,
 } as const;
 
 export const GALAXY = {
@@ -2081,14 +2232,30 @@ export const GALAXY = {
  */
 export const TRADE = {
   /**
-   * 90 alloy = 30 crystal = 1 deuterium. Owner instruction, D156.
+   * 90 alloy = 45 crystal = 10 deuterium. Owner instruction, D183.
    *
    * Read as UNITS PER RESOURCE UNIT, which is the only way this cannot be
    * inverted by accident: a resource's number is what one of it is worth, so the
-   * scarcer the resource the larger the figure. One Deuterium is ninety units and
+   * scarcer the resource the larger the figure. Ten Deuterium is ninety units and
    * ninety Alloy is also ninety units, which is the same sentence twice.
+   *
+   * IT WAS 90:30:1 AT D156, AND THAT MADE THE MERCHANT A PRINTING PRESS. One
+   * Deuterium bought ninety Alloy — a ninety-to-one premium on a resource the
+   * plant produces continuously and a rock delivers in lumps — so a single Atlas
+   * of isotope paid for a fleet and the whole isotope lane stopped being a
+   * contested errand. Crystal was mispriced in the same direction at three.
+   *
+   * NINE-TO-ONE AND TWO-TO-ONE are the premiums now, which still rank the three
+   * resources the way the economy does — Deuterium scarcest, then Crystal, then
+   * Alloy — without letting one full hold rewrite a season. The rate stays a
+   * number a player can hold in their head, which is the whole reason it is
+   * published and fixed rather than discovered.
+   *
+   * A LIVE SEASON KEEPS THE RATE IT WAS DEALT. `tradeShipSpec` freezes
+   * `occurrence.effect.rate` onto every occurrence at calendar time (D149), so
+   * this constant reaches a running galaxy only through `season restamp`.
    */
-  rate: { alloy: 1, crystal: 3, deuterium: 90 },
+  rate: { alloy: 1, crystal: 2, deuterium: 9 },
 
   /**
    * HALF AN ATLAS'S PACE, ON THE ATLAS'S OWN SCALE. D155's lesson, applied before
@@ -2107,7 +2274,7 @@ export const TRADE = {
    * the anchor is written as the conversion rather than as its result, exactly as
    * `PIRATE.speedMin` names a Cataclysm. `trade.test.ts` binds it to `HULLS`.
    */
-  speed: 47 / TRAVEL.distanceFactor,
+  speed: profileFlightSpeed(SUPPORT_ROUND_TRIP.at(-1)!) / TRAVEL.distanceFactor / 2,
 
   /**
    * How far out it runs. NARROWER THAN THE ROCKS' 400-2,000 ON PURPOSE.
@@ -2312,6 +2479,37 @@ export const DEBRIS = {
 } as const;
 
 /**
+ * WHAT A GARBAGE COLLECTOR LIFTS OFF ITS OWN BATTLE. D200, owner instruction.
+ *
+ * *"Savaş bitiminde geri dönerken debris oluşmuşsa 15k debris'ten alır."* Each
+ * collector in the attacking wing that SURVIVES the fight takes up to this much of
+ * the wreck the fight made, split the way the wreck is split, before the rest is
+ * left in orbit as the ordinary public field. `settleWreck` is the only statement.
+ *
+ * NOT A HOLD. The owner's words again — *"ambar kapasitesi olarak değil de başka
+ * bir şey"* — and it matters: `fleetCargo` is the loot ceiling, and a collector
+ * that lifted it would be a transport in disguise at three times a transport's
+ * price. It carries nothing a raid takes from a store, and nothing a store holds.
+ *
+ * STILL DOWNSTREAM OF COMBAT, which is what keeps D32's import safe. A collector
+ * can only ever lift what the battle it flew into destroyed: it cannot be aimed at a
+ * field, a rock or anything but a fight, and it collects at the instant that fight
+ * resolves. Wreckage stays Wealth and never Dominion (D2), whoever takes it.
+ */
+export const SALVAGE = {
+  /** Wreck one surviving collector lifts, in resource units. Owner's number. */
+  perCollector: 15_000,
+  /**
+   * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction:
+   * *"19.1 döteryum yakıt çok. 10 yap."* Priced off its value like every other hull
+   * it would drink 191 (19.1 per `FUEL.reference` units), two and a half Argosies,
+   * for a hull that fires nothing and carries nothing. 100 is the card's 10 per
+   * thousand units. `hullFuelMass` reads it; nothing else may.
+   */
+  fuelMass: 100,
+} as const;
+
+/**
  * THE GALAXY'S CONVERSATION, IN THE ONE PLACE BOTH ENDS READ. D77.
  *
  * The route and the composer have to agree about the ceiling or the composer lets a
@@ -2327,7 +2525,7 @@ export const CHAT = {
 } as const;
 
 export const SEASON = {
-  days: 14,
+  days: ECONOMY_PROFILE.seasonDays,
   /** Frozen finale before the next world opens. D88. */
   afterglowMinutes: 5,
   /** Above this, an upgrade no longer repays before the wipe — the sunset phase. */
@@ -2434,6 +2632,26 @@ const PIRATE_SPAWN_PER_SEAT_PER_HOUR = 0.02;
  * first. The tap itself is a decision.
  */
 export const PIRATE = {
+  /**
+   * HOW FAR THE REAL RENDEZVOUS MAY SIT FROM THE ONE THE PLAYER READ. D183.
+   *
+   * Owner report: *"Bir kullanıcı gönderirken 10dk yazıyordu, gönderme tuşuna
+   * bastım 40dk'ya çıktı."* Measured, and it is real and worse than reported: a
+   * quote half a minute old drifts by more than a minute in about 1.5% of solves,
+   * and the worst case in a 20,000-solve sweep went from 5.1 minutes to 56.3.
+   *
+   * WHY IT JUMPS RATHER THAN SLIDES. `interceptOrbit` finds the FIRST meeting, and
+   * a wing slower than the pirate does not chase it — it waits for the orbit to
+   * come round. That meeting is a narrow window, and a fleet that leaves a moment
+   * too late misses it entirely and is quoted the NEXT lap. Nothing is wrong with
+   * either answer; they are answers to two different instants.
+   *
+   * SO THE LAUNCH CHECKS THE QUOTE. A raid cannot be recalled (P3), so committing a
+   * fleet to a number the player never saw is the one thing this surface may not
+   * do. A minute is wide enough that ordinary staleness never trips it and narrow
+   * enough that a missed lap always does.
+   */
+  quoteToleranceMinutes: 1,
   /**
    * WHAT A PIRATE'S GUNS ACTUALLY DO, by level, against the table's own figures.
    *
@@ -2568,8 +2786,8 @@ export const PIRATE = {
    * inner edge, two and a half hours at the outer — and that shortest period is
    * what sets the ceiling on `bearingMs` below.
    */
-  speedMin: 106 / TRAVEL.distanceFactor,
-  speedMax: 200 / TRAVEL.distanceFactor,
+  speedMin: profileFlightSpeed(20) / TRAVEL.distanceFactor,
+  speedMax: profileFlightSpeed(15) / TRAVEL.distanceFactor,
 
   /** How far out they run. Same band and same draw as the rocks. */
   orbitMin: 400,
@@ -2602,7 +2820,9 @@ export const MULTI_WORLD = {
    * without raising this would have switched the merchant off entirely rather than
    * reshaping it.
    */
-  rulesetVersion: 6,
+  rulesetVersion: 7,
+  /** D2's uncapped additive Dominion. Earlier seasons retain the bounded curve. */
+  dominionLinearRulesetVersion: 7,
   /** Old hull rows may exist only before this offline season boundary. D148. */
   fleetCatalogRulesetVersion: 4,
   /** Persisted galaxy-event calendars exist only on freshly created seasons at this boundary. */
@@ -2684,31 +2904,30 @@ export const MULTI_WORLD = {
    */
   recoveryMinutes: 2 * 60,
   settlement: {
-    cost: {
-      alloy: scalePrice(2000, ECONOMY_TEMPO.fixedPrice),
-      crystal: scalePrice(1000, ECONOMY_TEMPO.fixedPrice),
-      deuterium: 0,
-    },
+    /** Delivered capital and refundable escrow are separate; only capital occupies cargo. */
+    cost: SETTLEMENT_CAPITAL,
+    fee: SETTLEMENT_FEE,
+    charge: SETTLEMENT_CHARGE,
     transportHull: 'COURIER',
     transports: 2,
   },
   neutral: {
     1: {
-      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, HANGAR: 0, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
       instruments: {},
       fleet: {},
       ground: {},
       reinforcementMinutes: null,
     },
     2: {
-      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, HANGAR: 0, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
       instruments: {},
       fleet: { DART: 8, PIKE: 2 },
       ground: {},
       reinforcementMinutes: 6 * 60,
     },
     3: {
-      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, HANGAR: 0, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
       instruments: { AEGIS: 3 },
       fleet: { VIPER: 16, TALON: 6, STRONGHOLD: 2 },
       ground: { THORN: 6, BASTION: 2 },
@@ -2720,10 +2939,11 @@ export const MULTI_WORLD = {
 /**
  * THE STRATEGIC WEAPON, RE-SPECIFIED AT D113 — owner instruction.
  *
- * What an impact DOES is now four things and no more, so it can be said in one
- * sentence on the screen before anybody spends 33,000 resources on it: every
- * fleet on the ground dies, half of everything stored is gone, the Command Core
- * loses a level, and the world produces nothing for two hours.
+ * What an impact DOES is a few things and no more, so it can be said in one
+ * sentence on the screen before anybody spends 73,815 resources on it: half of
+ * everything stored is gone, the Command Core loses a level, the Aegis two, and
+ * the world produces nothing for two hours. Since D179 every fleet on the ground
+ * survives it.
  *
  * The old strike zeroed the stores and lowered four buildings, which was both
  * harder to describe and effectively unrecoverable. Halving is a rule a player
@@ -2753,19 +2973,24 @@ export const DEATH_STAR = {
    * about the galaxy rather than about the economy's pace, so the number is written
    * out where it can be read and argued with.
    *
-   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction. What it does
-   * shrank first: D167 priced it at "put somebody else's colony on the table for
-   * the whole galaxy", and D179 took that away along with the fleet it used to
-   * destroy. The buyer now takes NOTHING home — no loot, no Dominion, no world —
-   * so what is left to pay for is denial, and denial alone is worth less.
+   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction; the owner's
+   * economy table (`docs/astera-economy-final-2026-09-09.md`) then set the figure
+   * below, 73,815. What it does shrank first: D167 priced it at "put somebody
+   * else's colony on the table for the whole galaxy", and D179 took that away along
+   * with the fleet it used to destroy. The buyer now takes NOTHING home — no loot,
+   * no Dominion, no world — so what is left to pay for is denial.
    *
-   * MEASURED BEFORE THE CUT, against a full store: the strike still destroys about
-   * 102,000 at a Core 12 world and about 420,000 at a Core 17 one. So this is not a
-   * weak weapon being propped up; it is a weapon whose entire return is the damage,
-   * priced so that firing it is a decision a commander makes more than once a
-   * season. `ANTI_STRATEGIC.cost` moved with it and must keep moving with it.
+   * MEASURED AT D179, against a full store: the strike destroys about 102,000 at a
+   * Core 12 world and about 420,000 at a Core 17 one. So this is not a weak weapon
+   * being propped up; it is a weapon whose entire return is the damage.
+   * `ANTI_STRATEGIC.cost` moves with it and must keep moving with it.
    */
-  cost: { alloy: 20_000, crystal: 10_000, deuterium: 2_500 },
+  cost: { alloy: 47_887, crystal: 23_944, deuterium: 1_984 },
+  /**
+   * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
+   * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`
+   * is half of this and moves with it.
+   */
   buildMinutes: 60,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,

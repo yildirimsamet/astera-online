@@ -6,7 +6,7 @@ import {
 
 describe('earliest orbital rendezvous', () => {
   it.each([
-    { name: 'pirate', radius: 1550, targetSpeed: PIRATE.speedMax, speed: HULLS.CITADEL.speed, passAt: 0.1, offset: 1 },
+    { name: 'pirate', radius: 1550, targetSpeed: PIRATE.speedMax * 2, speed: HULLS.CITADEL.speed, passAt: 0.1, offset: 1 },
     { name: 'asteroid', radius: 1000, targetSpeed: 750, speed: PROSPECTOR.speed, passAt: 0.005, offset: 0.1 },
   ])('keeps the brief first $name pass between scan samples', ({ radius, targetSpeed, speed, passAt, offset }) => {
     const period = 2 * Math.PI * radius / targetSpeed;

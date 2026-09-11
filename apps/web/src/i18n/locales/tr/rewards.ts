@@ -40,7 +40,7 @@ export const rewards = {
    * neden isteyeceğini söyler; on bir kartı tarayan biri ikisine de ihtiyaç duyar.
    */
   chains: {
-    VAULT: { name: 'Kasa', tag: 'Her akında kaynaklarının bir kısmını koru' },
+    VAULT: { name: 'Depo', tag: 'Deponu derinleştir ve bir kısmını akına kapat' },
     PIRATE: { name: 'Yenilen korsanlar', tag: 'Farklı korsanları yen; gemilerin sağ kalsın' },
     PROBE: { name: 'Yollanan sondalar', tag: 'Hedefe gitmeden önce bilgi topla' },
     RAID: { name: 'Akın yapılan dünyalar', tag: 'Her farklı dünya bir kez sayılır' },

@@ -37,7 +37,10 @@ export const NO_LOOT: Loot = {
  * no cooldown table and no extra state.
  *
  * TWO PILES, TWO RATES (D16). Ore in storage is exposed in full, less the vault
- * floor. Ore still sitting uncollected in the works is exposed at
+ * floor — ALL THREE RESOURCES, which this took until D187 to actually do. The
+ * deuterium line read the bare store while the other two subtracted their floors,
+ * a leftover from when `vaultProtects` returned zero for fuel because fuel had no
+ * passive rate to take hours of. Ore still sitting uncollected in the works is exposed at
  * `COMBAT.lootBufferShare` and the vault does not cover it at all — the vault
  * protects a store, and this has not reached the store yet. Leaving production
  * uncollected is therefore partial cover and never safety, which is exactly the
@@ -50,9 +53,11 @@ export function computeLoot(
   stock: Resources,
   buffer: Resources,
   /**
-   * A PAIR, NOT A NUMBER. D61. The two floors differ because the two economies
-   * do — see `vaultProtects`. Taking a number here is what let one figure sized
-   * for alloy be charged against crystal for four phases.
+   * A TRIPLE, NOT A NUMBER. D61, and all three of it since D187. The floors differ
+   * because the three economies do — see `vaultProtects`. Taking a number here is
+   * what let one figure sized for alloy be charged against crystal for four
+   * phases; taking only two of the three is what let the fuel floor be published
+   * to the player and then ignored by the raid.
    */
   vaultFloor: Resources,
   grade: Grade,
@@ -64,7 +69,7 @@ export function computeLoot(
   const share = COMBAT.lootBufferShare;
   const stockA = Math.max(0, stock.alloy - vaultFloor.alloy) * mult;
   const stockC = Math.max(0, stock.crystal - vaultFloor.crystal) * mult;
-  const stockD = Math.max(0, stock.deuterium) * mult;
+  const stockD = Math.max(0, stock.deuterium - vaultFloor.deuterium) * mult;
   const bufferA = Math.max(0, buffer.alloy) * mult * share;
   const bufferC = Math.max(0, buffer.crystal) * mult * share;
   const bufferD = Math.max(0, buffer.deuterium) * mult * share;
@@ -225,6 +230,38 @@ export const withinTierBand = (peakCoreA: number, peakCoreB: number): boolean =>
  * casual-farming risk in `balance.md` is carried by this band, the bash limit and
  * the vault floor.
  */
+/**
+ * WHEN A COMMANDER WHO JOINED AT `joinedMs` STOPS BEING NEW. D183.
+ *
+ * An INSTANT rather than a duration, like every other clock in the game: it is
+ * stored on the player row, published to the client, and drawn as a countdown
+ * against `serverNow()` (D51). A duration would have to be re-based by whoever
+ * received it, which is how two surfaces start disagreeing about the same wait.
+ */
+export const newcomerShieldUntil = (joinedMs: number): number =>
+  joinedMs + ABUSE.newcomerShieldHours * 3_600_000;
+
+/**
+ * IS THIS COMMANDER STILL UNDER THE SHIELD? D183.
+ *
+ * NULL IS THE ORDINARY STATE and it is what the column holds for every commander
+ * who has ever taken a shot: dropping the shield writes null rather than a past
+ * instant, so "has this commander committed to the war" is one question with one
+ * answer rather than a date comparison somebody forgets to make.
+ *
+ * The boundary belongs to the galaxy — at the instant it expires the shield is
+ * gone — and anything that is not a pair of finite numbers is not a shield.
+ */
+export const newcomerShielded = (
+  until: number | null | undefined,
+  nowMs: number,
+): boolean =>
+  until !== null
+  && until !== undefined
+  && Number.isFinite(until)
+  && Number.isFinite(nowMs)
+  && nowMs < until;
+
 export function canAttack(
   attacker: AttackParty,
   defender: AttackParty,
@@ -249,11 +286,19 @@ export function canAttack(
  *
  * D14 — three rules and no anti-cheat system: core gameplay outranks
  * abuse-hardening in MVP, and on a 200-player shard social visibility catches more
- * than code would. THERE IS NO NEWCOMER GRACE; a four-hour shield on every fresh
+ * than code would. THERE WAS NO NEWCOMER GRACE; a four-hour shield on every fresh
  * account was the fourth rule until the owner removed it, because a world where a
  * new arrival is untouchable is a world where the first hours are safe, and this
  * game's first hours are supposed to teach you that they are not. What protects a
  * beginner has to scale with the SITUATION, never with how new they are.
+ *
+ * D183 — the grace came back at twenty-four hours, owner instruction, and it
+ * answers D14 rather than ignoring it. The shield is not a gift, it is a POSITION:
+ * taking a shot drops it, once, after a confirmation. So a beginner is never
+ * untouchable — they are un-reached, and the moment they reach out the galaxy can
+ * reach back. What protects them still scales with the situation; what changed is
+ * that the situation now includes "has not fired yet". `ABUSE.newcomerShieldHours`
+ * and `newcomerShielded` are the whole of it.
  *
  * D49 — the band is measured in TIERS, not in wealth. It had been a wealth ratio
  * (no attacking anyone holding under 40% of what you hold) and the problem was

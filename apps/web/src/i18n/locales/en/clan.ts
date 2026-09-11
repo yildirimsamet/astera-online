@@ -16,12 +16,12 @@ export const clan = {
   tabs: {
     label: 'Clan sections',
     overview: 'Overview',
-    strength: 'Strength',
+    strength: 'Forces',
     members: 'Members',
     aid: 'Aid',
   },
   strength: {
-    heading: 'clan strength',
+    heading: 'clan forces',
     waiting: 'Measuring the whole crew',
     title: 'How strong are we together?',
     body: 'One clear view of everything the current crew controls. These are shared totals, not a combat bonus.',
@@ -88,6 +88,18 @@ export const clan = {
       CLOSED: 'Closed',
     },
   },
+  /**
+   * A CLAN'S PUBLIC PROFILE. D183, owner report: *"Sıradan bir kullanıcı bir
+   * klanda kimler var onu bile göremiyor."*
+   */
+  profile: {
+    eyebrow: 'Clan profile',
+    loading: 'Reading the roster',
+    roster_one: '{{count}} commander',
+    roster_other: '{{count}} commanders',
+    leader: 'Leader',
+  },
+
   directory: {
     heading: 'Find a clan',
     count: '{{count}} clans',
@@ -97,6 +109,8 @@ export const clan = {
     empty: 'No clan matches that search. Clear it or found your own.',
     meta: 'Leader {{leader}} · {{members}}/5 members · {{score}} Dominion',
     applyTo: 'Apply to {{clan}}',
+    /** The row itself is the door to the roster. D183. */
+    inspect: 'Inspect {{clan}}',
     apply: 'Apply',
     pending: 'Application waiting',
     full: 'Clan full',

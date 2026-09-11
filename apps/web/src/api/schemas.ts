@@ -24,15 +24,19 @@ import type {
 /** Compile-time proof that a Zod enum still spells the same union as the rules. */
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
+/** Dominion is persisted and transferred as an exact JavaScript-safe integer. */
+const dominionInteger = z.number().int().safe();
+
 export const hullId = z.enum([
   'DART', 'PIKE', 'RAMPART', 'WARDEN', 'COURIER',
   'VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL', 'WAYFARER',
   'TEMPEST', 'BALLISTA', 'LEVIATHAN', 'PRAETORIAN', 'ATLAS', 'NULLIFIER',
-  'CATACLYSM', 'CITADEL',
+  'GARBAGE_COLLECTOR',
+  'CATACLYSM', 'CORSAIR', 'CITADEL', 'PALADIN', 'ARGOSY',
   'BASTION', 'THORN', 'PROSPECTOR',
 ]);
 export const buildingId = z.enum([
-  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT',
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
 ]);
 /**
  * TWO ID SPACES, BECAUSE THEY ARE TWO KINDS OF THING. D25.
@@ -53,6 +57,7 @@ export const researchProjectId = z.enum([
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
   'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
   'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
+  'AI_ROBOTS',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -74,6 +79,21 @@ const fleet = z.record(hullId, z.number());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 const band = z.object({ low: z.number(), high: z.number() });
+
+/**
+ * THE SHAPE OF A WALL, AS A PROBE READ IT. D199. The rules' `ClassReading`, parsed:
+ * the same five answers, from "nothing fires" to the whole split in tens.
+ */
+const classReading = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('NONE') }),
+  z.object({ kind: z.literal('UNREAD') }),
+  z.object({ kind: z.literal('EVEN') }),
+  z.object({ kind: z.literal('DOMINANT'), cls: z.enum(['SKIRMISHER', 'BULWARK', 'LANCE']) }),
+  z.object({
+    kind: z.literal('SHARES'),
+    shares: z.object({ SKIRMISHER: z.number(), BULWARK: z.number(), LANCE: z.number() }),
+  }),
+]);
 
 const timedConstructionOrder = z.object({
   id: z.string(),
@@ -152,7 +172,7 @@ export const seasonResultSchema = z.object({
   seasonId: z.string(),
   accountId: z.string(),
   finalRank: z.number(),
-  dominion: z.number(),
+  dominion: dominionInteger,
   damageDealt: z.number(),
   damageTaken: z.number(),
   rivalName: z.string().nullable(),
@@ -171,7 +191,7 @@ export const seasonResultSchema = z.object({
       name: z.string(),
       tag: z.string(),
       finalRank: z.number().int().positive(),
-      dominion: z.number(),
+      dominion: dominionInteger,
       topThree: z.boolean(),
     }).nullable().optional(),
   }),
@@ -256,10 +276,36 @@ export const seasonSchema = z.object({
    */
   onlineToday: z.number().optional(),
   result: seasonResultSchema.nullable().optional(),
-  /** One seasonal identity marker; optional only for rolling-deploy compatibility. D91. */
-  rivalPlanetId: z.string().nullable().optional(),
-  /** Stable commander identity, so every world they control wears the same mark. */
-  rivalPlayerId: z.string().nullable().optional(),
+  /**
+   * THE COMMANDERS THIS ONE IS WATCHING — up to `RIVAL.max`, each in its own slot.
+   * D183.
+   *
+   * It was one planet id and one commander id (D91 · D97), and the ceiling went to
+   * five on the owner's instruction. The SLOT is the load-bearing field: the disc
+   * draws a mark's colour from it, so it is stored rather than read off a position
+   * in this array — a mark that changed colour because an unrelated one was cleared
+   * would be a different bookmark every time the list moved.
+   *
+   * `.default([])` so a client ahead of its server reads an empty disc rather than
+   * failing the season payload, which also carries the clock and the population.
+   */
+  rivals: z.array(z.object({
+    planetId: z.string(),
+    playerId: z.string(),
+    slot: z.number().int().nonnegative(),
+  })).default([]),
+  /**
+   * WHEN THIS COMMANDER'S OWN FIRST-DAY SHIELD ENDS — null when they have none.
+   * D183.
+   *
+   * Read by the launch surface, which has to say what a raid COSTS before it is
+   * pressed: firing gives the shield up, once, and a position spent without being
+   * offered is one the player did not choose to spend.
+   *
+   * `.nullish()` so a client ahead of its server simply shows no warning rather
+   * than failing the season payload, which also carries the clock.
+   */
+  shieldUntil: z.coerce.date().nullish().transform((at) => at ?? null),
 });
 
 /**
@@ -278,10 +324,24 @@ const galaxyOrbitSchema = z.object({
   speed: z.number().positive(),
 });
 
-const tradeRateSchema = z.object({
-  alloy: z.number().positive(),
-  crystal: z.number().positive(),
-  deuterium: z.number().positive(),
+/**
+ * WHOLE NUMBERS, AND THE ARITHMETIC IS WHY. D183.
+ *
+ * The split's step comes from `leadStride`, which divides the cheap price by
+ * `gcd(dear, cheap)` — and a greatest common divisor of two fractions is not a
+ * number anybody should reason about. A rate of 1.5 would snap the split onto
+ * positions that leave a remainder, quietly reintroducing the scrap the whole
+ * mechanism exists to prevent.
+ *
+ * `TRADE.rate` is authored as whole numbers and an occurrence freezes what it was
+ * dealt, so a fraction cannot reach here today. `.int()` is what keeps that true
+ * after somebody edits the table: the boundary states the requirement rather than
+ * the arithmetic assuming it.
+ */
+export const tradeRateSchema = z.object({
+  alloy: z.number().int().positive(),
+  crystal: z.number().int().positive(),
+  deuterium: z.number().int().positive(),
 });
 
 const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
@@ -338,12 +398,24 @@ export const activeGalaxyEventsSchema = z.object({
   })),
 });
 
+/** The whole set after the press, so the disc never has to work out what changed. */
 export const rivalSetSchema = z.object({
-  rivalPlanetId: z.string().nullable(),
-  rivalPlayerId: z.string().nullable().optional(),
+  rivals: z.array(z.object({
+    planetId: z.string(),
+    playerId: z.string(),
+    slot: z.number().int().nonnegative(),
+  })).default([]),
 });
 
 /* ── your planet ────────────────────────────────────────────── */
+
+/** One strategic asset on a world's pad — a Death Star or an interceptor charge. */
+const strategicAsset = z.object({
+  id: z.string(),
+  status: z.enum(['BUILDING', 'PAUSED', 'READY']),
+  readyAt: z.coerce.date().nullable(),
+  remainingSeconds: z.number().nullable(),
+});
 
 export const planetSchema = z.object({
   planet: z.object({
@@ -456,12 +528,16 @@ export const planetSchema = z.object({
     CONSTRUCTION: z.array(z.union([timedConstructionOrder, stagedConstructionOrder])),
     YARD: z.array(z.union([timedYardOrder, stagedYardOrder])),
   }).optional(),
-  strategic: z.object({
-    id: z.string(),
-    status: z.enum(['BUILDING', 'PAUSED', 'READY']),
-    readyAt: z.coerce.date().nullable(),
-    remainingSeconds: z.number().nullable(),
-  }).nullable().optional(),
+  /** The head of `deathStars`: the weapon that can fly soonest. */
+  strategic: strategicAsset.nullable().optional(),
+  /**
+   * EVERY WEAPON ON THE PAD, READY FIRST. T11.
+   *
+   * The stockpile research puts two on one world, and a single `strategic` key
+   * cannot say "one ready, one building". Optional for a rolling deploy against
+   * an older server — `deathStarsOf` falls back to the single key.
+   */
+  deathStars: z.array(strategicAsset).optional(),
   /**
    * THE ANTI-STRATEGIC CHARGE, ON ITS OWN KEY. T10 · T12.
    *
@@ -471,12 +547,7 @@ export const planetSchema = z.object({
    * the other. Optional for a rolling deploy against an older server, where a
    * missing key simply means no charge is known.
    */
-  interceptor: z.object({
-    id: z.string(),
-    status: z.enum(['BUILDING', 'PAUSED', 'READY']),
-    readyAt: z.coerce.date().nullable(),
-    remainingSeconds: z.number().nullable(),
-  }).nullable().optional(),
+  interceptor: strategicAsset.nullable().optional(),
   colonies: z.object({
     highestCore: z.number(),
     colonies: z.number(),
@@ -508,12 +579,10 @@ export const planetSchema = z.object({
    * Optional only for a rolling deploy against an older server.
    */
   capacity: z.object({
-    hangar: z.number(),
-    hangarUsed: z.number(),
     ground: z.number(),
     groundUsed: z.number(),
   }).optional(),
-  score: z.object({ wealth: z.number(), dominion: z.number() }),
+  score: z.object({ wealth: z.number(), dominion: dominionInteger }),
 });
 
 export const planetsSchema = z.object({
@@ -811,7 +880,7 @@ export const leaderboardSchema = z.object({
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       coreTier: z.number().optional(),
-      score: z.number(),
+      score: dominionInteger,
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
   ),
@@ -823,7 +892,7 @@ export const leaderboardSchema = z.object({
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       coreTier: z.number().optional(),
-      score: z.number(),
+      score: dominionInteger,
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     })
     .nullable(),
@@ -845,7 +914,30 @@ export const publicClanSchema = z.object({
   recruiting: z.boolean(),
   leaderName: z.string(),
   memberCount: z.number().int().nonnegative(),
-  score: z.number(),
+  score: dominionInteger,
+  /**
+   * WHO IS IN IT. D183, owner report: *"Sıradan bir kullanıcı bir klanda kimler
+   * var onu bile göremiyor."*
+   *
+   * A clan is a public institution and its roster is part of what it is — the one
+   * fact somebody deciding whether to apply actually needs, and the directory
+   * offered a member COUNT and no way to see past it.
+   *
+   * IT REVEALS NOTHING NEW. Commander identity and Dominion are already galaxy-wide
+   * on `/api/leaderboard` (D76); this collects them under the clan they belong to.
+   * WORLDS are the line and they are not here: where a member lives is a probe's
+   * product (D127), and a clan roster must never become a free address book.
+   *
+   * `.default([])` so the listing — which sends no roster, because five names per
+   * row on a scrolling directory is a wall rather than a list — parses with the
+   * same schema as the profile.
+   */
+  members: z.array(z.object({
+    playerId: z.string(),
+    username: z.string(),
+    role: clanRole,
+    dominion: dominionInteger,
+  })).default([]),
 });
 
 export const clanDirectorySchema = z.object({
@@ -879,8 +971,8 @@ export const clanBadgeSchema = z.object({
 export const clanStrengthSchema = z.object({
   clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }),
   totals: z.object({
-    clanDominion: z.number(),
-    memberDominion: z.number(),
+    clanDominion: dominionInteger,
+    memberDominion: dominionInteger,
     ships: z.number().int().nonnegative(),
     fleetValue: z.number().nonnegative(),
     groundDefences: z.number().int().nonnegative(),
@@ -895,7 +987,7 @@ export const clanStrengthSchema = z.object({
     playerId: z.string(),
     username: z.string(),
     role: clanRole,
-    dominion: z.number(),
+    dominion: dominionInteger,
     ships: z.number().int().nonnegative(),
     worlds: z.number().int().nonnegative(),
   })),
@@ -943,7 +1035,7 @@ export const clanHomeSchema = z.discriminatedUnion('state', [
       tag: z.string(),
       description: z.string(),
       recruiting: z.boolean(),
-      score: z.number(),
+      score: dominionInteger,
       role: clanRole,
       matureAt: z.coerce.date(),
       mature: z.boolean(),
@@ -1325,7 +1417,7 @@ export const intelSchema = z.object({
       /**
        * WHAT THIS COMMANDER HAS RESEARCHED INTO THEIR HULLS. T9 · D137.
        *
-       * Up to a 25% combat multiplier, and the invariant is explicit: doctrine
+       * Up to a 56% combat multiplier (D169), and the invariant is explicit: doctrine
        * that decides a battle must be probe-visible. Absent on a caretaker world
        * and on reports written before it existed — absent means "this reading was
        * never taken", never "they have researched nothing".
@@ -1339,6 +1431,14 @@ export const intelSchema = z.object({
        * decision. Never public — the only way to hold it is to have flown there.
        */
       interceptor: z.boolean().optional(),
+      /**
+       * THE THREE READINGS D199 ADDED: the shape of what fires, the Aegis charge at
+       * arrival and the hulls in the line that fire nothing. Absent on a report
+       * written before them — which is "never measured", never "measured at zero".
+       */
+      classReading: classReading.optional(),
+      shield: band.optional(),
+      unarmed: band.optional(),
       detected: z.boolean(),
     }),
   ),
@@ -1636,7 +1736,17 @@ const ordinaryBattleReport = z.object({
       lootCrystal: z.number(),
       lootDeuterium: z.number(),
       /** Null on reports written before the swing was recorded. */
-      dominion: z.number().nullable(),
+      dominion: dominionInteger.nullable(),
+      /** Auditable v7 equation, already mirrored into the reader's perspective. */
+      dominionBreakdown: z
+        .object({
+          ruleVersion: z.number().int().positive(),
+          lootValue: z.number().int().safe(),
+          enemyPermanentLossValue: z.number().int().nonnegative().safe(),
+          ownPermanentLossValue: z.number().int().nonnegative().safe(),
+          rawExchange: z.number().int().safe(),
+        })
+        .nullish(),
       /** What the defender's Aegis soaked before anything reached a hull. */
       shieldAbsorbed: z.number().default(0),
       /** Immutable battle-time Aegis state; null on reports that predate telemetry. */
@@ -1650,6 +1760,11 @@ const ordinaryBattleReport = z.object({
       disruptedMinutes: z.number().default(0),
       /** What the fight left in orbit for whoever gets there first. */
       wreckValue: z.number().default(0),
+      /**
+       * What the attacker's Garbage Collectors lifted before the field formed. D200.
+       * Both sides get it; absent on a report from a server that predates the hull.
+       */
+      salvage: resources.optional(),
       /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
       attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
@@ -1695,8 +1810,8 @@ export const reportsSchema = z.object({
     battles: z.number().int().nonnegative(),
     attacks: z.number().int().nonnegative(),
     defences: z.number().int().nonnegative(),
-    dominionGained: z.number().nonnegative(),
-    dominionLost: z.number().nonnegative(),
+    dominionGained: dominionInteger.nonnegative(),
+    dominionLost: dominionInteger.nonnegative(),
     lastInteractionAt: z.coerce.date(),
     lastKnownFleet: fleet.nullable(),
     lastKnownAt: z.coerce.date().nullable(),
@@ -1785,6 +1900,21 @@ export const miningSchema = z.object({
   craftHold: z.number(),
   /** What a Derrick would make of the hold, so the interface can sell one. */
   derrickHold: z.number(),
+  /**
+   * WHEN THE SELECTED WORLD'S DRILLS ARE FREE AGAIN — null when they already are.
+   * D183.
+   *
+   * A trip too short to have cost anything (a wreck field over your own world is
+   * a zero-length leg) rests the craft for a minute when they land. The instant is
+   * published rather than only refused, because D124 forbids a rule the player
+   * cannot see and `PROSPECTOR.returnSpeedFactor` refuses "a timer with nothing on
+   * screen" in as many words.
+   *
+   * `.nullish()` with a null default so a client ahead of its server parses the
+   * whole payload instead of losing the asteroid field over one absent field —
+   * the exact failure this file's contract tests exist for.
+   */
+  craftReadyAt: z.coerce.date().nullish().transform((at) => at ?? null),
   asteroids: z.array(asteroidSchema),
   nextFieldChangeAt: z.coerce.date().nullable(),
   /** Wreck fields left by battles. Public in full — size, place and clock. D32. */
@@ -1839,6 +1969,7 @@ export const miningStatusSchema = miningSchema
     craftSpeed: true,
     craftHold: true,
     derrickHold: true,
+    craftReadyAt: true,
     runs: true,
   })
   .extend({
@@ -2331,6 +2462,8 @@ export type ServerStatus = z.infer<typeof serverStatus>;
 export type ServerList = z.infer<typeof serverListSchema>;
 export type Placement = z.infer<typeof placementSchema>;
 export type SeasonInfo = z.infer<typeof seasonSchema>;
+/** One mark on the disc: where it was placed, who it is about, and its colour. D183. */
+export type RivalMark = SeasonInfo['rivals'][number];
 export type ActiveGalaxyEvent = z.infer<typeof activeGalaxyEventsSchema>['events'][number];
 export type HistoricalSeasonResult = z.infer<typeof historicalSeasonResultSchema>;
 type ParsedPlanetView = z.infer<typeof planetSchema>;

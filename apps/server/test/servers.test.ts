@@ -14,6 +14,7 @@ import {
   accountRewards,
   chatMessages,
   researchOrders,
+  playerRivals,
   debrisFields,
   missions,
   planets,
@@ -730,9 +731,28 @@ describe('servers', () => {
         cost: { alloy: 0, crystal: 0, deuterium: 0 },
       });
 
+      /*
+        AND A RIVAL MARK, WHICH IS THE SAME BUG A FOURTH TIME. D183 added
+        `player_rivals` with `player_id` referencing `players` at `ON DELETE no
+        action`, and this list was never told — so `delete(players)` fails on the
+        key and a galaxy where ANYBODY has marked a rival cannot be reset at all.
+        One row reproduces it, exactly as one research order did.
+
+        `target_player_id` is deliberately NOT a foreign key (D183), so only the
+        owning side constrains the wipe.
+      */
+      await db.insert(playerRivals).values({
+        playerId: placed.playerId,
+        targetPlayerId: placed.playerId,
+        planetId: placed.planetId,
+        slot: 0,
+        createdAt: clock.now(),
+      });
+
       const result = await wipeAllServers(db, clock, { count: 2, capacity: 1 });
 
       expect(await db.select().from(researchOrders)).toHaveLength(0);
+      expect(await db.select().from(playerRivals)).toHaveLength(0);
       expect(result.playersCleared).toBe(2);
       expect(result.seasonsWiped).toBe(2);
       expect(await db.select().from(players)).toHaveLength(0);

@@ -1,3 +1,4 @@
+import type { ActivityProfile } from './player-calendar.js';
 import type {
   BuildingId, GroundHullId, InstrumentId, MobileHullId, SatelliteId, TechLevels,
 } from '@astera/rules';
@@ -22,21 +23,24 @@ export type GroundMix = Partial<Record<GroundHullId, number>>;
  */
 export interface Archetype {
   readonly share: number;
+  /**
+   * HOW MUCH OF THE DAY THIS HABIT SPENDS IN THE GAME. D188.
+   *
+   * The archetype IS the engagement model, so the calendar profile belongs beside
+   * it. It used to be handed out by `activityProfiles[p.id % length]` — a round
+   * robin over player id — which could give the GRINDER twenty minutes a day and
+   * the CASUAL the full evening, measuring a population nobody designed.
+   */
+  readonly activity: ActivityProfile;
+  /** DEPRECATED: the async-era login count. Read only when no calendar is configured. */
   readonly loginsPerDay: number;
   /**
-   * THE HANGAR IS LAST ON EVERY LIST, AND IT IS DEMAND-DRIVEN. T4.
+   * THE ORDER IS WHAT GETS CROWDED OUT, NOT WHAT GETS BUILT. T4 · D184.
    *
-   * The loop skips a Hangar whose ceiling the fleet is nowhere near, so position
-   * decides only what it CROWDS OUT once the construction queue is full — and a
-   * ceiling-lifter should never crowd out the economy that fills it. A commander
-   * raises a Hangar when they hit one, and grows the rest of the time.
-   *
-   * POSITION WAS MEASURED AND MAKES NO DIFFERENCE — the demand gate already stops
-   * an early buy, so second and last produce an identical ladder across all five
-   * gate seeds. It is last because that is the honest model, not because it moved a
-   * number: a commander raises a Hangar when they hit one and grows the rest of the
-   * time, and a bot that bought capacity ahead of production would be a model of a
-   * worse player than the one being measured.
+   * Position decides only what a full construction queue drops, so the economy
+   * that funds everything else sits at the front. The Hangar used to close every
+   * list behind a demand gate; it is gone, and with it the one entry here that
+   * earned nothing on its own.
    */
   readonly buildOrder: readonly BuildingId[];
   /**
@@ -122,8 +126,9 @@ export type ArchetypeName = 'TURTLE' | 'RAIDER' | 'FARMER' | 'CASUAL' | 'GRINDER
 
 export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
   TURTLE: {
+    activity: 'average',
     share: 0.18, loginsPerDay: 4, defenceRatio: 1.5,
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'HANGAR', 'DEUTERIUM_PLANT'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'DEUTERIUM_PLANT'],
     wants: ['AEGIS', 'UPLINK', 'RADAR', 'FOUNDRY'],
     // Never attacks, so this is a home garrison: the cheapest hit points it can
     // put on the pad beside the Bastions it actually relies on.
@@ -137,8 +142,9 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     scouts: false,
   },
   RAIDER: {
+    activity: 'average',
     share: 0.22, loginsPerDay: 6, defenceRatio: 0.35,
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'HANGAR', 'DEUTERIUM_PLANT'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'VEIL', 'BEACON'],
     // Attacks constantly and scouts never, so it cannot learn what it is flying
     // into. A generalist mix is what that player ends up with: enough Lances to
@@ -156,8 +162,9 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     scouts: false,
   },
   FARMER: {
+    activity: 'average',
     share: 0.24, loginsPerDay: 4, defenceRatio: 1.3,
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'VAULT', 'CORE', 'SHIPYARD', 'DEUTERIUM_PLANT'],
     wants: ['FOUNDRY', 'AEGIS', 'UPLINK', 'RADAR'],
     // Raids occasionally and cheaply; the fleet is a sideline to the economy.
     composition: { WARDEN: 0.7, DART: 0.3 }, adaptsComposition: false,
@@ -173,8 +180,9 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     scouts: false,
   },
   CASUAL: {
+    activity: 'half',
     share: 0.24, loginsPerDay: 2, defenceRatio: 0.9,
-    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'VAULT', 'HANGAR', 'DEUTERIUM_PLANT'],
+    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'VAULT', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'AEGIS', 'FOUNDRY'],
     // Two logins a day buys the cheap thing and moves on.
     composition: { DART: 0.7, RAMPART: 0.3 }, adaptsComposition: false,
@@ -187,8 +195,9 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
     scouts: false,
   },
   GRINDER: {
+    activity: 'heavy',
     share: 0.12, loginsPerDay: 10, defenceRatio: 0.45,
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'HANGAR', 'DEUTERIUM_PLANT'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'TELESCOPE', 'RADAR', 'VEIL', 'BEACON'],
     // The only archetype that reasons about its fleet. `composition` here is the
     // fallback for a Shipyard too low to offer a choice.
@@ -207,3 +216,80 @@ export const ARCHETYPES: Record<ArchetypeName, Archetype> = {
 };
 
 export const ARCHETYPE_NAMES = Object.keys(ARCHETYPES) as ArchetypeName[];
+
+/**
+ * WHAT SHARE OF THE STORE GOES TO A FLEET, AT THIS STAGE OF DEVELOPMENT. D192.
+ *
+ * Owner instruction: *"İlk seviyelerde bina odaklı, biraz gelişince %70 bina %30
+ * filo, biraz daha fazla gelişince %50 %50."*
+ *
+ * ONE FRACTION FOR A WHOLE SEASON MODELLED NOBODY. It had a commander fighting as
+ * hard on day one as on day twenty: at Core 2 there is nothing worth defending and
+ * every hour of production is worth more in a Refinery than in a Dart, while at
+ * Core 14 the next rung repays over days and a raid repays this evening. The split
+ * has to move, and it moves with the CORE, which is the game's own measure of how
+ * developed a world is.
+ *
+ * THE STAGES ARE THE INSTRUCTION'S OWN, at the end of its range the measurement
+ * allows: building-focused to Core 5, FOUR tenths through Core 11, one half from
+ * Core 12. Interpolated rather than stepped, because a bot that doubles its
+ * military budget the minute a Core finishes is a bot whose behaviour is an
+ * artefact of a threshold.
+ *
+ * WHY FOUR TENTHS AND NOT THREE. The instruction opened at 70/30 and the follow-up
+ * widened it — *"%30-%40 civarı filo hedefi istediğim PvP ile uygun oran gibi
+ * duruyor."* Swept across five seeds, the low end does not survive its own goal:
+ *
+ *   mid share   VFR (min of five)   raids/player/day
+ *      0.30          0.083 LOW            2.56
+ *      0.36          0.089 LOW            2.68
+ *      0.40          0.097 OK             2.69
+ *      0.44          0.098 OK             2.76
+ *
+ * Below 0.40 the galaxy holds less worth taking AND flies fewer raids, so the
+ * cheaper end buys nothing the instruction was after. The field's own mean was
+ * already 0.44, which is the thing worth knowing here: these bots were never at
+ * 70/30 to begin with, so this change is a re-SHAPING across development rather
+ * than the reduction it reads as.
+ *
+ * AND THE HABIT STILL VARIES AROUND IT. `militaryShare` on the archetype stops
+ * being an absolute and becomes a TILT against the field's mean, so the stage says
+ * what the galaxy does and the habit says who this commander is. A Turtle is still
+ * a Turtle at every stage; flattening the five onto one curve would delete the
+ * spread the ladder is measured against.
+ */
+const STAGE: readonly (readonly [core: number, share: number])[] = [
+  [1, 0.26], [5, 0.26], [7, 0.40], [11, 0.40], [12, 0.50], [22, 0.50],
+];
+
+const FIELD_MEAN = ARCHETYPE_NAMES.reduce(
+  (sum, name) => sum + ARCHETYPES[name].militaryShare, 0,
+) / ARCHETYPE_NAMES.length;
+
+export function militaryShareAt(type: ArchetypeName, coreLevel: number): number {
+  const core = Math.max(1, Math.min(22, Math.floor(coreLevel)));
+  let stage = STAGE[STAGE.length - 1]![1];
+  for (let i = 1; i < STAGE.length; i++) {
+    const [prevCore, prevShare] = STAGE[i - 1]!;
+    const [nextCore, nextShare] = STAGE[i]!;
+    if (core <= nextCore) {
+      const span = nextCore - prevCore;
+      const t = span <= 0 ? 1 : (core - prevCore) / span;
+      stage = prevShare + (nextShare - prevShare) * Math.max(0, Math.min(1, t));
+      break;
+    }
+  }
+  /*
+    THE TILT IS BLENDED, NOT MULTIPLIED, and the difference is load-bearing at the
+    bottom. A raw ratio compounds: a Turtle is already the lowest share in the
+    field, so multiplying it by a building-focused opening crushed its budget to
+    the point where it could no longer field BOTH of the defensive hulls its own
+    composition names — measured, one Turtle in nine ended a season with no Warden
+    at all. Halfway between the stage and the habit keeps every archetype in the
+    order it authored while leaving the quiet ones able to buy what they are.
+  */
+  const tilt = 0.5 + 0.5 * (ARCHETYPES[type].militaryShare / FIELD_MEAN);
+  // A share is a fraction; the clamp is what stops a tilted late stage from
+  // reserving a treasury the buildings then cannot touch.
+  return Math.max(0.05, Math.min(0.85, stage * tilt));
+}

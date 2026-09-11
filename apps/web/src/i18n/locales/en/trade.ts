@@ -68,7 +68,7 @@ export const trade = {
   hullNone: "None at this world",
   bays: "Flight bays",
   baysReading: "{{used}} of {{total}} flight bays in use",
-  homeDefence: "{{ships}} craft remain here · {{power}} defence power",
+  homeDefence: "{{ships}} craft remain here · {{power}} firepower",
   fuel: "fuel for both legs",
   figureOut: "Out",
   figureAway: "Away for",

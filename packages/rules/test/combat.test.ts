@@ -2,26 +2,28 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
   COMBAT,
-  DOMINION_TRANSFER_SCALE,
   GROUND_HULLS,
   HULLS,
   NON_COMBATANT_HULLS,
   computeLoot,
   counterMult,
   deuteriumOf,
+  battleDominion,
   emptyLedger,
   bookBattle,
   dominion,
   dominionTransfer,
   fleetCount,
   fleetCargo,
-  fleetPower,
+  fleetEntries,
   fleetValue,
   garrisonOf,
+  unarmedCount,
   PIRATE,
   mulberry32,
   pirateStats,
   resolveCombat,
+  type Fleet,
   type HullId,
   type MobileHullId,
 } from '../src/index.js';
@@ -43,10 +45,10 @@ describe('counter cycle', () => {
    * actually works — an exchange the attacker wins, not one they walk.
    */
   it('Darts break Bastions at a favourable exchange — the anti-turtle tool', () => {
-    const parity = resolveCombat({ DART: 53 }, { BASTION: 4 }, 0, flat(), NO_TECH);
+    const parity = resolveCombat({ DART: Math.floor(fleetValue({ BASTION: 4 }) / fleetValue({ DART: 1 })) }, { BASTION: 4 }, 0, flat(), NO_TECH);
     expect(parity.grade).toBe('PARTIAL');
 
-    const r = resolveCombat({ DART: 70 }, { BASTION: 4 }, 0, flat(), NO_TECH);
+    const r = resolveCombat({ DART: 44 }, { BASTION: 4 }, 0, flat(), NO_TECH);
     expect(r.grade).toBe('DECISIVE');
     expect(fleetValue(r.attackerLosses)).toBeLessThan(fleetValue(r.defenderLosses) / 2);
   });
@@ -195,13 +197,20 @@ describe('grading uses value, not power', () => {
    * fight involving a counter was mis-scored.
    *
    * The gap is starker since Economy v2, which is the useful part: the two fleets
-   * that `fleetPower` calls equal differ by more than twenty times in what they
-   * cost. The count is DERIVED from the metric rather than written down, so this
-   * keeps testing the property after the next re-cut of the hull table.
+   * that metric calls equal differ by more than twenty times in what they cost.
+   * The count is DERIVED from the metric rather than written down, so this keeps
+   * testing the property after the next re-cut of the hull table.
+   *
+   * THE METRIC IS SPELLED OUT HERE, because nothing in the game may use it again.
+   * It lived on as `fleetPower` behind the transfer and trade sheets' "defence
+   * power" — a second force unit on two screens — until D199 retired it.
    */
+  const heft = (fleet: Fleet): number =>
+    fleetEntries(fleet).reduce((sum, [id, n]) => sum + n * HULLS[id].atk * HULLS[id].hp, 0);
+
   it('power says these are equal; combat and the price list both say otherwise', () => {
-    const wasps = Math.round(fleetPower({ BASTION: 1 }) / fleetPower({ DART: 1 }));
-    expect(fleetPower({ DART: wasps })).toBeCloseTo(fleetPower({ BASTION: 1 }), 0);
+    const wasps = Math.round(heft({ BASTION: 1 }) / heft({ DART: 1 }));
+    expect(heft({ DART: wasps }) / 1000).toBeCloseTo(heft({ BASTION: 1 }) / 1000, 0);
 
     // Equal by power; nowhere near equal by what they cost.
     expect(fleetValue({ DART: wasps })).toBeGreaterThan(fleetValue({ BASTION: 1 }) * 10);
@@ -557,36 +566,76 @@ describe('dominion', () => {
     expect(dominion(atk)).toBeLessThan(0);
   });
 
-  it('smoothly bounds one battle without changing its direction', () => {
-    expect(dominionTransfer(1_000)).toBe(997);
-    expect(dominionTransfer(-1_000)).toBe(-997);
-    expect(dominionTransfer(10_000)).toBe(7_616);
-    expect(dominionTransfer(-10_000)).toBe(-7_616);
-    expect(dominionTransfer(100_000)).toBe(DOMINION_TRANSFER_SCALE);
-    expect(dominionTransfer(-100_000)).toBe(-DOMINION_TRANSFER_SCALE);
+  it('moves the full realised exchange without a plateau', () => {
+    expect(dominionTransfer(1_000)).toBe(1_000);
+    expect(dominionTransfer(-1_000)).toBe(-1_000);
+    expect(dominionTransfer(10_000)).toBe(10_000);
+    expect(dominionTransfer(-10_000)).toBe(-10_000);
+    expect(dominionTransfer(100_000)).toBe(100_000);
+    expect(dominionTransfer(-100_000)).toBe(-100_000);
   });
 
-  it('books only the bounded transfer into the ledgers', () => {
+  it('books the entire exchange and exposes an auditable breakdown', () => {
     const atk = emptyLedger();
     const def = emptyLedger();
     const result = resolveCombat({ DART: 1 }, {}, 0, rng(), NO_TECH);
 
     const transfer = bookBattle(atk, def, 1_000_000, result);
 
-    expect(transfer).toBe(DOMINION_TRANSFER_SCALE);
-    expect(atk).toEqual({ taken: DOMINION_TRANSFER_SCALE, lost: 0 });
-    expect(def).toEqual({ taken: 0, lost: DOMINION_TRANSFER_SCALE });
+    expect(transfer).toBe(1_000_000);
+    expect(atk).toEqual({ taken: 1_000_000, lost: 0 });
+    expect(def).toEqual({ taken: 0, lost: 1_000_000 });
+    expect(battleDominion(1_000_000, result)).toEqual({
+      rulesetVersion: 7,
+      lootValue: 1_000_000,
+      attackerLossValue: 0,
+      defenderPermanentLossValue: 0,
+      rawExchange: 1_000_000,
+      transfer: 1_000_000,
+    });
   });
 
-  it('keeps legacy ledger totals and applies the bound only to the new battle', () => {
+  it('retains the bounded rule for pre-v7 seasons without repricing their ledger', () => {
     const challenger = emptyLedger();
     const incumbent = { taken: 100_000, lost: 0 };
     const result = resolveCombat({ DART: 1 }, {}, 0, rng(), NO_TECH);
 
-    bookBattle(challenger, incumbent, 1_000_000, result);
+    bookBattle(challenger, incumbent, 1_000_000, result, 6);
 
-    expect(dominion(challenger)).toBe(DOMINION_TRANSFER_SCALE);
+    expect(dominion(challenger)).toBe(10_000);
     expect(dominion(incumbent)).toBe(90_000);
+  });
+
+  it('refuses fractional and unsafe score inputs instead of corrupting integer ledgers', () => {
+    expect(() => dominionTransfer(0.5)).toThrow(/safe integer/i);
+    expect(() => dominionTransfer(Number.MAX_SAFE_INTEGER + 1)).toThrow(/safe integer/i);
+    expect(() => dominion({
+      taken: Number.MAX_SAFE_INTEGER + 1,
+      lost: Number.MAX_SAFE_INTEGER + 1,
+    })).toThrow(/safe integer/i);
+    expect(() => dominion({ taken: -1, lost: 0 })).toThrow(/non-negative/i);
+  });
+
+  it('keeps the exchange exact when an intermediate sum crosses the safe-number boundary', () => {
+    const result = {
+      ...resolveCombat({ DART: 1 }, {}, 0, rng(), NO_TECH),
+      attackerLossValue: 2,
+      defenderLossValue: 2,
+    };
+
+    expect(battleDominion(Number.MAX_SAFE_INTEGER, result).rawExchange)
+      .toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it('refuses impossible negative economic legs and invalid ruleset versions', () => {
+    const result = resolveCombat({ DART: 1 }, {}, 0, rng(), NO_TECH);
+
+    expect(() => battleDominion(-1, result)).toThrow(/non-negative/i);
+    expect(() => battleDominion(0, { ...result, attackerLossValue: -1 }))
+      .toThrow(/non-negative/i);
+    expect(() => battleDominion(0, { ...result, defenderLossValue: -1 }))
+      .toThrow(/non-negative/i);
+    expect(() => dominionTransfer(1, 0)).toThrow(/positive/i);
   });
 
   it('is zero for a player who never fights', () => {
@@ -631,6 +680,21 @@ describe('the garrison', () => {
 
   it('defends an empty world with nothing', () => {
     expect(garrisonOf({}, {})).toEqual({});
+  });
+
+  /**
+   * THE HULLS A RAID MUST SINK AND CANNOT BE SHOT BY. D199.
+   *
+   * A transport at home is in the line — a DECISIVE raid has to destroy it — and it
+   * adds nothing to the firepower a probe reports. Six Atlases alone read as a
+   * world with no defence and still send eight Darts home empty, so the probe has
+   * to count them on their own.
+   */
+  it('counts the hulls in the line that fire nothing', () => {
+    expect(unarmedCount(garrisonOf({ DART: 4, ATLAS: 6, COURIER: 2, PROSPECTOR: 3 }, { BASTION: 2 })))
+      .toBe(8);
+    expect(unarmedCount(garrisonOf({ DART: 4 }, { THORN: 5 }))).toBe(0);
+    expect(unarmedCount({})).toBe(0);
   });
 
   /**

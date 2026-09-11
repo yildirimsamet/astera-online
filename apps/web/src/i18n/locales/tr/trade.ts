@@ -62,7 +62,7 @@ export const trade = {
   hullNone: "Bu dünyada yok",
   bays: "Uçuş yatakları",
   baysReading: "{{total}} uçuş yatağının {{used}} tanesi dolu",
-  homeDefence: "Burada {{ships}} gemi kalır · {{power}} savunma gücü",
+  homeDefence: "Burada {{ships}} gemi kalır · {{power}} ateş gücü",
   fuel: "iki bacağın yakıtı",
   figureOut: "Gidiş",
   figureAway: "Dışarıda",

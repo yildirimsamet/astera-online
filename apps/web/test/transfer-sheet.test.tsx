@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HULLS, hangarCapacity, missionFuel } from '@astera/rules';
+import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, missionFuel } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -43,6 +43,55 @@ describe('world transfer sheet', () => {
   beforeEach(() => {
     mutate.mockReset();
     useTransfer.mockClear();
+  });
+
+  /**
+   * THE DESTINATION'S BERTHS ARE THE COMMANDER'S, NOT A CONSTANT'S. D170.
+   *
+   * `landingBlock` reads the target controller's Prospector Holds and refuses
+   * against `prospectorCeiling(tech)`; this sheet read `prospectorRoom(held)` with
+   * no ladder at all, so a commander who had bought the third berth was told their
+   * own colony was full and the commit button stayed dead. Both ends of one
+   * transfer must answer the same question — a client stricter than the server is
+   * a purchase the player simply cannot make.
+   */
+  const withHolds = (level: number) => planetView().research.map((project) => (
+    project.id === 'PROSPECTOR_HOLDS' ? { ...project, level } : project
+  ));
+
+  const transferProspector = (level: number, targetHeld: number) => render(
+    <ToastProvider>
+      <TransferSheet
+        target={target}
+        planet={planetView(
+          { fleet: { PROSPECTOR: 1 }, research: withHolds(level) },
+          { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },
+        )}
+        targetPlanet={planetView({
+          fleet: { PROSPECTOR: targetHeld },
+          research: withHolds(level),
+          capacity: { ground: 8, groundUsed: 0 },
+        }, { id: 'colony-1' })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  it('lets a bought third berth receive a Prospector', async () => {
+    const user = userEvent.setup();
+    transferProspector(3, 2);
+    await user.click(screen.getByRole('button', { name: 'More Prospector' }));
+    expect(screen.queryByText(/cannot accept another Prospector/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+  });
+
+  it('still refuses a third Prospector while the rung is unbought', async () => {
+    const user = userEvent.setup();
+    transferProspector(2, 2);
+    await user.click(screen.getByRole('button', { name: 'More Prospector' }));
+    expect(screen.getByText(/cannot accept another Prospector/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
   });
 
   it('shows cargo capacity and updates the defence left at origin', async () => {
@@ -113,18 +162,28 @@ describe('world transfer sheet', () => {
     expect(quantity).toHaveValue('200');
   });
 
-  it('does not offer a transfer that the owned destination Hangar will reject', async () => {
+  /**
+   * THE REFUSAL THIS REPLACES. D184.
+   *
+   * A destination Hangar could fill while a squadron was in the air, so this sheet
+   * drew the far world's room and greyed the commit. There is no such ceiling now:
+   * a committed flight always lands, which is the only honest answer for a launch
+   * that cannot be recalled.
+   */
+  it('offers the transfer however full the destination already is', async () => {
     const user = userEvent.setup();
-    const hangar = hangarCapacity(0);
     render(
       <ToastProvider>
         <TransferSheet
           target={target}
           targetPlanet={planetView({
-            fleet: { DART: hangar },
-            capacity: { hangar, hangarUsed: hangar, ground: 100, groundUsed: 0 },
+            fleet: { DART: 5_000 },
+            capacity: { ground: 100, groundUsed: 0 },
           }, { id: target.id })}
-          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1' })}
+          planet={planetView(
+            { fleet: { DART: 1 } },
+            { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },
+          )}
           onClose={vi.fn()}
           onLaunched={vi.fn()}
         />
@@ -132,21 +191,8 @@ describe('world transfer sheet', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
-    /*
-      THE REFUSAL IS DRAWN, NOT WRITTEN. D142's rule reached this sheet: the
-      sentence "Destination Hangar after landing: 40 + 1 / 40" is now the same
-      three-part bar the build sheet uses, so the assertion moves from the prose
-      to the picture — the room reads as over its ceiling and the card is marked
-      FULL. The reading survives in full for a screen reader, which is where the
-      figures still have to exist.
-    */
-    expect(
-      screen.getByRole('img', {
-        name: new RegExp(`${String(hangar + 1)} of ${String(hangar)} used`, 'i'),
-      }),
-    ).toBeInTheDocument();
-    expect(document.querySelector('[data-full]')).not.toBeNull();
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+    expect(document.querySelector('[data-full]')).toBeNull();
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
   });
 
   /**
@@ -175,12 +221,15 @@ describe('world transfer sheet', () => {
     it('lists the ore carriers even on a world that owns none of them', () => {
       render0({ DART: 2 });
 
-      for (const name of ['Courier', 'Wayfarer', 'Atlas']) {
-        const more = screen.getByRole('button', { name: `More ${name}` });
+      // Read off the rules list, so a fourth transport (D196) cannot leave this
+      // asserting that three of four carriers are drawn.
+      for (const id of TRANSFER_CARGO_HULLS) {
+        const more = screen.getByRole('button', { name: `More ${HULLS[id].name}` });
         expect(more).toBeInTheDocument();
         expect(more).toBeDisabled();
       }
-      expect(screen.getAllByText(/none at this world/i).length).toBe(3);
+      expect(screen.getAllByText(/none at this world/i).length)
+        .toBe(TRANSFER_CARGO_HULLS.length);
     });
 
     it('says a world with no carrier cannot move ore at all', () => {
@@ -460,5 +509,26 @@ describe('the deuterium a transfer may actually load', () => {
 
     expect(Number(slider(/Deuterium/i).max)).toBe(0);
     expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+  });
+});
+
+/**
+ * WHAT STAYS HOME IS WRITTEN IN THE ONE FORCE UNIT. D199.
+ *
+ * This line said "defence power" and meant `fleetPower` — attack times hit points
+ * over a thousand, a second currency found on no other screen. The same fleet read
+ * 102 here and 8,442 on the launch sheet. It is firepower now: what the hulls and
+ * guns that can fire cost, the unit a probe and the launch sheet use.
+ */
+describe('the garrison left behind', () => {
+  it('is stated in firepower, the unit the launch sheet uses', () => {
+    const planet = planetView({ fleet: { DART: 4, COURIER: 2 }, ground: { THORN: 3 } });
+    render(
+      <ToastProvider>
+        <TransferSheet target={target} planet={planet} onClose={vi.fn()} onLaunched={vi.fn()} />
+      </ToastProvider>,
+    );
+    const firepower = compact(combatValue(garrisonOf(planet.fleet, planet.ground)));
+    expect(screen.getByText(new RegExp(`${firepower} firepower`, 'i'))).toBeInTheDocument();
   });
 });

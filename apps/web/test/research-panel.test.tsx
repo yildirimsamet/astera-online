@@ -84,7 +84,7 @@ const world = (
 ): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 14, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6, HANGAR: 2 },
+      buildings: { CORE: 14, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
       research: allOpen(),
       ...over,
     },
@@ -127,7 +127,7 @@ const show = (
   );
   /*
     THE FOUR BANDS FOLD, and only one is open on arrival — fifteen project cards is
-    several screens of a 375-wide phone otherwise. Every test in this file is about
+    several screens of a 350-wide phone otherwise. Every test in this file is about
     a PROJECT rather than about the fold, so they reach past it here; the fold's own
     behaviour lives in `accordion-memory.test.ts`.
 
@@ -245,6 +245,7 @@ describe('the groups', () => {
       DEATH_STAR_PROTOCOL: 'frontier',
       DEUTERIUM_SYNTHESIS: 'industry',
       YARD_AUTOMATION: 'industry',
+      AI_ROBOTS: 'industry',
       PROSPECTOR_HOLDS: 'industry',
       CARGO_HOLDS: 'industry',
       SHIP_POWER: 'doctrine',
@@ -351,7 +352,7 @@ describe('a closed door states its reason', () => {
   it('leaves no row shut and silent for a brand new commander', () => {
     const view = show(
       {
-        buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, HANGAR: 0 },
+        buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
         research: ALL.map((id) => state(id, {
           discovered: id === 'DEUTERIUM_SYNTHESIS',
           available: id === 'DEUTERIUM_SYNTHESIS',
@@ -446,7 +447,7 @@ describe('a closed door states its reason', () => {
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     expect(need).toBeGreaterThan(1);
     const view = show({
-      buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6, HANGAR: 2 },
+      buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
     expect(row(view, 'DEATH_STAR_PROTOCOL'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
@@ -461,7 +462,7 @@ describe('a closed door states its reason', () => {
     const onNeed = vi.fn();
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show(
-      { buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6, HANGAR: 2 } },
+      { buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 } },
       {},
       { onNeed },
     );
@@ -474,7 +475,7 @@ describe('a closed door states its reason', () => {
   it('still states the Core reason with no host to take the fix', () => {
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show({
-      buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6, HANGAR: 2 },
+      buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
     expect(row(view, 'DEATH_STAR_PROTOCOL'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
@@ -610,10 +611,17 @@ describe('a closed door states its reason', () => {
         researchOrder('SHIP_POWER', new Date('2026-08-28T12:00:00.000Z'), 2),
       ],
     });
-    const fullQueueReason = reason(view, 'CARGO_HOLDS');
+    /*
+      READ ON A PROJECT THAT IS NOT ITSELF ON THE QUEUE. D183: a row already bought
+      states what is happening to it instead of why it cannot be started, so asking
+      one of the three IN the queue would be asking the wrong row about the queue.
+    */
+    const fullQueueReason = reason(view, 'PROSPECTOR_HOLDS');
     expect(fullQueueReason).toMatch(/3 research projects are already queued/i);
     expect(fullQueueReason).toMatch(/wait for one to finish/i);
     expect(fullQueueReason).not.toMatch(/cancel/i);
+    // And the three that ARE on it say so, rather than repeating the refusal.
+    expect(reason(view, 'CARGO_HOLDS')).toBe('');
   });
 });
 
@@ -721,6 +729,51 @@ describe('the commander research queue', () => {
     expect(control).toBeEnabled();
     await userEvent.click(control!);
     expect(mutate).toHaveBeenCalledWith('DENSE_FUEL_CELLS', expect.anything());
+  });
+
+  /**
+   * A PROJECT ALREADY ON THE QUEUE STATES THAT, AND NOTHING ELSE. D183, owner
+   * report: *"Que'da olan bir araştırma menü item'da: 'birazdan sonra
+   * araştırılabilir' yazısı → 'araştırılıyor' ile değişmeli."*
+   *
+   * Every door in `doorOf` describes something the commander has yet to do, and a
+   * project that is BOUGHT and running has none of them left — but the clock the
+   * refusal ladder falls through to was still true, so a paid-for project on the
+   * commander's own queue was labelled "researchable in 4h". That is the ladder
+   * answering a question nobody asked: not "when could I start this" but "what is
+   * happening to it right now".
+   *
+   * AND THE TWO STATES ARE NOT ONE STATE. Running is being paid for by the clock;
+   * waiting is a place in a line of three. A row that called both "queued" would
+   * hide the only fact a commander deciding what to buy next actually needs.
+   */
+  it('says a running project is being researched rather than dating its own start', () => {
+    const view = show({
+      research: allOpen({
+        ISOTOPE_SPECTROMETRY: { discovered: false, available: false },
+      }),
+      researchQueue: [
+        researchOrder('ISOTOPE_SPECTROMETRY', new Date('2026-08-28T10:00:00.000Z')),
+      ],
+    });
+    expect(reason(view, 'ISOTOPE_SPECTROMETRY')).toBe('');
+    expect(row(view, 'ISOTOPE_SPECTROMETRY')).toHaveTextContent(/Researching/i);
+    expect(row(view, 'ISOTOPE_SPECTROMETRY')).not.toHaveTextContent(/Researchable in/i);
+  });
+
+  it('says a project waiting behind another is queued, not running', () => {
+    const view = show({
+      research: allOpen({
+        CARGO_HOLDS: { discovered: false, available: false },
+      }),
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T10:00:00.000Z')),
+        researchOrder('CARGO_HOLDS', new Date('2026-08-28T11:00:00.000Z'), 1),
+      ],
+    });
+    expect(reason(view, 'CARGO_HOLDS')).toBe('');
+    expect(row(view, 'CARGO_HOLDS')).toHaveTextContent(/In queue/i);
+    expect(row(view, 'CARGO_HOLDS')).not.toHaveTextContent(/Researchable in/i);
   });
 
   it('marks a project queued on this world rather than calling it blocked', () => {

@@ -65,7 +65,8 @@ describe('the reward panel', () => {
       { id: 'PIRATE', metric: 'count', progress: 1, tiers: [tier(1, 'claimable', 'PIRATE')] },
     ], 2));
     render(<Wrapper><RewardsScreen commander="Vantage" /></Wrapper>);
-    expect(await screen.findByText('Vault')).toBeInTheDocument();
+    // D190 renamed the building to what it does: the Store.
+    expect(await screen.findByText('Store')).toBeInTheDocument();
     expect(screen.getByText('Pirates defeated')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /claim/i })).toHaveLength(2);
     expect(document.querySelector('[data-reward-claim="VAULT:1"]')).toBeInTheDocument();

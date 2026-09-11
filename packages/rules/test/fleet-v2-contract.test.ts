@@ -21,7 +21,7 @@ import {
   hullRequirementsMet,
   resolveCombat,
   transferCargoCapacity,
-  upgradeCost,
+  buildingCost,
 } from '../src/index.js';
 
 const fleetV2 = [
@@ -41,8 +41,13 @@ const fleetV2 = [
   { id: 'PRAETORIAN', tier: 3, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK' },
   { id: 'ATLAS', tier: 3, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT' },
   { id: 'NULLIFIER', tier: 3, family: 'SPECIALIST', profile: 'SHIELD_BREAKER', cls: 'LANCE' },
+  // D200: the second Special hull, and the first one that fires nothing.
+  { id: 'GARBAGE_COLLECTOR', tier: 3, family: 'SPECIALIST', profile: 'COLLECTOR', cls: 'SUPPORT' },
   { id: 'CATACLYSM', tier: 4, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE' },
+  { id: 'CORSAIR', tier: 4, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER' },
   { id: 'CITADEL', tier: 4, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK' },
+  { id: 'PALADIN', tier: 4, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK' },
+  { id: 'ARGOSY', tier: 4, family: 'CARGO', profile: 'TRANSPORT', cls: 'SUPPORT' },
 ] as const;
 
 const fleetV2Ids = fleetV2.map(({ id }) => id);
@@ -65,8 +70,12 @@ const shipyardGate = {
   PRAETORIAN: 4,
   ATLAS: 4,
   NULLIFIER: 4,
+  GARBAGE_COLLECTOR: 4,
   CATACLYSM: 6,
+  CORSAIR: 6,
   CITADEL: 6,
+  PALADIN: 6,
+  ARGOSY: 6,
 } as const;
 
 const researchGate: Record<string, readonly { project: string; level: number }[]> = {
@@ -104,6 +113,9 @@ const researchGate: Record<string, readonly { project: string; level: number }[]
     { project: 'STARSHIP_ENGINEERING', level: 1 },
     { project: 'GRAVITIC_CHARGES', level: 1 },
   ],
+  GARBAGE_COLLECTOR: [
+    { project: 'STARSHIP_ENGINEERING', level: 1 },
+  ],
   CATACLYSM: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
     { project: 'SHIP_POWER', level: 4 },
@@ -114,6 +126,20 @@ const researchGate: Record<string, readonly { project: string; level: number }[]
     { project: 'SHIP_ARMOR', level: 4 },
     { project: 'SHIP_POWER', level: 2 },
   ],
+  CORSAIR: [
+    { project: 'STARSHIP_ENGINEERING', level: 2 },
+    { project: 'SHIP_POWER', level: 2 },
+    { project: 'SHIP_PROPULSION', level: 4 },
+  ],
+  PALADIN: [
+    { project: 'STARSHIP_ENGINEERING', level: 2 },
+    { project: 'SHIP_ARMOR', level: 2 },
+    { project: 'SHIP_POWER', level: 2 },
+  ],
+  ARGOSY: [
+    { project: 'STARSHIP_ENGINEERING', level: 2 },
+    { project: 'SHIP_PROPULSION', level: 2 },
+  ],
 };
 
 const hullByRuntimeId = (id: string) =>
@@ -123,7 +149,7 @@ const runtimeProperty = (value: object, property: string): unknown =>
   Object.entries(value).find(([candidate]) => candidate === property)?.[1];
 
 describe('Fleet V2 catalog contract — D148', () => {
-  it('replaces every retired ordinary hull with all eighteen supplied craft', () => {
+  it('replaces every retired ordinary hull with all twenty-two supplied craft', () => {
     expect([...Object.keys(HULLS)].sort()).toEqual([...fleetV2Ids, ...preservedIds].sort());
     expect([...ALL_HULLS].sort()).toEqual([...fleetV2Ids, ...preservedIds].sort());
     expect([...MOBILE_HULLS].sort()).toEqual([...fleetV2Ids].sort());
@@ -198,11 +224,11 @@ describe('Fleet V2 catalog contract — D148', () => {
 
   it('leaves the ground and mining craft numerically untouched', () => {
     expect(HULLS.BASTION).toMatchObject({
-      id: 'BASTION', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0,
+      id: 'BASTION', cls: 'BULWARK', atk: 144, hp: 1000, speed: 0, cargo: 0,
       minShipyard: 1, ground: true,
     });
     expect(HULLS.THORN).toMatchObject({
-      id: 'THORN', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0,
+      id: 'THORN', cls: 'SKIRMISHER', atk: 42, hp: 215, speed: 0, cargo: 0,
       minShipyard: 0, ground: true,
     });
     expect(HULLS.PROSPECTOR).toMatchObject({
@@ -330,11 +356,11 @@ describe('Fleet V2 catalog contract — D148', () => {
   it('derives the guided opening from exactly two Darts', () => {
     const dart = hullByRuntimeId('DART');
     if (!dart) throw new Error('missing guided-opening hull DART');
-    const step = upgradeCost(1);
+    const steps = (['CORE', 'REFINERY', 'EXTRACTOR'] as const).map(id => buildingCost(id, 1));
 
     expect(START).toEqual({
-      alloy: 3 * step.alloy + 2 * dart.alloy,
-      crystal: 3 * step.crystal + 2 * dart.crystal,
+      alloy: steps.reduce((sum, cost) => sum + cost.alloy, 0) + 2 * dart.alloy,
+      crystal: steps.reduce((sum, cost) => sum + cost.crystal, 0) + 2 * dart.crystal,
       deuterium: 0,
     });
     expect(PLANET_START).toEqual({
@@ -391,6 +417,8 @@ describe('Fleet V2 research identity contract', () => {
       'EMPLACEMENT_DOCTRINE',
       'INTERCEPTION_GRID',
       'STRATEGIC_STOCKPILE',
+      // The surface's own build-speed ladder. D198.
+      'AI_ROBOTS',
     ];
 
     expect([...RESEARCH_PROJECT_IDS].sort()).toEqual(expected.sort());

@@ -540,6 +540,23 @@ export function useClanDirectory(search: string, enabled = true) {
   });
 }
 
+/**
+ * ONE CLAN'S PUBLIC PROFILE, INCLUDING WHO IS IN IT. D183.
+ *
+ * Read only while a profile is open — `enabled` is the sheet — because a roster
+ * per row would be a request per row on a scrolling directory. Cached like the
+ * directory itself: a clan's membership moves in hours, not in seconds.
+ */
+export function useClanProfile(clanId: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.clanProfile(clanId ?? ''),
+    queryFn: () => api.clan(clanId!),
+    enabled: clanId !== null,
+    staleTime: 30_000,
+  });
+}
+
 export function useClanLeaderboard(enabled = true) {
   const api = useApi();
   return useQuery({
@@ -741,12 +758,18 @@ export function useSetRival() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (planetId: string | null) => api.setRival(planetId),
-    onSuccess: async ({ rivalPlanetId, rivalPlayerId }) => {
+    /*
+      THE WHOLE SET COMES BACK, so the cache is replaced rather than patched. D183.
+
+      With one mark a press was "set this field"; with up to `RIVAL.max` it can add,
+      clear, or free a slot for the next mark to take — and a client working out
+      which of those happened would be a second implementation of the rule the
+      server just applied.
+    */
+    onSuccess: async ({ rivals }) => {
       await client.cancelQueries({ queryKey: keys.season });
       client.setQueryData<SeasonInfo>(keys.season, (current) =>
-        current
-          ? { ...current, rivalPlanetId, rivalPlayerId: rivalPlayerId ?? null }
-          : current,
+        current ? { ...current, rivals } : current,
       );
     },
   });
@@ -1563,8 +1586,18 @@ export function usePirates() {
   return useQuery({
     queryKey: activePlanetId ? keys.piratesFrom(activePlanetId) : keys.pirates,
     queryFn: () => api.pirates(activePlanetId ?? undefined),
+    /*
+      AT THE TRAFFIC PACE, NOT THE ORDINARY ONE. D183.
+
+      This payload carries a RENDEZVOUS TABLE — an instantaneous solve against a
+      moving target — and at a minute's staleness it can name a different lap of
+      the orbit than the launch will. `TRAFFIC_MS` is the pace everything else that
+      moves on the disc is read at, and a pirate is one of the things that moves.
+      The launch still carries the quote and the server still refuses a drifted one;
+      this is what keeps that refusal rare rather than routine.
+    */
     staleTime: 5_000,
-    refetchInterval: NET_MS,
+    refetchInterval: TRAFFIC_MS,
     refetchOnWindowFocus: true,
   });
 }
@@ -1585,8 +1618,10 @@ export function useRaidPirate() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ pirateId, fleet }: { pirateId: string; fleet: Fleet }) =>
-      api.raidPirate(pirateId, fleet, activePlanetId ?? undefined),
+    mutationFn: (
+      { pirateId, fleet, quotedMinutes }:
+      { pirateId: string; fleet: Fleet; quotedMinutes?: number },
+    ) => api.raidPirate(pirateId, fleet, activePlanetId ?? undefined, quotedMinutes),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([
@@ -1597,6 +1632,14 @@ export function useRaidPirate() {
       // The lane the raid flew at is one fewer target and one fewer bay.
       invalidate(keys.pirates, keys.galaxy);
     },
+    /*
+      A REFUSED LAUNCH LEAVES A STALE QUOTE ON SCREEN. D183.
+
+      `RENDEZVOUS_MOVED` means this client's rendezvous table has drifted onto a
+      different lap of the orbit — so the first thing the player needs is the fresh
+      one, before they read the refusal and press again.
+    */
+    onError: () => { invalidate(keys.pirates); },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });
 }
@@ -1681,10 +1724,13 @@ export function useLaunch() {
   const lane = usePlanetMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ targetPlanetId, fleet }: { targetPlanetId: string; fleet: Fleet }) =>
+    mutationFn: (
+      { targetPlanetId, fleet, acknowledgeShieldLoss }:
+      { targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean },
+    ) =>
       activePlanetId
-        ? api.launch(activePlanetId, targetPlanetId, fleet)
-        : api.launch(targetPlanetId, fleet),
+        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       /**

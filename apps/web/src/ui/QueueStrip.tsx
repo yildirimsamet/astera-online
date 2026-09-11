@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BUILD, cancelRefund } from '@astera/rules';
 import type { BuildOrderView } from '../api/schemas.js';
 import { buildOrderArt, buildOrderLabel } from '../lib/orders.js';
+import { full } from '../lib/format.js';
 import { clockTime, countdown } from '../lib/time.js';
+import { Confirm, ConfirmLine } from './kit/index.js';
 
 /**
  * ONE LANE OF WORK, AS A TIMELINE. Owner instruction.
@@ -44,6 +47,14 @@ export function QueueStrip({
   onCancel?: (order: BuildOrderView) => void;
 }) {
   const { t } = useTranslation();
+  /**
+   * WHICH ORDER IS BEING ASKED ABOUT. Half of what an order cost is destroyed by
+   * this control (`BUILD.cancelRefund`) and the target is a 20px glyph in the
+   * corner of a segment that is itself pressable. The price used to live on a
+   * `title` attribute — a hover tooltip, on a game budgeted for a phone — so on
+   * the real device it was not merely unconfirmed, it never appeared at all.
+   */
+  const [asking, setAsking] = useState<BuildOrderView | null>(null);
 
   const timed = orders.map((order) => {
     const startedAt = order.startedAt instanceof Date ? order.startedAt : null;
@@ -98,7 +109,6 @@ export function QueueStrip({
             : 0;
           const art = buildOrderArt(order);
           const name = buildOrderLabel(order);
-          const refund = cancelRefund(order.cost);
 
           return (
             <span
@@ -145,12 +155,7 @@ export function QueueStrip({
                   data-cancel
                   disabled={cancelling !== undefined}
                   aria-label={t('planet.queue.cancelOne', { name })}
-                  title={t('planet.queue.refund', {
-                    alloy: refund.alloy,
-                    crystal: refund.crystal,
-                    deuterium: refund.deuterium,
-                  })}
-                  onClick={() => { onCancel(order); }}
+                  onClick={() => { setAsking(order); }}
                   className="absolute right-0 top-0 z-[2] flex size-5 items-center justify-center rounded-bl-chip bg-void/70 text-micro text-faint transition-colors hover:bg-threat/30 hover:text-threat-ink disabled:opacity-40"
                 >
                   ×
@@ -169,6 +174,100 @@ export function QueueStrip({
           />
         ))}
       </div>
+
+      {asking && (
+        <CancelConfirm
+          order={asking}
+          /* The strip already greys its marks while a cancel runs; the
+             confirmation was the one surface not told, and its commit is the
+             button most likely to be pressed twice. */
+          pending={cancelling !== undefined}
+          onClose={() => { setAsking(null); }}
+          onConfirm={() => {
+            const order = asking;
+            setAsking(null);
+            onCancel?.(order);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * WHAT CANCELLING ACTUALLY COSTS, BEFORE IT HAPPENS.
+ *
+ * It leads with the DESTROYED figures and gives them the threat ink, because a
+ * refund on its own reads as a gain — the player is being handed resources, and
+ * nothing on the old control said the larger number was going up in smoke to
+ * hand them over. What comes back is the quieter second line, which is the
+ * correct ranking of the two facts for the decision being made.
+ *
+ * A resource with nothing in it is not drawn: most orders cost no Deuterium and
+ * a row of zeroes is three lines of nothing on a 350pt screen.
+ */
+function CancelConfirm({
+  order,
+  pending,
+  onConfirm,
+  onClose,
+}: {
+  order: BuildOrderView;
+  pending: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const back = cancelRefund(order.cost);
+  const share = Math.round((1 - BUILD.cancelRefund) * 100);
+  const resources = ['alloy', 'crystal', 'deuterium'] as const;
+
+  return (
+    <Confirm
+      eyebrow={t('planet.queue.confirm.eyebrow')}
+      // The order's own name IS the title. A key holding only `{{name}}` is a
+      // translation with no words in it, which `i18n.test.ts` refuses.
+      title={buildOrderLabel(order)}
+      confirmLabel={t('planet.queue.confirm.commit')}
+      backLabel={t('planet.queue.confirm.back')}
+      pending={pending}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    >
+      <p className="text-body text-bone">
+        {t('planet.queue.confirm.lead', { share })}
+      </p>
+
+      <div className="plate plate-inset mt-3 px-3 py-2">
+        <p className="legend text-threat-ink">{t('planet.queue.confirm.lost')}</p>
+        {resources.map((resource) => {
+          const lost = order.cost[resource] - back[resource];
+          return lost > 0 && (
+            <ConfirmLine
+              key={resource}
+              label={t(`vocabulary.resource.${resource}`)}
+              value={full(lost)}
+            />
+          );
+        })}
+      </div>
+
+      <div className="plate plate-inset mt-2 px-3 py-2">
+        <p className="legend">{t('planet.queue.confirm.kept')}</p>
+        {resources.map((resource) => back[resource] > 0 && (
+          <ConfirmLine
+            key={resource}
+            label={t(`vocabulary.resource.${resource}`)}
+            value={full(back[resource])}
+            tone="kept"
+          />
+        ))}
+      </div>
+
+      {/* The clock is a cost the figures cannot show: a re-order starts over. */}
+      <p className="mt-3 text-caption text-dim">
+        {t('planet.queue.confirm.progress')}
+      </p>
+    </Confirm>
   );
 }

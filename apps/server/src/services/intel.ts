@@ -14,7 +14,10 @@ import {
   probeAccuracy,
   distance,
   fleetCount,
-  fleetValue,
+  combatValue,
+  classReading,
+  garrisonOf,
+  unarmedCount,
   radarRevealsBearing,
   radarRevealsOrigin,
   telescopeCooldownHours,
@@ -58,9 +61,12 @@ import {
   assertWorldOperational,
   GameError,
   buildingLevelsOf,
+  economyAt,
+  hardwareOf,
   loadLocked,
   saveResources,
 } from './planet.js';
+import { neutralStanding } from './neutral.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard, publishWorldMemory } from '../stream/bus.js';
 import { researchLevels } from './researchState.js';
@@ -842,6 +848,38 @@ export const rememberVisitedWorld = async (
   input: { observerPlayerId: string; targetPlanetId: string; seasonId: string; seenAt: Date },
 ): Promise<void> => rememberWorld(tx, { ...input, source: 'BATTLE' });
 
+/**
+ * THE WORLD AS A RAID LANDING NOW WOULD FIND IT, WITHOUT TOUCHING IT. D199.
+ *
+ * A row holds the economy as it was last written, and between writes the works go
+ * on producing and the Aegis goes on charging. The probe used to read the row as it
+ * lay: a world nobody had touched for five hours reported five-hour-old ore, and
+ * the raid that followed — which does tick the world — found more than the report
+ * said could be there. A probe is a look, not an act, so it locks nothing and
+ * writes nothing: it computes what the battle's own tick would write.
+ */
+async function standingAt(tx: Tx, target: typeof planets.$inferSelect, now: Date) {
+  if (target.kind === 'NEUTRAL') {
+    const { alloy, crystal, shield } = await neutralStanding(tx, target, now);
+    return {
+      alloy,
+      crystal,
+      deuterium: target.deuterium,
+      bufferAlloy: target.bufferAlloy,
+      bufferCrystal: target.bufferCrystal,
+      bufferDeuterium: target.bufferDeuterium,
+      shield,
+    };
+  }
+  const [[season], levels, hardwareRows] = await Promise.all([
+    tx.select().from(seasons).where(eq(seasons.id, target.seasonId)),
+    buildingLevelsOf(tx, target.id),
+    tx.select().from(satellites).where(eq(satellites.planetId, target.id)),
+  ]);
+  if (!season) throw new Error('probe target belongs to a missing season');
+  return economyAt(target, levels, hardwareOf(hardwareRows, levels), season, now).state;
+}
+
 /** Snapshot the target and write both sides of the event. Called by the worker. */
 export async function resolveProbe(
   tx: Tx,
@@ -872,6 +910,8 @@ export async function resolveProbe(
   const homeFleet = home as Partial<Record<HullId, number>>;
 
   const accuracy = probeAccuracy(shipyard, veil);
+  // The ore and the charge as they stand at this instant, not as the row lay. D199.
+  const standing = await standingAt(tx, target, now);
   /**
    * WHAT A RAID COULD TAKE, NOT WHAT THE WORLD IS HOLDING. Owner report:
    * *"gezegende 50k kaynak gözüküyor ama dalıyom 300 alloy alıyorum. Böyle
@@ -897,11 +937,11 @@ export async function resolveProbe(
    */
   const targetBuildings = await buildingLevelsOf(tx, target.id);
   const raidable = raidableStock(
-    { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
+    { alloy: standing.alloy, crystal: standing.crystal, deuterium: standing.deuterium },
     {
-      alloy: target.bufferAlloy,
-      crystal: target.bufferCrystal,
-      deuterium: target.bufferDeuterium,
+      alloy: standing.bufferAlloy,
+      crystal: standing.bufferCrystal,
+      deuterium: standing.bufferDeuterium,
     },
     vaultProtects(
       targetBuildings.VAULT,
@@ -933,11 +973,11 @@ export async function resolveProbe(
    * or the detection roll, exactly as it did while it was gated.
    */
   const raidableDeuterium = computeLoot(
-    { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
+    { alloy: standing.alloy, crystal: standing.crystal, deuterium: standing.deuterium },
     {
-      alloy: target.bufferAlloy,
-      crystal: target.bufferCrystal,
-      deuterium: target.bufferDeuterium,
+      alloy: standing.bufferAlloy,
+      crystal: standing.bufferCrystal,
+      deuterium: standing.bufferDeuterium,
     },
     vaultProtects(
       targetBuildings.VAULT,
@@ -953,8 +993,42 @@ export async function resolveProbe(
     accuracy,
     seededFrom(mission.id, 0x1d50_70e),
   );
-  const defence = fuzzBand(fleetValue(homeFleet), accuracy, rng);
+  /*
+    THE DEFENCE BAND IS THE FORCE, NOT THE FURNITURE. D183, owner report against the
+    launch sheet's own comparison: *"Yük gemisi ekliyorum gücüm artıyor ama yük
+    gemilerinin saldırısı 0. Saçma değil mi?"*
+
+    The same question lives on this side of the wire. `fleetValue` priced a world's
+    defence off every hull standing there, so a hangar of Atlases and a pair of
+    Prospectors read as a fortress and a probe sold that reading for fifty alloy.
+    `combatValue` counts what can fire, which is what a raid actually meets — and it
+    is the same quantity `ForceCompare` now measures the attacking wing in, so the
+    two numbers on that screen are finally one comparison.
+
+    THE SIZE BAND STILL COUNTS EVERY CRAFT, deliberately. "How many ships are
+    there" is a different question from "how much of it shoots", and a probe that
+    reported five hulls at a world holding eleven would be hiding the transports
+    rather than pricing them.
+  */
+  const defence = fuzzBand(combatValue(homeFleet), accuracy, rng);
   const size = fuzzBand(fleetCount(homeFleet), accuracy, rng);
+  /*
+    THE THREE READINGS THAT TURN A FIREPOWER FIGURE INTO A FIGHT. D199.
+
+    Firepower alone could not say whether a wing was the right size: the counter
+    cycle moves a fight about as far as full research does, a charged Aegis further
+    than either, and a hangar of transports holds off a raid that reads as facing
+    nothing. So the probe also reads the SHAPE of what fires (gated by the same
+    accuracy, so the Veil buys a wall its privacy), the Aegis charge at arrival and
+    the unarmed hulls standing in the line.
+
+    Each band draws from its own seeded stream, like the deuterium above, so the
+    bands a report already carried and the detection roll below are untouched.
+  */
+  const line = garrisonOf(homeFleet, {});
+  const shape = classReading(line, accuracy);
+  const shield = fuzzBand(standing.shield, accuracy, seededFrom(mission.id, 0x5e1d_0a));
+  const unarmed = fuzzBand(unarmedCount(line), accuracy, seededFrom(mission.id, 0x0a4_3ed));
   /*
     THE WEAPON, AND ONLY THE WEAPON. T12.
 
@@ -964,20 +1038,26 @@ export async function resolveProbe(
     interceptor flag a few queries below has always been typed; this one had no
     reason to be until D139 put a second kind of asset in the table.
   */
-  const [strategic] = await tx
+  /*
+    AND EVERY WEAPON, NOT THE FIRST ROW. T11.
+
+    The stockpile puts two on one pad, and an unordered `LIMIT 1` could meet the
+    one still building before the one that can fly — telling an attacker they had
+    an hour when they had none. Any ready weapon makes the pad READY.
+  */
+  const pad = await tx
     .select({ status: strategicAssets.status })
     .from(strategicAssets)
     .where(and(
       eq(strategicAssets.planetId, target.id),
       eq(strategicAssets.type, 'DEATH_STAR'),
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
-    ))
-    .limit(1);
+    ));
   const strategicStatus = accuracy < DEATH_STAR.probeVisibilityAccuracy
     ? 'UNKNOWN' as const
-    : strategic?.status === 'READY'
+    : pad.some((asset) => asset.status === 'READY')
       ? 'READY' as const
-      : strategic
+      : pad.length > 0
         ? 'BUILDING' as const
         : 'NONE' as const;
 
@@ -991,7 +1071,7 @@ export async function resolveProbe(
     They are not part of `silhouetteOf`, which derives from what is PUBLIC about a
     world — nothing about a commander's research is. This is the probe's own
     product: earned by flying there, frozen at the look, and stale from then on
-    exactly like the rest of the record. Without it a 25% multiplier would sit
+    exactly like the rest of the record. Without it a 56% multiplier (D169) would sit
     invisibly on every battle and quietly devalue the scouting flight that the
     whole information layer is built to sell.
   */
@@ -1040,6 +1120,9 @@ export async function resolveProbe(
     deuteriumStock: { low: deuteriumStock.low, high: deuteriumStock.high },
     defence: { low: defence.low, high: defence.high },
     fleetSize: { low: size.low, high: size.high },
+    classReading: shape,
+    shield: { low: shield.low, high: shield.high },
+    unarmed: { low: unarmed.low, high: unarmed.high },
     fleetHome: !anyAway,
     strategicStatus,
     /**

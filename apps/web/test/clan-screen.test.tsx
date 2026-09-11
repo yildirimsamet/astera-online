@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -71,12 +71,12 @@ const directory = {
     {
       id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB',
       description: 'Watch the rim. Bring everyone home.', recruiting: true,
-      leaderName: 'Vantage', memberCount: 2, score: 840,
+      leaderName: 'Vantage', memberCount: 2, score: 840, members: [],
     },
     {
       id: 'clan-night', name: 'Night Couriers', tag: 'N7',
       description: 'Cargo before glory.', recruiting: false,
-      leaderName: 'Ada', memberCount: 5, score: 120,
+      leaderName: 'Ada', memberCount: 5, score: 120, members: [],
     },
   ],
   total: 2,
@@ -221,6 +221,58 @@ describe('clan command surface', () => {
     expect(screen.getByText('Application sent. The leader has 24 hours to answer.')).toBeInTheDocument();
   });
 
+  /**
+   * A CLAN IS A PUBLIC INSTITUTION AND ITS ROSTER IS PART OF IT. D183, owner
+   * report: *"Klan menüsünde klanların sıralandığı sectionda bir klan'a tıklayıp
+   * incelenmiyor. Sıradan bir kullanıcı bir klanda kimler var onu bile göremiyor."*
+   *
+   * The directory offered a member COUNT and an Apply button, which asks a
+   * commander to join five strangers on the strength of a number. The roster is the
+   * one fact that decision actually turns on, and it reveals nothing new — identity
+   * and Dominion are already galaxy-wide on the ladder (D76). WORLDS are the line
+   * and stay off it: where a member lives is a probe's product (D127).
+   */
+  it('opens a clan from the directory and names who is in it', async () => {
+    const { api } = show({ ...outside, requests: [] });
+    const profile = vi.spyOn(api, 'clan').mockResolvedValue({
+      ...directory.clans[0]!,
+      members: [
+        { playerId: 'p-1', username: 'Vantage', role: 'LEADER' as const, dominion: 640 },
+        { playerId: 'p-2', username: 'Ada', role: 'MEMBER' as const, dominion: 200 },
+      ],
+    });
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /inspect orbit wardens/i }));
+
+    await waitFor(() => { expect(profile).toHaveBeenCalledWith('clan-orbit'); });
+    expect(await screen.findByText('Vantage')).toBeInTheDocument();
+    expect(screen.getByText('Ada')).toBeInTheDocument();
+    // No world, no position: a roster is not an address book.
+    expect(screen.queryByText(/Kestrel|Orrery/)).toBeNull();
+  });
+
+  it('offers Apply from inside the profile, so the decision and the reason are together', async () => {
+    const { api } = show({ ...outside, requests: [] });
+    vi.spyOn(api, 'clan').mockResolvedValue({
+      ...directory.clans[0]!,
+      members: [
+        { playerId: 'p-1', username: 'Vantage', role: 'LEADER' as const, dominion: 640 },
+      ],
+    });
+    const apply = vi.spyOn(api, 'applyToClan')
+      .mockResolvedValue({ requestId: 'application-1', expiresAt: later });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /inspect orbit wardens/i }));
+    await screen.findByText('Vantage');
+    // The directory's own row still carries one, so press the SHEET's control.
+    const sheet = document.querySelector('[data-sheet-panel]');
+    if (!(sheet instanceof HTMLElement)) throw new Error('the profile opened no sheet');
+    await user.click(within(sheet).getByRole('button', { name: 'Apply to Orbit Wardens' }));
+
+    await waitFor(() => { expect(apply).toHaveBeenCalledWith('clan-orbit'); });
+  });
+
   it('states exactly what adaptation changes and shows the crew strength together', async () => {
     show(member);
 
@@ -229,7 +281,7 @@ describe('clan command surface', () => {
     expect(screen.getByText(/Aid, shared loot and clan history open/)).toBeInTheDocument();
 
     expect(screen.queryByRole('tab', { name: 'Chat' })).not.toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole('tab', { name: 'Strength' }));
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Forces' }));
     expect(screen.getByText('How strong are we together?')).toBeInTheDocument();
     expect(screen.getByText('1,240')).toBeInTheDocument();
     expect(screen.getByText('73')).toBeInTheDocument();

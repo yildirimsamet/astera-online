@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { and, asc, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
 import {
   GALAXY_EVENTS,
+  ECONOMY_PROFILE,
   MULTI_WORLD,
   generateGalaxyEventSchedule,
   plannedEffectFor,
@@ -167,6 +168,7 @@ export async function seedGalaxyEventCalendar(
   season: typeof seasons.$inferSelect,
   initializedAt: Date = season.startsAt,
 ): Promise<void> {
+  if (!ECONOMY_PROFILE.tradeShip && !ECONOMY_PROFILE.asteroidShower) return;
   if (season.rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion) return;
   const durationMinutes = minutesSince(season.startsAt, season.endsAt);
   /*

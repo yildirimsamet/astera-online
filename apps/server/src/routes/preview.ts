@@ -8,6 +8,7 @@ import { galaxyOf, occupiedSlots } from '../services/season.js';
 import { listServers, resolveJoinTarget } from '../services/servers.js';
 import { projectGalaxyTraffic } from '../services/traffic.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
+import { applyDominionPodium, dominionPodium } from '../services/dominion.js';
 
 /**
  * THE GALAXY, BEFORE YOU HAVE AN ACCOUNT. D56.
@@ -75,7 +76,13 @@ export function registerPreviewRoutes(app: FastifyInstance): void {
       adminPlayerIdsInSeason(app.db, target.seasonId, app.adminUsernames),
       app.projections.pirateSnapshot(target.seasonId, app.clock.now()),
     ]);
-    const worlds = allWorlds.filter((world) =>
+    const publicPodium = adminPlayerIds.size === 0
+      ? null
+      : await dominionPodium(app.db, target.seasonId, adminPlayerIds);
+    const rankedWorlds = publicPodium === null
+      ? allWorlds
+      : applyDominionPodium(allWorlds, publicPodium);
+    const worlds = rankedWorlds.filter((world) =>
       world.controller.kind !== 'PLAYER'
       || !adminPlayerIds.has(world.controller.playerId));
     /**

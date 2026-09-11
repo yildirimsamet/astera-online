@@ -24,6 +24,8 @@ export interface WorkerOptions {
   silentSpaceEnabled?: boolean;
   silentSpaceBatch?: number;
   silentSpaceMaxShards?: number;
+  /** Configured operator accounts are spectators to Dominion competition. */
+  adminUsernames?: ReadonlySet<string>;
 }
 
 export interface TickResult {
@@ -246,7 +248,11 @@ export class EventWorker {
         continue;
       }
       try {
-        await handler({ db: this.db, clock: this.clock }, event);
+        await handler({
+          db: this.db,
+          clock: this.clock,
+          adminUsernames: this.opts.adminUsernames,
+        }, event);
         await complete(this.db, event.id);
         processed++;
       } catch (err) {

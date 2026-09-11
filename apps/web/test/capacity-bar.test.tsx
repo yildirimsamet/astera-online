@@ -96,7 +96,7 @@ describe('the capacity bar', () => {
   /** Ground guns share the vocabulary; only the ceiling behind it differs. */
   it('draws a ground battery the same way', () => {
     const view = bar({ total: 30, used: 13, incoming: hullBulk('BASTION'), fits: 1 });
-    expect(widthOf(view, 'incoming')).toBeCloseTo(hullBulk('BASTION') / 30 * 100, 0);
+    expect(widthOf(view, 'incoming')).toBeCloseTo(Math.min(hullBulk('BASTION'), 30 - 13) / 30 * 100, 0);
   });
 });
 

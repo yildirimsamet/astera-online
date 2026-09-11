@@ -3,10 +3,10 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import {
-  DEATH_STAR,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   PROBE,
+  combatValue,
   distance,
   fleetCount,
   fleetEntries,
@@ -32,10 +32,12 @@ import type {
   RivalSummary,
 } from '../api/schemas.js';
 import { useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { rivalColour } from './PlanetField.jsx';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { colonizationPhase, type ColonizationPhase } from '../lib/colonization.js';
 import { useAccordion } from '../lib/accordion.js';
+import { deathStarsOf, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
   confidenceWord,
@@ -51,6 +53,7 @@ import {
 import { countdown, duration, staleness, useNow } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { flightModifiers, reachMinutes } from '../lib/navigation.js';
+import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
@@ -59,7 +62,7 @@ import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { useOwnPress } from '../ui/kit/index.js';
+import { Confirm, ConfirmLine, useOwnPress } from '../ui/kit/index.js';
 
 /**
  * FOCUS — what is this thing, and what do I know about it?
@@ -212,7 +215,22 @@ function Shell({
       </div>
 
       {open && (
-        <div className="max-h-[52dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
+        /*
+          THE BODY IS 70dvh, AND THE MISSING 30 IS THE PRODUCT. Owner report.
+
+          52dvh on the 812pt phone this game is budgeted against is roughly 420pt
+          of body — and the rail above it and the commit row inside it are both
+          inside that figure, so a world with any intel on it put the commander
+          into a scroll before they had finished reading the first fact. That is
+          `interface.md`'s fourth question, measured: a decision taken over two
+          screens is a different decision from one taken over one.
+
+          It does not go further, and the ceiling is the reason the rail exists at
+          all. I5: the galaxy never closes. What is left above this is the world
+          being decided about — take that and this stops being a panel over a
+          living disc and becomes a page with a picture behind it.
+        */
+        <div className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
           {/*
             Every focus card goes through this shell, so wrapping it here is what
             stops a frozen season offering launches, probes and settlements it
@@ -298,7 +316,7 @@ function FactRow({ fact }: { fact: Fact }) {
  *
  * A dossier can hold four of these at once, and each one drew a label, the fact, a
  * two-line argument for why it matters and a full-width control. Four of that is
- * most of a 375-wide screen spent on what the player does NOT know, sitting above
+ * most of a 350-wide screen spent on what the player does NOT know, sitting above
  * the two commitments that would act on it.
  *
  * SO THE PROSE FOLDS AND THE ACTION NEVER DOES — the same division `RouteStep`
@@ -389,8 +407,9 @@ export function PlanetFocus({
   intel,
   reports,
   rival,
-  isRival = false,
+  rivalSlot = null,
   now,
+  outOfBand = false,
   onClose,
   onAttack,
   onSettle,
@@ -407,8 +426,25 @@ export function PlanetFocus({
   intel: IntelView | undefined;
   reports: readonly Report[];
   rival?: RivalSummary;
-  isRival?: boolean;
+  /**
+   * WHICH OF THE COMMANDER'S MARKS THIS WORLD WEARS, OR NULL. D183.
+   *
+   * The slot rather than a boolean, because a mark's colour comes off it — five
+   * identical reticles would be five marks and no information, which is the whole
+   * point of raising the ceiling from one.
+   */
+  rivalSlot?: number | null;
   now: number;
+  /**
+   * IS THE BAND ALREADY REFUSING THIS TARGET, PROVABLY. D168 · D127.
+   *
+   * Computed by `lib/band.ts` from the disc the caller can actually see, and it
+   * is one-directional on purpose: fog can prove "further developed than you"
+   * and can never prove the reverse. Passed in rather than read here because
+   * `GalaxyView` is holding the whole galaxy already, and the arithmetic stays
+   * pure and testable away from a panel with thirty hooks.
+   */
+  outOfBand?: boolean;
   onClose: () => void;
   onAttack: () => void;
   onSettle?: () => void;
@@ -439,6 +475,45 @@ export function PlanetFocus({
     hooks in the same order; only what it draws is a branch.
   */
   const dossierBands = useAccordion('dossier', ['probe']);
+
+  /**
+   * IS THE STRIKE BEING ASKED ABOUT. Owner report: *"yanlışlıkla"*.
+   *
+   * A Death Star strike is the most expensive single action a commander takes,
+   * it consumes the weapon, and it was one slab in a wrapped row of four whose
+   * neighbour is an ordinary raid. Every other commitment in this game has a
+   * sheet between the press and the spend — a raid picks its fleet, a settlement
+   * states its convoy — and this one, which spends more than any of them, had
+   * nothing.
+   *
+   * UP HERE FOR THE REASON THE COMMENT ABOVE GIVES, and it was first written
+   * below the owned-world return, where `focus-hook-order.test.tsx` caught it
+   * immediately: the rail keeps its fiber across a change of subject, so a hook
+   * only some renders reach is React #310 in production. Every hook this panel
+   * has is called on every render; only what it draws is a branch.
+   */
+  const [striking, setStriking] = useState(false);
+
+  /**
+   * AND IT DIES WITH THE WORLD IT WAS ASKED ABOUT.
+   *
+   * The rail keeps its fiber across a change of subject — that is exactly what
+   * `focus-hook-order.test.tsx` exists to protect — so this state survived one.
+   * Open the strike question on Grimhold, focus your own colony without
+   * answering (the panel early-returns and the sheet vanishes), then focus any
+   * foreign world: it came back by itself, naming a world the commander had
+   * pressed nothing on. That is a worse version of the mis-tap the confirmation
+   * was added to prevent.
+   *
+   * Keyed on the world's id rather than on the object, because the galaxy
+   * payload re-parses and a fresh `target` for the same world is an ordinary
+   * refetch, not a change of subject.
+   */
+  const askedAbout = useRef(target.id);
+  if (askedAbout.current !== target.id) {
+    askedAbout.current = target.id;
+    if (striking) setStriking(false);
+  }
 
   if (target.isOwned) {
     return (
@@ -519,7 +594,7 @@ export function PlanetFocus({
     is not.
   */
   const settlementFuelled =
-    planet.planet.deuterium - MULTI_WORLD.settlement.cost.deuterium >= settlementFuel;
+    planet.planet.deuterium - MULTI_WORLD.settlement.charge.deuterium >= settlementFuel;
   const colonyStanding = planet.colonies ?? {
     colonies: 0,
     reservations: 0,
@@ -537,9 +612,9 @@ export function PlanetFocus({
         ? t('focus.planet.settleNeedBay')
         : (planet.fleet.COURIER ?? 0) < MULTI_WORLD.settlement.transports
           ? t('focus.planet.settleNeedCourier')
-          : planet.planet.alloy < MULTI_WORLD.settlement.cost.alloy
+          : planet.planet.alloy < MULTI_WORLD.settlement.charge.alloy
             ? t('focus.planet.settleNeedAlloy')
-            : planet.planet.crystal < MULTI_WORLD.settlement.cost.crystal
+            : planet.planet.crystal < MULTI_WORLD.settlement.charge.crystal
               ? t('focus.planet.settleNeedCrystal')
               // Beside the other two stores, because it is one: the founding stock
               // is carried and the flight is burned, and both come off this world.
@@ -557,10 +632,31 @@ export function PlanetFocus({
    * land before the window closed. The weapon takes nothing now — it restarts the
    * target's deadline — so both refusals are gone and the button says one thing.
    */
-  const deathStarReady = planet.strategic?.status === 'READY';
+  /**
+   * A WORLD THAT CANNOT BE RAIDED, AND THE CONTROL HAS TO SAY SO. D124 · D183.
+   *
+   * `PROTECTED` covers two rules that mean one thing to a raider: the occupation
+   * window on a world just captured (D98), and its commander's first-day shield
+   * (D183). Both refuse a launch, and until now only the Death Star control knew —
+   * the ordinary raid offered the button, took the player through picking a fleet,
+   * and refused at the moment the fleet stopped being recallable.
+   *
+   * That is precisely the failure D124 names, and it is the whole reason the state
+   * is public: a raider who cannot tell a shielded commander from a reachable one
+   * learns the rule as an error message. The clock is read against `now` rather
+   * than trusted, because a payload sits on screen while its window expires.
+   *
+   * THE PROBE IS DELIBERATELY OUTSIDE IT. A shield stops raids, not sight.
+   */
+  const shieldedUntil = target.state.kind === 'PROTECTED' && target.state.until.getTime() > now
+    ? target.state.until
+    : null;
+
+  const deathStarReady = readyDeathStar(planet) !== undefined;
+  const hasDeathStar = deathStarsOf(planet).length > 0;
   const deathStarBlock = !deathStarReady
     ? t('focus.planet.deathStarUnavailable')
-    : target.state.kind === 'PROTECTED'
+    : shieldedUntil !== null
       ? t('focus.planet.deathStarProtected')
       : originRecovering
         ? t('focus.planet.deathStarOriginRecovering')
@@ -602,7 +698,7 @@ export function PlanetFocus({
       onClose={onClose}
       summary={(
         <span className="flex flex-col items-end gap-1">
-          {!unsurveyed && <WorldKind target={target} rival={isRival} />}
+          {!unsurveyed && <WorldKind target={target} rivalSlot={rivalSlot} />}
           <Headline of={known} />
         </span>
       )}
@@ -629,12 +725,23 @@ export function PlanetFocus({
           {!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL' && (
           <button
             type="button"
-            className={`slab slab-ghost min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight ${isRival ? 'text-alloy' : ''}`}
+            className="slab slab-ghost min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight"
+            /*
+              THE CONTROL WEARS THE MARK'S OWN COLOUR. D183 — the reticle on the
+              disc, the dot in the menu and this button are the same hue, so the
+              colour is what tells five marks apart everywhere it appears.
+            */
+            style={rivalSlot !== null ? { color: rivalColour(rivalSlot) } : undefined}
             disabled={setRival.isPending}
             onClick={() => {
-              setRival.mutate(isRival ? null : target.id, {
+              /*
+                THE SAME WORLD BOTH WAYS. D183: the press is a toggle on the server,
+                so marking and clearing send the identical body — `null` is now the
+                gesture that empties the WHOLE set and must never be sent from here.
+              */
+              setRival.mutate(target.id, {
                 onSuccess: () => {
-                  say(t(isRival ? 'focus.planet.rivalCleared' : 'focus.planet.rivalMarked', {
+                  say(t(rivalSlot !== null ? 'focus.planet.rivalCleared' : 'focus.planet.rivalMarked', {
                     commander: target.owner,
                   }));
                 },
@@ -651,13 +758,13 @@ export function PlanetFocus({
               of three hundred worlds; changing your mind about who you are
               watching is not a decision the game needs to protect you from.
             */}
-            {t(isRival ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
+            {t(rivalSlot !== null ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
           </button>
           )}
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
             <button
               type="button"
-              className="slab slab-primary min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight"
+              className="slab slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight"
               disabled={!settlementReady}
               onClick={onSettle}
             >
@@ -669,7 +776,7 @@ export function PlanetFocus({
 
             This slab rendered unconditionally and, for the overwhelming majority
             of commanders, read "No ready Death Star" — a full-width control on a
-            375-wide rail whose entire content was the absence of a thing they had
+            350-wide rail whose entire content was the absence of a thing they had
             never built. Three stacked slabs, one of them announcing nothing.
 
             `interface.md` I1 — an unavailable action stays visible with its reason
@@ -680,13 +787,13 @@ export function PlanetFocus({
             With `strategic` null there is no gap, no reason worth reading, and no
             action — only a row of type.
           */}
-          {onDeathStar && !target.clanmate && planet.strategic != null && (
+          {onDeathStar && !target.clanmate && hasDeathStar && (
             <button
               type="button"
               data-death-star
               className="slab slab-commit basis-full whitespace-normal px-3 leading-tight"
               disabled={!deathStarEnabled}
-              onClick={onDeathStar}
+              onClick={() => { setStriking(true); }}
             >
               {deathStarBlock ?? t('focus.planet.deathStarStrike')}
             </button>
@@ -707,7 +814,7 @@ export function PlanetFocus({
             The probe used to live in the panel BODY, below the list of gaps, while
             the attack lived down here — so the two things a commander opens this
             panel to do were separated by everything they already knew, and each ate
-            a full row of a 375-wide phone.
+            a full row of a 350-wide phone.
 
             Pairing them costs the labels their sentences, so the COST moves onto
             its own micro line inside the probe's button rather than out of the
@@ -728,12 +835,24 @@ export function PlanetFocus({
             // grant — a probe alone needs crystal the mandatory upgrades spent.
             data-attack
             className="slab slab-commit slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight"
-            aria-label={t(originRecovering
-              ? 'focus.planet.attackOriginRecovering'
-              : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                ? 'focus.planet.attackNeutralAgain'
-                : 'focus.planet.attack')}
-            disabled={originRecovering}
+            /*
+              THE BAND IS ORDERED FIRST, AND THAT MATCHES THE SERVER. `canAttack`
+              raises the two tier codes ahead of `BASH_LIMIT` because a permanent
+              refusal outranks a temporary one — telling a commander to wait out a
+              window that will not make the fight legal sends them away and back
+              for the same no. The same argument puts it ahead of a shield clock
+              here: the shield expires, the development gap does not.
+            */
+            aria-label={t(outOfBand
+              ? 'focus.planet.attackOutOfBand'
+              : shieldedUntil !== null
+                ? 'focus.planet.attackProtected'
+                : originRecovering
+                  ? 'focus.planet.attackOriginRecovering'
+                  : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+                    ? 'focus.planet.attackNeutralAgain'
+                    : 'focus.planet.attack')}
+            disabled={outOfBand || originRecovering || shieldedUntil !== null}
             onClick={onAttack}
           >
             {/*
@@ -747,11 +866,22 @@ export function PlanetFocus({
               layout of its own.
             */}
             <AttackIcon className="size-4 shrink-0" />
-            {t(originRecovering
-              ? 'focus.planet.attackOriginRecovering'
-              : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                ? 'focus.planet.attackNeutralAgain'
-                : 'focus.planet.attackShort')}
+            {/*
+              THE REASON RIDES THE LABEL, and it names the CLOCK rather than the
+              rule: "protected for 4h" is a fact a commander can plan against,
+              where "that commander is new" is trivia about somebody else.
+            */}
+            {outOfBand
+              ? t('focus.planet.attackOutOfBandShort')
+              : shieldedUntil !== null
+              ? t('focus.planet.attackProtectedShort', {
+                duration: countdown(shieldedUntil.getTime() - now),
+              })
+              : t(originRecovering
+                ? 'focus.planet.attackOriginRecovering'
+                : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+                  ? 'focus.planet.attackNeutralAgain'
+                  : 'focus.planet.attackShort')}
           </button>}
           </>
         )}
@@ -780,7 +910,7 @@ export function PlanetFocus({
         settlementFuel={settlementFuel}
         settlementFuelled={settlementFuelled}
         claimActive={claimActive}
-        isRival={isRival}
+        isRival={rivalSlot !== null}
         phase={colonyPhase}
       />
       )}
@@ -805,12 +935,12 @@ export function PlanetFocus({
         />
       </div>
 
-      {(isRival || rival) && (
+      {(rivalSlot !== null || rival) && (
         <RivalHistory
           summary={rival}
           probeAt={intel?.probeReports.find((report) => report.spatiallyCurrent !== false && report.targetPlanetId === target.id)?.at}
           now={now}
-          marked={isRival}
+          marked={rivalSlot !== null}
         />
       )}
 
@@ -878,7 +1008,81 @@ export function PlanetFocus({
           />
         ))}
       </div>
+
+      {/*
+        THE SECOND BEAT ON THE STRIKE. Owner report: *"yanlışlıkla"*.
+
+        Inside the shell rather than beside it, because it is a sheet and a sheet
+        is a fixed-position surface — where the element sits in this tree changes
+        nothing about where it lands, and keeping it here means it dies with the
+        panel that opened it. The commit itself is still the caller's: this asks,
+        `GalaxyView` fires.
+      */}
+      {striking && onDeathStar && (
+        <StrikeConfirm
+          target={target}
+          onClose={() => { setStriking(false); }}
+          onConfirm={() => {
+            setStriking(false);
+            onDeathStar();
+          }}
+        />
+      )}
     </Shell>
+  );
+}
+
+/**
+ * WHAT A STRIKE SPENDS, ON THE PRESS THAT SPENDS IT.
+ *
+ * Three sentences and one figure, and the ranking is deliberate. It names the
+ * WORLD first — a mis-tap sends a Death Star to the wrong one, which is the whole
+ * of the owner's report — then what is consumed, then what the target actually
+ * suffers, then what it does NOT (D179: the world stays, the fleet survives).
+ *
+ * It is not the essay this panel used to draw under every world. That argued for
+ * the rocket to somebody merely looking; this states a price to somebody who has
+ * already pressed. The difference is the whole reason one was removed and the
+ * other added on the same day.
+ */
+function StrikeConfirm({
+  target,
+  onConfirm,
+  onClose,
+}: {
+  target: GalaxyPlanet;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const world = target.intel === 'UNKNOWN'
+    ? t('focus.planet.unsurveyedTitle')
+    : target.name;
+
+  return (
+    <Confirm
+      eyebrow={t('focus.planet.strikeConfirm.eyebrow')}
+      title={t('focus.planet.strikeConfirm.title', { world })}
+      confirmLabel={t('focus.planet.strikeConfirm.commit')}
+      backLabel={t('focus.planet.strikeConfirm.back')}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    >
+      <p className="text-body text-bone">{t('focus.planet.strikeConfirm.lead')}</p>
+
+      <div className="plate plate-inset mt-3 px-3 py-2">
+        <ConfirmLine
+          label={t('focus.planet.strikeConfirm.outage')}
+          value={duration(MULTI_WORLD.recoveryMinutes)}
+        />
+      </div>
+
+      {/* And what it does NOT do, because D179 took the teeth out and a commander
+          about to spend twenty thousand alloy should know what they are buying. */}
+      <p className="mt-3 text-caption text-dim">
+        {t('focus.planet.strikeConfirm.keeps')}
+      </p>
+    </Confirm>
   );
 }
 
@@ -926,7 +1130,7 @@ function OwnedPlanetFocus({
       onClose={onClose}
       summary={(
         <span className="flex flex-col items-end gap-1">
-          <WorldKind target={target} rival={false} />
+          <WorldKind target={target} rivalSlot={null} />
           <span>{t('focus.planet.transferFrom', { origin: origin.planet.name })}</span>
         </span>
       )}
@@ -977,7 +1181,14 @@ function OwnedPlanetFocus({
   );
 }
 
-function WorldKind({ target, rival }: { target: GalaxyPlanet; rival: boolean }) {
+function WorldKind({
+  target,
+  rivalSlot,
+}: {
+  target: GalaxyPlanet;
+  /** The mark's slot, so the word wears the same colour the disc draws. D183. */
+  rivalSlot: number | null;
+}) {
   const { t } = useTranslation();
   return (
     <span className="legend flex items-center gap-1">
@@ -990,7 +1201,11 @@ function WorldKind({ target, rival }: { target: GalaxyPlanet; rival: boolean }) 
             ? 'focus.planet.kindColony'
             : 'focus.planet.kindNeutral')}
       </span>
-      {rival && <span className="text-alloy-glow">· {t('focus.planet.rivalMarkedAction')}</span>}
+      {rivalSlot !== null && (
+        <span style={{ color: rivalColour(rivalSlot) }}>
+          · {t('focus.planet.rivalMarkedAction')}
+        </span>
+      )}
     </span>
   );
 }
@@ -1072,56 +1287,26 @@ function Requirement({
 }
 
 /**
- * WHAT THE ROCKET DOES, BESIDE THE CONTROL THAT FIRES IT. D113.
+ * THE STRIKE ESSAY IS GONE FROM THIS PANEL, AND THAT IS THE POINT. Owner report.
  *
- * The route strip said "Damage" and then "Control transfers", which describes
- * the SEQUENCE and never once the effect. Same five facts as the forge card and
- * deliberately its own strings (D55): this one is written about the world under
- * the crosshair, not about the weapon on your own pad.
+ * `StrikeEffects` drew six lines of what a Death Star does, under a world the
+ * commander was merely LOOKING at. Three things were wrong with it at once:
+ *
+ * · IT ANSWERED A QUESTION NOBODY HERE ASKED. `focus-density.test.tsx` already
+ *   refuses to draw the death-star CONTROL to a commander who owns no weapon —
+ *   "you have no Death Star" is not a gap they are about to close (I1). The
+ *   explanation of that control outlived the control itself, so the panel spent
+ *   half a phone screen arguing for a rocket that was not on offer.
+ * · IT WAS ALREADY WRITTEN SOMEWHERE BETTER. The forge card states the same five
+ *   facts beside the thing that fires them (D55/D113), which is where a commander
+ *   is actually deciding to build one.
+ * · IT COST THE SHEET ITS HEIGHT. Six bullet lines on the one surface an attack
+ *   is chosen from, above the intel that the attack is chosen WITH.
+ *
+ * What stays is the route strip and the control — the strike is still named and
+ * still offered. `focus-sheet-owner-fixes.test.tsx` holds both halves: no essay,
+ * and the route still there.
  */
-/**
- * WHAT A STRIKE ACTUALLY DOES, AND SINCE D179 THAT IS ALL IT DOES.
- *
- * AND THE `capturable` PROP IS GONE WITH IT. D179.
- *
- * It meant "a second rocket can take this world" until D167, then "this world can
- * be LOST if nobody answers" until D179 removed the deadline. What was left was a
- * boolean choosing between two phrasings of "nothing happens" — a difference the
- * component still LOOKED like it was drawing, which is exactly how the next author
- * learns a rule that does not exist. There is one closing line now because there
- * is one rule: a strike is an OUTAGE, on every kind of world.
- */
-function StrikeEffects() {
-  const { t } = useTranslation();
-  const lines = [
-    t('focus.planet.strikeFleet'),
-    t('focus.planet.strikeStock'),
-    t('focus.planet.strikeCore'),
-    t('focus.planet.strikeAegis', { levels: DEATH_STAR.aegisLevelsLost }),
-    t('focus.planet.strikeDark', {
-      duration: duration(MULTI_WORLD.recoveryMinutes),
-    }),
-  ];
-  return (
-    <div className="plate plate-inset mt-3 flex flex-col gap-2 p-3">
-      <p className="legend text-threat-ink">{t('focus.planet.strikeTitle')}</p>
-      <ul className="flex flex-col gap-2">
-        {lines.map((line) => (
-          <li key={line} className="flex gap-2 text-caption text-bone">
-            <span aria-hidden className="text-threat-ink">▪</span>
-            <span>{line}</span>
-          </li>
-        ))}
-        {/* What the SECOND one does, which is the only reason to plan a first. */}
-        <li className="flex gap-2 text-caption text-dim">
-          <span aria-hidden className="text-faint">▪</span>
-          <span>{t('focus.planet.strikeNoCapture')}</span>
-        </li>
-      </ul>
-    </div>
-  );
-}
-
 function StrategicWorldGuide({
   target,
   planet,
@@ -1210,7 +1395,6 @@ function StrategicWorldGuide({
             </span>
           )}
         </div>
-        <StrikeEffects />
       </div>
     );
   }
@@ -1222,8 +1406,8 @@ function StrategicWorldGuide({
   ) {
     const until = target.neutral?.claimUntil;
     const hauler = (planet.fleet.COURIER ?? 0) >= MULTI_WORLD.settlement.transports;
-    const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.cost.alloy;
-    const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.cost.crystal;
+    const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.charge.alloy;
+    const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.charge.crystal;
     return (
       <div className={`mb-3 rounded-chip border px-3 py-3 ${
         claimActive ? 'border-opportunity/50 bg-opportunity/10' : 'border-line-soft bg-deep/65'
@@ -1315,26 +1499,26 @@ function StrategicWorldGuide({
                 <Requirement
                   ok={alloy}
                   label={t('focus.planet.foundingAlloy', {
-                    amount: compact(MULTI_WORLD.settlement.cost.alloy),
+                    amount: compact(MULTI_WORLD.settlement.charge.alloy),
                   })}
                   explanation={t('focus.planet.foundingAlloyExplain', {
-                    amount: compact(MULTI_WORLD.settlement.cost.alloy),
+                    amount: compact(MULTI_WORLD.settlement.charge.alloy),
                   })}
                 >
                   <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-3.5 object-contain" />
-                  {compact(MULTI_WORLD.settlement.cost.alloy)}
+                  {compact(MULTI_WORLD.settlement.charge.alloy)}
                 </Requirement>
                 <Requirement
                   ok={crystal}
                   label={t('focus.planet.foundingCrystal', {
-                    amount: compact(MULTI_WORLD.settlement.cost.crystal),
+                    amount: compact(MULTI_WORLD.settlement.charge.crystal),
                   })}
                   explanation={t('focus.planet.foundingCrystalExplain', {
-                    amount: compact(MULTI_WORLD.settlement.cost.crystal),
+                    amount: compact(MULTI_WORLD.settlement.charge.crystal),
                   })}
                 >
                   <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-3.5 object-contain" />
-                  {compact(MULTI_WORLD.settlement.cost.crystal)}
+                  {compact(MULTI_WORLD.settlement.charge.crystal)}
                 </Requirement>
                 <Requirement
                   ok={settlementFuelled}
@@ -1393,7 +1577,7 @@ function StrategicWorldGuide({
     <div className={`mb-3 rounded-chip border px-3 py-3 ${
       recovery
         ? 'border-alert/55 bg-alert/12'
-        : isRival ? 'border-[#ff6b43]/45 bg-[#ff6b43]/8' : 'border-line-soft bg-deep/65'
+        : isRival ? 'border-alloy-glow/45 bg-alloy-glow/8' : 'border-line-soft bg-deep/65'
     }`}>
       <div className="flex items-center justify-between gap-2">
         <p className={`legend ${recovery ? 'text-threat-ink' : 'text-bone'}`}>
@@ -1431,9 +1615,6 @@ function StrategicWorldGuide({
           />
         </ol>
       )}
-      {/* A capital never reaches this guide — it returns above — so this is always
-          a colony, and a colony is the world that can actually be lost. */}
-      {!protectedState && <StrikeEffects />}
       {/*
         THE THREE CHIPS HERE WERE THE CAPTURE GATES — an open colony slot, a ready
         weapon, a flight that lands before the window shuts — and D167 removed the
@@ -1456,7 +1637,7 @@ function StrategicWorldGuide({
  * ONE STEP OF THE ROUTE, AND ONLY THE LIVE ONE IS OPEN. Owner report.
  *
  * All three steps used to render fully expanded — number, label, prose and
- * requirement chips — stacked down a 375-wide phone. A three-step process the
+ * requirement chips — stacked down a 350-wide phone. A three-step process the
  * commander is only ever standing on ONE step of filled the screen with the two
  * they were not on, and pushed the controls that act on it below the fold.
  *
@@ -1863,6 +2044,7 @@ export function AsteroidFocus({
   reachMinutes: reach,
   worksRoom,
   run,
+  craftReadyAt,
   onClose,
   onSend,
   busy,
@@ -1892,6 +2074,16 @@ export function AsteroidFocus({
   worksRoom: number;
   /** Your own craft already working this rock, if any. */
   run: MiningRun | undefined;
+  /**
+   * WHEN THIS WORLD'S DRILLS ARE FREE AGAIN — null when they already are. D183.
+   *
+   * A trip too short to have cost anything (a wreck field over your own world is a
+   * zero-length leg) rests the squadron for a minute when it lands. Drawn rather
+   * than only refused: D124 forbids a rule the player cannot see, and
+   * `PROSPECTOR.returnSpeedFactor` refuses "a timer with nothing on screen" in as
+   * many words. The launch stays the authority behind it.
+   */
+  craftReadyAt: Date | null;
   onClose: () => void;
   onSend: (craft: number) => void;
   busy: boolean;
@@ -1899,6 +2091,7 @@ export function AsteroidFocus({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
+  const now = useNow();
   const crystal = Math.round(rock.crystalShare * 100);
   const deuterium = Math.round((rock.deuteriumShare ?? 0) * 100);
   const needsSpectrometry = rock.isotopeRich && !isotopeAccess;
@@ -1919,6 +2112,7 @@ export function AsteroidFocus({
   // account. Anything above the room available is lost on arrival. D31.
   const bringing = Math.min(craftHold * sending, rock.oreRemaining);
   const spill = Math.max(0, Math.round(bringing - worksRoom));
+  const resting = restingFor(craftReadyAt, now);
 
   return (
     <Shell
@@ -1963,7 +2157,9 @@ export function AsteroidFocus({
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
-            disabled={busy || needsSpectrometry || craftAvailable < 1 || tooLate}
+            disabled={
+              busy || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
+            }
             onClick={() => {
               onSend(sending);
             }}
@@ -1972,9 +2168,11 @@ export function AsteroidFocus({
               ? t('focus.asteroid.researchNeeded')
               : craftAvailable < 1
                 ? t('focus.asteroid.noCraft')
-                : tooLate
-                  ? t('focus.asteroid.tooLate')
-                  : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
+                : resting !== null
+                  ? t('focus.asteroid.resting', { duration: countdown(resting) })
+                  : tooLate
+                    ? t('focus.asteroid.tooLate')
+                    : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
           </button>
         )
       }
@@ -2216,6 +2414,28 @@ export function PirateFocus({
           value={soonest === null ? '—' : duration(soonest)}
           tone={soonest === null ? 'threat' : undefined}
         />
+        {/*
+          HOW BIG THE FIGHT IS, ON THE RAIL THAT DESCRIBES IT. D183, owner report:
+          *"Bir korsan filoya focus olunca, focus sheette korsan filonun gücü
+          gözükmüyor. Ancak saldır butona basınca açılan sheette gözüküyor."*
+
+          The crew list below answers "what is out there"; it does not answer "how
+          much is it", and that figure was two taps away inside the commitment sheet
+          — on the far side of the decision the commander was trying to make. D124:
+          the one rule this feature turns on is "is this fight my size".
+
+          `combatValue`, the same axis `ForceCompare` puts the commander's own wing
+          on a tap later. A rail quoting a different quantity would be worse than a
+          rail quoting none. IDENTIFIED only: a Radar return carries no roster (D123)
+          and a strength invented from a silhouette is a reading nobody bought.
+        */}
+        {identified && crew && (
+          <Figure
+            label={t('pirate.strengthLabel')}
+            value={full(combatValue(crew))}
+            testId="pirate-strength"
+          />
+        )}
       </div>
 
       {/*
@@ -2410,16 +2630,22 @@ export function TradeFocus({
       {/*
         THE RATE, DRAWN. D124 · D142.
 
-        One anchor — a single deuterium — and what it is worth in each of the three
-        substances, as bars against the largest of them. The numerals are there, but
-        the SHAPE is what says "alloy is cheap and deuterium is dear" before a word
-        is read, which is the judgement a player actually makes here.
+        ONE ANCHOR, AND IT IS THE SMALLEST ONE THAT COMES OUT WHOLE. The anchor used
+        to be a single deuterium, which worked while every other price divided it
+        (1 · 3 · 90 — one deuterium was ninety alloy and thirty crystal, both whole).
+        At D183's 1 · 2 · 9 it does not: one deuterium is four and a half crystal,
+        and a rail that prints "4.5" is asking a player to reason about a resource
+        that only exists in whole units.
+        `rateAnchor` is the least common multiple of the three prices, so every row
+        is a whole number and the SHAPE — alloy is cheap, deuterium is dear — is
+        what it always was. On the shipped rate the rail reads 18 · 9 · 2.
       */}
       <p className="legend mb-2">{t('trade.rateHeading')}</p>
       <div data-testid="trade-rate" className="space-y-2">
         {TRADE_RESOURCES.map((resource) => {
-          const amount = merchant.rate.deuterium / merchant.rate[resource];
-          const widest = merchant.rate.deuterium / Math.min(
+          const anchor = rateAnchor(merchant.rate);
+          const amount = anchor / merchant.rate[resource];
+          const widest = anchor / Math.min(
             merchant.rate.alloy,
             merchant.rate.crystal,
             merchant.rate.deuterium,
@@ -2959,6 +3185,20 @@ export function ContactFocus({
  */
 
 /**
+ * HOW LONG THIS WORLD'S DRILLS ARE STILL RESTING, OR NULL. D183.
+ *
+ * One statement for both mining rails, because they are the same decision in two
+ * costumes and a rest that read differently on each would be two rules. Null the
+ * moment the instant is behind us, so the control comes back on the tick rather
+ * than on the next refetch.
+ */
+const restingFor = (readyAt: Date | null, now: number): number | null => {
+  if (!readyAt) return null;
+  const left = readyAt.getTime() - now;
+  return left > 0 ? left : null;
+};
+
+/**
  * HOW MANY CRAFT TO COMMIT — and why it has to be a choice.
  *
  * The panel used to send `worthSending`: everything at home, capped at what the
@@ -2967,7 +3207,9 @@ export function ContactFocus({
  * craft on a rock and one on a wreck field had no way to say so — the first launch
  * took the whole available squadron and the second target was unreachable until they came home.
  *
- * `PROSPECTOR.max` is two (D74), so this is two buttons and never a stepper.
+ * The ceiling is two, or three once Prospector Holds reaches its third rung (D170),
+ * so this is a handful of buttons and never a stepper — it reads `craftAvailable`
+ * rather than the constant, which is why the third berth needed nothing here.
  * The default stays `worthSending`, so the common case is still one tap.
  */
 function CraftPicker({
@@ -3016,6 +3258,7 @@ export function DebrisFocus({
   reachMinutes: reach,
   worksRoom,
   run,
+  craftReadyAt,
   onSend,
   onClose,
   busy,
@@ -3035,6 +3278,8 @@ export function DebrisFocus({
   reachMinutes: number | null;
   worksRoom: number;
   run: MiningRun | undefined;
+  /** The same rest the rock rail draws, and the lane the rule exists for. D183. */
+  craftReadyAt: Date | null;
   onSend: (craft: number) => void;
   onClose: () => void;
   busy: boolean;
@@ -3042,6 +3287,7 @@ export function DebrisFocus({
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
+  const now = useNow();
   const left = field.alloy + field.crystal + field.deuterium;
   const canCarry = craftHold * craftAvailable;
   const worthSending = Math.max(
@@ -3055,6 +3301,7 @@ export function DebrisFocus({
     setCraft(worthSending);
   }, [worthSending]);
   const spill = Math.max(0, Math.round(Math.min(craftHold * sending, left) - worksRoom));
+  const resting = restingFor(craftReadyAt, now);
 
   return (
     <Shell
@@ -3096,16 +3343,18 @@ export function DebrisFocus({
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
-            disabled={busy || craftAvailable < 1 || tooLate}
+            disabled={busy || craftAvailable < 1 || tooLate || resting !== null}
             onClick={() => {
               onSend(sending);
             }}
           >
             {craftAvailable < 1
               ? t('focus.debris.noCraft')
-              : tooLate
-                ? t('focus.debris.tooLate')
-                : t('focus.debris.send', { count: sending, duration: duration(reach) })}
+              : resting !== null
+                ? t('focus.debris.resting', { duration: countdown(resting) })
+                : tooLate
+                  ? t('focus.debris.tooLate')
+                  : t('focus.debris.send', { count: sending, duration: duration(reach) })}
           </button>
         )
       }
@@ -3168,6 +3417,7 @@ function Figure({
   label,
   value,
   tone,
+  testId,
 }: {
   label: string;
   value: string;
@@ -3175,6 +3425,8 @@ function Figure({
   // piles in the palette the whole game uses for them is what makes it readable at
   // a glance as "salvage" rather than as an abstract number.
   tone?: 'crystal' | 'alloy' | 'opportunity' | 'threat';
+  /** A handle for the one figure a test needs to find among several. */
+  testId?: string;
 }) {
   const colour =
     tone === 'crystal'
@@ -3187,7 +3439,7 @@ function Figure({
           ? 'text-threat'
           : 'text-bone';
   return (
-    <div>
+    <div {...(testId ? { 'data-testid': testId } : {})}>
       <p className="legend">{label}</p>
       <p className={`num mt-1 text-body ${colour}`}>
         {value}

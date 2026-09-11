@@ -119,6 +119,12 @@ describe('the quick-start guide row', () => {
     expect(page).toContain('<html');
   });
 
+  it('explains the first-day shield and the action that spends it', () => {
+    const page = readFileSync(resolve(process.cwd(), `public${GUIDE_URL}`), 'utf8');
+    expect(page).toMatch(/ilk 24 saat/i);
+    expect(page).toMatch(/saldırı.*koruma.*sona erer/is);
+  });
+
   /*
     THE WAY BACK IS STICKY, and that is the point of it. Owner request. The guide
     is one long scroll, so a way back that lives at the top is a way back only

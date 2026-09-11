@@ -2,7 +2,6 @@ import {
   RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
   groundSlots,
-  hangarCapacity,
 } from '@astera/rules';
 import type { PlanetView } from '../src/api/schemas.js';
 
@@ -56,7 +55,7 @@ export function planetView(
       disruptedUntil: null,
       ...stock,
     },
-    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, HANGAR: 0 },
+    buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
     nextCosts: {},
     instruments: {},
     instrumentCosts: {},
@@ -86,8 +85,6 @@ export function planetView(
     fleetAway: {},
     flight: { used: 0, total: 3 },
     capacity: {
-      hangar: hangarCapacity(0),
-      hangarUsed: 12,
       ground: groundSlots(1),
       groundUsed: 0,
     },

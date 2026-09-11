@@ -33,13 +33,13 @@ describe('explicit tutorial sight framing', () => {
     expect(last.fraction).toBe(1);
   });
   it('fits the whole sphere in portrait and landscape with room for the coach', () => {
-    for (const aspect of [375 / 812, 812 / 375]) {
+    for (const aspect of [350 / 812, 812 / 350]) {
       const distance = sightCameraDistance(15, 45, aspect);
       const vertical = 45 * Math.PI / 360;
       const horizontal = Math.atan(Math.tan(vertical) * aspect);
       expect(Math.asin(15 / distance)).toBeLessThan(Math.min(vertical, horizontal));
     }
-    expect(sightCameraDistance(15, 45, 375 / 812)).toBeGreaterThan(sightCameraDistance(15, 45, 812 / 375));
+    expect(sightCameraDistance(15, 45, 350 / 812)).toBeGreaterThan(sightCameraDistance(15, 45, 812 / 350));
   });
 });
 

@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PIRATE, type Fleet } from '@astera/rules';
+import { PIRATE, combatValue, type Fleet } from '@astera/rules';
+import { full } from '../src/lib/format.js';
 import { hullLabel } from '../src/i18n/names.js';
 import { PirateFocus } from '../src/galaxy/FocusPanel.js';
 import type { PirateContact } from '../src/api/schemas.js';
@@ -205,5 +206,56 @@ describe('the pirate rail', () => {
 
     panel(identified({ expiresInMinutes: 12 }), { DART: 10 });
     expect(document.querySelector('.text-threat')).toBeTruthy();
+  });
+});
+
+
+/**
+ * THE CREW'S STRENGTH, ON THE RAIL THAT DESCRIBES THEM. D183, owner report:
+ * *"Bir korsan filoya focus olunca, focus sheette korsan filonun gücü gözükmüyor.
+ * Ancak saldır butona basınca açılan sheette gözüküyor."*
+ *
+ * The rail already listed the crew hull by hull, which answers "what is out there"
+ * and not "how much is it" — and the figure that answers the second question was
+ * two taps away, inside the commitment sheet, on the far side of a decision the
+ * commander was trying to make. D124: a rule the player cannot see is not a usable
+ * rule, and "is this fight my size" is the whole rule of this feature.
+ *
+ * IT IS THE SAME AXIS THE SHEET USES. `combatValue`, so the number a commander
+ * reads here is the number they will read beside their own wing a tap later. A
+ * rail that quoted a different quantity would be worse than one that quoted none.
+ *
+ * A RADAR RETURN HAS NO CREW AND THEREFORE NO FIGURE. D123 — the roster is what
+ * IDENTIFIED buys, and inventing a strength from a silhouette would be selling a
+ * reading nobody paid for.
+ */
+describe('what the crew is worth', () => {
+  it('states the strength of an identified crew, on the sheet’s own axis', () => {
+    panel(identified(), { DART: 20 });
+    const strength = screen.getByTestId('pirate-strength');
+    expect(strength).toHaveTextContent(
+      full(combatValue({ TEMPEST: 1, DART: 2 })).replace(/\u00a0/g, ' '),
+    );
+  });
+
+  it('counts what fires, so a hauled prize does not read as a fortress', () => {
+    panel(identified({ fleet: { DART: 2, ATLAS: 4 } }), { DART: 20 });
+    expect(screen.getByTestId('pirate-strength')).toHaveTextContent(
+      full(combatValue({ DART: 2 })).replace(/\u00a0/g, ' '),
+    );
+  });
+
+  /** One force unit, one name, on every surface. D199. */
+  it('calls it Firepower, the name the launch sheet and the probe use', () => {
+    panel(identified(), { DART: 20 });
+    expect(screen.getByTestId('pirate-strength')).toHaveTextContent(/^Firepower/);
+  });
+
+  it('draws no strength at all for a contact nobody has identified', () => {
+    panel(
+      { ...identified(), zone: 'CONTACT', fleet: undefined, level: undefined, damageMult: undefined },
+      { DART: 20 },
+    );
+    expect(screen.queryByTestId('pirate-strength')).toBeNull();
   });
 });

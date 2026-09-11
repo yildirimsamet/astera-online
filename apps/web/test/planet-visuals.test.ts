@@ -21,7 +21,7 @@ import {
   SCALE,
   activeWorldPosition,
   controlledWorldId,
-  isRivalNode,
+  rivalSlotOf,
   planetNodes,
   toWorld,
 } from '../src/galaxy/scene.js';
@@ -474,8 +474,9 @@ describe('world identity on the disc', () => {
         isSelf: false, state: { kind: 'NORMAL' }, intel: 'RESOLVED',
       },
     ]);
-    expect(isRivalNode(capital!, 'rival-capital', 'rival-player')).toBe(true);
-    expect(isRivalNode(colony!, 'rival-capital', 'rival-player')).toBe(true);
-    expect(isRivalNode(stranger!, 'rival-capital', 'rival-player')).toBe(false);
+    const marks = [{ planetId: 'rival-capital', playerId: 'rival-player', slot: 0 }];
+    expect(rivalSlotOf(capital!, marks)).toBe(0);
+    expect(rivalSlotOf(colony!, marks)).toBe(0);
+    expect(rivalSlotOf(stranger!, marks)).toBeNull();
   });
 });

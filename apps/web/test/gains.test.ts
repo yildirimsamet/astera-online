@@ -60,7 +60,6 @@ const at = (level: number): BuildingLevels => ({
   EXTRACTOR: Math.max(START_BUILDINGS.EXTRACTOR, level),
   VAULT: Math.max(START_BUILDINGS.VAULT, level),
   SHIPYARD: Math.max(START_BUILDINGS.SHIPYARD, level),
-  HANGAR: Math.max(START_BUILDINGS.HANGAR, level),
   DEUTERIUM_PLANT: Math.max(START_BUILDINGS.DEUTERIUM_PLANT, level),
 });
 
@@ -74,6 +73,38 @@ describe('every upgrade row states something that actually changes', () => {
    * screen can do. D169 made the floor a SHARE of the store, so every level moves
    * it by construction and the fallback became unreachable code. Both are gone.
    */
+  /**
+   * THE VAULT ROW STATES BOTH ITS JOBS, AND THIS TEST IS WHY. D190.
+   *
+   * Owner report: players believe the Vault only protects a fixed amount and do
+   * not know it deepens the STORE. It is a reasonable belief, because the row
+   * stopped saying so: D169 removed the store half to fix a different fault and
+   * nothing here noticed, so the game taught the wrong rule for a release while a
+   * docblock two lines above the code went on describing both jobs.
+   *
+   * A comprehension fix that no test holds is a comprehension fix with a shelf
+   * life. This is the guard: whatever the row is reworded to, it must carry the
+   * depth of the store and the protected share of it, and both must move.
+   */
+  it('states the store depth and the protected slice, and moves both', () => {
+    for (const level of [0, 1, 3, 6, 12]) {
+      const gain = buildingGain('VAULT', level, level, at(level));
+      const figures = (text: string) =>
+        [...text.matchAll(/\d[\d.,\u00a0 ]*/g)].map((m) => Number(m[0].replace(/[^\d]/g, '')));
+
+      // Two quantities on the row: how deep the store is, and how much is safe.
+      expect(figures(gain.now).length, `Vault ${String(level)} now`).toBeGreaterThanOrEqual(2);
+
+      const [storeNow, safeNow] = figures(gain.now);
+      const [storeNext, safeNext] = figures(gain.next);
+      // The store is the headline, so it is the larger of the pair...
+      expect(storeNow!).toBeGreaterThan(safeNow!);
+      // ...and a level buys more of BOTH, which is the rule players were missing.
+      expect(storeNext!).toBeGreaterThan(storeNow!);
+      expect(safeNext!).toBeGreaterThanOrEqual(safeNow!);
+    }
+  });
+
   it('never quotes the same protected pair twice', () => {
     for (const level of [0, 1, 3, 6, 12]) {
       const gain = buildingGain('VAULT', level, level, at(level));

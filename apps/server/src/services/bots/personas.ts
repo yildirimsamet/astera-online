@@ -81,13 +81,16 @@ export interface BotPersona {
 export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   BUILDER: {
     id: 'BUILDER',
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT', 'HANGAR'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'AEGIS', 'FOUNDRY', 'TELESCOPE'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },
       { project: 'STARSHIP_ENGINEERING', level: 1 },
       { project: 'SHIP_ARMOR', level: 2 },
       { project: 'YARD_AUTOMATION', level: 1 },
+      // The builder buys the surface ladder too, or it is the one commander in the
+      // galaxy that never touches a project the game sells. D198.
+      { project: 'AI_ROBOTS', level: 1 },
     ],
     composition: { WARDEN: 0.6, RAMPART: 0.4 },
     groundMix: { BASTION: 0.6, THORN: 0.4 },
@@ -96,7 +99,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   RAIDER: {
     id: 'RAIDER',
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'HANGAR', 'VAULT'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'VAULT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'VEIL', 'BEACON'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },
@@ -112,7 +115,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   PROSPECTOR: {
     id: 'PROSPECTOR',
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'SHIPYARD', 'VAULT', 'DEUTERIUM_PLANT', 'HANGAR'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'SHIPYARD', 'VAULT', 'DEUTERIUM_PLANT'],
     wants: ['UPLINK', 'RADAR', 'DERRICK', 'AEGIS', 'TELESCOPE'],
     research: [
       { project: 'ISOTOPE_SPECTROMETRY', level: 1 },
@@ -127,7 +130,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   BALANCED: {
     id: 'BALANCED',
-    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'DEUTERIUM_PLANT', 'VAULT', 'HANGAR'],
+    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'DEUTERIUM_PLANT', 'VAULT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'AEGIS', 'FOUNDRY'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },

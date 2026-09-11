@@ -13,6 +13,7 @@ import {
 import { clanActor } from './clan.js';
 import { activeClanMembership } from './clanCombat.js';
 import { GameError } from './planet.js';
+import { dominionScore, sumDominionScores } from './dominion.js';
 
 /**
  * The private, current strength of one clan.
@@ -108,7 +109,7 @@ export async function readClanStrength(db: Db, accountId: string) {
     playerId: member.playerId,
     username: member.username,
     role: member.role,
-    dominion: Math.round(member.dominionTaken - member.dominionLost),
+    dominion: dominionScore(member.dominionTaken, member.dominionLost),
     ships: shipsByPlayer.get(member.playerId) ?? 0,
     worlds: worldsByPlayer.get(member.playerId) ?? 0,
   }));
@@ -116,8 +117,11 @@ export async function readClanStrength(db: Db, accountId: string) {
   return {
     clan: { id: clan.id, name: clan.name, tag: clan.tag },
     totals: {
-      clanDominion: Math.round(clan.dominionTaken - clan.dominionLost),
-      memberDominion: members.reduce((total, member) => total + member.dominion, 0),
+      clanDominion: dominionScore(clan.dominionTaken, clan.dominionLost),
+      memberDominion: sumDominionScores(
+        members.map((member) => member.dominion),
+        'Clan member Dominion total',
+      ),
       ships,
       fleetValue,
       groundDefences,

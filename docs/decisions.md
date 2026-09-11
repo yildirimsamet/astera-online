@@ -15,8 +15,20 @@ Binds: Intel progression, combat complexity, galaxy interaction model.
 
 ### D2 · Score = Dominion — LOCKED
 
-Rule: `raw = looted + enemyDestroyed - ownDestroyed`; Dominion transfer = `round(10,000*tanh(raw/10,000))`. Combat-only, zero-sum, max ±10,000 per battle. `fleetPower` never scores combat.
-Binds: Combat settlement, leaderboard, season results, reports, simulator.
+Rule: `exchange = securedLoot + enemyPermanentLoss - ownPermanentLoss`; the attacker's Dominion
+transfer is exactly `exchange` and the defender receives its exact opposite. It is uncapped,
+linear, combat-only and additive: splitting the same realised exchange across battles cannot buy
+more score. A large fleet earns nothing merely for being sent, while destroying or losing a
+season-sized fleet may cause a season-sized ladder move — the fleet is the bet. Ground defence is
+priced net of free salvage; wreckage, fuel, battle grade, `fleetPower`, NPCs, neutral worlds,
+trade and strategic strikes never add Dominion of their own. The invariant is zero-sum per scored
+battle and across a season cycle; D174 placement can move an existing balance between local
+galaxies. Rulesets before v7 retain their recorded bounded transfers and are never repriced.
+Every movement is stored in a durable integer score journal that survives player-facing report,
+mission and idle-seat deletion; season freeze reproduces both player and clan caches before ranks
+become permanent. Operator battles are explicitly marked competition-exempt rather than inferred
+from a zero. Binds: Combat settlement, score journal, leaderboard, season results, reports,
+simulator.
 
 ### D5 · Season = 14 days — STRUCTURE LOCKED, NUMBER PROVISIONAL
 
@@ -237,12 +249,330 @@ Binds: `transferCargoCapacity`, `cargoMult`, `launchTransfer`, `launchTrade`, `E
 
 ### D182 · The launch sheet's ETA is quoted to the second — OWNER INSTRUCTION
 
-Rule: `durationPrecise` beside `duration`, used only for the launch sheet's one-way figure. A raid arrives at an authoritative instant and the whole game is built on being there for it, so a flight rounded to the whole minute hides up to fifty-nine seconds of the thing a commander is committing to. A separate function rather than a flag, because seconds belong only where somebody is timing something and a boolean would spread them by accident. Minutes-and-seconds under an hour, all three units past it, and the existing days-and-hours shape past a day where the seconds are noise. Seconds are padded so the figure does not change width on a 375px screen.
+Rule: `durationPrecise` beside `duration`, used only for the launch sheet's one-way figure. A raid arrives at an authoritative instant and the whole game is built on being there for it, so a flight rounded to the whole minute hides up to fifty-nine seconds of the thing a commander is committing to. A separate function rather than a flag, because seconds belong only where somebody is timing something and a boolean would spread them by accident. Minutes-and-seconds under an hour, all three units past it, and the existing days-and-hours shape past a day where the seconds are noise. Seconds are padded so the figure does not change width on a 350px screen.
 Binds: `durationPrecise`, `units.hoursMinutesSeconds`, `LaunchSheet`, `duration-precise.test.ts`, D51.
 
-### D137 · Research tech stays below information advantage — OWNER DECISION
 
-Rule: One pure tech calculation serves server/sim/client; missing tech never silently defaults. Combined military tech product cap=25%; counter cycle stays ~156%. Attacker tech freezes at launch; defender tech reads at combat. Combat doctrines are probe-visible; economy research private.
+### D200 · Garbage Collector (Hurdacı) — OWNER INSTRUCTION
+
+Special bandında ikinci gemi: tier 3, Tersane 4 + Yıldız Gemisi Mühendisliği 1, fiyatı elle konuldu ve ölçeklenmez: **10.000 alaşım + 5.000 kristal**. Saldırı 0, ambar 0; SUPPORT sınıfı, yani yük gemisi gibi hattın arkasında durur — kendi tarafında savaş gemisi yaşadıkça korunur, hat düşünce vurulup ölür (HP, kademesinin nakliyesiyle aynı: 540). Hız, pivot tur süresi (20 dk): üçgenin ortası, Lance temposu. Yakıt D195'in tek istisnası: değerinden 19,1 /1k içecekti, sahibin talimatıyla elle **10 /1k** (`SALVAGE.fuelMass` = 100).
+
+Kural: katıldığı savaş bittiğinde **hayatta kalan** her Hurdacı, o savaşın enkazından `SALVAGE.perCollector` = **15.000**'e kadar alır; oran enkazın kendi alaşım/kristal/döteryum karışımıdır (`claimDebris`'in aritmetiği). Toplama, savaşın çözüldüğü anda ve aynı transaction'da olur; kalan kısım olağan herkese açık alandır. `settleWreck` tek ifadedir ve üç yol da (oyuncu, bakıcı dünya, korsan) onu okur. `DEBRIS.minimum` taban kuralı **kalana** uygulanır: Hurdacı zaten oradadır, alan çizilmeyecek kadar küçük hurdayı da alır.
+
+Ganimet değildir: Dominion'a girmez (D2), klan payına girmez (D114), ambar tavanını (`fleetCargo`) büyütmez. Dönüş bacağında `missions.salvage` / `pirate_raids.salvage` olarak ganimetin **yanında** taşınır ve depoya iner; sunucu bacaktan vazgeçse (`abandon`) bile iner. Rapor ikisine de gösterir (`battle_reports.salvage`): saldıran için "Enkazdan toplanan" satırı, savunan için sonuç cümlesi — Hurdacı savunanın gördüğü filodaydı (D164). Savunmada toplamaz; evde duran Hurdacı nakliye gibi hattadır ve ölebilir.
+
+Tek başına gidemez: dünya saldırısı savaş gemisi ister (`NOT_A_WARSHIP`), madencilik yalnız Prospector'undur. Korsana tek başına gönderilebilir (D150'de kargo için olduğu gibi "kötü karar, yasak değil") ama ateş etmediği için enkaz yaratamaz; kendi ölümü dışında toplayacak bir şey yoktur. Korsan kadrosu Hurdacı almaz: havuz canlı sezonda sezon anahtarından yeniden türetildiği için yeni gemi havuzu değiştirmemeli — `garbage-collector.test.ts` eski kadroları birebir tutar.
+
+Rozeti kılıç değil kasa: ateş etmeyen gövde "bana mı geliyor" sorusuna hayır der (`rankRow`, `atk` üzerinden). Görsel: burun +z, boyut 1.85, 4.992 üçgen (hata sınırı 0.01 — 0.005'te 7.182'de takılıyor), dama arka planı gömülü render D196'nın floodfill kurtarmasıyla temizlendi.
+
+Bilinen yaklaşım: D199 tahmini, probe'un saydığı silahsız gövdeleri kanadın kademesindeki nakliye olarak modeller; evde park edilmiş Hurdacı gerçek hattı modelden değerli yapar. Bu sapma farklı kademeli nakliyeler için zaten vardı; ölçülmüş tahmin motoru değiştirilmedi.
+Binds: `SALVAGE`, `settleWreck`, `salvageCapacity`, `hullFuelMass`, `profileHull`, `poolFor`, `rankRow`, `StatStrip.salvage`, `missions.salvage`, `pirate_raids.salvage`, `battle_reports.salvage`, `settleReturn`, `resolvePirateReturn`, `abandon`, D2, D32, D114, D150, D164, D195.
+
+### D199 · Tek güç birimi ve savunma/filo karşılaştırması
+
+Oyunda "Power" dört farklı şeyi ifade ediyordu: `wealth`, `combatValue`, `fleetPower` ve `fleetValue`. Aynı filo farklı ekranlarda farklı sayılarla görünüyordu ve hiçbirinde bu sayının savaştaki anlamı açık değildi.
+
+Yeni yaklaşımda ölçümler savaş motoruna göre yapılıyor: duvarla eşit ateş gücü yalnızca kısmi kırılma sağlıyor ve yaklaşık %63 kayıp veriyor; temiz zafer için yaklaşık ×1.45 güç gerekiyor. Araştırma, karşı tür, Aegis, yer savunması ve üsse dönen nakliyeler gibi etkenler de ayrıca hesaba katılıyor.
+
+Probe artık hedefin **o anki** ekonomisini, savunmasını, sınıf dağılımını, Aegis ve silahsız nakliye bilgisini bulanıklaştırılmış bantlarla gösteriyor. `forecastLines/forecastLoss` ise "bu filo ne kadar savunmayı aşar?" sorusuna tahmin sunuyor.
+
+Ancak sistem kesin kazanma oranı veya zafer kararı vermiyor; bilgi sağlıyor, kararı oyuncuya bırakıyor. Radar hâlâ ateş gücü değil, kütle ölçüyor.
+
+### D198 · AI Robots
+
+AI Robots, Construction kuyruğundaki tüm bina, instrument ve satellite projelerinin süresini kısaltıyor; tek tek yapı listesi tutmuyor.
+
+Beş seviye etkisi: **0.95 / 0.90 / 0.85 / 0.80 / 0.75**. Yard Automation gemi üretimini, AI Robots ise yapı üretimini hızlandırıyor; birbirlerinin etkisini kullanmıyorlar. AI Robots her seviyede Yard Automation'dan daha pahalı.
+
+İndirim, üretim süresi tavanı uygulandıktan sonra uygulanıyor. `tech` hem bina hem diğer construction hesaplarında zorunlu.
+
+Simülasyonda ARR değişmezken VFR medianı **0.087 → 0.077**'ye düştü; bu nedenle tam araştırma alan tarafından alınmadı, yalnızca Builder botu bir seviye alıyor.
+
+İnceleme sırasında iki eski hata da düzeltildi: build satırı fiyat/timer için farklı seviyeler kullanıyordu ve Academy doğrudan tasarım tablosundan süre okuyordu.
+
+### D197 · Üç küçük borç
+
+**Cargo Holds:** Klan teslimatları da araştırma seviyesindeki `cargoMult`'ı kullanıyor. Böylece kişisel transfer, ticaret ve klan yardımı aynı kapasite kuralına bağlı. Ayrıca Argosy'nin klan transferinde kapasitesinin 0 görünmesine neden olan sabit taşıyıcı listesi düzeltildi.
+
+**Kütle eşikleri:** Radarın medium/heavy eşikleri artık sabit fiyat yerine canlı `HULLS` tablosundan geliyor; böylece fiyat değişince eşikler de otomatik güncelleniyor.
+
+**Gemi triangle ceiling:** Merchant hariç uçan gemiler için **5.000 triangle** sınırı getirildi. 11 gemi sıkıştırıldı; dokuz tanesi 4.999–5.000 aralığına geldi. Merchant ve Death Star özel kaldı.
+
+Ayrıca Corsair ve Argosy görselleri 180° döndürülme kararından geri alındı; perspektifli renderlarda bu görüntüyü bozuyordu.
+
+### D196 · Tier 4 tamamlandı
+
+Tier 4'e üç gemi eklendi:
+
+* **Corsair** — Raider/Skirmisher
+* **Paladin** — Escort/Bulwark
+* **Argosy** — Transport/Support
+
+Önceden tier 4'te Bulwark'a karşı üst seviye bir karşılık yoktu ve oyuncu daha düşük tier gemisine geri dönmek zorunda kalıyordu. Yeni gemiler counter cycle'ı ve tier 4 rol çeşitliliğini tamamlıyor.
+
+Destek gemileri de tier 4'e çıktığı için `SUPPORT_ROUND_TRIP` ve `SUPPORT_HOLD` dördüncü seviyeye ulaştı. Merchant hızı artık son transport rung'ından otomatik türetiliyor.
+
+İki görsel düzeltme yapıldı: Corsair/Argosy yönleri ayrı ayrı düzeltildi ve transparanı kaybolmuş tier-4 görsellerinin arka planı floodfill ile temizlendi.
+
+### D195b · Nakliye kapasitesi
+
+`SUPPORT_HOLD`:
+**[1000, 3400, 9500]**
+(eski: [700, 2200, 6000])
+
+Courier başlangıçta maliyetinden daha az taşıdığı için ilk rung oyuncuyu cezalandırıyordu. Yeni değerler kargo/verilen maliyet oranını her seviyede artırıyor.
+
+Raidlerin taşıyabileceği ganimet sürekli olarak gemi kapasitesiyle sınırlıydı; eski değerlerde gelişim arttıkça PvP'den elde edilen pay neredeyse değişmiyordu. Yeni ladder sonrası pay gelişimle birlikte **%7.8 → %10.0 → %11.5** seviyelerine çıkıyor.
+
+Amaç oyuncuyu boş bekletmek yerine gelişimin yeni bir PvP kapasitesi açması. Vault hâlâ bir gecelik üretimi koruyor ve savaş gemileri transportların yerini almıyor.
+
+### D195c · Gemi satırında tier ve kapasite
+
+Gemi adı şu biçime geliyor:
+
+**Dart (Lv1) – 3 in 4 out**
+
+Tier ve kapasite bilgisi isim satırına taşınıyor; class chip alt satırda kalıyor. Böylece geminin adı gereksiz yere sıkışmıyor.
+
+### D195 · Savaş gemilerine kargo, yeni yakıt modeli
+
+Üç karar alındı:
+
+1. **Her savaş gemisinin kargo kapasitesi var.**
+   `COMBAT_HOLD = [40, 85, 180, 380]` tier'a göre ölçekleniyor. Böylece savaş gemisiyle raid tamamen anlamsız değil, ancak ciddi ganimet için transport hâlâ gerekli.
+
+2. **Yakıt geminin değerine ve hızına göre hesaplanıyor.**
+   Tier'a özel yakıt istisnası kaldırıldı. Yakıt artık gemi değeri ve round-trip süresinden türetiliyor.
+
+3. **Tier yükseldikçe uzmanlaşma artıyor.**
+   `ROLE_SPREAD = [0.8, 1, 1.2, 1.45]`. Saldırı/zırh dağılımı daha keskin hale geliyor ancak `atk × hp` sabit kaldığı için eşit bütçe yaklaşık eşit toplam güç sağlıyor.
+
+Eski sistemde tier 1 aşırı yakıt verimliydi ve oyuncuyu üst tier'ları üretmekten caydırıyordu. Yeni sistemde yakıt/verim eğrisi monoton hale geldi; counter cycle korunurken VFR de **0.072–0.079 → 0.083–0.102** aralığına yükseldi.
+
+### D191 · Instrument fiyatları
+
+`instrumentCost` tekrar instrument ID'sini kullanıyor. Böylece Telescope, Radar, Aegis ve Veil artık yanlışlıkla aynı fiyatı paylaşmıyor.
+
+Telescope, diğer detectorlara göre **3:2** oranında daha pahalı kalıyor. Fiyat seviyesini genel olarak artırmak yerine sadece yanlış kaybolan fiyat farkı geri getirildi; çünkü tüm seviyeyi pahalılaştırmak ARR'yi düşürüyordu.
+
+Ayrıca bunu koruması gereken testin aslında aynı anda hem "Telescope daha pahalı" hem "iki fiyat eşit" demesi nedeniyle hatayı gizlediği tespit edildi.
+
+### D194 · Sezon değişikliğinin testlere etkisi
+
+Sezon **30 gün ve opsiyonel bitişli** hale gelmişti. Eski testlerin çoğu 14 günlük sezonu varsaydığı için bozuldu; özelliklerin kendisi bozuk değildi.
+
+Testler artık sezon süresini `TEST_SEASON_DAYS` üzerinden açıkça kullanıyor. Günlük oranlarla sabit gün sayısını çarpan testler düzeltildi.
+
+İnceleme sırasında iki bağımsız hata da bulundu:
+
+* Radar mass testi gerçek kurala göre değil, eski fiyatlara göre doğrulanıyordu.
+* Combat hull'ların kargosunun sıfırlanması sonucu yalnız savaş gemisiyle yapılan raidlerin ganimeti sıfıra düşmüştü.
+
+Sonuç olarak yeni tasarımda **bir raid gerçekten ganimet istiyorsa kargo kapasitesi getirmeli**; aksi halde boş dönebiliyor.
+
+### D193 · Vault bir iş gününü değil, geceyi korur
+
+`ECON.protectedShare`: **0.15 → 0.10**
+
+Yeni `protectedHoursCap = 8`.
+
+Amaç "uyurken kaynak güvende, işe gittiğinde bir kısmı riskte" kuralını doğrudan saat üzerinden tanımlamak. Sabit yüzde tek başına kullanıldığında yüksek Vault seviyelerinde sonunda bütün iş gününü koruyordu.
+
+Raid sonrası hedefin üretiminin yaklaşık yarım saati alınabiliyor; daha büyük agresif loot payı, oyunu gelişim odaklı olmaktan çıkarabileceği için reddedildi.
+
+Sonuç:
+
+* VFR: **0.095–0.109 → 0.106–0.112**
+* SV: **0.125–0.133**
+* Raid: **2.74/player/day**
+* ARR: **~0.22**, hâlâ açık problem.
+
+Loot hâlâ cargo-capped; yani çok zenginleşen hedeflerden alınabilecek miktar otomatik büyümüyor. Gelecekteki kaldıraç Vault değil, cargo ladder.
+
+### D192 · Fleet harcaması gelişime göre artar
+
+Sabit askeri harcama oranı yerine `militaryShareAt(archetype, coreLevel)` kullanılıyor.
+
+Gelişim ilerledikçe oyuncu daha fazla fleet harcıyor:
+
+* erken oyun: yapı/ekonomi ağırlıklı
+* orta oyun: yaklaşık **%40**
+* Core 12+: yaklaşık **%50**
+
+Değerler aşamalı değil, interpolasyonlu; böylece Core seviyesine geçildiği anda bot davranışında yapay sıçrama oluşmuyor.
+
+Test edilen orta değerlerde **%40** kritik eşik oldu:
+
+* %30 → VFR 0.083, düşük
+* %36 → 0.089, düşük
+* **%40 → 0.097, uygun**
+* %44 → 0.098
+
+Archetype eğilimi doğrudan çarpılmıyor; stage ile harmanlanıyor. Böylece Turtle gibi düşük askeri bütçeli profiller gerekli savunma gemilerini yine alabiliyor.
+
+### D190 · Production buffer ve Vault açıklaması
+
+`collectorHours = 10`.
+
+On saat, gecelik üretim + küçük marj sağlıyor ve çalışan oyuncunun gün içinde kontrol etmesini anlamlı kılıyor.
+
+Vault'un iki işi açıkça gösteriliyor:
+
+1. Depolama kapasitesini artırmak.
+2. Raid'den korunmuş miktarı belirlemek.
+
+İki değer de **saat** cinsinden gösteriliyor. Örneğin:
+
+* Vault 0: **16 saat depo · 2 saat korumalı**
+* Vault 6: **47 saat depo · 7 saat korumalı**
+* Vault 14: **105 saat depo · 16 saat korumalı**
+
+Gezegen ekranı artık her kaynak için **stored / capacity** gösteriyor. Aynı bar içinde korunan bölüm de işaretleniyor. Böylece Vault'un yalnızca "korunan miktar" olmadığı, doğrudan depolama kapasitesini de büyüttüğü görsel olarak anlaşılıyor.
+
+### D189 · Simülasyonda karar aralığı 10 dakika
+
+`DECISION_MINUTES = 10`.
+
+Önceden 2 dakikalık tick, 90 dakikalık akşam oyununu yapay biçimde 45 ayrı oturuma bölüyor ve raid sayısını şişiriyordu.
+
+10 dakika, oyundaki en hızlı anlamlı değişimlerin altında kalırken değişiklik olmayan anlarda sahte kararlar üretmiyor.
+
+Sonuç:
+
+* Raid: **2.71/player/day**
+* VFR: **0.095–0.109**
+* SV: **0.135–0.140**
+* TAX: **0.040–0.099**
+* ARR: **0.217–0.221**
+
+Suite yeşil olsa da ARR hedefin altında kaldı; artık bu değer gerçek bir ölçüm olarak kabul edilmeli.
+
+İki olası ARR kaldıracı ölçüldü fakat uygulanmadı:
+
+* Vault'un daha fazla üretimi koruması
+* Çok pahalı instrument seviyeleri
+
+### D188 · Aktivite archetype'lara bağlandı
+
+Oyuncu profillerinin aktivitesi artık archetype'a göre atanıyor.
+
+Temel profil:
+
+* sabah 10 dk
+* öğle 15 dk
+* ikindi 15 dk
+* akşam 90 dk
+* hafta sonu 130 dk
+
+Bunun yanında daha aktif ve daha az aktif varyantlar var.
+
+Eski sistem oyuncu ID'sine göre rastgele takvim veriyordu; bu nedenle "Grinder" bazen Casual aktivitesi alabiliyordu ve ölçümler geçersizleşiyordu.
+
+Yeni sistem gerçek archetype ile gerçek takvimi eşliyor.
+
+Fakat bu değişiklik ARR'yi **0.223–0.232**'ye ve TAX'ı bazı seed'lerde hedef altına çekti. Ayrıca 2 dakikalık karar sistemi raid sayısını **6.7/player/day** gibi gerçek dışı seviyelere çıkardığı için default henüz değiştirilmedi.
+
+### D186 · Büyük hold daha yavaş
+
+Cargo gemileri tekrar gerçek bir hız ladder'ına sahip:
+
+`SUPPORT_ROUND_TRIP = [17, 22, 32]`
+
+Courier hızlı ve küçük, Atlas daha yavaş ve büyük. Merchant'ın hızı ladder'ın son seviyesinden türetiliyor.
+
+Önceden tüm destek gemileri aynı hızdaydı; bu durumda küçük gemiler anlamsızlaşıyordu.
+
+Ayrıca iki testin başlıkları ladder'ı savunurken gövdeleri yanlışlıkla eşit hız bekliyordu. Testler gerçek tasarıma göre düzeltildi.
+
+### D185 · Shipyard iki farklı ürün satar
+
+Shipyard'ın ilk **6 seviyesi** gemi tier'larını açıyor ve mevcut fiyatlama korunuyor.
+
+6'nın üstünde yeni tier açılmadığı için Shipyard artık **throughput** satıyor. Bu seviyelerde maliyet sabit production-hour karşılığıyla ilerliyor.
+
+Eski modelde geometrik fiyat artışı ile doğrusal throughput artışı çarpışıyordu; üst seviyeler bir sezonluk üretimin yüzlerce katına çıkıyordu.
+
+Yeni iki aşamalı modelde:
+
+* tier açan seviyeler gerçek ilerleme maliyeti taşıyor,
+* sonrası aynı marjinal etki için aynı miktarda üretim zamanı istiyor.
+
+Bu, kaybedilen filonun daha hızlı yeniden kurulmasını sağlıyor ve 90 dakikalık oyun oturumunda daha fazla sortie mümkün kılıyor.
+
+### D184 · Hangar kaldırıldı
+
+Hangar tamamen kaldırıldı.
+
+Filo artık kapasite tavanına değil:
+
+* gemi maliyetine,
+* uçuş yakıtına,
+* savaşta kayıplara
+
+bağlı.
+
+Yer savunması ise kapasite limitini koruyor.
+
+Hangar'ın fiyatı geometrik büyürken sağladığı kapasite yalnızca lineer artıyordu; yüksek seviyeler sezon üretiminin katlarını maliyete çıkarıyordu. Yeniden fiyatlandırmak yerine mekanik tamamen kaldırıldı.
+
+`bulk` artık Hangar kapasitesi değil; geminin yakıt kütlesi ve yer savunmasının yükü olarak kullanılıyor.
+
+Bunun yan etkisi bot ekonomisinde ortaya çıktı: Hangar kalkınca bot filoya sürekli harcama yapıyor ve bazı araştırmaları artık alamıyor. Araştırma rezervi ekleme denemesi başka metrikleri bozduğu için geri alındı; bot harcama modeli ayrı bir kalibrasyon konusu olarak bırakıldı.
+
+### D183 · On üç owner düzeltmesi
+
+Bu geçişteki ana kararlar:
+
+**Ekonomi**
+
+* Trade rate: **90:30:1 → 90:45:10**
+* Trade mekanizması artık bölünmeyen oranlarda da "artık bırakmadan" çalışıyor.
+* Rate gösterimi tam sayılarla korunuyor.
+
+**Fleet değeri**
+
+* Force karşılaştırmalarında `fleetValue` yerine ateş gücünü temsil eden `combatValue` kullanılıyor.
+* Böylece savaşmayan Atlas gibi transportlar fleet power'ını yapay biçimde yükseltmiyor.
+* Yakıt göstergesi de bu force karşılaştırmasının yanında gösteriliyor.
+
+**Yeni oyuncu koruması**
+
+* Her commander için sezonun ilk **24 saati** newcomer shield var.
+* Oyuncu saldırıyı başlatırsa shield kayboluyor.
+* Koruma tüm dünyalarda görünür: `PROTECTED`.
+* Probe görüşü bu shield'dan etkilenmiyor.
+
+**Rivals**
+
+* Her commander için en fazla **5 rival** tutuluyor.
+* Slot oyuncunun rengini belirliyor; slot temizlenmedikçe renk değişmiyor.
+* Liste doluysa yeni rival eklenemiyor.
+
+**Mining**
+
+* Yakın mesafe mining artık kısa bir cooldown taşıyor.
+* `craftReadyAt` API'de yayınlanıyor ve oyuncuya countdown gösteriliyor.
+
+**Pirate ETA**
+
+* Eski ETA zaman geçtikçe belirgin biçimde sapabiliyordu.
+* Launch artık `quotedMinutes` taşıyor ve fazla eski tahminleri reddediyor.
+
+**UI ve yüzey düzeltmeleri**
+
+* Prospector Hold üçüncü seviye UI'da doğru gösteriliyor.
+* Kuyruktaki araştırmalar "Researching / In queue" olarak ifade ediliyor.
+* İstenen planet tabı uygun olmayan panellerde düşürülüyor.
+* Clan profili roster gösteriyor.
+* Ownership bağlantıları gerektiğinde nearest-neighbour fallback kullanıyor.
+* Pirate rail gücü kendi ekseninde gösteriyor.
+* Academy pirate eğitimi gerçek engagement bilgisini kullanıyor.
+
+**Temizlenen eski hatalar**
+Rival kayıtları silinen commander'ların ardından kalıyor, commander başka galaxye taşındığında eski rival slotları boşa çıkmıyor, `PROTECTED` dünyalarda saldırı butonu görünmeye devam ediyor ve bazı yüzeyler rakibi world yerine commander üzerinden tutarsız çözümlüyordu. Bunların tamamı düzeltildi.
+
+Oyuncunun kendi koruması ve kalan süresi kalıcı HUD'da gösterilir. Saldırı onayı da kalkanı düşürmenin sonucunu son kez açıklar.
+
 Binds: `tech.ts`, combat, probes, prediction.
 
 ### D148 · Fleet V2 is an authored tiered hull catalog — OWNER INSTRUCTION
@@ -323,9 +653,9 @@ Binds: Veil, intel schemas, galaxy/focus rendering, client fallbacks.
 Rule: Combat resolves in three simultaneous-fire rounds with the counter cycle and bounded ±8% variance, with no mid-fight player input. Randomness may not become large enough to overwhelm information and composition.
 Binds: Combat resolver, hull counter matrix, reports, simulator.
 
-### D14 · No newcomer immunity — OWNER DECISION
+### D14 · No newcomer immunity — SUPERSEDED BY D183 AND D168
 
-Rule: There is no time-based newcomer grace period or development-tier attack band. Protection comes from fog/information cost plus `ABUSE.bashLimit`; server refusal after a fleet is prepared must not depend on hidden development state.
+Historical rule: there was no time-based newcomer grace period or development-tier attack band. D183 now gives every commander a visible 24-hour shield that is spent when they choose to attack; D168 separately restores a commander-wide development-tier attack band.
 Binds: Attack validation, anti-abuse, D127 world disclosure, onboarding expectations.
 
 ### D18 · Telescope is reach plus commitment — OWNER DECISION
@@ -538,7 +868,11 @@ Binds: Galaxy labels, reports, notifications, leaderboard, intel projections.
 
 ### D76 · Dominion ladder ranks the local galaxy — OWNER INSTRUCTION
 
-Rule: Leaderboard contains the caller's whole galaxy, sorted by rounded Dominion with deterministic ties. D127 controls capital intel: current sight=current identity/tier; REMEMBERED=frozen tier; UNKNOWN=no capital identity/tier. UNKNOWN commander click warns and never moves camera.
+Rule: Leaderboard contains every current competition-eligible commander in the caller's galaxy,
+independent of the shard's admission cap, sorted by exact integer Dominion with deterministic ties.
+Operator accounts are absent even to themselves. D127 controls capital intel: current
+sight=current identity/tier; REMEMBERED=frozen tier; UNKNOWN=no capital identity/tier. UNKNOWN
+commander click warns and never moves camera.
 Binds: Leaderboard, Dominion, D127.
 
 ### D77 · Galaxy chat is seasonal and server-authored — OWNER INSTRUCTION
@@ -752,6 +1086,24 @@ a safe new capital position. New registrations remain capped. Never take another
 colony to admit a return. Oldest eligible application first; blocked applications retain
 sequence and are rechecked. Five-minute maintenance, five successful moves per pass.
 Normal season reset and clan exit rules remain. See the final handoff plan for acceptance.
+
+### Economy redesign · Scarce colonies, independent capital progression — OWNER APPROVED (2026-09-09)
+
+The owner rejected widespread first-colony ownership that could turn a 300-player
+galaxy into 700–1000 worlds. Colonies are scarce, valuable, contestable possessions;
+every player need not own one. The average player's day 2–3 milestone means economic
+and military readiness to compete, not guaranteed acquisition. Earlier low-activity
+acquisition dates are not ownership guarantees either. Capital-only progression must
+support T3, T4 and meaningful PvP. The owner's further emphasis is that the audience's
+limited screen time must not weaken PvP or competition: meeting development dates alone
+does not pass the economy if players cannot fund and sustain meaningful operations.
+A second world must not automatically double economic
+power; investment, defence and logistics compete with the same development/fleet budget.
+The current 51-neutral pool is a reference, not an approved final count. No new upkeep,
+ownership penalty, direct raid capture or production constant changes have been implemented
+by this decision. The existing D167 ownership mechanism is unchanged. Candidate
+economy implementation/measurements: `docs/astera-economy-design-v1.md` and
+`tools/colony-investment-study.ts`.
 
 ## Known authority gaps
 

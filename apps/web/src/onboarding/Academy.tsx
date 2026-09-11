@@ -66,7 +66,7 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
 const rows: Partial<Record<AcademyStepId, string>> = {
   core: 'CORE', refinery: 'REFINERY', extractor: 'EXTRACTOR', deuterium: 'DEUTERIUM_PLANT', foundry: 'FOUNDRY',
   uplink: 'UPLINK', radar: 'RADAR', veil: 'VEIL', vault: 'VAULT', aegis: 'AEGIS', thorn: 'THORN', bastion: 'BASTION',
-  shipyard: 'SHIPYARD', hangar: 'HANGAR', darts: 'DART', reinforcements: 'DART', prospector: 'PROSPECTOR', courier: 'COURIER',
+  shipyard: 'SHIPYARD', darts: 'DART', reinforcements: 'DART', prospector: 'PROSPECTOR', courier: 'COURIER',
 };
 const menuFrom: Partial<Record<AcademyStepId, PlanetGroup>> = { production: 'grow', intel: 'grow', defend: 'orbit', fleet: 'defend' };
 
@@ -446,5 +446,6 @@ function AcademyMining({ onClose, onSend }: { onClose: () => void; onSend: (craf
   return <div data-academy-mining data-testid="academy-mining-target"><AsteroidFocus rock={rock}
     isotopeAccess={false} craftAvailable={planet.data.fleet.PROSPECTOR ?? 0} craftHold={data.craftHold}
     derrick={data.derrick} derrickHold={data.derrickHold} minutesLeft={60} reachMinutes={0.1}
-    worksRoom={room} run={undefined} onClose={onClose} onSend={onSend} busy={false} open onToggle={onClose} /></div>;
+    worksRoom={room} run={undefined} craftReadyAt={data.craftReadyAt} onClose={onClose} onSend={onSend}
+    busy={false} open onToggle={onClose} /></div>;
 }

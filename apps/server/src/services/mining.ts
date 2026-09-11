@@ -1,11 +1,13 @@
-import { and, eq, gt, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import {
   asteroidActive,
   claimOre,
   interceptAsteroid,
   prospectorHold,
+  prospectorReadyAt,
   prospectorSpeed,
   prospectorReturnSpeed,
+  PROSPECTOR,
   travelExact,
   DEBRIS,
   claimDebris,
@@ -201,6 +203,17 @@ export function projectPrivateMiningView(
   runs: readonly (typeof miningRuns.$inferSelect)[],
   tech: TechLevels,
   asteroidKey: string,
+  /**
+   * WHEN THE SELECTED WORLD'S DRILLS ARE FREE AGAIN — null when they already are.
+   * D183.
+   *
+   * On the payload rather than only on the refusal, because D124 is explicit: a
+   * rule the player cannot see is not a usable rule, and `returnSpeedFactor`'s own
+   * note refuses "a timer with nothing on screen". The rail draws the countdown
+   * off this and the send control is dead before it is ever pressed; the launch's
+   * `PROSPECTORS_RESTING` stays the authority behind it (Principle 1).
+   */
+  craftReadyAt: Date | null = null,
 ) {
   return {
     /** Whether the DERRICK is in orbit. D25 — hardware, never a level. */
@@ -208,6 +221,7 @@ export function projectPrivateMiningView(
     craftSpeed: prospectorSpeed(orbit),
     craftHold: prospectorHold(orbit, tech),
     derrickHold: prospectorHold(['DERRICK'], tech),
+    craftReadyAt,
     runs: runs.map((run) => ({
       id: run.id,
       planetId: run.planetId,
@@ -260,6 +274,10 @@ async function miningStatusAfterLaunch(
     runs,
     await techOf(tx, origin.playerId),
     field.asteroidKey,
+    // A launch has just succeeded, so this world cannot be resting — but read it
+    // rather than assume it: the answer belongs to the world, and this launch may
+    // have been the one that earns the rest (see `resolveMiningReturn`).
+    await prospectorsRestingUntil(tx, origin.planetId, origin.now),
   );
   // The commander's spectrometry, not the world's. T7.
   if (!(await hasResearch(tx, origin.playerId, 'ISOTOPE_SPECTROMETRY'))) {
@@ -395,6 +413,8 @@ export async function launchMining(
     // Before the intercept solve: no point finding a meeting point for a launch
     // that has nowhere to launch from. D28.
     await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    // And nothing to solve for a squadron that only just landed from a free trip.
+    await assertProspectorsRested(tx, planetId, origin.now);
 
     if (!asteroidActive(rock, nowMinutes)) {
       throw new GameError('ASTEROID_GONE', 'That rock is not in the disc', 409);
@@ -974,6 +994,97 @@ export async function visibleDebris(db: Queryable, seasonId: string, now: Date) 
 }
 
 /**
+ * WHEN THIS WORLD'S DRILLS ARE FREE AGAIN, OR NULL WHEN THEY ALREADY ARE. D183.
+ *
+ * A raid resolved over a commander's own world leaves its wreckage AT that world,
+ * so the salvage leg is zero units long — and every brake mining has is written
+ * against a distance (`returnSpeedFactor` scales one, the flight bay is held for
+ * the length of one, `PROSPECTOR.max` rations craft that are away for one). At
+ * zero all three are free and the field is emptied by tapping. This is the fourth
+ * brake, and the only one that does not read a distance.
+ *
+ * DERIVED, NEVER STORED. The run rows already carry everything the answer needs —
+ * the leg is `arriveAt - departAt` and the landing is `homeAt` — and A5 forbids
+ * storing what a formula produces. The row is also the only place the fact can
+ * live without a migration that every replica has to be ahead of.
+ *
+ * IT LOOKS FOR THE LATEST SHORT RUN, NOT THE LATEST RUN. Two squadrons can be out
+ * at once on different errands: a long haul landing after a short hop would hide
+ * the hop's cooldown entirely if this simply read the most recent landing. The
+ * predicate is in the WHERE clause for exactly that reason.
+ *
+ * PER WORLD, because craft are counted per world (`PROSPECTOR.max` is "a property
+ * of the WORLD"). A squadron resting at the capital must never hold a colony's own
+ * drills on the ground.
+ */
+export async function prospectorsRestingUntil(
+  tx: Queryable,
+  planetId: string,
+  now: Date,
+): Promise<Date | null> {
+  const [last] = await tx
+    .select({ departAt: miningRuns.departAt, arriveAt: miningRuns.arriveAt, homeAt: miningRuns.homeAt })
+    .from(miningRuns)
+    .where(and(
+      eq(miningRuns.planetId, planetId),
+      eq(miningRuns.status, 'done'),
+      /*
+        ONLY A LANDING INSIDE THE WINDOW CAN SET A REST, and saying so here is what
+        keeps this cheap. This function runs on every launch AND on every read of
+        `/api/mining/status`, which is a poll — asked as "the latest short run this
+        world ever flew" it sorts every finished run the world owns, hundreds of
+        them by the end of a season, on a query nobody notices getting slower.
+
+        It changes no answer: a landing older than the cooldown produces a `readyAt`
+        already in the past, which the comparison below discards anyway. What it
+        changes is how many rows ever reach the sort. `debris.test.ts` holds the
+        behaviour from the outside so the bound cannot quietly become a rule.
+      */
+      gt(
+        miningRuns.homeAt,
+        new Date(now.getTime() - PROSPECTOR.shortTripCooldownMinutes * 60_000),
+      ),
+      // The outbound leg, in minutes, against the rule's own figure. Written in
+      // SQL rather than filtered in JS so the index does the work and a season's
+      // worth of finished runs never has to come back over the wire.
+      sql`extract(epoch from (${miningRuns.arriveAt} - ${miningRuns.departAt}))
+          < ${PROSPECTOR.shortTripMinutes * 60}`,
+    ))
+    .orderBy(desc(miningRuns.homeAt))
+    .limit(1);
+  if (!last?.homeAt) return null;
+
+  const readyAt = prospectorReadyAt(
+    (last.arriveAt.getTime() - last.departAt.getTime()) / 60_000,
+    last.homeAt.getTime(),
+  );
+  return readyAt !== null && readyAt > now.getTime() ? new Date(readyAt) : null;
+}
+
+/**
+ * The refusal, stated once so both mining lanes make the same one.
+ *
+ * NAMES THE INSTANT. D124 — a rule the player cannot see is not a usable rule, and
+ * a lockout with no clock on it is the exact "timer with nothing on screen" that
+ * `PROSPECTOR.returnSpeedFactor` refuses. The client draws the countdown from
+ * `params.readyAt`; the same instant is published on `/api/mining/status` so the
+ * control is disabled before it is ever pressed.
+ */
+async function assertProspectorsRested(tx: Tx, planetId: string, now: Date): Promise<void> {
+  const readyAt = await prospectorsRestingUntil(tx, planetId, now);
+  if (readyAt) {
+    throw new GameError(
+      'PROSPECTORS_RESTING',
+      'Those craft only just landed. They are ready again shortly.',
+      409,
+      // An ISO string, like `WORLD_RECOVERING`'s: `ErrorParams` carries scalars,
+      // and every clock that crosses this boundary crosses it the same way.
+      { readyAt: readyAt.toISOString() },
+    );
+  }
+}
+
+/**
  * Send craft to a wreck field. D32.
  *
  * Deliberately NOT `interceptAsteroid`: a field does not move, so this is a plain
@@ -1006,6 +1117,13 @@ export async function launchHarvest(
     }
 
     await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    /*
+      THE LANE THIS RULE EXISTS FOR. D183. A field over the commander's own world
+      is a zero-length leg, so it is the salvage run that turns into tapping — but
+      the gate sits on both lanes, because the rule is about the LEG and not about
+      what is at the end of it.
+    */
+    await assertProspectorsRested(tx, planetId, origin.now);
 
     const [field] = await tx
       .select()

@@ -113,7 +113,7 @@ export function duration(minutes: number): string {
  *
  * IT STOPS AT A DAY, where the seconds become noise and the width stops being
  * worth it — the same days-and-hours shape `duration` uses. Seconds are padded so
- * the figure does not change width as it counts, on a screen 375px wide.
+ * the figure does not change width as it counts, on a screen 350px wide.
  */
 export function durationPrecise(minutes: number): string {
   const total = Math.max(0, Math.round(minutes * 60));

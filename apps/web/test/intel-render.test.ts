@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { RIVAL } from '@astera/rules';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { galaxySchema } from '../src/api/schemas.js';
-import { isRivalNode, planetNodes, stanceOf } from '../src/galaxy/scene.js';
+import { planetNodes, rivalSlotOf, stanceOf } from '../src/galaxy/scene.js';
+import { CLANMATE_COLOUR, MARK_COLOUR, RIVAL_COLOURS, rivalColour } from '../src/galaxy/PlanetField.js';
 import { recordAgeMinutes } from '../src/lib/dossier.js';
 import { resolvedOnly } from '../src/galaxy/Satellites.js';
 import { shellLook } from '../src/galaxy/DysonShells.js';
@@ -41,6 +43,14 @@ const world = (over: Partial<GalaxyPlanet> = {}): GalaxyPlanet => ({
 });
 
 const nodeOf = (over: Partial<GalaxyPlanet> = {}) => planetNodes([world(over)])[0]!;
+
+/** A world with a commander behind it — what a rival mark is really about. D97. */
+const heldBy = (id: string, playerId: string, over: Partial<GalaxyPlanet> = {}) =>
+  nodeOf({
+    id,
+    controller: { kind: 'PLAYER', playerId, displayName: playerId },
+    ...over,
+  });
 
 /**
  * EXACTLY WHAT THE SERVER SENDS FOR A WORLD NOBODY HAS LOOKED AT. D127.
@@ -134,21 +144,85 @@ describe('the three states, as the disc reads them', () => {
 
   /* ── the rival reticle, which leaked through the fog ───────── */
 
+  /** One mark, in the shape the payload actually carries since D183. */
+  const mark = (slot: number, planetId: string, playerId?: string) => ({
+    slot,
+    planetId,
+    playerId: playerId ?? `player-of-${planetId}`,
+  });
+
   it('never marks an unknown world as the rival, even when pinned by world', () => {
     const unknown = nodeOf({ id: 'rival-world', intel: 'UNKNOWN' });
-    expect(isRivalNode(unknown, 'rival-world', null)).toBe(false);
+    expect(rivalSlotOf(unknown, [mark(0, 'rival-world')])).toBeNull();
   });
 
   it('still marks a remembered or resolved rival', () => {
-    expect(isRivalNode(nodeOf({ id: 'r', intel: 'REMEMBERED' }), 'r', null)).toBe(true);
-    expect(isRivalNode(nodeOf({ id: 'r', intel: 'RESOLVED' }), 'r', null)).toBe(true);
+    expect(rivalSlotOf(nodeOf({ id: 'r', intel: 'REMEMBERED' }), [mark(0, 'r')])).toBe(0);
+    expect(rivalSlotOf(nodeOf({ id: 'r', intel: 'RESOLVED' }), [mark(0, 'r')])).toBe(0);
   });
 
   /** And the player branch was always safe: an unknown world names no controller. */
   it('cannot match a rival by player on a world that names none', () => {
     const unknown = planetNodes(parseUnknown().planets)[0]!;
     expect(unknown.controllerPlayerId).toBeUndefined();
-    expect(isRivalNode(unknown, null, 'their-player-id')).toBe(false);
+    expect(rivalSlotOf(unknown, [mark(0, 'somewhere', 'their-player-id')])).toBeNull();
+  });
+
+  /**
+   * FIVE MARKS, AND EACH KEEPS ITS OWN COLOUR. D183.
+   *
+   * The SLOT is what the disc colours by, so this returns the slot rather than a
+   * boolean: a mark whose colour came from its position in the array would change
+   * hue every time an unrelated mark was cleared, and a bookmark that changes
+   * colour is a different bookmark.
+   */
+  it('answers with the slot the mark holds, so its colour never moves', () => {
+    const marks = [mark(0, 'a', 'red'), mark(3, 'b', 'violet')];
+    expect(rivalSlotOf(heldBy('a', 'red'), marks)).toBe(0);
+    expect(rivalSlotOf(heldBy('b', 'violet'), marks)).toBe(3);
+    expect(rivalSlotOf(heldBy('c', 'nobody'), marks)).toBeNull();
+  });
+
+  /**
+   * THE COMMANDER IS THE MARK, THE WORLD IS ONLY WHERE IT WAS PLACED. D97.
+   *
+   * Every world a marked commander controls wears the reticle — that is what makes
+   * the mark useful on a disc where a commander holds four worlds — and it must
+   * follow them when a marked colony changes hands.
+   */
+  it('marks every world of a marked commander, not only the one pressed', () => {
+    const marks = [mark(1, 'their-capital', 'sable')];
+    expect(rivalSlotOf(heldBy('their-colony', 'sable'), marks)).toBe(1);
+  });
+
+  /** Nothing marked is a clean disc — the ordinary state, and it costs no work. */
+  it('draws no reticle at all when nothing is marked', () => {
+    expect(rivalSlotOf(heldBy('a', 'red'), [])).toBeNull();
+  });
+
+  /**
+   * FIVE DISTINCT COLOURS, AND NONE OF THEM ANOTHER MARK'S. D183.
+   *
+   * The disc already spends green on a clanmate and blue on the commander's own
+   * worlds; a rival hue that collided with either would turn the one control that
+   * says "watch this" into a control that says something else.
+   */
+  it('gives every slot its own colour, and none of them a colour already in use', () => {
+    expect(RIVAL_COLOURS).toHaveLength(RIVAL.max);
+    expect(new Set(RIVAL_COLOURS).size).toBe(RIVAL.max);
+    for (const colour of RIVAL_COLOURS) {
+      expect(colour).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(colour.toLowerCase()).not.toBe(CLANMATE_COLOUR.toLowerCase());
+      expect(colour.toLowerCase()).not.toBe(MARK_COLOUR.self.toLowerCase());
+    }
+  });
+
+  /** A slot past the palette still draws: the colour wraps rather than vanishing. */
+  it('never leaves a mark without a colour', () => {
+    expect(rivalColour(0)).toBe(RIVAL_COLOURS[0]);
+    expect(rivalColour(RIVAL.max - 1)).toBe(RIVAL_COLOURS[RIVAL.max - 1]);
+    expect(rivalColour(RIVAL.max)).toBe(RIVAL_COLOURS[0]);
+    expect(rivalColour(-1)).toBe(RIVAL_COLOURS[0]);
   });
 
   /* ── stance, which the body's brightness reads ─────────────── */

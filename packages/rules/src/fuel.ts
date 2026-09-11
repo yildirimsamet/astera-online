@@ -1,24 +1,44 @@
-import { FUEL } from './constants.js';
-import { HULLS, fleetEntries, hullBulk } from './hulls.js';
+import { FUEL, SALVAGE } from './constants.js';
+import { HULLS, fleetEntries, hullRoundTrip } from './hulls.js';
 import type { Fleet, HullId } from './types.js';
 
 /**
- * THE MASS A FUEL CHARGE IS MEASURED IN. T6 · D153.
+ * THE MASS A FUEL CHARGE IS MEASURED IN. T6 · D153 · D195.
  *
- * Hangar room, times the tier's own thirst rung. `FUEL.tierMass` states why the
- * multiplier is here rather than folded into `bulk`: room and thirst are two jobs,
- * and one number doing both would re-rate every hull against the Hangar the next
- * time fuel moved.
+ * A FIXED FRACTION OF WHAT THE HULL COST, TILTED BY HOW FAST IT FLIES. D195
+ * replaced D153's `bulk x tierMass` with this because the tier ladder had inverted
+ * the thing it was meant to protect: measured across the catalogue, power per unit
+ * of fuel ran 13.4 / 10.6 / 8.2 / 10.6 from tier 1 to tier 4, so the entry hull was
+ * the efficient one and every rung above it was a penalty. `FUEL.perValue` states
+ * the whole argument.
  *
- * ZERO FOR A GROUND HULL rather than its bulk, for the same reason it takes no
- * hangar room: a gun never travels. A hull with no tier — the Prospector — is at the
- * bottom rung, and burns nothing in practice because a mining run is not charged
- * (D136).
+ * PRICE, because that is the one number that already carries everything a hull is —
+ * D148 prices the catalogue at `atk x hp / value^2`, so charging fuel against value
+ * charges it against POWER without fuel ever reading a combat stat. The relation
+ * cannot invert: a hull that is worth more to field costs more to fly, at every
+ * rung, with no tier left to sit on.
+ *
+ * TIMES `pivotRoundTrip / referenceRoundTrip`, which is the owner's second rule —
+ * a fast hull drinks more, a slow one less. It is the SAME number the hold is
+ * derived from in `profileHull`, deliberately: one statement of "how fast is this
+ * thing" feeding both, because two tables would drift the first time either moved.
+ *
+ * CEILED, NEVER ROUNDED, and never below one. `missionFuel` already ceils per leg,
+ * so this is the same promise one level down: no hull is ever free to move, and
+ * rounding never hands the cheap end of a tier a discount the dear end pays for.
+ *
+ * ZERO FOR A GROUND HULL. A gun never travels, so it has no thirst whatever it
+ * weighs on the ground. A hull with no reference trip — the Prospector — sits at the
+ * pivot, and burns nothing in practice because a mining run is not charged (D136).
  */
 export function hullFuelMass(hull: HullId): number {
   const spec = HULLS[hull];
   if (spec.ground) return 0;
-  return hullBulk(hull) * (spec.tier === null ? 1 : FUEL.tierMass[spec.tier]);
+  // The Garbage Collector's thirst is the owner's, not its price's. D200.
+  if (spec.profile === 'COLLECTOR') return SALVAGE.fuelMass;
+  const value = spec.alloy + spec.crystal + spec.deuterium;
+  const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(hull) ?? FUEL.pivotRoundTrip);
+  return Math.max(1, Math.ceil(value * FUEL.perValue * thirst));
 }
 
 /**

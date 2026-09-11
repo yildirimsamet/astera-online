@@ -61,7 +61,7 @@ const armed = (
   const base = planetView();
   return planetView(
     {
-      buildings: { CORE: 9, REFINERY: 4, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 3, HANGAR: 1 },
+      buildings: { CORE: 9, REFINERY: 4, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 3 },
       instruments: { RADAR: ANTI_STRATEGIC.requiredRadar },
       orbit: ['UPLINK'],
       research: base.research.map((project) => project.id === ANTI_STRATEGIC.requiredResearch
@@ -219,6 +219,26 @@ describe('the charge itself', () => {
   });
 
   /**
+   * A LOADED CHARGE IS NOT RADAR PROTECTION WHEN ITS RING HAS GONE DARK.
+   *
+   * Core loss can disable the Uplink slot and therefore zero the effective Radar.
+   * The charge remains stored, but calling the battery simply "Ready" tells the
+   * commander to trust a circle this world no longer has.
+   */
+  it('marks a loaded charge as lacking Radar protection when its Uplink is inactive', () => {
+    const view = show(armed({
+      instruments: { RADAR: 5 },
+      orbit: [],
+      interceptor: { id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 },
+    }));
+
+    expect(stateOf(view)).toBe('NO_RADAR');
+    expect(block(view)).toHaveTextContent(/Radar ring is offline/i);
+    expect(block(view)).toHaveTextContent(/Uplink/i);
+    expect(button(view)).toBeNull();
+  });
+
+  /**
    * THE FIELD THIS READS IS NOT THE WEAPON'S. T12 split `strategic` in two after
    * finding that a charge started later reported itself as the Death Star. A world
    * with a Death Star ready and no charge must still offer one.
@@ -259,7 +279,7 @@ describe('a hull gated on research', () => {
     const base = planetView();
     return planetView(
       {
-        buildings: { CORE: 9, REFINERY: 4, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 6, HANGAR: 2 },
+        buildings: { CORE: 9, REFINERY: 4, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 6 },
         research: base.research,
       },
       { alloy: 500_000, crystal: 200_000, deuterium: 50_000 },

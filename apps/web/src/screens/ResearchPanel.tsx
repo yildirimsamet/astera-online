@@ -68,7 +68,11 @@ const GROUPED = [
     id: 'industry',
     label: 'research.industryBand',
     note: 'research.industryNote',
-    projects: ['DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS'],
+    /** The two build queues sit side by side: what flies, then what stands. D198. */
+    projects: [
+      'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'AI_ROBOTS',
+      'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
+    ],
   },
   {
     id: 'doctrine',
@@ -190,6 +194,19 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const researchQueue = planet.researchQueue ?? [];
   const graviticShare = percent(DEUTERIUM.graviticDiscoveryShieldShare);
   const running = researchQueue.find((order) => order.slot === 0 && order.finishesAt instanceof Date);
+  /**
+   * IS THIS PROJECT ON THE COMMANDER'S QUEUE, AND IN WHICH OF THE TWO WAYS. D183.
+   *
+   * `running` is the slot the clock is actually paying for; everything else on the
+   * queue is WAITING. Both are "bought" as far as the refusal ladder is concerned,
+   * which is why `doorOf` returns early on either — but they are different facts to
+   * a reader, so the row prints different words for them.
+   */
+  const queuedState = (id: ResearchProjectId): 'running' | 'queued' | null => {
+    const order = researchQueue.find((candidate) => candidate.projectId === id);
+    if (!order) return null;
+    return order.slot === 0 ? 'running' : 'queued';
+  };
   const queueOrders: BuildOrderView[] = researchQueue.map((order) => ({
     id: order.id,
     queue: 'CONSTRUCTION',
@@ -246,6 +263,13 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           tag: t('research.yardTag'),
           role: t('research.yardRole'),
           detail: t('research.yardDetail'),
+        };
+      case 'AI_ROBOTS':
+        return {
+          name: t('research.robotsName'),
+          tag: t('research.robotsTag'),
+          role: t('research.robotsRole'),
+          detail: t('research.robotsDetail'),
         };
       case 'PROSPECTOR_HOLDS':
         return {
@@ -343,6 +367,19 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     completed: boolean,
   ): Blocked | undefined => {
     if (completed) return undefined;
+    /*
+      A PROJECT ALREADY ON THE QUEUE HAS NO DOOR LEFT. D183, owner report:
+      *"Que'da olan bir araştırma menü item'da 'birazdan sonra araştırılabilir'
+      yazısı 'araştırılıyor' ile değişmeli."*
+
+      Every refusal below describes something the commander has yet to do, and a
+      project that is BOUGHT and running has none of them — but the act clock this
+      ladder falls through to was still literally true, so a paid-for project on
+      the commander's own queue was labelled "researchable in 4h". That is the
+      ladder answering a question nobody asked: not "when could I start this" but
+      "what is happening to it right now". `queuedState` answers the second one.
+    */
+    if (queuedState(id) !== null) return undefined;
     if (researchQueue.length >= BUILD.queueDepth) {
       return { reason: t('research.queueFull') };
     }
@@ -431,7 +468,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     const level = state.level ?? (state.completed ? 1 : 0);
     const maxLevel = state.maxLevel ?? 1;
     const completed = state.completed;
-    const queued = researchQueue.some((queuedOrder) => queuedOrder.projectId === id);
+    const onQueue = queuedState(id);
     const blocked = doorOf(id, state, completed);
     /**
      * THE FIGURE, WHICH THIS ROW WAS THE ONLY LADDER IN THE GAME WITHOUT.
@@ -453,7 +490,15 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
       maxLevel,
       ...(blocked ? { blocked } : {}),
       ...(completed ? { completed: t('research.complete') } : {}),
-      ...(queued ? { queued: t('planet.queue.queued', { count: 1 }) } : {}),
+      /*
+        RUNNING AND WAITING ARE NOT ONE STATE. Running is being paid for by the
+        clock; waiting is a place in a line of three. A row that called both
+        "queued" would hide the only fact a commander deciding what to buy next
+        actually needs — and this row used to say "1 order queued" for both.
+      */
+      ...(onQueue
+        ? { queued: t(onQueue === 'running' ? 'research.rowRunning' : 'research.rowQueued') }
+        : {}),
     };
 
     return (
@@ -479,7 +524,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
             CONSTRUCTION. `orderMinutes` honours that asymmetry rather than tidying
             it away; a quote the server contradicts is worse than no quote.
           */
-          takes={orderMinutes('RESEARCH', state.cost, planet)}
+          takes={orderMinutes('RESEARCH', state.cost, planet, 1, { research: id, level: level + 1 })}
           unowned={level === 0}
           {...(spec.blocked ? { blocked: spec.blocked } : {})}
           {...(spec.completed ? { completed: spec.completed } : {})}

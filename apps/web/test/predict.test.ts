@@ -4,13 +4,14 @@ import {
   HULLS,
   PROSPECTOR,
   RESEARCH_MAX_LEVEL,
+  RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
   instrumentCost,
   groundSlots,
-  hangarCapacity,
   hullBulk,
   satelliteCost,
   upgradeCost,
+  buildingCost,
 } from '@astera/rules';
 import {
   predictBuild,
@@ -149,10 +150,10 @@ describe('predicting an upgrade', () => {
       slot: 1,
       kind: 'BUILDING',
       subject: 'CORE',
-      cost: upgradeCost(6),
+      cost: buildingCost('CORE', 6),
     });
     expect(second?.planet.alloy).toBe(
-      rich.planet.alloy - upgradeCost(5).alloy - upgradeCost(6).alloy,
+      rich.planet.alloy - upgradeCost(5).alloy - buildingCost('CORE', 6).alloy,
     );
     expect(second?.buildings.CORE).toBe(5);
   });
@@ -222,8 +223,8 @@ describe('predicting a build', () => {
   it('reads every advanced build gate from the Fleet V2 catalog metadata', () => {
     const rich = planetView(
       {
-        buildings: { CORE: 8, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 6, HANGAR: 10 },
-        capacity: { hangar: 100_000, hangarUsed: 0, ground: groundSlots(8), groundUsed: 0 },
+        buildings: { CORE: 8, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 6 },
+        capacity: { ground: groundSlots(8), groundUsed: 0 },
       },
       { alloy: 500_000, crystal: 500_000, deuterium: 500_000 },
     );
@@ -285,6 +286,44 @@ describe('predicting a build', () => {
     expect(predictBuild(mining, 'PROSPECTOR', 1)).toBeNull();
   });
 
+  /**
+   * THE THIRD DRILL IS BOUGHT, AND THE PREDICTOR HAS TO KNOW IT WAS. D170.
+   *
+   * `prospectorCeiling` has read the third rung of Prospector Holds since D170 and
+   * the build endpoint has honoured it — this predictor did not, so a commander who
+   * had paid 6,000 alloy for the rung watched the row refuse the craft they had
+   * just bought the right to. The optimistic frame must never be stricter than the
+   * server: a refusal the server would not make is a purchase the player cannot
+   * make at all, because the control never offers it.
+   */
+  it('offers a third drill once Prospector Holds reaches its third rung', () => {
+    const withRung = (level: number) => planetView(
+      {
+        buildings: { CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 },
+        fleet: { PROSPECTOR: PROSPECTOR.max },
+        fleetAway: {},
+        research: RESEARCH_PROJECT_IDS.map((id) => ({
+          id,
+          cost: RESEARCH_PROJECTS[id].costAt(1),
+          discovered: true,
+          completed: false,
+          completedAt: null,
+          available: true,
+          availableAt: new Date('2000-01-01T00:00:00.000Z'),
+          prerequisite: RESEARCH_PROJECTS[id].prerequisite,
+          ...(id === 'PROSPECTOR_HOLDS' ? { level } : {}),
+        })),
+        capacity: { ground: 8, groundUsed: 0 },
+      },
+      { alloy: 500_000, crystal: 500_000 },
+    );
+    // Two rungs is the two-craft world every commander starts in.
+    expect(predictBuild(withRung(2), 'PROSPECTOR', 1)).toBeNull();
+    expect(predictBuild(withRung(3), 'PROSPECTOR', 1)).not.toBeNull();
+    // And the third is the last one: the rung lifts the ceiling by exactly one.
+    expect(predictBuild(withRung(3), 'PROSPECTOR', 2)).toBeNull();
+  });
+
   it('counts Prospectors already committed in the yard against the cap', () => {
     const mining = planetView(
       {
@@ -299,23 +338,22 @@ describe('predicting a build', () => {
     expect(predictBuild(second, 'PROSPECTOR', 1)).toBeNull();
   });
 
-  it('counts owned and queued ships against Hangar room', () => {
-    const capacity = hangarCapacity(0);
-    const nearlyFull = planetView(
+  /** D184: a warship has no room to run out of, so the prediction never refuses one. */
+  it('never refuses a warship for room, however many are already owned', () => {
+    const packed = planetView(
       {
         buildings: {
-          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 0,
+          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4,
         },
-        fleet: { DART: capacity - hullBulk('DART') },
-        capacity: { hangar: capacity, hangarUsed: capacity - 1, ground: groundSlots(6), groundUsed: 0 },
+        fleet: { DART: 5_000 },
+        capacity: { ground: groundSlots(6), groundUsed: 0 },
       },
       { alloy: 500_000, crystal: 500_000 },
     );
 
-    const lastPlace = predictBuild(nearlyFull, 'DART', 1);
-    expect(lastPlace).not.toBeNull();
-    expect(predictBuild(lastPlace!, 'DART', 1)).toBeNull();
-    expect(predictBuild(nearlyFull, 'DART', 2)).toBeNull();
+    const first = predictBuild(packed, 'DART', 1);
+    expect(first).not.toBeNull();
+    expect(predictBuild(first!, 'DART', 50)).not.toBeNull();
   });
 
   it('keeps ground emplacements in their own capacity pool', () => {
@@ -323,10 +361,10 @@ describe('predicting a build', () => {
     const fullGround = planetView(
       {
         buildings: {
-          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 0,
+          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4,
         },
         ground: { THORN: Math.floor(capacity / hullBulk('THORN')) },
-        capacity: { hangar: hangarCapacity(0), hangarUsed: 0, ground: capacity, groundUsed: capacity },
+        capacity: { ground: capacity, groundUsed: capacity },
       },
       { alloy: 500_000, crystal: 500_000 },
     );
@@ -358,7 +396,7 @@ describe('predicting a build', () => {
   it('declines when the total price is out of reach, not just the unit price', () => {
     const thin = planetView(
       { buildings: yard.buildings },
-      { alloy: HULLS.DART.alloy * 2, crystal: 0 },
+      { alloy: HULLS.DART.alloy * 2, crystal: HULLS.DART.crystal * 2 },
     );
     expect(predictBuild(thin, 'DART', 2)).not.toBeNull();
     expect(predictBuild(thin, 'DART', 3)).toBeNull();

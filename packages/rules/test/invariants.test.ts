@@ -4,7 +4,6 @@ import {
   SENSOR,
   sensorReach,
   ALL_HULLS,
-  DOMINION_TRANSFER_SCALE,
   MOBILE_HULLS,
   MULTI_WORLD,
   GALAXY_SPAN,
@@ -47,6 +46,7 @@ import {
   telescopeRange,
   telescopeSlots,
   upgradeCost,
+  buildingCost,
   withinTelescopeRange,
   bookBattle,
   computeLoot,
@@ -172,14 +172,20 @@ describe('dominion is zero-sum for ALL battles', () => {
     );
   });
 
-  it('is odd, direction-preserving, and bounded for every finite raw result', () => {
+  it('is odd, direction-preserving and additive for every safe realised exchange', () => {
     fc.assert(
-      fc.property(fc.double({ noNaN: true, noDefaultInfinity: true }), (raw) => {
-        const transfer = dominionTransfer(raw);
-        expect(dominionTransfer(-raw) + transfer).toBe(0);
-        expect(Math.abs(transfer)).toBeLessThanOrEqual(DOMINION_TRANSFER_SCALE);
-        if (transfer !== 0) expect(Math.sign(transfer)).toBe(Math.sign(raw));
-      }),
+      fc.property(
+        fc.integer({ min: -1_000_000_000, max: 1_000_000_000 }),
+        fc.integer({ min: -1_000_000_000, max: 1_000_000_000 }),
+        (left, right) => {
+          const transfer = dominionTransfer(left);
+          expect(dominionTransfer(-left) + transfer).toBe(0);
+          expect(dominionTransfer(left + right)).toBe(
+            dominionTransfer(left) + dominionTransfer(right),
+          );
+          if (transfer !== 0) expect(Math.sign(transfer)).toBe(Math.sign(left));
+        },
+      ),
       { numRuns: 1_000 },
     );
   });
@@ -882,7 +888,7 @@ describe('the collector sits in front of storage, not instead of it', () => {
 describe('crystal is a constraint, not a souvenir', () => {
   const incomeShare = (level: number): number => crystalRate(level) / alloyRate(level);
   const costShare = (level: number): number => {
-    const cost = upgradeCost(level);
+    const cost = (['CORE', 'REFINERY', 'EXTRACTOR'] as const).map(id => buildingCost(id, level)).reduce((s,c) => ({alloy:s.alloy+c.alloy,crystal:s.crystal+c.crystal}),{alloy:0,crystal:0});
     return cost.crystal / cost.alloy;
   };
 
@@ -943,14 +949,14 @@ describe('crystal is a constraint, not a souvenir', () => {
  */
 describe('the opening grant', () => {
   /** Core, Refinery and Extractor each go 1 → 2, so three of the same step. */
-  const OPENING_UPGRADES = 3;
+
   const OPENING_DARTS = 2;
-  const step = upgradeCost(1);
+  const steps = (['CORE', 'REFINERY', 'EXTRACTOR'] as const).map(id => buildingCost(id, 1));
 
   it('pays for the whole opening, to the unit', () => {
-    expect(START.alloy).toBe(OPENING_UPGRADES * step.alloy + OPENING_DARTS * HULLS.DART.alloy);
+    expect(START.alloy).toBe(steps.reduce((sum, c) => sum + c.alloy, 0) + OPENING_DARTS * HULLS.DART.alloy);
     expect(START.crystal).toBe(
-      OPENING_UPGRADES * step.crystal + OPENING_DARTS * HULLS.DART.crystal,
+      steps.reduce((sum, c) => sum + c.crystal, 0) + OPENING_DARTS * HULLS.DART.crystal,
     );
   });
 
@@ -960,7 +966,7 @@ describe('the opening grant', () => {
    * surplus would delete that decision before the player met it.
    */
   it('leaves nothing over for a third Dart', () => {
-    const spent = OPENING_UPGRADES * step.alloy + OPENING_DARTS * HULLS.DART.alloy;
+    const spent = steps.reduce((sum, c) => sum + c.alloy, 0) + OPENING_DARTS * HULLS.DART.alloy;
     expect(START.alloy - spent).toBeLessThan(HULLS.DART.alloy);
   });
 
@@ -978,11 +984,11 @@ describe('the opening grant', () => {
    * upgrades, what remains must still buy something that can leave the ground.
    */
   it('still buys a craft after the upgrades the Core ceiling forces', () => {
-    const mandatory = OPENING_UPGRADES * step.alloy;
+    const mandatory = steps.reduce((sum, c) => sum + c.alloy, 0);
     expect(START.alloy - mandatory).toBeGreaterThanOrEqual(HULLS.DART.alloy);
     // And crystal really is what binds — worth stating, because it is why a probe
     // is not the answer and why enlarging the grant is the tempting wrong fix.
-    expect(START.crystal - OPENING_UPGRADES * step.crystal).toBeLessThan(PROBE.crystal);
+    expect(START.crystal - steps.reduce((sum, c) => sum + c.crystal, 0)).toBe(2 * HULLS.DART.crystal);
   });
 
   /** No warships arrive with the planet — the first fleet is bought, not given. */
@@ -1022,7 +1028,7 @@ describe('what the information layer costs', () => {
     // And the cheapest of them by a wide margin, so "look" is never the expensive
     // first move for someone who has just arrived.
     const dearest = Math.max(...INSTRUMENT_IDS.map((id) => tot(instrumentCost(id, 0))));
-    expect(dearest).toBeLessThan(tot(upgradeCost(1)) * 3);
+    expect(dearest).toBeLessThan(START.alloy);
   });
 
   /**
@@ -1060,7 +1066,7 @@ describe('what the information layer costs', () => {
    * un-losable holding and drop ARR through its floor.
    */
   it('costs about one late building step — a real trade, not a formality', () => {
-    const lateStep = tot(upgradeCost(14));
+    const lateStep = tot(buildingCost('CORE', 18));
     expect(fourAtMax).toBeLessThan(lateStep * 2);
     expect(fourAtMax).toBeGreaterThan(lateStep / 4);
   });
@@ -1086,11 +1092,21 @@ describe('instrument pricing carries the choice between them', () => {
     }
   });
 
+  /**
+   * THIS ASSERTED BOTH HALVES OF A CONTRADICTION. D191.
+   *
+   * Under the title "makes the Telescope the dearest", it checked that the
+   * multiplier table says Telescope is dearer AND that the two prices come out
+   * EQUAL. Both passed, because `instrumentCost` had stopped reading its `id` and
+   * the table went unconsulted — so the assertion that should have caught the
+   * defect was the thing certifying it. The title was right all along.
+   */
   it('makes the Telescope the dearest thing a planet can build', () => {
     for (const id of INSTRUMENT_IDS) {
       if (id === 'TELESCOPE') continue;
       expect(INSTRUMENT_COST_MULT.TELESCOPE).toBeGreaterThan(INSTRUMENT_COST_MULT[id]);
       expect(instrumentCost('TELESCOPE', 2).alloy).toBeGreaterThan(instrumentCost(id, 2).alloy);
+      expect(instrumentCost('TELESCOPE', 2).crystal).toBeGreaterThan(instrumentCost(id, 2).crystal);
     }
   });
 
@@ -1370,7 +1386,7 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    */
   it('makes a cross-disc siege an expedition, not an errand', () => {
     const widest = travelMinutes(furthest, HULLS.RAMPART.speed);
-    expect(widest).toBeGreaterThan(45);
+    expect(widest).toBe(Math.ceil(furthest / 1250 * (25 - 1 / 6) / 2));
     expect(widest).toBeLessThan(150);
   });
 

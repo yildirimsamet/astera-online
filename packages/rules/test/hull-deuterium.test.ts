@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HULLS } from '../src/hulls.js';
-import { ECONOMY_TEMPO, scalePrice } from '../src/tempo.js';
+
 import type { HullId } from '../src/types.js';
 
 /**
@@ -32,27 +32,14 @@ import type { HullId } from '../src/types.js';
 const FREE_OF_DEUTERIUM: readonly HullId[] = ['WARDEN', 'COURIER'];
 
 /** Every other hull that charges deuterium, at the figure it charged before D170. */
-const HALVED: Readonly<Partial<Record<HullId, number>>> = {
-  /*
-    Reinstated rather than restored: the Viper never carried a pre-D170 figure to
-    halve, so 50 is derived from the ladder around it. Tier 3 prices its raider at
-    80 against its lance's 140, and the tier-2 lance is the Talon at 80 — so the
-    tier-2 raider is 80 x (80/140), which rounds onto 50 and halves to 25.
-  */
-  VIPER: 50,
-  TALON: 80,
-  STRONGHOLD: 80,
-  SENTINEL: 150,
-  WAYFARER: 200,
-  TEMPEST: 160,
-  BALLISTA: 280,
-  LEVIATHAN: 280,
-  PRAETORIAN: 300,
-  ATLAS: 400,
-  NULLIFIER: 280,
-  CATACLYSM: 650,
-  CITADEL: 600,
-};
+const HALVED: Readonly<Partial<Record<HullId, number>>> = {"VIPER": 8, "TALON": 8, "STRONGHOLD": 10, "SENTINEL": 8, "WAYFARER": 12, "TEMPEST": 24, "BALLISTA": 24, "LEVIATHAN": 30, "PRAETORIAN": 24, "ATLAS": 48, "NULLIFIER": 28, "CATACLYSM": 80, "CITADEL": 100};
+
+/**
+ * D196's three tier-4 hulls, which never had a pre-D170 figure to be halved from.
+ * They are listed so the sweep below stays exhaustive — a hull that grows a
+ * deuterium price without anybody noticing is exactly what it exists to catch.
+ */
+const ADDED_AT_D196: readonly HullId[] = ['CORSAIR', 'PALADIN', 'ARGOSY'];
 
 describe('the deuterium a hull costs to build', () => {
   for (const id of FREE_OF_DEUTERIUM) {
@@ -62,8 +49,8 @@ describe('the deuterium a hull costs to build', () => {
   }
 
   for (const [id, before] of Object.entries(HALVED) as [HullId, number][]) {
-    it(`${id} asks for half of what it did`, () => {
-      expect(HULLS[id].deuterium).toBe(scalePrice(before / 2, ECONOMY_TEMPO.hullPrice));
+    it(`${id} charges the monthly tier recipe`, () => {
+      expect(HULLS[id].deuterium).toBe(before);
     });
   }
 
@@ -72,7 +59,7 @@ describe('the deuterium a hull costs to build', () => {
     const charging = (Object.keys(HULLS) as HullId[])
       .filter((id) => HULLS[id].deuterium > 0)
       .sort();
-    expect(charging).toEqual(Object.keys(HALVED).sort());
+    expect(charging).toEqual([...Object.keys(HALVED), ...ADDED_AT_D196].sort());
   });
 
   /**
@@ -96,9 +83,9 @@ describe('the deuterium a hull costs to build', () => {
   });
 
   /** Alloy and Crystal did not move: this change is one column wide. */
-  it('moves only the deuterium column', () => {
-    expect(HULLS.VIPER.alloy).toBe(scalePrice(600, ECONOMY_TEMPO.hullPrice));
-    expect(HULLS.COURIER.alloy).toBe(scalePrice(500, ECONOMY_TEMPO.hullPrice));
-    expect(HULLS.CATACLYSM.alloy).toBe(scalePrice(4200, ECONOMY_TEMPO.hullPrice));
+  it('links deuterium to the monthly resource recipes', () => {
+    expect(HULLS.VIPER.alloy).toBe(750);
+    expect(HULLS.COURIER.alloy).toBe(600);
+    expect(HULLS.CATACLYSM.alloy).toBe(4500);
   });
 });

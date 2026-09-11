@@ -54,7 +54,7 @@ const status = (runs: MiningRun[] = []): MiningStatusView => ({
   derrick: false,
   craftSpeed: 330,
   craftHold: 400,
-  derrickHold: 600,
+  craftReadyAt: null, derrickHold: 600,
   runs,
   isotopes: [],
 });

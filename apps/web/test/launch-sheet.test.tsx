@@ -5,13 +5,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
-import type { GalaxyPlanet, PirateContact } from '../src/api/schemas.js';
+import type { BattleReport, GalaxyPlanet, IntelView, PirateContact, Report } from '../src/api/schemas.js';
+import { intelSchema } from '../src/api/schemas.js';
+import { compact } from '../src/lib/format.js';
+import { flightModifiers } from '../src/lib/navigation.js';
 import { resetClock, serverNow } from '../src/lib/clock.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
-import { academyLessonFleet } from '@astera/rules';
+import {
+  academyLessonFleet,
+  forecastLines,
+  forecastLoss,
+  shieldHp,
+  wallKnowledgeOf,
+  type ForecastInput,
+} from '@astera/rules';
 import { hullLabel } from '../src/i18n/names.js';
 
 const target: GalaxyPlanet = {
@@ -373,6 +383,87 @@ describe('the fuel this launch burns', () => {
     expect(document.querySelector('[data-spend-left]')).toBeInTheDocument();
   });
 
+  /**
+   * THE TANK SITS WITH THE FORCE, NOT FIVE BLOCKS BELOW IT. D183, owner
+   * instruction: *"Seçilen gemi miktarına göre harcanacak yakıt gösteren
+   * section'ı da taşı."*
+   *
+   * The two things a commander adjusts a wing against are what it is WORTH in a
+   * fight and what it COSTS to fly, and both move on the same "+" — so reading
+   * them meant scrolling past the flight figures and the pirate note. The order
+   * is asserted rather than described because it is invisible to a typecheck and
+   * this block has already been re-edited once by another pass since it moved.
+   */
+  it('draws the tank INSIDE the force box, not as a block under it', async () => {
+    await packOne(10_000);
+    const box = document.querySelector('[data-force-compare]');
+    expect(box, 'the force comparison is not on the sheet').not.toBeNull();
+
+    /*
+      INSIDE, BECAUSE THE BOX IS STICKY. Owner correction: *"lan altında demiyorum
+      aynı kutunun içinde altında olsun. güç gösteren kutu sticky, sheet'te scroll
+      yapınca yakıt gösteren alan sayfanın üstünde kalıyor."*
+
+      As a SIBLING the fuel meter scrolled out from under a box that stays pinned,
+      so the two figures a wing is adjusted against came apart the moment the sheet
+      moved — which is the whole thing moving it was meant to fix. Containment is
+      the assertion; a sibling in the right order would pass an ordering test and
+      still be wrong.
+    */
+    expect(box!.querySelector('[data-launch-meters]')).not.toBeNull();
+    expect(box!.querySelector('[data-spend-bar]')).not.toBeNull();
+  });
+
+  /** And it is the last thing in that box, under both force bars. */
+  it('puts the tank below the two force bars', async () => {
+    await packOne(10_000);
+    const box = document.querySelector('[data-force-compare]')!;
+    const parts = [...box.querySelectorAll('[data-part], [data-launch-meters]')]
+      .map((node) => node.getAttribute('data-launch-meters') !== null
+        ? 'fuel'
+        : node.getAttribute('data-part'));
+    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('yours'));
+    expect(parts.indexOf('fuel')).toBeGreaterThan(parts.indexOf('theirs'));
+  });
+
+  /**
+   * AND IT IS THE SELECTED WING'S FUEL, which is the half of the instruction that
+   * makes the placement worth anything: a figure beside the picker that did not
+   * answer the picker would be decoration.
+   *
+   * ENOUGH SHIPS TO CROSS A STEP. `missionFuel` is
+   * `ceil(mass x distance / FUEL.scale) x legs`, so at this fixture's short range a
+   * handful of Darts all round to the same litre and the assertion would pass or
+   * fail on rounding rather than on wiring. Twenty crosses it.
+   */
+  it('moves with the number of ships picked', async () => {
+    render(
+      <LaunchSheet
+        /*
+          A REAL LEG. The shared fixture sits ~144 units away, and
+          `ceil(mass x distance / FUEL.scale)` rounds every wing that close to the
+          same litre — so a nearer target would make this assertion about rounding
+          rather than about whether the meter is wired to the picker at all.
+        */
+        target={{ kind: 'world', world: { ...target, position: { x: 5_000, y: 0, z: 0 } } }}
+        planet={planetView({ fleet: { DART: 20 } }, { deuterium: 100 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+
+    const spent = () => Number.parseFloat(
+      document.querySelector<HTMLElement>('[data-part="spent"]')?.style.width ?? '0',
+    );
+    const one = spent();
+
+    await user.click(screen.getByRole('button', { name: /max dart/i }));
+    expect(spent()).toBeGreaterThan(one);
+  });
+
   it('runs past the end of the tank when it is not, and names the gap', async () => {
     await packOne(0);
     expect(document.querySelector('[data-spend-bar]')).toHaveAttribute('data-short', 'true');
@@ -440,12 +531,15 @@ describe('how old the target is, on the surface where the fleet is committed', (
 
   /**
    * AND AN UNSURVEYED WORLD KEEPS THE LINE IT ALREADY HAD. There is no record to
-   * be old — "nobody has looked here" is the whole of what is true.
+   * be old — "you have never looked here" is the whole of what is true.
+   *
+   * The sentence used to say "nobody", which is a claim about every commander in
+   * the galaxy rather than about this one's fog, and no commander can hold it.
    */
-  it('leaves an unsurveyed world saying only that nobody has looked', () => {
+  it('leaves an unsurveyed world saying only that the commander has not looked', () => {
     open({ ...target, intel: 'UNKNOWN' as const, name: '', owner: '' });
     expect(screen.queryByText(/ago/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: /nobody has looked here/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /you have never looked here/i })).toBeInTheDocument();
   });
 
   /**
@@ -755,8 +849,8 @@ describe('a fleet that cannot fight', () => {
  */
 describe('the picker while a lesson is running', () => {
   const holding = planetView({
-    fleet: { DART: 3, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
-    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1, HANGAR: 3 },
+    fleet: { DART: 4, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
   });
 
   const lessonSheet = (lesson: 'pirate' | 'raid') => render(
@@ -843,8 +937,8 @@ describe('the picker while a lesson is running', () => {
  */
 describe('the order a lesson lists ships in', () => {
   const holding = planetView({
-    fleet: { DART: 3, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
-    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1, HANGAR: 3 },
+    fleet: { DART: 4, COURIER: 1, WARDEN: 1, PROSPECTOR: 1 },
+    buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
   });
 
   const rows = (lesson: 'pirate' | 'raid' | null) => {
@@ -869,5 +963,228 @@ describe('the order a lesson lists ships in', () => {
   it('leaves the ordinary picker banded, which is not this order', () => {
     // Offensive before Defensive before Cargo — `roster.ts`, untouched.
     expect(rows(null)).toEqual(['DART', 'WARDEN', 'COURIER']);
+  });
+});
+
+/**
+ * HOW MUCH OF A WALL THE WING TAKES, ON THE SHEET WHERE IT STOPS BEING RECALLABLE.
+ * D199.
+ *
+ * The comparison put the wing and the wall on one axis and left the question it
+ * exists for — is this fight my size — to be answered by losing it. The lines are
+ * `forecastLines` fed with everything this commander already holds: their own
+ * ships and research, and what the probe read of the wall — its shape, its shield,
+ * its transports and its doctrine. Asserted against the rules function itself, so
+ * the sheet can never quote a line the engine would not draw.
+ */
+describe('how much of a wall the wing takes', () => {
+  const read = (over: Partial<IntelView['probeReports'][number]> = {}): IntelView =>
+    intelSchema.parse({
+      watching: [],
+      radarLog: [],
+      probeCost: { alloy: 50, crystal: 30, deuterium: 0 },
+      probeReports: [{
+        targetPlanetId: 'p2',
+        targetName: 'Tharsis',
+        targetUsername: 'Sable',
+        at: new Date(serverNow() - 20 * 60_000),
+        accuracy: 0.55,
+        stock: { low: 1_000, high: 2_000 },
+        deuteriumStock: null,
+        defence: { low: 4_000, high: 6_000 },
+        fleetSize: { low: 5, high: 8 },
+        fleetHome: true,
+        detected: false,
+        doctrines: {},
+        classReading: { kind: 'DOMINANT', cls: 'BULWARK' },
+        shield: { low: 0, high: 0 },
+        unarmed: { low: 0, high: 0 },
+        ...over,
+      }],
+    });
+
+  const holding = planetView({ fleet: { TALON: 20 } });
+
+  const open = async (
+    intel: IntelView | undefined,
+    world: GalaxyPlanet = target,
+    reports: Report[] = [],
+  ) => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world }}
+        planet={holding}
+        intel={intel}
+        reports={reports}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    await openAllBands(userEvent.setup());
+    await userEvent.setup().click(screen.getByRole('button', { name: /max talon/i }));
+  };
+
+  const inputFor = (intel: IntelView): ForecastInput => {
+    const report = intel.probeReports[0]!;
+    return {
+      attackerTech: flightModifiers(holding).tech,
+      defenderTech: report.doctrines ?? {},
+      shield: report.shield ?? { low: 0, high: 0 },
+      unarmed: report.unarmed ?? { low: 0, high: 0 },
+      wall: wallKnowledgeOf(report.classReading),
+    };
+  };
+
+  it('draws no lines before a ship is picked', () => {
+    render(
+      <LaunchSheet target={{ kind: 'world', world: target }} planet={holding} intel={read()}
+        onClose={vi.fn()} onLaunched={vi.fn()} />,
+      { wrapper },
+    );
+    expect(screen.queryByTestId('compare-lines')).toBeNull();
+  });
+
+  it('draws the lines the battle engine gives this wing against the wall the probe read', async () => {
+    const intel = read();
+    await open(intel);
+    const expected = forecastLines({ TALON: 20 }, inputFor(intel));
+    const said = await screen.findByTestId('compare-lines');
+    expect(said).toHaveTextContent(compact(expected.clears.low));
+    expect(said).toHaveTextContent(compact(expected.breaks.low));
+  });
+
+  it('states what the fight is expected to cost against the reading', async () => {
+    const intel = read();
+    await open(intel);
+    const expected = forecastLoss({ TALON: 20 }, { low: 4_000, high: 6_000 }, inputFor(intel));
+    const loss = await screen.findByTestId('compare-loss');
+    expect(loss).toHaveTextContent(String(Math.round(expected.low * 100)));
+    expect(loss).toHaveTextContent(String(Math.round(expected.high * 100)));
+  });
+
+  /**
+   * NO READING, NO LINES. Found in review: with nobody having looked, the lines were
+   * still drawn — against a wall with no research, no dome and no transports, the
+   * kindest wall there is. Every input about the wall was a guess and the guess was
+   * always in the wing's favour. The lines are what a probe buys; before one, the box
+   * says so and nothing more.
+   */
+  it('draws no lines and no loss when nobody has looked', async () => {
+    await open(undefined);
+    expect(await screen.findByTestId('compare-unknown')).toBeInTheDocument();
+    expect(screen.queryByTestId('compare-lines')).toBeNull();
+    expect(screen.queryByTestId('compare-loss')).toBeNull();
+  });
+
+  /** A reading written before D199 has no shape, no charge and no hangar — and says so. */
+  it('says what an old probe could not see, and the dome it could', async () => {
+    await open(
+      read({ classReading: undefined, shield: undefined, unarmed: undefined }),
+      { ...target, shielded: true },
+    );
+    const notes = await screen.findByTestId('compare-notes');
+    expect(notes).toHaveTextContent(/shield charge not measured/i);
+    expect(notes).toHaveTextContent(/shape of the wall not read/i);
+    expect(notes).toHaveTextContent(/transports not counted/i);
+  });
+
+  /**
+   * AN UNMEASURED DOME IS ANYTHING UP TO THE MOST THIS WORLD CAN HOLD — never nothing.
+   * Found in review: a dome no probe measured was fought as an empty one, so the
+   * lines were drawn for the kindest case while a note said the charge was unknown.
+   * The dome is public and so is the Core that caps its Aegis, so the worst case is
+   * knowable: the lines widen to it, and the hatch says how much of them is open.
+   */
+  it('reads a dome no probe measured as anything up to the most this world can hold', async () => {
+    const intel = read({ shield: undefined });
+    await open(intel, { ...target, shielded: true });
+    const bounded = forecastLines(
+      { TALON: 20 },
+      { ...inputFor(intel), shield: { low: 0, high: shieldHp(target.coreLevel) } },
+    );
+    const bare = forecastLines({ TALON: 20 }, inputFor(intel));
+    expect(compact(bounded.clears.low)).not.toBe(compact(bare.clears.low));
+    expect(await screen.findByTestId('compare-lines')).toHaveTextContent(compact(bounded.clears.low));
+  });
+
+  /** Seen on the phone: "5 transports" off a band that read 1–5. A band is printed as one. */
+  it('counts the transports in the line as the band the probe read', async () => {
+    await open(read({ unarmed: { low: 1, high: 5 } }));
+    expect(await screen.findByTestId('compare-notes')).toHaveTextContent(/1–5 transports stand in the line/i);
+  });
+
+  it('passes on what the probe and the Telescope already said', async () => {
+    await open(
+      read({ detected: true, fleetHome: false }),
+      { ...target, fleet: { status: 'AWAY', staleMinutes: 0, etaMinutes: null, clarity: 'FULL' } },
+    );
+    const notes = await screen.findByTestId('compare-notes');
+    expect(notes).toHaveTextContent(/your probe was seen/i);
+    expect(notes).toHaveTextContent(/some of their fleet was out at the look/i);
+    expect(notes).toHaveTextContent(/telescope: their fleet is out now/i);
+  });
+
+  it('names what the last raid on this world sank', async () => {
+    const last = {
+      id: 'b1',
+      missionId: 'm1',
+      at: new Date(serverNow() - 90 * 60_000),
+      grade: 'PARTIAL',
+      attacking: true,
+      opponentName: 'Sable',
+      opponentPlanet: 'Tharsis',
+      opponentPlanetId: 'p2',
+      neutral: false,
+      yourPlanet: 'Home',
+      rounds: [],
+      yourLosses: {},
+      theirLosses: { BASTION: 3, DART: 1 },
+      yourFleet: { TALON: 10 },
+      theirFleet: {},
+      lootAlloy: 0,
+      lootCrystal: 0,
+      lootDeuterium: 0,
+      dominion: 0,
+      shieldAbsorbed: 0,
+      cargoLimited: false,
+      defenceSalvage: {},
+      disruptedMinutes: 0,
+      wreckValue: 0,
+    } as const satisfies BattleReport;
+    await open(read(), target, [last]);
+    expect(await screen.findByTestId('compare-notes')).toHaveTextContent(/last raid sank mostly bulwark/i);
+  });
+
+  it('reads a pirate crew it can see as one exact line', async () => {
+    const crew = { VIPER: 3, COURIER: 1 } as const;
+    render(
+      <LaunchSheet
+        target={{ kind: 'pirate', pirate: {
+          id: 'pirate-1', callsign: 'VEX7', zone: 'IDENTIFIED', at: { x: 400, y: 0, z: 0 },
+          expiresInMinutes: 180, reachMinutes: 12,
+          reach: [{ hull: 'TALON', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
+          level: 2, fleet: crew, damageMult: 0.65, mass: 'MEDIUM',
+        } }}
+        planet={holding}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+    await openAllBands(userEvent.setup());
+    await userEvent.setup().click(screen.getByRole('button', { name: /max talon/i }));
+    const expected = forecastLines({ TALON: 20 }, {
+      attackerTech: flightModifiers(holding).tech,
+      defenderTech: {},
+      defenderDamageMult: 0.65,
+      shield: { low: 0, high: 0 },
+      unarmed: { low: 0, high: 0 },
+      wall: { kind: 'EXACT', fleet: crew },
+    });
+    expect(expected.clears.low).toBe(expected.clears.high);
+    const said = await screen.findByTestId('compare-lines');
+    expect(said).toHaveTextContent(compact(expected.clears.low));
+    expect(said).not.toHaveTextContent(new RegExp(`${compact(expected.clears.low)}–`));
   });
 });

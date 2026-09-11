@@ -125,16 +125,66 @@ describe('ownership topology', () => {
   });
 
   /**
-   * A star drawn around the wrong centre would state a relationship that is not
-   * there. A commander always has exactly one capital — it can be devastated but
-   * never captured — so this is a guard rather than a case anybody reaches.
+   * KNOWN COLONIES JOIN EACH OTHER WHEN THE CAPITAL IS NOT KNOWN. D183, owner
+   * report: *"Komutanın ana gezegenini bilmiyorum ama birden fazla kolonisini
+   * biliyorum: bu durumda bir kolonisine tıklayınca diğerleri arasında tül bağı
+   * gözükmüyor. İstiyorum ki koloniler birbirine bağlansın — ana gezegeni leak
+   * etmeyecek şekilde."*
+   *
+   * The star hangs off the capital, and a capital nobody has found is not in the
+   * node list — so the commonest case in a fogged galaxy, two colonies of a
+   * stranger, drew nothing at all. The relationship IS known there: both worlds
+   * name the same controller, publicly, and the player can already read it one
+   * world at a time.
+   *
+   * A CHAIN RATHER THAN A STAR, and rather than a mesh. A star needs a centre and
+   * the only honest centre is the capital; picking one of the colonies would state
+   * that the others belong to it. A mesh reads as a network of routes, which is the
+   * one thing these threads must never be (the module's own note). A chain says
+   * exactly what is known — these are one commander's — and claims no hierarchy.
+   *
+   * IT LEAKS NOTHING. Every world in the chain is one the caller has already
+   * resolved; the capital contributes no endpoint, no direction and no gap.
    */
-  it('draws nothing for a set with no capital in it', () => {
-    const orphans = [
-      node({ id: 'a', playerId: 'me', owned: true }),
-      node({ id: 'b', playerId: 'me', owned: true, x: 5 }),
+  it('joins known colonies to each other when the capital is unknown', () => {
+    const fogged = [
+      node({ id: 'their-one', playerId: 'them', x: 25 }),
+      node({ id: 'their-two', playerId: 'them', x: 30 }),
+      node({ id: 'their-three', playerId: 'them', x: 35 }),
+      node({ id: 'mine-capital', playerId: 'me', owned: true, kind: 'CAPITAL' }),
     ];
-    expect(ownershipPairs(orphans, 'a')).toEqual([]);
+    const pairs = ownershipPairs(fogged, 'their-two');
+
+    // Three worlds, two threads: a chain, never the three of a complete graph.
+    expect(pairs).toHaveLength(2);
+    expect(pairs.every((pair) => pair.kind === 'selected')).toBe(true);
+    const touched = pairs.flatMap((pair) => [pair.from.id, pair.to.id]);
+    expect(new Set(touched)).toEqual(new Set(['their-one', 'their-two', 'their-three']));
+    // Nothing of the caller's, and nothing of a capital nobody has found.
+    expect(touched).not.toContain('mine-capital');
+  });
+
+  /** The capital, once found, takes the centre back: a star states the real shape. */
+  it('goes back to a star the moment the capital is known', () => {
+    const pairs = ownershipPairs(WORLDS, 'their-one');
+    expect(pairs.every((pair) => pair.from.id === 'their-capital')).toBe(true);
+  });
+
+  /** A commander with one known world still has nothing to join it to. */
+  it('draws nothing for a single known world', () => {
+    const alone = [node({ id: 'a', playerId: 'them' })];
+    expect(ownershipPairs(alone, 'a')).toEqual([]);
+  });
+
+  it('is stable: the same worlds in any order produce the same threads', () => {
+    const worlds = [
+      node({ id: 'c', playerId: 'them', x: 30 }),
+      node({ id: 'a', playerId: 'them', x: 10 }),
+      node({ id: 'b', playerId: 'them', x: 20 }),
+    ];
+    const forward = ownershipPairs(worlds, 'a').map((pair) => pair.key);
+    const backward = ownershipPairs([...worlds].reverse(), 'a').map((pair) => pair.key);
+    expect(backward).toEqual(forward);
   });
 
   it('builds one curved multi-segment buffer without invalid coordinates', () => {

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   DEUTERIUM,
   MULTI_WORLD,
-  PROSPECTOR,
   RESEARCH_PROJECTS,
   START_BUILDINGS,
   advanceEconomy,
@@ -74,19 +73,10 @@ describe('the deuterium refinery', () => {
    * it falls. An assertion that merely allowed the plant to be large would pass on
    * a tenfold change as happily as on this one.
    */
-  it('is under a miner while a world is young, and passes it from level 8', () => {
-    const perRun = 2 * PROSPECTOR.hold
-      * (DEUTERIUM.isotopeShareMin + DEUTERIUM.isotopeShareMax) / 2;
-    const ceiling = plantCeiling(RESEARCH_PROJECTS.DEUTERIUM_SYNTHESIS.maxLevel);
-
-    // The opening still belongs to the rocks: a plant a young world can afford
-    // does not out-produce one miner.
-    expect(deuteriumRate(7)).toBeLessThan(perRun);
-    // And from the next level it does, which is the whole of what D176 bought.
-    expect(deuteriumRate(8)).toBeGreaterThanOrEqual(perRun);
-    // The top is a real supply rather than an unbounded one.
-    expect(deuteriumRate(ceiling)).toBeGreaterThan(perRun * 2);
-    expect(deuteriumRate(ceiling)).toBeLessThan(perRun * 3);
+  it('uses the monthly plant curve independently of contested mining', () => {
+    expect(deuteriumRate(1)).toBe(4);
+    expect(deuteriumRate(7)).toBeCloseTo(4 * 7 ** 1.2);
+    expect(deuteriumRate(plantCeiling(5))).toBeCloseTo(4 * plantCeiling(5) ** 1.2);
   });
 
   it('is a fraction of what the other two produce, at every level', () => {

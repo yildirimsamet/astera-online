@@ -10,7 +10,7 @@ import {
   SETTLEMENT_CLAIM_MINUTES,
   deuteriumStorageCap,
   crystalRate,
-  upgradeCost,
+  buildingCost,
   DEATH_STAR,
   sensorSphere,
 } from '@astera/rules';
@@ -34,7 +34,16 @@ import {
   units,
 } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
-import { joinSeason } from '../src/services/player.js';
+/*
+  A COMMANDER JOINED IN THIS FILE IS A SETTLED ONE. D183.
+
+  `joinSeason` stamps a day of newcomer shield on everybody, which is the rule and
+  is the wrong starting state for a file whose whole subject is strikes landing:
+  every one of them would be refused before reaching the thing under test.
+  `joinSettled` is the same join with the shield cleared, aliased so the eleven call
+  sites below say what they always said.
+*/
+import { joinSettled as joinSeason } from './helpers.js';
 import { launchAttack } from '../src/services/mission.js';
 import {
   buildDeathStar,
@@ -126,7 +135,7 @@ describe('current multi-world ruleset', () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 2)!;
     const blockedAlloy = HULLS.DART.alloy;
-    expect(upgradeCost(4).alloy).toBeGreaterThan(blockedAlloy);
+    expect(buildingCost('CORE', 4).alloy).toBeGreaterThan(blockedAlloy);
     await setLevel(f.db, target.world.id, 'CORE', 4);
     await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await f.db.update(planets).set({
@@ -273,6 +282,8 @@ describe('current multi-world ruleset', () => {
       eq(units.location, 'home'),
     ));
     expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
+    expect(captured!.alloy).toBeGreaterThanOrEqual(target.world.alloy + 800);
+    expect(captured!.crystal).toBeGreaterThanOrEqual(target.world.crystal + 400);
     expect(captured?.protectedUntil?.getTime()).toBe(f.clock.now().getTime() + 6 * 60 * 60_000);
     expect(state).toHaveLength(0);
     expect(hauler).toMatchObject({
@@ -303,6 +314,8 @@ describe('current multi-world ruleset', () => {
       launchSettlement(f.db, f.joined.playerId, f.joined.planetId, target.world.id, f.clock),
       launchSettlement(f.db, rival.playerId, rival.planetId, target.world.id, f.clock),
     ]);
+    expect(left.planet.planet.alloy).toBe(9000);
+    expect(left.planet.planet.crystal).toBe(4500);
     expect(left.arriveAt.getTime()).toBe(right.arriveAt.getTime());
     f.clock.set(left.arriveAt);
     await workerFor(f.db, f.clock).tick();
@@ -332,6 +345,13 @@ describe('current multi-world ruleset', () => {
       eq(notifications.kind, 'settlement_lost'),
     ));
     expect(loserNotices).toHaveLength(1);
+    const [refunded] = await f.db.select().from(planets).where(eq(planets.id, loser.planetId));
+    expect(refunded!.alloy).toBe(10000);
+    expect(refunded!.crystal).toBe(5000);
+    await workerFor(f.db, f.clock).tick();
+    const [again] = await f.db.select().from(planets).where(eq(planets.id, loser.planetId));
+    expect(again!.alloy).toBe(refunded!.alloy);
+    expect(again!.crystal).toBe(refunded!.crystal);
   });
 
   it('treats the claim end as a strict boundary', async () => {
@@ -958,7 +978,7 @@ describe('current multi-world ruleset', () => {
      * a building the rule no longer drops, or count the Aegis on a world that has
      * none, and this moves. `real` is float4, hence the tolerance.
      */
-    const coreLoss = upgradeCost(4);
+    const coreLoss = buildingCost('CORE', 4);
     /**
      * WHAT WAS DESTROYED EQUALS WHAT SURVIVED, which is the halving rule stated
      * as an identity rather than as a number. Read off the struck world so it
@@ -1192,8 +1212,8 @@ describe('current multi-world ruleset', () => {
 
     const [ledger] = await f.db.select().from(strategicImpacts)
       .where(eq(strategicImpacts.missionId, launched.missionId));
-    const replacement = ['CORE', 'REFINERY', 'EXTRACTOR']
-      .map(() => upgradeCost(4))
+    const replacement = (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
+      .map(id => buildingCost(id, 4))
       .reduce(
         (sum, cost) => sum + cost.alloy + cost.crystal + cost.deuterium,
         0,

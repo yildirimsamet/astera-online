@@ -446,6 +446,157 @@ describe('the interception grid', () => {
     });
   });
 
+  /**
+   * THE WORKER WAS LATE, AND THE SHOT IS STILL OWED. CLAUDE.md: timed systems
+   * tolerate restarts.
+   *
+   * A whole flight is one to nine minutes and the ring sits one and a half to two
+   * from the world, so a deploy that holds the worker for two minutes can span the
+   * crossing AND the arrival. The check ran after the weapon had landed, saw no
+   * time left, and did nothing — then the arrival in the same batch struck a world
+   * whose battery was loaded the whole way in. The rule is where the weapon WAS
+   * with a charge ready, not how punctual the queue happened to be.
+   */
+  describe('when the worker was late', () => {
+    const struckOutcome = async (missionId: string) => {
+      const rows = await f.db.select().from(strategicImpacts)
+        .where(eq(strategicImpacts.missionId, missionId));
+      return rows.map((row) => row.outcome);
+    };
+    const ringCheck = async (missionId: string) => {
+      const [check] = await f.db.select({ at: scheduledEvents.resolveAt })
+        .from(scheduledEvents)
+        .where(and(
+          eq(scheduledEvents.kind, 'strategic_intercept'),
+          eq(scheduledEvents.refId, missionId),
+          eq(scheduledEvents.status, 'pending'),
+        ));
+      return check;
+    };
+    /** Sleep from now until after the weapon arrives, then catch up. */
+    const oversleep = async (arriveAt: Date) => {
+      f.clock.set(new Date(arriveAt.getTime() + 30_000));
+      await workerFor(f).tick();
+      await workerFor(f).tick(); // the owed collision resolves on the next pass
+    };
+
+    it('shoots down a weapon whose ring crossing it slept through', async () => {
+      await armAttacker();
+      await armDefender();
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+      await workerFor(f).tick(); // on time for the launch: arms the ring crossing
+      const crossing = await ringCheck(launched.missionId);
+      expect(crossing).toBeDefined();
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['INTERCEPTED']);
+      expect(await interceptors(f, defender, 'CONSUMED')).toHaveLength(1);
+      const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
+      expect(world?.recoveryUntil).toBeNull();
+      // Recorded where the weapon crossed the ring, not where the worker woke.
+      const [shot] = await f.db.select().from(strategicInterceptions)
+        .where(eq(strategicInterceptions.missionId, launched.missionId));
+      expect(shot?.trigger).toBe('RADAR');
+      expect(Math.abs(shot!.launchAt.getTime() - (crossing!.at.getTime() + 1_000)))
+        .toBeLessThanOrEqual(1_000);
+      expect(shot!.impactAt.getTime()).toBeLessThanOrEqual(launched.arriveAt.getTime());
+    });
+
+    it('shoots it down when it slept through the launch as well', async () => {
+      await armAttacker();
+      await armDefender();
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['INTERCEPTED']);
+      expect(await interceptors(f, defender, 'CONSUMED')).toHaveLength(1);
+    });
+
+    it('fires a charge that finished while it slept, once the weapon was inside the ring', async () => {
+      await armAttacker();
+      await giveSatellite(f.db, defender, 'UPLINK');
+      await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+      await workerFor(f).tick();
+      const crossing = await ringCheck(launched.missionId);
+      // On time for the crossing, with nothing loaded: the check sees no charge.
+      f.clock.set(crossing!.at);
+      await workerFor(f).tick();
+
+      const readyAt = new Date(crossing!.at.getTime() + 20_000);
+      const { schedule } = await import('../src/worker/queue.js');
+      const [charge] = await f.db.insert(strategicAssets).values({
+        planetId: defender,
+        type: 'INTERCEPTOR',
+        status: 'BUILDING',
+        startedAt: new Date(readyAt.getTime() - ANTI_STRATEGIC.buildMinutes * 60_000),
+        readyAt,
+        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+      }).returning();
+      await schedule(f.db, {
+        seasonId: f.seasonId,
+        kind: 'death_star_ready',
+        refId: charge!.id,
+        payload: { expectedReadyAt: readyAt.toISOString() },
+        resolveAt: readyAt,
+      });
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['INTERCEPTED']);
+      const [shot] = await f.db.select().from(strategicInterceptions)
+        .where(eq(strategicInterceptions.missionId, launched.missionId));
+      expect(shot?.launchAt).toEqual(readyAt);
+    });
+
+    it('still lets the weapon land when nothing was loaded', async () => {
+      await armAttacker();
+      await giveSatellite(f.db, defender, 'UPLINK');
+      await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['FIRST_STRIKE']);
+    });
+
+    it('still lets it land where no ring and no Telescope could have seen it', async () => {
+      await armAttacker();
+      await armDefender(ANTI_STRATEGIC.requiredRadar - 1);
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['FIRST_STRIKE']);
+      expect(await interceptors(f, defender, 'READY')).toHaveLength(1);
+    });
+
+    it('never fires a charge that was only ready after the weapon had landed', async () => {
+      await armAttacker();
+      await giveSatellite(f.db, defender, 'UPLINK');
+      await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
+      const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
+      const readyAt = new Date(launched.arriveAt.getTime() + 10_000);
+      await f.db.insert(strategicAssets).values({
+        planetId: defender,
+        type: 'INTERCEPTOR',
+        status: 'BUILDING',
+        startedAt: new Date(readyAt.getTime() - ANTI_STRATEGIC.buildMinutes * 60_000),
+        readyAt,
+        remainingSeconds: ANTI_STRATEGIC.buildMinutes * 60,
+      });
+
+      await oversleep(launched.arriveAt);
+
+      expect(await struckOutcome(launched.missionId)).toEqual(['FIRST_STRIKE']);
+      expect(await interceptors(f, defender, 'CONSUMED')).toHaveLength(0);
+    });
+  });
+
   describe('what it takes to have one', () => {
     it('cannot be built without the research', async () => {
       await giveSatellite(f.db, defender, 'UPLINK');
@@ -584,6 +735,16 @@ describe('stockpiling a second Death Star', () => {
     // The queue is a line, not a pair: the second finishes a full build later.
     expect(secondRow!.readyAt!.getTime() - firstRow!.readyAt!.getTime())
       .toBeGreaterThanOrEqual(DEATH_STAR.buildMinutes * 60_000);
+  });
+
+  /** And what the owner is handed back: both weapons, the first still first. */
+  it('answers the second order with both weapons on the view', async () => {
+    await giveResearch(f.db, capital, 'STRATEGIC_STOCKPILE');
+    const first = await buildDeathStar(f.db, capital, f.clock);
+    const second = await buildDeathStar(f.db, capital, f.clock);
+
+    expect(second.planet.deathStars.map((asset) => asset.id)).toEqual([first.assetId, second.assetId]);
+    expect(second.planet.strategic?.id).toBe(first.assetId);
   });
 
   it('finishes both, and finishing one never finishes the other', async () => {
@@ -772,6 +933,35 @@ describe('what a probe brings home about a grid', () => {
         remainingSeconds: 0,
       },
     ]);
+
+    expect((await probeAndRead())?.strategicStatus).toBe('READY');
+  });
+
+  /**
+   * TWO WEAPONS, AND THE ONE THAT CAN FLY IS THE ONE THAT MATTERS. T11.
+   *
+   * The read was an unordered `LIMIT 1`, so with the stockpile a pad holding a
+   * ready weapon and a second one building could come home as merely BUILDING —
+   * an attacker told they had an hour when they had none.
+   */
+  it('reports a ready weapon even when a second one is building behind it', async () => {
+    await setLevel(f.db, mine, 'SHIPYARD', 4);
+    // Inserted building-first, so an unordered read meets the wrong row first.
+    await f.db.insert(strategicAssets).values({
+      planetId: target,
+      type: 'DEATH_STAR',
+      status: 'BUILDING',
+      startedAt: f.clock.now(),
+      readyAt: new Date(f.clock.now().getTime() + DEATH_STAR.buildMinutes * 60_000),
+      remainingSeconds: DEATH_STAR.buildMinutes * 60,
+    });
+    await f.db.insert(strategicAssets).values({
+      planetId: target,
+      type: 'DEATH_STAR',
+      status: 'READY',
+      startedAt: new Date(f.clock.now().getTime() - 60_000),
+      remainingSeconds: 0,
+    });
 
     expect((await probeAndRead())?.strategicStatus).toBe('READY');
   });
@@ -993,7 +1183,33 @@ describe('a world holding both kinds of strategic asset', () => {
 
       const shown = await view(defender);
       expect(shown.strategic).toBeNull();
+      expect(shown.deathStars).toEqual([]);
       expect(shown.interceptor?.status).toBe('READY');
+    });
+
+    /**
+     * THE STOCKPILE PUTS TWO WEAPONS ON ONE PAD, AND THE VIEW HAS TO SAY SO. T11.
+     *
+     * `strategic` was the NEWEST row, so a second weapon queued behind a ready one
+     * reported itself as the weapon: the owner saw "building" over a Death Star
+     * that could fly, and the strike control read the same field and refused.
+     */
+    it('leads with the weapon that can fly, never the newest one', async () => {
+      await put(defender, 'DEATH_STAR', 'READY', new Date(f.clock.now().getTime() - 60_000));
+      await put(defender, 'DEATH_STAR', 'BUILDING', new Date(f.clock.now().getTime() + 60_000));
+
+      const shown = await view(defender);
+      expect(shown.strategic?.status).toBe('READY');
+      expect(shown.deathStars.map((asset) => asset.status)).toEqual(['READY', 'BUILDING']);
+    });
+
+    it('lists every weapon on the pad in the order they will be ready', async () => {
+      const later = await put(defender, 'DEATH_STAR', 'BUILDING', new Date(f.clock.now().getTime() + 60_000));
+      const sooner = await put(defender, 'DEATH_STAR', 'BUILDING');
+
+      const shown = await view(defender);
+      expect(shown.deathStars.map((asset) => asset.id)).toEqual([sooner.id, later.id]);
+      expect(shown.strategic?.id).toBe(sooner.id);
     });
   });
 
@@ -1063,5 +1279,74 @@ describe('a world holding both kinds of strategic asset', () => {
       expect(pending.map((row) => row.refId).sort())
         .toEqual(rows.map((row) => row.id).sort());
     });
+  });
+});
+
+/**
+ * A STRATEGIC BUILD THAT GIVES UP IS A SYSTEM FAULT, SO IT COSTS NOTHING — AND
+ * GIVES BACK NOTHING EXTRA EITHER.
+ *
+ * The weapon and the charge share one completion event and one abandon path, and
+ * the refund was the WEAPON's price for both. A charge whose completion failed for
+ * good paid 44,291 and got 73,815 back: a fault that minted resources.
+ */
+describe('a strategic build that gives up', () => {
+  let f: Fixture;
+  let world: string;
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+    world = f.planetIds[0]!;
+    await setLevel(f.db, world, 'CORE', DEATH_STAR.requiredCore);
+    await setLevel(f.db, world, 'SHIPYARD', DEATH_STAR.requiredShipyard);
+    await grant(f.db, world, 400_000, 200_000);
+    await giveResearch(f.db, world, 'DEATH_STAR_PROTOCOL');
+    await giveResearch(f.db, world, ANTI_STRATEGIC.requiredResearch);
+    await giveSatellite(f.db, world, 'UPLINK');
+    await giveInstrument(f.db, world, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+  });
+
+  const stock = async () => {
+    const [row] = await f.db.select().from(planets).where(eq(planets.id, world));
+    return { alloy: row!.alloy, crystal: row!.crystal, deuterium: row!.deuterium };
+  };
+
+  /** Give up on the build through the same path the worker takes. */
+  const giveUp = async (assetId: string) => {
+    const { abandon } = await import('../src/worker/abandon.js');
+    const [event] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'death_star_ready'),
+      eq(scheduledEvents.refId, assetId),
+    ));
+    expect(event).toBeDefined();
+    return abandon(f.db, event!, f.clock);
+  };
+
+  it('refunds a charge at the charge’s price', async () => {
+    const { assetId } = await buildInterceptor(f.db, world, f.clock);
+    const before = await stock();
+
+    expect(await giveUp(assetId)).toBe(true);
+
+    const after = await stock();
+    expect({
+      alloy: after.alloy - before.alloy,
+      crystal: after.crystal - before.crystal,
+      deuterium: after.deuterium - before.deuterium,
+    }).toEqual(ANTI_STRATEGIC.cost);
+  });
+
+  it('refunds a weapon at the weapon’s price', async () => {
+    const { assetId } = await buildDeathStar(f.db, world, f.clock);
+    const before = await stock();
+
+    expect(await giveUp(assetId)).toBe(true);
+
+    const after = await stock();
+    expect({
+      alloy: after.alloy - before.alloy,
+      crystal: after.crystal - before.crystal,
+      deuterium: after.deuterium - before.deuterium,
+    }).toEqual(DEATH_STAR.cost);
   });
 });

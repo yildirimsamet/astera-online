@@ -22,16 +22,32 @@ export function Meter({
   tone,
   cells = 12,
   label,
+  safeShare = 0,
 }: {
   value: number;
   cap: number;
   tone: 'alloy' | 'crystal' | 'deuterium';
   cells?: number;
   label?: string;
+  /**
+   * THE PART OF THE BAR A RAID CANNOT REACH, drawn INSIDE it. D190.
+   *
+   * The vault floor is a share of the STORE, and drawing it as a separate figure
+   * is what let players believe the Vault was a box that holds a fixed amount
+   * rather than the thing that makes the store deep. Marked in place, the rule
+   * reads without a sentence: this much of what you see is untouchable, the rest
+   * is what a raider comes for, and the whole bar grows when the Vault does.
+   */
+  safeShare?: number;
 }) {
   const share = cap <= 0 ? 0 : Math.min(1, value / cap);
   const lit = Math.round(share * cells);
   const full = share >= 0.999;
+  // At least one cell whenever there is any protection at all: a floor drawn as
+  // nothing is a floor the player is entitled to think does not exist.
+  const safeCells = safeShare > 0
+    ? Math.max(1, Math.round(Math.min(1, safeShare) * cells))
+    : 0;
 
   const colour = tone === 'alloy'
     ? 'bg-alloy'
@@ -55,12 +71,26 @@ export function Meter({
       {Array.from({ length: cells }, (_, i) => {
         const on = i < lit;
         const leading = on && i === lit - 1;
+        const safe = i < safeCells;
+        /*
+          A RING WAS INVISIBLE AND A COLOUR IS NOT. D190, owner report with a
+          screenshot: *"işaretli dilim hiç ama hiç belli olmuyor ki."* Right — a
+          1px inset ring on a five-pixel cell that is already carrying a saturated
+          fill is nothing at arm's length, and this game is played one-handed by
+          people who are not looking hard.
+
+          The safe cells take BONE instead of the resource hue, so the eye reads a
+          different material rather than a decorated one. It survives the case that
+          matters most, too: a store over its ceiling pins every cell lit, and the
+          pale head against the saturated rest still says "only this much is safe".
+        */
         return (
           <span
             key={i}
+            data-safe={safe ? 'true' : undefined}
             className={`flex-1 rounded-cell transition-colors duration-500 ${
-              on ? colour : 'bg-line/70'
-            } ${leading ? glow : ''}`}
+              safe ? (on ? 'bg-bone' : 'bg-bone/25') : on ? colour : 'bg-line/70'
+            } ${leading && !safe ? glow : ''}`}
             style={leading && !full ? undefined : { opacity: on ? 0.9 : 1 }}
           />
         );

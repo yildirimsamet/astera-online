@@ -55,7 +55,7 @@ Paylaşılan 40 adımlı checkpoint, yeni ödül zincirleri, atomik sunucu aktar
 bot başlangıcı kodlandı. Yerel zamanlı inşa/üretim dünyası test edildi.
 Yeni Akademi girişe ve menüdeki ödülsüz tekrar oynama seçeneğine bağlandı.
 Yerel korsan/maden/baskın, gerçek bildirim ve rapor ekranları bağlı; Türkçe 40 adım
-375px tarayıcıda tamamlandı. Toast, yükleme, kuyruk kaydırma ve koşulsuz animasyon
+350px tarayıcıda tamamlandı. Toast, yükleme, kuyruk kaydırma ve koşulsuz animasyon
 değişiklikleriyle 40 adım İngilizce/Türkçe tekrar geçti (`out/academy-complete-en`,
 `out/academy-complete-tr`). Ardından owner'ın bulduğu ilk-adet hatası ayrıca
 düzeltildi; aşağıdaki tek-basış regresyonu bu son farkı kapsar. Kabul listesi ve
@@ -91,7 +91,7 @@ geri eklenmez. Tamamlanmadan bu belge kaldırılmayacak.
 - [x] Sağlanan el görseli, tıklama hareketi, iki dalga halkası; son owner kararıyla animasyonlar OS tercihinden bağımsızdır.
 - [x] El/balon konumu DOM üzerinden; balon hedefin üstünü kapatmaz (birim test).
 - [x] Akademi sheet'leri gökyüzünü karartmaz; gerçek galaksi görünümü değişmez.
-- [x] Sekme/alt satır/yan kontrol açılmaları 375px gerçek kontrollerle oynandı; tanıtılmayan kontroller gizli.
+- [x] Sekme/alt satır/yan kontrol açılmaları 350px gerçek kontrollerle oynandı; tanıtılmayan kontroller gizli.
 - [x] El/hedef takibi ve scroll geçişleri birim testler + gerçek arayüz oynama/görselleriyle doğrulandı; Dart ilk-adet hatası ayrıca kapatıldı.
 - [x] Telescope küresi, korsan/asteroit ve kargo baskını iki dilde 40 adım uçtan uca doğrulandı.
 - [x] Erken Atla çıkışına çalışan gerçek kuyruk bırak; tamamlanmamış derse ödül verme.
@@ -101,10 +101,10 @@ geri eklenmez. Tamamlanmadan bu belge kaldırılmayacak.
 
 **Katman 1 doğrulaması (7 Eylül 2026).** İlgili altı web test dosyası: 92/92;
 sunucu `onboarding.test.ts`: 18/18 (retry ve eşzamanlı claim dahil).
-375px giriş/Atla/claim/rehber yönlendirmesi için
+350px giriş/Atla/claim/rehber yönlendirmesi için
 `node tools/visual.mjs out/onboarding-repair --onboarding` eklendi; kart ile
 Chat/Chronicle çakışmasını önce yakaladı, düzeltmeden sonra geçti. Ortak cihazın
-iki kapısı da 327px genişliğinde, 375×812 ekran içinde. React rehberi mevcut
+iki kapısı da 327px genişliğinde, 350×812 ekran içinde. React rehberi mevcut
 veri ve saatten türetir; yeni sorgu veya animasyon ölçüm döngüsü yoktur.
 
 **Son owner etkileşim düzeltmeleri (7 Eylül 2026).** Tanıtımda çerçeve,
@@ -126,7 +126,7 @@ bekler ve yükleme karesinin süresini hareketten düşmez. İlk kart gezegenden
 boşlukla, önceki yerinden 32px yukarıdadır. Elin DOM ölçümleri stil yazımlarından
 önce toplanır; değişmeyen kart konumu yeniden yazılmaz. İlgili 80 web testi, web
 tip kontrolü, build ve workspace lint geçti. `out/academy-opening-tr/academy-home.png`
-375×812 kadrajı ve gerçek gezegen tıklaması doğrulandı; gerçek telefon FPS
+350×812 kadrajı ve gerçek gezegen tıklaması doğrulandı; gerçek telefon FPS
 doğrulaması henüz yapılmadı.
 
 Rules suite **873/873**, ilgili sunucu claim/ödül/bot/şema suite **76/76** geçti.
@@ -421,7 +421,7 @@ mı" kararı.
 - **T-D · Hedef ekran dışında olabilir.** `useScrollIntoView` beat başına bir kez
   hedefi görünüre getiriyor. **Korunmalı** — işaret ettiği şey görünmeyen bir
   işaret, bozuk bir işarettir.
-- **T-E · 375px bütçesi.** Baloncuk hedefin **yanına** değil, üstüne ya da altına
+- **T-E · 350px bütçesi.** Baloncuk hedefin **yanına** değil, üstüne ya da altına
   konur. Tam genişlikte bir satırın yanında baloncuğa yer yoktur (§5.10-T7).
 - **T-F · Reddedilen tıklama hissedilmeli.** `useGate`'in `onRefused`'ı bugün
   kartı titretiyor (`BeatCard` · `nudge`). Artık **baloncuğu** titretmeli; sessiz
@@ -508,7 +508,7 @@ Sıra önemli. Sunucu sınırı client'tan önce gelir, çünkü client script'i
 6. **i18n** — iki dil, `t()` tiplenmiş; eksik anahtar derlemede yakalanır.
 7. **Simülatör** — tarihsel öneri; §5.12 owner kararıyla ayrıntılı modelleme/kalibrasyon uygulanmaz. Mevcut hata bantları genişletilmez.
 8. **Bot başlangıcı** — §5.10-T2'nin kararı uygulanır.
-9. **Görsel doğrulama** — `node tools/visual.mjs`, 375px.
+9. **Görsel doğrulama** — `node tools/visual.mjs`, 350px.
 
 **Katman 1 (§3) bu sıradan bağımsızdır ve önce yapılabilir.** Akademi gelse bile
 B1/B2 kapanmalı: Akademi'ye girmeden hesap açabilen biri hâlâ hiçbir şey
@@ -551,7 +551,7 @@ Safari özel gezinti, site verisi kapalı tarayıcı ve gömülü webview **okum
 bile fırlatıyor. Her okuma ve yazma try/catch içinde olmalı ve **değer yokken
 sayfa doğru çizilmeli**.
 
-**T7 · Ekran bütçesi 375 x 812.** `tools/visual.mjs` tam 375'te çalışır. Ders
+**T7 · Ekran bütçesi 350 x 812.** `tools/visual.mjs` tam 350'te çalışır. Ders
 kartı bu bütçeye sığmalı; kesilen bir isim küçük bir isimden kötüdür.
 
 **T8 · Compact ve premium.** Owner'ın üç kez tekrarlanmış duran talimatı: **büyük

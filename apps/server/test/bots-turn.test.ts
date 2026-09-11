@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
-import { botProfiles, buildOrders, buildings, missions, planets, players } from '../src/db/schema.js';
+import { botProfiles, buildOrders, buildings, missions, planets, players, units } from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import {
@@ -69,12 +69,37 @@ const settleNeighbours = async (): Promise<void> => {
     .where(sql`true`);
 };
 
+/**
+ * A SEAT IS SEATED AS AN ACADEMY GRADUATE, AND THESE TESTS ARE NOT ABOUT THAT.
+ *
+ * `ensureBotSeats` joins with `ACADEMY_STEPS.length` completed, so every seat
+ * arrives holding `{ DART: 3, WARDEN: 1, PROSPECTOR: 1, COURIER: 1 }` and with a
+ * CORE upgrade already in its construction queue — `academyExitCheckpoint` falls
+ * back to `'CORE'` once the three opening buildings are past level 2.
+ *
+ * Both are correct for a graduate and both are noise here: every test below states
+ * the world it wants to reason about — no warships, no craft at all, a Core at its
+ * ceiling — and inherits a fixture that contradicts it. Clearing the two is the
+ * same move `seedWorld` makes for the newcomer shield: a fixture states its world
+ * rather than leaving a later feature's starting state to leak into an assertion
+ * about a different rule.
+ *
+ * WHAT IT DOES NOT DO IS CHANGE A RULE. The Core ceiling gate reads
+ * `buildings.CORE + queuedCount(CONSTRUCTION, CORE)` and works; what the test was
+ * finding was the order SEATING created, never one a turn made.
+ */
+const emptySeat = async (): Promise<void> => {
+  await f.db.delete(units).where(eq(units.planetId, seat.planetId));
+  await f.db.delete(buildOrders).where(eq(buildOrders.planetId, seat.planetId));
+};
+
 beforeEach(async () => {
   f = await seedWorld(2);
   await addBot(f.db, 'Kara Şahin', f.clock);
   await ensureBotSeats(f.db, f.clock, silent);
   seat = await seatOf();
   await settleNeighbours();
+  await emptySeat();
 });
 
 describe('a bot turn', () => {

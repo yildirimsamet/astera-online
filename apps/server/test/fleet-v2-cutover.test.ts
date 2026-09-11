@@ -13,7 +13,12 @@ import {
 } from '../src/db/schema.js';
 import { buildUnits } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
-import { joinSeason } from '../src/services/player.js';
+/*
+  A COMMANDER RESEATED ON THE SUCCESSOR IS A SETTLED ONE. D183 — `joinSeason` grants
+  every commander a day of first-day shield, and this smoke route flies a raid
+  between the two accounts it reseats.
+*/
+import { joinSettled as joinSeason } from './helpers.js';
 import { completeResearch } from '../src/services/research.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';

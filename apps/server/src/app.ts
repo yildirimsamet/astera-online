@@ -154,6 +154,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       silentSpaceEnabled: opts.env.SILENT_SPACE_ENABLED,
       silentSpaceBatch: opts.env.SILENT_SPACE_BATCH,
       silentSpaceMaxShards: opts.env.SILENT_SPACE_MAX_SHARDS,
+      adminUsernames: new Set(opts.env.ADMIN_USERNAMES),
     },
     log,
   );

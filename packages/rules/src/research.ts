@@ -1,6 +1,7 @@
+import { profileResearch } from './economy-profile.js';
 import { DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
-import { cargoMult, hullTech, prospectorHoldMult, yardSpeedMult } from './tech.js';
+import { cargoMult, hullTech, prospectorHoldMult, robotSpeedMult, yardSpeedMult } from './tech.js';
 import { RESEARCH_PROJECT_IDS, type ResearchProjectId, type Resources } from './types.js';
 
 export interface ResearchProject {
@@ -40,9 +41,9 @@ export interface ResearchProject {
  *
  * The research removes the CHORE — being at the keyboard the minute the first
  * finishes — and never the COST: the second is built after the first, for its own
- * full hour. Two is the ceiling because D113 already turns two hits inside a
- * recovery window into a colony changing hands, and a third would make that route
- * a formality rather than a campaign.
+ * full build. Two is the ceiling because a loaded defender holds exactly one charge
+ * (`ANTI_STRATEGIC.maxCharges`): two is bait and blow, and a third would make the
+ * charge a formality rather than an answer.
  */
 export const strategicStockpile = (stockpileLevel: number): number =>
   stockpileLevel > 0 ? 2 : 1;
@@ -89,6 +90,8 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
       return plantCeiling(rung);
     case 'YARD_AUTOMATION':
       return yardSpeedMult({ YARD_AUTOMATION: rung });
+    case 'AI_ROBOTS':
+      return robotSpeedMult({ AI_ROBOTS: rung });
     case 'PROSPECTOR_HOLDS':
       return prospectorHoldMult({ PROSPECTOR_HOLDS: rung });
     case 'CARGO_HOLDS':
@@ -241,6 +244,30 @@ const PRICE_TABLES = {
     { alloy: 17_500, crystal: 10_500, deuterium: 750 },
     { alloy: 26_000, crystal: 15_500, deuterium: 1000 },
   ],
+  /**
+   * D198, AND WHAT THIS ROW IS ACTUALLY FOR.
+   *
+   * Every figure in this object is superseded: `withResearchCostMix` below quotes
+   * `profileResearch` for all sixteen projects, so no cell here reaches a player.
+   * What membership of this table still DOES is put a project in
+   * `RESEARCH_COST_MIX_EXEMPTIONS` — an authored ladder that something else then
+   * biases toward Crystal is not an authored ladder — and give `priced()` a shape
+   * to clamp into. The real price of this one lives in `economy-profile.ts` as
+   * `{ stage: 6, hours: 3.5, growth: 1.8 }`: Yard Automation's family, a sixth
+   * dearer at every rung. Shallower at the top (a quarter against three tenths)
+   * and dearer anyway, because it reaches the whole surface rather than one queue
+   * and a Core that lands sooner pulls everything behind it forward.
+   *
+   * The figures below are that ladder's own shape at 1/5 scale, so a reader who
+   * does reach this row is not handed a number that contradicts the game.
+   */
+  AI_ROBOTS: [
+    { alloy: 1843, crystal: 1417, deuterium: 0 },
+    { alloy: 3317, crystal: 2551, deuterium: 0 },
+    { alloy: 5970, crystal: 4592, deuterium: 0 },
+    { alloy: 10_745, crystal: 8266, deuterium: 0 },
+    { alloy: 19_341, crystal: 14_878, deuterium: 0 },
+  ],
 } as const satisfies Partial<Record<ResearchProjectId, readonly Resources[]>>;
 
 type PricedProjectId = keyof typeof PRICE_TABLES;
@@ -334,8 +361,7 @@ const withResearchCostMix = (
     projects[id] = {
       ...project,
       costAt: (level: number) => {
-        const cost = priced(level);
-        return { ...cost, crystal: Math.round(cost.crystal * RESEARCH_CRYSTAL_UPLIFT) };
+        return profileResearch(id, Math.min(project.maxLevel, Math.max(1, level))).cost;
       },
     };
   }
@@ -451,6 +477,19 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
    * three-world commander should feel, not what one world can shrug off.
    */
   YARD_AUTOMATION: priced('YARD_AUTOMATION'),
+  /**
+   * THE YARD PROJECT'S OPPOSITE NUMBER. D198, owner instruction.
+   *
+   * Yard Automation shortens what FLIES; this shortens what STANDS. Between them
+   * the two build queues each have exactly one speed ladder, which is what keeps
+   * either of them worth buying — and it is why `robotSpeedMult` is forbidden from
+   * `shipMinutes` and `yardSpeedMult` from the surface.
+   *
+   * Open from the first minute with no prerequisite, like the other economy
+   * ladders: it is not Frontier content, it is something a commander improves
+   * while they play.
+   */
+  AI_ROBOTS: priced('AI_ROBOTS'),
   PROSPECTOR_HOLDS: priced('PROSPECTOR_HOLDS'),
   /**
    * Dearest of the three, because it is the only one that moves ARR: `fleetCargo`

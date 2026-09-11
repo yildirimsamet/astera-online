@@ -16,13 +16,13 @@ export const clan = {
   tabs: {
     label: 'Klan bölümleri',
     overview: 'Özet',
-    strength: 'Güç',
+    strength: 'Kuvvetler',
     members: 'Üyeler',
     aid: 'Yardım',
   },
   strength: {
-    heading: 'klan gücü',
-    waiting: 'Tüm ekibin gücü ölçülüyor',
+    heading: 'klan kuvvetleri',
+    waiting: 'Tüm ekibin kuvvetleri ölçülüyor',
     title: 'Birlikte ne kadar güçlüyüz?',
     body: 'Ekibinin kontrol ettiği dünyaları, filoları ve yer savunmalarını tek bakışta gör. Bunlar ortak toplamlar; savaş bonusu değil.',
     memberDominion: 'Ekip Hâkimiyeti',
@@ -88,6 +88,14 @@ export const clan = {
       CLOSED: 'Kapandı',
     },
   },
+  profile: {
+    eyebrow: 'Klan profili',
+    loading: 'Kadro okunuyor',
+    roster_one: '{{count}} komutan',
+    roster_other: '{{count}} komutan',
+    leader: 'Lider',
+  },
+
   directory: {
     heading: 'Klan bul',
     count: '{{count}} klan',
@@ -96,6 +104,7 @@ export const clan = {
     waiting: 'Klan sinyalleri taranıyor',
     empty: 'Bu aramaya uyan klan yok. Aramayı temizle veya kendi klanını kur.',
     meta: 'Lider {{leader}} · {{members}}/5 üye · {{score}} Hâkimiyet',
+    inspect: '{{clan}} klanını incele',
     applyTo: '{{clan}} klanına başvur',
     apply: 'Başvur',
     pending: 'Başvuru bekliyor',

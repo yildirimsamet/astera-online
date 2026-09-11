@@ -22,6 +22,7 @@ import {
   clanScoreEvents,
   clans,
   debrisFields,
+  dominionEvents,
   galaxyEvents,
   galaxyEventOccurrences,
   miningRuns,
@@ -33,6 +34,7 @@ import {
   planets,
   planetResearch,
   playerResearch,
+  playerRivals,
   researchOrders,
   returnApplications,
   players,
@@ -56,6 +58,7 @@ import {
 import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
 import { publishShard } from '../stream/bus.js';
+import { addDominionCounters } from './dominion.js';
 
 /**
  * THE GALAXIES, AS A PLACE YOU CHOOSE. D21.
@@ -493,8 +496,8 @@ export async function wipeAllServers(
             lifetime: {
               ...prior,
               seasons: (prior.seasons ?? 0) + 1,
-              dominionTaken: (prior.dominionTaken ?? 0) + row.taken,
-              dominionLost: (prior.dominionLost ?? 0) + row.lost,
+              dominionTaken: addDominionCounters(prior.dominionTaken ?? 0, row.taken),
+              dominionLost: addDominionCounters(prior.dominionLost ?? 0, row.lost),
               bestWealth: Math.max(prior.bestWealth ?? 0, row.wealth),
             },
           })
@@ -566,6 +569,7 @@ export async function wipeAllServers(
     await tx.delete(watches);
     await tx.delete(strategicInterceptions);
     await tx.delete(strategicImpacts);
+    await tx.delete(dominionEvents);
     await tx.delete(battleReports);
     /*
       THE WRECKAGE COMES DOWN BEFORE THE RAID THAT MADE IT. D150.
@@ -605,6 +609,18 @@ export async function wipeAllServers(
     await tx.delete(planetResearch);
     await tx.delete(neutralPlanetState);
     await tx.delete(planets);
+    /*
+      THE RIVAL MARKS, AND IT IS THE SAME LESSON A FOURTH TIME. D183 added
+      `player_rivals` with `player_id` referencing `players` at `ON DELETE no
+      action` — deliberately, so a reclaim throws rather than silently orphaning a
+      mark — and this list was never told. `delete(players)` below then fails on
+      the key, so a galaxy where ANYBODY has marked a rival cannot be reset at all:
+      the same outage `debris_fields` and `research_orders` each caused once.
+
+      `target_player_id` is NOT a foreign key (D183, so an invisible mark cannot
+      hold a slot for the season), so only the owning side constrains the order.
+    */
+    await tx.delete(playerRivals);
     // Before the commanders it points at, or the wipe fails on the foreign key. T7.
     await tx.delete(playerResearch);
     await tx.update(returnApplications).set({

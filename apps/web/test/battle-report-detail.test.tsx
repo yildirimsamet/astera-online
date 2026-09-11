@@ -61,6 +61,7 @@ const base: BattleReport = {
   lootCrystal: 80,
   lootDeuterium: 0,
   dominion: 120,
+  dominionBreakdown: null,
   shieldAbsorbed: 100,
   cargoLimited: false,
   defenceSalvage: {},
@@ -315,6 +316,28 @@ describe('what a battle report explains', () => {
     expect(screen.queryByText('Rounds')).not.toBeInTheDocument();
   });
 
+  it('shows the exact Dominion equation behind a v7 battle', async () => {
+    await openSheet(report({
+      dominion: 980,
+      dominionBreakdown: {
+        ruleVersion: 7,
+        lootValue: 380,
+        enemyPermanentLossValue: 900,
+        ownPermanentLossValue: 300,
+        rawExchange: 980,
+      },
+    }));
+
+    expect(screen.getByText('How Dominion moved')).toBeVisible();
+    expect(screen.getByText('Secured loot')).toBeVisible();
+    expect(screen.getByText('Enemy permanent losses')).toBeVisible();
+    expect(screen.getByText('Your permanent losses')).toBeVisible();
+    expect(screen.getAllByText('+980').length).toBeGreaterThan(0);
+    expect(screen.getByText('+380')).toBeVisible();
+    expect(screen.getByText('+900')).toBeVisible();
+    expect(screen.getByText('−300')).toBeVisible();
+  });
+
   /**
    * THE FORCE EQUATION, WITHOUT MENTAL SUBTRACTION.
    *
@@ -401,6 +424,37 @@ describe('what a battle report explains', () => {
     await openSheet(report({ disruptedMinutes: 180, wreckValue: 3400 }));
     expect(screen.getByText(/Their works are offline/)).toBeVisible();
     expect(screen.getByText(/in wreckage is drifting over Grimhold/)).toBeVisible();
+  });
+
+  /**
+   * WHAT THE GARBAGE COLLECTORS LIFTED. D200.
+   *
+   * It came home with the fleet and it is not loot — it moved no Dominion and was
+   * never the defender's — so it is its own line under the haul, drawn as the three
+   * materials the wreck was made of rather than one lump.
+   */
+  it('shows the attacker what their collectors lifted, apart from the haul', async () => {
+    await openSheet(report({ salvage: { alloy: 9_000, crystal: 5_000, deuterium: 1_000 } }));
+    expect(screen.getByText('Salvaged from the wreck')).toBeVisible();
+    const row = screen.getByTestId('report-salvage');
+    expect(within(row).getByText('+9,000')).toBeVisible();
+    expect(within(row).getByText('+5,000')).toBeVisible();
+    expect(within(row).getByText('+1,000')).toBeVisible();
+  });
+
+  it('tells the defender the wreck over their world was lifted before it formed', async () => {
+    await openSheet(report({
+      attacking: false,
+      salvage: { alloy: 9_000, crystal: 5_000, deuterium: 1_000 },
+    }));
+    expect(screen.getByText(/Their Garbage Collectors lifted 15k of the wreckage/)).toBeVisible();
+    expect(screen.queryByTestId('report-salvage')).not.toBeInTheDocument();
+  });
+
+  it('says nothing about salvage when nothing was lifted', async () => {
+    await openSheet(report({ salvage: { alloy: 0, crystal: 0, deuterium: 0 } }));
+    expect(screen.queryByText('Salvaged from the wreck')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('report-salvage')).not.toBeInTheDocument();
   });
 
   it('says it in the second person to the commander it happened to', async () => {

@@ -1,9 +1,22 @@
-import { and, eq, sql } from 'drizzle-orm';
-import { DISRUPTION, fleetCargo } from '@astera/rules';
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { DISRUPTION, MULTI_WORLD, fleetCargo, fleetValue } from '@astera/rules';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { battleReports, missions, planets, players, scheduledEvents, units } from '../src/db/schema.js';
+import {
+  accounts,
+  attackCommitments,
+  battleReports,
+  clans,
+  dominionEvents,
+  missions,
+  planets,
+  players,
+  scheduledEvents,
+  seasons,
+  units,
+} from '../src/db/schema.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { onMissionArrival } from '../src/worker/handlers.js';
 import { claimDue, complete, fail, failedEventCount, reap, schedule } from '../src/worker/queue.js';
 import { abandon, strandedFlightCount, sweepStranded } from '../src/worker/abandon.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -11,6 +24,7 @@ import { launchAttack } from '../src/services/mission.js';
 import {
   giveInstrument,
   giveSatellite,
+  fuelUp,
   giveUnits,
   grant,
   levelWorld,
@@ -465,6 +479,9 @@ describe('event worker', () => {
   describe('a raid, end to end, with both players offline', () => {
     it('resolves combat, moves loot, disrupts, and brings the fleet home', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
       await setLevel(f.db, attacker, 'CORE', 6);
       await giveUnits(f.db, attacker, { DART: 120, COURIER: 8 });
       await grant(f.db, defender, 60_000, 6_000);
@@ -520,6 +537,32 @@ describe('event worker', () => {
       expect(report).toBeDefined();
       expect(report!.grade).toBe('DECISIVE');
       expect(report!.loot.alloy).toBeGreaterThan(0);
+      const lootValue = report!.loot.alloy + report!.loot.crystal + report!.loot.deuterium;
+      const attackerLossValue = fleetValue(report!.attackerLosses);
+      const defenderPermanentLossValue = Math.max(
+        0,
+        fleetValue(report!.defenderLosses) - fleetValue(report!.defenceSalvage),
+      );
+      expect(report).toMatchObject({
+        dominionEligible: true,
+        dominionRuleVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+        dominionLootValue: lootValue,
+        dominionAttackerLossValue: attackerLossValue,
+        dominionDefenderLossValue: defenderPermanentLossValue,
+        dominionRawExchange: lootValue + defenderPermanentLossValue - attackerLossValue,
+        dominionSwing: lootValue + defenderPermanentLossValue - attackerLossValue,
+      });
+      const [scoreEvent] = await f.db.select().from(dominionEvents)
+        .where(eq(dominionEvents.missionId, launch.missionId));
+      expect(scoreEvent).toMatchObject({
+        eligible: true,
+        rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+        lootValue,
+        attackerLossValue,
+        defenderLossValue: defenderPermanentLossValue,
+        rawExchange: report!.dominionRawExchange,
+        transfer: report!.dominionSwing,
+      });
 
       // The defender is poorer and disrupted.
       const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
@@ -531,7 +574,7 @@ describe('event worker', () => {
       // Dominion is zero-sum across the pair.
       const rows = await f.db.select().from(players);
       const total = rows.reduce((s, p) => s + p.dominionTaken - p.dominionLost, 0);
-      expect(Math.abs(total)).toBeLessThan(0.001);
+      expect(total).toBe(0);
 
       // A return leg was scheduled; run it.
       const [ret] = await f.db
@@ -559,6 +602,335 @@ describe('event worker', () => {
       expect(attackerPlanet!.alloy).toBeGreaterThan(0); // loot arrived
     });
 
+    it('does not discard already-scored loot when a return event is abandoned', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 80, COURIER: 6 });
+      await fuelUp(f.db, attacker);
+      await grant(f.db, defender, 40_000, 4_000);
+      await levelWorld(f.db, [attacker, defender]);
+      f.clock.advance(300);
+
+      const launch = await launchAttack(
+        f.db,
+        attacker,
+        defender,
+        { DART: 80, COURIER: 6 },
+        f.clock,
+      );
+      f.clock.set(settledAt(launch.arriveAt));
+      await makeWorker(f).tick();
+
+      const [returnMission] = await f.db.select().from(missions).where(and(
+        eq(missions.kind, 'return'),
+        eq(missions.parentMissionId, launch.missionId),
+      ));
+      expect(returnMission?.loot).toBeDefined();
+      const [returnEvent] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, returnMission!.id),
+      ));
+      const [before] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+
+      await expect(abandon(f.db, returnEvent!, f.clock)).resolves.toBe(true);
+
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, attacker));
+      expect(after!.alloy - before!.alloy).toBe(returnMission!.loot!.alloy);
+      expect(after!.crystal - before!.crystal).toBe(returnMission!.loot!.crystal);
+      expect(after!.deuterium - before!.deuterium).toBe(returnMission!.loot!.deuterium);
+    });
+
+    it('does not lose either score update when two colonies of one defender are hit concurrently', async () => {
+      f = await seedWorld(4, 5150);
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      const [firstOrigin, defenderCapital, secondOrigin, defenderColony] = f.planetIds as [
+        string,
+        string,
+        string,
+        string,
+      ];
+      const defenderPlayerId = f.playerIds[1]!;
+      await f.db.update(planets)
+        .set({ controllerPlayerId: defenderPlayerId, kind: 'COLONY' })
+        .where(eq(planets.id, defenderColony));
+      await f.db.update(units)
+        .set({ ownerPlayerId: defenderPlayerId })
+        .where(eq(units.planetId, defenderColony));
+
+      for (const origin of [firstOrigin, secondOrigin]) {
+        await setLevel(f.db, origin, 'CORE', 6);
+        await giveUnits(f.db, origin, { DART: 40 });
+        await fuelUp(f.db, origin);
+      }
+      for (const target of [defenderCapital, defenderColony]) {
+        await giveUnits(f.db, target, { BASTION: 50 });
+      }
+      await levelWorld(f.db, f.planetIds);
+      f.clock.advance(300);
+
+      const [first, second] = await Promise.all([
+        launchAttack(f.db, firstOrigin, defenderCapital, { DART: 40 }, f.clock),
+        launchAttack(f.db, secondOrigin, defenderColony, { DART: 40 }, f.clock),
+      ]);
+      f.clock.set(new Date(Math.max(
+        settledAt(first.arriveAt).getTime(),
+        settledAt(second.arriveAt).getTime(),
+      )));
+      const arrivals = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        inArray(scheduledEvents.refId, [first.missionId, second.missionId]),
+      ));
+
+      await Promise.all(arrivals.map((event) => onMissionArrival({ db: f.db, clock: f.clock }, event)));
+
+      const reports = await f.db.select().from(battleReports).where(inArray(
+        battleReports.missionId,
+        [first.missionId, second.missionId],
+      ));
+      expect(reports).toHaveLength(2);
+      const expectedDefenderScore = -reports.reduce(
+        (total, report) => total + (report.dominionSwing ?? 0),
+        0,
+      );
+      const [defender] = await f.db.select().from(players).where(eq(players.id, defenderPlayerId));
+      expect(defender!.dominionTaken - defender!.dominionLost).toBe(expectedDefenderScore);
+    });
+
+    it('does not deadlock a planet-then-player launch while settling Dominion', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 20 });
+      await fuelUp(f.db, attacker);
+      await levelWorld(f.db, [attacker, defender]);
+      f.clock.advance(300);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, launch.missionId),
+      ));
+
+      let announcePlanetsLocked!: () => void;
+      const planetsLocked = new Promise<void>((resolve) => { announcePlanetsLocked = resolve; });
+      let competeForPlayers!: () => void;
+      const compete = new Promise<void>((resolve) => { competeForPlayers = resolve; });
+      const launchShapedTransaction = f.db.transaction(async (tx) => {
+        for (const planetId of [attacker, defender].sort()) {
+          await tx.select({ id: planets.id }).from(planets)
+            .where(eq(planets.id, planetId)).for('update');
+        }
+        announcePlanetsLocked();
+        await compete;
+        for (const playerId of [...f.playerIds].sort()) {
+          await tx.select({ id: players.id }).from(players)
+            .where(eq(players.id, playerId)).for('update');
+        }
+      });
+      await planetsLocked;
+
+      const arrival = onMissionArrival({ db: f.db, clock: f.clock }, event!);
+      // Let arrival reach its next lock before the launch-shaped transaction asks
+      // for player rows. Opposite lock order creates a real PostgreSQL deadlock.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      competeForPlayers();
+      const outcomes = await Promise.allSettled([launchShapedTransaction, arrival]);
+
+      expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+    });
+
+    it('does not deadlock clan management while settling clan Dominion', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 20 });
+      await fuelUp(f.db, attacker);
+      await levelWorld(f.db, [attacker, defender]);
+      f.clock.advance(300);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
+      const [scoreClan] = await f.db.insert(clans).values({
+        seasonId: f.seasonId,
+        name: 'Lock Order',
+        nameKey: 'lock order',
+        tag: 'LOCK',
+        description: '',
+        createdAt: f.clock.now(),
+      }).returning();
+      await f.db.update(attackCommitments)
+        .set({ attackerScoreClanId: scoreClan!.id })
+        .where(eq(attackCommitments.missionId, launch.missionId));
+      f.clock.set(settledAt(launch.arriveAt));
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, launch.missionId),
+      ));
+
+      let announceClanLocked!: () => void;
+      const clanLocked = new Promise<void>((resolve) => { announceClanLocked = resolve; });
+      let competeForPlayer!: () => void;
+      const compete = new Promise<void>((resolve) => { competeForPlayer = resolve; });
+      const clanManagementOrder = f.db.transaction(async (tx) => {
+        await tx.select({ id: clans.id }).from(clans)
+          .where(eq(clans.id, scoreClan!.id)).for('update');
+        announceClanLocked();
+        await compete;
+        await tx.select({ id: players.id }).from(players)
+          .where(eq(players.id, f.playerIds[0]!)).for('update');
+      });
+      await clanLocked;
+
+      const arrival = onMissionArrival({ db: f.db, clock: f.clock }, event!);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      competeForPlayer();
+      const outcomes = await Promise.allSettled([clanManagementOrder, arrival]);
+
+      expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+    });
+
+    it('does not deadlock a player-then-clan launch while settling clan Dominion', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 20 });
+      await fuelUp(f.db, attacker);
+      await levelWorld(f.db, [attacker, defender]);
+      f.clock.advance(300);
+      const launch = await launchAttack(f.db, attacker, defender, { DART: 20 }, f.clock);
+      const [scoreClan] = await f.db.insert(clans).values({
+        seasonId: f.seasonId,
+        name: 'Launch Order',
+        nameKey: 'launch order',
+        tag: 'FLY',
+        description: '',
+        createdAt: f.clock.now(),
+      }).returning();
+      await f.db.update(attackCommitments)
+        .set({ attackerScoreClanId: scoreClan!.id })
+        .where(eq(attackCommitments.missionId, launch.missionId));
+      f.clock.set(settledAt(launch.arriveAt));
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, launch.missionId),
+      ));
+
+      let announcePlayerLocked!: () => void;
+      const playerLocked = new Promise<void>((resolve) => { announcePlayerLocked = resolve; });
+      let competeForClan!: () => void;
+      const compete = new Promise<void>((resolve) => { competeForClan = resolve; });
+      const clanLaunchOrder = f.db.transaction(async (tx) => {
+        await tx.select({ id: players.id }).from(players)
+          .where(eq(players.id, f.playerIds[0]!)).for('update');
+        announcePlayerLocked();
+        await compete;
+        // `recordClanAttack` takes this key-share lock through its clan foreign
+        // keys after `prepareClanAttack` has locked both player rows.
+        await tx.select({ id: clans.id }).from(clans)
+          .where(eq(clans.id, scoreClan!.id)).for('key share');
+      });
+      await playerLocked;
+
+      const arrival = onMissionArrival({ db: f.db, clock: f.clock }, event!);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      competeForClan();
+      const outcomes = await Promise.allSettled([clanLaunchOrder, arrival]);
+
+      expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+    });
+
+    it('returns untouched when the target became the attacker\'s own world in flight', async () => {
+      const [attacker, target] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 20 });
+      await fuelUp(f.db, attacker);
+      await levelWorld(f.db, [attacker, target]);
+      f.clock.advance(300);
+
+      const launch = await launchAttack(f.db, attacker, target, { DART: 20 }, f.clock);
+      await f.db.update(planets)
+        .set({ controllerPlayerId: f.playerIds[0], kind: 'COLONY' })
+        .where(eq(planets.id, target));
+      f.clock.set(settledAt(launch.arriveAt));
+
+      await expect(makeWorker(f).tick()).resolves.toMatchObject({ failed: 0 });
+      expect(await f.db.select().from(battleReports)).toHaveLength(0);
+      expect(await f.db.select().from(dominionEvents)).toHaveLength(0);
+      const [returnMission] = await f.db.select().from(missions).where(and(
+        eq(missions.kind, 'return'),
+        eq(missions.ownerPlayerId, f.playerIds[0]!),
+      ));
+      expect(returnMission?.parentMissionId).toBeNull();
+      expect(returnMission?.fleet).toMatchObject({ DART: 20 });
+    });
+
+    it('keeps an operator battle outside the competitive ledger', async () => {
+      const [attacker, defender] = f.planetIds as [string, string];
+      await f.db.update(seasons)
+        .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
+        .where(eq(seasons.id, f.seasonId));
+      await setLevel(f.db, attacker, 'CORE', 6);
+      await giveUnits(f.db, attacker, { DART: 40, COURIER: 4 });
+      await grant(f.db, defender, 20_000, 2_000);
+      await levelWorld(f.db, [attacker, defender]);
+      f.clock.advance(300);
+      const launch = await launchAttack(
+        f.db,
+        attacker,
+        defender,
+        { DART: 40, COURIER: 4 },
+        f.clock,
+      );
+      f.clock.set(settledAt(launch.arriveAt));
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, launch.missionId),
+      ));
+      const [operator] = await f.db.select({ username: accounts.username })
+        .from(accounts).where(eq(accounts.id, f.accountIds[0]!));
+
+      await onMissionArrival({
+        db: f.db,
+        clock: f.clock,
+        adminUsernames: new Set([operator!.username]),
+      }, event!);
+
+      const [report] = await f.db.select().from(battleReports)
+        .where(eq(battleReports.missionId, launch.missionId));
+      expect(report).toMatchObject({
+        dominionEligible: false,
+        dominionSwing: 0,
+        dominionRuleVersion: null,
+        dominionRawExchange: null,
+      });
+      const [scoreEvent] = await f.db.select().from(dominionEvents)
+        .where(eq(dominionEvents.missionId, launch.missionId));
+      expect(scoreEvent).toMatchObject({
+        eligible: false,
+        rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion,
+        lootValue: null,
+        attackerLossValue: null,
+        defenderLossValue: null,
+        rawExchange: null,
+        transfer: 0,
+      });
+      const ledger = await f.db.select().from(players);
+      expect(ledger.map((player) => player.dominionTaken - player.dominionLost))
+        .toEqual([0, 0]);
+    });
+
     /**
      * THE BEACON SPEEDS THE TRIP HOME TOO. D25 sold "out and back".
      *
@@ -582,6 +954,13 @@ describe('event worker', () => {
         await placeAt(f.db, defender, { x: 1_200 });
         await setLevel(f.db, attacker, 'CORE', 9);
         await giveUnits(f.db, attacker, { DART: 60 });
+      /*
+        AND A TANK. D195 priced fuel off hull VALUE instead of D153's tier rung,
+        roughly doubling what a tier-1 wing burns, so the fixture's default no
+        longer covers this leg. `fuelUp` exists for a test that is about something
+        other than fuel — here, a radar window and a return leg's pace.
+      */
+        await fuelUp(f.db, attacker);
         await grant(f.db, defender, 20_000, 2_000);
         if (beacon) await giveSatellite(f.db, attacker, 'BEACON');
         f.clock.advance(300);
@@ -708,6 +1087,90 @@ describe('an event that gives up releases what it was holding', () => {
       .from(units)
       .where(and(eq(units.planetId, mine), eq(units.location, 'home')));
     expect(home.find((u) => u.hull === 'DART')?.count).toBe(40);
+  });
+
+  it('merges a recalled fleet after a concurrent home-garrison change', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.refId, launch.missionId));
+    expect(event).toBeDefined();
+
+    let announceLocked!: () => void;
+    const locked = new Promise<void>((resolve) => { announceLocked = resolve; });
+    let releasePlanet!: () => void;
+    const released = new Promise<void>((resolve) => { releasePlanet = resolve; });
+    const concurrentGarrisonChange = f.db.transaction(async (tx) => {
+      await tx
+        .select({ id: planets.id })
+        .from(planets)
+        .where(eq(planets.id, mine))
+        .for('update');
+      announceLocked();
+      await released;
+      await tx
+        .update(units)
+        .set({ count: 25 })
+        .where(and(
+          eq(units.planetId, mine),
+          eq(units.location, 'home'),
+          eq(units.hull, 'DART'),
+        ));
+    });
+    await locked;
+
+    const recall = abandon(f.db, event!, f.clock);
+    // Give the recall transaction a chance to reach the planet lock. Without
+    // one it commits its stale 20-home + 20-return merge before the concurrent
+    // transaction writes 25, permanently losing the returned squadron.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    releasePlanet();
+    await Promise.all([concurrentGarrisonChange, recall]);
+
+    const home = await f.db
+      .select()
+      .from(units)
+      .where(and(
+        eq(units.planetId, mine),
+        eq(units.location, 'home'),
+        eq(units.hull, 'DART'),
+      ));
+    expect(home[0]?.count).toBe(45);
+  });
+
+  it('does not deadlock a planet-then-player launch while recalling a failed mission', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock);
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.refId, launch.missionId));
+    expect(event).toBeDefined();
+
+    let announcePlanetsLocked!: () => void;
+    const planetsLocked = new Promise<void>((resolve) => { announcePlanetsLocked = resolve; });
+    let competeForPlayers!: () => void;
+    const compete = new Promise<void>((resolve) => { competeForPlayers = resolve; });
+    const launchShapedTransaction = f.db.transaction(async (tx) => {
+      for (const planetId of [mine, theirs].sort()) {
+        await tx.select({ id: planets.id }).from(planets)
+          .where(eq(planets.id, planetId)).for('update');
+      }
+      announcePlanetsLocked();
+      await compete;
+      for (const playerId of [...f.playerIds].sort()) {
+        await tx.select({ id: players.id }).from(players)
+          .where(eq(players.id, playerId)).for('update');
+      }
+    });
+    await planetsLocked;
+
+    const recall = abandon(f.db, event!, f.clock);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    competeForPlayers();
+    const outcomes = await Promise.allSettled([launchShapedTransaction, recall]);
+
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
   });
 
   it('is idempotent — abandoning twice releases nothing the second time', async () => {

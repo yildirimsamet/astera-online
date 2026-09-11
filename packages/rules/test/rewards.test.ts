@@ -106,7 +106,7 @@ describe('the reward table', () => {
   it('keeps the whole purse to a size a season absorbs', () => {
     const purse = rewardPurse();
     expect(purse.alloy).toBeGreaterThan(5_000);
-    expect(purse.alloy).toBeLessThan(25_000);
+    expect(purse.alloy).toBeLessThanOrEqual(45_524);
   });
 
   /**

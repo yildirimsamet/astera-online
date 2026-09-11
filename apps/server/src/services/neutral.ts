@@ -17,15 +17,17 @@ import {
   productionMult,
   resolveCombat,
   seededFrom,
+  settleWreck,
   shieldHp,
   storageCap,
   alloyRate,
   crystalRate,
-  upgradeCost,
+  buildingCost,
   type BuildingId,
   type Fleet,
   type HullId,
   type NeutralTier,
+  type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
@@ -52,18 +54,25 @@ const EMPTY_VAULT = { alloy: 0, crystal: 0, deuterium: 0 };
 async function neutralLevels(tx: Tx, planetId: string) {
   const rows = await tx.select().from(buildings).where(eq(buildings.planetId, planetId));
   const levels = {
-    CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0, HANGAR: 0, DEUTERIUM_PLANT: 0,
+    CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0,
   };
   for (const row of rows) if (row.type in levels) levels[row.type as BuildingId] = row.level;
   return levels;
 }
 
-export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
-  const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
-  if (world?.kind !== 'NEUTRAL') return null;
-  const levels = await neutralLevels(tx, planetId);
-  const orbitRows = await tx.select({ type: satellites.type, level: satellites.level }).from(satellites)
-    .where(eq(satellites.planetId, planetId));
+/**
+ * A NEUTRAL WORLD'S ECONOMY AT `now`, COMPUTED AND NEVER WRITTEN. D199.
+ *
+ * `advanceNeutralEconomy` writes it under a lock before a battle; a probe reads it
+ * and writes nothing — the same arithmetic, so the report and the raid after it see
+ * one world.
+ */
+export function neutralEconomyAt(
+  world: typeof planets.$inferSelect,
+  levels: Record<BuildingId, number>,
+  orbitRows: readonly { type: string; level: number }[],
+  now: Date,
+): { alloy: number; crystal: number; shield: number } {
   const orbit = orbitRows.map((row) => row.type)
     .filter((type): type is 'FOUNDRY' => type === 'FOUNDRY');
   const elapsedHours = Math.max(0, now.getTime() - world.lastTickAt.getTime()) / 3_600_000;
@@ -79,6 +88,25 @@ export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date)
   const shield = maxShield > 0
     ? Math.min(maxShield, world.shield + maxShield * SHIELD.regenPerHour * elapsedHours)
     : 0;
+  return { alloy, crystal, shield };
+}
+
+const neutralOrbit = (tx: Tx, planetId: string) =>
+  tx.select({ type: satellites.type, level: satellites.level }).from(satellites)
+    .where(eq(satellites.planetId, planetId));
+
+/** The same, read without a lock or a write — a probe looks, it does not tick. */
+export async function neutralStanding(tx: Tx, world: typeof planets.$inferSelect, now: Date) {
+  const [levels, orbitRows] = await Promise.all([neutralLevels(tx, world.id), neutralOrbit(tx, world.id)]);
+  return neutralEconomyAt(world, levels, orbitRows, now);
+}
+
+export async function advanceNeutralEconomy(tx: Tx, planetId: string, now: Date) {
+  const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
+  if (world?.kind !== 'NEUTRAL') return null;
+  const levels = await neutralLevels(tx, planetId);
+  const orbitRows = await neutralOrbit(tx, planetId);
+  const { alloy, crystal, shield } = neutralEconomyAt(world, levels, orbitRows, now);
   await tx.update(planets).set({ alloy, crystal, shield, lastTickAt: now })
     .where(eq(planets.id, planetId));
   return { ...world, alloy, crystal, shield, levels };
@@ -120,32 +148,34 @@ const flyingMaterial = (fleet: Fleet, key: 'alloy' | 'crystal' | 'deuterium') =>
     .reduce((sum, [hull, count]) => sum + HULLS[hull][key] * count, 0);
 
 /**
- * What a field made of these losses would be worth, or zero if none is created.
+ * The wreck a caretaker fight makes: the raider's own dead, split by material.
  *
- * The battle report carries the same figure and is written BEFORE the field, so
- * the threshold lives here rather than being applied twice and drifting. A report
- * that claims wreckage nobody can go and collect is worse than one that says none.
+ * Only the attacker's losses — nothing a caretaker fields is left in orbit. What
+ * the raider's collectors lift and what is left as a field is `settleWreck`'s
+ * answer, taken once in `resolveNeutralBattle` so the report and the field are
+ * the same remainder rather than the threshold being applied twice and drifting.
  */
-const attackerWreckValue = (losses: Fleet): number => {
-  const total = flyingMaterial(losses, 'alloy')
-    + flyingMaterial(losses, 'crystal')
-    + flyingMaterial(losses, 'deuterium');
+const attackerWreck = (losses: Fleet): Resources => {
+  const alloy = flyingMaterial(losses, 'alloy');
+  const crystal = flyingMaterial(losses, 'crystal');
+  const deuterium = flyingMaterial(losses, 'deuterium');
+  const total = alloy + crystal + deuterium;
+  if (total <= 0) return { alloy: 0, crystal: 0, deuterium: 0 };
   const wreck = total * DEBRIS.share;
-  return wreck < DEBRIS.minimum || total <= 0 ? 0 : wreck;
+  return {
+    alloy: wreck * alloy / total,
+    crystal: wreck * crystal / total,
+    deuterium: wreck * deuterium / total,
+  };
 };
 
 async function createAttackerDebris(
   tx: Tx,
   mission: typeof missions.$inferSelect,
-  losses: Fleet,
+  field: Resources | null,
   now: Date,
 ): Promise<void> {
-  const alloy = flyingMaterial(losses, 'alloy');
-  const crystal = flyingMaterial(losses, 'crystal');
-  const deuterium = flyingMaterial(losses, 'deuterium');
-  const total = alloy + crystal + deuterium;
-  const wreck = attackerWreckValue(losses);
-  if (wreck === 0) return;
+  if (!field) return;
   // The position is stored beside the anchor rather than resolved through it, so
   // every reader has one place to look whether or not there is a world here. D150.
   const [at] = await tx
@@ -159,9 +189,9 @@ async function createAttackerDebris(
     y: at?.y ?? 0,
     z: at?.z ?? 0,
     missionId: mission.id,
-    alloy: wreck * alloy / total,
-    crystal: wreck * crystal / total,
-    deuterium: wreck * deuterium / total,
+    alloy: field.alloy,
+    crystal: field.crystal,
+    deuterium: field.deuterium,
     createdAt: now,
   });
 }
@@ -213,6 +243,16 @@ export async function resolveNeutralBattle(
   const cargoLimited =
     uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium
     > loot.alloy + loot.crystal + loot.deuterium;
+  /*
+    THE RAIDER'S OWN WRECK, AND WHAT ITS COLLECTORS LIFT OF IT. D200.
+    Settled once, here, so the report, the field and the return leg all read the
+    same remainder — the collectors take first, the public field is what is left.
+  */
+  const { salvage, field: wreck } = settleWreck(
+    attackerWreck(result.attackerLosses),
+    result.attackerSurvivors,
+  );
+  const lifted = salvage.alloy + salvage.crystal + salvage.deuterium > 0;
   await saveResources(tx, mission.targetPlanetId, {
     alloy: neutral.alloy - loot.fromStock.alloy,
     crystal: neutral.crystal - loot.fromStock.crystal,
@@ -286,9 +326,10 @@ export async function resolveNeutralBattle(
       rebuild a gun and no production to disrupt, so both stay at their defaults
       rather than carrying a figure the caretaker never received.
     */
-    // Attacker losses only: nothing a caretaker fields is left in orbit. See
-    // `createAttackerDebris`, which is priced on exactly this list.
-    wreckValue: attackerWreckValue(result.attackerLosses),
+    // Attacker losses only: nothing a caretaker fields is left in orbit. What the
+    // collectors left of it — the same field `createAttackerDebris` writes.
+    wreckValue: wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0,
+    salvage,
     cargoLimited,
     shieldAbsorbed: result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0),
     dominionSwing: 0,
@@ -319,6 +360,13 @@ export async function resolveNeutralBattle(
       lootAlloy: loot.alloy,
       lootCrystal: loot.crystal,
       lootDeuterium: loot.deuterium,
+      ...(lifted
+        ? {
+            salvageAlloy: salvage.alloy,
+            salvageCrystal: salvage.crystal,
+            salvageDeuterium: salvage.deuterium,
+          }
+        : {}),
       unitsLost: fleetCount(result.attackerLosses),
       shipsHome: fleetCount(result.attackerSurvivors),
       // A caretaker world is outside the ladder: taking one moves nobody's score.
@@ -328,7 +376,7 @@ export async function resolveNeutralBattle(
     refId: mission.id,
   });
 
-  await createAttackerDebris(tx, mission, result.attackerLosses, clock.now());
+  await createAttackerDebris(tx, mission, wreck, clock.now());
   await clearMissionUnits(tx, mission.originPlanetId, mission.id);
   if (fleetCount(result.attackerSurvivors) > 0) {
     const home = fleetTravelExact(
@@ -345,6 +393,7 @@ export async function resolveNeutralBattle(
       targetPlanetId: mission.originPlanetId,
       fleet: result.attackerSurvivors,
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+      salvage: lifted ? salvage : null,
       tech: mission.tech,
       distance: mission.distance,
       departAt: clock.now(),
@@ -442,7 +491,7 @@ export async function reinforceNeutral(
     let level = advanced.levels[type];
     const target = template.buildings[type];
     while (level < target) {
-      const cost = upgradeCost(level);
+      const cost = buildingCost(type, level);
       if (alloy < cost.alloy || crystal < cost.crystal || deuterium < cost.deuterium) {
         reinforcementBlocked = true;
         break;

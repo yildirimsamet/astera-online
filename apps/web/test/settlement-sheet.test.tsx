@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MULTI_WORLD } from '@astera/rules';
 import { SettlementSheet } from '../src/screens/SettlementSheet.js';
@@ -49,9 +49,19 @@ describe('settlement confirmation', () => {
     expect(screen.getByText(/first valid two-Courier fleet to arrive takes the world/i)).toBeInTheDocument();
     expect(screen.getByText('Colony ships').closest('div'))
       .toHaveTextContent(String(MULTI_WORLD.settlement.transports));
-    expect(screen.getByText(new RegExp(MULTI_WORLD.settlement.cost.alloy.toLocaleString('en-US'))))
+    const cargo = screen.getByText('Founding cargo').closest('div');
+    expect(cargo).not.toBeNull();
+    expect(within(cargo!).getByText(new RegExp(
+      `${MULTI_WORLD.settlement.cost.alloy.toLocaleString('en-US')} Alloy`,
+    ))).toBeInTheDocument();
+
+    const fee = screen.getByText('Founding fee').closest('div');
+    expect(fee).not.toBeNull();
+    expect(within(fee!).getByText(new RegExp(
+      `${MULTI_WORLD.settlement.fee.alloy.toLocaleString('en-US')} Alloy`,
+    ))).toBeInTheDocument();
+    expect(screen.getByText(/fee is spent and only the founding cargo lands/i))
       .toBeInTheDocument();
-    expect(screen.getByText(/cannot be recalled/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /dispatch colony ships/i }));
     expect(onConfirm).toHaveBeenCalledOnce();

@@ -62,6 +62,21 @@ const intercepted = z.object({
   range: z.number(),
 });
 
+/**
+ * WHAT A RAID'S GARBAGE COLLECTORS LIFTED. D200.
+ *
+ * Present only when something was lifted, so every payload written before the hull
+ * existed — and every raid without one — parses to zero and reads as it always did.
+ * Its own three fields rather than folded into the loot: the loot moved Dominion
+ * and the salvage never does, and a sentence that summed them would say otherwise.
+ */
+const salvageFields = {
+  salvageAlloy: z.number().default(0),
+  salvageCrystal: z.number().default(0),
+  salvageDeuterium: z.number().default(0),
+};
+
+
 const raided = z.object({
   originPlanetId: z.string().optional(),
   originUsername: z.string().optional(),
@@ -101,9 +116,10 @@ const raidResult = z.object({
   lootAlloy: z.number(),
   lootCrystal: z.number(),
   lootDeuterium: z.number().default(0),
+  ...salvageFields,
   unitsLost: z.number(),
   shipsHome: z.number(),
-  dominion: z.number().optional(),
+  dominion: z.number().int().safe().optional(),
 });
 
 /**
@@ -126,6 +142,7 @@ const returned = z.discriminatedUnion('trip', [
     lootAlloy: z.number(),
     lootCrystal: z.number(),
     lootDeuterium: z.number().default(0),
+    ...salvageFields,
   }),
   z.object({
     trip: z.enum(['mining', 'harvest']),
@@ -192,6 +209,7 @@ const returned = z.discriminatedUnion('trip', [
     lootAlloy: z.number(),
     lootCrystal: z.number(),
     lootDeuterium: z.number().default(0),
+    ...salvageFields,
     /** `resolvePirateReturn` puts it here; a capture is fleet, not ore. */
     capturedHull: z.string().optional(),
   }),
@@ -315,6 +333,20 @@ const spoils = (alloy: number, crystal: number, deuterium = 0): string[] => {
 
 /** The separator between clauses of one notification. One place, one decision. */
 const JOIN = (): string => i18n.t('notifications.join');
+
+/** "+15k salvage", or null when the collectors lifted nothing. */
+const salvageClause = (trip: {
+  salvageAlloy: number;
+  salvageCrystal: number;
+  salvageDeuterium: number;
+}): string | null => {
+  const lifted = trip.salvageAlloy + trip.salvageCrystal + trip.salvageDeuterium;
+  return lifted >= 1 ? i18n.t('notifications.spoilSalvage', { amount: compact(lifted) }) : null;
+};
+
+/** A homecoming line with the salvage clause on the end, when there is one. */
+const withSalvage = (line: string, clause: string | null): string =>
+  clause === null ? line : `${line}${JOIN()}${clause}`;
 
 /**
  * DECISIVE, PARTIAL or REPELLED, in the player's language.
@@ -616,6 +648,9 @@ export function describeNotification(notification: NotificationView, now: number
         return i18n.t('notifications.raidWiped', { target, count: unitsLost });
       }
       const took = spoils(lootAlloy, lootCrystal, lootDeuterium);
+      // After the loot and apart from it: wreck the collectors lifted, never plunder.
+      const lifted = salvageClause(parsed.data);
+      if (lifted !== null) took.push(lifted);
       /*
         THE SHIP IS THE HEADLINE WHEN THERE IS ONE. D150.
 
@@ -696,18 +731,27 @@ export function describeNotification(notification: NotificationView, now: number
           printing a raw id at the player.
         */
         const towed = trip.capturedHull === undefined ? null : hullName(trip.capturedHull);
+        const lifted = salvageClause(trip);
         if (towed !== null) {
-          return i18n.t('notifications.pirateHomeTowed', {
+          return withSalvage(i18n.t('notifications.pirateHomeTowed', {
             count: trip.ships,
             hull: towed,
             ...(loot > 0 ? { amount: compact(loot) } : {}),
             context: loot > 0 ? 'looted' : 'empty',
-          });
+          }), lifted);
         }
-        return i18n.t(
-          loot > 0 ? 'notifications.pirateHome' : 'notifications.pirateHomeEmpty',
+        /*
+          SALVAGE IS NOT AN EMPTY HAND EITHER. A squadron whose holds came home empty
+          but whose collectors lifted a wreck brought something home, and
+          "empty-handed" would state that as a falsehood — the towed-hull reasoning
+          above, for the D200 hull.
+        */
+        return withSalvage(i18n.t(
+          loot > 0
+            ? 'notifications.pirateHome'
+            : lifted !== null ? 'notifications.pirateHomeBare' : 'notifications.pirateHomeEmpty',
           { count: trip.ships, amount: compact(loot) },
-        );
+        ), lifted);
       }
       if (trip.trip === 'raid') {
         const origin = identity(
@@ -720,10 +764,13 @@ export function describeNotification(notification: NotificationView, now: number
           ? i18n.t('notifications.fleetFrom', { origin })
           : '';
         const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
-        return i18n.t(
-          loot > 0 ? 'notifications.fleetHomeLooted' : 'notifications.fleetHomeEmpty',
+        const lifted = salvageClause(trip);
+        return withSalvage(i18n.t(
+          loot > 0
+            ? 'notifications.fleetHomeLooted'
+            : lifted !== null ? 'notifications.fleetHomeBare' : 'notifications.fleetHomeEmpty',
           { where, count: trip.ships, amount: compact(loot) },
-        );
+        ), lifted);
       }
       const what = i18n.t(
         trip.trip === 'harvest' ? 'notifications.salvageWord' : 'notifications.oreWord',

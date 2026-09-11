@@ -259,9 +259,15 @@ describe('notification copy', () => {
       );
     });
 
+    /**
+     * A FLEET'S SIZE, NEVER ITS FORCE. D199. Radar weighs the whole fleet,
+     * transports included, so a raid that is mostly cargo reads as big and fights
+     * like nothing. "Force" promised the second; the word says the first.
+     */
     it('renders the current Radar 4 coarse mass without exposing an exact count', () => {
       const line = say('incoming_fleet', { etaMinutes: 9, mass: 'HEAVY' });
-      expect(line).toContain('Heavy force inbound');
+      expect(line).toContain('Large fleet inbound');
+      expect(line).not.toMatch(/force/i);
       expect(line).not.toContain('ships');
     });
 

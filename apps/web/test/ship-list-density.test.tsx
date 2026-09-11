@@ -48,44 +48,55 @@ const line = (view: ReturnType<typeof render>, name: string) =>
   view.container.querySelector<HTMLElement>(`[data-row-line="${name}"]`);
 
 describe('what shares the name\'s line', () => {
-  it('gives the name a line of its own', () => {
-    const view = render(
-      <UpgradeRow
-        name="Praetorian"
-        role="escort"
-        tag="Mobile escort"
-        nameBadge={<ClassChip cls="BULWARK" />}
-        nameAside="1 away"
-        cost={{ alloy: 2500, crystal: 900, deuterium: 300 }}
-        held={{ alloy: 9e5, crystal: 9e5, deuterium: 9e5 }}
-        verb="build"
-        onAct={() => undefined}
-      />,
-    );
-    const nameLine = line(view, 'name');
+  const praetorian = () => render(
+    <UpgradeRow
+      name="Praetorian"
+      role="escort"
+      tag="Mobile escort"
+      nameBadge={<ClassChip cls="BULWARK" />}
+      nameAside="1 away"
+      tierMark="Lv3"
+      cost={{ alloy: 2500, crystal: 900, deuterium: 300 }}
+      held={{ alloy: 9e5, crystal: 9e5, deuterium: 9e5 }}
+      verb="build"
+      onAct={() => undefined}
+    />,
+  );
+
+  /**
+   * THE CLASS CHIP IS THE ONE THAT COST THE NAME ITS WIDTH, and it is still off
+   * this line. D195c moved the COUNTS up by owner instruction — *"Dart (Lv1) - 3
+   * in 4 out"* — and that is a different quantity of pixels: `hullLocationCounts`
+   * is held to 14 characters at `text-micro` by `hull-row-counts.test.tsx`, and the
+   * tier mark is three, both `shrink-0` against a `truncate` name. The chip is a
+   * glyph plus a word at caption size, roughly 60px of a ~241px budget, and it is
+   * a fact ABOUT the ship rather than part of its identity.
+   */
+  it('keeps the class chip off the name line', () => {
+    const nameLine = line(praetorian(), 'name');
     expect(nameLine).toHaveTextContent('Praetorian');
-    // The two things that used to crowd it are NOT on it.
     expect(nameLine!.querySelector('[data-class]')).toBeNull();
-    expect(nameLine!.textContent).not.toMatch(/away/i);
   });
 
-  it('puts the class and the counts on the supporting line instead', () => {
-    const view = render(
-      <UpgradeRow
-        name="Praetorian"
-        role="escort"
-        tag="Mobile escort"
-        nameBadge={<ClassChip cls="BULWARK" />}
-        nameAside="1 away"
-        cost={{ alloy: 2500, crystal: 900, deuterium: 300 }}
-        held={{ alloy: 9e5, crystal: 9e5, deuterium: 9e5 }}
-        verb="build"
-        onAct={() => undefined}
-      />,
-    );
-    const support = line(view, 'support');
+  it('carries the tier and the holding beside the name', () => {
+    const nameLine = line(praetorian(), 'name');
+    expect(nameLine).toHaveTextContent('Lv3');
+    expect(nameLine).toHaveTextContent('1 away');
+  });
+
+  it('leaves the class and the flavour on the supporting line', () => {
+    const support = line(praetorian(), 'support');
     expect(support!.querySelector('[data-class]')).toHaveAttribute('data-class', 'BULWARK');
-    expect(support).toHaveTextContent('1 away');
+    expect(support).toHaveTextContent('Mobile escort');
+  });
+
+  /** The name still truncates before either mark does — a half-count reads as a bug. */
+  it('shrinks the name rather than the marks', () => {
+    const view = praetorian();
+    const nameLine = line(view, 'name')!;
+    expect(nameLine.querySelector('h3')!.className).toContain('truncate');
+    expect(view.getByTestId('hull-tier').className).toContain('shrink-0');
+    expect(view.getByTestId('hull-where').className).toContain('shrink-0');
   });
 
   /**

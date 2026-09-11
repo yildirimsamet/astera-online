@@ -10,10 +10,8 @@ import {
   buildingCost,
   groundLoad,
   groundSlots,
-  hangarCapacity,
-  hangarLoad,
+  hullFuelMass,
   hullBulk,
-  upgradeCost,
   type Fleet,
   type NeutralTier,
 } from '../src/index.js';
@@ -24,10 +22,11 @@ const value = (id: (typeof ALL_HULLS)[number]): number =>
 /**
  * ROOM, NOT WORTH — but priced off worth on purpose. T4.
  *
- * `bulk` is what a craft takes up in a Hangar and, from T6, the mass it burns fuel
- * to move. It is derived from the hull's own price rather than hand-set, and the
- * band below is the reason: a bulk that drifts from value turns the Hangar into a
- * SECOND pricing axis, one that silently re-rates every hull against the counter
+ * `bulk` is what a gun takes up on the ground and, from T6, the mass a hull burns
+ * fuel to move. The Hangar that once metered it is gone; these two survive it. It
+ * is derived from the hull's own price rather than hand-set, and the band below is
+ * the reason: a bulk that drifts from value turns fuel into a SECOND pricing axis,
+ * one that silently re-rates every hull against the counter
  * cycle the whole game rests on. `atk × hp / value²` is held near-constant across
  * the table (see `hulls.ts`); a capacity measured in value leaves that untouched,
  * and a capacity measured in anything else does not.
@@ -38,7 +37,7 @@ describe('what a craft takes up', () => {
   });
 
   it('makes the Dart the unit', () => {
-    expect(hullBulk('DART')).toBe(1);
+    expect(hullBulk('DART')).toBe(3);
   });
 
   /**
@@ -46,96 +45,90 @@ describe('what a craft takes up', () => {
    * only licence taken. Fifteen per cent is well inside the 156% the counter cycle
    * buys, so no hull can be made better or worse by the room it takes.
    */
-  it('stays proportional to what the hull costs, within the rounding', () => {
-    const perUnit = value('DART');
-    for (const id of ALL_HULLS) {
-      const exact = value(id) / perUnit;
-      expect(Math.abs(hullBulk(id) - exact) / exact).toBeLessThan(0.15);
-    }
+  it('packs higher tiers more efficiently without making them cheaper', () => {
+    const line = ['DART', 'VIPER', 'TEMPEST', 'CATACLYSM'] as const;
+    expect(line.map(id => hullBulk(id))).toEqual([3, 5, 8, 13]);
+    for (let i = 1; i < line.length; i++) expect(value(line[i]!) / hullBulk(line[i]!)).toBeGreaterThan(value(line[i - 1]!) / hullBulk(line[i - 1]!));
   });
 
-  it('rises with the hull, never falls', () => {
-    const byValue = [...ALL_HULLS].sort((a, b) => value(a) - value(b));
-    for (let i = 1; i < byValue.length; i++) {
-      expect(hullBulk(byValue[i]!)).toBeGreaterThanOrEqual(hullBulk(byValue[i - 1]!));
-    }
+  it('keeps cargo capacity a different purchase from combat room', () => {
+    expect(hullBulk('COURIER')).toBe(3);
+    expect(hullBulk('WAYFARER')).toBe(6);
+    expect(hullBulk('ATLAS')).toBe(14);
   });
 });
 
 /**
- * TWO POOLS, TWO SOURCES, DELIBERATELY. T4b.
+ * ONE POOL, AND IT IS THE GROUND'S. D184.
  *
- * Investment in a fleet must not steal from defence and investment in defence must
- * not steal from a fleet — they are two decisions and one pool would bind them to
- * a single slider. So the Hangar answers "how much fleet" and the Command Core,
- * which already says how big a world is, answers "how many emplacements".
+ * There were two. The Hangar answered "how much fleet" and the Command Core "how
+ * many emplacements", and the Hangar is gone: a dedicated building whose only
+ * product was a ceiling is a tax rather than a decision, and its price ran away
+ * from what it bought — the eighth rung cost more alloy than a whole season makes
+ * and bought room for twenty-six Darts.
  *
- * A caller cannot pass the wrong half: `hangarLoad` counts only what flies and
- * `groundLoad` only what cannot. That is the D131 lesson — a rule honoured on one
- * path and forgotten on another is the failure mode this code base has already
- * shipped once.
+ * A FLEET IS NOW BRAKED BY WHAT IT COSTS, WHAT IT BURNS AND WHAT IT LOSES, which
+ * is how every ship in this genre has always been braked. Ground guns keep their
+ * ceiling because they are not symmetric with a fleet: they never move, never fly,
+ * salvage at 60%, leave no wreckage and cannot be counter-raided, so an uncapped
+ * wall inside D168's tier band would be a world nobody legally able to attack it
+ * could ever break.
  */
-describe('the two capacities', () => {
-  it('uses the reduced Hangar ladder and charges double for every rung', () => {
-    expect(hangarCapacity(0)).toBe(100);
-    expect(hangarCapacity(1)).toBe(180);
-    expect(hangarCapacity(12)).toBe(1_060);
-
-    for (const level of [0, 1, 5, 12]) {
-      const ordinary = upgradeCost(level);
-      expect(buildingCost('HANGAR', level)).toEqual({
-        alloy: ordinary.alloy * 2,
-        crystal: ordinary.crystal * 2,
-        deuterium: ordinary.deuterium * 2,
-      });
-      expect(buildingCost('SHIPYARD', level)).toEqual(ordinary);
-    }
-  });
-
-  it('counts only flying craft against the Hangar', () => {
-    const fleet: Fleet = { DART: 3, BASTION: 2, THORN: 5 };
-    expect(hangarLoad(fleet)).toBe(3 * hullBulk('DART'));
-    for (const id of GROUND_HULLS) expect(hangarLoad({ [id]: 10 })).toBe(0);
-  });
-
+describe('the ground is the only capacity', () => {
   it('counts only emplacements against the ground slots', () => {
     const fleet: Fleet = { DART: 3, BASTION: 2, THORN: 5 };
     expect(groundLoad(fleet)).toBe(2 * hullBulk('BASTION') + 5 * hullBulk('THORN'));
     for (const id of MOBILE_HULLS) expect(groundLoad({ [id]: 10 })).toBe(0);
   });
 
-  /** The mining craft flies, so it takes hangar room. Mining is a choice against fleet size. */
-  it('charges the Hangar for mining craft', () => {
-    expect(hangarLoad({ PROSPECTOR: 2 })).toBe(2 * hullBulk('PROSPECTOR'));
-  });
-
   it('loads nothing for an empty world', () => {
-    expect(hangarLoad({})).toBe(0);
     expect(groundLoad({})).toBe(0);
   });
 
-  it('both ladders climb, and neither starts at nothing', () => {
-    expect(hangarCapacity(0)).toBeGreaterThan(0);
+  it('climbs with the Core and never starts at nothing', () => {
     expect(groundSlots(0)).toBeGreaterThan(0);
     for (let level = 1; level <= 20; level++) {
-      expect(hangarCapacity(level)).toBeGreaterThan(hangarCapacity(level - 1));
       expect(groundSlots(level)).toBeGreaterThan(groundSlots(level - 1));
     }
   });
+});
 
-  /**
-   * A world opens with no Hangar and must still be able to keep a fleet, or the
-   * game locks at the moment it is handed over. `START_BUILDINGS` is what a fresh
-   * planet is written with, and the rehearsal replays it — a capacity of zero at
-   * level zero would break both.
-   */
-  it('lets a world with no Hangar at all keep a real fleet', () => {
-    expect(START_BUILDINGS.HANGAR).toBe(0);
-    expect(hangarCapacity(START_BUILDINGS.HANGAR)).toBeGreaterThan(hangarLoad({ DART: 50 }));
+/**
+ * THE HANGAR IS GONE, AND THESE ARE THE EDGES THAT PROVE IT. D184.
+ *
+ * A removal is only finished when nothing can still name the thing. The building
+ * leaves the catalogue, the opening world and the game's own neutral templates
+ * together, or a world is written with a level for a building that has no price.
+ */
+describe('the Hangar is gone', () => {
+  it('is not a building any more', () => {
+    expect(BUILDING_IDS).not.toContain('HANGAR');
+    expect(Object.keys(START_BUILDINGS)).not.toContain('HANGAR');
   });
 
-  it('is a building like any other', () => {
-    expect(BUILDING_IDS).toContain('HANGAR');
+  it('has no price, because it has no rungs', () => {
+    for (const id of BUILDING_IDS) expect(buildingCost(id, 0).alloy).toBeGreaterThan(0);
+  });
+
+  /**
+   * BULK OUTLIVED BOTH ITS OLD JOBS. The Hangar that rationed it is gone (D184) and
+   * D195 moved fuel onto hull VALUE, so what is left is ground room and nothing
+   * else — `groundSlots` is its last consumer, and a gun still weighs what it did.
+   */
+  it('leaves bulk behind as ground room, and only that', () => {
+    for (const id of GROUND_HULLS) {
+      expect(hullBulk(id), id).toBeGreaterThan(0);
+      expect(hullFuelMass(id), id).toBe(0);
+    }
+    // Fuel no longer reads it: two hulls of equal bulk fly at different prices.
+    expect(hullBulk('DART')).toBe(hullBulk('PIKE'));
+    expect(hullFuelMass('DART')).not.toBe(hullFuelMass('PIKE'));
+  });
+
+  it('names no Hangar in any neutral template', () => {
+    for (const tier of [1, 2, 3] as const) {
+      expect(Object.keys(MULTI_WORLD.neutral[tier].buildings)).not.toContain('HANGAR');
+    }
   });
 });
 
@@ -150,14 +143,6 @@ describe('the two capacities', () => {
  */
 describe('the neutral templates fit under their own ceilings', () => {
   const tiers = [1, 2, 3] as const;
-
-  it.each(tiers)('tier %i keeps its fleet inside a Hangar it has not built', (tier: NeutralTier) => {
-    const template = MULTI_WORLD.neutral[tier];
-    expect(template.buildings.HANGAR).toBe(0);
-    expect(hangarLoad(template.fleet)).toBeLessThanOrEqual(
-      hangarCapacity(template.buildings.HANGAR),
-    );
-  });
 
   it.each(tiers)('tier %i keeps its guns inside its own Core', (tier: NeutralTier) => {
     const template = MULTI_WORLD.neutral[tier];

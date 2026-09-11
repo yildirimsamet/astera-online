@@ -20,7 +20,7 @@ import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 const rich = (): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 4 },
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4 },
       orbitSlots: 3,
       fleet: {},
       fleetAway: {},

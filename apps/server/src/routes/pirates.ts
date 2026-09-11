@@ -31,6 +31,15 @@ const raidBody = z.object({
   originPlanetId: z.string().uuid().optional(),
   pirateId: z.string().regex(/^[A-Za-z0-9_-]{22}$/),
   fleet: z.record(z.string(), z.number().int().min(0)),
+  /**
+   * THE FLIGHT TIME THE PLAYER WAS LOOKING AT. D183.
+   *
+   * Not client-authored STATE — it decides nothing and grants nothing. It is the
+   * player saying which answer they agreed to, and the server refuses when its own
+   * solve has moved past `PIRATE.quoteToleranceMinutes`. Optional, so a client one
+   * deploy behind still launches exactly as it did.
+   */
+  quotedMinutes: z.number().finite().nonnegative().optional(),
 }).strict();
 
 /**
@@ -265,6 +274,7 @@ export function registerPirateRoutes(app: FastifyInstance): void {
       body.fleet,
       app.clock,
       owner.playerId,
+      body.quotedMinutes,
     );
   });
 }

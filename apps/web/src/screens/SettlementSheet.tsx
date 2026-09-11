@@ -66,16 +66,26 @@ export function SettlementSheet({
         </Button>
       }
     >
-      <div className="plate plate-crystal px-2 py-2">
-        <p className="text-title text-figure">
+      {/*
+        FOUR CLASSES IN THIS FILE RESOLVED TO NOTHING, and the sheet had been
+        shipping without any of them: `plate-crystal` (the lit tone is `plate-lit`),
+        `rounded-panel` (no such radius), `text-muted` (the ink is `text-dim`) and
+        a `text-title text-figure` pair where the second silently overrode the
+        first. A commitment surface that renders as a flat unlit box is exactly
+        the "every screen looks like a different designer made it" the owner
+        reported; `surface-vocabulary.test.ts` now refuses a class that means
+        nothing.
+      */}
+      <div className="plate plate-lit px-3 py-3">
+        <p className="headline">
           {t('focus.planet.settlementConfirm.race')}
         </p>
-        <p className="mt-2 text-body text-muted">
+        <p className="mt-2 text-body text-dim">
           {t('focus.planet.settlementConfirm.noRecall')}
         </p>
       </div>
 
-      <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-panel bg-line/50">
+      <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-plate bg-line/50">
         <SettlementFact
           label={t('focus.planet.settlementConfirm.transports')}
           value={String(MULTI_WORLD.settlement.transports)}
@@ -85,6 +95,13 @@ export function SettlementSheet({
           value={t('focus.planet.settlementConfirm.cargoValue', {
             alloy: full(MULTI_WORLD.settlement.cost.alloy),
             crystal: full(MULTI_WORLD.settlement.cost.crystal),
+          })}
+        />
+        <SettlementFact
+          label={t('focus.planet.settlementConfirm.foundingFee')}
+          value={t('focus.planet.settlementConfirm.cargoValue', {
+            alloy: full(MULTI_WORLD.settlement.fee.alloy),
+            crystal: full(MULTI_WORLD.settlement.fee.crystal),
           })}
         />
         <SettlementFact
@@ -106,9 +123,14 @@ export function SettlementSheet({
 
 function SettlementFact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-deep/90 px-3 py-3">
+    /*
+      A CELL IN A HAIRLINE GRID, so the ground is opaque on purpose — the `gap-px`
+      above is what draws the rules between them, and a translucent cell would
+      show the sheet through its own table. It is not a card and takes no plate.
+    */
+    <div className="bg-plate px-3 py-3">
       <dt className="legend">{label}</dt>
-      <dd className="mt-1 text-body text-figure">{value}</dd>
+      <dd className="num mt-1 text-body text-bone">{value}</dd>
     </div>
   );
 }

@@ -6,10 +6,9 @@ import {
   distance,
   missionFuel,
   fleetCount,
-  fleetPower,
+  combatValue,
+  garrisonOf,
   fleetTravelExact,
-  hangarCapacity,
-  hangarLoad,
   prospectorRoom,
   resourcesTotal,
   transferCargoCapacity,
@@ -23,7 +22,6 @@ import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
-import { CapacityBar } from '../ui/CapacityBar.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
@@ -41,7 +39,7 @@ const RESOURCE_ORDER = ['alloy', 'crystal', 'deuterium'] as const;
 /**
  * A part's share of a whole, clamped, with an empty origin drawing nothing.
  *
- * A world whose every craft is already away has no defence power at all, and
+ * A world whose every craft is already away has no firepower at all, and
  * dividing by it would put `NaN%` into a style attribute.
  */
 const share = (part: number, whole: number): number =>
@@ -161,19 +159,19 @@ export function TransferSheet({
       ),
     }
     : undefined;
-  const destinationCapacity = targetPlanet
-    ? targetPlanet.capacity?.hangar ?? hangarCapacity(targetPlanet.buildings.HANGAR ?? 0)
-    : undefined;
-  const destinationUsed = targetPlanet
-    ? targetPlanet.capacity?.hangarUsed ?? hangarLoad(targetOwned ?? {})
-    : undefined;
-  const incomingSpace = hangarLoad(fleet);
-  const destinationFits = destinationCapacity === undefined || destinationUsed === undefined
-    ? true
-    : destinationUsed + incomingSpace <= destinationCapacity;
   const targetProspectors = targetOwned?.PROSPECTOR ?? 0;
+  /**
+   * HOW MANY BERTHS THE DESTINATION HAS, AND WHO DECIDES. D170 · D134.
+   *
+   * The third rung of Prospector Holds buys a third berth on every world its
+   * commander holds, and research belongs to the COMMANDER — a transfer only ever
+   * runs between two worlds of the same commander, so the origin's ladder IS the
+   * destination's. `landingBlock` has read it on the server since the rung shipped;
+   * this read `prospectorRoom(held)` with no ladder, so a commander who had paid
+   * for the berth was told their own colony was full and the commit stayed dead.
+   */
   const prospectorsFit = targetPlanet === undefined
-    || (fleet.PROSPECTOR ?? 0) <= prospectorRoom(targetProspectors);
+    || (fleet.PROSPECTOR ?? 0) <= prospectorRoom(targetProspectors, mods.tech);
   /** Does this world own an ore carrier at all — a different problem from not loading one. */
   const ownsCarrier = transferCargoCapacity(planet.fleet, mods.tech) > 0;
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
@@ -182,9 +180,10 @@ export function TransferSheet({
       Math.max(0, (planet.fleet[id] ?? 0) - (fleet[id] ?? 0)),
     ]),
   ), [fleet, planet.fleet]);
-  const homeDefence = fleetPower({ ...remainingFleet, ...planet.ground });
+  // Firepower, the one force unit the launch sheet and a probe use. D199.
+  const homeDefence = combatValue(garrisonOf(remainingFleet, planet.ground));
   /** What the origin holds before anything is packed, so the bar has a whole. */
-  const defencePowerNow = fleetPower({ ...planet.fleet, ...planet.ground });
+  const defencePowerNow = combatValue(garrisonOf(planet.fleet, planet.ground));
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
   const eta = useMemo(
@@ -210,7 +209,7 @@ export function TransferSheet({
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
-  const valid = fleetCount(fleet) > 0 && loaded <= capacity && destinationFits && prospectorsFit
+  const valid = fleetCount(fleet) > 0 && loaded <= capacity && prospectorsFit
     && cargo.alloy <= planet.planet.alloy
     && cargo.crystal <= planet.planet.crystal
     && cargo.deuterium <= planet.planet.deuterium
@@ -301,27 +300,15 @@ export function TransferSheet({
           />
         </div>
       )}
-      {destinationCapacity !== undefined && destinationUsed !== undefined && (
-        <div className="mt-2">
-          {/*
-            THE DESTINATION'S ROOM, IN THE HANGAR BAR THE BUILD SHEET ALREADY
-            TAUGHT. `used + incoming / total` was a sum spelled out; the same three
-            parts drawn are read without arithmetic, and the ORDER's segment grows
-            as ships are added — so a transfer that will not fit is visible while
-            it is being packed rather than at the moment it is refused.
-          */}
-          <CapacityBar
-            total={destinationCapacity}
-            used={destinationUsed}
-            incoming={incomingSpace}
-            label={t('transfer.destinationLabel')}
-          />
-          {!prospectorsFit && (
-            <p className="mt-2 text-caption text-alloy">
-              {t('transfer.destinationProspectorFull')}
-            </p>
-          )}
-        </div>
+      {/*
+        THE DESTINATION'S ONE REMAINING REFUSAL. D184 took the Hangar bar that used
+        to stand here — a fleet has no ceiling, so there is nothing left to draw
+        against — and the berth cap is a different rule that still bites.
+      */}
+      {!prospectorsFit && (
+        <p className="mt-2 text-caption text-alloy">
+          {t('transfer.destinationProspectorFull')}
+        </p>
       )}
       <h3 className="legend mt-2">{t('transfer.fleet')}</h3>
       {/*
@@ -406,7 +393,7 @@ export function TransferSheet({
               <span className="min-w-0 flex-1">
                 <span className="name block truncate text-bone">{hullName(id) ?? id}</span>
                 {/*
-                HOW MANY ARE HERE, AS PIPS WHERE THE EYE CAN COUNT THEM. A hangar
+                HOW MANY ARE HERE, AS PIPS WHERE THE EYE CAN COUNT THEM. A roster
                 holds a handful of anything expensive, and "/3" is a figure to
                 read where three marks is a quantity to see. Past eight the rack
                 would be a smear, so the numeral takes over — which is the same
@@ -478,7 +465,7 @@ export function TransferSheet({
           const max = loadCeiling(resource, { stock, capacity, otherCargo, fuel });
           const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
           return (
-            <label key={resource} className="block rounded-chip border border-line-soft bg-deep/55 px-3 py-3">
+            <label key={resource} className="plate plate-inset block rounded-chip px-3 py-3">
               <span className="flex items-center gap-2">
                 {/*
                 THE SUBSTANCE IS ITS OWN RENDER. Three sliders under three grey

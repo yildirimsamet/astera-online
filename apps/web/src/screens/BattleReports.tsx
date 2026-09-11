@@ -225,7 +225,7 @@ export function BattleReports({
                 so the chip printed "0" on exactly the rows where the ladder had
                 nothing to say. Shown when it moved; omitted when it did not.
               */}
-              {report.dominion !== null && Math.round(report.dominion) !== 0 && (
+              {report.dominion !== null && report.dominion !== 0 && (
                 <span
                   className={`num text-body ${report.dominion >= 0 ? 'text-opportunity' : 'text-threat'}`}
                 >
@@ -441,6 +441,8 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
   }, []);
 
   const looted = report.lootAlloy + report.lootCrystal + report.lootDeuterium;
+  const salvage = report.salvage;
+  const lifted = salvage ? salvage.alloy + salvage.crystal + salvage.deuterium : 0;
   const yourClan = report.attacking ? report.attackerClan : report.defenderClan;
   const theirClan = report.attacking ? report.defenderClan : report.attackerClan;
 
@@ -739,7 +741,7 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
           value={compact(Math.abs(looted))}
           tone={looted >= 0 ? 'text-alloy' : 'text-threat'}
         />
-        {report.dominion !== null && Math.round(report.dominion) !== 0 && (
+        {report.dominion !== null && report.dominion !== 0 && (
           <Figure
             label={t('reports.dominion')}
             value={signed(report.dominion)}
@@ -747,6 +749,49 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
           />
         )}
       </div>
+      {report.dominionBreakdown && (
+        <section
+          className="plate plate-inset mt-3 p-3"
+          data-dominion-ruleset={report.dominionBreakdown.ruleVersion}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="legend text-crystal">{t('reports.dominionBreakdown.title')}</h3>
+            <span className="num text-micro text-faint">
+              v{report.dominionBreakdown.ruleVersion}
+            </span>
+          </div>
+          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-caption">
+            <dt className="text-dim">
+              {t(report.dominionBreakdown.lootValue >= 0
+                ? 'reports.dominionBreakdown.lootGained'
+                : 'reports.dominionBreakdown.lootLost')}
+            </dt>
+            <dd className={report.dominionBreakdown.lootValue >= 0
+              ? 'num text-alloy'
+              : 'num text-threat'}>
+              {signed(report.dominionBreakdown.lootValue)}
+            </dd>
+            <dt className="text-dim">{t('reports.dominionBreakdown.enemyLosses')}</dt>
+            <dd className="num text-opportunity">
+              {signed(report.dominionBreakdown.enemyPermanentLossValue)}
+            </dd>
+            <dt className="text-dim">{t('reports.dominionBreakdown.ownLosses')}</dt>
+            <dd className="num text-threat">
+              {signed(-report.dominionBreakdown.ownPermanentLossValue)}
+            </dd>
+            <dt className="mt-1 border-t border-line-soft pt-2 text-bone">
+              {t('reports.dominionBreakdown.total')}
+            </dt>
+            <dd className={`num mt-1 border-t border-line-soft pt-2 ${
+              report.dominionBreakdown.rawExchange >= 0
+                ? 'text-opportunity'
+                : 'text-threat'
+            }`}>
+              {signed(report.dominionBreakdown.rawExchange)}
+            </dd>
+          </dl>
+        </section>
+      )}
       {looted !== 0 && (
         <p className="legend mt-2">{t(looted >= 0 ? 'reports.haul' : 'reports.haulLost')}</p>
       )}
@@ -779,6 +824,47 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
             </span>
           )}
         </p>
+      )}
+      {/*
+        WHAT THE COLLECTORS LIFTED, UNDER THE HAUL AND NEVER INSIDE IT. D200.
+
+        It came home with the fleet, so it belongs beside "what came home" — but it
+        is not loot: it was never the defender's and it moved no Dominion, and a sum
+        that folded the two together would print a haul the equation above cannot
+        account for. Attacker's copy only; the defender reads it as a consequence.
+      */}
+      {report.attacking && lifted > 0 && salvage && (
+        <>
+          <p className="legend mt-2">{t('reports.salvageHaul')}</p>
+          <p data-testid="report-salvage" className="num mt-1 flex items-center gap-2 text-caption">
+            <span className="flex items-center gap-1 text-alloy">
+              <img
+                src={RESOURCE_ART.alloy}
+                alt={t('vocabulary.resource.alloy')}
+                className="size-4 object-contain"
+              />
+              {signed(salvage.alloy)}
+            </span>
+            <span className="flex items-center gap-1 text-crystal">
+              <img
+                src={RESOURCE_ART.crystal}
+                alt={t('vocabulary.resource.crystal')}
+                className="size-4 object-contain"
+              />
+              {signed(salvage.crystal)}
+            </span>
+            {salvage.deuterium !== 0 && (
+              <span className="flex items-center gap-1 text-opportunity">
+                <img
+                  src={RESOURCE_ART.deuterium}
+                  alt={t('vocabulary.resource.deuterium')}
+                  className="size-4 object-contain"
+                />
+                {signed(salvage.deuterium)}
+              </span>
+            )}
+          </p>
+        </>
       )}
       <Consequences report={report} />
       {/*
@@ -851,6 +937,24 @@ function Consequences({ report }: { report: OrdinaryReport }) {
       text: t(report.attacking ? 'reports.effects.worksTheirs' : 'reports.effects.worksYours', {
         duration: duration(report.disruptedMinutes),
       }),
+    });
+  }
+  /*
+    THE DEFENDER IS TOLD WHERE THE REST OF THE WRECK WENT. D200.
+
+    A defender who lost a fleet reads the wreck line below — and without this, it is
+    far smaller than the fleet with nothing to say why. The collectors were in the
+    roster that arrived over their world (D164), so naming what they lifted crosses
+    no line. The attacker reads the same figure as its own haul row instead.
+  */
+  const lifted = report.salvage
+    ? report.salvage.alloy + report.salvage.crystal + report.salvage.deuterium
+    : 0;
+  if (!report.attacking && lifted >= 1) {
+    lines.push({
+      key: 'collected',
+      tone: 'text-alloy',
+      text: t('reports.effects.salvageTheirs', { amount: compact(lifted) }),
     });
   }
   if (report.wreckValue >= 1) {

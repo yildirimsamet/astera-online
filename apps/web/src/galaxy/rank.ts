@@ -29,10 +29,10 @@ export type RankGlyph = 'sword' | 'shield' | 'crate' | typeof STAR;
 /**
  * Which mark stands for a family.
  *
- * SPECIALIST IS A SWORD, and the Nullifier is the whole of that family: a
- * shield-breaker that flies at somebody. The glyph answers "is this coming for
- * me", and a fourth symbol invented for a cast of one would be a legend to
- * memorise rather than a picture to read.
+ * SPECIALIST IS A SWORD, for the Nullifier: a shield-breaker that flies at
+ * somebody. The glyph answers "is this coming for me", and a fourth symbol
+ * invented for a cast of one would be a legend to memorise rather than a picture
+ * to read. The family's unarmed hull wears the crate instead — see `rankRow`.
  *
  * PRESERVED — the ground guns and the drill — has no mark, because nothing in it
  * is on the tier ladder and a badge on it would be inventing a rank.
@@ -53,7 +53,16 @@ const FAMILY_GLYPH: Record<HullFamily, RankGlyph | null> = {
  */
 export function rankRow(hull: HullId): readonly RankGlyph[] {
   const spec = HULLS[hull];
-  const glyph = FAMILY_GLYPH[spec.family];
+  /*
+    A HULL THAT FIRES NOTHING WEARS THE SUPPORT MARK, whatever family sells it. D200.
+    The sword answers "is this coming for me", and the Garbage Collector — the
+    first Special hull that is not the Nullifier — is not: it flies behind the
+    line as a transport does. Read off `atk`, like `combatValue`, so the glyph and
+    the force figure can never disagree about what fires.
+  */
+  const glyph = spec.atk <= 0 && FAMILY_GLYPH[spec.family] !== null
+    ? 'crate'
+    : FAMILY_GLYPH[spec.family];
   if (spec.tier === null || glyph === null) return [];
   return [glyph, ...Array.from({ length: spec.tier }, () => STAR as RankGlyph)];
 }

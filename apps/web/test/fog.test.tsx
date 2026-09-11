@@ -247,7 +247,7 @@ describe('a foreign contact, as rendered', () => {
   /** Radar remains an estimate until Telescope sight supplies a manifest. */
   it('states the Radar size and never invents a hull', () => {
     const { container } = show(contact());
-    expect(screen.getByText(/sizeable force/i)).toBeInTheDocument();
+    expect(screen.getByText(/mid-sized fleet/i)).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/wasp/i);
     expect(container.textContent).toMatch(/no manifest at this range/i);
   });
@@ -262,10 +262,10 @@ describe('a foreign contact, as rendered', () => {
 
   it('reads a committed fleet as heavier, and a scout party as lighter', () => {
     show(contact({ mass: 'HEAVY' }));
-    expect(screen.getByText(/heavy force/i)).toBeInTheDocument();
+    expect(screen.getByText(/large fleet/i)).toBeInTheDocument();
     cleanup();
     show(contact({ mass: 'LIGHT' }));
-    expect(screen.getByText(/light contact/i)).toBeInTheDocument();
+    expect(screen.getByText(/small fleet/i)).toBeInTheDocument();
   });
 
   /**

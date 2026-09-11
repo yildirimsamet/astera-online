@@ -2,7 +2,7 @@ import { joinSeason } from '../src/services/player.js';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
 import { seedWorld, testDb, giveUnits, makeAccount } from './helpers.js';
-import { players, planets, units, commanderTransfers, mainVacancies, scheduledEvents, seasons, shards } from '../src/db/schema.js';
+import { players, planets, playerRivals, units, commanderTransfers, mainVacancies, scheduledEvents, seasons, shards } from '../src/db/schema.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import { enqueueReturn } from '../src/services/returnQueue.js';
@@ -32,6 +32,53 @@ it('moves an existing inactive commander without replacing worlds, fleet, stock 
   expect(await f.db.select().from(mainVacancies)).toHaveLength(1);
   expect((await transferCommander(f.db, player!.id, target!.id, f.clock)).status).not.toBe('MOVED');
 });
+/**
+ * A RIVAL MARK DOES NOT SURVIVE A CHANGE OF GALAXY. D183.
+ *
+ * A mark names a commander, and a commander who is not in this galaxy is not on
+ * this disc — `rivalSlotOf` matches by controller id, so nothing is ever drawn for
+ * one. Left standing it would be worse than useless: invisible, and still counted
+ * against `RIVAL.max`, so a commander coming back from Silent Space would find
+ * their bookmarks gone AND their slots spent.
+ *
+ * Both directions again, exactly as the reclaim does it: the marks this commander
+ * was keeping, and the marks other commanders were keeping on them. The second set
+ * belongs to people still in the old galaxy, and what they were watching has left
+ * it.
+ */
+it('drops the rival marks on both sides when a commander changes galaxy', async () => {
+  const f = await idleFixture();
+  await f.db.insert(playerRivals).values([
+    // What the mover was watching.
+    { playerId: f.playerIds[0]!, planetId: f.planetIds[1]!, targetPlayerId: f.playerIds[1]!, slot: 0 },
+    // What somebody staying behind was watching about the mover.
+    { playerId: f.playerIds[1]!, planetId: f.planetIds[0]!, targetPlayerId: f.playerIds[0]!, slot: 2 },
+  ]);
+
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('MOVED');
+
+  expect(await f.db.select().from(playerRivals)).toHaveLength(0);
+});
+
+/** A mark between two commanders who both stayed is none of the move's business. */
+it('leaves the marks of commanders who did not move', async () => {
+  const f = await seedWorld(3);
+  f.clock.advance(48 * 60);
+  await f.db.update(players).set({ lastActiveAt: f.clock.now() })
+    .where(eq(players.id, f.playerIds[1]!));
+  await f.db.update(players).set({ lastActiveAt: f.clock.now() })
+    .where(eq(players.id, f.playerIds[2]!));
+  await f.db.insert(playerRivals).values({
+    playerId: f.playerIds[1]!, planetId: f.planetIds[2]!, targetPlayerId: f.playerIds[2]!, slot: 0,
+  });
+
+  const target = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+  expect((await transferCommander(f.db, f.playerIds[0]!, target!.id, f.clock)).status).toBe('MOVED');
+
+  expect(await f.db.select().from(playerRivals)).toHaveLength(1);
+});
+
 it('returns to the exact vacated address and preserves the commander through both moves', async () => {
   const f = await idleFixture();
   const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectorCap } from '@astera/rules';
-import { useClanBadge, useCollect, usePlanet, useRewards } from '../api/queries.js';
+import { useClanBadge, useCollect, usePlanet, useRewards, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { ClaimIcon, MenuIcon } from '../ui/icons/index.js';
+import { ClaimIcon, MenuIcon, ShieldIcon } from '../ui/icons/index.js';
 import { Meter } from '../ui/kit/index.js';
 import { Tally } from '../ui/Tally.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -15,6 +15,7 @@ import { Signals } from './Signals.js';
 import type { Panel, PanelStop } from '../screens/GalaxyView.jsx';
 import { useWorld } from '../api/world.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { countdown, useNow } from '../lib/time.js';
 
 /**
  * What you hold, what is waiting, and how long the season has left.
@@ -101,6 +102,7 @@ export function StatusBar({
             cap={data.planet.alloyCap}
             rate={data.planet.alloyPerHour}
             tone="alloy"
+            safe={data.planet.vaultProtected.alloy}
           />
           <Stock
             label={t('statusBar.crystalLabel')}
@@ -108,6 +110,7 @@ export function StatusBar({
             cap={data.planet.crystalCap}
             rate={data.planet.crystalPerHour}
             tone="crystal"
+            safe={data.planet.vaultProtected.crystal}
           />
           <Stock
             label={t('statusBar.deuteriumLabel')}
@@ -115,6 +118,7 @@ export function StatusBar({
             cap={data.planet.deuteriumCap}
             rate={data.planet.deuteriumPerHour ?? 0}
             tone="deuterium"
+            safe={data.planet.vaultProtected.deuterium}
           />
         </div>
         {!lesson && <div className="flex shrink-0 items-end gap-2 ml-auto">
@@ -300,6 +304,7 @@ function Works({
 
   return (
     <div className="mt-3 flex items-stretch gap-2 max-h-[32px]">
+      <NewcomerShield />
       <button
         type="button"
         disabled={collect.isPending || !something}
@@ -383,6 +388,29 @@ function Works({
   );
 }
 
+/** The commander's own first-day raid immunity, kept in the permanent HUD. */
+export function NewcomerShield() {
+  const { t } = useTranslation();
+  const until = useSeason().data?.shieldUntil ?? null;
+  const now = useNow();
+  if (until === null || until.getTime() <= now) return null;
+  const remaining = countdown(until.getTime() - now);
+
+  return (
+    <div
+      data-newcomer-shield
+      aria-label={t('statusBar.newcomerShield.hint', { duration: remaining })}
+      className="flex shrink-0 flex-col justify-center rounded-chip border border-opportunity/35 bg-opportunity/10 px-2 text-opportunity"
+    >
+      <span className="flex items-center gap-1 whitespace-nowrap text-micro font-semibold leading-none">
+        <ShieldIcon className="size-3.5" />
+        {t('statusBar.newcomerShield.label')}
+      </span>
+      <span className="num mt-1 text-micro leading-none text-bone">{remaining}</span>
+    </div>
+  );
+}
+
 /** One container, with its rim drawn full height so the headroom is visible. */
 function Vessel({
   fill,
@@ -433,12 +461,24 @@ function Stock({
   cap,
   rate,
   tone,
+  safe,
 }: {
   label: string;
   value: number;
   cap: number;
   rate: number;
   tone: 'alloy' | 'crystal' | 'deuterium';
+  /**
+   * WHAT A RAID CANNOT REACH, ON THE BAR THE PLAYER NEVER STOPS LOOKING AT. D190.
+   *
+   * Owner report: commanders believe the Vault is a box that holds a fixed amount
+   * and do not know it makes the STORE deep. This strip is where that belief is
+   * formed, because it is on screen in every session and it drew the store with no
+   * mention of the floor at all. Marking the slice here is the cheapest place in
+   * the game to teach the rule: the safe zone is the same fraction of every bar,
+   * and the whole bar is what a Vault level buys.
+   */
+  safe: number;
 }) {
   const { t } = useTranslation();
   const atCap = cap > 0 && value >= cap - 0.5;
@@ -483,7 +523,13 @@ function Stock({
       */}
       <div className="mt-2 flex items-center gap-2">
         <span className="min-w-0 flex-1">
-          <Meter value={value} cap={cap} tone={tone} cells={8} />
+          <Meter
+            value={value}
+            cap={cap}
+            tone={tone}
+            cells={8}
+            safeShare={cap > 0 ? safe / cap : 0}
+          />
         </span>
         {/*
           A FULL STORE KEEPS ITS OWN HUE. `interface.md` I0: storage capacity is

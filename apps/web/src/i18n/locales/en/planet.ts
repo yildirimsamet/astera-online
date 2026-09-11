@@ -18,11 +18,14 @@ export const planet = {
     building: "Loading · {{duration}}",
     paused: "Loading paused during recovery",
     ready: "One charge loaded",
+    noRadar: "Loaded · Radar ring is offline",
     build: "Load charge",
     started: "Charge loading",
     hint: "Destroys the first Death Star that enters the timed Radar ring or is identified in Telescope sight. Spent when it fires.",
     readyHint:
       "Armed. It destroys the next Death Star that enters the Radar interception ring or is identified in Telescope sight.",
+    noRadarHint:
+      "The charge remains loaded, but this world has no Radar interception ring. Restore its Uplink and Radar 3; Telescope sight from another world can still trigger it.",
     needResearch: "Interception Grid",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
@@ -36,6 +39,7 @@ export const planet = {
     building: "Building · {{duration}}",
     paused: "Build paused during recovery",
     ready: "Ready to launch",
+    stock: "{{ready}} ready · {{building}} building · {{held}}/{{capacity}}",
     build: "Build",
     started: "Death Star construction started",
     dangerHint:
@@ -46,7 +50,7 @@ export const planet = {
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
     needOperational: "World operational",
-    buildTime: "60 min · one weapon · no recall",
+    buildTime: "{{duration}} · one weapon · no recall",
 
     /**
      * WHAT AN IMPACT DOES, SAID PLAINLY, BEFORE THE MONEY IS SPENT. D113.
@@ -111,12 +115,27 @@ export const planet = {
       "Refund: {{alloy}} alloy · {{crystal}} crystal · {{deuterium}} Deuterium",
     cancelled:
       "Order cancelled · {{alloy}} alloy, {{crystal}} crystal and {{deuterium}} Deuterium returned",
+
+    /**
+     * THE SECOND BEAT ON A CANCEL. Owner report.
+     *
+     * The price of cancelling was on a `title` attribute — a hover tooltip, on a
+     * phone — so the half that burns was not merely unconfirmed, it was never on
+     * screen at all. It leads with what is DESTROYED: a refund figure alone reads
+     * as a gain, because the player is being handed resources.
+     */
+    confirm: {
+      eyebrow: "Cancel an order",
+      lead: "{{share}}% of what this order cost is destroyed. The rest comes back now.",
+      lost: "Destroyed",
+      kept: "Returned",
+      progress: "Work done on it is lost too — a re-order starts from nothing.",
+      commit: "Cancel the order",
+      back: "Keep it",
+    },
   },
 
   capacity: {
-    hangarBand: "Fleet room",
-    hangarUse:
-      "Hangar space {{used}} / {{total}}. Ships away from this world still occupy their space.",
     hullUse:
       "Each uses {{bulk}} space · {{used}} / {{total}} committed after the queue.",
     full: "No room: {{used}} / {{total}} space is already committed. Raise the relevant capacity first.",
@@ -125,11 +144,13 @@ export const planet = {
   /** What each structure is for, in one line, where the row states it. */
   roles: {
     vault:
-      "The only stock a raid cannot touch. Everything above it is takeable.",
+      "Sets how many hours of its own production each resource holds; the bottom 10%, capped at 8 hours of production, is safe from raids.",
     shipyard:
       "Unlocks heavier hulls, builds them faster, and sharpens every probe you send.",
-    refinery: "Raises passive alloy production and alloy storage on this world.",
-    extractor: "Raises passive crystal production and crystal storage on this world.",
+    refinery:
+      "Raises hourly alloy output; the store is measured in hours, so what it holds grows with it. Most buildings and ships spend this.",
+    extractor:
+      "Raises hourly crystal output; the store is measured in hours, so what it holds grows with it. Advanced ships, instruments and research spend crystal.",
     coreCapped_one:
       "{{count}} building upgrade is blocked until the Command Core is raised.",
     coreCapped_other:
@@ -283,6 +304,7 @@ export const planet = {
     ownedGain: "You have",
     hullAwayCount: "{{count}} away",
     hullLocationCounts: "{{home}} in · {{away}} out",
+    hullTier: "Lv{{tier}}",
     prospectorLimit: "{{owned}} / {{max}} · limit",
   },
 
@@ -406,7 +428,9 @@ export const action = {
   statSpeedFixed: "fixed",
   statCargo: "Cargo",
   statCargoNone: "—",
-  statRoom: "Hangar",
+  /** What a Garbage Collector lifts off its battle's wreck. It takes the Cargo cell. D200. */
+  statSalvage: "Salvage",
+  statRoom: "Bulk",
   statFuel: "Fuel",
   /** The rate carries its own span: the row form of the strip prints no labels. */
   statFuelRate: "{{value}} /1k",
@@ -417,16 +441,27 @@ export const action = {
 export const planetHero = {
   capital: "Capital world",
   colony: "Colony world",
-  power: "Power",
+  /**
+   * THE WORLD'S OWN TIER, UNDER ITS PORTRAIT. Owner report.
+   *
+   * The figure the whole galaxy is sorted by — the disc draws a world's size
+   * from it, every dossier states it, and since D168 it decides who a commander
+   * may fight. It was on screen everywhere EXCEPT a commander's own worlds.
+   */
+  tier: "Tier {{tier}}",
+  /** The one force unit, on the one world the commander knows exactly. D199. */
+  firepower: "Firepower",
   perHour: "Per hour",
   perHourSuffix: "/h",
   disrupted: "Production stopped · raided · {{countdown}}",
   defence: "Defence",
   defenceNone: "None",
-  defenceThin: "Thin",
-  defenceHeld: "Held",
-  defenceShipsOnly: "{{count}} ships only",
-  defenceOnGround: "{{count}} on the ground",
+  defenceShips_one: "{{count}} ship",
+  defenceShips_other: "{{count}} ships",
+  defenceGuns_one: "{{count}} gun",
+  defenceGuns_other: "{{count}} guns",
+  defenceUnarmed_one: "{{count}} transport in the line",
+  defenceUnarmed_other: "{{count}} transports in the line",
   fleetAway: "{{count}} in the air",
   shield: "Shield",
   shieldNone: "None",
@@ -435,6 +470,11 @@ export const planetHero = {
   shieldMeter: "Aegis shield charge",
   shieldRegen: "+{{amount}}/h · before units",
   vaultSafe: "Safe in the vault",
+  storeLabel: "Store",
+  storeRule: "The Store level sets how long these bars are; the bracket under the shield is safe from a raid.",
+  alloyStore: "{{held}} of {{cap}} alloy, {{safe}} protected",
+  crystalStore: "{{held}} of {{cap}} crystal, {{safe}} protected",
+  deuteriumStore: "{{held}} of {{cap}} deuterium, {{safe}} protected",
   alloySafe: "{{amount}} alloy safe",
   crystalSafe: "{{amount}} crystal safe",
   deuteriumSafe: "{{amount}} deuterium safe",
@@ -485,6 +525,8 @@ export const launch = {
   /** A raid at a world has to be able to shoot back. The server refuses this too. */
   noEscort: "Add a warship",
   cargo: "Cargo",
+  /** A ceiling on a wreck nobody has made yet, and only for collectors that live. D200. */
+  salvage: "Your collectors lift up to {{amount}} of the wreck if they survive",
   distance: "Distance",
   fleetHeading: "Fleet",
   atHome: "{{count}} home",
@@ -496,16 +538,19 @@ export const launch = {
   quantity: "{{name}} quantity",
   max: "Max {{name}}",
   maxShort: "Max",
-  /** Screen-reader sentence for the garrison bar, which is a picture. */
-  defenceReading:
-    "{{holds}} defence power holds; {{leaves}} leaves with this fleet",
-  hangarLabel: "Hangar",
-  hangarNote:
-    "Launching frees no room. Ships in the air still belong to this world.",
   noShips:
     "No ships at home. Build some in the shipyard, or wait for a fleet to come back.",
   warning:
     "This cannot be recalled. Once it leaves, the only way to find out what was down there is to watch it land — and your planet holds {{count}} units until it comes back.",
+  /**
+   * WHAT A RAID COSTS THE COMMANDER FOR THE REST OF THE DAY. D183.
+   *
+   * One sentence beside the exposure warning, because the two are halves of one
+   * price. It says what is spent and what that opens — not how the rule works,
+   * which is the sheet's own shape rather than a paragraph's job.
+   */
+  shieldWarning:
+    "This gives up your first-day shield. Once it is gone, other commanders can raid you too.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
 } as const;
 
@@ -517,7 +562,7 @@ export const transfer = {
   eta: "ETA",
   capacity: "Cargo",
   fleet: "Craft",
-  homeDefence: "{{ships}} craft remain at origin · {{power}} defence power",
+  homeDefence: "{{ships}} craft remain at origin · {{power}} firepower",
   cargo: "Resources",
   alloy: "Alloy",
   crystal: "Crystal",
@@ -533,7 +578,6 @@ export const transfer = {
   holdNoCarrier:
     "This world has no Courier, Wayfarer or Atlas, so nothing here can carry ore.",
   /** Caption on the destination's room bar, which draws the figures itself. */
-  destinationLabel: "Destination hangar",
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} of {{held}} {{name}} packed",
   /** Caption on a cargo slider's spend bar: what this transfer takes. */

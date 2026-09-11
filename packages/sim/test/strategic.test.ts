@@ -134,7 +134,7 @@ describe('multi-world strategic simulation', () => {
     expect(world.strategic.deathStar.captures).toBe(0);
   });
 
-  it('models a build, first strike, second strike capture and the launched-slot release', () => {
+  it('models repeated outages without changing colony ownership', () => {
     const world = buildWorld({ players: 2, days: 14, seed: 5150 });
     const attacker = world.players[0]!;
     const target = world.neutrals[0]!;
@@ -167,19 +167,20 @@ describe('multi-world strategic simulation', () => {
     tryDeathStar(attacker, first.arriveAt + 1, world);
     expect(world.deathStars.get(attacker.id)?.status).toBe('BUILDING');
     const secondReady = first.arriveAt + 1 + DEATH_STAR.buildMinutes;
+    target.recoveryUntil = secondReady + 90; // An overlapping strike must not capture either.
     tryDeathStar(attacker, secondReady, world);
     const second = world.strategicMissions.find((m) => m.kind === 'death_star')!;
     expect(second.arriveAt).toBeLessThan(target.recoveryUntil);
     advanceStrategicLayer(world, second.arriveAt);
 
-    expect(target.controllerId).toBe(attacker.id);
-    expect(target.recoveryUntil).toBe(0);
-    expect(target.protectedUntil).toBeGreaterThan(second.arriveAt);
+    expect(target.controllerId).toBeNull();
+    expect(target.recoveryUntil).toBe(second.arriveAt + MULTI_WORLD.recoveryMinutes);
+    expect(target.protectedUntil).toBe(0);
     expect(world.strategic.deathStar).toMatchObject({
       builds: 2,
       launches: 2,
-      firstHits: 1,
-      captures: 1,
+      firstHits: 2,
+      captures: 0,
       misses: 0,
     });
   });

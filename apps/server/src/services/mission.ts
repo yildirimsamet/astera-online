@@ -38,7 +38,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
-import { peakCoreLevels } from './player.js';
+import { assertNewcomerShields, peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
@@ -87,6 +87,19 @@ export async function launchAttack(
   requested: Fleet,
   clock: Clock,
   expectedPlayerId?: string,
+  /**
+   * THE COMMANDER HAS BEEN TOLD THIS SPENDS THEIR OWN SHIELD, AND SAID YES. D183.
+   *
+   * Owner instruction: *"Kişi kendisi saldırı yapmak isterse uyarı verilir ve kabul
+   * ederse kalkanı kalkar."* The shield is a POSITION rather than a gift — firing
+   * gives it up — and a position spent without being offered is a position the
+   * player did not choose to spend. So the launch refuses once with
+   * `SHIELD_WOULD_DROP`, the surface asks, and the answer comes back here.
+   *
+   * It is not client-authored state: it grants nothing and decides nothing. It is
+   * the player saying they have read the price.
+   */
+  acknowledgeShieldLoss?: boolean,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -215,6 +228,34 @@ export async function launchAttack(
     if (target.kind !== 'NEUTRAL' && !them) {
       throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
     }
+
+    /**
+     * THE FIRST DAY IN A GALAXY IS SAFE, AND FIRING GIVES IT UP. D183, reversing D14.
+     *
+     * TWO REFUSALS, AND THE TARGET'S COMES FIRST. Accepting the loss of your own
+     * shield to hit somebody who cannot be hit would spend a day of protection for
+     * nothing: the launch is refused either way, and the honest refusal is the one
+     * about them.
+     *
+     * BOTH ARE RAISED BEFORE ANYTHING IS SPENT — no fuel debited, no bay taken, no
+     * ships off the stack — for the same reason D168's band is: a refusal that costs
+     * something is a punishment for asking a question.
+     *
+     * THE SHIELD IS SPENT, NOT PAUSED. Writing null rather than a past instant is
+     * what makes "has this commander committed to the war" a presence rather than a
+     * date comparison, and it is why the window never comes back: a shield that
+     * returned after one shot would make the first day a free strike.
+     *
+     * NEUTRAL WORLDS ARE OUTSIDE IT ENTIRELY. There is no commander to protect and
+     * none to charge — a caretaker world is scenery with a garrison, and settling
+     * is not the reaching-out this rule is about.
+     */
+    await assertNewcomerShields(tx, {
+      attackerPlayerId: me.id,
+      defenderPlayerId: target.kind === 'NEUTRAL' ? null : (them?.id ?? null),
+      now: origin.now,
+      acknowledgeShieldLoss: acknowledgeShieldLoss ?? false,
+    });
 
     /**
      * THE BAND IS MEASURED ON THE TWO COMMANDERS, AND IT IS ASKED FIRST. D168.

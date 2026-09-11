@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TRADE, UNAIDED, quoteTrade, transferCargoCapacity } from '@astera/rules';
+import { TRADE, UNAIDED, combatValue, garrisonOf, quoteTrade, transferCargoCapacity } from '@astera/rules';
+import { compact } from '../src/lib/format.js';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import type { PlanetView } from '../src/api/schemas.js';
@@ -244,10 +245,18 @@ describe('the split the owner described', () => {
     await openWith180Alloy();
     setAmount(/what you take/i, 1);
 
-    expect(screen.getByTestId('trade-split').querySelector('[data-take="deuterium"]'))
-      .toHaveTextContent('1');
-    expect(screen.getByTestId('trade-split').querySelector('[data-take="crystal"]'))
-      .toHaveTextContent('30');
+    /*
+      THE SPLIT'S OWN ARITHMETIC, OFF THE RATE. These read 1 and 30 — the answers
+      for 1 · 3 · 90 — and 180 alloy buys a different pair at any other rate. The
+      RULE is the assertion: whatever the slider is dragged to, the two takes spend
+      the offer to nothing.
+    */
+    const take = (good: string) => Number(
+      screen.getByTestId('trade-split')
+        .querySelector(`[data-take="${good}"]`)?.textContent.replace(/\D/g, '') ?? '0',
+    );
+    expect(take('deuterium') * TRADE.rate.deuterium + take('crystal') * TRADE.rate.crystal)
+      .toBe(180 * TRADE.rate.alloy);
     expect(commit()).toBeEnabled();
   });
 
@@ -373,9 +382,20 @@ describe('the ceiling says what it is', () => {
     const hold = transferCargoCapacity({ ATLAS: 1 }, {});
     const top = Number(screen.getByTestId('trade-offer').textContent.replace(/\D/g, ''));
     expect(top).toBeLessThanOrEqual(hold);
-    // 5,940 alloy is exactly 66 deuterium, and the line has to say so.
-    expect(screen.getByTestId('trade-ceiling'))
-      .toHaveTextContent(new RegExp(`${String(top / 90)}\\s*Deuterium`, 'i'));
+    /*
+      The ceiling is a whole number of the dear good, and the line has to say so.
+
+      READ AS A NUMBER, NOT AS A LITERAL. A regex built from `String(1055)` stopped
+      matching the moment D195b grew the Atlas's hold past a thousand and the
+      caption correctly printed "1,055" — the figure was right on the screen and
+      the assertion could not see it. The digits are compared the same way `top` is
+      read two lines above, so a thousands separator can never fail this again.
+    */
+    const dear = (top * TRADE.rate.alloy) / TRADE.rate.deuterium;
+    const ceiling = screen.getByTestId('trade-ceiling').textContent;
+    expect(ceiling).toMatch(/Deuterium/i);
+    expect([...ceiling.matchAll(/[\d.,]+/g)].map((m) => Number(m[0].replace(/\D/g, ''))))
+      .toContain(dear);
   });
 
   it('blames the store when the store is the smaller wall', async () => {
@@ -643,5 +663,15 @@ describe('the sheet reads naturally in Turkish', () => {
     expect(screen.getByTestId('trade-hold')).toHaveTextContent(/ambar/i);
     expect(screen.getByText('Veriyorum')).toBeInTheDocument();
     expect(screen.getByText('Alıyorum')).toBeInTheDocument();
+  });
+});
+
+/** The garrison left behind, in the one force unit. D199. */
+describe('the garrison left behind by a convoy', () => {
+  it('is stated in firepower, the unit the launch sheet uses', () => {
+    const planet = trader({ ground: { THORN: 2 } });
+    sheet({ planet });
+    const firepower = compact(combatValue(garrisonOf(planet.fleet, planet.ground)));
+    expect(screen.getAllByText(new RegExp(`${firepower} firepower`, 'i')).length).toBeGreaterThan(0);
   });
 });

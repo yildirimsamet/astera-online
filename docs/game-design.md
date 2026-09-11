@@ -38,11 +38,23 @@ the finale.
 
 ## Ownership — the worlds
 
+**Accepted economy redesign direction (2026-09-09; candidate rules are not live):**
+colonies are scarce, valuable and contested; not every commander is expected to own one.
+Capital-only development must support T3/T4 and meaningful PvP. Day 2–3 for an average
+player means readiness to compete for a colony, not ownership. Total world count and
+local competition constrain supply; widespread ownership is not a reason to multiply
+the map to 700–1000 worlds for 300 players. Colony investment must offer a real advantage
+without automatically doubling a commander's economy per additional planet. See
+`docs/astera-economy-design-v1.md`; the exact supply and productive contribution remain
+model parameters, not live constants.
+
 One commander per galaxy, with one uncapturable **capital** and up to three captured
 **colonies**. Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
-specific permanent level loss in D97/D98. A capital may be devastated but never captured;
-colonies and neutral worlds may also transfer control on a qualifying second impact.
+specific permanent level loss in D97/D98. A capital may be devastated but never captured.
+Under D167 a Death Star transfers no ownership: a colony receiving no ship as relief
+inside its recovery window becomes neutral, then can be settled through the ordinary
+settlement rules. This supersedes the former second-impact transfer description.
 
 Ownership is public spatial structure as well as a label (D122). The galaxy always joins the
 caller's capital and colonies with faint white filaments. Focusing another commander's
@@ -200,9 +212,10 @@ role.
 | **Warden / Sentinel / Praetorian** | 1 / 2 / 3 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed; no tier-4 successor |
 | **Courier / Wayfarer / Atlas** | 1 / 2 / 3 | Support | Fast/light, balanced and heavy cargo choices | Deal no damage; capacity, speed and bulk prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
+| **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
 | **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
-| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet | Cannot raid, transfer or defend an ordinary raid |
+| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid, transfer or defend an ordinary raid; rests a minute after a leg under a minute (D183) |
 
 Counter cycle: **`SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER`** at 1.6× / 0.625×. Support
 hulls are prey to everything and deal nothing.
@@ -303,7 +316,9 @@ the only thing that makes raiding competitive with building over a season.
 A resolved battle leaves a public debris field at the defender's coordinates holding 10% of
 the value of every non-ground hull destroyed on both sides. It decays over twenty minutes (D63) and
 anybody can harvest it (D32, D37). A private fight becomes a public, timed, contested second
-event — and somebody who is not at war gets a reason to watch other people's.
+event — and somebody who is not at war gets a reason to watch other people's. An attacking
+Garbage Collector that lives through the fight lifts its share first, at the instant the battle
+resolves; the public field is what it leaves (D200). Salvage is Wealth, never Dominion or loot.
 
 ## The information layer — this is the game
 
@@ -558,6 +573,30 @@ and counts, and the formation shows the same information through real hull asset
 pips. Owner, origin and destination remain hidden. Mining runs expose their route only after
 their target has been discovered, so a route cannot reveal a hidden rock.
 
+### The first day in a galaxy (D183)
+
+Every commander who joins a galaxy — a new account, a veteran on their second season, a graduate
+of the Academy — cannot be raided or struck for twenty-four hours. This reverses D14, which
+removed a four-hour version with an argument that is still true: *a world where a new arrival is
+untouchable is a world where the first hours are safe, and this game's first hours are supposed to
+teach you that they are not.*
+
+**What answers that argument is the second half of the rule.** The shield is a POSITION, not a
+gift. Raiding or striking somebody spends it — after one refusal that the launch sheet turns into
+a confirmation, because a shield spent without being offered is one the player did not choose to
+spend. So a beginner is never untouchable; they are un-reached. The commander who wants a
+dangerous first day makes it dangerous, and the one who wants to build gets a day to build. It is
+spent rather than paused: a shield that came back after one shot would make the first day a free
+strike.
+
+**It is public, and it has to be.** Every world its commander holds reads as `PROTECTED` on the
+disc, for the same reason the development band still owes a surface (D124/D168): a raider who
+cannot tell a shielded commander from a reachable one discovers the rule by committing a fleet and
+being refused, which is an error message rather than a rule. It stops raids, not SIGHT — a probe
+flies as it always did, because a newcomer nobody can read is a newcomer nobody can decide about.
+The protected commander's permanent HUD also names their own raid immunity and counts down the
+time left; the launch confirmation explains that choosing to attack spends it.
+
 ### Pirate fleets — the third target class (D150)
 
 A pirate fleet is an NPC squadron riding a closed orbit inside the disc. Everything about it —
@@ -624,9 +663,16 @@ applied to the one lane that cannot itself cost a ship.
 trade ship cannot be raided, cannot fight back, and pays nothing onto the ladder either way. It is
 not a market: one published rate, no haggling, no order book, and no price that softens or
 hardens with how much the galaxy has already sold it. A rate cheap enough to undercut what a
-Refinery already produces would make an isotope asteroid worthless to fight over — the shipped
-90 alloy : 30 crystal : 1 deuterium is generous without cutting the ground out from under the
-mining race D135 is built on.
+Refinery already produces would make an isotope asteroid worthless to fight over.
+
+**The rate is 90 alloy : 45 crystal : 10 deuterium (D183).** It shipped at 90 : 30 : 1, and that
+was a printing press rather than a shop: one Deuterium bought ninety Alloy — a ninety-to-one
+premium on a resource the plant produces continuously and a rock delivers in lumps — so a single
+Atlas of isotope paid for a fleet and the mining race D135 is built on stopped mattering. Nine to
+one keeps Deuterium the scarcest thing on the counter and two to one keeps Crystal above Alloy,
+which is the ranking the economy actually has, without letting one full hold rewrite a season. A
+live season keeps the rate it was dealt (D149): the calendar freezes it per occurrence, and
+`season restamp` is the only door.
 
 This feeds OPPORTUNITY and RE-ENGAGEMENT most directly — one more reason to check the sky this
 session even with nothing under threat — and a little AMBITION and RISK besides: three hours
@@ -674,18 +720,21 @@ game a three-person studio would have to operate.
 ## Competition — Dominion
 
 ```
-raw battle value = loot from players + enemy unit value destroyed
-                 − own unit value destroyed
+raw battle value = secured loot from players + enemy permanent unit loss
+                 − own permanent unit loss
 
-battle transfer = round(10,000 × tanh(raw battle value / 10,000))
+battle transfer = raw battle value
 Dominion        = sum of battle transfers
 ```
 
 The defender receives the exact negative of the attacker's transfer. It is therefore **exactly
-zero-sum across the galaxy, only combat generates it, and one battle moves at most 10,000
-Dominion.** The smooth bound is nearly linear for small exchanges but prevents one late-season
-fleet from erasing a season's score. It still rewards winning fights *efficiently*, which is what
-scouting buys.
+zero-sum per scored battle and across the season cycle, and only player combat generates it.** It
+is deliberately uncapped and linear: splitting one realised exchange across several battles
+cannot buy more score, and destroying a fleet built over a season can move a season-sized amount.
+That is the stake promised by "the fleet is the bet." Merely sending a large fleet earns nothing;
+only secured loot and permanent unit losses move the ladder, so it still rewards winning fights
+*efficiently*, which is what scouting buys. D174 can carry a commander's existing balance between
+MAIN and Silent Space, so one local room need not sum to zero at every instant.
 
 It also **scores defence**: repelling a raid destroys the attacker's ships, which is Dominion
 for the defender. A fortress that is never attacked scores zero; a fortress that is attacked
@@ -696,8 +745,8 @@ why **no anti-turtle machinery is needed anywhere else in the design.**
 
 Net worth survives as **Wealth**: displayed, never ranked.
 
-The first live-season rollout is prospective: battles resolved before the deployment retain their
-recorded Dominion; only battles resolved afterwards use the bounded transfer.
+The linear rule begins with ruleset v7. Earlier seasons and reports retain their recorded bounded
+Dominion and are never repriced; a cycle never mixes the two rules.
 
 ## What the game tells you
 

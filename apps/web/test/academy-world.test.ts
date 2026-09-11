@@ -30,6 +30,10 @@ describe('the local Academy world', () => {
     else {
       expect(done.reports).toHaveLength(1);
       expect(done.reports[0]?.grade).toBe('DECISIVE');
+      // BOTH LESSONS PAY. The pirate exercise asserted zero until D195, and it was
+      // true for one reason: `profileHull` overwrote every warship's hold with zero,
+      // so the Darts flew home empty and the tutorial taught that beating a pirate
+      // is worth nothing. The hoard was always there; there was nothing to put it in.
       expect(done.reports[0]?.lootAlloy).toBeGreaterThan(0);
     }
   });

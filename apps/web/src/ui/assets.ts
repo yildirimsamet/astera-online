@@ -151,6 +151,7 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   DEUTERIUM_SYNTHESIS: `${BASE}/lab/deuterium_syntesis.png`,
   /* The three economy ladders. */
   YARD_AUTOMATION: `${BASE}/lab/yard_automation.png`,
+  AI_ROBOTS: `${BASE}/lab/ai_robots.png`,
   PROSPECTOR_HOLDS: `${BASE}/lab/prospector_holds.png`,
   CARGO_HOLDS: `${BASE}/lab/cargo_holds.png`,
   /* Fleet V2's permission root and its three bounded stat ladders. D148. */
@@ -232,8 +233,12 @@ export const MODEL = {
   praetorian: FLEET_V2_ASSET_MANIFEST.PRAETORIAN.model,
   atlas: FLEET_V2_ASSET_MANIFEST.ATLAS.model,
   nullifier: FLEET_V2_ASSET_MANIFEST.NULLIFIER.model,
+  garbageCollector: FLEET_V2_ASSET_MANIFEST.GARBAGE_COLLECTOR.model,
   cataclysm: FLEET_V2_ASSET_MANIFEST.CATACLYSM.model,
+  corsair: FLEET_V2_ASSET_MANIFEST.CORSAIR.model,
   citadel: FLEET_V2_ASSET_MANIFEST.CITADEL.model,
+  paladin: FLEET_V2_ASSET_MANIFEST.PALADIN.model,
+  argosy: FLEET_V2_ASSET_MANIFEST.ARGOSY.model,
   deathStar: '/assets/models/ships/death_star.glb',
   /** The Trade Ship NPC. A craft, not a building — it flies, so it is aimed. */
   tradeShip: '/assets/models/ships/trade_ship.glb',
@@ -550,8 +555,6 @@ export function buildingArt(id: BuildingId, level: number): string | null {
       return RESOURCE_ART.crystal;
     case 'SHIPYARD':
       return `${BASE}/general/shipyard_${String(tier)}.png`;
-    case 'HANGAR':
-      return `${BASE}/general/hangar_${String(tier)}.png`;
     /** It makes deuterium, so it wears deuterium — the Refinery and Extractor idiom. */
     case 'DEUTERIUM_PLANT':
       return RESOURCE_ART.deuterium;
@@ -579,6 +582,5 @@ export const BUILDING_ART: Record<BuildingId, string | null> = {
   EXTRACTOR: RESOURCE_ART.crystal,
   VAULT: `${BASE}/general/vault_1.png`,
   SHIPYARD: `${BASE}/general/shipyard_1.png`,
-  HANGAR: `${BASE}/general/hangar_1.png`,
   DEUTERIUM_PLANT: RESOURCE_ART.deuterium,
 };

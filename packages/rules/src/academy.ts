@@ -1,5 +1,5 @@
 import { OPENING_BONUS, START_BUILDINGS, PROSPECTOR } from './constants.js';
-import { buildingCost, buildMinutes, instrumentCost } from './economy.js';
+import { buildingCost, buildingMinutes, instrumentCost } from './economy.js';
 import { HULLS, fleetCargo } from './hulls.js';
 import { resolveCombat } from './combat.js';
 import { mulberry32 } from './rng.js';
@@ -25,7 +25,7 @@ export const ACADEMY_STEPS = [
   { id: 'aegis' }, { id: 'aegisReward', reward: 'AEGIS:1' },
   { id: 'thorn' }, { id: 'bastion' }, { id: 'fleet' },
   { id: 'shipyard', building: 'SHIPYARD' }, { id: 'shipyardReward', reward: 'SHIPYARD:1' },
-  { id: 'hangar' }, { id: 'darts' }, { id: 'pirate' }, { id: 'pirateReport' },
+  { id: 'darts' }, { id: 'pirate' }, { id: 'pirateReport' },
   { id: 'pirateReward', reward: 'PIRATE:1' }, { id: 'shipsReward', reward: 'SHIPS:2' },
   { id: 'prospector' }, { id: 'mine' }, { id: 'mineReward', reward: 'MINE:1' },
   { id: 'research' }, { id: 'reinforcements' }, { id: 'courier' },
@@ -65,11 +65,10 @@ export const ACADEMY_PIRATE_FLEET: Fleet = { WARDEN: 1 };
  * NEITHER NAMES THE CAPTURED WARDEN, on owner instruction. It is a real warship
  * and it would be legal to send, but the raid lesson is the payoff of "build two
  * Darts and a Courier" and a third hull in the picker asks a question the lesson
- * has not taught the answer to. It stays in the hangar; the roster screen is
+ * has not taught the answer to. It stays on the pad; the roster screen is
  * where a captured hull is meant to be discovered.
  */
 export const ACADEMY_PIRATE_RAID_FLEET: Fleet = { DART: 2 };
-export const ACADEMY_RAID_FLEET: Fleet = { DART: 3, COURIER: 1 };
 
 /**
  * WHAT COMES HOME FROM THE PIRATE LESSON: the survivors, plus the prize.
@@ -77,7 +76,7 @@ export const ACADEMY_RAID_FLEET: Fleet = { DART: 3, COURIER: 1 };
  * A DECISIVE win tows one of the pirate's hulls back (D133/D150) and this fight
  * always wins one, so the commander lands with a Warden they never built. The
  * disc used to draw the return leg from `attackerSurvivors` alone — one Dart —
- * and the captured ship just turned up in the hangar afterwards with nothing on
+ * and the captured ship just turned up in the roster afterwards with nothing on
  * screen tying it to the fight. One statement, read by the checkpoint below and
  * by `academyPending`, so the fleet that flies home and the fleet that lands
  * cannot disagree.
@@ -96,6 +95,7 @@ export const academyPirateBattle = () => resolveCombat(
   { ...ACADEMY_PIRATE_RAID_FLEET }, ACADEMY_PIRATE_FLEET, 0, mulberry32(1),
   { attacker: { tech: {} }, defender: { tech: {}, ...pirateStats(1) } },
 );
+export const ACADEMY_RAID_FLEET: Fleet = { DART: (academyPirateHomecoming().DART ?? 0) + 2, COURIER: 1 };
 export const ACADEMY_FLIGHT_DISTANCE = 150;
 export const ACADEMY_LEG_SECONDS = 6;
 export const academyOrderSeconds = (minutes: number): number => Math.max(1, Math.min(8, Math.ceil(minutes * 60)));
@@ -194,7 +194,13 @@ export function academyCheckpoint(completed: number): AcademyCheckpoint {
       }
       case 'departure':
         spend(departureCost);
-        state.queue = { building: 'CORE', seconds: Math.ceil(buildMinutes(departureCost, state.buildings.CORE) * 60), cost: { ...departureCost } };
+        state.queue = {
+          building: 'CORE',
+          // The Academy world holds no research, so the ladder is neutral — but it
+          // goes through the QUOTE, never `profileBuilding().minutes`. D198.
+          seconds: Math.ceil(buildingMinutes('CORE', state.buildings.CORE + 1, {}) * 60),
+          cost: { ...departureCost },
+        };
         break;
     }
   }
@@ -215,7 +221,10 @@ export function academyExitCheckpoint(completed: number): AcademyCheckpoint {
     crystal: Math.max(0, state.resources.crystal - cost.crystal),
     deuterium: Math.max(0, state.resources.deuterium - cost.deuterium),
   };
-  state.queue = { building, cost, seconds: Math.ceil(buildMinutes(cost, state.buildings.CORE) * 60) };
+  state.queue = {
+    building, cost,
+    seconds: Math.ceil(buildingMinutes(building, state.buildings[building] + 1, {}) * 60),
+  };
   return state;
 }
 

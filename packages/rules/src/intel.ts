@@ -1,8 +1,9 @@
 import { ANTI_STRATEGIC, INTEL, SENSOR } from './constants.js';
-import { fleetValue } from './hulls.js';
+import { COMBAT_CLASSES, COMBAT_HULLS, HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { clamp, seededFrom } from './rng.js';
 import type {
   ClarityState,
+  CombatClass,
   Fleet,
   FleetStatus,
   InstrumentId,
@@ -212,18 +213,108 @@ export interface Band {
 }
 
 /**
+ * WHAT A PROBE CAN TELL ABOUT THE SHAPE OF A WALL. D199.
+ *
+ *   · `NONE` — nothing that fires was standing there. Any probe can say that; the
+ *     firepower band already reads 0 – 0.
+ *   · `UNREAD` — the probe was too weak to tell (its Shipyard below the Veil).
+ *   · `EVEN` — no class held more than half of the firepower.
+ *   · `DOMINANT` — one class held more than half.
+ *   · `SHARES` — the whole split, in `classShareStep` steps that add up to 100.
+ */
+export type ClassReading =
+  | { kind: 'NONE' }
+  | { kind: 'UNREAD' }
+  | { kind: 'EVEN' }
+  | { kind: 'DOMINANT'; cls: CombatClass }
+  | { kind: 'SHARES'; shares: Record<CombatClass, number> };
+
+/**
+ * Read the counter-cycle shape of a defending line, as a probe of this accuracy can.
+ *
+ * Only what FIRES is weighed, by value — the same axis `combatValue` measures the
+ * wall on — so the two ground guns count in their own classes and a hangar of
+ * transports counts for nothing. Transports are a separate reading (`unarmedCount`).
+ */
+export function classReading(line: Fleet, accuracy: number): ClassReading {
+  const value: Record<CombatClass, number> = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
+  let total = 0;
+  for (const [id, n] of fleetEntries(line)) {
+    const h = HULLS[id];
+    if (h.atk <= 0 || h.cls === 'SUPPORT') continue;
+    const v = n * (h.alloy + h.crystal + h.deuterium);
+    value[h.cls] += v;
+    total += v;
+  }
+  if (total <= 0) return { kind: 'NONE' };
+
+  // A hair of float noise must not turn a par probe into a weak one.
+  const reaches = (bar: number) => accuracy >= bar - 1e-9;
+  if (!reaches(INTEL.classMajorityAccuracy)) return { kind: 'UNREAD' };
+
+  if (reaches(INTEL.classSharesAccuracy)) {
+    return { kind: 'SHARES', shares: inSteps(value, total, INTEL.classShareStep) };
+  }
+  for (const cls of COMBAT_CLASSES) {
+    if (value[cls] / total > INTEL.classMajority) return { kind: 'DOMINANT', cls };
+  }
+  return { kind: 'EVEN' };
+}
+
+/**
+ * Shares in whole steps that add up to exactly 100 — largest remainder, ties to the
+ * cycle's own order, so the same wall always prints the same split.
+ */
+function inSteps(
+  value: Record<CombatClass, number>,
+  total: number,
+  step: number,
+): Record<CombatClass, number> {
+  const units = Math.round(100 / step);
+  const raw = COMBAT_CLASSES.map((cls) => (value[cls] / total) * units);
+  const whole = raw.map((r) => Math.floor(r));
+  let left = units - whole.reduce((a, b) => a + b, 0);
+  const byRemainder = raw
+    .map((r, i) => ({ i, rest: r - Math.floor(r) }))
+    .sort((a, b) => b.rest - a.rest || a.i - b.i);
+  for (const { i } of byRemainder) {
+    if (left <= 0) break;
+    whole[i] = (whole[i] ?? 0) + 1;
+    left -= 1;
+  }
+  const out: Record<CombatClass, number> = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
+  COMBAT_CLASSES.forEach((cls, i) => {
+    out[cls] = (whole[i] ?? 0) * step;
+  });
+  return out;
+}
+
+/**
  * A probe report is a band, not a number. A cheap scout tells you "somewhere
  * between 30k and 80k"; an expensive one tells you 61,000. Those are genuinely
  * different decisions, which is what makes probe level worth paying for.
+ *
+ * THE TRUTH IS ALWAYS INSIDE IT. D199. The band used to move its centre by the
+ * error and draw the width around the moved centre, which kept the floor under the
+ * truth and let the ceiling fall below it — about one par reading in six. Now the
+ * WIDTH is what the accuracy buys, the same `(1 + e) / (1 − e)` ratio as always,
+ * and the one draw decides only where inside that width the truth sits. Uniform in
+ * log terms, so the band's shape says nothing about which end is nearer.
+ *
+ * Floored and ceiled rather than rounded, so a fraction of a unit can never push
+ * the truth out of a band that is printed in whole numbers.
  */
 export function fuzzBand(trueValue: number, accuracy: number, rng: Rng): Band {
-  const err = (1 - accuracy) * (rng() * 2 - 1);
-  const mid = Math.max(0, Math.round(trueValue * (1 + err)));
-  const spread = (1 - accuracy) * mid;
+  const truth = Math.max(0, trueValue);
+  const e = 1 - clamp(accuracy, INTEL.accuracyMin, INTEL.accuracyMax);
+  const width = (1 + e) / (1 - e);
+  const below = rng();
+  const low = Math.floor(truth / width ** below);
+  const high = Math.ceil(truth * width ** (1 - below));
   return {
-    low: Math.max(0, Math.round(mid - spread)),
-    high: Math.round(mid + spread),
-    mid,
+    low,
+    high,
+    mid: clamp(Math.round(Math.sqrt(low * high)), low, high),
   };
 }
 
@@ -358,10 +449,28 @@ export const radarRevealsComposition = (radarLevel: number): boolean => radarLev
  * six Darts. A probe and an empty return leg both come out LIGHT, which is right:
  * a stranger cannot tell them apart and is not supposed to.
  */
+/**
+ * The cheapest combat hull a commander at this tier can put in a line.
+ *
+ * CHEAPEST rather than an average, because the bucket is a FLOOR: a wing of ten
+ * of anything at that tier has to reach it, including the wing somebody built out
+ * of the affordable option.
+ */
+const wingValue = (tier: number): number => {
+  const values = COMBAT_HULLS.filter((id) => HULLS[id].tier === tier)
+    .map((id) => HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium);
+  return SENSOR.massWing * Math.min(...values);
+};
+
+/** A working raid: ten mid-tier craft. D197. */
+export const massMediumValue = (): number => wingValue(SENSOR.massMediumTier);
+/** Somebody committing: ten of the best they can build. D197. */
+export const massHeavyValue = (): number => wingValue(SENSOR.massHeavyTier);
+
 export function massClass(fleet: Fleet): MassClass {
   const value = fleetValue(fleet);
-  if (value >= SENSOR.massHeavy) return 'HEAVY';
-  return value >= SENSOR.massMedium ? 'MEDIUM' : 'LIGHT';
+  if (value >= massHeavyValue()) return 'HEAVY';
+  return value >= massMediumValue() ? 'MEDIUM' : 'LIGHT';
 }
 
 /**

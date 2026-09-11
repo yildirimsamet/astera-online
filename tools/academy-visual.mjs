@@ -1,4 +1,4 @@
-/** D172. Plays the Academy through real controls at 375px. No account is
+/** D172. Plays the Academy through real controls at 350px. No account is
  * created. A failed lesson leaves a photo.
  */
 import { chromium } from 'playwright';
@@ -7,7 +7,7 @@ import { mkdir } from 'node:fs/promises';
 export async function verifyAcademy(out) {
   await mkdir(out, { recursive: true });
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const page = await browser.newPage({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true,
+  const page = await browser.newPage({ viewport: { width: 350, height: 812 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true,
     reducedMotion: 'reduce', // Owner: animations must also run with this OS setting.
     locale: process.env.ACADEMY_LANGUAGE === 'tr' ? 'tr-TR' : 'en-US' });
   page.setDefaultTimeout(15_000);

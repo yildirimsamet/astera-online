@@ -7,6 +7,7 @@ import {
   applyDisruption,
   collect,
   collectorCap,
+  instrumentCost,
   crystalRate,
   deuteriumRate,
   deuteriumStorageCap,
@@ -25,7 +26,7 @@ describe('production and cost curves', () => {
     // `base x L x growth^L`: level 0 produces nothing, which is correct — a planet
     // is created with the Refinery at 1 and it can never go down.
     expect(alloyRate(0)).toBe(0);
-    expect(alloyRate(1)).toBeCloseTo(ECON.alloyBase * ECON.alloyMult, 5);
+    expect(alloyRate(1)).toBeCloseTo(100, 5);
   });
 
   /**
@@ -47,9 +48,9 @@ describe('production and cost curves', () => {
    * upgrade's crystal share to it: charge crystal at the old share against the new
    * income and crystal quietly stops being the constraint the design needs.
    */
-  it('holds the D161 balance between the three passive rates', () => {
+  it('uses the monthly production ratios and power curves', () => {
     // 52.8 / 118.8 — crystal is now 4/9 of alloy income rather than 4/11.
-    expect(crystalRate(1) / alloyRate(1)).toBeCloseTo((48 * 1.1) / (132 * 0.9) * (1.09 / 1.10), 6);
+    expect(crystalRate(1) / alloyRate(1)).toBeCloseTo(0.5, 6);
     /*
       Deuterium keeps its own flatter ladder; only its base has ever moved. D161
       lifted it 15%, D176 tripled what that produced — both are written as the
@@ -57,9 +58,9 @@ describe('production and cost curves', () => {
       still see which instruction moved which part of it.
     */
     expect(deuteriumRate(1) / alloyRate(1))
-      .toBeCloseTo((4.15 * 1.15 * 3) / (132 * 0.9) * (1.04 / 1.10), 6);
+      .toBeCloseTo(0.04, 6);
     // And the shape is untouched: it is still `base x L x growth^L`.
-    expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 * ECON.alloyMult, 6);
+    expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 ** 1.3, 6);
   });
 
   /**
@@ -172,8 +173,9 @@ describe('the vault invariant', () => {
 
     // The building is worth levelling: the amount kept safe rises with it.
     expect(floor(16)).toBeGreaterThan(floor(0) * 2);
-    // ...but never the share, which is one constant at every level now.
-    expect(share(16)).toBeCloseTo(share(0), 3);
+    // ...but never the share, which is a constant until the night cap binds and
+    // falls after it — a developed store is deeper, not more untouchable. D193.
+    expect(share(16)).toBeLessThan(share(0));
     // But never past the bound, at any level, on any world.
     for (const v of [0, 1, 4, 8, 12, 16]) {
       expect(share(v), `Vault ${String(v)}`).toBeLessThan(0.5);
@@ -442,5 +444,85 @@ describe('disruption', () => {
     expect(productiveMinutes(0, 100, 40)).toBe(60);
     expect(productiveMinutes(0, 100, 500)).toBe(0);
     expect(productiveMinutes(100, 50, 0)).toBe(0);
+  });
+});
+
+/**
+ * TEN HOURS, AND THE TWO RULES THAT BOUND IT. D190, owner instruction.
+ *
+ * The works fill and then the plant stands idle until somebody taps. Ten hours is
+ * a night plus a margin — the figure D16 authored and measured — and it is the
+ * number that decides whether a working commander's midday check-in has a job. The
+ * audience is out of the house for eleven hours; at twelve the check-in bought
+ * nothing, at ten the last hour of the working day is only produced if somebody
+ * looked. That is the design, not an accident of the cutover that set it to 12.
+ *
+ * THE WORKS MUST STAY SMALLER THAN THE STORE AT EVERY VAULT LEVEL, D171's rule and
+ * the reason cutting this dial alone was once refused: `collect` takes
+ * `min(buffer, room)`, so anything the store cannot accept is LEFT in the works
+ * rather than lost. A works bigger than the store at Vault 0 would strand a young
+ * world's salvage haul with nowhere to bank it.
+ */
+describe('the works hold ten hours', () => {
+  it('is ten hours of whatever the world produces', () => {
+    expect(ECON.collectorHours).toBe(10);
+    for (const rate of [100, 1_000, 3_380]) {
+      expect(collectorCap(rate)).toBe(10 * rate);
+    }
+  });
+
+  it('stays under the store at every Vault level, including zero', () => {
+    for (let vault = 0; vault <= 21; vault++) {
+      expect(collectorCap(alloyRate(8)), `vault ${String(vault)}`)
+        .toBeLessThan(storageCap(alloyRate(8), vault));
+    }
+  });
+
+  /** The working day is eleven hours, so the day's last hour needs a look. */
+  it('fills before a commander gets home from work', () => {
+    expect(ECON.collectorHours).toBeLessThan(11);
+  });
+});
+
+/**
+ * AN INSTRUMENT'S PRICE READS WHICH INSTRUMENT IT IS. D191.
+ *
+ * `instrumentCost(_id, level)` ignored its first argument, so Telescope, Radar,
+ * Aegis and Veil cost the same at every rung. That is not a neutral simplification:
+ * Radar out-reaches Telescope at every level (CLAUDE.md states it as a rule), so at
+ * equal price Radar is strictly the better buy and the choice D22 priced open stops
+ * being a choice. `INSTRUMENT_COST_MULT` had carried 3 / 2 / 2 / 2 for exactly this
+ * reason and went unread in the economy cutover.
+ *
+ * THE RATIO IS RESTORED, THE LEVEL IS NOT RAISED. The cheap three keep today's
+ * price and the Telescope is dearer against them. Lifting the whole layer instead
+ * is measured to push wealth into buildings — the one holding a raid can never
+ * take — which drops ARR, and ARR is already the open band.
+ */
+describe('what an instrument costs', () => {
+  const cheap = ['RADAR', 'AEGIS', 'VEIL'] as const;
+
+  it('prices the identifying instrument above the others', () => {
+    for (let level = 0; level <= 4; level++) {
+      const scope = instrumentCost('TELESCOPE', level);
+      for (const id of cheap) {
+        const other = instrumentCost(id, level);
+        expect(scope.alloy, `L${String(level)} vs ${id}`).toBeGreaterThan(other.alloy);
+        expect(scope.crystal).toBeGreaterThan(other.crystal);
+      }
+    }
+  });
+
+  it('keeps the three detectors on one price, so only the identifier is dearer', () => {
+    for (let level = 0; level <= 4; level++) {
+      const [first, ...rest] = cheap.map((id) => instrumentCost(id, level));
+      for (const other of rest) expect(other).toEqual(first);
+    }
+  });
+
+  /** The whole layer must not get dearer: ARR is the open band and this is a lever on it. */
+  it('leaves the cheap three exactly where the flat price left them', () => {
+    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
+    expect(instrumentCost('RADAR', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
   });
 });

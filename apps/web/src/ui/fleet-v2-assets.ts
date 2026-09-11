@@ -88,9 +88,33 @@ export const FLEET_V2_ASSET_MANIFEST = {
     // #e42f38 — the same colour, as the hex every other trail is authored in.
     trail: { color: '#e42f38', width: 0.9 },
   }, calibrated(12, 0, 0, 0)),
+  /*
+    D200. Nose on +z, read off the six-side viewer: the claws lead. Tier-three size.
+    It flies with a fleet and fires nothing, so it takes a support craft's gentle
+    light rather than a warship's — and its own cold blue, the colour its render's
+    pod rings already glow, because the cargo green says "hold" and it has none.
+  */
+  GARBAGE_COLLECTOR: asset('garbage-collector', {
+    facing: '+z',
+    scale: 1.85,
+    light: { color: '#4c9bff', intensity: 1.25, distance: 2.5 * 1.85 },
+    trail: { color: '#4c9bff', width: 0.96 },
+  }, calibrated(0, 0, 0, 0.12)),
 
   CATACLYSM: asset('cataclysm', offensive('-x', 3, '#ff3f52', 1.12), calibrated(11.5, 0, 90, 0.13)),
+  /*
+    D196'S THREE. Scale sits inside the tier-4 band the two originals already set
+    (Cataclysm 3.0, Citadel 2.5) rather than above it, so D165's "no hull is drawn
+    smaller than one of a lower tier" holds and none of them out-masses the two
+    hulls the tier was built around. Drive colours are COLD, which is what
+    `visual-design.md` reserves for an ordinary combat hull — amber, red and
+    strategic red are spoken for — and the Argosy takes the cargo green every hold
+    in the game already flies.
+  */
+  CORSAIR: asset('corsair', offensive('+z', 2.7, '#35d9e5', 1.06), calibrated(0, 0, 0, 0.14)),
   CITADEL: asset('citadel', defensive('-z', 2.5, '#3BB9F1', 1.18), calibrated(-13, 180, 0, 0.21)),
+  PALADIN: asset('paladin', defensive('+z', 2.6, '#AD78ED', 1.1), calibrated(0, 0, 0, 0.13)),
+  ARGOSY: asset('argosy', cargo('+z', 2.4, 1.14), calibrated(0, 0, 0, 0.12)),
 } as const satisfies Record<MobileHullId, FleetV2Asset>;
 
 /** The small representative Fleet V2 cast used by the public landing scene. */

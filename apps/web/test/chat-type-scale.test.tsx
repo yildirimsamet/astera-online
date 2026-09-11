@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  * CHAT READS TWO POINTS LARGER THAN THE REST OF THE GAME. D170, owner request.
  *
  * Every other surface in Astera states a FACT — a price, a level, a countdown —
- * and the compact scale is what lets a 375px screen hold enough of them to make a
+ * and the compact scale is what lets a 350px screen hold enough of them to make a
  * decision with. Chat states SENTENCES, written by people, read in a row, and 12px
  * of running prose on a phone is the one place the compact rule costs more than it
  * buys.

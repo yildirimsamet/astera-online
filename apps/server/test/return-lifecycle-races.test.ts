@@ -6,11 +6,14 @@ import { createSeason } from '../src/services/season.js';
 import { enqueueReturn, refreshReturnActivity } from '../src/services/returnQueue.js';
 import { Presence } from '../src/services/presence.js';
 import { bootstrapServers, wipeAllServers } from '../src/services/servers.js';
-import { seedWorld, testDb, truncateAll } from './helpers.js';
+import { seedWorld, testDb, truncateAll, TEST_SEASON_DAYS } from './helpers.js';
 afterAll(async () => { await (await testDb()).close(); });
 it('CR: admission checks the deadline after waiting for commander lock', async () => {
   const f = await seedWorld(1);
-  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1, role: 'WAITING' });
+  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(),
+    // Same PERIOD as the world the commander is returning to, or the two land in
+    // different cycles and `lockQueueCommander` finds no target at all. D194.
+    days: TEST_SEASON_DAYS, rulesetVersion: 1, role: 'WAITING' });
   await f.db.update(players).set({ seasonId: waiting.season.id });
   f.clock.set(new Date(waiting.season.endsAt.getTime() - 1_000));
   let action: Promise<unknown> | undefined;
@@ -41,7 +44,10 @@ it('CR: one bootstrap shares a cycle under a progressing clock', async () => {
 
 it('wipe and presence serialize without a player/application deadlock', async () => {
   const f = await seedWorld(1);
-  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1, role: 'WAITING' });
+  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(),
+    // Same PERIOD as the world the commander is returning to, or the two land in
+    // different cycles and `lockQueueCommander` finds no target at all. D194.
+    days: TEST_SEASON_DAYS, rulesetVersion: 1, role: 'WAITING' });
   await f.db.update(players).set({ seasonId: waiting.season.id });
   const application = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
   let wipe: ReturnType<typeof wipeAllServers> | undefined;
@@ -69,7 +75,10 @@ it('wipe and presence serialize without a player/application deadlock', async ()
 
 it.each(['presence', 'enqueue'])('%s expires priority when its player lock wait crosses expiry', async (kind) => {
   const f = await seedWorld(1);
-  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(), rulesetVersion: 1, role: 'WAITING' });
+  const waiting = await createSeason(f.db, { shardCode: 'WAIT-CR', seed: 7, startsAt: f.clock.now(),
+    // Same PERIOD as the world the commander is returning to, or the two land in
+    // different cycles and `lockQueueCommander` finds no target at all. D194.
+    days: TEST_SEASON_DAYS, rulesetVersion: 1, role: 'WAITING' });
   await f.db.update(players).set({ seasonId: waiting.season.id });
   const application = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
   f.clock.set(new Date(application.expiresAt.getTime() - 1_000));

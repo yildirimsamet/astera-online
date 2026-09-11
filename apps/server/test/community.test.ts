@@ -4,7 +4,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, announcements, feedbackEntries } from '../src/db/schema.js';
+import { accounts, announcements, feedbackEntries, players } from '../src/db/schema.js';
 import { sanitizeAnnouncementHtml } from '../src/services/announcementHtml.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
@@ -139,6 +139,10 @@ describe('announcements, feedback and admin authority', () => {
   });
 
   it('hides an admin commander and planet from every other galaxy response', async () => {
+    await fixture.db.update(players).set({ dominionTaken: 1_000_000 })
+      .where(eq(players.id, fixture.playerIds[0]!));
+    await fixture.db.update(players).set({ dominionTaken: 100 })
+      .where(eq(players.id, fixture.playerIds[1]!));
     const playerGalaxy = await app.inject({
       method: 'GET', url: '/api/galaxy', headers: playerAuth,
     });
@@ -146,6 +150,8 @@ describe('announcements, feedback and admin authority', () => {
     expect(playerGalaxy.json<{ planets: { id: string }[] }>().planets)
       .not.toContainEqual(expect.objectContaining({ id: fixture.planetIds[0] }));
     expect(playerGalaxy.body).not.toContain(fixture.playerIds[0]!);
+    expect(playerGalaxy.json<{ planets: { id: string; dominionRank?: number }[] }>().planets)
+      .toContainEqual(expect.objectContaining({ id: fixture.planetIds[1], dominionRank: 1 }));
 
     const playerLadder = await app.inject({
       method: 'GET', url: '/api/leaderboard', headers: playerAuth,
@@ -153,12 +159,21 @@ describe('announcements, feedback and admin authority', () => {
     expect(playerLadder.statusCode).toBe(200);
     expect(playerLadder.json<{ ladder: { playerId: string }[] }>().ladder)
       .not.toContainEqual(expect.objectContaining({ playerId: fixture.playerIds[0] }));
+    expect(playerLadder.json<{ ladder: { playerId: string; rank: number }[] }>().ladder)
+      .toContainEqual(expect.objectContaining({ playerId: fixture.playerIds[1], rank: 1 }));
 
     const adminGalaxy = await app.inject({
       method: 'GET', url: '/api/galaxy', headers: adminAuth,
     });
     expect(adminGalaxy.json<{ planets: { id: string }[] }>().planets)
       .toContainEqual(expect.objectContaining({ id: fixture.planetIds[0] }));
+
+    const adminLadder = await app.inject({
+      method: 'GET', url: '/api/leaderboard', headers: adminAuth,
+    });
+    expect(adminLadder.statusCode).toBe(200);
+    expect(adminLadder.json<{ ladder: { playerId: string }[] }>().ladder)
+      .not.toContainEqual(expect.objectContaining({ playerId: fixture.playerIds[0] }));
   });
 
   it('keeps read state isolated per account', async () => {

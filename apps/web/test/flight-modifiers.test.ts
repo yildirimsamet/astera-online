@@ -72,7 +72,7 @@ describe('the launch preview and propulsion research', () => {
   it('halves the quoted flight at the top of the ladder', () => {
     const plain = planRoute(HERE, THERE, SENDING, HOME, {}, UNAIDED);
     const quick = planRoute(HERE, THERE, SENDING, HOME, {}, fast);
-    expect(quick.oneWayMinutes).toBeCloseTo(plain.oneWayMinutes / 2, 6);
+    expect(quick.oneWayMinutes).toBeCloseTo(plain.oneWayMinutes / 1.5, 6);
     // ...and exposure is the doubled leg, so the error compounded there too.
     expect(quick.exposureMinutes).toBeCloseTo(quick.oneWayMinutes * 2, 6);
   });

@@ -4,7 +4,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, players, satellites } from '../src/db/schema.js';
+import { accounts, players, satellites, seasons, shards } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch } from '../src/services/intel.js';
 import { createSeason } from '../src/services/season.js';
@@ -493,5 +493,58 @@ describe('GET /api/leaderboard', () => {
     const rows = res.json<{ ladder: { playerId: string }[] }>().ladder;
     expect(rows.map((row) => row.playerId)).not.toContain(joined.playerId);
     expect(rows).toHaveLength(3);
+  });
+
+  it('keeps every current commander when returns have taken the galaxy over its join cap', async () => {
+    const [season] = await f.db
+      .select({ shardId: seasons.shardId })
+      .from(seasons)
+      .where(eq(seasons.id, f.seasonId));
+    await f.db.update(shards).set({ playerCap: 2 }).where(eq(shards.id, season!.shardId));
+
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const rows = res.json<{ ladder: { playerId: string }[] }>().ladder;
+
+    expect(rows.map((row) => row.playerId).sort()).toEqual([...f.playerIds].sort());
+  });
+
+  it('removes operators from both the ladder and public podium order', async () => {
+    const [operator] = await f.db.select({ username: accounts.username })
+      .from(accounts)
+      .where(eq(accounts.id, f.accountIds[1]!));
+    await close();
+    const built = buildApp({
+      env: testEnv({ ADMIN_USERNAMES: operator!.username }),
+      logger: silent,
+      db: f.db,
+      clock: f.clock,
+    });
+    app = built.app;
+    close = built.close;
+    await app.ready();
+
+    for (const [index, score] of [300, 900, 600].entries()) {
+      await f.db.update(players).set({ dominionTaken: score, dominionLost: 0 })
+        .where(eq(players.id, f.playerIds[index]!));
+    }
+
+    const ladder = (await app.inject({
+      method: 'GET',
+      url: '/api/leaderboard',
+      headers: auth,
+    })).json<{ ladder: { playerId: string; rank: number }[] }>().ladder;
+    expect(ladder).toEqual([
+      expect.objectContaining({ playerId: f.playerIds[2], rank: 1 }),
+      expect.objectContaining({ playerId: f.playerIds[0], rank: 2 }),
+    ]);
+
+    const galaxy = (await app.inject({
+      method: 'GET',
+      url: '/api/galaxy',
+      headers: auth,
+    })).json<{ planets: GalaxyPlanet[] }>().planets;
+    expect(galaxy.map((planet) => planet.id)).not.toContain(f.planetIds[1]);
+    expect(galaxy.find((planet) => planet.id === f.planetIds[2])?.dominionRank).toBe(1);
+    expect(galaxy.find((planet) => planet.id === f.planetIds[0])?.dominionRank).toBe(2);
   });
 });
