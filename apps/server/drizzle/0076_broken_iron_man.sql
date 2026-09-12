@@ -1,0 +1,3 @@
+DROP INDEX "intergalactic_convoy_runs_planet_occurrence_idx";--> statement-breakpoint
+ALTER TABLE "intergalactic_convoy_runs" ADD COLUMN "abandoned_at" timestamp with time zone;--> statement-breakpoint
+CREATE UNIQUE INDEX "intergalactic_convoy_runs_planet_occurrence_idx" ON "intergalactic_convoy_runs" USING btree ("planet_id","occurrence_id") WHERE "intergalactic_convoy_runs"."abandoned_at" IS NULL;

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lte, ne } from 'drizzle-orm';
 import {
   INSTRUMENT_IDS,
   SHIELD,
@@ -24,7 +24,7 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { buildOrders, players, strategicAssets } from '../db/schema.js';
+import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
 import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
 import { researchView } from './researchState.js';
@@ -183,6 +183,42 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
    * `count` carries its target level.
    */
   const queuedResearch = await projectedResearchLevels(tx, p.playerId, researchQueue);
+  const [activeConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
+    .from(intergalacticConvoyRuns)
+    .where(and(
+      eq(intergalacticConvoyRuns.planetId, planetId),
+      ne(intergalacticConvoyRuns.status, 'done'),
+    ))
+    .limit(1);
+  /**
+   * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
+   *
+   * A world may strike each occurrence exactly once, ever — the DB says so with a
+   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts two hours
+   * while a round trip rarely lasts one. So the ordinary case is a commander whose
+   * fleet is safely home, inside the same window, looking at a control that has
+   * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
+   * moment the fleet lands) re-armed that control and let them pick a wing, read a
+   * quote and commit, to be answered with `CONVOY_ALREADY_RAIDED`.
+   *
+   * A rule the player cannot SEE is not a usable rule (D124), so the state travels
+   * with the world rather than living only in the refusal. It names no occurrence
+   * and no run: it is one boolean about the convoy that is public right now.
+   */
+  const [spentConvoy] = await tx.select({ id: intergalacticConvoyRuns.id })
+    .from(intergalacticConvoyRuns)
+    .innerJoin(
+      galaxyEventOccurrences,
+      eq(galaxyEventOccurrences.id, intergalacticConvoyRuns.occurrenceId),
+    )
+    .where(and(
+      eq(intergalacticConvoyRuns.planetId, planetId),
+      // An abandoned outbound run released its ration; the control stays live.
+      isNull(intergalacticConvoyRuns.abandonedAt),
+      lte(galaxyEventOccurrences.startsAt, p.now),
+      gt(galaxyEventOccurrences.endsAt, p.now),
+    ))
+    .limit(1);
 
   // Every craft this world owns, home or away — both ceilings are ownership rules.
   const owned = await totalUnitsOf(tx, planetId);
@@ -312,6 +348,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * under.
      */
     flight: await baysOf(tx, planetId, p.buildings.CORE),
+    convoyLaunchLocked: activeConvoy !== undefined,
+    convoyOccurrenceSpent: spentConvoy !== undefined,
     /**
      * BOTH CEILINGS AND BOTH LOADS. T4 · T4b.
      *

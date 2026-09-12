@@ -28,9 +28,9 @@ import { planetView } from './fixtures.js';
  *   the target device the price was not merely un-confirmed, it was unstated.
  *
  * · THE DEATH STAR STRIKE is the most expensive single action in the game
- *   (`DEATH_STAR.cost`, 20k/10k/2.5k), it consumes the weapon, and it sat as one
+ *   (`DEATH_STAR.cost`), it consumes the weapon, and it sat as one
  *   slab among four in a wrapped row where the neighbouring control is an
- *   ordinary raid.
+ *   ordinary raid. Its exact price comes from the shared rules table.
  *
  * `visual-design.md` reserves commit styling for the irreversible and this file
  * is the other half of that rule: an irreversible thing also gets a SECOND BEAT.

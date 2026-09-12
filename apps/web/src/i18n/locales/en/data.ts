@@ -601,6 +601,12 @@ export const notifications = {
   asteroidShowerEnded: 'The asteroid shower has ended · asteroid spawn is back to normal.',
   tradeShipStarted: 'A trade ship is in the galaxy · {{alloy}} alloy = 1 deuterium.',
   tradeShipEnded: 'The trade ship has left the galaxy.',
+  intergalacticConvoyStarted: 'The Intergalactic Convoy is crossing the galaxy.',
+  intergalacticConvoyEnded: 'The Intergalactic Convoy has departed.',
+  intergalacticConvoyResult: 'Convoy strike resolved · {{resources}} · prize: {{ships}} · returning now.',
+  intergalacticConvoyHome: 'Convoy strike home · {{resources}} · prize: {{ships}}.',
+  intergalacticConvoyNoResources: 'no resources',
+  intergalacticConvoyNoShip: 'no ship',
 } as const;
 
 /**

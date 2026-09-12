@@ -51,3 +51,26 @@ describe('database pool capacity telemetry', () => {
     metrics.close();
   });
 });
+
+describe('route and operation telemetry', () => {
+  it('counts response statuses, refusal reasons, and idempotent outcomes without player data', () => {
+    const metrics = new RuntimeMetrics();
+    const route = '/api/intergalactic-convoy/launch';
+
+    metrics.observeRoute('POST', route, 200, 12, 512);
+    metrics.observeRoute('POST', route, 409, 4, 96);
+    metrics.observeRefusal('POST', route, 'CONVOY_QUOTE_CHANGED');
+    metrics.observeOperation('intergalactic-convoy.launch', 'accepted');
+    metrics.observeOperation('intergalactic-convoy.launch', 'replay');
+
+    const status = metrics.status();
+    expect(status.routes[`POST ${route}`]).toMatchObject({
+      requests: 2,
+      errors: 0,
+      responseStatuses: { 200: 1, 409: 1 },
+    });
+    expect(status.refusals[`POST ${route}`]).toEqual({ CONVOY_QUOTE_CHANGED: 1 });
+    expect(status.operations['intergalactic-convoy.launch']).toEqual({ accepted: 1, replay: 1 });
+    metrics.close();
+  });
+});

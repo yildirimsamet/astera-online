@@ -178,14 +178,12 @@ removing an order would change the meaning of a later one; Research cannot be ca
 
 ## Combat
 
-**The Death Star is the one hand-set price (D167).** 40,000 alloy · 25,000 crystal · 6,000
-deuterium, written out rather than run through `scalePrice`, because it is priced against what
-it DOES rather than against the economy's pace — and at D167 what it does changed completely.
-It no longer transfers a colony to its attacker; it darkens a world for eight hours and starts a
-deadline its commander has to answer, and a colony left unanswered is released to NOBODY. The
-buyer is paying to put somebody else's holding on the table for the whole galaxy, garrison and
-half-stock intact, which is a different purchase from buying a planet. Previous figure: 25,500 /
-25,500 / 3,900 through the tempo scaler.
+**The Death Star is hand-priced (D203).** 143,661 alloy · 71,832 crystal · 5,952
+deuterium, exactly three times the preceding 47,887 / 23,944 / 1,984 table. It is
+written out rather than run through `scalePrice`; tempo changes do not move it. The
+Interception Grid charge is 43,100 / 21,551 / 1,787, a 50% component-wise increase
+with nearest-integer rounding. The battery totals 66,438 against the weapon's 221,445
+(30.0%) and remains strictly cheaper. Build times remain 60 and 30 minutes.
 
 ```
 3 rounds · simultaneous fire · ±8% variance
@@ -471,7 +469,8 @@ disruption    20 / 7 / 0 min, cap 25 pending          [PROVISIONAL]
 abuse         bash 3 per attacker per target per 12 h
 season        14 days · investment horizon 0.70 · acts at 4/14, 8/14, 12/14
 opening       START 870/78 · OPENING_BONUS 407/146 · PLANET_START 1,277/224
-strategic     settlement 2 Couriers + 3,400/1,700 · Death Star 25,500/25,500/3,900, 60 min
+strategic     settlement 2 Couriers + 3,400/1,700 · Death Star 143,661/71,832/5,952, 60 min
+              Interception Grid 43,100/21,551/1,787, 30 min
               both Death Star gates Core 12 · Shipyard 5 · recovery 2 h
 research      Isotope 1,530 C · Dense Fuel 2,380 C + 195 D · Gravitic 3,230 C + 455 D
               Death Star Protocol 18,700 A + 6,120 C + 1,170 D
@@ -495,8 +494,9 @@ production ceiling and the stricter `vault protection + unclaimed ≤ 49% of sto
 keep claimable safety below the design's half-store raidable invariant. Existing shares are
 never deleted if a later world loss lowers the ceiling; new credits simply stop.
 
-**The Death Star's figures moved at D113 by owner instruction, and its economic effect was
-explicitly NOT measured.** What was measured is reachability, which is a different question:
+**The Death Star's economic effect remains explicitly unmeasured.** The reachability
+figures below belong to the older, cheaper weapon and are retained only as history; D203's
+3× price invalidates them as a current affordability claim:
 
 | | |
 |---|---|
@@ -505,10 +505,8 @@ explicitly NOT measured.** What was measured is reachability, which is a differe
 | War act opens | day 4 of 14 |
 | Median end-of-season Crystal | 42,000–72,000 against a 15,000 craft |
 
-So the gate is real — three days into the act rather than open the moment it starts — and
-it is not dead content. `recoveryMinutes` fell to two hours and the capture route survives
-by arithmetic: a Death Star crosses the whole disc in 13.1 minutes and the second one takes
-sixty to build, so the capture leg is 73.1 minutes inside a 120-minute window.
+Those rows no longer prove the current weapon is reachable on the same dates. Its one-hour
+build and travel speed are unchanged; only the price moved.
 
 **The simulator cannot speak to any of this.** It has never built a Death Star on any seed:
 its bots reach one through `GRAVITIC_CHARGES`, which needs a GRINDER to raid a shielded
@@ -523,7 +521,7 @@ orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 3200, 6000, 11000]   weights [—, .40, .27, .18, .10, .05]
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
-isotope       one seeded rock per 9 after hour 35, plus a bonus seam every 10 lanes
+isotope       one seeded rock per 5 after hour 35, plus a bonus seam every 10 lanes = 11/50 (22%)
               10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
 shower        5 starts/full Türkiye day · 60 min · ×5 new arrivals · 120 min post-end cooldown
 quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a blackout
@@ -550,15 +548,15 @@ find, not a speed comparison.
 
 ```
 spawn         0.02 per seat per hour — 6/h at 300 seats, ~18 alive at any moment
-orbit         radius 400–2000, closed 3D orbit, constant speed 88.3–166.7 units/min
-              = a Cataclysm's 106 and a Dart's 200 ÷ TRAVEL.distanceFactor (D155)
-period        15 min at the inner edge to ~142 min at the outer, derived from the two
+orbit         radius 400–2000, closed 3D orbit, constant speed 94.54–126.40 units/min
+              = 75% of Cataclysm and Dart speed ÷ TRAVEL.distanceFactor (D155/D203)
+period        ~19.9 min at the inner edge to ~132.9 min at the outer, derived from the two
 life          2–4 hours, then gone for good
 level weights [—, .45, .30, .18, .07]                       levels 1–4
 roster        2–5 ships, one guaranteed COMBAT hull AT the level, rest free below it
 damage        ×0.50 / 0.65 / 0.75 / 0.85 on ATTACK only — never on hp
-capture       0.50 / 0.35 / 0.25 / 0.15, DECISIVE only, weighted by roster count
-hoard         fleetValue(roster) × 1.40, split 55% Alloy / 30% Crystal / 15% Deuterium
+capture       0.75 / 0.50 / 0.35 / 0.30, DECISIVE only, weighted by roster count
+hoard         fleetValue(roster) × 1.82, split 55% Alloy / 30% Crystal / 1.125% Deuterium
 window        PIRATE.bearingMs = TRAFFIC.refreshMs × 2 = 10s — DERIVED, never typed
 ```
 
@@ -608,12 +606,13 @@ Measured over the generated lane, 288 rendezvous from four origins:
 | Prospector → rock (D74, reference) | 0.232 laps · 83° | 13% | < 1 lap |
 | Dart → pirate, old 200–420 band | 0.340 laps · 122° | 74% | — |
 | Dart → pirate, D155 band | **0.138 laps · 50°** | 12% | 0.455 laps |
+| Dart → pirate, D203 ×0.75 band | **0.121 laps · 43°** | 0% | 0.391 laps |
 
 The ceiling asserted in `pirates.test.ts` is the rock lane's own — median under a quarter
 revolution, worst case under one — so a future change to either the lane or the hull ladder
-re-measures the geometry instead of assuming it. A heavy line is deliberately left outside
-it: the floor IS a Cataclysm's pace, so anything slower than a Cataclysm buys guns at the
-cost of the chase, and hunting pirates is what the Skirmisher class is for.
+re-measures the geometry instead of assuming it. D203 slows both pirate endpoints by the
+same 25%; every Skirmisher still outruns the full band, and a Citadel now also outruns its
+slow end.
 
 **"Profitable" is an equation, and it is measured rather than asserted.** `hoardValueMult` is
 swept so this is positive for a fleet composed for the target and negative for one that is
@@ -631,10 +630,10 @@ Average net per raid, from the same tool:
 
 | Composition | L1 | L2 | L3 | L4 |
 | ----------- | -- | -- | -- | -- |
-| sized for the target | 2,353 | 4,788 | 7,874 | 7,294 |
-| sized, but no hold | 1,532 | 4,183 | 7,012 | 6,606 |
-| sized, but no guns | −1,150 | −3,871 | −10,724 | −24,616 |
-| fixed 40 Darts + 2 Couriers | 2,431 | 2,402 | −2,237 | −8,422 |
+| sized for the target | 2,208 | 4,904 | 9,029 | 16,298 |
+| sized, but no hold | 1,560 | 4,471 | 8,286 | 15,556 |
+| sized, but no guns | −644 | −2,493 | −6,428 | −20,642 |
+| fixed 40 Darts + 2 Couriers | 2,192 | 4,252 | 3,716 | −9,398 |
 
 Re-measured after the owner's pirate tunes: `captureChance` raised to 0.75/0.5/0.35/0.3, and
 `hoardShare.deuterium` cut twice — to 0.075, then to **0.008**, which is a ceiling rather than
@@ -662,19 +661,25 @@ less moot now — a two-leg pirate raid burns single-digit to low-double-digit d
 median level-4 hoard of 240 — but that is a statement about how cheap fuel is at this fleet
 size, not a licence to grow the share again without re-measuring both.
 
-The two tunes pull opposite ways — a much smaller hoard against a hull that lands far more
-often — and the net lands slightly flatter and slightly lower than before: L1 gives back about
-3%, L4 about 18%. The lane still pays a fleet built for the target and still punishes one that
-is not, which is the only property this table exists to hold.
+**D204 raises every pirate resource by 30%.** The shared multiplier moves 1.4 → **1.82**;
+the 0.55/0.30/0.01125 shares do not move. On the current hull roster, sixty thousand seeds per
+level put the sampled Deuterium maxima at 70 · 165 · 390 · 986, preserving the level ladder.
+These are raw hoards: battle grade and surviving cargo can still bind the delivered reward.
+The monthly pirate allowance moves from 5% to 6.5% with the same factor, but admission is still
+priced on the former ×1.4 hoard. That keeps existing deterministic pirate membership/indexes
+stable while leaving enough safety-ceiling room for the larger hoards.
 
-Note the shares now sum to 0.858, so a hoard is worth `hoardValueMult × 0.858` of the pirate's
-hulls. `hoardValueMult` itself is untouched at 1.4 so the swept number keeps meaning what
-`pirate-study.ts` and this table say it means.
+D204 changes the reward altitude but not the composition test: the measured lane still pays a
+fleet built for every target level and still punishes an all-cargo fleet at every level. That sign
+gap is the property this table exists to hold.
 
-Two things that table has to keep saying. Bringing no hold costs roughly a third of the
-prize — cargo room is bought with combat power, so how much to bring is the raid decision
-from `game-design.md` moved onto a target that cannot shoot first. And a fixed fleet stops
-paying somewhere between L2 and L3, which is what makes the level badge a number a commander
+The shares sum to 0.86125, so a raw hoard is worth `1.82 × 0.86125 ≈ 1.5675` times the pirate
+hulls' resource value before rounding. `pirate-study.ts` reads that shipped multiplier directly.
+
+Two things that table has to keep saying. Bringing no hold leaves part of the prize behind —
+cargo room is bought with combat power, so how much to bring is the raid decision from
+`game-design.md` moved onto a target that cannot shoot first. And the fixed fleet now stops
+paying somewhere between L3 and L4, which is what makes the level badge a number a commander
 prices themselves against rather than decoration.
 
 **Dials that may be turned, and dials that may not.** This is a brand-new resource tap sitting
@@ -697,10 +702,8 @@ speed    47 ÷ TRAVEL.distanceFactor (1.2) = 39.17 units/min — half the Atlas'
          could repeat)
 orbit    radius 600–1,600 — narrower than the rocks'/pirates' 400–2,000, because a public
          position has no sensor opportunity left to equalise, only distance fairness
-window   3 appearances per Türkiye day, 180 minutes (3h) each; the cooldown IS the window
-         (`repeatCooldownMinutes = durationMinutes = 180`), so two merchants never overlap
-season   `MULTI_WORLD.tradeShipRulesetVersion = 5` — new seasons only; `galaxyEventsRulesetVersion`
-         stays 4 so the Asteroid Shower keeps seeding on every already-live season
+window   fixed 01–03, 07–09, 15–17 and 21–23 Türkiye windows in ruleset 8; 120 minutes each
+season   `MULTI_WORLD.rulesetVersion = 8`; rulesets 4–7 keep their frozen random calendars
 dock     10s alongside before the return leg — the same shape as a raid's engagement window
 ```
 
@@ -722,8 +725,9 @@ the finding that reopened the rate, not the 3:1 ratio itself.
 **The worst-case round trip sits inside the window, with room to spare.** A rim world at 2,000 and
 a merchant at 1,600 on the opposite side of the sphere are 3,600 units apart. The Atlas — the
 slowest cargo hull, so this is also the slowest anyone can be caught making this trip — covers
-that in 46 minutes, so the full round trip is 92 minutes against a 180-minute window, leaving the
-10-second dock and a late launch fully paid for. `trade.test.ts` asserts this bound.
+that in 46 minutes, so the full round trip is 92 minutes against a 120-minute window, leaving the
+10-second dock paid for. A sufficiently late launch is still honestly refused. `trade.test.ts`
+asserts this bound.
 
 **Dials that may be turned, and dials that may not.** **Turnable:** the daily appearance count,
 the window length, the orbit band, the rate itself if the production-parity measurement moves,
@@ -732,9 +736,12 @@ owner has ruled out for now rather than forever. **Not turnable, for this or for
 health/acceptance bands, loot grade multipliers, hull prices, and the Hangar constants. Widening
 one of those to make the rate land is the move `CLAUDE.md` forbids outright.
 
-**The simulator does not model this lane**, for the same reason it does not model the pirate
+**The simulator does not model this lane or the Intergalactic Convoy.** Both public-event incomes
+are explicitly excluded from ARR, VFR, progression and season calibration; feature correctness
+tests cover caps, cargo, fuel, probability and exactly-once behavior without adding income to the
+model. The merchant remains excluded for the same reason the simulator does not model the pirate
 lane's real-time pacing: bots still run on async-era `loginsPerDay`, and a trade ship's whole
-appeal is timing one convoy against a three-hour window inside a single login. Reading `VFR`
+appeal is timing one convoy against a two-hour window inside a single login. Reading `VFR`
 against this lane, or tuning the rate to move the standing D134 blocker, would be pricing a
 benefit the model cannot see — exactly what this file's own "simulator never prices benefits it
 does not model" rule forbids.

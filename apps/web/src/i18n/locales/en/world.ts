@@ -23,6 +23,8 @@ export const galaxy = {
   wrecks_other: " · {{count}} wrecks",
   asteroidShower: 'Asteroid shower',
   asteroidShowerStatus: 'Spawn ×{{multiplier}} · {{remaining}} left',
+  intergalacticConvoy: 'Intergalactic Convoy',
+  intergalacticConvoyStatus: 'Crossing the galaxy · {{remaining}} left',
   openIntel: "Intel",
   /**
    * THE PLANET GLYPH IS A CAMERA MOVE NOW, AND THE SHEET HAS ITS OWN MARK. D163.

@@ -9,6 +9,7 @@ import {
   radarRevealsSize,
   radarSensesIntent,
   engagementEndsAt,
+  isConvoyEngaging,
   massClass,
   orbitStandoff,
   piratePosition,
@@ -29,6 +30,7 @@ import {
 import type { Db, Queryable } from '../db/client.js';
 import {
   buildings,
+  intergalacticConvoyRuns,
   miningRuns,
   missions,
   pirateRaids,
@@ -504,6 +506,8 @@ export interface TrafficSnapshot {
    * is on a return leg. One source, because there is only one truth.
    */
   tradeRunRows: { run: typeof tradeRuns.$inferSelect }[];
+  /** Player fleets committed to the public intergalactic convoy. */
+  convoyRunRows: { run: typeof intergalacticConvoyRuns.$inferSelect }[];
   /**
    * WHAT IS ACTUALLY ABOARD EACH RAID, keyed by raid id. D150.
    *
@@ -547,7 +551,7 @@ export async function loadTrafficSnapshot(
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
   const impactCutoff = new Date(now.getTime() - DEATH_STAR.impactSeconds * 1000);
-  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, interceptionRows, impactRows] =
+  const [missionRows, miningRows, pirateRaidRows, tradeRunRows, convoyRunRows, interceptionRows, impactRows] =
     await Promise.all([
     db
       .select({ mission: missions })
@@ -576,6 +580,13 @@ export async function loadTrafficSnapshot(
       .from(tradeRuns)
       .where(and(eq(tradeRuns.seasonId, seasonId), ne(tradeRuns.status, 'done'))),
     db
+      .select({ run: intergalacticConvoyRuns })
+      .from(intergalacticConvoyRuns)
+      .where(and(
+        eq(intergalacticConvoyRuns.seasonId, seasonId),
+        ne(intergalacticConvoyRuns.status, 'done'),
+      )),
+    db
       .select({ interception: strategicInterceptions })
       .from(strategicInterceptions)
       .where(and(
@@ -600,6 +611,7 @@ export async function loadTrafficSnapshot(
   for (const { run } of miningRows) ids.add(run.planetId);
   for (const { raid } of pirateRaidRows) ids.add(raid.planetId);
   for (const { run } of tradeRunRows) ids.add(run.planetId);
+  for (const { run } of convoyRunRows) ids.add(run.planetId);
 
   // The live roster of every raid still in the air. See `raidFleets` above for why
   // the row's own `fleet` column is the wrong answer on a return leg.
@@ -625,6 +637,7 @@ export async function loadTrafficSnapshot(
       miningRows,
       pirateRaidRows,
       tradeRunRows,
+      convoyRunRows,
       raidFleets,
       interceptionRows,
       landedDeathStarMissionIds,
@@ -664,6 +677,7 @@ export async function loadTrafficSnapshot(
     miningRows,
     pirateRaidRows,
     tradeRunRows,
+    convoyRunRows,
     raidFleets,
     interceptionRows,
     landedDeathStarMissionIds,
@@ -923,6 +937,7 @@ export function projectGalaxyTraffic(
     miningRows,
     pirateRaidRows,
     tradeRunRows,
+    convoyRunRows,
     raidFleets,
     positions,
     coreLevels,
@@ -1847,6 +1862,163 @@ export function projectGalaxyTraffic(
       continue;
     }
 
+    out.push({
+      id: run.id,
+      kind: 'fleet',
+      ...slice,
+      mass: massClass(run.fleet),
+      fleet: run.fleet,
+    });
+  }
+
+  /**
+   * A STRIKE WING IS ORDINARY TRAFFIC; ITS FIVE-SECOND IMPACT IS PUBLIC. D201.
+   *
+   * The wing follows the same NONE/CONTACT/IDENTIFIED disclosure as every other
+   * player fleet. During the authored engagement only the impact point survives
+   * at NONE: no hold position and therefore no bearing back to the launch pad.
+   * Rewards and cargo never enter this projection.
+   */
+  for (const { run } of convoyRunRows) {
+    const mine = ownPlayerId === null
+      ? ownedPlanets.has(run.planetId)
+      : run.ownerPlayerId === ownPlayerId;
+    if (mine) continue;
+
+    const home = { x: run.returnX, y: run.returnY, z: run.returnZ };
+    const intercept = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    const engagementEnd = {
+      x: run.engagementEndX,
+      y: run.engagementEndY,
+      z: run.engagementEndZ,
+    };
+    // The route is already frozen at launch, so rendering follows its timestamps
+    // even if the arrival worker is late changing the persistence state.
+    const returning = run.status === 'returning'
+      || now.getTime() >= run.engagementEndsAt.getTime();
+    const homeCore = coreLevels.get(run.planetId);
+    const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
+
+    if (run.status === 'outbound'
+      && isConvoyEngaging(run.arriveAt.getTime(), now.getTime())) {
+      const progress = Math.max(0, Math.min(1,
+        (now.getTime() - run.arriveAt.getTime())
+          / (run.engagementEndsAt.getTime() - run.arriveAt.getTime()),
+      ));
+      const target = {
+        x: intercept.x + (engagementEnd.x - intercept.x) * progress,
+        y: intercept.y + (engagementEnd.y - intercept.y) * progress,
+        z: intercept.z + (engagementEnd.z - intercept.z) * progress,
+      };
+      const hold = visualLeg(home, intercept, 0, ENGAGEMENT_STANDOFF).to;
+      const holdEnd = {
+        x: hold.x + engagementEnd.x - intercept.x,
+        y: hold.y + engagementEnd.y - intercept.y,
+        z: hold.z + engagementEnd.z - intercept.z,
+      };
+      const currentHold = {
+        x: hold.x + (holdEnd.x - hold.x) * progress,
+        y: hold.y + (holdEnd.y - hold.y) * progress,
+        z: hold.z + (holdEnd.z - hold.z) * progress,
+      };
+      const zone = zoneAt(currentHold);
+      const moment = {
+        engagement: {
+          arriveAt: run.arriveAt,
+          endsAt: run.engagementEndsAt,
+          target: intercept,
+          targetTo: engagementEnd,
+        },
+      } as const;
+      if (zone === 'NONE') {
+        out.push({
+          id: run.id,
+          kind: 'unknown',
+          from: target,
+          to: target,
+          startAt: run.arriveAt,
+          endAt: run.engagementEndsAt,
+          landing: true,
+          effectOnly: true,
+          ...moment,
+        });
+        continue;
+      }
+      if (zone === 'CONTACT') {
+        const reveal = radarReveal(currentHold);
+        out.push({
+          id: run.id,
+          kind: 'unknown',
+          from: currentHold,
+          to: holdEnd,
+          startAt: now,
+          endAt: run.engagementEndsAt,
+          /*
+            THE FAR POINT IS WHERE THE PASS ENDS, NOT A HEADING. D201.
+
+            `contactPosition` coasts a window past its end so a craft whose next
+            read is late keeps moving — right for a bearing, wrong here: the
+            far point is exactly where this wing stops being alongside, and
+            extrapolating it draws the attacker overtaking the convoy it is
+            firing at. `landing` is the payload saying which kind this is.
+          */
+          landing: true,
+          ...(reveal.size ? { mass: massClass(run.fleet) } : {}),
+          ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+          ...moment,
+        });
+        continue;
+      }
+      out.push({
+        id: run.id,
+        kind: 'fleet',
+        from: currentHold,
+        to: holdEnd,
+        startAt: now,
+        endAt: run.engagementEndsAt,
+        landing: true,
+        mass: massClass(run.fleet),
+        fleet: run.fleet,
+        ...moment,
+      });
+      continue;
+    }
+
+    /*
+      THE TWO LEGS MEET THE PASS WHERE THE PASS ACTUALLY HAPPENS. D201 review.
+
+      The five-second hold is drawn one `ENGAGEMENT_STANDOFF` short of the
+      formation centre, on the approach line — so a leg that ran all the way to the
+      raw centre left the craft to jump backwards by that gap the instant it began
+      firing, and forwards again when it stopped. The convoy is ten world units
+      long and the gap is 2.2 of them, so it read as a stutter rather than as an
+      arrival. Both ends take the same clearance the hold does, which is also what
+      the owner's own client reads (`legStandoff`).
+    */
+    const leg = returning
+      ? visualLeg(engagementEnd, home, ENGAGEMENT_STANDOFF, surface)
+      : visualLeg(home, intercept, surface, ENGAGEMENT_STANDOFF);
+    const slice = windowOf(
+      leg.from,
+      leg.to,
+      returning ? run.engagementEndsAt : run.departAt,
+      returning ? run.homeAt : run.arriveAt,
+      now,
+    );
+    if (!slice) continue;
+    const zone = zoneAt(slice.from);
+    if (zone === 'NONE') continue;
+    if (zone === 'CONTACT') {
+      const reveal = radarReveal(slice.from);
+      out.push({
+        id: run.id,
+        kind: 'unknown',
+        ...slice,
+        ...(reveal.size ? { mass: massClass(run.fleet) } : {}),
+        ...(reveal.kind ? { silhouette: 'fleet' } : {}),
+      });
+      continue;
+    }
     out.push({
       id: run.id,
       kind: 'fleet',

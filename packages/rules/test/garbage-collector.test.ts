@@ -7,6 +7,7 @@ import {
   HULLS,
   MOBILE_HULLS,
   NON_COMBATANT_HULLS,
+  PIRATE,
   SALVAGE,
   TRANSFER_CARGO_HULLS,
   combatValue,
@@ -281,13 +282,26 @@ describe('the pirate lane is untouched by the collector', () => {
     }
   });
 
-  it('deals the same season field it dealt before', () => {
+  it('keeps the same season field membership while D204 raises its hoards', () => {
     const field = generatePirateSchedule(mulberry32(7), 60 * 24 * 3);
     expect(field).toHaveLength(46);
+    const atPreviousReward = (roster: Fleet): Resources => {
+      const worth = fleetValue(roster) * PIRATE.hoardAdmissionValueMult;
+      return {
+        alloy: Math.floor(worth * PIRATE.hoardShare.alloy),
+        crystal: Math.floor(worth * PIRATE.hoardShare.crystal),
+        deuterium: Math.floor(worth * PIRATE.hoardShare.deuterium),
+      };
+    };
+    const legacyDigest = createHash('sha256')
+      .update(JSON.stringify(field.map((p) => [p.level, p.roster, atPreviousReward(p.roster)])))
+      .digest('hex');
+    expect(legacyDigest).toBe('77367da58012298942c177950c78b1a7b9bf4b352187caa38cb3ca93a3f381f2');
+
     const digest = createHash('sha256')
       .update(JSON.stringify(field.map((p) => [p.level, p.roster, p.hoard])))
       .digest('hex');
-    expect(digest).toBe('77367da58012298942c177950c78b1a7b9bf4b352187caa38cb3ca93a3f381f2');
+    expect(digest).toBe('86e1e49a1f7569dd490b7b6229f8e85c52a2afa35fa33a803c0e72e4746ae7f8');
   });
 
   it('never puts a collector in a pirate crew', () => {

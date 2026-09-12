@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * THE ECONOMY IS MEASURED WITHOUT THE PUBLIC EVENTS. Owner instruction, 2026-09-12:
+ * THE ECONOMY IS MEASURED WITHOUT THE PUBLIC EVENTS. Owner instructions, 2026-09-12:
  * *"asteroid shower, tradeShip eventleri açılacak! sadece ekonomi testlerine dahil
  * edilmeyecek. Bu ARR falan hesaplamalarına!"*
  *
@@ -15,6 +15,10 @@ import { describe, expect, it } from 'vitest';
  * field and never deals a calendar, a shower lane or a merchant. This holds that
  * construction, so the day somebody wires an event into a season it fails here
  * rather than quietly moving every band in `docs/balance.md`.
+ *
+ * Intergalactic convoy is deliberately in the same exempt class: its resource
+ * and hull rewards must never contribute to ARR, VFR, progression, or season
+ * economy simulations.
  */
 const SOURCE = fileURLToPath(new URL('../src', import.meta.url));
 const EVENT_SURFACE = [
@@ -22,10 +26,14 @@ const EVENT_SURFACE = [
   'withAsteroidShowerLanes',
   'ASTEROID_SHOWER',
   'TRADE_SHIP',
+  'INTERGALACTIC_CONVOY',
   'tradeShipSpec',
   'quoteTrade',
+  'quoteIntergalacticConvoyReward',
+  'rollIntergalacticConvoyAward',
   'tradeShip',
   'asteroidShower',
+  'intergalacticConvoy',
 ] as const;
 
 describe('the simulator’s economy', () => {

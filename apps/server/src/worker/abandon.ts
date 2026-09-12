@@ -18,6 +18,7 @@ import { abandonBuildOrder } from '../services/buildQueue.js';
 import { abandonResearchOrder } from '../services/research.js';
 import { abandonDeathStarBuild } from '../services/strategic.js';
 import { abandonTradeRun } from '../services/trade.js';
+import { abandonIntergalacticConvoyRun } from '../services/intergalacticConvoyRaid.js';
 import { allocateClanLoot } from '../services/clanLoot.js';
 import { capitalPlanet } from '../services/ownership.js';
 
@@ -249,6 +250,10 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
       return (await abandonTradeRun(db, event.refId, 'outbound', clock)) !== null;
     case 'trade_return':
       return (await abandonTradeRun(db, event.refId, 'returning', clock)) !== null;
+    case 'convoy_arrival':
+      return (await abandonIntergalacticConvoyRun(db, event.refId, 'outbound', clock)) !== null;
+    case 'convoy_return':
+      return (await abandonIntergalacticConvoyRun(db, event.refId, 'returning', clock)) !== null;
     case 'build_complete':
       // Migrated legacy research rows keep their old event kind because PostgreSQL
       // cannot use a newly-added enum value in the same migration transaction.
@@ -313,6 +318,7 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
     missions: strandedMissions,
     runs: strandedRuns,
     trades: strandedTrades,
+    convoys: strandedConvoys,
     builds: strandedBuilds,
     research: strandedResearch,
     deathStars: strandedDeathStars,
@@ -331,6 +337,9 @@ export async function sweepStranded(db: Db, clock: Clock): Promise<number> {
   */
   for (const { id, leg } of strandedTrades) {
     if (await abandonTradeRun(db, id, leg, clock)) released += 1;
+  }
+  for (const { id, leg } of strandedConvoys) {
+    if (await abandonIntergalacticConvoyRun(db, id, leg, clock)) released += 1;
   }
   for (const id of strandedBuilds) if (await abandonBuildOrder(db, id, clock)) released += 1;
   for (const id of strandedResearch) {
@@ -364,6 +373,7 @@ async function strandedState(
   missions: string[];
   runs: string[];
   trades: { id: string; leg: 'outbound' | 'returning' }[];
+  convoys: { id: string; leg: 'outbound' | 'returning' }[];
   builds: string[];
   research: string[];
   deathStars: string[];
@@ -407,6 +417,19 @@ async function strandedState(
           and e.status in ('pending', 'processing'))
   `);
 
+  const convoyRows = await db.execute<{ id: string; status: 'outbound' | 'returning' }>(sql`
+    select c.id, c.status from intergalactic_convoy_runs c
+    where c.status in ('outbound', 'returning')
+      and case when c.status = 'outbound' then c.engagement_ends_at else c.home_at end
+          < ${cutoff}::timestamptz
+      and not exists (
+        select 1 from scheduled_events e
+        where e.ref_id = c.id
+          and ((c.status = 'outbound' and e.kind = 'convoy_arrival')
+            or (c.status = 'returning' and e.kind = 'convoy_return'))
+          and e.status in ('pending', 'processing'))
+  `);
+
   const buildRows = await db.execute<{ id: string }>(sql`
     select b.id from build_orders b
     where b.status = 'BUILDING'
@@ -441,6 +464,7 @@ async function strandedState(
     missions: missionRows.map((row) => row.id),
     runs: runRows.map((row) => row.id),
     trades: tradeRows.map((row) => ({ id: row.id, leg: row.status })),
+    convoys: convoyRows.map((row) => ({ id: row.id, leg: row.status })),
     builds: buildRows.map((row) => row.id),
     research: researchRows.map((row) => row.id),
     deathStars: deathStarRows.map((row) => row.id),
@@ -454,8 +478,8 @@ async function strandedState(
  * able to report the number on an API-only process that runs no worker at all.
  */
 export async function strandedFlightCount(db: Db, now: Date): Promise<number> {
-  const { missions: m, runs: r, trades: t } = await strandedState(db, now);
-  return m.length + r.length + t.length;
+  const { missions: m, runs: r, trades: t, convoys: c } = await strandedState(db, now);
+  return m.length + r.length + t.length + c.length;
 }
 
 /** Ordinary and strategic builds whose completion event has disappeared. */

@@ -1,5 +1,18 @@
 import { expect, it } from 'vitest';
-import { designBattleSample, designValidation } from './economy-design-validation.js';
+import {
+  ECONOMY_VALIDATION_EXCLUSIONS,
+  designBattleSample,
+  designValidation,
+} from './economy-design-validation.js';
+
+it('declares the Intergalactic Convoy outside economy calibration', () => {
+  expect(ECONOMY_VALIDATION_EXCLUSIONS).toEqual([
+    'trade-ship',
+    'asteroid-shower',
+    'intergalactic-convoy',
+    'colony-transfer',
+  ]);
+});
 
 it('measures prepared counter victories against real opposition without counting walkovers', () => {
   const r = designBattleSample({ VIPER: 12 }, { SENTINEL: 12 });
@@ -18,5 +31,10 @@ it('keeps the bounded validation reproducible with explicit inputs and separate 
   expect(r.isolated.every(x => x.summary.maxResourceError < 1e-7 && x.summary.maxHullError === 0)).toBe(true);
   expect(r.isolated.filter(x => x.profile === 'average' && x.stress === 'baseline').every(x => x.pacingPassed)).toBe(true);
   expect(r.combat.every(x => x.result.ordinaryTargetPassed)).toBe(true);
-  expect(r.excluded).toEqual(['trade-ship', 'asteroid-shower', 'colony-transfer']);
+  expect(r.excluded).toEqual([
+    'trade-ship',
+    'asteroid-shower',
+    'intergalactic-convoy',
+    'colony-transfer',
+  ]);
 });

@@ -94,13 +94,7 @@ export function privateAsteroidFieldWithEvents(
     occurrence.startsAtMinute,
     occurrence.endsAtMinute,
     occurrence.definitionVersion,
-    occurrence.kind === 'ASTEROID_SHOWER'
-      ? occurrence.effect.asteroidSpawnMultiplier
-      : [
-          occurrence.effect.rate.alloy,
-          occurrence.effect.rate.crystal,
-          occurrence.effect.rate.deuterium,
-        ].join('/'),
+    JSON.stringify(occurrence.effect),
   ].join(':')).join('|');
   const cacheKey = `${key}:${signature}`;
   const cached = composedFieldCache.get(cacheKey);

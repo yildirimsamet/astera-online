@@ -76,6 +76,7 @@ void [
 ];
 
 const fleet = z.record(hullId, z.number());
+const techLevels = z.record(researchProjectId, z.number().int().nonnegative());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
 const band = z.object({ low: z.number(), high: z.number() });
@@ -368,6 +369,28 @@ const activeGalaxyEventSchema = z.discriminatedUnion('kind', [
     expiresAtMinute: z.number(),
     orbit: galaxyOrbitSchema,
   }),
+  z.object({
+    id: z.string().uuid(),
+    kind: z.literal('INTERGALACTIC_CONVOY'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    appearsAtMinute: z.number(),
+    expiresAtMinute: z.number(),
+    route: z.object({
+      from: vec3,
+      to: vec3,
+      velocity: vec3,
+      speed: z.number().positive(),
+    }),
+    visual: z.object({ formationVersion: z.literal(1) }),
+    rewardPolicy: z.object({
+      resourceCapHours: z.number().positive(),
+      fullRewardForceRatio: z.number().positive(),
+      shipDropFullFirepower: z.number().positive(),
+      shipDropChanceAtFullQuality: z.number().min(0).max(1),
+      maxAwardedShips: z.number().int().positive(),
+    }),
+  }),
 ]);
 
 const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
@@ -574,6 +597,12 @@ export const planetSchema = z.object({
   fleetAway: fleet,
   /** Craft in the air, and how many bays the Command Core has opened. D28. */
   flight: z.object({ used: z.number(), total: z.number() }),
+  convoyLaunchLocked: z.boolean().optional(),
+  /**
+   * This world has already spent its one strike at the convoy that is up. D124.
+   * Optional only for a rolling deploy against an older server.
+   */
+  convoyOccurrenceSpent: z.boolean().optional(),
   /**
    * Ownership ceilings, including craft away from the world. T4/T4b.
    * Optional only for a rolling deploy against an older server.
@@ -1244,6 +1273,13 @@ const galaxyLifecyclePayloadSchema = z.discriminatedUnion('eventKind', [
     endsAt: z.string(),
     rate: tradeRateSchema,
   }),
+  z.object({
+    eventKind: z.literal('INTERGALACTIC_CONVOY'),
+    startsAt: z.string(),
+    endsAt: z.string(),
+    resourceCapHours: z.number().positive(),
+    shipDropChanceAtFullQuality: z.number().min(0).max(1),
+  }),
 ]);
 
 /** Every lifecycle kind this build can render. See the drop rule below. */
@@ -1506,8 +1542,10 @@ const pendingThread = z.object({
    */
   kind: z.enum([
     'fleet', 'probe', 'incoming', 'transfer', 'settlement', 'death_star', 'pirate', 'trade',
+    'intergalactic_convoy',
   ]),
   targetName: z.string(),
+  originPlanetId: z.string().uuid().optional(),
   /**
    * WHICH PIRATE A `pirate` THREAD IS AT. D150.
    *
@@ -1522,6 +1560,9 @@ const pendingThread = z.object({
   minutesRemaining: z.number(),
   /** The exact landing instant, on your own craft and on an inbound one alike. */
   arriveAt: z.coerce.date(),
+  /** Exact phase boundaries on an intergalactic convoy thread. */
+  engagementEndsAt: z.coerce.date().optional(),
+  homeAt: z.coerce.date().optional(),
   leg: z.enum(['outbound', 'return']).optional(),
   /**
    * What is in it — your own craft, or an inbound attack at RADAR L5. D123.
@@ -1568,6 +1609,15 @@ const pendingThread = z.object({
    * there is no field here for a modified client to read.
    */
   path: z
+    .object({
+      from: vec3,
+      to: vec3,
+      departAt: z.coerce.date(),
+      arriveAt: z.coerce.date(),
+    })
+    .optional(),
+  /** The convoy continues along its diameter during the five-second volley. */
+  engagementPath: z
     .object({
       from: vec3,
       to: vec3,
@@ -1632,7 +1682,7 @@ export const returnSchema = z.object({
   awayMinutes: z.number(),
   entries: z.array(
     z.object({
-      kind: z.enum(['fleet_returned', 'raided', 'raid_result', 'scan_detected', 'accrued', 'unlock']),
+      kind: z.enum(['fleet_returned', 'convoy_result', 'raided', 'raid_result', 'scan_detected', 'accrued', 'unlock']),
       title: z.string(),
       detail: z.string(),
       at: z.coerce.date(),
@@ -2157,6 +2207,31 @@ export const tradeLaunchSchema = z.object({
   ...withPlanet,
 });
 
+/** One immutable strike quote accepted and frozen by the convoy launch route. */
+export const intergalacticConvoyLaunchSchema = z.object({
+  runId: z.string(),
+  occurrenceId: z.string().uuid(),
+  fleet,
+  tech: techLevels,
+  departAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+  engagementEndsAt: z.coerce.date(),
+  homeAt: z.coerce.date(),
+  flightSeconds: z.number().finite().nonnegative(),
+  intercept: vec3,
+  engagementEnd: vec3,
+  returnPoint: vec3,
+  fuel: z.number().int().nonnegative(),
+  productionCap: resources,
+  resourceQualityFactor: z.number().min(0).max(1),
+  shipQualityFactor: z.number().min(0).max(1),
+  cargo: z.number().nonnegative(),
+  quotedResourceReward: resources,
+  shipDropChance: z.number().min(0).max(1),
+  pending: z.array(pendingThread),
+  ...withPlanet,
+}).strict();
+
 
 /**
  * Other players' fleets, deliberately unattributable.
@@ -2294,7 +2369,13 @@ export const trafficSchema = z.object({
        * it; otherwise the contact's ordinary Radar/Telescope fields describe it.
        */
       engagement: z
-        .object({ arriveAt: z.coerce.date(), endsAt: z.coerce.date(), target: vec })
+        .object({
+          arriveAt: z.coerce.date(),
+          endsAt: z.coerce.date(),
+          target: vec,
+          /** Moving public target; absent for stationary worlds and pirate holds. */
+          targetTo: vec.optional(),
+        })
         .optional(),
       /**
        * A STRIKE LANDED HERE, AT THIS INSTANT. D106.
@@ -2542,6 +2623,7 @@ export type PendingThread = z.infer<typeof pendingThread>;
 export type PiratesView = z.infer<typeof piratesSchema>;
 export type PirateContact = PiratesView['pirates'][number];
 export type PirateRaidResult = z.infer<typeof pirateRaidSchema>;
+export type IntergalacticConvoyLaunchResult = z.infer<typeof intergalacticConvoyLaunchSchema>;
 export type Unlockable = z.infer<typeof unlockable>;
 export type LaunchResult = z.infer<typeof launchSchema>;
 export type MiningLaunchResult = z.infer<typeof miningLaunchSchema>;

@@ -1,7 +1,9 @@
 import {
   HULLS,
+  INTERGALACTIC_CONVOY,
   MOBILE_HULLS,
   TRADE,
+  TRAVEL,
   distance,
   exposureMinutes,
   fleetCargo,
@@ -10,7 +12,9 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   interceptOrbit,
+  interceptIntergalacticConvoy,
   missionFuel,
+  missionFuelForDistances,
   transferCargoCapacity,
   travelMinutes,
   type Fleet,
@@ -263,6 +267,64 @@ export function planTradeRoute(
     fuel: missionFuel(sending, reach, 2),
     homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
     rendezvous: hit.at,
+  };
+}
+
+export interface IntergalacticConvoyRoute extends Route {
+  engagementEndsAtMinute: number;
+  engagementEnd: Vec3;
+  returnMinutes: number;
+  homeAtMinute: number;
+}
+
+/** Exact client preview for the same linear interception the server commits. */
+export function planIntergalacticConvoyRoute(
+  origin: Vec3,
+  convoy: {
+    appearsAtMinute: number;
+    expiresAtMinute: number;
+    route: { from: Vec3; to: Vec3; velocity: Vec3 };
+  },
+  nowMinutes: number,
+  sending: Fleet,
+  homeFleet: Fleet,
+  ground: Fleet,
+  mods: FlightModifiers,
+): IntergalacticConvoyRoute | null {
+  const pace = fleetPace(sending, mods);
+  if (!(pace > 0)) return null;
+  const hit = interceptIntergalacticConvoy({
+    origin,
+    spec: {
+      appearsAt: convoy.appearsAtMinute,
+      expiresAt: convoy.expiresAtMinute,
+      from: convoy.route.from,
+      to: convoy.route.to,
+      velocity: convoy.route.velocity,
+    },
+    departAtMinute: nowMinutes,
+    fleetUnitsPerMinute: pace / TRAVEL.distanceFactor,
+  });
+  if (!hit) return null;
+
+  const outboundDistance = distance(origin, hit.intercept);
+  const returnDistance = distance(hit.engagementEnd, origin);
+  const oneWayMinutes = hit.arrivesAtMinute - nowMinutes;
+  const returnMinutes = fleetTravelExact(returnDistance, sending, mods);
+  return {
+    distance: outboundDistance,
+    oneWayMinutes,
+    exposureMinutes: oneWayMinutes
+      + INTERGALACTIC_CONVOY.engagementSeconds / 60
+      + returnMinutes,
+    cargo: fleetCargo(sending, mods.tech),
+    fuel: missionFuelForDistances(sending, [outboundDistance, returnDistance]),
+    homeDefenceAfter: homeDefenceAfter(homeFleet, ground, sending),
+    rendezvous: hit.intercept,
+    engagementEndsAtMinute: hit.engagementEndsAtMinute,
+    engagementEnd: hit.engagementEnd,
+    returnMinutes,
+    homeAtMinute: hit.engagementEndsAtMinute + returnMinutes,
   };
 }
 

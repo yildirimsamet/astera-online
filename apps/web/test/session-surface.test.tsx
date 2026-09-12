@@ -372,6 +372,25 @@ describe('notification copy', () => {
   });
 
   describe('craft coming home', () => {
+    it('distinguishes convoy spoils in transit from their final delivery', () => {
+      const runId = '00000000-0000-4000-8000-000000000001';
+      const reward = {
+        trip: 'intergalactic_convoy',
+        runId,
+        resourceReward: { alloy: 1_200, crystal: 300, deuterium: 40 },
+        awardedFleet: { DART: 2 },
+      };
+      expect(say('convoy_result', { ...reward, inTransit: true })).toBe(
+        'Convoy strike resolved · +1.2k alloy · +300 crystal · +40 Deuterium · prize: 2 Dart · returning now.',
+      );
+      expect(say('fleet_returned', {
+        ...reward,
+        destinationPlanetId: '00000000-0000-4000-8000-000000000002',
+      })).toBe(
+        'Convoy strike home · +1.2k alloy · +300 crystal · +40 Deuterium · prize: 2 Dart.',
+      );
+    });
+
     it('explains why a same-owner transfer had to turn around', () => {
       const capacityPayload = {
         trip: 'transfer_rerouted',

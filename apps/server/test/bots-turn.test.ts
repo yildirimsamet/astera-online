@@ -5,6 +5,7 @@ import { botProfiles, buildOrders, buildings, missions, planets, players, units 
 import { addBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import {
+  BOT_AUTONOMOUS_LANES,
   drawLane, openLanes, raidCandidates, raidingWing, runBotTurn, type BotSeat,
 } from '../src/services/bots/brain.js';
 import { BOTS, BOT_PERSONAS, type BotPersona } from '../src/services/bots/personas.js';
@@ -23,6 +24,12 @@ import { fuelUp, giveUnits, grant, seedWorld, setLevel, type Fixture } from './h
  */
 
 const silent = pino({ level: 'silent' });
+
+it('never gives bots a galaxy-event or intergalactic-convoy lane', () => {
+  expect(BOT_AUTONOMOUS_LANES).toEqual(['probe', 'mine', 'harvest', 'pirate', 'attack']);
+  expect(BOT_AUTONOMOUS_LANES).not.toContain('intergalactic_convoy');
+  expect(BOT_AUTONOMOUS_LANES).not.toContain('trade');
+});
 
 let f: Fixture;
 let seat: BotSeat;

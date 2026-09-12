@@ -144,15 +144,29 @@ describe('the first-day shield in the permanent HUD', () => {
     );
   };
 
-  it('shows that raids are blocked and how long the protection has left', () => {
+  /**
+   * THE GLYPH CARRIES THE NAME; THE COUNTDOWN IS THE FACT. Owner report.
+   *
+   * The chip used to write "Raid shield" beside a shield icon that already says
+   * it, on the row that also holds the works meter, its collect button and the
+   * store's own "full" warning — and when that warning appeared the controls ran
+   * into each other. What has to survive is the countdown and the sentence a
+   * screen reader gets, which is what this asserts.
+   */
+  it('shows how long the protection has left, and says why in full to a reader', () => {
     showStatus(new Date(Date.now() + 6 * 3_600_000));
-    expect(screen.getByText(/raid shield/i)).toBeInTheDocument();
     expect(screen.getByText(/5h 59m|6h 00m/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/cannot be raided/i)).toBeInTheDocument();
   });
 
+  /*
+    ASSERTED ON THE CHIP ITSELF, not on a word inside it: this used to look for
+    "Raid shield", so once that text was dropped the test passed whether or not the
+    badge was still on screen.
+  */
   it('takes the stale badge away once its timestamp has passed', () => {
     showStatus(new Date(Date.now() - 1));
-    expect(screen.queryByText(/raid shield/i)).toBeNull();
+    expect(screen.queryByLabelText(/cannot be raided/i)).toBeNull();
+    expect(document.querySelector('[data-newcomer-shield]')).toBeNull();
   });
 });

@@ -783,6 +783,7 @@ describe('the kinds of news the server can send', () => {
     expect([...notificationKind.enumValues].sort()).toEqual([
       'colony_captured',
       'colony_lost',
+      'convoy_result',
       'death_star_result',
       'fleet_returned',
       'galaxy_event_ended',

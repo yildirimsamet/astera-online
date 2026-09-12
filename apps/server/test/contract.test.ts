@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { and, desc, eq } from 'drizzle-orm';
 import {
   ANTI_STRATEGIC,
@@ -165,6 +165,8 @@ import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWor
  */
 
 const silent = pino({ level: 'silent' });
+const TRADE_DURATION = GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].endsAtLocalMinute
+  - GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].startsAtLocalMinute;
 
 afterAll(async () => {
   const { close } = await testDb();
@@ -174,11 +176,12 @@ afterAll(async () => {
 describe('every payload the client parses', () => {
   let f: Fixture;
   let app: FastifyInstance;
+  let built: ReturnType<typeof buildApp>;
   let auth: { authorization: string };
 
   beforeEach(async () => {
     f = await seedWorld(3, 4242, { pirates: true });
-    const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
+    built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
     app = built.app;
     await app.ready();
 
@@ -199,6 +202,25 @@ describe('every payload the client parses', () => {
     await giveInstrument(f.db, theirs, 'AEGIS', 1);
     // Far enough in that the asteroid field has actually spawned rocks.
     f.clock.advance(600);
+  });
+
+  /**
+   * EVERY APP THIS FILE BUILDS HOLDS CONNECTIONS, AND THEY HAVE TO GO BACK.
+   *
+   * `beforeEach` stands up a whole app per test — seventy-nine of them — and
+   * nothing ever tore one down, so Postgres eventually answered `sorry, too many
+   * clients already` (53300). It surfaced as an unrelated route returning 500,
+   * landing on whichever test ran after the ceiling was reached: it read first as
+   * a mining bug, then as a pirate one, and moved whenever the file's timing did.
+   *
+   * `built.close()` RATHER THAN `app.close()`, and the difference is the whole
+   * fix: the Fastify instance borrows the suite's shared pool, but `EventBus`
+   * opens a `LISTEN` connection of its OWN, and only the builder's own teardown
+   * knows about it — along with the worker, the rate-limit backend and the
+   * metrics observers.
+   */
+  afterEach(async () => {
+    await built.close();
   });
 
   const get = async (url: string): Promise<unknown> => {
@@ -401,7 +423,7 @@ describe('every payload the client parses', () => {
       definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
       startsAt,
       endsAt: new Date(
-        startsAt.getTime() + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes * 60_000,
+        startsAt.getTime() + TRADE_DURATION * 60_000,
       ),
       effect: { rate: TRADE.rate },
       createdAt: startsAt,
@@ -417,7 +439,7 @@ describe('every payload the client parses', () => {
     expect(merchant.orbit.radius).toBeGreaterThanOrEqual(TRADE.orbitMin);
     expect(merchant.orbit.radius).toBeLessThanOrEqual(TRADE.orbitMax);
     expect(merchant.expiresAtMinute - merchant.appearsAtMinute)
-      .toBeCloseTo(GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes, 6);
+      .toBeCloseTo(TRADE_DURATION, 6);
   });
 
   /**
@@ -1038,7 +1060,7 @@ describe('every payload the client parses', () => {
       definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
       startsAt,
       endsAt: new Date(
-        startsAt.getTime() + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes * 60_000,
+        startsAt.getTime() + TRADE_DURATION * 60_000,
       ),
       effect: { rate: TRADE.rate },
       createdAt: startsAt,
@@ -1489,7 +1511,7 @@ describe('every payload the client parses', () => {
     await setLevel(f.db, origin, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, origin, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.update(planets)
-      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
     await giveResearch(f.db, origin, 'ISOTOPE_SPECTROMETRY');
     await giveResearch(f.db, origin, 'GRAVITIC_CHARGES');
@@ -1523,7 +1545,7 @@ describe('every payload the client parses', () => {
   it('POST interceptor build parses its exact contract', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
-      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
     await giveSatellite(f.db, origin, 'UPLINK');
     await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
@@ -1540,7 +1562,7 @@ describe('every payload the client parses', () => {
   it('refuses an interceptor the commander has not researched', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
-      .set({ alloy: 100_000, crystal: 50_000, deuterium: 10_000 })
+      .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
     await giveSatellite(f.db, origin, 'UPLINK');
     await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);

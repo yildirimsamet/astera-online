@@ -282,7 +282,7 @@ interface AirborneItem {
  */
 type FlightMark =
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
-  | 'mining' | 'salvage' | 'pirate' | 'trade';
+  | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
 
 const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   fleet: AttackIcon,
@@ -299,6 +299,7 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   // A convoy IS a transfer: cargo leaving a world under escort. Same reasoning as
   // the pirate line above — the glyph names the ACT, not the destination. D156.
   trade: SendIcon,
+  intergalactic_convoy: AttackIcon,
 };
 
 /**
@@ -429,6 +430,13 @@ const title = (thread: PendingThread): string => {
   */
   if (thread.kind === 'trade') {
     return i18n.t(thread.leg === 'return' ? 'pendingStrip.tradeHome' : 'pendingStrip.tradeOut');
+  }
+  if (thread.kind === 'intergalactic_convoy') {
+    return i18n.t(
+      thread.leg === 'return'
+        ? 'pendingStrip.intergalacticConvoyHome'
+        : 'pendingStrip.intergalacticConvoyOut',
+    );
   }
   if (thread.kind === 'pirate') {
     /*

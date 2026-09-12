@@ -31,6 +31,7 @@ interface RouteSamples {
   errors: number;
   responseBytes: number;
   latency: SampleWindow;
+  responseStatuses: Map<number, number>;
 }
 
 export interface RuntimeStatus {
@@ -54,8 +55,13 @@ export interface RuntimeStatus {
     requests: number;
     errors: number;
     responseBytes: number;
+    responseStatuses: Record<number, number>;
     latencyMs: ReturnType<SampleWindow['summary']>;
   }>;
+  /** Stable client-facing error codes by route; never includes player identity. */
+  refusals: Record<string, Record<string, number>>;
+  /** Domain command outcomes such as a new mutation versus an idempotent replay. */
+  operations: Record<string, Record<string, number>>;
 }
 
 /**
@@ -76,6 +82,8 @@ export class RuntimeMetrics {
   private readonly databaseAcquire = new SampleWindow();
   private databaseAcquireErrors = 0;
   private readonly routes = new Map<string, RouteSamples>();
+  private readonly refusals = new Map<string, Map<string, number>>();
+  private readonly operations = new Map<string, Map<string, number>>();
   private readonly gcObserver: PerformanceObserver;
 
   constructor() {
@@ -99,12 +107,22 @@ export class RuntimeMetrics {
       errors: 0,
       responseBytes: 0,
       latency: new SampleWindow(),
+      responseStatuses: new Map<number, number>(),
     };
     samples.requests += 1;
     if (statusCode >= 500) samples.errors += 1;
     samples.responseBytes += responseBytes;
     samples.latency.add(latencyMs);
+    samples.responseStatuses.set(statusCode, (samples.responseStatuses.get(statusCode) ?? 0) + 1);
     this.routes.set(key, samples);
+  }
+
+  observeRefusal(method: string, route: string, code: string): void {
+    this.incrementNested(this.refusals, `${method.toUpperCase()} ${route}`, code);
+  }
+
+  observeOperation(operation: string, outcome: string): void {
+    this.incrementNested(this.operations, operation, outcome);
   }
 
   observeDatabaseAcquire(latencyMs: number): void {
@@ -127,6 +145,9 @@ export class RuntimeMetrics {
         requests: samples.requests,
         errors: samples.errors,
         responseBytes: samples.responseBytes,
+        responseStatuses: Object.fromEntries(
+          [...samples.responseStatuses].sort(([a], [b]) => a - b),
+        ),
         latencyMs: samples.latency.summary(),
       };
     }
@@ -159,7 +180,26 @@ export class RuntimeMetrics {
         acquireMs: this.databaseAcquire.summary(),
       },
       routes,
+      refusals: this.nestedStatus(this.refusals),
+      operations: this.nestedStatus(this.operations),
     };
+  }
+
+  private incrementNested(
+    target: Map<string, Map<string, number>>,
+    scope: string,
+    value: string,
+  ): void {
+    const counts = target.get(scope) ?? new Map<string, number>();
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+    target.set(scope, counts);
+  }
+
+  private nestedStatus(target: Map<string, Map<string, number>>): Record<string, Record<string, number>> {
+    return Object.fromEntries([...target].sort(([a], [b]) => a.localeCompare(b)).map(([scope, counts]) => [
+      scope,
+      Object.fromEntries([...counts].sort(([a], [b]) => a.localeCompare(b))),
+    ]));
   }
 
   close(): void {

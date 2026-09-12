@@ -138,6 +138,7 @@ export function Bombardment({
   arriveAt,
   /** One in sensor reach; reduced only for the synthetic, effect-only public view. */
   intensity = 1,
+  engagementSeconds,
 }: {
   volleyKey: string;
   slots: readonly (readonly [number, number, number])[];
@@ -146,10 +147,12 @@ export function Bombardment({
   shipScale: number;
   arriveAt: number;
   intensity?: number;
+  /** Defaults to ordinary combat; the public convoy authors an exact five seconds. */
+  engagementSeconds?: number;
 }) {
   const shots = useMemo(
-    () => volleyFor(volleyKey, slots.length, radius),
-    [volleyKey, slots.length, radius],
+    () => volleyFor(volleyKey, slots.length, radius, engagementSeconds),
+    [volleyKey, slots.length, radius, engagementSeconds],
   );
 
   if (shots.length === 0 || distance <= 0 || radius <= 0) return null;

@@ -579,7 +579,7 @@ export function isotopeProfile(
   appearsAtMinutes: number,
 ): IsotopeProfile {
   const eligible = appearsAtMinutes >= DEUTERIUM.frontierStartsAtMinutes;
-  // The primary lane preserves the bounded one-in-nine field. One seed-shifted
+  // The primary lane preserves the bounded one-in-five field. One seed-shifted
   // bonus seam every ten lanes raises spawn supply without remapping the whole
   // galaxy or creating an unlucky drought. The index keeps this stateless.
   const lane = isotopeHash(seed, 0) % DEUTERIUM.isotopeCadence;

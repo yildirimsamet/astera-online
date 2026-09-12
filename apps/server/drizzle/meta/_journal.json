@@ -526,6 +526,20 @@
       "when": 1789115000000,
       "tag": "0074_salvage",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1789174360491,
+      "tag": "0075_quiet_guardsmen",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1789224421788,
+      "tag": "0076_broken_iron_man",
+      "breakpoints": true
     }
   ]
 }

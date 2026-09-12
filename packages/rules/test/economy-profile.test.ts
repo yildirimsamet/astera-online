@@ -61,17 +61,17 @@ describe('monthly economy', () => {
     expect(purse.deuterium).toBe(0);
   });
   it('links the other purchases and moving targets to the same economy', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 47887, crystal: 23944, deuterium: 1984 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 143661, crystal: 71832, deuterium: 5952 });
     expect(DEATH_STAR.buildMinutes).toBe(60);
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 28733, crystal: 14367, deuterium: 1191 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43100, crystal: 21551, deuterium: 1787 });
     expect(ANTI_STRATEGIC.buildMinutes).toBe(30);
     expect(CLAN.creationCost.alloy).toBe(Math.ceil(profileIncome(6).alloy * 8));
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
     expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });
     expect(START.alloy).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const).reduce((a, b) => a + buildingCost(b, 1).alloy, 600));
     expect(START.crystal).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const).reduce((a, b) => a + buildingCost(b, 1).crystal, 120));
-    expect(PIRATE.speedMin).toBe(HULLS.CATACLYSM.speed / TRAVEL.distanceFactor);
-    expect(PIRATE.speedMax).toBe(HULLS.DART.speed / TRAVEL.distanceFactor);
+    expect(PIRATE.speedMin).toBe(HULLS.CATACLYSM.speed * 0.75 / TRAVEL.distanceFactor);
+    expect(PIRATE.speedMax).toBe(HULLS.DART.speed * 0.75 / TRAVEL.distanceFactor);
     // The SLOWEST hold anchors the merchant, never a named hull — D186, and D196
     // moved the anchor from the Atlas to the Argosy without a constant changing.
     expect(TRADE.speed).toBe(HULLS.ARGOSY.speed / TRAVEL.distanceFactor / 2);

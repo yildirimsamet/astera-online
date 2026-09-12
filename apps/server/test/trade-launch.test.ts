@@ -55,6 +55,8 @@ afterAll(async () => {
 });
 
 const DEFINITION = GALAXY_EVENTS.definitions.TRADE_SHIP;
+const DURATION = DEFINITION.windows[0].endsAtLocalMinute
+  - DEFINITION.windows[0].startsAtLocalMinute;
 
 interface Merchant {
   occurrenceId: string;
@@ -87,7 +89,7 @@ describe('a convoy sent to the merchant', () => {
     opts: { sequence?: number; startsAtMinute?: number; nowMinute?: number } = {},
   ): Promise<Merchant> => {
     const startsAtMinute = opts.startsAtMinute ?? 0;
-    const endsAtMinute = startsAtMinute + DEFINITION.durationMinutes;
+    const endsAtMinute = startsAtMinute + DURATION;
     const startsAt = new Date(seasonStartsAt.getTime() + startsAtMinute * 60_000);
     const endsAt = new Date(seasonStartsAt.getTime() + endsAtMinute * 60_000);
     const [row] = await f.db
@@ -376,7 +378,7 @@ describe('a convoy sent to the merchant', () => {
     const order = { fleet, give: RES(900), want: RES(0, 300) };
 
     // Gone: the window closed an hour before the clock.
-    const past = await merchantUp({ startsAtMinute: 0, nowMinute: DEFINITION.durationMinutes + 60 });
+    const past = await merchantUp({ startsAtMinute: 0, nowMinute: DURATION + 60 });
     await expect(
       launchTrade(f.db, mine, { ...order, occurrenceId: past.occurrenceId }, f.clock),
     ).rejects.toMatchObject({ code: 'TRADE_WINDOW_CLOSED', status: 409 });
@@ -384,7 +386,7 @@ describe('a convoy sent to the merchant', () => {
     // Not yet: the calendar row exists and its window has not opened.
     const future = await merchantUp({
       sequence: 1,
-      startsAtMinute: DEFINITION.durationMinutes * 4,
+      startsAtMinute: DURATION * 4,
       nowMinute: 30,
     });
     await expect(
@@ -537,7 +539,7 @@ describe('a convoy sent to the merchant', () => {
     // One minute of window left, and the slowest hold in the catalogue.
     const merchant = await merchantUp({
       startsAtMinute: 0,
-      nowMinute: DEFINITION.durationMinutes - 1,
+      nowMinute: DURATION - 1,
     });
     const fleet = await armed({ ATLAS: 2 });
     await expect(

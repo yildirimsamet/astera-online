@@ -5,6 +5,7 @@ import { compact } from '../lib/format.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { countdown, useNow } from '../lib/time.js';
 import { GalaxyIcon } from '../ui/icons/index.js';
+import type { ActiveGalaxyEvent as ActiveGalaxyEventView } from '../api/schemas.js';
 
 /**
  * Active clock-derived status; lifecycle notifications remain in Signals/history.
@@ -26,8 +27,15 @@ import { GalaxyIcon } from '../ui/icons/index.js';
  * must judge, applied to the smallest surface in the game. It also stops being a
  * translated sentence: there is no grammar left in it to get wrong.
  */
-export function ActiveGalaxyEvent({ onFocusTrade }: { onFocusTrade?: (id: string) => void } = {}) {
-  const { t } = useTranslation();
+interface ActiveGalaxyEventProps {
+  onFocusTrade?: (id: string) => void;
+  onFocusConvoy?: (id: string) => void;
+}
+
+export function ActiveGalaxyEvent({
+  onFocusTrade,
+  onFocusConvoy,
+}: ActiveGalaxyEventProps = {}) {
   const events = useGalaxyEvents();
   const now = useNow(1_000);
   // `flatMap` rather than `filter`, because only the former narrows the union.
@@ -51,55 +59,91 @@ export function ActiveGalaxyEvent({ onFocusTrade }: { onFocusTrade?: (id: string
         */
         <Chip
           key={event.id}
-          {...(event.kind === 'TRADE_SHIP' && onFocusTrade !== undefined
-            ? { onPress: () => { onFocusTrade(event.id); } }
-            : {})}
-          tone={event.kind === 'TRADE_SHIP'
-            ? 'border-alloy/35 text-alloy'
-            : 'border-crystal/35 text-crystal'}
+          {...eventPress(event, onFocusTrade, onFocusConvoy)}
+          tone={eventTone(event)}
         >
           <GalaxyIcon className="size-4 shrink-0" />
-          <div className="min-w-0">
-            <p className="legend truncate text-micro">
-              {event.kind === 'TRADE_SHIP' ? t('trade.chip') : t('galaxy.asteroidShower')}
-            </p>
-            {event.kind === 'TRADE_SHIP' ? (
-              <p className="num flex items-center gap-1 text-micro text-bone">
-                {/*
-                  ONE ANCHOR, THREE MARKS. A single deuterium is the unit the other
-                  two are quoted against, because it is the dearest and therefore
-                  the one whose figure stays small enough to read at this size.
-                */}
-                {(['alloy', 'crystal', 'deuterium'] as const).map((good, index) => (
-                  <span key={good} className="flex items-center gap-0.5">
-                    {index > 0 && <span aria-hidden className="text-faint">=</span>}
-                    <img
-                      src={RESOURCE_ART[good]}
-                      alt={t(`trade.${good}`)}
-                      className="size-3 shrink-0 object-contain"
-                    />
-                    {compact(event.rate.deuterium / event.rate[good])}
-                  </span>
-                ))}
-                <span className="ml-1 truncate text-dim">
-                  {t('trade.chipRemaining', {
-                    remaining: countdown(event.endsAt.getTime() - now),
-                  })}
-                </span>
-              </p>
-            ) : (
-              <p className="num truncate text-micro text-bone">
-                {t('galaxy.asteroidShowerStatus', {
-                  multiplier: event.asteroidSpawnMultiplier,
-                  remaining: countdown(event.endsAt.getTime() - now),
-                })}
-              </p>
-            )}
-          </div>
+          <EventStatus event={event} now={now} />
         </Chip>
       ))}
     </div>
   );
+}
+
+function eventTone(event: ActiveGalaxyEventView): string {
+  switch (event.kind) {
+    case 'TRADE_SHIP': return 'border-alloy/35 text-alloy';
+    case 'INTERGALACTIC_CONVOY': return 'border-threat/35 text-threat';
+    case 'ASTEROID_SHOWER': return 'border-crystal/35 text-crystal';
+  }
+}
+
+function eventPress(
+  event: ActiveGalaxyEventView,
+  onFocusTrade: ((id: string) => void) | undefined,
+  onFocusConvoy: ((id: string) => void) | undefined,
+): { onPress?: () => void } {
+  switch (event.kind) {
+    case 'TRADE_SHIP':
+      return onFocusTrade ? { onPress: () => { onFocusTrade(event.id); } } : {};
+    case 'INTERGALACTIC_CONVOY':
+      return onFocusConvoy ? { onPress: () => { onFocusConvoy(event.id); } } : {};
+    case 'ASTEROID_SHOWER':
+      return {};
+  }
+}
+
+function EventStatus({ event, now }: { event: ActiveGalaxyEventView; now: number }) {
+  const { t } = useTranslation();
+  switch (event.kind) {
+    case 'TRADE_SHIP':
+      return (
+        <div className="min-w-0">
+          <p className="legend truncate text-micro">{t('trade.chip')}</p>
+          <p className="num flex items-center gap-1 text-micro text-bone">
+            {(['alloy', 'crystal', 'deuterium'] as const).map((good, index) => (
+              <span key={good} className="flex items-center gap-0.5">
+                {index > 0 ? <span aria-hidden className="text-faint">=</span> : null}
+                <img
+                  src={RESOURCE_ART[good]}
+                  alt={t(`trade.${good}`)}
+                  className="size-3 shrink-0 object-contain"
+                />
+                {compact(event.rate.deuterium / event.rate[good])}
+              </span>
+            ))}
+            <span className="ml-1 truncate text-dim">
+              {t('trade.chipRemaining', {
+                remaining: countdown(event.endsAt.getTime() - now),
+              })}
+            </span>
+          </p>
+        </div>
+      );
+    case 'INTERGALACTIC_CONVOY':
+      return (
+        <div className="min-w-0">
+          <p className="legend truncate text-micro">{t('galaxy.intergalacticConvoy')}</p>
+          <p className="num truncate text-micro text-bone">
+            {t('galaxy.intergalacticConvoyStatus', {
+              remaining: countdown(event.endsAt.getTime() - now),
+            })}
+          </p>
+        </div>
+      );
+    case 'ASTEROID_SHOWER':
+      return (
+        <div className="min-w-0">
+          <p className="legend truncate text-micro">{t('galaxy.asteroidShower')}</p>
+          <p className="num truncate text-micro text-bone">
+            {t('galaxy.asteroidShowerStatus', {
+              multiplier: event.asteroidSpawnMultiplier,
+              remaining: countdown(event.endsAt.getTime() - now),
+            })}
+          </p>
+        </div>
+      );
+  }
 }
 
 

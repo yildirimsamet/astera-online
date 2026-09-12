@@ -25,6 +25,7 @@ import {
   dominionEvents,
   galaxyEvents,
   galaxyEventOccurrences,
+  intergalacticConvoyRuns,
   miningRuns,
   pirateRaids,
   pirateState,
@@ -559,6 +560,7 @@ export async function wipeAllServers(
       function.
     */
     await tx.delete(tradeRuns);
+    await tx.delete(intergalacticConvoyRuns);
     await tx.delete(galaxyEvents);
     await tx.delete(galaxyEventOccurrences);
     await tx.delete(requestLog);

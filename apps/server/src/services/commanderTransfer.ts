@@ -6,7 +6,8 @@ import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
-  scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns } from '../db/schema.js';
+  scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
+  intergalacticConvoyRuns } from '../db/schema.js';
 import { loadLocked } from './planet.js';
 import { lockAdmission } from './returnQueue.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
@@ -77,7 +78,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [mining] = await tx.select({ id: miningRuns.id }).from(miningRuns).where(and(inArray(miningRuns.planetId, ids), ne(miningRuns.status, 'done'))).limit(1);
       const [pirate] = await tx.select({ id: pirateRaids.id }).from(pirateRaids).where(and(ne(pirateRaids.status, 'done'), or(eq(pirateRaids.ownerPlayerId, playerId), inArray(pirateRaids.planetId, ids)))).limit(1);
       const [trade] = await tx.select({ id: tradeRuns.id }).from(tradeRuns).where(and(ne(tradeRuns.status, 'done'), or(eq(tradeRuns.ownerPlayerId, playerId), inArray(tradeRuns.planetId, ids)))).limit(1);
-      if (mining || pirate || trade) defer('FLIGHT');
+      const [convoy] = await tx.select({ id: intergalacticConvoyRuns.id }).from(intergalacticConvoyRuns).where(and(ne(intergalacticConvoyRuns.status, 'done'), or(eq(intergalacticConvoyRuns.ownerPlayerId, playerId), inArray(intergalacticConvoyRuns.planetId, ids)))).limit(1);
+      if (mining || pirate || trade || convoy) defer('FLIGHT');
       const [foreign] = await tx.select({ id: units.planetId }).from(units).where(and(gt(units.count, 0), or(
         and(inArray(units.planetId, ids), or(ne(units.ownerPlayerId, playerId), ne(units.location, 'home'))),
         and(eq(units.ownerPlayerId, playerId), notInArray(units.planetId, ids)),

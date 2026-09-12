@@ -30,12 +30,14 @@ export async function idempotentMutation<T>(
     key: string;
     body: unknown;
     now: Date;
+    onOutcome?: (outcome: 'accepted' | 'replay') => void;
   },
   mutate: (tx: Tx) => Promise<T>,
 ): Promise<T> {
   const hash = requestHash(input.body);
   const scope = `idem:${input.playerId}:${input.operation}:${input.key}`;
-  return db.transaction(async (tx) => {
+  let outcome: 'accepted' | 'replay' = 'accepted';
+  const response = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${scope}))`);
     const [existing] = await tx
       .select({ requestHash: requestLog.requestHash, response: requestLog.response })
@@ -54,6 +56,7 @@ export async function idempotentMutation<T>(
           409,
         );
       }
+      outcome = 'replay';
       return existing.response as T;
     }
 
@@ -71,4 +74,8 @@ export async function idempotentMutation<T>(
     });
     return serialisable;
   });
+  // Observe only after the transaction commits. A failed mutation or insert is
+  // neither an accepted command nor a replay and must not inflate success data.
+  input.onOutcome?.(outcome);
+  return response;
 }

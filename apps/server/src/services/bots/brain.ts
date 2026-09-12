@@ -347,7 +347,9 @@ async function buyShips(
 
 /* ── the one flight ─────────────────────────────────────────── */
 
-export type Lane = 'probe' | 'mine' | 'harvest' | 'pirate' | 'attack';
+/** Bots never opt into public galaxy-event economies or convoy strikes. */
+export const BOT_AUTONOMOUS_LANES = ['probe', 'mine', 'harvest', 'pirate', 'attack'] as const;
+export type Lane = (typeof BOT_AUTONOMOUS_LANES)[number];
 
 /**
  * WHICH LANES THIS WORLD COULD ACTUALLY FLY THIS MINUTE.

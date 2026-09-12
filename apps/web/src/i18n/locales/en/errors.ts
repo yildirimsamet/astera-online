@@ -67,6 +67,12 @@ export const errors = {
   TIER_BAND: "That commander's total strength is far above your own",
   TIER_BAND_WEAK: "That commander's total strength is far below your own",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',
+  CONVOY_ALREADY_RAIDED: 'This world already struck this intergalactic convoy',
+  CONVOY_FLEET_ALREADY_AWAY: 'This world already has a fleet committed to the intergalactic convoy',
+  CONVOY_NEEDS_COMBAT_FLEET: 'Send a fleet with firepower',
+  CONVOY_OUT_OF_REACH: 'The convoy will be gone before the strike',
+  CONVOY_QUOTE_CHANGED: 'The convoy moved beyond the launch you confirmed; refresh the quote',
+  CONVOY_WINDOW_CLOSED: 'There is no intergalactic convoy out there',
   /**
    * THE TWO SIDES OF THE FIRST-DAY SHIELD. D183.
    *

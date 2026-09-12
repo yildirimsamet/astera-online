@@ -1287,8 +1287,8 @@ describe('a world holding both kinds of strategic asset', () => {
  * GIVES BACK NOTHING EXTRA EITHER.
  *
  * The weapon and the charge share one completion event and one abandon path, and
- * the refund was the WEAPON's price for both. A charge whose completion failed for
- * good paid 44,291 and got 73,815 back: a fault that minted resources.
+ * the refund was the WEAPON's price for both. A failed charge could therefore get
+ * back more than it paid: a fault that minted resources.
  */
 describe('a strategic build that gives up', () => {
   let f: Fixture;

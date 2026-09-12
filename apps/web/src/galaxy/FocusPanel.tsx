@@ -55,6 +55,7 @@ import { serverNow } from '../lib/clock.js';
 import { flightModifiers, reachMinutes } from '../lib/navigation.js';
 import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
+import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { AttackIcon, EyeIcon } from '../ui/icons/index.js';
 import { Price } from '../ui/Action.js';
@@ -110,7 +111,8 @@ export type Focus =
    * announced public moment with no sight to buy. The id is the OCCURRENCE's, which
    * is also what the launch posts.
    */
-  | { kind: 'tradeShip'; id: string };
+  | { kind: 'tradeShip'; id: string }
+  | { kind: 'intergalacticConvoy'; id: string };
 
 /* ── shared chrome ───────────────────────────────────────────── */
 
@@ -2504,28 +2506,101 @@ export function PirateFocus({
   );
 }
 
-/* ── the merchant crossing the disc ──────────────────────────── */
+/* ── the public convoy crossing the disc ─────────────────────── */
 
 /**
- * TRADE FOCUS — D156.
+ * INTERGALACTIC CONVOY FOCUS — D201.
  *
- * The third rail in this file with the same bones, and that is the point: a rock,
- * a pirate and a merchant are one decision in three costumes. Something is passing
- * through, it is worth something, it will not be there later, and the only question
- * is whether what you can send arrives in time. Reusing `AsteroidFocus`'s shape
- * means the third one is already learned the first time it is seen.
- *
- * WHAT ONLY THIS ONE HAS IS THE RATE, and it is the entire reason to fly at it. A
- * rule the player cannot see is not a usable rule (D124), and until this rail
- * existed the rate lived in a constants file and two docblocks. So it is DRAWN
- * (D142) — three bars against one deuterium — rather than written as a sentence
- * the player has to hold in their head while sizing a convoy.
- *
- * THERE IS NO FOG HERE AND THERE NEVER WILL BE. The merchant is an announced
- * public moment: every commander in the galaxy sees the same ship, the same orbit
- * and the same rate, which is why the boundary line says so out loud rather than
- * leaving a player to wonder what they have not bought.
+ * The target and its route are public. The rail therefore spends its scarce room
+ * on the decision: time remaining, this world's best reach, the exact five-second
+ * firing window, no retaliation, and whether this physical world already owns the
+ * one allowed strike for the occurrence.
  */
+export function IntergalacticConvoyFocus({
+  convoy,
+  minutesLeft,
+  reachMinutes,
+  hasCombatCraft,
+  launchLocked,
+  occurrenceSpent,
+  onClose,
+  onRaid,
+  open,
+  onToggle,
+}: {
+  convoy: IntergalacticConvoyEvent;
+  minutesLeft: number;
+  reachMinutes: number | null;
+  hasCombatCraft: boolean;
+  launchLocked: boolean;
+  /** This world has already spent its one strike at the convoy that is up. D124. */
+  occurrenceSpent: boolean;
+  onClose: () => void;
+  onRaid: () => void;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  /*
+    THE SPENT QUOTA COMES FIRST, AND IT IS THE ONE THIS RAIL USED TO MISS. D124.
+
+    A world strikes each crossing exactly once, ever, while the crossing lasts two
+    hours and the round trip rarely lasts one — so the ordinary case is a commander
+    whose fleet is home again, inside the same window, looking at a live button
+    with nothing behind it. `launchLocked` clears the moment the fleet lands and
+    said nothing about the quota, so the control invited a launch the server was
+    always going to refuse.
+  */
+  const refusal = occurrenceSpent
+    ? t('convoy.alreadyStruck')
+    : launchLocked
+      ? t('convoy.alreadyAway')
+      : !hasCombatCraft
+        ? t('convoy.noCraft')
+        : reachMinutes === null
+          ? t('convoy.cannotReach')
+          : null;
+
+  return (
+    <Shell
+      eyebrow={t('convoy.eyebrow')}
+      title={t('convoy.title')}
+      open={open}
+      onToggle={onToggle}
+      onClose={onClose}
+      summary={(
+        <span>
+          <span className={minutesLeft < 15 ? 'text-threat' : ''}>{duration(minutesLeft)}</span>
+          {reachMinutes !== null
+            ? ` · ${t('convoy.summaryReach', { duration: duration(reachMinutes) })}`
+            : ''}
+        </span>
+      )}
+      actions={(
+        <button
+          type="button"
+          data-testid="convoy-open"
+          className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+          disabled={refusal !== null}
+          onClick={onRaid}
+        >
+          {refusal ?? t('convoy.open')}
+        </button>
+      )}
+    >
+      <div className="grid grid-cols-2 gap-2">
+        <Figure label={t('convoy.engagementLabel')} value={t('convoy.engagementDuration')} />
+        <Figure
+          label={t('convoy.shipChance')}
+          value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`}
+        />
+      </div>
+      <p className="mt-3 text-caption leading-snug text-bone">{t('convoy.boundary')}</p>
+      <p className="mt-1 text-caption leading-snug text-dim">{t('convoy.irreversible')}</p>
+    </Shell>
+  );
+}
+
 export function TradeFocus({
   merchant,
   fleetAtHome,

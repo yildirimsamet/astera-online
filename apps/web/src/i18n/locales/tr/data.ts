@@ -669,6 +669,12 @@ export const notifications = {
   asteroidShowerEnded: 'Asteroid yağmuru bitti. Yeni asteroid oluşma hızı normale döndü.',
   tradeShipStarted: 'Galakside bir ticaret gemisi var · {{alloy}} alaşım = 1 döteryum.',
   tradeShipEnded: 'Ticaret gemisi galaksiden ayrıldı.',
+  intergalacticConvoyStarted: 'Galaksilerarası Konvoy galaksiyi geçiyor.',
+  intergalacticConvoyEnded: 'Galaksilerarası Konvoy galaksiden ayrıldı.',
+  intergalacticConvoyResult: 'Konvoy akını sonuçlandı · {{resources}} · ganimet: {{ships}} · dönüşte.',
+  intergalacticConvoyHome: 'Konvoy akını döndü · {{resources}} · ganimet: {{ships}}.',
+  intergalacticConvoyNoResources: 'kaynak yok',
+  intergalacticConvoyNoShip: 'gemi yok',
 } as const;
 
 /**

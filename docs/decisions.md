@@ -220,7 +220,7 @@ Binds: Deuterium economy.
 ### D176 · The deuterium plant is a supply, not a floor — OWNER INSTRUCTION
 
 Rule: `ECON.deuteriumBase` is tripled and `PIRATE.hoardShare.deuterium` goes 0.008 → 0.01125. Owner instruction: *"deuterium rafinerisinin üretim çıktılarını 3 kat arttırmanı istiyorum ve korsan filonun verebileceği max deuterium miktarını ~700 yapmanı istiyorum."* THIS RETIRES THE ORDERING D135 STATED, and it is retired on purpose rather than drifted into. The plant reads L1 10/h · L3 34/h · L6 76/h · L9 128/h · L15 271/h against a miner's ~105 per isotope run, so it is under one miner through plant level 7, passes it at level 8, and ends at about 2.58× it. What the rocks keep is what a plant cannot copy: they are contested, and they arrive in one lump a fleet has to be in position for — the Frontier act now competes on risk and timing rather than on volume. ONLY THE BASE MOVED. `deuteriumMult` stays 1.04, so every level rises by the same factor and the ladder keeps the shape the rest of the economy was measured against; the `× 3` is written as its own factor beside D161's `× 1.15` rather than folded into the swept 4.15, so a later reader can still see which instruction moved which part. The pirate ceiling was raised by the SHARE alone for the same reason a flat cap was rejected when it was cut: the ladder is what the level badge prices, and it runs 64 · 192 · 401 · 699 against the old 45 · 137 · 285 · 497, measured over sixty thousand seeds per level. Deuterium stays a garnish by share — about 1.3% of a hoard's value. THE ACCEPTANCE TESTS WERE RESTATED, NOT WIDENED: `deuterium.test.ts` asserted that the plant never catches the rocks and now asserts exactly where it crosses them, and `pirates.test.ts` keeps its lower bound at nine tenths of the ceiling because twenty thousand seeds reach about 93% of what sixty thousand find. The owner's standing note applies to all of it: *"ekonomi dengesini boşver, şuanda tam düzgün bir denge yok"* — this is a deliberate step away from a balance nobody has settled yet, not a claim that the new numbers are balanced.
-Binds: `ECON.deuteriumBase`, `deuteriumRate`, deuterium storage/works/vault floors, `PIRATE.hoardShare`, `pirateHoard`, D135, D136, D150, D161.
+Binds: `ECON.deuteriumBase`, `deuteriumRate`, deuterium storage/works/vault floors, `PIRATE.hoardShare`, `pirateHoard`, D135, D136, D150, D161. D204 supersedes only this entry's ~700 pirate ceiling; the 0.01125 share remains current.
 
 ### D177 · A flight that arrives at nothing says so — OWNER QUESTION
 
@@ -252,6 +252,141 @@ Binds: `transferCargoCapacity`, `cargoMult`, `launchTransfer`, `launchTrade`, `E
 Rule: `durationPrecise` beside `duration`, used only for the launch sheet's one-way figure. A raid arrives at an authoritative instant and the whole game is built on being there for it, so a flight rounded to the whole minute hides up to fifty-nine seconds of the thing a commander is committing to. A separate function rather than a flag, because seconds belong only where somebody is timing something and a boolean would spread them by accident. Minutes-and-seconds under an hour, all three units past it, and the existing days-and-hours shape past a day where the seconds are noise. Seconds are padded so the figure does not change width on a 350px screen.
 Binds: `durationPrecise`, `units.hoursMinutesSeconds`, `LaunchSheet`, `duration-precise.test.ts`, D51.
 
+
+### D204 · Convoy schedule and three reward dials move — OWNER INSTRUCTION
+
+Rule: three reward/supply dials move on the owner's instruction. (1) An
+Intergalactic Convoy resource quote is capped by **two frozen hours** of the
+origin world's nominal production instead of one; firepower quality, cargo,
+ship-drop odds and every other constraint remain unchanged. Newly dealt and
+restamped unopened occurrences carry `resourceCapHours: 2`; persisted one-hour
+snapshots remain readable and immutable. (2) Every pirate hoard resource rises
+by **30%** through the common `PIRATE.hoardValueMult`, **1.4 → 1.82**. The
+Alloy/Crystal/Deuterium shares stay 0.55/0.30/0.01125, so composition and the
+level ladder do not change. Cargo and combat-grade clamps still apply to what
+actually returns. The pirate external-supply allowance rises with the reward,
+5% → 6.5%, while admission remains valued at the frozen pre-D204 multiplier;
+otherwise rationing would delete/re-index live deterministic pirate targets
+instead of merely increasing their rewards. (3) From the shared season clock's 35th hour onward, exactly
+**11/50 = 22%** of asteroid indexes are isotope-rich: the deterministic primary
+cadence becomes five and the existing one-extra-per-ten-lanes seam remains.
+Pre-frontier rocks and the separately rolled 10–25% Deuterium concentration are
+unchanged.
+
+The same instruction moves the Convoy's two fixed Türkiye-time windows from
+18:00–20:00 / 22:00–24:00 to **07:00–09:00 / 19:00–21:00**. Both remain
+half-open two-hour windows. Event kinds are independent: the morning window may
+overlap the 07:00 Trade Ship and the evening window may overlap the 20:00
+Asteroid Shower. Persisted old-season occurrence times remain immutable; the
+new schedule is used when a season calendar is dealt.
+
+Binds: `INTERGALACTIC_CONVOY.resourceCapHours`, persisted convoy effect parsing,
+`PIRATE.hoardValueMult`, `pirateHoard`, `DEUTERIUM.isotopeCadence`,
+`DEUTERIUM.isotopeRate`, `isotopeProfile`, `monthlySupply`, pirate admission,
+fixed Convoy windows, D102, D150, D176, D201.
+
+
+### D203 · Strategic prices rise and pirate fleets slow down — OWNER INSTRUCTION
+
+Rule: every resource component of `DEATH_STAR.cost` is tripled, from
+47,887/23,944/1,984 to **143,661/71,832/5,952**. Every component of
+`ANTI_STRATEGIC.cost` rises by 50%, rounded to the nearest whole resource by the
+project's price convention, from 28,733/14,367/1,191 to **43,100/21,551/1,787**.
+Build times, gates, strike effects and interception behavior do not move. The unequal
+raises deliberately change the battery's total share of the weapon from about 60% to
+about 30%; it remains strictly cheaper than the weapon it answers.
+
+Only the pirate lane's orbital speed changes: one `PIRATE_SPEED_MULT = 0.75` applies
+to both hull-derived endpoints, producing **94.54–126.40 units/minute** without
+changing ship speeds, other moving targets, orbit radii, lifetimes, spawn rate,
+rosters, rewards or combat. Consequently, a Citadel now outruns the slow end of the
+pirate band; this is part of the requested whole-lane reduction rather than a separate
+heavy-hull tune.
+
+Binds: `DEATH_STAR.cost`, `ANTI_STRATEGIC.cost`, `PIRATE.speedMin/Max`, strategic
+price tests, pirate geometry tests, D155, D179.
+
+
+### D202 · Convoy presence and precise pirate interaction — OWNER INSTRUCTION
+
+Rule: the Intergalactic Convoy's v1 visible roster is eleven ranks and two columns containing every
+mobile Fleet V2 hull exactly once (22 craft); its separately versioned eight-hull reward pool does not
+change. The convoy baseline is 2× its previous size, ranks close from 48 to 34 game units and lanes
+widen from 36 to 64 for the doubled capital hulls, then owner review replaces the fixed 34 with
+size-authored neighbouring gaps, then extends only the consecutive tier 3/4 section by six more
+units: 22/28/34/34/41/54/56/68/76/72. Small ranks remain dense and large ranks cannot overlap.
+Every craft carries bounded deterministic
+longitudinal throttle drift whose maximum cannot reorder ranks. One batched formation wake and one
+instanced drive bank supply motion without per-frame React state or per-craft effect draw calls; the
+first pulse-ring treatment is explicitly removed after owner review. Its first 16-streak line replacement
+is also rejected as childish and too static. The final treatment is four transparent full-length flow
+veils in one instanced draw: the geometry remains anchored while vertex waves and domain-warped fragment
+noise continuously evolve and travel from the nose toward the rear. Per frame only shader uniforms change.
+Focus targets the train's length
+midpoint and takes an exact range derived from the final nose-to-tail extent and the camera FOV.
+Corsair, Argosy and Paladin declare their corrected native nose as `-X`, reversing the first attempted
+quarter turn in every flight scene. An identified pirate replaces the
+formation-wide box target with one batched pick sphere per visible hull, leaving the formation's empty
+horizontal wedges clickable as galaxy; its existing batched plume is made depth-independent and
+brighter so animated engine fire remains visible.
+Binds: `INTERGALACTIC_CONVOY.formation`, `convoyFormationSlots`, `IntergalacticConvoy`,
+`FLEET_V2_ASSET_MANIFEST`, `FormationWakes`, `FormationLightField`, pirate hit targets, D165, D201.
+
+### D201 · Intergalactic Convoy and the fixed public-event calendar — OWNER INSTRUCTION
+
+Ruleset 8 replaces random public-event packing with a UTC+03:00, half-open fixed daily calendar:
+Trade Ship 01:00–03:00, 07:00–09:00, 15:00–17:00 and 21:00–23:00; Asteroid Shower
+02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5 and 20:00–21:00 ×10; Intergalactic
+Convoy 07:00–09:00 and 19:00–21:00 (moved by D204). Only complete windows inside a season are dealt. Fixed
+kinds consume no calendar RNG; rulesets 4–5 and 6–7 retain frozen random definitions for explicit
+old-season creation and restamping.
+
+The convoy formation centre crosses an isotropic galaxy diameter in exactly 120 minutes and the
+visual ranks do not change that gameplay anchor. A launch needs an armed mobile fleet, spends both
+legs of fuel, cannot be recalled, engages for five seconds without retaliation or loss, and delivers
+at most two frozen hours of the origin world's nominal production subject to firepower and cargo
+(raised from one by D204).
+Resource quality and ship-drop quality use separate thresholds. Full ship quality is 15%; a drop is
+1/2/3 ships at 80/17/3, with tier weights 55/27/13/5 truncated by the launched fleet's maximum tier
+and a versioned eight-hull visible pool. A world may launch at most once per occurrence and may have
+only one non-done convoy run across occurrences; both rules are database constraints. v1 server bots
+do not choose this lane. Like Asteroid Shower and Trade Ship income, Convoy income remains
+explicitly outside ARR/VFR, progression, season and every other economy calibration simulation.
+
+**Review corrections, same decision.** Seven of them change stated behaviour and are recorded
+here rather than only in the code:
+
+- **The quote guard is an AGE bound, not a reaction-time bound.** A rendezvous with a moving
+  target is pinned in absolute time, so hesitating `d` seconds simply leaves `d` less flying to
+  do: measured over the shipped geometry the worst-case drift in both the flight's duration and
+  its absolute arrival is 0.98 × the delay. A raw five-second tolerance on either figure
+  therefore refused the median confirmation for no reason but reading speed.
+  `quoteToleranceSeconds` now bounds only the surplus BEYOND what the elapsed time explains, and
+  `maxQuoteAgeSeconds` moves 15 → **45** as the one real staleness bound. The client stamps
+  `quotedAt` from the press instead of from the five-second tick.
+- **The spent occurrence is published.** `convoyOccurrenceSpent` on the planet view says this
+  world has already struck the crossing that is up. `convoyLaunchLocked` clears when the fleet
+  lands and the quota does not, so without it the control re-armed inside the same window and
+  invited a launch the server was always going to refuse (D124).
+- **An abandoned outbound run releases the ration it never spent.** `abandoned_at` drops the row
+  out of the now-partial `(planet_id, occurrence_id)` unique index: a strike that never fired
+  because an arrival event failed permanently is our fault, not one of the commander's decisions.
+  Fuel stays spent — D136 refunds nothing, on any path.
+- **A moving engagement is a window, never a hold.** `contactPosition` enters the placement solve
+  only for a stationary target; `engagement.targetTo` is the payload saying which kind this is.
+  The two helpers used to delegate to each other without progress.
+- **The formation's orientation is a quaternion**, not `lookAt`: an isotropic route may be
+  parallel to world up, and at the far end the group's position IS its target.
+- **The offline recap filters the lane in the query** (every returning lane writes
+  `fleet_returned`, so a LIMIT taken first could drop every convoy line) and takes at most
+  `CONVOY_RECAP_LINES` of the five.
+- **`plannedEffectFor` has no default config** and `galaxyEventKindsForRuleset` states the
+  merchant's ENTITLEMENT boundary (ruleset 5) separately from its SHAPE boundary
+  (`tradeShipRulesetVersion`), which D166 had silently merged.
+
+Binds: `INTERGALACTIC_CONVOY`, fixed galaxy-event planner/config registry, ruleset 8, convoy route,
+launch/run lifecycle, per-world uniqueness, reward snapshot, traffic/fog/UI, rollout telemetry,
+`convoyOccurrenceSpent`, `intergalactic_convoy_runs.abandoned_at`, `engagementPosition`.
 
 ### D200 · Garbage Collector (Hurdacı) — OWNER INSTRUCTION
 
@@ -820,7 +955,7 @@ Binds: World memory, D127.
 
 ### D155 · A pirate is chased at fleet speed, and the meeting point is drawn — OWNER INSTRUCTION
 
-Rule: `PIRATE.speedMin/Max` are the hull table's own figures divided by `TRAVEL.distanceFactor` — a Cataclysm's pace to a Dart's pace — so every Skirmisher outruns every pirate and a heavy line cannot lead one. The old 200–420 band was measured against rock speed, but a rock is chased by a Prospector and a pirate is chased by a warship: on one scale it was 240–504, faster than every ship in the game, so `interceptOrbit`'s earliest meeting was the far side of the orbit after a lap of waiting rather than a lead. `pirates.test.ts` asserts both anchors against `HULLS` and holds the median lead under a quarter revolution, the ceiling the rock lane has carried since D40/D121. `/api/pirates` publishes each `reach` row's rendezvous point; it is `distance` and `minutes` stated rather than implied, for a pirate in current sight from a world the caller owns, and the orbital elements stay server-private. The disc draws every open-space aim point through one list (`rendezvousMarks`): a mining interception, an outbound raid's rendezvous, and — while the launch sheet is open — where the selected wing would meet it. Marks never survive the sheet that proposed them, and never mark a target that is an address.
+Rule (speed figures superseded by D203; the derived-band and geometry rules stand): `PIRATE.speedMin/Max` are derived from the hull table and divided by `TRAVEL.distanceFactor`. D155 used a Cataclysm's full pace through a Dart's full pace, so every Skirmisher outran every pirate and a heavy line could not lead one. The old 200–420 band was measured against rock speed, but a rock is chased by a Prospector and a pirate is chased by a warship: on one scale it was 240–504, faster than every ship in the game, so `interceptOrbit`'s earliest meeting was the far side of the orbit after a lap of waiting rather than a lead. `pirates.test.ts` asserts both anchors against `HULLS` and holds the median lead under a quarter revolution, the ceiling the rock lane has carried since D40/D121. `/api/pirates` publishes each `reach` row's rendezvous point; it is `distance` and `minutes` stated rather than implied, for a pirate in current sight from a world the caller owns, and the orbital elements stay server-private. The disc draws every open-space aim point through one list (`rendezvousMarks`): a mining interception, an outbound raid's rendezvous, and — while the launch sheet is open — where the selected wing would meet it. Marks never survive the sheet that proposed them, and never mark a target that is an address.
 Binds: Pirate lane geometry, `/api/pirates`, launch sheet, disc marks, D40, D124, D142, D150.
 
 Correction (2026-09-07): the shared solver's 12-second scan could miss an entire
@@ -922,7 +1057,7 @@ Binds: Server selection, admission, bootstrap/rollover, historical shard rows.
 
 ### D102 · Isotope concentration is deterministic — OWNER INSTRUCTION
 
-Rule: Isotope eligibility is deterministic, currently 11/90 indexes. Concentration is separate deterministic whole-percent 10–25% from season seed + asteroid index and consumes no shared galaxy RNG. Deuterium replaces Alloy; total ore unchanged. Changing concentration must not alter isotope cadence or D110 arrival cadence.
+Rule: Isotope eligibility is deterministic, currently 11/50 indexes (22% after D204; formerly 11/90). Concentration is separate deterministic whole-percent 10–25% from season seed + asteroid index and consumes no shared galaxy RNG. Deuterium replaces Alloy; total ore unchanged. Changing concentration must not alter isotope cadence or D110 arrival cadence.
 Binds: Asteroids, mining, simulator.
 
 ### D103 · The Rival mark is free to move — OWNER INSTRUCTION

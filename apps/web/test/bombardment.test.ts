@@ -30,6 +30,7 @@ import {
   concealedVolley,
   contactPosition,
   engagementHold,
+  engagementTargetPosition,
   HEADING_EPSILON,
   isHeading,
   legEnd,
@@ -230,6 +231,16 @@ describe('a volley', () => {
         expect(shot.launchAt).toBeGreaterThanOrEqual(0);
         expect(impactAt(shot) + BLAST_SECONDS).toBeLessThanOrEqual(COMBAT.engagementSeconds);
       }
+    }
+  });
+
+  it('fits the convoy volley and every impact burn inside its exact five seconds', () => {
+    const convoySeconds = 5;
+    const volley = volleyFor('convoy:run-1', 8, RADIUS, convoySeconds);
+    expect(volley.length).toBeGreaterThan(0);
+    for (const shot of volley) {
+      expect(shot.launchAt).toBeGreaterThanOrEqual(0);
+      expect(impactAt(shot) + BLAST_SECONDS).toBeLessThanOrEqual(convoySeconds);
     }
   });
 
@@ -727,6 +738,23 @@ describe('the engagement window', () => {
 
   it('is exactly the window the server schedules against', () => {
     expect(engagementEndsAt(arriveAt) - arriveAt).toBe(COMBAT.engagementSeconds * 1000);
+  });
+
+  it('moves a convoy target along its published five-second segment', () => {
+    const start = new Date(arriveAt);
+    const end = new Date(arriveAt + 5_000);
+    const engagement = {
+      arriveAt: start,
+      endsAt: end,
+      target: { x: -10, y: 5, z: 2 },
+      targetTo: { x: 10, y: 15, z: 6 },
+    };
+    expect(engagementTargetPosition(engagement, arriveAt - 1)).toEqual([-0.2, 0.1, 0.04]);
+    const midpoint = engagementTargetPosition(engagement, arriveAt + 2_500);
+    expect(midpoint[0]).toBeCloseTo(0);
+    expect(midpoint[1]).toBeCloseTo(0.2);
+    expect(midpoint[2]).toBeCloseTo(0.08);
+    expect(engagementTargetPosition(engagement, arriveAt + 5_001)).toEqual([0.2, 0.3, 0.12]);
   });
 
   /**

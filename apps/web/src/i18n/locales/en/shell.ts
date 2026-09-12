@@ -24,7 +24,6 @@ export const statusBar = {
   menuWaiting: '{{count}} rewards waiting',
   clanWaiting: '{{count}} clan updates waiting',
   newcomerShield: {
-    label: 'Raid shield',
     hint: 'You cannot be raided for {{duration}}',
   },
   bays: {
@@ -73,6 +72,8 @@ export const pendingStrip = {
   */
   tradeOut: 'Convoy → Trade Ship',
   tradeHome: 'Convoy returning · Trade Ship',
+  intergalacticConvoyOut: 'Strike → Intergalactic Convoy',
+  intergalacticConvoyHome: 'Strike returning · Intergalactic Convoy',
   fleetHome: 'Your fleet home from {{target}}',
   fleetOut: 'Your fleet → {{target}}',
   engaging: 'Engaging',

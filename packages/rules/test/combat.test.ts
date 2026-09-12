@@ -4,6 +4,7 @@ import {
   COMBAT,
   GROUND_HULLS,
   HULLS,
+  MULTI_WORLD,
   NON_COMBATANT_HULLS,
   computeLoot,
   counterMult,
@@ -586,7 +587,7 @@ describe('dominion', () => {
     expect(atk).toEqual({ taken: 1_000_000, lost: 0 });
     expect(def).toEqual({ taken: 0, lost: 1_000_000 });
     expect(battleDominion(1_000_000, result)).toEqual({
-      rulesetVersion: 7,
+      rulesetVersion: MULTI_WORLD.rulesetVersion,
       lootValue: 1_000_000,
       attackerLossValue: 0,
       defenderPermanentLossValue: 0,

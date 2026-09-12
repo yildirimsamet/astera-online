@@ -186,6 +186,28 @@ describe('a client waiting for an arrival', () => {
     expect(invalidated).toHaveLength(landed);
   });
 
+  it('wakes for convoy contact, the five-second engagement end, and homecoming', () => {
+    mount({ pending: [thread({
+      kind: 'intergalactic_convoy',
+      originPlanetId: '00000000-0000-4000-8000-000000000001',
+      targetName: 'INTERGALACTIC_CONVOY',
+      arriveAt: at(Date.now() + 120_000),
+      engagementEndsAt: at(Date.now() + 125_000),
+      homeAt: at(Date.now() + 300_000),
+    })] });
+
+    vi.advanceTimersByTime(122_000);
+    expect(invalidated.map((k) => k[0])).toContain('pending');
+    const afterContact = invalidated.length;
+
+    vi.advanceTimersByTime(5_000);
+    expect(invalidated.length).toBeGreaterThan(afterContact);
+    const afterEngagement = invalidated.length;
+
+    vi.advanceTimersByTime(175_000);
+    expect(invalidated.length).toBeGreaterThan(afterEngagement);
+  });
+
   /** An inbound raid you can see is still an arrival worth waking for. */
   it('wakes for an inbound attack too', () => {
     mount({

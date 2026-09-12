@@ -1,8 +1,22 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Billboard, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { engagementEndsAt, isEngaging, seededFrom } from '@astera/rules';
+import {
+  INTERGALACTIC_CONVOY,
+  engagementEndsAt,
+  isEngaging,
+  seededFrom,
+  type HullId,
+} from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
 import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE, hullPoseLift } from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
@@ -14,6 +28,7 @@ import {
   contactPosition,
   CRAFT_SCALE,
   engagementPosition,
+  engagementTargetPosition,
   isHeading,
   legEnd,
   legStandoff,
@@ -617,6 +632,9 @@ function Flight({
   onSelect: () => void;
 }) {
   const path = thread.path;
+  const convoyEngagementPath = thread.kind === 'intergalactic_convoy'
+    ? thread.engagementPath
+    : undefined;
   const isProbe = thread.kind === 'probe';
   const isDeathStar = thread.kind === 'death_star';
   const style = isProbe ? ROUTE.probe : ROUTE.fleet;
@@ -653,6 +671,29 @@ function Flight({
     () => (path ? legEnd(path, standoff.end) : ([0, 0, 0] as Vec3Tuple)),
     [path, standoff],
   );
+  const convoyTargetStart = useMemo(
+    () => path && convoyEngagementPath ? toWorld(path.to) : null,
+    [path, convoyEngagementPath],
+  );
+  const convoyTargetEnd = useMemo(() => {
+    if (!convoyEngagementPath || !convoyTargetStart) return null;
+    const attackerStart = toWorld(convoyEngagementPath.from);
+    const attackerEnd = toWorld(convoyEngagementPath.to);
+    return [
+      convoyTargetStart[0] + attackerEnd[0] - attackerStart[0],
+      convoyTargetStart[1] + attackerEnd[1] - attackerStart[1],
+      convoyTargetStart[2] + attackerEnd[2] - attackerStart[2],
+    ] as Vec3Tuple;
+  }, [convoyEngagementPath, convoyTargetStart]);
+  const convoyReach = useMemo(() => {
+    if (!convoyEngagementPath || !convoyTargetStart) return 0;
+    const attackerStart = toWorld(convoyEngagementPath.from);
+    return Math.hypot(
+      convoyTargetStart[0] - attackerStart[0],
+      convoyTargetStart[1] - attackerStart[1],
+      convoyTargetStart[2] - attackerStart[2],
+    );
+  }, [convoyEngagementPath, convoyTargetStart]);
 
   /**
    * What this leg bombards, and how big it is — see `bombardmentTarget`.
@@ -682,7 +723,10 @@ function Flight({
   const formationScale = formation.scale;
   const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
 
-  const engaging = useEngagement(path ? path.arriveAt.getTime() : null);
+  const engaging = useEngagement(
+    path ? path.arriveAt.getTime() : null,
+    thread.kind === 'intergalactic_convoy' ? thread.engagementEndsAt?.getTime() : undefined,
+  );
   /**
    * A Death Star is spent at the instant it lands: it is the explosion. Kept here
    * rather than left to the payload because the mission is only resolved on the
@@ -703,14 +747,36 @@ function Flight({
 
   useFrame(() => {
     if (!path || !group.current) return;
+    const now = serverNow();
+    const convoyPhase = convoyEngagementPath !== undefined
+      && convoyTargetStart !== null
+      && convoyTargetEnd !== null
+      && now >= convoyEngagementPath.departAt.getTime()
+      && now < convoyEngagementPath.arriveAt.getTime();
     // The same helper the camera reads, so a focused squadron stays centred.
-    const at = threadPosition(path, serverNow(), standoff);
+    const at = convoyPhase
+      ? threadPosition(convoyEngagementPath, now, { start: 0, end: 0 })
+      : threadPosition(path, now, standoff);
+    const targetAt = convoyPhase
+      ? (() => {
+          const span = convoyEngagementPath.arriveAt.getTime()
+            - convoyEngagementPath.departAt.getTime();
+          const progress = span <= 0
+            ? 1
+            : Math.max(0, Math.min(1, (now - convoyEngagementPath.departAt.getTime()) / span));
+          return [
+            convoyTargetStart[0] + (convoyTargetEnd[0] - convoyTargetStart[0]) * progress,
+            convoyTargetStart[1] + (convoyTargetEnd[1] - convoyTargetStart[1]) * progress,
+            convoyTargetStart[2] + (convoyTargetEnd[2] - convoyTargetStart[2]) * progress,
+          ] as Vec3Tuple;
+        })()
+      : to;
     group.current.position.set(at[0], at[1], at[2]);
     // Floored against the squadron's own size for the reason written over
     // `formationAimDistance`: on the last seconds of an approach the destination
     // comes inside the formation, and aiming each slot at it splays the wing.
     formationAim.current = formationAimDistance(
-      Math.hypot(to[0] - at[0], to[1] - at[1], to[2] - at[2]),
+      Math.hypot(targetAt[0] - at[0], targetAt[1] - at[1], targetAt[2] - at[2]),
       formationScale,
     );
     /**
@@ -724,7 +790,7 @@ function Flight({
      * result. `lookAt` keeps the hull level because it resolves the roll against
      * world up.
      */
-    group.current.lookAt(to[0], to[1], to[2]);
+    group.current.lookAt(targetAt[0], targetAt[1], targetAt[2]);
 
     /**
      * BOTH ENDS, EVERY FRAME — which is also why the geometry itself never changes.
@@ -738,13 +804,14 @@ function Flight({
      */
     const points = line.getAttribute('position') as THREE.BufferAttribute;
     const nose = style.scale * 0.6;
-    const dx = stop[0] - at[0];
-    const dy = stop[1] - at[1];
-    const dz = stop[2] - at[2];
+    const lineEnd = convoyPhase ? targetAt : stop;
+    const dx = lineEnd[0] - at[0];
+    const dy = lineEnd[1] - at[1];
+    const dz = lineEnd[2] - at[2];
     const left = Math.hypot(dx, dy, dz);
     const k = left > nose ? nose / left : 0;
     points.setXYZ(0, at[0] + dx * k, at[1] + dy * k, at[2] + dz * k);
-    points.setXYZ(1, stop[0], stop[1], stop[2]);
+    points.setXYZ(1, lineEnd[0], lineEnd[1], lineEnd[2]);
     points.needsUpdate = true;
   });
 
@@ -913,6 +980,17 @@ function Flight({
             </>
           );
         })()}
+        {thread.kind === 'intergalactic_convoy' && engaging && convoyReach > 0 ? (
+          <Bombardment
+            volleyKey={`convoy:${id}`}
+            slots={slots}
+            distance={convoyReach}
+            radius={Math.max(0.5, formationScale)}
+            shipScale={style.scale}
+            arriveAt={path.arriveAt.getTime()}
+            engagementSeconds={INTERGALACTIC_CONVOY.engagementSeconds}
+          />
+        ) : null}
       </group>
     </>
   );
@@ -1012,6 +1090,8 @@ function FormationLightField({
   aimDistance,
   focused,
   showPips,
+  name = 'formation-lights',
+  intensity = 1,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
@@ -1019,6 +1099,8 @@ function FormationLightField({
   aimDistance: RefObject<number>;
   focused: boolean;
   showPips: boolean;
+  name?: string;
+  intensity?: number;
 }) {
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
   const lights = useMemo(() => {
@@ -1064,7 +1146,7 @@ function FormationLightField({
           authoredScale * 0.46 * puff.size,
           puff.alpha,
           0.12,
-          0.65 + puff.white * 1.15,
+          (0.65 + puff.white * 1.15) * intensity,
         );
       }
     });
@@ -1077,7 +1159,7 @@ function FormationLightField({
     geometry.setAttribute('aPulse', new THREE.BufferAttribute(pulses, 1));
     geometry.setAttribute('aEnergy', new THREE.BufferAttribute(energies, 1));
     return geometry;
-  }, [markers, slots, scale]);
+  }, [intensity, markers, slots, scale]);
 
   const glowMaterial = useMemo(
     () =>
@@ -1090,6 +1172,10 @@ function FormationLightField({
         vertexColors: true,
         transparent: true,
         depthWrite: false,
+        // Hulls deliberately clear map depth immediately before drawing. A
+        // formation plume rendered against the remaining last-hull depth could
+        // therefore vanish behind an unrelated member of its own squadron.
+        depthTest: false,
         blending: THREE.AdditiveBlending,
         vertexShader: `
           attribute float aSize;
@@ -1168,7 +1254,7 @@ function FormationLightField({
         material={glowMaterial}
         frustumCulled={false}
         renderOrder={SHIP_ORDER + 1}
-        name="formation-lights"
+        name={name}
       />
       {showPips && (
         <>
@@ -1752,16 +1838,20 @@ export function Wake({
 }
 
 /** Parallel formation wakes share one camera-facing strip buffer and one draw. */
-function FormationWakes({
+export function FormationWakes({
   markers,
   slots,
   scale,
   aimDistance,
+  name,
+  longitudinalOffset,
 }: {
   markers: readonly Marker[];
   slots: readonly Vec3Tuple[];
   scale: number;
   aimDistance: RefObject<number>;
+  name?: string;
+  longitudinalOffset?: (markerIndex: number, elapsedSeconds: number) => number;
 }) {
   const mesh = useRef<THREE.Mesh>(null);
   const material = useMemo(() => makeWakeMaterial(), []);
@@ -1798,6 +1888,7 @@ function FormationWakes({
   const direction = useMemo(() => new THREE.Vector3(), []);
   const eyeFromCraft = useMemo(() => new THREE.Vector3(), []);
   const aimed = useMemo<Vec3Tuple>(() => [0, 0, 1], []);
+  const animatedSlot = useMemo<Vec3Tuple>(() => [0, 0, 0], []);
 
   useFrame(({ camera, clock }) => {
     const node = mesh.current;
@@ -1812,12 +1903,19 @@ function FormationWakes({
     const positions = node.geometry.getAttribute('position') as THREE.BufferAttribute;
     markers.forEach((marker, markerIndex) => {
       const slot = slots[markerIndex] ?? [0, 0, 0];
+      animatedSlot[0] = slot[0];
+      animatedSlot[1] = slot[1];
+      animatedSlot[2] = slot[2] + (longitudinalOffset?.(markerIndex, clock.elapsedTime) ?? 0);
       const authoredScale = hullVisualScale(marker.hull, scale);
       // The streak is shed by the hull, so it starts at the hull's own height.
       const lift = hullPoseLift(marker.hull) * authoredScale;
-      formationAimDirection(slot, aimDistance.current, aimed);
+      formationAimDirection(animatedSlot, aimDistance.current, aimed);
       direction.set(...aimed);
-      eyeFromCraft.set(eye.x - slot[0], eye.y - slot[1] - lift, eye.z - slot[2]);
+      eyeFromCraft.set(
+        eye.x - animatedSlot[0],
+        eye.y - animatedSlot[1] - lift,
+        eye.z - animatedSlot[2],
+      );
       side.copy(direction).cross(eyeFromCraft);
       if (side.lengthSq() < 1e-12) side.set(1, 0, 0);
       else side.normalize();
@@ -1831,9 +1929,9 @@ function FormationWakes({
           back *
           0.22;
         const distance = authoredScale * WAKE_LENGTH * back;
-        const centreX = slot[0] - direction.x * distance;
-        const centreY = slot[1] + lift - direction.y * distance;
-        const centreZ = slot[2] - direction.z * distance;
+        const centreX = animatedSlot[0] - direction.x * distance;
+        const centreY = animatedSlot[1] + lift - direction.y * distance;
+        const centreZ = animatedSlot[2] - direction.z * distance;
         const vertex = vertexBase + k * 2;
         positions.setXYZ(
           vertex,
@@ -1865,6 +1963,7 @@ function FormationWakes({
   return (
     <mesh
       ref={mesh}
+      name={name}
       geometry={geometry}
       material={material}
       frustumCulled={false}
@@ -2080,14 +2179,20 @@ function ConcealedEngagement({
   nodes: readonly PlanetNode[];
 }) {
   const fight = contact.engagement;
-  const engaging = useEngagement(fight ? fight.arriveAt.getTime() : null);
+  const engaging = useEngagement(
+    fight ? fight.arriveAt.getTime() : null,
+    fight?.endsAt.getTime(),
+  );
   const shot = useMemo(
     () => (fight
       ? concealedVolley(fight.target, nodes, CONTACT_STYLE.fleet.scale)
       : null),
     [fight, nodes],
   );
-  const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
+  const centre = useMemo(
+    () => (fight ? engagementTargetPosition(fight, serverNow()) : null),
+    [fight],
+  );
   const direction = useMemo(() => concealedEngagementDirection(contact.id), [contact.id]);
   const source = useMemo<Vec3Tuple | null>(() => {
     if (!shot || !centre) return null;
@@ -2104,11 +2209,24 @@ function ConcealedEngagement({
     frame.lookAt(centre[0], centre[1], centre[2]);
     return frame.quaternion.clone();
   }, [centre, source]);
+  const group = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const node = group.current;
+    if (!node || !fight || !shot) return;
+    const target = engagementTargetPosition(fight, serverNow());
+    node.position.set(
+      target[0] + direction[0] * shot.standoff,
+      target[1] + direction[1] * shot.standoff,
+      target[2] + direction[2] * shot.standoff,
+    );
+    node.lookAt(...target);
+  });
 
   if (!fight || !shot || !centre || !source || !orientation || !engaging) return null;
 
   return (
     <group
+      ref={group}
       name="concealed-engagement"
       position={source}
       quaternion={orientation}
@@ -2126,6 +2244,7 @@ function ConcealedEngagement({
         shipScale={CONTACT_STYLE.fleet.scale}
         arriveAt={fight.arriveAt.getTime()}
         intensity={bombardmentIntensity(true)}
+        engagementSeconds={(fight.endsAt.getTime() - fight.arriveAt.getTime()) / 1000}
       />
     </group>
   );
@@ -2426,6 +2545,93 @@ function PirateMark({ scale, focused }: {
   );
 }
 
+/** Half-footprint used by a pirate's per-craft pick sphere. */
+export function formationMarkerHitRadius(hull: HullId, baseScale: number): number {
+  return Math.max(baseScale * 0.65, hullVisualScale(hull, baseScale) * 0.58);
+}
+
+/**
+ * A pirate formation contains large empty wedges between its visible hulls. One
+ * box around those extrema made all of that empty space clickable, especially at
+ * close zoom. Instanced spheres follow the actual craft instead: still one draw
+ * and one handler, but no invisible horizontal wall across the galaxy.
+ */
+function PirateFormationHitTarget({
+  markers,
+  slots,
+  scale,
+  onPointerUp,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  onPointerUp: (event: ThreeEvent<PointerEvent>) => void;
+}) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  const transform = useMemo(() => new THREE.Object3D(), []);
+
+  useLayoutEffect(() => {
+    const node = mesh.current;
+    if (!node) return;
+    markers.forEach((marker, index) => {
+      transform.position.set(...(slots[index] ?? [0, 0, 0]));
+      transform.scale.setScalar(formationMarkerHitRadius(marker.hull, scale));
+      transform.updateMatrix();
+      node.setMatrixAt(index, transform.matrix);
+    });
+    node.instanceMatrix.needsUpdate = true;
+  }, [markers, scale, slots, transform]);
+
+  return (
+    <instancedMesh
+      ref={mesh}
+      name="pirate-formation-hit-targets"
+      args={[undefined, undefined, markers.length]}
+      frustumCulled={false}
+      onPointerUp={onPointerUp}
+      renderOrder={-1}
+    >
+      <sphereGeometry args={[1, 12, 8]} />
+      <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+    </instancedMesh>
+  );
+}
+
+/**
+ * The existing batched flame field, made explicit and brighter for pirates.
+ * `depthTest: false` inside the field keeps its animated plumes visible after the
+ * hull render path clears depth; this is one point-bank draw, not 13 sprites per
+ * ship.
+ */
+function PirateEngineFlames({
+  markers,
+  slots,
+  scale,
+  aimDistance,
+  focused,
+  showPips,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  aimDistance: RefObject<number>;
+  focused: boolean;
+  showPips: boolean;
+}) {
+  return (
+    <FormationLightField
+      name="pirate-engine-flames"
+      markers={markers}
+      slots={slots}
+      scale={scale}
+      aimDistance={aimDistance}
+      focused={focused}
+      showPips={showPips}
+      intensity={1.45}
+    />
+  );
+}
+
 function Foreign({
   contact,
   nodes,
@@ -2494,7 +2700,10 @@ function Foreign({
    * volley rather than each seeing their own version of it.
    */
   const fight = contact.engagement;
-  const engaging = useEngagement(fight ? fight.arriveAt.getTime() : null);
+  const engaging = useEngagement(
+    fight ? fight.arriveAt.getTime() : null,
+    fight?.endsAt.getTime(),
+  );
   /**
    * And the same rule from the other side of the payload. The finished mission is
    * republished for the length of the explosion so a client that was elsewhere can
@@ -2526,11 +2735,29 @@ function Foreign({
    * straight through the world-solve and put the pirate on top of its attacker.
    * `engagementPosition` is now the single answer and both of them call it.
    */
+  /*
+    BOTH ENDS OF THE VOLLEY ARE READ AT THE SAME INSTANT. D201.
+
+    A convoy strike translates the craft and its target by the identical vector for
+    five seconds, so the SEPARATION between them is constant — but only if the two
+    are sampled together. Reading the craft at `startAt` against a target sampled
+    at `serverNow()` made the rounds stretch across the pass. The window's own
+    opening instant is the instant both are read at; for a stationary fight neither
+    figure depends on it, so a world raid and a pirate rendezvous are unchanged.
+  */
+  const volleyAt = contact.startAt.getTime();
   const hold = useMemo(
-    () => (fight ? engagementPosition(contact, fight.target, nodes) : null),
-    [fight, contact, nodes],
+    () => (fight ? engagementPosition(contact, fight.target, nodes, volleyAt) : null),
+    [fight, contact, nodes, volleyAt],
   );
-  const centre = useMemo(() => (fight ? toWorld(fight.target) : null), [fight]);
+  const volleyAnchor = useMemo(
+    () => (fight ? engagementTargetPosition(fight, volleyAt) : null),
+    [fight, volleyAt],
+  );
+  const centre = useMemo(
+    () => (fight ? engagementTargetPosition(fight, serverNow()) : null),
+    [fight],
+  );
   const formation = useMemo(() => formationLayout(markers, style.scale), [markers, style.scale]);
   const slots = formation.slots;
   const formationScale = formation.scale;
@@ -2591,7 +2818,7 @@ function Foreign({
     node.position.set(at[0], at[1], at[2]);
     // Aimed down its own window, which is its heading and nothing further — or, once
     // it is over a world, at the world it is putting rounds into.
-    const aim = centre ?? to;
+    const aim = fight ? engagementTargetPosition(fight, serverNow()) : to;
     /*
       THE SLOTS AIM AT A DIRECTION, NOT AT THE SAMPLE THAT EXPRESSED IT.
 
@@ -2629,6 +2856,13 @@ function Foreign({
 
   if (spent) return null;
 
+  const pickContact = (event: ThreeEvent<PointerEvent>): void => {
+    if (!wasTap()) return;
+    markHit();
+    event.stopPropagation();
+    onSelect();
+  };
+
   return (
     <>
       {route && (
@@ -2650,18 +2884,19 @@ function Foreign({
           cannot select reads as scenery — which is the opposite of the liveliness
           this is for.
         */}
-        <mesh
-          position={hitBox.centre}
-          onPointerUp={(event) => {
-            if (!wasTap()) return;
-            markHit();
-            event.stopPropagation();
-            onSelect();
-          }}
-        >
-          <boxGeometry args={hitBox.size} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
+        {contact.kind === 'pirate' && markers ? (
+          <PirateFormationHitTarget
+            markers={markers}
+            slots={slots}
+            scale={style.scale}
+            onPointerUp={pickContact}
+          />
+        ) : (
+          <mesh position={hitBox.centre} onPointerUp={pickContact}>
+            <boxGeometry args={hitBox.size} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
 
         <TrackingMark
           kind={contact.kind}
@@ -2694,16 +2929,27 @@ function Foreign({
                 current either way (the rock lane's rule), and a dimmed ship reads as
                 a rendering fault rather than as a sentence about sight.
               */}
-              <FormationLightField
-                markers={markers}
-                slots={slots}
-                scale={style.scale}
-                aimDistance={formationAim}
-                focused={focused}
-                // Telescope sight is exact, so its tally uses the same pips as an
-                // owned squadron. Radar silhouettes and mining craft do not.
-                showPips={exactFleet}
-              />
+              {contact.kind === 'pirate' ? (
+                <PirateEngineFlames
+                  markers={markers}
+                  slots={slots}
+                  scale={style.scale}
+                  aimDistance={formationAim}
+                  focused={focused}
+                  showPips={exactFleet}
+                />
+              ) : (
+                <FormationLightField
+                  markers={markers}
+                  slots={slots}
+                  scale={style.scale}
+                  aimDistance={formationAim}
+                  focused={focused}
+                  // Telescope sight is exact, so its tally uses the same pips as an
+                  // owned squadron. Radar silhouettes and mining craft do not.
+                  showPips={exactFleet}
+                />
+              )}
               <FormationWakes
                 markers={markers}
                 slots={slots}
@@ -2769,14 +3015,14 @@ function Foreign({
           The volley, seeded from the mission id — the same key the attacker's own
           client uses, so the two of them watch the identical bombardment.
         */}
-        {fight && hold && centre && engaging && (
+        {fight && hold && volleyAnchor && centre && engaging && (
           <Bombardment
             volleyKey={contact.id}
             slots={slots}
             distance={Math.hypot(
-              centre[0] - hold[0],
-              centre[1] - hold[1],
-              centre[2] - hold[2],
+              volleyAnchor[0] - hold[0],
+              volleyAnchor[1] - hold[1],
+              volleyAnchor[2] - hold[2],
             )}
             /*
               THE SIZE OF WHAT IS BEING SHOT AT. D150.
@@ -2790,6 +3036,7 @@ function Foreign({
             radius={world ? world.radius : formationScale}
             shipScale={style.scale}
             arriveAt={fight.arriveAt.getTime()}
+            engagementSeconds={(fight.endsAt.getTime() - fight.arriveAt.getTime()) / 1000}
           />
         )}
       </group>
@@ -2963,9 +3210,11 @@ export function useStrikeConsumed(at: number | null): boolean {
   return consumed;
 }
 
-export function useEngagement(arriveAt: number | null): boolean {
+export function useEngagement(arriveAt: number | null, explicitEndsAt?: number): boolean {
   const [engaging, setEngaging] = useState(
-    () => arriveAt !== null && isEngaging(arriveAt, serverNow()),
+    () => arriveAt !== null && (explicitEndsAt === undefined
+      ? isEngaging(arriveAt, serverNow())
+      : serverNow() >= arriveAt && serverNow() < explicitEndsAt),
   );
 
   useEffect(() => {
@@ -3006,9 +3255,11 @@ export function useEngagement(arriveAt: number | null): boolean {
     const settle = (): void => {
       for (const timer of timers) clearTimeout(timer);
       timers.length = 0;
-      setEngaging(isEngaging(arriveAt, serverNow()));
+      setEngaging(explicitEndsAt === undefined
+        ? isEngaging(arriveAt, serverNow())
+        : serverNow() >= arriveAt && serverNow() < explicitEndsAt);
       arm(arriveAt, true);
-      arm(engagementEndsAt(arriveAt), false);
+      arm(explicitEndsAt ?? engagementEndsAt(arriveAt), false);
     };
 
     settle();
@@ -3021,7 +3272,7 @@ export function useEngagement(arriveAt: number | null): boolean {
       document.removeEventListener('visibilitychange', wake);
       for (const timer of timers) clearTimeout(timer);
     };
-  }, [arriveAt]);
+  }, [arriveAt, explicitEndsAt]);
 
   return engaging;
 }

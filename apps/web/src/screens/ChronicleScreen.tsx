@@ -147,24 +147,32 @@ export function ChronicleScreen({
               case 'galaxy_event_started':
                 title = event.payload.eventKind === 'TRADE_SHIP'
                   ? t('chronicle.tradeShipStarted')
-                  : t('chronicle.asteroidShowerStarted');
+                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
+                    ? t('chronicle.intergalacticConvoyStarted')
+                    : t('chronicle.asteroidShowerStarted');
                 detail = event.payload.eventKind === 'TRADE_SHIP'
                   ? t('chronicle.tradeShipStartedDetail', {
                     alloy: full(event.payload.rate.deuterium / event.payload.rate.alloy),
                     crystal: full(event.payload.rate.deuterium / event.payload.rate.crystal),
                   })
-                  : t('chronicle.asteroidShowerStartedDetail', {
-                    multiplier: event.payload.asteroidSpawnMultiplier,
-                  });
+                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
+                    ? t('chronicle.intergalacticConvoyStartedDetail')
+                    : t('chronicle.asteroidShowerStartedDetail', {
+                      multiplier: event.payload.asteroidSpawnMultiplier,
+                    });
                 icon = <GalaxyIcon className="size-4" />;
                 break;
               case 'galaxy_event_ended':
                 title = event.payload.eventKind === 'TRADE_SHIP'
                   ? t('chronicle.tradeShipEnded')
-                  : t('chronicle.asteroidShowerEnded');
+                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
+                    ? t('chronicle.intergalacticConvoyEnded')
+                    : t('chronicle.asteroidShowerEnded');
                 detail = event.payload.eventKind === 'TRADE_SHIP'
                   ? t('chronicle.tradeShipEndedDetail')
-                  : t('chronicle.asteroidShowerEndedDetail');
+                  : event.payload.eventKind === 'INTERGALACTIC_CONVOY'
+                    ? t('chronicle.intergalacticConvoyEndedDetail')
+                    : t('chronicle.asteroidShowerEndedDetail');
                 icon = <GalaxyIcon className="size-4" />;
                 break;
             }

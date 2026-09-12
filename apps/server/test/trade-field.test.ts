@@ -15,7 +15,11 @@ import { privatePirateField } from '../src/services/pirateField.js';
  * assumed.
  */
 
-const RATE = GALAXY_EVENTS.definitions.TRADE_SHIP.effect.rate;
+const TRADE_WINDOW = GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0];
+const TRADE_DURATION = TRADE_WINDOW.endsAtLocalMinute - TRADE_WINDOW.startsAtLocalMinute;
+const SHOWER_WINDOW = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows[0];
+const SHOWER_DURATION = SHOWER_WINDOW.endsAtLocalMinute - SHOWER_WINDOW.startsAtLocalMinute;
+const RATE = TRADE_WINDOW.effect.rate;
 const KEY = 'trade-field-test-key';
 
 const tradeOccurrence = (
@@ -25,7 +29,7 @@ const tradeOccurrence = (
   sequence,
   kind: 'TRADE_SHIP',
   startsAtMinute,
-  endsAtMinute: startsAtMinute + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes,
+  endsAtMinute: startsAtMinute + TRADE_DURATION,
   definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
   effect: { rate: RATE },
 });
@@ -37,7 +41,7 @@ const showerOccurrence = (
   sequence,
   kind: 'ASTEROID_SHOWER',
   startsAtMinute,
-  endsAtMinute: startsAtMinute + GALAXY_EVENTS.definitions.ASTEROID_SHOWER.durationMinutes,
+  endsAtMinute: startsAtMinute + SHOWER_DURATION,
   definitionVersion: GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version,
   effect: { asteroidSpawnMultiplier: 5 },
 });
@@ -51,7 +55,7 @@ describe('the season trade lane', () => {
     expect(again).toEqual(first);
     expect(first.sequence).toBe(0);
     expect(first.appearsAt).toBe(600);
-    expect(first.expiresAt).toBe(600 + GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes);
+    expect(first.expiresAt).toBe(600 + TRADE_DURATION);
     expect(first.rate).toEqual(RATE);
     expect(first.speed).toBe(TRADE.speed);
     expect(first.radius).toBeGreaterThanOrEqual(TRADE.orbitMin);
@@ -77,9 +81,8 @@ describe('the season trade lane', () => {
     const occurrences = [tradeOccurrence(0, 600), tradeOccurrence(1, 1_200)];
     expect(activeTradeShip(KEY, occurrences, 599)).toBeNull();
     expect(activeTradeShip(KEY, occurrences, 600)?.sequence).toBe(0);
-    expect(activeTradeShip(KEY, occurrences, 779)?.sequence).toBe(0);
-    // 600 + 180 is the first minute it is gone.
-    expect(activeTradeShip(KEY, occurrences, 780)).toBeNull();
+    expect(activeTradeShip(KEY, occurrences, 600 + TRADE_DURATION - 1)?.sequence).toBe(0);
+    expect(activeTradeShip(KEY, occurrences, 600 + TRADE_DURATION)).toBeNull();
     expect(activeTradeShip(KEY, occurrences, 1_200)?.sequence).toBe(1);
     expect(activeTradeShip(KEY, occurrences, 99_999)).toBeNull();
   });

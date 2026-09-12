@@ -55,7 +55,7 @@ Rejected engines and the reasoning: `decisions.md` A2.
 | Class | Mechanism | Covers |
 |---|---|---|
 | **Continuous** | Lazy — computed on read | Resource accumulation, shield regen, asteroid position, fleet position, telescope staleness |
-| **Discrete** | Scheduled events + one worker | Fleet arrival → battle, fleet return → loot, probe arrival, radar warning, galaxy-event lifecycle, season rollover |
+| **Discrete** | Scheduled events + one worker | Fleet arrival → battle, fleet return → loot, probe arrival, radar warning, galaxy-event lifecycle, convoy arrival/return, season rollover |
 | **Instantaneous** | REST inside a transaction | Upgrade, build, launch, scout, assign telescope |
 
 ### The lazy tick — the entire offline-progression system
@@ -319,7 +319,7 @@ handling for no benefit.
 Seasonal and permanent tables, with **nothing storing a value derivable from a formula and a clock**:
 
 `accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
-`galaxy_events` · `galaxy_event_occurrences` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` ·
+`galaxy_events` · `galaxy_event_occurrences` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` · `pirate_raids` · `trade_runs` · `intergalactic_convoy_runs` ·
 `build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `probe_world_memories` · `watches` ·
 `sensor_epochs` · `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
 `request_log` · `clans` · `clan_memberships` · `clan_requests` · `clan_ceasefires` ·
@@ -334,6 +334,12 @@ can delay notification delivery but cannot extend the effect. Each occurrence sn
 and effect. `scheduled_events.dedupe_key` is nullable so legacy producers retain their semantics,
 while galaxy lifecycle repair can safely upsert one start and one end job across restarts/replicas.
 The active-event API is account/season scoped and never exposes the future schedule.
+
+`intergalactic_convoy_runs` freezes the moving intercept, five-second parallel segment, return
+point/timestamps, launch fleet/tech, production cap and quoted reward. Partial uniqueness holds one
+active run per physical world; full `(planet_id, occurrence_id)` uniqueness makes the one-strike quota
+survive completion. Conditional status updates make arrival/reward roll and return/delivery exactly
+once, while the two prizes remain nullable only on the outbound state.
 
 `probe_reports` is the complete Intel-centre history. `probe_world_memories` is its bounded
 read model: one atomically replaced pointer per observer and target world, used by the galaxy

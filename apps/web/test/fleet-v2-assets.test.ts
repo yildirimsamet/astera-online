@@ -165,8 +165,8 @@ describe('Fleet V2 canonical assets', () => {
       DART: '-x', PIKE: '+x', RAMPART: '+x', WARDEN: '+x', COURIER: '+x',
       VIPER: '+x', TALON: '+x', STRONGHOLD: '+z', SENTINEL: '+z', WAYFARER: '+x',
       TEMPEST: '+x', BALLISTA: '+z', LEVIATHAN: '+x', PRAETORIAN: '+z', ATLAS: '+z',
-      NULLIFIER: '-x', GARBAGE_COLLECTOR: '+z', CATACLYSM: '-x', CORSAIR: '+z',
-      CITADEL: '-z', PALADIN: '+z', ARGOSY: '+z',
+      NULLIFIER: '-x', GARBAGE_COLLECTOR: '+z', CATACLYSM: '-x', CORSAIR: '-x',
+      CITADEL: '-z', PALADIN: '-x', ARGOSY: '-x',
     } as const;
     expect(Object.fromEntries(
       Object.entries(manifest ?? {}).map(([id, asset]) => [id, asset.facing]),

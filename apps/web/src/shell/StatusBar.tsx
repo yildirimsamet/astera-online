@@ -397,16 +397,24 @@ export function NewcomerShield() {
   const remaining = countdown(until.getTime() - now);
 
   return (
+    /*
+      THE GLYPH IS THE LABEL. Owner report — the row was colliding.
+
+      This chip stated its own name in words beside a shield icon that already
+      says it, and it sat on the one row that also carries the works meter, its
+      collect button and the store's own "full" warning. When that warning appears
+      the row has no width left and the controls ran into each other. A glyph over
+      a sentence is the standing rule; the countdown is the fact worth the space,
+      and the whole sentence stays on `aria-label` for anyone who needs it read.
+    */
     <div
       data-newcomer-shield
+      title={t('statusBar.newcomerShield.hint', { duration: remaining })}
       aria-label={t('statusBar.newcomerShield.hint', { duration: remaining })}
-      className="flex shrink-0 flex-col justify-center rounded-chip border border-opportunity/35 bg-opportunity/10 px-2 text-opportunity"
+      className="flex flex-col shrink-0 items-center gap-1 rounded-chip border border-opportunity/35 bg-opportunity/10 px-2 py-1 text-opportunity"
     >
-      <span className="flex items-center gap-1 whitespace-nowrap text-micro font-semibold leading-none">
-        <ShieldIcon className="size-3.5" />
-        {t('statusBar.newcomerShield.label')}
-      </span>
-      <span className="num mt-1 text-micro leading-none text-bone">{remaining}</span>
+      <ShieldIcon className="size-3 shrink-0" />
+      <span className="num whitespace-nowrap text-micro leading-none text-bone text-micro">{remaining}</span>
     </div>
   );
 }

@@ -342,6 +342,11 @@ tell a fuselage from a wingspan (the Explorer is 0.62 long and 1.00 across the w
 flew sideways down every route), and it cannot tell a nose from a tail. **Facing is information
 only the person who made the model has. It has to be written down, not guessed.**
 
+The owner review found that the supplied Corsair, Argosy and Paladin meshes are the same case: all
+three native noses are on `-X`, not `+Z`. Their manifest declarations carry that quarter-turn
+correction so the models face their travel direction in every scene, rather than receiving a
+convoy-only rotation.
+
 Two more traps at the same site: `orientedCraft` turns a model *before* it measures it, because
 a box round a body lying diagonally is a box round the diagonal; and a thin shell needs
 `THREE.DoubleSide` or it draws nothing for half of every rotation, which reads as a corrupt
@@ -367,6 +372,35 @@ spiral neighbours among the small craft behind it, and at a strict share those a
 radius too slowly to clear it. Do not tune it by eye: `flight-visual.test.ts` measures the
 tightest pair in a mixed wing against the tightest pair in a single-hull wing, which is the
 property the number exists to hold.
+
+The Intergalactic Convoy is the deliberate exception to an ordinary wing layout: one parent transform
+moves a frozen eleven-rank, two-column formation containing each of the 22 mobile Fleet V2 hulls
+exactly once, broadly tier 1 at the nose and tier 4 at the rear. Its convoy-only baseline is drawn at
+2× its earlier size. Longitudinal gaps are authored per neighbouring rank at
+22/28/34/34/41/54/56/68/76/72 game units while the two lanes are 64 units apart: small noses stay
+dense, and the consecutive tier 3/4 ranks receive a further six-unit breath after owner review.
+Each craft has a deterministic, bounded forward/back throttle drift; two opposite extremes remain
+well inside one rank gap, so the motion can never change the order. The whole train also carries one
+batched wake field and one instanced drive-light bank. Four transparent, full-length flow veils
+sit over the train in one instanced draw. Their sheets do not slide: vertex waves and domain-warped
+fragment noise travel from local `+Z` toward `-Z`, continuously changing the soft filaments and
+leaving dark air between them. This supplies an actual silk-like slipstream rather than moving
+unchanged strokes, without restoring the rejected rings or becoming a second route line. Position,
+heading and motion are updated through refs on the authoritative server clock; no React state update
+or network poll occurs per frame. During a strike both attacker and target advance along the published
+five-second segment, and only the attacker fires.
+
+Convoy focus is an exact composition rather than the ordinary craft's one-way 7-unit dolly. The
+camera targets the formation anchor halfway between its first and last rank, and derives its range
+from the final 2× nose-to-tail extent, the canvas's 45° vertical field of view and portrait-safe
+padding for the expanded focus rail. It may pull back as well as in, so a close camera cannot crop the
+formation it just selected or leave its rear ranks behind the rail.
+
+An identified pirate's selectable area follows the same visible truth. It is an instanced sphere per
+drawn hull, not one rectangular volume around the formation's extrema; the empty wedges between hulls
+remain available to galaxy clicks even at close zoom. Pirate engines use the batched animated plume
+field with depth testing disabled and stronger energy, so another hull's depth clear cannot erase the
+flame bank.
 
 ## Audio — nothing exists
 

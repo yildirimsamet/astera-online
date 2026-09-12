@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   check,
+  doublePrecision,
   pgEnum,
   pgTable,
   primaryKey,
@@ -25,6 +26,7 @@ import type {
   HullId,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidShowerEffect,
+  IntergalacticConvoyEffect,
   TradeShipEffect,
   TradeRate,
   ResearchProjectId,
@@ -92,6 +94,9 @@ export const eventKind = pgEnum('event_kind', [
   /** A convoy reaching the merchant, and its return leg reaching home. D156. */
   'trade_arrival',
   'trade_return',
+  /** A Galaksilerarası Konvoy raid beginning its return, then reaching home. D201. */
+  'convoy_arrival',
+  'convoy_return',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -105,6 +110,8 @@ export const galaxyEventOccurrenceKind = pgEnum('galaxy_event_occurrence_kind', 
   'ASTEROID_SHOWER',
   /** Ticaret Gemisi. D156. */
   'TRADE_SHIP',
+  /** Galaksilerarası Konvoy. D201. */
+  'INTERGALACTIC_CONVOY',
 ]);
 /**
  * WHAT THE GAME TELLS YOU, AND NOTHING ELSE. D45.
@@ -155,6 +162,8 @@ export const notificationKind = pgEnum('notification_kind', [
    * `raid_result` already carries one.
    */
   'target_gone',
+  /** A convoy engagement resolved; both prizes are still in transit. D201. */
+  'convoy_result',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -661,6 +670,13 @@ export type GalaxyEventLifecyclePayload =
       startsAt: string;
       endsAt: string;
       rate: TradeRate;
+    }
+  | {
+      eventKind: 'INTERGALACTIC_CONVOY';
+      startsAt: string;
+      endsAt: string;
+      resourceCapHours: number;
+      shipDropChanceAtFullQuality: number;
     };
 
 export type GalaxyEventPayload =
@@ -723,7 +739,9 @@ export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
    * that in one place and refuses a row whose effect does not match its kind,
    * rather than each of the four readers guessing at the shape.
    */
-  effect: jsonb('effect').$type<AsteroidShowerEffect | TradeShipEffect>().notNull(),
+  effect: jsonb('effect').$type<
+    AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect
+  >().notNull(),
   startProcessedAt: timestamp('start_processed_at', { withTimezone: true }),
   endProcessedAt: timestamp('end_processed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -2047,6 +2065,143 @@ export const tradeRuns = pgTable('trade_runs', {
     `uniqueIndex('trade_runs_planet_occurrence_idx').on(t.planetId, t.occurrenceId)
       .where(sql`status <> 'done'`)`.
   */
+]);
+
+export const intergalacticConvoyRunStatus = pgEnum('intergalactic_convoy_run_status', [
+  'outbound', 'returning', 'done',
+]);
+
+/**
+ * ONE WORLD'S ONCE-PER-OCCURRENCE STRIKE AT THE INTERGALACTIC CONVOY. D201.
+ *
+ * The launch roster and every point/timestamp are immutable snapshots. The
+ * target keeps moving during the five-second engagement, so the first intercept
+ * and the engagement-end return point are deliberately separate. Rewards are
+ * NULL only until that engagement resolves; an empty prize is persisted as `{}`
+ * so a retry can distinguish "rolled nothing" from "not rolled yet".
+ */
+export const intergalacticConvoyRuns = pgTable('intergalactic_convoy_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  occurrenceId: uuid('occurrence_id').notNull().references(() => galaxyEventOccurrences.id),
+  /** Physical launch pad. Its active lock survives a change of controller. */
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /** The commander who committed the fleet, frozen independently from the pad. */
+  ownerPlayerId: uuid('owner_player_id').notNull().references(() => players.id),
+  status: intergalacticConvoyRunStatus('status').notNull().default('outbound'),
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  tech: jsonb('tech').$type<TechLevels>().notNull(),
+  interceptX: doublePrecision('intercept_x').notNull(),
+  interceptY: doublePrecision('intercept_y').notNull(),
+  interceptZ: doublePrecision('intercept_z').notNull(),
+  engagementEndX: doublePrecision('engagement_end_x').notNull(),
+  engagementEndY: doublePrecision('engagement_end_y').notNull(),
+  engagementEndZ: doublePrecision('engagement_end_z').notNull(),
+  /** Immutable origin position; safe-home rerouting does not rewrite the visual path. */
+  returnX: doublePrecision('return_x').notNull(),
+  returnY: doublePrecision('return_y').notNull(),
+  returnZ: doublePrecision('return_z').notNull(),
+  departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  engagementEndsAt: timestamp('engagement_ends_at', { withTimezone: true }).notNull(),
+  homeAt: timestamp('home_at', { withTimezone: true }).notNull(),
+  productionCap: jsonb('production_cap').$type<Resources>().notNull(),
+  resourceQualityFactor: doublePrecision('resource_quality_factor').notNull(),
+  shipQualityFactor: doublePrecision('ship_quality_factor').notNull(),
+  quotedResourceReward: jsonb('quoted_resource_reward').$type<Resources>().notNull(),
+  resourceReward: jsonb('resource_reward').$type<Resources>(),
+  awardedFleet: jsonb('awarded_fleet').$type<Fleet>(),
+  /**
+   * THE STRIKE NEVER HAPPENED, AND THE WORLD IS NOT CHARGED FOR IT. D201.
+   *
+   * Set only by the outbound recovery path, when a `convoy_arrival` event failed
+   * permanently and the wing was flown safely home without ever firing. The
+   * occurrence quota is a ration of PLAYER decisions — one strike per world per
+   * crossing — and a server fault is not one of those decisions, so a run that
+   * ended this way must not hold the world's single shot for the rest of the
+   * window. Fuel is a separate matter and stays spent: D136 refunds nothing, ever.
+   *
+   * Null on every ordinary row, which is what keeps the quota index below honest
+   * for the runs that did fire.
+   */
+  abandonedAt: timestamp('abandoned_at', { withTimezone: true }),
+}, (t) => [
+  index('intergalactic_convoy_runs_season_status_idx').on(t.seasonId, t.status),
+  index('intergalactic_convoy_runs_owner_status_idx').on(t.ownerPlayerId, t.status),
+  uniqueIndex('intergalactic_convoy_runs_planet_active_idx')
+    .on(t.planetId)
+    .where(sql`${t.status} <> 'done'`),
+  /**
+   * ONE STRIKE PER WORLD PER CROSSING, FOR EVERY STRIKE THAT ACTUALLY HAPPENED.
+   *
+   * Partial on `abandoned_at IS NULL` since D201: an abandoned outbound run is
+   * kept for its history and its notification, and releases the ration it never
+   * spent.
+   */
+  uniqueIndex('intergalactic_convoy_runs_planet_occurrence_idx')
+    .on(t.planetId, t.occurrenceId)
+    .where(sql`${t.abandonedAt} IS NULL`),
+  check(
+    'intergalactic_convoy_runs_quality_check',
+    sql`${t.resourceQualityFactor} BETWEEN 0 AND 1
+      AND ${t.shipQualityFactor} BETWEEN 0 AND 1`,
+  ),
+  check(
+    'intergalactic_convoy_runs_time_order_check',
+    sql`${t.departAt} <= ${t.arriveAt}
+      AND ${t.arriveAt} < ${t.engagementEndsAt}
+      AND ${t.engagementEndsAt} = ${t.arriveAt} + INTERVAL '5 seconds'
+      AND ${t.engagementEndsAt} <= ${t.homeAt}`,
+  ),
+  check(
+    'intergalactic_convoy_runs_coordinates_check',
+    sql`${t.interceptX} > '-Infinity'::double precision
+      AND ${t.interceptX} < 'Infinity'::double precision
+      AND ${t.interceptY} > '-Infinity'::double precision
+      AND ${t.interceptY} < 'Infinity'::double precision
+      AND ${t.interceptZ} > '-Infinity'::double precision
+      AND ${t.interceptZ} < 'Infinity'::double precision
+      AND ${t.engagementEndX} > '-Infinity'::double precision
+      AND ${t.engagementEndX} < 'Infinity'::double precision
+      AND ${t.engagementEndY} > '-Infinity'::double precision
+      AND ${t.engagementEndY} < 'Infinity'::double precision
+      AND ${t.engagementEndZ} > '-Infinity'::double precision
+      AND ${t.engagementEndZ} < 'Infinity'::double precision
+      AND ${t.returnX} > '-Infinity'::double precision
+      AND ${t.returnX} < 'Infinity'::double precision
+      AND ${t.returnY} > '-Infinity'::double precision
+      AND ${t.returnY} < 'Infinity'::double precision
+      AND ${t.returnZ} > '-Infinity'::double precision
+      AND ${t.returnZ} < 'Infinity'::double precision`,
+  ),
+  check(
+    'intergalactic_convoy_runs_reward_state_check',
+    sql`(${t.status} = 'outbound'
+          AND ${t.resourceReward} IS NULL
+          AND ${t.awardedFleet} IS NULL)
+      OR (${t.status} <> 'outbound'
+          AND ${t.resourceReward} IS NOT NULL
+          AND ${t.awardedFleet} IS NOT NULL)`,
+  ),
+  check(
+    'intergalactic_convoy_runs_production_cap_check',
+    sql`COALESCE((${t.productionCap}->>'alloy')::numeric >= 0, false)
+      AND COALESCE((${t.productionCap}->>'crystal')::numeric >= 0, false)
+      AND COALESCE((${t.productionCap}->>'deuterium')::numeric >= 0, false)`,
+  ),
+  check(
+    'intergalactic_convoy_runs_quoted_reward_check',
+    sql`COALESCE((${t.quotedResourceReward}->>'alloy')::numeric >= 0, false)
+      AND COALESCE((${t.quotedResourceReward}->>'crystal')::numeric >= 0, false)
+      AND COALESCE((${t.quotedResourceReward}->>'deuterium')::numeric >= 0, false)`,
+  ),
+  check(
+    'intergalactic_convoy_runs_resource_reward_check',
+    sql`${t.resourceReward} IS NULL OR (
+      COALESCE((${t.resourceReward}->>'alloy')::numeric >= 0, false)
+      AND COALESCE((${t.resourceReward}->>'crystal')::numeric >= 0, false)
+      AND COALESCE((${t.resourceReward}->>'deuterium')::numeric >= 0, false))`,
+  ),
 ]);
 
 export const miningStatus = pgEnum('mining_status', ['outbound', 'returning', 'done']);

@@ -42,6 +42,7 @@ import {
   ContactFocus,
   PirateFocus,
   PlanetFocus,
+  IntergalacticConvoyFocus,
   TradeFocus,
   RunFocus,
   ThreadFocus,
@@ -54,12 +55,18 @@ import { SituationGuide } from '../ui/SituationGuide.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { activeTradeShip } from '../lib/trade.js';
-import { flightModifiers, planTradeRoute } from '../lib/navigation.js';
+import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
+import {
+  flightModifiers,
+  planIntergalacticConvoyRoute,
+  planTradeRoute,
+} from '../lib/navigation.js';
 import { outOfBandAbove } from '../lib/band.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
   MOBILE_HULLS,
+  combatValue,
   distance,
   engagementEndsAt,
   interceptAsteroid,
@@ -133,6 +140,11 @@ const NO_SENSORS: readonly ReachRing[] = [];
 const ClanScreen = lazy(async () => {
   const module = await import('./ClanScreen.jsx');
   return { default: module.ClanScreen };
+});
+
+const IntergalacticConvoySheet = lazy(async () => {
+  const module = await import('./IntergalacticConvoySheet.jsx');
+  return { default: module.IntergalacticConvoySheet };
 });
 
 /** Tiptap is admin-only and must not enter every commander's first galaxy bundle. */
@@ -334,6 +346,10 @@ export function GalaxyView({
     () => activeTradeShip(galaxyEvents.data?.events, now),
     [galaxyEvents.data, now],
   );
+  const intergalacticConvoy = useMemo(
+    () => activeIntergalacticConvoy(galaxyEvents.data?.events, now),
+    [galaxyEvents.data, now],
+  );
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
 
   /*
@@ -460,6 +476,7 @@ export function GalaxyView({
    * behaviour for an appointment nobody can extend.
    */
   const [trading, setTrading] = useState(false);
+  const [strikingConvoy, setStrikingConvoy] = useState(false);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
   const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
@@ -616,6 +633,28 @@ export function GalaxyView({
     );
     return route?.oneWayMinutes ?? null;
   }, [tradeShip, planet.data, season.data, tradeMinute]);
+
+  const convoyReach = useMemo(() => {
+    if (!intergalacticConvoy || !planet.data || !season.data) return null;
+    const home = planet.data;
+    const armed = MOBILE_HULLS.filter(
+      (hull) => (home.fleet[hull] ?? 0) > 0 && combatValue({ [hull]: 1 }) > 0,
+    );
+    let best: number | null = null;
+    for (const hull of armed) {
+      const route = planIntergalacticConvoyRoute(
+        home.planet.position,
+        intergalacticConvoy,
+        (tradeMinute * 60_000 - season.data.startsAt.getTime()) / 60_000,
+        { [hull]: 1 },
+        home.fleet,
+        home.ground,
+        flightModifiers(home),
+      );
+      if (route && (best === null || route.oneWayMinutes < best)) best = route.oneWayMinutes;
+    }
+    return best;
+  }, [intergalacticConvoy, planet.data, season.data, tradeMinute]);
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
   /**
@@ -914,6 +953,7 @@ export function GalaxyView({
     setDetail(false);
     setAttacking(false);
     setTrading(false);
+    setStrikingConvoy(false);
     setSettlingTargetId(null);
   };
 
@@ -936,6 +976,7 @@ export function GalaxyView({
         wrecks={wrecks}
         meteorShower={meteorShower}
         tradeShip={tradeShip}
+        intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
         showTelescopeReach={showTelescopeReach}
         showRadarReach={showRadarReach}
@@ -1042,6 +1083,10 @@ export function GalaxyView({
         <ActiveGalaxyEvent
           onFocusTrade={(id) => {
             setFocus({ kind: 'tradeShip', id });
+            setDetail(true);
+          }}
+          onFocusConvoy={(id) => {
+            setFocus({ kind: 'intergalacticConvoy', id });
             setDetail(true);
           }}
         />
@@ -1285,6 +1330,27 @@ export function GalaxyView({
           onToggle={toggle}
         />
       )}
+
+      {!coachFocus
+        && focus?.kind === 'intergalacticConvoy'
+        && intergalacticConvoy?.id === focus.id
+        && (
+          <IntergalacticConvoyFocus
+            convoy={intergalacticConvoy}
+            minutesLeft={Math.max(
+              0,
+              (intergalacticConvoy.endsAt.getTime() - now) / 60_000,
+            )}
+            reachMinutes={convoyReach}
+            hasCombatCraft={combatValue(planet.data?.fleet ?? {}) > 0}
+            launchLocked={planet.data?.convoyLaunchLocked === true}
+            occurrenceSpent={planet.data?.convoyOccurrenceSpent === true}
+            onClose={close}
+            onRaid={() => { setStrikingConvoy(true); }}
+            open={detail}
+            onToggle={toggle}
+          />
+        )}
 
       {!coachFocus && focus?.kind === 'run' &&
         (() => {
@@ -1766,6 +1832,27 @@ export function GalaxyView({
           }}
         />
       )}
+
+      {panel !== 'recap'
+        && strikingConvoy
+        && intergalacticConvoy
+        && planet.data
+        && season.data
+        && (
+          <Suspense fallback={null}>
+            <IntergalacticConvoySheet
+              event={intergalacticConvoy}
+              seasonStart={season.data.startsAt}
+              planet={planet.data}
+              onAim={setAim}
+              onClose={() => { setStrikingConvoy(false); }}
+              onLaunched={() => {
+                setStrikingConvoy(false);
+                close();
+              }}
+            />
+          </Suspense>
+        )}
 
       {panel !== 'recap'
         && settlingTargetId !== null

@@ -79,6 +79,7 @@ import {
   rewardsSchema,
   returnSchema,
   instrumentRaiseSchema,
+  intergalacticConvoyLaunchSchema,
   satelliteInstallSchema,
   seasonSchema,
   rivalSetSchema,
@@ -151,7 +152,7 @@ interface RequestOptions {
  * embedded webviews have neither. The widened type is what makes the guard honest
  * rather than something the linter is entitled to delete.
  */
-const newIdempotencyKey = (): string => {
+export const createIdempotencyKey = (): string => {
   // Read through the weaker shape rather than the ambient DOM declaration: this is
   // not a cast to silence the compiler, it is the narrower truth about the runtime.
   const { crypto } = globalThis as { crypto?: { randomUUID?: () => string } };
@@ -165,6 +166,15 @@ export interface ClanAidInput {
   targetPlanetId: string;
   fleet: Fleet;
   cargo: Resources;
+}
+
+export interface IntergalacticConvoyLaunchInput {
+  originPlanetId: string;
+  occurrenceId: string;
+  fleet: Fleet;
+  quotedAt: Date;
+  quotedFlightSeconds: number;
+  quotedArriveAt: Date;
 }
 
 /**
@@ -472,7 +482,7 @@ export class Api {
     return this.send(path, schema, {
       method: 'POST',
       body,
-      idempotencyKey: newIdempotencyKey(),
+      idempotencyKey: createIdempotencyKey(),
     });
   }
 
@@ -725,6 +735,20 @@ export class Api {
       method: 'POST',
       body: { occurrenceId, fleet, give, want, ...(originPlanetId ? { originPlanetId } : {}) },
     });
+
+  /** Commit the exact moving-target quote the confirmation surface displayed. */
+  launchIntergalacticConvoy = (
+    input: IntergalacticConvoyLaunchInput,
+    idempotencyKey: string,
+  ) => this.send('/api/intergalactic-convoy/launch', intergalacticConvoyLaunchSchema, {
+    method: 'POST',
+    idempotencyKey,
+    body: {
+      ...input,
+      quotedAt: input.quotedAt.toISOString(),
+      quotedArriveAt: input.quotedArriveAt.toISOString(),
+    },
+  });
 
   /** Send craft to a wreck field. D32 — the same craft, a different errand. */
   harvest = (fieldId: string, craft: number, originPlanetId?: string) =>

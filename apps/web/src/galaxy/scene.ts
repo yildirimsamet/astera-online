@@ -3,6 +3,7 @@ import {
   GALAXY,
   VIEW,
   interpolatePosition,
+  intergalacticConvoyPosition,
   orbitStandoff,
   surfaceStandoff,
   toGame,
@@ -14,6 +15,7 @@ import {
   type Vec3Tuple,
 } from '@astera/rules';
 import type { Contact, GalaxyPlanet, MiningRun, PendingThread } from '../api/schemas.js';
+import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 
 /**
  * The galaxy, as the 3D surface needs it.
@@ -510,6 +512,22 @@ export function legStandoff(
 ): LegStandoff {
   if (!thread.path) return NO_STANDOFF;
   const returning = thread.leg === 'return';
+  /*
+    A CONVOY STRIKE HOLDS OFF THE FORMATION, EXACTLY LIKE A PIRATE RENDEZVOUS.
+
+    Its far end is open space, so the generic branch below finds no world node and
+    gives it nothing — which left the craft running to the raw formation centre and
+    then snapping back to the hold the moment it opened fire. `ENGAGEMENT_STANDOFF`
+    is the shared figure `traffic.ts` publishes that hold at, so owner and stranger
+    draw the same approach (D106).
+  */
+  if (thread.kind === 'intergalactic_convoy') {
+    const homeNode = targetNodeOf(nodes, returning ? thread.path.to : thread.path.from);
+    const home = homeNode ? surfaceStandoff(homeNode.radius) : 0;
+    return returning
+      ? { start: ENGAGEMENT_STANDOFF, end: home }
+      : { start: home, end: ENGAGEMENT_STANDOFF };
+  }
   if (thread.kind === 'pirate') {
     /*
       Home takes the ordinary surface clearance; the far end is empty space, and
@@ -747,11 +765,23 @@ export function contactPosition(
    * `effectOnly` engagement never reaches this helper: it has no authoritative
    * squadron point to solve and draws only the public volley.
    */
-  const fight = contact.engagement;
-  if (fight && now >= fight.arriveAt.getTime()) {
-    return engagementPosition(contact, fight.target, nodes);
-  }
+  /*
+    ONLY A STATIONARY FIGHT HAS A HOLD TO SOLVE FOR. D201.
 
+    A raid on a world and a pirate rendezvous are fought over a point that does not
+    move, so the craft has to be PLACED — the published window is degenerate and
+    says only "I am holding here". A convoy strike is the opposite: the target
+    crosses the disc for the whole five seconds, so the server publishes a real
+    window (`currentHold → holdEnd`) and the craft is simply interpolated across it
+    like any other contact. `targetTo` is the payload saying which of the two this
+    is, and reading it here rather than inside `engagementPosition` is what keeps
+    the two helpers from calling each other — which they did, without ever making
+    progress, until the stack ran out on every frame of a witnessed strike.
+  */
+  const fight = contact.engagement;
+  if (fight && fight.targetTo === undefined && now >= fight.arriveAt.getTime()) {
+    return engagementPosition(contact, fight.target, nodes, now);
+  }
 
   /**
    * THE WINDOW IS ALREADY ON THE DRAWN LEG. D106.
@@ -790,6 +820,16 @@ export function contactPosition(
     visualFrom[2] + (visualTo[2] - visualFrom[2]) * t,
   ];
 }
+
+/**
+ * The published bearing window, read at an instant and nothing else.
+ *
+ * Split out of `contactPosition` so a moving engagement can reach the same
+ * arithmetic without re-entering the branch that sent it here. It is deliberately
+ * not exported: "where is this craft" has one public answer.
+ */
+const windowPosition = (contact: Contact, now: number): Vec3Tuple =>
+  contactPosition({ ...contact, engagement: undefined }, now);
 
 /**
  * THE TWO FIGURES A CONCEALED VOLLEY NEEDS. D52 · D150.
@@ -854,11 +894,38 @@ export function engagementPosition(
   contact: Contact,
   target: { x: number; y: number; z: number },
   nodes: readonly PlanetNode[],
+  now: number,
 ): Vec3Tuple {
+  /*
+    A MOVING FIGHT IS NEVER PLACED, ONLY READ. D201. The window already carries the
+    craft alongside its target for the whole pass, so there is nothing to solve —
+    and `windowPosition` reaches the interpolation directly rather than through the
+    branch that delegated here.
+  */
+  if (contact.engagement?.targetTo) return windowPosition(contact, now);
   const held = contact.from.x === contact.to.x
     && contact.from.y === contact.to.y
     && contact.from.z === contact.to.z;
   return held ? toWorld(contact.from) : engagementHold(target, contact.from, nodes);
+}
+
+/** A convoy target moves throughout its public five-second engagement. */
+export function engagementTargetPosition(
+  engagement: NonNullable<Contact['engagement']>,
+  now: number,
+): Vec3Tuple {
+  const from = toWorld(engagement.target);
+  if (!engagement.targetTo) return from;
+  const to = toWorld(engagement.targetTo);
+  const span = engagement.endsAt.getTime() - engagement.arriveAt.getTime();
+  const progress = span <= 0
+    ? 1
+    : Math.max(0, Math.min(1, (now - engagement.arriveAt.getTime()) / span));
+  return [
+    from[0] + (to[0] - from[0]) * progress,
+    from[1] + (to[1] - from[1]) * progress,
+    from[2] + (to[2] - from[2]) * progress,
+  ];
 }
 
 /**
@@ -994,6 +1061,21 @@ export function tradeShipWorldPosition(
   now: number,
 ): Vec3Tuple {
   return orbitWorldPosition(orbit, seasonStart, now);
+}
+
+/** Rules-derived position of the public convoy on its exact diameter crossing. */
+export function intergalacticConvoyWorldPosition(
+  event: IntergalacticConvoyEvent,
+  seasonStart: Date,
+  now: number,
+): Vec3Tuple {
+  const minute = (now - seasonStart.getTime()) / 60_000;
+  return toWorld(intergalacticConvoyPosition({
+    appearsAt: event.appearsAtMinute,
+    expiresAt: event.expiresAtMinute,
+    from: event.route.from,
+    to: event.route.to,
+  }, minute));
 }
 
 /**

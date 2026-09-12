@@ -29,6 +29,8 @@ import { fuelUp, giveUnits, grant, seedWorld, testDb, type Fixture } from './hel
 
 const silent = pino({ level: 'silent' });
 const DEFINITION = GALAXY_EVENTS.definitions.TRADE_SHIP;
+const DURATION = DEFINITION.windows[0].endsAtLocalMinute
+  - DEFINITION.windows[0].startsAtLocalMinute;
 
 /**
  * THE CONVOY GETS THERE, AND THE CONVOY GETS HOME. D156.
@@ -71,7 +73,7 @@ describe('a convoy resolving', () => {
 
   const merchantUp = async (): Promise<string> => {
     const startsAt = new Date(seasonStartsAt.getTime());
-    const endsAt = new Date(seasonStartsAt.getTime() + DEFINITION.durationMinutes * 60_000);
+    const endsAt = new Date(seasonStartsAt.getTime() + DURATION * 60_000);
     const [row] = await f.db
       .insert(galaxyEventOccurrences)
       .values({

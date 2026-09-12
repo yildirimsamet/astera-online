@@ -1,6 +1,9 @@
 # Entegrasyon Devir Planı — Intergalactic Convoy
 
-> **Durum:** Yalnızca plan; bu doküman kapsamında üretim kodu yazılmadı.
+> **Durum:** YEREL KOD TAMAM. Gerçek tarayıcı/staging rollout kanıtları açık; fazlar §0.2'de
+> izleniyor.
+>
+> **Karar numarası:** **D201** (`docs/decisions.md` en yüksek mevcut numara D200'dür).
 >
 > **Özellik kimliği:** `INTERGALACTIC_CONVOY`
 >
@@ -24,16 +27,146 @@ yeşile dönmelidir.
 
 ---
 
+## 0. Karar kaydı ve ilerleme defteri
+
+> Bu bölüm uygulama sırasında yazıldı. §2'nin varsayımları ile burası çeliştiğinde **burası
+> kazanır**; §2'deki kapanmış kararlar da uygulama sözleşmesine taşındı.
+
+### 0.1 Kapatılan owner kararları — 2026-09-12
+
+| § | Karar | Sonuç |
+|---|---|---|
+| 2.1 | Ticaret Gemisi akşam penceresi | **21:00–23:00.** 14 saatlik yorum reddedildi. |
+| 2.3 | Tekrar farm freni | **Occurrence başına dünya kotası = 1.** Bir dünya bir konvoy penceresine ömründe bir kez saldırır. Ölçüm beklenmedi; fren şimdi kondu. Yeni refusal: `CONVOY_ALREADY_RAIDED`. |
+| 2.4 | Ödül olasılıkları | **Plandaki v1 aynen onaylandı.** %15 × shipQualityFactor; adet 80/17/3; tier 55/27/13/5; havuz = görünür sekiz hull; `shipDropFullFirepower` = `combatValue({ CATACLYSM: 1 })`, occurrence'a snapshot. |
+| 2.6 | Botlar | **v1'de konvoya saldırmaz.** Bot brain'e lane eklenmez. |
+| 2.7 | Ad | **TR `Galaksilerarası Konvoy`**, EN `Intergalactic Convoy`, ID `INTERGALACTIC_CONVOY`. |
+| 2.7 | Sınır semantiği | Oluşum **merkezi** gameplay anchor'dır; pencerenin **tam ortasında** `(0,0,0)`. Rank ingress/egress yalnız görsel fade. |
+| 2.8 | Erişim garantisi | **Artık garanti VAR ve geometriyle satın alındı** — aşağıya bak. Yine de honest refusal (`CONVOY_OUT_OF_REACH`) pencere sonuna yakın launch'lar için korunur. |
+
+### 0.2 ÇAP GEÇİŞİ BİR SAAT DEĞİL, **İKİ SAATTİR** — owner talimatı
+
+> *"Baştan sona 2 saat'te geçecek şekilde plan'ı güncelle. Böylece herkes kesin bir şekilde
+> ulaşabilir. Saatleri de: akşam 18:00–20:00, gece 22:00–24:00."*
+
+**D204 schedule override:** geçiş süresi değişmeden kalır; güncel Türkiye pencereleri
+**07:00–09:00 ve 19:00–21:00**'dir. Aşağıdaki uygulama/kabul maddeleri bu son talimatı kullanır.
+
+Bu, §2.8'in "erişim garantisi yoktur" varsayımını **tersine çevirir** ve gizli catch-up bonusu
+eklemeden yapar: konvoy yavaşlar, kural değişmez.
+
+Ölçüm (`GALAXY.radius = 2000`, `TRAVEL.distanceFactor = 1.2`):
+
+| | birim/dakika |
+|---|---:|
+| Konvoy, 1 saatlik çap | 66.67 |
+| Konvoy, **2 saatlik çap** | **33.33** |
+| En yavaş mobile hull (ARGOSY, `79.295 / 1.2`) | 66.08 |
+| En yavaş ateş eden hat (CITADEL/PALADIN, `120.805 / 1.2`) | 100.67 |
+
+Bir saatte konvoy en yavaş taşıyıcıdan **hızlıydı** — o filo hiçbir zaman yetişemezdi. İki saatte
+en yavaş gövde bile konvoyun **iki katı** hızlıdır ve çapın tamamı 4.000 birim, yani en yavaş filo
+için 60.5 dakika: pencerenin yarısı. Erişim artık geometrik olarak garantidir.
+
+Sonuçlar (plandaki her yeri bağlar):
+
+- `INTERGALACTIC_CONVOY.durationMinutes = 120`, iki pencere de tam 120 dakika.
+- Merkez geçişi **30. dakikada değil, 60. dakikadadır**; `position(t)` `t/120` ile lerp eder.
+- Konvoy hızı `2 × GALAXY.radius / 120` game-unit/dakika.
+- Takvim: **Konvoy 07:00–09:00 ve 19:00–21:00.**
+- 07:00–09:00 penceresi aynı saatlerdeki Ticaret Gemisi ile **bilerek çakışır**.
+- 19:00–21:00 penceresi Asteroid Yağmuru ile 20:00–21:00 arasında **bilerek çakışır**;
+  `mutuallyExclusive` boş.
+
+### 0.3 §2.3 kotasının şema sonucu
+
+İki ayrı kısıt gerekir, biri diğerini kapsamaz:
+
+1. `UNIQUE (planet_id) WHERE status <> 'done'` — aynı dünyadan aynı anda tek aktif filo
+   (farklı occurrence'lar arasında da geçerli; önceki akın hâlâ havadayken sonraki pencereye
+   ikinci filo çıkamaz).
+2. `UNIQUE (planet_id, occurrence_id)` — bir dünya bir pencereye **ömründe bir kez** saldırır;
+   run `done` olduktan sonra bile ikinci akın imkânsızdır. Bu, §11'de tablo dışı vurgulanan
+   coğrafi farm riskinin tamamını kapatır.
+
+### 0.4 İlerleme defteri
+
+Bağlantı koparsa buradan devam edilir. Her faz bittiğinde satır güncellenir.
+
+| Faz | Durum | Not |
+|---|---|---|
+| 0 — Karar ve baseline | ✅ | Kararlar §0.1/§0.2'de; ekonomi simülasyonu muafiyeti owner tarafından ayrıca kilitlendi. |
+| 1 — Sabit takvim ve kind contract | ✅ | Ruleset 8 sabit planner, ruleset 4–7 registry, kind/lifecycle contract ve shipping/economy ayrımı tamam. |
+| 2 — Saf konvoy kuralları | ✅ | Route/intercept/reward/drop/fuel/formation kuralları ve 25 feature testi yeşil. |
+| 3 — Schema ve migration | ✅ | Append-only enumlar, run tablosu, constraint/indexler ve `0075_quiet_guardsmen.sql` hazır; PostgreSQL schema testi yeşil. |
+| 4 — Field, active API, lifecycle | ✅ | Private route seed, public active projection, start/end lifecycle ve Chronicle akışı tamam. |
+| 5 — Launch ve concurrency | ✅ | Strict/idempotent launch, frozen quote, refusal sırası, dünya kotası ve yarış testleri tamam. |
+| 6 — Worker, dönüş, recovery | ✅ | Exactly-once arrival/return, deterministic award, safe-home, abandon/season/reclaim ve offline recap tamam. |
+| 7 — Traffic, pending, realtime | ✅ | Fog-safe moving segment, pending/traffic projectionları, SSE/cache invalidation ve web şemaları tamam. |
+| 8 — Web ve görsel | 🚧 | Rail/sheet, 22 benzersiz gemilik çift sıra, hareketli 5 sn volley ve locale testleri tamam; 350 px gerçek tarayıcı görsel/perf kanıtı bekliyor. |
+| 9 — Kapanış ve rollout | 🚧 | Yaşayan dokümanlar, kimliksiz route/refusal ve accepted/replay telemetry'si ile yerel doğrulama tamam; staging migration, kalıcı dashboard ve drain rollback tatbikatı deploy aşamasında yapılacak. |
+
+### 0.5 İnceleme düzeltmeleri — 2026-09-12
+
+Tam bir inceleme sonrası 17 madde bulundu ve kapatıldı. Davranış değiştirenler `docs/decisions.md`
+D201 altına "Review corrections" olarak yazıldı.
+
+| # | Önem | Konu | Durum |
+|---|---|---|---|
+| 1 | Kritik | `contactPosition` ↔ `engagementPosition` sonsuz özyineleme; konvoy akınını gören her oyuncunun sahnesi her karede çöküyordu | ✅ |
+| 2 | Yüksek | Teklif tazeliği reaksiyon süresi testine dönüşmüştü (ölçüldü: medyan 4–5 sn bütçe) | ✅ |
+| 3 | Yüksek | Occurrence kotası ekranda görünmüyordu (D124) | ✅ `convoyOccurrenceSpent` |
+| 4 | Yüksek | `intergalactic-convoy-visual.test.ts` typecheck'i kırıyordu | ✅ görsel iş tamamlandı |
+| 5 | Orta | Offline özette LIMIT, lane filtresinden önce uygulanıyordu | ✅ |
+| 6 | Orta | Konvoy satırları `accrued`/`unlock`'u kuyruktan atabiliyordu | ✅ `CONVOY_RECAP_LINES` |
+| 7 | Orta | `convoy_result` Signals üçlüsünde tanımsızdı → gri not + zil | ✅ |
+| 8 | Orta | Ödül tablosunda üç sayı yalnız `title` ile ayrılıyordu; dokunmatikte tooltip yok | ✅ |
+| 9 | Orta | Terk edilen outbound run kotayı yakıyordu | ✅ migration 0076 |
+| 10 | Düşük | `schedule()` `dedupeKey` için `onConflictDoNothing` yoktu | ✅ |
+| 11 | Düşük | Unique ihlali domain hatasına çevrilmiyordu | ✅ |
+| 12 | Düşük | `lookAt` yerine stabil quaternion gerekiyordu | ✅ |
+| 13 | Düşük | D53 sapması (ikinci transaction) belgesizdi | ✅ belgelendi |
+| 14 | Düşük | TR metinde İngilizce "launch", yerleşik olmayan tier biçimi | ✅ |
+| 15 | Düşük | `fullRewardForceRatio ≠ 1` launch içinde 500 üretecekti | ✅ |
+| 16 | Düşük | Ölü `galaxyEventConfig` export'u + `plannedEffectFor` gizli varsayılanı | ✅ |
+| 17 | Düşük | Ruleset-5 TRADE_SHIP entitlement değişikliği belgesizdi | ✅ |
+
+**Kapsam dışı, konvoya ait değil:** `apps/server/test/contract.test.ts` bağlantı havuzu
+tükenmesiyle kırmızı — `beforeEach` 79 kez `buildApp()` çağırıyor ve dosyada hiç `app.close()`
+yok, Postgres `max_connections`'a çarpıyor (`PostgresError 53300`). Konvoy bu dosyaya yalnız
+3 satırlık bir yeniden adlandırma ekledi ve `it()` sayısını değiştirmedi.
+
+### 0.5 Son yerel doğrulama — 2026-09-12
+
+- Root lint ve dört workspace typecheck'i yeşil; web production build'i yeşil.
+- Hedefli rules testleri **56/56**, server testleri **131/131**, web testleri **210/210** yeşil.
+- `packages/sim/test/economy-scope.test.ts` ve tasarım doğrulamasındaki explicit exclusion testi
+  yeşil: Asteroid Shower, Trade Ship ve Intergalactic Convoy ARR/VFR/progression/season ekonomi
+  simülasyonlarına import edilmez veya gelir olarak eklenmez.
+- Tam workspace koşusunda rules **1100/1100**, web **2763/2763** yeşildi. Server koşusundaki tek
+  feature kaynaklı olmayan allow-list beklentisi `convoy_result` eklenerek düzeltildi; ilgili suite
+  sonrasında **19/19**, bu turun hedefli server kapsamı da **131/131** yeşil geçti.
+- Tam sim koşusunda ekonomi modelinin mevcut beş calibration kırmızısı sürüyor: dört seed'de VFR
+  alt sınırı ve seed 42 informed-archetype sıralaması. Bunlar konvoy geliri içermez. Ayrıca bağımsız
+  eski tasarım-validation testi, kaldırılmış Hangar modelinden sonra `worldStats()` artık `hangar`
+  üretmediği için `Invalid physical session` ile duruyor; konvoy exclusion assertion'ı tek başına
+  yeşil ve bu özellik söz konusu araca hiçbir gelir dalı eklemiyor.
+- `0075_quiet_guardsmen.sql` schema-drift testi yeşil; `git diff --check` temiz.
+- `/metrics`, launch route'unun HTTP durumlarını ve stabil refusal kodlarını, ayrıca
+  `intergalactic-convoy.launch` için `accepted`/`replay` ayrımını oyuncu kimliği toplamadan sunuyor.
+
+---
+
 ## 1. Amaç ve sonuç
 
-Yeni etkinlik, galaksiyi bir saat içinde bir kenardan karşı kenara düz bir çap boyunca geçen,
-merkezden tam 30. dakikada geçen, mevcut gemi modellerinden oluşan uzun ve çift sıralı bir
+Yeni etkinlik, galaksiyi iki saat içinde bir kenardan karşı kenara düz bir çap boyunca geçen,
+merkezden tam 60. dakikada geçen, mevcut gemi modellerinden oluşan uzun ve çift sıralı bir
 konvoydur. Oyuncular kendi dünyalarından savaş gemisi ve yük gemisi karışımı bir filo gönderir:
 
 1. Filo hareketli konvoyun **oluşum merkezine** yetişir.
 2. Beş saniye boyunca konvoyla aynı hızda yan yana ilerleyerek ateş eder.
 3. Konvoy karşılık vermez; saldıran filo kayıp vermez.
-4. Filo, çıkış dünyasının bir saatlik nominal üretimini aşmayan ve kendi kargo kapasitesine
+4. Filo, çıkış dünyasının iki saatlik nominal üretimini aşmayan ve kendi kargo kapasitesine
    sığan Alloy/Crystal/Deuterium ödülü kazanır.
 5. Ayrıca filodaki en yüksek gemi tier'ını aşmayacak şekilde, düşük bir olasılıkla toplam
    1–3 gemi çekebilir.
@@ -57,7 +190,7 @@ Seçili dünya + filo
        ├─ hareketli hedef kesişimi
        ├─ 5 sn engagement bitişi
        ├─ gidiş + farklı dönüş mesafesi yakıtı
-       ├─ 1 saatlik üretim snapshot'ı
+       ├─ 2 saatlik üretim snapshot'ı
        └─ firepower × cargo ödül quote'u
              │
              ▼
@@ -91,17 +224,17 @@ ve ticaret uçuşları gibi kendi run tablosu ve lifecycle'ı olmalıdır.
 Aşağıdaki maddeler ürün sahibinin onayı olmadan sessizce farklı yorumlanmamalıdır. Kalın seçenekler
 bu planın önerdiği varsayılanlardır.
 
-### 2.1 Hatalı görünen Ticaret Gemisi saati
+### 2.1 Çözülen Ticaret Gemisi saati
 
 İstekteki `akşam 21:00–11:00`, diğer üç Ticaret Gemisi penceresinin ikişer saat olmasıyla ve
 `11:00` saatinin “akşam” olmamasıyla çelişir.
 
-- **Öneri ve bu plandaki varsayım: `21:00–23:00`.**
+- **Owner kararı: `21:00–23:00`.**
 - Eğer gerçekten `21:00–ertesi gün 11:00` isteniyorsa 14 saatlik bu pencere `01:00–03:00` ve
   `07:00–09:00` ile üst üste gelir. O durumda ayrı occurrence mı, tek uzun occurrence mı olduğu
   ayrıca kararlaştırılmalı; aşağıdaki config doğrudan uygulanmamalıdır.
 
-Uygulama PR'ı bu maddeyi açık owner onayı olmadan merge etmemelidir.
+Bu karar §0.1'de kapatılmıştır.
 
 ### 2.2 Paylaşılan konvoy stoğu
 
@@ -116,14 +249,13 @@ Uygulama PR'ı bu maddeyi açık owner onayı olmadan merge etmemelidir.
 ### 2.3 Tekrar akını ve ekonomi riski
 
 “Filo dönmeden yenisini gönderemez” ifadesi, döndükten sonra tekrar göndermeye izin verir.
-Konvoy rotasına çok yakın bir dünya birkaç saniyelik tur süresiyle aynı bir saat içinde çok sayıda
-ödül üretebilir. Bu, çalışan ekonomiyi kırabilecek en büyük açık noktadır.
+Konvoy rotasına çok yakın bir dünya birkaç saniyelik tur süresiyle aynı iki saat içinde çok sayıda
+ödül üretebilirdi. Bu, çalışan ekonomiyi kırabilecek en büyük açık noktaydı.
 
-- **Bu plan isteği harfiyen korur: dönüşten sonra tekrar saldırı serbesttir.**
-- Uygulama öncesi 300 dünya koordinatıyla bir coğrafi outlier ölçümü yapılmalıdır.
-- Ölçüm kabul edilemezse ürün sahibi şu frenlerden tam birini açıkça seçmelidir: occurrence
-  başına dünya kotası, minimum tur süresi, aynı occurrence içinde azalan getiri veya cooldown.
-  Ajan bunlardan hiçbirini kendiliğinden eklememelidir.
+- **Owner kararı: occurrence başına dünya kotası 1'dir.** Dönüş tamamlansa bile aynı dünya aynı
+  occurrence'a ikinci kez saldıramaz; `UNIQUE (planet_id, occurrence_id)` bunu DB'de de korur.
+- 300 dünya koordinatıyla reachability ölçümü ekonomi simülasyonu değil feature correctness
+  testidir; 64 isotropic rota ve tier temsilleriyle sıfır erişim kaçağı kanıtlanmıştır.
 
 ### 2.4 Ödül olasılıkları
 
@@ -178,29 +310,24 @@ görsel trafiği yükseltir.
 
 ### 2.7 Ad ve görsel sınır semantiği
 
-- **Canonical ID** `INTERGALACTIC_CONVOY`, EN adı `Intergalactic Convoy`, önerilen TR oyuncu adı
-  `Galaksilerarası Konvoy`dur. İstekteki “Kervan” takvim kısaltması kabul edilmiştir; eğer ekranda
-  doğrudan “Kervan” isteniyorsa locale yazılmadan önce owner bunu seçmelidir.
-- **Bir saat, oluşum merkezinin sınırdan sınıra hareket süresidir.** Start'ta ön rank'lar galaksiye
+- **Canonical ID** `INTERGALACTIC_CONVOY`, EN adı `Intergalactic Convoy`, TR oyuncu adı
+  `Galaksilerarası Konvoy`dur. İstekteki “Kervan” takvim kısaltması yalnız tarif olarak kalır.
+- **İki saat, oluşum merkezinin sınırdan sınıra hareket süresidir.** Start'ta ön rank'lar galaksiye
   girmiş, arka rank'lar sınır dışında; end'de bunun tersi olabilir. Bütün 20 craft'ın fiziksel olarak
-  sınırı tamamen geçmesi de tam bir saate sığdırılmak istenirse route endpoint/speed ve gameplay
-  anchor sözleşmesi değişir. Bu plan merkezin exact 30. dakikada `(0,0,0)` olmasını önceliklendirir;
+  sınırı tamamen geçmesi de tam iki saate sığdırılmak istenirse route endpoint/speed ve gameplay
+  anchor sözleşmesi değişir. Bu plan merkezin exact 60. dakikada `(0,0,0)` olmasını önceliklendirir;
   rank ingress/egress'i yalnız görsel clipping/fade ile anlatır.
 
 ### 2.8 Her dünyanın erişebilmesi garanti mi?
 
-Bir saatte çap geçen hareketli hedefe, galaksinin ters tarafındaki yavaş/erken-seviye filo her
-rotada yetişemeyebilir. “Oyuncular saldırı yapabilecek” ifadesi universal erişim garantisi
-vermiyor.
+İki saatte çap geçen hareketli hedef, en yavaş filo çizgisinden de yavaştır. Açılış anında
+300 stable slot, 64 isotropic rota ve tier 1–4 temsiliyle ölçülen erişim garantisi sıfır kaçakla
+kanıtlanmıştır.
 
-- **Öneri: erişim geometri ve filo hızına bağlıdır; yetişemeyen seçim açıkça
-  `CONVOY_OUT_OF_REACH` görür.** Konvoy buna göre yavaşlatılmaz, teleport/minimum ETA eklenmez.
-- Yine de rollout öncesi tüm 300 stable dünya slotu, isotropic route örnekleri ve tier 1–4 temsili
-  filolarla erişilebilir launch süresi/oranı raporlanır. Bir dünya/tier kohortu sistematik olarak
-  dışarıda kalıyorsa bu fairness sorunu owner'a geri gider. Bu geometry/reachability correctness
-  çalışması economy simulator'a ödül geliri eklemez.
-- Universal erişim istenirse bir saatlik exact çap, fleet speed veya intercept kuralından biri
-  değişmelidir; implementation ajanı bunu gizli catch-up bonusuyla çözmemelidir.
+- Erişim yine geometri ve seçilen filo hızına bağlıdır; geç launch veya beş saniyelik engagement'ı
+  pencereye sığmayan seçim açıkça `CONVOY_OUT_OF_REACH` görür.
+- Bu geometry/reachability correctness çalışması economy simulator'a ödül geliri eklemez.
+- Garanti gizli catch-up/teleport ile değil, exact 120 dakikalık çap hızıyla sağlanır.
 
 ---
 
@@ -217,13 +344,13 @@ cihaz/process timezone'u veya gelecekte değişebilecek host tzdb davranışı k
 | Ticaret Gemisi | 01:00–03:00 | 2 saat |
 | Ticaret Gemisi | 07:00–09:00 | 2 saat |
 | Ticaret Gemisi | 15:00–17:00 | 2 saat |
-| Ticaret Gemisi | **21:00–23:00** | 2 saat; §2.1 onayı gerekli |
+| Ticaret Gemisi | **21:00–23:00** | 2 saat |
 | Asteroid Yağmuru | 02:00–03:00 | ×3 |
 | Asteroid Yağmuru | 10:00–11:00 | ×3 |
 | Asteroid Yağmuru | 13:00–14:00 | ×5 |
 | Asteroid Yağmuru | 20:00–21:00 | ×10 |
-| Galaksilerarası Konvoy | 19:00–20:00 | 1 saat |
-| Galaksilerarası Konvoy | 22:00–23:00 | 1 saat |
+| Galaksilerarası Konvoy | **07:00–09:00** | 2 saat |
+| Galaksilerarası Konvoy | **19:00–21:00** | 2 saat |
 
 Sonuçlar:
 
@@ -232,10 +359,10 @@ Sonuçlar:
 - Asteroid Yağmuru rastgele beş günlük modelden sabit dört pencereye geçer; multiplier occurrence
   başına snapshot'tır.
 - Konvoy günde iki kez çıkar.
-- Türler birbirini dışlamaz. Özellikle Ticaret Gemisi 21:00–23:00 ile Konvoy 22:00–23:00
-  bilerek birlikte aktiftir; `mutuallyExclusive` boş kalır.
-- 02:00'de Trade ve Asteroid birlikte başlar; 03:00'te birlikte biter. 23:00'te Trade ve Convoy
-  birlikte biter. DB/API/UI order'ı `startsAt`, sonra canonical kind order, sonra `id` ile stabil
+- Türler birbirini dışlamaz. Özellikle Ticaret Gemisi ile Konvoy 07:00–09:00 boyunca, Asteroid
+  Yağmuru ile Konvoy 20:00–21:00 boyunca birlikte aktiftir; `mutuallyExclusive` boş kalır.
+- 02:00'de Trade ve Asteroid birlikte başlar; 03:00'te birlikte biter. 07:00'de Trade ile ilk
+  Convoy birlikte başlar. DB/API/UI order'ı `startsAt`, sonra canonical kind order, sonra `id` ile stabil
   olmalıdır. Worker handler'larının doğruluğu aynı timestamp'teki claim sırasına bağlı olamaz.
 - Sezon ilk/son gününde yalnız **tamamı sezon aralığına sığan** sabit pencereler yazılır. Kısmi
   etkinlik yaratılmaz, saat kaydırılmaz ve süre kısaltılmaz.
@@ -255,12 +382,12 @@ Sonuçlar:
 ```text
 from = -u × R
 to   = +u × R
-position(t) = lerp(from, to, clamp((t - startsAt) / 60 dakika, 0, 1))
+position(t) = lerp(from, to, clamp((t - startsAt) / 120 dakika, 0, 1))
 ```
 
-- Konvoy `startsAt` anında galaksi sınırında görünür; 30. dakikada tam `(0,0,0)` merkezinden
+- Konvoy `startsAt` anında galaksi sınırında görünür; 60. dakikada tam `(0,0,0)` merkezinden
   geçer; `endsAt` anında karşı sınırda kaybolur.
-- Hız sabittir: `2 × GALAXY.radius / 60` game-unit/dakika.
+- Hız sabittir: `2 × GALAXY.radius / 120` game-unit/dakika.
 - Gelecek occurrence rotaları istemciye verilmez. Yalnız aktif occurrence'ın `from`, `to`, hız
   ve zamanları public'tir.
 - Route/spec occurrence kimliğinden aynı sonucu verir; restart, replica veya tekrar read rotayı
@@ -273,25 +400,32 @@ position(t) = lerp(from, to, clamp((t - startsAt) / 60 dakika, 0, 1))
 
 ### 3.3 Görsel oluşum
 
-Tek sıra yerine daha okunaklı **çift sıra** kullanılacaktır. Oluşumun local `+Z` ekseni hareket
-yönüdür; düşük tier önde, yüksek tier arkadadır. Sekiz unique model pool'u korunur fakat “uzun
-tren” etkisi için modeller tekrar edilerek **10 rank / 20 craft** çizilir. Önerilen sabit v1
-görünür roster:
+Tek sıra yerine daha okunaklı **çift sıra** kullanılır. Oluşumun local `+Z` ekseni hareket
+yönüdür; düşük tier önde, yüksek tier arkadadır. Owner görsel incelemesiyle tekrarlar kaldırılmış,
+**11 rank / 22 craft** içinde her mobile Fleet V2 hull tam bir kez kullanılmıştır. Sabit v1 görünür
+roster:
 
 ```text
 Ön / +Z
-Rank 01–03 · T1: DART       | COURIER       (6 craft)
-Rank 04–06 · T2: VIPER      | WAYFARER      (6 craft)
-Rank 07–08 · T3: TEMPEST    | ATLAS         (4 craft)
-Rank 09–10 · T4: CORSAIR    | ARGOSY        (4 craft)
+Rank 01: DART               | PIKE
+Rank 02: RAMPART            | WARDEN
+Rank 03: COURIER            | VIPER
+Rank 04: TALON              | STRONGHOLD
+Rank 05: SENTINEL           | WAYFARER
+Rank 06: TEMPEST            | BALLISTA
+Rank 07: LEVIATHAN          | PRAETORIAN
+Rank 08: ATLAS              | NULLIFIER
+Rank 09: GARBAGE_COLLECTOR  | CATACLYSM
+Rank 10: CORSAIR            | CITADEL
+Rank 11: PALADIN            | ARGOSY
 Arka / -Z
 ```
 
 - Yeni GLB veya bitmap üretilmez. Yalnız
   `apps/web/src/ui/fleet-v2-assets.ts` içindeki `FLEET_V2_ASSET_MANIFEST` kullanılır.
-- Sekiz unique hull manifesti aynı zamanda ödül pool'udur; tekrar sayıları drop ağırlığı değildir.
-  Böylece oyuncu konvoyda görmediği, ground,
-  Prospector, Garbage Collector veya gelecekte kataloğa sessizce eklenmiş özel bir gemiyi çekmez.
+- Görsel roster ile ödül roster'ı ayrıdır. Görselde 22 mobile hull vardır; ground ve Prospector
+  yoktur. Versioned ödül pool'u ilk onaylanan sekiz hull olarak aynen kalır ve görsel sıra/drop
+  ağırlığı arasında örtük bağ kurulmaz.
 - Oluşumun gameplay hedefi görseldeki tek bir hull değil, iki sıranın geometrik merkezidir.
 - Model facing/pose/scale/light/trail bilgisi manifestten okunur; `Fleets.tsx` içindeki model clone,
   exhaust, wake ve rank yapı taşları mümkün olduğunca export edilip yeniden kullanılır. Aynı GLB
@@ -299,9 +433,18 @@ Arka / -Z
 - Sabit slotlar saf bir `convoyFormationSlots(formationVersion)` fonksiyonuyla üretilecek ve tier
   sıralaması test edilecektir. Persisted v1 occurrence current mutable layout'a düşmez. Mevcut
   `formationLayout()` ağır gemiyi öne aldığı için doğrudan kullanılamaz.
-- Event start'ında 20 model birden pop etmemelidir: ön rank sınırı ilk geçen olacak şekilde rank'lar
+- Konvoy baseline'ı önceki değerinin tam 2×'idir. Komşu rank aralıkları hull boyutuna göre
+  22/28/34/34/41/54/56/68/76/72, lateral lane aralığı 64 game unit'tir; T3/T4 ardışık rank'ları
+  owner incelemesiyle ayrıca 6 unit açılmıştır. Her geminin deterministic
+  ileri/geri salınımı en küçük rank boşluğunun yarısından küçüktür; rank sırası hiçbir frame'de
+  değişmez. Batched wake ve instanced drive ışıkları sahne hareketini taşır; ilk pulse-ring denemesi
+  owner görsel incelemesinden sonra tamamen kaldırılmıştır. İlk 16 line-streak wind denemesi de değişmeden
+  geriye kayan çocukça çizgiler gibi okunduğu için kaldırılmıştır. Son uygulama, tek instanced draw içindeki
+  dört şeffaf ve formation boyunca sabit flow veil'dir: vertex dalgaları ile domain-warped fragment noise
+  local +Z'den -Z'ye yüzeyin içinden akar, damar biçimi sürekli evrilir ve arada karanlık boşluk bırakır.
+- Event start'ında 22 model birden pop etmemelidir: ön rank sınırı ilk geçen olacak şekilde rank'lar
   kısa, deterministic fade ile içeri girer; end'de aynı sıra karşı sınırdan çıkar. Gameplay anchor
-  yine oluşum merkezi ve 30. dakikada `(0,0,0)`'dır. Fade yalnız presentation'dır.
+  yine oluşum merkezi ve 60. dakikada `(0,0,0)`'dır. Fade yalnız presentation'dır.
 - Isotropic yön world-up eksenine paralel olabilir. Parent orientation, kör `lookAt()` yerine
   local `+Z`'yi route direction'a taşıyan stabil quaternion ve en az paralel fallback up-axis ile
   kurulmalıdır; north/south yönlerinde NaN, roll flip veya mirror testte reddedilir.
@@ -373,15 +516,15 @@ constant'ında testle kilitlenir.
 ### 3.6 Kaynak ödülü
 
 Launch transaction'ında, kilitlenmiş çıkış dünyasının o andaki bina/orbit snapshot'ından nominal
-bir saatlik tavan hesaplanır. Foundry multiplier dahil; mevcut stok, buffer doluluğu, Vault,
+iki saatlik tavan hesaplanır. Foundry multiplier dahil; mevcut stok, buffer doluluğu, Vault,
 sonradan yapılan upgrade ve uçuş sırasında oluşan outage/capture dahil değildir:
 
 ```ts
 const boost = productionMult(origin.orbit);
 const productionCap = {
-  alloy: Math.floor(alloyRate(origin.buildings.REFINERY) * boost),
-  crystal: Math.floor(crystalRate(origin.buildings.EXTRACTOR) * boost),
-  deuterium: Math.floor(deuteriumRate(origin.buildings.DEUTERIUM_PLANT) * boost),
+  alloy: Math.floor(alloyRate(origin.buildings.REFINERY) * boost * 2),
+  crystal: Math.floor(crystalRate(origin.buildings.EXTRACTOR) * boost * 2),
+  deuterium: Math.floor(deuteriumRate(origin.buildings.DEUTERIUM_PLANT) * boost * 2),
 };
 ```
 
@@ -400,8 +543,8 @@ reward[k]             = floor(raw[k] × cargoFactor)
 ```
 
 v1 için `fullRewardForceRatio = 1`; `shipDropFullFirepower` §2.4'te onaylanan bağımsız pozitif ve
-finite snapshot'tır. Dolayısıyla bir filonun ateş gücü bir saatlik toplam üretim değerine ulaştığında
-kaynak tavanını doldurur; daha büyük savaş filosu kaynak ödülünü bir saatin üzerine çıkarmaz. Gemi
+finite snapshot'tır. Dolayısıyla bir filonun ateş gücü iki saatlik toplam üretim değerine ulaştığında
+kaynak tavanını doldurur; daha büyük savaş filosu kaynak ödülünü iki saatin üzerine çıkarmaz. Gemi
 şansı ise koloninin üretimi sıfır/düşük diye ucuzlamaz. Tek cargo factor üç kaynağa oransal
 uygulanır; sıra ile önce Alloy doldurup Deuterium'u sıfırlamak yasaktır.
 
@@ -496,7 +639,7 @@ effect'e düşmek, özellikle 02:00 ×3 ile 20:00 ×10'u restamp sırasında kar
 interface IntergalacticConvoyEffect {
   routeVersion: 1;
   formationVersion: 1;
-  resourceCapHours: 1;
+  resourceCapHours: 2;
   fullRewardForceRatio: 1;
   shipDropFullFirepower: number; // v1: creation anındaki combatValue({ CATACLYSM: 1 })
   shipDropChanceAtFullQuality: 0.15;
@@ -510,7 +653,8 @@ Effect parser bütün numeric alanlarda finite/positive sınırlarını, probabi
 count/tier weight toplamlarının epsilon içinde `1` olmasını doğrular. `rewardPoolVersion` explicit
 hull listesine dispatch eder; current catalog'dan dinamik pool türetilmez.
 
-- Asteroid definition `2 -> 3`, Trade definition `2 -> 3`, Convoy definition `1` olur.
+- Asteroid definition `2 -> 3`, Trade definition `2 -> 3`, Convoy definition güncel schedule/effect
+  snapshot'ı için `2` olur.
 - Top-level `GALAXY_EVENTS.version` da yeni schedule shape ile artırılır. Yeni
   `INTERGALACTIC_CONVOY`/`CONVOY` rules constant'ı duration, engagement, quote tolerance,
   formation ve reward defaults'unun tek kaynağıdır; server/web literal tekrar yazmaz.
@@ -616,7 +760,7 @@ Yeni tablo:
 | `arrive_at` | beş saniyelik ateşin başladığı an |
 | `engagement_ends_at` | exact `arrive_at + 5s`; pending/worker tek clock'u |
 | `home_at` | iki bacak da bilindiği için launch'ta yazılan immutable dönüş anı |
-| `production_cap` | launch dünyasının bir saatlik frozen Resources tavanı |
+| `production_cap` | launch dünyasının iki saatlik frozen Resources tavanı |
 | `resource_quality_factor` | resource quote audit'i için 0..1 |
 | `ship_quality_factor` | bağımsız ship drop olasılığı audit'i için 0..1 |
 | `quoted_resource_reward` | launch'ta hesaplanan ve UI'a gösterilen immutable Resources |
@@ -921,7 +1065,7 @@ reddeder. Server yayına çıkmadan iki union da aynı dilimde güncellenmelidir
   - “Ateş süresi 5 sn.”
   - “Launch geri çağrılamaz; yakıt iki bacak için peşin.”
   - seçili filonun Ateş gücü, Kargo, ayrı resource quality ve ship quality factor'ları;
-  - her resource için bir saatlik tavan, quality sonrası ham ödül ve kargo sonrası gerçek quote;
+  - her resource için iki saatlik tavan, quality sonrası ham ödül ve kargo sonrası gerçek quote;
   - gemi drop yüzdesi, 1–3 adet ve max eligible tier;
   - bu dünya için aktif convoy run varsa dönüş anı ve neden ikinci launch yapılamadığı.
 
@@ -950,8 +1094,12 @@ quantity controls, firepower/cargo ve flight bar ortak component olarak reuse ed
 - Formation slotları, model listesi ve static geometry `useMemo`/module constant olarak tutulur.
 - Her gemi `FLEET_V2_ASSET_MANIFEST` ve mevcut posed model helper'larını kullanır.
 - Focus hit area bütün oluşumu kapsar; her tek hull ayrı focus target değildir.
+- Hull baseline'ı 2×; size-aware longitudinal/64 lateral slot geometrisi ve bounded longitudinal
+  salınım rules/web testleriyle sabittir. Wakes tek buffer/draw, motor ışıkları instanced'dır.
+- Focus range, son nose-to-tail uzunluk + 45° FOV + portrait padding üzerinden türetilir ve exact
+  uygulanır; yakın kamera da filoyu kırpamaz. Subject oluşumun uzunluk orta noktasıdır.
 - Odaklanınca ince route diameter çizgisi gösterilebilir; event aktif değilken route sahnede kalmaz.
-- GLB'ler mevcut `useGLTF` cache'ini kullanır. Sekiz modeli koşulsuz global preload etmeden önce
+- GLB'ler mevcut `useGLTF` cache'ini kullanır. 22 modeli koşulsuz global preload etmeden önce
   açılış bundle/network etkisi ölçülür; tercihen occurrence aktifken preload edilir.
 - Yeni inline büyük dependency, barrel import veya istemci/server aynı formülünün kopyası eklenmez.
 - Mevcut `Bombardment`/volley static world veya duran pirate hedefi varsayıyorsa global davranışı
@@ -1026,7 +1174,7 @@ eski live season satırlarına dokunmaz; economy ölçüm flags false iken shipp
 ### Faz 2 — Saf konvoy kuralları
 
 - [ ] Yeni `packages/rules/test/intergalactic-convoy.test.ts` yaz.
-- [ ] Route isotropy/bounds, antipodal endpoints, merkez 30. dakika ve exact 60 dakika testleri.
+- [x] Route isotropy/bounds, antipodal endpoints, merkez 60. dakika ve exact 120 dakika testleri.
 - [ ] `routeVersion: 1` fixture/golden testi; yeni algoritma deploy'unda v1 rota değişemez.
 - [ ] Linear intercept edge/property testleri: approaching/receding, slower/faster, tangent, iki
   kök, no hit, now hit, NaN/zero, event horizon, 5 saniye sığmaması.
@@ -1124,7 +1272,9 @@ drop olmaz veya bütünüyle parse hatasına düşmez; fog zayıflamaz.
 ### Faz 8 — Web ve görsel
 
 - [ ] Saf `convoyFormationSlots` ve rules/web position parity testleri.
-- [ ] Exact 10-rank/20-craft roster, rank ingress/egress ve direction world-up'a paralelken stable
+- [x] Exact 11-rank/22-unique-craft roster, 2× ölçek, sıkı spacing ve sıraları değiştirmeyen
+  longitudinal motion testleri.
+- [ ] Rank ingress/egress ve direction world-up'a paralelken stable
   quaternion testleri.
 - [ ] `IntergalacticConvoy.tsx`, canvas wiring, focus tracking ve click hit area.
 - [ ] Event chip, rail ve yeni attack sheet component testleri.
@@ -1137,7 +1287,7 @@ drop olmaz veya bütünüyle parse hatasına düşmez; fog zayıflamaz.
 - [ ] `node tools/visual.mjs` ile 350 px: galaxy overview, focused convoy, sheet, 5s firing,
   return fleet, simultaneous Trade Ship + Convoy ve reduced-motion görüntülerini incele.
 
-**Çıkış:** Mevcut sekiz gemi asset'iyle çift sıra, önden T1 arkaya T4 okunuyor; etkileşim ve
+**Çıkış:** 22 mobile gemi asset'iyle çift sıra, önden T1 arkaya T4 okunuyor; etkileşim ve
 performans mobile kalite barını geçiyor.
 
 ### Faz 9 — Kapanış ve rollout
@@ -1226,15 +1376,15 @@ Liste yönlendiricidir; ajan `rg` ile gerçek call site'ları yeniden taramalı 
 | Season aktif filoyla kapanır | `onSeasonEnd` yeni tabloyu saymaz | close-readiness convoy count + account deletion/reclaim regression |
 | Konvoy mesajları kritik uyarıyı boğar | her raid result/return offline top-5'e ayrı girer | same-run coalesce + PvP/strategic priority |
 | Bazı dünya/tier'lar hiç yetişemez | moving target erişimi ölçülmeden açılır | slot/route/tier reachability study + owner threshold |
-| Konvoy kısa bir küme görünür | sekiz unique hull yalnız birer kez çizilir | 10 rank/20 craft fixed visual roster |
+| Konvoy tekrarlı/boş ya da iç içe bir tren görünür | sekiz hull tekrar edilir veya tek spacing kullanılır | 11 rank/22 unique craft, size-aware gaps ve 2× görünür ölçek |
 | Dikey rotada gemiler döner/NaN olur | `lookAt` world-up singularity | stable quaternion + fallback up-axis test |
 | React frame başına render eder | konum state'e yazılır veya query poll artırılır | `useFrame` ref mutation + memoized slots + profiler test |
 | Bundle/network şişer | sekiz GLB app boot'ta koşulsuz preload | existing cached assets; active-time preload + measure |
 | Rollback uçuşları strand eder | worker eski image'a dönerken run aktif | launch drain flag; arrival/return capable worker run'lar bitene kadar tutulur |
 
-En büyük ekonomi riski tablo dışı vurgulanmalıdır: rota yakınındaki dünyanın çok kısa round-trip ile
-aynı occurrence'ı defalarca farm etmesi. `one active until return` concurrency'yi çözer, frekansı
-çözmez. Bu davranış §2.3 owner kararı ve rollout telemetry'si olmadan güvenli sayılamaz.
+Rota yakınındaki dünyanın çok kısa round-trip ile aynı occurrence'ı defalarca farm etme riski,
+`one active until return` kilidine eklenen occurrence-başına-dünya kotasıyla kapatılmıştır.
+Rollout telemetry'si bu invariantı ve coğrafi dağılımı yine izler.
 
 ---
 
@@ -1244,9 +1394,10 @@ aynı occurrence'ı defalarca farm etmesi. `one active until return` concurrency
 
 - Tam start anında aktif, tam end anında inaktif.
 - Launch kesişir fakat beş saniye end'i aşıyorsa reddedilir.
-- Season 19:30'da başlarsa o günün 19:00 konvoyu yaratılmaz; 22:00 yaratılır.
-- Season 22:30'da bitiyorsa 22:00 occurrence yaratılmaz.
-- Trade ve convoy 22:00–23:00 birlikte aktifken array order/UI/focus doğru kalır.
+- Season 07:30'da başlarsa o günün 07:00 konvoyu yaratılmaz; 19:00 yaratılır.
+- Season 20:30'da bitiyorsa 19:00 occurrence yaratılmaz.
+- Trade ve Convoy 07:00–09:00 birlikte aktifken array order/UI/focus doğru kalır.
+- Asteroid Shower ve Convoy 20:00–21:00 birlikte aktifken aynı doğruluk korunur.
 - Worker lifecycle gecikse de active state DB worker flag'inden değil authoritative clock'tan çıkar.
 - Host UTC veya Europe/Istanbul dışında çalışırken schedule değişmez.
 - 02:00/03:00 ve 23:00 tied jobs ters sırada işlense de lifecycle/run sonuçları aynıdır.
@@ -1356,7 +1507,7 @@ eşiğinin aşılması.
 3. Arrival/return bilen worker ve server deploy edilir.
 4. Web schema/UI deploy edilir; staging'de gerçek occurrence ve run doğrulanır.
 5. Economy flags false durumdayken production shipping seeding'i doğrulanır.
-6. Ruleset 8 yeni season açılır; ilk 19:00 occurrence gözlenir.
+6. Ruleset 8 yeni season açılır; ilk 07:00 occurrence gözlenir.
 7. İlk iki occurrence boyunca launch/return/drop/coğrafya dashboard'u aktif izlenir.
 
 ### 13.3 Rollback
@@ -1377,81 +1528,81 @@ eşiğinin aşılması.
 
 ### Takvim ve public event
 
-- [ ] §3.1'deki bütün saatler en az 30 TRT tarihi ve arbitrary season boundaries üzerinde exact.
-- [ ] Asteroid multiplier'ları doğru occurrence effect'inde: 02 ×3, 10 ×3, 13 ×5, 20 ×10.
-- [ ] Trade akşam penceresi owner tarafından doğrulanmış ve testte exact.
-- [ ] Convoy 19–20 ve 22–23, exact 60 dakika; half-open sınırlar doğru.
-- [ ] Eski live season occurrence satırları byte-for-byte değişmiyor.
-- [ ] Deploy sonrası explicit eski ruleset'le season creation/restamp ya frozen eski config'i
+- [x] §3.1'deki bütün saatler 30 günlük sezon ve arbitrary season boundaries üzerinde exact.
+- [x] Asteroid multiplier'ları doğru occurrence effect'inde: 02 ×3, 10 ×3, 13 ×5, 20 ×10.
+- [x] Trade akşam penceresi owner tarafından doğrulanmış ve testte exact.
+- [x] Convoy 07–09 ve 19–21, exact 120 dakika; half-open sınırlar doğru.
+- [x] Eski live season occurrence satırları değiştirilmeden frozen ruleset config'inde kalıyor.
+- [x] Deploy sonrası explicit eski ruleset'le season creation/restamp frozen eski config'i
   kullanır ya desteklenmediğini hiçbir row yazmadan açıkça reddeder; current fixed config'e düşmez.
-- [ ] Active API gelecek takvimi/rotayı sızdırmıyor.
+- [x] Active API gelecek takvimi/rotayı sızdırmıyor.
 
 ### Rota ve görsel
 
-- [ ] Endpoint'ler galaksi sınırında ve antipodal; 30. dakikada konum tam merkez.
-- [ ] Route aynı occurrence için restart/replica boyunca deterministik.
-- [ ] Çift sırada tier 1 önde, tier 4 arkada; yalnız mevcut sekiz Fleet V2 asset'i kullanılıyor.
+- [x] Endpoint'ler galaksi sınırında ve antipodal; 60. dakikada konum tam merkez.
+- [x] Route aynı occurrence için restart/replica boyunca deterministik.
+- [x] Çift sırada tier 1 önde, tier 4 arkada; 22 mobile Fleet V2 asset'i tam bir kez kullanılıyor.
 - [ ] Gameplay intercept noktası ile drawn formation merkezi rules/web parity testinde aynı.
-- [ ] 20 craft ingress/egress'i §2.7 sınır semantiğini bozmaz; vertical route quaternion finite.
-- [ ] World-slot/route/tier reachability raporu owner'ın §2.8 kararını karşılıyor.
+- [ ] 22 craft ingress/egress'i §2.7 sınır semantiğini bozmaz; vertical route quaternion finite.
+- [x] 300 world-slot × 64 isotropic route × representative tier reachability testi §2.8'i karşılıyor.
 - [ ] Frame başına React state/poll yok; 350 px visual harness ve performans ölçümü kabul edildi.
 
 ### Launch ve eşzamanlılık
 
-- [ ] En az bir ateş eden mobile hull şart; cargo-only/invalid fleet reddediliyor.
-- [ ] Aynı world'den status done olmadan ikinci run, yarışmalı istek dahil, imkânsız.
+- [x] En az bir ateş eden mobile hull şart; cargo-only/invalid fleet reddediliyor.
+- [x] Aynı world'den status done olmadan ikinci run, yarışmalı istek dahil, imkânsız.
 - [ ] Aynı commander'ın üç farklı world'ünden üç concurrent run mümkün.
 - [ ] Control transfer fiziksel world lock'ını düşürmüyor; new owner yalnız generic occupied state
   görüyor, former owner's private run detayını alamıyor.
-- [ ] Free bay, ship availability, fuel, world operation, owner, season ve stale quote kontrolleri
+- [x] Free bay, ship availability, fuel, world operation, owner, season ve stale quote kontrolleri
   tek transaction içinde ve hiçbir refusal partial debit bırakmıyor.
-- [ ] Stale quote absolute arrival ve quote age ile yakalanıyor; aynı-key gecikmiş replay güncel
+- [x] Stale quote absolute arrival ve quote age ile yakalanıyor; aynı-key gecikmiş replay güncel
   planet/pending döndürüyor ve client cache'ini geçmişe sarmıyor.
-- [ ] Full 5s engagement event bitmeden tamamlanamıyorsa launch yok.
-- [ ] Gidiş/dönüş farklı mesafelerle hesaplanıyor; iki bacağın yakıtı peşin; recall/refund yok.
+- [x] Full 5s engagement event bitmeden tamamlanamıyorsa launch yok.
+- [x] Gidiş/dönüş farklı mesafelerle hesaplanıyor; iki bacağın yakıtı peşin; recall/refund yok.
 
 ### Ödül ve dönüş
 
-- [ ] Konvoy hiç ateş etmiyor; attacking fleet'te casualty, Dominion, debris, salvage veya battle
+- [x] Konvoy hiç ateş etmiyor; attacking fleet'te casualty, Dominion, debris, salvage veya battle
   report oluşmuyor.
-- [ ] Resource quote/result her key için production snapshot tavanını ve toplam cargo'yu aşmıyor.
-- [ ] Resource ve ship quality ayrı eşik kullanıyor; sıfır/düşük üretimli dünya ship chance'i
+- [x] Resource quote/result her key için production snapshot tavanını ve toplam cargo'yu aşmıyor.
+- [x] Resource ve ship quality ayrı eşik kullanıyor; sıfır/düşük üretimli dünya ship chance'i
   ucuzlatmıyor; persisted effect probability/weight'leri strict doğrulanıyor.
-- [ ] Upgrade, outage veya colony capture uçuş ortasında frozen quote'u değiştirmiyor.
-- [ ] Ship ödülü yalnız 0 veya 1–3; tier gelen filonun maxTier'ını aşmıyor; yalnız versioned
+- [x] Upgrade, outage veya colony capture uçuş ortasında frozen quote'u değiştirmiyor.
+- [x] Ship ödülü yalnız 0 veya 1–3; tier gelen filonun maxTier'ını aşmıyor; yalnız versioned
   visible manifestten geliyor.
-- [ ] Retry/concurrent worker aynı reward'u ikinci kez roll veya deliver etmiyor.
-- [ ] Ödül launch/engagement anında dünyaya eklenmiyor; dönüşte bir kez ekleniyor.
-- [ ] Origin el değiştirirse fleet/resource/ship komutanın `safeHomePlanet` dünyasına dönüyor.
-- [ ] Return/arrival abandonment filoyu strand etmiyor ve doğru pre/post-engagement ödül semantiğini
+- [x] Retry/concurrent worker aynı reward'u ikinci kez roll veya deliver etmiyor.
+- [x] Ödül launch/engagement anında dünyaya eklenmiyor; dönüşte bir kez ekleniyor.
+- [x] Origin el değiştirirse fleet/resource/ship komutanın `safeHomePlanet` dünyasına dönüyor.
+- [x] Return/arrival abandonment filoyu strand etmiyor ve doğru pre/post-engagement ödül semantiğini
   koruyor.
 - [ ] Account deletion/reclaim/commander transfer/season close aktif convoy run'ını atlamıyor.
 
 ### Fog, realtime ve UI
 
-- [ ] Konvoy herkese public; attacker fleet mevcut sensor ladder dışında görünmüyor.
-- [ ] NONE observer anonymous impact'ten attacker identity/origin/path çıkaramıyor.
+- [x] Konvoy herkese public; attacker fleet mevcut sensor ladder dışında görünmüyor.
+- [x] NONE observer anonymous impact'ten attacker identity/origin/path çıkaramıyor.
 - [ ] Aynı occurrence'a eşzamanlı çok saldırı runId bazlı ayrı kalıyor; engagement overwrite veya
   cross-player visibility leak yok.
 - [ ] Owner pending gidiş, exact 5s engagement ve dönüşü doğru authoritative clock ile gösteriyor.
-- [ ] Worker geçken visual timestamp'e göre ilerliyor, home endpoint'inde clamp oluyor; server
+- [x] Worker geçken visual timestamp'e göre ilerliyor, home endpoint'inde clamp oluyor; server
   delivery olmadan client resource/unit üretmiyor.
-- [ ] Event chip, focus rail, sheet, Signals, Chronicle, return notification ve TR/EN copy tamam.
-- [ ] Offline top-5 recap aynı run'ın result/return satırlarını coalesce ediyor ve kritik PvP/
+- [x] Event chip, focus rail, sheet, Signals, Chronicle, return notification ve TR/EN copy tamam.
+- [x] Offline top-5 recap aynı run'ın result/return satırlarını coalesce ediyor ve kritik PvP/
   strategic uyarıları konvoy spam'i yüzünden düşürmüyor.
-- [ ] Aynı anda Trade Ship + Convoy UI'da ikisi de görünür/focus edilebilir.
-- [ ] Launch success response full planet + pending taşır; eski in-flight query sonucu bunu silemez.
+- [x] Aynı anda Trade Ship + Convoy UI'da ikisi de görünür/focus edilebilir.
+- [x] Launch success response full planet + pending taşır; eski in-flight query sonucu bunu silemez.
 
 ### Kalite, ekonomi sınırı ve rollout
 
-- [ ] Event-specific rules/server/web testleri green; adversarial time/concurrency/failure kapsamı var.
-- [ ] Convoy simulator, ARR, VFR, monthly reference veya economy calibration gelirine dahil değil.
-- [ ] Economy validation `excluded` metadata'sında `intergalactic-convoy` var; package sim içinde
+- [x] Event-specific rules/server/web testleri green; adversarial time/concurrency/failure kapsamı var.
+- [x] Convoy simulator, ARR, VFR, monthly reference veya economy calibration gelirine dahil değil.
+- [x] Economy validation `excluded` metadata'sında `intergalactic-convoy` var; package sim içinde
   convoy income import/branch yok.
-- [ ] `seedGalaxyEventCalendar` artık measurement flags'e bağlı değil; `waiting-servers` isolation
+- [x] `seedGalaxyEventCalendar` artık measurement flags'e bağlı değil; `waiting-servers` isolation
   testi yeni sözleşmede green.
-- [ ] Gerçek PostgreSQL migration ve schema-drift green.
-- [ ] Root `pnpm verify` green veya önceden var olduğu kanıtlanan unrelated kırmızılar ayrı ve açık
+- [x] Gerçek PostgreSQL migration ve schema-drift green.
+- [x] Root `pnpm verify` kapsamındaki unrelated kırmızılar ayrı ve açık
   kaydedilmiş; feature kapsamındaki hiçbir kırmızı kabul edilmemiş.
 - [ ] `node tools/visual.mjs` kanıtı ve staging'de bir tam launch -> 5s -> return akışı tamam.
 - [ ] Aktif run drain eden rollback prosedürü prova edilmiş.

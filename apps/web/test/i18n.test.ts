@@ -498,6 +498,28 @@ describe('a refusal arrives in the language that is up', () => {
     await i18n.changeLanguage('en');
   });
 
+  it('localises every intergalactic convoy refusal in both languages', async () => {
+    const refusals = [
+      ['CONVOY_ALREADY_RAIDED', 'already struck', 'zaten saldırdı'],
+      ['CONVOY_FLEET_ALREADY_AWAY', 'fleet committed', 'zaten yolda'],
+      ['CONVOY_NEEDS_COMBAT_FLEET', 'fleet with firepower', 'ateş gücü'],
+      ['CONVOY_OUT_OF_REACH', 'gone before', 'ayrılacak'],
+      ['CONVOY_QUOTE_CHANGED', 'moved beyond', 'ilerledi'],
+      ['CONVOY_WINDOW_CLOSED', 'no intergalactic convoy', 'konvoy yok'],
+    ] as const;
+
+    for (const [code, , turkish] of refusals) {
+      const err = new ApiError(code, `server fallback: ${code}`, 409);
+      await i18n.changeLanguage('tr');
+      expect(describeError(err).toLocaleLowerCase('tr')).toContain(turkish);
+    }
+    await i18n.changeLanguage('en');
+    for (const [code, english] of refusals) {
+      const err = new ApiError(code, `server fallback: ${code}`, 409);
+      expect(describeError(err).toLowerCase()).toContain(english);
+    }
+  });
+
   /** A hull arrives as an ID so the client can name it in either language. */
   it('names a hull rather than printing its id', async () => {
     const err = new ApiError('NOT_ENOUGH_SHIPS', 'Not enough DART at home', 400, { hull: 'DART' });

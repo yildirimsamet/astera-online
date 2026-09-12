@@ -24,9 +24,9 @@ const total = (r: { alloy: number; crystal: number; deuterium: number }): number
  * WHAT IS LEFT is half the stores, one Core level with whatever it drags down,
  * two Aegis levels, the cancelled scaffolding, and two hours in the dark with the
  * launch bays sealed. That is still the largest single act of destruction in the
- * game — measured at 3x the weapon's price against a Core 12 world and near 13x
- * against a Core 17 one — but the buyer takes NOTHING home: no loot, no Dominion,
- * no world. It is a pure denial weapon now, and it is priced as one.
+ * game, but the buyer takes NOTHING home: no loot, no Dominion, no world. D203
+ * triples the weapon's price directly; the older damage-to-price measurements no
+ * longer describe this owner-set balance.
  */
 describe('how long a struck world stays dark', () => {
   /**
@@ -47,8 +47,8 @@ describe('how long a struck world stays dark', () => {
  */
 describe('what the strategic pair costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 47_887, crystal: 23_944, deuterium: 1_984 });
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 28_733, crystal: 14_367, deuterium: 1_191 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 143_661, crystal: 71_832, deuterium: 5_952 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43_100, crystal: 21_551, deuterium: 1_787 });
   });
 
   it('never lets stopping a strike cost more than making one', () => {
@@ -56,23 +56,15 @@ describe('what the strategic pair costs', () => {
   });
 
   /**
-   * The share is the interlock's actual shape: cheap enough that a defender can
-   * afford to be ready, dear enough that spending the shot is a real loss. Asserted
-   * as a band rather than a number so the two may be retuned together, and fails
-   * the moment one of them moves alone.
+   * D203 triples the weapon and raises the battery by half, taking the pair from
+   * roughly 60% to roughly 30%. The narrow band allows only component rounding.
    */
   it('keeps the battery a real share of the weapon it answers', () => {
     const share = total(ANTI_STRATEGIC.cost) / total(DEATH_STAR.cost);
-    expect(share).toBeGreaterThan(0.5);
-    expect(share).toBeLessThan(0.75);
+    expect(share).toBeGreaterThan(0.29);
+    expect(share).toBeLessThan(0.31);
   });
 
-  /**
-   * IT CAME DOWN WITH WHAT IT DOES. D167 raised the price because the strike put
-   * somebody else's colony on the table for the whole galaxy. D179 took that away,
-   * so the weapon is worth materially less than it was and is priced under half of
-   * the D167 figure — the owner's number, not a derived one.
-   */
   /**
    * ONE HOUR, owner instruction: *"ölüm yıldızı üretim süresi 1 saat olmalı"*. A
    * working-tree retune had taken it to four; the battery follows at half, because

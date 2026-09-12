@@ -7,6 +7,7 @@ const NOW = Date.parse('2026-09-02T10:30:00.000Z');
 let endsAt = new Date('2026-09-02T11:00:00.000Z');
 let secondEvent = false;
 let merchant = false;
+let convoy = false;
 
 vi.mock('../src/api/queries.js', () => ({
   useGalaxyEvents: () => ({
@@ -33,6 +34,27 @@ vi.mock('../src/api/queries.js', () => ({
           ascendingNode: 1.9,
           speed: 39.17,
         },
+      }] : []), ...(convoy ? [{
+        id: '3f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d12',
+        kind: 'INTERGALACTIC_CONVOY' as const,
+        startsAt: new Date('2026-09-02T10:00:00.000Z'),
+        endsAt: new Date('2026-09-02T11:00:00.000Z'),
+        appearsAtMinute: 600,
+        expiresAtMinute: 720,
+        route: {
+          from: { x: -2000, y: 0, z: 0 },
+          to: { x: 2000, y: 0, z: 0 },
+          velocity: { x: 100 / 3, y: 0, z: 0 },
+          speed: 100 / 3,
+        },
+        visual: { formationVersion: 1 as const },
+        rewardPolicy: {
+          resourceCapHours: 2,
+          fullRewardForceRatio: 1,
+          shipDropFullFirepower: 5780,
+          shipDropChanceAtFullQuality: 0.15,
+          maxAwardedShips: 3,
+        },
       }] : []), ...(secondEvent ? [{
         id: '6d06f858-e06e-4a06-b2cf-4d58c543203f',
         kind: 'ASTEROID_SHOWER' as const,
@@ -53,6 +75,7 @@ afterEach(async () => {
   endsAt = new Date('2026-09-02T11:00:00.000Z');
   secondEvent = false;
   merchant = false;
+  convoy = false;
   await i18n.changeLanguage('en');
 });
 
@@ -127,5 +150,22 @@ describe('active galaxy event chip', () => {
     secondEvent = true;
     render(<ActiveGalaxyEvent />);
     expect(screen.getAllByRole('status')).toHaveLength(2);
+  });
+
+  it('makes the convoy chip focus the public formation', () => {
+    convoy = true;
+    const onFocusConvoy = vi.fn();
+    render(<ActiveGalaxyEvent onFocusConvoy={onFocusConvoy} />);
+    const button = screen.getByRole('button', { name: /Intergalactic Convoy/i });
+    button.click();
+    expect(onFocusConvoy).toHaveBeenCalledWith('3f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d12');
+  });
+
+  it('keeps an overlapping Trade Ship and Convoy independently focusable', () => {
+    merchant = true;
+    convoy = true;
+    render(<ActiveGalaxyEvent onFocusTrade={vi.fn()} onFocusConvoy={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Trade ship/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Intergalactic Convoy/i })).toBeInTheDocument();
   });
 });

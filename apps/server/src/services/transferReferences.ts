@@ -29,6 +29,8 @@ export const TRANSFER_EVENT_POLICIES = {
   pirate_return: 'BLOCKER',
   trade_arrival: 'BLOCKER',
   trade_return: 'BLOCKER',
+  convoy_arrival: 'BLOCKER',
+  convoy_return: 'BLOCKER',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

@@ -22,6 +22,8 @@ export const galaxy = {
   wrecks_other: " · {{count}} enkaz",
   asteroidShower: 'Asteroid yağmuru',
   asteroidShowerStatus: 'Oluşma ×{{multiplier}} · {{remaining}} kaldı',
+  intergalacticConvoy: 'Galaksilerarası Konvoy',
+  intergalacticConvoyStatus: 'Galaksiyi geçiyor · {{remaining}} kaldı',
   openIntel: "İstihbarat",
   /**
    * THE PLANET GLYPH IS A CAMERA MOVE NOW, AND THE SHEET HAS ITS OWN MARK. D163.

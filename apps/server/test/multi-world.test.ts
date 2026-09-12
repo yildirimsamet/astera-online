@@ -829,7 +829,7 @@ describe('current multi-world ruleset', () => {
   it('serializes Death Star construction and never charges a rejected duplicate', async () => {
     const f = await setup();
     const capital = f.joined.planetId;
-    const purse = { alloy: 100_000, crystal: 50_000, deuterium: 10_000 };
+    const purse = { alloy: 400_000, crystal: 200_000, deuterium: 40_000 };
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
@@ -855,7 +855,7 @@ describe('current multi-world ruleset', () => {
   it('does not sell a Death Star that cannot finish before the season freezes', async () => {
     const f = await setup();
     const capital = f.joined.planetId;
-    const purse = { alloy: 100_000, crystal: 50_000, deuterium: 10_000 };
+    const purse = { alloy: 400_000, crystal: 200_000, deuterium: 40_000 };
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);

@@ -111,10 +111,13 @@ export const FLEET_V2_ASSET_MANIFEST = {
     strategic red are spoken for — and the Argosy takes the cargo green every hold
     in the game already flies.
   */
-  CORSAIR: asset('corsair', offensive('+z', 2.7, '#35d9e5', 1.06), calibrated(0, 0, 0, 0.14)),
+  // Owner review reversed the first quarter-turn: all three supplied models have
+  // their visible nose on -X. Keeping the correction in `facing` fixes every
+  // flight scene instead of layering a convoy-only rotation over the symptom.
+  CORSAIR: asset('corsair', offensive('-x', 2.7, '#35d9e5', 1.06), calibrated(0, 0, 0, 0.14)),
   CITADEL: asset('citadel', defensive('-z', 2.5, '#3BB9F1', 1.18), calibrated(-13, 180, 0, 0.21)),
-  PALADIN: asset('paladin', defensive('+z', 2.6, '#AD78ED', 1.1), calibrated(0, 0, 0, 0.13)),
-  ARGOSY: asset('argosy', cargo('+z', 2.4, 1.14), calibrated(0, 0, 0, 0.12)),
+  PALADIN: asset('paladin', defensive('-x', 2.6, '#AD78ED', 1.1), calibrated(0, 0, 0, 0.13)),
+  ARGOSY: asset('argosy', cargo('-x', 2.4, 1.14), calibrated(0, 0, 0, 0.12)),
 } as const satisfies Record<MobileHullId, FleetV2Asset>;
 
 /** The small representative Fleet V2 cast used by the public landing scene. */

@@ -222,6 +222,40 @@ describe('the return payload', () => {
     expect(payload.entries.some((e) => e.kind === 'scan_detected')).toBe(true);
   });
 
+  /**
+   * THE LANE IS FILTERED IN THE QUERY, NOT AFTER THE LIMIT. D201.
+   *
+   * `fleet_returned` is written by every returning lane in the game, so a LIMIT
+   * taken before the lane was checked could be filled entirely by rows the recap
+   * then threw away — and a commander with a busy mailbox simply lost their convoy
+   * lines. Twelve unrelated returns here are more than the window this reads.
+   */
+  it('finds a convoy result behind a mailbox full of other returns', async () => {
+    await f.db.insert(notifications).values(Array.from({ length: 12 }, (_, index) => ({
+      playerId: myPlayer,
+      kind: 'fleet_returned' as const,
+      payload: { trip: 'recalled', craft: 1, craftKind: 'fleet' },
+      createdAt: f.clock.now(),
+      refId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    })));
+    await f.db.insert(notifications).values({
+      playerId: myPlayer,
+      kind: 'convoy_result',
+      payload: {
+        trip: 'intergalactic_convoy',
+        runId: '11111111-1111-4111-8111-111111111111',
+        resourceReward: { alloy: 900, crystal: 300, deuterium: 60 },
+        awardedFleet: { DART: 1 },
+        inTransit: true,
+      },
+      createdAt: f.clock.now(),
+      refId: '11111111-1111-4111-8111-111111111111',
+    });
+
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(payload.entries.some((entry) => entry.kind === 'convoy_result')).toBe(true);
+  });
+
   it('reports what accrued, once enough time has passed', async () => {
     f.clock.advance(300);
     const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
@@ -247,6 +281,93 @@ describe('the return payload', () => {
 
     const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(payload.entries.length).toBeLessThanOrEqual(5);
+  });
+
+  it('coalesces a convoy result and delivery from the same run into the delivered recap', async () => {
+    const runId = crypto.randomUUID();
+    const resourceReward = { alloy: 1_200, crystal: 300, deuterium: 40 };
+    const awardedFleet = { DART: 2 };
+    await f.db.insert(notifications).values([
+      {
+        playerId: myPlayer,
+        kind: 'convoy_result',
+        refId: runId,
+        createdAt: f.clock.now(),
+        payload: {
+          trip: 'intergalactic_convoy',
+          runId,
+          resourceReward,
+          awardedFleet,
+          inTransit: true,
+        },
+      },
+      {
+        playerId: myPlayer,
+        kind: 'fleet_returned',
+        refId: runId,
+        createdAt: f.clock.now(),
+        payload: {
+          trip: 'intergalactic_convoy',
+          runId,
+          resourceReward,
+          awardedFleet,
+          destinationPlanetId: mine,
+        },
+      },
+    ]);
+
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    const convoy = payload.entries.filter((entry) =>
+      entry.kind === 'convoy_result' || entry.kind === 'fleet_returned');
+    expect(convoy).toHaveLength(1);
+    expect(convoy[0]).toMatchObject({
+      kind: 'fleet_returned',
+      title: 'Convoy prizes delivered',
+    });
+    expect(convoy[0]?.detail).toContain('+1,540 resources');
+    expect(convoy[0]?.detail).toContain('2 prize ships');
+  });
+
+  it('keeps a strategic scan ahead of a crowded convoy recap', async () => {
+    const at = f.clock.now();
+    await f.db.insert(scanEvents).values({
+      targetPlanetId: mine,
+      originPlanetId: theirs,
+      detected: true,
+      bearing: 'north',
+      createdAt: at,
+    });
+    await f.db.insert(notifications).values(
+      Array.from({ length: 5 }, () => {
+        const runId = crypto.randomUUID();
+        return {
+          playerId: myPlayer,
+          kind: 'convoy_result' as const,
+          refId: runId,
+          createdAt: at,
+          payload: {
+            trip: 'intergalactic_convoy',
+            runId,
+            resourceReward: { alloy: 10, crystal: 0, deuterium: 0 },
+            awardedFleet: {},
+            inTransit: true,
+          },
+        };
+      }),
+    );
+
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(payload.entries[0]?.kind).toBe('scan_detected');
+    /*
+      AND NO LANE TAKES THE REST OF THE BUDGET EITHER. D201 review.
+
+      Keeping the scan first is only half of it: five convoy lines behind it still
+      left nothing for what accrued and nothing for an unlock, which is news a
+      player cannot get back. `CONVOY_RECAP_LINES` is the ceiling, so the tail of
+      the recap survives a commander who struck every crossing of the night.
+    */
+    expect(payload.entries.filter((entry) => entry.kind === 'convoy_result')).toHaveLength(2);
+    expect(payload.entries.some((entry) => entry.kind === 'accrued')).toBe(true);
   });
 
   /** Reading advances the window, so refreshing does not replay old news. */

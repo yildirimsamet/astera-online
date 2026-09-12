@@ -29,6 +29,9 @@ const DAY_MINUTES = 24 * 60;
 const MINUTE = 60_000;
 // 2026-09-02 00:00 in Türkiye (UTC+03:00).
 const TURKEY_MIDNIGHT_UNIX_MINUTE = Date.parse('2026-09-01T21:00:00.000Z') / MINUTE;
+const TRADE_WINDOWS = GALAXY_EVENTS.definitions.TRADE_SHIP.windows;
+const TRADE_WINDOW_MINUTES = TRADE_WINDOWS[0].endsAtLocalMinute
+  - TRADE_WINDOWS[0].startsAtLocalMinute;
 
 const res = (alloy: number, crystal: number, deuterium: number): Resources =>
   ({ alloy, crystal, deuterium });
@@ -93,7 +96,7 @@ describe('the trade rate', () => {
   });
 
   it('is the rate the galaxy-event calendar hands to a live occurrence', () => {
-    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.effect.rate).toEqual(TRADE.rate);
+    expect(TRADE_WINDOWS.every((window) => window.effect.rate === TRADE.rate)).toBe(true);
   });
 });
 
@@ -238,7 +241,7 @@ describe('the merchant on its orbit', () => {
     const oneWay = travelExact(worst, HULLS.ATLAS.speed);
     expect(worst).toBe(3_600);
     expect(oneWay).toBeLessThan(50);
-    expect(oneWay * 2).toBeLessThan(GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes);
+    expect(oneWay * 2).toBeLessThan(TRADE_WINDOW_MINUTES);
   });
 
   it('is a pure function of its occurrence and its stream', () => {
@@ -317,7 +320,7 @@ describe('reaching the merchant', () => {
       { x: 0, y: 120, z: 1_900 },
       { x: 1_300, y: -400, z: -1_400 },
     ];
-    const window = GALAXY_EVENTS.definitions.TRADE_SHIP.durationMinutes;
+    const window = TRADE_WINDOW_MINUTES;
     let checked = 0;
     for (const seed of [3, 19, 404, 7_777]) {
       for (const spec of laneFor(seed)) {

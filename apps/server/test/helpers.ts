@@ -92,7 +92,7 @@ export async function truncateAll(db: Db): Promise<void> {
              clan_ceasefires, clan_memberships, clans,
              strategic_interceptions, strategic_impacts, dominion_events, battle_reports,
              scheduled_events, research_orders, build_orders, strategic_assets, missions, mining_runs,
-             asteroid_claims, pirate_raids, pirate_state, trade_runs, units,
+             asteroid_claims, pirate_raids, pirate_state, trade_runs, intergalactic_convoy_runs, units,
              galaxy_event_occurrences, galaxy_events,
              sensor_epochs, satellites, buildings, planet_research, player_research,
              neutral_planet_state, planets, players,

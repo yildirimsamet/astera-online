@@ -43,4 +43,12 @@ describe('finite monthly external supply', () => {
     }
     expect(() => monthlySupply('mining', 0, -1)).toThrow();
   });
+
+  it('raises the pirate allowance by the same 30% as every hoard resource', () => {
+    for (const resource of resources) {
+      const mining = monthlySupply('mining', 12, SERVERS.capacity)[resource];
+      const piracy = monthlySupply('pirates', 12, SERVERS.capacity)[resource];
+      expect(piracy / mining).toBeCloseTo(0.65, 12);
+    }
+  });
 });

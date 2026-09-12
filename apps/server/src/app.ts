@@ -25,6 +25,7 @@ import { registerGalaxyRoutes } from './routes/galaxy.js';
 import { registerMiningRoutes } from './routes/mining.js';
 import { registerPirateRoutes } from './routes/pirates.js';
 import { registerTradeRoutes } from './routes/trade.js';
+import { registerIntergalacticConvoyRoutes } from './routes/intergalacticConvoy.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { EventWorker } from './worker/loop.js';
 import { EventBus } from './stream/bus.js';
@@ -326,6 +327,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // `instanceof` narrowing against an interface leaves the residual type as
     // unknown, so keep the original around for the structural checks below.
     const err: unknown = error;
+    const route = req.routeOptions.url ?? req.url;
 
     if (err instanceof GameError) {
       /**
@@ -335,6 +337,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
        * `params` is omitted rather than sent empty, so nothing changes on the wire
        * for the refusals that have no figures in them.
        */
+      metrics.observeRefusal(req.method, route, err.code);
       return reply.status(err.status).send({
         error: err.code,
         message: err.message,
@@ -345,12 +348,14 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     // malformed request would surface as a 500 and look like a server fault.
     if (err instanceof ZodError) {
       const first = err.issues[0];
+      metrics.observeRefusal(req.method, route, 'BAD_REQUEST');
       return reply.status(400).send({
         error: 'BAD_REQUEST',
         message: first ? `${first.path.join('.') || 'body'}: ${first.message}` : 'Invalid request',
       });
     }
     if (error.validation) {
+      metrics.observeRefusal(req.method, route, 'BAD_REQUEST');
       return reply.status(400).send({ error: 'BAD_REQUEST', message: error.message });
     }
     req.log.error({ err: error }, 'unhandled route error');
@@ -396,6 +401,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerMiningRoutes(app);
     registerPirateRoutes(app);
     registerTradeRoutes(app);
+    registerIntergalacticConvoyRoutes(app);
     registerSessionRoutes(app);
     registerReturnApplicationRoutes(app);
     registerChatRoutes(app);

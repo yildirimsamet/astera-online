@@ -99,6 +99,36 @@ export function missionFuel(fleet: Fleet, distance: number, legs: 1 | 2): number
 }
 
 /**
+ * Fuel for a mission whose outbound and return legs do not have the same length.
+ *
+ * A moving target is met at one point and left five seconds later at another, so
+ * multiplying one distance by two would charge for a journey the fleet never
+ * flies. Each real leg is rounded independently, preserving `missionFuel(f, d, 2)`
+ * exactly when both distances are `d`.
+ */
+export function missionFuelForDistances(
+  fleet: Fleet,
+  distances: readonly number[],
+): number {
+  if (distances.some((span) => !Number.isFinite(span) || span < 0)) {
+    throw new RangeError('mission distances must be finite and non-negative');
+  }
+  const mass = fuelMass(fleet);
+  if (!Number.isSafeInteger(mass) || mass < 0) {
+    throw new RangeError('fleet fuel mass must be a non-negative safe integer');
+  }
+  if (mass === 0) return 0;
+  const fuel = distances.reduce(
+    (total, span) => total + Math.ceil((mass * span) / FUEL.scale),
+    0,
+  );
+  if (!Number.isSafeInteger(fuel) || fuel < 0) {
+    throw new RangeError('mission fuel must be a non-negative safe integer');
+  }
+  return fuel;
+}
+
+/**
  * WHAT ONE OF THESE COSTS TO MOVE. Owner report — the ship card was silent on it.
  *
  * The craft sheet answers "what IS this hull" in four numbers, and since T6 a

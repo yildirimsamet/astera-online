@@ -41,6 +41,11 @@ import { Wrecks, wreckPosition, type WreckView } from './Wrecks.js';
 import { Asteroids } from './Asteroids.jsx';
 import { TradeShip } from './TradeShip.jsx';
 import type { TradeShipEvent } from '../lib/trade.js';
+import {
+  CONVOY_FOCUS_DISTANCE,
+  IntergalacticConvoy,
+} from './IntergalacticConvoy.jsx';
+import type { IntergalacticConvoyEvent } from '../lib/intergalacticConvoy.js';
 import { AimMark, RendezvousMarks } from './Rendezvous.jsx';
 import { OwnFleets, Traffic } from './Fleets.jsx';
 import { threadKey } from './threadKey.js';
@@ -69,6 +74,7 @@ import {
   threadPosition,
   toWorld,
   tradeShipWorldPosition,
+  intergalacticConvoyWorldPosition,
   type PlanetNode,
   type Vec3Tuple,
 } from './scene.js';
@@ -172,6 +178,8 @@ export interface GalaxyCanvasProps {
    * payload, not with the renderer.
    */
   tradeShip?: TradeShipEvent | null;
+  /** Public formation crossing the galaxy on its announced diameter. */
+  intergalacticConvoy?: IntergalacticConvoyEvent | null;
   /** Wreck fields left by battles, visible to the whole galaxy. D32. */
   wrecks: readonly WreckView[];
   /**
@@ -283,6 +291,7 @@ export function GalaxyCanvas({
   runs,
   wrecks,
   tradeShip = null,
+  intergalacticConvoy = null,
   meteorShower = false,
   sensors,
   showTelescopeReach = false,
@@ -410,6 +419,13 @@ export function GalaxyCanvas({
       return () => tradeShipWorldPosition(orbit, seasonStart, serverNow());
     }
 
+    if (focus.kind === 'intergalacticConvoy'
+      && seasonStart
+      && intergalacticConvoy?.id === focus.id) {
+      const convoy = intergalacticConvoy;
+      return () => intergalacticConvoyWorldPosition(convoy, seasonStart, serverNow());
+    }
+
     if (focus.kind === 'interception') {
       const event = interceptions?.find((candidate) => candidate.id === focus.id);
       if (!event) return null;
@@ -456,6 +472,7 @@ export function GalaxyCanvas({
     interceptions,
     interceptionImpacts,
     tradeShip,
+    intergalacticConvoy,
   ]);
 
   /**
@@ -471,7 +488,11 @@ export function GalaxyCanvas({
    * Only ever pulls IN, and only when the camera is further out than this. A
    * player who has deliberately gone close keeps their framing.
    */
-  const approach = focus === null || focus.kind === 'planet' ? null : CRAFT_DISTANCE;
+  const approach = focus === null || focus.kind === 'planet'
+    ? null
+    : focus.kind === 'intergalacticConvoy'
+      ? CONVOY_FOCUS_DISTANCE
+      : CRAFT_DISTANCE;
 
   /**
    * WHAT IS FOCUSED, AS A STABLE STRING — and it is the fix for a camera that
@@ -662,6 +683,16 @@ export function GalaxyCanvas({
           }}
         />
 
+        <IntergalacticConvoy
+          event={intergalacticConvoy}
+          seasonStart={seasonStart}
+          focused={focus?.kind === 'intergalacticConvoy'
+            && focus.id === intergalacticConvoy?.id}
+          onSelect={(id) => {
+            onFocus({ kind: 'intergalacticConvoy', id });
+          }}
+        />
+
         {/*
           THE BOUNDARIES, DRAWN. D125/D126. Before the worlds, so the rings sit
           behind the things they are about rather than over them.
@@ -830,7 +861,7 @@ export function GalaxyCanvas({
         subject={subject}
         focusKey={focusKey}
         approach={approach}
-        exactApproach={coachTap !== null}
+        exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy'}
         openWide={openWide}
         wideDistance={wideDistance}
         {...(sightRadius !== undefined ? { sightRadius } : {})}

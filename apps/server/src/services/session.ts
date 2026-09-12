@@ -11,6 +11,8 @@ import {
   radarRevealsComposition,
   radarRevealsOrigin,
   radarRevealsSize,
+  ENGAGEMENT_STANDOFF,
+  visualLeg,
   type Fleet,
   type MassClass,
   type PirateLevel,
@@ -20,6 +22,7 @@ import type { Db, Queryable } from '../db/client.js';
 import {
   battleReports,
   buildings,
+  intergalacticConvoyRuns,
   missions,
   notifications,
   pirateRaids,
@@ -126,6 +129,7 @@ export async function currentUnlocks(db: Queryable, playerId: string): Promise<U
 
 export type ReturnEntryKind =
   | 'fleet_returned'
+  | 'convoy_result'
   | 'raided'
   | 'raid_result'
   | 'scan_detected'
@@ -152,8 +156,10 @@ export interface PendingThread {
    * caller's own craft. D153's outbound-only camera follow reads `leg`/`status`
    * off this thread too, so it dies with it.
    */
-  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate' | 'trade';
+  kind: 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star' | 'pirate' | 'trade' | 'intergalactic_convoy';
   targetName: string;
+  /** Stable physical launch pad on a commander's own flight only. */
+  originPlanetId?: string;
   /**
    * THE WORLD THIS THREAD IS HEADING TOWARD.
    *
@@ -213,6 +219,9 @@ export interface PendingThread {
    * stays withheld is unchanged: no origin, no heading, no composition.
    */
   arriveAt: Date;
+  /** Exact phase boundaries on an intergalactic convoy thread. */
+  engagementEndsAt?: Date;
+  homeAt?: Date;
   /** Which way a fleet of yours is flying. Absent for `incoming`. */
   leg?: 'outbound' | 'return';
   /**
@@ -267,6 +276,12 @@ export interface PendingThread {
     departAt: Date;
     arriveAt: Date;
   };
+  engagementPath?: {
+    from: { x: number; y: number; z: number };
+    to: { x: number; y: number; z: number };
+    departAt: Date;
+    arriveAt: Date;
+  };
 }
 
 export interface ReturnPayload {
@@ -278,7 +293,46 @@ export interface ReturnPayload {
 }
 
 const MAX_ENTRIES = 5;
+/**
+ * How many of the five offline lines one lane may ever take. D201.
+ *
+ * Two, because the recap has to be able to say "your convoys paid" without being
+ * able to say only that: three worlds striking two crossings a night would
+ * otherwise fill every slot and push the accrual and unlock lines off a screen
+ * that is the one place they are announced.
+ */
+const CONVOY_RECAP_LINES = 2;
 const fmt = (n: number): string => Math.round(n).toLocaleString('en-US');
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Turn one persisted convoy moment into the compact, server-owned offline recap. */
+const convoyRecap = (
+  payload: Record<string, unknown>,
+  delivered: boolean,
+  at: Date,
+): ReturnEntry | null => {
+  if (payload.trip !== 'intergalactic_convoy' || typeof payload.runId !== 'string') return null;
+  const reward = payload.resourceReward;
+  const prizeFleet = payload.awardedFleet;
+  if (!isRecord(reward) || !isRecord(prizeFleet)) return null;
+  const resources = ['alloy', 'crystal', 'deuterium'].map((good) => reward[good]);
+  if (resources.some((amount) =>
+    typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0)) return null;
+  const awarded = Object.values(prizeFleet);
+  if (awarded.some((amount) =>
+    typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0)) return null;
+  const resourceTotal = (resources as number[]).reduce((sum, amount) => sum + amount, 0);
+  const shipTotal = (awarded as number[]).reduce((sum, amount) => sum + amount, 0);
+  const shipLabel = `${String(shipTotal)} prize ship${shipTotal === 1 ? '' : 's'}`;
+  return {
+    kind: delivered ? 'fleet_returned' : 'convoy_result',
+    title: delivered ? 'Convoy prizes delivered' : 'Convoy prizes secured',
+    detail: `+${fmt(resourceTotal)} resources · ${shipLabel} ${delivered ? 'delivered' : 'returning home'}`,
+    at,
+  };
+};
 
 /**
  * "While you were gone" — the single most important screen in the game.
@@ -369,6 +423,59 @@ export async function buildReturnPayload(
       detail: 'Someone is building a picture of you.',
       at: now,
     });
+  }
+
+  /**
+   * TWO PERSISTED MOMENTS, ONE OFFLINE STORY. D201.
+   *
+   * The live mailbox keeps both the engagement result and final delivery. This
+   * five-line recap cannot afford two lines for one run, so delivery wins when
+   * both happened while the commander was away. Appending after battle and scan
+   * facts preserves the existing strategic priority under a crowded mailbox.
+   */
+  const convoyNews = await db
+    .select()
+    .from(notifications)
+    .where(and(
+      eq(notifications.playerId, playerId),
+      gt(notifications.createdAt, since),
+      inArray(notifications.kind, ['convoy_result', 'fleet_returned']),
+      /*
+        THE LANE IS PART OF THE QUERY, NOT OF THE LOOP BELOW. D201.
+
+        `fleet_returned` is written by every returning lane in the game — a raid, a
+        trade convoy, a mining run, a transfer, a recall — so a LIMIT taken before
+        the lane was checked could be filled entirely by rows this block then threw
+        away, and a commander with a busy mailbox simply lost their convoy lines.
+        Asking the database for the right rows is also the only version of this that
+        stays correct as lanes are added.
+      */
+      sql`${notifications.payload}->>'trip' = 'intergalactic_convoy'`,
+    ))
+    .orderBy(desc(notifications.createdAt))
+    .limit(MAX_ENTRIES * 2);
+  const convoyByRun = new Map<string, (typeof convoyNews)[number]>();
+  for (const news of convoyNews) {
+    if (typeof news.payload.runId !== 'string') continue;
+    const current = convoyByRun.get(news.payload.runId);
+    if (!current || (news.kind === 'fleet_returned' && current.kind !== 'fleet_returned')) {
+      convoyByRun.set(news.payload.runId, news);
+    }
+  }
+  /*
+    ONE LINE PER RUN, AND NEVER THE WHOLE RECAP. D201.
+
+    Five lines is the entire budget and a commander with three worlds can land six
+    convoys in a night, so an unbounded push here would leave nothing for what
+    accrued and nothing for an unlock — news a player cannot get back. Battle and
+    scan lines are already ahead of this block; `CONVOY_RECAP_LINES` is what stops
+    the tail of the list being crowded out from behind.
+  */
+  for (const news of [...convoyByRun.values()]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, CONVOY_RECAP_LINES)) {
+    const recap = convoyRecap(news.payload, news.kind === 'fleet_returned', news.createdAt);
+    if (recap) entries.push(recap);
   }
 
   /* what accrued while you were away */
@@ -865,6 +972,62 @@ export async function pendingThreads(
          */
         departAt: returning ? dockEndsAt(run.arriveAt) : run.departAt,
         arriveAt,
+      },
+    });
+  }
+
+  const intergalacticRuns = !playerId
+    ? []
+    : await db
+        .select({ run: intergalacticConvoyRuns })
+        .from(intergalacticConvoyRuns)
+        .where(and(
+          eq(intergalacticConvoyRuns.ownerPlayerId, playerId),
+          inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
+        ));
+
+  for (const { run } of intergalacticRuns) {
+    // Visual phase follows the immutable flight clock, not worker throughput.
+    // Rewards remain unresolved until the handler commits, but a late worker
+    // must not leave the owner's craft frozen at the intercept meanwhile.
+    const returning = run.status === 'returning'
+      || now.getTime() >= run.engagementEndsAt.getTime();
+    const arriveAt = returning ? run.homeAt : run.arriveAt;
+    const home = { x: run.returnX, y: run.returnY, z: run.returnZ };
+    const intercept = { x: run.interceptX, y: run.interceptY, z: run.interceptZ };
+    const engagementEnd = {
+      x: run.engagementEndX,
+      y: run.engagementEndY,
+      z: run.engagementEndZ,
+    };
+    const engagementHold = visualLeg(home, intercept, 0, ENGAGEMENT_STANDOFF).to;
+    const engagementHoldEnd = {
+      x: engagementHold.x + engagementEnd.x - intercept.x,
+      y: engagementHold.y + engagementEnd.y - intercept.y,
+      z: engagementHold.z + engagementEnd.z - intercept.z,
+    };
+    pending.push({
+      id: run.id,
+      kind: 'intergalactic_convoy',
+      targetName: 'INTERGALACTIC_CONVOY',
+      originPlanetId: run.planetId,
+      minutesRemaining: Math.max(0, Math.round((arriveAt.getTime() - now.getTime()) / 60_000)),
+      arriveAt,
+      engagementEndsAt: run.engagementEndsAt,
+      homeAt: run.homeAt,
+      leg: returning ? 'return' : 'outbound',
+      fleet: run.fleet,
+      path: {
+        from: returning ? engagementEnd : home,
+        to: returning ? home : intercept,
+        departAt: returning ? run.engagementEndsAt : run.departAt,
+        arriveAt,
+      },
+      engagementPath: {
+        from: engagementHold,
+        to: engagementHoldEnd,
+        departAt: run.arriveAt,
+        arriveAt: run.engagementEndsAt,
       },
     });
   }

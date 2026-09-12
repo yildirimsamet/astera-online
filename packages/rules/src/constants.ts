@@ -1,5 +1,5 @@
 import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
-import type { BuildingId, InstrumentId, Resources, SatelliteId } from './types.js';
+import type { BuildingId, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /**
@@ -465,10 +465,10 @@ export const DEUTERIUM = {
    * shape, not at the same wall-clock hour.
    */
   frontierStartsAtMinutes: 35 * 60,
-  /** One rich index per lane, plus one extra seam every ten lanes. D98. */
-  isotopeCadence: 9,
+  /** One rich index per five-index lane, plus one extra seam every ten lanes: 11/50. D204. */
+  isotopeCadence: 5,
   isotopeBonusCadence: 10,
-  isotopeRate: 11 / 90,
+  isotopeRate: 11 / 50,
   /** Inclusive seeded range; replaces ore rather than increasing total value. D102. */
   isotopeShareMin: 0.10,
   isotopeShareMax: 0.25,
@@ -1705,7 +1705,7 @@ export const RESEARCH_TECH = {
 /**
  * THE WEAPON THAT ANSWERS THE WEAPON. T10.
  *
- * A Death Star is 73,815 resources, an hour of build, a Command Core of twelve, a
+ * A Death Star is 221,445 resources, an hour of build, a Command Core of twelve, a
  * Shipyard of five and the whole Frontier chain. An interceptor that stopped it
  * cheaply would throw every bit of D113's work away, so the two are priced against
  * each other rather than separately.
@@ -1715,7 +1715,7 @@ export const RESEARCH_TECH = {
  * many words. The timed radar ring is already drawn on the disc (D126), so a weapon
  * dying on it is a rule with a picture: the explosion happens in space, over the
  * ring, beside the world; the Radar rung suddenly buys something enormous; and an
- * attacker who scouts can read the reach and price the risk before spending 73,815.
+ * attacker who scouts can read the reach and price the risk before spending 221,445.
  *
  * ONE CHARGE, AND THE NUMBER IS THE WHOLE INTERLOCK. At two, a loaded defender is
  * immune to a commander who may only stockpile two weapons, and the Death Star
@@ -1737,7 +1737,7 @@ export const ANTI_STRATEGIC = {
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
   /**
-   * ABOUT THREE FIFTHS OF WHAT IT STOPS, SET BY HAND. D170/D179, owner figures.
+   * ABOUT THREE TENTHS OF WHAT IT STOPS, SET BY HAND. D170/D179/D203, owner figures.
    *
    * The battery and the weapon are priced against EACH OTHER rather than
    * separately — that is the whole interlock, and it is the reason this number may
@@ -1747,8 +1747,8 @@ export const ANTI_STRATEGIC = {
    * THE FLOOR IS THE ONE RULE THAT CANNOT BEND: answering a strike must cost LESS
    * than making one. Above that line the battery is a defender's investment; at or
    * past it an attacker drains a defender simply by launching, and firing becomes
-   * profitable without ever landing. The owner's table puts the battery at 44,291
-   * against a 73,815 weapon — about 60%, inside the band both tests hold.
+   * profitable without ever landing. D203 raises the battery to 66,438 while the
+   * weapon rises to 221,445 — about 30%, inside the band both tests hold.
    *
    * FINAL FIGURES, like `DEATH_STAR.cost` and the research tables. No tempo scale
    * runs on top of them — what the sheet quotes is what a person typed — so the
@@ -1762,9 +1762,9 @@ export const ANTI_STRATEGIC = {
    * below this one; the test is what keeps the two in step.
    */
   cost: {
-    alloy: 28_733,
-    crystal: 14_367,
-    deuterium: 1_191,
+    alloy: 43_100,
+    crystal: 21_551,
+    deuterium: 1_787,
   },
   buildMinutes: 30,
 } as const;
@@ -2305,23 +2305,59 @@ export const TRADE = {
   dockSeconds: 10,
 } as const;
 
+/** D201's shared convoy clocks and quote limits. Route/reward math lives in rules. */
+export const INTERGALACTIC_CONVOY = {
+  durationMinutes: 120,
+  engagementSeconds: 5,
+  quoteToleranceSeconds: 5,
+  /**
+   * HOW LONG A CONFIRMATION SHEET MAY STAY OPEN. D201.
+   *
+   * 15 → 45. This is the only real staleness bound (see
+   * `intergalacticConvoyQuoteIsFresh`), so it has to be a window a person can
+   * actually read a commitment inside of: the sheet states fuel, ETA, the whole
+   * reward table and a ship chance, and fifteen seconds refused players who were
+   * doing nothing but reading it. Forty-five seconds of convoy is 25 of the 4,000
+   * units it crosses — six tenths of one per cent of the route — so nothing the
+   * player was shown has meaningfully moved.
+   */
+  maxQuoteAgeSeconds: 45,
+  formation: {
+    // Gaps are authored per neighbouring pair: small hulls remain packed near
+    // the nose while capital ranks get the full length their 2x models need.
+    // Index 0 is the Rank 1 → Rank 2 centre distance, and so on.
+    lateralSpacing: 64,
+    rankGaps: [22, 28, 34, 34, 41, 54, 56, 68, 76, 72],
+    ranks: [
+      ['DART', 'PIKE'],
+      ['RAMPART', 'WARDEN'],
+      ['COURIER', 'VIPER'],
+      ['TALON', 'STRONGHOLD'],
+      ['SENTINEL', 'WAYFARER'],
+      ['TEMPEST', 'BALLISTA'],
+      ['LEVIATHAN', 'PRAETORIAN'],
+      ['ATLAS', 'NULLIFIER'],
+      ['GARBAGE_COLLECTOR', 'CATACLYSM'],
+      ['CORSAIR', 'CITADEL'],
+      ['PALADIN', 'ARGOSY'],
+    ] satisfies readonly (readonly [MobileHullId, MobileHullId])[],
+  },
+  rewardPool: [
+    'DART', 'COURIER', 'VIPER', 'WAYFARER', 'TEMPEST', 'ATLAS', 'CORSAIR', 'ARGOSY',
+  ] satisfies readonly MobileHullId[],
+} as const;
+
 /**
- * Public galaxy moments. Their exact occurrence timestamps are generated once at
- * season creation and persisted; changing this object never rewrites a live sky.
+ * Public galaxy moments dealt for ruleset 8+. D201.
  *
- * Türkiye quiet hours are deliberately a LOW-WEIGHT band, not a blackout. Five
- * showers reserve one quiet-hours start and may roll a second, but can never
- * place more than two on the same Türkiye calendar date.
- *
- * `dailyCount` LIVES ON EACH DEFINITION, NOT ON THE CALENDAR. D156. It sat under
- * `calendar` while there was exactly one kind of moment, where it read as a
- * property of the schedule rather than of the event — and the day a second kind
- * arrived, the two would have had to share a rate. A shower is five a day; a
- * merchant is three. The calendar block is now only what is genuinely common to
- * every kind: the clock, the quiet band and how hard the packer tries.
+ * Every window is pinned to UTC+03:00 and half-open. The convoy's centre takes
+ * the full two hours to cross the diameter: 07:00–09:00 and 19:00–21:00. The
+ * morning convoy overlaps the 07:00 merchant; the evening convoy overlaps the
+ * 20:00 shower. Old random schedules are frozen in
+ * `galaxyEventConfigForRuleset()` and never inferred from this current object.
  */
 export const GALAXY_EVENTS = {
-  version: 1,
+  version: 3,
   calendar: {
     /** Human-facing schedule zone; arithmetic uses the pinned offset below. */
     timeZone: 'Europe/Istanbul',
@@ -2337,87 +2373,54 @@ export const GALAXY_EVENTS = {
     candidateAttempts: 512,
   },
   definitions: {
-    /**
-     * TEN BY DAY, FIVE AT NIGHT. D178, owner instruction: *"gündüz 10x olsun gece
-     * 5x kalsın"*.
-     *
-     * The night keeps exactly the shower it always had and the day is worth twice
-     * that — a raise where somebody is awake to fly at it, and no change at all to
-     * the hours where a denser sky would mostly expire unseen.
-     *
-     * THE NIGHT IS THE CALENDAR'S OWN, not a third one. `lowPriorityWindow` already
-     * decides how rarely a shower is scheduled between midnight and 08:00; reading
-     * the same band here means the hours that are scarce are also the hours that
-     * are smaller, stated once. (The merchant's `quietWindow` is its own 01:00
-     * boundary and stays that way — D166 bought it for a promise this kind never
-     * made.)
-     *
-     * THIS MOVES NO WINDOW. The multiplier is stamped onto an occurrence AFTER its
-     * start instant is drawn and consumes no randomness, so the shower's stream
-     * stays byte-identical (D149) and a season already dealt is untouched: every
-     * occurrence froze its own figure at deal time. Raising it on a live season is
-     * therefore a row update, never a re-deal — and only for windows that have not
-     * opened yet, because a shower's rocks take their indices in sequence order and
-     * renumbering a lane would move claims and in-flight runs onto other rocks.
-     */
     ASTEROID_SHOWER: {
-      version: 2,
-      dailyCount: { min: 5, max: 5 },
-      durationMinutes: 60,
-      /** Two quiet hours after the one-hour shower; starts stay at least three hours apart. */
-      repeatCooldownMinutes: 120,
-      effect: { asteroidSpawnMultiplier: 10 },
-      nightEffect: { asteroidSpawnMultiplier: 5 },
+      schedule: 'FIXED_DAILY',
+      version: 3,
+      windows: [
+        { startsAtLocalMinute: 2 * 60, endsAtLocalMinute: 3 * 60,
+          effect: { asteroidSpawnMultiplier: 3 } },
+        { startsAtLocalMinute: 10 * 60, endsAtLocalMinute: 11 * 60,
+          effect: { asteroidSpawnMultiplier: 3 } },
+        { startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
+          effect: { asteroidSpawnMultiplier: 5 } },
+        { startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
+          effect: { asteroidSpawnMultiplier: 10 } },
+      ],
     },
-    /**
-     * FOUR MERCHANTS A DAY, THREE HOURS EACH, AND ONE OF THEM AT NIGHT. D156 · D166.
-     *
-     * Twelve of every twenty-four hours have a ship in the sky, which is the point:
-     * a player who logs in once a day has to have a real chance of finding one,
-     * and a window shorter than a round trip from the rim would be an announced
-     * event most of the galaxy could not attend.
-     *
-     * D166 RAISED IT FROM THREE AND PINNED THE FOURTH TO THE NIGHT. Owner
-     * instruction: *"günde 4 kez … 3 aktif zamanlarda 1 gece (TSİ 01:00 - 08:00)"*.
-     * The calendar's shared `lowPriorityWindow` could not express that: it is a
-     * SHARE with a ceiling plus a coin flip, which is right for a shower nobody has
-     * to attend and wrong for a promise made to the commander who plays after
-     * midnight. `quietWindow` states the merchant's own rule — its own hours, and an
-     * exact count rather than a target.
-     *
-     * THE COOLDOWN CAME DOWN WITH THE COUNT, and it had to. Two merchants never
-     * overlap as long as the gap covers the window, and the gap is
-     * `durationMinutes + repeatCooldownMinutes`. At the old 180 the gap was 360, and
-     * four of those need 1,440 minutes — an entire day, with the night window
-     * eating one of the four slots. At 60 the gap is 240 and four starts need 960,
-     * which leaves the planner real room on both sides of 08:00. The shower's five
-     * starts at a 180-minute gap still need 720 of their own, so the two lanes pack
-     * independently and never have to negotiate — which is why `mutuallyExclusive`
-     * stays empty.
-     *
-     * `version` MOVED WITH THE SHAPE. A live season keeps the calendar it was dealt
-     * (D149); only seasons created past `MULTI_WORLD.tradeShipRulesetVersion` get
-     * this one.
-     */
     TRADE_SHIP: {
+      schedule: 'FIXED_DAILY',
+      version: 3,
+      windows: [
+        { startsAtLocalMinute: 60, endsAtLocalMinute: 3 * 60, effect: { rate: TRADE.rate } },
+        { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 9 * 60,
+          effect: { rate: TRADE.rate } },
+        { startsAtLocalMinute: 15 * 60, endsAtLocalMinute: 17 * 60,
+          effect: { rate: TRADE.rate } },
+        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 23 * 60,
+          effect: { rate: TRADE.rate } },
+      ],
+    },
+    INTERGALACTIC_CONVOY: {
+      schedule: 'FIXED_DAILY',
       version: 2,
-      dailyCount: { min: 4, max: 4 },
-      durationMinutes: 180,
-      repeatCooldownMinutes: 60,
-      /** The merchant's own night, and exactly one window inside it. D166. */
-      quietWindow: {
-        startsAtLocalMinute: 60,
-        endsAtLocalMinute: 8 * 60,
-        exactDailyCount: 1,
-      },
-      effect: { rate: TRADE.rate },
+      windows: [7 * 60, 19 * 60].map((startsAtLocalMinute) => ({
+        startsAtLocalMinute,
+        endsAtLocalMinute: startsAtLocalMinute + INTERGALACTIC_CONVOY.durationMinutes,
+        effect: {
+          routeVersion: 1 as const,
+          formationVersion: 1 as const,
+          resourceCapHours: 2 as const,
+          fullRewardForceRatio: 1 as const,
+          /** Snapshot of `combatValue({ CATACLYSM: 1 })` at definition creation. */
+          shipDropFullFirepower: 5_780,
+          shipDropChanceAtFullQuality: 0.15 as const,
+          shipCountWeights: [0.80, 0.17, 0.03] as const,
+          shipTierWeights: [0.55, 0.27, 0.13, 0.05] as const,
+          rewardPoolVersion: 1 as const,
+        },
+      })),
     },
   },
-  /**
-   * A shower and a merchant MAY share the sky, and nothing is gained by stopping
-   * them. They compete for no resource, no screen and no decision — one changes
-   * how many rocks arrive, the other parks a shop in orbit.
-   */
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
 } as const;
 
@@ -2631,6 +2634,8 @@ const PIRATE_SPAWN_PER_SEAT_PER_HOUR = 0.02;
  * depends on what you believe is there — moved onto a target that cannot shoot
  * first. The tap itself is a decision.
  */
+const PIRATE_SPEED_MULT = 0.75;
+
 export const PIRATE = {
   /**
    * HOW FAR THE REAL RENDEZVOUS MAY SIT FROM THE ONE THE PLAYER READ. D183.
@@ -2698,23 +2703,28 @@ export const PIRATE = {
    * Above 1 by construction: a prize smaller than its escort makes "never launch"
    * the only rational line. It is swept so `E[net]` is positive for a correctly
    * composed fleet and negative for a wrong one — see `docs/balance.md`.
+  * D204 raises the shared multiplier from 1.4 to 1.82, increasing Alloy,
+  * Crystal and Deuterium by 30% without changing their relative shares.
    */
-  hoardValueMult: 1.4,
+  hoardRewardScale: 1.3,
+  hoardValueMult: 1.82,
+  /** Frozen admission valuation; reward tuning must not re-index a live pirate field. */
+  hoardAdmissionValueMult: 1.4,
   /**
    * How the hoard splits. Deuterium is the smallest share: it is also fuel.
    *
    * CUT TWICE AND THEN RAISED ONCE, ALL THREE ON OWNER INSTRUCTION: 0.15 → 0.075
-   * → 0.008 → 0.01125 (D176), so the richest level-4 hoard the generator can
-   * produce pays about 700 deuterium and every level below it scales from the
-   * same share. The raise moved the SHARE and nothing else, so the ladder keeps
-   * the shape the two cuts gave it.
+   * → 0.008 → 0.01125 (D176). At the old 1.4 multiplier the richest level-4
+   * hoard paid about 700 deuterium. D204 leaves this share intact and raises the
+   * common multiplier instead, taking every resource — including that ceiling —
+   * up by 30% while preserving the ladder.
    *
    * WHY A SHARE AND NOT A CAP. A flat `min(deuterium, 500)` was the obvious shape
    * and it flattens the ladder: levels 2, 3 and 4 would all have paid 500 at the
    * top, and the level badge is exactly the number a commander prices the fight
    * against. Scaling keeps each hoard proportional to what the pirate is worth,
-   * which is the property the whole hoard is built on. The measured ceilings are
-   * 64 · 192 · 401 · 699 — a ladder, ending where the owner put it.
+   * which is the property the whole hoard is built on. D176's measured ceilings
+   * were 64 · 192 · 401 · 699; D204 scales the same ladder by 1.3.
    *
    * WHY IT IS THIS SMALL AT ALL. Fuel is what makes a raid cost something (D136):
    * it is paid in full at launch and never refunded. A hoard that hands the tank
@@ -2725,11 +2735,9 @@ export const PIRATE = {
    * NOT REDISTRIBUTED, on purpose. Moving the freed share onto alloy and crystal
    * would have kept the lane paying what it always paid, in a currency that is
    * easier to spend — the opposite of the instruction. So these no longer sum to
-   * 1 and `hoardValueMult` is no longer the whole multiplier: a hoard is worth
-   * `hoardValueMult × 0.858` of the pirate's hulls. Stated here rather than folded
-   * into `hoardValueMult`, because 1.4 is a SWEPT number that `docs/balance.md`
-   * and `tools/pirate-study.ts` know by that name, and rewriting it would hide a
-   * reward cut inside a constant nobody would think to re-derive.
+   * 1 and `hoardValueMult` is not the whole multiplier: a hoard is worth
+   * `hoardValueMult × 0.86125` of the pirate's hulls. D204 deliberately moves
+   * `hoardValueMult` to 1.82 because all three resources must rise together.
    * `pirates.test.ts` reads both numbers and asserts their product, and samples
    * the ceiling rather than trusting this comment.
    */
@@ -2751,7 +2759,7 @@ export const PIRATE = {
   lifeHoursMax: 4,
 
   /**
-   * Game units per minute along the orbit, OFF THE HULL TABLE'S OWN SCALE. D155.
+   * Game units per minute along the orbit, OFF THE HULL TABLE'S OWN SCALE. D155/D203.
    *
    * THIS WAS THE ONE NUMBER IN THE FEATURE THAT WAS MEASURED AGAINST THE WRONG
    * THING. It read 200-420 and called itself "deliberately under the rocks", which
@@ -2770,24 +2778,23 @@ export const PIRATE = {
    * answered for the rocks — "the craft sets off in an unrelated direction" — and
    * it was live on this lane from the day it shipped.
    *
-   * SO BOTH ENDS ARE NOW READ OFF THE CATALOGUE, and are written as the conversion
-   * rather than as its result so the scale cannot be mistaken again:
+   * SO BOTH ENDS ARE READ OFF THE CATALOGUE, then D203 applies one 25% reduction
+   * to the whole band. The multiplier is shared so the range cannot distort:
    *
-   *   · TOP — a Dart's pace. The cheapest hull in the game outruns the fastest
+   *   · TOP — three quarters of a Dart's pace. Every Skirmisher outruns the fastest
    *     pirate, so whether you can catch one is never a question about your wallet.
-   *   · FLOOR — a Cataclysm's pace. A heavy line still cannot lead one, so hunting
-   *     is a genuine choice between guns and geometry, and the Skirmisher class
-   *     gets the job D148 built it for.
+   *   · FLOOR — three quarters of a Cataclysm's pace. The Citadel now outruns this
+   *     end as a deliberate consequence of slowing every pirate by the same share.
    *
    * A pirate now moves like the fleet it is rather than like a rock, which is also
    * the honest reading of what a player is looking at. `pirates.test.ts` asserts
    * both anchors against `HULLS` and re-measures the lead over the generated lane.
-   * The orbital period follows from this and the radius — fifteen minutes at the
-   * inner edge, two and a half hours at the outer — and that shortest period is
+   * The orbital period follows from this and the radius — about twenty minutes at
+   * the inner edge and two hours thirteen minutes at the outer — and that shortest period is
    * what sets the ceiling on `bearingMs` below.
    */
-  speedMin: profileFlightSpeed(20) / TRAVEL.distanceFactor,
-  speedMax: profileFlightSpeed(15) / TRAVEL.distanceFactor,
+  speedMin: profileFlightSpeed(20) * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
+  speedMax: profileFlightSpeed(15) * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
 
   /** How far out they run. Same band and same draw as the rocks. */
   orbitMin: 400,
@@ -2797,7 +2804,7 @@ export const PIRATE = {
    * HOW FAR AHEAD A PIRATE'S MOTION IS PUBLISHED. Derived, never typed.
    *
    * `TRAFFIC.bearingMinutes` is four minutes and it was written for a STRAIGHT
-   * leg. A pirate's shortest revolution is about fifteen minutes since D155 slowed
+   * leg. A pirate's shortest revolution is about twenty minutes since D203 slowed
    * the lane to fleet pace, so four minutes of a closed orbit is a quarter of a
    * lap: the straight chord the client draws between the two published points
    * would visibly cut through the middle of the orbit.
@@ -2815,12 +2822,11 @@ export const PIRATE = {
 
 export const MULTI_WORLD = {
   /**
-   * THE RULESET A NEW SEASON IS CREATED AT. 5 → 6 at D166, with the merchant's
-   * calendar: `tradeShipRulesetVersion` gates on this figure, so raising the gate
-   * without raising this would have switched the merchant off entirely rather than
-   * reshaping it.
+   * THE RULESET A NEW SEASON IS CREATED AT. 7 → 8 at D201, with the authored
+   * fixed public-event calendar and Intergalactic Convoy. Older seasons retain
+   * their persisted random calendars; this default affects new seasons only.
    */
-  rulesetVersion: 7,
+  rulesetVersion: 8,
   /** D2's uncapped additive Dominion. Earlier seasons retain the bounded curve. */
   dominionLinearRulesetVersion: 7,
   /** Old hull rows may exist only before this offline season boundary. D148. */
@@ -2852,6 +2858,10 @@ export const MULTI_WORLD = {
    * only seasons created past this boundary get the new one.
    */
   tradeShipRulesetVersion: 6,
+  /** D201 replaces both legacy random lanes with authored fixed daily windows. */
+  fixedGalaxyEventScheduleRulesetVersion: 8,
+  /** D201's convoy lane exists only in seasons created at the fixed-calendar boundary. */
+  intergalacticConvoyRulesetVersion: 8,
   /** Neutral worlds and colonies remain the v2 boundary. */
   neutralWorldRulesetVersion: 2,
   /** D114 clan state exists only in a freshly created v3 season. */
@@ -2940,7 +2950,7 @@ export const MULTI_WORLD = {
  * THE STRATEGIC WEAPON, RE-SPECIFIED AT D113 — owner instruction.
  *
  * What an impact DOES is a few things and no more, so it can be said in one
- * sentence on the screen before anybody spends 73,815 resources on it: half of
+ * sentence on the screen before anybody spends 221,445 resources on it: half of
  * everything stored is gone, the Command Core loses a level, the Aegis two, and
  * the world produces nothing for two hours. Since D179 every fleet on the ground
  * survives it.
@@ -2965,7 +2975,7 @@ export const DEATH_STAR = {
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
   /**
-   * SET BY HAND, NOT SCALED. D167/D179 — owner figures, and the exception is
+   * SET BY HAND, NOT SCALED. D167/D179/D203 — owner figures, and the exception is
    * deliberate.
    *
    * Everything else in this file is priced through `scalePrice` so a tempo change
@@ -2973,19 +2983,19 @@ export const DEATH_STAR = {
    * about the galaxy rather than about the economy's pace, so the number is written
    * out where it can be read and argued with.
    *
-   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction; the owner's
-   * economy table (`docs/astera-economy-final-2026-09-09.md`) then set the figure
-   * below, 73,815. What it does shrank first: D167 priced it at "put somebody
+   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction; the later
+   * economy table then set it to 73,815. D203 triples every resource component to
+   * the 221,445 figure below. What it does shrank first: D167 priced it at "put somebody
    * else's colony on the table for the whole galaxy", and D179 took that away along
    * with the fleet it used to destroy. The buyer now takes NOTHING home — no loot,
    * no Dominion, no world — so what is left to pay for is denial.
    *
-   * MEASURED AT D179, against a full store: the strike destroys about 102,000 at a
-   * Core 12 world and about 420,000 at a Core 17 one. So this is not a weak weapon
-   * being propped up; it is a weapon whose entire return is the damage.
-   * `ANTI_STRATEGIC.cost` moves with it and must keep moving with it.
+   * MEASURED AT D179, before this price change and against a full store: the strike
+   * destroys about 102,000 at a Core 12 world and about 420,000 at a Core 17 one.
+   * D203 is a direct owner retune, not a new return-on-damage claim.
+   * `ANTI_STRATEGIC.cost` moved by 50% in the same instruction.
    */
-  cost: { alloy: 47_887, crystal: 23_944, deuterium: 1_984 },
+  cost: { alloy: 143_661, crystal: 71_832, deuterium: 5_952 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
    * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`

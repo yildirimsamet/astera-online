@@ -59,6 +59,53 @@ const PLANET = planetView(
 );
 
 describe('the API client', () => {
+  it('keeps the convoy confirmation key on the wire and parses its frozen clocks', async () => {
+    let path = '';
+    let key = '';
+    const fetch = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+      path = pathOf(url);
+      key = new Headers(init?.headers).get('idempotency-key') ?? '';
+      return json({
+        runId: 'run-1',
+        occurrenceId: '00000000-0000-4000-8000-000000000002',
+        fleet: { DART: 4 },
+        tech: { SHIP_POWER: 2 },
+        departAt: '2026-09-12T15:10:00.000Z',
+        arriveAt: '2026-09-12T15:11:30.000Z',
+        engagementEndsAt: '2026-09-12T15:11:35.000Z',
+        homeAt: '2026-09-12T15:13:05.000Z',
+        flightSeconds: 90,
+        intercept: { x: 1, y: 2, z: 3 },
+        engagementEnd: { x: 2, y: 3, z: 4 },
+        returnPoint: { x: 0, y: 0, z: 0 },
+        fuel: 8,
+        productionCap: { alloy: 100, crystal: 50, deuterium: 20 },
+        resourceQualityFactor: 0.8,
+        shipQualityFactor: 0.6,
+        cargo: 120,
+        quotedResourceReward: { alloy: 80, crystal: 40, deuterium: 0 },
+        shipDropChance: 0.12,
+        planet: PLANET,
+        pending: [],
+      });
+    });
+    const api = new Api({ fetch: fetch as unknown as typeof globalThis.fetch });
+
+    const result = await api.launchIntergalacticConvoy({
+      originPlanetId: '00000000-0000-4000-8000-000000000001',
+      occurrenceId: '00000000-0000-4000-8000-000000000002',
+      fleet: { DART: 4 },
+      quotedAt: new Date('2026-09-12T15:10:00.000Z'),
+      quotedFlightSeconds: 90,
+      quotedArriveAt: new Date('2026-09-12T15:11:30.000Z'),
+    }, 'convoy-confirm-1');
+
+    expect(path).toBe('/api/intergalactic-convoy/launch');
+    expect(key).toBe('convoy-confirm-1');
+    expect(result.engagementEndsAt).toBeInstanceOf(Date);
+    expect(result.homeAt.toISOString()).toBe('2026-09-12T15:13:05.000Z');
+  });
+
   it('refreshes and retries once when the access token has expired', async () => {
     const calls: string[] = [];
     const fetch = vi.fn((url: string | URL | Request) => {

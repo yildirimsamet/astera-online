@@ -35,7 +35,7 @@ import type {
   notificationsSchema,
   FeedbackKind,
 } from './schemas.js';
-import type { ClanAidInput } from './client.js';
+import type { ClanAidInput, IntergalacticConvoyLaunchInput } from './client.js';
 import { useApi } from './context.js';
 import { keys } from './keys.js';
 import { serverNow } from '../lib/clock.js';
@@ -1117,13 +1117,17 @@ export function useContactWindows(
  */
 export function useFleetArrivals(pending: readonly PendingThread[] | undefined): void {
   const moments = useMemo(() => {
-    const out: number[] = [];
+    const out = new Set<number>();
     for (const thread of pending ?? []) {
       const at = thread.arriveAt.getTime();
-      out.push(at);
-      if (thread.kind === 'fleet' && thread.leg !== 'return') out.push(engagementEndsAt(at));
+      out.add(at);
+      if (thread.kind === 'fleet' && thread.leg !== 'return') out.add(engagementEndsAt(at));
+      if (thread.kind === 'intergalactic_convoy') {
+        if (thread.engagementEndsAt) out.add(thread.engagementEndsAt.getTime());
+        if (thread.homeAt) out.add(thread.homeAt.getTime());
+      }
     }
-    return out.sort((a, b) => a - b);
+    return [...out].sort((a, b) => a - b);
   }, [pending]);
   useRefetchOnArrival(moments, [keys.pending, keys.planet, keys.galaxy, keys.reports, keys.traffic]);
 }
@@ -1678,6 +1682,50 @@ export function useLaunchTrade(originPlanetId: string) {
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
       invalidate(keys.traffic, keys.galaxy, keys.planets);
+    },
+    onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+/** Launch one irreversible strike from a specific physical world. */
+export function useLaunchIntergalacticConvoy(originPlanetId: string) {
+  const api = useApi();
+  const client = useQueryClient();
+  const apply = useApplyPlanet();
+  const invalidate = useInvalidator();
+  const lane = usePlanetMutationLane(originPlanetId);
+  return useMutation({
+    scope: lane.scope,
+    mutationFn: (
+      { idempotencyKey, ...input }:
+      Omit<IntergalacticConvoyLaunchInput, 'originPlanetId'> & { idempotencyKey: string },
+    ) => api.launchIntergalacticConvoy({ ...input, originPlanetId }, idempotencyKey),
+    onMutate: async () => {
+      const turn = await lane.enter();
+      try {
+        await Promise.all([
+          client.cancelQueries({ queryKey: keys.planetById(originPlanetId) }),
+          client.cancelQueries({ queryKey: keys.pending }),
+        ]);
+        return turn;
+      } catch (error) {
+        turn.release();
+        throw error;
+      }
+    },
+    onSuccess: async (result) => {
+      await apply(result.planet);
+      client.setQueryData(keys.pending, { pending: result.pending });
+      invalidate(
+        keys.traffic,
+        keys.galaxy,
+        keys.galaxyEvents,
+        keys.planets,
+        keys.notifications,
+      );
+    },
+    onError: () => {
+      invalidate(keys.galaxyEvents, keys.planetById(originPlanetId), keys.pending);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });

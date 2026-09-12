@@ -46,12 +46,16 @@ export function ChronicleLauncher({ onOpen }: { onOpen: () => void }) {
       case 'galaxy_event_started':
         line = latest.payload.eventKind === 'TRADE_SHIP'
           ? t('chronicle.launcherTradeShipStarted')
-          : t('chronicle.launcherAsteroidShowerStarted');
+          : latest.payload.eventKind === 'INTERGALACTIC_CONVOY'
+            ? t('chronicle.launcherIntergalacticConvoyStarted')
+            : t('chronicle.launcherAsteroidShowerStarted');
         break;
       case 'galaxy_event_ended':
         line = latest.payload.eventKind === 'TRADE_SHIP'
           ? t('chronicle.launcherTradeShipEnded')
-          : t('chronicle.launcherAsteroidShowerEnded');
+          : latest.payload.eventKind === 'INTERGALACTIC_CONVOY'
+            ? t('chronicle.launcherIntergalacticConvoyEnded')
+            : t('chronicle.launcherAsteroidShowerEnded');
         break;
     }
   }

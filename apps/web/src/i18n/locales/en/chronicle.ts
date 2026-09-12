@@ -51,6 +51,12 @@ export const chronicle = {
   asteroidShowerEndedDetail: 'Spawn returned to normal. Existing asteroids remain until their natural expiry.',
   tradeShipStarted: 'A trade ship entered the galaxy',
   tradeShipStartedDetail: 'It swapped at {{alloy}} alloy = {{crystal}} crystal = 1 deuterium, for anyone who could reach it.',
+  intergalacticConvoyStarted: 'The Intergalactic Convoy entered the galaxy',
+  intergalacticConvoyStartedDetail: 'Its formation can be struck while it crosses the galaxy.',
+  intergalacticConvoyEnded: 'The Intergalactic Convoy departed',
+  intergalacticConvoyEndedDetail: 'Committed strike wings continue their return flights.',
+  launcherIntergalacticConvoyStarted: 'The Intergalactic Convoy is crossing the galaxy',
+  launcherIntergalacticConvoyEnded: 'The Intergalactic Convoy departed',
   tradeShipEnded: 'The trade ship left',
   tradeShipEndedDetail: 'Its window closed. Convoys already in the air still come home.',
   act: {

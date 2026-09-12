@@ -66,6 +66,18 @@ describe('the two-project frontier', () => {
     }
   });
 
+  it('marks exactly 22% of asteroids isotope rich from season hour 35 onward', () => {
+    expect(DEUTERIUM.frontierStartsAtMinutes).toBe(35 * 60);
+    expect(DEUTERIUM.isotopeRate).toBe(11 / 50);
+
+    for (let seed = 1; seed <= 32; seed += 1) {
+      const rich = Array.from({ length: 50 }, (_, index) =>
+        isotopeProfile(seed, index, DEUTERIUM.frontierStartsAtMinutes).rich)
+        .filter(Boolean).length;
+      expect(rich).toBe(11);
+    }
+  });
+
   it('is deterministic, seed-shifted and has the configured bounded cadence', () => {
     const sample = Array.from({ length: 100_000 }, (_, index) =>
       isotopeProfile(4242, index, DEUTERIUM.frontierStartsAtMinutes + index));

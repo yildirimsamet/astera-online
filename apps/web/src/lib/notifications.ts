@@ -29,6 +29,34 @@ import { duration } from './time.js';
 /* ── payload shapes ─────────────────────────────────────────── */
 
 const fleet = z.record(z.string(), z.number());
+const resourceBundle = z.object({
+  alloy: z.number(),
+  crystal: z.number(),
+  deuterium: z.number(),
+});
+
+const convoyResult = z.object({
+  trip: z.literal('intergalactic_convoy'),
+  runId: z.string().uuid(),
+  resourceReward: resourceBundle,
+  awardedFleet: fleet,
+  inTransit: z.literal(true),
+});
+
+/**
+ * WHAT A CONVOY RUN WON, WHICHEVER OF ITS TWO MOMENTS IS BEING READ. D201.
+ *
+ * A run writes `convoy_result` when the firing ends and `fleet_returned` when the
+ * prizes land, and the two payloads differ in their tail — `inTransit` on one, a
+ * `destinationPlanetId` on the other. Only the prize itself decides whether the
+ * row reads as a win, so the check is stated on the half they share and neither
+ * strict shape is widened to serve it.
+ */
+const convoyPrize = z.object({
+  trip: z.literal('intergalactic_convoy'),
+  resourceReward: resourceBundle,
+  awardedFleet: fleet,
+});
 
 const incoming = z.object({
   /** ISO instant. Absent on rows written before D45; `etaMinutes` covers those. */
@@ -213,6 +241,13 @@ const returned = z.discriminatedUnion('trip', [
     /** `resolvePirateReturn` puts it here; a capture is fleet, not ore. */
     capturedHull: z.string().optional(),
   }),
+  z.object({
+    trip: z.literal('intergalactic_convoy'),
+    runId: z.string().uuid(),
+    resourceReward: resourceBundle,
+    awardedFleet: fleet,
+    destinationPlanetId: z.string().uuid(),
+  }),
 ]);
 
 /**
@@ -306,6 +341,13 @@ const galaxyLifecycle = z.discriminatedUnion('eventKind', [
       crystal: z.number().positive(),
       deuterium: z.number().positive(),
     }),
+  }),
+  z.object({
+    eventKind: z.literal('INTERGALACTIC_CONVOY'),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    resourceCapHours: z.number().positive(),
+    shipDropChanceAtFullQuality: z.number().min(0).max(1),
   }),
 ]);
 
@@ -445,6 +487,7 @@ export function notificationIdentity(notification: NotificationView): Notificati
         ...(parsed.data.targetPlanetId ? { planetId: parsed.data.targetPlanetId } : {}),
       };
     }
+
     case 'fleet_returned': {
       const parsed = returned.safeParse(notification.payload);
       if (!parsed.success) return null;
@@ -674,6 +717,23 @@ export function describeNotification(notification: NotificationView, now: number
       });
     }
 
+    case 'convoy_result': {
+      const parsed = convoyResult.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      const resources = spoils(
+        parsed.data.resourceReward.alloy,
+        parsed.data.resourceReward.crystal,
+        parsed.data.resourceReward.deuterium,
+      );
+      const ships = composition(parsed.data.awardedFleet);
+      return i18n.t('notifications.intergalacticConvoyResult', {
+        resources: resources.length > 0
+          ? resources.join(JOIN())
+          : i18n.t('notifications.intergalacticConvoyNoResources'),
+        ships: ships || i18n.t('notifications.intergalacticConvoyNoShip'),
+      });
+    }
+
     case 'fleet_returned': {
       const parsed = returned.safeParse(notification.payload);
       if (!parsed.success) {
@@ -713,6 +773,20 @@ export function describeNotification(notification: NotificationView, now: number
               count: trip.ships,
               landed: bought.join(JOIN()),
             });
+      }
+      if (trip.trip === 'intergalactic_convoy') {
+        const resources = spoils(
+          trip.resourceReward.alloy,
+          trip.resourceReward.crystal,
+          trip.resourceReward.deuterium,
+        );
+        const ships = composition(trip.awardedFleet);
+        return i18n.t('notifications.intergalacticConvoyHome', {
+          resources: resources.length > 0
+            ? resources.join(JOIN())
+            : i18n.t('notifications.intergalacticConvoyNoResources'),
+          ships: ships || i18n.t('notifications.intergalacticConvoyNoShip'),
+        });
       }
       if (trip.trip === 'pirate') {
         /*
@@ -887,7 +961,9 @@ export function describeNotification(notification: NotificationView, now: number
         ? i18n.t('notifications.tradeShipStarted', {
             alloy: full(parsed.data.rate.deuterium / parsed.data.rate.alloy),
           })
-        : i18n.t('notifications.asteroidShowerStarted');
+        : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
+          ? i18n.t('notifications.intergalacticConvoyStarted')
+          : i18n.t('notifications.asteroidShowerStarted');
     }
 
     case 'galaxy_event_ended': {
@@ -895,7 +971,9 @@ export function describeNotification(notification: NotificationView, now: number
       if (!parsed.success) return null;
       return parsed.data.eventKind === 'TRADE_SHIP'
         ? i18n.t('notifications.tradeShipEnded')
-        : i18n.t('notifications.asteroidShowerEnded');
+        : parsed.data.eventKind === 'INTERGALACTIC_CONVOY'
+          ? i18n.t('notifications.intergalacticConvoyEnded')
+          : i18n.t('notifications.asteroidShowerEnded');
     }
 
     /**
@@ -1032,6 +1110,13 @@ export function signalFamily(notification: NotificationView): SignalFamily {
       return isPirateNews(notification) ? 'pirate' : 'gain';
     case 'fleet_returned':
       return isAlarming(notification) ? 'threat' : 'gain';
+    /*
+      A CONVOY RESULT IS THE PAYOFF, SO IT READS AS ONE. D201. It fell through to
+      `note` — a grey row with a bell on it — which is how the moment the whole
+      five-second action exists for was drawn as unremarkable housekeeping.
+    */
+    case 'convoy_result':
+      return 'gain';
     case 'probe_report':
     case 'unlock':
     case 'colony_captured':
@@ -1085,6 +1170,23 @@ export function signalOutcome(notification: NotificationView): SignalOutcome {
    * not a gain, and painting it green would be the interface congratulating the
    * player on a wasted capital ship.
    */
+  /**
+   * A STRIKE THAT BROUGHT NOTHING HOME. D201, and the same rule as D105 above.
+   *
+   * A world with no production and a wing under the ship threshold can complete
+   * the whole five seconds and come back empty. The convoy never fires back, so
+   * nothing was lost either — which is exactly the third answer, and painting it
+   * green would congratulate a commander on an empty hold.
+   */
+  if (notification.kind === 'convoy_result' || notification.kind === 'fleet_returned') {
+    const parsed = convoyPrize.safeParse(notification.payload);
+    if (parsed.success) {
+      const { alloy, crystal, deuterium } = parsed.data.resourceReward;
+      const ships = Object.values(parsed.data.awardedFleet)
+        .reduce((sum, count) => sum + count, 0);
+      if (alloy + crystal + deuterium + ships === 0) return 'neutral';
+    }
+  }
   if (notification.kind === 'death_star_result') {
     const parsed = strategicResult.safeParse(notification.payload);
     if (parsed.success && parsed.data.outcome === 'INEFFECTIVE') return 'neutral';
@@ -1131,6 +1233,7 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
       return 'raided';
     case 'fleet_returned':
     case 'target_gone':
+    case 'convoy_result':
       return 'returned';
     /**
      * AN EYE FOR YOUR PROBE, A PING FOR SOMEBODY ELSE'S. See `EyeIcon`.

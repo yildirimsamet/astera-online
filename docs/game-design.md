@@ -151,7 +151,9 @@ flying at the same rock — and they arrive in one lump a fleet has to be in pos
 is a decision rather than an accrual. Isotope Spectrometry still reveals them, and they still
 pay for advanced Fleet V2 hulls, the last research rungs and a Death Star. What they no longer
 are is the bigger number, and the Frontier act now has to compete on risk and timing instead of
-on volume. The plant's curve is still flatter than alloy's or crystal's, and the test now asserts
+on volume. From the season's 35th hour, exactly 11 of each 50 asteroid indexes (22%) are
+isotope-rich; their 10–25% Deuterium concentration is unchanged. The plant's curve is still
+flatter than alloy's or crystal's, and the test now asserts
 where the two cross rather than that they never do.
 
 Deuterium is otherwise unchanged: fully raidable above the vault floor, the same fleet cargo as
@@ -546,10 +548,10 @@ schedule and raw indexes never reach the browser, so direct API automation has n
 list to enumerate. Once two commanders have independently found the same rock, the ordinary public
 race and visible mining route begin for both of them.
 
-**Asteroid Shower is a public opportunity window (D149).** It begins five times per full Türkiye
-calendar day, lasts one hour and multiplies new arrivals by five. Midnight–08:00 Türkiye time remains
-eligible but low priority: a five-event day targets one start there and never exceeds two. Starts are
-at least three hours apart: one hour active plus two hours cooldown. The end stops only bonus arrivals;
+**Asteroid Shower is a public opportunity window (D149/D201).** In ruleset 8 it uses four fixed,
+half-open Türkiye windows: 02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5 and
+20:00–21:00 ×10. Ruleset 4–7 seasons retain the random calendar already persisted for them. The
+end stops only bonus arrivals;
 rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,
 the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
 undiscovered coordinate and the API never publishes the future calendar.
@@ -630,13 +632,18 @@ three-plus the raid budget comes from. Fuel for both legs, prepaid, refunded nev
 Dominion at all**: the ladder is a zero-sum transfer between commanders, so beating a pirate makes
 you richer and moves you nowhere. Standing is still bought from people.
 
+The raw hoard is the pirate roster's build value ×1.82, split into 55% Alloy, 30% Crystal and
+1.125% Deuterium. D204 raised the former ×1.4 multiplier by 30% without changing those shares;
+combat grade and surviving cargo still decide how much of the raw hoard reaches home.
+
 **What it deliberately is not.** Pirates never attack. There is no escalating threat, no defence
 minigame and no pirate faction with a memory. The system adds one target class and one new reason
 to launch tonight; it does not add a second game beside the game.
 
 ### Trade ships — the fourth target class, and the first you deal with (D156)
 
-A trade ship rides a closed orbit for three hours, three times a Türkiye day, and then it is
+A trade ship rides a closed orbit for two hours at 01:00, 07:00, 15:00 and 21:00 Türkiye time,
+and then it is
 gone. Everything about it is public: unlike a pirate, whose whole value is that nobody else can
 see it coming, the merchant's orbit is broadcast to the entire galaxy from the moment it appears
 until the moment it leaves. There is nothing to scout and nothing to hide here — the opportunity
@@ -645,7 +652,7 @@ is finding the decision worth making with it, not finding the ship.
 **The decision it creates.** Every other target answers "is this worth taking, and can I get away
 with it." A merchant answers a different question: what do I have too much of, what do I actually
 need, and is it worth pinning a convoy — and the flight bay and both legs of fuel that convoy
-holds for the whole round trip — to an appointment that only stands for three hours. What a
+holds for the whole round trip — to an appointment that only stands for two hours. What a
 commander gives up by taking it is capacity: that convoy is not available for a raid or a rock
 worth mining for as long as it is committed to the merchant instead. In exchange it turns a
 surplus that cannot be spent — a full alloy store while deuterium starves the yard queue — into
@@ -655,7 +662,7 @@ the resource actually blocking the next order, at a price fixed and known a day 
 cap — the owner ruled out all three. `requiredHold`, the larger of what the convoy carries out and
 what it carries home, is the whole arithmetic: a small offer buying a large haul still needs a
 hold big enough to bring the haul home, so the planning question is never "can I afford this
-trade" but "how big a convoy am I willing to have caught away from home for three hours." That is
+trade" but "how big a convoy am I willing to have caught away from home for two hours." That is
 the same brake the rest of the game already runs on — cargo capacity, a flight bay, prepaid fuel —
 applied to the one lane that cannot itself cost a ship.
 
@@ -675,9 +682,29 @@ live season keeps the rate it was dealt (D149): the calendar freezes it per occu
 `season restamp` is the only door.
 
 This feeds OPPORTUNITY and RE-ENGAGEMENT most directly — one more reason to check the sky this
-session even with nothing under threat — and a little AMBITION and RISK besides: three hours
-committed to a convoy in the open is still three hours undefended, on the same clock as
+session even with nothing under threat — and a little AMBITION and RISK besides: a convoy
+committed in the open is still capacity left undefended, on the same clock as
 everything else that can go wrong while you are away.
+
+### Intergalactic Convoy — a public moving strike (D201)
+
+Twice a Türkiye day, 07:00–09:00 and 19:00–21:00, a twenty-two-craft double formation crosses an
+isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
+60. The active route is public; future routes remain server-secret. A commander sends an armed
+mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
+fire and loses no craft, then follows a separately frozen return leg. Both legs' fuel is paid at
+launch and the flight cannot be recalled.
+
+The resource prize is bounded by two frozen hours of the origin world's nominal production,
+firepower quality and the launched wing's cargo. Ship quality uses its own combat threshold: at full
+quality the chance is 15%, with a versioned 1–3 ship/tier roll that can never exceed the wing's
+highest tier. Prizes exist in transit after the engagement and enter the commander's safe home world
+only on return. One physical world gets one strike per occurrence and can hold only one active convoy
+run across occurrences. Server bots do not choose this lane.
+
+This event is deliberately absent from ARR, VFR, progression and season economy simulations. Its
+cap, cargo, probability, concurrency and exactly-once tests are feature correctness, not economy
+calibration.
 
 ## Clans — five seats, useful cooperation, no diplomacy game
 
@@ -757,9 +784,11 @@ Seven from the single-world game —
 `strategic incoming` · `death star result` · `colony captured` · `colony lost` ·
 `settlement success` · `settlement lost`.
 
-Asteroid Shower adds `galaxy event started` and `galaxy event ended`. They are deliberately public,
+Public events add `galaxy event started` and `galaxy event ended`. They are deliberately public,
 actionable opportunity messages rather than personal surprises, and future event types reuse these
-same two kinds instead of growing the enum per event.
+same two kinds instead of growing the enum per event. A convoy strike also writes one private
+`convoy result` while its prizes are returning and one ordinary `fleet returned` on delivery; an
+offline five-line recap coalesces those two rows by run id.
 
 The test for admitting one: **it reports something that happened TO YOU, that you could not
 have predicted, and that you can act on.** Nothing else passes it.

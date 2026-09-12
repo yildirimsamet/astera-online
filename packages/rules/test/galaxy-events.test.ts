@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   GALAXY_EVENTS,
+  GALAXY_EVENT_KINDS,
   GALAXY,
+  MULTI_WORLD,
   assertMutuallyExclusiveEventWindows,
+  combatValue,
+  galaxyEventConfigForRuleset,
+  galaxyEventKindsForRuleset,
   generateAsteroidSchedule,
   generateGalaxyEventSchedule,
   mulberry32,
+  plannedEffectFor,
   withAsteroidShowerLanes,
   type GalaxyEventKind,
   type PlannedGalaxyEvent,
@@ -16,6 +22,21 @@ const MINUTE = 60_000;
 const DAY_MINUTES = 24 * 60;
 // 2026-09-02 00:00 in Türkiye (UTC+03:00).
 const TURKEY_MIDNIGHT_UNIX_MINUTE = Date.parse('2026-09-01T21:00:00.000Z') / MINUTE;
+const LEGACY_GALAXY_EVENTS = galaxyEventConfigForRuleset(7);
+const legacySchedule = (input: Parameters<typeof generateGalaxyEventSchedule>[0]) =>
+  generateGalaxyEventSchedule({
+    ...input,
+    config: input.config ?? LEGACY_GALAXY_EVENTS,
+    kinds: input.kinds ?? galaxyEventKindsForRuleset(7),
+  });
+const LEGACY_SHOWER_DEFINITION = LEGACY_GALAXY_EVENTS.definitions.ASTEROID_SHOWER;
+if (LEGACY_SHOWER_DEFINITION.schedule !== 'RANDOM_DAILY') {
+  throw new Error('legacy shower config must be random');
+}
+const LEGACY_TRADE_DEFINITION = LEGACY_GALAXY_EVENTS.definitions.TRADE_SHIP;
+if (LEGACY_TRADE_DEFINITION.schedule !== 'RANDOM_DAILY') {
+  throw new Error('legacy trade config must be random');
+}
 
 /**
  * One independent stream per kind, memoised because `rngFor` is asked once per
@@ -43,16 +64,18 @@ const onlyKind = (
 
 describe('galaxy event calendar', () => {
   it('ships the requested Asteroid Shower production defaults', () => {
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.dailyCount).toEqual({ min: 5, max: 5 });
-    expect(GALAXY_EVENTS.calendar.timeZone).toBe('Europe/Istanbul');
-    expect(GALAXY_EVENTS.calendar.utcOffsetMinutes).toBe(180);
-    expect(GALAXY_EVENTS.calendar.lowPriorityWindow).toMatchObject({
+    expect(LEGACY_GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toMatchObject({
+      dailyCount: { min: 5, max: 5 },
+    });
+    expect(LEGACY_GALAXY_EVENTS.calendar.timeZone).toBe('Europe/Istanbul');
+    expect(LEGACY_GALAXY_EVENTS.calendar.utcOffsetMinutes).toBe(180);
+    expect(LEGACY_GALAXY_EVENTS.calendar.lowPriorityWindow).toMatchObject({
       startsAtLocalMinute: 0,
       endsAtLocalMinute: 8 * 60,
       targetShare: 0.2,
       maxDailyCount: 2,
     });
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toMatchObject({
+    expect(LEGACY_GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toMatchObject({
       durationMinutes: 60,
       repeatCooldownMinutes: 120,
       effect: { asteroidSpawnMultiplier: 10 },
@@ -71,7 +94,7 @@ describe('galaxy event calendar', () => {
    * beside that one and the merchant's would be two rules where one will do.
    */
   it('stamps the night figure on a night shower and the day figure on the rest', () => {
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 14 * DAY_MINUTES,
       rngFor: streamsFrom(0x51a7),
@@ -103,17 +126,17 @@ describe('galaxy event calendar', () => {
    * change to the multiplier a safe operation rather than a re-deal.
    */
   it('draws the same windows whatever the two multipliers are', () => {
-    const plan = (effect: number, nightEffect: number) => generateGalaxyEventSchedule({
+    const plan = (effect: number, nightEffect: number) => legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 14 * DAY_MINUTES,
       rngFor: streamsFrom(0x51a7),
       kinds: ['ASTEROID_SHOWER'],
       config: {
-        ...GALAXY_EVENTS,
+        ...LEGACY_GALAXY_EVENTS,
         definitions: {
-          ...GALAXY_EVENTS.definitions,
+          ...LEGACY_GALAXY_EVENTS.definitions,
           ASTEROID_SHOWER: {
-            ...GALAXY_EVENTS.definitions.ASTEROID_SHOWER,
+            ...LEGACY_SHOWER_DEFINITION,
             effect: { asteroidSpawnMultiplier: effect },
             nightEffect: { asteroidSpawnMultiplier: nightEffect },
           },
@@ -127,17 +150,17 @@ describe('galaxy event calendar', () => {
 
   /** A night figure is an effect like any other, and is refused on the same rule. */
   it('refuses a night multiplier that is not a multiplier', () => {
-    expect(() => generateGalaxyEventSchedule({
+    expect(() => legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: DAY_MINUTES,
       rngFor: streamsFrom(1),
       kinds: ['ASTEROID_SHOWER'],
       config: {
-        ...GALAXY_EVENTS,
+        ...LEGACY_GALAXY_EVENTS,
         definitions: {
-          ...GALAXY_EVENTS.definitions,
+          ...LEGACY_GALAXY_EVENTS.definitions,
           ASTEROID_SHOWER: {
-            ...GALAXY_EVENTS.definitions.ASTEROID_SHOWER,
+            ...LEGACY_SHOWER_DEFINITION,
             nightEffect: { asteroidSpawnMultiplier: 1 },
           },
         },
@@ -146,7 +169,7 @@ describe('galaxy event calendar', () => {
   });
 
   it('plans exactly five events per full Türkiye day with one or at most two at night', () => {
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 14 * DAY_MINUTES,
       rngFor: streamsFrom(0x51a7),
@@ -174,22 +197,23 @@ describe('galaxy event calendar', () => {
       seasonDurationMinutes: 4 * DAY_MINUTES,
       kinds: ['ASTEROID_SHOWER'] as const,
     };
-    const first = generateGalaxyEventSchedule({ ...input, rngFor: streamsFrom(9441) });
-    const second = generateGalaxyEventSchedule({ ...input, rngFor: streamsFrom(9441) });
+    const first = legacySchedule({ ...input, rngFor: streamsFrom(9441) });
+    const second = legacySchedule({ ...input, rngFor: streamsFrom(9441) });
 
     expect(second).toEqual(first);
     for (let index = 1; index < first.length; index += 1) {
       const previous = first[index - 1]!;
       const current = first[index]!;
       expect(current.startsAtMinute).toBeGreaterThanOrEqual(
-        previous.endsAtMinute + GALAXY_EVENTS.definitions.ASTEROID_SHOWER.repeatCooldownMinutes,
+        previous.endsAtMinute
+          + LEGACY_SHOWER_DEFINITION.repeatCooldownMinutes,
       );
     }
   });
 
   it('keeps a 14-day arbitrary-start season at seventy occurrences', () => {
     for (const [offset, seed] of [[3 * 60, 91], [11 * 60 + 17, 291]] as const) {
-      const schedule = generateGalaxyEventSchedule({
+      const schedule = legacySchedule({
         seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + offset,
         seasonDurationMinutes: 14 * DAY_MINUTES,
         rngFor: streamsFrom(seed),
@@ -203,16 +227,16 @@ describe('galaxy event calendar', () => {
   });
 
   it('rejects an impossible calendar instead of silently dropping events', () => {
-    expect(() => generateGalaxyEventSchedule({
+    expect(() => legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: DAY_MINUTES,
       rngFor: streamsFrom(1),
       config: {
-        ...GALAXY_EVENTS,
+        ...LEGACY_GALAXY_EVENTS,
         definitions: {
-          ...GALAXY_EVENTS.definitions,
+          ...LEGACY_GALAXY_EVENTS.definitions,
           ASTEROID_SHOWER: {
-            ...GALAXY_EVENTS.definitions.ASTEROID_SHOWER,
+            ...LEGACY_SHOWER_DEFINITION,
             repeatCooldownMinutes: DAY_MINUTES,
           },
         },
@@ -223,17 +247,17 @@ describe('galaxy event calendar', () => {
   it('rejects an impossible TRADE_SHIP calendar too, rather than dropping one', () => {
     // The fail-closed rule is per kind, not a property of the one kind that had
     // it first: a lane that cannot be packed is a bug, never a shorter calendar.
-    expect(() => generateGalaxyEventSchedule({
+    expect(() => legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: DAY_MINUTES,
       rngFor: streamsFrom(1),
       kinds: ['TRADE_SHIP'],
       config: {
-        ...GALAXY_EVENTS,
+        ...LEGACY_GALAXY_EVENTS,
         definitions: {
-          ...GALAXY_EVENTS.definitions,
+          ...LEGACY_GALAXY_EVENTS.definitions,
           TRADE_SHIP: {
-            ...GALAXY_EVENTS.definitions.TRADE_SHIP,
+            ...LEGACY_TRADE_DEFINITION,
             repeatCooldownMinutes: DAY_MINUTES,
           },
         },
@@ -273,12 +297,12 @@ describe('a multi-kind calendar', () => {
         seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + offset,
         seasonDurationMinutes: 14 * DAY_MINUTES,
       };
-      const showerOnly = generateGalaxyEventSchedule({
+      const showerOnly = legacySchedule({
         ...input,
         rngFor: streamsFrom(seed),
         kinds: ['ASTEROID_SHOWER'],
       });
-      const both = generateGalaxyEventSchedule({ ...input, rngFor: streamsFrom(seed) });
+      const both = legacySchedule({ ...input, rngFor: streamsFrom(seed) });
 
       expect(onlyKind(both, 'ASTEROID_SHOWER')).toEqual(showerOnly);
       expect(onlyKind(both, 'TRADE_SHIP').length).toBeGreaterThan(0);
@@ -292,13 +316,13 @@ describe('a multi-kind calendar', () => {
       rngFor: streamsFrom(12),
     });
     expect(new Set(schedule.map((event) => event.kind)))
-      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP']));
+      .toEqual(new Set(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']));
   });
 
   it('seeds a shower-only calendar for a season that predates the trade ship', () => {
     // The ruleset-4 path: an existing season is entitled to the shower and to
     // nothing else, and asks for exactly that.
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 14 * DAY_MINUTES,
       rngFor: streamsFrom(64),
@@ -309,7 +333,7 @@ describe('a multi-kind calendar', () => {
   });
 
   it('numbers each kind from zero in its own start order', () => {
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 137,
       seasonDurationMinutes: 5 * DAY_MINUTES,
       rngFor: streamsFrom(555),
@@ -330,7 +354,7 @@ describe('a multi-kind calendar', () => {
     expect(GALAXY_EVENTS.mutuallyExclusive).toHaveLength(0);
     let overlaps = 0;
     for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      const schedule = generateGalaxyEventSchedule({
+      const schedule = legacySchedule({
         seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
         seasonDurationMinutes: 14 * DAY_MINUTES,
         rngFor: streamsFrom(seed),
@@ -356,12 +380,12 @@ describe('a multi-kind calendar', () => {
       bounded whole-season retry earns its keep, so an arbitrary start offset is
       swept here rather than a tidy midnight one.
     */
-    const definition = GALAXY_EVENTS.definitions.TRADE_SHIP;
+    const definition = LEGACY_TRADE_DEFINITION;
     const gap = definition.durationMinutes + definition.repeatCooldownMinutes;
     for (const [offset, seed] of [
       [0, 11], [3 * 60, 12], [11 * 60 + 17, 13], [19 * 60 + 43, 14], [187.5, 15],
     ] as const) {
-      const schedule = generateGalaxyEventSchedule({
+      const schedule = legacySchedule({
         seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + offset,
         seasonDurationMinutes: 14 * DAY_MINUTES,
         rngFor: streamsFrom(seed),
@@ -390,14 +414,14 @@ describe('a multi-kind calendar', () => {
   it("keeps a trade ship's own cooldown out of the shower's arithmetic", () => {
     // A trade ship's 180-minute cooldown says nothing about a shower, and the
     // shower's 120 says nothing about a trade ship. The gap is per kind.
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 7 * DAY_MINUTES,
       rngFor: streamsFrom(808),
     });
     const showers = onlyKind(schedule, 'ASTEROID_SHOWER');
-    const showerGap = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.durationMinutes
-      + GALAXY_EVENTS.definitions.ASTEROID_SHOWER.repeatCooldownMinutes;
+    const showerGap = LEGACY_SHOWER_DEFINITION.durationMinutes
+      + LEGACY_SHOWER_DEFINITION.repeatCooldownMinutes;
     let tight = 0;
     for (let index = 1; index < showers.length; index += 1) {
       const delta = showers[index]!.startsAtMinute - showers[index - 1]!.startsAtMinute;
@@ -406,6 +430,172 @@ describe('a multi-kind calendar', () => {
     }
     // Proof the shower is not silently paying the trade ship's larger gap.
     expect(tight).toBeGreaterThan(0);
+  });
+});
+
+describe('the ruleset-8 fixed public-event calendar', () => {
+  const convoyWindowAt = (index: number) => {
+    const window = GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows[index];
+    if (window === undefined) throw new Error(`missing convoy window ${String(index)}`);
+    return window;
+  };
+
+  const currentDay = () => generateGalaxyEventSchedule({
+    seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+    seasonDurationMinutes: DAY_MINUTES,
+    rngFor: (kind) => {
+      throw new Error(`fixed kind ${kind} must not request an RNG stream`);
+    },
+  });
+
+  it('appends the Intergalactic Convoy kind without moving the existing order', () => {
+    expect(GALAXY_EVENT_KINDS).toEqual([
+      'ASTEROID_SHOWER',
+      'TRADE_SHIP',
+      'INTERGALACTIC_CONVOY',
+    ]);
+  });
+
+  it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
+    expect(MULTI_WORLD.rulesetVersion).toBe(8);
+    expect(GALAXY_EVENTS.version).toBe(3);
+    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(2);
+    expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);
+    expect(galaxyEventKindsForRuleset(MULTI_WORLD.rulesetVersion)).toEqual([
+      'ASTEROID_SHOWER',
+      'TRADE_SHIP',
+      'INTERGALACTIC_CONVOY',
+    ]);
+    expect(galaxyEventKindsForRuleset(7)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
+  });
+
+  it('deals the ten exact half-open TRT windows and their occurrence effects', () => {
+    const schedule = currentDay();
+    const rows = schedule.map((event) => ({
+      kind: event.kind,
+      startsAtMinute: event.startsAtMinute,
+      endsAtMinute: event.endsAtMinute,
+      effect: event.effect,
+    }));
+
+    expect(rows).toEqual([
+      { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 180,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 120, endsAtMinute: 180,
+        effect: { asteroidSpawnMultiplier: 3 } },
+      { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 540,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[1].effect },
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 420, endsAtMinute: 540,
+        effect: convoyWindowAt(0).effect },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 600, endsAtMinute: 660,
+        effect: { asteroidSpawnMultiplier: 3 } },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 780, endsAtMinute: 840,
+        effect: { asteroidSpawnMultiplier: 5 } },
+      { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1020,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1140, endsAtMinute: 1260,
+        effect: convoyWindowAt(1).effect },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
+        effect: { asteroidSpawnMultiplier: 10 } },
+      { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1380,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
+    ]);
+    expect(schedule.map((event) => event.sequence)).toEqual([0, 0, 1, 0, 1, 2, 2, 1, 3, 3]);
+    expect(convoyWindowAt(0).effect.shipDropFullFirepower)
+      .toBe(combatValue({ CATACLYSM: 1 }));
+  });
+
+  it('writes only complete fixed windows inside arbitrary season boundaries', () => {
+    const schedule = generateGalaxyEventSchedule({
+      // 02:30–22:30 TRT: the 02:00 shower and 21:00 trade window are partial.
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 150,
+      seasonDurationMinutes: 20 * 60,
+      rngFor: () => { throw new Error('fixed definitions do not consume RNG'); },
+    });
+
+    expect(schedule.map((event) => [event.kind, event.startsAtMinute, event.endsAtMinute]))
+      .toEqual([
+        ['TRADE_SHIP', 270, 390],
+        ['INTERGALACTIC_CONVOY', 270, 390],
+        ['ASTEROID_SHOWER', 450, 510],
+        ['ASTEROID_SHOWER', 630, 690],
+        ['TRADE_SHIP', 750, 870],
+        ['INTERGALACTIC_CONVOY', 990, 1110],
+        ['ASTEROID_SHOWER', 1050, 1110],
+      ]);
+  });
+
+  it('matches a fixed effect only at an authored exact local start minute', () => {
+    expect(plannedEffectFor(
+      'ASTEROID_SHOWER',
+      TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60,
+      GALAXY_EVENTS,
+    )).toEqual({ asteroidSpawnMultiplier: 10 });
+    expect(() => plannedEffectFor(
+      'ASTEROID_SHOWER',
+      TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60 + 1,
+      GALAXY_EVENTS,
+    )).toThrow(/exact fixed start/i);
+  });
+
+  it('rejects wrapping, overlapping, fractional and out-of-day fixed windows', () => {
+    const invalidWindows = [
+      [{ startsAtLocalMinute: 60, endsAtLocalMinute: 60,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect }],
+      [{ startsAtLocalMinute: 1380, endsAtLocalMinute: 60,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect }],
+      [{ startsAtLocalMinute: 1.5, endsAtLocalMinute: 60,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect }],
+      [{ startsAtLocalMinute: 60, endsAtLocalMinute: 1441,
+        effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect }],
+      [
+        { startsAtLocalMinute: 60, endsAtLocalMinute: 180,
+          effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
+        { startsAtLocalMinute: 179, endsAtLocalMinute: 240,
+          effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
+      ],
+    ] as const;
+
+    for (const windows of invalidWindows) {
+      expect(() => generateGalaxyEventSchedule({
+        seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+        seasonDurationMinutes: DAY_MINUTES,
+        rngFor: streamsFrom(1),
+        config: {
+          ...GALAXY_EVENTS,
+          definitions: {
+            ...GALAXY_EVENTS.definitions,
+            TRADE_SHIP: { ...GALAXY_EVENTS.definitions.TRADE_SHIP, windows },
+          },
+        },
+      })).toThrow(/fixed window/i);
+    }
+  });
+
+  it('keeps frozen calendar shapes for old rulesets and gates kinds by their first boundary', () => {
+    expect(galaxyEventKindsForRuleset(3)).toEqual([]);
+    expect(galaxyEventKindsForRuleset(4)).toEqual(['ASTEROID_SHOWER']);
+    expect(galaxyEventKindsForRuleset(5)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
+    expect(galaxyEventKindsForRuleset(7)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
+    expect(galaxyEventKindsForRuleset(8)).toEqual(GALAXY_EVENT_KINDS);
+
+    expect(galaxyEventConfigForRuleset(4).definitions.TRADE_SHIP.schedule).toBe('RANDOM_DAILY');
+    expect(galaxyEventConfigForRuleset(5).definitions.TRADE_SHIP).toMatchObject({
+      schedule: 'RANDOM_DAILY',
+      version: 1,
+      dailyCount: { min: 3, max: 3 },
+      durationMinutes: 180,
+      repeatCooldownMinutes: 180,
+    });
+    expect(galaxyEventConfigForRuleset(7).definitions.TRADE_SHIP).toMatchObject({
+      schedule: 'RANDOM_DAILY',
+      version: 2,
+      dailyCount: { min: 4, max: 4 },
+      durationMinutes: 180,
+      repeatCooldownMinutes: 60,
+    });
+    expect(galaxyEventConfigForRuleset(8)).toBe(GALAXY_EVENTS);
+    expect(() => galaxyEventConfigForRuleset(3)).toThrow(/ruleset/i);
   });
 });
 
@@ -562,13 +752,14 @@ describe('Asteroid Shower bonus lane', () => {
  * hour either side of midnight belongs to the evening session rather than to the
  * night one.
  */
-describe('the merchant’s four windows a day', () => {
-  const definition = GALAXY_EVENTS.definitions.TRADE_SHIP;
+describe('the legacy ruleset-7 merchant’s four random windows a day', () => {
+  const definition = LEGACY_TRADE_DEFINITION;
   const quiet = definition.quietWindow;
+  if (!quiet) throw new Error('legacy trade config must have its quiet window');
   /** Minutes past local midnight for an absolute schedule minute. */
   const localMinuteOf = (startsAtMinute: number, offset: number): number => {
     const absolute = TURKEY_MIDNIGHT_UNIX_MINUTE + offset + startsAtMinute;
-    const local = absolute + GALAXY_EVENTS.calendar.utcOffsetMinutes;
+    const local = absolute + LEGACY_GALAXY_EVENTS.calendar.utcOffsetMinutes;
     return ((local % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
   };
 
@@ -581,7 +772,7 @@ describe('the merchant’s four windows a day', () => {
 
   it('puts exactly one of every four inside 01:00–08:00, on every whole day', () => {
     for (const [offset, seed] of [[0, 21], [5 * 60, 22], [17 * 60 + 9, 23]] as const) {
-      const schedule = generateGalaxyEventSchedule({
+      const schedule = legacySchedule({
         seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + offset,
         seasonDurationMinutes: 14 * DAY_MINUTES,
         rngFor: streamsFrom(seed),
@@ -606,7 +797,7 @@ describe('the merchant’s four windows a day', () => {
   });
 
   it('never opens one in the hour after midnight', () => {
-    const schedule = generateGalaxyEventSchedule({
+    const schedule = legacySchedule({
       seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
       seasonDurationMinutes: 14 * DAY_MINUTES,
       rngFor: streamsFrom(24),
@@ -622,6 +813,6 @@ describe('the merchant’s four windows a day', () => {
    * on `GalaxyEventDefinition`, and the shower's literal has no such key at all.
    */
   it('leaves the shower on the calendar-wide quiet-hours rule', () => {
-    expect('quietWindow' in GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toBe(false);
+    expect('quietWindow' in LEGACY_GALAXY_EVENTS.definitions.ASTEROID_SHOWER).toBe(false);
   });
 });

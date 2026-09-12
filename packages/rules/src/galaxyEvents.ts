@@ -1,10 +1,10 @@
-import { GALAXY_EVENTS } from './constants.js';
+import { GALAXY_EVENTS, MULTI_WORLD } from './constants.js';
 import type { TradeRate } from './trade.js';
 import type { Rng } from './types.js';
 
 const DAY_MINUTES = 24 * 60;
 
-export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP';
+export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP' | 'INTERGALACTIC_CONVOY';
 
 /**
  * THE PLANNING ORDER, AND IT IS A CONTRACT RATHER THAN A LIST. D156.
@@ -23,7 +23,11 @@ export type GalaxyEventKind = 'ASTEROID_SHOWER' | 'TRADE_SHIP';
  * `galaxy-events.test.ts` asserts the shower slice of a full calendar equals the
  * shower-only calendar, which is the in-repo form of that proof.
  */
-export const GALAXY_EVENT_KINDS: readonly GalaxyEventKind[] = ['ASTEROID_SHOWER', 'TRADE_SHIP'];
+export const GALAXY_EVENT_KINDS: readonly GalaxyEventKind[] = [
+  'ASTEROID_SHOWER',
+  'TRADE_SHIP',
+  'INTERGALACTIC_CONVOY',
+];
 
 export interface AsteroidShowerEffect {
   asteroidSpawnMultiplier: number;
@@ -33,10 +37,23 @@ export interface TradeShipEffect {
   rate: TradeRate;
 }
 
+export interface IntergalacticConvoyEffect {
+  routeVersion: 1;
+  formationVersion: 1;
+  resourceCapHours: number;
+  fullRewardForceRatio: number;
+  shipDropFullFirepower: number;
+  shipDropChanceAtFullQuality: number;
+  shipCountWeights: readonly [number, number, number];
+  shipTierWeights: readonly [number, number, number, number];
+  rewardPoolVersion: 1;
+}
+
 /** What each kind's occurrence carries. One entry per member of the union. */
 export interface GalaxyEventEffects {
   ASTEROID_SHOWER: AsteroidShowerEffect;
   TRADE_SHIP: TradeShipEffect;
+  INTERGALACTIC_CONVOY: IntergalacticConvoyEffect;
 }
 
 interface PlannedGalaxyEventBase {
@@ -57,9 +74,14 @@ interface PlannedGalaxyEventBase {
 
 export type PlannedGalaxyEvent =
   | (PlannedGalaxyEventBase & { kind: 'ASTEROID_SHOWER'; effect: AsteroidShowerEffect })
-  | (PlannedGalaxyEventBase & { kind: 'TRADE_SHIP'; effect: TradeShipEffect });
+  | (PlannedGalaxyEventBase & { kind: 'TRADE_SHIP'; effect: TradeShipEffect })
+  | (PlannedGalaxyEventBase & {
+      kind: 'INTERGALACTIC_CONVOY';
+      effect: IntergalacticConvoyEffect;
+    });
 
-export interface GalaxyEventDefinition<Effect> {
+export interface RandomDailyDefinition<Effect> {
+  readonly schedule: 'RANDOM_DAILY';
   readonly version: number;
   /**
    * Starts on one full Türkiye calendar date, FOR THIS KIND ALONE.
@@ -106,6 +128,20 @@ export interface GalaxyEventDefinition<Effect> {
   readonly nightEffect?: Effect;
 }
 
+export interface FixedDailyDefinition<Effect> {
+  readonly schedule: 'FIXED_DAILY';
+  readonly version: number;
+  readonly windows: readonly {
+    readonly startsAtLocalMinute: number;
+    readonly endsAtLocalMinute: number;
+    readonly effect: Effect;
+  }[];
+}
+
+export type GalaxyEventDefinition<Effect> =
+  | RandomDailyDefinition<Effect>
+  | FixedDailyDefinition<Effect>;
+
 export type GalaxyEventDefinitions = {
   readonly [Kind in GalaxyEventKind]: GalaxyEventDefinition<GalaxyEventEffects[Kind]>;
 };
@@ -127,6 +163,106 @@ export interface GalaxyEventsConfig {
   };
   readonly definitions: GalaxyEventDefinitions;
   readonly mutuallyExclusive: readonly (readonly [string, string])[];
+}
+
+/**
+ * Frozen calendar shapes for seasons explicitly created on older rulesets.
+ *
+ * Ruleset 5 introduced the merchant with three random three-hour windows;
+ * ruleset 6 raised it to four and pinned one to its own night. D201's ruleset 8
+ * replaces both random lanes with fixed windows. Keeping these objects here is
+ * what prevents a maintenance command from silently applying today's calendar
+ * to an older season.
+ */
+const legacyConfig = (tradeVersion: 1 | 2): GalaxyEventsConfig => ({
+  version: 1,
+  calendar: GALAXY_EVENTS.calendar,
+  definitions: {
+    ASTEROID_SHOWER: {
+      schedule: 'RANDOM_DAILY',
+      version: 2,
+      dailyCount: { min: 5, max: 5 },
+      durationMinutes: 60,
+      repeatCooldownMinutes: 120,
+      effect: { asteroidSpawnMultiplier: 10 },
+      nightEffect: { asteroidSpawnMultiplier: 5 },
+    },
+    TRADE_SHIP: tradeVersion === 1
+      ? {
+          schedule: 'RANDOM_DAILY',
+          version: 1,
+          dailyCount: { min: 3, max: 3 },
+          durationMinutes: 180,
+          repeatCooldownMinutes: 180,
+          effect: { rate: { ...GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect.rate } },
+        }
+      : {
+          schedule: 'RANDOM_DAILY',
+          version: 2,
+          dailyCount: { min: 4, max: 4 },
+          durationMinutes: 180,
+          repeatCooldownMinutes: 60,
+          quietWindow: {
+            startsAtLocalMinute: 60,
+            endsAtLocalMinute: 8 * 60,
+            exactDailyCount: 1,
+          },
+          effect: { rate: { ...GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect.rate } },
+        },
+    // Not entitled before ruleset 8; present only to keep the config map total.
+    INTERGALACTIC_CONVOY: GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY,
+  },
+  mutuallyExclusive: [],
+});
+
+/** The ruleset the merchant first existed at. Its SHAPE moved later; see below. */
+const TRADE_SHIP_FIRST_RULESET = 5;
+
+const GALAXY_EVENTS_RULESET_4_5 = legacyConfig(1);
+const GALAXY_EVENTS_RULESET_6_7 = legacyConfig(2);
+
+export function galaxyEventConfigForRuleset(rulesetVersion: number): GalaxyEventsConfig {
+  if (!Number.isInteger(rulesetVersion)
+    || rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion) {
+    throw new RangeError('Unsupported galaxy-event ruleset version');
+  }
+  if (rulesetVersion < MULTI_WORLD.tradeShipRulesetVersion) {
+    return GALAXY_EVENTS_RULESET_4_5;
+  }
+  if (rulesetVersion < MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion) {
+    return GALAXY_EVENTS_RULESET_6_7;
+  }
+  return GALAXY_EVENTS;
+}
+
+/**
+ * WHICH LANES A SEASON CREATED AT THIS RULESET IS ENTITLED TO.
+ *
+ * THE MERCHANT'S BOUNDARY IS 5, NOT `tradeShipRulesetVersion`, AND THAT IS A
+ * DELIBERATE CORRECTION. D201.
+ *
+ * D156 shipped the merchant at ruleset 5 and gated seeding on
+ * `tradeShipRulesetVersion`, which was 5 at the time. D166 then reshaped the
+ * merchant's calendar and raised BOTH that gate and the default ruleset to 6 —
+ * correct for the reshape, but it silently moved the ENTITLEMENT too: re-seeding a
+ * ruleset-5 season afterwards produced no merchant at all, even though every
+ * ruleset-5 season alive had been dealt one.
+ *
+ * Entitlement and SHAPE are two questions and now have two answers. This function
+ * says which lanes exist for a ruleset; `galaxyEventConfigForRuleset` says what
+ * they look like, and it is the one that still reads `tradeShipRulesetVersion` to
+ * choose between the three-a-day and four-a-day merchants. Nothing on a live
+ * season moves either way: a calendar is dealt once, at creation (D149).
+ */
+export function galaxyEventKindsForRuleset(rulesetVersion: number): readonly GalaxyEventKind[] {
+  if (!Number.isInteger(rulesetVersion)
+    || rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion) return [];
+  const kinds: GalaxyEventKind[] = ['ASTEROID_SHOWER'];
+  if (rulesetVersion >= TRADE_SHIP_FIRST_RULESET) kinds.push('TRADE_SHIP');
+  if (rulesetVersion >= MULTI_WORLD.intergalacticConvoyRulesetVersion) {
+    kinds.push('INTERGALACTIC_CONVOY');
+  }
+  return kinds;
 }
 
 export interface GalaxyEventWindow {
@@ -199,17 +335,51 @@ function assertFiniteInteger(value: number, name: string, minimum: number): void
  * name is exactly how `validateConfig` stayed single-kind by construction while
  * looking generic.
  */
-function validateEffect(kind: string, effect: AsteroidShowerEffect | TradeShipEffect): void {
+const sumsToOne = (weights: readonly number[]): boolean =>
+  weights.every((weight) => Number.isFinite(weight) && weight >= 0 && weight <= 1)
+  && Math.abs(weights.reduce((sum, weight) => sum + weight, 0) - 1) <= 1e-9;
+
+function assertPolicyVersion(value: number, kind: string, name: string): void {
+  if (value !== 1) throw new RangeError(`${kind} ${name} is not supported`);
+}
+
+function validateEffect(
+  kind: string,
+  effect: AsteroidShowerEffect | TradeShipEffect | IntergalacticConvoyEffect,
+): void {
   if ('asteroidSpawnMultiplier' in effect) {
     if (!Number.isFinite(effect.asteroidSpawnMultiplier) || effect.asteroidSpawnMultiplier <= 1) {
       throw new RangeError(`${kind} multiplier must be greater than one`);
     }
     return;
   }
-  for (const [resource, units] of Object.entries(effect.rate)) {
-    if (!Number.isFinite(units) || units <= 0) {
-      throw new RangeError(`${kind} rate.${resource} must be positive`);
+  if ('rate' in effect) {
+    for (const [resource, units] of Object.entries(effect.rate)) {
+      if (!Number.isFinite(units) || units <= 0) {
+        throw new RangeError(`${kind} rate.${resource} must be positive`);
+      }
     }
+    return;
+  }
+  assertPolicyVersion(effect.routeVersion, kind, 'routeVersion');
+  assertPolicyVersion(effect.formationVersion, kind, 'formationVersion');
+  assertPolicyVersion(effect.rewardPoolVersion, kind, 'rewardPoolVersion');
+  for (const [name, value] of [
+    ['resourceCapHours', effect.resourceCapHours],
+    ['fullRewardForceRatio', effect.fullRewardForceRatio],
+    ['shipDropFullFirepower', effect.shipDropFullFirepower],
+  ] as const) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError(`${kind} ${name} must be positive`);
+    }
+  }
+  if (!Number.isFinite(effect.shipDropChanceAtFullQuality)
+    || effect.shipDropChanceAtFullQuality < 0
+    || effect.shipDropChanceAtFullQuality > 1) {
+    throw new RangeError(`${kind} shipDropChanceAtFullQuality must be a probability`);
+  }
+  if (!sumsToOne(effect.shipCountWeights) || !sumsToOne(effect.shipTierWeights)) {
+    throw new RangeError(`${kind} reward weights must sum to one`);
   }
 }
 
@@ -236,22 +406,48 @@ function validateConfig(config: GalaxyEventsConfig): void {
   // config is a type error; a kind added to the config and forgotten here is not,
   // which is why nothing below names one.
   for (const [kind, definition] of Object.entries(config.definitions)) {
-    assertFiniteInteger(definition.dailyCount.min, `${kind}.dailyCount.min`, 0);
-    assertFiniteInteger(definition.dailyCount.max, `${kind}.dailyCount.max`, 0);
-    if (definition.dailyCount.min > definition.dailyCount.max) {
-      throw new RangeError(`${kind}.dailyCount.min cannot exceed dailyCount.max`);
+    assertFiniteInteger(definition.version, `${kind}.version`, 1);
+    if (definition.schedule === 'RANDOM_DAILY') {
+      assertFiniteInteger(definition.dailyCount.min, `${kind}.dailyCount.min`, 0);
+      assertFiniteInteger(definition.dailyCount.max, `${kind}.dailyCount.max`, 0);
+      if (definition.dailyCount.min > definition.dailyCount.max) {
+        throw new RangeError(`${kind}.dailyCount.min cannot exceed dailyCount.max`);
+      }
+      if (!Number.isFinite(definition.durationMinutes) || definition.durationMinutes <= 0) {
+        throw new RangeError(`${kind}.durationMinutes must be positive`);
+      }
+      if (!Number.isFinite(definition.repeatCooldownMinutes)
+        || definition.repeatCooldownMinutes < 0) {
+        throw new RangeError(`${kind}.repeatCooldownMinutes cannot be negative`);
+      }
+      validateEffect(kind, definition.effect);
+      if (definition.nightEffect) validateEffect(kind, definition.nightEffect);
+      continue;
     }
-    if (!Number.isFinite(definition.durationMinutes) || definition.durationMinutes <= 0) {
-      throw new RangeError(`${kind}.durationMinutes must be positive`);
+
+    if (definition.windows.length === 0) {
+      throw new RangeError(`${kind} fixed windows cannot be empty`);
     }
-    if (!Number.isFinite(definition.repeatCooldownMinutes)
-      || definition.repeatCooldownMinutes < 0) {
-      throw new RangeError(`${kind}.repeatCooldownMinutes cannot be negative`);
+    const windows = [...definition.windows].sort(
+      (left, right) => left.startsAtLocalMinute - right.startsAtLocalMinute,
+    );
+    for (const [index, window] of windows.entries()) {
+      assertFiniteInteger(
+        window.startsAtLocalMinute,
+        `${kind} fixed window start`,
+        0,
+      );
+      assertFiniteInteger(window.endsAtLocalMinute, `${kind} fixed window end`, 1);
+      if (window.startsAtLocalMinute >= DAY_MINUTES
+        || window.endsAtLocalMinute > DAY_MINUTES
+        || window.startsAtLocalMinute >= window.endsAtLocalMinute) {
+        throw new RangeError(`${kind} fixed window must be non-wrapping inside one day`);
+      }
+      if (index > 0 && windows[index - 1]!.endsAtLocalMinute > window.startsAtLocalMinute) {
+        throw new RangeError(`${kind} fixed windows cannot overlap`);
+      }
+      validateEffect(kind, window.effect);
     }
-    validateEffect(kind, definition.effect);
-    // A night figure is an effect like any other and fails on the same rule; a
-    // kind without one is simply worth its `effect` at every hour.
-    if (definition.nightEffect) validateEffect(kind, definition.nightEffect);
   }
 }
 
@@ -355,7 +551,7 @@ function planBucket(
   seasonEndsAt: number,
   rng: Rng,
   config: GalaxyEventsConfig,
-  definition: GalaxyEventDefinition<unknown>,
+  definition: RandomDailyDefinition<unknown>,
 ): number[] {
   if (bucket.count === 0) return [];
   /**
@@ -483,7 +679,7 @@ function planBucket(
 function planKind(
   input: GenerateGalaxyEventScheduleInput,
   config: GalaxyEventsConfig,
-  definition: GalaxyEventDefinition<unknown>,
+  definition: RandomDailyDefinition<unknown>,
   rng: Rng,
 ): number[] {
   const seasonEndsAt = input.seasonStartsAtUnixMinute + input.seasonDurationMinutes;
@@ -540,7 +736,7 @@ const localMinuteOfDay = (unixMinute: number, utcOffsetMinutes: number): number 
 export function effectAt<Effect>(
   startsAtUnixMinute: number,
   config: GalaxyEventsConfig,
-  definition: { readonly effect: Effect; readonly nightEffect?: Effect },
+  definition: RandomDailyDefinition<Effect>,
 ): Effect {
   if (!definition.nightEffect) return definition.effect;
   const window = config.calendar.lowPriorityWindow;
@@ -561,9 +757,70 @@ export function effectAt<Effect>(
 export function plannedEffectFor<Kind extends GalaxyEventKind>(
   kind: Kind,
   startsAtUnixMinute: number,
-  config: GalaxyEventsConfig = GALAXY_EVENTS,
+  /**
+   * WHICH SEASON'S CALENDAR IS BEING ASKED ABOUT, AND IT HAS NO DEFAULT. D201.
+   *
+   * It used to fall back to the CURRENT config, which is the shape of the fault
+   * D180 removed from `FlightModifiers`: a caller that forgot it got a plausible
+   * answer computed against the wrong ruleset. An occurrence dealt under a random
+   * calendar has no fixed window to match, so the silent answer here would have
+   * been a thrown "must match an exact fixed start minute" from a maintenance
+   * command that never mentioned rulesets — or, worse, a plausible effect from a
+   * calendar that season was never dealt. Every caller now says which config it
+   * means, and `galaxyEventConfigForRuleset` is where it gets one.
+   */
+  config: GalaxyEventsConfig,
 ): GalaxyEventEffects[Kind] {
-  return effectAt(startsAtUnixMinute, config, config.definitions[kind]);
+  const definition = config.definitions[kind];
+  if (definition.schedule === 'RANDOM_DAILY') {
+    return effectAt(startsAtUnixMinute, config, definition);
+  }
+  const local = localMinuteOfDay(startsAtUnixMinute, config.calendar.utcOffsetMinutes);
+  const window = definition.windows.find((candidate) =>
+    candidate.startsAtLocalMinute === local);
+  if (!window) {
+    throw new RangeError(`${kind} occurrence must match an exact fixed start minute`);
+  }
+  return window.effect;
+}
+
+/** Absolute start instants for complete authored windows inside the season. */
+function planFixedKind<Effect>(
+  input: GenerateGalaxyEventScheduleInput,
+  config: GalaxyEventsConfig,
+  definition: FixedDailyDefinition<Effect>,
+): number[] {
+  const seasonStartsAt = input.seasonStartsAtUnixMinute;
+  const seasonEndsAt = seasonStartsAt + input.seasonDurationMinutes;
+  const offset = config.calendar.utcOffsetMinutes;
+  const firstDay = Math.floor((seasonStartsAt + offset) / DAY_MINUTES);
+  const lastDay = Math.floor(((seasonEndsAt - Number.EPSILON) + offset) / DAY_MINUTES);
+  const starts: number[] = [];
+  const windows = [...definition.windows].sort(
+    (left, right) => left.startsAtLocalMinute - right.startsAtLocalMinute,
+  );
+
+  for (let localDay = firstDay; localDay <= lastDay; localDay += 1) {
+    const dayStartsAt = localDay * DAY_MINUTES - offset;
+    for (const window of windows) {
+      const startsAt = dayStartsAt + window.startsAtLocalMinute;
+      const endsAt = dayStartsAt + window.endsAtLocalMinute;
+      if (startsAt >= seasonStartsAt && endsAt <= seasonEndsAt) starts.push(startsAt);
+    }
+  }
+  return starts;
+}
+
+function fixedEndAt<Effect>(
+  startsAt: number,
+  config: GalaxyEventsConfig,
+  definition: FixedDailyDefinition<Effect>,
+): number {
+  const local = localMinuteOfDay(startsAt, config.calendar.utcOffsetMinutes);
+  const window = definition.windows.find((candidate) =>
+    candidate.startsAtLocalMinute === local);
+  if (!window) throw new RangeError('Occurrence must match an exact fixed start minute');
+  return startsAt + window.endsAtLocalMinute - window.startsAtLocalMinute;
 }
 
 /**
@@ -587,10 +844,12 @@ function occurrencesFor(
         sequence,
         kind,
         startsAtMinute: startsAt - seasonStartsAtUnixMinute,
-        endsAtMinute: startsAt - seasonStartsAtUnixMinute + definition.durationMinutes,
+        endsAtMinute: (definition.schedule === 'RANDOM_DAILY'
+          ? startsAt + definition.durationMinutes
+          : fixedEndAt(startsAt, config, definition)) - seasonStartsAtUnixMinute,
         definitionVersion: definition.version,
         effect: {
-          asteroidSpawnMultiplier: effectAt(startsAt, config, definition)
+          asteroidSpawnMultiplier: plannedEffectFor('ASTEROID_SHOWER', startsAt, config)
             .asteroidSpawnMultiplier,
         },
       }));
@@ -601,13 +860,73 @@ function occurrencesFor(
         sequence,
         kind,
         startsAtMinute: startsAt - seasonStartsAtUnixMinute,
-        endsAtMinute: startsAt - seasonStartsAtUnixMinute + definition.durationMinutes,
+        endsAtMinute: (definition.schedule === 'RANDOM_DAILY'
+          ? startsAt + definition.durationMinutes
+          : fixedEndAt(startsAt, config, definition)) - seasonStartsAtUnixMinute,
         definitionVersion: definition.version,
-        effect: { rate: { ...definition.effect.rate } },
+        effect: { rate: { ...plannedEffectFor('TRADE_SHIP', startsAt, config).rate } },
       }));
+    }
+    case 'INTERGALACTIC_CONVOY': {
+      const definition = config.definitions.INTERGALACTIC_CONVOY;
+      return starts.map((startsAt, sequence) => {
+        const effect = plannedEffectFor('INTERGALACTIC_CONVOY', startsAt, config);
+        return {
+          sequence,
+          kind,
+          startsAtMinute: startsAt - seasonStartsAtUnixMinute,
+          endsAtMinute: (definition.schedule === 'RANDOM_DAILY'
+            ? startsAt + definition.durationMinutes
+            : fixedEndAt(startsAt, config, definition)) - seasonStartsAtUnixMinute,
+          definitionVersion: definition.version,
+          effect: {
+            ...effect,
+            shipCountWeights: [
+              effect.shipCountWeights[0],
+              effect.shipCountWeights[1],
+              effect.shipCountWeights[2],
+            ],
+            shipTierWeights: [
+              effect.shipTierWeights[0],
+              effect.shipTierWeights[1],
+              effect.shipTierWeights[2],
+              effect.shipTierWeights[3],
+            ],
+          },
+        };
+      });
     }
   }
 }
+
+function startsForKind(
+  kind: GalaxyEventKind,
+  input: GenerateGalaxyEventScheduleInput,
+  config: GalaxyEventsConfig,
+): number[] {
+  switch (kind) {
+    case 'ASTEROID_SHOWER': {
+      const definition = config.definitions.ASTEROID_SHOWER;
+      return definition.schedule === 'RANDOM_DAILY'
+        ? planKind(input, config, definition, input.rngFor(kind))
+        : planFixedKind(input, config, definition);
+    }
+    case 'TRADE_SHIP': {
+      const definition = config.definitions.TRADE_SHIP;
+      return definition.schedule === 'RANDOM_DAILY'
+        ? planKind(input, config, definition, input.rngFor(kind))
+        : planFixedKind(input, config, definition);
+    }
+    case 'INTERGALACTIC_CONVOY': {
+      const definition = config.definitions.INTERGALACTIC_CONVOY;
+      return definition.schedule === 'RANDOM_DAILY'
+        ? planKind(input, config, definition, input.rngFor(kind))
+        : planFixedKind(input, config, definition);
+    }
+  }
+}
+
+const kindOrder = (kind: GalaxyEventKind): number => GALAXY_EVENT_KINDS.indexOf(kind);
 
 /**
  * Generate the immutable event occurrence plan for one season.
@@ -633,11 +952,13 @@ export function generateGalaxyEventSchedule(
   const schedule: PlannedGalaxyEvent[] = [];
   for (const kind of GALAXY_EVENT_KINDS) {
     if (!entitled.includes(kind)) continue;
-    const definition = config.definitions[kind];
-    const starts = planKind(input, config, definition, input.rngFor(kind));
+    const starts = startsForKind(kind, input, config);
     schedule.push(...occurrencesFor(kind, config, starts, input.seasonStartsAtUnixMinute));
   }
 
   assertMutuallyExclusiveEventWindows(schedule, config.mutuallyExclusive);
-  return schedule;
+  return schedule.sort((left, right) =>
+    left.startsAtMinute - right.startsAtMinute
+    || kindOrder(left.kind) - kindOrder(right.kind)
+    || left.sequence - right.sequence);
 }

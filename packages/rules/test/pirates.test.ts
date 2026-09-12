@@ -125,32 +125,30 @@ describe('the pirate table', () => {
       the orbit, one lap of waiting, and the owner reported it exactly as the rock
       lane was once reported: the fleet sets off somewhere unrelated.
 
-      Both ends are read off the catalogue rather than typed, because a number
-      typed here is a number that stops meaning what it says the next time D152
-      moves the ladder — which is precisely what happened to the old figure.
+      Both ends are read off the catalogue and then multiplied by D203's shared
+      0.75, because two separately typed speeds would eventually drift.
 
-        · TOP: a Dart's pace. The cheapest ship in the game outruns the fastest
+        · TOP: three quarters of a Dart's pace. Every Skirmisher outruns the fastest
           pirate, so "can I catch it" is never a question about your wallet.
-        · FLOOR: a Cataclysm's pace. A heavy line cannot lead one, so the chase is
-          a real choice between guns and geometry rather than a free win.
+        · FLOOR: three quarters of a Cataclysm's pace. The Citadel now outruns the
+          slow end; that is the requested lane-wide reduction, not a second tune.
 
       EVERY COMPARISON HERE IS IN UNITS PER MINUTE, which is the scale a pirate's
       `speed` is already on. `travelExact` divides a hull's catalogue figure by
       `distanceFactor` to reach it, so that division is the comparison — and
       leaving it out is exactly how the two scales came to be confused.
     */
-    expect(PIRATE.speedMax).toBeCloseTo(HULLS.DART.speed / TRAVEL.distanceFactor, 9);
-    expect(PIRATE.speedMin).toBeCloseTo(HULLS.CATACLYSM.speed / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMax).toBeCloseTo(HULLS.DART.speed * 0.75 / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMin).toBeCloseTo(HULLS.CATACLYSM.speed * 0.75 / TRAVEL.distanceFactor, 9);
     expect(PIRATE.speedMin).toBeLessThan(PIRATE.speedMax);
 
     // The hunting class outruns every pirate the lane can draw, at every rung.
     expect(skirmishers.length).toBeGreaterThan(2);
     for (const id of skirmishers) {
-      expect(HULLS[id].speed / TRAVEL.distanceFactor).toBeGreaterThanOrEqual(PIRATE.speedMax);
+      expect(HULLS[id].speed / TRAVEL.distanceFactor).toBeGreaterThan(PIRATE.speedMax);
     }
-    // And a heavy line does not: the floor IS the heaviest striker's pace, so
-    // anything slower than a Cataclysm is buying guns at the cost of the chase.
-    expect(HULLS.CITADEL.speed / TRAVEL.distanceFactor).toBeLessThan(PIRATE.speedMin);
+    // After the lane-wide 25% reduction, even the Citadel outruns the slow end.
+    expect(HULLS.CITADEL.speed / TRAVEL.distanceFactor).toBeGreaterThan(PIRATE.speedMin);
   });
 
   it('derives its published window from the client poll interval and never below it', () => {
@@ -227,6 +225,18 @@ describe('the pirate roster', () => {
 });
 
 describe('the pirate hoard', () => {
+  it('raises every resource by 30% from the previous 1.4 reward baseline', () => {
+    const roster = pirateRoster(4, seededFrom('thirty-percent-hoard'));
+    const previousWorth = fleetValue(roster) * 1.4;
+
+    expect(PIRATE.hoardValueMult).toBeCloseTo(1.4 * 1.3, 12);
+    expect(pirateHoard(roster)).toEqual({
+      alloy: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.alloy),
+      crystal: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.crystal),
+      deuterium: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.deuterium),
+    });
+  });
+
   it('is priced off what the pirate is worth, not off what a player owns', () => {
     for (const level of LEVELS) {
       const roster = pirateRoster(level, seededFrom('hoard', level));
@@ -259,9 +269,9 @@ describe('the pirate hoard', () => {
 
   it('caps the deuterium a hoard can carry at a tankful, and keeps the levels apart', () => {
     /*
-      THE OWNER'S CEILING: about 700 at level 4, every level below it scaled by
-      the same share rather than clamped. Raised from 500 by D176, by moving the
-      share alone — the ladder keeps its shape and every level rises with it.
+      THE CURRENT SAMPLED CEILING: about 990 at level 4, every level below it
+      scaled by the same share rather than clamped. D204 raises every resource by
+      30% through the shared reward multiplier, so the ladder keeps its shape.
 
       A FLAT CAP WAS THE OBVIOUS SHAPE AND IT IS THE WRONG ONE. Levels 2, 3 and 4
       would all have paid 500 at the top, and the level badge is precisely the
@@ -272,15 +282,10 @@ describe('the pirate hoard', () => {
 
       SAMPLED, NOT DERIVED. The roster comes out of a seeded generator, so the
       ceiling is the richest roster it can produce and there is no closed form.
-      Twenty thousand seeds per level here; the constant itself was set against
-      sixty thousand, where the worst level-4 roster is worth 44,404.
-
-      WHICH IS WHY THE LOWER BOUND IS NINE TENTHS OF THE CEILING RATHER THAN THE
-      CEILING ITSELF. Twenty thousand seeds do not reach the richest roster sixty
-      thousand find — they land about 93% of the way there — so the bound is set
-      below that gap on purpose and was set the same way before D176 raised the
-      share (450 against a 500 ceiling, 630 against 700). It is the same
-      diagnostic, re-derived, not a band widened to admit a new number.
+      Twenty thousand seeds per level keep this suite quick; a separate sixty-
+      thousand-seed D204 measurement found a level-4 maximum of 986 Deuterium.
+      The exact multiplier assertion above guards the 30% raise, while this sample
+      catches a runaway ceiling and verifies that every level remains distinct.
     */
     const worst = new Map<PirateLevel, number>();
     for (const level of LEVELS) {
@@ -291,7 +296,7 @@ describe('the pirate hoard', () => {
       worst.set(level, max);
     }
 
-    expect(worst.get(4)).toBeLessThanOrEqual(700);
+    expect(worst.get(4)).toBeLessThanOrEqual(990);
     /*
       AND IT HAS TO REACH IT. An upper bound alone would pass just as happily on a
       share tuned to fifty, which would have deleted the reward instead of

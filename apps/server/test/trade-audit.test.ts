@@ -20,6 +20,8 @@ import { fuelUp, giveUnits, grant, seedWorld, testDb, type Fixture } from './hel
 
 const silent = pino({ level: 'silent' });
 const DEFINITION = GALAXY_EVENTS.definitions.TRADE_SHIP;
+const DURATION = DEFINITION.windows[0].endsAtLocalMinute
+  - DEFINITION.windows[0].startsAtLocalMinute;
 
 /**
  * AN INDEPENDENT AUDIT OF THE MERCHANT LANE. D156.
@@ -60,7 +62,7 @@ describe('the merchant lane under pressure', () => {
 
   const merchantUp = async (): Promise<string> => {
     const startsAt = new Date(seasonStartsAt.getTime());
-    const endsAt = new Date(seasonStartsAt.getTime() + DEFINITION.durationMinutes * 60_000);
+    const endsAt = new Date(seasonStartsAt.getTime() + DURATION * 60_000);
     const [row] = await f.db
       .insert(galaxyEventOccurrences)
       .values({

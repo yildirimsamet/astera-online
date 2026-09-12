@@ -142,13 +142,17 @@ export function pirateRoster(level: PirateLevel, rng: Rng): Fleet {
  * it would quietly make the next raid free, and the launch decision is supposed to
  * cost something every time.
  */
-export function pirateHoard(roster: Fleet): Resources {
-  const worth = fleetValue(roster) * PIRATE.hoardValueMult;
+function pirateHoardAt(roster: Fleet, valueMult: number): Resources {
+  const worth = fleetValue(roster) * valueMult;
   return {
     alloy: Math.floor(worth * PIRATE.hoardShare.alloy),
     crystal: Math.floor(worth * PIRATE.hoardShare.crystal),
     deuterium: Math.floor(worth * PIRATE.hoardShare.deuterium),
   };
+}
+
+export function pirateHoard(roster: Fleet): Resources {
+  return pirateHoardAt(roster, PIRATE.hoardValueMult);
 }
 
 /**
@@ -345,7 +349,14 @@ export function generatePirateSchedule(
   const pirates: PirateSpec[] = [];
   if (count <= 0) return pirates;
 
-  const remaining = Array.from({ length: SEASON.days }, (_, day) => monthlySupply('pirates', day, SERVERS.capacity));
+  const remaining = Array.from({ length: SEASON.days }, (_, day) => {
+    const allowance = monthlySupply('pirates', day, SERVERS.capacity);
+    return {
+      alloy: allowance.alloy / PIRATE.hoardRewardScale,
+      crystal: allowance.crystal / PIRATE.hoardRewardScale,
+      deuterium: allowance.deuterium / PIRATE.hoardRewardScale,
+    };
+  });
   const interval = span / count;
   for (let laneIndex = 0; laneIndex < count; laneIndex++) {
     const radius = orbitRadius(rng(), PIRATE.orbitMin, PIRATE.orbitMax);
@@ -365,7 +376,9 @@ export function generatePirateSchedule(
     const hoard = pirateHoard(roster);
     // Conservative cap: even repeated decisive encounters cannot capture more than
     // the original crew. Pirate-created wreckage is external supply as well.
-    const liability = { ...hoard };
+    // Admission stays on the pre-D204 valuation so a reward tune cannot delete
+    // or re-index targets in a field that commanders may already be flying at.
+    const liability = pirateHoardAt(roster, PIRATE.hoardAdmissionValueMult);
     for (const [id, amount] of fleetEntries(roster)) {
       for (const k of ['alloy', 'crystal', 'deuterium'] as const) liability[k] += HULLS[id][k] * amount * (1 + DEBRIS.share);
     }

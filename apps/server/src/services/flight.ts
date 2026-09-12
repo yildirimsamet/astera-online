@@ -1,7 +1,13 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { clanBayAvailable, flightSlots } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
-import { miningRuns, missions, pirateRaids, tradeRuns } from '../db/schema.js';
+import {
+  intergalacticConvoyRuns,
+  miningRuns,
+  missions,
+  pirateRaids,
+  tradeRuns,
+} from '../db/schema.js';
 import { GameError } from './planet.js';
 
 /**
@@ -138,7 +144,21 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       and(eq(tradeRuns.planetId, planetId), inArray(tradeRuns.status, ['outbound', 'returning'])),
     );
 
-  return (flights?.n ?? 0) + (mining?.n ?? 0) + (pirate?.n ?? 0) + (trade?.n ?? 0);
+  const [convoy] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(intergalacticConvoyRuns)
+    .where(
+      and(
+        eq(intergalacticConvoyRuns.planetId, planetId),
+        inArray(intergalacticConvoyRuns.status, ['outbound', 'returning']),
+      ),
+    );
+
+  return (flights?.n ?? 0)
+    + (mining?.n ?? 0)
+    + (pirate?.n ?? 0)
+    + (trade?.n ?? 0)
+    + (convoy?.n ?? 0);
 }
 
 export interface BayCount {

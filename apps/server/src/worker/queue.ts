@@ -140,17 +140,33 @@ export async function schedule(
     seasonId: string;
     kind: EventRow['kind'];
     refId?: string;
+    dedupeKey?: string;
     payload?: Record<string, unknown>;
     resolveAt: Date;
   },
 ): Promise<void> {
-  await db.insert(scheduledEvents).values({
+  /*
+    A DEDUPE KEY IS A PROMISE THAT THE SECOND INSERT IS A NO-OP. D201.
+
+    `events_dedupe_key_idx` is UNIQUE, so a caller that supplies a key and races
+    itself — a retried handler, a repair sweep, two replicas reaching the same
+    moment — got a raw constraint violation instead of the idempotence the key was
+    added for. `ensureGalaxyEventLifecycleEvents` has always written the same column
+    through `onConflictDoNothing`; this is the same rule stated once, for every
+    caller. A row with no key keeps the old behaviour exactly: `null` collides with
+    nothing in a unique index.
+  */
+  const insert = db.insert(scheduledEvents).values({
     seasonId: input.seasonId,
     kind: input.kind,
     refId: input.refId ?? null,
+    dedupeKey: input.dedupeKey ?? null,
     payload: input.payload ?? null,
     resolveAt: input.resolveAt,
   });
+  await (input.dedupeKey === undefined
+    ? insert
+    : insert.onConflictDoNothing({ target: scheduledEvents.dedupeKey }));
 }
 
 /**

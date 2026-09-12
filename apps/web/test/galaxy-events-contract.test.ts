@@ -9,6 +9,29 @@ const shower = {
   asteroidSpawnMultiplier: 5,
 };
 
+const convoy = {
+  id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11',
+  kind: 'INTERGALACTIC_CONVOY',
+  startsAt: '2026-09-02T04:00:00.000Z',
+  endsAt: '2026-09-02T06:00:00.000Z',
+  appearsAtMinute: 420,
+  expiresAtMinute: 540,
+  route: {
+    from: { x: -2000, y: 0, z: 0 },
+    to: { x: 2000, y: 0, z: 0 },
+    velocity: { x: 100 / 3, y: 0, z: 0 },
+    speed: 100 / 3,
+  },
+  visual: { formationVersion: 1 },
+  rewardPolicy: {
+    resourceCapHours: 2,
+    fullRewardForceRatio: 1,
+    shipDropFullFirepower: 5780,
+    shipDropChanceAtFullQuality: 0.15,
+    maxAwardedShips: 3,
+  },
+};
+
 describe('galaxy event rolling-deploy contracts', () => {
   it('keeps known active events when a newer server also sends an unknown kind', () => {
     const parsed = activeGalaxyEventsSchema.parse({
@@ -59,5 +82,14 @@ describe('galaxy event rolling-deploy contracts', () => {
     expect(() => activeGalaxyEventsSchema.parse({
       events: [{ ...shower, asteroidSpawnMultiplier: 1 }],
     })).toThrow();
+  });
+
+  it('keeps the complete public convoy route and reward policy', () => {
+    const parsed = activeGalaxyEventsSchema.parse({ events: [convoy] });
+    const event = parsed.events[0];
+    expect(event?.kind).toBe('INTERGALACTIC_CONVOY');
+    if (event?.kind !== 'INTERGALACTIC_CONVOY') throw new Error('convoy was dropped');
+    expect(event.route.velocity.x).toBeCloseTo(event.route.speed, 10);
+    expect(event.rewardPolicy.maxAwardedShips).toBe(3);
   });
 });

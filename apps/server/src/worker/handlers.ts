@@ -43,6 +43,7 @@ import {
   clans,
   debrisFields,
   dominionEvents,
+  intergalacticConvoyRuns,
   miningRuns,
   missions,
   neutralPlanetState,
@@ -73,6 +74,10 @@ import {
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
 import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
+import {
+  resolveIntergalacticConvoyArrival,
+  resolveIntergalacticConvoyReturn,
+} from '../services/intergalacticConvoyRaid.js';
 import { techOf } from '../services/researchState.js';
 import { applyResearchCompletion } from '../services/research.js';
 import {
@@ -1656,7 +1661,7 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
     // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
     // this processing event and replace it atomically; EventWorker's later
     // `complete()` update simply finds no old row.
-    const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount]] = await Promise.all([
+    const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -1685,6 +1690,11 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
         .where(and(eq(pirateRaids.seasonId, seasonId), ne(pirateRaids.status, 'done'))),
       tx.select({ n: sql<number>`count(*)::int` }).from(tradeRuns)
         .where(and(eq(tradeRuns.seasonId, seasonId), ne(tradeRuns.status, 'done'))),
+      tx.select({ n: sql<number>`count(*)::int` }).from(intergalacticConvoyRuns)
+        .where(and(
+          eq(intergalacticConvoyRuns.seasonId, seasonId),
+          ne(intergalacticConvoyRuns.status, 'done'),
+        )),
     ]);
     if (
       (missionCount?.n ?? 0) > 0
@@ -1694,6 +1704,7 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       || (researchCount?.n ?? 0) > 0
       || (pirateCount?.n ?? 0) > 0
       || (tradeCount?.n ?? 0) > 0
+      || (convoyCount?.n ?? 0) > 0
     ) {
       await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
       await schedule(tx, {
@@ -2222,6 +2233,20 @@ export const onTradeReturn: Handler = async ({ db, clock }, event) => {
   });
 };
 
+export const onConvoyArrival: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('convoy_arrival without refId');
+  await db.transaction(async (tx) => {
+    await resolveIntergalacticConvoyArrival(tx, event.refId!, clock);
+  });
+};
+
+export const onConvoyReturn: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('convoy_return without refId');
+  await db.transaction(async (tx) => {
+    await resolveIntergalacticConvoyReturn(tx, event.refId!, clock);
+  });
+};
+
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
@@ -2233,6 +2258,8 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   pirate_return: onPirateReturn,
   trade_arrival: onTradeArrival,
   trade_return: onTradeReturn,
+  convoy_arrival: onConvoyArrival,
+  convoy_return: onConvoyReturn,
   season_end: onSeasonEnd,
   season_rollover: onSeasonRollover,
   season_act: onSeasonAct,

@@ -44,20 +44,10 @@ const FLIGHT_MAX = 1.05;
  * the volley read as rounds that flew at a world and quietly stopped existing. The
  * impact is the payoff of the whole ten seconds; it can afford to be seen.
  *
- * The launch window shortens to pay for it (`LAST_LAUNCH`), so the last fire is
+ * The launch window shortens to pay for it, so the last fire is
  * still out before the battle resolves.
  */
 export const BLAST_SECONDS = 1;
-
-/**
- * The last second at which anything may be launched.
- *
- * Derived rather than chosen: every missile must have landed AND finished burning
- * before the battle resolves, or the cinematic outlives the state it is drawing
- * and the last thing on screen is an explosion on a world whose report has already
- * been filed.
- */
-const LAST_LAUNCH = WINDOW - FLIGHT_MAX - BLAST_SECONDS;
 
 /**
  * Rounds one drawn model fires.
@@ -163,8 +153,15 @@ export const impactAt = (shot: Shot): number => shot.launchAt + shot.flight;
  * formation rather than running model by model — otherwise the first ship empties
  * its rack before the second one starts, which reads as a queue.
  */
-export function volleyFor(key: string, models: number, planetRadius: number): Shot[] {
+export function volleyFor(
+  key: string,
+  models: number,
+  planetRadius: number,
+  windowSeconds: number = WINDOW,
+): Shot[] {
   if (models <= 0 || planetRadius <= 0) return [];
+  const lastLaunch = windowSeconds - FLIGHT_MAX - BLAST_SECONDS;
+  if (!(lastLaunch > 0)) return [];
   const rng = seededFrom('volley', key);
 
   /**
@@ -177,7 +174,7 @@ export function volleyFor(key: string, models: number, planetRadius: number): Sh
    * Above `MAX_ROUNDS` models that floor stops being free, and D115 made it
    * reachable: removing the twelve-marker formation cap means a 200-ship raid
    * draws 40 markers and a 1,000-ship raid draws 200. One round each is then 200
-   * rounds, and `LAST_LAUNCH` seconds cannot hold 200 rounds without putting two
+   * rounds, and the launch window cannot hold 200 rounds without putting two
    * inside 0.05s of each other — measured at 0.0155s. That is not a bombardment,
    * it is a stream, and it breaks the two properties this file exists to hold.
    *
@@ -246,7 +243,7 @@ export function volleyFor(key: string, models: number, planetRadius: number): Sh
    * slices in the same window and the gaps close by arithmetic rather than by a
    * second scheduling rule.
    */
-  const slice = LAST_LAUNCH / pending.length;
+  const slice = lastLaunch / pending.length;
   return pending
     .map((shot, i) => ({
       ...shot,

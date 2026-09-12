@@ -18,6 +18,7 @@ import {
   clanRaidRoster,
   clanRequests,
   debrisFields,
+  intergalacticConvoyRuns,
   miningRuns,
   pirateRaids,
   pirateState,
@@ -136,6 +137,7 @@ export async function commanderRows(
   runIds: string[];
   raidIds: string[];
   tradeIds: string[];
+  convoyIds: string[];
 }> {
   const missionIds = (
     await tx
@@ -188,6 +190,16 @@ export async function commanderRows(
       .where(or(inArray(tradeRuns.planetId, planetIds), eq(tradeRuns.ownerPlayerId, playerId)))
   ).map((r) => r.id);
 
+  const convoyIds = (
+    await tx
+      .select({ id: intergalacticConvoyRuns.id })
+      .from(intergalacticConvoyRuns)
+      .where(or(
+        inArray(intergalacticConvoyRuns.planetId, planetIds),
+        eq(intergalacticConvoyRuns.ownerPlayerId, playerId),
+      ))
+  ).map((r) => r.id);
+
   const fieldIds = (
     await tx
       .select({ id: debrisFields.id })
@@ -224,7 +236,7 @@ export async function commanderRows(
       )
   ).map((r) => r.id);
 
-  return { missionIds, fieldIds, runIds, raidIds, tradeIds };
+  return { missionIds, fieldIds, runIds, raidIds, tradeIds, convoyIds };
 }
 
 /**
@@ -238,7 +250,7 @@ export async function busy(
   tx: Tx,
   planetIds: string[],
   playerId: string,
-  rows: { runIds: string[]; raidIds: string[]; tradeIds: string[] },
+  rows: { runIds: string[]; raidIds: string[]; tradeIds: string[]; convoyIds: string[] },
 ): Promise<boolean> {
   const [flight] = await tx
     .select({ id: missions.id })
@@ -278,6 +290,18 @@ export async function busy(
       .select({ id: tradeRuns.id })
       .from(tradeRuns)
       .where(and(inArray(tradeRuns.id, rows.tradeIds), ne(tradeRuns.status, 'done')))
+      .limit(1);
+    if (convoy) return true;
+  }
+
+  if (rows.convoyIds.length > 0) {
+    const [convoy] = await tx
+      .select({ id: intergalacticConvoyRuns.id })
+      .from(intergalacticConvoyRuns)
+      .where(and(
+        inArray(intergalacticConvoyRuns.id, rows.convoyIds),
+        ne(intergalacticConvoyRuns.status, 'done'),
+      ))
       .limit(1);
     if (convoy) return true;
   }
@@ -337,9 +361,10 @@ export async function demolish(
     runIds: string[];
     raidIds: string[];
     tradeIds: string[];
+    convoyIds: string[];
   },
 ): Promise<void> {
-  const { missionIds, fieldIds, runIds, raidIds, tradeIds } = rows;
+  const { missionIds, fieldIds, runIds, raidIds, tradeIds, convoyIds } = rows;
 
   /**
    * Season-scoped only, and `account_rewards` is deliberately absent from this
@@ -456,7 +481,7 @@ export async function demolish(
     .from(buildOrders)
     .where(inArray(buildOrders.planetId, planetIds))).map((order) => order.id);
   const refs = [
-    ...missionIds, ...runIds, ...raidIds, ...tradeIds,
+    ...missionIds, ...runIds, ...raidIds, ...tradeIds, ...convoyIds,
     ...planetIds, ...assetIds, ...buildOrderIds,
   ];
   if (refs.length > 0) {
@@ -480,6 +505,9 @@ export async function demolish(
     function never touches — and before the planets and the player below.
   */
   if (tradeIds.length > 0) await tx.delete(tradeRuns).where(inArray(tradeRuns.id, tradeIds));
+  if (convoyIds.length > 0) {
+    await tx.delete(intergalacticConvoyRuns).where(inArray(intergalacticConvoyRuns.id, convoyIds));
+  }
   // Damage this commander did to a pirate outlives them as anonymous world state,
   // but the row's `destroyed_by_player_id` points at a commander about to vanish.
   await tx

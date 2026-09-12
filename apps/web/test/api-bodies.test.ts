@@ -107,6 +107,21 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
     asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw', craft: 3,
   }],
   ['harvest', (a) => a.harvest('field-1', 3), { fieldId: 'field-1', craft: 3 }],
+  ['launchIntergalacticConvoy', (a) => a.launchIntergalacticConvoy({
+    originPlanetId: '00000000-0000-4000-8000-000000000001',
+    occurrenceId: '00000000-0000-4000-8000-000000000002',
+    fleet: { DART: 4 },
+    quotedAt: new Date('2026-09-12T15:10:00.000Z'),
+    quotedFlightSeconds: 90,
+    quotedArriveAt: new Date('2026-09-12T15:11:30.000Z'),
+  }, 'convoy-confirm-1'), {
+    originPlanetId: '00000000-0000-4000-8000-000000000001',
+    occurrenceId: '00000000-0000-4000-8000-000000000002',
+    fleet: { DART: 4 },
+    quotedAt: '2026-09-12T15:10:00.000Z',
+    quotedFlightSeconds: 90,
+    quotedArriveAt: '2026-09-12T15:11:30.000Z',
+  }],
 ];
 
 describe('what the client sends', () => {

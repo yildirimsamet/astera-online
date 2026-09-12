@@ -20,7 +20,6 @@ export const statusBar = {
   menuWaiting: '{{count}} ödül bekliyor',
   clanWaiting: '{{count}} klan gelişmesi bekliyor',
   newcomerShield: {
-    label: 'Akın kalkanı',
     hint: '{{duration}} boyunca sana akın yapılamaz',
   },
   bays: {
@@ -59,6 +58,8 @@ export const pendingStrip = {
   pirateHome: 'Akın dönüyor · {{target}}',
   tradeOut: 'Konvoy → Ticaret Gemisi',
   tradeHome: 'Konvoy dönüyor · Ticaret Gemisi',
+  intergalacticConvoyOut: 'Akın → Galaksilerarası Konvoy',
+  intergalacticConvoyHome: 'Akın dönüyor · Galaksilerarası Konvoy',
   fleetHome: 'Filon dönüyor · {{target}}',
   fleetOut: 'Filon → {{target}}',
   engaging: 'Çatışıyor',

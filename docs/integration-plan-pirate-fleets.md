@@ -236,6 +236,10 @@ export interface PirateSpec {
 `constants.ts` içinde `PIRATE` bloğu — hepsi **PROVISIONAL**, docblock'ta
 gerekçesiyle:
 
+> **D204 güncel override:** aşağıdaki ilk-plan örneğindeki `hoardValueMult: 1.4`
+> artık tarihseldir. Shipped değer `1.82`'dir; Alloy, Crystal ve Deuterium ham
+> ganimetlerinin üçünü de aynı anda %30 artırır.
+
 ```ts
 export const PIRATE = {
   damageMult:    { 1: 0.50, 2: 0.65, 3: 0.75, 4: 0.85 },  // şartname

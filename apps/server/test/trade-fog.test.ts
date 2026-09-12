@@ -40,6 +40,8 @@ afterAll(async () => {
 });
 
 const DEFINITION = GALAXY_EVENTS.definitions.TRADE_SHIP;
+const DURATION = DEFINITION.windows[0].endsAtLocalMinute
+  - DEFINITION.windows[0].startsAtLocalMinute;
 
 const post = (at: Vec3, telescope: number, radar: number, planetId: string): SensorPost => ({
   ...sensorSphere(at, telescope, radar, planetId),
@@ -68,7 +70,7 @@ describe('a convoy on the disc', () => {
 
   const send = async (fleet: Fleet = { COURIER: 4 }) => {
     const startsAt = new Date(seasonStartsAt.getTime());
-    const endsAt = new Date(seasonStartsAt.getTime() + DEFINITION.durationMinutes * 60_000);
+    const endsAt = new Date(seasonStartsAt.getTime() + DURATION * 60_000);
     const [row] = await f.db
       .insert(galaxyEventOccurrences)
       .values({

@@ -793,8 +793,8 @@ export async function finishDeathStarBuild(tx: Tx, assetId: string, expectedRead
  * A permanently failed strategic build is a system fault, so it costs nothing.
  *
  * EITHER KIND, AT ITS OWN PRICE. The weapon and the interception charge share one
- * completion event and so one abandon path, and this refunded the weapon's price
- * for both — a charge that failed for good paid 44,291 and got 73,815 back.
+ * completion event and so one abandon path, and this once refunded the weapon's
+ * price for both — a charge failure could therefore mint resources.
  */
 export async function abandonDeathStarBuild(
   db: Db,

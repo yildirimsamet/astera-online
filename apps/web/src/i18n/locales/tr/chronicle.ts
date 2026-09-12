@@ -51,6 +51,12 @@ export const chronicle = {
   asteroidShowerEndedDetail: 'Oluşma hızı normale döndü. Mevcut asteroidler doğal süreleri dolana kadar kalır.',
   tradeShipStarted: 'Galaksiye bir ticaret gemisi girdi',
   tradeShipStartedDetail: 'Ona yetişebilen herkese {{alloy}} alaşım = {{crystal}} kristal = 1 döteryum kurundan takas yaptı.',
+  intergalacticConvoyStarted: 'Galaksilerarası Konvoy galaksiye girdi',
+  intergalacticConvoyStartedDetail: 'Galaksiyi geçerken düzenine akın yapılabilir.',
+  intergalacticConvoyEnded: 'Galaksilerarası Konvoy ayrıldı',
+  intergalacticConvoyEndedDetail: 'Yola çıkmış akın filoları dönüş uçuşlarına devam eder.',
+  launcherIntergalacticConvoyStarted: 'Galaksilerarası Konvoy galaksiyi geçiyor',
+  launcherIntergalacticConvoyEnded: 'Galaksilerarası Konvoy ayrıldı',
   tradeShipEnded: 'Ticaret gemisi ayrıldı',
   tradeShipEndedDetail: 'Penceresi kapandı. Havadaki konvoylar yine de eve döner.',
   act: {

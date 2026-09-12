@@ -1,6 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, asc, eq, inArray } from 'drizzle-orm';
-import { GALAXY_EVENTS, MULTI_WORLD, SEASON, TRADE } from '@astera/rules';
+import {
+  GALAXY_EVENTS,
+  MULTI_WORLD,
+  SEASON,
+  TRADE,
+  galaxyEventConfigForRuleset,
+  plannedEffectFor,
+} from '@astera/rules';
 import { FixedClock, minutesSince } from '../src/clock.js';
 import {
   galaxyEventOccurrences,
@@ -29,6 +36,13 @@ import { onGalaxyEventEnd, onGalaxyEventStart } from '../src/worker/handlers.js'
 import { makeAccount, testDb, truncateAll } from './helpers.js';
 
 const START = new Date('2026-09-01T21:00:00.000Z'); // Türkiye 00:00
+const LEGACY_EVENTS = galaxyEventConfigForRuleset(7);
+const LEGACY_SHOWER = LEGACY_EVENTS.definitions.ASTEROID_SHOWER;
+if (LEGACY_SHOWER.schedule !== 'RANDOM_DAILY') {
+  throw new Error('ruleset 7 shower calendar must stay random');
+}
+const LEGACY_NIGHT_EFFECT = LEGACY_SHOWER.nightEffect;
+if (!LEGACY_NIGHT_EFFECT) throw new Error('ruleset 7 shower must keep its night effect');
 
 afterAll(async () => {
   const { close } = await testDb();
@@ -122,14 +136,14 @@ describe('persisted galaxy events', () => {
         expect(row.effect).toEqual({ asteroidSpawnMultiplier: 5 });
         expect(row.definitionVersion).toBe(1);
       }
-      // And every pending one now carries the figure its own hour is worth.
+      // And every pending one now carries the current fixed figure its exact
+      // authored hour is worth.
       for (const row of pending) {
-        const local = ((row.startsAt.getTime() / 60_000)
-          + GALAXY_EVENTS.calendar.utcOffsetMinutes) % (24 * 60);
-        const atNight = local >= 0 && local < 8 * 60;
-        expect(row.effect).toEqual({
-          asteroidSpawnMultiplier: atNight ? 5 : 10,
-        });
+        expect(row.effect).toEqual(plannedEffectFor(
+          'ASTEROID_SHOWER',
+          row.startsAt.getTime() / 60_000,
+          GALAXY_EVENTS,
+        ));
         expect(row.definitionVersion)
           .toBe(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version);
       }
@@ -203,9 +217,55 @@ describe('persisted galaxy events', () => {
       expect(after.map((row) => row.definitionVersion))
         .toEqual(before.map((row) => row.definitionVersion));
     });
+
+    it('restamps each season through its own frozen ruleset config', async () => {
+      const { db, season: rulesetFive } = await world(0, 5);
+      const { season: rulesetSeven } = await world(0, 7);
+      await db
+        .update(galaxyEventOccurrences)
+        .set({ definitionVersion: 99, effect: { rate: { alloy: 1, crystal: 1, deuterium: 1 } } })
+        .where(eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'));
+
+      await db.transaction((tx) => restampFutureOccurrences(tx, {
+        now: new Date(START.getTime() + 60_000),
+        kinds: ['TRADE_SHIP'],
+      }));
+
+      const versions = async (seasonId: string) => (await db
+        .select({ version: galaxyEventOccurrences.definitionVersion })
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, seasonId),
+          eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
+        )))
+        .map((row) => row.version);
+      expect(new Set(await versions(rulesetFive.id))).toEqual(new Set([1]));
+      expect(new Set(await versions(rulesetSeven.id))).toEqual(new Set([2]));
+    });
   });
 
-  it('atomically seeds both immutable lanes and their lifecycle queue pairs', async () => {
+  it('creates the frozen three-merchant ruleset-5 calendar and four-merchant ruleset-6 calendar', async () => {
+    const { db, season: rulesetFive } = await world(0, 5);
+    const { season: rulesetSix } = await world(0, 6);
+    const merchants = async (seasonId: string) => db
+      .select()
+      .from(galaxyEventOccurrences)
+      .where(and(
+        eq(galaxyEventOccurrences.seasonId, seasonId),
+        eq(galaxyEventOccurrences.kind, 'TRADE_SHIP'),
+      ));
+
+    const five = await merchants(rulesetFive.id);
+    const six = await merchants(rulesetSix.id);
+    expect(five).toHaveLength(SEASON.days * 3);
+    expect(six).toHaveLength(SEASON.days * 4);
+    expect(five.every((row) => row.definitionVersion === 1)).toBe(true);
+    expect(six.every((row) => row.definitionVersion === 2)).toBe(true);
+    expect(five.every((row) => minutesSince(row.startsAt, row.endsAt) === 180)).toBe(true);
+    expect(six.every((row) => minutesSince(row.startsAt, row.endsAt) === 180)).toBe(true);
+  });
+
+  it('atomically seeds all three immutable lanes and their lifecycle queue pairs', async () => {
     const { db, season } = await world();
     const occurrences = await db
       .select()
@@ -217,6 +277,7 @@ describe('persisted galaxy events', () => {
       .where(inArray(scheduledEvents.kind, ['galaxy_event_start', 'galaxy_event_end']));
     const showers = occurrences.filter((row) => row.kind === 'ASTEROID_SHOWER');
     const merchants = occurrences.filter((row) => row.kind === 'TRADE_SHIP');
+    const convoys = occurrences.filter((row) => row.kind === 'INTERGALACTIC_CONVOY');
 
     /*
       DERIVED FROM THE SEASON, NOT TYPED. D191.
@@ -228,12 +289,14 @@ describe('persisted galaxy events', () => {
       not what this test is about.
     */
     const days = SEASON.days;
-    expect(showers).toHaveLength(days * 5);
+    expect(showers).toHaveLength(days * 4);
     expect(merchants).toHaveLength(days * 4);
+    expect(convoys).toHaveLength(days * 2);
     expect(lifecycle).toHaveLength(occurrences.length * 2);
     // Sequence is per kind now, so uniqueness is asserted inside each lane.
     expect(new Set(showers.map((row) => row.sequence)).size).toBe(showers.length);
     expect(new Set(merchants.map((row) => row.sequence)).size).toBe(merchants.length);
+    expect(new Set(convoys.map((row) => row.sequence)).size).toBe(convoys.length);
     /*
       EACH SHOWER CARRIES WHAT ITS OWN HOUR IS WORTH. D178.
 
@@ -243,26 +306,15 @@ describe('persisted galaxy events', () => {
       actually present, or a stamping bug that dealt one figure everywhere would
       pass it.
     */
-    const nightFigure = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.nightEffect
-      .asteroidSpawnMultiplier;
-    const dayFigure = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.effect
-      .asteroidSpawnMultiplier;
-    const stamped = showers.map((row) => {
-      const local = ((row.startsAt.getTime() / 60_000)
-        + GALAXY_EVENTS.calendar.utcOffsetMinutes) % (24 * 60);
-      const atNight = local >= 0 && local < 8 * 60;
-      return {
-        wanted: atNight ? nightFigure : dayFigure,
-        got: 'asteroidSpawnMultiplier' in row.effect
-          ? row.effect.asteroidSpawnMultiplier
-          : null,
-      };
-    });
-    expect(stamped.every((row) => row.got === row.wanted)).toBe(true);
-    expect(stamped.some((row) => row.wanted === nightFigure)).toBe(true);
-    expect(stamped.some((row) => row.wanted === dayFigure)).toBe(true);
+    const showerFigures = showers.map((row) =>
+      'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
+    expect(showerFigures.filter((value) => value === 3)).toHaveLength(days * 2);
+    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days);
+    expect(showerFigures.filter((value) => value === 10)).toHaveLength(days);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
+    expect(convoys.every((row) => row.definitionVersion === 2
+      && minutesSince(row.startsAt, row.endsAt) === 120)).toBe(true);
     expect(lifecycle.every((row) => row.refId !== null)).toBe(true);
   });
 
@@ -273,7 +325,7 @@ describe('persisted galaxy events', () => {
    * merchant and the very first shower of a season would have collided and the
    * whole season-creation transaction would have rolled back.
    */
-  it('lets both kinds legitimately hold sequence zero', async () => {
+  it('lets all three kinds legitimately hold sequence zero', async () => {
     const { db, season } = await world();
     const zeroes = await db
       .select()
@@ -283,7 +335,11 @@ describe('persisted galaxy events', () => {
         eq(galaxyEventOccurrences.sequence, 0),
       ));
 
-    expect(zeroes.map((row) => row.kind).sort()).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
+    expect(zeroes.map((row) => row.kind).sort()).toEqual([
+      'ASTEROID_SHOWER',
+      'INTERGALACTIC_CONVOY',
+      'TRADE_SHIP',
+    ]);
     await expect(db.insert(galaxyEventOccurrences).values({
       seasonId: season.id,
       sequence: 0,
@@ -307,7 +363,7 @@ describe('persisted galaxy events', () => {
    */
   it('adds merchants only at the trade-ship boundary and never moves the shower calendar', async () => {
     const { db, season: legacy } = await world(0, MULTI_WORLD.galaxyEventsRulesetVersion);
-    const { season: modern } = await world();
+    const { season: modern } = await world(0, 5);
     /*
       `seasons.asteroid_key` is `defaultRandom()`, so two seasons never share a
       calendar by accident and comparing them raw would compare two secrets rather
@@ -719,4 +775,3 @@ describe('persisted galaxy events', () => {
     expect(await merchants()).toEqual([]);
   });
 });
-

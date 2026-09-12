@@ -1,12 +1,14 @@
 import { createHmac } from 'node:crypto';
 import { and, asc, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
 import {
-  GALAXY_EVENTS,
-  ECONOMY_PROFILE,
   MULTI_WORLD,
+  galaxyEventConfigForRuleset,
+  galaxyEventKindsForRuleset,
   generateGalaxyEventSchedule,
   plannedEffectFor,
   type GalaxyEventKind,
+  type IntergalacticConvoyEffect,
+  type IntergalacticConvoySpec,
   type OrbitElements,
   type PlannedGalaxyEvent,
   type TradeRate,
@@ -27,6 +29,7 @@ import {
 import { publishShard } from '../stream/bus.js';
 import { recordGalaxyEvent } from './chronicle.js';
 import { tradeShipOf } from './tradeField.js';
+import { intergalacticConvoyOf } from './intergalacticConvoyField.js';
 import { GameError } from './planet.js';
 
 const showerEffectSchema = z.object({
@@ -40,6 +43,28 @@ const tradeRateSchema = z.object({
 }).strict();
 
 const tradeEffectSchema = z.object({ rate: tradeRateSchema }).strict();
+
+const convoyEffectSchema = z.object({
+  routeVersion: z.literal(1),
+  formationVersion: z.literal(1),
+  // Read immutable v1 occurrences as well as D204's two-hour snapshots.
+  resourceCapHours: z.union([z.literal(1), z.literal(2)]),
+  fullRewardForceRatio: z.literal(1),
+  shipDropFullFirepower: z.number().finite().positive(),
+  shipDropChanceAtFullQuality: z.number().finite().min(0).max(1),
+  shipCountWeights: z.tuple([
+    z.number().finite().min(0).max(1),
+    z.number().finite().min(0).max(1),
+    z.number().finite().min(0).max(1),
+  ]).refine((weights) => Math.abs(weights.reduce((sum, weight) => sum + weight, 0) - 1) <= 1e-9),
+  shipTierWeights: z.tuple([
+    z.number().finite().min(0).max(1),
+    z.number().finite().min(0).max(1),
+    z.number().finite().min(0).max(1),
+    z.number().finite().min(0).max(1),
+  ]).refine((weights) => Math.abs(weights.reduce((sum, weight) => sum + weight, 0) - 1) <= 1e-9),
+  rewardPoolVersion: z.literal(1),
+}).strict();
 
 /**
  * THE PERSISTED `kind` COLUMN IS THE DISCRIMINATOR, BECAUSE THE JSONB HAS NONE.
@@ -60,6 +85,7 @@ const tradeEffectSchema = z.object({ rate: tradeRateSchema }).strict();
 const effectSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('ASTEROID_SHOWER'), effect: showerEffectSchema }).strict(),
   z.object({ kind: z.literal('TRADE_SHIP'), effect: tradeEffectSchema }).strict(),
+  z.object({ kind: z.literal('INTERGALACTIC_CONVOY'), effect: convoyEffectSchema }).strict(),
 ]);
 
 type OccurrenceEffect = z.infer<typeof effectSchema>;
@@ -81,6 +107,7 @@ const occurrenceEffect = (
 const CALENDAR_LABEL: Record<GalaxyEventKind, string> = {
   ASTEROID_SHOWER: 'galaxy-events:v1',
   TRADE_SHIP: 'galaxy-events:trade-ship:v1',
+  INTERGALACTIC_CONVOY: 'galaxy-events:intergalactic-convoy:v1',
 };
 
 function calendarRng(asteroidKey: string, kind: GalaxyEventKind): () => number {
@@ -133,8 +160,9 @@ export async function restampFutureOccurrences(
 ): Promise<number> {
   if (input.kinds.length === 0) return 0;
   const rows = await tx
-    .select()
+    .select({ occurrence: galaxyEventOccurrences, rulesetVersion: seasons.rulesetVersion })
     .from(galaxyEventOccurrences)
+    .innerJoin(seasons, eq(seasons.id, galaxyEventOccurrences.seasonId))
     .where(and(
       gt(galaxyEventOccurrences.startsAt, input.now),
       inArray(galaxyEventOccurrences.kind, [...input.kinds]),
@@ -145,10 +173,12 @@ export async function restampFutureOccurrences(
     .for('update');
 
   let changed = 0;
-  for (const row of rows) {
+  for (const joined of rows) {
+    const row = joined.occurrence;
     const kind = row.kind;
-    const wanted = plannedEffectFor(kind, row.startsAt.getTime() / 60_000);
-    const version = GALAXY_EVENTS.definitions[kind].version;
+    const config = galaxyEventConfigForRuleset(joined.rulesetVersion);
+    const wanted = plannedEffectFor(kind, row.startsAt.getTime() / 60_000, config);
+    const version = config.definitions[kind].version;
     if (JSON.stringify(row.effect) === JSON.stringify(wanted)
       && row.definitionVersion === version) {
       continue;
@@ -168,7 +198,6 @@ export async function seedGalaxyEventCalendar(
   season: typeof seasons.$inferSelect,
   initializedAt: Date = season.startsAt,
 ): Promise<void> {
-  if (!ECONOMY_PROFILE.tradeShip && !ECONOMY_PROFILE.asteroidShower) return;
   if (season.rulesetVersion < MULTI_WORLD.galaxyEventsRulesetVersion) return;
   const durationMinutes = minutesSince(season.startsAt, season.endsAt);
   /*
@@ -186,8 +215,8 @@ export async function seedGalaxyEventCalendar(
     was rebuilt mid-deal would restart at counter zero and re-deal what it had
     already dealt.
   */
-  const kinds: GalaxyEventKind[] = ['ASTEROID_SHOWER'];
-  if (season.rulesetVersion >= MULTI_WORLD.tradeShipRulesetVersion) kinds.push('TRADE_SHIP');
+  const config = galaxyEventConfigForRuleset(season.rulesetVersion);
+  const kinds = galaxyEventKindsForRuleset(season.rulesetVersion);
   const streams = new Map<GalaxyEventKind, () => number>();
   const plan = generateGalaxyEventSchedule({
     seasonStartsAtUnixMinute: season.startsAt.getTime() / 60_000,
@@ -200,6 +229,7 @@ export async function seedGalaxyEventCalendar(
       return stream;
     },
     kinds,
+    config,
   });
   if (plan.length === 0) return;
 
@@ -313,9 +343,14 @@ export async function loadGalaxyEventSchedule(
       definitionVersion: row.definitionVersion,
     };
     const parsed = occurrenceEffect(row);
-    return parsed.kind === 'ASTEROID_SHOWER'
-      ? { ...base, kind: parsed.kind, effect: parsed.effect }
-      : { ...base, kind: parsed.kind, effect: parsed.effect };
+    switch (parsed.kind) {
+      case 'ASTEROID_SHOWER':
+        return { ...base, kind: parsed.kind, effect: parsed.effect };
+      case 'TRADE_SHIP':
+        return { ...base, kind: parsed.kind, effect: parsed.effect };
+      case 'INTERGALACTIC_CONVOY':
+        return { ...base, kind: parsed.kind, effect: parsed.effect };
+    }
   });
 }
 
@@ -358,6 +393,25 @@ export type ActiveGalaxyEventView =
       appearsAtMinute: number;
       expiresAtMinute: number;
       orbit: OrbitElements;
+    })
+  | (ActiveGalaxyEventBase & {
+      kind: 'INTERGALACTIC_CONVOY';
+      appearsAtMinute: number;
+      expiresAtMinute: number;
+      route: {
+        from: { x: number; y: number; z: number };
+        to: { x: number; y: number; z: number };
+        velocity: { x: number; y: number; z: number };
+        speed: number;
+      };
+      visual: { formationVersion: 1 };
+      rewardPolicy: {
+        resourceCapHours: number;
+        fullRewardForceRatio: number;
+        shipDropFullFirepower: number;
+        shipDropChanceAtFullQuality: number;
+        maxAwardedShips: number;
+      };
     });
 
 /**
@@ -403,7 +457,11 @@ export async function activeGalaxyEvents(
       lte(galaxyEventOccurrences.startsAt, now),
       gt(galaxyEventOccurrences.endsAt, now),
     ))
-    .orderBy(asc(galaxyEventOccurrences.startsAt));
+    .orderBy(
+      asc(galaxyEventOccurrences.startsAt),
+      asc(galaxyEventOccurrences.kind),
+      asc(galaxyEventOccurrences.id),
+    );
 
   return rows.map((row): ActiveGalaxyEventView => {
     const base = { id: row.id, startsAt: row.startsAt, endsAt: row.endsAt };
@@ -413,6 +471,33 @@ export async function activeGalaxyEvents(
         ...base,
         kind: parsed.kind,
         asteroidSpawnMultiplier: parsed.effect.asteroidSpawnMultiplier,
+      };
+    }
+    if (parsed.kind === 'INTERGALACTIC_CONVOY') {
+      const startsAtMinute = minutesSince(me.seasonStartsAt, row.startsAt);
+      const endsAtMinute = minutesSince(me.seasonStartsAt, row.endsAt);
+      const spec = intergalacticConvoyOf(me.asteroidKey, {
+        sequence: row.sequence,
+        kind: parsed.kind,
+        startsAtMinute,
+        endsAtMinute,
+        definitionVersion: row.definitionVersion,
+        effect: parsed.effect,
+      });
+      return {
+        ...base,
+        kind: parsed.kind,
+        appearsAtMinute: spec.appearsAt,
+        expiresAtMinute: spec.expiresAt,
+        route: { from: spec.from, to: spec.to, velocity: spec.velocity, speed: spec.speed },
+        visual: { formationVersion: parsed.effect.formationVersion },
+        rewardPolicy: {
+          resourceCapHours: parsed.effect.resourceCapHours,
+          fullRewardForceRatio: parsed.effect.fullRewardForceRatio,
+          shipDropFullFirepower: parsed.effect.shipDropFullFirepower,
+          shipDropChanceAtFullQuality: parsed.effect.shipDropChanceAtFullQuality,
+          maxAwardedShips: parsed.effect.shipCountWeights.length,
+        },
       };
     }
     /*
@@ -495,6 +580,44 @@ export async function tradeShipOccurrence(
   });
 }
 
+export interface IntergalacticConvoyOccurrence {
+  spec: IntergalacticConvoySpec;
+  effect: IntergalacticConvoyEffect;
+}
+
+/** Active-window authority for one client-supplied convoy occurrence id. */
+export async function intergalacticConvoyOccurrence(
+  tx: Queryable,
+  seasonId: string,
+  occurrenceId: string,
+): Promise<IntergalacticConvoyOccurrence | null> {
+  const [row] = await tx
+    .select({
+      occurrence: galaxyEventOccurrences,
+      seasonStartsAt: seasons.startsAt,
+      asteroidKey: seasons.asteroidKey,
+    })
+    .from(galaxyEventOccurrences)
+    .innerJoin(seasons, eq(seasons.id, galaxyEventOccurrences.seasonId))
+    .where(and(
+      eq(galaxyEventOccurrences.id, occurrenceId),
+      eq(galaxyEventOccurrences.seasonId, seasonId),
+    ))
+    .limit(1);
+  if (!row) return null;
+  const parsed = occurrenceEffect(row.occurrence);
+  if (parsed.kind !== 'INTERGALACTIC_CONVOY') return null;
+  const spec = intergalacticConvoyOf(row.asteroidKey, {
+    sequence: row.occurrence.sequence,
+    kind: parsed.kind,
+    startsAtMinute: minutesSince(row.seasonStartsAt, row.occurrence.startsAt),
+    endsAtMinute: minutesSince(row.seasonStartsAt, row.occurrence.endsAt),
+    definitionVersion: row.occurrence.definitionVersion,
+    effect: parsed.effect,
+  });
+  return { spec, effect: parsed.effect };
+}
+
 type Lifecycle = 'start' | 'end';
 
 /**
@@ -512,13 +635,22 @@ function lifecyclePayload(
     endsAt: occurrence.endsAt.toISOString(),
   };
   const parsed = occurrenceEffect(occurrence);
-  return parsed.kind === 'ASTEROID_SHOWER'
-    ? {
+  if (parsed.kind === 'ASTEROID_SHOWER') {
+    return {
         eventKind: parsed.kind,
         ...window,
         asteroidSpawnMultiplier: parsed.effect.asteroidSpawnMultiplier,
-      }
-    : { eventKind: parsed.kind, ...window, rate: parsed.effect.rate };
+      };
+  }
+  if (parsed.kind === 'TRADE_SHIP') {
+    return { eventKind: parsed.kind, ...window, rate: parsed.effect.rate };
+  }
+  return {
+    eventKind: parsed.kind,
+    ...window,
+    resourceCapHours: parsed.effect.resourceCapHours,
+    shipDropChanceAtFullQuality: parsed.effect.shipDropChanceAtFullQuality,
+  };
 }
 
 async function claimLifecycle(
@@ -623,5 +755,3 @@ export async function notifyActiveGalaxyEventsForPlayer(
     payload: lifecyclePayload(occurrence),
   }))).onConflictDoNothing();
 }
-
-export const galaxyEventConfig = GALAXY_EVENTS;

@@ -1016,6 +1016,19 @@ calendar. At the first live start/end, observe one Chronicle row, one notificati
 player and one `galaxy-event` shard invalidation; worker delay may delay those deliveries but must
 not change the clock-derived asteroid effect.
 
+Ruleset 8 is a separate forward boundary. Apply additive migration `0075_quiet_guardsmen.sql`, then
+deploy convoy-aware workers/server and the strict-schema web client before creating any ruleset-8
+season. A complete 30-day TRT-aligned season must contain 120 Asteroid Shower, 120 Trade Ship and
+60 Intergalactic Convoy occurrences, with two lifecycle jobs per row. Do not backfill a ruleset-7
+live season. Rollback with active convoy runs is drain-first: close new launches, keep an
+arrival/return-capable worker until every run is `done`, and leave the additive enum/table in place.
+During the canary, read the `/metrics` response at
+`runtime.routes["POST /api/intergalactic-convoy/launch"]` for status distribution,
+`runtime.refusals["POST /api/intergalactic-convoy/launch"]` for stable refusal codes, and
+`runtime.operations["intergalactic-convoy.launch"]` for accepted versus replayed commands.
+These are bounded process-local counters and contain no account/player/world identifier; aggregate
+them across replicas before setting alert thresholds.
+
 Before traffic reopens, an abort restores the verified final dump and the recorded v3 image/web
 release. After a v4 season accepts any player write, restoring v3 would discard player decisions;
 rollback is forbidden and the response is a forward fix. There is no in-place hull mapping or

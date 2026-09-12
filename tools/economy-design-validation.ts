@@ -13,6 +13,13 @@ import { fleetSession } from './fleet-session-study.js';
 import { summarizeCosted } from './costed-progression-study.js';
 import { reciprocalEconomy, reciprocalScenario } from './reciprocal-economy-study.js';
 
+export const ECONOMY_VALIDATION_EXCLUSIONS = [
+  'trade-ship',
+  'asteroid-shower',
+  'intergalactic-convoy',
+  'colony-transfer',
+] as const;
+
 const keys = ['alloy', 'crystal', 'deuterium'] as const;
 export function designBattleSample(attacker: Fleet, defender: Fleet) {
   const roster = Object.fromEntries(ALL_HULLS.map(h => [h, designHull(h)]));
@@ -68,7 +75,7 @@ export function designValidation(includeShared = true) {
       desiredFleet: { ...designScenario(p.profile, 14).desiredFleet, COURIER: 1 } }));
     shared.push({ scenario: s, result: reciprocalEconomy(s) });
   }
-  return { model: 'target-derived-candidate-v1', excluded: ['trade-ship', 'asteroid-shower', 'colony-transfer'],
+  return { model: 'target-derived-candidate-v1', excluded: ECONOMY_VALIDATION_EXCLUSIONS,
     isolated, combat, shared,
     hulls: ALL_HULLS.map(designHull),
     research: [14, 30].flatMap(days => Object.values(RESEARCH_PROJECTS).flatMap(p =>
