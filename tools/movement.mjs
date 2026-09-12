@@ -115,11 +115,27 @@ if ((ownerName === undefined) !== (observerName === undefined)) {
 }
 const a = await commander(ownerName ?? `mova${stamp}`, ownerName !== undefined);
 const b = await commander(observerName ?? `movb${stamp}`, observerName !== undefined);
+
+if (ownerName === undefined && observerName === undefined) {
+  // Fresh harness commanders would otherwise be correctly protected from the
+  // immediate combat launch this disposable movement fixture needs to create.
+  await sql`
+    UPDATE players
+    SET newcomer_shield_until = now() - interval '1 minute'
+    WHERE id IN (
+      SELECT player_id FROM planets WHERE id IN (${a.planet.id}, ${b.planet.id})
+    )
+  `;
+}
 console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
 
 /** Give both real eyes and a deterministic shared patch of sky. D123/D126. */
 const installEyes = async (planetId, x) => {
-  await sql`UPDATE planets SET x = ${x}, y = 0, z = 0 WHERE id = ${planetId}`;
+  await sql`
+    UPDATE planets
+    SET x = ${x}, y = 0, z = 0, deuterium = 100000
+    WHERE id = ${planetId}
+  `;
   for (const [slot, type, level] of [[0, 'TELESCOPE', 5], [1, 'RADAR', 5], [5, 'UPLINK', 1]]) {
     await sql`
       INSERT INTO satellites (planet_id, slot, type, level)

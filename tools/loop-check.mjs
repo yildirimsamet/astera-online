@@ -71,6 +71,17 @@ const a = await commander(`loopa${stamp}`);
 const b = await commander(`loopb${stamp}`);
 console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
 
+// The loop deliberately exercises combat immediately after joining. Production
+// commanders keep the newcomer shield; only these disposable fixture players
+// need it expired so the harness can reach the flight lifecycle it measures.
+await sql`
+  UPDATE players
+  SET newcomer_shield_until = now() - interval '1 minute'
+  WHERE id IN (
+    SELECT player_id FROM planets WHERE id IN (${a.planet.id}, ${b.planet.id})
+  )
+`;
+
 /**
  * THE HARNESS MUST BUY THE VISIBILITY IT ASSERTS. D123/D126.
  *
@@ -80,7 +91,11 @@ console.log(`A = ${a.planet.name}   B = ${b.planet.name}\n`);
  * visibility untouched while making the real-HTTP fixture deterministic.
  */
 const installEyes = async (planetId, x) => {
-  await sql`UPDATE planets SET x = ${x}, y = 0, z = 0 WHERE id = ${planetId}`;
+  await sql`
+    UPDATE planets
+    SET x = ${x}, y = 0, z = 0, deuterium = 100000
+    WHERE id = ${planetId}
+  `;
   for (const [slot, type, level] of [[0, 'TELESCOPE', 5], [1, 'RADAR', 5], [5, 'UPLINK', 1]]) {
     await sql`
       INSERT INTO satellites (planet_id, slot, type, level)
