@@ -117,9 +117,7 @@ import {
   unlocksSchema,
   upgradeSchema,
   watchSchema,
-  deathStarBuildSchema,
   deathStarLaunchSchema,
-  interceptorBuildSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
 import {
@@ -127,6 +125,7 @@ import {
   isShardEvent,
 } from '../../web/src/session/shardEvents.js';
 import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture, giveDebris } from './helpers.js';
+import { buildDeathStar } from '../src/services/strategic.js';
 
 /**
  * THE CLIENT'S PARSER, RUN AGAINST THE SERVER'S REAL ANSWER.
@@ -1506,7 +1505,7 @@ describe('every payload the client parses', () => {
     expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
   });
 
-  it('POST Death Star build and launch routes parse their exact contracts', async () => {
+  it('returns 404 from the temporarily disabled Death Star craft route', async () => {
     const [origin, target] = f.planetIds as [string, string];
     await setLevel(f.db, origin, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, origin, 'SHIPYARD', DEATH_STAR.requiredShipyard);
@@ -1516,13 +1515,13 @@ describe('every payload the client parses', () => {
     await giveResearch(f.db, origin, 'ISOTOPE_SPECTROMETRY');
     await giveResearch(f.db, origin, 'GRAVITIC_CHARGES');
     await giveResearch(f.db, origin, 'DEATH_STAR_PROTOCOL');
-    const built = deathStarBuildSchema.parse(
-      await post(`/api/planets/${origin}/death-star/build`, {}),
-    );
-    expect(built.planet.strategic?.status).toBe('BUILDING');
-    // The whole pad reaches the client, not just its headline (T11 stockpile).
-    expect(built.planet.deathStars?.map((asset) => asset.id)).toEqual([built.assetId]);
+    const disabled = await app.inject({
+      method: 'POST', url: `/api/planets/${origin}/death-star/build`, headers: auth, payload: {},
+    });
+    expect(disabled.statusCode).toBe(404);
+    expect(disabled.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
 
+    const built = await buildDeathStar(f.db, origin, f.clock);
     await f.db.update(strategicAssets)
       .set({ status: 'READY', readyAt: f.clock.now(), remainingSeconds: 0 })
       .where(eq(strategicAssets.id, built.assetId));
@@ -1542,7 +1541,7 @@ describe('every payload the client parses', () => {
    * research menu now, so a commander could pay 33,000 for a permission to build a
    * thing with no door — which is worse than not having the defence at all.
    */
-  it('POST interceptor build parses its exact contract', async () => {
+  it('returns 404 from the temporarily disabled interceptor craft route', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
@@ -1551,15 +1550,14 @@ describe('every payload the client parses', () => {
     await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
     await giveResearch(f.db, origin, ANTI_STRATEGIC.requiredResearch);
 
-    const built = interceptorBuildSchema.parse(
-      await post(`/api/planets/${origin}/interceptor/build`, {}),
-    );
-    expect(built.planet.interceptor?.status).toBe('BUILDING');
-    // And the weapon slot stays empty: two assets, two keys, never one.
-    expect(built.planet.strategic ?? null).toBeNull();
+    const disabled = await app.inject({
+      method: 'POST', url: `/api/planets/${origin}/interceptor/build`, headers: auth, payload: {},
+    });
+    expect(disabled.statusCode).toBe(404);
+    expect(disabled.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
   });
 
-  it('refuses an interceptor the commander has not researched', async () => {
+  it('returns the same 404 before checking interceptor prerequisites', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
@@ -1573,8 +1571,8 @@ describe('every payload the client parses', () => {
       headers: auth,
       payload: {},
     });
-    expect(res.statusCode).toBe(403);
-    expect(res.json<{ error?: string }>().error).toBe('INTERCEPTOR_LOCKED');
+    expect(res.statusCode).toBe(404);
+    expect(res.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
   });
 
   /**

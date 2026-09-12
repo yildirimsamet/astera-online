@@ -31,7 +31,9 @@ describe('monthly fleet tempo', () => {
     for (const id of MOBILE_HULLS) {
       const hull = HULLS[id];
       if (hull.cls === 'SUPPORT') continue;
-      const expected = hull.cls === 'SKIRMISHER' ? 15 : hull.cls === 'LANCE' ? 20 : 25;
+      // D207: the Escort reads its profile, not its class — it is the faster Bulwark.
+      const expected = hull.cls === 'SKIRMISHER' ? 15 : hull.cls === 'LANCE' ? 20
+        : hull.profile === 'ESCORT' ? 18 : 25;
       expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED) + 10 / 60).toBeCloseTo(expected, 9);
     }
   });

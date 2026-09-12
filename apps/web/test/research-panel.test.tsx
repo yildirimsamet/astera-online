@@ -186,6 +186,14 @@ beforeEach(async () => {
 });
 
 describe('every project is reachable', () => {
+  it('keeps the Death Star and battery permission projects display-none', () => {
+    const view = show();
+    expect(row(view, 'DEATH_STAR_PROTOCOL')).toHaveClass('hidden');
+    expect(row(view, 'INTERCEPTION_GRID')).toHaveClass('hidden');
+    expect(row(view, 'GRAVITIC_CHARGES')).not.toHaveClass('hidden');
+    expect(row(view, 'STRATEGIC_STOCKPILE')).not.toHaveClass('hidden');
+  });
+
   it('renders a row for all fifteen projects', () => {
     const view = show();
     for (const id of ALL) expect(row(view, id)).toBeInTheDocument();

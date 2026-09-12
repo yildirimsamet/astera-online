@@ -109,11 +109,11 @@ const show = (
 };
 
 describe('strategic hardware hierarchy', () => {
-  it('keeps an unbuilt Death Star inside Fleet instead of leading every planet visit', async () => {
+  it('keeps the temporarily disabled Death Star forge display-none', async () => {
     const view = show({}, 'grow');
     expect(view.container.querySelector('[data-strategic-state]')).toBeNull();
     await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
-    expect(view.container.querySelector('[data-strategic-state="LOCKED"]')).not.toBeNull();
+    expect(view.container.querySelector('[data-strategic-state="LOCKED"]')).toHaveClass('hidden');
   });
 
   it('raises a live strategic asset above every tab because it is now planet state', () => {
@@ -772,7 +772,7 @@ describe('the fuel a craft burns', () => {
     expect(fuel).toHaveTextContent(/fuel/i);
   });
 
-  it('scales with the mass the Hangar already charges for', async () => {
+  it('uses the authored fuel rate for heavier hulls', async () => {
     show();
     await openSheet('Rampart');
 
@@ -789,48 +789,32 @@ describe('the fuel a craft burns', () => {
   });
 });
 
-/**
- * HOW MUCH ROOM A CRAFT TAKES, ON THE SHEET WHERE IT IS BOUGHT. Owner report.
- *
- * The Hangar is the ceiling on a whole fleet, and the number that decides how much
- * of it one hull eats was on no card in the game — a commander could read a
- * Citadel's attack, hull, speed, cargo and fuel and had to divide two capacity
- * bars in their head to learn that eight of them fill a Hangar. `hullBulk` is the
- * same figure the sheet already caps the order with, so the card and the cap are
- * one number rather than two.
- *
- * SIX FIGURES IN A 3×2 GRID, at owner instruction. A sixth on a wrapping flex row
- * broke wherever the corner happened to be narrow; a fixed grid is the same shape
- * on every hull, which is the property that makes two cards comparable at a glance.
- */
-describe('the room a craft takes', () => {
-  it('states the bulk the order is already capped by', async () => {
+/** D184 removed the Hangar and its fleet ceiling. A mobile hull's legacy bulk is
+ * therefore not a decision the Fleet craft sheet should expose. Ground units
+ * still spend real ground capacity and keep the same figure on their sheet. */
+describe('the obsolete Hangar figure', () => {
+  it('hides bulk on mobile Fleet craft sheets', async () => {
     show();
     await openSheet('Dart');
 
-    const room = document.querySelector('.stat-room');
-    expect(room, 'the craft sheet says nothing about the hull\'s bulk').not.toBeNull();
-    expect(room).toHaveTextContent(String(hullBulk('DART')));
-    // D184: the Hangar is gone, so bulk is named for what it still measures —
-    // the fuel a hull burns and the ground it stands on.
-    expect(room).toHaveTextContent(/bulk/i);
+    expect(document.querySelector('.stat-room')).toBeNull();
   });
 
-  it('grows with the hull, so two cards can be compared', async () => {
-    show();
-    await openSheet('Rampart');
-    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('RAMPART')));
-    expect(hullBulk('RAMPART')).toBeGreaterThan(hullBulk('DART'));
+  it('keeps bulk where a ground unit still consumes capacity', async () => {
+    show({}, 'defend');
+    await openSheet('Bastion');
+
+    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('BASTION')));
   });
 
-  it('lays the six figures out as a fixed three-column grid', async () => {
+  it('leaves five relevant figures on a mobile craft sheet', async () => {
     show();
     await openSheet('Dart');
 
     const strip = document.querySelector('[data-build-stats] .stats');
     expect(strip).not.toBeNull();
     expect(strip).toHaveClass('stats-card');
-    expect(strip?.querySelectorAll('.stat')).toHaveLength(6);
+    expect(strip?.querySelectorAll('.stat')).toHaveLength(5);
   });
 });
 

@@ -36,6 +36,15 @@ describe('private Academy resume', () => {
     clearAcademy();
     expect(restoreAcademy(now).step).toBe(0);
   });
+  it('restarts checkpoints saved against the old lesson order', () => {
+    saveAcademy(openAcademy(now, at('darts')));
+    const saved = localStorage.getItem('astera.academy.v1');
+    if (saved === null) throw new Error('Academy checkpoint was not saved');
+    expect(saved).toContain('"version":2');
+
+    localStorage.setItem('astera.academy.v1', saved.replace('"version":2', '"version":1'));
+    expect(restoreAcademy(now).step).toBe(0);
+  });
   it('works when accessing storage itself throws', () => {
     vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => { throw new Error('private mode'); });
     expect(() => { saveAcademy(openAcademy(now)); }).not.toThrow();

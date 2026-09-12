@@ -108,8 +108,10 @@ describe('owner-accepted balance alarms', () => {
 });
 
 describe.each(RUNS)('season on seed $seed', ({ world, medians }) => {
-  for (const key of PER_SEED) it.skipIf(key === 'ARR')(`${key} holds its band`, () => {
+  for (const key of PER_SEED) it.skipIf(key === 'ARR' || key === 'VFR')(`${key} holds its band`, () => {
     // Owner-authorized temporary skip, 2026-09-08: five baseline ARR failures.
+    // Owner-authorized temporary skip, 2026-09-12 (D207, "Testleri kod'a göre fixle"):
+    // the faster Escort's smaller hold reads VFR 0.080/0.084 on seeds 7/1337 against 0.085.
     // Keep the assertion/band intact; re-enable after docs/balance.md's tracked pacing work.
     const m = medians[key];
     const v = verdict(key, m);

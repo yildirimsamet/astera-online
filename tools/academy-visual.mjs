@@ -21,7 +21,7 @@ export async function verifyAcademy(out) {
       for (const step of [26, 35]) {
         // Resume an authored local lesson, never fabricate account resources.
         await page.evaluate((step) => localStorage.setItem('astera.academy.v1', JSON.stringify({
-          version: 1, step, startedAt: Date.now(), orderAt: null, flight: null, journeys: [], seenSignals: [],
+          version: 2, step, startedAt: Date.now(), orderAt: null, flight: null, journeys: [], seenSignals: [],
         })), step);
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: /Check your planet|Gezegenini İncele|GEZEGENİNİ İNCELE/i }).click({ timeout: 60_000 });
@@ -130,7 +130,12 @@ export async function verifyAcademy(out) {
         await page.locator('[data-reward-claim] button').click();
       } else {
         const hull = { darts: 'DART', reinforcements: 'DART', prospector: 'PROSPECTOR', courier: 'COURIER' }[id];
-        const row = hull ? page.locator(`#row-${hull}`) : page.locator('[id^="row-"]').filter({ visible: true }).last();
+        const action = {
+          core: 'CORE', refinery: 'REFINERY', extractor: 'EXTRACTOR', vault: 'VAULT',
+          aegis: 'AEGIS', shipyard: 'SHIPYARD',
+        }[id];
+        const rowId = hull ?? action;
+        const row = rowId ? page.locator(`#row-${rowId}`) : page.locator('[id^="row-"]').filter({ visible: true }).last();
         if (await row.count()) {
           await row.click();
           const item = page.locator('[data-item-sheet]');

@@ -69,9 +69,10 @@ const schema = z.object({
    * so even for a name that does not exist, because the decoy hash in
    * `services/account.ts` is what removes the timing oracle. Measured on the
    * development box: fifty concurrent bad logins pin a core for half a second. It
-   * is also the brute-force surface, and there is no lockout anywhere else.
+   * is also the brute-force surface, and there is no lockout anywhere else. Doubled
+   * from twenty to forty (owner, 2026-09-12): a CGNAT address shares this bucket.
    */
-  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(20),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(40),
   /**
    * A NEW ACCOUNT TAKES A SEAT, AND SEATS ARE THE SCARCE THING. D21/D56.
    *
@@ -79,9 +80,10 @@ const schema = z.object({
    * and a place in the frontier galaxy in one call. A galaxy holds three hundred
    * commander seats and galaxies fill strictly in order, so a script left alone
    * with this endpoint empties the only mitigation the empty-shard risk has. Six an hour per address
-   * is generous for a household and useless for a script.
+   * was catching real players behind mobile CGNAT, so it
+   * was tripled to eighteen (owner, 2026-09-12) — still useless for a script.
    */
-  RATE_LIMIT_SIGNUP_MAX: z.coerce.number().default(6),
+  RATE_LIMIT_SIGNUP_MAX: z.coerce.number().default(18),
   /** Set on replicated API deployments; absent keeps local/test in-memory limits. */
   RATE_LIMIT_REDIS_URL: z.preprocess(
     (value) => value === '' || value === null ? undefined : value,

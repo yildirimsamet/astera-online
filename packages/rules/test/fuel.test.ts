@@ -257,10 +257,11 @@ describe('D195 fuel by hull value', () => {
   });
 
   it('drinks more the faster it flies, at equal value', () => {
-    // Pike and Warden cost exactly the same to build and fly different trips.
+    // Pike and Warden cost exactly the same to build and fly different trips; since
+    // D207 the Warden is the quicker of the two, so it is the thirstier one.
     expect(value('PIKE')).toBe(value('WARDEN'));
-    expect(hullRoundTrip('PIKE')!).toBeLessThan(hullRoundTrip('WARDEN')!);
-    expect(hullFuelMass('PIKE')).toBeGreaterThan(hullFuelMass('WARDEN'));
+    expect(hullRoundTrip('WARDEN')!).toBeLessThan(hullRoundTrip('PIKE')!);
+    expect(hullFuelMass('WARDEN')).toBeGreaterThan(hullFuelMass('PIKE'));
   });
 
   /** A gun that never travels has no thirst, whatever it weighs on the ground. */

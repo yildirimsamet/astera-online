@@ -4,6 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   ANTI_STRATEGIC,
+  FEATURE_FLAGS,
   BUILD,
   HULLS,
   RESEARCH_PROJECTS,
@@ -668,7 +669,7 @@ function DeathStarForge({
       data-strategic-state={primary?.status ?? 'LOCKED'}
       data-strategic-count={weapons.length}
       data-strategic-capacity={stockpile}
-      className={`death-star-forge ${readyCount > 0 ? 'death-star-forge-ready' : ''}`}
+      className={`death-star-forge ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'} ${readyCount > 0 ? 'death-star-forge-ready' : ''}`}
     >
       <div className="relative z-[1] flex items-start gap-2">
         <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-chip ${live ? 'size-[72px]' : 'size-24'}`}>
@@ -1516,7 +1517,7 @@ function InterceptorBattery({
   return (
     <div
       data-interceptor-state={state}
-      className="plate flex flex-col gap-2 border-b border-line-soft p-3 last:border-b-0"
+      className={`plate flex flex-col gap-2 border-b border-line-soft p-3 last:border-b-0 ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
       <div className="flex items-center gap-2">
         <img
@@ -2553,8 +2554,9 @@ function BuildSheet({
               cargo={spec.cargo}
               salvage={salvageCapacity({ [hull]: 1 })}
               fuel={hullFuelRate(hull)}
-              // The same figure this sheet caps the order with, a dozen lines up.
-              room={bulk}
+              // D184 removed the mobile-fleet ceiling. Ground bulk still spends
+              // real capacity; mobile hull bulk is no longer a player-facing fact.
+              {...(spec.ground ? { room: bulk } : {})}
               size="card"
             />
           </div>) : null}

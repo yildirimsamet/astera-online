@@ -8,7 +8,7 @@ const KEY = 'astera.academy.v1';
 const moment = z.number().int().nonnegative().max(8_640_000_000_000_000);
 const flight = z.object({ kind: z.enum(['pirate', 'mine', 'raid']), startedAt: moment }).strict();
 const savedSchema = z.object({
-  version: z.literal(1), step: z.number().int().min(0).max(ACADEMY_STEPS.length), startedAt: moment,
+  version: z.literal(2), step: z.number().int().min(0).max(ACADEMY_STEPS.length), startedAt: moment,
   orderAt: moment.nullable(), flight: flight.nullable(), journeys: z.array(flight).max(3),
   seenSignals: z.array(z.string()).max(2),
 }).strict();
@@ -16,7 +16,7 @@ const savedSchema = z.object({
 export function saveAcademy(world: AcademyWorld): void {
   try {
     window.localStorage.setItem(KEY, JSON.stringify({
-      version: 1, step: world.step, startedAt: world.preview.season.startsAt.getTime(),
+      version: 2, step: world.step, startedAt: world.preview.season.startsAt.getTime(),
       orderAt: world.pending?.order.startedAt?.getTime() ?? null,
       flight: world.flight ? { kind: world.flight.kind, startedAt: world.flight.departAt } : null,
       journeys: world.journeys.map((f) => ({ kind: f.kind, startedAt: f.departAt })),

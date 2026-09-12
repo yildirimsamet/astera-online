@@ -6,8 +6,12 @@ import type { PlanetGroup } from '../lib/directives.js';
 export const AcademyLessonContext = createContext<AcademyStepId | null>(null);
 export const useAcademyLesson = () => useContext(AcademyLessonContext);
 
-/** The newest revealed tab; an introductory tab press still shows the previous panel. */
+/** The newest revealed tab; boundaries follow the authored menu introductions,
+ * so moving a lesson between phases cannot strand it on its former tab. */
 export function academyGroup(id: AcademyStepId): PlanetGroup {
   const step = ACADEMY_STEPS.findIndex((s) => s.id === id);
-  return step < 10 ? 'grow' : step < 15 ? 'orbit' : step < 22 ? 'defend' : 'reach';
+  const intel = ACADEMY_STEPS.findIndex((s) => s.id === 'intel');
+  const defend = ACADEMY_STEPS.findIndex((s) => s.id === 'defend');
+  const fleet = ACADEMY_STEPS.findIndex((s) => s.id === 'fleet');
+  return step < intel ? 'grow' : step < defend ? 'orbit' : step < fleet ? 'defend' : 'reach';
 }

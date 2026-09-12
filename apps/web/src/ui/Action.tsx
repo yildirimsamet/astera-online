@@ -310,19 +310,9 @@ export function StatStrip({
    * destination to charge against, which is exactly why it quotes a rate instead.
    */
   fuel: number;
-  /**
-   * HANGAR ROOM ONE OF THIS HULL TAKES — `hullBulk`. Owner report.
-   *
-   * The Hangar is the ceiling on a whole fleet and this is the number that decides
-   * how much of it one craft eats, and it was on no card in the game: a commander
-   * could read every other figure on a Citadel and still had to divide two capacity
-   * bars in their head to learn that eight of them fill a bay. The same figure the
-   * sheet already caps the order with, so the card and the cap cannot disagree.
-   *
-   * Optional, because the row form beside a hull in the launch sheet is choosing
-   * ships out of a hangar that has already been paid for — there is no room
-   * decision left to make there.
-   */
+  /** Ground capacity consumed by a fixed emplacement. Mobile fleets have no
+   * Hangar ceiling since D184, so their sheets deliberately omit this legacy
+   * figure. */
   room?: number;
   /**
    * WRECK THIS HULL LIFTS AFTER A FIGHT — `salvageCapacity`. D200.

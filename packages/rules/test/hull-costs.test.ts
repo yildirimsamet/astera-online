@@ -168,6 +168,24 @@ describe('the hull table is priced on equal-budget power', () => {
     expect(value('DART')).toBe(value('PIKE'));
     expect(value('PIKE')).toBeLessThan(value('RAMPART'));
   });
+
+  /**
+   * THE ESCORT TRADES PART OF THE FORTRESS HULL FOR SPEED. D206, owner instruction:
+   * *"Evet escort hızlanmalı"*. Both are Bulwark class, and the profile read the
+   * trip off the CLASS alone, so every Escort flew exactly as slowly as the Fortress
+   * of its tier while being the smaller hull — the trade the roster was authored
+   * around had no speed half. The hold tilts the other way with the same trip.
+   */
+  it('flies every Escort faster than its tier\'s Fortress and below its Raider', () => {
+    const at = (profile: string, tier: number) =>
+      MOBILE_HULLS.map((id) => HULLS[id]).find((h) => h.profile === profile && h.tier === tier)!;
+    for (const tier of [1, 2, 3, 4]) {
+      const escort = at('ESCORT', tier), fortress = at('FORTRESS', tier), raider = at('RAIDER', tier);
+      expect(escort.speed, escort.id).toBeGreaterThan(fortress.speed);
+      expect(escort.speed, escort.id).toBeLessThan(raider.speed);
+      expect(escort.cargo, escort.id).toBeLessThan(fortress.cargo);
+    }
+  });
 });
 
 /**

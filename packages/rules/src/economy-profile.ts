@@ -288,6 +288,15 @@ const SUPPORT_HOLD = [1000, 3400, 9500, 26000] as const;
 /** The trip both of the above are neutral at. `FUEL.pivotRoundTrip` is the same figure. */
 const PIVOT_ROUND_TRIP = 20;
 
+/**
+ * THE ESCORT'S TRIP. D207, owner instruction: *"Evet escort hızlanmalı"*, then
+ * *"Biraz daha hızlandırsak yanlış mı olur?"*. Between the Raider's 15 and the
+ * Fortress's 25, and quicker than the Striker's 20 — the Bulwark that is the smaller
+ * hull buys its size back in speed. It never reaches the Raider's figure: speed is
+ * that line's identity. The same trip tilts the hold down and the fuel up.
+ */
+const ESCORT_ROUND_TRIP = 18;
+
 export function profileHull(live: Hull): ProfileHull {
   const id = live.id, tier = live.tier ?? 1;
   const steps = [1, 2.5, 6, 15], base = [300, 750, 1800, 4500];
@@ -299,7 +308,10 @@ export function profileHull(live: Hull): ProfileHull {
   const role = live.cls === 'SKIRMISHER' ? 1 : live.cls === 'LANCE' ? 1.04 : fortress ? 0.9 : 0.96;
   const sharp = 1 + (role - 1) * ROLE_SPREAD[tier - 1]!;
   const power = 40 * steps[tier - 1]! * 1.1 ** ((tier - 1) / 2) * (tier === 2 ? 1.015 : 1) * premium;
-  const roundTrip = live.cls === 'SKIRMISHER' ? 15 : live.cls === 'LANCE' ? 20 : 25;
+  // The trip reads the PROFILE where a class holds two: an Escort trades part of the
+  // Fortress hull for speed, which a class-only trip flew at the Fortress's pace (D207).
+  const roundTrip = live.cls === 'SKIRMISHER' ? 15 : live.cls === 'LANCE' ? 20
+    : live.profile === 'ESCORT' ? ESCORT_ROUND_TRIP : 25;
   const common = { ...live, alloy: Math.ceil(base[tier - 1]! * premium), crystal: Math.ceil(c[tier - 1]! * premium),
     deuterium: Math.ceil(d[tier - 1]! * premium), atk: Math.round(power * 0.52 * sharp), hp: Math.round(power / 0.52 / sharp),
     speed: profileFlightSpeed(roundTrip),

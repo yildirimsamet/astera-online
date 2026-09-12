@@ -8,6 +8,7 @@ import { academyFetch } from '../src/onboarding/academyFetch.js';
 import { openAcademy, beginAcademyOrder, beginAcademyFlight, advanceAcademy, type AcademyWorld } from '../src/onboarding/academyWorld.js';
 import { ACADEMY_STEPS } from '@astera/rules';
 import { saveAcademy } from '../src/onboarding/academyStorage.js';
+import { academyGroup } from '../src/onboarding/lessonScope.js';
 import * as analytics from '../src/lib/analytics.js';
 import type * as GateModule from '../src/onboarding/Gate.jsx';
 
@@ -17,11 +18,11 @@ function lesson(world: AcademyWorld, replay = false) {
   const write = vi.fn();
   const api = new Api({ fetch: academyFetch(() => world, write) });
   const mine = vi.spyOn(api, 'mine');
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+  const view = render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
     <ApiProvider api={api}><AcademyScreen world={world} write={write} api={api} replay={replay}
       onClaim={vi.fn()} onSignIn={vi.fn()} onLeave={vi.fn()} /></ApiProvider>
   </QueryClientProvider>);
-  return { mine, write };
+  return { mine, write, view };
 }
 
 vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ panel, planetGroup, frameTelescope, openingHome, onPanel, onFocused, coachTap, coachFocus }: {
@@ -94,6 +95,17 @@ describe('Academy ownership and progression', () => {
     expect(styles).toContain('[data-academy] [data-disc-controls]{display:none}');
     expect(styles).toContain('[data-academy] [data-sensor-toggles]{display:none}');
   });
+  it('keeps sensor toggles hidden until the reordered Telescope exercise', () => {
+    const at = (id: string) => openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === id));
+    const hidden = lesson(at('uplink'));
+    const before = Array.from(document.querySelectorAll('style')).map((node) => node.textContent).join('');
+    expect(before).toContain('[data-academy] [data-sensor-toggles]{display:none}');
+
+    hidden.view.unmount();
+    lesson(at('telescope'));
+    const during = Array.from(document.querySelectorAll('style')).map((node) => node.textContent).join('');
+    expect(during).not.toContain('[data-academy] [data-sensor-toggles]{display:none}');
+  });
   it('blocks detail-sheet presses in an introduction but not Continue', () => {
     const world = openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'deuterium'));
     const { write } = lesson(world);
@@ -108,9 +120,8 @@ describe('Academy ownership and progression', () => {
    *
    * A radius on its own is a fact, not a reason. One second after the sphere opens
    * a world appears inside it, and only then does the beat mean what it is trying
-   * to say — *this is what sight is for.* The advance moved out to leave that
-   * demonstration on screen for more than a blink; at the old four seconds the
-   * player had three, most of which is the sphere still growing.
+   * to say — *this is what sight is for.* The visible result stays for one second
+   * before the lesson continues.
    */
   it('opens the sphere, puts a world in it a second later, then advances once', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -127,7 +138,7 @@ describe('Academy ownership and progression', () => {
     expect(write).toHaveBeenCalledOnce();
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ sightDemo: true, step: world.step }));
 
-    act(() => { vi.advanceTimersByTime(4999); });
+    act(() => { vi.advanceTimersByTime(999); });
     expect(write).toHaveBeenCalledOnce();
     act(() => { vi.advanceTimersByTime(1); });
     expect(write).toHaveBeenCalledTimes(2);
@@ -160,6 +171,14 @@ describe('Academy ownership and progression', () => {
     expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name }));
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ step: world.step + 1 }));
+  });
+  it('keeps the Vault lesson in Production while defence hardware stays in Defend', () => {
+    expect(academyGroup('vault')).toBe('grow');
+    expect(academyGroup('vaultReward')).toBe('grow');
+    expect(academyGroup('aegis')).toBe('defend');
+
+    lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'vault')));
+    expect(screen.getByTestId('academy-galaxy')).toHaveAttribute('data-group', 'grow');
   });
   it('frames Telescope after the real toggle without offering Continue', () => {
     lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'telescope')));

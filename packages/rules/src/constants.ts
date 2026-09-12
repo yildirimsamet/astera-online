@@ -1702,6 +1702,12 @@ export const RESEARCH_TECH = {
   propulsionMaxLevel: 4,
 } as const;
 
+/** Temporary release switch: keep the authored strategic system intact while
+ * its two crafting doors and direct research permissions are unavailable. */
+export const FEATURE_FLAGS: Readonly<Record<'STRATEGIC_CRAFTING_ENABLED', boolean>> = {
+  STRATEGIC_CRAFTING_ENABLED: false,
+};
+
 /**
  * THE WEAPON THAT ANSWERS THE WEAPON. T10.
  *

@@ -6,6 +6,7 @@ import {
   INSTRUMENT_IDS,
   RESEARCH_PROJECT_IDS,
   SATELLITE_IDS,
+  FEATURE_FLAGS,
   type HullId,
 } from '@astera/rules';
 import { and, asc, eq } from 'drizzle-orm';
@@ -278,6 +279,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/planets/:planetId/death-star/build', { preHandler: requireAuth }, async (req) => {
+    if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED) {
+      throw new GameError('STRATEGIC_UNAVAILABLE', 'No such crafting route', 404);
+    }
     z.object({}).strict().parse(req.body ?? {});
     const owner = await explicitPlanet(req.accountId!, req.params);
     return buildDeathStar(app.db, owner.planetId, app.clock, owner.playerId);
@@ -292,6 +296,9 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
    * answer — one charge is one row, and reloading is another build.
    */
   app.post('/api/planets/:planetId/interceptor/build', { preHandler: requireAuth }, async (req) => {
+    if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED) {
+      throw new GameError('STRATEGIC_UNAVAILABLE', 'No such crafting route', 404);
+    }
     z.object({}).strict().parse(req.body ?? {});
     const owner = await explicitPlanet(req.accountId!, req.params);
     return buildInterceptor(app.db, owner.planetId, app.clock, owner.playerId);

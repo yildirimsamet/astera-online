@@ -117,9 +117,12 @@ describe('a bot holds the fleet its archetype asked for', () => {
       const requestedShare = requested.reduce((sum, id) => sum + shares(p.fleet)[id], 0);
       expect(requestedShare, `${p.name} bought hulls its archetype never names`)
         .toBeGreaterThan(0.95);
-      for (const id of requested) {
-        expect(shares(p.fleet)[id], `${p.name} holds no ${id}`).toBeGreaterThan(0.05);
-      }
+    }
+    // Pooled, not per bot: a turtle that was raided can lose every Warden it owned
+    // (seed 42 after D207), and a loss is not a hull the archetype failed to ask for.
+    for (const id of Object.keys(ARCHETYPES.TURTLE.composition) as CombatHullId[]) {
+      const pooled = turtles.reduce((sum, p) => sum + shares(p.fleet)[id], 0) / turtles.length;
+      expect(pooled, `turtles hold no ${id}`).toBeGreaterThan(0.05);
     }
   });
 

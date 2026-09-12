@@ -4,6 +4,13 @@ import { PLANET_START, START_BUILDINGS } from '../src/constants.js';
 import { academyExitCheckpoint, academyLessonFleet, academyPirateHomecoming, academyPirateBattle } from '../src/academy.js';
 
 describe('the authored Academy boundary', () => {
+  it('teaches the Vault during Production before moving on to Intel and Defend', () => {
+    const at = (id: string) => ACADEMY_STEPS.findIndex((step) => step.id === id);
+    expect(at('foundry')).toBeLessThan(at('vault'));
+    expect(at('vaultReward')).toBe(at('vault') + 1);
+    expect(at('vaultReward')).toBeLessThan(at('intel'));
+    expect(at('defend')).toBeLessThan(at('aegis'));
+  });
   it('leaves paid work after any early skip without awarding unfinished lessons', () => {
     for (let step = 0; step <= ACADEMY_STEPS.length; step++) {
       const taught = academyCheckpoint(step);

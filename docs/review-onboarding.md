@@ -608,7 +608,8 @@ kadar ileri gittiğidir**:
   kalır; yeni sekme görünür olur ve oyuncu ona dokununca ders ilerler.
 - Telescope düğmesi görüş küresini açınca kamera yumuşakça uzaklaşır;
   mesafe ekran oranına göre kürenin tamamını sığdırır. Oyuncuya görmesi için
-  kısa süre tanınır, ardından sıradaki tanıtıma geçilir; Devam istenmez.
+  demo gezegenleri göründükten sonra bir saniye tanınır, ardından sıradaki
+  tanıtıma geçilir; Devam istenmez.
 - Açılışta sahne hazır olduktan sonra mevcut uzak konumdan gezegene 2 saniyede
   süzülür. Devam yerine gerçek gezegene dokunulur; el ve alttaki iki tıklama
   halkası bütün eylem adımlarında döngüsel hareket eder. İlk kart biraz yukarıda
@@ -638,10 +639,11 @@ kadar ileri gittiğidir**:
 
 **Güncel ders sırası (§5'teki eski ders tablosunun yerine geçer).** Production:
 Core, Alloy Refinery, Crystal Extractor tanıt/geliştir/ödül; Deuterium Refinery
-ve Foundry yalnız tanıt. Intel: Uplink, Telescope, Radar, Veil tanıt; Telescope
+ve Foundry yalnız tanıt; Vault tanıt/geliştir/ödül (1/3/5 zinciri). Intel:
+Uplink, Telescope, Radar, Veil tanıt; Telescope
 adımında `data-sensor-toggle="telescope"` ile görüş alanını göster. Defend:
-Vault ve Aegis tanıt/geliştir/ödül (1/3/5 zincirleri), Thorn/Bastion yalnız tanıt.
-Fleet: Shipyard tanıt/geliştir/ödül, Hangar tanıt; iki Dart üret, korsana saldır,
+Aegis tanıt/geliştir/ödül (1/3/5 zinciri), Thorn/Bastion yalnız tanıt.
+Fleet: Shipyard tanıt/geliştir/ödül; iki Dart üret, korsana saldır,
 savaş bildirimini ve raporunu göster, korsan ve üretim ödülünü al. Prospector
 üret, asteroide gönder, ödül al. Araştırma menüsünü tanıt. İki Dart daha ve bir
 Courier üret; kargonun işlevini anlat, kurgu gezegene saldır, sonucu göster,

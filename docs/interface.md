@@ -212,15 +212,19 @@ player concluded they already had everything.
 scroll. **Order is fixed because a control that reorders itself destroys muscle memory.** An
 item lives where a player would look for its outcome, never where the code stores its type:
 
-- Production: Core, Refinery, Extractor and the production Foundry.
+- Production: Core, Refinery, Extractor, the production Foundry and the Vault.
 - Intel: Uplink, Telescope, Radar and Veil.
-- Defend: Vault, Aegis and both ground batteries.
+- Defend: Aegis and both ground batteries.
 - Fleet: Shipyard, Derrick, Beacon, research and every mobile hull.
 
 The four satellites therefore no longer sit together. Their shared constraint does: an orbit
 rack remains visible above the category content, names every occupied socket and states that any
 satellite consumes one of the same scarce slots. This preserves the identity choice without
 making a player learn that an Aegis shield is somehow an orbital concern.
+
+**Temporary strategic hiding (D206).** The Death Star forge, anti-strategic battery,
+Death Star Protocol and Interception Grid remain mounted/authored but use `display: none` while
+`FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED` is false. This is a release switch, not a deletion of their rules.
 
 **Nothing on the bar gives advice.** A pip used to mark whichever problem the situation engine
 ranked highest, and it was removed by owner decision (D56a): the tabs say what they ARE and the

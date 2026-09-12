@@ -95,9 +95,12 @@ describe('what a hull carries and drinks', () => {
   });
 
   /** Fuel must stop punishing the tier it is supposed to reward. */
-  it('never gets less fuel-efficient as the tier rises, within a class', () => {
-    for (const cls of ['SKIRMISHER', 'LANCE', 'BULWARK'] as const) {
-      const line = combat.filter((id) => HULLS[id].cls === cls)
+  // A LINE is one class AND one profile: since D207 an Escort flies a quicker trip than
+  // the Fortress of its tier, so Rampart -> Warden is a speed choice, not a tier step.
+  it('never gets less fuel-efficient as the tier rises, within a line', () => {
+    const lines = new Set(combat.map((id) => `${HULLS[id].cls}/${HULLS[id].profile}`));
+    for (const cls of lines) {
+      const line = combat.filter((id) => `${HULLS[id].cls}/${HULLS[id].profile}` === cls)
         .sort((a, b) => tierOf(a) - tierOf(b));
       for (let i = 1; i < line.length; i++) {
         const before = Math.sqrt(HULLS[line[i - 1]!].atk * HULLS[line[i - 1]!].hp) / hullFuelMass(line[i - 1]!);

@@ -211,7 +211,7 @@ role.
 | **Dart / Viper / Tempest** | 1 / 2 / 3 | Skirmisher | The fast raider line; 1.6× into Bulwark | Low hull efficiency; no tier-4 successor |
 | **Pike / Talon / Ballista / Cataclysm** | 1 / 2 / 3 / 4 | Lance | Attack-specialist line; 1.6× into Skirmisher | Loses to Bulwark; increasing cost, build time and bulk |
 | **Rampart / Stronghold / Leviathan / Citadel** | 1 / 2 / 3 / 4 | Bulwark | Maximum hull-per-role defensive line; 1.6× into Lance | Slowest profile at each tier |
-| **Warden / Sentinel / Praetorian** | 1 / 2 / 3 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed; no tier-4 successor |
+| **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
 | **Courier / Wayfarer / Atlas** | 1 / 2 / 3 | Support | Fast/light, balanced and heavy cargo choices | Deal no damage; capacity, speed and bulk prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
 | **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |

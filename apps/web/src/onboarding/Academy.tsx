@@ -297,9 +297,9 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
    * canvas for this whole beat, so it cannot be tapped, and it is published only
    * while the beat runs.
    *
-   * SIX SECONDS, NOT FOUR. The advance had to move with this: at four the
-   * demonstration was on screen for three, most of which is the sphere still
-   * opening. The beat now has a shape — sphere, arrival, a moment to read it.
+   * ONE SECOND AFTER THE WORLDS APPEAR, move on. The camera move and reveal have
+   * already made the point; holding the finished picture for five seconds made
+   * the lesson feel stuck.
    */
   useEffect(() => {
     if (!telescope || id !== 'telescope' || claiming) return;
@@ -312,7 +312,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
         ...current, step: current.step + 1,
         checkpoint: academyCheckpoint(current.step + 1), sightDemo: false,
       });
-    }, 6000);
+    }, 2000);
     return () => { window.clearTimeout(show); window.clearTimeout(advance); };
   }, [telescope, id, claiming, write]);
   const openPanel = (next: Panel, shelf?: PanelStop, reportMissionId?: string) => {
@@ -364,12 +364,13 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
 
   const showNext = !busy && intro;
   const group = menuFrom[id] ?? academyGroup(id);
+  const telescopeStep = ACADEMY_STEPS.findIndex((lesson) => lesson.id === 'telescope');
   const exposedRows = ACADEMY_STEPS.slice(0, world.step + 1).flatMap((s) => rows[s.id] ? [rows[s.id]!] : []);
   const rowRule = exposedRows.map((r) => `:not(#row-${r})`).join('');
   return <AcademyLessonContext.Provider value={id}><div data-academy data-academy-step={id} className="relative z-10 flex h-dvh flex-col overflow-hidden">
     <style>{`
       [data-academy] [data-disc-controls]{display:none}
-      ${world.step < 12 ? '[data-academy] [data-sensor-toggles]{display:none}' : ''}
+      ${world.step < telescopeStep ? '[data-academy] [data-sensor-toggles]{display:none}' : ''}
       ${id === 'research' ? '' : `[data-academy] [id^="row-"]${rowRule}{display:none}`}
       [data-academy] [data-sheet-panel]{max-height:calc(100dvh - 160px)}
       [data-academy] [id^="planet-panel-"] ~ *{scroll-margin-top:8px}

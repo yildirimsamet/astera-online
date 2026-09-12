@@ -4,6 +4,7 @@ import {
   BUILD,
   DEUTERIUM,
   RESEARCH_PROJECTS,
+  FEATURE_FLAGS,
   type ResearchProjectId,
 } from '@astera/rules';
 import { useCompleteResearch, usePlanet } from '../api/queries.js';
@@ -502,7 +503,15 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     };
 
     return (
-      <div key={id} id={`row-${id}`} data-focused={focused === id ? 'true' : undefined}>
+      <div
+        key={id}
+        id={`row-${id}`}
+        data-focused={focused === id ? 'true' : undefined}
+        className={!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
+          && (id === 'DEATH_STAR_PROTOCOL' || id === 'INTERCEPTION_GRID')
+          ? 'hidden'
+          : undefined}
+      >
         <UpgradeRow
           art={RESEARCH_ART[id]}
           name={name}

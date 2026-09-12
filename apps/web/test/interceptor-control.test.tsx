@@ -113,6 +113,10 @@ beforeEach(async () => {
 });
 
 describe('where it lives', () => {
+  it('keeps the temporarily disabled battery display-none', () => {
+    expect(block(show(armed()))).toHaveClass('hidden');
+  });
+
   it('is on Defend, beside the shield and the guns', () => {
     expect(stateOf(show(armed()))).not.toBeNull();
   });

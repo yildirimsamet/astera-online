@@ -386,9 +386,12 @@ migration that backfills or contracts a column needs its own zero-null/assertion
 
 Then prove the **new image** can migrate the restored production shape:
 
+The `-T` plus `</dev/null` pairing is deliberate for remote heredoc deployments; step 8b explains
+the failure mode.
+
 ```bash
-POSTGRES_DB="$restore_db" "${compose[@]}" run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+POSTGRES_DB="$restore_db" "${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
 
 docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera -d "$restore_db" -c \
   'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
@@ -560,8 +563,39 @@ Skip step 8 entirely. Continue at step 9.
 
 ### 8. Quiesced path — when step 6 forced a stop
 
-The step 6 snapshot is your before-picture. Stop Nginx first so no new mutation can enter, then
-stop every application role gracefully. PostgreSQL and Valkey stay up.
+The step 6 snapshot is your before-picture. The default path stops Nginx first so no new mutation
+can enter, then stops every application role gracefully. PostgreSQL and Valkey stay up.
+
+If the owner requires a maintenance page instead of a refused connection, atomically replace the
+static webroot with a prebuilt maintenance directory on the same filesystem and leave Nginx up.
+Prove the page through the TLS vhost **before** stopping the applications:
+
+```bash
+test -f "$maintenance_source/index.html"
+maintenance_stamp="$(date -u +%Y%m%d-%H%M%S)"
+live_webroot="/var/www/astera-live-before-maintenance-$maintenance_stamp"
+maintenance_used="/var/www/astera-maintenance-used-$maintenance_stamp"
+
+sudo cp -a "$maintenance_source" "/var/www/astera-maintenance-stage-$maintenance_stamp"
+sudo mv /var/www/astera "$live_webroot"
+sudo mv "/var/www/astera-maintenance-stage-$maintenance_stamp" /var/www/astera
+
+curl -kfsS --resolve asteraonline.space:443:127.0.0.1 \
+  https://asteraonline.space/ | rg -F 'Kısa bir güncelleme'
+```
+
+Do not test that page with only `curl -H 'Host: asteraonline.space' http://127.0.0.1/`: the HTTP
+vhost returns a 301 before Nginx reads `index.html`, so a text assertion fails even when the swap
+is correct. `--resolve` exercises the actual HTTPS server block without depending on public DNS.
+The static page covers navigation at `/`; `/api` continues to use its upstream and will return 502
+while every API replica is stopped unless the maintenance vhost explicitly intercepts that path.
+
+Install an EXIT trap that moves `$live_webroot` back and starts the stopped application roles on
+any abort. On success, restore the project webroot only after all four health checks pass, then
+archive the used maintenance directory as `$maintenance_used`. A maintenance page is presentation,
+not quiescence: all three APIs and the worker must still be stopped and verified below. When using
+this variant, skip the Nginx stop/listener block and begin at `"${compose[@]}" stop`; Nginx must
+remain up to serve the page.
 
 ```bash
 sudo systemctl stop nginx
@@ -602,13 +636,19 @@ For a schema-changing release, restore this exact final dump to the disposable d
 the migration rehearsal once more. The database is small; the extra downtime is cheaper than
 discovering that the only rollback artifact differs from the one tested before quiescence.
 
+When this sequence is sent to `ssh host 'bash -s'` as a heredoc, every one-off Compose container
+must have stdin redirected from `/dev/null`. `docker compose run -T` disables pseudo-TTY
+allocation; it does **not** detach stdin. Without the redirect the child container can consume the
+rest of the remote script, silently skipping health/web acceptance and falling into an EXIT trap.
+Use both `-T` and `</dev/null` as shown here.
+
 ```bash
 final_restore_db="astera_final_restore_${release_sha:0:10}"
 docker exec astera-postgres-prod createdb -U astera "$final_restore_db"
 gunzip -c "$final_backup" | docker exec -i astera-postgres-prod \
   psql -v ON_ERROR_STOP=1 -U astera -d "$final_restore_db"
-POSTGRES_DB="$final_restore_db" "${compose[@]}" run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+POSTGRES_DB="$final_restore_db" "${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
 docker exec astera-postgres-prod psql -v ON_ERROR_STOP=1 -U astera \
   -d "$final_restore_db" -c \
   'select count(*) as applied_migrations from drizzle.__drizzle_migrations;'
@@ -618,8 +658,8 @@ docker exec astera-postgres-prod dropdb -U astera --force "$final_restore_db"
 Apply migrations to production only after that succeeds:
 
 ```bash
-"${compose[@]}" run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
+"${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
 ```
 
 Run the release-specific post-migration assertions now. A migration command returning zero proves
@@ -978,6 +1018,43 @@ the old world; no failed/processing lifecycle events; one pending end, one pendi
 the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity
 and season results survive; disposable player/world rows do not.
 
+### Owner-authorized emergency wipe
+
+This is not the normal lifecycle above. Use it only when the owner explicitly accepts that every
+remaining seasonal job and disposable world row will be destroyed. Record the last deployed SHA,
+take the ordinary rehearsed release backup first, and keep the previous image/webroot. Once a new
+season accepts writes, restoring the pre-wipe dump loses those writes and is a disaster-recovery
+decision rather than an ordinary rollback.
+
+The wipe must run on a **fully quiesced application**, even though `wipeAllServers` itself uses one
+transaction and an advisory lock. Stopping only the worker is insufficient: a live API can insert
+a mission, request/audit row, watch or other planet child after that table was cleared and before
+`planets` is deleted. The resulting foreign-key race presents only as `Failed query: delete from
+"planets"`; the transaction rolls back, but the reset does not happen.
+
+1. Publish and prove the maintenance page using the HTTPS check in step 8.
+2. Stop `api1`, `api2`, `api3` **and** `worker`; verify no matching container is running.
+3. Take and checksum a new backup now that no writer exists. This is the wipe boundary.
+4. Run the exact release image with stdin detached:
+
+   ```bash
+   "${compose[@]}" run -T --rm --no-deps api1 \
+     apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts wipe --yes </dev/null
+   ```
+
+5. Require the command to report the expected old-season/player counts and exactly `EU-1, EU-2`
+   opened. Before reopening traffic, prove two live seasons, no frozen seasons, the intended
+   ruleset, one pending end/rollover per successor, valid event windows and no failed/processing
+   queue rows.
+6. Start the worker, require healthy queue/zero unknown events, then start and prove all three APIs.
+   Restore the project webroot only after those checks pass.
+
+If the same planet deletion error persists with all four application containers stopped, do not
+disable the constraint or delete tables by hand. Inspect every foreign key whose parent is
+`planets` in `pg_constraint` and compare its child table with the explicit child-before-parent list
+in `wipeAllServers`; a newly added seasonal table is missing from that list and needs a tested code
+fix. Re-running against live writers does not diagnose that distinction.
+
 ### Fleet Catalog V2 season-boundary cutover (ruleset v4)
 
 Fleet V2 is an offline catalog boundary, not a rolling-compatible application deploy. Ruleset-v3
@@ -1022,6 +1099,18 @@ season. A complete 30-day TRT-aligned season must contain 120 Asteroid Shower, 1
 60 Intergalactic Convoy occurrences, with two lifecycle jobs per row. Do not backfill a ruleset-7
 live season. Rollback with active convoy runs is drain-first: close new launches, keep an
 arrival/return-capable worker until every run is `done`, and leave the additive enum/table in place.
+
+`season wipe --yes` opens successors at `clock.now()` and currently has no `--starts-at` option.
+An owner-requested immediate wipe at an arbitrary TRT minute is therefore still an exact 30-day
+season, but it is not a TRT-day-aligned season: the planner deliberately omits a fixed event window
+unless the whole half-open window fits inside the season. For example, a start late in the 21:00
+Trade Ship window yields 119 complete Trade Ship occurrences while Asteroid Shower and Convoy may
+still yield 120 and 60. That means the lane is scheduled, not disabled. If 120/120/60 is a hard
+acceptance requirement, arrange the transition at 00:00 TRT; do not invent an off-schedule row,
+extend `ends_at`, or move season timestamps after players have joined merely to make the count
+green. Always print each kind's count plus its first start and last end so the distinction is
+visible.
+
 During the canary, read the `/metrics` response at
 `runtime.routes["POST /api/intergalactic-convoy/launch"]` for status distribution,
 `runtime.refusals["POST /api/intergalactic-convoy/launch"]` for stable refusal codes, and
@@ -1170,10 +1259,10 @@ export ASTERA_GIT_COMMIT="$(git rev-parse HEAD)"
 compose=(docker compose -f docker-compose.prod.yml)
 "${compose[@]}" up -d postgres valkey
 "${compose[@]}" build api1
-"${compose[@]}" run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
-"${compose[@]}" run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts bootstrap
+"${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate </dev/null
+"${compose[@]}" run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts bootstrap </dev/null
 "${compose[@]}" up -d worker api1 api2 api3
 ```
 
@@ -1204,8 +1293,8 @@ Health, logs and season status:
 cd ~/astera
 for port in 3200 3201 3202 3210; do curl -fsS "localhost:$port/health" | jq; done
 docker compose -f docker-compose.prod.yml logs -f api1 api2 api3 worker
-docker compose -f docker-compose.prod.yml run --rm --no-deps api1 \
-  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts status
+docker compose -f docker-compose.prod.yml run -T --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts status </dev/null
 ```
 
 Nightly backup, retaining the last fourteen dumps:
