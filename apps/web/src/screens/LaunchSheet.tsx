@@ -127,9 +127,24 @@ export function LaunchSheet({
   /**
    * THE COMMANDER'S OWN FIRST-DAY SHIELD, IF THEY STILL HAVE ONE. D183.
    *
-   * A raid at a WORLD spends it; a pirate is not a commander and costs nothing
-   * (`assertNewcomerShields` takes a `defenderPlayerId` and a pirate has none), so
-   * the price is only ever quoted on the lane that actually charges it.
+   * A raid at another COMMANDER's world spends it; a pirate is not a commander and
+   * costs nothing (`assertNewcomerShields` takes a `defenderPlayerId` and a pirate
+   * has none), so the price is only ever quoted on the lane that actually charges
+   * it.
+   *
+   * AND A CARETAKER WORLD IS NOT A COMMANDER EITHER. `target.kind === 'world'` is
+   * this file's "the target is a planet" discriminator and says nothing about
+   * WHOSE planet — so on its own it quoted the shield against every neutral raid,
+   * a cost the server never charges. `mission.ts` decides on exactly the value
+   * read here (`defenderPlayerId: target.kind === 'NEUTRAL' ? null : …`), so the
+   * two sides now answer from the same discriminator instead of from two
+   * different ideas of what a target is.
+   *
+   * AN UNSURVEYED WORLD STILL PAYS, and that asymmetry is deliberate. `kind` is
+   * optional on the public payload, and the safe direction is to WARN: the server
+   * refuses an unacknowledged launch outright (`SHIELD_WOULD_DROP`), so a missing
+   * warning costs a refusal, while a missing acknowledgement on a real commander's
+   * world would be a shield spent on a press that never mentioned it.
    *
    * Read off the season payload rather than the planet's, because the shield
    * belongs to the commander and not to the world the fleet is leaving — the same
@@ -138,6 +153,7 @@ export function LaunchSheet({
   const season = useSeason();
   const shieldUntil = season.data?.shieldUntil ?? null;
   const spendsShield = target.kind === 'world'
+    && target.world.kind !== 'NEUTRAL'
     && shieldUntil !== null
     && shieldUntil.getTime() > serverNow();
 

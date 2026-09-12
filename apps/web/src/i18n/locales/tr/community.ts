@@ -66,7 +66,8 @@ export const community = {
     copied: 'Kopyalandı',
     copyLabel: '{{label}} adresini kopyala',
     copiedLabel: '{{label}} adresi kopyalandı',
-    cardHeading: 'İyzico',
-    cardNote: 'Fiyatlar ve ödeme bağlantısı şu an geçici, henüz kesinleşmedi.',
+    cardHeading: 'Shopier',
+    cardLabel: '{{amount}} ₺ ile destek ol',
+    cardNote: 'Ödeme bağlantıları hazırlanıyor; kartlar çok yakında açılacak.',
   },
 } as const;

@@ -29,6 +29,7 @@ import {
   SpeakerOffIcon,
   SpeakerOnIcon,
   GuideIcon,
+  // HeartIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { GUIDE_URL } from './guide.js';
@@ -243,11 +244,12 @@ export function MenuPanel({
         />
         {onReplayAcademy && <MenuRow icon={<GuideIcon className="size-5" />} label={t('academy.replay')}
           hint={t('academy.replayHint')} onClick={onReplayAcademy} />}
-        {/* TODO: for now its closed */}
+         {/* TODO: for now its closed. Ödeme linkleri eklenince açılacak. */}
         {/* <MenuRow
           icon={<HeartIcon className="size-5" />}
           label={t('community.donate.menuLabel')}
           hint={t('community.donate.menuHint')}
+          attention
           onClick={() => {
             onOpen('donate');
           }}

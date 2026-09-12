@@ -145,9 +145,19 @@ describe('multi-world strategic simulation', () => {
     // This case starts after the ordinary Construction queue has completed the
     // protocol; build-queue.test.ts owns the research timing itself.
     world.deathStarProtocol.add(attacker.id);
-    attacker.alloy = 100_000;
-    attacker.crystal = 100_000;
-    attacker.deuterium = 100_000;
+    /*
+      FUNDED OFF THE PRICE RATHER THAN OFF A LITERAL. D203 tripled `DEATH_STAR.cost`
+      and this purse stayed at its old figure, so the attacker could no longer
+      afford the weapon and the case silently stopped testing outages at all — the
+      first assertion read `undefined` instead of `BUILDING`. Reading the cost means
+      the next retune cannot do the same thing.
+    */
+    const fund = (): void => {
+      attacker.alloy = DEATH_STAR.cost.alloy * 2;
+      attacker.crystal = DEATH_STAR.cost.crystal * 2;
+      attacker.deuterium = DEATH_STAR.cost.deuterium * 2;
+    };
+    fund();
     const war = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes;
 
     tryDeathStar(attacker, war, world);
@@ -161,9 +171,7 @@ describe('multi-world strategic simulation', () => {
     expect(target.recoveryUntil).toBeGreaterThan(first.arriveAt);
     expect(world.strategic.deathStar.firstHits).toBe(1);
 
-    attacker.alloy = 100_000;
-    attacker.crystal = 100_000;
-    attacker.deuterium = 100_000;
+    fund();
     tryDeathStar(attacker, first.arriveAt + 1, world);
     expect(world.deathStars.get(attacker.id)?.status).toBe('BUILDING');
     const secondReady = first.arriveAt + 1 + DEATH_STAR.buildMinutes;

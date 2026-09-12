@@ -411,7 +411,7 @@ export function NewcomerShield() {
       data-newcomer-shield
       title={t('statusBar.newcomerShield.hint', { duration: remaining })}
       aria-label={t('statusBar.newcomerShield.hint', { duration: remaining })}
-      className="flex flex-col shrink-0 items-center gap-1 rounded-chip border border-opportunity/35 bg-opportunity/10 px-2 py-1 text-opportunity"
+      className="flex flex-col shrink-0 items-center gap-1 rounded-chip border border-opportunity/35 bg-opportunity/10 px-1 py-1 text-opportunity"
     >
       <ShieldIcon className="size-3 shrink-0" />
       <span className="num whitespace-nowrap text-micro leading-none text-bone text-micro">{remaining}</span>

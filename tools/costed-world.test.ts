@@ -66,7 +66,7 @@ it('prices each building rung once and enforces Core and synthesis gates', () =>
   expect(quoteWorldOrder(w, { building: 'REFINERY', level: 1 }, 0)).toBeNull();
   const core = quoteWorldOrder(w, { building: 'CORE', level: 1 }, 0)!;
   expect(core.cost).toEqual(buildingCost('CORE', 0));
-  expect(core.minutes).toBe(buildMinutes(core.cost, 0));
+  expect(core.minutes).toBe(buildMinutes(core.cost, 0, {}));
   completeWorldOrder(w, { building: 'CORE', level: 1 });
   expect(quoteWorldOrder(w, { building: 'REFINERY', level: 1 }, 0)).not.toBeNull();
   expect(quoteWorldOrder(w, { building: 'DEUTERIUM_PLANT', level: 1 }, 0)).toBeNull();

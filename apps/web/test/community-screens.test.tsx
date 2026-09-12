@@ -9,7 +9,7 @@ import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import AdminPanel from '../src/screens/AdminPanel.js';
 import { AnnouncementsScreen } from '../src/screens/AnnouncementsScreen.js';
-import { DonateScreen } from '../src/screens/DonateScreen.js';
+import { DonateScreen, SUPPORT_CARDS } from '../src/screens/DonateScreen.js';
 import { FeedbackScreen } from '../src/screens/FeedbackScreen.js';
 
 const publishedAt = new Date('2026-08-30T12:00:00.000Z');
@@ -131,11 +131,48 @@ describe('community surfaces', () => {
     expect(await screen.findByRole('button', { name: 'USDT · TRC-20 address copied' }))
       .toBeInTheDocument();
 
-    // The İyzico link does not exist yet, so every amount is a stated intention
+    // The Shopier links do not exist yet, so every card is a stated intention
     // rather than a control that silently does nothing when pressed.
-    for (const amount of ['$1', '$5', '$10', '$20']) {
-      expect(screen.getByRole('button', { name: amount })).toBeDisabled();
+    for (const card of SUPPORT_CARDS) {
+      // The exact label, never a loose number: /49/ also matches the 499 card.
+      const label = i18n.t('community.donate.cardLabel', { amount: card.amount });
+      expect(screen.getByRole('button', { name: label })).toBeDisabled();
     }
+  });
+
+  /**
+   * THE CARD ART IS THE BUTTON. Owner instruction, with `49-tl-destek.png` and its
+   * three siblings handed over as the controls themselves.
+   *
+   * Each card already draws its own amount and its own "DESTEK OL", so nothing
+   * writes either of them a second time — the house rule is that a fact which is
+   * DRAWN is not also written. What the markup still owes is the accessible name,
+   * because the amount only exists as pixels.
+   */
+  it('draws all four support cards as the controls themselves', () => {
+    render(<DonateScreen />);
+
+    expect(SUPPORT_CARDS).toHaveLength(4);
+    for (const card of SUPPORT_CARDS) {
+      const art = screen.getByAltText(i18n.t('community.donate.cardLabel', { amount: card.amount }));
+      expect(art).toHaveAttribute('src', card.art);
+    }
+  });
+
+  /**
+   * A CARD WITH NOWHERE TO GO IS NOT PRESSABLE. The screen's own docblock: a
+   * live-looking button that does nothing when pressed is worse than one that
+   * says it is not ready. `href` is the single switch — fill it in and the card
+   * becomes a real link with no other edit.
+   */
+  it('turns a card into a real link the moment its address is filled in', () => {
+    render(<DonateScreen cards={[{ amount: 99, art: '/art/99.png', href: 'https://pay.example/99' }]} />);
+
+    const link = screen.getByRole('link', {
+      name: i18n.t('community.donate.cardLabel', { amount: 99 }),
+    });
+    expect(link).toHaveAttribute('href', 'https://pay.example/99');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
   });
 
   /**

@@ -157,7 +157,7 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // The same shape, naming which of the caller's own worlds was scanned.
   'intel.radar.onWorld',
   'notifications.unlock',
-  // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "İyzico"
+  // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "Shopier"
   // are the same proper nouns in every language.
   'community.donate.cryptoTrc20',
   'community.donate.cryptoSolana',

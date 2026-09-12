@@ -83,7 +83,8 @@ export const community = {
     */
     copyLabel: 'Copy {{label}} address',
     copiedLabel: '{{label}} address copied',
-    cardHeading: 'İyzico',
-    cardNote: 'Prices and the payment link are temporary and not final yet.',
+    cardHeading: 'Shopier',
+    cardLabel: 'Support with {{amount}} TL',
+    cardNote: 'The payment links are being set up; the cards open shortly.',
   },
 } as const;

@@ -54,7 +54,23 @@ const mine = planetView(
   { deuterium: 50_000 },
 );
 
-function show(shieldUntil: Date | null) {
+/**
+ * A CARETAKER WORLD, PUBLISHED THE WAY THE GALAXY PUBLISHES ONE.
+ *
+ * `kind: 'NEUTRAL'` is the same discriminator the server decides on — see
+ * `mission.ts`, which passes `defenderPlayerId: null` for exactly this value.
+ */
+const neutral: GalaxyPlanet = {
+  ...target,
+  id: 'caretaker-3',
+  name: 'Hollow-3',
+  owner: '',
+  kind: 'NEUTRAL',
+  isCapital: false,
+  controller: { kind: 'NEUTRAL', tier: 1 },
+};
+
+function show(shieldUntil: Date | null, world: GalaxyPlanet = target) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   const launch = vi.spyOn(api, 'launch').mockResolvedValue({
     missionId: 'm1',
@@ -75,7 +91,7 @@ function show(shieldUntil: Date | null) {
   render(
     <Wrapper>
       <LaunchSheet
-        target={{ kind: 'world', world: target }}
+        target={{ kind: 'world', world }}
         planet={mine}
         onClose={vi.fn()}
         onLaunched={vi.fn()}
@@ -121,6 +137,30 @@ describe('the first-day shield on the launch sheet', () => {
     await waitFor(() => { expect(launch).toHaveBeenCalled(); });
     // The flag rides the launch that was confirmed, never a launch that was not.
     expect(launch.mock.calls[0]).toContain(true);
+  });
+
+  /**
+   * A NEUTRAL WORLD COSTS NOTHING, SO IT IS NOT QUOTED A PRICE. D183.
+   *
+   * `assertNewcomerShields` passes `defenderPlayerId: null` for a caretaker world
+   * and returns before spending anything — there is no commander to protect and
+   * none to charge. The sheet read `target.kind === 'world'`, which is the client's
+   * "this is a planet" discriminator and says nothing about WHOSE planet, so it
+   * quoted the shield against every neutral raid: a cost the server never charges,
+   * shown on the one surface whose whole job is to state what a press costs.
+   */
+  it('says nothing about the shield when the target is a caretaker world', async () => {
+    show(new Date(Date.now() + 6 * 3_600_000), neutral);
+    await commit();
+    expect(screen.queryByText(/first-day shield/i)).toBeNull();
+  });
+
+  it('sends no acknowledgement for a neutral world, because none is spent', async () => {
+    const { launch } = show(new Date(Date.now() + 6 * 3_600_000), neutral);
+    const user = await commit();
+    await user.click(screen.getByRole('button', { name: /launch|commit|confirm/i }));
+    await waitFor(() => { expect(launch).toHaveBeenCalled(); });
+    expect(launch.mock.calls[0]).not.toContain(true);
   });
 
   it('sends no acknowledgement when there is no shield to spend', async () => {

@@ -43,8 +43,16 @@ export const BANDS = {
    * makes the vault cover 100% of storage and drives this ratio toward zero;
    * `test/season.test.ts` asserts that directly, so the number below cannot be
    * loosened into meaninglessness without that test failing.
+   *
+   * 0.09 → 0.085 ON THE OWNER'S INSTRUCTION, and recorded as what it is: the band
+   * was widened to fit the reading rather than the reading moved into the band.
+   * Three of five seeds measure 0.088–0.089 after the latest economy calibration,
+   * where `CLAUDE.md` still records 0.095–0.109. Nothing about the model changed to
+   * justify this; the alarm is being quietened, so the drift it was raised over is
+   * still there and still unexplained. The vault-covers-everything test above is
+   * what keeps the new floor from being meaningless.
    */
-  VFR: [0.09, 0.65],
+  VFR: [0.085, 0.65],
   /**
    * Passive share of an active player's LADDER position — not their wealth.
    *
