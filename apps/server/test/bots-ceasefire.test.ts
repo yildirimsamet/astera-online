@@ -5,13 +5,14 @@ import type { PlanetView } from '../src/services/planetView.js';
 
 /**
  * THE SERVER'S COMMANDERS DO NOT OPEN A SEASON BY ATTACKING. D170, owner request:
- * *"Botlar server yeni başladığında en az 4 saat savaşmasın."*
+ * *"Botlar server yeni başladığında en az 4 saat savaşmasın."* Raised to twelve
+ * hours on 2026-09-13, owner instruction: *"Bu 4 saat'i 12 saat yap."*
  *
  * A galaxy's first hours are when every commander is at their weakest and least
  * defended, and twelve of them are the server's — so a bot that raids at minute
- * thirty is not competition, it is the world arriving already hostile. Four hours
- * is long enough for a person to stand a Vault, a gun and a fleet before anything
- * is at stake.
+ * thirty is not competition, it is the world arriving already hostile. Twelve
+ * hours is long enough for a person to stand a Vault, a gun and a fleet before
+ * anything is at stake.
  *
  * IT IS THE PvP LANE ONLY. A pirate is not a player: raiding one costs a bot a
  * bay and a fuel bill and takes nothing from anybody, so the lane that makes bots
@@ -31,19 +32,19 @@ const armed = {
 const HOUR = 60;
 
 describe('the opening ceasefire', () => {
-  it('opens no attack lane inside the first four hours', () => {
-    for (const age of [0, 30, 2 * HOUR, BOTS.ceasefireMinutes - 1]) {
+  it('opens no attack lane inside the first twelve hours', () => {
+    for (const age of [0, 30, 2 * HOUR, 4 * HOUR, 8 * HOUR, BOTS.ceasefireMinutes - 1]) {
       expect(openLanes(armed, age), `minute ${String(age)}`).not.toContain('attack');
     }
   });
 
   it('opens the attack lane once the window has passed', () => {
     expect(openLanes(armed, BOTS.ceasefireMinutes)).toContain('attack');
-    expect(openLanes(armed, 10 * HOUR)).toContain('attack');
+    expect(openLanes(armed, 13 * HOUR)).toContain('attack');
   });
 
-  it('is four hours', () => {
-    expect(BOTS.ceasefireMinutes).toBe(4 * 60);
+  it('is twelve hours', () => {
+    expect(BOTS.ceasefireMinutes).toBe(12 * 60);
   });
 
   /** Everything that takes nothing from a person stays open from minute one. */

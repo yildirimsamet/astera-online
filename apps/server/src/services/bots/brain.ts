@@ -371,7 +371,7 @@ export function openLanes(view: PlanetView, seasonAgeMinutes = Number.POSITIVE_I
   if (COMBAT_HULLS.some((hull) => (view.fleet[hull] ?? 0) > 0)) {
     open.push('pirate');
     /*
-      NOBODY IS ATTACKED IN THE FIRST FOUR HOURS. D170 — see `BOTS.ceasefireMinutes`
+      NOBODY IS ATTACKED IN THE FIRST TWELVE HOURS. D170 — see `BOTS.ceasefireMinutes`
       for the reasoning. The pirate lane above is deliberately outside it: a pirate
       is not a player, so a bot fighting one is alive rather than hostile.
 

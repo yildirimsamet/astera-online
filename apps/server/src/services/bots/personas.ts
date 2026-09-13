@@ -193,11 +193,12 @@ export const BOTS = {
 
   /**
    * THE OPENING CEASEFIRE. D170, owner instruction: *"Botlar server yeni
-   * başladığında en az 4 saat savaşmasın."*
+   * başladığında en az 4 saat savaşmasın."* Raised to TWELVE hours on 2026-09-13,
+   * owner instruction: *"Bu 4 saat'i 12 saat yap."*
    *
    * A galaxy's first hours are when every commander is weakest and least defended,
    * and eight of them are the server's own — so a bot raiding at minute thirty is
-   * not competition, it is a world that arrived already hostile. Four hours is
+   * not competition, it is a world that arrived already hostile. Twelve hours is
    * long enough for a person to stand a Vault, a gun and a fleet before anything
    * they own is at stake.
    *
@@ -210,7 +211,7 @@ export const BOTS = {
    * limit, the newcomer grace and the fog all still bind them exactly as they bind
    * a person, and nothing here alters what a player may do to another player.
    */
-  ceasefireMinutes: 4 * 60,
+  ceasefireMinutes: 12 * 60,
 
   /**
    * THE SHIFT ROSTER, AS A TARGET FOR EACH TÜRKIYE HOUR. Owner instruction:
