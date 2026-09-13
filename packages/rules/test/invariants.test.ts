@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
@@ -332,34 +333,44 @@ describe('the asteroid field', () => {
   const spec = generateGalaxy(7, 40);
   const rocks = spec.asteroids;
 
-  it('spawns rocks at the owner-set fifteen-percent-higher rate', () => {
-    expect(GALAXY.asteroidSpawnPerHour).toBe(10.35);
+  it('spawns rocks at the owner-set fifty-percent-higher rate', () => {
+    expect(GALAXY.asteroidSpawnPerHour).toBe(15.525);
   });
 
-  it('adds the higher rate as a new lane without squeezing established spawn times', () => {
+  it('adds the higher rate after both established lanes without moving a live rock', () => {
     const span = SEASON.days * 24 * 60;
     const baseCount = Math.round((9 * span) / 60);
+    const establishedCount = Math.round((10.35 * span) / 60);
     const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
     const baseInterval = span / baseCount;
-    const extraInterval = span / (totalCount - baseCount);
+    const establishedExtraInterval = span / (establishedCount - baseCount);
+    const increaseInterval = span / (totalCount - establishedCount);
 
     expect(rocks).toHaveLength(totalCount);
+    expect(createHash('sha256').update(JSON.stringify(rocks.slice(0, establishedCount))).digest('hex'))
+      .toBe('48650c97f36902dc4ad5284974facc6b8a017c6aeab56597d3e05734933cbcbc');
     for (const index of [0, 1, Math.floor(baseCount / 2), baseCount - 1]) {
       expect(rocks[index]?.appearsAt).toBeGreaterThanOrEqual(index * baseInterval);
       expect(rocks[index]?.appearsAt).toBeLessThan((index + 1) * baseInterval);
     }
-    for (const laneIndex of [0, 1, totalCount - baseCount - 1]) {
+    for (const laneIndex of [0, 1, establishedCount - baseCount - 1]) {
       const rock = rocks[baseCount + laneIndex];
       expect(rock?.index).toBe(baseCount + laneIndex);
-      expect(rock?.appearsAt).toBeGreaterThanOrEqual(laneIndex * extraInterval);
-      expect(rock?.appearsAt).toBeLessThan((laneIndex + 1) * extraInterval);
+      expect(rock?.appearsAt).toBeGreaterThanOrEqual(laneIndex * establishedExtraInterval);
+      expect(rock?.appearsAt).toBeLessThan((laneIndex + 1) * establishedExtraInterval);
+    }
+    for (const laneIndex of [0, 1, totalCount - establishedCount - 1]) {
+      const rock = rocks[establishedCount + laneIndex];
+      expect(rock?.index).toBe(establishedCount + laneIndex);
+      expect(rock?.appearsAt).toBeGreaterThanOrEqual(laneIndex * increaseInterval);
+      expect(rock?.appearsAt).toBeLessThan((laneIndex + 1) * increaseInterval);
     }
   });
 
   /**
    * HOW BUSY THE SKY IS, AND NOTHING WAS HOLDING IT.
    *
-   * `asteroidSpawnPerHour` was raised 15% by owner decision and the suite would not
+   * `asteroidSpawnPerHour` was raised 50% by owner decision and the suite would not
    * have noticed either the change or a revert of it: every other test here is a
    * property of an individual rock, and none of them counts the field.
    *

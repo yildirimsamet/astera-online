@@ -486,13 +486,15 @@ describe('persisted galaxy events', () => {
       .toEqual(privateAsteroidFieldWithEvents(season.asteroidKey, showersOnly));
   });
 
-  it('composes bonus lanes while preserving every baseline asteroid', async () => {
+  it('composes bonus lanes while preserving every pre-increase asteroid', async () => {
     const { db, season } = await world();
     const baseline = privateAsteroidField(season.asteroidKey);
     const snapshot = await loadMiningSnapshot(db, season.id, START);
+    const establishedCount = Math.round(10.35 * SEASON.days * 24);
 
     expect(snapshot.asteroids.length).toBeGreaterThan(baseline.length);
-    expect(snapshot.asteroids.slice(0, baseline.length)).toEqual(baseline);
+    expect(snapshot.asteroids.slice(0, establishedCount))
+      .toEqual(baseline.slice(0, establishedCount));
   });
 
   it('repairs a missing lifecycle row without duplicating the rest', async () => {

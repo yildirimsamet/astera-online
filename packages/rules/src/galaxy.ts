@@ -189,8 +189,12 @@ function rollLevel(roll: number): number {
  */
 /** The established lane stays fixed so a density increase never moves a live rock. */
 const ASTEROID_BASE_SPAWN_PER_HOUR = 9;
+/** The complete standing field before the 2026-09-13 owner-set 50% increase. */
+const ASTEROID_ESTABLISHED_SPAWN_PER_HOUR = 10.35;
 /** Independent from both planet placement and the established asteroid lane. */
 const ASTEROID_EXTRA_LANE_SEED = 0x243f6a88;
+/** Independent standing lane for the 10.35 -> 15.525 increase. */
+const ASTEROID_INCREASE_LANE_SEED = 0x13198a2e;
 
 /**
  * Map one uniform draw onto the measured orbit distribution.
@@ -269,8 +273,12 @@ export function generateAsteroidSchedule(
   seed = 0,
 ): AsteroidSpec[] {
   const totalCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
-  const baseCount = Math.min(
+  const establishedCount = Math.min(
     totalCount,
+    Math.round((ASTEROID_ESTABLISHED_SPAWN_PER_HOUR * span) / 60),
+  );
+  const baseCount = Math.min(
+    establishedCount,
     Math.round((ASTEROID_BASE_SPAWN_PER_HOUR * span) / 60),
   );
   const asteroids: AsteroidSpec[] = [];
@@ -286,14 +294,22 @@ export function generateAsteroidSchedule(
     mulberry32((seed ^ ASTEROID_EXTRA_LANE_SEED) >>> 0),
     span,
     seed,
-    totalCount - baseCount,
+    establishedCount - baseCount,
     baseCount,
   );
 
-  // Cap each resource/day together so the rock's visible composition stays truthful.
+  // Cap the established field against its original 10% allowance. The public
+  // monthly allowance is now 15%; scaling it back here keeps every live rock's
+  // ore byte-identical while reserving the added half for the new lane.
   for (let day = 0; day < SEASON.days; day++) {
     const today = asteroids.filter(r => Math.floor(r.appearsAt / 1440) === day);
-    const budget = monthlySupply('mining', day, SERVERS.capacity);
+    const expandedBudget = monthlySupply('mining', day, SERVERS.capacity);
+    const budgetScale = ASTEROID_ESTABLISHED_SPAWN_PER_HOUR / GALAXY.asteroidSpawnPerHour;
+    const budget = {
+      alloy: expandedBudget.alloy * budgetScale,
+      crystal: expandedBudget.crystal * budgetScale,
+      deuterium: expandedBudget.deuterium * budgetScale,
+    };
     const total = today.reduce((sum, r) => ({ alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
       crystal: sum.crystal + r.ore * r.crystalShare, deuterium: sum.deuterium + r.ore * r.deuteriumShare }),
     { alloy: 0, crystal: 0, deuterium: 0 });
@@ -301,16 +317,70 @@ export function generateAsteroidSchedule(
       .map(k => total[k] > 0 ? budget[k] / total[k] : 1));
     for (const rock of today) rock.ore = Math.floor(rock.ore * factor);
   }
+
+  appendStandingAsteroidIncrease(asteroids, asteroids, span, seed, totalCount - establishedCount);
   return asteroids;
+}
+
+/** Append the new standing lane after every established index and cap only that lane. */
+function appendStandingAsteroidIncrease(
+  target: AsteroidSpec[],
+  established: readonly AsteroidSpec[],
+  span: number,
+  seed: number,
+  count: number,
+): void {
+  const lane: AsteroidSpec[] = [];
+  appendAsteroidLane(
+    lane,
+    mulberry32((seed ^ ASTEROID_INCREASE_LANE_SEED) >>> 0),
+    span,
+    seed,
+    count,
+    target.length,
+  );
+
+  // The expanded allowance belongs to the expanded lane. Existing rocks keep
+  // their ore; only the new lane is reduced if its independent draws overshoot
+  // the remaining resource mix on a particular day.
+  for (let day = 0; day < SEASON.days; day++) {
+    const existingToday = established.filter(r => Math.floor(r.appearsAt / 1440) === day);
+    const laneToday = lane.filter(r => Math.floor(r.appearsAt / 1440) === day);
+    const budget = monthlySupply('mining', day, SERVERS.capacity);
+    const existing = existingToday.reduce((sum, r) => ({
+      alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
+      crystal: sum.crystal + r.ore * r.crystalShare,
+      deuterium: sum.deuterium + r.ore * r.deuteriumShare,
+    }), { alloy: 0, crystal: 0, deuterium: 0 });
+    const added = laneToday.reduce((sum, r) => ({
+      alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
+      crystal: sum.crystal + r.ore * r.crystalShare,
+      deuterium: sum.deuterium + r.ore * r.deuteriumShare,
+    }), { alloy: 0, crystal: 0, deuterium: 0 });
+    const factor = Math.min(1, ...(['alloy', 'crystal', 'deuterium'] as const).map((resource) =>
+      added[resource] > 0
+        ? Math.max(0, budget[resource] - existing[resource]) / added[resource]
+        : 1));
+    for (const rock of laneToday) rock.ore = Math.floor(rock.ore * factor);
+  }
+  target.push(...lane);
+}
+
+export interface AsteroidShowerLaneOptions {
+  rngForOccurrence?: (occurrence: PlannedGalaxyEvent) => () => number;
+  rngForIncreaseOccurrence?: (occurrence: PlannedGalaxyEvent) => () => number;
+  span?: number;
 }
 
 /**
  * Append one isolated bonus lane per persisted Asteroid Shower occurrence.
  *
- * The input field is never mutated. Existing indices, random draws and opaque ids
- * remain stable; only fresh indices after the baseline are allocated. A shower's
- * lane contains no spawn at or after `endsAtMinute`, while each generated rock's
- * ordinary lifetime may extend well beyond that boundary.
+ * The input field is never mutated. Every pre-increase index, random draw and
+ * opaque id remains stable. The new standing lane is deliberately re-appended
+ * after all frozen event lanes, followed by each event's new-rate delta; only
+ * those fresh rocks receive fresh indices. A shower's lane contains no spawn at
+ * or after `endsAtMinute`, while each generated rock's ordinary lifetime may
+ * extend well beyond that boundary.
  *
  * IT IS HANDED THE WHOLE CALENDAR AND TAKES ONLY WHAT IS ITS OWN. D156.
  *
@@ -330,14 +400,27 @@ export function withAsteroidShowerLanes(
   base: readonly AsteroidSpec[],
   occurrences: readonly PlannedGalaxyEvent[],
   isotopeSeed: number,
-  rngForOccurrence: (occurrence: PlannedGalaxyEvent) => () => number =
-    (occurrence) => seededFrom('asteroid:shower:v1', isotopeSeed, occurrence.sequence),
+  options: AsteroidShowerLaneOptions = {},
 ): AsteroidSpec[] {
-  const asteroids = [...base];
+  const span = options.span ?? seasonMinutes;
+  const establishedCount = Math.round((ASTEROID_ESTABLISHED_SPAWN_PER_HOUR * span) / 60);
+  if (base.length < establishedCount) {
+    throw new RangeError('Asteroid base field is shorter than the established lane');
+  }
+  const established = base.slice(0, establishedCount);
+  const asteroids = [...established];
   const showers = occurrences
     .filter((occurrence) => occurrence.kind === 'ASTEROID_SHOWER')
     .sort((left, right) => left.sequence - right.sequence);
+  const rngForOccurrence = options.rngForOccurrence
+    ?? ((occurrence: PlannedGalaxyEvent) =>
+      seededFrom('asteroid:shower:v1', isotopeSeed, occurrence.sequence));
+  const rngForIncreaseOccurrence = options.rngForIncreaseOccurrence
+    ?? ((occurrence: PlannedGalaxyEvent) =>
+      seededFrom('asteroid:shower:spawn-increase:v1', isotopeSeed, occurrence.sequence));
 
+  // Recreate every pre-increase shower lane first. This entire prefix is the
+  // live field: changing its count would move claims and flights to another rock.
   for (const occurrence of showers) {
     const duration = occurrence.endsAtMinute - occurrence.startsAtMinute;
     const multiplier = occurrence.effect.asteroidSpawnMultiplier;
@@ -347,13 +430,48 @@ export function withAsteroidShowerLanes(
     if (!Number.isFinite(multiplier) || multiplier <= 1) {
       throw new RangeError('Asteroid Shower multiplier must be greater than one');
     }
-    const count = Math.round(GALAXY.asteroidSpawnPerHour * (multiplier - 1) * duration / 60);
+    const count = Math.round(
+      ASTEROID_ESTABLISHED_SPAWN_PER_HOUR * (multiplier - 1) * duration / 60,
+    );
     appendAsteroidLane(
       asteroids,
       rngForOccurrence(occurrence),
       duration,
       isotopeSeed,
       count,
+      asteroids.length,
+      occurrence.startsAtMinute,
+    );
+  }
+
+  // The standing increase comes after every old event index, even though its
+  // appearances span the whole season. Index order is identity, not chronology.
+  const totalBaseCount = Math.round((GALAXY.asteroidSpawnPerHour * span) / 60);
+  appendStandingAsteroidIncrease(
+    asteroids,
+    established,
+    span,
+    isotopeSeed,
+    totalBaseCount - establishedCount,
+  );
+
+  // Add only the delta that turns each old event total into the new-rate total.
+  // These lanes are also last, so resizing them cannot renumber an old event.
+  for (const occurrence of showers) {
+    const duration = occurrence.endsAtMinute - occurrence.startsAtMinute;
+    const multiplier = occurrence.effect.asteroidSpawnMultiplier;
+    const establishedBonus = Math.round(
+      ASTEROID_ESTABLISHED_SPAWN_PER_HOUR * (multiplier - 1) * duration / 60,
+    );
+    const expandedBonus = Math.round(
+      GALAXY.asteroidSpawnPerHour * (multiplier - 1) * duration / 60,
+    );
+    appendAsteroidLane(
+      asteroids,
+      rngForIncreaseOccurrence(occurrence),
+      duration,
+      isotopeSeed,
+      expandedBonus - establishedBonus,
       asteroids.length,
       occurrence.startsAtMinute,
     );

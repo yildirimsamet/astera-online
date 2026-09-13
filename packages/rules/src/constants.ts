@@ -2152,20 +2152,20 @@ export const GALAXY = {
   /**
    * New rocks entering the disc per hour. PROVISIONAL.
    *
-   * RAISED 15% FROM 9 TO 10.35, owner decision. A denser sky: more of the disc is
-   * worth looking at, and the race for a rock happens oftener.
+   * RAISED 50% FROM 10.35 TO 15.525, owner decision. A denser sky: more of the
+   * disc is worth looking at, both during an Asteroid Shower and between events.
    *
    * WHAT IT MOVES, BECAUSE THE FIELD IS DERIVED AND NOT STORED (A5). The existing
-   * 9/hour lane keeps its indices, rolls and appearance times. The extra 1.35/hour
-   * is a second deterministic lane with new indices, so increasing density adds
-   * rocks without making a live target jump or disappear between two reads.
+   * 10.35/hour field and every event lane keep their indices, rolls and appearance
+   * times. The extra 5.175/hour and its matching event bonus are independent lanes
+   * after that established field, so a live target never jumps or disappears.
    *
    * It is safe for a run already in the air: `resolveMiningArrival` finds its rock
    * by INDEX and does not re-check `asteroidActive`; all established indices still
    * name the same orbit. The claim rows keyed by index stay coherent for the same
    * reason.
    */
-  asteroidSpawnPerHour: 10.35,
+  asteroidSpawnPerHour: 15.525,
 
   /**
    * Game units per minute along the orbit, random inside this band and INDEPENDENT

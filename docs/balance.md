@@ -523,7 +523,7 @@ drives the strategic layer directly instead.
 ### Asteroids
 
 ```
-spawn         0.0345 per player per hour — 10.35/h and ~39 rocks visible at 300 players
+spawn         0.05175 per player per hour — 15.525/h and ~59 rocks visible at 300 players
 orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 3200, 6000, 11000]   weights [—, .40, .27, .18, .10, .05]
@@ -538,8 +538,8 @@ The Crystal reduction does not reduce total ore. The removed share becomes Alloy
 concentration still replaces Alloy independently after the Alloy/Crystal split.
 
 **Spawn is per-capita or mining dies at scale.** A flat rate tuned at 50 players is six times thinner
-at 300 and the field becomes irrelevant. At 0.030 a contesting commander draws about a quarter of a
-day-1 income from rocks and under 2% of a day-7 one: a catch-up lever early, a race prize later.
+at 300 and the field becomes irrelevant. The owner-set 0.05175 rate is 50% above the previous
+0.0345: a denser field between events, with every shower scaling from the same higher base.
 
 The shower adds four independent deterministic arrival lanes while active; it does not multiply
 the existing population, ore per rock, life or mining speed. Five non-overlapping one-hour windows
@@ -653,7 +653,7 @@ prices the fight against.
 the density it always had (5x through the calendar's own 00:00–08:00 TRT band) and the day is worth
 twice that — a raise where somebody is awake to fly at it, and no change to the hours where a
 denser sky mostly expires unseen. The bonus lane is `round(asteroidSpawnPerHour x (multiplier - 1)
-x duration / 60)`, so an hour-long shower adds ~93 rocks by day against ~41 at night. The figure is
+x duration / 60)`, so an hour-long shower adds ~140 rocks by day against ~62 at night. The figure is
 stamped per occurrence at deal time and consumes no randomness, so no window moves and no existing
 rock changes; a season already dealt keeps its frozen figures until `season restamp` raises the
 windows that have not opened yet.

@@ -163,9 +163,10 @@ export function monthlySupply(kind: 'mining' | 'pirates', day: number, seats: nu
   if (!Number.isInteger(seats) || seats < 1 || !Number.isInteger(day) || day < 0) throw new Error('Invalid supply period');
   const r = dailyReference[day];
   if (!r) return { alloy: 0, crystal: 0, deuterium: 0 };
-  // D204 raises every pirate hoard resource by 30%; lift the matching allowance
-  // with it so the same deterministic field remains inside its supply ceiling.
-  const share = kind === 'mining' ? 0.1 : 0.05 * PIRATE.hoardRewardScale;
+  // The owner-set 50% base-spawn lift carries the mining allowance from 10% to
+  // 15%, so the extra rocks remain real opportunities instead of zero-ore rows.
+  // D204's pirate allowance remains tied only to the hoard reward scale.
+  const share = kind === 'mining' ? 0.15 : 0.05 * PIRATE.hoardRewardScale;
   return { alloy: MONTHLY_REFERENCE.alloy * share * seats * r.alloy / totals.alloy,
     crystal: MONTHLY_REFERENCE.crystal * share * seats * r.crystal / totals.crystal,
     deuterium: MONTHLY_REFERENCE.deuterium * share * seats * r.deuterium / totals.deuterium };

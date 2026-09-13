@@ -109,7 +109,7 @@ export function privateAsteroidFieldWithEvents(
     privateAsteroidField(key),
     occurrences,
     isotopeSeed,
-    (occurrence) => showerRng(key, occurrence.sequence),
+    { rngForOccurrence: (occurrence) => showerRng(key, occurrence.sequence) },
   );
   composedFieldCache.set(cacheKey, field);
   trim(composedFieldCache);

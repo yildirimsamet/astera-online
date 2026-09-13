@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   GALAXY_EVENTS,
@@ -622,13 +623,26 @@ describe('Asteroid Shower bonus lane', () => {
       definitionVersion: 2,
       effect: { asteroidSpawnMultiplier: 5 },
     };
-    const showered = withAsteroidShowerLanes(base, [occurrence], 400);
-
-    expect(showered.slice(0, base.length)).toEqual(base);
-    expect(showered.length - base.length).toBe(
-      Math.round(GALAXY.asteroidSpawnPerHour * (occurrence.effect.asteroidSpawnMultiplier - 1)),
+    const showered = withAsteroidShowerLanes(base, [occurrence], 400, { span });
+    const establishedCount = Math.round(10.35 * span / 60);
+    const establishedBonus = Math.round(10.35 * (occurrence.effect.asteroidSpawnMultiplier - 1));
+    const expandedBonus = Math.round(
+      GALAXY.asteroidSpawnPerHour * (occurrence.effect.asteroidSpawnMultiplier - 1),
     );
-    const bonus = showered.slice(base.length);
+
+    // Both hashes are the complete pre-increase schedules. Existing public ids,
+    // claims and in-flight runs remain attached to byte-identical rocks.
+    expect(createHash('sha256').update(JSON.stringify(base.slice(0, establishedCount))).digest('hex'))
+      .toBe('5d9860678cf77d29ce2ec3d2d57e08e519decf367e4c87c0b99ccf2bb5e9d06e');
+    expect(createHash('sha256')
+      .update(JSON.stringify(showered.slice(0, establishedCount + establishedBonus)))
+      .digest('hex'))
+      .toBe('473411c63de16a96feeb0d364dee20496757e79c3153bad9dcccbf0ada4f2875');
+    expect(showered.length - base.length).toBe(expandedBonus);
+    const bonus = [
+      ...showered.slice(establishedCount, establishedCount + establishedBonus),
+      ...showered.slice(showered.length - (expandedBonus - establishedBonus)),
+    ];
     expect(bonus.every((rock) => rock.appearsAt >= 8 * 60 && rock.appearsAt < 9 * 60)).toBe(true);
     expect(bonus.some((rock) => rock.expiresAt > 9 * 60)).toBe(true);
   });
@@ -657,8 +671,8 @@ describe('Asteroid Shower bonus lane', () => {
       definitionVersion: 2, effect: { asteroidSpawnMultiplier: 10 },
     };
 
-    const both = withAsteroidShowerLanes(base, [night, day], 511);
-    const nightOnly = withAsteroidShowerLanes(base, [night], 511);
+    const both = withAsteroidShowerLanes(base, [night, day], 511, { span });
+    const nightOnly = withAsteroidShowerLanes(base, [night], 511, { span });
     const nightCount = Math.round(GALAXY.asteroidSpawnPerHour * 4);
     const dayCount = Math.round(GALAXY.asteroidSpawnPerHour * 9);
 
@@ -671,7 +685,10 @@ describe('Asteroid Shower bonus lane', () => {
       id is an HMAC of that index, and claims and in-flight runs are keyed by it, so
       this equality is what makes adding to a later window safe on a live season.
     */
-    expect(both.slice(0, base.length + nightCount)).toEqual(nightOnly);
+    const establishedCount = Math.round(10.35 * span / 60);
+    const establishedNightCount = Math.round(10.35 * 4);
+    expect(both.slice(0, establishedCount + establishedNightCount))
+      .toEqual(nightOnly.slice(0, establishedCount + establishedNightCount));
   });
 
   it('ignores TRADE_SHIP rows instead of turning every trade window into a shower', () => {
@@ -728,13 +745,14 @@ describe('Asteroid Shower bonus lane', () => {
       base,
       [trades[0]!, showers[0]!, trades[1]!, showers[1]!],
       97,
+      { span },
     );
     // Byte-identical to the field the shower-only calendar produces: the same
     // rocks, the same indices, the same draws in the same order.
-    expect(mixed).toEqual(withAsteroidShowerLanes(base, showers, 97));
+    expect(mixed).toEqual(withAsteroidShowerLanes(base, showers, 97, { span }));
     expect(mixed.length).toBeGreaterThan(base.length);
     // And a calendar with no shower in it adds nothing at all.
-    expect(withAsteroidShowerLanes(base, trades, 97)).toEqual(base);
+    expect(withAsteroidShowerLanes(base, trades, 97, { span })).toEqual(base);
   });
 });
 
