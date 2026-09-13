@@ -186,9 +186,12 @@ statistic beside attack, hull, speed and cargo — what one of that hull burns p
 — because choosing between two hulls is where that comparison is actually made. A cost the
 player meets only as a refusal is a rule they cannot see.
 
-**Production fills the works and stops there (D16).** One tap moves it into storage. Storage
-caps at 12 hours of production, the works at 10, so a normal night wastes nothing and a long
-absence still tops out.
+**Production fills the works and stops there (D16).** One tap moves it into storage. The works
+hold ten hours. Storage follows the Vault's authored depth ladder; once upgrade prices outgrow
+that ladder, Vault L is guaranteed to hold 110% of the Alloy Refinery L→L+1 alloy cost and the
+Crystal Extractor L→L+1 crystal cost. The resulting hour window also applies to deuterium. This
+keeps same-level producer upgrades reachable through L30 without increasing the eight-hour
+Vault protection ceiling.
 
 ### Why players hold raidable stock at all
 

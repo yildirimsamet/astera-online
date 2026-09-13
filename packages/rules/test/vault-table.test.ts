@@ -71,8 +71,8 @@ describe('the Vault price table', () => {
 
 describe('the store the Vault buys', () => {
   HOURS.forEach((hours, level) => {
-    it(`holds ${String(hours)} hours at Vault ${String(level)}`, () => {
-      expect(storageHours(level)).toBeCloseTo(hours, 10);
+    it(`holds at least ${String(hours)} hours at Vault ${String(level)}`, () => {
+      expect(storageHours(level)).toBeGreaterThanOrEqual(hours);
     });
   });
 
@@ -110,9 +110,9 @@ describe('the store the Vault buys', () => {
    * at its own last step rather than clamping. A store that stopped growing would
    * re-create the crossing the ladder exists to prevent.
    */
-  it("continues the table's last step past its end", () => {
-    expect(storageHours(21)).toBeCloseTo(44 * ECON.storageScale, 10);
-    expect(storageHours(25)).toBeCloseTo(60 * ECON.storageScale, 10);
+  it("keeps the table's extrapolation as the minimum past its end", () => {
+    expect(storageHours(21)).toBeGreaterThanOrEqual(44 * ECON.storageScale);
+    expect(storageHours(25)).toBeGreaterThanOrEqual(60 * ECON.storageScale);
     expect(storageHours(-3)).toBeCloseTo(3 * ECON.storageScale, 10);
   });
 
@@ -163,11 +163,13 @@ describe('the vault floor follows the store it sits in', () => {
 });
 
 describe('a developed Vault can still hold what the next upgrade costs', () => {
-  it('never creates an upgrade the store cannot reach', () => {
-    for (let level = 1; level <= 20; level += 1) {
-      const vault = Math.max(0, Math.min(20, level - 1));
-      expect(buildingCost('REFINERY', level).alloy, `L${String(level)} at Vault ${String(vault)}`)
-        .toBeLessThanOrEqual(storageCap(alloyRate(level), vault));
+  it('gives a same-level Vault ten percent headroom through level thirty', () => {
+    for (let level = 1; level <= 30; level += 1) {
+      const target = Math.ceil(
+        buildingCost('REFINERY', level).alloy * ECON.producerUpgradeStorageMargin,
+      );
+      expect(storageCap(alloyRate(level), level), `L${String(level)} at Vault ${String(level)}`)
+        .toBeGreaterThanOrEqual(target);
     }
   });
 });

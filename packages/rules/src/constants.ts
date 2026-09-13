@@ -235,6 +235,13 @@ export const ECON = {
   storageScale: 5.25,
 
   /**
+   * A Vault kept level with a producer must hold the producer's next upgrade,
+   * plus enough headroom that rounding or a small queued expense cannot turn the
+   * advertised purchase window into a hard stop.
+   */
+  producerUpgradeStorageMargin: 1.10,
+
+  /**
    * Hours the works hold before they STOP. D16, restored to ten at D190.
    *
    * Production does not flow into storage on its own: it fills a buffer inside the

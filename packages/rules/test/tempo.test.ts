@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, MULTI_WORLD, PROBE,
+import { ECON, ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, MULTI_WORLD, PROBE,
   profileBuilding, profileResearch, hullWorkMinutes, RESEARCH_PROJECTS,
-  storageCap, alloyRate, buildingCost, satelliteCost } from '../src/index.js';
+  storageCap, alloyRate, crystalRate, buildingCost, satelliteCost } from '../src/index.js';
 
 describe('monthly economy tempo', () => {
   it('uses a thirty-day deadline and preserves early work', () => {
@@ -11,8 +11,15 @@ describe('monthly economy tempo', () => {
     expect(profileBuilding('CORE', 12).minutes).toBeLessThan(60);
   });
   it('keeps reachable producer investments within storage', () => {
-    for (let level = 1; level <= 20; level++) {
-      expect(buildingCost('REFINERY', level).alloy).toBeLessThanOrEqual(storageCap(alloyRate(level), level - 1));
+    for (let level = 1; level <= 30; level++) {
+      const refinery = buildingCost('REFINERY', level);
+      const extractor = buildingCost('EXTRACTOR', level);
+      expect(storageCap(alloyRate(level), level)).toBeGreaterThanOrEqual(
+        Math.ceil(refinery.alloy * ECON.producerUpgradeStorageMargin),
+      );
+      expect(storageCap(crystalRate(level), level)).toBeGreaterThanOrEqual(
+        Math.ceil(extractor.crystal * ECON.producerUpgradeStorageMargin),
+      );
     }
     // The works cap is a different contract and `economy.test.ts` owns it; a copy
     // here only ever went stale, which is what it did.

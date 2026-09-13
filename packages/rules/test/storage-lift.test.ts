@@ -28,10 +28,10 @@ describe('the uniform storage lift', () => {
     expect(ECON.storageHoursLadder[1]).toBe(4);
   });
 
-  it('keeps the monthly scale uniform across the table and extrapolation', () => {
-    for (const level of [0, 1, 5, 10, ECON.storageHoursLadder.length - 1, 40]) {
-      const shape = storageHours(level) / ECON.storageScale;
-      expect(storageHours(level)).toBeCloseTo(shape * MONTHLY_SCALE, 8);
+  it('keeps the monthly scale as the authored minimum', () => {
+    const authored = new Map([[0, 3], [1, 4], [5, 8], [10, 13], [20, 40], [40, 120]]);
+    for (const [level, hours] of authored) {
+      expect(storageHours(level)).toBeGreaterThanOrEqual(hours * MONTHLY_SCALE);
     }
   });
 

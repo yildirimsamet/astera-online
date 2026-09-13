@@ -249,8 +249,29 @@ export const investedInSatellite = (id: SatelliteId): number =>
  * amount — the interface states them, and the invariant test compares them against
  * `protectedHours`.
  */
-export const storageHours = (vaultLevel: number): number =>
-  storageTableHours(vaultLevel) * ECON.storageScale;
+export const storageHours = (vaultLevel: number): number => {
+  const level = Math.max(0, Math.floor(vaultLevel));
+  const authoredFloor = storageTableHours(level) * ECON.storageScale;
+  if (level === 0) return authoredFloor;
+
+  /*
+   * SAME-LEVEL PURCHASE GUARANTEE. A Vault at L must hold 110% of the resources
+   * needed to take the matching Alloy Refinery / Crystal Extractor from L to
+   * L+1. The ordinary Vault ladder remains the floor; this derived ceiling takes
+   * over only when upgrade prices begin outgrowing the linear extrapolation.
+   * Deuterium storage consumes these same hours through deuteriumStorageCap, so
+   * all three producers retain the same storage window.
+   */
+  const refinery = buildingCost('REFINERY', level);
+  const extractor = buildingCost('EXTRACTOR', level);
+  const alloyTarget = Math.ceil(refinery.alloy * ECON.producerUpgradeStorageMargin);
+  const crystalTarget = Math.ceil(extractor.crystal * ECON.producerUpgradeStorageMargin);
+  const purchaseHours = Math.max(
+    alloyTarget / alloyRate(level),
+    crystalTarget / crystalRate(level),
+  );
+  return Math.max(authoredFloor, purchaseHours);
+};
 
 /**
  * The Vault's own table, in its own units, before `ECON.storageScale`. D171.
