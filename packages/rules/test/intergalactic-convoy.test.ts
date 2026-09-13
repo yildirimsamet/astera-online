@@ -72,6 +72,18 @@ describe('the Intergalactic Convoy route', () => {
     expect(intergalacticConvoyPosition(spec, occurrence.endsAtMinute)).toEqual(spec.to);
   });
 
+  it('accepts a two-hour route after fractional season-minute conversion', () => {
+    const startsAtMinute = 427.58143333333334;
+    const endsAtMinute = 547.5814333333333;
+
+    expect(endsAtMinute - startsAtMinute).not.toBe(INTERGALACTIC_CONVOY.durationMinutes);
+    expect(() => intergalacticConvoySpec({
+      ...occurrence,
+      startsAtMinute,
+      endsAtMinute,
+    }, sequenceRng(0.25, 0.75))).not.toThrow();
+  });
+
   it('freezes the route-v1 draw order in a golden fixture', () => {
     const spec = intergalacticConvoySpec(occurrence, seededFrom('convoy-route-golden'));
     expect(spec.from.x).toBeCloseTo(-1_665.6306719810273, 10);

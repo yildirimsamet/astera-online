@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   GALAXY_EVENTS,
+  INTERGALACTIC_CONVOY,
   intergalacticConvoySpec,
   type PlannedGalaxyEvent,
 } from '@astera/rules';
@@ -71,6 +72,28 @@ describe('the private-key convoy field', () => {
 });
 
 describe('the authenticated active event projection', () => {
+  it('publishes a fixed-clock convoy when the season began between whole minutes', async () => {
+    const { db } = await testDb();
+    const seasonStartsAt = new Date('2026-09-13T08:52:25.114Z');
+    const clock = new FixedClock(new Date('2026-09-13T16:05:00.000Z'));
+    const { season } = await createSeason(db, {
+      shardCode: 'EU-FRACTIONAL-CONVOY',
+      seed: 4513,
+      startsAt: seasonStartsAt,
+      playerCap: 60,
+      rulesetVersion: 8,
+    });
+    const account = await makeAccount(db, 'FractionalConvoyTester');
+    await joinSeason(db, account.id, season.id, clock);
+
+    const active = (await activeGalaxyEvents(db, account.id, clock))
+      .find((event) => event.kind === 'INTERGALACTIC_CONVOY');
+    if (active?.kind !== 'INTERGALACTIC_CONVOY') throw new Error('missing active convoy');
+    const duration = active.expiresAtMinute - active.appearsAtMinute;
+    expect(duration).not.toBe(INTERGALACTIC_CONVOY.durationMinutes);
+    expect(duration).toBeCloseTo(INTERGALACTIC_CONVOY.durationMinutes, 12);
+  });
+
   it('publishes a route only while its ruleset-8 occurrence is active', async () => {
     const { db } = await testDb();
     const clock = new FixedClock(new Date(START.getTime() + (7 * 60 - 1) * 60_000));

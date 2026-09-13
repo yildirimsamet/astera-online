@@ -131,10 +131,10 @@ export function intergalacticConvoySpec(
     throw new RangeError('convoy sequence must be a non-negative safe integer');
   }
   assertVersion(occurrence.effect.routeVersion, 1, 'route');
+  const durationMinutes = occurrence.endsAtMinute - occurrence.startsAtMinute;
   if (!Number.isFinite(occurrence.startsAtMinute)
     || !Number.isFinite(occurrence.endsAtMinute)
-    || occurrence.endsAtMinute - occurrence.startsAtMinute
-      !== INTERGALACTIC_CONVOY.durationMinutes) {
+    || Math.abs(durationMinutes - INTERGALACTIC_CONVOY.durationMinutes) > EPSILON) {
     throw new RangeError('convoy route duration must match the authored duration');
   }
   assertPositive(GALAXY.radius, 'galaxy radius');
