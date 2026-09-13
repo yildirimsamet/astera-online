@@ -137,6 +137,8 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
 export const alloyRate = (level: number): number => {
   const openingMultiplier = level >= 1 && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
     ? ECONOMY_ADJUSTMENT.earlyAlloyOutputMultiplier
+    : level <= ECONOMY_ADJUSTMENT.midAlloyMaxLevel
+      ? ECONOMY_ADJUSTMENT.midAlloyOutputMultiplier
     : 1;
   return profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * openingMultiplier;
 };
