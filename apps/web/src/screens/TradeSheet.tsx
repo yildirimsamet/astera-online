@@ -71,9 +71,9 @@ import { describe, useToast } from '../ui/Toast.js';
  *      good leads and the cheaper absorbs the remainder EXACTLY (`balanceTake`),
  *      so the merchant never keeps a unit and there is no leftover to explain.
  *
- * The owner's own worked example is the acceptance test: offer 180 alloy and the
+ * D208 keeps the worked-example invariant at its new rate: offer 64 alloy and the
  * counter opens at two deuterium; drag it down one notch and the rest comes home
- * as thirty crystal. Nothing to reconcile, nothing to top up, no dead button.
+ * as sixteen crystal. Nothing to reconcile, nothing to top up, no dead button.
  *
  * `quoteTrade` IS STILL THE ONLY ARITHMETIC that decides anything, and the refusal
  * ladder below is still `services/trade.ts`'s own order. Most of its rungs are now

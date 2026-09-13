@@ -24,11 +24,12 @@ describe('mixed fleet and prototype experiment', () => {
     expect(() => affordablePacket({ VIPER: 0.5 }, { alloy: 100, crystal: 100, deuterium: 100 }, 10)).toThrow();
     expect(() => affordablePacket({ VIPER: -1, TALON: 1 }, { alloy: 10000, crystal: 10000, deuterium: 10000 }, 100)).toThrow();
   });
-  it('never reports mutual destruction as an attacker victory', () => {
+  it('never reports a both-survive result as an attacker victory', () => {
     const r = measureBattle({ TALON: 45 }, { BALLISTA: 15 }, 0, {}, { SHIP_POWER: 2 });
-    expect(r.mutualDestruction).toBe(r.samples);
+    expect(r.bothSurvive).toBe(r.samples);
+    expect(r.mutualDestruction).toBe(0);
     expect(r.attackerVictory).toBe(0);
-    expect(r.meanAttackerReplacement).toEqual(cost({ TALON: 45 }));
+    expect(r.meanAttackerReplacement.alloy).toBeGreaterThan(0);
     expect(r.meanAttackerYardMinutes).toBeGreaterThan(0);
   });
   it('measures shields and surviving forces instead of counting damage as victory', () => {

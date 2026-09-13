@@ -323,6 +323,8 @@ export function planetOf(w: RehearsalWorld): PlanetView {
       disruptedUntil: null,
     },
     buildings: { ...w.buildings },
+    // The rehearsal world IS the capital, so it gates its own research. D209.
+    researchCore: w.buildings.CORE,
     nextCosts: Object.fromEntries(
       BUILDING_IDS.map((b) => [b, buildingCost(b, w.buildings[b])]),
     ),

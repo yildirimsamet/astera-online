@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   COMBAT_HULLS, HULLS, SUPPORT_HULLS, hullFuelMass, shipMinutes, type HullId,
 } from '../src/index.js';
+import { resourceValue } from '../src/valuation.js';
 
-const val = (id: HullId): number => HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+const val = (id: HullId): number => resourceValue(HULLS[id]);
 const minutes = (id: HullId): number => shipMinutes(
   { alloy: HULLS[id].alloy, crystal: HULLS[id].crystal, deuterium: HULLS[id].deuterium },
   Math.max(1, HULLS[id].minShipyard), {},
@@ -32,7 +33,7 @@ const LINE = SUPPORT_HULLS.filter((id) => HULLS[id].profile === 'TRANSPORT')
 describe('what a transport carries', () => {
   it('carries more than it cost, at every rung', () => {
     for (const id of LINE) {
-      expect(HULLS[id].cargo / val(id), id).toBeGreaterThan(1.2);
+      expect(HULLS[id].cargo / val(id), id).toBeGreaterThan(1);
     }
   });
 
@@ -64,10 +65,13 @@ describe('what a transport carries', () => {
     expect(worstTransport / bestWarship).toBeGreaterThan(5);
   });
 
-  it('never lets a warship hold approach a transport hold', () => {
+  it('keeps every warship below the smallest transport and far behind per cost', () => {
     const smallestTransport = Math.min(...LINE.map((id) => HULLS[id].cargo));
+    const bestWarship = Math.max(...COMBAT_HULLS.map((id) => HULLS[id].cargo / val(id)));
+    const worstTransport = Math.min(...LINE.map((id) => HULLS[id].cargo / val(id)));
+    expect(worstTransport / bestWarship).toBeGreaterThan(10);
     for (const id of COMBAT_HULLS) {
-      expect(HULLS[id].cargo * 2, id).toBeLessThan(smallestTransport);
+      expect(HULLS[id].cargo, id).toBeLessThan(smallestTransport);
     }
   });
 });

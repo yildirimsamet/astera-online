@@ -194,7 +194,7 @@ const legacyConfig = (tradeVersion: 1 | 2): GalaxyEventsConfig => ({
           dailyCount: { min: 3, max: 3 },
           durationMinutes: 180,
           repeatCooldownMinutes: 180,
-          effect: { rate: { ...GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect.rate } },
+          effect: { rate: { alloy: 1, crystal: 2, deuterium: 9 } },
         }
       : {
           schedule: 'RANDOM_DAILY',
@@ -207,7 +207,7 @@ const legacyConfig = (tradeVersion: 1 | 2): GalaxyEventsConfig => ({
             endsAtLocalMinute: 8 * 60,
             exactDailyCount: 1,
           },
-          effect: { rate: { ...GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect.rate } },
+          effect: { rate: { alloy: 1, crystal: 2, deuterium: 9 } },
         },
     // Not entitled before ruleset 8; present only to keep the config map total.
     INTERGALACTIC_CONVOY: GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY,

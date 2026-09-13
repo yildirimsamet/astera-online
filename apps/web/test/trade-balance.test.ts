@@ -25,14 +25,14 @@ import {
  *
  * SO THE ASK IS A SPLIT, NOT TWO AMOUNTS. The offer buys a fixed number of units;
  * the dearer of the two goods gets a slider and the cheaper absorbs the remainder
- * exactly, which is the owner's own worked example:
+ * exactly, which is the owner's D183 worked example:
  *
  *   *"180 alaşım göndermek olarak ayarladıysam, 2 döteryum isterim değil mi,
  *   otomatik max ayarlanmalı. Döteryumu kendim kaydırarak 1'e çekersem, alacağım
  *   otomatik olarak 1 döteryum, 30 kristal olmalı."*
  *
- * There is no leftover to explain because there is no leftover, and no invalid
- * state to refuse because the controls cannot produce one.
+ * D208 changes those quantities to 64 alloy, two deuterium and sixteen crystal;
+ * the invariant remains: no leftover and no invalid state.
  */
 
 const RATE = TRADE.rate;
@@ -41,10 +41,9 @@ const hold = (fleet: Fleet): number => transferCargoCapacity(fleet, {});
 describe('which good the ask is dragged by', () => {
   /*
     THE CHEAPER GOOD IS THE ABSORBER, AND IT HAS TO BE — this is not a preference.
-    A remainder can only be spent exactly by a good whose price divides it, and the
-    cheaper price always divides the dearer one in this table (1 · 3 · 90). Hand the
-    slider to the cheap good instead and the dear one is left with a fraction: three
-    crystal of offer cannot become 0.033 deuterium.
+    A remainder can only be spent exactly by a good whose price divides it. On
+    D208's 1 · 2 · 32 rate the cheaper price divides the dearer one; the generic
+    ordering also supports persisted historical rates.
   */
   it('gives the slider to the dearer good, so the cheaper can absorb any remainder', () => {
     expect(dearestFirst('alloy', RATE)).toEqual(['deuterium', 'crystal']);
@@ -55,16 +54,13 @@ describe('which good the ask is dragged by', () => {
 
 describe("the owner's worked example", () => {
   /*
-    THE EXAMPLE, RESTATED ON D183'S RATE. The owner's worked case was written
-    against 1 · 3 · 90 — "180 alloy is two deuterium, drag it to one and the rest
-    comes home as thirty crystal" — and every number in it is a function of the
-    rate rather than of the rule. At 1 · 2 · 9, 180 alloy is twenty deuterium and
-    the crystal that absorbs one notch of that is nine. The RULE the example is
-    really about is unchanged: the dear good leads, the cheap good absorbs, and the
-    merchant keeps nothing.
+    The worked quantities derive from the occurrence rate. The rule is stable:
+    the dear good leads, the cheap good absorbs, and the merchant keeps nothing.
+    D208's 1 · 2 · 32 makes every lead notch exact; generic tests below retain the
+    non-divisible historical case.
   */
   const fleet: Fleet = { ATLAS: 1 };
-  const units = 180 * RATE.alloy;
+  const units = 20 * RATE.deuterium;
   const top = Math.floor(units / RATE.deuterium);
 
   it('tops the ask up to the whole offer in deuterium on its own', () => {
@@ -85,7 +81,7 @@ describe("the owner's worked example", () => {
   it('leaves the merchant nothing, wherever the slider sits', () => {
     for (let lead = 0; lead <= top; lead += 1) {
       const want = balanceTake(units, 'alloy', lead, RATE, hold(fleet));
-      expect(quoteTrade({ alloy: 180, crystal: 0, deuterium: 0 }, want, RATE).leftoverUnits)
+      expect(quoteTrade({ alloy: units / RATE.alloy, crystal: 0, deuterium: 0 }, want, RATE).leftoverUnits)
         .toBe(0);
     }
   });
@@ -182,7 +178,10 @@ describe('the largest offer a convoy can make', () => {
   });
 
   it('is bounded by the store when the store is the smaller wall', () => {
-    expect(largestOffer(90, hold({ ATLAS: 1 }), 'alloy', RATE)).toBe(90);
+    const step = offerStep('alloy', RATE);
+    const top = largestOffer(90, hold({ ATLAS: 1 }), 'alloy', RATE);
+    expect(top).toBe(Math.floor(90 / step) * step);
+    expect(top + step).toBeGreaterThan(90);
   });
 
   it('grows with the convoy, which is the answer to every hold refusal', () => {
@@ -216,7 +215,7 @@ describe('the counter never keeps a scrap, and never rounds one off', () => {
 
   /*
     OFF THE RATE, NOT OFF REMEMBERED NUMBERS. These read 90 / 30 / 1, which were
-    the answers for 1 · 3 · 90 and stopped being answers at D183's 1 · 2 · 9. What
+    the answers for 1 · 3 · 90 and stopped being answers at the historical 1 · 2 · 9 rate. What
     the rule actually says is "one whole unit of the dearest good this offer buys",
     and stated that way the assertion survives the next rate change too.
   */
@@ -378,7 +377,7 @@ describe('why the offer stops where it does', () => {
       THE STORE IS BIG AND THE CONVOY IS SMALL. The figures were 6,000 of hold
       against 100 deuterium, which was convoy-bound at 1 · 3 · 90 (a hundred
       deuterium is 9,000 units and 9,000 alloy does not fit in 6,000) and is store-
-      bound at D183's 1 · 2 · 9. The CASE is "the convoy is the shorter of the two",
+      bound at the historical 1 · 2 · 9 rate. The CASE is "the convoy is the shorter of the two",
       so the store moves rather than the assertion.
     */
     const hold = 600;
@@ -441,6 +440,7 @@ describe('what the counter requires of a rate', () => {
   /** Whatever the whole-number rate, a stride is a usable positive step. */
   it('produces a workable stride for every whole rate', () => {
     for (const rate of [
+      { alloy: 1, crystal: 2, deuterium: 32 },
       { alloy: 1, crystal: 2, deuterium: 9 },
       { alloy: 1, crystal: 3, deuterium: 90 },
       { alloy: 1, crystal: 1, deuterium: 1 },

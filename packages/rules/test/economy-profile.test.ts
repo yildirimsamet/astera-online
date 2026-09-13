@@ -55,9 +55,10 @@ describe('monthly economy', () => {
   });
   it('funds season rewards from the frozen monthly reference', () => {
     const purse = rewardPurse();
-    expect(purse.alloy).toBeGreaterThan(45000);
-    expect(purse.alloy).toBeLessThanOrEqual(45524);
-    expect(purse.crystal).toBeLessThanOrEqual(22337);
+    // D209 halved the seasonal purse, owner instruction.
+    expect(purse.alloy).toBeGreaterThan(22500);
+    expect(purse.alloy).toBeLessThanOrEqual(22762);
+    expect(purse.crystal).toBeLessThanOrEqual(11169);
     expect(purse.deuterium).toBe(0);
   });
   it('links the other purchases and moving targets to the same economy', () => {

@@ -9,7 +9,7 @@ import {
 } from '@astera/rules';
 import { atMinute } from '../clock.js';
 import type { Queryable } from '../db/client.js';
-import { battleReports, playerResearch } from '../db/schema.js';
+import { battleReports, buildings, planets, playerResearch } from '../db/schema.js';
 import type { LockedPlanet } from './planet.js';
 
 /**
@@ -34,6 +34,26 @@ export type ResearchLevels = ReadonlyMap<ResearchProjectId, number>;
  */
 export const asTech = (levels: ReadonlyMap<ResearchProjectId, number>): TechLevels =>
   Object.fromEntries(levels);
+
+/**
+ * THE COMMAND CORE RESEARCH IS GATED AND TIMED BY: THE CAPITAL'S. D209, owner instruction.
+ *
+ * Research belongs to the commander (T7/D134), and so does the development that
+ * unlocks it. It read the FUNDING world's Core, which let a commander whose own
+ * capital was Core 5 order a Core-12 project — and order everything faster — from
+ * a Core 8 world a garrison fight had handed them. The world that funds an order
+ * still pays for it; the Core that gates and times it is the one the commander
+ * built. Zero when the commander somehow holds no capital, which gates everything.
+ */
+export async function researchCoreLevel(db: Queryable, playerId: string): Promise<number> {
+  const [row] = await db
+    .select({ level: buildings.level })
+    .from(planets)
+    .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
+    .where(and(eq(planets.controllerPlayerId, playerId), eq(planets.kind, 'CAPITAL')))
+    .limit(1);
+  return row?.level ?? 0;
+}
 
 /** Everything this commander has researched, ready for an effect function. */
 export async function techOf(db: Queryable, playerId: string): Promise<TechLevels> {

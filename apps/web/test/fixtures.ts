@@ -90,6 +90,8 @@ export function planetView(
     },
     score: { wealth: 0, dominion: 0 },
     ...over,
+    // A fixture world is its commander's capital unless a test says otherwise. D209.
+    researchCore: over.researchCore ?? over.buildings?.CORE ?? 1,
   };
 }
 

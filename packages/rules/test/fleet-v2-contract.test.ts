@@ -376,7 +376,8 @@ describe('Fleet V2 catalog contract — D148', () => {
     const tierTwo = MULTI_WORLD.neutral[2].fleet as Record<string, number>;
     const tierThree = MULTI_WORLD.neutral[3].fleet as Record<string, number>;
 
-    expect(Object.keys(tierOne)).toHaveLength(0);
+    // D209: every tier is guarded now, tier 1 included.
+    expect(Object.keys(tierOne).length).toBeGreaterThan(0);
     expect(Object.keys(tierTwo).length).toBeGreaterThan(0);
     expect(Object.keys(tierThree).length).toBeGreaterThan(0);
     for (const fleet of [tierOne, tierTwo, tierThree]) {

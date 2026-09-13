@@ -12,6 +12,7 @@ import {
   PROSPECTOR,
   RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
+  SHIELD,
   activeAsteroids,
   asteroidPosition,
   claimOre,
@@ -74,6 +75,7 @@ import {
   prospectorSpeed,
   travelExact,
   satelliteCost,
+  satelliteMinutes,
   satelliteSlots,
   seeingUnlocked,
   shieldHp,
@@ -224,6 +226,8 @@ export interface SimNeutralWorld {
   controllerId: number | null;
   buildings: BuildingLevels;
   aegis: number;
+  /** Current charge, persisted independently from the dome's maximum level. */
+  shield: number;
   fleet: Fleet;
   alloy: number;
   crystal: number;
@@ -495,7 +499,8 @@ export function buildWorld(cfg: SimConfig): World {
         z: chosen.slot.z,
         controllerId: null,
         buildings: { ...template.buildings },
-        aegis: chosen.tier === 3 ? 3 : 0,
+        aegis: template.instruments.AEGIS,
+        shield: shieldHp(template.instruments.AEGIS),
         fleet: { ...template.fleet, ...template.ground },
         alloy: storageCap(alloyPerHour, template.buildings.VAULT),
         crystal: storageCap(crystalPerHour, template.buildings.VAULT),
@@ -915,20 +920,32 @@ function syncNeutral(n: SimNeutralWorld, t: number, world: World): void {
   }
   n.alloy = nextAlloy;
   n.crystal = nextCrystal;
+  const maxShield = shieldHp(n.aegis);
+  n.shield = maxShield > 0
+    ? Math.min(maxShield, n.shield + maxShield * SHIELD.regenPerHour * hours)
+    : 0;
   n.lastTick = t;
 }
 
-/** Mirrors the server's strict infrastructure → Aegis → proportional garrison order. */
+/**
+ * Mirrors the server's `reinforceNeutral` (D209): buildings rebuilt out of the stores
+ * in strict order, then the dome and the guard topped back up to the template for
+ * free, never past it. An open claim is waited out like a recovery.
+ */
 function reinforceNeutralSim(n: SimNeutralWorld, t: number, world: World): void {
   const template = MULTI_WORLD.neutral[n.tier];
   if (template.reinforcementMinutes === null) return;
+  if (n.claimUntil !== null && n.claimUntil > t) {
+    n.nextReinforcement = n.claimUntil;
+    return;
+  }
   syncNeutral(n, t, world);
-  let blocked = false;
+  let short = false;
   for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'] as const) {
-    while (n.buildings[type] < template.buildings[type]) {
+    while (!short && n.buildings[type] < template.buildings[type]) {
       const cost = buildingCost(type, n.buildings[type]);
       if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) {
-        blocked = true;
+        short = true;
         break;
       }
       n.alloy -= cost.alloy;
@@ -936,38 +953,13 @@ function reinforceNeutralSim(n: SimNeutralWorld, t: number, world: World): void 
       n.deuterium -= cost.deuterium;
       n.buildings[type]++;
     }
-    if (blocked) break;
   }
-  if (n.tier === 3 && !blocked) {
-    while (n.aegis < 3) {
-      const cost = instrumentCost('AEGIS', n.aegis);
-      if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) {
-        blocked = true;
-        break;
-      }
-      n.alloy -= cost.alloy;
-      n.crystal -= cost.crystal;
-      n.deuterium -= cost.deuterium;
-      n.aegis++;
-    }
-  }
+  n.aegis = Math.max(n.aegis, template.instruments.AEGIS);
+  n.shield = shieldHp(n.aegis);
   const target = { ...template.fleet, ...template.ground } as Fleet;
-  const tie = ALL_HULLS.filter((hull) => (target[hull] ?? 0) > 0);
-  while (!blocked) {
-    const missing = tie
-      .filter((hull) => (n.fleet[hull] ?? 0) < (target[hull] ?? 0))
-      .sort((a, b) =>
-        ((n.fleet[a] ?? 0) / Math.max(1, target[a] ?? 0))
-        - ((n.fleet[b] ?? 0) / Math.max(1, target[b] ?? 0))
-        || tie.indexOf(a) - tie.indexOf(b));
-    const hull = missing[0];
-    if (!hull) break;
-    const cost = HULLS[hull];
-    if (n.alloy < cost.alloy || n.crystal < cost.crystal || n.deuterium < cost.deuterium) break;
-    n.alloy -= cost.alloy;
-    n.crystal -= cost.crystal;
-    n.deuterium -= cost.deuterium;
-    n.fleet[hull] = (n.fleet[hull] ?? 0) + 1;
+  for (const hull of ALL_HULLS) {
+    const want = target[hull] ?? 0;
+    if ((n.fleet[hull] ?? 0) < want) n.fleet[hull] = want;
   }
   n.nextReinforcement = t + template.reinforcementMinutes;
 }
@@ -983,12 +975,9 @@ function strategicReservations(world: World, playerId: number): number {
   ).length;
 }
 
-function strategicCapacity(world: World, p: SimPlayer): number {
-  const highest = Math.max(
-    p.buildings.CORE,
-    ...coloniesOf(world, p.id).map((n) => n.buildings.CORE),
-  );
-  return colonyCapacity(highest);
+/** Slots count off the capital's Core only, like the server (D209). */
+function strategicCapacity(_world: World, p: SimPlayer): number {
+  return colonyCapacity(p.buildings.CORE);
 }
 
 function canReserveColony(world: World, p: SimPlayer): boolean {
@@ -996,13 +985,13 @@ function canReserveColony(world: World, p: SimPlayer): boolean {
     < strategicCapacity(world, p);
 }
 
-function raidFleetFor(p: SimPlayer, tier: NeutralTier): Fleet | null {
+function raidFleetFor(p: SimPlayer): Fleet | null {
   const cargoHull = ARCHETYPES[p.type].cargoPreference.find((id) => (p.fleet[id] ?? 0) > 0);
   const escort = COMBAT_HULLS
     .filter((id) => (p.fleet[id] ?? 0) > 0)
     .sort((a, b) => HULLS[b].speed - HULLS[a].speed)[0];
   if (!cargoHull || !escort) return null;
-  if (tier === 1) return { [escort]: Math.min(3, p.fleet[escort] ?? 0), [cargoHull]: 1 };
+  // A guarded tier 1 (D209) takes the same committed wing as any other tier.
   const send: Fleet = { [cargoHull]: 1 };
   for (const hull of COMBAT_HULLS) {
     const count = Math.floor((p.fleet[hull] ?? 0) * 0.6);
@@ -1017,8 +1006,8 @@ export function neutralRaidEligible(
   attackValue: number,
   defenceValue: number,
 ): boolean {
-  if (tier === 1) return attackValue > 0;
-  if (tier === 2) return attackValue >= defenceValue * 1.8;
+  // D209 guards tier 1 as well, so both lower tiers ask for the same margin.
+  if (tier === 1 || tier === 2) return attackValue >= defenceValue * 1.8;
   return archetype === 'GRINDER' && attackValue >= defenceValue * 2.5;
 }
 
@@ -1057,9 +1046,10 @@ function tryNeutralRaid(p: SimPlayer, t: number, world: World): void {
       world.strategic.recoveryThirdPartyArrivals++;
       continue;
     }
-    const send = raidFleetFor(p, n.tier);
+    const send = raidFleetFor(p);
     if (!send) return;
-    const defenceValue = fleetValue(n.fleet) + shieldHp(n.aegis);
+    syncNeutral(n, t, world);
+    const defenceValue = fleetValue(n.fleet) + n.shield;
     const attackValue = fleetValue(send);
     // T3 is intentionally not a blind farm: only the informed archetype models a
     // probe/counter-composition decision, and still demands a wide safety margin.
@@ -1183,6 +1173,7 @@ function applyStrategicDamage(n: SimNeutralWorld, t: number): void {
     n.buildings[type] = Math.min(n.buildings[type], core);
   }
   n.aegis = Math.max(0, n.aegis - DEATH_STAR.aegisLevelsLost);
+  n.shield = 0;
   // D179: the strike destroys no fleet, on any kind of world. The garrison stands.
   n.claimUntil = null;
   n.lastTick = t;
@@ -1221,12 +1212,13 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     const result = resolveCombat(
       mission.fleet,
       target.fleet,
-      shieldHp(target.aegis),
+      target.shield,
       mulberry32((mission.id * 104729 + t) >>> 0),
       // A caretaker world researches nothing; the raider's doctrines still count.
       { attacker: { tech: p.tech }, defender: { tech: {} } },
     );
     target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage };
+    target.shield = result.shieldLeft;
     const loot = computeLoot(
       { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
       EMPTY_RESOURCES,
@@ -1281,9 +1273,13 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
       target.controllerId = p.id;
       target.claimUntil = null;
       target.protectedUntil = t + MULTI_WORLD.occupationMinutes;
-      target.alloy += MULTI_WORLD.settlement.cost.alloy;
-      target.crystal += MULTI_WORLD.settlement.cost.crystal;
-      target.deuterium += MULTI_WORLD.settlement.cost.deuterium;
+      // D209: the tier's capture stock, and nothing of the caretaker's or the cargo.
+      const stock = MULTI_WORLD.neutral[target.tier].captureStock;
+      target.alloy = stock.alloy;
+      target.crystal = stock.crystal;
+      target.deuterium = stock.deuterium;
+      // The caretaker's guard stands down; it is never handed over.
+      target.fleet = {};
       target.fleet[transportHull] = (target.fleet[transportHull] ?? 0) + transports;
       world.strategic.colonizedAt[target.tier].push(t);
     } else if (world.activityProfiles) {
@@ -2001,7 +1997,10 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         subject: id,
         count: 1,
         cost,
-        minutes: buildMinutes(cost, projected.buildings.CORE, projected.research),
+        // A satellite reads the satellite quote (the Uplink is five minutes by hand, D209).
+        minutes: orbital
+          ? satelliteMinutes(id, projected.buildings.CORE, projected.research)
+          : buildMinutes(cost, projected.buildings.CORE, projected.research),
       });
       if (placed) {
         spendCrystal(world, 'hardware', cost.crystal);

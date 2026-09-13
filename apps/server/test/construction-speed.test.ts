@@ -7,7 +7,7 @@ import {
   hullWorkMinutes,
 } from '@astera/rules';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { buildOrders } from '../src/db/schema.js';
+import { buildOrders, planets } from '../src/db/schema.js';
 import {
   buildUnits, installSatellite, raiseInstrument, upgradeBuilding,
 } from '../src/services/build.js';
@@ -94,6 +94,18 @@ describe('the surface build ladder, through the real queue', () => {
 
     expect(await queuedSeconds(f, planetId))
       .toBe(asStored(buildMinutes(satelliteCost('FOUNDRY'), CORE, {}) * 0.85));
+  });
+
+  /** D209: the Uplink is five minutes by hand, and the robots still take their share. */
+  it('builds the Uplink in five minutes, less the robot rung, for 1,000 / 500', async () => {
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, planetId));
+    await giveResearch(f.db, planetId, 'AI_ROBOTS', 3);
+    await installSatellite(f.db, planetId, 'UPLINK', f.clock);
+
+    expect(await queuedSeconds(f, planetId)).toBe(asStored(5 * 0.85));
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, planetId));
+    expect(before!.alloy - after!.alloy).toBeCloseTo(1_000, 0);
+    expect(before!.crystal - after!.crystal).toBeCloseTo(500, 0);
   });
 
   /**

@@ -71,15 +71,10 @@ const lcm = (a: number, b: number): number => (a / gcd(a, b)) * b;
 /**
  * THE SMALLEST PILE OF UNITS THAT IS A WHOLE NUMBER OF ALL THREE GOODS. D183.
  *
- * What the rail draws the rate against. The anchor used to be a single deuterium,
- * which came out whole in every row while the other two prices divided it
- * (1 · 3 · 90 — ninety alloy and thirty crystal). At 1 · 2 · 9 it does not: one
- * deuterium is four and a half crystal, and a resource that only exists in whole
- * units must never be drawn as a fraction.
- *
- * The least common multiple is the smallest anchor with no fractions in it, which
- * keeps the picture as small as the rate allows — on the shipped table it is 18,
- * so the rail reads 18 alloy · 9 crystal · 2 deuterium.
+ * The least common multiple is the smallest anchor with no fractional resources.
+ * On D208's 1 · 2 · 32 table it is 32, so the rail reads exactly the owner's
+ * equality: 32 alloy · 16 crystal · 1 deuterium. The function remains generic for
+ * historical occurrence rates.
  */
 export const rateAnchor = (rate: TradeRate): number =>
   lcm(lcm(rate.alloy, rate.crystal), rate.deuterium);
@@ -97,12 +92,9 @@ export const rateAnchor = (rate: TradeRate): number =>
  *
  * So the dearer good leads, always.
  *
- * THE CHEAP PRICE NO LONGER DIVIDES THE DEAR ONE. D183 moved the rate from
- * 1 · 3 · 90 to 1 · 2 · 9, and this note used to lean on 90 being a multiple of 3
- * — with nine and two it is not, so a remainder of one unit cannot be spent by
- * anything and the counter would keep a scrap. `leadStride` is what replaced that
- * accident with a rule: the split moves in whatever steps actually close the
- * arithmetic, whatever the rate says.
+ * D208's cheap price divides the dear one in every split, so each lead notch closes.
+ * `leadStride` remains the generic rule because persisted D183 occurrences use
+ * 1 · 2 · 9 and require coarser steps.
  */
 export const dearestFirst = (
   give: TradeGood,
@@ -201,12 +193,9 @@ export const offerCeiling = (
  * could not be spent purely on deuterium: 2,898 buys thirty-two and strands twenty
  * units, which the cheap good then mopped up as six crystal nobody asked for.
  *
- * Against the DEAREST good the arithmetic closes at the TOP: `units` is a multiple
- * of the dear price, so the far end of the split slider is a whole number of the
- * dear good with nothing left over. Every notch below it used to close as well,
- * because the cheap price divided the dear one (1 · 3 · 90) — at D183's 1 · 2 · 9
- * it does not, and `leadStride` is what makes the notches between the ends land on
- * splits that still spend the offer to nothing.
+ * Against the DEAREST good the arithmetic closes at the top. `leadStride` makes
+ * every intermediate notch close too: it is one on D208's divisible 1 · 2 · 32
+ * rate and stays coarser for persisted D183 occurrences.
  */
 export const offerStep = (give: TradeGood, rate: TradeRate): number => {
   const [dear] = dearestFirst(give, rate);
@@ -217,16 +206,9 @@ export const offerStep = (give: TradeGood, rate: TradeRate): number => {
  * HOW FAR APART THE SPLIT'S NOTCHES ARE. D183.
  *
  * A split spends the offer to nothing when `units − lead·dear` is a whole number
- * of the cheap good. While the cheap price divided the dear one that was true of
- * EVERY lead (1 · 3 · 90 — take one deuterium out of any pile of units and what is
- * left is still a multiple of three). At 1 · 2 · 9 it is not: nine is odd, so
- * taking one deuterium out of an even pile leaves an odd one, and one unit is a
- * scrap no good can spend.
- *
- * The leads that DO close are an arithmetic run, and this is its step. It is one
- * for every rate where the cheap price divides the dear one, so the old table's
- * behaviour is exactly what this returns for it — nothing about the split changed
- * for a rate that never needed it.
+ * of the cheap good. The closing leads form an arithmetic run and this is its step.
+ * It is one for D208's divisible 1 · 2 · 32 rate and remains generic for persisted
+ * D183 occurrences where 2 does not divide 9.
  *
  * WHY NOT REFUSE THE SCRAP INSTEAD. Because "the counter never keeps a scrap" is
  * the whole promise of this sheet (the owner's own report: the first version made

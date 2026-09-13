@@ -12,6 +12,7 @@
 
 export * from './types.js';
 export * from './tempo.js';
+export * from './valuation.js';
 export * from './constants.js';
 export * from './rng.js';
 export * from './hulls.js';

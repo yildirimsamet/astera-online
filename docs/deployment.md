@@ -56,7 +56,7 @@ and the rollback boundary. It is deliberately not a release history.
   API. The worker intentionally has no LISTEN socket, so that value is expected on port 3210.
 - Production admits at most two live galaxies, each with 300 real-player seats, filled strictly
   in order. EU-1 carries a temporary owner-set `player_cap=350` for the current season only —
-  see "Live galaxy acceptance", which is where the expectation of a red row is recorded. Each new galaxy also has 30 tier-1, 15 tier-2 and 6 tier-3 neutral worlds; those 51
+  see "Live galaxy acceptance", which is where the expectation of a red row is recorded. Each new galaxy also has 38 tier-1, 19 tier-2 and 8 tier-3 neutral worlds (D209); those 65
   worlds do not consume player seats.
 - The certified host budget assumes HoofyWood and Candely remain stopped. Astera deployment has
   no authority to delete their containers or volumes, and they must not be restarted casually
@@ -844,10 +844,10 @@ answers "which addresses are taken" and `seatedCommanders` counts capitals when 
 `pickSpawnSlot` keeps offering a built-on slot and the front door answers `SHARD_FULL` on a
 galaxy with empty seats. Real seats are therefore `player_cap` minus that count.
 
-**The 51 / 30 / 15 / 6 pool is a SEEDING fact, not a standing one, and only a galaxy nobody has
+**The 65 / 38 / 19 / 8 pool (D209; 51 / 30 / 15 / 6 before it) is a SEEDING fact, not a standing one, and only a galaxy nobody has
 settled still shows it.** A settlement captures a neutral world: the row becomes a `COLONY`, its
 `neutral_planet_state` is detached, and the neutral count falls by one for the rest of the season.
-Requiring 51 on a played galaxy fails every deploy into a world where the game has happened. What
+Requiring 65 on a played galaxy fails every deploy into a world where the game has happened. What
 must hold is the CONSERVATION — measured, not eyeballed:
 
 ```sql
@@ -863,9 +863,9 @@ SELECT count(*) AS orphaned_neutral_state
  WHERE p.kind <> 'NEUTRAL';
 ```
 
-Require `neutrals + colonies = 51` per live shard, every `CAPITAL` and `COLONY` controlled, every
-`NEUTRAL` uncontrolled, and `orphaned_neutral_state = 0`. A fresh galaxy satisfies it at 51/0; a
-played one at, say, 28/23. A pool that does NOT add to 51 is a world that has lost or gained a
+Require `neutrals + colonies = 65` per live shard, every `CAPITAL` and `COLONY` controlled, every
+`NEUTRAL` uncontrolled, and `orphaned_neutral_state = 0`. A fresh galaxy satisfies it at 65/0; a
+played one at, say, 42/23. A pool that does NOT add to 65 is a world that has lost or gained a
 planet, which is the failure the flat count was reaching for and never actually tested.
 
 `ruleset_version` is whatever `MULTI_WORLD.rulesetVersion` was in the code that CREATED the season,
@@ -1068,7 +1068,7 @@ commander research; ruleset-v4 code deliberately has no live translator for thos
 3. Take the final quiesced dump, checksum it and restore it to a disposable database exactly as in
    steps 5 and 8b above. On that restored copy, run the new image's migrations and
    `season wipe --yes --seed <recorded rehearsal seed>`.
-4. On the restored copy require two live seasons with `ruleset_version = 4`, 51 neutral worlds per
+4. On the restored copy require two live seasons with `ruleset_version = 4`, 65 neutral worlds per
    successor, no unknown hull rows, no players/missions/research/reports from the old world, and the
    expected pending lifecycle rows. Run the focused executable smoke:
 
@@ -1354,10 +1354,10 @@ compare the conservation query below before touching production.
 
 **A CAPTURED COLONY IS HANDED BACK, NOT DELETED.** A colony deleted outright is a world that
 has left the galaxy — one fewer thing to fight over for the rest of the season, and
-`neutrals + colonies = 51` permanently red on every later deploy. The command re-seeds each
+`neutrals + colonies = 65` permanently red on every later deploy. The command re-seeds each
 colony's address from the season's own generator: same slot, same tier, same profile seed,
 same name it was born with. An address the generator never put a neutral at — a Silent Space
-departure site — is left empty, because re-seeding one there would make a 52nd world. Verify
+departure site — is left empty, because re-seeding one there would make a 66th world. Verify
 with the conservation query in "Live galaxy acceptance"; the capital count falls by one and
 the caretaker pool does not move.
 

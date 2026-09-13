@@ -6,9 +6,11 @@ import {
   type ResearchProjectId,
   defenceMinutes,
   researchMinutes,
+  satelliteMinutes,
   shipMinutes,
   type BuildingId,
   type Resources,
+  type SatelliteId,
 } from '@astera/rules';
 import { techOf } from './navigation.js';
 
@@ -65,6 +67,12 @@ interface QueuedOrder {
  */
 export interface OrderTimingSource {
   buildings: Partial<Record<BuildingId, number>>;
+  /**
+   * The capital's Core, which research reads on every world (D209). Absent only on
+   * a source that has no commander behind it — the Academy rehearsal's single
+   * world — where this world's own Core is the capital's.
+   */
+  researchCore?: number;
   research: readonly { id: string; level?: number; completed?: boolean }[];
   queues?: {
     CONSTRUCTION: readonly QueuedOrder[];
@@ -74,6 +82,10 @@ export interface OrderTimingSource {
 
 const levelOf = (view: OrderTimingSource, building: BuildingId): number =>
   view.buildings[building] ?? 0;
+
+/** The Core research is gated and timed by. D209. */
+export const researchCoreOf = (view: OrderTimingSource): number =>
+  view.researchCore ?? levelOf(view, 'CORE');
 
 /**
  * How many levels of one building are already waiting in the CONSTRUCTION queue.
@@ -119,8 +131,17 @@ export function orderMinutes(
   cost: Resources,
   view: OrderTimingSource,
   count = 1,
-  subject?: { building: BuildingId; level: number } | { research: ResearchProjectId; level: number } | { hull: HullId },
+  subject?:
+    | { building: BuildingId; level: number }
+    | { research: ResearchProjectId; level: number }
+    | { hull: HullId }
+    | { satellite: SatelliteId },
 ): number {
+  if (subject && 'satellite' in subject) {
+    // The satellite quote, as `installSatellite` places it: the Uplink's fixed
+    // five minutes or the price-based clock, robots applied either way. D209.
+    return satelliteMinutes(subject.satellite, projectedCore(view), techOf({ research: research(view) }));
+  }
   if (subject && 'building' in subject) {
     // `buildingMinutes`, not `profileBuilding().minutes`: the latter is the design
     // reference and carries no commander's research. Mirrors `build.ts`. D198.
@@ -128,8 +149,8 @@ export function orderMinutes(
   }
   if (subject && 'research' in subject) {
     // The subject supplies the row's identity; the live clock still comes from
-    // its bill and this world's current Core, exactly as it does on the server.
-    return researchMinutes(cost, levelOf(view, 'CORE'));
+    // its bill and the capital's current Core, exactly as it does on the server.
+    return researchMinutes(cost, researchCoreOf(view));
   }
   if (subject && 'hull' in subject) return hullWorkMinutes(subject.hull, count, projectedShipyard(view), techOf({ research: research(view) }));
   const priced: Resources = count === 1
@@ -146,9 +167,9 @@ export function orderMinutes(
     case 'DEFENCE':
       return defenceMinutes(priced, projectedShipyard(view));
     case 'RESEARCH':
-      // The CURRENT Core, deliberately. See the docblock: `research.ts` reads the
-      // planet's own level and never consults a build queue.
-      return researchMinutes(priced, levelOf(view, 'CORE'));
+      // The CURRENT capital Core, deliberately: `research.ts` reads the capital's
+      // standing level (D209) and never consults a build queue.
+      return researchMinutes(priced, researchCoreOf(view));
   }
 }
 

@@ -29,7 +29,8 @@ describe('monthly economy tempo', () => {
   });
   it('keeps entry purchases reachable and founding capital separate', () => {
     expect(HULLS.DART.alloy).toBe(300);
-    expect(satelliteCost('UPLINK')).toEqual({ alloy: 50, crystal: 25, deuterium: 0 });
+    // D209, owner instruction: the Uplink is priced by hand, not by the tempo.
+    expect(satelliteCost('UPLINK')).toEqual({ alloy: 1000, crystal: 500, deuterium: 0 });
     expect(MULTI_WORLD.settlement.charge).toEqual({ alloy: 1000, crystal: 500, deuterium: 0 });
     expect(PROBE.alloy).toBe(50);
   });

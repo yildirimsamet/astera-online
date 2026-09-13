@@ -3,8 +3,9 @@ import {
   COMBAT_HULLS, HULLS, MOBILE_HULLS, SUPPORT_HULLS, TRANSFER_CARGO_HULLS,
   fleetValue, mulberry32, resolveCombat, type Fleet, type HullId,
 } from '../src/index.js';
+import { resourceValue } from '../src/valuation.js';
 
-const val = (id: HullId): number => HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+const val = (id: HullId): number => resourceValue(HULLS[id]);
 const atTier = (t: number): HullId[] => MOBILE_HULLS.filter((id) => HULLS[id].tier === t);
 const find = (t: number, profile: string): HullId | undefined =>
   atTier(t).find((id) => HULLS[id].profile === profile);

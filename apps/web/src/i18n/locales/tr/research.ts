@@ -40,7 +40,7 @@ export const research = {
   rowRunning: "Araştırılıyor",
   rowQueued: "Sırada",
 
-  needCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
+  needCore: "Ana gezegende Komuta Çekirdeğini {{level}}. seviyeye yükselt",
   queueFull:
     "Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.",
   at: "{{duration}} sonra araştırılabilir",

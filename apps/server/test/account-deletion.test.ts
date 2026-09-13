@@ -107,8 +107,8 @@ afterAll(async () => {
  * TWO THINGS ARE DIFFERENT, AND BOTH ARE TESTED HERE:
  *
  *   1. A CAPTURED COLONY GOES BACK TO BEING A CARETAKER WORLD. The galaxy is
- *      seeded with exactly 51 of them and `docs/deployment.md` accepts a live
- *      shard on `neutrals + colonies = 51`. A colony deleted outright is a world
+ *      seeded with exactly 65 of them and `docs/deployment.md` accepts a live
+ *      shard on `neutrals + colonies = 65`. A colony deleted outright is a world
  *      that has LEFT the galaxy: one fewer thing to fight over for the rest of the
  *      season, and that acceptance permanently red. So the address is re-seeded
  *      from the same generator the season was born from — same slot, same tier,
@@ -117,6 +117,9 @@ afterAll(async () => {
  *      protects. `account_rewards` survives a reclaim because the person is coming
  *      back. It cannot survive the person.
  */
+/** The whole caretaker pool a season is seeded with (D209: 38 / 19 / 8). */
+const NEUTRAL_POOL = MULTI_WORLD.neutralCounts[1] + MULTI_WORLD.neutralCounts[2] + MULTI_WORLD.neutralCounts[3];
+
 describe('deleting an account at the player’s request', () => {
   let f: Fixture;
   let leaver: string;
@@ -184,8 +187,8 @@ describe('deleting an account at the player’s request', () => {
   /**
    * THE ACCEPTANCE QUERY FROM `docs/deployment.md`, ASKED OF THE FIXTURE.
    *
-   * *"Require `neutrals + colonies = 51` per live shard."* A fresh galaxy satisfies
-   * it at 51/0 and a played one at 28/23; what may never change is the sum.
+   * *"Require `neutrals + colonies = 65` per live shard."* A fresh galaxy satisfies
+   * it at 65/0 and a played one at 42/23; what may never change is the sum.
    */
   const caretakerPool = async () => {
     const rows = await f.db
@@ -242,7 +245,7 @@ describe('deleting an account at the player’s request', () => {
   /**
    * THE CONSERVATION `docs/deployment.md` ACCEPTS A LIVE SHARD ON.
    *
-   * `neutrals + colonies = 51` per live shard. A colony deleted outright is a
+   * `neutrals + colonies = 65` per live shard. A colony deleted outright is a
    * world that has left the galaxy, and that query reads red on every deploy for
    * the rest of the season.
    */
@@ -255,7 +258,7 @@ describe('deleting an account at the player’s request', () => {
     expect(result.coloniesReturned).toEqual([colony.name]);
     // One world less — the capital. The colony is not lost, it is handed back.
     expect(await worldCount()).toBe(before - 1);
-    expect(await caretakerPool()).toBe(51);
+    expect(await caretakerPool()).toBe(NEUTRAL_POOL);
 
     const [restored] = await f.db
       .select().from(planets)
@@ -306,7 +309,7 @@ describe('deleting an account at the player’s request', () => {
 
     expect(result.coloniesReturned.toSorted()).toEqual([first.name, second.name].toSorted());
     expect(await worldCount()).toBe(before - 1);
-    expect(await caretakerPool()).toBe(51);
+    expect(await caretakerPool()).toBe(NEUTRAL_POOL);
     const tiers = await f.db
       .select({ tier: neutralPlanetState.tier })
       .from(neutralPlanetState)

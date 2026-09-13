@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { buildingCost, buildMinutes, RESEARCH_PROJECTS, storageCap, alloyRate, instrumentCost, satelliteCost } from '../packages/rules/src/index.js';
+import { buildingCost, buildMinutes, ECON, RESEARCH_PROJECTS, storageCap, alloyRate, instrumentCost, satelliteCost } from '../packages/rules/src/index.js';
 import { emptyWorld, quoteWorldOrder, completeWorldOrder, worldStats, developmentReserve, worldProtection } from './costed-world.js';
 import { designBuilding, designIncome, designResearch } from './economy-design-model.js';
 
@@ -7,10 +7,10 @@ it('protects each new-design resource using its own actual production instead of
   const w = emptyWorld(); w.design = { seasonDays: 14 };
   w.buildings.REFINERY = 6; w.buildings.EXTRACTOR = 4; w.buildings.DEUTERIUM_PLANT = 3; w.buildings.VAULT = 6;
   const p = worldProtection(w), s = worldStats(w);
-  expect(p.alloy).toBe(Math.round(s.storage.alloy * 0.15));
-  expect(p.crystal).toBe(Math.round(s.storage.crystal * 0.15));
+  expect(p.alloy).toBe(Math.round(s.storage.alloy * ECON.protectedShare));
+  expect(p.crystal).toBe(Math.round(s.storage.crystal * ECON.protectedShare));
   // Containment capacity is not passive D production and creates no protected resource grant.
-  expect(p.deuterium).toBeLessThan(s.storage.deuterium * 0.15);
+  expect(p.deuterium).toBeLessThan(s.storage.deuterium * ECON.protectedShare);
   w.buildings.DEUTERIUM_PLANT = 0;
   expect(worldProtection(w).deuterium).toBe(0);
 });

@@ -55,7 +55,7 @@ export const research = {
   rowRunning: "Researching",
   rowQueued: "In queue",
 
-  needCore: "Raise Command Core to L{{level}}",
+  needCore: "Raise your capital’s Command Core to L{{level}}",
   queueFull: "3 research projects are already queued. Wait for one to finish before adding another.",
   at: "Researchable in {{duration}}",
   warAt: "War act opens in {{duration}}",

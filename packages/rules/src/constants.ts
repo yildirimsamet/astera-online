@@ -1,4 +1,5 @@
 import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
+import { RESOURCE_VALUE } from './valuation.js';
 import type { BuildingId, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
@@ -817,9 +818,15 @@ export const SATELLITES = {
    * allowed to gate anything: it is what makes the FIRST slot a real decision — do
    * you open your eyes, or do you take production, or speed for your drills.
    */
+  /*
+    PRICED BY HAND AT D209, owner instruction: 1,000 alloy and 500 crystal, built in
+    five minutes (`UPLINK_BUILD_MINUTES`). It was 50 / 25 off the gateway tempo —
+    cheap enough that the fog layer's door cost nothing but the slot. It still
+    stays inside a commander's opening store (`invariants.test.ts`).
+  */
   UPLINK: {
-    alloy: scalePrice(900, ECONOMY_TEMPO.gatewayPrice),
-    crystal: scalePrice(300, ECONOMY_TEMPO.gatewayPrice),
+    alloy: 1_000,
+    crystal: 500,
   },
   /** Services every mining craft the planet owns: bigger hold, faster crossing. */
   DERRICK: {
@@ -835,6 +842,15 @@ export const SATELLITES = {
     speed: 1.3,
   },
 } as const;
+
+/**
+ * THE UPLINK'S BUILD TIME, IN MINUTES, BEFORE AI ROBOTS. D209, owner instruction.
+ *
+ * Every other satellite is quoted off its price (`buildMinutes`); the Uplink is the
+ * one the owner set by hand. `satelliteMinutes` is the only reader, and it still
+ * applies the Construction queue's robot discount (D198 — no exceptions).
+ */
+export const UPLINK_BUILD_MINUTES = 5;
 
 /** Every satellite has a price, and the map is total. Checked, not assumed. */
 const _priced: Record<SatelliteId, { readonly alloy: number; readonly crystal: number }> = SATELLITES;
@@ -1796,17 +1812,17 @@ export const FUEL = {
    * there is no tier to sit on for a discount. The ladder is gone; there is nothing
    * left to exclude tier 1 from.
    *
-   * THE VALUE IS SET SO THE GALAXY'S TOTAL FUEL BILL DOES NOT MOVE. This is a
-   * redistribution between hulls, not a new tax and not a rebate: the same
-   * deuterium leaves the same fleets, and it leaves them in proportion to what they
-   * are worth instead of in proportion to a rung.
+   * D208 weights value at A + 2C + 32D. The fraction preserves the opening's
+   * per-hull fuel masses; later recipes and mission bills are measured explicitly.
+   * Total season fuel is not guaranteed unchanged when commanders change fleets.
    *
    * IT STILL MULTIPLIES FUEL MASS AND NOTHING ELSE. `bulk` survives as GROUND ROOM
    * (`groundSlots`) and is no longer the fuel basis for anything that flies, so the
    * two can no longer re-rate each other. Prices are still `atk x hp / value^2` and
    * do not read fuel; the counter cycle and the research ceiling are untouched.
    */
-  perValue: 0.0127,
+  // Economic hull value at 32:16:1; preserves every T1 combat hull's opening thirst.
+  perValue: 0.011,
   /**
    * THE ROUND TRIP A FUEL CHARGE IS NEUTRAL AT. D195, owner instruction.
    *
@@ -2219,7 +2235,7 @@ export const GALAXY = {
 /**
  * TİCARET GEMİSİ — THE SECOND PUBLIC MOMENT IN THE SKY. D156.
  *
- * A merchant rides a closed orbit three times a day and swaps one resource for
+ * A merchant rides a closed orbit four times a day and swaps one resource for
  * another at ONE fixed, published rate. It is the first thing in the galaxy that
  * turns a surplus into a shortage without a fight, and it is deliberately not a
  * market: no price discovery, no order book, no quota, no fee. A rate a player
@@ -2238,30 +2254,14 @@ export const GALAXY = {
  */
 export const TRADE = {
   /**
-   * 90 alloy = 45 crystal = 10 deuterium. Owner instruction, D183.
-   *
-   * Read as UNITS PER RESOURCE UNIT, which is the only way this cannot be
-   * inverted by accident: a resource's number is what one of it is worth, so the
-   * scarcer the resource the larger the figure. Ten Deuterium is ninety units and
-   * ninety Alloy is also ninety units, which is the same sentence twice.
-   *
-   * IT WAS 90:30:1 AT D156, AND THAT MADE THE MERCHANT A PRINTING PRESS. One
-   * Deuterium bought ninety Alloy — a ninety-to-one premium on a resource the
-   * plant produces continuously and a rock delivers in lumps — so a single Atlas
-   * of isotope paid for a fleet and the whole isotope lane stopped being a
-   * contested errand. Crystal was mispriced in the same direction at three.
-   *
-   * NINE-TO-ONE AND TWO-TO-ONE are the premiums now, which still rank the three
-   * resources the way the economy does — Deuterium scarcest, then Crystal, then
-   * Alloy — without letting one full hold rewrite a season. The rate stays a
-   * number a player can hold in their head, which is the whole reason it is
-   * published and fixed rather than discovered.
-   *
-   * A LIVE SEASON KEEPS THE RATE IT WAS DEALT. `tradeShipSpec` freezes
-   * `occurrence.effect.rate` onto every occurrence at calendar time (D149), so
-   * this constant reaches a running galaxy only through `season restamp`.
+   * D208: 32 alloy = 16 crystal = 1 deuterium; unit values are 1, 2, 32.
+   * This is an owner-selected, rounded L12 production reference, not a dynamic
+   * scarcity estimate for every player's producers and research.
+   * A live calendar keeps its persisted occurrence rate; only newly dealt fixed
+   * calendars use this definition. Historical random-calendar definitions are
+   * pinned separately in galaxyEvents.ts. Restamping is an explicit operator action.
    */
-  rate: { alloy: 1, crystal: 2, deuterium: 9 },
+  rate: RESOURCE_VALUE,
 
   /**
    * HALF AN ATLAS'S PACE, ON THE ATLAS'S OWN SCALE. D155's lesson, applied before
@@ -2395,7 +2395,7 @@ export const GALAXY_EVENTS = {
     },
     TRADE_SHIP: {
       schedule: 'FIXED_DAILY',
-      version: 3,
+      version: 4,
       windows: [
         { startsAtLocalMinute: 60, endsAtLocalMinute: 3 * 60, effect: { rate: TRADE.rate } },
         { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 9 * 60,
@@ -2417,7 +2417,7 @@ export const GALAXY_EVENTS = {
           formationVersion: 1 as const,
           resourceCapHours: 2 as const,
           fullRewardForceRatio: 1 as const,
-          /** Snapshot of `combatValue({ CATACLYSM: 1 })` at definition creation. */
+          /** Frozen pre-D208 `combatValue({ CATACLYSM: 1 })`; hull discounts do not retune this event. */
           shipDropFullFirepower: 5_780,
           shipDropChanceAtFullQuality: 0.15 as const,
           shipCountWeights: [0.80, 0.17, 0.03] as const,
@@ -2887,7 +2887,18 @@ export const MULTI_WORLD = {
   capitalSlots: SERVERS.capacity,
   /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */
   neutralSlotPool: SERVERS.capacity + 450,
-  neutralCounts: { 1: 30, 2: 15, 3: 6 },
+  /** D209 (owner instruction): eight more T1, four more T2 and two more T3 than D97's 30/15/6. */
+  neutralCounts: { 1: 38, 2: 19, 3: 8 },
+  /**
+   * THE COMMAND CORE EACH COLONY SLOT OPENS AT. D209, owner instruction.
+   *
+   * The first colony at Core 6, the second at 9, the third at 12. It was one per
+   * three Core levels from Core 3, which let a three-hour-old commander hold two.
+   * `colonyCapacity` counts the thresholds reached and the settle control names the
+   * next one, so the number a player reads and the number the server enforces are
+   * this one list.
+   */
+  colonyCoreThresholds: [6, 9, 12],
   /**
    * `claimMinutes` IS NOT HERE, AND MUST NEVER BE TYPED BACK IN.
    *
@@ -2920,33 +2931,56 @@ export const MULTI_WORLD = {
    */
   recoveryMinutes: 2 * 60,
   settlement: {
-    /** Delivered capital and refundable escrow are separate; only capital occupies cargo. */
+    /**
+     * `cost` rides as cargo and `fee` as escrow: both come home if the race is lost, and
+     * both are spent whole on a successful landing — the world opens on its tier's
+     * `captureStock`, never on this cargo (D209).
+     */
     cost: SETTLEMENT_CAPITAL,
     fee: SETTLEMENT_FEE,
     charge: SETTLEMENT_CHARGE,
     transportHull: 'COURIER',
     transports: 2,
   },
+  /**
+   * THE CARETAKER WORLDS. D209 re-armed every tier, owner instruction.
+   *
+   * `buildings` are unchanged. `instruments.AEGIS` is the dome the world is seeded
+   * with and rebuilt towards — read by `createNeutralWorld`, `reinforceNeutral` and
+   * the simulator, never restated as a literal. `ground` must fit
+   * `groundSlots(buildings.CORE)`: tier 3 was asked for five Bastions, which is 120
+   * of Core 8's 100, and the owner chose three.
+   *
+   * `captureStock` IS WHAT A SETTLED WORLD OPENS WITH, and nothing else. Before D209
+   * the settler inherited whatever the caretaker was holding — full stores, a
+   * season's worth of deuterium — plus the founding cargo on top. Now the stores are
+   * SET to this on a successful landing and the founding charge is spent whole.
+   */
   neutral: {
     1: {
       buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
-      instruments: {},
-      fleet: {},
-      ground: {},
+      instruments: { AEGIS: 0 },
+      fleet: { DART: 12 },
+      ground: { THORN: 1 },
+      captureStock: { alloy: 1_000, crystal: 500, deuterium: 0 },
       reinforcementMinutes: null,
     },
     2: {
       buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
-      instruments: {},
-      fleet: { DART: 8, PIKE: 2 },
-      ground: {},
+      instruments: { AEGIS: 2 },
+      fleet: { DART: 10, PIKE: 10, VIPER: 5, STRONGHOLD: 5 },
+      ground: { THORN: 2, BASTION: 2 },
+      captureStock: { alloy: 5_000, crystal: 2_500, deuterium: 1_000 },
       reinforcementMinutes: 6 * 60,
     },
     3: {
       buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
-      instruments: { AEGIS: 3 },
-      fleet: { VIPER: 16, TALON: 6, STRONGHOLD: 2 },
-      ground: { THORN: 6, BASTION: 2 },
+      instruments: { AEGIS: 4 },
+      fleet: {
+        VIPER: 10, STRONGHOLD: 10, TEMPEST: 3, BALLISTA: 3, SENTINEL: 3, LEVIATHAN: 3, PRAETORIAN: 3,
+      },
+      ground: { THORN: 5, BASTION: 3 },
+      captureStock: { alloy: 15_000, crystal: 5_000, deuterium: 3_000 },
       reinforcementMinutes: 4 * 60,
     },
   },

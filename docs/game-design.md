@@ -49,12 +49,14 @@ without automatically doubling a commander's economy per additional planet. See
 model parameters, not live constants.
 
 One commander per galaxy, with one uncapturable **capital** and up to three captured
-**colonies**. Every controlled world is named, fixed in 3D and runs the complete planetary
+**colonies**. Colony slots open at the capital's Command Core 6, 9 and 12, and only the capital's
+Core counts (D209). Every caretaker world is guarded; a settled world opens on its tier's fixed
+capture stock, never on what the caretaker held (D209). Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
 specific permanent level loss in D97/D98. A capital may be devastated but never captured.
-Under D167 a Death Star transfers no ownership: a colony receiving no ship as relief
-inside its recovery window becomes neutral, then can be settled through the ordinary
-settlement rules. This supersedes the former second-impact transfer description.
+Under D179 a Death Star transfers or releases no ownership: every world keeps its controller
+through the two-hour outage. This supersedes both the former second-impact transfer and D167's
+temporary release deadline.
 
 Ownership is public spatial structure as well as a label (D122). The galaxy always joins the
 caller's capital and colonies with faint white filaments. Focusing another commander's
@@ -199,7 +201,7 @@ store fills, an order commits part of it, and production continues while that or
 involuntary sawtooth, not any score incentive, is what makes raiding worth doing. **Cost lumpiness
 and bounded build throughput are hard requirements, not tuning preferences.**
 
-## Fleet — eighteen Fleet V2 hulls, one mining craft and two ground guns
+## Fleet — twenty-two mobile hulls, one mining craft and two ground guns
 
 Every Fleet V2 hull is a fixed authored profile. The player does not allocate stat points or fit
 modules; the decision is which hulls to build and combine. A higher tier converts cost into stats
@@ -208,11 +210,11 @@ role.
 
 | Hulls | Tier | Class | Mathematical job | Cost of using them |
 |---|---:|---|---|---|
-| **Dart / Viper / Tempest** | 1 / 2 / 3 | Skirmisher | The fast raider line; 1.6× into Bulwark | Low hull efficiency; no tier-4 successor |
+| **Dart / Viper / Tempest / Corsair** | 1 / 2 / 3 / 4 | Skirmisher | The fast raider line; 1.6× into Bulwark | Less hold and durability than slower profiles |
 | **Pike / Talon / Ballista / Cataclysm** | 1 / 2 / 3 / 4 | Lance | Attack-specialist line; 1.6× into Skirmisher | Loses to Bulwark; increasing cost, build time and bulk |
 | **Rampart / Stronghold / Leviathan / Citadel** | 1 / 2 / 3 / 4 | Bulwark | Maximum hull-per-role defensive line; 1.6× into Lance | Slowest profile at each tier |
 | **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
-| **Courier / Wayfarer / Atlas** | 1 / 2 / 3 | Support | Fast/light, balanced and heavy cargo choices | Deal no damage; capacity, speed and bulk prevent a universal choice |
+| **Courier / Wayfarer / Atlas / Argosy** | 1 / 2 / 3 / 4 | Support | Fast/light through slow/deep cargo choices | Deal no damage; capacity and speed prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
 | **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
@@ -489,14 +491,14 @@ compress 351 worlds back into the old 50-player picture. At the widest camera di
 sphere remains available as an overview, while ordinary play opens on a readable neighbourhood.
 
 At most two galaxies of 300 commander seats, filled strictly in order (D99/D100). A v2 season also contains
-51 neutral worlds: thirty T1, fifteen T2 and six T3. The sphere radius and travel rules do not scale with
+65 neutral worlds: thirty-eight T1, nineteen T2 and eight T3 (D209). The sphere radius and travel rules do not scale with
 population; the denser neighbourhood is an explicit consequence of the 300-player world, not a
 hidden balance adjustment.
 
 The population is spread through the whole sphere, not filled from one neighbourhood outwards. Capital
 addresses use the seeded Poisson layout and each arriving commander takes the address furthest from
 the commanders already present. Neutral placement is stratified as well: T1 worlds cover the playable
-sphere by equal-volume radial strata, T2 worlds occupy an evenly distributed middle shell, and the six
+sphere by equal-volume radial strata, T2 worlds occupy an evenly distributed middle shell, and the eight
 T3 worlds share the contested central shell. Every tier spans all three axes; a flat ring is invalid.
 
 ```
@@ -672,14 +674,14 @@ not a market: one published rate, no haggling, no order book, and no price that 
 hardens with how much the galaxy has already sold it. A rate cheap enough to undercut what a
 Refinery already produces would make an isotope asteroid worthless to fight over.
 
-**The rate is 90 alloy : 45 crystal : 10 deuterium (D183).** It shipped at 90 : 30 : 1, and that
-was a printing press rather than a shop: one Deuterium bought ninety Alloy — a ninety-to-one
-premium on a resource the plant produces continuously and a rock delivers in lumps — so a single
-Atlas of isotope paid for a fleet and the mining race D135 is built on stopped mattering. Nine to
-one keeps Deuterium the scarcest thing on the counter and two to one keeps Crystal above Alloy,
-which is the ranking the economy actually has, without letting one full hold rewrite a season. A
-live season keeps the rate it was dealt (D149): the calendar freezes it per occurrence, and
-`season restamp` is the only door.
+**The rate is 32 alloy : 16 crystal : 1 deuterium (D208).** The counter stores those as unit
+values `1 : 2 : 32`: all three piles have value 32 in the worked equality. This is the rounded
+L12 producer ratio (the exact production reading is about `32.052 : 16.026 : 1`), chosen as one
+stable planning price. It is not a claim that every development level has the same scarcity.
+The swap conserves these value units; cargo, a flight bay and prepaid fuel remain its costs. A
+live season keeps the rate persisted on its occurrences (D149). Newly dealt fixed calendars use
+D208; historical ruleset 5–7 definitions keep D183's `1 : 2 : 9`, and an operator restamp is the
+only explicit way to update unopened occurrences.
 
 This feeds OPPORTUNITY and RE-ENGAGEMENT most directly — one more reason to check the sky this
 session even with nothing under threat — and a little AMBITION and RISK besides: a convoy
@@ -753,6 +755,10 @@ raw battle value = secured loot from players + enemy permanent unit loss
 battle transfer = raw battle value
 Dominion        = sum of battle transfers
 ```
+
+All three value terms currently count physical `Alloy + Crystal + Deuterium`. D208's
+`Alloy + 2×Crystal + 32×Deuterium` production reference calibrates ships and the merchant;
+it does not reprice the Dominion journal.
 
 The defender receives the exact negative of the attacker's transfer. It is therefore **exactly
 zero-sum per scored battle and across the season cycle, and only player combat generates it.** It

@@ -215,25 +215,22 @@ describe('the counter opens on a trade that already works', () => {
 
 describe('the split the owner described', () => {
   /**
-   * *"180 alaşım göndermek olarak ayarladıysam, 2 döteryum isterim değil mi,
-   * otomatik max ayarlanmalı. Döteryumu kendim kaydırarak 1'e çekersem, alacağım
-   * otomatik olarak 1 döteryum, 30 kristal olmalı."*
-   *
-   * One slider, two readouts. The dearer good leads and the cheaper absorbs the
-   * remainder exactly, so every unit paid for comes home and there is no leftover
-   * for the player to notice, understand and clean up.
+   * D183's original 180-alloy example established the interaction. D208 changes
+   * the quantities, not the rule: one slider, two readouts, the dearer good leads
+   * and the cheaper absorbs the remainder exactly.
    */
-  const openWith180Alloy = async (): Promise<void> => {
+  const twoDeuteriumInAlloy = (2 * TRADE.rate.deuterium) / TRADE.rate.alloy;
+  const openWithTwoDeuteriumInAlloy = async (): Promise<void> => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /max courier/i }));
-    setAmount(/alloy to give/i, 180);
+    setAmount(/alloy to give/i, twoDeuteriumInAlloy);
   };
 
   it('tops the ask up to two deuterium on its own', async () => {
     sheet({ planet: trader({ fleet: { COURIER: 1 } }) });
-    await openWith180Alloy();
+    await openWithTwoDeuteriumInAlloy();
 
-    expect(screen.getByTestId('trade-offer')).toHaveTextContent('180');
+    expect(screen.getByTestId('trade-offer')).toHaveTextContent(String(twoDeuteriumInAlloy));
     expect(screen.getByTestId('trade-split').querySelector('[data-take="deuterium"]'))
       .toHaveTextContent('2');
     expect(screen.getByTestId('trade-split').querySelector('[data-take="crystal"]'))
@@ -242,27 +239,26 @@ describe('the split the owner described', () => {
 
   it('pays the rest in crystal the moment the deuterium is dragged down', async () => {
     sheet({ planet: trader({ fleet: { COURIER: 1 } }) });
-    await openWith180Alloy();
+    await openWithTwoDeuteriumInAlloy();
     setAmount(/what you take/i, 1);
 
     /*
-      THE SPLIT'S OWN ARITHMETIC, OFF THE RATE. These read 1 and 30 — the answers
-      for 1 · 3 · 90 — and 180 alloy buys a different pair at any other rate. The
-      RULE is the assertion: whatever the slider is dragged to, the two takes spend
-      the offer to nothing.
+      THE SPLIT'S OWN ARITHMETIC, OFF THE RATE. The exact readout changes with the
+      occurrence's rate. The rule is the assertion: wherever the slider is dragged,
+      the two takes spend the offer to nothing.
     */
     const take = (good: string) => Number(
       screen.getByTestId('trade-split')
         .querySelector(`[data-take="${good}"]`)?.textContent.replace(/\D/g, '') ?? '0',
     );
     expect(take('deuterium') * TRADE.rate.deuterium + take('crystal') * TRADE.rate.crystal)
-      .toBe(180 * TRADE.rate.alloy);
+      .toBe(twoDeuteriumInAlloy * TRADE.rate.alloy);
     expect(commit()).toBeEnabled();
   });
 
   it('leaves the merchant nothing, wherever the slider sits', async () => {
     sheet({ planet: trader({ fleet: { COURIER: 1 } }) });
-    await openWith180Alloy();
+    await openWithTwoDeuteriumInAlloy();
     for (const at of [0, 1, 2]) {
       setAmount(/what you take/i, at);
       expect(commit(), `split at ${String(at)}`).toBeEnabled();

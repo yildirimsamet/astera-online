@@ -9,47 +9,42 @@ import {
   exposureMinutes,
   fleetCargo,
   fleetTravelExact,
-  hullBulk,
   missionFuel,
   radarLead,
   resolveCombat,
+  resourceValue,
   shieldHp,
   shipMinutes,
   type Fleet,
   type HullId,
 } from '@astera/rules';
 import { runSeason } from '../src/index.js';
+import { economicFleetValue } from '../src/fleet-calibration.js';
 
 const value = (id: HullId): number =>
-  HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+  resourceValue(HULLS[id]);
 
 const fleetAtValue = (id: HullId, budget = 240_000): Fleet => ({
-  [id]: Math.max(1, Math.floor(budget / value(id))),
-});
-
-const fleetAtBulk = (id: HullId, capacity = 600): Fleet => ({
-  [id]: Math.max(1, Math.floor(capacity / hullBulk(id))),
+  [id]: Math.floor(budget / value(id)),
 });
 
 const exchange = (attacker: Fleet, defender: Fleet, attackerTech = {}) => {
   const result = resolveCombat(
     attacker, defender, 0, () => 0.5, { attacker: { tech: attackerTech }, defender: { tech: {} } },
   );
-  return result.defenderLossValue - result.attackerLossValue;
+  return economicFleetValue(result.defenderLosses) - economicFleetValue(result.defenceSalvage)
+    - economicFleetValue(result.attackerLosses);
 };
 
 describe('Fleet V2 all-pairs calibration — D148', () => {
-  it.each([
-    ['equal resource value', fleetAtValue],
-    ['equal hangar bulk', fleetAtBulk],
-  ] as const)('%s preserves every strong and weak side of the visible counter cycle', (_, fleet) => {
+  // D184 removed mobile capacity. Equal bulk is no longer equal investment;
+  // specialists also spend part of their invoice on an ability, not ordinary power.
+  it('equal economic value preserves every strong and weak side of the visible counter cycle', () => {
     for (const attacker of COMBAT_HULLS) {
       let strong = 0;
       let weak = 0;
       for (const defender of COMBAT_HULLS) {
-        // Two tiers behind is intentionally obsolete at equal Hangar capacity.
-        if (_ === 'equal hangar bulk' && Math.abs(HULLS[attacker].tier! - HULLS[defender].tier!) >= 2) continue;
-        const margin = exchange(fleet(attacker), fleet(defender));
+        const margin = exchange(fleetAtValue(attacker), fleetAtValue(defender));
         const multiplier = counterMult(HULLS[attacker].cls, HULLS[defender].cls);
         if (multiplier > 1) {
           expect(margin, `${attacker} should trade up into ${defender}`).toBeGreaterThan(0);
@@ -163,8 +158,8 @@ describe('Fleet V2 mission-profile calibration — D148', () => {
     const result = resolveCombat(
       counters, ground, 0, () => 0.5, { attacker: { tech: {} }, defender: { tech: {} } },
     );
-    expect(result.attackerLossValue).toBeGreaterThan(120_000);
-    expect(result.defenderLossValue).toBeGreaterThan(48_000);
+    expect(economicFleetValue(result.attackerLosses)).toBeGreaterThan(120_000);
+    expect(economicFleetValue(result.defenderLosses) - economicFleetValue(result.defenceSalvage)).toBeGreaterThan(48_000);
   });
 });
 

@@ -20,7 +20,10 @@ import {
   missionFuel,
   mulberry32,
   pirateRoster,
+  pirateHoard,
+  pirateAdmissionCost,
   profileFlightSpeed,
+  resourceValue,
   resolveCombat,
   salvageCapacity,
   seededFrom,
@@ -99,7 +102,7 @@ describe('the Garbage Collector in the catalogue', () => {
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBeLessThan(Math.ceil(15_000 * FUEL.perValue));
     // Every other hull still drinks off its price.
     expect(hullFuelMass('ARGOSY')).toBe(
-      Math.ceil(11_730 * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
+      Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
     );
   });
 
@@ -282,11 +285,13 @@ describe('the pirate lane is untouched by the collector', () => {
     }
   });
 
-  it('keeps the same season field membership while D204 raises its hoards', () => {
+  it('keeps the recorded admission prices and field membership through hull recalibration', () => {
+    expect(pirateAdmissionCost({ VIPER: 1, CATACLYSM: 1 }))
+      .toEqual({ alloy: 5250, crystal: 1380, deuterium: 88 });
     const field = generatePirateSchedule(mulberry32(7), 60 * 24 * 3);
     expect(field).toHaveLength(46);
     const atPreviousReward = (roster: Fleet): Resources => {
-      const worth = fleetValue(roster) * PIRATE.hoardAdmissionValueMult;
+      const worth = total(pirateAdmissionCost(roster)) * PIRATE.hoardAdmissionValueMult;
       return {
         alloy: Math.floor(worth * PIRATE.hoardShare.alloy),
         crystal: Math.floor(worth * PIRATE.hoardShare.crystal),
@@ -298,10 +303,14 @@ describe('the pirate lane is untouched by the collector', () => {
       .digest('hex');
     expect(legacyDigest).toBe('77367da58012298942c177950c78b1a7b9bf4b352187caa38cb3ca93a3f381f2');
 
-    const digest = createHash('sha256')
-      .update(JSON.stringify(field.map((p) => [p.level, p.roster, p.hoard])))
-      .digest('hex');
-    expect(digest).toBe('86e1e49a1f7569dd490b7b6229f8e85c52a2afa35fa33a803c0e72e4746ae7f8');
+    // Rewards follow current replacement prices; admission and target IDs do not.
+    for (const p of field) expect(p.hoard).toEqual(pirateHoard(p.roster));
+    for (const id of MOBILE_HULLS) {
+      const frozen = pirateAdmissionCost({ [id]: 1 });
+      for (const key of ['alloy', 'crystal', 'deuterium'] as const) {
+        expect(HULLS[id][key], `${id}: frozen admission must cover current liability`).toBeLessThanOrEqual(frozen[key]);
+      }
+    }
   });
 
   it('never puts a collector in a pirate crew', () => {

@@ -132,17 +132,29 @@ export const focus = {
     settleNeedFuel: "Found colony · Deuterium missing",
     settleTooLate: "Found colony · arrives too late",
     settleRecovering: "Found colony · origin recovering",
+    settleWhy: {
+      recovering: "Your world is recovering — no fleet can leave it yet.",
+      colonyCore: "Next colony needs Command Core {{required}} · now {{current}}",
+      colonyMax: "You already hold the most colonies there are: {{max}}.",
+      flightBay: "Every flight bay is in use — found it when a fleet lands.",
+      courier: "{{need}} Couriers needed · {{have}} here",
+      alloy: "{{need}} Alloy needed · {{have}} here",
+      crystal: "{{need}} Crystal needed · {{have}} here",
+      fuel: "{{need}} Deuterium needed · {{have}} here",
+      tooLate: "Couriers from here land after the race closes.",
+    },
     settlementConfirm: {
       eyebrow: "Colony race",
       title: "Found {{world}}",
       unsurveyedTitle: "Found this world",
       race: "The first valid two-Courier fleet to arrive takes the world.",
       noRecall:
-        "Colony ships cannot be recalled. If you found the colony, the fee is spent and only the founding cargo lands. If another commander wins first, your Couriers, cargo and fee return; spent fuel does not.",
+        "Colony ships cannot be recalled. If you found the colony, the founding cost is spent and the world opens on its tier's stock. If another commander wins first, your Couriers and founding cost return; spent fuel does not.",
       transports: "Colony ships",
-      foundingCargo: "Founding cargo",
-      foundingFee: "Founding fee",
+      foundingCost: "Founding cost",
+      opensWith: "Colony opens with",
       cargoValue: "{{alloy}} Alloy · {{crystal}} Crystal",
+      stockValue: "{{alloy}} Alloy · {{crystal}} Crystal · {{deuterium}} Deuterium",
       fuel: "Flight fuel",
       arrives: "Arrives in",
       closes: "Race closes in",
@@ -223,7 +235,7 @@ export const focus = {
       "A Death Star clears this claim and starts {{duration}} of recovery. It takes no world and loses nobody one — the world goes dark, and comes back.",
     openColonySlot: "Colony slot",
     colonySlotExplain:
-      "Needed only for step 3. Your strongest Command Core must provide an unused colony slot when the founding fleet leaves.",
+      "Needed only for step 3. Your capital's Command Core must provide an unused colony slot when the founding fleet leaves.",
     captureColonySlotExplain:
       "Needed to found a colony, never to strike one: a Death Star transfers nothing.",
     openFlightBay: "1 free flight bay",
@@ -234,10 +246,10 @@ export const focus = {
       "Only for step 3: these are the founding fleet, sent separate from the raid after it opens the race. They are not needed for the raid.",
     foundingAlloy: "{{amount}} Alloy",
     foundingAlloyExplain:
-      "{{amount}} Alloy travels as the new colony’s starting stock in step 3. It is not a cost of the raid.",
+      "{{amount}} Alloy is spent founding the colony in step 3; a race you lose hands it back. It is not a cost of the raid.",
     foundingCrystal: "{{amount}} Crystal",
     foundingCrystalExplain:
-      "{{amount}} Crystal travels as the new colony’s starting stock in step 3. It is not a cost of the raid.",
+      "{{amount}} Crystal is spent founding the colony in step 3; a race you lose hands it back. It is not a cost of the raid.",
     settlementFuel: "{{amount}} Deuterium",
     settlementFuelExplain:
       "The 2 Couriers burn {{amount}} Deuterium on their one-way flight in step 3. Distance changes this amount.",

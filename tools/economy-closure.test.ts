@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { closureScenario, externalBudget, colonyInvoice, strategicInvoice, rewardInvoices, closureStudy } from './economy-closure.js';
 import { fleetSession } from './fleet-session-study.js';
 import { summarizeCosted } from './costed-progression-study.js';
+import { HULLS, MULTI_WORLD } from '../packages/rules/src/index.js';
 
 it('closes representative readiness and renewal checks without inventing ownership or raid income', () => {
   const r = closureStudy();
@@ -10,8 +11,12 @@ it('closes representative readiness and renewal checks without inventing ownersh
   const pressure = r.runs.find(x => x.stress === 'evening-losses')!;
   expect(pressure.result.shocks).toHaveLength(10);
   expect(pressure.result.orders.some(o => o.at > 10 * 1440)).toBe(true);
-  expect(r.readiness.find(x => x.profile === 'average')!.ready).toBe(true);
+  const average = r.readiness.find(x => x.profile === 'average')!;
+  expect(average.ready).toBe(false);
+  expect(average.world!.buildings.CORE).toBeLessThan(MULTI_WORLD.colonyCoreThresholds[0]);
   expect(r.readiness.find(x => x.profile === 'low-once')!.ready).toBe(false);
+  expect(r.readiness.map(x => x.requirement.core))
+    .toEqual(r.readiness.map(() => MULTI_WORLD.colonyCoreThresholds[0]));
   expect(r.renewal.every(x => x.budget.fits)).toBe(true);
   expect(r.runs.every(x => x.summary.maxResourceError < 1e-7)).toBe(true);
 });
@@ -20,17 +25,22 @@ it('keeps all external-source envelopes separate and scales shared supply with p
   const a = externalBudget({ alloy: 10000, crystal: 5000, deuterium: 100 }, 300);
   const b = externalBudget({ alloy: 10000, crystal: 5000, deuterium: 100 }, 1000);
   expect(a.mining.alloy).toBe(300000); expect(a.pirates.alloy).toBe(150000);
-  expect(a.rewards.alloy).toBe(90000);
+  expect(a.rewards.alloy).toBe(45000);
   expect(b.mining.alloy / a.mining.alloy).toBeCloseTo(1000 / 300);
   expect(() => externalBudget({ alloy: -1, crystal: 0, deuterium: 0 }, 300)).toThrow();
 });
 
 it('separates colony capital from its consumed fee and buys enough real transport volume', () => {
   const c = colonyInvoice();
-  expect(c.capital).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
-  expect(c.fee).toEqual({ alloy: 200, crystal: 100, deuterium: 0 });
-  expect(c.couriers).toBe(2); expect(c.couriers * 700).toBeGreaterThanOrEqual(1200);
-  expect(c.total.alloy).toBe(c.capital.alloy + c.fee.alloy + 1200);
+  expect(c.capital).toEqual(MULTI_WORLD.settlement.cost);
+  expect(c.fee).toEqual(MULTI_WORLD.settlement.fee);
+  expect(c.couriers).toBe(MULTI_WORLD.settlement.transports);
+  expect(c.couriers * HULLS[MULTI_WORLD.settlement.transportHull].cargo)
+    .toBeGreaterThanOrEqual(c.capital.alloy + c.capital.crystal + c.capital.deuterium);
+  expect(c.total.alloy).toBe(
+    c.capital.alloy + c.fee.alloy
+    + c.couriers * HULLS[MULTI_WORLD.settlement.transportHull].alloy,
+  );
   const s = strategicInvoice();
   expect(s.interceptor.alloy).toBeLessThan(s.weapon.alloy);
   expect(s.interceptor.deuterium).toBeLessThan(s.weapon.deuterium);

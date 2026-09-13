@@ -27,7 +27,7 @@ import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
 import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
-import { researchView } from './researchState.js';
+import { researchCoreLevel, researchView } from './researchState.js';
 import { colonyStanding } from './ownership.js';
 import {
   activeResearchOrders,
@@ -309,6 +309,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
     research: await researchView(tx, p, queuedResearch),
+    /** The Core that gates and times research on EVERY world: the capital's. D209. */
+    researchCore: await researchCoreLevel(tx, p.playerId),
     /** One commander lane, identical whichever controlled world funded the view. */
     researchQueue: researchQueue.map(researchOrderView),
     /** Absolute instants keep every client on the same queue clock. D4. */

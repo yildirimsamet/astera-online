@@ -370,7 +370,8 @@ export function predictResearch(view: PlanetView, projectId: ResearchProjectId):
   const state = view.research.find((project) => project.id === projectId);
   if (!(state?.queueAvailable ?? state?.available)) return null;
   const requiredCore = RESEARCH_PROJECTS[projectId].requiredCore ?? 0;
-  if ((view.buildings.CORE ?? 0) < requiredCore) return null;
+  // The capital's Core, like the server (D209).
+  if (view.researchCore < requiredCore) return null;
   const cost = RESEARCH_PROJECTS[projectId].costAt(level);
   if (!affordable(view, cost)) return null;
   const next = spend(view, cost);

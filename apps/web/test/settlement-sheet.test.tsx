@@ -49,21 +49,39 @@ describe('settlement confirmation', () => {
     expect(screen.getByText(/first valid two-Courier fleet to arrive takes the world/i)).toBeInTheDocument();
     expect(screen.getByText('Colony ships').closest('div'))
       .toHaveTextContent(String(MULTI_WORLD.settlement.transports));
-    const cargo = screen.getByText('Founding cargo').closest('div');
-    expect(cargo).not.toBeNull();
-    expect(within(cargo!).getByText(new RegExp(
-      `${MULTI_WORLD.settlement.cost.alloy.toLocaleString('en-US')} Alloy`,
+    // D209: the whole founding charge is spent on success, and the world opens on
+    // its tier's own stock — never on the caretaker's stores plus the cargo.
+    const cost = screen.getByText('Founding cost').closest('div');
+    expect(cost).not.toBeNull();
+    expect(within(cost!).getByText(new RegExp(
+      `${MULTI_WORLD.settlement.charge.alloy.toLocaleString('en-US')} Alloy`,
     ))).toBeInTheDocument();
-
-    const fee = screen.getByText('Founding fee').closest('div');
-    expect(fee).not.toBeNull();
-    expect(within(fee!).getByText(new RegExp(
-      `${MULTI_WORLD.settlement.fee.alloy.toLocaleString('en-US')} Alloy`,
-    ))).toBeInTheDocument();
-    expect(screen.getByText(/fee is spent and only the founding cargo lands/i))
+    const opens = screen.getByText('Colony opens with').closest('div');
+    expect(opens).not.toBeNull();
+    const stock = MULTI_WORLD.neutral[1].captureStock;
+    expect(opens).toHaveTextContent(new RegExp(`${stock.alloy.toLocaleString('en-US')} Alloy`));
+    expect(opens).toHaveTextContent(new RegExp(`${stock.crystal.toLocaleString('en-US')} Crystal`));
+    expect(screen.queryByText('Founding cargo')).not.toBeInTheDocument();
+    expect(screen.getByText(/founding cost is spent and the world opens on its tier.s stock/i))
       .toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /dispatch colony ships/i }));
     expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it('states no opening stock for a world whose tier has not been read', () => {
+    const { neutral, ...rest } = target;
+    const unread: GalaxyPlanet = { ...rest, intel: 'UNKNOWN', neutral: { ...neutral!, tier: undefined } };
+    render(
+      <SettlementSheet
+        target={unread}
+        planet={planetView({ fleet: { COURIER: 2 } }, { alloy: 10_000, crystal: 10_000, deuterium: 10_000 })}
+        now={Date.now()}
+        pending={false}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Colony opens with')).not.toBeInTheDocument();
   });
 });

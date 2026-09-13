@@ -108,7 +108,7 @@ describe('active galaxy event chip', () => {
    * should already know whether it is worth opening the rail (D124).
    */
   /**
-   * THE RATE IS DRAWN, AND ALL THREE GOODS ARE IN IT. Owner report: the chip read
+   * THE RATE IS DRAWN, AND ALL THREE GOODS ARE IN IT. Historical D156 report: the chip read
    * *"90 alaşım = 1 döteryum"*, which names two of the three substances the
    * merchant deals in and spends a line of prose doing it. It is an equality
    * between three quantities, so it is drawn as one — mark, number, equals — which

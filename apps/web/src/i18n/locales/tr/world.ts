@@ -121,17 +121,29 @@ export const focus = {
     settleNeedFuel: "Koloni kur · Döteryum eksik",
     settleTooLate: "Koloni kur · zamanında varamaz",
     settleRecovering: "Koloni kur · ana dünya toparlanıyor",
+    settleWhy: {
+      recovering: "Dünyan toparlanıyor; şu an buradan filo kalkamaz.",
+      colonyCore: "Sonraki koloni için Komuta Çekirdeği {{required}} gerekli · şu an {{current}}",
+      colonyMax: "Tutulabilecek en fazla koloniye sahipsin: {{max}}.",
+      flightBay: "Tüm uçuş rampaları dolu; bir filo inince kurabilirsin.",
+      courier: "{{need}} Kurye gerekli · burada {{have}}",
+      alloy: "{{need}} Alaşım gerekli · burada {{have}}",
+      crystal: "{{need}} Kristal gerekli · burada {{have}}",
+      fuel: "{{need}} Döteryum gerekli · burada {{have}}",
+      tooLate: "Buradan kalkan Kuryeler yarış kapandıktan sonra varır.",
+    },
     settlementConfirm: {
       eyebrow: "Koloni yarışı",
       title: "{{world}} üzerinde koloni kur",
       unsurveyedTitle: "Bu dünyada koloni kur",
       race: "Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
       noRecall:
-        "Koloni gemileri geri çağrılamaz. Koloniyi sen kurarsan ücret harcanır ve gezegene yalnızca kuruluş yükü iner. Başkası önce kazanırsa Kuryelerin, yükün ve ücretin geri döner; harcanan yakıt dönmez.",
+        "Koloni gemileri geri çağrılamaz. Koloniyi sen kurarsan kuruluş bedeli harcanır ve gezegen kendi kademesinin stoğuyla açılır. Başkası önce kazanırsa Kuryelerin ve kuruluş bedelin geri döner; harcanan yakıt dönmez.",
       transports: "Koloni gemileri",
-      foundingCargo: "Kuruluş yükü",
-      foundingFee: "Kuruluş ücreti",
+      foundingCost: "Kuruluş bedeli",
+      opensWith: "Koloni şununla açılır",
       cargoValue: "{{alloy}} Alaşım · {{crystal}} Kristal",
+      stockValue: "{{alloy}} Alaşım · {{crystal}} Kristal · {{deuterium}} Döteryum",
       fuel: "Uçuş yakıtı",
       arrives: "Varış süresi",
       closes: "Yarışın bitmesine",
@@ -211,7 +223,7 @@ export const focus = {
       "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Hiçbir dünyayı ele geçirmez, kimseye de kaybettirmez — dünya kararır ve geri döner.",
     openColonySlot: "Koloni yuvası",
     colonySlotExplain:
-      "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken en güçlü Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
+      "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken ana gezegendeki Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
     captureColonySlotExplain:
       "Koloni kurmak için gerekir, koloni vurmak için değil: Ölüm Yıldızı hiçbir dünyayı devretmez.",
     openFlightBay: "1 boş uçuş rampası",
@@ -222,10 +234,10 @@ export const focus = {
       "Yalnızca 3. adımda gerekir: kuruluş filosudur ve yarış açıldıktan sonra akından ayrı gönderilir. Akın için Kurye gerekmez.",
     foundingAlloy: "{{amount}} Alaşım",
     foundingAlloyExplain:
-      "{{amount}} Alaşım, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
+      "{{amount}} Alaşım 3. adımda koloniyi kurarken harcanır; yarışı kaybedersen geri döner. Akının maliyeti değildir.",
     foundingCrystal: "{{amount}} Kristal",
     foundingCrystalExplain:
-      "{{amount}} Kristal, 3. adımda yeni koloninin başlangıç stoğu olarak taşınır. Akının maliyeti değildir.",
+      "{{amount}} Kristal 3. adımda koloniyi kurarken harcanır; yarışı kaybedersen geri döner. Akının maliyeti değildir.",
     settlementFuel: "{{amount}} Döteryum",
     settlementFuelExplain:
       "2 Kurye, 3. adımdaki tek yön uçuşunda {{amount}} Döteryum yakar. Bu miktar mesafeye göre değişir.",

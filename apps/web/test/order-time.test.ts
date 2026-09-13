@@ -7,6 +7,8 @@ import {
   buildingCost,
   defenceMinutes,
   researchMinutes,
+  satelliteCost,
+  satelliteMinutes,
   shipMinutes,
   type HullId,
 } from '@astera/rules';
@@ -165,6 +167,28 @@ describe('orderMinutes agrees with the rules the server charges', () => {
     expect(orderMinutes('RESEARCH', cost, planet())).toBeLessThan(buildMinutes(cost, 5, {}));
     expect(orderMinutes('RESEARCH', cost, planet()))
       .toBeCloseTo(buildMinutes(cost, 5, {}) * BUILD.researchTimeMult, 6);
+  });
+
+  /** D209: the Uplink row quotes the owner's five minutes, like the server's order. */
+  it('quotes a satellite through its own clock, the Uplink at five minutes', () => {
+    const view = planet({ research: [{ id: 'AI_ROBOTS', level: 2, completed: false }] });
+    const tech = { AI_ROBOTS: 2 };
+    expect(orderMinutes('SATELLITE', satelliteCost('UPLINK'), view, 1, { satellite: 'UPLINK' }))
+      .toBe(satelliteMinutes('UPLINK', 5, tech));
+    expect(orderMinutes('SATELLITE', satelliteCost('FOUNDRY'), view, 1, { satellite: 'FOUNDRY' }))
+      .toBe(satelliteMinutes('FOUNDRY', 5, tech));
+  });
+
+  /**
+   * D209: research is gated and timed by the commander's CAPITAL Core, whichever
+   * world funds it. A taller colony does not make a project quicker.
+   */
+  it('prices research against the capital Core the payload names, not this world', () => {
+    const cost = { alloy: 2000, crystal: 1500, deuterium: 0 };
+    const colony = planet({ buildings: { CORE: 10, SHIPYARD: 4 }, researchCore: 2 });
+    expect(orderMinutes('RESEARCH', cost, colony)).toBe(researchMinutes(cost, 2));
+    expect(orderMinutes('RESEARCH', cost, colony, 1, { research: 'SHIP_POWER', level: 1 }))
+      .toBe(researchMinutes(cost, 2));
   });
 
   it('keeps the Core acceleration when a research row supplies its subject', () => {

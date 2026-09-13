@@ -18,15 +18,15 @@
  *
  * ── WHAT IS DIFFERENT FROM A RECLAIM ────────────────────────────────────────
  *
- *   1. A CAPTURED COLONY GOES BACK TO THE GALAXY. A season is seeded with 51
+ *   1. A CAPTURED COLONY GOES BACK TO THE GALAXY. D209 seeds a season with 65
  *      caretaker worlds and `docs/deployment.md` accepts a live shard on
- *      `neutrals + colonies = 51`. A colony deleted outright is a world that has
+ *      `neutrals + colonies = 65`. A colony deleted outright is a world that has
  *      LEFT — one fewer thing for everybody else to fight over for the rest of the
  *      season, and that acceptance query permanently red. So the address is
  *      re-seeded through `createNeutralWorld`, from the same generator the season
  *      was born from: same slot, same tier, same profile seed, same name. An
  *      address the generator never put a neutral at — a Silent Space departure
- *      site — is simply left empty, because inventing one there would make a 52nd
+ *      site — is simply left empty, because inventing one there would make a 66th
  *      world.
  *   2. THE ACCOUNT ROW GOES, and with it the once-and-for-ever ledger a reclaim
  *      protects. `account_rewards` survives a reclaim because the person is coming

@@ -480,6 +480,17 @@ describe('a closed door states its reason', () => {
     expect(onNeed).toHaveBeenCalledWith('CORE');
   });
 
+  /** D209: the Core that gates research is the capital's, read on every world. */
+  it('gates a project on the capital Core, however tall the world showing it', () => {
+    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const view = show({
+      buildings: { CORE: need + 3, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
+      researchCore: need - 1,
+    });
+    expect(row(view, 'DEATH_STAR_PROTOCOL'))
+      .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
+  });
+
   it('still states the Core reason with no host to take the fix', () => {
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show({

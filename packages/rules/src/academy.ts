@@ -208,11 +208,45 @@ export function academyCheckpoint(completed: number): AcademyCheckpoint {
   return state;
 }
 
+/**
+ * THE ACADEMY'S EXIT PACKAGE. D209, owner instruction.
+ *
+ * D209 halved every seasonal reward, and the Academy is paid almost entirely in
+ * rewards — a graduate would have opened on 295 alloy. The halving stays for the
+ * season; the Academy is made whole by handing back exactly what its claimed
+ * lessons paid, which is the half the halving took. It is derived from the claims
+ * rather than typed, so an early skip receives the share it earned and the figure
+ * follows the reward table if that ever moves again. It lands only on the world a
+ * commander JOINS with (`academyExitCheckpoint`); the lessons themselves keep
+ * paying the amounts their cards show.
+ */
+export function academyExitGrant(claimedRewards: readonly string[]): Resources {
+  return claimedRewards.reduce<Resources>((sum, id) => {
+    const ref = findRewardTier(id);
+    if (!ref) throw new Error(`Missing Academy reward: ${id}`);
+    return {
+      alloy: sum.alloy + ref.tier.reward.alloy,
+      crystal: sum.crystal + ref.tier.reward.crystal,
+      deuterium: sum.deuterium + ref.tier.reward.deuterium,
+    };
+  }, { ...empty });
+}
+
+const withExitGrant = (state: AcademyCheckpoint): AcademyCheckpoint => {
+  const grant = academyExitGrant(state.claimedRewards);
+  state.resources = {
+    alloy: state.resources.alloy + grant.alloy,
+    crystal: state.resources.crystal + grant.crystal,
+    deuterium: state.resources.deuterium + grant.deuterium,
+  };
+  return state;
+};
+
 /** Leaving early preserves taught progress but must not create an empty first
  * session. Start the first missing opening upgrade; otherwise start Core 3. */
 export function academyExitCheckpoint(completed: number): AcademyCheckpoint {
   const state = academyCheckpoint(completed);
-  if (state.queue) return state;
+  if (state.queue) return withExitGrant(state);
   const building = (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
     .find((id) => state.buildings[id] < 2) ?? 'CORE';
   const cost = buildingCost(building, state.buildings[building]);
@@ -225,7 +259,7 @@ export function academyExitCheckpoint(completed: number): AcademyCheckpoint {
     building, cost,
     seconds: Math.ceil(buildingMinutes(building, state.buildings[building] + 1, {}) * 60),
   };
-  return state;
+  return withExitGrant(state);
 }
 
 export const TUTORIAL_EXIT = academyExitCheckpoint(ACADEMY_STEPS.length);

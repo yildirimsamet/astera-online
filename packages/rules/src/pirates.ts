@@ -1,4 +1,5 @@
 import { monthlySupply } from './monthly-supply.js';
+import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
 import { PIRATE, SEASON, SERVERS, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
@@ -142,8 +143,8 @@ export function pirateRoster(level: PirateLevel, rng: Rng): Fleet {
  * it would quietly make the next raid free, and the launch decision is supposed to
  * cost something every time.
  */
-function pirateHoardAt(roster: Fleet, valueMult: number): Resources {
-  const worth = fleetValue(roster) * valueMult;
+function hoardAtValue(value: number, valueMult: number): Resources {
+  const worth = value * valueMult;
   return {
     alloy: Math.floor(worth * PIRATE.hoardShare.alloy),
     crystal: Math.floor(worth * PIRATE.hoardShare.crystal),
@@ -152,7 +153,18 @@ function pirateHoardAt(roster: Fleet, valueMult: number): Resources {
 }
 
 export function pirateHoard(roster: Fleet): Resources {
-  return pirateHoardAt(roster, PIRATE.hoardValueMult);
+  return hoardAtValue(fleetValue(roster), PIRATE.hoardValueMult);
+}
+
+/** Frozen component liability, independent of live hull discounts. D208. */
+export function pirateAdmissionCost(roster: Fleet): Resources {
+  const cost: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  for (const [id, amount] of fleetEntries(roster)) {
+    for (const k of ['alloy', 'crystal', 'deuterium'] as const) {
+      cost[k] += PIRATE_ADMISSION_PRICES[id][k] * amount;
+    }
+  }
+  return cost;
 }
 
 /**
@@ -378,9 +390,11 @@ export function generatePirateSchedule(
     // the original crew. Pirate-created wreckage is external supply as well.
     // Admission stays on the pre-D204 valuation so a reward tune cannot delete
     // or re-index targets in a field that commanders may already be flying at.
-    const liability = pirateHoardAt(roster, PIRATE.hoardAdmissionValueMult);
-    for (const [id, amount] of fleetEntries(roster)) {
-      for (const k of ['alloy', 'crystal', 'deuterium'] as const) liability[k] += HULLS[id][k] * amount * (1 + DEBRIS.share);
+    const admittedCost = pirateAdmissionCost(roster);
+    const liability = hoardAtValue(admittedCost.alloy + admittedCost.crystal + admittedCost.deuterium,
+      PIRATE.hoardAdmissionValueMult);
+    for (const k of ['alloy', 'crystal', 'deuterium'] as const) {
+      liability[k] += admittedCost[k] * (1 + DEBRIS.share);
     }
     if (!budget || (['alloy', 'crystal', 'deuterium'] as const).some(k => liability[k] > budget[k])) continue;
     for (const k of ['alloy', 'crystal', 'deuterium'] as const) budget[k] -= liability[k];

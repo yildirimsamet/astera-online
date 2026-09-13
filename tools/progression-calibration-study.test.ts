@@ -57,6 +57,9 @@ it('reports target exhaustion and the remaining season without pretending target
 
 it('charges both shipyard upgrades and completes them before permitting a T4 hull', () => {
   const s = stressedScenario('average', 'paid-yard-6');
+  // This is a queue-ordering unit check, not the pacing acceptance row. Remove
+  // wallet scarcity so the assertion cannot go stale when live invoices change.
+  s.stock = { alloy: 1_000_000, crystal: 1_000_000, deuterium: 1_000_000 };
   expect(s.development.find(a => a.id === 'yard-5')!.cost).toEqual(buildingCost('SHIPYARD', 4));
   expect(s.development.find(a => a.id === 'yard-6')!.cost).toEqual(buildingCost('SHIPYARD', 5));
   const r = fleetSession(s);

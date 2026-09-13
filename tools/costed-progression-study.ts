@@ -60,6 +60,10 @@ export function costedScenario(profile: ActivityProfile, days: number, prices?: 
   const hulls: HullId[] = ['DART', 'VIPER', 'TEMPEST', 'CATACLYSM'];
   const hullRequires = Object.fromEntries(hulls.map(id => [id, HULLS[id].requiredResearch.map(r => `research:${r.project}:${r.level}`)]));
   return { ...worldStats(initial), world: { initial, orders }, initialFleet: {},
+    // D184 removed the production Hangar. The generic session ledger still uses a
+    // finite ceiling for historical candidate experiments, so live costed worlds
+    // represent the absence of that ceiling explicitly instead of passing undefined.
+    hangar: Number.MAX_SAFE_INTEGER,
     desiredFleet: { CATACLYSM: 2, TEMPEST: 4, VIPER: 8, DART: 2 }, packet: { DART: 2 },
     packetChoices: [{ CATACLYSM: 2, TEMPEST: 2 }, { TEMPEST: 2, VIPER: 4 }, { VIPER: 4 }, { DART: 2 }],
     stock: { alloy: 1500, crystal: 400, deuterium: 50 }, end: days * 1440, seasonEnd: days * 1440, seed: 42,

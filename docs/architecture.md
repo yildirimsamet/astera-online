@@ -457,7 +457,7 @@ node tools/visual.mjs out/visual               # drive and measure the running c
 
 # The world. `bootstrap` is idempotent — running it twice creates nothing.
 pnpm season migrate
-pnpm season bootstrap                  # two galaxies of 300 + 51 neutrals each
+pnpm season bootstrap                  # two galaxies of 300 + 65 neutrals each (38/19/8)
 pnpm season bootstrap --unattended 12  # DEV ONLY: inert commanders to scout
 pnpm season status                     # every galaxy, its population, who is on it
 pnpm season wipe --yes                 # END EVERYTHING and open fresh galaxies

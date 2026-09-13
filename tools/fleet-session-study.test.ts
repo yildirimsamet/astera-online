@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { fleetSession, sessionScenario } from './fleet-session-study.js';
 import { fleetCount, fleetTravelExact, missionFuel, resolveCombat, mulberry32 , hullBulk } from '../packages/rules/src/index.js';
-import { prototypeRoster } from './fleet-economy-next-study.js';
+import { prototypeRoster, withRoster } from './fleet-economy-next-study.js';
 import { HULLS } from '../packages/rules/src/hulls.js';
 import { emptyWorld, worldStats } from './costed-world.js';
 import { buildingCost } from '../packages/rules/src/index.js';
@@ -112,9 +112,10 @@ it('pays a probe, occupies the common bay and waits for its returned report befo
 
 it('freezes attacker research at dispatch and uses defender research in the actual battle', () => {
   const s = sessionScenario(); const w = emptyWorld();
-  w.buildings.CORE = 12; w.buildings.HANGAR = 12; w.buildings.SHIPYARD = 6;
+  w.buildings.CORE = 12; w.buildings.SHIPYARD = 6;
   w.tech = { SHIP_POWER: 1, STARSHIP_ENGINEERING: 1 };
-  s.stock.crystal = 10000; s.baseRoundTripAt1250 = 150;
+  s.stock = { alloy: 100_000, crystal: 100_000, deuterium: 100_000 };
+  s.baseRoundTripAt1250 = 300;
   s.world = { initial: w, orders: { power: { research: 'SHIP_POWER', level: 2 } } };
   s.development = [{ id: 'power', queue: 'research', cost: { alloy: 0, crystal: 0, deuterium: 0 }, minutes: 1, requires: [] }];
   s.desiredFleet = {}; s.targets = [{ ...s.targets[0]!, tech: { SHIP_ARMOR: 4 } }];
@@ -176,14 +177,14 @@ it('does not let an impossible research invoice block affordable capacity invest
   const s = sessionScenario(); const initial = emptyWorld();
   initial.buildings.CORE = 1; initial.buildings.REFINERY = 1; initial.buildings.EXTRACTOR = 1;
   s.initialFleet = {}; s.desiredFleet = {}; s.targets = []; s.stock = { alloy: 1000, crystal: 400, deuterium: 0 };
-  s.world = { initial, orders: { synthesis: { research: 'DEUTERIUM_SYNTHESIS', level: 1 }, core: { building: 'CORE', level: 2 } } };
+  s.world = { initial, orders: { engineering: { research: 'STARSHIP_ENGINEERING', level: 1 }, core: { building: 'CORE', level: 2 } } };
   s.development = [
-    { id: 'synthesis', queue: 'research', requires: [], cost: { alloy: 1, crystal: 1, deuterium: 0 }, minutes: 1 },
+    { id: 'engineering', queue: 'research', requires: [], cost: { alloy: 1, crystal: 1, deuterium: 0 }, minutes: 1 },
     { id: 'core', queue: 'construction', requires: [], cost: { alloy: 1, crystal: 1, deuterium: 0 }, minutes: 1 },
   ];
   const r = fleetSession(s);
   expect(r.developmentStarted.core).toBe(0);
-  expect(r.developmentStarted.synthesis).toBeUndefined();
+  expect(r.developmentStarted.engineering).toBeUndefined();
 });
 
 it('requires real catalog research in costed mode even when a prototype roster clears its research list', () => {
@@ -411,14 +412,14 @@ it('keeps the candidate unresearched roundtrip separate from the capped speed up
   expect(() => fleetSession(s)).toThrow();
 });
 
-it('uses candidate physical bulk for both hangar and fuel and restores the live catalog', () => {
+it('uses candidate bulk for study capacity and economic value for fuel and restores the live catalog', () => {
   const original = HULLS.VIPER;
   const s = sessionScenario(); s.roster = prototypeRoster(1.1, 0.52, 0);
   s.bulk = { VIPER: 5, SENTINEL: 5 }; s.hangar = 24 * 5;
   s.targets = [{ id: 'empty', distance: 1250, fleet: {} }]; s.windows = [{ start: 0, end: 1 }];
   const r = fleetSession(s);
   expect(r.maxCommittedBulk).toBe(120);
-  expect(r.fuelSpent).toBe(60);
+  expect(r.fuelSpent).toBe(withRoster(s.roster, () => missionFuel({ VIPER: 24 }, 1250, 2)));
   expect(HULLS.VIPER).toBe(original);
 });
 
@@ -500,7 +501,12 @@ it('does not use the actual battle random seed to choose a supposedly safe attac
 it('adds salvaged ground units to surviving ground units instead of overwriting them', () => {
   const s = sessionScenario(); s.targets = [{ id: 'ground', distance: 1250, fleet: { THORN: 20 } }];
   s.windows = [{ start: 0, end: 1 }];
-  expect(fleetSession(s).targets[0]!.fleet.THORN).toBe(15);
+  const battle = resolveCombat(s.packet, s.targets[0]!.fleet, 0, mulberry32(s.seed),
+    { attacker: { tech: {} }, defender: { tech: {} } });
+  expect(battle.defenderSurvivors.THORN).toBeGreaterThan(0);
+  expect(battle.defenceSalvage.THORN).toBeGreaterThan(0);
+  expect(fleetSession(s).targets[0]!.fleet.THORN)
+    .toBe((battle.defenderSurvivors.THORN ?? 0) + (battle.defenceSalvage.THORN ?? 0));
 });
 
 it('rejects cyclic development rather than waiting the entire season for an impossible gate', () => {

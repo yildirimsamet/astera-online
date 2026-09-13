@@ -65,17 +65,28 @@ export const SETTLEMENT_CLAIM_MINUTES = Math.ceil(
   ),
 );
 
-/** Capacity is deliberately stepwise and derived from the strongest controlled Core. */
-export function colonyCapacity(highestCore: number): number {
-  if (highestCore < 3) return 0;
-  return Math.min(3, Math.floor(highestCore / 3));
+/**
+ * Capacity is deliberately stepwise and derived from the CAPITAL's Core: one colony
+ * per threshold reached in `MULTI_WORLD.colonyCoreThresholds` (D209).
+ */
+export function colonyCapacity(capitalCore: number): number {
+  return MULTI_WORLD.colonyCoreThresholds.filter((core) => capitalCore >= core).length;
+}
+
+/**
+ * The Core the NEXT colony opens at for a commander holding `colonies` (and
+ * `reservations` already flying), or null when every slot the game has is spoken
+ * for. What the settle control tells a commander it cannot yet use. D209.
+ */
+export function nextColonyCore(colonies: number, reservations = 0): number | null {
+  return MULTI_WORLD.colonyCoreThresholds[colonies + reservations] ?? null;
 }
 
 export const hasColonyCapacity = (
-  highestCore: number,
+  capitalCore: number,
   colonies: number,
   reservations: number,
-): boolean => colonies + reservations < colonyCapacity(highestCore);
+): boolean => colonies + reservations < colonyCapacity(capitalCore);
 
 export function neutralReserve(held: Resources, capacity: Resources): NeutralReserve {
   const total = Math.max(0, held.alloy) + Math.max(0, held.crystal);

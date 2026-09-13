@@ -537,6 +537,11 @@ export const planetSchema = z.object({
     prerequisiteMet: z.boolean().optional(),
     queuePrerequisiteMet: z.boolean().optional(),
   })),
+  /**
+   * THE COMMAND CORE THAT GATES AND TIMES RESEARCH ON THIS WORLD: THE CAPITAL'S. D209.
+   * A colony funds an order but never lends it its own Core.
+   */
+  researchCore: z.number().int().nonnegative(),
   /** One commander-wide queue, repeated in planet responses for atomic mutation updates. */
   researchQueue: z.array(timedResearchOrder).optional(),
   /**
@@ -572,7 +577,7 @@ export const planetSchema = z.object({
    */
   interceptor: strategicAsset.nullable().optional(),
   colonies: z.object({
-    highestCore: z.number(),
+    capitalCore: z.number(),
     colonies: z.number(),
     reservations: z.number(),
     capacity: z.number(),

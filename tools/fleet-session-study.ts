@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ABUSE, COMBAT, FUEL, HULLS, fleetCount, fleetEntries, fleetTravelExact, hullBulk, hullRoundTrip, missionFuel,
+import { ABUSE, COMBAT, HULLS, fleetCount, fleetEntries, fleetTravelExact, hullBulk, missionFuel,
   mulberry32, resolveCombat, shipMinutes, PROBE, travelExact } from '../packages/rules/src/index.js';
 import type { TechLevels } from '../packages/rules/src/tech.js';
 import type { Fleet, Hull, HullId, Resources } from '../packages/rules/src/types.js';
@@ -97,19 +97,10 @@ export function fleetSession(s: SessionScenario) {
 
 function executeSession(s: SessionScenario, requirements: Partial<Record<HullId, Hull['requiredResearch']>>) {
   const bulk = (h: HullId) => s.roster ? s.bulk![h]! : hullBulk(h);
-  // D195: fuel is a fraction of hull VALUE, tilted by the hull's own round trip.
-  const fuelMassOf = (h: HullId) => {
-    const t = s.roster?.[h] ?? HULLS[h];
-    const trip = hullRoundTrip(h) ?? FUEL.pivotRoundTrip;
-    return Math.max(1, Math.ceil((t.alloy + t.crystal + t.deuterium) * FUEL.perValue
-      * (FUEL.pivotRoundTrip / trip)));
-  };
   const load = (f: Fleet) => fleetEntries(f).reduce((n, [h, count]) => n + count * bulk(h), 0);
-  const fuelFor = (f: Fleet, distance: number) => {
-    if (!s.roster) return missionFuel(f, distance, 2);
-    const mass = fleetEntries(f).reduce((n, [h, count]) => n + count * fuelMassOf(h), 0);
-    return Math.ceil(mass * distance / FUEL.scale) * 2;
-  };
+  // `withRoster` installs a candidate before entering this function, so the shared
+  // quote also covers prototypes and cannot drift from D208's A + 2C + 32D fuel mass.
+  const fuelFor = (f: Fleet, distance: number) => missionFuel(f, distance, 2);
   const fleets = [s.initialFleet, s.desiredFleet, s.packet, ...(s.packetChoices ?? []), ...s.targets.map(t => t.fleet)];
   const valid = (n: number) => Number.isFinite(n) && n >= 0;
   const engagement = COMBAT.engagementSeconds / 60;

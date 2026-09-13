@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SENSOR } from '@astera/rules';
+import { MULTI_WORLD, SENSOR } from '@astera/rules';
 import { buildApp } from '../src/app.js';
 import { accounts, planets, players, satellites } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
@@ -228,8 +228,10 @@ describe('preview', () => {
         detect: 0,
       }),
     ]);
-    // One real commander plus the fixed 51-world neutral pool.
-    expect(body.galaxy.planets.filter((p) => !p.isSelf)).toHaveLength(52);
+    // One real commander plus the fixed neutral pool (D209: 38 / 19 / 8).
+    expect(body.galaxy.planets.filter((p) => !p.isSelf)).toHaveLength(
+      1 + MULTI_WORLD.neutralCounts[1] + MULTI_WORLD.neutralCounts[2] + MULTI_WORLD.neutralCounts[3],
+    );
   });
 
   it('carries the real commanders, by name and position', async () => {

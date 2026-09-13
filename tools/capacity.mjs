@@ -45,6 +45,7 @@ import {
   sessionSchema,
   trafficSchema,
 } from '../apps/web/src/api/schemas.ts';
+import { CAPACITY_NEUTRAL_SHAPE } from './capacity-shape.ts';
 
 const PRODUCTION_HOSTS = new Set([
   'asteraonline.space',
@@ -1173,10 +1174,10 @@ const reconcileCapacityDatabase = async () => {
       && row.capacity === 300
       && row.players === expectedPlayers[index]
       && row.capitals === expectedPlayers[index]
-      && row.neutrals === 51
-      && row.tier1 === 30
-      && row.tier2 === 15
-      && row.tier3 === 6
+      && row.neutrals === CAPACITY_NEUTRAL_SHAPE.total
+      && row.tier1 === CAPACITY_NEUTRAL_SHAPE.tier1
+      && row.tier2 === CAPACITY_NEUTRAL_SHAPE.tier2
+      && row.tier3 === CAPACITY_NEUTRAL_SHAPE.tier3
     ));
     const integrityShape = Boolean(
       integrity

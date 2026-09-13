@@ -86,7 +86,7 @@ hull on your side survives.
 and 60% of destroyed ground units rebuild free.
 
 **DECISIVE / PARTIAL / REPELLED** — The three battle grades, by share of defender *value*
-destroyed. Loot 65% / 35% / 0% of raidable stock, still bounded by survivor cargo.
+destroyed. Loot 70% / 35% / 0% of raidable stock, still bounded by survivor cargo.
 
 **Salvage** — The 60% of destroyed ground defence that rebuilds free. It exists so that
 blind raiding can actually fail.
@@ -144,10 +144,10 @@ no combat happens at the rendezvous and no Dominion moves either way. D156.
 Four windows a Türkiye day, never overlapping, each announced to the whole galaxy the instant it
 opens and never a moment before. D149/D156.
 
-**Trade rate** — the merchant's one published exchange price: 90 alloy = 45 crystal = 10
-deuterium (`TRADE.rate`, read as units per resource unit; D183 moved it from 90 : 30 : 1,
-where one deuterium bought ninety alloy and made the lane a printing press). Frozen per
-occurrence at calendar time, so a live season keeps the rate it was dealt.
+**Trade rate** — the merchant's one published exchange price: 32 alloy = 16 crystal = 1
+deuterium (`TRADE.rate` unit values are `1 : 2 : 32`, D208's rounded L12 production
+reference). Frozen per occurrence at calendar time, so a live season keeps the rate it was dealt;
+ruleset 5–7 definitions retain D183's `1 : 2 : 9`.
 
 **Trade convoy** — the cargo fleet sent to a trade ship. Sized by `requiredHold`, the larger of
 what it carries out and what it carries home — a small offer buying a large haul still needs room
@@ -174,7 +174,7 @@ devastated by a Death Star, and cannot be abandoned or captured.
 
 **Colony** — A fully functional player-controlled world won from a neutral or by a second
 Death Star strike. A commander may retain up to three, with new acquisition capacity derived
-from their highest Command Core.
+from their capital's Command Core.
 
 **Neutral world** — One of seventeen deterministic, shared-stock worlds created with a v2
 season. It has no commander, grants no Dominion and is never replaced after capture.

@@ -13,6 +13,7 @@ import {
   transferCargoCapacity,
   type Fleet,
   type HullId,
+  type NeutralTier,
   type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
@@ -329,8 +330,9 @@ export async function launchSettlement(
     /*
       THE FOUNDING STOCK TRAVELS WITH THEM, SO IT IS SPENT BEFORE THE FLIGHT IS. T6.
 
-      `MULTI_WORLD.settlement.cost` is the cargo of this mission, not a fee: it is
-      handed to the colony on landing. Its deuterium is zero today and this guard
+      `MULTI_WORLD.settlement.cost` is the cargo of this mission, not a fee. Since D209
+      it is spent on a successful landing rather than handed to the colony, and it
+      comes home if the race is lost. Its deuterium is zero today and this guard
       read the bare store, which is the same shape `launchTransfer` shipped as a
       bug — the day the founding stock carries any fuel, a settlement would fly on
       deuterium it had already given away and write a negative tank. Stated through
@@ -533,12 +535,25 @@ export async function resolveSettlement(
   });
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.world.id, mission.fleet);
-  // The fee is consumed by success; the capital is delivered once under the mission lock.
-  const cargo = mission.cargo ?? EMPTY;
+  /*
+    A SETTLED WORLD OPENS ON ITS TIER'S CAPTURE STOCK, AND ON NOTHING ELSE. D209.
+
+    It used to keep whatever the caretaker was holding — full stores and a season's
+    deuterium — and receive the founding cargo on top, which made a settlement a
+    profit at the moment it landed. The stores are SET, the works are emptied, and
+    the founding charge (cargo and fee alike) is spent whole on success. A settler
+    who loses the race still gets both back through `rerouteToSafeHome`.
+    The tier is read off the row selected above: `transferPlanetControl` has
+    already deleted `neutral_planet_state`.
+  */
+  const stock = MULTI_WORLD.neutral[target.state.tier as NeutralTier].captureStock;
   await tx.update(planets).set({
-    alloy: sql`${planets.alloy} + ${cargo.alloy}`,
-    crystal: sql`${planets.crystal} + ${cargo.crystal}`,
-    deuterium: sql`${planets.deuterium} + ${cargo.deuterium}`,
+    alloy: stock.alloy,
+    crystal: stock.crystal,
+    deuterium: stock.deuterium,
+    bufferAlloy: 0,
+    bufferCrystal: 0,
+    bufferDeuterium: 0,
   }).where(eq(planets.id, target.world.id));
   await schedule(tx, {
     seasonId: mission.seasonId,

@@ -48,4 +48,12 @@ describe('the Turkish the force readings are written in', () => {
     expect(tr('reports.theirBoardArrived')).toBe('Üzerine gelen filo');
     expect(tr('clan.strength.waiting')).toBe('Tüm ekibin kuvvetleri ölçülüyor');
   });
+
+  it('names the capital as the only Core that opens a colony slot in both languages', () => {
+    expect(tr('focus.planet.colonySlotExplain')).toContain('ana gezegendeki Komuta Çekirdeği');
+    expect(tr('focus.planet.colonySlotExplain')).not.toContain('en güçlü');
+    const en = i18n.getFixedT('en');
+    expect(en('focus.planet.colonySlotExplain')).toContain("capital's Command Core");
+    expect(en('focus.planet.colonySlotExplain')).not.toContain('strongest');
+  });
 });

@@ -74,7 +74,7 @@ function safeSum(label: string, ...values: number[]): number {
   return Number(exact);
 }
 
-/** The attacker's unbounded economic result before it is converted to Dominion. */
+/** The attacker's unbounded raw-resource result before it is converted to Dominion. */
 export function rawBattleDominion(lootValue: number, result: CombatResult): number {
   return safeSum(
     'Battle Dominion exchange',

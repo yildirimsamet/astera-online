@@ -362,10 +362,16 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
 // Allocate the season purse once. IDs, goals and account grants keep their existing identity.
 const seasonChains = REWARD_CHAIN_IDS.map(id => CHAINS[id]).filter(c => c.scope === 'season');
 const rewardWeight = seasonChains.reduce((sum, c) => sum + c.tiers.reduce((n, _, i) => n + i + 1, 0), 0);
+/*
+  HALVED AT D209, OWNER INSTRUCTION. The first ruleset-8 season paid the leaders
+  ~27k alloy in rewards inside three hours against ~2.7k of their own production,
+  most of the purse landing before a single colony race had been run. Each tier is
+  the floor of HALF its D208 figure; the account-scoped Twitter grant is untouched.
+*/
 for (const chain of seasonChains) {
   CHAINS[chain.id] = { ...chain, tiers: chain.tiers.map((tier, i) => ({ ...tier, reward: {
-    alloy: Math.floor(MONTHLY_REFERENCE.alloy * 0.03 * (i + 1) / rewardWeight),
-    crystal: Math.floor(MONTHLY_REFERENCE.crystal * 0.03 * (i + 1) / rewardWeight),
+    alloy: Math.floor(Math.floor(MONTHLY_REFERENCE.alloy * 0.03 * (i + 1) / rewardWeight) / 2),
+    crystal: Math.floor(Math.floor(MONTHLY_REFERENCE.crystal * 0.03 * (i + 1) / rewardWeight) / 2),
     deuterium: 0,
   } })) };
 }

@@ -24,7 +24,7 @@ import {
   saveResources,
 } from './planet.js';
 import { activeResearchOrders, projectedResearchLevels } from './researchQueue.js';
-import { researchView } from './researchState.js';
+import { researchCoreLevel, researchView } from './researchState.js';
 import { safeHomePlanet } from './ownership.js';
 
 export interface CompleteResearchResult {
@@ -35,8 +35,8 @@ export interface CompleteResearchResult {
 /**
  * Commit one project to the commander's own research queue.
  *
- * The selected planet funds the work and supplies the Core level used to price
- * its duration. The queue and completed level belong to the player, so adding or
+ * The selected planet funds the work; the capital supplies the Core level used
+ * to gate and time it (D209). The queue and completed level belong to the player, so adding or
  * losing a colony never creates, blocks or destroys research throughput.
  */
 export async function completeResearch(
@@ -106,8 +106,10 @@ export async function completeResearch(
     if (!state.queueAvailable) {
       throw new GameError('RESEARCH_UNAVAILABLE', 'That research is not available yet', 403);
     }
+    // Gated and timed by the capital, whichever world pays. D209.
+    const researchCore = await researchCoreLevel(tx, planet.playerId);
     const requiredCore = RESEARCH_PROJECTS[projectId].requiredCore ?? 0;
-    if (planet.buildings.CORE < requiredCore) {
+    if (researchCore < requiredCore) {
       throw new GameError('RESEARCH_UNAVAILABLE', 'Raise the Command Core first', 403, {
         requiredCore,
       });
@@ -124,7 +126,7 @@ export async function completeResearch(
     }
     const durationSeconds = Math.max(
       1,
-      Math.ceil(researchMinutes(cost, planet.buildings.CORE) * 60),
+      Math.ceil(researchMinutes(cost, researchCore) * 60),
     );
     const startedAt = queue.at(-1)?.readyAt ?? planet.now;
     const readyAt = new Date(startedAt.getTime() + durationSeconds * 1_000);

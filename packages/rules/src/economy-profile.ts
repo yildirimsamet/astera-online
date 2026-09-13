@@ -1,5 +1,6 @@
 /** Shared executable economy. No I/O, clock, mutable selection or runtime dependencies. */
 import type { BuildingId, Hull, ResearchProjectId, Resources } from './types.js';
+import { resourceValue } from './valuation.js';
 
 /**
  * `tradeShip` AND `asteroidShower` SHIP ON, AND THE ECONOMY IS STILL MEASURED
@@ -228,8 +229,9 @@ export interface ProfileHull extends Hull { bulk: number; workMinutes: number; r
  * make the extremes strictly better than the middle — the whole Skirmisher line
  * sits at role 1.000 and would earn nothing at all, and every Escort would be
  * dominated by a Fortress of its own counter class. Two dead branches, one of them
- * a third of the counter cycle. Equal budget still buys equal power at every tier;
- * what a tier buys is a SHARPER CHOICE, and the counter cycle still decides fights.
+ * a third of the counter cycle. Within a tier, budget buys equal ordinary combat product across the four
+ * profiles. D208 adds a modest product gain between tiers; the counter cycle
+ * still decides fights. Nullifier pays an explicit shield-only ability premium.
  *
  * THE TIER-1 RUNG IS BELOW 1, so the entry hulls are the blunt ones. A commander
  * who cannot yet read a probe is not punished for guessing wrong, and the reward
@@ -257,31 +259,18 @@ const ROLE_SPREAD = [0.8, 1, 1.2, 1.45] as const;
  * frugal and deep-holded — one number, one trade, stated once.
  *
  * The rungs are set so no tier overlaps the one below it: the emptiest hull of any
- * tier still carries more than the fullest hull of the tier beneath.
+ * tier still carries more than the fullest hull of the tier beneath. Cargo remains
+ * a secondary profile trade; D208 calibrates a warship's combat return, rather than
+ * granting every stat a simultaneous efficiency bonus.
  */
 const COMBAT_HOLD = [40, 85, 180, 380] as const;
 
 /**
- * WHAT A DEDICATED TRANSPORT CARRIES. D195b, owner instruction (option B).
- *
- * `[700, 2200, 6000]` until D195b, and the entry rung was UNDERWATER: a Courier cost
- * 750 and carried 700, the only hull in the game worth less full than empty. Every
- * rung now carries more than it cost — 1.33x, 1.78x, 2.04x — and the trade still
- * improves with the tier, which is what the ladder was always meant to sell.
- *
- * THE SIZE CAME FROM A MEASUREMENT, NOT A PREFERENCE. Against a matched target at
- * four development stages, `computeLoot` came home holding 877 of 880, 2,736 of
- * 2,740, 8,217 of 8,220 and 21,037 of 21,040: THE HOLD IS THE BINDING CONSTRAINT ON
- * EVERY RAID IN THE GAME, at every stage, to the last unit. Neither the vault floor
- * nor the battle grade bound any of them. So the share of a target's exposed wealth
- * a raid takes home is a direct statement of this array — it sat flat at 6-10%
- * however far either commander had developed, which made growing worth nothing in
- * PvP. The new rungs lift it to roughly 10-14% and let it RISE with the tier.
- *
- * IT IS STILL FAR SHORT OF EMPTYING ANYBODY. D193's vault keeps a night whatever
- * this says, and `test/transport-ladder.test.ts` holds the distance between a
- * warship's hold and a transport's, so logistics stays a decision rather than a
- * rounding error on a raiding wing.
+ * Dedicated transport holds, retained at D208 because they already satisfy the
+ * new value rule: capacity per A + 2C + 32D rises at every tier. Inflating the
+ * whole ladder when tier-4 warships gained hold produced excess season loot;
+ * transports remain over ten times as capacity-efficient as any warship.
+ * Slow holds buy capacity with exposure.
  */
 const SUPPORT_HOLD = [1000, 3400, 9500, 26000] as const;
 
@@ -300,20 +289,32 @@ const ESCORT_ROUND_TRIP = 18;
 export function profileHull(live: Hull): ProfileHull {
   const id = live.id, tier = live.tier ?? 1;
   const steps = [1, 2.5, 6, 15], base = [300, 750, 1800, 4500];
-  const c = [60, 180, 450, 1200], d = [0, 8, 24, 80];
+  const c = [60, 180, 450, 1200], d = [0, 2, 6, 20];
   const bulk = [3, 5, 8, 13], work = [2, 5, 12, 28];
   const fortress = live.profile === 'FORTRESS', support = live.cls === 'SUPPORT';
   const premium = fortress ? 1.25 : live.profile === 'SHIELD_BREAKER' ? 1.15 : 1;
   // Excess HP with too little attack failed to resolve even favourable equal-budget fights.
   const role = live.cls === 'SKIRMISHER' ? 1 : live.cls === 'LANCE' ? 1.04 : fortress ? 0.9 : 0.96;
   const sharp = 1 + (role - 1) * ROLE_SPREAD[tier - 1]!;
-  const power = 40 * steps[tier - 1]! * 1.1 ** ((tier - 1) / 2) * (tier === 2 ? 1.015 : 1) * premium;
+  const recipe = { alloy: Math.ceil(base[tier - 1]! * premium), crystal: Math.ceil(c[tier - 1]! * premium),
+    deuterium: Math.ceil(d[tier - 1]! * premium) };
+  // Preserve the paid opening. Later tiers buy 6/12/18% more product per ECONOMIC
+  // budget, not per raw resource count; sharpening the role never changes that product.
+  // Smaller isotope invoices keep the raw-budget + full-research gap below the counter
+  // cycle too, without inflating T4 past the unchanged ground guns.
+  const efficiency = [1, 1.06, 1.12, 1.18] as const;
+  // The specialist premium buys shield-only damage, not free ordinary firepower.
+  // Fortress premiums still price a larger ordinary hull; Nullifier's do not.
+  const ordinaryCost = live.profile === 'SHIELD_BREAKER'
+    ? resourceValue({ alloy: base[tier - 1]!, crystal: c[tier - 1]!, deuterium: d[tier - 1]! })
+    : resourceValue(recipe);
+  const power = tier === 1 ? 40 * premium
+    : Math.sqrt(21 * 77) * (ordinaryCost / 420) * Math.sqrt(efficiency[tier - 1]!);
   // The trip reads the PROFILE where a class holds two: an Escort trades part of the
   // Fortress hull for speed, which a class-only trip flew at the Fortress's pace (D207).
   const roundTrip = live.cls === 'SKIRMISHER' ? 15 : live.cls === 'LANCE' ? 20
     : live.profile === 'ESCORT' ? ESCORT_ROUND_TRIP : 25;
-  const common = { ...live, alloy: Math.ceil(base[tier - 1]! * premium), crystal: Math.ceil(c[tier - 1]! * premium),
-    deuterium: Math.ceil(d[tier - 1]! * premium), atk: Math.round(power * 0.52 * sharp), hp: Math.round(power / 0.52 / sharp),
+  const common = { ...live, ...recipe, atk: Math.round(power * 0.52 * sharp), hp: Math.round(power / 0.52 / sharp),
     speed: profileFlightSpeed(roundTrip),
     cargo: Math.round((COMBAT_HOLD[tier - 1]! * roundTrip) / PIVOT_ROUND_TRIP),
     bulk: Math.ceil(bulk[tier - 1]! * premium), workMinutes: work[tier - 1]! * premium,
@@ -343,4 +344,3 @@ export function profileHull(live: Hull): ProfileHull {
     speed: profileFlightSpeed(SUPPORT_ROUND_TRIP[tier - 1]!) };
   return common;
 }
-

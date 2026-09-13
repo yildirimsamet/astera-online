@@ -21,7 +21,9 @@ import type {
  * Fortresses buy durability with speed and Escorts sit between those extremes.
  * Tier efficiency is deliberately shallow — roughly 1.00 / 1.06 / 1.12 / 1.18
  * in `atk × hp / value²` — so the 1.6/0.625 counter still matters more than tech.
- * Phase 3 owns final numeric calibration; this is the executable starting table.
+ * D208 uses economic value A + 2C + 32D. The literals preserve identities and
+ * gates; profileHull supplies the live recipe, stats, holds and speed. Nullifier
+ * pays an ordinary-product penalty for its shield-only ability.
  *
  * EVERY `speed` HERE IS D148'S AUTHORED FIGURE x1.25, ROUNDED TO A WHOLE UNIT.
  * D152, owner instruction. The lift is uniform, so every profile relation the
@@ -101,7 +103,7 @@ export const HULLS: Record<HullId, Hull> = {
    * and logistics stopped at 3, so a Cataclysm fleet escorted an Atlas.
    *
    * The slowest hull in the game and the deepest hold — `SUPPORT_ROUND_TRIP`'s
-   * fourth rung is 38 minutes, which is what buys the 26,000. D195's two rules are
+   * fourth rung is 38 minutes; D208 gives the live Argosy a 26,000-unit hold. D195's two rules are
    * at their extreme here: nothing carries more and nothing drinks less per unit of
    * its own price.
    */

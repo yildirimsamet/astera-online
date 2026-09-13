@@ -73,6 +73,8 @@ import {
 } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
+/** The Core the first colony slot opens at (D209). */
+const COLONY_CORE = MULTI_WORLD.colonyCoreThresholds[0];
 const workerFor = (db: Awaited<ReturnType<typeof testDb>>['db'], clock: FixedClock) =>
   new EventWorker(db, clock, { pollMs: 1, batch: 100, staleMinutes: 5 }, silent);
 
@@ -107,14 +109,14 @@ describe('current multi-world ruleset', () => {
     await truncateAll(db);
   });
 
-  it('creates the deterministic fixed 30/15/6 pool outside all capital slots', async () => {
+  it('creates the deterministic fixed 38/19/8 pool outside all capital slots', async () => {
     const f = await setup();
     // The current ruleset, which stopped being the Fleet V2 boundary at D156.
     expect(f.season.rulesetVersion).toBe(MULTI_WORLD.rulesetVersion);
-    expect(f.neutrals).toHaveLength(51);
-    expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(30);
-    expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(15);
-    expect(f.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(6);
+    expect(f.neutrals).toHaveLength(65);
+    expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(38);
+    expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(19);
+    expect(f.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(8);
     expect(f.neutrals.every((row) => row.world.slotIndex >= SERVERS.capacity)).toBe(true);
     expect(f.neutrals.every((row) => row.world.controllerPlayerId === null)).toBe(true);
     expect(f.neutrals.every((row) => row.world.alloy > 0 && row.world.crystal > 0)).toBe(true);
@@ -131,13 +133,16 @@ describe('current multi-world ruleset', () => {
     }
   });
 
-  it('spends reinforcement stock in strict infrastructure then proportional-garrison order', async () => {
+  /*
+    D209 REPLACED "infrastructure first, then a garrison bought out of what is left":
+    the guard now re-arms for free (`neutral-colony-d209.test.ts` holds that half).
+    What stays is that BUILDINGS are still paid for, in strict order, out of the stores.
+  */
+  it('still pays for infrastructure out of the stores, in strict order', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 2)!;
-    const blockedAlloy = HULLS.DART.alloy;
-    expect(buildingCost('CORE', 4).alloy).toBeGreaterThan(blockedAlloy);
+    const blockedAlloy = buildingCost('CORE', 4).alloy - 1;
     await setLevel(f.db, target.world.id, 'CORE', 4);
-    await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await f.db.update(planets).set({
       alloy: blockedAlloy,
       crystal: 100_000,
@@ -146,38 +151,32 @@ describe('current multi-world ruleset', () => {
     }).where(eq(planets.id, target.world.id));
 
     await f.db.transaction((tx) => reinforceNeutral(tx, target.world.id, f.clock.now()));
-    expect(await f.db.select().from(units).where(eq(units.planetId, target.world.id))).toEqual([]);
     const [blocked] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    const [core] = await f.db.select().from(buildings)
+      .where(and(eq(buildings.planetId, target.world.id), eq(buildings.type, 'CORE')));
+    expect(core?.level).toBe(4);
     expect(blocked?.alloy).toBe(blockedAlloy);
 
-    await setLevel(f.db, target.world.id, 'CORE', 5);
-    await f.db.insert(units).values({
-      planetId: target.world.id,
-      ownerPlayerId: null,
-      hull: 'DART',
-      location: 'home',
-      count: 7,
-    });
-    await f.db.update(planets).set({
-      alloy: HULLS.PIKE.alloy,
-      crystal: HULLS.PIKE.crystal,
-      deuterium: HULLS.PIKE.deuterium,
-      lastTickAt: f.clock.now(),
-    }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ alloy: buildingCost('CORE', 4).alloy, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, target.world.id));
+    await f.db.update(neutralPlanetState).set({ claimUntil: null })
+      .where(eq(neutralPlanetState.planetId, target.world.id));
     await f.db.transaction((tx) => reinforceNeutral(tx, target.world.id, f.clock.now()));
-    const garrison = await f.db.select().from(units).where(eq(units.planetId, target.world.id));
-    expect(garrison.map((row) => [row.hull, row.count]).sort()).toEqual([
-      ['DART', 7],
-      ['PIKE', 1],
-    ]);
+    const [raised] = await f.db.select().from(buildings)
+      .where(and(eq(buildings.planetId, target.world.id), eq(buildings.type, 'CORE')));
+    const [paid] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    expect(raised?.level).toBe(5);
+    expect(paid?.alloy).toBe(0);
   });
 
-  it('resolves an empty T1 as decisive, opens one public claim and writes no Dominion', async () => {
+  it('resolves a T1 whose guard has fallen as decisive, opens one public claim and writes no Dominion', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    // D209 guards every tier; this case is the walkover once that guard is gone.
+    await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await f.db.update(planets).set({ x: 150, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { DART: 1 });
 
     const launched = await launchAttack(f.db, f.joined.planetId, target.world.id, { DART: 1 }, f.clock);
@@ -208,9 +207,11 @@ describe('current multi-world ruleset', () => {
   it('never extends a live claim, and reopens one that has closed', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    // A fallen guard: tier 1 never re-arms (D209), so every raid below is a walkover.
+    await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await f.db.update(planets).set({ x: 150, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0 }).where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
 
     /** One whole raid: out, decisive, and home again, so the next one may launch. */
     const raid = async () => {
@@ -256,7 +257,7 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 10_000, crystal: 5_000 })
       .where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, {
       COURIER: MULTI_WORLD.settlement.transports,
     });
@@ -282,8 +283,8 @@ describe('current multi-world ruleset', () => {
       eq(units.location, 'home'),
     ));
     expect(captured).toMatchObject({ kind: 'COLONY', controllerPlayerId: f.joined.playerId });
-    expect(captured!.alloy).toBeGreaterThanOrEqual(target.world.alloy + 800);
-    expect(captured!.crystal).toBeGreaterThanOrEqual(target.world.crystal + 400);
+    // D209: the caretaker's stores and the founding cargo are both gone; the tier's stock is what opens.
+    expect(captured).toMatchObject(MULTI_WORLD.neutral[1].captureStock);
     expect(captured?.protectedUntil?.getTime()).toBe(f.clock.now().getTime() + 6 * 60 * 60_000);
     expect(state).toHaveLength(0);
     expect(hauler).toMatchObject({
@@ -304,7 +305,7 @@ describe('current multi-world ruleset', () => {
     await f.db.update(neutralPlanetState).set({ claimUntil })
       .where(eq(neutralPlanetState.planetId, target.world.id));
     for (const capital of [f.joined.planetId, rival.planetId]) {
-      await setLevel(f.db, capital, 'CORE', 3);
+      await setLevel(f.db, capital, 'CORE', COLONY_CORE);
       await giveUnits(f.db, capital, {
         COURIER: MULTI_WORLD.settlement.transports,
       });
@@ -357,7 +358,7 @@ describe('current multi-world ruleset', () => {
   it('treats the claim end as a strict boundary', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     await f.db.update(planets).set({ alloy: 10_000, crystal: 5_000 })
       .where(eq(planets.id, f.joined.planetId));
@@ -388,7 +389,7 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets)
       .set({ x: GALAXY.radius, y: 0, z: 0 })
       .where(eq(planets.id, target.world.id));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
     await f.db.update(planets).set({ alloy: 10_000, crystal: 5_000 })
       .where(eq(planets.id, f.joined.planetId));
@@ -425,7 +426,7 @@ describe('current multi-world ruleset', () => {
     await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 20_000, crystal: 10_000 })
       .where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     const before = target.world.alloy;
     const launched = await launchTransfer(
@@ -505,7 +506,7 @@ describe('current multi-world ruleset', () => {
     await f.db.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 20_000, crystal: 10_000 })
       .where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: 1 });
     const before = await f.db.select().from(planets).where(eq(planets.id, f.joined.planetId));
     const launched = await launchTransfer(
@@ -556,7 +557,7 @@ describe('current multi-world ruleset', () => {
   it('reserves colony capacity at launch and honours an in-flight claim after Core falls', async () => {
     const f = await setup();
     const [first, second] = f.neutrals.filter((row) => row.state.tier === 1);
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 20_000, crystal: 10_000 })
       .where(eq(planets.id, f.joined.planetId));
     await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, first!.world.id));
@@ -581,7 +582,7 @@ describe('current multi-world ruleset', () => {
       f.clock,
     )).rejects.toMatchObject({ code: 'COLONY_CAP' });
 
-    await setLevel(f.db, f.joined.planetId, 'CORE', 2);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE - 1);
     f.clock.set(launched.arriveAt);
     await workerFor(f.db, f.clock).tick();
     const [captured] = await f.db.select().from(planets).where(eq(planets.id, first!.world.id));
@@ -774,11 +775,12 @@ describe('current multi-world ruleset', () => {
     }).where(eq(planets.id, capital));
     await f.db.update(planets).set({ x: 20, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     /*
-      A TIER 1 WORLD IS UNGUARDED, so it is given a garrison by hand: the D179 claim
-      below is that a strike leaves one standing, and nothing survives an empty
-      world. Inserted the way `setNeutralFleet` does it — no owner column, because
+      A KNOWN GARRISON, set by hand in place of the template's (D209 guards tier 1
+      with Darts and a Thorn): the D179 claim below is that a strike leaves one
+      standing, and a hand-set roster keeps the assertion about that and nothing else. Inserted the way `setNeutralFleet` does it — no owner column, because
       nobody holds this world.
     */
+    await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await f.db.insert(units).values({
       planetId: target.world.id,
       ownerPlayerId: null,
@@ -1314,7 +1316,7 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
     await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 400_000, crystal: 200_000, deuterium: 60_000 })
       .where(eq(planets.id, f.joined.planetId));
-    await setLevel(f.db, f.joined.planetId, 'CORE', 3);
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
     await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
     await f.db.update(neutralPlanetState)
       .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })
@@ -1423,6 +1425,8 @@ describe('current multi-world ruleset', () => {
     const f = await setup();
     const colony = await withColony(f);
     await giveUnits(f.db, colony, { DART: 3 });
+    // A tier 1 colony opens with no deuterium (D209); fuel it so the refusal is the outage's.
+    await f.db.update(planets).set({ deuterium: 5_000 }).where(eq(planets.id, colony));
     const rival = await rivalPad(f, 'Colony Breaker');
     await strike(f, rival.planetId, colony);
 

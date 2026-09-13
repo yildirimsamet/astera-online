@@ -15,6 +15,7 @@ import {
   prospectorCeiling,
   prospectorRoom,
   satelliteCost,
+  satelliteMinutes,
   satelliteSlots,
   seeingUnlocked,
   type BuildingId,
@@ -451,8 +452,9 @@ export async function installSatellite(
       subject: type,
       count: 1,
       cost,
-      minutes: buildMinutes(
-        cost, context.projected.buildings.CORE, asTech(context.projected.research),
+      // The satellite quote: the Uplink's fixed five minutes or the price-based clock. D209.
+      minutes: satelliteMinutes(
+        type, context.projected.buildings.CORE, asTech(context.projected.research),
       ),
     });
     return { type, slot, planet: await planetView(tx, planetId, clock) };

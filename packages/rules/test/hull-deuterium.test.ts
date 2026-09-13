@@ -3,36 +3,20 @@ import { HULLS } from '../src/hulls.js';
 
 import type { HullId } from '../src/types.js';
 
-/**
- * WHAT A HULL COSTS IN DETERIUM, HALVED, AND THREE MADE FREE OF IT. D170.
- *
- * Deuterium is the one resource a young commander cannot make until they have
- * bought the research and stood the plant, and every hull that asked for it was a
- * door held shut behind that chain. The owner cut every figure in half and took it
- * off three hulls entirely — the entry-tier escort, the entry-tier transport and
- * the tier-2 skirmisher — so the opening of the game is buildable out of the two
- * resources a world produces on its own from minute one.
- *
- * THE VIPER IS BACK ON THE LADDER. Later owner instruction, reversing exactly one
- * third of D170: *"level 2 gemilerden craft yaparken sadece engerek deuterium
- * istemiyor, bu yanlış."* D170's exemption was written as "the entry tier plus the
- * tier-2 skirmisher", and that last clause is what broke the reading — TIER 2 is
- * where the deuterium chain is supposed to start, so one free hull sitting beside
- * four that charge does not read as generosity, it reads as an oversight.
- *
- * The entry tier keeps its exemption in full: Warden and Courier are tier 1, and
- * tier 1 charges no deuterium at all. The opening of the game is untouched.
- *
- * Only the BUILD PRICE moved. Fuel is a separate charge (D136/D153) and
- * `FUEL.tierMass` is untouched, so what a hull costs to fly is exactly what it
- * was — this is about reaching the shipyard, not about reaching the target.
+/** D208 prices build isotope at A + 2C + 32D; tier 1 remains buildable without it.
+ * Viper joins every other tier-2 hull on this chain (the reversal of D170).
+ * Transports retain their recipes; their capacity is calibrated separately.
  */
 
 /** The entry tier, which charges no deuterium at all. */
 const FREE_OF_DEUTERIUM: readonly HullId[] = ['WARDEN', 'COURIER'];
 
-/** Every other hull that charges deuterium, at the figure it charged before D170. */
-const HALVED: Readonly<Partial<Record<HullId, number>>> = {"VIPER": 8, "TALON": 8, "STRONGHOLD": 10, "SENTINEL": 8, "WAYFARER": 12, "TEMPEST": 24, "BALLISTA": 24, "LEVIATHAN": 30, "PRAETORIAN": 24, "ATLAS": 48, "NULLIFIER": 28, "CATACLYSM": 80, "CITADEL": 100};
+/** Authored combat isotope invoices and the unchanged transport invoices. */
+const CALIBRATED: Readonly<Partial<Record<HullId, number>>> = {
+  VIPER: 2, TALON: 2, STRONGHOLD: 3, SENTINEL: 2, WAYFARER: 12,
+  TEMPEST: 6, BALLISTA: 6, LEVIATHAN: 8, PRAETORIAN: 6, ATLAS: 48,
+  NULLIFIER: 7, CATACLYSM: 20, CITADEL: 25,
+};
 
 /**
  * D196's three tier-4 hulls, which never had a pre-D170 figure to be halved from.
@@ -48,7 +32,7 @@ describe('the deuterium a hull costs to build', () => {
     });
   }
 
-  for (const [id, before] of Object.entries(HALVED) as [HullId, number][]) {
+  for (const [id, before] of Object.entries(CALIBRATED) as [HullId, number][]) {
     it(`${id} charges the monthly tier recipe`, () => {
       expect(HULLS[id].deuterium).toBe(before);
     });
@@ -59,7 +43,7 @@ describe('the deuterium a hull costs to build', () => {
     const charging = (Object.keys(HULLS) as HullId[])
       .filter((id) => HULLS[id].deuterium > 0)
       .sort();
-    expect(charging).toEqual([...Object.keys(HALVED), ...ADDED_AT_D196].sort());
+    expect(charging).toEqual([...Object.keys(CALIBRATED), ...ADDED_AT_D196].sort());
   });
 
   /**

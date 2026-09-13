@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ECON,
+  MONTHLY_REFERENCE,
   REWARD_CHAINS,
   REWARD_CHAIN_IDS,
   findRewardTier,
@@ -83,6 +84,34 @@ describe('the reward table', () => {
         expect(chain.tiers[i]!.reward.crystal).toBeGreaterThan(chain.tiers[i - 1]!.reward.crystal);
       }
     }
+  });
+
+  it('halves every seasonal reward and leaves the Twitter follow reward unchanged', () => {
+    const seasonal = REWARD_CHAINS.filter((chain) => chain.scope === 'season');
+    const weight = seasonal.reduce(
+      (sum, chain) => sum + chain.tiers.reduce((chainSum, _, index) => chainSum + index + 1, 0),
+      0,
+    );
+
+    for (const chain of seasonal) {
+      chain.tiers.forEach((tier, index) => {
+        const tierWeight = index + 1;
+        const previous = {
+          alloy: Math.floor(MONTHLY_REFERENCE.alloy * 0.03 * tierWeight / weight),
+          crystal: Math.floor(MONTHLY_REFERENCE.crystal * 0.03 * tierWeight / weight),
+        };
+        expect(tier.reward, `${chain.id}:${String(tier.goal)}`).toEqual({
+          alloy: Math.floor(previous.alloy / 2),
+          crystal: Math.floor(previous.crystal / 2),
+          deuterium: 0,
+        });
+      });
+    }
+
+    const social = REWARD_CHAINS.find((chain) => chain.id === 'SOCIAL');
+    expect(social?.tiers).toEqual([
+      { goal: 1, reward: { alloy: 1_000, crystal: 500, deuterium: 0 } },
+    ]);
   });
 
   it('counts tiers reached, and never more than there are', () => {

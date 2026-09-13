@@ -524,6 +524,21 @@ describe('predicting a satellite', () => {
 });
 
 describe('predicting research', () => {
+  /** D209: a colony's own Core never lets it predict a project the capital cannot order. */
+  it('refuses to predict a Core-gated project the capital Core does not reach', () => {
+    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const open = planetView().research.map((project) => project.id === 'DEATH_STAR_PROTOCOL'
+      ? { ...project, discovered: true, available: true, queueAvailable: true }
+      : project);
+    const stock = { alloy: 5_000_000, crystal: 5_000_000, deuterium: 5_000_000 };
+    const colony = planetView(
+      { buildings: { CORE: need + 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 }, research: open, researchCore: need - 1 },
+      stock,
+    );
+    expect(predictResearch(colony, 'DEATH_STAR_PROTOCOL')).toBeNull();
+    expect(predictResearch({ ...colony, researchCore: need }, 'DEATH_STAR_PROTOCOL')).not.toBeNull();
+  });
+
   it('queues an available project without marking it complete', () => {
     const view = planetView(
       {

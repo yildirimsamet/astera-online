@@ -3,12 +3,13 @@ import {
   ALL_HULLS, HULLS, PLANET_START, hullFuelMass, hullRoundTrip, missionFuel,
   type HullId,
 } from '../src/index.js';
+import { resourceValue } from '../src/valuation.js';
 
 const combat = ALL_HULLS.filter((id) => {
   const h = HULLS[id];
   return !h.ground && h.cls !== 'SUPPORT' && id !== 'PROSPECTOR';
 });
-const price = (id: HullId) => HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+const price = (id: HullId) => resourceValue(HULLS[id]);
 const tierOf = (id: HullId) => HULLS[id].tier ?? 1;
 const trip = (id: HullId) => hullRoundTrip(id) ?? 20;
 const byTier = (t: number) => combat.filter((id) => tierOf(id) === t);
@@ -105,7 +106,7 @@ describe('what a hull carries and drinks', () => {
       for (let i = 1; i < line.length; i++) {
         const before = Math.sqrt(HULLS[line[i - 1]!].atk * HULLS[line[i - 1]!].hp) / hullFuelMass(line[i - 1]!);
         const after = Math.sqrt(HULLS[line[i]!].atk * HULLS[line[i]!].hp) / hullFuelMass(line[i]!);
-        expect(after, `${cls} ${line[i - 1]!} -> ${line[i]!}`).toBeGreaterThan(before * 0.9);
+        expect(after, `${cls} ${line[i - 1]!} -> ${line[i]!}`).toBeGreaterThan(before);
       }
     }
   });
@@ -140,7 +141,8 @@ describe('the specialisation spread', () => {
 
   it('never pays for it — equal budget still buys equal power', () => {
     for (let t = 1; t <= 4; t++) {
-      const eff = byTier(t).map((id) => (HULLS[id].atk * HULLS[id].hp) / price(id) ** 2);
+      const eff = byTier(t).filter((id) => HULLS[id].profile !== 'SHIELD_BREAKER')
+        .map((id) => (HULLS[id].atk * HULLS[id].hp) / price(id) ** 2);
       expect(Math.max(...eff) / Math.min(...eff), `tier ${String(t)}`).toBeLessThan(1.06);
     }
   });

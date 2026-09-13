@@ -5,7 +5,6 @@ import {
   GALAXY,
   MULTI_WORLD,
   assertMutuallyExclusiveEventWindows,
-  combatValue,
   galaxyEventConfigForRuleset,
   galaxyEventKindsForRuleset,
   generateAsteroidSchedule,
@@ -502,7 +501,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     ]);
     expect(schedule.map((event) => event.sequence)).toEqual([0, 0, 1, 0, 1, 2, 2, 1, 3, 3]);
     expect(convoyWindowAt(0).effect.shipDropFullFirepower)
-      .toBe(combatValue({ CATACLYSM: 1 }));
+      .toBe(5_780); // Authored occurrence price, frozen before D208's hull recalibration.
   });
 
   it('writes only complete fixed windows inside arbitrary season boundaries', () => {

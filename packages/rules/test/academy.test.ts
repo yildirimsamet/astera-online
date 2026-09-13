@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { ACADEMY_STEPS, academyCheckpoint, TUTORIAL_EXIT, academyRaidBattle, academyRaidLoot, academyPirateLoot, academyMinedOre, ACADEMY_FLIGHT_DISTANCE, academyOrderSeconds } from '../src/academy.js';
 import { PLANET_START, START_BUILDINGS } from '../src/constants.js';
-import { academyExitCheckpoint, academyLessonFleet, academyPirateHomecoming, academyPirateBattle } from '../src/academy.js';
+import { academyExitCheckpoint, academyExitGrant, academyLessonFleet, academyPirateHomecoming, academyPirateBattle } from '../src/academy.js';
+import { findRewardTier } from '../src/rewards.js';
+
+/** The exit a graduate would have had with no package: the exit checkpoint's own arithmetic, minus the grant. */
+const academyExitCheckpointWithoutGrant = () => {
+  const exit = academyExitCheckpoint(ACADEMY_STEPS.length);
+  const grant = academyExitGrant(exit.claimedRewards);
+  return { alloy: exit.resources.alloy - grant.alloy, crystal: exit.resources.crystal - grant.crystal };
+};
 
 describe('the authored Academy boundary', () => {
   it('teaches the Vault during Production before moving on to Intel and Defend', () => {
@@ -24,6 +32,31 @@ describe('the authored Academy boundary', () => {
     }
     expect(academyExitCheckpoint(ACADEMY_STEPS.length)).toEqual(TUTORIAL_EXIT);
   });
+  /**
+   * D209 halved every seasonal reward, and the Academy is paid almost entirely in
+   * rewards: a graduate left with 295 alloy instead of ~2,500. The owner kept the
+   * halving and asked for the Academy's exit to be made whole. The exit package is
+   * exactly the rewards its lessons claimed — the half the halving took back — and
+   * it lands only on the world a commander actually joins with.
+   */
+  it('makes the Academy exit whole for the rewards its lessons claimed', () => {
+    for (let step = 0; step <= ACADEMY_STEPS.length; step++) {
+      const taught = academyCheckpoint(step);
+      const grant = academyExitGrant(taught.claimedRewards);
+      const expected = taught.claimedRewards.reduce((sum, id) => {
+        const tier = findRewardTier(id)!.tier.reward;
+        return { alloy: sum.alloy + tier.alloy, crystal: sum.crystal + tier.crystal, deuterium: sum.deuterium + tier.deuterium };
+      }, { alloy: 0, crystal: 0, deuterium: 0 });
+      expect(grant, `step ${String(step)}`).toEqual(expected);
+    }
+    expect(academyExitGrant([])).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
+    // A graduate opens on the first session the Academy was sized for, not on scraps.
+    expect(TUTORIAL_EXIT.resources.alloy).toBeGreaterThanOrEqual(2_400);
+    expect(TUTORIAL_EXIT.resources.crystal).toBeGreaterThanOrEqual(1_600);
+    expect(TUTORIAL_EXIT.resources.alloy)
+      .toBe(academyExitCheckpointWithoutGrant().alloy + academyExitGrant(TUTORIAL_EXIT.claimedRewards).alloy);
+  });
+
   it('separates visible targets and caps only Academy order clocks', () => {
     expect(ACADEMY_FLIGHT_DISTANCE).toBeGreaterThan(50);
     expect(academyOrderSeconds(20)).toBe(8);

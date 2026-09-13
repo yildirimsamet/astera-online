@@ -41,13 +41,14 @@ against a 2.0-minute warning.
 
 **Combat variance is ±8%.** If randomness dominated, intel would be worthless.
 
-**Dominion is the uncapped realised economic exchange and sums to exactly zero across every scored
+**Dominion is the uncapped realised raw-resource exchange and sums to exactly zero across every scored
 battle.** `secured loot + enemy permanent loss - own permanent loss` is booked directly to the
 attacker and its exact negative to the defender. It is additive and property-tested: splitting the
 same realised exchange cannot manufacture score. A season-sized fleet loss may erase a
 season-sized lead by design — fleet value is the stake — while a large fleet merely sent against a
 small target earns only what it actually takes or destroys. Rulesets before v7 keep the historical
-10,000-asymptote transfers already written to them.
+10,000-asymptote transfers already written to them. Current score terms use physical `A + C + D`;
+D208's `A + 2C + 32D` value is reserved for fleet calibration, fuel and new merchant quotes.
 
 **`START` is arithmetic:** it buys Core, Refinery and Extractor each 1→2 plus the active ruleset's
 two guided-opening Darts, and not a unit more. D148 rederived it as `852 alloy · 72 crystal`;
@@ -230,6 +231,12 @@ Ground hulls are paid 1.6× for never leaving: they cannot loot and cannot take 
 in **opposite counter classes** so that "how much defence" becomes "what *kind*" — a question only the
 information layer can answer.
 
+### D208 live fleet calibration
+
+The current `32 : 16 : 1` calibration, complete live roster, simulator scope and
+known season alarms are recorded in [`fleet-calibration-d208.md`](fleet-calibration-d208.md).
+All earlier Fleet V2 tables below are historical evidence; they are not the live catalogue.
+
 ### Fleet V2 pricing contract (D148)
 
 Fleet V2 keeps `atk · hp / value²` as the equal-budget combat check, but does not pretend it prices
@@ -249,7 +256,7 @@ shieldless Nullifier runs, cargo returns, fuel/travel/build-time costs and Basti
 No hull may win every role. If tier-4 hulls trivialize unchanged ground defence, Fleet V2 price,
 stats or bulk move; D7/D27 ground values are not silently buffed inside this scope.
 
-#### Accepted Fleet V2 table — Phase 3
+#### Historical Fleet V2 table — Phase 3 (superseded by D208)
 
 Prices below are the executable post-tempo values; bulk remains price-derived in Dart units.
 The Speed column is post-D152: D148's authored figure ×1.25, rounded to a whole unit. The lift is
@@ -695,8 +702,8 @@ zero, so the zero-sum property `invariants.test.ts` asserts is untouched by the 
 ### Trade ship (D156)
 
 ```
-rate     90 alloy = 45 crystal = 10 deuterium — TRADE.rate = { alloy: 1, crystal: 2, deuterium: 9 } (D183; was 1/3/90)
-         read as units per resource unit: the scarcer the resource, the larger its own figure
+rate     32 alloy = 16 crystal = 1 deuterium — TRADE.rate = { alloy: 1, crystal: 2, deuterium: 32 } (D208)
+         rounded L12 production reference; historical rulesets 5–7 retain D183's 1/2/9
 speed    47 ÷ TRAVEL.distanceFactor (1.2) = 39.17 units/min — half the Atlas's catalogue 94,
          on the Atlas's own scale, never the rocks' 350–750 (D155's lesson, applied before it
          could repeat)
@@ -983,12 +990,10 @@ launch now carries. The probe script was temporary and is not kept: it is four
 lines of `interceptOrbit` over a generated field and is cheaper to rewrite than to
 maintain.
 
-**The merchant rate is not freely tunable.** `balanceTake` closed every notch of
-the split only because the cheap price divided the dear one (3 divides 90). At
-D183's 1 · 2 · 9 it does not, so the split now moves in `leadStride` steps — the
-run of leads that leave a remainder the cheap good can spend exactly. Any future
-rate change should either keep `dear % cheap === 0` or accept that the split's
-notches are coarser than one; `trade-balance.test.ts` sweeps both ends.
+**The merchant rate is not freely tunable.** `balanceTake` moves the split in
+`leadStride` steps: one on D208's divisible `1 · 2 · 32`, coarser on persisted
+D183 `1 · 2 · 9` occurrences. Any future rate must preserve whole resources and
+zero hidden remainder; `trade-balance.test.ts` sweeps both ends.
 
 **Correction to the standing skip note above.** The current tree fails FIVE VFR
 cases (0.072–0.079 against a floor of 0.09) with the six ARR/pacing cases skipped —

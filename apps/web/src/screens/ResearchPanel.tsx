@@ -451,7 +451,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
       return { reason: t('research.at', { duration: untilOpen }) };
     }
     const needCore = RESEARCH_PROJECTS[id].requiredCore ?? 0;
-    if ((planet.buildings.CORE ?? 0) < needCore) {
+    // The capital's Core gates research on every world (D209).
+    if (planet.researchCore < needCore) {
       return {
         reason: t('research.needCore', { level: needCore }),
         // The Core lives on the planet sheet. Where the host cannot take us there,

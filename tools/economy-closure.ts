@@ -11,7 +11,7 @@ import { designScenario } from './economy-design-study.js';
 import { worldStats, type WorldOrder } from './costed-world.js';
 import { fleetSession } from './fleet-session-study.js';
 import { summarizeCosted } from './costed-progression-study.js';
-import { fleetEntries, FUEL } from '../packages/rules/src/index.js';
+import { fleetEntries, FUEL, HULLS, MULTI_WORLD } from '../packages/rules/src/index.js';
 import type { Fleet } from '../packages/rules/src/types.js';
 
 const keys = ['alloy', 'crystal', 'deuterium'] as const;
@@ -22,15 +22,17 @@ export function externalBudget(referenceProduced: Resources, population: number)
   if (!Number.isInteger(population) || population < 1
     || keys.some(k => !Number.isFinite(referenceProduced[k]) || referenceProduced[k] < 0)) throw new Error('Invalid external budget');
   return { mining: scaled(referenceProduced, population * 0.1),
-    pirates: scaled(referenceProduced, population * 0.05), rewards: scaled(referenceProduced, population * 0.03) };
+    pirates: scaled(referenceProduced, population * 0.05), rewards: scaled(referenceProduced, population * 0.015) };
 }
 
 export function colonyInvoice() {
-  const capital = { alloy: 800, crystal: 400, deuterium: 0 }, fee = { alloy: 200, crystal: 100, deuterium: 0 };
-  const couriers = Math.ceil((capital.alloy + capital.crystal + capital.deuterium) / 700);
+  const capital = { ...MULTI_WORLD.settlement.cost }, fee = { ...MULTI_WORLD.settlement.fee };
+  const couriers = MULTI_WORLD.settlement.transports;
+  const transport = HULLS[MULTI_WORLD.settlement.transportHull];
   return { capital, fee, couriers,
-    total: { alloy: capital.alloy + fee.alloy + couriers * 600,
-      crystal: capital.crystal + fee.crystal + couriers * 150, deuterium: 0 } };
+    total: { alloy: capital.alloy + fee.alloy + couriers * transport.alloy,
+      crystal: capital.crystal + fee.crystal + couriers * transport.crystal,
+      deuterium: capital.deuterium + fee.deuterium + couriers * transport.deuterium } };
 }
 
 export function strategicInvoice() {
@@ -52,6 +54,10 @@ export function rewardInvoices(purse: Resources) {
 
 export function closureScenario(profile: ActivityProfile, days: number) {
   const s = designScenario(profile, days); s.fleetBudgetHours = 18;
+  // D184 removed the runtime fleet ceiling. This older physical harness still
+  // needs a finite upper bound for its arithmetic, so model the absent ceiling
+  // without reintroducing a gameplay limit.
+  s.hangar = Number.MAX_SAFE_INTEGER;
   s.desiredFleet.COURIER = 2;
   const insert = (id: string, order: WorldOrder, before: string) => {
     s.world!.orders[id] = order;
@@ -97,12 +103,13 @@ export function closureStudy() {
   const readiness = (['average', 'low-once'] as const).map(profile => {
     const s = closureScenario(profile, 14); s.end = 3 * 1440 - 1;
     const r = fleetSession(s), c = colonyInvoice();
-    const ready = r.world!.buildings.CORE >= 3 && (r.home.COURIER ?? 0) >= c.couriers
+    const colonyCore = MULTI_WORLD.colonyCoreThresholds[0];
+    const ready = r.world!.buildings.CORE >= colonyCore && (r.home.COURIER ?? 0) >= c.couriers
       && (r.home.DART ?? 0) >= 2 && (r.world!.instruments?.TELESCOPE ?? 0) >= 1
       && r.stock.alloy >= c.capital.alloy + c.fee.alloy && r.stock.crystal >= c.capital.crystal + c.fee.crystal
       && r.stock.deuterium >= 5;
     return { profile, at: s.end, ready, stock: r.stock, home: r.home, world: r.world,
-      requirement: { ...c, fuelReserve: 5, core: 3, telescope: 1, darts: 2 } };
+      requirement: { ...c, fuelReserve: 5, core: colonyCore, telescope: 1, darts: 2 } };
   });
   const packets: { day: number; fleet: Fleet }[] = [{ day: 5, fleet: { TEMPEST: 2, VIPER: 4, COURIER: 1 } },
     { day: 10, fleet: { CATACLYSM: 2, TEMPEST: 2, COURIER: 1 } }];

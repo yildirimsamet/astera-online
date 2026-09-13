@@ -19,7 +19,7 @@ import type { ActiveGalaxyEvent as ActiveGalaxyEventView } from '../api/schemas.
  * the corner should already know whether it is worth opening. The full surface —
  * the orbit, the reach, the convoy — is the rail on the disc.
  *
- * AND IT CARRIES ALL THREE GOODS, IN THEIR OWN MARKS. Owner report: the chip read
+ * AND IT CARRIES ALL THREE GOODS, IN THEIR OWN MARKS. Historical D156 report: the chip read
  * *"90 alaşım = 1 döteryum"*, which names two of the three substances the merchant
  * deals in and spends a whole line of prose doing it. The rate is an equality
  * between three quantities and it is drawn as one — mark, number, equals, mark,

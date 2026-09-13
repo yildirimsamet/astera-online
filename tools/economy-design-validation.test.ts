@@ -4,6 +4,7 @@ import {
   designBattleSample,
   designValidation,
 } from './economy-design-validation.js';
+import { designSeason } from './economy-design-model.js';
 
 it('declares the Intergalactic Convoy outside economy calibration', () => {
   expect(ECONOMY_VALIDATION_EXCLUSIONS).toEqual([
@@ -29,7 +30,21 @@ it('keeps the bounded validation reproducible with explicit inputs and separate 
   expect(r.isolated).toHaveLength(8);
   expect(r.combat).toHaveLength(21);
   expect(r.isolated.every(x => x.summary.maxResourceError < 1e-7 && x.summary.maxHullError === 0)).toBe(true);
-  expect(r.isolated.filter(x => x.profile === 'average' && x.stress === 'baseline').every(x => x.pacingPassed)).toBe(true);
+  const averageBaselines = r.isolated.filter(x => x.profile === 'average' && x.stress === 'baseline');
+  // This historical target-derived candidate is diagnostic, not the shipped D208
+  // calibration. Once D184's missing-Hangar crash was fixed, both durations were
+  // measurably early; preserve the rejected result instead of claiming acceptance.
+  expect(averageBaselines.map(x => ({ days: x.days, pacingPassed: x.pacingPassed })))
+    .toEqual([{ days: 14, pacingPassed: false }, { days: 30, pacingPassed: false }]);
+  for (const x of averageBaselines) {
+    const goal = designSeason(x.days);
+    expect(x.pacingPassed).toBe(x.summary.milestones.firstT3Day !== null
+      && x.summary.milestones.firstT4Day !== null
+      && x.summary.milestones.firstT3Day >= goal.t3Days[0]!
+      && x.summary.milestones.firstT3Day <= goal.t3Days[1]!
+      && x.summary.milestones.firstT4Day >= goal.t4Days[0]!
+      && x.summary.milestones.firstT4Day <= goal.t4Days[1]!);
+  }
   expect(r.combat.every(x => x.result.ordinaryTargetPassed)).toBe(true);
   expect(r.excluded).toEqual([
     'trade-ship',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-/** Raw bulk of a wing. The Hangar that used to meter it is gone (D184); fuel still reads it. */
+/** Legacy mobile bulk diagnostic. The Hangar is gone and D208 fuel does not read it. */
 const fleetBulk = (fleet: Record<string, number | undefined>): number =>
   Object.entries(fleet).reduce((sum, [id, n]) => sum + (n ?? 0) * hullBulk(id as never), 0);
 import {
@@ -16,6 +16,7 @@ import {
   hullFuelRate,
   hullRoundTrip,
   missionFuel,
+  resourceValue,
   type Fleet,
   type MobileHullId,
 } from '../src/index.js';
@@ -205,7 +206,7 @@ describe('fuel per craft', () => {
  */
 describe('D195 fuel by hull value', () => {
   const value = (id: MobileHullId): number =>
-    HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+    resourceValue(HULLS[id]);
 
   /**
    * ONE HULL IS OUTSIDE THIS, BY NAME AND BY INSTRUCTION. D200: the owner set the

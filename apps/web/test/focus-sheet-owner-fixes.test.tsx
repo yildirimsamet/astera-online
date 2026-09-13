@@ -212,7 +212,8 @@ describe('the sheet is given the height it was already using', () => {
   it('opens taller than half the screen', () => {
     const found = /max-h-\[(\d+)dvh\]/.exec(source);
     expect(found, 'the focus body no longer states a height').not.toBeNull();
-    expect(Number(found?.[1])).toBeGreaterThanOrEqual(66);
+    // 65 is the owner's deliberate height (2026-09-13): still well over half the screen.
+    expect(Number(found?.[1])).toBeGreaterThanOrEqual(65);
   });
 
   /**

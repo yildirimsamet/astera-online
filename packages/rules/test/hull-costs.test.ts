@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HULLS, MOBILE_HULLS, GROUND_HULLS, combatValue, fleetValue } from '../src/hulls.js';
 import { COMBAT } from '../src/constants.js';
 import type { HullId } from '../src/types.js';
+import { resourceValue } from '../src/valuation.js';
 
 /**
  * WHAT THE HULL TABLE IS PRICED ON. Economy v2.
@@ -16,7 +17,7 @@ import type { HullId } from '../src/types.js';
  */
 
 const value = (id: HullId): number =>
-  HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium;
+  resourceValue(HULLS[id]);
 
 /**
  * Equal-budget power. With damage spread across a force rather than focused, what
@@ -48,7 +49,7 @@ describe('the hull table is priced on equal-budget power', () => {
       ['DART', 'PIKE', 'RAMPART', 'WARDEN'],
       ['VIPER', 'TALON', 'STRONGHOLD', 'SENTINEL'],
       ['TEMPEST', 'BALLISTA', 'LEVIATHAN', 'PRAETORIAN'],
-      ['CATACLYSM', 'CITADEL'],
+      ['CORSAIR', 'CATACLYSM', 'CITADEL', 'PALADIN'],
     ] as const;
     const averages = idsByTier.map((ids) =>
       ids.reduce((sum, id) => sum + power(id), 0) / ids.length,
@@ -81,7 +82,7 @@ describe('the hull table is priced on equal-budget power', () => {
    */
   it('keeps the tier gap far below the counter cycle', () => {
     const tierOne = ['DART', 'PIKE', 'RAMPART', 'WARDEN'] as const;
-    const tierFour = ['CATACLYSM', 'CITADEL'] as const;
+    const tierFour = ['CORSAIR', 'CATACLYSM', 'CITADEL', 'PALADIN'] as const;
     const average = (ids: readonly HullId[]) =>
       ids.reduce((sum, id) => sum + power(id), 0) / ids.length;
     const gap = average(tierFour) / average(tierOne);

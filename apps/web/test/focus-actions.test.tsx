@@ -529,7 +529,7 @@ describe('the focus rail’s two commitments', () => {
               nextReinforcementAt: null,
             },
           })}
-          planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
           intel={intel}
           reports={[]}
           now={NOW}
@@ -586,7 +586,7 @@ describe('the focus rail’s two commitments', () => {
           planet={{
             ...mine,
             fleet: { ...mine.fleet, COURIER: 1 },
-            colonies: { highestCore: 4, colonies: 1, reservations: 0, capacity: 1 },
+            colonies: { capitalCore: 4, colonies: 1, reservations: 0, capacity: 1 },
           }}
         />
       </Wrapper>,
@@ -600,13 +600,141 @@ describe('the focus rail’s two commitments', () => {
           planet={{
             ...mine,
             fleet: { ...mine.fleet, COURIER: 1 },
-            colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
+            colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 },
             flight: { used: 1, total: 1 },
           }}
         />
       </Wrapper>,
     );
     expect(screen.getByRole('button', { name: /found colony.*flight bays full/i })).toBeDisabled();
+  });
+
+  /**
+   * D209 — OWNER INSTRUCTION. A disabled label is a few words on a slab; the note
+   * above it says what is actually missing, with the number that fixes it.
+   */
+  it('explains above the disabled control why the colony cannot be founded', () => {
+    const Wrapper = harness();
+    const neutral = target({
+      kind: 'NEUTRAL',
+      controller: { kind: 'NEUTRAL', tier: 1 },
+      state: { kind: 'NORMAL' },
+      neutral: {
+        tier: 1,
+        threat: 'UNGUARDED',
+        reserve: 'RICH',
+        claimUntil: new Date(NOW + 20 * 60_000),
+        nextReinforcementAt: null,
+      },
+    });
+    const props = {
+      target: neutral,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onSettle: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{
+            ...mine,
+            fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
+            colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 0 },
+          }}
+        />
+      </Wrapper>,
+    );
+    const note = document.querySelector('[data-settle-reason]');
+    expect(note).toHaveTextContent(/next colony needs command core 6 · now 4/i);
+    const button = screen.getByRole('button', { name: /^Found colony\b/ });
+    expect(button).toBeDisabled();
+    // Above the control it explains, in the same row.
+    expect(note!.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{
+            ...mine,
+            fleet: { ...mine.fleet, COURIER: 1 },
+            colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 },
+          }}
+        />
+      </Wrapper>,
+    );
+    expect(document.querySelector('[data-settle-reason]'))
+      .toHaveTextContent(/2 couriers needed · 1 here/i);
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{
+            ...mine,
+            planet: { ...mine.planet, deuterium: 5_000 },
+            fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
+            colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 },
+          }}
+        />
+      </Wrapper>,
+    );
+    expect(document.querySelector('[data-settle-reason]')).toBeNull();
+    expect(screen.getByRole('button', { name: /^Found colony$/ })).toBeEnabled();
+  });
+
+  /**
+   * D209 — OWNER INSTRUCTION: the Core a colony needs is said BEFORE the raid, on the
+   * first look at the world, so nobody breaks a guard they can never settle behind.
+   * Only the slot is a reason this early; Couriers and ore belong to step 3.
+   */
+  it('says the Core a colony needs before any raid, and nothing else that early', () => {
+    const Wrapper = harness();
+    const neutral = target({
+      kind: 'NEUTRAL',
+      controller: { kind: 'NEUTRAL', tier: 1 },
+      state: { kind: 'NORMAL' },
+      neutral: { tier: 1, threat: 'UNGUARDED', reserve: 'RICH', claimUntil: null, nextReinforcementAt: null },
+    });
+    const props = {
+      target: neutral,
+      intel,
+      reports: [],
+      now: NOW,
+      onClose: vi.fn(),
+      onAttack: vi.fn(),
+      onSettle: vi.fn(),
+      onInstallTelescope: vi.fn(),
+      onLaunched: vi.fn(),
+      open: true,
+      onToggle: vi.fn(),
+    };
+    const view = render(
+      <Wrapper>
+        <PlanetFocus {...props} planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 0 } }} />
+      </Wrapper>,
+    );
+    expect(document.querySelector('[data-settle-reason]'))
+      .toHaveTextContent(/next colony needs command core 6 · now 4/i);
+
+    view.rerender(
+      <Wrapper>
+        <PlanetFocus
+          {...props}
+          planet={{ ...mine, fleet: { DART: 6 }, colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 } }}
+        />
+      </Wrapper>,
+    );
+    // No Couriers yet, and that is not a reason before a claim has opened.
+    expect(document.querySelector('[data-settle-reason]')).toBeNull();
   });
 
   it('shows founding requirements before the raid, so the claim cannot reveal a surprise cost', () => {
@@ -626,7 +754,7 @@ describe('the focus rail’s two commitments', () => {
               nextReinforcementAt: null,
             },
           })}
-          planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+          planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
           intel={intel}
           reports={[]}
           now={NOW}
@@ -677,7 +805,7 @@ describe('the focus rail’s two commitments', () => {
                 nextReinforcementAt: null,
               },
             })}
-            planet={{ ...mine, colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
+            planet={{ ...mine, colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 } }}
             intel={intel}
             reports={[]}
             now={NOW}
@@ -745,7 +873,7 @@ describe('the focus rail’s two commitments', () => {
             ...mine,
             fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
             planet: { ...mine.planet, alloy: 20_000, crystal: 10_000, deuterium },
-            colonies: { highestCore: 4, colonies: 0, reservations: 0, capacity: 1 },
+            colonies: { capitalCore: 4, colonies: 0, reservations: 0, capacity: 1 },
           }}
           intel={intel}
           reports={[]}

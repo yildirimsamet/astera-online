@@ -20,7 +20,7 @@ const zero = (): Resources => ({ alloy: 0, crystal: 0, deuterium: 0 });
 const settlers = { [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports };
 type Kind = 'decision' | 'raid-resolved' | 'raid-returned' | 'settlement-arrived' | 'settlement-returned';
 
-/** Players already have Core >=3, one free colony slot, 2 Darts and 3 Couriers, three bays and known target. */
+/** Players already have capital Core >=6, one free colony slot, 2 Darts and 3 Couriers, three bays and known target. */
 export function claimRace(input: Player[], end: number) {
   const ids = new Set(input.map(p => p.id));
   if (ids.size !== input.length || !Number.isFinite(end) || end < 0 || input.some(p =>

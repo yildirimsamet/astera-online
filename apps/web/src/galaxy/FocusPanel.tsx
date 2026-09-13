@@ -2,6 +2,7 @@ import { GameActions } from '../session/seasonLock.js';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
@@ -35,7 +36,12 @@ import { useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { rivalColour } from './PlanetField.jsx';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
-import { colonizationPhase, type ColonizationPhase } from '../lib/colonization.js';
+import {
+  colonizationPhase,
+  settlementBlock,
+  type ColonizationPhase,
+  type SettlementBlock,
+} from '../lib/colonization.js';
 import { useAccordion } from '../lib/accordion.js';
 import { deathStarsOf, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
@@ -232,7 +238,7 @@ function Shell({
           being decided about — take that and this stops being a panel over a
           living disc and becomes a page with a picture behind it.
         */
-        <div className="max-h-[70dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
+        <div className="max-h-[65dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
           {/*
             Every focus card goes through this shell, so wrapping it here is what
             stops a frozen season offering launches, probes and settlements it
@@ -403,6 +409,38 @@ function GapRow({
  * fixes. A controlled destination branches into the compact transfer route below;
  * it has no intelligence gaps or hostile commitments to explain.
  */
+/** The short label a blocked settle slab carries, one per refusal. D209. */
+const SETTLE_LABEL = {
+  RECOVERING: 'focus.planet.settleRecovering',
+  COLONY_CORE: 'focus.planet.settleNeedSlot',
+  COLONY_MAX: 'focus.planet.settleNeedSlot',
+  FLIGHT_BAY: 'focus.planet.settleNeedBay',
+  COURIER: 'focus.planet.settleNeedCourier',
+  ALLOY: 'focus.planet.settleNeedAlloy',
+  CRYSTAL: 'focus.planet.settleNeedCrystal',
+  FUEL: 'focus.planet.settleNeedFuel',
+  TOO_LATE: 'focus.planet.settleTooLate',
+} as const satisfies Record<SettlementBlock['code'], string>;
+
+/** The sentence above the slab: what is missing, and the number that fixes it. D209. */
+function settleReason(block: SettlementBlock, t: TFunction): string {
+  switch (block.code) {
+    case 'RECOVERING': return t('focus.planet.settleWhy.recovering');
+    case 'COLONY_CORE':
+      return t('focus.planet.settleWhy.colonyCore', { required: block.requiredCore, current: block.currentCore });
+    case 'COLONY_MAX': return t('focus.planet.settleWhy.colonyMax', { max: block.max });
+    case 'FLIGHT_BAY': return t('focus.planet.settleWhy.flightBay');
+    case 'COURIER': return t('focus.planet.settleWhy.courier', { need: block.need, have: block.have });
+    case 'ALLOY':
+      return t('focus.planet.settleWhy.alloy', { need: compact(block.need), have: compact(block.have) });
+    case 'CRYSTAL':
+      return t('focus.planet.settleWhy.crystal', { need: compact(block.need), have: compact(block.have) });
+    case 'FUEL':
+      return t('focus.planet.settleWhy.fuel', { need: compact(block.need), have: compact(block.have) });
+    case 'TOO_LATE': return t('focus.planet.settleWhy.tooLate');
+  }
+}
+
 export function PlanetFocus({
   target,
   planet,
@@ -601,31 +639,29 @@ export function PlanetFocus({
     colonies: 0,
     reservations: 0,
     capacity: 0,
-    highestCore: planet.buildings.CORE ?? 0,
+    // The capital's Core, which every world's payload carries (D209).
+    capitalCore: planet.researchCore,
   };
   const colonySlotOpen = colonyStanding.colonies + colonyStanding.reservations
     < colonyStanding.capacity;
   const flightBayOpen = planet.flight.used < planet.flight.total;
-  const settlementBlock = originRecovering
-    ? t('focus.planet.settleRecovering')
-    : !colonySlotOpen
-      ? t('focus.planet.settleNeedSlot')
-      : !flightBayOpen
-        ? t('focus.planet.settleNeedBay')
-        : (planet.fleet.COURIER ?? 0) < MULTI_WORLD.settlement.transports
-          ? t('focus.planet.settleNeedCourier')
-          : planet.planet.alloy < MULTI_WORLD.settlement.charge.alloy
-            ? t('focus.planet.settleNeedAlloy')
-            : planet.planet.crystal < MULTI_WORLD.settlement.charge.crystal
-              ? t('focus.planet.settleNeedCrystal')
-              // Beside the other two stores, because it is one: the founding stock
-              // is carried and the flight is burned, and both come off this world.
-              : !settlementFuelled
-                ? t('focus.planet.settleNeedFuel')
-                : !settlementCanArrive
-                  ? t('focus.planet.settleTooLate')
-                  : null;
-  const settlementReady = claimActive && settlementBlock === null;
+  /*
+    ONE STATEMENT OF WHAT STANDS IN THE WAY, READ TWICE. D209, owner instruction.
+    The slab keeps its short label; the note above it says what is missing with the
+    number that fixes it. Both come off `settlementBlock`, so they cannot disagree.
+  */
+  const settleBlock = settlementBlock({
+    originRecovering,
+    colonies: colonyStanding,
+    flight: planet.flight,
+    couriers: planet.fleet.COURIER ?? 0,
+    stock: planet.planet,
+    fuel: settlementFuel,
+    canArrive: settlementCanArrive,
+  });
+  const settlementBlockLabel = settleBlock === null ? null : t(SETTLE_LABEL[settleBlock.code]);
+  const settlementBlockReason = settleBlock === null ? null : settleReason(settleBlock, t);
+  const settlementReady = claimActive && settleBlock === null;
   /**
    * A STRIKE IS NEVER AN ACQUISITION. D167.
    *
@@ -763,6 +799,20 @@ export function PlanetFocus({
             {t(rivalSlot !== null ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
           </button>
           )}
+          {onSettle && settlementBlockReason && (
+            (claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT')
+            // Before any raid only the colony slot is a reason: the rest belongs to step 3 (D209).
+            || (colonyPhase === 'NEUTRAL_PREP'
+              && (settleBlock?.code === 'COLONY_CORE' || settleBlock?.code === 'COLONY_MAX'))
+          ) && (
+            <p
+              data-settle-reason
+              role="note"
+              className="plate plate-inset basis-full px-2 py-1 text-label leading-snug text-dim"
+            >
+              {settlementBlockReason}
+            </p>
+          )}
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
             <button
               type="button"
@@ -770,7 +820,7 @@ export function PlanetFocus({
               disabled={!settlementReady}
               onClick={onSettle}
             >
-              {settlementBlock ?? t('focus.planet.settle')}
+              {settlementBlockLabel ?? t('focus.planet.settle')}
             </button>
           )}
           {/*
@@ -2705,15 +2755,10 @@ export function TradeFocus({
       {/*
         THE RATE, DRAWN. D124 · D142.
 
-        ONE ANCHOR, AND IT IS THE SMALLEST ONE THAT COMES OUT WHOLE. The anchor used
-        to be a single deuterium, which worked while every other price divided it
-        (1 · 3 · 90 — one deuterium was ninety alloy and thirty crystal, both whole).
-        At D183's 1 · 2 · 9 it does not: one deuterium is four and a half crystal,
-        and a rail that prints "4.5" is asking a player to reason about a resource
-        that only exists in whole units.
-        `rateAnchor` is the least common multiple of the three prices, so every row
-        is a whole number and the SHAPE — alloy is cheap, deuterium is dear — is
-        what it always was. On the shipped rate the rail reads 18 · 9 · 2.
+        ONE ANCHOR, AND IT IS THE SMALLEST ONE THAT COMES OUT WHOLE.
+        `rateAnchor` is the least common multiple of the occurrence's three prices,
+        so current and persisted historical rates both render without fractions.
+        D208's 1 · 2 · 32 rate reads 32 Alloy · 16 Crystal · 1 Deuterium.
       */}
       <p className="legend mb-2">{t('trade.rateHeading')}</p>
       <div data-testid="trade-rate" className="space-y-2">

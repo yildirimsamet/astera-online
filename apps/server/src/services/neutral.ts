@@ -13,7 +13,6 @@ import {
   fleetSpeedMult,
   fleetTravelExact,
   garrisonOf,
-  instrumentCost,
   productionMult,
   resolveCombat,
   seededFrom,
@@ -460,24 +459,44 @@ export async function returnAttackUntouched(
   });
 }
 
+/**
+ * A CARETAKER WORLD RE-ARMS FOR FREE. D209, owner instruction.
+ *
+ * The garrison and the dome are topped back up to the template at every tick, and
+ * neither is paid for: D209's garrisons cost more than a caretaker's stores can ever
+ * hold (tier 2 ~20k alloy against a ~13k store), so a world that paid for its guard
+ * would never be whole again after its first defeat. Buildings still rebuild out of
+ * the stores — they only ever fall to a strike — and a building shortfall no longer
+ * holds the guard back.
+ *
+ * AN OPEN CLAIM IS WAITED OUT, like a recovery. A claim opens only when the guard
+ * has fallen, and the race it starts is for an unguarded world; re-arming it under
+ * the settlers would be a fight nobody launched.
+ */
 export async function reinforceNeutral(
   tx: Tx,
   planetId: string,
   now: Date,
 ): Promise<Date | null> {
+  // Acquisition/combat lock the world before its neutral state. Reversing that
+  // order here deadlocks overlapping arrivals; wait on the world without holding
+  // the state a settlement must update/delete.
+  const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
+  if (world?.kind !== 'NEUTRAL') return null;
   const [state] = await tx.select().from(neutralPlanetState)
     .where(eq(neutralPlanetState.planetId, planetId)).for('update');
   if (!state) return null;
-  const [world] = await tx.select().from(planets).where(eq(planets.id, planetId)).for('update');
-  if (world?.kind !== 'NEUTRAL') return null;
   const tier = state.tier as NeutralTier;
   const template = MULTI_WORLD.neutral[tier];
   if (template.reinforcementMinutes === null) return null;
-  if (world.recoveryUntil && world.recoveryUntil > now) {
+  const waitUntil = [world.recoveryUntil, state.claimUntil]
+    .filter((until): until is Date => until !== null && until > now)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  if (waitUntil) {
     await tx.update(neutralPlanetState)
-      .set({ nextReinforcementAt: world.recoveryUntil })
+      .set({ nextReinforcementAt: waitUntil })
       .where(eq(neutralPlanetState.planetId, planetId));
-    return world.recoveryUntil;
+    return waitUntil;
   }
 
   const advanced = await advanceNeutralEconomy(tx, planetId, now);
@@ -486,14 +505,15 @@ export async function reinforceNeutral(
   let crystal = advanced.crystal;
   let deuterium = world.deuterium;
   const order: BuildingId[] = ['CORE', 'REFINERY', 'EXTRACTOR', 'SHIPYARD'];
-  let reinforcementBlocked = false;
+  let infrastructureShort = false;
   for (const type of order) {
+    if (infrastructureShort) break;
     let level = advanced.levels[type];
     const target = template.buildings[type];
     while (level < target) {
       const cost = buildingCost(type, level);
       if (alloy < cost.alloy || crystal < cost.crystal || deuterium < cost.deuterium) {
-        reinforcementBlocked = true;
+        infrastructureShort = true;
         break;
       }
       alloy -= cost.alloy;
@@ -503,50 +523,40 @@ export async function reinforceNeutral(
       await tx.update(buildings).set({ level })
         .where(and(eq(buildings.planetId, planetId), eq(buildings.type, type)));
     }
-    if (reinforcementBlocked) break;
   }
-  if (tier === 3 && !reinforcementBlocked) {
+
+  // The dome, to the template's own level and at no charge.
+  const domeTarget: number = template.instruments.AEGIS;
+  if (domeTarget > 0) {
     const [aegis] = await tx.select().from(satellites)
       .where(and(eq(satellites.planetId, planetId), eq(satellites.type, 'AEGIS')));
-    let level = aegis?.level ?? 0;
-    while (level < 3) {
-      const cost = instrumentCost('AEGIS', level);
-      if (alloy < cost.alloy || crystal < cost.crystal || deuterium < cost.deuterium) {
-        reinforcementBlocked = true;
-        break;
-      }
-      alloy -= cost.alloy;
-      crystal -= cost.crystal;
-      deuterium -= cost.deuterium;
-      level++;
-      await tx.insert(satellites).values({ planetId, slot: 0, type: 'AEGIS', level })
+    if ((aegis?.level ?? 0) < domeTarget) {
+      await tx.insert(satellites).values({ planetId, slot: 0, type: 'AEGIS', level: domeTarget })
         .onConflictDoUpdate({
           target: [satellites.planetId, satellites.slot],
-          set: { type: 'AEGIS', level },
+          set: { type: 'AEGIS', level: domeTarget },
         });
     }
   }
 
+  // The guard, to the template's own roster and at no charge. Never past it.
   const current = await neutralFleet(tx, planetId);
   const targets = { ...template.fleet, ...template.ground } as Fleet;
-  const tie: HullId[] = ALL_HULLS.filter((hull) => (targets[hull] ?? 0) > 0);
-  while (!reinforcementBlocked) {
-    const missing = tie.filter((hull) => (current[hull] ?? 0) < (targets[hull] ?? 0));
-    if (missing.length === 0) break;
-    missing.sort((a, b) =>
-      ((current[a] ?? 0) / Math.max(1, targets[a] ?? 0))
-      - ((current[b] ?? 0) / Math.max(1, targets[b] ?? 0))
-      || tie.indexOf(a) - tie.indexOf(b));
-    const hull = missing[0]!;
-    const spec = HULLS[hull];
-    if (alloy < spec.alloy || crystal < spec.crystal || deuterium < spec.deuterium) break;
-    alloy -= spec.alloy;
-    crystal -= spec.crystal;
-    deuterium -= spec.deuterium;
-    current[hull] = (current[hull] ?? 0) + 1;
+  for (const hull of ALL_HULLS) {
+    const want = targets[hull] ?? 0;
+    if ((current[hull] ?? 0) < want) current[hull] = want;
   }
   await setNeutralFleet(tx, planetId, current);
-  await tx.update(planets).set({ alloy, crystal, deuterium }).where(eq(planets.id, planetId));
+  await tx.update(planets).set({
+    alloy,
+    crystal,
+    deuterium,
+    // A free, whole dome means its charge too. In particular, a reinforcement
+    // delayed to the end of the 27-minute claim has regenerated only a fraction
+    // of its wall naturally; returning the guard with that sliver would make the
+    // server weaker than both the owner rule and the simulator's template fight.
+    shield: shieldHp(domeTarget),
+  }).where(eq(planets.id, planetId));
   const next = addMinutes(now, template.reinforcementMinutes);
   await tx.update(neutralPlanetState).set({ nextReinforcementAt: next })
     .where(eq(neutralPlanetState.planetId, planetId));

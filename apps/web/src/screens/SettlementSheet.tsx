@@ -44,6 +44,8 @@ export function SettlementSheet({
   );
   const fuel = missionFuel(fleet, span, 1);
   const closesIn = Math.max(0, (target.neutral?.claimUntil?.getTime() ?? now) - now);
+  const tier = target.neutral?.tier;
+  const opening = tier === undefined ? null : MULTI_WORLD.neutral[tier].captureStock;
 
   return (
     <Sheet
@@ -90,18 +92,18 @@ export function SettlementSheet({
           label={t('focus.planet.settlementConfirm.transports')}
           value={String(MULTI_WORLD.settlement.transports)}
         />
+        {/*
+          ONE COST AND ONE OPENING. D209, owner instruction.
+          The cargo and the fee used to be two rows because the cargo landed as the
+          colony's stock. Nothing lands now: the whole charge is spent on success and
+          the world opens on its tier's `captureStock`, which is only stated for a
+          tier this commander can actually read.
+        */}
         <SettlementFact
-          label={t('focus.planet.settlementConfirm.foundingCargo')}
+          label={t('focus.planet.settlementConfirm.foundingCost')}
           value={t('focus.planet.settlementConfirm.cargoValue', {
-            alloy: full(MULTI_WORLD.settlement.cost.alloy),
-            crystal: full(MULTI_WORLD.settlement.cost.crystal),
-          })}
-        />
-        <SettlementFact
-          label={t('focus.planet.settlementConfirm.foundingFee')}
-          value={t('focus.planet.settlementConfirm.cargoValue', {
-            alloy: full(MULTI_WORLD.settlement.fee.alloy),
-            crystal: full(MULTI_WORLD.settlement.fee.crystal),
+            alloy: full(MULTI_WORLD.settlement.charge.alloy),
+            crystal: full(MULTI_WORLD.settlement.charge.crystal),
           })}
         />
         <SettlementFact
@@ -116,19 +118,30 @@ export function SettlementSheet({
           label={t('focus.planet.settlementConfirm.closes')}
           value={countdown(closesIn)}
         />
+        {opening && (
+          <SettlementFact
+            wide
+            label={t('focus.planet.settlementConfirm.opensWith')}
+            value={t('focus.planet.settlementConfirm.stockValue', {
+              alloy: full(opening.alloy),
+              crystal: full(opening.crystal),
+              deuterium: full(opening.deuterium),
+            })}
+          />
+        )}
       </dl>
     </Sheet>
   );
 }
 
-function SettlementFact({ label, value }: { label: string; value: string }) {
+function SettlementFact({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
     /*
       A CELL IN A HAIRLINE GRID, so the ground is opaque on purpose — the `gap-px`
       above is what draws the rules between them, and a translucent cell would
       show the sheet through its own table. It is not a card and takes no plate.
     */
-    <div className="bg-plate px-3 py-3">
+    <div className={`bg-plate px-3 py-3${wide ? ' col-span-2' : ''}`}>
       <dt className="legend">{label}</dt>
       <dd className="num mt-1 text-body text-bone">{value}</dd>
     </div>

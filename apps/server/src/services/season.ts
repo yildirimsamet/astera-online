@@ -246,7 +246,8 @@ export async function createNeutralWorld(
       // Neutrals never mint Deuterium, but the season starts with every shared
       // stockpile full. Once raided or spent this reserve can only decrease.
       deuterium: deuteriumStock,
-      shield: tier === 3 ? shieldHp(3) : 0,
+      // The dome is the template's own (D209); a tier without one reads zero.
+      shield: shieldHp(template.instruments.AEGIS),
       lastTickAt: startsAt,
     })
     .returning();
@@ -259,8 +260,10 @@ export async function createNeutralWorld(
       level,
     })),
   );
-  if (tier === 3) {
-    await tx.insert(satellites).values({ planetId: world.id, slot: 0, type: 'AEGIS', level: 3 });
+  if (template.instruments.AEGIS > 0) {
+    await tx.insert(satellites).values({
+      planetId: world.id, slot: 0, type: 'AEGIS', level: template.instruments.AEGIS,
+    });
   }
   const fleet = { ...template.fleet, ...template.ground };
   const unitRows = Object.entries(fleet)
@@ -401,7 +404,7 @@ export async function latestSeasonResult(db: Db, accountId: string) {
  * open, which keeps the sequential frontier from moving on to the next galaxy.
  *
  * NOT THE CAPACITY QUESTION. That one is `seatedCommanders`, and merging the two
- * breaks the opposite half: the 51 neutrals sit outside the window, so counting
+ * breaks the opposite half: the 65 neutrals sit outside the window, so counting
  * worlds against the cap refuses every join into an empty galaxy.
  */
 export async function occupiedSlots(db: Db, seasonId: string): Promise<Set<number>> {

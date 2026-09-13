@@ -1,11 +1,12 @@
 import { FUEL, SALVAGE } from './constants.js';
 import { HULLS, fleetEntries, hullRoundTrip } from './hulls.js';
 import type { Fleet, HullId } from './types.js';
+import { resourceValue } from './valuation.js';
 
 /**
  * THE MASS A FUEL CHARGE IS MEASURED IN. T6 · D153 · D195.
  *
- * A FIXED FRACTION OF WHAT THE HULL COST, TILTED BY HOW FAST IT FLIES. D195
+ * A FIXED FRACTION OF THE HULL'S A + 2C + 32D EXPENSE, TILTED BY HOW FAST IT FLIES. D195
  * replaced D153's `bulk x tierMass` with this because the tier ladder had inverted
  * the thing it was meant to protect: measured across the catalogue, power per unit
  * of fuel ran 13.4 / 10.6 / 8.2 / 10.6 from tier 1 to tier 4, so the entry hull was
@@ -36,7 +37,7 @@ export function hullFuelMass(hull: HullId): number {
   if (spec.ground) return 0;
   // The Garbage Collector's thirst is the owner's, not its price's. D200.
   if (spec.profile === 'COLLECTOR') return SALVAGE.fuelMass;
-  const value = spec.alloy + spec.crystal + spec.deuterium;
+  const value = resourceValue(spec);
   const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(hull) ?? FUEL.pivotRoundTrip);
   return Math.max(1, Math.ceil(value * FUEL.perValue * thirst));
 }
@@ -47,7 +48,7 @@ export function hullFuelMass(hull: HullId): number {
  * The counterpart to `hangarLoad`, and deliberately a separate function from it for
  * the reason that file already states about `hangarLoad`/`groundLoad`: a caller
  * passing the wrong quantity is exactly the failure this code base has shipped
- * before. Here the split is in the name — room is `hangarLoad`, thirst is this.
+ * before. Ground room and launch thirst have separate functions and separate units.
  */
 export function fuelMass(fleet: Fleet): number {
   let mass = 0;
@@ -65,23 +66,11 @@ export function fuelMass(fleet: Fleet): number {
  *
  * MASS × DISTANCE, PER LEG, AND NOTHING ELSE.
  *
- *   · MASS is `fuelMass`: the same `bulk` the Hangar rations, times the hull tier's
- *     thirst rung (D153). Room and thirst are derived from one number so they can
- *     never disagree about how big a fleet is, and kept separate so a fuel change
- *     cannot silently re-rate the Hangar — `FUEL.tierMass` states the whole
- *     argument. Ground defence weighs nothing here for the same reason it takes no
- *     hangar room: it never travels.
- *
- *   · DISTANCE, because that is the axis the game already charges on. D125 and
- *     D126 made distance an INFORMATION cost — how far you can see, how late the
- *     warning comes. This makes the same axis an economic one, which is the
- *     consistent version of the same idea rather than a new tax.
- *
- *   · NOT SPEED. A Bulwark already pays for being slow by being slow: longer in
- *     the air, longer out of position, longer visible to everyone watching.
- *     Charging it again for the same property taxes one decision twice, and the
- *     hull table is priced at equal-budget power precisely so that no second axis
- *     can quietly re-rate it.
+ * MASS is economic hull expense A + 2C + 32D times FUEL.perValue, tilted
+ * by pivotRoundTrip / referenceRoundTrip. It does not read mobile bulk or a tier
+ * ladder. Ground hulls never travel. The Garbage Collector has its owner-set mass.
+ * Distance adds the price of reach; the reference trip adds the bounded price of
+ * speed. Flight duration itself is quoted separately from catalogue speed.
  *
  * ROUNDED UP PER LEG, so the shortest hop still costs a drop. A free launch is a
  * launch with no decision in it.

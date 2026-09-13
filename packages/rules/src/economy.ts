@@ -12,6 +12,7 @@ import {
   EMPLACEMENT,
   SATELLITES,
   SEASON,
+  UPLINK_BUILD_MINUTES,
   SHIELD,
 } from './constants.js';
 import {
@@ -202,9 +203,10 @@ export function instrumentCost(id: InstrumentId, level: number): Resources {
 
 /** What a satellite costs. Flat — it is bought once and never raised. D25. */
 export const satelliteCost = (id: SatelliteId): Resources => {
-  const effort = { UPLINK: 0.5, FOUNDRY: 4, DERRICK: 4, BEACON: 5 }[id];
-  return profileInvoice(profileIncome(id === 'UPLINK' ? 1 : 6),
-    { alloy: effort, crystal: effort, deuterium: 0 });
+  // The Uplink is priced by hand (D209); the three multipliers stay on the profile.
+  if (id === 'UPLINK') return { alloy: SATELLITES.UPLINK.alloy, crystal: SATELLITES.UPLINK.crystal, deuterium: 0 };
+  const effort = { FOUNDRY: 4, DERRICK: 4, BEACON: 5 }[id];
+  return profileInvoice(profileIncome(6), { alloy: effort, crystal: effort, deuterium: 0 });
 };
 
 /** Everything sunk into a building to reach `level`. Feeds the Wealth display. */
@@ -481,6 +483,23 @@ export const buildMinutes = (
 ): number =>
   Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel))
     * robotSpeedMult(tech);
+
+/**
+ * A SATELLITE'S TIMER — THE QUOTE EVERY SATELLITE ORDER READS. D209.
+ *
+ * The Uplink takes the owner's fixed `UPLINK_BUILD_MINUTES`; the other three are the
+ * ordinary `buildMinutes` off their price. Both take the robot discount, because the
+ * rule is the Construction QUEUE (D198), never a list of structures. `tech` is
+ * required for the same reason it is on the other two quotes.
+ */
+export const satelliteMinutes = (
+  id: SatelliteId,
+  coreLevel: number,
+  tech: TechLevels,
+): number =>
+  id === 'UPLINK'
+    ? UPLINK_BUILD_MINUTES * robotSpeedMult(tech)
+    : buildMinutes(satelliteCost(id), coreLevel, tech);
 
 /**
  * WHAT A BUILDING'S TIMER ACTUALLY READS, AND THE ONLY THING THAT MAY BE QUOTED.

@@ -1196,7 +1196,7 @@ function SatelliteItemRow({
         cost={action.cost}
         held={held}
         income={income}
-        takes={orderMinutes('SATELLITE', action.cost, planet)}
+        takes={orderMinutes('SATELLITE', action.cost, planet, 1, { satellite: id })}
         unowned={!action.owned}
         {...(inactive ? { inactive: t('planet.orbit.inactiveSatellite') } : {})}
         {...(action.blocked ? { blocked: action.blocked } : {})}

@@ -76,16 +76,17 @@ describe('multi-world strategic rules', () => {
   });
 
   it.each([
-    [0, 0], [2, 0], [3, 1], [5, 1], [6, 2], [8, 2], [9, 3], [99, 3],
+    // D209: colonies arrive at Core 6, 9 and 12.
+    [0, 0], [2, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [99, 3],
   ])('maps Core %i to %i colony slots', (core, capacity) => {
     expect(colonyCapacity(core)).toBe(capacity);
   });
 
   it('grandfathers existing colonies but rejects every new reservation over cap', () => {
-    expect(hasColonyCapacity(3, 1, 0)).toBe(false);
+    expect(hasColonyCapacity(6, 1, 0)).toBe(false);
     expect(hasColonyCapacity(2, 3, 0)).toBe(false);
-    expect(hasColonyCapacity(9, 1, 1)).toBe(true);
-    expect(hasColonyCapacity(9, 1, 2)).toBe(false);
+    expect(hasColonyCapacity(12, 1, 1)).toBe(true);
+    expect(hasColonyCapacity(12, 1, 2)).toBe(false);
   });
 
   it('uses exact EMPTY/LOW/RICH public reserve boundaries', () => {
@@ -111,15 +112,15 @@ describe('multi-world strategic rules', () => {
     expect(transferCargoCapacity({ DART: 99 }, {})).toBe(0);
   });
 
-  it('selects exactly 30/15/6 stable unique neutral slots after all 300 capitals', () => {
+  it('selects exactly 38/19/8 stable unique neutral slots after all 300 capitals', () => {
     const slots = generateGalaxy(8331, MULTI_WORLD.neutralSlotPool).slots;
     const first = selectNeutralSlots(8331, slots);
     const again = selectNeutralSlots(8331, slots);
     expect(again).toEqual(first);
-    expect(first.filter((entry) => entry.tier === 1)).toHaveLength(30);
-    expect(first.filter((entry) => entry.tier === 2)).toHaveLength(15);
-    expect(first.filter((entry) => entry.tier === 3)).toHaveLength(6);
-    expect(new Set(first.map((entry) => entry.slot.index))).toHaveLength(51);
+    expect(first.filter((entry) => entry.tier === 1)).toHaveLength(38);
+    expect(first.filter((entry) => entry.tier === 2)).toHaveLength(19);
+    expect(first.filter((entry) => entry.tier === 3)).toHaveLength(8);
+    expect(new Set(first.map((entry) => entry.slot.index))).toHaveLength(65);
     expect(first.every((entry) => entry.slot.index >= SERVERS.capacity)).toBe(true);
   });
 

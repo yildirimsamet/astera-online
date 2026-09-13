@@ -82,6 +82,7 @@ import { TransferSheet } from './TransferSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
 import { DiscControls } from '../galaxy/DiscControls.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
+import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
 import { BattleReportDoor } from './BattleReports.jsx';
@@ -1523,6 +1524,9 @@ export function GalaxyView({
         >
           <ResearchPanel
             onNeed={(id) => {
+              // A Core shortfall is the capital's to fix, whichever world is open (D209).
+              const world = researchNeedWorld(id, capitalPlanetId);
+              if (world !== null && world !== activePlanetId) selectPlanet(world);
               onPanel('planet');
               setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
             }}

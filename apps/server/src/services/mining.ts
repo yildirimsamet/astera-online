@@ -590,13 +590,15 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 
   if (rock && rockIndex !== null) {
     /**
-     * Lock the claim row before reading it.
+     * Seed the claim row BEFORE locking it, like pirate_state (D150).
      *
-     * Two squadrons landing in the same second is not a rare case — it is the
-     * intended one, because the race is the decision. `ON CONFLICT DO UPDATE`
-     * with the addition done in SQL means the second transaction blocks on the
-     * first, then reads a total that already includes it.
+     * FOR UPDATE cannot lock an absent row. Two first arrivals could both claim
+     * the untouched ore, then overwrite each other's ledger total. The initial
+     * insert serialises that first hit; the row lock serialises all later hits.
      */
+    await tx.insert(asteroidClaims).values({
+      seasonId: run.seasonId, index: rockIndex, oreTaken: 0, updatedAt: now,
+    }).onConflictDoNothing({ target: [asteroidClaims.seasonId, asteroidClaims.index] });
     const [existing] = await tx
       .select()
       .from(asteroidClaims)
@@ -608,7 +610,8 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
       )
       .for('update');
 
-    const alreadyTaken = existing?.oreTaken ?? 0;
+    if (!existing) throw new Error('seeded asteroid claim row disappeared');
+    const alreadyTaken = existing.oreTaken;
     const remaining = Math.max(0, rock.ore - alreadyTaken);
     const claim = claimOre(
       remaining,
@@ -620,17 +623,9 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 
     if (claim.taken > 0) {
       await tx
-        .insert(asteroidClaims)
-        .values({
-          seasonId: run.seasonId,
-          index: rockIndex,
-          oreTaken: alreadyTaken + claim.taken,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: [asteroidClaims.seasonId, asteroidClaims.index],
-          set: { oreTaken: alreadyTaken + claim.taken, updatedAt: now },
-        });
+        .update(asteroidClaims)
+        .set({ oreTaken: alreadyTaken + claim.taken, updatedAt: now })
+        .where(and(eq(asteroidClaims.seasonId, run.seasonId), eq(asteroidClaims.index, rockIndex)));
       if (rock.isotopeRich && remaining - claim.taken <= 0) {
         await recordGalaxyEvent(tx, {
           seasonId: run.seasonId,

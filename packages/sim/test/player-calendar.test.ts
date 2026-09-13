@@ -7,7 +7,9 @@ function settlementFixture() {
   const world = buildWorld({ players: 5, days: 1, seed: 2, activityProfiles: ['low'], neutralRaidChance: 0 });
   const p = world.players[0]!, target = world.neutrals.find(n => n.tier === 1)!;
   p.x = 0; p.y = 0; p.z = 0; target.x = 1250; target.y = 0; target.z = 0;
-  p.buildings.CORE = 3; p.fleet = { COURIER: 2 }; p.alloy = 10000; p.crystal = 10000; p.deuterium = 1000;
+  // D209: the first colony opens at Core 6, and tier 1 is guarded — these cases are past that guard.
+  p.buildings.CORE = MULTI_WORLD.colonyCoreThresholds[0]; p.fleet = { COURIER: 2 }; p.alloy = 10000; p.crystal = 10000; p.deuterium = 1000;
+  target.fleet = {};
   target.claimUntil = 100;
   world.strategicRng = () => 0;
   return { world, p, target };
@@ -18,7 +20,8 @@ describe('working adult calendar', () => {
     const { world, p, target } = settlementFixture();
     target.claimUntil = null;
     world.neutrals = [target]; world.neutralRaidChance = 1;
-    p.fleet = { DART: 2, COURIER: 1 }; p.deuterium = 0;
+    // A bot commits 60% of each combat hull, so four Darts send the two this case prices.
+    p.fleet = { DART: 4, COURIER: 1 }; p.deuterium = 0;
     runStrategicSession(p, 0, world);
     expect(world.strategicMissions).toHaveLength(0);
     p.deuterium = 1000;
@@ -92,7 +95,8 @@ describe('working adult calendar', () => {
   it('cannot dispatch settlers automatically from an offline battle outcome', () => {
     const world = buildWorld({ players: 5, days: 1, seed: 2, activityProfiles: ['low'], spendingArchetype: 'CASUAL' });
     const p = world.players[0]!, target = world.neutrals.find(n => n.tier === 1)!;
-    p.buildings.CORE = 3; p.fleet = { COURIER: 2 }; p.alloy = 10000; p.crystal = 10000; p.deuterium = 1000;
+    p.buildings.CORE = MULTI_WORLD.colonyCoreThresholds[0]; p.fleet = { COURIER: 2 }; p.alloy = 10000; p.crystal = 10000; p.deuterium = 1000;
+    target.fleet = {};
     world.strategicRng = () => 0;
     world.strategicMissions.push({ id: 999, kind: 'neutral_attack', ownerId: p.id, targetId: target.id,
       arriveAt: 100, fleet: { DART: 1 }, returning: false });

@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNull, max, or } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, or } from 'drizzle-orm';
 import { colonyCapacity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -146,25 +146,34 @@ export async function ownedPlanet(
 }
 
 export interface ColonyStanding {
-  highestCore: number;
+  /** The capital's Command Core: the only Core colony slots are counted from. D209. */
+  capitalCore: number;
   colonies: number;
   reservations: number;
   capacity: number;
 }
 
+/**
+ * HOW MANY COLONIES THIS COMMANDER MAY HOLD, AND HOW MANY THEY DO.
+ *
+ * Slots are counted off the CAPITAL's Core and nothing else (D209, owner
+ * instruction). It read the tallest Core the commander controlled anywhere, so a
+ * caretaker world that arrived at Core 8 opened the second slot one upgrade later —
+ * development nobody built, the same free Core D209 took away from research.
+ */
 export async function colonyStanding(tx: Queryable, playerId: string): Promise<ColonyStanding> {
   const controlled = await tx
     .select({ planetId: planets.id, kind: planets.kind })
     .from(planets)
     .where(eq(planets.controllerPlayerId, playerId));
-  const ids = controlled.map((world) => world.planetId);
+  const capital = controlled.find((world) => world.kind === 'CAPITAL');
   const [[core], [reserved]] = await Promise.all([
-    ids.length === 0
+    capital === undefined
       ? Promise.resolve([{ level: 0 }])
       : tx
-          .select({ level: max(buildings.level) })
+          .select({ level: buildings.level })
           .from(buildings)
-          .where(and(inArray(buildings.planetId, ids), eq(buildings.type, 'CORE'))),
+          .where(and(eq(buildings.planetId, capital.planetId), eq(buildings.type, 'CORE'))),
     tx
       .select({ n: count() })
       .from(missions)
@@ -177,12 +186,12 @@ export async function colonyStanding(tx: Queryable, playerId: string): Promise<C
         ),
       )),
   ]);
-  const highestCore = core?.level ?? 0;
+  const capitalCore = core?.level ?? 0;
   return {
-    highestCore,
+    capitalCore,
     colonies: controlled.filter((world) => world.kind === 'COLONY').length,
     reservations: reserved?.n ?? 0,
-    capacity: colonyCapacity(highestCore),
+    capacity: colonyCapacity(capitalCore),
   };
 }
 
@@ -271,6 +280,18 @@ export async function transferPlanetControl(
   if (rows.length === 0) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
 
   await tx.delete(neutralPlanetState).where(eq(neutralPlanetState.planetId, input.targetPlanetId));
+  /*
+    A CARETAKER'S GUARD STANDS DOWN; IT IS NEVER HANDED OVER. D209.
+    A claim only opens once the guard has fallen, but a guard that re-armed after it
+    (or a claim set by an operator) must not become the settler's free fleet. Only
+    rows nobody owns are the caretaker's.
+  */
+  if (input.expectedControllerPlayerId === null) {
+    await tx.delete(units).where(and(
+      eq(units.planetId, input.targetPlanetId),
+      isNull(units.ownerPlayerId),
+    ));
+  }
   await tx
     .update(units)
     .set({ ownerPlayerId: input.newPlayerId })

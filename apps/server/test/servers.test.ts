@@ -364,7 +364,7 @@ describe('servers', () => {
      *
      * Two facts, and they pull in opposite directions: the COLLISION set is every
      * world, and the CAPACITY count is capitals only. Merging them re-breaks the
-     * other half — the 51 neutrals sit outside the window, so counting worlds
+     * other half — the 65 neutrals sit outside the window, so counting worlds
      * against the cap refuses every join into a galaxy that is empty.
      */
     it('never offers a joining commander a slot another world already holds', async () => {
@@ -396,7 +396,7 @@ describe('servers', () => {
       expect(res.json<Placement>().slotIndex).not.toBe(contested.index);
     });
 
-    /** The other half: 51 neutral worlds live above the window and cost no seat. */
+    /** The other half: 65 neutral worlds live above the window and cost no seat. */
     it('counts commanders against the seat cap, never worlds', async () => {
       await openWorld(2, 4);
       const neutrals = await db

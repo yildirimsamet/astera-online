@@ -78,21 +78,17 @@ const laneFor = (seed: number, days = 3): TradeShipSpec[] => {
  * which is why the return leg, not the outbound one, is what these tests hold.
  */
 describe('the trade rate', () => {
-  it('prices ninety alloy, forty-five crystal and ten deuterium the same', () => {
+  it('prices thirty-two alloy, sixteen crystal and one deuterium the same', () => {
     /*
-      THE OWNER'S RATE, 90:45:10, STATED IN THE ONLY PLACE IT CAN BE READ WRONG.
-
-      It was 90:30:1 at D156, which made one Deuterium worth ninety Alloy — the
-      merchant was the cheapest Deuterium in the game by an order of magnitude and
-      a single Atlas of isotope paid for a whole fleet. Ten Deuterium to ninety
-      Alloy is a nine-to-one premium instead of ninety-to-one: still the scarcest
-      thing on the counter, no longer a printing press.
+      D208's owner-selected L12 reference, stored as values 1:2:32.
+      Thirty-two Alloy, sixteen Crystal and one Deuterium each represent the same
+      production effort. The equalities below guard against reversing that scale.
     */
-    expect(tradeUnits(res(90, 0, 0), TRADE.rate)).toBe(90);
-    expect(tradeUnits(res(0, 45, 0), TRADE.rate)).toBe(90);
-    expect(tradeUnits(res(0, 0, 10), TRADE.rate)).toBe(90);
+    expect(tradeUnits(res(32, 0, 0), TRADE.rate)).toBe(32);
+    expect(tradeUnits(res(0, 16, 0), TRADE.rate)).toBe(32);
+    expect(tradeUnits(res(0, 0, 1), TRADE.rate)).toBe(32);
     expect(tradeUnits(NOTHING, TRADE.rate)).toBe(0);
-    expect(tradeUnits(res(1, 1, 1), TRADE.rate)).toBe(1 + 2 + 9);
+    expect(tradeUnits(res(1, 1, 1), TRADE.rate)).toBe(1 + 2 + 32);
   });
 
   it('is the rate the galaxy-event calendar hands to a live occurrence', () => {
@@ -105,31 +101,30 @@ describe('quoting a swap', () => {
     /*
       THE RETURN LEG IS THE DECISION, and this example is why the feature exists.
 
-      Ten thousand Deuterium is ninety thousand units, and ninety thousand units
-      buys sixty thousand Alloy plus fifteen thousand Crystal. The convoy that
-      carries the offer out needs room for 10,000; the convoy that brings the goods
-      home needs room for 75,000. Sizing a wing against the OUTBOUND leg is the
+      Ten thousand Deuterium is 320,000 units, which buys 240,000 Alloy plus
+      40,000 Crystal. The convoy that carries the offer out needs room for 10,000;
+      the convoy that brings the goods home needs room for 280,000. Sizing a wing against the OUTBOUND leg is the
       mistake the quote exists to prevent, so `requiredHold` states the larger.
     */
-    const quote = quoteTrade(res(0, 0, 10_000), res(60_000, 15_000, 0), TRADE.rate);
+    const quote = quoteTrade(res(0, 0, 10_000), res(240_000, 40_000, 0), TRADE.rate);
 
     expect(quote.refusal).toBeNull();
-    expect(quote.offerUnits).toBe(90_000);
-    expect(quote.askUnits).toBe(90_000);
+    expect(quote.offerUnits).toBe(320_000);
+    expect(quote.askUnits).toBe(320_000);
     expect(quote.leftoverUnits).toBe(0);
     expect(quote.outboundVolume).toBe(10_000);
-    expect(quote.returnVolume).toBe(75_000);
-    expect(quote.requiredHold).toBe(75_000);
+    expect(quote.returnVolume).toBe(280_000);
+    expect(quote.requiredHold).toBe(280_000);
     expect(quote.requiredHold).toBe(quote.returnVolume);
   });
 
   it('works the rate in the other direction too', () => {
-    const quote = quoteTrade(res(9_000, 0, 0), res(0, 0, 1_000), TRADE.rate);
+    const quote = quoteTrade(res(32_000, 0, 0), res(0, 0, 1_000), TRADE.rate);
     expect(quote.refusal).toBeNull();
-    expect(quote.offerUnits).toBe(9_000);
-    expect(quote.askUnits).toBe(9_000);
-    expect(quote.requiredHold).toBe(9_000);
-    expect(quote.outboundVolume).toBe(9_000);
+    expect(quote.offerUnits).toBe(32_000);
+    expect(quote.askUnits).toBe(32_000);
+    expect(quote.requiredHold).toBe(32_000);
+    expect(quote.outboundVolume).toBe(32_000);
     expect(quote.returnVolume).toBe(1_000);
   });
 
@@ -138,9 +133,9 @@ describe('quoting a swap', () => {
     // more than the ask is legal, and the difference is stated, never silent.
     const quote = quoteTrade(res(0, 0, 100), res(450, 0, 0), TRADE.rate);
     expect(quote.refusal).toBeNull();
-    expect(quote.offerUnits).toBe(900);
+    expect(quote.offerUnits).toBe(3_200);
     expect(quote.askUnits).toBe(450);
-    expect(quote.leftoverUnits).toBe(450);
+    expect(quote.leftoverUnits).toBe(2_750);
   });
 
   it('refuses an empty offer, an empty ask and an offer that cannot pay', () => {
