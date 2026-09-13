@@ -50,7 +50,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
   it('applies the two early Alloy bands after the producer cut, leaving level ten onward unchanged', () => {
     for (let level = 0; level <= 100; level += 1) {
       const reference = profileIncome(level);
-      const alloyMultiplier = level >= 1 && level <= 6 ? 1.25 : level <= 9 ? 1.15 : 1;
+      const alloyMultiplier = level >= 1 && level <= 6 ? 1.25 : level >= 7 && level <= 9 ? 1.15 : 1;
       expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.70 * alloyMultiplier, 8);
       expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.70, 8);
       expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.70, 8);

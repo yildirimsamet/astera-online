@@ -81,6 +81,8 @@ describe('production and cost curves', () => {
     expect(alloyRate(7)).toBeGreaterThan(alloyRate(6));
     // Exact owner boundary: preserving L10 makes it slightly lower than boosted L9.
     expect(alloyRate(10)).toBeLessThan(alloyRate(9));
+    expect(paybackHours(9)).toBe(Infinity);
+    expect(worthInvesting(9, 300)).toBe(false);
   });
 
   /**

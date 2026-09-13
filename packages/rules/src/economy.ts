@@ -135,12 +135,13 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
 export const alloyRate = (level: number): number => {
-  const openingMultiplier = level >= 1 && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
+  const alloyMultiplier = level >= 1 && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
     ? ECONOMY_ADJUSTMENT.earlyAlloyOutputMultiplier
-    : level <= ECONOMY_ADJUSTMENT.midAlloyMaxLevel
+    : level > ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
+        && level <= ECONOMY_ADJUSTMENT.midAlloyMaxLevel
       ? ECONOMY_ADJUSTMENT.midAlloyOutputMultiplier
-    : 1;
-  return profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * openingMultiplier;
+      : 1;
+  return profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * alloyMultiplier;
 };
 
 export const crystalRate = (level: number): number =>
