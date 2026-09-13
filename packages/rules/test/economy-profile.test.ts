@@ -10,14 +10,14 @@ import { hullTech } from '../src/tech.js';
 import { hullBulk } from '../src/hulls.js';
 
 describe('monthly economy', () => {
-  it('is used by actual production, purchases, ship capacity and propulsion, not only a simulator', () => {
-    expect(alloyRate(4)).toBe(profileIncome(4).alloy);
-    expect(crystalRate(4)).toBe(profileIncome(4).crystal);
-    expect(deuteriumRate(4)).toBe(profileIncome(4).deuterium);
+  it('feeds the live economy before the explicit 30% tempo overlay', () => {
+    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.70);
+    expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.70);
+    expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.70);
     expect(buildingCost('REFINERY', 3)).toEqual(profileBuilding('REFINERY', 4).cost);
     expect(RESEARCH_PROJECTS.STARSHIP_ENGINEERING.costAt(1)).toEqual(profileResearch('STARSHIP_ENGINEERING', 1).cost);
     expect(collectorCap(100)).toBe(1000);
-    expect(HULLS.DART.alloy).toBe(300); expect(hullBulk('DART')).toBe(3);
+    expect(HULLS.DART.alloy).toBe(390); expect(hullBulk('DART')).toBe(3);
     expect(hullTech({ SHIP_PROPULSION: 4 }, 'DART').speed).toBe(1.5);
   });
   /**
@@ -49,8 +49,8 @@ describe('monthly economy', () => {
     expect(dart.alloy).toBe(300); expect(dart.crystal).toBe(60);
     expect(dart.workMinutes).toBe(2); expect(dart.bulk).toBe(3);
     expect(atlas.atk).toBe(0); expect(atlas.cargo).toBe(9500);
-    expect(hullWorkMinutes('DART', 2, 0, {})).toBe(4);
-    expect(hullWorkMinutes('CATACLYSM', 2, 6, {})).toBeCloseTo(56 / 1.72);
+    expect(hullWorkMinutes('DART', 2, 0, {})).toBe(5.2);
+    expect(hullWorkMinutes('CATACLYSM', 2, 6, {})).toBeCloseTo(56 / 1.72 * 1.30);
     expect(() => hullWorkMinutes('DART', 0.5, 0, {})).toThrow();
   });
   it('funds season rewards from the frozen monthly reference', () => {
@@ -63,9 +63,9 @@ describe('monthly economy', () => {
   });
   it('links the other purchases and moving targets to the same economy', () => {
     expect(DEATH_STAR.cost).toEqual({ alloy: 143661, crystal: 71832, deuterium: 5952 });
-    expect(DEATH_STAR.buildMinutes).toBe(60);
+    expect(DEATH_STAR.buildMinutes).toBe(78);
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43100, crystal: 21551, deuterium: 1787 });
-    expect(ANTI_STRATEGIC.buildMinutes).toBe(30);
+    expect(ANTI_STRATEGIC.buildMinutes).toBe(39);
     expect(CLAN.creationCost.alloy).toBe(Math.ceil(profileIncome(6).alloy * 8));
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
     expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });

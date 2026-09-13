@@ -16,6 +16,7 @@ import {
   productionMult,
   resolveCombat,
   seededFrom,
+  scaleNeutralDeuteriumLoot,
   settleWreck,
   shieldHp,
   storageCap,
@@ -216,7 +217,13 @@ export async function resolveNeutralBattle(
     { attacker: { tech: mission.tech ?? {} }, defender: { tech: {} } },
   );
   await setNeutralFleet(tx, mission.targetPlanetId, result.defenderSurvivors);
-  const loot = computeLoot(
+  const [state] = await tx.select({ tier: neutralPlanetState.tier })
+    .from(neutralPlanetState)
+    .where(eq(neutralPlanetState.planetId, mission.targetPlanetId));
+  if (!state || (state.tier !== 1 && state.tier !== 2 && state.tier !== 3)) {
+    throw new Error('neutral battle target lost its valid tier');
+  }
+  const loot = scaleNeutralDeuteriumLoot(computeLoot(
     { alloy: neutral.alloy, crystal: neutral.crystal, deuterium: neutral.deuterium },
     { alloy: 0, crystal: 0, deuterium: 0 },
     EMPTY_VAULT,
@@ -231,14 +238,14 @@ export async function resolveNeutralBattle(
       with the other path, and with its own combat call.
     */
     fleetCargo(result.attackerSurvivors, mission.tech ?? {}),
-  );
-  const uncappedLoot = computeLoot(
+  ), state.tier);
+  const uncappedLoot = scaleNeutralDeuteriumLoot(computeLoot(
     { alloy: neutral.alloy, crystal: neutral.crystal, deuterium: neutral.deuterium },
     { alloy: 0, crystal: 0, deuterium: 0 },
     EMPTY_VAULT,
     result.grade,
     Number.MAX_SAFE_INTEGER,
-  );
+  ), state.tier);
   const cargoLimited =
     uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium
     > loot.alloy + loot.crystal + loot.deuterium;

@@ -7,7 +7,7 @@ function settlementFixture() {
   const world = buildWorld({ players: 5, days: 1, seed: 2, activityProfiles: ['low'], neutralRaidChance: 0 });
   const p = world.players[0]!, target = world.neutrals.find(n => n.tier === 1)!;
   p.x = 0; p.y = 0; p.z = 0; target.x = 1250; target.y = 0; target.z = 0;
-  // D209: the first colony opens at Core 6, and tier 1 is guarded — these cases are past that guard.
+  // The first colony opens at the owner-revised threshold, and tier 1 is guarded.
   p.buildings.CORE = MULTI_WORLD.colonyCoreThresholds[0]; p.fleet = { COURIER: 2 }; p.alloy = 10000; p.crystal = 10000; p.deuterium = 1000;
   target.fleet = {};
   target.claimUntil = 100;

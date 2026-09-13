@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMBAT,
   DEATH_STAR,
   MULTI_WORLD,
   RESEARCH_PROJECTS,
@@ -75,6 +76,34 @@ describe('multi-world strategic simulation', () => {
     expect(battle.grade).toBe('DECISIVE');
     expect(battle.attackerLossValue).toBe(0);
     expect(loot.alloy + loot.crystal + loot.deuterium).toBeGreaterThan(0);
+  });
+
+  it.each([1, 2, 3] as const)('applies the tier %i neutral deuterium loot reduction', (tier) => {
+    const world = buildWorld({ players: 2, days: 1, seed: 5151 });
+    const attacker = world.players[0]!;
+    const target = world.neutrals.find((neutral) => neutral.tier === tier)!;
+    target.fleet = {};
+    target.aegis = 0;
+    target.shield = 0;
+    target.alloy = 1000;
+    target.crystal = 1000;
+    target.deuterium = 1000;
+    target.lastTick = 0;
+    target.nextReinforcement = null;
+    world.neutrals = [target];
+    world.strategicMissions = [{ id: 917 + tier, kind: 'neutral_attack', ownerId: attacker.id,
+      targetId: target.id, arriveAt: 0, fleet: { DART: 1, COURIER: 8 }, returning: false }];
+
+    advanceStrategicLayer(world, 0);
+
+    const returning = world.strategicMissions.find((mission) => mission.kind === 'neutral_attack' && mission.returning);
+    if (returning?.kind !== 'neutral_attack') throw new Error('missing neutral return');
+    const baseLoot = 1000 * COMBAT.lootDecisive;
+    const expected = Math.floor(baseLoot * Math.round(
+      MULTI_WORLD.neutral[tier].deuteriumLootMultiplier * 100,
+    ) / 100);
+    expect(returning.cargo).toEqual({ alloy: baseLoot, crystal: baseLoot, deuterium: expected });
+    expect(target.deuterium).toBe(1000 - expected);
   });
 
   it('keeps a neutral raid and its loot in flight until their real arrival moments', () => {

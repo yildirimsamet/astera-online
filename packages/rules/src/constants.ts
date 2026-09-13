@@ -1,7 +1,7 @@
 import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
 import { RESOURCE_VALUE } from './valuation.js';
 import type { BuildingId, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
-import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
+import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /**
  * Every number the design can be wrong about, in one place.
@@ -540,7 +540,7 @@ export const SHIELD_BREAKER = {
  */
 export const START = {
   /**
-   * RE-DERIVED, AND THE ARITHMETIC IS UNCHANGED. Economy v2.
+   * RE-DERIVED FROM THE OPENING'S INVOICES. Economy v2.
    *
    *   Command Core 1 → 2       90 alloy · 26 crystal
    *   Alloy Refinery 1 → 2     90 alloy · 26 crystal
@@ -549,13 +549,16 @@ export const START = {
    *   ─────────────────────────────────────────────
    *                           870 alloy · 78 crystal
    *
-   * The figure moved because `costBase` and `costMult` did. The DERIVATION did
-   * not, and `test/invariants.test.ts` still holds this to it exactly.
+   * The figures above are historical. The derivation stays three level-two
+   * upgrades plus two Darts; the owner's +30% flying-hull metal pass also applies
+   * to those Darts. OPENING_BONUS keeps PLANET_START's total grant fixed.
    */
   alloy: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
-    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.alloy, 600),
+    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.alloy,
+      2 * Math.ceil(300 * ECONOMY_ADJUSTMENT.hullMetalPrice)),
   crystal: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
-    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.crystal, 120),
+    .reduce((sum, id) => sum + profileBuilding(id, 2).cost.crystal,
+      2 * Math.ceil(60 * ECONOMY_ADJUSTMENT.hullMetalPrice)),
   deuterium: 0,
 } as const satisfies Resources;
 
@@ -895,11 +898,10 @@ export const BUILD = {
   /** Research is deliberate work, not assembly. */
   researchTimeMult: ECONOMY_TEMPO.researchWork,
   /**
-   * Nothing may ever take longer than this. Eight hours, against a brief that says
-   * the top of the tree must not reach one to two days. It only binds at Core 20,
-   * which no fourteen-day season reaches.
+   * The authored eight-hour work ceiling follows the owner's +30% timer pass:
+   * 10h24m before robots. Raising the ceiling too preserves +30% at capped levels.
    */
-  capMinutes: ECONOMY_TEMPO.buildCapMinutes,
+  capMinutes: ECONOMY_TEMPO.buildCapMinutes * ECONOMY_ADJUSTMENT.buildTime,
   /**
    * How many orders may be pending in ONE queue. There are two — construction and
    * the yard — and they run independently.
@@ -1446,7 +1448,7 @@ export const PROBE = {
    * general flight-bay rule (`flightSlots`), which D28 made the one scarcity every
    * craft in the game shares, and the owner's call is that it stays that way.
    */
-  alloy: 50,
+  alloy: Math.ceil(50 * ECONOMY_ADJUSTMENT.hullMetalPrice),
   /**
    * Halved to 25 on the owner's instruction, with the speed below.
    *
@@ -1456,7 +1458,7 @@ export const PROBE = {
    * decides whether a probe is affordable at the moment somebody is deciding what
    * kind of game this is.
    */
-  crystal: 30,
+  crystal: Math.ceil(30 * ECONOMY_ADJUSTMENT.hullMetalPrice),
   /**
    * ×12 AT D121, ON THE OWNER'S INSTRUCTION: 260 → 3120. ×4 WAS TRIED FIRST.
    *
@@ -1788,7 +1790,7 @@ export const ANTI_STRATEGIC = {
     crystal: 21_551,
     deuterium: 1_787,
   },
-  buildMinutes: 30,
+  buildMinutes: 30 * ECONOMY_ADJUSTMENT.buildTime,
 } as const;
 
 export const FUEL = {
@@ -2890,15 +2892,17 @@ export const MULTI_WORLD = {
   /** D209 (owner instruction): eight more T1, four more T2 and two more T3 than D97's 30/15/6. */
   neutralCounts: { 1: 38, 2: 19, 3: 8 },
   /**
-   * THE COMMAND CORE EACH COLONY SLOT OPENS AT. D209, owner instruction.
+   * THE COMMAND CORE EACH COLONY SLOT OPENS AT. D209, owner instruction;
+   * thresholds revised by the owner on 2026-09-13.
    *
-   * The first colony at Core 6, the second at 9, the third at 12. It was one per
-   * three Core levels from Core 3, which let a three-hour-old commander hold two.
+   * The first colony at Core 9, the second at 12, the third at 15. The prior
+   * 6 / 9 / 12 ladder still let the first snowball begin before the capital had
+   * crossed the opening progression band.
    * `colonyCapacity` counts the thresholds reached and the settle control names the
    * next one, so the number a player reads and the number the server enforces are
    * this one list.
    */
-  colonyCoreThresholds: [6, 9, 12],
+  colonyCoreThresholds: [9, 12, 15],
   /**
    * `claimMinutes` IS NOT HERE, AND MUST NEVER BE TYPED BACK IN.
    *
@@ -2943,7 +2947,9 @@ export const MULTI_WORLD = {
     transports: 2,
   },
   /**
-   * THE CARETAKER WORLDS. D209 re-armed every tier, owner instruction.
+   * THE CARETAKER WORLDS. D209 re-armed every tier, owner instruction; the
+   * owner's subsequent 30% economy experiment raises the mobile guard counts;
+   * the follow-up gives T1 an Aegis 1, one Viper and one Stronghold as well.
    *
    * `buildings` are unchanged. `instruments.AEGIS` is the dome the world is seeded
    * with and rebuilt towards — read by `createNeutralWorld`, `reinforceNeutral` and
@@ -2959,17 +2965,21 @@ export const MULTI_WORLD = {
   neutral: {
     1: {
       buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
-      instruments: { AEGIS: 0 },
-      fleet: { DART: 12 },
+      instruments: { AEGIS: 1 },
+      fleet: { DART: 12, PIKE: 6, VIPER: 1, STRONGHOLD: 1 },
       ground: { THORN: 1 },
+      /** Owner follow-up: a neutral raid takes 70% less of its normal D haul. */
+      deuteriumLootMultiplier: 0.30,
       captureStock: { alloy: 1_000, crystal: 500, deuterium: 0 },
       reinforcementMinutes: null,
     },
     2: {
       buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
       instruments: { AEGIS: 2 },
-      fleet: { DART: 10, PIKE: 10, VIPER: 5, STRONGHOLD: 5 },
+      fleet: { DART: 20, PIKE: 20, VIPER: 8, STRONGHOLD: 8 },
       ground: { THORN: 2, BASTION: 2 },
+      /** Owner follow-up: a neutral raid takes 50% less of its normal D haul. */
+      deuteriumLootMultiplier: 0.50,
       captureStock: { alloy: 5_000, crystal: 2_500, deuterium: 1_000 },
       reinforcementMinutes: 6 * 60,
     },
@@ -2977,9 +2987,11 @@ export const MULTI_WORLD = {
       buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
       instruments: { AEGIS: 4 },
       fleet: {
-        VIPER: 10, STRONGHOLD: 10, TEMPEST: 3, BALLISTA: 3, SENTINEL: 3, LEVIATHAN: 3, PRAETORIAN: 3,
+        VIPER: 15, STRONGHOLD: 15, TEMPEST: 5, BALLISTA: 5, SENTINEL: 5, LEVIATHAN: 5, PRAETORIAN: 5,
       },
       ground: { THORN: 5, BASTION: 3 },
+      /** Owner follow-up: a neutral raid takes 30% less of its normal D haul. */
+      deuteriumLootMultiplier: 0.70,
       captureStock: { alloy: 15_000, crystal: 5_000, deuterium: 3_000 },
       reinforcementMinutes: 4 * 60,
     },
@@ -3041,7 +3053,7 @@ export const DEATH_STAR = {
    * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`
    * is half of this and moves with it.
    */
-  buildMinutes: 60,
+  buildMinutes: 60 * ECONOMY_ADJUSTMENT.buildTime,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,
   /**

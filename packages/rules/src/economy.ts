@@ -1,6 +1,7 @@
 import { HULLS } from './hulls.js';
 import type { HullId } from './types.js';
 import { profileIncome, profileBuilding, profileInvoice, profileHull } from './economy-profile.js';
+import { ECONOMY_ADJUSTMENT } from './tempo.js';
 import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import {
@@ -134,10 +135,10 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
 export const alloyRate = (level: number): number =>
-  profileIncome(level).alloy;
+  profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput;
 
 export const crystalRate = (level: number): number =>
-  profileIncome(level).crystal;
+  profileIncome(level).crystal * ECONOMY_ADJUSTMENT.producerOutput;
 
 /** Cost to go from `level` to `level + 1`. */
 export function upgradeCost(level: number): Resources {
@@ -310,7 +311,7 @@ export const collectorCap = (ratePerHour: number): number =>
  * measurement it is held against.
  */
 export const deuteriumRate = (level: number): number =>
-  profileIncome(Math.max(0, level)).deuterium;
+  profileIncome(Math.max(0, level)).deuterium * ECONOMY_ADJUSTMENT.producerOutput;
 
 /**
  * DEUTERIUM ARRIVES TWO WAYS, SO THE CEILING IS SIZED FROM BOTH. T5, corrected.
@@ -481,7 +482,7 @@ export const buildMinutes = (
   coreLevel: number,
   tech: TechLevels,
 ): number =>
-  Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel))
+  Math.min(BUILD.capMinutes, totalOf(cost) / constructionThroughput(coreLevel) * ECONOMY_ADJUSTMENT.buildTime)
     * robotSpeedMult(tech);
 
 /**
@@ -498,7 +499,7 @@ export const satelliteMinutes = (
   tech: TechLevels,
 ): number =>
   id === 'UPLINK'
-    ? UPLINK_BUILD_MINUTES * robotSpeedMult(tech)
+    ? UPLINK_BUILD_MINUTES * ECONOMY_ADJUSTMENT.buildTime * robotSpeedMult(tech)
     : buildMinutes(satelliteCost(id), coreLevel, tech);
 
 /**
@@ -521,7 +522,7 @@ export const buildingMinutes = (
   id: BuildingId,
   level: number,
   tech: TechLevels,
-): number => profileBuilding(id, level).minutes * robotSpeedMult(tech);
+): number => profileBuilding(id, level).minutes * ECONOMY_ADJUSTMENT.buildTime * robotSpeedMult(tech);
 
 /**
  * Yard time, after whatever the commander has automated. T8.
@@ -535,15 +536,16 @@ export const shipMinutes = (
   shipyardLevel: number,
   tech: TechLevels,
 ): number =>
-  Math.min(BUILD.capMinutes, (totalOf(cost) / yardThroughput(shipyardLevel)) * yardSpeedMult(tech));
+  Math.min(BUILD.capMinutes, (totalOf(cost) / yardThroughput(shipyardLevel)) * yardSpeedMult(tech)
+    * ECONOMY_ADJUSTMENT.buildTime);
 
 export const defenceMinutes = (cost: Resources, shipyardLevel: number): number =>
-  Math.min(BUILD.capMinutes, totalOf(cost) / defenceThroughput(shipyardLevel));
+  Math.min(BUILD.capMinutes, totalOf(cost) / defenceThroughput(shipyardLevel) * ECONOMY_ADJUSTMENT.buildTime);
 
 export const researchMinutes = (cost: Resources, coreLevel: number): number =>
   Math.min(
     BUILD.capMinutes,
-    (BUILD.researchTimeMult * totalOf(cost)) / constructionThroughput(coreLevel),
+    (BUILD.researchTimeMult * totalOf(cost)) / constructionThroughput(coreLevel) * ECONOMY_ADJUSTMENT.buildTime,
   );
 
 /**
@@ -823,5 +825,6 @@ export function minutesUntilCollectorFull(
 /** Physical hull workload, shared by the real queue and its UI quote. */
 export function hullWorkMinutes(id: HullId, count: number, yard: number, tech: TechLevels): number {
   if (!Number.isInteger(count) || count < 1 || !Number.isInteger(yard) || yard < 0) throw new Error('Invalid hull work');
-  return profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard) * yardSpeedMult(tech);
+  return profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard) * yardSpeedMult(tech)
+    * ECONOMY_ADJUSTMENT.buildTime;
 }

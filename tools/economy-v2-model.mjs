@@ -212,7 +212,7 @@ const DEATH_STAR = { alloy:28000, crystal:9000, deuterium:2600, buildMinutes:60,
  * ladder — which is where wealth that a raid can never take is supposed to go.
  */
 const SETTLEMENT = { alloy: 2000, crystal: 1000, deuterium: 0, haulers: 2,
-                     colonyCapacity: 'floor(highestCore / 3), capped at 3' };
+                     colonyCapacity: 'capital Core thresholds 9 / 12 / 15, capped at 3' };
 
 /* opening grant — DERIVED from the opening sequence, never picked */
 const OPENING = (() => {

@@ -10,7 +10,7 @@ import { settlementBlock, type SettlementBlockInput } from '../src/lib/colonizat
  */
 const ready: SettlementBlockInput = {
   originRecovering: false,
-  colonies: { colonies: 0, reservations: 0, capacity: 1, capitalCore: 6 },
+  colonies: { colonies: 0, reservations: 0, capacity: 1, capitalCore: 9 },
   flight: { used: 0, total: 3 },
   couriers: MULTI_WORLD.settlement.transports,
   stock: { alloy: 50_000, crystal: 50_000, deuterium: 50_000 },
@@ -27,14 +27,14 @@ describe('settlementBlock', () => {
     expect(settlementBlock({
       ...ready,
       colonies: { colonies: 0, reservations: 0, capacity: 0, capitalCore: 4 },
-    })).toEqual({ code: 'COLONY_CORE', requiredCore: 6, currentCore: 4 });
+    })).toEqual({ code: 'COLONY_CORE', requiredCore: 9, currentCore: 4 });
   });
 
   it('counts a colony already flying when naming the next threshold', () => {
     expect(settlementBlock({
       ...ready,
-      colonies: { colonies: 1, reservations: 1, capacity: 2, capitalCore: 9 },
-    })).toEqual({ code: 'COLONY_CORE', requiredCore: 12, currentCore: 9 });
+      colonies: { colonies: 1, reservations: 1, capacity: 2, capitalCore: 12 },
+    })).toEqual({ code: 'COLONY_CORE', requiredCore: 15, currentCore: 12 });
   });
 
   it('says the ceiling has been reached once every slot the game has is taken', () => {

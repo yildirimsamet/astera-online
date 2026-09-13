@@ -2,7 +2,7 @@ import { profileHull } from './economy-profile.js';
 import { COMBAT, PROSPECTOR } from './constants.js';
 import { cargoMult, hullTech } from './tech.js';
 import type { TechLevels } from './tech.js';
-import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
+import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
 import type {
   CombatClass,
   Fleet,
@@ -68,8 +68,9 @@ export const HULLS: Record<HullId, Hull> = {
    * attack lane refuses a wing with no combat hull and the mining lane is a
    * Prospector's alone.
    *
-   * THE PRICE IS THE OWNER'S AND IS NEVER SCALED — 10k alloy, 5k crystal — so
-   * `profileHull` carries it through rather than re-deriving it from a tier. It
+   * The authored price is 10k alloy, 5k crystal, so `profileHull` carries it
+   * through rather than re-deriving it from a tier. The owner's later all-ship
+   * metal-price adjustment is applied once at catalogue construction. It
    * fires nothing, so `atk × hp / value²` has nothing to price. Its hold is zero
    * on purpose: the salvage is not cargo, and the loot ceiling never sees it.
    */
@@ -149,8 +150,16 @@ export const HULLS: Record<HullId, Hull> = {
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */
 export const ALL_HULLS: readonly HullId[] = Object.keys(HULLS) as HullId[];
-// Preserve identities, gates and roles; apply the shared economy before deriving any catalog views.
-for (const id of ALL_HULLS) HULLS[id] = profileHull(HULLS[id]);
+// Price AFTER deriving hardware: the owner asked for dearer ships, not stronger ships.
+// profileHull is also used for workload/bulk metadata; do not scale a live invoice twice there.
+for (const id of ALL_HULLS) {
+  const hull = profileHull(HULLS[id]);
+  HULLS[id] = hull.ground ? hull : {
+    ...hull,
+    alloy: Math.ceil(hull.alloy * ECONOMY_ADJUSTMENT.hullMetalPrice),
+    crystal: Math.ceil(hull.crystal * ECONOMY_ADJUSTMENT.hullMetalPrice),
+  };
+}
 export const MOBILE_HULLS: readonly MobileHullId[] = ALL_HULLS.filter(
   (id): id is MobileHullId => !HULLS[id].ground && id !== 'PROSPECTOR',
 );

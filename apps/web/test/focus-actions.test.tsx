@@ -653,7 +653,7 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     const note = document.querySelector('[data-settle-reason]');
-    expect(note).toHaveTextContent(/next colony needs command core 6 · now 4/i);
+    expect(note).toHaveTextContent(/next colony needs command core 9 · now 4/i);
     const button = screen.getByRole('button', { name: /^Found colony\b/ });
     expect(button).toBeDisabled();
     // Above the control it explains, in the same row.
@@ -666,7 +666,7 @@ describe('the focus rail’s two commitments', () => {
           planet={{
             ...mine,
             fleet: { ...mine.fleet, COURIER: 1 },
-            colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 },
+            colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 },
           }}
         />
       </Wrapper>,
@@ -682,7 +682,7 @@ describe('the focus rail’s two commitments', () => {
             ...mine,
             planet: { ...mine.planet, deuterium: 5_000 },
             fleet: { ...mine.fleet, COURIER: MULTI_WORLD.settlement.transports },
-            colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 },
+            colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 },
           }}
         />
       </Wrapper>,
@@ -723,13 +723,13 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(document.querySelector('[data-settle-reason]'))
-      .toHaveTextContent(/next colony needs command core 6 · now 4/i);
+      .toHaveTextContent(/next colony needs command core 9 · now 4/i);
 
     view.rerender(
       <Wrapper>
         <PlanetFocus
           {...props}
-          planet={{ ...mine, fleet: { DART: 6 }, colonies: { capitalCore: 6, colonies: 0, reservations: 0, capacity: 1 } }}
+          planet={{ ...mine, fleet: { DART: 6 }, colonies: { capitalCore: 9, colonies: 0, reservations: 0, capacity: 1 } }}
         />
       </Wrapper>,
     );

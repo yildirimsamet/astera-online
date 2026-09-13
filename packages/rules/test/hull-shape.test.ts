@@ -139,6 +139,27 @@ describe('the specialisation spread', () => {
     }
   });
 
+  it('makes Escorts the offensive and Fortresses the defensive SUR profile', () => {
+    for (let t = 1; t <= 4; t++) {
+      const escortId = byTier(t).find((id) => HULLS[id].profile === 'ESCORT');
+      const fortressId = byTier(t).find((id) => HULLS[id].profile === 'FORTRESS');
+      expect(escortId, `tier ${String(t)} Escort`).toBeDefined();
+      expect(fortressId, `tier ${String(t)} Fortress`).toBeDefined();
+      const escort = HULLS[escortId!];
+      const fortress = HULLS[fortressId!];
+      expect(escort.atk, `${escortId!} attack`).toBeGreaterThan(fortress.atk);
+      expect(escort.hp, `${escortId!} defence`).toBeLessThan(fortress.hp);
+      const attackLead = escort.atk / fortress.atk;
+      const defenceLead = fortress.hp / escort.hp;
+      expect(attackLead, `tier ${String(t)} attack lead`).toBeGreaterThan(1.18);
+      expect(attackLead, `tier ${String(t)} attack lead`).toBeLessThan(1.35);
+      expect(Math.abs(attackLead - defenceLead), `tier ${String(t)} mirrored profiles`)
+        .toBeLessThan(0.02);
+      expect([escort.alloy, escort.crystal, escort.deuterium], `tier ${String(t)} equal invoice`)
+        .toEqual([fortress.alloy, fortress.crystal, fortress.deuterium]);
+    }
+  });
+
   it('never pays for it — equal budget still buys equal power', () => {
     for (let t = 1; t <= 4; t++) {
       const eff = byTier(t).filter((id) => HULLS[id].profile !== 'SHIELD_BREAKER')

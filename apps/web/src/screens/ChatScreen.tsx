@@ -1,5 +1,14 @@
 import { CHAT, CLAN } from '@astera/rules';
-import { useEffect, useMemo, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type SyntheticEvent,
+  type UIEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useChatMessages,
@@ -110,7 +119,6 @@ export function ChatScreen({
               messages={generalMessages}
               listLabel={t('chat.list')}
               empty={t('chat.empty')}
-              older={t('chat.older')}
               loadingOlder={t('chat.loadingOlder')}
               placeholder={t('chat.placeholder')}
               draft={generalDraft}
@@ -118,7 +126,7 @@ export function ChatScreen({
               onFocusPlanet={onFocusPlanet}
               hasNextPage={general.hasNextPage}
               fetchingOlder={general.isFetchingNextPage}
-              onOlder={() => { void general.fetchNextPage(); }}
+              onOlder={() => general.fetchNextPage()}
               onMarkRead={(id) => { markGeneral.mutate(id); }}
               posting={postGeneral.isPending}
               postError={postGeneral.isError ? postGeneral.error : null}
@@ -143,7 +151,6 @@ export function ChatScreen({
             messages={clanMessages}
             listLabel={t('clan.chat.list')}
             empty={t('clan.chat.empty')}
-            older={t('clan.chat.older')}
             loadingOlder={t('clan.chat.loadingOlder')}
             placeholder={t('clan.chat.placeholder')}
             draft={clanDraft}
@@ -151,7 +158,7 @@ export function ChatScreen({
             onFocusPlanet={onFocusPlanet}
             hasNextPage={clan.hasNextPage}
             fetchingOlder={clan.isFetchingNextPage}
-            onOlder={() => { void clan.fetchNextPage(); }}
+            onOlder={() => clan.fetchNextPage()}
             onMarkRead={(id) => { clanActions.readChat.mutate(id); }}
             posting={clanActions.postChat.isPending}
             postError={clanActions.postChat.isError ? clanActions.postChat.error : null}
@@ -191,7 +198,6 @@ function ChannelPanel({
   messages,
   listLabel,
   empty,
-  older,
   loadingOlder,
   placeholder,
   draft,
@@ -210,7 +216,6 @@ function ChannelPanel({
   messages: readonly MessageRow[];
   listLabel: string;
   empty: string;
-  older: string;
   loadingOlder: string;
   placeholder: string;
   draft: string;
@@ -218,7 +223,7 @@ function ChannelPanel({
   onFocusPlanet: (planetId: string) => void;
   hasNextPage: boolean;
   fetchingOlder: boolean;
-  onOlder: () => void;
+  onOlder: () => Promise<unknown>;
   onMarkRead: (messageId: string) => void;
   posting: boolean;
   postError: unknown;
@@ -231,23 +236,70 @@ function ChannelPanel({
   const now = useNow(30_000);
   const history = useRef<HTMLDivElement>(null);
   const marked = useRef<string | null>(null);
+  const followingLatest = useRef(true);
+  const requestingOlder = useRef(false);
+  const prependSnapshot = useRef<{ scrollHeight: number; scrollTop: number } | null>(null);
+  const previousLatestId = useRef<string | undefined>(undefined);
+  const oldestId = messages[0]?.id;
   const latestId = messages.at(-1)?.id;
 
   useEffect(() => {
-    if (!latestId || marked.current === latestId) return;
+    if (!followingLatest.current || !latestId || marked.current === latestId) return;
     marked.current = latestId;
     onMarkRead(latestId);
   }, [latestId, onMarkRead]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     /**
      * Scroll the ONE box that owns the messages. `scrollIntoView()` also walks
      * outward toward the page viewport; on iOS that can preserve the visual
      * viewport pan Safari applied while the keyboard and composer were focused.
+     * The first page starts at the bottom. After that, only somebody already at
+     * the bottom follows a newly arrived message; scrolling up is an explicit
+     * decision to keep reading history.
      */
     const log = history.current;
-    if (log) log.scrollTop = log.scrollHeight;
+    if (!log || !latestId) return;
+    if (previousLatestId.current === undefined || followingLatest.current) {
+      log.scrollTop = log.scrollHeight;
+      followingLatest.current = true;
+    }
+    previousLatestId.current = latestId;
   }, [latestId]);
+
+  useLayoutEffect(() => {
+    const snapshot = prependSnapshot.current;
+    const log = history.current;
+    if (!snapshot || !log) return;
+    log.scrollTop = snapshot.scrollTop + (log.scrollHeight - snapshot.scrollHeight);
+    prependSnapshot.current = null;
+  }, [oldestId]);
+
+  const markLatestRead = (): void => {
+    if (!latestId || marked.current === latestId) return;
+    marked.current = latestId;
+    onMarkRead(latestId);
+  };
+
+  const loadOlder = (log: HTMLDivElement): void => {
+    if (!hasNextPage || fetchingOlder || requestingOlder.current) return;
+    requestingOlder.current = true;
+    prependSnapshot.current = { scrollHeight: log.scrollHeight, scrollTop: log.scrollTop };
+    void onOlder().then(
+      () => { requestingOlder.current = false; },
+      () => {
+        requestingOlder.current = false;
+        prependSnapshot.current = null;
+      },
+    );
+  };
+
+  const handleHistoryScroll = (event: UIEvent<HTMLDivElement>): void => {
+    const log = event.currentTarget;
+    followingLatest.current = log.scrollHeight - log.scrollTop - log.clientHeight <= 48;
+    if (followingLatest.current) markLatestRead();
+    if (log.scrollTop <= 48) loadOlder(log);
+  };
 
   const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -263,12 +315,18 @@ function ChannelPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={history} className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" role="log" aria-label={listLabel} aria-live="polite">
-        {hasNextPage ? (
-          <div className="py-3 text-center">
-            <Button size="sm" variant="ghost" disabled={fetchingOlder} onClick={onOlder}>
-              {fetchingOlder ? loadingOlder : older}
-            </Button>
+      <div
+        ref={history}
+        className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3"
+        role="log"
+        aria-label={listLabel}
+        aria-live="polite"
+        aria-busy={fetchingOlder}
+        onScroll={handleHistoryScroll}
+      >
+        {fetchingOlder ? (
+          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-faint" role="status">
+            {loadingOlder}
           </div>
         ) : null}
         {messages.length === 0 ? (

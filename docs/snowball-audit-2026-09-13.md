@@ -4,7 +4,22 @@
 Multi-account hariçtir. Üretimde yazma, deploy, wipe veya oyuncu üzerinde deneme yapılmadı.
 Sunucu kanıtları yalnızca yerel, adı `_test` ile biten veritabanlarında çalıştırıldı.
 
-## Sonuç: bu haliyle erken snowball kapatılmış değildir
+Kapsam notu: aşağıdaki fiyatlar, 52,59 dakika rotası ve tam test sonucu `147deca`
+checkpoint'ine aittir. Sonraki %25 fiyat/üretim/süre deneyi ayrı ölçüldü:
+[deney raporu](economy-experiment-25pct-2026-09-13.md). Eski rakamlar yeni adayın
+kalibrasyonu veya mevcut fiyatları olarak okunmamalıdır.
+Güncel aday %30 ve daha güçlü garnizonlardır; eski sabit rotadan ayrı, yatırım ve
+garnizona göre ordu seçen [gerçek servis ölçümü](economy-experiment-30pct-2026-09-13.md) kullanılır.
+Son T1 AEGIS 1 / Viper 1 / Stronghold 1 eklemesi
+[ayrı kalkanlı tekrar](economy-experiment-t1-aegis-2026-09-13.md) ile ölçülür;
+önceki %30 raporunun 201,39 dakikası bu sonraki garnizona ait değildir.
+
+> **Güncel durum:** İlk koloni yuvası daha sonra başkent Core 9'a taşındı
+> (`9 / 12 / 15`). Bu nedenle aşağıdaki 52,59 dakikalık Core 6 rotası tarihsel bir
+> açığı kanıtlar, fakat mevcut çalışma ağacında geçerli bir kolonileşme rotası değildir.
+> Yeni eşik için saldırgan ölçüm ayrıca yeniden çalıştırılmalıdır.
+
+## Tarihsel checkpoint sonucu: erken snowball kapatılmış değildi
 
 **Tek oyuncu, gerçek seed 4242 konumlarında, kendi ödediği gemilerle, Akademi çıkışından
 52,59 dakika sonra T1 koloni kurdu.** Merchant yok, ek kaynak yok, gezegen taşıma yok,
@@ -24,7 +39,7 @@ açılmasını engelleyecek bir çözüm olarak sunulmamalıdır.
 
 | Öncelik / tür | Bulgular | Durum / kanıt |
 | --- | --- | --- |
-| P1 — sezon tasarımı | Core 6, pahalı bir zaman kapısı değil; birinci oturumda solo fetih mümkün | 52,59 dk gerçek sunucu rotası; sahip kararı gerekir |
+| P1 — sezon tasarımı | Eski Core 6 kapısı pahalı bir zaman kapısı değildi | 52,59 dk tarihsel rota; güncel 9/12/15 kapısında yeniden ölçüm gerekir |
 | P2 — onboarding tasarımı | Son Akademi checkpoint'i client `step` değeriyle, dersleri oynama kanıtı olmadan seçilebiliyor | Tek gerçek HTTP claim 200 + tam paket; mevcut onboarding regresyonu yeniden geçti; paket bir kez, **kural kararı açık** |
 | P1 — kod hatası | Korsan PARTIAL ödemesi keseyi azaltmıyor; aynı dünyadan dönüş sonrası tekrar vurulabiliyor | İki normal launch/return, ilk hoard'dan fazla A/C ödeme; **açık** |
 | P2 — PvP tasarımı | Core 6 / Yard 6, ödenmiş research ile Tier 4 üretebilir ama Core 2 hâlâ attack band'inde | Canlı production şartları + `canAttack(6,2)` yeşil; timer/solo-T4 rotası iddiası değil, **kural kararı açık** |
@@ -141,8 +156,8 @@ Tam paket herkes için serbest bir başlangıç mı, eğitim tamamlayana mahsus 
 ### 2. Fethedemediğim tarafsızı bile yağmalardım; boş T1'i acele kapatmazdım
 
 [Attack servisi](../apps/server/src/services/mission.ts) neutralleri newcomer shield,
-komutan Core bandı ve PvP bash hesabı dışında tutuyor. **Core 6 yalnızca kolonileşme kapısı;
-yağma kapısı değil.** Bay, ücretli filo, yakıt ve aynı origin-target için aktif sefer sınırı var;
+komutan Core bandı ve PvP bash hesabı dışında tutuyor. **Güncel Core 9 ilk koloni kapısıdır;
+yağma kapısı değildir.** Bay, ücretli filo, yakıt ve aynı origin-target için aktif sefer sınırı var;
 “limitsiz/bedava attack” iddiası yok.
 
 | Tier / adet | İlk A | İlk C | İlk D | A/saat | C/saat |
@@ -209,8 +224,8 @@ Hazır Yard 2 T2 üretimini açar; Yard 4 tek başına T3 research şartlarını
 [Merchant](../packages/rules/src/trade.ts) kota/komisyon taşımıyor; hold, bay, prepaid fuel
 ve pencere sınırı var. Yeni takvimde 1 D = 32 A = 16 C. Neutral başlangıç D'sini veya yeni
 T2/T3 capture D'sini ucuz Core/Yard/producer yatırımlarına yönlendirmek güçlü zincirdir.
-Core 6→9'un invoice'u 9.048 A / 2.437 C, temel timer toplamı ~53,27 dakikadır;
-para gelirse ikinci colony slot'u da bir günlük zorunlu bekleme gerektirmez.
+Core 6→9'un invoice'u 9.048 A / 2.437 C, temel timer toplamı ~53,27 dakikadır ve
+güncel kuralla ancak **ilk** koloni yuvasını açar. İkinci yuva için Core 12 gerekir.
 
 3.000 D→96.000 A tek seferde iki Courier ile taşınamaz: `quoteTrade` dönüş hacmini de
 kontrol eder. Örnek olarak 60 D→1.920 A, iki araştırmasız Courier'nin 2.000 hold'una sığar;
@@ -319,7 +334,8 @@ node tools/visual.mjs /tmp/blindspace-visual-review
 
 Görsel koşu 350×812: kontroller geçti, runtime error yok. Ek component-fixture tarayıcı koşusunda
 TR/EN T3 yerleşim bedeli/açılış stoğu ve sabit kontroller taşmadı; ekran görüntüleri incelendi.
-TR/EN baskın öncesi Core 6 / şu an 4 bilgi kutusu da 350px'te okunuyor ve viewport içinde kalıyor.
+TR/EN baskın öncesi tarihsel Core 6 / şu an 4 bilgi kutusu da 350px'te okunmuştu;
+güncel dinamik metin ilk yuva için Core 9'u ortak kuraldan alır.
 Bu ek koşu gerçek settlement başlatmadı; servis doğrulaması ayrı sunucu testindedir.
 Araç ve sunucu kanıtları tekrarlanabilir;
 ham ölçüm geçici JSON/log olarak saklandı, megabaytlık kalibrasyon çıktısı repoya eklenmedi.
@@ -332,13 +348,13 @@ istiyor. Değiştirilecek sayıları ayrıca verecek; bu checkpoint'te yeni kali
 52,59 dakika mevcut karşılaştırma baseline'ı olarak korunuyor.
 
 1. 6 saat hedefinin maliyet/garnizon/ekonomi adaylarını gerçek servis rotalarıyla sınamak.
-   Core 6 yerine rastgele threshold veya ek süre kilidi seçilmedi; kesin ekonomik alt sınır,
+   Güncel Core 9 eşiğinin kesin ekonomik alt sınırı,
    claim'i başkasından alma ve etkinlik gelirleri dahil karşı örneklerle doğrulanmalıdır.
 2. Korsan kalan kesesinin kalıcı ve atomik takip kuralı; PARTIAL/tek-deneme tercihi açıkça kararlaştırılmalı.
 3. T1 kalıcı boş raid çiftliği ve ilk neutral bank'ın korunup korunmayacağı.
 4. T2/T3 capture D'sinin **yeni 32 valuation ile** büyüklüğü; free producer/Yard ve dünya başına
    Convoy ration'unun amaçlanan colony ödülü mü, fazla compound gain mi olduğu.
-5. Core 6'da üst-tier filo ile düşük-Core PvP hedeflerini tutmanın amaçlanan strateji olup olmadığı.
+5. Koloni kapısından bağımsız olarak düşük-Core PvP bandında üst-tier filo tutmanın amaçlanan strateji olup olmadığı.
 
 Bu beş başlık gameplay/risk-reward değiştirir; kilitli kararlar kullanıcı adına yeniden yazılmadı.
 Yeni hull table ve yeni merchant calendar aynı reset sınırında uygulanmalı. Persist edilmiş eski

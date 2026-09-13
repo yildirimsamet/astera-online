@@ -1,5 +1,5 @@
-import { ABUSE, COMBAT } from './constants.js';
-import type { Grade, Resources } from './types.js';
+import { ABUSE, COMBAT, MULTI_WORLD } from './constants.js';
+import type { Grade, NeutralTier, Resources } from './types.js';
 
 export const gradeMultiplier = (grade: Grade): number =>
   grade === 'DECISIVE'
@@ -97,6 +97,26 @@ export function computeLoot(
     deuterium: fromStock.deuterium + fromBuffer.deuterium,
     fromStock,
     fromBuffer,
+  };
+}
+
+/**
+ * Apply the caretaker-only fuel haircut after ordinary cargo allocation.
+ * The cut stays on the world and does not turn into extra alloy or crystal.
+ */
+export function scaleNeutralDeuteriumLoot(loot: Loot, tier: NeutralTier): Loot {
+  const multiplier = MULTI_WORLD.neutral[tier].deuteriumLootMultiplier;
+  const percent = Math.round(multiplier * 100);
+  const deuterium = Math.floor(loot.deuterium * percent / 100);
+  const fromStockDeuterium = Math.min(
+    deuterium,
+    Math.floor(loot.fromStock.deuterium * percent / 100),
+  );
+  return {
+    ...loot,
+    deuterium,
+    fromStock: { ...loot.fromStock, deuterium: fromStockDeuterium },
+    fromBuffer: { ...loot.fromBuffer, deuterium: deuterium - fromStockDeuterium },
   };
 }
 

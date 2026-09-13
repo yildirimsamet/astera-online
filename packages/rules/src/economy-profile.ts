@@ -240,6 +240,17 @@ export interface ProfileHull extends Hull { bulk: number; workMinutes: number; r
 const ROLE_SPREAD = [0.8, 1, 1.2, 1.45] as const;
 
 /**
+ * THE TWO SUR PROFILES ARE EQUAL-SIZED ALTERNATIVES. Owner instruction, D209.
+ *
+ * Fleet speed alone cannot carry the Escort identity because a transport or
+ * Nullifier commonly sets the fleet pace. Both Bulwarks therefore buy the same
+ * recipe and `ATK * HP` product: Escort puts that power into attack, Fortress into
+ * armour. The roughly 25% mirror gap widens only gently so the established D195
+ * tier-specialisation ladder survives integer rounding.
+ */
+const BULWARK_PROFILE_RATIO = [1.22, 1.25, 1.28, 1.31] as const;
+
+/**
  * WHAT A WARSHIP CARRIES. D195, owner instruction.
  *
  * *"Hepsinde az da olsa belirli miktarda kargo kapasitesi istiyorum. 50 100 vs."* —
@@ -291,11 +302,12 @@ export function profileHull(live: Hull): ProfileHull {
   const steps = [1, 2.5, 6, 15], base = [300, 750, 1800, 4500];
   const c = [60, 180, 450, 1200], d = [0, 2, 6, 20];
   const bulk = [3, 5, 8, 13], work = [2, 5, 12, 28];
-  const fortress = live.profile === 'FORTRESS', support = live.cls === 'SUPPORT';
-  const premium = fortress ? 1.25 : live.profile === 'SHIELD_BREAKER' ? 1.15 : 1;
+  const fortress = live.profile === 'FORTRESS', escort = live.profile === 'ESCORT';
+  const support = live.cls === 'SUPPORT';
+  const premium = fortress || escort ? 1.25 : live.profile === 'SHIELD_BREAKER' ? 1.15 : 1;
   // Excess HP with too little attack failed to resolve even favourable equal-budget fights.
-  const role = live.cls === 'SKIRMISHER' ? 1 : live.cls === 'LANCE' ? 1.04 : fortress ? 0.9 : 0.96;
-  const sharp = 1 + (role - 1) * ROLE_SPREAD[tier - 1]!;
+  const role = live.cls === 'SKIRMISHER' ? 1 : live.cls === 'LANCE' ? 1.04 : 1;
+  let sharp = 1 + (role - 1) * ROLE_SPREAD[tier - 1]!;
   const recipe = { alloy: Math.ceil(base[tier - 1]! * premium), crystal: Math.ceil(c[tier - 1]! * premium),
     deuterium: Math.ceil(d[tier - 1]! * premium) };
   // Preserve the paid opening. Later tiers buy 6/12/18% more product per ECONOMIC
@@ -310,6 +322,10 @@ export function profileHull(live: Hull): ProfileHull {
     : resourceValue(recipe);
   const power = tier === 1 ? 40 * premium
     : Math.sqrt(21 * 77) * (ordinaryCost / 420) * Math.sqrt(efficiency[tier - 1]!);
+  if (escort || fortress) {
+    const bulwarkSharp = Math.sqrt(BULWARK_PROFILE_RATIO[tier - 1]!);
+    sharp = escort ? bulwarkSharp : 1 / bulwarkSharp;
+  }
   // The trip reads the PROFILE where a class holds two: an Escort trades part of the
   // Fortress hull for speed, which a class-only trip flew at the Fortress's pace (D207).
   const roundTrip = live.cls === 'SKIRMISHER' ? 15 : live.cls === 'LANCE' ? 20

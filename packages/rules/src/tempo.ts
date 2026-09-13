@@ -1,5 +1,12 @@
 import type { Resources } from './types.js';
 
+/** Owner's post-147deca 30% experiment: replaces 25%, not compounded on top of it. */
+export const ECONOMY_ADJUSTMENT = {
+  hullMetalPrice: 1.30,
+  producerOutput: 0.70,
+  buildTime: 1.30,
+} as const;
+
 /**
  * THE ECONOMY TEMPO, IN ONE PLACE.
  *

@@ -6,6 +6,7 @@ import {
   PROBE,
   SENSOR,
   combatValue,
+  computeLoot,
   detectChance,
   fleetValue,
   raidableStock,
@@ -14,6 +15,7 @@ import {
 import {
   accounts,
   missions,
+  neutralPlanetState,
   planets,
   players,
   probeReports,
@@ -517,6 +519,37 @@ describe('the information layer', () => {
       expect(report!.stock.low).toBeGreaterThanOrEqual(0);
     });
 
+    it('quotes the same tier-adjusted deuterium that a neutral raid can take', async () => {
+      await grant(f.db, theirs, 60_000, 6_000);
+      await setLevel(f.db, mine, 'SHIPYARD', 4);
+      const unscaled = await standingNow();
+      const expectedDeuterium = Math.floor(unscaled.raidableDeuterium * 30 / 100);
+      await f.db.update(planets)
+        .set({ kind: 'NEUTRAL', controllerPlayerId: null })
+        .where(eq(planets.id, theirs));
+      await f.db.insert(neutralPlanetState).values({
+        planetId: theirs,
+        tier: 1,
+        profileSeed: 19,
+        economyAnchorAt: f.clock.now(),
+      });
+
+      const scout = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(scout.arriveAt);
+      await worker(f).tick();
+
+      const [report] = await f.db.select().from(probeReports)
+        .where(eq(probeReports.missionId, scout.missionId));
+
+      expect(report).toMatchObject({ accuracy: 1 });
+      expect(report!.deuteriumStock).toEqual({
+        low: expectedDeuterium,
+        high: expectedDeuterium,
+      });
+      expect(report!.stock.low).toBe(report!.stock.high);
+      expect(report!.stock.high).toBeGreaterThanOrEqual(expectedDeuterium);
+    });
+
     /**
      * A WORLD UNDER ITS OWN VAULT FLOOR OFFERS ONLY ITS WORKS.
      *
@@ -595,15 +628,31 @@ describe('the information layer', () => {
     };
 
     /** The world as a raid landing at this instant would find it — locked and ticked. */
-    const standingNow = () => withPlanetLock(f.db, theirs, f.clock, (_tx, p) => Promise.resolve({
-      raidable: raidableStock(
-        { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium },
-        { alloy: p.bufferAlloy, crystal: p.bufferCrystal, deuterium: p.bufferDeuterium },
-        vaultProtects(p.buildings.VAULT, p.buildings.REFINERY, p.buildings.EXTRACTOR, p.buildings.DEUTERIUM_PLANT),
-        'DECISIVE',
-      ),
-      shield: p.shield,
-    }));
+    const standingNow = () => withPlanetLock(f.db, theirs, f.clock, (_tx, p) => {
+      const stock = { alloy: p.alloy, crystal: p.crystal, deuterium: p.deuterium };
+      const buffer = {
+        alloy: p.bufferAlloy,
+        crystal: p.bufferCrystal,
+        deuterium: p.bufferDeuterium,
+      };
+      const floor = vaultProtects(
+        p.buildings.VAULT,
+        p.buildings.REFINERY,
+        p.buildings.EXTRACTOR,
+        p.buildings.DEUTERIUM_PLANT,
+      );
+      return Promise.resolve({
+        raidable: raidableStock(stock, buffer, floor, 'DECISIVE'),
+        raidableDeuterium: computeLoot(
+          stock,
+          buffer,
+          floor,
+          'DECISIVE',
+          Number.MAX_SAFE_INTEGER,
+        ).deuterium,
+        shield: p.shield,
+      });
+    });
 
     /**
      * WHAT A PROBE MEASURES IS THE WORLD AT THE MOMENT IT ARRIVES. D199.

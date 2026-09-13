@@ -66,6 +66,7 @@ import {
   instrumentMaxed,
   mulberry32,
   resolveCombat,
+  scaleNeutralDeuteriumLoot,
   instrumentCost,
   interceptAsteroid,
   isSatellite,
@@ -1219,13 +1220,13 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     );
     target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage };
     target.shield = result.shieldLeft;
-    const loot = computeLoot(
+    const loot = scaleNeutralDeuteriumLoot(computeLoot(
       { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
       EMPTY_RESOURCES,
       EMPTY_RESOURCES,
       result.grade,
       fleetCargo(result.attackerSurvivors, p.tech),
-    );
+    ), target.tier);
     target.alloy -= loot.fromStock.alloy;
     target.crystal -= loot.fromStock.crystal;
     target.deuterium -= loot.fromStock.deuterium;

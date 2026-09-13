@@ -121,7 +121,6 @@ import {
   transferOriginForFocus,
 } from '../galaxy/follow.js';
 import {
-  reconcileOwnCraft,
   reconcileOwnInterceptionImpacts,
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
@@ -698,32 +697,6 @@ export function GalaxyView({
     () => new Set(planets.filter((world) => world.isOwned).map((world) => world.id)),
     [planets],
   );
-
-  /**
-   * FOLLOW EVERY NEW OWNED CRAFT OUT, not a list of launch buttons.
-   *
-   * `reconcileOwnCraft` recognises payload capabilities — a pending row with a
-   * path, or a live mining run — so Death Stars, probes and future vehicle kinds
-   * all take the same route. The first complete payload is only a baseline: opening
-   * the game must never snap the camera onto something launched yesterday.
-   *
-   * AND ONLY OUT. A return leg is a new mission row, so it used to read as a fresh
-   * launch and take the screen a second time — mid-menu, once per craft. That rule
-   * lives in `reconcileOwnCraft`, which states why.
-   */
-  const seenOwnCraft = useRef<ReadonlySet<string> | null>(null);
-  const ownCraftReady = pending.data !== undefined && mining.statusData !== undefined;
-  useEffect(() => {
-    if (!ownCraftReady) return;
-    const result = reconcileOwnCraft(seenOwnCraft.current, threads, runs);
-    seenOwnCraft.current = result.seen;
-    if (!result.focus) return;
-    setFocus(result.focus);
-    setTransferOriginId(null);
-    setDetail(false);
-    setAttacking(false);
-    setAttackingPirateId(null);
-  }, [ownCraftReady, runs, threads]);
 
   /**
    * An interceptor is not a pending mission: it lives for eight seconds in the

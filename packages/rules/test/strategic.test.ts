@@ -76,17 +76,17 @@ describe('multi-world strategic rules', () => {
   });
 
   it.each([
-    // D209: colonies arrive at Core 6, 9 and 12.
-    [0, 0], [2, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [99, 3],
+    // Owner revision: colonies arrive at Core 9, 12 and 15.
+    [0, 0], [6, 0], [8, 0], [9, 1], [11, 1], [12, 2], [14, 2], [15, 3], [99, 3],
   ])('maps Core %i to %i colony slots', (core, capacity) => {
     expect(colonyCapacity(core)).toBe(capacity);
   });
 
   it('grandfathers existing colonies but rejects every new reservation over cap', () => {
-    expect(hasColonyCapacity(6, 1, 0)).toBe(false);
+    expect(hasColonyCapacity(9, 1, 0)).toBe(false);
     expect(hasColonyCapacity(2, 3, 0)).toBe(false);
-    expect(hasColonyCapacity(12, 1, 1)).toBe(true);
-    expect(hasColonyCapacity(12, 1, 2)).toBe(false);
+    expect(hasColonyCapacity(15, 1, 1)).toBe(true);
+    expect(hasColonyCapacity(15, 1, 2)).toBe(false);
   });
 
   it('uses exact EMPTY/LOW/RICH public reserve boundaries', () => {

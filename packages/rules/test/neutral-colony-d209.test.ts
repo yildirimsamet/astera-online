@@ -13,6 +13,7 @@ import {
   groundSlots,
   hasColonyCapacity,
   nextColonyCore,
+  scaleNeutralDeuteriumLoot,
   selectNeutralSlots,
   shieldHp,
 } from '../src/index.js';
@@ -23,31 +24,52 @@ import {
  *
  * A caretaker world is guarded at every tier, a captured world opens on a fixed
  * tier stock instead of whatever the caretaker was holding, colonies arrive at
- * Core 6 / 9 / 12, and the galaxy carries 38 / 19 / 8 of them.
+ * Core 9 / 12 / 15, and the galaxy carries 38 / 19 / 8 of them.
  */
 describe('D209 neutral garrisons', () => {
-  it('guards tier 1 with twelve Darts and one Thorn and no dome', () => {
+  it('guards tier 1 with twelve Darts, six Pikes, one Viper, one Stronghold, one Thorn and Aegis 1', () => {
     const t1 = MULTI_WORLD.neutral[1];
-    expect(t1.fleet).toEqual({ DART: 12 });
+    expect(t1.fleet).toEqual({ DART: 12, PIKE: 6, VIPER: 1, STRONGHOLD: 1 });
     expect(t1.ground).toEqual({ THORN: 1 });
-    expect(t1.instruments).toEqual({ AEGIS: 0 });
+    expect(t1.instruments).toEqual({ AEGIS: 1 });
+    expect(t1.deuteriumLootMultiplier).toBe(0.30);
   });
 
   it('guards tier 2 with a mixed wing, two of each gun and an Aegis at level 2', () => {
     const t2 = MULTI_WORLD.neutral[2];
-    expect(t2.fleet).toEqual({ DART: 10, PIKE: 10, VIPER: 5, STRONGHOLD: 5 });
+    expect(t2.fleet).toEqual({ DART: 20, PIKE: 20, VIPER: 8, STRONGHOLD: 8 });
     expect(t2.ground).toEqual({ THORN: 2, BASTION: 2 });
     expect(t2.instruments).toEqual({ AEGIS: 2 });
+    expect(t2.deuteriumLootMultiplier).toBe(0.50);
   });
 
   it('guards tier 3 with the full roster, 5 Thorns, 3 Bastions and an Aegis at level 4', () => {
     const t3 = MULTI_WORLD.neutral[3];
     expect(t3.fleet).toEqual({
-      VIPER: 10, STRONGHOLD: 10, TEMPEST: 3, BALLISTA: 3, SENTINEL: 3, LEVIATHAN: 3, PRAETORIAN: 3,
+      VIPER: 15, STRONGHOLD: 15, TEMPEST: 5, BALLISTA: 5, SENTINEL: 5, LEVIATHAN: 5, PRAETORIAN: 5,
     });
     // Five Bastions were asked for and do not fit Core 8; the owner chose three (84 of 100).
     expect(t3.ground).toEqual({ THORN: 5, BASTION: 3 });
     expect(t3.instruments).toEqual({ AEGIS: 4 });
+    expect(t3.deuteriumLootMultiplier).toBe(0.70);
+  });
+
+  it.each([
+    [1, 30], [2, 50], [3, 70],
+  ] as const)('keeps only the owner-authored tier %i share of neutral deuterium loot', (tier, expected) => {
+    const loot = {
+      alloy: 300, crystal: 200, deuterium: 100,
+      fromStock: { alloy: 200, crystal: 150, deuterium: 61 },
+      fromBuffer: { alloy: 100, crystal: 50, deuterium: 39 },
+    };
+    const scaled = scaleNeutralDeuteriumLoot(loot, tier);
+    const expectedStock = Math.floor(61 * expected / 100);
+    expect(scaled).toEqual({
+      alloy: 300, crystal: 200, deuterium: expected,
+      fromStock: { alloy: 200, crystal: 150, deuterium: expectedStock },
+      fromBuffer: { alloy: 100, crystal: 50, deuterium: expected - expectedStock },
+    });
+    expect(loot.deuterium).toBe(100);
   });
 
   it('keeps every garrison on real hulls, flying hulls in fleet and guns on the ground', () => {
@@ -92,16 +114,16 @@ describe('D209 capture stock', () => {
 
 describe('D209 colony capacity', () => {
   it.each([
-    [0, 0], [3, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [99, 3],
+    [0, 0], [6, 0], [8, 0], [9, 1], [11, 1], [12, 2], [14, 2], [15, 3], [99, 3],
   ])('maps Core %i to %i colony slots', (core, capacity) => {
     expect(colonyCapacity(core)).toBe(capacity);
   });
 
   it('names the Core the next colony opens at, and null past the third', () => {
-    expect(nextColonyCore(0)).toBe(6);
-    expect(nextColonyCore(1)).toBe(9);
-    expect(nextColonyCore(1, 1)).toBe(12);
-    expect(nextColonyCore(2)).toBe(12);
+    expect(nextColonyCore(0)).toBe(9);
+    expect(nextColonyCore(1)).toBe(12);
+    expect(nextColonyCore(1, 1)).toBe(15);
+    expect(nextColonyCore(2)).toBe(15);
     expect(nextColonyCore(3)).toBeNull();
   });
 
@@ -110,12 +132,12 @@ describe('D209 colony capacity', () => {
   });
 
   it('refuses a reservation that the new thresholds no longer allow', () => {
-    expect(hasColonyCapacity(5, 0, 0)).toBe(false);
-    expect(hasColonyCapacity(6, 0, 0)).toBe(true);
-    expect(hasColonyCapacity(8, 1, 0)).toBe(false);
-    expect(hasColonyCapacity(9, 1, 0)).toBe(true);
-    expect(hasColonyCapacity(11, 2, 0)).toBe(false);
-    expect(hasColonyCapacity(12, 2, 0)).toBe(true);
+    expect(hasColonyCapacity(8, 0, 0)).toBe(false);
+    expect(hasColonyCapacity(9, 0, 0)).toBe(true);
+    expect(hasColonyCapacity(11, 1, 0)).toBe(false);
+    expect(hasColonyCapacity(12, 1, 0)).toBe(true);
+    expect(hasColonyCapacity(14, 2, 0)).toBe(false);
+    expect(hasColonyCapacity(15, 2, 0)).toBe(true);
   });
 });
 
@@ -140,14 +162,14 @@ describe('D209 Uplink (Anten)', () => {
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1_000, crystal: 500, deuterium: 0 });
   });
 
-  it.each([1, 6, 20])('takes five minutes at Core %i before any automation', (core) => {
-    expect(satelliteMinutes('UPLINK', core, {})).toBe(5);
+  it.each([1, 6, 20])('takes 6.5 minutes at Core %i after the owner 30% timer pass, before automation', (core) => {
+    expect(satelliteMinutes('UPLINK', core, {})).toBe(6.5);
   });
 
   it('still takes the AI Robots discount, like everything else in Construction (D198)', () => {
     for (let rung = 0; rung <= 5; rung++) {
       expect(satelliteMinutes('UPLINK', 6, { AI_ROBOTS: rung }))
-        .toBeCloseTo(5 * robotSpeedMult({ AI_ROBOTS: rung }), 10);
+        .toBeCloseTo(6.5 * robotSpeedMult({ AI_ROBOTS: rung }), 10);
     }
   });
 

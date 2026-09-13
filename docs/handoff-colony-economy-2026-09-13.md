@@ -103,9 +103,15 @@ Kirpi=`THORN` (yer), Tabya=`BASTION` (yer).
 
 | Kademe | `fleet` | `ground` | Aegis |
 |---|---|---|---|
-| T1 | DART 12 | THORN 1 | 0 |
-| T2 | DART 10, PIKE 10, VIPER 5, STRONGHOLD 5 | THORN 2, BASTION 2 | seviye 2 |
-| T3 | VIPER 10, STRONGHOLD 10, TEMPEST 3, BALLISTA 3, SENTINEL 3, LEVIATHAN 3, PRAETORIAN 3 | THORN 5, **BASTION 3** | seviye 4 |
+| T1 | DART 12, PIKE 6, VIPER 1, STRONGHOLD 1 | THORN 1 | seviye 1 |
+| T2 | DART 20, PIKE 20, VIPER 8, STRONGHOLD 8 | THORN 2, BASTION 2 | seviye 2 |
+| T3 | VIPER 15, STRONGHOLD 15, TEMPEST 5, BALLISTA 5, SENTINEL 5, LEVIATHAN 5, PRAETORIAN 5 | THORN 5, **BASTION 3** | seviye 4 |
+
+Bu filo sayıları sahibin %30 deneyi ve sonraki T1 AEGIS 1 / VIPER 1 / STRONGHOLD 1
+eklemesiyle güncellediği adaydır (2026-09-13).
+Önceki D209 sayıları `147deca` checkpoint'inde korunur; not 17–20'deki eski
+kalibrasyonlar bu yeni garnizonun ölçümü değildir. [İlk %30 deney](economy-experiment-30pct-2026-09-13.md),
+[T1 kalkanlı tekrar](economy-experiment-t1-aegis-2026-09-13.md).
 
 - **T3 Tabya 3, 5 değil.** Sahip ilk başta 5 istedi; 5 Kirpi + 5 Tabya = 120 bulk, `groundSlots(8)` = 100.
   Sahip "5 Kirpi + 3 Tabya" (84 bulk) seçti. T2: 48 ≤ 70, T1: 6 ≤ 40.
@@ -127,14 +133,15 @@ altında geçerli olduğunu bir testle doğrula ("Core caps the Aegis").
 
 ### 2.3 Koloni kapasitesi
 
-`colonyCapacity(highestCore)` (`packages/rules/src/strategic.ts`), en güçlü Core'a göre:
+`colonyCapacity(capitalCore)` (`packages/rules/src/strategic.ts`), yalnızca ana gezegenin Core'una göre:
 
-| Core | Bugün | Yeni |
+| Core | Önceki D209 | Güncel sahip kararı |
 |---|---|---|
-| < 6 | 0 (Core 3–5'te 1) | 0 |
-| 6–8 | 2 | **1** |
-| 9–11 | 3 | **2** |
-| ≥ 12 | 3 | **3** |
+| < 6 | 0 | 0 |
+| 6–8 | 1 | **0** |
+| 9–11 | 2 | **1** |
+| 12–14 | 3 | **2** |
+| ≥ 15 | 3 | **3** |
 
 Üst sınır 3 kalır (`colonyCapacity(Infinity) === 3`; `returnPlacement.ts` ve `waitingPlacement.ts`
 buna dayanıyor). `packages/rules/test/strategic.test.ts:81` tablosu güncellenir. "Never shrinks
@@ -367,7 +374,7 @@ Bunlara ek olarak Owner'ın istedikleri:
 |---|---|---|
 | 0 | Baseline: D208 çalışma dizininde test/type durumu | ✅ typecheck temiz; rules 1 kırmızı (aşağıda not 1) |
 | 1 | Rules: garnizon + instruments + `captureStock` + `neutralCounts` (§2.2, §2.4) | ✅ |
-| 2 | Rules: `colonyCapacity` 6/9/12 (§2.3) + `nextColonyCore` | ✅ |
+| 2 | Rules: `colonyCapacity` 9/12/15 (§2.3) + `nextColonyCore` | ✅ (sahip revizyonu 2026-09-13) |
 | 3 | Server: `createNeutralWorld` + `reinforceNeutral` Aegis şablondan (§2.2) | ✅ (not 3) |
 | 4 | Server: `resolveSettlement` stok set, yük teslim yok (§2.1) | ✅ (not 3) |
 | 5 | Server + web: araştırma Core'u ana gezegenden (§2.6) | ✅ |
@@ -391,7 +398,8 @@ Bunlara ek olarak Owner'ın istedikleri:
 2. **Adım 1–2 ne yaptı:**
    - `packages/rules/src/constants.ts`: `MULTI_WORLD.neutral[1|2|3]` artık `instruments: { AEGIS: n }`
      (T1 `0`), yeni `fleet`/`ground` ve `captureStock` taşıyor. `neutralCounts` 38/19/8. Yeni
-     `MULTI_WORLD.colonyCoreThresholds = [6, 9, 12]`.
+     `MULTI_WORLD.colonyCoreThresholds = [9, 12, 15]` (ilk D209 uygulaması `[6, 9, 12]` idi;
+     sahip aynı gün eşiği üç seviye yükseltti).
    - `packages/rules/src/strategic.ts`: `colonyCapacity` eşikleri sayıyor. Yeni
      `nextColonyCore(colonies, reservations)` bir sonraki koloninin Core'unu veya `null` döndürüyor
      (bilgi kutusu bunu okuyacak).
@@ -468,12 +476,12 @@ Bunlara ek olarak Owner'ın istedikleri:
    Testler: `strategic.test.ts` (+3 D209), `player-calendar.test.ts` fixture'ları.
    Denge ölçümü (ARR vb.) bu değişikliklerle **yeniden ölçülmedi**.
 10. **Code review (2026-09-13, sahip istedi) — bulgular, henüz DÜZELTİLMEDİ:**
-    1. *Karar gerekli:* Koloni kapasitesi "kontrol edilen en güçlü Core"u okuyor (`ownership.ts
-       colonyStanding`). Core 8 gelen T3'ün bir seviye yükseltilmesi 2. yuvayı açıyor. Bu, araştırma
-       için kapatılan "bedava Core" açığının aynısı.
+    1. *Çözüldü:* Koloni kapasitesi artık yalnızca CAPITAL Core'u okuyor (`ownership.ts
+       colonyStanding`). Sonraki sahip revizyonuyla yuvalar Core 9 / 12 / 15'te açılıyor; ele geçirilen
+       dünyanın Core'u hiçbir yuva açmıyor.
     2. *UX açığı:* Bilgi kutusu sadece claim açıkken çıkıyor. Claim öncesinde (NEUTRAL_PREP) Core
-       yetmezliği sayıyla söylenmiyor; oyuncu 12 Ok'lu T1'i kırıp ancak ondan sonra Core 6 gerektiğini
-       öğreniyor.
+       yetmezliği sayıyla söylenmiyordu. Sonraki UX düzeltmesi claim öncesinde de ortak
+       `settlementBlock` üzerinden güncel Core 9 gereksinimini gösteriyor.
     3. *Hata:* `ResearchPanel` kolonide Core şartı için "düzelt" kısayolu koloninin Core'una gidiyor,
        ana gezegene değil.
     4. *Lint (verify'ı kırar):* `neutral.ts` kullanılmayan `instrumentCost` importu; sim
@@ -594,3 +602,30 @@ Bunlara ek olarak Owner'ın istedikleri:
       için sahip kararları `docs/snowball-audit-2026-09-13.md` sonunda listelidir.
       Sonraki iş bu kararları netleştirmek, ilgili düzeltmeleri regresyonla uygulamak ve yeniden
       kalibre etmektir. Deploy/wipe/commit yapılmadı; adım 10 hâlâ o anda sahip onayı gerektirir.
+20. **Checkpoint ve sahibin %25 ekonomi deneyi (2026-09-13):**
+    - Sahip onayıyla yerel `147deca` checkpoint commit'i atıldı; push/deploy/wipe yok.
+      Not 19'daki tam yeşil sonuç bu checkpoint içindir, sonraki deney için değildir.
+    - Sahip gemilerin mevcut alloy/crystal fiyatlarına +%25, üç üreticinin tüm level
+      üretimine −%25 ve tüm imalat/yapım sürelerine +%25 istedi. Fiyatları üretimden
+      türeten tasarım referansı sabit tutuldu; binalar/araştırmalar otomatik ucuzlamadı.
+      Gemi üretim D'si, yarıya indirilmiş sezon ödülleri ve tarafsız garnizonlar değişmedi.
+    - Eski 52,59 dakika rotası birebir tekrarlandığında 12 Pike siparişine para yetmedi.
+      Aynı ordu + iki baskın, yasal gelir toplama ve ücretli parçalı üretimle son adayda
+      258,31 dakikada koloni kurdu. **6 saat doğal zorluk hedefi sağlanmış değildir.**
+      Bu matematiksel minimum değildir; savaş rastgeleliği sefer kimliğine bağlıdır.
+    - Tam test paketi ve yeni filo kalibrasyonu bu deney aşamasında çalıştırılmadı.
+      Ayrıntılar ve kapsam sınırları: `docs/economy-experiment-25pct-2026-09-13.md`.
+21. **%30 + daha güçlü garnizon + doğru uyarlanan açılış (2026-09-13):**
+    - Sahip %25'i %30 ile değiştirdi; checkpoint bazında 1,30/0,70/1,30, üst üste
+      çarpma yok. §2.2 filo sayıları güncellendi; ground/kalkan/binalar/capture stock/takviye sabit.
+    - Eski sabit 12 Pike / iki raid güncel T1'i temizlemiyor; bunu “en hızlı oyuncu”
+      sayan tekrar koşusu yetersizdir. Gerçek claim'ler, Ref/Ext yatırımları,
+      sensörün açtığı normal mining ve açık tersaneye göre ücretli ordu planı ölçüldü.
+    - 5 Dart + Warden + 4 ücretli Pike + 5 ücretli Talon + 2 Courier ile tek DECISIVE;
+      Core 6 hazır, gerçek haul founding'i finanse eder, normal settlement koloni kurar.
+      Üç gerçek asteroid alanında **201,39 / 206,06 / 215,26 dakika**; en hızlı
+      bulunan 3 saat 21 dakika (Akademi çıkışından), matematiksel minimum değildir.
+    - DB kaynak makbuzları, tam %30 sipariş süreleri, garrison ve gerçek sahiplik
+      tekrar doğrulandı. **Doğal 6 saat hedefi hâlâ sağlanmıyor.** Tam workspace
+      verify ve yeni filo/season kalibrasyonu yok; push/deploy/reset/yeni commit yok.
+      Rapor: `docs/economy-experiment-30pct-2026-09-13.md`.

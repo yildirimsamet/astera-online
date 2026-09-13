@@ -3,6 +3,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   HULLS,
+  COMBAT,
   GALAXY,
   GALAXY_SPAN,
   MULTI_WORLD,
@@ -196,6 +197,40 @@ describe('current multi-world ruleset', () => {
     expect(player?.dominionTaken).toBe(0);
     expect(player?.dominionLost).toBe(0);
   });
+
+  it.each([1, 2, 3] as const)(
+    'reduces only neutral tier %i deuterium loot and leaves the cut in its tank',
+    async (tier) => {
+      const f = await setup();
+      const target = f.neutrals.find((row) => row.state.tier === tier)!;
+      await f.db.delete(units).where(eq(units.planetId, target.world.id));
+      await f.db.update(planets).set({
+        x: 150, y: 0, z: 0, alloy: 1000, crystal: 1000, deuterium: 1000, lastTickAt: f.clock.now(),
+      }).where(eq(planets.id, target.world.id));
+      await f.db.update(planets).set({ x: 0, y: 0, z: 0, deuterium: 100_000 })
+        .where(eq(planets.id, f.joined.planetId));
+      await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
+      await giveUnits(f.db, f.joined.planetId, { DART: 1, COURIER: 8 });
+
+      const launched = await launchAttack(
+        f.db, f.joined.planetId, target.world.id, { DART: 1, COURIER: 8 }, f.clock,
+      );
+      f.clock.set(new Date(launched.arriveAt.getTime() + 11_000));
+      await workerFor(f.db, f.clock).tick();
+
+      const [report] = await f.db.select().from(battleReports)
+        .where(eq(battleReports.targetPlanetId, target.world.id));
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+      const baseLoot = 1000 * COMBAT.lootDecisive;
+      const expected = Math.floor(baseLoot * Math.round(
+        MULTI_WORLD.neutral[tier].deuteriumLootMultiplier * 100,
+      ) / 100);
+      expect(report?.loot.alloy).toBeGreaterThan(0);
+      expect(report?.loot.crystal).toBeGreaterThan(0);
+      expect(report?.loot.deuterium).toBe(expected);
+      expect(after?.deuterium).toBe(1000 - expected);
+    },
+  );
 
   /**
    * D112. Both halves of one guard, on one world, in order: a raid landing while
@@ -628,6 +663,10 @@ describe('current multi-world ruleset', () => {
     await giveInstrument(f.db, target.world.id, 'TELESCOPE', 3);
     await giveInstrument(f.db, target.world.id, 'RADAR', 2);
     await giveSatellite(f.db, target.world.id, 'UPLINK');
+    // This fixture took a seeded caretaker world by hand. Real settlement deletes
+    // its NULL-owner guard; mirror that boundary before installing the defender's
+    // authored fleet so guard revisions cannot leak unrelated rows into this test.
+    await f.db.delete(units).where(eq(units.planetId, target.world.id));
     await giveUnits(f.db, target.world.id, {
       DART: 2,
       PIKE: 2,

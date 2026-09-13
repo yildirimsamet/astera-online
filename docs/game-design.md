@@ -49,7 +49,7 @@ without automatically doubling a commander's economy per additional planet. See
 model parameters, not live constants.
 
 One commander per galaxy, with one uncapturable **capital** and up to three captured
-**colonies**. Colony slots open at the capital's Command Core 6, 9 and 12, and only the capital's
+**colonies**. Colony slots open at the capital's Command Core 9, 12 and 15, and only the capital's
 Core counts (D209). Every caretaker world is guarded; a settled world opens on its tier's fixed
 capture stock, never on what the caretaker held (D209). Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the

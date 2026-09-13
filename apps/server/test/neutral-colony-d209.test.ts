@@ -119,11 +119,16 @@ describe('D209 caretaker reinforcement', () => {
     expect(await aegisOf(g.db, target.world.id)).toBe(MULTI_WORLD.neutral[tier].instruments.AEGIS);
   });
 
-  it('never builds a dome on a tier 1 world', async () => {
+  it('seeds the tier 1 dome but never rebuilds it after destruction', async () => {
     const g = await galaxy();
     const target = g.neutrals.find((row) => row.state.tier === 1)!;
+    expect(await aegisOf(g.db, target.world.id)).toBe(MULTI_WORLD.neutral[1].instruments.AEGIS);
+    await g.db.delete(satellites).where(eq(satellites.planetId, target.world.id));
+    await g.db.update(planets).set({ shield: 0 }).where(eq(planets.id, target.world.id));
     await g.db.transaction((tx) => reinforceNeutral(tx, target.world.id, g.clock.now()));
     expect(await aegisOf(g.db, target.world.id)).toBe(0);
+    const [after] = await g.db.select().from(planets).where(eq(planets.id, target.world.id));
+    expect(after?.shield).toBe(0);
   });
 });
 
@@ -306,14 +311,13 @@ describe('D209 colony capacity reads the capital Core', () => {
     await g.db.update(planets).set({ controllerPlayerId: g.joined.playerId, kind: 'COLONY' })
       .where(eq(planets.id, colony!.world.id));
     await setLevel(g.db, colony!.world.id, 'CORE', 12);
-    await setLevel(g.db, g.joined.planetId, 'CORE', MULTI_WORLD.colonyCoreThresholds[0] - 1);
-
-    expect(await colonyStanding(g.db, g.joined.playerId))
-      .toMatchObject({ capitalCore: MULTI_WORLD.colonyCoreThresholds[0] - 1, colonies: 1, capacity: 0 });
-
-    await setLevel(g.db, g.joined.planetId, 'CORE', MULTI_WORLD.colonyCoreThresholds[1]);
-    expect(await colonyStanding(g.db, g.joined.playerId))
-      .toMatchObject({ capitalCore: MULTI_WORLD.colonyCoreThresholds[1], capacity: 2 });
+    for (const [capitalCore, capacity] of [
+      [8, 0], [9, 1], [11, 1], [12, 2], [14, 2], [15, 3],
+    ] as const) {
+      await setLevel(g.db, g.joined.planetId, 'CORE', capitalCore);
+      expect(await colonyStanding(g.db, g.joined.playerId), `capital Core ${String(capitalCore)}`)
+        .toMatchObject({ capitalCore, colonies: 1, capacity });
+    }
   });
 
   it('refuses a settlement when only a captured world is tall enough', async () => {

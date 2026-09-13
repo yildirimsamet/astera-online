@@ -9,7 +9,7 @@ import {
   detectChance,
   fuzzBand,
   computeLoot,
-  raidableStock,
+  scaleNeutralDeuteriumLoot,
   vaultProtects,
   probeAccuracy,
   distance,
@@ -43,6 +43,7 @@ import {
   accounts,
   buildings,
   missions,
+  neutralPlanetState,
   planets,
   players,
   probeReports,
@@ -925,9 +926,9 @@ export async function resolveProbe(
    * and the delivered number were never the same quantity — and a reading that
    * cannot be compared to the outcome it predicts is not intelligence.
    *
-   * `raidableStock` is `computeLoot` with the raider's hold taken out of the
-   * question, so this figure and the haul are computed by ONE piece of arithmetic
-   * and cannot drift. The hold stays out on purpose: it is a fact about the
+   * `computeLoot` runs with the hold taken out of the question, then a neutral's
+   * tier-specific D haircut is applied through the same helper as battle resolution.
+   * Thus this figure and the haul cannot drift. The hold stays out on purpose: it is a fact about the
    * attacker, and a probe that folded it in would report a different world to two
    * commanders.
    *
@@ -936,7 +937,7 @@ export async function resolveProbe(
    * already knows which of the two they are flying for.
    */
   const targetBuildings = await buildingLevelsOf(tx, target.id);
-  const raidable = raidableStock(
+  let uncappedLoot = computeLoot(
     { alloy: standing.alloy, crystal: standing.crystal, deuterium: standing.deuterium },
     {
       alloy: standing.bufferAlloy,
@@ -949,14 +950,23 @@ export async function resolveProbe(
       targetBuildings.EXTRACTOR,
       targetBuildings.DEUTERIUM_PLANT,
     ),
-    'DECISIVE',
+    'DECISIVE', Number.MAX_SAFE_INTEGER,
   );
+  if (target.kind === 'NEUTRAL') {
+    const [state] = await tx.select({ tier: neutralPlanetState.tier }).from(neutralPlanetState)
+      .where(eq(neutralPlanetState.planetId, target.id));
+    if (!state || (state.tier !== 1 && state.tier !== 2 && state.tier !== 3)) {
+      throw new Error('neutral probe target lost its valid tier');
+    }
+    uncappedLoot = scaleNeutralDeuteriumLoot(uncappedLoot, state.tier);
+  }
+  const raidable = uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium;
   const stock = fuzzBand(raidable, accuracy, rng);
   /**
    * THE DEUTERIUM SHARE OF THE SAME FIGURE, FOR EVERY COMMANDER. D166.
    *
    * Owner instruction, and the gate it removes could not have been kept honestly:
-   * `raidableStock` above sums ALL THREE resources, so the deuterium was already
+   * The raidable total above sums ALL THREE resources, so the deuterium was already
    * inside the headline band. A commander without `ISOTOPE_SPECTROMETRY` was
    * reading it through the total, and one who had bought the project saw the same
    * ore twice — once in the band, once on its own line, and was sizing a hold
@@ -972,22 +982,7 @@ export async function resolveProbe(
    * A separate deterministic roll keeps this field from perturbing the other bands
    * or the detection roll, exactly as it did while it was gated.
    */
-  const raidableDeuterium = computeLoot(
-    { alloy: standing.alloy, crystal: standing.crystal, deuterium: standing.deuterium },
-    {
-      alloy: standing.bufferAlloy,
-      crystal: standing.bufferCrystal,
-      deuterium: standing.bufferDeuterium,
-    },
-    vaultProtects(
-      targetBuildings.VAULT,
-      targetBuildings.REFINERY,
-      targetBuildings.EXTRACTOR,
-      targetBuildings.DEUTERIUM_PLANT,
-    ),
-    'DECISIVE',
-    Number.MAX_SAFE_INTEGER,
-  ).deuterium;
+  const raidableDeuterium = uncappedLoot.deuterium;
   const deuteriumStock = fuzzBand(
     raidableDeuterium,
     accuracy,

@@ -1,5 +1,14 @@
 # D208 fleet calibration — 32 Alloy = 16 Crystal = 1 Deuterium
 
+Scope: the measurements and fingerprints below belong to checkpoint `147deca`,
+before the subsequent owner-requested 25% economy experiment. They are not a fresh
+calibration of the experimental working tree. See
+[the independent experiment report](economy-experiment-25pct-2026-09-13.md).
+The owner subsequently replaced that pass with 30% and raised neutral mobile counts:
+[current opening experiment](economy-experiment-30pct-2026-09-13.md).
+The colony ladder was subsequently raised from Core 6/9/12 to **9/12/15** as well;
+all Core-6 colony timings below are historical checkpoint evidence, not a current route.
+
 Recorded 2026-09-13 from the live roster. The reproducible report is generated with:
 
 ```sh
@@ -121,10 +130,10 @@ was Stronghold over Rampart at 36,438 economic units; the largest was Talon over
 
 ## Season impact
 
-This is not an adversarial fastest-colony bound. A real-server solo route at seed
+This is not an adversarial fastest-colony bound. At the recorded checkpoint, a real-server solo route at seed
 4242 founded its first T1 colony **52.59 minutes after Academy exit**, with paid
 ships, real seeded positions, five probes and two raids, without merchant,
-additional grants or another player's help. The current capital Core 2→6
+additional grants or another player's help. The then-current capital Core 2→6
 base timers sum to only 24.88 minutes; an Academy graduate can fund that gate,
 the two founding Couriers and the charge from the shipped package and accessible
 rewards. Taking someone else's public claim does not require clearing its garrison

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -26,6 +26,7 @@ const initial = {
 function show(
   onFocusPlanet = vi.fn(),
   initialChannel: 'general' | 'clan' = 'general',
+  generalData: unknown = initial,
 ) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
@@ -43,7 +44,7 @@ function show(
     },
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(keys.chatMessages, initial);
+  client.setQueryData(keys.chatMessages, generalData);
   client.setQueryData(keys.chatUnread, { count: 1 });
   client.setQueryData(keys.clanBadge, {
     available: true,
@@ -160,6 +161,109 @@ describe('galaxy chat surface', () => {
     await waitFor(() => { expect(post).toHaveBeenCalledWith('Yeni mesaj'); });
     await waitFor(() => { expect(history.scrollTop).toBe(900); });
     expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('loads older messages at the top without a button or a viewport jump', async () => {
+    const newestPage = {
+      pages: [{
+        messages: [
+          { id: 'two', authorPlayerId: 'other', username: 'İzci', content: 'İkinci', createdAt: at, self: false },
+          { id: 'three', authorPlayerId: 'mine', username: 'Vantage', content: 'Üçüncü', createdAt: new Date(at.getTime() + 1000), self: true },
+        ],
+        nextBefore: 'older-cursor',
+      }],
+      pageParams: [null],
+    };
+    const { api } = show(vi.fn(), 'general', newestPage);
+    const history = screen.getByRole('log', { name: 'Galaxy messages' });
+    let scrollHeight = 600;
+    Object.defineProperties(history, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    });
+    const older = vi.spyOn(api, 'chatMessages').mockImplementation(() => {
+      scrollHeight = 900;
+      return Promise.resolve({
+        messages: [
+          { id: 'zero', authorPlayerId: 'other', username: 'Sable', content: 'Sıfırıncı', createdAt: new Date(at.getTime() - 2000), self: false },
+          { id: 'one', authorPlayerId: 'other', username: 'Sable', content: 'Birinci', createdAt: new Date(at.getTime() - 1000), self: false },
+        ],
+        nextBefore: null,
+      });
+    });
+    history.scrollTop = 0;
+
+    fireEvent.scroll(history);
+
+    expect(screen.queryByRole('button', { name: 'Load older messages' })).not.toBeInTheDocument();
+    await waitFor(() => { expect(older).toHaveBeenCalledWith('older-cursor'); });
+    expect(await screen.findByText('Sıfırıncı')).toBeInTheDocument();
+    await waitFor(() => { expect(history.scrollTop).toBe(300); });
+  });
+
+  it('stays on older messages when a new message arrives', async () => {
+    const { api, client } = show();
+    const history = screen.getByRole('log', { name: 'Galaxy messages' });
+    let scrollHeight = 900;
+    Object.defineProperties(history, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    });
+    history.scrollTop = 240;
+    fireEvent.scroll(history);
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('two'); });
+    vi.mocked(api.markChatRead).mockClear();
+
+    scrollHeight = 980;
+    act(() => {
+      client.setQueryData(keys.chatMessages, {
+        pages: [{
+          messages: [
+            ...initial.pages[0]!.messages,
+            { id: 'four', authorPlayerId: 'other', username: 'Sable', content: 'Yeni gelen', createdAt: new Date(at.getTime() + 2000), self: false },
+          ],
+          nextBefore: null,
+        }],
+        pageParams: [null],
+      });
+    });
+
+    expect(await screen.findByText('Yeni gelen')).toBeInTheDocument();
+    expect(history.scrollTop).toBe(240);
+    expect(api.markChatRead).not.toHaveBeenCalled();
+
+    history.scrollTop = 680;
+    fireEvent.scroll(history);
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('four'); });
+  });
+
+  it('continues following new messages while already at the bottom', async () => {
+    const { client } = show();
+    const history = screen.getByRole('log', { name: 'Galaxy messages' });
+    let scrollHeight = 900;
+    Object.defineProperties(history, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, get: () => scrollHeight },
+    });
+    history.scrollTop = 600;
+    fireEvent.scroll(history);
+
+    scrollHeight = 980;
+    act(() => {
+      client.setQueryData(keys.chatMessages, {
+        pages: [{
+          messages: [
+            ...initial.pages[0]!.messages,
+            { id: 'four', authorPlayerId: 'other', username: 'Sable', content: 'Takip edilen', createdAt: new Date(at.getTime() + 2000), self: false },
+          ],
+          nextBefore: null,
+        }],
+        pageParams: [null],
+      });
+    });
+
+    expect(await screen.findByText('Takip edilen')).toBeInTheDocument();
+    await waitFor(() => { expect(history.scrollTop).toBe(980); });
   });
 
   it('keeps a Unicode draft to 280 visible characters', () => {

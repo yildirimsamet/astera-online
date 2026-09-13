@@ -723,7 +723,7 @@ Binds: Hull speed, Propulsion, D111/D148.
 
 ### D153 · The disc grows every level, the fleet drinks, and the camera follows a craft out — OWNER INSTRUCTION
 
-Rule: (1) `worldRadius` uses exact Core level: 0.44@1, 0.82@11, 1.40@top, geometric/clamped; standoffs use level. (2) Dyson starts Core 12, ring/3 levels. (3) Fuel mass=`bulk × tierMass`, tiers ×1/2/4/5; speed irrelevant. (4) Probe speed=3510; Prospector unchanged. (5) Auto-focus follows own outbound craft only, never returns.
+Rule: (1) `worldRadius` uses exact Core level: 0.44@1, 0.82@11, 1.40@top, geometric/clamped; standoffs use level. (2) Dyson starts Core 12, ring/3 levels. (3) Fuel mass=`bulk × tierMass`, tiers ×1/2/4/5; speed irrelevant. (4) Probe speed=3510; Prospector unchanged. (5) Auto-focus follows own outbound craft only, never returns. D210 later supersedes point 5.
 Binds: Radius/Dyson/fuel/probe/focus.
 
 ### D154 · The galaxy states what it is looking at — OWNER INSTRUCTION
@@ -1183,10 +1183,10 @@ Binds: `RESOURCE_VALUE`, `resourceValue`, `profileHull`, `hullFuelMass`, `TRADE.
 Context: the first ruleset-8 season (opened 2026-09-12 18:55 UTC) had commanders at Core 8 with two colonies, three of them T2, inside three hours. A read-only production ledger found no duplication: every level and hull matched a paid order, and spend + holdings stayed under the income ceiling. The speed came from rules: a settler inherited the caretaker's full stores (T2 12,763 / 6,381 / 3,191) plus the founding cargo, tier 1 had no guard, tier 2's guard was 8 Darts and 2 Pikes, and the seasonal reward purse paid ~10× production in the opening. Full record: `docs/handoff-colony-economy-2026-09-13.md`.
 
 Rule:
-- **Caretaker garrisons** (`MULTI_WORLD.neutral`, buildings unchanged): T1 DART 12 + THORN 1; T2 DART 10, PIKE 10, VIPER 5, STRONGHOLD 5 + THORN 2, BASTION 2, Aegis 2; T3 VIPER 10, STRONGHOLD 10, TEMPEST 3, BALLISTA 3, SENTINEL 3, LEVIATHAN 3, PRAETORIAN 3 + THORN 5, BASTION 3, Aegis 4. The owner asked for five Bastions on T3; 5 Thorns + 5 Bastions is 120 of Core 8's 100 ground room, and the owner chose three. The dome is `instruments.AEGIS`, read by seeding, reinforcement and the simulator — never a tier literal.
+- **Caretaker garrisons** (`MULTI_WORLD.neutral`, buildings unchanged; owner revised the mobile counts during the 30% experiment on 2026-09-13, then added the T1 dome/Viper/Stronghold): T1 DART 12, PIKE 6, VIPER 1, STRONGHOLD 1 + THORN 1, Aegis 1; T2 DART 20, PIKE 20, VIPER 8, STRONGHOLD 8 + THORN 2, BASTION 2, Aegis 2; T3 VIPER 15, STRONGHOLD 15, TEMPEST 5, BALLISTA 5, SENTINEL 5, LEVIATHAN 5, PRAETORIAN 5 + THORN 5, BASTION 3, Aegis 4. The owner asked for five Bastions on T3; 5 Thorns + 5 Bastions is 120 of Core 8's 100 ground room, and the owner chose three. The dome is `instruments.AEGIS`, read by seeding, reinforcement and the simulator — never a tier literal.
 - **Reinforcement is free and whole** for T2 (6 h) and T3 (4 h): guard and dome are topped up to the template without spending stores (the new guards cost more than a caretaker can hold). Buildings still rebuild from stores, and a shortfall no longer blocks the guard. An open claim is waited out like a recovery. T1 never re-arms.
 - **A settled world opens on `captureStock` and nothing else**: T1 1,000 / 500 / 0, T2 5,000 / 2,500 / 1,000, T3 15,000 / 5,000 / 3,000. Stores are SET, works emptied, and the whole founding charge (cargo and fee) is spent on success; a lost race still refunds both. `transferPlanetControl` deletes caretaker-owned (NULL owner) units instead of handing them over — before this a guard that stood during a claim became the settler's free fleet.
-- **Colony slots open at CAPITAL Core 6 / 9 / 12** (`colonyCoreThresholds`, `colonyCapacity`, `nextColonyCore`), counted off the capital only — never a captured world's Core.
+- **Colony slots open at CAPITAL Core 9 / 12 / 15** (`colonyCoreThresholds`, `colonyCapacity`, `nextColonyCore`), counted off the capital only — never a captured world's Core. The owner raised the previous 6 / 9 / 12 ladder on 2026-09-13 so the first captured economy cannot enter before the capital crosses the opening band. Existing colonies remain grandfathered; the change gates new reservations.
 - **Research is gated and timed by the capital's Core** (`researchCoreLevel`, published as `researchCore`), whichever world funds the order. Capture writes no research.
 - **The galaxy seeds 38 / 19 / 8 caretaker worlds** (65).
 - **Seasonal rewards are halved** (floor of half each D208 tier; the account Twitter grant is unchanged). The Academy claims nine rewards, so `academyExitGrant` returns exactly what its claimed lessons paid on the world a commander joins with; a graduate opens on 2,518 / 1,691 instead of 295 / 602.
@@ -1198,6 +1198,29 @@ Rejected in the same session: the production-deuterium ×2 experiment, from the 
 Deliberately unchanged: a caretaker's raidable seeded stores; `neutralThreat(1)` still reads `UNGUARDED` (not rendered); level rewards still read the viewed world's buildings; T1's `captureStock` carries no deuterium, so a new T1 colony cannot launch until fuel is shipped in. Economy health bands were not re-measured for this change.
 
 Binds: `MULTI_WORLD.neutral`, `neutralCounts`, `colonyCoreThresholds`, `colonyCapacity`, `nextColonyCore`, `createNeutralWorld`, `reinforceNeutral`, `resolveSettlement`, `transferPlanetControl`, `colonyStanding.capitalCore`, `researchCoreLevel`, `REWARD_CHAINS`, `academyExitGrant`, `SATELLITES.UPLINK`, `UPLINK_BUILD_MINUTES`, `satelliteMinutes`, `settlementBlock`, `researchNeedWorld`, simulator strategic layer.
+
+Owner follow-up experiment (2026-09-13, not a production acceptance): replaces the earlier
+25% pass with **+30% flying-hull alloy/crystal**, **−30% actual A/C/D producer outputs**
+and **+30% all manufacturing/build work**, each relative to checkpoint `147deca`, not
+compounded. Preserve design-reference invoices, hull hardware, production D and already-halved
+rewards. The authored five-minute Uplink therefore quotes 6.5 minutes, and the Academy's
+unchanged 2,223/1,089 reward grant now leaves 2,518/1,484/46 after actual dearer purchases.
+The initial guard revision left guns, domes, buildings, capture stock and rearm cadence intact.
+Measurements: [30% opening report](economy-experiment-30pct-2026-09-13.md).
+The next owner trial adds only **T1 Aegis 1 / Viper 1 / Stronghold 1**. T1 still has
+no rearm cadence; its initial shield is 90, and first-raid planning must use that
+actual seeded charge rather than assuming zero. Prices, rewards and other tiers
+remain unchanged. Measurements: [T1 dome follow-up](economy-experiment-t1-aegis-2026-09-13.md).
+
+### D210 · Dispatch keeps the commander's camera — OWNER INSTRUCTION
+
+Rule: Sending any player-directed craft does not select it or move the camera. This covers
+fleets, probes, transfers, settlement craft, Death Stars, mining runs and salvage runs,
+regardless of whether the target is a world, asteroid, wreck, pirate fleet, merchant or
+convoy. The permanent in-flight sheet remains the explicit route to select and follow an
+airborne craft. Strategic interceptor launch/impact framing is a separate automatic defence
+scene and is unchanged. This supersedes D153(5).
+Binds: `GalaxyView` focus effects, in-flight sheet craft focus, D69, D153.
 
 ### D141 · Everything the server sells must be reachable — OWNER INSTRUCTION
 

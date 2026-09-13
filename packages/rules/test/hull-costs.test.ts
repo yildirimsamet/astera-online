@@ -30,9 +30,9 @@ const power = (id: HullId): number =>
 
 describe('monthly crystal recipes', () => {
   it('charges crystal on every ship, including the opening Dart', () => {
-    expect(HULLS.DART.crystal).toBe(60);
-    expect(HULLS.COURIER.crystal).toBe(150);
-    expect(HULLS.ATLAS.crystal).toBe(1000);
+    expect(HULLS.DART.crystal).toBe(78);
+    expect(HULLS.COURIER.crystal).toBe(195);
+    expect(HULLS.ATLAS.crystal).toBe(1300);
     for (const hull of Object.values(HULLS)) expect(hull.crystal).toBeGreaterThan(0);
   });
 });
@@ -95,13 +95,15 @@ describe('the hull table is priced on equal-budget power', () => {
   });
 
   /**
-   * Ground hulls are paid 1.6x for never leaving: they cannot loot, cannot take
-   * Dominion, and can only ever be part of a decision made at home.
+   * Ground hulls are paid for never leaving: they cannot loot, cannot take
+   * Dominion, and can only ever be part of a decision made at home. The owner's
+   * 30% ship-price experiment deliberately excludes emplacements, so their live
+   * efficiency edge over the now-dearer Dart is a little above 2x.
    */
   it('pays the ground guns for being unable to leave', () => {
     for (const id of GROUND_HULLS) {
       expect(power(id), id).toBeGreaterThan(power('WARDEN'));
-      expect(power(id), id).toBeLessThan(power('DART') * 2);
+      expect(power(id), id).toBeLessThan(power('DART') * 2.1);
     }
   });
 

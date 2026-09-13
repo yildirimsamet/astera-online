@@ -406,6 +406,9 @@ opens by focusing the thing it is about.
 The permanent in-flight strip is also the way into the commander's airborne roster.
 It combines mission threads with mining and salvage runs, opens as a bottom sheet,
 and every owned drawable row closes the sheet and focuses that craft on the disc.
+Dispatch itself never changes the camera subject: a fleet, probe, transfer, settlement,
+Death Star, mining run or salvage run remains visible on the disc without taking the
+commander away from what they were inspecting. Following one requires the explicit row tap.
 
 The disc caption names the room as well as the map: `The disc · Vantage (EU-1)` / `Disk ·
 Vantage (EU-1)`. The live online count keeps the opposite edge. A client talking to a server
@@ -420,8 +423,10 @@ a public world update refreshes it too because Core tier is part of every row.
 Galaxy Chat belongs directly to the disc and identifies people only by commander username.
 Its permanent way in is a compact control at the lower-right of the Galaxy viewport, not a
 commander-menu row.
-The newest page opens at the bottom, older pages load through the cursor, and a submitted
-message appears from the authoritative response. While the panel is open, `shard:chat`
+The newest page opens at the bottom, scrolling to the top loads older pages through the cursor
+without moving the message under the reader, and a submitted message appears from the authoritative
+response. A reader who has scrolled up stays there when a new message arrives; only a reader already
+at the bottom follows it automatically. While the panel is open, `shard:chat`
 keeps it live and the newest visible message advances the durable read marker. While it is
 closed, the same event refreshes the unread count; a small red dot appears on the Galaxy
 chat control itself. The player's own posts never light the dot.
