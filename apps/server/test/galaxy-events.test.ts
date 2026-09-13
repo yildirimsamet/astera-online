@@ -31,6 +31,7 @@ import {
   lockGalaxyEventAudience,
   restampFutureOccurrences,
   seedGalaxyEventCalendar,
+  syncMissingFixedOccurrences,
 } from '../src/services/galaxyEvents.js';
 import { onGalaxyEventEnd, onGalaxyEventStart } from '../src/worker/handlers.js';
 import { makeAccount, testDb, truncateAll } from './helpers.js';
@@ -244,6 +245,71 @@ describe('persisted galaxy events', () => {
     });
   });
 
+  describe('syncing a new fixed window into a live calendar', () => {
+    it('appends the active and future windows without moving any existing asteroid sequence', async () => {
+      const { db, season } = await world();
+      const showers = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+      const addedWindowRows = showers.filter((row) =>
+        minutesSince(START, row.startsAt) % (24 * 60) === 16 * 60);
+      const removedIds = addedWindowRows.map((row) => row.id);
+      expect(removedIds).toHaveLength(SEASON.days);
+      await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
+      await db.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, removedIds));
+
+      const retained = await db
+        .select({ id: galaxyEventOccurrences.id, sequence: galaxyEventOccurrences.sequence })
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+      const retainedById = new Map(retained.map((row) => [row.id, row.sequence]));
+      const previousMax = Math.max(...retained.map((row) => row.sequence));
+      const now = new Date(START.getTime() + (16 * 60 + 8) * 60_000);
+
+      const inserted = await db.transaction((tx) => syncMissingFixedOccurrences(tx, {
+        now,
+        seasonId: season.id,
+        kinds: ['ASTEROID_SHOWER'],
+      }));
+      expect(inserted).toBe(SEASON.days);
+
+      const after = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+      for (const row of after) {
+        const oldSequence = retainedById.get(row.id);
+        if (oldSequence !== undefined) expect(row.sequence).toBe(oldSequence);
+      }
+      const appended = after.filter((row) => !retainedById.has(row.id));
+      expect(appended.every((row) => row.sequence > previousMax)).toBe(true);
+      expect(appended.some((row) => row.startsAt <= now && row.endsAt > now)).toBe(true);
+
+      const lifecycle = await db
+        .select()
+        .from(scheduledEvents)
+        .where(inArray(scheduledEvents.refId, appended.map((row) => row.id)));
+      expect(lifecycle).toHaveLength(appended.length * 2);
+
+      const again = await db.transaction((tx) => syncMissingFixedOccurrences(tx, {
+        now,
+        seasonId: season.id,
+        kinds: ['ASTEROID_SHOWER'],
+      }));
+      expect(again).toBe(0);
+    });
+  });
+
   it('creates the frozen three-merchant ruleset-5 calendar and four-merchant ruleset-6 calendar', async () => {
     const { db, season: rulesetFive } = await world(0, 5);
     const { season: rulesetSix } = await world(0, 6);
@@ -282,14 +348,14 @@ describe('persisted galaxy events', () => {
     /*
       DERIVED FROM THE SEASON, NOT TYPED. D191.
 
-      These read `14 * 5` and `14 * 4` — the season length written out as a
+      These once read `14 * 5` and `14 * 4` — the season length written out as a
       literal. The season is thirty days now and the calendar dutifully dealt 150
       showers, so the only thing that failed was the arithmetic in the test. A
       per-day rate asserted against a hard-coded span measures the span, which is
       not what this test is about.
     */
     const days = SEASON.days;
-    expect(showers).toHaveLength(days * 4);
+    expect(showers).toHaveLength(days * 5);
     expect(merchants).toHaveLength(days * 4);
     expect(convoys).toHaveLength(days * 2);
     expect(lifecycle).toHaveLength(occurrences.length * 2);
@@ -309,7 +375,7 @@ describe('persisted galaxy events', () => {
     const showerFigures = showers.map((row) =>
       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
     expect(showerFigures.filter((value) => value === 3)).toHaveLength(days * 2);
-    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days);
+    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days * 2);
     expect(showerFigures.filter((value) => value === 10)).toHaveLength(days);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);

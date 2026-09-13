@@ -337,7 +337,7 @@ Binds: `INTERGALACTIC_CONVOY.formation`, `convoyFormationSlots`, `IntergalacticC
 
 Ruleset 8 replaces random public-event packing with a UTC+03:00, half-open fixed daily calendar:
 Trade Ship 01:00–03:00, 07:00–09:00, 15:00–17:00 and 21:00–23:00; Asteroid Shower
-02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5 and 20:00–21:00 ×10; Intergalactic
+02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5, 16:00–17:00 ×5 and 20:00–21:00 ×10; Intergalactic
 Convoy 07:00–09:00 and 19:00–21:00 (moved by D204). Only complete windows inside a season are dealt. Fixed
 kinds consume no calendar RNG; rulesets 4–5 and 6–7 retain frozen random definitions for explicit
 old-season creation and restamping.

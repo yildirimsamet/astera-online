@@ -27,6 +27,7 @@ const toggles = (over: Partial<Parameters<typeof SensorToggles>[0]> = {}) => {
     radar: true,
     onToggleTelescope: vi.fn(),
     onToggleRadar: vi.fn(),
+    onOpenGalaxyEvents: vi.fn(),
     ...over,
   };
   render(<SensorToggles {...props} />);
@@ -65,6 +66,18 @@ describe('the sensor switches', () => {
 
     await user.click(screen.getByRole('button', { name: /radar/i }));
     expect(props.onToggleRadar).toHaveBeenCalledTimes(1);
+  });
+
+  it('places the galaxy-events guide under the Telescope and opens it', async () => {
+    const props = toggles();
+    const user = userEvent.setup();
+    const guide = screen.getByRole('button', { name: /galaxy events/i });
+
+    expect(guide.parentElement).toBe(
+      document.querySelector('[data-sensor-toggle="telescope"]')?.parentElement,
+    );
+    await user.click(guide);
+    expect(props.onOpenGalaxyEvents).toHaveBeenCalledTimes(1);
   });
 
   /** The label says what the press will DO, not what the state currently is. */
@@ -119,7 +132,7 @@ describe('what the row offers', () => {
 
   it('offers both once a Radar is running', () => {
     toggles();
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    expect(screen.getAllByRole('button')).toHaveLength(3);
   });
 });
 

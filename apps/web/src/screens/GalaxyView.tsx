@@ -129,6 +129,7 @@ import { keepsPlanetGroup, rivalMenuRows } from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
+import { GalaxyEventsGuide } from './GalaxyEventsGuide.js';
 
 /** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
 /**
@@ -428,6 +429,7 @@ export function GalaxyView({
    */
   const [showTelescopeReach, setShowTelescopeReach] = useState(false);
   const [showRadarReach, setShowRadarReach] = useState(false);
+  const [eventsGuideOpen, setEventsGuideOpen] = useState(false);
   /**
    * THE RADAR SWITCH ONLY EXISTS IF THERE IS A RADAR. Owner instruction.
    *
@@ -1079,6 +1081,7 @@ export function GalaxyView({
         <SensorToggles
           telescope={showTelescopeReach}
           onToggleTelescope={() => { setShowTelescopeReach((on) => !on); }}
+          onOpenGalaxyEvents={() => { setEventsGuideOpen(true); }}
           {...(hasRadar
             ? {
                 radar: showRadarReach,
@@ -1480,6 +1483,10 @@ export function GalaxyView({
           />
         </Sheet>
       )}
+
+      {eventsGuideOpen ? (
+        <GalaxyEventsGuide onClose={() => { setEventsGuideOpen(false); }} />
+      ) : null}
 
       {/*
         RESEARCH. Its own panel because the levels are the COMMANDER's since T7, and

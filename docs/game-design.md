@@ -553,8 +553,8 @@ schedule and raw indexes never reach the browser, so direct API automation has n
 list to enumerate. Once two commanders have independently found the same rock, the ordinary public
 race and visible mining route begin for both of them.
 
-**Asteroid Shower is a public opportunity window (D149/D201).** In ruleset 8 it uses four fixed,
-half-open Türkiye windows: 02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5 and
+**Asteroid Shower is a public opportunity window (D149/D201).** In ruleset 8 it uses five fixed,
+half-open Türkiye windows: 02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5, 16:00–17:00 ×5 and
 20:00–21:00 ×10. Ruleset 4–7 seasons retain the random calendar already persisted for them. The
 end stops only bonus arrivals;
 rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,

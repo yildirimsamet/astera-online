@@ -17,7 +17,10 @@ import { addMinutes, systemClock } from '../clock.js';
 import { accounts, players } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
-import { restampFutureOccurrences } from '../services/galaxyEvents.js';
+import {
+  restampFutureOccurrences,
+  syncMissingFixedOccurrences,
+} from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
 import { deleteAccount, describeAccount } from '../services/accountDeletion.js';
@@ -50,6 +53,10 @@ season restamp [--yes] [options]    re-deal the effect of every window of ONE ev
                                    kind that has NOT opened yet, from today's
                                    rules. Dry run unless --yes; opened windows are
                                    never touched (see the note in the service).
+                                   --kind KIND, default ASTEROID_SHOWER
+season sync-events [--yes] [options]
+                                   append missing current/future fixed windows without
+                                   renumbering the live calendar. Dry run unless --yes.
                                    --kind KIND, default ASTEROID_SHOWER
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
@@ -288,6 +295,47 @@ async function main(): Promise<void> {
         console.log(
           `${String(planned)} pending window(s) would change. Nothing was written; `
           + 'pass --yes to apply.',
+        );
+        break;
+      }
+
+      /**
+       * A fixed calendar can gain a new daily window after a season was dealt.
+       * This appends only missing current/future rows; existing sequence numbers
+       * and therefore existing asteroid ids stay untouched.
+       */
+      case 'sync-events': {
+        const now = systemClock.now();
+        const kind = values.kind ?? 'ASTEROID_SHOWER';
+        if (!GALAXY_EVENT_KINDS.includes(kind as GalaxyEventKind)) {
+          throw new Error(`Unknown event kind ${kind}. One of: ${GALAXY_EVENT_KINDS.join(', ')}`);
+        }
+        const kinds = [kind as GalaxyEventKind];
+        const seasonId = values.shard === undefined
+          ? undefined
+          : (await liveSeason(db, values.shard))?.season.id;
+        if (values.shard !== undefined && seasonId === undefined) {
+          throw new Error(`no live season on ${values.shard}`);
+        }
+        if (values.yes === true) {
+          const inserted = await db.transaction((tx) =>
+            syncMissingFixedOccurrences(tx, { now, seasonId, kinds }));
+          console.log(`appended ${String(inserted)} missing window(s).`);
+          break;
+        }
+        class DryRun extends Error {}
+        let planned = 0;
+        try {
+          await db.transaction(async (tx) => {
+            planned = await syncMissingFixedOccurrences(tx, { now, seasonId, kinds });
+            throw new DryRun();
+          });
+        } catch (error) {
+          if (!(error instanceof DryRun)) throw error;
+        }
+        console.log(
+          `${String(planned)} missing current/future window(s) would be appended. `
+          + 'Nothing was written; pass --yes to apply.',
         );
         break;
       }

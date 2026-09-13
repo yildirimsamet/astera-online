@@ -192,6 +192,105 @@ export async function restampFutureOccurrences(
   return changed;
 }
 
+/**
+ * Append fixed windows added after a live season's calendar was dealt.
+ *
+ * Existing rows are never renumbered. Asteroid lanes allocate public ids in
+ * sequence order, so every inserted row receives a sequence after the current
+ * maximum even when its clock time is earlier than a previously dealt future
+ * window. This preserves every existing asteroid id while allowing a newly
+ * authored window that is currently active to begin on the next worker tick.
+ */
+export async function syncMissingFixedOccurrences(
+  tx: Tx,
+  input: { now: Date; seasonId?: string; kinds: readonly GalaxyEventKind[] },
+): Promise<number> {
+  if (input.kinds.length === 0) return 0;
+  const live = await tx
+    .select({
+      id: seasons.id,
+      startsAt: seasons.startsAt,
+      endsAt: seasons.endsAt,
+      rulesetVersion: seasons.rulesetVersion,
+    })
+    .from(seasons)
+    .where(and(
+      eq(seasons.status, 'live'),
+      ...(input.seasonId === undefined ? [] : [eq(seasons.id, input.seasonId)]),
+    ))
+    .for('update');
+
+  let insertedCount = 0;
+  for (const season of live) {
+    const config = galaxyEventConfigForRuleset(season.rulesetVersion);
+    for (const kind of input.kinds) {
+      if (config.definitions[kind].schedule !== 'FIXED_DAILY') {
+        throw new RangeError(`${kind} does not use a fixed calendar in this season`);
+      }
+    }
+
+    const existing = await tx
+      .select()
+      .from(galaxyEventOccurrences)
+      .where(and(
+        eq(galaxyEventOccurrences.seasonId, season.id),
+        inArray(galaxyEventOccurrences.kind, [...input.kinds]),
+      ));
+    const existingStarts = new Set(existing.map((row) =>
+      `${row.kind}:${row.startsAt.getTime()}`));
+    let nextSequence = Math.max(-1, ...existing.map((row) => row.sequence)) + 1;
+    const plan = generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: season.startsAt.getTime() / 60_000,
+      seasonDurationMinutes: minutesSince(season.startsAt, season.endsAt),
+      kinds: input.kinds,
+      config,
+      rngFor: (kind) => { throw new Error(`fixed kind ${kind} requested RNG`); },
+    }).filter((event) => {
+      const startsAt = addMinutes(season.startsAt, event.startsAtMinute);
+      const endsAt = addMinutes(season.startsAt, event.endsAtMinute);
+      return endsAt > input.now && !existingStarts.has(`${event.kind}:${startsAt.getTime()}`);
+    });
+
+    for (const event of plan) {
+      const startsAt = addMinutes(season.startsAt, event.startsAtMinute);
+      const endsAt = addMinutes(season.startsAt, event.endsAtMinute);
+      const [inserted] = await tx
+        .insert(galaxyEventOccurrences)
+        .values({
+          seasonId: season.id,
+          sequence: nextSequence,
+          kind: event.kind,
+          definitionVersion: event.definitionVersion,
+          startsAt,
+          endsAt,
+          effect: event.effect,
+          createdAt: input.now,
+        })
+        .returning({ id: galaxyEventOccurrences.id });
+      if (!inserted) throw new Error('Failed to append fixed galaxy-event occurrence');
+      nextSequence += 1;
+      insertedCount += 1;
+      await tx.insert(scheduledEvents).values([
+        {
+          seasonId: season.id,
+          kind: 'galaxy_event_start',
+          refId: inserted.id,
+          dedupeKey: `galaxy-event:start:${inserted.id}`,
+          resolveAt: startsAt,
+        },
+        {
+          seasonId: season.id,
+          kind: 'galaxy_event_end',
+          refId: inserted.id,
+          dedupeKey: `galaxy-event:end:${inserted.id}`,
+          resolveAt: endsAt,
+        },
+      ]);
+    }
+  }
+  return insertedCount;
+}
+
 /** Seed occurrences and their two queue moments in the season-creation transaction. */
 export async function seedGalaxyEventCalendar(
   tx: Tx,

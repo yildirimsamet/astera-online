@@ -23,7 +23,7 @@ vi.mock('../src/api/queries.js', () => ({
         kind: 'TRADE_SHIP' as const,
         startsAt: new Date('2026-09-02T10:00:00.000Z'),
         endsAt: new Date('2026-09-02T11:00:00.000Z'),
-        rate: { alloy: 1, crystal: 3, deuterium: 90 },
+        rate: { alloy: 1, crystal: 2, deuterium: 32 },
         appearsAtMinute: 600,
         expiresAtMinute: 780,
         orbit: {
@@ -127,8 +127,8 @@ describe('active galaxy event chip', () => {
     const marks = trade?.querySelectorAll('img') ?? [];
     expect([...marks].map((mark) => mark.getAttribute('alt')))
       .toEqual(['Alloy', 'Crystal', 'Deuterium']);
-    expect(trade).toHaveTextContent('90');
-    expect(trade).toHaveTextContent('30');
+    expect(trade).toHaveTextContent('32');
+    expect(trade).toHaveTextContent('16');
     expect(trade).toHaveTextContent('1');
     expect(trade).toHaveTextContent('30m 00s left');
   });

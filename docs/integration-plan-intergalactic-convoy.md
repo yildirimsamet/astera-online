@@ -348,6 +348,7 @@ cihaz/process timezone'u veya gelecekte değişebilecek host tzdb davranışı k
 | Asteroid Yağmuru | 02:00–03:00 | ×3 |
 | Asteroid Yağmuru | 10:00–11:00 | ×3 |
 | Asteroid Yağmuru | 13:00–14:00 | ×5 |
+| Asteroid Yağmuru | 16:00–17:00 | ×5 |
 | Asteroid Yağmuru | 20:00–21:00 | ×10 |
 | Galaksilerarası Konvoy | **07:00–09:00** | 2 saat |
 | Galaksilerarası Konvoy | **19:00–21:00** | 2 saat |
@@ -356,7 +357,7 @@ Sonuçlar:
 
 - Ticaret Gemisi mevcut günde dört rastgele, üçer saatlik occurrence modelinden günde dört sabit,
   ikişer saatlik occurrence modeline geçer.
-- Asteroid Yağmuru rastgele beş günlük modelden sabit dört pencereye geçer; multiplier occurrence
+- Asteroid Yağmuru rastgele beş günlük modelden sabit beş pencereye geçer; multiplier occurrence
   başına snapshot'tır.
 - Konvoy günde iki kez çıkar.
 - Türler birbirini dışlamaz. Özellikle Ticaret Gemisi ile Konvoy 07:00–09:00 boyunca, Asteroid

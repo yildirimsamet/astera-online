@@ -546,6 +546,17 @@ export function ClockIcon(props: IconProps) {
   );
 }
 
+/** A compact explanation door. Kept as a question mark because it sits beside map controls. */
+export function HelpIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M9.6 9a2.7 2.7 0 1 1 3.6 2.55c-.8.32-1.2.85-1.2 1.65v.3" />
+      <path d="M12 17.4h.01" />
+    </Glyph>
+  );
+}
+
 export function BellIcon(props: IconProps) {
   return (
     <Glyph {...props}>

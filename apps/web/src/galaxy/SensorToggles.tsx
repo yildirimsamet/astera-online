@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { haptic } from '../lib/haptics.js';
-import { RadarIcon, TelescopeIcon } from '../ui/icons/index.js';
+import { HelpIcon, RadarIcon, TelescopeIcon } from '../ui/icons/index.js';
 
 /**
  * TURN THE BOUNDARIES OFF, AND ON. Owner instruction.
@@ -35,6 +35,7 @@ export function SensorToggles({
   radar,
   onToggleTelescope,
   onToggleRadar,
+  onOpenGalaxyEvents,
 }: {
   telescope: boolean;
   onToggleTelescope: () => void;
@@ -52,19 +53,37 @@ export function SensorToggles({
    */
   radar?: boolean;
   onToggleRadar?: () => void;
+  onOpenGalaxyEvents?: () => void;
 }) {
   const { t } = useTranslation();
 
   return (
-    <div data-sensor-toggles className="pointer-events-auto mt-2 flex gap-2">
-      <Switch
-        id="telescope"
-        on={telescope}
-        label={t(telescope ? 'galaxy.hideTelescope' : 'galaxy.showTelescope')}
-        onPress={onToggleTelescope}
-      >
-        <TelescopeIcon className="size-[18px]" />
-      </Switch>
+    <div data-sensor-toggles className="pointer-events-auto mt-2 flex items-start gap-2">
+      <div className="flex flex-col gap-2">
+        <Switch
+          id="telescope"
+          on={telescope}
+          label={t(telescope ? 'galaxy.hideTelescope' : 'galaxy.showTelescope')}
+          onPress={onToggleTelescope}
+        >
+          <TelescopeIcon className="size-[18px]" />
+        </Switch>
+        {onOpenGalaxyEvents === undefined ? null : (
+          <button
+            type="button"
+            data-galaxy-events-guide
+            aria-label={t('galaxy.eventsGuide.open')}
+            title={t('galaxy.eventsGuide.open')}
+            onClick={() => {
+              haptic('tap');
+              onOpenGalaxyEvents();
+            }}
+            className="grid size-9 place-items-center rounded-chip border border-line-soft bg-deep/70 text-dim outline-none transition-colors hover:border-crystal/35 hover:text-crystal focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crystal/70"
+          >
+            <HelpIcon className="size-[18px]" />
+          </button>
+        )}
+      </div>
       {radar !== undefined && onToggleRadar !== undefined && (
         <Switch
           id="radar"

@@ -2370,7 +2370,7 @@ export const INTERGALACTIC_CONVOY = {
  * `galaxyEventConfigForRuleset()` and never inferred from this current object.
  */
 export const GALAXY_EVENTS = {
-  version: 3,
+  version: 4,
   calendar: {
     /** Human-facing schedule zone; arithmetic uses the pinned offset below. */
     timeZone: 'Europe/Istanbul',
@@ -2388,13 +2388,15 @@ export const GALAXY_EVENTS = {
   definitions: {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
-      version: 3,
+      version: 4,
       windows: [
         { startsAtLocalMinute: 2 * 60, endsAtLocalMinute: 3 * 60,
           effect: { asteroidSpawnMultiplier: 3 } },
         { startsAtLocalMinute: 10 * 60, endsAtLocalMinute: 11 * 60,
           effect: { asteroidSpawnMultiplier: 3 } },
         { startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
+          effect: { asteroidSpawnMultiplier: 5 } },
+        { startsAtLocalMinute: 16 * 60, endsAtLocalMinute: 17 * 60,
           effect: { asteroidSpawnMultiplier: 5 } },
         { startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
           effect: { asteroidSpawnMultiplier: 10 } },

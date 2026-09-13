@@ -1173,6 +1173,28 @@ compose=(docker compose -f docker-compose.prod.yml)
   restamp --shard EU-1 --kind ASTEROID_SHOWER --yes
 ```
 
+Changing an existing window's effect is different from adding a brand-new fixed window. For a
+new window, append the missing current and future occurrences after the code deploy:
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+
+# Dry run first.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  sync-events --shard EU-1 --kind ASTEROID_SHOWER
+
+# Apply only after the reported count matches the remaining daily windows.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  sync-events --shard EU-1 --kind ASTEROID_SHOWER --yes
+```
+
+`sync-events` never renumbers an existing occurrence. New rows take sequence numbers after the
+live lane's current maximum, even when the newly authored clock window is earlier in the day.
+That append-only rule preserves every existing asteroid id. A window already in progress is
+included while its end is still in the future, so the worker publishes it on its next tick;
+fully ended windows are never backfilled. The command is idempotent and defaults to a rollback-only
+dry run.
+
 The binary path is not decoration: the image installs with `--prod --filter @astera/server...`,
 so there is no root `tsx` to load — `node --import tsx` fails to resolve at `/app`. Every CLI
 call in this document uses the package's own binary for the same reason the `CMD` does.

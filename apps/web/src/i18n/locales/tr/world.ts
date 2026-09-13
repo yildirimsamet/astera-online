@@ -39,6 +39,28 @@ export const galaxy = {
   hideTelescope: "Teleskop menzilini gizle",
   showRadar: "Radar menzilini göster",
   hideRadar: "Radar menzilini gizle",
+  eventsGuide: {
+    open: "Galaksi etkinliklerini göster",
+    eyebrow: "Günlük takvim",
+    title: "Galaksi etkinlikleri",
+    intro: "Her gün tekrarlanan etkinlikleri kaçırmamak için saatleri burada takip et.",
+    timeZone: "Türkiye saati (UTC+3)",
+    dailyNote: "Tüm saatler her gün tekrar eder ve Türkiye saatine göre gösterilir.",
+    asteroid: {
+      title: "Asteroid Yağmuru",
+      summary: "Etkinlik boyunca galaksideki yeni asteroid oluşma hızını artırır. Daha önce oluşmuş asteroidler süreleri dolana kadar kalır.",
+    },
+    trade: {
+      title: "Ticaret Gemisi",
+      summary: "Galakside beliren gemiyi seç, kaynaklarını ihtiyacın olan kaynağa dönüştür.",
+      rate: "Sabit kur: 32 Alaşım = 16 Kristal = 1 Döteryum.",
+    },
+    convoy: {
+      title: "Galaksilerarası Konvoy",
+      summary: "Geçiş sırasında konvoya filo gönder; ateş gücüne göre kaynak ve gemi kazanma şansı elde et.",
+      note: "Konvoy karşılık vermez; filon kayıp vermez. Her dünya aynı geçişe bir kez akın edebilir.",
+    },
+  },
   openResearch: "Araştırma",
   openClan: "Klan",
   kindCapital: "Ana gezegen",

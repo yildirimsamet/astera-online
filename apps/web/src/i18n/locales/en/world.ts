@@ -40,6 +40,28 @@ export const galaxy = {
   hideTelescope: "Hide Telescope reach",
   showRadar: "Show Radar reach",
   hideRadar: "Hide Radar reach",
+  eventsGuide: {
+    open: "Show galaxy events",
+    eyebrow: "Daily calendar",
+    title: "Galaxy events",
+    intro: "Use this schedule to keep track of the events that repeat every day.",
+    timeZone: "Türkiye time (UTC+3)",
+    dailyNote: "Every window repeats daily and is shown in Türkiye time.",
+    asteroid: {
+      title: "Asteroid Shower",
+      summary: "Increases new asteroid arrivals across the galaxy. Existing asteroids remain until they naturally expire.",
+    },
+    trade: {
+      title: "Trade Ship",
+      summary: "Select the ship on the galaxy map to exchange your resources for the resource you need.",
+      rate: "Fixed rate: 32 Alloy = 16 Crystal = 1 Deuterium.",
+    },
+    convoy: {
+      title: "Intergalactic Convoy",
+      summary: "Send a fleet during its crossing for resources and a chance to recover ships, scaled by firepower.",
+      note: "The convoy does not fire back, so your fleet takes no losses. Each world can strike once per crossing.",
+    },
+  },
   /* Screen-reader names for the marks on the disc. Nothing is painted. */
   openResearch: "Research",
   openClan: "Clan",

@@ -457,7 +457,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
 
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
     expect(MULTI_WORLD.rulesetVersion).toBe(8);
-    expect(GALAXY_EVENTS.version).toBe(3);
+    expect(GALAXY_EVENTS.version).toBe(4);
     expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(2);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);
     expect(galaxyEventKindsForRuleset(MULTI_WORLD.rulesetVersion)).toEqual([
@@ -468,7 +468,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     expect(galaxyEventKindsForRuleset(7)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
   });
 
-  it('deals the ten exact half-open TRT windows and their occurrence effects', () => {
+  it('deals the eleven exact half-open TRT windows and their occurrence effects', () => {
     const schedule = currentDay();
     const rows = schedule.map((event) => ({
       kind: event.kind,
@@ -492,6 +492,8 @@ describe('the ruleset-8 fixed public-event calendar', () => {
         effect: { asteroidSpawnMultiplier: 5 } },
       { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1020,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 960, endsAtMinute: 1020,
+        effect: { asteroidSpawnMultiplier: 5 } },
       { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1140, endsAtMinute: 1260,
         effect: convoyWindowAt(1).effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
@@ -499,7 +501,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
       { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1380,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
     ]);
-    expect(schedule.map((event) => event.sequence)).toEqual([0, 0, 1, 0, 1, 2, 2, 1, 3, 3]);
+    expect(schedule.map((event) => event.sequence)).toEqual([0, 0, 1, 0, 1, 2, 2, 3, 1, 4, 3]);
     expect(convoyWindowAt(0).effect.shipDropFullFirepower)
       .toBe(5_780); // Authored occurrence price, frozen before D208's hull recalibration.
   });
@@ -519,6 +521,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
         ['ASTEROID_SHOWER', 450, 510],
         ['ASTEROID_SHOWER', 630, 690],
         ['TRADE_SHIP', 750, 870],
+        ['ASTEROID_SHOWER', 810, 870],
         ['INTERGALACTIC_CONVOY', 990, 1110],
         ['ASTEROID_SHOWER', 1050, 1110],
       ]);

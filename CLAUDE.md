@@ -199,7 +199,7 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
 
 - One account → one commander → one galaxy; galaxies fill in order; one capital + max three colonies, DB-enforced.
 - Ruleset 8 deals the public-event calendar at fixed Türkiye windows (D201): Trade Ship 01–03,
-  07–09, 15–17 and 21–23; Asteroid Shower 02–03 ×3, 10–11 ×3, 13–14 ×5 and
+  07–09, 15–17 and 21–23; Asteroid Shower 02–03 ×3, 10–11 ×3, 13–14 ×5, 16–17 ×5 and
   20–21 ×10; Intergalactic Convoy 07–09 and 19–21. Windows are half-open and only complete
   windows inside the season are persisted. Rulesets 4–5 and 6–7 retain frozen random configs;
   restamping reads each season's own config and never redeals a live calendar. Fixed kinds consume
