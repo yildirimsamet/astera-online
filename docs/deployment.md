@@ -534,6 +534,26 @@ way to roll it. That gap is not user-facing: a scheduled event is claimed with `
 simply runs that much late, which is the same lateness `WORKER_POLL_MS` already admits. Roll it
 LAST, so the APIs are already answering on the new image when it comes back.
 
+#### D211: two-phase activation when upgrading from the 6/hour pirate lane
+
+The established prefix is unchanged, but an OLD worker cannot resolve an additional index.
+Do not expose additional contacts while any old process is still running. Before the four
+`roll` calls above, export `PIRATE_SPAWN_INCREASE_ENABLED=false`; Compose passes it to APIs
+and worker. They derive the complete new field and accept its handles, but the contact and
+traffic projections (and bot selection) publish only established targets.
+
+After the first four rolls, require every process healthy, on `release_sha` and `new_image_id`,
+and with the switch set to `false` in its environment. Only then export
+`PIRATE_SPAWN_INCREASE_ENABLED=true` and repeat the same API1 → API2 → API3 → worker roll.
+The second roll may mix visibility settings, but never field knowledge: even a still-staged
+process can accept and settle an additional handle exposed by an enabled replica. Check the
+final switch is `true` everywhere before publishing web or claiming the increase is live.
+No database write, season operation or world stop is needed. If the compatibility roll is
+incomplete, leave contacts hidden and investigate; never activate early. Future releases may
+use the ordinary single roll once the complete field is already running everywhere.
+
+#### Publish the staged webroot
+
 Then swap the client by rename rather than by copy. Stage on the SAME filesystem as the live root
 or the rename is a copy and the window comes back:
 

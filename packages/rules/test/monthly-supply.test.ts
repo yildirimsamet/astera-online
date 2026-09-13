@@ -1,19 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { generateAsteroidSchedule, generatePirateSchedule, mulberry32, HULLS, DEBRIS, SERVERS } from '../src/index.js';
-import { monthlySupply } from '../src/monthly-supply.js';
+import { generateAsteroidSchedule, generatePirateSchedule, mulberry32, HULLS, DEBRIS, PIRATE, SERVERS, pirateAdmissionCost } from '../src/index.js';
+import { monthlyPirateSupplyAtRate, monthlySupply } from '../src/monthly-supply.js';
 
 const resources = ['alloy', 'crystal', 'deuterium'] as const;
 describe('finite monthly external supply', () => {
   it('caps each day independently, including every possible captured pirate hull and its debris', () => {
     for (const seed of [1, 42, 951]) {
       const rocks = generateAsteroidSchedule(mulberry32(seed));
-      const pirates = generatePirateSchedule(mulberry32(seed));
+      // Preserve the original actual-hull-price regression signal independently
+      // of the owner-set extra lane. D208's existing price/admission mismatch must
+      // remain visible, not be fixed by widening a cap in this density release.
+      const establishedLengths: Record<number, number> = { 1: 2902, 42: 2841, 951: 2818 };
+      const pirates = generatePirateSchedule(mulberry32(seed)).slice(0, establishedLengths[seed]);
       expect(rocks.length).toBeGreaterThan(0);
       expect(pirates.length).toBeGreaterThan(0);
       pirates.forEach((p, i) => { expect(p.index).toBe(i); });
       for (let day = 0; day < 30; day++) {
         const mining = monthlySupply('mining', day, SERVERS.capacity);
-        const piracy = monthlySupply('pirates', day, SERVERS.capacity);
+        const piracy = monthlyPirateSupplyAtRate(day, SERVERS.capacity, PIRATE.establishedSpawnPerHour);
         const a = { alloy: 0, crystal: 0, deuterium: 0 };
         const p = { alloy: 0, crystal: 0, deuterium: 0 };
         for (const r of rocks.filter(r => Math.floor(r.appearsAt / 1440) === day)) {
@@ -36,6 +40,27 @@ describe('finite monthly external supply', () => {
       }
     }
   });
+  it('keeps both lanes inside the proportional frozen-price admission budget every day', () => {
+    for (const seed of [1, 42, 951]) {
+      const field = generatePirateSchedule(mulberry32(seed));
+      for (let day = 0; day < 30; day++) {
+        const allowance = monthlySupply('pirates', day, SERVERS.capacity);
+        const liability = { alloy: 0, crystal: 0, deuterium: 0 };
+        for (const pirate of field.filter(p => Math.floor(p.appearsAt / 1440) === day)) {
+          const cost = pirateAdmissionCost(pirate.roster);
+          const worth = cost.alloy + cost.crystal + cost.deuterium;
+          for (const k of resources) {
+            const oldHoard = Math.floor(worth * PIRATE.hoardAdmissionValueMult * PIRATE.hoardShare[k]);
+            liability[k] += oldHoard + cost[k] * (1 + DEBRIS.share);
+          }
+        }
+        for (const k of resources) {
+          expect(liability[k], `admission day ${day} ${k}`)
+            .toBeLessThanOrEqual(allowance[k] / PIRATE.hoardRewardScale + 0.001);
+        }
+      }
+    }
+  });
   it('scales communal supply with seats and never creates a thirty-first day', () => {
     for (const kind of ['mining', 'pirates'] as const) {
       expect(monthlySupply(kind, 29, 1000).alloy / monthlySupply(kind, 29, 300).alloy).toBeCloseTo(1000 / 300);
@@ -44,11 +69,11 @@ describe('finite monthly external supply', () => {
     expect(() => monthlySupply('mining', 0, -1)).toThrow();
   });
 
-  it('keeps pirate supply unchanged while the owner expands mining supply by 50%', () => {
+  it('raises pirate supply with the owner-set 50% spawn increase', () => {
     for (const resource of resources) {
       const mining = monthlySupply('mining', 12, SERVERS.capacity)[resource];
       const piracy = monthlySupply('pirates', 12, SERVERS.capacity)[resource];
-      expect(piracy / mining).toBeCloseTo((0.05 * 1.30) / 0.15, 12);
+      expect(piracy / mining).toBeCloseTo((0.05 * 1.30 * 1.50) / 0.15, 12);
     }
   });
 });

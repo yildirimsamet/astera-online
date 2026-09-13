@@ -1,9 +1,10 @@
-import { monthlySupply } from './monthly-supply.js';
+import { monthlyPirateSupplyAtRate } from './monthly-supply.js';
 import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
 import { PIRATE, SEASON, SERVERS, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { orbitPosition } from './galaxy.js';
+import { mulberry32 } from './rng.js';
 import type { OrbitElements, SensorEpoch } from './galaxy.js';
 import { sensorZone, type SensorSphere, type SensorZone } from './sight.js';
 import type { Fleet, Grade, HullId, MobileHullId, Resources, Rng, Vec3 } from './types.js';
@@ -339,30 +340,32 @@ function rollLevel(roll: number): PirateLevel {
 /**
  * THE SEASON'S WHOLE PIRATE LANE, generated once from the season key.
  *
- * ADDITIVE-LANE DISCIPLINE APPLIES HERE THE DAY THE RATE MOVES, and the reason is
+ * ADDITIVE-LANE DISCIPLINE APPLIES WHEN THE RATE MOVES, and the reason is
  * written out over `generateAsteroidSchedule`: raising density by squeezing the
  * interval moves EVERY live target and makes a player's chosen quarry jump or
  * vanish between two reads. A pirate is worse than a rock in that respect,
  * because a fleet may already be in the air toward the point it used to be at.
- * A future rate change appends a second seed-shifted lane with fresh indices, or
- * it waits for `MULTI_WORLD.pirateRulesetVersion` and a season boundary.
+ * The 2026-09-14 increase therefore appends a second seed-shifted lane with fresh
+ * indices. The helper below builds one lane at one rate; the public composer keeps
+ * the complete established lane first and appends the increase after it.
  *
  * THE ROLL ORDER IS PART OF THE CONTRACT. Every draw below is taken in a fixed
  * sequence from one generator, so inserting a new property in the middle re-rolls
  * every pirate after it. Append.
  */
-export function generatePirateSchedule(
+function generatePirateLane(
   rng: Rng,
-  span: number = SEASON.days * 24 * 60,
-  indexOffset = 0,
-  appearsAtOffset = 0,
+  span: number,
+  indexOffset: number,
+  appearsAtOffset: number,
+  spawnPerHour: number,
 ): PirateSpec[] {
-  const count = Math.round((PIRATE.spawnPerHour * span) / 60);
+  const count = Math.round((spawnPerHour * span) / 60);
   const pirates: PirateSpec[] = [];
   if (count <= 0) return pirates;
 
   const remaining = Array.from({ length: SEASON.days }, (_, day) => {
-    const allowance = monthlySupply('pirates', day, SERVERS.capacity);
+    const allowance = monthlyPirateSupplyAtRate(day, SERVERS.capacity, spawnPerHour);
     return {
       alloy: allowance.alloy / PIRATE.hoardRewardScale,
       crystal: allowance.crystal / PIRATE.hoardRewardScale,
@@ -427,4 +430,43 @@ export function generatePirateSchedule(
     });
   }
   return pirates;
+}
+
+export interface PirateScheduleOptions {
+  /** Independent deterministic draws for the owner-set density increase. */
+  rngForIncrease?: Rng;
+  /** Derive only established contacts for a compatibility-stage rollout. */
+  includeIncrease?: boolean;
+}
+
+/** Established targets first, then the independent owner-set +50% lane. */
+export function generatePirateSchedule(
+  rng: Rng,
+  span: number = SEASON.days * 24 * 60,
+  indexOffset = 0,
+  appearsAtOffset = 0,
+  options: PirateScheduleOptions = {},
+): PirateSpec[] {
+  const established = generatePirateLane(
+    rng,
+    span,
+    indexOffset,
+    appearsAtOffset,
+    PIRATE.establishedSpawnPerHour,
+  );
+  const increaseRate = PIRATE.spawnPerHour - PIRATE.establishedSpawnPerHour;
+  if (increaseRate <= 0 || options.includeIncrease === false) return established;
+
+  // The server supplies a key-separated stream. Pure rules callers still get a
+  // deterministic independent stream, seeded only after the old lane is complete.
+  const rngForIncrease = options.rngForIncrease
+    ?? mulberry32(Math.floor(rng() * 0x1_0000_0000));
+  const increase = generatePirateLane(
+    rngForIncrease,
+    span,
+    indexOffset + established.length,
+    appearsAtOffset,
+    increaseRate,
+  );
+  return [...established, ...increase];
 }

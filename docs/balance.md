@@ -554,7 +554,8 @@ find, not a speed comparison.
 ### Pirates (D150 · D155)
 
 ```
-spawn         0.02 per seat per hour — 6/h at 300 seats, ~18 alive at any moment
+spawn         0.03 per seat per hour — 9 candidates/h at 300 seats; ~5.9/h admitted
+              and ~18 alive at a typical instant after the daily supply cap
 orbit         radius 400–2000, closed 3D orbit, constant speed 94.54–126.40 units/min
               = 75% of Cataclysm and Dart speed ÷ TRAVEL.distanceFactor (D155/D203)
 period        ~19.9 min at the inner edge to ~132.9 min at the outer, derived from the two
@@ -570,17 +571,16 @@ window        PIRATE.bearingMs = TRAFFIC.refreshMs × 2 = 10s — DERIVED, never
 **What a commander actually meets.** Regenerate with `pnpm study:pirates`
 (`tools/pirate-study.ts`), which reads the shipped constants rather than restating them.
 Measured over the generated world positions of five seeds, counting distinct pirates that
-enter a world's circles during an eight-hour session. Sixty-seven pirates are alive at some
-point in that window.
+enter a world's circles during an eight-hour session on the first full season day. Ten pirates
+are alive at some point in that window, up from seven before the 50% increase.
 
 | Instruments | p10 | median | p90 | share of the window |
 | ----------- | --- | ------ | --- | ------------------- |
-| naked eye | 13 | 21 | 27 | 31% |
-| Radar 3 | 50 | 56 | 61 | 83% |
-| Telescope 5 · Radar 5 | 60 | 64 | 66 | 95% |
+| naked eye | 1 | 3 | 6 | 31% |
+| Radar 3 | 6 | 8 | 11 | 84% |
+| Telescope 5 · Radar 5 | 8 | 10 | 13 | 95% |
 
-The naked-eye p90:p10 spread is 2.1x, the same range the fourth-power orbit draw was adopted
-to hold for asteroids — it is the same draw. **Sensor investment roughly triples
+The early-season naked-eye p10 is one target. **Sensor investment roughly triples
 opportunity**, which is the point: the pirate lane is the first system where a Radar pays out
 in targets rather than in warnings. A world sitting exactly at the galaxy centre is the
 degenerate case and sees very few, because no orbit of radius ≥ 400 passes within 750 of the
@@ -675,6 +675,19 @@ These are raw hoards: battle grade and surviving cargo can still bind the delive
 The monthly pirate allowance moves from 5% to 6.5% with the same factor, but admission is still
 priced on the former ×1.4 hoard. That keeps existing deterministic pirate membership/indexes
 stable while leaving enough safety-ceiling room for the larger hoards.
+
+**D211 raises pirate density by 50%.** The per-seat candidate rate moves 0.02 → **0.03**, or
+6 → **9 per hour** in a 300-seat galaxy. Four full-season seeds admit 1.494–1.505× as many
+targets after daily rationing. This is an additive lane, not a shorter interval over the old
+one: every established orbit, roster, hoard, lifetime, index and opaque id remains byte-identical,
+and only fresh targets are appended from an independent random stream. The matching monthly
+allowance moves 6.5% → **9.75%**, split between established and added lanes at their own rates;
+without it, the admission cap would discard the requested density before it reached the disc.
+The frozen admission liability remains capped per day. D208's existing mismatch between
+frozen admission prices and current captured-hull prices is not repaired here: the original
+actual-price cap regression is retained against the unchanged established lane, alongside a
+new full-field frozen-liability test. Activation waits until every process understands the
+additional indices (`docs/deployment.md`, D211 two-phase rollout).
 
 D204 changes the reward altitude but not the composition test: the measured lane still pays a
 fleet built for every target level and still punishes an all-cargo fleet at every level. That sign

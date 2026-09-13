@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   resolveCombat,
@@ -513,6 +514,20 @@ describe('the pirate schedule', () => {
     expect(field.length).toBeGreaterThan(0);
     expect(field.length).toBeLessThanOrEqual(expected);
     expect(PIRATE.spawnPerHour).toBeGreaterThan(0);
+  });
+
+  it('raises the spawn rate by 50% without moving an established pirate', () => {
+    expect(PIRATE.spawnPerSeatPerHour).toBe(0.03);
+    expect(PIRATE.spawnPerHour).toBe(9);
+
+    const establishedLength = 2823;
+    const field = generatePirateSchedule(mulberry32(7));
+    expect(field.length / establishedLength).toBeGreaterThan(1.45);
+    expect(field.length / establishedLength).toBeLessThan(1.55);
+    expect(createHash('sha256')
+      .update(JSON.stringify(field.slice(0, establishedLength)))
+      .digest('hex'))
+      .toBe('a3828f6839be3b69838c29621be59651f1131f3cda92a7c517f75aabd8a5d41a');
   });
 
   it('rolls levels in the advertised proportions', () => {

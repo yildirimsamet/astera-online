@@ -43,11 +43,11 @@ import type { Queryable } from '../db/client.js';
  * cannot move a single rock and vice versa.
  */
 
-function keyedRng(key: string): () => number {
+function keyedRng(key: string, label = 'pirate:draw'): () => number {
   let counter = 0;
   return () => {
     const value = createHmac('sha256', key)
-      .update(`pirate:draw:${String(counter)}`)
+      .update(`${label}:${String(counter)}`)
       .digest()
       .readUInt32BE(0);
     counter += 1;
@@ -68,15 +68,19 @@ function trim<K, V>(cache: Map<K, V>): void {
 }
 
 /** The whole lane for this season key. LRU-32, because generation is not free. */
-export function privatePirateField(key: string): PirateSpec[] {
-  const cached = fieldCache.get(key);
+export function privatePirateField(key: string, includeIncrease = true): PirateSpec[] {
+  const cacheKey = `${key}:${includeIncrease ? 'full' : 'established'}`;
+  const cached = fieldCache.get(cacheKey);
   if (cached) {
-    fieldCache.delete(key);
-    fieldCache.set(key, cached);
+    fieldCache.delete(cacheKey);
+    fieldCache.set(cacheKey, cached);
     return cached;
   }
-  const field = generatePirateSchedule(keyedRng(key));
-  fieldCache.set(key, field);
+  const field = generatePirateSchedule(keyedRng(key), undefined, 0, 0, {
+    rngForIncrease: keyedRng(key, 'pirate:spawn-increase:v1'),
+    includeIncrease,
+  });
+  fieldCache.set(cacheKey, field);
   trim(fieldCache);
   return field;
 }
@@ -207,6 +211,12 @@ export async function loadPirateSnapshot(
     destroyedByPlayerId: row.destroyedByPlayerId,
   }]));
   const pirates = privatePirateField(season.asteroidKey);
+  // First roll all processes with contacts hidden, then open the extra lane.
+  // Even staged APIs retain the full field so a newly enabled replica's handles
+  // remain valid everywhere once the compatibility rollout has completed.
+  const visibleLength = process.env.PIRATE_SPAWN_INCREASE_ENABLED === 'false'
+    ? privatePirateField(season.asteroidKey, false).length
+    : pirates.length;
 
   return {
     pirates,
@@ -219,6 +229,6 @@ export async function loadPirateSnapshot(
     },
     destroyedAt: (index) => state.get(index)?.destroyedAt ?? null,
     standing: (at) => activePirates(pirates, minutesSince(season.startsAt, at))
-      .filter((spec) => state.get(spec.index)?.destroyedAt == null),
+      .filter((spec) => spec.index < visibleLength && state.get(spec.index)?.destroyedAt == null),
   };
 }

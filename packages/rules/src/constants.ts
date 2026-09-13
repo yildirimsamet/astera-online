@@ -2628,8 +2628,10 @@ export const SERVERS = {
   idleDays: 3,
 } as const;
 
-/** Multi-world ruleset v4. D148 activates Fleet Catalog V2 at an offline rollover. */
-const PIRATE_SPAWN_PER_SEAT_PER_HOUR = 0.02;
+/** The complete pirate lane before the 2026-09-14 owner-set density increase. */
+const PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR = 0.02;
+/** Owner-set +50%; appended as an independent lane so live targets never move. */
+const PIRATE_SPAWN_PER_SEAT_PER_HOUR = PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * 1.5;
 
 /**
  * KORSAN FİLOLARI — THE GALAXY'S THIRD TARGET CLASS. D150.
@@ -2768,6 +2770,7 @@ export const PIRATE = {
    */
   spawnPerSeatPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR,
   spawnPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
+  establishedSpawnPerHour: PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
 
   /** Hours a pirate rides its orbit before it is gone for good. */
   lifeHoursMin: 2,

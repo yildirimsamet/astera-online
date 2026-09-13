@@ -1235,6 +1235,24 @@ airborne craft. Strategic interceptor launch/impact framing is a separate automa
 scene and is unchanged. This supersedes D153(5).
 Binds: `GalaxyView` focus effects, in-flight sheet craft focus, D69, D153.
 
+### D211 · Pirate density rises 50% without moving a live target — OWNER INSTRUCTION
+
+Rule: `PIRATE.spawnPerSeatPerHour` moves 0.02 → **0.03**, taking the 300-seat candidate rate
+from 6 → **9 per hour**. The established schedule is immutable: squeezing its interval would
+move every pirate orbit, invalidate remembered targets and redirect in-flight raids because
+pirate state and missions address the deterministic index. `generatePirateSchedule` therefore
+recreates the complete old lane byte-for-byte and appends a key-separated increase lane with
+fresh continuous indices. The monthly external-supply allowance rises by the same 50%, from
+6.5% → **9.75%**; each lane receives only the allowance belonging to its own rate, so the old
+admission decisions also remain unchanged. Four full-season seeds produce 1.494–1.505× the old
+admitted target count while every old-prefix hash remains identical.
+Rolling activation is two-phase: set `PIRATE_SPAWN_INCREASE_ENABLED=false` for the first
+API/worker roll. Staged processes derive and accept the full lane but publish only established
+contacts. After all four processes run the new SHA, roll with the switch true to expose the
+increase. No old worker can then turn an extra-lane raid home for an unknown index.
+Binds: `PIRATE`, `generatePirateSchedule`, `monthlyPirateSupplyAtRate`, `privatePirateField`,
+`pirate_state`, pirate opaque IDs, pirate raids, D150, D204.
+
 ### D141 · Everything the server sells must be reachable — OWNER INSTRUCTION
 
 Rule: Server boundary IDs come from authoritative rules catalogs, not copied enums. Every server-sold building/hull/instrument/satellite/research/strategic action must have a reachable control. Locked rows explain why and link to resolution; governing capacity/state is visible before commit.

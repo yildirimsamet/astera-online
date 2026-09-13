@@ -186,6 +186,28 @@ describe('a raid at a pirate', () => {
     expect(flown.raidId).toBeTypeOf('string');
   });
 
+  it('accepts and settles an extra handle while its own contacts are still staged', async () => {
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const established = privatePirateField(season!.asteroidKey, false);
+    const target = await findVisible(new Set(established.map(p => p.index)));
+    expect(target.spec.index).toBeGreaterThanOrEqual(established.length);
+    vi.stubEnv('PIRATE_SPAWN_INCREASE_ENABLED', 'false');
+    try {
+      const fleet = await armed({ DART: 250, COURIER: 6 });
+      const flown = await launchPirateRaid(f.db, mine, target.id, fleet, f.clock);
+      f.clock.set(settledAt(flown.arriveAt));
+      await new EventWorker(f.db, f.clock, { pollMs: 50, batch: 50, staleMinutes: 5 }, silent).tick();
+      const [report] = await f.db.select().from(battleReports)
+        .where(eq(battleReports.pirateRaidId, flown.raidId));
+      expect(report?.targetKind).toBe('PIRATE');
+      const [raid] = await f.db.select().from(pirateRaids).where(eq(pirateRaids.id, flown.raidId));
+      expect(raid?.status).toBe('returning');
+      expect(raid?.homeAt).not.toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('takes a flight bay, both legs of fuel, and leaves the world reading AWAY', async () => {
     const target = await findVisible();
     const fleet = await armed();

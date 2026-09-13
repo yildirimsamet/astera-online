@@ -1,4 +1,5 @@
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { fleetCount, fleetEntries, pirateActive, pirateRoster, seededFrom } from '@astera/rules';
 import { pirateState, seasons } from '../src/db/schema.js';
@@ -26,6 +27,7 @@ afterAll(async () => {
   const { close } = await testDb();
   await close();
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('the private pirate field', () => {
   it('is the same lane every time the season key is read', () => {
@@ -35,6 +37,24 @@ describe('the private pirate field', () => {
     expect(a).toEqual(privatePirateField('key-one'));
     expect(a).not.toEqual(privatePirateField('key-two'));
     expect(a.length).toBeGreaterThan(0);
+  });
+
+  it('appends the denser lane after every established opaque target', () => {
+    const establishedLength = 2809;
+    const field = privatePirateField('key-one');
+    expect(field.length / establishedLength).toBeGreaterThan(1.45);
+    expect(field.length / establishedLength).toBeLessThan(1.55);
+    expect(createHash('sha256')
+      .update(JSON.stringify(field.slice(0, establishedLength)))
+      .digest('hex'))
+      .toBe('f831aa77815a859a4129e66095dcf9b0b6387748257cea7cfa8c5f260ceb0fba');
+  });
+
+  it('can retain the complete established lane during a rolling activation', () => {
+    const established = privatePirateField('key-one', false);
+    expect(established).toHaveLength(2809);
+    expect(established).toEqual(privatePirateField('key-one').slice(0, established.length));
+    expect(privatePirateField('key-one', false)).toBe(established);
   });
 
   it('hands out an opaque handle and never the index behind it', () => {
@@ -162,5 +182,25 @@ describe('what a pirate has left', () => {
     }
     expect(snapshot.standing(now).length).toBeGreaterThan(0);
     expect(snapshot.standing(now).length).toBeLessThan(snapshot.pirates.length);
+  });
+
+  it('hides only extra contacts until every process understands their handles', async () => {
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const established = privatePirateField(season!.asteroidKey, false);
+    const full = privatePirateField(season!.asteroidKey);
+    const extra = full[established.length]!;
+    const now = new Date(season!.startsAt.getTime() + (extra.appearsAt + 1) * 60_000);
+
+    vi.stubEnv('PIRATE_SPAWN_INCREASE_ENABLED', 'false');
+    const staged = await loadPirateSnapshot(f.db, f.seasonId, now);
+    expect(staged.pirates).toBe(full);
+    expect(pirateIndexFromId(staged.key, staged.pirates, pirateId(staged.key, extra.index)))
+      .toBe(extra.index);
+    expect(staged.standing(now).every(p => p.index < established.length)).toBe(true);
+
+    vi.stubEnv('PIRATE_SPAWN_INCREASE_ENABLED', 'true');
+    const enabled = await loadPirateSnapshot(f.db, f.seasonId, now);
+    expect(enabled.standing(now).some(p => p.index === extra.index)).toBe(true);
+    expect(staged.standing(now)).toEqual(enabled.standing(now).filter(p => p.index < established.length));
   });
 });

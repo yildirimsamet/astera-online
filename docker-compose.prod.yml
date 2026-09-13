@@ -39,6 +39,9 @@ x-api: &api
     COMMANDER_CACHE_TTL_MS: ${COMMANDER_CACHE_TTL_MS:-30000}
     PUBLIC_CACHE_TTL_MS: ${PUBLIC_CACHE_TTL_MS:-30000}
     TRAFFIC_CACHE_TTL_MS: ${TRAFFIC_CACHE_TTL_MS:-5000}
+    # Set false for the first compatibility roll, true after all four processes
+    # understand the additional pirate handles. Existing targets stay visible.
+    PIRATE_SPAWN_INCREASE_ENABLED: ${PIRATE_SPAWN_INCREASE_ENABLED:-true}
     MINING_CACHE_TTL_MS: ${MINING_CACHE_TTL_MS:-5000}
     SSE_MAX_BUFFER_BYTES: ${SSE_MAX_BUFFER_BYTES:-65536}
   depends_on:
