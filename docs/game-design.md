@@ -222,7 +222,7 @@ role.
 | **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
 | **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
-| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid, transfer or defend an ordinary raid; rests a minute after a leg under a minute (D183) |
+| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid or defend an ordinary raid; transfer needs a mobile escort; a short debris leg rests only its own craft (D183) |
 
 Counter cycle: **`SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER`** at 1.6× / 0.625×. Support
 hulls are prey to everything and deal nothing.
@@ -566,7 +566,17 @@ race and stays one; the trip back is the price of having won it. What it costs i
 bay held three times as long and a craft on the disc, in the open, for the whole of it — so
 "which rock, and when" now also asks how long you are willing to be committed. It does not
 lower how much ore the galaxy takes out: the field is the bottleneck, not the round trip, and
-the same rocks are emptied either way. Salvage runs pay the same price.
+the same rocks are emptied either way. Laden salvage runs pay the same price. Empty
+craft return at normal speed, including when a rival has already emptied the target.
+
+**Only short debris runs earn a cooldown (D183, owner correction 2026-09-13).**
+An outbound debris leg under one minute rests only the craft that flew it for one minute
+after landing. Asteroid runs never earn this rest, even at zero distance. The
+authoritative `craftCooldowns` exposes each landed batch's craft count and ready instant;
+`craftReadyAt` remains only for older clients. Unused or independently ready craft stay
+sendable, including to a target already worked by another outbound/returning craft.
+Independent runs share ordinary flight bays and the planet's home inventory, not a
+one-run-per-target restriction.
 
 **Mined ore comes home into the works, not into storage (D31)** — so a miner collects like
 everyone else, their haul is raidable at half rate with no vault cover, and what they can

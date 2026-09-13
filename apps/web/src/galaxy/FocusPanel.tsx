@@ -8,6 +8,7 @@ import {
   SETTLEMENT_CLAIM_MINUTES,
   PROBE,
   combatValue,
+  prospectorAvailability,
   distance,
   fleetCount,
   fleetEntries,
@@ -34,6 +35,7 @@ import type {
 } from '../api/schemas.js';
 import { useProbe, useSetRival, useWatch } from '../api/queries.js';
 import { rivalColour } from './PlanetField.jsx';
+import type { TargetMiningRun } from './scene.js';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import {
@@ -2088,7 +2090,7 @@ function ProbeControl({
 export function AsteroidFocus({
   rock,
   isotopeAccess,
-  craftAvailable,
+  craftAvailable: craftAtHome,
   craftHold,
   derrick,
   derrickHold,
@@ -2097,6 +2099,7 @@ export function AsteroidFocus({
   worksRoom,
   run,
   craftReadyAt,
+  craftCooldowns,
   onClose,
   onSend,
   busy,
@@ -2125,17 +2128,10 @@ export function AsteroidFocus({
    */
   worksRoom: number;
   /** Your own craft already working this rock, if any. */
-  run: MiningRun | undefined;
-  /**
-   * WHEN THIS WORLD'S DRILLS ARE FREE AGAIN — null when they already are. D183.
-   *
-   * A trip too short to have cost anything (a wreck field over your own world is a
-   * zero-length leg) rests the squadron for a minute when it lands. Drawn rather
-   * than only refused: D124 forbids a rule the player cannot see, and
-   * `PROSPECTOR.returnSpeedFactor` refuses "a timer with nothing on screen" in as
-   * many words. The launch stays the authority behind it.
-   */
+  run: TargetMiningRun | undefined;
+  /** Legacy aggregate fallback only when an older server omits independent batches. */
   craftReadyAt: Date | null;
+  craftCooldowns?: readonly CraftCooldown[];
   onClose: () => void;
   onSend: (craft: number) => void;
   busy: boolean;
@@ -2144,6 +2140,7 @@ export function AsteroidFocus({
 }) {
   const { t } = useTranslation();
   const now = useNow();
+  const { available: craftAvailable, resting } = craftReadiness(craftAtHome, craftReadyAt, craftCooldowns, now);
   const crystal = Math.round(rock.crystalShare * 100);
   const deuterium = Math.round((rock.deuteriumShare ?? 0) * 100);
   const needsSpectrometry = rock.isotopeRich && !isotopeAccess;
@@ -2164,7 +2161,6 @@ export function AsteroidFocus({
   // account. Anything above the room available is lost on arrival. D31.
   const bringing = Math.min(craftHold * sending, rock.oreRemaining);
   const spill = Math.max(0, Math.round(bringing - worksRoom));
-  const resting = restingFor(craftReadyAt, now);
 
   return (
     <Shell
@@ -2194,18 +2190,8 @@ export function AsteroidFocus({
          * hull now, so the only reason not to offer the button is having no craft,
          * which the button itself already says.
          */
-        run ? (
-          <p className="num text-caption text-crystal">
-            {t('focus.asteroid.working', {
-              count: run.craft,
-              state: t(
-                run.status === 'returning'
-                  ? 'focus.asteroid.stateReturning'
-                  : 'focus.asteroid.stateInbound',
-              ),
-            })}
-          </p>
-        ) : (
+        <>
+        {run && <MiningCommitments run={run} lane="asteroid" />}
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
@@ -2218,24 +2204,25 @@ export function AsteroidFocus({
           >
             {needsSpectrometry
               ? t('focus.asteroid.researchNeeded')
-              : craftAvailable < 1
-                ? t('focus.asteroid.noCraft')
-                : resting !== null
-                  ? t('focus.asteroid.resting', { duration: countdown(resting) })
+              : resting !== null
+                ? t('focus.asteroid.resting', { duration: countdown(resting) })
+                : craftAvailable < 1
+                  ? t('focus.asteroid.noCraft')
                   : tooLate
                     ? t('focus.asteroid.tooLate')
                     : t('focus.asteroid.send', { count: sending, duration: duration(reach) })}
           </button>
-        )
+        </>
       }
     >
-      {!run && !needsSpectrometry && (
+      {!needsSpectrometry && (
         <CraftPicker
           available={craftAvailable}
           value={sending}
           onPick={setCraft}
         />
       )}
+      <CraftRests cooldowns={craftCooldowns} now={now} lane="asteroid" />
 
       <div className="grid grid-cols-2 gap-2">
         <Figure
@@ -3318,6 +3305,63 @@ const restingFor = (readyAt: Date | null, now: number): number | null => {
   return left > 0 ? left : null;
 };
 
+interface CraftCooldown { runId: string; craft: number; readyAt: Date }
+
+/** Keep independently launched batches visible without pretending they share a leg. */
+function MiningCommitments({ run, lane }: {
+  run: TargetMiningRun;
+  lane: 'asteroid' | 'debris';
+}) {
+  const { t } = useTranslation();
+  const batches = run.outboundCraft === undefined || run.returningCraft === undefined
+    ? [{ count: run.craft, status: run.status }]
+    : [
+        { count: run.outboundCraft, status: 'outbound' as const },
+        { count: run.returningCraft, status: 'returning' as const },
+      ].filter((batch) => batch.count > 0);
+
+  return batches.map((batch) => (
+    <p key={batch.status} className={`num text-caption ${lane === 'asteroid' ? 'text-crystal' : 'text-alloy'}`}>
+      {t(lane === 'asteroid' ? 'focus.asteroid.working' : 'focus.debris.working', {
+        count: batch.count,
+        state: t(
+          batch.status === 'returning'
+            ? lane === 'asteroid'
+              ? 'focus.asteroid.stateReturning'
+              : 'focus.debris.stateReturning'
+            : lane === 'asteroid'
+              ? 'focus.asteroid.stateInbound'
+              : 'focus.debris.stateInbound',
+        ),
+      })}
+    </p>
+  ));
+}
+
+/** Derive selectable craft every second; expired batches need no network poll. */
+const craftReadiness = (home: number, legacy: Date | null, cooldowns: readonly CraftCooldown[] | undefined, now: number) => {
+  if (cooldowns === undefined) return { available: home, resting: restingFor(legacy, now) };
+  const view = prospectorAvailability(home,
+    cooldowns.map((rest) => ({ craft: rest.craft, readyAtMs: rest.readyAt.getTime() })), now);
+  return {
+    available: view.available,
+    resting: view.available === 0 && view.readyAtMs !== null ? (view.readyAtMs - now) / 60_000 : null,
+  };
+};
+
+function CraftRests({ cooldowns, now, lane }: {
+  cooldowns: readonly CraftCooldown[] | undefined; now: number; lane: 'asteroid' | 'debris';
+}) {
+  const { t } = useTranslation();
+  return cooldowns?.filter((rest) => rest.readyAt.getTime() > now).map((rest) => (
+    <p key={rest.runId} className="num text-caption text-dim">
+      {rest.craft} × {t(lane === 'asteroid' ? 'focus.asteroid.resting' : 'focus.debris.resting', {
+        duration: countdown((rest.readyAt.getTime() - now) / 60_000),
+      })}
+    </p>
+  ));
+}
+
 /**
  * HOW MANY CRAFT TO COMMIT — and why it has to be a choice.
  *
@@ -3373,12 +3417,13 @@ function CraftPicker({
 export function DebrisFocus({
   field,
   planetName,
-  craftAvailable,
+  craftAvailable: craftAtHome,
   craftHold,
   reachMinutes: reach,
   worksRoom,
   run,
   craftReadyAt,
+  craftCooldowns,
   onSend,
   onClose,
   busy,
@@ -3397,9 +3442,10 @@ export function DebrisFocus({
   craftHold: number;
   reachMinutes: number | null;
   worksRoom: number;
-  run: MiningRun | undefined;
-  /** The same rest the rock rail draws, and the lane the rule exists for. D183. */
+  run: TargetMiningRun | undefined;
+  /** Legacy fallback only; new servers publish the independent landed batches. */
   craftReadyAt: Date | null;
+  craftCooldowns?: readonly CraftCooldown[];
   onSend: (craft: number) => void;
   onClose: () => void;
   busy: boolean;
@@ -3408,6 +3454,7 @@ export function DebrisFocus({
 }) {
   const { t } = useTranslation();
   const now = useNow();
+  const { available: craftAvailable, resting } = craftReadiness(craftAtHome, craftReadyAt, craftCooldowns, now);
   const left = field.alloy + field.crystal + field.deuterium;
   const canCarry = craftHold * craftAvailable;
   const worthSending = Math.max(
@@ -3421,7 +3468,6 @@ export function DebrisFocus({
     setCraft(worthSending);
   }, [worthSending]);
   const spill = Math.max(0, Math.round(Math.min(craftHold * sending, left) - worksRoom));
-  const resting = restingFor(craftReadyAt, now);
 
   return (
     <Shell
@@ -3448,18 +3494,8 @@ export function DebrisFocus({
         </span>
       }
       actions={
-        run ? (
-          <p className="num text-caption text-alloy">
-            {t('focus.debris.working', {
-              count: run.craft,
-              state: t(
-                run.status === 'returning'
-                  ? 'focus.debris.stateReturning'
-                  : 'focus.debris.stateInbound',
-              ),
-            })}
-          </p>
-        ) : (
+        <>
+        {run && <MiningCommitments run={run} lane="debris" />}
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
@@ -3468,24 +3504,19 @@ export function DebrisFocus({
               onSend(sending);
             }}
           >
-            {craftAvailable < 1
-              ? t('focus.debris.noCraft')
-              : resting !== null
-                ? t('focus.debris.resting', { duration: countdown(resting) })
+            {resting !== null
+              ? t('focus.debris.resting', { duration: countdown(resting) })
+              : craftAvailable < 1
+                ? t('focus.debris.noCraft')
                 : tooLate
                   ? t('focus.debris.tooLate')
                   : t('focus.debris.send', { count: sending, duration: duration(reach) })}
           </button>
-        )
+        </>
       }
     >
-      {!run && (
-        <CraftPicker
-          available={craftAvailable}
-          value={sending}
-          onPick={setCraft}
-        />
-      )}
+      <CraftPicker available={craftAvailable} value={sending} onPick={setCraft} />
+      <CraftRests cooldowns={craftCooldowns} now={now} lane="debris" />
 
       <div className="grid grid-cols-2 gap-2">
         <Figure label={t('focus.debris.alloyLeft')} value={compact(field.alloy)} tone="alloy" />

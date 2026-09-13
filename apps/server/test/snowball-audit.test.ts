@@ -328,7 +328,7 @@ async function soloOpeningPlan(
       const hit = interceptOrbit(current, prospectorSpeed(current.orbit), rock, rock.expiresAt, minute);
       if (!hit) return [];
       const roundTrip = hit.flightMinutes + travelExact(Math.hypot(hit.at.x - current.x,
-        hit.at.y - current.y, hit.at.z - current.z), prospectorReturnSpeed(current.orbit));
+        hit.at.y - current.y, hit.at.z - current.z), prospectorReturnSpeed(current.orbit, true));
       const ore = Math.min(rock.oreRemaining, prospectorHold(current.orbit, {}) * craft);
       return [{ rock, score: ore * (1 - rock.crystalShare) / Math.max(0.01, roundTrip) }];
     }).sort((left, right) => right.score - left.score);

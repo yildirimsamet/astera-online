@@ -1956,8 +1956,8 @@ export const miningSchema = z.object({
   /** What a Derrick would make of the hold, so the interface can sell one. */
   derrickHold: z.number(),
   /**
-   * WHEN THE SELECTED WORLD'S DRILLS ARE FREE AGAIN — null when they already are.
-   * D183.
+   * Legacy aggregate clock. New clients count `craftCooldowns` independently;
+   * a rest never holds another ready craft. Retained for already-open clients.
    *
    * A trip too short to have cost anything (a wreck field over your own world is
    * a zero-length leg) rests the craft for a minute when they land. The instant is
@@ -1970,6 +1970,12 @@ export const miningSchema = z.object({
    * the exact failure this file's contract tests exist for.
    */
   craftReadyAt: z.coerce.date().nullish().transform((at) => at ?? null),
+  /** Independent landed batches. Optional only during mixed-version rollout. */
+  craftCooldowns: z.array(z.object({
+    runId: z.string().uuid(),
+    craft: z.number().int().positive(),
+    readyAt: z.coerce.date(),
+  })).optional(),
   asteroids: z.array(asteroidSchema),
   nextFieldChangeAt: z.coerce.date().nullable(),
   /** Wreck fields left by battles. Public in full — size, place and clock. D32. */
@@ -2025,6 +2031,7 @@ export const miningStatusSchema = miningSchema
     craftHold: true,
     derrickHold: true,
     craftReadyAt: true,
+    craftCooldowns: true,
     runs: true,
   })
   .extend({

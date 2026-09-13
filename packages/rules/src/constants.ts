@@ -1909,7 +1909,8 @@ export const PROSPECTOR = {
    * hole and `shortTripCooldownMinutes` is what fills it; both are below, and the
    * cooldown is DRAWN, which is what the objection above actually asks for.
    *
-   * THE SALVAGE RUN PAYS IT TOO. Owner decision. `resolveMiningArrival` turns both
+   * A LADEN SALVAGE RUN PAYS IT TOO. Owner decision. Empty craft fly at normal
+   * speed (owner correction, 2026-09-13). `resolveMiningArrival` turns both
    * kinds of run around through the same line, so a wreck field is not a faster
    * way home than a rock.
    */
@@ -1946,10 +1947,8 @@ export const PROSPECTOR = {
    * home by tapping.
    *
    * ONE MINUTE, AND IT IS THE OUTBOUND LEG THAT IS MEASURED — the trip the player
-   * actually chose, from which the way home is derived. On the ordinary field this
-   * is nothing: the nearest rock band starts at 400 units and a bare Prospector
-   * covers that in about half an hour, so no rock run has ever come close to the
-   * line. It exists for the case where the target is where the craft already is.
+   * actually chose. ONLY DEBRIS RUNS earn this rest (owner correction, 2026-09-13):
+   * an asteroid interception may also be under a minute, but never adds a cooldown.
    */
   shortTripMinutes: 1,
   /**

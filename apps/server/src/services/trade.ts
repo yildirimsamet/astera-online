@@ -25,6 +25,7 @@ import { tradeRuns, units } from '../db/schema.js';
 import { publish, publishShard } from '../stream/bus.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
+import { assertProspectorsRested } from './mining.js';
 import { tradeShipOccurrence } from './galaxyEvents.js';
 import { validateTransferFleet } from './movement.js';
 import { notify } from './notifications.js';
@@ -189,6 +190,10 @@ export async function launchTrade(
       }
     }
 
+    // Prospectors can accompany a transport. That must not spend a resting craft
+    // or make its landing row reserve an unrelated fresh craft on return.
+    await assertProspectorsRested(tx, planetId, origin.now,
+      origin.homeFleet.PROSPECTOR ?? 0, requested.PROSPECTOR ?? 0);
     const tech = await techOf(tx, origin.playerId);
     const speed = fleetSpeed(requested, tech) * fleetSpeedMult(origin.orbit);
     if (!(speed > 0)) throw new GameError('IMMOBILE_FLEET', 'That convoy cannot travel');

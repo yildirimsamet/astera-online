@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   PROSPECTOR,
   prospectorReadyAt,
+  prospectorReturnSpeed,
+  prospectorSpeed,
   shortProspectorTrip,
 } from '../src/index.js';
 
@@ -43,14 +45,20 @@ describe('a Prospector trip too short to cost anything', () => {
    */
   it('lands its craft with an instant they are free again', () => {
     const home = Date.UTC(2026, 0, 1, 12, 0, 0);
-    expect(prospectorReadyAt(0, home))
+    expect(prospectorReadyAt(0, home, 'debris'))
       .toBe(home + PROSPECTOR.shortTripCooldownMinutes * 60_000);
   });
 
   it('leaves an ordinary trip with no cooldown at all', () => {
     const home = Date.UTC(2026, 0, 1, 12, 0, 0);
-    expect(prospectorReadyAt(PROSPECTOR.shortTripMinutes, home)).toBeNull();
-    expect(prospectorReadyAt(45, home)).toBeNull();
+    expect(prospectorReadyAt(PROSPECTOR.shortTripMinutes, home, 'debris')).toBeNull();
+    expect(prospectorReadyAt(45, home, 'debris')).toBeNull();
+  });
+
+  it('never puts an asteroid run on cooldown, even at zero distance', () => {
+    const home = Date.UTC(2026, 0, 1, 12);
+    expect(prospectorReadyAt(0, home, 'asteroid')).toBeNull();
+    expect(prospectorReadyAt(PROSPECTOR.shortTripMinutes / 2, home, 'asteroid')).toBeNull();
   });
 
   /**
@@ -59,8 +67,8 @@ describe('a Prospector trip too short to cost anything', () => {
    * a countdown that never ends.
    */
   it('refuses to invent an instant out of numbers that are not ones', () => {
-    expect(prospectorReadyAt(Number.NaN, Date.now())).toBeNull();
-    expect(prospectorReadyAt(0, Number.NaN)).toBeNull();
+    expect(prospectorReadyAt(Number.NaN, Date.now(), 'debris')).toBeNull();
+    expect(prospectorReadyAt(0, Number.NaN, 'debris')).toBeNull();
     expect(shortProspectorTrip(Number.NaN)).toBe(false);
     expect(shortProspectorTrip(-1)).toBe(true);
   });
@@ -75,5 +83,18 @@ describe('a Prospector trip too short to cost anything', () => {
   it('states both figures as minutes, and both above zero', () => {
     expect(PROSPECTOR.shortTripMinutes).toBeGreaterThan(0);
     expect(PROSPECTOR.shortTripCooldownMinutes).toBeGreaterThan(0);
+  });
+});
+
+describe('Prospector return speed', () => {
+  it.each([false, true])('uses normal speed when empty (Derrick: %s)', (derrick) => {
+    const orbit = derrick ? ['DERRICK' as const] : [];
+    expect(prospectorReturnSpeed(orbit, false)).toBe(prospectorSpeed(orbit));
+  });
+
+  it.each([false, true])('slows a laden craft only (Derrick: %s)', (derrick) => {
+    const orbit = derrick ? ['DERRICK' as const] : [];
+    expect(prospectorReturnSpeed(orbit, true))
+      .toBe(prospectorSpeed(orbit) * PROSPECTOR.returnSpeedFactor);
   });
 });

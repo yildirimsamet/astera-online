@@ -2254,13 +2254,8 @@ export const miningRuns = pgTable('mining_runs', {
 }, (t) => [
   index('mining_planet_idx').on(t.planetId, t.status),
   index('mining_season_idx').on(t.seasonId, t.status),
-  uniqueIndex('mining_planet_rock_idx')
-    .on(t.planetId, t.asteroidIndex)
-    .where(sql`status <> 'done'`),
-  /** One harvest per field per planet, the same rule the rocks have. */
-  uniqueIndex('mining_planet_debris_idx')
-    .on(t.planetId, t.debrisFieldId)
-    .where(sql`status <> 'done'`),
+  // Multiple independent craft may share a target. Origin-lock inventory and
+  // bay checks, not target uniqueness, enforce launch capacity.
   check(
     'mining_one_target',
     sql`(asteroid_index is not null and debris_field_id is null)

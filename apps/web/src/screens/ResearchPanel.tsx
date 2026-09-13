@@ -509,7 +509,9 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         id={`row-${id}`}
         data-focused={focused === id ? 'true' : undefined}
         className={!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
-          && (id === 'DEATH_STAR_PROTOCOL' || id === 'INTERCEPTION_GRID')
+          && (id === 'DEATH_STAR_PROTOCOL'
+            || id === 'INTERCEPTION_GRID'
+            || id === 'STRATEGIC_STOCKPILE')
           ? 'hidden'
           : undefined}
       >
@@ -602,7 +604,13 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         for a week should not reopen Doctrine every visit.
       */}
       {GROUPED.map((group) => (
-        <section key={group.id} data-band={group.id} className="plate overflow-hidden">
+        <section
+          key={group.id}
+          data-band={group.id}
+          className={`plate overflow-hidden ${
+            !FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && group.id === 'strategic' ? 'hidden' : ''
+          }`}
+        >
           {/*
             The two keys are written out rather than built from `group.id`. A
             template literal would type-check as one union member and quietly stop

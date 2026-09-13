@@ -686,8 +686,21 @@ Bu geçişteki ana kararlar:
 
 **Mining**
 
-* Yakın mesafe mining artık kısa bir cooldown taşıyor.
-* `craftReadyAt` API'de yayınlanıyor ve oyuncuya countdown gösteriliyor.
+* Bir dakikadan kısa debris yolculuğu inişten sonra bir dakika cooldown taşıyor.
+  Asteroid yolculuğu mesafeden bağımsız olarak cooldown üretmiyor
+  (owner correction, 2026-09-13).
+* Cooldown yalnızca o yolculuğa katılan kazıcıları tutuyor; kullanılmamış veya kendi
+  cooldown'ı bitmiş kazıcılar serbest. Aynı asteroid/debris hedefinde birden fazla
+  bağımsız outbound/returning yolculuk bulunabilir (owner correction, 2026-09-13).
+* `craftCooldowns: [{runId, craft, readyAt}]` API'de yayınlanıyor ve her dönüşün
+  countdown'ı ayrı gösteriliyor. `craftReadyAt` eski açık client'lar için korunuyor.
+* Migration `0077` hedef başına tek uçuş indekslerini kaldırıyor. Eski kod şemayı
+  okuyup kendi eski launch kontrolünü sürdürebilir; event/payload değişmiyor.
+  Rolling uyumluluğu eski imajı migration uygulanmış restore DB'de boot ederek ölçülmeli.
+* CR'da transfer/merchant konvoyunun dinlenen kazıcıyı taşıyabildiği testle ölçüldü.
+  Bu iki launch da aynı origin-lock cooldown sayımını kullanıyor: dinlenen kazıcı
+  başka dünyaya taşınarak cooldown'ını silemez veya başka taze kazıcıyı kilitleyemez.
+  Taze kazıcının transfer/konvoya katılması değişmiyor.
 
 **Pirate ETA**
 
@@ -871,7 +884,7 @@ Binds: Fleet formations, bombardment visualization, performance work.
 
 ### D117 · Laden Prospectors return at one-third speed — OWNER INSTRUCTION
 
-Rule: A loaded mining/salvage return leg uses one-third of normal Prospector speed, expressed in the shared `homeAt`; it is a slower visible return, not a separate cooldown. Every countdown, season-end guard and simulator read uses the same return-speed rule.
+Rule: A loaded mining/salvage return leg uses one-third of normal Prospector speed, expressed in the shared `homeAt`; it is a slower visible return, not a separate cooldown. Empty craft return at normal speed (owner correction, 2026-09-13), including exhausted or missing targets. Any positive haul, even a partial or deuterium-only load, pays the slowdown. Every countdown, season-end guard and simulator read uses the same return-speed rule; launch guards conservatively allow for a laden return because the haul is unknown until arrival.
 Binds: Mining/salvage settlement, Prospector timing, flight bays, simulator.
 
 ### D120 · Visual legs stay continuous — OWNER DECISION
@@ -1155,7 +1168,7 @@ Binds: `ACADEMY_STEPS`, `academyGroup`, Academy Telescope timing/storage, Fleet 
 
 ### D206 · Strategic crafting is temporarily hidden behind one release switch — OWNER INSTRUCTION
 
-Rule: Death Star crafting and the anti-strategic battery are temporarily unavailable without deleting their implementation. `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED = false` is the single reopening switch. While false, the two planet-menu surfaces stay mounted but carry `display: none`; the two direct permission rows (`DEATH_STAR_PROTOCOL` and `INTERCEPTION_GRID`) do the same in Research. `GRAVITIC_CHARGES` remains visible because it also unlocks the Nullifier, and `STRATEGIC_STOCKPILE` remains authored as the separate capacity project. Authenticated POSTs to the Death Star and interceptor build routes return the same `STRATEGIC_UNAVAILABLE` 404 before body, ownership, prerequisite or resource evaluation. Existing launch/resolution state is not deleted and the Death Star launch route is unchanged, so reopening does not require data repair.
+Rule: Death Star crafting and the anti-strategic battery are temporarily unavailable without deleting their implementation. `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED = false` is the single reopening switch. While false, the two planet-menu surfaces stay mounted but carry `display: none`; every Death Star-only research row (`DEATH_STAR_PROTOCOL`, `INTERCEPTION_GRID` and `STRATEGIC_STOCKPILE`) and their now-empty Strategic band do the same. `GRAVITIC_CHARGES` remains visible because it also unlocks the Nullifier. Authenticated POSTs to the Death Star and interceptor build routes return the same `STRATEGIC_UNAVAILABLE` 404 before body, ownership, prerequisite or resource evaluation. Existing research, launch/resolution state and authored projects are not deleted, so reopening does not require data repair.
 Binds: `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED`, Death Star forge, interceptor battery, ResearchPanel, strategic build routes.
 
 ### D207 · The Escort is the faster Bulwark — OWNER INSTRUCTION

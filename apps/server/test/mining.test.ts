@@ -19,13 +19,18 @@ import {
 } from '@astera/rules';
 import {
   asteroidClaims,
+  debrisFields,
   galaxyEvents,
   miningRuns,
   notifications,
   planets,
+  scheduledEvents,
+  satellites,
   units,
 } from '../src/db/schema.js';
-import { launchHarvest, launchMining, visibleAsteroids } from '../src/services/mining.js';
+import {
+  launchHarvest, launchMining, prospectorsRestingUntil, resolveMiningArrival, visibleAsteroids,
+} from '../src/services/mining.js';
 import { buildUnits } from '../src/services/build.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
@@ -598,13 +603,13 @@ describe('mining', () => {
       expect(lateRun.minedAlloy + lateRun.minedCrystal).toBe(0);
     });
 
-    it('refuses a second run at a rock you are already working', async () => {
+    it('allows a second independent run at a rock already being worked', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 4 });
       const rock = waitForRock();
 
       await launchMining(f.db, mine, rock.index, 2, f.clock);
-      await expect(launchMining(f.db, mine, rock.index, 2, f.clock)).rejects.toMatchObject({
-        code: 'ALREADY_MINING',
+      await expect(launchMining(f.db, mine, rock.index, 2, f.clock)).resolves.toMatchObject({
+        craft: 2,
       });
     });
 
@@ -683,12 +688,92 @@ describe('mining', () => {
    * scheduled at it — so asserting on the stored instant is asserting on all of
    * them at once.
    *
-   * The factor multiplies the SPEED, so only the travel term moves:
-   * `prospectorTravelExact` is `launchMinutes + travel`, and the landing overhead
-   * is the same whichever way the craft is pointed. That is why these compare
-   * against the helper rather than against a bare multiple of the outbound leg.
+   * D121 removed fixed overhead. Empty craft retain normal speed; any positive
+   * haul pays the slowdown (owner correction, 2026-09-13).
    */
   describe('the trip home', () => {
+    it.each(['alloy', 'crystal', 'deuterium'] as const)(
+      'keeps a partial %s-only haul at laden speed', async (resource) => {
+        await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+        const field = await giveDebris(f.db, f.seasonId, other, {
+          alloy: 0, crystal: 0, deuterium: 0, [resource]: 10, createdAt: f.clock.now(),
+        });
+        const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+        f.clock.set(run.arriveAt);
+        await worker(f).tick();
+        const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+        const hauled = back!.minedAlloy + back!.minedCrystal + back!.minedDeuterium;
+        expect(hauled).toBeGreaterThan(0);
+        expect(hauled).toBeLessThan(back!.holdEach);
+        const expected = run.arriveAt.getTime()
+          + travelExact(120, prospectorSpeed([]) * PROSPECTOR.returnSpeedFactor) * 60_000;
+        expect(Math.abs(back!.homeAt!.getTime() - expected)).toBeLessThanOrEqual(1);
+      },
+    );
+
+    it('puts no cooldown on a real asteroid trip shorter than a minute', async () => {
+      const rock = waitForRock();
+      const minutes = (f.clock.now().getTime() - Date.UTC(2026, 0, 1)) / 60_000;
+      await placeAt(f.db, mine, asteroidPosition(rock, minutes));
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const run = await launchMining(f.db, mine, rock.index, 1, f.clock);
+      expect(run.flightMinutes).toBeLessThan(PROSPECTOR.shortTripMinutes);
+      f.clock.set(run.arriveAt);
+      await worker(f).tick();
+      const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+      f.clock.set(back!.homeAt!);
+      await worker(f).tick();
+      expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toBeNull();
+      const field = await giveDebris(f.db, f.seasonId, mine, {
+        alloy: 1_000, crystal: 0, createdAt: f.clock.now(),
+      });
+      await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).resolves.toMatchObject({ craft: 1 });
+    });
+
+    it.each(['asteroid', 'debris'] as const)(
+      'returns empty from an exhausted %s at normal speed, even after a restart',
+      async (kind) => {
+        await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+        const rock = waitForRock();
+        const field = await giveDebris(f.db, f.seasonId, other, {
+          alloy: 5_000, crystal: 1_200, createdAt: f.clock.now(),
+        });
+        const run = kind === 'asteroid'
+          ? await launchMining(f.db, mine, rock.index, 1, f.clock)
+          : await launchHarvest(f.db, mine, field.id, 1, f.clock);
+        if (kind === 'asteroid') {
+          await f.db.insert(asteroidClaims).values({
+            seasonId: f.seasonId, index: rock.index, oreTaken: rock.ore, updatedAt: run.arriveAt,
+          });
+        } else {
+          await f.db.update(debrisFields).set({ takenAlloy: 5_000, takenCrystal: 1_200 })
+            .where(eq(debrisFields.id, field.id));
+        }
+        // Hardware installed mid-flight must still lift the empty return.
+        await f.db.insert(satellites).values({ planetId: mine, slot: 0, type: 'DERRICK', level: 1 });
+        f.clock.set(new Date(run.arriveAt.getTime() + 10 * 60_000));
+        await worker(f).tick();
+        const [back] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+        const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+        expect(back!.minedAlloy + back!.minedCrystal + back!.minedDeuterium).toBe(0);
+        const dist = Math.hypot(back!.interceptX - home!.x, back!.interceptY - home!.y, back!.interceptZ - home!.z);
+        expect(dist).toBeGreaterThan(0);
+        const expected = run.arriveAt.getTime() + travelExact(dist, prospectorSpeed(['DERRICK'])) * 60_000;
+        expect(Math.abs(back!.homeAt!.getTime() - expected)).toBeLessThanOrEqual(1);
+        const [event] = await f.db.select().from(scheduledEvents).where(and(
+          eq(scheduledEvents.refId, run.runId), eq(scheduledEvents.kind, 'mining_return'),
+        ));
+        expect(event!.resolveAt).toEqual(back!.homeAt);
+        await f.db.transaction(async (tx) => resolveMiningArrival(tx, run.runId, f.clock.now()));
+        const [duplicate] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+        expect(duplicate!.homeAt).toEqual(back!.homeAt);
+        f.clock.set(back!.homeAt!);
+        await worker(f).tick();
+        const [done] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+        expect(done!.status).toBe('done');
+      },
+    );
+
     it('starts from the promised meeting instant after a delayed worker restart', async () => {
       await giveUnits(f.db, mine, { PROSPECTOR: 1 });
       const rock = waitForRock();
@@ -708,7 +793,7 @@ describe('mining', () => {
         turned!.interceptZ - home!.z,
       );
       const expectedHomeAt = run.arriveAt.getTime()
-        + travelExact(back, prospectorReturnSpeed([])) * 60_000;
+        + travelExact(back, prospectorReturnSpeed([], true)) * 60_000;
 
       expect(turned!.status).toBe('returning');
       expect(Math.abs(turned!.homeAt!.getTime() - expectedHomeAt)).toBeLessThanOrEqual(1);
@@ -732,7 +817,7 @@ describe('mining', () => {
         turned!.interceptZ - home!.z,
       );
       const orbit: [] = [];
-      const expected = travelExact(back, prospectorReturnSpeed(orbit));
+      const expected = travelExact(back, prospectorReturnSpeed(orbit, true));
       // Compared in MILLISECONDS with a one-millisecond tolerance, not as a
       // fractional minute: `homeAt` is a Date, so the stored instant is quantised
       // to the millisecond and no closeness in minutes is tighter than that.
@@ -781,7 +866,7 @@ describe('mining', () => {
         turned!.interceptZ - home!.z,
       );
       const orbit: [] = [];
-      const expected = travelExact(back, prospectorReturnSpeed(orbit));
+      const expected = travelExact(back, prospectorReturnSpeed(orbit, true));
       expect(
         Math.abs(turned!.homeAt!.getTime() - (run.arriveAt.getTime() + expected * 60_000)),
       ).toBeLessThanOrEqual(1);

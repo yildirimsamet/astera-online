@@ -5,8 +5,10 @@ import {
   DEBRIS,
   HULLS,
   PROSPECTOR,
+  TRAVEL,
   debrisRemaining,
   fleetEntries,
+  prospectorSpeed,
   type Fleet,
   type HullId,
 } from '@astera/rules';
@@ -152,7 +154,7 @@ describe('wreck fields', () => {
    */
   it('locks the craft for a minute after a trip too short to have cost anything', async () => {
     const field = await fight();
-    await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+    await giveUnits(f.db, mine, { PROSPECTOR: 1 });
     await collectWorks(f.db, mine, f.clock);
 
     // The field sits on the origin world itself, so the leg is zero.
@@ -213,6 +215,51 @@ describe('wreck fields', () => {
     // Hours later that landing decides nothing, however short the leg was.
     f.clock.advance(6 * 60);
     expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toBeNull();
+  });
+
+  it('does not let a later short asteroid landing hide the debris cooldown', async () => {
+    const now = f.clock.now().getTime();
+    const field = await giveDebris(f.db, f.seasonId, mine, { alloy: 1_000, crystal: 0, createdAt: f.clock.now() });
+    await f.db.insert(miningRuns).values([
+      {
+        // The constrained target column wins over the denormalised wire label.
+        seasonId: f.seasonId, planetId: mine, targetKind: 'asteroid', debrisFieldId: field.id,
+        craft: 1, holdEach: 300, interceptX: 0, interceptY: 0, interceptZ: 0,
+        departAt: new Date(now - 20_000), arriveAt: new Date(now - 15_000),
+        homeAt: new Date(now - 10_000), status: 'done',
+      },
+      {
+        seasonId: f.seasonId, planetId: mine, targetKind: 'debris', asteroidIndex: 0,
+        craft: 1, holdEach: 300, interceptX: 0, interceptY: 0, interceptZ: 0,
+        departAt: new Date(now - 10_000), arriveAt: new Date(now - 5_000),
+        homeAt: new Date(now - 1_000), status: 'done',
+      },
+    ]);
+    expect(await prospectorsRestingUntil(f.db, mine, f.clock.now()))
+      .toEqual(new Date(now - 10_000 + PROSPECTOR.shortTripCooldownMinutes * 60_000));
+  });
+
+  it.each([0, 0.5, 1, 1.5])('rests only debris legs strictly under a minute (%s min)', async (minutes) => {
+    await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+    const field = await giveDebris(f.db, f.seasonId, mine, {
+      alloy: 1_000, crystal: 0, createdAt: f.clock.now(),
+    });
+    await f.db.update(debrisFields)
+      .set({ x: field.x + minutes * prospectorSpeed([]) / TRAVEL.distanceFactor })
+      .where(eq(debrisFields.id, field.id));
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    await flyHome(run.runId);
+    const [done] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, run.runId));
+    if (minutes < PROSPECTOR.shortTripMinutes) {
+      const readyAt = new Date(done!.homeAt!.getTime() + PROSPECTOR.shortTripCooldownMinutes * 60_000);
+      expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toEqual(readyAt);
+      await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).rejects.toMatchObject({
+        code: 'PROSPECTORS_RESTING', params: { readyAt: readyAt.toISOString() },
+      });
+      f.clock.set(readyAt);
+    }
+    expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toBeNull();
+    await expect(launchHarvest(f.db, mine, field.id, 1, f.clock)).resolves.toMatchObject({ craft: 1 });
   });
 
   /**
@@ -482,14 +529,10 @@ describe('wreck fields', () => {
   });
 
   /**
-   * THE TWO PARTIAL UNIQUE INDEXES MUST NOT COLLIDE WITH EACH OTHER.
+   * DIFFERENT TARGET LANES MUST NOT COLLIDE.
    *
-   * `mining_planet_rock_idx` is `(planet_id, asteroid_index)` and
-   * `mining_planet_debris_idx` is `(planet_id, debris_field_id)`, and since D32
-   * each run leaves one of those columns NULL. This only works because Postgres
-   * treats NULLs as distinct in a unique index — so two harvests do not collide on
-   * the rock index they both leave empty. That is load-bearing behaviour resting on
-   * a default, which is exactly the kind of thing to pin down.
+   * Every run leaves one target column NULL. Independent dispatch removed the
+   * target uniqueness indexes, but both lanes still share inventory and bays.
    */
   it('two harvests at two different fields coexist — NULL rock indexes do not collide', async () => {
     const field = await fight();

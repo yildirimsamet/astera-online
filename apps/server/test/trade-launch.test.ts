@@ -25,10 +25,12 @@ import { minutesSince } from '../src/clock.js';
 import { tradeShipOf } from '../src/services/tradeField.js';
 import { launchTrade, tradeLocation } from '../src/services/trade.js';
 import { launchAttack } from '../src/services/mission.js';
+import { launchHarvest, resolveMiningArrival, resolveMiningReturn } from '../src/services/mining.js';
 import { baysInUse } from '../src/services/flight.js';
 import { fleetTruthFor } from '../src/services/intel.js';
 import {
   fuelUp,
+  giveDebris,
   giveUnits,
   grant,
   levelWorld,
@@ -125,6 +127,21 @@ describe('a convoy sent to the merchant', () => {
   };
 
   const RES = (alloy = 0, crystal = 0, deuterium = 0) => ({ alloy, crystal, deuterium });
+
+  it('cannot take resting Prospectors on a trade convoy but can take fresh ones', async () => {
+    const merchant = await merchantUp();
+    await armed({ COURIER: 4, PROSPECTOR: 2 });
+    const field = await giveDebris(f.db, f.seasonId, mine, { alloy: 10_000, crystal: 0, createdAt: f.clock.now() });
+    const run = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+    await f.db.transaction((tx) => resolveMiningArrival(tx, run.runId, f.clock.now()));
+    await f.db.transaction((tx) => resolveMiningReturn(tx, run.runId, f.clock));
+    const send = (craft: number) => launchTrade(f.db, mine, {
+      occurrenceId: merchant.occurrenceId, fleet: { COURIER: 1, PROSPECTOR: craft },
+      give: RES(32), want: RES(0, 16),
+    }, f.clock);
+    await expect(send(2)).rejects.toMatchObject({ code: 'PROSPECTORS_RESTING', params: { available: 1 } });
+    await expect(send(1)).resolves.toBeDefined();
+  });
 
   /* ── the shape of a launch ──────────────────────────────── */
 

@@ -186,12 +186,13 @@ beforeEach(async () => {
 });
 
 describe('every project is reachable', () => {
-  it('keeps the Death Star and battery permission projects display-none', () => {
+  it('keeps every Death Star-only project display-none while strategic crafting is off', () => {
     const view = show();
     expect(row(view, 'DEATH_STAR_PROTOCOL')).toHaveClass('hidden');
     expect(row(view, 'INTERCEPTION_GRID')).toHaveClass('hidden');
     expect(row(view, 'GRAVITIC_CHARGES')).not.toHaveClass('hidden');
-    expect(row(view, 'STRATEGIC_STOCKPILE')).not.toHaveClass('hidden');
+    expect(row(view, 'STRATEGIC_STOCKPILE')).toHaveClass('hidden');
+    expect(view.container.querySelector('[data-band="strategic"]')).toHaveClass('hidden');
   });
 
   it('renders a row for all fifteen projects', () => {

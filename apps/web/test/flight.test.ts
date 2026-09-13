@@ -259,6 +259,20 @@ describe('a mining run', () => {
       .toBe(fromA);
   });
 
+  it('summarises every independent run from this world at the same target', () => {
+    const first = run({ id: 'run-a', planetId: 'colony-a', craft: 1, status: 'returning' });
+    const second = run({ id: 'run-b', planetId: 'colony-a', craft: 2, status: 'outbound' });
+    const done = run({ id: 'run-c', planetId: 'colony-a', craft: 8, status: 'done' });
+    expect(runForPlanetTarget([first, second, done], 'colony-a', {
+      kind: 'asteroid', id: first.asteroidId!,
+    })).toMatchObject({
+      craft: 3,
+      status: 'outbound',
+      outboundCraft: 2,
+      returningCraft: 1,
+    });
+  });
+
   it('treats an older server’s origin-less run as belonging to the selected world', () => {
     const legacy = run({ planetId: undefined });
     expect(runForPlanetTarget(

@@ -666,13 +666,20 @@ export function runHomePosition(
   return origin ? toGame(origin.position) : fallback;
 }
 
-/** The active world's own commitment to one target, if it has one. */
+export type TargetMiningRun = MiningRun & {
+  /** Present only when several independent batches share this target. */
+  outboundCraft?: number;
+  /** Present only when several independent batches share this target. */
+  returningCraft?: number;
+};
+
+/** The active world's complete commitment to one target, if it has one. */
 export function runForPlanetTarget(
   runs: readonly MiningRun[],
   planetId: string | undefined,
   target: { kind: 'asteroid' | 'debris'; id: string },
-): MiningRun | undefined {
-  return runs.find((run) => {
+): TargetMiningRun | undefined {
+  const matching = runs.filter((run) => {
     if (run.status === 'done') return false;
     // Missing only while rolling from an older server whose status contained one
     // selected world's runs, so it is necessarily the active world's run.
@@ -681,6 +688,27 @@ export function runForPlanetTarget(
       ? run.asteroidId === target.id
       : run.debrisFieldId === target.id;
   });
+
+  if (matching.length === 0) return undefined;
+  const first = matching[0]!;
+  if (matching.length === 1) return first;
+
+  const outboundCraft = matching.reduce(
+    (total, run) => total + (run.status === 'outbound' ? run.craft : 0),
+    0,
+  );
+  const returningCraft = matching.reduce(
+    (total, run) => total + (run.status === 'returning' ? run.craft : 0),
+    0,
+  );
+
+  return {
+    ...first,
+    craft: outboundCraft + returningCraft,
+    status: outboundCraft > 0 ? 'outbound' : 'returning',
+    outboundCraft,
+    returningCraft,
+  };
 }
 
 /**

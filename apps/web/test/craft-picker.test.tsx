@@ -52,6 +52,7 @@ const rockPanel = (
   craftAvailable: number,
   onSend: (n: number) => void,
   craftReadyAt: Date | null = null,
+  craftCooldowns?: { runId: string; craft: number; readyAt: Date }[],
 ) =>
   render(
     <AsteroidFocus
@@ -68,6 +69,7 @@ const rockPanel = (
       onSend={onSend}
       {...shell}
       craftReadyAt={craftReadyAt}
+      craftCooldowns={craftCooldowns}
     />,
   );
 
@@ -75,6 +77,7 @@ const wreckPanel = (
   craftAvailable: number,
   onSend: (n: number) => void,
   craftReadyAt: Date | null = null,
+  craftCooldowns?: { runId: string; craft: number; readyAt: Date }[],
 ) =>
   render(
     <DebrisFocus
@@ -88,6 +91,7 @@ const wreckPanel = (
       onSend={onSend}
       {...shell}
       craftReadyAt={craftReadyAt}
+      craftCooldowns={craftCooldowns}
     />,
   );
 
@@ -202,6 +206,35 @@ describe.each([
   });
 });
 
+describe.each([
+  ['an asteroid', rockPanel], ['a wreck field', wreckPanel],
+])('independently resting craft at %s', (_name, panel) => {
+  it('offers only the ready craft and shows the other craft\'s own countdown', async () => {
+    const onSend = vi.fn();
+    const readyAt = new Date(Date.now() + 45_000);
+    panel(2, onSend, readyAt, [{ runId: 'rest1', craft: 1, readyAt }]);
+    expect(sendButton()).toBeEnabled();
+    expect(sendButton().textContent).toMatch(/^Send 1/);
+    expect(screen.getByText(/Craft resting/i)).toBeInTheDocument();
+    await userEvent.setup().click(sendButton());
+    expect(onSend).toHaveBeenCalledWith(1);
+  });
+
+  it('names the rest when every home craft is resting', () => {
+    const readyAt = new Date(Date.now() + 45_000);
+    panel(2, vi.fn(), readyAt, [{ runId: 'rest1', craft: 2, readyAt }]);
+    expect(screen.getByRole('button', { name: /Craft resting/i })).toBeDisabled();
+  });
+
+  it('makes expired craft selectable without waiting for another server response', () => {
+    panel(2, vi.fn(), new Date(Date.now() + 45_000), [
+      { runId: 'rest1', craft: 1, readyAt: new Date(Date.now() - 1) },
+    ]);
+    expect(sendButton()).toBeEnabled();
+    expect(options()).toHaveLength(2);
+  });
+});
+
 describe('a public isotope anomaly without Spectrometry', () => {
   it('builds anticipation without offering a launch the server will refuse', () => {
     render(
@@ -253,9 +286,7 @@ describe('a public isotope anomaly without Spectrometry', () => {
 });
 
 /**
- * A target you are already working is not a target you can send more at — one run
- * per planet per rock, and per field (D19, D32). The picker must not appear there,
- * because it would offer a launch the server refuses with ALREADY_MINING.
+ * A target already being worked must still accept independently available craft.
  */
 describe('a target already being worked', () => {
   const run = {
@@ -274,7 +305,8 @@ describe('a target already being worked', () => {
     minedDeuterium: 0,
   };
 
-  it('shows no picker on a rock you already have craft at', () => {
+  it('offers the picker and another launch on a rock already being worked', async () => {
+    const onSend = vi.fn();
     render(
       <AsteroidFocus
         rock={ROCK}
@@ -287,11 +319,35 @@ describe('a target already being worked', () => {
         reachMinutes={12}
         worksRoom={100_000}
         run={run}
+        onSend={onSend}
+        {...shell}
+      />,
+    );
+    expect(options()).toHaveLength(3);
+    expect(screen.getByText(/already working this rock/i)).toBeInTheDocument();
+    await userEvent.setup().click(sendButton());
+    expect(onSend).toHaveBeenCalledWith(3);
+  });
+
+  it('shows outbound and returning batches separately when they share a target', () => {
+    render(
+      <AsteroidFocus
+        rock={ROCK}
+        isotopeAccess={false}
+        craftAvailable={1}
+        craftHold={300}
+        derrick={false}
+        derrickHold={780}
+        minutesLeft={400}
+        reachMinutes={12}
+        worksRoom={100_000}
+        run={{ ...run, craft: 3, outboundCraft: 2, returningCraft: 1 }}
         onSend={vi.fn()}
         {...shell}
       />,
     );
-    expect(options()).toHaveLength(0);
-    expect(screen.getByText(/already working this rock/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/2 craft already working this rock · inbound/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 craft already working this rock · heading home/i)).toBeInTheDocument();
   });
 });

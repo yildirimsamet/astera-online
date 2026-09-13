@@ -2104,6 +2104,7 @@ function AsteroidFocusHost({
       run={runForPlanetTarget(runs, p?.id, { kind: 'asteroid', id: rock.id })}
       /** D183: the selected world's rest, published on the private mining view. */
       craftReadyAt={mining?.craftReadyAt ?? null}
+      craftCooldowns={mining?.craftCooldowns}
       onClose={onClose}
       busy={busy}
       open={open}
@@ -2193,6 +2194,7 @@ function DebrisFocusHost({
       run={runForPlanetTarget(runs, p?.id, { kind: 'debris', id: field.id })}
       /** The lane the rule exists for: a field over your own world. D183. */
       craftReadyAt={mining?.craftReadyAt ?? null}
+      craftCooldowns={mining?.craftCooldowns}
       busy={busy}
       open={open}
       onToggle={onToggle}

@@ -10,7 +10,7 @@ import {
   launchMining,
   projectIsotopeKnowledge,
   projectPrivateMiningView,
-  prospectorsRestingUntil,
+  prospectorCooldowns,
   projectVisibleDebris,
 } from '../services/mining.js';
 import { projectPlayerAsteroidField } from '../services/asteroidField.js';
@@ -132,6 +132,7 @@ export function registerMiningRoutes(app: FastifyInstance): void {
     const runs = [...new Map(
       rows.flatMap((row) => row.run === null ? [] : [[row.run.id, row.run] as const]),
     ).values()];
+    const cooldowns = await prospectorCooldowns(app.db, first.planetId, app.clock.now());
     return {
       seasonId: first.seasonId,
       revealIsotopes: rows.some(
@@ -143,9 +144,8 @@ export function registerMiningRoutes(app: FastifyInstance): void {
         runs,
         await techOf(app.db, first.playerId),
         first.asteroidKey,
-        // The SELECTED world's rest, like the hardware above it — a squadron
-        // resting at the capital never holds a colony's own drills. D183.
-        await prospectorsRestingUntil(app.db, first.planetId, app.clock.now()),
+        cooldowns.at(-1)?.readyAt ?? null,
+        cooldowns,
       ),
     };
   };

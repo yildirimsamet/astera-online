@@ -797,7 +797,7 @@ export const prospectorSpeed = (orbit: SatelliteSet): number =>
   PROSPECTOR.speed * drillSpeedMult(orbit);
 
 /**
- * The speed of the trip HOME, which is not the speed of the trip out.
+ * Laden craft return at a third of normal speed; empty craft fly at normal speed.
  *
  * One definition, because three processes have to agree on it: the server writes
  * `homeAt` from it, every consumer — the owner's craft, the public contact, the
@@ -807,8 +807,8 @@ export const prospectorSpeed = (orbit: SatelliteSet): number =>
  * A Derrick still lifts it: the multiplier is applied to the lifted speed rather
  * than to the base, so upgrading orbit shortens both legs in the same proportion.
  */
-export const prospectorReturnSpeed = (orbit: SatelliteSet): number =>
-  prospectorSpeed(orbit) * PROSPECTOR.returnSpeedFactor;
+export const prospectorReturnSpeed = (orbit: SatelliteSet, laden: boolean): number =>
+  prospectorSpeed(orbit) * (laden ? PROSPECTOR.returnSpeedFactor : 1);
 
 /**
  * What one mining craft carries home. T8.
@@ -830,7 +830,7 @@ export const prospectorHold = (orbit: SatelliteSet, tech: TechLevels): number =>
  * three evaluate to nothing. This is the predicate that notices.
  *
  * THE OUTBOUND LEG, because that is the trip the player chose; the way home is
- * derived from it by a fixed ratio, so measuring both would be measuring one fact
+ * priced from the same distance, so measuring both would be measuring one fact
  * twice. A leg that is not a number is not short — a missing figure must never
  * become a lockout.
  */
@@ -838,8 +838,8 @@ export const shortProspectorTrip = (outboundMinutes: number): boolean =>
   Number.isFinite(outboundMinutes) && outboundMinutes < PROSPECTOR.shortTripMinutes;
 
 /**
- * WHEN CRAFT THAT LANDED FROM SUCH A TRIP MAY LAUNCH AGAIN — or null, which is
- * every ordinary run in the game. D183.
+ * WHEN CRAFT THAT LANDED FROM A SHORT DEBRIS TRIP MAY LAUNCH AGAIN. Asteroid
+ * runs never earn a cooldown, regardless of distance (owner correction, 2026-09-13).
  *
  * AN INSTANT RATHER THAN A DURATION, like every other clock here: the client draws
  * countdowns against `serverNow()` (D51), and a duration would have to be re-based
@@ -853,10 +853,27 @@ export const shortProspectorTrip = (outboundMinutes: number): boolean =>
 export const prospectorReadyAt = (
   outboundMinutes: number,
   homeAtMs: number,
+  targetKind: 'asteroid' | 'debris',
 ): number | null =>
-  shortProspectorTrip(outboundMinutes) && Number.isFinite(homeAtMs)
+  targetKind === 'debris' && shortProspectorTrip(outboundMinutes) && Number.isFinite(homeAtMs)
     ? homeAtMs + PROSPECTOR.shortTripCooldownMinutes * 60_000
     : null;
+
+/** Independent landed batches; resting craft cannot be spent, fresh craft can. */
+export function prospectorAvailability(
+  homeCraft: number,
+  cooldowns: readonly { craft: number; readyAtMs: number }[],
+  nowMs: number,
+): { available: number; readyAtMs: number | null } {
+  let resting = 0;
+  let readyAtMs: number | null = null;
+  for (const cooldown of cooldowns) {
+    if (cooldown.readyAtMs <= nowMs) continue;
+    resting += cooldown.craft;
+    readyAtMs = readyAtMs === null ? cooldown.readyAtMs : Math.min(readyAtMs, cooldown.readyAtMs);
+  }
+  return { available: Math.max(0, homeCraft - resting), readyAtMs };
+}
 
 /**
  * A joining player takes the free slot furthest from everyone already placed, so

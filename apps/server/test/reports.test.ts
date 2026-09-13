@@ -939,7 +939,7 @@ describe('what a battle leaves behind', () => {
     expect(finished!.status).toBe('done');
   });
 
-  it('refuses a second harvest at a field you are already working', async () => {
+  it('allows a second independent harvest at a field already being worked', async () => {
     await fight();
     const [field] = await f.db.select().from(debrisFields);
     await giveUnits(f.db, mine, { PROSPECTOR: 4 });
@@ -953,8 +953,8 @@ describe('what a battle leaves behind', () => {
     await setLevel(f.db, mine, 'REFINERY', 6);
     await setLevel(f.db, mine, 'EXTRACTOR', 6);
     await launchHarvest(f.db, mine, field!.id, 2, f.clock);
-    await expect(launchHarvest(f.db, mine, field!.id, 2, f.clock)).rejects.toMatchObject({
-      code: 'ALREADY_HARVESTING',
+    await expect(launchHarvest(f.db, mine, field!.id, 2, f.clock)).resolves.toMatchObject({
+      craft: 2,
     });
   });
 });

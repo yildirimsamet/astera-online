@@ -1,10 +1,11 @@
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   asteroidActive,
   claimOre,
   interceptAsteroid,
   prospectorHold,
   prospectorReadyAt,
+  prospectorAvailability,
   prospectorSpeed,
   prospectorReturnSpeed,
   PROSPECTOR,
@@ -204,16 +205,11 @@ export function projectPrivateMiningView(
   tech: TechLevels,
   asteroidKey: string,
   /**
-   * WHEN THE SELECTED WORLD'S DRILLS ARE FREE AGAIN — null when they already are.
-   * D183.
-   *
-   * On the payload rather than only on the refusal, because D124 is explicit: a
-   * rule the player cannot see is not a usable rule, and `returnSpeedFactor`'s own
-   * note refuses "a timer with nothing on screen". The rail draws the countdown
-   * off this and the send control is dead before it is ever pressed; the launch's
-   * `PROSPECTORS_RESTING` stays the authority behind it (Principle 1).
+   * Legacy aggregate clock, retained for already-open clients. New clients use
+   * the independent landed batches below, so a rest never locks fresh craft.
    */
   craftReadyAt: Date | null = null,
+  craftCooldowns: readonly ProspectorCooldown[] = [],
 ) {
   return {
     /** Whether the DERRICK is in orbit. D25 — hardware, never a level. */
@@ -222,6 +218,7 @@ export function projectPrivateMiningView(
     craftHold: prospectorHold(orbit, tech),
     derrickHold: prospectorHold(['DERRICK'], tech),
     craftReadyAt,
+    craftCooldowns,
     runs: runs.map((run) => ({
       id: run.id,
       planetId: run.planetId,
@@ -269,15 +266,14 @@ async function miningStatusAfterLaunch(
 ): Promise<MiningStatusView> {
   const runs = await activePlayerMiningRuns(tx, origin.playerId);
   const field = await fieldOf(tx, origin.seasonId);
+  const cooldowns = await prospectorCooldowns(tx, origin.planetId, origin.now);
   const view = projectPrivateMiningView(
     origin.orbit,
     runs,
     await techOf(tx, origin.playerId),
     field.asteroidKey,
-    // A launch has just succeeded, so this world cannot be resting — but read it
-    // rather than assume it: the answer belongs to the world, and this launch may
-    // have been the one that earns the rest (see `resolveMiningReturn`).
-    await prospectorsRestingUntil(tx, origin.planetId, origin.now),
+    cooldowns.at(-1)?.readyAt ?? null,
+    cooldowns,
   );
   // The commander's spectrometry, not the world's. T7.
   if (!(await hasResearch(tx, origin.playerId, 'ISOTOPE_SPECTROMETRY'))) {
@@ -413,8 +409,7 @@ export async function launchMining(
     // Before the intercept solve: no point finding a meeting point for a launch
     // that has nowhere to launch from. D28.
     await assertFreeBay(tx, planetId, origin.buildings.CORE);
-    // And nothing to solve for a squadron that only just landed from a free trip.
-    await assertProspectorsRested(tx, planetId, origin.now);
+    await assertProspectorsRested(tx, planetId, origin.now, available, craft);
 
     if (!asteroidActive(rock, nowMinutes)) {
       throw new GameError('ASTEROID_GONE', 'That rock is not in the disc', 409);
@@ -441,28 +436,8 @@ export async function launchMining(
       throw new GameError('ASTEROID_EMPTY', 'That rock has already been stripped', 409);
     }
 
-    /**
-     * One run per rock per planet.
-     *
-     * Enforced by a partial unique index as well as by this check: splitting a
-     * squadron across two runs at the same target is pure micro-management with no
-     * decision in it, and the index is what makes the guarantee survive a race.
-     */
-    const [existing] = await tx
-      .select({ id: miningRuns.id })
-      .from(miningRuns)
-      .where(
-        and(
-          eq(miningRuns.planetId, planetId),
-          eq(miningRuns.asteroidIndex, asteroidIndex),
-          inArray(miningRuns.status, ['outbound', 'returning']),
-        ),
-      )
-      .limit(1);
-    if (existing) {
-      throw new GameError('ALREADY_MINING', 'You already have craft working that rock', 409);
-    }
-
+    // Independently available craft may share a target. The origin row lock,
+    // home inventory and flight bays guard concurrent dispatches, not the target.
     const speed = prospectorSpeed(origin.orbit);
     const hit = interceptAsteroid(origin, speed, rock, nowMinutes);
     if (!hit) {
@@ -474,11 +449,11 @@ export async function launchMining(
     }
 
     const arriveAt = atMinute(field.startsAt, hit.meetsAtMinutes);
-    // Priced at the RETURN speed, or this guard lets a player launch a run that
-    // physically cannot get home before the season closes. D117.
+    // Budget a laden return: the haul is unknown until arrival, and this guard
+    // must not admit a run that cannot get home before the season closes. D117.
     const homeMinutes = travelExact(
       distance(hit.at, origin),
-      prospectorReturnSpeed(origin.orbit),
+      prospectorReturnSpeed(origin.orbit, true),
     );
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit, await techOf(tx, origin.playerId));
@@ -661,15 +636,16 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
    * factor belongs here and nowhere else — the two guards that also mention the
    * trip home are proving a run can FINISH, not deciding when it does.
    *
-   * Both kinds of run come through here — a rock and a wreck field — which is how
-   * the salvage run pays the same price without a branch.
+   * Both kinds of run come through here. An empty craft did not win the race and
+   * carries no load to slow it down (owner correction, 2026-09-13).
    */
+  const took = mined.alloy + mined.crystal + mined.deuterium;
   const back = travelExact(
     Math.hypot(run.interceptX - home.x, run.interceptY - home.y, run.interceptZ - home.z),
     // Re-read from what is CURRENTLY in orbit on purpose: the craft is a real
     // object being flown home, and a Derrick that lands while it is out
     // legitimately gets it back sooner. Only the aim point is frozen.
-    prospectorReturnSpeed(await orbitOf(tx, run.planetId)),
+    prospectorReturnSpeed(await orbitOf(tx, run.planetId), took > 0),
   );
   const homeAt = addMinutes(now, back);
 
@@ -699,7 +675,6 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
    *
    * IT NAMES NO RIVAL. Who emptied it is their run, not this one's news (D127).
    */
-  const took = mined.alloy + mined.crystal + mined.deuterium;
   if (took === 0 && home.controllerPlayerId) {
     await notify(tx, {
       playerId: home.controllerPlayerId,
@@ -989,7 +964,7 @@ export async function visibleDebris(db: Queryable, seasonId: string, now: Date) 
 }
 
 /**
- * WHEN THIS WORLD'S DRILLS ARE FREE AGAIN, OR NULL WHEN THEY ALREADY ARE. D183.
+ * Independent cooldowns earned by this world's landed short debris runs. D183.
  *
  * A raid resolved over a commander's own world leaves its wreckage AT that world,
  * so the salvage leg is zero units long — and every brake mining has is written
@@ -1003,26 +978,29 @@ export async function visibleDebris(db: Queryable, seasonId: string, now: Date) 
  * storing what a formula produces. The row is also the only place the fact can
  * live without a migration that every replica has to be ahead of.
  *
- * IT LOOKS FOR THE LATEST SHORT RUN, NOT THE LATEST RUN. Two squadrons can be out
- * at once on different errands: a long haul landing after a short hop would hide
- * the hop's cooldown entirely if this simply read the most recent landing. The
- * predicate is in the WHERE clause for exactly that reason.
+ * ONLY DEBRIS RUNS EARN A REST (owner correction, 2026-09-13), using the
+ * constrained target column rather than the denormalised wire label.
  *
- * PER WORLD, because craft are counted per world (`PROSPECTOR.max` is "a property
- * of the WORLD"). A squadron resting at the capital must never hold a colony's own
- * drills on the ground.
+ * Each row reserves only its own craft until its own ready instant. Because a
+ * resting craft cannot relaunch, recent eligible rows cannot count that craft
+ * twice; no hull identity or stored timer is needed. The launch reads these rows
+ * under the origin lock, alongside the home inventory. Other home craft and
+ * other worlds stay available (owner correction, 2026-09-13).
  */
-export async function prospectorsRestingUntil(
+export interface ProspectorCooldown { runId: string; craft: number; readyAt: Date }
+
+export async function prospectorCooldowns(
   tx: Queryable,
   planetId: string,
   now: Date,
-): Promise<Date | null> {
-  const [last] = await tx
-    .select({ departAt: miningRuns.departAt, arriveAt: miningRuns.arriveAt, homeAt: miningRuns.homeAt })
+): Promise<ProspectorCooldown[]> {
+  const landed = await tx
+    .select({ id: miningRuns.id, craft: miningRuns.craft, departAt: miningRuns.departAt, arriveAt: miningRuns.arriveAt, homeAt: miningRuns.homeAt })
     .from(miningRuns)
     .where(and(
       eq(miningRuns.planetId, planetId),
       eq(miningRuns.status, 'done'),
+      isNotNull(miningRuns.debrisFieldId),
       /*
         ONLY A LANDING INSIDE THE WINDOW CAN SET A REST, and saying so here is what
         keeps this cheap. This function runs on every launch AND on every read of
@@ -1045,15 +1023,21 @@ export async function prospectorsRestingUntil(
       sql`extract(epoch from (${miningRuns.arriveAt} - ${miningRuns.departAt}))
           < ${PROSPECTOR.shortTripMinutes * 60}`,
     ))
-    .orderBy(desc(miningRuns.homeAt))
-    .limit(1);
-  if (!last?.homeAt) return null;
+    .orderBy(asc(miningRuns.homeAt));
+  return landed.flatMap((run) => {
+    if (!run.homeAt) return [];
+    const readyAt = prospectorReadyAt(
+      (run.arriveAt.getTime() - run.departAt.getTime()) / 60_000,
+      run.homeAt.getTime(), 'debris',
+    );
+    return readyAt !== null && readyAt > now.getTime()
+      ? [{ runId: run.id, craft: run.craft, readyAt: new Date(readyAt) }] : [];
+  });
+}
 
-  const readyAt = prospectorReadyAt(
-    (last.arriveAt.getTime() - last.departAt.getTime()) / 60_000,
-    last.homeAt.getTime(),
-  );
-  return readyAt !== null && readyAt > now.getTime() ? new Date(readyAt) : null;
+/** Legacy aggregate clock only; dispatch must count independent batches. */
+export async function prospectorsRestingUntil(tx: Queryable, planetId: string, now: Date): Promise<Date | null> {
+  return (await prospectorCooldowns(tx, planetId, now)).at(-1)?.readyAt ?? null;
 }
 
 /**
@@ -1065,16 +1049,25 @@ export async function prospectorsRestingUntil(
  * `params.readyAt`; the same instant is published on `/api/mining/status` so the
  * control is disabled before it is ever pressed.
  */
-async function assertProspectorsRested(tx: Tx, planetId: string, now: Date): Promise<void> {
-  const readyAt = await prospectorsRestingUntil(tx, planetId, now);
-  if (readyAt) {
+export async function assertProspectorsRested(tx: Tx, planetId: string, now: Date, homeCraft: number, requested: number): Promise<void> {
+  // Non-mining fleets need no query. A home-inventory shortage belongs to each
+  // lane's existing stock validator; this guard only prices resting HOME craft.
+  if (requested === 0 || requested > homeCraft) return;
+  const cooldowns = await prospectorCooldowns(tx, planetId, now);
+  const { available } = prospectorAvailability(homeCraft,
+    cooldowns.map((rest) => ({ craft: rest.craft, readyAtMs: rest.readyAt.getTime() })), now.getTime());
+  if (requested > available) {
+    let ready = available;
+    // Name the first instant when the REQUESTED count can launch, not when every
+    // craft is ready. The ordered batches expire independently.
+    const enough = cooldowns.find((rest) => { ready += rest.craft; return ready >= requested; });
     throw new GameError(
       'PROSPECTORS_RESTING',
       'Those craft only just landed. They are ready again shortly.',
       409,
       // An ISO string, like `WORLD_RECOVERING`'s: `ErrorParams` carries scalars,
       // and every clock that crosses this boundary crosses it the same way.
-      { readyAt: readyAt.toISOString() },
+      { available, readyAt: enough?.readyAt.toISOString() ?? now.toISOString() },
     );
   }
 }
@@ -1115,10 +1108,10 @@ export async function launchHarvest(
     /*
       THE LANE THIS RULE EXISTS FOR. D183. A field over the commander's own world
       is a zero-length leg, so it is the salvage run that turns into tapping — but
-      the gate sits on both lanes, because the rule is about the LEG and not about
-      what is at the end of it.
+      a rest earned there holds only the craft that flew it. Asteroid runs
+      never earn a rest, regardless of their leg's length.
     */
-    await assertProspectorsRested(tx, planetId, origin.now);
+    await assertProspectorsRested(tx, planetId, origin.now, available, craft);
 
     const [field] = await tx
       .select()
@@ -1141,19 +1134,6 @@ export async function launchHarvest(
       throw new GameError('FIELD_GONE', 'There is nothing left of it', 409);
     }
 
-    const [existing] = await tx
-      .select({ id: miningRuns.id })
-      .from(miningRuns)
-      .where(
-        and(
-          eq(miningRuns.planetId, planetId),
-          eq(miningRuns.debrisFieldId, fieldId),
-          inArray(miningRuns.status, ['outbound', 'returning']),
-        ),
-      )
-      .limit(1);
-    if (existing) throw new GameError('ALREADY_HARVESTING', 'You already have craft there', 409);
-
     /*
       THE FIELD'S OWN POSITION, NOT ITS WORLD'S. D150.
 
@@ -1168,10 +1148,10 @@ export async function launchHarvest(
     const dist = distance(origin, target);
     // A harvest is the same craft on a different errand, so it flies by the same
     // rule as a mining run — mining's own launch overhead, not a warship's. D48.
-    // Out at hull speed and home at a third of it, for the same reason and through
-    // the same turn-around line: a wreck field is not a faster way home. D117.
+    // Budget a laden return conservatively; arrival selects the actual speed
+    // from the haul, so an empty craft flies home at normal speed. D117.
     const outbound = travelExact(dist, speed);
-    const homeMinutes = travelExact(dist, prospectorReturnSpeed(origin.orbit));
+    const homeMinutes = travelExact(dist, prospectorReturnSpeed(origin.orbit, true));
     const arriveAt = addMinutes(origin.now, outbound);
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, homeMinutes));
     const holdEach = prospectorHold(origin.orbit, await techOf(tx, origin.playerId));

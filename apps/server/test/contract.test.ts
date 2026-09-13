@@ -755,6 +755,27 @@ describe('every payload the client parses', () => {
     expect('craftReadyAt' in parsed).toBe(true);
     // Nothing has flown, so nothing is resting: null is the ordinary answer.
     expect(parsed.craftReadyAt).toBeNull();
+    expect(parsed.craftCooldowns).toEqual([]);
+  });
+
+  it('GET /api/mining/status preserves separate cooldown batches through the client parser', async () => {
+    const mine = f.planetIds[0]!;
+    const now = f.clock.now().getTime();
+    const field = await giveDebris(f.db, f.seasonId, mine, { alloy: 10_000, crystal: 0, createdAt: f.clock.now() });
+    const runs = await f.db.insert(miningRuns).values([10_000, 1_000].map((ago) => ({
+      seasonId: f.seasonId, planetId: mine, targetKind: 'debris' as const, debrisFieldId: field.id,
+      craft: 1, holdEach: 300, interceptX: 0, interceptY: 0, interceptZ: 0,
+      departAt: new Date(now - ago - 5_000), arriveAt: new Date(now - ago),
+      homeAt: new Date(now - ago), status: 'done' as const,
+    }))).returning();
+    const parsed = miningStatusSchema.parse(await get('/api/mining/status'));
+    expect(parsed.craftCooldowns).toEqual(runs.map((run) => ({
+      runId: run.id, craft: 1, readyAt: new Date(run.homeAt!.getTime() + 60_000),
+    })));
+    const raw = await get('/api/mining/status');
+    // The previous deployed parser strips extra keys; no already-open client
+    // loses its field over the new independent batches.
+    expect(miningStatusSchema.omit({ craftCooldowns: true }).safeParse(raw).success).toBe(true);
   });
 
   it('GET /api/mining/field and /status preserve the public/private split', async () => {

@@ -219,11 +219,17 @@ Rationale/evidence: `docs/decisions.md`. Numbers/simulator history: `docs/balanc
   isotope run at level 8 and ends near 2.5×. Rocks stay contested and arrive in one lump, but they
   are no longer the larger number. Plant level is still capped by research rung (D135).
 - Mined ore lands in `WORKS`, not storage. The works hold `ECON.collectorHours` = **10** hours and must stay under the store at EVERY Vault level, zero included (D16/D171/D190) — `collect` takes `min(buffer, room)`, so a works bigger than the store strands ore nothing can bank.
-- **A mining leg under `PROSPECTOR.shortTripMinutes` rests the world's drills** for
+- **A debris leg under `PROSPECTOR.shortTripMinutes` rests only its own craft** for
   `shortTripCooldownMinutes` (D183). Every other brake on mining is a function of distance,
   and a wreck field over your own world is zero distance. Derived from the run rows, never
-  stored; published as `craftReadyAt` and drawn, or it is the timer with nothing on screen
-  that `returnSpeedFactor` refuses.
+  stored; independent `{runId, craft, readyAt}` batches are published as `craftCooldowns`
+  and drawn (`craftReadyAt` is legacy compatibility only), or it is the timer with nothing on screen
+  that `returnSpeedFactor` refuses. Asteroid runs never earn this cooldown. Empty
+  mining/salvage craft return at normal speed; only laden craft pay D117's slowdown
+  (owner correction, 2026-09-13).
+- Independent Prospectors may share an asteroid or debris target, including while a
+  previous run returns. Origin-lock home inventory, independent cooldowns and flight
+  bays enforce launch capacity; target uniqueness is retired (owner correction, 2026-09-13).
 - Notifications are idempotent by `(player_id, kind, ref_id)`.
 - **A committed flight is never recalled and never turns early** — it flies the whole outbound
   leg, and a target that died mid-flight is discovered on arrival. What the arrival owes the
