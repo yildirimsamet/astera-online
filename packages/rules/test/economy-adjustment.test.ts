@@ -47,10 +47,11 @@ describe('owner 30% economy experiment against the checkpoint', () => {
     expect(PROBE.speed).toBe(3510);
   });
 
-  it('cuts all three actual producer ladders by 30%, not their design reference invoices', () => {
+  it('lifts Alloy through level six after the producer cut, leaving every later rung unchanged', () => {
     for (let level = 0; level <= 100; level += 1) {
       const reference = profileIncome(level);
-      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.70, 8);
+      const openingAlloyMultiplier = level >= 1 && level <= 6 ? 1.25 : 1;
+      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.70 * openingAlloyMultiplier, 8);
       expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.70, 8);
       expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.70, 8);
     }

@@ -134,8 +134,12 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
  * Level 0 produces nothing, which is correct — a planet is created with the
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
-export const alloyRate = (level: number): number =>
-  profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput;
+export const alloyRate = (level: number): number => {
+  const openingMultiplier = level >= 1 && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
+    ? ECONOMY_ADJUSTMENT.earlyAlloyOutputMultiplier
+    : 1;
+  return profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * openingMultiplier;
+};
 
 export const crystalRate = (level: number): number =>
   profileIncome(level).crystal * ECONOMY_ADJUSTMENT.producerOutput;

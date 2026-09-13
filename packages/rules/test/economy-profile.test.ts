@@ -11,7 +11,7 @@ import { hullBulk } from '../src/hulls.js';
 
 describe('monthly economy', () => {
   it('feeds the live economy before the explicit 30% tempo overlay', () => {
-    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.70);
+    expect(alloyRate(4)).toBeCloseTo(profileIncome(4).alloy * 0.70 * 1.25);
     expect(crystalRate(4)).toBeCloseTo(profileIncome(4).crystal * 0.70);
     expect(deuteriumRate(4)).toBeCloseTo(profileIncome(4).deuterium * 0.70);
     expect(buildingCost('REFINERY', 3)).toEqual(profileBuilding('REFINERY', 4).cost);

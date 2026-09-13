@@ -26,7 +26,7 @@ describe('production and cost curves', () => {
     // `base x L x growth^L`: level 0 produces nothing, which is correct — a planet
     // is created with the Refinery at 1 and it can never go down.
     expect(alloyRate(0)).toBe(0);
-    expect(alloyRate(1)).toBeCloseTo(100, 5);
+    expect(alloyRate(1)).toBeCloseTo(87.5, 5);
   });
 
   /**
@@ -49,8 +49,9 @@ describe('production and cost curves', () => {
    * income and crystal quietly stops being the constraint the design needs.
    */
   it('uses the monthly production ratios and power curves', () => {
-    // 52.8 / 118.8 — crystal is now 4/9 of alloy income rather than 4/11.
-    expect(crystalRate(1) / alloyRate(1)).toBeCloseTo(0.5, 6);
+    // The opening Alloy lift temporarily lowers the other resources' income share.
+    expect(crystalRate(1) / alloyRate(1)).toBeCloseTo(0.4, 6);
+    expect(crystalRate(7) / alloyRate(7)).toBeCloseTo(0.5, 6);
     /*
       Deuterium keeps its own flatter ladder; only its base has ever moved. D161
       lifted it 15%, D176 tripled what that produced — both are written as the
@@ -58,9 +59,23 @@ describe('production and cost curves', () => {
       still see which instruction moved which part of it.
     */
     expect(deuteriumRate(1) / alloyRate(1))
-      .toBeCloseTo(0.04, 6);
+      .toBeCloseTo(0.032, 6);
+    expect(deuteriumRate(7) / alloyRate(7))
+      .toBeCloseTo((4 * 7 ** 1.2) / (100 * 7 ** 1.3), 6);
     // And the shape is untouched: it is still `base x L x growth^L`.
     expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 ** 1.3, 6);
+  });
+
+  it('boosts Alloy only through level six and leaves level seven untouched', () => {
+    expect(alloyRate(0)).toBe(0);
+    for (let level = 1; level <= 6; level += 1) {
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * 1.25, 8);
+    }
+    for (const level of [7, 8, 20, 100]) {
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70, 8);
+    }
+    // Exact owner boundary: preserving L7 means the boosted L6 happens to be higher.
+    expect(alloyRate(7)).toBeLessThan(alloyRate(6));
   });
 
   /**

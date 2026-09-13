@@ -4,6 +4,9 @@ import type { Resources } from './types.js';
 export const ECONOMY_ADJUSTMENT = {
   hullMetalPrice: 1.30,
   producerOutput: 0.70,
+  /** Owner instruction, 2026-09-13: accelerate only the opening Alloy ladder. */
+  earlyAlloyOutputMultiplier: 1.25,
+  earlyAlloyMaxLevel: 6,
   buildTime: 1.30,
 } as const;
 
@@ -20,7 +23,7 @@ export const ECONOMY_ADJUSTMENT = {
  *
  *   - upgrade prices start 5% dearer and use a 1.54 rung curve;
  *   - fixed metal purchases are 70% dearer;
- *   - passive Alloy/Crystal output is 30% lower;
+ *   - passive output is 30% lower, with Alloy levels 1–6 lifted 25% from that live rate;
  *   - ordinary hulls are 25% dearer and take 50% longer to craft;
  *   - construction has its own calibrated curve so both L11 -> L12 and
  *     L12 -> L13 take between one and two hours;
