@@ -268,7 +268,7 @@ export const clan = {
     max: 'Tümü',
     cargo: 'Taşınacak kaynaklar',
     cargoUse: '{{used}} / {{capacity}} yük',
-    transportOnly: 'Klan yardımında kaynakları yalnız Kurye, Seyyah ve Atlas taşır.',
+    transportOnly: 'Klan yardımında kaynakları yalnız Kurye, Seyyah, Atlas ve Argosi taşır.',
     fuel: 'uçuş yakıtı',
     check: 'Uçuşu kontrol et',
     arrival: 'Yol süresi',

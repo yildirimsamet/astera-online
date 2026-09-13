@@ -82,7 +82,7 @@ export const research = {
   denseRole:
     "To reveal it, fill your cargo in one raid while loot remains on the target. Completion opens the Ship Propulsion research ladder.",
   denseDetail:
-    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves all eighteen ships in your fleet and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
+    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves every ship in your fleet and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
   graviticName: "Gravitic Charges",
   graviticTag: "Unlocks the Nullifier",
   graviticRole:
@@ -118,12 +118,12 @@ export const research = {
   holdsTag: "Mining craft carry more",
   holdsRole: "Raises every Prospector hold; the Derrick’s capacity bonus applies on top",
   holdsDetail:
-    "Each rung increases how much every Prospector can return with. The bonus multiplies with the Derrick satellite, so research and orbital hardware reward the same mining plan.",
+    "Each rung increases how much every Prospector can return with. The bonus multiplies with the Derrick satellite, and the third rung opens a third Prospector slot on every world.",
   cargoName: "Cargo Holds",
   cargoTag: "Every hold carries more",
   cargoRole: "Raises raid loot, world transfers and trade convoys alike · asteroid mining is its own ladder",
   cargoDetail:
-    "Each rung increases what your ships carry: raid loot across the whole mobile fleet, and the hold of every Courier, Wayfarer and Atlas moving ore between your worlds or trading with a merchant. Prospectors have their own ladder in Prospector Holds.",
+    "Each rung increases what your ships carry: raid loot across the whole mobile fleet, and the hold of every Courier, Wayfarer, Atlas and Argosy moving ore between your worlds or trading with a merchant. Prospectors have their own ladder in Prospector Holds.",
 
   engineeringName: "Starship Engineering",
   engineeringTag: "Opens advanced hull tiers",
@@ -140,15 +140,15 @@ export const research = {
   armorName: "Ship Armor",
   armorTag: "Raises ship hull strength",
   armorRole:
-    "Increases hull strength for all eighteen ships in your fleet, transports included, and satisfies advanced defensive build gates.",
+    "Increases hull strength for every ship in your fleet, transports included, and satisfies advanced defensive build gates.",
   armorDetail:
-    "Each rung increases hull strength for all eighteen ships, Courier, Wayfarer and Atlas included. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each rung increases hull strength for every ship in your fleet, Courier, Wayfarer, Atlas and Argosy included. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
   propulsionName: "Ship Propulsion",
   propulsionTag: "Raises fleet speed",
   propulsionRole:
-    "Increases the speed of all eighteen ships in your fleet and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
+    "Increases the speed of every ship in your fleet and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
   propulsionDetail:
-    "Each of the four rungs adds a quarter to the nominal speed of all eighteen ships, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
+    "Each of the four rungs adds a quarter to the nominal speed of every ship in your fleet, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
   groundDoctrineName: "Emplacement Doctrine",
   doctrineTag: "Improves ground defence",
   doctrineRole:

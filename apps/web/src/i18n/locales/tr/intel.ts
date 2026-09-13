@@ -304,7 +304,7 @@ export const reports = {
     shieldTheirs: 'Kalkanları, gövdelere ulaşmadan önce {{amount}} hasarı karşıladı.',
     shieldYours: 'Kalkanın, gövdelerine ulaşmadan önce {{amount}} hasarı karşıladı.',
     cargoLimited:
-      'Ambarların doldu. O gezegende taşıyabileceğinden fazla kaynak vardı; filona Kurye, Seyyah veya Atlas ekleyebilirsin.',
+      'Ambarların doldu. O gezegende taşıyabileceğinden fazla kaynak vardı; filona Kurye, Seyyah, Atlas veya Argosi ekleyebilirsin.',
     salvaged_one: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     salvaged_other: '{{count}} yer topu kendi enkazından yeniden kuruldu; şimdi yine ayakta.',
     worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Bu sürede kaynak üretilmiyor.',

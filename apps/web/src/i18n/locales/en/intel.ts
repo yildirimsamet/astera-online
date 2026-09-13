@@ -351,7 +351,7 @@ export const reports = {
     shieldTheirs: 'Their shield soaked {{amount}} damage before anything reached a hull.',
     shieldYours: 'Your shield soaked {{amount}} damage before anything reached a hull.',
     cargoLimited:
-      'Your holds were full. There was more on that world than you could carry — bring Courier, Wayfarer or Atlas transports.',
+      'Your holds were full. There was more on that world than you could carry — bring Courier, Wayfarer, Atlas or Argosy transports.',
     salvaged_one: '{{count}} ground gun was rebuilt from its own wreckage and is standing again.',
     salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage and are standing again.',
     worksTheirs: 'Their works are offline for {{duration}}. Nothing is being produced there.',

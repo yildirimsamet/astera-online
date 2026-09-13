@@ -273,7 +273,7 @@ export const clan = {
     max: 'Max',
     cargo: 'Resources to carry',
     cargoUse: '{{used}} / {{capacity}} hold',
-    transportOnly: 'Only Courier, Wayfarer and Atlas carry resources on clan aid.',
+    transportOnly: 'Only Courier, Wayfarer, Atlas and Argosy carry resources on clan aid.',
     fuel: 'fuel for the flight',
     check: 'Check flight',
     arrival: 'Travel time',

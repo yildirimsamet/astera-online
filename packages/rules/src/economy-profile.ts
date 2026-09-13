@@ -216,11 +216,11 @@ export interface ProfileHull extends Hull { bulk: number; workMinutes: number; r
 /**
  * HOW FAR A TIER PUSHES ITS HULLS APART. D195, owner instruction, option A.
  *
- * The owner asked for the attack/armour trade to get SHARPER as hulls go up:
- * *"her level'da bu oranlarin iyilesmesi lazim"*. `role` is the deviation from an
- * even split — a Lance leans 4% toward attack, a Fortress 10% toward armour — and
- * this scales that deviation by tier, so a tier-4 Fortress is further from a tier-4
- * Lance than their tier-1 counterparts are.
+ * The owner asked for the attack/armour trade to get SHARPER as hulls go up, and
+ * then made the visible boundary explicit: every Lance must show more attack than
+ * hull strength. A tiny tilt around the catalogue's old 0.52 attack coefficient
+ * could never cross that boundary; Pike still rendered as 21 / 75 and looked like
+ * a second Raider with a different counter chip.
  *
  * IT IS THE SPREAD THAT WIDENS, NEVER THE PRODUCT. `atk x hp` is exactly `power^2`
  * whatever `sharp` is, because one factor multiplies attack and divides armour by
@@ -233,11 +233,17 @@ export interface ProfileHull extends Hull { bulk: number; workMinutes: number; r
  * profiles. D208 adds a modest product gain between tiers; the counter cycle
  * still decides fights. Nullifier pays an explicit shield-only ability premium.
  *
- * THE TIER-1 RUNG IS BELOW 1, so the entry hulls are the blunt ones. A commander
- * who cannot yet read a probe is not punished for guessing wrong, and the reward
- * for reaching tier 4 is that guessing right matters more.
+ * These are the authored ATTACK / HP ratios. They widen gently by tier while the
+ * product stays fixed: cost and equal-budget efficiency do not move, only where a
+ * Lance puts the power it already bought. Pike's tiny stats quantise 1.08 to 42/38,
+ * visibly sharper than the next rung; forcing every later rounded ratio above that
+ * erased the tier advantage at real budgets. Nullifier is included because it is a
+ * Lance too; its shield multiplier remains a property of its live attack.
  */
-const ROLE_SPREAD = [0.8, 1, 1.2, 1.45] as const;
+// Ratios of 1.1–1.4 erased equal-budget Lance tier progression through one-salvo
+// saturation. The owner's second adjustment moves the whole line further into
+// attack, but this much narrower ladder still leaves D208's tier gain measurable.
+const LANCE_ATTACK_HP_RATIO = [1.08, 1.081, 1.082, 1.083] as const;
 
 /**
  * THE TWO SUR PROFILES ARE EQUAL-SIZED ALTERNATIVES. Owner instruction, D209.
@@ -306,8 +312,9 @@ export function profileHull(live: Hull): ProfileHull {
   const support = live.cls === 'SUPPORT';
   const premium = fortress || escort ? 1.25 : live.profile === 'SHIELD_BREAKER' ? 1.15 : 1;
   // Excess HP with too little attack failed to resolve even favourable equal-budget fights.
-  const role = live.cls === 'SKIRMISHER' ? 1 : live.cls === 'LANCE' ? 1.04 : 1;
-  let sharp = 1 + (role - 1) * ROLE_SPREAD[tier - 1]!;
+  let sharp = live.cls === 'LANCE'
+    ? Math.sqrt(LANCE_ATTACK_HP_RATIO[tier - 1]!) / 0.52
+    : 1;
   const recipe = { alloy: Math.ceil(base[tier - 1]! * premium), crystal: Math.ceil(c[tier - 1]! * premium),
     deuterium: Math.ceil(d[tier - 1]! * premium) };
   // Preserve the paid opening. Later tiers buy 6/12/18% more product per ECONOMIC

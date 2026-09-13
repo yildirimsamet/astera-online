@@ -78,7 +78,7 @@ export const errors = {
      it is written without interpolation: a placeholder rendered raw on the older
      caller is worse than a sentence that fits both. */
   CARGO_CAPACITY: 'Bu yük konvoyun taşıyabileceğinden fazla',
-  TRANSFER_NEEDS_CARGO_HULL: 'Kaynak taşımak için Kurye, Seyyah veya Atlas gerekir',
+  TRANSFER_NEEDS_CARGO_HULL: 'Kaynak taşımak için Kurye, Seyyah, Atlas veya Argosi gerekir',
   BAD_TRADE: 'Tüccar bu takası kabul etmiyor',
   TRADE_WINDOW_CLOSED: 'Tüccar galaksiden ayrıldı',
   CHAT_RATE_LIMIT: '{{seconds}} saniyede en fazla beş mesaj gönderebilirsin.',
@@ -87,7 +87,7 @@ export const errors = {
   CLANS_NEXT_SEASON: 'Klanlar bu galaksiden daha yeni galaksilerde açılır',
   CLAN_ADAPTING: 'Bu özellik 12 saatlik klan uyumu tamamlanınca açılır',
   CLAN_AID_CANNOT_LAND: 'Bu dünya gönderdiğin gemileri henüz teslim alamaz',
-  CLAN_AID_CARGO_CAPACITY: 'Klan kaynağını yalnız Kurye, Seyyah ve Atlas taşır; kapasite {{capacity}}',
+  CLAN_AID_CARGO_CAPACITY: 'Klan kaynağını yalnız Kurye, Seyyah, Atlas ve Argosi taşır; kapasite {{capacity}}',
   CLAN_AID_DISABLED: 'Bu klan üyesi yardım kabul etmiyor',
   CLAN_AID_LIMIT: 'Bu yük alıcının son 24 saatlik sınırını aşıyor. Yükü azalt veya sınırın yenilenmesini bekle.',
   CLAN_AID_MEMBERSHIP: 'Klan yardımı yalnız mevcut klan üyeleri arasında yapılabilir',

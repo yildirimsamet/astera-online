@@ -531,12 +531,12 @@ export const transfer = {
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
   irreversible:
-    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah ve Atlas sağlar.",
+    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah, Atlas ve Argosi sağlar.",
   hullNone: "Bu dünyada yok",
-  holdReady: "Madeni Kurye, Seyyah ve Atlas taşır. Ambar: {{capacity}}.",
-  holdNeedsLoad: "Maden taşımak için yukarıdan Kurye, Seyyah veya Atlas ekle.",
+  holdReady: "Madeni Kurye, Seyyah, Atlas ve Argosi taşır. Ambar: {{capacity}}.",
+  holdNeedsLoad: "Maden taşımak için yukarıdan Kurye, Seyyah, Atlas veya Argosi ekle.",
   holdNoCarrier:
-    "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah veya Atlas yok.",
+    "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah, Atlas veya Argosi yok.",
   /** Hedefin yer çubuğunun altyazısı; sayıları çubuğun kendisi çiziyor. */
   /** Gemi sayısını gösteren işaretlerin ekran okuyucu karşılığı. */
   hullPacked: "{{held}} {{name}} içinden {{packed}} tanesi yüklendi",

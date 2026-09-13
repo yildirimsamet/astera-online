@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { combatValue } from '@astera/rules';
 import type { GalaxyPlanet, IntelView, ProbeReport } from '../src/api/schemas.js';
 import { dossier } from '../src/lib/dossier.js';
 import { planetView } from './fixtures.js';
@@ -80,8 +81,9 @@ describe('firepower and what makes it a fight', () => {
   });
 
   it('compares it with the firepower standing on the reader’s own world', () => {
-    // Ten Darts are 3,600 of firepower; the band is half that to all of it.
-    const note = armedReader(report({ defence: { low: 1_800, high: 3_600 } }))
+    // Size the reading from the live catalogue so hull calibration cannot stale this contract.
+    const mine = combatValue({ DART: 10 });
+    const note = armedReader(report({ defence: { low: mine / 2, high: mine } }))
       .find((f) => f.key === 'defence')?.note;
     expect(note).toMatch(/×0\.5–1\.0/);
     expect(note).toMatch(/Kestrel-12/);

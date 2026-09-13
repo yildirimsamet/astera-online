@@ -47,6 +47,58 @@ describe('economic fleet progression at 32:16:1', () => {
     }
   });
 
+  it('makes every Lance visibly attack-led without changing its price or combat product', () => {
+    const strikers = line('STRIKER');
+    const raiders = line('RAIDER');
+    const previousProducts = [21 * 75, 63 * 214, 160 * 538, 431 * 1425] as const;
+    const previousPrices = [[390, 78, 0], [975, 234, 2], [2340, 585, 6], [5850, 1560, 20]] as const;
+    const firstAttackLedProfile = [[41, 39], [119, 113], [301, 285], [807, 762]] as const;
+    const revisedProfile = [[42, 38], [120, 111], [305, 282], [816, 754]] as const;
+    expect(strikers).toHaveLength(4);
+    for (let index = 0; index < strikers.length; index += 1) {
+      const striker = strikers[index]!;
+      const raider = raiders[index]!;
+      expect(HULLS[striker].atk, striker).toBeGreaterThan(HULLS[striker].hp);
+      expect(HULLS[striker].atk, `${striker} compared with its Raider`).toBeGreaterThan(HULLS[raider].atk);
+      expect(HULLS[striker].hp, `${striker} compared with its Raider`).toBeLessThan(HULLS[raider].hp);
+      expect(cost(striker), `${striker} price`).toBe(cost(raider));
+      expect([HULLS[striker].alloy, HULLS[striker].crystal, HULLS[striker].deuterium], `${striker} unchanged recipe`)
+        .toEqual(previousPrices[index]);
+      expect(HULLS[striker].atk, `${striker} attack after the second owner adjustment`)
+        .toBeGreaterThan(firstAttackLedProfile[index]![0]);
+      expect(HULLS[striker].hp, `${striker} hull after the second owner adjustment`)
+        .toBeLessThan(firstAttackLedProfile[index]![1]);
+      expect([HULLS[striker].atk, HULLS[striker].hp], `${striker} revised profile`)
+        .toEqual(revisedProfile[index]);
+      const product = HULLS[striker].atk * HULLS[striker].hp;
+      // Reciprocal redistribution preserves the unrounded product exactly;
+      // rounding two small integer stats changes Pike's product by 1.34%.
+      expect(
+        Math.abs(product / previousProducts[index]! - 1),
+        `${striker} product drift from the previous live catalogue`,
+      ).toBeLessThan(0.02);
+      // Pike's one-point move is coarse at this scale: 42/38 visibly rounds above
+      // the later authored ratios. T2-T4 must still expose the intended widening,
+      // while the whole line remains narrow enough not to erase tier efficiency.
+      if (index > 1) {
+        const previous = strikers[index - 1]!;
+        expect(HULLS[striker].atk / HULLS[striker].hp, `${striker} specialisation`)
+          .toBeGreaterThan(HULLS[previous].atk / HULLS[previous].hp);
+      }
+    }
+    expect(HULLS.NULLIFIER.atk).toBeGreaterThan(HULLS.NULLIFIER.hp);
+    expect(HULLS.NULLIFIER.atk).toBeGreaterThan(301);
+    expect(HULLS.NULLIFIER.hp).toBeLessThan(285);
+    expect([HULLS.NULLIFIER.atk, HULLS.NULLIFIER.hp]).toEqual([305, 282]);
+    expect([HULLS.NULLIFIER.alloy, HULLS.NULLIFIER.crystal, HULLS.NULLIFIER.deuterium])
+      .toEqual([2691, 674, 7]);
+    expect(Math.abs(HULLS.NULLIFIER.atk * HULLS.NULLIFIER.hp / (160 * 538) - 1))
+      .toBeLessThan(0.02);
+    const visibleRatios = strikers.map((id) => HULLS[id].atk / HULLS[id].hp);
+    expect(Math.max(...visibleRatios) / Math.min(...visibleRatios))
+      .toBeLessThan(1.03);
+  });
+
   it('preserves cargo as a secondary profile trade instead of paying every stat an efficiency bonus', () => {
     expect(line('RAIDER').map(id => HULLS[id].cargo)).toEqual([30, 64, 135, 285]);
     expect(line('STRIKER').map(id => HULLS[id].cargo)).toEqual([40, 85, 180, 380]);

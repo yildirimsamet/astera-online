@@ -208,15 +208,15 @@ and bounded build throughput are hard requirements, not tuning preferences.**
 
 Every Fleet V2 hull is a fixed authored profile. The player does not allocate stat points or fit
 modules; the decision is which hulls to build and combine. A higher tier converts cost into stats
-more efficiently and pays a smaller specialization penalty, but never replaces every lower-tier
-role.
+more efficiently; specialization redistributes attack and hull without adding combat product,
+and never replaces every lower-tier role.
 
 | Hulls | Tier | Class | Mathematical job | Cost of using them |
 |---|---:|---|---|---|
-| **Dart / Viper / Tempest / Corsair** | 1 / 2 / 3 / 4 | Skirmisher | The fast raider line; 1.6× into Bulwark | Less hold and durability than slower profiles |
-| **Pike / Talon / Ballista / Cataclysm** | 1 / 2 / 3 / 4 | Lance | Attack-specialist line; 1.6× into Skirmisher | Loses to Bulwark; increasing cost, build time and bulk |
-| **Rampart / Stronghold / Leviathan / Citadel** | 1 / 2 / 3 / 4 | Bulwark | Maximum hull-per-role defensive line; 1.6× into Lance | Slowest profile at each tier |
-| **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Mobile escort alternative | Trades part of the fortress hull for speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
+| **Dart / Viper / Tempest / Corsair** | 1 / 2 / 3 / 4 | Skirmisher | The fast raider line; 1.6× into Bulwark | Less hold than Lance/Fortress; Lance counters it |
+| **Pike / Talon / Ballista / Cataclysm** | 1 / 2 / 3 / 4 | Lance | Attack exceeds hull strength; same-price Raider alternative with more attack and less hull; 1.6× into Skirmisher | Slower and more fragile than Raider; loses to Bulwark; mirrors risk mutual annihilation |
+| **Rampart / Stronghold / Leviathan / Citadel** | 1 / 2 / 3 / 4 | Bulwark | Maximum hull-per-role defensive line; 1.6× into Lance | Slowest combat profile at each tier |
+| **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Same-price Fortress alternative with more attack and less hull | Trades hull for attack and speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
 | **Courier / Wayfarer / Atlas / Argosy** | 1 / 2 / 3 / 4 | Support | Fast/light through slow/deep cargo choices | Deal no damage; capacity and speed prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
 | **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
@@ -237,8 +237,8 @@ It is what stops "send everything" from being universally correct. A pure combat
 the battle and carries almost nothing home; a cargo-heavy fleet carries everything and loses.
 The optimal ratio depends on what you believe is in the target's vault — **exactly the thing
 you had to scout to find out.** Loot capacity is where the information layer cashes out into a
-number. Courier, Wayfarer and Atlas add a second cargo decision: exposure window versus capacity
-and bulk. Atlas does not replace Courier because the slowest included hull owns the fleet clock.
+number. Courier, Wayfarer, Atlas and Argosy add a second cargo decision: exposure window versus
+capacity. A deeper hold does not replace Courier because the slowest included hull owns the fleet clock.
 
 Support hulls are **shielded from fire while any combat hull on their side survives**, which
 creates the escort decision: bring enough combat hulls to cover the cargo you brought.

@@ -70,7 +70,7 @@ export const research = {
   denseRole:
     "Keşfetmek için bir akında ambarını doldur ve hedefte ganimet bırak. Tamamlandığında Gemi İtkisi araştırma basamaklarını açar.",
   denseDetail:
-    "Tamamlandığında komutanın için Gemi İtkisi araştırmasını kalıcı olarak açar. İtki, filondaki on sekiz gemiyi hızlandırır ve Atlas üretim koşullarından biridir; Kazıcı, sonda ve Ölüm Yıldızı bundan etkilenmez.",
+    "Tamamlandığında komutanın için Gemi İtkisi araştırmasını kalıcı olarak açar. İtki, filondaki bütün gemileri hızlandırır ve Atlas üretim koşullarından biridir; Kazıcı, sonda ve Ölüm Yıldızı bundan etkilenmez.",
   graviticName: "Gravitik Yükler",
   graviticTag: "Söndürücü’yü açar",
   graviticRole:
@@ -107,13 +107,13 @@ export const research = {
   holdsRole:
     "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
   holdsDetail:
-    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2,6 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır.",
+    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2,6 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır; üçüncü kademe her dünyada üçüncü Kazıcı yuvasını açar.",
   cargoName: "Gemi Ambarları",
   cargoTag: "Her ambar daha çok taşır",
   cargoRole:
     "Akın ganimetini, dünyalar arası transferi ve ticaret konvoyunu birlikte artırır; asteroit madenciliğinin kendi kademesi vardır.",
   cargoDetail:
-    "Her kademe gemilerinin taşıdığını artırır: hareketli filonun akın ganimetini ve dünyaların arasında cevher taşıyan ya da tüccarla ticaret yapan her Kurye, Seyyah ve Atlas'ın ambarını. Kazıcıların kendi kademesi Kazıcı Ambarları'dır.",
+    "Her kademe gemilerinin taşıdığını artırır: hareketli filonun akın ganimetini ve dünyaların arasında cevher taşıyan ya da tüccarla ticaret yapan her Kurye, Seyyah, Atlas ve Argosi'nin ambarını. Kazıcıların kendi kademesi Kazıcı Ambarları'dır.",
 
   engineeringName: "Yıldız Gemisi Mühendisliği",
   engineeringTag: "Üst seviye gemileri açar",
@@ -130,15 +130,15 @@ export const research = {
   armorName: "Gemi Zırhı",
   armorTag: "Gemilerin gövde dayanımını artırır",
   armorRole:
-    "Nakliye dâhil filondaki on sekiz geminin dayanımını yükseltir ve ileri savunma gemilerinin üretim koşullarına katkı verir.",
+    "Nakliye dâhil filondaki bütün gemilerin dayanımını yükseltir ve ileri savunma gemilerinin üretim koşullarına katkı verir.",
   armorDetail:
-    "Her kademe, Kurye, Seyyah ve Atlas dâhil on sekiz geminin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
+    "Her kademe, Kurye, Seyyah, Atlas ve Argosi dâhil filondaki bütün gemilerin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
   propulsionName: "Gemi İtkisi",
   propulsionTag: "Filonun hızını artırır",
   propulsionRole:
-    "Filondaki on sekiz geminin hızını artırır ve Atlas üretim koşuluna katkı verir. Yoğun Yakıt Hücrelerinden sonra açılır.",
+    "Filondaki bütün gemilerin hızını artırır ve Atlas üretim koşuluna katkı verir. Yoğun Yakıt Hücrelerinden sonra açılır.",
   propulsionDetail:
-    "Dört kademenin her biri on sekiz geminin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçtiğin filoyu geliştirirken gövde profilini silmez. Kazıcı, sonda ve Ölüm Yıldızı etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
+    "Dört kademenin her biri filondaki bütün gemilerin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçtiğin filoyu geliştirirken gövde profilini silmez. Kazıcı, sonda ve Ölüm Yıldızı etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
   groundDoctrineName: "Tabya/Kirpi Doktrini",
   doctrineTag: "Yer savunmasını geliştirir",
   doctrineRole:

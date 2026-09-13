@@ -34,7 +34,7 @@ export const trade = {
     "Every commander in the galaxy sees this ship, its orbit and its rate. There is no quota and no fee.",
   open: "Send a convoy",
   noCraft: "No craft standing at this world",
-  noCarrier: "Needs a Courier, Wayfarer or Atlas",
+  noCarrier: "Needs a Courier, Wayfarer, Atlas or Argosy",
   carriersAway: "Your carriers are away",
   tooLate: "Nothing here can reach it in time",
 
@@ -64,7 +64,7 @@ export const trade = {
   /** `aria-label` on the offer slider. */
   giveAmount: "{{resource}} to give",
   giveSpend: "Leaving the store",
-  holdNoCarrier: "Only a Courier, Wayfarer or Atlas has a hold — pick one.",
+  holdNoCarrier: "Only a Courier, Wayfarer, Atlas or Argosy has a hold — pick one.",
   hullNone: "None at this world",
   bays: "Flight bays",
   baysReading: "{{used}} of {{total}} flight bays in use",
@@ -93,7 +93,7 @@ export const trade = {
   chooseFleet: "Choose a convoy",
   windowClosed: "The merchant has gone",
   noBay: "No free flight bay",
-  needsCarrier: "Add a Courier, Wayfarer or Atlas",
+  needsCarrier: "Add a Courier, Wayfarer, Atlas or Argosy",
   noOffer: "Choose what to offer",
   noAsk: "Choose what to take",
   cannotPay: "The offer will not pay for that",

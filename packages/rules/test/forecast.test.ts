@@ -18,8 +18,9 @@ import {
  *
  * The launch sheet put the wing's firepower beside the wall's and stopped there,
  * so the one question it is for — is this fight my size — was answered by losing
- * it. Measured on the battle engine: an equal wing only breaks a wall and loses
- * two thirds of itself doing it; a clean sweep wants about half as much again.
+ * it. Raider-profile mirrors historically needed about half as much again for a
+ * clean sweep. Attack-led Lances can instead erase both sides in one salvo, so
+ * that rule of thumb must not be treated as a universal combat invariant.
  *
  * These lines are that measurement, taken by the same engine the server grades
  * with, over every wall the reading still allows. They are an expectation, not a
@@ -110,13 +111,32 @@ describe('the lines a wing is drawn against', () => {
   });
 
   /** The measured rule of thumb, reproduced by the engine rather than typed in. */
-  it('asks for about half as much again to clear a wall like your own', () => {
-    const wing: Fleet = { TALON: 30 };
-    const f = forecastLines(wing, blind({ wall: { kind: 'EXACT', fleet: { TALON: 1 } } }));
+  it('asks for about half as much again to clear a Raider-profile mirror', () => {
+    const wing: Fleet = { VIPER: 30 };
+    const f = forecastLines(wing, blind({ wall: { kind: 'EXACT', fleet: { VIPER: 1 } } }));
     const mine = combatValue(wing);
     expect(f.clears.low).toBeGreaterThan(mine / 1.8);
     expect(f.clears.low).toBeLessThan(mine / 1.2);
     expect(f.breaks.low).toBeGreaterThan(mine * 0.9);
+  });
+
+  it('matches attack-led Lance mirrors without treating DECISIVE as survival', () => {
+    const wing: Fleet = { TALON: 30 };
+    for (const count of [28, 29, 30, 31, 32, 33]) {
+      const crew: Fleet = { TALON: count };
+      const input = blind({ wall: { kind: 'EXACT', fleet: crew } });
+      const f = forecastLines(wing, input);
+      const r = resolveCombat(wing, crew, 0, flat, {
+        attacker: { tech: none }, defender: { tech: none },
+      });
+      expect(combatValue(crew) < f.clears.low, `clears ${String(count)}`).toBe(r.grade === 'DECISIVE');
+      expect(combatValue(crew) < f.breaks.low, `breaks ${String(count)}`).toBe(r.grade !== 'REPELLED');
+      if (count === 30) {
+        expect(r.grade).toBe('DECISIVE');
+        expect(combatValue(r.attackerSurvivors)).toBe(0);
+        expect(combatValue(r.defenderSurvivors)).toBe(0);
+      }
+    }
   });
 });
 

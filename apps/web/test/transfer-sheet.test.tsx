@@ -235,7 +235,7 @@ describe('world transfer sheet', () => {
     it('says a world with no carrier cannot move ore at all', () => {
       render0({ DART: 2 });
 
-      expect(screen.getByText(/no Courier, Wayfarer or Atlas/i)).toBeInTheDocument();
+      expect(screen.getByText(/no Courier, Wayfarer, Atlas or Argosy/i)).toBeInTheDocument();
       // Never `0 / 0`, which reads as a limit the player is up against when what
       // is true is that there is no hold on this mission at all.
       expect(screen.getByText('Cargo')).toHaveTextContent('Cargo —');
@@ -244,8 +244,8 @@ describe('world transfer sheet', () => {
     it('tells a world that owns a carrier to put one in the fleet', () => {
       render0({ DART: 2, COURIER: 1 });
 
-      expect(screen.getByText(/add a Courier, Wayfarer or Atlas/i)).toBeInTheDocument();
-      expect(screen.queryByText(/no Courier, Wayfarer or Atlas/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/add a Courier, Wayfarer, Atlas or Argosy/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no Courier, Wayfarer, Atlas or Argosy/i)).not.toBeInTheDocument();
     });
 
     it('cannot be dragged into a load it will not be allowed to send', () => {
@@ -262,7 +262,7 @@ describe('world transfer sheet', () => {
 
       await user.click(screen.getByRole('button', { name: 'More Courier' }));
 
-      expect(screen.queryByText(/add a Courier, Wayfarer or Atlas/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/add a Courier, Wayfarer, Atlas or Argosy/i)).not.toBeInTheDocument();
       expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo)}`, 'i')))
         .toBeInTheDocument();
     });

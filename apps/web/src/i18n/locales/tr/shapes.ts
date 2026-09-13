@@ -50,7 +50,7 @@ export const counter = {
   compareLabel: '{{yours}} gönderiyorsun; dünyalarının son okuması {{theirs}}',
   compareRuleToggle: 'Bu nedir?',
   compareRule:
-    'Ateş gücü, ateş edebilen gemi ve topların maliyetidir; iki taraf aynı ölçekte. Çizgiler savaş hesabının kendisinden gelir: senin gemilerin, senin araştırman ve sondanın onlar hakkında gördükleri — kalkan, araştırma, savunma dağılımı. İlk çizginin altındaki bir savunmayı bu filo temizler, ikincinin altındakini kırar. ±%8 zar hesaba katılmaz ve okuma eski olabilir.',
+    'Ateş gücü, ateş edebilen gemi ve topların maliyetidir; iki taraf aynı ölçekte. Çizgiler savaş hesabının kendisinden gelir: senin gemilerin, senin araştırman ve sondanın onlar hakkında gördükleri — kalkan, araştırma, savunma dağılımı. İlk çizginin altındaki bir savunmayı bu filo temizler, ikincinin altındakini kırar. Temizlemek gemilerinin hayatta kalacağını garanti etmez: iki taraf da yok olabilir ve ganimet gelmez. Beklenen kaybı da oku. ±%8 zar hesaba katılmaz ve okuma eski olabilir.',
   linesClears: '{{at}} altındakini temizler',
   linesBreaks: '{{at}} altındakini kırar',
   lineJoin: ' · ',

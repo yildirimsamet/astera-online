@@ -81,7 +81,7 @@ export const counter = {
    */
   compareRuleToggle: 'What is this?',
   compareRule:
-    'Firepower is what the hulls and guns that can fire cost — both sides on one scale. The lines come from the battle itself: your ships, your research, and what the probe saw of theirs — shield, research and the shape of the wall. Below the first line this wing clears the wall; below the second it breaks it. The ±8% roll is left out, and the reading may be old.',
+    'Firepower is what the hulls and guns that can fire cost — both sides on one scale. The lines come from the battle itself: your ships, your research, and what the probe saw of theirs — shield, research and the shape of the wall. Below the first line this wing clears the wall; below the second it breaks it. Clearing it does not guarantee surviving ships: both sides can be destroyed, yielding no haul. Read the expected loss too. The ±8% roll is left out, and the reading may be old.',
   linesClears: 'Clears below {{at}}',
   linesBreaks: 'breaks below {{at}}',
   lineJoin: ' · ',

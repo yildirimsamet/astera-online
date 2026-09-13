@@ -8,6 +8,9 @@ The owner subsequently replaced that pass with 30% and raised neutral mobile cou
 [current opening experiment](economy-experiment-30pct-2026-09-13.md).
 The colony ladder was subsequently raised from Core 6/9/12 to **9/12/15** as well;
 all Core-6 colony timings below are historical checkpoint evidence, not a current route.
+The later attack-led Lance profile is measured separately in
+[the Lance calibration](lance-profile-calibration-2026-09-13.md); the roster below
+predates that redistribution and the 30% price increase.
 
 Recorded 2026-09-13 from the live roster. The reproducible report is generated with:
 

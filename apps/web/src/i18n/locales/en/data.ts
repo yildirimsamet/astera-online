@@ -9,10 +9,10 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings, construction speed and the world\'s orbit, flight and ground-defence capacity', detail: 'No other building can rise above the Command Core. Raising it shortens building and research time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. It produces no ore or combat power by itself.' },
+    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings and construction speed; the capital opens colony slots at levels 9, 12 and 15.', detail: 'No other building can rise above the Command Core. Raising it shortens building time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. Only the capital’s Core sets research ceilings and speed, and grants the first, second and third colony slots at levels 9, 12 and 15. It produces no ore or combat power by itself.' },
     REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage', detail: 'Each level increases passive alloy income and the amount that can be stored. Alloy pays for most construction and hulls, so this shortens many future waits.' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
-    VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Sets how many hours of its own production each resource can hold. It also keeps the bottom 10%, capped at 8 hours of production, safe from raids.', detail: 'Every level makes the store deeper: each resource holds that many hours of its OWN hourly output, which is why the alloy and crystal ceilings differ. Its second job is protection — a raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource\'s production. The Store does not fight and does not reduce incoming damage.' },
+    VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Expands resource storage and leaves 10% headroom for the next matching alloy and crystal producer upgrades. The bottom 10%, capped at 8 hours of production, is safe from raids.', detail: 'The Store first grows by its authored production-hour ladder. At high levels, if that floor is too small, Store L expands to hold 110% of the Alloy Refinery L→L+1 alloy cost and Crystal Extractor L→L+1 crystal cost; the resulting hour window also applies to Deuterium. A raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource’s production. The Store does not fight or reduce incoming damage.' },
     SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add no queue slots.' },
     DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: 'Deuterium per hour and fuel storage · its ceiling is set by Deuterium Synthesis', detail: 'Each level increases passive Deuterium production and the amount that can be stored. Deuterium fuels fleet launches; research the next Deuterium Synthesis rung when the Refinery reaches its level ceiling.' },
   },
@@ -87,7 +87,7 @@ export const vocabulary = {
         'Raises this world’s passive alloy, crystal and Deuterium production by 6%.',
       blurb:
         'Supports production from orbit, increasing all three hourly resource streams along with the Works and storage capacities derived from them.',
-      detail: 'The Foundry applies a 1.06 multiplier to passive alloy, crystal and Deuterium production on this world. The Works and storage limits derived from those rates rise with it; Vault protection does not. It does not affect mining holds or raid cargo.',
+      detail: 'The Foundry applies a 1.06 multiplier to passive alloy, crystal and Deuterium production on this world. The Works and storage limits derived from those rates rise with it; the Store’s raid-protected amount does not. It does not affect mining holds or raid cargo.',
     },
     DERRICK: {
       name: 'Derrick',
@@ -102,10 +102,10 @@ export const vocabulary = {
       name: 'Beacon',
       tag: 'Faster fleets',
       role:
-        'Makes every raid and transfer fleet launched here travel 1.3× faster on both legs.',
+        'Makes raid, transfer, trade and clan-aid fleets launched here travel 1.3× faster on both legs.',
       blurb:
-        'A navigation mark. Every fleet that leaves this planet flies faster, out and back. Shorter flights mean a shorter window with your defence away from home.',
-      detail: 'Its 1.3 speed multiplier applies to every outbound and return raid or transfer fleet launched here. It does not affect Prospectors, attack, armour or cargo.',
+        'A navigation mark for raid, transfer, trade and clan-aid fleets. Shorter flights mean a shorter window with your defence away from home.',
+      detail: 'Its 1.3 speed multiplier applies to outbound and return raid, transfer, trade and clan-aid fleets launched here. It does not affect settlement fleets, Prospectors or the Death Star, and it changes no attack, armour, cargo or fuel cost.',
     },
   },
 
@@ -119,10 +119,10 @@ export const vocabulary = {
    * the opposite of the rule it enforces.
    */
   combatClass: {
-    SKIRMISHER: { name: 'Skirmisher', tag: 'Many, fast, light' },
-    BULWARK: { name: 'Bulwark', tag: 'Heavy armour, slow' },
-    LANCE: { name: 'Lance', tag: 'One heavy blow' },
-    SUPPORT: { name: 'Support', tag: 'Unarmed; covered while escorts live' },
+    SKIRMISHER: { name: 'Skirmisher', tag: 'Strong vs Bulwark; weak vs Lance' },
+    BULWARK: { name: 'Bulwark', tag: 'Strong vs Lance; weak vs Skirmisher' },
+    LANCE: { name: 'Lance', tag: 'Strong vs Skirmisher; weak vs Bulwark' },
+    SUPPORT: { name: 'Support', tag: 'Unarmed; covered while warships live' },
   },
 
   hull: {
@@ -132,42 +132,42 @@ export const vocabulary = {
       detail: 'A low-cost Skirmisher for short raids and heavy-hull counters. Its speed preserves home-defence uptime; its thin hull makes a failed read expensive.',
     },
     PIKE: {
-      name: 'Pike', tag: 'Entry strike hull', role: 'High attack for its price; fragile against Bulwark-class targets.',
-      pitch: 'Commits more of its budget to damage than survival.',
-      detail: 'A Lance-class striker that punishes Skirmishers and Thorns. Ramparts and Bastions counter it, so an all-Pike force has a visible answer.',
+      name: 'Pike', tag: 'Entry Lance hull', role: 'At Dart’s price it attacks harder and has less hull, with class advantage against Skirmishers.',
+      pitch: 'Attack exceeds hull strength: a harder opening salvo buys a more fragile ship.',
+      detail: 'Pike is an entry Lance that hunts Skirmishers such as Dart and Thorn. At Dart’s price it buys more attack and less hull, and flies slower. Bulwark hulls and Bastions counter it, so an all-Pike fleet has a clear and effective answer.',
     },
     RAMPART: {
-      name: 'Rampart', tag: 'Entry fortress', role: 'Cheap durability that makes the whole fleet slower.',
+      name: 'Rampart', tag: 'Entry fortress', role: 'At Warden’s price it buys more durability, but attacks less and slows the fleet more.',
       pitch: 'Absorbs Lance fire efficiently; vulnerable to Skirmisher swarms.',
       detail: 'A slow Bulwark-class line hull. It buys survival instead of attack and is best when travel time matters less than holding formation.',
     },
     WARDEN: {
-      name: 'Warden', tag: 'Mobile escort', role: 'Balanced protection without Rampart-level delay.',
-      pitch: 'Less hull than a fortress, more speed and attack for mixed fleets.',
-      detail: 'An entry Bulwark escort for compositions that need protection without accepting the slowest travel profile.',
+      name: 'Warden', tag: 'Mobile escort', role: 'At Rampart’s price it attacks harder and flies faster, but has less hull.',
+      pitch: 'Trades part of fortress durability for attack and mixed-fleet tempo.',
+      detail: 'Warden is a mobile Bulwark escort with the same resource price as Rampart. Its raw attack and speed are higher and its hull strength is lower. Rampart suits a static wall; Warden suits a mixed fleet that needs tempo.',
     },
     COURIER: {
       name: 'Courier', tag: 'Fast light transport', role: 'Entry cargo hull; fast, lightly protected and unarmed.',
-      pitch: 'Keeps quick raids quick, but needs escorts and carries less.',
+      pitch: 'Keeps pace with fortress and Lance fleets, but slows the fastest Skirmisher formations.',
       detail: 'A support hull for loot, transfers and settlement. It deals no damage and is protected only while combat escorts survive.',
     },
     VIPER: {
       name: 'Viper', tag: 'Efficient raider', role: 'Tier-two speed and better survival than Dart.',
       pitch: 'Preserves the fast-fleet plan while paying less durability tax.',
-      detail: 'A research-free tier-two Skirmisher. Dart remains cheaper; Viper converts a larger commitment into better equal-cost efficiency.',
+      detail: 'A research-free tier-two Skirmisher. Dart remains cheaper, while both hulls share the same raw speed. Viper turns its larger commitment into more attack, hull, cargo and better equal-cost combat efficiency.',
     },
     TALON: {
-      name: 'Talon', tag: 'Heavy striker', role: 'Tier-two attack specialization with moderate speed.',
-      pitch: 'More efficient strike damage without removing Pike’s cheap role.',
+      name: 'Talon', tag: 'Heavy striker', role: 'At Viper’s price it attacks substantially harder, has less hull, flies slower and counters Skirmishers.',
+      pitch: 'Attack exceeds hull strength; a more fragile ship balances its higher damage.',
       detail: 'A Lance-class damage hull for developed yards. Bulwark counters still matter more than its tier advantage.',
     },
     STRONGHOLD: {
-      name: 'Stronghold', tag: 'Heavy line hull', role: 'Maximum tier-two durability; slow and expensive.',
+      name: 'Stronghold', tag: 'Heavy line hull', role: 'At Sentinel’s price it has the most tier-two durability, but less attack and speed.',
       pitch: 'Builds a wall when survival matters more than arrival time.',
       detail: 'A fortress-profile Bulwark. Its high hull anchors fleets, while Skirmishers and long exposure remain clear costs.',
     },
     SENTINEL: {
-      name: 'Sentinel', tag: 'Tier-two escort', role: 'Faster defensive escort for mixed formations.',
+      name: 'Sentinel', tag: 'Tier-two escort', role: 'At Stronghold’s price it attacks harder and flies faster, but has less hull.',
       pitch: 'Trades fortress durability for attack and fleet tempo.',
       detail: 'A mobile Bulwark escort that protects transports without forcing the Stronghold travel profile.',
     },
@@ -177,34 +177,34 @@ export const vocabulary = {
       detail: 'A tier-two support transport for larger raids and transfers. It remains unarmed and depends on combat escorts.',
     },
     TEMPEST: {
-      name: 'Tempest', tag: 'Advanced speed raider', role: 'Fastest combat hull; research-gated Skirmisher.',
+      name: 'Tempest', tag: 'Advanced speed raider', role: 'Research-gated tier-three Skirmisher; shares the fastest raw combat speed with Dart, Viper and Corsair.',
       pitch: 'Late-game speed with improved efficiency, still not a line ship.',
       detail: 'An advanced raider unlocked by Engineering and Ship Power. It keeps a fragile profile so lower-tier walls and counters remain relevant.',
     },
     BALLISTA: {
-      name: 'Ballista', tag: 'Advanced striker', role: 'Research-gated heavy attack in the Lance class.',
-      pitch: 'Concentrated damage that still breaks against the right wall.',
+      name: 'Ballista', tag: 'Advanced striker', role: 'At Tempest’s price it attacks substantially harder, has less hull and flies slower as a tier-three Lance.',
+      pitch: 'Attack exceeds hull strength, but high damage will not save it from the right Bulwark wall.',
       detail: 'A tier-three strike hull requiring Engineering and Ship Power. It rewards an informed target, not blind mono-fleet production.',
     },
     LEVIATHAN: {
-      name: 'Leviathan', tag: 'Advanced fortress', role: 'Huge line durability bought with speed.',
+      name: 'Leviathan', tag: 'Advanced fortress', role: 'At Praetorian’s price it buys more hull, but less attack and speed for a tier-three wall.',
       pitch: 'A late-game wall that makes every flight a long commitment.',
       detail: 'A tier-three fortress unlocked through Engineering and Ship Armor. Skirmishers remain its efficient counter.',
     },
     PRAETORIAN: {
-      name: 'Praetorian', tag: 'Advanced escort', role: 'Durable, mobile protection for valuable fleets.',
-      pitch: 'Less hull than Leviathan, more tempo for mixed formations.',
+      name: 'Praetorian', tag: 'Advanced escort', role: 'At Leviathan’s price it attacks harder and flies faster, but has less hull.',
+      pitch: 'Trades part of fortress durability for attack and mixed-fleet tempo.',
       detail: 'A tier-three Bulwark escort requiring Engineering and Ship Armor. It protects cargo without becoming the slowest possible choice.',
     },
     ATLAS: {
-      name: 'Atlas', tag: 'Maximum cargo', role: 'Largest hold; slow, bulky and research-gated.',
-      pitch: 'Best capacity efficiency when the route is safe enough to be slow.',
+      name: 'Atlas', tag: 'Tier-three heavy transport', role: 'The largest tier-three hold; slow, bulky and research-gated.',
+      pitch: 'The most efficient safe, high-volume transport before Argosy unlocks.',
       detail: 'A tier-three support transport unlocked by Engineering and Propulsion. It deals no damage and makes escort planning essential.',
     },
     NULLIFIER: {
       name: 'Nullifier',
       tag: 'Breaks active shields',
-      role: 'Lance specialist. Five times its normal effect against an active shield.',
+      role: 'An attack-led Lance specialist: attack exceeds hull strength, with five times its normal effect against an active shield.',
       pitch: 'Crushes an Aegis without turning bonus damage into unit kills. Weak when no shield is standing.',
       detail: 'Its specialist charge deals five times normal effect to an active Aegis. Once the shield falls, that bonus does not spill into ships or guns, so unshielded targets waste its premium.',
     },
@@ -217,34 +217,34 @@ export const vocabulary = {
       detail: 'When the battle ends, every collector still alive lifts up to {{salvage}} of the wreck — in the wreck’s own mix of alloy, crystal and deuterium — before the rest drifts as a public field. The haul lands in storage with the fleet. It adds nothing to the hold, cannot fly without a warship, cannot be sent at a wreck field or an asteroid, and collects nothing while defending.',
     },
     CATACLYSM: {
-      name: 'Cataclysm', tag: 'Capital striker', role: 'Tier-four attack peak; powerful, costly and deliberately slow.',
-      pitch: 'Exceptional concentrated damage without immunity to counters.',
+      name: 'Cataclysm', tag: 'Capital striker', role: 'At Corsair’s price it attacks substantially harder, has less hull and flies slower as a tier-four Lance.',
+      pitch: 'Attack exceeds hull strength; a more fragile ship and class counters balance its hard salvo.',
       detail: 'A capital Lance hull behind Engineering, Power and Armor. Its efficiency is higher, but Bulwark-class defence remains a better answer than mirroring it.',
     },
     CORSAIR: {
       name: 'Corsair',
       tag: 'Capital raider',
       role: 'The top tier\'s only Skirmisher — what breaks a Bulwark wall.',
-      pitch: 'The fastest hull in the game carrying the heaviest guns; it holds little and drinks hard.',
-      detail: 'The Corsair is the only tier-four answer to a Bulwark. Until it arrived, breaking a Citadel wall meant building tier-three Tempests. It is brittle against Lances and burns the most fuel per unit of its own value.',
+      pitch: 'At Cataclysm’s price it is faster and tougher, but attacks less and carries a smaller hold.',
+      detail: 'Corsair is tier four’s only Skirmisher and shares the highest raw combat-speed rung with Dart, Viper and Tempest. It has less raw attack than Cataclysm but gains the Skirmisher advantage against Citadel walls; Lance-class targets counter it.',
     },
     CITADEL: {
-      name: 'Citadel', tag: 'Capital fortress', role: 'Tier-four durability peak and the slowest mobile commitment.',
+      name: 'Citadel', tag: 'Capital fortress', role: 'At Paladin’s price it has more hull, less attack and the slowest tier-four combat speed.',
       pitch: 'The strongest wall, paid for in cost and exposure time.',
       detail: 'A capital Bulwark hull behind Engineering, Armor and Power. It anchors defence but remains vulnerable to Skirmisher counters.',
     },
     PALADIN: {
       name: 'Paladin',
       tag: 'Capital escort',
-      role: 'The middle ground between Citadel and Cataclysm: real guns and real armour.',
-      pitch: 'It holds less than a Citadel, fires far more, and costs less than either.',
+      role: 'At Citadel’s price it attacks harder and flies faster, but has less hull.',
+      pitch: 'A tier-four escort that trades part of fortress durability for attack and fleet tempo.',
       detail: 'The Paladin is Bulwark-class, so it stops Lances and falls to Skirmishers. It spends the premium a Citadel pays for armour on weapons instead — the only option between the two extremes of tier four.',
     },
     ARGOSY: {
       name: 'Argosy',
       tag: 'Capital hauler',
       role: 'The deepest hold and the slowest hull in the game.',
-      pitch: 'Carries what a squadron of Atlases carries, and can outrun nothing at all.',
+      pitch: 'Carries nearly as much as three Atlases, and can outrun nothing at all.',
       detail: 'The Argosy is tier four\'s transport. Support class, so it is shielded while combat hulls live and defenceless once the line is gone. The merchant\'s pace is tied to this hull: the slowest hold in the catalogue sets it.',
     },
     BASTION: {
@@ -266,7 +266,7 @@ export const vocabulary = {
       tag: 'Mines asteroids',
       role: 'Mines asteroids with a base hold of 300 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 300; a Derrick and Prospector Holds research can improve them. Each world may own at most two. It never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 300; a Derrick and Prospector Holds research can improve them. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
     },
   },
 
@@ -382,7 +382,7 @@ export const gains = {
     unlocks: 'Prospectors also travel {{factor}}× faster',
   },
   beacon: {
-    label: 'Every fleet that leaves here',
+    label: 'Raid, transfer, trade and aid fleets',
     now: 'normal speed',
     next: '{{factor}}× faster',
     unlocks: 'Out and back — a shorter window with your defence away from home',
@@ -394,10 +394,10 @@ export const gains = {
       'Every warship in your fleet. Power and Armor together add at most 56% equal-budget combat power; transports and ground defence are unaffected.',
     armorLabel: 'Ship hull strength',
     armorScope:
-      'All 18 ships in your fleet, transports included. Power and Armor together add at most 56% equal-budget combat power; ground defence is unaffected.',
+      'All ships in your fleet, transports included. Power and Armor together add at most 56% equal-budget combat power; ground defence is unaffected.',
     speedLabel: 'Fleet speed',
     speedScope:
-      'All 18 ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors, probes and the Death Star are unaffected.',
+      'All ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors, probes and the Death Star are unaffected.',
     engineeringLabel: 'Hull tier access',
     engineeringTier: 'Tier {{tier}}',
     engineeringScope:

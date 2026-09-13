@@ -104,7 +104,7 @@ export const errors = {
      it is written without interpolation: a placeholder rendered raw on the older
      caller is worse than a sentence that fits both. */
   CARGO_CAPACITY: 'That load is more than this convoy can carry',
-  TRANSFER_NEEDS_CARGO_HULL: 'Carrying resources needs a Courier, Wayfarer or Atlas',
+  TRANSFER_NEEDS_CARGO_HULL: 'Carrying resources needs a Courier, Wayfarer, Atlas or Argosy',
   BAD_TRADE: 'The merchant does not take that swap',
   TRADE_WINDOW_CLOSED: 'The merchant has left the galaxy',
   CHAT_RATE_LIMIT: 'Send at most five messages every {{seconds}} seconds.',
@@ -113,7 +113,7 @@ export const errors = {
   CLANS_NEXT_SEASON: 'Clans open in newer galaxies than this one',
   CLAN_ADAPTING: 'This opens when the 12-hour clan adaptation is complete',
   CLAN_AID_CANNOT_LAND: 'That world cannot receive this exact ship payload yet',
-  CLAN_AID_CARGO_CAPACITY: 'Only Courier, Wayfarer and Atlas carry clan resources; capacity is {{capacity}}',
+  CLAN_AID_CARGO_CAPACITY: 'Only Courier, Wayfarer, Atlas and Argosy carry clan resources; capacity is {{capacity}}',
   CLAN_AID_DISABLED: 'That clanmate is not accepting aid',
   CLAN_AID_LIMIT: 'That payload is over the receiver’s rolling 24-hour allowance. Reduce it or wait for allowance to return.',
   CLAN_AID_MEMBERSHIP: 'Clan aid is only for current clanmates',

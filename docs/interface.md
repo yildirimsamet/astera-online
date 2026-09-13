@@ -223,9 +223,10 @@ satellite consumes one of the same scarce slots. This preserves the identity cho
 making a player learn that an Aegis shield is somehow an orbital concern.
 
 **Temporary strategic hiding (D206).** The Death Star forge, anti-strategic battery,
-Death Star Protocol, Interception Grid and Strategic Stockpile remain mounted/authored but use `display: none` while
-`FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED` is false. Their now-empty Strategic research band is hidden with them.
-This is a release switch, not a deletion of their rules.
+Death Star Protocol, Interception Grid and Strategic Stockpile remain mounted/authored but use
+`display: none` while `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED` is false. With every project in
+the Strategic research band unavailable, the empty band is hidden too. This is a release switch,
+not a deletion of their rules.
 
 **Nothing on the bar gives advice.** A pip used to mark whichever problem the situation engine
 ranked highest, and it was removed by owner decision (D56a): the tabs say what they ARE and the

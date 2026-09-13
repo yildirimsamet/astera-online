@@ -17,10 +17,11 @@ import type { CombatClass, Fleet, Grade, HullClass, HullId, HullProfile } from '
  *
  * The launch sheet put the wing's firepower beside the wall's and stopped there, so
  * the one question it exists for — is this fight my size — was answered by losing
- * it. Measured on the battle engine: a wing equal to the wall only BREAKS it, and
- * loses two thirds of itself doing so; a clean sweep wants about half as much again.
- * Research, a charged Aegis, ground guns, transports in the line and the counter
- * cycle all move that, from a tenth to three times, so no fixed ratio can be printed.
+ * it. Raider-profile mirrors historically needed about half as much again for a
+ * clean sweep; attack-led Lance mirrors can erase both sides in one salvo instead.
+ * Research, Aegis, ground guns, transports and counters also move the thresholds,
+ * so no fixed ratio can be printed. DECISIVE describes the defender being cleared,
+ * not attacker survival; the loss estimate is a separate part of the decision.
  *
  * SO THE ENGINE ANSWERS IT. Every wall the reading still allows is built at the
  * tiers this wing flies (the attack band keeps both commanders within one tier of

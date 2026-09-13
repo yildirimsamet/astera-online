@@ -1168,7 +1168,7 @@ Binds: `ACADEMY_STEPS`, `academyGroup`, Academy Telescope timing/storage, Fleet 
 
 ### D206 · Strategic crafting is temporarily hidden behind one release switch — OWNER INSTRUCTION
 
-Rule: Death Star crafting and the anti-strategic battery are temporarily unavailable without deleting their implementation. `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED = false` is the single reopening switch. While false, the two planet-menu surfaces stay mounted but carry `display: none`; every Death Star-only research row (`DEATH_STAR_PROTOCOL`, `INTERCEPTION_GRID` and `STRATEGIC_STOCKPILE`) and their now-empty Strategic band do the same. `GRAVITIC_CHARGES` remains visible because it also unlocks the Nullifier. Authenticated POSTs to the Death Star and interceptor build routes return the same `STRATEGIC_UNAVAILABLE` 404 before body, ownership, prerequisite or resource evaluation. Existing research, launch/resolution state and authored projects are not deleted, so reopening does not require data repair.
+Rule: Death Star crafting and the anti-strategic battery are temporarily unavailable without deleting their implementation. `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED = false` is the single reopening switch. While false, the two planet-menu surfaces stay mounted but carry `display: none`; every Death Star-only research row (`DEATH_STAR_PROTOCOL`, `INTERCEPTION_GRID` and `STRATEGIC_STOCKPILE`) does the same, along with the now-empty Strategic research band. `GRAVITIC_CHARGES` remains visible because it also unlocks the Nullifier. Authenticated POSTs to the Death Star and interceptor build routes return the same `STRATEGIC_UNAVAILABLE` 404 before body, ownership, prerequisite or resource evaluation. Existing research, launch/resolution state and authored projects are not deleted, so reopening does not require data repair.
 Binds: `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED`, Death Star forge, interceptor battery, ResearchPanel, strategic build routes.
 
 ### D207 · The Escort is the faster Bulwark — OWNER INSTRUCTION
@@ -1345,6 +1345,33 @@ ownership penalty, direct raid capture or production constant changes have been 
 by this decision. The existing D167 ownership mechanism is unchanged. Candidate
 economy implementation/measurements: `docs/astera-economy-design-v1.md` and
 `tools/colony-investment-study.ts`.
+
+### Lance profile split · Attack-led at unchanged prices — OWNER INSTRUCTION (2026-09-13/14)
+
+Owner: the Raider and Lance lines must differ visibly; every Lance must have attack
+above hull strength, while cost and efficiency are preserved. This supersedes
+D195's historical `ROLE_SPREAD` implementation for Lances, not its constant-product rule.
+The owner's 2026-09-14 follow-up moved every Lance further into attack. The final
+`LANCE_ATTACK_HP_RATIO = [1.08, 1.081, 1.082, 1.083]` is applied by reciprocal
+attack/HP factors. Recipes, production time, cargo, speed, fuel and Bulwark profiles
+are unchanged. Nullifier follows its Lance class and retains its shield-only premium.
+Integer rounding moves the pre-split product by at most 1.34%; no existing balance
+acceptance band was widened.
+
+The rejected 1.10/1.20/1.30/1.40 ladder erased equal-budget Lance mirrors in one salvo
+and hid higher-tier efficiency. Two follow-up candidates, 1.08/1.11/1.14/1.17 and
+1.08/1.11/1.112/1.114, also saturated the upper-tier 240k comparisons. Pike's
+42/38 integer result visibly overshoots the next authored ratio; forcing every
+rounded tier above it recreates that failure. The selected ladder passes counter signs at three
+budgets and all 12 mean adjacent-tier checks. Mirrors remain substantially more
+destructive: simultaneous fire plus attack above HP can kill both sides, which earns
+no raid haul or return fleet. A neutral DECISIVE still opens its separate claim
+window even when the raiding fleet dies. This is a profile trade-off, not a universal upper-tier win promise.
+The old half-again forecast rule of thumb remains tested on unchanged Raider
+profiles; a separate Lance test checks engine grades including mutual destruction.
+Measurements and verification caveats: `docs/lance-profile-calibration-2026-09-13.md`.
+The owner initially requested that this calibration remain local, then authorized its production
+deployment on 2026-09-14 after qualification.
 
 ## Known authority gaps
 

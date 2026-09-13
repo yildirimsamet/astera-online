@@ -571,12 +571,12 @@ export const transfer = {
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
   irreversible:
-    "One way. Ground defence cannot move; cargo space comes only from Courier, Wayfarer and Atlas.",
+    "One way. Ground defence cannot move; cargo space comes only from Courier, Wayfarer, Atlas and Argosy.",
   hullNone: "None at this world",
-  holdReady: "Courier, Wayfarer and Atlas carry the ore. Hold: {{capacity}}.",
-  holdNeedsLoad: "Add a Courier, Wayfarer or Atlas above to carry ore.",
+  holdReady: "Courier, Wayfarer, Atlas and Argosy carry the ore. Hold: {{capacity}}.",
+  holdNeedsLoad: "Add a Courier, Wayfarer, Atlas or Argosy above to carry ore.",
   holdNoCarrier:
-    "This world has no Courier, Wayfarer or Atlas, so nothing here can carry ore.",
+    "This world has no Courier, Wayfarer, Atlas or Argosy, so nothing here can carry ore.",
   /** Caption on the destination's room bar, which draws the figures itself. */
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} of {{held}} {{name}} packed",

@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS,
   BUILDING_IDS,
+  HULLS,
   INSTRUMENT_IDS,
+  MULTI_WORLD,
   RESEARCH_PROJECT_IDS,
   SATELLITE_IDS,
+  prospectorCeiling,
   type ResearchProjectId,
 } from '@astera/rules';
 import i18n from '../src/i18n/index.js';
@@ -73,6 +76,91 @@ describe('the Store protection promise', () => {
         expect(copy).toMatch(/10/);
         expect(copy).toMatch(/8/);
         expect(copy).not.toMatch(/15/);
+      }
+    }
+  });
+
+  it('explains the current same-level producer purchase window', () => {
+    expect(en.vocabulary.building.VAULT.detail).toContain('110%');
+    expect(tr.vocabulary.building.VAULT.detail).toContain('110');
+    for (const locale of [en, tr]) {
+      expect(locale.vocabulary.building.VAULT.detail).toContain('L→L+1');
+    }
+  });
+});
+
+describe('Vocabulary describes the calibrated catalogue, not its retired stats', () => {
+  it('does not promise surviving ships merely because the defender is cleared', () => {
+    expect(en.counter.compareRule).toContain('does not guarantee surviving ships');
+    expect(tr.counter.compareRule).toContain('gemilerinin hayatta kalacağını garanti etmez');
+  });
+
+  it('scopes research speed to the capital Core and merchant speed to the catalogue', () => {
+    expect(en.vocabulary.building.CORE.detail).toContain('Only the capital’s Core sets research');
+    expect(tr.vocabulary.building.CORE.detail).toContain('Araştırma sınırı ve hızı yalnız ana gezegenin');
+    expect(tr.vocabulary.hull.ARGOSY.detail).toContain('katalogdaki en yavaş nakliye');
+  });
+
+  it('teaches an attack-led Lance profile in both languages', () => {
+    for (const id of ['PIKE', 'TALON', 'BALLISTA', 'CATACLYSM', 'NULLIFIER'] as const) {
+      expect(HULLS[id].atk, id).toBeGreaterThan(HULLS[id].hp);
+      const english = en.vocabulary.hull[id];
+      const turkish = tr.vocabulary.hull[id];
+      expect(`${english.role} ${english.pitch}`, id).toMatch(/attack exceeds hull strength/i);
+      expect(`${turkish.role} ${turkish.pitch}`, id).toMatch(/saldırısı dayanımından yüksek/i);
+    }
+  });
+
+  it('describes Escorts as same-price, harder-hitting and less durable Fortress alternatives', () => {
+    for (const [escort, fortress] of [
+      ['WARDEN', 'RAMPART'], ['SENTINEL', 'STRONGHOLD'],
+      ['PRAETORIAN', 'LEVIATHAN'], ['PALADIN', 'CITADEL'],
+    ] as const) {
+      for (const resource of ['alloy', 'crystal', 'deuterium'] as const) {
+        expect(HULLS[escort][resource], escort).toBe(HULLS[fortress][resource]);
+      }
+      expect(HULLS[escort].atk, escort).toBeGreaterThan(HULLS[fortress].atk);
+      expect(HULLS[escort].hp, escort).toBeLessThan(HULLS[fortress].hp);
+      expect(en.vocabulary.hull[escort].role, escort).toMatch(/price.*attacks harder.*less hull/i);
+      expect(tr.vocabulary.hull[escort].role, escort).toMatch(/aynı bedelde.*daha az dayan/i);
+    }
+  });
+
+  it('does not imply higher-tier Raiders are faster, or Atlas is the largest hold', () => {
+    for (const id of ['VIPER', 'TEMPEST', 'CORSAIR'] as const) {
+      expect(HULLS[id].speed, id).toBe(HULLS.DART.speed);
+    }
+    expect(en.vocabulary.hull.VIPER.detail).toContain('same raw speed');
+    expect(tr.vocabulary.hull.VIPER.detail).toContain('ham hızı aynıdır');
+    expect(HULLS.ARGOSY.cargo).toBeGreaterThan(HULLS.ATLAS.cargo);
+    expect(en.vocabulary.hull.ATLAS.role).toContain('tier-three');
+    expect(tr.vocabulary.hull.ATLAS.role).toContain('Üçüncü seviyenin');
+    expect(en.vocabulary.hull.CORSAIR.pitch).not.toContain('heaviest guns');
+    expect(tr.vocabulary.hull.CORSAIR.pitch).not.toContain('en ağır silah');
+  });
+
+  it('names the third mining-craft slot and capital-only colony gates', () => {
+    expect(prospectorCeiling({})).toBe(2);
+    expect(prospectorCeiling({ PROSPECTOR_HOLDS: 3 })).toBe(3);
+    expect(en.vocabulary.hull.PROSPECTOR.detail).toContain('Prospector Holds III');
+    expect(tr.vocabulary.hull.PROSPECTOR.detail).toContain('Kazıcı Ambarları III');
+    expect(en.research.holdsDetail).toContain('third Prospector slot');
+    expect(tr.research.holdsDetail).toContain('üçüncü Kazıcı yuvasını');
+    for (const core of MULTI_WORLD.colonyCoreThresholds) {
+      expect(en.vocabulary.building.CORE.detail).toContain(String(core));
+      expect(tr.vocabulary.building.CORE.detail).toContain(String(core));
+    }
+    expect(en.vocabulary.building.CORE.detail).toContain('Only the capital');
+    expect(tr.vocabulary.building.CORE.detail).toContain('Yalnız ana gezegendeki');
+  });
+
+  it('includes Argosy everywhere a resource-carrier list is taught', () => {
+    for (const [copies, list, name] of [
+      [ENGLISH, /Courier.*Wayfarer/, 'Argosy'],
+      [TURKISH, /Kurye.*Seyyah/, 'Argosi'],
+    ] as const) {
+      for (const [path, copy] of copies) {
+        if (list.test(copy)) expect(copy, path).toContain(name);
       }
     }
   });

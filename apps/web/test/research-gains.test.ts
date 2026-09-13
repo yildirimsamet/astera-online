@@ -123,9 +123,8 @@ describe('what a rung of research buys', () => {
         commander can see); the distinction it draws is what is asserted.
       */
       expect(researchGain('SHIP_POWER', 0).unlocks).toMatch(/warship/i);
-      expect(researchGain('SHIP_POWER', 0).unlocks).not.toMatch(/all 18/i);
-      expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all 18/i);
-      expect(researchGain('SHIP_PROPULSION', 0).unlocks).toMatch(/all 18/i);
+      expect(researchGain('SHIP_ARMOR', 0).unlocks).toMatch(/all ships.*transports/i);
+      expect(researchGain('SHIP_PROPULSION', 0).unlocks).toMatch(/all ships/i);
     });
 
     /** The combined Power × Armor ceiling is the one hard research rule. */
