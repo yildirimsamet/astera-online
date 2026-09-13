@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, notInArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import { ACADEMY_STEPS, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
@@ -188,10 +188,12 @@ async function seatedBots(db: Db): Promise<SeatedBot[]> {
     .from(botProfiles)
     .innerJoin(players, eq(players.accountId, botProfiles.accountId))
     .innerJoin(seasons, and(eq(seasons.id, players.seasonId), eq(seasons.status, 'live')))
+    .innerJoin(shards, eq(shards.id, seasons.shardId))
     .innerJoin(planets, and(
       eq(planets.controllerPlayerId, players.id),
       eq(planets.kind, 'CAPITAL'),
     ))
+    .where(notInArray(shards.code, [...BOTS.excludedShardCodes]))
     .orderBy(asc(botProfiles.ordinal));
 }
 

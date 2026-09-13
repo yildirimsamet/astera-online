@@ -99,6 +99,15 @@ describe('seating bots on a live galaxy', () => {
     expect(seated?.n).toBe(0);
   });
 
+  it('never runs an already-seated bot after its galaxy becomes excluded', async () => {
+    await fillPool(1);
+    await ensureBotSeats(f.db, f.clock, silent);
+    await f.db.update(shards).set({ code: 'EU-2', name: 'Kestrel' });
+    f.clock.set(busyEvening);
+    const result = await runBotSweep(f.db, f.clock, silent);
+    expect(result).toEqual({ seated: 0, awake: 0, turns: 0 });
+  });
+
   it('gives a bot the same opening a person gets', async () => {
     await fillPool(1);
     await ensureBotSeats(f.db, f.clock, silent);
