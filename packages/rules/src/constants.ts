@@ -1442,7 +1442,7 @@ export const SENSOR = {
  */
 export const PROBE = {
   /**
-   * Cut from 220 alloy to 50 alloy and 50 crystal, on the owner's instruction.
+   * Owner price: 65 alloy and 40 crystal.
    *
    * The old price was a fifth of a Wasp and still bought nothing at all in the
    * first hour of an account — which is exactly the hour the player is deciding
@@ -1450,14 +1450,13 @@ export const PROBE = {
    * little of BOTH resources is what keeps it a decision after the opening: alloy
    * alone is the resource nobody is ever short of.
    *
-   * The crystal half was halved again to 25 at D59, with the speed tripled — see
-   * both below. HOW MANY may be in the air at once is NOT set here: it is the
+   * HOW MANY may be in the air at once is NOT set here: it is the
    * general flight-bay rule (`flightSlots`), which D28 made the one scarcity every
    * craft in the game shares, and the owner's call is that it stays that way.
    */
-  alloy: Math.ceil(50 * ECONOMY_ADJUSTMENT.hullMetalPrice),
+  alloy: 65,
   /**
-   * Halved to 25 on the owner's instruction, with the speed below.
+   * Set to 40 on the owner's instruction.
    *
    * The pair of changes has one purpose: make looking the thing a player reaches
    * for first. Crystal is the binding resource in the opening — the three
@@ -1465,7 +1464,7 @@ export const PROBE = {
    * decides whether a probe is affordable at the moment somebody is deciding what
    * kind of game this is.
    */
-  crystal: Math.ceil(30 * ECONOMY_ADJUSTMENT.hullMetalPrice),
+  crystal: 40,
   /**
    * ×12 AT D121, ON THE OWNER'S INSTRUCTION: 260 → 3120. ×4 WAS TRIED FIRST.
    *

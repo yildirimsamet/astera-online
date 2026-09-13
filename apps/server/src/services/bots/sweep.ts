@@ -63,12 +63,13 @@ export async function ensureBotSeats(
   log: FastifyBaseLogger,
 ): Promise<number> {
   const live = await db
-    .select({ id: seasons.id })
+    .select({ id: seasons.id, code: shards.code })
     .from(seasons)
     .innerJoin(shards, eq(shards.id, seasons.shardId))
     .where(and(eq(seasons.status, 'live'), eq(shards.role, 'MAIN')))
     .orderBy(asc(seasons.startsAt), asc(seasons.id));
-  if (live.length === 0) return 0;
+  const eligible = live.filter((season) => !BOTS.excludedShardCodes.includes(season.code));
+  if (eligible.length === 0) return 0;
 
   const profiles = await db
     .select({ accountId: botProfiles.accountId, ordinal: botProfiles.ordinal })
@@ -85,7 +86,7 @@ export async function ensureBotSeats(
   let seated = 0;
   let free = profiles.filter((profile) => !seasonOf.has(profile.accountId));
 
-  for (const season of live) {
+  for (const season of eligible) {
     const here = placed.filter((row) => row.seasonId === season.id).length;
     const need = BOTS.perGalaxy - here;
     if (need <= 0) continue;

@@ -881,6 +881,10 @@ the next remains `locked` until the frontier fills.
 
 ## Turning on the commanders the server plays — D159
 
+Kestrel (`EU-2`) is explicitly human-only. `BOTS.excludedShardCodes` prevents the worker from
+seating any roster account there; production acceptance must report zero joined bot profiles on
+its live season.
+
 A separate, explicitly authorized owner operation, and deliberately two steps: the roster is
 filled by hand and the switch is thrown afterwards. `BOTS_ENABLED` defaults to `false`, so a
 deploy never starts seating anybody on its own.
@@ -891,7 +895,7 @@ deploy never starts seating anybody on its own.
    Run this on the VPS, against production, with the real `DATABASE_URL`:
 
    ```bash
-   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz" ...     # 12 per live galaxy
+   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz" ...     # 8 on EU-1; none on EU-2
    pnpm bots list
    ```
 
@@ -905,7 +909,7 @@ deploy never starts seating anybody on its own.
    ```
 4. **Confirm.** `/health` reports `checks.bots = { seated, awake }`. `seated` should reach the
    roster size within a minute; `awake` is zero between 01:00 and 08:00 Türkiye time and between
-   four and twelve at every other hour — that is the schedule working, not a fault. `/api/season`
+   four and eight at every other hour — that is the schedule working, not a fault. `/api/season`
    `online` should rise to match.
 
 To stop: `BOTS_ENABLED=false` and restart the worker. The worlds stay exactly where they are and

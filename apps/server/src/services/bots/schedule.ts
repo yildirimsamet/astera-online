@@ -16,7 +16,7 @@ import { BOTS } from './personas.js';
  *     `BOTS.awakeByLocalHour` are read as a blackout and the edge jitter below is
  *     clamped inside the active band, so no rounding can leak a commander into the
  *     quiet hours.
- *   · At least four and at most twelve are awake at every other minute. The count
+ *   · At least four and at most eight are awake at every other minute. The count
  *     for a slot IS the curve's value — it is not sampled or drawn — and the jitter
  *     may only ever ADD a commander to a minute, never remove one. A floor that is
  *     computed cannot dip; a floor that is rolled for can, and would, at 08:07.

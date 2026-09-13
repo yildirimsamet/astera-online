@@ -43,7 +43,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
 
   it('also raises the disposable probe invoice, without changing flight time', () => {
     expect(PROBE.alloy).toBe(65);
-    expect(PROBE.crystal).toBe(39);
+    expect(PROBE.crystal).toBe(40);
     expect(PROBE.speed).toBe(3510);
   });
 

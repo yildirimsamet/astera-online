@@ -88,6 +88,17 @@ describe('bot roster', () => {
 });
 
 describe('seating bots on a live galaxy', () => {
+  it('never seats a bot on Kestrel EU-2', async () => {
+    await f.db.update(shards).set({ code: 'EU-2', name: 'Kestrel' });
+    await fillPool(BOTS.perGalaxy);
+    expect(await ensureBotSeats(f.db, f.clock, silent)).toBe(0);
+    const [seated] = await f.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(botProfiles)
+      .innerJoin(players, eq(players.accountId, botProfiles.accountId));
+    expect(seated?.n).toBe(0);
+  });
+
   it('gives a bot the same opening a person gets', async () => {
     await fillPool(1);
     await ensureBotSeats(f.db, f.clock, silent);
@@ -243,7 +254,7 @@ describe('presence', () => {
     // Every commander is seated with the same `nextActionAt`, so the first sweep
     // after a deploy has the entire roster due at once. `WORKER_POLL_MS` is one
     // second because visible timing matters (D52) — a tick that stops to play
-    // twelve sessions is a tick during which nobody's raid lands.
+    // eight sessions is a tick during which nobody's raid lands.
     const result = await runBotSweep(f.db, f.clock, silent);
     expect(result.awake).toBeGreaterThanOrEqual(4);
     expect(result.turns).toBeGreaterThan(0);

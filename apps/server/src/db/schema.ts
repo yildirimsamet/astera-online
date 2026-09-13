@@ -250,7 +250,7 @@ export const feedbackEntries = pgTable('feedback_entries', {
  *
  * IT HANGS OFF THE ACCOUNT, NOT THE PLAYER, BECAUSE THAT IS WHAT SURVIVES A WIPE.
  * `wipeAllServers` deletes every `players` row and keeps every `accounts` row, so a
- * profile keyed on the account is what lets the same twelve names be seated again in
+ * profile keyed on the account is what lets the same eight names be seated again in
  * the next season without the owner retyping them.
  *
  * `ordinal` is the shift roster's key and the persona's: it decides when this

@@ -6,7 +6,7 @@ import { botsAwakeAt } from '../src/services/bots/schedule.js';
  * THE SHIFT ROSTER, AND IT IS THE HALF OF THIS FEATURE A PLAYER CAN COUNT.
  *
  * Owner instruction: nobody awake between 01:00 and 08:00 Türkiye time, and
- * between four and twelve of them awake at every other minute of the day. Both
+ * between four and eight of them awake at every other minute of the day. Both
  * are absolute, so both are asserted minute by minute across whole days rather
  * than sampled — a floor that holds at 20:00 and dips to three at 08:07 is not a
  * floor, and 08:07 is exactly where a naive edge jitter puts the hole.
@@ -37,7 +37,7 @@ describe('bot shift roster', () => {
     }
   });
 
-  it('holds the four-to-twelve envelope at every waking minute', () => {
+  it('holds the four-to-eight envelope at every waking minute', () => {
     for (let day = 10; day < 17; day++) {
       for (const { hour, minute, at } of minutesOfDay(day)) {
         if (hour >= 1 && hour < 8) continue;

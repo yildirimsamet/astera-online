@@ -111,7 +111,7 @@ const schema = z.object({
    * screen in the game reads, and launches real fleets at real players. None of
    * that may happen because a process booted with an empty environment — a
    * developer running `pnpm dev` against a copy of production must get a quiet
-   * galaxy, not twelve commanders going to work.
+   * galaxy, not eight commanders going to work.
    *
    * Only the worker reads it (`ROLE=worker|both`); an API replica with it set does
    * nothing, because nothing in the request path consults it.

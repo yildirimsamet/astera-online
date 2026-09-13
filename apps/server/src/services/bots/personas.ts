@@ -180,20 +180,23 @@ const isPersonaId = (id: string): id is BotPersonaId =>
   Object.hasOwn(BOT_PERSONAS, id);
 
 export const BOTS = {
+  /** Kestrel is a human-only galaxy. The worker must never seat a bot there. */
+  excludedShardCodes: ['EU-2'] as readonly string[],
+
   /**
    * HOW MANY COMMANDERS THE SERVER SEATS IN EACH LIVE GALAXY. Owner instruction.
    *
    * Per galaxy, not in total: galaxies fill in order and a second one opening
    * empty is the same problem this exists to solve, one shard along.
    */
-  perGalaxy: 12,
+  perGalaxy: 8,
 
   /**
    * THE OPENING CEASEFIRE. D170, owner instruction: *"Botlar server yeni
    * başladığında en az 4 saat savaşmasın."*
    *
    * A galaxy's first hours are when every commander is weakest and least defended,
-   * and twelve of them are the server's own — so a bot raiding at minute thirty is
+   * and eight of them are the server's own — so a bot raiding at minute thirty is
    * not competition, it is a world that arrived already hostile. Four hours is
    * long enough for a person to stand a Vault, a gun and a fleet before anything
    * they own is at stake.
@@ -211,7 +214,7 @@ export const BOTS = {
 
   /**
    * THE SHIFT ROSTER, AS A TARGET FOR EACH TÜRKIYE HOUR. Owner instruction:
-   * nobody between 01:00 and 08:00, and between four and twelve of them awake at
+   * nobody between 01:00 and 08:00, and between four and eight of them awake at
    * every other hour.
    *
    * A FLAT NUMBER WOULD BE THE TELL. Twelve commanders who are all present at
@@ -246,14 +249,14 @@ export const BOTS = {
   /**
    * HOW MANY SESSIONS ONE SWEEP WILL PLAY, AND IT IS A LATENCY BUDGET.
    *
-   * At rest this ceiling is never reached: twelve commanders on a seven-to-twenty-
+   * At rest this ceiling is never reached: eight commanders on a seven-to-twenty-
    * three-minute cadence produce under one due turn a minute. It exists for the
    * COLD START — every commander is seated with the same `nextActionAt`, so the
    * first sweep after a deploy has the whole roster due at once, and a turn is half
    * a dozen locking transactions.
    *
    * `WORKER_POLL_MS` is one second because visible timing matters (D52): a tick
-   * that stops to play twelve sessions is a tick during which nobody's raid lands.
+   * that stops to play eight sessions is a tick during which nobody's raid lands.
    * Three a sweep spreads that cold start over four minutes and costs nothing
    * afterwards; the commanders passed over keep their due time and are simply first
    * in the queue next minute.
@@ -265,7 +268,7 @@ export const BOTS = {
    *
    * Rewards need no code — every reward in this game is CLAIMED and none of these
    * commanders ever opens the screen that claims one. The ceiling is what keeps
-   * them off the podium, and it is the whole of "exempt": twelve tireless
+   * them off the podium, and it is the whole of "exempt": eight tireless
    * commanders with no ceiling would own the top of a ladder that exists for the
    * people playing.
    */

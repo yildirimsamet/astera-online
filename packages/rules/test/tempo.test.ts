@@ -35,10 +35,10 @@ describe('monthly economy tempo', () => {
     expect(DEATH_STAR.buildMinutes).toBe(60);
   });
   it('keeps entry purchases reachable and founding capital separate', () => {
-    expect(HULLS.DART.alloy).toBe(300);
+    expect(HULLS.DART.alloy).toBe(390);
     // D209, owner instruction: the Uplink is priced by hand, not by the tempo.
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1000, crystal: 500, deuterium: 0 });
     expect(MULTI_WORLD.settlement.charge).toEqual({ alloy: 1000, crystal: 500, deuterium: 0 });
-    expect(PROBE.alloy).toBe(50);
+    expect(PROBE.alloy).toBe(65);
   });
 });
