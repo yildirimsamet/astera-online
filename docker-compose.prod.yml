@@ -42,6 +42,17 @@ x-api: &api
     # Set false for the first compatibility roll, true after all four processes
     # understand the additional pirate handles. Existing targets stay visible.
     PIRATE_SPAWN_INCREASE_ENABLED: ${PIRATE_SPAWN_INCREASE_ENABLED:-true}
+    # The same two-phase rule for the 2026-09-14 doubling, which appends a THIRD
+    # lane after the one above. Nests with it: while the older flag is false this
+    # one changes nothing, because a process that cannot read the +50% lane
+    # certainly cannot read the lane after it.
+    PIRATE_SPAWN_SURGE_ENABLED: ${PIRATE_SPAWN_SURGE_ENABLED:-true}
+    # The recovery shield (2026-09-14). False means the columns are written by the
+    # migration and read by nobody: no window is granted and no stored instant
+    # refuses a launch, so a fleet mid-roll cannot have one instance enforcing a
+    # shield another instance does not know exists. The first-day shield is a
+    # separate column and is untouched either way.
+    RECOVERY_SHIELD_ENABLED: ${RECOVERY_SHIELD_ENABLED:-true}
     MINING_CACHE_TTL_MS: ${MINING_CACHE_TTL_MS:-5000}
     SSE_MAX_BUFFER_BYTES: ${SSE_MAX_BUFFER_BYTES:-65536}
   depends_on:

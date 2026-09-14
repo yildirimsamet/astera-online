@@ -91,7 +91,7 @@ const previewOf = (planets: Preview['galaxy']['planets'] = []): Preview => ({
     status: 'live',
     startsAt: new Date(Date.now() - HOUR),
     endsAt: new Date(Date.now() + 14 * 24 * HOUR),
-    rivals: [], shieldUntil: null, playerCap: 50,
+    rivals: [], shieldUntil: null, shieldKind: null, playerCap: 50,
     players: 38,
   },
   galaxy: {

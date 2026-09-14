@@ -8,7 +8,7 @@ import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
 import { LaunchSheet } from '../src/screens/LaunchSheet.js';
-import { NewcomerShield } from '../src/shell/StatusBar.js';
+import { AttackShield } from '../src/shell/StatusBar.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
@@ -172,14 +172,14 @@ describe('the first-day shield on the launch sheet', () => {
   });
 });
 
-describe('the first-day shield in the permanent HUD', () => {
-  const showStatus = (shieldUntil: Date | null) => {
+describe('the attack shield in the permanent HUD', () => {
+  const showStatus = (shieldUntil: Date | null, shieldKind: 'NEWCOMER' | 'RECOVERY' | null = null) => {
     const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(keys.season, { rivals: [], shieldUntil });
+    client.setQueryData(keys.season, { rivals: [], shieldUntil, shieldKind });
     render(
       <QueryClientProvider client={client}>
-        <ApiProvider api={api}><NewcomerShield /></ApiProvider>
+        <ApiProvider api={api}><AttackShield /></ApiProvider>
       </QueryClientProvider>,
     );
   };
@@ -204,9 +204,24 @@ describe('the first-day shield in the permanent HUD', () => {
     "Raid shield", so once that text was dropped the test passed whether or not the
     badge was still on screen.
   */
+  /**
+   * ONE CHIP, TWO SHIELDS, AND IT SAYS WHICH. 2026-09-14.
+   *
+   * The countdown is the same fact either way — *nobody can raid me for this long*
+   * — but what firing would give up is not: the first day never comes back and a
+   * recovery window can be earned again, so the sentence a reader gets names the
+   * one that is standing. A server that does not send the kind (an older one, or
+   * the Academy's offline payload) falls back to the first-day wording rather than
+   * to nothing.
+   */
+  it('names the recovery shield when that is the one standing', () => {
+    showStatus(new Date(Date.now() + 3 * 3_600_000), 'RECOVERY');
+    expect(screen.getByLabelText(/recovery shield/i)).toBeInTheDocument();
+  });
+
   it('takes the stale badge away once its timestamp has passed', () => {
     showStatus(new Date(Date.now() - 1));
     expect(screen.queryByLabelText(/cannot be raided/i)).toBeNull();
-    expect(document.querySelector('[data-newcomer-shield]')).toBeNull();
+    expect(document.querySelector('[data-attack-shield]')).toBeNull();
   });
 });

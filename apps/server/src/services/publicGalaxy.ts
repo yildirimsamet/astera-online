@@ -23,6 +23,7 @@ import {
   players,
   satellites,
 } from '../db/schema.js';
+import { protectionFrom } from './attackProtection.js';
 import {
   compareDominionScoresDescending,
   dominionPodium,
@@ -197,6 +198,8 @@ export async function publicWorlds(
        * the one fact a launch decision turns on, and it expires on its own.
        */
       playerShieldUntil: players.newcomerShieldUntil,
+      /** The other half of the same fact since 2026-09-14. See `protectionFrom`. */
+      playerRecoveryShieldUntil: players.recoveryShieldUntil,
     })
     .from(planets)
     .leftJoin(players, eq(planets.controllerPlayerId, players.id))
@@ -266,14 +269,19 @@ export async function publicWorlds(
       THE THREE STATES A WORLD CAN BE IN, AND THE ORDER IS THE SEVERITY.
 
       RECOVERY is a world that has been struck and is dark; PROTECTED is a world
-      that cannot be raided. The second now has two sources — an occupation window
-      on one captured world (`protectedUntil`), and its commander's first-day
-      shield (D183) — and they mean the same thing to a raider, so they wear the
-      same badge and the later of the two is the one that is drawn.
+      that cannot be raided. The second now has THREE sources — an occupation window
+      on one captured world (`protectedUntil`), its commander's first-day shield
+      (D183), and since 2026-09-14 their recovery shield — and all three mean the
+      same thing to a raider, so they wear the same badge and the latest of them is
+      the one that is drawn. The two commander shields are composed by
+      `protectionFrom`, which is the only place either column is interpreted.
     */
+    const commanderProtection = r.planet.kind === 'NEUTRAL'
+      ? null
+      : protectionFrom(r.playerShieldUntil, r.playerRecoveryShieldUntil, now);
     const shieldedUntil = [
       r.planet.protectedUntil,
-      r.planet.kind === 'NEUTRAL' ? null : r.playerShieldUntil,
+      commanderProtection === null ? null : new Date(commanderProtection.until),
     ].filter((at): at is Date => at !== null && at > now)
       .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
     const state = r.planet.recoveryUntil && r.planet.recoveryUntil > now

@@ -69,11 +69,20 @@ describe('finite monthly external supply', () => {
     expect(() => monthlySupply('mining', 0, -1)).toThrow();
   });
 
-  it('raises pirate supply with the owner-set 50% spawn increase', () => {
+  /**
+   * The allowance is a share of the frozen monthly reference scaled by the lane's
+   * candidate rate, so it follows both 2026-09-14 increases: 0.05 x 1.30 x (0.06 /
+   * 0.02) is 19.5% of the reference, against mining's 15%. Without the matching
+   * headroom the admission cap would simply discard the new lane's targets and the
+   * doubling would exist only in the constants.
+   */
+  it('raises pirate supply with the owner-set spawn increases', () => {
+    const rateScale = PIRATE.spawnPerHour / PIRATE.establishedSpawnPerHour;
+    expect(rateScale).toBeCloseTo(3, 9);
     for (const resource of resources) {
       const mining = monthlySupply('mining', 12, SERVERS.capacity)[resource];
       const piracy = monthlySupply('pirates', 12, SERVERS.capacity)[resource];
-      expect(piracy / mining).toBeCloseTo((0.05 * 1.30 * 1.50) / 0.15, 12);
+      expect(piracy / mining).toBeCloseTo((0.05 * PIRATE.hoardRewardScale * rateScale) / 0.15, 12);
     }
   });
 });

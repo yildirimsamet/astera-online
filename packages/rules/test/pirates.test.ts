@@ -516,18 +516,45 @@ describe('the pirate schedule', () => {
     expect(PIRATE.spawnPerHour).toBeGreaterThan(0);
   });
 
-  it('raises the spawn rate by 50% without moving an established pirate', () => {
-    expect(PIRATE.spawnPerSeatPerHour).toBe(0.03);
-    expect(PIRATE.spawnPerHour).toBe(9);
+  /**
+   * TWO DENSITY RAISES, THREE LANES, AND NOT ONE MOVED TARGET.
+   *
+   * The 2026-09-14 doubling is the second append on the same day: 0.02 → 0.03 →
+   * 0.06 a seat an hour. The digest below is the ORIGINAL lane's, unchanged from
+   * when it was the whole field, which is the only proof that matters — a pirate's
+   * public handle is an HMAC of its lane index, so a renumbering silently re-aims
+   * every claim, every `pirate_state` row and every raid already in the air.
+   */
+  it('doubles the spawn rate without moving a pirate from either earlier lane', () => {
+    expect(PIRATE.spawnPerSeatPerHour).toBeCloseTo(0.06, 12);
+    expect(PIRATE.spawnPerHour).toBeCloseTo(18, 9);
 
-    const establishedLength = 2823;
+    const established = generatePirateSchedule(mulberry32(7), undefined, 0, 0, {
+      stage: 'ESTABLISHED',
+    });
+    const increased = generatePirateSchedule(mulberry32(7), undefined, 0, 0, {
+      stage: 'INCREASED',
+    });
     const field = generatePirateSchedule(mulberry32(7));
-    expect(field.length / establishedLength).toBeGreaterThan(1.45);
-    expect(field.length / establishedLength).toBeLessThan(1.55);
-    expect(createHash('sha256')
-      .update(JSON.stringify(field.slice(0, establishedLength)))
-      .digest('hex'))
+
+    expect(established).toHaveLength(2823);
+    // Each stage is a strict prefix of the next, so a staged rollout only ever
+    // hides contacts — it can never publish a different one under the same handle.
+    expect(increased.slice(0, established.length)).toEqual(established);
+    expect(field.slice(0, increased.length)).toEqual(increased);
+    expect(field.map((spec, index) => spec.index === index).every(Boolean)).toBe(true);
+
+    expect(increased.length / established.length).toBeGreaterThan(1.45);
+    expect(increased.length / established.length).toBeLessThan(1.55);
+    expect(field.length / established.length).toBeGreaterThan(2.9);
+    expect(field.length / established.length).toBeLessThan(3.1);
+
+    // Both earlier lanes are pinned, not just the first: the +50% lane is as live
+    // as the original one and a re-deal of it would move just as many claims.
+    expect(createHash('sha256').update(JSON.stringify(established)).digest('hex'))
       .toBe('a3828f6839be3b69838c29621be59651f1131f3cda92a7c517f75aabd8a5d41a');
+    expect(createHash('sha256').update(JSON.stringify(increased)).digest('hex'))
+      .toBe('ffa17ad8fce8dcde4e3d89da248490e1c55659bdab41a86e3871a89747beba2c');
   });
 
   it('rolls levels in the advertised proportions', () => {

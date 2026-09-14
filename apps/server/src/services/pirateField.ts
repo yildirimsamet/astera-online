@@ -6,6 +6,7 @@ import {
   pirateDiscovered,
   type Fleet,
   type HullId,
+  type PirateLaneStage,
   type PirateSpec,
   type SensorEpoch,
 } from '@astera/rules';
@@ -39,8 +40,8 @@ import type { Queryable } from '../db/client.js';
  *
  * THE LANE IS DERIVED FROM THE SEASON'S EXISTING SECRET under its own HMAC
  * labels. A separate key column would have been a migration for no gain: distinct
- * labels already give the two lanes independent draws, so raising the pirate rate
- * cannot move a single rock and vice versa.
+ * labels already give each lane independent draws, so raising the pirate rate
+ * cannot move a single rock — or a single already-drawn pirate — and vice versa.
  */
 
 function keyedRng(key: string, label = 'pirate:draw'): () => number {
@@ -67,9 +68,18 @@ function trim<K, V>(cache: Map<K, V>): void {
   }
 }
 
-/** The whole lane for this season key. LRU-32, because generation is not free. */
-export function privatePirateField(key: string, includeIncrease = true): PirateSpec[] {
-  const cacheKey = `${key}:${includeIncrease ? 'full' : 'established'}`;
+/**
+ * The whole lane for this season key. LRU-32, because generation is not free.
+ *
+ * ONE KEYED STREAM PER LANE, under its own HMAC label. Distinct labels are what
+ * make the three lanes independent: raising density appends draws that no earlier
+ * lane can see, so a live pirate's orbit, roster and hoard cannot move.
+ */
+export function privatePirateField(
+  key: string,
+  stage: PirateLaneStage = 'ALL',
+): PirateSpec[] {
+  const cacheKey = `${key}:${stage}`;
   const cached = fieldCache.get(cacheKey);
   if (cached) {
     fieldCache.delete(cacheKey);
@@ -78,7 +88,8 @@ export function privatePirateField(key: string, includeIncrease = true): PirateS
   }
   const field = generatePirateSchedule(keyedRng(key), undefined, 0, 0, {
     rngForIncrease: keyedRng(key, 'pirate:spawn-increase:v1'),
-    includeIncrease,
+    rngForSurge: keyedRng(key, 'pirate:spawn-surge:v1'),
+    stage,
   });
   fieldCache.set(cacheKey, field);
   trim(fieldCache);
@@ -211,12 +222,18 @@ export async function loadPirateSnapshot(
     destroyedByPlayerId: row.destroyedByPlayerId,
   }]));
   const pirates = privatePirateField(season.asteroidKey);
-  // First roll all processes with contacts hidden, then open the extra lane.
-  // Even staged APIs retain the full field so a newly enabled replica's handles
-  // remain valid everywhere once the compatibility rollout has completed.
+  /*
+    First roll all processes with the newer contacts hidden, then open each lane.
+    Even a staged API derives the FULL field, so a handle minted by an instance
+    that is already ahead still resolves here; only what `standing` publishes is
+    held back. The two flags nest in lane order — the older one wins, because a
+    process that cannot read the +50% lane certainly cannot read the one after it.
+  */
   const visibleLength = process.env.PIRATE_SPAWN_INCREASE_ENABLED === 'false'
-    ? privatePirateField(season.asteroidKey, false).length
-    : pirates.length;
+    ? privatePirateField(season.asteroidKey, 'ESTABLISHED').length
+    : process.env.PIRATE_SPAWN_SURGE_ENABLED === 'false'
+      ? privatePirateField(season.asteroidKey, 'INCREASED').length
+      : pirates.length;
 
   return {
     pirates,

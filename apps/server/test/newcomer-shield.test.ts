@@ -172,7 +172,7 @@ describe('the newcomer shield', () => {
    *
    * A shield that stopped raids and not this would be a shield that stopped nothing
    * worth stopping — a Death Star halves a world's stores, drops its Core and darks
-   * it for two hours (D179). `assertNewcomerShields` is the single statement both
+   * it for two hours (D179). `assertAttackProtections` is the single statement both
    * lanes read precisely so this cannot be the lane somebody forgets.
    *
    * The two refusals keep the raid lane's order for the same reason: giving up your

@@ -39,6 +39,7 @@ import { launchPirateRaid } from '../pirateRaid.js';
 import { asteroidId, discoveredAsteroidIndexes } from '../asteroidField.js';
 import { loadPirateSnapshot, pirateId } from '../pirateField.js';
 import { sensorHistoryForPlayer } from '../sensorHistory.js';
+import { protectionFrom } from '../attackProtection.js';
 import { peakCoreLevels } from '../player.js';
 import { researchLevels, techOf } from '../researchState.js';
 import type { PlanetView } from '../planetView.js';
@@ -456,6 +457,8 @@ async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24
       joinedAt: players.joinedAt,
       /** The commander's first day here, which no launch may cross. D183. */
       shieldUntil: players.newcomerShieldUntil,
+      /** …and the four hours a heavy defeat buys them, on the same terms. */
+      recoveryShieldUntil: players.recoveryShieldUntil,
       protectedUntil: planets.protectedUntil,
       recoveryUntil: planets.recoveryUntil,
     })
@@ -608,13 +611,15 @@ export async function raidCandidates(
     if ((known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff) continue;
     if (world.protectedUntil && world.protectedUntil > now) continue;
     /*
-      THE FIRST-DAY SHIELD BINDS THE SERVER'S OWN COMMANDERS TOO. D183.
+      BOTH ATTACK SHIELDS BIND THE SERVER'S OWN COMMANDERS TOO. D183 · 2026-09-14.
 
       `startAttack` would refuse the launch anyway; skipping here is what stops a
-      bot spending its turn on a target it cannot have — and what keeps a shielded
-      newcomer's first day quiet rather than merely un-hit.
+      bot spending its turn on a target it cannot have — and what keeps a protected
+      commander's window quiet rather than merely un-hit. Read through the same
+      composition the gate enforces, so the two can never disagree about who is
+      reachable.
     */
-    if (world.shieldUntil && world.shieldUntil > now) continue;
+    if (protectionFrom(world.shieldUntil, world.recoveryShieldUntil, now)) continue;
     if (world.recoveryUntil && world.recoveryUntil > now) continue;
     if (world.playerId !== null && !withinTierBand(myPeak, peaks.get(world.playerId) ?? 1)) continue;
 

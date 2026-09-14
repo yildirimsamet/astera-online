@@ -48,8 +48,8 @@ describe('research resource mix', () => {
 
 describe('the two-project frontier', () => {
   it('prices the monthly frontier permissions', () => {
-    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 3586, deuterium: 0 });
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 47200, deuterium: 3000 });
+    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 2869, deuterium: 0 });
+    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 37760, deuterium: 3000 });
   });
 
   it('opens spectroscopy on the shared season clock, never on a private timer', () => {
@@ -178,8 +178,8 @@ describe('the levelled research model', () => {
   });
 
   it('prices the monthly frontier permissions', () => {
-    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 3586, deuterium: 0 });
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 47200, deuterium: 3000 });
+    expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 2869, deuterium: 0 });
+    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 37760, deuterium: 3000 });
   });
 
   /** A price is asked for by TARGET level, so level one is what an unowned project costs. */

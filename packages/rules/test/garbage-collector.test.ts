@@ -96,8 +96,9 @@ describe('the Garbage Collector in the catalogue', () => {
    * and a half Argosies — for a hull that fires nothing and carries nothing. The
    * owner's figure is the card's own unit, so it is stated in it.
    */
-  it('drinks the owner’s ten per thousand units, not what its price would say', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(10);
+  it('drinks the owner’s hand-set thirst, not what its price would say', () => {
+    // Five per thousand units since the 2026-09-14 halving; ten before it.
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(5);
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBeLessThan(Math.ceil(15_000 * FUEL.perValue));
     // Every other hull still drinks off its price.

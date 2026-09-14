@@ -768,12 +768,42 @@ export const START_BUILDINGS = {
  */
 export const INSTRUMENT_LEVEL_WORTH = 2;
 
-/** Dead with `INSTRUMENT_LEVEL_WORTH`; `instrumentCost` ignores its `id` entirely. */
+/**
+ * THE RATIO BETWEEN THE FOUR, AND IT IS LIVE. D191.
+ *
+ * `instrumentCost` normalises on the cheap three, so what this actually states is
+ * that a Telescope is half again a detector's price at every rung. The docblock
+ * here called it dead for a release, which was true only between the economy
+ * cutover and D191 restoring the read.
+ */
 export const INSTRUMENT_COST_MULT = {
   TELESCOPE: 3,
   RADAR: 2,
   AEGIS: 2,
   VEIL: 2,
+} as const satisfies Record<InstrumentId, number>;
+
+/**
+ * A QUARTER OFF THE TWO INSTRUMENTS THAT LOOK. Owner instruction, 2026-09-14:
+ * *"Telescope ve Radar'ın bütün seviyelerindeki kaynak maliyetlerini %25 azalt."*
+ *
+ * THE TWO THAT SEE, AND NEITHER OF THE TWO THAT HIDE. The Aegis and the Veil keep
+ * their price to the unit, because this is a discount on FINDING things rather
+ * than a discount on the information layer: the same package doubles the pirate
+ * lane and front-loads the shower, and both of those are content a commander can
+ * only spend if they can see it. Cheapening the counter-measures alongside would
+ * have handed the increase straight back.
+ *
+ * APPLIED LAST, TO THE ALREADY-CEILED FIGURE, and rounded rather than ceiled — so
+ * the quoted price is exactly `round(old x 0.75)` and a reader can check any rung
+ * against the old table with a calculator. Ranges, repoint cooldowns, fog and
+ * identification are untouched; only the bill moved.
+ */
+export const INSTRUMENT_COST_DISCOUNT = {
+  TELESCOPE: 0.75,
+  RADAR: 0.75,
+  AEGIS: 1,
+  VEIL: 1,
 } as const satisfies Record<InstrumentId, number>;
 
 /**
@@ -1829,8 +1859,23 @@ export const FUEL = {
    * two can no longer re-rate each other. Prices are still `atk x hp / value^2` and
    * do not read fuel; the counter cycle and the research ceiling are untouched.
    */
-  // Economic hull value at 32:16:1; preserves every T1 combat hull's opening thirst.
-  perValue: 0.011,
+  /**
+   * Economic hull value at 32:16:1.
+   *
+   * HALVED FROM 0.011. Owner instruction, 2026-09-14: *"Yakıt tüketen bütün
+   * gemilerin Deuterium tüketimini %50 azalt."* The rate is the only dial the
+   * change needed, because D195 already routed every flying hull through it —
+   * which is the property that makes a one-line halving safe and a per-hull table
+   * unsafe. The Garbage Collector is the single exception and moves beside it in
+   * `SALVAGE.fuelMass`; leaving that behind would have halved "every ship" except
+   * the one hull whose thirst a player complained about first.
+   *
+   * WHAT DOES NOT HALVE IS THE SMALLEST BILL. `hullFuelMass` floors at one and
+   * `missionFuel` ceils per leg, so a trip that already cost a single unit still
+   * costs one: no fuel-charged hull is ever free to move (D136). The halving is a
+   * statement about the underlying rate, and the tests assert it there.
+   */
+  perValue: 0.0055,
   /**
    * THE ROUND TRIP A FUEL CHARGE IS NEUTRAL AT. D195, owner instruction.
    *
@@ -1880,7 +1925,10 @@ export const PROSPECTOR = {
    */
   speed: 825,
   /**
-   * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: three times.
+   * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
+   * (2026-09-14). The brake stays a brake — a full craft is still the slowest
+   * thing its owner will fly that hour — but the trip it prices now sits beside a
+   * hold that carries a third more, so the wait per unit came down twice over.
    *
    * A RATIO, and it has to be one. D63 moved hull speeds by 9.46 and nine tests
    * failed at once, none because the thing they tested had broken — every rule
@@ -1914,9 +1962,18 @@ export const PROSPECTOR = {
    * kinds of run around through the same line, so a wreck field is not a faster
    * way home than a rock.
    */
-  returnSpeedFactor: 1 / 3,
-  /** Resource units one craft carries home, before a Derrick. */
-  hold: 300,
+  returnSpeedFactor: 1 / 2,
+  /**
+   * Resource units one craft carries home, before a Derrick.
+   *
+   * 300 → 400 (owner instruction, 2026-09-14) AND THE ROCKS MOVED WITH IT. This
+   * is the same number as `GALAXY.asteroidOreQuantum`: a field whose every yield
+   * is a multiple of one bare craft's hold is a field that never sends a squadron
+   * home for a twenty-unit remainder. Raising one without the other re-creates
+   * exactly the leftovers the change was made to delete, which is why the two are
+   * held together by `balance-tempo-2026-09-14.test.ts` rather than by a comment.
+   */
+  hold: 400,
   /**
    * HOW MANY A PLANET MAY EVER OWN. Owner's figure.
    *
@@ -2097,6 +2154,55 @@ export const ABUSE = {
    * close.
    */
   newcomerShieldHours: 24,
+
+  /**
+   * HOW LONG A COMMANDER IS SAFE AFTER A HEAVY DEFEAT. Owner instruction,
+   * 2026-09-14: *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver."*
+   *
+   * IT IS THE FIRST-DAY SHIELD'S CONTRACT, NOT A SECOND MECHANISM. Same scope —
+   * the commander and every world they hold, against Raid and Death Star only —
+   * and the same forfeit: attacking another commander gives it up, once, after a
+   * confirmation. What makes it a different DECISION from D183's is that it can be
+   * earned again, so it answers the question a beginner's window cannot: what
+   * happens to somebody who has already committed to the war and just lost badly.
+   *
+   * FOUR HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
+   * this game is played in gaps, so the window has to be long enough to open the
+   * game once and put an order in, and short enough that a defeat is not a day off
+   * the board for whoever won. Production timers came down a quarter in the same
+   * package, so four hours buys more rebuilding than it would have last week — a
+   * coupling that is deliberate and measured rather than incidental.
+   *
+   * IT LIVES IN ITS OWN COLUMN. `players.recoveryShieldUntil` is nullable and
+   * separate from `newcomerShieldUntil` on purpose: overloading one column would
+   * make "has this commander ever fired" — which the first-day rule answers by
+   * PRESENCE — unanswerable the first time a recovery shield was granted and spent.
+   */
+  recoveryShieldHours: 4,
+
+  /**
+   * THE TWO THRESHOLDS A DEFEAT HAS TO CLEAR, AS WHOLE MULTIPLES.
+   *
+   * `2 x lootLost >= raidableBefore` and `20 x lootLost >= storageCapacity`: half
+   * of what was there to take, AND a twentieth of everything this commander can
+   * store. Stated as multiples of the loss rather than as `0.5` and `0.05` of the
+   * other side so every comparison is integer arithmetic — the rule has an exact
+   * boundary at each end (a cargo-sufficient PARTIAL sits precisely on the first
+   * one), and a float share is how an exact boundary becomes a coin flip.
+   *
+   * WHY BOTH. The relative test alone is an exploit: a colony deliberately left at
+   * two units of alloy loses "everything" to a single Dart and puts the commander's
+   * entire holding — capital included — behind four hours of immunity. The material
+   * floor closes it, and it is measured against STORAGE rather than against a Core
+   * table because storage already grows with the commander: the bar scales with
+   * development on its own, and no second ladder has to be kept in step with it.
+   *
+   * A TWENTIETH IS THE FIRST SIMULATION FIGURE. If it turns out to refuse real
+   * heavy defeats at low development it moves, and it moves here — `earnsRecoveryShield`
+   * is the only reader.
+   */
+  recoveryRaidableMultiple: 2,
+  recoveryStorageMultiple: 20,
 } as const;
 
 /**
@@ -2222,8 +2328,38 @@ export const GALAXY = {
    * against a single developed planet's 674. Mining is deliberately scarce at that
    * ratio: there is not enough ore for everyone to live on it, which is what makes
    * arriving first worth anything.
+   *
+   * EVERY RUNG IS NOW A WHOLE NUMBER OF PACKETS. Owner instruction, 2026-09-14:
+   * the ladder moved from `800 · 1600 · 3200 · 6000 · 11000` onto multiples of
+   * `asteroidOreQuantum`, and it was flattened at both ends while it moved. The
+   * old top was thirteen bare holds and the old bottom was two, which is not a
+   * ladder of prizes so much as one prize and four consolations; five even steps
+   * from four holds to twenty read as a choice at every rung.
    */
-  asteroidOreByLevel: [0, 800, 1600, 3200, 6000, 11000] as readonly number[],
+  asteroidOreByLevel: [0, 1600, 3200, 4800, 6400, 8000] as readonly number[],
+
+  /**
+   * THE UNIT A ROCK'S YIELD IS COUNTED IN. Owner instruction, 2026-09-14.
+   *
+   * *"Kazıcı temel kapasitesini 400 yap ve asteroid cevherlerini 400'ün katlarına
+   * taşı."* One bare Prospector hold (`PROSPECTOR.hold`), and the two are the same
+   * number on purpose: a squadron that empties a rock empties it exactly, and no
+   * trip is ever made for the twenty units the last one could not fit.
+   *
+   * IT BINDS THE BUDGET, NOT ONLY THE TABLE, and that is the half the first
+   * attempt at this missed. The level table was never the whole story — a day's
+   * yields are rescaled to fit `monthlySupply('mining', …)`, and a continuous
+   * rescale turns 1,600 into 337 whatever the table says. `quantiseDailyOre` in
+   * `galaxy.ts` is where the rule is actually enforced; this is the figure it
+   * enforces.
+   *
+   * IT CANNOT PROMISE ZERO REMAINDER TO AN UPGRADED FLEET, and pretending
+   * otherwise would be the more expensive lie. Prospector Holds and a Derrick
+   * multiply the hold to figures like 1,000 and 2,080 that no single quantum
+   * divides. What this fixes is the BARE craft — the one every commander flies
+   * first and the one the complaint was about.
+   */
+  asteroidOreQuantum: 400,
 
   /** How often each level turns up. Must sum to 1 across levels 1-5. */
   asteroidLevelWeights: [0, 0.4, 0.27, 0.18, 0.1, 0.05] as readonly number[],
@@ -2388,7 +2524,12 @@ export const GALAXY_EVENTS = {
   definitions: {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
-      version: 4,
+      /**
+       * VERSION 5 IS THE FRONT LOAD AND NOTHING ELSE. The windows and multipliers
+       * below are byte-identical to version 4; what changed is WHEN inside the
+       * hour the bonus rocks arrive. See `ASTEROID_SHOWER_FRONT_LOAD`.
+       */
+      version: 5,
       windows: [
         { startsAtLocalMinute: 2 * 60, endsAtLocalMinute: 3 * 60,
           effect: { asteroidSpawnMultiplier: 3 } },
@@ -2437,6 +2578,46 @@ export const GALAXY_EVENTS = {
     },
   },
   mutuallyExclusive: [] as readonly (readonly [string, string])[],
+} as const;
+
+/**
+ * WHEN AN ASTEROID SHOWER IS ACTUALLY FELT. Owner report, 2026-09-14:
+ * *"Asteroid Shower başladığında etkinin ilk dakikalarda belirginleşmesini
+ * istiyorum."*
+ *
+ * THE COMPLAINT WAS NOT ABOUT THE NOTIFICATION. A shower's bonus rocks were spread
+ * evenly over the whole sixty minutes, so at the instant the banner appeared the
+ * field held exactly as many rocks as it had a second earlier — and a commander who
+ * opened the game on the announcement, looked, and saw nothing had been told the
+ * truth by the copy and lied to by the disc. Measured over a hundred deterministic
+ * samples the raw field grew 4.6% / 8.7% / 19.8% in the first five minutes at the
+ * x3 / x5 / x10 windows; fog and sensor reach then made one commander's share of
+ * that smaller still.
+ *
+ * HALF THE HOUR'S BONUS IN THE FIRST FIVE MINUTES, and the other half across the
+ * remaining fifty-five. The hourly TOTAL does not move — this is a redistribution,
+ * not a bigger event — so nothing about the season's supply, the monthly allowance
+ * or the shower's own multiplier changes.
+ *
+ * SPREAD ACROSS THE FIVE MINUTES RATHER THAN DROPPED AT MINUTE ZERO. A single
+ * instant carrying half an hour's rocks is a lottery for whoever happens to be
+ * looking at the second it fires, and `interface.md`'s "Now" is about the moment
+ * arriving on time, not about one commander winning it. Five minutes is long enough
+ * to open the game and short enough that the growth reads as sudden.
+ *
+ * IT IS GATED ON THE OCCURRENCE'S DEFINITION VERSION, NOT ON A DATE. A calendar is
+ * dealt once at season creation (D149) and each row carries the version it was
+ * stamped with, so a window that has already opened keeps the arrival times its
+ * rocks were derived under — which is what `restampFutureOccurrences` exists to
+ * respect, and what stops a lane resize moving a claim or a drill in flight.
+ */
+export const ASTEROID_SHOWER_FRONT_LOAD = {
+  /** Occurrences stamped at or above this definition version are front-loaded. */
+  fromDefinitionVersion: 5,
+  /** Share of a window's bonus rocks that arrive inside `minutes`. */
+  share: 0.5,
+  /** How long the front of the window is, in minutes from its start. */
+  minutes: 5,
 } as const;
 
 /**
@@ -2521,10 +2702,15 @@ export const SALVAGE = {
    * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction:
    * *"19.1 döteryum yakıt çok. 10 yap."* Priced off its value like every other hull
    * it would drink 191 (19.1 per `FUEL.reference` units), two and a half Argosies,
-   * for a hull that fires nothing and carries nothing. 100 is the card's 10 per
+   * for a hull that fires nothing and carries nothing. 100 was the card's 10 per
    * thousand units. `hullFuelMass` reads it; nothing else may.
+   *
+   * HALVED TO 50 WITH THE REST OF THE FLEET, 2026-09-14. It is hand-set rather
+   * than priced, so `FUEL.perValue` cannot reach it — and "every ship that burns
+   * deuterium" has to include the one hull that is exempt from the formula, or the
+   * instruction quietly skipped its most-complained-about case.
    */
-  fuelMass: 100,
+  fuelMass: 50,
 } as const;
 
 /**
@@ -2628,10 +2814,28 @@ export const SERVERS = {
   idleDays: 3,
 } as const;
 
-/** The complete pirate lane before the 2026-09-14 owner-set density increase. */
+/**
+ * THE PIRATE LANE'S THREE RATES, AND WHY THERE ARE THREE RATHER THAN ONE.
+ *
+ * Density has been raised twice and each raise APPENDED a lane instead of moving
+ * the dial, for the reason written over `generatePirateSchedule`: a pirate is
+ * derived from the season key on every read, so squeezing the interval moves the
+ * appearance time, orbit and index of every target already in the sky — including
+ * the one a commander has a fleet in the air toward. Keeping the earlier rates
+ * named is what lets each lane be rebuilt byte for byte.
+ *
+ *   · 0.02 — the original lane;
+ *   · 0.03 — the 2026-09-14 +50%, its own seed-shifted lane;
+ *   · 0.06 — the owner's *"korsan yoğunluğunu 2 katına çıkar"* on the same day,
+ *     a third lane carrying the whole 0.03 difference.
+ *
+ * Only the last figure is the galaxy's actual candidate rate; the first two exist
+ * so the composer can subtract.
+ */
 const PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR = 0.02;
-/** Owner-set +50%; appended as an independent lane so live targets never move. */
-const PIRATE_SPAWN_PER_SEAT_PER_HOUR = PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * 1.5;
+const PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR =
+  PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * 1.5;
+const PIRATE_SPAWN_PER_SEAT_PER_HOUR = PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR * 2;
 
 /**
  * KORSAN FİLOLARI — THE GALAXY'S THIRD TARGET CLASS. D150.
@@ -2771,6 +2975,8 @@ export const PIRATE = {
   spawnPerSeatPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR,
   spawnPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
   establishedSpawnPerHour: PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
+  /** The first two lanes together: the field as it stood before the doubling. */
+  increasedSpawnPerHour: PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
 
   /** Hours a pirate rides its orbit before it is gone for good. */
   lifeHoursMin: 2,

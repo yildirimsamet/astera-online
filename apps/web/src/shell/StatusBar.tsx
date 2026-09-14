@@ -304,7 +304,7 @@ function Works({
 
   return (
     <div className="mt-3 flex items-stretch gap-2 max-h-[32px]">
-      <NewcomerShield />
+      <AttackShield />
       <button
         type="button"
         disabled={collect.isPending || !something}
@@ -388,13 +388,25 @@ function Works({
   );
 }
 
-/** The commander's own first-day raid immunity, kept in the permanent HUD. */
-export function NewcomerShield() {
+/**
+ * The commander's own raid immunity, kept in the permanent HUD.
+ *
+ * TWO SHIELDS, ONE CHIP. The first day (D183) and the four hours a heavy defeat
+ * buys (2026-09-14) are the same fact to the commander reading this — *nobody can
+ * raid me for this long* — so they share the countdown and differ only in the
+ * sentence, which names what would be given up by firing. The server composes the
+ * two and says which is standing; this never compares two columns itself.
+ */
+export function AttackShield() {
   const { t } = useTranslation();
-  const until = useSeason().data?.shieldUntil ?? null;
+  const season = useSeason().data;
+  const until = season?.shieldUntil ?? null;
   const now = useNow();
   if (until === null || until.getTime() <= now) return null;
   const remaining = countdown(until.getTime() - now);
+  const hint = season?.shieldKind === 'RECOVERY'
+    ? t('statusBar.recoveryShield.hint', { duration: remaining })
+    : t('statusBar.newcomerShield.hint', { duration: remaining });
 
   return (
     /*
@@ -408,9 +420,9 @@ export function NewcomerShield() {
       and the whole sentence stays on `aria-label` for anyone who needs it read.
     */
     <div
-      data-newcomer-shield
-      title={t('statusBar.newcomerShield.hint', { duration: remaining })}
-      aria-label={t('statusBar.newcomerShield.hint', { duration: remaining })}
+      data-attack-shield
+      title={hint}
+      aria-label={hint}
       className="flex flex-col shrink-0 items-center gap-1 rounded-chip border border-opportunity/35 bg-opportunity/10 px-1 py-1 text-opportunity"
     >
       <ShieldIcon className="size-3 shrink-0" />

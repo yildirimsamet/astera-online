@@ -125,10 +125,13 @@ export function LaunchSheet({
   const [confirming, setConfirming] = useState(false);
   const lesson = useAcademyLesson();
   /**
-   * THE COMMANDER'S OWN FIRST-DAY SHIELD, IF THEY STILL HAVE ONE. D183.
+   * THE COMMANDER'S OWN RAID IMMUNITY, IF THEY STILL HAVE ONE. D183 · 2026-09-14.
+   *
+   * EITHER SHIELD, because either is spent by this launch: the server composes the
+   * first day and the recovery window into one instant and names which is standing.
    *
    * A raid at another COMMANDER's world spends it; a pirate is not a commander and
-   * costs nothing (`assertNewcomerShields` takes a `defenderPlayerId` and a pirate
+   * costs nothing (`assertAttackProtections` takes a `defenderPlayerId` and a pirate
    * has none), so the price is only ever quoted on the lane that actually charges
    * it.
    *
@@ -1041,7 +1044,15 @@ export function LaunchSheet({
           */}
           {spendsShield && (
             <p data-shield-warning className="mt-2 text-body leading-relaxed text-alloy">
-              {t('launch.shieldWarning')}
+              {/*
+                NAMED, BECAUSE THE TWO COST DIFFERENT THINGS TO GIVE UP. The first
+                day never comes back; a recovery window can be earned again by
+                losing badly again. A confirmation that called one the other would
+                misprice the decision it exists to price.
+              */}
+              {season.data?.shieldKind === 'RECOVERY'
+                ? t('launch.recoveryShieldWarning')
+                : t('launch.shieldWarning')}
             </p>
           )}
           {/*

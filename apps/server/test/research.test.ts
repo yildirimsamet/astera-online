@@ -187,11 +187,11 @@ describe('the seasonal frontier', () => {
     /*
       FUNDED FROM THE PRICE, NOT FROM A NUMBER THAT WAS ONCE ENOUGH.
 
-      This read `5_000` Crystal, which stopped covering the two projects the moment
-      `RESEARCH_CRYSTAL_UPLIFT` raised every rung by a quarter — and the test then
-      failed on INSUFFICIENT_RESOURCES, which says nothing at all about the
-      prerequisite chain it exists to test. Reading the cost keeps the arrangement
-      honest through any later re-pricing.
+      This read `5_000` Crystal, which stopped covering the two projects the first
+      time the Crystal column moved — and the test then failed on
+      INSUFFICIENT_RESOURCES, which says nothing at all about the prerequisite chain
+      it exists to test. Reading the cost keeps the arrangement honest through any
+      later re-pricing, the 2026-09-14 fifth off Crystal included.
     */
     const bill = (['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS'] as const)
       .map((id) => RESEARCH_PROJECTS[id].costAt(1))

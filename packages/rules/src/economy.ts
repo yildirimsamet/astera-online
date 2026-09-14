@@ -10,6 +10,7 @@ import {
   DEUTERIUM,
   ECON,
   INSTRUMENT_COST_MULT,
+  INSTRUMENT_COST_DISCOUNT,
   EMPLACEMENT,
   SATELLITES,
   SEASON,
@@ -202,9 +203,19 @@ export function instrumentCost(id: InstrumentId, level: number): Resources {
   // Normalised on the cheap three, so this reads as "the Telescope is dearer"
   // rather than "everything went up".
   const mult = INSTRUMENT_COST_MULT[id] / INSTRUMENT_COST_MULT.RADAR;
+  /*
+    THE 2026-09-14 QUARTER OFF THE TWO THAT LOOK, APPLIED LAST AND ROUNDED.
+
+    It lands on the finished figure rather than inside the invoice so the quote
+    is exactly `round(undiscounted x INSTRUMENT_COST_DISCOUNT[id])` — the form the
+    owner asked for and the form a reader can check with a calculator. Folding it
+    into `base` instead would ceil a different intermediate and put two rungs one
+    unit above the authored table for no reason anybody could reconstruct.
+  */
+  const discount = INSTRUMENT_COST_DISCOUNT[id];
   return {
-    alloy: Math.ceil(base.alloy * mult),
-    crystal: Math.ceil(base.crystal * mult),
+    alloy: Math.round(Math.ceil(base.alloy * mult) * discount),
+    crystal: Math.round(Math.ceil(base.crystal * mult) * discount),
     deuterium: 0,
   };
 }

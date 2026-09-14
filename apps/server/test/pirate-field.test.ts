@@ -39,11 +39,32 @@ describe('the private pirate field', () => {
     expect(a.length).toBeGreaterThan(0);
   });
 
-  it('appends the denser lane after every established opaque target', () => {
+  /**
+   * TWO DENSITY RAISES, THREE LANES, AND THE FIRST ONE UNMOVED.
+   *
+   * The keyed field is composed the same way the pure one is: 0.02, then the
+   * +50% lane, then the 2026-09-14 doubling. Each stage is a strict PREFIX of the
+   * next, which is what makes a staged rollout able to hide contacts without ever
+   * publishing a different one under the same handle — a pirate's id is an HMAC of
+   * its lane index, so a renumbering silently re-aims every claim and every raid
+   * already in the air. The digest is the original lane's, unchanged from when it
+   * was the whole field.
+   */
+  it('appends each denser lane after every established opaque target', () => {
     const establishedLength = 2809;
+    const established = privatePirateField('key-one', 'ESTABLISHED');
+    const increased = privatePirateField('key-one', 'INCREASED');
     const field = privatePirateField('key-one');
-    expect(field.length / establishedLength).toBeGreaterThan(1.45);
-    expect(field.length / establishedLength).toBeLessThan(1.55);
+
+    expect(established).toHaveLength(establishedLength);
+    expect(increased.slice(0, established.length)).toEqual(established);
+    expect(field.slice(0, increased.length)).toEqual(increased);
+
+    expect(increased.length / establishedLength).toBeGreaterThan(1.45);
+    expect(increased.length / establishedLength).toBeLessThan(1.55);
+    expect(field.length / establishedLength).toBeGreaterThan(2.9);
+    expect(field.length / establishedLength).toBeLessThan(3.1);
+
     expect(createHash('sha256')
       .update(JSON.stringify(field.slice(0, establishedLength)))
       .digest('hex'))
@@ -51,10 +72,10 @@ describe('the private pirate field', () => {
   });
 
   it('can retain the complete established lane during a rolling activation', () => {
-    const established = privatePirateField('key-one', false);
+    const established = privatePirateField('key-one', 'ESTABLISHED');
     expect(established).toHaveLength(2809);
     expect(established).toEqual(privatePirateField('key-one').slice(0, established.length));
-    expect(privatePirateField('key-one', false)).toBe(established);
+    expect(privatePirateField('key-one', 'ESTABLISHED')).toBe(established);
   });
 
   it('hands out an opaque handle and never the index behind it', () => {
@@ -186,7 +207,7 @@ describe('what a pirate has left', () => {
 
   it('hides only extra contacts until every process understands their handles', async () => {
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
-    const established = privatePirateField(season!.asteroidKey, false);
+    const established = privatePirateField(season!.asteroidKey, 'ESTABLISHED');
     const full = privatePirateField(season!.asteroidKey);
     const extra = full[established.length]!;
     const now = new Date(season!.startsAt.getTime() + (extra.appearsAt + 1) * 60_000);

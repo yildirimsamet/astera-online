@@ -26,6 +26,9 @@ export const statusBar = {
   newcomerShield: {
     hint: 'You cannot be raided for {{duration}}',
   },
+  recoveryShield: {
+    hint: 'Recovery shield — you cannot be raided for {{duration}}',
+  },
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
     label: 'Bays',

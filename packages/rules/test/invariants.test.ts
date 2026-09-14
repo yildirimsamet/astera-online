@@ -347,8 +347,22 @@ describe('the asteroid field', () => {
     const increaseInterval = span / (totalCount - establishedCount);
 
     expect(rocks).toHaveLength(totalCount);
-    expect(createHash('sha256').update(JSON.stringify(rocks.slice(0, establishedCount))).digest('hex'))
-      .toBe('48650c97f36902dc4ad5284974facc6b8a017c6aeab56597d3e05734933cbcbc');
+    /*
+      THE FINGERPRINT IS TAKEN WITHOUT `ore`, AND THAT IS THE POINT OF IT.
+
+      It used to hash the whole rock, which conflated two promises that have since
+      come apart: that a density change never MOVES a live target, and that a
+      re-pricing never changes one. The 2026-09-14 packet rule deliberately
+      re-prices every rock in the field (`quantiseDailyOre`) and is shipped at a
+      season boundary for exactly that reason — while the lane geometry it runs
+      over is untouched, and stays byte-for-byte what it was before both density
+      increases. This digest is that second promise, and it is the one a live
+      season depends on: an index, an orbit, an appearance and a lifetime are what
+      a claim row, a flight in the air and a drawn target all resolve through.
+    */
+    const laneShape = rocks.slice(0, establishedCount).map(({ ore: _ore, ...rest }) => rest);
+    expect(createHash('sha256').update(JSON.stringify(laneShape)).digest('hex'))
+      .toBe('5a32c67f825471c955562860fc7e16fc6b4e9d02805fb3e5133ad54909d5a644');
     for (const index of [0, 1, Math.floor(baseCount / 2), baseCount - 1]) {
       expect(rocks[index]?.appearsAt).toBeGreaterThanOrEqual(index * baseInterval);
       expect(rocks[index]?.appearsAt).toBeLessThan((index + 1) * baseInterval);

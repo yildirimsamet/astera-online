@@ -81,7 +81,7 @@ export const errors = {
    * player only when a client is behind or a launch is made from somewhere the
    * question was not asked, so it has to state the whole rule on its own.
    */
-  NEWCOMER_SHIELDED: 'That commander is in their first day here and cannot be raided yet',
+  NEWCOMER_SHIELDED: 'That commander is under a shield and cannot be raided yet',
   /**
    * A SIXTH MARK, AND A SQUADRON THAT ONLY JUST LANDED. D183.
    *
@@ -91,7 +91,7 @@ export const errors = {
    */
   RIVAL_LIMIT: 'You are already watching {{max}} commanders. Clear one first.',
   PROSPECTORS_RESTING: 'Those craft only just landed. They are ready again shortly.',
-  SHIELD_WOULD_DROP: 'This gives up your own first-day shield. Confirm to send anyway.',
+  SHIELD_WOULD_DROP: 'This gives up your own shield. Confirm to send anyway.',
   /**
    * THE RENDEZVOUS MOVED WHILE THE PLAYER WAS DECIDING. D183.
    *

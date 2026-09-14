@@ -9,7 +9,33 @@ export const ECONOMY_ADJUSTMENT = {
   earlyAlloyMaxLevel: 6,
   midAlloyOutputMultiplier: 1.15,
   midAlloyMaxLevel: 9,
-  buildTime: 1.30,
+  /**
+   * THE ONE DIAL EVERY TIMER IN THE GAME IS MULTIPLIED BY.
+   *
+   * `1.30 x 0.75 = 0.975`. Owner instruction, 2026-09-14: *"Üretilen veya
+   * araştırılan her şeyin yapım süresini %25 azalt."* Both halves are still live
+   * decisions — the 30% slow-down is the standing tempo and the quarter is the
+   * reduction on top of it — but the DERIVATION belongs in this sentence rather
+   * than in the expression: `1.30 * 0.75` evaluates to 0.9750000000000001 in
+   * binary floating point, and a dial every timer in the game multiplies by is the
+   * last place to leave a trailing bit for a later equality check to trip over.
+   *
+   * IT REACHES SEVEN QUOTES AND NO MORE: `buildMinutes`, `satelliteMinutes`,
+   * `buildingMinutes`, `shipMinutes`, `defenceMinutes`, `researchMinutes` and
+   * `DEATH_STAR.buildMinutes`. Flight time, event windows, mining turnaround,
+   * Telescope repoint, disruption and recovery are deliberately outside it: they
+   * are not WORK, and shortening them would be a different decision wearing this
+   * one's clothes.
+   *
+   * THE CEILING MOVES WITH IT, AND THAT IS THE PROPERTY THAT MAKES THE CHANGE ONE
+   * LINE. `BUILD.capMinutes` is itself `ECONOMY_TEMPO.buildCapMinutes x buildTime`,
+   * so every quote reduces to `buildTime x min(480, work)` whether it clamps before
+   * the multiplication (`buildingMinutes`, off authored minutes) or after it
+   * (`buildMinutes`, `shipMinutes`, `defenceMinutes`, `researchMinutes`, off price).
+   * A capped order therefore shortens by the same quarter as an uncapped one: the
+   * effective eight-hour ceiling falls from 624 to 468 minutes before AI Robots.
+   */
+  buildTime: 0.975,
 } as const;
 
 /**

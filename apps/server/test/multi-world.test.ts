@@ -1521,14 +1521,35 @@ describe('current multi-world ruleset', () => {
    * A SECOND STRIKE RESTARTS THE OUTAGE, AND THAT IS ALL IT HAS EVER DONE SINCE
    * D167. D179 leaves this intact: half of what is LEFT goes, the clock starts
    * again, and control does not move.
+   *
+   * BOTH ROCKETS ARE COMMITTED BEFORE EITHER LANDS, and since 2026-09-14 that is
+   * the only way a second one can reach a world inside the first one's window: an
+   * impact hands its commander a four-hour recovery shield, and that shield refuses
+   * a new Death Star exactly as it refuses a raid. What a shield never does is turn
+   * back something already in the air — so the pair still lands, which is both what
+   * keeps the rule below testable and the behaviour a pre-committed strike is
+   * entitled to. Two pads at two distances, because a second rocket that arrives in
+   * the same instant as the first cannot show a clock being restarted.
    */
   it('makes a second strike restart the outage rather than take the world', async () => {
     const f = await setup();
     const colony = await withColony(f);
-    const rival = await rivalPad(f, 'Colony Breaker');
-    await strike(f, rival.planetId, colony);
+    const near = await rivalPad(f, 'Colony Breaker');
+    const far = await rivalPad(f, 'Second Breaker');
+    await f.db.update(planets).set({ x: 0, y: 0, z: 600 }).where(eq(planets.id, far.planetId));
 
-    const second = await strike(f, rival.planetId, colony);
+    await armed(f, near.planetId);
+    await armed(f, far.planetId);
+    const first = await launchDeathStar(f.db, near.planetId, colony, f.clock);
+    const second = await launchDeathStar(f.db, far.planetId, colony, f.clock);
+    expect(first.arriveAt.getTime()).toBeLessThan(second.arriveAt.getTime());
+
+    const worker = workerFor(f.db, f.clock);
+    f.clock.set(first.arriveAt);
+    await worker.tick();
+    f.clock.set(second.arriveAt);
+    await worker.tick();
+
     const [again] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(again?.controllerPlayerId).toBe(f.joined.playerId);
     expect(again?.recoveryUntil?.getTime())

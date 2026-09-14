@@ -22,6 +22,9 @@ export const statusBar = {
   newcomerShield: {
     hint: '{{duration}} boyunca sana akın yapılamaz',
   },
+  recoveryShield: {
+    hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
+  },
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
     label: 'Rampa',

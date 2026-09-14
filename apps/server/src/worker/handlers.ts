@@ -7,6 +7,7 @@ import {
   bookBattle,
   computeLoot,
   deuteriumOf,
+  raidableStock,
   fleetCargo,
   fleetCount,
   fleetEntries,
@@ -71,6 +72,7 @@ import {
   saveResources,
   setUnits,
 } from '../services/planet.js';
+import { grantRecoveryShield } from '../services/attackProtection.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
 import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
@@ -791,6 +793,25 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       result.grade,
       Number.MAX_SAFE_INTEGER,
     );
+    /**
+     * THE CEILING THIS WORLD COULD HAVE BEEN MADE TO GIVE UP. 2026-09-14.
+     *
+     * DECISIVE with the hold taken out of the question — the exact figure a probe
+     * reports (`intel.ts`) and the exact denominator the recovery shield is decided
+     * against. Read from the SAME pre-battle snapshot the debit below uses, because
+     * it cannot be recomputed afterwards: the stores have been emptied, and the
+     * vault floor and the works exposure move underneath it with every tick.
+     *
+     * NOT `uncappedLoot`, which is quoted at the grade the battle actually reached.
+     * A PARTIAL raid is supposed to sit at half of this, and measuring it against
+     * its own share would make every PARTIAL look total.
+     */
+    const raidableBefore = raidableStock(
+      exposedStock,
+      exposedBuffer,
+      vaultFloor,
+      'DECISIVE',
+    );
     const cargoLimited =
       uncappedLoot.alloy + uncappedLoot.crystal + uncappedLoot.deuterium
       > loot.alloy + loot.crystal + loot.deuterium;
@@ -814,6 +835,27 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         disruptedUntilMinutes > defender.nowMinutes
           ? atMinute(defender.seasonStart, disruptedUntilMinutes)
           : defender.disruptedUntil,
+    });
+
+    /**
+     * AND A DEFEAT HEAVY ENOUGH BUYS THE DEFENDER FOUR HOURS. Owner instruction,
+     * 2026-09-14.
+     *
+     * HERE, INSIDE THE BATTLE'S OWN TRANSACTION, with both player rows already held
+     * `FOR UPDATE` by `lockLedgers` in id order — the same rows in the same order a
+     * launch takes. That is what makes "attacking and protected at once" impossible
+     * rather than unlikely: a commander cannot be granted a window on one connection
+     * while spending it on another.
+     *
+     * AFTER THE DEBIT AND BEFORE THE REPORT, so the report can carry both halves of
+     * the audit trail — what the loss was measured against, and what it bought.
+     */
+    const lootTotal = loot.alloy + loot.crystal + loot.deuterium;
+    const recoveryShieldUntil = await grantRecoveryShield(tx, {
+      playerId: defender.playerId,
+      raidableBefore,
+      lootLost: lootTotal,
+      now: defender.now,
     });
 
     const dominionBreakdown = scoreEligible
@@ -932,6 +974,18 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       dominionDefenderLossValue: dominionBreakdown?.defenderPermanentLossValue ?? null,
       dominionRawExchange: dominionBreakdown?.rawExchange ?? null,
       dominionEligible: scoreEligible,
+      /*
+        THE RECOVERY SHIELD'S AUDIT TRAIL. 2026-09-14.
+
+        `raidableBefore` is the denominator the grant was decided against and cannot
+        be recomputed from a resolved battle; `recoveryShieldUntil` is what it
+        bought, or null when the thresholds were not met — or when the defender had
+        a raid of their own in the air. Neither reaches the API: `readBattleReports`
+        builds its payload field by field, and telling an attacker how much MORE was
+        there is a disclosure the fog does not make.
+      */
+      raidableBefore: Math.round(raidableBefore),
+      recoveryShieldUntil,
       createdAt: defender.now,
     });
     await tx.insert(dominionEvents).values({
@@ -994,6 +1048,11 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         .returning({ id: debrisFields.id });
       wreckFieldId = row?.id ?? null;
     }
+
+    // The defender's own HUD counts the window down and every disc in the galaxy
+    // draws their worlds as PROTECTED, so the reads move immediately rather than on
+    // the next minute's poll.
+    if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
 
     await clearMissionUnits(tx, mission.originPlanetId, missionId);
 

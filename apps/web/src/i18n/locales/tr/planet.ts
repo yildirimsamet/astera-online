@@ -512,6 +512,8 @@ export const launch = {
     "Bunu geri çağıramazsın. Kalktıktan sonra aşağıda ne olduğunu ancak inişini izleyerek öğrenirsin; o dönene kadar gezegeninde {{count}} birlik kalıyor.",
   shieldWarning:
     "Bu akın ilk gün kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
+  recoveryShieldWarning:
+    "Bu akın toparlanma kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   fleetsave: "Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.",
 } as const;
 

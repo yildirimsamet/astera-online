@@ -265,7 +265,7 @@ export async function seedWorld(
   }
 
   /**
-   * A SEEDED WORLD IS A SETTLED ONE, SO THE NEWCOMER SHIELD COMES OFF. D183.
+   * A SEEDED WORLD IS A SETTLED ONE, SO BOTH ATTACK SHIELDS COME OFF. D183.
    *
    * `joinSeason` stamps every commander with a day of it, which is the rule and is
    * also the wrong starting state for almost every test in this suite: these
@@ -277,7 +277,7 @@ export async function seedWorld(
    * honest shape: a fixture states the world it is describing, and a rule is tested
    * by asking for it rather than by being left switched on everywhere.
    */
-  await db.update(players).set({ newcomerShieldUntil: null })
+  await db.update(players).set({ newcomerShieldUntil: null, recoveryShieldUntil: null })
     .where(inArray(players.id, playerIds));
 
   /**
@@ -693,7 +693,7 @@ export async function joinSettled(
   clock: FixedClock,
 ): ReturnType<typeof joinSeason> {
   const joined = await joinSeason(db, accountId, seasonId, clock);
-  await db.update(players).set({ newcomerShieldUntil: null })
+  await db.update(players).set({ newcomerShieldUntil: null, recoveryShieldUntil: null })
     .where(eq(players.id, joined.playerId));
   return joined;
 }

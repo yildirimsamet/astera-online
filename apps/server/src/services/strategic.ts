@@ -34,7 +34,7 @@ import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
 import { advanceNeutralEconomy } from './neutral.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
-import { assertNewcomerShields } from './player.js';
+import { assertAttackProtections, forceRecoveryShield } from './attackProtection.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -349,7 +349,7 @@ export async function launchDeathStar(
     }
 
     /**
-     * THE FIRST-DAY SHIELD BINDS THE HEAVIEST WEAPON TOO. D183.
+     * BOTH ATTACK SHIELDS BIND THE HEAVIEST WEAPON TOO. D183 · 2026-09-14.
      *
      * A strike is the loudest thing one commander can do to another, so a shield
      * that stopped raids and not this would be a shield that stopped nothing worth
@@ -360,7 +360,7 @@ export async function launchDeathStar(
      * A strike also SPENDS the attacker's shield, and for the same reason a raid
      * does: this is reaching out, and the galaxy may reach back.
      */
-    await assertNewcomerShields(tx, {
+    await assertAttackProtections(tx, {
       attackerPlayerId: origin.playerId,
       defenderPlayerId: target.controllerPlayerId,
       now: origin.now,
@@ -732,6 +732,25 @@ export async function applyDeathStarStrike(
     payload: { expectedUntil: recoveryUntil.toISOString() },
     resolveAt: recoveryUntil,
   });
+  /**
+   * AND THE COMMANDER GETS THE SAME FOUR HOURS A HEAVY RAID BUYS. Owner
+   * instruction, 2026-09-14.
+   *
+   * OUTRIGHT, WITHOUT THE LOSS TEST. The raid rule measures a share of what was
+   * raidable, and a strike takes nothing raidable — it DESTROYS half the stores,
+   * drops the Core with everything standing on it and burns the queue behind it,
+   * and none of that lands in anybody's hold for a share to be computed from.
+   * Approximating one out of destroyed value would be a second loot formula, which
+   * is exactly what the rule is written to avoid.
+   *
+   * TWO CLOCKS, AND THEY MEASURE DIFFERENT THINGS. `recoveryUntil` above darkens
+   * THIS WORLD for two hours (D179); this protects the COMMANDER, on every world
+   * they hold, for four. Neither replaces the other and neither reads the other.
+   */
+  const recoveryShieldUntil = target.controllerPlayerId && target.kind !== 'NEUTRAL'
+    ? await forceRecoveryShield(tx, { playerId: target.controllerPlayerId, now })
+    : null;
+  if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
   if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
   return {
     outcome: 'FIRST_STRIKE',

@@ -552,6 +552,37 @@ No database write, season operation or world stop is needed. If the compatibilit
 incomplete, leave contacts hidden and investigate; never activate early. Future releases may
 use the ordinary single roll once the complete field is already running everywhere.
 
+#### 2026-09-14: the pirate doubling and the recovery shield
+
+The 2026-09-14 balance package adds two more switches, both defaulting to `true` in Compose and
+both meaning "read nothing new" when exported as `false`.
+
+`PIRATE_SPAWN_SURGE_ENABLED` is the D211 rule again for the THIRD lane, which carries the
+0.03 → 0.06 per-seat doubling. It NESTS with `PIRATE_SPAWN_INCREASE_ENABLED`: while that one is
+`false` this one changes nothing, because a process that cannot resolve the +50% lane certainly
+cannot resolve the lane after it. Roll exactly as above — four rolls with it `false`, then four
+with it `true` — and check the switch is `true` everywhere before claiming the density is live.
+
+`RECOVERY_SHIELD_ENABLED` covers the four-hour shield a heavy PvP defeat buys. Migration `0078`
+is expand-only (three nullable columns: `players.recovery_shield_until`,
+`battle_reports.raidable_before`, `battle_reports.recovery_shield_until`), so it may be applied
+before the roll with nothing reading it. Export `RECOVERY_SHIELD_ENABLED=false` for the first
+roll: every process then writes the columns' migration and reads neither, so no instance can
+refuse a launch for a window another instance does not know about. Activate it on the second
+roll. Turning it back to `false` afterwards is a clean rollback — no window is granted and no
+stored instant protects anybody — but a shield already granted simply stops being honoured, so
+prefer doing it at a quiet hour. The first-day shield (D183) is a separate column and is
+unaffected in either direction.
+
+The rest of the 2026-09-14 package — drill hold, asteroid ore quantisation, research and
+instrument prices, fuel, build times, the Asteroid Shower front load — is pure rules and needs
+no switch. It DOES need a new ruleset/season boundary: the asteroid field is re-derived from the
+season key on every read, so re-pricing ore changes what a live season's rocks carry. Existing
+flights keep the `hold_each` they launched with, existing queues keep their `ready_at`, and an
+Asteroid Shower window that has already opened keeps its old arrival spread — only occurrences
+restamped to definition version 5 (`season events restamp`, which refuses a window that has
+opened) are front-loaded.
+
 #### Publish the staged webroot
 
 Then swap the client by rename rather than by copy. Stage on the SAME filesystem as the live root

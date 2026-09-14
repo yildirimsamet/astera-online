@@ -4,6 +4,7 @@ import {
   RESEARCH_PROJECTS, SATELLITE_IDS, TUTORIAL_EXIT,
   academyExitGrant, alloyRate, buildingCost, buildingMinutes, buildMinutes, constructionThroughput,
   crystalRate, defenceMinutes, defenceThroughput, deuteriumRate, hullWorkMinutes,
+  ECONOMY_ADJUSTMENT, RESEARCH_CRYSTAL_DISCOUNT,
   profileBuilding, profileHull, profileIncome, profileResearch, researchMinutes,
   rewardPurse, robotSpeedMult, satelliteCost, satelliteMinutes, shipMinutes,
   yardSpeedMult, yardThroughput,
@@ -58,15 +59,22 @@ describe('owner 30% economy experiment against the checkpoint', () => {
     for (const id of BUILDING_IDS) {
       expect(buildingCost(id, 5)).toEqual(profileBuilding(id, 6).cost);
     }
-    expect(RESEARCH_PROJECTS.SHIP_POWER.costAt(2)).toEqual(profileResearch('SHIP_POWER', 2).cost);
+    // The one thing that no longer equals the profile outright: the 2026-09-14
+    // fifth off Crystal, applied where every project's quote meets.
+    const powerTwo = profileResearch('SHIP_POWER', 2).cost;
+    expect(RESEARCH_PROJECTS.SHIP_POWER.costAt(2)).toEqual({
+      ...powerTwo,
+      crystal: Math.round(powerTwo.crystal * RESEARCH_CRYSTAL_DISCOUNT),
+    });
   });
 
-  it('extends every building level by 30%, retaining the robots discount', () => {
+  it('scales every building level by the one shared timer dial, retaining the robots discount', () => {
     for (const id of BUILDING_IDS) {
       for (let level = 1; level <= 100; level += 1) {
         for (const tech of technologies) {
           expect(buildingMinutes(id, level, tech), `${id}:${String(level)}`)
-            .toBeCloseTo(profileBuilding(id, level).minutes * 1.30 * robotSpeedMult(tech), 8);
+            .toBeCloseTo(profileBuilding(id, level).minutes * ECONOMY_ADJUSTMENT.buildTime
+              * robotSpeedMult(tech), 8);
         }
       }
     }
@@ -79,7 +87,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
           for (const tech of technologies) {
             expect(hullWorkMinutes(id, count, yard, tech), id)
               .toBeCloseTo(profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard)
-                * yardSpeedMult(tech) * 1.30, 8);
+                * yardSpeedMult(tech) * ECONOMY_ADJUSTMENT.buildTime, 8);
           }
         }
       }
@@ -93,17 +101,20 @@ describe('owner 30% economy experiment against the checkpoint', () => {
         for (const tech of technologies) {
           expect(buildMinutes(cost, level, tech))
             .toBeCloseTo(Math.min(480, total / constructionThroughput(level))
-              * robotSpeedMult(tech) * 1.30, 8);
+              * robotSpeedMult(tech) * ECONOMY_ADJUSTMENT.buildTime, 8);
           expect(shipMinutes(cost, level, tech))
-            .toBeCloseTo(Math.min(480, total / yardThroughput(level) * yardSpeedMult(tech)) * 1.30, 8);
+            .toBeCloseTo(Math.min(480, total / yardThroughput(level) * yardSpeedMult(tech))
+              * ECONOMY_ADJUSTMENT.buildTime, 8);
         }
         expect(defenceMinutes(cost, level))
-          .toBeCloseTo(Math.min(480, total / defenceThroughput(level)) * 1.30, 8);
+          .toBeCloseTo(Math.min(480, total / defenceThroughput(level))
+            * ECONOMY_ADJUSTMENT.buildTime, 8);
         expect(researchMinutes(cost, level))
-          .toBeCloseTo(Math.min(480, BUILD.researchTimeMult * total / constructionThroughput(level)) * 1.30, 8);
+          .toBeCloseTo(Math.min(480, BUILD.researchTimeMult * total / constructionThroughput(level))
+            * ECONOMY_ADJUSTMENT.buildTime, 8);
       }
     }
-    expect(BUILD.capMinutes).toBe(624);
+    expect(BUILD.capMinutes).toBe(468);
   });
 
   it('extends every satellite, including the fixed Uplink timer, and strategic crafting', () => {
@@ -111,11 +122,12 @@ describe('owner 30% economy experiment against the checkpoint', () => {
       for (const tech of technologies) {
         const baseline = id === 'UPLINK' ? 5
           : Math.min(480, sum(satelliteCost(id)) / constructionThroughput(6));
-        expect(satelliteMinutes(id, 6, tech)).toBeCloseTo(baseline * robotSpeedMult(tech) * 1.30, 8);
+        expect(satelliteMinutes(id, 6, tech))
+          .toBeCloseTo(baseline * robotSpeedMult(tech) * ECONOMY_ADJUSTMENT.buildTime, 8);
       }
     }
-    expect(DEATH_STAR.buildMinutes).toBe(78);
-    expect(ANTI_STRATEGIC.buildMinutes).toBe(39);
+    expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
+    expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
   });
 
   it('keeps the already-halved reward purse and Academy reward grant rather than halving again', () => {
@@ -124,7 +136,8 @@ describe('owner 30% economy experiment against the checkpoint', () => {
       .toEqual({ alloy: 2223, crystal: 1089, deuterium: 0 });
     // Dearer Academy purchases can change its remainder; do not compensate with a new free grant.
     expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2518, crystal: 1484, deuterium: 46 });
-    expect(TUTORIAL_EXIT.queue?.seconds).toBe(Math.ceil(222 / 60 * 1.30 * 60));
+    expect(TUTORIAL_EXIT.queue?.seconds)
+      .toBe(Math.ceil(222 / 60 * ECONOMY_ADJUSTMENT.buildTime * 60));
   });
 
   it('sets the requested guards and T1 dome without changing guns, stock or rearm cadence', () => {

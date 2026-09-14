@@ -114,7 +114,7 @@ export async function ensureBotSeats(
               clock.now().getTime() - (SERVERS.onlineWindowMinutes + 1) * 60_000,
             ),
             /*
-              AND NO FIRST-DAY SHIELD. D183.
+              AND NO ATTACK SHIELD OF EITHER KIND. D183 · 2026-09-14.
 
               `joinSeason` grants one to every commander, which is the rule and is
               about a PERSON: it buys a beginner a day to build before the galaxy
@@ -130,6 +130,12 @@ export async function ensureBotSeats(
               PERSON, so nothing here lets a bot reach one.
             */
             newcomerShieldUntil: null,
+            /*
+              The recovery shield is refused at the source (`forceRecoveryShield`
+              asks `isServerCommander`), so this is belt and braces for a profile
+              seated onto an account that already held one from an earlier season.
+            */
+            recoveryShieldUntil: null,
           })
           .where(eq(players.accountId, profile.accountId));
         seated++;

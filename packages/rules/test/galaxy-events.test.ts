@@ -13,6 +13,7 @@ import {
   mulberry32,
   plannedEffectFor,
   withAsteroidShowerLanes,
+  type AsteroidSpec,
   type GalaxyEventKind,
   type PlannedGalaxyEvent,
   type Rng,
@@ -630,14 +631,20 @@ describe('Asteroid Shower bonus lane', () => {
       GALAXY.asteroidSpawnPerHour * (occurrence.effect.asteroidSpawnMultiplier - 1),
     );
 
-    // Both hashes are the complete pre-increase schedules. Existing public ids,
-    // claims and in-flight runs remain attached to byte-identical rocks.
-    expect(createHash('sha256').update(JSON.stringify(base.slice(0, establishedCount))).digest('hex'))
-      .toBe('5d9860678cf77d29ce2ec3d2d57e08e519decf367e4c87c0b99ccf2bb5e9d06e');
-    expect(createHash('sha256')
-      .update(JSON.stringify(showered.slice(0, establishedCount + establishedBonus)))
-      .digest('hex'))
-      .toBe('473411c63de16a96feeb0d364dee20496757e79c3153bad9dcccbf0ada4f2875');
+    /*
+      Both hashes are the complete pre-increase schedules, taken WITHOUT `ore` —
+      see the same treatment in `invariants.test.ts`. Ore is deliberately re-priced
+      by the 2026-09-14 packet rule and that ships at a season boundary; what a
+      live claim, an in-flight run and a drawn target actually resolve through is
+      the index, the orbit and the two instants, and those stay byte-identical.
+    */
+    const laneShape = (rocks: readonly AsteroidSpec[]): string => createHash('sha256')
+      .update(JSON.stringify(rocks.map(({ ore: _ore, ...rest }) => rest)))
+      .digest('hex');
+    expect(laneShape(base.slice(0, establishedCount)))
+      .toBe('69d30eb877f5a878adda1d34022bf904699c870cad58a59a40e588bb75f7b693');
+    expect(laneShape(showered.slice(0, establishedCount + establishedBonus)))
+      .toBe('617dc6f3c0aca9b3d129611bf2a34f5a073006d92bce2179fbfb5e8085539e5e');
     expect(showered.length - base.length).toBe(expandedBonus);
     const bonus = [
       ...showered.slice(establishedCount, establishedCount + establishedBonus),

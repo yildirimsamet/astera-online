@@ -79,9 +79,16 @@ export function readsForShardEvent(kind: string): readonly (readonly string[])[]
         keys.leaderboard,
         keys.miningField,
       ];
+    /**
+     * A world came out of its outage, or somebody's raid immunity moved.
+     *
+     * `season` is in the list because the commander's OWN shield countdown lives on
+     * that payload: a recovery shield granted by a battle has to appear in the HUD
+     * and price the launch sheet immediately, not on the next minute's poll.
+     */
     case 'recovery':
     case 'protection':
-      return [keys.galaxy, keys.planet];
+      return [keys.galaxy, keys.planet, keys.season];
     /**
      * A mining or salvage run started, turned for home, or landed. The shard-wide
      * half refreshes only the caller-filtered rock/wreck field and public traffic. The one

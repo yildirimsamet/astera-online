@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, newcomerShielded, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
@@ -388,71 +388,11 @@ export async function peakCoreLevels(
 
 
 /**
- * THE FIRST-DAY SHIELD, ON BOTH SIDES OF ONE HOSTILE LAUNCH. D183.
+ * THE TWO ATTACK SHIELDS LIVE IN `attackProtection.ts`.
  *
- * Owner instruction, reversing D14: *"gezegenini yeni oluşturan herkes ilk 1 gün
- * saldırılamaz kalkanı olmalı. Kişi kendisi saldırı yapmak isterse uyarı verilir ve
- * kabul ederse kalkanı kalkar."*
- *
- * ONE STATEMENT, TWO LANES. A raid and a strike ask the identical question and a
- * shield that stopped one and not the other would stop nothing worth stopping —
- * the strike is the loudest thing one commander can do to another. Written here
- * rather than twice because two copies of a rule are how the two lanes start
- * disagreeing about who is protected.
- *
- * THE ORDER IS LOAD-BEARING. The TARGET's shield is checked first: accepting the
- * loss of your own day to hit somebody who cannot be hit would spend a position for
- * nothing, and the launch is refused either way. Both refusals are raised before
- * anything is spent, like D168's band, because a refusal that costs something is a
- * punishment for asking a question.
- *
- * SPENT, NEVER PAUSED. Dropping writes null rather than a past instant: "has this
- * commander committed to the war" is then a presence rather than a date comparison,
- * and the window cannot come back — a shield that returned after one shot would
- * make the first day a free strike rather than a decision.
- *
- * A NEUTRAL TARGET IS OUTSIDE IT ENTIRELY. There is no commander to protect and
- * none to charge; settling is not the reaching-out this rule is about.
+ * `assertNewcomerShields` stood here while there was one column to read. The
+ * 2026-09-14 recovery shield adds a second, and the composition of the two — plus
+ * the storage reading and the outbound-raid refusal that decide when one is EARNED
+ * — is a subject of its own rather than a paragraph in the join/placement service.
+ * `assertAttackProtections` is what `mission.ts` and `strategic.ts` call now.
  */
-export async function assertNewcomerShields(
-  tx: Tx,
-  input: {
-    attackerPlayerId: string;
-    defenderPlayerId: string | null;
-    now: Date;
-    acknowledgeShieldLoss: boolean;
-  },
-): Promise<void> {
-  if (input.defenderPlayerId === null) return;
-
-  const rows = await tx
-    .select({ id: players.id, until: players.newcomerShieldUntil })
-    .from(players)
-    .where(inArray(players.id, [input.attackerPlayerId, input.defenderPlayerId]));
-  const shieldOf = (id: string): Date | null =>
-    rows.find((row) => row.id === id)?.until ?? null;
-
-  const theirs = shieldOf(input.defenderPlayerId);
-  if (newcomerShielded(theirs?.getTime() ?? null, input.now.getTime())) {
-    throw new GameError(
-      'NEWCOMER_SHIELDED',
-      'That commander is still under their first-day shield',
-      409,
-      { until: theirs!.toISOString() },
-    );
-  }
-
-  const mine = shieldOf(input.attackerPlayerId);
-  if (!newcomerShielded(mine?.getTime() ?? null, input.now.getTime())) return;
-  if (!input.acknowledgeShieldLoss) {
-    throw new GameError(
-      'SHIELD_WOULD_DROP',
-      'Launching this gives up your own first-day shield',
-      409,
-      { until: mine!.toISOString() },
-    );
-  }
-  await tx.update(players)
-    .set({ newcomerShieldUntil: null })
-    .where(eq(players.id, input.attackerPlayerId));
-}

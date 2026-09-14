@@ -179,11 +179,12 @@ const flat = (cost: Resources) => (): Resources => cost;
  * would move them, and `RESEARCH_COST_MIX_EXEMPTIONS` below is what keeps the mix
  * off. `test/research-tables` holds every cell of it.
  *
- * EXACTLY ONE THING SITS ON TOP, and it is named: `RESEARCH_CRYSTAL_UPLIFT`, a
- * later owner instruction raising the Crystal on every rung in the game by a
- * quarter. It is applied where all fifteen projects meet rather than typed into
- * these cells, so the ladders below stay the numbers that were chosen and the
- * uplift stays one auditable multiplication rather than a rewrite.
+ * AND NONE OF THESE CELLS REACHES A PLAYER ANY MORE. `withResearchCostMix` quotes
+ * `profileResearch` for all sixteen projects; what membership of this table still
+ * does is keep the Crystal bias off (`RESEARCH_COST_MIX_EXEMPTIONS`) and give
+ * `priced()` a shape to clamp into. The one live multiplication on top of the
+ * quote is `RESEARCH_CRYSTAL_DISCOUNT`, applied where all sixteen meet rather than
+ * typed into any table, so it stays one auditable step rather than a rewrite.
  *
  * The rung count is NOT stated here. `RESEARCH_MAX_LEVEL` walks the effect to find
  * where a project stops selling anything, and `test/research-ceiling` fails if a
@@ -314,33 +315,39 @@ export function researchCostMix(id: ResearchProjectId, cost: Resources): Resourc
 }
 
 /**
- * A QUARTER MORE CRYSTAL ON EVERY RESEARCH RUNG IN THE GAME. Owner instruction.
+ * A FIFTH OFF THE CRYSTAL OF EVERY RESEARCH RUNG IN THE GAME. Owner instruction,
+ * 2026-09-14: *"Bütün araştırma seviyelerinin kristal maliyetini %20 azalt."*
  *
- * APPLIED HERE BECAUSE THIS IS THE ONLY PLACE ALL FIFTEEN PROJECTS MEET. They
- * reach their price by two different roads: eight are the hand-typed ladders in
- * `PRICE_TABLES`, exempt from the Crystal bias and never tempo-scaled, and seven
- * are generated, scaled and biased. Raising the number in either table alone would
- * have moved half the research screen and left the other half exactly where it
- * was, which is not what "all research" means.
+ * APPLIED WHERE ALL SIXTEEN PROJECTS MEET, which is `withResearchCostMix` below
+ * and nowhere else. A project reaches its price by one of two roads — eight are
+ * the authored `PRICE_TABLES` ladders and eight are generated — and both roads now
+ * end at `profileResearch`. Typing a fifth off either table alone would move half
+ * the research screen and leave the other half exactly where it was, which is not
+ * what "all research" means.
  *
- * IT DOES NOT REOPEN D169. That decision removed four multiplications standing
- * between a number the owner chose and the number on screen, so that the tables
- * could be read directly. This is one, named, and it is itself the owner's choice
- * — and `research-tables.test.ts` still asserts every cell, comparing the quote
- * against the table times this constant rather than against retyped figures, so
- * the authored ladders stay readable as exactly what they are.
+ * IT REPLACES A CONSTANT THAT HAD STOPPED BEING READ. `RESEARCH_CRYSTAL_UPLIFT`
+ * stood here at 1.25 and this docblock claimed it reached every rung; the economy
+ * profile cutover had quietly routed `costAt` past it some releases earlier, so
+ * the game's actual prices had not carried the uplift for as long as the comment
+ * had claimed they did. A named constant that multiplies nothing is worse than no
+ * constant, because it is the first thing a later tuning pass reaches for. This
+ * one is wired into the quote, and `balance-tempo-2026-09-14.test.ts` compares the
+ * quote against `profileResearch` so it cannot come loose again.
  *
- * ALLOY AND DEUTERIUM DO NOT MOVE. The change is one column wide.
+ * ALLOY AND DEUTERIUM DO NOT MOVE. The change is one column wide. Prerequisites,
+ * effects, ceilings and unlock times are untouched — but TIMERS are not, and that
+ * is deliberate: `researchMinutes` is priced off the total bill, so a cheaper rung
+ * is also a quicker one. See `docs/balance-tempo-change-plan-2026-09-14.md` §3.
  */
-export const RESEARCH_CRYSTAL_UPLIFT = 1.25;
+export const RESEARCH_CRYSTAL_DISCOUNT = 0.80;
 
-/** Every project's price BEFORE the uplift, so the tests can hold both halves. */
+/** Every project's authored price, so the tests can hold both halves. */
 const BASE_COST = new Map<ResearchProjectId, (level: number) => Resources>();
 
 /**
- * What a rung cost before `RESEARCH_CRYSTAL_UPLIFT` was applied.
+ * What a rung cost on its authored ladder, before the economy profile took over.
  *
- * Exported for `research-tables.test.ts`, which asserts the uplift as a RATIO
+ * Exported for `research-tables.test.ts`, which asserts relationships as RATIOS
  * against this rather than as a list of new numbers — so the assertion keeps
  * meaning the same thing the next time a rung is re-priced.
  */
@@ -361,7 +368,18 @@ const withResearchCostMix = (
     projects[id] = {
       ...project,
       costAt: (level: number) => {
-        return profileResearch(id, Math.min(project.maxLevel, Math.max(1, level))).cost;
+        const cost = profileResearch(id, Math.min(project.maxLevel, Math.max(1, level))).cost;
+        /*
+          THE ONE PLACE THE CRYSTAL DISCOUNT LANDS, AND IT IS THE ONE PLACE EVERY
+          CALLER ARRIVES AT. The server debits `costAt`, the cancel refund reads it,
+          Wealth totals it and the client previews it; a discount applied anywhere
+          else would be a second opinion about what a rung costs. Rounded, so the
+          quote stays a whole resource amount — `profileInvoice` already ceiled it.
+        */
+        return {
+          ...cost,
+          crystal: Math.round(cost.crystal * RESEARCH_CRYSTAL_DISCOUNT),
+        };
       },
     };
   }

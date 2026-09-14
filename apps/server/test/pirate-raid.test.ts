@@ -188,7 +188,7 @@ describe('a raid at a pirate', () => {
 
   it('accepts and settles an extra handle while its own contacts are still staged', async () => {
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
-    const established = privatePirateField(season!.asteroidKey, false);
+    const established = privatePirateField(season!.asteroidKey, 'ESTABLISHED');
     const target = await findVisible(new Set(established.map(p => p.index)));
     expect(target.spec.index).toBeGreaterThanOrEqual(established.length);
     vi.stubEnv('PIRATE_SPAWN_INCREASE_ENABLED', 'false');

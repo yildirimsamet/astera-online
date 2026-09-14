@@ -12,6 +12,7 @@ import {
 } from '../db/schema.js';
 import type { Queryable } from '../db/client.js';
 import { addMinutes } from '../clock.js';
+import { protectionFrom } from '../services/attackProtection.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
 
@@ -35,6 +36,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         accountId: players.accountId,
         playerId: players.id,
         shieldUntil: players.newcomerShieldUntil,
+        recoveryShieldUntil: players.recoveryShieldUntil,
       })
       .from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id))
@@ -99,6 +101,12 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         )),
     ]);
 
+    const protection = protectionFrom(
+      row.shieldUntil,
+      row.recoveryShieldUntil,
+      app.clock.now(),
+    );
+
     return {
       seasonId: row.season.id,
       shard: row.shard.code,
@@ -124,17 +132,22 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       /** Up to `RIVAL.max` marks, each carrying the slot the disc colours it by. D183. */
       rivals: await rivalsOf(app.db, row.playerId),
       /**
-       * THE COMMANDER'S OWN FIRST-DAY SHIELD. D183.
+       * THE COMMANDER'S OWN RAID IMMUNITY — WHICHEVER OF THE TWO IS STANDING.
+       * D183 · 2026-09-14.
        *
-       * Null once it is spent or expired, which is also the ordinary state. On this
-       * payload because the launch surface has to say what a raid COSTS before it is
-       * pressed — a shield spent without being offered is a shield the player did not
-       * choose to spend, and `SHIELD_WOULD_DROP` is the refusal that would otherwise
-       * be the first they heard of it.
+       * Null once both are spent or expired, which is also the ordinary state. On
+       * this payload because the launch surface has to say what a raid COSTS before
+       * it is pressed — a shield spent without being offered is a shield the player
+       * did not choose to spend, and `SHIELD_WOULD_DROP` is the refusal that would
+       * otherwise be the first they heard of it.
+       *
+       * `shieldKind` NAMES IT, because the two cost different things to give up and
+       * the HUD and the launch confirmation both have to say which. It is read
+       * through `protectionFrom`, the same composition the launch gate enforces, so
+       * the countdown can never promise a window the gate would not honour.
        */
-      shieldUntil: row.shieldUntil !== null && row.shieldUntil > app.clock.now()
-        ? row.shieldUntil
-        : null,
+      shieldUntil: protection === null ? null : new Date(protection.until),
+      shieldKind: protection?.kind ?? null,
     };
   });
 

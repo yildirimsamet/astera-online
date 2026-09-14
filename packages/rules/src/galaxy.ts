@@ -1,11 +1,18 @@
 import { monthlySupply } from './monthly-supply.js';
-import { DEBRIS, GALAXY, PROSPECTOR, SEASON, SERVERS } from './constants.js';
+import {
+  ASTEROID_SHOWER_FRONT_LOAD,
+  DEBRIS,
+  GALAXY,
+  PROSPECTOR,
+  SEASON,
+  SERVERS,
+} from './constants.js';
 import { prospectorHoldMult, type TechLevels } from './tech.js';
 import { mulberry32, seededFrom } from './rng.js';
 import { drillHoldMult, drillSpeedMult } from './economy.js';
 import { isotopeProfile } from './research.js';
 import { distance, travelExact } from './travel.js';
-import type { SatelliteSet, Vec3 } from './types.js';
+import type { Resources, SatelliteSet, Vec3 } from './types.js';
 import type { PlannedGalaxyEvent } from './galaxyEvents.js';
 
 export interface PlanetSlot extends Vec3 {
@@ -217,6 +224,14 @@ export function orbitRadius(roll: number, inner: number, outer: number): number 
 export const asteroidOrbitRadius = (roll: number): number =>
   orbitRadius(roll, GALAXY.asteroidOrbitMin, GALAXY.asteroidOrbitMax);
 
+/** A lane's arrivals, weighted toward its opening. See `ASTEROID_SHOWER_FRONT_LOAD`. */
+export interface AsteroidLaneFrontLoad {
+  /** Share of the lane that arrives inside `minutes`. */
+  share: number;
+  /** Width of the front, in minutes from the lane's start. */
+  minutes: number;
+}
+
 function appendAsteroidLane(
   asteroids: AsteroidSpec[],
   rng: () => number,
@@ -225,9 +240,36 @@ function appendAsteroidLane(
   count: number,
   indexOffset: number,
   appearsAtOffset = 0,
+  frontLoad?: AsteroidLaneFrontLoad,
 ): void {
   if (count <= 0) return;
-  const interval = span / Math.max(1, count);
+  /*
+    TWO EVEN SPREADS RATHER THAN ONE, AND THE DRAW ORDER IS UNCHANGED.
+
+    Without a front load this is the single `span / count` interval it always was.
+    With one, the lane is split in two at `frontLoad.minutes` and each half is
+    spread evenly over its own stretch with the same one-interval jitter — so the
+    front is dense and the tail is thin, and neither is a pile at one instant.
+
+    EACH ROCK STILL TAKES EXACTLY THE SAME DRAWS IN THE SAME ORDER, one of them for
+    this jitter. That is what lets a front load change WHEN a lane's rocks appear
+    without changing which rocks they are, and it is why the option is a schedule
+    rather than a different lane builder.
+  */
+  const front = frontLoad !== undefined && span > frontLoad.minutes
+    ? {
+        minutes: frontLoad.minutes,
+        count: Math.min(count, Math.max(0, Math.round(count * frontLoad.share))),
+      }
+    : { minutes: 0, count: 0 };
+  const frontCount = front.count;
+  // Coupled to the count on purpose: a front of zero rocks must not still push the
+  // tail five minutes late, which is what an unconditional `front.minutes` would do
+  // if a future share ever rounded the front away.
+  const frontSpan = frontCount > 0 ? front.minutes : 0;
+  const frontInterval = frontCount > 0 ? frontSpan / frontCount : 0;
+  const tailCount = count - frontCount;
+  const tailInterval = tailCount > 0 ? (span - frontSpan) / tailCount : 0;
 
   for (let laneIndex = 0; laneIndex < count; laneIndex++) {
     const index = indexOffset + laneIndex;
@@ -235,7 +277,14 @@ function appendAsteroidLane(
     const speed =
       GALAXY.asteroidSpeedMin + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
     const level = rollLevel(rng());
-    const appearsAt = appearsAtOffset + laneIndex * interval + rng() * interval;
+    const jitter = rng();
+    // Written as `slot * interval + jitter * interval` rather than the algebraically
+    // equal `(slot + jitter) * interval`: the two differ in the last bit of a float,
+    // and the un-front-loaded form has to stay identical to the byte.
+    const [slot, interval, from] = laneIndex < frontCount
+      ? [laneIndex, frontInterval, appearsAtOffset]
+      : [laneIndex - frontCount, tailInterval, appearsAtOffset + frontSpan];
+    const appearsAt = from + slot * interval + jitter * interval;
     const life =
       (GALAXY.asteroidLifeHoursMin +
         rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) *
@@ -264,6 +313,89 @@ function appendAsteroidLane(
       appearsAt,
       expiresAt: appearsAt + life,
     });
+  }
+}
+
+const ORE_RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
+
+/** What one rock's ore weighs against the day's three-resource allowance. */
+const oreCost = (rock: AsteroidSpec, ore: number): Resources => ({
+  alloy: ore * (1 - rock.crystalShare - rock.deuteriumShare),
+  crystal: ore * rock.crystalShare,
+  deuterium: ore * rock.deuteriumShare,
+});
+
+/** The same sum over a whole lane-day. */
+function oreMix(rocks: readonly AsteroidSpec[], oreOf: (rock: AsteroidSpec) => number): Resources {
+  const mix: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  for (const rock of rocks) {
+    const cost = oreCost(rock, oreOf(rock));
+    for (const resource of ORE_RESOURCES) mix[resource] += cost[resource];
+  }
+  return mix;
+}
+
+/**
+ * A DAY'S ROCKS, PAID FOR IN WHOLE PACKETS. Owner instruction, 2026-09-14.
+ *
+ * THE LEVEL TABLE WAS NEVER THE WHOLE ANSWER, and that is the trap this function
+ * exists to close. `GALAXY.asteroidOreByLevel` states five yields and a reader
+ * naturally concludes those are the yields; they are not. A season's field is then
+ * rescaled to fit `monthlySupply('mining', …)`, and the old rescale was continuous
+ * — `floor(ore x factor)` — so a 1,600-unit rock reached the disc holding 337. That
+ * is where the twenty- and thirty-unit remainders a player complained about
+ * actually came from, and re-typing the table alone would have changed nothing.
+ *
+ * SO THE BUDGET IS SPENT IN PACKETS RATHER THAN SCALED. Each rock is offered the
+ * packets its own level buys at the day's rate, floored to a whole one and never
+ * below one, and the running allowance is debited as they are handed out. Three
+ * properties follow, and every one of them is a requirement rather than a
+ * by-product:
+ *
+ *   · EVERY YIELD IS A POSITIVE MULTIPLE OF `asteroidOreQuantum`, so a bare
+ *     Prospector squadron empties a rock exactly and never flies for a remainder;
+ *   · NO DAY EVER OUTSPENDS ITS ALLOWANCE, because the debit is checked before it
+ *     is made rather than approximated by a factor — a quantised total can round
+ *     UP past a continuous one, which is exactly how a cap gets silently breached;
+ *   · IT IS A PURE FUNCTION OF THE LANE, so two processes deriving the same season
+ *     key agree to the unit.
+ *
+ * THE FLOOR AT ONE PACKET IS WHAT KEEPS THE FIELD POPULATED. Flooring alone turns
+ * roughly a third of the opening field into zero-ore rows — invisible to every
+ * player surface (`oreRemaining > 0`) and therefore a silent thinning of the disc,
+ * which is the opposite of what a density increase is for. Measured across twelve
+ * seeds and thirty days, the floor never once forces the allowance over: the
+ * packets other rocks give up by flooring more than pay for it. The descending
+ * clamp below is the guarantee rather than the expectation — it is what makes the
+ * cap true by construction on a season where that arithmetic does not hold.
+ *
+ * ROCKS ARE SERVED IN INDEX ORDER, which is the only order a derived field has.
+ * It biases nothing while the allowance covers the day, and on the day it does not
+ * it is at least the same bias in every process that derives it.
+ */
+function quantiseDailyOre(rocks: readonly AsteroidSpec[], budget: Resources): void {
+  if (rocks.length === 0) return;
+  const quantum = GALAXY.asteroidOreQuantum;
+  const demand = oreMix(rocks, (rock) => rock.ore);
+  const factor = Math.min(1, ...ORE_RESOURCES.map((resource) =>
+    demand[resource] > 0 ? budget[resource] / demand[resource] : 1));
+  const left: Resources = { ...budget };
+  // A shared allowance is real to within floating-point noise; a rock may not be
+  // starved of a packet it can afford by the last bit of a resource share.
+  const epsilon = 1e-9;
+  for (const rock of rocks) {
+    const capacity = Math.max(0, Math.floor(rock.ore / quantum));
+    let packets = capacity === 0
+      ? 0
+      : Math.min(capacity, Math.max(1, Math.floor((rock.ore * factor) / quantum)));
+    let spend = oreCost(rock, packets * quantum);
+    while (packets > 0
+      && ORE_RESOURCES.some((resource) => spend[resource] > left[resource] + epsilon)) {
+      packets -= 1;
+      spend = oreCost(rock, packets * quantum);
+    }
+    rock.ore = packets * quantum;
+    for (const resource of ORE_RESOURCES) left[resource] -= spend[resource];
   }
 }
 
@@ -310,12 +442,7 @@ export function generateAsteroidSchedule(
       crystal: expandedBudget.crystal * budgetScale,
       deuterium: expandedBudget.deuterium * budgetScale,
     };
-    const total = today.reduce((sum, r) => ({ alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
-      crystal: sum.crystal + r.ore * r.crystalShare, deuterium: sum.deuterium + r.ore * r.deuteriumShare }),
-    { alloy: 0, crystal: 0, deuterium: 0 });
-    const factor = Math.min(1, ...(['alloy', 'crystal', 'deuterium'] as const)
-      .map(k => total[k] > 0 ? budget[k] / total[k] : 1));
-    for (const rock of today) rock.ore = Math.floor(rock.ore * factor);
+    quantiseDailyOre(today, budget);
   }
 
   appendStandingAsteroidIncrease(asteroids, asteroids, span, seed, totalCount - establishedCount);
@@ -347,21 +474,12 @@ function appendStandingAsteroidIncrease(
     const existingToday = established.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const laneToday = lane.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const budget = monthlySupply('mining', day, SERVERS.capacity);
-    const existing = existingToday.reduce((sum, r) => ({
-      alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
-      crystal: sum.crystal + r.ore * r.crystalShare,
-      deuterium: sum.deuterium + r.ore * r.deuteriumShare,
-    }), { alloy: 0, crystal: 0, deuterium: 0 });
-    const added = laneToday.reduce((sum, r) => ({
-      alloy: sum.alloy + r.ore * (1 - r.crystalShare - r.deuteriumShare),
-      crystal: sum.crystal + r.ore * r.crystalShare,
-      deuterium: sum.deuterium + r.ore * r.deuteriumShare,
-    }), { alloy: 0, crystal: 0, deuterium: 0 });
-    const factor = Math.min(1, ...(['alloy', 'crystal', 'deuterium'] as const).map((resource) =>
-      added[resource] > 0
-        ? Math.max(0, budget[resource] - existing[resource]) / added[resource]
-        : 1));
-    for (const rock of laneToday) rock.ore = Math.floor(rock.ore * factor);
+    const existing = oreMix(existingToday, (rock) => rock.ore);
+    quantiseDailyOre(laneToday, {
+      alloy: Math.max(0, budget.alloy - existing.alloy),
+      crystal: Math.max(0, budget.crystal - existing.crystal),
+      deuterium: Math.max(0, budget.deuterium - existing.deuterium),
+    });
   }
   target.push(...lane);
 }
@@ -419,6 +537,21 @@ export function withAsteroidShowerLanes(
     ?? ((occurrence: PlannedGalaxyEvent) =>
       seededFrom('asteroid:shower:spawn-increase:v1', isotopeSeed, occurrence.sequence));
 
+  /*
+    THE FRONT LOAD IS READ OFF THE OCCURRENCE, NEVER OFF TODAY'S DEFINITION.
+
+    A calendar row carries the version it was dealt under (D149), so a window that
+    was planned — or has already opened — under the old shape keeps the arrival
+    times its rocks were derived with. That is the whole safety argument: a lane's
+    rocks are addressed by index, and moving one that is already in the sky moves a
+    claim, a flight and a drawn target with it. `restampFutureOccurrences` is the
+    only door onto the new shape, and it refuses a window that has opened.
+  */
+  const frontLoadFor = (occurrence: PlannedGalaxyEvent): AsteroidLaneFrontLoad | undefined =>
+    occurrence.definitionVersion >= ASTEROID_SHOWER_FRONT_LOAD.fromDefinitionVersion
+      ? { share: ASTEROID_SHOWER_FRONT_LOAD.share, minutes: ASTEROID_SHOWER_FRONT_LOAD.minutes }
+      : undefined;
+
   // Recreate every pre-increase shower lane first. This entire prefix is the
   // live field: changing its count would move claims and flights to another rock.
   for (const occurrence of showers) {
@@ -441,6 +574,7 @@ export function withAsteroidShowerLanes(
       count,
       asteroids.length,
       occurrence.startsAtMinute,
+      frontLoadFor(occurrence),
     );
   }
 
@@ -474,6 +608,7 @@ export function withAsteroidShowerLanes(
       expandedBonus - establishedBonus,
       asteroids.length,
       occurrence.startsAtMinute,
+      frontLoadFor(occurrence),
     );
   }
   return asteroids;

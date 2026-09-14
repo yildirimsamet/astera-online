@@ -535,16 +535,32 @@ describe('what an instrument costs', () => {
     }
   });
 
-  it('keeps the three detectors on one price, so only the identifier is dearer', () => {
+  /**
+   * THE THREE DETECTORS SHARED ONE PRICE UNTIL 2026-09-14, and now two of them do.
+   * The owner took a quarter off the two instruments that LOOK — Telescope and
+   * Radar — and left the two that hide alone, so the Aegis and the Veil are what
+   * the flat detector price still is. `INSTRUMENT_COST_DISCOUNT` is the statement.
+   */
+  it('keeps the two counter-measures on one price, which is the undiscounted one', () => {
     for (let level = 0; level <= 4; level++) {
-      const [first, ...rest] = cheap.map((id) => instrumentCost(id, level));
-      for (const other of rest) expect(other).toEqual(first);
+      expect(instrumentCost('VEIL', level)).toEqual(instrumentCost('AEGIS', level));
+      for (const resource of ['alloy', 'crystal'] as const) {
+        expect(instrumentCost('RADAR', level)[resource], `L${String(level)}`)
+          .toBe(Math.round(instrumentCost('AEGIS', level)[resource] * 0.75));
+      }
     }
   });
 
   /** The whole layer must not get dearer: ARR is the open band and this is a lever on it. */
-  it('leaves the cheap three exactly where the flat price left them', () => {
-    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
-    expect(instrumentCost('RADAR', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
+  it('leaves the two counter-measures exactly where the flat price left them', () => {
+    expect(instrumentCost('AEGIS', 0)).toEqual({ alloy: 197, crystal: 148, deuterium: 0 });
+    expect(instrumentCost('AEGIS', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
+  });
+
+  it('takes the owner-set quarter off both instruments that see', () => {
+    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 148, crystal: 111, deuterium: 0 });
+    expect(instrumentCost('RADAR', 4)).toEqual({ alloy: 19155, crystal: 14366, deuterium: 0 });
+    expect(instrumentCost('TELESCOPE', 0)).toEqual({ alloy: 222, crystal: 167, deuterium: 0 });
+    expect(instrumentCost('TELESCOPE', 4)).toEqual({ alloy: 28733, crystal: 21550, deuterium: 0 });
   });
 });

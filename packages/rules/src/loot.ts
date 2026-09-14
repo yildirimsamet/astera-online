@@ -262,6 +262,17 @@ export const newcomerShieldUntil = (joinedMs: number): number =>
   joinedMs + ABUSE.newcomerShieldHours * 3_600_000;
 
 /**
+ * THE ONE READING OF A STORED PROTECTION COLUMN, AND EVERY OTHER ANSWER IS BUILT
+ * FROM IT. D183 · 2026-09-14.
+ *
+ * Returns the instant, or null. Two questions are asked of these columns — "is
+ * this commander protected" and "until when, and by which of the two" — and a
+ * predicate cannot answer the second without its caller re-reading the column and
+ * asserting a type the predicate already proved. One function returning the value
+ * removes both the duplicate test and the cast.
+ */
+
+/**
  * IS THIS COMMANDER STILL UNDER THE SHIELD? D183.
  *
  * NULL IS THE ORDINARY STATE and it is what the column holds for every commander
@@ -272,15 +283,161 @@ export const newcomerShieldUntil = (joinedMs: number): number =>
  * The boundary belongs to the galaxy — at the instant it expires the shield is
  * gone — and anything that is not a pair of finite numbers is not a shield.
  */
+const liveUntil = (
+  until: number | null | undefined,
+  nowMs: number,
+): number | null =>
+  typeof until === 'number'
+  && Number.isFinite(until)
+  && Number.isFinite(nowMs)
+  && nowMs < until
+    ? until
+    : null;
+
 export const newcomerShielded = (
   until: number | null | undefined,
   nowMs: number,
-): boolean =>
-  until !== null
-  && until !== undefined
-  && Number.isFinite(until)
-  && Number.isFinite(nowMs)
-  && nowMs < until;
+): boolean => liveUntil(until, nowMs) !== null;
+
+/**
+ * WHEN A RECOVERY SHIELD GRANTED NOW WOULD END. Owner instruction, 2026-09-14.
+ *
+ * An INSTANT for the same reason `newcomerShieldUntil` is one: it is stored on the
+ * player row, published to the client and drawn as a countdown against
+ * `serverNow()` (D51). A duration would have to be re-based by whoever received it.
+ */
+export const recoveryShieldUntil = (nowMs: number): number =>
+  nowMs + ABUSE.recoveryShieldHours * 3_600_000;
+
+/**
+ * THE END OF THE WINDOW AFTER ONE MORE HEAVY DEFEAT. Owner instruction.
+ *
+ * *"Süreler toplanmaz"* — a second defeat inside a live window pushes the end out
+ * to four hours from NOW and no further, so a commander being worked over by
+ * several attackers is not accumulating a day of immunity one raid at a time. It
+ * can only ever move the end FORWARD: a defeat landing under a shield that already
+ * reaches further leaves that shield alone rather than cutting it short.
+ *
+ * Anything that is not a finite instant is treated as no shield at all, which is
+ * the same reading `newcomerShielded` gives a corrupt column.
+ */
+export const extendRecoveryShield = (
+  existingUntil: number | null | undefined,
+  nowMs: number,
+): number => {
+  const fresh = recoveryShieldUntil(nowMs);
+  return typeof existingUntil === 'number' && Number.isFinite(existingUntil)
+    ? Math.max(fresh, existingUntil)
+    : fresh;
+};
+
+/** Which of the two shields is standing, and until when. */
+export interface AttackProtection {
+  kind: 'NEWCOMER' | 'RECOVERY';
+  /** Epoch milliseconds, exclusive: at this instant the protection is gone. */
+  until: number;
+}
+
+/**
+ * THE ONE PLACE THE TWO SHIELDS ARE READ. Owner instruction, 2026-09-14.
+ *
+ * A commander may hold a first-day shield (D183) and a recovery shield at once,
+ * and to a raider they mean exactly the same thing: this launch is refused. So
+ * every surface that asks "is this commander reachable" has to ask ONE question,
+ * or the disc, the launch gate, the bot's target list and the HUD will each answer
+ * it from whichever column they happened to be written against.
+ *
+ * THE LATER END WINS, because that is the instant the commander is actually
+ * reachable again and the figure a countdown has to draw. The KIND is carried
+ * beside it so the surface can name what it is showing — *"toparlanma kalkanı"*
+ * rather than *"ilk gün kalkanı"* — which is the whole reason this returns a pair
+ * rather than a number.
+ *
+ * ON AN EXACT TIE THE FIRST DAY IS NAMED. Both are spent by the same launch, so
+ * the choice only decides a word; the first-day shield is the one that can never
+ * be earned again, which makes it the more useful thing to warn somebody about.
+ *
+ * NULL IS THE ORDINARY STATE. The boundary belongs to the galaxy — at the instant
+ * a window expires it is over — and anything that is not a finite pair of numbers
+ * is not a shield.
+ */
+export function effectiveAttackProtection(
+  newcomerUntil: number | null | undefined,
+  recoveryUntil: number | null | undefined,
+  nowMs: number,
+): AttackProtection | null {
+  const newcomer = liveUntil(newcomerUntil, nowMs);
+  const recovery = liveUntil(recoveryUntil, nowMs);
+  if (newcomer === null) {
+    return recovery === null ? null : { kind: 'RECOVERY', until: recovery };
+  }
+  if (recovery === null || newcomer >= recovery) {
+    return { kind: 'NEWCOMER', until: newcomer };
+  }
+  return { kind: 'RECOVERY', until: recovery };
+}
+
+/** What one battle has to have cost the defender to be worth four hours. */
+export interface RecoveryShieldCheck {
+  /**
+   * The DECISIVE, unlimited-cargo raidable total on the struck world, read from
+   * the same transaction snapshot the battle debited — never from what is left
+   * afterwards, and never from a second loot formula.
+   */
+  raidableBefore: number;
+  /** What the defender actually lost in this battle and the winner actually carried. */
+  lootLost: number;
+  /** Every store this commander owns, summed across all three resources and all worlds. */
+  storageCapacity: number;
+}
+
+/**
+ * DID THIS BATTLE HURT ENOUGH TO BE WORTH A SHIELD? Owner instruction, 2026-09-14.
+ *
+ * TWO CONDITIONS, BOTH REQUIRED, and `ABUSE.recoveryRaidableMultiple` /
+ * `ABUSE.recoveryStorageMultiple` carry the argument for why there are two. In
+ * short: the share alone is bought with an empty colony, and the material floor
+ * alone would never fire for a small commander who genuinely lost everything.
+ *
+ * IT READS THE REAL LOSS, NOT THE GRADE. A PARTIAL raid with cargo enough for the
+ * whole share takes exactly half of the DECISIVE ceiling and therefore qualifies;
+ * a cargo-limited DECISIVE that flew home half-empty does not. That is deliberate
+ * — the rule is about what the defender is standing in afterwards, and a label on
+ * the battle report is not that.
+ *
+ * NOTHING IS ROUNDED INTO A GRANT. Both comparisons are integer multiplications of
+ * the loss, so the exact half and the exact twentieth are inside the rule rather
+ * than at the mercy of a float share; and any input that is not a finite,
+ * non-negative number answers false rather than being coerced.
+ */
+const saneAmount = (value: number): boolean => Number.isFinite(value) && value >= 0;
+
+/**
+ * THE HALF OF THE RULE THAT NEEDS NOTHING BUT THE BATTLE. Exported, and the reason
+ * is a cost rather than a preference.
+ *
+ * The other half needs every store this commander owns, which is three queries the
+ * worker would otherwise run on EVERY resolved raid in the galaxy — including the
+ * REPELLED ones that took nothing, which is most of them. The server asks this
+ * first and only reaches for the database if it passes. It is one statement of the
+ * relative test used in two places, not two statements of it: `earnsRecoveryShield`
+ * calls exactly this function.
+ */
+export function recoveryShieldRelativeLoss(
+  raidableBefore: number,
+  lootLost: number,
+): boolean {
+  if (!saneAmount(raidableBefore) || !saneAmount(lootLost)) return false;
+  if (lootLost <= 0 || raidableBefore <= 0) return false;
+  return ABUSE.recoveryRaidableMultiple * lootLost >= raidableBefore;
+}
+
+export function earnsRecoveryShield(input: RecoveryShieldCheck): boolean {
+  const { raidableBefore, lootLost, storageCapacity } = input;
+  if (!saneAmount(storageCapacity) || storageCapacity <= 0) return false;
+  if (!recoveryShieldRelativeLoss(raidableBefore, lootLost)) return false;
+  return ABUSE.recoveryStorageMultiple * lootLost >= storageCapacity;
+}
 
 export function canAttack(
   attacker: AttackParty,

@@ -434,6 +434,21 @@ export const players = pgTable('players', {
    */
   newcomerShieldUntil: timestamp('newcomer_shield_until', { withTimezone: true }),
   /**
+   * THE SHIELD A HEAVY DEFEAT BUYS, AND WHY IT IS A SECOND COLUMN. 2026-09-14.
+   *
+   * It obeys the same contract as `newcomerShieldUntil` — the commander and every
+   * world they hold, against Raid and Death Star, given up by attacking somebody —
+   * and it could not share the column. That one answers "has this commander ever
+   * fired" by PRESENCE (`newcomerShielded`, and dropping writes null rather than a
+   * past instant), so writing a recovery window into it would tell the game a
+   * commander eight days into a war had never taken a shot. Two columns, one read:
+   * `effectiveAttackProtection` is the only place either is interpreted.
+   *
+   * Earned again and again, unlike the first day's. `extendRecoveryShield` pushes
+   * the end out to four hours from the newest defeat and never stacks two windows.
+   */
+  recoveryShieldUntil: timestamp('recovery_shield_until', { withTimezone: true }),
+  /**
    * Which unlocks this player has already been SHOWN.
    *
    * What is unlocked is derived from history, not stored — that cannot drift. This
@@ -1405,6 +1420,29 @@ export const battleReports = pgTable('battle_reports', {
   dominionRawExchange: bigint('dominion_raw_exchange', { mode: 'number' }),
   /** True when scored, false for a competition-exempt operator battle, null on legacy reports. */
   dominionEligible: boolean('dominion_eligible'),
+  /**
+   * THE DENOMINATOR THE RECOVERY SHIELD WAS DECIDED AGAINST. 2026-09-14.
+   *
+   * What a DECISIVE raid with unlimited cargo could have taken from this world at
+   * the instant before the battle debited it — `raidableStock`, the same figure a
+   * probe reports, read from the same transaction snapshot. Stored because it
+   * CANNOT be recomputed afterwards: the stores it was measured on have already
+   * been debited, and the vault floor, the works exposure and an hour of
+   * production all move underneath it.
+   *
+   * With `loot` beside it this is what makes the grant auditable — the realised
+   * share is `sum(loot) / raidableBefore`, which is why the ratio itself is not a
+   * fourth column to keep in step. Null on every report that predates the rule and
+   * on every battle that is not a commander raiding a commander.
+   */
+  raidableBefore: bigint('raidable_before', { mode: 'number' }),
+  /**
+   * The recovery window this battle granted the DEFENDER, or null if it granted
+   * none. The other half of the audit trail: without it, a report that cleared
+   * both thresholds and a report that was refused for an active outbound raid read
+   * identically.
+   */
+  recoveryShieldUntil: timestamp('recovery_shield_until', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),

@@ -38,7 +38,8 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
-import { assertNewcomerShields, peakCoreLevels } from './player.js';
+import { assertAttackProtections } from './attackProtection.js';
+import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
 import { publishShard } from '../stream/bus.js';
@@ -230,7 +231,7 @@ export async function launchAttack(
     }
 
     /**
-     * THE FIRST DAY IN A GALAXY IS SAFE, AND FIRING GIVES IT UP. D183, reversing D14.
+     * THE FIRST DAY IS SAFE, AND SO IS THE HOUR AFTER A BEATING. D183 · 2026-09-14.
      *
      * TWO REFUSALS, AND THE TARGET'S COMES FIRST. Accepting the loss of your own
      * shield to hit somebody who cannot be hit would spend a day of protection for
@@ -241,16 +242,18 @@ export async function launchAttack(
      * ships off the stack — for the same reason D168's band is: a refusal that costs
      * something is a punishment for asking a question.
      *
-     * THE SHIELD IS SPENT, NOT PAUSED. Writing null rather than a past instant is
-     * what makes "has this commander committed to the war" a presence rather than a
-     * date comparison, and it is why the window never comes back: a shield that
-     * returned after one shot would make the first day a free strike.
+     * THE SHIELD IS SPENT, NOT PAUSED, AND BOTH ARE SPENT TOGETHER. Writing null
+     * rather than a past instant is what makes "has this commander committed to the
+     * war" a presence rather than a date comparison, and it is why the first day
+     * never comes back. The recovery window goes with it in the same update: a
+     * commander who fires has committed, and keeping half a shield by owning two
+     * kinds of it is not a position anybody should be able to hold.
      *
      * NEUTRAL WORLDS ARE OUTSIDE IT ENTIRELY. There is no commander to protect and
      * none to charge — a caretaker world is scenery with a garrison, and settling
      * is not the reaching-out this rule is about.
      */
-    await assertNewcomerShields(tx, {
+    await assertAttackProtections(tx, {
       attackerPlayerId: me.id,
       defenderPlayerId: target.kind === 'NEUTRAL' ? null : (them?.id ?? null),
       now: origin.now,

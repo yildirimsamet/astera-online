@@ -561,9 +561,19 @@ rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining f
 the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
 undiscovered coordinate and the API never publishes the future calendar.
 
-**A laden craft flies home at a third of the speed it went out (D117).** The trip out is a
-race and stays one; the trip back is the price of having won it. What it costs is a flight
-bay held three times as long and a craft on the disc, in the open, for the whole of it — so
+**Half of a window's bonus now lands in its first five minutes (2026-09-14).** The hourly total is
+unchanged — this is a redistribution, not a bigger event. What it fixes is that the banner used to
+arrive before the rocks did: spread evenly over sixty minutes, the field at the instant of the
+announcement held exactly what it had held a second earlier, so a commander who opened the game on
+the signal was told the truth by the copy and lied to by the disc. It is spread ACROSS the five
+minutes rather than dropped at minute zero, because a single instant carrying half an hour's rocks
+is a lottery for whoever happens to be looking. A window that has already opened keeps the arrival
+times its rocks were derived under.
+
+**A laden craft flies home at half the speed it went out (D117, halved from a third on
+2026-09-14).** The trip out is a race and stays one; the trip back is the price of having won it.
+What it costs is a flight bay held twice as long and a craft on the disc, in the open, for the
+whole of it — so
 "which rock, and when" now also asks how long you are willing to be committed. It does not
 lower how much ore the galaxy takes out: the field is the bottleneck, not the round trip, and
 the same rocks are emptied either way. Laden salvage runs pay the same price. Empty
@@ -613,6 +623,39 @@ being refused, which is an error message rather than a rule. It stops raids, not
 flies as it always did, because a newcomer nobody can read is a newcomer nobody can decide about.
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
+
+### The recovery shield — four hours after a heavy defeat (2026-09-14)
+
+The first day answers "what protects somebody who has not started yet". This answers the question
+it cannot: **what happens to a commander who has already committed to the war and just lost
+badly.** A defeat that takes at least half of what was raidable on the struck world AND at least a
+twentieth of everything that commander can store leaves them unreachable for four hours, on every
+world they hold, against Raid and Death Star. A Death Star impact grants it outright — it destroys
+rather than loots, so there is no share to measure, and it is the loudest thing one commander can
+do to another.
+
+**It is the first day's contract, not a second mechanism.** Same scope, same forfeit, same
+confirmation: raiding somebody spends it after one refusal, and both shields go together, because
+a commander who fires has committed and keeping half a shield by owning two kinds of it is not a
+position anybody should hold. What is different is that it is EARNED and can be earned again — so
+it is stored in its own column, and "has this commander ever fired" stays the presence question
+the first day answers.
+
+**Two thresholds, both required, and each closes what the other opens.** The share alone is bought
+with a deliberately empty colony: lose two units of alloy on a world you left bare and your whole
+holding goes behind four hours for the price of one hull. The material floor alone would never
+fire for a small commander who genuinely lost everything they had. The floor is measured against
+STORAGE rather than against a development table, so the bar scales with the commander on its own.
+
+**And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
+the air collects nothing: a shield won while your fleet is still flying at somebody who can no
+longer answer inverts what the shield is for. The server's own commanders claim it no more than
+they claim the first day (D159).
+
+**What it does not do.** It never turns a fleet back: anything legally in the air when the window
+opens still arrives, and a second heavy defeat pushes the end out to four hours from that battle
+rather than stacking a second window. Pirates, probes, mining, transfers, settlement, trade and
+clan aid neither grant it nor spend it.
 
 ### Pirate fleets — the third target class (D150)
 

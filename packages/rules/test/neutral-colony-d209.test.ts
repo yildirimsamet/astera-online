@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ECONOMY_ADJUSTMENT,
   HULLS,
   MULTI_WORLD,
   SATELLITE_IDS,
+  UPLINK_BUILD_MINUTES,
   buildMinutes,
   robotSpeedMult,
   satelliteCost,
@@ -162,14 +164,17 @@ describe('D209 Uplink (Anten)', () => {
     expect(satelliteCost('UPLINK')).toEqual({ alloy: 1_000, crystal: 500, deuterium: 0 });
   });
 
-  it.each([1, 6, 20])('takes 6.5 minutes at Core %i after the owner 30% timer pass, before automation', (core) => {
-    expect(satelliteMinutes('UPLINK', core, {})).toBe(6.5);
+  /** The owner's flat five minutes through the one shared timer dial, at any Core. */
+  const uplinkMinutes = UPLINK_BUILD_MINUTES * ECONOMY_ADJUSTMENT.buildTime;
+
+  it.each([1, 6, 20])('takes the same flat quote at Core %i, before automation', (core) => {
+    expect(satelliteMinutes('UPLINK', core, {})).toBeCloseTo(uplinkMinutes, 10);
   });
 
   it('still takes the AI Robots discount, like everything else in Construction (D198)', () => {
     for (let rung = 0; rung <= 5; rung++) {
       expect(satelliteMinutes('UPLINK', 6, { AI_ROBOTS: rung }))
-        .toBeCloseTo(6.5 * robotSpeedMult({ AI_ROBOTS: rung }), 10);
+        .toBeCloseTo(uplinkMinutes * robotSpeedMult({ AI_ROBOTS: rung }), 10);
     }
   });
 

@@ -345,9 +345,9 @@ function rollLevel(roll: number): PirateLevel {
  * interval moves EVERY live target and makes a player's chosen quarry jump or
  * vanish between two reads. A pirate is worse than a rock in that respect,
  * because a fleet may already be in the air toward the point it used to be at.
- * The 2026-09-14 increase therefore appends a second seed-shifted lane with fresh
- * indices. The helper below builds one lane at one rate; the public composer keeps
- * the complete established lane first and appends the increase after it.
+ * The two 2026-09-14 increases therefore append a seed-shifted lane each, with
+ * fresh indices. The helper below builds one lane at one rate; the public composer
+ * keeps every earlier lane first and appends the new one after it.
  *
  * THE ROLL ORDER IS PART OF THE CONTRACT. Every draw below is taken in a fixed
  * sequence from one generator, so inserting a new property in the middle re-rolls
@@ -432,14 +432,41 @@ function generatePirateLane(
   return pirates;
 }
 
+/**
+ * HOW MANY OF THE THREE LANES TO DERIVE, and why this is not a boolean.
+ *
+ * Density has been raised twice and every raise appended a lane rather than moving
+ * the dial, so "the field" is now a prefix question with three answers rather than
+ * two. A second boolean beside the first would have made `(false, true)` sayable
+ * and meaningless; a stage says the one true thing — how far along the composition
+ * this caller is entitled to read — and the stages nest by construction.
+ *
+ * It exists for the COMPATIBILITY ROLL and nothing else. Every API and worker
+ * instance has to be able to resolve a new lane's opaque handles before any of its
+ * targets is published, so a deployment shows the shorter prefix until the whole
+ * fleet is on the new build. `docs/deployment.md` carries the order.
+ */
+export type PirateLaneStage = 'ESTABLISHED' | 'INCREASED' | 'ALL';
+
 export interface PirateScheduleOptions {
-  /** Independent deterministic draws for the owner-set density increase. */
+  /** Independent deterministic draws for the owner-set +50% lane. */
   rngForIncrease?: Rng;
-  /** Derive only established contacts for a compatibility-stage rollout. */
-  includeIncrease?: boolean;
+  /** Independent deterministic draws for the owner-set doubling lane. */
+  rngForSurge?: Rng;
+  /** Derive a shorter prefix for a compatibility-stage rollout. Defaults to `ALL`. */
+  stage?: PirateLaneStage;
 }
 
-/** Established targets first, then the independent owner-set +50% lane. */
+/**
+ * Established targets first, then the +50% lane, then the doubling lane.
+ *
+ * APPEND-ONLY, AND THE ORDER IS THE CONTRACT. A pirate's public id is an HMAC of
+ * its lane index and `pirate_state` is keyed by that index, so a lane inserted
+ * anywhere but the end renumbers live targets — including ones a commander already
+ * has a fleet in the air toward. Each lane is generated at its OWN rate against its
+ * OWN slice of the monthly allowance (`monthlyPirateSupplyAtRate`), which is what
+ * makes the composition additive rather than a re-deal.
+ */
 export function generatePirateSchedule(
   rng: Rng,
   span: number = SEASON.days * 24 * 60,
@@ -447,26 +474,40 @@ export function generatePirateSchedule(
   appearsAtOffset = 0,
   options: PirateScheduleOptions = {},
 ): PirateSpec[] {
-  const established = generatePirateLane(
+  const stage = options.stage ?? 'ALL';
+  const pirates = generatePirateLane(
     rng,
     span,
     indexOffset,
     appearsAtOffset,
     PIRATE.establishedSpawnPerHour,
   );
-  const increaseRate = PIRATE.spawnPerHour - PIRATE.establishedSpawnPerHour;
-  if (increaseRate <= 0 || options.includeIncrease === false) return established;
 
-  // The server supplies a key-separated stream. Pure rules callers still get a
-  // deterministic independent stream, seeded only after the old lane is complete.
-  const rngForIncrease = options.rngForIncrease
-    ?? mulberry32(Math.floor(rng() * 0x1_0000_0000));
-  const increase = generatePirateLane(
-    rngForIncrease,
-    span,
-    indexOffset + established.length,
-    appearsAtOffset,
-    increaseRate,
-  );
-  return [...established, ...increase];
+  /*
+    The server supplies a key-separated stream per lane. A pure rules caller gets a
+    deterministic independent one instead, drawn from its own generator IN LANE
+    ORDER and only once the lane before it is complete — so asking for a shorter
+    prefix can never change a lane that a longer one would also have produced.
+  */
+  const append = (rate: number, supplied: Rng | undefined): void => {
+    if (rate <= 0) return;
+    const lane = supplied ?? mulberry32(Math.floor(rng() * 0x1_0000_0000));
+    // Appended one at a time rather than by spreading the array into `push`: a
+    // season's lane runs to thousands of entries and spread passes every one of
+    // them as a call argument, which has an engine limit this has no reason to
+    // walk toward.
+    for (const spec of generatePirateLane(
+      lane,
+      span,
+      indexOffset + pirates.length,
+      appearsAtOffset,
+      rate,
+    )) pirates.push(spec);
+  };
+
+  if (stage === 'ESTABLISHED') return pirates;
+  append(PIRATE.increasedSpawnPerHour - PIRATE.establishedSpawnPerHour, options.rngForIncrease);
+  if (stage === 'INCREASED') return pirates;
+  append(PIRATE.spawnPerHour - PIRATE.increasedSpawnPerHour, options.rngForSurge);
+  return pirates;
 }

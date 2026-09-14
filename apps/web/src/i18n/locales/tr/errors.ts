@@ -69,10 +69,10 @@ export const errors = {
   CONVOY_OUT_OF_REACH: 'Akın tamamlanamadan konvoy ayrılacak',
   CONVOY_QUOTE_CHANGED: 'Konvoy ilerledi; güncel rotayı inceleyip yeniden gönder',
   CONVOY_WINDOW_CLOSED: 'Galakside saldırılacak bir Galaksilerarası Konvoy yok',
-  NEWCOMER_SHIELDED: 'O komutan galaksideki ilk gününde; henüz akın edilemez',
+  NEWCOMER_SHIELDED: 'O komutan koruma altında; henüz akın edilemez',
   RIVAL_LIMIT: 'Zaten {{max}} komutanı izliyorsun. Önce birini kaldır.',
   PROSPECTORS_RESTING: 'Araçların henüz indi; birazdan yeniden hazır olacak.',
-  SHIELD_WOULD_DROP: 'Bu akın kendi ilk gün kalkanını bitirir. Yine de göndermek için onayla.',
+  SHIELD_WOULD_DROP: 'Bu akın kendi kalkanını bitirir. Yine de göndermek için onayla.',
   RENDEZVOUS_MOVED: 'Yörüngesinde ilerledi — uçuş süresi artık {{minutes}}dk. Kontrol edip tekrar gönder.',
   /* Raised by the transfer lane with no detail and by the trade lane with one, so
      it is written without interpolation: a placeholder rendered raw on the older

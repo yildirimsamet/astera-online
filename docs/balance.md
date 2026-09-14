@@ -215,7 +215,7 @@ must not be copied forward as the Fleet V2 price table.
 | Breacher | Lance | 55 | 300 | 78 | 0 | 1,250 | 550 | 200 | 3 | 4,125 |
 | Bastion | Bulwark · ground | 118 | 906 | — | — | 2,400 | 800 | 0 | 1 | 10,440 |
 | Thorn | Skirmisher · ground | 49 | 174 | — | — | 700 | 200 | 0 | 0 | 10,526 |
-| Prospector | Support · mining | 0 | 150 | 825 | 300 | 650 | 200 | 0 | 1 | — |
+| Prospector | Support · mining | 0 | 150 | 825 | 400 | 650 | 200 | 0 | 1 | — |
 
 **The table is priced on `atk · hp / value²`** — equal-budget power when damage is spread across a
 force. Not attack-per-resource, which is the quantity that made the old Bulwark lose every
@@ -526,11 +526,13 @@ drives the strategic layer directly instead.
 spawn         0.05175 per player per hour — 15.525/h and ~59 rocks visible at 300 players
 orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
 life          2.5–5 hours, then gone for good
-ore by level  [—, 800, 1600, 3200, 6000, 11000]   weights [—, .40, .27, .18, .10, .05]
+ore by level  [—, 1600, 3200, 4800, 6400, 8000]   weights [—, .40, .27, .18, .10, .05]
+ore quantum   400 = one bare Prospector hold; every yield is a whole number of these
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
 isotope       one seeded rock per 5 after hour 35, plus a bonus seam every 10 lanes = 11/50 (22%)
               10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
 shower        5 starts/full Türkiye day · 60 min · ×5 new arrivals · 120 min post-end cooldown
+              half of each window's bonus lands in its first 5 minutes (definition v5)
 quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a blackout
 ```
 
@@ -554,8 +556,8 @@ find, not a speed comparison.
 ### Pirates (D150 · D155)
 
 ```
-spawn         0.03 per seat per hour — 9 candidates/h at 300 seats; ~5.9/h admitted
-              and ~18 alive at a typical instant after the daily supply cap
+spawn         0.06 per seat per hour — 18 candidates/h at 300 seats, in three
+              append-only lanes (0.02 + 0.01 + 0.03); admitted after the daily supply cap
 orbit         radius 400–2000, closed 3D orbit, constant speed 94.54–126.40 units/min
               = 75% of Cataclysm and Dart speed ÷ TRAVEL.distanceFactor (D155/D203)
 period        ~19.9 min at the inner edge to ~132.9 min at the outer, derived from the two
@@ -688,6 +690,78 @@ frozen admission prices and current captured-hull prices is not repaired here: t
 actual-price cap regression is retained against the unchanged established lane, alongside a
 new full-field frozen-liability test. Activation waits until every process understands the
 additional indices (`docs/deployment.md`, D211 two-phase rollout).
+
+## 2026-09-14 — the eight-change tempo package
+
+Eight owner instructions shipped as one package because they multiply. Each is stated here with
+what it moved and what it deliberately did not; `packages/rules/test/balance-tempo-2026-09-14.test.ts`
+holds every one of them against the code, and
+`docs/balance-tempo-change-plan-2026-09-14.md` carries the pre-implementation analysis.
+
+**The drill and the rock it meets.** `PROSPECTOR.hold` 300 → **400**, and the ore ladder moved
+onto multiples of that same figure: `800/1600/3200/6000/11000` → **`1600/3200/4800/6400/8000`**.
+The complaint this answers was about twenty- and thirty-unit remainders, and the LEVEL TABLE WAS
+NEVER WHERE THEY CAME FROM — a day's yields are rescaled to fit `monthlySupply('mining', …)`, and
+a continuous rescale turns 1,600 into 337 whatever the table says. `quantiseDailyOre` replaces
+that rescale: each rock is offered the packets its level buys at the day's rate, floored to a
+whole one and never below one, against a running allowance. Measured over twelve seeds and thirty
+days it produces no zero-ore rock, no day over its cap, and total ore within about 3% of the old
+field. A laden craft also comes home at **half** speed rather than a third.
+
+The promise is for the BARE craft and is not extended to an upgraded one: Prospector Holds and a
+Derrick multiply the hold to figures like 1,000 and 2,080 that no single quantum divides. Making
+that guarantee would mean either free remainder collection or a rock whose yield changes per
+player, and the second is a worse game.
+
+**Research crystal −20%, Telescope and Radar −25%.** Both applied where every quote meets —
+`RESEARCH_CRYSTAL_DISCOUNT` in `withResearchCostMix`, `INSTRUMENT_COST_DISCOUNT` in
+`instrumentCost` — rather than typed into a table. The Aegis and the Veil keep their price to the
+unit: this is a discount on FINDING things, and cheapening the counter-measures in the same
+package that doubles the pirate lane would hand the increase straight back. **Timers move with
+both**, because time is derived from price: a research rung is cheaper AND quicker, and a
+Telescope rung lands at roughly 56% of its old wait once the global cut below is applied too.
+That compounding is intended and is the package's main snowball risk.
+
+**Fuel −50%.** `FUEL.perValue` 0.011 → **0.0055**, plus `SALVAGE.fuelMass` 100 → **50** for the
+Garbage Collector, whose thirst is hand-set and cannot be reached by the rate. The floor of one
+unit per hull and the per-leg ceiling are unchanged, so the very smallest bills do not halve;
+the underlying rate does, and that is what the tests assert.
+
+**All build and research timers −25%.** `ECONOMY_ADJUSTMENT.buildTime` 1.30 → **0.975**. One dial,
+seven quotes, and the ceiling moves with it because `BUILD.capMinutes` is derived from the same
+constant: the effective eight-hour cap falls 624 → **468** minutes before AI Robots. Flight time,
+event windows, mining turnaround, the Telescope repoint, disruption and recovery are outside it —
+they are not WORK.
+
+**Pirate density doubled.** 0.03 → **0.06** per seat per hour, as a third append-only lane with
+its own HMAC-labelled stream, so every established orbit, roster, hoard, lifetime, index and
+opaque id stays byte-identical (`pirates.test.ts` pins the original lane's digest). The monthly
+pirate allowance follows the rate to **19.5%**; without it the admission cap would discard the
+new lane before it reached the disc. Two-phase activation as in D211.
+
+**The Asteroid Shower is felt in its first minutes.** The hourly total does not move; the
+arrivals do. Half of each window's bonus now lands inside its first five minutes, spread across
+them rather than dropped at minute zero — a single instant would be a lottery for whoever
+happened to be looking. Measured over five seeds, raw active-field growth at +5 minutes goes from
+5.9% / 10.4% / 21.5% to **29% / 57% / 124%** at ×3 / ×5 / ×10, with the +60-minute figure
+unchanged to six decimal places. Gated on the occurrence's definition version (4 → **5**), so a
+window that has already opened keeps the arrival times its rocks were derived under.
+
+**Four hours of protection after a heavy defeat.** A commander who loses at least half of what
+was raidable AND at least a twentieth of everything they can store is unreachable for four hours,
+on every world they hold, against Raid and Death Star — the first-day shield's contract, earned
+rather than given, and given up the same way. A Death Star impact grants it outright. The two
+conditions are both required: the share alone is bought with a deliberately empty colony, and the
+material floor alone would never fire for a small commander who genuinely lost everything.
+Storage capacity is the denominator because it already grows with development, so no second
+ladder has to be kept in step with the Core.
+
+**Watch list.** The measured risks are the ones the plan named: mining competition against a
+2.67× bigger bare hold; pirate PvE net return with twice the targets and half the fuel; earlier
+sensor acquisition from a discount that is also a speed-up; and stock velocity, where faster
+queues spend resources sooner and leave less raidable value standing. The simulator's `SV` band
+is the first place that last one shows, and it is the figure to re-measure before the next
+ruleset.
 
 D204 changes the reward altitude but not the composition test: the measured lane still pays a
 fleet built for every target level and still punishes an all-cargo fleet at every level. That sign

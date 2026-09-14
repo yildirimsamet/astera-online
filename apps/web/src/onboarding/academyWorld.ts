@@ -51,7 +51,7 @@ export function academyPreview(now: number): Preview {
       seasonId: 'academy', shard: 'ACADEMY', seed: 1, status: 'ACTIVE',
       startsAt: new Date(now), endsAt: new Date(now + 86_400_000),
       // Nothing to watch in a lesson with one world in it. D183.
-      playerCap: 1, players: 1, rivals: [], shieldUntil: null,
+      playerCap: 1, players: 1, rivals: [], shieldUntil: null, shieldKind: null,
     },
     galaxy: {
       you: { planetId: reserved.id, playerId: 'academy-commander' },

@@ -296,17 +296,25 @@ export const seasonSchema = z.object({
     slot: z.number().int().nonnegative(),
   })).default([]),
   /**
-   * WHEN THIS COMMANDER'S OWN FIRST-DAY SHIELD ENDS — null when they have none.
-   * D183.
+   * WHEN THIS COMMANDER'S OWN RAID IMMUNITY ENDS — null when they have none.
+   * D183 · 2026-09-14.
    *
    * Read by the launch surface, which has to say what a raid COSTS before it is
    * pressed: firing gives the shield up, once, and a position spent without being
    * offered is one the player did not choose to spend.
    *
-   * `.nullish()` so a client ahead of its server simply shows no warning rather
-   * than failing the season payload, which also carries the clock.
+   * IT IS THE LATER OF THE TWO SHIELDS since the recovery window shipped, composed
+   * server-side by `effectiveAttackProtection`, because both are spent by the same
+   * launch and both refuse the same raid. `shieldKind` says WHICH, so the HUD and
+   * the confirmation can name what is being given up — the first day never comes
+   * back, a recovery window can be earned again, and telling a player the wrong one
+   * misprices the decision.
+   *
+   * `.nullish()` on both so a client ahead of its server simply shows no warning
+   * rather than failing the season payload, which also carries the clock.
    */
   shieldUntil: z.coerce.date().nullish().transform((at) => at ?? null),
+  shieldKind: z.enum(['NEWCOMER', 'RECOVERY']).nullish().transform((kind) => kind ?? null),
 });
 
 /**
