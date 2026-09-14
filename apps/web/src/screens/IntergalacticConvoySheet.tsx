@@ -137,10 +137,14 @@ export function IntergalacticConvoySheet({
 
   const setShip = (hull: HullId, count: number): void => {
     const available = planet.fleet[hull] ?? 0;
-    setFleet((current) => ({
-      ...current,
-      [hull]: Math.max(0, Math.min(available, count)),
-    }));
+    setFleet((current) => {
+      // A removed hull must be absent: convoy quotes and launch accept positive counts only.
+      const { [hull]: _removed, ...remaining } = current;
+      const next: Fleet = remaining;
+      const selected = Math.max(0, Math.min(available, count));
+      if (selected > 0) next[hull] = selected;
+      return next;
+    });
     setConfirmation(null);
   };
 
