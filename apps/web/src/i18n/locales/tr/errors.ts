@@ -15,7 +15,7 @@ export const errors = {
   PLANET_NOT_OWNED: 'Bu dünyayı kontrol etmiyorsun',
   WORLD_RECOVERING: 'Bu dünya toparlanma sürecinde',
   COLONY_SECESSION_PENDING: 'Bu koloninin sadakati sıfıra indi ve koloni kopuyor',
-  FAULT_ITEM_BROKEN: 'Bu item\’ı geliştirmeden önce arızasını onar',
+  FAULT_ITEM_BROKEN: 'Bu item’ı geliştirmeden önce arızasını onar',
   OCCUPATION_PROTECTED: 'Bu dünya işgal koruması altında',
   COLONY_CAP: 'Komuta Çekirdeğin yeni bir koloniyi taşıyamaz',
   NO_ACTIVE_CLAIM: 'Açık bir yerleşim talebi yok',

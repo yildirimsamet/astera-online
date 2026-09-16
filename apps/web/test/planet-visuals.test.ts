@@ -214,10 +214,14 @@ describe('world identity on the disc', () => {
       {
         id: 'broken', name: 'Vantage', owner: 'Me', position: { x: 0, y: 0, z: 0 },
         intel: 'RESOLVED', isSelf: true, isOwned: true, faulty: true,
+        coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
+        state: { kind: 'NORMAL' as const }, isCapital: false,
       },
       {
         id: 'healthy', name: 'Harbor', owner: 'Me', position: { x: 1, y: 0, z: 0 },
         intel: 'RESOLVED', isSelf: false, isOwned: true,
+        coreTier: 2, coreLevel: 6, satellites: [], shielded: false,
+        state: { kind: 'NORMAL' as const }, isCapital: false,
       },
     ]);
     expect(broken!.faulty).toBe(true);

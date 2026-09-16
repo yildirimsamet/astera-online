@@ -348,21 +348,21 @@ describe('arızalı item sunucu kapısı', () => {
     ['SHIPYARD_REVOLT', 'SHIPYARD'],
   ] as const)('%s varken %s yükseltilemez', async (fault, building) => {
     await breakIt(f, colony, fault);
-    await expect(upgradeBuilding(f.db, colony, building, f.clock, f.playerIds[0]!))
+    await expect(upgradeBuilding(f.db, colony, building, f.clock, f.playerIds[0]))
       .rejects.toMatchObject({ code: 'FAULT_ITEM_BROKEN' });
   });
 
   it('bozuk teleskop yükseltilemez', async () => {
     await breakIt(f, colony, 'TELESCOPE_FAULT');
-    await expect(raiseInstrument(f.db, colony, 'TELESCOPE', f.clock, f.playerIds[0]!))
+    await expect(raiseInstrument(f.db, colony, 'TELESCOPE', f.clock, f.playerIds[0]))
       .rejects.toMatchObject({ code: 'FAULT_ITEM_BROKEN' });
   });
 
   it('bozuk Prospector yeniden üretilemez ama başka bir gemi üretilebilir', async () => {
     await breakIt(f, colony, 'PROSPECTOR_FAULT');
-    await expect(buildUnits(f.db, colony, 'PROSPECTOR', 1, f.clock, f.playerIds[0]!))
+    await expect(buildUnits(f.db, colony, 'PROSPECTOR', 1, f.clock, f.playerIds[0]))
       .rejects.toMatchObject({ code: 'FAULT_ITEM_BROKEN' });
-    await expect(buildUnits(f.db, colony, 'DART', 1, f.clock, f.playerIds[0]!))
+    await expect(buildUnits(f.db, colony, 'DART', 1, f.clock, f.playerIds[0]))
       .resolves.toMatchObject({ hull: 'DART' });
   });
 });

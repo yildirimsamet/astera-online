@@ -1682,33 +1682,45 @@ failures behind these. Actual qualification and activation evidence is appended 
 Owner requirement: **no reset of the live season.** Everything below is expand-only or gated
 behind an operator command, so the ordinary release rules apply.
 
-**What ships.** Migration `0089` adds `planets.recovery_boost_until`. Migration `0090` adds the
-`asteroid_hour` event kind, `seasons.asteroid_dynamic_from`, `seasons.asteroid_legacy_calendar` and
-the `asteroid_spawn_hours` table. Both are expand-only and the old image never reads them. Their
-journal `when` values (`1789600000000`, `1789610000000`) are deliberately BELOW the colony-faults
-branch's `0089` (`1789625557570`): Drizzle silently skips a migration whose `when` is lower than
-the last applied one, so whichever ships second must carry the higher value. When faults merge,
-renumber its file to `0091` and keep its `when` above both of these.
+**What ships (merged master).** Migration `0089` adds colony faults, `planets.loyalty DEFAULT 100
+NOT NULL`, and four worker event kinds. `0090` adds nullable season-close markers. `0091` adds
+`battle_reports.colony_faults DEFAULT []`. `0092` adds `planets.recovery_boost_until`. `0093` adds
+the `asteroid_hour` event kind, dynamic-field season columns and `asteroid_spawn_hours`. The
+journal order is `0089`–`0093`; do not use the pre-merge branch numbering. Existing colonies
+start at 100 loyalty. After the migrations commit, `runMigrations` arms a `fault_spawn` event
+for every live colony already at Core 6 or higher; it does not create a fault immediately.
 
-**Step 6 reading.** No contraction, no removed route. `asteroid_hour` is a new kind that no live
-season produces until `adopt-event-calendar` runs, so it does not force a stop. Run that command
-only after EVERY api and worker replica runs the new image.
+**Step 6 reading.** The DDL is expand-only, but the migration command's fault backfill can
+produce `fault_spawn` while the old worker is still live. That worker does not know the kind and
+could consume it as unknown. **Stop the singleton worker before migrating production, roll all
+three APIs to the new image, then start the new worker**, while keeping the APIs serving. This
+also prevents a new fault from becoming active while an old API still permits the affected
+action. This is Rule 12's worker-stop condition: report the active-commander count and obtain
+owner approval before either the stop or production DDL. `asteroid_hour` remains gated by
+`adopt-event-calendar`; run that command only after every API and the worker runs the new image.
 
-**Until the command runs, nothing changes for players** except the six-hour shield and its boost,
-the convoy's four-hour label, and the events guide (which already shows the new weekly calendar).
-The live season keeps its old windows and its derived field.
+**Until the command runs, the live season keeps its old windows and derived field.** The new
+server may apply the six-hour recovery shield, but the new weekly event times are not live.
+Shield deadlines granted before this release retain their stored deadline, and their struck
+worlds have no boost marker; the six-hour/+100% rule applies to defeats settled by the new code.
+Count active old shields in the preflight so this transition is explicit.
 
-**Adopt the live season, right after the rollout:**
+**Adopt the live season only as a separately approved operator action after all four server
+roles are on the new image, ideally before publishing the new web artifact.** Inventory every
+live shard. The command below intentionally omits `--shard`, so it adopts them all; use a shard
+filter only if that shard's calendar can safely differ from the public guide. The web events guide
+uses the code's schedule, while an unadopted live season still follows its old persisted calendar.
+Do not publish a guide that promises the new windows while leaving populated shards unadopted.
 
 ```bash
 compose=(docker compose -f docker-compose.prod.yml)
 
 # Dry run: the real transaction, rolled back. Reports the cutover hour and the row counts.
 "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar --shard EU-1
+  adopt-event-calendar
 
 "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
-  adopt-event-calendar --shard EU-1 --yes
+  adopt-event-calendar --yes
 ```
 
 What it does, in one transaction, at the NEXT hour boundary (the cutover):

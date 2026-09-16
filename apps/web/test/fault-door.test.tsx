@@ -188,16 +188,16 @@ describe('onarım şeridi', () => {
    * doğrulayan bir yeniden yazım: `PlanetScreen`'in uyanma efekti onarımın `readyAt`
    * anını da bekliyor, yoksa biten bir onarım sayfa yenilenene kadar "00:00"da kalırdı.
    */
-  it('bir onarım bittiği anda ekranı uyandırır ve gezegeni yeniden okur', async () => {
+  it('bir onarım bittiği anda ekranı uyandırır ve gezegeni yeniden okur', () => {
     vi.useFakeTimers();
     const readyAt = new Date(Date.now() + 9 * 60_000);
     show([{ ...fault('VAULT_LEAK'), repair: { slot: 0, readyAt } }], 'grow');
     spies.refetch.mockClear();
 
-    await act(async () => { vi.advanceTimersByTime(9 * 60_000 - 5_000); });
+    act(() => { vi.advanceTimersByTime(9 * 60_000 - 5_000); });
     expect(spies.refetch, 'onarım bitmeden uyandı').not.toHaveBeenCalled();
 
-    await act(async () => { vi.advanceTimersByTime(10_000); });
+    act(() => { vi.advanceTimersByTime(10_000); });
     expect(spies.refetch).toHaveBeenCalled();
   });
 });
