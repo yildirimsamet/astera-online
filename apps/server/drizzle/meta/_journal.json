@@ -624,6 +624,13 @@
       "when": 1789539157570,
       "tag": "0088_activate_live_rank_rewards",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1789600000000,
+      "tag": "0089_recovery_production_boost",
+      "breakpoints": true
     }
   ]
 }

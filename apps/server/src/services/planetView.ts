@@ -283,6 +283,16 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       disruptedUntil: p.disruptedUntil,
       recoveryUntil: p.recoveryUntil,
       protectedUntil: p.protectedUntil,
+      /**
+       * THE STRUCK WORLD WORKS DOUBLE UNTIL THIS INSTANT. 2026-09-16.
+       *
+       * Null the moment it has passed, so a surface never has to compare it to a
+       * clock to decide whether to draw the boost — and the works projection on the
+       * client reads the same instant to fill the vessels at the boosted pace.
+       */
+      productionBoostUntil: p.recoveryBoostUntil !== null && p.recoveryBoostUntil > p.now
+        ? p.recoveryBoostUntil
+        : null,
     },
     buildings: p.buildings,
     nextCosts: Object.fromEntries(

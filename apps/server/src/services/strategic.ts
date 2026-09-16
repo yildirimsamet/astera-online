@@ -748,7 +748,11 @@ export async function applyDeathStarStrike(
    * they hold, for four. Neither replaces the other and neither reads the other.
    */
   const recoveryShieldUntil = target.controllerPlayerId && target.kind !== 'NEUTRAL'
-    ? await forceRecoveryShield(tx, { playerId: target.controllerPlayerId, now })
+    ? await forceRecoveryShield(tx, {
+      playerId: target.controllerPlayerId,
+      planetId: target.id,
+      now,
+    })
     : null;
   if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
   if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);

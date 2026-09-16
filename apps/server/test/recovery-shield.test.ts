@@ -6,6 +6,8 @@ import { battleReports, missions, planets, players, strategicAssets } from '../s
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchDeathStar } from '../src/services/strategic.js';
+import { planetView } from '../src/services/planetView.js';
+import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
 import { publicWorlds } from '../src/services/publicGalaxy.js';
 import { EventWorker } from '../src/worker/loop.js';
@@ -151,7 +153,7 @@ describe('the recovery shield', () => {
 
   /* ── what earns it ───────────────────────────────────────── */
 
-  it('gives the defender four hours after a battle that took half of everything', async () => {
+  it('gives the defender six hours after a battle that took half of everything', async () => {
     const report = await overwhelm();
     const until = await recoveryOf(f.playerIds[1]!);
     expect(until).not.toBeNull();
@@ -287,7 +289,7 @@ describe('the recovery shield', () => {
     const extended = await recoveryOf(f.playerIds[1]!);
     expect(extended).not.toBeNull();
 
-    // Pushed out to four hours from the SECOND battle, not eight from the first.
+    // Pushed out to six hours from the SECOND battle, not twelve from the first.
     expect(extended!.getTime()).toBeGreaterThan(granted!.getTime());
     expect(extended!.getTime() - granted!.getTime())
       .toBeLessThan(ABUSE.recoveryShieldHours * HOUR);
@@ -348,7 +350,7 @@ describe('the recovery shield', () => {
     expect(scout.missionId).toBeTypeOf('string');
   });
 
-  it('lets the raid through the moment the four hours are over', async () => {
+  it('lets the raid through the moment the six hours are over', async () => {
     await overwhelm();
     f.clock.advance(ABUSE.recoveryShieldHours * 60 + 1);
     await giveUnits(f.db, mine, { DART: 10 });
@@ -428,7 +430,7 @@ describe('the recovery shield', () => {
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, theirs));
     expect(struck?.recoveryUntil).not.toBeNull();
     // Two independent clocks: the world is dark for two hours, the commander is
-    // unreachable for four.
+    // unreachable for six.
     expect(until!.getTime()).toBeGreaterThan(struck!.recoveryUntil!.getTime());
   });
 
@@ -476,5 +478,145 @@ describe('the recovery shield', () => {
     await worker().tick();
     const [landed] = await f.db.select().from(missions).where(eq(missions.id, second.missionId));
     expect(landed?.status).toBe('resolved');
+  });
+
+  /* ── the struck world works double ───────────────────────── */
+
+  /**
+   * OWNER INSTRUCTION, 2026-09-16: *"bu kalkan aktifken saldırı yediği gezegendeki
+   * üretim %100 boostlanmalı."* The shield is the commander's; the boost is the
+   * world's — the one whose defeat earned the window, and no other.
+   */
+  const boostOf = async (planetId: string): Promise<Date | null> => {
+    const [row] = await f.db
+      .select({ until: planets.recoveryBoostUntil })
+      .from(planets)
+      .where(eq(planets.id, planetId));
+    return row?.until ?? null;
+  };
+
+  const viewOf = (planetId: string) =>
+    f.db.transaction((tx) => planetView(tx, planetId, f.clock));
+
+  /** Alloy the works made over one clean hour, clear of any raid disruption. */
+  const alloyOverAnHour = async (planetId: string) => {
+    f.clock.advance(30);
+    const before = await viewOf(planetId);
+    f.clock.advance(60);
+    const after = await viewOf(planetId);
+    expect(after.planet.bufferAlloy, 'the fixture hit the collector ceiling')
+      .toBeLessThan(after.planet.bufferAlloyCap);
+    return {
+      made: after.planet.bufferAlloy - before.planet.bufferAlloy,
+      rate: after.planet.alloyPerHour,
+    };
+  };
+
+  it('boosts the struck world until the shield ends, and no other world', async () => {
+    await overwhelm();
+    const shield = await recoveryOf(f.playerIds[1]!);
+    expect(shield).not.toBeNull();
+    expect((await boostOf(theirs))?.getTime()).toBe(shield!.getTime());
+    // The same commander's colony was not the one hit.
+    expect(await boostOf(colony)).toBeNull();
+    // And the raider gets nothing for winning.
+    expect(await boostOf(mine)).toBeNull();
+  });
+
+  it('makes the struck world’s works fill twice as fast', async () => {
+    await overwhelm();
+    const struck = await alloyOverAnHour(theirs);
+    expect(struck.made).toBeGreaterThan(struck.rate * 2 - 2);
+    expect(struck.made).toBeLessThan(struck.rate * 2 + 2);
+  });
+
+  it('publishes the boost on the world it applies to, and drops it when it ends', async () => {
+    await overwhelm();
+    const shield = await recoveryOf(f.playerIds[1]!);
+    expect((await viewOf(theirs)).planet.productionBoostUntil?.getTime()).toBe(shield!.getTime());
+    expect((await viewOf(colony)).planet.productionBoostUntil).toBeNull();
+
+    f.clock.set(new Date(shield!.getTime() + 1));
+    expect((await viewOf(theirs)).planet.productionBoostUntil).toBeNull();
+  });
+
+  it('stops the boost the instant the commander spends the shield by attacking', async () => {
+    await overwhelm();
+    await giveUnits(f.db, theirs, { DART: 10 });
+    await grant(f.db, theirs, 60_000, 6_000);
+    await launchAttack(f.db, theirs, mine, { DART: 10 }, f.clock, undefined, true);
+    expect(await recoveryOf(f.playerIds[1]!)).toBeNull();
+    expect((await boostOf(theirs))!.getTime()).toBeLessThanOrEqual(f.clock.now().getTime());
+
+    const after = await alloyOverAnHour(theirs);
+    expect(after.made).toBeGreaterThan(after.rate - 2);
+    expect(after.made).toBeLessThan(after.rate + 2);
+  });
+
+  it('moves the boost to the second struck world when the window is extended', async () => {
+    await grant(f.db, theirs, 60_000, 15_000);
+    await grant(f.db, colony, 60_000, 15_000);
+    await giveUnits(f.db, theirs, { DART: 1 });
+    await giveUnits(f.db, colony, { DART: 1 });
+    await giveUnits(f.db, mine, { DART: 480, COURIER: 120 });
+    await fuelUp(f.db, mine, 5_000_000);
+    await levelWorld(f.db, f.planetIds);
+
+    const first = await launchAttack(f.db, mine, theirs, HEAVY, f.clock);
+    const second = await launchAttack(f.db, mine, colony, HEAVY, f.clock);
+    f.clock.set(settledAt(first.arriveAt));
+    await worker().tick();
+    const granted = await recoveryOf(f.playerIds[1]!);
+
+    f.clock.set(new Date(settledAt(second.arriveAt).getTime() + 90 * 60_000));
+    await worker().tick();
+    const extended = await recoveryOf(f.playerIds[1]!);
+    expect(extended!.getTime()).toBeGreaterThan(granted!.getTime());
+
+    // Each world keeps the window its own defeat bought.
+    expect((await boostOf(theirs))?.getTime()).toBe(granted!.getTime());
+    expect((await boostOf(colony))?.getTime()).toBe(extended!.getTime());
+  });
+
+  it('boosts the world a Death Star struck', async () => {
+    await grant(f.db, theirs, 200_000, 50_000);
+    await setLevel(f.db, mine, 'CORE', 5);
+    await f.db.insert(strategicAssets).values({
+      planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
+    });
+    const launched = await launchDeathStar(f.db, mine, theirs, f.clock);
+    f.clock.set(settledAt(launched.arriveAt));
+    await worker().tick();
+
+    const until = await recoveryOf(f.playerIds[1]!);
+    expect(until).not.toBeNull();
+    expect((await boostOf(theirs))?.getTime()).toBe(until!.getTime());
+  });
+
+  it('grants no boost while the feature is staged off', async () => {
+    vi.stubEnv('RECOVERY_SHIELD_ENABLED', 'false');
+    try {
+      await overwhelm();
+      expect(await boostOf(theirs)).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  /** A boost is compensation to the commander who was hit, never a dowry. */
+  it('does not travel with a world that changes hands', async () => {
+    await overwhelm();
+    expect(await boostOf(colony)).toBeNull();
+    const shield = await recoveryOf(f.playerIds[1]!);
+    await f.db.update(planets).set({ recoveryBoostUntil: shield }).where(eq(planets.id, colony));
+
+    await f.db.transaction((tx) => transferPlanetControl(tx, {
+      targetPlanetId: colony,
+      newPlayerId: f.playerIds[0]!,
+      expectedControllerPlayerId: f.playerIds[1]!,
+      now: f.clock.now(),
+      protectedUntil: f.clock.now(),
+    }));
+    expect(await boostOf(colony)).toBeNull();
   });
 });

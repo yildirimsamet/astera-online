@@ -896,6 +896,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     const fleetLost = fleetCost(result.defenderLosses, result.defenceSalvage);
     const recovery = await grantRecoveryShield(tx, {
       playerId: defender.playerId,
+      planetId: defender.planetId,
       lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       fleetLost,
       now: defender.now,

@@ -513,7 +513,7 @@ export const launch = {
   shieldWarning:
     "Bu akın ilk gün kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   recoveryShieldWarning:
-    "Bu akın toparlanma kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
+    "Bu akın toparlanma kalkanını ve +%100 üretimi bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   fleetsave: "Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.",
 } as const;
 

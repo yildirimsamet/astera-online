@@ -2137,6 +2137,9 @@ export const ABUSE = {
   /**
    * HOW LONG A COMMANDER IS SAFE AFTER A HEAVY DEFEAT. Owner instruction,
    * 2026-09-14: *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver."*
+   * Raised to SIX on 2026-09-16: *"Saldırı yiyen'e verdiğimiz kalkanın süresi 6 saat
+   * olmalı"* — and the same instruction added `recoveryProductionMult`, so the window
+   * is now a rebuild the struck world is actively paid for rather than only a pause.
    *
    * IT IS THE FIRST-DAY SHIELD'S CONTRACT, NOT A SECOND MECHANISM. Same scope —
    * the commander and every world they hold, against Raid and Death Star only —
@@ -2157,7 +2160,26 @@ export const ABUSE = {
    * make "has this commander ever fired" — which the first-day rule answers by
    * PRESENCE — unanswerable the first time a recovery shield was granted and spent.
    */
-  recoveryShieldHours: 4,
+  recoveryShieldHours: 6,
+
+  /**
+   * WHAT THE STRUCK WORLD'S WORKS MAKE WHILE THE RECOVERY SHIELD STANDS. Owner
+   * instruction, 2026-09-16: *"bu kalkan aktifken saldırı yediği gezegendeki üretim
+   * %100 boostlanmalı."*
+   *
+   * THE WORLD THAT WAS HIT, NOT EVERY WORLD. The shield is the commander's (a raider
+   * cannot reach any of their worlds), but the boost belongs to the world whose
+   * defeat earned it: `planets.recovery_boost_until` is stamped on that one row.
+   *
+   * IT ENDS WITH THE SHIELD, INCLUDING WHEN THE SHIELD IS SPENT. Firing on another
+   * commander gives up the window, and the boost goes with it at that instant —
+   * the owner's words are "while this shield is active".
+   *
+   * THE COLLECTOR DOES NOT GROW. The works fill the same vessel twice as fast; a
+   * ceiling that doubled for six hours would shrink back and clamp away ore the
+   * commander had already made. `productionHours` is the one statement of the rule.
+   */
+  recoveryProductionMult: 2,
 
   /**
    * HOW MUCH WORK A DEFEAT HAS TO COST TO BE WORTH A WINDOW. Owner's design,
@@ -2189,9 +2211,9 @@ export const ABUSE = {
    * alone, where six hours of ore and six hours of ships is a twelve-hour defeat
    * rather than two small ones.
    *
-   * EIGHT HOURS, WHICH IS TWICE THE WINDOW. A shield therefore covers half the work
-   * it takes to recover, which is a relationship that can be said out loud rather
-   * than a figure that has to be looked up. Measured against 97 live battles it
+   * EIGHT HOURS. It was set as twice a four-hour window; the window grew to six on
+   * 2026-09-16 and the bar deliberately did not move with it — the owner lengthened
+   * the protection, not the definition of a heavy defeat. Measured against 97 live battles it
    * grants on 25% of the ones the attacker won — one raid in four, against 31% for
    * the rule it replaces, so the raid economy sees no shock while the rule finally
    * fires on the right battles.

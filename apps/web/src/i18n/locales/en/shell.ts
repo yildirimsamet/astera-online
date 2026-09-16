@@ -36,6 +36,10 @@ export const statusBar = {
   recoveryShield: {
     hint: 'Recovery shield — you cannot be raided for {{duration}}',
   },
+  recoveryBoost: {
+    mark: 'Output boosted +100%',
+    note: '+100% output while shielded',
+  },
   bays: {
     hint: '{{used}} of {{total}} flight bays in use',
     label: 'Bays',

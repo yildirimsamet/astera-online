@@ -46,8 +46,9 @@ const alloyWorthHours = (hours: number): Resources =>
 describe('what counts as a heavy defeat', () => {
   it('states the bar as hours of the defender’s own production', () => {
     expect(ABUSE.recoveryLossHours).toBe(8);
-    // The window is half the bar: a shield covers half the work it takes to recover.
-    expect(ABUSE.recoveryShieldHours * 2).toBe(ABUSE.recoveryLossHours);
+    // 2026-09-16: the window grew to six hours and the bar did not move with it —
+    // the owner lengthened the protection, not the definition of a heavy defeat.
+    expect(ABUSE.recoveryShieldHours).toBe(6);
   });
 
   /**
@@ -168,16 +169,16 @@ describe('what counts as a heavy defeat', () => {
 });
 
 describe('the recovery window', () => {
-  it('runs four hours from the instant the battle resolved', () => {
-    expect(recoveryShieldUntil(NOW)).toBe(NOW + 4 * HOUR);
+  it('runs six hours from the instant the battle resolved', () => {
+    expect(recoveryShieldUntil(NOW)).toBe(NOW + 6 * HOUR);
   });
 
   it('extends to the later end rather than adding a second window', () => {
     const first = recoveryShieldUntil(NOW);
-    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 5 * HOUR);
+    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 7 * HOUR);
     expect(extendRecoveryShield(NOW + 9 * HOUR, NOW)).toBe(NOW + 9 * HOUR);
-    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 4 * HOUR);
-    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 4 * HOUR);
+    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 6 * HOUR);
+    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 6 * HOUR);
   });
 });
 

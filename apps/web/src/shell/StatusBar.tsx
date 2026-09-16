@@ -67,6 +67,14 @@ export function StatusBar({
    * A badge may only ever promise something the surface it sits on can show.
    */
   const menuAttention = waiting;
+  /*
+    THE STRUCK WORLD WORKS DOUBLE. Owner instruction, 2026-09-16. The server nulls a
+    boost that has passed, but a header left open across the instant must stop
+    drawing it on its own clock rather than at the next fetch.
+  */
+  const now = useNow();
+  const boostUntil = data?.planet.productionBoostUntil ?? null;
+  const boosted = boostUntil !== null && boostUntil.getTime() > now;
 
   if (!data) return <div className="h-[70px]" />;
   return (
@@ -116,6 +124,7 @@ export function StatusBar({
             rate={data.planet.alloyPerHour}
             tone="alloy"
             safe={data.planet.vaultProtected.alloy}
+            boosted={boosted}
           />
           <Stock
             label={t('statusBar.crystalLabel')}
@@ -124,6 +133,7 @@ export function StatusBar({
             rate={data.planet.crystalPerHour}
             tone="crystal"
             safe={data.planet.vaultProtected.crystal}
+            boosted={boosted}
           />
           <Stock
             label={t('statusBar.deuteriumLabel')}
@@ -132,6 +142,7 @@ export function StatusBar({
             rate={data.planet.deuteriumPerHour ?? 0}
             tone="deuterium"
             safe={data.planet.vaultProtected.deuterium}
+            boosted={boosted}
           />
         </div>
         {!lesson && <div className="flex shrink-0 items-end gap-2 ml-auto">
@@ -196,6 +207,9 @@ export function StatusBar({
       </div>
 
       {!lesson && <Works planet={data} held={held} onOpen={onOpen} />}
+      {!lesson && boosted && boostUntil !== null && (
+        <RecoveryBoostNote remainingMs={boostUntil.getTime() - now} />
+      )}
     </header>
   );
 }
@@ -441,6 +455,61 @@ export function AttackShield() {
   );
 }
 
+/**
+ * THE RULE BEHIND THE ARROWS, IN ONE LINE. Owner instruction, 2026-09-16: *"bir yere
+ * ufak bir şekilde koruma süresi boyunca %100 boost yazmalıyız."*
+ *
+ * The arrows on the stores say THAT something is faster; this says by how much, why,
+ * and until when — the three things a player needs to decide whether to come back
+ * and collect before the works fill at the doubled pace. It only exists while the
+ * boost does, so the header is its ordinary height every other hour of the season.
+ */
+function RecoveryBoostNote({ remainingMs }: { remainingMs: number }) {
+  const { t } = useTranslation();
+  return (
+    <p
+      data-recovery-boost
+      className="mt-1.5 flex items-center gap-1 text-micro leading-none text-opportunity"
+    >
+      <BoostGlyph className="size-2.5 shrink-0" />
+      <span className="min-w-0 truncate">{t('statusBar.recoveryBoost.note')}</span>
+      <span className="num shrink-0 text-bone">{countdown(remainingMs)}</span>
+    </p>
+  );
+}
+
+function BoostGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 10 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M5 10.5V2" />
+      <path d="M1.5 5.2 5 1.7l3.5 3.5" />
+    </svg>
+  );
+}
+
+/**
+ * A STORE THAT IS FILLING FASTER THAN ITS LEVELS SAY. The same arrow on all three,
+ * rising, in the shield's own colour — the boost exists because of the shield and
+ * ends with it, so the two read as one fact.
+ */
+function BoostMark() {
+  const { t } = useTranslation();
+  return (
+    <span role="img" aria-label={t('statusBar.recoveryBoost.mark')} className="boost-mark">
+      <BoostGlyph className="boost-mark-glyph" />
+    </span>
+  );
+}
+
 /** One container, with its rim drawn full height so the headroom is visible. */
 function Vessel({
   fill,
@@ -492,6 +561,7 @@ function Stock({
   rate,
   tone,
   safe,
+  boosted,
 }: {
   label: string;
   value: number;
@@ -509,6 +579,8 @@ function Stock({
    * and the whole bar is what a Vault level buys.
    */
   safe: number;
+  /** The recovery boost is running on this world. */
+  boosted: boolean;
 }) {
   const { t } = useTranslation();
   const atCap = cap > 0 && value >= cap - 0.5;
@@ -531,6 +603,7 @@ function Stock({
           aria-hidden
           className="size-3 shrink-0 object-contain drop-shadow-[0_0_5px_rgba(120,160,220,0.35)]"
         />
+        {boosted && <BoostMark />}
         {/*
           Still `full()` and never `compact()`. This is what the player is holding
           and what they are about to spend; a store that reads "10k" cannot be

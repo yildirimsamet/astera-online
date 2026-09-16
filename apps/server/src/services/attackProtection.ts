@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lt, ne, or } from 'drizzle-orm';
 import {
   alloyRate,
   crystalRate,
@@ -208,6 +208,8 @@ export async function grantRecoveryShield(
   tx: Tx,
   input: {
     playerId: string;
+    /** The world the battle was fought at; it is the one that works double. */
+    planetId: string;
     lootLost: Resources;
     fleetLost: Resources;
     now: Date;
@@ -228,7 +230,11 @@ export async function grantRecoveryShield(
   if (!earnsRecoveryShield({ lootLost: input.lootLost, fleetLost: input.fleetLost, production })) {
     return { until: null, hours };
   }
-  const until = await forceRecoveryShield(tx, { playerId: input.playerId, now: input.now });
+  const until = await forceRecoveryShield(tx, {
+    playerId: input.playerId,
+    planetId: input.planetId,
+    now: input.now,
+  });
   return { until, hours };
 }
 
@@ -247,7 +253,17 @@ export async function grantRecoveryShield(
  */
 export async function forceRecoveryShield(
   tx: Tx,
-  input: { playerId: string; now: Date },
+  input: {
+    playerId: string;
+    /**
+     * THE STRUCK WORLD. Owner instruction, 2026-09-16: it produces double while the
+     * shield stands. Its row is already held by the settlement that got here
+     * (`loadLocked`), and its economy has been advanced to `now`, so the boost
+     * starts exactly at the battle and nothing before it is paid twice.
+     */
+    planetId: string;
+    now: Date;
+  },
 ): Promise<Date | null> {
   if (!recoveryShieldEnabled()) return null;
   if (await isServerCommander(tx, input.playerId)) return null;
@@ -266,7 +282,23 @@ export async function forceRecoveryShield(
     row.until?.getTime() ?? null,
     input.now.getTime(),
   ));
-  if (row.until !== null && row.until.getTime() >= until.getTime()) return row.until;
+  /*
+    THE STRUCK WORLD WORKS DOUBLE UNTIL THE SHIELD'S END — the end the shield
+    actually has, which is the existing one when that already reaches further. Only
+    ever moved forward: a second defeat on this world extends its boost, and a
+    defeat elsewhere leaves this world's boost at the window its own defeat bought.
+  */
+  const standing = row.until !== null && row.until.getTime() >= until.getTime()
+    ? row.until
+    : until;
+  await tx.update(planets)
+    .set({ recoveryBoostUntil: standing })
+    .where(and(
+      eq(planets.id, input.planetId),
+      eq(planets.controllerPlayerId, input.playerId),
+      or(isNull(planets.recoveryBoostUntil), lt(planets.recoveryBoostUntil, standing)),
+    ));
+  if (standing === row.until) return row.until;
   await tx.update(players)
     .set({ recoveryShieldUntil: until })
     .where(eq(players.id, input.playerId));
@@ -373,4 +405,16 @@ export async function assertAttackProtections(
   await tx.update(players)
     .set({ newcomerShieldUntil: null, recoveryShieldUntil: null })
     .where(eq(players.id, input.attackerPlayerId));
+  /*
+    THE BOOST GOES WITH THE SHIELD. Owner's words: "bu kalkan aktifken". Cut to NOW
+    rather than nulled, so the lazy tick still pays every boosted minute up to the
+    launch on a world that has not been read since. Only rows with a live boost are
+    touched, which is none at all for almost every launch in the galaxy.
+  */
+  await tx.update(planets)
+    .set({ recoveryBoostUntil: input.now })
+    .where(and(
+      eq(planets.controllerPlayerId, input.attackerPlayerId),
+      gt(planets.recoveryBoostUntil, input.now),
+    ));
 }

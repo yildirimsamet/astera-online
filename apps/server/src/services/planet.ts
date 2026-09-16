@@ -160,6 +160,9 @@ export function economyAt(
     vaultLevel: levels.VAULT,
     aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
     production: productionMult(hardware.orbit),
+    recoveryBoostUntilMinutes: row.recoveryBoostUntil
+      ? minutesSince(season.startsAt, row.recoveryBoostUntil)
+      : null,
   };
   const state = recovering ? {
     alloy: row.alloy,
@@ -243,6 +246,8 @@ export interface LockedPlanet {
   disruptedUntil: Date | null;
   recoveryUntil: Date | null;
   protectedUntil: Date | null;
+  /** The recovery shield's production boost on this world; see `planets.recoveryBoostUntil`. */
+  recoveryBoostUntil: Date | null;
   buildings: BuildingLevels;
   /** Ground installations, with their levels. */
   instruments: InstrumentLevels;
@@ -480,6 +485,7 @@ export async function loadLocked(
     disruptedUntil: row.disruptedUntil,
     recoveryUntil: row.recoveryUntil,
     protectedUntil: row.protectedUntil,
+    recoveryBoostUntil: row.recoveryBoostUntil,
     buildings: levels,
     instruments,
     effectiveInstruments,

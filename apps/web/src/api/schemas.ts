@@ -641,6 +641,13 @@ export const planetSchema = z.object({
     disruptedUntil: z.coerce.date().nullable(),
     recoveryUntil: z.coerce.date().nullable().optional(),
     protectedUntil: z.coerce.date().nullable().optional(),
+    /**
+     * THIS WORLD WORKS DOUBLE UNTIL THIS INSTANT. 2026-09-16.
+     *
+     * The recovery shield's production boost on the world a heavy defeat struck.
+     * Optional so a payload from a server that predates it reads as no boost.
+     */
+    productionBoostUntil: z.coerce.date().nullable().optional(),
   }),
   buildings: z.record(buildingId, z.number()),
   nextCosts: z.record(buildingId, resources),

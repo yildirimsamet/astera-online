@@ -25,6 +25,10 @@ export const statusBar = {
   recoveryShield: {
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
+  recoveryBoost: {
+    mark: 'Üretim +%100 hızlı',
+    note: 'Koruma boyunca +%100 üretim',
+  },
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',
     label: 'Rampa',

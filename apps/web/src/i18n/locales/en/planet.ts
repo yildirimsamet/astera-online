@@ -553,7 +553,7 @@ export const launch = {
     "This gives up your first-day shield. Once it is gone, other commanders can raid you too.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
-    "This gives up your recovery shield. Once it is gone, other commanders can raid you too.",
+    "This gives up your recovery shield and its +100% output. Once it is gone, other commanders can raid you too.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
 } as const;
 

@@ -1,4 +1,4 @@
-import { productiveMinutes } from '@astera/rules';
+import { productionHours } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import { toServerTime } from './clock.js';
 import { useNow } from './time.js';
@@ -72,7 +72,15 @@ export function worksAt(
   const from = toServerTime(fetchedAt) / 60_000;
   const to = Math.max(from, now / 60_000);
   const until = planet.disruptedUntil ? planet.disruptedUntil.getTime() / 60_000 : 0;
-  const hours = productiveMinutes(from, to, until) / 60;
+  /*
+    THE RECOVERY BOOST FILLS THE SAME VESSEL FASTER. `productionHours` is the server's
+    own statement of it, so a boosted hour here is the boosted hour a collection
+    moves — and the ceiling below is unchanged, exactly as it is on the server.
+  */
+  const boostUntil = planet.productionBoostUntil
+    ? planet.productionBoostUntil.getTime() / 60_000
+    : null;
+  const hours = productionHours(from, to, until, boostUntil);
 
   return {
     bufferAlloy: Math.min(planet.bufferAlloyCap, planet.bufferAlloy + planet.alloyPerHour * hours),

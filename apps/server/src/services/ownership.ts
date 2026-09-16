@@ -292,6 +292,8 @@ export async function transferPlanetControl(
       controllerPlayerId: input.newPlayerId,
       kind: 'COLONY',
       recoveryUntil: null,
+      // A boost is the defeated commander's compensation, never the new owner's dowry.
+      recoveryBoostUntil: null,
       protectedUntil: input.protectedUntil,
       disruptedUntil: null,
       lastTickAt: input.now,

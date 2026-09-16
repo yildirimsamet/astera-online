@@ -5,6 +5,7 @@ import { ECONOMY_ADJUSTMENT } from './tempo.js';
 import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import {
+  ABUSE,
   BUILD,
   DISRUPTION,
   DEUTERIUM,
@@ -670,6 +671,32 @@ export function productiveMinutes(from: number, to: number, until = 0): number {
   return Math.max(0, span - lost);
 }
 
+/**
+ * HOURS OF PRODUCTION A SPAN IS WORTH, WITH THE RECOVERY BOOST APPLIED. 2026-09-16.
+ *
+ * Productive hours, plus the extra share `ABUSE.recoveryProductionMult` pays for
+ * every productive minute before `boostUntil`. One statement for the server's lazy
+ * tick and the client's works projection, so the vessel the player watches fill
+ * and the figure a collection moves cannot disagree about a boosted hour.
+ *
+ * The boost is bounded by wall time and paid on productive time: a disruption
+ * inside the window is still offline, and the window does not wait for it.
+ * Anything that is not a finite instant is no boost at all.
+ */
+export function productionHours(
+  from: number,
+  to: number,
+  disruptedUntil = 0,
+  boostUntil: number | null = null,
+): number {
+  const ordinary = productiveMinutes(from, to, disruptedUntil);
+  if (boostUntil === null || !Number.isFinite(boostUntil) || boostUntil <= from) {
+    return ordinary / 60;
+  }
+  const boosted = productiveMinutes(from, Math.min(to, boostUntil), disruptedUntil);
+  return (ordinary + boosted * (ABUSE.recoveryProductionMult - 1)) / 60;
+}
+
 /* ── The lazy tick ──────────────────────────────────────────────── */
 
 export interface PlanetEconomyState {
@@ -715,6 +742,14 @@ export interface PlanetEconomyInput {
    * did.
    */
   production?: number;
+  /**
+   * WHEN THIS WORLD'S RECOVERY BOOST ENDS, in season minutes. 2026-09-16.
+   *
+   * Absent or null on every world that was not the one a heavy defeat struck. The
+   * server stamps it with the shield's end and cuts it to the instant the shield is
+   * spent, so this function never has to know about the commander's shield itself.
+   */
+  recoveryBoostUntilMinutes?: number | null;
 }
 
 /**
@@ -745,11 +780,18 @@ export function advanceEconomy(
 ): PlanetEconomyState {
   if (nowMinutes <= state.lastTickMinutes) return state;
 
-  const producing = productiveMinutes(
+  /*
+    HOURS OF PRODUCTION, NOT HOURS OF CLOCK. With no recovery boost this is exactly
+    the productive hours it always was; with one, every boosted productive minute
+    counts double. The collector ceilings below read the RATE, which the boost does
+    not touch — the same vessel fills faster and is never made bigger.
+  */
+  const producing = productionHours(
     state.lastTickMinutes,
     nowMinutes,
     state.disruptedUntilMinutes,
-  ) / 60;
+    input.recoveryBoostUntilMinutes ?? null,
+  );
   const wall = (nowMinutes - state.lastTickMinutes) / 60;
 
   const boost = input.production ?? 1;

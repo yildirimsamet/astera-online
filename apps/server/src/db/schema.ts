@@ -950,6 +950,16 @@ export const planets = pgTable('planets', {
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
   /**
+   * WHEN THIS WORLD STOPS WORKING DOUBLE. Owner instruction, 2026-09-16.
+   *
+   * Stamped on the world whose heavy defeat granted (or extended) the commander's
+   * recovery shield, with the shield's end — and cut to the instant the shield is
+   * spent by firing on another commander. Null everywhere else. It is the WORLD's
+   * column rather than the player's because the owner's rule is "the planet that
+   * was attacked", and a commander with three worlds may have been hit on one.
+   */
+  recoveryBoostUntil: timestamp('recovery_boost_until', { withTimezone: true }),
+  /**
    * DEAD SINCE D179, AND KEPT ONLY SO OLD ROWS CAN BE CLEARED.
    *
    * D167 put a struck COLONY on a deadline rather than an outage: land no ship
