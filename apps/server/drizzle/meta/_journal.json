@@ -617,6 +617,13 @@
       "when": 1789493942185,
       "tag": "0087_yellow_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1789539157570,
+      "tag": "0088_activate_live_rank_rewards",
+      "breakpoints": true
     }
   ]
 }

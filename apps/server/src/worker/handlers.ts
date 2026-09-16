@@ -1763,6 +1763,12 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
     if (clock.now().getTime() < season.endsAt.getTime()) {
       throw new Error(`season_end for ${seasonId} fired before endsAt`);
     }
+    const [seasonShard] = await tx
+      .select({ role: shards.role })
+      .from(shards)
+      .where(eq(shards.id, season.shardId))
+      .limit(1);
+    if (!seasonShard) throw new Error(`season ${seasonId} has no shard`);
 
     // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
     // this processing event and replace it atomically; EventWorker's later
@@ -2132,7 +2138,9 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
     if (values.length > 0) {
       await tx.insert(seasonResults).values(values).onConflictDoNothing();
     }
-    if (rewardProgram) {
+    // WAITING is Silent Space: it preserves inactive commanders but is not a
+    // season they entered or a ladder that pays into the next competitive world.
+    if (rewardProgram && seasonShard.role !== 'WAITING') {
       const eligible = values
         .filter((row) => (
           !botAccountIds.has(row.accountId)

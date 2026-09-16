@@ -46,10 +46,15 @@ const rewardProgram = {
   version: 1,
   minimumDominion: 1,
   tiers: [
-    { place: 1, alloy: 2_000, crystal: 1_500, deuterium: 300 },
-    { place: 2, alloy: 1_750, crystal: 1_250, deuterium: 250 },
-    { place: 3, alloy: 1_500, crystal: 1_000, deuterium: 200 },
-  ],
+    [2_000, 1_500, 300], [1_750, 1_250, 250], [1_500, 1_000, 200],
+    [1_250, 750, 150], [1_000, 500, 100], [750, 250, 50],
+    [600, 175, 25], [450, 150, 15], [250, 75, 10], [200, 50, 5],
+  ].map(([alloy, crystal, deuterium], index) => ({
+    place: index + 1,
+    alloy: alloy!,
+    crystal: crystal!,
+    deuterium: deuterium!,
+  })),
 };
 
 async function show({ legacy = false, archiveFailure = false, noRewards = false } = {}) {
@@ -185,6 +190,7 @@ async function show({ legacy = false, archiveFailure = false, noRewards = false 
 }
 
 afterEach(async () => {
+  window.localStorage.clear();
   await i18n.changeLanguage('en');
 });
 
@@ -236,17 +242,29 @@ describe('season archive surface', () => {
    */
   it('shows what the season is being played for, and where the reader stands', async () => {
     await show();
+    const user = userEvent.setup();
 
     expect(screen.getByText('End of season prize')).toBeVisible();
-    // The table, with every place priced.
+    const table = screen.getByRole('button', { name: /prize by place/i });
+    expect(table).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Rank 10')).not.toBeInTheDocument();
+    await user.click(table);
+    expect(table).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Rank 1')).toBeVisible();
+    expect(screen.getByText('Rank 10')).toBeVisible();
+    const prizeList = screen.getByRole('list', { name: 'Prize by place' });
+    expect(prizeList.children).toHaveLength(10);
+    expect(prizeList).toHaveClass('md:grid-cols-2');
+    for (const row of Array.from(prizeList.children).slice(0, 3)) {
+      const medal = row.querySelector('svg');
+      expect(medal).toHaveAttribute('width', '16');
+      expect(medal).toHaveAttribute('height', '16');
+    }
     // The reader's own prize, in full, on their standing card.
-    expect(screen.getByText('1,750')).toBeVisible();
-    // And every paid place wears its prize on its own ladder row, compact enough
-    // to sit beside a commander's name.
-    expect(screen.getAllByText('2.0k').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1,750').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: 'alloy' }).length).toBeGreaterThan(0);
     // And the reader's own position, said as a position.
-    expect(screen.getByText(/Rank 2/)).toBeVisible();
+    expect(screen.getByText('Rank 2 · you are winning this')).toBeVisible();
     expect(screen.getByText(/lands the moment you found your world/)).toBeVisible();
   });
 

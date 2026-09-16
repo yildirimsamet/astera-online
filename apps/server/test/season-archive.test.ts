@@ -158,6 +158,48 @@ describe('completed season archive', () => {
   });
 
   /**
+   * FILTERED CYCLES MUST NOT CONSUME THE PAGE.
+   *
+   * Production had eleven empty or Silent Space cycles between the current world
+   * and the oldest real records. The API used to take twelve raw cycles and only
+   * then remove those gaps, leaving one old season in a rail too short to scroll.
+   * With no scroll there was no next-page request, so records that existed in the
+   * database were unreachable.
+   */
+  it('fills an archive page with visible cycles across empty historical gaps', async () => {
+    await freeze();
+    const gapStart = new Date(fixture.clock.now().getTime() + 86_400_000);
+    const gap = await createSeason(fixture.db, {
+      shardCode: 'EU-ARCHIVE-GAP',
+      seed: 9138,
+      startsAt: gapStart,
+    });
+    await fixture.db.update(seasons).set({ status: 'wiped' })
+      .where(eq(seasons.id, gap.season.id));
+    const live = await createSeason(fixture.db, {
+      shardCode: 'EU-ARCHIVE-NOW',
+      seed: 9139,
+      startsAt: new Date(gapStart.getTime() + 86_400_000),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/season-archive?limit=2',
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{
+      cycles: { ordinal: number; galaxies: { seasonId: string }[] }[];
+      nextCursor: number | null;
+    }>();
+
+    expect(body.cycles.map((cycle) => cycle.ordinal)).toEqual([3, 1]);
+    expect(body.cycles.flatMap((cycle) => cycle.galaxies.map((galaxy) => galaxy.seasonId)))
+      .toEqual([live.season.id, fixture.seasonId]);
+    expect(body.nextCursor).toBeNull();
+  });
+
+  /**
    * WHAT THE SEASON IS FOR, SAID WHILE IT IS STILL BEING PLAYED.
    *
    * The archive answers "what did I do"; it cannot answer "why am I still here in
@@ -198,6 +240,15 @@ describe('completed season archive', () => {
   it('publishes no reward table for a cycle that predates the program', async () => {
     await fixture.db.update(seasonCycles).set({ rewardProgramVersion: 0 });
     const response = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
+    expect(response.json<{ seasonRewards: unknown }>().seasonRewards).toBeNull();
+  });
+
+  it('publishes no reward table inside Silent Space', async () => {
+    await fixture.db.update(shards).set({ role: 'WAITING' });
+
+    const response = await app.inject({ method: 'GET', url: '/api/season', headers: auth });
+
+    expect(response.statusCode).toBe(200);
     expect(response.json<{ seasonRewards: unknown }>().seasonRewards).toBeNull();
   });
 

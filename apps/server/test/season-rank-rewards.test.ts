@@ -99,6 +99,16 @@ describe('next-season Dominion rewards', () => {
     });
   });
 
+  it('does not create rank rewards for a Silent Space season', async () => {
+    await f.db.update(shards).set({ role: 'WAITING' });
+    await f.db.update(players).set({ dominionTaken: 1_000 })
+      .where(eq(players.id, f.playerIds[0]!));
+
+    await freeze();
+
+    expect(await f.db.select().from(seasonRewardEntitlements)).toHaveLength(0);
+  });
+
   it('binds the entitlement to the immediate successor and pays concurrent joins exactly once', async () => {
     await f.db.update(players).set({ dominionTaken: 700 })
       .where(eq(players.id, f.playerIds[0]!));

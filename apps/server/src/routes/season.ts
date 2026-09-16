@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, exists, gte, inArray, isNotNull, lt, ne, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
@@ -35,10 +35,38 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       cursor: z.coerce.number().int().positive().optional(),
       limit: z.coerce.number().int().min(1).max(24).default(12),
     }).parse(req.query);
+    /*
+      PAGE WHAT CAN BE SHOWN, NOT WHAT HAPPENS TO EXIST IN THE CYCLE TABLE.
+
+      Production carries bootstrap cycles, finished empty galaxies and parked
+      WAITING shards between real records. Taking twelve raw cycles and filtering
+      afterwards once produced a one-button rail with older results behind a next
+      page that could only be requested by scrolling — but one button cannot
+      scroll. The correlated predicate keeps the query bounded while making every
+      row that consumes `limit` eligible to survive the projection below.
+    */
+    const visibleCycle = exists(app.db
+      .select({ id: seasons.id })
+      .from(seasons)
+      .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .where(and(
+        eq(seasons.cycleId, seasonCycles.id),
+        ne(shards.role, 'WAITING'),
+        or(
+          inArray(seasons.status, ['live', 'pending']),
+          exists(app.db
+            .select({ accountId: seasonResults.accountId })
+            .from(seasonResults)
+            .where(eq(seasonResults.seasonId, seasons.id))),
+        ),
+      )));
     const cycleRows = await app.db
       .select()
       .from(seasonCycles)
-      .where(query.cursor === undefined ? undefined : lt(seasonCycles.ordinal, query.cursor))
+      .where(and(
+        query.cursor === undefined ? undefined : lt(seasonCycles.ordinal, query.cursor),
+        visibleCycle,
+      ))
       .orderBy(desc(seasonCycles.ordinal))
       .limit(query.limit + 1);
     const page = cycleRows.slice(0, query.limit);
@@ -348,7 +376,11 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       row.recoveryShieldUntil,
       app.clock.now(),
     );
-    const rewardProgram = seasonRankRewardProgram(row.rewardProgramVersion);
+    // Silent Space is a parking lane, not a competition. Do not advertise a
+    // prize there that its season-end handler deliberately cannot award.
+    const rewardProgram = row.shard.role === 'WAITING'
+      ? null
+      : seasonRankRewardProgram(row.rewardProgramVersion);
 
     return {
       seasonId: row.season.id,

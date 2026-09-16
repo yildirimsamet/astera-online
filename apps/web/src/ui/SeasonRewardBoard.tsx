@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import type { SeasonInfo, Leaderboard } from '../api/schemas.js';
+import { useAccordion } from '../lib/accordion.js';
 import { full } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { serverNow } from '../lib/clock.js';
 import { RESOURCE_ART } from './assets.js';
-import { RewardIcon } from './icons/index.js';
+import { ChevronIcon, RewardIcon } from './icons/index.js';
 import { Medal, isPlace } from './Medal.js';
 
 /**
@@ -27,11 +28,11 @@ import { Medal, isPlace } from './Medal.js';
  *   2. Where do *I* stand — their own line, first, and phrased as a position
  *      rather than as a table to search for themselves in.
  *
- * WHAT EACH PLACE PAYS IS NOT HERE — IT IS ON THE PLACE ITSELF. A ten-row price
- * list under the header made the reader hold a number in their head and go looking
- * for the commander who holds it. The prize now sits on the ladder row it belongs
- * to, above that commander's name, so "what is first place worth" and "who is
- * first" are one glance instead of two.
+ * THE TEN PRIZES ARE ONE QUIET DISCLOSURE ABOVE THE LADDER. They are public rules,
+ * not private standing data, and every commander must be able to inspect the whole
+ * bargain without searching ten live rows. Keeping the list folded preserves the
+ * comparison density of the leaderboard; remembering the fold means a commander
+ * who is actively comparing prizes does not pay the same tap on every visit.
  */
 export function SeasonRewardBoard({
   season,
@@ -41,10 +42,14 @@ export function SeasonRewardBoard({
   board: Leaderboard | undefined;
 }) {
   const { t } = useTranslation();
+  // Hooks stay above the early return: pre-program cycles still render this
+  // component and must not change the hook order when a refetch resolves.
+  const tiers = useAccordion('season-reward-tiers', []);
   const program = season?.seasonRewards ?? null;
   if (!program || program.tiers.length === 0) return null;
 
   const places = program.tiers.length;
+  const tableOpen = tiers.isOpen('tiers');
   const yours = board?.you?.rank ?? null;
   const winning = yours !== null && yours <= places;
   const mine = winning ? program.tiers.find((tier) => tier.place === yours) ?? null : null;
@@ -86,7 +91,62 @@ export function SeasonRewardBoard({
         {t('leaderboard.rewards.explain', { places })}
       </p>
 
-      {/* THE READER'S OWN LINE, ABOVE THE TABLE. */}
+      <div className="plate plate-cut mt-3 overflow-hidden">
+        <button
+          type="button"
+          aria-expanded={tableOpen}
+          aria-controls="season-reward-tier-list"
+          onClick={() => { tiers.toggle('tiers'); }}
+          className="flex min-h-11 w-full items-center gap-3 px-3 py-2 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-crystal"
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-opportunity/30 bg-opportunity/8 text-opportunity">
+            <RewardIcon className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="legend block text-bone">{t('leaderboard.rewards.table')}</span>
+            <span className="mt-0.5 block text-micro text-faint">
+              {t('leaderboard.rewards.tableCount', { places })}
+            </span>
+          </span>
+          <ChevronIcon
+            className={`size-4 shrink-0 text-faint transition-transform ${tableOpen ? 'rotate-90' : ''}`}
+          />
+        </button>
+
+        {tableOpen ? (
+          <ol
+            id="season-reward-tier-list"
+            aria-label={t('leaderboard.rewards.table')}
+            className="grid border-t border-line-soft bg-void/35 md:grid-cols-2"
+          >
+            {program.tiers.map((tier) => (
+              <li
+                key={tier.place}
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2 border-b border-line-soft px-3 py-2 md:odd:border-r"
+              >
+                {isPlace(tier.place) ? (
+                  <Medal place={tier.place} size={16} className="mx-auto" />
+                ) : (
+                  <span className="num text-center text-label text-faint">#{tier.place}</span>
+                )}
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="legend w-16 shrink-0 text-dim">
+                    {t('leaderboard.rewards.place', { place: tier.place })}
+                  </span>
+                  <Prize
+                    alloy={tier.alloy}
+                    crystal={tier.crystal}
+                    deuterium={tier.deuterium}
+                    size="sm"
+                  />
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+      </div>
+
+      {/* THE READER'S OWN LINE, STILL ABOVE THE LIVE LADDER. */}
       <div
         className={`plate mt-3 px-3 py-3 ${winning ? 'plate-cut' : 'plate-sunk'}`}
         data-reward-standing={winning ? 'paid' : 'unpaid'}

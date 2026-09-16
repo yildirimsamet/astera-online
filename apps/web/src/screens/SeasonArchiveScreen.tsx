@@ -157,7 +157,7 @@ export function SeasonArchiveScreen({
             question the product never answered — what being there is worth.
           */}
           <SeasonRewardBoard season={season.data} board={board.data} />
-          <LeaderboardScreen onFocusPlanet={onFocusPlanet} rewards={season.data?.seasonRewards} />
+          <LeaderboardScreen onFocusPlanet={onFocusPlanet} />
         </>
       ) : resultId === null ? (
         <ArchivedLeaderboard seasonId={seasonId} onOpen={setResultId} />
