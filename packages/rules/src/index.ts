@@ -33,6 +33,7 @@ export * from './intergalacticConvoy.js';
 export * from './pirates.js';
 export * from './trade.js';
 export * from './rewards.js';
+export * from './seasonRankRewards.js';
 export * from './research.js';
 export * from './strategic.js';
 export * from './view.js';

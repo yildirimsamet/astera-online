@@ -11,11 +11,47 @@ export function eventWindow(startsAtLocalMinute: number, endsAtLocalMinute: numb
   return `${clock(startsAtLocalMinute)}–${clock(endsAtLocalMinute)}`;
 }
 
+/**
+ * WHERE THE READING DAY BEGINS. Owner instruction, 2026-09-16.
+ *
+ * The rules author every window in ascending local minutes and this guide printed
+ * them in that order, so each lane opened on its smallest hours: the merchant's
+ * list began 01:00 and the shower's began 02:00. Two problems, and the second is
+ * the one the owner reported. A player scanning for "what is next" met the two
+ * windows they are least likely to be awake for; and with a shower now closing the
+ * day at 23:00–24:00, a list that then printed 02:00 read as a day ENDING at two
+ * in the morning rather than as the night's tail.
+ *
+ * SIX IS THE CUT AND IT IS A JUDGEMENT, not a derived figure. Everything the
+ * calendar holds before it — 01:00 and 02:00 — is a window somebody meets by
+ * staying up or by waking to it; everything after is a window they plan around.
+ * The merchant's 07:00 is the first of those, which is why the cut sits below it
+ * and not at the config's own `lowPriorityWindow` (00:00–08:00): that band is the
+ * legacy random planner's quiet hours and would have sent 07:00 to the back.
+ */
+const READING_DAY_STARTS_AT_LOCAL_MINUTE = 6 * 60;
+
+/**
+ * Order a lane for reading, without touching the authored array.
+ *
+ * `packages/rules` decides sequence numbers from its own window order, and a
+ * shower's sequence fixes the index every asteroid id is an HMAC of — so this
+ * sorts a COPY and nothing here may ever be pushed back into the rules.
+ */
+function readingOrder<T extends { readonly startsAtLocalMinute: number }>(
+  windows: readonly T[],
+): T[] {
+  const key = (minute: number): number =>
+    minute < READING_DAY_STARTS_AT_LOCAL_MINUTE ? minute + 24 * 60 : minute;
+  return [...windows].sort((left, right) =>
+    key(left.startsAtLocalMinute) - key(right.startsAtLocalMinute));
+}
+
 export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  const asteroidWindows = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows;
-  const tradeWindows = GALAXY_EVENTS.definitions.TRADE_SHIP.windows;
-  const convoyWindows = GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows;
+  const asteroidWindows = readingOrder(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows);
+  const tradeWindows = readingOrder(GALAXY_EVENTS.definitions.TRADE_SHIP.windows);
+  const convoyWindows = readingOrder(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows);
 
   return (
     <Sheet

@@ -8,6 +8,7 @@ import { techOf } from '../services/researchState.js';
 import {
   launchHarvest,
   launchMining,
+  recallMining,
   projectIsotopeKnowledge,
   projectPrivateMiningView,
   prospectorCooldowns,
@@ -260,5 +261,12 @@ export function registerMiningRoutes(app: FastifyInstance): void {
     );
     const { asteroidIndex: _internalIndex, ...publicResult } = result;
     return publicResult;
+  });
+
+  /** Turn only an outbound Prospector run around; every other craft stays committed. */
+  app.post('/api/mining/runs/:runId/recall', { preHandler: requireAuth }, async (req) => {
+    const { runId } = z.object({ runId: z.string().uuid() }).strict().parse(req.params);
+    const commander = await me(req.accountId!);
+    return recallMining(app.db, runId, app.clock, commander.playerId);
   });
 }

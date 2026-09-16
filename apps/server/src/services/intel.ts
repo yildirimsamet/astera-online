@@ -3,6 +3,7 @@ import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-
 import { alias } from 'drizzle-orm/pg-core';
 import {
   COMBAT_RESEARCH_PROJECTS,
+  FEATURE_FLAGS,
   PROBE,
   DEATH_STAR,
   bearingBetween,
@@ -55,7 +56,6 @@ import {
   units,
   watches,
 } from '../db/schema.js';
-import { assertFreeBay } from './flight.js';
 import { announceUnlocks } from './notifications.js';
 import {
   assertSeasonOpenThrough,
@@ -572,74 +572,19 @@ export async function launchProbe(
     }
 
     /**
-     * TWO LIMITS ON SCOUTING, both owner decisions.
+     * FIVE SECONDS BEFORE THE SAME WORLD MAY BE PROBED AGAIN.
      *
-     * Counted under the origin planet's lock, so two probes launched at the same
-     * instant cannot both see a clear board and both pass — the second blocks here
-     * and re-reads a row the first has already written.
-     *
-     * Return legs count. A probe on its way home is still a craft you have not got
-     * back, and letting the cap reset at the halfway point would make it a cap on
-     * outbound distance rather than on how much you may have in the air.
-     *
-     * SCOPED TO THE COMMANDER SINCE D121, not to the world the probe leaves from.
-     * It used to read every probe touching THIS origin, which was the whole of the
-     * rule when a commander held one world. With up to three colonies under them
-     * (D97) that sold the same target four looks at once, and it would now
-     * contradict the cooldown below — which is per commander — line for line: the
-     * colony's probe would be told the target is clear and then refused for an
-     * hour by the next check. Return legs are stored with their two ends swapped
-     * (D28), so a probe coming HOME from the target still matches on `originPlanetId`.
-     */
-    const inFlight = await tx
-      .select({ targetPlanetId: missions.targetPlanetId, originPlanetId: missions.originPlanetId })
-      .from(missions)
-      .where(
-        and(
-          eq(missions.kind, 'probe'),
-          eq(missions.status, 'in_flight'),
-          eq(missions.ownerPlayerId, origin.playerId),
-        ),
-      );
-
-    /**
-     * The probe cap is now the general flight-slot rule. D28.
-     *
-     * `PROBE.maxInFlight` was a special case that rationed one craft type and left
-     * mining and raiding unrationed; a bay is the same scarcity applied to
-     * everything that leaves the ground. The `inFlight` rows above are still
-     * needed — the one-probe-per-target rule below reads them.
-     */
-    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
-
-    // One probe per target at a time. A second one launched before the first
-    // reports would buy nothing — the answer is already on its way — and it is the
-    // cheapest way to turn a banded reading into a precise one by averaging.
-    const already = inFlight.some(
-      (m) => m.targetPlanetId === targetPlanetId || m.originPlanetId === targetPlanetId,
-    );
-    if (already) {
-      throw new GameError(
-        'PROBE_ALREADY_OUT',
-        'You already have a probe working that planet',
-        409,
-      );
-    }
-
-    /**
-     * AND AN HOUR BEFORE THE SAME WORLD MAY BE READ AGAIN. D121, owner instruction.
-     *
-     * D121 made a probe four times faster, which took the wait out of scouting —
-     * and the wait was doing rationing work nobody had ever written down. This is
-     * that work, stated: one look per world per hour, per commander.
+     * The target row is already locked by `lockWorlds`, so concurrent taps from
+     * two colonies under the same commander serialize before this read. The first
+     * committed launch is therefore always visible to the second.
      *
      * MEASURED FROM THE LAUNCH. `departAt` is the instant of the decision, so the
-     * hour is the same hour for a neighbour and for a world on the far rim; dating
-     * it from the report would charge distance twice, once in the flight and again
-     * in the cooldown.
+     * five seconds are the same for a neighbour and for a world on the far rim;
+     * dating it from the report would charge distance twice, once in the flight
+     * and again in the cooldown.
      *
      * CANCELLED FLIGHTS ARE EXCLUDED. `sweepStranded` and `abandon()` mark a probe
-     * whose event row was lost as `cancelled` and refund nothing — charging an hour
+     * whose event row was lost as `cancelled` and refund nothing — charging a wait
      * for a look the game itself failed to deliver would make a server fault cost
      * the player their turn.
      */
@@ -650,6 +595,7 @@ export async function launchProbe(
       .where(
         and(
           eq(missions.kind, 'probe'),
+          isNull(missions.parentMissionId),
           eq(missions.ownerPlayerId, origin.playerId),
           eq(missions.targetPlanetId, targetPlanetId),
           inArray(missions.status, ['in_flight', 'resolved']),
@@ -666,10 +612,10 @@ export async function launchProbe(
         409,
         {
           // A CODE PLUS ITS FIGURES, never a finished sentence (D55). The client
-          // counts down against the instant; the minutes are the fallback for a
+          // counts down against the instant; seconds are the fallback for a
           // surface that only has room for a number.
           until: readyAt.toISOString(),
-          minutes: Math.max(1, Math.ceil((readyAt.getTime() - origin.now.getTime()) / 60_000)),
+          seconds: Math.max(1, Math.ceil((readyAt.getTime() - origin.now.getTime()) / 1000)),
         },
       );
     }
@@ -1048,8 +994,29 @@ export async function resolveProbe(
       eq(strategicAssets.type, 'DEATH_STAR'),
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
     ));
-  const strategicStatus = accuracy < DEATH_STAR.probeVisibilityAccuracy
-    ? 'UNKNOWN' as const
+  /*
+    AND A BLURRY LOOK AT AN EMPTY PAD IS NOT A GAP.
+    `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED`.
+
+    `UNKNOWN` means "your probe was not sharp enough to tell", and it is honest
+    only while a pad could be holding something. With crafting off nobody can
+    START one, so for every world in the galaxy the blurry answer and the sharp
+    answer are the same answer — and the difference is not cosmetic, because the
+    client prints `UNKNOWN` as a dossier row naming a weapon that has no forge, no
+    research row and no launch control anywhere on the screen. Sub-75% accuracy is
+    the COMMON case, so nearly every probe came home advertising a dead system.
+
+    THE PAD IS STILL READ FIRST, AND THAT IS THE LOAD-BEARING PART. The build door
+    is shut but `/api/death-star/launch` is not, so a weapon finished before the
+    flag flipped can still fly. If one is standing there, the accuracy gate is
+    doing real work again and `UNKNOWN` is the true reading — this collapses to
+    NONE only when the pad is provably empty AND nobody can fill it.
+  */
+  const blurry = accuracy < DEATH_STAR.probeVisibilityAccuracy;
+  const strategicStatus = blurry
+    ? (FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED || pad.length > 0
+      ? 'UNKNOWN' as const
+      : 'NONE' as const)
     : pad.some((asset) => asset.status === 'READY')
       ? 'READY' as const
       : pad.length > 0
@@ -1236,8 +1203,8 @@ export async function readRadarLog(
  * looked here" gap. One surface saying two things about one world.
  *
  * Keep the recent history AND the newest delivered report for every remembered
- * target. A fixed history cap alone cannot cover a season: the one-hour per-target
- * cooldown still allows more than forty distinct reports, leaving a REMEMBERED
+ * target. A fixed history cap alone cannot cover a season: the five-second interval
+ * allows far more than forty distinct reports, leaving a REMEMBERED
  * world on the map whose dossier had fallen out of the only readable endpoint.
  */
 export async function readProbeReports(db: Db, playerId: string, limit = 40) {
@@ -1292,7 +1259,7 @@ export async function readProbeReports(db: Db, playerId: string, limit = 40) {
  * the guard reads, so the two can never disagree by a rounding.
  *
  * Only rows still inside the window are returned, so the list is bounded by how
- * many probes one commander can have launched in an hour rather than by history.
+ * many targets one commander probed in the last five seconds rather than history.
  */
 export async function readProbeCooldowns(
   db: Db,
@@ -1305,14 +1272,14 @@ export async function readProbeCooldowns(
     .where(
       and(
         eq(missions.kind, 'probe'),
+        isNull(missions.parentMissionId),
         eq(missions.ownerPlayerId, playerId),
         inArray(missions.status, ['in_flight', 'resolved']),
         gt(missions.departAt, addMinutes(now, -PROBE.retargetCooldownMinutes)),
       ),
     );
 
-  // A commander may have probed the same world twice inside an hour only if the
-  // first was cancelled, so keep the latest and let the newest launch decide.
+  // Keep one row per world and let the newest launch decide its ready instant.
   const latest = new Map<string, Date>();
   for (const row of rows) {
     const readyAt = addMinutes(row.departAt, PROBE.retargetCooldownMinutes);

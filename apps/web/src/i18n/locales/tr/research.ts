@@ -70,7 +70,7 @@ export const research = {
   denseRole:
     "Keşfetmek için bir akında ambarını doldur ve hedefte ganimet bırak. Tamamlandığında Gemi İtkisi araştırma basamaklarını açar.",
   denseDetail:
-    "Tamamlandığında komutanın için Gemi İtkisi araştırmasını kalıcı olarak açar. İtki, filondaki bütün gemileri hızlandırır ve Atlas üretim koşullarından biridir; Kazıcı, sonda ve Ölüm Yıldızı bundan etkilenmez.",
+    "Tamamlandığında komutanın için Gemi İtkisi araştırmasını kalıcı olarak açar. İtki, filondaki bütün gemileri hızlandırır ve Atlas üretim koşullarından biridir; Kazıcı ve sonda bundan etkilenmez.",
   graviticName: "Gravitik Yükler",
   graviticTag: "Söndürücü’yü açar",
   graviticRole:
@@ -126,19 +126,19 @@ export const research = {
   powerRole:
     "Filondaki savaş gemilerinin saldırısını yükseltir ve ileri saldırı gemilerinin üretim koşullarına katkı verir. Yük gemileri ve yer savunması etkilenmez.",
   powerDetail:
-    "Her kademe, Söndürücü dâhil bütün savaş gemilerinin normal saldırısını artırır ve hâlihazırda sahip olduğun gemilere de uygulanır. Nakliye gemilerine saldırı eklemez; Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran kalkış, savunan çatışma anındaki seviyeyi kullanır.",
+    "Her kademe, Söndürücü dâhil bütün savaş gemilerinin normal saldırısını artırır ve hâlihazırda sahip olduğun gemilere de uygulanır. Nakliye gemilerine saldırı eklemez; Tabya, Kirpi, Kazıcı ve sonda etkilenmez. Saldıran kalkış, savunan çatışma anındaki seviyeyi kullanır.",
   armorName: "Gemi Zırhı",
   armorTag: "Gemilerin gövde dayanımını artırır",
   armorRole:
     "Nakliye dâhil filondaki bütün gemilerin dayanımını yükseltir ve ileri savunma gemilerinin üretim koşullarına katkı verir.",
   armorDetail:
-    "Her kademe, Kurye, Seyyah, Atlas ve Argosi dâhil filondaki bütün gemilerin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı, sonda ve Ölüm Yıldızı etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
+    "Her kademe, Kurye, Seyyah, Atlas ve Argosi dâhil filondaki bütün gemilerin gövde dayanımını artırır. Tabya, Kirpi, Kazıcı ve sonda etkilenmez. Saldıran filo kalkış, savunan taraf çatışma anındaki seviyeyi kullanır.",
   propulsionName: "Gemi İtkisi",
   propulsionTag: "Filonun hızını artırır",
   propulsionRole:
     "Filondaki bütün gemilerin hızını artırır ve Atlas üretim koşuluna katkı verir. Yoğun Yakıt Hücrelerinden sonra açılır.",
   propulsionDetail:
-    "Dört kademenin her biri filondaki bütün gemilerin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçtiğin filoyu geliştirirken gövde profilini silmez. Kazıcı, sonda ve Ölüm Yıldızı etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
+    "Dört kademenin her biri filondaki bütün gemilerin taban hızına dörtte bir ekler; sonuncusu hızı ikiye katlar ve her uçuşu yarıya indirir. Karma filo yine en yavaş üyesinin hızında uçar; böylece itki seçtiğin filoyu geliştirirken gövde profilini silmez. Kazıcı ve sonda etkilenmez; yalnız tamamlandıktan sonra hesaplanan görevler artışı alır.",
   groundDoctrineName: "Tabya/Kirpi Doktrini",
   doctrineTag: "Yer savunmasını geliştirir",
   doctrineRole:

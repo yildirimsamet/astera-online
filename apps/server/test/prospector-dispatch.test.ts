@@ -69,18 +69,19 @@ describe('independent Prospector dispatch', () => {
     await expect(launchMining(f.db, home, target.index, 1, f.clock)).resolves.toMatchObject({ craft: 1 });
   });
 
-  it('cannot transfer a resting craft to erase its cooldown, but can transfer the unused one', async () => {
-    rock();
+  it('never transfers a Prospector between worlds', async () => {
     await giveUnits(f.db, home, { PROSPECTOR: 2, COURIER: 2 });
     const target = f.planetIds[1]!;
     await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! }).where(eq(planets.id, target));
-    const field = await giveDebris(f.db, f.seasonId, home, { alloy: 10_000, crystal: 0, createdAt: f.clock.now() });
-    await land((await launchHarvest(f.db, home, field.id, 1, f.clock)).runId);
-    const send = (craft: number) => launchTransfer(f.db, f.playerIds[0]!, home, target,
-      { PROSPECTOR: craft, COURIER: 1 }, { alloy: 0, crystal: 0, deuterium: 0 }, f.clock);
-    await expect(send(2)).rejects.toMatchObject({ code: 'PROSPECTORS_RESTING', params: { available: 1 } });
-    await expect(send(1)).resolves.toBeDefined();
-    await expect(send(1)).rejects.toMatchObject({ code: 'PROSPECTORS_RESTING', params: { available: 0 } });
+    await expect(launchTransfer(
+      f.db,
+      f.playerIds[0]!,
+      home,
+      target,
+      { PROSPECTOR: 1, COURIER: 1 },
+      { alloy: 0, crystal: 0, deuterium: 0 },
+      f.clock,
+    )).rejects.toMatchObject({ code: 'PROSPECTOR_TRANSFER_FORBIDDEN', status: 400 });
   });
 
   it('keeps staggered debris cooldowns separate and never spends a resting craft', async () => {

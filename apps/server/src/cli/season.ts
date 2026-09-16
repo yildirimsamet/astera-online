@@ -24,6 +24,7 @@ import {
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
 import { deleteAccount, describeAccount } from '../services/accountDeletion.js';
+import { departToSilentSpace, describeSilentSpaceDeparture } from '../services/silentSpace.js';
 import {
   bootstrapServers,
   listServers,
@@ -43,6 +44,14 @@ season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
+season silent-space NAME [--yes] MOVE ONE PERSON out of their main galaxy into
+                                   Silent Space at their own request, playing or
+                                   not. Worlds, buildings, stock, fleet and
+                                   research go with them; the addresses they
+                                   leave become their return addresses and the
+                                   colony sites reopen as caretaker worlds. Dry
+                                   run unless --yes. Refuses, writing nothing,
+                                   while anything of theirs is in the air.
 season delete-account NAME [--yes] ERASE ONE PERSON at their own request: the
                                    account, the commander, the capital and every
                                    row either was the reason for. A captured
@@ -353,6 +362,69 @@ async function main(): Promise<void> {
           result.already
             ? `${result.player} already has ${id}. Nothing written.`
             : `${result.player} may now claim ${id}.`,
+        );
+        return;
+      }
+
+      /**
+       * MOVING ONE PERSON WHO ASKED TO BE MOVED.
+       *
+       * A COMMAND RATHER THAN A ROUTE, for the reason `delete-account` is one:
+       * the thing being confirmed is a HUMAN REQUEST that no server-side check
+       * can verify. Silent Space is otherwise entered by absence alone, and it
+       * stays that way — this waives the activity clock for one named commander
+       * and steps around no other fence.
+       *
+       * Dry run by default, and for the same reason: `display_name` is not
+       * unique, the operator is typing a name read in a message, and the one
+       * failure this must never have is moving the wrong person.
+       *
+       * IT IS NOT A DELETION AND NOT A TRAPDOOR. Nothing of theirs is destroyed,
+       * and the ordinary return application brings them home to the addresses
+       * they left, from the game, with no operator involved.
+       */
+      case 'silent-space': {
+        const name = positionals[1];
+        if (name === undefined) throw new Error('Which commander? season silent-space NAME');
+        const found = await describeSilentSpaceDeparture(db, systemClock, name);
+
+        if (values.yes !== true) {
+          console.log(
+            [
+              `WOULD MOVE    ${found.commander}  (commander ${found.playerId})`,
+              `out of        ${found.shard}`,
+              `worlds        ${
+                found.worlds.length === 0
+                  ? '(none)'
+                  : found.worlds
+                    .map((world) => `${world.name} [${world.kind} @${String(world.slotIndex)}]`)
+                    .join(', ')
+              }`,
+              `inactive      ${found.inactive ? 'yes — the sweep would take them anyway' : 'no — this is an owner-authorised move'}`,
+              '',
+              'Everything they own travels with them. The addresses above become',
+              'their return addresses; each colony site reopens as a caretaker world.',
+              '',
+              'Nothing was written. Re-run with --yes to move this person.',
+            ].join('\n'),
+          );
+          return;
+        }
+
+        const result = await departToSilentSpace(db, systemClock, name);
+        if (result.status !== 'MOVED') {
+          throw new Error(
+            `${found.commander} was NOT moved (${result.status}) and nothing was written. `
+            + 'Let whatever is in the air land, then run it again.',
+          );
+        }
+        console.log(
+          [
+            `moved         ${found.commander} out of ${found.shard} into Silent Space`,
+            `galaxy        ${result.targetSeasonId ?? '(none)'}`,
+            `worlds        ${found.worlds.map((world) => world.name).join(', ') || '(none)'}`,
+            'return        theirs to ask for, from the game, whenever they want it.',
+          ].join('\n'),
         );
         return;
       }

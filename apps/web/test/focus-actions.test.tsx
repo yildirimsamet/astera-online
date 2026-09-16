@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  FEATURE_FLAGS,
   GALAXY_SPAN,
   MULTI_WORLD,
   distance,
@@ -298,7 +299,16 @@ describe('the focus rail’s two commitments', () => {
     }
   });
 
-  it('offers a ready Death Star against neutrals, but never through occupation protection', () => {
+/**
+   * THE THREE CASES BELOW DESCRIBE THE WEAPON WITH ITS SWITCH ON.
+   *
+   * `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED` is a release switch rather than a
+   * deletion (see `constants.ts`), so these keep describing what the rail does the
+   * day it flips back — a commander who OWNS a weapon, which is a state the server
+   * cannot produce while crafting is off. What the rail says in the meantime is
+   * `strategic-offline.test.tsx`: no route, no consequence line, no essay.
+   */
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers a ready Death Star against neutrals, but never through occupation protection', () => {
     const Wrapper = harness();
     const strategic = { ...mine, strategic: {
       id: 'asset-1',
@@ -384,7 +394,7 @@ describe('the focus rail’s two commitments', () => {
    * D55/D113. What replaced the test is in `focus-sheet-owner-fixes.test.tsx`:
    * no essay, and the strike route and control still on the panel.
    */
-  it('offers a destructive Death Star strike against an uncapturable capital', () => {
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers a destructive Death Star strike against an uncapturable capital', () => {
     const Wrapper = harness();
     render(
       <Wrapper>
@@ -413,7 +423,7 @@ describe('the focus rail’s two commitments', () => {
     expect(screen.getByRole('button', { name: /death star.*devastate/i })).toBeEnabled();
   });
 
-  it('explains that a recovering capital can be struck again but never captured', () => {
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('explains that a recovering capital can be struck again but never captured', () => {
     const Wrapper = harness();
     render(
       <Wrapper>
@@ -487,7 +497,7 @@ describe('the focus rail’s two commitments', () => {
    * strategic asset actually exists, in any state, because from then on its
    * refusal is something they can act on.
    */
-  it('keeps the Death Star route visible before a weapon is ready', () => {
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('keeps the Death Star route visible before a weapon is ready', () => {
     const Wrapper = harness();
     render(
       <Wrapper>
@@ -969,6 +979,23 @@ describe('the focus rail’s two commitments', () => {
  */
 describe('the probe control while a world is still cooling', () => {
   const clock = () => Date.now();
+
+  it('automatically reopens after five seconds without another server response', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(NOW);
+      resetClock();
+      show({ probeCooldowns: [{ targetPlanetId: 'p2', readyAt: new Date(NOW + 5000) }] });
+      expect(screen.getByRole('button', { name: /another probe/i })).toBeDisabled();
+      act(() => { vi.advanceTimersByTime(4999); });
+      expect(screen.getByRole('button', { name: /another probe/i })).toBeDisabled();
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(screen.getByRole('button', { name: /send a probe/i })).toBeEnabled();
+    } finally {
+      vi.useRealTimers();
+      resetClock();
+    }
+  });
 
   it('offers the launch when nothing has looked here recently', () => {
     show({ probeCooldowns: [] });

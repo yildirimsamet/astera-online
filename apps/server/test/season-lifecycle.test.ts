@@ -15,6 +15,7 @@ import {
   dominionEvents,
   pirateRaids,
   pirateState,
+  planets,
   playerResearch,
   shards,
   units,
@@ -335,6 +336,8 @@ describe('season lifecycle', () => {
       .where(eq(units.planetId, planetId));
     expect(frozen?.status).toBe('frozen');
     expect(wasps).toMatchObject({ hull: 'DART', count: 1 });
+    const [planet] = await f.db.select().from(planets).where(eq(planets.id, planetId));
+    expect(planet?.seasonTelemetry.shipsBuilt).toEqual({ DART: 1 });
   });
 
   it('waits for every snapshot, then wipes and opens successors atomically', async () => {

@@ -29,7 +29,7 @@ export function useSilenceToasts(): void {
  * change of pacing and says nothing about the behaviour it exists to protect.
  */
 export const DWELL_MS = 2400;
-export const ERROR_DWELL_MS = 6000;
+export const ERROR_DWELL_MS = 4000;
 
 let sequence = 0;
 
@@ -98,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            * height as `--toast-lift` while it is mounted; everywhere else the
            * variable is absent and the original offset stands.
            */
-          className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--toast-lift,112px)+env(safe-area-inset-bottom))] z-50 flex justify-center px-2"
+          className="pointer-events-none fixed inset-x-0 top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-50 flex justify-center"
         >
           {/*
             A REFUSAL LOOKS LIKE A REFUSAL, AND IT USED TO LOOK LIKE THE WEATHER.
@@ -117,7 +117,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={message.id}
             role={message.tone === 'error' ? 'alert' : undefined}
-            className={`plate pointer-events-auto flex max-w-sm items-center gap-2 px-3 py-3 text-body ${
+            className={`plate pointer-events-auto flex max-w-sm items-center gap-1 px-1 py-1 text-body ${
               message.tone === 'error' ? 'plate-threat text-threat-ink' : 'text-bone'
             }`}
           >

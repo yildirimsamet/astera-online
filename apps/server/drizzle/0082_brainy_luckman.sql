@@ -1,0 +1,1 @@
+ALTER TABLE "season_cycles" ADD COLUMN "stats_version" integer DEFAULT 0 NOT NULL;

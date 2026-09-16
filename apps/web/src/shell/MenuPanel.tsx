@@ -17,10 +17,11 @@ import {
   useRenderQuality,
   type RenderQuality,
 } from '../lib/quality.js';
-import { Button, Note, Section, Segmented, type Segment } from '../ui/kit/index.js';
+import { Button, Note, Section, SectionHead, Segmented, type Segment } from '../ui/kit/index.js';
 import {
   ChevronIcon,
   BellIcon,
+  CloseIcon,
   GalaxyIcon,
   LeaderboardIcon,
   RewardIcon,
@@ -47,6 +48,44 @@ import type { Panel } from '../screens/GalaxyView.jsx';
  * `Signals` rather than in `screens/`. `GalaxyView` renders a 3D disc; nothing in
  * this file knows the disc exists, and keeping it here is what lets it be rendered
  * on its own in a test without standing up a WebGL context.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * IT IS A MAP NOW, AND IT USED TO BE A PILE. Owner report:
+ *
+ *   *"bir gruplama yok, bir hiyeraşi yok, hangi buton nerede nasıl gösterilmeli
+ *   gibi bir önem sıralaması yok. Butonlar yatay şekilde uzayıp gereksiz yer
+ *   kaplıyor. Yanlış bir buton'a tıklayınca geri dönme yok direk kapatılıyor."*
+ *
+ * Nine destinations arrived as one undifferentiated column of identical
+ * full-width rows — a season shortcut, a bug report and a resolution dial drawn
+ * with exactly the same weight, each spending 350 pixels to put a glyph at one end
+ * of a line and a chevron at the other. Nothing on the sheet said what mattered,
+ * so a reader read all nine every time, and the ninth was below the fold.
+ *
+ * FOUR RANKS, AND THE SHAPE IS THE RANK. That is the whole design, and it is what
+ * lets a ten-year-old and a fifty-year-old read the same sheet without a legend:
+ *
+ *   1 · A FULL-WIDTH, LIT ROW — something is waiting on YOU. A season that ended,
+ *       a placement to apply for. Nothing else is ever allowed this shape, which
+ *       is what keeps it meaning something; most sessions show none of them.
+ *   2 · A CHIP — a shortcut you made yourself. Rival marks, wearing the same hue
+ *       the reticle on the disc wears. Five of them are one wrapped line here and
+ *       used to be five full-width rows.
+ *   3 · A TILE, TWO TO A ROW, UNDER A NAMED GROUP — a place to go. The name above
+ *       the pair is the hierarchy: SEASON is what you came to check, the TEAM
+ *       carries the only unread counts, HELP is there for the day you need it.
+ *   4 · A LINE IN A PLATE — a preference about the phone in your hand. The least
+ *       touched thing in the game, and it used to be the tallest block on the
+ *       sheet: three cards with their own glyphs, names and paragraphs, under a
+ *       heading that read "Language".
+ *
+ * And the way out is last, alone, under the account — because the two most
+ * destructive controls on a screen should never be adjacent by accident.
+ *
+ * A WRONG TAP IS RECOVERABLE. Every tile REPLACED this sheet with what it opened,
+ * so closing that surface dropped the reader on the galaxy: one mis-tap cost the
+ * header control plus finding your place in the list again. `returnsToMenu` in
+ * `shell/panelRoute.ts` is the rule, and `Sheet`'s `onBack` is the arrow.
  */
 
 /**
@@ -90,7 +129,7 @@ export function MenuPanel({
    * EVERY MARK THIS COMMANDER IS KEEPING, IN SLOT ORDER. D183.
    *
    * `lost` is a mark whose world is no longer on the disc — reclaimed, wiped, or
-   * simply out of the payload. It gets a row that clears THAT mark and nothing
+   * simply out of the payload. It gets a chip that clears THAT mark and nothing
    * else; the old single-mark version cleared the whole set, which with five marks
    * would throw away four bookmarks to tidy one.
    */
@@ -114,73 +153,132 @@ export function MenuPanel({
   const announcementData = useAnnouncements().data;
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
 
+  const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
+
   return (
     <div className="flex flex-col gap-4">
       {/**
-       * WHAT IS LEFT AFTER THE DISC TOOK THE TWO VERBS. Owner instruction.
+       * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
-       * Research and the clan are marks on the canvas now (`DiscControls`), because
-       * they are things a commander DOES and a menu is where you look things UP. A
-       * second door onto either would be one door too many: two ways in to one
-       * surface is how a player learns that neither is the real one.
-       *
-       * The leaderboard and rewards stay here. Intel moved onto the disc beside
-       * the three commander actions, forming the requested four-mark grid.
-       *
-       * They are rows rather than icons because a menu is read rather than
-       * recognised: the header had room for a glyph and a tooltip nobody sees on a
-       * phone, and this has room for the sentence that says what the surface is
-       * for. `docs/interface.md` I5 — a permanent way in, labelled as the thing it
-       * opens.
-       *
-       * ABOVE the account block, not below it. The two of them are what a player
-       * came here to do; the galaxy name, the clock and the way out are what they
-       * came here to check.
+       * Both of these appear when the game owes the commander a decision rather
+       * than when they might like one: a season whose result is readable, a
+       * placement in Silent Space that has to be applied for. They are the only
+       * things on this sheet drawn at full width and lit, and most sessions show
+       * neither — which is exactly what makes the shape readable when one appears.
        */}
-      <div className="flex flex-col gap-2">
-        {inSilentSpace && <MenuRow icon={<GalaxyIcon className="size-5" />}
-          label={t('silentSpace.menu')} hint={t('silentSpace.menuHint')} onClick={() => { onOpen('return'); }} />}
-        {hasSeasonResult && (
-          <MenuRow
-            icon={<GalaxyIcon className="size-5" />}
-            label={t('seasonRecap.menuLabel')}
-            hint={t('seasonRecap.menuHint')}
-            onClick={() => {
-              onOpen('recap');
-            }}
-          />
-        )}
-        {/*
-          ONE ROW PER MARK, WEARING ITS OWN COLOUR. D183.
+      {(inSilentSpace || hasSeasonResult) && (
+        <div className="flex flex-col gap-2">
+          {inSilentSpace && (
+            <MenuRow
+              icon={<GalaxyIcon className="size-5" />}
+              label={t('silentSpace.menu')}
+              hint={t('silentSpace.menuHint')}
+              onClick={() => {
+                onOpen('return');
+              }}
+            />
+          )}
+          {hasSeasonResult && (
+            <MenuRow
+              icon={<GalaxyIcon className="size-5" />}
+              label={t('seasonRecap.menuLabel')}
+              hint={t('seasonRecap.menuHint')}
+              onClick={() => {
+                onOpen('recap');
+              }}
+            />
+          )}
+        </div>
+      )}
 
-          The dot is the whole identity of the row: it is the same hue the reticle
-          on the disc is drawn in, so a commander reading the menu and a commander
-          reading the map are looking at one thing. A row for a mark whose world has
-          gone clears that mark alone — the old single-mark version sent `null`,
-          which with five marks would throw four bookmarks away to tidy one.
-        */}
-        {rivals.map((mark) => (
-          mark.lost
-            ? onClearRival && (
-              <MenuRow
-                key={mark.planetId}
-                icon={<RivalDot slot={mark.slot} />}
-                label={t('menu.rivalLostLabel')}
-                hint={t('menu.rivalLostHint')}
-                onClick={() => { onClearRival(mark.planetId); }}
-              />
-            )
-            : onFocusRival && (
-              <MenuRow
-                key={mark.planetId}
-                icon={<RivalDot slot={mark.slot} />}
-                label={t('menu.rivalLabel', { commander: mark.owner })}
-                hint={t('menu.rivalHint', { planet: mark.name })}
-                onClick={() => { onFocusRival(mark.planetId); }}
-              />
-            )
-        ))}
-        <MenuRow
+      {/*
+        RANK TWO — ONE CHIP PER MARK, WEARING ITS OWN COLOUR. D183.
+
+        The dot is the whole identity of the chip: it is the same hue the reticle on
+        the disc is drawn in, so a commander reading the menu and a commander
+        reading the map are looking at one thing. A chip rather than a row because
+        the entire content of a bookmark is a colour and a name — five of them used
+        to be five full-width rows, some 240 pixels of a phone spent on shortcuts.
+
+        A chip for a mark whose world has gone clears THAT mark alone; the old
+        single-mark version sent `null`, which with five marks would throw four
+        bookmarks away to tidy one.
+      */}
+      {marks.length > 0 && (
+        <section data-menu-group className="flex flex-col gap-2">
+          <SectionHead label={t('menu.marksHeading')} />
+          <div data-rival-chips className="flex flex-wrap gap-1.5">
+            {marks.map((mark) =>
+              mark.lost ? (
+                <RivalChip
+                  key={mark.planetId}
+                  slot={mark.slot}
+                  face={t('menu.rivalLostShort')}
+                  name={`${t('menu.rivalLostLabel')}. ${t('menu.rivalLostHint')}`}
+                  lost
+                  onClick={() => {
+                    onClearRival?.(mark.planetId);
+                  }}
+                />
+              ) : (
+                <RivalChip
+                  key={mark.planetId}
+                  slot={mark.slot}
+                  face={mark.owner}
+                  name={`${t('menu.rivalLabel', { commander: mark.owner })}. ${t('menu.rivalHint', { planet: mark.name })}`}
+                  onClick={() => {
+                    onFocusRival?.(mark.planetId);
+                  }}
+                />
+              ),
+            )}
+          </div>
+        </section>
+      )}
+
+      {/**
+       * RANK THREE — WHERE YOU CAN GO, TWO TO A ROW, UNDER A NAME.
+       *
+       * WHAT IS LEFT AFTER THE DISC TOOK THE VERBS. Research, the clan and Intel
+       * are marks on the canvas (`DiscControls`), because they are things a
+       * commander DOES and a menu is where you look things UP. A second door onto
+       * any of them would be one door too many: two ways in to one surface is how a
+       * player learns that neither is the real one.
+       *
+       * THE GROUP NAME IS THE HIERARCHY. Three words do the work that nine
+       * identical rows could not — a reader can tell WITHOUT reading the tiles that
+       * the leaderboard and the sound slider are different kinds of thing, which is
+       * the entire complaint this sheet was rebuilt from.
+       *
+       * The tile's second line is gone from the face and kept on `aria-label`:
+       * "Leaderboard" does not need a sentence under it, the glyph has already said
+       * the rest, and seven sentences is most of a 350-wide phone. A screen reader
+       * still hears the whole thing, and the one reader who genuinely cannot infer
+       * a destination from its name is the reader who cannot see the glyph either.
+       */}
+      <MenuGroup label={t('menu.seasonHeading')}>
+        <MenuTile
+          icon={<LeaderboardIcon className="size-5" />}
+          label={t('menu.leaderboardLabel')}
+          hint={t('menu.leaderboardHint')}
+          onClick={() => {
+            onOpen('leaderboard');
+          }}
+        />
+        <MenuTile
+          icon={<RewardIcon className="size-5" />}
+          label={t('menu.rewardsLabel')}
+          hint={t('menu.rewardsHint')}
+          attention={waiting > 0}
+          {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
+          onClick={() => {
+            onOpen('rewards');
+          }}
+        />
+      </MenuGroup>
+
+      <MenuGroup label={t('menu.asteraHeading')}>
+        <MenuTile
           icon={<BellIcon className="size-5" />}
           label={t('menu.announcementsLabel')}
           hint={t('menu.announcementsHint')}
@@ -192,7 +290,7 @@ export function MenuPanel({
             onOpen('announcements');
           }}
         />
-        <MenuRow
+        <MenuTile
           icon={<SendIcon className="size-5" />}
           label={t('menu.feedbackLabel')}
           hint={t('menu.feedbackHint')}
@@ -200,52 +298,8 @@ export function MenuPanel({
             onOpen('feedback');
           }}
         />
-        <MenuRow
-          icon={<LeaderboardIcon className="size-5" />}
-          label={t('menu.leaderboardLabel')}
-          hint={t('menu.leaderboardHint')}
-          onClick={() => {
-            onOpen('leaderboard');
-          }}
-        />
-        <MenuRow
-          icon={<RewardIcon className="size-5" />}
-          label={t('menu.rewardsLabel')}
-          hint={t('menu.rewardsHint')}
-          {...(waiting > 0 ? { badge: t('menu.rewardsWaiting', { count: waiting }) } : {})}
-          onClick={() => {
-            onOpen('rewards');
-          }}
-        />
-        {/*
-          THE QUICK-START GUIDE, APPENDED. Owner request, and the small version of
-          it on purpose: `public/hizli-baslangic-rehberi.html` is a finished
-          standalone page the build already ships and Nginx already serves, so all
-          that was missing was a door.
-
-          A LINK, IN THIS TAB. It shipped as a new tab and the owner reversed it:
-          on a phone that leaves a tab behind on every visit, and it costs the
-          page the one control every reader already has — the browser's own back.
-          The guide replaces the game here, and stepping back restores it.
-
-          It is still not an in-game sheet. The page carries its own stylesheet
-          and its own Turkish, and wrapping it would claim it is part of the
-          interface while it still reads as a separate site.
-
-          Appended after the last standing row rather than inserted, so nothing a
-          commander already knows the position of moves. See `shell/guide.ts` for
-          why this is provisional.
-        */}
-        <MenuRow
-          icon={<GuideIcon className="size-5" />}
-          label={t('menu.guideLabel')}
-          hint={t('menu.guideHint')}
-          href={GUIDE_URL}
-        />
-        {onReplayAcademy && <MenuRow icon={<GuideIcon className="size-5" />} label={t('academy.replay')}
-          hint={t('academy.replayHint')} onClick={onReplayAcademy} />}
-         {/* TODO: for now its closed. Ödeme linkleri eklenince açılacak. */}
-        {/* <MenuRow
+        {/* TODO: for now its closed. Ödeme linkleri eklenince açılacak. */}
+        {/* <MenuTile
           icon={<HeartIcon className="size-5" />}
           label={t('community.donate.menuLabel')}
           hint={t('community.donate.menuHint')}
@@ -255,7 +309,7 @@ export function MenuPanel({
           }}
         /> */}
         {isAdmin && (
-          <MenuRow
+          <MenuTile
             icon={<LockIcon className="size-5" />}
             label={t('community.admin.menuLabel')}
             hint={t('community.admin.menuHint')}
@@ -264,14 +318,71 @@ export function MenuPanel({
             }}
           />
         )}
-      </div>
+      </MenuGroup>
+
+      {/*
+        THE QUICK-START GUIDE AND THE REHEARSAL, TOGETHER AND NAMED AS HELP.
+
+        `public/hizli-baslangic-rehberi.html` is a finished standalone page the
+        build already ships and Nginx already serves, so all that was missing was a
+        door. It is A LINK, IN THIS TAB: the guide replaces the game and the
+        browser's own back restores it — a new tab leaves one behind on every visit
+        and costs the page the one control every reader already has.
+
+        It is still not an in-game sheet. The page carries its own stylesheet and
+        its own Turkish, and wrapping it would claim it is part of the interface
+        while it still reads as a separate site. See `shell/guide.ts`.
+      */}
+      <MenuGroup label={t('menu.helpHeading')}>
+        <MenuTile
+          icon={<GuideIcon className="size-5" />}
+          label={t('menu.guideLabel')}
+          hint={t('menu.guideHint')}
+          href={GUIDE_URL}
+        />
+        {onReplayAcademy && (
+          <MenuTile
+            icon={<GuideIcon className="size-5" />}
+            label={t('academy.replay')}
+            hint={t('academy.replayHint')}
+            onClick={onReplayAcademy}
+          />
+        )}
+      </MenuGroup>
+
+      {/**
+       * RANK FOUR — THE PHONE IN YOUR HAND, one line each.
+       *
+       * Language, sound and resolution are one category: a preference about the
+       * DEVICE rather than about the commander or the season, which is why all
+       * three are stored per device and why all three live together. They used to
+       * be three stacked cards, each with a glyph socket, a name, a sentence and
+       * its own control — the tallest block on the sheet, for the least often
+       * touched thing in the game — under a section heading that read "Language",
+       * which is the grouping failure in miniature: a group named after one of the
+       * three things in it.
+       *
+       * The resolution keeps its sentence and nothing else does, because it is the
+       * one rung whose NAME does not say what it buys (`docs/interface.md` I1:
+       * "Balanced" alone does not say what it balances). Language and sound show
+       * their state in the control itself.
+       */}
+      <Section label={t('menu.deviceHeading')}>
+        <div data-device-settings className="plate divide-y divide-line-soft">
+          <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
+            <LanguageSwitch compact />
+          </SettingRow>
+          <SoundSetting />
+          <QualitySetting />
+        </div>
+      </Section>
 
       {/*
         NO CUT CORNERS HERE. `Plate`'s own rule: the shear is an ACCENT for the
         directive, the commit surface, the active dock plate — never the default
         card. These two were the only cut plates on the sheet and they are the
         two least actionable things on it, a galaxy name and a clock, while the
-        three pressable rows above them were plain. The accent was spent exactly
+        pressable rows above them were plain. The accent was spent exactly
         backwards.
       */}
       <Section label={t('menu.accountHeading')}>
@@ -308,72 +419,53 @@ export function MenuPanel({
           countdown rather than in a paragraph of its own.
         */}
         <Note>{t('galaxy.commander.wipeNote')}</Note>
-      </Section>
-
-      {/*
-        THE LANGUAGE LIVES HERE, beside the galaxy and the way out.
-
-        This is the one surface in the game that is about the ACCOUNT rather than
-        the world (D21, D54), and which language you read the world in is an
-        account fact — it is not a season, not a planet, and it has no business on
-        a tab of the planet sheet. It also sits above sign-out rather than below,
-        because the two most destructive controls on a screen should not be
-        adjacent by accident.
-      */}
-      <Section label={t('settings.sectionLabel')}>
-        <LanguageSwitch />
-        <Note>{t('settings.hint')}</Note>
 
         {/*
-          THE SOUND SWITCH, beside the language because they are the same kind of
-          thing: a preference about the device you are holding rather than about
-          the commander or the season. Both are stored per device for that reason.
+          THE WAY OUT IS LAST AND IT IS ALONE. It sits under the account it ends
+          rather than beside the language pair, because the two most destructive
+          controls on a screen should never be adjacent by accident.
         */}
-        <SoundSwitch />
-
-        {/*
-          AND THE RESOLUTION, for the same reason both of its neighbours are here:
-          it is a fact about the device in the player's hand, not about the
-          commander or the season, and it is stored per device like they are.
-        */}
-        <QualitySwitch />
+        <Button variant="ghost" size="md" full onClick={onSignOut}>
+          {t('galaxy.commander.signOut')}
+        </Button>
       </Section>
-
-      <Button variant="ghost" size="lg" full onClick={onSignOut}>
-        {t('galaxy.commander.signOut')}
-      </Button>
     </div>
   );
 }
 
 /**
- * ONE WAY IN, STATED RATHER THAN DRAWN.
+ * A NAMED GROUP OF DESTINATIONS, TWO TO A ROW.
  *
- * A chevron on the right and the label on the left: the shape a phone user reads
- * as "this goes somewhere" without being taught. The badge is a count and not a
- * dot, because there is room here for the number and the header's dot has already
- * done the job of saying THAT something is waiting.
+ * The grid is the answer to *"butonlar yatay şekilde uzayıp gereksiz yer
+ * kaplıyor"*: a destination does not need 350 pixels to say LEADERBOARD, and the
+ * pair costs one row's height instead of two. An odd count leaves the last cell
+ * empty on purpose — a tile stretched across both columns to tidy the row would be
+ * the full-width slab this sheet just stopped drawing.
  */
-/**
- * A MARK'S COLOUR, AS THE ROW'S ICON. D183.
- *
- * The same hue the reticle is drawn in on the disc, so the menu and the map are
- * one thing rather than two lists that happen to agree. A dot rather than a glyph
- * because the colour IS the content — a galaxy icon in five colours would spend a
- * row's icon slot saying "galaxy" five times.
- */
-function RivalDot({ slot }: { slot: number }) {
+function MenuGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <span
-      aria-hidden
-      data-rival-dot={slot}
-      className="block size-3 rounded-full"
-      style={{ backgroundColor: rivalColour(slot) }}
-    />
+    <section data-menu-group className="flex flex-col gap-2">
+      <SectionHead label={label} />
+      <div data-menu-grid className="grid grid-cols-2 gap-2">{children}</div>
+    </section>
   );
 }
 
-function MenuRow({
+/**
+ * ONE PLACE TO GO: a glyph, a name, and a count when something is waiting in it.
+ *
+ * THE GLYPH SITS ABOVE THE NAME rather than beside it, which is what buys the name
+ * the tile's full width — "Liderlik tablosu" and "Akademiyi tekrar oyna" are the
+ * two longest things this menu has to say, and a name is the one piece of copy on
+ * a dense surface that must never be the thing that gives (`styles.css`, `.name`).
+ * It is also the arrangement every phone in the world already uses for a grid of
+ * destinations, so nobody has to be taught it.
+ *
+ * NO CHEVRON. A row needed one to say "this goes somewhere"; a tile in a grid is
+ * already shaped like a thing you press, and eight chevrons is eight pieces of
+ * furniture saying what the shape has said.
+ */
+function MenuTile({
   icon,
   label,
   hint,
@@ -389,9 +481,9 @@ function MenuRow({
   attention?: boolean;
   onClick?: () => void;
   /**
-   * A ROW THAT GOES TO A URL IS A LINK, NOT A BUTTON.
+   * A TILE THAT GOES TO A URL IS A LINK, NOT A BUTTON.
    *
-   * Every other row here opens a surface inside the app, which is a button doing
+   * Every other tile here opens a surface inside the app, which is a button doing
    * something. The guide is a real document at a real address, and saying so in
    * the markup is not pedantry: it is what gives a long-press or a middle-click
    * the choice of a new tab, what puts the destination in the status bar, and
@@ -412,17 +504,12 @@ function MenuRow({
         THE HINT IS THE ACCESSIBLE NAME, NOT A SECOND LINE. Owner directive:
         *"gereksiz fazla yazı yerine tasarımın kendini anlattığı ... temiz premium."*
 
-        Seven of these at two lines each is most of a 350-wide phone spent on a
-        menu, and the second line was explaining destinations that name themselves:
-        "Leaderboard" does not need a sentence under it, and the icon and chevron
-        have already said the rest.
-
-        MOVED rather than deleted. A screen reader still hears the whole thing, and
-        the one reader who genuinely cannot infer a destination from its name is the
-        reader who cannot see the icon either.
+        MOVED rather than deleted, and the tests that name these destinations read
+        this exact sentence — `${label}. ${hint}` — so the pairing is load-bearing.
       */
       aria-label={`${label}. ${hint}`}
-      className="plate flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+      data-menu-tile
+      className="plate relative flex flex-col items-start gap-1.5 px-2 py-2 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
     >
       <span
         data-attention={attention || undefined}
@@ -434,60 +521,183 @@ function MenuRow({
       >
         {icon}
       </span>
-      <span aria-hidden className="name min-w-0 flex-1 truncate text-bone">{label}</span>
+      <span aria-hidden data-fit="condensed" className="name w-full leading-tight text-bone">
+        {label}
+      </span>
+      {/*
+        THE COUNT RIDES THE GLYPH'S LINE, opposite it, where the tile has nothing
+        else to do with the width. It is a number rather than a dot because there
+        is room for it here and the header's dot has already done the job of
+        saying THAT something is waiting.
+      */}
       {badge === undefined ? null : (
-        <span className="num shrink-0 rounded-full bg-opportunity/15 px-2 py-0.5 text-micro text-opportunity">
+        <span className="num absolute right-1.5 top-1.5 rounded-full bg-opportunity/15 px-1.5 py-0.5 text-micro leading-none text-opportunity">
           {badge}
         </span>
       )}
-      <ChevronIcon className="size-4 shrink-0 text-faint" />
     </Element>
   );
 }
 
 /**
- * ON OR OFF, AND THE GLYPH SAYS WHICH. Owner instruction.
+ * RANK ONE: THE ONE SHAPE THAT MEANS "THIS IS WAITING ON YOU".
+ *
+ * Full width, lit, and above every group. It is deliberately the only thing on the
+ * sheet drawn this way — a shape that means something has to be scarce, and the
+ * two callers (a readable season result, a Silent Space placement) are both cases
+ * where the game owes the commander a decision rather than offering one.
+ */
+function MenuRow({
+  icon,
+  label,
+  hint,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-menu-row
+      onClick={() => {
+        haptic('tap');
+        onClick();
+      }}
+      aria-label={`${label}. ${hint}`}
+      className="plate plate-opportunity flex w-full items-center gap-2 px-3 py-2 text-left transition-colors active:bg-raised/60"
+    >
+      <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-opportunity">
+        {icon}
+      </span>
+      <span aria-hidden className="min-w-0 flex-1">
+        <span className="name block truncate text-bone">{label}</span>
+        <span className="mt-0.5 block truncate text-micro leading-tight text-dim">{hint}</span>
+      </span>
+      <ChevronIcon className="size-4 shrink-0 text-opportunity" />
+    </button>
+  );
+}
+
+/**
+ * A MARK'S COLOUR, AND THE COMMANDER IT BELONGS TO. D183.
+ *
+ * The dot is the same hue the reticle is drawn in on the disc, so the menu and the
+ * map are one thing rather than two lists that happen to agree. The name beside it
+ * is the commander's, because a mark is about a PERSON and the world in it is only
+ * where the press landed.
+ *
+ * A LOST MARK WEARS A CROSS AND CLEARS ITSELF. Its face has to be short enough for
+ * a chip, so the full sentence stays on the accessible name — which is also what
+ * every test that reaches for this chip reads.
+ */
+function RivalChip({
+  slot,
+  face,
+  name,
+  lost = false,
+  onClick,
+}: {
+  slot: number;
+  face: string;
+  name: string;
+  lost?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-rival-chip
+      aria-label={name}
+      onClick={() => {
+        haptic('tap');
+        onClick();
+      }}
+      className={`plate flex min-w-0 max-w-full items-center gap-1.5 rounded-chip px-2 py-1.5 transition-colors active:bg-raised/60 ${
+        lost ? 'opacity-70' : ''
+      }`}
+    >
+      <span
+        aria-hidden
+        data-rival-dot={slot}
+        className="block size-2.5 shrink-0 rounded-full"
+        style={{ backgroundColor: rivalColour(slot) }}
+      />
+      <span aria-hidden className="name min-w-0 truncate text-label text-bone">{face}</span>
+      {lost && <CloseIcon className="size-3 shrink-0 text-faint" />}
+    </button>
+  );
+}
+
+/**
+ * ONE PREFERENCE, ONE LINE: its name on the left, the control that sets it filling
+ * the rest.
+ *
+ * `below` is for the one setting whose chosen value does not explain itself. Every
+ * other sentence that used to sit under one of these was describing a control that
+ * already shows its own state — a speaker glyph that is lit or not, a language pair
+ * where one half is raised — and three of those is a paragraph of a phone screen
+ * spent restating what is on it.
+ */
+function SettingRow({
+  label,
+  children,
+  below,
+  title,
+}: {
+  label: string;
+  children: ReactNode;
+  below?: string;
+  title?: string;
+}) {
+  return (
+    <div data-setting-row className="px-2 py-2" {...(title === undefined ? {} : { title })}>
+      <div className="flex items-center gap-2">
+        <span className="legend w-16 shrink-0 leading-tight">{label}</span>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+      {below === undefined ? null : (
+        <p className="mt-1.5 text-micro leading-snug text-faint">{below}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ON OR OFF AND HOW LOUD, ON ONE LINE.
  *
  * `aria-pressed` rather than a checkbox: this is a control with two states that
  * takes effect immediately, which is exactly what a toggle button is for, and it
  * means a screen reader announces the state rather than the player having to infer
- * it from a label that changed.
- *
- * The label changes with the state as well as the icon. A control whose only
- * signal is a picture is one a player has to test to understand.
+ * it from a label that changed. The sentence that used to sit under it — "the score
+ * is playing" — is the toggle's accessible name now, so nothing is lost to anyone
+ * who needs it read and the row costs one line instead of three.
  */
-function SoundSwitch() {
+function SoundSetting() {
   const { t } = useTranslation();
   const on = useMusicEnabled();
   const volume = useMusicVolume();
   const percent = Math.round(volume * 100);
 
   return (
-    <div className="plate">
-      <button
-        type="button"
-        aria-pressed={on}
-        onClick={() => {
-          haptic('tap');
-          setMusicEnabled(!on);
-        }}
-        className={`flex w-full items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-white/[0.025] ${ on ? 'text-bone' : 'text-faint' }`}
-      >
-        <span className="socket grid size-8 shrink-0 place-items-center rounded-control">
+    <SettingRow label={t('menu.soundLabel')}>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={on}
+          aria-label={`${t('menu.soundLabel')}. ${on ? t('menu.soundOn') : t('menu.soundOff')}`}
+          onClick={() => {
+            haptic('tap');
+            setMusicEnabled(!on);
+          }}
+          className={`socket grid size-9 shrink-0 place-items-center rounded-control transition-colors ${
+            on ? 'text-crystal' : 'text-faint'
+          }`}
+        >
           {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="name block">
-            {t('menu.soundLabel')}
-          </span>
-          <span className="mt-1 block text-label leading-snug text-faint">
-            {on ? t('menu.soundOn') : t('menu.soundOff')}
-          </span>
-        </span>
-      </button>
-
-      <label className="flex items-center gap-2 border-t border-line-soft px-3 py-3">
-        <span className="legend shrink-0">{t('menu.volumeLabel')}</span>
+        </button>
         <input
           type="range"
           min={0}
@@ -501,11 +711,11 @@ function SoundSwitch() {
           }}
           className="slider slider-crystal min-w-0 flex-1"
         />
-        <output className="num w-9 shrink-0 text-right text-label text-crystal">
+        <output className="num w-8 shrink-0 text-right text-micro text-crystal">
           {t('menu.volumeValue', { volume: percent })}
         </output>
-      </label>
-    </div>
+      </div>
+    </SettingRow>
   );
 }
 
@@ -518,15 +728,13 @@ function SoundSwitch() {
  *
  * THREE RUNGS, NOT A SLIDER. A slider implies a continuum somebody can tune, and
  * there is nothing here to tune: there are three sensible ceilings on the device
- * pixel ratio and every value between them looks and costs the same as one of
- * them. It is also the compact form — one row of three words against a slider,
- * its track, its handle and a readout, on the phone this game is budgeted for.
+ * pixel ratio and every value between them looks and costs the same as one of them.
  *
- * THE LINE UNDER THE NAME IS THE CURRENT RUNG'S OWN, so choosing states what was
- * chosen. `docs/interface.md` I1: a value the player cannot compare is not yet
- * information, and "Balanced" alone does not say what it balances.
+ * THE LINE UNDER THE ROW IS THE CURRENT RUNG'S OWN, and it is the only sentence
+ * left in this block. `docs/interface.md` I1: a value the player cannot compare is
+ * not yet information, and "Balanced" alone does not say what it balances.
  */
-function QualitySwitch() {
+function QualitySetting() {
   const { t } = useTranslation();
   const quality = useRenderQuality();
 
@@ -536,27 +744,14 @@ function QualitySwitch() {
   }));
 
   return (
-    <div className="plate px-3 py-3">
-      <div className="flex items-center gap-2">
-        <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-dim">
-          <GalaxyIcon className="size-[18px]" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="name block">{t('menu.qualityLabel')}</span>
-          <span className="mt-1 block text-label leading-snug text-faint">
-            {t(`menu.qualityHint.${quality}`)}
-          </span>
-        </span>
-      </div>
-
+    <SettingRow label={t('menu.qualityLabel')} below={t(`menu.qualityHint.${quality}`)}>
       <Segmented
-        className="mt-3"
         size="sm"
         label={t('menu.qualityLabel')}
         segments={segments}
         value={quality}
         onSelect={setRenderQuality}
       />
-    </div>
+    </SettingRow>
   );
 }

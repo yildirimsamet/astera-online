@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fleetCount } from '@astera/rules';
-import { useMining, usePending, useTraffic } from '../api/queries.js';
+import { useMining, usePending, useRecallMining, useTraffic } from '../api/queries.js';
 import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
@@ -14,11 +14,13 @@ import {
   DrillIcon,
   HomeworldIcon,
   IncomingIcon,
+  ReturnedIcon,
   ScanIcon,
   SendIcon,
   WarBannerIcon,
 } from '../ui/icons/index.js';
 import { Sheet } from '../ui/kit/index.js';
+import { describe, useToast } from '../ui/Toast.js';
 
 /**
  * WHAT THIS STRIP CAN ASK THE CAMERA TO LOOK AT. D162.
@@ -53,6 +55,8 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
    * the row stays a statement.
    */
   const traffic = useTraffic();
+  const recall = useRecallMining();
+  const say = useToast();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
   const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
@@ -115,6 +119,9 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
           : null
         : { from: run.departAt.getTime(), to: run.arriveAt.getTime() },
       focus: { kind: 'run', id: run.id },
+      ...(run.status === 'outbound' && run.recalledAt === null && run.arriveAt.getTime() > now
+        ? { recall: { runId: run.id, originPlanetId: run.planetId } }
+        : {}),
     })),
   ].sort((a, b) => a.arrival - b.arrival || a.key.localeCompare(b.key));
 
@@ -230,6 +237,44 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
                     {focus && <span aria-hidden className="self-center text-faint">›</span>}
                   </>
                 );
+                const recallInput = item.recall;
+                if (recallInput) {
+                  return (
+                    <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(false);
+                          if (focus) onFocus?.(focus);
+                        }}
+                        className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                      >
+                        {body}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('pendingStrip.recallProspectors')}
+                        disabled={recall.isPending}
+                        onClick={() => {
+                          recall.mutate(recallInput, {
+                            onSuccess: () => {
+                              say(t('pendingStrip.recallStarted'));
+                            },
+                            onError: (error) => {
+                              say(describe(error), 'error');
+                            },
+                          });
+                        }}
+                        className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
+                      >
+                        <ReturnedIcon className="size-4" />
+                        {recall.isPending
+                          ? t('pendingStrip.recallingProspectors')
+                          : t('pendingStrip.recallProspectors')}
+                      </button>
+                    </div>
+                  );
+                }
                 return focus ? (
                   <button
                     key={item.key}
@@ -269,6 +314,7 @@ interface AirborneItem {
   /** The leg's departure and arrival instants, or null where it is fogged. */
   span: { from: number; to: number } | null;
   focus?: StripFocus;
+  recall?: { runId: string; originPlanetId: string | undefined };
 }
 
 /**

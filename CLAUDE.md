@@ -57,6 +57,69 @@ If context is lost: `CLAUDE.md → docs/decisions.md → docs/balance.md → cod
 7. Son bir code review yap: eksik, yanlış, hatalı, unutulan bir yer var mı kontrol et. Bir yeri kırdık mı kontrol et.
 7. Tüm testleri çalıştır.
 
+### Tasarım/Design discipline
+
+**frontend'de yeni veya güncellenecek bir component, sayfa, section, element, tasarım, design vs her hangi bir şey yaparken, bu 4 kuralı takip etmen ŞART! ZORUNLU!**
+
+#### The four questions every surface must answer
+
+Owner instruction, and they outrank aesthetics on every screen in this game. A surface that
+fails one of these is unfinished however finished it looks — and the failure is usually
+invisible to whoever built it, because the builder already knows what the number means.
+
+##### 1 · Clarity — does the player understand this?
+
+Putting a value on screen is not the same as making it understood. Beside every figure a
+player is meant to act on, they need to be able to answer:
+
+- What does this represent?
+- Is a big one good?
+- How does it compare to MY equivalent?
+- What else is it related to?
+- Which decision am I supposed to use it for?
+
+##### 2 · Predictability — can the player anticipate the outcome?
+
+They do not need certainty. This game is *built* on not having it, and a screen that answered
+"will I win" would end the bet the core loop is made of. But an outcome nobody can estimate
+is indistinguishable from a random one, and it makes the whole intel layer worthless: nobody
+pays for a reading that does not narrow anything.
+
+The line: **the player must be able to form an expectation and be wrong about it.** Give the
+inputs and the rule; withhold the answer.
+
+##### 3 · Decision support — do they hold what they need to choose?
+
+Rules must be discoverable *where they are used*, in the amount needed *at that moment*. The
+two failure modes are equally bad:
+
+- **Too much** — a twenty-page wiki, or every rule on every card.
+- **Too little** — dropping the player into a system with no explanation at all.
+
+Progressive disclosure is the answer: the row states the fact, the sheet one tap deeper
+states the rule. *The worked example:* the counter cycle decides every fight in the game and
+its multipliers appeared in exactly one place — the battle report, after the fleet was
+already lost. A rule taught as a post-mortem is not decision support (D124).
+
+And the adjacent case: **a player must be able to sense why a feature exists.** If a mechanic
+leaves them asking "why am I doing this", the answer to *what does it get me* and *when
+should I use it* is missing from the surface, not from the player.
+
+##### 4 · Interaction cost — how much work is this to use?
+
+Scroll is a cost. So is a tap, and so is a screen change. Ten items a player wants to
+COMPARE, at one screen each, is a different product from the same ten at two screens.
+
+On a 350-wide phone, density and screen economy outrank decorative whitespace — but not
+blindly: **space must carry a purpose.** The 74px art socket earns its height (a render at
+40px reads as a favicon); a paragraph under a collapsed band does not.
+
+#### The question behind all four
+
+**Does this interface SHOW, or does it HELP?** An interface can present every fact a player
+needs and still leave them unable to decide, and that is the state this project's screens
+were found in. Showing more is not helping more.
+
 ## Quality bar
 
 > **CODE WITHOUT TESTS IS UNFINISHED WORK.**

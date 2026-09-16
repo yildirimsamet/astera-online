@@ -105,8 +105,8 @@ Skirmisher-class, tears into heavy hulls, picked apart by Lances). Opposite clas
 purpose, so what a planet is strong *against* is a choice the defender makes and a question
 the attacker has to answer. D27.
 
-**Flight bay** — one of the slots a planet has for craft that are away. Every raid, probe
-and mining run holds one for its whole round trip; the Command Core opens them at
+**Flight bay** — one of the slots a planet has for fleets or mining craft that are away. Every
+raid, transfer and mining run holds one for its whole round trip; probes are exempt. The Command Core opens them at
 `3 + floor(core / 3)`. A dark bay is the game's only return hook. D28.
 
 **Wreckage / debris field** — what a battle leaves at the defender's planet: a tenth of the

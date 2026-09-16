@@ -2266,8 +2266,8 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * has decided to scout and then launches blind anyway is not taking a shortcut,
    * they are throwing a fleet at a coordinate.
    *
-   * IT IS NOT 1.0, because a bay held by a probe is a bay a raid cannot use and
-   * there is a real impatience in the decision. The other archetypes still never
+   * IT IS NOT 1.0 because there is still a paid, visible delay in the decision.
+   * Probes no longer consume fleet bays. The other archetypes still never
    * scout, and that is deliberate: the spread between someone who looks and
    * someone who does not is exactly what D127 is supposed to make expensive, and
    * flattening it would delete the comparison.

@@ -8,6 +8,7 @@ import {
   neutralPlanetState,
   planets,
   players,
+  seasonTelemetrySegments,
   units,
 } from '../db/schema.js';
 import { GameError, lockSeason } from './planet.js';
@@ -253,13 +254,33 @@ export async function transferPlanetControl(
   input: TransferControlInput,
 ): Promise<{ previousPlayerId: string | null; planetId: string }> {
   const [pair] = await tx
-    .select({ planetSeason: planets.seasonId, playerSeason: players.seasonId })
+    .select({
+      planetSeason: planets.seasonId,
+      playerSeason: players.seasonId,
+      controllerPlayerId: planets.controllerPlayerId,
+      statsOwnerPlayerId: planets.statsOwnerPlayerId,
+      telemetry: planets.seasonTelemetry,
+    })
     .from(planets)
     .innerJoin(players, eq(players.id, input.newPlayerId))
     .where(eq(planets.id, input.targetPlanetId));
   if (!pair) throw new GameError('TARGET_CHANGED', 'That world changed first', 409);
   if (pair.planetSeason !== pair.playerSeason) {
     throw new GameError('WRONG_GALAXY', 'That world is in another galaxy', 409);
+  }
+
+  if (
+    input.expectedControllerPlayerId !== null
+    && pair.controllerPlayerId === input.expectedControllerPlayerId
+    && pair.statsOwnerPlayerId === input.expectedControllerPlayerId
+  ) {
+    await tx.insert(seasonTelemetrySegments).values({
+      seasonId: pair.planetSeason,
+      playerId: input.expectedControllerPlayerId,
+      sourcePlanetId: input.targetPlanetId,
+      telemetry: pair.telemetry,
+      closedAt: input.now,
+    });
   }
 
   const expected = input.expectedControllerPlayerId === null
@@ -274,6 +295,12 @@ export async function transferPlanetControl(
       protectedUntil: input.protectedUntil,
       disruptedUntil: null,
       lastTickAt: input.now,
+      statsOwnerPlayerId: input.newPlayerId,
+      seasonTelemetry: {
+        produced: { alloy: 0, crystal: 0, deuterium: 0 },
+        productiveSeconds: 0,
+        shipsBuilt: {},
+      },
     })
     .where(and(eq(planets.id, input.targetPlanetId), expected))
     .returning({ id: planets.id });

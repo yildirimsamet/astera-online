@@ -95,7 +95,7 @@ export async function truncateAll(db: Db): Promise<void> {
              asteroid_claims, pirate_raids, pirate_state, trade_runs, intergalactic_convoy_runs, units,
              galaxy_event_occurrences, galaxy_events,
              sensor_epochs, satellites, buildings, planet_research, player_research,
-             neutral_planet_state, planets, players,
+             neutral_planet_state, planets, players, season_reward_entitlements,
              seasons, season_cycles, shards, bot_profiles, accounts
     RESTART IDENTITY CASCADE
   `);

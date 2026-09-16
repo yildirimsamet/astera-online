@@ -409,8 +409,9 @@ tables are temporarily the same; splitting them restores the narrower surprise w
 many times it is requested inside its window. Without this a player defeats the entire fog layer by
 pulling to refresh. It is the easiest way to ship a broken information game.
 
-Probes: `50 alloy · 30 crystal · speed 3,510` (×0.75 at D153), rationed by flight bays and by one launch per
-target world per commander per hour (D121).
+Probes: `65 alloy · 40 crystal · speed 3,510` (×0.75 at D153). Repeat launches to the same
+target are allowed every five seconds per commander, including while earlier probes are
+airborne. Probes do not consume ordinary flight bays; each launch pays the full price.
 
 ### What the disc itself gives away — the sensor horizon (D123)
 
@@ -747,14 +748,36 @@ happened to be looking. Measured over five seeds, raw active-field growth at +5 
 unchanged to six decimal places. Gated on the occurrence's definition version (4 → **5**), so a
 window that has already opened keeps the arrival times its rocks were derived under.
 
-**Four hours of protection after a heavy defeat.** A commander who loses at least half of what
-was raidable AND at least a twentieth of everything they can store is unreachable for four hours,
-on every world they hold, against Raid and Death Star — the first-day shield's contract, earned
-rather than given, and given up the same way. A Death Star impact grants it outright. The two
-conditions are both required: the share alone is bought with a deliberately empty colony, and the
-material floor alone would never fire for a small commander who genuinely lost everything.
-Storage capacity is the denominator because it already grows with development, so no second
-ladder has to be kept in step with the Core.
+**Four hours of protection after a heavy defeat, measured in the defender's own production
+hours (reworked 2026-09-15).** A commander whose defeat cost at least **eight hours** of their own
+works — everything carried off PLUS every hull destroyed that did not rebuild from its own
+wreckage, priced on the 32:16:1 scale and divided by what all their worlds turn out in an hour —
+is unreachable for four hours, on every world they hold, against Raid and Death Star. The window
+is half the bar, so a shield covers half the work it takes to recover. It is the first-day
+shield's contract, earned rather than given, and given up the same way; a Death Star impact on a
+player's world grants it outright.
+
+*What it replaces, and why.* The rule that shipped on 2026-09-14 asked for half of the struck
+world's raidable stock AND a twentieth of the commander's total STORAGE. Measured against the
+first 97–105 live battles, both halves were wrong. Storage is a ceiling nobody reaches — the
+median commander sits at 24% of it — so "a twentieth of capacity" meant a different fraction of a
+different quantity for every player, and one defender who lost 100% of his raidable stock scored
+0.53% of the bar. Worse, neither half could see a FLEET, while the median defender of a lost
+battle loses 100% of the ships standing on the world. The loudest thing a raid does was worth
+zero to the rule meant to notice a heavy defeat.
+
+*One figure, not two compared separately.* The owner's instruction was that either half should be
+enough; adding them satisfies that — a sum is never smaller than its larger part — and also
+answers the case neither test could alone, where six hours of ore and six hours of ships is a
+twelve-hour defeat rather than two small ones. Both sides go through `resourceValue` rather than
+being divided resource by resource: `profileIncome` gives a commander with no Deuterium Plant a
+production rate of exactly zero, and 36 of 97 measured battles took deuterium the defender cannot
+make — an infinite rebuild time, and therefore a free shield on any raid that touched the tank.
+
+*Eight hours is the measured figure.* Against the same 97 battles it grants on **25%** of the ones
+the attacker won, against 31% for the rule it replaces, so the raid economy sees no shock while
+the rule finally fires on the right battles. `battle_reports.recovery_loss_hours` records what
+every resolved battle scored, so the bar can be re-measured rather than re-argued.
 
 **Watch list.** The measured risks are the ones the plan named: mining competition against a
 2.67× bigger bare hold; pirate PvE net return with twice the targets and half the fuel; earlier
@@ -867,8 +890,8 @@ Two fixes to the model were made first, and both are keepers:
 **The second change made `RR` WORSE — 0.995 to 0.889 — and that is the finding.** A bot takes one
 action per session, so a probe replaces a raid outright: scouting more means raiding less while
 still paying for the fleet. The shipped game stopped charging that price at D121, which made
-probes 36× faster specifically so a look costs a flight bay and about twenty seconds rather than
-a turn. **The model prices scouting as a lost session and the game does not, so it cannot
+probes 36× faster so a look costs only its resources and travel rather than a turn. Probe launches
+now use a five-second per-target interval and no ordinary flight bay. **The model prices scouting as a lost session and the game does not, so it cannot
 evaluate a change whose entire purpose is to make scouting necessary.**
 
 Three things follow.
@@ -876,8 +899,8 @@ Three things follow.
 1. **Do not tune constants against this number.** Loot grades, `defenceSalvage` and hull HP are
    the listed levers for `RR` and every one of them would be moved to fix an artifact.
 2. **The bot session model is the fix**, and it is the "re-derive the simulator for real-time
-   pacing" item that was already on the list. A probe should cost a bay and a short flight, not
-   an action.
+   pacing" item that was already on the list. A probe should cost its resources, five-second
+   target pacing and a short flight, not an action.
 3. **The real question is a playtest question.** Whether raiding pays under D127 depends on
    whether players scout, and `docs/playtest-log.md` exists to measure exactly that: attacks
    preceded by a probe or telescope reading, target at or above 50%. No bot mix can answer it.

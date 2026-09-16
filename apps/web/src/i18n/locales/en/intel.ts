@@ -44,7 +44,7 @@ export const intel = {
     heading: 'Probe reports',
     newest: 'newest first',
     missing: 'No probe has ever come back',
-    gives: 'Real numbers — how much they hold and how hard they are to take — as a range.',
+    gives: 'Estimates of their resources and units, shown as ranges. It does not guarantee a battle outcome.',
     /**
      * THE FIGURES ARE INTERPOLATED, NOT WRITTEN. D59.
      *
@@ -58,10 +58,11 @@ export const intel = {
      */
     cost: 'Fast and cheap — {{alloy}} alloy, {{crystal}} crystal, and it outruns every warship you own. Their radar may catch it.',
     stock: 'Stock',
-    defence: 'Defence',
+    defence: 'Armed unit value',
     ships: 'Ships',
     accuracyHome: '{{percent}} accuracy · fleet was home',
     accuracyOut: '{{percent}} accuracy · fleet was out',
+    estimateNote: 'These numbers are estimated ranges. Armed unit value excludes the shield and unarmed ships.',
     caught: 'they caught it',
     /* Two words beside the signal bars, which carry the accuracy themselves. */
     homeTag: 'fleet was home',
@@ -116,22 +117,23 @@ export const reports = {
   youRaided: 'You raided ',
   raidedBy: 'Raided by ',
   rounds: '{{count}} rounds',
-  sheetYouRaided: 'You raided {{opponent}}',
-  sheetTheyRaided: '{{opponent}} raided you',
-  heldAgainstYou: '{{planet}} held. You now know what it takes to break it.',
-  brokenByYou: '{{planet}} did not hold.',
+  sheetYouRaided: 'Target: {{opponent}} · {{planet}}',
+  sheetYouRaidedPirate: 'Target: {{opponent}}',
+  sheetTheyRaided: 'Attacker: {{opponent}}',
+  heldAgainstYou: '{{planet}} kept defending. You took no loot from this raid.',
+  brokenByYou: 'You damaged the defence on {{planet}}.',
   /**
    * A PIRATE VERDICT NAMES NO WORLD, because there is not one. Both sentences
    * above are built around `{{planet}}`, which is the empty string out here.
    */
   pirateBroken: 'The crew broke. What was left of them is yours.',
-  pirateHeld: 'They held, and flew on. Your squadron came back with nothing.',
+  pirateHeld: 'The pirates kept defending. You took no loot from this raid.',
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'From pirates',
   pirateCapturedNote:
     'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to, and it does not count as one you built.',
-  youHeld: 'You held. They now know how much you had waiting.',
-  youFell: 'You did not hold.',
+  youHeld: 'You stopped the raid. The attacker took no resources.',
+  youFell: 'The raid damaged your defence.',
   /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */
   shipsLost: 'Ships lost',
   haul: 'What came home',
@@ -142,13 +144,16 @@ export const reports = {
   taken: 'Taken',
   lost: 'Lost',
   dominion: 'Dominion',
+  dominionSummaryGained: 'You gained {{amount}} Dominion in this battle.',
+  dominionSummaryLost: 'You lost {{amount}} Dominion in this battle.',
+  dominionReason: 'Loot you secured and the enemy\u2019s permanent losses add points. Loot taken from you and your permanent losses subtract points. Resource value is used, not ship count.',
   dominionBreakdown: {
     title: 'How Dominion moved',
     lootGained: 'Secured loot',
     lootLost: 'Loot taken from you',
     enemyLosses: 'Enemy permanent losses',
     ownLosses: 'Your permanent losses',
-    total: 'Dominion exchange',
+    total: 'Total point change',
   },
   clansAtLaunch: 'Clans when this fleet launched',
   yourClan: 'Your side',
@@ -162,9 +167,45 @@ export const reports = {
     held: 'Had',
     total: 'Total',
     lost: 'Lost',
-    returned: 'Returned',
+    returned: 'Survived',
     standing: 'Standing',
     destroyed: 'You destroyed',
+    enemyDestroyed: 'Enemy units destroyed',
+    attackerDestroyed: 'Attacking ships destroyed',
+    noneReturned: 'None of your ships survived the battle.',
+    someReturned: '{{count}} of your ships survived the battle.',
+    enemySurvivedNote: 'Enemy units remain; their count is hidden. This number is only what you destroyed.',
+    enemyUnknownNote: 'This number is only what you destroyed; the remaining enemy count is hidden.',
+    loot: 'Loot',
+    rosterUnknown: 'This report has no starting count. The surviving count cannot be calculated.',
+    walkoverSummary: 'No units were there to defend the target. There was no fight.',
+    piratePartialSummary: 'Part of the pirate fleet was still alive at the end of battle.',
+    title: {
+      attacking: {
+        DECISIVE: 'Your raid succeeded',
+        DECISIVE_WIPED: 'You breached the defence but lost your fleet',
+        PARTIAL: 'Your raid partly succeeded',
+        PARTIAL_WIPED: 'You damaged the defence but lost your fleet',
+        REPELLED: 'Your raid was repelled',
+      },
+      defending: {
+        DECISIVE: 'Your defence was breached',
+        PARTIAL: 'Your defence was partly breached',
+        REPELLED: 'You stopped the raid',
+      },
+    },
+    summary: {
+      attacking: {
+        DECISIVE: 'No units remained to defend the target.',
+        PARTIAL: 'The full-success condition was not met: defending units or the shield were still standing.',
+        REPELLED: 'The enemy kept defending. You took no loot.',
+      },
+      defending: {
+        DECISIVE: 'All your defending units were destroyed in this battle.',
+        PARTIAL: 'The attacker did not fully succeed: your units or shield were still standing.',
+        REPELLED: 'Your defence held. The attacker took no loot.',
+      },
+    },
   },
   /*
     WHAT IT SHOWS IS LOSSES, so that is what it says. The heading claimed 'what
@@ -181,6 +222,16 @@ export const reports = {
   yours: 'What it cost you',
   yoursEmpty: 'You lost nothing.',
   howItWent: 'How it went',
+  reasonHeading: 'Why this result?',
+  rulesToggle: 'Battle rules and calculation',
+  roundCalculationToggle: 'Show this round\u2019s shot calculation',
+  roundLossesYours: 'Your units destroyed',
+  roundLossesTheirs: 'Enemy units destroyed',
+  roundNoCasualties: 'No losses',
+  roundShield: 'The defender\u2019s shield absorbed {{amount}} damage.',
+  turningPointSupport: 'After round {{round}}, you had no units able to fire. The {{support}} remaining support ships could not attack.',
+  turningPointWiped: 'After round {{round}}, your entire force was destroyed.',
+  roundDamageNote: 'The damage figures include any damage absorbed by the defender\u2019s shield.',
   roundDealt: 'You dealt',
   roundTook: 'You took',
   roundLine: 'you dealt <0>{{dealt}}</0>, took <1>{{took}}</1>',
@@ -189,12 +240,18 @@ export const reports = {
   aegis: {
     aria: 'Aegis shield',
     label: 'AEGIS',
+    labelTheirs: 'Enemy Aegis shield',
+    labelYours: 'Your Aegis shield',
     broken: 'BROKEN',
+    roundedZero: 'REPORTED 0',
     damaged: 'DAMAGED',
     held: 'HELD',
     before: 'Before battle',
     after: 'After battle',
     note: 'The planet shield takes damage before any defending unit does.',
+    brokenUnitsRemain: 'The shield reports 0, but defending units survived.',
+    brokenDefenceGone: 'The shield broke. All defending units were also destroyed in this battle.',
+    brokenMeaning: 'Shield strength is rounded. A reported 0 alone does not prove that all defending forces were destroyed.',
     absorbed: '{{amount}} shield damage absorbed',
   },
   /* ── what a report owes each case. `docs/battle-reports.md` ── */
@@ -206,9 +263,12 @@ export const reports = {
   /** The four questions a battle report answers, in the order a reader asks them. */
   q: {
     happened: 'What happened',
-    there: 'What was on the other side',
-    who: 'Who died, and when',
-    changed: 'What it changed',
+    there: 'What you learned about the enemy',
+    enemyForce: 'Enemy units at the start of battle',
+    enemyLosses: 'What you destroyed from the enemy',
+    incomingForce: 'The fleet that attacked you',
+    who: 'What happened to your force?',
+    changed: 'Loot and point changes',
   },
   walkoverHeading: 'No defending force stood here',
   walkoverBody:
@@ -216,12 +276,16 @@ export const reports = {
   walkoverDefendingBody:
     'No defending units stood on your world. The attacking fleet could take the available loot without a fight.',
   /** Their board, and how far the reading goes. */
-  theirBoardComplete: 'Everything they had',
+  theirBoardComplete: 'All units defending at the start of battle',
   theirBoardCompleteNote:
-    'Nothing survived, so this is their whole force — the most exact reading of another commander you will ever get.',
-  theirBoardFloor: 'At least this much',
+    'All were destroyed in this battle. Some ground guns may be rebuilt after the battle.',
+  theirBoardEmptyAtStart: 'No defending units stood here at the start',
+  theirBoardEmptyAtStartNote:
+    'There were no combat ships or ground guns at the target, so there is no destroyed-unit list here.',
+  theirBoardFloor: 'Destroyed units only',
   theirBoardFloorNote:
-    'They held, so this is what you destroyed and not what they had. A battle reports what died; a probe is what counts what is left.',
+    'This is not the enemy\u2019s whole fleet. It lists only units destroyed in this battle. Remaining units are not revealed here; send a new probe for an estimate.',
+  theirBoardMissingRosterNote: 'This report has no starting roster for the attacking fleet. Only the ships you destroyed are listed; survivors cannot be calculated.',
   theirBoardNothing: 'You destroyed nothing',
   /**
    * THE DEFENDER'S VERSION, WHICH IS NOT A BOUND AT ALL. D164.
@@ -233,10 +297,10 @@ export const reports = {
    */
   theirBoardArrived: 'What came at you',
   theirBoardArrivedNote:
-    'Their whole squadron, down to the hulls that never fired. You watched it arrive; the red is what flew home again.',
+    'The entire fleet sent at you, including combat and support ships. Each row labels how many arrived, were destroyed and remained.',
   /** The wall, stated apart from the ships, because it is a different kind of thing. */
   groundHeading: 'Ground defence',
-  groundNote: 'Guns that never leave the world. They cannot loot and take no Dominion.',
+  groundNote: 'These guns defend the planet and cannot fly. {{percent}}% of each destroyed type is rebuilt after battle, rounded down. Their losses are handled separately from ships.',
   shipsHeading: 'Ships',
   noGroundHeading: 'No ground defence',
   noGroundNote: 'This world had no wall standing when you arrived.',
@@ -331,16 +395,20 @@ export const reports = {
   why: {
     attacking: {
       DECISIVE: 'You destroyed everything defending it and broke the shield, which is what opens the full haul.',
+      DECISIVE_WIPED: 'You destroyed every defending unit, but none of your ships survived to carry loot home.',
       DECISIVE_WITHOUT_SHIELD: 'You destroyed everything defending it, which is what opens the full haul.',
       WALKOVER: 'No defending units stood here; the available loot was open to your fleet.',
-      PARTIAL: 'You broke most of the defence but not all of it, so only part of their stock came away.',
-      REPELLED: 'Their defence held. Your fleet could not get through, and nothing came away.',
+      PARTIAL: 'You dealt enough damage for partial success, but not full success. Only part of the loot became available; without surviving cargo space, nothing can be taken.',
+      PARTIAL_WIPED: 'You dealt enough damage for partial success, but none of your ships survived to carry loot home.',
+      REPELLED: 'The destroyed units\u2019 resource value did not reach {{threshold}}% of all defending units\u2019 starting value. That is why the raid was repelled; ship count or breaking the shield alone does not decide the result.',
     },
     defending: {
-      DECISIVE: 'Everything you had defending fell and the shield went with it, so they took the full haul.',
-      DECISIVE_WITHOUT_SHIELD: 'Everything you had defending fell, so they took the full haul.',
+      DECISIVE: 'All your defending units fell and the shield broke, opening the available loot to the raiders. The amount taken depends on their surviving cargo space.',
+      DECISIVE_WITHOUT_SHIELD: 'All your defending units fell, opening the available loot to the raiders. The amount taken depends on their surviving cargo space.',
+      DECISIVE_WIPED: 'All your defending units fell — and so did every ship they came with. The loot was open and there was nothing left alive to carry it home.',
       WALKOVER: 'No defending units stood on your world, so the available loot was open to the raiders.',
-      PARTIAL: 'Most of your defence fell but something held, so they only got part of your stock.',
+      PARTIAL: 'The attacker dealt enough damage for partial success, but not full success. Only part of the loot became available.',
+      PARTIAL_WIPED: 'The attacker dealt enough damage for partial success, but not one of their ships survived to carry it. Nothing left your world.',
       REPELLED: 'Your defence held. They got through nothing, and took nothing.',
     },
   },
@@ -352,8 +420,8 @@ export const reports = {
     shieldYours: 'Your shield soaked {{amount}} damage before anything reached a hull.',
     cargoLimited:
       'Your holds were full. There was more on that world than you could carry — bring Courier, Wayfarer, Atlas or Argosy transports.',
-    salvaged_one: '{{count}} ground gun was rebuilt from its own wreckage and is standing again.',
-    salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage and are standing again.',
+    salvaged_one: '{{count}} ground gun was rebuilt from its own wreckage after the battle.',
+    salvaged_other: '{{count}} ground guns were rebuilt from their own wreckage after the battle.',
     worksTheirs: 'Their works are offline for {{duration}}. Nothing is being produced there.',
     worksYours: 'Your works were knocked offline for {{duration}}.',
     /** The defender's copy of what the raider's collectors lifted. D200. */
@@ -376,12 +444,28 @@ export const reports = {
     held: 'Had',
     lost: 'Lost',
     left: 'Left',
+    rebuilt: 'Rebuilt',
+    start: 'At the start',
+    arrived: 'Arrived',
+    rebuiltNote: '{{count}} destroyed ground guns were rebuilt after battle; included in the remaining count.',
+    groundType: 'Ground gun · cannot fly',
+    supportType: 'Support ship · cannot fire',
+    combatType: 'Combat ship',
     summary: '{{brought}} into the fight · {{lost}} destroyed · {{left}} standing',
   },
   /** Whose casualties. Both sides fly Darts, so colour alone cannot say it. */
   roundTheirs: 'Them',
   roundYours: 'You',
   roundNoLosses: 'Neither side lost a unit this round.',
+  roundStanding: {
+    unknownOwn: 'This report has no starting counts; your remaining units cannot be calculated.',
+    heading: 'Your side after round {{round}}',
+    enemyHeading: 'Attacking fleet after round {{round}}',
+    summary: '{{combat}} units able to fire · {{support}} unarmed support ships',
+    supportExposed: 'Support ships cannot fire. No combat units remain to protect them.',
+    noneLeft: 'You have no units left to continue fighting.',
+    unknownEnemy: 'The enemy\u2019s remaining count is hidden. The enemy losses above are not their whole fleet.',
+  },
 } as const;
 
 /** One telescope reading, rendered as certainty. */
@@ -449,8 +533,8 @@ export const dossier = {
   stockCaught: 'Their radar caught the probe — they know somebody looked.',
   stockClean: 'The probe got in and out unnoticed.',
   /** The one force unit, D199 — what the hulls and guns that can fire cost. */
-  defenceLabel: 'Firepower',
-  defenceNote: 'What could fire on the world when the probe passed.',
+  defenceLabel: 'Armed unit value',
+  defenceNote: 'Resource cost of firing ships and ground guns when the probe passed. Not attack damage; excludes the shield and unarmed ships.',
   defenceRatio: 'About ×{{ratio}} what stands on {{world}}.',
   shapeLabel: 'Shape of the wall',
   shapeNote: 'By value, of what can fire. More than half is a majority.',

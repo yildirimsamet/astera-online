@@ -91,7 +91,7 @@ import { AnnouncementsScreen } from './AnnouncementsScreen.js';
 import { FeedbackScreen } from './FeedbackScreen.js';
 import { DonateScreen } from './DonateScreen.js';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
-import { LeaderboardScreen } from './LeaderboardScreen.jsx';
+import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
 import { ChatScreen } from './ChatScreen.jsx';
 import { ChatLauncher, type ChatChannel } from './ChatLauncher.jsx';
 import { ChronicleLauncher } from './ChronicleLauncher.jsx';
@@ -103,6 +103,7 @@ import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { DiscReadout } from './DiscReadout.jsx';
 import { SensorToggles } from '../galaxy/SensorToggles.jsx';
+import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
 import {
   SeasonRecap,
   seasonRecapShowsPrimaryAction,
@@ -125,7 +126,7 @@ import {
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
 import type { StripFocus } from '../shell/PendingStrip.js';
-import { keepsPlanetGroup, rivalMenuRows } from '../shell/panelRoute.js';
+import { keepsPlanetGroup, returnsToMenu, rivalMenuRows } from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
@@ -937,6 +938,21 @@ export function GalaxyView({
     setDetail((open) => !open);
   };
 
+  /**
+   * THE WAY BACK TO THE MENU, for the surfaces the menu is the only door onto.
+   *
+   * Owner report: *"yanlış bir buton'a tıklayınca geri dönme yok direk
+   * kapatılıyor"*. A menu tile REPLACES the menu, so closing what it opened landed
+   * the reader on the disc — the price of one mis-tap was the header control plus
+   * finding your place in the list again.
+   *
+   * `returnsToMenu` decides, so the set is a rule with a test rather than six
+   * hand-written props that a seventh sheet can quietly disagree with. Spread
+   * rather than passed, because a sheet with nowhere to go back to must not draw
+   * the arrow at all.
+   */
+  const menuBack = returnsToMenu(panel) ? { onBack: () => { onPanel('menu'); } } : {};
+
   return (
     <SeasonLockProvider locked={season.data?.status === 'frozen'}>
     <div className="absolute inset-0 overflow-hidden">
@@ -1090,6 +1106,12 @@ export function GalaxyView({
             : {})}
         />
         </div>
+
+        {/*
+          THE PICK-VOLUME COLOUR KEY. Off unless `?hitboxes=1` asked for it, and it
+          renders nothing at all in that state — see `galaxy/hitboxDebug`.
+        */}
+        <HitboxLegend />
 
         {/*
           THREE MARKS RATHER THAN A WORD, and two of them came out of the menu.
@@ -1568,6 +1590,7 @@ export function GalaxyView({
 
       {panel === 'rewards' && (
         <Sheet
+          {...menuBack}
           eyebrow={t('rewards.eyebrow')}
           title={t('rewards.title')}
           onClose={() => {
@@ -1581,13 +1604,14 @@ export function GalaxyView({
       {panel === 'leaderboard' && (
         <Sheet
           bleed
+          {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
           title={t('leaderboard.title')}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <LeaderboardScreen
+          <SeasonArchiveScreen
             onFocusPlanet={(planetId) => {
               onPanel(null);
               focusPlanet(planetId);
@@ -1598,6 +1622,7 @@ export function GalaxyView({
 
       {panel === 'announcements' && (
         <Sheet
+          {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
@@ -1608,6 +1633,7 @@ export function GalaxyView({
 
       {panel === 'feedback' && (
         <Sheet
+          {...menuBack}
           eyebrow={t('community.feedback.eyebrow')}
           title={t('community.feedback.title')}
           onClose={() => { onPanel(null); }}
@@ -1618,6 +1644,7 @@ export function GalaxyView({
 
       {panel === 'donate' && (
         <Sheet
+          {...menuBack}
           eyebrow={t('community.donate.eyebrow')}
           title={t('community.donate.title')}
           onClose={() => { onPanel(null); }}
@@ -1630,6 +1657,7 @@ export function GalaxyView({
         <Sheet
           contained
           bleed
+          {...menuBack}
           eyebrow={t('community.admin.eyebrow')}
           title={t('community.admin.title')}
           onClose={() => { onPanel(null); }}
@@ -1916,7 +1944,6 @@ export function GalaxyView({
         return target ? (
           <TransferSheet
             target={target}
-            targetPlanet={owned}
             planet={transferOrigin}
             onClose={() => { setTransferTargetId(null); }}
             onLaunched={() => {

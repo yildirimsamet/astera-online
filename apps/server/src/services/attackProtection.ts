@@ -3,14 +3,14 @@ import {
   alloyRate,
   crystalRate,
   deuteriumRate,
-  deuteriumStorageCap,
   earnsRecoveryShield,
   effectiveAttackProtection,
-  recoveryShieldRelativeLoss,
   extendRecoveryShield,
   productionMult,
-  storageCap,
+  recoveryLossHours,
+  resourceValue,
   type AttackProtection,
+  type Resources,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import { botProfiles, buildings, missions, planets, players, satellites } from '../db/schema.js';
@@ -28,9 +28,9 @@ import { GameError, orbitFromRows } from './planet.js';
  * `assertAttackProtections` was extracted out of `mission.ts` and `strategic.ts`
  * to avoid the first time, and adding a second column is when it would recur.
  *
- * WHAT IS PURE AND WHAT IS NOT. The rules package owns the thresholds, the window
- * and the composition of the two columns; this file owns the four things that need
- * a database — what a commander can store across every world they hold, whether
+ * WHAT IS PURE AND WHAT IS NOT. The rules package owns the bar, the window and the
+ * composition of the two columns; this file owns the four things that need a
+ * database — what a commander's works turn out across every world they hold, whether
  * they have a hostile fleet of their own in the air, whether they are a person at
  * all, and the atomic read-check-clear on the player rows.
  */
@@ -67,31 +67,34 @@ export const protectionFrom = (
 );
 
 /**
- * EVERYTHING THIS COMMANDER COULD HOLD IF EVERY STORE WERE FULL.
+ * WHAT THIS COMMANDER'S WORKS TURN OUT IN AN HOUR, ACROSS EVERY WORLD.
  *
- * The denominator of the recovery shield's material floor. It is a CAPACITY rather
- * than a stock on purpose: a stock is what the attacker just emptied, so measuring
- * against it would make every defeat look total, and it would also make the
- * threshold move with the hour of the day rather than with the commander's
- * development. Capacity grows with the Vault and the producers, so the bar scales
- * on its own and no second ladder has to be kept in step with the Core.
+ * The denominator of the recovery shield: a defeat is heavy when it costs more
+ * hours of this than `ABUSE.recoveryLossHours`.
+ *
+ * IT REPLACED STORAGE CAPACITY, and the live field is why. Capacity is a ceiling
+ * nobody reaches — the median commander holds 24% of theirs — so a floor written
+ * against it meant a different fraction of a different quantity for every player,
+ * and one caught with an empty store could lose everything they had and clear
+ * nothing. Production is what a commander actually has going, it is the unit the
+ * whole economy profile is already written in, and it can only be zero for someone
+ * holding no world at all.
  *
  * NOMINAL, AND THAT IS DELIBERATE: the Foundry counts because it genuinely makes a
  * world bigger, while disruption and a struck world's fallen Core do not — the bar
- * a commander is measured against must not drop the moment they are hit, or the
- * second raid of an evening would be easier to earn a shield from than the first.
- *
- * EVERY WORLD THEY CONTROL, because the shield covers every world they control.
+ * must not drop because they were just hit, or the second raid of an evening would
+ * be easier to earn a shield from than the first.
  */
-async function commanderStorageCapacity(
+async function commanderProductionRate(
   db: Queryable,
   playerId: string,
-): Promise<number> {
+): Promise<Resources> {
+  const total: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
   const worlds = await db
     .select({ id: planets.id })
     .from(planets)
     .where(eq(planets.controllerPlayerId, playerId));
-  if (worlds.length === 0) return 0;
+  if (worlds.length === 0) return total;
 
   const worldIds = worlds.map((world) => world.id);
   const [buildingRows, satelliteRows] = await Promise.all([
@@ -112,21 +115,16 @@ async function commanderStorageCapacity(
     satellitesByWorld.set(row.planetId, installed);
   }
 
-  let capacity = 0;
   for (const world of worlds) {
     const levels = levelsByWorld.get(world.id);
     const level = (type: string): number => levels?.get(type) ?? 0;
-    const vault = level('VAULT');
     const orbit = orbitFromRows(satellitesByWorld.get(world.id) ?? [], level('CORE'));
     const boost = productionMult(orbit);
-    const alloy = alloyRate(level('REFINERY')) * boost;
-    const crystal = crystalRate(level('EXTRACTOR')) * boost;
-    const deuterium = deuteriumRate(level('DEUTERIUM_PLANT')) * boost;
-    capacity += storageCap(alloy, vault)
-      + storageCap(crystal, vault)
-      + deuteriumStorageCap(deuterium, crystal, vault);
+    total.alloy += alloyRate(level('REFINERY')) * boost;
+    total.crystal += crystalRate(level('EXTRACTOR')) * boost;
+    total.deuterium += deuteriumRate(level('DEUTERIUM_PLANT')) * boost;
   }
-  return capacity;
+  return total;
 }
 
 /**
@@ -197,36 +195,41 @@ async function isServerCommander(db: Queryable, playerId: string): Promise<boole
  * that takes that row — see `assertAttackProtections` for the one thing that
  * deliberately does not, and why.
  *
- * THE FIGURES COME FROM THE CALLER, not from a second reading of the world. The
- * battle has already debited the stores, so anything measured here would be
- * measured after the fact; `raidableBefore` and `lootLost` are handed in from the
- * same snapshot the debit used, and `earnsRecoveryShield` is the only judge.
+ * THE LOSS COMES FROM THE CALLER, not from a second reading of the world. The
+ * battle has already debited the stores and cleared the dead hulls, so anything
+ * measured here would be measured after the fact. Only the PRODUCTION is read
+ * here, because that is a fact about the commander rather than about the battle.
+ *
+ * IT RETURNS THE HOURS AS WELL AS THE WINDOW, so the battle report can record what
+ * the decision was made on. The figure cannot be recomputed later: the production
+ * rate at the instant of the fight is not stored anywhere else.
  */
 export async function grantRecoveryShield(
   tx: Tx,
   input: {
     playerId: string;
-    raidableBefore: number;
-    lootLost: number;
+    lootLost: Resources;
+    fleetLost: Resources;
     now: Date;
   },
-): Promise<Date | null> {
-  if (!recoveryShieldEnabled()) return null;
+): Promise<{ until: Date | null; hours: number }> {
+  if (!recoveryShieldEnabled()) return { until: null, hours: 0 };
   /*
-    THE FREE HALF OF THE RULE FIRST. This runs on every resolved PvP arrival in the
-    galaxy, and most of them are REPELLED raids that took nothing — asking the
-    database what a commander can store before asking whether they lost half of
-    anything would be three queries per battle to reach the same `false`.
+    NOTHING LOST, NOTHING TO ASK THE DATABASE. This runs on every resolved PvP
+    arrival in the galaxy and most of them are REPELLED raids that took nothing;
+    reading three tables to divide zero by something is work the worker should not
+    do on every mission that lands.
   */
-  if (!recoveryShieldRelativeLoss(input.raidableBefore, input.lootLost)) return null;
-  if (!earnsRecoveryShield({
-    raidableBefore: input.raidableBefore,
-    lootLost: input.lootLost,
-    storageCapacity: await commanderStorageCapacity(tx, input.playerId),
-  })) {
-    return null;
+  if (resourceValue(input.lootLost) + resourceValue(input.fleetLost) <= 0) {
+    return { until: null, hours: 0 };
   }
-  return forceRecoveryShield(tx, { playerId: input.playerId, now: input.now });
+  const production = await commanderProductionRate(tx, input.playerId);
+  const hours = recoveryLossHours(input.lootLost, input.fleetLost, production);
+  if (!earnsRecoveryShield({ lootLost: input.lootLost, fleetLost: input.fleetLost, production })) {
+    return { until: null, hours };
+  }
+  const until = await forceRecoveryShield(tx, { playerId: input.playerId, now: input.now });
+  return { until, hours };
 }
 
 /**

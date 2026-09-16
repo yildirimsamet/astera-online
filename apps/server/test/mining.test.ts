@@ -14,7 +14,10 @@ import {
   prospectorHold,
   prospectorReturnSpeed,
   prospectorSpeed,
+  surfaceStandoff,
   travelExact,
+  visualLeg,
+  worldRadius,
   type AsteroidSpec,
 } from '@astera/rules';
 import {
@@ -24,15 +27,19 @@ import {
   miningRuns,
   notifications,
   planets,
+  seasons,
   scheduledEvents,
   satellites,
   units,
 } from '../src/db/schema.js';
 import {
-  launchHarvest, launchMining, prospectorsRestingUntil, resolveMiningArrival, visibleAsteroids,
+  launchHarvest, launchMining, prospectorsRestingUntil, recallMining,
+  resolveMiningArrival, visibleAsteroids,
 } from '../src/services/mining.js';
 import { buildUnits } from '../src/services/build.js';
+import { transferPlanetControl } from '../src/services/ownership.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { abandon, strandedFlightCount } from '../src/worker/abandon.js';
 import {
   giveResearch,
   giveUnits,
@@ -453,14 +460,332 @@ describe('mining', () => {
     });
   });
 
+  describe('an outbound Prospector recall', () => {
+    it('belongs to the current controller when its launch world changes hands', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      await f.db.transaction((tx) => transferPlanetControl(tx, {
+        targetPlanetId: mine,
+        newPlayerId: f.playerIds[1]!,
+        expectedControllerPlayerId: f.playerIds[0]!,
+        now: f.clock.now(),
+        protectedUntil: f.clock.now(),
+      }));
+
+      await expect(recallMining(f.db, launched.runId, f.clock, f.playerIds[1]!))
+        .resolves.toMatchObject({ runId: launched.runId });
+      await expect(recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!))
+        .rejects.toMatchObject({ code: 'MINING_RUN_NOT_FOUND', status: 404 });
+    });
+
+    it('merges a failed recalled return after a concurrent home-garrison update', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 2 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      const recalled = await recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+      f.clock.set(recalled.homeAt);
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return'),
+      ));
+      let announceLocked!: () => void;
+      const locked = new Promise<void>((resolve) => { announceLocked = resolve; });
+      let releasePlanet!: () => void;
+      const released = new Promise<void>((resolve) => { releasePlanet = resolve; });
+      const concurrent = f.db.transaction(async (tx) => {
+        await tx.select().from(planets).where(eq(planets.id, mine)).for('update');
+        announceLocked();
+        await released;
+        await tx.update(units).set({ count: 4 }).where(and(
+          eq(units.planetId, mine), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+        ));
+      });
+      await locked;
+      const landing = abandon(f.db, event!, f.clock);
+      const outcomes = Promise.allSettled([concurrent, landing]);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      releasePlanet();
+      expect((await outcomes).map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+      const [home] = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+      ));
+      expect(home?.count).toBe(5);
+    });
+
+    it('does not mutate an outbound flight in a frozen season', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      await f.db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, f.seasonId));
+      await expect(recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!))
+        .rejects.toMatchObject({ code: 'SEASON_FROZEN', status: 409 });
+      const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(run).toMatchObject({ status: 'outbound', recalledAt: null, homeAt: null });
+    });
+
+    it('does not let an obsolete arrival failure teleport the recalled craft home', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      const [arrival] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.refId, launched.runId),
+        eq(scheduledEvents.kind, 'mining_arrival'),
+      ));
+      f.clock.set(new Date(f.clock.now().getTime()
+        + (launched.arriveAt.getTime() - f.clock.now().getTime()) / 3));
+      const recalled = await recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+
+      expect(await abandon(f.db, arrival!, f.clock)).toBe(false);
+      const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(run).toMatchObject({ status: 'returning', homeAt: recalled.homeAt });
+      const [home] = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+      ));
+      expect(home?.count ?? 0).toBe(0);
+      f.clock.set(recalled.homeAt);
+      await worker(f).tick();
+      expect(await f.db.select().from(asteroidClaims)).toEqual([]);
+      const [landed] = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+      ));
+      expect(landed?.count).toBe(1);
+    });
+
+    it('a stale outbound event cannot hide a recalled run whose return event is missing', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      const recalled = await recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+      await f.db.delete(scheduledEvents).where(and(
+        eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return'),
+      ));
+      f.clock.set(new Date(recalled.homeAt.getTime() + 6 * 60_000));
+      expect(await strandedFlightCount(f.db, f.clock.now())).toBe(1);
+    });
+
+    it('rechecks target contact after waiting for the origin planet lock', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      let announceLocked!: () => void;
+      const locked = new Promise<void>((resolve) => { announceLocked = resolve; });
+      let releasePlanet!: () => void;
+      const released = new Promise<void>((resolve) => { releasePlanet = resolve; });
+      const blocking = f.db.transaction(async (tx) => {
+        await tx.select().from(planets).where(eq(planets.id, mine)).for('update');
+        announceLocked();
+        await released;
+      });
+      await locked;
+      const recalling = recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+      const outcome = Promise.allSettled([recalling]);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      f.clock.set(launched.arriveAt);
+      releasePlanet();
+      await blocking;
+      const [result] = await outcome;
+      expect(result.status).toBe('rejected');
+      if (result.status === 'rejected') {
+        expect(result.reason).toMatchObject({ code: 'MINING_ALREADY_ARRIVED', status: 409 });
+      }
+      const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(run).toMatchObject({ status: 'outbound', recalledAt: null, homeAt: null });
+    });
+
+    it('takes the season lock before the flight row and does not deadlock season administration', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      let announceLocked!: () => void;
+      const locked = new Promise<void>((resolve) => { announceLocked = resolve; });
+      let continueSeason!: () => void;
+      const continued = new Promise<void>((resolve) => { continueSeason = resolve; });
+      const administrative = f.db.transaction(async (tx) => {
+        await tx.select().from(seasons).where(eq(seasons.id, f.seasonId)).for('update');
+        announceLocked();
+        await continued;
+        await tx.select().from(miningRuns).where(eq(miningRuns.id, launched.runId)).for('update');
+      });
+      await locked;
+      const recalling = recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!);
+      const outcomes = Promise.allSettled([administrative, recalling]);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      continueSeason();
+      expect((await outcomes).map((outcome) => outcome.status)).toEqual(['fulfilled', 'fulfilled']);
+    });
+
+    it('serializes duplicate recalls without creating two return jobs or two craft', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      const outcomes = await Promise.allSettled([
+        recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!),
+        recallMining(f.db, launched.runId, f.clock, f.playerIds[0]!),
+      ]);
+      expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+      const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+      if (rejected?.status === 'rejected') {
+        expect(rejected.reason).toMatchObject({ code: 'MINING_ALREADY_ARRIVED' });
+      }
+      const returns = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return'),
+      ));
+      expect(returns).toHaveLength(1);
+      f.clock.set(returns[0]!.resolveAt);
+      await worker(f).tick();
+      const [landed] = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+      ));
+      expect(landed?.count).toBe(1);
+    });
+
+    it('turns at its current position, flies home, and never claims the asteroid', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const rock = waitForRock();
+      const launched = await launchMining(f.db, mine, rock.index, 1, f.clock);
+      const originalArrival = launched.arriveAt;
+      const departedAt = f.clock.now();
+      const recallAt = new Date(
+        departedAt.getTime() + (originalArrival.getTime() - departedAt.getTime()) / 3,
+      );
+      f.clock.set(recallAt);
+
+      const recalled = await recallMining(
+        f.db,
+        launched.runId,
+        f.clock,
+        f.playerIds[0]!,
+      );
+      const [home] = await f.db.select().from(planets).where(eq(planets.id, mine));
+      const [turning] = await f.db
+        .select()
+        .from(miningRuns)
+        .where(eq(miningRuns.id, launched.runId));
+      const progress = (recallAt.getTime() - departedAt.getTime())
+        / (originalArrival.getTime() - departedAt.getTime());
+      const outbound = visualLeg(
+        home!,
+        launched.intercept,
+        surfaceStandoff(worldRadius(10)),
+        0,
+      );
+
+      expect(turning).toMatchObject({
+        status: 'returning',
+        recalledAt: recallAt,
+        arriveAt: recallAt,
+      });
+      expect(turning!.interceptX).toBeCloseTo(
+        outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+        2,
+      );
+      expect(turning!.interceptY).toBeCloseTo(
+        outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+        2,
+      );
+      expect(turning!.interceptZ).toBeCloseTo(
+        outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+        2,
+      );
+      const turn = {
+        x: turning!.interceptX,
+        y: turning!.interceptY,
+        z: turning!.interceptZ,
+      };
+      const expectedHomeAt = recallAt.getTime()
+        + travelExact(distance(turn, outbound.from), prospectorReturnSpeed([], false)) * 60_000;
+      expect(Math.abs(recalled.homeAt.getTime() - expectedHomeAt)).toBeLessThanOrEqual(1);
+
+      const stillAway = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine),
+        eq(units.hull, 'PROSPECTOR'),
+      ));
+      expect(stillAway.find((row) => row.location === 'home')?.count ?? 0).toBe(0);
+
+      // Both the obsolete arrival job and the new return job are now due. The
+      // obsolete one must not win ore merely because the worker sees it later.
+      f.clock.set(new Date(Math.max(originalArrival.getTime(), recalled.homeAt.getTime())));
+      await worker(f).tick();
+      expect(await f.db.select().from(asteroidClaims)).toEqual([]);
+      const [done] = await f.db
+        .select()
+        .from(miningRuns)
+        .where(eq(miningRuns.id, launched.runId));
+      expect(done!.status).toBe('done');
+      const landed = await f.db.select().from(units).where(and(
+        eq(units.planetId, mine),
+        eq(units.hull, 'PROSPECTOR'),
+        eq(units.location, 'home'),
+      ));
+      expect(landed[0]!.count).toBe(1);
+      const [news] = await f.db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.refId, launched.runId));
+      expect(news?.payload).toMatchObject({ trip: 'mining_recalled', craft: 1 });
+    });
+
+    it('cannot be recalled at the target instant, even if its worker is late', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+      f.clock.set(launched.arriveAt);
+
+      await expect(recallMining(
+        f.db,
+        launched.runId,
+        f.clock,
+        f.playerIds[0]!,
+      )).rejects.toMatchObject({ code: 'MINING_ALREADY_ARRIVED', status: 409 });
+    });
+
+    it('cannot be recalled after it has mined or by another commander', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const launched = await launchMining(f.db, mine, waitForRock().index, 1, f.clock);
+
+      await expect(recallMining(
+        f.db,
+        launched.runId,
+        f.clock,
+        f.playerIds[1]!,
+      )).rejects.toMatchObject({ code: 'MINING_RUN_NOT_FOUND', status: 404 });
+
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      await expect(recallMining(
+        f.db,
+        launched.runId,
+        f.clock,
+        f.playerIds[0]!,
+      )).rejects.toMatchObject({ code: 'MINING_ALREADY_ARRIVED', status: 409 });
+    });
+
+    it('can recall a debris run without taking wreckage or earning a short-run rest', async () => {
+      await giveUnits(f.db, mine, { PROSPECTOR: 1 });
+      const field = await giveDebris(f.db, f.seasonId, other, {
+        alloy: 10_000,
+        crystal: 0,
+        createdAt: f.clock.now(),
+      });
+      const launched = await launchHarvest(f.db, mine, field.id, 1, f.clock);
+      f.clock.set(new Date(
+        f.clock.now().getTime()
+          + (launched.arriveAt.getTime() - f.clock.now().getTime()) / 2,
+      ));
+      const recalled = await recallMining(
+        f.db,
+        launched.runId,
+        f.clock,
+        f.playerIds[0]!,
+      );
+
+      f.clock.set(new Date(Math.max(launched.arriveAt.getTime(), recalled.homeAt.getTime())));
+      await worker(f).tick();
+      const [wreck] = await f.db.select().from(debrisFields).where(eq(debrisFields.id, field.id));
+      expect(wreck).toMatchObject({ takenAlloy: 0, takenCrystal: 0, takenDeuterium: 0 });
+      expect(await prospectorsRestingUntil(f.db, mine, f.clock.now())).toBeNull();
+    });
+  });
+
   /* ── the race ─────────────────────────────────────────────── */
 
   describe('the race for a rock', () => {
     /**
      * SOMEBODY ELSE FINISHED THE ROCK WHILE THE DRILL WAS IN THE AIR.
      *
-     * The craft cannot be recalled and does not turn early — a launched flight is
-     * committed (D40), so it flies the whole outbound leg, finds an empty rock and
+     * The craft was not recalled before contact and does not turn early now, so it
+     * flies the whole outbound leg, finds an empty rock and
      * flies home. THE PART THAT MUST NEVER REGRESS is that it comes home at all: a
      * craft can never disappear, and this lane has no fight to lose it in.
      *

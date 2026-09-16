@@ -66,9 +66,10 @@ export const satelliteSlots = (coreLevel: number): number =>
 /**
  * HOW MANY CRAFT A PLANET MAY HAVE IN THE AIR AT ONCE. D28.
  *
- * Every craft that leaves — an attack, a probe, a mining run — holds one slot for
- * the WHOLE ROUND TRIP, and gives it back when it lands. One mining run is one
- * slot however many Prospectors are in it: a squadron is a decision, not five.
+ * Every fleet or mining squadron that leaves holds one slot for the WHOLE ROUND
+ * TRIP and gives it back when it lands. Explorer probes are the explicit
+ * exception: their paid launches are paced per target and never occupy these bays.
+ * One mining run is one slot however many Prospectors are in it.
  *
  * THIS IS THE UNIT OF PACING, and it replaces nothing that was working. D4 ruled
  * out build timers, correctly, and then nothing took over the job of occupying
@@ -77,9 +78,8 @@ export const satelliteSlots = (coreLevel: number): number =>
  * hook: a dark bay on your own dashboard says *you have not finished your turn*
  * without a notification, a streak or a bonus.
  *
- * IT REMOVES MORE RULES THAN IT ADDS. `PROBE.maxInFlight` was a special case for
- * one craft type; this is the general form of it, and the general form also closes
- * the mining exploit — unlimited concurrent runs — without a second special case.
+ * Mining still uses the general bay rule, closing unlimited concurrent runs
+ * without a one-run-per-target special case.
  *
  * BASE THREE, NOT TWO. Owner decision, and the conservative one: three is exactly
  * today's probe cap, so nothing a player can do now becomes impossible. It means
@@ -129,21 +129,30 @@ export const fleetSpeedMult = (orbit: SatelliteSet): number =>
   hasSatellite(orbit, 'BEACON') ? SATELLITES.BEACON.speed : 1;
 
 /**
+ * THE OPENING LIFT ON ALLOY, AND IT ENDS BY DECAYING. See `ECONOMY_ADJUSTMENT`.
+ *
+ * Flat across the opening, then a straight line back to 1.00 at
+ * `alloyLiftEndLevel` — the version with an EDGE at L9 made the next upgrade a
+ * downgrade, which is the one thing a ladder may never do.
+ */
+const alloyLift = (level: number): number => {
+  const { earlyAlloyOutputMultiplier: lift, earlyAlloyMaxLevel: flat, alloyLiftEndLevel: end }
+    = ECONOMY_ADJUSTMENT;
+  if (level < 1) return 1;
+  if (level <= flat) return lift;
+  if (level >= end) return 1;
+  return 1 + (lift - 1) * (end - level) / (end - flat);
+};
+
+/**
  * `base × L × growth^L` per hour. See `ECON.alloyBase` for why the linear factor
  * is there: it is what makes L1 → L2 a doubling and L17 → L18 a sixteenth.
  *
  * Level 0 produces nothing, which is correct — a planet is created with the
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
-export const alloyRate = (level: number): number => {
-  const alloyMultiplier = level >= 1 && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
-    ? ECONOMY_ADJUSTMENT.earlyAlloyOutputMultiplier
-    : level > ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel
-        && level <= ECONOMY_ADJUSTMENT.midAlloyMaxLevel
-      ? ECONOMY_ADJUSTMENT.midAlloyOutputMultiplier
-      : 1;
-  return profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * alloyMultiplier;
-};
+export const alloyRate = (level: number): number =>
+  profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * alloyLift(level);
 
 export const crystalRate = (level: number): number =>
   profileIncome(level).crystal * ECONOMY_ADJUSTMENT.producerOutput;

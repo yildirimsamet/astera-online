@@ -216,6 +216,15 @@ export const focus = {
     capitalProtected: "Uncapturable capital",
     capitalProtectedHint:
       "A Death Star halves its stores and takes a level off its Core. It destroys no craft and control never changes.",
+    /**
+     * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
+     *
+     * `capitalProtectedHint` above is the flag-ON sentence and stays exactly as
+     * written for the day it flips back. This is the same slot said in the rules
+     * a commander can currently reach: a raid, loot, and a world that never moves.
+     */
+    capitalRaidOnlyHint:
+      "A raid takes resources and nothing else. A capital never changes hands, whatever lands on it.",
     capitalRecovering: "Capital devastated · uncapturable",
     capitalRecoveringHint:
       "You may strike again: half of what is LEFT goes and the recovery restarts; control still cannot change.",

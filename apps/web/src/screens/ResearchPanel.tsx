@@ -97,6 +97,23 @@ const GROUPED = [
   projects: readonly ResearchProjectId[];
 }[];
 
+/**
+ * THE THREE ROWS THAT BELONG TO THE WEAPON, AND ONE PLACE THAT SAYS SO.
+ *
+ * `STRATEGIC_CRAFTING_ENABLED` hides them with `display: none` rather than
+ * dropping them from the tree, so a row keeps its id, its sheet and its place in
+ * every test that names it — the flag is a release switch, not a deletion.
+ *
+ * BUT A BAND'S COUNTER READ `projects.length`, and Frontier carries four rows
+ * with one of them hidden: the closed header promised four and opened onto three.
+ * A count is the only thing a closed band says about itself, so both the header
+ * and the rows have to ask the same question — which is why this is a function
+ * and not two copies of the same three ids.
+ */
+const strategicOnly = (id: ResearchProjectId): boolean =>
+  !FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
+  && (id === 'DEATH_STAR_PROTOCOL' || id === 'INTERCEPTION_GRID' || id === 'STRATEGIC_STOCKPILE');
+
 interface SheetSpec {
   id: ResearchProjectId;
   name: string;
@@ -508,12 +525,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         key={id}
         id={`row-${id}`}
         data-focused={focused === id ? 'true' : undefined}
-        className={!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
-          && (id === 'DEATH_STAR_PROTOCOL'
-            || id === 'INTERCEPTION_GRID'
-            || id === 'STRATEGIC_STOCKPILE')
-          ? 'hidden'
-          : undefined}
+        className={strategicOnly(id) ? 'hidden' : undefined}
       >
         <UpgradeRow
           art={RESEARCH_ART[id]}
@@ -620,7 +632,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           <Band
             label={t(group.label)}
             {...(bands.isOpen(group.id) ? { note: t(group.note) } : {})}
-            count={group.projects.length}
+            count={group.projects.filter((id) => !strategicOnly(id)).length}
             open={bands.isOpen(group.id)}
             onToggle={() => { bands.toggle(group.id); }}
           />

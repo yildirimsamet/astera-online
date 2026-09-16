@@ -464,6 +464,19 @@ describe('notification copy', () => {
       ).toBe('Ore home · +812 alloy · +190 crystal');
     });
 
+    it('names an intentional Prospector recall without calling it an empty haul', () => {
+      expect(
+        say('fleet_returned', {
+          trip: 'mining_recalled',
+          craft: 2,
+          alloy: 0,
+          crystal: 0,
+          wastedAlloy: 0,
+          wastedCrystal: 0,
+        }),
+      ).toBe('2 Prospectors home · recall complete');
+    });
+
     /** D31's lesson, which had never once been displayed anywhere. */
     it('says what was thrown away because the works were full', () => {
       const line = say('fleet_returned', {

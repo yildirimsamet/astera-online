@@ -129,10 +129,8 @@ describe('D152 Ship Propulsion ladder', () => {
  * which is the direction that rule wants.
  *
  * AND IT IS STILL THE FASTEST THING IN THE GAME by a wide margin — a scout must
- * outrun anything that can be sent at you, or a warning is worth nothing — and the
- * hour that actually rations scouting (`retargetCooldownMinutes`) still outlasts the
- * widest round trip, which is the relationship that keeps two rules from disagreeing
- * about one control.
+ * outrun anything that can be sent at you, or a warning is worth nothing. Launch
+ * pacing is a separate five-second rule and no longer pretends to be flight time.
  */
 describe('D153 probe speed', () => {
   it('flies at exactly three quarters of what it flew before', () => {

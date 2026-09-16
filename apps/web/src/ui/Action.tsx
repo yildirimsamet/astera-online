@@ -296,6 +296,7 @@ export function StatStrip({
   room,
   salvage,
   size = 'row',
+  showLabels = false,
 }: {
   atk: number;
   hp: number;
@@ -324,18 +325,21 @@ export function StatStrip({
    */
   salvage?: number;
   size?: 'row' | 'card';
+  /** Launch decisions must not require memorising stat icons. */
+  showLabels?: boolean;
 }) {
   const big = size === 'card';
   const lifts = salvage !== undefined && salvage > 0;
 
   return (
-    <div className={`stats ${big ? 'stats-card' : ''}`}>
+    <div className={`stats ${big ? 'stats-card' : ''} ${showLabels ? '!grid grid-cols-2 !gap-2' : ''}`}>
       <Stat
         icon={<AttackIcon className={big ? 'size-5' : 'size-4'} />}
         tone="attack"
         label={i18n.t('action.statAttack')}
         value={atk}
         big={big}
+        showLabel={showLabels}
       />
       <Stat
         icon={<HullIcon className={big ? 'size-5' : 'size-4'} />}
@@ -343,6 +347,7 @@ export function StatStrip({
         label={i18n.t('action.statHull')}
         value={hp}
         big={big}
+        showLabel={showLabels}
       />
       <Stat
         icon={<SpeedIcon className={big ? 'size-5' : 'size-4'} />}
@@ -353,6 +358,7 @@ export function StatStrip({
         // is slow rather than fixed in place.
         text={speed === 0 ? i18n.t('action.statSpeedFixed') : undefined}
         big={big}
+        showLabel={showLabels}
       />
       {lifts ? (
         <Stat
@@ -361,6 +367,7 @@ export function StatStrip({
           label={i18n.t('action.statSalvage')}
           value={salvage}
           big={big}
+          showLabel={showLabels}
         />
       ) : (
         <Stat
@@ -370,6 +377,7 @@ export function StatStrip({
           value={cargo}
           text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
           big={big}
+          showLabel={showLabels}
         />
       )}
       {room !== undefined && (
@@ -379,6 +387,7 @@ export function StatStrip({
           label={i18n.t('action.statRoom')}
           value={room}
           big={big}
+          showLabel={showLabels}
         />
       )}
       <Stat
@@ -394,6 +403,7 @@ export function StatStrip({
             : i18n.t('action.statFuelRate', { value: decimal(fuel) })
         }
         big={big}
+        showLabel={showLabels}
       />
     </div>
   );
@@ -406,6 +416,7 @@ function Stat({
   value,
   text,
   big,
+  showLabel = false,
 }: {
   icon: ReactNode;
   tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'salvage' | 'fuel' | 'room';
@@ -413,13 +424,14 @@ function Stat({
   value: number;
   text?: string;
   big: boolean;
+  showLabel?: boolean;
 }) {
   return (
-    <div className={`stat stat-${tone}`}>
-      <span className="stat-icon">{icon}</span>
+    <div className={`stat stat-${tone}`} title={label} aria-label={`${label}: ${text ?? compact(value)}`}>
+      <span aria-hidden className="stat-icon">{icon}</span>
       <span className="stat-body">
-        {big && <span className="legend">{label}</span>}
-        <span className="stat-value">{text ?? compact(value)}</span>
+        {(big || showLabel) && <span className={big ? 'legend' : 'text-body text-dim'}>{label}</span>}
+        <span className={`stat-value ${showLabel ? '!text-title' : ''}`}>{text ?? compact(value)}</span>
       </span>
     </div>
   );

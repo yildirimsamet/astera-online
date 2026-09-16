@@ -21,6 +21,9 @@ import {
   alloyRate,
   crystalRate,
   distance,
+  surfaceStandoff,
+  visualLeg,
+  worldRadius,
   type AsteroidSpec,
   type SatelliteSet,
   type Vec3,
@@ -35,6 +38,7 @@ import {
   assertWorldOperational,
   GameError,
   loadLocked,
+  lockSeason,
   orbitOf,
   saveResources,
   setUnits,
@@ -229,6 +233,7 @@ export function projectPrivateMiningView(
       craft: run.craft,
       departAt: run.departAt,
       arriveAt: run.arriveAt,
+      recalledAt: run.recalledAt,
       homeAt: run.homeAt,
       intercept: { x: run.interceptX, y: run.interceptY, z: run.interceptZ },
       minedAlloy: Math.round(run.minedAlloy),
@@ -337,6 +342,17 @@ export interface MiningLaunch {
   /** Mission strip state, protected against an older read landing after this POST. */
   pending: PendingThread[];
   /** The selected world after the Prospectors and one flight bay have left it. */
+  planet: PlanetView;
+}
+
+export interface MiningRecall {
+  runId: string;
+  homeAt: Date;
+  /** Private run/hardware state after the turn was committed. */
+  mining: MiningStatusView;
+  /** Mission strip state from the same transaction as the turn. */
+  pending: PendingThread[];
+  /** The origin still has the craft and its bay committed until `homeAt`. */
   planet: PlanetView;
 }
 
@@ -463,6 +479,7 @@ export async function launchMining(
       .values({
         seasonId: origin.seasonId,
         planetId,
+        ownerPlayerId: origin.playerId,
         asteroidIndex,
         craft,
         holdEach,
@@ -512,6 +529,124 @@ export async function launchMining(
       flightMinutes: hit.flightMinutes,
       intercept: hit.at,
       capacity: holdEach * craft,
+      ...await launchViews(tx, origin, clock),
+    };
+  });
+}
+
+/**
+ * Turn an outbound Prospector squadron around before it reaches its target.
+ *
+ * The row lock is the arbitration point between this action and the arrival
+ * worker. Only an `outbound` row strictly before `arriveAt` can be recalled. Once
+ * this transition wins, the already-scheduled arrival becomes an idempotent no-op
+ * and therefore cannot claim asteroid ore or wreckage later.
+ */
+export async function recallMining(
+  db: Db,
+  runId: string,
+  clock: Clock,
+  expectedPlayerId: string,
+): Promise<MiningRecall> {
+  return db.transaction(async (tx) => {
+    // Recall follows current world control, just like the private mining roster.
+    // A capture transfers every Prospector unit to the new controller while the
+    // immutable run owner remains the launch/statistics actor. Joining the pad is
+    // therefore both the correct authority and a 404-shaped privacy boundary.
+    const [candidate] = await tx.select({ seasonId: miningRuns.seasonId })
+      .from(miningRuns)
+      .innerJoin(planets, eq(planets.id, miningRuns.planetId))
+      .where(and(
+        eq(miningRuns.id, runId),
+        eq(planets.controllerPlayerId, expectedPlayerId),
+      ));
+    if (!candidate) {
+      throw new GameError('MINING_RUN_NOT_FOUND', 'No such Prospector flight', 404);
+    }
+    // Match arrival workers and season administration: season → run → planet.
+    // The pre-read discovers the parent lock; only the locked row is authority.
+    await lockSeason(tx, candidate.seasonId);
+    const [run] = await tx
+      .select()
+      .from(miningRuns)
+      .where(eq(miningRuns.id, runId))
+      .for('update');
+    if (!run) {
+      throw new GameError('MINING_RUN_NOT_FOUND', 'No such Prospector flight', 404);
+    }
+
+    const origin = await loadLocked(tx, run.planetId, clock, { expectedPlayerId });
+    // A planet lock may have waited past contact. Decide using the clock AFTER
+    // that wait, not the moment the HTTP request first found the flight.
+    const now = origin.now;
+    if (run.status !== 'outbound' || now.getTime() >= run.arriveAt.getTime()) {
+      throw new GameError(
+        'MINING_ALREADY_ARRIVED',
+        'Prospectors cannot be recalled after reaching their target',
+        409,
+      );
+    }
+
+    const legMs = run.arriveAt.getTime() - run.departAt.getTime();
+    // A clock correction must not put the turn behind the pad. Zero-length legs
+    // are already rejected by the strict arrival check above.
+    const progress = legMs <= 0
+      ? 0
+      : Math.max(0, Math.min(1, (now.getTime() - run.departAt.getTime()) / legMs));
+    // Store the point the player is actually looking at. Mining craft are drawn
+    // from the world's surface, not its centre; interpolating the raw endpoints
+    // here would make a recalled craft jump by the remaining surface clearance
+    // on the exact frame it turned around.
+    const outbound = visualLeg(
+      origin,
+      { x: run.interceptX, y: run.interceptY, z: run.interceptZ },
+      surfaceStandoff(worldRadius(origin.buildings.CORE)),
+      0,
+    );
+    const turn = {
+      x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+      y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+      z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+    };
+    const returnMinutes = travelExact(
+      // Fly back to the same surface point the outbound marker left from. Using
+      // the world centre adds one planet radius to the clock while the rendered
+      // return leg stops at the surface, leaving an immediate recall visibly
+      // motionless for several seconds.
+      distance(turn, outbound.from),
+      prospectorReturnSpeed(origin.orbit, false),
+    );
+    const homeAt = addMinutes(now, returnMinutes);
+
+    // `arriveAt` is the start instant of every returning mining leg. Replacing the
+    // obsolete target contact with the turn instant lets every existing position,
+    // traffic and countdown projection draw the physical return without a second
+    // trajectory model. `recalledAt` preserves why that contact moved.
+    await tx
+      .update(miningRuns)
+      .set({
+        status: 'returning',
+        interceptX: turn.x,
+        interceptY: turn.y,
+        interceptZ: turn.z,
+        arriveAt: now,
+        recalledAt: now,
+        homeAt,
+      })
+      .where(eq(miningRuns.id, run.id));
+
+    await schedule(tx, {
+      seasonId: run.seasonId,
+      kind: 'mining_return',
+      refId: run.id,
+      resolveAt: homeAt,
+    });
+    await publishShard(tx, run.seasonId, 'mining');
+    await publish(tx, expectedPlayerId, 'private:mining');
+
+    return {
+      runId: run.id,
+      homeAt,
       ...await launchViews(tx, origin, clock),
     };
   });
@@ -662,8 +797,8 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
   /**
    * THE TRIP THAT ARRIVED AT NOTHING. D177, and the same fact as the pirate lane's.
    *
-   * A drill cannot be recalled and does not turn early — it flies the whole
-   * outbound leg — so the only question is WHEN the commander finds out that
+   * A drill that reaches this handler has crossed the no-recall boundary and flies
+   * the whole remaining trip home, so the only question is WHEN the commander finds out that
    * somebody emptied the rock, or that the rock is no longer in the disc at all.
    * It used to be when the craft landed, one full return leg after the answer
    * existed, in a haul row that said "empty-handed" without saying why.
@@ -1001,6 +1136,9 @@ export async function prospectorCooldowns(
       eq(miningRuns.planetId, planetId),
       eq(miningRuns.status, 'done'),
       isNotNull(miningRuns.debrisFieldId),
+      // A recalled squadron never reached the debris field, so its shortened
+      // outbound span cannot earn the landing rest this query derives.
+      sql`${miningRuns.recalledAt} is null`,
       /*
         ONLY A LANDING INSIDE THE WINDOW CAN SET A REST, and saying so here is what
         keeps this cheap. This function runs on every launch AND on every read of
@@ -1161,6 +1299,7 @@ export async function launchHarvest(
       .values({
         seasonId: origin.seasonId,
         planetId,
+        ownerPlayerId: origin.playerId,
         targetKind: 'debris',
         debrisFieldId: fieldId,
         craft,

@@ -423,7 +423,7 @@ export const action = {
   shortfallJoin: " and ",
   shortfallLabel: "Short — needs {{parts}}",
   statAttack: "Attack",
-  statHull: "Hull",
+  statHull: "Durability",
   statSpeed: "Speed",
   statSpeedFixed: "fixed",
   statCargo: "Cargo",
@@ -451,7 +451,6 @@ export const planetHero = {
   tier: "Tier {{tier}}",
   /** The one force unit, on the one world the commander knows exactly. D199. */
   firepower: "Firepower",
-  perHour: "Per hour",
   perHourSuffix: "/h",
   disrupted: "Production stopped · raided · {{countdown}}",
   defence: "Defence",
@@ -530,6 +529,7 @@ export const launch = {
   distance: "Distance",
   fleetHeading: "Fleet",
   atHome: "{{count}} home",
+  perShipStats: "Per ship · includes your research",
   away: "{{fleet}} away on a flight. Only ships standing on this world can be sent.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -585,8 +585,6 @@ export const transfer = {
   hullPacked: "{{packed}} of {{held}} {{name}} packed",
   /** Caption on a cargo slider's spend bar: what this transfer takes. */
   cargoSending: "Sending",
-  destinationProspectorFull:
-    "The destination cannot accept another Prospector.",
 } as const;
 
 /**

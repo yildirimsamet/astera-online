@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "season_reward_entitlements_source_cycle_account_idx" ON "season_reward_entitlements" USING btree ("source_cycle_id","account_id");

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { adsensePlugin } from './src/lib/adsense.js';
 
 /**
  * Everything is served same-origin in dev, through this proxy.
@@ -21,7 +22,7 @@ const apiProxy = {
 };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), adsensePlugin()],
   /**
    * ONE THREE, STATED RATHER THAN HOPED FOR.
    *

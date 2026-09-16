@@ -25,6 +25,7 @@ import type {
   Contact,
   MiningFieldView,
   MiningLaunchResult,
+  MiningRecallResult,
   MiningRun,
   MiningStatusView,
   MiningView,
@@ -495,6 +496,42 @@ export function useLeaderboard(enabled = true) {
     queryFn: api.leaderboard,
     staleTime: 60_000,
     enabled,
+  });
+}
+
+export function useSeasonArchive(enabled = true) {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.seasonArchive,
+    queryFn: ({ pageParam }) => api.seasonArchive(pageParam),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    staleTime: 5 * 60_000,
+    enabled,
+  });
+}
+
+export function useArchivedLeaderboard(seasonId: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: seasonId === null ? ['season-archive', 'leaderboard', 'none'] : keys.archivedLeaderboard(seasonId),
+    queryFn: () => api.archivedLeaderboard(seasonId ?? ''),
+    // Frozen gameplay is immutable, but account deletion can remove old identity.
+    // A bounded cache plus focus refetch prevents a deleted name living forever.
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    enabled: seasonId !== null,
+  });
+}
+
+export function useSeasonCommanderProfile(resultId: string | null) {
+  const api = useApi();
+  return useQuery({
+    queryKey: resultId === null ? ['season-archive', 'profile', 'none'] : keys.seasonCommanderProfile(resultId),
+    queryFn: () => api.seasonCommanderProfile(resultId ?? ''),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    enabled: resultId !== null,
   });
 }
 
@@ -1177,19 +1214,20 @@ function useInvalidator() {
 function useApplyPlanet() {
   const client = useQueryClient();
   const { activePlanetId } = useWorld();
-  return async (planet: PlanetView) => {
+  return async (planet: PlanetView, allowCapitalAlias = true) => {
     const id = planet.planet.id;
     const explicitKey = keys.planetById(id);
+    const seedAlias = activePlanetId === null && allowCapitalAlias;
     await Promise.all([
       client.cancelQueries({ queryKey: explicitKey }),
-      ...(activePlanetId === null
+      ...(seedAlias
         ? [client.cancelQueries({ queryKey: keys.planet })]
         : []),
     ]);
     client.setQueryData(explicitKey, planet);
     // The legacy capital alias exists only when no WorldProvider selected an id.
     // A capital-only mutation (rewards) must never overwrite a selected colony.
-    if (activePlanetId === null) client.setQueryData(keys.planet, planet);
+    if (seedAlias) client.setQueryData(keys.planet, planet);
     client.setQueryData(keys.planets, (current: PlanetsView | undefined) =>
       current
         ? { ...current, planets: current.planets.map((world) => world.planet.id === id ? planet : world) }
@@ -1269,6 +1307,24 @@ function usePlanetMutationLane(planetId: string | null) {
     enter: () => enterMutationTurn(client, id),
     leave: (turn: MutationTurn | undefined): void => { turn?.release(); },
   };
+}
+
+/** Mining POSTs replace one commander-wide roster, even from different worlds. */
+async function enterMiningTurn(client: QueryClient, planetLaneId: string): Promise<MutationTurn> {
+  const roster = await enterMutationTurn(client, 'mining:commander');
+  try {
+    const world = await enterMutationTurn(client, planetLaneId);
+    return { release: () => { world.release(); roster.release(); } };
+  } catch (error) {
+    roster.release();
+    throw error;
+  }
+}
+
+function useMiningMutationLane(planetId: string | null) {
+  const client = useQueryClient();
+  const lane = usePlanetMutationLane(planetId);
+  return { ...lane, enter: () => enterMiningTurn(client, lane.scope.id) };
 }
 
 function useOptimisticPlanet() {
@@ -1548,14 +1604,19 @@ export function useCollect() {
  * when it is the surface this tree is using. Each older GET is cancelled before
  * the POST answer is written, or a pre-launch run list can erase the new craft.
  */
-function useApplyMiningLaunch(activePlanetId: string | null) {
+function useApplyMiningResult(activePlanetId: string | null) {
   const client = useQueryClient();
   const applyPlanet = useApplyPlanet();
-  return async (result: MiningLaunchResult) => {
+  return async (result: MiningLaunchResult | MiningRecallResult) => {
     const planetId = result.planet.planet.id;
     const statusKey = keys.miningStatusById(planetId);
+    const capitalId = client.getQueryData<PlanetsView>(keys.planets)?.capitalPlanetId
+      ?? client.getQueryData<PlanetView>(keys.planet)?.planet.id;
+    // A recall can originate at another colony even on the legacy capital-only
+    // surface. Only the roster is commander-wide; hardware and stock are not.
+    const seedAlias = activePlanetId === null && (!capitalId || capitalId === planetId);
     await Promise.all([
-      applyPlanet(result.planet),
+      applyPlanet(result.planet, seedAlias),
       // Every per-world status carries the commander's complete run roster. An
       // older read for any selected colony must not erase this launch later.
       client.cancelQueries({ queryKey: keys.miningStatus }),
@@ -1568,7 +1629,7 @@ function useApplyMiningLaunch(activePlanetId: string | null) {
         : current,
     );
     client.setQueryData(statusKey, result.mining);
-    if (activePlanetId === null) client.setQueryData(keys.miningStatus, result.mining);
+    if (seedAlias) client.setQueryData(keys.miningStatus, result.mining);
     client.setQueryData(keys.pending, { pending: result.pending });
   };
 }
@@ -1734,8 +1795,8 @@ export function useLaunchIntergalacticConvoy(originPlanetId: string) {
 export function useMine() {
   const api = useApi();
   const { activePlanetId } = useWorld();
-  const apply = useApplyMiningLaunch(activePlanetId);
-  const lane = usePlanetMutationLane(activePlanetId);
+  const apply = useApplyMiningResult(activePlanetId);
+  const lane = useMiningMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
     mutationFn: ({ asteroidId, craft }: { asteroidId: string; craft: number }) =>
@@ -1750,8 +1811,8 @@ export function useMine() {
 export function useHarvest() {
   const api = useApi();
   const { activePlanetId } = useWorld();
-  const apply = useApplyMiningLaunch(activePlanetId);
-  const lane = usePlanetMutationLane(activePlanetId);
+  const apply = useApplyMiningResult(activePlanetId);
+  const lane = useMiningMutationLane(activePlanetId);
   return useMutation({
     scope: lane.scope,
     mutationFn: ({ fieldId, craft }: { fieldId: string; craft: number }) =>
@@ -1759,6 +1820,39 @@ export function useHarvest() {
     onMutate: lane.enter,
     onSuccess: apply,
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
+  });
+}
+
+/** Turn only an outbound Prospector run around and apply its physical return leg. */
+export function useRecallMining() {
+  const api = useApi();
+  const { activePlanetId } = useWorld();
+  const apply = useApplyMiningResult(activePlanetId);
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ runId }: { runId: string; originPlanetId?: string }) =>
+      api.recallMining(runId),
+    onMutate: async ({ originPlanetId }) => {
+      const originId = originPlanetId ?? activePlanetId;
+      const capitalId = client.getQueryData<PlanetsView>(keys.planets)?.capitalPlanetId
+        ?? client.getQueryData<PlanetView>(keys.planet)?.planet.id;
+      const legacyCapital = activePlanetId === null && (!originId || originId === capitalId);
+      const turn = await enterMiningTurn(
+        client, `planet:${legacyCapital ? 'capital' : originId ?? 'capital'}`,
+      );
+      try {
+        await Promise.all([
+          client.cancelQueries({ queryKey: keys.miningStatus }),
+          client.cancelQueries({ queryKey: keys.pending }),
+        ]);
+        return turn;
+      } catch (error) {
+        turn.release();
+        throw error;
+      }
+    },
+    onSuccess: apply,
+    onSettled: (_data, _error, _vars, turn) => { turn?.release(); },
   });
 }
 

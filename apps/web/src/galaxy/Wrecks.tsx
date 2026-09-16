@@ -8,6 +8,7 @@ import { MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 
 /**
  * WRECKAGE ON THE DISC. D32.
@@ -305,7 +306,7 @@ function Wreck({
       */}
       <mesh onPointerUp={pick} rotation={[Math.PI / 2, 0, 0]} frustumCulled={false} renderOrder={-1}>
         <torusGeometry args={[ringRadius, tube, 6, 24]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        <HitboxMaterial kind="wreck" />
       </mesh>
     </group>
   );

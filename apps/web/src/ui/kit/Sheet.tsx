@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAcademyLesson } from '../../onboarding/lessonScope.js';
 import { IconButton } from './Button.js';
 import { useOwnPress } from './useOwnPress.js';
-import { CloseIcon } from '../icons/index.js';
+import { ArrowIcon, CloseIcon } from '../icons/index.js';
 
 /**
  * SHEET — the surface a decision is made on.
@@ -42,14 +42,32 @@ export function Sheet({
   title,
   eyebrow,
   onClose,
+  onBack,
   children,
   footer,
   contained = false,
   bleed = false,
+  reading = false,
 }: {
   title: string;
   eyebrow?: string;
   onClose: () => void;
+  /**
+   * WHERE THIS SHEET WAS OPENED FROM, when that is a surface rather than the
+   * galaxy. Owner report: *"yanlış bir buton'a tıklayınca geri dönme yok, direk
+   * kapatılıyor"*.
+   *
+   * The menu's destinations REPLACE the menu, so closing one dropped the reader
+   * onto the disc — the price of a mis-tap was the header control plus finding
+   * your place in the list again, which is the moment a player stops exploring a
+   * menu. `returnsToMenu` in `shell/panelRoute.ts` is the rule that decides which
+   * sheets get this; a sheet that opens itself never does, because a back arrow
+   * pointing at a surface the reader never came from is worse than none.
+   *
+   * IT IS NOT THE CLOSE. Both are drawn, at opposite ends of the head: back leads
+   * one step in, close leaves for the galaxy. Escape stays the close.
+   */
+  onBack?: () => void;
   children: ReactNode;
   footer?: ReactNode;
   /** Give the body a real height and let its child own scrolling. */
@@ -63,6 +81,8 @@ export function Sheet({
    * it is a note saying the padding was applied one level too high.
    */
   bleed?: boolean;
+  /** A bounded column for long-form reports; other decision sheets keep their layout. */
+  reading?: boolean;
 }) {
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
@@ -101,7 +121,7 @@ export function Sheet({
         data-sheet-panel
         className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] ${
           contained ? 'h-[88dvh]' : 'max-h-[88dvh]'
-        }`}
+        } ${reading ? 'mx-auto w-full max-w-3xl' : ''}`}
       >
         <header className="relative flex shrink-0 items-start gap-2 px-2 pb-3 pt-3">
           {/* The one bright seam on the sheet: a filament along the cut edge, so
@@ -110,9 +130,23 @@ export function Sheet({
             aria-hidden
             className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-crystal/70 via-crystal/15 to-transparent"
           />
+          {/*
+            THE ARROW LEADS THE TITLE. A back control placed after the name it
+            steps away from is a control nobody finds: every phone in the world
+            draws it at the top-left, before the thing it is about.
+          */}
+          {onBack === undefined ? null : (
+            <IconButton ariaLabel={t('sheet.back')} onClick={onBack} tone="ghost" size="sm">
+              <ArrowIcon className="size-4 rotate-180" />
+            </IconButton>
+          )}
           <div className="min-w-0 flex-1">
-            {eyebrow === undefined ? null : <p className="legend mb-1 truncate">{eyebrow}</p>}
-            <h2 className="headline text-balance text-figure">{title}</h2>
+            {eyebrow === undefined ? null : (
+              <p className={reading ? 'mb-1 break-words text-body text-dim' : 'legend mb-1 truncate'}>
+                {eyebrow}
+              </p>
+            )}
+            <h2 className={reading ? 'text-balance text-figure font-semibold text-bone' : 'headline text-balance text-figure'}>{title}</h2>
           </div>
           {/*
             A GLYPH, NOT A WORD. The close used to be a full slab reading CLOSE,
@@ -120,7 +154,7 @@ export function Sheet({
             beside the title competing with it. Its accessible name is still the
             word, so a screen reader and the screenshot harness both still find it.
           */}
-          <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size="sm">
+          <IconButton ariaLabel={t('sheet.close')} onClick={onClose} tone="ghost" size={reading ? 'md' : 'sm'}>
             <CloseIcon className="size-4" />
           </IconButton>
         </header>

@@ -39,6 +39,7 @@ import {
   sensorEpochs,
   scanEvents,
   scheduledEvents,
+  seasonTelemetrySegments,
   seasons,
   strategicAssets,
   strategicImpacts,
@@ -225,14 +226,31 @@ export async function commanderRows(
       )
   ).map((r) => r.id);
 
+  /**
+   * AND THE DRILLS THIS SEAT SENT OUT, BY PAD **OR** BY COMMANDER. D150 · D156,
+   * and this lane joined them the day `mining_runs` learned who launched it.
+   *
+   * The season archive gave the table an `owner_player_id` so a run's output is
+   * attributed to whoever flew it rather than to whoever happens to own the pad at
+   * freeze — and that column is a foreign key to `players` with `ON DELETE no
+   * action`, exactly like the raid and convoy keys above. Gathering by pad alone
+   * therefore leaves the same landmine those two docblocks describe: a colony that
+   * changed hands after a drill came home keeps a row whose `planet_id` now belongs
+   * to somebody else and whose `owner_player_id` is the commander being reclaimed,
+   * so `delete(players)` violates the owner key and the seat can never be freed
+   * again. `units`, `pirate_raids`, `trade_runs` and `intergalactic_convoy_runs`
+   * all read both doors; this one now does too.
+   */
   const runIds = (
     await tx
       .select({ id: miningRuns.id })
       .from(miningRuns)
       .where(
-        fieldIds.length > 0
-          ? or(inArray(miningRuns.planetId, planetIds), inArray(miningRuns.debrisFieldId, fieldIds))
-          : inArray(miningRuns.planetId, planetIds),
+        or(
+          inArray(miningRuns.planetId, planetIds),
+          eq(miningRuns.ownerPlayerId, playerId),
+          ...(fieldIds.length > 0 ? [inArray(miningRuns.debrisFieldId, fieldIds)] : []),
+        ),
       )
   ).map((r) => r.id);
 
@@ -568,6 +586,26 @@ export async function demolish(
     failure mode is a galaxy that can never be reopened. The row above it is keyed
     on the planet and the one below is the commander themself; this belongs between.
   */
+  await tx.delete(seasonTelemetrySegments).where(eq(seasonTelemetrySegments.playerId, playerId));
+  /*
+    AND THE ACTOR NAME LEFT ON A WORLD THIS COMMANDER NO LONGER HOLDS.
+
+    `planets.stats_owner_player_id` is a season-stats memory, but it is a real
+    foreign key to `players` with `ON DELETE no action` — so a world that names
+    this commander and is NOT in `planetIds` (because somebody else controls it
+    now) makes `delete(players)` throw and the seat can never be freed again. That
+    is the `sensor_epochs` failure one screen up, on a column added the day the
+    season archive landed.
+
+    The ordinary conquest path moves the actor with the controller, so the
+    divergence should not arise; `loadLocked` also repairs it on the next advance.
+    This is the third line of defence and it costs one statement, which is the
+    trade every key above this one was re-learned the hard way.
+  */
+  await tx
+    .update(planets)
+    .set({ statsOwnerPlayerId: null })
+    .where(eq(planets.statsOwnerPlayerId, playerId));
   await tx.delete(playerResearch).where(eq(playerResearch.playerId, playerId));
   /*
     THE RIVAL MARKS, BOTH DIRECTIONS, AND ONLY ONE OF THEM IS A CONSTRAINT. D183.

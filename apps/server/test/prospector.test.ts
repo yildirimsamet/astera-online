@@ -63,19 +63,7 @@ afterAll(async () => {
   await close();
 });
 
-/**
- * THE CAP IS A PROPERTY OF THE WORLD, NOT OF THE BUILD SCREEN. T1.
- *
- * `PROSPECTOR.max` was enforced at one of the four places a craft can arrive, so
- * a player could build two, fly them to a colony and build two more — repeated
- * once per world, and repeated again once the first pair had landed. The cap held
- * on paper and bought nothing.
- *
- * A Prospector cannot travel alone: `fleetSpeed` reads only `MOBILE_HULLS`, so a
- * lone mining craft quotes an infinite trip and is refused as immobile. Every
- * transfer here therefore flies with a warship escort, which is exactly the shape
- * the exploit had.
- */
+/** A Prospector belongs to its build world and leaves it only on a mining run. */
 describe('the Prospector cap', () => {
   let f: Fixture;
   let home: string;
@@ -118,10 +106,10 @@ describe('the Prospector cap', () => {
     });
   });
 
-  describe('arriving by transfer', () => {
-    it('delivers a squadron the destination can hold', async () => {
+  describe('planet-to-planet transfer', () => {
+    it('rejects a mixed fleet containing a Prospector before reserving craft', async () => {
       await giveUnits(f.db, home, { DART: 1, PROSPECTOR: 1 });
-      const launched = await launchTransfer(
+      await expect(launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
@@ -129,175 +117,28 @@ describe('the Prospector cap', () => {
         { DART: 1, PROSPECTOR: 1 },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
-      );
-      f.clock.set(launched.arriveAt);
-      await workerFor(f).tick();
+      )).rejects.toMatchObject({ code: 'PROSPECTOR_TRANSFER_FORBIDDEN', status: 400 });
 
-      expect(await prospectorsAt(f, colony)).toBe(1);
-      expect(await prospectorsAt(f, home)).toBe(0);
-    });
-
-    /**
-     * THE EXPLOIT, STATED AS A TEST.
-     *
-     * Two at home, two at the colony, and the second pair flown across is what
-     * made a world hold four. The refusal happens at launch so the player is
-     * never charged a flight for craft that could not land.
-     */
-    it('refuses a launch the destination could not hold', async () => {
-      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
-      await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max });
-
-      await expect(
-        launchTransfer(
-          f.db,
-          f.playerIds[0]!,
-          home,
-          colony,
-          { DART: 1, PROSPECTOR: 1 },
-          { alloy: 0, crystal: 0, deuterium: 0 },
-          f.clock,
-        ),
-      ).rejects.toMatchObject({
-        code: 'TARGET_PROSPECTOR_CAP',
-        params: { max: PROSPECTOR.max, have: PROSPECTOR.max },
-      });
-      expect(await prospectorsAt(f, home)).toBe(PROSPECTOR.max);
+      expect(await prospectorsAt(f, home)).toBe(1);
+      expect(await homeFleetAt(f, home)).toMatchObject({ DART: 1, PROSPECTOR: 1 });
       expect(await f.db.select().from(missions)).toHaveLength(0);
     });
 
-    /**
-     * A destination with ROOM FOR ONE and a squadron of two. A guard that only
-     * asks "is the target full?" passes this and still lands three craft.
-     */
-    it('adds the incoming craft to the destination before judging the room', async () => {
-      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
-      await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max - 1 });
-
-      await expect(
-        launchTransfer(
-          f.db,
-          f.playerIds[0]!,
-          home,
-          colony,
-          { DART: 1, PROSPECTOR: PROSPECTOR.max },
-          { alloy: 0, crystal: 0, deuterium: 0 },
-          f.clock,
-        ),
-      ).rejects.toMatchObject({ code: 'TARGET_PROSPECTOR_CAP' });
-    });
-
-    /**
-     * A transfer takes minutes, and the destination goes on living while it flies.
-     * Checking only at launch lands craft on a world that filled up in the
-     * meantime — so the arrival checks again, and a squadron with nowhere to land
-     * is sent home rather than deleted.
-     */
-    it('sends home a squadron whose destination filled while it was in the air', async () => {
-      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
+    it('still transfers an ordinary fleet', async () => {
+      await giveUnits(f.db, home, { DART: 1 });
       const launched = await launchTransfer(
         f.db,
         f.playerIds[0]!,
         home,
         colony,
-        { DART: 1, PROSPECTOR: PROSPECTOR.max },
+        { DART: 1 },
         { alloy: 0, crystal: 0, deuterium: 0 },
         f.clock,
       );
-      await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max });
-
-      f.clock.set(launched.arriveAt);
-      await workerFor(f).tick();
-
-      const [rerouted] = await f.db
-        .select()
-        .from(missions)
-        .where(and(eq(missions.kind, 'transfer'), eq(missions.status, 'in_flight')));
-      expect(rerouted?.parentMissionId).toBe(launched.missionId);
-
-      f.clock.set(rerouted!.arriveAt);
-      await workerFor(f).tick();
-
-      // Nothing was destroyed by a rule, and nothing landed where it could not fit.
-      expect(await prospectorsAt(f, colony)).toBe(PROSPECTOR.max);
-      expect(await prospectorsAt(f, home)).toBe(PROSPECTOR.max);
-      expect(await homeFleetAt(f, home)).toMatchObject({ DART: 1 });
+      expect(typeof launched.missionId).toBe('string');
     });
 
-    /**
-     * The reserved stack stays on the ORIGIN's books for the whole trip. If a fix
-     * moved those rows to the destination instead, the origin's quota would empty
-     * mid-flight and the exploit would come straight back through the front door.
-     */
-    it('keeps the origin quota spent while its craft are in the air', async () => {
-      await giveUnits(f.db, home, { DART: 1, PROSPECTOR: PROSPECTOR.max });
-      await launchTransfer(
-        f.db,
-        f.playerIds[0]!,
-        home,
-        colony,
-        { DART: 1, PROSPECTOR: PROSPECTOR.max },
-        { alloy: 0, crystal: 0, deuterium: 0 },
-        f.clock,
-      );
-
-      expect(await prospectorsAt(f, home)).toBe(PROSPECTOR.max);
-      await expect(buildUnits(f.db, home, 'PROSPECTOR', 1, f.clock)).rejects.toMatchObject({
-        code: 'PROSPECTOR_CAP',
-      });
-    });
-
-    /**
-     * TWO LAUNCHES THAT BOTH SEE THE LAST FREE BERTH.
-     *
-     * Both are allowed out, and that is deliberate rather than a hole. A launch
-     * does not RESERVE a berth — the craft stay booked to the world they left for
-     * the whole trip, which is what keeps the origin's own quota spent — so the
-     * launch check can only answer for the destination as it stands right now.
-     * That makes this exactly the case the arrival check exists for: the world
-     * filled up behind them, and the second squadron is sent home rather than
-     * squeezed in or deleted.
-     *
-     * What must hold under the race is the CAP, and that is what is asserted.
-     */
-    it('lands only what fits when two launches take off at the same instant', async () => {
-      await giveUnits(f.db, home, { DART: 2, PROSPECTOR: PROSPECTOR.max });
-      await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max - 1 });
-      const before = (await prospectorsAt(f, home)) + (await prospectorsAt(f, colony));
-
-      const results = await Promise.allSettled([
-        launchTransfer(
-          f.db,
-          f.playerIds[0]!,
-          home,
-          colony,
-          { DART: 1, PROSPECTOR: 1 },
-          { alloy: 0, crystal: 0, deuterium: 0 },
-          f.clock,
-        ),
-        launchTransfer(
-          f.db,
-          f.playerIds[0]!,
-          home,
-          colony,
-          { DART: 1, PROSPECTOR: 1 },
-          { alloy: 0, crystal: 0, deuterium: 0 },
-          f.clock,
-        ),
-      ]);
-      expect(results.every((r) => r.status === 'fulfilled')).toBe(true);
-
-      // Both arrive; the second finds the berth taken and turns for home.
-      f.clock.advance(60);
-      await workerFor(f).tick();
-      f.clock.advance(60);
-      await workerFor(f).tick();
-
-      expect(await prospectorsAt(f, colony)).toBe(PROSPECTOR.max);
-      expect((await prospectorsAt(f, home)) + (await prospectorsAt(f, colony))).toBe(before);
-    });
-
-    /** The fourth door, and it was already shut. A raid may not carry miners. */
+    /** A raid is a separate route and may not carry miners either. */
     it('cannot smuggle one into an attack fleet', async () => {
       await giveUnits(f.db, home, { DART: 5, PROSPECTOR: 1 });
       await expect(
@@ -326,7 +167,7 @@ describe('the Prospector cap', () => {
       expect(await prospectorsAt(f, colony)).toBe(PROSPECTOR.max);
     });
 
-    it('builds nothing and receives nothing, and loses nothing either', async () => {
+    it('builds nothing and rejects a transfer without losing existing craft', async () => {
       await giveUnits(f.db, colony, { PROSPECTOR: PROSPECTOR.max + 1 });
       await giveUnits(f.db, home, { DART: 1, PROSPECTOR: 1 });
 
@@ -343,7 +184,7 @@ describe('the Prospector cap', () => {
           { alloy: 0, crystal: 0, deuterium: 0 },
           f.clock,
         ),
-      ).rejects.toMatchObject({ code: 'TARGET_PROSPECTOR_CAP' });
+      ).rejects.toMatchObject({ code: 'PROSPECTOR_TRANSFER_FORBIDDEN' });
       expect(await prospectorsAt(f, colony)).toBe(PROSPECTOR.max + 1);
     });
   });

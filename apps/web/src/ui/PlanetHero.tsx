@@ -243,7 +243,6 @@ function Firepower({ planet }: { planet: PlanetView }) {
 
 /** Firepower and output. */
 function Readouts({ planet }: { planet: PlanetView }) {
-  const { t } = useTranslation();
   return (
     /*
       30px WAS A POSTER, NOT A READOUT. Owner directive: *"gereksiz büyük fontlar."*
@@ -259,14 +258,42 @@ function Readouts({ planet }: { planet: PlanetView }) {
       <div className="plate plate-inset flex-1 px-2 py-2 min-w-[80px]">
         <Firepower planet={planet} />
       </div>
-      <div className="plate plate-inset flex-1 px-2 py-2 min-w-[100px]">
-        <p className="legend">{t('planetHero.perHour')}</p>
-        <div className="mt-1 space-y-0.5">
-          <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
+      {/*
+        NO HEADING, THREE RATES. Owner instruction, 2026-09-15: *"bu sectionda
+        döteryum üretimi gözükmüyor … title'ı yani SAATTE yazısını kaldıralım."*
+
+        DEUTERIUM IS THE ONE THAT DECIDES WHETHER A FLEET CAN LEAVE, and it was
+        the one the world's own output plate did not state — so "how fast is my
+        fuel arriving", the input to every dispatch, had to be read somewhere
+        else. The heading paid for it: every figure here already ends in `/h`, so
+        "Per hour" was restating a suffix the eye reads on the same line, and this
+        plate shares a fixed-height flex row with Firepower where a fourth line
+        would push the whole sheet down.
+      */}
+      <div data-testid="planet-rates" className="plate plate-inset flex-1 px-2 py-2 min-w-[100px]">
+        <div className="space-y-0.5">
           <Rate
+            id="alloy"
+            art={RESOURCE_ART.alloy}
+            value={planet.planet.alloyPerHour}
+            tone="text-alloy"
+          />
+          <Rate
+            id="crystal"
             art={RESOURCE_ART.crystal}
             value={planet.planet.crystalPerHour}
             tone="text-crystal"
+          />
+          {/*
+            ZERO IS A READING, NOT AN ABSENCE. A row that vanishes on a world with
+            no plant says "this world cannot make fuel"; the truth is that it does
+            not make any YET, which is the reason to build one.
+          */}
+          <Rate
+            id="deuterium"
+            art={RESOURCE_ART.deuterium}
+            value={planet.planet.deuteriumPerHour ?? 0}
+            tone="text-deuterium"
           />
         </div>
       </div>
@@ -505,10 +532,15 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
   );
 }
 
-function Rate({ art, value, tone }: { art: string; value: number; tone: string }) {
+function Rate(
+  { art, value, tone, id }: { art: string; value: number; tone: string; id?: string },
+) {
   const { t } = useTranslation();
   return (
-    <p className={`num flex items-center gap-2 text-caption ${tone}`}>
+    <p
+      {...(id === undefined ? {} : { 'data-testid': `rate-${id}` })}
+      className={`num flex items-center gap-2 text-caption ${tone}`}
+    >
       <img src={art} alt="" aria-hidden className="size-3.5 object-contain" />
       {compact(value)}
       <span className="text-micro text-faint">{t('planetHero.perHourSuffix')}</span>

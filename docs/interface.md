@@ -408,6 +408,8 @@ opens by focusing the thing it is about.
 The permanent in-flight strip is also the way into the commander's airborne roster.
 It combines mission threads with mining and salvage runs, opens as a bottom sheet,
 and every owned drawable row closes the sheet and focuses that craft on the disc.
+An outbound Prospector row also carries its own recall control until contact; pressing
+it turns the craft around at its current point and leaves the physical return leg visible.
 Dispatch itself never changes the camera subject: a fleet, probe, transfer, settlement,
 Death Star, mining run or salvage run remains visible on the disc without taking the
 commander away from what they were inspecting. Following one requires the explicit row tap.

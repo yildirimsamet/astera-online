@@ -194,15 +194,35 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
   });
 }
 
-async function abandonMiningRun(db: Db, runId: string, at: Date): Promise<boolean> {
+async function abandonMiningRun(
+  db: Db,
+  runId: string,
+  at: Date,
+  expectedStatus?: 'outbound' | 'returning',
+): Promise<boolean> {
   return db.transaction(async (tx) => {
+    const [candidate] = await tx.select({ seasonId: miningRuns.seasonId })
+      .from(miningRuns).where(eq(miningRuns.id, runId));
+    if (!candidate) return false;
+    await lockSeason(tx, candidate.seasonId);
     const [run] = await tx
       .update(miningRuns)
       .set({ status: 'done' })
-      .where(and(eq(miningRuns.id, runId), inArray(miningRuns.status, ['outbound', 'returning'])))
+      .where(and(
+        eq(miningRuns.id, runId),
+        expectedStatus
+          ? eq(miningRuns.status, expectedStatus)
+          : inArray(miningRuns.status, ['outbound', 'returning']),
+      ))
       .returning();
     if (!run) return false;
 
+    // This is the same read/merge/write as an ordinary landing. Serialize it
+    // against construction, launches and other returns, or a stale home count
+    // can erase the recalled craft while recovering a failed return event.
+    const [home] = await tx.select({ id: planets.id }).from(planets)
+      .where(eq(planets.id, run.planetId)).for('update');
+    if (!home) throw new Error('mining origin vanished before abandonment');
     const current = await tx
       .select()
       .from(units)
@@ -233,8 +253,11 @@ export async function abandon(db: Db, event: EventRow, clock: Clock): Promise<bo
     case 'mission_arrival':
       return abandonMission(db, event.refId, clock.now());
     case 'mining_arrival':
+      // The old contact event survives a manual turn. A failed obsolete arrival
+      // must not release craft that still have a real return leg ahead of them.
+      return abandonMiningRun(db, event.refId, clock.now(), 'outbound');
     case 'mining_return':
-      return abandonMiningRun(db, event.refId, clock.now());
+      return abandonMiningRun(db, event.refId, clock.now(), 'returning');
     /**
      * A CONVOY THAT CANNOT BE RESOLVED COMES HOME WITH WHATEVER NEVER CHANGED
      * HANDS. D156.
@@ -402,7 +425,9 @@ async function strandedState(
       and coalesce(r.home_at, r.arrive_at) < ${cutoff}::timestamptz
       and not exists (
         select 1 from scheduled_events e
-        where e.ref_id = r.id and e.kind in ('mining_arrival', 'mining_return')
+        where e.ref_id = r.id
+          and ((r.status = 'outbound' and e.kind = 'mining_arrival')
+            or (r.status = 'returning' and e.kind = 'mining_return'))
           and e.status in ('pending', 'processing'))
   `);
 

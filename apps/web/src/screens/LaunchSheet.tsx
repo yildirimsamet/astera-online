@@ -9,6 +9,8 @@ import {
   forecastLines,
   forecastLoss,
   hullFuelRate,
+  hullTech,
+  fleetCargo,
   salvageCapacity,
   shieldHp,
   wallKnowledgeOf,
@@ -41,7 +43,7 @@ import { HULL_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SalvageIcon } from '../ui/icons/index.js';
 import { ClassChip } from '../ui/CounterMark.js';
-import { ForceCompare, type ForceReading } from '../ui/ForceCompare.js';
+import { FleetLossWarning, ForceCompare, type ForceReading } from '../ui/ForceCompare.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -510,6 +512,7 @@ export function LaunchSheet({
     const available = planet.fleet[hull] ?? 0;
     const pickable = roomFor(hull);
     const chosen = sending[hull] ?? 0;
+    const tech = hullTech(mods.tech, hull);
     if (available === 0) return null;
     return (
       <div
@@ -532,6 +535,8 @@ export function LaunchSheet({
                 alt=""
                 aria-hidden
                 className="size-11 object-contain"
+                width={44}
+                height={44}
                 loading="lazy"
               />
             ) : (
@@ -559,13 +564,15 @@ export function LaunchSheet({
               </span>
             </div>
             <div className="mt-1">
+              <p className="mb-2 text-body leading-relaxed text-dim">{t('launch.perShipStats')}</p>
               <StatStrip
-                atk={HULLS[hull].atk}
-                hp={HULLS[hull].hp}
-                speed={HULLS[hull].speed}
-                cargo={HULLS[hull].cargo}
+                atk={HULLS[hull].atk * tech.atk}
+                hp={HULLS[hull].hp * tech.hp}
+                speed={HULLS[hull].speed * tech.speed}
+                cargo={fleetCargo({ [hull]: 1 }, mods.tech)}
                 salvage={salvageCapacity({ [hull]: 1 })}
                 fuel={hullFuelRate(hull)}
+                showLabels
               />
             </div>
           </div>
@@ -666,6 +673,9 @@ export function LaunchSheet({
           : target.world.name}
       onClose={onClose}
       footer={
+        <>
+        <FleetLossWarning loss={loss} />
+        {
         confirming ? (
           <div className="flex gap-2">
             <Button
@@ -803,6 +813,8 @@ export function LaunchSheet({
                         : t('launch.send', { count: total })}
           </Button>
         )
+        }
+        </>
       }
     >
       {/*

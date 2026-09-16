@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ANTI_STRATEGIC, DEATH_STAR, MULTI_WORLD } from '../src/index.js';
+import { ANTI_STRATEGIC, DEATH_STAR, ECONOMY_ADJUSTMENT, MULTI_WORLD } from '../src/index.js';
 
 const total = (r: { alloy: number; crystal: number; deuterium: number }): number =>
   r.alloy + r.crystal + r.deuterium;
@@ -71,7 +71,10 @@ describe('what the strategic pair costs', () => {
    * the reload rule below is the interlock and not a second figure.
    */
   it('prices the reusable defence reload at half the weapon work', () => {
-    expect(DEATH_STAR.buildMinutes).toBe(60);
+    // The owner's hour is the AUTHORED figure. `ECONOMY_ADJUSTMENT.buildTime` then
+    // shaves 2.5% off every timer in the game, and a weapon exempt from the one
+    // global dial would be the exception nobody could predict from.
+    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.buildTime);
     expect(ANTI_STRATEGIC.buildMinutes).toBe(DEATH_STAR.buildMinutes / 2);
   });
 });

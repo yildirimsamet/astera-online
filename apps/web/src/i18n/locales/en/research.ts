@@ -82,7 +82,7 @@ export const research = {
   denseRole:
     "To reveal it, fill your cargo in one raid while loot remains on the target. Completion opens the Ship Propulsion research ladder.",
   denseDetail:
-    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves every ship in your fleet and is also part of the Atlas build gate; it does not change Prospectors, probes or the Death Star.",
+    "Completing it permanently opens Ship Propulsion research for your commander. Propulsion improves every ship in your fleet and is also part of the Atlas build gate; it does not change Prospectors or probes.",
   graviticName: "Gravitic Charges",
   graviticTag: "Unlocks the Nullifier",
   graviticRole:
@@ -136,19 +136,19 @@ export const research = {
   powerRole:
     "Increases the attack of every warship in your fleet and satisfies advanced offensive build gates. Cargo hulls and ground defence are unaffected.",
   powerDetail:
-    "Each rung increases ordinary attack on every warship, the Nullifier included, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each rung increases ordinary attack on every warship, the Nullifier included, and applies to ships you already own. It does not add attack to transports or affect Bastion, Thorn, Prospector or probes. An attacker carries its launch-time level; a defender reads the battle-time level.",
   armorName: "Ship Armor",
   armorTag: "Raises ship hull strength",
   armorRole:
     "Increases hull strength for every ship in your fleet, transports included, and satisfies advanced defensive build gates.",
   armorDetail:
-    "Each rung increases hull strength for every ship in your fleet, Courier, Wayfarer, Atlas and Argosy included. It does not affect Bastion, Thorn, Prospector, probes or the Death Star. An attacker carries its launch-time level; a defender reads the battle-time level.",
+    "Each rung increases hull strength for every ship in your fleet, Courier, Wayfarer, Atlas and Argosy included. It does not affect Bastion, Thorn, Prospector or probes. An attacker carries its launch-time level; a defender reads the battle-time level.",
   propulsionName: "Ship Propulsion",
   propulsionTag: "Raises fleet speed",
   propulsionRole:
     "Increases the speed of every ship in your fleet and contributes to the Atlas gate. It opens after Dense Fuel Cells.",
   propulsionDetail:
-    "Each of the four rungs adds a quarter to the nominal speed of every ship in your fleet, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors, probes or the Death Star, and only missions quoted after completion receive the gain.",
+    "Each of the four rungs adds a quarter to the nominal speed of every ship in your fleet, so the last one doubles it and halves every flight. A mixed fleet still travels at the speed of its slowest member, so propulsion improves a chosen composition without erasing its profile. It does not affect Prospectors or probes, and only missions quoted after completion receive the gain.",
   groundDoctrineName: "Emplacement Doctrine",
   doctrineTag: "Improves ground defence",
   doctrineRole:

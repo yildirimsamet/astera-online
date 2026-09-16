@@ -47,8 +47,8 @@ in order:
 - **A rule that is enforced by the interface refusing to move.** If a payload is late, the
   world keeps running off the clock it already has and corrects itself when the truth lands.
 
-The limits this does NOT relax: the server is still the only authority (P1), a fleet still
-cannot be recalled (P3), the fog is still enforced in the query (P4/P5), and none of this
+The limits this does NOT relax: the server is still the only authority (P1), combat and
+transport fleets still cannot be recalled (P3; outbound Prospectors are the sole exception), the fog is still enforced in the query (P4/P5), and none of this
 is a licence to add systems. **Simple implementation, magnificent presentation.**
 
 ## What this is not

@@ -4,11 +4,31 @@ import type { Resources } from './types.js';
 export const ECONOMY_ADJUSTMENT = {
   hullMetalPrice: 1.30,
   producerOutput: 0.70,
-  /** Owner instruction, 2026-09-13: two temporary boosts on the early Alloy ladder. */
+  /**
+   * Owner instruction, 2026-09-13: a temporary lift on the early Alloy ladder.
+   *
+   * IT TAPERS RATHER THAN STOPPING, AND THAT IS THE WHOLE OF IT. The lift shipped
+   * as two flat bands with an edge — 1.25x through L6, 1.15x through L9, nothing
+   * from L10 — and the edge was steeper than the curve underneath it:
+   * `9^1.3 x 1.15 > 10^1.3`, so Refinery 9 -> 10 sold LESS alloy an hour than the
+   * commander already had, and shrank the store with it, at the dearest price on
+   * the ladder so far. Owner report, 2026-09-15: *"hem saatlik üretim miktarı
+   * artmıyor hem de depo düşüyor"*.
+   *
+   * So the lift is flat to `earlyAlloyMaxLevel` and then decays linearly to 1.00 at
+   * `alloyLiftEndLevel`, paying itself back over rungs whose own step (12-16%) is
+   * large enough to swallow it. L10 onward is untouched profile income, which is
+   * the property worth keeping: this is a shape on the OPENING, not a change to the
+   * economy the rest of the game is measured against.
+   *
+   * `invariants.test.ts` holds the rule this broke — no rung may pay less than the
+   * one below it — on the composition rather than on these figures, so a later
+   * retune cannot reintroduce the edge.
+   */
   earlyAlloyOutputMultiplier: 1.25,
   earlyAlloyMaxLevel: 6,
-  midAlloyOutputMultiplier: 1.15,
-  midAlloyMaxLevel: 9,
+  /** The first rung with no lift left on it. Between the two, the lift decays. */
+  alloyLiftEndLevel: 10,
   /**
    * THE ONE DIAL EVERY TIMER IN THE GAME IS MULTIPLIED BY.
    *
@@ -51,7 +71,8 @@ export const ECONOMY_ADJUSTMENT = {
  *
  *   - upgrade prices start 5% dearer and use a 1.54 rung curve;
  *   - fixed metal purchases are 70% dearer;
- *   - passive output is 30% lower, with Alloy L1–6 lifted 25% and L7–9 lifted 15%;
+ *   - passive output is 30% lower, with Alloy lifted 25% through L1–6 and the lift
+ *     decaying back to nothing by L10;
  *   - ordinary hulls are 25% dearer and take 50% longer to craft;
  *   - construction has its own calibrated curve so both L11 -> L12 and
  *     L12 -> L13 take between one and two hours;

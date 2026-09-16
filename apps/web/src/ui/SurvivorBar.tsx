@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { compact } from '../lib/format.js';
+import { full } from '../lib/format.js';
 
 /**
  * WHAT WENT IN AND WHAT CAME BACK, AS ONE SHAPE. Owner instruction.
@@ -18,8 +18,8 @@ import { compact } from '../lib/format.js';
  * Rebuilt is its own colour on the same bar, because "these came back" is a
  * different fact from "these never died" and the report has to say which is which.
  *
- * NUMBERS SURVIVE, SMALL AND BESIDE THE SHAPE. A figure is what you check when the
- * picture has already told you the answer, and no figure here is load-bearing.
+ * LABELLED COUNTS ARE PRIMARY. The bar reinforces the three visible facts;
+ * neither colour nor an unlabelled zero should carry the meaning alone.
  */
 export function SurvivorBar({
   sent,
@@ -28,6 +28,8 @@ export function SurvivorBar({
   compactRow = false,
   showFigures = true,
   side = 'yours',
+  sentLabel,
+  leftLabel,
 }: {
   /** What stood or was sent in. The width of the whole bar. */
   sent: number;
@@ -49,12 +51,14 @@ export function SurvivorBar({
    * Painting both the same way would have the sheet cheering at your losses.
    */
   side?: 'yours' | 'theirs';
+  sentLabel?: string;
+  leftLabel?: string;
 }) {
   const { t } = useTranslation();
   const total = Math.max(1, sent);
   const died = Math.max(0, Math.min(sent, lost));
   const alive = Math.max(0, sent - died);
-  const back = Math.max(0, rebuilt);
+  const back = Math.max(0, Math.min(died, rebuilt));
   /*
     THE BAR IS THE FORCE THAT WENT IN, and salvage is drawn on top of it rather
     than inside it — those guns are extra, not survivors, and squeezing them into
@@ -63,18 +67,44 @@ export function SurvivorBar({
   const alivePart = (alive / total) * 100;
   const diedPart = (died / total) * 100;
   const backPart = (back / total) * 100;
+  const lostTone = side === 'theirs'
+    ? died > 0 ? 'text-opportunity' : 'text-dim'
+    : died > 0 ? 'text-threat-ink' : 'text-dim';
+  const leftTone = side === 'theirs'
+    ? alive + back > 0 ? 'text-threat-ink' : 'text-opportunity'
+    : alive + back === 0 ? 'text-threat-ink' : 'text-bone';
 
   return (
     <span
-      className={`flex min-w-0 items-center gap-2 ${compactRow ? '' : 'w-full'}`}
+      className={`flex min-w-0 flex-col gap-2 ${compactRow ? '' : 'w-full'}`}
       role="img"
       aria-label={t('reports.force.reading', {
-        sent: compact(sent),
-        lost: compact(died),
-        left: compact(alive + back),
+        sent: full(sent),
+        lost: full(died),
+        left: full(alive + back),
       })}
     >
-      <span className="socket flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full">
+      {showFigures ? (
+        <span className="grid w-full grid-cols-3 gap-2 text-left">
+          <span>
+            <span className="block text-label text-dim">{sentLabel ?? t('reports.force.start')}</span>
+            <span data-sent className="num block text-title text-bone">{full(sent)}</span>
+          </span>
+          <span>
+            <span className="block text-label text-dim">{t('reports.force.lost')}</span>
+            <span data-lost className={`num block text-title ${lostTone}`}>
+              {full(died)}
+            </span>
+          </span>
+          <span>
+            <span className="block text-label text-dim">{leftLabel ?? t('reports.force.left')}</span>
+            <span data-alive className={`num block text-title ${leftTone}`}>
+              {full(alive + back)}
+            </span>
+          </span>
+        </span>
+      ) : null}
+      <span aria-hidden className="socket relative flex h-2 w-full min-w-0 overflow-hidden rounded-full">
         <span
           data-part="alive"
           className={`h-full ${side === 'theirs' ? 'bg-threat/70' : 'bg-bone/70'}`}
@@ -83,34 +113,17 @@ export function SurvivorBar({
         <span
           data-part="lost"
           className={`h-full ${side === 'theirs' ? 'bg-opportunity/70' : 'bg-threat/80'}`}
-          style={{ width: `${String(diedPart)}%` }}
+          style={{ width: `${String(diedPart)}%`, backgroundImage: 'repeating-linear-gradient(135deg, transparent 0 4px, rgb(255 255 255 / 20%) 4px 6px)' }}
         />
         <span
           data-part="rebuilt"
-          className="h-full bg-opportunity/70"
+          className="absolute right-0 h-full bg-opportunity/90"
           style={{ width: `${String(backPart)}%` }}
         />
       </span>
-      {/*
-        TWO FIGURES AND NOT FOUR: what is left, and what it cost. "Sent" is the
-        whole bar and needs no numeral; "rebuilt" is the green sliver.
-      */}
-      {showFigures ? (
-        <span
-          className={`num shrink-0 text-caption ${side === 'theirs' ? 'text-threat-ink' : 'text-bone'}`}
-          data-alive
-        >
-          {compact(alive + back)}
-        </span>
-      ) : null}
-      {showFigures && died > 0 ? (
-        <span
-          className={`num shrink-0 text-caption ${
-            side === 'theirs' ? 'text-opportunity' : 'text-threat-ink'
-          }`}
-          data-lost
-        >
-          −{compact(died)}
+      {back > 0 && showFigures ? (
+        <span data-rebuilt className="w-full text-label leading-relaxed text-opportunity">
+          {t('reports.force.rebuiltNote', { count: full(back) })}
         </span>
       ) : null}
     </span>

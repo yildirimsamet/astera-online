@@ -1,0 +1,1 @@
+ALTER TABLE "battle_reports" ADD COLUMN "recovery_loss_hours" real;

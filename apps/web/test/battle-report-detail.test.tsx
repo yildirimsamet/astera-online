@@ -215,7 +215,7 @@ describe('what a battle report explains', () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByText(/You broke most of the defence but not all of it/)).toBeVisible();
+    expect(await screen.findByText(/You dealt enough damage for partial success/)).toBeVisible();
   });
   /**
    * THE DENOMINATOR. Twelve of fifteen is a disaster and twelve of eighty is the
@@ -250,7 +250,8 @@ describe('what a battle report explains', () => {
       theirLosses: { DART: 9 },
     }));
 
-    expect(screen.getByText('Had')).toBeVisible();
+    const opening = within(document.querySelector<HTMLElement>('[data-battle-verdict]')!);
+    expect(opening.getByText('Had')).toBeVisible();
     expect(screen.queryByText('Sent')).not.toBeInTheDocument();
   });
 
@@ -303,16 +304,11 @@ describe('what a battle report explains', () => {
     expect(screen.queryByText('→')).not.toBeInTheDocument();
   });
 
-  /**
-   * THE THREE NUMBERS A PLAYER FEELS. `Rounds` led this row and is the least
-   * consequential figure on the surface — a fixed three at most, decided by the
-   * combat model rather than by anything the player chose.
-   */
-  it('leads with the haul, its price, and what it moved', async () => {
+  it('does not repeat the opening loss and loot summary in the bookkeeping section', async () => {
     await openSheet(report());
-    expect(screen.getByText('Ships lost')).toBeVisible();
-    expect(screen.getByText('Taken')).toBeVisible();
-    expect(screen.getByText('Dominion')).toBeVisible();
+    expect(screen.queryByText('Ships lost')).not.toBeInTheDocument();
+    expect(screen.queryByText('Taken')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Dominion').length).toBeGreaterThan(0);
     expect(screen.queryByText('Rounds')).not.toBeInTheDocument();
   });
 
@@ -359,9 +355,9 @@ describe('what a battle report explains', () => {
     expect(opening.getByText('150')).toBeVisible();
     expect(opening.getByText('Lost')).toBeVisible();
     expect(opening.getByText('35')).toBeVisible();
-    expect(opening.getByText('Returned')).toBeVisible();
+    expect(opening.getByText('Survived')).toBeVisible();
     expect(opening.getByText('115')).toBeVisible();
-    expect(opening.getByText('You destroyed')).toBeVisible();
+    expect(opening.getByText('Enemy units destroyed')).toBeVisible();
     expect(opening.getByText('54')).toBeVisible();
   });
 
@@ -391,7 +387,7 @@ describe('what a battle report explains', () => {
     const verdict = document.querySelector<HTMLElement>('[data-battle-verdict="PARTIAL"]');
     const opening = within(verdict!);
     expect(opening.queryByText('Sent')).not.toBeInTheDocument();
-    expect(opening.queryByText('Returned')).not.toBeInTheDocument();
+    expect(opening.queryByText('Survived')).not.toBeInTheDocument();
     expect(opening.getByText('Lost')).toBeVisible();
     expect(opening.getByText('2')).toBeVisible();
   });
@@ -481,16 +477,16 @@ describe('what a battle report explains', () => {
    */
   it('explains the word stamped at the top, without a number to decode', async () => {
     await openSheet(report({ grade: 'PARTIAL' }));
-    expect(screen.getByText(/You broke most of the defence but not all of it/)).toBeVisible();
-    // No internal quantity and no threshold: `defenceValue` and "42%" are the
-    // combat model talking to itself.
+    expect(screen.getByText(/You dealt enough damage for partial success/)).toBeVisible();
+    expect(screen.queryByText(/broke most/)).not.toBeInTheDocument();
     expect(screen.queryByText(/defence value/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/42%/)).not.toBeInTheDocument();
+    expect(document.querySelector('[data-battle-reason]')).not.toHaveTextContent(/42%/);
   });
 
   it('explains a repelled raid differently from a decisive one', async () => {
     await openSheet(report({ grade: 'REPELLED' }));
-    expect(screen.getByText(/Their defence held/)).toBeVisible();
+    expect(screen.getByText(/The enemy kept defending/)).toBeVisible();
+    expect(document.querySelector('[data-battle-reason]')).toHaveTextContent(/42%/);
     expect(screen.queryByText(/You destroyed everything/)).not.toBeInTheDocument();
   });
 
@@ -501,7 +497,7 @@ describe('what a battle report explains', () => {
    */
   it('tells the defender what happened to THEM, not what happened to someone', async () => {
     await openSheet(report({ attacking: false, grade: 'PARTIAL' }));
-    expect(screen.getByText(/Most of your defence fell but something held/)).toBeVisible();
+    expect(screen.getByText(/The attacker dealt enough damage for partial success/)).toBeVisible();
     expect(screen.queryByText(/You broke most of the defence/)).not.toBeInTheDocument();
   });
 
@@ -513,8 +509,8 @@ describe('what a battle report explains', () => {
   it('names who died in which round', async () => {
     await openSheet(report());
     // Round 2 is where the Bastion went.
-    expect(screen.getByText('−1 Bastion')).toBeVisible();
-    expect(screen.getByText('−6 Dart')).toBeVisible();
+    expect(screen.getByText('1 Bastion')).toBeVisible();
+    expect(screen.getByText('6 Dart')).toBeVisible();
   });
 
   it('labels both damage bars with words instead of relying on colour', async () => {
@@ -532,7 +528,7 @@ describe('what a battle report explains', () => {
     const aegis = screen.getByRole('img', { name: 'Aegis shield' }).closest('section');
     expect(aegis).not.toBeNull();
     const card = within(aegis!);
-    expect(card.getByText('AEGIS')).toBeVisible();
+    expect(card.getByText('Enemy Aegis shield')).toBeVisible();
     expect(card.getByText('DAMAGED')).toBeVisible();
     expect(card.getByText('Before battle')).toBeVisible();
     expect(card.getByText('After battle')).toBeVisible();
@@ -575,8 +571,8 @@ describe('what a battle report explains', () => {
     const round = document.querySelector<HTMLElement>('[data-combat-round="1"]');
     expect(round).not.toBeNull();
     const step = within(round!);
-    expect(step.getByText('1 · Simultaneous fire')).toBeVisible();
-    expect(step.getByText(/A unit destroyed in this round still fires/)).toBeVisible();
+    expect(screen.getByText(/A unit destroyed in this round still fires/)).toBeVisible();
+    await userEvent.click(step.getByText('Show this round’s shot calculation'));
     expect(step.getByText('Your shot')).toBeVisible();
     expect(step.getByText('+4%')).toBeVisible();
     expect(step.getByText('Their shot')).toBeVisible();
@@ -584,7 +580,8 @@ describe('what a battle report explains', () => {
     expect(step.getByText('2 · Aegis takes the hit')).toBeVisible();
     expect(step.getByText('Reached hulls')).toBeVisible();
     expect(step.getByText('540')).toBeVisible();
-    expect(step.getByText('3 · Losses leave the battle')).toBeVisible();
+    expect(step.getByText('Your units destroyed')).toBeVisible();
+    expect(step.getByText('Enemy units destroyed')).toBeVisible();
   });
 
   it('explains how the attack power itself is calculated', async () => {
@@ -592,6 +589,7 @@ describe('what a battle report explains', () => {
 
     const formula = document.querySelector<HTMLElement>('[data-combat-formula]');
     expect(formula).not.toBeNull();
+    await userEvent.click(screen.getByText('Battle rules and calculation'));
     const key = within(formula!);
     expect(key.getByText('How attack power is built')).toBeVisible();
     expect(key.getByText(/unit count × attack × research/)).toBeVisible();
@@ -605,6 +603,7 @@ describe('what a battle report explains', () => {
 
   it('shows the exact result and loot rules without revealing hidden survivors', async () => {
     await openSheet(report({ grade: 'PARTIAL', rounds: [detailedRound()] }));
+    await userEvent.click(screen.getByText('Battle rules and calculation'));
 
     const formula = within(document.querySelector<HTMLElement>('[data-combat-formula]')!);
     expect(formula.getByText('How the result is decided')).toBeVisible();
@@ -640,9 +639,10 @@ describe('what a battle report explains', () => {
         defenderLosses: { DART: 3 },
       }],
     }));
-    expect(screen.getByText('Them')).toBeVisible();
-    expect(screen.getByText('You')).toBeVisible();
-    expect(screen.getAllByText('−3 Dart')).toHaveLength(2);
+    const casualties = within(document.querySelector<HTMLElement>('[data-round-losses]')!);
+    expect(casualties.getByText('Enemy units destroyed')).toBeVisible();
+    expect(casualties.getByText('Your units destroyed')).toBeVisible();
+    expect(casualties.getAllByText('3 Dart')).toHaveLength(2);
   });
 
   /**
@@ -650,9 +650,10 @@ describe('what a battle report explains', () => {
    * nobody's score, and so does a raid repelled without losses, so the chip
    * printed "0" on exactly the rows where the ladder had nothing to say.
    */
-  it('omits the Dominion figure when the ladder did not move', async () => {
+  it('states zero Dominion in the opening payoff when the ladder did not move', async () => {
     await openSheet(report({ dominion: 0 }));
-    expect(screen.queryByText('Dominion')).not.toBeInTheDocument();
+    const payoff = within(document.querySelector<HTMLElement>('[data-verdict-payoff]')!);
+    expect(payoff.getByText('Dominion').parentElement).toHaveTextContent('0');
   });
 
   it('says so plainly in a round where neither side lost a unit', async () => {
@@ -667,7 +668,8 @@ describe('what a battle report explains', () => {
         defenderLosses: {},
       }],
     }));
-    expect(screen.getByText('Neither side lost a unit this round.')).toBeVisible();
+    const casualties = within(document.querySelector<HTMLElement>('[data-round-losses]')!);
+    expect(casualties.getAllByText('No losses')).toHaveLength(2);
   });
 
   /**
@@ -695,7 +697,7 @@ describe('what a battle report explains', () => {
     expect(within(board as HTMLElement).getByText('Dart')).toBeVisible();
     expect(screen.getByText('What came at you')).toBeVisible();
     // And the floor framing is gone: this is not a floor, it is the force.
-    expect(screen.queryByText('At least this much')).not.toBeInTheDocument();
+    expect(screen.queryByText('Destroyed units only')).not.toBeInTheDocument();
   });
 
   /**
@@ -708,7 +710,7 @@ describe('what a battle report explains', () => {
     await openSheet(report({ attacking: true, theirFleet: {} }));
 
     expect(document.querySelector('[data-their-board="arrived"]')).toBeNull();
-    expect(screen.getByText('At least this much')).toBeVisible();
+    expect(screen.getByText('Destroyed units only')).toBeVisible();
   });
 
   /**
@@ -724,7 +726,8 @@ describe('what a battle report explains', () => {
     }));
 
     expect(document.querySelector('[data-their-board="arrived"]')).toBeNull();
-    expect(screen.getByText('At least this much')).toBeVisible();
+    expect(screen.getByText('Destroyed units only')).toBeVisible();
+    expect(screen.getByText(/no starting roster for the attacking fleet/)).toBeVisible();
   });
 
   /**
@@ -743,7 +746,7 @@ describe('what a battle report explains', () => {
     });
     await openSheet(sheet);
 
-    const force = screen.getByText('Sent').closest('div')?.parentElement;
+    const force = document.querySelector<HTMLElement>('[data-battle-verdict]');
     expect(force).not.toBeNull();
     // The defender's Bastion appears as a LOSS below, and never as a holding in
     // the one table on this sheet that states how many of something there were.
@@ -756,7 +759,7 @@ describe('what a battle report explains', () => {
       a short list. `battle-report-cases.test.tsx` holds down both bounds.
     */
     expect(document.querySelector('[data-their-board="floor"]')).not.toBeNull();
-    expect(screen.getByText('At least this much')).toBeVisible();
+    expect(screen.getByText('Destroyed units only')).toBeVisible();
   });
 
   /**
@@ -805,7 +808,7 @@ describe('what a battle report explains', () => {
 
     expect(screen.getByText('Bu savaş ne yaptı')).toBeVisible();
     expect(screen.getByText(/Ambarların doldu/)).toBeVisible();
-    expect(screen.getByText('Giden')).toBeVisible();
+    expect(screen.getAllByText('Giden').length).toBeGreaterThan(0);
     // The roster is a bar now; its sentence lives where a screen reader hears it.
     expect(document.querySelector('[role="img"][aria-label*="gitti"]')).toBeInTheDocument();
     await i18n.changeLanguage('en');

@@ -51,6 +51,9 @@ const isOutboundLeg = and(ne(missions.kind, 'return'), isNull(missions.parentMis
 const minesOf = (planetId: string) =>
   and(
     eq(missions.status, 'in_flight'),
+    // Probes are paid intelligence packets paced per target, not fleet squadrons.
+    // They remain visible and pending, but never consume an ordinary flight bay.
+    ne(missions.kind, 'probe'),
     or(
       and(isOutboundLeg, eq(missions.originPlanetId, planetId)),
       and(isReturnLeg, eq(missions.targetPlanetId, planetId)),

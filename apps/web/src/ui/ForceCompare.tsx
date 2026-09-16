@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compact } from '../lib/format.js';
 import { staleness } from '../lib/time.js';
-import { AttackIcon } from './icons/index.js';
 
 /**
  * YOUR FLEET AND THEIRS, ON ONE AXIS — AND WHERE THIS WING STOPS WINNING ON IT.
@@ -23,7 +22,8 @@ import { AttackIcon } from './icons/index.js';
  *
  * THE SHARED SCALE IS THE WHOLE COMPONENT, and it is the one legitimate exception
  * to `RangeBand`'s rule that "two bands on one card share no scale". That guards
- * against comparing stock with ship count; here every figure is firepower.
+ * against comparing stock with ship count; here both bars measure the resource
+ * cost of armed units, not damage or hit points.
  *
  * WHAT IT REFUSES TO DO:
  *
@@ -33,8 +33,8 @@ import { AttackIcon } from './icons/index.js';
  *   · DRAW A ZERO FOR AN ABSENCE. Never-looked renders no enemy bar at all.
  *   · HIDE THE DOUBT. The band's unmeasured stretch is hatched, and so is the part
  *     of a line the reading leaves open (an unread wall, an unknown shield).
- *   · SAY THE RULE ON THE CARD. The figures and lines are always drawn; what they
- *     mean is one tap away (`interface.md`: prose folds, facts never).
+ * Basic units are stated before the sticky comparison. The detailed rule folds,
+ * while the figures, estimate and fuel stay together as the fleet is adjusted.
  */
 
 export interface ForceReading {
@@ -52,7 +52,7 @@ export interface ForceReading {
   ageMinutes: number | null;
 }
 
-/** `forecastLines`, as this card draws it: the firepower each line sits at, least to most favourable. */
+/** `forecastLines`: armed-unit resource value at each limit, least to most favourable. */
 export interface ForceLines {
   clears: { low: number; high: number };
   breaks: { low: number; high: number };
@@ -111,6 +111,27 @@ export function ForceCompare({
     });
 
   return (
+    <>
+      {/* Prose scrolls away, so the pinned comparison leaves room to choose ships. */}
+      <div className="mt-2 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-body font-semibold text-crystal">{t('counter.compareHeading')}</p>
+          <button
+            type="button"
+            className="shrink-0 py-2 text-body text-crystal underline decoration-dotted underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-crystal"
+            aria-expanded={explained}
+            onClick={() => { setExplained((open) => !open); }}
+          >
+            {t('counter.compareRuleToggle')}
+          </button>
+        </div>
+        <p className="mt-1 text-body leading-relaxed text-dim">{t('counter.compareMeaning')}</p>
+        {explained ? (
+          <p data-testid="compare-rule" className="mt-2 text-body leading-relaxed text-dim">
+            {t('counter.compareRule')}
+          </p>
+        ) : null}
+      </div>
     <section
       data-force-compare
       className="plate plate-inset bg-panel !opacity-100 z-50 mt-1 px-3 py-2 sticky top-0"
@@ -121,31 +142,11 @@ export function ForceCompare({
           : t('counter.compareUnknown'),
       })}
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="legend flex items-center gap-1 text-crystal">
-          <AttackIcon className="size-3.5" aria-hidden />
-          {t('counter.compareHeading')}
-        </p>
-        <button
-          type="button"
-          className="text-micro text-faint underline decoration-dotted underline-offset-2"
-          aria-expanded={explained}
-          onClick={() => { setExplained((open) => !open); }}
-        >
-          {t('counter.compareRuleToggle')}
-        </button>
-      </div>
-      {explained && (
-        <p data-testid="compare-rule" className="mt-1 text-micro leading-snug text-faint">
-          {t('counter.compareRule')}
-        </p>
-      )}
-
       {/* ── your side: counted, exact, no doubt to draw ── */}
       <div className="mt-2 flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-micro text-faint">{t('counter.compareYours')}</span>
-          <span className="num text-caption text-bone">{compact(yours)}</span>
+          <span className="text-body text-dim">{t('counter.compareYours')}</span>
+          <span className="num text-title text-bone">{compact(yours)}</span>
         </div>
         <div className="socket h-1.5 w-full overflow-hidden rounded-full">
           <span
@@ -164,7 +165,7 @@ export function ForceCompare({
             it is qualify the word "theirs"; a whole row for four words is exactly the
             spend the rest of this sheet was cut to stop.
           */}
-          <span className="min-w-0 truncate text-micro text-faint">
+          <span className="min-w-0 text-body text-dim">
             {t('counter.compareTheirs')}
             {theirs ? (
               <span data-testid="compare-provenance" className="ml-1 text-faint/80">
@@ -177,7 +178,7 @@ export function ForceCompare({
               </span>
             ) : null}
           </span>
-          <span className="num shrink-0 text-caption text-threat-ink">
+          <span className="num shrink-0 text-title text-threat-ink">
             {theirs
               ? theirs.low === theirs.high
                 ? compact(theirs.high)
@@ -211,7 +212,7 @@ export function ForceCompare({
             already treats "never looked" this way; a commitment surface has more
             reason to, not less.
           */
-          <p data-testid="compare-unknown" className="text-micro leading-snug text-alloy">
+          <p data-testid="compare-unknown" className="text-body leading-relaxed text-alloy">
             {t('counter.compareUnknownWhy')}
           </p>
         )}
@@ -255,19 +256,21 @@ export function ForceCompare({
       </div>
 
       {lines && (
-        <p data-testid="compare-lines" className="num mt-1.5 text-micro leading-snug">
+        <p data-testid="compare-lines" className="num mt-2 grid gap-1 text-label leading-relaxed">
           <span className="text-opportunity">{t('counter.linesClears', { at: span(lines.clears) })}</span>
-          <span className="text-faint">{t('counter.lineJoin')}</span>
           <span className="text-alloy">{t('counter.linesBreaks', { at: span(lines.breaks) })}</span>
         </p>
       )}
       {lossShare !== null && (
-        <p data-testid="compare-loss" className="num text-micro leading-snug text-faint">
+        <div className="mt-2 border-t border-line-soft pt-2">
+        <p data-testid="compare-loss" className="text-body font-semibold leading-relaxed text-bone">
           {t('counter.lossLabel', { share: lossShare })}
         </p>
+        <p className="mt-1 text-caption leading-relaxed text-dim">{t('counter.lossUncertainty')}</p>
+        </div>
       )}
       {notes.length > 0 && (
-        <p data-testid="compare-notes" className="text-micro leading-snug text-faint/80">
+        <p data-testid="compare-notes" className="mt-1 text-label leading-relaxed text-dim">
           {notes.join(t('counter.lineJoin'))}
         </p>
       )}
@@ -281,5 +284,19 @@ export function ForceCompare({
         <div className="mt-2 border-t border-line-soft pt-2">{children}</div>
       )}
     </section>
+    </>
+  );
+}
+
+/** The worst-case consequence is printed at the irreversible launch control. */
+export function FleetLossWarning({ loss }: { loss: { low: number; high: number } | null }) {
+  const { t } = useTranslation();
+  // Match the rounded percentage the player sees in the comparison above. A
+  // displayed 100% without the corresponding consequence would contradict itself.
+  if (loss === null || Math.round(loss.high * 100) < 100) return null;
+  return (
+    <p data-total-loss-risk className="mb-2 border-l-2 border-threat pl-3 text-title font-semibold leading-relaxed text-threat-ink">
+      {t('counter.lossTotalRisk')}
+    </p>
   );
 }

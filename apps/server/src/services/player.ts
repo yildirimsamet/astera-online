@@ -13,6 +13,11 @@ import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
 } from './galaxyEvents.js';
+import {
+  deliverSeasonRankReward,
+  deliveredSeasonRankReward,
+  type DeliveredSeasonRankReward,
+} from './seasonRankRewards.js';
 
 /**
  * The rows a fresh planet is written with, from the one table that decides it.
@@ -49,6 +54,8 @@ export interface JoinResult {
   planetId: string;
   slotIndex: number;
   seasonId: string;
+  /** Present on both the winning response and safe retries after a payout. */
+  seasonReward: DeliveredSeasonRankReward | null;
 }
 
 /**
@@ -90,11 +97,13 @@ async function readPlacement(db: Db, accountId: string): Promise<JoinResult | nu
     .limit(1);
 
   if (!found) return null;
+  const seasonReward = await deliveredSeasonRankReward(db, accountId, found.player.seasonId);
   return {
     playerId: found.player.id,
     planetId: found.planet.id,
     slotIndex: found.planet.slotIndex,
     seasonId: found.player.seasonId,
+    seasonReward,
   };
 }
 
@@ -242,6 +251,12 @@ export async function joinSeason(
             deuterium: academy ? academy.resources.deuterium + (academy.queue?.cost.deuterium ?? 0) : PLANET_START.deuterium,
             academyStep: academyStep ?? null,
             builtEver: academy?.builtEver ?? {},
+            statsOwnerPlayerId: player.id,
+            seasonTelemetry: {
+              produced: { alloy: 0, crystal: 0, deuterium: 0 },
+              productiveSeconds: 0,
+              shipsBuilt: academy?.builtEver ?? {},
+            },
             bufferAlloy: academy?.buffer.alloy ?? 0,
             bufferCrystal: academy?.buffer.crystal ?? 0,
             bufferDeuterium: academy?.buffer.deuterium ?? 0,
@@ -277,6 +292,14 @@ export async function joinSeason(
           }
         }
 
+        const seasonReward = await deliverSeasonRankReward(tx, {
+          accountId,
+          targetCycleId: current.cycleId,
+          deliveredSeasonId: seasonId,
+          planetId: planet.id,
+          deliveredAt: now,
+        });
+
         /**
          * NO STARTING FLEET. D22.
          *
@@ -309,6 +332,7 @@ export async function joinSeason(
           planetId: planet.id,
           slotIndex: slot.index,
           seasonId,
+          seasonReward,
         };
       });
     } catch (err) {

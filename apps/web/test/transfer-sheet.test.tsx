@@ -45,53 +45,23 @@ describe('world transfer sheet', () => {
     useTransfer.mockClear();
   });
 
-  /**
-   * THE DESTINATION'S BERTHS ARE THE COMMANDER'S, NOT A CONSTANT'S. D170.
-   *
-   * `landingBlock` reads the target controller's Prospector Holds and refuses
-   * against `prospectorCeiling(tech)`; this sheet read `prospectorRoom(held)` with
-   * no ladder at all, so a commander who had bought the third berth was told their
-   * own colony was full and the commit button stayed dead. Both ends of one
-   * transfer must answer the same question — a client stricter than the server is
-   * a purchase the player simply cannot make.
-   */
-  const withHolds = (level: number) => planetView().research.map((project) => (
-    project.id === 'PROSPECTOR_HOLDS' ? { ...project, level } : project
-  ));
+  it('does not list Prospectors in the interplanetary transfer section', () => {
+    render(
+      <ToastProvider>
+        <TransferSheet
+          target={target}
+          planet={planetView(
+            { fleet: { PROSPECTOR: 3, DART: 1 } },
+            { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },
+          )}
+          onClose={vi.fn()}
+          onLaunched={vi.fn()}
+        />
+      </ToastProvider>,
+    );
 
-  const transferProspector = (level: number, targetHeld: number) => render(
-    <ToastProvider>
-      <TransferSheet
-        target={target}
-        planet={planetView(
-          { fleet: { PROSPECTOR: 1 }, research: withHolds(level) },
-          { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },
-        )}
-        targetPlanet={planetView({
-          fleet: { PROSPECTOR: targetHeld },
-          research: withHolds(level),
-          capacity: { ground: 8, groundUsed: 0 },
-        }, { id: 'colony-1' })}
-        onClose={vi.fn()}
-        onLaunched={vi.fn()}
-      />
-    </ToastProvider>,
-  );
-
-  it('lets a bought third berth receive a Prospector', async () => {
-    const user = userEvent.setup();
-    transferProspector(3, 2);
-    await user.click(screen.getByRole('button', { name: 'More Prospector' }));
-    expect(screen.queryByText(/cannot accept another Prospector/i)).toBeNull();
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
-  });
-
-  it('still refuses a third Prospector while the rung is unbought', async () => {
-    const user = userEvent.setup();
-    transferProspector(2, 2);
-    await user.click(screen.getByRole('button', { name: 'More Prospector' }));
-    expect(screen.getByText(/cannot accept another Prospector/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Prospector/i })).toBeNull();
+    expect(document.querySelector('[data-hull-row="PROSPECTOR"]')).toBeNull();
   });
 
   it('shows cargo capacity and updates the defence left at origin', async () => {
@@ -176,10 +146,6 @@ describe('world transfer sheet', () => {
       <ToastProvider>
         <TransferSheet
           target={target}
-          targetPlanet={planetView({
-            fleet: { DART: 5_000 },
-            capacity: { ground: 100, groundUsed: 0 },
-          }, { id: target.id })}
           planet={planetView(
             { fleet: { DART: 1 } },
             { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },

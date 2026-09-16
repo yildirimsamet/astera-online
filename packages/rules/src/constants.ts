@@ -1465,10 +1465,9 @@ export const SENSOR = {
  * Shipyard level supplies BOTH probe accuracy and probe stealth: one building
  * gates the whole active-intel path, which keeps the player's model small.
  *
- * `maxInFlight` USED TO LIVE HERE and was deleted by D28. Scouting is still
- * rationed — more tightly, in fact, because a probe now competes with a raid and a
- * mining run for the same bay — but a cap on one craft type was a special case
- * where a general rule was wanted. See `flightSlots` in `economy.ts`.
+ * `maxInFlight` USED TO LIVE HERE and is deliberately gone. A paid probe may be
+ * launched every five seconds even while earlier probes are still flying; probes
+ * no longer consume ordinary fleet bays.
  */
 export const PROBE = {
   /**
@@ -1480,9 +1479,8 @@ export const PROBE = {
    * little of BOTH resources is what keeps it a decision after the opening: alloy
    * alone is the resource nobody is ever short of.
    *
-   * HOW MANY may be in the air at once is NOT set here: it is the
-   * general flight-bay rule (`flightSlots`), which D28 made the one scarcity every
-   * craft in the game shares, and the owner's call is that it stays that way.
+   * HOW MANY may be in the air at once is not capped. Affordability and the
+   * target-scoped five-second interval below are the only launch limits.
    */
   alloy: 65,
   /**
@@ -1545,32 +1543,13 @@ export const PROBE = {
    * the direction that rule wants — and at 3510 it is still an order of magnitude
    * clear of the fastest hull anyone can send at you.
    *
-   * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. What stops a
-   * commander reading the same world over and over is stated as a rule rather than
-   * smuggled in as travel time: `retargetCooldownMinutes` below, plus the flight
-   * bay every craft in the game competes for (D28).
+   * IT NO LONGER RATIONS SCOUTING, AND IT WAS NEVER SUPPOSED TO. Repeated taps are
+   * paced by the five-second interval below; probes do not consume ordinary fleet
+   * bays and an airborne probe does not close the target to another paid look.
    */
   speed: 3510,
-  /**
-   * HOW LONG BEFORE THE SAME COMMANDER MAY LOOK AT THE SAME WORLD AGAIN. D121,
-   * owner instruction.
-   *
-   * Measured from the LAUNCH, not from the report, so the hour is the same hour
-   * for a neighbour and for a world on the far rim. Anything measured from the
-   * return would charge distance twice — once in the flight and again in the
-   * cooldown — and the flight is already where distance is supposed to be felt.
-   *
-   * SCOPED TO THE COMMANDER, NOT TO THE WORLD THE PROBE LEFT FROM. A commander may
-   * hold four worlds (D97), and a per-origin rule would sell the same hour four
-   * times over to whoever had colonised most — which is a wealth ladder wearing an
-   * intel rule's clothes.
-   *
-   * It replaces the rationing that travel time used to do by accident, and it is a
-   * better version of it: a flight that is too long to be worth taking hides the
-   * decision inside a wait, while a stated hour puts "is this the world I want to
-   * spend my look on" in front of the player at the moment they choose.
-   */
-  retargetCooldownMinutes: 60,
+  /** Five-second, commander-and-target scoped double-tap guard, measured at launch. */
+  retargetCooldownMinutes: 5 / 60,
 } as const;
 
 /**
@@ -2181,28 +2160,43 @@ export const ABUSE = {
   recoveryShieldHours: 4,
 
   /**
-   * THE TWO THRESHOLDS A DEFEAT HAS TO CLEAR, AS WHOLE MULTIPLES.
+   * HOW MUCH WORK A DEFEAT HAS TO COST TO BE WORTH A WINDOW. Owner's design,
+   * 2026-09-15, replacing the two thresholds that shipped the day before.
    *
-   * `2 x lootLost >= raidableBefore` and `20 x lootLost >= storageCapacity`: half
-   * of what was there to take, AND a twentieth of everything this commander can
-   * store. Stated as multiples of the loss rather than as `0.5` and `0.05` of the
-   * other side so every comparison is integer arithmetic — the rule has an exact
-   * boundary at each end (a cargo-sufficient PARTIAL sits precisely on the first
-   * one), and a float share is how an exact boundary becomes a coin flip.
+   * MEASURED IN THE DEFENDER'S OWN PRODUCTION HOURS: everything the battle took —
+   * resources carried off PLUS hulls destroyed that did not rebuild from their own
+   * wreckage — priced on the game's 32:16:1 scale and divided by what this
+   * commander's works turn out in an hour. *"Belirli bir emek varsa kalkanı direkt
+   * verebiliriz."* It is the honest definition of heavy: how long you must work to
+   * stand where you stood.
    *
-   * WHY BOTH. The relative test alone is an exploit: a colony deliberately left at
-   * two units of alloy loses "everything" to a single Dart and puts the commander's
-   * entire holding — capital included — behind four hours of immunity. The material
-   * floor closes it, and it is measured against STORAGE rather than against a Core
-   * table because storage already grows with the commander: the bar scales with
-   * development on its own, and no second ladder has to be kept in step with it.
+   * WHAT IT REPLACES, AND WHY THAT HAD TO GO. The first rule asked for half of the
+   * struck world's raidable stock AND a twentieth of the commander's total STORAGE.
+   * Both halves measured the wrong thing, and the live field said so within a day:
    *
-   * A TWENTIETH IS THE FIRST SIMULATION FIGURE. If it turns out to refuse real
-   * heavy defeats at low development it moves, and it moves here — `earnsRecoveryShield`
-   * is the only reader.
+   *   · storage is a ceiling nobody reaches — the median commander sits at 24% of
+   *     it — so "a twentieth of capacity" meant a different fraction of a different
+   *     quantity for every player, and one caught with an empty store could lose
+   *     everything they had and clear nothing (measured: a defender who lost 100%
+   *     of his raidable stock scored 0.53% of the bar);
+   *   · and neither half could see a FLEET. Across 97 live battles the median
+   *     defender lost 100% of the ships standing on the world. The loudest thing a
+   *     raid does was worth zero to the rule meant to notice a heavy defeat.
+   *
+   * ONE FIGURE, NOT TWO COMPARED SEPARATELY. The owner's instruction was that
+   * either half should be enough; adding them satisfies that — a sum is never
+   * smaller than its larger part — and also answers the case neither test could
+   * alone, where six hours of ore and six hours of ships is a twelve-hour defeat
+   * rather than two small ones.
+   *
+   * EIGHT HOURS, WHICH IS TWICE THE WINDOW. A shield therefore covers half the work
+   * it takes to recover, which is a relationship that can be said out loud rather
+   * than a figure that has to be looked up. Measured against 97 live battles it
+   * grants on 25% of the ones the attacker won — one raid in four, against 31% for
+   * the rule it replaces, so the raid economy sees no shock while the rule finally
+   * fires on the right battles.
    */
-  recoveryRaidableMultiple: 2,
-  recoveryStorageMultiple: 20,
+  recoveryLossHours: 8,
 } as const;
 
 /**
@@ -2500,10 +2494,13 @@ export const INTERGALACTIC_CONVOY = {
  * Public galaxy moments dealt for ruleset 8+. D201.
  *
  * Every window is pinned to UTC+03:00 and half-open. The convoy's centre takes
- * the full two hours to cross the diameter: 07:00–09:00 and 19:00–21:00. The
- * morning convoy overlaps the 07:00 merchant; the evening convoy overlaps the
- * 20:00 shower. Old random schedules are frozen in
- * `galaxyEventConfigForRuleset()` and never inferred from this current object.
+ * the full two hours to cross the diameter: 07:00–09:00, 12:00–14:00 and
+ * 19:00–21:00. Lanes are allowed to overlap each other and several do on purpose —
+ * the morning convoy runs under the 07:00 merchant, the noon one under the 13:00
+ * shower, the evening one under the 20:00 shower — because a commander with one
+ * fleet and two opportunities is the choice these windows exist to create. Old
+ * random schedules are frozen in `galaxyEventConfigForRuleset()` and never
+ * inferred from this current object.
  */
 export const GALAXY_EVENTS = {
   version: 4,
@@ -2525,11 +2522,25 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 5 IS THE FRONT LOAD AND NOTHING ELSE. The windows and multipliers
-       * below are byte-identical to version 4; what changed is WHEN inside the
-       * hour the bonus rocks arrive. See `ASTEROID_SHOWER_FRONT_LOAD`.
+       * VERSION 5 WAS THE FRONT LOAD AND NOTHING ELSE — the windows and multipliers
+       * were byte-identical to version 4 and only the arrival times inside the hour
+       * moved (`ASTEROID_SHOWER_FRONT_LOAD`).
+       *
+       * VERSION 6 IS THE SIXTH WINDOW. Owner instruction, 2026-09-16: a x5 shower
+       * filling 23:00–24:00. The version moves because the SHAPE moved — a season
+       * dealt under 5 has five windows a day and one dealt under 6 has six, and
+       * `restampFutureOccurrences` compares this figure to decide whether a row is
+       * current. Leaving it at 5 would stamp two different calendars with one
+       * number, and a row that lies about which calendar it came from is the one
+       * thing D149's freeze exists to prevent.
+       *
+       * A LIVE SEASON DOES NOT GAIN IT ON DEPLOY. Calendars are dealt once at
+       * creation, so the new window reaches a running galaxy only through
+       * `pnpm season sync-events --kind ASTEROID_SHOWER --yes` — and
+       * `docs/deployment.md` states what that costs if it is run while a window is
+       * already open.
        */
-      version: 5,
+      version: 6,
       windows: [
         { startsAtLocalMinute: 2 * 60, endsAtLocalMinute: 3 * 60,
           effect: { asteroidSpawnMultiplier: 3 } },
@@ -2541,6 +2552,21 @@ export const GALAXY_EVENTS = {
           effect: { asteroidSpawnMultiplier: 5 } },
         { startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
           effect: { asteroidSpawnMultiplier: 10 } },
+        /**
+         * THE LAST HOUR OF THE DAY, AND IT ENDS ON THE BOUNDARY ITSELF.
+         *
+         * `endsAtLocalMinute: 24 * 60` is the largest value `validateConfig`
+         * accepts: a window may TOUCH midnight and may not cross it. It touches the
+         * 21:00 merchant at its start the same way — half-open windows that share
+         * an instant do not overlap, which is why neither guard refuses this.
+         *
+         * x5 RATHER THAN ANOTHER x10. The 20:00 window is the day's peak and the
+         * one a commander plans an evening around; a second x10 an hour later would
+         * make the peak a plateau and take the decision out of it. This is the
+         * evening's second chance, priced like the afternoon's two.
+         */
+        { startsAtLocalMinute: 23 * 60, endsAtLocalMinute: 24 * 60,
+          effect: { asteroidSpawnMultiplier: 5 } },
       ],
     },
     TRADE_SHIP: {
@@ -2558,8 +2584,27 @@ export const GALAXY_EVENTS = {
     },
     INTERGALACTIC_CONVOY: {
       schedule: 'FIXED_DAILY',
-      version: 2,
-      windows: [7 * 60, 19 * 60].map((startsAtLocalMinute) => ({
+      /**
+       * VERSION 3 IS THE NOON CROSSING. Owner instruction, 2026-09-16.
+       *
+       * Two crossings left the middle of the day empty: a commander who plays at
+       * lunch met the merchant's 07:00 window already closed and the 15:00 one not
+       * yet open. The version moves because the SHAPE moves — two windows a day
+       * becomes three — and `restampFutureOccurrences` reads this figure to decide
+       * whether a dealt row is current.
+       *
+       * IT IS 12:00–14:00 AND NOT THE 12:00–13:00 THAT WAS ASKED FOR, and the hour
+       * is not a rounding. The list below maps ONE authored duration onto every
+       * window because the convoy's speed is `2 x GALAXY.radius / durationMinutes`:
+       * the formation enters one rim as the window opens and clears the far rim as
+       * it closes. `intergalacticConvoySpec` refuses any other duration outright,
+       * and `resourceCapHours: 2` prices the reward as two hours of the raider's
+       * own production. A sixty-minute crossing is a different event wearing this
+       * one's name — twice the speed, half the reach for a slow fleet, and a reward
+       * table that no longer matches its own clock. Owner chose the authored shape.
+       */
+      version: 3,
+      windows: [7 * 60, 12 * 60, 19 * 60].map((startsAtLocalMinute) => ({
         startsAtLocalMinute,
         endsAtLocalMinute: startsAtLocalMinute + INTERGALACTIC_CONVOY.durationMinutes,
         effect: {

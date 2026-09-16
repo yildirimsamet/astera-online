@@ -30,6 +30,7 @@ import {
   probeReports,
   shards,
   seasons,
+  scheduledEvents,
   strategicAssets,
   units,
 } from '../src/db/schema.js';
@@ -84,9 +85,13 @@ import {
   intelSchema,
   launchSchema,
   leaderboardSchema,
+  seasonArchiveSchema,
+  seasonArchiveLeaderboardSchema,
+  seasonCommanderProfileSchema,
   markedSchema,
   meSchema,
   miningLaunchSchema,
+  miningRecallSchema,
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
@@ -126,6 +131,7 @@ import {
 } from '../../web/src/session/shardEvents.js';
 import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture, giveDebris } from './helpers.js';
 import { buildDeathStar } from '../src/services/strategic.js';
+import { onSeasonEnd } from '../src/worker/handlers.js';
 
 /**
  * THE CLIENT'S PARSER, RUN AGAINST THE SERVER'S REAL ANSWER.
@@ -802,9 +808,17 @@ describe('every payload the client parses', () => {
    * parsed: a schema loose enough to accept either shape would otherwise let the
    * field quietly come back as required.
    */
-  it('POST /api/mining/launch parses', async () => {
+  it('POST /api/mining/launch and its Prospector recall parse', async () => {
     const [mine] = f.planetIds as [string];
     await exposeMineableAsteroid();
+    // The visibility helper deliberately parks on the rock. Move the launch pad
+    // after that sighting so recall exercises a real outbound leg rather than a
+    // zero-distance arrival that is correctly already too late to turn.
+    const [pad] = await f.db
+      .select({ x: planets.x, y: planets.y, z: planets.z })
+      .from(planets)
+      .where(eq(planets.id, mine));
+    await placeAt(f.db, mine, { x: pad!.x + 25, y: pad!.y, z: pad!.z });
     const field = miningSchema.parse(await get('/api/mining'));
     // Not every rock in the disc can still be reached; take the first that can.
     let launched: unknown = null;
@@ -833,6 +847,18 @@ describe('every payload the client parses', () => {
     expect(parsed.mining).toEqual(miningStatusSchema.parse(await get('/api/mining/status')));
     expect(parsed.planet).toEqual(planetSchema.parse(await get('/api/planet')));
     expect(parsed.pending).toEqual(
+      pendingSchema.parse(await get('/api/session/pending')).pending,
+    );
+
+    const recalled = miningRecallSchema.parse(
+      await post(`/api/mining/runs/${parsed.runId}/recall`, {}),
+    );
+    const recalledRun = recalled.mining.runs.find((run) => run.id === parsed.runId);
+    expect(recalledRun).toMatchObject({ status: 'returning' });
+    expect(recalledRun?.recalledAt).toBeInstanceOf(Date);
+    expect(recalled.homeAt).toEqual(recalledRun?.homeAt);
+    expect(recalled.planet).toEqual(planetSchema.parse(await get('/api/planet')));
+    expect(recalled.pending).toEqual(
       pendingSchema.parse(await get('/api/session/pending')).pending,
     );
   });
@@ -1213,6 +1239,27 @@ describe('every payload the client parses', () => {
     expect(parsed.online).toBeLessThanOrEqual(parsed.players);
   });
 
+  it('parses the season archive, completed leaderboard and commander profile contracts', async () => {
+    seasonArchiveSchema.parse(await get('/api/season-archive?limit=12'));
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const [event] = await f.db
+      .select()
+      .from(scheduledEvents)
+      .where(eq(scheduledEvents.kind, 'season_end'));
+    if (!season || !event) throw new Error('contract season fixture is incomplete');
+    f.clock.set(season.endsAt);
+    await onSeasonEnd({ db: f.db, clock: f.clock }, event);
+
+    const leaderboard = seasonArchiveLeaderboardSchema.parse(
+      await get(`/api/season-archive/${f.seasonId}/leaderboard`),
+    );
+    const resultId = leaderboard.ladder[0]?.resultId;
+    if (!resultId) throw new Error('completed leaderboard returned no commander');
+    seasonCommanderProfileSchema.parse(
+      await get(`/api/season-archive/results/${resultId}`),
+    );
+  });
+
   /**
    * EVERY OTHER GET THE CLIENT PARSES, in one table.
    *
@@ -1378,7 +1425,7 @@ describe('every payload the client parses', () => {
    * suites were green, and the only thing that would have caught it is this.
    *
    * Each gets its own case because `beforeEach` reseeds: a launch commits units and
-   * a probe takes a bay, so sharing a world would make the order load-bearing.
+   * a probe spends resources, so sharing a world would make the order load-bearing.
    */
   it('POST /api/planet/upgrade parses', async () => {
     // The Vault, because `grant` raises the Refinery until it can HOLD the grant —

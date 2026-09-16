@@ -62,7 +62,7 @@ export const counter = {
   matchupLabel: '{{attacker}} against {{defender}}: {{outcome}}, ×{{mult}} damage',
   cycleLabel: 'Skirmisher beats Bulwark, Bulwark beats Lance, Lance beats Skirmisher',
   /** Above the two bars on the launch sheet — the one name of the one force unit. D199. */
-  compareHeading: 'Firepower',
+  compareHeading: 'Armed unit value',
   compareYours: 'Sending',
   compareTheirs: 'Standing there',
   /** The reading has an age and a width, and both are the fact. */
@@ -80,12 +80,15 @@ export const counter = {
    * a known shield; what they leave out is said, never implied.
    */
   compareRuleToggle: 'What is this?',
+  compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
   compareRule:
-    'Firepower is what the hulls and guns that can fire cost — both sides on one scale. The lines come from the battle itself: your ships, your research, and what the probe saw of theirs — shield, research and the shape of the wall. Below the first line this wing clears the wall; below the second it breaks it. Clearing it does not guarantee surviving ships: both sides can be destroyed, yielding no haul. Read the expected loss too. The ±8% roll is left out, and the reading may be old.',
-  linesClears: 'Clears below {{at}}',
-  linesBreaks: 'breaks below {{at}}',
+    'Both sides\u2019 firing ships and ground guns are compared by resource cost. The shield and unarmed ships are not in this number. The forecast also uses ship classes, research and the known shield. When enemy value is below a limit, the model expects that level of success. Full success does not guarantee surviving ships: both sides can be destroyed. The reading may be old; random shot changes are not included.',
+  linesClears: 'Full-success limit: {{at}}',
+  linesBreaks: 'partial-success limit: {{at}}',
   lineJoin: ' · ',
-  lossLabel: 'Expected loss {{share}}',
+  lossLabel: 'Estimated loss: {{share}} (by fleet resource value)',
+  lossUncertainty: 'This is a loss range based on current information, not a chance of winning.',
+  lossTotalRisk: 'High risk: None of your ships may return.',
   /** What the lines could not see, and what is already known about the reading. D199. */
   noteShieldUnmeasured: 'Shield charge not measured',
   noteShapeUnread: 'Shape of the wall not read',

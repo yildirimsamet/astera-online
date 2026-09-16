@@ -17,6 +17,12 @@
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
+if (process.argv.includes('--battle-reports')) {
+  const { verifyBattleReports } = await import('./battle-report-visual.mjs');
+  await verifyBattleReports(process.argv[2] ?? 'out/battle-reports');
+  process.exit(0);
+}
+
 if (process.argv.includes('--silent-space')) {
   const { verifySilentSpace } = await import('./silent-space-visual.mjs');
   await verifySilentSpace(process.argv[2] ?? 'out/silent-space');

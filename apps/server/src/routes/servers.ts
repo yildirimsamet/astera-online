@@ -85,6 +85,7 @@ export function registerServerRoutes(app: FastifyInstance): void {
         planetId: seated.planetId,
         planetName: placement.planetName,
         slotIndex: seated.slotIndex,
+        seasonReward: seated.seasonReward,
       };
     }
 
@@ -104,6 +105,7 @@ export function registerServerRoutes(app: FastifyInstance): void {
       planetId: joined.planetId,
       planetName: planet?.name ?? '',
       slotIndex: joined.slotIndex,
+      seasonReward: joined.seasonReward,
     };
   });
 }

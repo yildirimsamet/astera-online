@@ -482,6 +482,11 @@ describe('whether a signal went the reader’s way', () => {
    * wash on any of them would make the two that mean something mean less.
    */
   it('leaves what is neither alone', () => {
+    expect(signalOutcome(news('fleet_returned', {
+      trip: 'mining_recalled', craft: 2,
+      alloy: 0, crystal: 0, deuterium: 0,
+      wastedAlloy: 0, wastedCrystal: 0, wastedDeuterium: 0,
+    }))).toBe('neutral');
     expect(signalOutcome(news('scan_detected'))).toBe('neutral');
     expect(signalOutcome(news('galaxy_event_started'))).toBe('neutral');
     expect(signalOutcome(news('galaxy_event_ended'))).toBe('neutral');

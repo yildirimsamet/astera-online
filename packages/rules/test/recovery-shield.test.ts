@@ -1,155 +1,169 @@
 import { describe, expect, it } from 'vitest';
 import {
   ABUSE,
-  COMBAT,
-  computeLoot,
+  RESOURCE_VALUE,
   earnsRecoveryShield,
   effectiveAttackProtection,
   extendRecoveryShield,
   newcomerShieldUntil,
-  raidableStock,
-  recoveryShieldRelativeLoss,
+  recoveryLossHours,
   recoveryShieldUntil,
+  resourceValue,
+  type Resources,
 } from '../src/index.js';
 
 /**
- * THE SHIELD A HEAVY DEFEAT BUYS. Owner instruction, 2026-09-14.
+ * THE SHIELD A HEAVY DEFEAT BUYS. Owner instruction, 2026-09-14/15.
  *
  * *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver; korunan oyuncu
  * başka bir oyuncuya saldırmayı seçerse korumayı kaldır."* The pure half of that
  * lives here: what counts as heavy, how long the window is, and how it composes
  * with the first-day shield. Everything about launches, locks and who is actually
  * attacking is the server's, and `apps/server/test/recovery-shield.test.ts` holds it.
+ *
+ * HEAVY IS MEASURED IN THE COMMANDER'S OWN PRODUCTION HOURS. Owner's design, and
+ * the second one: the first shipped rule measured a share of the struck world's
+ * raidable stock against a floor of total STORAGE, and live measurement found both
+ * halves wrong. Storage is a ceiling nobody reaches — the median commander sits at
+ * 24% of it — so the floor meant something different for every player, and a
+ * commander caught with an empty store could lose everything they had and clear
+ * nothing. Worse, the rule could not see a FLEET at all, while the median defender
+ * of a lost battle loses 100% of the ships standing on the world.
  */
 
 const HOUR = 3_600_000;
-const NOW = Date.UTC(2026, 8, 14, 12, 0, 0);
+const NOW = Date.UTC(2026, 8, 15, 12, 0, 0);
+const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+
+/** A commander whose works turn out this much an hour, across every world. */
+const PRODUCTION: Resources = { alloy: 1_000, crystal: 500, deuterium: 20 };
+/** What one hour of that is worth on the game's own 32:16:1 scale. */
+const PER_HOUR = resourceValue(PRODUCTION);
+/** Alloy alone worth exactly N hours of it. */
+const alloyWorthHours = (hours: number): Resources =>
+  ({ alloy: (PER_HOUR * hours) / RESOURCE_VALUE.alloy, crystal: 0, deuterium: 0 });
 
 describe('what counts as a heavy defeat', () => {
-  /** A commander whose stores would hold this much in total, across every world. */
-  const STORAGE = 200_000;
-  /** A twentieth of it — the material floor the relative test sits on top of. */
-  const FLOOR = STORAGE / ABUSE.recoveryStorageMultiple;
-
-  it('states the two thresholds as whole multiples, so no boundary is a float', () => {
-    expect(ABUSE.recoveryShieldHours).toBe(4);
-    expect(ABUSE.recoveryRaidableMultiple).toBe(2);
-    expect(ABUSE.recoveryStorageMultiple).toBe(20);
+  it('states the bar as hours of the defender’s own production', () => {
+    expect(ABUSE.recoveryLossHours).toBe(8);
+    // The window is half the bar: a shield covers half the work it takes to recover.
+    expect(ABUSE.recoveryShieldHours * 2).toBe(ABUSE.recoveryLossHours);
   });
 
-  it('grants at exactly half of what was raidable, and refuses a unit below it', () => {
-    const raidableBefore = 40_000;
-    const half = raidableBefore / 2;
-    expect(half).toBeGreaterThan(FLOOR);
-    expect(earnsRecoveryShield({ raidableBefore, lootLost: half, storageCapacity: STORAGE }))
+  /**
+   * THE LOSS IS ONE FIGURE, NOT TWO COMPARED SEPARATELY.
+   *
+   * Owner's design: *"bu ikisinden birisi kalkan kazanması için yeterli olur"* —
+   * either half being enough is satisfied by adding them, because a sum is never
+   * smaller than its larger part. Adding also answers the case neither test could
+   * on its own: a defeat that took six hours of ore AND six hours of ships is a
+   * twelve-hour defeat, and a rule that compared the two halves separately would
+   * call it two small ones.
+   */
+  it('adds what was carried off to what was destroyed', () => {
+    const loot = alloyWorthHours(3);
+    const fleet = alloyWorthHours(5);
+    expect(recoveryLossHours(loot, NOTHING, PRODUCTION)).toBeCloseTo(3, 9);
+    expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(5, 9);
+    expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(8, 9);
+  });
+
+  it('grants at exactly the bar and refuses a whisker below it', () => {
+    const at = alloyWorthHours(ABUSE.recoveryLossHours);
+    expect(earnsRecoveryShield({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION }))
       .toBe(true);
-    expect(earnsRecoveryShield({ raidableBefore, lootLost: half - 1, storageCapacity: STORAGE }))
+    const under = { ...at, alloy: at.alloy * 0.999 };
+    expect(earnsRecoveryShield({ lootLost: under, fleetLost: NOTHING, production: PRODUCTION }))
       .toBe(false);
   });
 
-  it('refuses a proportionally huge loss that is materially trivial', () => {
-    // A deliberately empty colony: everything it held was taken, and it held nothing.
+  /** Either half alone clears it, which is the owner's "ikisinden birisi yeterli". */
+  it('grants on a fleet wipe that carried nothing away', () => {
     expect(earnsRecoveryShield({
-      raidableBefore: 2,
-      lootLost: 2,
-      storageCapacity: STORAGE,
-    })).toBe(false);
-  });
-
-  it('grants at exactly a twentieth of total storage, and refuses a unit below it', () => {
-    // Loss is total, so the relative test is satisfied at any raidable figure.
-    expect(earnsRecoveryShield({
-      raidableBefore: FLOOR,
-      lootLost: FLOOR,
-      storageCapacity: STORAGE,
+      lootLost: NOTHING,
+      fleetLost: alloyWorthHours(9),
+      production: PRODUCTION,
     })).toBe(true);
-    expect(earnsRecoveryShield({
-      raidableBefore: FLOOR - 1,
-      lootLost: FLOOR - 1,
-      storageCapacity: STORAGE,
-    })).toBe(false);
   });
 
-  it('refuses a battle that took nothing, and one there was nothing to take from', () => {
-    expect(earnsRecoveryShield({ raidableBefore: 50_000, lootLost: 0, storageCapacity: STORAGE }))
+  /**
+   * THE DIVISION BY ZERO THE FIRST DESIGN WOULD HAVE HAD, AND WHY IT IS GONE.
+   *
+   * Dividing each resource by its OWN production and taking the slowest is the
+   * intuitive reading of "how long to rebuild this", and it breaks on the live
+   * field: `profileIncome` gives deuterium `4 x L^1.2` against alloy's `100 x
+   * L^1.3`, and a commander with no Deuterium Plant produces exactly none. Measured
+   * on 97 live battles, 36 of them had the defender losing deuterium they cannot
+   * make — an infinite rebuild time, and therefore a free shield on any raid that
+   * touched the tank.
+   *
+   * Both sides are converted through `resourceValue` instead — the game's own
+   * 32:16:1 scale, where a unit of deuterium is already worth 32 alloy. The
+   * denominator is then the whole works and can only be zero for a commander who
+   * holds no world at all.
+   */
+  it('prices a resource the defender cannot produce rather than dividing by zero', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    const fuelOnly: Resources = { alloy: 0, crystal: 0, deuterium: 100 };
+    const hours = recoveryLossHours(fuelOnly, NOTHING, noPlant);
+    expect(Number.isFinite(hours)).toBe(true);
+    expect(hours).toBeCloseTo(
+      resourceValue(fuelOnly) / resourceValue(noPlant),
+      9,
+    );
+    // And it is still expensive, because deuterium is worth 32 alloy a unit.
+    expect(hours).toBeGreaterThan(0);
+  });
+
+  it('refuses a battle that cost nothing, and a commander who produces nothing', () => {
+    expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: NOTHING, production: PRODUCTION }))
       .toBe(false);
-    expect(earnsRecoveryShield({ raidableBefore: 0, lootLost: 0, storageCapacity: STORAGE }))
-      .toBe(false);
-    // A commander with no stores at all cannot clear a floor of zero by losing zero.
-    expect(earnsRecoveryShield({ raidableBefore: 0, lootLost: 0, storageCapacity: 0 }))
-      .toBe(false);
+    expect(recoveryLossHours(alloyWorthHours(50), NOTHING, NOTHING)).toBe(0);
+    expect(earnsRecoveryShield({
+      lootLost: alloyWorthHours(50),
+      fleetLost: NOTHING,
+      production: NOTHING,
+    })).toBe(false);
   });
 
   it('refuses nonsense rather than rounding it into a grant', () => {
-    for (const input of [
-      { raidableBefore: Number.NaN, lootLost: 10_000, storageCapacity: STORAGE },
-      { raidableBefore: 50_000, lootLost: Number.NaN, storageCapacity: STORAGE },
-      { raidableBefore: 50_000, lootLost: 40_000, storageCapacity: Number.NaN },
-      { raidableBefore: -1, lootLost: 40_000, storageCapacity: STORAGE },
-      { raidableBefore: 50_000, lootLost: -1, storageCapacity: STORAGE },
-      { raidableBefore: Infinity, lootLost: Infinity, storageCapacity: STORAGE },
-    ]) {
-      expect(earnsRecoveryShield(input), JSON.stringify(input)).toBe(false);
-    }
-  });
-
-  /**
-   * THE PRE-FILTER MAY NEVER BE MISTAKEN FOR THE RULE.
-   *
-   * The server asks `recoveryShieldRelativeLoss` on its own before it pays for a
-   * storage sweep, so the one thing that must stay true is that passing it is
-   * NECESSARY and never SUFFICIENT: anything the full rule grants, the pre-filter
-   * also passes, and the pre-filter alone can still be refused by the floor.
-   */
-  it('gates the full rule without ever standing in for it', () => {
-    const cases = [
-      { raidableBefore: 40_000, lootLost: 20_000 },
-      { raidableBefore: 40_000, lootLost: 19_999 },
-      { raidableBefore: 2, lootLost: 2 },
-      { raidableBefore: 0, lootLost: 0 },
-      { raidableBefore: 50_000, lootLost: 0 },
-      { raidableBefore: Number.NaN, lootLost: 10 },
+    const bad: Resources[] = [
+      { alloy: Number.NaN, crystal: 0, deuterium: 0 },
+      { alloy: Infinity, crystal: 0, deuterium: 0 },
+      { alloy: -1, crystal: 0, deuterium: 0 },
     ];
-    for (const probe of cases) {
-      const full = earnsRecoveryShield({ ...probe, storageCapacity: STORAGE });
-      const gate = recoveryShieldRelativeLoss(probe.raidableBefore, probe.lootLost);
-      if (full) expect(gate, JSON.stringify(probe)).toBe(true);
+    for (const value of bad) {
+      expect(earnsRecoveryShield({ lootLost: value, fleetLost: NOTHING, production: PRODUCTION }),
+        JSON.stringify(value)).toBe(false);
+      expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: value, production: PRODUCTION }),
+        JSON.stringify(value)).toBe(false);
+      expect(earnsRecoveryShield({
+        lootLost: alloyWorthHours(50), fleetLost: NOTHING, production: value,
+      }), JSON.stringify(value)).toBe(false);
     }
-    // And the case that proves it is not sufficient: everything taken, nothing lost.
-    expect(recoveryShieldRelativeLoss(2, 2)).toBe(true);
-    expect(earnsRecoveryShield({ raidableBefore: 2, lootLost: 2, storageCapacity: STORAGE }))
-      .toBe(false);
+    expect(recoveryLossHours({ alloy: Number.NaN, crystal: 0, deuterium: 0 }, NOTHING, PRODUCTION))
+      .toBe(0);
   });
 
   /**
-   * THE PARTIAL BOUNDARY, PINNED RATHER THAN LEFT TO ARITHMETIC.
+   * THE BAR SCALES WITH THE COMMANDER, WHICH IS THE WHOLE POINT OF THE UNIT.
    *
-   * `raidableBefore` is quoted at DECISIVE — the ceiling a probe shows — and a
-   * PARTIAL grade takes half of that share (35% against 70%). So a PARTIAL result
-   * with cargo enough for all of it lands on the threshold EXACTLY, and whether
-   * that grants a shield is a real design answer rather than an accident of two
-   * unrelated constants. It grants: the rule reads what the defender actually lost,
-   * never the label the battle was given.
+   * A beginner and a developed commander are asked for the same number of HOURS,
+   * so the absolute figure the developed one has to lose is larger by exactly the
+   * ratio of their works. No second ladder is kept in step with the Core, and a
+   * commander caught with an empty store is judged on what the defeat cost them
+   * rather than on a ceiling they were nowhere near.
    */
-  it('grants on a cargo-sufficient PARTIAL, which sits exactly on the half', () => {
-    expect(COMBAT.lootPartial / COMBAT.lootDecisive).toBeCloseTo(0.5, 12);
-    const stock = { alloy: 120_000, crystal: 80_000, deuterium: 6_000 };
-    const buffer = { alloy: 0, crystal: 0, deuterium: 0 };
-    const floor = { alloy: 0, crystal: 0, deuterium: 0 };
-    const raidableBefore = raidableStock(stock, buffer, floor, 'DECISIVE');
-    const partial = computeLoot(stock, buffer, floor, 'PARTIAL', Number.MAX_SAFE_INTEGER);
-    const lootLost = partial.alloy + partial.crystal + partial.deuterium;
-
-    expect(2 * lootLost).toBeGreaterThanOrEqual(raidableBefore);
-    expect(earnsRecoveryShield({ raidableBefore, lootLost, storageCapacity: 1_000_000 }))
+  it('asks a bigger commander for a proportionally bigger loss', () => {
+    const small: Resources = { alloy: 200, crystal: 100, deuterium: 2 };
+    const large: Resources = { alloy: 4_000, crystal: 2_000, deuterium: 60 };
+    const loss = { alloy: 20_000, crystal: 0, deuterium: 0 };
+    expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: small }))
       .toBe(true);
-    // Cargo-limited is decided on the real haul, so half a PARTIAL is not enough.
-    const limited = computeLoot(stock, buffer, floor, 'PARTIAL', lootLost / 2);
-    expect(earnsRecoveryShield({
-      raidableBefore,
-      lootLost: limited.alloy + limited.crystal + limited.deuterium,
-      storageCapacity: 1_000_000,
-    })).toBe(false);
+    expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: large }))
+      .toBe(false);
+    expect(recoveryLossHours(loss, NOTHING, small))
+      .toBeCloseTo(recoveryLossHours(loss, NOTHING, large) * (resourceValue(large) / resourceValue(small)), 6);
   });
 });
 
@@ -160,9 +174,7 @@ describe('the recovery window', () => {
 
   it('extends to the later end rather than adding a second window', () => {
     const first = recoveryShieldUntil(NOW);
-    // A second heavy defeat an hour later pushes the end out, and only by the gap.
     expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 5 * HOUR);
-    // One three hours after it lands inside a window that already reaches further.
     expect(extendRecoveryShield(NOW + 9 * HOUR, NOW)).toBe(NOW + 9 * HOUR);
     expect(extendRecoveryShield(null, NOW)).toBe(NOW + 4 * HOUR);
     expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 4 * HOUR);
@@ -187,10 +199,8 @@ describe('the two protections, read as one', () => {
       .toEqual({ kind: 'NEWCOMER', until: newcomer });
     expect(effectiveAttackProtection(null, recovery, NOW))
       .toEqual({ kind: 'RECOVERY', until: recovery });
-    // The first day outlasts a four-hour recovery, so it is the one named.
     expect(effectiveAttackProtection(newcomer, recovery, NOW))
       .toEqual({ kind: 'NEWCOMER', until: newcomer });
-    // …and a recovery stamped later than a nearly-spent first day wins instead.
     expect(effectiveAttackProtection(NOW + HOUR, recovery, NOW))
       .toEqual({ kind: 'RECOVERY', until: recovery });
   });

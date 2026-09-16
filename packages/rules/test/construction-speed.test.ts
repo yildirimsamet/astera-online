@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILD,
   BUILDING_IDS,
+  ECONOMY_ADJUSTMENT,
   INSTRUMENT_IDS,
   RESEARCH_MAX_LEVEL,
   RESEARCH_TECH,
@@ -38,6 +39,20 @@ const CORE = 8;
 const cost = (alloy: number, crystal: number, deuterium = 0): Resources =>
   ({ alloy, crystal, deuterium });
 
+/**
+ * THE GLOBAL TIMER DIAL, WHICH THIS FILE WAS AUTHORED WITHOUT.
+ *
+ * `buildingMinutes` is `profileBuilding().minutes x ECONOMY_ADJUSTMENT.buildTime x
+ * robotSpeedMult(tech)` — the dial is the one figure every timer in the game is
+ * multiplied by, and it sat at 1.00 when these assertions were written. It is
+ * 0.975 now, so an expectation built out of `profileBuilding` that does not carry
+ * it is asserting the dial does not exist, which is what made this file red.
+ *
+ * The robot half of every assertion below is UNCHANGED: what the research sells is
+ * a ratio, and a ratio does not care what the dial is set to.
+ */
+const quoted = (minutes: number): number => minutes * ECONOMY_ADJUSTMENT.buildTime;
+
 describe('the AI Robots ladder', () => {
   it('sells five rungs, a twentieth at a time to a quarter', () => {
     expect(robotSpeedMult({})).toBe(1);
@@ -69,9 +84,9 @@ describe('what the robots actually shorten', () => {
     for (const id of BUILDING_IDS) {
       for (let level = 1; level <= 12; level++) {
         const base = profileBuilding(id, level).minutes;
-        expect(buildingMinutes(id, level, {}), `${id} L${String(level)}`).toBe(base);
+        expect(buildingMinutes(id, level, {}), `${id} L${String(level)}`).toBe(quoted(base));
         expect(buildingMinutes(id, level, { AI_ROBOTS: 5 }), `${id} L${String(level)}`)
-          .toBeCloseTo(base * 0.75, 10);
+          .toBeCloseTo(quoted(base) * 0.75, 10);
       }
     }
   });
@@ -106,7 +121,7 @@ describe('what the robots actually shorten', () => {
     const base = profileBuilding('CORE', 9).minutes;
     for (let rung = 0; rung <= 5; rung++) {
       expect(buildingMinutes('CORE', 9, { AI_ROBOTS: rung }), `L${String(rung)}`)
-        .toBeCloseTo(base * robotSpeedMult({ AI_ROBOTS: rung }), 10);
+        .toBeCloseTo(quoted(base) * robotSpeedMult({ AI_ROBOTS: rung }), 10);
     }
   });
 });
@@ -135,7 +150,7 @@ describe('what the robots must not touch', () => {
 
   it('leaves the Yard project shaving only the Yard', () => {
     const base = profileBuilding('SHIPYARD', 5).minutes;
-    expect(buildingMinutes('SHIPYARD', 5, { YARD_AUTOMATION: 5 })).toBe(base);
+    expect(buildingMinutes('SHIPYARD', 5, { YARD_AUTOMATION: 5 })).toBe(quoted(base));
   });
 });
 
@@ -152,7 +167,10 @@ describe('what the robots must not touch', () => {
 describe('a timer already at the ceiling', () => {
   it('still feels the research', () => {
     const capped = BUILDING_IDS.map((id) => ({ id, level: 40 }))
-      .filter(({ id, level }) => profileBuilding(id, level).minutes === BUILD.capMinutes);
+      // `BUILD.capMinutes` already carries the dial; `profileBuilding` is the
+      // authored figure underneath it. Comparing the two directly could never match.
+      .filter(({ id, level }) =>
+        profileBuilding(id, level).minutes === BUILD.capMinutes / ECONOMY_ADJUSTMENT.buildTime);
     expect(capped.length).toBeGreaterThan(0);
     for (const { id, level } of capped) {
       expect(buildingMinutes(id, level, { AI_ROBOTS: 5 }), id)

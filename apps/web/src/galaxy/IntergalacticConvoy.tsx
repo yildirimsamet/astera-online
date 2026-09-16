@@ -14,6 +14,7 @@ import {
   toWorld,
 } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 
 export const CONVOY_BASE_HULL_SCALE = 0.14 * CRAFT_SCALE;
 export const CONVOY_HULL_SCALE_MULT = 2;
@@ -496,7 +497,7 @@ export function IntergalacticConvoy({
       {onSelect ? (
         <mesh name="intergalactic-convoy-hit" onPointerUp={pick} renderOrder={-1}>
           <sphereGeometry args={[HIT_RADIUS, 12, 8]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <HitboxMaterial kind="convoy" />
         </mesh>
       ) : null}
     </group>

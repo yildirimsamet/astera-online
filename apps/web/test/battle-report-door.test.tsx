@@ -168,15 +168,8 @@ describe('which fight a notification names', () => {
 
 describe('where a report opens', () => {
   /**
-   * AT THE BOTTOM, WHICH IS WHERE THE ANSWER IS. Owner instruction.
-   *
-   * A report is read in one direction: what happened, then what it cost, then what
-   * came home. The sheet is taller than a phone and opens at the top, so a
-   * commander who tapped a notification to find out how a raid went arrived at the
-   * header and had to scroll past the whole account to reach the verdict.
-   *
-   * ONCE, ON ARRIVAL. Not a scroll lock — the reader is free to go back up through
-   * the rounds, and nothing pulls them down again.
+   * The verdict is now first. Opening at the bottom would skip the answer and
+   * reveal bookkeeping instead; no global smooth-scroll side effect is needed.
    */
   it('lands the reader on the outcome rather than the header', async () => {
     const scrollTo = vi.fn();
@@ -189,8 +182,8 @@ describe('where a report opens', () => {
 
     open('mission-b1', [report()]);
     await screen.findByRole('dialog');
-    await waitFor(() => { expect(scrollTo).toHaveBeenCalled(); });
-    const [args] = scrollTo.mock.calls.at(-1) as [{ top: number }];
-    expect(args.top).toBeGreaterThan(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-sheet-scroll]')?.scrollTop).toBe(0);
+    expect(document.querySelector('[data-battle-verdict]')).not.toBeNull();
   });
 });

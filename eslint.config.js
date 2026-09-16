@@ -5,7 +5,9 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
-  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**'] },
+  // `.dev/` is the local bring-up's scratch area — the dev-server log and any
+  // throwaway database fixtures. It is gitignored and is not part of the build.
+  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

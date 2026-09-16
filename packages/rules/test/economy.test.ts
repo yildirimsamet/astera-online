@@ -49,9 +49,10 @@ describe('production and cost curves', () => {
    * income and crystal quietly stops being the constraint the design needs.
    */
   it('uses the monthly production ratios and power curves', () => {
-    // The opening Alloy lift temporarily lowers the other resources' income share.
+    // The opening Alloy lift temporarily lowers the other resources' income share,
+    // and gives it back one rung at a time while the lift tapers out.
     expect(crystalRate(1) / alloyRate(1)).toBeCloseTo(0.4, 6);
-    expect(crystalRate(7) / alloyRate(7)).toBeCloseTo(0.5 / 1.15, 6);
+    expect(crystalRate(7) / alloyRate(7)).toBeCloseTo(0.5 / 1.1875, 6);
     expect(crystalRate(10) / alloyRate(10)).toBeCloseTo(0.5, 6);
     /*
       Deuterium keeps its own flatter ladder; only its base has ever moved. D161
@@ -62,27 +63,54 @@ describe('production and cost curves', () => {
     expect(deuteriumRate(1) / alloyRate(1))
       .toBeCloseTo(0.032, 6);
     expect(deuteriumRate(7) / alloyRate(7))
-      .toBeCloseTo((4 * 7 ** 1.2) / (100 * 7 ** 1.3 * 1.15), 6);
+      .toBeCloseTo((4 * 7 ** 1.2) / (100 * 7 ** 1.3 * 1.1875), 6);
     // And the shape is untouched: it is still `base x L x growth^L`.
     expect(alloyRate(2) / alloyRate(1)).toBeCloseTo(2 ** 1.3, 6);
   });
 
-  it('boosts Alloy by 25% through L6, 15% through L9, and leaves L10 onward untouched', () => {
+  /**
+   * THE EARLY ALLOY LIFT, AND WHY IT TAPERS INSTEAD OF ENDING.
+   *
+   * Owner instruction, 2026-09-13: lift the opening Alloy ladder so the first
+   * hours are less thin. It shipped as two flat bands that STOPPED — 1.25x through
+   * L6, 1.15x through L9, nothing from L10 — and a lift that stops is a lift the
+   * player pays back in one rung: `9^1.3 x 1.15 > 10^1.3`, so Refinery 9 -> 10
+   * bought a commander 0.3% LESS alloy an hour and a smaller store, at the dearest
+   * price on the ladder so far (owner report, 2026-09-15).
+   *
+   * The lift now DECAYS to 1.00 across L7..L10 — same flat opening, same untouched
+   * curve from L10 on, and the whole return happens inside levels whose own step is
+   * big enough to absorb it. The worst rung on the ladder gains 7.9%.
+   *
+   * L10 ONWARD STAYS EXACTLY THE PROFILE. That is the property worth keeping: the
+   * lift is a temporary shape on the opening, not a change to the economy the rest
+   * of the game is measured against.
+   */
+  it('lifts the opening Alloy ladder 25% and decays it back to the profile by L10', () => {
+    const lift = (level: number): number =>
+      level <= 6 ? 1.25 : level >= 10 ? 1 : 1 + 0.25 * (10 - level) / 4;
+
     expect(alloyRate(0)).toBe(0);
     for (let level = 1; level <= 6; level += 1) {
       expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * 1.25, 8);
     }
+    expect([7, 8, 9].map(lift)).toEqual([1.1875, 1.125, 1.0625]);
     for (let level = 7; level <= 9; level += 1) {
-      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * 1.15, 8);
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * lift(level), 8);
     }
     for (const level of [10, 11, 20, 100]) {
       expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70, 8);
     }
-    expect(alloyRate(7)).toBeGreaterThan(alloyRate(6));
-    // Exact owner boundary: preserving L10 makes it slightly lower than boosted L9.
-    expect(alloyRate(10)).toBeLessThan(alloyRate(9));
-    expect(paybackHours(9)).toBe(Infinity);
-    expect(worthInvesting(9, 300)).toBe(false);
+
+    // The two rungs the flat bands broke, in the units the screen quotes.
+    for (let level = 1; level <= 12; level += 1) {
+      expect(alloyRate(level), `L${String(level)}`).toBeGreaterThan(alloyRate(level - 1));
+      expect(storageCap(alloyRate(level), 9), `store L${String(level)}`)
+        .toBeGreaterThan(storageCap(alloyRate(level - 1), 9));
+    }
+    expect(alloyRate(10) / alloyRate(9)).toBeGreaterThan(1.07);
+    expect(paybackHours(9)).toBeLessThan(Infinity);
+    expect(worthInvesting(9, 300)).toBe(true);
   });
 
   /**

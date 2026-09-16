@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { combatValue } from '@astera/rules';
-import { ForceCompare } from '../src/ui/ForceCompare.js';
+import { FleetLossWarning, ForceCompare } from '../src/ui/ForceCompare.js';
 import { compact } from '../src/lib/format.js';
 import { staleness } from '../src/lib/time.js';
 import i18n from '../src/i18n/index.js';
@@ -155,7 +155,8 @@ describe('what it says about the reading', () => {
     const view = render(
       <ForceCompare yours={8240} theirs={reading} lines={lines} loss={{ low: 0.35, high: 0.6 }} />,
     );
-    expect(view.container.textContent).not.toMatch(/win|lose|likely|chance/i);
+    expect(view.container.textContent).not.toMatch(/you will win|you will lose|likely victory|\d+% chance/i);
+    expect(view.container.textContent).toMatch(/not a chance of winning/i);
   });
 
   /**
@@ -169,8 +170,8 @@ describe('what it says about the reading', () => {
     expect(screen.queryByTestId('compare-rule')).toBeNull();
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/hulls and guns that can fire/i);
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/battle/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/firing ships and ground guns/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/both sides can be destroyed/i);
   });
 });
 
@@ -194,8 +195,8 @@ describe('the lines', () => {
   it('states both lines in words', () => {
     render(<ForceCompare yours={8240} theirs={reading} lines={lines} />);
     const said = screen.getByTestId('compare-lines');
-    expect(said).toHaveTextContent(`Clears below ${compact(9_000)}`);
-    expect(said).toHaveTextContent(`breaks below ${compact(12_000)}`);
+    expect(said).toHaveTextContent(`Full-success limit: ${compact(9_000)}`);
+    expect(said).toHaveTextContent(`partial-success limit: ${compact(12_000)}`);
   });
 
   /** An unread wall moves a line; the part nobody has measured is drawn as doubt. */
@@ -204,7 +205,7 @@ describe('the lines', () => {
     const view = render(<ForceCompare yours={8240} theirs={reading} lines={open} />);
     expect(widthOf(view, 'zone-clears')).toBeCloseTo((6_000 / 13_900) * 100, 4);
     expect(widthOf(view, 'zone-clears-open')).toBeCloseTo(((9_000 - 6_000) / 13_900) * 100, 4);
-    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Clears below ${compact(6_000)}–${compact(9_000)}`);
+    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full-success limit: ${compact(6_000)}–${compact(9_000)}`);
   });
 
   it('clips a line that runs past the axis rather than stretching it', () => {
@@ -218,7 +219,7 @@ describe('the lines', () => {
   it('scales to the wing and its own lines when there is no reading', () => {
     const view = render(<ForceCompare yours={8240} theirs={null} lines={lines} />);
     expect(widthOf(view, 'zone-clears')).toBeCloseTo((9_000 / 12_000) * 100, 4);
-    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Clears below ${compact(9_000)}`);
+    expect(screen.getByTestId('compare-lines')).toHaveTextContent(`Full-success limit: ${compact(9_000)}`);
   });
 
   it('draws no lines for a wing with nothing selected', () => {
@@ -263,10 +264,30 @@ describe('the axis is force, not spend', () => {
     expect(combatValue({ ...wing, ATLAS: 2 })).toBe(combatValue(wing));
   });
 
-  it('names the axis Firepower, and says what it counts one tap deeper', () => {
+  it('names resource value rather than firepower, and states the unit before any tap', () => {
     render(<ForceCompare yours={combatValue({ DART: 12 })} theirs={reading} />);
-    expect(screen.getByText('Firepower')).toBeInTheDocument();
+    expect(screen.getByText('Armed unit value')).toBeInTheDocument();
+    expect(screen.getByText(/Resource cost, not attack damage/)).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /what is this/i }));
-    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/hulls and guns that can fire/i);
+    expect(screen.getByTestId('compare-rule')).toHaveTextContent(/firing ships and ground guns/i);
+  });
+});
+
+describe('the worst-case fleet loss warning', () => {
+  it.each([null, { low: 0, high: 0 }, { low: 0.35, high: 0.6 }, { low: 0.9, high: 0.994 }])('does not invent total-loss risk for %j', loss => {
+    const view = render(<FleetLossWarning loss={loss} />);
+    expect(view.container.querySelector('[data-total-loss-risk]')).toBeNull();
+  });
+
+  it.each([{ low: 0.24, high: 0.995 }, { low: 0.24, high: 1 }, { low: 1, high: 1 }])('states total loss in words for %j', loss => {
+    const view = render(<FleetLossWarning loss={loss} />);
+    expect(view.container.querySelector('[data-total-loss-risk]')).toHaveTextContent(/None of your ships may return/);
+  });
+
+  it('keeps the unit and the uncertainty visible without expanding the detailed rule', () => {
+    render(<ForceCompare yours={8240} theirs={reading} loss={{ low: 0.24, high: 1 }} />);
+    expect(screen.getByTestId('compare-loss')).toHaveTextContent(/24–100%.*fleet resource value/);
+    expect(screen.getByText(/not a chance of winning/)).toBeVisible();
+    expect(screen.queryByTestId('compare-rule')).toBeNull();
   });
 });

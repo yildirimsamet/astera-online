@@ -97,8 +97,12 @@ describe('the walkover — a DECISIVE with no rounds at all', () => {
 
   it('says the world was undefended instead of drawing an empty round list', async () => {
     const view = await openSheet(walkover());
+    const board = view.container.querySelector('[data-their-board="complete"]');
     expect(view.container.querySelector('[data-walkover]')).not.toBeNull();
     expect(view.container.querySelector('[data-combat-round]')).toBeNull();
+    expect(board).toHaveTextContent(i18n.t('reports.theirBoardEmptyAtStart'));
+    expect(board).not.toHaveTextContent(i18n.t('reports.theirBoardCompleteNote'));
+    expect(view.container.querySelector('[data-no-ground]')).toBeNull();
     expect(view.container.textContent).not.toMatch(/no shield/i);
     expect(view.container.textContent).not.toMatch(/You destroyed everything defending/i);
   });
@@ -110,11 +114,16 @@ describe('the walkover — a DECISIVE with no rounds at all', () => {
   });
 
   it('explains an undefended raid from the defending commander’s perspective', async () => {
-    const view = await openSheet({ ...walkover(), attacking: false, lootAlloy: -300 });
+    const view = await openSheet({
+      ...walkover(), attacking: false, yourFleet: {}, lootAlloy: -300,
+    });
     const explanation = view.container.querySelector('[data-walkover]');
+    const verdict = view.container.querySelector('[data-battle-verdict]');
     expect(explanation?.textContent).toMatch(/attacking fleet/i);
     expect(explanation?.textContent).not.toMatch(/Your ships arrived/i);
     expect(view.container.textContent).not.toMatch(/Everything you had defending fell/i);
+    expect(verdict).toHaveTextContent(i18n.t('reports.verdict.yourForce'));
+    expect(verdict).not.toHaveTextContent(i18n.t('reports.verdict.rosterUnknown'));
   });
 });
 
@@ -138,7 +147,8 @@ describe('what was on the other side', () => {
   it('states the roster is only a floor when they held', async () => {
     const view = await openSheet(report({ grade: 'PARTIAL' }));
     expect(view.container.querySelector('[data-their-board="floor"]')).not.toBeNull();
-    expect(view.container.textContent).toMatch(/at least/i);
+    expect(view.container.textContent).toMatch(/Destroyed units only/i);
+    expect(view.container.textContent).toMatch(/not the enemy.*whole fleet/i);
   });
 
   it('says nothing was destroyed rather than showing a blank on a clean repel', async () => {
@@ -229,13 +239,14 @@ describe('the order a reader asks their questions in', () => {
   });
 
   /**
-   * NOTHING ON THIS SHEET FOLDS. A report is read once, at the end of a bet the
-   * commander has already paid for. Folding a section of it would be the
-   * interaction-cost rule eating the decision-support rule it exists to serve.
+   * Outcomes and casualties never fold; the optional formula is secondary.
    */
-  it('hides none of it behind a tap', async () => {
+  it('keeps critical facts outside optional calculation details', async () => {
     const view = await openSheet(report());
     expect(view.container.querySelectorAll('[aria-expanded]')).toHaveLength(0);
+    expect(view.container.querySelector('[data-battle-verdict]')?.closest('details')).toBeNull();
+    expect(view.container.querySelector('[data-round-losses]')?.closest('details')).toBeNull();
+    expect(view.container.querySelector('[data-combat-formula]')?.closest('details')).not.toHaveAttribute('open');
     expect(order).toHaveLength(4);
   });
 });

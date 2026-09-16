@@ -41,6 +41,14 @@ describe('the survivor bar', () => {
     expect(widthOf(view, 'lost')).toBeCloseTo(100, 1);
   });
 
+  it('treats zero enemy survivors as good news and surviving enemies as a threat', () => {
+    const none = render(<SurvivorBar sent={20} lost={20} side="theirs" />);
+    expect(none.container.querySelector('[data-alive]')).toHaveClass('text-opportunity');
+    none.unmount();
+    const some = render(<SurvivorBar sent={20} lost={5} side="theirs" />);
+    expect(some.container.querySelector('[data-alive]')).toHaveClass('text-threat-ink');
+  });
+
   /**
    * D27: ground defence salvages back. A defender told they lost seven Bastions
    * while four are still standing is being told two things by one screen — so
@@ -57,11 +65,25 @@ describe('the survivor bar', () => {
     expect(view.container.querySelector('[data-alive]')).toHaveTextContent('7');
   });
 
-  it('states the cost beside the shape, and only when there was one', () => {
+  it('labels the exact cost including zero, instead of making the player infer it', () => {
     expect(render(<SurvivorBar sent={10} lost={3} />).container.querySelector('[data-lost]'))
       .toHaveTextContent('3');
     expect(render(<SurvivorBar sent={10} lost={0} />).container.querySelector('[data-lost]'))
-      .toBeNull();
+      .toHaveTextContent('0');
+  });
+
+  it('shows labelled starting, destroyed and surviving counts with caller-specific words', () => {
+    const view = render(<SurvivorBar sent={10} lost={3} sentLabel="Sent" leftLabel="Survived" />);
+    expect(view.container).toHaveTextContent(/Sent10.*Lost3.*Survived7/);
+    expect(view.container.querySelector('[data-sent]')).toHaveTextContent('10');
+  });
+
+  it('overlays rebuilt guns within the lost portion rather than clipping a third flex segment', () => {
+    const view = render(<SurvivorBar sent={10} lost={7} rebuilt={99} />);
+    expect(widthOf(view, 'rebuilt')).toBe(70);
+    expect(view.container.querySelector('[data-part="rebuilt"]')).toHaveClass('absolute');
+    expect(view.container.querySelector('[data-alive]')).toHaveTextContent('10');
+    expect(view.container.querySelector('[data-rebuilt]')).toHaveTextContent(/7.*after battle/);
   });
 
   it('can hide repeated figures when a summary already prints them', () => {

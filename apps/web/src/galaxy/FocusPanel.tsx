@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  FEATURE_FLAGS,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   PROBE,
@@ -59,7 +60,6 @@ import {
   type Headline as HeadlineKind,
 } from '../lib/dossier.js';
 import { countdown, duration, staleness, useNow } from '../lib/time.js';
-import { serverNow } from '../lib/clock.js';
 import { flightModifiers, reachMinutes } from '../lib/navigation.js';
 import { rateAnchor } from '../lib/trade.js';
 import type { TradeShipEvent } from '../lib/trade.js';
@@ -1439,8 +1439,24 @@ function StrategicWorldGuide({
             <p className={`legend ${ recovery ? 'text-threat-ink' : 'text-crystal' }`}>
               {t(recovery ? 'focus.planet.capitalRecovering' : 'focus.planet.capitalProtected')}
             </p>
+            {/*
+              WHAT A CAPITAL COSTS A RAIDER, IN THE VOCABULARY THAT IS ON SCREEN.
+
+              Both sentences below the headline were written about the Death Star
+              — what it halves, and that a second one takes half of the remainder
+              — and `STRATEGIC_CRAFTING_ENABLED` took the forge, the research row
+              and the launch control away without touching them. That left the one
+              surface a raider reads before committing explaining a weapon they
+              cannot build, own or find, which reads as a broken game rather than
+              as a rule. The flag-off line states the rule that IS live: raids take
+              resources here and control never moves.
+            */}
             <p className="mt-1 text-label text-dim">
-              {t(recovery ? 'focus.planet.capitalRecoveringHint' : 'focus.planet.capitalProtectedHint')}
+              {t(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
+                ? 'focus.planet.capitalRaidOnlyHint'
+                : recovery
+                  ? 'focus.planet.capitalRecoveringHint'
+                  : 'focus.planet.capitalProtectedHint')}
             </p>
           </div>
           {recovery && (
@@ -1613,12 +1629,15 @@ function StrategicWorldGuide({
               <AttackIcon className="mt-1 size-3.5 shrink-0 text-alloy" />
               <span>{t('focus.planet.claimRaidStillOpen')}</span>
             </p>
-            <p className="flex items-start gap-2">
-              <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
-              <span>{t('focus.planet.claimDeathStarConsequence', {
-                duration: duration(MULTI_WORLD.recoveryMinutes),
-              })}</span>
-            </p>
+            {/* The second way a claim ends is the weapon; with it off there is one. */}
+            {FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && (
+              <p className="flex items-start gap-2">
+                <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
+                <span>{t('focus.planet.claimDeathStarConsequence', {
+                  duration: duration(MULTI_WORLD.recoveryMinutes),
+                })}</span>
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -1627,6 +1646,21 @@ function StrategicWorldGuide({
 
   const recovery = target.state.kind === 'RECOVERY' ? target.state : null;
   const protectedState = target.state.kind === 'PROTECTED' ? target.state : null;
+  /**
+   * A ROUTE WITH NO VEHICLE IS NOT A ROUTE. `STRATEGIC_CRAFTING_ENABLED`.
+   *
+   * Everything below except the occupation notice describes an IMPACT — "what a
+   * strike does", the damage step, the clock, the warning that the world produces
+   * nothing until it runs out. None of it can be caused while the weapon is off,
+   * and `recoveryUntil` is written in exactly one place in the server
+   * (`services/strategic.ts`), so the recovery branch is unreachable too.
+   *
+   * THE OCCUPATION WINDOW SURVIVES IT, and that is the whole reason this is a
+   * filter rather than a `return null`: `PROTECTED` also refuses an ordinary raid
+   * (D98 · D183), so a commander looking at a freshly captured colony still needs
+   * to be told why the attack control will not fire.
+   */
+  if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && protectedState === null) return null;
   return (
     <div className={`mb-3 rounded-chip border px-3 py-3 ${
       recovery
@@ -1976,12 +2010,13 @@ function CloseGap({
  * world is missing its surface AND its stock, two gaps closed by the same launch,
  * so the rail grew two identical buttons.
  *
- * THE COOLDOWN IS THE ONLY THING THAT CLOSES IT. D121 — one look per world per
- * hour, enforced in `launchProbe` under the planet lock, which is the only place
+ * THE COOLDOWN IS THE ONLY THING THAT CLOSES IT — five seconds per world,
+ * enforced in `launchProbe` under the planet lock, which is the only place
  * it can be enforced. What this does is stop the interface offering a launch it
  * already knows will be refused (principle 10), reading the SAME instant the
  * guard reads, published by `/api/intel`, so the two can never disagree by a
- * rounding. `serverNow()` because a drifted phone must not open it early (D52).
+ * rounding. `useNow()` reads the server-corrected clock so a drifted phone cannot
+ * open it early, and also re-renders when the five seconds expire (D52).
  */
 function ProbeControl({
   target,
@@ -1996,6 +2031,9 @@ function ProbeControl({
   const { t } = useTranslation();
   const probe = useProbe();
   const say = useToast();
+  // Five seconds is short enough that waiting for an unrelated React update would
+  // visibly strand the disabled control. Tick from the server-corrected clock.
+  const now = useNow(1000);
 
   const readyAt = intel?.probeCooldowns.find(
     (row) => row.targetPlanetId === target.id,
@@ -2008,7 +2046,7 @@ function ProbeControl({
   */
   const shape = 'slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight';
 
-  if (readyAt !== undefined && readyAt.getTime() > serverNow()) {
+  if (readyAt !== undefined && readyAt.getTime() > now) {
     return (
       <button
         type="button"
@@ -2021,13 +2059,13 @@ function ProbeControl({
           button is a visual saving and must not become an information loss.
         */
         aria-label={t('focus.planet.probeCooling', {
-          duration: duration((readyAt.getTime() - serverNow()) / 60_000),
+          duration: duration((readyAt.getTime() - now) / 60_000),
         })}
       >
         <EyeIcon className="size-4 shrink-0" />
         {t('focus.planet.probeShort')}
         <span className="num text-micro text-faint">
-          {duration((readyAt.getTime() - serverNow()) / 60_000)}
+          {duration((readyAt.getTime() - now) / 60_000)}
         </span>
       </button>
     );

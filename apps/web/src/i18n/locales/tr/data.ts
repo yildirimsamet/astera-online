@@ -98,10 +98,10 @@ export const vocabulary = {
       tag: 'Gezegeni saran kalkan',
       role: 'Birliklerden önce hasar alan gezegen kalkanıdır; azami dayanımının saatte %35’ini yeniler.',
       roleNone:
-        'Akın hasarını gemilere ve yer savunmasına ulaşmadan önce karşılar. Kaynak harcamadan yenilenir; istihbarat sağlamaz ve stratejik silahları durdurmaz.',
+        'Akın hasarını gemilere ve yer savunmasına ulaşmadan önce karşılar. Kaynak harcamadan yenilenir; istihbarat sağlamaz.',
       roleOwned:
-        'Akın hasarını önce kalkan karşılar. Azami dayanımının saatte %35’ini kaynak harcamadan yeniler; istihbarat sağlamaz ve stratejik silahları durdurmaz.',
-      detail: 'Her seviye kalkanın azami dayanımını artırır. Çatışmada hasar önce Aegis’ten düşer, kalkan bittikten sonra gemilere ve yer savunmasına geçer. Kalkan azami değerinin saatte %35’i kadar yenilenir. Aegis bilgi toplamaz; Ölüm Yıldızı’nı durdurmak için Önleme Ağı gerekir.',
+        'Akın hasarını önce kalkan karşılar. Azami dayanımının saatte %35’ini kaynak harcamadan yeniler; istihbarat sağlamaz.',
+      detail: 'Her seviye kalkanın azami dayanımını artırır. Çatışmada hasar önce Aegis’ten düşer, kalkan bittikten sonra gemilere ve yer savunmasına geçer. Kalkan azami değerinin saatte %35’i kadar yenilenir. Aegis bilgi toplamaz.',
     },
     VEIL: {
       name: 'Perde',
@@ -150,7 +150,7 @@ export const vocabulary = {
         'Bu dünyadan kalkan akın, transfer, ticaret ve klan yardımı filolarının gidiş ve dönüş hızını 1,3 katına çıkarır.',
       blurb:
         'Akın, transfer, ticaret ve klan yardımı filolarına rota desteği sağlar. Gidiş ve dönüş kısaldıkça gemilerin ev savunmasından ayrı kaldığı süre de azalır.',
-      detail: 'Kılavuz, bu dünyadan başlayan akın, transfer, ticaret ve klan yardımı filolarını gidişte ve dönüşte 1,3 kat hızlandırır. Yerleşim filolarını, Kazıcıları veya Ölüm Yıldızı’nı hızlandırmaz; saldırı, gövde dayanımı, ambar ve yakıt maliyeti değişmez.',
+      detail: 'Kılavuz, bu dünyadan başlayan akın, transfer, ticaret ve klan yardımı filolarını gidişte ve dönüşte 1,3 kat hızlandırır. Yerleşim filolarını veya Kazıcıları hızlandırmaz; saldırı, gövde dayanımı, ambar ve yakıt maliyeti değişmez.',
     },
   },
 
@@ -468,7 +468,7 @@ export const gains = {
       'Nakliye dâhil filondaki tüm gemiler. Güç × Zırh birlikte, eşit bütçeyle savaş gücünü en fazla %56 artırır; yer savunması etkilenmez.',
     speedLabel: 'Filo hızı',
     speedScope:
-      'Filondaki tüm gemiler. Karma filo yine en yavaş üyesinin — geliştirilmiş — hızıyla uçar; Kazıcı, sonda ve Ölüm Yıldızı etkilenmez.',
+      'Filondaki tüm gemiler. Karma filo yine en yavaş üyesinin — geliştirilmiş — hızıyla uçar; Kazıcı ve sonda etkilenmez.',
     engineeringLabel: 'Gemi seviyesi erişimi',
     engineeringTier: '{{tier}}. seviye',
     engineeringScope:
@@ -547,13 +547,13 @@ export const directives = {
   coreCeilingAction: 'Çekirdeği yükselt',
 
   idleTitle: 'Devam eden uçuş yok',
-  idleDetailHasShips: 'Rampaların boş. Sonda, akın, transfer veya madencilik görevi başlatabilirsin.',
+  idleDetailHasShips: 'Rampaların boş. Akın, transfer veya madencilik görevi başlatabilirsin; sondalar rampa kullanmaz.',
   idleDetailNoShips: 'Evde gemin yok. Ya yenisini yap ya da dışarıdakilerin dönmesini bekle.',
   idleAction: 'Hedef bul',
 
   baysFreeTitle_one: 'Bir rampa hâlâ boş',
   baysFreeTitle_other: '{{count}} rampa hâlâ boş',
-  baysFreeDetail: 'Her sonda, akın, transfer ve madencilik seferi bir rampa kullanır.',
+  baysFreeDetail: 'Akınlar, transferler ve madencilik seferleri bir rampa kullanır; sondalar kullanmaz.',
   baysFreeAction: 'Etrafa bak',
 
   kindThreat: 'Tehdit',
@@ -636,6 +636,7 @@ export const notifications = {
   fleetFrom: ' ({{origin}} dönüşü)',
   probeLost: 'Sondan kayboldu. O uçuş tamamlanamadı',
   recalled: '{{count}} araç geri döndü. O uçuş tamamlanamadı',
+  miningRecalledHome: '{{count}} Kazıcı evde · geri çağırma tamamlandı',
   transferReturningCapacity: '{{target}} transferi geri dönüyor · hedef kapasitesi yoldayken doldu',
   transferReturningOwnership: '{{target}} transferi geri dönüyor · gezegen yoldayken el değiştirdi',
 

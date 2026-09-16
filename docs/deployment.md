@@ -118,6 +118,20 @@ These are stop conditions, not suggestions.
     to production. "The runbook said to" is not consent, and neither is an instruction to
     deploy: an operator told to ship has been told the destination, not the price. The rolling
     path needs no such approval, because it takes nothing away from anyone.
+13. **A `packages/rules` change can rewrite the live galaxy, and no step in this document would
+    catch it.** The asteroid field, the pirate lane and the event lanes are DERIVED, never stored
+    (A5): every rock a commander sees is computed per request from the season's `asteroid_key`,
+    the persisted calendar rows and the code in the image. There is no table, so there is no
+    migration, so step 5b measures nothing and rule 5 never fires — and the new sky is live on the
+    first request the new image serves. Measured on a 30-day season: raising
+    `GALAXY.asteroidSpawnPerHour` from 10.35 to 15.525 (`0c01c65`) put ~19 extra rocks into the
+    disc at EVERY instant, including instants already in the past, so they do not fade in — they
+    are simply there when the page reloads. The same is true of anything that moves
+    `quantiseDailyOre`'s budget, because a rock with no ore is invisible (`oreRemaining > 0`) and a
+    budget change decides which rocks have any. If the release touches
+    `packages/rules/src/galaxy.ts`, `packages/rules/src/pirates.ts` or the `GALAXY.asteroid*` /
+    `GALAXY_EVENTS` constants, say so in the release note: players will meet it the moment traffic
+    reopens, and "nothing in the migration list" is not evidence that the world did not change.
 
 ### Why `deploy/deploy.sh` is not the production path yet
 
@@ -582,6 +596,86 @@ flights keep the `hold_each` they launched with, existing queues keep their `rea
 Asteroid Shower window that has already opened keeps its old arrival spread — only occurrences
 restamped to definition version 5 (`season events restamp`, which refuses a window that has
 opened) are front-loaded.
+
+#### 2026-09-15: the season archive, the rank rewards and the reworked shield
+
+**Migrations `0079`–`0086` are expand-only in every statement but ONE, and that one decides the
+order of this release.** `0079` finishes with
+
+```sql
+ALTER TABLE "season_cycles" ALTER COLUMN "ordinal" SET NOT NULL;
+```
+
+on a column with no default. The previously shipped image writes `season_cycles` with only
+`starts_at` / `ends_at` (`createSeasonIn`, through `INSERT ... ON CONFLICT`, whose tuple is still
+checked against NOT NULL before the conflict is detected), so between `migrate` and the worker's
+replacement that insert fails `23502`. It is step 6's "DDL old code cannot survive" row, and
+step 5b will NOT catch it: booting the old image only proves `/health`, not this write path.
+
+**The writers are the worker and the CLI, never an API replica.** `createSeasonIn` is reached from
+`onSeasonEnd`/`onSeasonRollover` (season rollover), from the Silent Space maintenance job
+(`ensureWaitingSeason`) and from `season`/bootstrap CLI commands. No HTTP route reaches it. So the
+release does not need a site stop — it needs the singleton worker recreated around the migration
+rather than after it, exactly as migration `0064` did:
+
+1. build both artefacts, prove rollback (steps 1–5b unchanged);
+2. **stop `astera-worker-prod`**;
+3. run `migrate` with the new image;
+4. **start the new worker** and require it healthy on `release_sha`;
+5. roll API1 → API2 → API3 one at a time as usual;
+6. publish the staged webroot.
+
+APIs keep serving throughout; the cost is the worker's own restart window, which this release pays
+anyway. Do not run the ordinary rolling order — a rollover or a Silent Space placement landing in
+the gap leaves a failed maintenance job until the worker is replaced.
+
+The rest of the DDL is genuinely expand-only: nullable columns (`planets.stats_owner_player_id`,
+`mining_runs.owner_player_id`, `season_results.stats`, `battle_reports.recovery_loss_hours`),
+columns with defaults (`season_results.public_id`, `average_eligible`, the three `stats_version`
+columns, `reward_program_version`, `planets.season_telemetry`) and two new tables
+(`season_telemetry_segments`, `season_reward_entitlements`).
+
+**`0081` rewrites every `planets` row** (`UPDATE planets SET stats_owner_player_id = player_id`).
+The table is small at production scale and the added `season_telemetry` default does not rewrite
+it (PostgreSQL 11+), but the `UPDATE` takes row locks — another reason to hold it in the quiet
+window the worker stop already creates.
+
+**The shield rule changed shape, not switch.** `RECOVERY_SHIELD_ENABLED` still gates the whole
+feature and still rolls back cleanly. What changed is what "heavy" means: production-hours instead
+of a share of raidable stock plus a twentieth of storage (`docs/balance.md`). `battle_reports`
+gains `recovery_loss_hours` so the bar can be re-measured from live data; the previously shipped
+`raidable_before` column is kept and still written as context.
+
+#### 2026-09-16: two new event windows, and the calendar command they need
+
+Pure rules — no migration, no switch, no stop. `GALAXY_EVENTS` gains an ASTEROID_SHOWER at
+23:00–24:00 TRT (x5, definition version 5 → 6) and an INTERGALACTIC_CONVOY at 12:00–14:00 TRT
+(definition version 2 → 3). Both are rule 13 releases: the shipped image deals the new calendar to
+any season CREATED after it, and reaches a running galaxy through nothing at all.
+
+**A live season needs two commands, and they are not optional — without them the deploy changes the
+sky for nobody.** Run them AFTER the roll, one kind at a time (the command has no "every lane"
+mode, deliberately), dry run first:
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+for kind in ASTEROID_SHOWER INTERGALACTIC_CONVOY; do
+  "${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+    sync-events --shard EU-1 --kind "$kind"
+done
+# Expect one appended window per remaining day, per kind. Re-run with --yes to apply.
+```
+
+**Pick the hour.** `sync-events` appends a window whose end is still in the future, including one
+that is open right now — see "Raising a public event on a live season" for what that costs at a
+frozen instant. The shower is the one to be careful with: run it outside 23:00–24:00 and outside
+every other shower window, and the new lane arrives on its own clock the next day. The convoy
+carries no asteroids, so its timing only decides whether one crossing starts mid-flight.
+
+The convoy window is 12:00–14:00 and not the 12:00–13:00 that was asked for, because
+`intergalacticConvoySpec` refuses any duration but `INTERGALACTIC_CONVOY.durationMinutes`: the
+formation's speed is the diameter divided by that figure and `resourceCapHours: 2` prices the
+reward against the same clock. Owner decision, recorded beside the constant.
 
 #### Publish the staged webroot
 
@@ -1254,13 +1348,34 @@ call in this document uses the package's own binary for the same reason the `CMD
 schedules, and sweeping them all would rewrite a merchant's rate and stamp today's version onto a
 window dealt under an older one.
 
-**It will only ever touch a window that has not opened, and that restriction is the whole safety
-argument.** A shower's bonus rocks are appended to the field after everything already in it, so a
-lane's SIZE fixes the index of every rock in every later lane. A rock's public id is an HMAC of that
-index, `asteroid_claims` is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves
+**`restamp` will only ever touch a window that has not opened, and that restriction is the whole
+safety argument.** A shower's bonus rocks are appended to the field after everything already in it,
+so a lane's SIZE fixes the index of every rock in every later lane. A rock's public id is an HMAC of
+that index, `asteroid_claims` is keyed by it, and an in-flight `mining_runs.asteroid_index` resolves
 through it — so resizing a lane whose rocks are already in the sky moves a commander's claim, and a
 drill already on its way, onto a different rock. Nothing throws; the damage is silent. A window that
 has not opened owns no rocks yet.
+
+**`sync-events` is the deliberate exception, and it is the one players see.** It appends any window
+whose END is still in the future, which includes the one that is open RIGHT NOW. Appending is
+index-safe for the reason above — new rows take sequence numbers after the live maximum, so no
+existing id moves — but index-safe is not invisible. The field is derived, so every rock of that
+lane whose `appearsAt` is already in the past exists the moment the transaction commits.
+
+Measured against the test database, appending a live x10 window forty minutes past its start WITH
+THE CLOCK FROZEN — nothing about time moved between the two readings:
+
+| | live rocks in the galaxy | seen by one commander (Telescope 1) |
+| --- | --- | --- |
+| before `sync-events --yes` | 80 | 33 |
+| after | 195 | 78 |
+
+So run it OUTSIDE a shower window unless there is a reason not to. The next daily occurrence then
+opens on its own clock and ramps across its hour, which is what the calendar and the front load
+(`ASTEROID_SHOWER_FRONT_LOAD`) were shaped for. Run inside one and the galaxy roughly doubles at a
+frozen instant, with no banner explaining it — an owner watching the disc reads that as a bug, and
+has. `apps/server/test/galaxy-events.test.ts` pins the size of that step so it cannot move
+unnoticed.
 
 Two consequences worth stating before running it:
 
@@ -1454,6 +1569,59 @@ It refuses, in words rather than a constraint name, on: anything still in the ai
 `pnpm bots retire`), an author of public news (`ANNOUNCEMENT_AUTHOR`), an account with Silent
 Space move history other return addresses hang off (`TRANSFER_HISTORY`), and a queued return
 application (`RETURN_QUEUED`). Nothing is written on any of them.
+
+## Moving one commander into Silent Space by hand
+
+Silent Space is otherwise entered by absence alone — the five-minute sweep reads
+`inactivityEligible` and nothing else decides. This is the one door absence cannot open: a
+commander who is playing right now and has asked, in a message, to be taken out of the main
+galaxy. The server cannot verify that request, so the operator answers it, exactly as with
+`delete-account`.
+
+```bash
+cd ~/astera
+compose=(docker compose -f docker-compose.prod.yml)
+
+# Dry run first. It resolves the name and prints who would move and what they hold.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  silent-space 'CommanderName'
+# reads: WOULD MOVE … / out of … / worlds … / Nothing was written.
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  silent-space 'CommanderName' --yes
+```
+
+**IT IS NOT A DELETION AND NOT A TRAPDOOR.** Nothing is destroyed: world ids, buildings,
+stock, fleet and research travel with the commander, the capital and colony addresses they
+leave become their return addresses, and the ordinary return application brings them home to
+those addresses from inside the game, with no operator involved. The dry run exists for the
+same reason `delete-account`'s does — `display_name` is not unique, and two matches stop the
+command rather than pick one.
+
+**`--yes` WAIVES THE ACTIVITY CLOCK AND NOTHING ELSE.** Every other fence still refuses, and a
+refusal is a status with nothing written: `FLIGHT` (a fleet, mining run, raid, trade or convoy
+in the air, theirs or somebody's aimed at them), `EVENT` (an unfinished build or research, or
+an event already overdue), `EFFECT` (recovery, an occupation window, a live wreck), `UNITS`,
+`CAPACITY`, `CONTENTION`. Let it land and run again — never clear a fence to force the move.
+
+Verify with the conservation query in "Live galaxy acceptance". The capital count on the MAIN
+shard falls by one, each colony site reopens as a caretaker world, so `neutrals + colonies`
+is unchanged at 65, and `orphaned_neutral_state` stays 0. The Silent Space shard gains the
+commander and their worlds; its own pool is not a 65 and is not an acceptance figure.
+
+**Rehearse on a restored copy first.** It runs in one transaction against a live world and the
+nightly dump is the whole of the way back. Restore into a disposable database exactly as step 5
+does and run it there. A frozen snapshot has one artefact worth knowing about: events that were
+in the future when the dump was taken are overdue by the time the rehearsal runs, so the
+rehearsal can answer `EVENT` where production would not.
+
+First use, 2026-09-15: `CaptainZovi`, at their own request, out of Vantage (`EU-1`) and into
+`WAIT-1` on transfer `663f07d2-35d9-4873-a00b-e8ff7d8fb512`. Rehearsed on a copy restored from
+`astera-20260915-135156.sql.gz`, including the return, which put the same world ids back on
+`EU-1` — at pooled addresses rather than the ones they left, which is the design. Production
+after: `EU-1` 21 colonies + 44 neutrals = 65, `orphaned_neutral_state` 0, both vacancies open,
+the colony site reopened as `Neutral T1-455`, fleet and stock unchanged, unemitted transfers 0,
+all four processes healthy and unrestarted.
 
 ## Remaining operational gaps
 

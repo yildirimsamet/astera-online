@@ -23,6 +23,7 @@ import { planetView } from '../src/services/planetView.js';
 import { collectWorks, installSatellite, raiseInstrument } from '../src/services/build.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
+import { baysInUse } from '../src/services/flight.js';
 import { loadLocked } from '../src/services/planet.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
@@ -94,11 +95,18 @@ describe('collecting the works', () => {
 
   /**
    * The works fill and STOP. This is the whole re-engagement mechanism: an absence
-   * of a day and an absence of a month leave the planet in the same state, and a
-   * tap is what starts it again.
+   * of a day and an absence of a fortnight leave the planet in the same state, and
+   * a tap is what starts it again.
+   *
+   * THE ABSENCE STOPS AT THE SEASON DEADLINE, which is why it is thirteen days and
+   * not thirty. Production is clamped to `season.endsAt` even while the status is
+   * still `live` (a freeze event the worker claims late must not mint resources),
+   * so an absence longer than the season no longer advances anything at all — and
+   * the restart below would have nothing to measure. Thirteen days is already many
+   * times longer than the works can hold, which is the property being asserted.
    */
   it('stops producing once the works are full, and restarts on collection', async () => {
-    f.clock.advance(60 * 24 * 30);
+    f.clock.advance(60 * 24 * 13);
     const stalled = await f.db.transaction((tx) => loadLocked(tx, mine, f.clock));
     expect(Math.round(stalled.bufferAlloy)).toBe(collectorCap(alloyRate(4)));
 
@@ -353,16 +361,13 @@ describe('what may be in the air at once', () => {
     }
   });
 
-  it('refuses a launch when every bay is occupied', async () => {
-    // Core 1 is three bays, which the four seeded planets can exhaust.
+  it('lets paid probes keep launching every five seconds without consuming bays', async () => {
     await setLevel(f.db, mine, 'CORE', 1);
-    expect(flightSlots(1)).toBe(3);
-    for (const target of [a, b, c]) {
-      await expect(launchProbe(f.db, mine, target, f.clock)).resolves.toBeTruthy();
+    for (let i = 0; i < flightSlots(1) + 2; i += 1) {
+      await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
+      f.clock.advance(PROBE.retargetCooldownMinutes);
     }
-    await expect(launchProbe(f.db, mine, d, f.clock)).rejects.toMatchObject({
-      code: 'NO_FREE_BAY',
-    });
+    expect(await baysInUse(f.db, mine)).toBe(0);
   });
 
   /**
@@ -371,7 +376,7 @@ describe('what may be in the air at once', () => {
    * Under `PROBE.maxInFlight` a player could hold three probes AND unlimited mining
    * runs AND a raid at every neighbour. Nothing traded against anything.
    */
-  it('a raid and a probe draw on the same bays', async () => {
+  it('a probe leaves every ordinary flight bay available to raids', async () => {
     // Every planet, not only the attacker: a Core 1 world among Core 18 ones is
     // outside the tier band and every raid here would be refused (D49).
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 1);
@@ -379,10 +384,9 @@ describe('what may be in the air at once', () => {
     await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
     await expect(launchAttack(f.db, mine, b, { DART: 20 }, f.clock)).resolves.toBeTruthy();
     await expect(launchAttack(f.db, mine, c, { DART: 20 }, f.clock)).resolves.toBeTruthy();
-    // Three bays, three craft out.
-    await expect(launchAttack(f.db, mine, d, { DART: 20 }, f.clock)).rejects.toMatchObject({
-      code: 'NO_FREE_BAY',
-    });
+    // Three raids occupy the three bays; the probe is outside that count.
+    await expect(launchAttack(f.db, mine, d, { DART: 20 }, f.clock)).resolves.toBeTruthy();
+    expect(await baysInUse(f.db, mine)).toBe(3);
   });
 
   it('the Command Core is the only thing that opens a bay', () => {
@@ -401,7 +405,7 @@ describe('what may be in the air at once', () => {
    * much a planet may have committed — and the return leg is exactly when a raider
    * is carrying loot and least able to answer for it.
    */
-  it('a craft on its way home is still holding its bay', async () => {
+  it('a returning probe still does not hold an ordinary flight bay', async () => {
     await setLevel(f.db, mine, 'CORE', 1);
     const first = await launchProbe(f.db, mine, a, f.clock);
     await launchProbe(f.db, mine, b, f.clock);
@@ -410,14 +414,13 @@ describe('what may be in the air at once', () => {
     // The first probe reaches its target and turns for home.
     f.clock.set(first.arriveAt);
     await worker(f).tick();
-    await expect(launchProbe(f.db, mine, d, f.clock)).rejects.toMatchObject({
-      code: 'NO_FREE_BAY',
-    });
+    expect(await baysInUse(f.db, mine)).toBe(0);
+    await expect(launchProbe(f.db, mine, d, f.clock)).resolves.toBeTruthy();
 
     // Only when it actually lands does the bay come back.
     f.clock.advance(first.flightMinutes);
     await worker(f).tick();
-    await expect(launchProbe(f.db, mine, d, f.clock)).resolves.toBeTruthy();
+    expect(await baysInUse(f.db, mine)).toBe(0);
   });
 
   /**
@@ -440,43 +443,30 @@ describe('what may be in the air at once', () => {
     }
   });
 
-  it('allows only one probe per target', async () => {
+  it('paces one target for five seconds without treating the airborne probe as a cap', async () => {
     await launchProbe(f.db, mine, a, f.clock);
-    await expect(launchProbe(f.db, mine, a, f.clock)).rejects.toMatchObject({
-      code: 'PROBE_ALREADY_OUT',
-    });
-  });
-
-  /**
-   * The return leg counts. A probe on its way home is still a craft you have not
-   * got back, and a cap that reset halfway would be a cap on distance rather than
-   * on how much you may have in the air.
-   *
-   * THE TWO LIMITS COME BACK AT DIFFERENT TIMES SINCE D121, and that is the point
-   * of the last three assertions. The BAY is released the moment the craft docks,
-   * because a bay is about how much you have in the air. The TARGET is not: one
-   * look per world per hour, per commander, so the world stays shut long after the
-   * craft that looked at it is home.
-   */
-  it('counts a probe coming home against both limits', async () => {
-    const launch = await launchProbe(f.db, mine, a, f.clock);
-    f.clock.set(launch.arriveAt);
-    await worker(f).tick();
-
-    await expect(launchProbe(f.db, mine, a, f.clock)).rejects.toMatchObject({
-      code: 'PROBE_ALREADY_OUT',
-    });
-
-    f.clock.advance(launch.flightMinutes);
-    await worker(f).tick();
-
-    // The bay is free: a different world can be looked at immediately.
-    await expect(launchProbe(f.db, mine, b, f.clock)).resolves.toBeTruthy();
-    // The world it looked at is not, and says so with the other sentence.
     await expect(launchProbe(f.db, mine, a, f.clock)).rejects.toMatchObject({
       code: 'PROBE_COOLDOWN',
     });
     f.clock.advance(PROBE.retargetCooldownMinutes);
+    await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
+  });
+
+  /**
+   * A returning probe neither occupies a bay nor locks its target beyond the same
+   * five-second launch interval. Its physical flight remains visible, but it is
+   * not fleet-capacity scarcity.
+   */
+  it('lets another paid probe launch while the first is coming home', async () => {
+    const departedAt = f.clock.now();
+    const launch = await launchProbe(f.db, mine, a, f.clock);
+    f.clock.set(launch.arriveAt);
+    await worker(f).tick();
+
+    expect(await baysInUse(f.db, mine)).toBe(0);
+    await expect(launchProbe(f.db, mine, b, f.clock)).resolves.toBeTruthy();
+
+    f.clock.set(new Date(departedAt.getTime() + PROBE.retargetCooldownMinutes * 60_000));
     await expect(launchProbe(f.db, mine, a, f.clock)).resolves.toBeTruthy();
   });
 

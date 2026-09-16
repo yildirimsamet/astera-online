@@ -1,0 +1,32 @@
+/* Reading sizes are local to battle reports; the command deck scale is unchanged. */
+.battle-report .text-body {
+  font-size: var(--text-title);
+}
+
+.battle-report .text-caption,
+.battle-report .text-label {
+  font-size: var(--text-body);
+}
+
+.battle-report h2 {
+  font-size: var(--text-figure);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.battle-report h3.legend {
+  font-size: var(--text-title);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.battle-report {
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+.battle-report .text-threat {
+  color: var(--color-threat-ink);
+}

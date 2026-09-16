@@ -53,7 +53,7 @@ export const clan = {
     heading: 'Neden katılayım?',
     activeHeading: 'Klanın ne yapıyor?',
     safeTitle: 'Güvenli takım arkadaşları',
-    safeBody: 'Klan üyeleri birbirine saldıramaz, sonda veya Ölüm Yıldızı gönderemez.',
+    safeBody: 'Klan üyeleri birbirine saldıramaz veya sonda gönderemez.',
     lootTitle: 'Paylaşılan akın ganimeti',
     lootBody: 'Güvenle dönen akın ganimetinin %10’u olgunlaşmış ekibe eşit bölünür. Herkes kendi payını alır.',
     aidTitle: 'Daha hızlı yardım uçuşu',
@@ -149,7 +149,7 @@ export const clan = {
   },
   rules: {
     peaceTitle: 'Dost ateşi yok',
-    peaceBody: 'Saldırı, sonda ve Ölüm Yıldızı engellenir.',
+    peaceBody: 'Saldırı ve sonda engellenir.',
     aidTitle: '%10 yardım hızı',
     aidBody: 'Hız ve ek rampa yalnız klan yardımına çalışır.',
     lootTitle: '%10 ortak',

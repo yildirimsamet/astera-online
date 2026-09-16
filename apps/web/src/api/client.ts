@@ -47,6 +47,7 @@ import {
   galaxySchema,
   intelSchema,
   miningLaunchSchema,
+  miningRecallSchema,
   miningFieldSchema,
   piratesSchema,
   pirateRaidSchema,
@@ -55,6 +56,9 @@ import {
   miningStatusSchema,
   launchSchema,
   leaderboardSchema,
+  seasonArchiveSchema,
+  seasonArchiveLeaderboardSchema,
+  seasonCommanderProfileSchema,
   chatPageSchema,
   chatPostSchema,
   chatReadSchema,
@@ -447,6 +451,18 @@ export class Api {
   galaxy = () => this.send('/api/galaxy', galaxySchema);
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
+  seasonArchive = (cursor?: number) => this.send(
+    `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,
+    seasonArchiveSchema,
+  );
+  archivedLeaderboard = (seasonId: string) => this.send(
+    `/api/season-archive/${encodeURIComponent(seasonId)}/leaderboard`,
+    seasonArchiveLeaderboardSchema,
+  );
+  seasonCommanderProfile = (resultId: string) => this.send(
+    `/api/season-archive/results/${encodeURIComponent(resultId)}`,
+    seasonCommanderProfileSchema,
+  );
 
   /* ── clans ───────────────────────────────────────────────── */
 
@@ -677,6 +693,13 @@ export class Api {
       method: 'POST',
       body: { asteroidId, craft, ...(originPlanetId ? { originPlanetId } : {}) },
     });
+
+  recallMining = (runId: string) =>
+    this.send(
+      `/api/mining/runs/${encodeURIComponent(runId)}/recall`,
+      miningRecallSchema,
+      { method: 'POST', body: {} },
+    );
 
   /**
    * The pirates on this commander's sensors, and what it would take to reach one.

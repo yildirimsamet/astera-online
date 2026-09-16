@@ -15,6 +15,7 @@ import {
 } from './scene.js';
 import { markersFor, slotOffset } from './Squadrons.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 
 /**
@@ -169,7 +170,7 @@ function Run({
           }}
         >
           <sphereGeometry args={[0.45, 8, 6]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <HitboxMaterial kind="miner" />
         </mesh>
 
         <Suspense fallback={null}>

@@ -13,6 +13,7 @@ import {
   selectNeutralSlots,
   shieldHp,
   storageCap,
+  CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
   type GalaxySpec,
   type NeutralTier,
 } from '@astera/rules';
@@ -32,6 +33,7 @@ import {
 import { addMinutes } from '../clock.js';
 import { schedule } from '../worker/queue.js';
 import { seedGalaxyEventCalendar } from './galaxyEvents.js';
+import { CURRENT_SEASON_STATS_VERSION } from './seasonArchive.js';
 
 /**
  * The galaxy is never stored slot by slot — it is regenerated from `seed`
@@ -119,14 +121,31 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
   const days = input.days ?? ECONOMY_PROFILE.seasonDays;
   const endsAt = input.endsAt ?? addMinutes(input.startsAt, days * 24 * 60);
   const initializedAt = input.initializedAt ?? input.startsAt;
-  // Exact period grouping preserves legacy clocks; never round a remaining duration.
-  const [cycle] = await tx.insert(seasonCycles)
-    .values({ startsAt: input.startsAt, endsAt })
-    .onConflictDoUpdate({
-      target: [seasonCycles.startsAt, seasonCycles.endsAt],
-      set: { startsAt: input.startsAt },
+  // One lock makes max+1 a durable identity rather than a race between shard
+  // bootstrap transactions. Exact period matches still share the same number.
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext('season-cycle-ordinal'))`);
+  const [existingCycle] = await tx
+    .select()
+    .from(seasonCycles)
+    .where(and(
+      eq(seasonCycles.startsAt, input.startsAt),
+      eq(seasonCycles.endsAt, endsAt),
+    ))
+    .limit(1);
+  const [nextCycle] = existingCycle ? [] : await tx
+    .select({ ordinal: sql<number>`coalesce(max(${seasonCycles.ordinal}), 0)::int + 1` })
+    .from(seasonCycles);
+  const [insertedCycle] = existingCycle ? [] : await tx
+    .insert(seasonCycles)
+    .values({
+      ordinal: nextCycle?.ordinal ?? 1,
+      statsVersion: CURRENT_SEASON_STATS_VERSION,
+      rewardProgramVersion: CURRENT_SEASON_RANK_REWARD_PROGRAM_VERSION,
+      startsAt: input.startsAt,
+      endsAt,
     })
     .returning();
+  const cycle = existingCycle ?? insertedCycle;
   if (!cycle) throw new Error('Season cycle allocation returned no row');
   const [shard] = await tx
       .insert(shards)
@@ -144,6 +163,7 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
         startsAt: input.startsAt,
         endsAt,
         rulesetVersion: input.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
+        statsVersion: cycle.statsVersion,
       })
       .returning();
 

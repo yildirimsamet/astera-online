@@ -64,6 +64,7 @@ import {
   players,
   returnApplications,
   seasonResults,
+  seasonRewardEntitlements,
   seasons,
 } from '../db/schema.js';
 import { GameError } from './planet.js';
@@ -110,6 +111,8 @@ async function forgetAccount(tx: Tx, accountId: string): Promise<void> {
   await tx.delete(accountRewards).where(eq(accountRewards.accountId, accountId));
   await tx.delete(announcementReads).where(eq(announcementReads.accountId, accountId));
   await tx.delete(feedbackEntries).where(eq(feedbackEntries.accountId, accountId));
+  await tx.delete(seasonRewardEntitlements)
+    .where(eq(seasonRewardEntitlements.accountId, accountId));
   await tx.delete(seasonResults).where(eq(seasonResults.accountId, accountId));
   await tx.delete(accounts).where(eq(accounts.id, accountId));
 }

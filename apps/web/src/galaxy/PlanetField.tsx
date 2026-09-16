@@ -7,6 +7,7 @@ import { fireTexture, smokeTexture } from './vfx.js';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
 import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 
 /**
@@ -508,14 +509,26 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   }, [group.nodes, tint]);
 
   /**
-   * Billboarding, once per rendered frame.
+   * A WORLD'S PICK VOLUME, AND WHY IT IS THE ONE THAT NEEDS A SECOND MESH.
    *
-   * Every instance shares the camera's orientation, so this is a matrix compose per
-   * planet — trivial work — and it runs only on frames that are actually drawn,
-   * because the canvas renders on demand.
+   * Everything else tappable on the disc carries an invisible solid that exists
+   * only to be raycast, so `hitboxDebug` paints it by swapping its material. A
+   * world has no such solid: the quad below IS the hit target AND the thing the
+   * planet art is drawn on, and it cannot wear a debug colour without taking the
+   * galaxy's worlds with it.
+   *
+   * So the debug view gets its own instanced quad on exactly the same matrices —
+   * written in the same two places, from the same `UP`, so it can never drift from
+   * the volume it is reporting. `raycast` is disabled on it: a second hit target
+   * stacked on every world would be the one bug this whole feature exists to find.
+   *
+   * WHAT IT SHOWS, and it is worth knowing: the quad is a SQUARE of side
+   * `radius * 2`, while the art inside it is a disc. The corners are tappable.
    */
-  useFrame(() => {
-    const mesh = ref.current;
+  const debug = useHitboxDebug();
+  const hitboxes = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = hitboxes.current;
     if (!mesh) return;
     group.nodes.forEach((node, i) => {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
@@ -525,6 +538,31 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
       mesh.setMatrixAt(i, UP.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
+    // The disc renders on demand, so a switch thrown while nothing is moving has
+    // to place the quads itself rather than wait for the next frame.
+  }, [camera, debug, group.nodes]);
+
+  /**
+   * Billboarding, once per rendered frame.
+   *
+   * Every instance shares the camera's orientation, so this is a matrix compose per
+   * planet — trivial work — and it runs only on frames that are actually drawn,
+   * because the canvas renders on demand.
+   */
+  useFrame(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const painted = hitboxes.current;
+    group.nodes.forEach((node, i) => {
+      UP.position.set(node.position[0], node.position[1], node.position[2]);
+      UP.quaternion.copy(camera.quaternion);
+      UP.scale.setScalar(node.radius * 2);
+      UP.updateMatrix();
+      mesh.setMatrixAt(i, UP.matrix);
+      painted?.setMatrixAt(i, UP.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (painted) painted.instanceMatrix.needsUpdate = true;
   });
 
   // Billboarding rotates each quad in place, so the sphere computed above stays
@@ -543,43 +581,58 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   };
 
   return (
-    <instancedMesh
-      ref={ref}
-      name="planet-worlds"
-      args={[undefined, undefined, count]}
-      onPointerUp={pick}
-      /**
-       * #4 — worlds vanishing at certain angles.
-       *
-       * The bounding sphere computed above makes culling correct, but each texture
-       * group spans the whole disc, so a group is either entirely on screen or
-       * entirely off it — and "entirely off" was being decided by a sphere that a
-       * grazing frustum could miss. Even at 351 worlds these remain sixteen
-       * instanced draw groups; culling a whole scattered group wins almost
-       * nothing and can hide selectable worlds.
-       */
-      frustumCulled={false}
-    >
-      <planeGeometry args={[1, 1]} />
-      {/*
-        #9 — a nearer world drawing behind a further one.
+    <>
+      <instancedMesh
+        ref={ref}
+        name="planet-worlds"
+        args={[undefined, undefined, count]}
+        onPointerUp={pick}
+        /**
+         * #4 — worlds vanishing at certain angles.
+         *
+         * The bounding sphere computed above makes culling correct, but each texture
+         * group spans the whole disc, so a group is either entirely on screen or
+         * entirely off it — and "entirely off" was being decided by a sphere that a
+         * grazing frustum could miss. Even at 351 worlds these remain sixteen
+         * instanced draw groups; culling a whole scattered group wins almost
+         * nothing and can hide selectable worlds.
+         */
+        frustumCulled={false}
+      >
+        <planeGeometry args={[1, 1]} />
+        {/*
+          #9 — a nearer world drawing behind a further one.
         
-        `transparent` + `depthWrite: false` means nothing writes depth, so the draw
-        ORDER decides what covers what — and the order is per instanced group, not
-        per planet. The fix is to stop treating these as translucent: the art is
-        opaque inside a hard alpha edge, so an alpha test cuts the disc out while
-        still writing depth, and `alphaToCoverage` uses the MSAA samples to keep
-        the rim smooth instead of jagged.
-      */}
-      <meshBasicMaterial
-        map={texture}
-        transparent={false}
-        alphaTest={0.35}
-        alphaToCoverage
-        depthWrite
-        toneMapped={false}
-      />
-    </instancedMesh>
+          `transparent` + `depthWrite: false` means nothing writes depth, so the draw
+          ORDER decides what covers what — and the order is per instanced group, not
+          per planet. The fix is to stop treating these as translucent: the art is
+          opaque inside a hard alpha edge, so an alpha test cuts the disc out while
+          still writing depth, and `alphaToCoverage` uses the MSAA samples to keep
+          the rim smooth instead of jagged.
+        */}
+        <meshBasicMaterial
+          map={texture}
+          transparent={false}
+          alphaTest={0.35}
+          alphaToCoverage
+          depthWrite
+          toneMapped={false}
+        />
+      </instancedMesh>
+      {debug && (
+        <instancedMesh
+          ref={hitboxes}
+          name="planet-hitboxes"
+          args={[undefined, undefined, count]}
+          raycast={() => null}
+          frustumCulled={false}
+          renderOrder={1}
+        >
+          <planeGeometry args={[1, 1]} />
+          <HitboxMaterial kind="planet" />
+        </instancedMesh>
+      )}
+    </>
   );
 }
 

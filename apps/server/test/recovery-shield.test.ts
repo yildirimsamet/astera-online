@@ -31,8 +31,11 @@ import {
  * forfeit, same confirmation — so most of what this file holds is that the two
  * behave identically to a raider and differently to the commander who owns them:
  * the first day is given once and spent for good, this one is EARNED and can be
- * earned again. `packages/rules/test/recovery-shield.test.ts` holds the thresholds
- * themselves; everything here is about launches, locks and the audit trail.
+ * earned again. `packages/rules/test/recovery-shield.test.ts` holds the bar itself
+ * — reworked on 2026-09-15 into hours of the defender's own production, after the
+ * first version's storage floor was measured against the live field and found to
+ * be a ceiling nobody reaches — and everything here is about launches, locks and
+ * the audit trail.
  */
 
 const silent = pino({ level: 'silent' });
@@ -124,7 +127,23 @@ describe('the recovery shield', () => {
       allows a commander exactly one of those.
     */
     await f.db.update(planets)
-      .set({ controllerPlayerId: f.playerIds[1]!, kind: 'COLONY' })
+      .set({
+        controllerPlayerId: f.playerIds[1]!,
+        kind: 'COLONY',
+        /*
+          THE TELEMETRY ACTOR MOVES WITH THE CONTROLLER, and `loadLocked` throws if
+          it does not. `transferPlanetControl` keeps the two in step for every real
+          capture; a fixture that writes the column directly has to do the same, or
+          the first economy tick on this world refuses and every mission arriving
+          at it fails for a reason that has nothing to do with the test.
+        */
+        statsOwnerPlayerId: f.playerIds[1]!,
+        seasonTelemetry: {
+          produced: { alloy: 0, crystal: 0, deuterium: 0 },
+          productiveSeconds: 0,
+          shipsBuilt: {},
+        },
+      })
       .where(eq(planets.id, colony));
     await levelWorld(f.db, f.planetIds);
     f.clock.advance(250);
@@ -140,14 +159,21 @@ describe('the recovery shield', () => {
       .toBe(report.createdAt.getTime() + ABUSE.recoveryShieldHours * HOUR);
   });
 
-  it('records what the grant was decided against, so it can be audited', async () => {
+  /**
+   * THE FIGURE THE DECISION WAS MADE ON, ON THE ROW THAT RECORDS THE DECISION.
+   *
+   * `recovery_loss_hours` cannot be recomputed after the fact: `loot` and
+   * `defender_losses` survive on the report, but the production rate at the instant
+   * of the fight does not live anywhere, and a Refinery finished an hour later
+   * would silently rewrite the verdict.
+   */
+  it('records the hours the grant was decided on, so it can be audited', async () => {
     const report = await overwhelm();
-    expect(report.raidableBefore).toBeGreaterThan(0);
-    const taken = report.loot.alloy + report.loot.crystal + report.loot.deuterium;
-    // The rule's own comparison, re-run against the two stored figures.
-    expect(ABUSE.recoveryRaidableMultiple * taken)
-      .toBeGreaterThanOrEqual(report.raidableBefore!);
+    expect(report.recoveryLossHours).not.toBeNull();
+    expect(report.recoveryLossHours!).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
     expect(report.recoveryShieldUntil).not.toBeNull();
+    // The world's raidable ceiling is still recorded beside it as context.
+    expect(report.raidableBefore).toBeGreaterThan(0);
   });
 
   it('gives nothing for a raid that barely dented the world', async () => {
@@ -169,12 +195,19 @@ describe('the recovery shield', () => {
   });
 
   /**
-   * THE EXPLOIT THE MATERIAL FLOOR CLOSES, STATED AS A TEST.
+   * THE EXPLOIT THAT KILLED THE FIRST RULE, AND WHY THE SECOND ONE CANNOT HAVE IT.
    *
    * A colony deliberately left with almost nothing in it loses ALL of its raidable
-   * stock to a single Wasp — a hundred per cent of the share — and the whole
-   * commander, capital included, would go behind four hours of immunity for the
-   * price of one hull. The twentieth-of-storage floor is what refuses it.
+   * stock to a single Wasp. Under the rule that shipped on 2026-09-14 that was a
+   * hundred per cent of the share, and the whole commander — capital included —
+   * went behind four hours of immunity for the price of one hull; a floor written
+   * against total STORAGE was bolted on to refuse it, and the floor is what the
+   * live field then proved unusable.
+   *
+   * The hours rule has no such hole to plug, because it never measures a SHARE of
+   * anything. Three units of alloy is three units of alloy: a few seconds of this
+   * commander's works, nowhere near the eight-hour bar, whatever fraction of the
+   * bare world it happened to represent. That is the property this test holds.
    */
   it('gives nothing for losing everything on a world that held nothing', async () => {
     // The capital is developed and full; the colony is bare.

@@ -559,6 +559,21 @@ describe('battle reports', () => {
       f.clock.advance(60);
       await worker().tick();
 
+      /*
+        AND HAND BACK THE WINDOW THAT FIRST RAID EARNED. 2026-09-15.
+
+        A defeat costing eight hours of the defender's own production now buys them
+        four hours of immunity, and a raid heavy enough to knock the works dark is
+        comfortably that — so the second launch below would be refused for a reason
+        this test is not about. `recovery-shield.test.ts` owns whether the window is
+        granted correctly; this one owns what `disrupted_minutes` says, and it needs
+        a reachable world to say it about.
+      */
+      await f.db
+        .update(players)
+        .set({ recoveryShieldUntil: null })
+        .where(eq(players.id, f.playerIds[1]!));
+
       // Then throw a token squadron at a world that is still dark, and lose.
       await giveUnits(f.db, theirs, { BASTION: 12 });
       await giveUnits(f.db, mine, { DART: 1 });

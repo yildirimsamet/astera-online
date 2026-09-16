@@ -341,6 +341,84 @@ describe('reclaiming idle seats', () => {
     expect(await f.db.select().from(miningRuns)).toHaveLength(1);
   });
 
+  /**
+   * THE DRILL THAT OUTLIVED ITS OWN PAD. D150 · D156, a third time.
+   *
+   * `mining_runs.owner_player_id` is a foreign key to `players` with `ON DELETE no
+   * action`, so a finished run whose pad has since changed hands is a row pointing
+   * at the reclaimed commander from a planet the sweep has no reason to touch. If
+   * the gather reads pads alone, `delete(players)` violates that key, the sweep
+   * fails, and the seat can never be freed — which is exactly what the raid and
+   * convoy docblocks in `commanderRows` were written about.
+   *
+   * The run is DONE on purpose: nothing is in the air, so this is not a deferral
+   * question. It is only about whether the row can be deleted with its commander.
+   */
+  it('takes a finished drill whose pad now belongs to somebody else', async () => {
+    await f.db.insert(miningRuns).values({
+      seasonId: f.seasonId,
+      // The pad is the OTHER commander's world: a colony that changed hands after
+      // this run came home. The sweep never looks at that planet.
+      planetId: active,
+      ownerPlayerId: f.playerIds[0]!,
+      targetKind: 'asteroid',
+      asteroidIndex: 4,
+      status: 'done',
+      craft: 1,
+      holdEach: 100,
+      interceptX: 0,
+      interceptY: 0,
+      interceptZ: 0,
+      departAt: f.clock.now(),
+      arriveAt: f.clock.now(),
+      homeAt: f.clock.now(),
+    });
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+
+    expect(result.failed, 'the seat could not be freed').toBe(0);
+    expect(result.reclaimed).toHaveLength(1);
+    expect(await gone(idle)).toBe(true);
+    expect(await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!)))
+      .toHaveLength(0);
+    // And the row went with its commander rather than being orphaned on a pad
+    // that is still being played.
+    expect(await f.db.select().from(miningRuns)).toHaveLength(0);
+    // The world it was launched from is untouched — it belongs to somebody else.
+    expect(await gone(active)).toBe(false);
+  });
+
+  /**
+   * AND THE ACTOR NAME ON SOMEBODY ELSE'S WORLD.
+   *
+   * `planets.stats_owner_player_id` arrived with the season archive and is a real
+   * foreign key to `players`. The conquest path moves it with the controller and
+   * `loadLocked` repairs a mismatch on the next advance, so a world naming a
+   * commander who does not hold it is not a state the game writes — but it is one
+   * an operator, a CLI or the next writer can leave behind, and the consequence is
+   * the worst one in this file: `delete(players)` throws and the seat is gone for
+   * good. Written straight into the column here, because that is exactly how it
+   * would arrive.
+   */
+  it('frees a seat still named as the telemetry actor on a world it lost', async () => {
+    await f.db
+      .update(planets)
+      .set({ statsOwnerPlayerId: f.playerIds[0]! })
+      .where(eq(planets.id, active));
+    await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
+
+    const result = await reclaimIdleSeats(f.db, f.clock);
+
+    expect(result.failed, 'the seat could not be freed').toBe(0);
+    expect(result.reclaimed).toHaveLength(1);
+    expect(await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!)))
+      .toHaveLength(0);
+    // The other commander's world survives, with the dead name cleared off it.
+    const [survivor] = await f.db.select().from(planets).where(eq(planets.id, active));
+    expect(survivor?.statsOwnerPlayerId).toBeNull();
+  });
+
   it('defers a world whose own craft are still out mining', async () => {
     await lastSeen(f.playerIds[0]!, SERVERS.idleDays + 1);
     await f.db.insert(miningRuns).values({

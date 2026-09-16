@@ -53,10 +53,10 @@ export const vocabulary = {
       tag: 'Shield for your planet',
       role: 'A planetary shield that takes damage before units and regenerates 35% of its maximum each hour.',
       roleNone:
-        'Absorbs raid damage before ships and ground guns, then regenerates without resources. It provides no intelligence and cannot intercept strategic weapons.',
+        'Absorbs raid damage before ships and ground guns, then regenerates without resources. It provides no intelligence.',
       roleOwned:
-        'Absorbs raid damage before ships and ground guns and regenerates 35% of its maximum each hour. It provides no intelligence or strategic interception.',
-      detail: 'Each level raises maximum shield strength. Combat damage is removed from Aegis before it reaches ships or ground guns, and the shield regenerates 35% of its maximum per hour without resources. It gathers no intelligence; stopping a Death Star requires an Interception Grid.',
+        'Absorbs raid damage before ships and ground guns and regenerates 35% of its maximum each hour. It provides no intelligence.',
+      detail: 'Each level raises maximum shield strength. Combat damage is removed from Aegis before it reaches ships or ground guns, and the shield regenerates 35% of its maximum per hour without resources. It gathers no intelligence.',
     },
     VEIL: {
       name: 'Veil',
@@ -105,7 +105,7 @@ export const vocabulary = {
         'Makes raid, transfer, trade and clan-aid fleets launched here travel 1.3× faster on both legs.',
       blurb:
         'A navigation mark for raid, transfer, trade and clan-aid fleets. Shorter flights mean a shorter window with your defence away from home.',
-      detail: 'Its 1.3 speed multiplier applies to outbound and return raid, transfer, trade and clan-aid fleets launched here. It does not affect settlement fleets, Prospectors or the Death Star, and it changes no attack, armour, cargo or fuel cost.',
+      detail: 'Its 1.3 speed multiplier applies to outbound and return raid, transfer, trade and clan-aid fleets launched here. It does not affect settlement fleets or Prospectors, and it changes no attack, armour, cargo or fuel cost.',
     },
   },
 
@@ -397,7 +397,7 @@ export const gains = {
       'All ships in your fleet, transports included. Power and Armor together add at most 56% equal-budget combat power; ground defence is unaffected.',
     speedLabel: 'Fleet speed',
     speedScope:
-      'All ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors, probes and the Death Star are unaffected.',
+      'All ships in your fleet. A mixed fleet still flies at its slowest member’s — improved — speed; Prospectors and probes are unaffected.',
     engineeringLabel: 'Hull tier access',
     engineeringTier: 'Tier {{tier}}',
     engineeringScope:
@@ -475,13 +475,13 @@ export const directives = {
   coreCeilingAction: 'Raise the Core',
 
   idleTitle: 'Nothing is in flight',
-  idleDetailHasShips: 'Your bays are idle. You can launch a probe, raid, transfer or mining run.',
+  idleDetailHasShips: 'Your bays are idle. You can launch a raid, transfer or mining run; probes do not use bays.',
   idleDetailNoShips: 'You have no ships at home. Build some, or wait for yours to come back.',
   idleAction: 'Find a target',
 
   baysFreeTitle_one: 'One bay is still free',
   baysFreeTitle_other: '{{count}} bays are still free',
-  baysFreeDetail: 'A probe, a raid or a mining run — anything that leaves takes one.',
+  baysFreeDetail: 'Raids, transfers and mining runs take one. Probes do not use bays.',
   baysFreeAction: 'Look for something',
 
   /** The card that carries the top directive. */
@@ -568,6 +568,7 @@ export const notifications = {
   fleetFrom: ' from {{origin}}',
   probeLost: 'Your probe was lost · that flight could not be completed',
   recalled: '{{count}} craft returned · that flight could not be completed',
+  miningRecalledHome: '{{count}} Prospectors home · recall complete',
   transferReturningCapacity: 'Transfer returning from {{target}} · destination capacity filled in flight',
   transferReturningOwnership: 'Transfer returning from {{target}} · the world changed hands in flight',
 

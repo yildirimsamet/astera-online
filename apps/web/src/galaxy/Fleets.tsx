@@ -47,6 +47,7 @@ import {
 } from './Squadrons.js';
 import { STAR, rankLayout, rankRow, type RankGlyph } from './rank.js';
 import { markHit, wasTap } from './tap.js';
+import { CONTACT_HITBOX_KIND, HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
   DEATH_STAR_LIGHT,
@@ -853,7 +854,7 @@ function Flight({
           }}
         >
           <boxGeometry args={hitBox.size} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <HitboxMaterial kind={isDeathStar ? 'deathStar' : isProbe ? 'probe' : 'fleet'} />
         </mesh>
 
         <TrackingMark
@@ -2592,7 +2593,7 @@ function PirateFormationHitTarget({
       renderOrder={-1}
     >
       <sphereGeometry args={[1, 12, 8]} />
-      <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+      <HitboxMaterial kind="pirate" />
     </instancedMesh>
   );
 }
@@ -2894,7 +2895,7 @@ function Foreign({
         ) : (
           <mesh position={hitBox.centre} onPointerUp={pickContact}>
             <boxGeometry args={hitBox.size} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            <HitboxMaterial kind={CONTACT_HITBOX_KIND[contact.kind]} />
           </mesh>
         )}
 

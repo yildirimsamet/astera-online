@@ -4,6 +4,9 @@ import {
   INSTRUMENT_IDS,
   SATELLITE_IDS,
   advanceEconomy,
+  alloyRate,
+  crystalRate,
+  deuteriumRate,
   productionMult,
   satelliteSlots,
   wealth,
@@ -29,6 +32,7 @@ import {
   players,
   researchOrders,
   satellites,
+  seasonTelemetrySegments,
   seasons,
   strategicAssets,
   units,
@@ -143,12 +147,20 @@ export function economyAt(
   season: Pick<typeof seasons.$inferSelect, 'startsAt' | 'endsAt' | 'status'>,
   requestedNow: Date,
 ) {
-  const now = season.status === 'live' || requestedNow <= season.endsAt
-    ? requestedNow
-    : season.endsAt;
+  // The deadline is an economic boundary even when the worker claims the freeze
+  // event late. Status remains `live` during afterglow, but production does not.
+  const now = requestedNow <= season.endsAt ? requestedNow : season.endsAt;
   const nowMinutes = minutesSince(season.startsAt, now);
 
   const recovering = row.recoveryUntil !== null && row.recoveryUntil > now;
+  const economyInput = {
+    refineryLevel: levels.REFINERY,
+    extractorLevel: levels.EXTRACTOR,
+    plantLevel: levels.DEUTERIUM_PLANT,
+    vaultLevel: levels.VAULT,
+    aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
+    production: productionMult(hardware.orbit),
+  };
   const state = recovering ? {
     alloy: row.alloy,
     crystal: row.crystal,
@@ -172,19 +184,26 @@ export function economyAt(
         ? minutesSince(season.startsAt, row.disruptedUntil)
         : 0,
     },
-    {
-      refineryLevel: levels.REFINERY,
-      extractorLevel: levels.EXTRACTOR,
-      plantLevel: levels.DEUTERIUM_PLANT,
-      // The store's ceiling scales with the Vault now, so `collect()` needs it.
-      vaultLevel: levels.VAULT,
-      aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
-      // A Foundry lifts the rate, and therefore the caps that follow from it. D25.
-      production: productionMult(hardware.orbit),
-    },
+    economyInput,
     nowMinutes,
   );
-  return { state, now, nowMinutes };
+  const produced = {
+    alloy: Math.max(0, state.bufferAlloy - row.bufferAlloy),
+    crystal: Math.max(0, state.bufferCrystal - row.bufferCrystal),
+    deuterium: Math.max(0, state.bufferDeuterium - row.bufferDeuterium),
+  };
+  const boost = economyInput.production;
+  const rates = [
+    alloyRate(economyInput.refineryLevel) * boost,
+    crystalRate(economyInput.extractorLevel) * boost,
+    deuteriumRate(economyInput.plantLevel) * boost,
+  ];
+  const generated = [produced.alloy, produced.crystal, produced.deuterium];
+  const productiveSeconds = Math.max(...generated.map((amount, index) => {
+    const rate = rates[index] ?? 0;
+    return rate <= 0 ? 0 : amount / rate * 3_600;
+  }));
+  return { state, now, nowMinutes, produced, productiveSeconds };
 }
 
 /** Rows to levels, with every building present at zero and nothing else present. */
@@ -233,6 +252,7 @@ export interface LockedPlanet {
   orbit: SatelliteSet;
   /** Every installed satellite, including slots made inactive by Core damage. */
   storedOrbit: SatelliteSet;
+  seasonTelemetry: (typeof planets.$inferSelect)['seasonTelemetry'];
   /** Units physically at home right now. Anything in flight is not here. */
   homeFleet: Fleet;
   ground: Fleet;
@@ -363,7 +383,7 @@ export async function loadLocked(
     (HULLS[u.hull].ground ? ground : homeFleet)[u.hull] = u.count;
   }
 
-  const { state: advanced, now, nowMinutes } = economyAt(
+  const { state: advanced, now, nowMinutes, produced, productiveSeconds } = economyAt(
     row,
     levels,
     { effectiveInstruments, orbit },
@@ -372,6 +392,57 @@ export async function loadLocked(
   );
 
   if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
+    /*
+      A HAND-OVER THAT DID NOT COME THROUGH `transferPlanetControl`, REPAIRED
+      RATHER THAN REFUSED.
+
+      The telemetry counter on the row belongs to ONE actor at a time, and the
+      ordinary conquest path closes the old actor's segment and restarts the
+      counter in the same statement. Anything else that moves `player_id` — an
+      operator's SQL, a CLI, a fixture, a future writer that forgets — would leave
+      the counter accumulating the new controller's production under the old
+      commander's name.
+
+      THIS USED TO THROW, AND THAT WAS THE MORE DANGEROUS ANSWER. `loadLocked` is
+      the gate every screen, every launch and every worker tick passes through, so
+      an exception here does not lose a statistic: it takes the world off the board
+      entirely, for everyone, until somebody notices — the exact shape of the D47
+      outage `schema-drift.test.ts` exists to remember. A season metric must never
+      be able to do that.
+
+      So the mismatch is closed the same way a real hand-over is: the former
+      actor's accumulated figures become an immutable segment, and the counter
+      restarts for whoever holds the world now. The interval being advanced right
+      now is credited to the current controller, because the row records no instant
+      at which control actually moved.
+    */
+    const formerActor = row.statsOwnerPlayerId !== null
+      && row.statsOwnerPlayerId !== row.controllerPlayerId
+      ? row.statsOwnerPlayerId
+      : null;
+    if (formerActor !== null) {
+      await tx.insert(seasonTelemetrySegments).values({
+        seasonId: row.seasonId,
+        playerId: formerActor,
+        sourcePlanetId: planetId,
+        telemetry: row.seasonTelemetry,
+        closedAt: row.lastTickAt,
+      });
+      row.seasonTelemetry = {
+        produced: { alloy: 0, crystal: 0, deuterium: 0 },
+        productiveSeconds: 0,
+        shipsBuilt: {},
+      };
+    }
+    row.seasonTelemetry = {
+      produced: {
+        alloy: row.seasonTelemetry.produced.alloy + produced.alloy,
+        crystal: row.seasonTelemetry.produced.crystal + produced.crystal,
+        deuterium: row.seasonTelemetry.produced.deuterium + produced.deuterium,
+      },
+      productiveSeconds: row.seasonTelemetry.productiveSeconds + productiveSeconds,
+      shipsBuilt: row.seasonTelemetry.shipsBuilt,
+    };
     await tx
       .update(planets)
       .set({
@@ -383,6 +454,8 @@ export async function loadLocked(
         bufferDeuterium: advanced.bufferDeuterium,
         shield: advanced.shield,
         lastTickAt: now,
+        statsOwnerPlayerId: row.controllerPlayerId,
+        seasonTelemetry: row.seasonTelemetry,
       })
       .where(eq(planets.id, planetId));
   }
@@ -412,6 +485,7 @@ export async function loadLocked(
     effectiveInstruments,
     orbit,
     storedOrbit,
+    seasonTelemetry: row.seasonTelemetry,
     homeFleet,
     ground,
     nowMinutes,

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEUTERIUM,
+  FEATURE_FLAGS,
   RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   RESEARCH_PROJECT_IDS,
@@ -193,6 +194,23 @@ describe('every project is reachable', () => {
     expect(row(view, 'GRAVITIC_CHARGES')).not.toHaveClass('hidden');
     expect(row(view, 'STRATEGIC_STOCKPILE')).toHaveClass('hidden');
     expect(view.container.querySelector('[data-band="strategic"]')).toHaveClass('hidden');
+  });
+
+  /**
+   * AND THE BAND'S COUNTER COUNTS WHAT IS THERE. Owner report.
+   *
+   * Frontier carries four projects and one of them is `display: none` while the
+   * weapon is off, so the header promised four and opened onto three. A count is
+   * the only thing a closed band says about itself — a commander who opens it
+   * looking for the fourth row has been sent to find something that is not there,
+   * which is `interface.md`'s first question failing on a single digit.
+   */
+  it.skipIf(FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('counts only the rows a closed band would open onto', () => {
+    const view = show();
+    const count = (band: string): string =>
+      view.container.querySelector(`[data-band="${band}"] .num`)?.textContent ?? '';
+    expect(count('frontier')).toBe('3');
+    expect(count('doctrine')).toBe('5');
   });
 
   it('renders a row for all fifteen projects', () => {

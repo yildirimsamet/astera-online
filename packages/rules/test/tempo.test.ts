@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ECON, ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, MULTI_WORLD, PROBE,
+import { ECON, ECONOMY_ADJUSTMENT, ECONOMY_PROFILE, DEATH_STAR, SEASON, HULLS, MULTI_WORLD, PROBE,
   profileBuilding, profileResearch, hullWorkMinutes, RESEARCH_PROJECTS,
   storageCap, alloyRate, crystalRate, buildingCost, satelliteCost } from '../src/index.js';
 
@@ -25,14 +25,16 @@ describe('monthly economy tempo', () => {
     // here only ever went stale, which is what it did.
   });
   it('prices work independently of resources and keeps the evening playable', () => {
-    expect(hullWorkMinutes('DART', 1, 0, {})).toBe(2);
-    expect(hullWorkMinutes('CITADEL', 1, 6, {})).toBeCloseTo(35 / 1.72);
+    // Two minutes of authored work, less the global timer dial every quote in the
+    // game carries. See `ECONOMY_ADJUSTMENT.buildTime`.
+    expect(hullWorkMinutes('DART', 1, 0, {})).toBe(2 * ECONOMY_ADJUSTMENT.buildTime);
+    expect(hullWorkMinutes('CITADEL', 1, 6, {})).toBeCloseTo(35 / 1.72 * ECONOMY_ADJUSTMENT.buildTime);
     for (const p of Object.values(RESEARCH_PROJECTS)) {
       for (let level = 1; level <= p.maxLevel; level++) {
         expect(profileResearch(p.id, level).minutes).toBeLessThanOrEqual(480);
       }
     }
-    expect(DEATH_STAR.buildMinutes).toBe(60);
+    expect(DEATH_STAR.buildMinutes).toBe(60 * ECONOMY_ADJUSTMENT.buildTime);
   });
   it('keeps entry purchases reachable and founding capital separate', () => {
     expect(HULLS.DART.alloy).toBe(390);

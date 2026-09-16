@@ -53,7 +53,7 @@ export const clan = {
     heading: 'Why join?',
     activeHeading: 'What your clan does',
     safeTitle: 'Safe teammates',
-    safeBody: 'Clanmates cannot attack each other. Probes and Death Star strikes are blocked too.',
+    safeBody: 'Clanmates cannot attack each other. Probes are blocked too.',
     lootTitle: 'Shared raid loot',
     lootBody: '10% of returned raid loot is split equally between the mature crew. Everyone claims their own share.',
     aidTitle: 'Faster aid flights',
@@ -154,7 +154,7 @@ export const clan = {
   },
   rules: {
     peaceTitle: 'No friendly fire',
-    peaceBody: 'Attacks, probes and Death Star strikes are blocked.',
+    peaceBody: 'Attacks and probes are blocked.',
     aidTitle: '+10% aid speed',
     aidBody: 'Only clan aid gets the speed and extra bay.',
     lootTitle: '10% shared',

@@ -1,11 +1,12 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { RIVAL, SERVERS } from '@astera/rules';
+import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
   planets,
   playerRivals,
   players,
+  seasonCycles,
   seasonResults,
   seasons,
   shards,
@@ -13,6 +14,7 @@ import {
 import type { Queryable } from '../db/client.js';
 import { addMinutes } from '../clock.js';
 import { protectionFrom } from '../services/attackProtection.js';
+import { averageSeasonStats, sumSeasonStats } from '../services/seasonArchive.js';
 import { GameError } from '../services/planet.js';
 import { requireAuth } from './auth.js';
 
@@ -28,6 +30,244 @@ import { requireAuth } from './auth.js';
  * not have, and mining resolves against rocks the player never saw.
  */
 export function registerSeasonRoutes(app: FastifyInstance): void {
+  app.get('/api/season-archive', { preHandler: requireAuth }, async (req) => {
+    const query = z.object({
+      cursor: z.coerce.number().int().positive().optional(),
+      limit: z.coerce.number().int().min(1).max(24).default(12),
+    }).parse(req.query);
+    const cycleRows = await app.db
+      .select()
+      .from(seasonCycles)
+      .where(query.cursor === undefined ? undefined : lt(seasonCycles.ordinal, query.cursor))
+      .orderBy(desc(seasonCycles.ordinal))
+      .limit(query.limit + 1);
+    const page = cycleRows.slice(0, query.limit);
+    if (page.length === 0) return { cycles: [], nextCursor: null };
+
+    /*
+      SILENT SPACE IS NOT A SEASON ANYBODY COMPETED IN. Owner instruction.
+
+      A WAITING shard is where commanders are parked when they stop playing — it
+      has a leaderboard because every galaxy does, not because anybody raced in
+      it. Listing it beside the real galaxies puts a season in the archive that
+      nobody chose to enter and, on the live field, it is the LARGEST one there.
+      The results stay sealed in the database; they are simply not offered as a
+      competition to browse.
+    */
+    const galaxyRows = await app.db
+      .select({ season: seasons, shard: shards })
+      .from(seasons)
+      .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .where(and(
+        inArray(seasons.cycleId, page.map((cycle) => cycle.id)),
+        ne(shards.role, 'WAITING'),
+      ))
+      .orderBy(asc(shards.ordinal));
+    /*
+      A FINISHED GALAXY EARNS ITS ROW BY HAVING SOMEBODY IN IT.
+
+      Measured on the live database the day before this shipped: eighteen cycles,
+      twenty completed galaxies, and FOURTEEN with no sealed result at all —
+      bootstraps, abandoned test worlds and shards opened and rolled before anyone
+      played them. Listing those makes most of the season selector open onto "no
+      results", which a player reads as a broken feature rather than as an honest
+      gap in the record.
+
+      A LIVE or PENDING galaxy is always kept: it is the world being played, and it
+      has no sealed results yet by definition. Only a FINISHED one has to show
+      something for itself.
+    */
+    const sealed = new Set((await app.db
+      .selectDistinct({ seasonId: seasonResults.seasonId })
+      .from(seasonResults)
+      .where(inArray(seasonResults.seasonId, galaxyRows.map((row) => row.season.id)))
+    ).map((row) => row.seasonId));
+    const galaxiesByCycle = new Map<string, typeof galaxyRows>();
+    for (const row of galaxyRows) {
+      const finished = row.season.status === 'frozen' || row.season.status === 'wiped';
+      if (finished && !sealed.has(row.season.id)) continue;
+      const grouped = galaxiesByCycle.get(row.season.cycleId) ?? [];
+      grouped.push(row);
+      galaxiesByCycle.set(row.season.cycleId, grouped);
+    }
+    const cycles = page.map((cycle) => {
+      const galaxies = galaxiesByCycle.get(cycle.id) ?? [];
+      const statuses = galaxies.map((row) => row.season.status);
+      const status = statuses.includes('live')
+        ? 'live'
+        : statuses.includes('frozen') ? 'frozen' : 'wiped';
+      return {
+        ordinal: cycle.ordinal,
+        startsAt: cycle.startsAt,
+        endsAt: cycle.endsAt,
+        status,
+        galaxies: galaxies.map(({ season, shard }) => ({
+          seasonId: season.id,
+          shard: shard.code,
+          shardName: shard.name === '' ? shard.code : shard.name,
+          status: season.status,
+        })),
+      };
+    });
+    /*
+      THE CURSOR COMES FROM THE PAGE THAT WAS READ, NOT FROM THE ONE THAT SURVIVED
+      THE FILTER. Paging on the last SHOWN ordinal would re-read every cycle the
+      filter just dropped, for ever, and a page that dropped all of them would have
+      no cursor to continue from at all.
+    */
+    const lastRead = page.at(-1);
+    return {
+      cycles: cycles.filter((cycle) => cycle.galaxies.length > 0),
+      nextCursor: cycleRows.length > query.limit && lastRead ? lastRead.ordinal : null,
+    };
+  });
+
+  app.get('/api/season-archive/:seasonId/leaderboard', { preHandler: requireAuth }, async (req) => {
+    const { seasonId } = z.object({ seasonId: z.string().uuid() }).parse(req.params);
+    const [context] = await app.db
+      .select({ season: seasons, cycle: seasonCycles, shard: shards })
+      .from(seasons)
+      .innerJoin(seasonCycles, eq(seasonCycles.id, seasons.cycleId))
+      .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .where(eq(seasons.id, seasonId))
+      .limit(1);
+    if (!context) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
+    if (context.season.status === 'live' || context.season.status === 'pending') {
+      throw new GameError('SEASON_NOT_COMPLETE', 'That season is still live', 409);
+    }
+
+    const rows = await app.db
+      .select()
+      .from(seasonResults)
+      .where(eq(seasonResults.seasonId, seasonId))
+      .orderBy(asc(seasonResults.finalRank));
+    return {
+      season: {
+        seasonId: context.season.id,
+        ordinal: context.cycle.ordinal,
+        shard: context.shard.code,
+        shardName: context.shard.name === '' ? context.shard.code : context.shard.name,
+        status: context.season.status,
+        startsAt: context.season.startsAt,
+        endsAt: context.season.endsAt,
+      },
+      ladder: rows.map((row) => ({
+        resultId: row.publicId,
+        rank: row.finalRank,
+        commanderName: row.recap.commanderName,
+        dominion: row.dominion,
+        title: row.title,
+        self: row.accountId === req.accountId,
+        reward: null,
+      })),
+    };
+  });
+
+  app.get('/api/season-archive/results/:resultId', { preHandler: requireAuth }, async (req) => {
+    const { resultId } = z.object({ resultId: z.string().uuid() }).parse(req.params);
+    const [selected] = await app.db
+      .select({ result: seasonResults, season: seasons, cycle: seasonCycles, shard: shards })
+      .from(seasonResults)
+      .innerJoin(seasons, eq(seasons.id, seasonResults.seasonId))
+      .innerJoin(seasonCycles, eq(seasonCycles.id, seasonResults.cycleId))
+      .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .where(eq(seasonResults.publicId, resultId))
+      .limit(1);
+    if (!selected) throw new GameError('SEASON_RESULT_NOT_FOUND', 'No such season result', 404);
+    if (selected.season.status === 'live' || selected.season.status === 'pending') {
+      throw new GameError('SEASON_NOT_COMPLETE', 'That season is still live', 409);
+    }
+
+    const completed = await app.db
+      .select({ result: seasonResults, season: seasons, cycle: seasonCycles, shard: shards })
+      .from(seasonResults)
+      .innerJoin(seasons, eq(seasons.id, seasonResults.seasonId))
+      .innerJoin(seasonCycles, eq(seasonCycles.id, seasonResults.cycleId))
+      .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .where(and(
+        eq(seasonResults.accountId, selected.result.accountId),
+        inArray(seasons.status, ['frozen', 'wiped']),
+        // Same rule as the index: a parked galaxy is not a season played.
+        ne(shards.role, 'WAITING'),
+      ))
+      .orderBy(desc(seasonCycles.ordinal));
+    const ranks = completed.map((row) => row.result.finalRank);
+    const completedStats = completed.flatMap((row) => row.result.stats === null
+      ? []
+      : [row.result.stats]);
+    /*
+      HOW MANY COMMANDERS THIS RANK WAS EARNED AGAINST.
+
+      "12th" is a number. "12th of 257 — top 5%" is a position, and a position is
+      the thing a player repeats to somebody else. Without the denominator the
+      rank on a permanent record means nothing: first of four and first of three
+      hundred are the same line of text.
+    */
+    const [field] = await app.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(seasonResults)
+      .where(eq(seasonResults.seasonId, selected.result.seasonId));
+    const cohortRows = selected.result.stats === null ? [] : await app.db
+      .select({ stats: seasonResults.stats })
+      .from(seasonResults)
+      .where(and(
+        eq(seasonResults.seasonId, selected.result.seasonId),
+        eq(seasonResults.averageEligible, true),
+        isNotNull(seasonResults.stats),
+      ));
+    const cohortStats = cohortRows.flatMap((row) => row.stats === null ? [] : [row.stats]);
+
+    return {
+      selected: {
+        resultId: selected.result.publicId,
+        seasonId: selected.season.id,
+        ordinal: selected.cycle.ordinal,
+        shard: selected.shard.code,
+        shardName: selected.shard.name === '' ? selected.shard.code : selected.shard.name,
+        status: selected.season.status,
+        startsAt: selected.season.startsAt,
+        endsAt: selected.season.endsAt,
+        commanderName: selected.result.recap.commanderName,
+        planetName: selected.result.recap.planetName,
+        rank: selected.result.finalRank,
+        /** The size of the field that rank was taken from. */
+        commanders: field?.n ?? 0,
+        dominion: selected.result.dominion,
+        title: selected.result.title,
+        recap: selected.result.recap,
+        stats: selected.result.stats,
+        averages: averageSeasonStats(cohortStats),
+        reward: null,
+      },
+      career: {
+        completedSeasons: completed.length,
+        bestRank: ranks.length === 0 ? null : Math.min(...ranks),
+        championships: ranks.filter((rank) => rank === 1).length,
+        podiums: ranks.filter((rank) => rank <= 3).length,
+        topTen: ranks.filter((rank) => rank <= 10).length,
+        totals: completedStats.length === 0 ? null : {
+          seasonsCovered: completedStats.length,
+          stats: sumSeasonStats(completedStats),
+        },
+        seasons: completed.map((row) => ({
+          resultId: row.result.publicId,
+          seasonId: row.season.id,
+          ordinal: row.cycle.ordinal,
+          shard: row.shard.code,
+          shardName: row.shard.name === '' ? row.shard.code : row.shard.name,
+          status: row.season.status,
+          startsAt: row.season.startsAt,
+          endsAt: row.season.endsAt,
+          commanderName: row.result.recap.commanderName,
+          rank: row.result.finalRank,
+          dominion: row.result.dominion,
+          title: row.result.title,
+          statsAvailable: row.result.stats !== null,
+        })),
+      },
+    };
+  });
+
   app.get('/api/season', { preHandler: requireAuth }, async (req) => {
     const [row] = await app.db
       .select({
@@ -37,10 +277,12 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         playerId: players.id,
         shieldUntil: players.newcomerShieldUntil,
         recoveryShieldUntil: players.recoveryShieldUntil,
+        rewardProgramVersion: seasonCycles.rewardProgramVersion,
       })
       .from(players)
       .innerJoin(seasons, eq(players.seasonId, seasons.id))
       .innerJoin(shards, eq(seasons.shardId, shards.id))
+      .innerJoin(seasonCycles, eq(seasonCycles.id, seasons.cycleId))
       .where(eq(players.accountId, req.accountId!))
       .limit(1);
 
@@ -106,6 +348,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       row.recoveryShieldUntil,
       app.clock.now(),
     );
+    const rewardProgram = seasonRankRewardProgram(row.rewardProgramVersion);
 
     return {
       seasonId: row.season.id,
@@ -148,6 +391,35 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
        */
       shieldUntil: protection === null ? null : new Date(protection.until),
       shieldKind: protection?.kind ?? null,
+      /**
+       * WHAT THE TOP OF THE TABLE IS WORTH, WHILE THERE IS STILL TIME TO CLIMB IT.
+       *
+       * A season that resets everything needs a reason to keep playing in week
+       * two, and the reward waiting for the first ten commanders is that reason —
+       * but it was reachable NOWHERE in the product. The entitlement was sealed at
+       * freeze and paid silently on the next join, so the only way to learn the
+       * program existed was to have already won it.
+       *
+       * READ FROM THE CYCLE'S OWN FROZEN VERSION, never from today's table. A
+       * commander is shown the bargain their season was opened under, so a
+       * mid-season deploy cannot move a prize somebody is already playing for.
+       * Null for a cycle opened before the program, which is the honest answer
+       * rather than an offer nothing will honour.
+       *
+       * IT IS THE TABLE AND NOTHING ELSE. Who currently holds a place is the
+       * leaderboard's own public ordering; restating it here would be a second
+       * copy of a ranking that must have exactly one source.
+       */
+      seasonRewards: rewardProgram === null ? null : {
+        version: rewardProgram.version,
+        minimumDominion: rewardProgram.minimumDominion,
+        tiers: rewardProgram.tiers.map((tier) => ({
+          place: tier.place,
+          alloy: tier.reward.alloy,
+          crystal: tier.reward.crystal,
+          deuterium: tier.reward.deuterium,
+        })),
+      },
     };
   });
 

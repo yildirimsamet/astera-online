@@ -20,7 +20,14 @@ export const statusBar = {
    * It says what is behind it rather than saying "menu", because D54's bug was a
    * control labelled as something other than what it opened.
    */
-  menuHint: 'Commander {{name}} — intel, leaderboard, rewards, account',
+  /*
+    IT NAMES WHAT IS ACTUALLY BEHIND IT, and it used to promise Intel — which
+    moved onto the disc with research and the clan. A control whose name lists a
+    surface it cannot reach is D54's bug wearing an accessible name instead of a
+    face, and this string is what a screen reader and the screenshot harness read.
+    The four groups the sheet is built from, in the order it draws them.
+  */
+  menuHint: 'Commander {{name}} — leaderboard, rewards, announcements, help and account',
   menuWaiting: '{{count}} rewards waiting',
   clanWaiting: '{{count}} clan updates waiting',
   newcomerShield: {
@@ -85,6 +92,9 @@ export const pendingStrip = {
   drillHome: 'Your drills returning home',
   salvageOut: 'Your drills → wreckage',
   drillCount: '{{count}} Prospectors',
+  recallProspectors: 'Recall Prospectors',
+  recallingProspectors: 'Recalling…',
+  recallStarted: 'Prospectors turned around · returning home',
   craftCount: '{{count}} craft',
   craftUnknown: 'Craft manifest unavailable',
   incomingHint: 'Inbound warning · origin hidden by fog',
@@ -139,6 +149,11 @@ export const signals = {
 
 /** The bottom sheet every decision is made from. */
 export const sheet = {
+  /*
+    A SHEET OPENED FROM THE MENU HAS SOMEWHERE TO GO BACK TO, and that is a
+    different word from "close". See `Sheet`'s own note.
+  */
+  back: 'Back',
   close: 'Close',
   dismiss: 'Close',
 } as const;
@@ -179,6 +194,16 @@ export const surface = {
  */
 export const menu = {
   eyebrow: 'Commander',
+  /*
+    THE GROUP NAMES. Four words doing the work nine identical rows could not: a
+    reader should be able to tell WITHOUT reading the rows that the leaderboard
+    and the sound slider are different kinds of thing.
+  */
+  seasonHeading: 'This season',
+  asteraHeading: 'Astera team',
+  helpHeading: 'Help',
+  deviceHeading: 'This device',
+  marksHeading: 'Your marks',
   intelLabel: 'Intel',
   intelHint: 'Telescope, probes, radar and battle reports',
   rewardsLabel: 'Rewards',
@@ -209,6 +234,8 @@ export const menu = {
   rivalLabel: 'Rival · {{commander}}',
   rivalHint: 'Focus {{planet}} and choose your next move',
   rivalLostLabel: 'Rival signal lost',
+  /** The chip's own face. The sentence above is still its accessible name. */
+  rivalLostShort: 'Lost mark',
   rivalLostHint: 'That world is gone. Clear the marker.',
   rivalCleared: 'The lost Rival marker was cleared.',
   accountHeading: 'Account',
@@ -247,6 +274,112 @@ export const leaderboard = {
   searchPlaceholder: 'Commander, planet or clan',
   noMatch: 'No commander, planet or clan matches that search.',
   locationUnknown: "You haven't discovered this commander's location yet.",
+  /*
+    THE IN-SEASON PRIZE — the answer to "what am I playing for".
+    It sits directly above the standings, because that is where the decision is.
+  */
+  rewards: {
+    title: 'End of season prize',
+    left: '{{duration}} left',
+    explain: 'When the season ends, the first {{places}} commanders open the next galaxy with resources.',
+    table: 'Prize by place',
+    rowPrizeLabel: 'Next season prize: {{alloy}} alloy, {{crystal}} crystal, {{deuterium}} deuterium',
+    holding: 'Rank {{place}} · you are winning this',
+    paidWhen: 'It lands the moment you found your world in the new season.',
+    standing: 'Rank {{place}}',
+    behind: '{{score}} more Dominion to reach the top {{places}}.',
+    climb: 'Reach the top {{places}} and take it.',
+    unranked: 'Join this galaxy to enter the standings.',
+  },
+  archive: {
+    selectorLabel: 'Season records',
+    archiveIndex: 'season records',
+    waitingArchive: 'Loading season records',
+    live: 'Live season',
+    seasonChoice: 'Season {{ordinal}} · {{galaxy}}',
+    seasonNumber: 'Season {{ordinal}}',
+    seasonHeading: 'Season {{ordinal}} · {{galaxy}}',
+    /* A rank is not a boast without its field — first of four reads like first of three hundred. */
+    percentile: 'Top {{share}}% · {{rank}} of {{commanders}} commanders',
+    fieldSize: '{{count}} commanders',
+    medals: 'Trophies',
+    signature: 'Your signature ship',
+    leadWorks: 'Works output',
+    leadProduced: 'Total the Works turned out',
+    leadRuns: 'from {{count}} asteroid runs',
+    signatureCount: 'You built {{count}}',
+    multiple: '×{{value}}',
+    share: '{{value}}%',
+    loadingOlder: 'Loading older seasons',
+    completedBoard: 'Completed season leaderboard',
+    waitingBoard: 'Opening the completed leaderboard',
+    emptyBoard: 'No commander results were recorded for this galaxy.',
+    searchLabel: 'Search the completed season by commander',
+    searchPlaceholder: 'Commander',
+    noMatch: 'No commander matches that search.',
+    openCommander: 'Open {{commander}} season record',
+    openSeasonRecord: 'Open Season {{ordinal}} · {{galaxy}} record',
+    commanderCard: 'commander season record',
+    waitingProfile: 'Opening the commander record',
+    back: 'Back to season standings',
+    profileViews: 'Commander record views',
+    seasonTab: 'Season {{ordinal}}',
+    overall: 'Overall',
+    cohort_one: 'Others = the average across {{count}} commander in this season',
+    cohort_other: 'Others = the average across {{count}} commanders in this season',
+    /** The three-column breakdown truncates; the long sentence is said once above. */
+    averageShort: 'Others: {{value}}',
+    statsUnavailable: 'No detailed record was kept for this season.',
+    statsUnavailableHint: 'Your rank and title are kept. What was never measured is not shown as zero.',
+    none: 'None',
+    ratios: {
+      trade: 'Damage traded',
+      haul: 'Loot per raid',
+      kept: 'Fleet kept',
+      convoy: 'Convoy hit rate',
+      hourly: 'Output per hour',
+      perRun: 'Haul per run',
+    },
+    sections: {
+      form: 'Form & efficiency',
+      competition: 'Competition & battle',
+      economy: 'Economy & production',
+      exploration: 'Exploration & opportunity',
+    },
+    metrics: {
+      finalRank: 'Final rank',
+      battles: 'Battles',
+      shipsBuilt: 'Ships built',
+      shipsLost: 'Ships lost',
+      shipsBuiltByHull: 'Ships built by type',
+      shipsLostByHull: 'Ships lost by type',
+      playerLoot: 'Loot from commanders',
+      productiveTime: 'Production time, all worlds',
+      produced: 'Produced by the Works',
+      asteroidRuns: 'Asteroid runs',
+      asteroidMined: 'Extracted from asteroids',
+      convoyAttempts: 'Convoy attempts',
+      convoySuccesses: 'Convoy successes',
+      convoyDelivered: 'Delivered convoy rewards',
+    },
+    resources: {
+      alloy: 'Alloy',
+      crystal: 'Crystal',
+      deuterium: 'Deuterium',
+    },
+    career: {
+      completed: 'Completed seasons',
+      bestRank: 'Best rank',
+      championships: 'Championships',
+      podiums: 'Podiums',
+      topTen: 'Top 10 finishes',
+      noTelemetry: 'No completed season has a detailed record yet.',
+      recordedTotals: 'Recorded career totals',
+      covered_one: '{{count}} season covered',
+      covered_other: '{{count}} seasons covered',
+      seasons: 'Season by season',
+    },
+  },
 } as const;
 
 export const chat = {

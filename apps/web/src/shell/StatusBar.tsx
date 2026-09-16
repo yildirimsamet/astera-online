@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectorCap } from '@astera/rules';
-import { useClanBadge, useCollect, usePlanet, useRewards, useSeason } from '../api/queries.js';
+import { useCollect, usePlanet, useRewards, useSeason } from '../api/queries.js';
 import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
@@ -28,8 +28,11 @@ import { countdown, useNow } from '../lib/time.js';
  *     nothing is in flight, so it is a control rather than a readout: one tap
  *     empties it, and when it is full it says what that is costing per hour.
  *   · WHAT IS NEW — the signals beacon.
- *   · EVERYTHING ELSE — one menu control, holding intel, rewards and the account:
- *     the galaxy you are in, how long the season has, and the way out.
+ *   · EVERYTHING ELSE — one menu control, holding the season standings, rewards,
+ *     the team's announcements, help, and the account: the galaxy you are in, how
+ *     long the season has, and the way out. Intel, research and the clan are NOT
+ *     behind it — they are marks on the disc — which is what its accessible name
+ *     and its attention dot both have to keep saying (`MenuPanel`).
  */
 export function StatusBar({
   commander,
@@ -52,8 +55,18 @@ export function StatusBar({
    * invalidates.
    */
   const waiting = useRewards().data?.claimable ?? 0;
-  const clanAttention = useClanBadge().data?.attentionCount ?? 0;
-  const menuAttention = waiting + clanAttention;
+  /**
+   * THE DOT COUNTS WHAT IS BEHIND THIS CONTROL, AND IT USED TO COUNT THE CLAN.
+   *
+   * The clan is a mark on the disc (`DiscControls`, which already lights it from
+   * the same `attentionCount`) and there has been no clan row in the menu since it
+   * moved. So a clan invite lit an amber dot on the hamburger, the player opened
+   * the sheet, found nothing new in it, and the dot was still there next time —
+   * which is how a player learns to ignore every dot the interface draws.
+   *
+   * A badge may only ever promise something the surface it sits on can show.
+   */
+  const menuAttention = waiting;
 
   if (!data) return <div className="h-[70px]" />;
   return (
@@ -177,9 +190,6 @@ export function StatusBar({
             )}
             {waiting > 0 ? (
               <span className="sr-only">{t('statusBar.menuWaiting', { count: waiting })}</span>
-            ) : null}
-            {clanAttention > 0 ? (
-              <span className="sr-only">{t('statusBar.clanWaiting', { count: clanAttention })}</span>
             ) : null}
           </button>
         </div>}

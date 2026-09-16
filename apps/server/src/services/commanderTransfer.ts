@@ -18,8 +18,24 @@ export type TransferStatus = 'MOVED' | 'ACTIVE' | 'PLACEMENT' | 'SEASON' | 'CAPA
 class Deferred extends Error { constructor(readonly status: TransferStatus) { super(status); } }
 function defer(status: TransferStatus): never { throw new Deferred(status); }
 
-/** No gameplay retry in this transaction: a busy row defers the whole move without skipping FIFO. */
-export async function transferCommander(db: Db, playerId: string, targetSeasonId: string, clock: Clock, applicationId?: string): Promise<{ status: TransferStatus }> {
+/**
+ * No gameplay retry in this transaction: a busy row defers the whole move without skipping FIFO.
+ *
+ * `ownerRequested` WAIVES THE ACTIVITY CLOCK AND NOTHING ELSE.
+ *
+ * Silent Space is otherwise entered by absence alone, and that is the right
+ * default: nobody is removed from a galaxy because of an opinion. The one case
+ * absence cannot describe is a commander who is playing right now and has asked
+ * to be taken out — a request that arrives in a message, which no server-side
+ * check can verify, so the operator is the one who answers it (`season
+ * silent-space`, the same shape as `season delete-account`).
+ *
+ * It skips the `inactivityEligible` gate and steps around no other fence: a
+ * fleet in the air, a live wreck, an unfinished event and a contended world all
+ * still defer, and a defer writes nothing. The return path never reads it — a
+ * return is authorised by its application, not by the operator.
+ */
+export async function transferCommander(db: Db, playerId: string, targetSeasonId: string, clock: Clock, applicationId?: string, options: { ownerRequested?: boolean } = {}): Promise<{ status: TransferStatus }> {
   try {
     await db.transaction(async (tx) => {
       await tx.execute(sql`set local lock_timeout = '150ms'`);
@@ -65,7 +81,8 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const ids = worlds.map(w => w.id);
       const now = clock.now();
       if (now >= source.endsAt || now >= target.endsAt) defer('SEASON');
-      if (!returning && !inactivityEligible({ lastActiveAt: player.lastActiveAt.getTime(), joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, now.getTime())) defer('ACTIVE');
+      if (!returning && options.ownerRequested !== true
+        && !inactivityEligible({ lastActiveAt: player.lastActiveAt.getTime(), joinedAt: player.joinedAt.getTime(), mainEnteredAt: (player.mainEnteredAt ?? player.joinedAt).getTime() }, now.getTime())) defer('ACTIVE');
       if (returning) {
         const [application] = await tx.select().from(returnApplications).where(eq(returnApplications.id, applicationId)).for('update', { noWait: true });
         if (application?.playerId !== playerId || application.status !== 'QUEUED' || now >= application.expiresAt

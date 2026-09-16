@@ -7,6 +7,7 @@ import { MODEL } from '../ui/assets.js';
 import { Exhaust, Hull } from './Fleets.jsx';
 import { CRAFT_SCALE, isHeading, tradeShipWorldPosition } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 
 /**
@@ -193,7 +194,7 @@ export function TradeShip({
       {onSelect && (
         <mesh name="trade-ship-hit" onPointerUp={pick} renderOrder={-1}>
           <sphereGeometry args={[TRADE_SHIP_HIT_RADIUS, 8, 6]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <HitboxMaterial kind="trade" />
         </mesh>
       )}
     </group>

@@ -404,7 +404,7 @@ export const action = {
   shortfallJoin: " ve ",
   shortfallLabel: "Eksik: {{parts}} gerekiyor",
   statAttack: "Saldırı",
-  statHull: "Gövde",
+  statHull: "Dayanıklılık",
   statSpeed: "Hız",
   statSpeedFixed: "sabit",
   statCargo: "Ambar",
@@ -428,7 +428,6 @@ export const planetHero = {
    */
   tier: "{{tier}}. kademe",
   firepower: "Ateş gücü",
-  perHour: "Saatte",
   perHourSuffix: "/sa",
   disrupted: "Akın yedin, üretim durdu · {{countdown}}",
   defence: "Savunma",
@@ -498,6 +497,7 @@ export const launch = {
   distance: "Mesafe",
   fleetHeading: "Filo",
   atHome: "evde {{count}}",
+  perShipStats: "Bir geminin değerleri · araştırmaların dahil",
   away: "Havada {{fleet}} var. Buradan yalnızca bu dünyada duran gemileri gönderebilirsin.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -544,7 +544,6 @@ export const transfer = {
   hullPacked: "{{held}} {{name}} içinden {{packed}} tanesi yüklendi",
   /** Yük sürgüsünün altındaki çubuğun altyazısı: bu transferle giden. */
   cargoSending: "Gönderiyorsun",
-  destinationProspectorFull: "Hedef dünya yeni bir Kazıcı kabul edemiyor.",
 } as const;
 
 export const capacity = {

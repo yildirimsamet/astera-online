@@ -1,0 +1,5 @@
+# Authorized Digital Sellers. AdSense reports "earnings at risk" against any site
+# it cannot find this record on, so it is part of the ad integration rather than
+# an extra. The publisher here must match `ADSENSE_CLIENT` in
+# `src/lib/adsense.ts` — a test holds the two together.
+google.com, pub-2743431608715099, DIRECT, f08c47fec0942fa0

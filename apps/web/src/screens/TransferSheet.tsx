@@ -9,7 +9,6 @@ import {
   combatValue,
   garrisonOf,
   fleetTravelExact,
-  prospectorRoom,
   resourcesTotal,
   transferCargoCapacity,
   type Fleet,
@@ -30,7 +29,9 @@ import { flightModifiers } from '../lib/navigation.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
-const MOVABLE = (Object.keys(HULLS) as HullId[]).filter((id) => !HULLS[id].ground);
+const MOVABLE = (Object.keys(HULLS) as HullId[]).filter(
+  (id) => !HULLS[id].ground && id !== 'PROSPECTOR',
+);
 /** Off the rule, never off a literal — see `TRANSFER_CARGO_HULLS`. */
 const CARRIES_ORE = (id: HullId): boolean =>
   (TRANSFER_CARGO_HULLS as readonly HullId[]).includes(id);
@@ -117,14 +118,11 @@ export interface TransferTarget {
 
 export function TransferSheet({
   target,
-  targetPlanet,
   planet,
   onClose,
   onLaunched,
 }: {
   target: TransferTarget;
-  /** Full private view of this owned destination, when already loaded. */
-  targetPlanet?: PlanetView;
   planet: PlanetView;
   onClose: () => void;
   onLaunched: () => void;
@@ -146,32 +144,6 @@ export function TransferSheet({
   const mods = flightModifiers(planet);
   const capacity = transferCargoCapacity(fleet, mods.tech);
   const loaded = resourcesTotal(cargo);
-  const targetOwned = targetPlanet
-    ? {
-      ...targetPlanet.fleet,
-      ...Object.fromEntries(
-        (Object.keys(HULLS) as HullId[]).map((id) => [
-          id,
-          (targetPlanet.fleet[id] ?? 0)
-          + (targetPlanet.ground[id] ?? 0)
-          + (targetPlanet.fleetAway[id] ?? 0),
-        ]),
-      ),
-    }
-    : undefined;
-  const targetProspectors = targetOwned?.PROSPECTOR ?? 0;
-  /**
-   * HOW MANY BERTHS THE DESTINATION HAS, AND WHO DECIDES. D170 · D134.
-   *
-   * The third rung of Prospector Holds buys a third berth on every world its
-   * commander holds, and research belongs to the COMMANDER — a transfer only ever
-   * runs between two worlds of the same commander, so the origin's ladder IS the
-   * destination's. `landingBlock` has read it on the server since the rung shipped;
-   * this read `prospectorRoom(held)` with no ladder, so a commander who had paid
-   * for the berth was told their own colony was full and the commit stayed dead.
-   */
-  const prospectorsFit = targetPlanet === undefined
-    || (fleet.PROSPECTOR ?? 0) <= prospectorRoom(targetProspectors, mods.tech);
   /** Does this world own an ore carrier at all — a different problem from not loading one. */
   const ownsCarrier = transferCargoCapacity(planet.fleet, mods.tech) > 0;
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
@@ -209,7 +181,7 @@ export function TransferSheet({
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
-  const valid = fleetCount(fleet) > 0 && loaded <= capacity && prospectorsFit
+  const valid = fleetCount(fleet) > 0 && loaded <= capacity
     && cargo.alloy <= planet.planet.alloy
     && cargo.crystal <= planet.planet.crystal
     && cargo.deuterium <= planet.planet.deuterium
@@ -299,16 +271,6 @@ export function TransferSheet({
             label={t('transfer.fuel')}
           />
         </div>
-      )}
-      {/*
-        THE DESTINATION'S ONE REMAINING REFUSAL. D184 took the Hangar bar that used
-        to stand here — a fleet has no ceiling, so there is nothing left to draw
-        against — and the berth cap is a different rule that still bites.
-      */}
-      {!prospectorsFit && (
-        <p className="mt-2 text-caption text-alloy">
-          {t('transfer.destinationProspectorFull')}
-        </p>
       )}
       <h3 className="legend mt-2">{t('transfer.fleet')}</h3>
       {/*

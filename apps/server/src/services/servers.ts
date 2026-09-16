@@ -47,6 +47,7 @@ import {
   sensorEpochs,
   scanEvents,
   scheduledEvents,
+  seasonTelemetrySegments,
   seasons,
   shards,
   tradeRuns,
@@ -60,6 +61,10 @@ import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
 import { publishShard } from '../stream/bus.js';
 import { addDominionCounters } from './dominion.js';
+import {
+  bindSeasonRankRewardsToSuccessor,
+  expireSeasonRankRewardsForCycles,
+} from './seasonRankRewards.js';
 
 /**
  * THE GALAXIES, AS A PLACE YOU CHOOSE. D21.
@@ -343,7 +348,13 @@ export async function bootstrapServers(
   clock: Clock,
   opts: BootstrapOptions = {},
 ): Promise<BootstrapResult> {
-  return db.transaction((tx) => bootstrapServersIn(tx, clock, opts));
+  const result = await db.transaction((tx) => bootstrapServersIn(tx, clock, opts));
+  return { created: result.created, existing: result.existing };
+}
+
+interface BootstrapInResult extends BootstrapResult {
+  /** The shared cycle opened by this call; private rollover coordination data. */
+  cycleId: string | null;
 }
 
 /** The same idempotent bootstrap, composable inside the atomic wipe. D88. */
@@ -351,7 +362,7 @@ async function bootstrapServersIn(
   tx: Tx,
   clock: Clock,
   opts: BootstrapOptions = {},
-): Promise<BootstrapResult> {
+): Promise<BootstrapInResult> {
   const count = opts.count ?? SERVERS.count;
   const capacity = opts.capacity ?? SERVERS.capacity;
   const days = opts.days ?? SEASON.days;
@@ -361,6 +372,7 @@ async function bootstrapServersIn(
   const startsAt = clock.now();
   const created: string[] = [];
   const existing: string[] = [];
+  let cycleId: string | null = null;
 
   for (let ordinal = 1; ordinal <= count; ordinal++) {
     const code = shardCodeFor(ordinal);
@@ -376,7 +388,7 @@ async function bootstrapServersIn(
       continue;
     }
 
-    await createSeasonIn(tx, {
+    const opened = await createSeasonIn(tx, {
       shardCode: code,
       shardName: shardNameFor(ordinal),
       ordinal,
@@ -388,10 +400,14 @@ async function bootstrapServersIn(
       days,
       playerCap: capacity,
     });
+    if (cycleId !== null && cycleId !== opened.season.cycleId) {
+      throw new Error('One bootstrap opened seasons in different cycles');
+    }
+    cycleId = opened.season.cycleId;
     created.push(code);
   }
 
-  return { created, existing };
+  return { created, existing, cycleId };
 }
 
 export interface WipeResult {
@@ -459,9 +475,10 @@ export async function wipeAllServers(
     }
 
     const ending = await tx
-      .select({ id: seasons.id })
+      .select({ id: seasons.id, cycleId: seasons.cycleId })
       .from(seasons)
       .where(inArray(seasons.status, ['live', 'frozen']));
+    const endingCycleIds = [...new Set(ending.map((season) => season.cycleId))];
     const roster = await tx
       .select({
         id: players.id,
@@ -506,6 +523,7 @@ export async function wipeAllServers(
       }
     }
 
+    await expireSeasonRankRewardsForCycles(tx, endingCycleIds, clock.now());
     await tx.update(seasons).set({ status: 'wiped' }).where(eq(seasons.status, 'live'));
     await tx.update(seasons).set({ status: 'wiped' }).where(eq(seasons.status, 'frozen'));
     for (const season of ending) await publishShard(tx, season.id, 'rollover');
@@ -610,6 +628,7 @@ export async function wipeAllServers(
     await tx.delete(researchOrders);
     await tx.delete(planetResearch);
     await tx.delete(neutralPlanetState);
+    await tx.delete(seasonTelemetrySegments);
     await tx.delete(planets);
     /*
       THE RIVAL MARKS, AND IT IS THE SAME LESSON A FOURTH TIME. D183 added
@@ -631,6 +650,7 @@ export async function wipeAllServers(
     await tx.delete(players);
 
     const opened = await bootstrapServersIn(tx, clock, opts);
+    await bindSeasonRankRewardsToSuccessor(tx, endingCycleIds, opened.cycleId);
     return {
       seasonsWiped: ending.length,
       playersCleared: roster.length,

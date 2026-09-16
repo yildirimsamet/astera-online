@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { Contact, MiningRun, PendingThread } from '../src/api/schemas.js';
 import { PendingStrip } from '../src/shell/PendingStrip.js';
+import { ToastProvider } from '../src/ui/Toast.js';
 
 /**
  * THE COUNTDOWN AT THE FOOT OF THE SCREEN BELONGS TO YOU, AND HAS TO SAY SO.
@@ -20,6 +21,7 @@ import { PendingStrip } from '../src/shell/PendingStrip.js';
 let rows: PendingThread[] = [];
 let runs: MiningRun[] = [];
 let contacts: Contact[] = [];
+const recall = vi.fn();
 
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
@@ -28,6 +30,7 @@ vi.mock('../src/api/queries.js', async () => {
     usePending: () => ({ data: { pending: rows } }),
     useMining: () => ({ data: { runs } }),
     useTraffic: () => ({ data: { contacts } }),
+    useRecallMining: () => ({ mutate: recall, isPending: false }),
   };
 });
 
@@ -66,6 +69,7 @@ const run = (over: Partial<MiningRun> = {}): MiningRun => ({
   minedAlloy: 0,
   minedCrystal: 0,
   minedDeuterium: 0,
+  recalledAt: null,
   ...over,
 });
 
@@ -83,10 +87,22 @@ const show = (
   rows = pending;
   runs = miningRuns;
   contacts = seen;
-  return render(<PendingStrip {...(onFocus ? { onFocus } : {})} />);
+  return render(
+    <ToastProvider>
+      <PendingStrip {...(onFocus ? { onFocus } : {})} />
+    </ToastProvider>,
+  );
 };
 
 describe('the pending strip', () => {
+  it.each([
+    { arriveAt: new Date(0) },
+    { recalledAt: undefined },
+  ])('does not offer recall for an expired outbound or legacy flight: %j', async (over) => {
+    show([thread({ kind: 'probe' }), thread({ kind: 'transfer' })], [run(over)]);
+    await userEvent.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /recall prospectors/i })).not.toBeInTheDocument();
+  });
   it('names an outbound fleet as yours', () => {
     show([thread()]);
     expect(screen.getByText(/your fleet → tharsis/i)).toBeInTheDocument();
@@ -236,6 +252,23 @@ describe('the pending strip', () => {
   it('does not count completed mining rows as airborne', () => {
     show([], [run({ status: 'done' })]);
     expect(screen.getByText(/nothing in flight/i)).toBeInTheDocument();
+  });
+
+  it('offers recall only while a Prospector run is outbound', async () => {
+    recall.mockReset();
+    const outbound = show([], [run()]);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    await user.click(screen.getByRole('button', { name: /recall prospectors/i }));
+    expect(recall).toHaveBeenCalledWith(
+      { runId: 'run-1', originPlanetId: undefined },
+      expect.any(Object),
+    );
+
+    outbound.unmount();
+    show([], [run({ status: 'returning', homeAt: new Date(Date.now() + 60_000) })]);
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /recall prospectors/i })).toBeNull();
   });
 });
 

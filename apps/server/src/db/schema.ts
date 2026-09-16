@@ -300,9 +300,16 @@ export const shards = pgTable('shards', {
 /** Compatibility group only; rollover still coordinates all live shards globally. */
 export const seasonCycles = pgTable('season_cycles', {
   id: uuid('id').primaryKey().defaultRandom(),
+  /** Permanent player-facing season number. Shared by every shard in this cycle. */
+  ordinal: integer('ordinal').notNull(),
+  /** Cycle-wide cutover: transfers cannot move partial history into a complete snapshot. */
+  statsVersion: integer('stats_version').notNull().default(0),
+  /** Frozen at creation; zero means the cross-season reward program was not active. */
+  rewardProgramVersion: integer('reward_program_version').notNull().default(0),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
 }, (t) => [
+  uniqueIndex('season_cycles_ordinal_idx').on(t.ordinal),
   uniqueIndex('season_cycles_period_idx').on(t.startsAt, t.endsAt),
   check('season_cycles_period_check', sql`${t.endsAt} > ${t.startsAt}`),
 ]);
@@ -328,6 +335,8 @@ export const seasons = pgTable('seasons', {
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
   /** Immutable: v1 capitals, v2 multi-world, v3 seasonal clans. */
   rulesetVersion: integer('ruleset_version').notNull().default(1),
+  /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
+  statsVersion: integer('stats_version').notNull().default(0),
 }, (t) => [index('seasons_shard_status_idx').on(t.shardId, t.status)]);
 
 export interface SeasonRecap {
@@ -347,8 +356,44 @@ export interface SeasonRecap {
   } | null;
 }
 
+export interface SeasonResourceStats {
+  alloy: number;
+  crystal: number;
+  deuterium: number;
+}
+
+/** Complete v1 metrics sealed at freeze. Missing legacy data is represented by a null snapshot. */
+export interface SeasonStatsSnapshot {
+  version: 1;
+  competition: {
+    battles: number;
+    attacks: number;
+    defences: number;
+    damageDealt: number;
+    damageTaken: number;
+    playerLoot: SeasonResourceStats;
+    shipsBuilt: number;
+    shipsLost: number;
+    shipsBuiltByHull: Fleet;
+    shipsLostByHull: Fleet;
+  };
+  economy: {
+    produced: SeasonResourceStats;
+    productiveSeconds: number;
+  };
+  exploration: {
+    asteroidRuns: number;
+    asteroidMined: SeasonResourceStats;
+    convoyAttempts: number;
+    convoySuccesses: number;
+    convoyDelivered: SeasonResourceStats;
+  };
+}
+
 /** Permanent identity and story, never permanent power. D85. */
 export const seasonResults = pgTable('season_results', {
+  /** Opaque archive handle; account ids never need to cross the public boundary. */
+  publicId: uuid('public_id').notNull().defaultRandom(),
   cycleId: uuid('cycle_id').notNull().references(() => seasonCycles.id),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   accountId: uuid('account_id').notNull().references(() => accounts.id),
@@ -360,9 +405,14 @@ export const seasonResults = pgTable('season_results', {
   biggestRaid: real('biggest_raid').notNull().default(0),
   title: text('title').notNull(),
   recap: jsonb('recap').$type<SeasonRecap>().notNull(),
+  statsVersion: integer('stats_version').notNull().default(0),
+  stats: jsonb('stats').$type<SeasonStatsSnapshot>(),
+  /** Freeze-time cohort membership. Never exposed as a bot/admin discriminator. */
+  averageEligible: boolean('average_eligible').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   primaryKey({ columns: [t.seasonId, t.accountId] }),
+  uniqueIndex('season_results_public_idx').on(t.publicId),
   uniqueIndex('season_results_cycle_account_idx').on(t.cycleId, t.accountId),
   index('season_results_account_idx').on(t.accountId, t.createdAt),
   check(
@@ -379,6 +429,75 @@ export const seasonResults = pgTable('season_results', {
         AND (${t.recap} #>> '{clan,dominion}')::numeric
           BETWEEN -9007199254740991 AND 9007199254740991
       )`,
+  ),
+]);
+
+export type SeasonRewardEntitlementStatus = 'PENDING' | 'DELIVERED' | 'EXPIRED';
+
+/**
+ * A final Dominion place paid once into the immediately following cycle.
+ *
+ * The amount is snapshotted at freeze, not re-read from the current rules table.
+ * `targetCycleId` starts null because freeze precedes rollover; the one atomic
+ * rollover binds every source-cycle entitlement to the cycle it opens. No player
+ * foreign key is kept because both the source and destination player rows are
+ * season-scoped and are wiped while this account-scoped receipt survives.
+ */
+export const seasonRewardEntitlements = pgTable('season_reward_entitlements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sourceCycleId: uuid('source_cycle_id').notNull().references(() => seasonCycles.id),
+  sourceSeasonId: uuid('source_season_id').notNull().references(() => seasons.id),
+  targetCycleId: uuid('target_cycle_id').references(() => seasonCycles.id),
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  displayRank: integer('display_rank').notNull(),
+  rewardPlace: integer('reward_place').notNull(),
+  alloy: integer('alloy').notNull(),
+  crystal: integer('crystal').notNull(),
+  deuterium: integer('deuterium').notNull(),
+  programVersion: integer('program_version').notNull(),
+  status: text('status').$type<SeasonRewardEntitlementStatus>().notNull().default('PENDING'),
+  deliveredSeasonId: uuid('delivered_season_id').references(() => seasons.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  expiredAt: timestamp('expired_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('season_reward_entitlements_source_account_idx')
+    .on(t.sourceSeasonId, t.accountId),
+  uniqueIndex('season_reward_entitlements_source_cycle_account_idx')
+    .on(t.sourceCycleId, t.accountId),
+  uniqueIndex('season_reward_entitlements_source_place_idx')
+    .on(t.sourceSeasonId, t.rewardPlace),
+  index('season_reward_entitlements_account_status_idx')
+    .on(t.accountId, t.status),
+  index('season_reward_entitlements_target_status_idx')
+    .on(t.targetCycleId, t.status),
+  check('season_reward_entitlements_rank_check', sql`${t.displayRank} > 0`),
+  check('season_reward_entitlements_place_check', sql`${t.rewardPlace} BETWEEN 1 AND 10`),
+  check(
+    'season_reward_entitlements_amount_check',
+    sql`${t.alloy} >= 0 AND ${t.crystal} >= 0 AND ${t.deuterium} >= 0`,
+  ),
+  check('season_reward_entitlements_program_check', sql`${t.programVersion} > 0`),
+  check(
+    'season_reward_entitlements_state_check',
+    sql`(
+      ${t.status} = 'PENDING'
+      AND ${t.deliveredSeasonId} IS NULL
+      AND ${t.deliveredAt} IS NULL
+      AND ${t.expiredAt} IS NULL
+    ) OR (
+      ${t.status} = 'DELIVERED'
+      AND ${t.targetCycleId} IS NOT NULL
+      AND ${t.deliveredSeasonId} IS NOT NULL
+      AND ${t.deliveredAt} IS NOT NULL
+      AND ${t.expiredAt} IS NULL
+    ) OR (
+      ${t.status} = 'EXPIRED'
+      AND ${t.targetCycleId} IS NOT NULL
+      AND ${t.deliveredSeasonId} IS NULL
+      AND ${t.deliveredAt} IS NULL
+      AND ${t.expiredAt} IS NOT NULL
+    )`,
   ),
 ]);
 
@@ -769,6 +888,35 @@ export const galaxyEventOccurrences = pgTable('galaxy_event_occurrences', {
   check('galaxy_event_occurrences_definition_version_check', sql`${t.definitionVersion} > 0`),
 ]);
 
+export interface PlanetSeasonTelemetry {
+  produced: SeasonResourceStats;
+  /** Seconds during which at least one Works resource was actually increasing. */
+  productiveSeconds: number;
+  shipsBuilt: Fleet;
+}
+
+/**
+ * A closed ownership segment kept until freeze.
+ *
+ * The live planet row carries the current controller's cumulative telemetry. When
+ * control changes, that counter must restart for the new actor without erasing
+ * what the former actor already produced. These rows are the immutable hand-off
+ * segments; freeze merges them with the still-open segment on every planet.
+ * `sourcePlanetId` is deliberately not a foreign key because a later reclaim may
+ * remove the physical world while the former commander's season contribution is
+ * still needed.
+ */
+export const seasonTelemetrySegments = pgTable('season_telemetry_segments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  sourcePlanetId: uuid('source_planet_id').notNull(),
+  telemetry: jsonb('telemetry').$type<PlanetSeasonTelemetry>().notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('season_telemetry_segments_season_player_idx').on(t.seasonId, t.playerId),
+]);
+
 export const planets = pgTable('planets', {
   id: uuid('id').primaryKey().defaultRandom(),
   /** Physical name retained for expand/backfill compatibility. Neutral is NULL. */
@@ -816,6 +964,14 @@ export const planets = pgTable('planets', {
    */
   recoveryReliefAt: timestamp('recovery_relief_at', { withTimezone: true }),
   protectedUntil: timestamp('protected_until', { withTimezone: true }),
+  /** Actor frozen independently from mutable control for season-stat attribution. */
+  statsOwnerPlayerId: uuid('stats_owner_player_id').references(() => players.id),
+  /** Cumulative facts that cannot be reconstructed from the final inventory/balance. */
+  seasonTelemetry: jsonb('season_telemetry').$type<PlanetSeasonTelemetry>().notNull().default({
+    produced: { alloy: 0, crystal: 0, deuterium: 0 },
+    productiveSeconds: 0,
+    shipsBuilt: {},
+  }),
   /**
    * HOW MANY OF EACH HULL THIS PLANET HAS EVER BUILT. Cumulative, never reduced.
    *
@@ -1436,6 +1592,23 @@ export const battleReports = pgTable('battle_reports', {
    * on every battle that is not a commander raiding a commander.
    */
   raidableBefore: bigint('raidable_before', { mode: 'number' }),
+  /**
+   * WHAT THE RECOVERY SHIELD WAS ACTUALLY DECIDED ON. 2026-09-15.
+   *
+   * The defeat priced in the defender's own production hours: everything carried
+   * off plus every hull destroyed that did not rebuild from its own wreckage, on
+   * the game's 32:16:1 scale, divided by what their works turn out in an hour.
+   * `ABUSE.recoveryLossHours` is the bar it was compared against.
+   *
+   * STORED BECAUSE IT CANNOT BE RECOMPUTED. `loot` and `defender_losses` are on
+   * the row, but the PRODUCTION RATE at the instant of the fight is nowhere —
+   * a Refinery finished an hour later would silently rewrite the verdict.
+   *
+   * It supersedes `raidable_before` as the decision input; that column stays as
+   * world context (what the raid could have taken at best) and because dropping a
+   * column is a contraction that would force a deploy stop for nothing.
+   */
+  recoveryLossHours: real('recovery_loss_hours'),
   /**
    * The recovery window this battle granted the DEFENDER, or null if it granted
    * none. The other half of the audit trail: without it, a report that cleared
@@ -2262,6 +2435,8 @@ export const miningRuns = pgTable('mining_runs', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   planetId: uuid('planet_id').notNull().references(() => planets.id),
+  /** Launch actor; later control or placement changes cannot rewrite attribution. */
+  ownerPlayerId: uuid('owner_player_id').references(() => players.id),
   /**
    * WHAT THIS RUN IS AIMED AT. D32.
    *
@@ -2283,6 +2458,8 @@ export const miningRuns = pgTable('mining_runs', {
   interceptZ: real('intercept_z').notNull(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  /** Set only when the commander turns an outbound squadron around before contact. */
+  recalledAt: timestamp('recalled_at', { withTimezone: true }),
   /** NULL until it turns for home. */
   homeAt: timestamp('home_at', { withTimezone: true }),
   /** What it actually got. Zero means it arrived to find the rock stripped. */

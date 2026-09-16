@@ -205,6 +205,9 @@ export const focus = {
     capitalProtected: "Ele geçirilemez ana gezegen",
     capitalProtectedHint:
       "Ölüm Yıldızı bina siparişlerini yok eder; depodaki ve üretim havuzundaki kaynakları yarıya indirir, Çekirdeği bir ve Aegis’i iki seviye düşürür. Gemilere ve toplara dokunmaz, kontrol asla el değiştirmez.",
+    /** Silah kapalıyken ana gezegenin tek gerçek kuralı. `STRATEGIC_CRAFTING_ENABLED`. */
+    capitalRaidOnlyHint:
+      "Akın buradan yalnızca kaynak alır. Ana gezegen ne olursa olsun el değiştirmez.",
     capitalRecovering: "Ana gezegen harap · ele geçirilemez",
     capitalRecoveringHint:
       "Tekrar vurabilirsin: kalanın yarısı da gider ve toparlanma baştan başlar; kontrol yine el değiştirmez.",

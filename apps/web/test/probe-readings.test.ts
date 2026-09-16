@@ -76,8 +76,14 @@ describe('firepower and what makes it a fight', () => {
       now: NOW,
     }).facts;
 
-  it('names the defence band Firepower', () => {
-    expect(fact(report(), 'defence')?.label).toBe('Firepower');
+  /**
+   * The band is named for WHAT IT COUNTS, not for what it does. "Firepower" read as
+   * a damage number; the reading is the VALUE of the armed ships standing on the
+   * world, and it deliberately excludes the shield and the unarmed hulls — which
+   * `estimateNote` says in as many words one tap deeper.
+   */
+  it('names the defence band for what it counts', () => {
+    expect(fact(report(), 'defence')?.label).toBe('Armed unit value');
   });
 
   it('compares it with the firepower standing on the reader’s own world', () => {

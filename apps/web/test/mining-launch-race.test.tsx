@@ -9,8 +9,10 @@ import {
   useHarvest,
   useMine,
   useMining,
+  useCollect,
+  useRecallMining,
 } from '../src/api/queries.js';
-import { miningLaunchSchema } from '../src/api/schemas.js';
+import { miningLaunchSchema, miningRecallSchema } from '../src/api/schemas.js';
 import type {
   MiningRun,
   MiningStatusView,
@@ -48,6 +50,96 @@ const run = (kind: Departure): MiningRun => ({
   minedAlloy: 0,
   minedCrystal: 0,
   minedDeuterium: 0,
+});
+
+describe('Prospector recall cache hand-off', () => {
+  const capitalId = '00000000-0000-4000-8000-000000000001';
+  const colonyId = '00000000-0000-4000-8000-000000000002';
+  const runId = '00000000-0000-4000-8000-000000000003';
+  const response = (originPlanetId = capitalId) => {
+    const recalledAt = new Date('2026-08-26T08:01:00.000Z');
+    const homeAt = new Date('2026-08-26T08:02:00.000Z');
+    return miningRecallSchema.parse({
+      runId, homeAt,
+      mining: status([{
+        ...run('mining'), id: runId, planetId: originPlanetId,
+        status: 'returning', recalledAt, arriveAt: recalledAt, homeAt,
+      }]),
+      pending: [],
+      planet: planetView({ flight: { used: 1, total: 3 } }, { id: originPlanetId }),
+    });
+  };
+
+  const setup = () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const recallMining = vi.fn().mockResolvedValue(response());
+    const mine = vi.fn();
+    const collect = vi.fn();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>
+        <ApiProvider api={{ recallMining, collect, mine } as unknown as Api}>{children}</ApiProvider>
+      </QueryClientProvider>
+    );
+    return { client, recallMining, collect, mine, wrapper };
+  };
+
+  it('does not replace capital hardware or resources when recalling another colony’s craft', async () => {
+    const { client, recallMining, wrapper } = setup();
+    const capital = planetView({}, { id: capitalId, alloy: 900 });
+    client.setQueryData(keys.planet, capital);
+    client.setQueryData(keys.miningStatus, status());
+    recallMining.mockResolvedValue(response(colonyId));
+    const view = renderHook(() => useRecallMining(), { wrapper });
+    await act(async () => {
+      await view.result.current.mutateAsync({ runId, originPlanetId: colonyId });
+    });
+    expect(client.getQueryData(keys.planet)).toEqual(capital);
+    expect(client.getQueryData<PlanetView>(keys.planetById(colonyId))?.planet.id).toBe(colonyId);
+    expect(client.getQueryData<MiningStatusView>(keys.miningStatus)?.runs[0]?.status).toBe('returning');
+    expect(client.getQueryData<MiningStatusView>(keys.miningStatusById(colonyId))?.runs[0]?.status)
+      .toBe('returning');
+  });
+
+  it('waits for a same-origin resource mutation before sending recall and applying a whole planet', async () => {
+    const { client, recallMining, collect, wrapper } = setup();
+    client.setQueryData(keys.planet, planetView({}, { id: capitalId }));
+    let finishCollect!: (value: { planet: PlanetView }) => void;
+    collect.mockReturnValue(new Promise<{ planet: PlanetView }>((resolve) => { finishCollect = resolve; }));
+    const view = renderHook(() => ({ collect: useCollect(), recall: useRecallMining() }), { wrapper });
+    act(() => { view.result.current.collect.mutate(); });
+    await waitFor(() => { expect(collect).toHaveBeenCalledTimes(1); });
+    act(() => { view.result.current.recall.mutate({ runId, originPlanetId: capitalId }); });
+    // Allow the second onMutate to reach the shared write lane.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
+    expect(recallMining).not.toHaveBeenCalled();
+    act(() => { finishCollect({ planet: planetView({}, { id: capitalId, alloy: 1000 }) }); });
+    await waitFor(() => { expect(view.result.current.recall.isSuccess).toBe(true); });
+    expect(recallMining).toHaveBeenCalledTimes(1);
+  });
+
+  it('orders mining and recall responses across different origins before replacing the commander-wide roster', async () => {
+    const { client, recallMining, mine, wrapper } = setup();
+    client.setQueryData(keys.planet, planetView({}, { id: capitalId }));
+    const launched = miningLaunchSchema.parse({
+      runId: runId, craft: 1, flightMinutes: 5,
+      arriveAt: run('mining').arriveAt, intercept: run('mining').intercept, capacity: 400,
+      mining: status([run('mining')]), pending: [], planet: planetView({}, { id: capitalId }),
+    });
+    let finishMining!: (value: typeof launched) => void;
+    mine.mockReturnValue(new Promise<typeof launched>((resolve) => { finishMining = resolve; }));
+    recallMining.mockResolvedValue(response(colonyId));
+    const view = renderHook(() => ({ mine: useMine(), recall: useRecallMining() }), { wrapper });
+    act(() => { view.result.current.mine.mutate({ asteroidId: 'mJt7YvxMZEC5S7yYQ32SYw', craft: 1 }); });
+    await waitFor(() => { expect(mine).toHaveBeenCalledTimes(1); });
+    act(() => { view.result.current.recall.mutate({ runId, originPlanetId: colonyId }); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 25)); });
+    expect(recallMining).not.toHaveBeenCalled();
+    act(() => { finishMining(launched); });
+    await waitFor(() => { expect(view.result.current.recall.isSuccess).toBe(true); });
+    expect(client.getQueryData<MiningStatusView>(keys.miningStatus)?.runs[0]?.status).toBe('returning');
+  });
 });
 
 const status = (runs: MiningRun[] = []): MiningStatusView => ({

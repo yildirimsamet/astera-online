@@ -625,6 +625,13 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
     case 'HULL':
       if (!isHull(order.subject)) throw new Error(`unknown hull ${order.subject}`);
       await addUnits(tx, planet.planetId, { [order.subject]: order.count });
+      planet.seasonTelemetry = {
+        ...planet.seasonTelemetry,
+        shipsBuilt: {
+          ...planet.seasonTelemetry.shipsBuilt,
+          [order.subject]: (planet.seasonTelemetry.shipsBuilt[order.subject] ?? 0) + order.count,
+        },
+      };
       await tx
         .update(planets)
         .set({
@@ -632,6 +639,7 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
             ${planets.builtEver}, ${`{${order.subject}}`},
             to_jsonb(coalesce((${planets.builtEver} ->> ${order.subject})::int, 0)
               + ${order.count}), true)`,
+          seasonTelemetry: planet.seasonTelemetry,
         })
         .where(eq(planets.id, planet.planetId));
       return;

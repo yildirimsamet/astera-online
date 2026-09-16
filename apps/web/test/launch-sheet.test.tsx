@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -16,6 +16,9 @@ import { planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import {
   academyLessonFleet,
+  HULLS,
+  hullTech,
+  fleetCargo,
   forecastLines,
   forecastLoss,
   shieldHp,
@@ -65,6 +68,28 @@ const openAllBands = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('choosing a fleet to attack with', () => {
+  it('labels per-ship values and applies the commander’s actual research', () => {
+    const researched = ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'CARGO_HOLDS'];
+    const planet = planetView({ fleet: { DART: 200 }, research: planetView().research.map(project =>
+      researched.includes(project.id) ? { ...project, level: 4, completed: true, available: true } : project,
+    ) });
+    const tech = flightModifiers(planet).tech;
+    const stats = hullTech(tech, 'DART');
+    const view = render(<LaunchSheet target={{ kind: 'world', world: target }} planet={planet}
+      onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
+    const row = view.container.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
+    expect(within(row).getByText('Per ship · includes your research')).toBeVisible();
+    for (const [cls, expected] of [
+      ['attack', HULLS.DART.atk * stats.atk], ['hull', HULLS.DART.hp * stats.hp],
+      ['speed', HULLS.DART.speed * stats.speed], ['cargo', fleetCargo({ DART: 1 }, tech)],
+    ] as const) {
+      expect(row.querySelector(`.stat-${cls} .stat-value`)).toHaveTextContent(compact(expected));
+    }
+    expect(within(row).getByText('Attack')).toBeVisible();
+    expect(within(row).getByText('Durability')).toBeVisible();
+    expect(within(row).getByText('Speed')).toBeVisible();
+    expect(within(row).getByText('Cargo')).toBeVisible();
+  });
   it('quotes the Academy leg and opens cargo without overwriting live folds', async () => {
     localStorage.setItem('astera.accordion.launch', '[]');
     render(<AcademyLessonContext.Provider value="raid"><LaunchSheet
@@ -653,9 +678,9 @@ describe('committing a fleet at a pirate', () => {
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
 
-    expect(screen.getByText(/cargo/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/cargo/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/^900$/)).toBeInTheDocument();
-    expect(screen.getByText(/fuel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/fuel/i).length).toBeGreaterThan(0);
   });
 
   /**
@@ -1009,11 +1034,12 @@ describe('how much of a wall the wing takes', () => {
     intel: IntelView | undefined,
     world: GalaxyPlanet = target,
     reports: Report[] = [],
+    planet = holding,
   ) => {
     render(
       <LaunchSheet
         target={{ kind: 'world', world }}
-        planet={holding}
+        planet={planet}
         intel={intel}
         reports={reports}
         onClose={vi.fn()}
@@ -1061,6 +1087,21 @@ describe('how much of a wall the wing takes', () => {
     const loss = await screen.findByTestId('compare-loss');
     expect(loss).toHaveTextContent(String(Math.round(expected.low * 100)));
     expect(loss).toHaveTextContent(String(Math.round(expected.high * 100)));
+  });
+
+  it('keeps a total-loss warning at both the selection and confirmation controls without launching', async () => {
+    await open(read({ defence: { low: 1_000_000, high: 2_000_000 } }), target, [],
+      planetView({ fleet: { TALON: 20 } }, { deuterium: 20000 }));
+    const loss = await screen.findByTestId('compare-loss');
+    expect(loss).toHaveTextContent('100%');
+    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /send 20 ships/i }));
+    expect(screen.getByRole('button', { name: /launch.*no recall/i })).toBeVisible();
+    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('button', { name: /send 20 ships/i })).toBeVisible();
+    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
   });
 
   /**

@@ -257,7 +257,7 @@ export function IntelScreen({
                   percentage stays as the accessible name, where a number is the
                   only thing that can be said.
                 */}
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span
                     className={report.fleetHome ? 'text-crystal' : 'text-alloy'}
                     role="img"
@@ -268,8 +268,8 @@ export function IntelScreen({
                   >
                     <Bars lit={Math.max(1, Math.round(report.accuracy * 5))} />
                   </span>
-                  <span className="text-label text-faint">
-                    {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
+                  <span className="text-body text-dim">
+                    {t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', { percent: percent(report.accuracy) })}
                   </span>
                   {report.detected && (
                     <span className="ml-auto text-label text-threat">
@@ -277,6 +277,7 @@ export function IntelScreen({
                     </span>
                   )}
                 </div>
+                <p className="mt-2 text-body leading-relaxed text-dim">{t('intel.probes.estimateNote')}</p>
               </div>
             ))}
           </Plate>

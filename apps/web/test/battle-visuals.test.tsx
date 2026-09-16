@@ -63,8 +63,8 @@ describe('the battle payoff', () => {
     const opening = within(verdict!);
     expect(opening.getByText('Sent')).toBeVisible();
     expect(opening.getByText('Lost')).toBeVisible();
-    expect(opening.getByText('Returned')).toBeVisible();
-    expect(opening.getByText('You destroyed')).toBeVisible();
+    expect(opening.getByText('Survived')).toBeVisible();
+    expect(opening.getByText('Enemy units destroyed')).toBeVisible();
     expect(screen.getByText('You dealt')).toBeVisible();
     expect(screen.getByText('You took')).toBeVisible();
     expect(screen.getAllByText('800').length).toBeGreaterThanOrEqual(1);

@@ -33,6 +33,7 @@ import {
   collectorCap,
   crystalRate,
   debrisRemaining,
+  deuteriumRate,
   defenceMinutes,
   distance,
   interceptAsteroid,
@@ -59,6 +60,7 @@ import {
   generateGalaxy,
   median,
   mulberry32,
+  paybackHours,
   resolveCombat,
   travelExact,
   travelMinutes,
@@ -898,6 +900,69 @@ describe('the collector sits in front of storage, not instead of it', () => {
 });
 
 /**
+ * AN UPGRADE MAY NEVER PAY LESS THAN THE LEVEL BELOW IT.
+ *
+ * The rule a temporary band broke. Alloy carried an early lift that ENDED at a
+ * rung — 1.15x through L9, 1.00x from L10 — and the step in the multiplier was
+ * steeper than the step in the curve underneath it, so Refinery 9 -> 10 sold a
+ * commander LESS alloy per hour than they already had, and a smaller store with
+ * it, for an exponential price. Every ladder in the interface reads off these
+ * three functions: the row quoted "1.5k/h -> 1.5k/h, store 55k -> 54k" and was
+ * telling the truth.
+ *
+ * SO THE GUARD IS ON THE SHAPE, NOT ON THE FIGURES. Any lift, taper or tempo dial
+ * is free to move these curves as long as a rung never loses — which is a property
+ * of the whole composition (rate, store hours, protected floor) and cannot be held
+ * by a test that pins one band's numbers. `economy.test.ts` owns the table; this
+ * owns the direction.
+ */
+describe('every producer rung is worth more than the one below it', () => {
+  const producers = [
+    ['REFINERY', alloyRate],
+    ['EXTRACTOR', crystalRate],
+    ['DEUTERIUM_PLANT', deuteriumRate],
+  ] as const;
+
+  it('never lowers hourly output on the way up', () => {
+    for (const [id, rate] of producers) {
+      for (let level = 1; level <= 40; level += 1) {
+        expect(rate(level), `${id} L${String(level)}`).toBeGreaterThan(rate(level - 1));
+      }
+    }
+  });
+
+  /**
+   * The store is `hours(vault) x rate`, so a rate that dips shrinks a store the
+   * player has already paid for. Held at several Vault levels because
+   * `storageHours` consults the producer curve itself for its same-level purchase
+   * guarantee — the two are not independent.
+   */
+  it('never shrinks the store, the works or the protected floor on the way up', () => {
+    for (const [id, rate] of producers) {
+      for (const vault of [0, 3, 9, 14]) {
+        for (let level = 1; level <= 40; level += 1) {
+          const where = `${id} L${String(level)} at Vault ${String(vault)}`;
+          expect(storageCap(rate(level), vault), where)
+            .toBeGreaterThanOrEqual(storageCap(rate(level - 1), vault));
+          expect(collectorCap(rate(level)), where)
+            .toBeGreaterThanOrEqual(collectorCap(rate(level - 1)));
+        }
+      }
+    }
+  });
+
+  /**
+   * The same rule stated the way a player meets it: a price with no payback is a
+   * row the interface has to keep offering and cannot justify.
+   */
+  it('quotes a finite payback for every rung it sells', () => {
+    for (let level = 0; level <= 40; level += 1) {
+      expect(paybackHours(level), `L${String(level)}`).toBeLessThan(Infinity);
+    }
+  });
+});
+
+/**
  * THE SCARCE RESOURCE HAS TO BE SPENDABLE.
  *
  * Crystal is the gate on everything interesting, which only works if a player is
@@ -1544,26 +1609,8 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
     expect('launchMinutes' in PROSPECTOR).toBe(false);
   });
 
-  /**
-   * AND THE HOUR HAS TO OUTLAST THE FLIGHT IT RATIONS. D121.
-   *
-   * `PROBE_ALREADY_OUT` and `PROBE_COOLDOWN` are two sentences about one target.
-   * If the cooldown could expire while the probe were still in the air, the game
-   * would tell a player they may look again and then refuse them because the last
-   * look has not come home — two rules disagreeing about one control. Speed and
-   * the cooldown are set independently, so the relationship is asserted rather
-   * than assumed.
-   */
-  it('keeps the cooldown longer than the round trip it replaces', () => {
-    const widestRoundTrip = 2 * travelExact(GALAXY_SPAN, PROBE.speed);
-    expect(PROBE.retargetCooldownMinutes).toBeGreaterThan(widestRoundTrip);
-  });
-
-  /**
-   * The hour is a rationing rule, not a wall: a commander with a telescope's worth
-   * of neighbours must still be able to work through them inside a session.
-   */
-  it('leaves scouting a rhythm rather than a queue', () => {
-    expect(PROBE.retargetCooldownMinutes).toBe(60);
+  /** Five seconds prevents double taps without rationing how many looks can fly. */
+  it('paces repeated looks at the same world by exactly five seconds', () => {
+    expect(PROBE.retargetCooldownMinutes * 60).toBe(5);
   });
 });

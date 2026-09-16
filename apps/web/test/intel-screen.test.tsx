@@ -506,13 +506,18 @@ describe('what a probe brought back', () => {
 
   /**
    * HOW GOOD THE READ WAS, IN THE SAME BARS THE TELESCOPE USES. A percentage is a
-   * figure about a figure; signal bars are already this game's word for "what is
-   * this reading worth". The percentage stays as the accessible name, which is
-   * the only form a screen reader can take.
+   * Signal bars reinforce the visible percentage; they cannot replace it.
    */
   it('shows the accuracy as signal strength and says the figure out loud', () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
     expect(screen.getByRole('img', { name: /80%.*accuracy/i })).toBeInTheDocument();
+    expect(screen.getByText('80% accuracy · fleet was home')).toBeVisible();
+    expect(screen.getByText(/These numbers are estimated ranges/)).toBeVisible();
+  });
+
+  it('states a lower accuracy and the fleet-away qualification in visible words', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { accuracy: 0.55, fleetHome: false })] });
+    expect(screen.getByText('55% accuracy · fleet was out')).toBeVisible();
   });
 
   /** Being caught is the cost of looking, and it stays in threat red. */

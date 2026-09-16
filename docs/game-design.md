@@ -118,8 +118,9 @@ one Thorn at Shipyard 0 still completes inside the narrowest Radar L3 warning.
 
 ### Flight bays — concurrent operations, not construction
 
-`bays = 3 + floor(core / 3)`. Every craft that leaves — a raid, a probe, a mining run — holds
-one for its whole round trip. A squadron is one bay, because a squadron is one decision.
+`bays = 3 + floor(core / 3)`. Every fleet or mining squadron that leaves holds one for its
+whole round trip. Explorer probes are the explicit exception: they may launch every five seconds
+per commander and target while earlier probes are still airborne, and never occupy a bay.
 
 Build queues pace conversion of resources into holdings; flight bays ration concurrent operations
 away from a world. They are deliberately separate constraints. A bay count remains a state the
@@ -222,7 +223,7 @@ and never replaces every lower-tier role.
 | **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
 | **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
-| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid or defend an ordinary raid; transfer needs a mobile escort; a short debris leg rests only its own craft (D183) |
+| **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid, defend or transfer between worlds; an outbound run may be recalled only before contact; a short debris leg rests only its own craft (D183) |
 
 Counter cycle: **`SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER`** at 1.6× / 0.625×. Support
 hulls are prey to everything and deal nothing.
@@ -336,7 +337,7 @@ Everything above exists so that this has stakes.
 | **Public** | Nothing | No | That a world is there, and where. Recovery and open claim windows, which are public moments (D127) | Live |
 | **Remembered** | A probe, once | Yes, at the time | Owner, development, satellites, dome — **frozen** at the look, and going stale as its subject grows | One shot, for ever |
 | **Telescope** | An instrument and a watch slot | **No** — you are never told who is watching | Fleet `HOME` / `AWAY` / `UNKNOWN`; return ETA at clarity ≥ +2; **and how much of the galaxy you see moving at all** | Live to 20 min stale |
-| **Explorer** | Ships, a bay, and flight time | **Yes** — radar can catch the probe | Stock, defence, fleet size, at an accuracy tier | One shot |
+| **Explorer** | Probe price, five-second target interval, and flight time | **Yes** — radar can catch the probe | Stock, defence, fleet size, at an accuracy tier | One shot |
 | **Combat** | Ships, permanently | Obviously | Ground truth | Perfect |
 
 The Telescope is cheap, silent, and tells you **when**. The Explorer is costly, loud, and
@@ -404,13 +405,13 @@ expensive one says 61,000. Those are genuinely different decisions. Floors and c
 guarantee that no investment buys perfect invisibility or perfect omniscience — **the fog
 never fully lifts.**
 
-**A probe is fast, and the rationing is a stated rule rather than a wait (D121).** The speed
+**A probe is fast, and repeat looks are paced by a five-second interval.** The speed
 is ×18 what it was and it pays no launch overhead, so a look at the neighbourhood costs about
-twenty seconds and the widest crossing of the disc about eighty. What stops a commander reading one world over and over is
-the flight bay every craft competes for, and **one look per world per hour, per commander** —
-counted from the LAUNCH, so the hour is the same hour for a neighbour and for the far rim, and
-held across every world one commander controls rather than sold once per colony. A flight the
-server itself abandons never charges the hour.
+twenty seconds and the widest crossing of the disc about eighty. A commander may keep sending
+paid probes to the same world **every five seconds**, even while earlier probes are airborne.
+Probes do not consume flight bays. The interval is counted from launch and shared across all
+worlds the commander controls, rather than sold once per colony. A flight the server itself
+abandons does not charge the interval.
 
 Distance still decides what a look costs — 22× between the closest legal pair and the widest
 crossing, which is a WIDER spread than the probe has ever had. The fixed launch charge was
@@ -588,6 +589,13 @@ sendable, including to a target already worked by another outbound/returning cra
 Independent runs share ordinary flight bays and the planet's home inventory, not a
 one-run-per-target restriction.
 
+**Only an outbound Prospector may be recalled, and only before contact.** Recall freezes the
+craft's current point on its original route and starts a normal-speed empty return from there; it
+never teleports to the planet. The obsolete arrival event becomes a no-op, so a recalled craft
+cannot claim asteroid ore or wreckage later. Once the arrival instant is reached—or mining has
+resolved—the action is unavailable. No ship, probe, convoy or other flying craft gains recall.
+Prospectors are also excluded from interplanetary transfer on both the interface and server.
+
 **Mined ore comes home into the works, not into storage (D31)** — so a miner collects like
 everyone else, their haul is raidable at half rate with no vault cover, and what they can
 absorb is set by the size of their planet rather than by how many craft they own. Mining is a
@@ -624,15 +632,14 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — four hours after a heavy defeat (2026-09-14)
+### The recovery shield — four hours after a heavy defeat (2026-09-14, reworked 2026-09-15)
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
-badly.** A defeat that takes at least half of what was raidable on the struck world AND at least a
-twentieth of everything that commander can store leaves them unreachable for four hours, on every
-world they hold, against Raid and Death Star. A Death Star impact grants it outright — it destroys
-rather than loots, so there is no share to measure, and it is the loudest thing one commander can
-do to another.
+badly.** A defeat that costs at least **eight hours of that commander's own production** leaves
+them unreachable for four hours, on every world they hold, against Raid and Death Star. A Death
+Star impact on a player's world grants it outright — it destroys rather than loots, so there is
+nothing carried off to measure, and it is the loudest thing one commander can do to another.
 
 **It is the first day's contract, not a second mechanism.** Same scope, same forfeit, same
 confirmation: raiding somebody spends it after one refusal, and both shields go together, because
@@ -641,11 +648,20 @@ position anybody should hold. What is different is that it is EARNED and can be 
 it is stored in its own column, and "has this commander ever fired" stays the presence question
 the first day answers.
 
-**Two thresholds, both required, and each closes what the other opens.** The share alone is bought
-with a deliberately empty colony: lose two units of alloy on a world you left bare and your whole
-holding goes behind four hours for the price of one hull. The material floor alone would never
-fire for a small commander who genuinely lost everything they had. The floor is measured against
-STORAGE rather than against a development table, so the bar scales with the commander on its own.
+**Heavy means "how long you must work to stand where you stood".** The loss is everything the
+battle carried off PLUS every hull it destroyed that did not rebuild from its own wreckage — the
+permanent loss, the same figure Dominion is scored on. That is priced on the game's own 32:16:1
+scale and divided by what this commander's works turn out in an hour, across every world they
+hold. One figure, not two compared separately: six hours of ore and six hours of ships is a
+twelve-hour defeat, not two small ones.
+
+The unit is the whole point. A beginner and a developed commander are asked for the same number of
+HOURS, so the absolute figure the developed one has to lose is larger by exactly the ratio of
+their works, and no second ladder has to be kept in step with the Core. A commander caught with an
+empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
+near — which is precisely what the first version of this rule got wrong, and why it was replaced
+one day after it shipped. The bar is eight hours and the window is four, so a shield covers half
+the work it takes to recover.
 
 **And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
 the air collects nothing: a shield won while your fleet is still flying at somebody who can no

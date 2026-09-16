@@ -182,6 +182,16 @@ const returned = z.discriminatedUnion('trip', [
     wastedCrystal: z.number(),
     wastedDeuterium: z.number().default(0),
   }),
+  z.object({
+    trip: z.literal('mining_recalled'),
+    craft: z.number(),
+    alloy: z.number(),
+    crystal: z.number(),
+    deuterium: z.number().default(0),
+    wastedAlloy: z.number(),
+    wastedCrystal: z.number(),
+    wastedDeuterium: z.number().default(0),
+  }),
   /**
    * A flight the server gave up on. `craftKind` says what was lost, because the
    * COUNT cannot: a probe has no unit rows, so `craft` is zero and the sentence
@@ -846,6 +856,9 @@ export function describeNotification(notification: NotificationView, now: number
           { where, count: trip.ships, amount: compact(loot) },
         ), lifted);
       }
+      if (trip.trip === 'mining_recalled') {
+        return i18n.t('notifications.miningRecalledHome', { count: trip.craft });
+      }
       const what = i18n.t(
         trip.trip === 'harvest' ? 'notifications.salvageWord' : 'notifications.oreWord',
       );
@@ -1160,6 +1173,10 @@ export function signalOutcome(notification: NotificationView): SignalOutcome {
     congratulates a commander on a trip that paid nothing.
   */
   if (notification.kind === 'target_gone') return 'neutral';
+  if (notification.kind === 'fleet_returned') {
+    const parsed = returned.safeParse(notification.payload);
+    if (parsed.success && parsed.data.trip === 'mining_recalled') return 'neutral';
+  }
   if (family === 'threat' || isAlarming(notification)) return 'loss';
   if (family === 'world' || family === 'watch' || family === 'note') return 'neutral';
   /**

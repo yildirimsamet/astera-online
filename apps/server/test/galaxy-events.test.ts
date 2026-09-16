@@ -5,6 +5,7 @@ import {
   MULTI_WORLD,
   SEASON,
   TRADE,
+  asteroidActive,
   galaxyEventConfigForRuleset,
   plannedEffectFor,
 } from '@astera/rules';
@@ -308,6 +309,79 @@ describe('persisted galaxy events', () => {
       }));
       expect(again).toBe(0);
     });
+
+    /**
+     * AND THE SKY CHANGES SIZE THE INSTANT IT DOES. Owner report:
+     * *"deploy yaptıktan sonra birden 30 50 70 100 falan asteroid fırlıyor."*
+     *
+     * The asteroid field is DERIVED, never stored (A5): every rock a commander
+     * sees is computed per request from the season key, the calendar rows and the
+     * code in `packages/rules`. So appending a window is not a change that takes
+     * effect when the window opens — it is a change that takes effect NOW, and
+     * `syncMissingFixedOccurrences` deliberately accepts a window that has ALREADY
+     * OPENED (`endsAt > now`, where `restampFutureOccurrences` insists on a strict
+     * `startsAt > now`). Every rock of that lane whose `appearsAt` is already in
+     * the past therefore exists the moment the transaction commits.
+     *
+     * That is the whole of the owner's report and it was written down nowhere: the
+     * service docblock states the sequence safety — ids do not move, claims and
+     * flights stay coherent — and says of the timing only that the window "can
+     * begin on the next worker tick". Nothing named the SIZE, and the size is what
+     * a player meets.
+     *
+     * THE CLOCK DOES NOT MOVE BETWEEN THE TWO READS, which is the only way to
+     * separate the deploy from the shower it lands inside. A shower ramps over its
+     * hour; this is a step at a frozen instant. The x10 window is used because it
+     * carries the largest lane, so a regression that narrowed or widened the step
+     * cannot hide inside the noise of a small one.
+     *
+     * The assertion is a BAND rather than a figure. The exact count comes off a
+     * seeded field and would re-roll on any lane, ore or lifetime change — that is
+     * balance work, and balance work should not fail this test. Doubling is the
+     * claim: an operator command that more than doubles the live sky at a frozen
+     * instant is a player-visible event, not a bookkeeping one.
+     */
+    it('more than doubles the live field at a frozen instant when the open window is appended', async () => {
+      const { db, season } = await world();
+      const showers = await db
+        .select()
+        .from(galaxyEventOccurrences)
+        .where(and(
+          eq(galaxyEventOccurrences.seasonId, season.id),
+          eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
+        ));
+      // The x10 lane, taken by its local hour rather than by its multiplier so the
+      // test names the window an operator would recognise on the calendar.
+      const removed = showers.filter((row) =>
+        minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60);
+      expect(removed).toHaveLength(SEASON.days);
+      expect(removed.every((row) => 'asteroidSpawnMultiplier' in row.effect
+        && row.effect.asteroidSpawnMultiplier === 10)).toBe(true);
+      const removedIds = removed.map((row) => row.id);
+      await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
+      await db.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, removedIds));
+
+      // Day 2, forty minutes into the window that is missing from this calendar.
+      const now = new Date(START.getTime() + (2 * 24 * 60 + 20 * 60 + 40) * 60_000);
+      const nowMinutes = minutesSince(START, now);
+      const liveNow = async (): Promise<number> => {
+        const snapshot = await loadMiningSnapshot(db, season.id, now);
+        return snapshot.asteroids.filter((rock) => asteroidActive(rock, nowMinutes)).length;
+      };
+
+      const before = await liveNow();
+      const appended = await db.transaction((tx) => syncMissingFixedOccurrences(tx, {
+        now,
+        seasonId: season.id,
+        kinds: ['ASTEROID_SHOWER'],
+      }));
+      const after = await liveNow();
+
+      // The window that is open right now is among the ones that came back.
+      expect(appended).toBeGreaterThan(0);
+      expect(before).toBeGreaterThan(0);
+      expect(after).toBeGreaterThan(before * 2);
+    });
   });
 
   it('creates the frozen three-merchant ruleset-5 calendar and four-merchant ruleset-6 calendar', async () => {
@@ -355,9 +429,9 @@ describe('persisted galaxy events', () => {
       not what this test is about.
     */
     const days = SEASON.days;
-    expect(showers).toHaveLength(days * 5);
+    expect(showers).toHaveLength(days * 6);
     expect(merchants).toHaveLength(days * 4);
-    expect(convoys).toHaveLength(days * 2);
+    expect(convoys).toHaveLength(days * 3);
     expect(lifecycle).toHaveLength(occurrences.length * 2);
     // Sequence is per kind now, so uniqueness is asserted inside each lane.
     expect(new Set(showers.map((row) => row.sequence)).size).toBe(showers.length);
@@ -375,11 +449,11 @@ describe('persisted galaxy events', () => {
     const showerFigures = showers.map((row) =>
       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
     expect(showerFigures.filter((value) => value === 3)).toHaveLength(days * 2);
-    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days * 2);
+    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days * 3);
     expect(showerFigures.filter((value) => value === 10)).toHaveLength(days);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
-    expect(convoys.every((row) => row.definitionVersion === 2
+    expect(convoys.every((row) => row.definitionVersion === 3
       && minutesSince(row.startsAt, row.endsAt) === 120)).toBe(true);
     expect(lifecycle.every((row) => row.refId !== null)).toBe(true);
   });

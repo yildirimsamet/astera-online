@@ -204,6 +204,140 @@ export const historicalSeasonResultSchema = seasonResultSchema.extend({
   shardName: z.string(),
 });
 
+const archivedSeasonStatus = z.enum(['frozen', 'wiped']);
+const archiveCycleStatus = z.enum(['live', 'frozen', 'wiped']);
+const archiveGalaxyStatus = z.enum(['pending', 'live', 'frozen', 'wiped']);
+
+const archivedSeasonContext = z.object({
+  seasonId: z.string().uuid(),
+  ordinal: z.number().int().positive(),
+  shard: z.string(),
+  shardName: z.string(),
+  status: archivedSeasonStatus,
+  startsAt: z.coerce.date(),
+  endsAt: z.coerce.date(),
+});
+
+export const seasonArchiveSchema = z.object({
+  cycles: z.array(z.object({
+    ordinal: z.number().int().positive(),
+    startsAt: z.coerce.date(),
+    endsAt: z.coerce.date(),
+    status: archiveCycleStatus,
+    galaxies: z.array(z.object({
+      seasonId: z.string().uuid(),
+      shard: z.string(),
+      shardName: z.string(),
+      status: archiveGalaxyStatus,
+    })),
+  })),
+  nextCursor: z.number().int().positive().nullable(),
+});
+
+export const seasonArchiveLeaderboardSchema = z.object({
+  season: archivedSeasonContext,
+  ladder: z.array(z.object({
+    resultId: z.string().uuid(),
+    rank: z.number().int().positive(),
+    commanderName: z.string(),
+    dominion: dominionInteger,
+    title: z.string(),
+    self: z.boolean(),
+    reward: z.null(),
+  })),
+});
+
+const seasonStatsResources = resources.extend({
+  alloy: z.number().nonnegative(),
+  crystal: z.number().nonnegative(),
+  deuterium: z.number().nonnegative(),
+});
+
+const seasonStatsSnapshotSchema = z.object({
+  version: z.literal(1),
+  competition: z.object({
+    battles: z.number().int().nonnegative(),
+    attacks: z.number().int().nonnegative(),
+    defences: z.number().int().nonnegative(),
+    damageDealt: z.number().nonnegative(),
+    damageTaken: z.number().nonnegative(),
+    playerLoot: seasonStatsResources,
+    shipsBuilt: z.number().int().nonnegative(),
+    shipsLost: z.number().int().nonnegative(),
+    shipsBuiltByHull: fleet,
+    shipsLostByHull: fleet,
+  }),
+  economy: z.object({
+    produced: seasonStatsResources,
+    productiveSeconds: z.number().nonnegative(),
+  }),
+  exploration: z.object({
+    asteroidRuns: z.number().int().nonnegative(),
+    asteroidMined: seasonStatsResources,
+    convoyAttempts: z.number().int().nonnegative(),
+    convoySuccesses: z.number().int().nonnegative(),
+    convoyDelivered: seasonStatsResources,
+  }),
+});
+
+const seasonStatsAveragesSchema = z.object({
+  cohortSize: z.number().int().positive(),
+  competition: seasonStatsSnapshotSchema.shape.competition.omit({
+    shipsBuiltByHull: true,
+    shipsLostByHull: true,
+  }).extend({
+    battles: z.number().nonnegative(),
+    attacks: z.number().nonnegative(),
+    defences: z.number().nonnegative(),
+    shipsBuilt: z.number().nonnegative(),
+    shipsLost: z.number().nonnegative(),
+  }),
+  economy: seasonStatsSnapshotSchema.shape.economy,
+  exploration: seasonStatsSnapshotSchema.shape.exploration.extend({
+    asteroidRuns: z.number().nonnegative(),
+    convoyAttempts: z.number().nonnegative(),
+    convoySuccesses: z.number().nonnegative(),
+  }),
+});
+
+const careerSeasonSchema = archivedSeasonContext.extend({
+  resultId: z.string().uuid(),
+  commanderName: z.string(),
+  rank: z.number().int().positive(),
+  dominion: dominionInteger,
+  title: z.string(),
+  statsAvailable: z.boolean(),
+});
+
+export const seasonCommanderProfileSchema = z.object({
+  selected: archivedSeasonContext.extend({
+    resultId: z.string().uuid(),
+    commanderName: z.string(),
+    planetName: z.string(),
+    rank: z.number().int().positive(),
+    /** The field this rank was taken from, so a position can be stated. */
+    commanders: z.number().int().nonnegative().optional(),
+    dominion: dominionInteger,
+    title: z.string(),
+    recap: seasonResultSchema.shape.recap,
+    stats: seasonStatsSnapshotSchema.nullable(),
+    averages: seasonStatsAveragesSchema.nullable(),
+    reward: z.null(),
+  }),
+  career: z.object({
+    completedSeasons: z.number().int().nonnegative(),
+    bestRank: z.number().int().positive().nullable(),
+    championships: z.number().int().nonnegative(),
+    podiums: z.number().int().nonnegative(),
+    topTen: z.number().int().nonnegative(),
+    totals: z.object({
+      seasonsCovered: z.number().int().positive(),
+      stats: seasonStatsSnapshotSchema,
+    }).nullable(),
+    seasons: z.array(careerSeasonSchema),
+  }),
+});
+
 export const meSchema = z.object({
   accountId: z.string(),
   username: z.string(),
@@ -276,6 +410,27 @@ export const seasonSchema = z.object({
    * way: absent means "this server does not say", never zero.
    */
   onlineToday: z.number().optional(),
+  /**
+   * WHAT THE TOP TEN WIN NEXT SEASON, read from the cycle's own frozen program.
+   *
+   * Optional and nullable for two different reasons, and both matter: OPTIONAL
+   * because a server one deploy behind does not send it, NULL because a cycle
+   * opened before the program was activated genuinely promises nothing. A client
+   * that showed a table in either case would be inventing an offer.
+   */
+  seasonRewards: z
+    .object({
+      version: z.number().int().positive(),
+      minimumDominion: z.number(),
+      tiers: z.array(z.object({
+        place: z.number().int().positive(),
+        alloy: z.number().nonnegative(),
+        crystal: z.number().nonnegative(),
+        deuterium: z.number().nonnegative(),
+      })),
+    })
+    .nullable()
+    .optional(),
   result: seasonResultSchema.nullable().optional(),
   /**
    * THE COMMANDERS THIS ONE IS WATCHING — up to `RIVAL.max`, each in its own slot.
@@ -2017,6 +2172,8 @@ export const miningSchema = z.object({
       craft: z.number(),
       departAt: z.coerce.date(),
       arriveAt: z.coerce.date(),
+      /** Explicit null means this server supports commander recall; absent is legacy. */
+      recalledAt: z.coerce.date().nullable().optional(),
       homeAt: z.coerce.date().nullable(),
       /** The point the craft was aimed at — where it and the rock meet. */
       intercept: vec3,
@@ -2076,6 +2233,15 @@ const miningLaunchBaseSchema = z.object({
  * launch transaction, so one POST response is enough to draw the craft.
  */
 export const miningLaunchSchema = miningLaunchBaseSchema.extend({
+  mining: miningStatusSchema,
+  pending: z.array(pendingThread),
+  ...withPlanet,
+});
+
+/** An outbound Prospector turn, with every private view changed by that action. */
+export const miningRecallSchema = z.object({
+  runId: z.string().uuid(),
+  homeAt: z.coerce.date(),
   mining: miningStatusSchema,
   pending: z.array(pendingThread),
   ...withPlanet,
@@ -2615,6 +2781,10 @@ export type RewardTierView = z.infer<typeof rewardTier>;
 export type GalaxyView = z.infer<typeof galaxySchema>;
 export type GalaxyPlanet = GalaxyView['planets'][number];
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
+export type SeasonArchive = z.infer<typeof seasonArchiveSchema>;
+export type SeasonArchiveLeaderboard = z.infer<typeof seasonArchiveLeaderboardSchema>;
+export type SeasonCommanderProfile = z.infer<typeof seasonCommanderProfileSchema>;
+export type SeasonStatsSnapshot = z.infer<typeof seasonStatsSnapshotSchema>;
 export type PublicClan = z.infer<typeof publicClanSchema>;
 export type ClanDirectory = z.infer<typeof clanDirectorySchema>;
 export type ClanBadge = z.infer<typeof clanBadgeSchema>;
@@ -2647,6 +2817,7 @@ export type IntergalacticConvoyLaunchResult = z.infer<typeof intergalacticConvoy
 export type Unlockable = z.infer<typeof unlockable>;
 export type LaunchResult = z.infer<typeof launchSchema>;
 export type MiningLaunchResult = z.infer<typeof miningLaunchSchema>;
+export type MiningRecallResult = z.infer<typeof miningRecallSchema>;
 export type MiningView = z.infer<typeof miningSchema>;
 export type MiningFieldView = z.infer<typeof miningFieldSchema>;
 export type MiningStatusView = z.infer<typeof miningStatusSchema>;

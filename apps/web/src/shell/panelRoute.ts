@@ -102,3 +102,36 @@ export function rivalMenuRows(
       };
     });
 }
+
+/**
+ * WHICH SURFACES THE MENU OWNS, AND THEREFORE WHICH ONES STEP BACK TO IT.
+ *
+ * Owner report: *"yanlış bir buton'a tıklayınca geri dönme yok direk kapatılıyor"*.
+ * A menu destination REPLACES the menu, so closing it landed the reader on the
+ * galaxy — one mis-tap cost the header control and finding your place in the list
+ * again, which is where a player stops exploring a menu at all.
+ *
+ * These six are opened from the menu and from nowhere else, which is what makes a
+ * back arrow on them honest: it always points at the surface the reader actually
+ * came from. Everything else is deliberately absent —
+ *
+ *   · the planet sheet, Intel, research, the clan, chat and the chronicle are
+ *     opened from the disc, so their way back is the disc;
+ *   · the recap and the Silent Space notice OPEN THEMSELVES when a season ends or
+ *     a placement lands, so an arrow into the menu would name a room the reader
+ *     was never in.
+ *
+ * Written here rather than inline in `GalaxyView` so it is a rule with a test: the
+ * failure it prevents is exactly a seventh sheet quietly growing an arrow that
+ * leads somewhere its reader has not been.
+ */
+const MENU_PANELS = new Set<Panel>([
+  'leaderboard',
+  'rewards',
+  'announcements',
+  'feedback',
+  'donate',
+  'admin',
+]);
+
+export const returnsToMenu = (panel: Panel): boolean => MENU_PANELS.has(panel);

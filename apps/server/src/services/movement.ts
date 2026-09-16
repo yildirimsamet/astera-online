@@ -23,7 +23,6 @@ import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
 import { assertFuel } from './fuel.js';
-import { assertProspectorsRested } from './mining.js';
 import {
   assertColonyCapacity,
   capitalPlanet,
@@ -171,6 +170,13 @@ export async function launchTransfer(
   clock: Clock,
 ) {
   validateTransferFleet(fleet);
+  if ((fleet.PROSPECTOR ?? 0) > 0) {
+    throw new GameError(
+      'PROSPECTOR_TRANSFER_FORBIDDEN',
+      'Prospectors cannot be transferred between worlds',
+      400,
+    );
+  }
   validateResources(cargo);
   if (originPlanetId === targetPlanetId) throw new GameError('SELF_TRANSFER', 'Choose another world');
   /*
@@ -225,10 +231,6 @@ export async function launchTransfer(
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
     await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
-    // A resting miner cannot move to another world to erase its cooldown. Fresh
-    // miners remain transferable; both world locks are already held.
-    await assertProspectorsRested(tx, originPlanetId, origin.now,
-      origin.homeFleet.PROSPECTOR ?? 0, fleet.PROSPECTOR ?? 0);
     // Refused at LAUNCH as well as on arrival, so a player is never charged a
     // flight for craft that could not have landed. Both worlds are already held
     // by `lockWorlds`, so the counts cannot move under the check. A conflict

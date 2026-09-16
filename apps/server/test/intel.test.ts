@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  FEATURE_FLAGS,
   INTEL,
   PROBE,
   SENSOR,
@@ -588,10 +589,8 @@ describe('the information layer', () => {
           .from(probeReports)
           .where(eq(probeReports.missionId, launch.missionId));
         const r = rows[0]!;
-        // Fly it home before the next one goes out. Only one probe may work a
-        // planet at a time, and a craft on its return leg is still working it —
-        // the answer is in the air. Skipping this made the second call fail with
-        // PROBE_ALREADY_OUT rather than measuring anything.
+        // Finish the mission so this accuracy comparison does not leave unrelated
+        // worker events pending between its two samples.
         f.clock.advance(launch.flightMinutes);
         await worker(f).tick();
         return (r.stock.high - r.stock.low) / Math.max(1, r.stock.high);
@@ -770,7 +769,7 @@ describe('the information layer', () => {
     });
   });
 
-  /* ── one look per world per hour ──────────────────────────── */
+  /* ── repeat paid looks every five seconds ─────────────────── */
 
   /**
    * D121 MADE A PROBE FOUR TIMES FASTER, AND THAT TOOK SOMETHING AWAY.
@@ -812,19 +811,8 @@ describe('the information layer', () => {
       return colony;
     };
 
-    /** Land the probe and its return leg, so only the cooldown is under test. */
-    const landAndReturn = async (launch: { arriveAt: Date }): Promise<void> => {
-      w.clock.set(launch.arriveAt);
-      await worker(w).tick();
-      // The return leg is one more flight, and the widest is minutes rather than
-      // an hour — see the rules test that binds those two constants together.
-      w.clock.advance(10);
-      await worker(w).tick();
-    };
-
-    it('refuses a second look at the same world inside the hour', async () => {
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+    it('refuses a second look at the same world inside five seconds', async () => {
+      await launchProbe(w.db, home, target, w.clock);
 
       await expect(launchProbe(w.db, home, target, w.clock)).rejects.toMatchObject({
         code: 'PROBE_COOLDOWN',
@@ -834,33 +822,29 @@ describe('the information layer', () => {
 
     /**
      * A refusal travels as a code plus its figures (D55), so the interface can say
-     * it in Turkish with the server's own numbers. A code with no `minutes` is a
+     * it in Turkish with the server's own numbers. A code with no `seconds` is a
      * toast that cannot answer the only question the player has.
      */
     it('says how long is left, in figures the client can translate', async () => {
       const departedAt = w.clock.now();
-      const first = await launchProbe(w.db, home, target, w.clock);
-      // Land it first: while a probe is still in the air the player gets
-      // PROBE_ALREADY_OUT, which is a different sentence about a different fact.
-      await landAndReturn(first);
-      w.clock.set(new Date(departedAt.getTime() + 20 * 60_000));
+      await launchProbe(w.db, home, target, w.clock);
+      w.clock.set(new Date(departedAt.getTime() + 2_000));
 
       const refused: unknown = await launchProbe(w.db, home, target, w.clock)
         .then(() => null)
         .catch((error: unknown) => error);
       const params = (refused as { params?: Record<string, unknown> }).params;
       expect(params).toEqual({
-        minutes: PROBE.retargetCooldownMinutes - 20,
+        seconds: 3,
         until: new Date(
           departedAt.getTime() + PROBE.retargetCooldownMinutes * 60_000,
         ).toISOString(),
       });
     });
 
-    it('opens again the moment the hour is up, and not before', async () => {
+    it('opens again the moment five seconds are up, and not before', async () => {
       const departedAt = w.clock.now();
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+      await launchProbe(w.db, home, target, w.clock);
 
       const readyAt = new Date(departedAt.getTime() + PROBE.retargetCooldownMinutes * 60_000);
       // A millisecond short is short.
@@ -873,10 +857,9 @@ describe('the information layer', () => {
       await expect(launchProbe(w.db, home, target, w.clock)).resolves.toBeDefined();
     });
 
-    /** The hour closes ONE world. It is a cooldown on a target, not on scouting. */
+    /** The interval closes ONE world. It is a cooldown on a target, not on scouting. */
     it('closes one world, not the neighbourhood', async () => {
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+      await launchProbe(w.db, home, target, w.clock);
 
       await expect(launchProbe(w.db, home, spare, w.clock)).resolves.toBeDefined();
     });
@@ -885,23 +868,36 @@ describe('the information layer', () => {
      * THE RULE IS THE COMMANDER'S, NOT THE LAUNCH PAD'S.
      *
      * A commander may hold four worlds (D97). Scoped to the origin planet, the
-     * same hour would be sold four times over to whoever had colonised most —
+     * same interval would be sold four times over to whoever had colonised most —
      * a wealth ladder wearing an intel rule's clothes.
      */
     it('holds across every world one commander controls', async () => {
       const second = await giveColony();
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+      await launchProbe(w.db, home, target, w.clock);
 
       await expect(launchProbe(w.db, second, target, w.clock)).rejects.toMatchObject({
         code: 'PROBE_COOLDOWN',
       });
     });
 
-    /** And it is one commander's hour, never the galaxy's. */
+    it('serializes simultaneous taps from two worlds under the same commander', async () => {
+      const second = await giveColony();
+      const results = await Promise.allSettled([
+        launchProbe(w.db, home, target, w.clock),
+        launchProbe(w.db, second, target, w.clock),
+      ]);
+
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      const [refused] = results.filter((result) => result.status === 'rejected');
+      expect(refused).toMatchObject({
+        status: 'rejected',
+        reason: { code: 'PROBE_COOLDOWN' },
+      });
+    });
+
+    /** And it is one commander's interval, never the galaxy's. */
     it('does not close the world to anybody else', async () => {
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+      await launchProbe(w.db, home, target, w.clock);
 
       await grant(w.db, spare, 50_000, 5_000);
       await setLevel(w.db, spare, 'SHIPYARD', 3);
@@ -912,10 +908,10 @@ describe('the information layer', () => {
      * A LOOK THE GAME ITSELF FAILED TO DELIVER COSTS NOTHING.
      *
      * `sweepStranded` and `abandon()` mark a probe whose event row was lost as
-     * `cancelled`. Charging the hour for it would make a server fault take the
+     * `cancelled`. Charging even the interval for it would make a server fault take the
      * player's turn away, which is exactly what those two paths exist to prevent.
      */
-    it('does not charge the hour for a flight the server gave up on', async () => {
+    it('does not charge the interval for a flight the server gave up on', async () => {
       const first = await launchProbe(w.db, home, target, w.clock);
       await w.db.update(missions)
         .set({ status: 'cancelled' })
@@ -924,17 +920,23 @@ describe('the information layer', () => {
       await expect(launchProbe(w.db, home, target, w.clock)).resolves.toBeDefined();
     });
 
-    /**
-     * While the probe is literally in the air the player gets the sentence that
-     * describes THAT, not the one about an hour — and it now covers every world
-     * the commander holds, for the same reason the cooldown does.
-     */
-    it('says "already out" while it is still flying, from any of your worlds', async () => {
+    /** The five-second guard prevents a double tap; an airborne probe is not a cap. */
+    it('allows another probe to the same world after five seconds, while the first flies', async () => {
       const second = await giveColony();
       await launchProbe(w.db, home, target, w.clock);
 
-      await expect(launchProbe(w.db, second, target, w.clock)).rejects.toMatchObject({
-        code: 'PROBE_ALREADY_OUT',
+      w.clock.advance(PROBE.retargetCooldownMinutes);
+      await expect(launchProbe(w.db, second, target, w.clock)).resolves.toBeDefined();
+    });
+
+    it('refuses one millisecond before the five-second interval ends', async () => {
+      await launchProbe(w.db, home, target, w.clock);
+      w.clock.advance(PROBE.retargetCooldownMinutes);
+      w.clock.set(new Date(w.clock.now().getTime() - 1));
+
+      await expect(launchProbe(w.db, home, target, w.clock)).rejects.toMatchObject({
+        code: 'PROBE_COOLDOWN',
+        params: { seconds: 1 },
       });
     });
 
@@ -944,8 +946,7 @@ describe('the information layer', () => {
      * player is offered a launch the server will refuse.
      */
     it('publishes the same instant the guard enforces', async () => {
-      const first = await launchProbe(w.db, home, target, w.clock);
-      await landAndReturn(first);
+      await launchProbe(w.db, home, target, w.clock);
       const [row] = (await readProbeCooldowns(w.db, commander, w.clock.now()))
         .filter((entry) => entry.targetPlanetId === target);
       expect(row).toBeDefined();
@@ -966,7 +967,19 @@ describe('the information layer', () => {
       expect(await readProbeCooldowns(w.db, commander, w.clock.now())).toEqual([]);
     });
 
-    /** One row per world, even where a cancelled flight left two launches in the hour. */
+    it('does not treat a probe’s automatic return as a new paid launch', async () => {
+      await placeAt(w.db, home, { x: 0, y: 0, z: 0 });
+      await placeAt(w.db, target, { x: 1000, y: 0, z: 0 });
+      const first = await launchProbe(w.db, home, target, w.clock);
+      w.clock.set(first.arriveAt);
+      await worker(w).tick();
+      // The real launch is older than five seconds. The just-created return
+      // packet points at home, but it must not invent a cooldown for that world.
+      expect(await readProbeCooldowns(w.db, commander, w.clock.now())).toEqual([]);
+      await expect(launchProbe(w.db, home, target, w.clock)).resolves.toBeDefined();
+    });
+
+    /** One row per world, even where a cancelled flight left two launches in the interval. */
     it('reports one window per world, dated from the newest launch', async () => {
       const first = await launchProbe(w.db, home, target, w.clock);
       await w.db.update(missions)
@@ -1051,10 +1064,8 @@ describe('the information layer', () => {
         const launch = await launchProbe(f.db, mine, theirs, f.clock);
         f.clock.set(launch.arriveAt);
         await worker(f).tick();
-        // Each craft has to get home before the next can go: one probe per target
-        // at a time, both legs. And since D121 the same commander may not look at
-        // the same world again for an hour, so the clock clears that too — this
-        // measures a DETECTION RATE, and the rationing rule is not its subject.
+        // Finish each mission before the next sample so this remains a detection
+        // test, independent of worker ordering and the five-second launch guard.
         f.clock.advance(launch.flightMinutes);
         await worker(f).tick();
         f.clock.advance(PROBE.retargetCooldownMinutes + 1);
@@ -1277,7 +1288,7 @@ describe('the information layer', () => {
         .where(eq(probeReports.missionId, low.missionId));
       expect(lowReport).toMatchObject({ accuracy: 0.67, strategicStatus: 'UNKNOWN' });
 
-      // Let the first probe return, and let D121's hour on this world close, before
+      // Let the first probe return, and let this world's interval close, before
       // sending another. The accuracy gate is what is under test, not the cooldown.
       f.clock.advance(low.flightMinutes);
       await worker(f).tick();
@@ -1289,6 +1300,30 @@ describe('the information layer', () => {
       const [highReport] = await f.db.select().from(probeReports)
         .where(eq(probeReports.missionId, high.missionId));
       expect(highReport).toMatchObject({ accuracy: 0.79, strategicStatus: 'READY' });
+    });
+
+    /**
+     * AND AN EMPTY PAD NOBODY CAN FILL IS NOT A GAP. Owner report.
+     *
+     * The case above keeps its `UNKNOWN`: a weapon is standing there, and with
+     * `/api/death-star/launch` still open a weapon finished before
+     * `STRATEGIC_CRAFTING_ENABLED` flipped can still fly, so the accuracy gate is
+     * doing real work. This one has nothing on the pad and no way to put anything
+     * on it, so the blurry answer and the sharp answer are the same answer.
+     *
+     * It matters because the client prints `UNKNOWN` as a dossier row naming a
+     * weapon with no forge, no research row and no launch control anywhere on the
+     * screen — and sub-75% accuracy is the common case, not the rare one.
+     */
+    it.skipIf(FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('reports an empty pad rather than a gap while nobody can fill it', async () => {
+      await grant(f.db, mine, 100_000, 10_000);
+      await setLevel(f.db, mine, 'SHIPYARD', 1); // 67%, under the accuracy gate.
+      const low = await launchProbe(f.db, mine, theirs, f.clock);
+      f.clock.set(low.arriveAt);
+      await worker(f).tick();
+      const [report] = await f.db.select().from(probeReports)
+        .where(eq(probeReports.missionId, low.missionId));
+      expect(report).toMatchObject({ accuracy: 0.67, strategicStatus: 'NONE' });
     });
   });
 

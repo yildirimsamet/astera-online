@@ -7,6 +7,7 @@ import { ASTEROID_MODELS } from '../ui/assets.js';
 import { asteroidRadius, asteroidVisualSeed, asteroidWorldPosition } from './scene.js';
 import { unitModel } from './model.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import {
   asteroidBodyColour,
@@ -323,7 +324,7 @@ function RockBucket({
         renderOrder={-1}
       >
         <sphereGeometry args={[1, 8, 6]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        <HitboxMaterial kind="asteroid" />
       </instancedMesh>
     </>
   );

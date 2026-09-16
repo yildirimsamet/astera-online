@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import {
   PROBE,
   applyDisruption,
@@ -25,18 +25,21 @@ import {
   NON_COMBATANT_HULLS,
   SEASON,
   SERVERS,
+  seasonRankRewardProgram,
   resolveCombat,
   settleWreck,
   travelExact,
   vaultProtects,
   type Fleet,
   type Ledger,
+  type Resources,
 } from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
   battleReports,
+  botProfiles,
   buildings,
   buildOrders,
   clanMemberships,
@@ -56,12 +59,16 @@ import {
   tradeRuns,
   scheduledEvents,
   seasonResults,
+  seasonRewardEntitlements,
+  seasonCycles,
+  seasonTelemetrySegments,
   seasons,
   shards,
   strategicAssets,
   strategicImpacts,
   strategicInterceptions,
   units,
+  type SeasonStatsSnapshot,
 } from '../db/schema.js';
 import {
   loadLocked,
@@ -73,6 +80,7 @@ import {
   setUnits,
 } from '../services/planet.js';
 import { grantRecoveryShield } from '../services/attackProtection.js';
+import { emptySeasonStats } from '../services/seasonArchive.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
 import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
@@ -165,6 +173,33 @@ async function claimMission(tx: Tx, missionId: string) {
     .where(and(eq(missions.id, missionId), eq(missions.status, 'in_flight')))
     .returning();
   return rows[0] ?? null;
+}
+
+/**
+ * WHAT A LIST OF DEAD HULLS COST TO BUILD, LESS WHATEVER STOOD BACK UP.
+ *
+ * Priced off the live catalogue rather than off a stored figure, because that is
+ * what a rebuild will actually be charged. `defenceSalvage` is subtracted per
+ * resource rather than by value: the two are the same hull table, and taking the
+ * difference in hulls first would lose the split the recipes carry.
+ */
+function fleetCost(lost: Fleet, salvaged: Fleet): Resources {
+  const total: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  const add = (fleet: Fleet, sign: 1 | -1): void => {
+    for (const [hull, count] of fleetEntries(fleet)) {
+      const spec = HULLS[hull];
+      total.alloy += sign * spec.alloy * count;
+      total.crystal += sign * spec.crystal * count;
+      total.deuterium += sign * spec.deuterium * count;
+    }
+  };
+  add(lost, 1);
+  add(salvaged, -1);
+  return {
+    alloy: Math.max(0, total.alloy),
+    crystal: Math.max(0, total.crystal),
+    deuterium: Math.max(0, total.deuterium),
+  };
 }
 
 /** Lock every Dominion ledger in one stable player-id order. */
@@ -850,13 +885,22 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
      * AFTER THE DEBIT AND BEFORE THE REPORT, so the report can carry both halves of
      * the audit trail — what the loss was measured against, and what it bought.
      */
-    const lootTotal = loot.alloy + loot.crystal + loot.deuterium;
-    const recoveryShieldUntil = await grantRecoveryShield(tx, {
+    /*
+      WHAT THE DEFENDER IS ACTUALLY OUT, IN THE TWO CURRENCIES A BATTLE SPENDS.
+
+      The ore is what flew away; the fleet is what stopped existing. Ground defence
+      rebuilds most of itself from its own wreckage (`defenceSalvage`), so the
+      gross loss would price Bastions the defender still owns — the shield reads
+      the PERMANENT loss, which is the same figure Dominion is scored on.
+    */
+    const fleetLost = fleetCost(result.defenderLosses, result.defenceSalvage);
+    const recovery = await grantRecoveryShield(tx, {
       playerId: defender.playerId,
-      raidableBefore,
-      lootLost: lootTotal,
+      lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+      fleetLost,
       now: defender.now,
     });
+    const recoveryShieldUntil = recovery.until;
 
     const dominionBreakdown = scoreEligible
       ? battleDominion(
@@ -985,6 +1029,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         there is a disclosure the fog does not make.
       */
       raidableBefore: Math.round(raidableBefore),
+      recoveryLossHours: recovery.hours,
       recoveryShieldUntil,
       createdAt: defender.now,
     });
@@ -1664,7 +1709,9 @@ export const onMiningReturn: Handler = async ({ db, clock }, event) => {
       playerId: planet.controllerPlayerId,
       kind: 'fleet_returned',
       payload: {
-        trip: run.debrisFieldId === null ? 'mining' : 'harvest',
+        trip: run.recalledAt !== null
+          ? 'mining_recalled'
+          : run.debrisFieldId === null ? 'mining' : 'harvest',
         craft: delivered.craft,
         alloy: Math.round(delivered.delivered.alloy),
         crystal: Math.round(delivered.delivered.crystal),
@@ -1775,6 +1822,17 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       return;
     }
 
+    if (season.statsVersion === 1) {
+      const ownedWorlds = await tx
+        .select({ id: planets.id })
+        .from(planets)
+        .where(and(eq(planets.seasonId, seasonId), isNotNull(planets.controllerPlayerId)));
+      const boundaryClock: Clock = { now: () => season.endsAt };
+      for (const world of ownedWorlds) {
+        await loadLocked(tx, world.id, boundaryClock, { requireLive: false });
+      }
+    }
+
     const allRoster = await tx
       .select({
         playerId: players.id,
@@ -1795,7 +1853,19 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
     const adminPlayerIds = await adminPlayerIdsInSeason(tx, seasonId, adminUsernames);
     const roster = allRoster.filter((player) => !adminPlayerIds.has(player.playerId));
     const cycleSeasons = tx.select({ id: seasons.id }).from(seasons).where(eq(seasons.cycleId, season.cycleId));
-    const [scoreEvents, reports, impacts, clanRows, clanEvents, membershipRows] = await Promise.all([
+    const [
+      scoreEvents,
+      reports,
+      impacts,
+      clanRows,
+      clanEvents,
+      membershipRows,
+      telemetryRows,
+      telemetrySegments,
+      miningRows,
+      convoyRows,
+      botRows,
+    ] = await Promise.all([
       tx.select({
         attackerPlayerId: dominionEvents.attackerPlayerId,
         defenderPlayerId: dominionEvents.defenderPlayerId,
@@ -1824,6 +1894,24 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       tx.select({ playerId: clanMemberships.playerId, clanId: clanMemberships.clanId })
         .from(clanMemberships)
         .where(and(eq(clanMemberships.seasonId, seasonId), isNull(clanMemberships.leftAt))),
+      tx.select({
+        playerId: planets.statsOwnerPlayerId,
+        telemetry: planets.seasonTelemetry,
+      }).from(planets).where(and(
+        inArray(planets.seasonId, cycleSeasons),
+        isNotNull(planets.statsOwnerPlayerId),
+      )),
+      tx.select({
+        playerId: seasonTelemetrySegments.playerId,
+        telemetry: seasonTelemetrySegments.telemetry,
+      }).from(seasonTelemetrySegments).where(inArray(
+        seasonTelemetrySegments.seasonId,
+        cycleSeasons,
+      )),
+      tx.select().from(miningRuns).where(inArray(miningRuns.seasonId, cycleSeasons)),
+      tx.select().from(intergalacticConvoyRuns)
+        .where(inArray(intergalacticConvoyRuns.seasonId, cycleSeasons)),
+      tx.select({ accountId: botProfiles.accountId }).from(botProfiles),
     ]);
     assertDominionLedgers(roster, scoreEvents, season.rulesetVersion);
     assertClanDominionLedgers(
@@ -1857,6 +1945,49 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       membership.playerId,
       membership.clanId,
     ]));
+    const botAccountIds = new Set(botRows.map((bot) => bot.accountId));
+    /*
+      THE SEASON'S ROWS, INDEXED BY COMMANDER ONCE INSTEAD OF RESCANNED PER HEAD.
+      2026-09-15.
+
+      Every figure below is built inside `ranked.map`, so a table read here is
+      walked once per commander. That is affordable for battle reports — a season
+      has thousands — and it is not for `mining_runs`, which is one row per drill
+      launched by anybody all season and is read across the whole CYCLE: at 300
+      seats the scan is quadratic in the two largest tables the freeze touches,
+      inside the one transaction that holds `seasons FOR UPDATE` and every planet
+      lock in the galaxy. The freeze is already the longest transaction the worker
+      runs; it must not also be the one that grows with the square of the roster.
+
+      Indexing changes no figure: the filters below are equality on the owner plus
+      the same per-row conditions, and a row with no owner belonged to nobody.
+    */
+    const byPlayer = <T>(rows: readonly T[], owner: (row: T) => string | null): Map<string, T[]> => {
+      const grouped = new Map<string, T[]>();
+      for (const row of rows) {
+        const id = owner(row);
+        if (id === null) continue;
+        const bucket = grouped.get(id);
+        if (bucket) bucket.push(row);
+        else grouped.set(id, [row]);
+      }
+      return grouped;
+    };
+    // The live counters and the closed hand-over segments are one list per
+    // commander; freeze reads them the same way and must not join them per head.
+    const telemetryByPlayer = byPlayer(
+      [...telemetryRows, ...telemetrySegments],
+      (row) => row.playerId,
+    );
+    const miningByPlayer = byPlayer(miningRows, (run) => run.ownerPlayerId);
+    const convoyByPlayer = byPlayer(convoyRows, (run) => run.ownerPlayerId);
+    const strikesTakenBy = byPlayer(impacts, (impact) => impact.defenderPlayerId);
+    const [cycle] = await tx
+      .select({ rewardProgramVersion: seasonCycles.rewardProgramVersion })
+      .from(seasonCycles)
+      .where(eq(seasonCycles.id, season.cycleId))
+      .limit(1);
+    const rewardProgram = seasonRankRewardProgram(cycle?.rewardProgramVersion ?? 0);
 
     const [shard] = await tx.select().from(shards).where(eq(shards.id, season.shardId));
     const shardLabel = shard?.name === ''
@@ -1906,6 +2037,71 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
         : finalRank <= 3 ? 'Vanguard' : dominion > 0 ? 'Conqueror' : 'Commander';
       const playerClanId = clanIdByPlayer.get(player.playerId);
       const clan = playerClanId ? clanRecapById.get(playerClanId) ?? null : null;
+      let stats: SeasonStatsSnapshot | null = null;
+      if (season.statsVersion === 1) {
+        stats = emptySeasonStats();
+        stats.competition.battles = mine.length;
+        stats.competition.attacks = attacks;
+        stats.competition.defences = defences;
+        stats.competition.damageDealt = damageDealt;
+        stats.competition.damageTaken = damageTaken;
+        for (const report of mine) {
+          const attacking = report.attackerPlayerId === player.playerId;
+          if (attacking) {
+            stats.competition.playerLoot.alloy += report.loot.alloy;
+            stats.competition.playerLoot.crystal += report.loot.crystal;
+            stats.competition.playerLoot.deuterium += deuteriumOf(report.loot);
+          }
+          const losses = attacking ? report.attackerLosses : report.defenderLosses;
+          for (const [hull, count] of fleetEntries(losses)) {
+            if (HULLS[hull].ground || count <= 0) continue;
+            stats.competition.shipsLostByHull[hull] =
+              (stats.competition.shipsLostByHull[hull] ?? 0) + count;
+            stats.competition.shipsLost += count;
+          }
+        }
+        for (const impact of strikesTakenBy.get(player.playerId) ?? []) {
+          for (const [hull, count] of fleetEntries(impact.destroyedFleet)) {
+            if (HULLS[hull].ground || count <= 0) continue;
+            stats.competition.shipsLostByHull[hull] =
+              (stats.competition.shipsLostByHull[hull] ?? 0) + count;
+            stats.competition.shipsLost += count;
+          }
+        }
+        for (const row of telemetryByPlayer.get(player.playerId) ?? []) {
+          stats.economy.produced.alloy += row.telemetry.produced.alloy;
+          stats.economy.produced.crystal += row.telemetry.produced.crystal;
+          stats.economy.produced.deuterium += row.telemetry.produced.deuterium;
+          stats.economy.productiveSeconds += row.telemetry.productiveSeconds;
+          for (const [hull, count] of fleetEntries(row.telemetry.shipsBuilt)) {
+            if (HULLS[hull].ground || count <= 0) continue;
+            stats.competition.shipsBuiltByHull[hull] =
+              (stats.competition.shipsBuiltByHull[hull] ?? 0) + count;
+            stats.competition.shipsBuilt += count;
+          }
+        }
+        for (const run of miningByPlayer.get(player.playerId) ?? []) {
+          if (run.targetKind !== 'asteroid' || run.homeAt === null) continue;
+          stats.exploration.asteroidRuns++;
+          stats.exploration.asteroidMined.alloy += run.minedAlloy;
+          stats.exploration.asteroidMined.crystal += run.minedCrystal;
+          stats.exploration.asteroidMined.deuterium += run.minedDeuterium;
+        }
+        for (const run of convoyByPlayer.get(player.playerId) ?? []) {
+          if (run.abandonedAt !== null || run.resourceReward === null) continue;
+          stats.exploration.convoyAttempts++;
+          if (
+            run.resourceReward.alloy + run.resourceReward.crystal
+              + run.resourceReward.deuterium > 0
+            || fleetCount(run.awardedFleet ?? {}) > 0
+          ) stats.exploration.convoySuccesses++;
+          if (run.status === 'done') {
+            stats.exploration.convoyDelivered.alloy += run.resourceReward.alloy;
+            stats.exploration.convoyDelivered.crystal += run.resourceReward.crystal;
+            stats.exploration.convoyDelivered.deuterium += run.resourceReward.deuterium;
+          }
+        }
+      }
       return {
         seasonId,
         cycleId: season.cycleId,
@@ -1927,11 +2123,38 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
           biggestRaid: biggest,
           clan,
         },
+        statsVersion: stats?.version ?? 0,
+        stats,
+        averageEligible: stats !== null && !botAccountIds.has(player.accountId),
         createdAt: clock.now(),
       };
     });
     if (values.length > 0) {
       await tx.insert(seasonResults).values(values).onConflictDoNothing();
+    }
+    if (rewardProgram) {
+      const eligible = values
+        .filter((row) => (
+          !botAccountIds.has(row.accountId)
+          && row.dominion >= rewardProgram.minimumDominion
+        ))
+        .slice(0, rewardProgram.tiers.length);
+      if (eligible.length > 0) {
+        await tx.insert(seasonRewardEntitlements).values(eligible.map((row, index) => {
+          const tier = rewardProgram.tiers[index];
+          if (!tier) throw new Error(`Missing season reward tier ${String(index + 1)}`);
+          return {
+            sourceCycleId: season.cycleId,
+            sourceSeasonId: seasonId,
+            accountId: row.accountId,
+            displayRank: row.finalRank,
+            rewardPlace: tier.place,
+            ...tier.reward,
+            programVersion: rewardProgram.version,
+            createdAt: clock.now(),
+          };
+        })).onConflictDoNothing();
+      }
     }
     await tx.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, seasonId));
     await publishShard(tx, seasonId, 'season');
