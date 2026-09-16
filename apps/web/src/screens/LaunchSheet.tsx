@@ -220,6 +220,9 @@ export function LaunchSheet({
     && route !== null
     && route.oneWayMinutes >= pirate.expiresInMinutes;
   const busy = launch.isPending || raid.isPending;
+  const shipyardRevolt = (planet.faults ?? []).some(
+    (fault) => fault.kind === 'SHIPYARD_REVOLT',
+  );
   /*
     READ HERE RATHER THAN OFF THE ROUTE, because the garrison is a fact about this
     world and this selection and does not stop being true when there is no route to
@@ -245,6 +248,7 @@ export function LaunchSheet({
     && total > 0
     && !COMBAT_HULLS.some((hull) => (sending[hull] ?? 0) > 0);
   const canSend = total > 0
+    && !shipyardRevolt
     && route !== null
     && route.oneWayMinutes > 0
     && !tooLate
@@ -697,7 +701,7 @@ export function LaunchSheet({
               variant="commit"
               size="sm"
               className="flex-[2]"
-              disabled={busy}
+              disabled={busy || shipyardRevolt}
               onClick={() => {
                 if (pirate) {
                   raid.mutate(
@@ -771,7 +775,9 @@ export function LaunchSheet({
                 );
               }}
             >
-              {busy ? t('launch.launching') : t('launch.commit')}
+              {shipyardRevolt
+                ? t('launch.shipyardRevolt')
+                : busy ? t('launch.launching') : t('launch.commit')}
             </Button>
           </div>
         ) : (
@@ -796,7 +802,9 @@ export function LaunchSheet({
               their world is helpless when what they need to do is leave the slow
               hull behind.
             */}
-            {total === 0
+            {shipyardRevolt
+              ? t('launch.shipyardRevolt')
+              : total === 0
               ? t('launch.chooseFleet')
               : baysFree <= 0
                 ? t('launch.noBay')

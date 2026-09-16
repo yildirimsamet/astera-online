@@ -141,6 +141,8 @@ describe('season lifecycle', () => {
       .where(eq(seasonResults.seasonId, f.seasonId))
       .orderBy(asc(seasonResults.finalRank));
     expect(after!.status).toBe('frozen');
+    expect(after).toMatchObject({ endReason: 'SCHEDULED_END' });
+    expect(after?.closedAt?.getTime()).toBe(season!.endsAt.getTime());
     expect(results).toHaveLength(3);
     expect(results.map((row) => row.dominion)).toEqual([300, 100, -50]);
     expect(results.map((row) => row.finalRank)).toEqual([1, 2, 3]);

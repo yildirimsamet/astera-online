@@ -426,6 +426,8 @@ export const reports = {
     worksYours: 'Your works were knocked offline for {{duration}}.',
     /** The defender's copy of what the raider's collectors lifted. D200. */
     salvageTheirs: 'Their Garbage Collectors lifted {{amount}} of the wreckage before it could drift.',
+    /** Koloni arızaları: what a heavy defeat broke. Defender only. */
+    colonyFaults: 'Broken on {{planet}} by this defeat: {{faults}}.',
     wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
     /** The same field, read from the world it is drifting over. */
     wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',

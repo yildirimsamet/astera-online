@@ -1,5 +1,5 @@
 import { and, count, eq, inArray, isNull, or } from 'drizzle-orm';
-import { colonyCapacity } from '@astera/rules';
+import { FAULT, colonyCapacity } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -8,11 +8,13 @@ import {
   neutralPlanetState,
   planets,
   players,
+  scheduledEvents,
   seasonTelemetrySegments,
   units,
 } from '../db/schema.js';
 import { GameError, lockSeason } from './planet.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
+import { armFaults } from './faults.js';
 
 export interface CommanderWorld {
   playerId: string;
@@ -298,6 +300,19 @@ export async function transferPlanetControl(
       disruptedUntil: null,
       lastTickAt: input.now,
       statsOwnerPlayerId: input.newPlayerId,
+      /*
+        A WORLD THAT CHANGES HANDS STARTS ITS LOYALTY AGAIN. Koloni arızaları.
+
+        WITHOUT THIS, TAKING A COLONY COULD BE A TRAP. Loyalty is a relationship between a
+        world and the commander who neglected it; carried across, a colony captured at 8%
+        would secede from the commander who just paid a Death Star for it, within the
+        hour, for something they had no part in and no warning of.
+
+        THE FAULTS THEMSELVES ARE DELIBERATELY KEPT. The world really is broken and the
+        new owner really does have to put it right — that is the prize arriving with its
+        problems, which is the whole shape of a neglected colony being worth taking.
+      */
+      loyalty: FAULT.loyaltyMax,
       seasonTelemetry: {
         produced: { alloy: 0, crystal: 0, deuterium: 0 },
         productiveSeconds: 0,
@@ -328,6 +343,27 @@ export async function transferPlanetControl(
       eq(units.planetId, input.targetPlanetId),
       or(eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR')),
     ));
+  /*
+    THE OLD OWNER'S COUNTDOWN IS THEIRS AND DIES WITH THE HANDOVER, and the new owner's
+    world has to start ageing on its own. A settled world is the case that needs the
+    second half: nothing else would ever arm it, because the only other place that does
+    is a Core reaching the gate, and a world taken at Core 12 is already past it.
+  */
+  await tx.delete(scheduledEvents).where(and(
+    eq(scheduledEvents.kind, 'colony_secession'),
+    eq(scheduledEvents.refId, input.targetPlanetId),
+    eq(scheduledEvents.status, 'pending'),
+  ));
+  const [core] = await tx.select({ level: buildings.level }).from(buildings)
+    .where(and(eq(buildings.planetId, input.targetPlanetId), eq(buildings.type, 'CORE')));
+  await armFaults(tx, {
+    seasonId: pair.planetSeason,
+    planetId: input.targetPlanetId,
+    kind: 'COLONY',
+    coreLevel: core?.level ?? 0,
+    now: input.now,
+  });
+
   await refreshSensorEpoch(tx, input.targetPlanetId, input.now);
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
 }

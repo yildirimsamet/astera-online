@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { coreTier, distance } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
@@ -6,6 +6,7 @@ import {
   buildings,
   clanMemberships,
   clans,
+  planetFaults,
   planets,
   players,
 } from '../db/schema.js';
@@ -51,13 +52,17 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const self = await app.projections.commander(req.accountId!);
     const now = app.clock.now();
 
-    const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds] = await Promise.all([
+    const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows] = await Promise.all([
       app.projections.worlds(self.seasonId, now),
       readTelescopes(app.db, self.playerId, app.clock),
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.rememberedFor(self.playerId),
       readClanPresence(app.db, self.playerId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
+      self.planetIds.length === 0
+        ? Promise.resolve([])
+        : app.db.select({ planetId: planetFaults.planetId }).from(planetFaults)
+          .where(inArray(planetFaults.planetId, self.planetIds)),
     ]);
     // An operator still needs their own world to enter and test the game, but no
     // other admin-owned world is part of a commander's public galaxy.
@@ -74,6 +79,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       world.controller.kind !== 'PLAYER'
       || !hiddenAdminPlayerIds.has(world.controller.playerId));
     const mineSet = new Set(self.planetIds);
+    const faultyMine = new Set(ownFaultRows.map((row) => row.planetId));
     const byTarget = new Map(watching.map((w) => [w.targetPlanetId, w]));
 
     /**
@@ -281,6 +287,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
           isSelf: world.id === self.capitalPlanetId,
           isOwned: mineSet.has(world.id),
           isCapital: world.kind === 'CAPITAL',
+          // Private ownership state: never attach this bit to somebody else's row.
+          ...(mineSet.has(world.id) && faultyMine.has(world.id) ? { faulty: true } : {}),
           // Present only where earned. Absent is not "unknown" — it is "you are
           // not looking at this planet".
           ...(watch

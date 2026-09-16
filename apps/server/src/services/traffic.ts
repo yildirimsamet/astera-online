@@ -34,6 +34,7 @@ import {
   miningRuns,
   missions,
   pirateRaids,
+  planetFaults,
   planets,
   strategicImpacts,
   strategicInterceptions,
@@ -836,15 +837,37 @@ export async function sensorPosts(
   planetIds: readonly string[],
 ): Promise<SensorPost[]> {
   if (planetIds.length === 0) return [];
-  const [rows, levels] = await Promise.all([
+  const [rows, levels, blinded] = await Promise.all([
     db
       .select({ id: planets.id, x: planets.x, y: planets.y, z: planets.z })
       .from(planets)
       .where(inArray(planets.id, [...planetIds])),
     instrumentLevels(db, planetIds),
+    /*
+      TELESKOP ARIZASI: DEFAULT GÖRÜŞ. Koloni arızaları, `TELESCOPE_FAULT`.
+
+      Read here because this is the ONE place a level becomes a radius, and a fault
+      that took effect anywhere else would be a second opinion about how far a
+      commander can see. It reduces the LEVEL rather than the radius, so the floor
+      `sensorReach` already applies — the naked-eye neighbourhood a commander has
+      with no instrument at all — is what is left. Nothing special-cases zero.
+
+      WHAT IT DOES NOT TOUCH IS THE WATCH SLOT. The Telescope sells two things and
+      only one of them is a circle; dropping a watch would silently delete an
+      observation the commander set up days ago, on a world they may not be able to
+      reach again, and no repair could give it back.
+    */
+    db
+      .select({ planetId: planetFaults.planetId })
+      .from(planetFaults)
+      .where(and(
+        inArray(planetFaults.planetId, [...planetIds]),
+        eq(planetFaults.kind, 'TELESCOPE_FAULT'),
+      )),
   ]);
+  const dark = new Set(blinded.map((row) => row.planetId));
   return rows.map((world) => {
-    const telescope = levelOf(levels, world.id, 'TELESCOPE');
+    const telescope = dark.has(world.id) ? 0 : levelOf(levels, world.id, 'TELESCOPE');
     const radar = levelOf(levels, world.id, 'RADAR');
     return {
       // `sensorSphere` is the ONE place a level becomes a radius. Everything below

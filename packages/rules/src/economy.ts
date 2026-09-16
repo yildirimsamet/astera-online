@@ -8,6 +8,7 @@ import {
   ABUSE,
   BUILD,
   DISRUPTION,
+  FAULT,
   DEUTERIUM,
   ECON,
   INSTRUMENT_COST_MULT,
@@ -20,7 +21,9 @@ import {
 } from './constants.js';
 import {
   INSTRUMENT_IDS,
+  hasFault,
   type BuildingId,
+  type FaultSet,
   type InstrumentId,
   type InstrumentLevels,
   type Resources,
@@ -717,6 +720,17 @@ export interface PlanetEconomyState {
   shield: number;
   lastTickMinutes: number;
   disruptedUntilMinutes: number;
+  /**
+   * LEAKED AND WAITING TO BECOME A PUBLIC FIELD. Koloni arızaları, `VAULT_LEAK`.
+   *
+   * Optional so every caller written before the fault system reads exactly the state
+   * it always did; `advanceEconomy` always returns all three, at zero on a world with
+   * nothing leaking. `vault_leak_flush` is the only thing that empties them, and what
+   * it empties them INTO is a debris field anybody can see.
+   */
+  pendingLeakAlloy?: number;
+  pendingLeakCrystal?: number;
+  pendingLeakDeuterium?: number;
 }
 
 export interface PlanetEconomyInput {
@@ -748,8 +762,24 @@ export interface PlanetEconomyInput {
    * Absent or null on every world that was not the one a heavy defeat struck. The
    * server stamps it with the shield's end and cuts it to the instant the shield is
    * spent, so this function never has to know about the commander's shield itself.
-   */
+  */
   recoveryBoostUntilMinutes?: number | null;
+  /**
+   * WHAT IS BROKEN ON THIS WORLD. Koloni arızaları; absent means nothing is.
+   *
+   * Three of the eight are read here and the other five are read where their effect
+   * lives — a shield at the battle, a departure at the flight bay, a radius at the
+   * sensor post. Nothing about a fault is central except the row it is written in.
+   */
+  faults?: FaultSet;
+  /**
+   * WHAT THIS LEAK HAS ALREADY PUT INTO ORBIT, so `FAULT.leakTotalStores` can stop it.
+   *
+   * Cumulative for the CURRENT occurrence and held on the fault row, not the planet:
+   * a repaired and re-broken vault starts its budget again, which is what makes the
+   * ceiling a property of the fault rather than of the world.
+   */
+  leakedSoFar?: Resources;
 }
 
 /**
@@ -794,39 +824,97 @@ export function advanceEconomy(
   );
   const wall = (nowMinutes - state.lastTickMinutes) / 60;
 
+  /*
+    NOMINAL RATES FIRST, AND THE DISTINCTION IS LOAD-BEARING.
+
+    What a world's hardware is RATED at decides three ceilings — the works' own, the
+    store's, and therefore how fast a broken vault bleeds. What it is PRODUCING is that
+    same figure with an outage applied. Reading one number for both would mean a
+    refinery outage quietly stopped the leak as well, and a commander could hold the
+    ore by breaking the mine.
+  */
   const boost = input.production ?? 1;
-  const ra = alloyRate(input.refineryLevel) * boost;
-  const rc = crystalRate(input.extractorLevel) * boost;
-  const rd = deuteriumRate(input.plantLevel) * boost;
+  const nominalA = alloyRate(input.refineryLevel) * boost;
+  const nominalC = crystalRate(input.extractorLevel) * boost;
+  const nominalD = deuteriumRate(input.plantLevel) * boost;
+
+  const faults = input.faults;
+  const ra = hasFault(faults, 'REFINERY_OUTAGE') ? 0 : nominalA;
+  const rc = hasFault(faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalC;
+  const rd = hasFault(faults, 'PLANT_OUTAGE') ? 0 : nominalD;
   const maxShield = shieldHp(input.aegisLevel);
 
-  return {
-    alloy: state.alloy,
-    crystal: state.crystal,
-    deuterium: state.deuterium,
-    bufferAlloy: Math.min(collectorCap(ra), state.bufferAlloy + ra * producing),
-    bufferCrystal: Math.min(collectorCap(rc), state.bufferCrystal + rc * producing),
-    /*
-      THE LINE THAT WAS A CONSTANT. T5.
+  /*
+    THE LEAK RUNS ON PRODUCTIVE MINUTES, LIKE THE WORKS AND UNLIKE THE SHIELD.
 
-      This read `state.bufferDeuterium` — carried across untouched, because the
-      resource had no production and the works could only ever receive what a
-      mining craft brought home. It grows now, under the same collector ceiling the
-      other two obey, and a world with no plant is left exactly where it was
-      because its rate is zero. The Foundry's boost applies here as well: it
-      multiplies everything the works make, and this is now something they make.
-    */
-    bufferDeuterium: rd <= 0
-      ? state.bufferDeuterium
-      : Math.min(deuteriumCollectorCap(rd, rc), state.bufferDeuterium + rd * producing),
+    `disruptedUntil` says the surface is not running, and a plant nobody is running is
+    not bleeding either. The shield stays the one exception for the reason it always
+    was: it is a separate system that a raid should not freeze.
+  */
+  const nominal = { alloy: nominalA, crystal: nominalC, deuterium: nominalD };
+  const leaking = hasFault(faults, 'VAULT_LEAK');
+  const rate = leaking ? leakRates(nominal, input.vaultLevel) : NO_LEAK;
+  const budget = leaking ? leakBudget(nominal, input.vaultLevel) : NO_LEAK;
+  const spent = input.leakedSoFar ?? NO_LEAK;
+  const room = (column: keyof Resources): number =>
+    Math.max(0, budget[column] - spent[column]);
+
+  const alloy = leakColumn({
+    store: state.alloy,
+    buffer: state.bufferAlloy,
+    cap: collectorCap(nominalA),
+    produce: ra,
+    leak: rate.alloy,
+    hours: producing,
+    budget: room('alloy'),
+  });
+  const crystal = leakColumn({
+    store: state.crystal,
+    buffer: state.bufferCrystal,
+    cap: collectorCap(nominalC),
+    produce: rc,
+    leak: rate.crystal,
+    hours: producing,
+    budget: room('crystal'),
+  });
+  /*
+    A WORLD WITH NO PLANT IS LEFT EXACTLY WHERE IT WAS. T5's rule, kept: with no rate
+    there is no ceiling to clamp a mined haul against, so the works are carried across
+    by hand. It also means such a column never leaks — `leakRates` prices the leak off
+    production and a tap that is not running cannot drip.
+  */
+  const deuterium = nominalD <= 0
+    ? { store: state.deuterium, buffer: state.bufferDeuterium, leaked: 0 }
+    : leakColumn({
+      store: state.deuterium,
+      buffer: state.bufferDeuterium,
+      cap: deuteriumCollectorCap(nominalD, nominalC),
+      produce: rd,
+      leak: rate.deuterium,
+      hours: producing,
+      budget: room('deuterium'),
+    });
+
+  return {
+    alloy: alloy.store,
+    crystal: crystal.store,
+    deuterium: deuterium.store,
+    bufferAlloy: alloy.buffer,
+    bufferCrystal: crystal.buffer,
+    bufferDeuterium: deuterium.buffer,
     shield:
       maxShield > 0
         ? Math.min(maxShield, state.shield + maxShield * SHIELD.regenPerHour * wall)
         : 0,
     lastTickMinutes: nowMinutes,
     disruptedUntilMinutes: state.disruptedUntilMinutes,
+    pendingLeakAlloy: (state.pendingLeakAlloy ?? 0) + alloy.leaked,
+    pendingLeakCrystal: (state.pendingLeakCrystal ?? 0) + crystal.leaked,
+    pendingLeakDeuterium: (state.pendingLeakDeuterium ?? 0) + deuterium.leaked,
   };
 }
+
+const NO_LEAK: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
 export interface Collection {
   state: PlanetEconomyState;
@@ -917,4 +1005,159 @@ export function hullWorkMinutes(id: HullId, count: number, yard: number, tech: T
   if (!Number.isInteger(count) || count < 1 || !Number.isInteger(yard) || yard < 0) throw new Error('Invalid hull work');
   return profileHull(HULLS[id]).workMinutes * count / (1 + 0.12 * yard) * yardSpeedMult(tech)
     * ECONOMY_ADJUSTMENT.buildTime;
+}
+
+/* ── the vault leak ──────────────────────────────────────────────────── */
+
+/** The three production rates a world runs at, per hour. */
+export interface ProductionRates {
+  alloy: number;
+  crystal: number;
+  deuterium: number;
+}
+
+/**
+ * HOW FAST EACH COLUMN BLEEDS, PER HOUR. Two clauses, and both are load-bearing:
+ *
+ *   · a FULL store empties in `leakDrainHours` — the owner's rule, and what makes the
+ *     leak a threat to the bank rather than to the income;
+ *   · never faster than `leakIncomeCap` times what the world makes — without which the
+ *     same rule reads as 1.1× production at core 6 and 273× at core 30.
+ *
+ * Per column rather than one total: deuterium's store is sized off the CRYSTAL rate,
+ * so a shared figure emptied that column before the player could read the notification.
+ */
+export function leakRates(rates: ProductionRates, vaultLevel: number): Resources {
+  const fromStore = (cap: number): number => cap / FAULT.leakDrainHours;
+  return {
+    alloy: Math.min(fromStore(storageCap(rates.alloy, vaultLevel)), rates.alloy * FAULT.leakIncomeCap),
+    crystal: Math.min(fromStore(storageCap(rates.crystal, vaultLevel)), rates.crystal * FAULT.leakIncomeCap),
+    deuterium: Math.min(
+      fromStore(deuteriumStorageCap(rates.deuterium, rates.crystal, vaultLevel)),
+      rates.deuterium * FAULT.leakIncomeCap,
+    ),
+  };
+}
+
+/** The most one leak may ever cost, per column. Owner's ceiling: one full store. */
+export function leakBudget(rates: ProductionRates, vaultLevel: number): Resources {
+  const stores = FAULT.leakTotalStores;
+  return {
+    alloy: storageCap(rates.alloy, vaultLevel) * stores,
+    crystal: storageCap(rates.crystal, vaultLevel) * stores,
+    deuterium: deuteriumStorageCap(rates.deuterium, rates.crystal, vaultLevel) * stores,
+  };
+}
+
+export interface LeakColumnInput {
+  /** Spendable, in the vault. */
+  store: number;
+  /** Uncollected, in the works. Drains FIRST — owner's *"önce havuzdan akar"*. */
+  buffer: number;
+  /** The works' own ceiling, so production past it is never credited. */
+  cap: number;
+  produce: number;
+  leak: number;
+  hours: number;
+  /** What this occurrence has left to spend before `leakTotalStores` is reached. */
+  budget: number;
+}
+
+export interface LeakColumnResult {
+  store: number;
+  buffer: number;
+  /** What reached orbit. This is what becomes a public field. */
+  leaked: number;
+}
+
+/**
+ * ONE COLUMN, LEAKING, ACROSS A SPAN — AND IT IS CONTINUOUS, NOT A BLOCK.
+ *
+ * THE OBVIOUS VERSION IS WRONG AND WAS MEASURED TO BE. "Add the production, then
+ * subtract the leak" over-charges a long absence badly: the works idle at `cap` in the
+ * first step and the leak then eats that ceiling PLUS the store, where a world that
+ * actually bled continuously would have kept its works running (the buffer never
+ * fills, so production never stops) and lost only the difference between the two
+ * rates. On a day's absence the block version took about 67% more than the truth.
+ *
+ * Continuous is a closed form, because both rates are constant across the span:
+ *
+ *   · LEAK ≤ PRODUCTION — the works out-run the drain. The buffer fills as usual, the
+ *     store is never touched, and once the buffer caps the works simply throttle to
+ *     match. What the fault costs is the production that never arrived, and nothing
+ *     the commander had already banked. This is the case `leakIncomeCap` creates at
+ *     the bottom of the Core ladder, and it is the honest reading of *"önce havuzdan
+ *     akar"*: the store's turn only comes when the works cannot keep up.
+ *   · LEAK > PRODUCTION — the piles fall at the difference, buffer first, then store.
+ *     When BOTH run dry the leak can only carry off what is being made, so the rate
+ *     drops to production for the rest of the span. That is the owner's *"malzeme
+ *     yoksa da doldukça akmalı"* stated as arithmetic, and it is why an empty world
+ *     never goes negative.
+ *
+ * THE BUDGET IS SPENT FIRST AND THE REST OF THE SPAN IS AN ORDINARY ONE. Once the
+ * occurrence has leaked its full store the world goes back to producing normally for
+ * whatever is left of the interval — the fault stays, the loyalty goes on falling and
+ * the repair is still owed, but there is nothing left to bleed.
+ */
+export function leakColumn(input: LeakColumnInput): LeakColumnResult {
+  const { cap, produce, leak, hours } = input;
+  if (!(hours > 0) || leak <= 0 || input.budget <= 0) {
+    return ordinary(input.store, input.buffer, cap, produce, hours);
+  }
+
+  const drain = leak - produce;
+  // When the piles can run dry the leak rate falls to `produce`; solving for the span
+  // that spends exactly the budget has to know which side of that moment it lands on.
+  const dry = drain > 0 ? (input.buffer + input.store) / drain : Number.POSITIVE_INFINITY;
+  const spent = (span: number): number => (span <= dry
+    ? leak * span
+    : leak * dry + produce * (span - dry));
+
+  let leaking = hours;
+  if (spent(hours) > input.budget) {
+    leaking = input.budget <= leak * Math.min(dry, hours)
+      ? input.budget / leak
+      : dry + (input.budget - leak * dry) / Math.max(produce, Number.MIN_VALUE);
+    leaking = Math.min(hours, Math.max(0, leaking));
+  }
+
+  let { store, buffer } = input;
+  let leaked = 0;
+  if (leaking > 0) {
+    if (drain <= 0) {
+      buffer = Math.min(cap, buffer - drain * leaking);
+      leaked = leak * leaking;
+    } else if (leaking <= dry) {
+      const removed = drain * leaking;
+      const fromBuffer = Math.min(buffer, removed);
+      buffer -= fromBuffer;
+      // `Math.max` because `leaking === dry` removes the piles EXACTLY, and exactly is
+      // a thing binary floating point cannot land on. A store of -1e-13 is a negative
+      // balance everywhere downstream that reads it.
+      store = Math.max(0, store - (removed - fromBuffer));
+      leaked = leak * leaking;
+    } else {
+      buffer = 0;
+      store = 0;
+      leaked = leak * dry + produce * (leaking - dry);
+    }
+  }
+
+  const rest = ordinary(store, buffer, cap, produce, hours - leaking);
+  return { store: rest.store, buffer: rest.buffer, leaked };
+}
+
+/** A span with nothing leaking: the works fill to their ceiling and stop. */
+function ordinary(
+  store: number,
+  buffer: number,
+  cap: number,
+  produce: number,
+  hours: number,
+): LeakColumnResult {
+  return {
+    store,
+    buffer: hours > 0 ? Math.min(cap, buffer + produce * hours) : buffer,
+    leaked: 0,
+  };
 }

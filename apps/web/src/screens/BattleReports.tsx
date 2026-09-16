@@ -981,6 +981,30 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     });
   }
 
+  /*
+    WHAT THE DEFEAT BROKE ON THE READER'S COLONY. Koloni arızaları, owner decision.
+
+    Here rather than as notifications: those arrived beside "you were raided", did not fold,
+    and never said the raid had caused them. On this page the cause and the effect are the
+    same read. Named with the world, because a commander holding four worlds needs to know
+    WHICH one to open.
+
+    The `attacking` guard is belt and braces — the server already sends an attacker an
+    empty list — because telling a raider which systems just went dark would be handing
+    them a probe's product for free.
+  */
+  const broken = report.attacking ? [] : report.colonyFaults ?? [];
+  if (broken.length > 0) {
+    lines.push({
+      key: 'faults',
+      tone: 'text-threat-ink',
+      text: t('reports.effects.colonyFaults', {
+        planet: report.yourPlanet,
+        faults: broken.map((kind) => t(`faults.name.${kind}`)).join(' · '),
+      }),
+    });
+  }
+
   if (lines.length === 0) return null;
 
   return (
@@ -988,7 +1012,11 @@ function Consequences({ report }: { report: OrdinaryReport }) {
       <p className="legend">{t('reports.effects.heading')}</p>
       <ul className="mt-2 grid gap-2">
         {lines.map((line) => (
-          <li key={line.key} className={`text-caption leading-snug ${line.tone}`}>
+          <li
+            key={line.key}
+            className={`text-caption leading-snug ${line.tone}`}
+            {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
+          >
             {line.text}
           </li>
         ))}

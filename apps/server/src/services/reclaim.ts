@@ -25,6 +25,7 @@ import {
   missions,
   notifications,
   neutralPlanetState,
+  planetFaults,
   planets,
   planetResearch,
   playerResearch,
@@ -575,6 +576,16 @@ export async function demolish(
     .delete(sensorEpochs)
     .where(or(inArray(sensorEpochs.planetId, planetIds), eq(sensorEpochs.playerId, playerId)));
   await tx.delete(buildings).where(inArray(buildings.planetId, planetIds));
+  /*
+    THE FAULT ROWS, AND THEY BELONG IN THIS LIST FOR THE REASON THE WHOLE LIST EXISTS.
+
+    `planet_faults` references `planets`, so a seat whose colony happened to be broken
+    would fail on the `delete(planets)` below and could never be reclaimed again — the
+    same shape as the `sensor_epochs` outage recorded above it, and the same shape as the
+    pirate-raid and convoy notes at the top of this file. Faults are the newest table to
+    carry a planet key and were the newest way to strand a seat.
+  */
+  await tx.delete(planetFaults).where(inArray(planetFaults.planetId, planetIds));
   await tx.delete(planetResearch).where(inArray(planetResearch.planetId, planetIds));
   await tx.delete(neutralPlanetState).where(inArray(neutralPlanetState.planetId, planetIds));
   await tx.delete(planets).where(inArray(planets.id, planetIds));

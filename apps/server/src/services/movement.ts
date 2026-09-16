@@ -230,7 +230,7 @@ export async function launchTransfer(
     if (origin.alloy < cargo.alloy || origin.crystal < cargo.crystal || origin.deuterium < cargo.deuterium) {
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
-    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
     // Refused at LAUNCH as well as on arrival, so a player is never charged a
     // flight for craft that could not have landed. Both worlds are already held
     // by `lockWorlds`, so the counts cannot move under the check. A conflict
@@ -308,7 +308,7 @@ export async function launchSettlement(
     assertWorldOperational(origin);
     if (origin.playerId !== ownerPlayerId) throw new GameError('PLANET_NOT_OWNED', 'Origin changed', 403);
     await assertColonyCapacity(tx, ownerPlayerId, origin.seasonId);
-    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
     const [neutral] = await tx
       .select({ world: planets, state: neutralPlanetState })
       .from(planets)

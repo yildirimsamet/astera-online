@@ -4,12 +4,15 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, players, satellites, seasons, shards } from '../src/db/schema.js';
+import { accounts, planetFaults, planets, players, satellites, seasons, shards } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { assignWatch } from '../src/services/intel.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import { publishShard } from '../src/stream/bus.js';
+import { breakFaults } from '../src/services/faults.js';
+import { completeFaultRepair } from '../src/services/faultRepair.js';
+import { FAULT_KINDS } from '@astera/rules';
 import {
   giveInstrument,
   giveSatellite,
@@ -49,6 +52,7 @@ interface GalaxyPlanet {
   /** How much of this world the caller has earned. D127. */
   intel?: 'RESOLVED' | 'REMEMBERED' | 'UNKNOWN';
   dominionRank?: 1 | 2 | 3;
+  faulty?: boolean;
   fleet?: { status: string; staleMinutes: number; etaMinutes: number | null; clarity: string };
 }
 
@@ -399,6 +403,52 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      */
     expect(Object.values(after)).not.toContain(LEVEL);
     expect(after.coreTier).not.toBe(LEVEL);
+  });
+
+  it('publishes the fault mark only on the caller\'s own broken worlds', async () => {
+    await f.db.insert(planetFaults).values([
+      { planetId: mine, kind: 'REFINERY_OUTAGE', startedAt: f.clock.now() },
+      { planetId: theirs, kind: 'EXTRACTOR_OUTAGE', startedAt: f.clock.now() },
+    ]);
+
+    const worlds = await galaxy();
+    expect(worlds.find((world) => world.id === mine)?.faulty).toBe(true);
+    expect(worlds.find((world) => world.id === theirs)).not.toHaveProperty('faulty');
+  });
+
+  it('turns the public Aegis dome off and on with a command-core fault', async () => {
+    await giveInstrument(f.db, theirs, 'AEGIS', 7);
+    expect((await galaxy()).find((world) => world.id === theirs)?.shielded).toBe(true);
+    const beforeBreak = app.projections.status().publicGalaxy.invalidations;
+
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, theirs));
+    await setLevel(f.db, theirs, 'DEUTERIUM_PLANT', 1);
+    await f.db.insert(planetFaults).values(
+      FAULT_KINDS
+        .filter((kind) => kind !== 'CORE_OUTAGE')
+        .map((kind) => ({ planetId: theirs, kind, startedAt: f.clock.now() })),
+    );
+    const written = await f.db.transaction((tx) => breakFaults(tx, {
+      seasonId: f.seasonId,
+      planetId: theirs,
+      now: f.clock.now(),
+      count: 1,
+      seed: 'only-core-remains',
+    }));
+    expect(written).toEqual(['CORE_OUTAGE']);
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBeGreaterThan(beforeBreak);
+    });
+    expect((await galaxy()).find((world) => world.id === theirs)?.shielded).toBe(false);
+
+    const beforeRepair = app.projections.status().publicGalaxy.invalidations;
+    const [coreFault] = await f.db.select({ id: planetFaults.id }).from(planetFaults)
+      .where(eq(planetFaults.kind, 'CORE_OUTAGE'));
+    await f.db.transaction((tx) => completeFaultRepair(tx, coreFault!.id, f.clock.now()));
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBeGreaterThan(beforeRepair);
+    });
+    expect((await galaxy()).find((world) => world.id === theirs)?.shielded).toBe(true);
   });
 
   it('requires authentication', async () => {

@@ -47,6 +47,7 @@ import {
   neutralPlanetState,
   planets,
   players,
+  planetFaults,
   probeReports,
   probeWorldMemories,
   satellites,
@@ -805,7 +806,7 @@ export const rememberVisitedWorld = async (
  * said could be there. A probe is a look, not an act, so it locks nothing and
  * writes nothing: it computes what the battle's own tick would write.
  */
-async function standingAt(tx: Tx, target: typeof planets.$inferSelect, now: Date) {
+export async function standingAt(tx: Tx, target: typeof planets.$inferSelect, now: Date) {
   if (target.kind === 'NEUTRAL') {
     const { alloy, crystal, shield } = await neutralStanding(tx, target, now);
     return {
@@ -818,13 +819,46 @@ async function standingAt(tx: Tx, target: typeof planets.$inferSelect, now: Date
       shield,
     };
   }
-  const [[season], levels, hardwareRows] = await Promise.all([
+  const [[season], levels, hardwareRows, faultRows] = await Promise.all([
     tx.select().from(seasons).where(eq(seasons.id, target.seasonId)),
     buildingLevelsOf(tx, target.id),
     tx.select().from(satellites).where(eq(satellites.planetId, target.id)),
+    /*
+      WHAT IS BROKEN THERE, BECAUSE A PROBE READS THE SAME ECONOMY THE OWNER DOES.
+
+      `economyAt` advances the target to `now` to price the report, and without this it
+      would advance it as though every works were running — so a scout of a world whose
+      refinery has been dark for six hours would come home with six hours of alloy that
+      does not exist. The intel layer is the one thing in this game that must not be
+      wrong about a number somebody paid to learn.
+
+      It does NOT disclose the fault itself. This is the stock calculation; what a probe
+      is entitled to SEE is decided by the report, and nothing here adds a line to it.
+    */
+    tx.select().from(planetFaults).where(eq(planetFaults.planetId, target.id)),
   ]);
   if (!season) throw new Error('probe target belongs to a missing season');
-  return economyAt(target, levels, hardwareOf(hardwareRows, levels), season, now).state;
+  const leak = faultRows.find((row) => row.kind === 'VAULT_LEAK');
+  return economyAt(
+    target,
+    levels,
+    hardwareOf(hardwareRows, levels),
+    season,
+    now,
+    faultRows.map((row) => row.kind),
+    /*
+      SPENT = WHAT REACHED ORBIT PLUS WHAT IS ON ITS WAY, exactly as `loadLocked` reads
+      it. Passing only the pending pile would let the probe's arithmetic overrun the
+      ceiling and quote a world poorer than it is.
+    */
+    leak
+      ? {
+        alloy: leak.leakedAlloy + target.pendingLeakAlloy,
+        crystal: leak.leakedCrystal + target.pendingLeakCrystal,
+        deuterium: leak.leakedDeuterium + target.pendingLeakDeuterium,
+      }
+      : undefined,
+  ).state;
 }
 
 /** Snapshot the target and write both sides of the event. Called by the worker. */

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FAULT_KINDS } from '@astera/rules';
 import type { NotificationView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullName, unlockCopy } from '../i18n/names.js';
@@ -325,6 +326,30 @@ const strategicResult = z.object({
 });
 
 const colonyEvent = z.object({ targetPlanetId: z.string() });
+
+/**
+ * ONE BROKEN THING, NAMED. Koloni arızaları.
+ *
+ * `group` and `itemId` are parsed but not read here: the sentence does not need them and
+ * `Signals` takes them straight off the raw payload to build the deep link. Declared all
+ * the same, so this schema is the one statement of what the server sends.
+ */
+const colonyFault = z.object({
+  planetId: z.string(),
+  planetName: z.string(),
+  fault: z.enum(FAULT_KINDS),
+  group: z.string().optional(),
+  itemId: z.string().optional(),
+});
+
+/** How far a world has fallen and how long is left of it. */
+const loyaltyWarning = z.object({
+  planetId: z.string(),
+  planetName: z.string(),
+  loyalty: z.number(),
+  faults: z.number(),
+  minutesLeft: z.number(),
+});
 
 /**
  * A PUBLIC EVENT STARTING OR ENDING — AND THERE ARE TWO KINDS OF THEM. D156.
@@ -962,6 +987,39 @@ export function describeNotification(notification: NotificationView, now: number
       return i18n.t('notifications.settlementLost');
     }
 
+    /*
+      SOMETHING BROKE, AND THE SENTENCE NAMES BOTH THE WORLD AND THE THING.
+
+      A commander may hold four worlds and this is the only news in the game where
+      knowing WHICH is not enough — "Vantage: something is broken" would send them
+      hunting through four tabs for a row the payload already knows. The name of the
+      fault is its own translation key, shared with the row and the repair sheet, so all
+      three call one thing by one name.
+    */
+    case 'colony_fault': {
+      const parsed = colonyFault.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('notifications.colonyFault', {
+        planet: parsed.data.planetName,
+        fault: i18n.t(`faults.name.${parsed.data.fault}`),
+      });
+    }
+
+    /*
+      THE WORLD IS ABOUT TO STOP BEING YOURS, and the sentence leads with the TIME.
+      "34%" is not something a commander can act on; "eleven hours" is the figure that
+      decides between fixing it now and fixing it tonight.
+    */
+    case 'colony_loyalty_warning': {
+      const parsed = loyaltyWarning.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      return i18n.t('notifications.colonyLoyalty', {
+        planet: parsed.data.planetName,
+        count: parsed.data.faults,
+        time: duration(parsed.data.minutesLeft),
+      });
+    }
+
     case 'galaxy_event_started': {
       const parsed = galaxyLifecycle.safeParse(notification.payload);
       if (!parsed.success) return null;
@@ -1101,7 +1159,16 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'raided':
     case 'colony_lost':
     case 'settlement_lost':
+    case 'colony_loyalty_warning':
       return 'threat';
+    /*
+      A FAULT IS NOT AN ATTACK, and the ink says so. Threat red in this game means
+      somebody is coming for you; spending it on an outage would cost the colour its
+      meaning the first time a commander saw four red rows about their own plumbing.
+      The LOYALTY WARNING above is a threat, because that one ends with a world gone.
+    */
+    case 'colony_fault':
+      return 'watch';
     case 'scan_detected':
       return 'watch';
     case 'strategic_intercepted': {

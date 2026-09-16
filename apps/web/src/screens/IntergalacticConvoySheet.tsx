@@ -24,6 +24,7 @@ import {
 import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { duration, useNow } from '../lib/time.js';
+import { launchFault } from '../lib/faults.js';
 import { hullLabel } from '../i18n/names.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -59,6 +60,7 @@ export function IntergalacticConvoySheet({
   const { t } = useTranslation();
   const say = useToast();
   const launch = useLaunchIntergalacticConvoy(planet.planet.id);
+  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   const now = useNow(5_000);
   const [fleet, setFleet] = useState<Fleet>({});
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -116,8 +118,10 @@ export function IntergalacticConvoySheet({
     whatever is in the hangar. D124 — it is stated on the control, never only in
     the server's answer.
   */
-  const refusal = planet.convoyOccurrenceSpent === true
-    ? t('convoy.alreadyStruck')
+  const refusal = launchBlocked
+    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    : planet.convoyOccurrenceSpent === true
+      ? t('convoy.alreadyStruck')
     : ships === 0
       ? t('convoy.chooseFleet')
       : firepower <= 0
@@ -163,7 +167,7 @@ export function IntergalacticConvoySheet({
             variant="commit"
             size="lg"
             className="flex-[2]"
-            disabled={launch.isPending}
+            disabled={launch.isPending || launchBlocked}
             onClick={() => {
               launch.mutate({
                 occurrenceId: event.id,
@@ -190,7 +194,9 @@ export function IntergalacticConvoySheet({
               });
             }}
           >
-            {launch.isPending ? t('convoy.sending') : t('convoy.commit')}
+            {launchBlocked
+              ? t('faults.launchBlock.SHIPYARD_REVOLT')
+              : launch.isPending ? t('convoy.sending') : t('convoy.commit')}
           </Button>
         </div>
       ) : (

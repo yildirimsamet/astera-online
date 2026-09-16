@@ -17,6 +17,7 @@ export * from './constants.js';
 export * from './rng.js';
 export * from './hulls.js';
 export * from './economy.js';
+export * from './faults.js';
 export * from './fuel.js';
 export * from './tech.js';
 export * from './travel.js';

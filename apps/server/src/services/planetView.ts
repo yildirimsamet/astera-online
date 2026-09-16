@@ -1,5 +1,9 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lte, ne } from 'drizzle-orm';
 import {
+  faultsPossible,
+  hasFault,
+  minutesUntilLoyaltyZero,
+  repairCost,
   INSTRUMENT_IDS,
   SHIELD,
   SATELLITE_IDS,
@@ -24,7 +28,7 @@ import {
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
-import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, players, strategicAssets } from '../db/schema.js';
+import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, planetFaults, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
 import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
 import { researchCoreLevel, researchView } from './researchState.js';
@@ -152,15 +156,27 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
    * anything that derives a cap or a rate from a level must go through it.
    */
   const boost = productionMult(p.orbit);
-  const perHourAlloy = alloyRate(p.buildings.REFINERY) * boost;
-  const perHourCrystal = crystalRate(p.buildings.EXTRACTOR) * boost;
+  const nominalPerHourAlloy = alloyRate(p.buildings.REFINERY) * boost;
+  const nominalPerHourCrystal = crystalRate(p.buildings.EXTRACTOR) * boost;
   /**
    * The floor is HOURS OF PRODUCTION, so it needs the producing levels as well as
    * the Vault's. It reads the unboosted rate on purpose: a Foundry lifts the store
    * without lifting the floor, so a bigger planet is slightly more exposed.
    */
   // What the plant makes, boosted like everything else the works produce. T5.
-  const perHourDeuterium = deuteriumRate(p.buildings.DEUTERIUM_PLANT) * boost;
+  const nominalPerHourDeuterium = deuteriumRate(p.buildings.DEUTERIUM_PLANT) * boost;
+  /*
+    THE VIEW PUBLISHES WHAT IS RUNNING, NOT WHAT THE HARDWARE COULD MAKE.
+
+    `advanceEconomy` has always applied the outage, but these three figures stayed
+    nominal. The browser projects the Works from them between reads, so it visibly
+    manufactured ore the server would never credit and kept the inflow animation
+    running over a dark refinery. Capacity remains nominal below: repairing a plant
+    resumes the same vessels; an outage does not shrink them.
+  */
+  const perHourAlloy = hasFault(p.faults, 'REFINERY_OUTAGE') ? 0 : nominalPerHourAlloy;
+  const perHourCrystal = hasFault(p.faults, 'EXTRACTOR_OUTAGE') ? 0 : nominalPerHourCrystal;
+  const perHourDeuterium = hasFault(p.faults, 'PLANT_OUTAGE') ? 0 : nominalPerHourDeuterium;
 
   const vaultCapacity = vaultProtects(
     p.buildings.VAULT,
@@ -232,10 +248,15 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       alloy: Math.floor(p.alloy),
       crystal: Math.floor(p.crystal),
       deuterium: Math.floor(p.deuterium),
-      alloyCap: storageCap(perHourAlloy, p.buildings.VAULT),
-      crystalCap: storageCap(perHourCrystal, p.buildings.VAULT),
-      deuteriumCap: deuteriumStorageCap(perHourDeuterium, perHourCrystal, p.buildings.VAULT),
+      alloyCap: storageCap(nominalPerHourAlloy, p.buildings.VAULT),
+      crystalCap: storageCap(nominalPerHourCrystal, p.buildings.VAULT),
+      deuteriumCap: deuteriumStorageCap(
+        nominalPerHourDeuterium,
+        nominalPerHourCrystal,
+        p.buildings.VAULT,
+      ),
       alloyPerHour: Math.round(perHourAlloy),
+      nominalAlloyPerHour: Math.round(nominalPerHourAlloy),
       /*
         THE RATE THE HUD WAS HARD-CODING TO ZERO. T5.
 
@@ -247,6 +268,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       */
       deuteriumPerHour: Math.round(perHourDeuterium),
       crystalPerHour: Math.round(perHourCrystal),
+      nominalCrystalPerHour: Math.round(nominalPerHourCrystal),
+      nominalDeuteriumPerHour: Math.round(nominalPerHourDeuterium),
       /**
        * The works: what is waiting to be collected, and the ceiling it stops at
        * (D16). Both are needed on the client, because the interface has to say
@@ -256,9 +279,12 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       bufferAlloy: Math.floor(p.bufferAlloy),
       bufferCrystal: Math.floor(p.bufferCrystal),
       bufferDeuterium: Math.floor(p.bufferDeuterium),
-      bufferAlloyCap: collectorCap(perHourAlloy),
-      bufferCrystalCap: collectorCap(perHourCrystal),
-      bufferDeuteriumCap: deuteriumCollectorCap(perHourDeuterium, perHourCrystal),
+      bufferAlloyCap: collectorCap(nominalPerHourAlloy),
+      bufferCrystalCap: collectorCap(nominalPerHourCrystal),
+      bufferDeuteriumCap: deuteriumCollectorCap(
+        nominalPerHourDeuterium,
+        nominalPerHourCrystal,
+      ),
       /**
        * WHAT IS ACTUALLY SAFE, AS ONE FIGURE. D61.
        *
@@ -323,6 +349,53 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     researchCore: await researchCoreLevel(tx, p.playerId),
     /** One commander lane, identical whichever controlled world funded the view. */
     researchQueue: researchQueue.map(researchOrderView),
+    /**
+     * WHAT IS BROKEN, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
+     *
+     * Read again here rather than taken from `loadLocked`, which carries only the
+     * KINDS. Five of the eight are enforced at a flight bay, a battle or a sensor post
+     * and none of those needs a repair timestamp; making every transaction in the game
+     * carry one so a screen could draw it is the wrong way round. This is a screen
+     * read, and a screen read may pay for its own query.
+     *
+     * THE PRICE IS SERVER-SIDE, like every other price on this payload. The client
+     * imports `repairCost` and could work it out, but a surface that mixes computed
+     * and authoritative figures is one modifier away from quoting a number the repair
+     * endpoint will refuse.
+     */
+    faults: (await tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)))
+      .map((fault) => ({
+        id: fault.id,
+        kind: fault.kind,
+        startedAt: fault.startedAt,
+        cost: repairCost(fault.kind, p.buildings.CORE),
+        /**
+         * NULL UNTIL SOMEBODY PAYS, and it never goes back to null. There is no cancel:
+         * the strip draws three lanes and none of them carries a way out.
+         */
+        repair: fault.repairReadyAt && fault.repairSlot !== null
+          ? { slot: fault.repairSlot, readyAt: fault.repairReadyAt }
+          : null,
+      })),
+    /**
+     * HOW MUCH OF THIS WORLD IS STILL YOURS, and how long that lasts.
+     *
+     * NULL WHERE IT CANNOT MOVE — a capital, or a colony below the Core gate. A bar
+     * that can only ever read full is furniture, and this screen has no room for
+     * furniture at 350 wide.
+     *
+     * `minutesLeft` is the half that makes it a DECISION rather than a readout. The
+     * commander does not need to know they are at 34%; they need to know they have
+     * eleven hours, because that is the figure "do I fix this now or after work" is
+     * answered with. Null while nothing is falling.
+     */
+    loyalty: faultsPossible({
+      kind: p.kind,
+      coreLevel: p.buildings.CORE,
+      plantLevel: p.buildings.DEUTERIUM_PLANT,
+    })
+      ? { value: p.loyalty, minutesLeft: minutesUntilLoyaltyZero(p.loyalty, p.faults.length) }
+      : null,
     /** Absolute instants keep every client on the same queue clock. D4. */
     queues: {
       CONSTRUCTION: queued

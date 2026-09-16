@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FAULT_KINDS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -216,6 +217,8 @@ const archivedSeasonContext = z.object({
   status: archivedSeasonStatus,
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
+  closedAt: z.coerce.date().nullable().optional(),
+  endReason: z.enum(['SCHEDULED_END', 'FORCED_WIPE']).nullable().optional(),
 });
 
 export const seasonArchiveSchema = z.object({
@@ -255,6 +258,10 @@ const seasonStatsResources = resources.extend({
 
 const seasonStatsSnapshotSchema = z.object({
   version: z.literal(1),
+  coverage: z.object({
+    kind: z.literal('partial'),
+    reason: z.literal('TELEMETRY_CUTOVER'),
+  }).optional(),
   competition: z.object({
     battles: z.number().int().nonnegative(),
     attacks: z.number().int().nonnegative(),
@@ -309,6 +316,14 @@ const careerSeasonSchema = archivedSeasonContext.extend({
   statsAvailable: z.boolean(),
 });
 
+const legacyCompetitionSchema = z.object({
+  battles: z.number().nonnegative(),
+  attacks: z.number().nonnegative(),
+  defences: z.number().nonnegative(),
+  damageDealt: z.number().nonnegative(),
+  damageTaken: z.number().nonnegative(),
+});
+
 export const seasonCommanderProfileSchema = z.object({
   selected: archivedSeasonContext.extend({
     resultId: z.string().uuid(),
@@ -320,6 +335,11 @@ export const seasonCommanderProfileSchema = z.object({
     dominion: dominionInteger,
     title: z.string(),
     recap: seasonResultSchema.shape.recap,
+    legacyStats: z.object({ competition: legacyCompetitionSchema }).optional(),
+    legacyAverages: z.object({
+      cohortSize: z.number().int().positive(),
+      competition: legacyCompetitionSchema,
+    }).nullable().optional(),
     stats: seasonStatsSnapshotSchema.nullable(),
     averages: seasonStatsAveragesSchema.nullable(),
     reward: z.null(),
@@ -330,8 +350,12 @@ export const seasonCommanderProfileSchema = z.object({
     championships: z.number().int().nonnegative(),
     podiums: z.number().int().nonnegative(),
     topTen: z.number().int().nonnegative(),
+    competitionTotals: legacyCompetitionSchema.extend({
+      seasonsCovered: z.number().int().nonnegative(),
+    }),
     totals: z.object({
       seasonsCovered: z.number().int().positive(),
+      partialSeasons: z.number().int().nonnegative(),
       stats: seasonStatsSnapshotSchema,
     }).nullable(),
     seasons: z.array(careerSeasonSchema),
@@ -616,9 +640,13 @@ export const planetSchema = z.object({
     crystalCap: z.number(),
     deuteriumCap: z.number(),
     alloyPerHour: z.number(),
+    /** Hardware output before a temporary colony fault; used to state the outage cost. */
+    nominalAlloyPerHour: z.number().optional(),
   /** Zero on a world with no refinery, and absent on a server that predates one. */
   deuteriumPerHour: z.number().optional(),
     crystalPerHour: z.number(),
+    nominalCrystalPerHour: z.number().optional(),
+    nominalDeuteriumPerHour: z.number().optional(),
     /**
      * The works: uncollected production, and the ceiling it stops at. D16.
      *
@@ -746,6 +774,34 @@ export const planetSchema = z.object({
    * missing key simply means no charge is known.
    */
   interceptor: strategicAsset.nullable().optional(),
+  /**
+   * WHAT IS BROKEN ON THIS WORLD, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
+   *
+   * Optional for a rolling deploy: an older server sends nothing and every surface
+   * reads an empty list, which is exactly "nothing is broken".
+   *
+   * `cost` IS THE SERVER'S FIGURE, not a local computation. `repairCost` is a pure
+   * function this client already imports, and a screen that quoted its own answer would
+   * be one balance change away from showing a price the repair endpoint refuses.
+   */
+  faults: z.array(z.object({
+    id: z.string(),
+    kind: z.enum(FAULT_KINDS),
+    startedAt: z.coerce.date(),
+    cost: resources,
+    /** Absolute instant, like every other queue clock. Null until somebody pays. */
+    repair: z.object({ slot: z.number().int(), readyAt: z.coerce.date() }).nullable(),
+  })).optional(),
+  /**
+   * HOW MUCH OF THIS WORLD IS STILL YOURS. Null where it cannot move.
+   *
+   * `minutesLeft` is the half that makes it a decision: 34% is not a length of time, and
+   * "eleven hours" is what "now or after work" is answered with.
+   */
+  loyalty: z.object({
+    value: z.number(),
+    minutesLeft: z.number().nullable(),
+  }).nullable().optional(),
   colonies: z.object({
     capitalCore: z.number(),
     colonies: z.number(),
@@ -1030,6 +1086,8 @@ export const galaxySchema = z.object({
       shielded: z.boolean().default(false),
       isSelf: z.boolean(),
       isOwned: z.boolean().optional(),
+      /** Present only on one of the caller's own worlds with at least one live fault. */
+      faulty: z.boolean().optional(),
       isCapital: z.boolean().optional(),
       /** Client-derived from current `clanPresence`; never inferred from stale intel. */
       clanmate: z.boolean().optional(),
@@ -1981,6 +2039,12 @@ const ordinaryBattleReport = z.object({
       cargoLimited: z.boolean().default(false),
       /** Defender only: ground guns that walked back out of their own wreckage. */
       defenceSalvage: fleet.default({}),
+      /**
+       * Defender only: what this defeat broke on the colony. Koloni arızaları.
+       * Optional for a rolling deploy, like `salvage`: a server that predates the column
+       * sends nothing and the report simply has no line for it.
+       */
+      colonyFaults: z.array(z.enum(FAULT_KINDS)).optional(),
       /** Minutes the defender's works were knocked offline by this battle. */
       disruptedMinutes: z.number().default(0),
       /** What the fight left in orbit for whoever gets there first. */
@@ -2741,6 +2805,8 @@ export type RivalMark = SeasonInfo['rivals'][number];
 export type ActiveGalaxyEvent = z.infer<typeof activeGalaxyEventsSchema>['events'][number];
 export type HistoricalSeasonResult = z.infer<typeof historicalSeasonResultSchema>;
 type ParsedPlanetView = z.infer<typeof planetSchema>;
+/** One broken thing on one world, as the repair surfaces read it. */
+export type FaultView = NonNullable<ParsedPlanetView['faults']>[number];
 type ParsedQueues = NonNullable<ParsedPlanetView['queues']>;
 export type ServerBuildOrderView = ParsedQueues[keyof ParsedQueues][number];
 export type ResearchOrderView = NonNullable<ParsedPlanetView['researchQueue']>[number];
@@ -2849,3 +2915,17 @@ export const returnStatusSchema = z.object({
   application: z.object({ id: z.string(), position: z.number().int().positive() }).nullable(),
 });
 export type ReturnStatus = z.infer<typeof returnStatusSchema>;
+
+/**
+ * What starting a repair answers with. Koloni arızaları.
+ *
+ * `readyAt` is an absolute instant, like every other queue clock on this boundary: the
+ * client derives the countdown from the shared server clock rather than accepting a
+ * duration that is stale the moment it is serialised.
+ */
+export const faultRepairSchema = z.object({
+  faultId: z.string(),
+  slot: z.number().int(),
+  readyAt: z.coerce.date(),
+  cost: resources,
+});

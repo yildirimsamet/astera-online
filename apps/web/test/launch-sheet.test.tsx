@@ -68,6 +68,30 @@ const openAllBands = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 describe('choosing a fleet to attack with', () => {
+  it('keeps the launch disabled and names the shipyard revolt on the button', async () => {
+    render(
+      <LaunchSheet
+        target={{ kind: 'world', world: target }}
+        planet={planetView({
+          fleet: { DART: 4 },
+          faults: [{
+            id: 'fault-yard',
+            kind: 'SHIPYARD_REVOLT',
+            startedAt: new Date(),
+            cost: { alloy: 100, crystal: 0, deuterium: 0 },
+            repair: null,
+          }],
+        }, { deuterium: 500_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />,
+      { wrapper },
+    );
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /max dart/i }));
+    expect(screen.getByRole('button', { name: /shipyard revolt/i })).toBeDisabled();
+  });
+
   it('labels per-ship values and applies the commander’s actual research', () => {
     const researched = ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'CARGO_HOLDS'];
     const planet = planetView({ fleet: { DART: 200 }, research: planetView().research.map(project =>

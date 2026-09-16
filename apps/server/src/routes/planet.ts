@@ -11,6 +11,7 @@ import {
 } from '@astera/rules';
 import { and, asc, eq } from 'drizzle-orm';
 import { planets } from '../db/schema.js';
+import { startFaultRepair } from '../services/faultRepair.js';
 import { planetView } from '../services/planetView.js';
 import {
   buildUnits,
@@ -302,6 +303,28 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
     z.object({}).strict().parse(req.body ?? {});
     const owner = await explicitPlanet(req.accountId!, req.params);
     return buildInterceptor(app.db, owner.planetId, app.clock, owner.playerId);
+  });
+
+  /**
+   * PUT ONE FAULT RIGHT. Koloni arızaları.
+   *
+   * THERE IS NO CANCEL ROUTE AND THERE IS NOT GOING TO BE ONE. Owner instruction:
+   * *"Arıza fix başladıgında cancel edilemez olsun hiç ugrasma."* Its absence is the
+   * contract — the strip draws three lanes with no way out and the sheet says so before
+   * the button is pressed, which is the same promise stated twice rather than a gap.
+   *
+   * The planet is named in the path rather than taken from the session, because a
+   * commander repairs a COLONY far more often than their capital and the notification
+   * that brought them here names the world.
+   */
+  app.post('/api/planets/:planetId/faults/:faultId/repair', { preHandler: requireAuth }, async (req) => {
+    const { planetId, faultId } = z
+      .object({ planetId: z.string().uuid(), faultId: z.string().uuid() })
+      .strict()
+      .parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    return startFaultRepair(app.db, owner.planetId, faultId, app.clock, owner.playerId);
   });
 
   /**

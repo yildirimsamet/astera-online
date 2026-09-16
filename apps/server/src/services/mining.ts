@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   asteroidActive,
   claimOre,
+  hasFault,
   interceptAsteroid,
   prospectorHold,
   prospectorReadyAt,
@@ -29,6 +30,7 @@ import {
   type SatelliteSet,
   type Vec3,
   orbitDiscoveredAt,
+  type FaultSet,
 } from '@astera/rules';
 import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -460,7 +462,8 @@ export async function launchMining(
 
     // Before the intercept solve: no point finding a meeting point for a launch
     // that has nowhere to launch from. D28.
-    await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    assertProspectorsUsable(origin.faults, planetId);
+    await assertFreeBay(tx, planetId, origin.buildings.CORE, origin.faults);
     await assertProspectorsRested(tx, planetId, origin.now, available, craft);
 
     if (!asteroidActive(rock, nowMinutes)) {
@@ -1278,7 +1281,8 @@ export async function launchHarvest(
       });
     }
 
-    await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    assertProspectorsUsable(origin.faults, planetId);
+    await assertFreeBay(tx, planetId, origin.buildings.CORE, origin.faults);
     /*
       THE LANE THIS RULE EXISTS FOR. D183. A field over the commander's own world
       is a zero-length leg, so it is the salvage run that turns into tapping — but
@@ -1373,4 +1377,27 @@ export async function launchHarvest(
       ...await launchViews(tx, origin, clock),
     };
   });
+}
+
+/**
+ * KAZICI MERKEZİNDE ARIZA: THE PROSPECTORS STAY ON THE PAD. `PROSPECTOR_FAULT`.
+ *
+ * Guarded at the two LAUNCHES — a run at a rock and a run at a field — and at neither
+ * of the two things that bring craft home. `recallMining` turns an outbound run round
+ * and is deliberately left alone: calling your own craft back is not what a fault in
+ * the pit should be able to prevent, and refusing it would strand them until a repair
+ * finished.
+ *
+ * It sits BEFORE `assertFreeBay` on purpose. Both refuse the same launch, and the
+ * first refusal is the one the player reads; "the pit is out" is the fact they can act
+ * on, where "no free bay" would send them looking at a flight board that is fine.
+ */
+function assertProspectorsUsable(faults: FaultSet, planetId: string): void {
+  if (!hasFault(faults, 'PROSPECTOR_FAULT')) return;
+  throw new GameError(
+    'FAULT_PROSPECTOR',
+    'The prospecting pit is out. No craft can be worked until it is put right.',
+    409,
+    { planetId },
+  );
 }

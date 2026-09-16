@@ -19,6 +19,7 @@ import {
   clanMemberships,
   clans,
   neutralPlanetState,
+  planetFaults,
   planets,
   players,
   satellites,
@@ -220,7 +221,7 @@ export async function publicWorlds(
   const ids = rows.map((r) => r.planet.id);
   if (ids.length === 0) return [];
 
-  const [buildingRows, satelliteRows] = await Promise.all([
+  const [buildingRows, satelliteRows, coreOutageRows] = await Promise.all([
     db
       .select({ planetId: buildings.planetId, type: buildings.type, level: buildings.level })
       .from(buildings)
@@ -229,11 +230,19 @@ export async function publicWorlds(
       .select({ planetId: satellites.planetId, type: satellites.type })
       .from(satellites)
       .where(inArray(satellites.planetId, ids)),
+    db
+      .select({ planetId: planetFaults.planetId })
+      .from(planetFaults)
+      .where(and(
+        inArray(planetFaults.planetId, ids),
+        eq(planetFaults.kind, 'CORE_OUTAGE'),
+      )),
   ]);
 
   const levels = new Map(buildingRows.map((r) => [`${r.planetId}:${r.type}`, r.level]));
   const installed = publicOrbit(satelliteRows);
   const shielded = publicShields(satelliteRows);
+  const darkCores = new Set(coreOutageRows.map((row) => row.planetId));
   const commanders = new Map<string, { score: number; joinedAt: Date }>();
   for (const row of rows) {
     const playerId = row.planet.controllerPlayerId;
@@ -299,7 +308,9 @@ export async function publicWorlds(
       coreTier: coreTier(core),
       coreLevel: core,
       satellites: installed.get(r.planet.id) ?? [],
-      shielded: shielded.has(r.planet.id),
+      // A dome is public hardware, and a dark dome is a public physical state too.
+      // Keep the fault itself private; publish only the observable consequence.
+      shielded: shielded.has(r.planet.id) && !darkCores.has(r.planet.id),
       state,
       ...(r.clanId && r.clanName && r.clanTag
         ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag } }

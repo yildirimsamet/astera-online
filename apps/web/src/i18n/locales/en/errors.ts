@@ -17,6 +17,8 @@ export const errors = {
   ADMIN_FORBIDDEN: 'Admin access is required',
   PLANET_NOT_OWNED: 'You do not control that world',
   WORLD_RECOVERING: 'That world is recovering',
+  COLONY_SECESSION_PENDING: 'That colony has reached zero loyalty and is seceding',
+  FAULT_ITEM_BROKEN: 'Repair this item before improving it',
   OCCUPATION_PROTECTED: 'That world is under occupation protection',
   COLONY_CAP: 'Your Command Core cannot hold another colony',
   NO_ACTIVE_CLAIM: 'No settlement claim is open',

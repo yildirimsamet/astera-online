@@ -279,6 +279,18 @@ export const leaderboard = {
     averageShort: 'Diğerleri: {{value}}',
     statsUnavailable: 'Bu sezonun ayrıntılı kaydı tutulmamış.',
     statsUnavailableHint: 'Sıran ve unvanın duruyor. O sezon ölçülmemiş olan şeyler sıfır gibi gösterilmiyor.',
+    legacyStats: {
+      title: 'Korunan sezon kaydı',
+      hint: 'Kaydedilmiş savaş verileri gösteriliyor. O dönemde ölçülmeyen ekonomi, filo üretimi ve keşif verileri gösterilmiyor.',
+    },
+    partialStats: {
+      title: 'Kısmi telemetri',
+      hint: 'Telemetri başlamadan önceki bazı hareketler eksik olabilir; kaydedilmiş rakamlar olduğu gibi korunur.',
+    },
+    forcedEnd: {
+      title: 'Sezon erken sona erdi',
+      hint: 'Oynanan dönem; son sıralama ve ödüllerle birlikte kalıcı olarak kaydedildi.',
+    },
     none: 'Yok',
     ratios: {
       trade: 'Hasar takası',
@@ -322,9 +334,11 @@ export const leaderboard = {
       podiums: 'Podyum',
       topTen: 'İlk 10',
       noTelemetry: 'Ayrıntılı kaydı olan tamamlanmış sezon henüz yok.',
+      recordedCombatTotals: 'Kaydedilmiş savaş toplamları',
       recordedTotals: 'Kaydedilmiş kariyer toplamları',
       covered_one: '{{count}} sezon kapsanıyor',
       covered_other: '{{count}} sezon kapsanıyor',
+      coveredWithPartial: '{{count}} sezon kapsanıyor · {{partial}} sezonda telemetri kısmi',
       seasons: 'Sezon sezon',
     },
   },

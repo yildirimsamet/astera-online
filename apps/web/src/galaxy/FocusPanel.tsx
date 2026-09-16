@@ -46,6 +46,7 @@ import {
   type SettlementBlock,
 } from '../lib/colonization.js';
 import { useAccordion } from '../lib/accordion.js';
+import { launchFault, type LaunchFault } from '../lib/faults.js';
 import { deathStarsOf, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
@@ -578,6 +579,9 @@ export function PlanetFocus({
   const originRecovering = Boolean(
     planet.planet.recoveryUntil && planet.planet.recoveryUntil.getTime() > now,
   );
+  const originShipyardRevolt = (planet.faults ?? []).some(
+    (fault) => fault.kind === 'SHIPYARD_REVOLT',
+  );
   const colonyPhase = colonizationPhase(target, now, settlementInFlight);
   /**
    * A CLAIM WINDOW SURVIVES THE FOG, SO THE CONTROL HAS TO AS WELL. D112/D127.
@@ -661,9 +665,11 @@ export function PlanetFocus({
     fuel: settlementFuel,
     canArrive: settlementCanArrive,
   });
-  const settlementBlockLabel = settleBlock === null ? null : t(SETTLE_LABEL[settleBlock.code]);
+  const settlementBlockLabel = originShipyardRevolt
+    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    : settleBlock === null ? null : t(SETTLE_LABEL[settleBlock.code]);
   const settlementBlockReason = settleBlock === null ? null : settleReason(settleBlock, t);
-  const settlementReady = claimActive && settleBlock === null;
+  const settlementReady = claimActive && settleBlock === null && !originShipyardRevolt;
   /**
    * A STRIKE IS NEVER AN ACQUISITION. D167.
    *
@@ -696,6 +702,8 @@ export function PlanetFocus({
   const hasDeathStar = deathStarsOf(planet).length > 0;
   const deathStarBlock = !deathStarReady
     ? t('focus.planet.deathStarUnavailable')
+    : originShipyardRevolt
+      ? t('faults.launchBlock.SHIPYARD_REVOLT')
     : shieldedUntil !== null
       ? t('focus.planet.deathStarProtected')
       : originRecovering
@@ -897,7 +905,9 @@ export function PlanetFocus({
               for the same no. The same argument puts it ahead of a shield clock
               here: the shield expires, the development gap does not.
             */
-            aria-label={t(outOfBand
+            aria-label={t(originShipyardRevolt
+              ? 'focus.planet.attackShipyardRevolt'
+              : outOfBand
               ? 'focus.planet.attackOutOfBand'
               : shieldedUntil !== null
                 ? 'focus.planet.attackProtected'
@@ -906,7 +916,7 @@ export function PlanetFocus({
                   : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
                     ? 'focus.planet.attackNeutralAgain'
                     : 'focus.planet.attack')}
-            disabled={outOfBand || originRecovering || shieldedUntil !== null}
+            disabled={originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
             onClick={onAttack}
           >
             {/*
@@ -925,7 +935,9 @@ export function PlanetFocus({
               rule: "protected for 4h" is a fact a commander can plan against,
               where "that commander is new" is trivia about somebody else.
             */}
-            {outOfBand
+            {originShipyardRevolt
+              ? t('focus.planet.attackShipyardRevoltShort')
+              : outOfBand
               ? t('focus.planet.attackOutOfBandShort')
               : shieldedUntil !== null
               ? t('focus.planet.attackProtectedShort', {
@@ -1171,6 +1183,7 @@ function OwnedPlanetFocus({
   const originRecovering = Boolean(
     origin.planet.recoveryUntil && origin.planet.recoveryUntil.getTime() > now,
   );
+  const originShipyardRevolt = launchFault(origin.faults, 'fleet') !== null;
 
   return (
     <Shell
@@ -1223,12 +1236,14 @@ function OwnedPlanetFocus({
         <button
           type="button"
           className="slab slab-primary w-full whitespace-normal px-3 leading-tight"
-          disabled={originRecovering}
+          disabled={originRecovering || originShipyardRevolt}
           onClick={onTransfer}
         >
-          {t(originRecovering
-            ? 'focus.planet.transferRecovering'
-            : 'focus.planet.transferPrepare')}
+          {originShipyardRevolt
+            ? t('faults.launchBlock.SHIPYARD_REVOLT')
+            : t(originRecovering
+              ? 'focus.planet.transferRecovering'
+              : 'focus.planet.transferPrepare')}
         </button>
       )}
     </Shell>
@@ -2138,6 +2153,7 @@ export function AsteroidFocus({
   run,
   craftReadyAt,
   craftCooldowns,
+  launchBlock,
   onClose,
   onSend,
   busy,
@@ -2170,6 +2186,7 @@ export function AsteroidFocus({
   /** Legacy aggregate fallback only when an older server omits independent batches. */
   craftReadyAt: Date | null;
   craftCooldowns?: readonly CraftCooldown[];
+  launchBlock?: LaunchFault;
   onClose: () => void;
   onSend: (craft: number) => void;
   busy: boolean;
@@ -2234,13 +2251,15 @@ export function AsteroidFocus({
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
             disabled={
-              busy || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
+              busy || launchBlock !== undefined || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
             }
             onClick={() => {
               onSend(sending);
             }}
           >
-            {needsSpectrometry
+            {launchBlock !== undefined
+              ? t(`faults.launchBlock.${launchBlock}`)
+              : needsSpectrometry
               ? t('focus.asteroid.researchNeeded')
               : resting !== null
                 ? t('focus.asteroid.resting', { duration: countdown(resting) })
@@ -2384,6 +2403,7 @@ const MOBILE_HULL_IDS = MOBILE_HULLS;
 export function PirateFocus({
   pirate,
   fleetAtHome,
+  launchBlocked = false,
   onClose,
   onAttack,
   raiding,
@@ -2393,6 +2413,7 @@ export function PirateFocus({
   pirate: PirateContact;
   /** What is STANDING at the selected world. Nothing in the air can be sent again. */
   fleetAtHome: Fleet;
+  launchBlocked?: boolean;
   onClose: () => void;
   /** Opens `LaunchSheet` — the game's one commitment surface. */
   onAttack: () => void;
@@ -2472,10 +2493,12 @@ export function PirateFocus({
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
-            disabled={!hasShips}
+            disabled={launchBlocked || !hasShips}
             onClick={onAttack}
           >
-            {hasShips ? t('pirate.attack') : t('pirate.noShips')}
+            {launchBlocked
+              ? t('faults.launchBlock.SHIPYARD_REVOLT')
+              : hasShips ? t('pirate.attack') : t('pirate.noShips')}
           </button>
         )
       }
@@ -2598,6 +2621,7 @@ export function IntergalacticConvoyFocus({
   hasCombatCraft,
   launchLocked,
   occurrenceSpent,
+  launchBlocked = false,
   onClose,
   onRaid,
   open,
@@ -2610,6 +2634,7 @@ export function IntergalacticConvoyFocus({
   launchLocked: boolean;
   /** This world has already spent its one strike at the convoy that is up. D124. */
   occurrenceSpent: boolean;
+  launchBlocked?: boolean;
   onClose: () => void;
   onRaid: () => void;
   open: boolean;
@@ -2626,8 +2651,10 @@ export function IntergalacticConvoyFocus({
     said nothing about the quota, so the control invited a launch the server was
     always going to refuse.
   */
-  const refusal = occurrenceSpent
-    ? t('convoy.alreadyStruck')
+  const refusal = launchBlocked
+    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    : occurrenceSpent
+      ? t('convoy.alreadyStruck')
     : launchLocked
       ? t('convoy.alreadyAway')
       : !hasCombatCraft
@@ -2682,6 +2709,7 @@ export function TradeFocus({
   fleetAway,
   minutesLeft,
   reachMinutes: reach,
+  launchBlocked = false,
   onClose,
   onTrade,
   open,
@@ -2703,6 +2731,7 @@ export function TradeFocus({
    * and the sheet quotes that exactly, from the same solver.
    */
   reachMinutes: number | null;
+  launchBlocked?: boolean;
   onClose: () => void;
   /** Opens `TradeSheet` — the surface the swap is actually committed on. */
   onTrade: () => void;
@@ -2756,7 +2785,7 @@ export function TradeFocus({
           type="button"
           data-testid="trade-open"
           className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
-          disabled={!hasCraft || !hasCarrier || tooLate}
+          disabled={launchBlocked || !hasCraft || !hasCarrier || tooLate}
           onClick={onTrade}
         >
           {/*
@@ -2765,8 +2794,10 @@ export function TradeFocus({
             — depends on a convoy that has not been chosen yet, so it belongs to the
             sheet. What a rail can answer is whether there is any point opening one.
           */}
-          {carriersAway
-            ? t('trade.carriersAway')
+          {launchBlocked
+            ? t('faults.launchBlock.SHIPYARD_REVOLT')
+            : carriersAway
+              ? t('trade.carriersAway')
             : !hasCraft
               ? t('trade.noCraft')
               : !hasCarrier
@@ -3462,6 +3493,7 @@ export function DebrisFocus({
   run,
   craftReadyAt,
   craftCooldowns,
+  launchBlock,
   onSend,
   onClose,
   busy,
@@ -3484,6 +3516,7 @@ export function DebrisFocus({
   /** Legacy fallback only; new servers publish the independent landed batches. */
   craftReadyAt: Date | null;
   craftCooldowns?: readonly CraftCooldown[];
+  launchBlock?: LaunchFault;
   onSend: (craft: number) => void;
   onClose: () => void;
   busy: boolean;
@@ -3537,12 +3570,14 @@ export function DebrisFocus({
           <button
             type="button"
             className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
-            disabled={busy || craftAvailable < 1 || tooLate || resting !== null}
+            disabled={busy || launchBlock !== undefined || craftAvailable < 1 || tooLate || resting !== null}
             onClick={() => {
               onSend(sending);
             }}
           >
-            {resting !== null
+            {launchBlock !== undefined
+              ? t(`faults.launchBlock.${launchBlock}`)
+              : resting !== null
               ? t('focus.debris.resting', { duration: countdown(resting) })
               : craftAvailable < 1
                 ? t('focus.debris.noCraft')

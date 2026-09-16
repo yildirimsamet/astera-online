@@ -60,6 +60,7 @@ const percentile = (rank: number, field: number): number | null =>
   field > 0 && rank > 0 ? Math.max(1, Math.ceil((rank / field) * 100)) : null;
 type Stats = SeasonStatsSnapshot;
 type Averages = NonNullable<SeasonCommanderProfile['selected']['averages']>;
+type SelectedRecord = SeasonCommanderProfile['selected'];
 
 export function SeasonArchiveScreen({
   onFocusPlanet,
@@ -569,6 +570,9 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
   const { t } = useTranslation();
   const { selected } = profile;
   if (!selected.stats || !selected.averages) {
+    if (selected.legacyStats && selected.legacyAverages) {
+      return <LegacySeasonStats selected={selected} />;
+    }
     /*
       AN HONEST GAP, DRESSED AS ONE.
 
@@ -596,6 +600,7 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
   const best = ratios(stats, averages);
   return (
     <div className="mt-4 space-y-5">
+      <RecordNotices selected={selected} />
       <p className="text-label text-faint">
         {t('leaderboard.archive.cohort', { count: averages.cohortSize })}
       </p>
@@ -641,33 +646,7 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
           </div>
         </Section>
       )}
-      {/* THE TWO THINGS THAT ARE STORIES RATHER THAN FIGURES. */}
-      {selected.recap.biggestRaid === null && selected.recap.rival === null ? null : (
-        <div className="grid grid-cols-1 gap-2">
-          {selected.recap.biggestRaid === null ? null : (
-            <div className="plate plate-cut px-3 py-3">
-              <p className="legend text-opportunity">{t('seasonRecap.biggestHeading')}</p>
-              <p className="mt-1 text-body text-bone">
-                {t('seasonRecap.biggestRaid', {
-                  name: selected.recap.biggestRaid.opponentName,
-                  value: full(selected.recap.biggestRaid.value),
-                })}
-              </p>
-            </div>
-          )}
-          {selected.recap.rival === null ? null : (
-            <div className="plate plate-cut px-3 py-3">
-              <p className="legend text-crystal">{t('seasonRecap.rivalHeading')}</p>
-              <p className="mt-1 text-body text-bone">
-                {t('seasonRecap.rival', {
-                  name: selected.recap.rival.commanderName,
-                  count: selected.recap.rival.battles,
-                })}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+      <RecapStories recap={selected.recap} />
       <Section icon={<WarBannerIcon className="size-3.5" />} label={t('leaderboard.archive.sections.competition')}>
         {signature === null ? null : (
           <div className="plate plate-cut flex items-center gap-3 px-3 py-3">
@@ -751,6 +730,101 @@ function SeasonStats({ profile }: { profile: SeasonCommanderProfile }) {
         <ResourceStats icon={<DrillIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.asteroidMined')} value={stats.exploration.asteroidMined} average={averages.exploration.asteroidMined} />
         <ResourceStats icon={<CargoIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.convoyDelivered')} value={stats.exploration.convoyDelivered} average={averages.exploration.convoyDelivered} />
       </Section>
+    </div>
+  );
+}
+
+function RecordNotices({ selected }: { selected: SelectedRecord }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {selected.endReason === 'FORCED_WIPE' ? (
+        <ArchiveNotice
+          title={t('leaderboard.archive.forcedEnd.title')}
+          hint={t('leaderboard.archive.forcedEnd.hint')}
+        />
+      ) : null}
+      {selected.stats?.coverage?.reason === 'TELEMETRY_CUTOVER' ? (
+        <ArchiveNotice
+          title={t('leaderboard.archive.partialStats.title')}
+          hint={t('leaderboard.archive.partialStats.hint')}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function ArchiveNotice({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="plate plate-sunk flex items-center gap-3 px-3 py-4">
+      <ArtWell src={BUILDING_ART.VAULT} alt="" size="sm" />
+      <div className="min-w-0">
+        <p className="name text-bone">{title}</p>
+        <p className="mt-1 text-label leading-snug text-faint">{hint}</p>
+      </div>
+    </div>
+  );
+}
+
+function LegacySeasonStats({ selected }: { selected: SelectedRecord }) {
+  const { t } = useTranslation();
+  const legacy = selected.legacyStats;
+  const averages = selected.legacyAverages;
+  if (!legacy || !averages) return null;
+  return (
+    <div className="mt-4 space-y-5">
+      <ArchiveNotice
+        title={t('leaderboard.archive.legacyStats.title')}
+        hint={t('leaderboard.archive.legacyStats.hint')}
+      />
+      <RecordNotices selected={selected} />
+      <p className="text-label text-faint">
+        {t('leaderboard.archive.cohort', { count: averages.cohortSize })}
+      </p>
+      <RecapStories recap={selected.recap} />
+      <Section
+        icon={<WarBannerIcon className="size-3.5" />}
+        label={t('leaderboard.archive.sections.competition')}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <ComparedStat icon={<WarBannerIcon className="size-3.5" />} label={t('leaderboard.archive.metrics.battles')} value={legacy.competition.battles} average={averages.competition.battles} />
+          <ComparedStat icon={<AttackIcon className="size-3.5" />} label={t('seasonRecap.attacks')} value={legacy.competition.attacks} average={averages.competition.attacks} />
+          <ComparedStat icon={<ShieldIcon className="size-3.5" />} label={t('seasonRecap.defences')} value={legacy.competition.defences} average={averages.competition.defences} />
+          <ComparedStat icon={<SkullIcon className="size-3.5" />} label={t('seasonRecap.damageDealt')} value={legacy.competition.damageDealt} average={averages.competition.damageDealt} />
+          <ComparedStat icon={<RaidedIcon className="size-3.5" />} label={t('seasonRecap.damageTaken')} value={legacy.competition.damageTaken} average={averages.competition.damageTaken} praise={false} />
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function RecapStories({ recap }: { recap: SelectedRecord['recap'] }) {
+  const { t } = useTranslation();
+  if (recap.biggestRaid === null && recap.rival === null) return null;
+  return (
+    <div className="grid grid-cols-1 gap-2">
+      {recap.biggestRaid === null ? null : (
+        <div className="plate plate-cut px-3 py-3">
+          <p className="legend text-opportunity">{t('seasonRecap.biggestHeading')}</p>
+          <p className="mt-1 text-body text-bone">
+            {t('seasonRecap.biggestRaid', {
+              name: recap.biggestRaid.opponentName,
+              value: full(recap.biggestRaid.value),
+            })}
+          </p>
+        </div>
+      )}
+      {recap.rival === null ? null : (
+        <div className="plate plate-cut px-3 py-3">
+          <p className="legend text-crystal">{t('seasonRecap.rivalHeading')}</p>
+          <p className="mt-1 text-body text-bone">
+            {t('seasonRecap.rival', {
+              name: recap.rival.commanderName,
+              count: recap.rival.battles,
+            })}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -845,12 +919,30 @@ function CareerStats({
         </div>
         <Stat label={t('leaderboard.archive.career.topTen')} value={full(career.topTen)} />
       </div>
+      <Section
+        label={t('leaderboard.archive.career.recordedCombatTotals')}
+        aside={t('leaderboard.archive.career.covered', {
+          count: career.competitionTotals.seasonsCovered,
+        })}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label={t('leaderboard.archive.metrics.battles')} value={full(career.competitionTotals.battles)} />
+          <Stat label={t('seasonRecap.attacks')} value={full(career.competitionTotals.attacks)} />
+          <Stat label={t('seasonRecap.damageDealt')} value={full(career.competitionTotals.damageDealt)} />
+          <Stat label={t('seasonRecap.damageTaken')} value={full(career.competitionTotals.damageTaken)} />
+        </div>
+      </Section>
       {career.totals === null ? (
         <EmptyState title={t('leaderboard.archive.career.noTelemetry')} />
       ) : (
         <Section
           label={t('leaderboard.archive.career.recordedTotals')}
-          aside={t('leaderboard.archive.career.covered', { count: career.totals.seasonsCovered })}
+          aside={career.totals.partialSeasons > 0
+            ? t('leaderboard.archive.career.coveredWithPartial', {
+              count: career.totals.seasonsCovered,
+              partial: career.totals.partialSeasons,
+            })
+            : t('leaderboard.archive.career.covered', { count: career.totals.seasonsCovered })}
         >
           <div className="grid grid-cols-2 gap-2">
             <Stat label={t('leaderboard.archive.metrics.battles')} value={full(career.totals.stats.competition.battles)} />

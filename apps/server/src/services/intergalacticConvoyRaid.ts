@@ -208,7 +208,7 @@ export async function launchIntergalacticConvoy(
     }
   }
 
-  await assertFreeBay(tx, input.planetId, origin.buildings.CORE);
+  await assertFreeBay(tx, input.planetId, origin.buildings.CORE, origin.faults);
 
   const occurrence = await intergalacticConvoyOccurrence(
     tx,

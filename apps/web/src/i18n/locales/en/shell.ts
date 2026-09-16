@@ -336,6 +336,18 @@ export const leaderboard = {
     averageShort: 'Others: {{value}}',
     statsUnavailable: 'No detailed record was kept for this season.',
     statsUnavailableHint: 'Your rank and title are kept. What was never measured is not shown as zero.',
+    legacyStats: {
+      title: 'Preserved season record',
+      hint: 'Recorded combat figures are shown. Economy, fleet production and exploration were not measured and are omitted.',
+    },
+    partialStats: {
+      title: 'Partial telemetry',
+      hint: 'Activity from before telemetry began may be missing; recorded figures remain exact.',
+    },
+    forcedEnd: {
+      title: 'Season ended early',
+      hint: 'The played period is sealed permanently, including its final standings and rewards.',
+    },
     none: 'None',
     ratios: {
       trade: 'Damage traded',
@@ -379,9 +391,11 @@ export const leaderboard = {
       podiums: 'Podiums',
       topTen: 'Top 10 finishes',
       noTelemetry: 'No completed season has a detailed record yet.',
+      recordedCombatTotals: 'Recorded combat totals',
       recordedTotals: 'Recorded career totals',
       covered_one: '{{count}} season covered',
       covered_other: '{{count}} seasons covered',
+      coveredWithPartial: '{{count}} seasons covered · {{partial}} with partial telemetry',
       seasons: 'Season by season',
     },
   },

@@ -53,6 +53,7 @@ const rockPanel = (
   onSend: (n: number) => void,
   craftReadyAt: Date | null = null,
   craftCooldowns?: { runId: string; craft: number; readyAt: Date }[],
+  launchBlock?: 'SHIPYARD_REVOLT' | 'PROSPECTOR_FAULT',
 ) =>
   render(
     <AsteroidFocus
@@ -70,6 +71,7 @@ const rockPanel = (
       {...shell}
       craftReadyAt={craftReadyAt}
       craftCooldowns={craftCooldowns}
+      launchBlock={launchBlock}
     />,
   );
 
@@ -78,6 +80,7 @@ const wreckPanel = (
   onSend: (n: number) => void,
   craftReadyAt: Date | null = null,
   craftCooldowns?: { runId: string; craft: number; readyAt: Date }[],
+  launchBlock?: 'SHIPYARD_REVOLT' | 'PROSPECTOR_FAULT',
 ) =>
   render(
     <DebrisFocus
@@ -92,6 +95,7 @@ const wreckPanel = (
       {...shell}
       craftReadyAt={craftReadyAt}
       craftCooldowns={craftCooldowns}
+      launchBlock={launchBlock}
     />,
   );
 
@@ -166,6 +170,16 @@ describe.each([
     panel(0, vi.fn());
     expect(options()).toHaveLength(0);
     expect(screen.getByRole('button', { name: /No .*at home/i })).toBeDisabled();
+  });
+});
+
+describe('faulted prospecting launches', () => {
+  it.each([
+    ['an asteroid', rockPanel],
+    ['a wreck field', wreckPanel],
+  ])('disables %s launch and names the broken Prospector centre', (_name, panel) => {
+    panel(2, vi.fn(), null, undefined, 'PROSPECTOR_FAULT');
+    expect(screen.getByRole('button', { name: /Prospector centre is down/i })).toBeDisabled();
   });
 });
 

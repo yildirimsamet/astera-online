@@ -378,6 +378,8 @@ export const reports = {
     worksTheirs: 'Tesisleri {{duration}} boyunca kapalı. Bu sürede kaynak üretilmiyor.',
     worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
     salvageTheirs: 'Hurdacıları, enkaz dağılmadan {{amount}} değerinde hurda topladı.',
+    /** Koloni arızaları: ağır bir yenilginin bozdukları. Yalnızca savunan. */
+    colonyFaults: 'Bu yenilgide {{planet}} üzerinde bozulanlar: {{faults}}.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
     /** Anılacak bir yörünge yok: alan, boşlukta, randevu noktasında duruyor. */

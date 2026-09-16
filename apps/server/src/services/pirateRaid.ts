@@ -202,7 +202,7 @@ export async function launchPirateRaid(
 
     // Before the rendezvous solve: there is no point finding a meeting point for a
     // launch that has nowhere to launch from. D28, in mining's order.
-    await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    await assertFreeBay(tx, planetId, origin.buildings.CORE, origin.faults);
 
     const nowMinutes = minutesSince(snapshot.startsAt, origin.now);
     if (!pirateActive(spec, nowMinutes) || snapshot.destroyedAt(index) !== null) {

@@ -21,6 +21,7 @@ import type {
   CombatRound,
   BuildQueueId,
   ClassReading,
+  FaultKind,
   Fleet,
   Grade,
   HullId,
@@ -101,6 +102,14 @@ export const eventKind = pgEnum('event_kind', [
   'convoy_return',
   /** The top of an hour on the dynamic asteroid field: count commanders, fix the spawn. */
   'asteroid_hour',
+  /**
+   * KOLONİ ARIZALARI. The next thing to break, one repair finishing, what has leaked
+   * becoming a public field, and a colony that ran out of loyalty.
+   */
+  'fault_spawn',
+  'fault_repair_complete',
+  'vault_leak_flush',
+  'colony_secession',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -168,6 +177,16 @@ export const notificationKind = pgEnum('notification_kind', [
   'target_gone',
   /** A convoy engagement resolved; both prizes are still in transit. D201. */
   'convoy_result',
+  /**
+   * SOMETHING ON ONE OF YOUR COLONIES BROKE, and the loyalty warning that follows it.
+   *
+   * A colony seceding reuses `colony_lost`: losing a world is one fact for the
+   * commander whether a Death Star or their own neglect took it, and a second kind
+   * would need a second row in `DESTINATION`, a second sentence and a second icon to
+   * say the same thing.
+   */
+  'colony_fault',
+  'colony_loyalty_warning',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -361,7 +380,17 @@ export const seasons = pgTable('seasons', {
    * copy for ever after. Null on a season that never had a derived field.
    */
   asteroidLegacyCalendar: jsonb('asteroid_legacy_calendar').$type<PlannedGalaxyEvent[]>(),
-}, (t) => [index('seasons_shard_status_idx').on(t.shardId, t.status)]);
+  /** Effective scoring boundary. Null while live and on history predating this marker. */
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  /** Why the immutable result was sealed; independent from telemetry completeness. */
+  endReason: text('end_reason').$type<'SCHEDULED_END' | 'FORCED_WIPE'>(),
+}, (t) => [
+  index('seasons_shard_status_idx').on(t.shardId, t.status),
+  check('seasons_end_reason_check', sql`${t.endReason} IS NULL OR ${t.endReason} IN ('SCHEDULED_END', 'FORCED_WIPE')`),
+  check('seasons_close_pair_check', sql`
+    (${t.closedAt} IS NULL AND ${t.endReason} IS NULL)
+    OR (${t.closedAt} IS NOT NULL AND ${t.endReason} IS NOT NULL)`),
+]);
 
 export interface SeasonRecap {
   commanderName: string;
@@ -386,9 +415,10 @@ export interface SeasonResourceStats {
   deuterium: number;
 }
 
-/** Complete v1 metrics sealed at freeze. Missing legacy data is represented by a null snapshot. */
+/** v1 metrics sealed at freeze. Coverage says whether collection began with the season. */
 export interface SeasonStatsSnapshot {
   version: 1;
+  coverage?: { kind: 'partial'; reason: 'TELEMETRY_CUTOVER' };
   competition: {
     battles: number;
     attacks: number;
@@ -1023,6 +1053,29 @@ export const planets = pgTable('planets', {
    * could not have meant both.
    */
   builtEver: jsonb('built_ever').$type<Fleet>().notNull().default({}),
+  /**
+   * HOW MUCH THIS COLONY STILL BELONGS TO ITS COMMANDER. Koloni arızaları.
+   *
+   * 0-100, lazy, advanced against the same `lastTickAt` the economy uses rather than
+   * a clock of its own — two anchors for one world is two answers to "how long has it
+   * been", and they drift.
+   *
+   * MEANINGLESS ON A CAPITAL AND BELOW THE CORE GATE, where it simply sits at the
+   * maximum: neither can break, so neither can lose loyalty. `planetView` publishes
+   * null there rather than a full bar, because a bar that can never move is furniture.
+   */
+  loyalty: real('loyalty').notNull().default(100),
+  /**
+   * WHAT HAS LEAKED OUT OF THE VAULT AND NOT YET REACHED ORBIT. `VAULT_LEAK`.
+   *
+   * Accrues lazily inside `advanceEconomy` and is emptied only by `vault_leak_flush`,
+   * which turns it into a debris field ANYBODY can see and fly at. Held here rather
+   * than on the fault row because it is a property of the world's piles; the
+   * per-occurrence ceiling lives on the fault, where it can start again.
+   */
+  pendingLeakAlloy: real('pending_leak_alloy').notNull().default(0),
+  pendingLeakCrystal: real('pending_leak_crystal').notNull().default(0),
+  pendingLeakDeuterium: real('pending_leak_deuterium').notNull().default(0),
   /** D172: immutable authored start, not live progress; NULL is a legacy world. */
   academyStep: integer('academy_step'),
 }, (t) => [
@@ -1050,6 +1103,89 @@ export const neutralPlanetState = pgTable('neutral_planet_state', {
   nextReinforcementAt: timestamp('next_reinforcement_at', { withTimezone: true }),
   economyAnchorAt: timestamp('economy_anchor_at', { withTimezone: true }).notNull(),
 }, (t) => [check('neutral_planet_tier_check', sql`${t.tier} BETWEEN 1 AND 3`)]);
+
+/**
+ * WHAT IS BROKEN ON ONE COLONY. `docs/colony-faults-plan.md`.
+ *
+ * EIGHT FAULTS AND ONE SHAPE. "Tersanede isyan" and "alaşım rafinerisinde elektrik
+ * kesintisi" are the same row with a different `kind`; the names are flavour and the
+ * only thing that genuinely differs is which capability the effect reads it at. That
+ * is why there is no per-fault column here and no per-fault table: anything that
+ * needed one would be a second system wearing this one's name.
+ *
+ * `kind` is plain text under a CHECK rather than an enum, following `buildings.type`:
+ * a ninth fault is then a constant and a check, not an `ALTER TYPE` that rebuilds a
+ * type and every column using it.
+ *
+ * THE REPAIR LIVES ON THE FAULT rather than in `build_orders`, and the two properties
+ * that forced it are exactly the two `build_orders` guarantees: that queue is SERIAL
+ * (D4 — the next order waits) and it is CANCELLABLE. Repairs run three at a time and
+ * cannot be called off. Sharing the table would have meant a flag on every read.
+ *
+ * NOTHING HERE RECORDS WHEN A FAULT WILL BE REPAIRED BY. `repair_ready_at` is the
+ * authoritative instant and its `fault_repair_complete` event is what acts on it; a
+ * row with a ready time and no event would be a repair that never lands.
+ */
+export const planetFaults = pgTable('planet_faults', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  kind: text('kind').$type<FaultKind>().notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  /**
+   * WHICH `fault_spawn` WROTE THIS ROW, and it is here for idempotence alone.
+   *
+   * A redelivered spawn used to write a SECOND fault, and the reason is worth keeping:
+   * the draw is seeded from the event id and so is deterministic, but it draws from the
+   * faults that are NOT already standing — and after the first run that pool is one
+   * shorter, so the same random number lands on a different fault. Determinism over a
+   * moving set is not idempotence.
+   *
+   * Nullable because a fault can also be written by a test or a future operator tool,
+   * and a NULL collides with nothing in a unique index.
+   */
+  spawnEventId: uuid('spawn_event_id'),
+  /**
+   * WHAT THIS OCCURRENCE HAS ALREADY PUT INTO ORBIT. `VAULT_LEAK` only.
+   *
+   * Per occurrence and not per world, which is what makes `FAULT.leakTotalStores` a
+   * ceiling on the FAULT: repair the vault and break it again and the budget starts
+   * over, exactly as a second flood would.
+   */
+  leakedAlloy: real('leaked_alloy').notNull().default(0),
+  leakedCrystal: real('leaked_crystal').notNull().default(0),
+  leakedDeuterium: real('leaked_deuterium').notNull().default(0),
+  /** 0-2 while a repair runs, NULL otherwise. The lane, not a priority. */
+  repairSlot: integer('repair_slot'),
+  repairStartedAt: timestamp('repair_started_at', { withTimezone: true }),
+  repairReadyAt: timestamp('repair_ready_at', { withTimezone: true }),
+  /** Spent up front and never refunded — there is no cancel to refund it to. */
+  repairCost: jsonb('repair_cost').$type<Resources>(),
+}, (t) => [
+  /**
+   * THE SAME FAULT CANNOT STAND TWICE, and this index is the entire rule.
+   *
+   * `eligibleFaults` draws only from what is not already active, so a duplicate can
+   * only arrive from a redelivered `fault_spawn` — and that is precisely the case a
+   * check in application code loses to.
+   */
+  uniqueIndex('planet_faults_planet_kind_idx').on(t.planetId, t.kind),
+  /** One spawn event, one fault. The guard against a redelivered worker tick. */
+  uniqueIndex('planet_faults_spawn_event_idx').on(t.spawnEventId),
+  /** Three lanes at once; the guard against a fourth. Mirrors the build queue's. */
+  uniqueIndex('planet_faults_repair_slot_idx')
+    .on(t.planetId, t.repairSlot)
+    .where(sql`${t.repairReadyAt} is not null`),
+  index('planet_faults_planet_idx').on(t.planetId),
+  check('planet_faults_kind_check', sql`${t.kind} IN (
+    'REFINERY_OUTAGE', 'EXTRACTOR_OUTAGE', 'PLANT_OUTAGE', 'VAULT_LEAK',
+    'CORE_OUTAGE', 'TELESCOPE_FAULT', 'SHIPYARD_REVOLT', 'PROSPECTOR_FAULT')`),
+  check('planet_faults_slot_check', sql`${t.repairSlot} IS NULL OR ${t.repairSlot} BETWEEN 0 AND 2`),
+  /** A half-written repair is a lane nothing can finish and nothing can free. */
+  check('planet_faults_repair_pair_check', sql`
+    (${t.repairSlot} IS NULL AND ${t.repairStartedAt} IS NULL AND ${t.repairReadyAt} IS NULL)
+ OR (${t.repairSlot} IS NOT NULL AND ${t.repairStartedAt} IS NOT NULL
+     AND ${t.repairReadyAt} IS NOT NULL)`),
+]);
 
 export const buildings = pgTable('buildings', {
   planetId: uuid('planet_id').notNull().references(() => planets.id),
@@ -1650,6 +1786,18 @@ export const battleReports = pgTable('battle_reports', {
    * identically.
    */
   recoveryShieldUntil: timestamp('recovery_shield_until', { withTimezone: true }),
+  /**
+   * WHAT THIS DEFEAT BROKE ON THE DEFENDER'S COLONY. Koloni arızaları, `FAULT.attackFaults`.
+   *
+   * Owner decision: told HERE, not as notifications. Those arrived beside `raided`, did
+   * not fold, and never named the raid as their cause — a reader saw "Vantage · Vault leak"
+   * and had to guess why.
+   *
+   * RECORDED, NOT DERIVED: the fault rows are repaired and deleted, so nothing later could
+   * say what this fight did. DEFENDER ONLY on the way out (`reports.ts`) — the attacker
+   * learning which of a colony's systems just went dark would be a free probe.
+   */
+  colonyFaults: jsonb('colony_faults').$type<FaultKind[]>().notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),

@@ -45,7 +45,7 @@ import { GameError, orbitFromRows } from './planet.js';
  * The first-day shield is untouched either way — it is a separate column and a
  * separate decision.
  */
-const recoveryShieldEnabled = (): boolean =>
+export const recoveryShieldEnabled = (): boolean =>
   process.env.RECOVERY_SHIELD_ENABLED !== 'false';
 
 /**
@@ -214,8 +214,26 @@ export async function grantRecoveryShield(
     fleetLost: Resources;
     now: Date;
   },
-): Promise<{ until: Date | null; hours: number }> {
-  if (!recoveryShieldEnabled()) return { until: null, hours: 0 };
+): Promise<{
+  until: Date | null;
+  hours: number;
+  /**
+   * DID THIS BLOW CROSS THE BAR — whether or not a window was actually written.
+   *
+   * Two refusals below are not about the size of the blow: a defender with a raid of
+   * their own in the air, and a commander the server plays. Both still took a defeat
+   * heavy enough to earn a shield, and what a colony breaks from is the DEFEAT, not the
+   * protection (koloni arızaları, `FAULT.attackFaults`). `until` answers "is this
+   * commander protected"; this answers "was that a heavy defeat", and they differ in
+   * exactly those two cases.
+   *
+   * False while the switch is off: with no shield system there is no bar to cross, and
+   * an operator who stages shields off should not discover they left a second system
+   * keyed to it running.
+   */
+  earned: boolean;
+}> {
+  if (!recoveryShieldEnabled()) return { until: null, hours: 0, earned: false };
   /*
     NOTHING LOST, NOTHING TO ASK THE DATABASE. This runs on every resolved PvP
     arrival in the galaxy and most of them are REPELLED raids that took nothing;
@@ -223,19 +241,19 @@ export async function grantRecoveryShield(
     do on every mission that lands.
   */
   if (resourceValue(input.lootLost) + resourceValue(input.fleetLost) <= 0) {
-    return { until: null, hours: 0 };
+    return { until: null, hours: 0, earned: false };
   }
   const production = await commanderProductionRate(tx, input.playerId);
   const hours = recoveryLossHours(input.lootLost, input.fleetLost, production);
   if (!earnsRecoveryShield({ lootLost: input.lootLost, fleetLost: input.fleetLost, production })) {
-    return { until: null, hours };
+    return { until: null, hours, earned: false };
   }
   const until = await forceRecoveryShield(tx, {
     playerId: input.playerId,
     planetId: input.planetId,
     now: input.now,
   });
-  return { until, hours };
+  return { until, hours, earned: true };
 }
 
 /**

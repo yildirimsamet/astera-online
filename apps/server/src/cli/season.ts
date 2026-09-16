@@ -14,7 +14,7 @@ import { createDb } from '../db/client.js';
 import { runMigrations } from '../db/migrate.js';
 import { loadDotEnv, loadEnv } from '../env.js';
 import { addMinutes, systemClock } from '../clock.js';
-import { accounts, players } from '../db/schema.js';
+import { accounts, players, seasons } from '../db/schema.js';
 import { hashPassword } from '../auth/password.js';
 import { createSeason, liveSeason } from '../services/season.js';
 import {
@@ -33,6 +33,7 @@ import {
   shardNameFor,
   wipeAllServers,
 } from '../services/servers.js';
+import { forceSeasonEnd } from '../worker/handlers.js';
 
 /** The @JoinAstera bonus, which is the only hand-checked reward there is. */
 const SOCIAL_REWARD = rewardId('SOCIAL', 1);
@@ -42,7 +43,7 @@ season migrate                     apply pending migrations
 season bootstrap [options]         open all ${String(SERVERS.count)} galaxies (idempotent)
 season create [options]            open ONE galaxy on a named shard
 season status                      every galaxy, its population and who is on it
-season wipe --yes [options]        END EVERYTHING. Fold records into accounts,
+season wipe --yes [options]        END EVERYTHING. Seal permanent season records,
                                    delete every season world, open fresh galaxies.
 season reward NAME [--id ID]       unlock a hand-checked reward for one commander
                                    (default SOCIAL:1 — the @JoinAstera bonus)
@@ -537,6 +538,14 @@ async function main(): Promise<void> {
             'wipe ends every season and deletes every planet in the world. ' +
               'Re-run with --yes if that is what you mean.',
           );
+        }
+        const live = await db
+          .select({ id: seasons.id })
+          .from(seasons)
+          .where(eq(seasons.status, 'live'));
+        const adminUsernames = new Set(env.ADMIN_USERNAMES);
+        for (const season of live) {
+          await forceSeasonEnd({ db, clock: systemClock, adminUsernames }, season.id);
         }
         const result = await wipeAllServers(db, systemClock, {
           count: galaxyCount(values.count),

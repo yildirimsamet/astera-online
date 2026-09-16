@@ -120,6 +120,10 @@ blindly: **space must carry a purpose.** The 74px art socket earns its height (a
 needs and still leave them unable to decide, and that is the state this project's screens
 were found in. Showing more is not helping more.
 
+Yaptıgın/Güncellediğin/Fixledigin herhangi bir işte tasarım/design ile ilgili yapılması gerekenler varsa asla atlanmamalı!
+**Her zaman şunu düşünmelisin: "Oyuncu API'yi anlamaz. Oyuncu gördüğünü anlar, gösterileni bilir!"**
+**Sana her hangi bir şey yap dedigimde, bu işin tasarım/design kısmını sakın atlama. Çok önemli bak bu konu.**
+
 ## Quality bar
 
 > **CODE WITHOUT TESTS IS UNFINISHED WORK.**

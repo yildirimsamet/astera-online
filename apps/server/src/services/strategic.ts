@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
+  FAULT,
   ANTI_STRATEGIC,
   BUILDING_IDS,
   DEATH_STAR,
@@ -32,9 +33,14 @@ import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
+import { breakFaults, defenceOnline } from './faults.js';
 import { advanceNeutralEconomy } from './neutral.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
-import { assertAttackProtections, forceRecoveryShield } from './attackProtection.js';
+import {
+  assertAttackProtections,
+  forceRecoveryShield,
+  recoveryShieldEnabled,
+} from './attackProtection.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -323,7 +329,7 @@ export async function launchDeathStar(
     await lockWorlds(tx, [capital.id, originPlanetId, targetPlanetId]);
     const origin = await loadLocked(tx, originPlanetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
-    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
 
     const [target] = await tx.select().from(planets).where(eq(planets.id, targetPlanetId));
     if (!target) throw new GameError('PLANET_NOT_FOUND', 'No such world', 404);
@@ -647,7 +653,17 @@ export async function applyDeathStarStrike(
     deuterium: (held.deuterium - survives(held.deuterium))
       + (held.bufferDeuterium - survives(held.bufferDeuterium)),
   };
-  const shieldDestroyed = advancedTarget?.shield ?? target.shield;
+  /*
+    A DARK DOME IS NOT A DOME THIS STRIKE BURNT THROUGH. `CORE_OUTAGE`.
+
+    The column still holds whatever the Aegis had regenerated to — a Core outage
+    silences the hardware, it does not drain the shield — so reading it here would have
+    the report claiming credit for destroying something that was never lit. The write
+    below still zeroes it, because a strike takes the dome down either way.
+  */
+  const shieldDestroyed = advancedTarget && !defenceOnline(advancedTarget.faults)
+    ? 0
+    : advancedTarget?.shield ?? target.shield;
   const strippedValue = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
 
   await tx
@@ -755,6 +771,26 @@ export async function applyDeathStarStrike(
     })
     : null;
   if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
+  /*
+    THE STRIKE BREAKS THE COLONY TOO. A strike earns the recovery window outright (above),
+    so it is by definition a blow heavy enough for `FAULT.attackFaults` — keyed on the
+    switch rather than on `recoveryShieldUntil`, for the reason the raid lane records:
+    `forceRecoveryShield` refuses a commander with a raid in the air and a server-played
+    one, and neither refusal made the strike any lighter.
+
+    FIRST_STRIKE ONLY, AND THAT IS STRUCTURAL: this is the branch where the world is still
+    the defender's. The capturing strike hands it over through `transferPlanetControl`,
+    which keeps whatever is broken and starts the new owner's loyalty again.
+  */
+  if (recoveryShieldEnabled() && target.controllerPlayerId && target.kind === 'COLONY') {
+    await breakFaults(tx, {
+      seasonId: mission.seasonId,
+      planetId: target.id,
+      now,
+      count: FAULT.attackFaults,
+      seed: `strike:${mission.id}`,
+    });
+  }
   if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
   return {
     outcome: 'FIRST_STRIKE',

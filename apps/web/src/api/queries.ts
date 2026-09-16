@@ -1443,6 +1443,30 @@ export function useBuild() {
 }
 
 /** Cancelling is authoritative because the refund and queue reflow are one transaction. */
+/**
+ * START A REPAIR. Koloni arızaları.
+ *
+ * INVALIDATES RATHER THAN APPLYING A PAYLOAD, unlike the build mutations beside it. The
+ * repair route answers with the repair, not with a whole world — one fault moving from
+ * "broken" to "a crew is on it" changes four surfaces (the strip, the tab mark, the row
+ * and the sheet) and re-reading the world is both cheaper to write and impossible to
+ * get subtly wrong.
+ *
+ * There is no cancelling counterpart. The server has no route and the sheet says so.
+ */
+export function useRepairFault() {
+  const api = useApi();
+  const invalidate = useInvalidator();
+  return useMutation({
+    mutationFn: ({ planetId, faultId }: { planetId: string; faultId: string }) =>
+      api.repairFault(planetId, faultId),
+    onSuccess: () => {
+      invalidate(keys.planet);
+      invalidate(keys.planets);
+    },
+  });
+}
+
 export function useCancelBuildOrder() {
   const api = useApi();
   const { activePlanetId } = useWorld();

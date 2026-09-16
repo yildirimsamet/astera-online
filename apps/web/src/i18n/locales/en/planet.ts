@@ -465,6 +465,9 @@ export const planetHero = {
   shield: "Shield",
   shieldNone: "None",
   shieldNoAegis: "no aegis",
+  shieldOffline: "Offline",
+  shieldCoreOffline: "Command core outage · Aegis is dark",
+  defenceCoreOffline: "Ground guns offline · command core outage",
   shieldValue: "{{current}} / {{max}}",
   shieldMeter: "Aegis shield charge",
   shieldRegen: "+{{amount}}/h · before units",
@@ -523,6 +526,7 @@ export const launch = {
   tooSlow: "Leave the slow ships behind",
   /** A raid at a world has to be able to shoot back. The server refuses this too. */
   noEscort: "Add a warship",
+  shipyardRevolt: "Shipyard revolt",
   cargo: "Cargo",
   /** A ceiling on a wreck nobody has made yet, and only for collectors that live. D200. */
   salvage: "Your collectors lift up to {{amount}} of the wreck if they survive",
@@ -599,4 +603,78 @@ export const capacity = {
   free: "free",
   /** Screen-reader only: the bar is a picture, and a picture needs a sentence. */
   reading: "{{used}} of {{total}} used",
+} as const;
+
+/**
+ * KOLONİ ARIZALARI — what broke, what it is taking, and what putting it right costs.
+ *
+ * THE VOICE IS THE FACT, NOT THE ALARM. Every one of these sentences names a thing that
+ * has STOPPED and says what that stops; none of them says "warning" or "critical". A
+ * colony breaking down is an ordinary part of holding three worlds, and copy that
+ * shouted would either train the player to ignore it or make four broken things feel
+ * like a catastrophe when they are a Tuesday.
+ */
+export const faults = {
+  title: "Faults",
+  mark: "Fault present",
+  launchBlock: {
+    SHIPYARD_REVOLT: "Shipyard revolt — nothing can launch",
+    PROSPECTOR_FAULT: "Prospector centre is down",
+  },
+  /** The strip under the build queues, and the row it collapses to when idle. */
+  strip: {
+    title: "Repairs",
+    capacity: "{{count}} crews",
+    priceAlloy: "{{alloy}} alloy",
+    priceBoth: "{{alloy}} alloy · {{crystal}} crystal",
+    lane: "Crew {{slot}}",
+  },
+  tab: "Something here is broken",
+  /** One line per fault: the name a player sees on the row and the sheet. */
+  name: {
+    REFINERY_OUTAGE: "Alloy refinery blackout",
+    EXTRACTOR_OUTAGE: "Crystal extractor blackout",
+    PLANT_OUTAGE: "Deuterium refinery blackout",
+    VAULT_LEAK: "Vault leak",
+    CORE_OUTAGE: "Command core blackout",
+    TELESCOPE_FAULT: "Telescope failure",
+    SHIPYARD_REVOLT: "Revolt in the yard",
+    PROSPECTOR_FAULT: "Prospecting pit down",
+  },
+  /** What it stops, in the player's terms. One sentence, no hedging. */
+  stopped: {
+    REFINERY_OUTAGE: "The refinery is dark. This world is making no alloy at all.",
+    EXTRACTOR_OUTAGE: "The extractor is dark. This world is making no crystal at all.",
+    PLANT_OUTAGE: "The plant is dark. This world is making no deuterium at all.",
+    VAULT_LEAK: "The vault is bleeding into orbit — and anyone whose telescope reaches this world can see the field and fly out for it.",
+    CORE_OUTAGE: "The core is dark: the Aegis is down and the ground guns have no fire control. Ships at home still fight. If someone lands now, they land on an open world.",
+    TELESCOPE_FAULT: "The telescope is blind. This world sees no further than the naked eye until it is fixed.",
+    SHIPYARD_REVOLT: "The yard has walked out. Nothing launches from this world — no raid, no transfer, no convoy. Craft already in the air still come home.",
+    PROSPECTOR_FAULT: "The pit is out. No Prospector can be sent from this world. Craft already out can still be recalled.",
+  },
+  toll: {
+    title: "What it is taking",
+    alloy: "{{amount}} alloy an hour, not being made",
+    crystal: "{{amount}} crystal an hour, not being made",
+    deuterium: "Every hour of deuterium this world would have made",
+    leak: "{{amount}} an hour draining into orbit, where anyone who can see this world may fly out and take it",
+  },
+  loyalty: {
+    title: "This world's loyalty",
+    line: "{{value}}% — falling while {{count}} things are broken. At this rate it reaches zero in {{time}}, and the colony declares itself independent.",
+    bar: "Loyalty {{value}}%",
+    left: "{{time}} left",
+  },
+  price: {
+    title: "The repair",
+    crew: "the crew",
+    parts: "parts",
+    takes: "Takes 5–15 minutes. The crew name their own hours when they are hired.",
+  },
+  repair: "Send a crew",
+  running: "A crew is on it · {{time}}",
+  noCancel: "Once a crew is out they cannot be called back.",
+  lanesFull: "All {{count}} crews are out",
+  started: "A crew is on its way.",
+  failed: "That could not be started.",
 } as const;

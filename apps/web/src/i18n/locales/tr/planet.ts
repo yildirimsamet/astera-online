@@ -442,6 +442,9 @@ export const planetHero = {
   shield: "Kalkan",
   shieldNone: "Yok",
   shieldNoAegis: "aegis yok",
+  shieldOffline: "Devre dışı",
+  shieldCoreOffline: "Komuta merkezi arızalı · Aegis sönük",
+  defenceCoreOffline: "Yer topları devre dışı · komuta merkezi arızalı",
   shieldValue: "{{current}} / {{max}}",
   shieldMeter: "Aegis kalkan doluluğu",
   shieldRegen: "+{{amount}}/sa · birliklerden önce",
@@ -492,6 +495,7 @@ export const launch = {
   tooSlow: "Yavaş gemileri geride bırak",
   /** Bir dünyaya yapılan akın ateş edebilmeli. Sunucu da bunu reddediyor. */
   noEscort: "Bir savaş gemisi ekle",
+  shipyardRevolt: "İsyan var",
   cargo: "Ambar",
   salvage: "Hurdacıların sağ kalırsa enkazdan en fazla {{amount}} toplar",
   distance: "Mesafe",
@@ -553,4 +557,74 @@ export const capacity = {
   used: "dolu",
   free: "boş",
   reading: "{{total}} kapasitenin {{used}} kadarı dolu",
+} as const;
+
+/**
+ * KOLONİ ARIZALARI. Ses tonu: olan biteni söyler, alarm vermez.
+ *
+ * Her cümle DURMUŞ bir şeyi adlandırıyor ve neyi durdurduğunu söylüyor; hiçbiri
+ * "uyarı" ya da "kritik" demiyor. Üç dünya tutmanın sıradan bir parçası bu; bağıran
+ * bir metin ya oyuncuya görmezden gelmeyi öğretirdi ya da dört küçük arızayı felaket
+ * gibi gösterirdi.
+ */
+export const faults = {
+  title: "Arızalar",
+  mark: "Arıza var",
+  launchBlock: {
+    SHIPYARD_REVOLT: "Tersanede isyan var",
+    PROSPECTOR_FAULT: "Kazıcı merkezi arızalı",
+  },
+  strip: {
+    title: "Onarım",
+    capacity: "{{count}} ekip",
+    priceAlloy: "{{alloy}} alaşım",
+    priceBoth: "{{alloy}} alaşım · {{crystal}} kristal",
+    lane: "{{slot}}. ekip",
+  },
+  tab: "Burada bir şey bozuk",
+  name: {
+    REFINERY_OUTAGE: "Alaşım rafinerisinde elektrik kesintisi",
+    EXTRACTOR_OUTAGE: "Kristal çıkarıcıda elektrik kesintisi",
+    PLANT_OUTAGE: "Döteryum rafinerisinde elektrik kesintisi",
+    VAULT_LEAK: "Kasada sızıntı",
+    CORE_OUTAGE: "Komuta merkezinde elektrik kesintisi",
+    TELESCOPE_FAULT: "Teleskop arızası",
+    SHIPYARD_REVOLT: "Tersanede isyan",
+    PROSPECTOR_FAULT: "Kazıcı merkezinde arıza",
+  },
+  stopped: {
+    REFINERY_OUTAGE: "Rafineri karanlıkta. Bu dünya hiç alaşım üretmiyor.",
+    EXTRACTOR_OUTAGE: "Çıkarıcı karanlıkta. Bu dünya hiç kristal üretmiyor.",
+    PLANT_OUTAGE: "Rafineri karanlıkta. Bu dünya hiç döteryum üretmiyor.",
+    VAULT_LEAK: "Kasa orbite akıyor — ve teleskobu buraya yetişen herkes o tarlayı görüp toplamaya gelebilir.",
+    CORE_OUTAGE: "Merkez karanlıkta: aegis sönük, yer toplarının atış kontrolü yok. Evdeki gemiler yine savaşıyor. Şimdi biri inerse açık bir dünyaya iner.",
+    TELESCOPE_FAULT: "Teleskop kör. Onarılana kadar bu dünya çıplak gözden öteye görmüyor.",
+    SHIPYARD_REVOLT: "Tersane işi bıraktı. Bu dünyadan hiçbir şey kalkmıyor — ne akın, ne transfer, ne konvoy. Havadakiler yine eve dönüyor.",
+    PROSPECTOR_FAULT: "Kazıcı merkezi kapalı. Bu dünyadan Prospector çıkamaz. Dışarıdakiler yine geri çağrılabilir.",
+  },
+  toll: {
+    title: "Sana neye mal oluyor",
+    alloy: "Saatte {{amount}} alaşım, üretilmiyor",
+    crystal: "Saatte {{amount}} kristal, üretilmiyor",
+    deuterium: "Bu dünyanın üreteceği her saatlik döteryum",
+    leak: "Saatte {{amount}} orbite akıyor; burayı görebilen herkes uçup alabilir",
+  },
+  loyalty: {
+    title: "Bu dünyanın sadakati",
+    line: "%{{value}} — {{count}} şey bozukken düşüyor. Bu hızla {{time}} içinde sıfıra iner ve koloni bağımsızlığını ilan eder.",
+    bar: "Sadakat %{{value}}",
+    left: "{{time}} kaldı",
+  },
+  price: {
+    title: "Onarım",
+    crew: "ekip",
+    parts: "parça",
+    takes: "5–15 dakika sürer. Ekip kendi saatini tutulduğu anda söyler.",
+  },
+  repair: "Ekip gönder",
+  running: "Bir ekip başında · {{time}}",
+  noCancel: "Tamir başladıktan sonra iptal edilemez.",
+  lanesFull: "{{count}} ekibin hepsi dışarıda",
+  started: "Ekip yolda.",
+  failed: "Başlatılamadı.",
 } as const;

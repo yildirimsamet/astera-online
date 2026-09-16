@@ -594,6 +594,8 @@ export const notifications = {
   },
   colonyCaptured: 'Colony secured · occupation protection is active',
   colonyLost: 'Colony lost to a strategic strike',
+  colonyFault: '{{planet}} · {{fault}}',
+  colonyLoyalty: '{{planet}} is slipping — {{count}} things broken, and it declares independence in {{time}}.',
   settlementLost: 'Settlement race lost · the Couriers and cargo are returning',
   interceptedDefended: 'Your grid destroyed a Death Star {{range}} units out.',
   interceptedLost: 'Your Death Star was destroyed {{range}} units short of its target.',

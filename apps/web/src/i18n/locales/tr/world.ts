@@ -318,6 +318,8 @@ export const focus = {
     attack: "Saldırı planla",
     attackNeutralAgain: "Tekrar akın · hak değişmez",
     attackOriginRecovering: "Saldırı · ana dünya toparlanıyor",
+    attackShipyardRevolt: "Saldırılamaz · tersanede isyan var",
+    attackShipyardRevoltShort: "İsyan var",
     windowOpen: "Filoları evde değil. Bu dünya şu anda normalden daha az savunuluyor.",
     distance: "Mesafe",
     reach: "Varış süren",

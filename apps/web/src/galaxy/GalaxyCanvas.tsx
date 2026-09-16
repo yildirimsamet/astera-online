@@ -85,6 +85,7 @@ import { commanderLabel } from '../lib/identity.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { useTranslation } from 'react-i18next';
+import { FaultMark } from '../ui/marks.js';
 
 /**
  * THE GAME SURFACE.
@@ -1120,7 +1121,7 @@ function Labels({
               {node.dominionRank ? <RankBadge rank={node.dominionRank} /> : null}
               <span>{commanderLabel(node.owner, node.clan?.tag)}</span>
             </span>
-            <span className="legend">{node.name}</span>
+            <GalaxyPlanetName node={node} />
             {/*
               A RECORD SAYS WHEN IT WAS TAKEN, AND WHAT IT IS. D127 · D151.
 
@@ -1153,6 +1154,26 @@ function Labels({
       );
       })}
     </>
+  );
+}
+
+/** The owner's private fault state, attached to the name it qualifies. */
+export function GalaxyPlanetName({ node }: { node: PlanetNode }) {
+  const { t } = useTranslation();
+  return (
+    <span className="legend flex items-center gap-1.5">
+      <span>{node.name}</span>
+      {node.isOwned && node.faulty ? (
+        <span
+          data-colony-fault-icon
+          title={t('faults.mark')}
+          className="text-threat-ink"
+        >
+          <FaultMark className="size-3.5" />
+          <span className="sr-only">{t('faults.mark')}</span>
+        </span>
+      ) : null}
+    </span>
   );
 }
 

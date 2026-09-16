@@ -214,7 +214,7 @@ export async function launchTrade(
     }
 
     // Before the rendezvous solve. D28, in mining's order.
-    await assertFreeBay(tx, planetId, origin.buildings.CORE);
+    await assertFreeBay(tx, planetId, origin.buildings.CORE, origin.faults);
 
     /*
       A CONVOY WITH NO CARRIER HAS NO HOLD.

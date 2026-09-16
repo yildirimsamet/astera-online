@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { alloyRate, collectorCap, crystalRate } from '@astera/rules';
@@ -17,14 +17,16 @@ import {
   scheduledEvents,
   seasonCycles,
   seasonResults,
+  seasonRewardEntitlements,
   seasonTelemetrySegments,
   seasons,
   shards,
 } from '../src/db/schema.js';
-import { onSeasonEnd } from '../src/worker/handlers.js';
+import { forceSeasonEnd, onSeasonEnd } from '../src/worker/handlers.js';
 import { createSeason } from '../src/services/season.js';
 import { planetView } from '../src/services/planetView.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
+import { wipeAllServers } from '../src/services/servers.js';
 import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -333,6 +335,28 @@ describe('completed season archive', () => {
       .from(seasonResults)
       .where(eq(seasonResults.accountId, fixture.accountIds[0]!));
     if (!frozen) throw new Error('freeze did not create a result');
+    const archived = await fixture.db
+      .select()
+      .from(seasonResults)
+      .orderBy(asc(seasonResults.finalRank));
+    for (const [index, row] of archived.entries()) {
+      await fixture.db
+        .update(seasonResults)
+        .set({
+          damageDealt: 12_000 - index * 3_000,
+          damageTaken: 4_000 + index * 1_000,
+          statsVersion: 0,
+          stats: null,
+          averageEligible: false,
+          recap: {
+            ...row.recap,
+            battles: 8 - index * 2,
+            attacks: 5 - index,
+            defences: 3 - index,
+          },
+        })
+        .where(eq(seasonResults.publicId, row.publicId));
+    }
 
     const nextStart = new Date(fixture.clock.now().getTime() + 86_400_000);
     const next = await createSeason(fixture.db, {
@@ -381,6 +405,25 @@ describe('completed season archive', () => {
         rank: number;
         stats: null;
         averages: null;
+        legacyStats: {
+          competition: {
+            battles: number;
+            attacks: number;
+            defences: number;
+            damageDealt: number;
+            damageTaken: number;
+          };
+        };
+        legacyAverages: {
+          cohortSize: number;
+          competition: {
+            battles: number;
+            attacks: number;
+            defences: number;
+            damageDealt: number;
+            damageTaken: number;
+          };
+        };
       };
       career: {
         completedSeasons: number;
@@ -389,6 +432,14 @@ describe('completed season archive', () => {
         podiums: number;
         topTen: number;
         totals: null;
+        competitionTotals: {
+          seasonsCovered: number;
+          battles: number;
+          attacks: number;
+          defences: number;
+          damageDealt: number;
+          damageTaken: number;
+        };
         seasons: { resultId: string; ordinal: number; status: string }[];
       };
     }>();
@@ -399,6 +450,25 @@ describe('completed season archive', () => {
       rank: frozen.finalRank,
       stats: null,
       averages: null,
+      legacyStats: {
+        competition: {
+          battles: 8,
+          attacks: 5,
+          defences: 3,
+          damageDealt: 12_000,
+          damageTaken: 4_000,
+        },
+      },
+      legacyAverages: {
+        cohortSize: 3,
+        competition: {
+          battles: 6,
+          attacks: 4,
+          defences: 2,
+          damageDealt: 9_000,
+          damageTaken: 5_000,
+        },
+      },
     });
     expect(body.career).toMatchObject({
       completedSeasons: 1,
@@ -407,6 +477,14 @@ describe('completed season archive', () => {
       podiums: 1,
       topTen: 1,
       totals: null,
+      competitionTotals: {
+        seasonsCovered: 1,
+        battles: 8,
+        attacks: 5,
+        defences: 3,
+        damageDealt: 12_000,
+        damageTaken: 4_000,
+      },
     });
     expect(body.career.seasons).toEqual([
       expect.objectContaining({ resultId: frozen.publicId, ordinal: 1, status: 'frozen' }),
@@ -424,6 +502,60 @@ describe('completed season archive', () => {
       error: 'SEASON_NOT_COMPLETE',
       message: 'That season is still live',
     });
+  });
+
+  it('seals records and rewards before a forced wipe removes live world rows', async () => {
+    const [season] = await fixture.db
+      .select({ cycleId: seasons.cycleId })
+      .from(seasons)
+      .where(eq(seasons.id, fixture.seasonId));
+    if (!season) throw new Error('fixture season disappeared');
+    await fixture.db.update(seasonCycles).set({ statsVersion: 0 })
+      .where(eq(seasonCycles.id, season.cycleId));
+    await fixture.db.update(seasons).set({ statsVersion: 0 })
+      .where(eq(seasons.id, fixture.seasonId));
+    await fixture.db.update(players).set({ dominionTaken: 1_000 })
+      .where(eq(players.id, fixture.playerIds[0]!));
+    await fixture.db.update(planets).set({
+      statsOwnerPlayerId: fixture.playerIds[0]!,
+      seasonTelemetry: {
+        produced: { alloy: 12_000, crystal: 4_000, deuterium: 900 },
+        productiveSeconds: 7_200,
+        shipsBuilt: { DART: 6 },
+      },
+    }).where(and(
+      eq(planets.seasonId, fixture.seasonId),
+      eq(planets.controllerPlayerId, fixture.playerIds[0]!),
+      eq(planets.kind, 'CAPITAL'),
+    ));
+
+    const cutoff = fixture.clock.now();
+    await forceSeasonEnd({ db: fixture.db, clock: fixture.clock }, fixture.seasonId);
+    await wipeAllServers(fixture.db, fixture.clock, { count: 1, capacity: 3 });
+
+    const [preserved] = await fixture.db.select().from(seasonResults).where(and(
+      eq(seasonResults.seasonId, fixture.seasonId),
+      eq(seasonResults.accountId, fixture.accountIds[0]!),
+    ));
+    expect(preserved?.stats).toMatchObject({
+      version: 1,
+      coverage: { kind: 'partial', reason: 'TELEMETRY_CUTOVER' },
+      competition: { shipsBuilt: 6, shipsBuiltByHull: { DART: 6 } },
+      economy: {
+        produced: { alloy: 12_000, crystal: 4_000, deuterium: 900 },
+        productiveSeconds: 7_200,
+      },
+    });
+    const [ended] = await fixture.db.select().from(seasons)
+      .where(eq(seasons.id, fixture.seasonId));
+    expect(ended).toMatchObject({ status: 'wiped', endReason: 'FORCED_WIPE' });
+    expect(ended?.closedAt?.getTime()).toBe(cutoff.getTime());
+    expect(await fixture.db.select().from(planets)
+      .where(eq(planets.seasonId, fixture.seasonId))).toHaveLength(0);
+    expect(await fixture.db.select().from(seasonResults)
+      .where(eq(seasonResults.seasonId, fixture.seasonId))).toHaveLength(3);
+    expect(await fixture.db.select().from(seasonRewardEntitlements)
+      .where(eq(seasonRewardEntitlements.sourceSeasonId, fixture.seasonId))).toHaveLength(1);
   });
 
   it('derives cohort averages including inactive zeroes and excludes ineligible snapshots', async () => {

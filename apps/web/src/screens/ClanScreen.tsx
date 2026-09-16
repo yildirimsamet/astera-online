@@ -50,6 +50,7 @@ import { hullName } from '../i18n/names.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { serverNow } from '../lib/clock.js';
 import { techOf } from '../lib/navigation.js';
+import { launchFault } from '../lib/faults.js';
 import { full, signed } from '../lib/format.js';
 import { duration, minutesUntil, useNow } from '../lib/time.js';
 import { useWorld } from '../api/world.js';
@@ -1501,6 +1502,7 @@ function ClanAidPanel({
   const [quotedKey, setQuotedKey] = useState<string | null>(null);
   const [launched, setLaunched] = useState(false);
   const origin = worlds.find((world) => world.planet.id === originId) ?? worlds[0];
+  const launchBlocked = launchFault(origin?.faults, 'fleet') !== null;
   const recipient = recipients.find((member) => member.playerId === recipientId) ?? recipients[0];
   const targets = recipient
     ? presence?.members.find((member) => member.playerId === recipient.playerId)?.worlds ?? []
@@ -1788,13 +1790,15 @@ function ClanAidPanel({
                   // `fuelled` is the live read of the sender's own store; the
                   // quote's `hasFuel` is a snapshot of the same sum taken one
                   // round trip ago, and the launch refuses on the live one.
-                  disabled={!quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
+                  disabled={launchBlocked || !quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
                   onClick={() => {
                     if (!payload) return;
                     actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
                   }}
                 >
-                  {t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
+                  {launchBlocked
+                    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+                    : t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
                 </Button>
               </Plate>
             ) : null}

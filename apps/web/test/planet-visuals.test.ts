@@ -209,6 +209,21 @@ describe('the camera home world', () => {
 });
 
 describe('world identity on the disc', () => {
+  it('carries the private fault marker only when the payload grants it', () => {
+    const [broken, healthy] = planetNodes([
+      {
+        id: 'broken', name: 'Vantage', owner: 'Me', position: { x: 0, y: 0, z: 0 },
+        intel: 'RESOLVED', isSelf: true, isOwned: true, faulty: true,
+      },
+      {
+        id: 'healthy', name: 'Harbor', owner: 'Me', position: { x: 1, y: 0, z: 0 },
+        intel: 'RESOLVED', isSelf: false, isOwned: true,
+      },
+    ]);
+    expect(broken!.faulty).toBe(true);
+    expect(healthy!.faulty).toBe(false);
+  });
+
   it('adds live clan identity to an unknown world without resolving its intel', () => {
     const galaxy = galaxySchema.parse({
       you: { planetId: 'mine', playerId: 'me', planetIds: ['mine'] },

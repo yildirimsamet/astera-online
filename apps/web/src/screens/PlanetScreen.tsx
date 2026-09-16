@@ -9,6 +9,8 @@ import {
   HULLS,
   RESEARCH_PROJECTS,
   DEATH_STAR,
+  FAULT,
+  FAULT_KINDS,
   PROSPECTOR,
   buildingCost,
   fleetCount,
@@ -32,6 +34,7 @@ import {
   type HullId,
   type InstrumentId,
   type SatelliteId,
+  type FaultKind,
 } from '@astera/rules';
 import {
   usePlanet,
@@ -43,12 +46,15 @@ import {
   useUpgrade,
   useBuildDeathStar,
 } from '../api/queries.js';
-import type { PlanetView } from '../api/schemas.js';
+import type { FaultView, PlanetView } from '../api/schemas.js';
+import { FaultMark } from '../ui/marks.js';
+import { FaultSheet } from './FaultSheet.js';
+import { FaultProvider, useFaults } from './faultScope.js';
 
 import type { PlanetGroup } from '../lib/directives.js';
 import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
-import { duration, untilReady, useNow } from '../lib/time.js';
+import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
 import { deathStarsOf } from '../lib/strategic.js';
 /** The commander's research ladders, off the payload the screen already holds. */
@@ -168,10 +174,20 @@ export interface SheetSpec {
 
 export function PlanetScreen({
   focusGroup,
+  focusItem,
   embedded = false,
   onOpenResearch,
 }: {
   focusGroup?: GroupId;
+  /**
+   * ONE ROW, NAMED BY SOMETHING OUTSIDE THIS SCREEN. Koloni arızaları.
+   *
+   * `focusGroup` gets the reader to the right tab and this gets them to the right line
+   * on it. It feeds the same `focused` state a requirement-jump already uses, so the
+   * highlight and the scroll are the ones this screen has always done — what is new is
+   * only who is allowed to ask for them.
+   */
+  focusItem?: string;
   /** Rendered inside a panel over the live galaxy rather than as a full screen. */
   embedded?: boolean;
   /**
@@ -190,6 +206,7 @@ export function PlanetScreen({
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
+  const [faultSheet, setFaultSheet] = useState<string | null>(null);
   const [tab, setTab] = useState<GroupId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
@@ -220,10 +237,13 @@ export function PlanetScreen({
         .filter((asset) => asset.status === 'BUILDING' && asset.readyAt !== null)
         .map((asset) => asset.readyAt)
       : [];
+    const repairInstants = (data?.faults ?? []).flatMap((fault) =>
+      fault.repair === null ? [] : [fault.repair.readyAt]);
     const instants = [
       data?.planet.recoveryUntil,
       ...strategicInstants,
       ...queueInstants,
+      ...repairInstants,
     ]
       .filter((instant): instant is Date => instant instanceof Date)
       .map((instant) => instant.getTime())
@@ -255,7 +275,7 @@ export function PlanetScreen({
       stopped = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [data?.deathStars, data?.planet.recoveryUntil, data?.queues, data?.strategic, refetch]);
+  }, [data?.deathStars, data?.faults, data?.planet.recoveryUntil, data?.queues, data?.strategic, refetch]);
 
   useEffect(() => {
     if (!flashed) return;
@@ -266,6 +286,19 @@ export function PlanetScreen({
       clearTimeout(id);
     };
   }, [flashed]);
+
+  /*
+    A CALLER NAMED A ROW, so this screen points at it exactly as a requirement-jump
+    does. Owner instruction: the notification takes the reader to the world, the tab AND
+    the row — and the third move is this one.
+
+    It writes into `focused` rather than owning a second highlight, so the row it lands
+    on looks the same as the row a blocked purchase sends you to. One appearance, one
+    fade, one rule.
+  */
+  useEffect(() => {
+    if (focusItem) setFocused(focusItem);
+  }, [focusItem]);
 
   // Sending the player to the thing that is blocking them is only useful if they
   // can see it when they arrive.
@@ -332,8 +365,30 @@ export function PlanetScreen({
     setFocused(id);
   };
 
+  /*
+    WHICH ROW IS BROKEN, KEYED BY THE ID THE ROW ALREADY CARRIES.
+
+    `FAULT_ITEM` is the client's half of the same map the server puts in the
+    notification payload, and the two are asserted against each other in the tests. It is
+    duplicated rather than derived because the server's copy must travel WITH the
+    notification — a client that worked it out locally would be a second table to keep in
+    step, and the failure mode (the wrong tab opens) is silent.
+  */
+  const faults = data.faults ?? [];
+  const faultOf = new Map(faults.map((fault) => [FAULT_ITEM[fault.kind], fault]));
+  const brokenGroups = [...new Set(
+    faults.map((fault) => TAB_OF[FAULT_ITEM[fault.kind]]).filter((id): id is GroupId => !!id),
+  )];
+
   const shared = {
     planet: data,
+    /*
+      A BROKEN ROW OPENS THE REPAIR, NOT THE UPGRADE. Owner instruction: *"Tıklayınca:
+      alttan geliştirme tab'ı degil yeni tasarlayacagın fixle sheeti çıkmalı."* The row
+      keeps its name, its price and its art at full strength — what changes is the door.
+    */
+    faultOf,
+    onOpenFault: (id: string) => { setFaultSheet(id); },
     held,
     // What the works actually produce, so a row that cannot be afforded can say
     // when it will be rather than how far along the saving is.
@@ -347,11 +402,39 @@ export function PlanetScreen({
     // it is the whole point of the requirement being a button.
     onNeed: goToNeed,
     onFlash: setFlashed,
-    onOpen: setSheet,
+    /*
+      THE DOOR IS DECIDED HERE AND NOWHERE ELSE.
+
+      Every row in this screen already routes its press through one callback carrying the
+      subject it is about, so a broken subject can be sent somewhere else without any of
+      the fourteen rows knowing the fault system exists. Owner instruction: *"Tıklayınca:
+      alttan geliştirme tab'ı degil yeni tasarlayacagın fixle sheeti çıkmalı."*
+    */
+    onOpen: (next: SheetSpec) => {
+      const broken = faultOf.get(next.item.id);
+      if (broken) setFaultSheet(broken.id);
+      else setSheet(next);
+    },
+  };
+
+  /*
+    THE SECOND DOOR, AND IT IS A SEPARATE ONE BECAUSE A HULL IS NOT AN `ItemRef`.
+
+    `ItemRef` covers buildings, instruments and satellites — the three things with a
+    LADDER — and a craft has none, so a hull row opens `BuildSheet` through `onBuild`
+    instead. `PROSPECTOR_FAULT` names a craft, which means it is the one fault of the
+    eight whose row never passes the interception above: the wash and the mark landed on
+    it and the press still opened the forge.
+  */
+  const openBuild = (hull: HullId): void => {
+    const broken = faultOf.get(hull);
+    if (broken) setFaultSheet(broken.id);
+    else setBuilding(hull);
   };
 
   return (
     <GameActions>
+      <FaultProvider faults={faultOf}>
       {/*
         WHO OWNS THE INSET. The sheet bleeds and this screen pads, block by block,
         because ONE thing here has to run edge to edge: the sticky category bar.
@@ -364,8 +447,9 @@ export function PlanetScreen({
           <PlanetHero planet={data} compact={embedded} />
         </div>}
 
-        <div className="px-2">
+        <div className="flex flex-col gap-2 px-2">
           <BuildQueues planet={data} />
+          <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
         </div>
 
         {recovering && (
@@ -384,6 +468,7 @@ export function PlanetScreen({
           active={active}
           onSelect={setTab}
           held={held}
+          broken={brokenGroups}
         />
 
         <div className="flex flex-col gap-4 px-2">
@@ -401,13 +486,21 @@ export function PlanetScreen({
             aria-disabled={recovering}
           >
             <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
-              {active === 'defend' && <Defend {...shared} onBuild={setBuilding} />}
+              {active === 'defend' && <Defend {...shared} onBuild={openBuild} />}
               {active === 'orbit' && <Orbit {...shared} />}
-              {active === 'reach' && <Reach {...shared} onBuild={setBuilding} />}
+              {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
               {active === 'grow' && <Grow {...shared} />}
             </DecisionGroup>
           </div>
         </div>
+
+        {faultSheet && faults.some((fault) => fault.id === faultSheet) && (
+          <FaultSheet
+            fault={faults.find((fault) => fault.id === faultSheet)!}
+            planet={data}
+            onClose={() => { setFaultSheet(null); }}
+          />
+        )}
 
         {sheet && (
           <ItemSheet
@@ -446,10 +539,33 @@ export function PlanetScreen({
           </div>
         )}
       </div>
+      </FaultProvider>
     </GameActions>
   );
 }
 
+
+/**
+ * WHICH ROW EACH FAULT MARKS. The client's half of `FAULT_LOCATION` on the server.
+ *
+ * THE ITEM IS THE BROKEN HARDWARE, NOT THE AFFECTED ONE. A `CORE_OUTAGE` puts the Aegis
+ * out, and it marks the Command Core: the Aegis is working perfectly and saying
+ * otherwise would send the player to buy a level that fixes nothing. The Prospector
+ * fault marks the craft rather than the Derrick, because a world may have no Derrick.
+ *
+ * Asserted against the server's copy in `faults.test.tsx`; a drift here opens the wrong
+ * tab, which is the kind of failure nothing else would catch.
+ */
+export const FAULT_ITEM: Record<FaultKind, string> = {
+  REFINERY_OUTAGE: 'REFINERY',
+  EXTRACTOR_OUTAGE: 'EXTRACTOR',
+  PLANT_OUTAGE: 'DEUTERIUM_PLANT',
+  VAULT_LEAK: 'VAULT',
+  CORE_OUTAGE: 'CORE',
+  TELESCOPE_FAULT: 'TELESCOPE',
+  SHIPYARD_REVOLT: 'SHIPYARD',
+  PROSPECTOR_FAULT: 'PROSPECTOR',
+};
 
 /** Which tab a given row lives under, so a requirement can jump to it. */
 export const TAB_OF: Record<string, GroupId | undefined> = {
@@ -467,6 +583,16 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
   DERRICK: 'reach',
   BEACON: 'reach',
   SHIPYARD: 'reach',
+  /*
+    THE PROSPECTOR IS A HULL AND IT IS ON `reach` WITH THE REST OF THE YARD.
+
+    It was missing, and nothing had ever asked for it: this table's only readers were a
+    blocked purchase and a research requirement, and neither can be blocked on a craft.
+    A fault can — `PROSPECTOR_FAULT` names this row — and a missing entry here is the
+    silent kind: the notification opens the sheet on Production and the reader is left
+    looking for a broken pit among the refineries.
+  */
+  PROSPECTOR: 'reach',
 };
 
 /**
@@ -537,6 +663,120 @@ function Wallet({ held }: { held: Projected }) {
 }
 
 /** Two independent commitments, kept visible while the player makes the next one. */
+/**
+ * ÜÇ ONARIM LANE'İ, AYNI ANDA KOŞAR. Koloni arızaları.
+ *
+ * Sits directly under `BuildQueues` and wears the same plate, because it is the same
+ * kind of thing: work this world has already paid for, with an instant attached. What
+ * makes it a separate section rather than a third lane in that one is that these run in
+ * PARALLEL and cannot be cancelled, and a queue whose lanes obeyed opposite rules would
+ * need a flag on every row.
+ *
+ * NOTHING BROKEN DRAWS NOTHING. The same lesson `BuildQueues` was corrected on — *"üretim
+ * yoksa bile full section açık bom bom duruyor"* — and it matters more here: most
+ * sessions on most worlds have no faults at all, and three empty sockets under a heading
+ * would be a permanent monument to a system that is not currently doing anything.
+ *
+ * BROKEN BUT UNATTENDED IS ONE LINE, not three empty sockets either. What the player
+ * needs then is the count and the cheapest way in, which is what the row says.
+ */
+function FaultRepairs({
+  planet,
+  onOpen,
+}: {
+  planet: PlanetView;
+  onOpen: (fault: FaultView) => void;
+}) {
+  const { t } = useTranslation();
+  const now = useNow(1000);
+  const faults = planet.faults ?? [];
+  if (faults.length === 0) return null;
+
+  /*
+    EVERY FAULT IS A ROW, AND EVERY ROW IS A DOOR. Code review.
+
+    The unattended state used to collapse to one line — "3 waiting · from 300 alloy" — with
+    nothing on it to press, so the only way to a broken thing was to hunt through four tabs
+    for a marked row. Listing them costs a line each and buys the thing the four questions
+    ask for: the player can COMPARE what is broken, and what each costs, on one screen.
+
+    Running crews first, in lane order, because those are the ones with a clock; then what
+    is still waiting, in the fixed fault order so a list re-read after a repair does not
+    shuffle under the reader's thumb. This is not the empty-section clutter the build queue
+    was corrected for: a broken system is never nothing.
+  */
+  const running = faults
+    .filter((fault) => fault.repair !== null)
+    .toSorted((a, b) => (a.repair?.slot ?? 0) - (b.repair?.slot ?? 0));
+  const waiting = faults
+    .filter((fault) => fault.repair === null)
+    .toSorted((a, b) => FAULT_KINDS.indexOf(a.kind) - FAULT_KINDS.indexOf(b.kind));
+
+  return (
+    <section className="plate plate-inset overflow-hidden" aria-label={t('faults.strip.title')}>
+      <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
+        <h2 className="legend flex items-center gap-1 text-bone">
+          <FaultMark className="size-[13px]" />
+          {t('faults.strip.title')}
+        </h2>
+        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
+        <span className="num text-micro text-faint">
+          {t('faults.strip.capacity', { count: FAULT.repairSlots })}
+        </span>
+      </header>
+      <ul className="flex flex-col">
+        {running.map((fault) => (
+          <li key={fault.id}>
+            {/*
+              NO CANCEL CONTROL, and its absence is the contract. `QueueStrip` takes an
+              optional `onCancel` for exactly this reason and the build queue passes one;
+              this lane does not, and neither does commander research.
+            */}
+            <button
+              type="button"
+              data-fault-lane="running"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left"
+              onClick={() => { onOpen(fault); }}
+            >
+              <span className="legend shrink-0 text-faint">
+                {t('faults.strip.lane', { slot: (fault.repair?.slot ?? 0) + 1 })}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-caption text-dim">
+                {t(`faults.name.${fault.kind}`)}
+              </span>
+              <span className="num shrink-0 text-caption text-bone">
+                {fault.repair ? countdown(fault.repair.readyAt.getTime() - now) : ''}
+              </span>
+            </button>
+          </li>
+        ))}
+        {waiting.map((fault) => (
+          <li key={fault.id}>
+            <button
+              type="button"
+              data-fault-lane="waiting"
+              className="flex w-full items-center gap-2 border-t border-line-soft px-3 py-2 text-left first:border-t-0"
+              onClick={() => { onOpen(fault); }}
+            >
+              <span className="min-w-0 flex-1 truncate text-caption text-bone">
+                {t(`faults.name.${fault.kind}`)}
+              </span>
+              <span className="num shrink-0 text-caption text-faint">
+                {fault.cost.crystal > 0
+                  ? t('faults.strip.priceBoth', {
+                    alloy: full(fault.cost.alloy),
+                    crystal: full(fault.cost.crystal),
+                  })
+                  : t('faults.strip.priceAlloy', { alloy: full(fault.cost.alloy) })}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function BuildQueues({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const now = useNow(1000);
@@ -880,10 +1120,13 @@ function Tabs({
   active,
   onSelect,
   held,
+  broken = [],
 }: {
   active: GroupId;
   onSelect: (id: GroupId) => void;
   held: Projected;
+  /** Which categories hold something broken. A FACT, never a ranking — see `Segment.mark`. */
+  broken?: readonly GroupId[];
 }) {
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
@@ -903,7 +1146,23 @@ function Tabs({
         marker="tab"
         role="tablist"
         label={t('planet.tabs.label')}
-        segments={(lesson ? TABS.slice(0, TABS.indexOf(academyGroup(lesson)) + 1) : TABS).map((id) => ({ id, label: t(GROUPS[id].problem) }))}
+        segments={(lesson ? TABS.slice(0, TABS.indexOf(academyGroup(lesson)) + 1) : TABS).map((id) => ({
+          id,
+          label: t(GROUPS[id].problem),
+          /*
+            NO COUNT. The glyph says "something under here has stopped", which is the
+            one thing a player cannot find out without opening all four tabs. HOW MANY
+            is a question the tab's own contents answer, and a number on the bar would
+            turn a fact back into the ranking D170 removed.
+          */
+          ...(broken.includes(id)
+            ? {
+              mark: <FaultMark className="size-[13px] text-bone" />,
+              // The glyph is `aria-hidden`; without this the mark is silent to a reader.
+              hint: `${t(GROUPS[id].problem)} — ${t('faults.tab')}`,
+            }
+            : {}),
+        }))}
         value={active}
         onSelect={onSelect}
         tabId={(id) => `planet-tab-${id}`}
@@ -1179,6 +1438,7 @@ function SatelliteItemRow({
   flashed: string | null;
   onOpen: GroupProps['onOpen'];
 }) {
+  const faults = useFaults();
   const { t } = useTranslation();
   const name = satelliteLabel(id);
   const role = satelliteRole(id);
@@ -1187,6 +1447,7 @@ function SatelliteItemRow({
   return (
     <div id={`row-${id}`}>
       <UpgradeRow
+          faulty={!!faults.get(id)}
         art={SATELLITE_ART[id]}
         name={name}
         tag={satelliteTag(id)}
@@ -1231,6 +1492,7 @@ function InstrumentItemRow({
   flashed: string | null;
   onOpen: GroupProps['onOpen'];
 }) {
+  const faults = useFaults();
   const { t } = useTranslation();
   const name = instrumentLabel(id);
   const role = instrumentPitch(id, action.level);
@@ -1244,6 +1506,7 @@ function InstrumentItemRow({
   return (
     <div id={`row-${id}`}>
       <UpgradeRow
+          faulty={!!faults.get(id)}
         art={instrumentArt(id, Math.max(1, action.level))}
         {...(next ? { nextArt: next } : {})}
         name={name}
@@ -1300,6 +1563,7 @@ function Defend({
   onOpen,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
+  const faults = useFaults();
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
   const instrument = useInstrumentAction(planet, onFlash);
@@ -1370,6 +1634,7 @@ function Defend({
 
       <div id="row-THORN">
         <UpgradeRow
+          faulty={!!faults.get('THORN')}
           art={groundArt('THORN', Math.max(1, thornsStanding))}
           nextArt={nextGroundArt('THORN', thornsStanding)}
           name={hullLabel('THORN')}
@@ -1405,6 +1670,7 @@ function Defend({
 
       <div id="row-BASTION">
         <UpgradeRow
+          faulty={!!faults.get('BASTION')}
           art={groundArt('BASTION', Math.max(1, bastionsStanding))}
           nextArt={nextGroundArt('BASTION', bastionsStanding)}
           name={hullLabel('BASTION')}
@@ -1823,6 +2089,7 @@ function Reach({
   onOpen,
   onBuild,
 }: GroupProps & { onBuild: (hull: HullId) => void }) {
+  const faults = useFaults();
   const { t } = useTranslation();
   /**
    * WHICH HULL FAMILIES ARE SHOWING THEIR ROWS.
@@ -1893,6 +2160,14 @@ function Reach({
           })}
       >
         <UpgradeRow
+          /*
+            THE HULL ROWS NEEDED THIS BY HAND. Every other row on this screen sits in a
+            one-line \`<div id="row-…">\` and got its mark in one sweep; this wrapper spreads
+            its data attributes over several lines, the sweep did not match it, and the
+            Prospector — the one craft a fault can name — drew no wash at all while its
+            press already went to the repair sheet.
+          */
+          faulty={!!faults.get(id)}
           art={HULL_ART[id]}
           name={hullLabel(id)}
           /*
@@ -2002,6 +2277,7 @@ function Reach({
     <>
       <div id="row-SHIPYARD">
         <UpgradeRow
+          faulty={!!faults.get('SHIPYARD')}
           art={buildingArt('SHIPYARD', Math.max(1, shipyard.level))}
           nextArt={nextBuildingArt('SHIPYARD', shipyard.actionLevel)}
           name={buildingName('SHIPYARD')}
@@ -2126,6 +2402,7 @@ function Reach({
 
 
 function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen }: GroupProps) {
+  const faults = useFaults();
   const { t } = useTranslation();
   // The Core is the ceiling and the two ore streams sit under it, so neither has a
   // requirement to jump to. The Refinery does: its ladder is on the research
@@ -2148,6 +2425,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
     <>
       <div id="row-CORE">
         <UpgradeRow
+          faulty={!!faults.get('CORE')}
           art={buildingArt('CORE', Math.max(1, core.level))}
           nextArt={nextBuildingArt('CORE', core.actionLevel)}
           name={buildingName('CORE')}
@@ -2183,6 +2461,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       */}
       <div id="row-REFINERY">
         <UpgradeRow
+          faulty={!!faults.get('REFINERY')}
           art={buildingArt('REFINERY', refinery.level)}
           name={buildingName('REFINERY')}
           tag={buildingTag('REFINERY')}
@@ -2223,6 +2502,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
       <div id="row-EXTRACTOR">
         <UpgradeRow
+          faulty={!!faults.get('EXTRACTOR')}
           art={buildingArt('EXTRACTOR', extractor.level)}
           name={buildingName('EXTRACTOR')}
           tag={buildingTag('EXTRACTOR')}
@@ -2271,6 +2551,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       */}
       <div id="row-DEUTERIUM_PLANT">
         <UpgradeRow
+          faulty={!!faults.get('DEUTERIUM_PLANT')}
           art={buildingArt('DEUTERIUM_PLANT', plant.level)}
           name={buildingName('DEUTERIUM_PLANT')}
           tag={buildingTag('DEUTERIUM_PLANT')}
@@ -2311,6 +2592,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
       <div id="row-VAULT">
         <UpgradeRow
+          faulty={!!faults.get('VAULT')}
           art={buildingArt('VAULT', Math.max(1, vault.level))}
           nextArt={nextBuildingArt('VAULT', vault.actionLevel)}
           name={buildingName('VAULT')}

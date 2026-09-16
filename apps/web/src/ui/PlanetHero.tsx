@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
 import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
-import { countdown, useNow } from '../lib/time.js';
+import { countdown, duration, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
@@ -48,6 +48,7 @@ export function PlanetHero({
   const disruptedFor = planet.planet.disruptedUntil
     ? planet.planet.disruptedUntil.getTime() - now
     : 0;
+  const coreOnline = !(planet.faults ?? []).some((fault) => fault.kind === 'CORE_OUTAGE');
 
   const exposed = Math.max(
     0,
@@ -57,9 +58,44 @@ export function PlanetHero({
       - planet.planet.vaultFloor,
   );
 
+  /**
+   * HOW MUCH OF THIS WORLD IS STILL YOURS, AND HOW LONG THAT LASTS.
+   *
+   * ONE LINE, AND THE SECOND HALF IS THE POINT. A bar at 34% SHOWS; "eleven hours"
+   * HELPS, because it is what "fix it now or after work" is answered with. `CLAUDE.md`'s
+   * first question — is a big one good, which decision am I supposed to use it for —
+   * has no answer without the time.
+   *
+   * ABSENT WHERE IT CANNOT MOVE. A capital and a colony below the Core gate get null
+   * from the server. Breakable colonies always get a line, including at 100%, so the
+   * commander can confirm the healthy state before anything goes wrong.
+   */
+  const loyalty = planet.loyalty ?? null;
+  const loyaltyLine = loyalty && (
+    <div data-loyalty data-testid="loyalty-line" className="flex items-baseline gap-2 border-t border-line-soft pt-1">
+      <span className="legend text-faint">{t('faults.loyalty.title')}</span>
+      <span className="h-1 flex-1 overflow-hidden rounded-full bg-void/60">
+        <span
+          data-loyalty-bar
+          className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-bone/50'}`}
+          style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
+        />
+      </span>
+      <span className="num text-caption text-bone">
+        {t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}
+      </span>
+      {loyalty.minutesLeft !== null && (
+        <span className="num text-micro text-faint">
+          {t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}
+        </span>
+      )}
+    </div>
+  );
+
   if (compactMode) {
     return (
       <div className="flex flex-col gap-2">
+        {loyaltyLine}
         {/*
           THE KIND LEADS; THE NAME CONFIRMS.
 
@@ -89,7 +125,7 @@ export function PlanetHero({
               <PlanetSigil
                 seed={planet.planet.id}
                 size={68}
-                shielded={planet.planet.shield > 0}
+                shielded={coreOnline && planet.planet.shield > 0}
               />
             </div>
             <TierMark planet={planet} />
@@ -100,10 +136,10 @@ export function PlanetHero({
             </p>
             <p className="legend mt-1 truncate">{planet.planet.name}</p>
           </div>
-          <Readouts planet={planet} />
+          <Readouts planet={planet} coreOnline={coreOnline} />
         </div>
         
-        <Verdicts planet={planet} exposed={exposed} />
+        <Verdicts planet={planet} exposed={exposed} coreOnline={coreOnline} />
         {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
       </div>
     );
@@ -111,6 +147,7 @@ export function PlanetHero({
 
   return (
     <div className="flex flex-col gap-2">
+      {loyaltyLine}
       {/*
         Side by side rather than stacked.
         A full-width portrait with the numbers underneath pushed every actual
@@ -149,7 +186,11 @@ export function PlanetHero({
             })}
           </div>
 
-          <PlanetSigil seed={planet.planet.id} size={100} shielded={planet.planet.shield > 0} />
+          <PlanetSigil
+            seed={planet.planet.id}
+            size={100}
+            shielded={coreOnline && planet.planet.shield > 0}
+          />
         </div>
         <TierMark planet={planet} />
         </div>
@@ -162,7 +203,7 @@ export function PlanetHero({
             {planet.planet.name}
           </h1>
           <div className="plate plate-inset mt-2 px-3 py-2">
-            <Firepower planet={planet} />
+            <Firepower planet={planet} coreOnline={coreOnline} />
           </div>
           <div className="mt-2 flex gap-2">
             <Rate art={RESOURCE_ART.alloy} value={planet.planet.alloyPerHour} tone="text-alloy" />
@@ -176,7 +217,7 @@ export function PlanetHero({
       </div>
 
       {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
-      <Verdicts planet={planet} exposed={exposed} />
+      <Verdicts planet={planet} exposed={exposed} coreOnline={coreOnline} />
     </div>
   );
 }
@@ -223,7 +264,7 @@ function TierMark({ planet }: { planet: PlanetView }) {
  * scale on the one world they know exactly — "mine reads 12k; a world that reads
  * 12k is a world like mine".
  */
-function Firepower({ planet }: { planet: PlanetView }) {
+function Firepower({ planet, coreOnline }: { planet: PlanetView; coreOnline: boolean }) {
   const { t } = useTranslation();
   return (
     <>
@@ -235,14 +276,14 @@ function Firepower({ planet }: { planet: PlanetView }) {
       */}
       <p className="legend">{t('planetHero.firepower')}</p>
       <p data-testid="planet-firepower" className="readout mt-1 text-body text-bone">
-        {full(combatValue(garrisonOf(planet.fleet, planet.ground)))}
+        {full(combatValue(garrisonOf(planet.fleet, coreOnline ? planet.ground : {})))}
       </p>
     </>
   );
 }
 
 /** Firepower and output. */
-function Readouts({ planet }: { planet: PlanetView }) {
+function Readouts({ planet, coreOnline }: { planet: PlanetView; coreOnline: boolean }) {
   return (
     /*
       30px WAS A POSTER, NOT A READOUT. Owner directive: *"gereksiz büyük fontlar."*
@@ -256,7 +297,7 @@ function Readouts({ planet }: { planet: PlanetView }) {
     */
     <div className="flex items-stretch gap-1 ml-auto">
       <div className="plate plate-inset flex-1 px-2 py-2 min-w-[80px]">
-        <Firepower planet={planet} />
+        <Firepower planet={planet} coreOnline={coreOnline} />
       </div>
       {/*
         NO HEADING, THREE RATES. Owner instruction, 2026-09-15: *"bu sectionda
@@ -313,9 +354,11 @@ function Disrupted({ ms }: { ms: number }) {
 function Verdicts({
   planet,
   exposed,
+  coreOnline,
 }: {
   planet: PlanetView;
   exposed: number;
+  coreOnline: boolean;
 }) {
   const { t } = useTranslation();
   const shield = planet.planet.shield;
@@ -329,10 +372,10 @@ function Verdicts({
     what? The honest verdicts are "nothing here can fire" and what is actually in
     the line; how strong that is, is the firepower figure beside it.
   */
-  const line = garrisonOf(planet.fleet, planet.ground);
+  const line = garrisonOf(planet.fleet, coreOnline ? planet.ground : {});
   const armed = combatValue(line) > 0;
   const ships = fleetEntries(planet.fleet).reduce((sum, [id, n]) => sum + (HULLS[id].atk > 0 ? n : 0), 0);
-  const guns = fleetCount(planet.ground);
+  const guns = coreOnline ? fleetCount(planet.ground) : 0;
   const unarmed = unarmedCount(line);
   const standing = [
     ships > 0 ? t('planetHero.defenceShips', { count: ships }) : null,
@@ -344,18 +387,25 @@ function Verdicts({
         testId="planet-defence"
         label={t('planetHero.defence')}
         value={armed ? standing : t('planetHero.defenceNone')}
-        detail={unarmed > 0 ? t('planetHero.defenceUnarmed', { count: unarmed }) : undefined}
+        detail={!coreOnline
+          ? t('planetHero.defenceCoreOffline')
+          : unarmed > 0 ? t('planetHero.defenceUnarmed', { count: unarmed }) : undefined}
         tone={armed ? 'neutral' : 'gap'}
       />
       <Verdict
+        testId="planet-shield"
         label={t('planetHero.shield')}
         value={
-          shieldMax > 0
+          !coreOnline
+            ? t('planetHero.shieldOffline')
+            : shieldMax > 0
             ? t('planetHero.shieldValue', { current: compact(shield), max: compact(shieldMax) })
             : t('planetHero.shieldNone')
         }
         detail={
-          shieldMax > 0
+          !coreOnline
+            ? t('planetHero.shieldCoreOffline')
+            : shieldMax > 0
             ? (
                 <div className="mt-2">
                   <Meter
@@ -372,7 +422,7 @@ function Verdicts({
               )
             : t('planetHero.shieldNoAegis')
         }
-        tone={shieldMax === 0 ? 'gap' : shieldShare < 0.35 ? 'warn' : 'good'}
+        tone={!coreOnline || shieldMax === 0 ? 'gap' : shieldShare < 0.35 ? 'warn' : 'good'}
       />
       <VaultVerdict
         planet={planet}

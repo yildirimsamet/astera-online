@@ -14,7 +14,12 @@ import { useAmbientMusic } from './lib/music.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
 import type { StripFocus } from './shell/PendingStrip.js';
-import { nextPanelStop, type PanelStopRequest } from './shell/panelRoute.js';
+import {
+  nextPanelFocus,
+  nextPanelStop,
+  type PanelFocusRequest,
+  type PanelStopRequest,
+} from './shell/panelRoute.js';
 
 /**
  * THREE SCREENS, ONE OF WHICH IS THE GAME.
@@ -96,8 +101,21 @@ export function App() {
    * notification land after the reader has already moved off the battles tab.
    */
   const [panelStop, setPanelStop] = useState<PanelStopRequest | null>(null);
-  const openPanel = (next: Panel, stop?: PanelStop, reportMissionId?: string): void => {
+  /**
+   * WHICH WORLD, WHICH TAB, WHICH ROW — for a notification that names all three.
+   *
+   * Beside `panelStop` and owned here for the same reason: `Signals` lives in the header,
+   * outside the canvas, and this is the lowest place both it and `GalaxyView` can see.
+   */
+  const [panelFocus, setPanelFocus] = useState<PanelFocusRequest | null>(null);
+  const openPanel = (
+    next: Panel,
+    stop?: PanelStop,
+    reportMissionId?: string,
+    focus?: { planetId?: string; group?: string; itemId?: string },
+  ): void => {
     setPanelStop((current) => nextPanelStop(current, stop, reportMissionId));
+    setPanelFocus((current) => nextPanelFocus(current, focus));
     setPanel(next);
   };
   const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
@@ -190,6 +208,7 @@ export function App() {
           panel={panel}
           onPanel={openPanel}
           panelStop={panelStop}
+          panelFocus={panelFocus}
           focusRequest={planetFocus}
           craftFocusRequest={craftFocus}
           commander={session.me.displayName}

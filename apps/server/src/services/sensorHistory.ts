@@ -2,7 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { sensorSphere, type SensorEpoch } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import { minutesSince } from '../clock.js';
-import { planets, seasons, sensorEpochs } from '../db/schema.js';
+import { planetFaults, planets, seasons, sensorEpochs } from '../db/schema.js';
 import { instrumentLevels, levelOf } from './intel.js';
 
 /**
@@ -28,10 +28,16 @@ export async function refreshSensorEpoch(
     .limit(1);
   if (!world) return;
 
-  const levels = await instrumentLevels(db, [planetId]);
+  const [levels, telescopeFault] = await Promise.all([
+    instrumentLevels(db, [planetId]),
+    db.select({ id: planetFaults.id }).from(planetFaults).where(and(
+      eq(planetFaults.planetId, planetId),
+      eq(planetFaults.kind, 'TELESCOPE_FAULT'),
+    )).limit(1),
+  ]);
   const reach = sensorSphere(
     { x: world.x, y: world.y, z: world.z },
-    levelOf(levels, planetId, 'TELESCOPE'),
+    telescopeFault.length > 0 ? 0 : levelOf(levels, planetId, 'TELESCOPE'),
     0,
   ).identify;
   const [open] = await db

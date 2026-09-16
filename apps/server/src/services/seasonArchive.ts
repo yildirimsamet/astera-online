@@ -70,6 +70,9 @@ const addFleet = (target: Fleet, value: Fleet): void => {
 
 export function sumSeasonStats(values: readonly SeasonStatsSnapshot[]): SeasonStatsSnapshot {
   const total = emptySeasonStats();
+  if (values.some((value) => value.coverage?.kind === 'partial')) {
+    total.coverage = { kind: 'partial', reason: 'TELEMETRY_CUTOVER' };
+  }
   for (const value of values) {
     total.competition.battles += value.competition.battles;
     total.competition.attacks += value.competition.attacks;

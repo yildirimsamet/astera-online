@@ -34,6 +34,8 @@ import { keepsPlanetGroup, nextPanelStop, rivalMenuRows } from '../src/shell/pan
  */
 const EVERY_KIND = [
   'colony_captured',
+  'colony_fault',
+  'colony_loyalty_warning',
   'colony_lost',
   'death_star_result',
   'fleet_returned',
@@ -55,6 +57,13 @@ const EVERY_KIND = [
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   colony_captured: { targetPlanetId: 'p9' },
+  colony_fault: {
+    planetId: 'p9', planetName: 'Vantage', fault: 'SHIPYARD_REVOLT',
+    group: 'reach', itemId: 'SHIPYARD',
+  },
+  colony_loyalty_warning: {
+    planetId: 'p9', planetName: 'Vantage', loyalty: 25, faults: 5, minutesLeft: 240,
+  },
   colony_lost: { targetPlanetId: 'p9' },
   death_star_result: { outcome: 'FIRST_STRIKE', targetPlanetId: 'p9' },
   fleet_returned: { trip: 'raid', ships: 4, lootAlloy: 10, lootCrystal: 0 },
@@ -221,7 +230,7 @@ describe('where a notification takes you', () => {
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('report', 'battles', 'mission-raided');
+    expect(onOpen).toHaveBeenCalledWith('report', 'battles', 'mission-raided', undefined);
   });
 
   /**
@@ -245,7 +254,7 @@ describe('where a notification takes you', () => {
       await openSheet();
       await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-      expect(onOpen).toHaveBeenCalledWith('report', 'battles', `mission-${kind}`);
+      expect(onOpen).toHaveBeenCalledWith('report', 'battles', `mission-${kind}`, undefined);
     },
   );
 
@@ -255,7 +264,7 @@ describe('where a notification takes you', () => {
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('intel', 'probes', undefined);
+    expect(onOpen).toHaveBeenCalledWith('intel', 'probes', undefined, undefined);
   });
 
   it('passes no shelf where the panel is the whole answer', async () => {
@@ -263,7 +272,7 @@ describe('where a notification takes you', () => {
     await openSheet();
     await userEvent.click(screen.getByRole('button', { name: 'Open related report' }));
 
-    expect(onOpen).toHaveBeenCalledWith('planet', undefined, undefined);
+    expect(onOpen).toHaveBeenCalledWith('planet', undefined, undefined, undefined);
   });
 
   /**

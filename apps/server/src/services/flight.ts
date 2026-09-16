@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
-import { clanBayAvailable, flightSlots } from '@astera/rules';
+import { clanBayAvailable, flightSlots, hasFault, type FaultSet } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
   intergalacticConvoyRuns,
@@ -185,7 +185,9 @@ export async function assertFreeBay(
   tx: Queryable,
   planetId: string,
   coreLevel: number,
+  faults: FaultSet,
 ): Promise<void> {
+  assertDeparturesAllowed(planetId, faults);
   const { used, total } = await baysOf(tx, planetId, coreLevel);
   if (used >= total) {
     throw new GameError(
@@ -202,7 +204,9 @@ export async function assertFreeClanAidBay(
   tx: Queryable,
   planetId: string,
   coreLevel: number,
+  faults: FaultSet,
 ): Promise<void> {
+  assertDeparturesAllowed(planetId, faults);
   const { used, total } = await baysOf(tx, planetId, coreLevel);
   if (!clanBayAvailable(total, used, true)) {
     throw new GameError(
@@ -212,4 +216,36 @@ export async function assertFreeClanAidBay(
       { total: total + 1 },
     );
   }
+}
+
+/**
+ * TERSANEDE İSYAN: NOTHING LEAVES. Koloni arızaları, `SHIPYARD_REVOLT`.
+ *
+ * THE ONE CHOKEPOINT, and that is why it lives here rather than in thirteen routes.
+ * Every departure in the game — a raid, a transfer, a settlement, a trade convoy, a
+ * pirate run, an intergalactic convoy, a mining launch, a salvage run, a strategic
+ * weapon, clan aid — reserves a flight bay immediately before it commits, and the two
+ * `assert…Bay` functions are the only way that reservation is made. A lane added
+ * tomorrow inherits this rule by taking a bay, which is the only guarantee that scales.
+ *
+ * `faults` IS A REQUIRED ARGUMENT AND DELIBERATELY NOT A QUERY. Every caller already
+ * holds a `LockedPlanet`, read under the lock it is about to commit inside; re-reading
+ * the fault rows here would be a second snapshot of the same fact, thirteen times
+ * over, on the hot path of every launch in the game. Required rather than defaulted so
+ * a new lane cannot silently opt out — the compiler visits every call site, which is
+ * the only reliable way to visit them all.
+ *
+ * WHAT IT DOES NOT STOP: landing, returning, and the probe. A fleet already in the air
+ * comes home — the revolt is in the yard, not in the sky — and a probe neither takes a
+ * bay nor is built here. Leaving the intel layer running is deliberate: a fault that
+ * blinded AND grounded a commander would leave them nothing to do but wait.
+ */
+export function assertDeparturesAllowed(planetId: string, faults: FaultSet): void {
+  if (!hasFault(faults, 'SHIPYARD_REVOLT')) return;
+  throw new GameError(
+    'FAULT_SHIPYARD',
+    'The yard is in revolt. Nothing launches from this world until it is put right.',
+    409,
+    { planetId },
+  );
 }

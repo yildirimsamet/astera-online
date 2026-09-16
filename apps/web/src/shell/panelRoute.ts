@@ -27,6 +27,38 @@ export function nextPanelStop(
 }
 
 /**
+ * WHERE A NOTIFICATION WANTS THE PLANET SHEET TO LAND. Koloni arızaları.
+ *
+ * Owner instruction, and the whole of it: *"Bildirime tikladigimda, ekran -> ilgili
+ * koloniye geçmeli -> menü açmalı -> filo tabını acıp tershaneye gelmeli."* Three moves
+ * in one press — select the world, open the sheet, scroll to the row — and none of them
+ * is the same as the others.
+ *
+ * ITS OWN TYPE BESIDE `PanelStopRequest` RATHER THAN A FIELD ON IT, for the reason D183
+ * records about that one: a deep link belongs to the navigation that carried it and to
+ * no other. A later ordinary press on a world must not re-open yesterday's fault.
+ */
+export interface PanelFocusRequest {
+  planetId?: string;
+  group?: string;
+  itemId?: string;
+  request: number;
+}
+
+/**
+ * Keep a focus only for the navigation that carries one. Same rule as `nextPanelStop`,
+ * stated separately because the two are cleared by different presses: a stop belongs to
+ * a shelf and a focus belongs to a row.
+ */
+export function nextPanelFocus(
+  current: PanelFocusRequest | null,
+  focus?: { planetId?: string; group?: string; itemId?: string },
+): PanelFocusRequest | null {
+  if (!focus || (!focus.planetId && !focus.group && !focus.itemId)) return null;
+  return { ...focus, request: (current?.request ?? 0) + 1 };
+}
+
+/**
  * DOES A REQUESTED PLANET TAB STILL BELONG TO THIS PANEL? D183.
  *
  * The planet sheet opens on Production and lets a CALLER name a tab instead — a

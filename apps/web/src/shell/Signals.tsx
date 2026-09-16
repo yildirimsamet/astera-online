@@ -72,7 +72,12 @@ export function Signals({
   onOpen,
   onFocusPlanet,
 }: {
-  onOpen: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
+  onOpen: (
+    panel: Panel,
+    stop?: PanelStop,
+    reportMissionId?: string,
+    focus?: { planetId?: string; group?: string; itemId?: string },
+  ) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
@@ -227,8 +232,8 @@ export function Signals({
                   repeats={entry.repeats}
                   unread={!entry.event.seen || justRead.has(entry.event.id)}
                   now={now}
-                  onGo={(panel, stop, reportMissionId) => {
-                    onOpen(panel, stop, reportMissionId);
+                  onGo={(panel, stop, reportMissionId, focus) => {
+                    onOpen(panel, stop, reportMissionId, focus);
                     setOpen(false);
                   }}
                   onFocusPlanet={(planetId) => {
@@ -297,6 +302,13 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   colony_captured: { panel: 'planet' },
   settlement_success: { panel: 'planet' },
   colony_lost: { panel: 'planet' },
+  /*
+    SOMETHING BROKE ON ONE OF YOUR WORLDS, and the press has to land on the row that is
+    broken rather than on the planet sheet's front door. The payload names the world, the
+    tab and the item; `PanelFocusRequest` carries them the rest of the way.
+  */
+  colony_fault: { panel: 'planet' },
+  colony_loyalty_warning: { panel: 'planet' },
   settlement_lost: { panel: 'planet' },
   // The active-event chip lives on the galaxy itself; closing Signals is the route.
   galaxy_event_started: { panel: null },
@@ -419,7 +431,12 @@ function Event({
   /** New in THIS reading — see `justRead`. Not simply `!event.seen`. */
   unread: boolean;
   now: number;
-  onGo: (panel: Panel, stop?: PanelStop, reportMissionId?: string) => void;
+  onGo: (
+    panel: Panel,
+    stop?: PanelStop,
+    reportMissionId?: string,
+    focus?: { planetId?: string; group?: string; itemId?: string },
+  ) => void;
   onFocusPlanet: (planetId: string) => void;
 }) {
   const line = describeNotification(event, now);
@@ -483,7 +500,31 @@ function Event({
           const reportMissionId = destination.stop === 'battles'
             ? event.refId ?? undefined
             : undefined;
-          onGo(destination.panel, destination.stop, reportMissionId);
+          /*
+            A FAULT NAMES A WORLD, A TAB AND A ROW, and all three come off the payload
+            rather than being worked out here. The server's copy has to travel with the
+            notification anyway — it is what makes the press work on a build that has
+            never heard of the fault it is announcing — so deriving a second answer on
+            this side would be a table to keep in step for no gain.
+          */
+          const payload = event.payload as
+            { planetId?: unknown; group?: unknown; itemId?: unknown } | undefined;
+          const focus = {
+            ...(typeof payload?.planetId === 'string' ? { planetId: payload.planetId } : {}),
+            ...(typeof payload?.group === 'string' ? { group: payload.group } : {}),
+            ...(typeof payload?.itemId === 'string' ? { itemId: payload.itemId } : {}),
+          };
+          /*
+            NOTHING TO POINT AT MEANS NOTHING IS SENT. Most news has no row in it, and
+            handing every one of them an empty object would make the argument meaningless
+            and every existing caller's signature a lie about what it receives.
+          */
+          onGo(
+            destination.panel,
+            destination.stop,
+            reportMissionId,
+            Object.keys(focus).length > 0 ? focus : undefined,
+          );
         }}
         className="absolute inset-0"
       />

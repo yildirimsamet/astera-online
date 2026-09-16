@@ -1,6 +1,7 @@
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import {
+  type FaultKind,
   MULTI_WORLD,
   PIRATE,
   deuteriumOf,
@@ -207,6 +208,15 @@ export interface BattleReportView {
    * ever said so out loud, so "you lost 7 Bastions" read as seven gone forever.
    */
   defenceSalvage: Fleet;
+  /**
+   * WHAT THIS DEFEAT BROKE ON THE READER'S COLONY. DEFENDER ONLY — empty for an attacker.
+   *
+   * Owner decision: the faults a heavy raid leaves are told here, on the page that names
+   * their cause, instead of as notifications beside `raided`. The attacker is told nothing:
+   * which of a colony's systems just went dark — its dome, its yard — is exactly what a
+   * probe is sold to learn, and a raid is not a probe.
+   */
+  colonyFaults: FaultKind[];
   /**
    * Minutes the defender's works stand offline after this battle, from its instant.
    * Zero when the grade caused no disruption — a repelled raid never reports any.
@@ -619,6 +629,7 @@ async function readBattleReportsIn(
       // than handed a figure about somebody else's fleet or somebody else's guns.
       cargoLimited: attacking && row.cargoLimited,
       defenceSalvage: attacking ? {} : row.defenceSalvage,
+      colonyFaults: attacking ? [] : row.colonyFaults,
       /*
         These two go to both, and neither is a disclosure. Downtime is a pure
         function of the grade, which both sides already have; the wreckage is a

@@ -662,6 +662,8 @@ export const notifications = {
   },
   colonyCaptured: 'Koloni kuruldu · işgal koruması aktif',
   colonyLost: 'Koloni stratejik darbeyle kaybedildi',
+  colonyFault: '{{planet}} · {{fault}}',
+  colonyLoyalty: '{{planet}} elden gidiyor — {{count}} şey bozuk, {{time}} içinde bağımsızlığını ilan ediyor.',
   settlementLost: 'Yerleşim yarışı kaybedildi · Kuryeler ve kuruluş yükü geri dönüyor',
   interceptedDefended: 'Savunma ağın bir Ölüm Yıldızı’nı {{range}} birim uzakta imha etti.',
   interceptedLost: 'Ölüm Yıldızı’n hedefine {{range}} birim kala imha edildi.',

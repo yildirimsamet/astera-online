@@ -81,13 +81,17 @@ const intel: IntelView = {
   probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
 };
 
-const show = (over: Partial<IntelView> = {}, world: Partial<GalaxyPlanet> = {}) => {
+const show = (
+  over: Partial<IntelView> = {},
+  world: Partial<GalaxyPlanet> = {},
+  origin: PlanetView = mine,
+) => {
   const Wrapper = harness();
   render(
     <Wrapper>
       <PlanetFocus
         target={target(world)}
-        planet={mine}
+        planet={origin}
         intel={{ ...intel, ...over }}
         reports={[]}
         now={NOW}
@@ -118,6 +122,22 @@ describe('the focus rail’s two commitments', () => {
     expect(attack!.querySelector('svg')).not.toBeNull();
     // And it is still the one control wearing the irreversible weight.
     expect(attack!.className).toContain('slab-commit');
+  });
+
+  it('refuses before opening the picker when the origin shipyard is in revolt', () => {
+    show({}, {}, {
+      ...mine,
+      faults: [{
+        id: 'fault-yard',
+        kind: 'SHIPYARD_REVOLT',
+        startedAt: new Date(NOW),
+        cost: { alloy: 100, crystal: 0, deuterium: 0 },
+        repair: null,
+      }],
+    });
+    const attack = document.querySelector('[data-attack]');
+    expect(attack).toBeDisabled();
+    expect(attack).toHaveTextContent(/shipyard revolt/i);
   });
 
   /**

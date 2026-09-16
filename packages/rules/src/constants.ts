@@ -3399,3 +3399,197 @@ export const DEATH_STAR = {
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,
 } as const;
+
+/**
+ * KOLONİ ARIZALARI — every number the fault system has. `docs/colony-faults-plan.md`.
+ *
+ * A colony that is not looked after BREAKS. Eight faults, drawn at random, each
+ * shutting one capability off; the longer they stand the faster the world's loyalty
+ * falls, and at zero the colony secedes and goes NEUTRAL. What that buys the design
+ * is a price on DEVELOP — three colonies is three colonies' upkeep — and a neglected
+ * world turning into a prize on somebody else's map.
+ *
+ * TWO NUMBERS ARE THE OWNER'S AND THE REST ARE DERIVED FROM THEM:
+ * eight faults standing together empty loyalty in twelve hours, and a world nobody
+ * touches collects all eight in forty-eight. Everything below is what those two
+ * force, measured rather than guessed.
+ */
+export const FAULT = {
+  /** Faults start here. Below it a colony cannot break and has no loyalty. */
+  minCoreLevel: 6,
+
+  /* ── the rhythm ────────────────────────────────────────────────────── */
+  /**
+   * A FIXED CADENCE WAS REFUSED, and the owner's reason is the whole design of this
+   * block: *"Yoksa kullanıcı 6 saatte bir açıp bakar oyuna."* A game is not an alarm
+   * clock. The gap is drawn from a two-armed mixture whose mean is six hours —
+   * `8 × 6h = 48h`, the owner's figure — and whose shape carries no learnable period.
+   */
+  burstChance: 0.30,
+  /** The burst arm: roughly three faults in ten land right behind the last one. */
+  burstMeanMinutes: 25,
+  /**
+   * The calm arm, and it is GAMMA(2) rather than exponential.
+   *
+   * An exponential's mode is zero, so several very short calm gaps in a row were
+   * likelier than they should be — and that tail is exactly what took a colony in
+   * twenty hours. Gamma(2) is two exponentials added, keeps the long upper tail, and
+   * cuts the lower one: measured over 40k runs the worst 5% of collapses moved from
+   * 25 hours to 29, and the median from 47.3 to 49.
+   */
+  calmMeanHours: 8.4,
+  /** Two faults never land in the same second; anything shorter reads as one event. */
+  minGapSeconds: 60,
+  /**
+   * WHAT A HEAVY DEFEAT BREAKS. Owner instruction: *"kalkan verilmesine sebep olmuş kadar
+   * bir saldırı yemişse: eklenebiliyorsa direk en az 2 tane arıza rastgele eklensin.
+   * eklenemiyorsa 1 eklensin, tüm arızalar zaten varsa bişey olmasın."*
+   *
+   * Two if two fit, one if one does, none if the world is already fully broken. The
+   * trigger is the recovery-shield bar rather than a second threshold of its own: the game
+   * already has one statement of "this blow was heavy", and a fault bar that disagreed
+   * with it would give a commander four hours of immunity for a raid that left their
+   * colony running — or break a colony over a raid the shield called a scratch.
+   */
+  attackFaults: 2,
+
+  /* ── loyalty ───────────────────────────────────────────────────────── */
+  loyaltyMax: 100,
+  /** Eight faults standing → zero in exactly this. OWNER'S NUMBER. */
+  loyaltyCollapseHours: 12,
+  /** No fault standing → full in this. */
+  loyaltyRecoverHours: 12,
+  /**
+   * HOW STEEPLY THE LOSS ACCELERATES WITH THE FAULT COUNT, and it is what makes the
+   * owner's two numbers compatible.
+   *
+   * A LINEAR fall satisfied both constants and still took a neglected colony in 35.5
+   * hours on average — BEFORE the 48-hour mark at which the fault table is supposed
+   * to fill. The world was gone before the system it models had finished happening.
+   * Measured over 40k Monte Carlo runs against the gap distribution above:
+   *
+   *   exponent 1 → 35.5h mean · 33.5 median · 20.0 worst-5%
+   *   exponent 2 → 45.1h      · 42.6        · 23.4
+   *   exponent 3 → 49.8h      · 49.0        · 29.0      ← owner's ~46-48h target
+   *   exponent 4 → 52.6h      · 49.8        · 26.2
+   *
+   * Said plainly on the screen: EVERY FAULT ACCELERATES THE LOSS MORE THAN THE ONE
+   * BEFORE IT. Four faults cost 1.04 loyalty an hour, six cost 3.52, eight cost 8.33.
+   *
+   * THE FLOOR IS TWELVE HOURS AND CANNOT BE RAISED. Eight faults arriving back to
+   * back — which the burst arm permits — collapse a world twelve hours later, because
+   * that is the owner's constant. Measured worst run: 13.2 hours; 1st percentile 23.
+   */
+  loyaltyCurveExponent: 3,
+  /**
+   * WHERE A FALLING WORLD SAYS SOMETHING. Koloni arızaları.
+   *
+   * LOSING A COLONY MUST NEVER BE A SURPRISE — `CLAUDE.md`'s Predictability rule, and
+   * the only one of the four a fault system can fail silently. The warnings delay
+   * nothing and forgive nothing; they make the loss READABLE, which is the difference
+   * between a bet and an accident.
+   *
+   * Three, and they get closer together as the fall accelerates: at a full eight faults
+   * the first is six hours out, the last under an hour and a half. That spacing is the
+   * cube's doing and it is the right shape — the warnings arrive faster exactly when
+   * there is less time to act.
+   */
+  loyaltyWarnAt: [50, 25, 10],
+
+  /* ── the vault leak ────────────────────────────────────────────────── */
+  /**
+   * Hours for a FULL store to drain. The owner's figure, and on its own it was a
+   * wipe rather than a leak — see `leakIncomeCap`.
+   */
+  leakDrainHours: 48,
+  /**
+   * THE SECOND CLAUSE, AND IT IS WHAT MAKES THE FIRST ONE MEAN THE SAME THING AT
+   * EVERY LEVEL. Owner instruction: *"üretim hızı 8bin iken milyonlarca sızıntı hızı
+   * olmasın."*
+   *
+   * Storage hours grow far faster than production does (`storageHours` carries the
+   * same-level purchase guarantee), so `store / 48h` alone measured:
+   *
+   *   core 6  · produces 1,265/h · leaked 1,422/h
+   *   core 18 · produces 4,565/h · leaked 18,600/h
+   *   core 30 · produces 8,878/h · leaked 2,421,694/h
+   *
+   * Capped, the rule reads the same way on every world: AN HOUR OF NEGLECT PUTS TWO
+   * HOURS OF PRODUCTION INTO ORBIT, where anybody who can see it may fly out and
+   * take it. It also fixes deuterium for free — that store is sized off the crystal
+   * rate, some thirty times its own production, so its column used to empty first.
+   */
+  leakIncomeCap: 2,
+  /** A single leak can never cost more than this many full stores, per column. */
+  leakTotalStores: 1,
+  /**
+   * How often what has leaked becomes a real, PUBLIC field in orbit.
+   *
+   * Not lazy, and that is the point: a field decays in forty minutes and belongs to
+   * whoever reaches it. Writing it only when the owner next opens the game would put
+   * a day of leakage into one fresh pile nobody could have raced for.
+   */
+  leakFlushMinutes: 20,
+
+  /* ── repair ────────────────────────────────────────────────────────── */
+  /** Three lanes, running at the same time, unlike every other queue in the game. */
+  repairSlots: 3,
+  repairMinMinutes: 5,
+  repairMaxMinutes: 15,
+  /**
+   * WHICH FAULTS COST WHAT. Three bands; the id decides the band and nothing else.
+   */
+  tiers: {
+    REFINERY_OUTAGE: 1,
+    EXTRACTOR_OUTAGE: 1,
+    PLANT_OUTAGE: 1,
+    TELESCOPE_FAULT: 2,
+    PROSPECTOR_FAULT: 2,
+    VAULT_LEAK: 3,
+    CORE_OUTAGE: 3,
+    SHIPYARD_REVOLT: 3,
+  },
+  /** Band 1 is alloy only; the other two ask for crystal beside it. */
+  tierCrystalShare: [0, 0.4, 0.5],
+  /**
+   * THE PRICE OF ONE REPAIR, IN ALLOY, BY BAND — AUTHORED, NOT DERIVED. Index 0 is
+   * `minCoreLevel`; past the end the last row stands for ever.
+   *
+   * A formula was tried and does not fit. The owner gave three anchors — 25/50/100 at
+   * core 6, 300/500/800 at 12, 1000/1500/2000 at 18 — and the SPREAD BETWEEN BANDS
+   * COMPRESSES across them (1:2:4 at the bottom, 1:1.5:2 at the top). No single
+   * multiplier produces that, and the same is true of `ECON.storageHoursLadder`,
+   * which is authored for the same reason.
+   *
+   * Scale check: core 18 band 3 is 2,000 alloy against 3,000/h of income — forty
+   * minutes. Core 30 is 7,790 against 8,878/h. Small, as instructed, and never in
+   * competition with an upgrade.
+   */
+  priceLadder: [
+    [25, 50, 100],        // 6
+    [40, 75, 140],
+    [60, 110, 190],
+    [90, 155, 260],
+    [130, 220, 360],
+    [200, 330, 530],
+    [300, 500, 800],      // 12
+    [400, 640, 980],
+    [510, 790, 1180],
+    [630, 950, 1390],
+    [760, 1120, 1610],
+    [880, 1300, 1800],
+    [1000, 1500, 2000],   // 18
+    [1120, 1680, 2240],
+    [1250, 1880, 2510],
+    [1400, 2110, 2810],
+    [1570, 2360, 3150],
+    [1760, 2640, 3520],
+    [1970, 2960, 3950],   // 24
+    [2210, 3320, 4420],
+    [2480, 3710, 4950],
+    [2770, 4160, 5550],
+    [3110, 4660, 6210],
+    [3480, 5220, 6960],
+    [3900, 5840, 7790],   // 30 — and every level above it
+  ],
+} as const;

@@ -74,6 +74,7 @@ import {
   movementLaunchSchema,
   deathStarBuildSchema,
   interceptorBuildSchema,
+  faultRepairSchema,
   deathStarLaunchSchema,
   previewSchema,
   probeSchema,
@@ -661,6 +662,17 @@ export class Api {
     this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
       method: 'POST', body: {},
     });
+
+  /**
+   * PUT ONE FAULT RIGHT. There is no matching `cancelFaultRepair`, deliberately: the
+   * server has no such route and the sheet says so before the button is pressed.
+   */
+  repairFault = (planetId: string, faultId: string) =>
+    this.send(
+      `/api/planets/${encodeURIComponent(planetId)}/faults/${encodeURIComponent(faultId)}/repair`,
+      faultRepairSchema,
+      { method: 'POST', body: {} },
+    );
 
   launchDeathStar = (originPlanetId: string, targetPlanetId: string) =>
     this.send('/api/death-star/launch', deathStarLaunchSchema, {

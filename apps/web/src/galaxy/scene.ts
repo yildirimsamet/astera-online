@@ -215,6 +215,8 @@ export interface PlanetNode {
    */
   kind?: GalaxyPlanet['kind'];
   isOwned: boolean;
+  /** Private owner-only marker. It says nothing about another commander's world. */
+  faulty?: boolean;
   isCapital: boolean;
   /** Public controller identity; used only for owned/rival visual grouping. */
   controllerPlayerId?: string;
@@ -291,6 +293,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
     state: planet.state,
     ...(planet.kind ? { kind: planet.kind } : {}),
     isOwned: planet.isOwned ?? planet.isSelf,
+    faulty: planet.faulty === true,
     // `clanmate` comes only from the current private clan-presence projection.
     // A remembered tag stays historical; UNKNOWN stays fogged even while this
     // separate identity bit earns the live friendly ring.

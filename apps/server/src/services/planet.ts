@@ -3,8 +3,11 @@ import {
   BUILDING_IDS,
   INSTRUMENT_IDS,
   SATELLITE_IDS,
+  FAULT,
   advanceEconomy,
+  advanceLoyalty,
   alloyRate,
+  faultsPossible,
   crystalRate,
   deuteriumRate,
   productionMult,
@@ -12,10 +15,13 @@ import {
   wealth,
   type BuildingId,
   type BuildingLevels,
+  type FaultKind,
+  type FaultSet,
   type Fleet,
   type HullId,
   type InstrumentId,
   type InstrumentLevels,
+  type Resources,
   type SatelliteId,
   type SatelliteSet,
   HULLS,
@@ -28,6 +34,7 @@ import {
   buildOrders,
   clanLootShares,
   missions,
+  planetFaults,
   planets,
   players,
   researchOrders,
@@ -146,6 +153,16 @@ export function economyAt(
   hardware: { effectiveInstruments: InstrumentLevels; orbit: SatelliteSet },
   season: Pick<typeof seasons.$inferSelect, 'startsAt' | 'endsAt' | 'status'>,
   requestedNow: Date,
+  /**
+   * WHAT IS BROKEN HERE, and every caller has to be able to say so.
+   *
+   * A probe reads this function too (`intel.ts`), and a report that quoted a stock
+   * computed as though the refinery were running would be the intel layer lying about
+   * something the observer paid for. Defaults to nothing broken, so a caller with no
+   * fault rows to hand reads exactly the figures it always did.
+   */
+  faults: FaultSet = [],
+  leakedSoFar?: Resources,
 ) {
   // The deadline is an economic boundary even when the worker claims the freeze
   // event late. Status remains `live` during afterglow, but production does not.
@@ -163,6 +180,8 @@ export function economyAt(
     recoveryBoostUntilMinutes: row.recoveryBoostUntil
       ? minutesSince(season.startsAt, row.recoveryBoostUntil)
       : null,
+    faults,
+    ...(leakedSoFar ? { leakedSoFar } : {}),
   };
   const state = recovering ? {
     alloy: row.alloy,
@@ -173,6 +192,11 @@ export function economyAt(
     bufferDeuterium: row.bufferDeuterium,
     shield: row.shield,
     lastTickMinutes: nowMinutes,
+    // A world under recovery is frozen, and that includes a broken vault: nothing is
+    // produced, so nothing is bleeding. The piles are carried across untouched.
+    pendingLeakAlloy: row.pendingLeakAlloy,
+    pendingLeakCrystal: row.pendingLeakCrystal,
+    pendingLeakDeuterium: row.pendingLeakDeuterium,
   } : advanceEconomy(
     {
       alloy: row.alloy,
@@ -186,6 +210,12 @@ export function economyAt(
       disruptedUntilMinutes: row.disruptedUntil
         ? minutesSince(season.startsAt, row.disruptedUntil)
         : 0,
+      // A lazy tick advances the SAME pending pile. Omitting these three made every
+      // read replace the previous interval with the newest one, so a leak observed
+      // twice never accumulated beyond one observation interval.
+      pendingLeakAlloy: row.pendingLeakAlloy,
+      pendingLeakCrystal: row.pendingLeakCrystal,
+      pendingLeakDeuterium: row.pendingLeakDeuterium,
     },
     economyInput,
     nowMinutes,
@@ -258,6 +288,22 @@ export interface LockedPlanet {
   /** Every installed satellite, including slots made inactive by Core damage. */
   storedOrbit: SatelliteSet;
   seasonTelemetry: (typeof planets.$inferSelect)['seasonTelemetry'];
+  /**
+   * WHAT IS BROKEN HERE. Koloni arızaları; empty on a capital, always.
+   *
+   * Loaded under the same lock as everything else, so a caller deciding whether a
+   * fleet may leave reads the same instant as the caller deciding what the works
+   * produced. Five of the eight are enforced by their READER rather than here — the
+   * flight bay, the battle, the sensor post — and this list is what they all read.
+   */
+  faults: FaultKind[];
+  /**
+   * 0-100 on a colony past the Core gate; `FAULT.loyaltyMax` everywhere else.
+   *
+   * Already advanced to `now`, like the ore. A caller that wants "how long has this
+   * world got" asks `minutesUntilLoyaltyZero` with this and `faults.length`.
+   */
+  loyalty: number;
   /** Units physically at home right now. Anything in flight is not here. */
   homeFleet: Fleet;
   ground: Fleet;
@@ -296,6 +342,22 @@ export class GameError extends Error {
 
 /** Mutations and launches stop for the whole exact recovery window. */
 export function assertWorldOperational(planet: LockedPlanet): void {
+  if (planet.kind === 'COLONY' && planet.loyalty <= 0) {
+    /*
+      ZERO IS ALREADY THE SECESSION BOUNDARY.
+
+      The scheduled event performs the ownership hand-over, but a worker may claim it
+      a fraction late. Without this guard, a request in that seam could launch a fleet,
+      place an order or even start a repair after the lazy tick had proved the colony
+      was no longer loyal. The queue remains the writer; player actions simply cannot
+      step past its authoritative boundary.
+    */
+    throw new GameError(
+      'COLONY_SECESSION_PENDING',
+      'That colony has reached zero loyalty and is seceding',
+      409,
+    );
+  }
   if (planet.recoveryUntil !== null && planet.recoveryUntil > planet.now) {
     throw new GameError('WORLD_RECOVERING', 'That world is recovering', 409, {
       until: planet.recoveryUntil.toISOString(),
@@ -372,11 +434,35 @@ export async function loadLocked(
     throw new GameError('PLANET_NOT_OWNED', 'You no longer control that world', 403);
   }
 
-  const [buildingRows, satelliteRows, unitRows] = await Promise.all([
+  const [buildingRows, satelliteRows, unitRows, faultRows] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, planetId)),
     tx.select().from(satellites).where(eq(satellites.planetId, planetId)),
     tx.select().from(units).where(and(eq(units.planetId, planetId), eq(units.location, 'home'))),
+    tx.select().from(planetFaults).where(eq(planetFaults.planetId, planetId)),
   ]);
+  const faults = faultRows.map((fault) => fault.kind);
+  /*
+    THE LEAK'S OWN CEILING, and it is read off the fault rather than the world.
+
+    `FAULT.leakTotalStores` caps what ONE occurrence may cost. A vault repaired and
+    broken again is a second flood with a second budget, which is what the commander
+    paid the repair for.
+  */
+  const leak = faultRows.find((fault) => fault.kind === 'VAULT_LEAK');
+  /*
+    SPENT = WHAT REACHED ORBIT + WHAT IS ON ITS WAY THERE.
+
+    The fault row counts only what a flush has already turned into a field; the rest is
+    sitting in `pending_leak_*` on this row. Passing the first without the second would
+    let a leak overrun its ceiling by one flush interval every time — and the flush
+    moves the figure between the two columns, so their sum is what the ceiling is
+    actually about.
+  */
+  const leakedSoFar = leak && {
+    alloy: leak.leakedAlloy + row.pendingLeakAlloy,
+    crystal: leak.leakedCrystal + row.pendingLeakCrystal,
+    deuterium: leak.leakedDeuterium + row.pendingLeakDeuterium,
+  };
 
   const levels = buildingLevelsFrom(buildingRows);
   const { instruments, effectiveInstruments, orbit, storedOrbit } = hardwareOf(satelliteRows, levels);
@@ -394,7 +480,30 @@ export async function loadLocked(
     { effectiveInstruments, orbit },
     season,
     clock.now(),
+    faults,
+    leakedSoFar ?? undefined,
   );
+
+  /*
+    SADAKAT DUVAR SAATİYLE İLERLER, üretken dakikalarla değil.
+
+    It is about NEGLECT, not about output: a raid that stopped the works did not repair
+    anything, and a world sitting broken through a disruption is still sitting broken.
+    The shield already keeps wall time for the same kind of reason.
+
+    A world that cannot break holds the maximum rather than being left at whatever it
+    last had. `planetView` publishes null there, so the figure is never read — but a
+    colony demoted below the gate coming back with a half-empty bar it can no longer
+    refill is the sort of state nothing would ever repair.
+  */
+  const breakable = faultsPossible({
+    kind: row.kind,
+    coreLevel: levels.CORE,
+    plantLevel: levels.DEUTERIUM_PLANT,
+  });
+  const loyalty = breakable
+    ? advanceLoyalty(row.loyalty, faults.length, (now.getTime() - row.lastTickAt.getTime()) / 60_000)
+    : FAULT.loyaltyMax;
 
   if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
     /*
@@ -458,6 +567,10 @@ export async function loadLocked(
         bufferCrystal: advanced.bufferCrystal,
         bufferDeuterium: advanced.bufferDeuterium,
         shield: advanced.shield,
+        pendingLeakAlloy: advanced.pendingLeakAlloy ?? row.pendingLeakAlloy,
+        pendingLeakCrystal: advanced.pendingLeakCrystal ?? row.pendingLeakCrystal,
+        pendingLeakDeuterium: advanced.pendingLeakDeuterium ?? row.pendingLeakDeuterium,
+        loyalty,
         lastTickAt: now,
         statsOwnerPlayerId: row.controllerPlayerId,
         seasonTelemetry: row.seasonTelemetry,
@@ -492,6 +605,8 @@ export async function loadLocked(
     orbit,
     storedOrbit,
     seasonTelemetry: row.seasonTelemetry,
+    faults,
+    loyalty,
     homeFleet,
     ground,
     nowMinutes,

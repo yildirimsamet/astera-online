@@ -19,6 +19,7 @@ import {
   satelliteSlots,
   seeingUnlocked,
   type BuildingId,
+  type FaultKind,
   type HullId,
   type InstrumentId,
   type SatelliteId,
@@ -60,6 +61,30 @@ import {
  */
 export interface WithPlanet {
   planet: PlanetView;
+}
+
+/** The broken row is a repair decision until its fault is gone, not an upgrade door. */
+const BUILDING_FAULT: Partial<Record<BuildingId, FaultKind>> = {
+  REFINERY: 'REFINERY_OUTAGE',
+  EXTRACTOR: 'EXTRACTOR_OUTAGE',
+  DEUTERIUM_PLANT: 'PLANT_OUTAGE',
+  VAULT: 'VAULT_LEAK',
+  CORE: 'CORE_OUTAGE',
+  SHIPYARD: 'SHIPYARD_REVOLT',
+};
+
+function assertFaultItemOperational(
+  planet: LockedPlanet,
+  item: string,
+  fault: FaultKind | undefined,
+): void {
+  if (!fault || !planet.faults.includes(fault)) return;
+  throw new GameError(
+    'FAULT_ITEM_BROKEN',
+    'Repair this item before improving it',
+    409,
+    { item, fault },
+  );
 }
 
 export interface CollectResult extends WithPlanet {
@@ -157,6 +182,7 @@ export async function placeBuildingUpgrade(
   type: BuildingId,
 ): Promise<number> {
   assertWorldOperational(planet);
+  assertFaultItemOperational(planet, type, BUILDING_FAULT[type]);
   const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
   const level = context.projected.buildings[type];
 
@@ -231,6 +257,9 @@ export async function placeUnitBuild(
   }
 
   assertWorldOperational(planet);
+  if (hull === 'PROSPECTOR') {
+    assertFaultItemOperational(planet, hull, 'PROSPECTOR_FAULT');
+  }
   const context = await buildQueueContext(tx, planet, 'YARD');
   const spec = HULLS[hull];
   const tech = asTech(context.projected.research);
@@ -365,6 +394,9 @@ export async function raiseInstrument(
 ): Promise<WithPlanet & { type: InstrumentId; level: number }> {
   return withPlanetLock(db, planetId, clock, async (tx, planet) => {
     assertWorldOperational(planet);
+    if (type === 'TELESCOPE') {
+      assertFaultItemOperational(planet, type, 'TELESCOPE_FAULT');
+    }
     const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
     const level = context.projected.instruments[type] ?? 0;
 

@@ -62,6 +62,7 @@ import {
   planTradeRoute,
 } from '../lib/navigation.js';
 import { outOfBandAbove } from '../lib/band.js';
+import { launchFault } from '../lib/faults.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
   HULLS,
@@ -126,7 +127,12 @@ import {
   reconcileOwnInterceptions,
 } from '../galaxy/ownCraft.js';
 import type { StripFocus } from '../shell/PendingStrip.js';
-import { keepsPlanetGroup, returnsToMenu, rivalMenuRows } from '../shell/panelRoute.js';
+import {
+  keepsPlanetGroup,
+  returnsToMenu,
+  rivalMenuRows,
+  type PanelFocusRequest,
+} from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
@@ -190,6 +196,7 @@ export function GalaxyView({
   panel,
   onPanel,
   panelStop,
+  panelFocus,
   focusRequest,
   craftFocusRequest,
   commander,
@@ -224,6 +231,8 @@ export function GalaxyView({
    * Intel centre is already showing battles and the reader has since moved off it.
    */
   panelStop?: { stop: PanelStop; request: number; reportMissionId?: string } | null;
+  /** A notification that names a world, a tab and a row. Koloni arızaları. */
+  panelFocus?: PanelFocusRequest | null;
   /** A route from an already-revealed identity back to its world. */
   focusRequest?: { planetId: string; request: number } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
@@ -353,6 +362,8 @@ export function GalaxyView({
     [galaxyEvents.data, now],
   );
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
+  /** The row a notification asked for, cleared the moment the sheet has used it. */
+  const [requestedItem, setRequestedItem] = useState<string | null>(null);
 
   /*
     A REQUESTED TAB BELONGS TO THE PANEL IT WAS MADE FOR. D183.
@@ -364,8 +375,35 @@ export function GalaxyView({
     had asked for that time. `keepsPlanetGroup` is the single statement of it.
   */
   useEffect(() => {
-    if (!keepsPlanetGroup(panel)) setRequestedPlanetGroup(null);
+    if (!keepsPlanetGroup(panel)) {
+      setRequestedPlanetGroup(null);
+      setRequestedItem(null);
+    }
   }, [panel]);
+
+  /*
+    THE THREE MOVES OF A FAULT NOTIFICATION, IN ORDER. Owner instruction:
+    *"ekran -> ilgili koloniye geçmeli -> menü açmalı -> filo tabını acıp tershaneye
+    gelmeli."*
+
+    Keyed on `request` rather than on the payload, so the SAME fault announced twice —
+    two colonies losing the same thing, or a reader coming back to a row they already
+    visited — lands both times. `nextPanelFocus` is what increments it, and it returns
+    null for every navigation that carries no focus, which is what clears a stale one.
+  */
+  useEffect(() => {
+    if (!panelFocus) return;
+    if (panelFocus.planetId && panelFocus.planetId !== activePlanetId) {
+      selectPlanet(panelFocus.planetId);
+    }
+    if (panelFocus.group) setRequestedPlanetGroup(panelFocus.group as PlanetGroup);
+    setRequestedItem(panelFocus.itemId ?? null);
+    /*
+      KEYED ON THE REQUEST AND ON NOTHING ELSE. Reacting to `activePlanetId` would re-run
+      this the moment the selection it just made lands, and re-assert a tab the reader
+      may already have moved off — the exact failure D183 records for the group request.
+    */
+  }, [panelFocus?.request]);
 
   /**
    * WAKE UP WHEN SOMETHING LANDS. D48.
@@ -1323,6 +1361,7 @@ export function GalaxyView({
           fleetAway={planet.data?.fleetAway ?? {}}
           minutesLeft={Math.max(0, (tradeShip.endsAt.getTime() - now) / 60_000)}
           reachMinutes={tradeReach}
+          launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
           onClose={close}
           onTrade={() => { setTrading(true); }}
           open={detail}
@@ -1344,6 +1383,7 @@ export function GalaxyView({
             hasCombatCraft={combatValue(planet.data?.fleet ?? {}) > 0}
             launchLocked={planet.data?.convoyLaunchLocked === true}
             occurrenceSpent={planet.data?.convoyOccurrenceSpent === true}
+            launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
             onClose={close}
             onRaid={() => { setStrikingConvoy(true); }}
             open={detail}
@@ -1502,6 +1542,7 @@ export function GalaxyView({
             {...(requestedPlanetGroup ?? planetGroup
               ? { focusGroup: requestedPlanetGroup ?? planetGroup }
               : {})}
+            {...(requestedItem ? { focusItem: requestedItem } : {})}
           />
         </Sheet>
       )}
@@ -2019,6 +2060,7 @@ function PirateFocusHost({
     <PirateFocus
       pirate={pirate}
       fleetAtHome={planet.data?.fleet ?? {}}
+      launchBlocked={launchFault(planet.data?.faults, 'fleet') !== null}
       raiding={raiding}
       open={open}
       onToggle={onToggle}
@@ -2139,6 +2181,7 @@ function AsteroidFocusHost({
       /** D183: the selected world's rest, published on the private mining view. */
       craftReadyAt={mining?.craftReadyAt ?? null}
       craftCooldowns={mining?.craftCooldowns}
+      launchBlock={launchFault(planet.data?.faults, 'prospector') ?? undefined}
       onClose={onClose}
       busy={busy}
       open={open}
@@ -2229,6 +2272,7 @@ function DebrisFocusHost({
       /** The lane the rule exists for: a field over your own world. D183. */
       craftReadyAt={mining?.craftReadyAt ?? null}
       craftCooldowns={mining?.craftCooldowns}
+      launchBlock={launchFault(planetQuery.data?.faults, 'prospector') ?? undefined}
       busy={busy}
       open={open}
       onToggle={onToggle}

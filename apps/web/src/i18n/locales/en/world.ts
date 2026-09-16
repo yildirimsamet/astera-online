@@ -347,6 +347,8 @@ export const focus = {
     attack: "Plan an attack",
     attackNeutralAgain: "Raid again · claim unchanged",
     attackOriginRecovering: "Attack · origin recovering",
+    attackShipyardRevolt: "Cannot attack · shipyard revolt",
+    attackShipyardRevoltShort: "Shipyard revolt",
     windowOpen:
       "Their fleet is not home. This is the window the whole game is about.",
     distance: "Distance",

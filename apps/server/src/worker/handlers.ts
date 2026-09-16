@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import {
+  FAULT,
   PROBE,
   applyDisruption,
   battleDominion,
@@ -80,6 +81,9 @@ import {
   setUnits,
 } from '../services/planet.js';
 import { grantRecoveryShield } from '../services/attackProtection.js';
+import { breakFaults, defenceOnline, onFaultSpawn, onVaultLeakFlush } from '../services/faults.js';
+import { onFaultRepairComplete } from '../services/faultRepair.js';
+import { onColonySecession } from '../services/loyalty.js';
 import { emptySeasonStats } from '../services/seasonArchive.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
@@ -753,11 +757,27 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     */
     const attackerTech = mission.tech ?? {};
     const defenderTech = await techOf(tx, defender.playerId);
-    const defenders = garrisonOf(defender.homeFleet, defender.ground);
+    /*
+      KOMUTA MERKEZİNDE KESİNTİ: THE DOME IS DARK AND THE GUNS DO NOT FIRE.
+      Koloni arızaları, `CORE_OUTAGE`.
+
+      The ships standing at home still fight — a crew does not need the Core to fly.
+      What the Core runs is the Aegis and the fire control on the emplacements, and
+      with it out both are simply absent from the line.
+
+      THE GROUND GOES BACK AS IT CAME, and the block below is where that is done.
+      `defenderSurvivors[hull] ?? 0` reads "not in the battle" as "annihilated", which
+      is right for a gun that fought and lost and catastrophic for one that never
+      fired: an outage would DESTROY a world's whole defensive line rather than
+      silence it for one raid. `NON_COMBATANT_HULLS` pays for exactly the same branch
+      one line up, for exactly the same reason.
+    */
+    const defenceDark = !defenceOnline(defender.faults);
+    const defenders = garrisonOf(defender.homeFleet, defenceDark ? {} : defender.ground);
     // Seeded from the mission id: any report can be re-derived from its inputs,
     // which makes battles auditable and bug reports reproducible.
     const result = resolveCombat(
-      attackingFleet, defenders, defender.shield, seededFrom(missionId),
+      attackingFleet, defenders, defenceDark ? 0 : defender.shield, seededFrom(missionId),
       { attacker: { tech: attackerTech }, defender: { tech: defenderTech } },
     );
 
@@ -777,9 +797,10 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         ? standing
         : result.defenderSurvivors[hull] ?? 0;
     }
-    for (const [hull] of fleetEntries(defender.ground)) {
-      defenderHome[hull] =
-        (result.defenderSurvivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
+    for (const [hull, standing] of fleetEntries(defender.ground)) {
+      defenderHome[hull] = defenceDark
+        ? standing
+        : (result.defenderSurvivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
     }
     await setUnits(tx, defender.planetId, defenderHome, 'home');
 
@@ -903,6 +924,30 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       now: defender.now,
     });
     const recoveryShieldUntil = recovery.until;
+    /*
+      A DEFEAT HEAVY ENOUGH TO EARN A SHIELD ALSO BREAKS THE COLONY. Owner instruction:
+      *"kalkan verilmesine sebep olmuş kadar bir saldırı yemişse ... en az 2 tane arıza
+      rastgele eklensin."*
+
+      Keyed on `earned`, not on `until`: the shield is refused to a defender with a raid of
+      their own in the air and to a server-played commander, and neither refusal made the
+      blow any lighter. A capital, a colony below the gate and a world with nothing left to
+      break all come back silent from `breakFaults`.
+
+      Idempotent through `claimMission` above: a redelivered arrival never gets here, and
+      the draw is seeded from the mission so a replayed resolution breaks the same things.
+    */
+    const colonyFaults = recovery.earned
+      ? await breakFaults(tx, {
+        seasonId: mission.seasonId,
+        planetId: defender.planetId,
+        now: defender.now,
+        count: FAULT.attackFaults,
+        seed: `attack:${missionId}`,
+        // Told in this battle's report below rather than as notifications. Owner decision.
+        announce: false,
+      })
+      : [];
 
     const dominionBreakdown = scoreEligible
       ? battleDominion(
@@ -993,6 +1038,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       attackerFleet: attackingFleet,
       defenderFleet: defenders,
       defenceSalvage: result.defenceSalvage,
+      colonyFaults,
       /*
         THE DOWNTIME STANDING AFTER THIS BATTLE, from its own instant — never the
         absolute deadline, which is meaningless once the report is an hour old.
@@ -1750,10 +1796,11 @@ export const onSeasonAct: Handler = async ({ db }, event) => {
 /* ── season freeze ─────────────────────────────────────────── */
 
 /** Freeze one galaxy and preserve the identity/story that survives its world. D85. */
-export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set() }, event) => {
-  const seasonId = event.refId ?? event.seasonId;
-  if (seasonId !== event.seasonId) throw new Error('season_end refId does not match its season');
-
+async function freezeSeason(
+  { db, clock, adminUsernames = new Set() }: HandlerContext,
+  seasonId: string,
+  event: EventRow | null,
+): Promise<void> {
   await db.transaction(async (tx) => {
     const [season] = await tx
       .select()
@@ -1762,7 +1809,7 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       .for('update');
     if (!season || season.status === 'frozen' || season.status === 'wiped') return;
     if (season.status !== 'live') throw new Error(`season ${seasonId} is ${season.status}`);
-    if (clock.now().getTime() < season.endsAt.getTime()) {
+    if (event !== null && clock.now().getTime() < season.endsAt.getTime()) {
       throw new Error(`season_end for ${seasonId} fired before endsAt`);
     }
     const [seasonShard] = await tx
@@ -1772,10 +1819,11 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
       .limit(1);
     if (!seasonShard) throw new Error(`season ${seasonId} has no shard`);
 
-    // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
-    // this processing event and replace it atomically; EventWorker's later
-    // `complete()` update simply finds no old row.
-    const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount]] = await Promise.all([
+    if (event !== null) {
+      // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
+      // this processing event and replace it atomically; EventWorker's later
+      // `complete()` update simply finds no old row.
+      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -1809,36 +1857,38 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
           eq(intergalacticConvoyRuns.seasonId, seasonId),
           ne(intergalacticConvoyRuns.status, 'done'),
         )),
-    ]);
-    if (
-      (missionCount?.n ?? 0) > 0
-      || (miningCount?.n ?? 0) > 0
-      || (buildCount?.n ?? 0) > 0
-      || (strategicCount?.n ?? 0) > 0
-      || (researchCount?.n ?? 0) > 0
-      || (pirateCount?.n ?? 0) > 0
-      || (tradeCount?.n ?? 0) > 0
-      || (convoyCount?.n ?? 0) > 0
-    ) {
-      await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
-      await schedule(tx, {
-        seasonId,
-        kind: 'season_end',
-        refId: seasonId,
-        resolveAt: new Date(clock.now().getTime() + 1_000),
-      });
-      return;
+      ]);
+      if (
+        (missionCount?.n ?? 0) > 0
+        || (miningCount?.n ?? 0) > 0
+        || (buildCount?.n ?? 0) > 0
+        || (strategicCount?.n ?? 0) > 0
+        || (researchCount?.n ?? 0) > 0
+        || (pirateCount?.n ?? 0) > 0
+        || (tradeCount?.n ?? 0) > 0
+        || (convoyCount?.n ?? 0) > 0
+      ) {
+        await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
+        await schedule(tx, {
+          seasonId,
+          kind: 'season_end',
+          refId: seasonId,
+          resolveAt: new Date(clock.now().getTime() + 1_000),
+        });
+        return;
+      }
     }
 
-    if (season.statsVersion === 1) {
-      const ownedWorlds = await tx
-        .select({ id: planets.id })
-        .from(planets)
-        .where(and(eq(planets.seasonId, seasonId), isNotNull(planets.controllerPlayerId)));
-      const boundaryClock: Clock = { now: () => season.endsAt };
-      for (const world of ownedWorlds) {
-        await loadLocked(tx, world.id, boundaryClock, { requireLive: false });
-      }
+    const capturedThrough = event === null
+      ? new Date(Math.min(clock.now().getTime(), season.endsAt.getTime()))
+      : season.endsAt;
+    const ownedWorlds = await tx
+      .select({ id: planets.id })
+      .from(planets)
+      .where(and(eq(planets.seasonId, seasonId), isNotNull(planets.controllerPlayerId)));
+    const boundaryClock: Clock = { now: () => capturedThrough };
+    for (const world of ownedWorlds) {
+      await loadLocked(tx, world.id, boundaryClock, { requireLive: false });
     }
 
     const allRoster = await tx
@@ -2045,9 +2095,11 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
         : finalRank <= 3 ? 'Vanguard' : dominion > 0 ? 'Conqueror' : 'Commander';
       const playerClanId = clanIdByPlayer.get(player.playerId);
       const clan = playerClanId ? clanRecapById.get(playerClanId) ?? null : null;
-      let stats: SeasonStatsSnapshot | null = null;
-      if (season.statsVersion === 1) {
-        stats = emptySeasonStats();
+      const stats: SeasonStatsSnapshot = emptySeasonStats();
+      if (season.statsVersion !== 1) {
+        stats.coverage = { kind: 'partial', reason: 'TELEMETRY_CUTOVER' };
+      }
+      {
         stats.competition.battles = mine.length;
         stats.competition.attacks = attacks;
         stats.competition.defences = defences;
@@ -2131,9 +2183,9 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
           biggestRaid: biggest,
           clan,
         },
-        statsVersion: stats?.version ?? 0,
+        statsVersion: stats.version,
         stats,
-        averageEligible: stats !== null && !botAccountIds.has(player.accountId),
+        averageEligible: !botAccountIds.has(player.accountId),
         createdAt: clock.now(),
       };
     });
@@ -2166,10 +2218,25 @@ export const onSeasonEnd: Handler = async ({ db, clock, adminUsernames = new Set
         })).onConflictDoNothing();
       }
     }
-    await tx.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, seasonId));
+    await tx.update(seasons).set({
+      status: 'frozen',
+      closedAt: capturedThrough,
+      endReason: event === null ? 'FORCED_WIPE' : 'SCHEDULED_END',
+    }).where(eq(seasons.id, seasonId));
     await publishShard(tx, seasonId, 'season');
   });
+}
+
+export const onSeasonEnd: Handler = async (ctx, event) => {
+  const seasonId = event.refId ?? event.seasonId;
+  if (seasonId !== event.seasonId) throw new Error('season_end refId does not match its season');
+  await freezeSeason(ctx, seasonId, event);
 };
+
+/** Seal a live season through now before an operator removes its world rows. */
+export async function forceSeasonEnd(ctx: HandlerContext, seasonId: string): Promise<void> {
+  await freezeSeason(ctx, seasonId, null);
+}
 
 /** Fifteen minutes after the snapshot, replace every galaxy in one commit. D88. */
 export const onSeasonRollover: Handler = async ({ db, clock }, event) => {
@@ -2574,4 +2641,8 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   galaxy_event_start: onGalaxyEventStart,
   galaxy_event_end: onGalaxyEventEnd,
   asteroid_hour: onAsteroidHour,
+  fault_spawn: onFaultSpawn,
+  fault_repair_complete: onFaultRepairComplete,
+  vault_leak_flush: onVaultLeakFlush,
+  colony_secession: onColonySecession,
 };

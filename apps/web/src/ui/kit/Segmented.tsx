@@ -30,6 +30,17 @@ export interface Segment<T extends string> {
   label: ReactNode;
   /** Announced instead of the label, where the label is an abbreviation. */
   hint?: string;
+  /**
+   * A GLYPH BESIDE THE LABEL, FOR A FACT ABOUT WHAT IS BEHIND THIS SEGMENT.
+   *
+   * A FACT, NEVER A RANKING. D170 removed a pip that marked whichever category the
+   * screen judged most urgent, on the owner's instruction that the tabs say what they
+   * ARE and the choosing is the player's. "Something under here is broken" is not an
+   * opinion about where to go — it is the one thing the player cannot find out without
+   * opening all four — so it is allowed, and a count is not: how many is a matter for
+   * the tab's own contents.
+   */
+  mark?: ReactNode;
 }
 
 export function Segmented<T extends string>({
@@ -135,7 +146,14 @@ export function Segmented<T extends string>({
                 : 'text-faint hover:text-dim'
             }`}
           >
-            {segment.label}
+            {segment.mark ? (
+              // `gap-1` and nothing else: the mark rides with the label rather than
+              // being pinned to a corner, so a two-word label still centres as one.
+              <span className="flex items-center justify-center gap-1">
+                {segment.label}
+                {segment.mark}
+              </span>
+            ) : segment.label}
           </button>
         );
       })}

@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
+  botProfiles,
   planets,
   playerRivals,
   players,
@@ -178,6 +179,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         status: context.season.status,
         startsAt: context.season.startsAt,
         endsAt: context.season.endsAt,
+        closedAt: context.season.closedAt,
+        endReason: context.season.endReason,
       },
       ladder: rows.map((row) => ({
         resultId: row.publicId,
@@ -235,6 +238,37 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
       .select({ n: sql<number>`count(*)::int` })
       .from(seasonResults)
       .where(eq(seasonResults.seasonId, selected.result.seasonId));
+    const [legacyRows, botRows] = await Promise.all([
+      app.db
+        .select({
+          accountId: seasonResults.accountId,
+          recap: seasonResults.recap,
+          damageDealt: seasonResults.damageDealt,
+          damageTaken: seasonResults.damageTaken,
+        })
+        .from(seasonResults)
+        .where(eq(seasonResults.seasonId, selected.result.seasonId)),
+      app.db.select({ accountId: botProfiles.accountId }).from(botProfiles),
+    ]);
+    const botAccountIds = new Set(botRows.map((row) => row.accountId));
+    const legacyCohort = legacyRows.filter((row) => !botAccountIds.has(row.accountId));
+    const legacyTotals = legacyCohort.reduce((total, row) => ({
+      battles: total.battles + row.recap.battles,
+      attacks: total.attacks + row.recap.attacks,
+      defences: total.defences + row.recap.defences,
+      damageDealt: total.damageDealt + row.damageDealt,
+      damageTaken: total.damageTaken + row.damageTaken,
+    }), { battles: 0, attacks: 0, defences: 0, damageDealt: 0, damageTaken: 0 });
+    const legacyAverages = legacyCohort.length === 0 ? null : {
+      cohortSize: legacyCohort.length,
+      competition: {
+        battles: legacyTotals.battles / legacyCohort.length,
+        attacks: legacyTotals.attacks / legacyCohort.length,
+        defences: legacyTotals.defences / legacyCohort.length,
+        damageDealt: legacyTotals.damageDealt / legacyCohort.length,
+        damageTaken: legacyTotals.damageTaken / legacyCohort.length,
+      },
+    };
     const cohortRows = selected.result.stats === null ? [] : await app.db
       .select({ stats: seasonResults.stats })
       .from(seasonResults)
@@ -255,6 +289,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         status: selected.season.status,
         startsAt: selected.season.startsAt,
         endsAt: selected.season.endsAt,
+        closedAt: selected.season.closedAt,
+        endReason: selected.season.endReason,
         commanderName: selected.result.recap.commanderName,
         planetName: selected.result.recap.planetName,
         rank: selected.result.finalRank,
@@ -263,6 +299,16 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         dominion: selected.result.dominion,
         title: selected.result.title,
         recap: selected.result.recap,
+        legacyStats: {
+          competition: {
+            battles: selected.result.recap.battles,
+            attacks: selected.result.recap.attacks,
+            defences: selected.result.recap.defences,
+            damageDealt: selected.result.damageDealt,
+            damageTaken: selected.result.damageTaken,
+          },
+        },
+        legacyAverages,
         stats: selected.result.stats,
         averages: averageSeasonStats(cohortStats),
         reward: null,
@@ -273,8 +319,24 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         championships: ranks.filter((rank) => rank === 1).length,
         podiums: ranks.filter((rank) => rank <= 3).length,
         topTen: ranks.filter((rank) => rank <= 10).length,
+        competitionTotals: completed.reduce((total, row) => ({
+          seasonsCovered: total.seasonsCovered + 1,
+          battles: total.battles + row.result.recap.battles,
+          attacks: total.attacks + row.result.recap.attacks,
+          defences: total.defences + row.result.recap.defences,
+          damageDealt: total.damageDealt + row.result.damageDealt,
+          damageTaken: total.damageTaken + row.result.damageTaken,
+        }), {
+          seasonsCovered: 0,
+          battles: 0,
+          attacks: 0,
+          defences: 0,
+          damageDealt: 0,
+          damageTaken: 0,
+        }),
         totals: completedStats.length === 0 ? null : {
           seasonsCovered: completedStats.length,
+          partialSeasons: completedStats.filter((stats) => stats.coverage?.kind === 'partial').length,
           stats: sumSeasonStats(completedStats),
         },
         seasons: completed.map((row) => ({
@@ -286,6 +348,8 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           status: row.season.status,
           startsAt: row.season.startsAt,
           endsAt: row.season.endsAt,
+          closedAt: row.season.closedAt,
+          endReason: row.season.endReason,
           commanderName: row.result.recap.commanderName,
           rank: row.result.finalRank,
           dominion: row.result.dominion,

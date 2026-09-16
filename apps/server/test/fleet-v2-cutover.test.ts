@@ -22,6 +22,7 @@ import { joinSettled as joinSeason } from './helpers.js';
 import { completeResearch } from '../src/services/research.js';
 import { wipeAllServers } from '../src/services/servers.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { forceSeasonEnd } from '../src/worker/handlers.js';
 import {
   giveUnits,
   grant,
@@ -56,6 +57,7 @@ describe('Fleet V2 offline season cutover', () => {
       completedAt: old.clock.now(),
     });
 
+    await forceSeasonEnd({ db: old.db, clock: old.clock }, old.seasonId);
     const cutover = await wipeAllServers(old.db, old.clock, {
       count: 2,
       seedBase: 148,

@@ -48,3 +48,34 @@ export function LockMark() {
     </svg>
   );
 }
+
+/**
+ * SOMETHING HERE IS BROKEN. Koloni arızaları.
+ *
+ * A BOLT, NOT A WARNING TRIANGLE. Every fault in this system is a thing that has
+ * STOPPED — the power is out, the crew walked, the dome is dark — and a triangle reads
+ * as "be careful" rather than "this is not running". The break in the stroke is the
+ * whole idea and survives being drawn at fourteen pixels, which is the size it is used
+ * at in the corner of a row and on a tab.
+ *
+ * It takes its colour from the text around it (`currentColor`) rather than owning one,
+ * because it appears in three places at three weights: faint in a row's corner, at full
+ * strength on the repair sheet, and inheriting the tab's own state on the category bar.
+ */
+export function FaultMark({ className = 'size-[14px]' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M13.5 3 5.5 13h5l-1 8 8-10h-5z" />
+      <path d="M3 3l18 18" strokeWidth="2.2" />
+    </svg>
+  );
+}

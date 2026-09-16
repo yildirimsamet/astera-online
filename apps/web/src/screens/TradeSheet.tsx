@@ -18,6 +18,7 @@ import type { PlanetView } from '../api/schemas.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
 import { flightModifiers, planTradeRoute } from '../lib/navigation.js';
+import { launchFault } from '../lib/faults.js';
 import {
   balanceTake,
   dearestFirst,
@@ -124,6 +125,7 @@ export function TradeSheet({
   const { t } = useTranslation();
   const say = useToast();
   const launch = useLaunchTrade(planet.planet.id);
+  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
 
   const [fleet, setFleet] = useState<Fleet>({});
   const [give, setGive] = useState<TradeGood>('alloy');
@@ -257,7 +259,8 @@ export function TradeSheet({
    * row by row rather than by reading two files side by side.
    */
   const refusal: string | null =
-    ships === 0 ? t('trade.chooseFleet')
+    launchBlocked ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    : ships === 0 ? t('trade.chooseFleet')
     : !windowOpen ? t('trade.windowClosed')
     : baysFree <= 0 ? t('trade.noBay')
     : !carrying ? t('trade.needsCarrier')
@@ -355,7 +358,7 @@ export function TradeSheet({
               variant="commit"
               size="lg"
               className="flex-[2]"
-              disabled={launch.isPending}
+              disabled={launch.isPending || launchBlocked}
               onClick={() => {
                 launch.mutate(
                   {
@@ -377,7 +380,9 @@ export function TradeSheet({
                 );
               }}
             >
-              {launch.isPending ? t('trade.sending') : t('trade.commit')}
+              {launchBlocked
+                ? t('faults.launchBlock.SHIPYARD_REVOLT')
+                : launch.isPending ? t('trade.sending') : t('trade.commit')}
             </Button>
           </div>
         ) : (

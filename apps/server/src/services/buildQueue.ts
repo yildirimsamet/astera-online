@@ -38,6 +38,7 @@ import {
   wakeStrategicInterceptions,
 } from './radar.js';
 import { schedule } from '../worker/queue.js';
+import { armFaults } from './faults.js';
 import { publicPlanetIdentity, recordGalaxyEvent } from './chronicle.js';
 import {
   GameError,
@@ -494,6 +495,23 @@ export async function applyBuildCompletion(
     // the worker apply it later. Starting history at worker time would lose every
     // analytically recoverable contact between those two instants.
     await refreshSensorEpoch(tx, planet.planetId, order.readyAt);
+  }
+  /*
+    A COLONY CROSSING THE CORE GATE STARTS AGEING. Koloni arızaları.
+
+    Armed here rather than anywhere else because this is where a Core level actually
+    changes, and `armFaults` is silent on a world that is not a colony, is below the
+    gate, or is already armed — so calling it on every completion costs one query and
+    can never double-arm.
+  */
+  if (order.kind === 'BUILDING' && order.subject === 'CORE') {
+    await armFaults(tx, {
+      seasonId: planet.seasonId,
+      planetId: planet.planetId,
+      kind: planet.kind,
+      coreLevel: planet.buildings.CORE,
+      now: planet.now,
+    });
   }
   await reflowQueue(tx, order.planetId, order.queue, planet.now, true);
   await refreshWealth(tx, planet);

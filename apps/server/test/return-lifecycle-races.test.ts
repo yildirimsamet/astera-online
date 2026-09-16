@@ -6,6 +6,7 @@ import { createSeason } from '../src/services/season.js';
 import { enqueueReturn, refreshReturnActivity } from '../src/services/returnQueue.js';
 import { Presence } from '../src/services/presence.js';
 import { bootstrapServers, wipeAllServers } from '../src/services/servers.js';
+import { forceSeasonEnd } from '../src/worker/handlers.js';
 import { seedWorld, testDb, truncateAll, TEST_SEASON_DAYS } from './helpers.js';
 afterAll(async () => { await (await testDb()).close(); });
 it('CR: admission checks the deadline after waiting for commander lock', async () => {
@@ -50,6 +51,11 @@ it('wipe and presence serialize without a player/application deadlock', async ()
     days: TEST_SEASON_DAYS, rulesetVersion: 1, role: 'WAITING' });
   await f.db.update(players).set({ seasonId: waiting.season.id });
   const application = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 0);
+  const live = await f.db.select({ id: seasons.id }).from(seasons)
+    .where(eq(seasons.status, 'live'));
+  for (const season of live) {
+    await forceSeasonEnd({ db: f.db, clock: f.clock }, season.id);
+  }
   let wipe: ReturnType<typeof wipeAllServers> | undefined;
   const errors: unknown[] = [];
   await f.db.transaction(async (tx) => {

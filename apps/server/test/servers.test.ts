@@ -31,6 +31,7 @@ import {
 } from '../src/services/servers.js';
 import { joinSeason } from '../src/services/player.js';
 import { grantReward } from '../src/services/rewards.js';
+import { forceSeasonEnd } from '../src/worker/handlers.js';
 import { testDb, testEnv, truncateAll, type Fixture, giveDebris } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -104,6 +105,15 @@ describe('servers', () => {
   /** A world of `count` galaxies, each holding `capacity` planets. */
   const openWorld = (count: number = SERVERS.count, capacity = 2) =>
     bootstrapServers(db, clock, { count, capacity, seedBase: 1000 });
+
+  const sealAndWipe = async (opts: { count: number; capacity: number }) => {
+    const live = await db.select({ id: seasons.id }).from(seasons)
+      .where(eq(seasons.status, 'live'));
+    for (const season of live) {
+      await forceSeasonEnd({ db, clock }, season.id);
+    }
+    return wipeAllServers(db, clock, opts);
+  };
 
   const register = async (): Promise<Session> => {
     seq += 1;
@@ -699,6 +709,18 @@ describe('servers', () => {
   });
 
   describe('the wipe', () => {
+    it('refuses to delete a live season that has not been sealed', async () => {
+      await openWorld(1, 2);
+      await join(await register(), 'EU-1');
+
+      await expect(wipeAllServers(db, clock, { count: 1, capacity: 2 }))
+        .rejects.toThrow(/sealed before wipe/i);
+
+      expect(await db.select().from(players)).toHaveLength(1);
+      expect((await db.select().from(seasons)).filter((season) => season.status === 'live'))
+        .toHaveLength(1);
+    });
+
     it('clears every galaxy and lets everybody start again', async () => {
       await openWorld(2, 1);
       const me = await register();
@@ -749,7 +771,7 @@ describe('servers', () => {
         createdAt: clock.now(),
       });
 
-      const result = await wipeAllServers(db, clock, { count: 2, capacity: 1 });
+      const result = await sealAndWipe({ count: 2, capacity: 1 });
 
       expect(await db.select().from(researchOrders)).toHaveLength(0);
       expect(await db.select().from(playerRivals)).toHaveLength(0);
@@ -807,7 +829,7 @@ describe('servers', () => {
         createdAt: clock.now(),
       });
 
-      const result = await wipeAllServers(db, clock, { count: 2, capacity: 2 });
+      const result = await sealAndWipe({ count: 2, capacity: 2 });
 
       expect(result.playersCleared).toBe(2);
       expect(await db.select().from(debrisFields)).toHaveLength(0);
@@ -820,7 +842,7 @@ describe('servers', () => {
       const me = await register();
       const before = (await join(me, 'EU-1')).json<Placement>();
 
-      await wipeAllServers(db, clock, { count: 2, capacity: 2 });
+      await sealAndWipe({ count: 2, capacity: 2 });
 
       const after = await join(me, 'EU-1');
       expect(after.statusCode).toBe(200);
@@ -831,12 +853,14 @@ describe('servers', () => {
       await openWorld(1, 2);
       const me = await register();
       const placement = (await join(me, 'EU-1')).json<Placement>();
+      await db.update(seasons).set({ rulesetVersion: 6 })
+        .where(eq(seasons.id, placement.seasonId));
       await db
         .update(players)
         .set({ dominionTaken: 900, dominionLost: 250, wealth: 4200 })
         .where(eq(players.id, placement.playerId));
 
-      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+      await sealAndWipe({ count: 1, capacity: 2 });
 
       const { accounts } = await import('../src/db/schema.js');
       const [account] = await db.select().from(accounts).where(eq(accounts.id, me.accountId));
@@ -852,18 +876,22 @@ describe('servers', () => {
       await openWorld(1, 2);
       const me = await register();
       const first = (await join(me, 'EU-1')).json<Placement>();
+      await db.update(seasons).set({ rulesetVersion: 6 })
+        .where(eq(seasons.id, first.seasonId));
       await db
         .update(players)
         .set({ dominionTaken: 100, wealth: 5000 })
         .where(eq(players.id, first.playerId));
-      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+      await sealAndWipe({ count: 1, capacity: 2 });
 
       const second = (await join(me, 'EU-1')).json<Placement>();
+      await db.update(seasons).set({ rulesetVersion: 6 })
+        .where(eq(seasons.id, second.seasonId));
       await db
         .update(players)
         .set({ dominionTaken: 40, wealth: 1000 })
         .where(eq(players.id, second.playerId));
-      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+      await sealAndWipe({ count: 1, capacity: 2 });
 
       const { accounts } = await import('../src/db/schema.js');
       const [account] = await db.select().from(accounts).where(eq(accounts.id, me.accountId));
@@ -880,7 +908,7 @@ describe('servers', () => {
       const me = await register();
       await join(me, 'EU-1');
 
-      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+      await sealAndWipe({ count: 1, capacity: 2 });
 
       const { accounts } = await import('../src/db/schema.js');
       expect(await db.select().from(accounts)).toHaveLength(1);
@@ -912,7 +940,7 @@ describe('servers', () => {
       const [account] = await db.select().from(accounts).where(eq(accounts.id, me.accountId));
       await grantReward(db, account!.displayName, rewardId('SOCIAL', 1));
 
-      await wipeAllServers(db, clock, { count: 1, capacity: 2 });
+      await sealAndWipe({ count: 1, capacity: 2 });
 
       expect(
         await db.select().from(accountRewards).where(eq(accountRewards.accountId, me.accountId)),
@@ -925,7 +953,7 @@ describe('servers', () => {
       await openWorld(2, 2);
       await join(await register(), 'EU-1');
 
-      await wipeAllServers(db, clock, { count: 2, capacity: 2 });
+      await sealAndWipe({ count: 2, capacity: 2 });
 
       const rows = await db.select().from(seasons);
       expect(rows.filter((s) => s.status === 'wiped')).toHaveLength(2);

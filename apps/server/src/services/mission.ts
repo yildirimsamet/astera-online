@@ -174,7 +174,7 @@ export async function launchAttack(
      */
     // Bays first: "you have nothing free" is a truer refusal than "not at that
     // target", and it is the one the player can act on. D28.
-    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE);
+    await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
 
     const alreadyOut = await tx
       .select({ id: missions.id })

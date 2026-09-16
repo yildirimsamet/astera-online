@@ -10,6 +10,42 @@ const FOLDER = join(HERE, '../../drizzle');
 
 export async function runMigrations(db: Db): Promise<void> {
   await migrate(db, { migrationsFolder: FOLDER });
+  await armEstablishedFaultColonies(db);
+}
+
+/**
+ * ARM COLONIES THAT CROSSED THE CORE GATE BEFORE FAULTS SHIPPED.
+ *
+ * This cannot live in 0089: `fault_spawn` is added to the event enum there, and
+ * PostgreSQL rejects any use of a newly-added enum value until that migration's
+ * transaction commits (55P04). Running this immediately after `migrate` preserves
+ * that boundary. The producer-owned dedupe key makes the repair safe after every
+ * migration command and after a process dies between the schema commit and here.
+ */
+async function armEstablishedFaultColonies(db: Db): Promise<void> {
+  await db.execute(sql`
+    INSERT INTO "scheduled_events" ("season_id", "kind", "ref_id", "dedupe_key", "resolve_at")
+    SELECT "planet"."season_id",
+           'fault_spawn',
+           "planet"."id",
+           'fault-spawn:arm:' || "planet"."id"::text,
+           now() + (random() * interval '6 hours')
+      FROM "planets" AS "planet"
+      INNER JOIN "buildings" AS "core"
+              ON "core"."planet_id" = "planet"."id" AND "core"."type" = 'CORE'
+      INNER JOIN "seasons" AS "season" ON "season"."id" = "planet"."season_id"
+     WHERE "planet"."kind" = 'COLONY'
+       AND "core"."level" >= 6
+       AND "season"."status" = 'live'
+       AND NOT EXISTS (
+         SELECT 1
+           FROM "scheduled_events" AS "active_fault"
+          WHERE "active_fault"."kind" = 'fault_spawn'
+            AND "active_fault"."ref_id" = "planet"."id"
+            AND "active_fault"."status" IN ('pending', 'processing')
+       )
+    ON CONFLICT ("dedupe_key") DO NOTHING
+  `);
 }
 
 /**

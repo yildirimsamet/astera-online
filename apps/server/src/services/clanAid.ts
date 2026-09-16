@@ -444,7 +444,7 @@ export async function launchClanAid(
     || origin.deuterium < input.cargo.deuterium) {
     throw new GameError('INSUFFICIENT_RESOURCES', 'The origin cannot load that cargo', 409);
   }
-  await assertFreeClanAidBay(tx, origin.planetId, origin.buildings.CORE);
+  await assertFreeClanAidBay(tx, origin.planetId, origin.buildings.CORE, origin.faults);
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-aid:${input.recipientPlayerId}`}))`);
   const value = aidCommitmentValue(input.fleet, input.cargo);
   const limits = await recipientAllowance(tx, input.recipientPlayerId, origin.now);

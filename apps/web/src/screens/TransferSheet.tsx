@@ -26,6 +26,7 @@ import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { flightModifiers } from '../lib/navigation.js';
+import { launchFault } from '../lib/faults.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 
@@ -132,6 +133,7 @@ export function TransferSheet({
   // Focusing a controlled destination also makes it active. The source therefore
   // travels explicitly instead of being re-read from the now-changed selector.
   const transfer = useTransfer(planet.planet.id);
+  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
   /**
@@ -181,7 +183,7 @@ export function TransferSheet({
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
-  const valid = fleetCount(fleet) > 0 && loaded <= capacity
+  const valid = !launchBlocked && fleetCount(fleet) > 0 && loaded <= capacity
     && cargo.alloy <= planet.planet.alloy
     && cargo.crystal <= planet.planet.crystal
     && cargo.deuterium <= planet.planet.deuterium
@@ -225,7 +227,9 @@ export function TransferSheet({
             });
           }}
         >
-          {transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
+          {launchBlocked
+            ? t('faults.launchBlock.SHIPYARD_REVOLT')
+            : transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
         </Button>
       )}
     >

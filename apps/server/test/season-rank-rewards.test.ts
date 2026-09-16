@@ -14,7 +14,7 @@ import {
 } from '../src/db/schema.js';
 import { joinSeason } from '../src/services/player.js';
 import { wipeAllServers } from '../src/services/servers.js';
-import { onSeasonEnd, onSeasonRollover } from '../src/worker/handlers.js';
+import { forceSeasonEnd, onSeasonEnd, onSeasonRollover } from '../src/worker/handlers.js';
 import { seedWorld, testDb, type Fixture } from './helpers.js';
 
 describe('next-season Dominion rewards', () => {
@@ -109,6 +109,26 @@ describe('next-season Dominion rewards', () => {
     expect(await f.db.select().from(seasonRewardEntitlements)).toHaveLength(0);
   });
 
+  it('grants and binds the configured rewards exactly once on a forced wipe', async () => {
+    await f.db.update(players).set({ dominionTaken: 1_000 })
+      .where(eq(players.id, f.playerIds[0]!));
+
+    await forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId);
+    await forceSeasonEnd({ db: f.db, clock: f.clock }, f.seasonId);
+    await wipeAllServers(f.db, f.clock, { count: 1, capacity: 4 });
+
+    const rewards = await f.db.select().from(seasonRewardEntitlements)
+      .where(eq(seasonRewardEntitlements.sourceSeasonId, f.seasonId));
+    expect(rewards).toHaveLength(1);
+    expect(rewards[0]).toMatchObject({
+      accountId: f.accountIds[0],
+      displayRank: 1,
+      rewardPlace: 1,
+      status: 'PENDING',
+    });
+    expect(rewards[0]?.targetCycleId).not.toBeNull();
+  });
+
   it('binds the entitlement to the immediate successor and pays concurrent joins exactly once', async () => {
     await f.db.update(players).set({ dominionTaken: 700 })
       .where(eq(players.id, f.playerIds[0]!));
@@ -160,6 +180,11 @@ describe('next-season Dominion rewards', () => {
     const [targetCycle] = await f.db.select().from(seasonCycles)
       .where(eq(seasonCycles.ordinal, 2));
     f.clock.set(targetCycle!.endsAt);
+    const live = await f.db.select({ id: seasons.id }).from(seasons)
+      .where(eq(seasons.status, 'live'));
+    for (const season of live) {
+      await forceSeasonEnd({ db: f.db, clock: f.clock }, season.id);
+    }
     await wipeAllServers(f.db, f.clock, { count: 2, seedBase: 9900 });
 
     const [expired] = await f.db.select().from(seasonRewardEntitlements)

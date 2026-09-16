@@ -98,6 +98,48 @@ export const BUILDING_IDS = [
 export type InstrumentId = 'TELESCOPE' | 'RADAR' | 'AEGIS' | 'VEIL';
 export const INSTRUMENT_IDS = ['TELESCOPE', 'RADAR', 'AEGIS', 'VEIL'] as const;
 
+/**
+ * WHAT CAN GO WRONG ON A COLONY, AND ALL EIGHT ARE ONE SHAPE. Koloni arızaları.
+ *
+ * "Tersanede isyan" and "alaşım rafinerisinde elektrik kesintisi" differ by the
+ * word on the screen and by nothing else: same row, same lifetime, same repair
+ * lane, same notification. The names are flavour; anything that branches per kind
+ * is branching on the EFFECT, which is the one thing that genuinely differs.
+ *
+ * THE LIST LIVES HERE RATHER THAN IN `faults.ts` so the economy can zero a rate
+ * without importing the fault module — `faults.ts` needs `storageCap` from the
+ * economy, and one of the two directions had to not exist.
+ *
+ * ORDER IS THE DISPLAY ORDER and nothing else depends on it: a fault is drawn
+ * uniformly from whatever is eligible, never off this index.
+ */
+export type FaultKind =
+  | 'REFINERY_OUTAGE'
+  | 'EXTRACTOR_OUTAGE'
+  | 'PLANT_OUTAGE'
+  | 'VAULT_LEAK'
+  | 'CORE_OUTAGE'
+  | 'TELESCOPE_FAULT'
+  | 'SHIPYARD_REVOLT'
+  | 'PROSPECTOR_FAULT';
+
+export const FAULT_KINDS = [
+  'REFINERY_OUTAGE',
+  'EXTRACTOR_OUTAGE',
+  'PLANT_OUTAGE',
+  'VAULT_LEAK',
+  'CORE_OUTAGE',
+  'TELESCOPE_FAULT',
+  'SHIPYARD_REVOLT',
+  'PROSPECTOR_FAULT',
+] as const satisfies readonly FaultKind[];
+
+/** What is broken on one world right now. Order-insensitive; duplicates are impossible. */
+export type FaultSet = readonly FaultKind[];
+
+export const hasFault = (faults: FaultSet | undefined, kind: FaultKind): boolean =>
+  faults?.includes(kind) ?? false;
+
 export type SatelliteId = 'FOUNDRY' | 'UPLINK' | 'DERRICK' | 'BEACON';
 export const SATELLITE_IDS = ['FOUNDRY', 'UPLINK', 'DERRICK', 'BEACON'] as const;
 

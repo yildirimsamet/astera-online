@@ -3,6 +3,7 @@ import { MULTI_WORLD, distance, fleetTravelExact, missionFuel } from '@astera/ru
 import type { GalaxyPlanet, PlanetView } from '../api/schemas.js';
 import { full } from '../lib/format.js';
 import { flightModifiers } from '../lib/navigation.js';
+import { launchFault } from '../lib/faults.js';
 import { countdown, duration } from '../lib/time.js';
 import { Button, Sheet } from '../ui/kit/index.js';
 
@@ -27,6 +28,7 @@ export function SettlementSheet({
   onConfirm: () => void;
 }) {
   const { t } = useTranslation();
+  const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   const fleet = { COURIER: MULTI_WORLD.settlement.transports } as const;
   const span = distance(planet.planet.position, target.position);
   /*
@@ -59,10 +61,12 @@ export function SettlementSheet({
           variant="commit"
           size="lg"
           full
-          disabled={pending}
+          disabled={pending || launchBlocked}
           onClick={onConfirm}
         >
-          {pending
+          {launchBlocked
+            ? t('faults.launchBlock.SHIPYARD_REVOLT')
+            : pending
             ? t('focus.planet.settlementConfirm.confirming')
             : t('focus.planet.settlementConfirm.confirm')}
         </Button>

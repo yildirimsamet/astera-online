@@ -920,3 +920,37 @@ describe('what a report about a pirate explains', () => {
     expect(within(sheet).queryByText(/drifting over \./)).toBeNull();
   });
 });
+
+/**
+ * SALDIRININ BOZDUKLARI SAVUNANIN RAPORUNDA YAZAR. Sahip kararı: bildirim olarak değil,
+ * savaş raporunda — "bu savaş ne yaptı" bloğunun içinde, yağmayla ve enkazla yan yana.
+ */
+describe('savaşın bozduğu koloni sistemleri', () => {
+  it('savunana hangi sistemlerin bozulduğunu, dünyasının adıyla söyler', async () => {
+    await openSheet(report({
+      attacking: false,
+      colonyFaults: ['VAULT_LEAK', 'SHIPYARD_REVOLT'],
+    }));
+    const line = screen.getByText(/Vantage-3/, { selector: '[data-colony-faults]' });
+    expect(line).toHaveTextContent('Vault leak');
+    expect(line).toHaveTextContent('Revolt in the yard');
+  });
+
+  it('hiçbir şey bozulmadıysa satır yoktur', async () => {
+    await openSheet(report({ attacking: false, colonyFaults: [] }));
+    expect(document.querySelector('[data-colony-faults]')).toBeNull();
+  });
+
+  /** Sunucu saldırgana boş liste yollar; istemci yine de kendi başına güvenli olmalı. */
+  it('saldırgana asla gösterilmez', async () => {
+    await openSheet(report({ attacking: true, colonyFaults: ['CORE_OUTAGE'] }));
+    expect(document.querySelector('[data-colony-faults]')).toBeNull();
+  });
+
+  it('bu alanı bilmeyen eski bir sunucunun raporu da açılır', async () => {
+    const legacy = { ...report({ attacking: false }) } as Partial<BattleReport>;
+    delete legacy.colonyFaults;
+    await openSheet(legacy as BattleReport);
+    expect(document.querySelector('[data-colony-faults]')).toBeNull();
+  });
+});

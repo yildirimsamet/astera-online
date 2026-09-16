@@ -6,7 +6,7 @@ import { haptic } from '../lib/haptics.js';
 import { Rungs } from './Rungs.js';
 import { duration } from '../lib/time.js';
 import { ActionButton, Price, ResourceAmounts, TimeCost, type Verb } from './Action.js';
-import { LockMark } from './marks.js';
+import { FaultMark, LockMark } from './marks.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
 
 /**
@@ -105,6 +105,7 @@ export function UpgradeRow({
   onOpen,
   pending = false,
   highlighted = false,
+  faulty = false,
   flash = false,
 }: {
   art?: string | null;
@@ -199,6 +200,19 @@ export function UpgradeRow({
   onOpen?: () => void;
   pending?: boolean;
   highlighted?: boolean;
+  /**
+   * SOMETHING ON THIS WORLD IS BROKEN AND IT IS THIS. Koloni arızaları.
+   *
+   * A WASH AND A MARK, NOT A DISABLE. The row stays pressable and its name, price and
+   * payload stay at full strength — the same rule `locked` answers to (interface.md I1):
+   * a state is drawn ON the row, never by deleting it. What changes is where the press
+   * GOES: the caller sends a faulty row to the repair sheet instead of the upgrade one,
+   * because a broken refinery is not a refinery you are choosing to grow.
+   *
+   * Deliberately greyish rather than red. Red in this game means somebody is attacking
+   * you, and spending it on an outage would cost the alert colour its meaning.
+   */
+  faulty?: boolean;
   /** Set briefly after a successful purchase. */
   flash?: boolean;
 }) {
@@ -261,10 +275,37 @@ export function UpgradeRow({
         silently drew a card background and a second ring inside the plate that
         already had one. The legacy rule is deleted; the marker is what it says.
       */
+      data-faulty={faulty ? '' : undefined}
       className={`group relative overflow-hidden border-b border-line-soft px-3 py-3 last:border-b-0 ${
         highlighted ? 'bg-crystal/10 ring-1 ring-inset ring-crystal/40' : ''
+      } ${
+        /*
+          ONE RING AT A TIME. `highlighted` draws a crystal ring and this drew a bone one;
+          both are `ring-1 ring-inset` and Tailwind resolves conflicting utilities by
+          stylesheet order rather than by the order they appear here, so which colour won
+          was not something this file decided. Focus is momentary and deliberate, so it
+          takes precedence; the corner mark says "broken" either way.
+        */
+        faulty ? `bg-bone/[0.045]${highlighted ? '' : ' ring-1 ring-inset ring-bone/20'}` : ''
       } ${flash ? 'sweep' : ''}`}
     >
+      {/*
+        THE MARK SITS IN THE CORNER AND SWALLOWS NOTHING.
+
+        `pointer-events-none`, like every other decoration on this row: a faulty row is
+        exactly the row a player taps, and a glyph that ate the press would make the one
+        row that needs opening the one row that does not open.
+      */}
+      {faulty && (
+        <span
+          data-fault-mark
+          aria-hidden
+          className="pointer-events-none absolute right-2 top-2 z-20 text-faint"
+        >
+          <FaultMark />
+        </span>
+      )}
+
       {/*
         The whole row opens the detail, except where a control sits on top of it.
         A card that only responds on one small chevron is a card players never

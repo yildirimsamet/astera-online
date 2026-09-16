@@ -57,7 +57,13 @@ const rewardProgram = {
   })),
 };
 
-async function show({ legacy = false, archiveFailure = false, noRewards = false } = {}) {
+async function show({
+  legacy = false,
+  partial = false,
+  forced = false,
+  archiveFailure = false,
+  noRewards = false,
+} = {}) {
   await i18n.changeLanguage('en');
   const fetch = vi.fn();
   if (archiveFailure) fetch.mockRejectedValue(new Error('offline'));
@@ -112,6 +118,8 @@ async function show({ legacy = false, archiveFailure = false, noRewards = false 
       status: 'frozen',
       startsAt,
       endsAt,
+      closedAt: forced ? new Date('2026-01-12T12:00:00.000Z') : endsAt,
+      endReason: forced ? 'FORCED_WIPE' : 'SCHEDULED_END',
       commanderName: 'Archive Ace',
       planetName: 'Aster Prime',
       rank: 1,
@@ -123,11 +131,33 @@ async function show({ legacy = false, archiveFailure = false, noRewards = false 
         battles: 8,
         attacks: 5,
         defences: 3,
-        rival: null,
-        biggestRaid: null,
+        rival: { commanderName: 'Rival Prime', battles: 4 },
+        biggestRaid: { value: 2_500, opponentName: 'Raid Target' },
         clan: null,
       },
-      stats: legacy ? null : stats,
+      legacyStats: {
+        competition: {
+          battles: 8,
+          attacks: 5,
+          defences: 3,
+          damageDealt: 12_000,
+          damageTaken: 4_000,
+        },
+      },
+      legacyAverages: {
+        cohortSize: 20,
+        competition: {
+          battles: 4,
+          attacks: 2,
+          defences: 2,
+          damageDealt: 6_000,
+          damageTaken: 5_000,
+        },
+      },
+      stats: legacy ? null : partial ? {
+        ...stats,
+        coverage: { kind: 'partial' as const, reason: 'TELEMETRY_CUTOVER' as const },
+      } : stats,
       averages: legacy ? null : {
         cohortSize: 20,
         competition: {
@@ -160,7 +190,22 @@ async function show({ legacy = false, archiveFailure = false, noRewards = false 
       championships: 1,
       podiums: 1,
       topTen: 1,
-      totals: legacy ? null : { seasonsCovered: 1, stats },
+      competitionTotals: {
+        seasonsCovered: 1,
+        battles: 8,
+        attacks: 5,
+        defences: 3,
+        damageDealt: 12_000,
+        damageTaken: 4_000,
+      },
+      totals: legacy ? null : {
+        seasonsCovered: 1,
+        partialSeasons: partial ? 1 : 0,
+        stats: partial ? {
+          ...stats,
+          coverage: { kind: 'partial' as const, reason: 'TELEMETRY_CUTOVER' as const },
+        } : stats,
+      },
       seasons: [{
         resultId,
         seasonId,
@@ -274,14 +319,46 @@ describe('season archive surface', () => {
     expect(screen.queryByText('End of season prize')).not.toBeInTheDocument();
   });
 
-  it('says historical telemetry is unavailable instead of inventing zeroes', async () => {
+  it('shows and compares the combat record that survived from a pre-telemetry season', async () => {
     await show({ legacy: true });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
     await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
 
-    expect(screen.getByText(/No detailed record was kept for this season/)).toBeVisible();
+    expect(screen.queryByText(/No detailed record was kept for this season/)).not.toBeInTheDocument();
+    expect(screen.getByText('Preserved season record')).toBeVisible();
+    expect(screen.getByText('12,000')).toBeVisible();
+    expect(screen.getByText('4,000')).toBeVisible();
+    expect(screen.getByText(/2,500 taken from Raid Target/)).toBeVisible();
+    expect(screen.getByText(/Rival Prime · 4 battles/)).toBeVisible();
+    expect(screen.getByText('Others: 6,000')).toBeVisible();
     expect(screen.queryByText('Others: 0')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Overall' }));
+    expect(screen.getByText('Recorded combat totals')).toBeVisible();
+    expect(screen.getByText('12,000')).toBeVisible();
+  });
+
+  it('labels telemetry cutover separately from an early forced ending', async () => {
+    await show({ partial: true });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
+    await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
+
+    expect(screen.getByText('Partial telemetry')).toBeVisible();
+    expect(screen.getByText(/before telemetry began may be missing/)).toBeVisible();
+    expect(screen.queryByText('Season ended early')).not.toBeInTheDocument();
+  });
+
+  it('calls a forced ending early without claiming that telemetry is missing', async () => {
+    await show({ forced: true });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
+    await user.click(screen.getByRole('button', { name: /Archive Ace/i }));
+
+    expect(screen.getByText('Season ended early')).toBeVisible();
+    expect(screen.getByText(/played period is sealed/)).toBeVisible();
+    expect(screen.queryByText('Partial telemetry')).not.toBeInTheDocument();
   });
 
   it('keeps the live leaderboard usable when the archive index cannot be reached', async () => {

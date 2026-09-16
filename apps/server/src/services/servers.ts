@@ -456,23 +456,26 @@ export async function wipeAllServers(
       if (!source || source.status === 'wiped') {
         return { seasonsWiped: 0, playersCleared: 0, serversOpened: [], deferred: false };
       }
-      const [stillLive] = await tx
-        .select({ n: sql<number>`count(*)::int` })
-        .from(seasons)
-        .where(eq(seasons.status, 'live'));
-      if ((stillLive?.n ?? 0) > 0) {
-        const [failedEnd] = await tx
-          .select({ n: sql<number>`count(*)::int` })
-          .from(scheduledEvents)
-          .where(and(
-            eq(scheduledEvents.kind, 'season_end'),
-            eq(scheduledEvents.status, 'failed'),
-          ));
-        if ((failedEnd?.n ?? 0) > 0) {
-          throw new Error('season rollover blocked by a failed season_end event');
-        }
-        return { seasonsWiped: 0, playersCleared: 0, serversOpened: [], deferred: true };
+    }
+    const [stillLive] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(seasons)
+      .where(eq(seasons.status, 'live'));
+    if ((stillLive?.n ?? 0) > 0) {
+      if (!guard) {
+        throw new Error('live seasons must be sealed before wipe');
       }
+      const [failedEnd] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(scheduledEvents)
+        .where(and(
+          eq(scheduledEvents.kind, 'season_end'),
+          eq(scheduledEvents.status, 'failed'),
+        ));
+      if ((failedEnd?.n ?? 0) > 0) {
+        throw new Error('season rollover blocked by a failed season_end event');
+      }
+      return { seasonsWiped: 0, playersCleared: 0, serversOpened: [], deferred: true };
     }
 
     const ending = await tx
