@@ -461,7 +461,6 @@ describe('the ruleset-8 fixed public-event calendar', () => {
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
     expect(MULTI_WORLD.rulesetVersion).toBe(8);
     expect(GALAXY_EVENTS.version).toBe(4);
-    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(3);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);
     expect(galaxyEventKindsForRuleset(MULTI_WORLD.rulesetVersion)).toEqual([
       'ASTEROID_SHOWER',
@@ -471,9 +470,25 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     expect(galaxyEventKindsForRuleset(7)).toEqual(['ASTEROID_SHOWER', 'TRADE_SHIP']);
   });
 
-  it('deals the thirteen exact half-open TRT windows and their occurrence effects', () => {
-    const schedule = currentDay();
-    const rows = schedule.map((event) => ({
+  /**
+   * THE WORKING WEEK AND THE WEEKEND ARE TWO CALENDARS. Owner instruction, 2026-09-16:
+   * *"galaksi eventlerinin boku çıktı oyun çok fazla aktif farm'a döndü, kitlemiz 30-40
+   * yaş çalışan insanlar bunlar eventleri yakalayamıyor."*
+   *
+   * Six showers and three convoys a day rewarded whoever could attend all of them.
+   * The new shape is two moments a weekday — lunch and the evening — and a bigger
+   * pair on Saturday and Sunday, when the audience is actually free.
+   */
+  it('versions both reshaped lanes so a dealt row says which calendar it came from', () => {
+    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(7);
+    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(4);
+    // The merchant was left exactly as it was.
+    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(4);
+  });
+
+  it('deals a weekday: lunch and evening showers, one evening convoy', () => {
+    // 2026-09-02 is a Wednesday.
+    const rows = currentDay().map((event) => ({
       kind: event.kind,
       startsAtMinute: event.startsAtMinute,
       endsAtMinute: event.endsAtMinute,
@@ -483,135 +498,176 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     expect(rows).toEqual([
       { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 180,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
-      { kind: 'ASTEROID_SHOWER', startsAtMinute: 120, endsAtMinute: 180,
-        effect: { asteroidSpawnMultiplier: 3 } },
       { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 540,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[1].effect },
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 420, endsAtMinute: 540,
-        effect: convoyWindowAt(0).effect },
-      { kind: 'ASTEROID_SHOWER', startsAtMinute: 600, endsAtMinute: 660,
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 750, endsAtMinute: 810,
         effect: { asteroidSpawnMultiplier: 3 } },
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 720, endsAtMinute: 840,
-        effect: convoyWindowAt(1).effect },
-      { kind: 'ASTEROID_SHOWER', startsAtMinute: 780, endsAtMinute: 840,
-        effect: { asteroidSpawnMultiplier: 5 } },
       { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1020,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
-      { kind: 'ASTEROID_SHOWER', startsAtMinute: 960, endsAtMinute: 1020,
-        effect: { asteroidSpawnMultiplier: 5 } },
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1140, endsAtMinute: 1260,
-        effect: convoyWindowAt(2).effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
         effect: { asteroidSpawnMultiplier: 10 } },
       { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1380,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
-      { kind: 'ASTEROID_SHOWER', startsAtMinute: 1380, endsAtMinute: 1440,
-        effect: { asteroidSpawnMultiplier: 5 } },
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1260, endsAtMinute: 1380,
+        effect: convoyWindowAt(0).effect },
     ]);
-    expect(schedule.map((event) => event.sequence)).toEqual([0, 0, 1, 0, 1, 1, 2, 2, 3, 2, 4, 3, 5]);
-    expect(convoyWindowAt(0).effect.shipDropFullFirepower)
-      .toBe(5_780); // Authored occurrence price, frozen before D208's hull recalibration.
+  });
+
+  it('deals a weekend: bigger showers and two convoys', () => {
+    // 2026-09-05 is a Saturday.
+    const saturday = generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 3 * DAY_MINUTES,
+      seasonDurationMinutes: DAY_MINUTES,
+      rngFor: (kind) => { throw new Error(`fixed kind ${kind} must not request an RNG stream`); },
+    }).filter((event) => event.kind !== 'TRADE_SHIP');
+
+    expect(saturday.map((event) => ({
+      kind: event.kind,
+      startsAtMinute: event.startsAtMinute,
+      endsAtMinute: event.endsAtMinute,
+      effect: event.effect,
+    }))).toEqual([
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 720, endsAtMinute: 840,
+        effect: convoyWindowAt(1).effect },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 780, endsAtMinute: 840,
+        effect: { asteroidSpawnMultiplier: 5 } },
+      { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
+        effect: { asteroidSpawnMultiplier: 15 } },
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1200, endsAtMinute: 1320,
+        effect: convoyWindowAt(2).effect },
+    ]);
+  });
+
+  it('counts a whole week as five weekdays and a two-day weekend', () => {
+    const week = generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+      seasonDurationMinutes: 7 * DAY_MINUTES,
+      rngFor: (kind) => { throw new Error(`fixed kind ${kind} must not request an RNG stream`); },
+    });
+    const of = (kind: GalaxyEventKind) => week.filter((event) => event.kind === kind);
+    expect(of('ASTEROID_SHOWER')).toHaveLength(5 * 2 + 2 * 2);
+    expect(of('INTERGALACTIC_CONVOY')).toHaveLength(5 * 1 + 2 * 2);
+    expect(of('TRADE_SHIP')).toHaveLength(7 * 4);
+    // Sequences stay per kind and in start order across the day-type change.
+    expect(of('ASTEROID_SHOWER').map((event) => event.sequence))
+      .toEqual([...Array(14).keys()]);
+
+    const saturdayStart = 3 * DAY_MINUTES;
+    const sundayEnd = 5 * DAY_MINUTES;
+    const weekendShowers = of('ASTEROID_SHOWER').filter((event) =>
+      event.startsAtMinute >= saturdayStart && event.startsAtMinute < sundayEnd);
+    expect(weekendShowers.map((event) => event.effect)).toEqual([
+      { asteroidSpawnMultiplier: 5 }, { asteroidSpawnMultiplier: 15 },
+      { asteroidSpawnMultiplier: 5 }, { asteroidSpawnMultiplier: 15 },
+    ]);
   });
 
   /**
-   * THE LAST HOUR OF THE DAY. Owner instruction, 2026-09-16.
+   * THE CONVOY KEEPS ITS AUTHORED SHAPE AND PAYS DOUBLE WHAT IT DID. Owner instruction,
+   * 2026-09-16: *"artık convoy -> saatlik üretim miktarının 4 katına kadar verecek."*
    *
-   * A sixth shower, x5, filling 23:00–24:00 TRT. It is the only window in the
-   * config that ends on the day boundary, which is worth a test of its own: the
-   * generator refuses a window that WRAPS (`endsAtLocalMinute > DAY_MINUTES`) and
-   * accepts one that touches, and those two are one integer apart. It also has to
-   * stay clear of the 21:00 merchant that ends where it begins and of the next
-   * day's 02:00 shower — half-open windows that touch are legal, overlapping ones
-   * are not, and `validateConfig` is what would refuse the second.
+   * Every window is still `INTERGALACTIC_CONVOY.durationMinutes` long, because the
+   * route contract refuses any other duration — the formation's speed is the disc's
+   * diameter over its window.
    */
-  /**
-   * A THIRD CROSSING, AT THE SHAPE THE OTHER TWO ALREADY HAVE. Owner instruction,
-   * 2026-09-16, resolved to 12:00–14:00.
-   *
-   * The window asked for was one hour, and one hour is not representable:
-   * `intergalacticConvoySpec` REFUSES an occurrence whose duration is not
-   * `INTERGALACTIC_CONVOY.durationMinutes`, because the centre's speed is
-   * `2 x radius / duration` — the convoy enters one rim as the window opens and
-   * leaves the far rim as it closes, and `resourceCapHours: 2` prices the reward as
-   * two hours of the raider's own production. A sixty-minute crossing would be a
-   * different event wearing the same name: twice the speed, half the reach for a
-   * slow fleet, and a reward table that no longer matches its clock.
-   *
-   * So the guard stays and the window takes the authored shape. This test is what
-   * says the noon convoy is the SAME event as the other two rather than a variant.
-   */
-  it('adds a noon convoy at the one duration the route contract allows', () => {
+  it('keeps every convoy at the route contract’s duration and caps it at four hours', () => {
     const windows = GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows;
-    expect(windows.map((window) => window.startsAtLocalMinute))
-      .toEqual([7 * 60, 12 * 60, 19 * 60]);
+    expect(windows.map((window) => [window.days, window.startsAtLocalMinute]))
+      .toEqual([['WEEKDAY', 21 * 60], ['WEEKEND', 12 * 60], ['WEEKEND', 20 * 60]]);
     for (const window of windows) {
       expect(window.endsAtLocalMinute - window.startsAtLocalMinute)
         .toBe(INTERGALACTIC_CONVOY.durationMinutes);
-      expect(window.effect.resourceCapHours).toBe(2);
+      expect(window.effect.resourceCapHours).toBe(4);
     }
-    // A shape change, so a dealt row still says which calendar it came from.
-    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBeGreaterThan(2);
-
-    const day = currentDay().filter((event) => event.kind === 'INTERGALACTIC_CONVOY');
-    expect(day).toHaveLength(3);
-    expect(day[1]).toMatchObject({ startsAtMinute: 720, endsAtMinute: 840 });
   });
 
-  it('closes the day with a x5 shower that ends exactly at midnight', () => {
+  it('authors the four shower windows the owner asked for, an hour each', () => {
     const windows = GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows;
-    const last = windows.find((window) => window.startsAtLocalMinute === 23 * 60);
-    expect(last).toBeDefined();
-    expect(last!.endsAtLocalMinute).toBe(24 * 60);
-    expect(last!.effect.asteroidSpawnMultiplier).toBe(5);
-    // A shape change, so the rows a season is dealt say which calendar they came from.
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBeGreaterThan(5);
-
-    // Six a day, and every one of them a whole hour inside the same day.
-    expect(windows).toHaveLength(6);
-    for (const window of windows) {
-      expect(window.endsAtLocalMinute - window.startsAtLocalMinute).toBe(60);
-      expect(window.endsAtLocalMinute).toBeLessThanOrEqual(24 * 60);
-    }
-
-    // And the day it closes is a real day of a real season, not just a table row.
-    const day = currentDay().filter((event) => event.kind === 'ASTEROID_SHOWER');
-    expect(day).toHaveLength(6);
-    expect(day.at(-1)).toMatchObject({ startsAtMinute: 1380, endsAtMinute: 1440 });
+    expect(windows.map((window) => [
+      window.days,
+      window.startsAtLocalMinute,
+      window.endsAtLocalMinute,
+      window.effect.asteroidSpawnMultiplier,
+    ])).toEqual([
+      ['WEEKDAY', 12 * 60 + 30, 13 * 60 + 30, 3],
+      ['WEEKDAY', 20 * 60, 21 * 60, 10],
+      ['WEEKEND', 13 * 60, 14 * 60, 5],
+      ['WEEKEND', 20 * 60, 21 * 60, 15],
+    ]);
   });
 
   it('writes only complete fixed windows inside arbitrary season boundaries', () => {
     const schedule = generateGalaxyEventSchedule({
-      // 02:30–22:30 TRT: the 02:00 shower and 21:00 trade window are partial.
-      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 150,
-      seasonDurationMinutes: 20 * 60,
+      // Wednesday 12:45 → Thursday 20:30 TRT: the first lunch shower and the second
+      // evening shower are partial and must not be written.
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE + 765,
+      seasonDurationMinutes: DAY_MINUTES + 465,
+      kinds: ['ASTEROID_SHOWER', 'INTERGALACTIC_CONVOY'],
       rngFor: () => { throw new Error('fixed definitions do not consume RNG'); },
     });
 
     expect(schedule.map((event) => [event.kind, event.startsAtMinute, event.endsAtMinute]))
       .toEqual([
-        ['TRADE_SHIP', 270, 390],
-        ['INTERGALACTIC_CONVOY', 270, 390],
-        ['ASTEROID_SHOWER', 450, 510],
-        ['INTERGALACTIC_CONVOY', 570, 690],
-        ['ASTEROID_SHOWER', 630, 690],
-        ['TRADE_SHIP', 750, 870],
-        ['ASTEROID_SHOWER', 810, 870],
-        ['INTERGALACTIC_CONVOY', 990, 1110],
-        ['ASTEROID_SHOWER', 1050, 1110],
+        ['ASTEROID_SHOWER', 435, 495],
+        ['INTERGALACTIC_CONVOY', 495, 615],
+        ['ASTEROID_SHOWER', 1425, 1485],
       ]);
   });
 
-  it('matches a fixed effect only at an authored exact local start minute', () => {
-    expect(plannedEffectFor(
-      'ASTEROID_SHOWER',
-      TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60,
-      GALAXY_EVENTS,
-    )).toEqual({ asteroidSpawnMultiplier: 10 });
+  it('matches a fixed effect only at an authored start minute on its own kind of day', () => {
+    const wednesdayEvening = TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60;
+    const saturdayEvening = wednesdayEvening + 3 * DAY_MINUTES;
+    expect(plannedEffectFor('ASTEROID_SHOWER', wednesdayEvening, GALAXY_EVENTS))
+      .toEqual({ asteroidSpawnMultiplier: 10 });
+    expect(plannedEffectFor('ASTEROID_SHOWER', saturdayEvening, GALAXY_EVENTS))
+      .toEqual({ asteroidSpawnMultiplier: 15 });
+    expect(() => plannedEffectFor('ASTEROID_SHOWER', wednesdayEvening + 1, GALAXY_EVENTS))
+      .toThrow(/exact fixed start/i);
+    // 13:00 is a weekend window and 12:30 a weekday one; neither exists on the other.
     expect(() => plannedEffectFor(
-      'ASTEROID_SHOWER',
-      TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60 + 1,
-      GALAXY_EVENTS,
+      'ASTEROID_SHOWER', TURKEY_MIDNIGHT_UNIX_MINUTE + 13 * 60, GALAXY_EVENTS,
     )).toThrow(/exact fixed start/i);
+    expect(() => plannedEffectFor(
+      'ASTEROID_SHOWER', TURKEY_MIDNIGHT_UNIX_MINUTE + 3 * DAY_MINUTES + 12 * 60 + 30, GALAXY_EVENTS,
+    )).toThrow(/exact fixed start/i);
+    // Sunday is a weekend day as well as Saturday.
+    expect(plannedEffectFor('INTERGALACTIC_CONVOY', saturdayEvening + DAY_MINUTES, GALAXY_EVENTS)
+      .resourceCapHours).toBe(4);
+  });
+
+  it('lets windows on different kinds of day share hours, and no others', () => {
+    const effect = GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect;
+    const withWindows = (windows: readonly {
+      days?: 'WEEKDAY' | 'WEEKEND';
+      startsAtLocalMinute: number;
+      endsAtLocalMinute: number;
+      effect: typeof effect;
+    }[]) => () => generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: TURKEY_MIDNIGHT_UNIX_MINUTE,
+      seasonDurationMinutes: 7 * DAY_MINUTES,
+      rngFor: streamsFrom(1),
+      config: {
+        ...GALAXY_EVENTS,
+        definitions: {
+          ...GALAXY_EVENTS.definitions,
+          TRADE_SHIP: { ...GALAXY_EVENTS.definitions.TRADE_SHIP, windows },
+        },
+      },
+    });
+
+    expect(withWindows([
+      { days: 'WEEKDAY', startsAtLocalMinute: 60, endsAtLocalMinute: 180, effect },
+      { days: 'WEEKEND', startsAtLocalMinute: 60, endsAtLocalMinute: 180, effect },
+    ])).not.toThrow();
+    expect(withWindows([
+      { days: 'WEEKDAY', startsAtLocalMinute: 60, endsAtLocalMinute: 180, effect },
+      { days: 'WEEKDAY', startsAtLocalMinute: 120, endsAtLocalMinute: 240, effect },
+    ])).toThrow(/fixed windows cannot overlap/i);
+    // A window with no day restriction runs every day, so it overlaps both.
+    expect(withWindows([
+      { startsAtLocalMinute: 60, endsAtLocalMinute: 180, effect },
+      { days: 'WEEKEND', startsAtLocalMinute: 120, endsAtLocalMinute: 240, effect },
+    ])).toThrow(/fixed windows cannot overlap/i);
   });
 
   it('rejects wrapping, overlapping, fractional and out-of-day fixed windows', () => {

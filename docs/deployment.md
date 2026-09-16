@@ -1676,3 +1676,63 @@ The notice appears once per placement/device and can be reopened from Menu → S
 It submits only explicit return intent. Season reset still applies. Known baseline failures:
 six owner-authorized simulator skips; three unchanged bots-turn assertions. Do not hide new
 failures behind these. Actual qualification and activation evidence is appended below.
+
+## Working-week calendar, dynamic asteroids and the six-hour shield — 2026-09-16
+
+Owner requirement: **no reset of the live season.** Everything below is expand-only or gated
+behind an operator command, so the ordinary release rules apply.
+
+**What ships.** Migration `0089` adds `planets.recovery_boost_until`. Migration `0090` adds the
+`asteroid_hour` event kind, `seasons.asteroid_dynamic_from`, `seasons.asteroid_legacy_calendar` and
+the `asteroid_spawn_hours` table. Both are expand-only and the old image never reads them. Their
+journal `when` values (`1789600000000`, `1789610000000`) are deliberately BELOW the colony-faults
+branch's `0089` (`1789625557570`): Drizzle silently skips a migration whose `when` is lower than
+the last applied one, so whichever ships second must carry the higher value. When faults merge,
+renumber its file to `0091` and keep its `when` above both of these.
+
+**Step 6 reading.** No contraction, no removed route. `asteroid_hour` is a new kind that no live
+season produces until `adopt-event-calendar` runs, so it does not force a stop. Run that command
+only after EVERY api and worker replica runs the new image.
+
+**Until the command runs, nothing changes for players** except the six-hour shield and its boost,
+the convoy's four-hour label, and the events guide (which already shows the new weekly calendar).
+The live season keeps its old windows and its derived field.
+
+**Adopt the live season, right after the rollout:**
+
+```bash
+compose=(docker compose -f docker-compose.prod.yml)
+
+# Dry run: the real transaction, rolled back. Reports the cutover hour and the row counts.
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar --shard EU-1
+
+"${compose[@]}" exec api1 apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts \
+  adopt-event-calendar --shard EU-1 --yes
+```
+
+What it does, in one transaction, at the NEXT hour boundary (the cutover):
+
+- copies the season's shower rows into `seasons.asteroid_legacy_calendar` and sets
+  `asteroid_dynamic_from`. The derived field is read from that copy from now on, so **every rock
+  already in the sky keeps its index, its id, its claims and the craft flying at it**. Derived rocks
+  that would have appeared at or after the cutover are never born;
+- removes every shower and convoy row starting at or after the cutover that does not match the
+  current definitions, with its queue moments, and deals the weekday/weekend windows from the cutover
+  on. Windows that opened before the cutover and every merchant row are untouched;
+- queues the first `asteroid_hour` at the cutover. The worker then opens one hour per hour.
+
+It is idempotent (a second run reports `0 removed, 0 added`). **Do not run `restamp` or
+`sync-events` for `ASTEROID_SHOWER` or `INTERGALACTIC_CONVOY` on a season that has not adopted:**
+`restamp` refuses the old window starts (`plannedEffectFor` finds no matching window), and
+`sync-events` would append the new windows BESIDE the old ones and re-deal the derived field.
+
+**Verify after the cutover hour:**
+
+```bash
+docker exec astera-postgres-prod psql -U astera -d astera -tAc \
+ "select hour_starts_at, active_players, jsonb_array_length(lanes)
+    from asteroid_spawn_hours order by hour_starts_at desc limit 3;"
+```
+
+`active_players` should match the non-bot `last_active_at > now() - 60 min` count at the hour.

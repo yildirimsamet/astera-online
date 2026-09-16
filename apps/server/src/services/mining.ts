@@ -1,4 +1,5 @@
 import { and, asc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import {
   asteroidActive,
   claimOre,
@@ -47,9 +48,10 @@ import {
 import {
   asteroidId,
   asteroidIndexFromId,
-  privateAsteroidFieldWithEvents,
+  composeSeasonAsteroidField,
   projectPlayerAsteroidField,
 } from './asteroidField.js';
+import { FIELD_LOOKBACK_HOURS, HOUR_MS, floorHour, loadAsteroidHours } from './asteroidSpawn.js';
 import { loadGalaxyEventSchedule } from './galaxyEvents.js';
 import { sensorHistoryForPlayer } from './sensorHistory.js';
 import { notify } from './notifications.js';
@@ -76,21 +78,55 @@ import { planetView, type PlanetView } from './planetView.js';
  * and one that arrives to find it stripped turns around empty.
  */
 
-/** Where the field lives. Regenerated per season, cached, never downloaded. */
-async function fieldOf(tx: Queryable, seasonId: string): Promise<{
+/**
+ * Where the field lives. Regenerated per season, cached, never downloaded.
+ *
+ * `now` BOUNDS THE DYNAMIC PART (2026-09-16): a season on the dynamic field holds a
+ * stored hour for every hour it has run, and a read only needs the ones whose rocks
+ * can still be seen, reached or flown home from — see `FIELD_LOOKBACK_HOURS`.
+ */
+async function fieldOf(tx: Queryable, seasonId: string, now: Date): Promise<{
   asteroids: AsteroidSpec[];
   startsAt: Date;
   asteroidKey: string;
 }> {
   const [season] = await tx.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
-  const eventSchedule = await loadGalaxyEventSchedule(tx, season.id, season.startsAt);
+  const dynamicFrom = season.asteroidDynamicFrom;
+  const calendar = dynamicFrom === null
+    ? await loadGalaxyEventSchedule(tx, season.id, season.startsAt)
+    : [];
+  const hours = dynamicFrom === null ? [] : await loadAsteroidHours(tx, season.id, now);
+  const hourZero = floorHour(season.startsAt).getTime();
   return {
-    asteroids: privateAsteroidFieldWithEvents(season.asteroidKey, eventSchedule),
+    asteroids: composeSeasonAsteroidField({
+      key: season.asteroidKey,
+      calendar,
+      dynamicFromMinute: dynamicFrom === null ? null : minutesSince(season.startsAt, dynamicFrom),
+      legacyCalendar: season.asteroidLegacyCalendar === null
+        ? null
+        : legacyCalendarSchema.parse(season.asteroidLegacyCalendar),
+      hours: hours.map((hour) => ({
+        hourOrdinal: Math.round((hour.hourStartsAt.getTime() - hourZero) / HOUR_MS),
+        lanes: hour.lanes,
+      })),
+      nowMinutes: minutesSince(season.startsAt, now),
+      lookbackMinutes: (FIELD_LOOKBACK_HOURS / 2) * 60,
+    }),
     startsAt: season.startsAt,
     asteroidKey: season.asteroidKey,
   };
 }
+
+/** The frozen shower calendar, read back through the same shape it was written in. */
+const legacyCalendarSchema = z.array(z.object({
+  sequence: z.number().int().nonnegative(),
+  kind: z.literal('ASTEROID_SHOWER'),
+  startsAtMinute: z.number().finite(),
+  endsAtMinute: z.number().finite(),
+  definitionVersion: z.number().int().positive(),
+  effect: z.object({ asteroidSpawnMultiplier: z.number().finite().gt(1) }).strict(),
+}).strict());
 
 export interface AsteroidView extends Omit<AsteroidSpec, 'isotopeRich' | 'deuteriumShare'> {
   /** Ore still in it. Internal full-field projection; API routes apply caller fog. */
@@ -122,7 +158,7 @@ export async function loadMiningSnapshot(
   seasonId: string,
   now: Date,
 ): Promise<MiningSnapshot> {
-  const field = await fieldOf(db, seasonId);
+  const field = await fieldOf(db, seasonId, now);
   const oldest = new Date(now.getTime() - DEBRIS.decayMinutes * 60_000);
   const [claims, debris] = await Promise.all([
     db.select().from(asteroidClaims).where(eq(asteroidClaims.seasonId, seasonId)),
@@ -270,7 +306,7 @@ async function miningStatusAfterLaunch(
   origin: Pick<LockedPlanet, 'planetId' | 'playerId' | 'seasonId' | 'orbit' | 'now'>,
 ): Promise<MiningStatusView> {
   const runs = await activePlayerMiningRuns(tx, origin.playerId);
-  const field = await fieldOf(tx, origin.seasonId);
+  const field = await fieldOf(tx, origin.seasonId, origin.now);
   const cooldowns = await prospectorCooldowns(tx, origin.planetId, origin.now);
   const view = projectPrivateMiningView(
     origin.orbit,
@@ -381,7 +417,7 @@ export async function launchMining(
     const origin = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(origin);
 
-    const field = await fieldOf(tx, origin.seasonId);
+    const field = await fieldOf(tx, origin.seasonId, origin.now);
     const nowMinutes = minutesSince(field.startsAt, origin.now);
     const fromOpaqueId = typeof asteroidTarget === 'string';
     const asteroidIndex = fromOpaqueId
@@ -694,7 +730,7 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
     mined = await claimFromDebris(tx, run.debrisFieldId, run.holdEach * run.craft, now);
   }
 
-  const { asteroids } = await fieldOf(tx, run.seasonId);
+  const { asteroids } = await fieldOf(tx, run.seasonId, now);
   const rockIndex = run.asteroidIndex;
   const rock = rockIndex === null ? undefined : asteroids.find((a) => a.index === rockIndex);
 

@@ -6,6 +6,7 @@ import { addMinutes } from '../clock.js';
 import {
   accounts,
   asteroidClaims,
+  asteroidSpawnHours,
   attackCommitments,
   battleReports,
   buildOrders,
@@ -614,6 +615,7 @@ export async function wipeAllServers(
     await tx.delete(strategicAssets);
     await tx.delete(missions);
     await tx.delete(asteroidClaims);
+    await tx.delete(asteroidSpawnHours);
     await tx.delete(units);
     await tx.delete(satellites);
     await tx.delete(sensorEpochs);

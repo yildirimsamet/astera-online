@@ -25,7 +25,7 @@ export const convoy = {
   cargo: 'Kargo',
   resourceQuality: 'Kaynak kalitesi',
   shipQuality: 'Gemi kalitesi',
-  cap: '2 saatlik tavan',
+  cap: '{{hours}} saatlik tavan',
   raw: 'Kalite sonrası',
   landed: 'Eve gelen',
   actual: 'Eve gelecek',

@@ -32,6 +32,7 @@ import {
 } from '../db/schema.js';
 import { addMinutes } from '../clock.js';
 import { schedule } from '../worker/queue.js';
+import { floorHour, scheduleAsteroidHour } from './asteroidSpawn.js';
 import { seedGalaxyEventCalendar } from './galaxyEvents.js';
 import { CURRENT_SEASON_STATS_VERSION } from './seasonArchive.js';
 
@@ -164,10 +165,27 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
         endsAt,
         rulesetVersion: input.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
         statsVersion: cycle.statsVersion,
+        /*
+          ON THE DYNAMIC ASTEROID FIELD FROM ITS FIRST INSTANT. 2026-09-16. The first
+          hour is opened at the later of the start and the moment the season was
+          provisioned, so a waiting galaxy does not open hours nobody could play.
+        */
+        asteroidDynamicFrom: (input.rulesetVersion ?? MULTI_WORLD.rulesetVersion)
+            >= MULTI_WORLD.dynamicAsteroidFieldRulesetVersion
+          ? input.startsAt
+          : null,
       })
       .returning();
 
   await seedGalaxyEventCalendar(tx, season!, initializedAt);
+  if (season!.asteroidDynamicFrom !== null) {
+    const opensAt = initializedAt > season!.startsAt ? initializedAt : season!.startsAt;
+    await scheduleAsteroidHour(tx, {
+      seasonId: season!.id,
+      hourStartsAt: floorHour(opensAt),
+      resolveAt: opensAt,
+    });
+  }
 
   await schedule(tx, {
     seasonId: season!.id,

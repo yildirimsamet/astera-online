@@ -25,7 +25,7 @@ export const convoy = {
   cargo: 'Cargo',
   resourceQuality: 'Resource quality',
   shipQuality: 'Ship quality',
-  cap: '2h cap',
+  cap: '{{hours}}h cap',
   raw: 'After quality',
   landed: 'Landed',
   actual: 'Coming home',

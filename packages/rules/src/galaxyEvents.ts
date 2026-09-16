@@ -128,14 +128,25 @@ export interface RandomDailyDefinition<Effect> {
   readonly nightEffect?: Effect;
 }
 
+/**
+ * WHICH DAYS A FIXED WINDOW RUNS ON, IN TÜRKİYE TIME. Owner instruction, 2026-09-16.
+ *
+ * `WEEKDAY` is Monday to Friday and `WEEKEND` is Saturday and Sunday; a window with
+ * no `days` runs every day, which is every window authored before this existed.
+ */
+export type GalaxyEventDays = 'WEEKDAY' | 'WEEKEND';
+
+export interface FixedDailyWindow<Effect> {
+  readonly days?: GalaxyEventDays;
+  readonly startsAtLocalMinute: number;
+  readonly endsAtLocalMinute: number;
+  readonly effect: Effect;
+}
+
 export interface FixedDailyDefinition<Effect> {
   readonly schedule: 'FIXED_DAILY';
   readonly version: number;
-  readonly windows: readonly {
-    readonly startsAtLocalMinute: number;
-    readonly endsAtLocalMinute: number;
-    readonly effect: Effect;
-  }[];
+  readonly windows: readonly FixedDailyWindow<Effect>[];
 }
 
 export type GalaxyEventDefinition<Effect> =
@@ -431,7 +442,7 @@ function validateConfig(config: GalaxyEventsConfig): void {
     const windows = [...definition.windows].sort(
       (left, right) => left.startsAtLocalMinute - right.startsAtLocalMinute,
     );
-    for (const [index, window] of windows.entries()) {
+    for (const window of windows) {
       assertFiniteInteger(
         window.startsAtLocalMinute,
         `${kind} fixed window start`,
@@ -443,13 +454,28 @@ function validateConfig(config: GalaxyEventsConfig): void {
         || window.startsAtLocalMinute >= window.endsAtLocalMinute) {
         throw new RangeError(`${kind} fixed window must be non-wrapping inside one day`);
       }
-      if (index > 0 && windows[index - 1]!.endsAtLocalMinute > window.startsAtLocalMinute) {
-        throw new RangeError(`${kind} fixed windows cannot overlap`);
-      }
       validateEffect(kind, window.effect);
+    }
+    /*
+      TWO WINDOWS COLLIDE ONLY IF THEY CAN RUN ON THE SAME DAY. A weekday 20:00 and a
+      weekend 20:00 never meet; a window with no `days` runs on both kinds of day and
+      therefore meets every other window whose hours it shares.
+    */
+    for (const [index, window] of windows.entries()) {
+      for (const later of windows.slice(index + 1)) {
+        if (!sharesADay(window, later)) continue;
+        if (window.endsAtLocalMinute > later.startsAtLocalMinute) {
+          throw new RangeError(`${kind} fixed windows cannot overlap`);
+        }
+      }
     }
   }
 }
+
+const sharesADay = (
+  left: { readonly days?: GalaxyEventDays },
+  right: { readonly days?: GalaxyEventDays },
+): boolean => left.days === undefined || right.days === undefined || left.days === right.days;
 
 const randomInteger = (rng: Rng, minimum: number, maximum: number): number =>
   minimum + Math.floor(rng() * (maximum - minimum + 1));
@@ -728,6 +754,37 @@ const localMinuteOfDay = (unixMinute: number, utcOffsetMinutes: number): number 
   (((unixMinute + utcOffsetMinutes) % DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES;
 
 /**
+ * WHETHER A LOCAL CALENDAR DAY IS A WEEKDAY OR A WEEKEND. 2026-09-16.
+ *
+ * `localDay` is whole days since the Unix epoch on the calendar's own clock — the
+ * same number the fixed planner walks. 1970-01-01 was a Thursday, so day + 4 lands
+ * Sunday on zero. Pure integer arithmetic: no process locale, no time-zone database.
+ */
+export function galaxyEventDayKind(localDay: number): GalaxyEventDays {
+  const weekday = (((localDay + 4) % 7) + 7) % 7;
+  return weekday === 0 || weekday === 6 ? 'WEEKEND' : 'WEEKDAY';
+}
+
+const localDayOf = (unixMinute: number, utcOffsetMinutes: number): number =>
+  Math.floor((unixMinute + utcOffsetMinutes) / DAY_MINUTES);
+
+const runsOn = (window: { readonly days?: GalaxyEventDays }, localDay: number): boolean =>
+  window.days === undefined || window.days === galaxyEventDayKind(localDay);
+
+/** The authored window an occurrence starting at this instant belongs to, if any. */
+function fixedWindowAt<Effect>(
+  startsAtUnixMinute: number,
+  config: GalaxyEventsConfig,
+  definition: FixedDailyDefinition<Effect>,
+): FixedDailyWindow<Effect> | undefined {
+  const offset = config.calendar.utcOffsetMinutes;
+  const local = localMinuteOfDay(startsAtUnixMinute, offset);
+  const day = localDayOf(startsAtUnixMinute, offset);
+  return definition.windows.find((candidate) =>
+    candidate.startsAtLocalMinute === local && runsOn(candidate, day));
+}
+
+/**
  * Which of a kind's two figures this occurrence is dealt. D178.
  *
  * Half-open on the same boundaries the scheduler uses, so a shower that opens
@@ -775,9 +832,7 @@ export function plannedEffectFor<Kind extends GalaxyEventKind>(
   if (definition.schedule === 'RANDOM_DAILY') {
     return effectAt(startsAtUnixMinute, config, definition);
   }
-  const local = localMinuteOfDay(startsAtUnixMinute, config.calendar.utcOffsetMinutes);
-  const window = definition.windows.find((candidate) =>
-    candidate.startsAtLocalMinute === local);
+  const window = fixedWindowAt(startsAtUnixMinute, config, definition);
   if (!window) {
     throw new RangeError(`${kind} occurrence must match an exact fixed start minute`);
   }
@@ -803,6 +858,7 @@ function planFixedKind<Effect>(
   for (let localDay = firstDay; localDay <= lastDay; localDay += 1) {
     const dayStartsAt = localDay * DAY_MINUTES - offset;
     for (const window of windows) {
+      if (!runsOn(window, localDay)) continue;
       const startsAt = dayStartsAt + window.startsAtLocalMinute;
       const endsAt = dayStartsAt + window.endsAtLocalMinute;
       if (startsAt >= seasonStartsAt && endsAt <= seasonEndsAt) starts.push(startsAt);
@@ -816,9 +872,7 @@ function fixedEndAt<Effect>(
   config: GalaxyEventsConfig,
   definition: FixedDailyDefinition<Effect>,
 ): number {
-  const local = localMinuteOfDay(startsAt, config.calendar.utcOffsetMinutes);
-  const window = definition.windows.find((candidate) =>
-    candidate.startsAtLocalMinute === local);
+  const window = fixedWindowAt(startsAt, config, definition);
   if (!window) throw new RangeError('Occurrence must match an exact fixed start minute');
   return startsAt + window.endsAtLocalMinute - window.startsAtLocalMinute;
 }

@@ -207,7 +207,7 @@ export function StatusBar({
       </div>
 
       {!lesson && <Works planet={data} held={held} onOpen={onOpen} />}
-      {!lesson && boosted && boostUntil !== null && (
+      {!lesson && boosted && (
         <RecoveryBoostNote remainingMs={boostUntil.getTime() - now} />
       )}
     </header>

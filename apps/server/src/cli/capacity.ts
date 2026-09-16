@@ -113,6 +113,7 @@ async function main(): Promise<void> {
         mining_runs,
         debris_fields,
         asteroid_claims,
+        asteroid_spawn_hours,
         watches,
         probe_world_memories,
         probe_reports,

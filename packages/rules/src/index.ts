@@ -28,6 +28,7 @@ export * from './intel.js';
 export * from './sight.js';
 export * from './score.js';
 export * from './galaxy.js';
+export * from './asteroidDynamic.js';
 export * from './galaxyEvents.js';
 export * from './intergalacticConvoy.js';
 export * from './pirates.js';

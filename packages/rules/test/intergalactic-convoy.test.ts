@@ -336,16 +336,17 @@ describe('the five-second convoy engagement clock', () => {
 });
 
 describe('the immutable convoy reward quote', () => {
-  it('derives two hours of production from the launch snapshot, including Foundry', () => {
+  it('derives four hours of production from the launch snapshot, including Foundry', () => {
     const buildings = {
       CORE: 1, REFINERY: 4, EXTRACTOR: 3, VAULT: 0, SHIPYARD: 1, DEUTERIUM_PLANT: 2,
     } as const;
     const orbit = ['FOUNDRY'] as const;
-    expect(effect.resourceCapHours).toBe(2);
+    // Owner instruction, 2026-09-16: "saatlik üretim miktarının 4 katına kadar".
+    expect(effect.resourceCapHours).toBe(4);
     expect(convoyProductionCap({ buildings, orbit, effect })).toEqual({
-      alloy: Math.floor(alloyRate(4) * productionMult(orbit) * 2),
-      crystal: Math.floor(crystalRate(3) * productionMult(orbit) * 2),
-      deuterium: Math.floor(deuteriumRate(2) * productionMult(orbit) * 2),
+      alloy: Math.floor(alloyRate(4) * productionMult(orbit) * 4),
+      crystal: Math.floor(crystalRate(3) * productionMult(orbit) * 4),
+      deuterium: Math.floor(deuteriumRate(2) * productionMult(orbit) * 4),
     });
   });
 

@@ -1,4 +1,4 @@
-import { GALAXY_EVENTS } from '@astera/rules';
+import { GALAXY_EVENTS, type GalaxyEventDays } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import { CargoIcon, CrystalIcon, GalaxyIcon } from '../ui/icons/index.js';
 import { Sheet } from '../ui/kit/Sheet.js';
@@ -47,11 +47,34 @@ function readingOrder<T extends { readonly startsAtLocalMinute: number }>(
     key(left.startsAtLocalMinute) - key(right.startsAtLocalMinute));
 }
 
+type DayGroup = GalaxyEventDays | 'EVERY_DAY';
+
+/**
+ * A LANE SPLIT BY THE KIND OF DAY IT RUNS ON. Owner instruction, 2026-09-16.
+ *
+ * The same 20:00 hour is a x10 shower on a weekday and a x15 one at the weekend, so
+ * a flat row of pills could not say which was which. Weekdays first, because that
+ * is the calendar a player meets five days out of seven; a window with no `days`
+ * runs every day and is its own row.
+ */
+function byDays<T extends { readonly days?: GalaxyEventDays; readonly startsAtLocalMinute: number }>(
+  windows: readonly T[],
+): { days: DayGroup; windows: T[] }[] {
+  const order: DayGroup[] = ['WEEKDAY', 'WEEKEND', 'EVERY_DAY'];
+  return order
+    .map((days) => ({
+      days,
+      windows: readingOrder(windows.filter((window) => (window.days ?? 'EVERY_DAY') === days)),
+    }))
+    .filter((group) => group.windows.length > 0);
+}
+
 export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
-  const asteroidWindows = readingOrder(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows);
-  const tradeWindows = readingOrder(GALAXY_EVENTS.definitions.TRADE_SHIP.windows);
-  const convoyWindows = readingOrder(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows);
+  const asteroidGroups = byDays(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows);
+  const tradeGroups = byDays(GALAXY_EVENTS.definitions.TRADE_SHIP.windows);
+  const convoyGroups = byDays(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows);
+  const dayLabel = (days: DayGroup): string => t(`galaxy.eventsGuide.days.${days}`);
 
   return (
     <Sheet
@@ -74,12 +97,16 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
             title={t('galaxy.eventsGuide.asteroid.title')}
             summary={t('galaxy.eventsGuide.asteroid.summary')}
           >
-            {asteroidWindows.map((window) => (
-              <TimePill
-                key={window.startsAtLocalMinute}
-                time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-                detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
-              />
+            {asteroidGroups.map((group) => (
+              <DayRow key={group.days} label={dayLabel(group.days)}>
+                {group.windows.map((window) => (
+                  <TimePill
+                    key={window.startsAtLocalMinute}
+                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                    detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
+                  />
+                ))}
+              </DayRow>
             ))}
           </EventCard>
 
@@ -90,11 +117,15 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
             summary={t('galaxy.eventsGuide.trade.summary')}
             note={t('galaxy.eventsGuide.trade.rate')}
           >
-            {tradeWindows.map((window) => (
-              <TimePill
-                key={window.startsAtLocalMinute}
-                time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-              />
+            {tradeGroups.map((group) => (
+              <DayRow key={group.days} label={dayLabel(group.days)}>
+                {group.windows.map((window) => (
+                  <TimePill
+                    key={window.startsAtLocalMinute}
+                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                  />
+                ))}
+              </DayRow>
             ))}
           </EventCard>
 
@@ -105,11 +136,15 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
             summary={t('galaxy.eventsGuide.convoy.summary')}
             note={t('galaxy.eventsGuide.convoy.note')}
           >
-            {convoyWindows.map((window) => (
-              <TimePill
-                key={window.startsAtLocalMinute}
-                time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
-              />
+            {convoyGroups.map((group) => (
+              <DayRow key={group.days} label={dayLabel(group.days)}>
+                {group.windows.map((window) => (
+                  <TimePill
+                    key={window.startsAtLocalMinute}
+                    time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
+                  />
+                ))}
+              </DayRow>
             ))}
           </EventCard>
         </div>
@@ -154,11 +189,21 @@ function EventCard({
           <p className="mt-1 text-caption leading-snug text-dim">{summary}</p>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">{children}</div>
+      <div className="mt-3 space-y-1.5">{children}</div>
       {note === undefined ? null : (
         <p className="mt-3 border-t border-line-soft pt-2 text-caption leading-snug text-bone">{note}</p>
       )}
     </article>
+  );
+}
+
+/** One kind of day: its name on the left, its windows beside it. */
+function DayRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div data-event-days className="flex items-center gap-2">
+      <span className="legend w-[62px] shrink-0 text-dim">{label}</span>
+      <div className="flex min-w-0 flex-wrap gap-1.5">{children}</div>
+    </div>
   );
 }
 

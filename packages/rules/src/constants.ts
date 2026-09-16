@@ -2515,12 +2515,12 @@ export const INTERGALACTIC_CONVOY = {
 /**
  * Public galaxy moments dealt for ruleset 8+. D201.
  *
- * Every window is pinned to UTC+03:00 and half-open. The convoy's centre takes
- * the full two hours to cross the diameter: 07:00–09:00, 12:00–14:00 and
- * 19:00–21:00. Lanes are allowed to overlap each other and several do on purpose —
- * the morning convoy runs under the 07:00 merchant, the noon one under the 13:00
- * shower, the evening one under the 20:00 shower — because a commander with one
- * fleet and two opportunities is the choice these windows exist to create. Old
+ * Every window is pinned to UTC+03:00 and half-open, and since 2026-09-16 a window
+ * may name the kind of day it runs on (`days`). Lanes are allowed to overlap each
+ * other and several do on purpose — the weekday convoy runs under the 21:00
+ * merchant, the weekend ones under the 13:00 and 20:00 showers — because a
+ * commander with one fleet and two opportunities is the choice these windows exist
+ * to create. Old
  * random schedules are frozen in `galaxyEventConfigForRuleset()` and never
  * inferred from this current object.
  */
@@ -2544,51 +2544,36 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 5 WAS THE FRONT LOAD AND NOTHING ELSE — the windows and multipliers
-       * were byte-identical to version 4 and only the arrival times inside the hour
-       * moved (`ASTEROID_SHOWER_FRONT_LOAD`).
+       * VERSION 7 IS THE WORKING WEEK. Owner instruction, 2026-09-16: *"kitlemiz
+       * 30-40 yaş çalışan insanlar bunlar eventleri yakalayamıyor ve tüm gün oynayan
+       * eventlerin hepsini yakalayan azınlık ise ekonomik ve güç olarak uçuyor."*
        *
-       * VERSION 6 IS THE SIXTH WINDOW. Owner instruction, 2026-09-16: a x5 shower
-       * filling 23:00–24:00. The version moves because the SHAPE moved — a season
-       * dealt under 5 has five windows a day and one dealt under 6 has six, and
-       * `restampFutureOccurrences` compares this figure to decide whether a row is
-       * current. Leaving it at 5 would stamp two different calendars with one
-       * number, and a row that lies about which calendar it came from is the one
-       * thing D149's freeze exists to prevent.
+       * Six windows a day paid whoever could attend six windows a day. A weekday now
+       * has two — lunch and the evening — and the weekend a bigger pair, when the
+       * audience is actually free. The version moves because the SHAPE moved, and
+       * `restampFutureOccurrences` compares it to decide whether a dealt row is
+       * current. (5 was the front load, 6 the 23:00 window; both shapes are gone.)
+       *
+       * A SHOWER NO LONGER SIZES A LANE OF ITS OWN. Under the dynamic field
+       * (`ASTEROID_DYNAMIC`) the multiplier scales the hour's per-player spawn for
+       * the part of the hour the window covers, which is why a window may open on a
+       * half hour: 12:30–13:30 multiplies the second half of one hour and the first
+       * half of the next.
        *
        * A LIVE SEASON DOES NOT GAIN IT ON DEPLOY. Calendars are dealt once at
-       * creation, so the new window reaches a running galaxy only through
-       * `pnpm season sync-events --kind ASTEROID_SHOWER --yes` — and
-       * `docs/deployment.md` states what that costs if it is run while a window is
-       * already open.
+       * creation; the running galaxy adopts this shape through the operator command
+       * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 6,
+      version: 7,
       windows: [
-        { startsAtLocalMinute: 2 * 60, endsAtLocalMinute: 3 * 60,
+        { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60 + 30,
           effect: { asteroidSpawnMultiplier: 3 } },
-        { startsAtLocalMinute: 10 * 60, endsAtLocalMinute: 11 * 60,
-          effect: { asteroidSpawnMultiplier: 3 } },
-        { startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
-          effect: { asteroidSpawnMultiplier: 5 } },
-        { startsAtLocalMinute: 16 * 60, endsAtLocalMinute: 17 * 60,
-          effect: { asteroidSpawnMultiplier: 5 } },
-        { startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
+        { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
           effect: { asteroidSpawnMultiplier: 10 } },
-        /**
-         * THE LAST HOUR OF THE DAY, AND IT ENDS ON THE BOUNDARY ITSELF.
-         *
-         * `endsAtLocalMinute: 24 * 60` is the largest value `validateConfig`
-         * accepts: a window may TOUCH midnight and may not cross it. It touches the
-         * 21:00 merchant at its start the same way — half-open windows that share
-         * an instant do not overlap, which is why neither guard refuses this.
-         *
-         * x5 RATHER THAN ANOTHER x10. The 20:00 window is the day's peak and the
-         * one a commander plans an evening around; a second x10 an hour later would
-         * make the peak a plateau and take the decision out of it. This is the
-         * evening's second chance, priced like the afternoon's two.
-         */
-        { startsAtLocalMinute: 23 * 60, endsAtLocalMinute: 24 * 60,
+        { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
           effect: { asteroidSpawnMultiplier: 5 } },
+        { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
+          effect: { asteroidSpawnMultiplier: 15 } },
       ],
     },
     TRADE_SHIP: {
@@ -2607,32 +2592,29 @@ export const GALAXY_EVENTS = {
     INTERGALACTIC_CONVOY: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 3 IS THE NOON CROSSING. Owner instruction, 2026-09-16.
+       * VERSION 4 IS THE WORKING WEEK AND A FOUR-HOUR PRIZE. Owner instruction,
+       * 2026-09-16: weekdays 21:00–23:00, weekends 12:00–14:00 and 20:00–22:00, and
+       * *"artık convoy -> saatlik üretim miktarının 4 katına kadar verecek."*
        *
-       * Two crossings left the middle of the day empty: a commander who plays at
-       * lunch met the merchant's 07:00 window already closed and the 15:00 one not
-       * yet open. The version moves because the SHAPE moves — two windows a day
-       * becomes three — and `restampFutureOccurrences` reads this figure to decide
-       * whether a dealt row is current.
-       *
-       * IT IS 12:00–14:00 AND NOT THE 12:00–13:00 THAT WAS ASKED FOR, and the hour
-       * is not a rounding. The list below maps ONE authored duration onto every
-       * window because the convoy's speed is `2 x GALAXY.radius / durationMinutes`:
-       * the formation enters one rim as the window opens and clears the far rim as
-       * it closes. `intergalacticConvoySpec` refuses any other duration outright,
-       * and `resourceCapHours: 2` prices the reward as two hours of the raider's
-       * own production. A sixty-minute crossing is a different event wearing this
-       * one's name — twice the speed, half the reach for a slow fleet, and a reward
-       * table that no longer matches its own clock. Owner chose the authored shape.
+       * EVERY WINDOW IS STILL TWO HOURS, and that is the route contract rather than a
+       * preference: the formation's speed is `2 x GALAXY.radius / durationMinutes`,
+       * so it enters one rim as the window opens and clears the far rim as it closes,
+       * and `intergalacticConvoySpec` refuses any other duration outright. Fewer
+       * crossings at a doubled cap keep a convoy worth planning an evening around.
        */
-      version: 3,
-      windows: [7 * 60, 12 * 60, 19 * 60].map((startsAtLocalMinute) => ({
+      version: 4,
+      windows: ([
+        ['WEEKDAY', 21 * 60],
+        ['WEEKEND', 12 * 60],
+        ['WEEKEND', 20 * 60],
+      ] as const).map(([days, startsAtLocalMinute]) => ({
+        days,
         startsAtLocalMinute,
         endsAtLocalMinute: startsAtLocalMinute + INTERGALACTIC_CONVOY.durationMinutes,
         effect: {
           routeVersion: 1 as const,
           formationVersion: 1 as const,
-          resourceCapHours: 2 as const,
+          resourceCapHours: 4 as const,
           fullRewardForceRatio: 1 as const,
           /** Frozen pre-D208 `combatValue({ CATACLYSM: 1 })`; hull discounts do not retune this event. */
           shipDropFullFirepower: 5_780,
@@ -2685,6 +2667,53 @@ export const ASTEROID_SHOWER_FRONT_LOAD = {
   share: 0.5,
   /** How long the front of the window is, in minutes from its start. */
   minutes: 5,
+} as const;
+
+/**
+ * THE FIELD FOLLOWS THE PEOPLE PLAYING IT. Owner instruction, 2026-09-16:
+ * *"Aktif oyuncu azalınca bedava farm yapmamalı, çok oyuncu olunca asteroid yok
+ * denilmemeli."*
+ *
+ * The derived field (`GALAXY.asteroidSpawnPerHour`, a fixed rate for the whole disc)
+ * paid the same sky to three commanders at four in the morning as to forty at nine
+ * in the evening: a free farm for the first and an empty disc for the second. So at
+ * every hour boundary the worker counts the commanders who played in the hour just
+ * gone and fixes that hour's spawn at `perPlayerPerHour` for each of them, multiplied
+ * by any Asteroid Shower for the part of the hour it covers. The count is stored with
+ * the hour, which is what keeps a rock's identity stable once it exists.
+ *
+ * ORE IS THE LEVEL TABLE, UNCAPPED. Owner decision, same day: the monthly allowance
+ * was sized for a fixed-rate field and would shrink every rock to one packet exactly
+ * when the galaxy is busiest. The table is gated by season day instead
+ * (`levelUnlockByDay`), so the first days cannot flood a young economy with 8,000-ore
+ * rocks.
+ */
+export const ASTEROID_DYNAMIC = {
+  /** Rocks per active commander per hour, before any shower. Owner's number. */
+  perPlayerPerHour: 2,
+  /** A commander counts as active for the next hour if they played in this window. */
+  activeWindowMinutes: 60,
+  /**
+   * The highest level a rock may roll, by season day: *"İlk gün sadece level 1-2,
+   * ikinci gün level 1-2-3, üçüncü gün 1-2-3-4, dördüncü gün artık hepsi."* The last
+   * entry holds for every later day.
+   */
+  levelUnlockByDay: [2, 3, 4, 5] as readonly number[],
+  /**
+   * WHERE DYNAMIC ROCKS ARE NUMBERED, CLEAR OF THE DERIVED FIELD. The legacy field of
+   * a thirty-day season stops near twelve thousand indices; ten million leaves it
+   * room forever. Each hour owns `indexSpanPerHour` indices, so a rock's hour is
+   * readable from its index and no two hours can collide. A thirty-one-day season's
+   * last index is ~84 million, well inside a Postgres integer.
+   */
+  indexBase: 10_000_000,
+  indexSpanPerHour: 100_000,
+  /**
+   * AN HOUR OPENED LATE STILL GETS ITS WHOLE HOUR if the worker reached it within
+   * this many minutes; later than that, only the minutes that are left are paid, so
+   * a worker coming back from an outage does not drop a missed hour's rocks at once.
+   */
+  lateStartGraceMinutes: 5,
 } as const;
 
 /**
@@ -3153,6 +3182,15 @@ export const MULTI_WORLD = {
   fixedGalaxyEventScheduleRulesetVersion: 8,
   /** D201's convoy lane exists only in seasons created at the fixed-calendar boundary. */
   intergalacticConvoyRulesetVersion: 8,
+  /**
+   * A SEASON CREATED AT OR ABOVE THIS RULESET IS ON THE DYNAMIC ASTEROID FIELD FROM
+   * ITS FIRST INSTANT (`ASTEROID_DYNAMIC`). 2026-09-16. It is 8 rather than a new 9
+   * because nothing else about a season changed: the one ruleset-8 season that was
+   * already live adopts the field by operator command, at an hour boundary, and every
+   * season created afterwards is dealt it at creation. `seasons.asteroid_dynamic_from`
+   * is the stored answer; this only decides what creation writes there.
+   */
+  dynamicAsteroidFieldRulesetVersion: 8,
   /** Neutral worlds and colonies remain the v2 boundary. */
   neutralWorldRulesetVersion: 2,
   /** D114 clan state exists only in a freshly created v3 season. */

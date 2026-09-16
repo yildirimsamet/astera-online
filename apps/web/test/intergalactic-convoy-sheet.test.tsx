@@ -28,7 +28,7 @@ const event: IntergalacticConvoyEvent = {
   },
   visual: { formationVersion: 1 },
   rewardPolicy: {
-    resourceCapHours: 2,
+    resourceCapHours: 4,
     fullRewardForceRatio: 1,
     shipDropFullFirepower: 5780,
     shipDropChanceAtFullQuality: 0.15,
@@ -91,7 +91,8 @@ describe('the intergalactic convoy commitment surface', () => {
     const launch = openSheet();
     fireEvent.click(screen.getByRole('button', { name: /Send every Dart/i }));
     expect(screen.getByText('Firepower').nextSibling).toHaveTextContent(/[1-9]/);
-    expect(screen.getByText('2h cap')).toBeInTheDocument();
+    // The column names the cap the occurrence carries, not a figure baked into copy.
+    expect(screen.getByText('4h cap')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('convoy-review'));
     fireEvent.click(screen.getByTestId('convoy-confirm'));
 

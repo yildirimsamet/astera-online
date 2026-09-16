@@ -31,6 +31,8 @@ export const TRANSFER_EVENT_POLICIES = {
   trade_return: 'BLOCKER',
   convoy_arrival: 'BLOCKER',
   convoy_return: 'BLOCKER',
+  // A season's hour on the dynamic asteroid field belongs to nobody in particular.
+  asteroid_hour: 'GLOBAL',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

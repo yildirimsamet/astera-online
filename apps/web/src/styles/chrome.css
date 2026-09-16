@@ -1144,14 +1144,15 @@
 
 /* ── recovery boost · the struck world works double ─────────────
    A rising arrow beside each store, in the shield's colour. It bobs rather than
-   blinks: the glyph has to stay readable at 8px on a phone, so it never fades out. */
+   blinks: the glyph has to stay readable at 8px on a phone, so it never fades out.
+   No glow filter: a drop-shadow is a layer per element and this header already pays
+   for one (see `.cut-shadow`); the shield's green on the dark header reads alone. */
 .boost-mark {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   margin-inline: -4px -2px;
-  color: var(--color-opportunity);
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--color-opportunity-glow) 70%, transparent));
+  color: var(--color-opportunity-glow);
 }
 
 .boost-mark-glyph {

@@ -4,6 +4,8 @@ import { assertSchemaCurrent } from './db/migrate.js';
 import { loadDotEnv, loadEnv } from './env.js';
 import { ensureSeasonActs } from './services/season.js';
 import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
+import { ensureAsteroidHourEvents } from './services/asteroidSpawn.js';
+import { systemClock } from './clock.js';
 
 loadDotEnv();
 const env = loadEnv();
@@ -40,6 +42,10 @@ async function main(): Promise<void> {
     const galaxyEventMomentsScheduled = await ensureGalaxyEventLifecycleEvents(db);
     if (galaxyEventMomentsScheduled > 0) {
       log.info({ galaxyEventMomentsScheduled }, 'scheduled missing galaxy-event moments');
+    }
+    const asteroidHoursScheduled = await ensureAsteroidHourEvents(db, systemClock.now());
+    if (asteroidHoursScheduled > 0) {
+      log.info({ asteroidHoursScheduled }, 'scheduled missing asteroid hours');
     }
     worker.start();
     log.info('event worker started');

@@ -554,9 +554,19 @@ schedule and raw indexes never reach the browser, so direct API automation has n
 list to enumerate. Once two commanders have independently found the same rock, the ordinary public
 race and visible mining route begin for both of them.
 
-**Asteroid Shower is a public opportunity window (D149/D201).** In ruleset 8 it uses five fixed,
-half-open Türkiye windows: 02:00–03:00 ×3, 10:00–11:00 ×3, 13:00–14:00 ×5, 16:00–17:00 ×5 and
-20:00–21:00 ×10. Ruleset 4–7 seasons retain the random calendar already persisted for them. The
+**The field follows the people playing it (2026-09-16).** At the top of every hour the worker
+counts the non-bot commanders who played in the last 60 minutes and fixes that hour's spawn at
+**2 rocks per commander**, at random instants and random levels. Ore is the level table
+(1,600–8,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
+L1–4, day 4+: all). A quiet night is no longer a free farm and a busy evening is no longer an empty
+sky. The count is stored with the hour (`asteroid_spawn_hours`), so a rock never moves once it
+exists. Seasons created before this keep their derived field up to the hour they adopted it.
+
+**Asteroid Shower is a public opportunity window (D149/D201, reshaped 2026-09-16).** The owner's
+audience is 30–40-year-olds with jobs, and six showers a day paid whoever could attend six. Weekdays
+(Mon–Fri, TRT): 12:30–13:30 ×3 and 20:00–21:00 ×10. Weekends: 13:00–14:00 ×5 and 20:00–21:00 ×15.
+A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
+bonus still arrives in its first five minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;
 rocks already in the galaxy retain their ordinary 2.5–5 hour life and mining flights continue. Signals,
 the Chronicle and the galaxy status chip announce the public lifecycle, while D143 still hides every
@@ -632,12 +642,16 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — four hours after a heavy defeat (2026-09-14, reworked 2026-09-15)
+### The recovery shield — six hours after a heavy defeat (2026-09-14, reworked 2026-09-15, 2026-09-16)
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
 badly.** A defeat that costs at least **eight hours of that commander's own production** leaves
-them unreachable for four hours, on every world they hold, against Raid and Death Star. A Death
+them unreachable for six hours, on every world they hold, against Raid and Death Star. **While it
+stands, the world that was struck produces +100%** (owner instruction, 2026-09-16): the works fill
+twice as fast, the collector ceiling does not grow, and the boost ends with the shield — including
+the instant the commander spends it by attacking. The header marks each store with a rising arrow
+and states the rule and its countdown. A Death
 Star impact on a player's world grants it outright — it destroys rather than loots, so there is
 nothing carried off to measure, and it is the loudest thing one commander can do to another.
 
@@ -660,8 +674,8 @@ HOURS, so the absolute figure the developed one has to lose is larger by exactly
 their works, and no second ladder has to be kept in step with the Core. A commander caught with an
 empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
 near — which is precisely what the first version of this rule got wrong, and why it was replaced
-one day after it shipped. The bar is eight hours and the window is four, so a shield covers half
-the work it takes to recover.
+one day after it shipped. The bar is eight hours; the window was four and became six on
+2026-09-16 without moving the bar.
 
 **And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
 the air collects nothing: a shield won while your fleet is still flying at somebody who can no
@@ -669,7 +683,7 @@ longer answer inverts what the shield is for. The server's own commanders claim 
 they claim the first day (D159).
 
 **What it does not do.** It never turns a fleet back: anything legally in the air when the window
-opens still arrives, and a second heavy defeat pushes the end out to four hours from that battle
+opens still arrives, and a second heavy defeat pushes the end out to six hours from that battle
 rather than stacking a second window. Pirates, probes, mining, transfers, settlement, trade and
 clan aid neither grant it nor spend it.
 
@@ -762,14 +776,16 @@ everything else that can go wrong while you are away.
 
 ### Intergalactic Convoy — a public moving strike (D201)
 
-Twice a Türkiye day, 07:00–09:00 and 19:00–21:00, a twenty-two-craft double formation crosses an
+Weekdays 21:00–23:00 and weekends 12:00–14:00 and 20:00–22:00 (TRT, since 2026-09-16), a
+twenty-two-craft double formation crosses an
 isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
 60. The active route is public; future routes remain server-secret. A commander sends an armed
 mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
 fire and loses no craft, then follows a separately frozen return leg. Both legs' fuel is paid at
 launch and the flight cannot be recalled.
 
-The resource prize is bounded by two frozen hours of the origin world's nominal production,
+The resource prize is bounded by four frozen hours (two before 2026-09-16) of the origin world's
+nominal production,
 firepower quality and the launched wing's cargo. Ship quality uses its own combat threshold: at full
 quality the chance is 15%, with a versioned 1–3 ship/tier roll that can never exceed the wing's
 highest tier. Prizes exist in transit after the engagement and enter the commander's safe home world

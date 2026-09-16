@@ -20,6 +20,8 @@ import { createSeason, liveSeason } from '../services/season.js';
 import {
   restampFutureOccurrences,
   syncMissingFixedOccurrences,
+  adoptLiveEventCalendar,
+  type CalendarAdoptionReport,
 } from '../services/galaxyEvents.js';
 import { joinSeason } from '../services/player.js';
 import { grantReward } from '../services/rewards.js';
@@ -67,6 +69,13 @@ season sync-events [--yes] [options]
                                    append missing current/future fixed windows without
                                    renumbering the live calendar. Dry run unless --yes.
                                    --kind KIND, default ASTEROID_SHOWER
+season adopt-event-calendar [--yes] [--shard CODE]
+                                   move a LIVE season onto today's weekday/weekend
+                                   shower and convoy windows and the dynamic asteroid
+                                   field, from the next hour boundary. Freezes the
+                                   derived field first so no rock in the sky moves.
+                                   Never touches an opened window or the merchant.
+                                   Dry run unless --yes; safe to run twice.
 
   --shard CODE      shard code, for 'create'   (default: EU-1)
   --seed N          galaxy seed / seed base    (default: random)
@@ -346,6 +355,47 @@ async function main(): Promise<void> {
           `${String(planned)} missing current/future window(s) would be appended. `
           + 'Nothing was written; pass --yes to apply.',
         );
+        break;
+      }
+
+      /**
+       * 2026-09-16: the no-reset deploy of the working-week calendar and the dynamic
+       * asteroid field. See `adoptLiveEventCalendar` for the safety argument.
+       */
+      case 'adopt-event-calendar': {
+        const now = systemClock.now();
+        const seasonId = values.shard === undefined
+          ? undefined
+          : (await liveSeason(db, values.shard))?.season.id;
+        if (values.shard !== undefined && seasonId === undefined) {
+          throw new Error(`no live season on ${values.shard}`);
+        }
+        const describe = (reports: CalendarAdoptionReport[]) => {
+          for (const report of reports) {
+            console.log(
+              `season ${report.seasonId}: cutover ${report.cutoverAt.toISOString()}, `
+              + (report.frozen ? 'derived field frozen, ' : '')
+              + `${String(report.deleted)} window(s) removed, ${String(report.inserted)} added.`,
+            );
+          }
+          if (reports.length === 0) console.log('no live season on a fixed calendar.');
+        };
+        if (values.yes === true) {
+          describe(await db.transaction((tx) => adoptLiveEventCalendar(tx, { now, seasonId })));
+          break;
+        }
+        class DryRun extends Error {}
+        let planned: CalendarAdoptionReport[] = [];
+        try {
+          await db.transaction(async (tx) => {
+            planned = await adoptLiveEventCalendar(tx, { now, seasonId });
+            throw new DryRun();
+          });
+        } catch (error) {
+          if (!(error instanceof DryRun)) throw error;
+        }
+        describe(planned);
+        console.log('Nothing was written; pass --yes to apply.');
         break;
       }
 

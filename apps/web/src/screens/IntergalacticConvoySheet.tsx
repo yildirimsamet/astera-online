@@ -303,7 +303,7 @@ export function IntergalacticConvoySheet({
       <div className="mt-2 space-y-2">
         <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
           <span />
-          <span className="legend text-micro text-faint">{t('convoy.cap')}</span>
+          <span className="legend text-micro text-faint">{t('convoy.cap', { hours: event.rewardPolicy.resourceCapHours })}</span>
           <span className="legend text-micro text-faint">{t('convoy.raw')}</span>
           <span className="legend min-w-14 text-right text-micro text-faint">
             {t('convoy.landed')}

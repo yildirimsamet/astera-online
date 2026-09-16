@@ -41,14 +41,19 @@ export const galaxy = {
   hideRadar: "Radar menzilini gizle",
   eventsGuide: {
     open: "Galaksi etkinliklerini göster",
-    eyebrow: "Günlük takvim",
+    eyebrow: "Haftalık takvim",
     title: "Galaksi etkinlikleri",
-    intro: "Her gün tekrarlanan etkinlikleri kaçırmamak için saatleri burada takip et.",
+    intro: "Hafta içi ve hafta sonu tekrarlanan etkinliklerin saatleri burada.",
     timeZone: "Türkiye saati (UTC+3)",
-    dailyNote: "Tüm saatler her gün tekrar eder ve Türkiye saatine göre gösterilir.",
+    dailyNote: "Hafta içi Pazartesi–Cuma, hafta sonu Cumartesi–Pazar. Saatler Türkiye saatidir.",
+    days: {
+      WEEKDAY: "Hafta içi",
+      WEEKEND: "Hafta sonu",
+      EVERY_DAY: "Her gün",
+    },
     asteroid: {
       title: "Asteroid Yağmuru",
-      summary: "Etkinlik boyunca galaksideki yeni asteroid oluşma hızını artırır. Daha önce oluşmuş asteroidler süreleri dolana kadar kalır.",
+      summary: "Her saat başında, son bir saatte oynayan her komutan için 2 asteroid doğar. Yağmur bu sayıyı pencere boyunca katsayısıyla çarpar; oluşmuş asteroidler süreleri dolana kadar kalır.",
     },
     trade: {
       title: "Ticaret Gemisi",
@@ -57,7 +62,7 @@ export const galaxy = {
     },
     convoy: {
       title: "Galaksilerarası Konvoy",
-      summary: "Geçiş sırasında konvoya filo gönder; ateş gücüne göre kaynak ve gemi kazanma şansı elde et.",
+      summary: "Geçiş sırasında konvoya filo gönder; ateş gücüne göre dünyanın 4 saatlik üretimine kadar kaynak ve gemi kazanma şansı elde et.",
       note: "Konvoy karşılık vermez; filon kayıp vermez. Her dünya aynı geçişe bir kez akın edebilir.",
     },
   },

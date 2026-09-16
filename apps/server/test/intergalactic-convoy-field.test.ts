@@ -75,7 +75,8 @@ describe('the authenticated active event projection', () => {
   it('publishes a fixed-clock convoy when the season began between whole minutes', async () => {
     const { db } = await testDb();
     const seasonStartsAt = new Date('2026-09-13T08:52:25.114Z');
-    const clock = new FixedClock(new Date('2026-09-13T16:05:00.000Z'));
+    // Sunday 20:05 TRT, inside the weekend evening convoy.
+    const clock = new FixedClock(new Date('2026-09-13T17:05:00.000Z'));
     const { season } = await createSeason(db, {
       shardCode: 'EU-FRACTIONAL-CONVOY',
       seed: 4513,
@@ -96,7 +97,8 @@ describe('the authenticated active event projection', () => {
 
   it('publishes a route only while its ruleset-8 occurrence is active', async () => {
     const { db } = await testDb();
-    const clock = new FixedClock(new Date(START.getTime() + (7 * 60 - 1) * 60_000));
+    // START is a Wednesday: the weekday convoy crosses 21:00–23:00 TRT.
+    const clock = new FixedClock(new Date(START.getTime() + (21 * 60 - 1) * 60_000));
     const { season } = await createSeason(db, {
       shardCode: 'EU-CONVOY-FIELD',
       seed: 4512,
@@ -110,15 +112,15 @@ describe('the authenticated active event projection', () => {
     expect((await activeGalaxyEvents(db, account.id, clock))
       .some(({ kind }) => kind === 'INTERGALACTIC_CONVOY')).toBe(false);
 
-    clock.set(new Date(START.getTime() + 7 * 60 * 60_000));
+    clock.set(new Date(START.getTime() + 21 * 60 * 60_000));
     const active = (await activeGalaxyEvents(db, account.id, clock))
       .find((event) => event.kind === 'INTERGALACTIC_CONVOY');
     expect(activeGalaxyEventsSchema.parse({ events: [active] }).events).toHaveLength(1);
     if (active?.kind !== 'INTERGALACTIC_CONVOY') throw new Error('missing active convoy');
-    expect(active.appearsAtMinute).toBe(7 * 60);
-    expect(active.expiresAtMinute).toBe(9 * 60);
+    expect(active.appearsAtMinute).toBe(21 * 60);
+    expect(active.expiresAtMinute).toBe(23 * 60);
     expect(active.visual).toEqual({ formationVersion: 1 });
-    expect(active.rewardPolicy.resourceCapHours).toBe(2);
+    expect(active.rewardPolicy.resourceCapHours).toBe(4);
     expect(active.rewardPolicy.shipDropChanceAtFullQuality).toBe(0.15);
     expect(active.rewardPolicy.maxAwardedShips).toBe(3);
     expect(typeof active.route.from.x).toBe('number');
@@ -134,7 +136,7 @@ describe('the authenticated active event projection', () => {
     )).toBeCloseTo(active.route.speed, 10);
     expect(JSON.stringify(active)).not.toContain(season.asteroidKey);
 
-    clock.set(new Date(START.getTime() + 9 * 60 * 60_000));
+    clock.set(new Date(START.getTime() + 23 * 60 * 60_000));
     expect((await activeGalaxyEvents(db, account.id, clock))
       .some(({ kind }) => kind === 'INTERGALACTIC_CONVOY')).toBe(false);
   });

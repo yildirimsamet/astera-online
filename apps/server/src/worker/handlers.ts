@@ -114,6 +114,7 @@ import {
 import { publish, publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { wipeAllServers } from '../services/servers.js';
+import { asteroidHourPayloadSchema, openAsteroidHour } from '../services/asteroidSpawn.js';
 import { schedule, type EventRow } from './queue.js';
 import {
   applyDeathStarStrike,
@@ -2456,6 +2457,16 @@ export const onStrategicInterceptImpact: Handler = async ({ db, clock }, event) 
   });
 };
 
+/** The top of an hour on the dynamic asteroid field. 2026-09-16. */
+export const onAsteroidHour: Handler = async ({ db, clock }, event) => {
+  const payload = asteroidHourPayloadSchema.parse(event.payload);
+  await openAsteroidHour(db, {
+    seasonId: event.seasonId,
+    hourStartsAt: new Date(payload.hourStartsAt),
+    now: clock.now(),
+  });
+};
+
 export const onGalaxyEventStart: Handler = async ({ db, clock }, event) => {
   if (!event.refId) throw new Error('galaxy_event_start without refId');
   await processGalaxyEventLifecycle(db, {
@@ -2562,4 +2573,5 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   neutral_reinforce: onNeutralReinforce,
   galaxy_event_start: onGalaxyEventStart,
   galaxy_event_end: onGalaxyEventEnd,
+  asteroid_hour: onAsteroidHour,
 };

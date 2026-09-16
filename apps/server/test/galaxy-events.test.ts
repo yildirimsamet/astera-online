@@ -7,6 +7,7 @@ import {
   TRADE,
   asteroidActive,
   galaxyEventConfigForRuleset,
+  galaxyEventDayKind,
   plannedEffectFor,
 } from '@astera/rules';
 import { FixedClock, minutesSince } from '../src/clock.js';
@@ -16,6 +17,7 @@ import {
   notifications,
   players,
   scheduledEvents,
+  seasons,
 } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
@@ -256,10 +258,13 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.seasonId, season.id),
           eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
         ));
+      // The weekday evening x10: START is a Wednesday, so day 0 holds one.
       const addedWindowRows = showers.filter((row) =>
-        minutesSince(START, row.startsAt) % (24 * 60) === 16 * 60);
+        minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
+        && 'asteroidSpawnMultiplier' in row.effect
+        && row.effect.asteroidSpawnMultiplier === 10);
       const removedIds = addedWindowRows.map((row) => row.id);
-      expect(removedIds).toHaveLength(SEASON.days);
+      expect(removedIds.length).toBeGreaterThan(0);
       await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
       await db.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, removedIds));
 
@@ -272,14 +277,14 @@ describe('persisted galaxy events', () => {
         ));
       const retainedById = new Map(retained.map((row) => [row.id, row.sequence]));
       const previousMax = Math.max(...retained.map((row) => row.sequence));
-      const now = new Date(START.getTime() + (16 * 60 + 8) * 60_000);
+      const now = new Date(START.getTime() + (20 * 60 + 8) * 60_000);
 
       const inserted = await db.transaction((tx) => syncMissingFixedOccurrences(tx, {
         now,
         seasonId: season.id,
         kinds: ['ASTEROID_SHOWER'],
       }));
-      expect(inserted).toBe(SEASON.days);
+      expect(inserted).toBe(removedIds.length);
 
       const after = await db
         .select()
@@ -343,6 +348,8 @@ describe('persisted galaxy events', () => {
      */
     it('more than doubles the live field at a frozen instant when the open window is appended', async () => {
       const { db, season } = await world();
+      // A season as it was before the dynamic field: the derived field is what grows.
+      await db.update(seasons).set({ asteroidDynamicFrom: null }).where(eq(seasons.id, season.id));
       const showers = await db
         .select()
         .from(galaxyEventOccurrences)
@@ -353,8 +360,10 @@ describe('persisted galaxy events', () => {
       // The x10 lane, taken by its local hour rather than by its multiplier so the
       // test names the window an operator would recognise on the calendar.
       const removed = showers.filter((row) =>
-        minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60);
-      expect(removed).toHaveLength(SEASON.days);
+        minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
+        && 'asteroidSpawnMultiplier' in row.effect
+        && row.effect.asteroidSpawnMultiplier === 10);
+      expect(removed.length).toBeGreaterThan(0);
       expect(removed.every((row) => 'asteroidSpawnMultiplier' in row.effect
         && row.effect.asteroidSpawnMultiplier === 10)).toBe(true);
       const removedIds = removed.map((row) => row.id);
@@ -429,9 +438,15 @@ describe('persisted galaxy events', () => {
       not what this test is about.
     */
     const days = SEASON.days;
-    expect(showers).toHaveLength(days * 6);
+    // 2026-09-16: two calendars, one for the working week and one for the weekend.
+    const firstLocalDay = Math.floor((START.getTime() / 60_000 + 180) / (24 * 60));
+    const weekendDays = Array.from({ length: days }, (_, day) => firstLocalDay + day)
+      .filter((localDay) => galaxyEventDayKind(localDay) === 'WEEKEND').length;
+    const weekdays = days - weekendDays;
+    expect(weekendDays).toBeGreaterThan(0);
+    expect(showers).toHaveLength(days * 2);
     expect(merchants).toHaveLength(days * 4);
-    expect(convoys).toHaveLength(days * 3);
+    expect(convoys).toHaveLength(weekdays + weekendDays * 2);
     expect(lifecycle).toHaveLength(occurrences.length * 2);
     // Sequence is per kind now, so uniqueness is asserted inside each lane.
     expect(new Set(showers.map((row) => row.sequence)).size).toBe(showers.length);
@@ -448,13 +463,15 @@ describe('persisted galaxy events', () => {
     */
     const showerFigures = showers.map((row) =>
       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
-    expect(showerFigures.filter((value) => value === 3)).toHaveLength(days * 2);
-    expect(showerFigures.filter((value) => value === 5)).toHaveLength(days * 3);
-    expect(showerFigures.filter((value) => value === 10)).toHaveLength(days);
+    expect(showerFigures.filter((value) => value === 3)).toHaveLength(weekdays);
+    expect(showerFigures.filter((value) => value === 10)).toHaveLength(weekdays);
+    expect(showerFigures.filter((value) => value === 5)).toHaveLength(weekendDays);
+    expect(showerFigures.filter((value) => value === 15)).toHaveLength(weekendDays);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
-    expect(convoys.every((row) => row.definitionVersion === 3
-      && minutesSince(row.startsAt, row.endsAt) === 120)).toBe(true);
+    expect(convoys.every((row) => row.definitionVersion === 4
+      && minutesSince(row.startsAt, row.endsAt) === 120
+      && 'resourceCapHours' in row.effect && row.effect.resourceCapHours === 4)).toBe(true);
     expect(lifecycle.every((row) => row.refId !== null)).toBe(true);
   });
 
@@ -561,7 +578,8 @@ describe('persisted galaxy events', () => {
   });
 
   it('composes bonus lanes while preserving every pre-increase asteroid', async () => {
-    const { db, season } = await world();
+    // Ruleset 7 is still dealt the derived field; ruleset 8 starts on the dynamic one.
+    const { db, season } = await world(0, 7);
     const baseline = privateAsteroidField(season.asteroidKey);
     const snapshot = await loadMiningSnapshot(db, season.id, START);
     const establishedCount = Math.round(10.35 * SEASON.days * 24);

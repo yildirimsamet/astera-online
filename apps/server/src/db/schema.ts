@@ -25,7 +25,9 @@ import type {
   Grade,
   HullId,
   GalaxyEventKind as ScheduledGalaxyEventKind,
+  AsteroidHourLane,
   AsteroidShowerEffect,
+  PlannedGalaxyEvent,
   IntergalacticConvoyEffect,
   TradeShipEffect,
   TradeRate,
@@ -97,6 +99,8 @@ export const eventKind = pgEnum('event_kind', [
   /** A Galaksilerarası Konvoy raid beginning its return, then reaching home. D201. */
   'convoy_arrival',
   'convoy_return',
+  /** The top of an hour on the dynamic asteroid field: count commanders, fix the spawn. */
+  'asteroid_hour',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -337,6 +341,26 @@ export const seasons = pgTable('seasons', {
   rulesetVersion: integer('ruleset_version').notNull().default(1),
   /** Zero is a legacy/partial season; newer versions promise the full sealed metric set. */
   statsVersion: integer('stats_version').notNull().default(0),
+  /**
+   * WHEN THIS SEASON'S ASTEROIDS STARTED FOLLOWING ITS PLAYERS. 2026-09-16.
+   *
+   * Null: the whole season is the derived fixed-rate field (A5), as every season
+   * before this was. An instant: from there on rocks come only from stored
+   * `asteroid_spawn_hours`. A season created at the current ruleset holds its own
+   * start; the season that was live when the change shipped holds the hour boundary
+   * the operator adopted it at.
+   */
+  asteroidDynamicFrom: timestamp('asteroid_dynamic_from', { withTimezone: true }),
+  /**
+   * THE SHOWER CALENDAR THE DERIVED FIELD WAS BUILT FROM, FROZEN AT ADOPTION.
+   *
+   * The derived field numbers its rocks by lane, and every lane's size comes from
+   * the shower rows — so re-dealing those rows would move the identity of rocks that
+   * are already in the sky, their claims and the craft flying at them. Adoption
+   * copies the rows here first and the derived part of the field is read from this
+   * copy for ever after. Null on a season that never had a derived field.
+   */
+  asteroidLegacyCalendar: jsonb('asteroid_legacy_calendar').$type<PlannedGalaxyEvent[]>(),
 }, (t) => [index('seasons_shard_status_idx').on(t.shardId, t.status)]);
 
 export interface SeasonRecap {
@@ -2022,6 +2046,27 @@ export const asteroidClaims = pgTable('asteroid_claims', {
   oreTaken: real('ore_taken').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 }, (t) => [primaryKey({ columns: [t.seasonId, t.index] })]);
+
+/**
+ * ONE HOUR OF THE DYNAMIC ASTEROID FIELD. 2026-09-16.
+ *
+ * The only stored fact about a dynamic rock is the hour it belongs to: how many
+ * commanders were active when the hour opened, when spawning could begin, and the
+ * lanes `planAsteroidHour` made of that. Every rock is re-derived from this row and
+ * the season secret, identically in every process, so a row is written once and
+ * never updated — changing one would move rocks that are already in the sky.
+ */
+export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  hourStartsAt: timestamp('hour_starts_at', { withTimezone: true }).notNull(),
+  spawnFrom: timestamp('spawn_from', { withTimezone: true }).notNull(),
+  activePlayers: integer('active_players').notNull(),
+  lanes: jsonb('lanes').$type<AsteroidHourLane[]>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  primaryKey({ columns: [t.seasonId, t.hourStartsAt] }),
+  check('asteroid_spawn_hours_active_players_check', sql`${t.activePlayers} >= 0`),
+]);
 
 /**
  * WHAT HAS BEEN SHOT OFF A PIRATE, AND WHETHER IT IS GONE. D150.

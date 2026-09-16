@@ -73,7 +73,8 @@ describe('the additive convoy schema', () => {
     expect(galaxyEventOccurrenceKind.enumValues).toEqual([
       'ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY',
     ]);
-    expect(eventKind.enumValues.slice(-2)).toEqual(['convoy_arrival', 'convoy_return']);
+    // 2026-09-16 appended the dynamic asteroid hour after the convoy's two values.
+    expect(eventKind.enumValues.slice(-3)).toEqual(['convoy_arrival', 'convoy_return', 'asteroid_hour']);
     expect(notificationKind.enumValues.at(-1)).toBe('convoy_result');
   });
 

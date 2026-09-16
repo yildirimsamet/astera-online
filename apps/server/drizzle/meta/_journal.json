@@ -631,6 +631,13 @@
       "when": 1789600000000,
       "tag": "0089_recovery_production_boost",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1789610000000,
+      "tag": "0090_dynamic_asteroid_field",
+      "breakpoints": true
     }
   ]
 }

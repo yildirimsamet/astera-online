@@ -2,9 +2,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   asteroidActive,
   orbitDiscoveredAt,
+  generateAsteroidHour,
   generateAsteroidSchedule,
   nextAsteroidDiscoveryAt,
   withAsteroidShowerLanes,
+  type AsteroidHourLane,
   type AsteroidSpec,
   type PlannedGalaxyEvent,
   type SensorEpoch,
@@ -29,7 +31,6 @@ function keyedRng(key: string): { rng: () => number; isotopeSeed: number } {
 
 const fieldCache = new Map<string, AsteroidSpec[]>();
 const composedFieldCache = new Map<string, AsteroidSpec[]>();
-const idCache = new Map<string, Map<string, number>>();
 const CACHE_MAX = 32;
 
 function trim<K, V>(cache: Map<K, V>): void {
@@ -116,27 +117,115 @@ export function privateAsteroidFieldWithEvents(
   return field;
 }
 
+/**
+ * THE DYNAMIC FIELD'S ROCKS FOR ONE STORED HOUR. 2026-09-16.
+ *
+ * Keyed by the season secret, the hour and its lanes — the complete input — so a
+ * cached hour can never be served for a different one. Rows are written once and
+ * never updated, which is what makes this cache safe to keep for the process's life.
+ */
+const hourCache = new Map<string, AsteroidSpec[]>();
+const HOUR_CACHE_MAX = 64;
+
+function dynamicHourRng(key: string, hourOrdinal: number): () => number {
+  let counter = 0;
+  return () => {
+    const value = createHmac('sha256', key)
+      .update(`asteroid:dynamic:v1:${String(hourOrdinal)}:${String(counter)}`)
+      .digest()
+      .readUInt32BE(0);
+    counter += 1;
+    return value / 0x1_0000_0000;
+  };
+}
+
+export function privateAsteroidHour(
+  key: string,
+  hour: { hourOrdinal: number; lanes: readonly AsteroidHourLane[] },
+): AsteroidSpec[] {
+  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lanes)}`;
+  const cached = hourCache.get(cacheKey);
+  if (cached) {
+    hourCache.delete(cacheKey);
+    hourCache.set(cacheKey, cached);
+    return cached;
+  }
+  const rocks = generateAsteroidHour({
+    hourOrdinal: hour.hourOrdinal,
+    lanes: hour.lanes,
+    rng: dynamicHourRng(key, hour.hourOrdinal),
+    isotopeSeed: keyedRng(key).isotopeSeed,
+  });
+  hourCache.set(cacheKey, rocks);
+  while (hourCache.size > HOUR_CACHE_MAX) {
+    const oldest = hourCache.keys().next().value;
+    if (oldest === undefined) break;
+    hourCache.delete(oldest);
+  }
+  return rocks;
+}
+
+/**
+ * EVERY ROCK A READ AT `nowMinutes` CAN SEE OR RESOLVE, FOR ONE SEASON. 2026-09-16.
+ *
+ * THREE SHAPES OF SEASON, ONE ANSWER:
+ *   · never dynamic (`dynamicFromMinute` null): the whole derived field, exactly as
+ *     before, built from the season's own calendar rows;
+ *   · dynamic from the start: only the stored hours;
+ *   · adopted mid-season: the derived field built from the FROZEN calendar and cut
+ *     at the cutover, then the stored hours. The frozen copy is what keeps every rock
+ *     that was already in the sky at the adoption the same rock afterwards.
+ *
+ * `lookbackMinutes` drops derived rocks that expired long enough ago that no craft
+ * can still be flying home from them; the stored hours are already loaded that way.
+ */
+export function composeSeasonAsteroidField(input: {
+  key: string;
+  calendar: readonly PlannedGalaxyEvent[];
+  dynamicFromMinute: number | null;
+  legacyCalendar: readonly PlannedGalaxyEvent[] | null;
+  hours: readonly { hourOrdinal: number; lanes: readonly AsteroidHourLane[] }[];
+  nowMinutes: number;
+  lookbackMinutes: number;
+}): AsteroidSpec[] {
+  if (input.dynamicFromMinute === null) {
+    return privateAsteroidFieldWithEvents(input.key, input.calendar);
+  }
+  const cutover = input.dynamicFromMinute;
+  const oldest = input.nowMinutes - input.lookbackMinutes;
+  const legacy = input.legacyCalendar === null
+    ? []
+    : privateAsteroidFieldWithEvents(input.key, input.legacyCalendar)
+      .filter((rock) => rock.appearsAt < cutover && rock.expiresAt > oldest);
+  return [...legacy, ...input.hours.flatMap((hour) => privateAsteroidHour(input.key, hour))];
+}
+
 /** Stable 128-bit public handle; the raw schedule index is never serialised. */
 export function asteroidId(key: string, index: number): string {
-  return createHmac('sha256', key)
+  const memoKey = `${key}:${String(index)}`;
+  const memo = idMemo.get(memoKey);
+  if (memo !== undefined) return memo;
+  const id = createHmac('sha256', key)
     .update(`asteroid:id:${String(index)}`)
     .digest()
     .subarray(0, 16)
     .toString('base64url');
+  idMemo.set(memoKey, id);
+  if (idMemo.size > ID_MEMO_MAX) {
+    const oldest = idMemo.keys().next().value;
+    if (oldest !== undefined) idMemo.delete(oldest);
+  }
+  return id;
 }
 
-function idsFor(key: string, field: readonly AsteroidSpec[]): Map<string, number> {
-  // A base field and its event-composed field share the secret key but not their
-  // number of indices. Keying only by the secret would make bonus ids unresolvable
-  // if the base map happened to be cached first.
-  const cacheKey = `${key}:${String(field.length)}`;
-  const cached = idCache.get(cacheKey);
-  if (cached) return cached;
-  const ids = new Map(field.map((rock) => [asteroidId(key, rock.index), rock.index]));
-  idCache.set(cacheKey, ids);
-  trim(idCache);
-  return ids;
-}
+/**
+ * ID BY INDEX, MEMOISED PER ROCK. It used to be a map per field, keyed by the field's
+ * LENGTH — sound while a season had one field, and wrong once the dynamic field made
+ * the composed set a window that slides every hour: two different windows of equal
+ * length would have shared a map and resolved an id to a rock the field did not hold.
+ */
+const idMemo = new Map<string, string>();
+const ID_MEMO_MAX = 60_000;
 
 /** Resolve only a canonical id for this exact season key. */
 export function asteroidIndexFromId(
@@ -145,7 +234,7 @@ export function asteroidIndexFromId(
   id: string,
 ): number | null {
   if (!/^[A-Za-z0-9_-]{22}$/.test(id)) return null;
-  const index = idsFor(key, field).get(id);
+  const index = field.find((rock) => asteroidId(key, rock.index) === id)?.index;
   if (index === undefined) return null;
   // Keep the final comparison fixed-time even though the map lookup already
   // avoids the O(n) schedule walk on every launch.

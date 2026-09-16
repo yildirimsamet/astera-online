@@ -42,14 +42,19 @@ export const galaxy = {
   hideRadar: "Hide Radar reach",
   eventsGuide: {
     open: "Show galaxy events",
-    eyebrow: "Daily calendar",
+    eyebrow: "Weekly calendar",
     title: "Galaxy events",
-    intro: "Use this schedule to keep track of the events that repeat every day.",
+    intro: "The windows that repeat through the working week and at the weekend.",
     timeZone: "Türkiye time (UTC+3)",
-    dailyNote: "Every window repeats daily and is shown in Türkiye time.",
+    dailyNote: "Weekdays are Monday–Friday, the weekend Saturday–Sunday. Times are Türkiye time.",
+    days: {
+      WEEKDAY: "Weekdays",
+      WEEKEND: "Weekend",
+      EVERY_DAY: "Every day",
+    },
     asteroid: {
       title: "Asteroid Shower",
-      summary: "Increases new asteroid arrivals across the galaxy. Existing asteroids remain until they naturally expire.",
+      summary: "Every hour, 2 asteroids arrive for each commander who played in the last hour. A shower multiplies that for its window; existing asteroids remain until they expire.",
     },
     trade: {
       title: "Trade Ship",
@@ -58,7 +63,7 @@ export const galaxy = {
     },
     convoy: {
       title: "Intergalactic Convoy",
-      summary: "Send a fleet during its crossing for resources and a chance to recover ships, scaled by firepower.",
+      summary: "Send a fleet during its crossing for up to 4 hours of your world's production and a chance to recover ships, scaled by firepower.",
       note: "The convoy does not fire back, so your fleet takes no losses. Each world can strike once per crossing.",
     },
   },

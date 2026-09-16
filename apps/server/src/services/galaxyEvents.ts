@@ -28,6 +28,7 @@ import {
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { recordGalaxyEvent } from './chronicle.js';
+import { HOUR_MS, floorHour, scheduleAsteroidHour } from './asteroidSpawn.js';
 import { tradeShipOf } from './tradeField.js';
 import { intergalacticConvoyOf } from './intergalacticConvoyField.js';
 import { GameError } from './planet.js';
@@ -47,8 +48,8 @@ const tradeEffectSchema = z.object({ rate: tradeRateSchema }).strict();
 const convoyEffectSchema = z.object({
   routeVersion: z.literal(1),
   formationVersion: z.literal(1),
-  // Read immutable v1 occurrences as well as D204's two-hour snapshots.
-  resourceCapHours: z.union([z.literal(1), z.literal(2)]),
+  // Read immutable v1 occurrences, D204's two-hour snapshots and 2026-09-16's four.
+  resourceCapHours: z.union([z.literal(1), z.literal(2), z.literal(4)]),
   fullRewardForceRatio: z.literal(1),
   shipDropFullFirepower: z.number().finite().positive(),
   shipDropChanceAtFullQuality: z.number().finite().min(0).max(1),
@@ -289,6 +290,176 @@ export async function syncMissingFixedOccurrences(
     }
   }
   return insertedCount;
+}
+
+/** What adopting the current calendar did to one live season. */
+export interface CalendarAdoptionReport {
+  seasonId: string;
+  /** The hour the new calendar and the dynamic asteroid field begin. */
+  cutoverAt: Date;
+  /** Whether this run froze the derived field's calendar (only ever the first run). */
+  frozen: boolean;
+  deleted: number;
+  inserted: number;
+}
+
+/**
+ * JSON WITH ITS OBJECT KEYS SORTED. `jsonb` does not keep the key order it was given,
+ * so an effect read back from the database and the same effect built in memory
+ * stringify differently; comparing them needs one order both can agree on.
+ */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(([key, inner]) => `${JSON.stringify(key)}:${canonicalJson(inner)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** The lanes a live season re-deals when it adopts the current calendar. */
+const ADOPTED_KINDS = ['ASTEROID_SHOWER', 'INTERGALACTIC_CONVOY'] as const;
+
+
+/**
+ * MOVE A LIVE SEASON ONTO THE CURRENT CALENDAR AND THE DYNAMIC ASTEROID FIELD, WITHOUT
+ * A RESET. Owner instruction, 2026-09-16: *"productiondaki aktif sezon'a reset atmadan
+ * deploy etmemiz lazım."*
+ *
+ * EVERYTHING HAPPENS AT ONE HOUR BOUNDARY — the next one, or the one a previous run
+ * already chose. From that instant the season's showers and convoys are the current
+ * weekday/weekend windows and its new rocks come from stored hours. Before it, nothing
+ * moves: every window that has opened (or opens before the boundary) keeps its row,
+ * and the merchant is not touched at all.
+ *
+ * THE DERIVED FIELD IS FROZEN FIRST, AND THAT IS THE WHOLE SAFETY ARGUMENT. The
+ * derived field numbers its rocks lane by lane from the shower rows, so deleting a
+ * future shower would renumber rocks that are in the sky right now — silently moving
+ * claims and the craft flying at them onto other rocks. The rows are copied onto the
+ * season before any is deleted, and the derived part of the field reads the copy.
+ *
+ * Idempotent: a second run finds every row from the boundary on already matching the
+ * current definitions and changes nothing.
+ */
+export async function adoptLiveEventCalendar(
+  tx: Tx,
+  input: { now: Date; seasonId?: string },
+): Promise<CalendarAdoptionReport[]> {
+  const live = await tx.select().from(seasons).where(and(
+    eq(seasons.status, 'live'),
+    gt(seasons.endsAt, input.now),
+    ...(input.seasonId === undefined ? [] : [eq(seasons.id, input.seasonId)]),
+  )).for('update');
+
+  const reports: CalendarAdoptionReport[] = [];
+  for (const season of live) {
+    if (season.rulesetVersion < MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion) continue;
+    const nextHour = new Date(floorHour(input.now).getTime() + HOUR_MS);
+    const cutoverAt = season.asteroidDynamicFrom !== null && season.asteroidDynamicFrom > input.now
+      ? season.asteroidDynamicFrom
+      : nextHour;
+
+    let frozen = false;
+    if (season.asteroidDynamicFrom === null) {
+      const legacyCalendar = (await loadGalaxyEventSchedule(tx, season.id, season.startsAt))
+        .filter((event) => event.kind === 'ASTEROID_SHOWER');
+      await tx.update(seasons)
+        .set({ asteroidDynamicFrom: cutoverAt, asteroidLegacyCalendar: legacyCalendar })
+        .where(eq(seasons.id, season.id));
+      await scheduleAsteroidHour(tx, { seasonId: season.id, hourStartsAt: cutoverAt });
+      frozen = true;
+    }
+
+    const config = galaxyEventConfigForRuleset(season.rulesetVersion);
+    const kinds = galaxyEventKindsForRuleset(season.rulesetVersion)
+      .filter((kind) => (ADOPTED_KINDS as readonly GalaxyEventKind[]).includes(kind)
+        && config.definitions[kind].schedule === 'FIXED_DAILY');
+    const plan = kinds.length === 0 ? [] : generateGalaxyEventSchedule({
+      seasonStartsAtUnixMinute: season.startsAt.getTime() / 60_000,
+      seasonDurationMinutes: minutesSince(season.startsAt, season.endsAt),
+      kinds,
+      config,
+      rngFor: (kind) => { throw new Error(`fixed kind ${kind} requested RNG`); },
+    }).filter((event) => addMinutes(season.startsAt, event.startsAtMinute) >= cutoverAt);
+
+    const existing = kinds.length === 0 ? [] : await tx.select().from(galaxyEventOccurrences)
+      .where(and(
+        eq(galaxyEventOccurrences.seasonId, season.id),
+        inArray(galaxyEventOccurrences.kind, [...kinds]),
+      ));
+    const signature = (row: {
+      kind: GalaxyEventKind; startsAt: Date; endsAt: Date; definitionVersion: number; effect: unknown;
+    }) => [
+      row.kind, row.startsAt.getTime(), row.endsAt.getTime(), row.definitionVersion,
+      canonicalJson(row.effect),
+    ].join('|');
+    const wanted = new Map(plan.map((event) => {
+      const row = {
+        kind: event.kind,
+        startsAt: addMinutes(season.startsAt, event.startsAtMinute),
+        endsAt: addMinutes(season.startsAt, event.endsAtMinute),
+        definitionVersion: event.definitionVersion,
+        effect: event.effect,
+      };
+      return [signature(row), row] as const;
+    }));
+
+    const stale = existing.filter((row) => row.startsAt >= cutoverAt && !wanted.has(signature(row)));
+    const kept = new Set(existing
+      .filter((row) => row.startsAt >= cutoverAt && wanted.has(signature(row)))
+      .map(signature));
+    if (stale.length > 0) {
+      const staleIds = stale.map((row) => row.id);
+      await tx.delete(scheduledEvents).where(inArray(scheduledEvents.refId, staleIds));
+      await tx.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, staleIds));
+    }
+
+    const nextSequence = new Map(kinds.map((kind) => [
+      kind,
+      Math.max(-1, ...existing.filter((row) => row.kind === kind).map((row) => row.sequence)) + 1,
+    ]));
+    let inserted = 0;
+    for (const [key, row] of wanted) {
+      if (kept.has(key)) continue;
+      const sequence = nextSequence.get(row.kind) ?? 0;
+      nextSequence.set(row.kind, sequence + 1);
+      const [created] = await tx.insert(galaxyEventOccurrences).values({
+        seasonId: season.id,
+        sequence,
+        kind: row.kind,
+        definitionVersion: row.definitionVersion,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        effect: row.effect,
+        createdAt: input.now,
+      }).returning({ id: galaxyEventOccurrences.id });
+      if (!created) throw new Error('Failed to insert an adopted galaxy-event occurrence');
+      await tx.insert(scheduledEvents).values([
+        {
+          seasonId: season.id,
+          kind: 'galaxy_event_start',
+          refId: created.id,
+          dedupeKey: `galaxy-event:start:${created.id}`,
+          resolveAt: row.startsAt,
+        },
+        {
+          seasonId: season.id,
+          kind: 'galaxy_event_end',
+          refId: created.id,
+          dedupeKey: `galaxy-event:end:${created.id}`,
+          resolveAt: row.endsAt,
+        },
+      ]);
+      inserted += 1;
+    }
+    if (frozen || stale.length > 0 || inserted > 0) {
+      await publishShard(tx, season.id, 'galaxy-event');
+    }
+    reports.push({ seasonId: season.id, cutoverAt, frozen, deleted: stale.length, inserted });
+  }
+  return reports;
 }
 
 /** Seed occurrences and their two queue moments in the season-creation transaction. */
