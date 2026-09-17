@@ -250,7 +250,7 @@ describe('the legal set says what it has to say', () => {
    * defaults cannot be checked against the page that has them.
    */
   it.each(['/cookies.html', '/cerez-politikasi.html', '/privacy.html', '/gizlilik-politikasi.html'])(
-    '%s states that nothing non-essential is stored before a choice',
+    '%s states that nothing identifying is stored before a choice',
     async (path) => {
       const page = await publicFile(path);
 
@@ -258,6 +258,34 @@ describe('the legal set says what it has to say', () => {
       expect(page).toMatch(/analytics_storage/);
       expect(page).toMatch(/denied|reddedildi/i);
       expect(page).toMatch(/Gizlilik ve çerez seçenekleri|Privacy &amp; cookie settings/);
+    },
+  );
+
+  /**
+   * THE CLAIM HAS TO SURVIVE BEING MEASURED, AND THE FIRST VERSION DID NOT.
+   *
+   * Both cookie policies said "none of this storage is used before you choose".
+   * A browser pointed at the deployed site says otherwise: Google's ad loader
+   * sets `test_cookie` on doubleclick.net before any choice, to find out whether
+   * the browser accepts cookies at all. It carries no identifier and expires in
+   * about fifteen minutes — but the sentence was still false, and a false
+   * sentence in a privacy policy is a worse finding than the cookie it hid.
+   *
+   * So the claim is narrowed to what is true — nothing IDENTIFYING — and the
+   * exception is named. This test is what stops the absolute version coming
+   * back the next time somebody tidies the wording.
+   */
+  it.each(['/cookies.html', '/cerez-politikasi.html'])(
+    '%s names the one cookie that really is set before a choice',
+    async (path) => {
+      const page = await publicFile(path);
+
+      expect(page).toContain('test_cookie');
+      expect(page).toContain('doubleclick.net');
+      expect(page).toMatch(/15 (minutes|dakika)/);
+      // The absolute claim the browser disproved must not reappear.
+      expect(page).not.toMatch(/None of this storage is used before you choose/);
+      expect(page).not.toMatch(/Bu depolamaların hiçbiri siz seçim yapmadan kullanılmaz/);
     },
   );
 

@@ -1338,6 +1338,13 @@ assume a previous container will reject an incompatible forward schema.
   rather than under the timestamped `/var/www/astera-releases/` copy taken in step 2. Both exist;
   either will do.
 
+  **`deploy/deploy.sh` now leaves the same three artifacts**, so a rollback does not depend on
+  which path the release took: `astera-server:rollback-<previous sha>` (the image to retag as
+  `:latest`), `/var/www/astera-previous` (the client that was serving), and
+  `/etc/nginx/sites-available/astera.pre-<new sha>-<stamp>` (the vhost that was loaded). The two
+  shas answer different questions on purpose — the image names the commit it takes you back TO,
+  the vhost names the release it came BEFORE. All three are taken before anything is replaced.
+
   **If the vhost changed in the release being rolled back, restore the vhost FIRST**, then the
   webroot — the mirror image of the forward order, and for the same reason. The current vhost's
   `script-src 'nonce-…' 'strict-dynamic'` ignores `'self'`, so the moment an older client whose

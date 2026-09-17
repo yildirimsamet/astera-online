@@ -180,3 +180,68 @@ describe('the per-request CSP nonce', () => {
     expect(doc).toMatch(/AFTER the rename/u);
   });
 });
+
+/**
+ * A ROLLBACK NEEDS THREE THINGS, AND THE SCRIPT USED TO KEEP NONE OF THEM.
+ *
+ * Going back means the image that was running, the client files that were
+ * serving, and the vhost that was loaded. The runbook's manual path copies all
+ * three by hand; `deploy.sh` overwrote the image tag, published over the webroot
+ * in place, and wrote the vhost to a `mktemp` it deleted on the way out. After
+ * the 2026-09-17 release the only way back was to check out the old commit and
+ * rebuild — which is not a rollback plan when the site is down.
+ *
+ * The two shas here are deliberately different and answer different questions:
+ * `rollback-<previous>` is the commit the image takes you back TO, while
+ * `pre-<new>` is the release the vhost came BEFORE. Both conventions already
+ * exist on the box from the manual path; the script now matches them.
+ */
+describe('the rollback boundary', () => {
+  const read = (path: string): Promise<string> =>
+    readFile(resolve(import.meta.dirname, '../../..', path), 'utf8');
+
+  it('captures the replaced commit before the reset that makes it unnameable', async () => {
+    const deploy = await read('deploy/deploy.sh');
+
+    const capture = deploy.indexOf('export ASTERA_PREVIOUS_SHA=');
+    const reset = deploy.indexOf('git reset --hard --quiet origin/master');
+
+    expect(capture).toBeGreaterThan(-1);
+    expect(reset).toBeGreaterThan(capture);
+    // It has to survive the re-exec, so it is exported rather than a local.
+    expect(deploy).toMatch(/export ASTERA_PREVIOUS_SHA=/u);
+    expect(deploy).toMatch(/ROLLBACK_SHA=\$\{ASTERA_PREVIOUS_SHA:-/u);
+  });
+
+  it('retains the running image, the serving webroot and the loaded vhost', async () => {
+    const deploy = await read('deploy/deploy.sh');
+
+    expect(deploy).toMatch(/docker tag astera-server:latest "astera-server:rollback-\$\{ROLLBACK_SHA\}"/u);
+    expect(deploy).toContain('/var/www/astera-previous/');
+    expect(deploy).toMatch(/nginx_previous="\$\{nginx_live\}\.pre-/u);
+  });
+
+  /**
+   * All three must be taken BEFORE anything is replaced. A copy made after the
+   * publish is a copy of the release being rolled back, which is worse than
+   * none: it looks like an escape route and is not one.
+   */
+  it('takes every copy before the thing it copies is overwritten', async () => {
+    const deploy = await read('deploy/deploy.sh');
+
+    const tagImage = deploy.indexOf('docker tag astera-server:latest');
+    const buildImage = deploy.indexOf('$COMPOSE build api1');
+    const copyWebroot = deploy.indexOf('/var/www/astera-previous/');
+    const publish = deploy.indexOf('deploy/publish-web.sh');
+
+    expect(buildImage).toBeGreaterThan(tagImage);
+    expect(publish).toBeGreaterThan(copyWebroot);
+  });
+
+  /** The vhost copy is the rollback artifact, so it must outlive the script. */
+  it('never deletes the vhost copy it just retained', async () => {
+    const deploy = await read('deploy/deploy.sh');
+
+    expect(deploy).not.toMatch(/rm -f "\$nginx_previous"/u);
+  });
+});

@@ -37,6 +37,12 @@ say() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 # the new one fetching again.
 if [[ "${1:-}" != "--local" && "${ASTERA_DEPLOY_REEXEC:-}" != "1" ]]; then
   say "Fetching origin/master"
+  # CAPTURED BEFORE THE RESET, because afterwards it is unrecoverable: the reset
+  # moves `master` and the old commit is no longer any ref this script can name.
+  # It travels through the re-exec in the environment, and it is what the rollback
+  # artifacts below are named after — an artifact whose name is the commit it can
+  # take you BACK to, rather than the one it was taken during.
+  export ASTERA_PREVIOUS_SHA=$(git rev-parse HEAD)
   git fetch --quiet origin
   git checkout --quiet master
   git reset --hard --quiet origin/master
@@ -67,6 +73,44 @@ if ! nginx -V 2>&1 | grep -q -- '--with-http_sub_module'; then
   exit 1
 fi
 echo "  ngx_http_sub_module present"
+
+# ── THE ROLLBACK BOUNDARY, TAKEN BEFORE ANYTHING IS REPLACED ─────────────────
+#
+# A rollback needs three things and this script used to retain none of them: the
+# image that is running now, the client files that are serving now, and the vhost
+# that is loaded now. The runbook's manual path takes all three by hand (its
+# "rule 10" copies); the script overwrote the image tag, published over the
+# webroot in place, and saved the vhost to a mktemp it deleted on the way out.
+#
+# Measured cost of that gap: after the 2026-09-17 release the only way back was
+# to check out the previous commit and rebuild the client. Nothing was lost, but
+# "rebuild it" is not a rollback plan when the site is down.
+#
+# Cheap to fix and cheap to keep: one docker tag, one `cp -a` of a directory that
+# is a few MB, and a vhost copy that is a few KB.
+say "Retaining the rollback boundary"
+# On `--local` there was no fetch, so the commit being replaced is the one in the
+# tree; the artifacts are then named after it, which is the best available truth.
+ROLLBACK_SHA=${ASTERA_PREVIOUS_SHA:-$(git rev-parse HEAD)}
+echo "  rolling back to would mean $(git rev-parse --short "$ROLLBACK_SHA")"
+
+# The image that is RUNNING, not the one about to be built. `docker tag` on a
+# digest that is already tagged is free and copies no layers.
+if docker image inspect astera-server:latest >/dev/null 2>&1; then
+  docker tag astera-server:latest "astera-server:rollback-${ROLLBACK_SHA}"
+  echo "  image   astera-server:rollback-${ROLLBACK_SHA}"
+else
+  echo "  image   none yet (first install)"
+fi
+
+# The client that is serving right now. `--delete` so a re-run does not blend two
+# releases into one directory.
+if [[ -d "$WEBROOT" ]]; then
+  sudo rsync -a --delete "$WEBROOT"/ /var/www/astera-previous/
+  echo "  webroot /var/www/astera-previous"
+else
+  echo "  webroot none yet (first install)"
+fi
 
 say "Building the server image"
 $COMPOSE build api1
@@ -172,11 +216,20 @@ rm -rf "$STAGE"
 # order now so it cannot drift back.
 say "Installing the three-replica Nginx route"
 nginx_live=/etc/nginx/sites-available/astera
-nginx_previous=$(mktemp -p /tmp astera-vhost.XXXXXX)
+# RETAINED, NOT TEMPORARY. This copy is both the "restore it if `nginx -t` fails"
+# safety net below AND the rollback artifact: an old client must never be put back
+# under the current nonce vhost, so a rollback needs the vhost that matched it.
+# Named like the runbook's, so both paths leave the same evidence behind.
+# `pre-<sha>` names the release it came BEFORE, which is the runbook's own
+# convention and matches the copies already on the box. The image tag opposite
+# is `rollback-<previous sha>` — the commit it takes you back TO. Two different
+# shas on purpose; they answer two different questions.
+nginx_previous="${nginx_live}.pre-$(git rev-parse --short=12 HEAD)-$(date -u +%Y%m%d-%H%M%S)"
 nginx_had_previous=false
 if sudo test -e "$nginx_live"; then
   sudo cp -a "$nginx_live" "$nginx_previous"
   nginx_had_previous=true
+  echo "  vhost  $nginx_previous"
 fi
 sudo install -o root -g root -m 0644 deploy/nginx/astera.conf "$nginx_live"
 if ! sudo nginx -t; then
@@ -187,11 +240,9 @@ if ! sudo nginx -t; then
     sudo rm -f "$nginx_live"
   fi
   sudo nginx -t
-  sudo rm -f "$nginx_previous"
   exit 1
 fi
 sudo systemctl reload nginx
-sudo rm -f "$nginx_previous"
 
 say "Checking the deployment"
 ports=(
