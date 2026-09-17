@@ -312,13 +312,43 @@ describe('the identity', () => {
  * The path is read out of the module rather than written down twice: a test that
  * asserts its own copy of a constant proves only that it can copy.
  */
+/**
+ * THE PLAYLIST IS BUILT FROM A COUNT, NOT FROM A DIRECTORY LISTING — which is the
+ * right call for the runtime (no HTTP round trip to find out what music exists)
+ * and exactly the thing that can silently drift. Nothing in the app would notice
+ * a tenth file nobody references, or a ninth entry pointing at an upload that
+ * never landed: `preload` is `none`, so the 404 only happens once that track comes
+ * up, on some player's phone, eight minutes in.
+ *
+ * So the check runs BOTH WAYS. Every path the array names must be on disk, and
+ * every mp3 on disk must be named by the array.
+ */
 describe('the ambient score', () => {
-  it('names a file that is actually served', async () => {
-    const source = await import('node:fs/promises').then((fs) =>
-      fs.readFile(resolve(process.cwd(), 'src/lib/music.ts'), 'utf8'),
-    );
-    const track = /const TRACK = '([^']+)'/.exec(source)?.[1];
-    expect(track, 'music.ts no longer declares TRACK the way this test reads it').toBeTruthy();
-    expect(existsSync(served(track!)), `${track!} is not in public/`).toBe(true);
+  it('names files that are actually served', async () => {
+    const { MUSIC_TRACKS } = await import('../src/lib/music.js');
+    expect(MUSIC_TRACKS.length).toBeGreaterThan(1);
+    for (const track of MUSIC_TRACKS) {
+      expect(existsSync(served(track)), `${track} is not in public/`).toBe(true);
+    }
+  });
+
+  it('leaves no music in public that the playlist cannot reach', async () => {
+    const fs = await import('node:fs/promises');
+    const { MUSIC_TRACKS } = await import('../src/lib/music.js');
+    const root = resolve(process.cwd(), 'public/assets/musics');
+    const found: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
+        const full = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) await walk(full);
+        else if (entry.name.endsWith('.mp3')) found.push(full);
+      }
+    };
+    await walk(root);
+
+    const reachable = new Set(MUSIC_TRACKS.map((track) => served(track)));
+    const orphans = found.filter((file) => !reachable.has(file));
+    expect(orphans, 'shipped but never played — either wire it up or delete it')
+      .toEqual([]);
   });
 });

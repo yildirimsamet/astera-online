@@ -277,6 +277,9 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // A handle and the address it points at. Translating either would send the
   // player somewhere that does not exist.
   'rewards.social.handle',
+  // Two clocks and a slash. There is no word in it to translate, and the key
+  // exists so a language that writes elapsed-after-total can still reorder it.
+  'menu.trackClock',
   'rewards.social.url',
   // YouTube is the embedded-video provider's proper name in both languages.
   'community.admin.tools.video',

@@ -764,6 +764,23 @@ export function SpeakerOffIcon(props: IconProps) {
   );
 }
 
+/**
+ * SKIP TO THE NEXT PIECE — a play head against a wall, the mark every transport
+ * control in the world has used since cassette decks.
+ *
+ * ONE GLYPH FOR BOTH DIRECTIONS. "Previous" is this mirrored, which the caller
+ * does with a transform: two hand-drawn paths for one shape drift apart the first
+ * time either is touched, and a player reading them side by side would see it.
+ */
+export function SkipIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M7 6.2 15.4 12 7 17.8Z" />
+      <path d="M17.6 6.2v11.6" />
+    </Glyph>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <Glyph {...props}>

@@ -2,8 +2,16 @@ import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_MUSIC_VOLUME,
+  formatTrackTime,
+  MUSIC_TRACKS,
   musicEnabled,
+  musicPlayback,
+  musicTrack,
   musicVolume,
+  nextTrack,
+  prevTrack,
+  randomTrackIndex,
+  selectTrack,
   setMusicEnabled,
   setMusicVolume,
   useAmbientMusic,
@@ -51,6 +59,9 @@ const setHidden = (value: boolean): void => {
 beforeEach(() => {
   setMusicEnabled(true);
   setMusicVolume(DEFAULT_MUSIC_VOLUME);
+  // The launch track is random by design, so every test that is not about the
+  // randomness has to pin it — otherwise one run in nine asserts a different file.
+  selectTrack(0);
   hidden = false;
   rejectPlay = null;
   fake = {
@@ -80,7 +91,7 @@ afterEach(() => {
 });
 
 describe('the ambient score', () => {
-  it('starts once, loops, and holds the volume it was given', () => {
+  it('starts once, does not loop a single track, and holds the volume it was given', () => {
     const created: HTMLAudioElement[] = [];
     const Audio = window.Audio;
     vi.stubGlobal(
@@ -97,7 +108,8 @@ describe('the ambient score', () => {
 
     expect(fake.play).toHaveBeenCalledTimes(1);
     const audio = created[0]!;
-    expect(audio.loop).toBe(true);
+    // The playlist is the loop now: a looping element would never reach `ended`.
+    expect(audio.loop).toBe(false);
     expect(audio.volume).toBeCloseTo(0.35, 5);
     // Never preloaded: the first frame of this app is competing for the same
     // connection as a 1.8 MB bundle.
@@ -150,18 +162,19 @@ describe('the ambient score', () => {
   });
 
   /**
-   * A missing file, or a codec the browser will not take. Retrying it on every
-   * visibility change is a leak with a schedule.
+   * A missing file, or a codec the browser will not take. One of those moves to
+   * the next track; a whole lap of them stops for good, because retrying nine
+   * files on every visibility change is a leak with a schedule.
    */
-  it('gives up for good when the file cannot be played', async () => {
+  it('gives up for good once every file has refused to play', async () => {
     rejectPlay = Object.assign(new Error('nope'), { name: 'NotSupportedError' });
     render(<Harness />);
-    await Promise.resolve();
-    await Promise.resolve();
+    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+    const attempts = fake.play.mock.calls.length;
 
     setHidden(true);
     setHidden(false);
-    expect(fake.play).toHaveBeenCalledTimes(1);
+    expect(fake.play).toHaveBeenCalledTimes(attempts);
   });
 
   /**
@@ -325,5 +338,266 @@ describe('the sound switch', () => {
     expect(() => { setMusicVolume(0.61); }).not.toThrow();
     expect(musicVolume()).toBeCloseTo(0.61, 5);
     spy.mockRestore();
+  });
+});
+
+/**
+ * THE PLAYLIST. Owner decision: one track was a signature, nine is a soundtrack.
+ *
+ * What changes with more than one file is not "which mp3 is in the string" — it is
+ * that the score now has a POSITION IN A LIST, and every lifecycle rule the block
+ * above holds has to keep holding while that position moves:
+ *
+ *   · A LAUNCH STARTS SOMEWHERE RANDOM, so two sessions do not open on the same
+ *     bar. Chosen once per page load, never persisted: a remembered track would
+ *     make the ninth visit sound like the eighth.
+ *   · SKIPPING IS A DELIBERATE RESTART, and the only place in this file where
+ *     tearing the source down is correct. Everything else — volume, the switch,
+ *     the tab going away — must still leave `currentTime` alone.
+ *   · A TRACK THAT ENDS HANDS OVER. `loop` is off now; the playlist is the loop.
+ *   · ONE BAD FILE MUST NOT SILENCE THE GAME. A 404 on track 4 moves to track 5;
+ *     only a whole lap of failures gives up, which is what stops a missing folder
+ *     from spinning through nine requests on every visibility change, for ever.
+ */
+describe('the playlist', () => {
+  const srcOf = (audio: HTMLAudioElement): string => audio.getAttribute('src') ?? '';
+
+  const withAudio = (): HTMLAudioElement[] => {
+    const created: HTMLAudioElement[] = [];
+    const Base = window.Audio;
+    vi.stubGlobal(
+      'Audio',
+      class extends Base {
+        constructor() {
+          super();
+          created.push(this);
+        }
+      },
+    );
+    return created;
+  };
+
+  it('ships every renamed file, numbered, and nothing else', () => {
+    expect(MUSIC_TRACKS).toHaveLength(9);
+    MUSIC_TRACKS.forEach((track, index) => {
+      expect(track).toBe(`/assets/musics/background-musics/${String(index + 1)}.mp3`);
+    });
+  });
+
+  it('opens on a random track, inside the list', () => {
+    const random = vi.spyOn(Math, 'random');
+    random.mockReturnValue(0);
+    expect(randomTrackIndex()).toBe(0);
+    random.mockReturnValue(0.5);
+    expect(randomTrackIndex()).toBe(4);
+    // The exclusive upper bound a real `Math.random()` never reaches, asserted
+    // anyway: an off-by-one here is an index out of the array and a silent tab.
+    random.mockReturnValue(0.999999);
+    expect(randomTrackIndex()).toBe(8);
+    random.mockRestore();
+  });
+
+  it('plays the track the store is pointing at', () => {
+    const created = withAudio();
+    selectTrack(3);
+    render(<Harness />);
+
+    expect(srcOf(created[0]!)).toBe(MUSIC_TRACKS[3]);
+    // The playlist is the loop, so no single track may loop on its own.
+    expect(created[0]!.loop).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('moves forward and back, wrapping at both ends', () => {
+    selectTrack(0);
+    act(() => { prevTrack(); });
+    expect(musicTrack()).toBe(8);
+    act(() => { nextTrack(); });
+    expect(musicTrack()).toBe(0);
+    act(() => { nextTrack(); });
+    expect(musicTrack()).toBe(1);
+  });
+
+  it('swaps the source and starts the new track from the top', () => {
+    const created = withAudio();
+    selectTrack(0);
+    render(<Harness />);
+    expect(fake.play).toHaveBeenCalledTimes(1);
+
+    act(() => { nextTrack(); });
+
+    // Same element — a skip must not orphan a decoder — with a new source.
+    expect(created).toHaveLength(1);
+    expect(srcOf(created[0]!)).toBe(MUSIC_TRACKS[1]);
+    expect(fake.play).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
+  });
+
+  it('hands over to the next track when one ends', () => {
+    const created = withAudio();
+    selectTrack(7);
+    render(<Harness />);
+
+    act(() => { created[0]!.dispatchEvent(new Event('ended')); });
+
+    expect(musicTrack()).toBe(8);
+    expect(srcOf(created[0]!)).toBe(MUSIC_TRACKS[8]);
+    vi.unstubAllGlobals();
+  });
+
+  it('skips a file it cannot play instead of going silent', async () => {
+    const created = withAudio();
+    rejectPlay = Object.assign(new Error('nope'), { name: 'NotSupportedError' });
+    selectTrack(2);
+    render(<Harness />);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(musicTrack()).toBe(3);
+    expect(srcOf(created[0]!)).toBe(MUSIC_TRACKS[3]);
+    vi.unstubAllGlobals();
+  });
+
+  it('gives up after a whole failed lap rather than retrying for ever', async () => {
+    rejectPlay = Object.assign(new Error('nope'), { name: 'NotSupportedError' });
+    selectTrack(0);
+    render(<Harness />);
+    for (let i = 0; i < 40; i += 1) await Promise.resolve();
+
+    const attempts = fake.play.mock.calls.length;
+    expect(attempts).toBeLessThanOrEqual(MUSIC_TRACKS.length);
+
+    setHidden(true);
+    setHidden(false);
+    expect(fake.play).toHaveBeenCalledTimes(attempts);
+  });
+
+  it('changes track while silenced without starting the sound', () => {
+    const created = withAudio();
+    selectTrack(0);
+    setMusicEnabled(false);
+    render(<Harness />);
+    expect(fake.play).not.toHaveBeenCalled();
+
+    act(() => { nextTrack(); });
+
+    expect(musicTrack()).toBe(1);
+    expect(srcOf(created[0]!)).toBe(MUSIC_TRACKS[1]);
+    expect(fake.play).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
+
+/**
+ * THE READOUT. Owner instruction: the menu shows what is playing, how long it is,
+ * and where in it we are — live.
+ *
+ * ONE SECOND IS THE RESOLUTION, and that is a render budget rather than a display
+ * choice. `timeupdate` fires four times a second on every browser; a store that
+ * notified on each one would re-render the open menu 240 times a minute to move a
+ * clock that only has sixty positions.
+ */
+describe('the now-playing readout', () => {
+  /**
+   * THE ONE THING A LIVE CLOCK CAN COST THAT NOTHING ELSE IN THIS FILE CAN.
+   *
+   * `useAmbientMusic` is called from the app ROOT, above the 3D galaxy. If it
+   * subscribes to the whole playback snapshot, then a store that ticks once a
+   * second re-renders that entire tree sixty times a minute — to move a readout
+   * that is not even on screen unless a settings sheet is open. So the root
+   * subscribes to the TRACK NUMBER alone, which changes when a player skips and
+   * not when the clock moves.
+   */
+  it('does not re-render the app root as the clock moves', () => {
+    const created: HTMLAudioElement[] = [];
+    const Base = window.Audio;
+    vi.stubGlobal('Audio', class extends Base {
+      constructor() { super(); created.push(this); }
+    });
+    let renders = 0;
+    const Root = () => {
+      renders += 1;
+      useAmbientMusic();
+      return null;
+    };
+    selectTrack(0);
+    render(<Root />);
+    const audio = created[0]!;
+    const settled = renders;
+    const time = vi.spyOn(audio, 'currentTime', 'get').mockReturnValue(1);
+    vi.spyOn(audio, 'duration', 'get').mockReturnValue(100);
+
+    for (let second = 1; second <= 5; second += 1) {
+      time.mockReturnValue(second);
+      act(() => { audio.dispatchEvent(new Event('timeupdate')); });
+    }
+
+    // Five seconds of ticks, and the store really did move.
+    expect(musicPlayback().position).toBe(5);
+    expect(renders).toBe(settled);
+
+    // A skip is a different matter: that one the root has to see.
+    act(() => { nextTrack(); });
+    expect(renders).toBeGreaterThan(settled);
+    vi.unstubAllGlobals();
+  });
+
+  it('reports the track, the position and the length', () => {
+    const created: HTMLAudioElement[] = [];
+    const Base = window.Audio;
+    vi.stubGlobal('Audio', class extends Base {
+      constructor() { super(); created.push(this); }
+    });
+    selectTrack(5);
+    render(<Harness />);
+    const audio = created[0]!;
+    vi.spyOn(audio, 'currentTime', 'get').mockReturnValue(61.4);
+    vi.spyOn(audio, 'duration', 'get').mockReturnValue(184);
+
+    act(() => { audio.dispatchEvent(new Event('timeupdate')); });
+
+    expect(musicPlayback()).toEqual({ track: 5, position: 61, duration: 184 });
+    vi.unstubAllGlobals();
+  });
+
+  it('holds a stable snapshot between whole seconds', () => {
+    const created: HTMLAudioElement[] = [];
+    const Base = window.Audio;
+    vi.stubGlobal('Audio', class extends Base {
+      constructor() { super(); created.push(this); }
+    });
+    selectTrack(0);
+    render(<Harness />);
+    const audio = created[0]!;
+    const time = vi.spyOn(audio, 'currentTime', 'get').mockReturnValue(10.1);
+    vi.spyOn(audio, 'duration', 'get').mockReturnValue(100);
+    act(() => { audio.dispatchEvent(new Event('timeupdate')); });
+    const first = musicPlayback();
+
+    time.mockReturnValue(10.9);
+    act(() => { audio.dispatchEvent(new Event('timeupdate')); });
+
+    // Same object identity: `useSyncExternalStore` tears on a new one every tick.
+    expect(musicPlayback()).toBe(first);
+    vi.unstubAllGlobals();
+  });
+
+  it('starts a skipped track back at zero before anything has loaded', () => {
+    selectTrack(0);
+    render(<Harness />);
+    act(() => { nextTrack(); });
+    expect(musicPlayback()).toEqual({ track: 1, position: 0, duration: 0 });
+  });
+
+  it('writes a clock a player can read, and refuses to invent one', () => {
+    expect(formatTrackTime(0)).toBe('0:00');
+    expect(formatTrackTime(9)).toBe('0:09');
+    expect(formatTrackTime(61)).toBe('1:01');
+    expect(formatTrackTime(3599)).toBe('59:59');
+    // Before metadata arrives the element reports NaN. A dash is honest; "0:00"
+    // would be a length, and a wrong one.
+    expect(formatTrackTime(Number.NaN)).toBe('–:––');
+    expect(formatTrackTime(Number.POSITIVE_INFINITY)).toBe('–:––');
+    expect(formatTrackTime(0, { blankAtZero: true })).toBe('–:––');
   });
 });

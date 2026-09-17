@@ -249,6 +249,15 @@ export const menu = {
   volumeLabel: 'Music volume',
   volumeValue: '{{volume}}%',
   /**
+   * WHICH OF THE NINE IS SOUNDING. The count is part of the label on purpose: "3"
+   * alone is a number, "3 / 9" is a position — it says how far the arrows reach
+   * and that there is something on the other side of them.
+   */
+  trackLabel: 'Track {{index}} / {{total}}',
+  trackPrev: 'Previous track',
+  trackNext: 'Next track',
+  trackClock: '{{position}} / {{duration}}',
+  /**
    * RESOLUTION. Three rungs, one word each — all three share a 350-wide row. The
    * line beneath belongs to the chosen rung: a rung's name does not say what it
    * buys, and the sentence does.

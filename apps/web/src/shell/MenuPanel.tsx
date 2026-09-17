@@ -2,9 +2,14 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnnouncements, useRewards } from '../api/queries.js';
 import {
+  formatTrackTime,
+  MUSIC_TRACKS,
+  nextTrack,
+  prevTrack,
   setMusicEnabled,
   setMusicVolume,
   useMusicEnabled,
+  useMusicPlayback,
   useMusicVolume,
 } from '../lib/music.js';
 import { rivalColour } from '../galaxy/PlanetField.jsx';
@@ -28,6 +33,7 @@ import {
   SendIcon,
   LockIcon,
   SpeakerOffIcon,
+  SkipIcon,
   SpeakerOnIcon,
   GuideIcon,
   // HeartIcon,
@@ -384,6 +390,7 @@ export function MenuPanel({
             <LanguageSwitch compact />
           </SettingRow>
           <SoundSetting />
+          <NowPlaying />
           <QualitySetting />
           {/*
             THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
@@ -776,6 +783,105 @@ function SoundSetting() {
         </output>
       </div>
     </SettingRow>
+  );
+}
+
+/**
+ * WHAT IS PLAYING, HOW LONG IT IS, AND WHERE IN IT WE ARE.
+ *
+ * Owner instruction, and the first of the four questions is what makes it a
+ * section rather than a line: the slider above says how LOUD, and says nothing
+ * about WHICH of nine pieces is making the sound. A player who wants the piano one
+ * and keeps getting the documentary one has no move to make until two arrows exist.
+ *
+ * THREE FACTS AND TWO CONTROLS, ON TWO LINES.
+ *
+ *   · The position in the list — "3 / 9" rather than "3", because a bare ordinal
+ *     is a number and a pair is a place: it says how far the arrows reach and that
+ *     there is something on the other side of them.
+ *   · The clock, elapsed against total, in the tabular face so the digits do not
+ *     shuffle sideways once a second.
+ *   · The bar, which is the clock again as a shape. It is `aria-hidden` for
+ *     exactly that reason — a screen reader that reads both reads the same fact
+ *     twice, a second apart.
+ *
+ * NO TRACK LIST, NO SHUFFLE, NO FAVOURITES. Nine pieces of background score do not
+ * earn a media library on a 350-wide phone, and every one of them is two taps away
+ * at the worst. The fourth question — what does this cost to use — answers itself
+ * when the whole control is 28 pixels of arrow at each end of a row that was
+ * already there.
+ *
+ * IT STAYS LIVE AND USABLE WHILE THE SCORE IS SILENCED, dimmed rather than
+ * disabled: choosing the piece you want before you turn the sound back on is a
+ * perfectly ordinary thing to do, and a control that vanishes when it is muted
+ * makes the player unmute to find out what they would be unmuting into.
+ */
+function NowPlaying() {
+  const { t } = useTranslation();
+  const on = useMusicEnabled();
+  const { track, position, duration } = useMusicPlayback();
+
+  const elapsed = formatTrackTime(position);
+  /** `blankAtZero`: nothing has decoded yet, and `0:00` would state a length. */
+  const total = formatTrackTime(duration, { blankAtZero: true });
+  const share = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
+
+  const skip = (move: () => void) => () => {
+    haptic('tap');
+    move();
+  };
+
+  return (
+    <div data-now-playing className="px-2 py-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={t('menu.trackPrev')}
+          onClick={skip(prevTrack)}
+          className="socket grid size-7 shrink-0 place-items-center rounded-control text-faint transition-colors hover:text-bone"
+        >
+          <SkipIcon className="size-3.5 -scale-x-100" />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className={`truncate text-micro ${on ? 'text-bone' : 'text-faint'}`}>
+              {t('menu.trackLabel', { index: track + 1, total: MUSIC_TRACKS.length })}
+            </span>
+            <span data-testid="now-playing-clock" className="num shrink-0 text-micro text-faint">
+              {t('menu.trackClock', { position: elapsed, duration: total })}
+            </span>
+          </div>
+          {/*
+            ONE SECOND OF LINEAR EASE, MATCHING THE TICK THAT FEEDS IT. The store
+            reports whole seconds, so an un-eased bar would jump nine pixels at a
+            time; a transition exactly as long as the interval turns the same data
+            into a hand that sweeps.
+          */}
+          <div
+            data-testid="now-playing-bar"
+            aria-hidden
+            className="socket mt-1.5 h-[3px] w-full overflow-hidden rounded-full"
+          >
+            <div
+              className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${
+                on ? 'bg-crystal' : 'bg-line-soft'
+              }`}
+              style={{ width: `${String(share)}%` }}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          aria-label={t('menu.trackNext')}
+          onClick={skip(nextTrack)}
+          className="socket grid size-7 shrink-0 place-items-center rounded-control text-faint transition-colors hover:text-bone"
+        >
+          <SkipIcon className="size-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }
 

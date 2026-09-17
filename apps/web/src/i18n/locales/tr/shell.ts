@@ -191,6 +191,10 @@ export const menu = {
   soundOff: 'Bu cihazda kapalı.',
   volumeLabel: 'Müzik seviyesi',
   volumeValue: '%{{volume}}',
+  trackLabel: 'Parça {{index}} / {{total}}',
+  trackPrev: 'Önceki parça',
+  trackNext: 'Sonraki parça',
+  trackClock: '{{position}} / {{duration}}',
   /**
    * ÇÖZÜNÜRLÜK. Üç kademe, her biri tek kelime — üçü yan yana 350 piksele sığmak
    * zorunda. Altındaki cümle seçili kademenin kendisine ait: kademenin adı ne
