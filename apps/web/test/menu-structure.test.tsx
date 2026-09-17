@@ -218,17 +218,26 @@ describe('the menu groups what it offers', () => {
    * They also sat under a heading reading "Language", which is the grouping
    * failure in miniature: a section named after one of the three things in it.
    */
-  it('gathers the three device settings into one plate, a line each', () => {
+  /**
+   * FOUR NOW, AND THE FOURTH BELONGS HERE.
+   *
+   * The privacy answer is stored per DEVICE, exactly like the language, the
+   * sound and the resolution — so it is a fourth line in this plate rather than
+   * a fifth section heading on a sheet that is already long. Consent that cannot
+   * be withdrawn is not consent, and this row is the standing route back to it.
+   */
+  it('gathers the device settings into one plate, a line each', () => {
     const view = show();
 
     const plate = view.container.querySelector('[data-device-settings]');
     expect(plate).not.toBeNull();
-    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(3);
+    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(4);
 
     // Every control that was there before is still there, and still live.
     expect(screen.getByRole('group', { name: i18n.t('settings.choose') })).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
+    expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();
   });
 
   /** The way out stays last, and stays alone. */

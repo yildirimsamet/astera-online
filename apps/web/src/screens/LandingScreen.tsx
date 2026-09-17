@@ -9,6 +9,7 @@ import { Button, useOwnPress } from '../ui/kit/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
+import { publisherUrl } from '../lib/publisherPages.js';
 
 /**
  * THE FRONT DOOR. D21.
@@ -67,7 +68,7 @@ export function LandingScreen({
    */
   knownCommander?: () => boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mode, setMode] = useState<Mode | null>(open ?? null);
   /**
    * Read ONCE, at mount, and never again. This screen is remounted every time the
@@ -302,6 +303,40 @@ export function LandingScreen({
               </div>
             </>
           )}
+
+          {/*
+            THE PUBLISHER'S OWN PAGES, ON THE ONE SCREEN A CRAWLER CAN READ.
+
+            Everything else in this client is behind a session, so this footer is
+            the only navigation Googlebot — and an AdSense site review — ever
+            reaches without JavaScript running a login. Each link resolves in the
+            reader's own language through `publisherUrl`, because the legal set
+            exists twice: `privacy.html` is English and `gizlilik-politikasi.html`
+            is Turkish, and pointing a Turkish player at an English policy is the
+            same defect as pointing a reviewer at a Turkish one.
+          */}
+          <nav
+            aria-label={t('landing.publicLinksLabel')}
+            className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-line-soft pt-3"
+          >
+            {(
+              [
+                ['about', 'landing.aboutLink'],
+                ['guide', 'landing.guideLink'],
+                ['privacy', 'landing.privacyLink'],
+                ['terms', 'landing.termsLink'],
+                ['contact', 'landing.contactLink'],
+              ] as const
+            ).map(([page, label]) => (
+              <a
+                key={page}
+                className="text-caption text-faint underline decoration-transparent underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-crystal"
+                href={publisherUrl(page, i18n.resolvedLanguage)}
+              >
+                {t(label)}
+              </a>
+            ))}
+          </nav>
         </footer>
       </div>
 

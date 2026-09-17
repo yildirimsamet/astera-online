@@ -1,5 +1,5 @@
 import { silentSpace } from './silentSpace.js';
-import { app, document, landing, loading, servers, settings } from './entry.js';
+import { app, consent, document, landing, loading, servers, settings } from './entry.js';
 import { chat, crash, leaderboard, menu, pendingStrip, sheet, signals, statusBar, surface, toast } from './shell.js';
 import { focus, galaxy, pirate, worlds } from './world.js';
 import { action, capacity, faults, itemSheet, launch, planet, planetHero, transfer, upgradeRow } from './planet.js';
@@ -37,6 +37,7 @@ export const tr: Resources = {
   loading,
   document,
   settings,
+  consent,
   statusBar,
   menu,
   leaderboard,

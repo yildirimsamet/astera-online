@@ -1,12 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it } from 'vitest';
 
 import {
   ADSENSE_CLIENT,
   ADSENSE_LOADER_SRC,
   adsenseHeadTag,
+  adsenseHeadTags,
   adsensePlugin,
+  consentBootstrapHeadTag,
 } from '../src/lib/adsense.js';
 
 const webRoot = resolve(import.meta.dirname, '..');
@@ -59,6 +62,51 @@ describe('the build plugin', () => {
   it('is wired into the client build', async () => {
     const config = await readFile(resolve(webRoot, 'vite.config.ts'), 'utf8');
     expect(config).toContain('adsensePlugin()');
+  });
+
+  it('runs a synchronous, local denied-by-default bootstrap before the async ad loader', () => {
+    const bootstrap = consentBootstrapHeadTag();
+    const transform = adsensePlugin().transformIndexHtml;
+
+    expect(bootstrap).toEqual({
+      tag: 'script',
+      attrs: { src: '/consent-bootstrap.js' },
+      injectTo: 'head',
+    });
+    expect(transform).toMatchObject({ order: 'pre' });
+    if (typeof transform !== 'object' || !('handler' in transform)) {
+      throw new Error('expected an ordered transformIndexHtml handler');
+    }
+    expect(transform.handler).toBe(adsenseHeadTags);
+    // Third tag: `h5BridgeHeadTag()`, asserted in `h5-ads.test.ts` where the
+    // snippet it loads is also exercised.
+    expect(adsenseHeadTags().slice(0, 2)).toEqual([
+      bootstrap,
+      adsenseHeadTag(),
+    ]);
+  });
+});
+
+describe('Google consent defaults', () => {
+  it('queues all four denied signals before any Google tag runs', async () => {
+    const script = await readFile(resolve(webRoot, 'public/consent-bootstrap.js'), 'utf8');
+    const browser = { dataLayer: [] as IArguments[], gtag: undefined as ((...args: unknown[]) => void) | undefined };
+
+    // The production file is classic JavaScript: run it against a fresh window
+    // without loading a remote tag or sharing state with the test browser.
+    runInNewContext(script, { window: browser });
+
+    expect(browser.dataLayer).toHaveLength(1);
+    expect(Array.from(browser.dataLayer[0] ?? [])).toEqual([
+      'consent',
+      'default',
+      {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      },
+    ]);
   });
 });
 

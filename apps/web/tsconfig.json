@@ -7,7 +7,21 @@
     "resolveJsonModule": true,
     /* import.meta.env, and the ?url / ?raw import suffixes. */
     "types": ["vite/client"],
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    /* The three classic scripts in `public/`. They are hand-written browser
+       JavaScript rather than build output, so they are linted like the rest of
+       the client; without them here the type-aware rules cannot see the file at
+       all and eslint fails on the parse rather than on the code. */
+    "public/consent-bootstrap.js",
+    "public/h5-ads.js",
+    "public/guide-back.js",
+    "*.ts"
+  ]
 }

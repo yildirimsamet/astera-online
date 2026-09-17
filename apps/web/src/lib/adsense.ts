@@ -1,7 +1,8 @@
 import type { HtmlTagDescriptor, Plugin } from 'vite';
+import { h5BridgeHeadTag } from './h5.js';
 
 /**
- * GOOGLE ADSENSE, AND WHY IT IS THE ONE TAG THAT DOES NOT WAIT.
+ * GOOGLE ADSENSE, WITH CONSENT DEFAULTS BEFORE ITS LOADER.
  *
  * `lib/analytics.ts` argues at length that a third-party script belongs after the
  * first frame, never in `<head>`. That argument is about MEASUREMENT, which is the
@@ -37,6 +38,15 @@ export const ADSENSE_CLIENT = 'ca-pub-2743431608715099';
 export const ADSENSE_LOADER_SRC =
   `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
 
+/** Parser-blocking by design: the next, async Google tag must see denied defaults. */
+export function consentBootstrapHeadTag(): HtmlTagDescriptor {
+  return {
+    tag: 'script',
+    attrs: { src: '/consent-bootstrap.js' },
+    injectTo: 'head',
+  };
+}
+
 /** The one tag the built page gains. */
 export function adsenseHeadTag(): HtmlTagDescriptor {
   return {
@@ -54,6 +64,23 @@ export function adsenseHeadTag(): HtmlTagDescriptor {
 }
 
 /**
+ * THREE TAGS IN ONE ORDER, AND THE ORDER IS THE WHOLE POINT.
+ *
+ *   1. `consent-bootstrap.js` — synchronous, first-party. Queues four DENIED
+ *      Consent Mode defaults, so the async loader that follows can never read or
+ *      write storage before a visitor has chosen.
+ *   2. Google's loader — async, verbatim, as argued at the top of this file.
+ *   3. `h5-ads.js` — synchronous. Defines `adBreak` and `adConfig` over the
+ *      loader's own queue, which is what turns an AdSense tag into an H5 Games
+ *      Ads integration. It goes AFTER the loader tag and still runs BEFORE it,
+ *      because the loader is async: the queue it adopts is the one either of
+ *      them creates first.
+ */
+export function adsenseHeadTags(): HtmlTagDescriptor[] {
+  return [consentBootstrapHeadTag(), adsenseHeadTag(), h5BridgeHeadTag()];
+}
+
+/**
  * Put the loader in the head of the built page — and only the built page.
  *
  * `/ads.txt` is the other half of the integration and is a static file in
@@ -67,7 +94,7 @@ export function adsensePlugin(): Plugin {
       // Ahead of Vite's own module injection, so the loader is the first request
       // the head starts rather than one queued behind the bundle.
       order: 'pre',
-      handler: () => [adsenseHeadTag()],
+      handler: adsenseHeadTags,
     },
   };
 }

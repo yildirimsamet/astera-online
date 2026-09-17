@@ -3,7 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Astera Online hızlı başlangıç rehberi: üretimini büyüt, meteor kaz, filo kur, araştırma yap, korsanlarla savaş, istihbarat topla ve koloni kur.">
 <title>Astera Online – Hızlı Başlangıç Rehberi</title>
+<link rel="canonical" href="https://asteraonline.space/hizli-baslangic-rehberi.html">
+  <link rel="alternate" hreflang="en" href="https://asteraonline.space/quick-start-guide.html">
+  <link rel="alternate" hreflang="tr" href="https://asteraonline.space/hizli-baslangic-rehberi.html">
+  <link rel="alternate" hreflang="x-default" href="https://asteraonline.space/quick-start-guide.html">
+<meta property="og:title" content="Astera Online Hızlı Başlangıç Rehberi">
+<meta property="og:description" content="Üretimini büyüt, meteor kaz, filo kur, araştırma yap, korsanlarla savaş, istihbarat topla ve kolonilerini savun.">
+<meta property="og:image" content="https://asteraonline.space/assets/images/general/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1733">
+<meta property="og:image:height" content="907">
+<meta property="og:image:alt" content="Canlı bir galakside ilerleyen Astera Online filoları">
+<meta property="og:url" content="https://asteraonline.space/hizli-baslangic-rehberi.html">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Astera Online Hızlı Başlangıç Rehberi">
+<meta name="twitter:description" content="Üretimini büyüt, meteor kaz, filo kur, araştırma yap, korsanlarla savaş, istihbarat topla ve kolonilerini savun.">
+<meta name="twitter:image" content="https://asteraonline.space/assets/images/general/og-image.png">
+<meta name="twitter:image:alt" content="Canlı bir galakside ilerleyen Astera Online filoları">
 <style>
   body{
     font-family:Arial,Helvetica,sans-serif;
@@ -82,6 +101,15 @@
   }
   .back:hover{color:#fff}
   .back span{font-size:17px;line-height:1}
+  .guide-footer{
+    margin-top:34px;
+    border-top:1px solid rgb(255 255 255 / 12%);
+    padding-top:16px;
+    color:#93a0bf;
+    font-size:13px
+  }
+  .guide-footer nav{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:8px}
+  .guide-footer p{margin:0}
 </style>
 </head>
 <body>
@@ -263,28 +291,12 @@
   Ekonomini geliştirirken Kazıcılarını ve filonu da mümkün olduğunca aktif tut.
 </p>
 
-<script>
-  /*
-    STEP BACK IF THERE IS SOMEWHERE TO STEP BACK TO, NAVIGATE IF THERE IS NOT.
+<footer class="guide-footer">
+  <nav aria-label="Yayıncı sayfaları"><a href="/">Oyna</a><a href="/hakkinda.html">Hakkında</a><a href="/gizlilik-politikasi.html">Gizlilik</a><a href="/cerez-politikasi.html">Çerezler</a><a href="/kvkk-aydinlatma-metni.html">KVKK</a><a href="/kullanim-kosullari.html">Koşullar</a><a href="/topluluk-kurallari.html">Topluluk</a><a href="/iletisim.html">İletişim</a></nav>
+  <p>Astera Online · Yayıncı: Samet Yıldırım · <a href="mailto:samety3503@gmail.com">samety3503@gmail.com</a></p>
+</footer>
 
-    The menu links here in this same tab, so the galaxy is one entry back in this
-    tab's own history — and going BACK is what lets the browser restore the page
-    it already has (bfcache) instead of booting a fresh 3D scene and fetching the
-    assets again. That is the whole reason this is not just a plain link.
-
-    The guard is the referrer: a reader who arrived cold — a shared link, a
-    bookmark, a search result — has no game behind them, and for them the
-    anchor's own href="/" is the right answer and this handler stands aside.
-  */
-  document.querySelector('.back').addEventListener('click', function (event) {
-    var cameFromTheGame =
-      window.history.length > 1 &&
-      document.referrer.indexOf(window.location.origin + '/') === 0;
-    if (!cameFromTheGame) return;
-    event.preventDefault();
-    window.history.back();
-  });
-</script>
+<script src="/guide-back.js" defer></script>
 
 </body>
 </html>

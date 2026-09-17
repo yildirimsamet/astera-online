@@ -48,6 +48,26 @@ echo "  at $(git rev-parse --short HEAD) — $(git log -1 --format=%s)"
 say "Checking the D99 host budget"
 ./deploy/host-capacity-preflight.sh
 
+# THE CSP NONCE NEEDS A MODULE, AND A MISSING ONE IS A BLANK GAME.
+#
+# `index.html` ships every script tag stamped with a `__CSP_NONCE__` placeholder
+# (apps/web/vite.config.ts, `html.cspNonce`) and nginx rewrites it per request
+# with `sub_filter`, so the `script-src 'nonce-…' 'strict-dynamic'` header and
+# the document agree. Without ngx_http_sub_module the substitution silently does
+# not happen, the nonce in the header matches nothing in the page, and EVERY
+# script is refused — a black screen with a console full of CSP violations.
+#
+# So it is checked here, before anything is built, rather than discovered after
+# the client has already been published over the working one.
+say "Checking nginx can stamp the CSP nonce"
+if ! nginx -V 2>&1 | grep -q -- '--with-http_sub_module'; then
+  echo "  ✗ nginx was built without ngx_http_sub_module."
+  echo "    deploy/nginx/astera.conf needs it to rewrite __CSP_NONCE__ per request."
+  echo "    On Debian/Ubuntu: sudo apt install nginx-full (or nginx-extras)."
+  exit 1
+fi
+echo "  ngx_http_sub_module present"
+
 say "Building the server image"
 $COMPOSE build api1
 
@@ -91,29 +111,6 @@ $COMPOSE run --rm --no-deps api1 \
 say "Starting one worker and three API replicas"
 $COMPOSE up -d --remove-orphans worker api1 api2 api3
 
-say "Installing the three-replica Nginx route"
-nginx_live=/etc/nginx/sites-available/astera
-nginx_previous=$(mktemp -p /tmp astera-vhost.XXXXXX)
-nginx_had_previous=false
-if sudo test -e "$nginx_live"; then
-  sudo cp -a "$nginx_live" "$nginx_previous"
-  nginx_had_previous=true
-fi
-sudo install -o root -g root -m 0644 deploy/nginx/astera.conf "$nginx_live"
-if ! sudo nginx -t; then
-  echo "Nginx rejected the new route; restoring the pre-deploy file." >&2
-  if [[ "$nginx_had_previous" == true ]]; then
-    sudo cp -a "$nginx_previous" "$nginx_live"
-  else
-    sudo rm -f "$nginx_live"
-  fi
-  sudo nginx -t
-  sudo rm -f "$nginx_previous"
-  exit 1
-fi
-sudo systemctl reload nginx
-sudo rm -f "$nginx_previous"
-
 say "Building the client"
 # Exported to a directory rather than an image: nginx serves these files
 # directly, so there is no container in the path of a static asset.
@@ -137,15 +134,15 @@ docker build --target web-dist --build-arg "VITE_GA_ID=${GA_ID}" \
 #
 # -k keeps the original: a client that does not send Accept-Encoding still needs
 # it, and `try_files` looks for the plain name.
-find "$STAGE" -type f \( -name '*.js' -o -name '*.css' -o -name '*.svg' \
+find "$STAGE" -type f ! -name 'index.html' \( -name '*.js' -o -name '*.css' -o -name '*.svg' \
      -o -name '*.json' -o -name '*.webmanifest' -o -name '*.html' \) \
      -size +1k -exec gzip -9 -k -f {} +
 echo "  pre-compressed $(find "$STAGE" -name '*.gz' | wc -l) files"
 
 say "Publishing the client to $WEBROOT"
 sudo mkdir -p "$WEBROOT"
-# --delete so a removed asset actually goes; rsync swaps each file into place, so
-# a reload never sees a half-written bundle.
+# Keep old hashed assets for tabs that load a lazy module after a deployment.
+# The helper copies the new asset set first and swaps index.html last.
 #
 # --chmod IS NOT TIDINESS. `-a` copies the source's permissions onto the
 # destination ROOT as well, and `docker build --output` writes its staging
@@ -153,9 +150,48 @@ sudo mkdir -p "$WEBROOT"
 # only. nginx runs as www-data and would still have served it after the chown
 # below, which is exactly what makes it a bad failure: the site works, and
 # nobody can read the directory to find out why anything is wrong.
-sudo rsync -a --delete --chmod=D755,F644 "$STAGE"/ "$WEBROOT"/
+sudo bash deploy/publish-web.sh "$STAGE" "$WEBROOT"
 sudo chown -R www-data:www-data "$WEBROOT"
 rm -rf "$STAGE"
+
+# ── THE VHOST GOES IN AFTER THE CLIENT, AND THE ORDER IS LOAD-BEARING ────────
+#
+# These two halves only work together, and they fail in opposite directions:
+#
+#   · NEW PAGE + OLD VHOST is harmless. The old policy carries no nonce source,
+#     so a browser ignores the `nonce` attribute on the new page's script tags
+#     entirely and `'self'` allows them exactly as before. That is the state the
+#     site sits in for the few seconds between the two steps below.
+#   · OLD PAGE + NEW VHOST IS A BLANK GAME. `'strict-dynamic'` makes `'self'`
+#     and every host source IGNORED, so a page whose script tags carry no nonce
+#     has nothing left to allow them and every script on it is refused.
+#
+# This block used to sit immediately after the API replicas started — minutes
+# before the client was even built — which would have blanked the live site for
+# the length of a Docker build. `test/deployment-publish.test.ts` holds the
+# order now so it cannot drift back.
+say "Installing the three-replica Nginx route"
+nginx_live=/etc/nginx/sites-available/astera
+nginx_previous=$(mktemp -p /tmp astera-vhost.XXXXXX)
+nginx_had_previous=false
+if sudo test -e "$nginx_live"; then
+  sudo cp -a "$nginx_live" "$nginx_previous"
+  nginx_had_previous=true
+fi
+sudo install -o root -g root -m 0644 deploy/nginx/astera.conf "$nginx_live"
+if ! sudo nginx -t; then
+  echo "Nginx rejected the new route; restoring the pre-deploy file." >&2
+  if [[ "$nginx_had_previous" == true ]]; then
+    sudo cp -a "$nginx_previous" "$nginx_live"
+  else
+    sudo rm -f "$nginx_live"
+  fi
+  sudo nginx -t
+  sudo rm -f "$nginx_previous"
+  exit 1
+fi
+sudo systemctl reload nginx
+sudo rm -f "$nginx_previous"
 
 say "Checking the deployment"
 ports=(
@@ -180,5 +216,34 @@ for port in "${ports[@]}"; do
     echo "  ⚠  :${port}/health is not ok. Read the checks above before walking away."
   fi
 done
+
+# THE NONCE IS VERIFIED ON THE LIVE PAGE, NOT ASSUMED.
+#
+# The preflight above proves nginx CAN substitute; this proves it DID. A page
+# served with the placeholder intact carries no valid nonce, so under
+# `'strict-dynamic'` every script on it is refused and the game is a blank
+# screen — the one failure of this deploy that no health endpoint would report.
+say "Checking the served page carries a real CSP nonce"
+served=$(curl -fsS -D /tmp/astera-index-headers https://asteraonline.space/ 2>/dev/null || echo '')
+header_nonce=$(grep -i '^content-security-policy:' /tmp/astera-index-headers 2>/dev/null \
+  | grep -o "nonce-[0-9a-f]\{32\}" | head -1 | cut -d- -f2- || echo '')
+rm -f /tmp/astera-index-headers
+if [[ -z "$served" ]]; then
+  echo "  ⚠  Could not fetch https://asteraonline.space/ from this box; check it by hand."
+elif [[ "$served" == *"__CSP_NONCE__"* ]]; then
+  echo
+  echo "  ✗ The page still contains __CSP_NONCE__. sub_filter did not run."
+  echo "    Most likely a stale index.html.gz in $WEBROOT, or the location block"
+  echo "    in deploy/nginx/astera.conf was not reloaded. THE GAME IS BLANK until"
+  echo "    this is fixed: sudo rm -f $WEBROOT/index.html.gz && sudo nginx -s reload"
+  exit 1
+elif [[ -z "$header_nonce" ]] || [[ "$served" != *"nonce=\"$header_nonce\""* ]]; then
+  echo
+  echo "  ✗ The nonce in the CSP header does not appear in the page."
+  echo "    Compare: curl -sSD - https://asteraonline.space/ | head -40"
+  exit 1
+else
+  echo "  nonce stamped and matching"
+fi
 
 say "Deployed $(git rev-parse --short HEAD)"

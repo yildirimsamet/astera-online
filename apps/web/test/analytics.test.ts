@@ -22,6 +22,7 @@ describe('analytics', () => {
     vi.resetModules();
     delete window.dataLayer;
     delete window.gtag;
+    delete window.__asteraConsentDefaults;
     for (const tag of document.querySelectorAll('script[src*="googletagmanager"]')) tag.remove();
   });
 
@@ -95,8 +96,18 @@ describe('analytics', () => {
     expect(document.querySelector('script[src*="googletagmanager"]')).toBeNull();
     track('login', { method: 'form' });
 
-    // js, config, and the event — all waiting for the real tag to drain them.
-    expect(window.dataLayer?.length).toBe(3);
+    // The consent default must be queued before js, config, and the event.
+    expect(window.dataLayer?.length).toBe(4);
+    expect(Array.from(window.dataLayer?.[0] as IArguments)).toEqual([
+      'consent',
+      'default',
+      {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      },
+    ]);
   });
 
   /**

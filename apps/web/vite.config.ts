@@ -24,6 +24,23 @@ const apiProxy = {
 export default defineConfig({
   plugins: [react(), tailwindcss(), adsensePlugin()],
   /**
+   * THE CSP NONCE PLACEHOLDER, FILLED IN PER REQUEST BY NGINX.
+   *
+   * Google does not support allow-listing AdSense by domain: the tag in `<head>`
+   * fetches further loaders from shards Google rotates, so a list is a policy
+   * that breaks on a Tuesday. Their documented model is a nonce plus
+   * `'strict-dynamic'`, which trusts what a nonced script loads rather than
+   * where it came from.
+   *
+   * `'strict-dynamic'` also makes `'self'` IGNORED, so EVERY script tag in the
+   * document needs the nonce — Vite's own module tag included, which is why this
+   * is a build option and not three hand-written attributes. The literal is
+   * replaced with `$request_id` by `sub_filter` in `deploy/nginx/astera.conf`;
+   * `deploy.sh` therefore refuses to pre-compress `index.html`, because a
+   * gzipped body is one `sub_filter` cannot rewrite.
+   */
+  html: { cspNonce: '__CSP_NONCE__' },
+  /**
    * ONE THREE, STATED RATHER THAN HOPED FOR.
    *
    * `three` is a peer dependency of five packages here — fiber, drei,

@@ -36,6 +36,12 @@ export const landing = {
   opening: 'Opening the galaxy',
   ready: 'Your planet is ready',
   cover: 'Bringing the sky up',
+  publicLinksLabel: 'Publisher links',
+  aboutLink: 'About Astera',
+  guideLink: 'How to play',
+  privacyLink: 'Privacy',
+  termsLink: 'Terms',
+  contactLink: 'Contact',
 
   form: {
     labelRegister: 'Create a commander',
@@ -121,4 +127,32 @@ export const settings = {
   /** On the control that opens the picker, and on the picker's own options. */
   choose: 'Choose a language',
   current: 'In use',
+} as const;
+
+/**
+ * THE PRIVACY CHOICE, IN THE PLAYER'S OWN WORDS.
+ *
+ * Two sentences, two buttons, one link. The first sentence says what is kept
+ * whatever they choose, because the session cookie is not part of the bargain
+ * and a notice that implies it is has misdescribed the deal. The second says
+ * exactly what each button does — "refuse" leaves ads running, unpersonalised,
+ * rather than removing them, and a player who discovers that afterwards was
+ * misled by the wording rather than by the ads.
+ */
+export const consent = {
+  title: 'Cookies and ad choices',
+  essentials: 'Signing in always stores one session cookie. That part is not optional.',
+  optional:
+    'Measurement and advertising storage are used only if you allow them. Refuse and the game works the same, with ads shown without personalisation.',
+  accept: 'Allow',
+  refuse: 'Refuse',
+  close: 'Close',
+  policy: 'Cookie Policy',
+  /** The permanent way back in. A row in the device group, not its own section. */
+  menuRowLabel: 'Privacy',
+  /** The row's accessible name; its visible text is the current answer. */
+  menuLabel: 'Privacy & cookie settings',
+  menuGranted: 'Allowed',
+  menuDenied: 'Refused',
+  menuUnset: 'Not chosen yet',
 } as const;

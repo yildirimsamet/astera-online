@@ -24,9 +24,13 @@
  *   4. IT IS IDEMPOTENT. React 19 StrictMode mounts twice in development, and two
  *      tags on one page double every figure they report.
  *
- * WHAT IS DELIBERATELY NOT HERE. No consent banner, because nothing here reads or
- * writes anything the player has given us — there is no ad module, no user id and
- * no custom dimension carrying a commander name. No route tracking, because the
+ * CONSENT COMES FIRST. Production injects a first-party synchronous bootstrap
+ * before the AdSense loader. When Analytics runs without that bootstrap (a dev
+ * server with a measurement id), it queues the same four denied defaults itself
+ * before its js/config commands. The AdSense CMP updates those signals only after
+ * its account-level Consent Mode switches are enabled and a visitor chooses.
+ *
+ * No route tracking, because the
  * game has no router: there is one screen and it is the galaxy (D20). What the
  * funnel actually needs is the two moments below, and they are the two GA4 names
  * for them rather than invented ones.
@@ -40,6 +44,7 @@ declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: GtagArgs) => void;
+    __asteraConsentDefaults?: boolean;
   }
 }
 
@@ -65,11 +70,20 @@ export function startAnalytics(): void {
    * silently ignores it. This is the one place in the codebase where the old form
    * is correct rather than lazy, which is why it is a `function` and not an arrow.
    */
-  window.gtag = function gtag() {
+  window.gtag ??= function gtag() {
     // eslint-disable-next-line prefer-rest-params
     window.dataLayer?.push(arguments);
   };
 
+  if (!window.__asteraConsentDefaults) {
+    window.gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+    });
+    window.__asteraConsentDefaults = true;
+  }
   window.gtag('js', new Date());
   window.gtag('config', MEASUREMENT_ID);
 

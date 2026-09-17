@@ -33,7 +33,8 @@ import {
   // HeartIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
-import { GUIDE_URL } from './guide.js';
+import { publisherUrl } from '../lib/publisherPages.js';
+import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 
 /**
@@ -147,7 +148,17 @@ export function MenuPanel({
   onReplayAcademy?: () => void;
   isAdmin?: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  /**
+   * READ AT RENDER, NOT HELD IN STATE. The notice writes the decision straight
+   * to storage and the menu is remounted every time it opens, so a read here is
+   * always current — a copy in state would be the one that goes stale.
+   */
+  const consentHint = ((): 'consent.menuGranted' | 'consent.menuDenied' | 'consent.menuUnset' => {
+    const stored = readConsent();
+    if (stored === null) return 'consent.menuUnset';
+    return stored.decision === 'granted' ? 'consent.menuGranted' : 'consent.menuDenied';
+  })();
   const hoursLeft = endsAt === null ? null : (endsAt.getTime() - serverNow()) / 3_600_000;
   const waiting = useRewards().data?.claimable ?? 0;
   const announcementData = useAnnouncements().data;
@@ -338,7 +349,7 @@ export function MenuPanel({
           icon={<GuideIcon className="size-5" />}
           label={t('menu.guideLabel')}
           hint={t('menu.guideHint')}
-          href={GUIDE_URL}
+          href={publisherUrl('guide', i18n.resolvedLanguage)}
         />
         {onReplayAcademy && (
           <MenuTile
@@ -374,8 +385,57 @@ export function MenuPanel({
           </SettingRow>
           <SoundSetting />
           <QualitySetting />
+          {/*
+            THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
+
+            A consent answer is stored per DEVICE, exactly like the language, the
+            sound and the resolution above it — so it is a fourth line here
+            rather than a fifth section heading on a sheet that is already long.
+
+            IT SHOWS THE ANSWER RATHER THAN ONLY THE DOOR. A row that reads
+            "Privacy settings ›" makes the player open a dialog to find out where
+            they stand; this one says it on the line. The rule behind it — what
+            is stored either way — is one tap deeper, in the notice itself.
+
+            `reopenGoogleCmp()` first: in the EEA, the UK and Switzerland the
+            answer lives inside Google's certified message and only Google can
+            reopen it. Everywhere else that call reports failure and the game's
+            own notice comes up.
+          */}
+          <SettingRow label={t('consent.menuRowLabel')}>
+            <button
+              type="button"
+              data-consent-settings
+              aria-label={t('consent.menuLabel')}
+              className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-crystal"
+              onClick={() => {
+                if (!reopenGoogleCmp()) openConsentNotice();
+              }}
+            >
+              <span className="min-w-0 truncate text-label text-bone">{t(consentHint)}</span>
+              <ChevronIcon className="size-4 shrink-0 text-faint" />
+            </button>
+          </SettingRow>
         </div>
       </Section>
+
+      <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-soft pt-3">
+        {(
+          [
+            ['privacy', 'landing.privacyLink'],
+            ['terms', 'landing.termsLink'],
+            ['contact', 'landing.contactLink'],
+          ] as const
+        ).map(([page, label]) => (
+          <a
+            key={page}
+            className="text-caption text-faint underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
+            href={publisherUrl(page, i18n.resolvedLanguage)}
+          >
+            {t(label)}
+          </a>
+        ))}
+      </nav>
 
       {/*
         NO CUT CORNERS HERE. `Plate`'s own rule: the shear is an ACCENT for the

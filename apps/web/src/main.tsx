@@ -12,11 +12,13 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n/index.js';
 import { syncDocumentLanguage } from './i18n/document.js';
 import { startAnalytics } from './lib/analytics.js';
+import { configureH5Ads } from './lib/h5.js';
 import { Api } from './api/client.js';
 import { shareStructure } from './api/structural.js';
 import { ApiProvider } from './api/context.js';
 import { ToastProvider } from './ui/Toast.js';
 import { ErrorBoundary } from './shell/ErrorBoundary.js';
+import { ConsentNotice } from './shell/ConsentNotice.js';
 import { App } from './App.js';
 import './styles.css';
 
@@ -30,6 +32,17 @@ syncDocumentLanguage();
  * a page that opens by compiling a 3D scene.
  */
 startAnalytics();
+
+/**
+ * H5 Games Ads, told what kind of game this is.
+ *
+ * `adConfig()` fetches nothing on its own — it declares the sound state so
+ * Google can pick a suitable creative, and leaves preloading to Google because
+ * there is no placement to preload for yet. On a dev server the bridge does not
+ * exist and this is a no-op; see `lib/h5.ts` for why the placement half is
+ * deliberately absent.
+ */
+configureH5Ads();
 
 const api = new Api();
 
@@ -118,6 +131,14 @@ createRoot(root).render(
             <ApiProvider api={api}>
               <ToastProvider>
                 <App />
+                {/*
+                  BESIDE THE APP RATHER THAN INSIDE IT, because `App` returns
+                  early for every session phase and the ad tag is already running
+                  on the first of them — the landing screen. A notice mounted
+                  below one of those branches would miss exactly the visitor it
+                  exists for: the one who has not signed in yet.
+                */}
+                <ConsentNotice />
               </ToastProvider>
             </ApiProvider>
           </QueryClientProvider>

@@ -7,8 +7,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { MenuPanel } from '../src/shell/MenuPanel.js';
-import { GUIDE_URL } from '../src/shell/guide.js';
+import { publisherUrl } from '../src/lib/publisherPages.js';
 import i18n from '../src/i18n/index.js';
+import { CONSENT_EVENT, CONSENT_STORAGE_KEY } from '../src/lib/consent.js';
 
 /**
  * THE QUICK-START GUIDE, REACHABLE. Owner request, and deliberately the small
@@ -105,7 +106,7 @@ describe('the quick-start guide row', () => {
     const row = screen.getByRole('link', {
       name: new RegExp(i18n.t('menu.guideLabel'), 'i'),
     });
-    expect(row).toHaveAttribute('href', GUIDE_URL);
+    expect(row).toHaveAttribute('href', publisherUrl('guide', i18n.resolvedLanguage));
     expect(row).not.toHaveAttribute('target');
   });
 
@@ -115,12 +116,12 @@ describe('the quick-start guide row', () => {
     the two — this is the connection.
   */
   it('points at a file that exists in public/', () => {
-    const page = readFileSync(resolve(process.cwd(), `public${GUIDE_URL}`), 'utf8');
+    const page = readFileSync(resolve(process.cwd(), `public${publisherUrl('guide', 'tr')}`), 'utf8');
     expect(page).toContain('<html');
   });
 
   it('explains the first-day shield and the action that spends it', () => {
-    const page = readFileSync(resolve(process.cwd(), `public${GUIDE_URL}`), 'utf8');
+    const page = readFileSync(resolve(process.cwd(), `public${publisherUrl('guide', 'tr')}`), 'utf8');
     expect(page).toMatch(/ilk 24 saat/i);
     expect(page).toMatch(/saldırı.*koruma.*sona erer/is);
   });
@@ -137,15 +138,25 @@ describe('the quick-start guide row', () => {
     shared link, a bookmark — who has no game behind them to step back to.
   */
   it('carries a sticky way back into the game', () => {
-    const page = readFileSync(resolve(process.cwd(), `public${GUIDE_URL}`), 'utf8');
+    const page = readFileSync(resolve(process.cwd(), `public${publisherUrl('guide', 'tr')}`), 'utf8');
 
     expect(page).toMatch(/<a[^>]+class="back"[^>]+href="\/"/);
     expect(page).toContain('position:sticky');
+    /*
+      THE HANDLER IS A FILE, NOT AN INLINE BLOCK, and that is a production fix
+      rather than tidiness. The deployed `Content-Security-Policy` grants
+      `script-src 'self'` and never `'unsafe-inline'`, so the inline version was
+      refused by every browser that actually reached this page: the button worked
+      and it worked by doing the plain navigation the handler exists to avoid.
+    */
+    expect(page).toContain('<script src="/guide-back.js"');
+    expect(page).not.toMatch(/<script>/);
+    const handler = readFileSync(resolve(process.cwd(), 'public/guide-back.js'), 'utf8');
     // Same tab means the game is one step back in this tab's own history —
     // and stepping back is what lets the browser restore it instead of
     // booting a fresh galaxy. The `href` covers a reader who arrived cold.
-    expect(page).toContain('history.back()');
-    expect(page).not.toContain('window.close()');
+    expect(handler).toContain('history.back()');
+    expect(handler).not.toContain('window.close()');
   });
 
   /*
@@ -162,6 +173,90 @@ describe('the quick-start guide row', () => {
 
     expect(rewards).toBeGreaterThan(-1);
     expect(guide).toBeGreaterThan(rewards);
+  });
+});
+
+/**
+ * THE PUBLISHER SET, IN THE READER'S OWN LANGUAGE.
+ *
+ * The legal pages exist twice — `privacy.html` is English, `gizlilik-politikasi.html`
+ * is Turkish — because Google's reviewer reads one and the players read the
+ * other. Handing either of them the wrong one is the same defect, so the link
+ * resolves through `publisherUrl` rather than through a literal.
+ */
+describe('publisher links for a signed-in commander', () => {
+  it('keeps the privacy, terms and contact pages reachable in English', () => {
+    show();
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy.html');
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms.html');
+    expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact.html');
+  });
+
+  it('shows the Turkish editions to a Turkish commander', async () => {
+    await i18n.changeLanguage('tr');
+    show();
+    expect(screen.getByRole('link', { name: 'Gizlilik' })).toHaveAttribute('href', '/gizlilik-politikasi.html');
+    expect(screen.getByRole('link', { name: 'Koşullar' })).toHaveAttribute('href', '/kullanim-kosullari.html');
+    expect(screen.getByRole('link', { name: 'İletişim' })).toHaveAttribute('href', '/iletisim.html');
+  });
+});
+
+/**
+ * THE STANDING ROUTE BACK TO THE PRIVACY CHOICE.
+ *
+ * Consent that cannot be withdrawn is not consent, and the row has to say where
+ * the player currently stands — otherwise finding out costs opening a dialog.
+ */
+describe('the privacy and cookie settings row', () => {
+  const row = (): HTMLElement => screen.getByRole('button', { name: /Privacy & cookie settings/i });
+
+  it('reports that nothing has been chosen yet', () => {
+    show();
+
+    expect(row().textContent).toContain('Not chosen yet');
+  });
+
+  it('reports a refusal in the row itself', () => {
+    window.localStorage.setItem(
+      CONSENT_STORAGE_KEY,
+      JSON.stringify({ version: 1, decision: 'denied', at: '2026-09-01T00:00:00.000Z' }),
+    );
+    show();
+
+    expect(row().textContent).toMatch(/Refused/i);
+  });
+
+  it('reopens the first-party notice when no certified CMP is present', () => {
+    const heard = vi.fn();
+    window.addEventListener(CONSENT_EVENT, heard);
+    show();
+
+    fireEvent.click(row());
+
+    expect(heard).toHaveBeenCalledOnce();
+    window.removeEventListener(CONSENT_EVENT, heard);
+  });
+
+  /**
+   * In the EEA, the UK and Switzerland the answer lives inside Google's message
+   * and only Google can reopen it. Showing ours on top would be a second notice
+   * claiming to speak for a choice it does not hold.
+   */
+  it('hands the question back to Google where the certified message owns it', () => {
+    const heard = vi.fn();
+    const showRevocationMessage = vi.fn();
+    (window as { __tcfapi?: unknown }).__tcfapi = () => undefined;
+    (window as { googlefc?: unknown }).googlefc = { showRevocationMessage };
+    window.addEventListener(CONSENT_EVENT, heard);
+    show();
+
+    fireEvent.click(row());
+
+    expect(showRevocationMessage).toHaveBeenCalledOnce();
+    expect(heard).not.toHaveBeenCalled();
+    window.removeEventListener(CONSENT_EVENT, heard);
+    delete (window as { __tcfapi?: unknown }).__tcfapi;
+    delete (window as { googlefc?: unknown }).googlefc;
   });
 });
 

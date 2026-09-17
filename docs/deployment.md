@@ -363,6 +363,7 @@ docker build --target web-dist \
 test -f "$web_stage/index.html"
 printf '%s\n' "$release_sha" > "$web_stage/release.txt"
 find "$web_stage" -type f \
+  ! -name 'index.html' \
   \( -name '*.js' -o -name '*.css' -o -name '*.svg' -o -name '*.json' \
      -o -name '*.webmanifest' -o -name '*.html' \) \
   -size +1k -exec gzip -9 -k -f {} +
@@ -685,6 +686,9 @@ or the rename is a copy and the window comes back:
 ```bash
 sudo rm -rf /var/www/astera-next
 sudo cp -a "$web_stage" /var/www/astera-next
+# Open tabs may still import chunks from older builds. Carry their immutable
+# assets into the candidate without overwriting the current build's assets.
+sudo rsync -a --ignore-existing /var/www/astera/assets/ /var/www/astera-next/assets/
 sudo chown -R www-data:www-data /var/www/astera-next
 sudo chmod -R a+rX /var/www/astera-next
 test -f /var/www/astera-next/index.html
@@ -700,9 +704,23 @@ sudo systemctl reload nginx
 window. The `reload` is not what publishes the files — Nginx stats the root per request — it is
 there to drop any open descriptor on the directory that has just been moved aside.
 
-If the vhost itself changed, install and validate it as in step 10 BEFORE the rename, and restore
-the saved copy if `nginx -t` fails. A vhost that fails validation on the rolling path is a stop
-condition: do not reload a broken configuration over a live site.
+If the vhost itself changed, install and validate it as in step 10 **AFTER the rename**, and
+restore the saved copy if `nginx -t` fails. A vhost that fails validation on the rolling path is a
+stop condition: do not reload a broken configuration over a live site.
+
+**The rename goes first, and the order is load-bearing.** The webroot and the vhost fail in
+opposite directions:
+
+| | Result |
+| --- | --- |
+| New webroot + old vhost | **Harmless.** The old policy carries no nonce source, so the browser ignores the `nonce` attribute on the new page's script tags and `'self'` allows them exactly as before. |
+| Old webroot + new vhost | **A blank game.** `'strict-dynamic'` makes `'self'` and every host source ignored, so a page whose script tags carry no nonce has nothing left to allow them. Every script is refused, with no server-side symptom at all. |
+
+The same rule runs backwards on a rollback: **restore the vhost before the webroot.** Putting the
+previous client back under the current vhost is the blank-game case above.
+
+`deploy/deploy.sh` publishes the client and only then installs the vhost, and
+`apps/web/test/deployment-publish.test.ts` holds that order so it cannot drift back.
 
 Skip step 8 entirely. Continue at step 9.
 
@@ -879,8 +897,7 @@ if ! sudo nginx -t; then
   exit 1
 fi
 
-sudo rsync -a --delete-delay --delay-updates --chmod=D755,F644 \
-  "$web_stage"/ /var/www/astera/
+sudo bash deploy/publish-web.sh "$web_stage" /var/www/astera
 sudo chown -R www-data:www-data /var/www/astera
 
 sudo systemctl reset-failed nginx
@@ -888,9 +905,10 @@ sudo systemctl start nginx
 sudo systemctl is-active --quiet nginx
 ```
 
-Nginx remains stopped throughout the file replacement, so the public cannot request an
-`index.html` from one build and an asset directory from another. `--chmod=D755,F644` is required:
-Docker's local output can leave the staging root mode 0700, while Nginx runs as `www-data`.
+Nginx remains stopped throughout publication. The helper keeps old hashed assets for open tabs,
+copies new assets before replacing `index.html`, and discards a stale precompressed index.
+`--chmod=D755,F644` is required: Docker's local output can leave the staging root mode 0700,
+while Nginx runs as `www-data`.
 
 ### 11. Prove the release from outside — BOTH PATHS
 
@@ -904,6 +922,39 @@ curl -fsS -D - -o /dev/null https://asteraonline.space/api/preview \
   | rg -i '^x-server-time:'
 curl -fsS https://asteraonline.space/api/servers | jq
 ```
+
+**The CSP nonce is a release check, not a detail.** `index.html` ships every script tag stamped
+with a `__CSP_NONCE__` placeholder (`apps/web/vite.config.ts`, `html.cspNonce`) and Nginx rewrites
+it per request with `sub_filter`, so the `script-src 'nonce-…' 'strict-dynamic'` header and the
+document agree. A page served with the placeholder intact carries no valid nonce: **every script
+on it is refused and the game is a blank screen**, with nothing failing on the server and nothing
+in `/health`. Three things must hold, and the third is the one that proves the other two:
+
+```bash
+# 1. The module exists. Without it `nginx -t` fails; with a different nginx build
+#    it may be absent entirely. On Debian/Ubuntu: sudo apt install nginx-full
+nginx -V 2>&1 | rg -o -- '--with-http_sub_module'
+
+# 2. No precompressed index can bypass the filter.
+test ! -f /var/www/astera/index.html.gz
+
+# 3. The served page and the served header carry the SAME nonce, and it changes
+#    on every request.
+curl -fsS -D /tmp/h https://asteraonline.space/ > /tmp/p
+rg -o "nonce-[0-9a-f]{32}" /tmp/h
+rg -o 'nonce="[0-9a-f]{32}"' /tmp/p | head -1
+rg -q '__CSP_NONCE__' /tmp/p && echo 'BROKEN: placeholder was not substituted'
+curl -fsS https://asteraonline.space/ | rg -o 'nonce="[0-9a-f]{32}"' | head -1  # must differ
+rm -f /tmp/h /tmp/p
+```
+
+`deploy/deploy.sh` runs checks 1 and 3 itself and refuses to finish if either fails. On the manual
+path they are yours to run.
+
+Also open the site once in a clean browser profile with the console visible. Zero CSP violations,
+the publisher pages reachable from the footer, and the privacy notice appearing before any
+`_ga` or advertising cookie exists is what an AdSense/H5 review looks at, and none of it shows up
+in a `curl`.
 
 `/api/preview` must remain write-free and take no seat. Do not create a test account in a live
 galaxy. Without `x-server-time`, phones fall back to their device clock and draw movement at
@@ -1286,6 +1337,13 @@ assume a previous container will reject an incompatible forward schema.
   either, and it is the reason the rolling path keeps a previous webroot under its own name
   rather than under the timestamped `/var/www/astera-releases/` copy taken in step 2. Both exist;
   either will do.
+
+  **If the vhost changed in the release being rolled back, restore the vhost FIRST**, then the
+  webroot — the mirror image of the forward order, and for the same reason. The current vhost's
+  `script-src 'nonce-…' 'strict-dynamic'` ignores `'self'`, so the moment an older client whose
+  script tags carry no nonce is renamed back under it, every script on the page is refused and
+  the game is blank with nothing failing server-side. Restore `astera.conf`, `sudo nginx -t`,
+  reload, and only then rename the webroot back.
 - **Before migrations:** retag/restart the retained old image and restore the prior web/Nginx
   files. The database has not changed.
 - **After migration but before public traffic:** keep Nginx stopped, stop new processes, recreate
@@ -1461,6 +1519,16 @@ compose=(docker compose -f docker-compose.prod.yml)
 Then build/publish the web artifact and run internal plus external acceptance using steps 4 and
 8–10 above. A first install has no rollback copy, which makes its backup and acceptance gates more
 important, not less.
+
+The vhost needs `ngx_http_sub_module`, which Debian and Ubuntu ship in `nginx-full` (the default
+for the `nginx` metapackage) and `nginx-extras`, but not in `nginx-light`. Without it `nginx -t`
+fails on the `sub_filter` line in `location = /index.html`, and that is the good outcome — the bad
+one is an Nginx that starts and serves the page with its CSP nonce placeholder unsubstituted, so
+every script on it is refused. Check before installing the vhost:
+
+```bash
+nginx -V 2>&1 | rg -o -- '--with-http_sub_module' || sudo apt install nginx-full
+```
 
 The TLS certificate must exist before enabling the 443 vhost:
 

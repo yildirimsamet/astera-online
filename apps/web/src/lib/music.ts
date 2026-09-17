@@ -135,6 +135,16 @@ const subscribe = (notify: () => void): (() => void) => {
   return () => listeners.delete(notify);
 };
 
+/**
+ * The same switch, for a listener that is not a component.
+ *
+ * `lib/h5.ts` needs it: Google selects ad creatives partly on whether the game
+ * can play sound, and its guidance is to re-declare the state the moment it
+ * changes rather than at the next ad. A `Set` de-duplicates, so a caller that
+ * subscribes the same function twice still gets one notification.
+ */
+export const subscribeMusic = subscribe;
+
 /** Subscribe a component to the switch. Safe to call from anywhere in the tree. */
 export const useMusicEnabled = (): boolean =>
   useSyncExternalStore(subscribe, musicEnabled, () => true);

@@ -1,0 +1,132 @@
+:root {
+  color-scheme: dark;
+  font-family: "IBM Plex Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #060914;
+  color: #e9eef8;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 20% 0%, rgb(34 75 116 / 32%), transparent 38rem),
+    linear-gradient(180deg, #080d1a 0%, #060914 100%);
+  line-height: 1.68;
+}
+
+a { color: #7dd8ff; }
+a:hover { color: #c7efff; }
+a:focus-visible { outline: 2px solid #7dd8ff; outline-offset: 4px; }
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  background: rgb(6 9 20 / 94%);
+  backdrop-filter: blur(12px);
+}
+
+.site-nav,
+.page,
+.site-footer {
+  width: min(100% - 2rem, 760px);
+  margin-inline: auto;
+}
+
+.site-nav {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 1.1rem;
+  font-size: .9rem;
+}
+
+.site-nav a { text-decoration: none; }
+.site-nav .brand { margin-right: auto; color: #fff; font-weight: 700; letter-spacing: .04em; }
+.site-nav .language { color: #aebbd0; }
+
+.page { padding-block: clamp(3rem, 8vw, 5.5rem); }
+
+.eyebrow {
+  margin: 0 0 .75rem;
+  color: #7dd8ff;
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+h1,
+h2 { color: #fff; line-height: 1.15; }
+h1 { max-width: 18ch; margin: 0 0 1.2rem; font-size: clamp(2.2rem, 8vw, 4.4rem); letter-spacing: -.035em; }
+h2 { margin: 2.7rem 0 .7rem; font-size: clamp(1.35rem, 4vw, 1.8rem); }
+
+.lede { max-width: 62ch; color: #c5d0e1; font-size: clamp(1.08rem, 2.5vw, 1.25rem); }
+p, li { color: #b8c3d6; }
+strong { color: #f5f8ff; }
+
+.facts,
+.steps {
+  display: grid;
+  gap: 1rem;
+  margin: 2.2rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts { grid-template-columns: repeat(3, 1fr); }
+.facts li,
+.step {
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  background: rgb(16 24 43 / 82%);
+  padding: 1.1rem;
+}
+.facts strong { display: block; margin-bottom: .25rem; color: #7dd8ff; }
+.step h2 { margin-top: 0; }
+
+.callout {
+  margin: 2rem 0;
+  border-left: 3px solid #7dd8ff;
+  background: rgb(25 43 68 / 70%);
+  padding: 1rem 1.25rem;
+}
+
+.site-footer {
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  padding-block: 1.5rem 2.5rem;
+  color: #8794aa;
+  font-size: .86rem;
+}
+
+.site-footer p { margin: 0; color: inherit; }
+
+/* Every publisher page ends with the same set of links. A reviewer, a crawler
+   and a player all look for the policy pages in the footer, so the set is
+   identical on each page and the current one is marked rather than removed. */
+.footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1.1rem;
+  margin-bottom: .9rem;
+}
+
+.footer-nav a { color: #aebbd0; text-decoration: none; }
+.footer-nav a:hover { color: #e9eef8; text-decoration: underline; }
+.footer-nav a[aria-current="page"] { color: #7dd8ff; }
+
+@media (max-width: 620px) {
+  .site-nav { flex-wrap: wrap; gap: .7rem 1rem; padding-block: .75rem; }
+  .site-nav .brand { width: 100%; }
+  .facts { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

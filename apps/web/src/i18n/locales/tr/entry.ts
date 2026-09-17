@@ -33,6 +33,12 @@ export const landing = {
   opening: 'Galaksi açılıyor',
   ready: 'Gezegenin hazır',
   cover: 'Gökyüzü açılıyor',
+  publicLinksLabel: 'Yayıncı bağlantıları',
+  aboutLink: 'Astera Hakkında',
+  guideLink: 'Nasıl oynanır?',
+  privacyLink: 'Gizlilik',
+  termsLink: 'Koşullar',
+  contactLink: 'İletişim',
 
   form: {
     labelRegister: 'Komutan oluştur',
@@ -106,4 +112,20 @@ export const settings = {
   hint: 'Galaksideki bütün metinler anında değişir; ilerlemen ve ayarların aynı kalır.',
   choose: 'Dil seç',
   current: 'Kullanımda',
+} as const;
+
+export const consent = {
+  title: 'Çerez ve reklam tercihin',
+  essentials: 'Giriş yapınca her hâlükârda bir oturum çerezi saklanır; bu kısım isteğe bağlı değil.',
+  optional:
+    'Ölçüm ve reklam depolaması yalnızca izin verirsen kullanılır. Reddedersen oyun aynı şekilde çalışır, reklamlar kişiselleştirilmeden gösterilir.',
+  accept: 'Kabul et',
+  refuse: 'Reddet',
+  close: 'Kapat',
+  policy: 'Çerez Politikası',
+  menuRowLabel: 'Gizlilik',
+  menuLabel: 'Gizlilik ve çerez seçenekleri',
+  menuGranted: 'İzin verildi',
+  menuDenied: 'Reddedildi',
+  menuUnset: 'Henüz seçilmedi',
 } as const;
