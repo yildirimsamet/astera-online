@@ -229,7 +229,7 @@ export const focus = {
     colonyRoute: "Koloni kurmanın yolu",
     claimOpen: "Koloni yarışı açık",
     settlementInFlight: "Koloni gemilerin yolda",
-    claimRaceExplain: "Gezegen henüz kimsenin değil. Geçerli 2 Şilebi ilk ulaştıran oyuncu gezegeni alır.",
+    claimRaceExplain: "Gezegen henüz kimsenin değil. Geçerli 2 Kurye'yi ilk ulaştıran oyuncu gezegeni alır.",
     colonySlots: "{{used}} / {{total}} koloni yuvası",
     routeRaid: "Kesin zafer kazan",
     routeRaidDetail: "Savaş gemileriyle akın yap. Bütün savunma gemilerini ve kalkanı yok et.",

@@ -332,7 +332,7 @@ export function TransferSheet({
                 }`}
             >
               <div className="flex items-center gap-2">
-              {/*
+                {/*
               THE SHIP, NOT ITS NAME. The raid sheet next door has shown the render
               since it was written; this one — the other half of the same verb —
               listed hull names as plain text, so a player learning which craft
@@ -343,52 +343,52 @@ export function TransferSheet({
               art at 35% behind an amber count says "this exists, you have none"
               in the same shape the whole game uses for a thing not yet owned.
             */}
-              <span data-art className="socket size-10 shrink-0 rounded-control">
-                {art ? (
-                  <img
-                    src={art}
-                    alt=""
-                    aria-hidden
-                    className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
-                    loading="lazy"
-                  />
-                ) : (
-                  <HullMark hull={id} className="size-6 text-dim" />
-                )}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="name block truncate text-bone">{hullName(id) ?? id}</span>
-                {/*
+                <span data-art className="socket size-10 shrink-0 rounded-control">
+                  {art ? (
+                    <img
+                      src={art}
+                      alt=""
+                      aria-hidden
+                      className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <HullMark hull={id} className="size-6 text-dim" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="name block truncate text-bone">{hullName(id) ?? id}</span>
+                  {/*
                 HOW MANY ARE HERE, AS PIPS WHERE THE EYE CAN COUNT THEM. A roster
                 holds a handful of anything expensive, and "/3" is a figure to
                 read where three marks is a quantity to see. Past eight the rack
                 would be a smear, so the numeral takes over — which is the same
                 threshold `Tally` is sized for everywhere else.
               */}
-                {held > 0 ? (
-                  held <= 8 ? (
-                    <span className="mt-1 flex items-center gap-2">
-                      <Tally
-                        used={fleet[id] ?? 0}
-                        total={held}
-                        size="sm"
-                        label={t('transfer.hullPacked', {
-                          packed: fleet[id] ?? 0,
-                          held,
-                          name: hullName(id) ?? id,
-                        })}
-                      />
-                    </span>
+                  {held > 0 ? (
+                    held <= 8 ? (
+                      <span className="mt-1 flex items-center gap-2">
+                        <Tally
+                          used={fleet[id] ?? 0}
+                          total={held}
+                          size="sm"
+                          label={t('transfer.hullPacked', {
+                            packed: fleet[id] ?? 0,
+                            held,
+                            name: hullName(id) ?? id,
+                          })}
+                        />
+                      </span>
+                    ) : (
+                      <span className="num mt-1 block text-label text-dim">
+                        {fleet[id] ?? 0}
+                        <span className="text-faint">/{held}</span>
+                      </span>
+                    )
                   ) : (
-                    <span className="num mt-1 block text-label text-dim">
-                      {fleet[id] ?? 0}
-                      <span className="text-faint">/{held}</span>
-                    </span>
-                  )
-                ) : (
-                  <span className="mt-1 block text-label text-alloy">{t('transfer.hullNone')}</span>
-                )}
-              </span>
+                    <span className="mt-1 block text-label text-alloy">{t('transfer.hullNone')}</span>
+                  )}
+                </span>
               </div>
               <div className="mt-2">
                 <QuantityStepper

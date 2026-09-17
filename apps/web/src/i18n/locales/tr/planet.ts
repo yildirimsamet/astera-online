@@ -404,7 +404,7 @@ export const action = {
   shortfallJoin: " ve ",
   shortfallLabel: "Eksik: {{parts}} gerekiyor",
   statAttack: "Saldırı",
-  statHull: "Dayanıklılık",
+  statHull: "Defans",
   statSpeed: "Hız",
   statSpeedFixed: "sabit",
   statCargo: "Ambar",

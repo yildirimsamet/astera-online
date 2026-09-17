@@ -209,7 +209,7 @@ function DayRow({ label, children }: { label: string; children: React.ReactNode 
 
 function TimePill({ time, detail }: { time: string; detail?: string }) {
   return (
-    <span className="num inline-flex items-center gap-1 rounded-full border border-line-soft bg-void/45 px-2 py-1 text-label text-bone">
+    <span className="plate plate-inset num inline-flex items-center gap-1 rounded-full px-2 py-1 text-label text-bone">
       {time}
       {detail === undefined ? null : <span className="text-crystal">{detail}</span>}
     </span>

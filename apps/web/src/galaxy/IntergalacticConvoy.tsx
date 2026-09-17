@@ -22,7 +22,8 @@ export const CONVOY_HULL_SCALE = CONVOY_BASE_HULL_SCALE * CONVOY_HULL_SCALE_MULT
 export const CONVOY_DRIFT_AMPLITUDE =
   (Math.min(...INTERGALACTIC_CONVOY.formation.rankGaps) / SCALE) * 0.12;
 export const CONVOY_WIND_LAYER_COUNT = 4;
-export const CONVOY_WIND_OPACITY = 0.105;
+export const CONVOY_WIND_OPACITY = 0.07;
+export const CONVOY_WIND_NOSE_OPACITY = 0.25;
 
 const FORMATION_VERSION = 1;
 const FOCUS_FOV_RADIANS = Math.PI / 4;
@@ -111,6 +112,7 @@ const WIND_VERTEX_SHADER = `
 
 const WIND_FRAGMENT_SHADER = `
   uniform float uOpacity;
+  uniform float uNoseOpacity;
   varying vec2 vUv;
   varying float vFlow;
   varying float vPhase;
@@ -169,14 +171,14 @@ const WIND_FRAGMENT_SHADER = `
     softBody *= smoothstep(0.42, 0.82, broadNoise) * 0.08;
     float sideFade = smoothstep(0.0, 0.11, vUv.x)
       * (1.0 - smoothstep(0.89, 1.0, vUv.x));
-    float noseFade = smoothstep(0.0, 0.07, vUv.y);
+    float noseFade = mix(uNoseOpacity, 1.0, smoothstep(0.0, 0.08, vUv.y));
     float tailFade = 1.0 - smoothstep(0.78, 1.0, vUv.y);
     float alpha = (filaments + softBody) * sideFade * noseFade * tailFade
       * vEnergy * uOpacity;
     if (alpha < 0.002) discard;
 
-    vec3 edgeColour = mix(vec3(0.08, 0.26, 0.34), vec3(0.11, 0.34, 0.43), vTone);
-    vec3 coreColour = mix(vec3(0.50, 0.72, 0.78), vec3(0.64, 0.82, 0.87), vTone);
+    vec3 edgeColour = mix(vec3(0.15, 0.23, 0.27), vec3(0.19, 0.29, 0.34), vTone);
+    vec3 coreColour = mix(vec3(0.59, 0.70, 0.74), vec3(0.69, 0.78, 0.81), vTone);
     vec3 colour = mix(edgeColour, coreColour, 0.26 + min(1.0, filaments) * 0.58);
     gl_FragColor = vec4(colour, alpha);
   }
@@ -199,6 +201,32 @@ export function convoyLongitudinalOffset(slotIndex: number, elapsedSeconds: numb
   );
 }
 
+/** Place the slipstream behind the nose and close to the two hull lanes. */
+export function convoyWindBounds(slots: readonly VisualSlot[]): {
+  front: number;
+  back: number;
+  halfWidth: number;
+} {
+  let front = -Infinity;
+  let back = Infinity;
+  let halfWidth = 0;
+  let largestHull = 0;
+  for (const slot of slots) {
+    const hullScale = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale;
+    front = Math.max(front, slot.position[2] + hullScale * 0.55);
+    back = Math.min(back, slot.position[2] - hullScale * 0.9);
+    halfWidth = Math.max(halfWidth, Math.abs(slot.position[0]) + hullScale * 0.38);
+    largestHull = Math.max(largestHull, hullScale);
+  }
+  const originalFront = front + largestHull * 0.3;
+  const rear = back - largestHull * 0.9;
+  return {
+    front: originalFront - (originalFront - rear) * 0.05,
+    back: rear,
+    halfWidth: halfWidth * 0.98,
+  };
+}
+
 /**
  * A soft slipstream field passing from the convoy's nose toward its rear.
  *
@@ -212,24 +240,7 @@ function ConvoyWind({ slots, focused }: {
   slots: readonly VisualSlot[];
   focused: boolean;
 }) {
-  const bounds = useMemo(() => {
-    let front = -Infinity;
-    let back = Infinity;
-    let halfWidth = 0;
-    let largestHull = 0;
-    for (const slot of slots) {
-      const hullScale = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale;
-      front = Math.max(front, slot.position[2] + hullScale * 0.55);
-      back = Math.min(back, slot.position[2] - hullScale * 0.9);
-      halfWidth = Math.max(halfWidth, Math.abs(slot.position[0]) + hullScale * 0.38);
-      largestHull = Math.max(largestHull, hullScale);
-    }
-    return {
-      front: front + largestHull * 0.3,
-      back: back - largestHull * 0.9,
-      halfWidth: halfWidth * 1.12,
-    };
-  }, [slots]);
+  const bounds = useMemo(() => convoyWindBounds(slots), [slots]);
   const geometry = useMemo(() => {
     const buffer = new THREE.InstancedBufferGeometry();
     const vertexCount = (WIND_FLOW_SEGMENTS + 1) * 2;
@@ -271,6 +282,7 @@ function ConvoyWind({ slots, focused }: {
       uBack: { value: bounds.back },
       uHalfWidth: { value: bounds.halfWidth },
       uOpacity: { value: CONVOY_WIND_OPACITY },
+      uNoseOpacity: { value: CONVOY_WIND_NOSE_OPACITY },
     },
     vertexShader: WIND_VERTEX_SHADER,
     fragmentShader: WIND_FRAGMENT_SHADER,

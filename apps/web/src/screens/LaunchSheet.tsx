@@ -582,7 +582,7 @@ export function LaunchSheet({
           </div>
         </div>
 
-        <div className="mt-2">
+        <div className="mt-3">
           <QuantityStepper
             value={chosen}
             min={0}

@@ -11,8 +11,10 @@ import {
   CONVOY_HULL_SCALE,
   CONVOY_HULL_SCALE_MULT,
   CONVOY_WIND_LAYER_COUNT,
+  CONVOY_WIND_NOSE_OPACITY,
   CONVOY_WIND_OPACITY,
   convoyLongitudinalOffset,
+  convoyWindBounds,
 } from '../src/galaxy/IntergalacticConvoy.js';
 
 /** Owner playtest corrections for the public convoy's map-scale presence. */
@@ -86,7 +88,36 @@ describe('the Intergalactic Convoy presentation', () => {
     expect(CONVOY_WIND_LAYER_COUNT).toBeGreaterThanOrEqual(3);
     expect(CONVOY_WIND_LAYER_COUNT).toBeLessThanOrEqual(5);
     expect(CONVOY_WIND_OPACITY).toBeGreaterThan(0);
-    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.25);
+    expect(CONVOY_WIND_OPACITY).toBeGreaterThanOrEqual(0.06);
+    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.075);
+    expect(CONVOY_WIND_NOSE_OPACITY).toBeGreaterThanOrEqual(0.2);
+    expect(CONVOY_WIND_NOSE_OPACITY).toBeLessThanOrEqual(0.3);
+  });
+
+  it('starts the wind 5% behind its former tip and brings its sides closer to the fleet', () => {
+    const slots = convoyFormationSlots(1).map((slot) => ({
+      hull: slot.hull,
+      position: [
+        slot.localPosition.x / SCALE,
+        slot.localPosition.y / SCALE,
+        slot.localPosition.z / SCALE,
+      ] as [number, number, number],
+    }));
+    const hullSizes = slots.map(({ hull }) => CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[hull].scale);
+    const largestHull = Math.max(...hullSizes);
+    const oldFront = Math.max(...slots.map((slot, index) => slot.position[2] + hullSizes[index]! * 0.55))
+      + largestHull * 0.3;
+    const oldBack = Math.min(...slots.map((slot, index) => slot.position[2] - hullSizes[index]! * 0.9))
+      - largestHull * 0.9;
+    const formationHalfWidth = Math.max(...slots.map((slot, index) => (
+      Math.abs(slot.position[0]) + hullSizes[index]! * 0.38
+    )));
+    const bounds = convoyWindBounds(slots);
+
+    expect(bounds.front).toBeCloseTo(oldFront - (oldFront - oldBack) * 0.05, 9);
+    expect(bounds.back).toBeCloseTo(oldBack, 9);
+    expect(bounds.halfWidth).toBeCloseTo(formationHalfWidth * 0.98, 9);
+    expect(bounds.front).toBeGreaterThan(bounds.back);
   });
 });
 
@@ -111,6 +142,7 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     expect(source).toContain('uniform float uTime;');
     expect(source).toContain('float flowNoise');
     expect(source).toContain('float flowFbm');
+    expect(source).toContain('mix(uNoseOpacity, 1.0, smoothstep');
     expect(source).toContain('vFlow = uv.y * 2.8 - uTime');
     expect(source).toContain('smoothstep');
     expect(source).not.toContain('<lineSegments');

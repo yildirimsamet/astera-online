@@ -53,7 +53,7 @@ export const counter = {
   compareRule:
     'İki tarafın ateş edebilen gemi ve toplarının kaynak maliyeti karşılaştırılır. Kalkan ve silahsız gemiler bu sayıya dahil değildir. Tahmin ayrıca gemi sınıflarını, araştırmaları ve bilinen kalkanı kullanır. Rakibin değeri belirtilen sınırın altındaysa model o başarı düzeyini bekler. Tam başarı, gemilerinin hayatta kalacağını garanti etmez: iki taraf da yok olabilir. Bilgi eski olabilir; turun şans etkisi hesaba katılmaz.',
   linesClears: 'Tam başarı sınırı: {{at}}',
-  linesBreaks: 'kısmi başarı sınırı: {{at}}',
+  linesBreaks: 'Kısmi başarı sınırı: {{at}}',
   lineJoin: ' · ',
   lossLabel: 'Tahmini kayıp: {{share}} (filonun kaynak değerine göre)',
   lossUncertainty: 'Bu bir kazanma olasılığı değil, mevcut bilgilere dayalı kayıp aralığıdır.',

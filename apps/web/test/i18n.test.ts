@@ -252,6 +252,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'community.donate.cardHeading',
   'signals.repeat',
   'pendingStrip.more',
+  // Notification title is two already-localised runtime values joined by punctuation.
+  'notifications.colonyFault',
   'planet.orbit.slotsUsed',
   'gains.derrick.now',
   'gains.derrick.next',

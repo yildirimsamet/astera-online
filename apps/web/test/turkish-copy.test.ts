@@ -22,7 +22,7 @@ describe('the Turkish the force readings are written in', () => {
     const clears = tr('counter.linesClears', { at: '12b' });
     const breaks = tr('counter.linesBreaks', { at: '12b' });
     expect(clears).toBe('Tam başarı sınırı: 12b');
-    expect(breaks).toBe('kısmi başarı sınırı: 12b');
+    expect(breaks).toBe('Kısmi başarı sınırı: 12b');
     // The rule this test exists for, held on the reading rather than the wording:
     // "12b altını" is read as GOLD before it is read as "what is under 12b", so the
     // line may never reach for `altı` to say where it sits.

@@ -106,7 +106,7 @@ export function Sheet({
   const dismiss = useOwnPress(onClose);
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[40] flex flex-col justify-end">
       <button
         type="button"
         aria-hidden="true"
@@ -120,7 +120,7 @@ export function Sheet({
         aria-label={title}
         data-sheet-panel
         className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] ${
-          contained ? 'h-[88dvh]' : 'max-h-[88dvh]'
+          contained ? 'h-[88dvh]' : 'max-h-[100dvh]'
         } ${reading ? 'mx-auto w-full max-w-3xl' : ''}`}
       >
         <header className="relative flex shrink-0 items-start gap-2 px-2 pb-3 pt-3">

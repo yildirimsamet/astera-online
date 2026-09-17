@@ -1713,10 +1713,10 @@ function Defend({
         />
       </div>
 
-      <Band
+      {/* <Band
         label={t('planet.defend.strategicBand')}
         note={t('planet.defend.strategicNote')}
-      />
+      /> */}
       {!lesson && <InterceptorBattery planet={planet} held={held} onNeed={onNeed} />}
     </>
   );

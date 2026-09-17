@@ -113,7 +113,7 @@ export function ForceCompare({
   return (
     <>
       {/* Prose scrolls away, so the pinned comparison leaves room to choose ships. */}
-      <div className="mt-2 px-3 py-2">
+      <div className="mt-1 px-2 pb-1">
         <div className="flex items-center justify-between gap-2">
           <p className="text-body font-semibold text-crystal">{t('counter.compareHeading')}</p>
           <button
@@ -134,7 +134,7 @@ export function ForceCompare({
       </div>
     <section
       data-force-compare
-      className="plate plate-inset bg-panel !opacity-100 z-50 mt-1 px-3 py-2 sticky top-0"
+      className="plate plate-inset bg-panel !opacity-100 z-50 mt-1 px-3 pt-1 pb-3 sticky top-0"
       aria-label={t('counter.compareLabel', {
         yours: compact(yours),
         theirs: theirs
@@ -178,7 +178,7 @@ export function ForceCompare({
               </span>
             ) : null}
           </span>
-          <span className="num shrink-0 text-title text-threat-ink">
+          <span className="num shrink-0 text-micro text-threat-ink">
             {theirs
               ? theirs.low === theirs.high
                 ? compact(theirs.high)
@@ -256,17 +256,17 @@ export function ForceCompare({
       </div>
 
       {lines && (
-        <p data-testid="compare-lines" className="num mt-2 grid gap-1 text-label leading-relaxed">
+        <p data-testid="compare-lines" className="num mt-2 grid grid-cols-2 gap-1 text-micro leading-relaxed">
           <span className="text-opportunity">{t('counter.linesClears', { at: span(lines.clears) })}</span>
           <span className="text-alloy">{t('counter.linesBreaks', { at: span(lines.breaks) })}</span>
         </p>
       )}
       {lossShare !== null && (
-        <div className="mt-2 border-t border-line-soft pt-2">
-        <p data-testid="compare-loss" className="text-body font-semibold leading-relaxed text-bone">
+        <div className="mt-1 border-t border-line-soft">
+        <p data-testid="compare-loss" className="text-label font-semibold leading-relaxed text-bone">
           {t('counter.lossLabel', { share: lossShare })}
         </p>
-        <p className="mt-1 text-caption leading-relaxed text-dim">{t('counter.lossUncertainty')}</p>
+        <p className="mt-0.5 text-caption leading-relaxed text-dim">{t('counter.lossUncertainty')}</p>
         </div>
       )}
       {notes.length > 0 && (
@@ -281,7 +281,7 @@ export function ForceCompare({
         hairline is the whole statement of that.
       */}
       {children !== undefined && (
-        <div className="mt-2 border-t border-line-soft pt-2">{children}</div>
+        <div className="mt-1 border-t border-line-soft pt-1">{children}</div>
       )}
     </section>
     </>
@@ -295,7 +295,7 @@ export function FleetLossWarning({ loss }: { loss: { low: number; high: number }
   // displayed 100% without the corresponding consequence would contradict itself.
   if (loss === null || Math.round(loss.high * 100) < 100) return null;
   return (
-    <p data-total-loss-risk className="mb-2 border-l-2 border-threat pl-3 text-title font-semibold leading-relaxed text-threat-ink">
+    <p data-total-loss-risk className="mb-2 border-l-2 border-threat pl-3 text-label font-semibold leading-relaxed text-threat-ink">
       {t('counter.lossTotalRisk')}
     </p>
   );

@@ -3459,7 +3459,7 @@ function CraftPicker({
   return (
     <div className="mt-3">
       <p className="legend mb-2">{t('focus.craftPicker.label')}</p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mb-2">
         {/* The chosen count is LIT AND RAISED, the same grammar every other
             segmented control in the game uses. It used to be cyan text plus a
             `border-crystal/60` that never drew, because `.btn` sets no border

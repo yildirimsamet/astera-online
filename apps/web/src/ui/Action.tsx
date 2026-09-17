@@ -332,9 +332,9 @@ export function StatStrip({
   const lifts = salvage !== undefined && salvage > 0;
 
   return (
-    <div className={`stats ${big ? 'stats-card' : ''} ${showLabels ? '!grid grid-cols-2 !gap-2' : ''}`}>
+    <div className={`stats ${big ? 'stats-card' : ''} ${showLabels ? '!grid grid-cols-5 !gap-2' : ''}`}>
       <Stat
-        icon={<AttackIcon className={big ? 'size-5' : 'size-4'} />}
+        icon={<AttackIcon className={big ? 'size-4' : 'size-3'} />}
         tone="attack"
         label={i18n.t('action.statAttack')}
         value={atk}
@@ -342,7 +342,7 @@ export function StatStrip({
         showLabel={showLabels}
       />
       <Stat
-        icon={<HullIcon className={big ? 'size-5' : 'size-4'} />}
+        icon={<HullIcon className={big ? 'size-4' : 'size-3'} />}
         tone="hull"
         label={i18n.t('action.statHull')}
         value={hp}
@@ -350,7 +350,7 @@ export function StatStrip({
         showLabel={showLabels}
       />
       <Stat
-        icon={<SpeedIcon className={big ? 'size-5' : 'size-4'} />}
+        icon={<SpeedIcon className={big ? 'size-4' : 'size-3'} />}
         tone="speed"
         label={i18n.t('action.statSpeed')}
         value={speed}
@@ -362,7 +362,7 @@ export function StatStrip({
       />
       {lifts ? (
         <Stat
-          icon={<SalvageIcon className={big ? 'size-5' : 'size-4'} />}
+          icon={<SalvageIcon className={big ? 'size-4' : 'size-3'} />}
           tone="salvage"
           label={i18n.t('action.statSalvage')}
           value={salvage}
@@ -371,7 +371,7 @@ export function StatStrip({
         />
       ) : (
         <Stat
-          icon={<CargoIcon className={big ? 'size-5' : 'size-4'} />}
+          icon={<CargoIcon className={big ? 'size-4' : 'size-3'} />}
           tone="cargo"
           label={i18n.t('action.statCargo')}
           value={cargo}
@@ -382,7 +382,7 @@ export function StatStrip({
       )}
       {room !== undefined && (
         <Stat
-          icon={<HangarIcon className={big ? 'size-5' : 'size-4'} />}
+          icon={<HangarIcon className={big ? 'size-4' : 'size-3'} />}
           tone="room"
           label={i18n.t('action.statRoom')}
           value={room}
@@ -391,7 +391,7 @@ export function StatStrip({
         />
       )}
       <Stat
-        icon={<Mark of="deuterium" className={big ? 'size-5' : 'size-4'} />}
+        icon={<Mark of="deuterium" className={big ? 'size-4' : 'size-3'} />}
         tone="fuel"
         label={i18n.t('action.statFuel')}
         value={fuel}
@@ -430,8 +430,8 @@ function Stat({
     <div className={`stat stat-${tone}`} title={label} aria-label={`${label}: ${text ?? compact(value)}`}>
       <span aria-hidden className="stat-icon">{icon}</span>
       <span className="stat-body">
-        {(big || showLabel) && <span className={big ? 'legend' : 'text-body text-dim'}>{label}</span>}
-        <span className={`stat-value ${showLabel ? '!text-title' : ''}`}>{text ?? compact(value)}</span>
+        {(big || showLabel) && <span className={big ? 'legend' : 'text-label text-dim'}>{label}</span>}
+        <span className={`stat-value ${showLabel ? '!text-label' : ''}`}>{text ?? compact(value)}</span>
       </span>
     </div>
   );
