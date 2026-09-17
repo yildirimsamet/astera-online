@@ -179,6 +179,29 @@ describe('arızalar gelmeye başlar', () => {
     expect(await faultsOf(f, colony)).toHaveLength(FAULT_KINDS.length);
     expect(await pendingOf(f, 'fault_spawn')).toHaveLength(1);
   });
+
+  it('tüm arızalar onarıldıktan sonra aynı sayaç hızıyla yeniden arıza çıkarır', async () => {
+    await arm();
+    const [firstTimer] = await pendingOf(f, 'fault_spawn');
+    f.clock.set(new Date(firstTimer!.resolveAt.getTime() + 1000));
+    await worker().tick();
+    const [firstFault] = await faultsOf(f, colony);
+    expect(firstFault).toBeDefined();
+    const [secondTimer] = await pendingOf(f, 'fault_spawn');
+    expect(secondTimer!.id).not.toBe(firstTimer!.id);
+
+    const { readyAt } = await startFaultRepair(f.db, colony, firstFault!.id, f.clock, f.playerIds[0]!);
+    f.clock.set(new Date(readyAt.getTime() + 1000));
+    await worker().tick();
+    expect(await faultsOf(f, colony)).toHaveLength(0);
+    expect((await pendingOf(f, 'fault_spawn'))[0]?.id).toBe(secondTimer!.id);
+    expect((await pendingOf(f, 'fault_spawn'))[0]?.resolveAt).toEqual(secondTimer!.resolveAt);
+
+    f.clock.set(new Date(secondTimer!.resolveAt.getTime() + 1000));
+    await worker().tick();
+    expect(await faultsOf(f, colony)).toHaveLength(1);
+    expect(await pendingOf(f, 'fault_spawn')).toHaveLength(1);
+  });
 });
 
 describe('onarım', () => {

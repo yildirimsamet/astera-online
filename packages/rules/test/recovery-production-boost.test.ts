@@ -54,11 +54,11 @@ describe('production hours across a span', () => {
   });
 
   /**
-   * A DISRUPTED WORLD IS NOT PRODUCING, AND A BOOST CANNOT DOUBLE ZERO.
+   * A LEGACY STORED DOWNTIME CANNOT BE TURNED INTO PRODUCTION BY A BOOST.
    *
-   * A raid that clears the recovery bar also disrupts the surface, so the first
-   * minutes of every boost are usually offline. The boost is spent in wall time —
-   * it ends with the shield — and pays only the minutes the works actually ran.
+   * New raids no longer create this state, but old persisted deadlines can overlap
+   * the recovery window during a rolling upgrade. The boost is spent in wall time
+   * and pays only the minutes the works actually ran.
    */
   it('boosts only productive minutes inside a disruption', () => {
     // Offline until 30, boosted until 90: 60 productive boosted + 30 ordinary.

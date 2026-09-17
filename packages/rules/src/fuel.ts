@@ -24,9 +24,11 @@ import { resourceValue } from './valuation.js';
  * derived from in `profileHull`, deliberately: one statement of "how fast is this
  * thing" feeding both, because two tables would drift the first time either moved.
  *
- * CEILED, NEVER ROUNDED, and never below one. `missionFuel` already ceils per leg,
- * so this is the same promise one level down: no hull is ever free to move, and
- * rounding never hands the cheap end of a tier a discount the dear end pays for.
+ * THE BASE MASS IS CEILED, THEN THE TIER MULTIPLIER IS ROUNDED. The second
+ * step raises tier one by 75% and tapers to 50% at tier four, preserving the
+ * higher tiers' production-resource efficiency while making every fleet dearer
+ * to operate. Applying it after the first ceiling keeps small hulls from losing
+ * most of their increase to integer rounding.
  *
  * ZERO FOR A GROUND HULL. A gun never travels, so it has no thirst whatever it
  * weighs on the ground. A hull with no reference trip — the Prospector — sits at the
@@ -35,11 +37,15 @@ import { resourceValue } from './valuation.js';
 export function hullFuelMass(hull: HullId): number {
   const spec = HULLS[hull];
   if (spec.ground) return 0;
-  // The Garbage Collector's thirst is the owner's, not its price's. D200.
-  if (spec.profile === 'COLLECTOR') return SALVAGE.fuelMass;
-  const value = resourceValue(spec);
-  const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(hull) ?? FUEL.pivotRoundTrip);
-  return Math.max(1, Math.ceil(value * FUEL.perValue * thirst));
+  // The Garbage Collector's base thirst is the owner's, not its price's. D200.
+  const base = spec.profile === 'COLLECTOR'
+    ? SALVAGE.fuelMass
+    : Math.max(1, Math.ceil(
+      resourceValue(spec) * FUEL.perValue
+      * (FUEL.pivotRoundTrip / (hullRoundTrip(hull) ?? FUEL.pivotRoundTrip)),
+    ));
+  const multiplier = spec.tier === null ? 1 : FUEL.tierMultiplier[spec.tier];
+  return Math.round(base * multiplier);
 }
 
 /**
@@ -66,9 +72,10 @@ export function fuelMass(fleet: Fleet): number {
  *
  * MASS × DISTANCE, PER LEG, AND NOTHING ELSE.
  *
- * MASS is economic hull expense A + 2C + 32D times FUEL.perValue, tilted
- * by pivotRoundTrip / referenceRoundTrip. It does not read mobile bulk or a tier
- * ladder. Ground hulls never travel. The Garbage Collector has its owner-set mass.
+ * MASS starts from economic hull expense A + 2C + 32D times FUEL.perValue, tilted
+ * by pivotRoundTrip / referenceRoundTrip, then takes the bounded tier multiplier.
+ * It does not read mobile bulk. Ground hulls never travel. The Garbage Collector
+ * has its owner-set base mass and takes the same tier-three increase.
  * Distance adds the price of reach; the reference trip adds the bounded price of
  * speed. Flight duration itself is quoted separately from catalogue speed.
  *

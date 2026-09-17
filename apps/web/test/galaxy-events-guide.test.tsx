@@ -50,8 +50,8 @@ describe('galaxy events guide', () => {
     };
 
     expect(rowsIn('Asteroid Yağmuru')).toEqual([
-      ['Hafta içi', ['12:30–13:30×3', '20:00–21:00×10']],
-      ['Hafta sonu', ['13:00–14:00×5', '20:00–21:00×15']],
+      ['Hafta içi', ['12:30–13:30×2', '20:00–21:00×5']],
+      ['Hafta sonu', ['13:00–14:00×3', '20:00–21:00×6']],
     ]);
     expect(rowsIn('Galaksilerarası Konvoy')).toEqual([
       ['Hafta içi', ['21:00–23:00']],

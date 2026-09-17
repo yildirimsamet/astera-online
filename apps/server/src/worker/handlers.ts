@@ -2,9 +2,7 @@ import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
   PROBE,
-  applyDisruption,
   battleDominion,
-  disruptionMinutes,
   bookBattle,
   computeLoot,
   deuteriumOf,
@@ -35,7 +33,7 @@ import {
   type Ledger,
   type Resources,
 } from '@astera/rules';
-import { addMinutes, atMinute, minutesSince, type Clock } from '../clock.js';
+import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
 import {
   accounts,
@@ -874,12 +872,6 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       > loot.alloy + loot.crystal + loot.deuterium;
     const shieldAbsorbed = result.rounds.reduce((sum, round) => sum + round.shieldAbsorbed, 0);
 
-    const disruptedUntilMinutes = applyDisruption(
-      defender.disruptedUntil ? minutesSince(defender.seasonStart, defender.disruptedUntil) : 0,
-      defender.nowMinutes,
-      result.grade,
-    );
-
     await saveResources(tx, defender.planetId, {
       alloy: defender.alloy - loot.fromStock.alloy,
       crystal: defender.crystal - loot.fromStock.crystal,
@@ -888,14 +880,10 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       bufferCrystal: defender.bufferCrystal - loot.fromBuffer.crystal,
       bufferDeuterium: defender.bufferDeuterium - loot.fromBuffer.deuterium,
       shield: result.shieldLeft,
-      disruptedUntil:
-        disruptedUntilMinutes > defender.nowMinutes
-          ? atMinute(defender.seasonStart, disruptedUntilMinutes)
-          : defender.disruptedUntil,
     });
 
     /**
-     * AND A DEFEAT HEAVY ENOUGH BUYS THE DEFENDER FOUR HOURS. Owner instruction,
+     * AND A DEFEAT HEAVY ENOUGH BUYS THE DEFENDER SIX HOURS. Owner instruction,
      * 2026-09-14.
      *
      * HERE, INSIDE THE BATTLE'S OWN TRANSACTION, with both player rows already held
@@ -1039,20 +1027,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defenderFleet: defenders,
       defenceSalvage: result.defenceSalvage,
       colonyFaults,
-      /*
-        THE DOWNTIME STANDING AFTER THIS BATTLE, from its own instant — never the
-        absolute deadline, which is meaningless once the report is an hour old.
-
-        ZERO WHENEVER THE GRADE CAUSED NONE, and that guard is not decorative.
-        `applyDisruption` returns the EXISTING deadline untouched when a grade adds
-        nothing, so a raid REPELLED by a world that was already offline from an
-        earlier raid would have stored that leftover figure — and the defender's own
-        report would have read "your works were knocked offline for two hours" about
-        an attack they had just beaten.
-      */
-      disruptedMinutes: disruptionMinutes(result.grade) === 0
-        ? 0
-        : Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
+      /** Historical reports retain this field, but PvP no longer stops production. */
+      disruptedMinutes: 0,
       // Below `DEBRIS.minimum` no field is written at all, so the report says
       // none rather than advertising wreckage nobody can fly out and collect.
       wreckValue,
@@ -1295,35 +1271,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         // report, so this reveals nothing new — it lets "you repelled a raid" say
         // what the raid paid, which is the difference between a fact and a result.
         theirLosses: fleetCount(result.attackerLosses),
-        /**
-         * HOW LONG THE WORKS ARE DOWN — THE THING THAT ACTUALLY HAPPENED.
-         *
-         * Without this the notification could only report the two figures that
-         * were often zero, and on a live shard that is exactly how it read: a
-         * commander raided six times in an evening was told "−0 taken · 0 units
-         * lost" six times, because the vault floor makes a poor planet unlootable
-         * and an undefended one loses no units. Nothing in the line was false and
-         * nothing in it was the point — every one of those raids had knocked their
-         * production offline for the disruption window.
-         *
-         * Sent as minutes FROM NOW rather than as an instant, because that is what
-         * the sentence says and it cannot then drift as the row ages: a
-         * notification is a record of a moment, not a live countdown. The planet
-         * view carries `disruptedUntil` for the countdown.
-         *
-        THE SAME GUARD THE REPORT ABOVE ALREADY HAD, and it was missing here.
-
-        `applyDisruption` returns the STANDING figure untouched when a raid adds
-        nothing — a repelled attack must not extend a window — and that figure
-        belongs to an earlier raid. Without the grade check this line told a
-        defender who had just BEATEN an attack that it had knocked their works
-        offline for an hour, quoting the leftover from the raid before it. The
-        report was fixed for exactly this at the time; the notification says the
-        same sentence to the same person and was left behind.
-      */
-        disruptedMinutes: disruptionMinutes(result.grade) === 0
-          ? 0
-          : Math.max(0, disruptedUntilMinutes - defender.nowMinutes),
+        /** Kept in the payload for older clients; new raids never stop the works. */
+        disruptedMinutes: 0,
       },
       at: defender.now,
       refId: missionId,

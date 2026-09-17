@@ -4,7 +4,7 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
-import { accounts, chatMessages, players } from '../src/db/schema.js';
+import { accounts, chatMessages, clanMemberships, clans, players } from '../src/db/schema.js';
 import { EventBus } from '../src/stream/bus.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
@@ -87,6 +87,29 @@ describe('galaxy chat', () => {
       username: 'İzci',
       planetId: f.planetIds[0],
     });
+  });
+
+  it('returns the current clan tag on sent and listed messages, then removes it when membership ends', async () => {
+    const [clan] = await f.db.insert(clans).values({
+      seasonId: f.seasonId, name: 'Orion Guard', nameKey: 'orion guard', tag: 'OG',
+      createdAt: f.clock.now(),
+    }).returning();
+    const [member] = await f.db.insert(clanMemberships).values({
+      seasonId: f.seasonId, clanId: clan!.id, playerId: f.playerIds[0]!,
+      role: 'LEADER', slot: 0, joinedAt: f.clock.now(), matureAt: f.clock.now(),
+      aidPolicyChangedAt: f.clock.now(),
+    }).returning();
+
+    const sent = await post(0, 'Merhaba');
+    expect(sent.json<{ message: { clanTag: string | null } }>().message.clanTag).toBe('OG');
+    const read = async () => (await app.inject({
+      method: 'GET', url: '/api/chat/messages', headers: auth[1],
+    })).json<{ messages: { clanTag: string | null }[] }>().messages[0]?.clanTag;
+    expect(await read()).toBe('OG');
+
+    await f.db.update(clanMemberships).set({ leftAt: f.clock.now() }).where(eq(clanMemberships.id, member!.id));
+    expect(await read()).toBeNull();
+    expect((await post(0, 'Tekrar merhaba')).json<{ message: { clanTag: string | null } }>().message.clanTag).toBeNull();
   });
 
   it('never publishes an undiscovered author location through chat', async () => {

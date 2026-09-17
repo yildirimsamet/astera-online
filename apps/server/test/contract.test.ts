@@ -513,6 +513,9 @@ describe('every payload the client parses', () => {
     const [mine, theirs] = f.planetIds as [string, string];
     await setLevel(f.db, mine, 'CORE', CLAN.founderCoreLevel);
     await setLevel(f.db, theirs, 'SHIPYARD', 4);
+    // The receiver's four-hour production allowance must cover the test gift.
+    await setLevel(f.db, theirs, 'REFINERY', 12);
+    await setLevel(f.db, theirs, 'EXTRACTOR', 12);
     const founded = clanCreatedSchema.parse(await clanPost('/api/clan/create', {
       name: 'Orbit Wardens',
       tag: 'ORB',
@@ -592,6 +595,9 @@ describe('every payload the client parses', () => {
     const message = clanChatPostSchema.parse(await clanPost('/api/clan/chat/messages', {
       content: 'Rim clear.',
     }));
+    expect(message.message).toHaveProperty('clanTag', founded.tag);
+    expect(clanChatPageSchema.parse(await get('/api/clan/chat')).messages[0])
+      .toHaveProperty('clanTag', founded.tag);
     clanChatReadSchema.parse(await clanPost('/api/clan/chat/read', { messageId: message.message.id }));
     clanSeenSchema.parse(await clanPost('/api/clan/read', {}));
     await f.db.insert(clanLootShares).values({
@@ -1402,6 +1408,7 @@ describe('every payload the client parses', () => {
   it('POST /api/chat/messages and /api/chat/read parse', async () => {
     const sent = chatPostSchema.parse(await post('/api/chat/messages', { content: 'hello galaxy' }));
     expect(sent.message.self).toBe(true);
+    expect(sent.message).toHaveProperty('clanTag');
     const marked = chatReadSchema.parse(await post('/api/chat/read', { messageId: sent.message.id }));
     expect(marked.ok).toBe(true);
   });

@@ -457,7 +457,7 @@ async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24
       joinedAt: players.joinedAt,
       /** The commander's first day here, which no launch may cross. D183. */
       shieldUntil: players.newcomerShieldUntil,
-      /** …and the four hours a heavy defeat buys them, on the same terms. */
+      /** …and the six hours a heavy defeat buys them, on the same terms. */
       recoveryShieldUntil: players.recoveryShieldUntil,
       protectedUntil: planets.protectedUntil,
       recoveryUntil: planets.recoveryUntil,

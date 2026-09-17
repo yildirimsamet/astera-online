@@ -21,12 +21,13 @@ describe('announcement HTML allow-list', () => {
       <h2>Update</h2>
       <p><strong>Ready</strong> <a href="https://astera.example/news">read</a></p>
       <img src="https://cdn.example/shot.png" alt="Galaxy">
-      <div data-youtube-video><iframe src="https://www.youtube-nocookie.com/embed/abc"></iframe></div>
+      <div data-youtube-video><iframe src="https://www.youtube-nocookie.com/embed/abc" referrerpolicy="no-referrer"></iframe></div>
     `);
     expect(result.rejected).toEqual([]);
     expect(result.html).toContain('<h2>Update</h2>');
     expect(result.html).toContain('rel="noopener noreferrer nofollow"');
-    expect(result.html).toContain('referrerpolicy="no-referrer"');
+    expect(result.html).toMatch(/<img[^>]*referrerpolicy="no-referrer"/);
+    expect(result.html).toMatch(/<iframe[^>]*referrerpolicy="strict-origin-when-cross-origin"/);
     expect(result.html).toContain('sandbox="allow-scripts allow-same-origin allow-presentation"');
   });
 

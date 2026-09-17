@@ -1,8 +1,8 @@
-import { and, count, desc, eq, gt, gte, lt, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
 import { CLAN, SEASON, clanChatMessageIsValid } from '@astera/rules';
 import { addMinutes } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
-import { accounts, clanMemberships, clanMessages, planets, players, seasons } from '../db/schema.js';
+import { accounts, clanMemberships, clanMessages, clans, planets, players, seasons } from '../db/schema.js';
 import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
@@ -13,6 +13,7 @@ export interface ClanMessageView {
   authorPlayerId: string;
   planetId: string;
   username: string;
+  clanTag: string | null;
   content: string;
   createdAt: string;
   self: boolean;
@@ -44,6 +45,7 @@ export async function readClanChat(
     authorPlayerId: clanMessages.authorPlayerId,
     planetId: planets.id,
     username: accounts.displayName,
+    clanTag: clans.tag,
     content: clanMessages.content,
     createdAt: clanMessages.createdAt,
   }).from(clanMessages)
@@ -53,6 +55,10 @@ export async function readClanChat(
       eq(planets.controllerPlayerId, players.id),
       eq(planets.kind, 'CAPITAL'),
     ))
+    .leftJoin(clanMemberships, and(
+      eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt),
+    ))
+    .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(and(
       eq(clanMessages.clanId, membership.clanId),
       gte(clanMessages.createdAt, membership.joinedAt),
@@ -101,6 +107,8 @@ export async function postClanChat(
   await lockClanPlayers(tx, [input.playerId]);
   const membership = await activeClanMembership(tx, input.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
+  const [clan] = await tx.select({ tag: clans.tag }).from(clans)
+    .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)));
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-chat:${membership.clanId}`}))`);
   const [latest] = await tx.select({ createdAt: clanMessages.createdAt })
     .from(clanMessages).where(eq(clanMessages.clanId, membership.clanId))
@@ -139,6 +147,7 @@ export async function postClanChat(
     ...message,
     planetId: actor.planetId,
     username: actor.displayName,
+    clanTag: clan?.tag ?? null,
     createdAt: message.createdAt.toISOString(),
     self: true,
   };

@@ -141,9 +141,13 @@ function dynamicHourRng(key: string, hourOrdinal: number): () => number {
 
 export function privateAsteroidHour(
   key: string,
-  hour: { hourOrdinal: number; lanes: readonly AsteroidHourLane[] },
+  hour: {
+    hourOrdinal: number;
+    lanes: readonly AsteroidHourLane[];
+    levelWeights: readonly number[];
+  },
 ): AsteroidSpec[] {
-  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lanes)}`;
+  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lanes)}:${JSON.stringify(hour.levelWeights)}`;
   const cached = hourCache.get(cacheKey);
   if (cached) {
     hourCache.delete(cacheKey);
@@ -153,6 +157,7 @@ export function privateAsteroidHour(
   const rocks = generateAsteroidHour({
     hourOrdinal: hour.hourOrdinal,
     lanes: hour.lanes,
+    levelWeights: hour.levelWeights,
     rng: dynamicHourRng(key, hour.hourOrdinal),
     isotopeSeed: keyedRng(key).isotopeSeed,
   });
@@ -184,7 +189,11 @@ export function composeSeasonAsteroidField(input: {
   calendar: readonly PlannedGalaxyEvent[];
   dynamicFromMinute: number | null;
   legacyCalendar: readonly PlannedGalaxyEvent[] | null;
-  hours: readonly { hourOrdinal: number; lanes: readonly AsteroidHourLane[] }[];
+  hours: readonly {
+    hourOrdinal: number;
+    lanes: readonly AsteroidHourLane[];
+    levelWeights: readonly number[];
+  }[];
   nowMinutes: number;
   lookbackMinutes: number;
 }): AsteroidSpec[] {

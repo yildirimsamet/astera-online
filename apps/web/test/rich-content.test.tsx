@@ -23,7 +23,7 @@ describe('announcement browser sink', () => {
       <RichContent html={`
         <p><a href="https://example.com">Read more</a></p>
         <img src="https://cdn.example/shot.png" alt="Galaxy shot">
-        <iframe src="https://www.youtube-nocookie.com/embed/abc"></iframe>
+        <iframe src="https://www.youtube-nocookie.com/embed/abc" referrerpolicy="no-referrer"></iframe>
       `} />,
     );
     expect(screen.getByRole('link', { name: 'Read more' })).toHaveAttribute(
@@ -32,6 +32,9 @@ describe('announcement browser sink', () => {
     expect(screen.getByRole('img', { name: 'Galaxy shot' })).toBeInTheDocument();
     expect(document.querySelector('iframe')).toHaveAttribute(
       'src', 'https://www.youtube-nocookie.com/embed/abc',
+    );
+    expect(document.querySelector('iframe')).toHaveAttribute(
+      'referrerpolicy', 'strict-origin-when-cross-origin',
     );
   });
 });

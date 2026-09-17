@@ -444,8 +444,8 @@ function TelescopeRack({
  * REWRITTEN ON THE OWNER'S NOTE. It used to read "Watching 2 of 47" against every
  * other planet in the galaxy, and draw a 47-cell bar with two cells lit. That is
  * a progress bar toward a goal the game does not have and could not offer: a
- * telescope tops out at three slots (D18, and D36 caps it), so the number on the
- * right was permanently unreachable by a factor of fifteen. An interface that
+ * telescope tops out at four slots (D18, and D36 caps it), so the number on the
+ * right was permanently unreachable. An interface that
  * shows a player a 4% score on a task that cannot be completed is telling them
  * they are failing at something nobody asked them to do.
  *
@@ -541,9 +541,8 @@ function Coverage({
  * D126 is deliberately split again.
  *
  * SCALED AGAINST THE GALAXY'S RADIUS, which is what makes it worth drawing at
- * all. Radar 5 reaches 2,200 against a radius-2,000 disc; drawing it against the
- * rim makes the current full-neighbourhood warning cost visible instead of hiding
- * it in a sentence.
+ * all. Radar 5 reaches 2,200 against a radius-2,000 disc and the upper rungs extend
+ * beyond the rim; drawing the ring at its real scale makes that reach visible.
  *
  * THE FIGURES STAY, SMALL AND BESIDE THEIR OWN RING. A player planning a defence
  * eventually wants the number; they never want it first.

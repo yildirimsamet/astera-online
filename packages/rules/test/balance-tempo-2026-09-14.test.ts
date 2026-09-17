@@ -147,12 +147,14 @@ describe('research prices', () => {
 describe('instrument prices', () => {
   /** The figures the plan authored, held as a table so a drift is a diff. */
   const EXPECTED: Partial<Record<InstrumentId, readonly (readonly [number, number])[]>> = {
-    TELESCOPE: [[222, 167], [1093, 819], [3698, 2774], [10750, 8062], [28733, 21550]],
-    RADAR: [[148, 111], [728, 546], [2465, 1849], [7166, 5375], [19155, 14366]],
+    TELESCOPE: [[207, 155], [892, 669], [2643, 1982], [6721, 5041], [15720, 11791],
+      [34866, 26151], [74556, 55917], [155204, 116403]],
+    RADAR: [[118, 89], [509, 382], [1510, 1133], [3841, 2881], [8983, 6737],
+      [19924, 14943], [42603, 31952], [88688, 66516]],
   };
 
   for (const [id, rungs] of Object.entries(EXPECTED) as [InstrumentId, readonly (readonly [number, number])[]][]) {
-    it(`takes a quarter off every ${id} rung`, () => {
+    it(`prices every ${id} rung on the extended sensor curve`, () => {
       rungs.forEach(([alloy, crystal], index) => {
         expect(instrumentCost(id, index)).toEqual({ alloy, crystal, deuterium: 0 });
       });
@@ -177,9 +179,9 @@ describe('fuel', () => {
     expect(FUEL.perValue).toBe(0.0055);
   });
 
-  it('halves the Garbage Collector, which does not read the rate', () => {
+  it('keeps the Garbage Collector base before the current tier-three lift', () => {
     expect(SALVAGE.fuelMass).toBe(50);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(50);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(79);
   });
 
   it('leaves no fuel-charged mobile hull free to move, and no ground gun charged', () => {

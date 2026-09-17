@@ -60,7 +60,7 @@ export function sanitizeRenderedHtml(raw: string): string {
       continue;
     }
     frame.setAttribute('loading', 'lazy');
-    frame.setAttribute('referrerpolicy', 'no-referrer');
+    frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
     frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
     frame.setAttribute('allow', 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture');
     frame.setAttribute('allowfullscreen', '');

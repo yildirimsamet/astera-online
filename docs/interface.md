@@ -513,8 +513,8 @@ trap focus and close with Back/Escape.
 
 A progress bar toward an unreachable total tells a player they are failing at something nobody
 asked them to do. The Intel centre's coverage panel read "Watching 2 of 47" against every other
-world in the galaxy and drew a 47-cell bar — but a telescope tops out at three watch slots, so
-the figure was unreachable by a factor of fifteen and the bar could never pass 6%.
+world in the galaxy and drew a 47-cell bar — but a telescope tops out at four watch slots, so
+the figure was unreachable and the bar could never represent full coverage.
 
 The denominator is what the player has: slots used against slots owned. The size of the galaxy
 still appears, but as the *reason* a slot is a decision rather than as a target.

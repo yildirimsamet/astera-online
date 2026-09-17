@@ -22,12 +22,9 @@ export const clarity = (telescopeLevel: number, veilLevel: number): number =>
 /**
  * THE TOP OF EACH INSTRUMENT, AND WHY TWO OF THEM HAVE ONE. D36.
  *
- * `atLevel` clamps, so a table with six entries has always meant "level 5 is the
- * last one that buys anything" — but nothing enforced or communicated that. A
- * player could raise a Radar to 8 at an exponential price, and every level past 5
- * changed precisely nothing: the reach table is exhausted, the bearing arrives at
- * L2 and the origin at L5. The interface duly reported "500 -> 500" and
- * charged them anyway.
+ * `atLevel` clamps, so the last table entry is the last level that buys anything.
+ * The sensor tables now run through level 8; deriving the ceiling from their length
+ * keeps construction, the interface and the effect in step.
  *
  * So the cap is not a new design decision — it is the one the tables already
  * describe, finally made honest. It is derived from the table length rather than

@@ -1524,7 +1524,7 @@ describe('current multi-world ruleset', () => {
    *
    * BOTH ROCKETS ARE COMMITTED BEFORE EITHER LANDS, and since 2026-09-14 that is
    * the only way a second one can reach a world inside the first one's window: an
-   * impact hands its commander a four-hour recovery shield, and that shield refuses
+   * impact hands its commander a six-hour recovery shield, and that shield refuses
    * a new Death Star exactly as it refuses a raid. What a shield never does is turn
    * back something already in the air — so the pair still lands, which is both what
    * keeps the rule below testable and the behaviour a pre-committed strike is

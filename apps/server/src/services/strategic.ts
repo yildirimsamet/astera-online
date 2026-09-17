@@ -749,7 +749,7 @@ export async function applyDeathStarStrike(
     resolveAt: recoveryUntil,
   });
   /**
-   * AND THE COMMANDER GETS THE SAME FOUR HOURS A HEAVY RAID BUYS. Owner
+   * AND THE COMMANDER GETS THE SAME SIX HOURS A HEAVY RAID BUYS. Owner
    * instruction, 2026-09-14.
    *
    * OUTRIGHT, WITHOUT THE LOSS TEST. The raid rule measures a share of what was

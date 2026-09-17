@@ -337,7 +337,11 @@ export function instrumentGain(id: InstrumentId, level: number): Gain {
                  * "3rd yuvayı ekler".
                  */
                 ordinal: i18n.t(
-                  nextSlots === 1 ? 'gains.telescope.ordinalSecond' : 'gains.telescope.ordinalThird',
+                  nextSlots === 1
+                    ? 'gains.telescope.ordinalSecond'
+                    : nextSlots === 2
+                      ? 'gains.telescope.ordinalThird'
+                      : 'gains.telescope.ordinalFourth',
                 ),
               })
             : i18n.t('gains.telescope.cooldown', { hours: cooldown }),

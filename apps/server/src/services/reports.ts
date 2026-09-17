@@ -217,10 +217,7 @@ export interface BattleReportView {
    * probe is sold to learn, and a raid is not a probe.
    */
   colonyFaults: FaultKind[];
-  /**
-   * Minutes the defender's works stand offline after this battle, from its instant.
-   * Zero when the grade caused no disruption — a repelled raid never reports any.
-   */
+  /** Historical compatibility field; new battles never stop production and write zero. */
   disruptedMinutes: number;
   /** What the fight left in orbit for whoever gets there first. Zero when no field formed. */
   wreckValue: number;

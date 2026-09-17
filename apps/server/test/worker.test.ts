@@ -1,5 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { DISRUPTION, MULTI_WORLD, fleetCargo, fleetValue } from '@astera/rules';
+import { MULTI_WORLD, fleetCargo, fleetValue } from '@astera/rules';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -477,7 +477,7 @@ describe('event worker', () => {
   });
 
   describe('a raid, end to end, with both players offline', () => {
-    it('resolves combat, moves loot, disrupts, and brings the fleet home', async () => {
+    it('resolves combat, moves loot, leaves production running, and brings the fleet home', async () => {
       const [attacker, defender] = f.planetIds as [string, string];
       await f.db.update(seasons)
         .set({ rulesetVersion: MULTI_WORLD.dominionLinearRulesetVersion })
@@ -564,12 +564,10 @@ describe('event worker', () => {
         transfer: report!.dominionSwing,
       });
 
-      // The defender is poorer and disrupted.
+      // The defender is poorer, but PvP never switches their works off.
       const [after] = await f.db.select().from(planets).where(eq(planets.id, defender));
       expect(after!.alloy).toBeLessThan(before[0]!.alloy);
-      expect(after!.disruptedUntil).not.toBeNull();
-      expect(after!.disruptedUntil!.getTime() - f.clock.now().getTime())
-        .toBe(DISRUPTION.decisiveMinutes * 60_000);
+      expect(after!.disruptedUntil).toBeNull();
 
       // Dominion is zero-sum across the pair.
       const rows = await f.db.select().from(players);

@@ -13,6 +13,7 @@ import {
   ECON,
   INSTRUMENT_COST_MULT,
   INSTRUMENT_COST_DISCOUNT,
+  SENSOR_INSTRUMENT_COST_GROWTH,
   EMPLACEMENT,
   SATELLITES,
   SEASON,
@@ -204,20 +205,20 @@ export function buildingCost(type: BuildingId, level: number): Resources {
  * price stops being one. `INSTRUMENT_COST_MULT` had carried the differential since
  * D22 and the economy cutover stopped consulting it.
  *
- * THE RATIO IS RESTORED AND THE LEVEL IS NOT RAISED. The three detectors keep the
- * price the flat formula gave them and the Telescope is dearer against them, in the
- * 3 : 2 the constant authored. Lifting the whole layer instead is measured to push
- * wealth into buildings — the one holding a raid can never reach — which drops ARR,
- * and ARR is the open band. A differential costs nothing there; a level does.
+ * Telescope stays dearer than Radar. Both seeing instruments use a gentler level
+ * growth than the two counter-measures so the added L6–L8 reach remains attainable.
  */
 export function instrumentCost(id: InstrumentId, level: number): Resources {
+  const growth = id === 'TELESCOPE' || id === 'RADAR'
+    ? SENSOR_INSTRUMENT_COST_GROWTH
+    : 2;
   const base = profileInvoice(profileIncome(Math.min(30, (level + 1) * 2)),
-    { alloy: 0.8 * 2 ** level, crystal: 1.2 * 2 ** level, deuterium: 0 });
+    { alloy: 0.8 * growth ** level, crystal: 1.2 * growth ** level, deuterium: 0 });
   // Normalised on the cheap three, so this reads as "the Telescope is dearer"
   // rather than "everything went up".
   const mult = INSTRUMENT_COST_MULT[id] / INSTRUMENT_COST_MULT.RADAR;
   /*
-    THE 2026-09-14 QUARTER OFF THE TWO THAT LOOK, APPLIED LAST AND ROUNDED.
+    THE SENSOR DISCOUNT, APPLIED LAST AND ROUNDED.
 
     It lands on the finished figure rather than inside the invoice so the quote
     is exactly `round(undiscounted x INSTRUMENT_COST_DISCOUNT[id])` — the form the
@@ -647,8 +648,9 @@ export function resolveQueue(
   return out;
 }
 
-/* ── Disruption ─────────────────────────────────────────────────── */
+/* ── Legacy persisted disruption compatibility ─────────────────── */
 
+/** Legacy calculation retained for persisted pre-change deadlines and records. */
 export const disruptionMinutes = (grade: 'DECISIVE' | 'PARTIAL' | 'REPELLED'): number =>
   grade === 'DECISIVE'
     ? DISRUPTION.decisiveMinutes
@@ -656,7 +658,7 @@ export const disruptionMinutes = (grade: 'DECISIVE' | 'PARTIAL' | 'REPELLED'): n
       ? DISRUPTION.partialMinutes
       : 0;
 
-/** Refreshes rather than stacks, and is capped — chain-raiding cannot bury a player. */
+/** Legacy deadline helper retained for persisted pre-change state and records. */
 export function applyDisruption(
   disruptedUntil: number,
   now: number,

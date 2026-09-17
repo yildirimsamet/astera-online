@@ -75,12 +75,12 @@ export const vocabulary = {
       name: 'Teleskop',
       tag: 'Uzağı okunur kılar',
       role:
-        'Görüş alanındaki hareketleri tanımlar; 1, 3 ve 5. seviyelerde bir, iki ve üç izleme yuvası sağlar.',
+        'Görüş alanındaki hareketleri tanımlar; 1, 3, 5 ve 7. seviyelerde bir, iki, üç ve dört izleme yuvası sağlar.',
       roleNone:
         'Kurulabilmesi için yörüngede Anten bulunmalıdır. Uzak hareketleri tanımlar, asteroitleri keşfeder ve seçtiğin bir dünyanın filosunun evde olup olmadığını sessizce izler.',
       roleOwned:
         'Hareketleri tanıdığın alanı büyütür ve seçtiğin dünyaların filo durumunu sessizce izler. Bilgi toplar; gezegeni savunmaz.',
-      detail: 'Her seviye hareketleri tanımlayabildiğin menzili büyütür. Bu alana giren asteroitler keşfedilir ve yok olana kadar haritada kalır. 1, 3 ve 5. seviyeler sırasıyla bir, iki ve üç izleme yuvası verir. Teleskop, sana yönelen filolar için varış uyarısı üretmez; bu Radarın görevidir.',
+      detail: 'Her seviye hareketleri tanımlayabildiğin menzili büyütür. Bu alana giren asteroitler keşfedilir ve yok olana kadar haritada kalır. 1, 3, 5 ve 7. seviyeler sırasıyla bir, iki, üç ve dört izleme yuvası verir. Teleskop, sana yönelen filolar için varış uyarısı üretmez; bu Radarın görevidir.',
     },
     RADAR: {
       name: 'Radar',
@@ -91,7 +91,7 @@ export const vocabulary = {
         'Kurulabilmesi için yörüngede Anten bulunmalıdır. Radar olmadan yaklaşan filo varış uyarısı üretmez ve sondaların çoğu fark edilmeden geçer.',
       roleOwned:
         'Çemberindeki hareketleri varış süresi olmadan algılar; bu dünyaya yönelen tehditleri ise varış süresiyle işaretler. 2. seviye yönü, 4. seviye yaklaşık büyüklüğü, 5. seviye çıkış dünyasını ve filo dökümünü gösterir.',
-      detail: 'Her Radar seviyesi temas ve zamanlı uyarı çemberini genişletir, sondaları yakalama ihtimalini artırır. İlk seviye yaklaşan filoyu ve varış süresini gösterir; 2. seviye geliş yönünü, 4. seviye yaklaşık gücü, 5. seviye çıkış dünyasını ve filodaki gemileri açar. Bu dünyaya yönelmeyen hareketler algılanır ancak varış süresi taşımaz. Önleme Ağı, stratejik silahlara ancak Radar 3 veya üstünde ateş edebilir.',
+      detail: 'Her Radar seviyesi temas ve zamanlı uyarı çemberini genişletir. İlk beş seviye sondaları yakalama ihtimalini de artırır: ilk seviye yaklaşan filoyu ve varış süresini gösterir; 2. seviye geliş yönünü, 4. seviye yaklaşık gücü, 5. seviye çıkış dünyasını ve filodaki gemileri açar. 6–8. seviyeler ek menzil sağlar. Bu dünyaya yönelmeyen hareketler algılanır ancak varış süresi taşımaz. Önleme Ağı, stratejik silahlara ancak Radar 3 veya üstünde ateş edebilir.',
     },
     AEGIS: {
       name: 'Aegis',
@@ -138,10 +138,10 @@ export const vocabulary = {
       name: 'Matkap',
       tag: 'Madencileri güçlendirir',
       role:
-        'Bu dünyadan kalkan Kazıcıların hızını 1,5 katına, taşıma kapasitesini 2,6 katına çıkarır.',
+        'Bu dünyadan kalkan Kazıcıların hızını 1,5 katına, taşıma kapasitesini 2 katına çıkarır.',
       blurb:
         'Kazıcı seferlerini destekleyen bir yörünge platformudur. Daha hızlı araçlar hareketli asteroide daha erken ulaşır; büyüyen ambar her aracın daha fazla cevherle dönmesini sağlar.',
-      detail: 'Matkap, bu dünyadan kalkan Kazıcıların hızını 1,5 katına, taban ambarını 2,6 katına çıkarır. Kazıcı Ambarları araştırmasının artışı bunun üzerine uygulanır. Akın ganimetini, diğer gemilerin hızını ve dünyalar arası transferleri etkilemez.',
+      detail: 'Matkap, bu dünyadan kalkan Kazıcıların hızını 1,5 katına, taban ambarını 2 katına çıkarır. Kazıcı Ambarları araştırmasının artışı bunun üzerine uygulanır. Akın ganimetini, diğer gemilerin hızını ve dünyalar arası transferleri etkilemez.',
     },
     BEACON: {
       name: 'Kılavuz',
@@ -402,11 +402,12 @@ export const gains = {
   telescope: {
     slotsLabel: 'İzleyebildiğin gezegen',
     rangeLabel: 'Görüş menzilin',
-    maxed: 'En üst seviye; {{slots}} izleme yuvası ve {{range}} birim hareket görüşü. Dış sınır sisli kalır',
+    maxed: 'En üst seviye; {{slots}} izleme yuvası ve galaksiyi boydan boya kapsayan {{range}} birim hareket görüşü',
     reachAndCooldown: '{{range}} görür, bir yuva {{hours}} saatte yeniden kurulur',
     nextSlot: 'Sonraki seviye {{ordinal}} yuvayı açar',
     ordinalSecond: '2.',
     ordinalThird: '3.',
+    ordinalFourth: '4.',
     cooldown: 'Bir yuva {{hours}} saatte yeniden kurulur',
   },
   radar: {

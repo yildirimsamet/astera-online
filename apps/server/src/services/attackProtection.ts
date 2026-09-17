@@ -132,7 +132,7 @@ async function commanderProductionRate(
  *
  * The one refusal that is about the DEFENDER's own conduct. Without it, a
  * commander who has committed a raid and taken a counter-punch on the way would
- * collect four hours of immunity WHILE their own fleet is still in the air toward
+ * collect six hours of immunity WHILE their own fleet is still in the air toward
  * a target that cannot answer back — a shield earned by attacking, which inverts
  * what the rule is for.
  *
@@ -168,7 +168,7 @@ async function hasOutboundPvpStrike(
  *
  * A bot is given no first-day shield for a stated reason — a shield on one would
  * remove a target from the disc for a day, on exactly the day a new commander has
- * the fewest of them — and the recovery shield is the same bargain for four hours
+ * the fewest of them — and the recovery shield is the same bargain for six hours
  * at a time. The server's commanders hold themselves to the rules people are
  * protected BY and claim none of the protections for themselves.
  *
@@ -186,7 +186,7 @@ async function isServerCommander(db: Queryable, playerId: string): Promise<boole
 }
 
 /**
- * GRANT OR EXTEND THE FOUR-HOUR WINDOW AFTER ONE BATTLE. Owner instruction.
+ * GRANT OR EXTEND THE SIX-HOUR WINDOW AFTER ONE BATTLE. Owner instruction.
  *
  * CALLED INSIDE THE BATTLE'S OWN TRANSACTION, with the defender's player row
  * already held `FOR UPDATE` by the settlement that got here (`lockLedgers`). Two
@@ -362,7 +362,7 @@ export async function forceRecoveryShield(
  * WHAT REMAINS IS ONE NARROW WINDOW, stated rather than glossed: a launch that has
  * read its rows but not yet committed its mission is invisible to a settlement
  * resolving in that instant, so a shield can be granted to a commander whose raid
- * is a few milliseconds from the air. It closes itself — the window is four hours,
+ * is a few milliseconds from the air. It closes itself — the window is six hours,
  * their own next launch clears it, and it costs the galaxy one commander who could
  * not be hit back for one evening. Closing it properly means taking the player
  * locks BEFORE the planet locks in `startAttack`, which is a change to the launch

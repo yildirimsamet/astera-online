@@ -415,7 +415,7 @@ function Works({
 /**
  * The commander's own raid immunity, kept in the permanent HUD.
  *
- * TWO SHIELDS, ONE CHIP. The first day (D183) and the four hours a heavy defeat
+ * TWO SHIELDS, ONE CHIP. The first day (D183) and the six hours a heavy defeat
  * buys (2026-09-14) are the same fact to the commander reading this — *nobody can
  * raid me for this long* — so they share the countdown and differ only in the
  * sentence, which names what would be given up by firing. The server composes the

@@ -24,8 +24,8 @@ import { schedule } from '../worker/queue.js';
  * belirlenir."*
  *
  * One `asteroid_hour` event per hour per season. It counts the people who played in
- * the hour just gone, reads which showers cover the hour, stores the lanes the rules
- * make of that, and queues the next hour. The rocks themselves are never stored —
+ * the hour just gone, reads which showers cover the hour, stores the lanes and level
+ * weights the rules use, and queues the next hour. The rocks themselves are never stored —
  * `asteroidField.ts` derives them from the row — so the row is the whole state, and
  * writing it exactly once is what keeps a rock's identity stable.
  */
@@ -156,6 +156,7 @@ export async function openAsteroidHour(
       spawnFrom,
       activePlayers,
       lanes,
+      levelWeights: ASTEROID_DYNAMIC.levelWeights,
       createdAt: input.now,
     }).onConflictDoNothing().returning({ seasonId: asteroidSpawnHours.seasonId });
 
@@ -215,15 +216,24 @@ export async function loadAsteroidHours(
   db: Queryable,
   seasonId: string,
   now: Date,
-): Promise<{ hourStartsAt: Date; lanes: AsteroidHourLane[] }[]> {
+): Promise<{
+  hourStartsAt: Date;
+  lanes: AsteroidHourLane[];
+  levelWeights: number[];
+}[]> {
   const rows = await db.select({
     hourStartsAt: asteroidSpawnHours.hourStartsAt,
     lanes: asteroidSpawnHours.lanes,
+    levelWeights: asteroidSpawnHours.levelWeights,
   }).from(asteroidSpawnHours).where(and(
     eq(asteroidSpawnHours.seasonId, seasonId),
     gte(asteroidSpawnHours.hourStartsAt, new Date(now.getTime() - FIELD_LOOKBACK_HOURS * HOUR_MS)),
   )).orderBy(asteroidSpawnHours.hourStartsAt);
-  return rows.map((row) => ({ hourStartsAt: row.hourStartsAt, lanes: lanesSchema.parse(row.lanes) }));
+  return rows.map((row) => ({
+    hourStartsAt: row.hourStartsAt,
+    lanes: lanesSchema.parse(row.lanes),
+    levelWeights: levelWeightsSchema.parse(row.levelWeights),
+  }));
 }
 
 /**
@@ -239,3 +249,6 @@ const lanesSchema = z.array(z.object({
   count: z.number().int().nonnegative(),
   frontCount: z.number().int().nonnegative(),
 }).strict());
+
+const levelWeightsSchema = z.array(z.number().finite().nonnegative()).min(2)
+  .refine((weights) => weights.slice(1).some((weight) => weight > 0));

@@ -521,38 +521,45 @@ describe('battle reports', () => {
       expect(defender!.cargoLimited).toBe(false);
     });
 
-    /**
-     * Downtime is a pure function of the grade, which both sides already have, so
-     * both are told — and it is measured from the battle rather than stored as a
-     * deadline, because a deadline is meaningless once the report is an hour old.
-     */
-    it('reports the works this raid knocked offline, to both sides', async () => {
+    /** A partial success takes loot, but combat itself never switches production off. */
+    it('reports no production downtime to either side after a partial raid', async () => {
       await raid();
       const [attacker] = await reportsFor(0);
       const [defender] = await reportsFor(1);
 
-      if (attacker!.grade === 'REPELLED') {
-        expect(attacker!.disruptedMinutes).toBe(0);
-      } else {
-        expect(attacker!.disruptedMinutes).toBeGreaterThan(0);
-      }
-      expect(defender!.disruptedMinutes).toBe(attacker!.disruptedMinutes);
+      expect(attacker!.grade).toBe('PARTIAL');
+      expect(attacker!.disruptedMinutes).toBe(0);
+      expect(defender!.disruptedMinutes).toBe(0);
     });
 
-    /**
-     * A REPELLED RAID REPORTS NO DOWNTIME, EVEN ON A WORLD ALREADY OFFLINE.
-     *
-     * `applyDisruption` returns the EXISTING deadline untouched when a grade adds
-     * nothing, so a world still dark from an earlier raid would have handed its
-     * leftover figure to the report of the attack it had just beaten — and the
-     * defender would have read "your works were knocked offline for three hours"
-     * about a defence that worked.
-     */
-    it('reports no downtime for a raid the defence turned away', async () => {
-      // Knock the works out first, from a raid that lands and wins.
+    it('leaves an undefended world producing after a light decisive raid earns no shield', async () => {
+      await giveUnits(f.db, mine, { DART: 1 });
+      const launch = await launchAttack(f.db, mine, theirs, { DART: 1 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+
+      const [report] = await reportsFor(0);
+      const [world] = await f.db
+        .select({ disruptedUntil: planets.disruptedUntil })
+        .from(planets)
+        .where(eq(planets.id, theirs));
+      const [defender] = await f.db
+        .select({ recoveryShieldUntil: players.recoveryShieldUntil })
+        .from(players)
+        .where(eq(players.id, f.playerIds[1]!));
+
+      expect(report!.grade).toBe('DECISIVE');
+      expect(report!.disruptedMinutes).toBe(0);
+      expect(defender!.recoveryShieldUntil).toBeNull();
+      expect(world!.disruptedUntil).toBeNull();
+    });
+
+    /** A legacy stored deadline must never leak into a new battle report. */
+    it('reports no downtime for a raid while a legacy deadline is still stored', async () => {
+      // A winning raid no longer creates downtime of its own.
       await raid(160);
       const [first] = await reportsFor(0);
-      expect(first!.disruptedMinutes).toBeGreaterThan(0);
+      expect(first!.disruptedMinutes).toBe(0);
 
       // Let the survivors dock: a fleet still in the air is committed to that
       // world and the second launch would be refused before it could be measured.
@@ -562,8 +569,8 @@ describe('battle reports', () => {
       /*
         AND HAND BACK THE WINDOW THAT FIRST RAID EARNED. 2026-09-15.
 
-        A defeat costing eight hours of the defender's own production now buys them
-        four hours of immunity, and a raid heavy enough to knock the works dark is
+        A defeat exceeding eight average hours of the defender's own production buys them
+        six hours of immunity, and a raid heavy enough to cross that bar is
         comfortably that — so the second launch below would be refused for a reason
         this test is not about. `recovery-shield.test.ts` owns whether the window is
         granted correctly; this one owns what `disrupted_minutes` says, and it needs
@@ -574,7 +581,12 @@ describe('battle reports', () => {
         .set({ recoveryShieldUntil: null })
         .where(eq(players.id, f.playerIds[1]!));
 
-      // Then throw a token squadron at a world that is still dark, and lose.
+      // Preserve compatibility with a legacy deadline while resolving a new raid.
+      await f.db.update(planets)
+        .set({ disruptedUntil: new Date(f.clock.now().getTime() + 20 * 60_000) })
+        .where(eq(planets.id, theirs));
+
+      // Then throw a token squadron at that world and lose.
       await giveUnits(f.db, theirs, { BASTION: 12 });
       await giveUnits(f.db, mine, { DART: 1 });
       const launch = await launchAttack(f.db, mine, theirs, { DART: 1 }, f.clock);

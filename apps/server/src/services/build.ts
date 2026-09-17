@@ -410,7 +410,7 @@ export async function raiseInstrument(
     /**
      * NOTHING LEFT TO SELL. D36.
      *
-     * A Radar past L5 and a Telescope past L5 have exhausted their own tables — the
+     * A Radar past L8 and a Telescope past L8 have exhausted their own tables — the
      * warning is at its longest, the range is already everywhere, the origin is
      * already named. Before this the purchase went through, at an exponential
      * price, and changed nothing whatsoever. That is not a balance question; it is

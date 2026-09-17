@@ -139,10 +139,10 @@ describe('event bus reconnect', () => {
   it('drops cached sensor reach as soon as an impact lowers Core', async () => {
     const planetId = f.planetIds[0]!;
     const playerId = f.playerIds[0]!;
-    await setLevel(f.db, planetId, 'CORE', 5);
+    await setLevel(f.db, planetId, 'CORE', 8);
     await giveSatellite(f.db, planetId, 'UPLINK');
-    await giveInstrument(f.db, planetId, 'TELESCOPE', 5);
-    await giveInstrument(f.db, planetId, 'RADAR', 5);
+    await giveInstrument(f.db, planetId, 'TELESCOPE', 8);
+    await giveInstrument(f.db, planetId, 'RADAR', 8);
 
     const before = await projections.sensorsFor(playerId, [planetId]);
     expect(before[0]).toMatchObject({ telescope: true, identify: SENSOR.maxRadius });

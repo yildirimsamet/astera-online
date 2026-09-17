@@ -389,21 +389,20 @@ INTERMITTENT: refresh ≤ every 20 min, 25% of refreshes dropped
 DEGRADED:     reads UNKNOWN 70% of the time
 ```
 
-Floors and ceilings guarantee that no investment buys perfect invisibility or perfect omniscience.
-**The fog never fully lifts.**
+Floors guarantee that no investment buys perfect invisibility. At L8 the two sensor circles span
+4,400 units; Telescope watch slots and probes still ration detailed knowledge of distant worlds.
 
-| Level | 1 | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|---|
-| Telescope range | 950 | 1,150 | 1,250 | 1,450 | 1,600 |
-| Watch slots | 1 | 1 | 2 | 2 | 3 |
-| Re-point cooldown | 5 h | 4 h | 3 h | 2 h | 1 h |
-| Telescope identify | 950 | 1,150 | 1,250 | 1,450 | 1,600 |
-| Radar detect / timed warning *(provisionally merged)* | 1,200 | 1,450 | 1,700 | 1,900 | 2,200 |
+| Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Telescope range | 950 | 1,150 | 1,250 | 1,450 | 1,600 | 2,500 | 3,400 | 4,400 |
+| Watch slots | 1 | 1 | 2 | 2 | 3 | 3 | 4 | 4 |
+| Re-point cooldown | 5 h | 4 h | 3 h | 2 h | 1 h | 1 h | 1 h | 1 h |
+| Telescope identify | 950 | 1,150 | 1,250 | 1,450 | 1,600 | 2,500 | 3,400 | 4,400 |
+| Radar detect / timed warning *(provisionally merged)* | 1,200 | 1,450 | 1,700 | 1,900 | 2,200 | 2,900 | 3,600 | 4,400 |
 
-The Telescope's moving-contact reach is capped at **1,600**, 80% of the sphere radius; comparing it
-only with the 4,000 diameter is insufficient because a radius-sized sensor at the origin already
-sees every valid coordinate. Radar out-reaches it at every rung. Its detection and timed-warning
-tables are temporarily the same; splitting them restores the narrower surprise window recorded by D9.
+The Telescope and Radar reach **4,400** at L8, enough for the widest authored separation. Radar
+out-reaches Telescope through L7 and meets it at the shared full-span ceiling. Detection and
+timed-warning tables are temporarily the same; splitting them restores the narrower surprise window recorded by D9.
 
 **Telescope reads are seeded from `(watchId, floor(now / 20min))`**, so a reading is identical however
 many times it is requested inside its window. Without this a player defeats the entire fog layer by
@@ -457,7 +456,7 @@ step, while Telescope L1 still costs 165 alloy and the door stays open.
 |---|---|---|---|
 | Uplink | 1,125 | 375 | Gates the Telescope and the Radar. Nothing else gates anything |
 | Foundry | 3,400 | 1,190 | ×1.06 on everything the works produce |
-| Derrick | 3,740 | 1,360 | ×2.6 mining hold, ×1.5 mining speed |
+| Derrick | 3,740 | 1,360 | ×2 mining hold, ×1.5 mining speed |
 | Beacon | 5,100 | 1,700 | ×1.3 speed for every fleet that leaves |
 
 Slots come from the Command Core at L1, L3, L5 and L9.
@@ -527,7 +526,8 @@ drives the strategic layer directly instead.
 spawn         0.05175 per player per hour — 15.525/h and ~59 rocks visible at 300 players
 orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
 life          2.5–5 hours, then gone for good
-ore by level  [—, 1600, 3200, 4800, 6400, 8000]   weights [—, .40, .27, .18, .10, .05]
+ore by level  [—, 1600, 3200, 4800, 6400, 8000]   dynamic weights [—, .44, .26, .17, .09, .04]
+legacy field  weights [—, .40, .27, .18, .10, .05] (kept deterministic)
 ore quantum   400 = one bare Prospector hold; every yield is a whole number of these
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
 isotope       one seeded rock per 5 after hour 35, plus a bonus seam every 10 lanes = 11/50 (22%)
@@ -536,6 +536,11 @@ shower        5 starts/full Türkiye day · 60 min · ×5 new arrivals · 120 mi
               half of each window's bonus lands in its first 5 minutes (definition v5)
 quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a blackout
 ```
+
+Current dynamic seasons use **1 rock per active commander per hour**. Fixed shower windows in
+Türkiye time remain 12:30–13:30 ×2 and 20:00–21:00 ×5 on weekdays; 13:00–14:00 ×3 and
+20:00–21:00 ×6 on weekends. These values are stamped only into unopened occurrences;
+already-open hours and windows keep their stored generation inputs.
 
 The Crystal reduction does not reduce total ore. The removed share becomes Alloy; isotope
 concentration still replaces Alloy independently after the Alloy/Crystal split.
@@ -728,6 +733,13 @@ Garbage Collector, whose thirst is hand-set and cannot be reached by the rate. T
 unit per hull and the per-leg ceiling are unchanged, so the very smallest bills do not halve;
 the underlying rate does, and that is what the tests assert.
 
+**Fuel operation increase (2026-09-17).** The rounded base mass now receives **1.75 / 1.67 /
+1.58 / 1.50** at tiers one through four. Lower tiers therefore take the larger increase and the
+top tier settles at +50%; integer rounding puts individual hulls at roughly +50–80%. The combat
+and transport progression tests hold power-per-fuel and cargo-per-fuel strictly upward at every
+tier. A representative first-refinery raid cadence falls from more than four launches per day to
+between three and four, making fleet size an operating decision even without a Hangar cap.
+
 **All build and research timers −25%.** `ECONOMY_ADJUSTMENT.buildTime` 1.30 → **0.975**. One dial,
 seven quotes, and the ceiling moves with it because `BUILD.capMinutes` is derived from the same
 constant: the effective eight-hour cap falls 624 → **468** minutes before AI Robots. Flight time,
@@ -748,12 +760,11 @@ happened to be looking. Measured over five seeds, raw active-field growth at +5 
 unchanged to six decimal places. Gated on the occurrence's definition version (4 → **5**), so a
 window that has already opened keeps the arrival times its rocks were derived under.
 
-**Four hours of protection after a heavy defeat, measured in the defender's own production
-hours (reworked 2026-09-15).** A commander whose defeat cost at least **eight hours** of their own
-works — everything carried off PLUS every hull destroyed that did not rebuild from its own
-wreckage, priced on the 32:16:1 scale and divided by what all their worlds turn out in an hour —
-is unreachable for four hours, on every world they hold, against Raid and Death Star. The window
-is half the bar, so a shield covers half the work it takes to recover. It is the first-day
+**Six hours of protection after a heavy defeat, measured in the defender's own production
+hours (reworked 2026-09-17).** A commander whose defeat costs more than **eight average hours** of
+their own works — everything carried off PLUS every hull destroyed that did not rebuild from its
+own wreckage — is unreachable for six hours, on every world they hold, against Raid and Death Star.
+The window and the loss bar are independent controls. It is the first-day
 shield's contract, earned rather than given, and given up the same way; a Death Star impact on a
 player's world grants it outright.
 
@@ -766,18 +777,14 @@ different quantity for every player, and one defender who lost 100% of his raida
 battle loses 100% of the ships standing on the world. The loudest thing a raid does was worth
 zero to the rule meant to notice a heavy defeat.
 
-*One figure, not two compared separately.* The owner's instruction was that either half should be
-enough; adding them satisfies that — a sum is never smaller than its larger part — and also
-answers the case neither test could alone, where six hours of ore and six hours of ships is a
-twelve-hour defeat rather than two small ones. Both sides go through `resourceValue` rather than
-being divided resource by resource: `profileIncome` gives a commander with no Deuterium Plant a
-production rate of exactly zero, and 36 of 97 measured battles took deuterium the defender cannot
-make — an infinite rebuild time, and therefore a free shield on any raid that touched the tank.
+*Three resource clocks.* Loot and permanent fleet cost are first added per resource. Each Alloy,
+Crystal and Deuterium loss is divided by that resource's hourly production across every world,
+and the three durations are averaged. Zero loss contributes zero hours; positive loss with zero
+production has no finite recovery time and crosses the bar.
 
-*Eight hours is the measured figure.* Against the same 97 battles it grants on **25%** of the ones
-the attacker won, against 31% for the rule it replaces, so the raid economy sees no shock while
-the rule finally fires on the right battles. `battle_reports.recovery_loss_hours` records what
-every resolved battle scored, so the bar can be re-measured rather than re-argued.
+*Eight hours is the owner-set bar.* The earlier 97-battle measurement used the superseded combined
+resource-value formula and does not describe this rule's grant rate. `battle_reports.recovery_loss_hours`
+records what every resolved battle scored so the new average can be measured from real battles.
 
 **Watch list.** The measured risks are the ones the plan named: mining competition against a
 2.67× bigger bare hold; pirate PvE net return with twice the targets and half the fuel; earlier

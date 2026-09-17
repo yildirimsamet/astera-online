@@ -107,7 +107,7 @@ export const research = {
   holdsRole:
     "Her Kazıcının tek seferde taşıdığı cevheri artırır; Matkabın sağladığı ambar artışı bunun üzerine uygulanır.",
   holdsDetail:
-    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2,6 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır; üçüncü kademe her dünyada üçüncü Kazıcı yuvasını açar.",
+    "Her kademe bütün Kazıcıların tek seferde getirdiği cevheri artırır. Matkabın 2 katlık ambar artışı da araştırmayla büyüyen kapasitenin üzerine uygulanır; üçüncü kademe her dünyada üçüncü Kazıcı yuvasını açar.",
   cargoName: "Gemi Ambarları",
   cargoTag: "Her ambar daha çok taşır",
   cargoRole:

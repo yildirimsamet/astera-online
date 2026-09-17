@@ -618,7 +618,7 @@ export const players = pgTable('players', {
    * `effectiveAttackProtection` is the only place either is interpreted.
    *
    * Earned again and again, unlike the first day's. `extendRecoveryShield` pushes
-   * the end out to four hours from the newest defeat and never stacks two windows.
+   * the end out to six hours from the newest defeat and never stacks two windows.
    */
   recoveryShieldUntil: timestamp('recovery_shield_until', { withTimezone: true }),
   /**
@@ -1001,6 +1001,7 @@ export const planets = pgTable('planets', {
   shield: real('shield').notNull().default(0),
   /** Lazy economy anchor. Advanced inside the row lock, never on a timer. */
   lastTickAt: timestamp('last_tick_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Legacy raid downtime; new battles never write it. Kept until old rows and clients age out. */
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
   /**
@@ -1703,12 +1704,7 @@ export const battleReports = pgTable('battle_reports', {
    * the loss legible was computed, applied and thrown away.
    */
   defenceSalvage: jsonb('defence_salvage').$type<Fleet>().notNull().default({}),
-  /**
-   * Minutes the defender's works stand offline AFTER this battle, from its instant.
-   *
-   * Zero whenever the grade caused no disruption at all, which is what stops a
-   * REPELLED raid inheriting a deadline an earlier raid had already set.
-   */
+  /** Historical compatibility field. New battle reports always write zero. */
   disruptedMinutes: real('disrupted_minutes').notNull().default(0),
   /**
    * Value of the wreckage this fight left in orbit, before anyone harvested it.
@@ -1766,9 +1762,9 @@ export const battleReports = pgTable('battle_reports', {
    * WHAT THE RECOVERY SHIELD WAS ACTUALLY DECIDED ON. 2026-09-15.
    *
    * The defeat priced in the defender's own production hours: everything carried
-   * off plus every hull destroyed that did not rebuild from its own wreckage, on
-   * the game's 32:16:1 scale, divided by what their works turn out in an hour.
-   * `ABUSE.recoveryLossHours` is the bar it was compared against.
+   * off plus every hull destroyed that did not rebuild from its own wreckage,
+   * divided separately by hourly Alloy, Crystal and Deuterium output across all
+   * worlds, then averaged. `ABUSE.recoveryLossHours` is the bar it was compared against.
    *
    * STORED BECAUSE IT CANNOT BE RECOMPUTED. `loot` and `defender_losses` are on
    * the row, but the PRODUCTION RATE at the instant of the fight is nowhere —
@@ -2198,11 +2194,12 @@ export const asteroidClaims = pgTable('asteroid_claims', {
 /**
  * ONE HOUR OF THE DYNAMIC ASTEROID FIELD. 2026-09-16.
  *
- * The only stored fact about a dynamic rock is the hour it belongs to: how many
- * commanders were active when the hour opened, when spawning could begin, and the
- * lanes `planAsteroidHour` made of that. Every rock is re-derived from this row and
- * the season secret, identically in every process, so a row is written once and
- * never updated — changing one would move rocks that are already in the sky.
+ * The stored generation facts for a dynamic rock are the hour it belongs to: how
+ * many commanders were active when the hour opened, when spawning could begin, the
+ * lanes `planAsteroidHour` made, and the level weights in force then. Every rock is
+ * re-derived from this row and the season secret, identically in every process, so
+ * a row is written once and never updated — changing one would move rocks already
+ * in the sky.
  */
 export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
@@ -2210,6 +2207,9 @@ export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   spawnFrom: timestamp('spawn_from', { withTimezone: true }).notNull(),
   activePlayers: integer('active_players').notNull(),
   lanes: jsonb('lanes').$type<AsteroidHourLane[]>().notNull(),
+  /** Frozen generation input; changing balance must not reroll an existing rock. */
+  levelWeights: jsonb('level_weights').$type<readonly number[]>().notNull()
+    .default(sql`'[0, 0.4, 0.27, 0.18, 0.1, 0.05]'::jsonb`),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   primaryKey({ columns: [t.seasonId, t.hourStartsAt] }),

@@ -1,8 +1,8 @@
-import { and, count, desc, eq, gt, lt, ne, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { CHAT } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, chatMessages, planets, players } from '../db/schema.js';
+import { accounts, chatMessages, clanMemberships, clans, planets, players } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
@@ -12,6 +12,7 @@ export interface ChatMessageView {
   authorPlayerId: string;
   planetId?: string;
   username: string;
+  clanTag: string | null;
   content: string;
   createdAt: Date;
   self: boolean;
@@ -36,10 +37,15 @@ async function chatPlayer(db: Db, accountId: string) {
     .select({
       player: players, planetId: planets.id,
       username: accounts.displayName, login: accounts.username,
+      clanTag: clans.tag,
     })
     .from(players)
     .innerJoin(accounts, eq(players.accountId, accounts.id))
     .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+    .leftJoin(clanMemberships, and(
+      eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt),
+    ))
+    .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(eq(players.accountId, accountId))
     .limit(1);
   if (!row) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
@@ -77,6 +83,7 @@ export async function readChat(
       y: planets.y,
       z: planets.z,
       username: accounts.displayName,
+      clanTag: clans.tag,
       login: accounts.username,
       content: chatMessages.content,
       createdAt: chatMessages.createdAt,
@@ -85,6 +92,10 @@ export async function readChat(
     .innerJoin(players, eq(chatMessages.authorPlayerId, players.id))
     .innerJoin(accounts, eq(players.accountId, accounts.id))
     .innerJoin(planets, and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')))
+    .leftJoin(clanMemberships, and(
+      eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt),
+    ))
+    .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
       cursor
@@ -175,7 +186,7 @@ export async function postChat(
 
     await publishShard(tx, me.player.seasonId, 'chat');
     return {
-      ...message, planetId: me.planetId, username: me.username, self: true,
+      ...message, planetId: me.planetId, username: me.username, clanTag: me.clanTag, self: true,
       admin: adminUsernames.has(me.login),
     };
   });

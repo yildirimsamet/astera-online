@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { and, asc, eq, gte, inArray } from 'drizzle-orm';
 import {
   ASTEROID_DYNAMIC,
+  GALAXY,
   GALAXY_EVENTS,
   PROSPECTOR,
   activeAsteroids,
@@ -80,7 +81,7 @@ async function hourRow(f: Fixture, hourStartsAt: Date) {
 }
 
 describe('opening an hour', () => {
-  it('counts two rocks for each commander who played in the last hour, and never a bot', async () => {
+  it('counts one rock for each commander who played in the last hour, and never a bot', async () => {
     const f = await dynamicWorld(4);
     const hour = f.clock.now();
     // Two people at the controls, one who left over an hour ago, one the server plays.
@@ -95,6 +96,7 @@ describe('opening an hour', () => {
 
     const row = await hourRow(f, hour);
     expect(row?.activePlayers).toBe(2);
+    expect(row?.levelWeights).toEqual(ASTEROID_DYNAMIC.levelWeights);
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
     expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour);
   });
@@ -115,7 +117,7 @@ describe('opening an hour', () => {
 
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * 2 * 10);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
   });
 
   it('opens each hour once and queues exactly one next hour', async () => {
@@ -135,6 +137,26 @@ describe('opening an hour', () => {
     expect(next).toHaveLength(1);
   });
 
+  it('keeps the legacy weights for an hour row that predates the new balance', async () => {
+    const f = await dynamicWorld(1);
+    const hour = f.clock.now();
+    await f.db.insert(asteroidSpawnHours).values({
+      seasonId: f.seasonId,
+      hourStartsAt: hour,
+      spawnFrom: hour,
+      activePlayers: 1,
+      lanes: [{
+        fromMinute: 0,
+        untilMinute: 60,
+        count: 1,
+        frontCount: 0,
+      }],
+      createdAt: hour,
+    });
+
+    expect((await hourRow(f, hour))?.levelWeights).toEqual(GALAXY.asteroidLevelWeights);
+  });
+
   it('pays a late hour only for the minutes it has left, and never backfills a lost one', async () => {
     const f = await dynamicWorld(2);
     const hour = f.clock.now();
@@ -145,7 +167,7 @@ describe('opening an hour', () => {
     expect(late?.spawnFrom.getTime()).toBe(halfway.getTime());
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
     const rocks = dynamicRocks(snapshot.asteroids);
-    expect(rocks).toHaveLength(2);
+    expect(rocks).toHaveLength(1);
     for (const rock of rocks) {
       expect(rock.appearsAt).toBeGreaterThanOrEqual(minutesSince(hour, halfway));
     }
@@ -383,11 +405,11 @@ describe('adopting the working-week calendar on a live season', () => {
       expect(row.effect).toEqual(plannedEffectFor(row.kind, row.startsAt.getTime() / 60_000, GALAXY_EVENTS));
       expect(row.definitionVersion).toBe(GALAXY_EVENTS.definitions[row.kind].version);
     }
-    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x15 shower.
+    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x6 shower.
     expect(reshaped.find((row) => row.startsAt.getTime() === cutover.getTime())?.kind)
       .toBe('INTERGALACTIC_CONVOY');
     expect(reshaped.find((row) => row.startsAt.getTime() === at(3, 20).getTime()
-      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 15 });
+      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 6 });
 
     // Removed windows took their queue moments with them; new ones brought theirs.
     const moments = await db.select().from(scheduledEvents).where(and(

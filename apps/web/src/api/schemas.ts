@@ -1417,6 +1417,7 @@ const clanMessageSchema = z.object({
   authorPlayerId: z.string(),
   planetId: z.string(),
   username: z.string(),
+  clanTag: z.string().nullable().optional(),
   content: z.string(),
   createdAt: z.coerce.date(),
   self: z.boolean(),
@@ -1458,6 +1459,7 @@ const chatMessageSchema = z.object({
   authorPlayerId: z.string(),
   planetId: z.string().optional(),
   username: z.string(),
+  clanTag: z.string().nullable().optional(),
   content: z.string(),
   createdAt: z.coerce.date(),
   self: z.boolean(),
@@ -2045,7 +2047,7 @@ const ordinaryBattleReport = z.object({
        * sends nothing and the report simply has no line for it.
        */
       colonyFaults: z.array(z.enum(FAULT_KINDS)).optional(),
-      /** Minutes the defender's works were knocked offline by this battle. */
+      /** Historical report compatibility; current battles always send zero. */
       disruptedMinutes: z.number().default(0),
       /** What the fight left in orbit for whoever gets there first. */
       wreckValue: z.number().default(0),

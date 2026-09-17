@@ -1,5 +1,4 @@
 import { ABUSE, COMBAT, MULTI_WORLD } from './constants.js';
-import { resourceValue } from './valuation.js';
 import type { Grade, NeutralTier, Resources } from './types.js';
 
 export const gradeMultiplier = (grade: Grade): number =>
@@ -314,7 +313,7 @@ export const recoveryShieldUntil = (nowMs: number): number =>
  * THE END OF THE WINDOW AFTER ONE MORE HEAVY DEFEAT. Owner instruction.
  *
  * *"Süreler toplanmaz"* — a second defeat inside a live window pushes the end out
- * to four hours from NOW and no further, so a commander being worked over by
+ * to six hours from NOW and no further, so a commander being worked over by
  * several attackers is not accumulating a day of immunity one raid at a time. It
  * can only ever move the end FORWARD: a defeat landing under a shield that already
  * reaches further leaves that shield alone rather than cutting it short.
@@ -398,21 +397,14 @@ export interface RecoveryShieldCheck {
 }
 
 /**
- * HOW LONG THIS DEFEAT WILL TAKE TO WORK OFF. Owner's design, 2026-09-15.
+ * HOW LONG THIS DEFEAT WILL TAKE TO WORK OFF. Owner's design, 2026-09-17.
  *
- * BOTH SIDES THROUGH `resourceValue`, WHICH IS THE WHOLE TRICK. Dividing each
- * resource by its OWN production and taking the slowest is the intuitive reading
- * of "how long to rebuild this", and it breaks on the live field: `profileIncome`
- * gives deuterium `4 x L^1.2` against alloy's `100 x L^1.3`, and a commander with
- * no Deuterium Plant produces exactly none — so any raid that touched the tank
- * would be an infinite rebuild and therefore a free shield. Measured on 97 live
- * battles, 36 of them were exactly that case.
- *
- * The game already states what one resource is worth against another: D208's
- * 32:16:1. Converting both the loss and the hour through it leaves a denominator
- * that is the WHOLE works, which can only be zero for a commander holding no world
- * at all — and a unit of deuterium still costs 32 alloy, so fuel is priced as the
- * expensive thing it is rather than divided by nothing.
+ * THREE INDEPENDENT CLOCKS. Loot and permanently destroyed fleet cost are added
+ * resource by resource. Each total is divided by that resource's nominal hourly
+ * production across every world, and the Alloy, Crystal and Deuterium durations
+ * are averaged. A resource with no loss contributes zero hours. A positive loss
+ * that the commander cannot produce has no finite recovery time and therefore
+ * clears the shield bar.
  *
  * ZERO FOR ANYTHING THAT IS NOT A PAIR OF REAL QUANTITIES. A negative, infinite or
  * missing figure is not a small defeat, it is not a defeat at all, and rounding it
@@ -427,9 +419,14 @@ export function recoveryLossHours(
     (['alloy', 'crystal', 'deuterium'] as const)
       .every((key) => Number.isFinite(amounts[key]) && amounts[key] >= 0);
   if (!sane(lootLost) || !sane(fleetLost) || !sane(production)) return 0;
-  const perHour = resourceValue(production);
-  if (perHour <= 0) return 0;
-  return (resourceValue(lootLost) + resourceValue(fleetLost)) / perHour;
+  const keys = ['alloy', 'crystal', 'deuterium'] as const;
+  const hours = keys.map((key) => {
+    const lost = lootLost[key] + fleetLost[key];
+    if (lost === 0) return 0;
+    if (production[key] === 0) return Number.POSITIVE_INFINITY;
+    return lost / production[key];
+  });
+  return hours.reduce((sum, duration) => sum + duration, 0) / hours.length;
 }
 
 /**
@@ -438,13 +435,13 @@ export function recoveryLossHours(
  * One comparison against `ABUSE.recoveryLossHours`, and the argument for both the
  * unit and the figure is written there. What is worth repeating is what the rule
  * deliberately does NOT read: the battle's GRADE. A PARTIAL raid that carried off
- * eight hours of work counts, and a DECISIVE one that flew home half-empty does
- * not — the question is what the defender is standing in afterwards, and a label
- * on the report is not that.
+ * more than eight average hours of work counts, and a DECISIVE one that flew home
+ * half-empty does not — the question is what the defender is standing in
+ * afterwards, and a label on the report is not that.
  */
 export function earnsRecoveryShield(input: RecoveryShieldCheck): boolean {
   return recoveryLossHours(input.lootLost, input.fleetLost, input.production)
-    >= ABUSE.recoveryLossHours;
+    > ABUSE.recoveryLossHours;
 }
 
 export function canAttack(

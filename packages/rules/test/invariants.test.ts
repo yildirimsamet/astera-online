@@ -434,7 +434,7 @@ describe('the asteroid field', () => {
     expect(Math.max(...populations)).toBeLessThanOrEqual(Math.ceil(expected * 1.9));
   });
 
-  it('spawns a level distribution that adds up', () => {
+  it('keeps the legacy level distribution complete', () => {
     const sum = GALAXY.asteroidLevelWeights.reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1, 6);
   });
@@ -510,6 +510,7 @@ describe('the asteroid field', () => {
     // print. If they drift, one of the two screens is lying.
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
     expect(PROSPECTOR.max).toBe(2);
+    expect(SATELLITES.DERRICK.hold).toBe(2);
   });
 
   /**
@@ -830,7 +831,7 @@ describe('ore claims', () => {
  * a table.
  */
 describe('telescope gates', () => {
-  const levels = [1, 2, 3, 4, 5, 6, 9];
+  const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
   it('never gives less reach, fewer slots or a longer wait for more level', () => {
     for (let i = 1; i < levels.length; i++) {
@@ -861,12 +862,13 @@ describe('telescope gates', () => {
    * capped, and `docs/game-design.md`'s promise holds — "no investment buys perfect
    * omniscience; the fog never fully lifts."
    */
-  it('reaches most of the disc at the top of the table, and never all of it', () => {
+  it('can cover the full authored galaxy span at the top of the table', () => {
     const acrossTheGalaxy = GALAXY.radius * 2;
-    expect(withinTelescopeRange(5, acrossTheGalaxy)).toBe(false);
-    expect(withinTelescopeRange(5, SENSOR.maxRadius)).toBe(true);
+    expect(SENSOR.maxRadius).toBe(4_400);
+    expect(withinTelescopeRange(8, acrossTheGalaxy)).toBe(true);
+    expect(withinTelescopeRange(8, SENSOR.maxRadius)).toBe(true);
     // Still a real ladder: the top rung sees a great deal more than the first.
-    expect(sensorReach(5)).toBeGreaterThan(sensorReach(1));
+    expect(sensorReach(8)).toBeGreaterThan(sensorReach(1));
   });
 });
 

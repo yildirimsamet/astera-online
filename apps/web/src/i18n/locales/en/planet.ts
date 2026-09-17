@@ -271,7 +271,7 @@ export const planet = {
       "Shaves build time off every hull · the Shipyard still sets the curve",
     holdsName: "Prospector Holds",
     holdsTag: "Mining craft carry more",
-    holdsRole: "Raises every Prospector hold and multiplies with the Derrick’s 2.6× capacity bonus",
+    holdsRole: "Raises every Prospector hold and multiplies with the Derrick’s 2× capacity bonus",
     cargoName: "Cargo Holds",
     cargoTag: "Every hold carries more",
     cargoRole: "Raises raid loot, world transfers and trade convoys alike",

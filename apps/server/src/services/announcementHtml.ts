@@ -100,7 +100,7 @@ export function sanitizeAnnouncementHtml(raw: string): SanitizedAnnouncement {
         attribs: {
           ...attributes,
           loading: 'lazy',
-          referrerpolicy: 'no-referrer',
+          referrerpolicy: 'strict-origin-when-cross-origin',
           sandbox: 'allow-scripts allow-same-origin allow-presentation',
           allow: 'accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture',
           allowfullscreen: '',

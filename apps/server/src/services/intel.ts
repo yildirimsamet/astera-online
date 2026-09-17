@@ -287,7 +287,7 @@ export async function assignWatch(
      *
      * INTERMITTENT is a deterministic uncertainty roll per assignment window. A
      * second slot aimed at the same target created a second independent roll, so
-     * three slots turned a 75% confirmation chance into 98% without improving an
+     * several slots turned one confirmation chance into near certainty without improving an
      * instrument. The target world is already row-locked above; assignments from
      * two controlled worlds therefore serialize on the same lock and cannot race
      * this check.

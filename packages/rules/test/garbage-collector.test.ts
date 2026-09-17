@@ -97,20 +97,24 @@ describe('the Garbage Collector in the catalogue', () => {
    * owner's figure is the card's own unit, so it is stated in it.
    */
   it('drinks the owner’s hand-set thirst, not what its price would say', () => {
-    // Five per thousand units since the 2026-09-14 halving; ten before it.
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(5);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(7.9);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(
+      Math.round(SALVAGE.fuelMass * FUEL.tierMultiplier[3]),
+    );
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBeLessThan(Math.ceil(15_000 * FUEL.perValue));
     // Every other hull still drinks off its price.
-    expect(hullFuelMass('ARGOSY')).toBe(
-      Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
-    );
+    expect(hullFuelMass('ARGOSY')).toBe(Math.round(
+      Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38))
+      * FUEL.tierMultiplier[4],
+    ));
   });
 
   it('charges its fixed thirst on every leg like any other mass', () => {
     const alone = missionFuel({ DART: 10 }, 1_000, 2);
     const withOne = missionFuel({ DART: 10, GARBAGE_COLLECTOR: 1 }, 1_000, 2);
-    expect(withOne).toBe(Math.ceil(((10 * hullFuelMass('DART') + SALVAGE.fuelMass) * 1_000) / FUEL.scale) * 2);
+    expect(withOne).toBe(Math.ceil(
+      ((10 * hullFuelMass('DART') + hullFuelMass('GARBAGE_COLLECTOR')) * 1_000) / FUEL.scale,
+    ) * 2);
     expect(withOne).toBeGreaterThan(alone);
   });
 

@@ -5,7 +5,6 @@ import {
   FEATURE_FLAGS,
   INTEL,
   PROBE,
-  SENSOR,
   combatValue,
   computeLoot,
   detectChance,
@@ -191,12 +190,13 @@ describe('the information layer', () => {
 
     it('reports the finite effective reach when an L5 target is outside the horizon', async () => {
       await placeAt(f.db, mine, { x: 0, y: 0, z: 0 });
-      await placeAt(f.db, theirs, { x: SENSOR.maxRadius + 100, y: 0, z: 0 });
+      const reach = INTEL.telescopeRange[5]!;
+      await placeAt(f.db, theirs, { x: reach + 100, y: 0, z: 0 });
       await giveInstrument(f, mine, 'TELESCOPE', 5);
 
       await expect(assignWatch(f.db, mine, theirs, 0, f.clock)).rejects.toMatchObject({
         code: 'OUT_OF_RANGE',
-        params: { level: 5, reach: SENSOR.maxRadius, distance: SENSOR.maxRadius + 100 },
+        params: { level: 5, reach, distance: reach + 100 },
       });
     });
 

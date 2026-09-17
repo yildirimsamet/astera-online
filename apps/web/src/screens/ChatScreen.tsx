@@ -21,6 +21,7 @@ import {
 } from '../api/queries.js';
 import { describeError } from '../i18n/errors.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
+import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
 import { ClanIcon, SendIcon } from '../ui/icons/index.js';
@@ -32,6 +33,7 @@ interface MessageRow {
   authorPlayerId: string;
   planetId?: string;
   username: string;
+  clanTag?: string | null;
   content: string;
   createdAt: Date;
   self: boolean;
@@ -364,7 +366,7 @@ function ChannelPanel({
               >
                 <div className="flex items-baseline justify-between gap-2">
                   {message.self ? (
-                    <strong data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : selfInk}`}>{message.username}</strong>
+                    <strong data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
                   ) : message.planetId !== undefined ? (
                     <button
                       type="button"
@@ -379,10 +381,10 @@ function ChannelPanel({
                         message.admin === true ? 'text-alloy' : 'text-bone'
                       }`}
                     >
-                      {message.username}
+                      {commanderLabel(message.username, message.clanTag)}
                     </button>
                   ) : (
-                    <span data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : 'text-bone'}`}>{message.username}</span>
+                    <span data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : 'text-bone'}`}>{commanderLabel(message.username, message.clanTag)}</span>
                   )}
                   <time className="shrink-0 text-micro text-faint" dateTime={message.createdAt.toISOString()}>
                     {chatRelativeTime(message.createdAt, now, t)}

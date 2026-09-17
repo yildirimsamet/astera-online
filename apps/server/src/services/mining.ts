@@ -111,6 +111,7 @@ async function fieldOf(tx: Queryable, seasonId: string, now: Date): Promise<{
       hours: hours.map((hour) => ({
         hourOrdinal: Math.round((hour.hourStartsAt.getTime() - hourZero) / HOUR_MS),
         lanes: hour.lanes,
+        levelWeights: hour.levelWeights,
       })),
       nowMinutes: minutesSince(season.startsAt, now),
       lookbackMinutes: (FIELD_LOOKBACK_HOURS / 2) * 60,

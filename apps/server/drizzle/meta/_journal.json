@@ -659,6 +659,13 @@
       "when": 1789714000000,
       "tag": "0093_dynamic_asteroid_field",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1789715000000,
+      "tag": "0094_asteroid_level_weights",
+      "breakpoints": true
     }
   ]
 }

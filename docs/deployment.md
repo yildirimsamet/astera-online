@@ -577,7 +577,7 @@ both meaning "read nothing new" when exported as `false`.
 cannot resolve the lane after it. Roll exactly as above — four rolls with it `false`, then four
 with it `true` — and check the switch is `true` everywhere before claiming the density is live.
 
-`RECOVERY_SHIELD_ENABLED` covers the four-hour shield a heavy PvP defeat buys. Migration `0078`
+`RECOVERY_SHIELD_ENABLED` covers the six-hour shield a heavy PvP defeat buys. Migration `0078`
 is expand-only (three nullable columns: `players.recovery_shield_until`,
 `battle_reports.raidable_before`, `battle_reports.recovery_shield_until`), so it may be applied
 before the roll with nothing reading it. Export `RECOVERY_SHIELD_ENABLED=false` for the first

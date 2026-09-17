@@ -101,10 +101,11 @@ describe('mission fuel', () => {
      * the ceiling rung one opens must sustain several ordinary raids a day, or the
      * whole chain ends in a building that does not solve the problem it was sold on.
      */
-    it('lets the first refinery rung sustain a day of raiding', () => {
+    it('makes a full raid cadence consume a meaningful first-refinery day', () => {
       const perDay = deuteriumRate(3) * 24;
       const raid = missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-      expect(perDay / raid).toBeGreaterThan(4);
+      expect(perDay / raid).toBeGreaterThan(3);
+      expect(perDay / raid).toBeLessThan(4);
     });
 
     /**
@@ -116,7 +117,7 @@ describe('mission fuel', () => {
       const near = missionFuel({ DART: 200 }, NEIGHBOUR, 2);
       const far = missionFuel({ DART: 200 }, GALAXY_SPAN, 2);
       expect(far).toBeGreaterThan(near * 3);
-      expect(far).toBeLessThan(deuteriumRate(9) * 24);
+      expect(far).toBeLessThan(deuteriumRate(9) * 48);
     });
   });
 
@@ -195,10 +196,9 @@ describe('fuel per craft', () => {
  * karli diye full ondan uretiyorlar"*. A ladder whose protected rung is also its
  * efficient rung deletes everything above it.
  *
- * SO THERE IS NO LADDER AND NOTHING TO EXCLUDE. Fuel is a fixed fraction of what
- * the hull cost, tilted by how fast it flies. Value already carries power — D148
- * prices the catalogue at `atk x hp / value^2` — so charging against value charges
- * against power, monotonically, with no rung to sit on for a discount.
+ * THE BASE HAS NO EXEMPTED RUNG. Fuel starts as a fixed fraction of what the hull
+ * cost, tilted by how fast it flies. The later 2026-09-17 increase adds a tapering
+ * tier multiplier, with the progression tests below preventing an inversion.
  *
  * `bulk` SURVIVES AS GROUND ROOM AND NOTHING ELSE. The Hangar that metered it is
  * gone (D184) and fuel no longer reads it, so the two can no longer re-rate each
@@ -208,21 +208,34 @@ describe('D195 fuel by hull value', () => {
   const value = (id: MobileHullId): number =>
     resourceValue(HULLS[id]);
 
+  it('raises lower tiers more while tapering the increase from 75% to 50%', () => {
+    expect(FUEL.tierMultiplier).toEqual({ 1: 1.75, 2: 1.67, 3: 1.58, 4: 1.5 });
+    for (const id of MOBILE_HULLS) {
+      const tier = HULLS[id].tier!;
+      const previous = HULLS[id].profile === 'COLLECTOR'
+        ? 50
+        : Math.max(1, Math.ceil(
+          value(id) * FUEL.perValue
+          * (FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip)),
+        ));
+      expect(hullFuelMass(id), id).toBe(Math.round(previous * FUEL.tierMultiplier[tier]));
+    }
+  });
+
   /**
    * ONE HULL IS OUTSIDE THIS, BY NAME AND BY INSTRUCTION. D200: the owner set the
    * Garbage Collector's thirst by hand (`SALVAGE.fuelMass`, *"19.1 döteryum yakıt
    * çok. 10 yap."*). The exception is asserted to be exactly that one hull, so a
    * second can only join it by changing this line on purpose.
    */
-  it('charges a fixed fraction of hull value, tilted by the hull\'s own trip', () => {
+  it('charges hull value and speed first, then the tier increase', () => {
     const handSet = MOBILE_HULLS.filter((id) => HULLS[id].profile === 'COLLECTOR');
     expect(handSet).toEqual(['GARBAGE_COLLECTOR']);
     for (const id of MOBILE_HULLS) {
       if (handSet.includes(id)) continue;
       const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip);
-      expect(hullFuelMass(id), id).toBe(
-        Math.max(1, Math.ceil(value(id) * FUEL.perValue * thirst)),
-      );
+      const base = Math.max(1, Math.ceil(value(id) * FUEL.perValue * thirst));
+      expect(hullFuelMass(id), id).toBe(Math.round(base * FUEL.tierMultiplier[HULLS[id].tier!]));
     }
   });
 
@@ -257,12 +270,12 @@ describe('D195 fuel by hull value', () => {
     }
   });
 
-  it('drinks more the faster it flies, at equal value', () => {
-    // Pike and Warden cost exactly the same to build and fly different trips; since
-    // D207 the Warden is the quicker of the two, so it is the thirstier one.
-    expect(value('PIKE')).toBe(value('WARDEN'));
+  it('drinks more per unit of value the faster it flies', () => {
+    // Since D207 the Warden is quicker than the Pike, so its value-normalised
+    // thirst is higher even after their recipes diverged.
     expect(hullRoundTrip('WARDEN')!).toBeLessThan(hullRoundTrip('PIKE')!);
-    expect(hullFuelMass('WARDEN')).toBeGreaterThan(hullFuelMass('PIKE'));
+    expect(hullFuelMass('WARDEN') / value('WARDEN'))
+      .toBeGreaterThan(hullFuelMass('PIKE') / value('PIKE'));
   });
 
   /** A gun that never travels has no thirst, whatever it weighs on the ground. */
@@ -294,8 +307,10 @@ describe('D195 fuel by hull value', () => {
    * or the chain the opening teaches ends in a building that does not solve the
    * problem it was sold on.
    */
-  it('lets the first refinery rung sustain a day of tier-2 raiding', () => {
+  it('spends most of a first-refinery day on three tier-2 raids', () => {
     const perDay = deuteriumRate(3) * 24;
-    expect(perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2)).toBeGreaterThan(4);
+    const raids = perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
+    expect(raids).toBeGreaterThan(3);
+    expect(raids).toBeLessThan(4);
   });
 });

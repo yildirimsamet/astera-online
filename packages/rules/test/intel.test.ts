@@ -50,9 +50,10 @@ describe('clarity gradient', () => {
    * ladder bought 275 units. They are one number now, and this holds them there.
    */
   it('ends at a real distance rather than at infinity', () => {
-    expect(Number.isFinite(telescopeRange(5))).toBe(true);
-    expect(telescopeRange(5)).toBe(SENSOR.maxRadius);
-    expect(telescopeWatchRange(5)).toBe(SENSOR.maxRadius);
+    expect(Number.isFinite(telescopeRange(8))).toBe(true);
+    expect(telescopeRange(8)).toBe(4_400);
+    expect(telescopeRange(8)).toBe(SENSOR.maxRadius);
+    expect(telescopeWatchRange(8)).toBe(SENSOR.maxRadius);
     expect(telescopeWatchRange(99)).toBe(SENSOR.maxRadius);
   });
 
@@ -319,7 +320,7 @@ describe('radar', () => {
   });
 
   it('clamps out-of-range levels', () => {
-    expect(radarRange(99)).toBe(radarRange(5));
+    expect(radarRange(99)).toBe(radarRange(8));
     expect(radarRange(-3)).toBe(0);
   });
 
@@ -443,7 +444,7 @@ describe('the radar ladder', () => {
   });
 
   it('nothing is ever scheduled earlier than the widest reach', () => {
-    expect(maxRadarRange()).toBe(radarRange(5));
+    expect(maxRadarRange()).toBe(radarRange(8));
   });
 
   /**
@@ -668,9 +669,10 @@ describe('what the disc itself discloses — D123', () => {
      * IT IS THE IDENTIFYING CIRCLE ONLY. The Radar reaches further by design — a
      * mote you cannot name is not omniscience — and is capped by its own table.
      */
-    it('never identifies everywhere, however much is paid', () => {
+    it('reaches the full authored span at the maximum level', () => {
       expect(sensorReach(99)).toBe(SENSOR.maxRadius);
-      expect(sensorReach(99)).toBeLessThan(GALAXY.radius);
+      expect(sensorReach(99)).toBe(4_400);
+      expect(sensorReach(99)).toBeGreaterThanOrEqual(GALAXY.radius * 2);
     });
   });
 
@@ -752,26 +754,27 @@ describe('what the disc itself discloses — D123', () => {
    */
   describe('the two ladders against each other', () => {
     it('puts the radar outside the telescope at every level it exists', () => {
-      for (let level = 1; level <= 5; level += 1) {
+      for (let level = 1; level <= 7; level += 1) {
         expect(
           radarContactRange(level),
           `radar ${String(level)} must out-reach telescope ${String(level)}`,
         ).toBeGreaterThan(telescopeRange(level));
       }
+      expect(radarContactRange(8)).toBe(telescopeRange(8));
     });
 
     it('gives every radar rung a reach to sell', () => {
-      for (let level = 1; level <= 5; level += 1) {
+      for (let level = 1; level <= 8; level += 1) {
         expect(radarContactRange(level)).toBeGreaterThan(radarContactRange(level - 1));
       }
     });
 
     it('gives every telescope rung a reach to sell, and ends at a number', () => {
-      for (let level = 1; level <= 5; level += 1) {
+      for (let level = 1; level <= 8; level += 1) {
         expect(telescopeRange(level)).toBeGreaterThan(telescopeRange(level - 1));
       }
-      expect(Number.isFinite(telescopeRange(5))).toBe(true);
-      expect(telescopeRange(5)).toBe(SENSOR.maxRadius);
+      expect(Number.isFinite(telescopeRange(8))).toBe(true);
+      expect(telescopeRange(8)).toBe(SENSOR.maxRadius);
     });
   });
 

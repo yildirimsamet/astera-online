@@ -225,6 +225,24 @@ describe('ruleset-v3 clans', () => {
       .toMatchObject({ clanChatUnread: 0, attentionCount: 0 });
   });
 
+  it('shows current clan tags on clan messages and removes them from departed authors', async () => {
+    const f = await setup(2);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    const sent = await f.db.transaction((tx) => postClanChat(tx, {
+      playerId: f.playerIds[1]!, content: 'Here', now: f.clock.now(),
+    }));
+    expect(sent.clanTag).toBe('OG');
+    const read = async () => (await readClanChat(f.db, f.accountIds[0]!, {
+      limit: 20, now: f.clock.now(),
+    })).messages[0]?.clanTag;
+    expect(await read()).toBe('OG');
+
+    await f.db.update(clanMemberships).set({ leftAt: f.clock.now() })
+      .where(eq(clanMemberships.playerId, f.playerIds[1]!));
+    expect(await read()).toBeNull();
+  });
+
   it('summarises the whole crew with a fixed aggregate payload', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);

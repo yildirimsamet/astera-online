@@ -693,10 +693,9 @@ export const START_BUILDINGS = {
  * somebody will reach for next and the map of what it does is expensive to
  * re-derive. Read the numbers below before moving it.
  *
- * THE PROBLEM IT WAS ADDED TO FIX IS REAL. Buildings run past L12 in a season;
- * instruments stop at L5, because every effect table that reads them
- * (`telescopeRange`, `telescopeCooldownHours`, `radarRange`) is five entries
- * long. At parity an instrument's TOP rung is therefore priced like a building's
+ * THE PROBLEM IT WAS ADDED TO FIX WAS REAL AT D30. Buildings ran past L12 while
+ * instruments stopped at L5 because their effect tables ended there. At parity an
+ * instrument's TOP rung was therefore priced like a building's
  * FIFTH rung while the player's income sits at a building's tenth — so all four
  * instruments at maximum cost 42,219, which is LESS than a single building step at
  * L10→L11 (49,315) and about ten hours of production for a developed planet. A
@@ -784,27 +783,19 @@ export const INSTRUMENT_COST_MULT = {
 } as const satisfies Record<InstrumentId, number>;
 
 /**
- * A QUARTER OFF THE TWO INSTRUMENTS THAT LOOK. Owner instruction, 2026-09-14:
- * *"Telescope ve Radar'ın bütün seviyelerindeki kaynak maliyetlerini %25 azalt."*
- *
- * THE TWO THAT SEE, AND NEITHER OF THE TWO THAT HIDE. The Aegis and the Veil keep
- * their price to the unit, because this is a discount on FINDING things rather
- * than a discount on the information layer: the same package doubles the pirate
- * lane and front-loads the shower, and both of those are content a commander can
- * only spend if they can see it. Cheapening the counter-measures alongside would
- * have handed the increase straight back.
- *
- * APPLIED LAST, TO THE ALREADY-CEILED FIGURE, and rounded rather than ceiled — so
- * the quoted price is exactly `round(old x 0.75)` and a reader can check any rung
- * against the old table with a calculator. Ranges, repoint cooldowns, fog and
- * identification are untouched; only the bill moved.
+ * THE TWO INSTRUMENTS THAT LOOK COST LESS; the Aegis and Veil stay untouched.
+ * Applied last to the already-ceiled invoice. Telescope keeps a premium over Radar
+ * because it identifies what the wider detector only marks.
  */
 export const INSTRUMENT_COST_DISCOUNT = {
-  TELESCOPE: 0.75,
-  RADAR: 0.75,
+  TELESCOPE: 0.7,
+  RADAR: 0.6,
   AEGIS: 1,
   VEIL: 1,
 } as const satisfies Record<InstrumentId, number>;
+
+/** Sensor-only price growth; keeps the new L6–L8 reach upgrades attainable. */
+export const SENSOR_INSTRUMENT_COST_GROWTH = 1.75;
 
 /**
  * WHAT EACH SATELLITE COSTS, AND WHAT IT DOES. D25.
@@ -872,7 +863,7 @@ export const SATELLITES = {
   DERRICK: {
     alloy: scalePrice(2200, ECONOMY_TEMPO.fixedPrice),
     crystal: scalePrice(800, ECONOMY_TEMPO.fixedPrice),
-    hold: 2.6,
+    hold: 2,
     speed: 1.5,
   },
   /** A navigation beacon. Every fleet that leaves here flies faster. */
@@ -975,8 +966,7 @@ export const COMBAT = {
    * band is locked at ±8% (below it randomness drowns the intel layer, D8) and the
    * counter cycle is what makes composition a decision. This number is the one
    * that DEFINES whether an attack counted — a raid that breaks 42% of the
-   * defending fleet now comes home with a partial haul and an hour of disruption
-   * instead of nothing at all.
+   * defending fleet now comes home with a partial haul instead of nothing at all.
    *
    * 0.38 WAS TRIED FIRST AND REFUSED BY THE MEASUREMENT. A lower bar helps the
    * BLIND attacker more than the informed one — an informed attacker already picks
@@ -1185,8 +1175,8 @@ export const INTEL = {
   /**
    * AND THE STEP PER LEVEL, CHOSEN SO THE LAST RUNG STILL SELLS SOMETHING. D36.
    *
-   * `detectMax` is 0.80 and the ladder is five rungs, so a slope of 0.13 puts a
-   * maxed Radar against an unequipped scout at exactly `0.15 + 5 * 0.13 = 0.80`.
+   * `detectMax` is 0.80, so a slope of 0.13 reaches the probability ceiling at L5:
+   * `0.15 + 5 * 0.13 = 0.80`. L6–L8 continue buying physical reach.
    * The old 0.18 saturated at L4 — `0.15 + 4 * 0.18 = 0.87`, clamped — which meant
    * Radar 5 bought nothing over Radar 4 against half the galaxy. That is the exact
    * failure `INSTRUMENT_MAX_LEVEL` exists to prevent, arriving through the clamp
@@ -1266,8 +1256,11 @@ export const INTEL = {
    *       3       1,250     1,700     +450
    *       4       1,450     1,900     +450
    *       5       1,600     2,200     +600
+   *       6       2,500     2,900     +400
+   *       7       3,400     3,600     +200
+   *       8       4,400     4,400        0
    */
-  radarRange: [0, 1200, 1450, 1700, 1900, 2200] as readonly number[],
+  radarRange: [0, 1200, 1450, 1700, 1900, 2200, 2900, 3600, 4400] as readonly number[],
 
   /**
    * HOW FAR A RADAR KNOWS SOMETHING IS COMING FOR YOU. D126, MERGED FOR NOW.
@@ -1290,7 +1283,7 @@ export const INTEL = {
    * editing this one table back to a tighter ladder — nothing else in the codebase
    * assumes they are equal, because both functions are still separate.
    */
-  radarContactRange: [0, 1200, 1450, 1700, 1900, 2200] as readonly number[],
+  radarContactRange: [0, 1200, 1450, 1700, 1900, 2200, 2900, 3600, 4400] as readonly number[],
 
   /**
    * PROVISIONAL. How far a telescope can see, in game units, by level. D18.
@@ -1322,7 +1315,7 @@ export const INTEL = {
    * spread to reach it, so every rung buys a real step and the table says its own
    * ceiling out loud.
    */
-  telescopeRange: [0, 950, 1150, 1250, 1450, 1600] as readonly number[],
+  telescopeRange: [0, 950, 1150, 1250, 1450, 1600, 2500, 3400, 4400] as readonly number[],
 
   /**
    * PROVISIONAL. Hours a telescope slot is locked after being RE-POINTED. D18.
@@ -1358,7 +1351,7 @@ export const INTEL = {
    * through `format.ts` for exactly that reason. Five whole hours down to one keeps
    * five distinct rungs and takes the decimal out of the problem entirely.
    */
-  telescopeCooldownHours: [0, 5, 4, 3, 2, 1] as readonly number[],
+  telescopeCooldownHours: [0, 5, 4, 3, 2, 1, 1, 1, 1] as readonly number[],
 } as const;
 
 /**
@@ -1394,35 +1387,11 @@ export const SENSOR = {
   baseRadius: 750,
 
   /**
-   * AND A CEILING, BECAUSE THE FOG MAY NEVER FULLY LIFT. D126.
-   *
-   * `INTEL.telescopeRange` once ended at `Infinity`, written when the top of that
-   * ladder only bought WATCH RANGE — how far you may point a slot. It is finite
-   * now; this ceiling remains the invariant that guards the identifying horizon.
-   *
-   * Reading the same table for TRAFFIC reach quietly turned it into something
-   * else: one maxed Telescope on one world, and every craft in the galaxy is
-   * identified for that commander for the rest of the season. Found on the owner's
-   * own account — a Telescope 5 capital beside three Telescope 0 colonies,
-   * resolving all 104 worlds while the colonies drew their local sensor
-   * bubbles. The system was a no-op for the player who had paid most for it.
-   *
-   * `docs/game-design.md` already forbids this in as many words: "Floors and
-   * ceilings guarantee that no investment buys perfect invisibility or perfect
-   * omniscience — the fog never fully lifts." Being below only the maximum
-   * crossing was insufficient: a sensor at the centre can see the whole galaxy as
-   * soon as its reach equals the radius. The ceiling is 80% of the radius-2,000
-   * sphere, so even the best possible origin leaves a real outer shell.
-   *
-   * IT IS THE TELESCOPE'S CEILING, NOT THE GALAXY'S. The Radar reaches further by
-   * design and is capped by its own table — a mote you cannot identify is not
-   * omniscience, and letting the detecting instrument out-reach the identifying
-   * one is the whole shape of the three-zone model. See `INTEL.radarRange`.
-   *
-   * It now AGREES with `INTEL.telescopeRange`'s own top rung rather than capping an
-   * infinity, so the two can no longer drift apart.
+   * THE AUTHORED FULL-SPAN CEILING. At L8 a commander who could not place a colony
+   * on the far side can still earn galaxy-wide moving-contact reach. Watch slots,
+   * probes and Veil clarity continue to ration detailed world intelligence.
    */
-  maxRadius: 1600,
+  maxRadius: 4400,
 
 
   /**
@@ -1811,6 +1780,17 @@ export const ANTI_STRATEGIC = {
 export const FUEL = {
   scale: 10_000,
   /**
+   * EXTRA THIRST BY HULL TIER. Owner instruction, 2026-09-17.
+   *
+   * Fuel must make an oversized fleet expensive to operate while preserving the
+   * reason to climb the catalogue. The entry tier therefore takes the full 75%
+   * increase and the surcharge tapers to 50% at tier four. The base mass is
+   * rounded before this multiplier so the very small entry-hull figures receive
+   * the authored increase. The multiplied result is rounded to the nearest whole
+   * fuel unit so intermediate tiers stay inside the intended percentage band.
+   */
+  tierMultiplier: { 1: 1.75, 2: 1.67, 3: 1.58, 4: 1.5 },
+  /**
    * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
    * D153's tier ladder outright.
    *
@@ -1823,11 +1803,10 @@ export const FUEL = {
    * — and a ladder that makes the cheapest hull the efficient one is a ladder that
    * deletes the catalogue above it.
    *
-   * SO FUEL IS PRICED OFF THE HULL, NOT OFF ITS TIER. What a craft costs to move is
-   * a fixed fraction of what it cost to build, which makes the relation monotone by
-   * construction: no rung can ever out-run the power it is charged against, and
-   * there is no tier to sit on for a discount. The ladder is gone; there is nothing
-   * left to exclude tier 1 from.
+   * SO THE BASE IS PRICED OFF THE HULL. What a craft costs to move starts as a
+   * fixed fraction of what it cost to build, which keeps price and thirst aligned.
+   * The later tier multiplier deliberately tapers downward and is held by the
+   * efficiency tests, so it strengthens rather than reverses tier progression.
    *
    * D208 weights value at A + 2C + 32D. The fraction preserves the opening's
    * per-hull fuel masses; later recipes and mission bills are measured explicitly.
@@ -1849,10 +1828,8 @@ export const FUEL = {
    * `SALVAGE.fuelMass`; leaving that behind would have halved "every ship" except
    * the one hull whose thirst a player complained about first.
    *
-   * WHAT DOES NOT HALVE IS THE SMALLEST BILL. `hullFuelMass` floors at one and
-   * `missionFuel` ceils per leg, so a trip that already cost a single unit still
-   * costs one: no fuel-charged hull is ever free to move (D136). The halving is a
-   * statement about the underlying rate, and the tests assert it there.
+   * This remains the base rate. `tierMultiplier` applies the later fleet-wide
+   * increase after the base mass is rounded.
    */
   perValue: 0.0055,
   /**
@@ -2060,10 +2037,11 @@ export const SHIELD = {
 } as const;
 
 /**
- * PROVISIONAL. A successful raid also knocks the target's surface works offline.
- * Buildings are never damaged — the ownership pillar holds — but the victim now
- * loses COMPOUNDING rather than merely stock, which is the only thing that makes
- * raiding competitive with building over a season.
+ * LEGACY RAID-DISRUPTION FIGURES.
+ *
+ * PvP no longer writes a production deadline: recovery protection and its doubled
+ * output are the comeback mechanic. These values remain while old report payloads
+ * and already-persisted `disrupted_until` rows age out safely across mixed clients.
  */
 export const DISRUPTION = {
   /**
@@ -2148,11 +2126,11 @@ export const ABUSE = {
    * earned again, so it answers the question a beginner's window cannot: what
    * happens to somebody who has already committed to the war and just lost badly.
    *
-   * FOUR HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
+   * SIX HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
    * this game is played in gaps, so the window has to be long enough to open the
    * game once and put an order in, and short enough that a defeat is not a day off
    * the board for whoever won. Production timers came down a quarter in the same
-   * package, so four hours buys more rebuilding than it would have last week — a
+   * package, so six hours buys more rebuilding than it would have last week — a
    * coupling that is deliberate and measured rather than incidental.
    *
    * IT LIVES IN ITS OWN COLUMN. `players.recoveryShieldUntil` is nullable and
@@ -2187,10 +2165,10 @@ export const ABUSE = {
    *
    * MEASURED IN THE DEFENDER'S OWN PRODUCTION HOURS: everything the battle took —
    * resources carried off PLUS hulls destroyed that did not rebuild from their own
-   * wreckage — priced on the game's 32:16:1 scale and divided by what this
-   * commander's works turn out in an hour. *"Belirli bir emek varsa kalkanı direkt
-   * verebiliriz."* It is the honest definition of heavy: how long you must work to
-   * stand where you stood.
+   * wreckage. Alloy, Crystal and Deuterium are divided by their own hourly output
+   * across every world, then those three durations are averaged. *"Belirli bir emek
+   * varsa kalkanı direkt verebiliriz."* It is the honest definition of heavy: how
+   * long you must work to stand where you stood.
    *
    * WHAT IT REPLACES, AND WHY THAT HAD TO GO. The first rule asked for half of the
    * struck world's raidable stock AND a twentieth of the commander's total STORAGE.
@@ -2205,18 +2183,13 @@ export const ABUSE = {
    *     defender lost 100% of the ships standing on the world. The loudest thing a
    *     raid does was worth zero to the rule meant to notice a heavy defeat.
    *
-   * ONE FIGURE, NOT TWO COMPARED SEPARATELY. The owner's instruction was that
-   * either half should be enough; adding them satisfies that — a sum is never
-   * smaller than its larger part — and also answers the case neither test could
-   * alone, where six hours of ore and six hours of ships is a twelve-hour defeat
-   * rather than two small ones.
+   * THREE RESOURCE CLOCKS. Loot and permanently lost fleet cost are added for each
+   * resource, divided by that resource's hourly production across all worlds, then
+   * the Alloy, Crystal and Deuterium durations are averaged.
    *
-   * EIGHT HOURS. It was set as twice a four-hour window; the window grew to six on
-   * 2026-09-16 and the bar deliberately did not move with it — the owner lengthened
-   * the protection, not the definition of a heavy defeat. Measured against 97 live battles it
-   * grants on 25% of the ones the attacker won — one raid in four, against 31% for
-   * the rule it replaces, so the raid economy sees no shock while the rule finally
-   * fires on the right battles.
+   * EIGHT HOURS. The window remains six hours; this number defines only how much
+   * permanent loss earns that recovery period. The comparison is strict: exactly
+   * eight hours does not cross an eight-hour bar.
    */
   recoveryLossHours: 8,
 } as const;
@@ -2377,7 +2350,7 @@ export const GALAXY = {
    */
   asteroidOreQuantum: 400,
 
-  /** How often each level turns up. Must sum to 1 across levels 1-5. */
+  /** Legacy derived-field weights. Kept stable so an existing old-season rock never changes. */
   asteroidLevelWeights: [0, 0.4, 0.27, 0.18, 0.1, 0.05] as readonly number[],
 
   /**
@@ -2544,7 +2517,9 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 7 IS THE WORKING WEEK. Owner instruction, 2026-09-16: *"kitlemiz
+       * VERSION 8 KEEPS THE WORKING WEEK AND REDUCES ITS MULTIPLIERS. Owner
+       * instruction, 2026-09-17: weekday lunch x2, evening x5; weekend lunch x3,
+       * evening x6. Version 7 introduced the working-week schedule because *"kitlemiz
        * 30-40 yaş çalışan insanlar bunlar eventleri yakalayamıyor ve tüm gün oynayan
        * eventlerin hepsini yakalayan azınlık ise ekonomik ve güç olarak uçuyor."*
        *
@@ -2564,16 +2539,16 @@ export const GALAXY_EVENTS = {
        * creation; the running galaxy adopts this shape through the operator command
        * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 7,
+      version: 8,
       windows: [
         { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60 + 30,
-          effect: { asteroidSpawnMultiplier: 3 } },
+          effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 10 } },
-        { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
           effect: { asteroidSpawnMultiplier: 5 } },
+        { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
+          effect: { asteroidSpawnMultiplier: 3 } },
         { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 15 } },
+          effect: { asteroidSpawnMultiplier: 6 } },
       ],
     },
     TRADE_SHIP: {
@@ -2680,7 +2655,8 @@ export const ASTEROID_SHOWER_FRONT_LOAD = {
  * every hour boundary the worker counts the commanders who played in the hour just
  * gone and fixes that hour's spawn at `perPlayerPerHour` for each of them, multiplied
  * by any Asteroid Shower for the part of the hour it covers. The count is stored with
- * the hour, which is what keeps a rock's identity stable once it exists.
+ * the hour together with the level weights used to generate it, which keeps a
+ * rock's identity stable across later balance changes.
  *
  * ORE IS THE LEVEL TABLE, UNCAPPED. Owner decision, same day: the monthly allowance
  * was sized for a fixed-rate field and would shrink every rock to one packet exactly
@@ -2690,7 +2666,7 @@ export const ASTEROID_SHOWER_FRONT_LOAD = {
  */
 export const ASTEROID_DYNAMIC = {
   /** Rocks per active commander per hour, before any shower. Owner's number. */
-  perPlayerPerHour: 2,
+  perPlayerPerHour: 1,
   /** A commander counts as active for the next hour if they played in this window. */
   activeWindowMinutes: 60,
   /**
@@ -2699,6 +2675,13 @@ export const ASTEROID_DYNAMIC = {
    * entry holds for every later day.
    */
   levelUnlockByDay: [2, 3, 4, 5] as readonly number[],
+  /**
+   * Current spawn chances by level. Higher levels taper a little more sharply than
+   * the legacy derived field: L5 moves from 5% to 4% (twenty percent rarer), with
+   * the released share flowing mostly to L1. Kept here so old derived seasons retain
+   * their byte-stable `GALAXY.asteroidLevelWeights` schedule.
+   */
+  levelWeights: [0, 0.44, 0.26, 0.17, 0.09, 0.04] as readonly number[],
   /**
    * WHERE DYNAMIC ROCKS ARE NUMBERED, CLEAR OF THE DERIVED FIELD. The legacy field of
    * a thirty-day season stops near twelve thousand indices; ten million leaves it
@@ -3448,7 +3431,7 @@ export const FAULT = {
    * Two if two fit, one if one does, none if the world is already fully broken. The
    * trigger is the recovery-shield bar rather than a second threshold of its own: the game
    * already has one statement of "this blow was heavy", and a fault bar that disagreed
-   * with it would give a commander four hours of immunity for a raid that left their
+   * with it would give a commander six hours of immunity for a raid that left their
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,

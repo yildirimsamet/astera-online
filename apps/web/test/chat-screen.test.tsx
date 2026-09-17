@@ -60,7 +60,7 @@ function show(
     pages: [{
       messages: [{
         id: 'clan-one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci',
-        content: 'Rim temiz', createdAt: at, self: false,
+        clanTag: 'WAR', content: 'Rim temiz', createdAt: at, self: false,
       }],
       nextBefore: null,
     }],
@@ -120,6 +120,23 @@ describe('galaxy chat surface', () => {
     expect(screen.getByText('Merhaba galaksi')).toBeInTheDocument();
     expect(screen.queryByText(/planet/i)).not.toBeInTheDocument();
     await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('two'); });
+  });
+
+  it('shows clan tags beside names in both channels, while leaving untagged names plain', async () => {
+    const tagged = {
+      pages: [{ ...initial.pages[0]!, messages: [
+        { ...initial.pages[0]!.messages[0]!, clanTag: 'OG' },
+        ...initial.pages[0]!.messages.slice(1),
+      ] }],
+      pageParams: [null],
+    };
+    show(vi.fn(), 'general', tagged);
+    expect(screen.getByRole('button', { name: '[OG] İzci' })).toBeInTheDocument();
+    expect(screen.getByText('Gizli')).toBeInTheDocument();
+    expect(screen.getByText('Vantage')).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Clan — 1 unread' }));
+    expect(screen.getByText('[WAR] İzci')).toBeInTheDocument();
   });
 
   it('underlines and routes only commanders whose location is known', async () => {

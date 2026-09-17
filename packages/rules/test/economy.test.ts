@@ -550,16 +550,12 @@ describe('the works hold ten hours', () => {
  * take — which drops ARR, and ARR is already the open band.
  */
 describe('what an instrument costs', () => {
-  const cheap = ['RADAR', 'AEGIS', 'VEIL'] as const;
-
-  it('prices the identifying instrument above the others', () => {
-    for (let level = 0; level <= 4; level++) {
+  it('prices the identifying instrument above the wider detector', () => {
+    for (let level = 0; level <= 7; level++) {
       const scope = instrumentCost('TELESCOPE', level);
-      for (const id of cheap) {
-        const other = instrumentCost(id, level);
-        expect(scope.alloy, `L${String(level)} vs ${id}`).toBeGreaterThan(other.alloy);
-        expect(scope.crystal).toBeGreaterThan(other.crystal);
-      }
+      const radar = instrumentCost('RADAR', level);
+      expect(scope.alloy, `L${String(level)}`).toBeGreaterThan(radar.alloy);
+      expect(scope.crystal).toBeGreaterThan(radar.crystal);
     }
   });
 
@@ -572,11 +568,8 @@ describe('what an instrument costs', () => {
   it('keeps the two counter-measures on one price, which is the undiscounted one', () => {
     for (let level = 0; level <= 4; level++) {
       expect(instrumentCost('VEIL', level)).toEqual(instrumentCost('AEGIS', level));
-      for (const resource of ['alloy', 'crystal'] as const) {
-        expect(instrumentCost('RADAR', level)[resource], `L${String(level)}`)
-          .toBe(Math.round(instrumentCost('AEGIS', level)[resource] * 0.75));
-      }
     }
+    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 118, crystal: 89, deuterium: 0 });
   });
 
   /** The whole layer must not get dearer: ARR is the open band and this is a lever on it. */
@@ -585,10 +578,17 @@ describe('what an instrument costs', () => {
     expect(instrumentCost('AEGIS', 4)).toEqual({ alloy: 25540, crystal: 19155, deuterium: 0 });
   });
 
-  it('takes the owner-set quarter off both instruments that see', () => {
-    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 148, crystal: 111, deuterium: 0 });
-    expect(instrumentCost('RADAR', 4)).toEqual({ alloy: 19155, crystal: 14366, deuterium: 0 });
-    expect(instrumentCost('TELESCOPE', 0)).toEqual({ alloy: 222, crystal: 167, deuterium: 0 });
-    expect(instrumentCost('TELESCOPE', 4)).toEqual({ alloy: 28733, crystal: 21550, deuterium: 0 });
+  it('lowers the entry price of both instruments that see', () => {
+    expect(instrumentCost('RADAR', 0)).toEqual({ alloy: 118, crystal: 89, deuterium: 0 });
+    expect(instrumentCost('TELESCOPE', 0)).toEqual({ alloy: 207, crystal: 155, deuterium: 0 });
+  });
+
+  it('softens the high-level sensor curve so levels six through eight remain reachable', () => {
+    const total = (id: 'TELESCOPE' | 'RADAR' | 'AEGIS', level: number) => {
+      const cost = instrumentCost(id, level);
+      return cost.alloy + cost.crystal;
+    };
+    expect(total('RADAR', 7)).toBeLessThan(total('AEGIS', 7) * 0.3);
+    expect(total('TELESCOPE', 7)).toBeLessThan(total('AEGIS', 7) * 0.45);
   });
 });

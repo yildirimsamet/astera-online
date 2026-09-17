@@ -25,8 +25,8 @@ import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js
  *
  * There were two separate faults underneath, and they need different fixes:
  *
- *   · THE TABLES RUN OUT. `radarRange` and `telescopeRange` have six entries
- *     each, and `atLevel` clamps — so level five really is the last one that buys
+ *   · THE TABLES RUN OUT. `radarRange` and `telescopeRange` have nine entries
+ *     each, and `atLevel` clamps — so level eight really is the last one that buys
  *     anything, and nothing enforced or said so. That is now a hard ceiling (D36),
  *     refused by the server and marked `maxed` here.
  *   · THE ROW MEASURED THE WRONG THING. A Shipyard past L4 still buys probe
@@ -160,8 +160,8 @@ describe('the instrument ceiling', () => {
    * than the numbers, which is what stops the two drifting apart.
    */
   it('stops exactly where the effect table stops', () => {
-    expect(INSTRUMENT_MAX_LEVEL.TELESCOPE).toBe(5);
-    expect(INSTRUMENT_MAX_LEVEL.RADAR).toBe(5);
+    expect(INSTRUMENT_MAX_LEVEL.TELESCOPE).toBe(8);
+    expect(INSTRUMENT_MAX_LEVEL.RADAR).toBe(8);
     // No table, no cap: a shield curve and a Veil both keep buying at every level.
     expect(INSTRUMENT_MAX_LEVEL.AEGIS).toBeNull();
     expect(INSTRUMENT_MAX_LEVEL.VEIL).toBeNull();
@@ -204,7 +204,7 @@ describe('the instrument ceiling', () => {
     for (const level of [...LEVELS, 40, 400]) {
       expect(telescopeSlots(level), `L${String(level)}`).toBeLessThanOrEqual(top);
     }
-    expect(top).toBe(3);
+    expect(top).toBe(4);
   });
 
   it('still grows the slot count on the way up', () => {
@@ -212,20 +212,20 @@ describe('the instrument ceiling', () => {
     expect(telescopeSlots(1)).toBe(1);
     expect(telescopeSlots(3)).toBe(2);
     expect(telescopeSlots(5)).toBe(3);
+    expect(telescopeSlots(7)).toBe(4);
   });
 
-  it('shows the capped moving-contact reach instead of promising the whole galaxy', () => {
-    const top = instrumentGain('TELESCOPE', 5);
-    expect(top.unlocks).toContain(String(sensorReach(5)));
-    expect(top.unlocks?.toLowerCase()).not.toContain('whole disc');
+  it('shows the full-span moving-contact reach at the new top level', () => {
+    const top = instrumentGain('TELESCOPE', 8);
+    expect(top.unlocks).toContain(String(sensorReach(8)));
 
-    const lastStep = instrumentGain('TELESCOPE', 4);
-    expect(lastStep.unlocks).toContain(String(sensorReach(5)));
+    const lastStep = instrumentGain('TELESCOPE', 7);
+    expect(lastStep.next).toContain(String(sensorReach(8)));
     expect(lastStep.unlocks).not.toContain('Infinity');
   });
 
   it('shows both Radar areas and keeps the wide one explicitly clockless', () => {
-    for (const level of [3, 4, 5]) {
+    for (const level of [3, 4, 5, 6, 7, 8]) {
       const gain = instrumentGain('RADAR', level);
       expect(gain.now).toContain(String(radarContactRange(level)));
       expect(gain.now).toContain(String(radarRange(level)));

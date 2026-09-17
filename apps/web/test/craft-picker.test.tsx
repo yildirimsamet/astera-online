@@ -203,6 +203,8 @@ describe.each([
     panel(3, vi.fn(), RESTING);
     const send = screen.getByRole('button', { name: /Craft resting/i });
     expect(send).toBeDisabled();
+    expect(send).toHaveTextContent(/4[3-5]s/);
+    expect(send).not.toHaveTextContent('0m');
     // The picker is not the thing that is wrong, so it is not the thing removed:
     // a commander can still see what they WOULD send when the minute is up.
     expect(options()).toHaveLength(3);
@@ -237,7 +239,10 @@ describe.each([
   it('names the rest when every home craft is resting', () => {
     const readyAt = new Date(Date.now() + 45_000);
     panel(2, vi.fn(), readyAt, [{ runId: 'rest1', craft: 2, readyAt }]);
-    expect(screen.getByRole('button', { name: /Craft resting/i })).toBeDisabled();
+    const send = screen.getByRole('button', { name: /Craft resting/i });
+    expect(send).toBeDisabled();
+    expect(send).toHaveTextContent(/4[3-5]s/);
+    expect(send).not.toHaveTextContent('0m');
   });
 
   it('makes expired craft selectable without waiting for another server response', () => {

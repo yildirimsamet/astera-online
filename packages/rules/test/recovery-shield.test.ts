@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ABUSE,
-  RESOURCE_VALUE,
   earnsRecoveryShield,
   effectiveAttackProtection,
   extendRecoveryShield,
   newcomerShieldUntil,
   recoveryLossHours,
   recoveryShieldUntil,
-  resourceValue,
   type Resources,
 } from '../src/index.js';
 
@@ -37,52 +35,61 @@ const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 
 /** A commander whose works turn out this much an hour, across every world. */
 const PRODUCTION: Resources = { alloy: 1_000, crystal: 500, deuterium: 20 };
-/** What one hour of that is worth on the game's own 32:16:1 scale. */
-const PER_HOUR = resourceValue(PRODUCTION);
-/** Alloy alone worth exactly N hours of it. */
-const alloyWorthHours = (hours: number): Resources =>
-  ({ alloy: (PER_HOUR * hours) / RESOURCE_VALUE.alloy, crystal: 0, deuterium: 0 });
+/** A loss that takes the same number of hours in all three resource lanes. */
+const lossWorthHours = (hours: number): Resources => ({
+  alloy: PRODUCTION.alloy * hours,
+  crystal: PRODUCTION.crystal * hours,
+  deuterium: PRODUCTION.deuterium * hours,
+});
 
 describe('what counts as a heavy defeat', () => {
   it('states the bar as hours of the defender’s own production', () => {
     expect(ABUSE.recoveryLossHours).toBe(8);
-    // 2026-09-16: the window grew to six hours and the bar did not move with it —
-    // the owner lengthened the protection, not the definition of a heavy defeat.
+    // The recovery window and its loss threshold are independent owner controls.
     expect(ABUSE.recoveryShieldHours).toBe(6);
   });
 
   /**
-   * THE LOSS IS ONE FIGURE, NOT TWO COMPARED SEPARATELY.
+   * LOOT AND FLEET COST SHARE THREE RESOURCE CLOCKS.
    *
-   * Owner's design: *"bu ikisinden birisi kalkan kazanması için yeterli olur"* —
-   * either half being enough is satisfied by adding them, because a sum is never
-   * smaller than its larger part. Adding also answers the case neither test could
-   * on its own: a defeat that took six hours of ore AND six hours of ships is a
-   * twelve-hour defeat, and a rule that compared the two halves separately would
-   * call it two small ones.
+   * Loot and fleet are first added resource by resource. Each combined resource
+   * loss is then divided by that resource's hourly production, and the three
+   * recovery times are averaged.
    */
   it('adds what was carried off to what was destroyed', () => {
-    const loot = alloyWorthHours(3);
-    const fleet = alloyWorthHours(5);
+    const loot = lossWorthHours(3);
+    const fleet = lossWorthHours(5);
     expect(recoveryLossHours(loot, NOTHING, PRODUCTION)).toBeCloseTo(3, 9);
     expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(5, 9);
+    expect(earnsRecoveryShield({ lootLost: loot, fleetLost: NOTHING, production: PRODUCTION }))
+      .toBe(false);
+    expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: fleet, production: PRODUCTION }))
+      .toBe(false);
     expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(8, 9);
-  });
-
-  it('grants at exactly the bar and refuses a whisker below it', () => {
-    const at = alloyWorthHours(ABUSE.recoveryLossHours);
-    expect(earnsRecoveryShield({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION }))
-      .toBe(true);
-    const under = { ...at, alloy: at.alloy * 0.999 };
-    expect(earnsRecoveryShield({ lootLost: under, fleetLost: NOTHING, production: PRODUCTION }))
+    expect(earnsRecoveryShield({ lootLost: loot, fleetLost: fleet, production: PRODUCTION }))
       .toBe(false);
   });
 
-  /** Either half alone clears it, which is the owner's "ikisinden birisi yeterli". */
+  it('averages the Alloy, Crystal and Deuterium recovery times separately', () => {
+    const uneven: Resources = { alloy: 9_000, crystal: 500, deuterium: 20 };
+    // 9 Alloy hours, 1 Crystal hour and 1 Deuterium hour: (9 + 1 + 1) / 3.
+    expect(recoveryLossHours(uneven, NOTHING, PRODUCTION)).toBeCloseTo(11 / 3, 9);
+  });
+
+  it('requires the three-resource average to exceed the bar', () => {
+    const at = lossWorthHours(ABUSE.recoveryLossHours);
+    expect(earnsRecoveryShield({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION }))
+      .toBe(false);
+    const over = { ...at, alloy: at.alloy + 1 };
+    expect(earnsRecoveryShield({ lootLost: over, fleetLost: NOTHING, production: PRODUCTION }))
+      .toBe(true);
+  });
+
+  /** Fleet replacement cost alone may clear the average-hours threshold. */
   it('grants on a fleet wipe that carried nothing away', () => {
     expect(earnsRecoveryShield({
       lootLost: NOTHING,
-      fleetLost: alloyWorthHours(9),
+      fleetLost: lossWorthHours(8.01),
       production: PRODUCTION,
     })).toBe(true);
   });
@@ -90,41 +97,29 @@ describe('what counts as a heavy defeat', () => {
   /**
    * THE DIVISION BY ZERO THE FIRST DESIGN WOULD HAVE HAD, AND WHY IT IS GONE.
    *
-   * Dividing each resource by its OWN production and taking the slowest is the
-   * intuitive reading of "how long to rebuild this", and it breaks on the live
-   * field: `profileIncome` gives deuterium `4 x L^1.2` against alloy's `100 x
-   * L^1.3`, and a commander with no Deuterium Plant produces exactly none. Measured
-   * on 97 live battles, 36 of them had the defender losing deuterium they cannot
-   * make — an infinite rebuild time, and therefore a free shield on any raid that
-   * touched the tank.
-   *
-   * Both sides are converted through `resourceValue` instead — the game's own
-   * 32:16:1 scale, where a unit of deuterium is already worth 32 alloy. The
-   * denominator is then the whole works and can only be zero for a commander who
-   * holds no world at all.
+   * A positive loss in a resource the commander cannot produce has no finite
+   * recovery time. That lane therefore makes the three-resource average infinite
+   * and clears the shield threshold.
    */
-  it('prices a resource the defender cannot produce rather than dividing by zero', () => {
+  it('grants when a lost resource cannot be produced on any world', () => {
     const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
     const fuelOnly: Resources = { alloy: 0, crystal: 0, deuterium: 100 };
     const hours = recoveryLossHours(fuelOnly, NOTHING, noPlant);
-    expect(Number.isFinite(hours)).toBe(true);
-    expect(hours).toBeCloseTo(
-      resourceValue(fuelOnly) / resourceValue(noPlant),
-      9,
-    );
-    // And it is still expensive, because deuterium is worth 32 alloy a unit.
-    expect(hours).toBeGreaterThan(0);
+    expect(hours).toBe(Number.POSITIVE_INFINITY);
+    expect(earnsRecoveryShield({ lootLost: fuelOnly, fleetLost: NOTHING, production: noPlant }))
+      .toBe(true);
   });
 
-  it('refuses a battle that cost nothing, and a commander who produces nothing', () => {
+  it('refuses a costless battle and grants for a positive loss with no production', () => {
     expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: NOTHING, production: PRODUCTION }))
       .toBe(false);
-    expect(recoveryLossHours(alloyWorthHours(50), NOTHING, NOTHING)).toBe(0);
+    expect(recoveryLossHours(lossWorthHours(50), NOTHING, NOTHING))
+      .toBe(Number.POSITIVE_INFINITY);
     expect(earnsRecoveryShield({
-      lootLost: alloyWorthHours(50),
+      lootLost: lossWorthHours(50),
       fleetLost: NOTHING,
       production: NOTHING,
-    })).toBe(false);
+    })).toBe(true);
   });
 
   it('refuses nonsense rather than rounding it into a grant', () => {
@@ -139,7 +134,7 @@ describe('what counts as a heavy defeat', () => {
       expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: value, production: PRODUCTION }),
         JSON.stringify(value)).toBe(false);
       expect(earnsRecoveryShield({
-        lootLost: alloyWorthHours(50), fleetLost: NOTHING, production: value,
+        lootLost: lossWorthHours(50), fleetLost: NOTHING, production: value,
       }), JSON.stringify(value)).toBe(false);
     }
     expect(recoveryLossHours({ alloy: Number.NaN, crystal: 0, deuterium: 0 }, NOTHING, PRODUCTION))
@@ -158,13 +153,14 @@ describe('what counts as a heavy defeat', () => {
   it('asks a bigger commander for a proportionally bigger loss', () => {
     const small: Resources = { alloy: 200, crystal: 100, deuterium: 2 };
     const large: Resources = { alloy: 4_000, crystal: 2_000, deuterium: 60 };
-    const loss = { alloy: 20_000, crystal: 0, deuterium: 0 };
+    const loss = { alloy: 20_000, crystal: 10_000, deuterium: 200 };
     expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: small }))
       .toBe(true);
     expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: large }))
       .toBe(false);
-    expect(recoveryLossHours(loss, NOTHING, small))
-      .toBeCloseTo(recoveryLossHours(loss, NOTHING, large) * (resourceValue(large) / resourceValue(small)), 6);
+    expect(recoveryLossHours(loss, NOTHING, small)).toBeGreaterThan(
+      recoveryLossHours(loss, NOTHING, large),
+    );
   });
 });
 

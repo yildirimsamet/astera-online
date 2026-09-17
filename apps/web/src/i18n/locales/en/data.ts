@@ -22,12 +22,12 @@ export const vocabulary = {
       name: 'Telescope',
       tag: 'Resolve distant movement',
       role:
-        'Identifies movement inside its reach; watch slots become 1, 2 and 3 at L1, L3 and L5. Silent.',
+        'Identifies movement inside its reach; watch slots become 1, 2, 3 and 4 at L1, L3, L5 and L7. Silent.',
       roleNone:
         'Identifies distant movement and lets you watch a chosen world silently to learn whether its fleet is home. Requires an Uplink in orbit.',
       roleOwned:
         'Extends the area where moving craft are identified and provides silent watch slots. It gives intelligence, not protection.',
-      detail: 'More levels extend moving-contact sight and reveal passing asteroids when they enter that area; a revealed rock stays known until it is gone. L1, L3 and L5 provide one, two and three silent watch slots. A Telescope never warns that a fleet is aimed at you.',
+      detail: 'More levels extend moving-contact sight and reveal passing asteroids when they enter that area; a revealed rock stays known until it is gone. L1, L3, L5 and L7 provide one, two, three and four silent watch slots. A Telescope never warns that a fleet is aimed at you.',
     },
     RADAR: {
       name: 'Radar',
@@ -46,7 +46,7 @@ export const vocabulary = {
         'Requires an Uplink in orbit. Without Radar, inbound fleets give no arrival warning and most probes pass unnoticed.',
       roleOwned:
         'Detects movement inside its circle without an ETA and marks threats aimed at this world with an arrival time. L2 adds bearing, L4 rough size, and L5 the origin world and full fleet.',
-      detail: 'Every level widens the contact and timed-warning circle and improves the chance of catching probes. L1 marks an inbound fleet with its arrival time, L2 adds bearing, L4 estimates its strength, and L5 reveals its origin and ships. Movement not aimed at this world is detected without an ETA. An Interception Grid can engage strategic weapons only at Radar 3 or above.',
+      detail: 'Every level widens the contact and timed-warning circle. Levels through L5 also improve the chance of catching probes: L1 marks an inbound fleet with its arrival time, L2 adds bearing, L4 estimates its strength, and L5 reveals its origin and ships. L6–L8 buy additional reach. Movement not aimed at this world is detected without an ETA. An Interception Grid can engage strategic weapons only at Radar 3 or above.',
     },
     AEGIS: {
       name: 'Aegis',
@@ -93,10 +93,10 @@ export const vocabulary = {
       name: 'Derrick',
       tag: 'Better mining craft',
       role:
-        'Gives every Prospector owned by this world 2.6× carrying capacity and 1.5× travel speed.',
+        'Gives every Prospector owned by this world 2× carrying capacity and 1.5× travel speed.',
       blurb:
         'Supports this world’s mining craft from orbit. Larger holds increase each haul, while faster travel improves their chance of reaching a contested asteroid in time.',
-      detail: 'It multiplies Prospector carrying capacity by 2.6 and speed by 1.5. Prospector Holds research multiplies the improved hold again. The Derrick changes mining craft only; raid cargo is unaffected.',
+      detail: 'It multiplies Prospector carrying capacity by 2× and speed by 1.5×. Prospector Holds research multiplies the improved hold again. The Derrick changes mining craft only; raid cargo is unaffected.',
     },
     BEACON: {
       name: 'Beacon',
@@ -330,11 +330,12 @@ export const gains = {
   telescope: {
     slotsLabel: 'Planets you can watch',
     rangeLabel: 'How far you can see',
-    maxed: 'Top level: {{slots}} watch slots and {{range}} units of moving-contact sight; the outer rim stays fogged',
+    maxed: 'Top level: {{slots}} watch slots and {{range}} units of moving-contact sight; enough to span the galaxy',
     reachAndCooldown: 'Reaches {{range}} · a slot realigns in {{hours}}h',
     nextSlot: 'Next level adds a {{ordinal}} slot',
     ordinalSecond: '2nd',
     ordinalThird: '3rd',
+    ordinalFourth: '4th',
     cooldown: 'A slot realigns in {{hours}}h',
   },
   radar: {

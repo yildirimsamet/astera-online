@@ -163,12 +163,12 @@ Deuterium is otherwise unchanged: fully raidable above the vault floor, the same
 any other material, and consumed by repeatable losable hulls rather than turned into permanent
 background power.
 
-**And every launch burns it (T6).** The charge is `mass x distance`, rounded up once per leg —
-mass being the same `bulk` the Hangar rations, so one quantity says how big a fleet is in both
-places. It is not priced on speed: a Bulwark already pays for being slow by being slow, and the
-hull table is held at equal-budget power precisely so no second axis can quietly re-rate it.
-D125 and D126 made distance an *information* cost; this makes the same axis an *economic* one,
-which is the consistent version of one idea rather than a new tax.
+**And every launch burns it (T6).** The charge is `fuel mass x distance`, rounded up once per
+leg. Fuel mass starts from the hull's production-resource value, is tilted modestly by its
+reference trip, then receives a tier multiplier: **1.75 / 1.67 / 1.58 / 1.50** from tier one to
+four. This makes fleets materially dearer to operate while preserving better power-per-fuel and
+cargo-per-fuel at every higher tier. D125 and D126 made distance an *information* cost; this
+makes the same axis an *economic* one.
 
 **Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
 cheaper raid, it is a stranded fleet, and a launched fleet cannot be recalled. A raid pays both
@@ -402,8 +402,9 @@ accuracy     = clamp(0.55 + 0.12 × (probeL − veilL),         0.30, 1.00)
 
 Reports are **bands, not numbers**. A cheap scout says "somewhere between 30k and 80k"; an
 expensive one says 61,000. Those are genuinely different decisions. Floors and ceilings
-guarantee that no investment buys perfect invisibility or perfect omniscience — **the fog
-never fully lifts.**
+guarantee that no investment buys perfect invisibility. A level-8 Telescope can span the
+4,400-unit galaxy, but it still holds only four watch slots; distant holdings require a slot,
+a probe or a colony placed nearer to them.
 
 **A probe is fast, and repeat looks are paced by a five-second interval.** The speed
 is ×18 what it was and it pays no launch overhead, so a look at the neighbourhood costs about
@@ -428,6 +429,9 @@ once.
 | L3 | 1,700 units; enables strategic interception after research | "Incoming fleet · ETA 9 min." |
 | L4 | 1,900 units; + rough size | "Sizeable force inbound." |
 | L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Dart, 20 Pike, 12 Courier." |
+| L6 | 2,900 units | "Inbound fleet detected." |
+| L7 | 3,600 units | "Inbound fleet detected." |
+| L8 | 4,400 units | "Inbound fleet detected." |
 
 **The top two rungs were not sold at all until D123.** Every contact on the disc carried its
 full roster, so a maxed Radar bought a bearing and two facts every player already had. A
@@ -556,15 +560,17 @@ race and visible mining route begin for both of them.
 
 **The field follows the people playing it (2026-09-16).** At the top of every hour the worker
 counts the non-bot commanders who played in the last 60 minutes and fixes that hour's spawn at
-**2 rocks per commander**, at random instants and random levels. Ore is the level table
+**1 rock per commander**, at random instants and random levels. Ore is the level table
 (1,600–8,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
-L1–4, day 4+: all). A quiet night is no longer a free farm and a busy evening is no longer an empty
-sky. The count is stored with the hour (`asteroid_spawn_hours`), so a rock never moves once it
-exists. Seasons created before this keep their derived field up to the hour they adopted it.
+L1–4, day 4+: all). Within the unlocked range the L1–5 weights are 44%, 26%, 17%, 9% and 4%; the
+rarest level is 20% less common than before. A quiet night is no longer a free farm and a busy evening is no longer an empty
+sky. The lane counts and level weights are stored with the hour (`asteroid_spawn_hours`), so a
+rock never moves when a later balance pass changes the distribution. Seasons created before this
+keep their derived field up to the hour they adopted it.
 
 **Asteroid Shower is a public opportunity window (D149/D201, reshaped 2026-09-16).** The owner's
 audience is 30–40-year-olds with jobs, and six showers a day paid whoever could attend six. Weekdays
-(Mon–Fri, TRT): 12:30–13:30 ×3 and 20:00–21:00 ×10. Weekends: 13:00–14:00 ×5 and 20:00–21:00 ×15.
+(Mon–Fri, TRT): 12:30–13:30 ×2 and 20:00–21:00 ×5. Weekends: 13:00–14:00 ×3 and 20:00–21:00 ×6.
 A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
 bonus still arrives in its first five minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;
@@ -646,7 +652,7 @@ time left; the launch confirmation explains that choosing to attack spends it.
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
-badly.** A defeat that costs at least **eight hours of that commander's own production** leaves
+badly.** A defeat that costs more than **eight average hours of that commander's own production** leaves
 them unreachable for six hours, on every world they hold, against Raid and Death Star. **While it
 stands, the world that was struck produces +100%** (owner instruction, 2026-09-16): the works fill
 twice as fast, the collector ceiling does not grow, and the boost ends with the shield — including
@@ -664,18 +670,17 @@ the first day answers.
 
 **Heavy means "how long you must work to stand where you stood".** The loss is everything the
 battle carried off PLUS every hull it destroyed that did not rebuild from its own wreckage — the
-permanent loss, the same figure Dominion is scored on. That is priced on the game's own 32:16:1
-scale and divided by what this commander's works turn out in an hour, across every world they
-hold. One figure, not two compared separately: six hours of ore and six hours of ships is a
-twelve-hour defeat, not two small ones.
+permanent loss, the same resource bundle Dominion is scored from. Loot and permanent fleet cost
+are added per resource; Alloy, Crystal and Deuterium are each divided by that resource's hourly
+output across every world the commander holds, then the three durations are averaged. A positive
+loss in a resource none of those worlds produces has no finite recovery time.
 
 The unit is the whole point. A beginner and a developed commander are asked for the same number of
 HOURS, so the absolute figure the developed one has to lose is larger by exactly the ratio of
 their works, and no second ladder has to be kept in step with the Core. A commander caught with an
 empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
 near — which is precisely what the first version of this rule got wrong, and why it was replaced
-one day after it shipped. The bar is eight hours; the window was four and became six on
-2026-09-16 without moving the bar.
+one day after it shipped. The average must exceed eight hours; the protection window is six.
 
 **And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
 the air collects nothing: a shield won while your fleet is still flying at somebody who can no

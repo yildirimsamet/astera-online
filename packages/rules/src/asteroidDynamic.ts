@@ -119,8 +119,7 @@ export function planAsteroidHour(input: PlanAsteroidHourInput): AsteroidHourLane
 }
 
 /** A level no higher than `maxLevel`, from the table's own weights renormalised. */
-function rollLevelUpTo(roll: number, maxLevel: number): number {
-  const weights = GALAXY.asteroidLevelWeights;
+function rollLevelUpTo(roll: number, maxLevel: number, weights: readonly number[]): number {
   const top = Math.min(maxLevel, weights.length - 1);
   let total = 0;
   for (let level = 1; level <= top; level += 1) total += weights[level] ?? 0;
@@ -135,6 +134,8 @@ function rollLevelUpTo(roll: number, maxLevel: number): number {
 export interface GenerateAsteroidHourInput {
   hourOrdinal: number;
   lanes: readonly AsteroidHourLane[];
+  /** Frozen when the hour opens, so balance changes cannot reroll a live rock. */
+  levelWeights?: readonly number[];
   /** One stream for this hour alone; the server keys it off the season secret. */
   rng: () => number;
   /** The season's isotope seed, so spectroscopy reads a dynamic rock like any other. */
@@ -155,7 +156,11 @@ export function generateAsteroidHour(input: GenerateAsteroidHourInput): Asteroid
       const radius = asteroidOrbitRadius(rng());
       const speed = GALAXY.asteroidSpeedMin
         + rng() * (GALAXY.asteroidSpeedMax - GALAXY.asteroidSpeedMin);
-      const level = rollLevelUpTo(rng(), asteroidMaxLevelOnDay(appearsAt / DAY_MINUTES));
+      const level = rollLevelUpTo(
+        rng(),
+        asteroidMaxLevelOnDay(appearsAt / DAY_MINUTES),
+        input.levelWeights ?? ASTEROID_DYNAMIC.levelWeights,
+      );
       const life = (GALAXY.asteroidLifeHoursMin
         + rng() * (GALAXY.asteroidLifeHoursMax - GALAXY.asteroidLifeHoursMin)) * 60;
       const crystalShare = GALAXY.asteroidCrystalShareMin

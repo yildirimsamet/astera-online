@@ -16,11 +16,10 @@ import {
  * THE FIELD FOLLOWS THE PEOPLE PLAYING IT. Owner instruction, 2026-09-16:
  * *"Aktif oyuncu azalınca bedava farm yapmamalı, çok oyuncu olunca asteroid yok
  * denilmemeli. Her saat başı aktif oyuncuya bakılır ve önümüzdeki 1 saat ne kadar
- * atılacağı belirlenir. Oyuncu başına rastgele level saatlik 2 adet asteroid rastgele
- * spawnlanır. Asteroid show etkinliklerinde aynı logic katsayı ile çarpılır."*
+ * atılacağı belirlenir. Asteroid show etkinliklerinde aynı logic katsayı ile çarpılır."*
  *
- * Worked examples from the same instruction, which these tests are built from:
- * 20 active commanders → 40 rocks that hour; 30 active during a x5 shower → 300.
+ * Revised 2026-09-17 to one rock per active commander per hour:
+ * 20 active commanders → 20 rocks that hour; 30 active during a x5 shower → 150.
  *
  * *"İlk gün sadece level 1-2, ikinci gün level 1-2-3, üçüncü gün level 1-2-3-4,
  * dördüncü gün artık hepsi"* — the level ladder opens one rung a day.
@@ -31,8 +30,8 @@ const lanesTotal = (lanes: readonly AsteroidHourLane[]) =>
   lanes.reduce((sum, lane) => sum + lane.count, 0);
 
 describe('the dynamic field, as figures', () => {
-  it('is two rocks an hour per commander active in the last hour', () => {
-    expect(ASTEROID_DYNAMIC.perPlayerPerHour).toBe(2);
+  it('is one rock an hour per commander active in the last hour', () => {
+    expect(ASTEROID_DYNAMIC.perPlayerPerHour).toBe(1);
     expect(ASTEROID_DYNAMIC.activeWindowMinutes).toBe(60);
   });
 
@@ -45,25 +44,63 @@ describe('the dynamic field, as figures', () => {
     // Before the season's first instant nothing larger than the first day's rocks.
     expect(asteroidMaxLevelOnDay(-1)).toBe(2);
   });
+
+  it('makes each higher level progressively rarer without changing the old derived field', () => {
+    expect(ASTEROID_DYNAMIC.levelWeights).toEqual([0, 0.44, 0.26, 0.17, 0.09, 0.04]);
+    expect(ASTEROID_DYNAMIC.levelWeights.reduce((sum, weight) => sum + weight, 0))
+      .toBeCloseTo(1, 9);
+    for (let level = 2; level < ASTEROID_DYNAMIC.levelWeights.length; level += 1) {
+      expect(ASTEROID_DYNAMIC.levelWeights[level])
+        .toBeLessThan(ASTEROID_DYNAMIC.levelWeights[level - 1]!);
+    }
+    // The rarest rock moves from 5% to 4%: exactly twenty percent harder to roll.
+    expect(ASTEROID_DYNAMIC.levelWeights[5])
+      .toBeCloseTo(GALAXY.asteroidLevelWeights[5]! * 0.8, 9);
+  });
+
+  it('uses the dynamic weights when a rock level is rolled', () => {
+    const draws = [0.5, 0.5, 0.5, 0.42];
+    const [rock] = generateAsteroidHour({
+      hourOrdinal: 72,
+      lanes: [{ fromMinute: 3 * 1440, untilMinute: 3 * 1440 + 60, count: 1, frontCount: 0 }],
+      rng: () => draws.shift() ?? 0.5,
+      isotopeSeed: 5,
+    });
+    // 0.42 was L2 under the legacy 40% L1 boundary; it is L1 under the new 44% boundary.
+    expect(rock?.level).toBe(1);
+  });
+
+  it('can re-derive an already-open hour with the weights stored beside it', () => {
+    const draws = [0.5, 0.5, 0.5, 0.42];
+    const [rock] = generateAsteroidHour({
+      hourOrdinal: 72,
+      lanes: [{ fromMinute: 3 * 1440, untilMinute: 3 * 1440 + 60, count: 1, frontCount: 0 }],
+      levelWeights: GALAXY.asteroidLevelWeights,
+      rng: () => draws.shift() ?? 0.5,
+      isotopeSeed: 5,
+    });
+    // The same draw stays L2 for a row opened under the legacy 40% L1 boundary.
+    expect(rock?.level).toBe(2);
+  });
 });
 
 describe('planning one hour', () => {
   const plain = { hourStartsAtMinute: 600, spawnFromMinute: 600, seasonEndsAtMinute: 99_999, showers: [] };
 
-  it('spawns forty rocks for twenty commanders in an ordinary hour', () => {
+  it('spawns twenty rocks for twenty commanders in an ordinary hour', () => {
     const lanes = planAsteroidHour({ ...plain, activePlayers: 20 });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 40, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 20, frontCount: 0 }]);
   });
 
-  it('spawns three hundred for thirty commanders under a x5 shower', () => {
+  it('spawns one hundred fifty for thirty commanders under a x5 shower', () => {
     const lanes = planAsteroidHour({
       ...plain,
       activePlayers: 30,
       showers: [{ startsAtMinute: 600, endsAtMinute: 660, multiplier: 5 }],
     });
-    expect(lanesTotal(lanes)).toBe(300);
+    expect(lanesTotal(lanes)).toBe(150);
     // Half of the shower's BONUS arrives in its opening minutes, as before.
-    expect(lanes[0]!.frontCount).toBe(Math.round((300 - 60) * ASTEROID_SHOWER_FRONT_LOAD.share));
+    expect(lanes[0]!.frontCount).toBe(Math.round((150 - 30) * ASTEROID_SHOWER_FRONT_LOAD.share));
   });
 
   it('spawns nothing in an hour nobody played', () => {
@@ -79,8 +116,8 @@ describe('planning one hour', () => {
     const shower = { startsAtMinute: 630, endsAtMinute: 690, multiplier: 3 };
     const first = planAsteroidHour({ ...plain, activePlayers: 10, showers: [shower] });
     expect(first).toEqual([
-      { fromMinute: 600, untilMinute: 630, count: 10, frontCount: 0 },
-      { fromMinute: 630, untilMinute: 660, count: 30, frontCount: 10 },
+      { fromMinute: 600, untilMinute: 630, count: 5, frontCount: 0 },
+      { fromMinute: 630, untilMinute: 660, count: 15, frontCount: 5 },
     ]);
     const second = planAsteroidHour({
       ...plain,
@@ -90,20 +127,20 @@ describe('planning one hour', () => {
       showers: [shower],
     });
     expect(second).toEqual([
-      { fromMinute: 660, untilMinute: 690, count: 30, frontCount: 0 },
-      { fromMinute: 690, untilMinute: 720, count: 10, frontCount: 0 },
+      { fromMinute: 660, untilMinute: 690, count: 15, frontCount: 0 },
+      { fromMinute: 690, untilMinute: 720, count: 5, frontCount: 0 },
     ]);
   });
 
   it('pays a late hour only for the minutes it has left', () => {
     const lanes = planAsteroidHour({ ...plain, spawnFromMinute: 620, activePlayers: 30 });
-    expect(lanes).toEqual([{ fromMinute: 620, untilMinute: 660, count: 40, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 620, untilMinute: 660, count: 20, frontCount: 0 }]);
     expect(planAsteroidHour({ ...plain, spawnFromMinute: 660, activePlayers: 30 })).toEqual([]);
   });
 
   it('stops at the season’s end', () => {
     const lanes = planAsteroidHour({ ...plain, seasonEndsAtMinute: 615, activePlayers: 20 });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 615, count: 10, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 615, count: 5, frontCount: 0 }]);
   });
 
   it('ignores a shower that ended before the hour or opens after it', () => {
@@ -115,7 +152,7 @@ describe('planning one hour', () => {
         { startsAtMinute: 660, endsAtMinute: 720, multiplier: 10 },
       ],
     });
-    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 10, frontCount: 0 }]);
+    expect(lanes).toEqual([{ fromMinute: 600, untilMinute: 660, count: 5, frontCount: 0 }]);
   });
 
   it('refuses a count it cannot trust', () => {

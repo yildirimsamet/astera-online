@@ -122,6 +122,9 @@ describe('the recovery shield', () => {
     for (const id of f.planetIds) {
       await setLevel(f.db, id, 'CORE', 8);
       await setLevel(f.db, id, 'SHIPYARD', 4);
+      // This suite tests finite three-resource recovery times. The zero-production
+      // lane and its infinite recovery time are covered by the pure rules tests.
+      await setLevel(f.db, id, 'DEUTERIUM_PLANT', 8);
     }
     /*
       THE DEFENDER'S SECOND WORLD, so "every world they hold" is testable — and it
@@ -172,7 +175,7 @@ describe('the recovery shield', () => {
   it('records the hours the grant was decided on, so it can be audited', async () => {
     const report = await overwhelm();
     expect(report.recoveryLossHours).not.toBeNull();
-    expect(report.recoveryLossHours!).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    expect(report.recoveryLossHours!).toBeGreaterThan(ABUSE.recoveryLossHours);
     expect(report.recoveryShieldUntil).not.toBeNull();
     // The world's raidable ceiling is still recorded beside it as context.
     expect(report.raidableBefore).toBeGreaterThan(0);
@@ -196,13 +199,31 @@ describe('the recovery shield', () => {
     expect(report?.recoveryShieldUntil ?? null).toBeNull();
   });
 
+  it('grants when loot includes a resource none of the defender’s worlds can produce', async () => {
+    await setLevel(f.db, theirs, 'DEUTERIUM_PLANT', 0);
+    await setLevel(f.db, colony, 'DEUTERIUM_PLANT', 0);
+    await grant(f.db, theirs, 400_000, 100_000);
+    await giveUnits(f.db, theirs, { DART: 2 });
+    await giveUnits(f.db, mine, { DART: 60 });
+    await levelWorld(f.db, f.planetIds);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 60 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const [report] = await f.db.select().from(battleReports)
+      .where(eq(battleReports.missionId, launch.missionId));
+    expect(report?.loot.deuterium).toBeGreaterThan(0);
+    expect(report?.recoveryLossHours).toBe(Number.POSITIVE_INFINITY);
+    expect(await recoveryOf(f.playerIds[1]!)).not.toBeNull();
+  });
+
   /**
    * THE EXPLOIT THAT KILLED THE FIRST RULE, AND WHY THE SECOND ONE CANNOT HAVE IT.
    *
    * A colony deliberately left with almost nothing in it loses ALL of its raidable
    * stock to a single Wasp. Under the rule that shipped on 2026-09-14 that was a
    * hundred per cent of the share, and the whole commander — capital included —
-   * went behind four hours of immunity for the price of one hull; a floor written
+   * went behind six hours of immunity for the price of one hull; a floor written
    * against total STORAGE was bolted on to refuse it, and the floor is what the
    * live field then proved unusable.
    *
@@ -234,12 +255,14 @@ describe('the recovery shield', () => {
    * A COMMANDER WHO IS MID-ATTACK MAY NOT COLLECT ONE.
    *
    * Otherwise a raid and a counter-raid crossing in the air end with the loser of
-   * the exchange safe behind four hours WHILE their own fleet is still in flight
+   * the exchange safe behind six hours WHILE their own fleet is still in flight
    * toward a target that now cannot answer. A shield earned by attacking inverts
    * what the shield is for.
    */
   it('refuses the grant while the defender has a raid of their own in the air', async () => {
     await grant(f.db, theirs, 200_000, 50_000);
+    await fuelUp(f.db, theirs);
+    await fuelUp(f.db, mine, 5_000_000);
     await giveUnits(f.db, theirs, { DART: 2, COURIER: 2 });
     await giveUnits(f.db, mine, { DART: 240, COURIER: 12 });
     await levelWorld(f.db, f.planetIds);
@@ -498,9 +521,8 @@ describe('the recovery shield', () => {
   const viewOf = (planetId: string) =>
     f.db.transaction((tx) => planetView(tx, planetId, f.clock));
 
-  /** Alloy the works made over one clean hour, clear of any raid disruption. */
+  /** Alloy the works make in the first hour immediately after the battle. */
   const alloyOverAnHour = async (planetId: string) => {
-    f.clock.advance(30);
     const before = await viewOf(planetId);
     f.clock.advance(60);
     const after = await viewOf(planetId);

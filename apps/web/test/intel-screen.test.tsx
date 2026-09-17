@@ -14,9 +14,9 @@ import { IntelScreen } from '../src/screens/IntelScreen.js';
  * The panel that leads the intel centre used to read "Watching 2 of 47" against
  * every other world in the galaxy, and drew a forty-seven-cell bar with two cells
  * lit. That is a progress bar toward a goal the game does not have and could not
- * offer: a Telescope tops out at three slots (D18, capped by D36), so the number
- * on the right was unreachable by a factor of fifteen and the bar could never
- * pass 6%. It told the player they were failing at something nobody had asked
+ * offer: a Telescope tops out at four slots (D18, capped by D36), so the number
+ * on the right was unreachable and the bar could never represent full coverage.
+ * It told the player they were failing at something nobody had asked
  * them to do — on the screen the whole product is supposed to live on.
  *
  * The denominator is now the slot count. The size of the galaxy still appears,

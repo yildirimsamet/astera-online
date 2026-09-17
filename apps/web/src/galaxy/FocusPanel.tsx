@@ -3414,7 +3414,7 @@ const craftReadiness = (home: number, legacy: Date | null, cooldowns: readonly C
     cooldowns.map((rest) => ({ craft: rest.craft, readyAtMs: rest.readyAt.getTime() })), now);
   return {
     available: view.available,
-    resting: view.available === 0 && view.readyAtMs !== null ? (view.readyAtMs - now) / 60_000 : null,
+    resting: view.available === 0 && view.readyAtMs !== null ? view.readyAtMs - now : null,
   };
 };
 
@@ -3425,7 +3425,7 @@ function CraftRests({ cooldowns, now, lane }: {
   return cooldowns?.filter((rest) => rest.readyAt.getTime() > now).map((rest) => (
     <p key={rest.runId} className="num text-caption text-dim">
       {rest.craft} × {t(lane === 'asteroid' ? 'focus.asteroid.resting' : 'focus.debris.resting', {
-        duration: countdown((rest.readyAt.getTime() - now) / 60_000),
+        duration: countdown(rest.readyAt.getTime() - now),
       })}
     </p>
   ));

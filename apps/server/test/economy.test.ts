@@ -18,7 +18,7 @@ import {
   telescopeCooldownHours,
   upgradeCost,
 } from '@astera/rules';
-import { battleReports, planets } from '../src/db/schema.js';
+import { battleReports, planets, players } from '../src/db/schema.js';
 import { planetView } from '../src/services/planetView.js';
 import { collectWorks, installSatellite, raiseInstrument } from '../src/services/build.js';
 import { assignWatch, launchProbe } from '../src/services/intel.js';
@@ -492,6 +492,11 @@ describe('what may be in the air at once', () => {
 
     f.clock.advance(launch.exposureMinutes);
     await worker(f).tick();
+    // This test owns the flight-bay lifecycle. The battle may independently earn
+    // its target a recovery shield, so remove that protection before the final
+    // launch proves the returning fleet released its commitment.
+    await f.db.update(players).set({ recoveryShieldUntil: null })
+      .where(eq(players.id, f.playerIds[1]!));
     await expect(launchAttack(f.db, mine, a, { DART: 20 }, f.clock)).resolves.toBeTruthy();
   });
 });
@@ -549,11 +554,9 @@ describe('raising ground instruments', () => {
   /**
    * THE CEILING. D36.
    *
-   * `radarRange` and `telescopeRange` are six-entry tables and `atLevel`
-   * clamps, so L5 has always been the last level that buys anything. Nothing
-   * enforced it: a player could raise a Radar to 8 at an exponential price and get
-   * precisely nothing for the last three. The interface reported "12 min -> 12 min"
-   * the whole way and took the money.
+   * `radarRange` and `telescopeRange` are finite tables and `atLevel` clamps at
+   * their final entry. The ceiling is derived from those tables so the server can
+   * never charge for a level whose effect has already stopped.
    */
   describe('the top of an instrument', () => {
     /** Raise as far as the rules allow, from a Core high enough not to be the limit. */
