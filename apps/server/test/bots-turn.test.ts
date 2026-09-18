@@ -3,6 +3,7 @@ import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
 import { botProfiles, buildOrders, buildings, missions, planets, players, units } from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
+import { buildUnits } from '../src/services/build.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import {
   BOT_AUTONOMOUS_LANES,
@@ -12,6 +13,7 @@ import { BOTS, BOT_PERSONAS, type BotPersona } from '../src/services/bots/person
 import { rememberWorld } from '../src/services/intel.js';
 import { planetView } from '../src/services/planetView.js';
 import { addMinutes } from '../src/clock.js';
+import { hangarCapacity, hangarCeiling, hangarLoad, hullBulk } from '@astera/rules';
 import { fuelUp, giveUnits, grant, seedWorld, setLevel, type Fixture } from './helpers.js';
 
 /**
@@ -142,6 +144,90 @@ describe('a bot turn', () => {
       .from(buildings)
       .where(and(eq(buildings.planetId, seat.planetId), eq(buildings.type, 'CORE')));
     expect(core?.level).toBe(BOTS.coreCeiling);
+  });
+
+  /**
+   * THE HANGAR IS THE BOT'S CEILING TOO. 2026-09-18.
+   *
+   * A bot ordering past its room would only be refused, turn after turn, and its
+   * alloy would sit idle; one that never raises its Hangar would stall at the base
+   * rung while the people around it grow. Both are shapes a player would read as
+   * "the other commanders are broken".
+   */
+  it('orders only as many ships as its Hangar has room for', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', 10);
+    await setLevel(f.db, seat.planetId, 'SHIPYARD', 4);
+    await grant(f.db, seat.planetId, 2_000_000, 600_000);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 1);
+    await giveUnits(f.db, seat.planetId, { RAMPART: (hangarCapacity(1) - 24) / hullBulk('RAMPART') });
+
+    for (let turn = 0; turn < 4; turn++) {
+      await runBotTurn(f.db, f.clock, seat, silent);
+      f.clock.advance(1);
+    }
+    const view = await viewOf();
+    const queued = view.queues.YARD.reduce(
+      (sum, order) => sum + hangarLoad({ [order.subject]: order.count }), 0);
+    expect(view.capacity.hangarUsed).toBeLessThanOrEqual(hangarCapacity(1));
+    expect(queued).toBeGreaterThan(0);
+    expect(view.capacity.hangarUsed + queued).toBeLessThanOrEqual(hangarCapacity(1));
+  });
+
+  /**
+   * TWO ORDERS OF ONE HULL ARE TWO ORDERS. The yard queue was folded into a record
+   * keyed by hull, so a second Dart batch overwrote the first and the bot believed it
+   * had room it did not — the server refused every order that turn.
+   */
+  it('counts every queued batch of the same hull against its room', async () => {
+    await setLevel(f.db, seat.planetId, 'CORE', 10);
+    await setLevel(f.db, seat.planetId, 'SHIPYARD', 4);
+    await grant(f.db, seat.planetId, 2_000_000, 600_000);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 1);
+    const dart = hullBulk('DART');
+    // 80 room: 20 standing, 2 × 15 queued in two batches, 30 genuinely free.
+    // Its Prospectors are already owned, so the only ship it can buy is a warship.
+    await giveUnits(f.db, seat.planetId, { RAMPART: 12 / hullBulk('RAMPART'), PROSPECTOR: 2 });
+    await buildUnits(f.db, seat.planetId, 'DART', 15 / dart, f.clock);
+    await buildUnits(f.db, seat.planetId, 'DART', 15 / dart, f.clock);
+
+    const result = await runBotTurn(f.db, f.clock, seat, silent);
+    expect(result.did.filter((step) => step.startsWith('ship:'))).not.toHaveLength(0);
+    const view = await viewOf();
+    const queued = view.queues.YARD.reduce(
+      (sum, order) => sum + hangarLoad({ [order.subject]: order.count }), 0);
+    expect(view.capacity.hangarUsed + queued).toBeLessThanOrEqual(hangarCapacity(1));
+  });
+
+  // Every other building stands at the bot's Core ceiling, so the only thing left
+  // to raise is whatever the Hangar gate allows.
+  it('raises its Hangar once the Core has opened the next rung', async () => {
+    await grant(f.db, seat.planetId, 2_000_000, 600_000);
+    for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD']) {
+      await setLevel(f.db, seat.planetId, type, BOTS.coreCeiling);
+    }
+    await setLevel(f.db, seat.planetId, 'HANGAR', hangarCeiling(BOTS.coreCeiling) - 1);
+    await runBotTurn(f.db, f.clock, seat, silent);
+
+    const orders = await f.db
+      .select({ subject: buildOrders.subject })
+      .from(buildOrders)
+      .where(and(eq(buildOrders.planetId, seat.planetId), eq(buildOrders.kind, 'BUILDING')));
+    expect(orders.map((order) => order.subject)).toContain('HANGAR');
+  });
+
+  it('never queues a Hangar rung its Core has not opened', async () => {
+    await grant(f.db, seat.planetId, 2_000_000, 600_000);
+    for (const type of ['CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD']) {
+      await setLevel(f.db, seat.planetId, type, BOTS.coreCeiling);
+    }
+    await setLevel(f.db, seat.planetId, 'HANGAR', hangarCeiling(BOTS.coreCeiling));
+    await runBotTurn(f.db, f.clock, seat, silent);
+
+    const orders = await f.db
+      .select({ subject: buildOrders.subject })
+      .from(buildOrders)
+      .where(and(eq(buildOrders.planetId, seat.planetId), eq(buildOrders.kind, 'BUILDING')));
+    expect(orders.map((order) => order.subject)).not.toContain('HANGAR');
   });
 
   it('does not offer a raid to a world that owns no warship', async () => {

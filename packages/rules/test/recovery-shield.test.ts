@@ -111,19 +111,57 @@ describe('what counts as a heavy defeat', () => {
   });
 
   /**
-   * THE DIVISION BY ZERO THE FIRST DESIGN WOULD HAVE HAD, AND WHY IT IS GONE.
+   * A LOSS IN A RESOURCE THE COMMANDER CANNOT MAKE IS REPRICED, NOT INFINITE.
+   * Owner instruction, 2026-09-18.
    *
-   * A positive loss in a resource the commander cannot produce has no finite
-   * recovery time. That lane therefore makes the three-resource average infinite
-   * and clears the shield threshold.
+   * The lane used to read as infinite hours and clear the bar outright, so for a
+   * commander without a Deuterium Refinery "six hours of net loss" meant "one unit of
+   * deuterium lost". The lost amount is now converted at the 32:16:1 value
+   * (`RESOURCE_VALUE`) into the first resource they DO produce — alloy, then
+   * crystal — and read on that resource's clock like any other loss.
    */
-  it('grants when a lost resource cannot be produced on any world', () => {
+  it('reprices lost deuterium as alloy when no world makes deuterium', () => {
     const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
     const fuelOnly: Resources = { alloy: 0, crystal: 0, deuterium: 100 };
-    const hours = recoveryLossHours(fuelOnly, NOTHING, noPlant);
-    expect(hours).toBe(Number.POSITIVE_INFINITY);
+    // 100 D = 3,200 alloy = 3.2 hours on the alloy clock, averaged over three clocks.
+    expect(recoveryLossHours(fuelOnly, NOTHING, noPlant)).toBeCloseTo(3.2 / 3, 9);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: fuelOnly, fleetLost: NOTHING, production: noPlant })))
+      .toBe(false);
+  });
+
+  it('still grants when the repriced loss reaches the bar', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    // 600 D = 19,200 alloy = 19.2 alloy hours → 6.4 averaged.
+    const heavy: Resources = { alloy: 0, crystal: 0, deuterium: 600 };
+    expect(recoveryLossHours(heavy, NOTHING, noPlant)).toBeCloseTo(6.4, 9);
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: heavy, fleetLost: NOTHING, production: noPlant })))
       .toBe(true);
+  });
+
+  it('adds the repriced amount to what was lost in that resource already', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    const loot: Resources = { alloy: 2_000, crystal: 500, deuterium: 50 };
+    const fleet: Resources = { alloy: 400, crystal: 0, deuterium: 25 };
+    // Alloy: 2,400 + 75 D × 32 = 4,800 → 4.8 h. Crystal: 500 → 1 h. Deuterium: 0 h.
+    expect(recoveryLossHours(loot, fleet, noPlant)).toBeCloseTo((4.8 + 1) / 3, 9);
+  });
+
+  it('falls back to crystal when alloy is not produced either', () => {
+    const crystalOnly: Resources = { alloy: 0, crystal: 500, deuterium: 0 };
+    const loss: Resources = { alloy: 1_000, crystal: 0, deuterium: 10 };
+    // 1,000 alloy = 500 crystal, 10 D = 160 crystal → 660 / 500 = 1.32 h on one clock.
+    expect(recoveryLossHours(loss, NOTHING, crystalOnly)).toBeCloseTo(1.32 / 3, 9);
+  });
+
+  it('leaves the net lookback finite, so a profitable raid can offset it', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    const check = {
+      defeats: [{ loot: { alloy: 0, crystal: 0, deuterium: 600 }, fleetLost: NOTHING }],
+      raids: [{ loot: { alloy: 3_000, crystal: 0, deuterium: 0 }, fleetLost: NOTHING }],
+      production: noPlant,
+    };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6.4 - 1, 9);
+    expect(earnsRecoveryShield(check)).toBe(false);
   });
 
   it('refuses a costless battle and grants for a positive loss with no production', () => {
@@ -236,17 +274,46 @@ describe('what the last six hours cost, net', () => {
     expect(netRecoveryLossHours({ defeats: [], raids: [], production: PRODUCTION })).toBe(0);
   });
 
-  it('keeps an unproducible loss infinite, whatever the raids earned', () => {
+  it('lets a raid offset an unproducible loss once it is repriced', () => {
     const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
     const check = {
       defeats: [{ loot: { alloy: 0, crystal: 0, deuterium: 100 }, fleetLost: NOTHING }],
       raids: [raid(50, 0)],
       production: noPlant,
     };
-    expect(netRecoveryLossHours(check)).toBe(Number.POSITIVE_INFINITY);
-    // A haul in a resource no world produces cannot be priced in hours; it offsets nothing.
-    expect(raidProfitHours({ loot: { alloy: 0, crystal: 0, deuterium: 9_999 }, fleetLost: NOTHING }, noPlant))
-      .toBe(0);
+    // 100 D repriced is ~1.07 h; a fifty-hour raid profit more than covers it.
+    expect(netRecoveryLossHours(check)).toBe(0);
+  });
+
+  /**
+   * A HAUL OF FUEL THE RAIDER CANNOT MAKE IS STILL PROFIT. 2026-09-18.
+   *
+   * It used to price at zero, so a commander without a Deuterium Refinery who looted
+   * deuterium all evening could still read as a net loser and take a shield they had
+   * not earned. It is repriced exactly as the loss side is.
+   */
+  it('reprices a fuel haul the raider cannot make, so it offsets the loss', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    // 300 D = 9,600 alloy = 9.6 alloy hours → 3.2 averaged.
+    expect(raidProfitHours({ loot: { alloy: 0, crystal: 0, deuterium: 300 }, fleetLost: NOTHING }, noPlant))
+      .toBeCloseTo(3.2, 9);
+    // A heavy defeat (6.4 h) minus that haul is under the bar: no shield.
+    const check = {
+      defeats: [{ loot: { alloy: 0, crystal: 0, deuterium: 600 }, fleetLost: NOTHING }],
+      raids: [{ loot: { alloy: 0, crystal: 0, deuterium: 300 }, fleetLost: NOTHING }],
+      production: noPlant,
+    };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(3.2, 9);
+    expect(earnsRecoveryShield(check)).toBe(false);
+  });
+
+  it('reprices a raid that lost unproducible fuel as a cost, never below zero overall', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    // Carried 3,000 alloy home, burned 100 D of hulls: (3,000 − 3,200) / 1,000 / 3.
+    expect(raidProfitHours({
+      loot: { alloy: 3_000, crystal: 0, deuterium: 0 },
+      fleetLost: { alloy: 0, crystal: 0, deuterium: 100 },
+    }, noPlant)).toBeCloseTo(-0.2 / 3, 9);
   });
 
   it('drops a corrupt row instead of letting it poison the rest', () => {

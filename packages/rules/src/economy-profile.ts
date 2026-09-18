@@ -83,6 +83,21 @@ export const YARD_GATE_TOP = 6;
 const stretch = (level: number, days: number = ECONOMY_PROFILE.progressionDays) =>
   level <= 3 ? 1 : horizonScale(days);
 
+/**
+ * THE STAGE A HANGAR RUNG IS PRICED AT; index is the rung bought. 2026-09-18.
+ *
+ * A gate rung costs what its gate Core's stage costs, so the rung that opens at
+ * Core 7 is priced like Core-7 hardware. Rung 7 jumps two stages and each rung
+ * after climbs one: roughly 3.6, 5.5, 8.4 and 12.8 days of one Core-16 world's output, a
+ * luxury for the largest holdings that a thirty-day season can still reach.
+ */
+const HANGAR_PRICE_STAGE = [1, 1, 4, 7, 10, 13, 16, 18, 19, 20, 21] as const;
+/**
+ * A rung costs a quarter more than the Core upgrade that opens it. Owner decision,
+ * 2026-09-18 (was ×2): the Core is the real gate, so the Hangar stays a modest add-on.
+ */
+const HANGAR_PRICE_MULT = 1.25;
+
 export interface ProfileBuilding {
   cost: Resources;
   minutes: number;
@@ -114,14 +129,21 @@ export function profileBuilding(
     VAULT: { alloy: 0.8, crystal: 0.8, deuterium: 0 },
     SHIPYARD: { alloy: 1.3, crystal: 1, deuterium: 0 },
     DEUTERIUM_PLANT: { alloy: 0.6, crystal: 1.2, deuterium: 0 },
+    HANGAR: { alloy: 0.65 * HANGAR_PRICE_MULT, crystal: 0.35 * HANGAR_PRICE_MULT, deuterium: 0 },
   };
-  // The Yard has fewer rungs than the producers, so its price uses the economic stage it supports.
-  const referenceLevel = id === 'SHIPYARD' ? Math.min(30, level * 2) : level;
+  // The Yard and the Hangar have fewer rungs than the producers, so each is priced
+  // at the economic stage it supports rather than at its own rung number.
+  const staged = id === 'SHIPYARD' || id === 'HANGAR';
+  const referenceLevel = id === 'SHIPYARD' ? Math.min(30, level * 2)
+    : id === 'HANGAR' ? HANGAR_PRICE_STAGE[Math.min(level, HANGAR_PRICE_STAGE.length - 1)]!
+    : level;
   const reference = profileIncome(referenceLevel), before = profileIncome(referenceLevel - 1);
-  const effectiveDelta = id === 'SHIPYARD'
+  const effectiveDelta = staged
     ? { alloy: reference.alloy - before.alloy, crystal: reference.crystal - before.crystal, deuterium: 0 } : delta;
-  const h = id === 'SHIPYARD'
+  const h = staged
     ? 0.5 * 1.5 ** (referenceLevel - 1) * stretch(referenceLevel, days) : horizon;
+  // A Hangar rung is raised at the pace of the stage it is priced at, not of its rung.
+  const work = id === 'HANGAR' ? Math.min(480, 2 * 1.36 ** (referenceLevel - 1)) : labor;
   const hours = { alloy: h * shares[id].alloy, crystal: h * shares[id].crystal, deuterium: 0 };
 
   /**
@@ -153,7 +175,7 @@ export function profileBuilding(
       referenceLevel, repaymentHours: h, recipeHours: flat };
   }
 
-  return { cost: profileInvoice(effectiveDelta, hours), minutes: labor,
+  return { cost: profileInvoice(effectiveDelta, hours), minutes: work,
     referenceLevel, repaymentHours: h, recipeHours: hours };
 }
 

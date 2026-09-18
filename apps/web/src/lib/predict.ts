@@ -9,6 +9,9 @@ import {
   buildingCost,
   groundLoad,
   groundSlots,
+  hangarCapacity,
+  hangarCeiling,
+  hangarLoad,
   hullBulk,
   hullBuildable,
   instrumentCost,
@@ -137,6 +140,7 @@ export function projectedQueueState(
       VAULT: view.buildings.VAULT ?? 0,
       SHIPYARD: view.buildings.SHIPYARD ?? 0,
       DEUTERIUM_PLANT: view.buildings.DEUTERIUM_PLANT ?? 0,
+      HANGAR: view.buildings.HANGAR ?? 0,
     },
     instruments: { ...view.instruments },
     orbit: [...view.orbit],
@@ -252,7 +256,8 @@ export function predictUpgrade(view: PlanetView, type: BuildingId): Prediction {
    * upgrade that un-happens a moment later.
    */
   const core = projected.buildings.CORE;
-  if (type !== 'CORE' && level >= core) return null;
+  // The Hangar's rungs open at the Core's tier changes, not one per Core level.
+  if (type === 'HANGAR' ? level >= hangarCeiling(core) : type !== 'CORE' && level >= core) return null;
 
   const next = spend(view, cost);
   return appendOrder(next, 'CONSTRUCTION', 'BUILDING', type, 1, cost);
@@ -299,13 +304,14 @@ export function predictBuild(view: PlanetView, hull: HullId, count: number): Pre
   const owned = projected.units[hull] ?? 0;
   if (hull === 'PROSPECTOR' && count > prospectorRoom(owned, tech)) return null;
 
-  // Only emplacements answer to a ceiling (D184), and the order must fit the same
-  // ownership pool the server checks. Projected units include every earlier Yard
-  // order, so two individually legal taps cannot optimistically walk through it.
-  if (spec.ground) {
-    const capacity = view.capacity?.ground ?? groundSlots(view.buildings.CORE ?? 0);
-    if (groundLoad(projected.units) + hullBulk(hull) * count > capacity) return null;
-  }
+  // A ship needs a Hangar berth and a gun needs ground: the same two pools the
+  // server checks. Projected units include every earlier Yard order, so two
+  // individually legal taps cannot optimistically walk through either ceiling.
+  const capacity = spec.ground
+    ? view.capacity?.ground ?? groundSlots(view.buildings.CORE ?? 0)
+    : view.capacity?.hangar ?? hangarCapacity(view.buildings.HANGAR ?? 0);
+  const used = spec.ground ? groundLoad(projected.units) : hangarLoad(projected.units);
+  if (used + hullBulk(hull) * count > capacity) return null;
 
   const next = spend(view, cost);
   return appendOrder(next, 'YARD', 'HULL', hull, count, cost);

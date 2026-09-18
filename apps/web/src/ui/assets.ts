@@ -555,6 +555,8 @@ export function buildingArt(id: BuildingId, level: number): string | null {
       return RESOURCE_ART.crystal;
     case 'SHIPYARD':
       return `${BASE}/general/shipyard_${String(tier)}.png`;
+    case 'HANGAR':
+      return `${BASE}/general/hangar_${String(tier)}.png`;
     /** It makes deuterium, so it wears deuterium — the Refinery and Extractor idiom. */
     case 'DEUTERIUM_PLANT':
       return RESOURCE_ART.deuterium;
@@ -583,4 +585,5 @@ export const BUILDING_ART: Record<BuildingId, string | null> = {
   VAULT: `${BASE}/general/vault_1.png`,
   SHIPYARD: `${BASE}/general/shipyard_1.png`,
   DEUTERIUM_PLANT: RESOURCE_ART.deuterium,
+  HANGAR: `${BASE}/general/hangar_1.png`,
 };

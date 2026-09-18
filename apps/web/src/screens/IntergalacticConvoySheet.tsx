@@ -84,6 +84,7 @@ export function IntergalacticConvoySheet({
     VAULT: planet.buildings.VAULT ?? 0,
     SHIPYARD: planet.buildings.SHIPYARD ?? 0,
     DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
+    HANGAR: planet.buildings.HANGAR ?? 0,
   };
   const productionCap = convoyProductionCap({
     buildings,

@@ -162,6 +162,8 @@ describe('ordinary build queues', () => {
 
   it('keeps the running head fixed when a middle order is cancelled', async () => {
     await grant(f.db, planetId, 100_000, 30_000);
+    // Thirty-one Darts need more room than the base rung; the queue is the subject here.
+    await setLevel(f.db, planetId, 'HANGAR', 2);
     await buildUnits(f.db, planetId, 'DART', 20, f.clock);
     await buildUnits(f.db, planetId, 'DART', 10, f.clock);
     await buildUnits(f.db, planetId, 'DART', 1, f.clock);

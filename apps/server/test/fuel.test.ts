@@ -118,7 +118,8 @@ describe('fuel', () => {
   });
 
   it('charges a transfer for the one leg it flies', async () => {
-    await setLevel(f.db, target, 'HANGAR', 1);
+    // Room for the forty Darts that land: this test is about fuel, not the Hangar.
+    await setLevel(f.db, target, 'HANGAR', 3);
     await f.db
       .update(planets)
       .set({ controllerPlayerId: f.playerIds[0]!, kind: 'COLONY' })

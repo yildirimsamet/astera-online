@@ -1,5 +1,6 @@
 import { ABUSE, COMBAT, MULTI_WORLD } from './constants.js';
 import type { Grade, NeutralTier, Resources } from './types.js';
+import { RESOURCE_VALUE } from './valuation.js';
 
 export const gradeMultiplier = (grade: Grade): number =>
   grade === 'DECISIVE'
@@ -415,26 +416,51 @@ const saneAmounts = (amounts: Resources): boolean =>
  * THREE INDEPENDENT CLOCKS. Loot and permanently destroyed fleet cost are added
  * resource by resource. Each total is divided by that resource's nominal hourly
  * production across every world, and the Alloy, Crystal and Deuterium durations
- * are averaged. A resource with no loss contributes zero hours. A positive loss
- * that the commander cannot produce has no finite recovery time and therefore
- * clears the shield bar.
+ * are averaged. A resource with no loss contributes zero hours.
+ *
+ * A LOSS IN A RESOURCE NO WORLD PRODUCES IS REPRICED. Owner instruction, 2026-09-18.
+ * It used to read as infinite hours, so for a commander without a Deuterium
+ * Refinery "six hours of net loss" meant "one unit of deuterium lost". The amount is
+ * converted at `RESOURCE_VALUE` (32:16:1) into the first resource the commander DOES
+ * produce — alloy, then crystal — and read on that clock. Only a commander who
+ * produces nothing at all has an infinite recovery time.
  *
  * ZERO FOR ANYTHING THAT IS NOT A PAIR OF REAL QUANTITIES. A negative, infinite or
  * missing figure is not a small defeat, it is not a defeat at all, and rounding it
  * into one is how a shield gets handed out by a corrupt row.
  */
+/**
+ * MOVE EVERY AMOUNT A COMMANDER CANNOT PRODUCE ONTO ONE THEY CAN. 2026-09-18.
+ *
+ * Converted at `RESOURCE_VALUE` (32:16:1) into the first produced resource — alloy,
+ * then crystal — so every clock reads a resource that has a rate. Amounts may be
+ * signed (a raid's net). Null when something must be moved and nothing is produced.
+ */
+function repriceToProduced(amounts: Resources, production: Resources): Resources | null {
+  const out: Resources = { ...amounts };
+  const target = RESOURCE_KEYS.find((key) => production[key] > 0);
+  for (const key of RESOURCE_KEYS) {
+    if (out[key] === 0 || production[key] > 0) continue;
+    if (target === undefined) return null;
+    out[target] += (out[key] * RESOURCE_VALUE[key]) / RESOURCE_VALUE[target];
+    out[key] = 0;
+  }
+  return out;
+}
+
 export function recoveryLossHours(
   lootLost: Resources,
   fleetLost: Resources,
   production: Resources,
 ): number {
   if (!saneAmounts(lootLost) || !saneAmounts(fleetLost) || !saneAmounts(production)) return 0;
-  const hours = RESOURCE_KEYS.map((key) => {
-    const lost = lootLost[key] + fleetLost[key];
-    if (lost === 0) return 0;
-    if (production[key] === 0) return Number.POSITIVE_INFINITY;
-    return lost / production[key];
-  });
+  const lost = repriceToProduced({
+    alloy: lootLost.alloy + fleetLost.alloy,
+    crystal: lootLost.crystal + fleetLost.crystal,
+    deuterium: lootLost.deuterium + fleetLost.deuterium,
+  }, production);
+  if (lost === null) return Number.POSITIVE_INFINITY;
+  const hours = RESOURCE_KEYS.map((key) => (lost[key] === 0 ? 0 : lost[key] / production[key]));
   return hours.reduce((sum, duration) => sum + duration, 0) / hours.length;
 }
 
@@ -445,16 +471,22 @@ export function recoveryLossHours(
  * each over its own production, averaged — so a profit and a loss are measured in the
  * one unit and can be subtracted. Negative when the raid cost more than it carried.
  *
- * A RESOURCE NO WORLD PRODUCES PRICES AT ZERO HERE, where on the loss side it prices at
- * infinity: a haul of fuel the commander cannot make is not hours of their work, and
- * letting it offset an infinite loss would be `∞ − ∞`.
+ * A RESOURCE NO WORLD PRODUCES IS REPRICED here exactly as on the loss side
+ * (2026-09-18). It used to price at zero, so a raider without a Deuterium Refinery who
+ * looted fuel all evening still read as a net loser and could take a shield unearned.
  */
 export function raidProfitHours(raid: RecoveryLedgerEntry, production: Resources): number {
   if (!saneAmounts(raid.loot) || !saneAmounts(raid.fleetLost) || !saneAmounts(production)) {
     return 0;
   }
-  const hours = RESOURCE_KEYS.map((key) =>
-    production[key] === 0 ? 0 : (raid.loot[key] - raid.fleetLost[key]) / production[key]);
+  const net = repriceToProduced({
+    alloy: raid.loot.alloy - raid.fleetLost.alloy,
+    crystal: raid.loot.crystal - raid.fleetLost.crystal,
+    deuterium: raid.loot.deuterium - raid.fleetLost.deuterium,
+  }, production);
+  // A commander who produces nothing has no hours to earn in.
+  if (net === null) return 0;
+  const hours = RESOURCE_KEYS.map((key) => (net[key] === 0 ? 0 : net[key] / production[key]));
   return hours.reduce((sum, duration) => sum + duration, 0) / hours.length;
 }
 

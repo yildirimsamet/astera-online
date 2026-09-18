@@ -146,20 +146,20 @@ describe('owner 30% economy experiment against the checkpoint', () => {
 
   it('sets the requested guards and T1 dome without changing guns, stock or rearm cadence', () => {
     expect(MULTI_WORLD.neutral[1]).toEqual({
-      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0, HANGAR: 1 },
       instruments: { AEGIS: 1 }, fleet: { DART: 12, PIKE: 6, VIPER: 1, STRONGHOLD: 1 }, ground: { THORN: 1 },
       deuteriumLootMultiplier: 0.30,
       captureStock: { alloy: 1000, crystal: 500, deuterium: 0 }, reinforcementMinutes: null,
     });
     expect(MULTI_WORLD.neutral[2]).toEqual({
-      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0, HANGAR: 2 },
       instruments: { AEGIS: 2 }, fleet: { DART: 20, PIKE: 20, VIPER: 8, STRONGHOLD: 8 },
       deuteriumLootMultiplier: 0.50,
       ground: { THORN: 2, BASTION: 2 }, captureStock: { alloy: 5000, crystal: 2500, deuterium: 1000 },
       reinforcementMinutes: 360,
     });
     expect(MULTI_WORLD.neutral[3]).toEqual({
-      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0, HANGAR: 3 },
       instruments: { AEGIS: 4 },
       fleet: { VIPER: 15, STRONGHOLD: 15, TEMPEST: 5, BALLISTA: 5, SENTINEL: 5, LEVIATHAN: 5, PRAETORIAN: 5 },
       deuteriumLootMultiplier: 0.70,

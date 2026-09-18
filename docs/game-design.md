@@ -86,8 +86,18 @@ fight.
 | **Crystal Extractor** | Crystal/hr and crystal storage | Slow, but gates everything interesting |
 | **Vault** | Storage capacity and protected stock | A larger purchase window vs investment elsewhere |
 | **Shipyard** | Unlocks hulls, sets probe stealth and build throughput | Reach vs growth |
+| **Hangar** | Fleet room on this world (ships, by `bulk`) | Grow the Core to grow the fleet |
 
-Five numbers, one portrait screen, no scrolling. **A hard cap.**
+**The Hangar (restored 2026-09-18, reverses D184).** Commanders held their Core low to stay
+inside the beginners' tier band and printed an unbounded fleet there. A world's ships — home,
+away and queued — must fit its Hangar room; ground guns keep their own Core-derived pool. Rungs
+open only where a development tier changes: Hangar 2–6 at Core 4, 7, 10, 13, 16; a Core-16 world
+may buy rungs 7–10 with resources alone. Room is a frozen ladder (80 · 180 · 470 · 810 · 1,550 ·
+2,290 · 3,250 · 4,400 · 5,740 · 7,270), derived from the gate Core's alloy+crystal output over
+1, 2, 3, 5, 8, 12, 17, 23, 30, 38 days of combat hulls; adjacent rungs stay within ×2.6 so the
+±1 tier band never pits a fleet against one five times its size. Overflow is legal: a full
+world builds and receives nothing more, but nothing is deleted. Live worlds were seeded at the
+rung their Core already opened (`0096_restore_hangar.sql`).
 
 **Work commits on payment and completes through three independent queues** (D4).
 Buildings, instruments and satellites use each world's CONSTRUCTION lane; mobile hulls and ground

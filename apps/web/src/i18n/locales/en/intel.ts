@@ -131,7 +131,7 @@ export const reports = {
   /** The prize, and the only door in the game into a hull you did not build. */
   pirateCaptured: 'From pirates',
   pirateCapturedNote:
-    'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to, and it does not count as one you built.',
+    'Taken intact from the wreck of a crew you destroyed. It joins the garrison at the world your fleet returns to — even over Hangar capacity — and it does not count as one you built.',
   youHeld: 'You stopped the raid. The attacker took no resources.',
   youFell: 'The raid damaged your defence.',
   /** The price of the haul, beside it. `Rounds` is the model's number, not the player's. */

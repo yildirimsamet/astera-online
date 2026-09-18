@@ -65,18 +65,16 @@ export type HullProfile =
  * on read; nothing writes one.
  */
 /**
- * THE HANGAR WAS THE SIXTH, AND IT IS GONE. D184.
+ * THE HANGAR IS BACK, GATED BY THE CORE'S TIERS. 2026-09-18, reverses D184.
  *
- * `buildings.type` is plain text with no constraint and `buildingLevelsFrom` reads
- * an unknown row as nothing, so dropping one needs no enum migration: a stale
- * `HANGAR` row is simply never asked for again. The migration deletes those rows
- * anyway, because a row nothing can price is a row that will confuse the next
- * person to read the table.
+ * D184 removed it and fleets became bounded only by a purse, so a commander could
+ * hold their Core low, stay inside the beginners' tier band and print an unbounded
+ * fleet there. `HANGAR` in constants carries the ladder and why.
  */
 export type BuildingId =
-  | 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'DEUTERIUM_PLANT';
+  | 'CORE' | 'REFINERY' | 'EXTRACTOR' | 'VAULT' | 'SHIPYARD' | 'DEUTERIUM_PLANT' | 'HANGAR';
 export const BUILDING_IDS = [
-  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT', 'HANGAR',
 ] as const;
 /**
  * TWO KINDS OF HARDWARE, AND THEY ARE NOT ALIKE. D25.

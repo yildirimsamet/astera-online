@@ -10,7 +10,9 @@ import {
   sensorReach,
   telescopeSlots,
   type BuildingLevels,
+  HANGAR,
   START_BUILDINGS,
+  hangarCapacity,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
 
@@ -61,6 +63,7 @@ const at = (level: number): BuildingLevels => ({
   VAULT: Math.max(START_BUILDINGS.VAULT, level),
   SHIPYARD: Math.max(START_BUILDINGS.SHIPYARD, level),
   DEUTERIUM_PLANT: Math.max(START_BUILDINGS.DEUTERIUM_PLANT, level),
+  HANGAR: Math.max(START_BUILDINGS.HANGAR, level),
 });
 
 describe('every upgrade row states something that actually changes', () => {
@@ -117,8 +120,9 @@ describe('every upgrade row states something that actually changes', () => {
   it.each(BUILDING_IDS)('%s, at every level', (id) => {
     for (const level of LEVELS) {
       const gain = buildingGain(id, level, 0, at(level));
+      const honest = gain.now !== gain.next || gain.maxed === true;
       expect(
-        gain.now !== gain.next,
+        honest,
         `${id} L${String(level)} shows "${gain.now}" -> "${gain.next}" and still charges for it`,
       ).toBe(true);
     }
@@ -150,6 +154,31 @@ describe('every upgrade row states something that actually changes', () => {
     for (const id of INSTRUMENT_IDS) {
       for (const level of LEVELS) expect(instrumentGain(id, level).label).not.toBe('');
     }
+  });
+});
+
+/**
+ * THE HANGAR ROW STATES ROOM, AND THE CORE ROW STATES THE RUNG IT OPENS. 2026-09-18.
+ *
+ * Room is the number a commander compares against their fleet; the Core row is
+ * where they learn that raising it is what lets the Hangar grow.
+ */
+describe('the Hangar and the Core gate', () => {
+  it('quotes the room this rung and the next one hold', () => {
+    const gain = buildingGain('HANGAR', 2, 0, at(2));
+    expect(gain.now).toContain(String(hangarCapacity(2)));
+    expect(gain.next).toContain(String(hangarCapacity(3)));
+  });
+
+  it('is maxed at the top rung and offers nothing past it', () => {
+    expect(buildingGain('HANGAR', HANGAR.maxLevel, 0, at(HANGAR.maxLevel)).maxed).toBe(true);
+    expect(buildingGain('HANGAR', HANGAR.maxLevel - 1, 0, at(9)).maxed).toBeUndefined();
+  });
+
+  it('says so on the Core row when the next Core opens a Hangar rung', () => {
+    expect(buildingGain('CORE', 6, 0, at(6)).unlocks).toMatch(/Hangar 3/);
+    expect(buildingGain('CORE', 15, 0, at(15)).unlocks).toMatch(/Hangar 6/);
+    expect(buildingGain('CORE', 7, 0, at(7)).unlocks ?? '').not.toMatch(/Hangar/);
   });
 });
 

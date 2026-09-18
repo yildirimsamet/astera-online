@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, HULLS, SEASON, distance, missionFuel } from '@astera/rules';
+import { CLAN, HULLS, SEASON, distance, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
 import {
   attackCommitments,
   battleReports,
@@ -65,6 +65,9 @@ import {
   testEnv,
   type Fixture,
 } from './helpers.js';
+
+/** Ramparts (4 room) filling a Hangar to exactly `room`. */
+const fillHangar = (room: number): Record<string, number> => ({ RAMPART: room / hullBulk('RAMPART') });
 
 const silent = pino({ level: 'silent' });
 
@@ -613,20 +616,19 @@ describe('ruleset-v3 clans', () => {
   });
 
   /**
-   * THE REFUSAL THIS REPLACES. D184.
+   * THE HANGAR DOES NOT CARE WHICH DOOR A SHIP CAME THROUGH. Restored 2026-09-18.
    *
-   * Aid used to be quoted against the destination's Hangar and refused when it
-   * would not fit. There is no such ceiling now, so a gift always lands — which is
-   * the only honest answer for a convoy that cannot be recalled once it is away.
-   * The berth cap below is the refusal that remains.
+   * A ship gift is a craft arriving at a world, so a full Hangar refuses it at the
+   * quote and at launch, exactly as it refuses a transfer.
    */
-  it('lands an aid fleet however full the destination already is', async () => {
+  it('quotes and refuses an aid fleet that cannot fit in the destination Hangar', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
-    await giveUnits(f.db, f.planetIds[1]!, { DART: 5_000 });
+    await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 1);
+    await giveUnits(f.db, f.planetIds[1]!, fillHangar(hangarCapacity(1)));
     await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const payload = {
       senderPlayerId: f.playerIds[0]!,
@@ -638,9 +640,9 @@ describe('ruleset-v3 clans', () => {
     };
 
     await expect(quoteClanAid(f.db, { ...payload, now: f.clock.now() }))
-      .resolves.toMatchObject({ canLand: true });
+      .resolves.toMatchObject({ canLand: false });
     await expect(f.db.transaction((tx) => launchClanAid(tx, { ...payload, clock: f.clock })))
-      .resolves.toBeTruthy();
+      .rejects.toMatchObject({ code: 'CLAN_AID_CANNOT_LAND' });
   });
 
   it('revalidates advanced ship gifts against the recipient research', async () => {
@@ -669,19 +671,14 @@ describe('ruleset-v3 clans', () => {
       .resolves.toMatchObject({ canLand: true });
   });
 
-  /**
-   * THE OTHER HALF OF THE SAME REFUSAL. D184.
-   *
-   * A destination could fill while the convoy was in the air, and the aid turned
-   * round. Nothing fills any more, so the gift arrives — an empty convoy is a
-   * one-way ship gift, so the Courier stays where it landed.
-   */
-  it('delivers aid even when the destination filled while it was flying', async () => {
+  /** The destination filled while the gift flew: it turns round, and nothing is lost. */
+  it('returns aid intact when the destination fills while it is flying', async () => {
     const f = await setup(3);
     const { result } = await foundClan(f);
     await joinClan(f, result.clanId, 0, 1);
     f.clock.advance(CLAN.adaptationMinutes);
     await f.db.delete(units).where(eq(units.planetId, f.planetIds[1]!));
+    await setLevel(f.db, f.planetIds[1]!, 'HANGAR', 1);
     await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
     const launch = await f.db.transaction((tx) => launchClanAid(tx, {
       senderPlayerId: f.playerIds[0]!,
@@ -692,19 +689,27 @@ describe('ruleset-v3 clans', () => {
       cargo: { alloy: 0, crystal: 0, deuterium: 0 },
       clock: f.clock,
     }));
-    await giveUnits(f.db, f.planetIds[1]!, { DART: 5_000 });
+    await giveUnits(f.db, f.planetIds[1]!, fillHangar(hangarCapacity(1)));
 
     f.clock.set(new Date(launch.arriveAt));
     await workerFor(f).tick();
-
     const [commitment] = await f.db.select().from(clanAidCommitments)
       .where(eq(clanAidCommitments.missionId, launch.missionId));
-    expect(commitment?.status).toBe('DELIVERED');
-    const landed = await f.db.select().from(units).where(and(
-      eq(units.planetId, f.planetIds[1]!),
-      eq(units.hull, 'COURIER'),
+    expect(commitment?.status).toBe('RETURNING');
+    const [back] = await f.db.select().from(missions).where(and(
+      eq(missions.parentMissionId, launch.missionId),
+      eq(missions.status, 'in_flight'),
     ));
-    expect(landed.reduce((sum, row) => sum + row.count, 0)).toBe(1);
+    expect(back).toBeDefined();
+
+    f.clock.set(back!.arriveAt);
+    await workerFor(f).tick();
+    const home = await f.db.select().from(units).where(and(
+      eq(units.planetId, f.planetIds[0]!),
+      eq(units.hull, 'COURIER'),
+      eq(units.location, 'home'),
+    ));
+    expect(home.reduce((sum, row) => sum + row.count, 0)).toBe(2);
   });
 
   it('returns the complete convoy when the recipient disables aid before arrival', async () => {

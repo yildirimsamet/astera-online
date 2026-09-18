@@ -6,6 +6,7 @@ import {
   DEATH_STAR,
   PROSPECTOR,
   groundSlots,
+  hangarCapacity,
   hullBulk,
   hullFuelRate,
 } from '@astera/rules';
@@ -43,6 +44,8 @@ const rich = (
       fleet: {},
       fleetAway: {},
       score: { wealth: 10_000, dominion: 0 },
+      // Room enough that the purse, not the Hangar, is what these tests are about.
+      capacity: { hangar: hangarCapacity(10), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
       ...over,
     },
     {
@@ -522,18 +525,37 @@ describe('the quantity picker', () => {
     expect(build).toHaveBeenCalledWith({ hull: 'DART', count: 2 }, expect.anything());
   });
   /**
-   * THE CEILING THIS REPLACES. D184.
+   * THE HANGAR IS BACK, AND THE STEPPER ANSWERS TO IT. 2026-09-18.
    *
-   * This screen used to refuse the "+" once a world's Hangar was one hull from
-   * full, and drew the room as a bar. The Hangar is gone: a fleet is braked by the
-   * purse, so the stepper keeps climbing and there is no room card on a warship's
-   * sheet at all. A gun still has one, and the case below it proves that.
+   * A control that offers a ship the server will refuse teaches a rule that is not
+   * true. The "+" stops at the last Dart that fits, and the sheet draws the room.
    */
-  it('never refuses a warship for room, however many are already standing', async () => {
-    show({ fleet: { DART: 5_000 }, capacity: { ground: groundSlots(6), groundUsed: 0 } });
+  it('never offers more ships than the Hangar has room for', async () => {
+    const hangar = hangarCapacity(1);
+    const used = hangar - 2 * hullBulk('DART');
+    show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 1 },
+      fleet: { RAMPART: used / hullBulk('RAMPART') },
+      capacity: { hangar, hangarUsed: used, hangarCeiling: 2, ground: groundSlots(6), groundUsed: 0 },
+    });
     await openSheet('Dart');
-    expect(screen.getByRole('button', { name: /more dart/i })).toBeEnabled();
-    expect(document.querySelector('[data-fits]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /more dart/i }));
+    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('2');
+    expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
+    expect(document.querySelector('[data-fits]')).toHaveTextContent('2');
+  });
+
+  it('says the Hangar is full instead of offering a stepper', async () => {
+    const hangar = hangarCapacity(1);
+    show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 1 },
+      fleet: { RAMPART: hangar / hullBulk('RAMPART') },
+      capacity: { hangar, hangarUsed: hangar, hangarCeiling: 2, ground: groundSlots(6), groundUsed: 0 },
+    });
+    await openSheet('Dart');
+    expect(screen.queryByRole('textbox', { name: /dart quantity/i })).toBeNull();
+    // Said on the sheet in place of the stepper (the row behind it says it too).
+    expect(screen.getAllByText(/hangar is full/i).length).toBeGreaterThan(1);
   });
 
   it('still draws the room a gun answers to', async () => {
@@ -792,12 +814,49 @@ describe('the fuel a craft burns', () => {
 /** D184 removed the Hangar and its fleet ceiling. A mobile hull's legacy bulk is
  * therefore not a decision the Fleet craft sheet should expose. Ground units
  * still spend real ground capacity and keep the same figure on their sheet. */
-describe('the obsolete Hangar figure', () => {
-  it('hides bulk on mobile Fleet craft sheets', async () => {
+/**
+ * THE HANGAR ROW NAMES THE CORE ITS NEXT RUNG WAITS ON. 2026-09-18.
+ *
+ * The rungs open at Core 4, 7, 10, 13 and 16 — not one per Core level — so the
+ * generic "Core L{{core + 1}}" would send a Core-5 commander to raise a Core 6
+ * that buys them nothing.
+ */
+describe('the Hangar row', () => {
+  const hangarWorld = (core: number, hangar: number) => show({
+    buildings: { CORE: core, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: hangar },
+    capacity: { hangar: hangarCapacity(hangar), hangarUsed: 0, ground: groundSlots(core), groundUsed: 0 },
+  });
+
+  it('sits in the fleet group with the room it holds', () => {
+    hangarWorld(6, 2);
+    const row = document.querySelector('#row-HANGAR');
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent(/Hangar/);
+    expect(document.querySelector('[data-hangar-room]')).toHaveTextContent(String(hangarCapacity(2)));
+  });
+
+  it('names the Core gate of the next rung, not the next Core level', () => {
+    hangarWorld(5, 2);
+    expect(document.querySelector('#row-HANGAR')).toHaveTextContent('Core L7');
+  });
+
+  it('offers the rung once the Core has opened it', () => {
+    hangarWorld(7, 2);
+    expect(document.querySelector('#row-HANGAR')).not.toHaveTextContent('Core L');
+  });
+
+  it('says the ladder is over at the top rung', () => {
+    hangarWorld(20, 10);
+    expect(document.querySelector('#row-HANGAR')).toHaveTextContent(/highest level/i);
+  });
+});
+
+describe('the room figure on a craft sheet', () => {
+  it('states the Hangar room a mobile craft takes', async () => {
     show();
     await openSheet('Dart');
 
-    expect(document.querySelector('.stat-room')).toBeNull();
+    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('DART')));
   });
 
   it('keeps bulk where a ground unit still consumes capacity', async () => {
@@ -807,14 +866,14 @@ describe('the obsolete Hangar figure', () => {
     expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('BASTION')));
   });
 
-  it('leaves five relevant figures on a mobile craft sheet', async () => {
+  it('leaves six relevant figures on a mobile craft sheet', async () => {
     show();
     await openSheet('Dart');
 
     const strip = document.querySelector('[data-build-stats] .stats');
     expect(strip).not.toBeNull();
     expect(strip).toHaveClass('stats-card');
-    expect(strip?.querySelectorAll('.stat')).toHaveLength(5);
+    expect(strip?.querySelectorAll('.stat')).toHaveLength(6);
   });
 });
 

@@ -8,6 +8,7 @@ import {
   RESEARCH_PROJECTS,
   instrumentCost,
   groundSlots,
+  hangarCapacity,
   hullBulk,
   satelliteCost,
   upgradeCost,
@@ -339,21 +340,37 @@ describe('predicting a build', () => {
   });
 
   /** D184: a warship has no room to run out of, so the prediction never refuses one. */
-  it('never refuses a warship for room, however many are already owned', () => {
+  it('declines a warship the Hangar has no room for, counting what is queued', () => {
+    const room = hangarCapacity(1);
     const packed = planetView(
       {
         buildings: {
-          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4,
+          CORE: 6, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 1,
         },
-        fleet: { DART: 5_000 },
-        capacity: { ground: groundSlots(6), groundUsed: 0 },
+        fleet: { RAMPART: (room - 2 * hullBulk('DART')) / hullBulk('RAMPART') },
+        capacity: { hangar: room, hangarUsed: room - 2 * hullBulk('DART'), ground: groundSlots(6), groundUsed: 0 },
       },
       { alloy: 500_000, crystal: 500_000 },
     );
 
+    expect(predictBuild(packed, 'DART', 3)).toBeNull();
     const first = predictBuild(packed, 'DART', 1);
     expect(first).not.toBeNull();
-    expect(predictBuild(first!, 'DART', 50)).not.toBeNull();
+    expect(predictBuild(first!, 'DART', 1)).not.toBeNull();
+    expect(predictBuild(predictBuild(first!, 'DART', 1)!, 'DART', 1)).toBeNull();
+  });
+
+  it('declines a Hangar rung the Core has not opened', () => {
+    const view = (core: number) => planetView(
+      {
+        buildings: { CORE: core, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 2 },
+        nextCosts: { HANGAR: buildingCost('HANGAR', 2) },
+      },
+      { alloy: 5_000_000, crystal: 5_000_000 },
+    );
+    expect(predictUpgrade(view(6), 'HANGAR')).toBeNull();
+    expect(predictUpgrade(view(7), 'HANGAR')?.queues?.CONSTRUCTION[0])
+      .toMatchObject({ kind: 'BUILDING', subject: 'HANGAR' });
   });
 
   it('keeps ground emplacements in their own capacity pool', () => {

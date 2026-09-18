@@ -673,6 +673,13 @@
       "when": 1789716000000,
       "tag": "0095_cosmetic_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1789802400000,
+      "tag": "0096_restore_hangar",
+      "breakpoints": true
     }
   ]
 }

@@ -118,7 +118,7 @@ export const reports = {
   /** Ödül: oyunda inşa etmediğin bir gövdeye açılan tek kapı. */
   pirateCaptured: 'Korsanlardan kaçırıldı.',
   pirateCapturedNote:
-    'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna katılır ve inşa ettiğin gemilerden sayılmaz.',
+    'Yok ettiğin mürettebatın enkazından sağlam çıkarıldı. Filonun döndüğü dünyanın garnizonuna Hangar dolu olsa bile katılır ve inşa ettiğin gemilerden sayılmaz.',
   youHeld: 'Saldırıyı durdurdun. Rakip kaynak alamadı.',
   youFell: 'Saldırı savunmana zarar verdi.',
   shipsLost: 'Kaybettiğin gemi',

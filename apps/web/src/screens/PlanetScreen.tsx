@@ -14,8 +14,12 @@ import {
   PROSPECTOR,
   buildingCost,
   fleetCount,
+  HANGAR,
   groundLoad,
   groundSlots,
+  hangarCapacity,
+  hangarCeiling,
+  hangarLoad,
   hullBulk,
   hullFuelRate,
   salvageCapacity,
@@ -583,6 +587,7 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
   DERRICK: 'reach',
   BEACON: 'reach',
   SHIPYARD: 'reach',
+  HANGAR: 'reach',
   /*
     THE PROSPECTOR IS A HULL AND IT IS ON `reach` WITH THE REST OF THE YARD.
 
@@ -1245,10 +1250,22 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     // compares — `level >= ceiling` there and here, so the two cannot drift.
     const plantCapped = id === 'DEUTERIUM_PLANT'
       && nextLevel >= plantCeiling(projected.research.get('DEUTERIUM_SYNTHESIS') ?? 0);
+    /*
+      THE HANGAR'S RUNGS OPEN AT THE CORE'S TIER CHANGES — 4, 7, 10, 13, 16 — not one
+      per Core level, so the generic "Core L{{core + 1}}" would send a Core-5
+      commander to raise a Core 6 that buys them nothing. Maxed first, as the
+      instruments do: a ladder that is over offers no way past it.
+    */
+    const hangarMaxed = id === 'HANGAR' && nextLevel >= HANGAR.maxLevel;
+    const coreGate = id === 'HANGAR'
+      ? nextLevel >= hangarCeiling(core) ? HANGAR.coreGate[nextLevel + 1] ?? null : null
+      : id !== 'CORE' && nextLevel >= core ? core + 1 : null;
     const blocked: Blocked | undefined =
-      id !== 'CORE' && nextLevel >= core
+      hangarMaxed
+        ? { reason: i18n.t('planet.blocked.maxed') }
+        : coreGate !== null
         ? {
-          reason: i18n.t('planet.blocked.core', { level: core + 1 }),
+          reason: i18n.t('planet.blocked.core', { level: coreGate }),
           onFix: () => { onNeed('CORE'); },
         }
         : orders.length >= BUILD.queueDepth
@@ -2109,6 +2126,7 @@ function Reach({
   const building = useBuildingAction(planet, onFlash);
   const orbit = useOrbitAction(planet, onFlash);
   const shipyard = building('SHIPYARD', buildingName('SHIPYARD'), onNeed);
+  const hangar = building('HANGAR', buildingName('HANGAR'), onNeed);
   const level = planet.buildings.SHIPYARD ?? 0;
   const yardOrders = planet.queues?.YARD ?? [];
   const yardProjection = projectedQueueState(planet, 'YARD');
@@ -2116,6 +2134,8 @@ function Reach({
   const tech = techOf(planet);
   const groundTotal = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
   const groundUsed = groundLoad(yardProjection.units);
+  const hangarTotal = planet.capacity?.hangar ?? hangarCapacity(planet.buildings.HANGAR ?? 0);
+  const hangarUsed = hangarLoad(yardProjection.units);
   const hull = (id: HullId) => {
     const hullSpec = HULLS[id];
     const home = (planet.fleet[id] ?? 0) + (planet.ground[id] ?? 0);
@@ -2136,8 +2156,10 @@ function Reach({
     const prospectorCeilingHere = prospectorCeiling(tech);
     const prospectorCapped = id === 'PROSPECTOR'
       && prospectorRoom(committed, tech) === 0;
-    // Only emplacements answer to a ceiling. D184.
-    const capacityCapped = hullSpec.ground && groundUsed + hullBulk(id) > groundTotal;
+    // Each hull answers to its own pool: a gun to the ground, a ship to the Hangar.
+    const poolTotal = hullSpec.ground ? groundTotal : hangarTotal;
+    const poolUsed = hullSpec.ground ? groundUsed : hangarUsed;
+    const capacityCapped = poolUsed + hullBulk(id) > poolTotal;
     const queuedCount = yardOrders
       .filter((order) => order.kind === 'HULL' && order.subject === id)
       .reduce((sum, order) => sum + order.count, 0);
@@ -2244,7 +2266,9 @@ function Reach({
                   owned: committed,
                   max: prospectorCeilingHere,
                 })
-                : t('planet.capacity.full', { used: groundUsed, total: groundTotal }),
+                : hullSpec.ground
+                  ? t('planet.capacity.full', { used: groundUsed, total: groundTotal })
+                  : t('planet.capacity.hangarFull', { used: hangarUsed, total: hangarTotal }),
             }
             : {})}
           cost={{
@@ -2313,6 +2337,62 @@ function Reach({
           pending={shipyard.pending}
           highlighted={focused === 'SHIPYARD'}
           flash={flashed === 'SHIPYARD'}
+        />
+      </div>
+
+      {/*
+        THE HANGAR, AND THE ROOM IT HOLDS, BESIDE THE YARD THAT FILLS IT. 2026-09-18.
+
+        The row sells the next rung — its gain is room now → room next, and its
+        requirement names the Core gate that rung waits on. The card under it is the
+        deck itself: what is spoken for and what is free, counting ships away from
+        home and every order already in the yard.
+      */}
+      <div id="row-HANGAR">
+        <UpgradeRow
+          art={buildingArt('HANGAR', Math.max(1, hangar.level))}
+          nextArt={nextBuildingArt('HANGAR', hangar.actionLevel)}
+          name={buildingName('HANGAR')}
+          tag={buildingTag('HANGAR')}
+          level={hangar.level}
+          role={buildingRole('HANGAR')}
+          onOpen={() => {
+            onOpen(
+              spec(
+                { kind: 'building', id: 'HANGAR' },
+                buildingName('HANGAR'),
+                buildingRole('HANGAR'),
+                hangar,
+              ),
+            );
+          }}
+          gain={buildingGain(
+            'HANGAR',
+            hangar.actionLevel,
+            cappedCountOf(hangar.projectedLevels),
+            hangar.projectedLevels,
+          )}
+          cost={hangar.cost}
+          held={held}
+          income={income}
+          takes={orderMinutes('BUILDING', hangar.cost, planet, 1, { building: 'HANGAR', level: hangar.actionLevel + 1 })}
+          unowned={hangar.level === 0}
+          {...(hangar.blocked ? { blocked: hangar.blocked } : {})}
+          {...(hangar.queued ? { queued: hangar.queued } : {})}
+          queuedActionable
+          verb="raise"
+          onAct={hangar.act}
+          pending={hangar.pending}
+          highlighted={focused === 'HANGAR'}
+          flash={flashed === 'HANGAR'}
+        />
+      </div>
+      <div data-hangar-room className="px-3 py-2">
+        <CapacityBar
+          total={hangarTotal}
+          used={hangarUsed}
+          incoming={0}
+          label={t('planet.capacity.hangarBand')}
         />
       </div>
 
@@ -2694,13 +2774,13 @@ function BuildSheet({
   const countCap = hull === 'PROSPECTOR'
     ? prospectorRoom(committed, tech)
     : Number.MAX_SAFE_INTEGER;
-  // A fleet has no ceiling (D184); only a gun does, and the berth cap is its own.
+  // A ship answers to the Hangar and a gun to the ground; the berth cap is its own.
   const bulk = hullBulk(hull);
-  const groundTotal = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
-  const groundUsed = groundLoad(yardProjection.units);
-  const spaceCap = spec.ground
-    ? Math.max(0, Math.floor((groundTotal - groundUsed) / bulk))
-    : Number.MAX_SAFE_INTEGER;
+  const poolTotal = spec.ground
+    ? planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0)
+    : planet.capacity?.hangar ?? hangarCapacity(planet.buildings.HANGAR ?? 0);
+  const poolUsed = spec.ground ? groundLoad(yardProjection.units) : hangarLoad(yardProjection.units);
+  const spaceCap = Math.max(0, Math.floor((poolTotal - poolUsed) / bulk));
   const cap = Math.min(countCap, spaceCap);
   const prospectorCapped = hull === 'PROSPECTOR' && countCap === 0;
   const capacityCapped = spaceCap === 0;
@@ -2836,9 +2916,8 @@ function BuildSheet({
               cargo={spec.cargo}
               salvage={salvageCapacity({ [hull]: 1 })}
               fuel={hullFuelRate(hull)}
-              // D184 removed the mobile-fleet ceiling. Ground bulk still spends
-              // real capacity; mobile hull bulk is no longer a player-facing fact.
-              {...(spec.ground ? { room: bulk } : {})}
+              // Every hull spends room: a ship in the Hangar, a gun on the ground.
+              room={bulk}
               size="card"
             />
           </div>) : null}
@@ -2895,7 +2974,9 @@ function BuildSheet({
           <p className="text-body leading-relaxed text-alloy">
             {prospectorCapped
               ? t('planet.buildSheet.capped', { count: committed })
-              : t('planet.capacity.full', { used: groundUsed, total: groundTotal })}
+              : spec.ground
+                ? t('planet.capacity.full', { used: poolUsed, total: poolTotal })
+                : t('planet.capacity.hangarFull', { used: poolUsed, total: poolTotal })}
           </p>
         ) : (
           <div className="mb-1">
@@ -2920,7 +3001,7 @@ function BuildSheet({
           </p>
         )}
         {/*
-          THE ROOM, AS A PICTURE — AND ONLY THE GROUND HAS ANY. Owner instruction, D184.
+          THE ROOM, AS A PICTURE. Owner instruction; the Hangar's room is back (2026-09-18).
 
           This was one line of small grey text carrying three numbers — what one of
           these takes, what is used, and the ceiling — and the report was that none
@@ -2929,21 +3010,19 @@ function BuildSheet({
           under the stepper directly above it, so pressing "+" and watching the room
           go is the rule teaching itself.
         */}
-        {spec.ground && (
-          <div className="mt-3">
-            <CapacityBar
-              total={groundTotal}
-              used={groundUsed}
-              incoming={prospectorCapped || capacityCapped ? 0 : bulk * clamped}
-              fits={spaceCap}
-              {...(art ? {
-                icon: (
-                  <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
-                )
-              } : {})}
-            />
-          </div>
-        )}
+        <div className="mt-3">
+          <CapacityBar
+            total={poolTotal}
+            used={poolUsed}
+            incoming={prospectorCapped || capacityCapped ? 0 : bulk * clamped}
+            fits={cap}
+            {...(art ? {
+              icon: (
+                <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
+              )
+            } : {})}
+          />
+        </div>
       </div>
 
       {!prospectorCapped && !capacityCapped && (

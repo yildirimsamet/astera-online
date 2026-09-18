@@ -314,6 +314,21 @@ const ROUND_TRIP: Record<HullId, number | null> = Object.fromEntries(
 export const hullRoundTrip = (id: HullId): number | null => ROUND_TRIP[id];
 
 
+/**
+ * Room this fleet takes in a HANGAR. Emplacements are not in it.
+ *
+ * Two named functions rather than one that sums whatever it is handed, because a
+ * caller passing the wrong half is exactly the failure this code base has already
+ * shipped once (D131). Craft that do not fight still take a berth.
+ */
+export function hangarLoad(fleet: Fleet): number {
+  let load = 0;
+  for (const [id, count] of fleetEntries(fleet)) {
+    if (!HULLS[id].ground) load += count * BULK[id];
+  }
+  return load;
+}
+
 /** Room this fleet takes on the GROUND. Nothing that flies is in it. */
 export function groundLoad(fleet: Fleet): number {
   let load = 0;

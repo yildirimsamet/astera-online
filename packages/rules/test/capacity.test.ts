@@ -10,6 +10,7 @@ import {
   buildingCost,
   groundLoad,
   groundSlots,
+  hangarSeedLevel,
   hullFuelMass,
   hullBulk,
   type Fleet,
@@ -59,22 +60,15 @@ describe('what a craft takes up', () => {
 });
 
 /**
- * ONE POOL, AND IT IS THE GROUND'S. D184.
+ * TWO POOLS, AND THEY DO NOT TOUCH. T4b, restored 2026-09-18.
  *
- * There were two. The Hangar answered "how much fleet" and the Command Core "how
- * many emplacements", and the Hangar is gone: a dedicated building whose only
- * product was a ceiling is a tax rather than a decision, and its price ran away
- * from what it bought — the eighth rung cost more alloy than a whole season makes
- * and bought room for twenty-six Darts.
- *
- * A FLEET IS NOW BRAKED BY WHAT IT COSTS, WHAT IT BURNS AND WHAT IT LOSES, which
- * is how every ship in this genre has always been braked. Ground guns keep their
- * ceiling because they are not symmetric with a fleet: they never move, never fly,
- * salvage at 60%, leave no wreckage and cannot be counter-raided, so an uncapped
- * wall inside D168's tier band would be a world nobody legally able to attack it
- * could ever break.
+ * The Hangar answers "how much fleet" and the Command Core "how many emplacements".
+ * One shared pool would bind attack and defence to a single slider. Ground guns
+ * keep their own ceiling because they never move, salvage at 60%, leave no
+ * wreckage and cannot be counter-raided: an uncapped wall inside D168's tier band
+ * would be a world nobody legally able to attack it could break.
  */
-describe('the ground is the only capacity', () => {
+describe('the ground capacity', () => {
   it('counts only emplacements against the ground slots', () => {
     const fleet: Fleet = { DART: 3, BASTION: 2, THORN: 5 };
     expect(groundLoad(fleet)).toBe(2 * hullBulk('BASTION') + 5 * hullBulk('THORN'));
@@ -94,28 +88,27 @@ describe('the ground is the only capacity', () => {
 });
 
 /**
- * THE HANGAR IS GONE, AND THESE ARE THE EDGES THAT PROVE IT. D184.
+ * THE HANGAR IS BACK, AND THESE ARE THE EDGES THAT PROVE IT. 2026-09-18.
  *
- * A removal is only finished when nothing can still name the thing. The building
- * leaves the catalogue, the opening world and the game's own neutral templates
- * together, or a world is written with a level for a building that has no price.
+ * D184 removed it; the owner restored it with rungs gated by the Core's tiers
+ * (`test/hangar.test.ts` holds the ladder). A return is only finished when every
+ * world the game writes names it at a rung its Core allows.
  */
-describe('the Hangar is gone', () => {
-  it('is not a building any more', () => {
-    expect(BUILDING_IDS).not.toContain('HANGAR');
-    expect(Object.keys(START_BUILDINGS)).not.toContain('HANGAR');
+describe('the Hangar in the catalogue', () => {
+  it('is a building again, and every new world opens with it', () => {
+    expect(BUILDING_IDS).toContain('HANGAR');
+    expect(START_BUILDINGS.HANGAR).toBe(1);
   });
 
-  it('has no price, because it has no rungs', () => {
+  it('prices every building, the Hangar included', () => {
     for (const id of BUILDING_IDS) expect(buildingCost(id, 0).alloy).toBeGreaterThan(0);
   });
 
   /**
-   * BULK OUTLIVED BOTH ITS OLD JOBS. The Hangar that rationed it is gone (D184) and
-   * D195 moved fuel onto hull VALUE, so what is left is ground room and nothing
-   * else — `groundSlots` is its last consumer, and a gun still weighs what it did.
+   * BULK IS ROOM, AND ONLY ROOM. D195 moved fuel onto hull VALUE, so bulk is what a
+   * hull takes in a Hangar or on the ground — and a gun still weighs what it did.
    */
-  it('leaves bulk behind as ground room, and only that', () => {
+  it('leaves bulk as room, and only that', () => {
     for (const id of GROUND_HULLS) {
       expect(hullBulk(id), id).toBeGreaterThan(0);
       expect(hullFuelMass(id), id).toBe(0);
@@ -125,9 +118,10 @@ describe('the Hangar is gone', () => {
     expect(hullFuelMass('DART')).not.toBe(hullFuelMass('PIKE'));
   });
 
-  it('names no Hangar in any neutral template', () => {
+  it('seeds every neutral template with the Hangar its Core opens', () => {
     for (const tier of [1, 2, 3] as const) {
-      expect(Object.keys(MULTI_WORLD.neutral[tier].buildings)).not.toContain('HANGAR');
+      const { buildings } = MULTI_WORLD.neutral[tier];
+      expect(buildings.HANGAR).toBe(hangarSeedLevel(buildings.CORE));
     }
   });
 });

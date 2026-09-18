@@ -136,6 +136,8 @@ export const planet = {
   },
 
   capacity: {
+    hangarBand: "Fleet room",
+    hangarFull: "Hangar is full: {{used}} / {{total}} room is committed. Raise the Hangar to build more ships.",
     hullUse:
       "Each uses {{bulk}} space · {{used}} / {{total}} committed after the queue.",
     full: "No room: {{used}} / {{total}} space is already committed. Raise the relevant capacity first.",
@@ -581,6 +583,7 @@ export const transfer = {
     "One way. Ground defence cannot move; cargo space comes only from Courier, Wayfarer, Atlas and Argosy.",
   hullNone: "None at this world",
   holdReady: "Courier, Wayfarer, Atlas and Argosy carry the ore. Hold: {{capacity}}.",
+  destinationLabel: "Destination Hangar",
   holdNeedsLoad: "Add a Courier, Wayfarer, Atlas or Argosy above to carry ore.",
   holdNoCarrier:
     "This world has no Courier, Wayfarer, Atlas or Argosy, so nothing here can carry ore.",

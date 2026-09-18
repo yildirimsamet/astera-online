@@ -9,6 +9,8 @@ import {
   combatValue,
   garrisonOf,
   fleetTravelExact,
+  hangarCapacity,
+  hangarLoad,
   resourcesTotal,
   transferCargoCapacity,
   type Fleet,
@@ -22,6 +24,7 @@ import { compact } from '../lib/format.js';
 import { duration } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -119,11 +122,14 @@ export interface TransferTarget {
 
 export function TransferSheet({
   target,
+  targetPlanet,
   planet,
   onClose,
   onLaunched,
 }: {
   target: TransferTarget;
+  /** Full private view of this owned destination, when already loaded. */
+  targetPlanet?: PlanetView;
   planet: PlanetView;
   onClose: () => void;
   onLaunched: () => void;
@@ -183,7 +189,22 @@ export function TransferSheet({
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
-  const valid = !launchBlocked && fleetCount(fleet) > 0 && loaded <= capacity
+  /*
+    THE FAR WORLD'S HANGAR, THE SAME CEILING `landingBlock` READS. 2026-09-18.
+    Only an owned destination whose view is loaded can be judged; otherwise the
+    server stays the authority and the sheet says nothing it cannot know.
+  */
+  const destinationTotal = targetPlanet
+    ? targetPlanet.capacity?.hangar ?? hangarCapacity(targetPlanet.buildings.HANGAR ?? 0)
+    : undefined;
+  const destinationUsed = targetPlanet
+    ? targetPlanet.capacity?.hangarUsed
+      ?? hangarLoad({ ...targetPlanet.fleet, ...targetPlanet.fleetAway })
+    : undefined;
+  const incomingRoom = hangarLoad(fleet);
+  const destinationFits = destinationTotal === undefined || destinationUsed === undefined
+    || destinationUsed + incomingRoom <= destinationTotal;
+  const valid = !launchBlocked && fleetCount(fleet) > 0 && loaded <= capacity && destinationFits
     && cargo.alloy <= planet.planet.alloy
     && cargo.crystal <= planet.planet.crystal
     && cargo.deuterium <= planet.planet.deuterium
@@ -273,6 +294,21 @@ export function TransferSheet({
             spend={fuel}
             tone="deuterium"
             label={t('transfer.fuel')}
+          />
+        </div>
+      )}
+      {destinationTotal !== undefined && destinationUsed !== undefined && (
+        <div data-transfer-destination className="mt-2">
+          {/*
+            THE DESTINATION'S ROOM, IN THE BAR THE BUILD SHEET ALREADY TAUGHT. The
+            order's segment grows as ships are added, so a transfer that will not
+            fit is visible while it is being packed, not when it is refused.
+          */}
+          <CapacityBar
+            total={destinationTotal}
+            used={destinationUsed}
+            incoming={incomingRoom}
+            label={t('transfer.destinationLabel')}
           />
         </div>
       )}

@@ -37,7 +37,7 @@ export const hullId = z.enum([
   'BASTION', 'THORN', 'PROSPECTOR',
 ]);
 export const buildingId = z.enum([
-  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
+  'CORE', 'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT', 'HANGAR',
 ]);
 /**
  * TWO ID SPACES, BECAUSE THEY ARE TWO KINDS OF THING. D25.
@@ -839,6 +839,10 @@ export const planetSchema = z.object({
    * Optional only for a rolling deploy against an older server.
    */
   capacity: z.object({
+    /** Hangar room, room in use and the tallest Hangar this Core allows. 2026-09-18. */
+    hangar: z.number().optional(),
+    hangarUsed: z.number().optional(),
+    hangarCeiling: z.number().optional(),
     ground: z.number(),
     groundUsed: z.number(),
   }).optional(),

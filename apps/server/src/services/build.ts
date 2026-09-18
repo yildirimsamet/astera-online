@@ -9,6 +9,10 @@ import {
   instrumentMaxed,
   groundLoad,
   groundSlots,
+  HANGAR,
+  hangarCapacity,
+  hangarCeiling,
+  hangarLoad,
   hullBulk,
   plantCeiling,
   productionMult,
@@ -176,6 +180,32 @@ export async function collectWorks(
 }
 
 /** Place one building commitment inside an already-held planet transaction. */
+/**
+ * THE HANGAR HAS ITS OWN CEILING, AND IT IS STILL THE CORE'S. 2026-09-18.
+ *
+ * Its rungs open at the Core levels where a development tier changes, not one per
+ * Core level: `hangarCeiling` is the one statement of that gate. The refusal names
+ * the Core the next rung needs, so the client can say "Core 7" rather than "raise
+ * your Core" to someone standing at Core 6. Off the PROJECTED Core, so a Core
+ * already queued ahead counts, exactly as the ordinary ceiling reads it.
+ */
+function assertHangarRung(level: number, core: number): void {
+  if (level >= HANGAR.maxLevel) {
+    throw new GameError('AT_MAX_LEVEL', 'Your Hangar is at its highest level.', 400, {
+      building: 'HANGAR',
+    });
+  }
+  if (level >= hangarCeiling(core)) {
+    const requiredCore = HANGAR.coreGate[level + 1] ?? HANGAR.coreGate[HANGAR.maxLevel];
+    throw new GameError(
+      'CORE_CEILING',
+      `Hangar ${String(level + 1)} needs Command Core ${String(requiredCore)}.`,
+      400,
+      { requiredCore },
+    );
+  }
+}
+
 export async function placeBuildingUpgrade(
   tx: Tx,
   planet: LockedPlanet,
@@ -186,7 +216,9 @@ export async function placeBuildingUpgrade(
   const context = await buildQueueContext(tx, planet, 'CONSTRUCTION');
   const level = context.projected.buildings[type];
 
-  if (type !== 'CORE' && level >= context.projected.buildings.CORE) {
+  if (type === 'HANGAR') {
+    assertHangarRung(level, context.projected.buildings.CORE);
+  } else if (type !== 'CORE' && level >= context.projected.buildings.CORE) {
     throw new GameError('CORE_CEILING', 'Command Core must be raised first');
   }
   /**
@@ -310,33 +342,34 @@ export async function placeUnitBuild(
   }
 
   /**
-   * ONLY THE GROUND HAS A CEILING. D184.
+   * TWO CEILINGS, ONE PER POOL. T4 · T4b, the Hangar restored 2026-09-18.
    *
-   * The Hangar is gone, so a fleet is braked by what it costs, what it burns and
-   * what it loses rather than by a building whose only product was a refusal.
-   * Emplacements keep theirs: a gun never moves, salvages at 60% and leaves no
-   * wreckage, so an uncapped wall inside D168's tier band would be a world nobody
-   * legally able to attack it could break.
-   *
-   * Counted over `projected.units`, so what is already in this queue counts. Two
-   * orders that each fit and together do not must be refused on the second, or the
-   * ceiling is a suggestion anybody walks past by tapping twice.
+   * A ship needs a berth in the Hangar, a gun needs ground the Core stands. Neither
+   * pool spends the other. Counted over `projected.units`, so what is already in
+   * this queue counts — two orders that each fit and together do not must be
+   * refused on the second, or the ceiling is a suggestion anybody walks past by
+   * tapping twice. Only THIS queue is projected: a Hangar rising in CONSTRUCTION
+   * cannot honestly hand room to a hull that may finish first in YARD.
    *
    * Inside the planet row lock, the same check-then-act shape `assertFreeBay` and
    * the Prospector cap already take.
    */
-  if (spec.ground) {
-    const needed = hullBulk(hull) * count;
-    const capacity = groundSlots(context.projected.buildings.CORE);
-    const used = groundLoad(context.projected.units);
-    if (used + needed > capacity) {
-      throw new GameError(
-        'GROUND_SLOTS_FULL',
-        `This world stands ${String(capacity)} of ground defence and holds ${String(used)}.`,
-        409,
-        { capacity, used, needed },
-      );
-    }
+  const needed = hullBulk(hull) * count;
+  const capacity = spec.ground
+    ? groundSlots(context.projected.buildings.CORE)
+    : hangarCapacity(context.projected.buildings.HANGAR);
+  const used = spec.ground
+    ? groundLoad(context.projected.units)
+    : hangarLoad(context.projected.units);
+  if (used + needed > capacity) {
+    throw new GameError(
+      spec.ground ? 'GROUND_SLOTS_FULL' : 'HANGAR_FULL',
+      spec.ground
+        ? `This world stands ${String(capacity)} of ground defence and holds ${String(used)}.`
+        : `Your Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
+      409,
+      { capacity, used, needed },
+    );
   }
 
   const cost = {

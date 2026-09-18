@@ -203,6 +203,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   // the fact is the tier. The rank badge on the disc draws the same figure as
   // stars, in no language at all.
   'planet.reach.hullTier',
+  // "Hangar" is the Turkish word too (TDK: hangar), not a stand-in.
+  'vocabulary.building.HANGAR.name',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',
   'galaxy.commander.galaxyUnknown',

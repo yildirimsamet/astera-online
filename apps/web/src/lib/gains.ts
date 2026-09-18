@@ -1,4 +1,7 @@
 import {
+  HANGAR,
+  hangarCapacity,
+  hangarSeedLevel,
   robotSpeedMult,
   yardSpeedMult,
   strategicStockpile,
@@ -64,6 +67,7 @@ export const levelsOf = (planet: PlanetView): BuildingLevels => ({
   VAULT: planet.buildings.VAULT ?? 0,
   SHIPYARD: planet.buildings.SHIPYARD ?? 0,
   DEUTERIUM_PLANT: planet.buildings.DEUTERIUM_PLANT ?? 0,
+  HANGAR: planet.buildings.HANGAR ?? 0,
 });
 
 /** Every player-facing sensor reach is the finite, server-enforced value. */
@@ -136,16 +140,34 @@ export function buildingGain(
 ): Gain {
   const next = level + 1;
   switch (id) {
-    case 'CORE':
+    case 'CORE': {
+      // A Core that crosses a Hangar gate says so: raising the Core is the only way
+      // the fleet grows, and this row is where a commander decides to raise it.
+      const opens = hangarSeedLevel(next) > hangarSeedLevel(level);
+      const releases = cappedCount > 0
+        ? i18n.t('gains.core.releases', { count: cappedCount })
+        : i18n.t('gains.core.raisesCap');
       return {
         label: i18n.t('gains.core.label'),
         now: i18n.t('gains.core.level', { level }),
         next: i18n.t('gains.core.level', { level: next }),
-        unlocks:
-          cappedCount > 0
-            ? i18n.t('gains.core.releases', { count: cappedCount })
-            : i18n.t('gains.core.raisesCap'),
+        unlocks: opens
+          ? i18n.t('gains.core.opensHangar', { rung: hangarSeedLevel(next), then: releases })
+          : releases,
       };
+    }
+    case 'HANGAR': {
+      const room = (rung: number) => rung < 1
+        ? i18n.t('gains.hangar.none')
+        : i18n.t('gains.hangar.value', { room: compact(hangarCapacity(rung)) });
+      return {
+        label: i18n.t('gains.hangar.label'),
+        now: room(level),
+        next: room(Math.min(next, HANGAR.maxLevel)),
+        ceiling: i18n.t('gains.hangar.ceiling', { room: compact(hangarCapacity(HANGAR.maxLevel)) }),
+        ...(level >= HANGAR.maxLevel ? { maxed: true as const } : {}),
+      };
+    }
     case 'REFINERY':
       return {
         label: i18n.t('gains.refinery.label'),

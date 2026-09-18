@@ -18,6 +18,9 @@ import {
   flightSlots,
   groundLoad,
   groundSlots,
+  hangarCapacity,
+  hangarCeiling,
+  hangarLoad,
   hullBulk,
   instrumentCost,
   productionMult,
@@ -115,6 +118,7 @@ export function openWorld(preview: Preview): RehearsalWorld {
 export type Refusal =
   | 'CORE_CEILING'
   | 'GROUND_SLOTS_FULL'
+  | 'HANGAR_FULL'
   | 'INSUFFICIENT_RESOURCES'
   | 'QUEUE_FULL'
   | 'SHIPYARD_TOO_LOW';
@@ -150,7 +154,9 @@ export function refusesUpgrade(w: RehearsalWorld, type: BuildingId): Refusal | n
   if (w.queues.CONSTRUCTION.length >= BUILD.queueDepth) return 'QUEUE_FULL';
   const projected = projectedBuildings(w);
   const level = projected[type];
-  if (type !== 'CORE' && level >= projected.CORE) return 'CORE_CEILING';
+  if (type === 'HANGAR' ? level >= hangarCeiling(projected.CORE) : type !== 'CORE' && level >= projected.CORE) {
+    return 'CORE_CEILING';
+  }
   const cost = buildingCost(type, level);
   if (w.alloy < cost.alloy || w.crystal < cost.crystal) return 'INSUFFICIENT_RESOURCES';
   return null;
@@ -168,9 +174,12 @@ export function refusesBuild(w: RehearsalWorld, hull: HullId, count: number): Re
       .filter((order) => order.kind === 'HULL')
       .map((order) => [order.subject, queuedCount(w, 'YARD', 'HULL', order.subject)]),
   );
-  // Only emplacements answer to a ceiling. D184.
+  // Ships answer to the Hangar and guns to the ground, as on the server.
   if (spec.ground && groundLoad(queued) + hullBulk(hull) * count > groundSlots(w.buildings.CORE)) {
     return 'GROUND_SLOTS_FULL';
+  }
+  if (!spec.ground && hangarLoad(queued) + hullBulk(hull) * count > hangarCapacity(w.buildings.HANGAR)) {
+    return 'HANGAR_FULL';
   }
   return null;
 }
@@ -363,6 +372,9 @@ export function planetOf(w: RehearsalWorld): PlanetView {
     fleetAway: {},
     flight: { used: 0, total: flightSlots(w.buildings.CORE) },
     capacity: {
+      hangar: hangarCapacity(w.buildings.HANGAR),
+      hangarUsed: 0,
+      hangarCeiling: hangarCeiling(w.buildings.CORE),
       ground: groundSlots(w.buildings.CORE),
       groundUsed: 0,
     },

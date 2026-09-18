@@ -18,8 +18,11 @@ import {
   buildingCost,
   distance,
   fleetValue,
+  hangarCeiling,
+  hangarLoad,
   hashSeed,
   hullBuildable,
+  hullBulk,
   mulberry32,
   piratePosition,
   plantCeiling,
@@ -212,12 +215,13 @@ async function raiseOneBuilding(
       WHERE THEY STOP. Owner decision: a middle ceiling.
 
       The Core is the ceiling over everything else, so capping it caps the world —
-      no separate rule is needed for the Refinery or the orbit slots.
+      no separate rule is needed for the Refinery, the Hangar or the orbit slots.
       Twelve tireless commanders with no ceiling would own the top of a ladder that
       exists for the people playing.
     */
     if (type === 'CORE' && level >= BOTS.coreCeiling) continue;
-    if (type !== 'CORE' && level >= core) continue;
+    // The Hangar has its own gate on the same Core: rungs open at tier changes.
+    if (type === 'HANGAR' ? level >= hangarCeiling(core) : type !== 'CORE' && level >= core) continue;
     if (type === 'DEUTERIUM_PLANT') {
       const rungLevel = view.research
         .find((project) => project.id === 'DEUTERIUM_SYNTHESIS')?.level ?? 0;
@@ -307,17 +311,25 @@ async function buyShips(
 ): Promise<void> {
   if (view.queues.YARD.length >= BUILD.queueDepth) return;
 
-  // D184: the Hangar is gone, so the brake here is the same one a player feels —
-  // the value ceiling above and the alloy budget below, never a building's refusal.
   const owned = fleetValue(view.fleet) + fleetValue(view.fleetAway);
+  // The Hangar is the brake a player feels, so the bot sizes its order to the room
+  // left after what is already in the yard rather than meeting the refusal.
+  // Summed batch by batch: two orders of one hull are two orders, not one record.
+  const queuedLoad = view.queues.YARD.reduce(
+    (sum, order) => sum + hangarLoad({ [order.subject]: order.count }),
+    0,
+  );
+  let room = view.capacity.hangar - view.capacity.hangarUsed - queuedLoad;
 
   // A rock needs a craft, and this is the only thing that buys one.
   const prospectors = (view.fleet.PROSPECTOR ?? 0) + (view.fleetAway.PROSPECTOR ?? 0)
     + queuedCount(view, 'YARD', 'PROSPECTOR');
-  if (prospectors < persona.prospectorTarget && view.buildings.SHIPYARD >= HULLS.PROSPECTOR.minShipyard) {
+  if (prospectors < persona.prospectorTarget && view.buildings.SHIPYARD >= HULLS.PROSPECTOR.minShipyard
+    && room >= hullBulk('PROSPECTOR')) {
     if (await attempt(did, 'ship:PROSPECTOR', log, () =>
       buildUnits(db, seat.planetId, 'PROSPECTOR', 1, clock, seat.playerId))) return;
   }
+  room = Math.max(0, room);
 
   if (owned >= BOTS.fleetValueCeiling) return;
 
@@ -339,6 +351,7 @@ async function buyShips(
       Math.floor(spend / Math.max(1, spec.alloy)),
       spec.crystal > 0 ? Math.floor(view.planet.crystal / spec.crystal) : Number.MAX_SAFE_INTEGER,
       spec.deuterium > 0 ? Math.floor((view.planet.deuterium * 0.5) / spec.deuterium) : Number.MAX_SAFE_INTEGER,
+      Math.floor(room / hullBulk(hull)),
     );
     if (n < 1) continue;
     if (await attempt(did, `ship:${hull}`, log, () =>

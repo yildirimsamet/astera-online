@@ -17,6 +17,9 @@ import {
   dominion,
   groundLoad,
   groundSlots,
+  hangarCapacity,
+  hangarCeiling,
+  hangarLoad,
   instrumentCost,
   productionMult,
   satelliteCost,
@@ -447,9 +450,13 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * The load is counted over every unit row this world owns — `fleet` is only
      * what is standing on the ground, and the ceiling is a rule about ownership.
      * Without that, a world whose guns were somehow away would be offered room it
-     * does not have. D184 left one ceiling here; the fleet no longer has one.
+     * does not have. `hangarCeiling` is the tallest Hangar this Core allows, so the
+     * screen can tell "raise the Hangar" from "raise the Core first".
      */
     capacity: {
+      hangar: hangarCapacity(p.buildings.HANGAR),
+      hangarUsed: hangarLoad(owned),
+      hangarCeiling: hangarCeiling(p.buildings.CORE),
       ground: groundSlots(p.buildings.CORE),
       groundUsed: groundLoad(owned),
     },

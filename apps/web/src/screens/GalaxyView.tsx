@@ -2015,6 +2015,7 @@ export function GalaxyView({
         return target ? (
           <TransferSheet
             target={target}
+            {...(owned ? { targetPlanet: owned } : {})}
             planet={transferOrigin}
             onClose={() => { setTransferTargetId(null); }}
             onLaunched={() => {

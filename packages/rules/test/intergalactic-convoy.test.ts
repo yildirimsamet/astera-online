@@ -338,7 +338,7 @@ describe('the five-second convoy engagement clock', () => {
 describe('the immutable convoy reward quote', () => {
   it('derives four hours of production from the launch snapshot, including Foundry', () => {
     const buildings = {
-      CORE: 1, REFINERY: 4, EXTRACTOR: 3, VAULT: 0, SHIPYARD: 1, DEUTERIUM_PLANT: 2,
+      CORE: 1, REFINERY: 4, EXTRACTOR: 3, VAULT: 0, SHIPYARD: 1, DEUTERIUM_PLANT: 2, HANGAR: 1,
     } as const;
     const orbit = ['FOUNDRY'] as const;
     // Owner instruction, 2026-09-16: "saatlik üretim miktarının 4 katına kadar".

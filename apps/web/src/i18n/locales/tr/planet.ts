@@ -129,6 +129,8 @@ export const planet = {
   },
 
   capacity: {
+    hangarBand: "Filo alanı",
+    hangarFull: "Hangar dolu: {{total}} alanın {{used}} kadarı bağlı. Daha fazla gemi için Hangarı yükselt.",
     hullUse:
       "Her biri {{bulk}} yer kullanır · sıra bitince {{used}} / {{total}} bağlı.",
     full: "Yer yok: {{total}} alanın {{used}} kadarı bağlı. Önce ilgili kapasiteyi yükselt.",
@@ -540,6 +542,7 @@ export const transfer = {
     "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah, Atlas ve Argosi sağlar.",
   hullNone: "Bu dünyada yok",
   holdReady: "Madeni Kurye, Seyyah, Atlas ve Argosi taşır. Ambar: {{capacity}}.",
+  destinationLabel: "Hedef Hangarı",
   holdNeedsLoad: "Maden taşımak için yukarıdan Kurye, Seyyah, Atlas veya Argosi ekle.",
   holdNoCarrier:
     "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah, Atlas veya Argosi yok.",

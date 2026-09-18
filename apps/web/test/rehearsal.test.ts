@@ -10,6 +10,8 @@ import {
   asteroidPosition,
   generateGalaxy,
   buildingCost,
+  hangarCapacity,
+  hullBulk,
 } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import {
@@ -233,8 +235,11 @@ describe('the opening budget', () => {
       alloy: 100_000_000,
       crystal: 100_000_000,
     };
-    // D184: a warship has no ceiling, so the only room refusal left is the ground's.
-    expect(refusesBuild(world, 'DART', 5_000)).toBe(null);
+    // The rehearsal's Hangar is the base rung a real world opens with, so the same
+    // order the server would refuse is refused here before anything is staged.
+    const room = hangarCapacity(world.buildings.HANGAR);
+    expect(refusesBuild(world, 'DART', Math.floor(room / hullBulk('DART')))).toBe(null);
+    expect(refusesBuild(world, 'DART', Math.floor(room / hullBulk('DART')) + 1)).toBe('HANGAR_FULL');
   });
 
   it('records what was pressed, in order, and nothing else', () => {

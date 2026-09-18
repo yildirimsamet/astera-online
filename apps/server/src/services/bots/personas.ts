@@ -81,7 +81,7 @@ export interface BotPersona {
 export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   BUILDER: {
     id: 'BUILDER',
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT', 'HANGAR'],
     wants: ['UPLINK', 'RADAR', 'AEGIS', 'FOUNDRY', 'TELESCOPE'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },
@@ -99,7 +99,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   RAIDER: {
     id: 'RAIDER',
-    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'VAULT'],
+    buildOrder: ['SHIPYARD', 'REFINERY', 'CORE', 'HANGAR', 'EXTRACTOR', 'DEUTERIUM_PLANT', 'VAULT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'VEIL', 'BEACON'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },
@@ -115,7 +115,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   PROSPECTOR: {
     id: 'PROSPECTOR',
-    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'SHIPYARD', 'VAULT', 'DEUTERIUM_PLANT'],
+    buildOrder: ['REFINERY', 'EXTRACTOR', 'CORE', 'SHIPYARD', 'VAULT', 'DEUTERIUM_PLANT', 'HANGAR'],
     wants: ['UPLINK', 'RADAR', 'DERRICK', 'AEGIS', 'TELESCOPE'],
     research: [
       { project: 'ISOTOPE_SPECTROMETRY', level: 1 },
@@ -130,7 +130,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
   },
   BALANCED: {
     id: 'BALANCED',
-    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'DEUTERIUM_PLANT', 'VAULT'],
+    buildOrder: ['REFINERY', 'CORE', 'EXTRACTOR', 'SHIPYARD', 'HANGAR', 'DEUTERIUM_PLANT', 'VAULT'],
     wants: ['UPLINK', 'RADAR', 'TELESCOPE', 'AEGIS', 'FOUNDRY'],
     research: [
       { project: 'DEUTERIUM_SYNTHESIS', level: 2 },

@@ -6,6 +6,8 @@ import {
   fleetCount,
   fleetSpeedMult,
   fleetTravelExact,
+  hangarCapacity,
+  hangarLoad,
   missionFuel,
   prospectorCeiling,
   prospectorRoom,
@@ -18,7 +20,7 @@ import {
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { missions, neutralPlanetState, planets, units } from '../db/schema.js';
+import { buildings, missions, neutralPlanetState, planets, units } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
@@ -94,7 +96,7 @@ async function reserveFleet(
 }
 
 export interface LandingBlock {
-  code: 'TARGET_PROSPECTOR_CAP';
+  code: 'TARGET_PROSPECTOR_CAP' | 'TARGET_HANGAR_FULL';
   message: string;
   params: Record<string, number>;
 }
@@ -153,6 +155,30 @@ export async function landingBlock(
         message:
           `That world may hold ${String(ceiling)} Prospectors, and it has ${String(held)}.`,
         params: { max: ceiling, have: held },
+      };
+    }
+  }
+
+  /*
+    THE HANGAR DOES NOT CARE WHICH DOOR A SHIP CAME THROUGH. T4, restored 2026-09-18.
+
+    A transfer or a clan gift arriving at a full world would otherwise be the one
+    way past the ceiling the Yard enforces. Overflow already standing there is
+    legal; only new ingress is refused, and a missing row reads as the base rung.
+  */
+  const incoming = hangarLoad(fleet);
+  if (incoming > 0) {
+    const [row] = await tx
+      .select({ level: buildings.level })
+      .from(buildings)
+      .where(and(eq(buildings.planetId, targetPlanetId), eq(buildings.type, 'HANGAR')));
+    const capacity = hangarCapacity(row?.level ?? 0);
+    const used = hangarLoad(owned);
+    if (used + incoming > capacity) {
+      return {
+        code: 'TARGET_HANGAR_FULL',
+        message: `That world's Hangar holds ${String(capacity)} and is carrying ${String(used)}.`,
+        params: { capacity, used, needed: incoming },
       };
     }
   }

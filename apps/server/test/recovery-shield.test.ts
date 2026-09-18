@@ -123,8 +123,8 @@ describe('the recovery shield', () => {
     for (const id of f.planetIds) {
       await setLevel(f.db, id, 'CORE', 8);
       await setLevel(f.db, id, 'SHIPYARD', 4);
-      // This suite tests finite three-resource recovery times. The zero-production
-      // lane and its infinite recovery time are covered by the pure rules tests.
+      // This suite tests three produced resources. A loss in one the defender cannot
+      // make is repriced into alloy (2026-09-18); the arithmetic is in the rules tests.
       await setLevel(f.db, id, 'DEUTERIUM_PLANT', 8);
     }
     /*
@@ -200,7 +200,12 @@ describe('the recovery shield', () => {
     expect(report?.recoveryShieldUntil ?? null).toBeNull();
   });
 
-  it('grants when loot includes a resource none of the defender’s worlds can produce', async () => {
+  /**
+   * ONE UNIT OF FUEL IS NOT A HEAVY DEFEAT. Owner report, 2026-09-18: a defender with
+   * no Deuterium Refinery used to earn the shield from any deuterium carried off,
+   * because that lane read as infinite hours. It is now repriced into alloy.
+   */
+  it('does not grant for a light raid that carried off fuel the defender cannot make', async () => {
     await setLevel(f.db, theirs, 'DEUTERIUM_PLANT', 0);
     await setLevel(f.db, colony, 'DEUTERIUM_PLANT', 0);
     await grant(f.db, theirs, 400_000, 100_000);
@@ -214,8 +219,9 @@ describe('the recovery shield', () => {
     const [report] = await f.db.select().from(battleReports)
       .where(eq(battleReports.missionId, launch.missionId));
     expect(report?.loot.deuterium).toBeGreaterThan(0);
-    expect(report?.recoveryLossHours).toBe(Number.POSITIVE_INFINITY);
-    expect(await recoveryOf(f.playerIds[1]!)).not.toBeNull();
+    expect(Number.isFinite(report?.recoveryLossHours)).toBe(true);
+    expect(report?.recoveryLossHours).toBeLessThan(ABUSE.recoveryLossHours);
+    expect(await recoveryOf(f.playerIds[1]!)).toBeNull();
   });
 
   /**
@@ -804,7 +810,7 @@ describe('the recovery shield', () => {
     expect(attacked && 'recovery' in attacked ? attacked.recovery : undefined).toBeNull();
   });
 
-  it('sends a finite figure for a loss nobody can work off', async () => {
+  it('sends a finite figure when the defender makes no deuterium', async () => {
     await setLevel(f.db, theirs, 'DEUTERIUM_PLANT', 0);
     await setLevel(f.db, colony, 'DEUTERIUM_PLANT', 0);
     await grant(f.db, theirs, 400_000, 100_000);
@@ -819,7 +825,7 @@ describe('the recovery shield', () => {
       .find((row) => row.kind !== 'STRATEGIC' && row.missionId === launch.missionId);
     const recovery = defended && 'recovery' in defended ? defended.recovery : undefined;
     expect(Number.isFinite(recovery?.lossHours)).toBe(true);
-    expect(recovery?.lossHours).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    expect(recovery?.shielded).toBe(false);
     // JSON has no Infinity: the wire must survive a round trip unchanged.
     expect(JSON.parse(JSON.stringify(recovery))).toEqual(recovery);
   });

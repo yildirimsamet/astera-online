@@ -14,6 +14,7 @@ export const vocabulary = {
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
     VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Expands resource storage and leaves 10% headroom for the next matching alloy and crystal producer upgrades. The bottom 10%, capped at 8 hours of production, is safe from raids.', detail: 'The Store first grows by its authored production-hour ladder. At high levels, if that floor is too small, Store L expands to hold 110% of the Alloy Refinery L→L+1 alloy cost and Crystal Extractor L→L+1 crystal cost; the resulting hour window also applies to Deuterium. A raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource’s production. The Store does not fight or reduce incoming damage.' },
     SHIPYARD: { name: 'Shipyard', tag: 'Unlocks better ships', role: 'Unlocks hulls · speeds ship and ground-defence construction · sets probe accuracy and stealth', detail: 'Higher levels open new hull classes and finish ships and ground defences faster. They also sharpen your probe readings and make your own probes harder to catch. Shipyard levels add no queue slots.' },
+    HANGAR: { name: 'Hangar', tag: 'Sets how much fleet fits', role: 'Fleet room on this world · new rungs open at Command Core 4, 7, 10, 13 and 16', detail: 'Every ship takes Hangar room by its size, including ships away from home; ground defences do not. A full Hangar builds and receives no more ships, but loses nothing it already holds. Rungs 2–6 open at Command Core 4, 7, 10, 13 and 16; at Core 16 rungs 7–10 can be bought with resources alone.' },
     DEUTERIUM_PLANT: { name: 'Deuterium Refinery', tag: 'Makes Deuterium', role: 'Deuterium per hour and fuel storage · its ceiling is set by Deuterium Synthesis', detail: 'Each level increases passive Deuterium production and the amount that can be stored. Deuterium fuels fleet launches; research the next Deuterium Synthesis rung when the Refinery reaches its level ceiling.' },
   },
 
@@ -304,6 +305,13 @@ export const gains = {
     releases_one: 'Releases {{count}} blocked upgrade',
     releases_other: 'Releases {{count}} blocked upgrades',
     raisesCap: 'Raises the level ceiling for buildings',
+    opensHangar: 'Opens Hangar {{rung}} · {{then}}',
+  },
+  hangar: {
+    label: 'Fleet room',
+    value: '{{room}} room',
+    none: 'No Hangar',
+    ceiling: 'Up to {{room}} at the top rung',
   },
   refinery: {
     label: 'Alloy per hour',

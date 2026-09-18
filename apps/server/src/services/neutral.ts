@@ -54,7 +54,7 @@ const EMPTY_VAULT = { alloy: 0, crystal: 0, deuterium: 0 };
 async function neutralLevels(tx: Tx, planetId: string) {
   const rows = await tx.select().from(buildings).where(eq(buildings.planetId, planetId));
   const levels = {
-    CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0,
+    CORE: 0, REFINERY: 0, EXTRACTOR: 0, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0, HANGAR: 0,
   };
   for (const row of rows) if (row.type in levels) levels[row.type as BuildingId] = row.level;
   return levels;

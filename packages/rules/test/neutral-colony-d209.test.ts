@@ -95,13 +95,13 @@ describe('D209 neutral garrisons', () => {
 
   it('leaves the caretaker buildings exactly as they were', () => {
     expect(MULTI_WORLD.neutral[1].buildings).toEqual(
-      { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
+      { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0, HANGAR: 1 },
     );
     expect(MULTI_WORLD.neutral[2].buildings).toEqual(
-      { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
+      { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0, HANGAR: 2 },
     );
     expect(MULTI_WORLD.neutral[3].buildings).toEqual(
-      { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
+      { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0, HANGAR: 3 },
     );
   });
 });

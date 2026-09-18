@@ -659,7 +659,42 @@ export const START_BUILDINGS = {
   SHIPYARD: 0,
   /** No plant, and no research to allow one. Deuterium is earned before it flows. */
   DEUTERIUM_PLANT: 0,
+  /** The base rung: room for the opening fleet, and no more. See `HANGAR`. */
+  HANGAR: 1,
 } as const satisfies Record<BuildingId, number>;
+
+/**
+ * HOW MUCH FLEET A WORLD MAY HOLD, AND WHAT OPENS MORE. 2026-09-18, owner design.
+ *
+ * Commanders held their Command Core low to stay inside the beginners' tier band
+ * (`coreTier`, `ABUSE.tierBand`) and printed an unbounded fleet there. The Hangar
+ * bounds a world's fleet in ROOM (`hullBulk`), and its rungs open only where a
+ * development tier changes — Core 4, 7, 10, 13, 16 — so staying small now means
+ * staying few. Past Core 16 rungs 7–10 are bought with resources alone.
+ *
+ * THE LADDER IS DERIVED, THEN FROZEN. Each rung is what the Refinery and Extractor
+ * at the gate Core buy in combat hulls over a day count that widens as it climbs
+ * (1 at Core 3 for the base, then 2, 3, 5, 8, 12 and 17, 23, 30, 38), deuterium
+ * ignored, room averaged over the tiers that stage builds. Widening days are what
+ * keep the ladder climbing: one day's output buys roughly the same room from Core
+ * 7 upward because dearer tiers cost more per berth. Adjacent rungs stay within
+ * ×2.6 of each other so the ±1 tier band never pits a fleet against one five
+ * times its size. `test/hangar.test.ts` holds the frozen figures to the
+ * derivation, so a producer retune fails there instead of moving every ceiling.
+ *
+ * OVERFLOW IS LEGAL. A capture, a strike or the migration can leave a world above
+ * its room; nothing is deleted, the world only builds and receives nothing more.
+ */
+export const HANGAR = {
+  /** Room per rung; index is the rung, and rung 0 (no row) reads as the base. */
+  capacity: [80, 80, 180, 470, 810, 1550, 2290, 3250, 4400, 5740, 7270],
+  /** Command Core a rung needs; index is the rung. Rungs above 6 need only Core 16. */
+  coreGate: [0, 1, 4, 7, 10, 13, 16, 16, 16, 16, 16],
+  /** The last rung a Core opens by itself; above it every rung is purchased. */
+  seedTop: 6,
+  /** Prices live with every other price, in `profileBuilding`. */
+  maxLevel: 10,
+} as const;
 
 /**
  * WHAT AN INSTRUMENT COSTS, RELATIVE TO A BUILDING. D22, narrowed by D25.
@@ -3288,7 +3323,7 @@ export const MULTI_WORLD = {
    */
   neutral: {
     1: {
-      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 0, HANGAR: 1 },
       instruments: { AEGIS: 1 },
       fleet: { DART: 12, PIKE: 6, VIPER: 1, STRONGHOLD: 1 },
       ground: { THORN: 1 },
@@ -3298,7 +3333,7 @@ export const MULTI_WORLD = {
       reinforcementMinutes: null,
     },
     2: {
-      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 0, SHIPYARD: 2, DEUTERIUM_PLANT: 0, HANGAR: 2 },
       instruments: { AEGIS: 2 },
       fleet: { DART: 20, PIKE: 20, VIPER: 8, STRONGHOLD: 8 },
       ground: { THORN: 2, BASTION: 2 },
@@ -3308,7 +3343,7 @@ export const MULTI_WORLD = {
       reinforcementMinutes: 6 * 60,
     },
     3: {
-      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0 },
+      buildings: { CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 0, SHIPYARD: 4, DEUTERIUM_PLANT: 0, HANGAR: 3 },
       instruments: { AEGIS: 4 },
       fleet: {
         VIPER: 15, STRONGHOLD: 15, TEMPEST: 5, BALLISTA: 5, SENTINEL: 5, LEVIATHAN: 5, PRAETORIAN: 5,
@@ -3414,8 +3449,12 @@ export const DEATH_STAR = {
  *
  * TWO NUMBERS ARE THE OWNER'S AND THE REST ARE DERIVED FROM THEM:
  * eight faults standing together empty loyalty in twelve hours, and a world nobody
- * touches collects all eight in forty-eight. Everything below is what those two
+ * touches collects all eight in seventy-two. Everything below is what those two
  * force, measured rather than guessed.
+ *
+ * THE SECOND ONE MOVED ON 2026-09-18: forty-eight → seventy-two, because players found the
+ * faults too frequent. The owner kept the loyalty speed exactly as it was, so a colony
+ * with its faults standing falls just as fast — it only takes longer to reach that point.
  */
 export const FAULT = {
   /** Faults start here. Below it a colony cannot break and has no loyalty. */
@@ -3425,8 +3464,8 @@ export const FAULT = {
   /**
    * A FIXED CADENCE WAS REFUSED, and the owner's reason is the whole design of this
    * block: *"Yoksa kullanıcı 6 saatte bir açıp bakar oyuna."* A game is not an alarm
-   * clock. The gap is drawn from a two-armed mixture whose mean is six hours —
-   * `8 × 6h = 48h`, the owner's figure — and whose shape carries no learnable period.
+   * clock. The gap is drawn from a two-armed mixture whose mean is nine hours —
+   * `8 × 9h = 72h`, the owner's figure — and whose shape carries no learnable period.
    */
   burstChance: 0.30,
   /** The burst arm: roughly three faults in ten land right behind the last one. */
@@ -3439,8 +3478,12 @@ export const FAULT = {
    * twenty hours. Gamma(2) is two exponentials added, keeps the long upper tail, and
    * cuts the lower one: measured over 40k runs the worst 5% of collapses moved from
    * 25 hours to 29, and the median from 47.3 to 49.
+   *
+   * 8.4 → 12.7 ON 2026-09-18, and this is the only rhythm number that moved. The burst
+   * arm stays, so faults still sometimes come back to back; they are just rarer overall.
+   * `0.3 × 25min + 0.7 × 12.7h ≈ 9h`, measured 9.00h over 200k draws.
    */
-  calmMeanHours: 8.4,
+  calmMeanHours: 12.7,
   /** Two faults never land in the same second; anything shorter reads as one event. */
   minGapSeconds: 60,
   /**
@@ -3475,6 +3518,10 @@ export const FAULT = {
    *   exponent 2 → 45.1h      · 42.6        · 23.4
    *   exponent 3 → 49.8h      · 49.0        · 29.0      ← owner's ~46-48h target
    *   exponent 4 → 52.6h      · 49.8        · 26.2
+   *
+   * THOSE ROWS ARE THE OLD 48-HOUR RHYTHM. At the 72-hour rhythm (2026-09-18) the same
+   * cube, untouched by owner decision, gives 67.8h mean · 65.8 median · 36.6 worst-5%
+   * over 40k runs: a neglected world now secedes around two days and three-quarters.
    *
    * Said plainly on the screen: EVERY FAULT ACCELERATES THE LOSS MORE THAN THE ONE
    * BEFORE IT. Four faults cost 1.04 loyalty an hour, six cost 3.52, eight cost 8.33.

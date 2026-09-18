@@ -1080,7 +1080,7 @@ whole diagnostic.
 | Deuterium Plant | yes | effect delta rises with price | fine |
 | Vault | no, but enables | L16 = 21%, L20 = 116% | fine — the unreachable rungs are ones a 30-day season has no use for (210 hours of store) |
 | Instruments ×4 | no | all four at L5 = 12% | fine — and this is the figure `INSTRUMENT_LEVEL_WORTH` was tuned to produce |
-| ~~Hangar~~ | no | L8 alone = 196% | **removed, D184** |
+| Hangar | no | rungs 7–10 ≈ 3.6 / 5.5 / 8.4 / 12.8 days of one Core-16 world | **restored 2026-09-18**, priced at 1.25× the Core upgrade that opens each rung |
 | ~~Shipyard past its gate~~ | no | whole tail = 30,376% | **repriced, D185** |
 
 So the defect was confined to the two ladders whose entire product was a non-earning ceiling

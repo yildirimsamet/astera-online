@@ -62,6 +62,12 @@ export const vocabulary = {
       role: 'Yeni gemileri açar; gemi ve yer savunması üretimini hızlandırır, sondalarını geliştirir.',
       detail: 'Seviye yükseldikçe yeni gemi sınıfları açılır; gemiler ve yer savunmaları daha kısa sürede tamamlanır. Yüksek Tersane seviyesi sondalarının daha doğru bilgi toplamasını ve rakip Radarlarına daha zor yakalanmasını sağlar. Üretim sırası uzunluğunu artırmaz.',
     },
+    HANGAR: {
+      name: 'Hangar',
+      tag: 'Filonun sığacağı yeri belirler',
+      role: 'Bu dünyadaki filo alanı · yeni seviyeler Komuta Çekirdeği 4, 7, 10, 13 ve 16’da açılır',
+      detail: 'Her gemi büyüklüğü kadar Hangar alanı kullanır; görevde olan gemiler de sayılır, yer savunmaları sayılmaz. Hangar dolunca yeni gemi üretilemez ve bu dünyaya gemi gönderilemez, ama eldekiler kaybolmaz. 2–6. seviyeler Komuta Çekirdeği 4, 7, 10, 13 ve 16’da açılır; Çekirdek 16’dan sonra 7–10. seviyeler yalnızca kaynakla alınır.',
+    },
     DEUTERIUM_PLANT: {
       name: 'Döteryum Rafinerisi',
       tag: 'Döteryum üretir',
@@ -376,6 +382,13 @@ export const gains = {
     releases_one: 'Tıkanan {{count}} yükseltmeyi açar',
     releases_other: 'Tıkanan {{count}} yükseltmeyi açar',
     raisesCap: 'Binaların ulaşabileceği seviye sınırını yükseltir',
+    opensHangar: 'Hangar {{rung}} açılır · {{then}}',
+  },
+  hangar: {
+    label: 'Filo alanı',
+    value: '{{room}} alan',
+    none: 'Hangar yok',
+    ceiling: 'En üst seviyede {{room}} alana kadar',
   },
   refinery: {
     label: 'Saatlik alaşım',

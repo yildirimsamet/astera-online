@@ -15,6 +15,7 @@ import {
   INSTRUMENT_COST_DISCOUNT,
   SENSOR_INSTRUMENT_COST_GROWTH,
   EMPLACEMENT,
+  HANGAR,
   SATELLITES,
   SEASON,
   UPLINK_BUILD_MINUTES,
@@ -101,6 +102,36 @@ export const satelliteSlots = (coreLevel: number): number =>
  */
 export const groundSlots = (coreLevel: number): number =>
   EMPLACEMENT.base + Math.max(0, coreLevel) * EMPLACEMENT.perLevel;
+
+/**
+ * HOW MUCH FLEET A WORLD MAY HOLD, IN ROOM. See the `HANGAR` block for the ladder.
+ *
+ * A missing row reads as the base rather than as nothing: a world seeded before the
+ * Hangar existed still keeps the fleet it had, and the refusal it meets is "raise
+ * your Hangar", never "you have no Hangar at all".
+ */
+export const hangarCapacity = (hangarLevel: number): number => {
+  const rung = Math.min(HANGAR.maxLevel, Math.max(1, Math.floor(hangarLevel)));
+  return HANGAR.capacity[rung] ?? HANGAR.capacity[1];
+};
+
+/**
+ * THE TALLEST HANGAR THIS COMMAND CORE ALLOWS. The rungs open at the Core levels
+ * where a development tier changes (`coreTier`), and a Core-16 world may buy every
+ * rung the ladder has. The one statement of the gate: the build door, the strike
+ * clamp and the client all read it.
+ */
+export function hangarCeiling(coreLevel: number): number {
+  let top = 0;
+  for (let rung = 1; rung <= HANGAR.maxLevel; rung++) {
+    if (coreLevel >= HANGAR.coreGate[rung]!) top = rung;
+  }
+  return top;
+}
+
+/** The rung a Core opens by itself; what a live world is handed when the Hangar returns. */
+export const hangarSeedLevel = (coreLevel: number): number =>
+  Math.min(HANGAR.seedTop, hangarCeiling(coreLevel));
 
 export const flightSlots = (coreLevel: number): number =>
   3 + Math.floor(Math.max(0, coreLevel) / 3);

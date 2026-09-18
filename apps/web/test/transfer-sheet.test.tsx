@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, missionFuel } from '@astera/rules';
+import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -133,19 +133,53 @@ describe('world transfer sheet', () => {
   });
 
   /**
-   * THE REFUSAL THIS REPLACES. D184.
+   * THE DESTINATION'S ROOM, DRAWN WHILE THE SQUADRON IS PACKED. Restored 2026-09-18.
    *
-   * A destination Hangar could fill while a squadron was in the air, so this sheet
-   * drew the far world's room and greyed the commit. There is no such ceiling now:
-   * a committed flight always lands, which is the only honest answer for a launch
-   * that cannot be recalled.
+   * The server refuses a transfer the far world's Hangar cannot hold. A sheet that
+   * lets the commander press send first teaches the rule through a toast; the bar
+   * shows the order's segment growing past the end instead, and the commit greys.
    */
-  it('offers the transfer however full the destination already is', async () => {
+  it('does not offer a transfer that the owned destination Hangar will reject', async () => {
+    const user = userEvent.setup();
+    const hangar = hangarCapacity(1);
+    render(
+      <ToastProvider>
+        <TransferSheet
+          target={target}
+          targetPlanet={planetView({
+            fleet: { RAMPART: hangar / hullBulk('RAMPART') },
+            capacity: { hangar, hangarUsed: hangar, ground: 100, groundUsed: 0 },
+          }, { id: target.id })}
+          planet={planetView(
+            { fleet: { DART: 1 } },
+            { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },
+          )}
+          onClose={vi.fn()}
+          onLaunched={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(
+      screen.getByRole('img', {
+        name: new RegExp(`${String(hangar + hullBulk('DART'))} of ${String(hangar)} used`, 'i'),
+      }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('[data-full]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+  });
+
+  it('sends a squadron the destination Hangar can hold', async () => {
     const user = userEvent.setup();
     render(
       <ToastProvider>
         <TransferSheet
           target={target}
+          targetPlanet={planetView({
+            fleet: {},
+            capacity: { hangar: hangarCapacity(1), hangarUsed: 0, ground: 100, groundUsed: 0 },
+          }, { id: target.id })}
           planet={planetView(
             { fleet: { DART: 1 } },
             { id: 'capital-1', alloy: 10_000, crystal: 5_000, deuterium: 5_000 },

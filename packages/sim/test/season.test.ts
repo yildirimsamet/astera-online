@@ -288,7 +288,7 @@ describe('VFR still catches a vault that covers everything', () => {
   const planet = (over: Partial<SimPlayer>): SimPlayer => ({
       id: 0, name: 'T', type: 'TURTLE', x: 0, y: 0, z: 0,
       buildings: {
-        CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0,
+        CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0, HANGAR: 3,
       },
       instruments: {}, orbit: [], fleet: {}, ground: {},
       queues: { CONSTRUCTION: [], YARD: [], RESEARCH: [] },
@@ -339,7 +339,7 @@ describe('VFR still catches a vault that covers everything', () => {
       const floor = vaultProtects(8, 8, 8, 0);
       return planet({
         buildings: {
-          CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0,
+          CORE: 8, REFINERY: 8, EXTRACTOR: 8, VAULT: 8, SHIPYARD: 4, DEUTERIUM_PLANT: 0, HANGAR: 3,
         },
         alloy: floor.alloy * 0.9,
         crystal: floor.crystal * 0.9,

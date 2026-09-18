@@ -1,6 +1,6 @@
 import {
   ACADEMY_STEPS, academyCheckpoint, buildingCost, buildMinutes, HULLS,
-  instrumentCost, shipMinutes, groundSlots, shieldHp, SHIELD, wealth,
+  instrumentCost, shipMinutes, groundSlots, hangarCapacity, hangarCeiling, hangarLoad, shieldHp, SHIELD, wealth,
   type AcademyCheckpoint, type AcademyStepId,
   academyFuel, academyPirateBattle, academyPirateLoot, academyRaidBattle, academyRaidLoot,
   ACADEMY_LEG_SECONDS, academyLessonFleet, academyOrderSeconds, fleetEntries, flightSlots, type Fleet,
@@ -216,6 +216,8 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
       }),
     },
     capacity: {
+      hangar: hangarCapacity(state.buildings.HANGAR), hangarUsed: hangarLoad(state.fleet),
+      hangarCeiling: hangarCeiling(state.buildings.CORE),
       ground: groundSlots(state.buildings.CORE), groundUsed: 0,
     },
   };
