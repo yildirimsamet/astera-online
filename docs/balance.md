@@ -526,7 +526,7 @@ drives the strategic layer directly instead.
 spawn         0.05175 per player per hour — 15.525/h and ~59 rocks visible at 300 players
 orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
 life          2.5–5 hours, then gone for good
-ore by level  [—, 1600, 3200, 4800, 6400, 8000]   dynamic weights [—, .44, .26, .17, .09, .04]
+ore by level  [—, 800, 1600, 2400, 3200, 4000]   dynamic weights [—, .44, .26, .17, .09, .04]
 legacy field  weights [—, .40, .27, .18, .10, .05] (kept deterministic)
 ore quantum   400 = one bare Prospector hold; every yield is a whole number of these
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
@@ -538,9 +538,13 @@ quiet hours   Türkiye 00:00–08:00 target 1 of 5 starts, hard cap 2; not a bla
 ```
 
 Current dynamic seasons use **1 rock per active commander per hour**. Fixed shower windows in
-Türkiye time remain 12:30–13:30 ×2 and 20:00–21:00 ×5 on weekdays; 13:00–14:00 ×3 and
-20:00–21:00 ×6 on weekends. These values are stamped only into unopened occurrences;
+Türkiye time are 12:30–13:30 ×2 and 20:00–21:00 ×3 on weekdays; 13:00–14:00 ×3 and
+20:00–21:00 ×5 on weekends. These values are stamped only into unopened occurrences;
 already-open hours and windows keep their stored generation inputs.
+
+The current asteroid ore ladder is half its prior value at every level. Pirate ship capture
+is 40% / 28% / 16% / 12% by level, or 30.12% across the level distribution on decisive wins.
+The later 10–30% fleet fuel surcharge has been removed; hulls use their base fuel mass.
 
 The Crystal reduction does not reduce total ore. The removed share becomes Alloy; isotope
 concentration still replaces Alloy independently after the Alloy/Crystal split.

@@ -258,11 +258,11 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.seasonId, season.id),
           eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
         ));
-      // The weekday evening x5: START is a Wednesday, so day 0 holds one.
+      // The weekday evening x3: START is a Wednesday, so day 0 holds one.
       const addedWindowRows = showers.filter((row) =>
         minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
         && 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 5);
+        && row.effect.asteroidSpawnMultiplier === 3);
       const removedIds = addedWindowRows.map((row) => row.id);
       expect(removedIds.length).toBeGreaterThan(0);
       await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
@@ -336,14 +336,12 @@ describe('persisted galaxy events', () => {
      *
      * THE CLOCK DOES NOT MOVE BETWEEN THE TWO READS, which is the only way to
      * separate the deploy from the shower it lands inside. A shower ramps over its
-     * hour; this is a step at a frozen instant. The x5 window is used because it
-     * carries the largest lane, so a regression that narrowed or widened the step
-     * cannot hide inside the noise of a small one.
+     * hour; this is a step at a frozen instant. The weekday evening window is
+     * removed by its calendar hour and then restored at that same frozen instant.
      *
      * The assertion is a BAND rather than a figure. The exact count comes off a
      * seeded field and would re-roll on any lane, ore or lifetime change — that is
-     * balance work, and balance work should not fail this test. Even after the
-     * reduced x5 multiplier, a step of at least half the prior sky is visible.
+     * balance work, and balance work should not fail this test.
      */
     it('visibly grows the live field at a frozen instant when the open window is appended', async () => {
       const { db, season } = await world();
@@ -356,15 +354,15 @@ describe('persisted galaxy events', () => {
           eq(galaxyEventOccurrences.seasonId, season.id),
           eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
         ));
-      // The x5 lane, taken by its local hour rather than by its multiplier so the
+      // The x3 lane, taken by its local hour rather than by its multiplier so the
       // test names the window an operator would recognise on the calendar.
       const removed = showers.filter((row) =>
         minutesSince(START, row.startsAt) % (24 * 60) === 20 * 60
         && 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 5);
+        && row.effect.asteroidSpawnMultiplier === 3);
       expect(removed.length).toBeGreaterThan(0);
       expect(removed.every((row) => 'asteroidSpawnMultiplier' in row.effect
-        && row.effect.asteroidSpawnMultiplier === 5)).toBe(true);
+        && row.effect.asteroidSpawnMultiplier === 3)).toBe(true);
       const removedIds = removed.map((row) => row.id);
       await db.delete(scheduledEvents).where(inArray(scheduledEvents.refId, removedIds));
       await db.delete(galaxyEventOccurrences).where(inArray(galaxyEventOccurrences.id, removedIds));
@@ -388,7 +386,7 @@ describe('persisted galaxy events', () => {
       // The window that is open right now is among the ones that came back.
       expect(appended).toBeGreaterThan(0);
       expect(before).toBeGreaterThan(0);
-      expect(after).toBeGreaterThan(before * 1.5);
+      expect(after).toBeGreaterThan(before);
     });
   });
 
@@ -463,9 +461,8 @@ describe('persisted galaxy events', () => {
     const showerFigures = showers.map((row) =>
       'asteroidSpawnMultiplier' in row.effect ? row.effect.asteroidSpawnMultiplier : NaN);
     expect(showerFigures.filter((value) => value === 2)).toHaveLength(weekdays);
-    expect(showerFigures.filter((value) => value === 5)).toHaveLength(weekdays);
-    expect(showerFigures.filter((value) => value === 3)).toHaveLength(weekendDays);
-    expect(showerFigures.filter((value) => value === 6)).toHaveLength(weekendDays);
+    expect(showerFigures.filter((value) => value === 3)).toHaveLength(days);
+    expect(showerFigures.filter((value) => value === 5)).toHaveLength(weekendDays);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
     expect(convoys.every((row) => row.definitionVersion === 4

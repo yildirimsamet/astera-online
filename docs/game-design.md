@@ -174,10 +174,8 @@ any other material, and consumed by repeatable losable hulls rather than turned 
 background power.
 
 **And every launch burns it (T6).** The charge is `fuel mass x distance`, rounded up once per
-leg. Fuel mass starts from the hull's production-resource value, is tilted modestly by its
-reference trip, then receives a tier multiplier: **1.75 / 1.67 / 1.58 / 1.50** from tier one to
-four. This makes fleets materially dearer to operate while preserving better power-per-fuel and
-cargo-per-fuel at every higher tier. D125 and D126 made distance an *information* cost; this
+leg. Fuel mass starts from the hull's production-resource value and is tilted modestly by its
+reference trip. The later 10–30% tier surcharge was removed on 2026-09-18. D125 and D126 made distance an *information* cost; this
 makes the same axis an *economic* one.
 
 **Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
@@ -571,7 +569,7 @@ race and visible mining route begin for both of them.
 **The field follows the people playing it (2026-09-16).** At the top of every hour the worker
 counts the non-bot commanders who played in the last 60 minutes and fixes that hour's spawn at
 **1 rock per commander**, at random instants and random levels. Ore is the level table
-(1,600–8,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
+(800–4,000) with no monthly cap; levels open one rung a day (day 1: L1–2, day 2: L1–3, day 3:
 L1–4, day 4+: all). Within the unlocked range the L1–5 weights are 44%, 26%, 17%, 9% and 4%; the
 rarest level is 20% less common than before. A quiet night is no longer a free farm and a busy evening is no longer an empty
 sky. The lane counts and level weights are stored with the hour (`asteroid_spawn_hours`), so a
@@ -580,7 +578,7 @@ keep their derived field up to the hour they adopted it.
 
 **Asteroid Shower is a public opportunity window (D149/D201, reshaped 2026-09-16).** The owner's
 audience is 30–40-year-olds with jobs, and six showers a day paid whoever could attend six. Weekdays
-(Mon–Fri, TRT): 12:30–13:30 ×2 and 20:00–21:00 ×5. Weekends: 13:00–14:00 ×3 and 20:00–21:00 ×6.
+(Mon–Fri, TRT): 12:30–13:30 ×2 and 20:00–21:00 ×3. Weekends: 13:00–14:00 ×3 and 20:00–21:00 ×5.
 A shower multiplies the hourly per-player spawn for the part of each hour it covers, and half of its
 bonus still arrives in its first five minutes. Ruleset 4–7 seasons retain their random calendar. The
 end stops only bonus arrivals;

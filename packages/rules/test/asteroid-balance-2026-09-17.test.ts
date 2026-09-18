@@ -14,7 +14,7 @@ describe('2026-09-17 asteroid balance', () => {
   });
 
   it('defines the reduced weekday and weekend showers for future restamps', () => {
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(8);
+    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(9);
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows.map((window) => [
       window.days,
       window.startsAtLocalMinute,
@@ -22,9 +22,9 @@ describe('2026-09-17 asteroid balance', () => {
       window.effect.asteroidSpawnMultiplier,
     ])).toEqual([
       ['WEEKDAY', 750, 810, 2],
-      ['WEEKDAY', 1200, 1260, 5],
+      ['WEEKDAY', 1200, 1260, 3],
       ['WEEKEND', 780, 840, 3],
-      ['WEEKEND', 1200, 1260, 6],
+      ['WEEKEND', 1200, 1260, 5],
     ]);
     expect(GALAXY_EVENTS.definitions.TRADE_SHIP.windows.map((window) => [
       window.startsAtLocalMinute,

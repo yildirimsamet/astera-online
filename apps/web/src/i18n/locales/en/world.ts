@@ -54,7 +54,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Shower",
-      summary: "Every hour, 2 asteroids arrive for each commander who played in the last hour. A shower multiplies that for its window; existing asteroids remain until they expire.",
+      summary: "Every hour, 1 asteroid arrives for each commander who played in the last hour. A shower multiplies that for its window; existing asteroids remain until they expire.",
     },
     trade: {
       title: "Trade Ship",

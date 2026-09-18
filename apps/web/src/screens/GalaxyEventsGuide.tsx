@@ -52,7 +52,7 @@ type DayGroup = GalaxyEventDays | 'EVERY_DAY';
 /**
  * A LANE SPLIT BY THE KIND OF DAY IT RUNS ON. Owner instruction, 2026-09-16.
  *
- * The same 20:00 hour is a x10 shower on a weekday and a x15 one at the weekend, so
+ * The same 20:00 hour is a x3 shower on a weekday and a x5 one at the weekend, so
  * a flat row of pills could not say which was which. Weekdays first, because that
  * is the calendar a player meets five days out of seven; a window with no `days`
  * runs every day and is its own row.

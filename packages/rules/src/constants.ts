@@ -1815,18 +1815,6 @@ export const ANTI_STRATEGIC = {
 export const FUEL = {
   scale: 10_000,
   /**
-   * EXTRA THIRST BY HULL TIER. Owner instruction, 2026-09-17; lowered 2026-09-18
-   * (75%→50% was too much).
-   *
-   * Fuel must make an oversized fleet expensive to operate while preserving the
-   * reason to climb the catalogue. The entry tier therefore takes the full 30%
-   * increase and the surcharge tapers to 10% at tier four. The base mass is
-   * rounded before this multiplier so the very small entry-hull figures receive
-   * the authored increase. The multiplied result is rounded to the nearest whole
-   * fuel unit so intermediate tiers stay inside the intended percentage band.
-   */
-  tierMultiplier: { 1: 1.3, 2: 1.23, 3: 1.17, 4: 1.1 },
-  /**
    * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
    * D153's tier ladder outright.
    *
@@ -1841,8 +1829,7 @@ export const FUEL = {
    *
    * SO THE BASE IS PRICED OFF THE HULL. What a craft costs to move starts as a
    * fixed fraction of what it cost to build, which keeps price and thirst aligned.
-   * The later tier multiplier deliberately tapers downward and is held by the
-   * efficiency tests, so it strengthens rather than reverses tier progression.
+   * The base mass has no later tier surcharge.
    *
    * D208 weights value at A + 2C + 32D. The fraction preserves the opening's
    * per-hull fuel masses; later recipes and mission bills are measured explicitly.
@@ -1864,8 +1851,7 @@ export const FUEL = {
    * `SALVAGE.fuelMass`; leaving that behind would have halved "every ship" except
    * the one hull whose thirst a player complained about first.
    *
-   * This remains the base rate. `tierMultiplier` applies the later fleet-wide
-   * increase after the base mass is rounded.
+   * This remains the fleet-wide rate after the 2026-09-18 tier surcharge rollback.
    */
   perValue: 0.0055,
   /**
@@ -2365,7 +2351,7 @@ export const GALAXY = {
    * entire 156, so the correct play was to stop upgrading anything and mine. The
    * owner spotted it from the feel of it before any of this was measured.
    *
-   * Now a rock is worth three to ten Prospector loads — a prize a squadron cannot
+   * Now a rock is worth two to ten bare Prospector loads — a prize a squadron cannot
    * empty in one trip, so two players arriving minutes apart both come home with
    * something and both know they were beaten to it. That is the race D19 is for.
    *
@@ -2379,9 +2365,10 @@ export const GALAXY = {
    * `asteroidOreQuantum`, and it was flattened at both ends while it moved. The
    * old top was thirteen bare holds and the old bottom was two, which is not a
    * ladder of prizes so much as one prize and four consolations; five even steps
-   * from four holds to twenty read as a choice at every rung.
+   * from four holds to twenty read as a choice at every rung. The 2026-09-18
+   * halving makes the current ladder two through ten bare holds.
    */
-  asteroidOreByLevel: [0, 1600, 3200, 4800, 6400, 8000] as readonly number[],
+  asteroidOreByLevel: [0, 800, 1600, 2400, 3200, 4000] as readonly number[],
 
   /**
    * THE UNIT A ROCK'S YIELD IS COUNTED IN. Owner instruction, 2026-09-14.
@@ -2573,9 +2560,8 @@ export const GALAXY_EVENTS = {
     ASTEROID_SHOWER: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 8 KEEPS THE WORKING WEEK AND REDUCES ITS MULTIPLIERS. Owner
-       * instruction, 2026-09-17: weekday lunch x2, evening x5; weekend lunch x3,
-       * evening x6. Version 7 introduced the working-week schedule because *"kitlemiz
+       * VERSION 9 reduces the evening multipliers from weekday x5 to x3 and
+       * weekend x6 to x5. Version 7 introduced the working-week schedule because *"kitlemiz
        * 30-40 yaş çalışan insanlar bunlar eventleri yakalayamıyor ve tüm gün oynayan
        * eventlerin hepsini yakalayan azınlık ise ekonomik ve güç olarak uçuyor."*
        *
@@ -2595,16 +2581,16 @@ export const GALAXY_EVENTS = {
        * creation; the running galaxy adopts this shape through the operator command
        * `pnpm season adopt-event-calendar`, which never touches a window that opened.
        */
-      version: 8,
+      version: 9,
       windows: [
         { days: 'WEEKDAY', startsAtLocalMinute: 12 * 60 + 30, endsAtLocalMinute: 13 * 60 + 30,
           effect: { asteroidSpawnMultiplier: 2 } },
         { days: 'WEEKDAY', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 5 } },
+          effect: { asteroidSpawnMultiplier: 3 } },
         { days: 'WEEKEND', startsAtLocalMinute: 13 * 60, endsAtLocalMinute: 14 * 60,
           effect: { asteroidSpawnMultiplier: 3 } },
         { days: 'WEEKEND', startsAtLocalMinute: 20 * 60, endsAtLocalMinute: 21 * 60,
-          effect: { asteroidSpawnMultiplier: 6 } },
+          effect: { asteroidSpawnMultiplier: 5 } },
       ],
     },
     TRADE_SHIP: {
@@ -3036,15 +3022,11 @@ export const PIRATE = {
    * pirate that is cheapest to beat carries the ship worth least. Anything short
    * of DECISIVE pays nothing here — survivors fly away with their own ships.
    *
-   * RAISED THROUGHOUT, and flattened at the hard end, on owner instruction
-   * (0.5/0.35/0.25/0.15 → 0.75/0.5/0.35/0.3). The inversion is intact and still
-   * the decision; what changed is the altitude. At the old table a level 4 raid
-   * paid a hull once in seven, which priced the game's most expensive PvE fight
-   * as a lottery — the prize was a story, but a story you had to fund six times.
-   * The top two rungs now sit close together on purpose: past level 2 you are
-   * choosing WHICH hull you are gambling for, not whether the gamble pays.
+   * The 2026-09-18 reduction makes the weighted chance across the pirate level
+   * distribution 30.12% on a decisive win, while preserving the easier target's
+   * better odds. A non-decisive result still pays no hull.
    */
-  captureChance: { 1: 0.75, 2: 0.5, 3: 0.35, 4: 0.3 },
+  captureChance: { 1: 0.4, 2: 0.28, 3: 0.16, 4: 0.12 },
 
   /** Ships in one pirate. Small on purpose: this is a fight you can read. */
   sizeMin: 2,

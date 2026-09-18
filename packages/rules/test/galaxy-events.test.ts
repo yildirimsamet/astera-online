@@ -480,7 +480,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
    * pair on Saturday and Sunday, when the audience is actually free.
    */
   it('versions both reshaped lanes so a dealt row says which calendar it came from', () => {
-    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(8);
+    expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(9);
     expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(4);
     // The merchant was left exactly as it was.
     expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(4);
@@ -505,7 +505,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
       { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1020,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
-        effect: { asteroidSpawnMultiplier: 5 } },
+        effect: { asteroidSpawnMultiplier: 3 } },
       { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1380,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
       { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1260, endsAtMinute: 1380,
@@ -532,7 +532,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 780, endsAtMinute: 840,
         effect: { asteroidSpawnMultiplier: 3 } },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
-        effect: { asteroidSpawnMultiplier: 6 } },
+        effect: { asteroidSpawnMultiplier: 5 } },
       { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1200, endsAtMinute: 1320,
         effect: convoyWindowAt(2).effect },
     ]);
@@ -557,8 +557,8 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     const weekendShowers = of('ASTEROID_SHOWER').filter((event) =>
       event.startsAtMinute >= saturdayStart && event.startsAtMinute < sundayEnd);
     expect(weekendShowers.map((event) => event.effect)).toEqual([
-      { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 6 },
-      { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 6 },
+      { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 5 },
+      { asteroidSpawnMultiplier: 3 }, { asteroidSpawnMultiplier: 5 },
     ]);
   });
 
@@ -590,9 +590,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
       window.effect.asteroidSpawnMultiplier,
     ])).toEqual([
       ['WEEKDAY', 12 * 60 + 30, 13 * 60 + 30, 2],
-      ['WEEKDAY', 20 * 60, 21 * 60, 5],
+      ['WEEKDAY', 20 * 60, 21 * 60, 3],
       ['WEEKEND', 13 * 60, 14 * 60, 3],
-      ['WEEKEND', 20 * 60, 21 * 60, 6],
+      ['WEEKEND', 20 * 60, 21 * 60, 5],
     ]);
   });
 
@@ -618,9 +618,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     const wednesdayEvening = TURKEY_MIDNIGHT_UNIX_MINUTE + 20 * 60;
     const saturdayEvening = wednesdayEvening + 3 * DAY_MINUTES;
     expect(plannedEffectFor('ASTEROID_SHOWER', wednesdayEvening, GALAXY_EVENTS))
-      .toEqual({ asteroidSpawnMultiplier: 5 });
+      .toEqual({ asteroidSpawnMultiplier: 3 });
     expect(plannedEffectFor('ASTEROID_SHOWER', saturdayEvening, GALAXY_EVENTS))
-      .toEqual({ asteroidSpawnMultiplier: 6 });
+      .toEqual({ asteroidSpawnMultiplier: 5 });
     expect(() => plannedEffectFor('ASTEROID_SHOWER', wednesdayEvening + 1, GALAXY_EVENTS))
       .toThrow(/exact fixed start/i);
     // 13:00 is a weekend window and 12:30 a weekday one; neither exists on the other.

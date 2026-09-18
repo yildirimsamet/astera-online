@@ -101,12 +101,12 @@ describe('mission fuel', () => {
      * the ceiling rung one opens must sustain several ordinary raids a day, or the
      * whole chain ends in a building that does not solve the problem it was sold on.
      */
-    // 2026-09-18: the lighter surcharge lets a first-refinery day fly about four.
+    // With the tier surcharge removed, a first-refinery day flies about five.
     it('makes a full raid cadence consume a meaningful first-refinery day', () => {
       const perDay = deuteriumRate(3) * 24;
       const raid = missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-      expect(perDay / raid).toBeGreaterThan(4);
-      expect(perDay / raid).toBeLessThan(5);
+      expect(perDay / raid).toBeGreaterThan(5);
+      expect(perDay / raid).toBeLessThan(6);
     });
 
     /**
@@ -209,18 +209,16 @@ describe('D195 fuel by hull value', () => {
   const value = (id: MobileHullId): number =>
     resourceValue(HULLS[id]);
 
-  // Owner, 2026-09-18: the 75%→50% surcharge was too much; 30%→10%, same taper.
-  it('raises lower tiers more while tapering the increase from 30% to 10%', () => {
-    expect(FUEL.tierMultiplier).toEqual({ 1: 1.3, 2: 1.23, 3: 1.17, 4: 1.1 });
+  it('uses the base fuel mass without a tier surcharge', () => {
+    expect(FUEL).not.toHaveProperty('tierMultiplier');
     for (const id of MOBILE_HULLS) {
-      const tier = HULLS[id].tier!;
       const previous = HULLS[id].profile === 'COLLECTOR'
         ? 50
         : Math.max(1, Math.ceil(
           value(id) * FUEL.perValue
           * (FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip)),
         ));
-      expect(hullFuelMass(id), id).toBe(Math.round(previous * FUEL.tierMultiplier[tier]));
+      expect(hullFuelMass(id), id).toBe(previous);
     }
   });
 
@@ -230,14 +228,14 @@ describe('D195 fuel by hull value', () => {
    * çok. 10 yap."*). The exception is asserted to be exactly that one hull, so a
    * second can only join it by changing this line on purpose.
    */
-  it('charges hull value and speed first, then the tier increase', () => {
+  it('charges hull value and speed without a tier increase', () => {
     const handSet = MOBILE_HULLS.filter((id) => HULLS[id].profile === 'COLLECTOR');
     expect(handSet).toEqual(['GARBAGE_COLLECTOR']);
     for (const id of MOBILE_HULLS) {
       if (handSet.includes(id)) continue;
       const thirst = FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip);
       const base = Math.max(1, Math.ceil(value(id) * FUEL.perValue * thirst));
-      expect(hullFuelMass(id), id).toBe(Math.round(base * FUEL.tierMultiplier[HULLS[id].tier!]));
+      expect(hullFuelMass(id), id).toBe(base);
     }
   });
 
@@ -273,11 +271,10 @@ describe('D195 fuel by hull value', () => {
   });
 
   it('drinks more per unit of value the faster it flies', () => {
-    // Since D207 the Warden is quicker than the Pike, so its value-normalised
-    // thirst is higher even after their recipes diverged.
-    expect(hullRoundTrip('WARDEN')!).toBeLessThan(hullRoundTrip('PIKE')!);
-    expect(hullFuelMass('WARDEN') / value('WARDEN'))
-      .toBeGreaterThan(hullFuelMass('PIKE') / value('PIKE'));
+    // A faster tier-three Raider burns more per unit of value than a Fortress.
+    expect(hullRoundTrip('TEMPEST')!).toBeLessThan(hullRoundTrip('LEVIATHAN')!);
+    expect(hullFuelMass('TEMPEST') / value('TEMPEST'))
+      .toBeGreaterThan(hullFuelMass('LEVIATHAN') / value('LEVIATHAN'));
   });
 
   /** A gun that never travels has no thirst, whatever it weighs on the ground. */
@@ -305,14 +302,14 @@ describe('D195 fuel by hull value', () => {
   /**
    * AND THE REFINERY THE OPENING SELLS STILL PAYS FOR THE FLYING IT UNLOCKS. The
    * first rung's raid is a Dart swarm with a Wayfarer or two behind it, so this raid
-   * now costs the tier-2 rung on the cargo — and the rung has to stay ahead of it,
+   * costs the tier-2 rung on the cargo — and the rung has to stay ahead of it,
    * or the chain the opening teaches ends in a building that does not solve the
    * problem it was sold on.
    */
-  it('spends a first-refinery day on about four tier-2 raids', () => {
+  it('spends a first-refinery day on about five tier-2 raids', () => {
     const perDay = deuteriumRate(3) * 24;
     const raids = perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-    expect(raids).toBeGreaterThan(4);
-    expect(raids).toBeLessThan(5);
+    expect(raids).toBeGreaterThan(5);
+    expect(raids).toBeLessThan(6);
   });
 });

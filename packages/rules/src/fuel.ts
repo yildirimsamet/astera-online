@@ -24,11 +24,8 @@ import { resourceValue } from './valuation.js';
  * derived from in `profileHull`, deliberately: one statement of "how fast is this
  * thing" feeding both, because two tables would drift the first time either moved.
  *
- * THE BASE MASS IS CEILED, THEN THE TIER MULTIPLIER IS ROUNDED. The second
- * step raises tier one by 75% and tapers to 50% at tier four, preserving the
- * higher tiers' production-resource efficiency while making every fleet dearer
- * to operate. Applying it after the first ceiling keeps small hulls from losing
- * most of their increase to integer rounding.
+ * The base mass is rounded up once. The later tier surcharge was removed on
+ * 2026-09-18, returning every hull to this base mass.
  *
  * ZERO FOR A GROUND HULL. A gun never travels, so it has no thirst whatever it
  * weighs on the ground. A hull with no reference trip — the Prospector — sits at the
@@ -44,8 +41,7 @@ export function hullFuelMass(hull: HullId): number {
       resourceValue(spec) * FUEL.perValue
       * (FUEL.pivotRoundTrip / (hullRoundTrip(hull) ?? FUEL.pivotRoundTrip)),
     ));
-  const multiplier = spec.tier === null ? 1 : FUEL.tierMultiplier[spec.tier];
-  return Math.round(base * multiplier);
+  return base;
 }
 
 /**
@@ -73,9 +69,9 @@ export function fuelMass(fleet: Fleet): number {
  * MASS × DISTANCE, PER LEG, AND NOTHING ELSE.
  *
  * MASS starts from economic hull expense A + 2C + 32D times FUEL.perValue, tilted
- * by pivotRoundTrip / referenceRoundTrip, then takes the bounded tier multiplier.
+ * by pivotRoundTrip / referenceRoundTrip.
  * It does not read mobile bulk. Ground hulls never travel. The Garbage Collector
- * has its owner-set base mass and takes the same tier-three increase.
+ * has its owner-set base mass.
  * Distance adds the price of reach; the reference trip adds the bounded price of
  * speed. Flight duration itself is quoted separately from catalogue speed.
  *

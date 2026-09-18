@@ -405,11 +405,11 @@ describe('adopting the working-week calendar on a live season', () => {
       expect(row.effect).toEqual(plannedEffectFor(row.kind, row.startsAt.getTime() / 60_000, GALAXY_EVENTS));
       expect(row.definitionVersion).toBe(GALAXY_EVENTS.definitions[row.kind].version);
     }
-    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x6 shower.
+    // Friday 21:00 opens the weekday convoy, Saturday 20:00 the x5 shower.
     expect(reshaped.find((row) => row.startsAt.getTime() === cutover.getTime())?.kind)
       .toBe('INTERGALACTIC_CONVOY');
     expect(reshaped.find((row) => row.startsAt.getTime() === at(3, 20).getTime()
-      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 6 });
+      && row.kind === 'ASTEROID_SHOWER')?.effect).toEqual({ asteroidSpawnMultiplier: 5 });
 
     // Removed windows took their queue moments with them; new ones brought theirs.
     const moments = await db.select().from(scheduledEvents).where(and(

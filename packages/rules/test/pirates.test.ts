@@ -92,19 +92,12 @@ describe('the pirate table', () => {
     }
   });
 
-  it('makes a hull the usual prize where the fight is easy, and never a rarity where it is hard', () => {
-    /*
-      THE SHAPE OF THE TABLE, NOT ITS DIGITS. Owner instruction.
-
-      The ordering test above cannot tell a generous ladder from a stingy one —
-      0.5/0.35/0.25/0.15 and 0.75/0.5/0.35/0.3 both descend. What the owner moved
-      is the ALTITUDE: a raid on the easy end should usually come home with a hull
-      rather than usually not, and the hardest pirate should still be worth flying
-      at rather than a lottery ticket. Those are two claims about whether the
-      feature pays, and they are what a later sweep must not quietly undo.
-    */
-    expect(PIRATE.captureChance[1]).toBeGreaterThan(0.5);
-    expect(PIRATE.captureChance[4]).toBeGreaterThanOrEqual(0.3);
+  it('offers about a 30% ship chance across the pirate level distribution on decisive wins', () => {
+    expect(PIRATE.captureChance).toEqual({ 1: 0.4, 2: 0.28, 3: 0.16, 4: 0.12 });
+    const weightedChance = LEVELS.reduce((sum, level) =>
+      sum + PIRATE.levelWeights[level]! * PIRATE.captureChance[level], 0);
+    expect(weightedChance).toBeGreaterThanOrEqual(0.29);
+    expect(weightedChance).toBeLessThanOrEqual(0.31);
   });
 
   it('spends its whole level distribution', () => {

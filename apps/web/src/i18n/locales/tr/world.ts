@@ -53,7 +53,7 @@ export const galaxy = {
     },
     asteroid: {
       title: "Asteroid Yağmuru",
-      summary: "Her saat başında, son bir saatte oynayan her komutan için 2 asteroid doğar. Yağmur bu sayıyı pencere boyunca katsayısıyla çarpar; oluşmuş asteroidler süreleri dolana kadar kalır.",
+      summary: "Her saat başında, son bir saatte oynayan her komutan için 1 asteroid doğar. Yağmur bu sayıyı pencere boyunca katsayısıyla çarpar; oluşmuş asteroidler süreleri dolana kadar kalır.",
     },
     trade: {
       title: "Ticaret Gemisi",

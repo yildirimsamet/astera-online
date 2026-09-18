@@ -56,7 +56,7 @@ describe('the drill and the rock it meets', () => {
 
   it('states every level of the ore table as a positive multiple of the packet', () => {
     const table = GALAXY.asteroidOreByLevel;
-    expect(table).toEqual([0, 1600, 3200, 4800, 6400, 8000]);
+    expect(table).toEqual([0, 800, 1600, 2400, 3200, 4000]);
     for (let level = 1; level < table.length; level++) {
       const ore = table[level]!;
       expect(ore % GALAXY.asteroidOreQuantum).toBe(0);
@@ -179,9 +179,9 @@ describe('fuel', () => {
     expect(FUEL.perValue).toBe(0.0055);
   });
 
-  it('keeps the Garbage Collector base before the current tier-three lift', () => {
+  it('uses the Garbage Collector base without a tier-three lift', () => {
     expect(SALVAGE.fuelMass).toBe(50);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(59);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(50);
   });
 
   it('leaves no fuel-charged mobile hull free to move, and no ground gun charged', () => {

@@ -97,16 +97,13 @@ describe('the Garbage Collector in the catalogue', () => {
    * owner's figure is the card's own unit, so it is stated in it.
    */
   it('drinks the owner’s hand-set thirst, not what its price would say', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(7.9);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(
-      Math.round(SALVAGE.fuelMass * FUEL.tierMultiplier[3]),
-    );
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(5);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBeLessThan(Math.ceil(15_000 * FUEL.perValue));
     // Every other hull still drinks off its price.
-    expect(hullFuelMass('ARGOSY')).toBe(Math.round(
-      Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38))
-      * FUEL.tierMultiplier[4],
-    ));
+    expect(hullFuelMass('ARGOSY')).toBe(
+      Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
+    );
   });
 
   it('charges its fixed thirst on every leg like any other mass', () => {
