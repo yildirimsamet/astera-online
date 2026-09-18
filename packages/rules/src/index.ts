@@ -16,6 +16,7 @@ export * from './valuation.js';
 export * from './constants.js';
 export * from './rng.js';
 export * from './hulls.js';
+export * from './cosmetics.js';
 export * from './economy.js';
 export * from './faults.js';
 export * from './fuel.js';

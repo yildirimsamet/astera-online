@@ -666,6 +666,13 @@
       "when": 1789715000000,
       "tag": "0094_asteroid_level_weights",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1789716000000,
+      "tag": "0095_cosmetic_entitlements",
+      "breakpoints": true
     }
   ]
 }

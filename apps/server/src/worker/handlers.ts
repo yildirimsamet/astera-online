@@ -31,7 +31,6 @@ import {
   vaultProtects,
   type Fleet,
   type Ledger,
-  type Resources,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -78,7 +77,7 @@ import {
   saveResources,
   setUnits,
 } from '../services/planet.js';
-import { grantRecoveryShield } from '../services/attackProtection.js';
+import { grantRecoveryShield, permanentFleetCost } from '../services/attackProtection.js';
 import { breakFaults, defenceOnline, onFaultSpawn, onVaultLeakFlush } from '../services/faults.js';
 import { onFaultRepairComplete } from '../services/faultRepair.js';
 import { onColonySecession } from '../services/loyalty.js';
@@ -176,33 +175,6 @@ async function claimMission(tx: Tx, missionId: string) {
     .where(and(eq(missions.id, missionId), eq(missions.status, 'in_flight')))
     .returning();
   return rows[0] ?? null;
-}
-
-/**
- * WHAT A LIST OF DEAD HULLS COST TO BUILD, LESS WHATEVER STOOD BACK UP.
- *
- * Priced off the live catalogue rather than off a stored figure, because that is
- * what a rebuild will actually be charged. `defenceSalvage` is subtracted per
- * resource rather than by value: the two are the same hull table, and taking the
- * difference in hulls first would lose the split the recipes carry.
- */
-function fleetCost(lost: Fleet, salvaged: Fleet): Resources {
-  const total: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
-  const add = (fleet: Fleet, sign: 1 | -1): void => {
-    for (const [hull, count] of fleetEntries(fleet)) {
-      const spec = HULLS[hull];
-      total.alloy += sign * spec.alloy * count;
-      total.crystal += sign * spec.crystal * count;
-      total.deuterium += sign * spec.deuterium * count;
-    }
-  };
-  add(lost, 1);
-  add(salvaged, -1);
-  return {
-    alloy: Math.max(0, total.alloy),
-    crystal: Math.max(0, total.crystal),
-    deuterium: Math.max(0, total.deuterium),
-  };
 }
 
 /** Lock every Dominion ledger in one stable player-id order. */
@@ -903,7 +875,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       gross loss would price Bastions the defender still owns — the shield reads
       the PERMANENT loss, which is the same figure Dominion is scored on.
     */
-    const fleetLost = fleetCost(result.defenderLosses, result.defenceSalvage);
+    const fleetLost = permanentFleetCost(result.defenderLosses, result.defenceSalvage);
     const recovery = await grantRecoveryShield(tx, {
       playerId: defender.playerId,
       planetId: defender.planetId,

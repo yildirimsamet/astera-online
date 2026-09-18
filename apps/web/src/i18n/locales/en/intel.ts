@@ -428,6 +428,16 @@ export const reports = {
     salvageTheirs: 'Their Garbage Collectors lifted {{amount}} of the wreckage before it could drift.',
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
     colonyFaults: 'Broken on {{planet}} by this defeat: {{faults}}.',
+    /**
+     * Recovery shield, defender only: the NET loss of the lookback at this battle, in
+     * hours of the reader's own production, against the bar. Owner instruction, 2026-09-18.
+     */
+    recoveryProgress:
+      'Recovery shield: {{hours}} of {{bar}} h of your production lost, net, over the last {{window}} h. Reach {{bar}} and no one can raid you for {{shield}} h; profit from your own raids is subtracted.',
+    recoveryEarned:
+      'This defeat earned you a {{shield}} h recovery shield: {{hours}} h of your production lost, net, over the last {{window}} h.',
+    recoveryRefused:
+      '{{hours}} h of your production lost, net, over the last {{window}} h — past the {{bar}} h bar, but no shield is granted while your own raid is in the air.',
     wreck: '{{amount}} in wreckage is drifting over {{planet}}. Anyone can go and take it.',
     /** The same field, read from the world it is drifting over. */
     wreckYours: '{{amount}} in wreckage is drifting in your own orbit. Anyone can go and take it — including you.',

@@ -292,6 +292,7 @@ export async function transferPlanetControl(
     .update(planets)
     .set({
       controllerPlayerId: input.newPlayerId,
+      equippedSkinId: null,
       kind: 'COLONY',
       recoveryUntil: null,
       // A boost is the defeated commander's compensation, never the new owner's dowry.

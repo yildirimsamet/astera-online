@@ -286,6 +286,7 @@ export async function secedeColony(
   await tx.update(planets).set({
     kind: 'NEUTRAL',
     controllerPlayerId: null,
+    equippedSkinId: null,
     statsOwnerPlayerId: null,
     protectedUntil: null,
     disruptedUntil: null,

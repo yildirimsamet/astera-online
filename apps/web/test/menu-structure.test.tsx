@@ -193,6 +193,8 @@ describe('the menu groups what it offers', () => {
     const destinations = [
       [named(i18n.t('menu.leaderboardLabel'), i18n.t('menu.leaderboardHint')), 'leaderboard'],
       [named(i18n.t('menu.rewardsLabel'), i18n.t('menu.rewardsHint')), 'rewards'],
+      [named(i18n.t('menu.skinsShopLabel'), i18n.t('menu.skinsShopHint')), 'skin-shop'],
+      [named(i18n.t('menu.skinsInventoryLabel'), i18n.t('menu.skinsInventoryHint')), 'skin-inventory'],
       [named(i18n.t('menu.announcementsLabel'), i18n.t('menu.announcementsHint')), 'announcements'],
       [named(i18n.t('menu.feedbackLabel'), i18n.t('menu.feedbackHint')), 'feedback'],
       [named(i18n.t('community.admin.menuLabel'), i18n.t('community.admin.menuHint')), 'admin'],
@@ -264,9 +266,9 @@ describe('the menu groups what it offers', () => {
  * the moment a player stops exploring a menu at all.
  */
 describe('every surface the menu opens can step back to it', () => {
-  it('names the six destinations the menu owns', () => {
+  it('names the destinations the menu owns', () => {
     for (const panel of [
-      'leaderboard', 'rewards', 'announcements', 'feedback', 'donate', 'admin',
+      'skin-shop', 'skin-inventory', 'leaderboard', 'rewards', 'announcements', 'feedback', 'donate', 'admin',
     ] as const) {
       expect(returnsToMenu(panel), panel).toBe(true);
     }

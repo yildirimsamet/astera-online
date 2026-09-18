@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FAULT_KINDS } from '@astera/rules';
+import { FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -1031,6 +1031,12 @@ export const galaxySchema = z.object({
   planets: z.array(
     z.object({
       id: z.string(),
+      /** Optional cosmetic look; UNKNOWN worlds never receive it. */
+      skin: z.object({
+        // An older client must still draw the galaxy when a newer server adds a product.
+        id: z.string().min(1),
+        status: z.enum(['NORMAL', 'RECOVERY_SHIELD']).catch('NORMAL'),
+      }).optional(),
       /**
        * HOW MUCH OF THIS WORLD YOU HAVE EARNED. D127.
        *
@@ -1132,6 +1138,17 @@ export const galaxySchema = z.object({
     }),
   ),
 });
+
+const planetSkinId = z.enum(PLANET_SKIN_IDS);
+export const skinCollectionSchema = z.object({
+  ownedSkinIds: z.array(planetSkinId),
+  planets: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    skinId: planetSkinId.nullable(),
+  })),
+});
+export const skinEquipSchema = z.object({ id: z.string(), skinId: planetSkinId.nullable() });
 
 export const leaderboardSchema = z.object({
   ladder: z.array(
@@ -2047,6 +2064,15 @@ const ordinaryBattleReport = z.object({
        * sends nothing and the report simply has no line for it.
        */
       colonyFaults: z.array(z.enum(FAULT_KINDS)).optional(),
+      /**
+       * Defender only: the lookback's NET loss in hours of the reader's production at
+       * this battle, and whether it bought the recovery shield. Optional for a rolling
+       * deploy; null to an attacker and on rows that predate the figure.
+       */
+      recovery: z
+        .object({ lossHours: z.number().nonnegative(), shielded: z.boolean() })
+        .nullable()
+        .optional(),
       /** Historical report compatibility; current battles always send zero. */
       disruptedMinutes: z.number().default(0),
       /** What the fight left in orbit for whoever gets there first. */

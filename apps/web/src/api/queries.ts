@@ -15,6 +15,7 @@ import type {
   InstrumentId,
   ResearchProjectId,
   SatelliteId,
+  PlanetSkinId,
   SensorSphere,
 } from '@astera/rules';
 import type { z } from 'zod';
@@ -229,6 +230,32 @@ export function useGalaxy() {
     staleTime: 15_000,
     refetchInterval: NET_MS,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useSkins() {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.skins,
+    queryFn: api.skins,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useEquipSkin() {
+  const api = useApi();
+  const cache = useQueryClient();
+  return useMutation({
+    mutationFn: ({ planetId, skinId }: { planetId: string; skinId: PlanetSkinId | null }) =>
+      api.equipSkin(planetId, skinId),
+    onSuccess: async () => {
+      await Promise.all([
+        cache.invalidateQueries({ queryKey: keys.skins }),
+        cache.invalidateQueries({ queryKey: keys.galaxy }),
+      ]);
+    },
   });
 }
 

@@ -296,6 +296,18 @@ export function MenuPanel({
 
       <MenuGroup label={t('menu.asteraHeading')}>
         <MenuTile
+          icon={<GalaxyIcon className="size-5" />}
+          label={t('menu.skinsShopLabel')}
+          hint={t('menu.skinsShopHint')}
+          onClick={() => { onOpen('skin-shop'); }}
+        />
+        <MenuTile
+          icon={<RewardIcon className="size-5" />}
+          label={t('menu.skinsInventoryLabel')}
+          hint={t('menu.skinsInventoryHint')}
+          onClick={() => { onOpen('skin-inventory'); }}
+        />
+        <MenuTile
           icon={<BellIcon className="size-5" />}
           label={t('menu.announcementsLabel')}
           hint={t('menu.announcementsHint')}
@@ -426,24 +438,6 @@ export function MenuPanel({
         </div>
       </Section>
 
-      <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-soft pt-3">
-        {(
-          [
-            ['privacy', 'landing.privacyLink'],
-            ['terms', 'landing.termsLink'],
-            ['contact', 'landing.contactLink'],
-          ] as const
-        ).map(([page, label]) => (
-          <a
-            key={page}
-            className="text-caption text-faint underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
-            href={publisherUrl(page, i18n.resolvedLanguage)}
-          >
-            {t(label)}
-          </a>
-        ))}
-      </nav>
-
       {/*
         NO CUT CORNERS HERE. `Plate`'s own rule: the shear is an ACCENT for the
         directive, the commit surface, the active dock plate — never the default
@@ -486,6 +480,24 @@ export function MenuPanel({
           countdown rather than in a paragraph of its own.
         */}
         <Note>{t('galaxy.commander.wipeNote')}</Note>
+
+              <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-soft pt-3">
+        {(
+          [
+            ['privacy', 'landing.privacyLink'],
+            ['terms', 'landing.termsLink'],
+            ['contact', 'landing.contactLink'],
+          ] as const
+        ).map(([page, label]) => (
+          <a
+            key={page}
+            className="text-caption text-faint underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
+            href={publisherUrl(page, i18n.resolvedLanguage)}
+          >
+            {t(label)}
+          </a>
+        ))}
+      </nav>
 
         {/*
           THE WAY OUT IS LAST AND IT IS ALONE. It sits under the account it ends

@@ -10,6 +10,7 @@ import { flightBar, rangeBand, spend, counter } from './shapes.js';
 import { onboarding } from './onboarding.js';
 import { research } from './research.js';
 import { rewards } from './rewards.js';
+import { skins } from './skins.js';
 import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
@@ -83,6 +84,7 @@ export const en = {
   onboarding,
   research,
   rewards,
+  skins,
   seasonRecap,
   chronicle,
   clan,

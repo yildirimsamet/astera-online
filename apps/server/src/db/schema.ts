@@ -35,6 +35,8 @@ import type {
   ResearchProjectId,
   Resources,
   TechLevels,
+  PlanetSkinId,
+  PlanetSkinStatus,
 } from '@astera/rules';
 
 /**
@@ -973,6 +975,8 @@ export const seasonTelemetrySegments = pgTable('season_telemetry_segments', {
 
 export const planets = pgTable('planets', {
   id: uuid('id').primaryKey().defaultRandom(),
+  /** Seasonal choice; the account entitlement is checked when it is changed. */
+  equippedSkinId: text('equipped_skin_id'),
   /** Physical name retained for expand/backfill compatibility. Neutral is NULL. */
   controllerPlayerId: uuid('player_id').references(() => players.id),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
@@ -2005,6 +2009,7 @@ export const probeReports = pgTable('probe_reports', {
    * Null on reports written before D127, which render as they always did.
    */
   silhouette: jsonb('silhouette').$type<{
+    skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
     owner: string;
     controllerPlayerId: string | null;
     clan: { id: string; name: string; tag: string } | null;
@@ -2096,6 +2101,7 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
    * world LOOKS like, never its research or what is on its interceptor pad.
    */
   silhouette: jsonb('silhouette').$type<{
+    skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
     owner: string;
     controllerPlayerId: string | null;
     clan: { id: string; name: string; tag: string } | null;
@@ -2800,6 +2806,24 @@ export const silentSpaceMaintenance = pgTable('silent_space_maintenance', {
   lastRunAt: timestamp('last_run_at', { withTimezone: true }),
   lastResult: jsonb('last_result').$type<Record<string, unknown>>(),
 });
+
+/**
+ * Permanent purchase/grant ledger for every cosmetic kind (planet skins today).
+ * One right equips any number of owned worlds. The row outlives its account: a
+ * deleted buyer leaves an anonymous record, so a fulfilled order stays fulfilled.
+ */
+export const cosmeticEntitlements = pgTable('cosmetic_entitlements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  cosmeticId: text('cosmetic_id').notNull(),
+  source: text('source').notNull(),
+  orderRef: text('order_ref').notNull(),
+  grantedByAccountId: uuid('granted_by_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('cosmetic_entitlements_account_cosmetic_idx').on(t.accountId, t.cosmeticId),
+  uniqueIndex('cosmetic_entitlements_order_idx').on(t.source, t.orderRef),
+]);
 
 /** Immutable move history also serves as a transactional notification outbox. No live-player FK. */
 export const commanderTransfers = pgTable('commander_transfers', {

@@ -84,6 +84,7 @@ describe('every class a screen writes resolves to something', () => {
   const TEXT_LAYOUT = /^(left|right|center|justify|start|end|balance|pretty|nowrap|wrap|clip|ellipsis)$/;
   const BORDER_SIDE = /^(t|b|l|r|x|y|s|e)(-\d+)?$/;
   const BORDER_STYLE = /^(solid|dashed|dotted|double|hidden)$/;
+  const BG_IMAGE = /^(cover|contain|center|top|bottom|left|right|repeat|no-repeat|fixed|local|scroll)$/;
 
   const dead = classNames().filter(({ cls }) => {
     if (defined.has(cls)) return false;
@@ -94,6 +95,8 @@ describe('every class a screen writes resolves to something', () => {
     const base = rest.split('/')[0] ?? '';
     if (KEYWORD.test(base) || base.startsWith('[') || /^\d/.test(base)) return false;
     if (kind === 'bg' && base.startsWith('gradient')) return false;
+    // Size, position and repeat of an image ground are keywords, not colours.
+    if (kind === 'bg' && BG_IMAGE.test(base)) return false;
     if (kind === 'text') return !(colours.has(base) || sizes.has(base) || TEXT_LAYOUT.test(base));
     if (kind === 'rounded') {
       const tail = base.replace(/^(t|b|l|r|tl|tr|bl|br|s|e|ss|se|es|ee)-/, '');

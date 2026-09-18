@@ -31,6 +31,9 @@ import {
 import { pirateCallsign, privatePirateField } from './pirateField.js';
 import { addDominionCounters } from './dominion.js';
 
+/** The wire's ceiling for `recovery.lossHours`: finite, and far past any bar. */
+const RECOVERY_HOURS_CAP = 999;
+
 /**
  * BATTLE REPORTS — the closing link of the loop.
  *
@@ -217,6 +220,21 @@ export interface BattleReportView {
    * probe is sold to learn, and a raid is not a probe.
    */
   colonyFaults: FaultKind[];
+  /**
+   * WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. DEFENDER ONLY.
+   * Owner instruction, 2026-09-18.
+   *
+   * `lossHours` is the NET loss of the whole lookback at the instant of this battle —
+   * every PvP defeat in it less the profit of the reader's own raids — in hours of their
+   * own production; `shielded` is whether this battle wrote a window. Without it the bar
+   * is invisible: a player cannot tell the fourth small raid from the one that will
+   * finally buy six quiet hours. Capped at `RECOVERY_HOURS_CAP` because JSON has no
+   * Infinity, and a loss nobody can work off is past any bar either way.
+   *
+   * Null to an attacker (how hurt the defender is, is a probe's product), on pirate and
+   * caretaker rows, and on rows written before the figure was recorded.
+   */
+  recovery: { lossHours: number; shielded: boolean } | null;
   /** Historical compatibility field; new battles never stop production and write zero. */
   disruptedMinutes: number;
   /** What the fight left in orbit for whoever gets there first. Zero when no field formed. */
@@ -627,6 +645,12 @@ async function readBattleReportsIn(
       cargoLimited: attacking && row.cargoLimited,
       defenceSalvage: attacking ? {} : row.defenceSalvage,
       colonyFaults: attacking ? [] : row.colonyFaults,
+      recovery: attacking || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
+        ? null
+        : {
+          lossHours: Math.min(row.recoveryLossHours, RECOVERY_HOURS_CAP),
+          shielded: row.recoveryShieldUntil !== null,
+        },
       /*
         These two go to both, and neither is a disclosure. Downtime is a pure
         function of the grade, which both sides already have; the wreckage is a

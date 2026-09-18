@@ -377,16 +377,24 @@ export function effectiveAttackProtection(
   return { kind: 'RECOVERY', until: recovery };
 }
 
-/** What one battle cost the defender, and what they make in an hour. */
-export interface RecoveryShieldCheck {
-  /** Resources the winner carried off this world. */
-  lootLost: Resources;
+/** What one PvP battle moved: the ore that changed hands and the hulls that died for good. */
+export interface RecoveryLedgerEntry {
+  /** Resources carried off — out of this commander's stores, or home into them. */
+  loot: Resources;
   /**
-   * What the hulls destroyed on the defending side cost to build, MINUS whatever
-   * rebuilt from its own wreckage. Ground defence salvages most of itself, so
-   * counting the gross loss would price a Bastion the defender still owns.
+   * What this commander's destroyed hulls cost to build, MINUS whatever rebuilt from
+   * its own wreckage. Ground defence salvages most of itself, so counting the gross
+   * loss would price a Bastion the defender still owns.
    */
   fleetLost: Resources;
+}
+
+/** Everything the last `ABUSE.recoveryLookbackHours` cost one commander, and what they make. */
+export interface RecoveryShieldCheck {
+  /** Every PvP defeat inside the lookback, the one being settled included. */
+  defeats: readonly RecoveryLedgerEntry[];
+  /** Every raid this commander made on ANOTHER commander inside the lookback. */
+  raids: readonly RecoveryLedgerEntry[];
   /**
    * Nominal hourly output across every world this commander holds — the Foundry
    * counted, disruption and a fallen Core not. The bar must not drop because they
@@ -395,6 +403,11 @@ export interface RecoveryShieldCheck {
    */
   production: Resources;
 }
+
+const RESOURCE_KEYS = ['alloy', 'crystal', 'deuterium'] as const;
+
+const saneAmounts = (amounts: Resources): boolean =>
+  RESOURCE_KEYS.every((key) => Number.isFinite(amounts[key]) && amounts[key] >= 0);
 
 /**
  * HOW LONG THIS DEFEAT WILL TAKE TO WORK OFF. Owner's design, 2026-09-17.
@@ -415,12 +428,8 @@ export function recoveryLossHours(
   fleetLost: Resources,
   production: Resources,
 ): number {
-  const sane = (amounts: Resources): boolean =>
-    (['alloy', 'crystal', 'deuterium'] as const)
-      .every((key) => Number.isFinite(amounts[key]) && amounts[key] >= 0);
-  if (!sane(lootLost) || !sane(fleetLost) || !sane(production)) return 0;
-  const keys = ['alloy', 'crystal', 'deuterium'] as const;
-  const hours = keys.map((key) => {
+  if (!saneAmounts(lootLost) || !saneAmounts(fleetLost) || !saneAmounts(production)) return 0;
+  const hours = RESOURCE_KEYS.map((key) => {
     const lost = lootLost[key] + fleetLost[key];
     if (lost === 0) return 0;
     if (production[key] === 0) return Number.POSITIVE_INFINITY;
@@ -430,18 +439,62 @@ export function recoveryLossHours(
 }
 
 /**
- * DID THIS BATTLE HURT ENOUGH TO BE WORTH A SHIELD? Owner instruction.
+ * WHAT ONE OF THIS COMMANDER'S OWN RAIDS EARNED, IN HOURS OF THEIR OWN WORK. Signed.
  *
- * One comparison against `ABUSE.recoveryLossHours`, and the argument for both the
- * unit and the figure is written there. What is worth repeating is what the rule
- * deliberately does NOT read: the battle's GRADE. A PARTIAL raid that carried off
- * more than eight average hours of work counts, and a DECISIVE one that flew home
- * half-empty does not — the question is what the defender is standing in
- * afterwards, and a label on the report is not that.
+ * The same three clocks as the loss — loot home minus hulls lost, resource by resource,
+ * each over its own production, averaged — so a profit and a loss are measured in the
+ * one unit and can be subtracted. Negative when the raid cost more than it carried.
+ *
+ * A RESOURCE NO WORLD PRODUCES PRICES AT ZERO HERE, where on the loss side it prices at
+ * infinity: a haul of fuel the commander cannot make is not hours of their work, and
+ * letting it offset an infinite loss would be `∞ − ∞`.
  */
-export function earnsRecoveryShield(input: RecoveryShieldCheck): boolean {
-  return recoveryLossHours(input.lootLost, input.fleetLost, input.production)
-    > ABUSE.recoveryLossHours;
+export function raidProfitHours(raid: RecoveryLedgerEntry, production: Resources): number {
+  if (!saneAmounts(raid.loot) || !saneAmounts(raid.fleetLost) || !saneAmounts(production)) {
+    return 0;
+  }
+  const hours = RESOURCE_KEYS.map((key) =>
+    production[key] === 0 ? 0 : (raid.loot[key] - raid.fleetLost[key]) / production[key]);
+  return hours.reduce((sum, duration) => sum + duration, 0) / hours.length;
+}
+
+/**
+ * WHAT THE LOOKBACK COST THIS COMMANDER, NET. Owner instruction, 2026-09-18.
+ *
+ * Every defeat's loot and lost hulls are summed and read on the three clocks; then the
+ * PROFIT of each raid the commander made is subtracted — only a raid that came out
+ * ahead, because *"birine saldırırsa ve zarar ederse umrumuzda değil."* Never below
+ * zero: a commander whose raids out-earned their defeats simply lost nothing.
+ *
+ * A corrupt row is dropped on its own rather than zeroing the whole window.
+ */
+export function netRecoveryLossHours(check: RecoveryShieldCheck): number {
+  if (!saneAmounts(check.production)) return 0;
+  const lost: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  for (const defeat of check.defeats) {
+    if (!saneAmounts(defeat.loot) || !saneAmounts(defeat.fleetLost)) continue;
+    for (const key of RESOURCE_KEYS) lost[key] += defeat.loot[key] + defeat.fleetLost[key];
+  }
+  const lossHours = recoveryLossHours(lost, { alloy: 0, crystal: 0, deuterium: 0 }, check.production);
+  if (lossHours === Number.POSITIVE_INFINITY) return lossHours;
+  const profitHours = check.raids.reduce(
+    (sum, raid) => sum + Math.max(0, raidProfitHours(raid, check.production)),
+    0,
+  );
+  return Math.max(0, lossHours - profitHours);
+}
+
+/**
+ * DID THE LOOKBACK HURT ENOUGH TO BE WORTH A SHIELD? Owner instruction.
+ *
+ * One comparison against `ABUSE.recoveryLossHours`, and reaching the bar is enough.
+ * What the rule deliberately does NOT read is any battle's GRADE: a PARTIAL raid that
+ * carried off a lot counts, and a DECISIVE one that flew home half-empty does not —
+ * the question is what the defender is standing in afterwards, and a label on the
+ * report is not that.
+ */
+export function earnsRecoveryShield(check: RecoveryShieldCheck): boolean {
+  return netRecoveryLossHours(check) >= ABUSE.recoveryLossHours;
 }
 
 export function canAttack(

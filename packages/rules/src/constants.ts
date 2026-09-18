@@ -2187,11 +2187,31 @@ export const ABUSE = {
    * resource, divided by that resource's hourly production across all worlds, then
    * the Alloy, Crystal and Deuterium durations are averaged.
    *
-   * EIGHT HOURS. The window remains six hours; this number defines only how much
-   * permanent loss earns that recovery period. The comparison is strict: exactly
-   * eight hours does not cross an eight-hour bar.
+   * SIX HOURS, AND THE BAR ITSELF COUNTS. Owner instruction, 2026-09-18: *"6 saatlik
+   * üretimine eşit veya aşıyorsa kalkan veriyoruz."* It was eight and strict; the
+   * window is still `recoveryShieldHours`, and this number defines only how much net
+   * loss earns it.
+   *
+   * NET, OVER `recoveryLookbackHours`. The loss is no longer one battle's: see there.
    */
-  recoveryLossHours: 8,
+  recoveryLossHours: 6,
+
+  /**
+   * HOW FAR BACK A DEFEAT KEEPS COUNTING TOWARD THE NEXT SHIELD. Owner instruction,
+   * 2026-09-18: *"Ufak ufak saldırı yemeye devam ederse oyuncu hiç gelişme şansı
+   * bulamıyor."*
+   *
+   * On every defeat the bar is asked of the whole window — every PvP defeat in it,
+   * this one included, LESS the profit of every raid this commander made on another
+   * commander in it (a raid that lost money subtracts nothing). Five raids that each
+   * stayed under the bar now add up to the one heavy raid they cost as much as.
+   *
+   * SIX, THE SHIELD'S OWN LENGTH, AND THAT IS WHAT STOPS SHIELDS CHAINING. A commander
+   * cannot be hit while shielded, so by the time the window ends every defeat that
+   * bought it has aged out of the lookback — unless they drop it themselves by
+   * attacking, in which case those defeats rightly still count.
+   */
+  recoveryLookbackHours: 6,
 } as const;
 
 /**

@@ -648,11 +648,12 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — six hours after a heavy defeat (2026-09-14, reworked 2026-09-15, 2026-09-16)
+### The recovery shield — six hours after a heavy defeat (2026-09-14, reworked 2026-09-15, 2026-09-16, 2026-09-18)
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
-badly.** A defeat that costs more than **eight average hours of that commander's own production** leaves
+badly.** When the NET loss of the last six hours reaches **six average hours of that commander's
+own production** (see *Judged on the lookback* below), the defeat that got it there leaves
 them unreachable for six hours, on every world they hold, against Raid and Death Star. **While it
 stands, the world that was struck produces +100%** (owner instruction, 2026-09-16): the works fill
 twice as fast, the collector ceiling does not grow, and the boost ends with the shield — including
@@ -680,7 +681,19 @@ HOURS, so the absolute figure the developed one has to lose is larger by exactly
 their works, and no second ladder has to be kept in step with the Core. A commander caught with an
 empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
 near — which is precisely what the first version of this rule got wrong, and why it was replaced
-one day after it shipped. The average must exceed eight hours; the protection window is six.
+one day after it shipped. The average must reach six hours (it was "exceed eight" until
+2026-09-18); the protection window is six.
+
+**Judged on the lookback, not on one battle** (owner instruction, 2026-09-18: *"ufak ufak saldırı
+yemeye devam ederse oyuncu hiç gelişme şansı bulamıyor"*). On every PvP defeat that cost anything,
+the server sums every PvP defeat in the last six hours (this one included, on any world the
+commander holds) and subtracts the PROFIT of every raid the commander made on another commander in
+the same hours — loot home minus their own permanently lost hulls, on the same three clocks. A raid
+that lost money subtracts nothing; caretaker worlds and pirates are on neither side. Because the
+lookback equals the window, a shield cannot chain: by the time it ends, the defeats that bought it
+have aged out — unless the commander spent it early by attacking, in which case they still count.
+A repelled raid that cost nothing does not re-ask the question. The defender's battle report
+states the net figure against the bar, and whether it bought the shield.
 
 **And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
 the air collects nothing: a shield won while your fleet is still flying at somebody who can no

@@ -8,6 +8,7 @@ import type {
   ResearchProjectId,
   Resources,
   SatelliteId,
+  PlanetSkinId,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
@@ -45,6 +46,8 @@ import {
   clanStrengthSchema,
   collectSchema,
   galaxySchema,
+  skinCollectionSchema,
+  skinEquipSchema,
   intelSchema,
   miningLaunchSchema,
   miningRecallSchema,
@@ -450,6 +453,11 @@ export class Api {
     planetSchema,
   );
   galaxy = () => this.send('/api/galaxy', galaxySchema);
+  skins = () => this.send('/api/skins', skinCollectionSchema);
+  equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
+    this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
+      method: 'POST', body: { skinId },
+    });
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
   leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
   seasonArchive = (cursor?: number) => this.send(

@@ -1,19 +1,32 @@
-import { and, eq, gt, inArray, isNull, lt, ne, or } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import {
+  ABUSE,
   alloyRate,
   crystalRate,
   deuteriumRate,
   earnsRecoveryShield,
   effectiveAttackProtection,
   extendRecoveryShield,
+  fleetEntries,
+  HULLS,
+  netRecoveryLossHours,
   productionMult,
-  recoveryLossHours,
   resourceValue,
   type AttackProtection,
+  type Fleet,
+  type RecoveryLedgerEntry,
   type Resources,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
-import { botProfiles, buildings, missions, planets, players, satellites } from '../db/schema.js';
+import {
+  battleReports,
+  botProfiles,
+  buildings,
+  missions,
+  planets,
+  players,
+  satellites,
+} from '../db/schema.js';
 import { GameError, orbitFromRows } from './planet.js';
 
 /**
@@ -69,8 +82,8 @@ export const protectionFrom = (
 /**
  * WHAT THIS COMMANDER'S WORKS TURN OUT IN AN HOUR, ACROSS EVERY WORLD.
  *
- * The denominator of the recovery shield: a defeat is heavy when it costs more
- * hours of this than `ABUSE.recoveryLossHours`.
+ * The denominator of the recovery shield: the lookback is heavy when it costs at
+ * least `ABUSE.recoveryLossHours` hours of this.
  *
  * IT REPLACED STORAGE CAPACITY, and the live field is why. Capacity is a ceiling
  * nobody reaches — the median commander holds 24% of theirs — so a floor written
@@ -125,6 +138,91 @@ async function commanderProductionRate(
     total.deuterium += deuteriumRate(level('DEUTERIUM_PLANT')) * boost;
   }
   return total;
+}
+
+/**
+ * WHAT A LIST OF DEAD HULLS COST TO BUILD, LESS WHATEVER STOOD BACK UP.
+ *
+ * Priced off the live catalogue rather than off a stored figure, because that is
+ * what a rebuild will actually be charged. `defenceSalvage` is subtracted per
+ * resource rather than by value: the two are the same hull table, and taking the
+ * difference in hulls first would lose the split the recipes carry.
+ *
+ * Here rather than in the worker because the lookback prices past reports with it:
+ * a defeat read back off the record must cost what the same defeat cost live.
+ */
+export function permanentFleetCost(lost: Fleet, salvaged: Fleet): Resources {
+  const total: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  const add = (fleet: Fleet, sign: 1 | -1): void => {
+    for (const [hull, count] of fleetEntries(fleet)) {
+      const spec = HULLS[hull];
+      total.alloy += sign * spec.alloy * count;
+      total.crystal += sign * spec.crystal * count;
+      total.deuterium += sign * spec.deuterium * count;
+    }
+  };
+  add(lost, 1);
+  add(salvaged, -1);
+  return {
+    alloy: Math.max(0, total.alloy),
+    crystal: Math.max(0, total.crystal),
+    deuterium: Math.max(0, total.deuterium),
+  };
+}
+
+/**
+ * EVERY PVP BATTLE THIS COMMANDER FOUGHT IN THE LOOKBACK, SPLIT BY SIDE.
+ * Owner instruction, 2026-09-18.
+ *
+ * Read off the reports, which already carry both halves: the loot and each side's
+ * dead hulls. `(now − lookback, now]` — a battle exactly one lookback old has aged
+ * out, which is what keeps a shield from being re-earned off the defeats that bought
+ * the last one (the window and the lookback are the same six hours).
+ *
+ * PLAYER TARGETS ONLY. A caretaker world and a pirate raid have no commander on the
+ * other side: neither a defeat nor a haul there is the war this rule is about.
+ *
+ * The battle being settled is not on the record yet — its report is written after
+ * the grant — so the caller adds it.
+ */
+async function lookbackLedger(
+  db: Queryable,
+  playerId: string,
+  now: Date,
+): Promise<{ defeats: RecoveryLedgerEntry[]; raids: RecoveryLedgerEntry[] }> {
+  const since = new Date(now.getTime() - ABUSE.recoveryLookbackHours * 3_600_000);
+  const rows = await db
+    .select({
+      attackerPlayerId: battleReports.attackerPlayerId,
+      defenderPlayerId: battleReports.defenderPlayerId,
+      loot: battleReports.loot,
+      attackerLosses: battleReports.attackerLosses,
+      defenderLosses: battleReports.defenderLosses,
+      defenceSalvage: battleReports.defenceSalvage,
+    })
+    .from(battleReports)
+    .where(and(
+      eq(battleReports.targetKind, 'PLAYER'),
+      or(
+        eq(battleReports.defenderPlayerId, playerId),
+        eq(battleReports.attackerPlayerId, playerId),
+      ),
+      gt(battleReports.createdAt, since),
+      lte(battleReports.createdAt, now),
+    ));
+  const defeats: RecoveryLedgerEntry[] = [];
+  const raids: RecoveryLedgerEntry[] = [];
+  for (const row of rows) {
+    if (row.defenderPlayerId === playerId && row.attackerPlayerId !== playerId) {
+      defeats.push({
+        loot: row.loot,
+        fleetLost: permanentFleetCost(row.defenderLosses, row.defenceSalvage),
+      });
+    } else if (row.attackerPlayerId === playerId && row.defenderPlayerId !== playerId) {
+      raids.push({ loot: row.loot, fleetLost: permanentFleetCost(row.attackerLosses, {}) });
+    }
+  }
+  return { defeats, raids };
 }
 
 /**
@@ -188,6 +286,11 @@ async function isServerCommander(db: Queryable, playerId: string): Promise<boole
 /**
  * GRANT OR EXTEND THE SIX-HOUR WINDOW AFTER ONE BATTLE. Owner instruction.
  *
+ * JUDGED ON THE WHOLE LOOKBACK, NOT ON THIS BATTLE. Owner instruction, 2026-09-18:
+ * every PvP defeat in the last `ABUSE.recoveryLookbackHours` (this one included),
+ * less the profit of every raid this commander made on another commander in the same
+ * hours — see `netRecoveryLossHours`. Small raids that each stayed under the bar add up.
+ *
  * CALLED INSIDE THE BATTLE'S OWN TRANSACTION, with the defender's player row
  * already held `FOR UPDATE` by the settlement that got here (`lockLedgers`). Two
  * battles resolving against one commander in the same instant therefore queue
@@ -195,10 +298,9 @@ async function isServerCommander(db: Queryable, playerId: string): Promise<boole
  * that takes that row — see `assertAttackProtections` for the one thing that
  * deliberately does not, and why.
  *
- * THE LOSS COMES FROM THE CALLER, not from a second reading of the world. The
- * battle has already debited the stores and cleared the dead hulls, so anything
- * measured here would be measured after the fact. Only the PRODUCTION is read
- * here, because that is a fact about the commander rather than about the battle.
+ * THIS BATTLE'S LOSS COMES FROM THE CALLER, not from a second reading of the world.
+ * The battle has already debited the stores and cleared the dead hulls, and its
+ * report is not written yet. The earlier battles and the PRODUCTION are read here.
  *
  * IT RETURNS THE HOURS AS WELL AS THE WINDOW, so the battle report can record what
  * the decision was made on. The figure cannot be recomputed later: the production
@@ -237,15 +339,25 @@ export async function grantRecoveryShield(
   /*
     NOTHING LOST, NOTHING TO ASK THE DATABASE. This runs on every resolved PvP
     arrival in the galaxy and most of them are REPELLED raids that took nothing;
-    reading three tables to divide zero by something is work the worker should not
-    do on every mission that lands.
+    reading four tables to divide zero by something is work the worker should not
+    do on every mission that lands. A defender who lost nothing just won, and the
+    lookback cannot have crossed the bar since their last defeat, or it would have
+    been granted there.
   */
   if (resourceValue(input.lootLost) + resourceValue(input.fleetLost) <= 0) {
     return { until: null, hours: 0, earned: false };
   }
-  const production = await commanderProductionRate(tx, input.playerId);
-  const hours = recoveryLossHours(input.lootLost, input.fleetLost, production);
-  if (!earnsRecoveryShield({ lootLost: input.lootLost, fleetLost: input.fleetLost, production })) {
+  const [production, ledger] = await Promise.all([
+    commanderProductionRate(tx, input.playerId),
+    lookbackLedger(tx, input.playerId, input.now),
+  ]);
+  const check = {
+    defeats: [...ledger.defeats, { loot: input.lootLost, fleetLost: input.fleetLost }],
+    raids: ledger.raids,
+    production,
+  };
+  const hours = netRecoveryLossHours(check);
+  if (!earnsRecoveryShield(check)) {
     return { until: null, hours, earned: false };
   }
   const until = await forceRecoveryShield(tx, {

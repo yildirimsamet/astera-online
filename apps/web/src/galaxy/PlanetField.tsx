@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt } from '../ui/assets.js';
@@ -9,6 +9,9 @@ import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
+import { partitionPlanetSkins } from '../ui/planetSkins.js';
+import { PlanetSkinModel } from './PlanetSkinModel.jsx';
+import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 
 /**
  * Every world in the disc, in sixteen draw calls.
@@ -49,7 +52,7 @@ export function PlanetField({
   // One bucket per distinct render, so each bucket can be a single instanced draw.
   const groups = useMemo<Group[]>(() => {
     const byTexture = new Map<string, PlanetNode[]>();
-    for (const node of nodes) {
+    for (const node of partitionPlanetSkins(nodes).png) {
       const texture = planetArt(node.id);
       const bucket = byTexture.get(texture);
       if (bucket) bucket.push(node);
@@ -57,11 +60,39 @@ export function PlanetField({
     }
     return [...byTexture].map(([texture, group]) => ({ texture, nodes: group }));
   }, [nodes]);
+  const skinGroups = useMemo(() => partitionPlanetSkins(nodes).models, [nodes]);
 
   return (
     <>
       {groups.map((group) => (
         <PlanetInstances key={group.texture} group={group} onSelect={onSelect} />
+      ))}
+      {skinGroups.map((group) => (
+        <SkinAssetBoundary
+          key={`${group.skinId}:${group.status}`}
+          fallback={group.nodes.map((node) => (
+            <PlanetInstances
+              key={node.id}
+              group={{ texture: planetArt(node.id), nodes: [node] }}
+              onSelect={onSelect}
+            />
+          ))}
+        >
+          <Suspense fallback={group.nodes.map((node) => (
+            <PlanetInstances
+              key={node.id}
+              group={{ texture: planetArt(node.id), nodes: [node] }}
+              onSelect={onSelect}
+            />
+          ))}>
+            <PlanetSkinModel
+              skinId={group.skinId}
+              status={group.status}
+              nodes={group.nodes}
+              onSelect={onSelect}
+            />
+          </Suspense>
+        </SkinAssetBoundary>
       ))}
       <Atmospheres nodes={nodes} />
       <RecoveryScars nodes={nodes} />

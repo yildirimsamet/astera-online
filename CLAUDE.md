@@ -43,7 +43,7 @@ If context is lost: `CLAUDE.md → docs/decisions.md → docs/balance.md → cod
 
 ### Development discipline
 
-**Tüm geliştirme veya güncellemeleri Test Driven Development methodu ile yapmak zorunlu, şart!.**
+**Tüm geliştirme veya güncellemeleri Test Driven Development methodu ile yapmak zorunlu, şart! (tasarım/still/className/css/design gibi konular hariç)**
 **Tek kelime bir kod dahi yazılıyorsa bu method'u uygulamak ZORUNLU, ŞART!**
 **ANAYASA ALLAHIN EMRİ ŞART**
 

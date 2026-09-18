@@ -380,6 +380,16 @@ export const reports = {
     salvageTheirs: 'Hurdacıları, enkaz dağılmadan {{amount}} değerinde hurda topladı.',
     /** Koloni arızaları: ağır bir yenilginin bozdukları. Yalnızca savunan. */
     colonyFaults: 'Bu yenilgide {{planet}} üzerinde bozulanlar: {{faults}}.',
+    /**
+     * Toparlanma kalkanı, yalnızca savunan: bu savaş anında son pencerenin NET kaybı,
+     * okuyanın kendi üretim saatiyle, eşiğe karşı. Owner instruction, 2026-09-18.
+     */
+    recoveryProgress:
+      'Toparlanma kalkanı: son {{window}} saatte net {{hours}} / {{bar}} saatlik üretim kaybettin. {{bar}} saate ulaşınca {{shield}} saat sana akın yapılamaz; kendi akınlarının kârı bundan düşülür.',
+    recoveryEarned:
+      'Bu yenilgi sana {{shield}} saatlik toparlanma kalkanı kazandırdı: son {{window}} saatte net {{hours}} saatlik üretim kaybettin.',
+    recoveryRefused:
+      'Son {{window}} saatte net {{hours}} saatlik üretim kaybettin ve {{bar}} saatlik eşiği geçtin; ama kendi akının havadayken kalkan verilmez.',
     wreck: '{{planet}} üzerinde {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir.',
     wreckYours: 'Kendi yörüngende {{amount}} değerinde enkaz sürükleniyor. İsteyen gidip alabilir; sen de.',
     /** Anılacak bir yörünge yok: alan, boşlukta, randevu noktasında duruyor. */

@@ -7,6 +7,10 @@ import {
   neutralReserve,
   neutralThreat,
   storageCap,
+  planetSkinById,
+  planetSkinStatus,
+  type PlanetSkinId,
+  type PlanetSkinStatus,
   type NeutralReserve,
   type NeutralThreat,
   type SatelliteId,
@@ -65,6 +69,8 @@ import {
  */
 export interface PublicWorld {
   id: string;
+  /** Equipped cosmetic only; no ownership rights or payment data. */
+  skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
   name: string;
   owner: string;
   kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL';
@@ -145,6 +151,7 @@ const publicShields = (rows: readonly { planetId: string; type: string }[]) =>
  * to be the same shape or the interface tells two stories about one world.
  */
 export const silhouetteOf = (world: PublicWorld): {
+  skin?: { id: PlanetSkinId; status: PlanetSkinStatus };
   owner: string;
   controllerPlayerId: string | null;
   clan: { id: string; name: string; tag: string } | null;
@@ -153,6 +160,7 @@ export const silhouetteOf = (world: PublicWorld): {
   satellites: string[];
   shielded: boolean;
 } => ({
+  ...(world.skin ? { skin: world.skin } : {}),
   owner: world.owner,
   controllerPlayerId:
     world.controller.kind === 'PLAYER' ? world.controller.playerId : null,
@@ -298,8 +306,14 @@ export async function publicWorlds(
       : shieldedUntil
         ? { kind: 'PROTECTED' as const, until: shieldedUntil }
         : { kind: 'NORMAL' as const };
+    const skin = r.planet.controllerPlayerId && r.planet.equippedSkinId
+      ? planetSkinById(r.planet.equippedSkinId)
+      : null;
     return {
       id: r.planet.id,
+      ...(skin
+        ? { skin: { id: skin.id, status: planetSkinStatus(r.planet.recoveryBoostUntil, now) } }
+        : {}),
       name: r.planet.name,
       owner: r.ownerName ?? `Neutral T${String(tier)}`,
       kind: r.planet.kind,

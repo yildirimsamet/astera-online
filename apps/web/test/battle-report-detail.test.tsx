@@ -954,3 +954,47 @@ describe('savaşın bozduğu koloni sistemleri', () => {
     expect(document.querySelector('[data-colony-faults]')).toBeNull();
   });
 });
+
+/**
+ * TOPARLANMA KALKANI: KURAL GÖRÜNMÜYORSA TAHMİN EDİLEMEZ. Owner instruction, 2026-09-18.
+ *
+ * Kalkan artık son 6 saatin net kaybına bakıyor. Savunan, bu yenilgiden sonra eşiğe ne kadar
+ * yaklaştığını ve kalkan alıp almadığını raporda okuyabilmeli; saldırgan hiçbir şey görmez.
+ */
+describe('toparlanma kalkanı satırı', () => {
+  it('eşiğin altında: net kaybı, eşiği ve kuralı söyler', async () => {
+    await openSheet(report({ attacking: false, recovery: { lossHours: 3.24, shielded: false } }));
+    const line = document.querySelector('[data-recovery-shield]');
+    expect(line).not.toBeNull();
+    expect(line).toHaveTextContent('3.2');
+    expect(line).toHaveTextContent(/6/);
+  });
+
+  it('kalkan kazandıysa bunu söyler', async () => {
+    await openSheet(report({ attacking: false, recovery: { lossHours: 7.5, shielded: true } }));
+    expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent(/shield/i);
+    expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent('7.5');
+  });
+
+  it('eşik aşıldı ama kalkan verilmediyse nedenini söyler', async () => {
+    await openSheet(report({ attacking: false, recovery: { lossHours: 9, shielded: false } }));
+    expect(document.querySelector('[data-recovery-shield]')).toHaveTextContent(/in the air/i);
+  });
+
+  it('saldırgana, kayıpsız rapora ve bu alanı bilmeyen eski sunucuya satır yoktur', async () => {
+    await openSheet(report({ attacking: true, recovery: { lossHours: 9, shielded: true } }));
+    expect(document.querySelector('[data-recovery-shield]')).toBeNull();
+  });
+
+  it('kaybı sıfır olan rapora satır yoktur', async () => {
+    await openSheet(report({ attacking: false, recovery: { lossHours: 0, shielded: false } }));
+    expect(document.querySelector('[data-recovery-shield]')).toBeNull();
+  });
+
+  it('bu alanı bilmeyen eski bir sunucunun raporu da açılır', async () => {
+    const legacy = { ...report({ attacking: false }) } as Partial<BattleReport>;
+    delete legacy.recovery;
+    await openSheet(legacy as BattleReport);
+    expect(document.querySelector('[data-recovery-shield]')).toBeNull();
+  });
+});

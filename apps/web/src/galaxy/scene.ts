@@ -158,6 +158,7 @@ export interface SensorReach {
 
 export interface PlanetNode {
   id: string;
+  skin?: GalaxyPlanet['skin'];
   name: string;
   owner: string;
   /** Active public clan identity, if this commander currently has one. D114. */
@@ -259,6 +260,7 @@ export function planetNodes(planets: readonly GalaxyPlanet[]): PlanetNode[] {
   )?.clan?.id;
   return planets.map((planet) => ({
     id: planet.id,
+    ...(planet.skin ? { skin: planet.skin } : {}),
     /**
      * THE ONE PLACE THE PAYLOAD'S GAPS ARE FILLED IN. D127.
      *

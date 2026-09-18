@@ -158,6 +158,8 @@ export function rivalMenuRows(
  * leads somewhere its reader has not been.
  */
 const MENU_PANELS = new Set<Panel>([
+  'skin-shop',
+  'skin-inventory',
   'leaderboard',
   'rewards',
   'announcements',

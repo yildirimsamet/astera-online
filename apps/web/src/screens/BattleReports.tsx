@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { COMBAT, HULLS, fleetEntries, type Grade, type HullId } from '@astera/rules';
+import { ABUSE, COMBAT, HULLS, fleetEntries, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -1005,6 +1005,32 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     });
   }
 
+  /*
+    WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. Owner instruction,
+    2026-09-18: the bar is the NET loss of the last six hours, so a player needs to see
+    how close the raids so far have brought them — the rule stated beside the figure,
+    one tap from the defeat that moved it. Defender only; the server sends an attacker
+    null, and the guard here keeps it that way on its own.
+  */
+  const recovery = report.attacking ? null : report.recovery ?? null;
+  if (recovery && recovery.lossHours > 0) {
+    const values = {
+      hours: recovery.lossHours >= 999 ? '999+' : decimal(recovery.lossHours),
+      bar: ABUSE.recoveryLossHours,
+      window: ABUSE.recoveryLookbackHours,
+      shield: ABUSE.recoveryShieldHours,
+    };
+    lines.push({
+      key: 'recovery',
+      tone: recovery.shielded ? 'text-opportunity' : 'text-dim',
+      text: recovery.shielded
+        ? t('reports.effects.recoveryEarned', values)
+        : recovery.lossHours >= ABUSE.recoveryLossHours
+          ? t('reports.effects.recoveryRefused', values)
+          : t('reports.effects.recoveryProgress', values),
+    });
+  }
+
   if (lines.length === 0) return null;
 
   return (
@@ -1016,6 +1042,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
             key={line.key}
             className={`text-caption leading-snug ${line.tone}`}
             {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
+            {...(line.key === 'recovery' ? { 'data-recovery-shield': '' } : {})}
           >
             {line.text}
           </li>

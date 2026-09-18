@@ -264,6 +264,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
             coreTier: coreTier(record.silhouette.coreLevel),
             satellites: record.silhouette.satellites,
             shielded: record.silhouette.shielded,
+            ...(record.silhouette.skin ? { skin: record.silhouette.skin } : {}),
             ...(record.silhouette.clan ? { clan: record.silhouette.clan } : {}),
             ...(record.silhouette.controllerPlayerId
               ? {

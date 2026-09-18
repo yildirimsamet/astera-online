@@ -157,6 +157,8 @@ const IntergalacticConvoySheet = lazy(async () => {
 
 /** Tiptap is admin-only and must not enter every commander's first galaxy bundle. */
 const AdminPanel = lazy(async () => import('./AdminPanel.js'));
+const SkinsScreen = lazy(async () => import('./SkinsScreen.js'));
+const SkinInventoryScreen = lazy(async () => import('./SkinInventoryScreen.js'));
 
 /**
  * THE GALAXY IS THE GAME. D20.
@@ -176,7 +178,7 @@ const AdminPanel = lazy(async () => import('./AdminPanel.js'));
  * world the commander controls, that second tap opens management instead.
  */
 
-export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'admin' | 'recap' | 'menu' | 'return' | null;
+export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | null;
 
 /**
  * WHICH SHELF INSIDE A PANEL, WHEN THE PANEL ALONE IS NOT AN ANSWER. D121.
@@ -1691,6 +1693,34 @@ export function GalaxyView({
           onClose={() => { onPanel(null); }}
         >
           <DonateScreen />
+        </Sheet>
+      )}
+
+      {panel === 'skin-shop' && (
+        <Sheet
+          bleed
+          {...menuBack}
+          eyebrow={t('menu.asteraHeading')}
+          title={t('menu.skinsShopLabel')}
+          onClose={() => { onPanel(null); }}
+        >
+          <Suspense fallback={<Waiting>{t('menu.skinsShopLabel')}</Waiting>}>
+            <SkinsScreen onOpenInventory={() => { onPanel('skin-inventory'); }} />
+          </Suspense>
+        </Sheet>
+      )}
+
+      {panel === 'skin-inventory' && (
+        <Sheet
+          bleed
+          {...menuBack}
+          eyebrow={t('menu.asteraHeading')}
+          title={t('menu.skinsInventoryLabel')}
+          onClose={() => { onPanel(null); }}
+        >
+          <Suspense fallback={<Waiting>{t('menu.skinsInventoryLabel')}</Waiting>}>
+            <SkinInventoryScreen onOpenShop={() => { onPanel('skin-shop'); }} />
+          </Suspense>
         </Sheet>
       )}
 

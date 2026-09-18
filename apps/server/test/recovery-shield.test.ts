@@ -1,12 +1,13 @@
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
-import { ABUSE } from '@astera/rules';
+import { ABUSE, type Fleet, type Resources } from '@astera/rules';
 import { battleReports, missions, planets, players, strategicAssets } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchDeathStar } from '../src/services/strategic.js';
 import { planetView } from '../src/services/planetView.js';
+import { grantRecoveryShield } from '../src/services/attackProtection.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
 import { publicWorlds } from '../src/services/publicGalaxy.js';
@@ -175,7 +176,7 @@ describe('the recovery shield', () => {
   it('records the hours the grant was decided on, so it can be audited', async () => {
     const report = await overwhelm();
     expect(report.recoveryLossHours).not.toBeNull();
-    expect(report.recoveryLossHours!).toBeGreaterThan(ABUSE.recoveryLossHours);
+    expect(report.recoveryLossHours!).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
     expect(report.recoveryShieldUntil).not.toBeNull();
     // The world's raidable ceiling is still recorded beside it as context.
     expect(report.raidableBefore).toBeGreaterThan(0);
@@ -640,5 +641,186 @@ describe('the recovery shield', () => {
       protectedUntil: f.clock.now(),
     }));
     expect(await boostOf(colony)).toBeNull();
+  });
+
+  /* ── the lookback: every defeat, less the commander's own profit ──
+     Owner instruction, 2026-09-18: small raids that each stay under the bar add up,
+     and what the commander's own raids on other commanders EARNED comes off. */
+
+  /** Far beyond any hour of these fixture worlds' works, so the verdict never rides on a rate. */
+  const HUGE: Resources = { alloy: 1e9, crystal: 1e9, deuterium: 1e9 };
+  const NOTHING: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  const TINY: Resources = { alloy: 1, crystal: 0, deuterium: 0 };
+
+  /** A resolved battle already on the record, `ago` before the fixture clock. */
+  const pastBattle = async (input: {
+    attacker: string;
+    defender: string | null;
+    target: string;
+    ago: number;
+    loot: Resources;
+    attackerLosses?: Fleet;
+    targetKind?: 'PLAYER' | 'NEUTRAL';
+  }) => {
+    const at = new Date(f.clock.now().getTime() - input.ago);
+    const [mission] = await f.db.insert(missions).values({
+      seasonId: f.seasonId,
+      kind: 'attack',
+      status: 'resolved',
+      ownerPlayerId: input.attacker,
+      originPlanetId: mine,
+      targetPlanetId: input.target,
+      fleet: {},
+      distance: 10,
+      departAt: at,
+      arriveAt: at,
+    }).returning();
+    await f.db.insert(battleReports).values({
+      seasonId: f.seasonId,
+      missionId: mission!.id,
+      attackerPlayerId: input.attacker,
+      defenderPlayerId: input.defender,
+      targetPlanetId: input.target,
+      targetKind: input.targetKind ?? 'PLAYER',
+      grade: 'DECISIVE',
+      rounds: [],
+      loot: input.loot,
+      attackerLosses: input.attackerLosses ?? {},
+      defenderLosses: {},
+      createdAt: at,
+    });
+  };
+
+  /** Settle a defeat on the defender right now that, alone, is nowhere near the bar. */
+  const settleSmallDefeat = () => f.db.transaction((tx) => grantRecoveryShield(tx, {
+    playerId: f.playerIds[1]!,
+    planetId: theirs,
+    lootLost: TINY,
+    fleetLost: NOTHING,
+    now: f.clock.now(),
+  }));
+
+  it('grants nothing for a small defeat with nothing else in the lookback', async () => {
+    const result = await settleSmallDefeat();
+    expect(result.earned).toBe(false);
+    expect(result.until).toBeNull();
+    expect(await recoveryOf(f.playerIds[1]!)).toBeNull();
+  });
+
+  it('adds every earlier defeat in the lookback, on any world they hold', async () => {
+    await pastBattle({
+      attacker: f.playerIds[0]!, defender: f.playerIds[1]!, target: colony, ago: 2 * HOUR, loot: HUGE,
+    });
+    const result = await settleSmallDefeat();
+    expect(result.earned).toBe(true);
+    expect(result.hours).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    expect(await recoveryOf(f.playerIds[1]!)).not.toBeNull();
+  });
+
+  it('forgets a defeat the moment it is six hours old', async () => {
+    const lookback = ABUSE.recoveryLookbackHours * HOUR;
+    await pastBattle({
+      attacker: f.playerIds[0]!, defender: f.playerIds[1]!, target: theirs, ago: lookback, loot: HUGE,
+    });
+    expect((await settleSmallDefeat()).earned).toBe(false);
+
+    await pastBattle({
+      attacker: f.playerIds[0]!, defender: f.playerIds[1]!, target: theirs, ago: lookback - 60_000, loot: HUGE,
+    });
+    expect((await settleSmallDefeat()).earned).toBe(true);
+  });
+
+  it('takes the profit of their own raids on other commanders off the loss', async () => {
+    await pastBattle({
+      attacker: f.playerIds[0]!, defender: f.playerIds[1]!, target: theirs, ago: HOUR, loot: HUGE,
+    });
+    await pastBattle({
+      attacker: f.playerIds[1]!, defender: f.playerIds[0]!, target: mine, ago: 3 * HOUR, loot: HUGE,
+    });
+    const result = await settleSmallDefeat();
+    expect(result.earned).toBe(false);
+    expect(result.hours).toBeLessThan(ABUSE.recoveryLossHours);
+    expect(await recoveryOf(f.playerIds[1]!)).toBeNull();
+  });
+
+  it('ignores their raids that lost money, and their raids on neutral worlds', async () => {
+    await pastBattle({
+      attacker: f.playerIds[0]!, defender: f.playerIds[1]!, target: theirs, ago: HOUR, loot: HUGE,
+    });
+    // Came home with nothing and left a wing behind: a loss, which subtracts nothing.
+    await pastBattle({
+      attacker: f.playerIds[1]!, defender: f.playerIds[0]!, target: mine, ago: HOUR,
+      loot: NOTHING, attackerLosses: { DART: 50 },
+    });
+    // A caretaker world is not another commander; its haul is not PvP profit.
+    await pastBattle({
+      attacker: f.playerIds[1]!, defender: null, target: mine, ago: HOUR,
+      loot: HUGE, targetKind: 'NEUTRAL',
+    });
+    expect((await settleSmallDefeat()).earned).toBe(true);
+  });
+
+  it('does not count a defeat somebody else took', async () => {
+    await pastBattle({
+      attacker: f.playerIds[1]!, defender: f.playerIds[0]!, target: mine, ago: HOUR, loot: NOTHING,
+    });
+    await pastBattle({
+      attacker: f.playerIds[2]!, defender: f.playerIds[0]!, target: mine, ago: HOUR, loot: HUGE,
+    });
+    expect((await settleSmallDefeat()).earned).toBe(false);
+  });
+
+  it('grants a live raid that tips the lookback over, and records the net hours', async () => {
+    await pastBattle({
+      attacker: f.playerIds[2]!, defender: f.playerIds[1]!, target: theirs, ago: HOUR, loot: HUGE,
+    });
+    await grant(f.db, theirs, 400_000, 100_000);
+    await giveUnits(f.db, theirs, { DART: 2 });
+    await giveUnits(f.db, mine, { DART: 60 });
+    await levelWorld(f.db, f.planetIds);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 60 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+
+    const [report] = await f.db.select().from(battleReports)
+      .where(eq(battleReports.missionId, launch.missionId));
+    expect(report?.recoveryLossHours).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    expect(report?.recoveryShieldUntil).not.toBeNull();
+    expect(await recoveryOf(f.playerIds[1]!)).not.toBeNull();
+  });
+
+  /* ── what the report tells the defender ── Four questions: the rule is useless if nobody can see it. */
+
+  it('tells the defender what the lookback cost and that it bought the shield; the attacker nothing', async () => {
+    const report = await overwhelm();
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const find = async (playerId: string) => (await readBattleReports(f.db, playerId)).reports
+      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === report.missionId);
+    const defended = await find(f.playerIds[1]!);
+    const attacked = await find(f.playerIds[0]!);
+    const recovery = defended && 'recovery' in defended ? defended.recovery : undefined;
+    expect(recovery?.shielded).toBe(true);
+    expect(recovery?.lossHours).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    expect(attacked && 'recovery' in attacked ? attacked.recovery : undefined).toBeNull();
+  });
+
+  it('sends a finite figure for a loss nobody can work off', async () => {
+    await setLevel(f.db, theirs, 'DEUTERIUM_PLANT', 0);
+    await setLevel(f.db, colony, 'DEUTERIUM_PLANT', 0);
+    await grant(f.db, theirs, 400_000, 100_000);
+    await giveUnits(f.db, theirs, { DART: 2 });
+    await giveUnits(f.db, mine, { DART: 60 });
+    await levelWorld(f.db, f.planetIds);
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 60 }, f.clock);
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    const { readBattleReports } = await import('../src/services/reports.js');
+    const defended = (await readBattleReports(f.db, f.playerIds[1]!)).reports
+      .find((row) => row.kind !== 'STRATEGIC' && row.missionId === launch.missionId);
+    const recovery = defended && 'recovery' in defended ? defended.recovery : undefined;
+    expect(Number.isFinite(recovery?.lossHours)).toBe(true);
+    expect(recovery?.lossHours).toBeGreaterThanOrEqual(ABUSE.recoveryLossHours);
+    // JSON has no Infinity: the wire must survive a round trip unchanged.
+    expect(JSON.parse(JSON.stringify(recovery))).toEqual(recovery);
   });
 });

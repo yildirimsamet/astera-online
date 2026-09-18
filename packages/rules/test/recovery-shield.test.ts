@@ -4,7 +4,9 @@ import {
   earnsRecoveryShield,
   effectiveAttackProtection,
   extendRecoveryShield,
+  netRecoveryLossHours,
   newcomerShieldUntil,
+  raidProfitHours,
   recoveryLossHours,
   recoveryShieldUntil,
   type Resources,
@@ -42,9 +44,18 @@ const lossWorthHours = (hours: number): Resources => ({
   deuterium: PRODUCTION.deuterium * hours,
 });
 
+/** One defeat inside the lookback and nothing else: the shape the old rule judged. */
+const oneDefeat = (input: { lootLost: Resources; fleetLost: Resources; production: Resources }) => ({
+  defeats: [{ loot: input.lootLost, fleetLost: input.fleetLost }],
+  raids: [],
+  production: input.production,
+});
+
 describe('what counts as a heavy defeat', () => {
   it('states the bar as hours of the defender’s own production', () => {
-    expect(ABUSE.recoveryLossHours).toBe(8);
+    // Owner instruction, 2026-09-18: six hours of production, six hours looked back.
+    expect(ABUSE.recoveryLossHours).toBe(6);
+    expect(ABUSE.recoveryLookbackHours).toBe(6);
     // The recovery window and its loss threshold are independent owner controls.
     expect(ABUSE.recoveryShieldHours).toBe(6);
   });
@@ -57,17 +68,22 @@ describe('what counts as a heavy defeat', () => {
    * recovery times are averaged.
    */
   it('adds what was carried off to what was destroyed', () => {
-    const loot = lossWorthHours(3);
-    const fleet = lossWorthHours(5);
-    expect(recoveryLossHours(loot, NOTHING, PRODUCTION)).toBeCloseTo(3, 9);
-    expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(5, 9);
-    expect(earnsRecoveryShield({ lootLost: loot, fleetLost: NOTHING, production: PRODUCTION }))
+    const loot = lossWorthHours(2);
+    const fleet = lossWorthHours(3);
+    expect(recoveryLossHours(loot, NOTHING, PRODUCTION)).toBeCloseTo(2, 9);
+    expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(3, 9);
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: loot, fleetLost: NOTHING, production: PRODUCTION })))
       .toBe(false);
-    expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: fleet, production: PRODUCTION }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: NOTHING, fleetLost: fleet, production: PRODUCTION })))
       .toBe(false);
-    expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(8, 9);
-    expect(earnsRecoveryShield({ lootLost: loot, fleetLost: fleet, production: PRODUCTION }))
+    expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(5, 9);
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: loot, fleetLost: fleet, production: PRODUCTION })))
       .toBe(false);
+    expect(earnsRecoveryShield(oneDefeat({
+      lootLost: loot,
+      fleetLost: lossWorthHours(4),
+      production: PRODUCTION,
+    }))).toBe(true);
   });
 
   it('averages the Alloy, Crystal and Deuterium recovery times separately', () => {
@@ -76,22 +92,22 @@ describe('what counts as a heavy defeat', () => {
     expect(recoveryLossHours(uneven, NOTHING, PRODUCTION)).toBeCloseTo(11 / 3, 9);
   });
 
-  it('requires the three-resource average to exceed the bar', () => {
+  it('grants from the bar itself: six hours exactly is enough', () => {
     const at = lossWorthHours(ABUSE.recoveryLossHours);
-    expect(earnsRecoveryShield({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION }))
-      .toBe(false);
-    const over = { ...at, alloy: at.alloy + 1 };
-    expect(earnsRecoveryShield({ lootLost: over, fleetLost: NOTHING, production: PRODUCTION }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION })))
       .toBe(true);
+    const under = { ...at, alloy: at.alloy - 1 };
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: under, fleetLost: NOTHING, production: PRODUCTION })))
+      .toBe(false);
   });
 
   /** Fleet replacement cost alone may clear the average-hours threshold. */
   it('grants on a fleet wipe that carried nothing away', () => {
-    expect(earnsRecoveryShield({
+    expect(earnsRecoveryShield(oneDefeat({
       lootLost: NOTHING,
-      fleetLost: lossWorthHours(8.01),
+      fleetLost: lossWorthHours(6),
       production: PRODUCTION,
-    })).toBe(true);
+    }))).toBe(true);
   });
 
   /**
@@ -106,20 +122,20 @@ describe('what counts as a heavy defeat', () => {
     const fuelOnly: Resources = { alloy: 0, crystal: 0, deuterium: 100 };
     const hours = recoveryLossHours(fuelOnly, NOTHING, noPlant);
     expect(hours).toBe(Number.POSITIVE_INFINITY);
-    expect(earnsRecoveryShield({ lootLost: fuelOnly, fleetLost: NOTHING, production: noPlant }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: fuelOnly, fleetLost: NOTHING, production: noPlant })))
       .toBe(true);
   });
 
   it('refuses a costless battle and grants for a positive loss with no production', () => {
-    expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: NOTHING, production: PRODUCTION }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: NOTHING, fleetLost: NOTHING, production: PRODUCTION })))
       .toBe(false);
     expect(recoveryLossHours(lossWorthHours(50), NOTHING, NOTHING))
       .toBe(Number.POSITIVE_INFINITY);
-    expect(earnsRecoveryShield({
+    expect(earnsRecoveryShield(oneDefeat({
       lootLost: lossWorthHours(50),
       fleetLost: NOTHING,
       production: NOTHING,
-    })).toBe(true);
+    }))).toBe(true);
   });
 
   it('refuses nonsense rather than rounding it into a grant', () => {
@@ -129,13 +145,13 @@ describe('what counts as a heavy defeat', () => {
       { alloy: -1, crystal: 0, deuterium: 0 },
     ];
     for (const value of bad) {
-      expect(earnsRecoveryShield({ lootLost: value, fleetLost: NOTHING, production: PRODUCTION }),
+      expect(earnsRecoveryShield(oneDefeat({ lootLost: value, fleetLost: NOTHING, production: PRODUCTION })),
         JSON.stringify(value)).toBe(false);
-      expect(earnsRecoveryShield({ lootLost: NOTHING, fleetLost: value, production: PRODUCTION }),
+      expect(earnsRecoveryShield(oneDefeat({ lootLost: NOTHING, fleetLost: value, production: PRODUCTION })),
         JSON.stringify(value)).toBe(false);
-      expect(earnsRecoveryShield({
+      expect(earnsRecoveryShield(oneDefeat({
         lootLost: lossWorthHours(50), fleetLost: NOTHING, production: value,
-      }), JSON.stringify(value)).toBe(false);
+      })), JSON.stringify(value)).toBe(false);
     }
     expect(recoveryLossHours({ alloy: Number.NaN, crystal: 0, deuterium: 0 }, NOTHING, PRODUCTION))
       .toBe(0);
@@ -154,13 +170,90 @@ describe('what counts as a heavy defeat', () => {
     const small: Resources = { alloy: 200, crystal: 100, deuterium: 2 };
     const large: Resources = { alloy: 4_000, crystal: 2_000, deuterium: 60 };
     const loss = { alloy: 20_000, crystal: 10_000, deuterium: 200 };
-    expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: small }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: loss, fleetLost: NOTHING, production: small })))
       .toBe(true);
-    expect(earnsRecoveryShield({ lootLost: loss, fleetLost: NOTHING, production: large }))
+    expect(earnsRecoveryShield(oneDefeat({ lootLost: loss, fleetLost: NOTHING, production: large })))
       .toBe(false);
     expect(recoveryLossHours(loss, NOTHING, small)).toBeGreaterThan(
       recoveryLossHours(loss, NOTHING, large),
     );
+  });
+});
+
+/**
+ * EVERY DEFEAT IN THE LOOKBACK, LESS WHAT THE COMMANDER'S OWN RAIDS EARNED.
+ * Owner instruction, 2026-09-18.
+ *
+ * *"Ufak ufak saldırı yemeye devam ederse oyuncu hiç gelişme şansı bulamıyor."* A
+ * commander bled by five raids that each stayed under the bar lost more than one who
+ * took a single heavy one, and got nothing. So the question is asked of the whole
+ * window: every defeat in the last six hours, minus the PROFIT of every raid this
+ * commander made on another commander in the same six hours. A raid that lost money
+ * subtracts nothing — *"birine saldırırsa ve zarar ederse umrumuzda değil."*
+ */
+describe('what the last six hours cost, net', () => {
+  const defeat = (hours: number) => ({ loot: lossWorthHours(hours), fleetLost: NOTHING });
+  const raid = (lootHours: number, lostHours: number) => ({
+    loot: lossWorthHours(lootHours),
+    fleetLost: lossWorthHours(lostHours),
+  });
+
+  it('adds small defeats until together they clear the bar', () => {
+    const check = { defeats: [defeat(2), defeat(2), defeat(2)], raids: [], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    expect(earnsRecoveryShield(check)).toBe(true);
+    expect(earnsRecoveryShield({ ...check, defeats: [defeat(2), defeat(2)] })).toBe(false);
+  });
+
+  it('subtracts the profit of the commander’s own raids', () => {
+    const check = { defeats: [defeat(4), defeat(4)], raids: [raid(3, 1)], production: PRODUCTION };
+    // 8 hours lost, one raid netted 3 − 1 = 2 hours: 6 left, exactly the bar.
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    expect(earnsRecoveryShield(check)).toBe(true);
+    expect(earnsRecoveryShield({ ...check, raids: [raid(3, 1), raid(1, 0)] })).toBe(false);
+  });
+
+  it('ignores a raid that lost more than it carried home', () => {
+    const check = { defeats: [defeat(6)], raids: [raid(1, 5), raid(0, 3)], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    expect(earnsRecoveryShield(check)).toBe(true);
+  });
+
+  it('judges a raid’s profit on the same three clocks as the loss', () => {
+    // 3000 Alloy home for ships worth 1000 Crystal: (3 − 2 + 0) / 3 of an hour.
+    const mixed = {
+      loot: { alloy: 3_000, crystal: 0, deuterium: 0 },
+      fleetLost: { alloy: 0, crystal: 1_000, deuterium: 0 },
+    };
+    expect(raidProfitHours(mixed, PRODUCTION)).toBeCloseTo(1 / 3, 9);
+    expect(raidProfitHours(raid(1, 4), PRODUCTION)).toBeCloseTo(-3, 9);
+  });
+
+  it('never reports a negative loss: profit beyond the damage is simply no shield', () => {
+    const check = { defeats: [defeat(2)], raids: [raid(10, 0)], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBe(0);
+    expect(earnsRecoveryShield(check)).toBe(false);
+    expect(netRecoveryLossHours({ defeats: [], raids: [], production: PRODUCTION })).toBe(0);
+  });
+
+  it('keeps an unproducible loss infinite, whatever the raids earned', () => {
+    const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
+    const check = {
+      defeats: [{ loot: { alloy: 0, crystal: 0, deuterium: 100 }, fleetLost: NOTHING }],
+      raids: [raid(50, 0)],
+      production: noPlant,
+    };
+    expect(netRecoveryLossHours(check)).toBe(Number.POSITIVE_INFINITY);
+    // A haul in a resource no world produces cannot be priced in hours; it offsets nothing.
+    expect(raidProfitHours({ loot: { alloy: 0, crystal: 0, deuterium: 9_999 }, fleetLost: NOTHING }, noPlant))
+      .toBe(0);
+  });
+
+  it('drops a corrupt row instead of letting it poison the rest', () => {
+    const corrupt = { loot: { alloy: Number.NaN, crystal: 0, deuterium: 0 }, fleetLost: NOTHING };
+    const check = { defeats: [defeat(6), corrupt], raids: [corrupt], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    expect(raidProfitHours(corrupt, PRODUCTION)).toBe(0);
   });
 });
 

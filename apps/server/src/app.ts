@@ -39,6 +39,7 @@ import { registerChronicleRoutes } from './routes/chronicle.js';
 import { registerGalaxyEventRoutes } from './routes/galaxyEvents.js';
 import { registerClanRoutes } from './routes/clan.js';
 import { registerCommunityRoutes } from './routes/community.js';
+import { registerCosmeticRoutes } from './routes/cosmetics.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -409,6 +410,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerGalaxyEventRoutes(app);
     registerClanRoutes(app);
     registerCommunityRoutes(app);
+    registerCosmeticRoutes(app);
   });
 
   return {
