@@ -14,7 +14,8 @@ import { FAULT_KINDS, type FaultKind, type FaultSet, type Resources, type Rng } 
  * at the flight bay — and never here.
  *
  * THE NUMBERS ARE ALL IN `FAULT`, and two of them are the owner's: eight faults empty
- * loyalty in twelve hours, and a neglected world collects all eight in forty-eight.
+ * loyalty in twelve hours, and a neglected world collects all eight in seventy-two
+ * (forty-eight until 2026-09-18, when players found the faults too frequent).
  * Everything else was derived from those two and measured against them.
  */
 
@@ -100,12 +101,21 @@ const exponential = (rng: Rng, mean: number): number => -Math.log(1 - rng()) * m
  *
  * Two arms. Three times in ten the next fault lands right behind the last one, which is
  * the "arka arkaya" the owner asked for and which no single-rate process makes visible.
- * The rest of the time it is a Gamma(2) around eight and a half hours — see
+ * The rest of the time it is a Gamma(2) around twelve and a half hours — see
  * `FAULT.calmMeanHours` for why not an exponential.
  *
- * The mixture means six hours, so eight faults take forty-eight. Measured over 200k
- * draws: mean 6.02h, 29% of gaps under an hour, coefficient of variation 1.03, and no
+ * The mixture means nine hours, so eight faults take seventy-two. Measured over 200k
+ * draws: mean 9.00h, 28% of gaps under an hour, coefficient of variation 1.04, and no
  * correlation at all between one gap and the next. There is no cadence to learn.
+ * (Until 2026-09-18 it meant six hours / forty-eight; see `FAULT.calmMeanHours`.)
+ *
+ * THE TAIL IS LONG, AND A QUIET COLONY IS NOT A STALLED ONE. At the current rhythm about
+ * one draw in 13 is over 24 hours and one in 50 over 34. On 2026-09-18, still on the old
+ * six-hour rhythm, production had three gaps of 34h, 37h and 40h out of 228,
+ * which looked like "faults stopped after a deploy". They were not: every armed colony
+ * still had its pending `fault_spawn`, and re-running this function on the causing event
+ * ids gave those exact gaps. Before debugging a silent colony, check that it has Core 6+
+ * and a pending `fault_spawn`; if both hold, it is waiting, not broken.
  */
 export function nextFaultGapMinutes(rng: Rng): number {
   const burst = rng() < FAULT.burstChance;

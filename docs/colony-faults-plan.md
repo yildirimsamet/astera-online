@@ -12,7 +12,8 @@
 | Kapsam | **Sadece koloniler.** Capital'de ne arıza var ne sadakat. |
 | Sızıntı debris'i | **Herkese açık**, mevcut `debris_fields`, mevcut 40 dk çürüme. |
 | Sızıntı tavanı | **Bir arıza en fazla bir depo dolusuna mal olur** — ve hız üretimle sınırlı (§2.6). |
-| Çöküş süresi | **İhmal edilen koloni ~48 saatte kopar**, ~34 değil (§4). |
+| Çöküş süresi | **İhmal edilen koloni ~68 saatte kopar** (§4). 2026-09-18'e kadar ~48'di. |
+| Arıza temposu | **Sekiz arıza ~72 saatte** (2026-09-18, eskiden 48). Oyuncular arızaları çok sık buldu; sadakat hızı bilerek aynı bırakıldı. |
 | Arıza isimleri | **Sadece flavor.** "Tersanede isyan" ile "alaşım rafineri arızası" mekanik olarak aynı şey. |
 | Arıza zamanlaması | **Öğrenilebilir bir ritim olmayacak.** Bazen arka arkaya. |
 
@@ -180,12 +181,18 @@ Gap, iki kollu bir karışım:
 
 ```
 p = FAULT.burstChance (0.30)  → gap ~ Exp(ortalama FAULT.burstMeanMinutes = 25 dk)
-1 - p                         → gap ~ Gamma(2, ortalama FAULT.calmMeanHours = 8.4 sa)
+1 - p                         → gap ~ Gamma(2, ortalama FAULT.calmMeanHours = 12.7 sa)
 gap = max(gap, 60 sn)
 ```
 
-Ortalama gap = `0.30 × 0.42sa + 0.70 × 8.4sa = 6 saat` → sekiz arıza için beklenen süre
-**48 saat**. Ölçüldü: 200k çekimde gap ortalaması 6,02 saat.
+Ortalama gap = `0.30 × 0.42sa + 0.70 × 12.7sa ≈ 9 saat` → sekiz arıza için beklenen süre
+**72 saat**. Ölçüldü: 200k çekimde gap ortalaması 9,00 saat, %28'i bir saatin altında.
+
+> **2026-09-18 değişikliği:** `calmMeanHours` 8.4 → 12.7 (6 saat / 48 saatten 9 saat /
+> 72 saate). Sebep: oyuncular arızaların çok sık geldiğinden şikâyetçiydi. Burst kolu ve
+> sadakat sabitleri değişmedi. Aşağıdaki "%29" ve Gamma(2) ölçümleri eski ritme aittir.
+> Uzun kuyruk: artık gap'lerin ~%8'i 24 saati, ~%2'si 34 saati geçer. Sessiz bir koloni
+> bozuk demek değildir; önce Core 6+ ve bekleyen `fault_spawn` kontrol edilir.
 
 Neden bu şekil:
 
@@ -237,6 +244,10 @@ gidiyordu. Üsteller denendi:
 
 Üç, hedefi ("~46–48 saat") tutturan ve en temiz kapalı formu olan üs. 40.000 koşuluk
 Monte Carlo, §3.1'deki gap dağılımıyla.
+
+> **2026-09-18:** Tablo eski 48 saatlik ritme aittir. Ritim 72 saate yavaşlatıldı, küp
+> ve 12/12 saat sabitleri sahip kararıyla aynı kaldı. Aynı Monte Carlo yeni ritimle:
+> ortalama çöküş **67,8 sa**, medyan 65,8, en kötü %5 36,6, ilk yüzdelik 27,5.
 
 **Mutlak taban 12 saattir ve kaldırılamaz.** Sekiz arıza ilk saatlerde arka arkaya
 gelirse — burst kolunun izin verdiği şey — çöküş 12 saat sonrasıdır, çünkü "sekiz arıza
@@ -548,7 +559,7 @@ gereken %34 değil, **ne kadar vakti olduğu**.
 |---|---|---|
 | `FAULT.minCoreLevel` | 6 | Arızaların başladığı seviye |
 | `FAULT.burstChance` / `burstMeanMinutes` | 0.30 / 25 | Arka arkaya gelme sıklığı |
-| `FAULT.calmMeanHours` | 8.4 | Sakin kolun ortalaması (ikisi 48 saati verir) |
+| `FAULT.calmMeanHours` | 12.7 | Sakin kolun ortalaması (ikisi 72 saati verir; 2026-09-18'e kadar 8.4 / 48) |
 | `FAULT.loyaltyCollapseHours` | 12 | Sekiz arızayla sıfıra iniş |
 | `FAULT.loyaltyCurveExponent` | 3 | Çöküşün birikimliliği — çöküş süresini belirler |
 | `FAULT.loyaltyRecoverHours` | 12 | Arızasız geri dolum |

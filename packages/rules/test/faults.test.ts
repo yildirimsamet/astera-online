@@ -101,13 +101,17 @@ describe('ritim — öğrenilebilir bir periyot olamaz', () => {
     return Array.from({ length: n }, () => nextFaultGapMinutes(rng));
   };
 
-  it('sekiz arıza ortalama 48 saatte tamamlanır', () => {
+  /**
+   * 2026-09-18 sahip talimatı: oyuncular arızaların çok sık geldiğinden şikâyetçi. Tempo
+   * 48 saatten ~72 saate yavaşlatıldı; sadakat sabitleri bilerek AYNI kaldı.
+   */
+  it('sekiz arıza ortalama 72 saatte tamamlanır', () => {
     const gaps = sample(200_000);
     const mean = gaps.reduce((s, v) => s + v, 0) / gaps.length / 60;
-    expect(mean).toBeGreaterThan(5.8);
-    expect(mean).toBeLessThan(6.2);
-    expect(mean * FAULT_KINDS.length).toBeGreaterThan(46);
-    expect(mean * FAULT_KINDS.length).toBeLessThan(50);
+    expect(mean).toBeGreaterThan(8.8);
+    expect(mean).toBeLessThan(9.2);
+    expect(mean * FAULT_KINDS.length).toBeGreaterThan(70);
+    expect(mean * FAULT_KINDS.length).toBeLessThan(74);
   });
 
   it('arızaların kayda değer bir kısmı arka arkaya gelir', () => {
@@ -182,11 +186,13 @@ describe('sadakat', () => {
   });
 
   /**
-   * HEDEF: ihmal edilen bir koloni ~48 saatte kopar, ~34'te değil. Sahip talimatı.
+   * HEDEF: ihmal edilen bir koloni ~68 saatte kopar. İlk hedef ~48'di; 2026-09-18'de
+   * arıza temposu 72 saate yavaşlatıldı ve sadakat sabitleri bilerek aynı bırakıldı,
+   * çöküş de bununla birlikte uzadı. Sahip talimatı.
    * Monte Carlo, `nextFaultGapMinutes`in kendi dağılımıyla — iki sabit birbirine
    * bağlı olduğu için ayrı ayrı doğrulanamaz.
    */
-  it('hiç ilgilenilmeyen koloni ortalama 46-52 saatte kopar', () => {
+  it('hiç ilgilenilmeyen koloni ortalama 64-72 saatte kopar', () => {
     const rng = mulberry32(7);
     const runs: number[] = [];
     for (let run = 0; run < 4000; run++) {
@@ -207,8 +213,8 @@ describe('sadakat', () => {
     }
     const mean = runs.reduce((s, v) => s + v, 0) / runs.length / 60;
     expect(runs).toHaveLength(4000);
-    expect(mean).toBeGreaterThan(46);
-    expect(mean).toBeLessThan(52);
+    expect(mean).toBeGreaterThan(64);
+    expect(mean).toBeLessThan(72);
   });
 });
 
