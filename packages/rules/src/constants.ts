@@ -1815,16 +1815,17 @@ export const ANTI_STRATEGIC = {
 export const FUEL = {
   scale: 10_000,
   /**
-   * EXTRA THIRST BY HULL TIER. Owner instruction, 2026-09-17.
+   * EXTRA THIRST BY HULL TIER. Owner instruction, 2026-09-17; lowered 2026-09-18
+   * (75%→50% was too much).
    *
    * Fuel must make an oversized fleet expensive to operate while preserving the
-   * reason to climb the catalogue. The entry tier therefore takes the full 75%
-   * increase and the surcharge tapers to 50% at tier four. The base mass is
+   * reason to climb the catalogue. The entry tier therefore takes the full 30%
+   * increase and the surcharge tapers to 10% at tier four. The base mass is
    * rounded before this multiplier so the very small entry-hull figures receive
    * the authored increase. The multiplied result is rounded to the nearest whole
    * fuel unit so intermediate tiers stay inside the intended percentage band.
    */
-  tierMultiplier: { 1: 1.75, 2: 1.67, 3: 1.58, 4: 1.5 },
+  tierMultiplier: { 1: 1.3, 2: 1.23, 3: 1.17, 4: 1.1 },
   /**
    * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
    * D153's tier ladder outright.

@@ -101,11 +101,12 @@ describe('mission fuel', () => {
      * the ceiling rung one opens must sustain several ordinary raids a day, or the
      * whole chain ends in a building that does not solve the problem it was sold on.
      */
+    // 2026-09-18: the lighter surcharge lets a first-refinery day fly about four.
     it('makes a full raid cadence consume a meaningful first-refinery day', () => {
       const perDay = deuteriumRate(3) * 24;
       const raid = missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-      expect(perDay / raid).toBeGreaterThan(3);
-      expect(perDay / raid).toBeLessThan(4);
+      expect(perDay / raid).toBeGreaterThan(4);
+      expect(perDay / raid).toBeLessThan(5);
     });
 
     /**
@@ -208,8 +209,9 @@ describe('D195 fuel by hull value', () => {
   const value = (id: MobileHullId): number =>
     resourceValue(HULLS[id]);
 
-  it('raises lower tiers more while tapering the increase from 75% to 50%', () => {
-    expect(FUEL.tierMultiplier).toEqual({ 1: 1.75, 2: 1.67, 3: 1.58, 4: 1.5 });
+  // Owner, 2026-09-18: the 75%→50% surcharge was too much; 30%→10%, same taper.
+  it('raises lower tiers more while tapering the increase from 30% to 10%', () => {
+    expect(FUEL.tierMultiplier).toEqual({ 1: 1.3, 2: 1.23, 3: 1.17, 4: 1.1 });
     for (const id of MOBILE_HULLS) {
       const tier = HULLS[id].tier!;
       const previous = HULLS[id].profile === 'COLLECTOR'
@@ -307,10 +309,10 @@ describe('D195 fuel by hull value', () => {
    * or the chain the opening teaches ends in a building that does not solve the
    * problem it was sold on.
    */
-  it('spends most of a first-refinery day on three tier-2 raids', () => {
+  it('spends a first-refinery day on about four tier-2 raids', () => {
     const perDay = deuteriumRate(3) * 24;
     const raids = perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-    expect(raids).toBeGreaterThan(3);
-    expect(raids).toBeLessThan(4);
+    expect(raids).toBeGreaterThan(4);
+    expect(raids).toBeLessThan(5);
   });
 });

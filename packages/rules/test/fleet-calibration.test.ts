@@ -130,7 +130,7 @@ describe('economic fleet progression at 32:16:1', () => {
 
   it('preserves the paid opening and specialist identities', () => {
     expect(HULLS.DART).toMatchObject({ alloy: 390, crystal: 78, deuterium: 0, atk: 21, hp: 77 });
-    expect(hullFuelMass('DART')).toBe(9);
+    expect(hullFuelMass('DART')).toBe(7);
     expect(HULLS.GARBAGE_COLLECTOR).toMatchObject({ alloy: 13_000, crystal: 6_500, deuterium: 0, atk: 0, cargo: 0 });
     expect(HULLS.PROSPECTOR).toMatchObject({ alloy: 780, crystal: 234, deuterium: 0, atk: 0, cargo: 400, speed: 825 });
     expect(HULLS.THORN).toMatchObject({ alloy: 600, crystal: 150, atk: 42, hp: 215 });

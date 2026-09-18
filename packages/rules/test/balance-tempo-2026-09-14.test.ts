@@ -181,7 +181,7 @@ describe('fuel', () => {
 
   it('keeps the Garbage Collector base before the current tier-three lift', () => {
     expect(SALVAGE.fuelMass).toBe(50);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(79);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(59);
   });
 
   it('leaves no fuel-charged mobile hull free to move, and no ground gun charged', () => {
