@@ -27,6 +27,7 @@ import type {
   HullId,
   GalaxyEventKind as ScheduledGalaxyEventKind,
   AsteroidHourLane,
+  PirateHourLane,
   AsteroidShowerEffect,
   PlannedGalaxyEvent,
   IntergalacticConvoyEffect,
@@ -314,7 +315,7 @@ export const shards = pgTable('shards', {
   name: text('name').notNull().default(''),
   ordinal: integer('ordinal').notNull().default(1),
   region: text('region').notNull().default('eu'),
-  playerCap: integer('player_cap').notNull().default(300),
+  playerCap: integer('player_cap').notNull().default(1000),
   role: text('role').$type<'MAIN' | 'WAITING'>().notNull().default('MAIN'),
 }, (t) => [
   uniqueIndex('shards_code_idx').on(t.code),
@@ -2216,6 +2217,12 @@ export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   /** Frozen generation input; changing balance must not reroll an existing rock. */
   levelWeights: jsonb('level_weights').$type<readonly number[]>().notNull()
     .default(sql`'[0, 0.4, 0.27, 0.18, 0.1, 0.05]'::jsonb`),
+  /**
+   * The hour's dynamic pirate lane (`PIRATE.dynamic`, ruleset 9+), written once with
+   * the rock lanes. Null in a season on the derived per-seat lane, and in any hour
+   * written before the column existed.
+   */
+  pirateLane: jsonb('pirate_lane').$type<PirateHourLane>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   primaryKey({ columns: [t.seasonId, t.hourStartsAt] }),

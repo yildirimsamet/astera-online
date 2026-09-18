@@ -361,10 +361,14 @@ describe('the asteroid field', () => {
       increases. This digest is that second promise, and it is the one a live
       season depends on: an index, an orbit, an appearance and a lifetime are what
       a claim row, a flight in the air and a drawn target all resolve through.
+
+      2026-09-18: RE-TAKEN FOR RADIUS 3000. The orbit band took the ×1.5 disc, so
+      every radius and period moved while index, appearance and lifetime did not.
+      That ships at a season boundary (the geometry cannot change under a live one).
     */
     const laneShape = rocks.slice(0, establishedCount).map(({ ore: _ore, ...rest }) => rest);
     expect(createHash('sha256').update(JSON.stringify(laneShape)).digest('hex'))
-      .toBe('5a32c67f825471c955562860fc7e16fc6b4e9d02805fb3e5133ad54909d5a644');
+      .toBe('3bacdccdb44d187d7224c1846c4010a1d3bc71044a95aad4135e7358b7a5792a');
     for (const index of [0, 1, Math.floor(baseCount / 2), baseCount - 1]) {
       expect(rocks[index]?.appearsAt).toBeGreaterThanOrEqual(index * baseInterval);
       expect(rocks[index]?.appearsAt).toBeLessThan((index + 1) * baseInterval);
@@ -656,10 +660,11 @@ describe('the asteroid field', () => {
    */
   it('keeps every generated rock reachable across the five gate seeds', () => {
     for (const [speed, maxFlight, maxLaps] of [
-      // measured max: 7.196 min, 0.9895 laps
-      [prospectorSpeed([]), 8, 1.01],
-      // measured max: 4.847 min, 0.6742 laps
-      [prospectorSpeed(['DERRICK']), 5, 0.68],
+      // measured max at radius 3000 (2026-09-18): 8.703 min, 0.7965 laps
+      // (was 7.196 / 0.9895 at radius 2000 — the rim is further, the laps shorter)
+      [prospectorSpeed([]), 9, 0.8],
+      // measured max: 5.795 min, 0.5399 laps (was 4.847 / 0.6742)
+      [prospectorSpeed(['DERRICK']), 6, 0.55],
     ] as const) {
       for (const seed of [42, 7, 99, 4242, 1337]) {
         const generated = generateGalaxy(seed, 50);
@@ -864,7 +869,7 @@ describe('telescope gates', () => {
    */
   it('can cover the full authored galaxy span at the top of the table', () => {
     const acrossTheGalaxy = GALAXY.radius * 2;
-    expect(SENSOR.maxRadius).toBe(4_400);
+    expect(SENSOR.maxRadius).toBe(6_600);
     expect(withinTelescopeRange(8, acrossTheGalaxy)).toBe(true);
     expect(withinTelescopeRange(8, SENSOR.maxRadius)).toBe(true);
     // Still a real ladder: the top rung sees a great deal more than the first.
@@ -1444,13 +1449,14 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
   neighbourLegs.sort((a, b) => a - b);
   const typicalLeg = neighbourLegs[Math.floor(neighbourLegs.length / 2)]!;
 
-  const allLegs: number[] = [];
+  // A running maximum, not `Math.max(...legs)`: a thousand seats is half a million
+  // pairs, which overflows the call stack as a spread.
+  let furthest = 0;
   for (let i = 0; i < spec.slots.length; i++) {
     for (let j = i + 1; j < spec.slots.length; j++) {
-      allLegs.push(distance(spec.slots[i]!, spec.slots[j]!));
+      furthest = Math.max(furthest, distance(spec.slots[i]!, spec.slots[j]!));
     }
   }
-  const furthest = Math.max(...allLegs);
 
   /** A typical raid, out and back. The unit everything below is counted in. */
   const roundTrip = 2 * travelMinutes(typicalLeg, HULLS.DART.speed);

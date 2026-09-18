@@ -1,5 +1,5 @@
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { BUILDING_IDS, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
+import { BUILDING_IDS, MULTI_WORLD, PLANET_START, START_BUILDINGS, academyExitCheckpoint, fleetEntries, findRewardTier, newcomerShieldUntil, pickSpawnSlot } from '@astera/rules';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { accounts, buildings, planets, players, seasons, shards, satellites, units, rewardGrants, mainVacancies, returnApplications } from '../db/schema.js';
@@ -46,8 +46,28 @@ const NAMES = [
  * contradicting itself at the one moment the player is deciding to trust it.
  * One function, so the two cannot drift.
  */
-export const planetNameFor = (slotIndex: number): string =>
-  `${NAMES[slotIndex % NAMES.length] ?? 'World'}-${String(slotIndex)}`;
+/**
+ * THE NUMBER A CAPITAL IS CALLED BY, SCRAMBLED ACROSS EVERY SEATED ADDRESS.
+ *
+ * People stand on addresses below `capitalSlots` and the server's commanders on the
+ * `botSlots` after them, so naming a world by its raw address made every bot a
+ * four-digit "10xx" — readable at a glance, which is the one thing the roster may
+ * never be (D159). A fixed stride coprime to the reserved range maps it onto itself
+ * one-to-one: names stay unique and stable, and a bot's number is drawn from the
+ * same spread as everyone else's. Addresses past the range keep their own number.
+ */
+const NAMED_ADDRESSES = MULTI_WORLD.capitalSlots + MULTI_WORLD.botSlots;
+const NAME_STRIDE = 677;
+const NAME_OFFSET = 131;
+const nameNumber = (slotIndex: number): number =>
+  slotIndex >= 0 && slotIndex < NAMED_ADDRESSES
+    ? (slotIndex * NAME_STRIDE + NAME_OFFSET) % NAMED_ADDRESSES
+    : slotIndex;
+
+export const planetNameFor = (slotIndex: number): string => {
+  const number = nameNumber(slotIndex);
+  return `${NAMES[number % NAMES.length] ?? 'World'}-${String(number)}`;
+};
 
 export interface JoinResult {
   playerId: string;
@@ -124,6 +144,9 @@ function settle(placement: JoinResult, seasonId: string): JoinResult {
   return placement;
 }
 
+/** Who is taking the seat: a person, or one of the server's own commanders. */
+export type JoinSeat = 'COMMANDER' | 'SERVER';
+
 /**
  * Place a player on a galaxy.
  *
@@ -142,6 +165,12 @@ function settle(placement: JoinResult, seasonId: string): JoinResult {
  * Every one of those is expressed as `onConflictDoNothing` returning no row, so
  * the failure is a value to test and not an exception to classify. Nothing in this
  * file inspects a driver error code.
+ *
+ * `seat: 'SERVER'` IS THE BOT'S DOOR, and differs only in WHERE. A server commander
+ * stands on its own band of addresses (`GALAXY.strata.bot`, the `botSlots` after the
+ * capitals), one layer inside the people, and takes the free one furthest from the
+ * other bots so the roster scatters all the way round the galaxy. It still costs a
+ * seat against `playerCap` and gets exactly the opening a person gets.
  */
 export async function joinSeason(
   db: Db,
@@ -149,6 +178,7 @@ export async function joinSeason(
   seasonId: string,
   clock: Clock,
   academyStep?: number,
+  seat: JoinSeat = 'COMMANDER',
 ): Promise<JoinResult> {
   // Validate before even looking for a placement. Only creation consumes it.
   const academy = academyStep === undefined ? null : academyExitCheckpoint(academyStep);
@@ -163,7 +193,10 @@ export async function joinSeason(
     throw new GameError('WAITING_JOIN_FORBIDDEN', 'Join an available main galaxy', 403);
   }
 
-  const spec = galaxyOf(seasonId, season.seed, shard.playerCap);
+  const spec = seat === 'SERVER'
+    ? { slots: galaxyOf(seasonId, season.seed, MULTI_WORLD.capitalSlots + MULTI_WORLD.botSlots).slots
+      .filter((slot) => slot.index >= MULTI_WORLD.capitalSlots) }
+    : galaxyOf(seasonId, season.seed, shard.playerCap);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     try {

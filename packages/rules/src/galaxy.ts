@@ -3,9 +3,9 @@ import {
   ASTEROID_SHOWER_FRONT_LOAD,
   DEBRIS,
   GALAXY,
+  MULTI_WORLD,
   PROSPECTOR,
   SEASON,
-  SERVERS,
 } from './constants.js';
 import { prospectorHoldMult, type TechLevels } from './tech.js';
 import { mulberry32, seededFrom } from './rng.js';
@@ -95,33 +95,60 @@ export interface GalaxySpec {
   asteroids: AsteroidSpec[];
 }
 
+export interface SlotLayout {
+  /** Indexes `[0, capitalSlots)` stand on the commander shell. */
+  capitalSlots: number;
+  /** The next `botSlots` stand on the bot band; everything after is neutral pool. */
+  botSlots: number;
+}
+
+interface Band {
+  readonly inner: number;
+  readonly outer: number;
+}
+
+function bandOf(index: number, layout: SlotLayout): Band {
+  if (index < layout.capitalSlots) return GALAXY.strata.commander;
+  if (index < layout.capitalSlots + layout.botSlots) return GALAXY.strata.bot;
+  return GALAXY.strata.neutral;
+}
+
 /**
  * Deterministic galaxy generation. The same seed produces the same galaxy in the
  * server, simulator and deterministic tooling. Player APIs still send the
  * authoritative, fog-projected world coordinates rather than asking a client to
  * reconstruct private state.
  *
- * Slots fill a radius-bounded sphere with uniform-volume candidates. Randomised
- * placement still uses Poisson-style rejection to preserve readable separation.
+ * THE SLOT'S INDEX DECIDES ITS BAND (`GALAXY.strata`): capitals first on the outer
+ * shell, then the server's commanders one band deeper, then the neutral search
+ * pool inside them. Each band is sampled uniformly by volume, and Poisson-style
+ * rejection still keeps every pair `minSeparation` apart across bands. Because
+ * the band follows the index and the stream is consumed in index order, any
+ * prefix of a larger galaxy IS the smaller one — admission (capitals only) and
+ * neutral selection (the whole pool) read the same addresses.
  */
 export function generateGalaxy(
   seed: number,
   slotCount: number = GALAXY.defaultSlots,
+  layout: SlotLayout = { capitalSlots: MULTI_WORLD.capitalSlots, botSlots: MULTI_WORLD.botSlots },
 ): GalaxySpec {
   const rng = mulberry32(seed);
   const slots: PlanetSlot[] = [];
 
   for (let i = 0; i < slotCount; i++) {
     let accepted: Vec3 | null = null;
+    const band = bandOf(i, layout);
+    const innerCubed = band.inner ** 3;
+    const outerCubed = band.outer ** 3;
 
     // A minimum separation is a contract, not a preference. The old best-of-12
     // fallback silently accepted overlaps once the 750-slot neutral search pool
     // became dense enough. Rejection remains cheap at the shipped density; an
     // impossible future layout fails loudly instead of creating a corrupt map.
     for (let attempt = 0; attempt < 96; attempt++) {
-      // Cube-root radius gives equal density throughout the sphere's volume;
-      // choosing radius linearly would crowd points around the centre.
-      const r = Math.cbrt(rng()) * GALAXY.radius;
+      // Cube-root radius gives equal density throughout the band's volume;
+      // choosing radius linearly would crowd points against its inner edge.
+      const r = Math.cbrt(innerCubed + rng() * (outerCubed - innerCubed)) * GALAXY.radius;
       const th = rng() * Math.PI * 2;
       const vertical = rng() * 2 - 1;
       const planar = Math.sqrt(1 - vertical * vertical);
@@ -435,7 +462,7 @@ export function generateAsteroidSchedule(
   // the added allowance available for the new lane.
   for (let day = 0; day < SEASON.days; day++) {
     const today = asteroids.filter(r => Math.floor(r.appearsAt / 1440) === day);
-    const expandedBudget = monthlySupply('mining', day, SERVERS.capacity);
+    const expandedBudget = monthlySupply('mining', day, GALAXY.asteroidBudgetSeats);
     const budgetScale = GALAXY.asteroidOreBudgetShare
       * ASTEROID_ESTABLISHED_SPAWN_PER_HOUR / GALAXY.asteroidSpawnPerHour;
     const budget = {
@@ -474,7 +501,7 @@ function appendStandingAsteroidIncrease(
   for (let day = 0; day < SEASON.days; day++) {
     const existingToday = established.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const laneToday = lane.filter(r => Math.floor(r.appearsAt / 1440) === day);
-    const monthlyBudget = monthlySupply('mining', day, SERVERS.capacity);
+    const monthlyBudget = monthlySupply('mining', day, GALAXY.asteroidBudgetSeats);
     const budget = {
       alloy: monthlyBudget.alloy * GALAXY.asteroidOreBudgetShare,
       crystal: monthlyBudget.crystal * GALAXY.asteroidOreBudgetShare,

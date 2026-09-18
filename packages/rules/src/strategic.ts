@@ -150,6 +150,8 @@ export interface NeutralSlot {
 
 export interface NeutralLayout {
   capitalSlots: number;
+  /** Server-commander addresses after the capitals; neutrals start past them. Default 0. */
+  botSlots?: number;
   neutralCounts: Readonly<Record<NeutralTier, number>>;
 }
 
@@ -164,8 +166,6 @@ function profileSeed(seed: number, index: number): number {
 
 const TAU = Math.PI * 2;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-const T2_RADIUS_SHARE = 0.55;
-const T3_RADIUS_SHARE = 0.12;
 
 /** A stable rotation keeps the strata seeded without coupling them to slot generation. */
 function layoutPhase(seed: number, tier: NeutralTier): number {
@@ -182,8 +182,9 @@ function neutralTargets(
   count: number,
 ): { x: number; y: number; z: number }[] {
   const phase = layoutPhase(seed, tier);
-  // T1 fills equal-volume radial strata. Shuffle those strata independently of
-  // the Fibonacci directions so radius cannot become a disguised north/south band.
+  // T1 fills equal-volume radial strata of its own band. Shuffle those strata
+  // independently of the Fibonacci directions so radius cannot become a disguised
+  // north/south band.
   const radialRanks = Array.from({ length: count }, (_, index) => index)
     .toSorted((a, b) => {
       const ah = profileSeed(seed ^ 0x6a09e667 ^ tier, a) >>> 0;
@@ -196,9 +197,12 @@ function neutralTargets(
     const vertical = 1 - (2 * (index + 0.5)) / count;
     const planar = Math.sqrt(1 - vertical * vertical);
     const angle = phase + index * GOLDEN_ANGLE;
+    const { t1, t2Share, t3Share } = GALAXY.strata;
     const radius = tier === 1
-      ? GALAXY.radius * Math.cbrt(((radialRanks[index] ?? index) + 0.5) / count)
-      : GALAXY.radius * (tier === 2 ? T2_RADIUS_SHARE : T3_RADIUS_SHARE);
+      ? GALAXY.radius * Math.cbrt(
+        t1.inner ** 3 + (((radialRanks[index] ?? index) + 0.5) / count) * (t1.outer ** 3 - t1.inner ** 3),
+      )
+      : GALAXY.radius * (tier === 2 ? t2Share : t3Share);
     return {
       x: radius * planar * Math.cos(angle),
       y: radius * vertical,
@@ -239,10 +243,10 @@ function selectNearTargets(
 }
 
 /**
- * Pick the v2 neutral pool from slots after every reserved capital address.
- * T3 owns the central contested points, T2 the middle density ring, and T1 covers
- * the whole playable sphere. Seeded ideal points are matched to generated addresses:
- * the worlds stay random-looking without allowing a whole tier to collapse into
+ * Pick the v2 neutral pool from slots after every reserved capital and bot address.
+ * T3 owns the central contested points, T2 the ring around them, and T1 the outer
+ * neutral band just inside the server's commanders (`GALAXY.strata`). Seeded ideal
+ * points are matched to generated addresses: the worlds stay random-looking without allowing a whole tier to collapse into
  * one lucky angular sample.
  */
 export function selectNeutralSlots(
@@ -250,11 +254,13 @@ export function selectNeutralSlots(
   slots: readonly PlanetSlot[],
   layout: NeutralLayout = {
     capitalSlots: MULTI_WORLD.capitalSlots,
+    botSlots: MULTI_WORLD.botSlots,
     neutralCounts: MULTI_WORLD.neutralCounts,
   },
 ): NeutralSlot[] {
+  const firstNeutral = layout.capitalSlots + (layout.botSlots ?? 0);
   const capital = slots.filter((slot) => slot.index < layout.capitalSlots);
-  const candidates = slots.filter((slot) => slot.index >= layout.capitalSlots);
+  const candidates = slots.filter((slot) => slot.index >= firstNeutral);
   const needed =
     layout.neutralCounts[1]
     + layout.neutralCounts[2]

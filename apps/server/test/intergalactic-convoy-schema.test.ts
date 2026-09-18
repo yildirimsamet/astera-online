@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { GALAXY_EVENTS, type IntergalacticConvoyEffect } from '@astera/rules';
+import { GALAXY_EVENTS, INTERGALACTIC_CONVOY, type IntergalacticConvoyEffect } from '@astera/rules';
 import {
   eventKind,
   galaxyEventOccurrenceKind,
@@ -28,7 +28,7 @@ async function occurrence(sequence = 0): Promise<string> {
     kind: 'INTERGALACTIC_CONVOY',
     definitionVersion: 1,
     startsAt,
-    endsAt: new Date(startsAt.getTime() + 120 * 60_000),
+    endsAt: new Date(startsAt.getTime() + INTERGALACTIC_CONVOY.durationMinutes * 60_000),
     effect,
   }).returning({ id: galaxyEventOccurrences.id });
   if (row === undefined) throw new Error('occurrence was not inserted');

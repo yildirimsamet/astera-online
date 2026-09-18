@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { and, eq, sql } from 'drizzle-orm';
 import {
   DEBRIS,
+  GALAXY,
   HULLS,
   PIRATE,
   fleetCount,
@@ -42,6 +43,7 @@ import {
   giveSatellite,
   giveUnits,
   grant,
+  placeAt,
   seedWorld,
   settledAt,
   testDb,
@@ -102,10 +104,14 @@ describe('a raid at a pirate', () => {
       band, so a visible target is genuinely uncommon — which is the feature
       working, and the reason this looks rather than assumes.
     */
+    // Only moments inside the season: the server clock stops at `endsAt`, so a pirate
+    // seen after it could never be launched at (the 1000-seat lane is dense enough
+    // for the search to walk that far).
+    const seasonMinutes = (season!.endsAt.getTime() - season!.startsAt.getTime()) / 60_000;
     for (const spec of field) {
       if (skip.has(spec.index)) continue;
       const first = Math.ceil(spec.appearsAt) + 1;
-      for (let minute = first; minute < spec.expiresAt; minute += 1) {
+      for (let minute = first; minute < Math.min(spec.expiresAt, seasonMinutes); minute += 1) {
         if (sensorZone([eye], piratePosition(spec, minute)) === 'NONE') continue;
         f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
         return { spec, id: pirateId(key, spec.index), key };
@@ -287,6 +293,10 @@ describe('a raid at a pirate', () => {
       while farming on the side.
     */
     await armed({ DART: 400 });
+    // On the commander shell, where commanders now live and the orbit band is
+    // densest: every bay needs a DIFFERENT pirate in sight inside the season, and
+    // the fixture's cluster near the centre no longer meets enough of them.
+    await placeAt(f.db, mine, { x: GALAXY.radius * 0.9, y: 0, z: 0 });
     const seen = new Set<number>();
     const [core] = await f.db
       .select({ level: buildings.level })

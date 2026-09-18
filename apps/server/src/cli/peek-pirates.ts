@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { createDb } from '../db/client.js';
 import { loadDotEnv, loadEnv } from '../env.js';
 import { planets, seasons } from '../db/schema.js';
-import { privatePirateField } from '../services/pirateField.js';
+import { loadPirateSnapshot } from '../services/pirateField.js';
 import { activePirates, piratePosition, distance, SENSOR } from '@astera/rules';
 
 loadDotEnv();
@@ -12,8 +12,9 @@ const planetId = process.argv[2]!;
 try {
   const [world] = await db.select().from(planets).where(eq(planets.id, planetId));
   const [season] = await db.select().from(seasons).where(eq(seasons.id, world!.seasonId));
-  const field = privatePirateField(season!.asteroidKey);
   const now = Date.now();
+  // The season's own field: the derived lane, or the stored hours on ruleset 9+.
+  const field = (await loadPirateSnapshot(db, season!.id, new Date(now))).pirates;
   const nowMin = (now - season!.startsAt.getTime()) / 60_000;
   console.log(`world ${world!.name} at (${world!.x.toFixed(0)}, ${world!.y.toFixed(0)}, ${world!.z.toFixed(0)})`);
   console.log(`season minute ${nowMin.toFixed(1)} · lane ${field.length} pirates · naked eye ${SENSOR.baseRadius}`);

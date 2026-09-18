@@ -355,9 +355,12 @@ describe('two raids at one pirate', () => {
       .filter((w) => f.planetIds.includes(w.id))
       .map((w) => sensorSphere({ x: w.x, y: w.y, z: w.z }, 0, 0, w.id));
 
-    // A pirate both test worlds can see at the same minute.
+    // A pirate both test worlds can see at the same minute — and a level-1 one, so
+    // two squadrons of Darts actually shoot something off it. Which pirate the
+    // search meets first moves with every change to the lane's geometry.
     let chosen: { index: number; minute: number } | null = null;
     outer: for (const spec of field) {
+      if (spec.level !== 1) continue;
       for (let minute = Math.ceil(spec.appearsAt) + 1; minute < spec.expiresAt; minute += 1) {
         if (!pirateActive(spec, minute)) continue;
         const at = piratePosition(spec, minute);

@@ -1,9 +1,12 @@
-import { and, count, eq, gt, gte, isNotNull, isNull, lt } from 'drizzle-orm';
+import { and, count, eq, gt, gte, isNotNull, isNull, lt, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
+  MULTI_WORLD,
   planAsteroidHour,
+  planPirateHour,
   type AsteroidHourLane,
+  type PirateHourLane,
 } from '@astera/rules';
 import { minutesSince } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -150,6 +153,20 @@ export async function openAsteroidHour(
       })),
     });
 
+    /*
+      THE SAME COUNT SIZES THE PIRATES (ruleset 9, `PIRATE.dynamic`). One clock, one
+      active count, one row: a pirate hour can never disagree with its rock hour
+      about who was playing. A season created earlier keeps its derived lane.
+    */
+    const pirateLane = season.rulesetVersion >= MULTI_WORLD.dynamicPirateRulesetVersion
+      ? planPirateHour({
+        activePlayers,
+        hourStartsAtMinute: minutesSince(season.startsAt, hourStart),
+        spawnFromMinute: minutesSince(season.startsAt, spawnFrom),
+        seasonEndsAtMinute: minutesSince(season.startsAt, season.endsAt),
+      })
+      : null;
+
     const inserted = await tx.insert(asteroidSpawnHours).values({
       seasonId: season.id,
       hourStartsAt: hourStart,
@@ -157,12 +174,15 @@ export async function openAsteroidHour(
       activePlayers,
       lanes,
       levelWeights: ASTEROID_DYNAMIC.levelWeights,
+      pirateLane,
       createdAt: input.now,
     }).onConflictDoNothing().returning({ seasonId: asteroidSpawnHours.seasonId });
 
     await queueNext(hourEnd);
     // New rocks are about to appear: the field projection and every open disc refetch.
     if (inserted.length > 0 && lanes.length > 0) await publishShard(tx, season.id, 'mining');
+    // And new pirates: the shared pirate snapshot is cached until this says otherwise.
+    if (inserted.length > 0 && pirateLane !== null) await publishShard(tx, season.id, 'pirate');
   });
 }
 
@@ -249,6 +269,55 @@ const lanesSchema = z.array(z.object({
   count: z.number().int().nonnegative(),
   frontCount: z.number().int().nonnegative(),
 }).strict());
+
+/** A stored pirate lane, parsed at the boundary like the rock lanes. */
+export const pirateLaneSchema = z.object({
+  fromMinute: z.number().finite(),
+  untilMinute: z.number().finite(),
+  count: z.number().int().nonnegative(),
+}).strict();
+
+/**
+ * The stored pirate hours a pirate read at `now` still needs, with their ordinals.
+ * A pirate lives at most `PIRATE.lifeHoursMax` after its hour; the same lookback as
+ * the rocks covers that and a raid still flying home from one.
+ */
+export async function loadPirateHours(
+  db: Queryable,
+  season: { id: string; startsAt: Date },
+  now: Date,
+): Promise<{ hourOrdinal: number; lane: PirateHourLane }[]> {
+  const rows = await db.select({
+    hourStartsAt: asteroidSpawnHours.hourStartsAt,
+    lane: asteroidSpawnHours.pirateLane,
+  }).from(asteroidSpawnHours).where(and(
+    eq(asteroidSpawnHours.seasonId, season.id),
+    gte(asteroidSpawnHours.hourStartsAt, new Date(now.getTime() - FIELD_LOOKBACK_HOURS * HOUR_MS)),
+    lte(asteroidSpawnHours.hourStartsAt, now),
+    isNotNull(asteroidSpawnHours.pirateLane),
+  )).orderBy(asteroidSpawnHours.hourStartsAt);
+  return rows.map((row) => ({
+    hourOrdinal: hourOrdinalOf(season.startsAt, row.hourStartsAt),
+    lane: pirateLaneSchema.parse(row.lane),
+  }));
+}
+
+/** One stored pirate hour by its ordinal, or null if it was never written. */
+export async function loadPirateHour(
+  db: Queryable,
+  season: { id: string; startsAt: Date },
+  hourOrdinal: number,
+): Promise<PirateHourLane | null> {
+  const hourStartsAt = new Date(floorHour(season.startsAt).getTime() + hourOrdinal * HOUR_MS);
+  const [row] = await db.select({ lane: asteroidSpawnHours.pirateLane })
+    .from(asteroidSpawnHours)
+    .where(and(eq(asteroidSpawnHours.seasonId, season.id), eq(asteroidSpawnHours.hourStartsAt, hourStartsAt)));
+  return row?.lane == null ? null : pirateLaneSchema.parse(row.lane);
+}
+
+/** The hour's ordinal from the season's first hour — the one `mining.ts` uses too. */
+export const hourOrdinalOf = (seasonStartsAt: Date, hourStartsAt: Date): number =>
+  Math.round((hourStartsAt.getTime() - floorHour(seasonStartsAt).getTime()) / HOUR_MS);
 
 const levelWeightsSchema = z.array(z.number().finite().nonnegative()).min(2)
   .refine((weights) => weights.slice(1).some((weight) => weight > 0));

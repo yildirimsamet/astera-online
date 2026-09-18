@@ -459,7 +459,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
   });
 
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
-    expect(MULTI_WORLD.rulesetVersion).toBe(8);
+    // Ruleset 9 (2026-09-19, dynamic pirates) keeps the fixed calendar.
+    expect(MULTI_WORLD.rulesetVersion).toBe(9);
+    expect(MULTI_WORLD.rulesetVersion).toBeGreaterThanOrEqual(MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion);
     expect(GALAXY_EVENTS.version).toBe(4);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);
     expect(galaxyEventKindsForRuleset(MULTI_WORLD.rulesetVersion)).toEqual([
@@ -481,9 +483,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
    */
   it('versions both reshaped lanes so a dealt row says which calendar it came from', () => {
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(9);
-    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(4);
-    // The merchant was left exactly as it was.
-    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(4);
+    // 2026-09-19: the radius-3000 galaxy lengthened both voyages (180 and 150 min).
+    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(5);
+    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(5);
   });
 
   it('deals a weekday: lunch and evening showers, one evening convoy', () => {
@@ -496,19 +498,19 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     }));
 
     expect(rows).toEqual([
-      { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 180,
+      { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 210,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
-      { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 540,
+      { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 570,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[1].effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 750, endsAtMinute: 810,
         effect: { asteroidSpawnMultiplier: 2 } },
-      { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1020,
+      { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1050,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
         effect: { asteroidSpawnMultiplier: 3 } },
-      { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1380,
+      { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1410,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1260, endsAtMinute: 1380,
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1260, endsAtMinute: 1440,
         effect: convoyWindowAt(0).effect },
     ]);
   });
@@ -527,13 +529,13 @@ describe('the ruleset-8 fixed public-event calendar', () => {
       endsAtMinute: event.endsAtMinute,
       effect: event.effect,
     }))).toEqual([
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 720, endsAtMinute: 840,
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 720, endsAtMinute: 900,
         effect: convoyWindowAt(1).effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 780, endsAtMinute: 840,
         effect: { asteroidSpawnMultiplier: 3 } },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
         effect: { asteroidSpawnMultiplier: 5 } },
-      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1200, endsAtMinute: 1320,
+      { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1200, endsAtMinute: 1380,
         effect: convoyWindowAt(2).effect },
     ]);
   });
@@ -609,7 +611,7 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     expect(schedule.map((event) => [event.kind, event.startsAtMinute, event.endsAtMinute]))
       .toEqual([
         ['ASTEROID_SHOWER', 435, 495],
-        ['INTERGALACTIC_CONVOY', 495, 615],
+        ['INTERGALACTIC_CONVOY', 495, 675],
         ['ASTEROID_SHOWER', 1425, 1485],
       ]);
   });
@@ -765,14 +767,18 @@ describe('Asteroid Shower bonus lane', () => {
       by the 2026-09-14 packet rule and that ships at a season boundary; what a
       live claim, an in-flight run and a drawn target actually resolve through is
       the index, the orbit and the two instants, and those stay byte-identical.
+
+      2026-09-18: RE-TAKEN FOR RADIUS 3000. The orbit band took the ×1.5 disc, so
+      every radius and period moved while index, appearance and lifetime did not.
+      That ships at a season boundary (the geometry cannot change under a live one).
     */
     const laneShape = (rocks: readonly AsteroidSpec[]): string => createHash('sha256')
       .update(JSON.stringify(rocks.map(({ ore: _ore, ...rest }) => rest)))
       .digest('hex');
     expect(laneShape(base.slice(0, establishedCount)))
-      .toBe('69d30eb877f5a878adda1d34022bf904699c870cad58a59a40e588bb75f7b693');
+      .toBe('7318a1ae0324286791b2775417743fa09c4666245adae860107fc162d66af904');
     expect(laneShape(showered.slice(0, establishedCount + establishedBonus)))
-      .toBe('617dc6f3c0aca9b3d129611bf2a34f5a073006d92bce2179fbfb5e8085539e5e');
+      .toBe('5d0c8199828bb56aca3afc26de897ab00a8e6b4c545bed0792c28fac5030bff0');
     expect(showered.length - base.length).toBe(expandedBonus);
     const bonus = [
       ...showered.slice(establishedCount, establishedCount + establishedBonus),

@@ -95,7 +95,7 @@ export async function ensureBotSeats(
     free = free.slice(taking.length);
     for (const profile of taking) {
       try {
-        await joinSeason(db, profile.accountId, season.id, clock, ACADEMY_STEPS.length);
+        await joinSeason(db, profile.accountId, season.id, clock, ACADEMY_STEPS.length, 'SERVER');
         /*
           SEATING IS NOT PLAYING, AND THE POPULATION FIGURE MUST NOT SAY IT IS.
 

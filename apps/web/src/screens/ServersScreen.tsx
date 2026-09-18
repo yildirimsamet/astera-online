@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { SERVERS } from '@astera/rules';
 import { useServers } from '../api/queries.js';
 import type { HistoricalSeasonResult, ServerRow } from '../api/schemas.js';
 import { Button } from '../ui/kit/index.js';
@@ -9,7 +10,7 @@ import { NextSeason } from '../ui/NextSeason.js';
 /**
  * CHOOSING A GALAXY. D21.
  *
- * Two galaxies, 300 commander seats each, and exactly one of them will take you. The list
+ * Two galaxies, `SERVERS.capacity` commander seats each, and exactly one of them will take you. The list
  * could therefore have been a single button — and it deliberately is not.
  *
  * WHY SHOW BOTH WHEN ONE MAY BE REFUSED. Because the shape of the world is the
@@ -71,7 +72,7 @@ export function ServersScreen({
         </Button>
       </header>
 
-      <p className="mt-6 max-w-md text-body leading-relaxed text-dim">{t('servers.rule')}</p>
+      <p className="mt-6 max-w-md text-body leading-relaxed text-dim">{t('servers.rule', { seats: SERVERS.capacity })}</p>
 
       {latestResult && (
         <button

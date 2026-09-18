@@ -331,12 +331,13 @@ describe('the Asteroid Shower front load', () => {
 describe('the pirate lane', () => {
   it('doubles the candidate rate to 0.06 a seat an hour', () => {
     expect(PIRATE.spawnPerSeatPerHour).toBeCloseTo(0.06, 12);
-    expect(PIRATE.spawnPerHour).toBeCloseTo(0.06 * SERVERS.capacity, 9);
+    // The derived lane is priced for the 300-seat galaxies it still serves.
+    expect(PIRATE.spawnPerHour).toBeCloseTo(0.06 * PIRATE.legacySeats, 9);
   });
 
   it('keeps both established rates so their lanes can be rebuilt byte for byte', () => {
-    expect(PIRATE.establishedSpawnPerHour).toBeCloseTo(0.02 * SERVERS.capacity, 9);
-    expect(PIRATE.increasedSpawnPerHour).toBeCloseTo(0.03 * SERVERS.capacity, 9);
+    expect(PIRATE.establishedSpawnPerHour).toBeCloseTo(0.02 * PIRATE.legacySeats, 9);
+    expect(PIRATE.increasedSpawnPerHour).toBeCloseTo(0.03 * PIRATE.legacySeats, 9);
   });
 
   it('doubles the monthly pirate allowance alongside the rate', () => {

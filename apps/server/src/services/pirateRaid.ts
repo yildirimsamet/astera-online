@@ -51,7 +51,7 @@ import {
   pirateCallsign,
   pirateId,
   pirateIndexFromId,
-  privatePirateField,
+  pirateSpecAt,
 } from './pirateField.js';
 import {
   GameError,
@@ -197,7 +197,7 @@ export async function launchPirateRaid(
 
     const snapshot = await loadPirateSnapshot(tx, origin.seasonId, origin.now);
     const index = pirateIndexFromId(snapshot.key, snapshot.pirates, target);
-    const spec = index === null ? undefined : snapshot.pirates[index];
+    const spec = index === null ? undefined : snapshot.spec(index);
     if (!spec || index === null) throw new GameError('NO_SUCH_PIRATE', 'No such pirate', 404);
 
     // Before the rendezvous solve: there is no point finding a meeting point for a
@@ -417,7 +417,7 @@ export async function resolvePirateArrival(
 
   const origin = await loadLocked(tx, raid.planetId, clock);
   const key = (await loadPirateSnapshot(tx, raid.seasonId, origin.now)).key;
-  const spec = privatePirateField(key)[raid.pirateIndex];
+  const spec = await pirateSpecAt(tx, raid.seasonId, raid.pirateIndex);
 
   const attacking = await fleetOfRaid(tx, raid.planetId, raidId);
   if (fleetCount(attacking) === 0) {

@@ -1,6 +1,6 @@
 import { monthlyPirateSupplyAtRate } from './monthly-supply.js';
 import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
-import { PIRATE, SEASON, SERVERS, DEBRIS } from './constants.js';
+import { PIRATE, SEASON, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
 import { orbitPosition } from './galaxy.js';
@@ -338,6 +338,43 @@ function rollLevel(roll: number): PirateLevel {
 }
 
 /**
+ * ONE PIRATE'S BODY, DRAWN IN THE LANE'S FIXED ORDER. Shared by the derived lane and
+ * the dynamic hour so a pirate is the same kind of thing whichever way it spawned.
+ *
+ * THE ORDER IS THE DERIVED LANE'S CONTRACT and must not move: radius, speed, level,
+ * the appearance roll, life, phase, inclination, node, roster. `appearsAt` turns the
+ * fourth draw into a season minute, which is the only thing the two callers place
+ * differently.
+ */
+function drawPirate(rng: Rng, appearsAt: (roll: number) => number): Omit<PirateSpec, 'index'> {
+  const radius = orbitRadius(rng(), PIRATE.orbitMin, PIRATE.orbitMax);
+  const speed = PIRATE.speedMin + rng() * (PIRATE.speedMax - PIRATE.speedMin);
+  const level = rollLevel(rng());
+  const appears = appearsAt(rng());
+  const life =
+    (PIRATE.lifeHoursMin + rng() * (PIRATE.lifeHoursMax - PIRATE.lifeHoursMin)) * 60;
+  const phase = rng() * Math.PI * 2;
+  // Uniform cos(inclination) keeps the orbit normals isotropic; choosing the
+  // angle itself uniformly would crowd every orbital plane around the poles.
+  const inclination = Math.acos(rng() * 2 - 1);
+  const ascendingNode = rng() * Math.PI * 2;
+  const roster = pirateRoster(level, rng);
+  return {
+    level,
+    roster,
+    hoard: pirateHoard(roster),
+    radius,
+    period: (2 * Math.PI * radius) / speed,
+    phase,
+    inclination,
+    ascendingNode,
+    speed,
+    appearsAt: appears,
+    expiresAt: appears + life,
+  };
+}
+
+/**
  * THE SEASON'S WHOLE PIRATE LANE, generated once from the season key.
  *
  * ADDITIVE-LANE DISCIPLINE APPLIES WHEN THE RATE MOVES, and the reason is
@@ -365,7 +402,7 @@ function generatePirateLane(
   if (count <= 0) return pirates;
 
   const remaining = Array.from({ length: SEASON.days }, (_, day) => {
-    const allowance = monthlyPirateSupplyAtRate(day, SERVERS.capacity, spawnPerHour);
+    const allowance = monthlyPirateSupplyAtRate(day, PIRATE.legacySeats, spawnPerHour);
     return {
       alloy: allowance.alloy / PIRATE.hoardRewardScale,
       crystal: allowance.crystal / PIRATE.hoardRewardScale,
@@ -374,21 +411,13 @@ function generatePirateLane(
   });
   const interval = span / count;
   for (let laneIndex = 0; laneIndex < count; laneIndex++) {
-    const radius = orbitRadius(rng(), PIRATE.orbitMin, PIRATE.orbitMax);
-    const speed = PIRATE.speedMin + rng() * (PIRATE.speedMax - PIRATE.speedMin);
-    const level = rollLevel(rng());
-    const appearsAt = appearsAtOffset + laneIndex * interval + rng() * interval;
-    const life =
-      (PIRATE.lifeHoursMin + rng() * (PIRATE.lifeHoursMax - PIRATE.lifeHoursMin)) * 60;
-    const phase = rng() * Math.PI * 2;
-    // Uniform cos(inclination) keeps the orbit normals isotropic; choosing the
-    // angle itself uniformly would crowd every orbital plane around the poles.
-    const inclination = Math.acos(rng() * 2 - 1);
-    const ascendingNode = rng() * Math.PI * 2;
-    const roster = pirateRoster(level, rng);
+    const drawn = drawPirate(
+      rng,
+      (roll) => appearsAtOffset + laneIndex * interval + roll * interval,
+    );
+    const { roster, appearsAt } = drawn;
 
     const budget = remaining[Math.floor(appearsAt / 1440)];
-    const hoard = pirateHoard(roster);
     // Conservative cap: even repeated decisive encounters cannot capture more than
     // the original crew. Pirate-created wreckage is external supply as well.
     // Admission stays on the pre-D204 valuation so a reward tune cannot delete
@@ -401,20 +430,7 @@ function generatePirateLane(
     }
     if (!budget || (['alloy', 'crystal', 'deuterium'] as const).some(k => liability[k] > budget[k])) continue;
     for (const k of ['alloy', 'crystal', 'deuterium'] as const) budget[k] -= liability[k];
-    pirates.push({
-      index: indexOffset + pirates.length,
-      level,
-      roster,
-      hoard,
-      radius,
-      period: (2 * Math.PI * radius) / speed,
-      phase,
-      inclination,
-      ascendingNode,
-      speed,
-      appearsAt,
-      expiresAt: appearsAt + life,
-    });
+    pirates.push({ index: indexOffset + pirates.length, ...drawn });
   }
 
   // Rationing must not spend the entire day's opportunities in its first hour.
@@ -510,4 +526,79 @@ export function generatePirateSchedule(
   if (stage === 'INCREASED') return pirates;
   append(PIRATE.spawnPerHour - PIRATE.increasedSpawnPerHour, options.rngForSurge);
   return pirates;
+}
+
+/**
+ * THE DYNAMIC PIRATE FIELD — one hour at a time. Owner instruction, 2026-09-19. See
+ * `PIRATE.dynamic` for the rule. The mirror of `asteroidDynamic.ts`: the worker
+ * stores the hour's lane, and `generatePirateHour` turns the stored lane back into
+ * pirates identically in every process, from a stream the server keys per hour.
+ */
+export interface PirateHourLane {
+  /** Season minutes, half-open. */
+  fromMinute: number;
+  untilMinute: number;
+  count: number;
+}
+
+export interface PlanPirateHourInput {
+  /** Non-bot commanders active in the window before the hour opened. */
+  activePlayers: number;
+  hourStartsAtMinute: number;
+  /** When spawning may begin: the hour start, or later if the hour opened late. */
+  spawnFromMinute: number;
+  seasonEndsAtMinute: number;
+}
+
+/** The hour's lane, or null when no part of the hour is inside the season. */
+export function planPirateHour(input: PlanPirateHourInput): PirateHourLane | null {
+  const players = input.activePlayers;
+  if (!Number.isInteger(players) || players < 0) {
+    throw new RangeError('activePlayers must be a non-negative integer');
+  }
+  const from = Math.max(input.hourStartsAtMinute, input.spawnFromMinute);
+  const until = Math.min(input.hourStartsAtMinute + 60, input.seasonEndsAtMinute);
+  if (!(until > from)) return null;
+  const hours = (until - from) / 60;
+  const count = Math.max(
+    PIRATE.dynamic.floorPerHour,
+    Math.round(players * PIRATE.dynamic.perActivePlayerPerHour * hours),
+  );
+  if (count > PIRATE.dynamic.indexSpanPerHour) {
+    throw new RangeError('The hour would spawn more pirates than its index span holds');
+  }
+  return { fromMinute: from, untilMinute: until, count };
+}
+
+/** The public index of the `offset`-th pirate of hour `hourOrdinal`. */
+export function dynamicPirateIndex(hourOrdinal: number, offset: number): number {
+  if (!Number.isInteger(hourOrdinal) || hourOrdinal < 0) {
+    throw new RangeError('hourOrdinal must be a non-negative integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0 || offset >= PIRATE.dynamic.indexSpanPerHour) {
+    throw new RangeError('offset must fit the hour index span');
+  }
+  return PIRATE.dynamic.indexBase + hourOrdinal * PIRATE.dynamic.indexSpanPerHour + offset;
+}
+
+/** The hour a dynamic index belongs to, or null for a pirate of the derived lane. */
+export function dynamicPirateHourOf(index: number): number | null {
+  if (!Number.isInteger(index) || index < PIRATE.dynamic.indexBase) return null;
+  return Math.floor((index - PIRATE.dynamic.indexBase) / PIRATE.dynamic.indexSpanPerHour);
+}
+
+/** Every pirate of one stored hour, in index order. */
+export function generatePirateHour(input: {
+  hourOrdinal: number;
+  lane: PirateHourLane;
+  /** One stream for this hour alone; the server keys it off the season secret. */
+  rng: Rng;
+}): PirateSpec[] {
+  const { lane, rng } = input;
+  const span = lane.untilMinute - lane.fromMinute;
+  return Array.from({ length: lane.count }, (_, offset) => ({
+    index: dynamicPirateIndex(input.hourOrdinal, offset),
+    // Random instants inside the hour, like the rocks: no even grid to read.
+    ...drawPirate(rng, (roll) => lane.fromMinute + roll * span),
+  }));
 }

@@ -61,20 +61,20 @@ describe('the Intergalactic Convoy route', () => {
     effect,
   };
 
-  it('crosses antipodal bounds in two hours and its centre at minute sixty', () => {
+  it('crosses antipodal bounds in three hours and its centre at minute ninety', () => {
     const spec = intergalacticConvoySpec(occurrence, sequenceRng(0, 0.5));
     expect(spec.from).toEqual({ x: -GALAXY.radius, y: -0, z: -0 });
     expect(spec.to).toEqual({ x: GALAXY.radius, y: 0, z: 0 });
     expect(spec.speed).toBe((2 * GALAXY.radius) / INTERGALACTIC_CONVOY.durationMinutes);
     expect(intergalacticConvoyPosition(spec, occurrence.startsAtMinute)).toEqual(spec.from);
-    expect(intergalacticConvoyPosition(spec, occurrence.startsAtMinute + 60))
+    expect(intergalacticConvoyPosition(spec, occurrence.startsAtMinute + 90))
       .toEqual({ x: 0, y: 0, z: 0 });
     expect(intergalacticConvoyPosition(spec, occurrence.endsAtMinute)).toEqual(spec.to);
   });
 
-  it('accepts a two-hour route after fractional season-minute conversion', () => {
+  it('accepts a three-hour route after fractional season-minute conversion', () => {
     const startsAtMinute = 427.58143333333334;
-    const endsAtMinute = 547.5814333333333;
+    const endsAtMinute = 607.5814333333333;
 
     expect(endsAtMinute - startsAtMinute).not.toBe(INTERGALACTIC_CONVOY.durationMinutes);
     expect(() => intergalacticConvoySpec({
@@ -86,9 +86,12 @@ describe('the Intergalactic Convoy route', () => {
 
   it('freezes the route-v1 draw order in a golden fixture', () => {
     const spec = intergalacticConvoySpec(occurrence, seededFrom('convoy-route-golden'));
-    expect(spec.from.x).toBeCloseTo(-1_665.6306719810273, 10);
-    expect(spec.from.y).toBeCloseTo(279.33606649129274, 10);
-    expect(spec.from.z).toBeCloseTo(1_071.282328106463, 10);
+    // The route-v1 unit direction, frozen at radius 2000 and scaled with the disc
+    // (2026-09-18, radius 3000): the draw order is what this pins, not the scale.
+    const scale = GALAXY.radius / 2000;
+    expect(spec.from.x).toBeCloseTo(-1_665.6306719810273 * scale, 9);
+    expect(spec.from.y).toBeCloseTo(279.33606649129274 * scale, 9);
+    expect(spec.from.z).toBeCloseTo(1_071.282328106463 * scale, 9);
     expect(spec.to).toEqual({ x: -spec.from.x, y: -spec.from.y, z: -spec.from.z });
   });
 

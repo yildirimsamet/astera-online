@@ -228,14 +228,14 @@ describe('the merchant on its orbit', () => {
 
   it('leaves a rim world a round trip inside the window', () => {
     /*
-      THE WORST GEOMETRY THE BAND ALLOWS: a world on the rim at 2,000 and a ship
+      THE WORST GEOMETRY THE BAND ALLOWS: a world on the rim at 3,000 and a ship
       at the far side of its widest orbit, 1,600 out. An Atlas is the slowest
       cargo hull in the catalogue, so if it fits, the whole class fits.
     */
     const worst = GALAXY.radius + TRADE.orbitMax;
     const oneWay = travelExact(worst, HULLS.ATLAS.speed);
-    expect(worst).toBe(3_600);
-    expect(oneWay).toBeLessThan(50);
+    expect(worst).toBe(4_600);
+    expect(oneWay).toBeLessThan(60);
     expect(oneWay * 2).toBeLessThan(TRADE_WINDOW_MINUTES);
   });
 

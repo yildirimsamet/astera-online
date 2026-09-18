@@ -479,9 +479,14 @@ export function buildWorld(cfg: SimConfig): World {
     shieldInsightSeen: false,
   }));
 
+  // A custom layout carries its own capital count, so its slots are layered on
+  // that count rather than the shipped thousand (`GALAXY.strata`).
   const strategicGalaxy = generateGalaxy(
     cfg.seed,
     cfg.neutralLayout?.slotPool ?? MULTI_WORLD.neutralSlotPool,
+    cfg.neutralLayout
+      ? { capitalSlots: cfg.neutralLayout.capitalSlots, botSlots: cfg.neutralLayout.botSlots ?? 0 }
+      : undefined,
   );
   const neutrals: SimNeutralWorld[] = selectNeutralSlots(
     cfg.seed,

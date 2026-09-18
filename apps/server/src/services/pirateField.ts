@@ -1,10 +1,14 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import {
+  MULTI_WORLD,
   activePirates,
+  dynamicPirateHourOf,
+  generatePirateHour,
   generatePirateSchedule,
   pirateDiscovered,
   type Fleet,
+  type PirateHourLane,
   type HullId,
   type PirateLaneStage,
   type PirateSpec,
@@ -14,6 +18,7 @@ import { minutesSince } from '../clock.js';
 import { GameError } from './planet.js';
 import { pirateState, seasons } from '../db/schema.js';
 import type { Queryable } from '../db/client.js';
+import { loadPirateHour, loadPirateHours } from './asteroidSpawn.js';
 
 /**
  * THE SEASON'S PIRATE LANE, KEYED BY A SECRET THAT NEVER CROSSES THE API. D150.
@@ -96,6 +101,66 @@ export function privatePirateField(
   return field;
 }
 
+const hourCache = new Map<string, PirateSpec[]>();
+
+/**
+ * THE PIRATES OF ONE STORED HOUR (ruleset 9). Keyed by the season secret, the hour
+ * and its lane — the complete input — under a label no derived lane uses, so a
+ * dynamic pirate cannot share a draw with anything else in the season.
+ */
+export function privatePirateHour(
+  key: string,
+  hour: { hourOrdinal: number; lane: PirateHourLane },
+): PirateSpec[] {
+  const cacheKey = `${key}:${String(hour.hourOrdinal)}:${JSON.stringify(hour.lane)}`;
+  const cached = hourCache.get(cacheKey);
+  if (cached) {
+    hourCache.delete(cacheKey);
+    hourCache.set(cacheKey, cached);
+    return cached;
+  }
+  const pirates = generatePirateHour({
+    hourOrdinal: hour.hourOrdinal,
+    lane: hour.lane,
+    rng: keyedRng(key, `pirate:dynamic:v1:${String(hour.hourOrdinal)}`),
+  });
+  hourCache.set(cacheKey, pirates);
+  while (hourCache.size > 256) {
+    const oldest = hourCache.keys().next().value;
+    if (oldest === undefined) break;
+    hourCache.delete(oldest);
+  }
+  return pirates;
+}
+
+/** Does this season spawn pirates per active commander rather than per seat? */
+export const dynamicPirates = (season: { rulesetVersion: number }): boolean =>
+  season.rulesetVersion >= MULTI_WORLD.dynamicPirateRulesetVersion;
+
+/**
+ * ONE PIRATE BY ITS INDEX, WHEREVER IT CAME FROM. For the reads that hold a raid's
+ * `pirate_index` and nothing else — a report, the flight strip, a raid resolving
+ * long after the snapshot moved on. A derived index is a position in the season's
+ * lane; a dynamic one names its hour, and only that hour's row is read.
+ */
+export async function pirateSpecAt(
+  db: Queryable,
+  seasonId: string,
+  index: number,
+): Promise<PirateSpec | undefined> {
+  const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
+  if (!season) return undefined;
+  const hourOrdinal = dynamicPirateHourOf(index);
+  if (hourOrdinal === null) {
+    return dynamicPirates(season) ? undefined : privatePirateField(season.asteroidKey)[index];
+  }
+  if (!dynamicPirates(season)) return undefined;
+  const lane = await loadPirateHour(db, season, hourOrdinal);
+  if (lane === null) return undefined;
+  return privatePirateHour(season.asteroidKey, { hourOrdinal, lane })
+    .find((spec) => spec.index === index);
+}
+
 /** Stable 128-bit public handle; the raw lane index is never serialised. */
 export function pirateId(key: string, index: number): string {
   return createHmac('sha256', key)
@@ -116,8 +181,15 @@ export function pirateId(key: string, index: number): string {
 export const pirateCallsign = (key: string, index: number): string =>
   pirateId(key, index).slice(0, 4);
 
+/**
+ * KEYED BY THE FIELD'S EXTENT, NOT ITS LENGTH ALONE. The derived lane never changes
+ * shape, but the dynamic field is a window that slides every hour, and two windows
+ * of equal length would have shared one map and resolved a handle to a pirate the
+ * current field does not hold — the bug `asteroidIndexFromId` was rewritten for.
+ * Each hour's indices are a contiguous run, so length plus both ends names the set.
+ */
 function idsFor(key: string, field: readonly PirateSpec[]): Map<string, number> {
-  const cacheKey = `${key}:${String(field.length)}`;
+  const cacheKey = `${key}:${String(field.length)}:${String(field[0]?.index ?? -1)}:${String(field.at(-1)?.index ?? -1)}`;
   const cached = idCache.get(cacheKey);
   if (cached) return cached;
   const ids = new Map(field.map((spec) => [pirateId(key, spec.index), spec.index]));
@@ -201,6 +273,8 @@ export interface PirateSnapshot {
   startsAt: Date;
   key: string;
   state: ReadonlyMap<number, PirateStateRow>;
+  /** Pirate `index` if this snapshot holds it — by INDEX, never by array position. */
+  spec: (index: number) => PirateSpec | undefined;
   /** The crew still aboard pirate `index`. */
   livingRosterOf: (index: number) => Fleet;
   destroyedAt: (index: number) => Date | null;
@@ -211,7 +285,7 @@ export interface PirateSnapshot {
 export async function loadPirateSnapshot(
   db: Queryable,
   seasonId: string,
-  _now: Date,
+  now: Date,
 ): Promise<PirateSnapshot> {
   const [season] = await db.select().from(seasons).where(eq(seasons.id, seasonId));
   if (!season) throw new GameError('SEASON_NOT_FOUND', 'No such season', 404);
@@ -221,6 +295,11 @@ export async function loadPirateSnapshot(
     destroyedAt: row.destroyedAt,
     destroyedByPlayerId: row.destroyedByPlayerId,
   }]));
+  if (dynamicPirates(season)) {
+    const pirates = (await loadPirateHours(db, season, now))
+      .flatMap((hour) => privatePirateHour(season.asteroidKey, hour));
+    return snapshotOf(season, state, pirates, Infinity);
+  }
   const pirates = privatePirateField(season.asteroidKey);
   /*
     First roll all processes with the newer contacts hidden, then open each lane.
@@ -235,13 +314,24 @@ export async function loadPirateSnapshot(
       ? privatePirateField(season.asteroidKey, 'INCREASED').length
       : pirates.length;
 
+  return snapshotOf(season, state, pirates, visibleLength);
+}
+
+function snapshotOf(
+  season: { startsAt: Date; asteroidKey: string },
+  state: ReadonlyMap<number, PirateStateRow>,
+  pirates: PirateSpec[],
+  visibleLength: number,
+): PirateSnapshot {
+  const byIndex = new Map(pirates.map((spec) => [spec.index, spec]));
   return {
     pirates,
     startsAt: season.startsAt,
     key: season.asteroidKey,
     state,
+    spec: (index) => byIndex.get(index),
     livingRosterOf: (index) => {
-      const spec = pirates[index];
+      const spec = byIndex.get(index);
       return spec ? livingRoster(spec.roster, state.get(index)?.losses) : {};
     },
     destroyedAt: (index) => state.get(index)?.destroyedAt ?? null,

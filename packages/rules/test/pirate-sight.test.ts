@@ -6,6 +6,8 @@ import {
   piratePosition,
   pirateSightZone,
   pirateZone,
+  radarContactRange,
+  sensorReach,
   sensorSphere,
   type PirateSpec,
   type SensorEpoch,
@@ -83,6 +85,9 @@ const eyes = (at = { x: 1_000, y: 0, z: 0 }, telescope = 5, radar = 5): SensorSp
 
 const BLIND: SensorSphere[] = [];
 
+/** Outside Telescope 5, inside Radar 5 — derived, so a rescaled ladder keeps the meaning. */
+const BETWEEN_TELESCOPE_AND_RADAR = (sensorReach(5) + radarContactRange(5)) / 2;
+
 describe('a pirate a commander has already had eyes on', () => {
   it('is discovered at the instant it first crosses the sphere', () => {
     expect(pirateDiscoveredAt(pirate(), [epoch()], 40)).toBe(0);
@@ -126,7 +131,7 @@ describe('the zone a pirate is published at', () => {
   });
 
   it('still falls back to a radar contact where the telescope does not reach', () => {
-    const far = { x: here.x + 1_800, y: 0, z: 0 };
+    const far = { x: here.x + BETWEEN_TELESCOPE_AND_RADAR, y: 0, z: 0 };
     expect(pirateZone(eyes(far), spec, here, [], 0)).toBe('CONTACT');
   });
 
@@ -150,7 +155,7 @@ describe('the zone a pirate is published at', () => {
    * bought — which is why it may sit over a live radar contact.
    */
   it('holds a live radar contact at identified once it has been discovered', () => {
-    const far = { x: here.x + 1_800, y: 0, z: 0 };
+    const far = { x: here.x + BETWEEN_TELESCOPE_AND_RADAR, y: 0, z: 0 };
     expect(pirateZone(eyes(far), spec, here, [epoch()], 0)).toBe('IDENTIFIED');
   });
 
@@ -159,7 +164,7 @@ describe('the zone a pirate is published at', () => {
    * telescope has ever held is unchanged by D160 at every range.
    */
   it('leaves a never-identified pirate at contact inside a radar circle', () => {
-    const far = { x: here.x + 1_800, y: 0, z: 0 };
+    const far = { x: here.x + BETWEEN_TELESCOPE_AND_RADAR, y: 0, z: 0 };
     const never = [epoch({ at: { x: 0, y: 1_900, z: 0 } })];
     expect(pirateZone(eyes(far), spec, here, never, 0)).toBe('CONTACT');
   });

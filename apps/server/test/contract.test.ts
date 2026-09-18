@@ -235,7 +235,7 @@ describe('every payload the client parses', () => {
   };
 
   /** Arrange one real, non-isotope target inside this commander's current eyes. */
-  const exposeMineableAsteroid = async (): Promise<void> => {
+  const exposeMineableAsteroid = async (): Promise<{ appearsAt: number; radius: number }> => {
     const seasonStart = new Date('2026-01-01T00:00:00.000Z');
     let minute = (f.clock.now().getTime() - seasonStart.getTime()) / 60_000;
     let rock = f.asteroids.find((candidate) =>
@@ -252,6 +252,7 @@ describe('every payload the client parses', () => {
     const mine = f.planetIds[0]!;
     await placeAt(f.db, mine, asteroidPosition(rock, minute));
     await refreshSensorEpoch(f.db, mine, f.clock.now());
+    return rock;
   };
 
   /**
@@ -2201,9 +2202,12 @@ describe('every payload the client parses', () => {
       silent,
     );
 
-    await exposeMineableAsteroid();
+    const exposed = await exposeMineableAsteroid();
     const field = miningSchema.parse(await get('/api/mining'));
-    const rock = field.asteroids.find((a) => a.oreRemaining > 0);
+    // THE ROCK THE WORLD WAS PARKED ON, not the first one listed: the sensor ladder
+    // reaches far enough (×1.5, 2026-09-18) to list rocks too short-lived to catch.
+    const rock = field.asteroids.find((a) => a.oreRemaining > 0
+      && a.appearsAt === exposed.appearsAt && a.radius === exposed.radius);
     expect(rock, 'no rock to mine in the contract fixture').toBeDefined();
 
     const run = await launchMining(f.db, mine, rock!.id, 2, f.clock);

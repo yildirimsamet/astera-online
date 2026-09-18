@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { and, eq, gte, sql } from 'drizzle-orm';
-import { SERVERS } from '@astera/rules';
+import { GALAXY, MULTI_WORLD, SERVERS } from '@astera/rules';
 import { accounts, botProfiles, buildings, planets, players, seasons, shards } from '../src/db/schema.js';
 import { addBot, listBots, retireBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats, runBotSweep } from '../src/services/bots/sweep.js';
@@ -129,6 +129,43 @@ describe('seating bots on a live galaxy', () => {
     expect(levels.length).toBeGreaterThan(0);
     expect(levels.find((row) => row.type === 'CORE')?.level).toBeGreaterThanOrEqual(2);
     expect(levels.find((row) => row.type === 'VAULT')?.level).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * THE SERVER'S COMMANDERS STAND BETWEEN THE PEOPLE AND T1. Owner instruction,
+   * 2026-09-18: a bot is scattered among the commanders, one band deeper, so a
+   * raider looking inward meets one before the neutral field and no single
+   * person is the only thing near a hungry neighbour.
+   */
+  it('seats bots on their own band, just inside every person', async () => {
+    await fillPool(BOTS.perGalaxy);
+    await ensureBotSeats(f.db, f.clock, silent);
+    const rows = await f.db
+      .select({ slot: planets.slotIndex, x: planets.x, y: planets.y, z: planets.z, bot: botProfiles.accountId })
+      .from(planets)
+      .innerJoin(players, eq(players.id, planets.controllerPlayerId))
+      .leftJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
+      .where(eq(planets.kind, 'CAPITAL'));
+    const bots = rows.filter((row) => row.bot !== null);
+    const people = rows.filter((row) => row.bot === null);
+    expect(bots).toHaveLength(BOTS.perGalaxy);
+    expect(people).toHaveLength(2);
+
+    const share = (row: { x: number; y: number; z: number }): number =>
+      Math.hypot(row.x, row.y, row.z) / GALAXY.radius;
+    for (const bot of bots) {
+      expect(bot.slot).toBeGreaterThanOrEqual(MULTI_WORLD.capitalSlots);
+      expect(bot.slot).toBeLessThan(MULTI_WORLD.capitalSlots + MULTI_WORLD.botSlots);
+      expect(share(bot)).toBeGreaterThanOrEqual(GALAXY.strata.bot.inner - 1e-4);
+      expect(share(bot)).toBeLessThanOrEqual(GALAXY.strata.bot.outer + 1e-4);
+    }
+    // `seedWorld` moves the people into one cluster (`placeInCluster`), so only their
+    // address is theirs; the shell those addresses stand on is `galaxy-strata.test.ts`.
+    for (const person of people) expect(person.slot).toBeLessThan(MULTI_WORLD.capitalSlots);
+  });
+
+  it('never gives the roster more seats than the galaxy reserves for it', () => {
+    expect(BOTS.perGalaxy).toBeLessThanOrEqual(MULTI_WORLD.botSlots);
   });
 
   it('seats the whole pool it has and asks for no more', async () => {

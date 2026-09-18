@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   GALAXY_EVENTS,
+  INTERGALACTIC_CONVOY,
   MULTI_WORLD,
   SEASON,
   TRADE,
@@ -465,8 +466,9 @@ describe('persisted galaxy events', () => {
     expect(showerFigures.filter((value) => value === 5)).toHaveLength(weekendDays);
     expect(merchants.every((row) => 'rate' in row.effect
       && row.effect.rate.deuterium === TRADE.rate.deuterium)).toBe(true);
-    expect(convoys.every((row) => row.definitionVersion === 4
-      && minutesSince(row.startsAt, row.endsAt) === 120
+    expect(convoys.every((row) => row.definitionVersion
+      === GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version
+      && minutesSince(row.startsAt, row.endsAt) === INTERGALACTIC_CONVOY.durationMinutes
       && 'resourceCapHours' in row.effect && row.effect.resourceCapHours === 4)).toBe(true);
     expect(lifecycle.every((row) => row.refId !== null)).toBe(true);
   });

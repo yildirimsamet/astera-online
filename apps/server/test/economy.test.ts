@@ -250,8 +250,8 @@ describe('telescope range and cooldown', () => {
     await giveSatellite(f.db, mine, 'UPLINK');
     await placeAt(f.db, mine, { x: 0 });
     await placeAt(f.db, near, { x: 200 });
-    // Beyond L1's reach of 950, inside L3's 1,250.
-    await placeAt(f.db, far, { x: 1_000 });
+    // Beyond L1's reach of 1,425, inside L3's 1,875 (the ×1.5 ladder, 2026-09-18).
+    await placeAt(f.db, far, { x: 1_600 });
   });
 
   it('refuses a world beyond the telescope reach', async () => {
@@ -264,7 +264,7 @@ describe('telescope range and cooldown', () => {
   it('a bigger telescope reaches further', async () => {
     await giveInstrument(f.db, mine, 'TELESCOPE', 3);
     await expect(assignWatch(f.db, mine, far, 0, f.clock)).resolves.toBeTruthy();
-    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(1_000);
+    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(1_600);
   });
 
   /** Filling an empty slot is free. The price is changing your mind. */

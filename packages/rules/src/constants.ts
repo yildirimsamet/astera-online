@@ -1287,16 +1287,20 @@ export const INTEL = {
    * or the ring it draws is inside out.
    *
    *     level   telescope   radar   margin
-   *       1         950     1,200     +250
-   *       2       1,150     1,450     +300
-   *       3       1,250     1,700     +450
-   *       4       1,450     1,900     +450
-   *       5       1,600     2,200     +600
-   *       6       2,500     2,900     +400
-   *       7       3,400     3,600     +200
-   *       8       4,400     4,400        0
+   *       1       1,425     1,800     +375
+   *       2       1,725     2,175     +450
+   *       3       1,875     2,550     +675
+   *       4       2,175     2,850     +675
+   *       5       2,400     3,300     +900
+   *       6       3,750     4,350     +600
+   *       7       5,100     5,400     +300
+   *       8       6,600     6,600        0
+   *
+   * BOTH LADDERS TOOK THE ×1.5 WITH THE RADIUS, 2026-09-18, owner decision: the
+   * disc went 2,000 → 3,000 and L8 had to keep reaching the whole of it. The
+   * margins scaled with them, so the owner's rule above still holds rung by rung.
    */
-  radarRange: [0, 1200, 1450, 1700, 1900, 2200, 2900, 3600, 4400] as readonly number[],
+  radarRange: [0, 1800, 2175, 2550, 2850, 3300, 4350, 5400, 6600] as readonly number[],
 
   /**
    * HOW FAR A RADAR KNOWS SOMETHING IS COMING FOR YOU. D126, MERGED FOR NOW.
@@ -1319,12 +1323,12 @@ export const INTEL = {
    * editing this one table back to a tighter ladder — nothing else in the codebase
    * assumes they are equal, because both functions are still separate.
    */
-  radarContactRange: [0, 1200, 1450, 1700, 1900, 2200, 2900, 3600, 4400] as readonly number[],
+  radarContactRange: [0, 1800, 2175, 2550, 2850, 3300, 4350, 5400, 6600] as readonly number[],
 
   /**
    * PROVISIONAL. How far a telescope can see, in game units, by level. D18.
    *
-   * The galaxy has radius 2,000, so the furthest two worlds can be 4,000 apart.
+   * The galaxy has radius 3,000, so the furthest two worlds can be 6,000 apart.
    * The raw table remains the watch-slot ladder; moving-contact sight is separately
    * floored and capped by `sensorReach` below.
    *
@@ -1351,7 +1355,7 @@ export const INTEL = {
    * spread to reach it, so every rung buys a real step and the table says its own
    * ceiling out loud.
    */
-  telescopeRange: [0, 950, 1150, 1250, 1450, 1600, 2500, 3400, 4400] as readonly number[],
+  telescopeRange: [0, 1425, 1725, 1875, 2175, 2400, 3750, 5100, 6600] as readonly number[],
 
   /**
    * PROVISIONAL. Hours a telescope slot is locked after being RE-POINTED. D18.
@@ -1427,7 +1431,7 @@ export const SENSOR = {
    * on the far side can still earn galaxy-wide moving-contact reach. Watch slots,
    * probes and Veil clarity continue to ration detailed world intelligence.
    */
-  maxRadius: 4400,
+  maxRadius: 6600,
 
 
   /**
@@ -2259,10 +2263,46 @@ export const RIVAL = {
 } as const;
 
 export const GALAXY = {
-  /** The playable volume is one sphere centred on the origin. */
-  radius: 2000,
+  /**
+   * The playable volume is one sphere centred on the origin.
+   *
+   * 2000 → 3000 on 2026-09-18 with the seat count 300 → 1000. ×1.5 rather than ×2
+   * because the shell the commanders stand on is what has to hold a thousand of
+   * them, and ∛(1000/300) ≈ 1.49 keeps its spacing close to what was played. Hull
+   * speeds, radar and telescope reach did NOT take the factor — a doubled disc
+   * would have doubled every flight to the centre and halved every sensor's share
+   * of the map. The orbit bands of rocks, pirates and the merchant DID, because
+   * they are geometry: left at 2000 no rock would ever cross the commander shell.
+   */
+  radius: 3000,
   minSeparation: 225,
   defaultSlots: 200,
+
+  /**
+   * THE GALAXY IS LAYERED, RIM TO CORE. Owner instruction, 2026-09-18. Shares of
+   * `radius`; every band is sampled uniformly by VOLUME inside its limits.
+   *
+   *   · commander — every person's capital, on the outer shell. Every commander is
+   *     therefore the same distance from the centre, and where you were seeded no
+   *     longer decides how far the prize is;
+   *   · bot — the server's commanders, one band deeper. Scattered all the way
+   *     round, so a raider looking inward meets one before the neutral field and
+   *     the pressure on any single person is diluted (owner: *"abartmadan"*);
+   *   · neutral — the search pool neutral worlds are chosen from, inside the bots;
+   *   · t1 / t2Share / t3Share — where each tier is aimed within that pool. T3 is the
+   *     contested core, T2 a ring around it, T1 the outer neutral band.
+   *
+   * THE ORDER IS THE CONTRACT: every commander outside every bot, every bot
+   * outside every neutral, T1 outside T2 outside T3 (`galaxy-strata.test.ts`).
+   */
+  strata: {
+    commander: { inner: 0.8, outer: 1 },
+    bot: { inner: 0.72, outer: 0.8 },
+    neutral: { inner: 0, outer: 0.7 },
+    t1: { inner: 0.5, outer: 0.7 },
+    t2Share: 0.35,
+    t3Share: 0.12,
+  },
 
   /**
    * ASTEROIDS ORBIT. They were briefly put on straight passes, and that was wrong.
@@ -2324,8 +2364,16 @@ export const GALAXY = {
   asteroidSpeedMax: 750,
 
   /** How far out they run. The whole tilted orbit stays inside the playable sphere. */
-  asteroidOrbitMin: 400,
-  asteroidOrbitMax: 2000,
+  asteroidOrbitMin: 600,
+  asteroidOrbitMax: 3000,
+  /**
+   * THE SEAT COUNT THE STATIC FIELD'S ORE BUDGET IS PRICED FOR, pinned at the 300
+   * it was balanced at. The static schedule's rock COUNT is a fixed hourly rate, so
+   * letting its budget follow `SERVERS.capacity` to 1000 would have made every rock
+   * ~3× richer without a single balance decision (D99: capacity work may not
+   * quietly rebalance). The per-player dynamic field is what scales with people.
+   */
+  asteroidBudgetSeats: 300,
 
   /**
    * Hours a rock stays in the disc before it is gone for good. PROVISIONAL.
@@ -2467,12 +2515,16 @@ export const TRADE = {
    * the rim is a free trip for the opposite rim and an expedition for everybody
    * else. Pulling both ends in costs nothing and makes the worst case survivable.
    *
-   * THE WORST CASE, VERIFIED IN `trade.test.ts`: a rim world at 2,000 and a ship
-   * at 1,600 on the far side is 3,600 units. An Atlas covers that in 46 minutes,
-   * so the round trip is 92 — comfortably inside the 180-minute window, with the
-   * dock and a mis-timed launch still paid for.
+   * THE WORST CASE, VERIFIED IN `trade.test.ts`: a rim world at 3,000 (the
+   * 2026-09-18 radius) and a ship at 1,600 on the far side is 4,600 units. An Atlas
+   * covers that in about 59 minutes, so the round trip fits the two-hour window.
+   * THE BAND DID NOT TAKE THE RADIUS FACTOR ON PURPOSE: at 2,400 the worst round
+   * trip is ~138 minutes and a far-side commander could not trade at all. Sitting
+   * at the middle ring, the merchant is the same distance from every rim capital.
+   * The inner edge moved 600 → 700 only to stay strictly inside the rocks' band,
+   * whose inner edge took the factor to 600.
    */
-  orbitMin: 600,
+  orbitMin: 700,
   orbitMax: 1600,
 
   /**
@@ -2487,7 +2539,13 @@ export const TRADE = {
 
 /** D201's shared convoy clocks and quote limits. Route/reward math lives in rules. */
 export const INTERGALACTIC_CONVOY = {
-  durationMinutes: 120,
+  /**
+   * 120 → 180 on 2026-09-19, owner instruction, after the radius went 2000 → 3000.
+   * The crossing is `2 × radius` in this many minutes, so three hours puts the
+   * formation back at its pre-growth speed and gives the rim — where every
+   * commander now lives — the extra hour the longer reach to the route costs.
+   */
+  durationMinutes: 180,
   engagementSeconds: 5,
   quoteToleranceSeconds: 5,
   /**
@@ -2594,14 +2652,21 @@ export const GALAXY_EVENTS = {
     },
     TRADE_SHIP: {
       schedule: 'FIXED_DAILY',
-      version: 4,
+      /**
+       * VERSION 5: every window 2h → 2h30, owner instruction 2026-09-19. At radius
+       * 3000 the worst Atlas round trip (far rim to the far side of the merchant's
+       * orbit) is ~117 minutes, which left a two-hour window no room for a late
+       * launch or the dock. Calendars are dealt at creation, so this reaches new
+       * seasons only.
+       */
+      version: 5,
       windows: [
-        { startsAtLocalMinute: 60, endsAtLocalMinute: 3 * 60, effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 9 * 60,
+        { startsAtLocalMinute: 60, endsAtLocalMinute: 3 * 60 + 30, effect: { rate: TRADE.rate } },
+        { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 9 * 60 + 30,
           effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 15 * 60, endsAtLocalMinute: 17 * 60,
+        { startsAtLocalMinute: 15 * 60, endsAtLocalMinute: 17 * 60 + 30,
           effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 23 * 60,
+        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 23 * 60 + 30,
           effect: { rate: TRADE.rate } },
       ],
     },
@@ -2612,13 +2677,15 @@ export const GALAXY_EVENTS = {
        * 2026-09-16: weekdays 21:00–23:00, weekends 12:00–14:00 and 20:00–22:00, and
        * *"artık convoy -> saatlik üretim miktarının 4 katına kadar verecek."*
        *
-       * EVERY WINDOW IS STILL TWO HOURS, and that is the route contract rather than a
-       * preference: the formation's speed is `2 x GALAXY.radius / durationMinutes`,
-       * so it enters one rim as the window opens and clears the far rim as it closes,
-       * and `intergalacticConvoySpec` refuses any other duration outright. Fewer
-       * crossings at a doubled cap keep a convoy worth planning an evening around.
+       * EVERY WINDOW IS `durationMinutes` LONG (three hours since VERSION 5,
+       * 2026-09-19), and that is the route contract rather than a preference: the
+       * formation's speed is `2 x GALAXY.radius / durationMinutes`, so it enters one
+       * rim as the window opens and clears the far rim as it closes, and
+       * `intergalacticConvoySpec` refuses any other duration outright. The weekday
+       * crossing now runs 21:00–24:00, which the calendar allows (a window may end
+       * exactly at the day boundary).
        */
-      version: 4,
+      version: 5,
       windows: ([
         ['WEEKDAY', 21 * 60],
         ['WEEKEND', 12 * 60],
@@ -2878,8 +2945,12 @@ export const SEASON = {
 export const SERVERS = {
   /** How many galaxies may be advertised and opened at once. D100. */
   count: 2,
-  /** Commander seats per galaxy — also the number of reserved capital slots. */
-  capacity: 300,
+  /**
+   * Commander seats per galaxy — also the number of reserved capital slots.
+   * 300 → 1000 on 2026-09-18, owner instruction, with the radius taken ×1.5 so the
+   * rim keeps roughly today's neighbour spacing (`GALAXY.radius`).
+   */
+  capacity: 1000,
   /**
    * How long a player counts as "in game" after their last authenticated request.
    *
@@ -3089,10 +3160,44 @@ export const PIRATE = {
    * a pure function of the season key rather than of a live population count.
    */
   spawnPerSeatPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR,
-  spawnPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
-  establishedSpawnPerHour: PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
+  /**
+   * THE SEATS THE DERIVED (LEGACY) LANE IS PRICED FOR, pinned at 300. Since ruleset
+   * 9 (2026-09-19) a new season spawns pirates per ACTIVE commander (`dynamic`
+   * below), so this lane only ever serves a season created before it — and those
+   * were 300-seat galaxies. Following `SERVERS.capacity` to 1000 would have tripled
+   * such a season's pirates and its external supply without a decision.
+   */
+  legacySeats: 300,
+  spawnPerHour: PIRATE_SPAWN_PER_SEAT_PER_HOUR * 300,
+  establishedSpawnPerHour: PIRATE_ESTABLISHED_SPAWN_PER_SEAT_PER_HOUR * 300,
   /** The first two lanes together: the field as it stood before the doubling. */
-  increasedSpawnPerHour: PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR * SERVERS.capacity,
+  increasedSpawnPerHour: PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR * 300,
+
+  /**
+   * THE DYNAMIC PIRATE FIELD. Owner instruction, 2026-09-19: pirates spawn like the
+   * rocks — per commander who actually played, not per seat. Every hour the worker
+   * counts the people active before it opened (`countActiveCommanders`, bots never
+   * count) and that hour spawns `activePlayers × perActivePlayerPerHour` pirates,
+   * and never fewer than `floorPerHour`, so a commander alone at four in the morning
+   * still has a target. A 1000-seat galaxy with 200 people on is ~50 an hour; a
+   * quiet night is one.
+   *
+   * THE RATE IS THE THROTTLE, NOT A DAILY BUDGET. The derived lane admitted pirates
+   * against a per-seat monthly allowance because its count was fixed in advance. An
+   * hour here is sized to who is actually playing, so the allowance's job — keeping
+   * external supply proportional to the population — is done by the rate itself.
+   * Each pirate's roster, hoard and capture rules are exactly the derived lane's.
+   *
+   * Indices live above every derived lane's (`indexBase`) and each hour owns a
+   * span of them, so a pirate's handle and its `pirate_state` row are stable the
+   * moment its hour is written.
+   */
+  dynamic: {
+    perActivePlayerPerHour: 0.25,
+    floorPerHour: 1,
+    indexBase: 1_000_000,
+    indexSpanPerHour: 1_000,
+  },
 
   /** Hours a pirate rides its orbit before it is gone for good. */
   lifeHoursMin: 2,
@@ -3137,8 +3242,8 @@ export const PIRATE = {
   speedMax: profileFlightSpeed(15) * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
 
   /** How far out they run. Same band and same draw as the rocks. */
-  orbitMin: 400,
-  orbitMax: 2000,
+  orbitMin: 600,
+  orbitMax: 3000,
 
   /**
    * HOW FAR AHEAD A PIRATE'S MOTION IS PUBLISHED. Derived, never typed.
@@ -3166,7 +3271,13 @@ export const MULTI_WORLD = {
    * fixed public-event calendar and Intergalactic Convoy. Older seasons retain
    * their persisted random calendars; this default affects new seasons only.
    */
-  rulesetVersion: 8,
+  rulesetVersion: 9,
+  /**
+   * 9 · 2026-09-19: pirates spawn per ACTIVE commander, hour by hour (`PIRATE.dynamic`),
+   * instead of the per-seat lane derived from the key. A season created below this
+   * keeps its derived lane for life — a pirate is never re-dealt under a live season.
+   */
+  dynamicPirateRulesetVersion: 9,
   /** D2's uncapped additive Dominion. Earlier seasons retain the bounded curve. */
   dominionLinearRulesetVersion: 7,
   /** Old hull rows may exist only before this offline season boundary. D148. */
@@ -3228,8 +3339,14 @@ export const MULTI_WORLD = {
   pirateRulesetVersion: 1,
   /** Coupled to admission: every seat needs one collision-free capital address. D99. */
   capitalSlots: SERVERS.capacity,
-  /** Nine candidates per neutral preserves D97's placement-search density at the larger scale. */
-  neutralSlotPool: SERVERS.capacity + 450,
+  /**
+   * Addresses reserved for the server's commanders, right after the capitals and on
+   * `GALAXY.strata.bot`. A ceiling, not a roster: `BOTS.perGalaxy` seats that many
+   * of them. The owner expects 50–100 at most in a thousand-seat galaxy.
+   */
+  botSlots: 100,
+  /** 450 neutral candidates after every capital and bot address. */
+  neutralSlotPool: SERVERS.capacity + 100 + 450,
   /** D209 (owner instruction): eight more T1, four more T2 and two more T3 than D97's 30/15/6. */
   neutralCounts: { 1: 38, 2: 19, 3: 8 },
   /**

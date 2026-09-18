@@ -40,6 +40,6 @@ describe('2026-09-17 asteroid balance', () => {
     expect(GALAXY_EVENTS.definitions.TRADE_SHIP.windows.map((window) => [
       window.startsAtLocalMinute,
       window.endsAtLocalMinute,
-    ])).toEqual([[60, 180], [420, 540], [900, 1020], [1260, 1380]]);
+    ])).toEqual([[60, 210], [420, 570], [900, 1050], [1260, 1410]]);
   });
 });

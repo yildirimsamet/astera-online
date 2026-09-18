@@ -9,7 +9,6 @@ import {
   engagementEndsAt,
   radarContactRange,
   radarRange,
-  sensorSphere,
   massClass,
   massHeavyValue,
   massMediumValue,
@@ -40,25 +39,34 @@ afterAll(async () => {
   await close();
 });
 
+/**
+ * 0043 AND 0045 ARE HISTORY, AND ARE HELD TO THE LADDER OF THEIR DAY.
+ *
+ * They used to be compared with the runtime rule, which was right only while the
+ * rule never moved. The 2026-09-18 ×1.5 ladder moved it, and an applied migration
+ * is never edited — `0097_thousand_seat_galaxy.sql` carries every open epoch onto
+ * the new ladder instead (`thousand-seats-migration.test.ts`).
+ */
+const LADDER_OF_0043_AND_0045 = [950, 1150, 1250, 1450, 1600] as const;
+
 describe('the durable sensor-history backfill', () => {
-  it('uses the same finite Telescope ladder as the runtime rule', () => {
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    const migration = readFileSync(
-      path.join(here, '../drizzle/0043_backfill_sensor_epochs.sql'),
-      'utf8',
-    );
-    for (const level of [1, 2, 3, 4, 5]) {
-      const reach = sensorSphere({ x: 0, y: 0, z: 0 }, level, 0).identify;
+  const expectLadder = (migration: string): void => {
+    LADDER_OF_0043_AND_0045.forEach((reach, i) => {
+      const level = i + 1;
       const predicate = level === 5
         ? `WHEN "e"."level" >= 5 THEN ${String(reach)}`
         : `WHEN "e"."level" = ${String(level)} THEN ${String(reach)}`;
       expect(migration).toContain(predicate);
-    }
-    const base = sensorSphere({ x: 0, y: 0, z: 0 }, 0, 0).identify;
-    expect(migration).toContain(`ELSE ${String(base)}`);
+    });
+    expect(migration).toContain(`ELSE ${String(SENSOR.baseRadius)}`);
+  };
+
+  it('backfilled on the finite Telescope ladder of its day', () => {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    expectLadder(readFileSync(path.join(here, '../drizzle/0043_backfill_sensor_epochs.sql'), 'utf8'));
   });
 
-  it('moves every live open epoch onto the new ladder at deployment time', () => {
+  it('moved every live open epoch onto the ladder of its day at deployment time', () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const migration = readFileSync(
       path.join(here, '../drizzle/0045_refresh_sensor_radius_epochs.sql'),
@@ -66,14 +74,7 @@ describe('the durable sensor-history backfill', () => {
     );
     expect(migration).toContain('UPDATE "sensor_epochs"');
     expect(migration).toContain('SET "ends_at" = now()');
-    for (const level of [1, 2, 3, 4, 5]) {
-      const reach = sensorSphere({ x: 0, y: 0, z: 0 }, level, 0).identify;
-      const predicate = level === 5
-        ? `WHEN "e"."level" >= 5 THEN ${String(reach)}`
-        : `WHEN "e"."level" = ${String(level)} THEN ${String(reach)}`;
-      expect(migration).toContain(predicate);
-    }
-    expect(migration).toContain(`ELSE ${String(SENSOR.baseRadius)}`);
+    expectLadder(migration);
   });
 });
 
@@ -128,15 +129,16 @@ describe('the sensor horizon', () => {
     /**
      * The caller at the origin; the fight a long way off along +x.
      *
-     * The default pair sits at 1,600 → 1,900, so its midpoint at 1,750 is BEYOND
-     * the telescope ceiling (1,600) and INSIDE the radar ceiling (2,200). That is
+     * The default pair sits at 2,400 → 2,850, so its midpoint at 2,625 is BEYOND
+     * the Telescope 5 reach (2,400) and INSIDE Radar 5 (3,300) — the ×1.5 ladder of
+     * 2026-09-18, and the same relation the 1,600 → 1,900 pair held before it. That is
      * the CONTACT band, and it is also the proof that no amount of Telescope
      * erases the spherical horizon. `raidBetween` moves the pair for the tests
      * that need one of the other two zones.
      */
     await placeAt(f.db, mine, { x: 0 });
-    await placeAt(f.db, a, { x: 1600 });
-    await placeAt(f.db, b, { x: 1900 });
+    await placeAt(f.db, a, { x: 2400 });
+    await placeAt(f.db, b, { x: 2850 });
 
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 8);
     await giveSatellite(f.db, mine, 'UPLINK');
@@ -213,7 +215,7 @@ describe('the sensor horizon', () => {
   it('still shows nothing with a maxed telescope and no radar', async () => {
     await eyes(5, 0);
     await distantRaid();
-    // 1,750 units out: past the telescope ceiling, and nothing detects it.
+    // 2,625 units out: past Telescope 5, and nothing detects it.
     expect(await contacts()).toEqual([]);
   });
 
@@ -247,7 +249,7 @@ describe('the sensor horizon', () => {
    */
   it('identifies the same craft once the telescope reaches it', async () => {
     await eyes(5, 5);
-    // Brought inside the 1,600 ceiling: midpoint 1,150.
+    // Brought inside the 2,400 reach: midpoint 1,150.
     await raidBetween(1000, 1300);
 
     const seen = await contacts();

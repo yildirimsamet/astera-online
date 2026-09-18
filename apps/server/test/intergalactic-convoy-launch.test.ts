@@ -72,7 +72,7 @@ async function convoyUp(nowMinute = 30): Promise<{
   order: (fleet: Fleet, planetId?: string) => Promise<IntergalacticConvoyOrder>;
 }> {
   const startsAtMinute = 0;
-  const endsAtMinute = 120;
+  const endsAtMinute = INTERGALACTIC_CONVOY.durationMinutes;
   const startsAt = season.startsAt;
   const endsAt = new Date(startsAt.getTime() + endsAtMinute * 60_000);
   const [occurrence] = await f.db.insert(galaxyEventOccurrences).values({
@@ -247,7 +247,7 @@ describe('an intergalactic convoy strike launch', () => {
     }))).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
 
     await f.db.update(planets).set({ deuterium: 100_000 }).where(eq(planets.id, mine));
-    f.clock.set(new Date(season.startsAt.getTime() + 119.99 * 60_000));
+    f.clock.set(new Date(season.startsAt.getTime() + (INTERGALACTIC_CONVOY.durationMinutes - 0.01) * 60_000));
     await expect(f.db.transaction((tx) => launchIntergalacticConvoy(tx, {
       planetId: mine,
       expectedPlayerId: f.playerIds[0]!,

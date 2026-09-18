@@ -436,14 +436,14 @@ once.
 
 | Level | Detects | Message |
 |---|---|---|
-| L1 | 1,200-unit contact/warning; scan fact | "Incoming fleet · ETA 9 min." |
-| L2 | 1,450 units; + scan bearing | "Scan detected from the galactic north-west." |
-| L3 | 1,700 units; enables strategic interception after research | "Incoming fleet · ETA 9 min." |
-| L4 | 1,900 units; + rough size | "Sizeable force inbound." |
-| L5 | 2,200 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Dart, 20 Pike, 12 Courier." |
-| L6 | 2,900 units | "Inbound fleet detected." |
-| L7 | 3,600 units | "Inbound fleet detected." |
-| L8 | 4,400 units | "Inbound fleet detected." |
+| L1 | 1,800-unit contact/warning; scan fact | "Incoming fleet · ETA 9 min." |
+| L2 | 2,175 units; + scan bearing | "Scan detected from the galactic north-west." |
+| L3 | 2,550 units; enables strategic interception after research | "Incoming fleet · ETA 9 min." |
+| L4 | 2,850 units; + rough size | "Sizeable force inbound." |
+| L5 | 3,300 units; + exact origin and composition | "Inbound from GRIMHOLD · 74 Dart, 20 Pike, 12 Courier." |
+| L6 | 4,350 units | "Inbound fleet detected." |
+| L7 | 5,400 units | "Inbound fleet detected." |
+| L8 | 6,600 units | "Inbound fleet detected." |
 
 **The top two rungs were not sold at all until D123.** Every contact on the disc carried its
 full roster, so a maxed Radar bought a bearing and two facts every player already had. A
@@ -500,26 +500,40 @@ reset continues. Activation status and measured acceptance are recorded in deplo
 
 ## Galaxy, travel and mining
 
-**One true sphere**, radius 2000 and therefore a maximum point-to-point crossing of 4000. Every
+**One true sphere**, radius 3000 and therefore a maximum point-to-point crossing of 6000. Every
 gameplay coordinate — not merely its horizontal projection — lies inside that sphere. The three
 painted galactic clouds are presentation planes, not collision or placement boundaries. The layout
 is **deterministic from the season seed**, so the client regenerates it instead of downloading it.
 
 The larger radius is also a larger navigable scene. The client keeps the established conversion of
 50 game units per rendered world unit; it must not raise that divisor with the gameplay radius and
-compress 351 worlds back into the old 50-player picture. At the widest camera distance the whole
+compress 1,165 worlds back into the old 50-player picture. At the widest camera distance the whole
 sphere remains available as an overview, while ordinary play opens on a readable neighbourhood.
 
-At most two galaxies of 300 commander seats, filled strictly in order (D99/D100). A v2 season also contains
-65 neutral worlds: thirty-eight T1, nineteen T2 and eight T3 (D209). The sphere radius and travel rules do not scale with
-population; the denser neighbourhood is an explicit consequence of the 300-player world, not a
-hidden balance adjustment.
+At most two galaxies of 1,000 commander seats, filled strictly in order (D99/D100; 300 → 1,000 on
+2026-09-18). A v2 season also contains 65 neutral worlds: thirty-eight T1, nineteen T2 and eight T3
+(D209). The radius took ×1.5 with the seat count (∛(1000/300) ≈ 1.49), which keeps the rim's neighbour
+spacing close to the 300-seat game. Hull speeds did not scale. Both sensor ladders (Telescope and Radar)
+scaled ×1.5 by owner decision, so L8 still covers the whole galaxy and radar still out-reaches the
+telescope at every rung. The rock and pirate orbit bands scaled too, because they are geometry. The
+merchant's band did not, because it has to stay inside the trade window from the far rim (the window itself went 2h → 2h30 on 2026-09-19).
 
-The population is spread through the whole sphere, not filled from one neighbourhood outwards. Capital
-addresses use the seeded Poisson layout and each arriving commander takes the address furthest from
-the commanders already present. Neutral placement is stratified as well: T1 worlds cover the playable
-sphere by equal-volume radial strata, T2 worlds occupy an evenly distributed middle shell, and the eight
-T3 worlds share the contested central shell. Every tier spans all three axes; a flat ring is invalid.
+**The galaxy is layered, rim to core (owner instruction, 2026-09-18; `GALAXY.strata`).** Shares of the
+radius, each band sampled uniformly by volume:
+
+| Band | Radius share | Who |
+|---|---|---|
+| Commander shell | 0.80–1.00 | every person's capital |
+| Bot band | 0.72–0.80 | the server's commanders (up to `MULTI_WORLD.botSlots` = 100) |
+| T1 | 0.50–0.70 | outer neutral band |
+| T2 | ≈0.35 | the ring around the core |
+| T3 | ≈0.12 | the contested core |
+
+Every commander therefore stands the same distance from the prize; the walk inward is the progression.
+An arriving commander still takes the free shell address furthest from those already present, and a
+bot takes the free bot address furthest from the other bots, so the roster scatters all the way round,
+just inside the people. The bots dilute pressure on any single commander without replacing the
+commanders as each other's targets. Every tier spans all three axes; a flat ring is invalid.
 
 ```
 travelExact = (distance / slowestShipSpeed) × 1.2
@@ -724,6 +738,13 @@ its route, its crew, its hoard and its life — is derived from the season key; 
 stored is what has been shot off it and whether it is gone. It attacks nothing. It just goes
 round, for two to four hours, and then it is not there any more.
 
+**How many (ruleset 9, 2026-09-19).** A season created from ruleset 9 spawns pirates the way it
+spawns rocks: each hour the worker counts the non-bot commanders who played and that hour spawns
+`active × 0.25` pirates, never fewer than one (`PIRATE.dynamic`). The hour's pirate lane is stored
+beside its rock lanes in `asteroid_spawn_hours`, and every pirate is derived from that row, so it
+never moves. Each pirate's crew, hoard and capture rules are the derived lane's. A season created
+earlier keeps the per-seat lane derived from its key, priced for 300 seats (`PIRATE.legacySeats`).
+
 **The decision it creates.** Every other target in the game has an address: a commander's world
 or a neutral one, and both will still be there tomorrow. A pirate is the first target whose whole
 value is that *it will not be*. So the question stops being "is this worth attacking" and becomes
@@ -760,7 +781,7 @@ to launch tonight; it does not add a second game beside the game.
 
 ### Trade ships — the fourth target class, and the first you deal with (D156)
 
-A trade ship rides a closed orbit for two hours at 01:00, 07:00, 15:00 and 21:00 Türkiye time,
+A trade ship rides a closed orbit for two and a half hours (two until 2026-09-19) at 01:00, 07:00, 15:00 and 21:00 Türkiye time,
 and then it is
 gone. Everything about it is public: unlike a pirate, whose whole value is that nobody else can
 see it coming, the merchant's orbit is broadcast to the entire galaxy from the moment it appears
@@ -770,7 +791,7 @@ is finding the decision worth making with it, not finding the ship.
 **The decision it creates.** Every other target answers "is this worth taking, and can I get away
 with it." A merchant answers a different question: what do I have too much of, what do I actually
 need, and is it worth pinning a convoy — and the flight bay and both legs of fuel that convoy
-holds for the whole round trip — to an appointment that only stands for two hours. What a
+holds for the whole round trip — to an appointment that only stands for two and a half hours. What a
 commander gives up by taking it is capacity: that convoy is not available for a raid or a rock
 worth mining for as long as it is committed to the merchant instead. In exchange it turns a
 surplus that cannot be spent — a full alloy store while deuterium starves the yard queue — into
@@ -806,10 +827,11 @@ everything else that can go wrong while you are away.
 
 ### Intergalactic Convoy — a public moving strike (D201)
 
-Weekdays 21:00–23:00 and weekends 12:00–14:00 and 20:00–22:00 (TRT, since 2026-09-16), a
+Weekdays 21:00–24:00 and weekends 12:00–15:00 and 20:00–23:00 (TRT; three hours since 2026-09-19,
+when the radius-3000 galaxy made the rim-to-route reach longer), a
 twenty-two-craft double formation crosses an
 isotropic galaxy diameter. Its centre is the gameplay anchor and reaches the galaxy centre at minute
-60. The active route is public; future routes remain server-secret. A commander sends an armed
+90. The active route is public; future routes remain server-secret. A commander sends an armed
 mobile wing to the moving intercept, fires alongside it for exactly five seconds, receives no return
 fire and loses no craft, then follows a separately frozen return leg. Both legs' fuel is paid at
 launch and the flight cannot be recalled.

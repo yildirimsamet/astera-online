@@ -28,7 +28,7 @@ import {
   type StrategicDestroyedOrder,
   type StrategicLevelChange,
 } from '../db/schema.js';
-import { pirateCallsign, privatePirateField } from './pirateField.js';
+import { pirateCallsign, pirateSpecAt } from './pirateField.js';
 import { addDominionCounters } from './dominion.js';
 
 /** The wire's ceiling for `recovery.lossHours`: finite, and far past any bar. */
@@ -465,21 +465,22 @@ async function readBattleReportsIn(
           id: pirateRaids.id,
           planetId: pirateRaids.planetId,
           pirateIndex: pirateRaids.pirateIndex,
+          seasonId: pirateRaids.seasonId,
           capturedHull: pirateRaids.capturedHull,
           asteroidKey: seasons.asteroidKey,
         })
         .from(pirateRaids)
         .innerJoin(seasons, eq(seasons.id, pirateRaids.seasonId))
         .where(inArray(pirateRaids.id, raidIds));
-  const raidById = new Map(raidRows.map((raid) => {
-    const spec = privatePirateField(raid.asteroidKey)[raid.pirateIndex];
+  const raidById = new Map(await Promise.all(raidRows.map(async (raid) => {
+    const spec = await pirateSpecAt(tx, raid.seasonId, raid.pirateIndex);
     return [raid.id, {
       planetId: raid.planetId,
       level: spec?.level ?? null,
       callsign: pirateCallsign(raid.asteroidKey, raid.pirateIndex),
       capturedHull: raid.capturedHull,
-    }];
-  }));
+    }] as const;
+  })));
 
   const named = [...new Set([
     ...rows.map((row) => row.targetPlanetId),

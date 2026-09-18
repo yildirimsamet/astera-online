@@ -72,7 +72,7 @@ export const servers = {
   commanderLabel: 'Commander',
   signOut: 'Sign out',
   rule:
-    'Every galaxy holds 300 commanders and no more. They fill in order, so the one you join is the one that already has people in it.',
+    'Every galaxy holds {{seats}} commanders and no more. They fill in order, so the one you join is the one that already has people in it.',
   loading: 'Reading the sky',
   unreachable: 'Could not reach the galaxies.',
   retry: 'Try again',

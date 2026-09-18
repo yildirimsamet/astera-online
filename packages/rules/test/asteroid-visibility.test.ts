@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GALAXY,
   orbitDiscoveredAt,
   asteroidOrbitRadius,
   asteroidPosition,
@@ -43,13 +44,13 @@ function epoch(overrides: Partial<SensorEpoch> = {}): SensorEpoch {
 
 describe('asteroid orbit distribution', () => {
   it('keeps the established inner boundary and reaches the true sphere boundary', () => {
-    expect(asteroidOrbitRadius(0)).toBe(400);
-    expect(asteroidOrbitRadius(1)).toBe(2_000);
+    expect(asteroidOrbitRadius(0)).toBe(600);
+    expect(asteroidOrbitRadius(1)).toBe(3_000);
   });
 
   it('uses the measured opportunity-balanced distribution across the full radius', () => {
     const roll = 0.5;
-    const expected = Math.pow(400 ** 4 + roll * (2_000 ** 4 - 400 ** 4), 1 / 4);
+    const expected = Math.pow(600 ** 4 + roll * (3_000 ** 4 - 600 ** 4), 1 / 4);
     expect(asteroidOrbitRadius(roll)).toBeCloseTo(expected, 10);
   });
 
@@ -58,8 +59,8 @@ describe('asteroid orbit distribution', () => {
     for (let step = 1; step <= 10_000; step++) {
       const radius = asteroidOrbitRadius(step / 10_000);
       expect(radius).toBeGreaterThanOrEqual(previous);
-      expect(radius).toBeGreaterThanOrEqual(400);
-      expect(radius).toBeLessThanOrEqual(2_000);
+      expect(radius).toBeGreaterThanOrEqual(GALAXY.asteroidOrbitMin);
+      expect(radius).toBeLessThanOrEqual(GALAXY.radius);
       previous = radius;
     }
   });

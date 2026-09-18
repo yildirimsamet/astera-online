@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateGalaxy, pickSpawnSlot, type PlanetSlot } from '../src/galaxy.js';
+import { generateGalaxy, type PlanetSlot } from '../src/galaxy.js';
 import { GALAXY, MULTI_WORLD, SERVERS } from '../src/constants.js';
 import { UNAIDED, distance, fleetTravelExact } from '../src/travel.js';
 import { MOBILE_HULLS } from '../src/hulls.js';
@@ -18,23 +18,6 @@ import {
 const settlementFleet = {
   [MULTI_WORLD.settlement.transportHull]: MULTI_WORLD.settlement.transports,
 };
-
-function octantCounts(slots: readonly PlanetSlot[]): number[] {
-  const octants = Array.from({ length: 8 }, () => 0);
-  for (const slot of slots) {
-    const octant = (slot.x >= 0 ? 1 : 0) | (slot.y >= 0 ? 2 : 0) | (slot.z >= 0 ? 4 : 0);
-    octants[octant] = (octants[octant] ?? 0) + 1;
-  }
-  return octants;
-}
-
-function centroidDistance(slots: readonly PlanetSlot[]): number {
-  const sum = slots.reduce(
-    (at, slot) => ({ x: at.x + slot.x, y: at.y + slot.y, z: at.z + slot.z }),
-    { x: 0, y: 0, z: 0 },
-  );
-  return Math.hypot(sum.x, sum.y, sum.z) / slots.length;
-}
 
 describe('multi-world strategic rules', () => {
   it('prices a settlement as the Economy v2 two-Courier commitment', () => {
@@ -112,7 +95,7 @@ describe('multi-world strategic rules', () => {
     expect(transferCargoCapacity({ DART: 99 }, {})).toBe(0);
   });
 
-  it('selects exactly 38/19/8 stable unique neutral slots after all 300 capitals', () => {
+  it('selects exactly 38/19/8 stable unique neutral slots after every capital and bot seat', () => {
     const slots = generateGalaxy(8331, MULTI_WORLD.neutralSlotPool).slots;
     const first = selectNeutralSlots(8331, slots);
     const again = selectNeutralSlots(8331, slots);
@@ -121,7 +104,9 @@ describe('multi-world strategic rules', () => {
     expect(first.filter((entry) => entry.tier === 2)).toHaveLength(19);
     expect(first.filter((entry) => entry.tier === 3)).toHaveLength(8);
     expect(new Set(first.map((entry) => entry.slot.index))).toHaveLength(65);
-    expect(first.every((entry) => entry.slot.index >= SERVERS.capacity)).toBe(true);
+    expect(first.every(
+      (entry) => entry.slot.index >= SERVERS.capacity + MULTI_WORLD.botSlots,
+    )).toBe(true);
   });
 
   it('keeps the T2 neutral ring at the same share when galaxy units change', () => {
@@ -132,48 +117,9 @@ describe('multi-world strategic rules', () => {
       0,
     ) / t2.length;
 
-    expect(Math.abs(meanRadius - GALAXY.radius * 0.55)).toBeLessThan(GALAXY.minSeparation);
+    expect(Math.abs(meanRadius - GALAXY.radius * GALAXY.strata.t2Share))
+      .toBeLessThan(GALAXY.minSeparation);
   });
-
-  it.each([1, 6, 18, 30, 4242, 8331])(
-    'spreads capital addresses and the first commanders through the sphere for seed %i',
-    (seed) => {
-      const slots = generateGalaxy(seed, MULTI_WORLD.capitalSlots).slots;
-      const equalVolumeShells = [0, 0, 0, 0];
-      for (const slot of slots) {
-        const radiusShareCubed = (Math.hypot(slot.x, slot.y, slot.z) / GALAXY.radius) ** 3;
-        const shell = Math.min(3, Math.floor(radiusShareCubed * 4));
-        equalVolumeShells[shell] = (equalVolumeShells[shell] ?? 0) + 1;
-      }
-      expect(Math.min(...equalVolumeShells)).toBeGreaterThanOrEqual(60);
-      expect(Math.max(...equalVolumeShells)).toBeLessThanOrEqual(90);
-
-      // Every octant receives a real population, and no axis is secretly flatter
-      // than the others. A disc passes the old radial test but fails both checks.
-      const octants = octantCounts(slots);
-      expect(Math.min(...octants)).toBeGreaterThanOrEqual(25);
-      expect(Math.max(...octants)).toBeLessThanOrEqual(55);
-      const moments = [
-        slots.reduce((sum, slot) => sum + slot.x ** 2, 0),
-        slots.reduce((sum, slot) => sum + slot.y ** 2, 0),
-        slots.reduce((sum, slot) => sum + slot.z ** 2, 0),
-      ];
-      expect(Math.max(...moments) / Math.min(...moments)).toBeLessThan(1.25);
-
-      const occupied = new Set<number>();
-      const firstFifty: PlanetSlot[] = [];
-      while (firstFifty.length < 50) {
-        const next = pickSpawnSlot(slots, occupied);
-        expect(next).not.toBeNull();
-        occupied.add(next!.index);
-        firstFifty.push(next!);
-      }
-      const firstOctants = octantCounts(firstFifty);
-      expect(Math.min(...firstOctants)).toBeGreaterThanOrEqual(4);
-      expect(Math.max(...firstOctants)).toBeLessThanOrEqual(11);
-      expect(centroidDistance(firstFifty)).toBeLessThan(GALAXY.radius * 0.075);
-    },
-  );
 
   it.each([1, 6, 18, 30, 4242, 8331])(
     'spreads every neutral tier across all three axes for seed %i',

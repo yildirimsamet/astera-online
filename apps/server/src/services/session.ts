@@ -34,7 +34,7 @@ import {
   units,
   watches,
 } from '../db/schema.js';
-import { pirateCallsign, privatePirateField } from './pirateField.js';
+import { pirateCallsign, pirateSpecAt } from './pirateField.js';
 import { announceUnlocks } from './notifications.js';
 import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
@@ -856,7 +856,7 @@ export async function pendingThreads(
       // A raid with no survivors has no return leg and no `homeAt`; it is closed
       // out by the arrival itself and must not be drawn as a flight.
       if (!arriveAt) continue;
-      const spec = privatePirateField(asteroidKey)[raid.pirateIndex];
+      const spec = await pirateSpecAt(db, raid.seasonId, raid.pirateIndex);
       if (!spec) continue;
       const home = { x: originX, y: originY, z: originZ };
       const meet = { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ };

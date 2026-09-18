@@ -459,7 +459,7 @@ describe('the pirate orbit', () => {
     // The asteroid study measured a linear draw at ~7.6x p90:p10 opportunity
     // imbalance and the fourth-power draw at ~2.1x. One draw, two lanes.
     for (const roll of [0, 0.13, 0.5, 0.87, 1]) {
-      expect(orbitRadius(roll, 400, 2000)).toBeCloseTo(asteroidOrbitRadius(roll), 9);
+      expect(orbitRadius(roll, PIRATE.orbitMin, PIRATE.orbitMax)).toBeCloseTo(asteroidOrbitRadius(roll), 9);
     }
   });
 
@@ -520,7 +520,10 @@ describe('the pirate schedule', () => {
    */
   it('doubles the spawn rate without moving a pirate from either earlier lane', () => {
     expect(PIRATE.spawnPerSeatPerHour).toBeCloseTo(0.06, 12);
-    expect(PIRATE.spawnPerHour).toBeCloseTo(18, 9);
+    // Per SEAT of the 300-seat galaxies this lane still serves (`PIRATE.legacySeats`);
+    // since ruleset 9 a new season spawns per active commander instead.
+    expect(PIRATE.legacySeats).toBe(300);
+    expect(PIRATE.spawnPerHour).toBeCloseTo(0.06 * PIRATE.legacySeats, 9);
 
     const established = generatePirateSchedule(mulberry32(7), undefined, 0, 0, {
       stage: 'ESTABLISHED',
@@ -530,6 +533,8 @@ describe('the pirate schedule', () => {
     });
     const field = generatePirateSchedule(mulberry32(7));
 
+    // The count is the 300-seat lane's and never moved; the digests below were
+    // re-taken for the radius-3000 orbit band (2026-09-18), a season-boundary change.
     expect(established).toHaveLength(2823);
     // Each stage is a strict prefix of the next, so a staged rollout only ever
     // hides contacts — it can never publish a different one under the same handle.
@@ -545,9 +550,9 @@ describe('the pirate schedule', () => {
     // Both earlier lanes are pinned, not just the first: the +50% lane is as live
     // as the original one and a re-deal of it would move just as many claims.
     expect(createHash('sha256').update(JSON.stringify(established)).digest('hex'))
-      .toBe('a3828f6839be3b69838c29621be59651f1131f3cda92a7c517f75aabd8a5d41a');
+      .toBe('176c0e9a4352c4fa964c6ccae41ba53db2d6b22423cd57e8a1d5c322c5b9b9d3');
     expect(createHash('sha256').update(JSON.stringify(increased)).digest('hex'))
-      .toBe('ffa17ad8fce8dcde4e3d89da248490e1c55659bdab41a86e3871a89747beba2c');
+      .toBe('f097ea6db249036536fa708952abd0c3b672e470b1628172450e9f0429ad096b');
   });
 
   it('rolls levels in the advertised proportions', () => {

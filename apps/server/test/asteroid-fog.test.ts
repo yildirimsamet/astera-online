@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { SENSOR, asteroidPosition, sensorSphere, type SensorEpoch } from '@astera/rules';
+import { GALAXY, SENSOR, asteroidPosition, sensorSphere, type SensorEpoch } from '@astera/rules';
 import {
   asteroidId,
   asteroidIndexFromId,
@@ -50,10 +50,10 @@ describe('private asteroid field identity', () => {
     expect(a.map((rock) => rock.appearsAt)).not.toEqual(b.map((rock) => rock.appearsAt));
   });
 
-  it('keeps every generated orbit inside radius 2000 and preserves speed-derived periods', () => {
+  it('keeps every generated orbit inside the galaxy and preserves speed-derived periods', () => {
     for (const rock of privateAsteroidField(keyA)) {
-      expect(rock.radius).toBeGreaterThanOrEqual(400);
-      expect(rock.radius).toBeLessThanOrEqual(2_000);
+      expect(rock.radius).toBeGreaterThanOrEqual(GALAXY.asteroidOrbitMin);
+      expect(rock.radius).toBeLessThanOrEqual(GALAXY.radius);
       expect(rock.period).toBeCloseTo((Math.PI * 2 * rock.radius) / rock.speed, 10);
     }
   });

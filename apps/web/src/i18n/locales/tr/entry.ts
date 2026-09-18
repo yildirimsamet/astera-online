@@ -69,7 +69,7 @@ export const servers = {
   commanderLabel: 'Komutan',
   signOut: 'Çıkış yap',
   rule:
-    'Her galakside en fazla 300 komutan var ve galaksiler sırayla doluyor. Yani katıldığın yerde seni bekleyen insanlar oluyor.',
+    'Her galakside en fazla {{seats}} komutan var ve galaksiler sırayla doluyor. Yani katıldığın yerde seni bekleyen insanlar oluyor.',
   loading: 'Gökyüzü taranıyor',
   unreachable: 'Galaksilere ulaşılamadı.',
   retry: 'Tekrar dene',

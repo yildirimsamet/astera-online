@@ -51,6 +51,7 @@ describe('the private pirate field', () => {
    * was the whole field.
    */
   it('appends each denser lane after every established opaque target', () => {
+    // The derived lane is priced for the 300 seats it serves (`PIRATE.legacySeats`).
     const establishedLength = 2809;
     const established = privatePirateField('key-one', 'ESTABLISHED');
     const increased = privatePirateField('key-one', 'INCREASED');
@@ -68,7 +69,7 @@ describe('the private pirate field', () => {
     expect(createHash('sha256')
       .update(JSON.stringify(field.slice(0, establishedLength)))
       .digest('hex'))
-      .toBe('f831aa77815a859a4129e66095dcf9b0b6387748257cea7cfa8c5f260ceb0fba');
+      .toBe('db190c424e1eb67ee8b0ccb18506c90509dd87c7dbf7f533dd75f8f0ee621f9b');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {
