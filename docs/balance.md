@@ -761,7 +761,7 @@ unchanged to six decimal places. Gated on the occurrence's definition version (4
 window that has already opened keeps the arrival times its rocks were derived under.
 
 **Six hours of protection after a heavy defeat, measured in the defender's own production
-hours (reworked 2026-09-17).** A commander whose defeat costs more than **eight average hours** of
+hours (reworked 2026-09-17; bar set to eight hours, the bar itself counting, 2026-09-18).** A commander whose net loss over the last six hours reaches **eight average hours** of
 their own works — everything carried off PLUS every hull destroyed that did not rebuild from its
 own wreckage — is unreachable for six hours, on every world they hold, against Raid and Death Star.
 The window and the loss bar are independent controls. It is the first-day

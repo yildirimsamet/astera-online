@@ -662,8 +662,8 @@ time left; the launch confirmation explains that choosing to attack spends it.
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
-badly.** When the NET loss of the last six hours reaches **six average hours of that commander's
-own production** (see *Judged on the lookback* below), the defeat that got it there leaves
+badly.** When the NET loss of the last six hours reaches **eight average hours of that commander's
+own production** (owner, 2026-09-18; see *Judged on the lookback* below), the defeat that got it there leaves
 them unreachable for six hours, on every world they hold, against Raid and Death Star. **While it
 stands, the world that was struck produces +100%** (owner instruction, 2026-09-16): the works fill
 twice as fast, the collector ceiling does not grow, and the boost ends with the shield — including

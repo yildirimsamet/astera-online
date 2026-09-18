@@ -53,8 +53,8 @@ const oneDefeat = (input: { lootLost: Resources; fleetLost: Resources; productio
 
 describe('what counts as a heavy defeat', () => {
   it('states the bar as hours of the defender’s own production', () => {
-    // Owner instruction, 2026-09-18: six hours of production, six hours looked back.
-    expect(ABUSE.recoveryLossHours).toBe(6);
+    // Owner instruction, 2026-09-18: eight hours of production (was six), six looked back.
+    expect(ABUSE.recoveryLossHours).toBe(8);
     expect(ABUSE.recoveryLookbackHours).toBe(6);
     // The recovery window and its loss threshold are independent owner controls.
     expect(ABUSE.recoveryShieldHours).toBe(6);
@@ -79,9 +79,10 @@ describe('what counts as a heavy defeat', () => {
     expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(5, 9);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: loot, fleetLost: fleet, production: PRODUCTION })))
       .toBe(false);
+    // 2 + 6 = 8 hours: exactly the bar.
     expect(earnsRecoveryShield(oneDefeat({
       lootLost: loot,
-      fleetLost: lossWorthHours(4),
+      fleetLost: lossWorthHours(6),
       production: PRODUCTION,
     }))).toBe(true);
   });
@@ -105,7 +106,7 @@ describe('what counts as a heavy defeat', () => {
   it('grants on a fleet wipe that carried nothing away', () => {
     expect(earnsRecoveryShield(oneDefeat({
       lootLost: NOTHING,
-      fleetLost: lossWorthHours(6),
+      fleetLost: lossWorthHours(8),
       production: PRODUCTION,
     }))).toBe(true);
   });
@@ -131,9 +132,9 @@ describe('what counts as a heavy defeat', () => {
 
   it('still grants when the repriced loss reaches the bar', () => {
     const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
-    // 600 D = 19,200 alloy = 19.2 alloy hours → 6.4 averaged.
-    const heavy: Resources = { alloy: 0, crystal: 0, deuterium: 600 };
-    expect(recoveryLossHours(heavy, NOTHING, noPlant)).toBeCloseTo(6.4, 9);
+    // 800 D = 25,600 alloy = 25.6 alloy hours → 8.53 averaged.
+    const heavy: Resources = { alloy: 0, crystal: 0, deuterium: 800 };
+    expect(recoveryLossHours(heavy, NOTHING, noPlant)).toBeCloseTo(25.6 / 3, 9);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: heavy, fleetLost: NOTHING, production: noPlant })))
       .toBe(true);
   });
@@ -237,23 +238,25 @@ describe('what the last six hours cost, net', () => {
   });
 
   it('adds small defeats until together they clear the bar', () => {
-    const check = { defeats: [defeat(2), defeat(2), defeat(2)], raids: [], production: PRODUCTION };
-    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    const check = {
+      defeats: [defeat(2), defeat(2), defeat(2), defeat(2)], raids: [], production: PRODUCTION,
+    };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
-    expect(earnsRecoveryShield({ ...check, defeats: [defeat(2), defeat(2)] })).toBe(false);
+    expect(earnsRecoveryShield({ ...check, defeats: [defeat(2), defeat(2), defeat(2)] })).toBe(false);
   });
 
   it('subtracts the profit of the commander’s own raids', () => {
-    const check = { defeats: [defeat(4), defeat(4)], raids: [raid(3, 1)], production: PRODUCTION };
-    // 8 hours lost, one raid netted 3 − 1 = 2 hours: 6 left, exactly the bar.
-    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    const check = { defeats: [defeat(5), defeat(5)], raids: [raid(3, 1)], production: PRODUCTION };
+    // 10 hours lost, one raid netted 3 − 1 = 2 hours: 8 left, exactly the bar.
+    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
     expect(earnsRecoveryShield({ ...check, raids: [raid(3, 1), raid(1, 0)] })).toBe(false);
   });
 
   it('ignores a raid that lost more than it carried home', () => {
-    const check = { defeats: [defeat(6)], raids: [raid(1, 5), raid(0, 3)], production: PRODUCTION };
-    expect(netRecoveryLossHours(check)).toBeCloseTo(6, 9);
+    const check = { defeats: [defeat(8)], raids: [raid(1, 5), raid(0, 3)], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
   });
 

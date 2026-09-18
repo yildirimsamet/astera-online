@@ -2222,14 +2222,14 @@ export const ABUSE = {
    * resource, divided by that resource's hourly production across all worlds, then
    * the Alloy, Crystal and Deuterium durations are averaged.
    *
-   * SIX HOURS, AND THE BAR ITSELF COUNTS. Owner instruction, 2026-09-18: *"6 saatlik
-   * üretimine eşit veya aşıyorsa kalkan veriyoruz."* It was eight and strict; the
-   * window is still `recoveryShieldHours`, and this number defines only how much net
-   * loss earns it.
+   * EIGHT HOURS, AND THE BAR ITSELF COUNTS. Owner instruction, 2026-09-18: *"son 6
+   * saatteki net kaybın kendi 8 saatlik üretimine denk gelecek şekilde."* It was six
+   * earlier the same day (and eight-and-strict before that); the window is still
+   * `recoveryShieldHours`, and this number defines only how much net loss earns it.
    *
    * NET, OVER `recoveryLookbackHours`. The loss is no longer one battle's: see there.
    */
-  recoveryLossHours: 6,
+  recoveryLossHours: 8,
 
   /**
    * HOW FAR BACK A DEFEAT KEEPS COUNTING TOWARD THE NEXT SHIELD. Owner instruction,
