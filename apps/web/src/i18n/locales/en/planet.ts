@@ -664,6 +664,7 @@ export const faults = {
   },
   loyalty: {
     title: "This world's loyalty",
+    battleLoss: "Partial defeat −15 · decisive defeat −30",
     line: "{{value}}% — falling while {{count}} things are broken. At this rate it reaches zero in {{time}}, and the colony declares itself independent.",
     bar: "Loyalty {{value}}%",
     left: "{{time}} left",

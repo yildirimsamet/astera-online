@@ -23,7 +23,7 @@ import {
  *
  *   · THE VAULT FLOOR is untouchable, and on a modest world it is most of the
  *     pile. A commander reading the total is reading mostly protected ore.
- *   · THE GRADE takes a share, never the remainder: 0.70 on DECISIVE.
+ *   · THE GRADE takes a share, never the remainder: 0.60 on DECISIVE.
  *   · THE UNCOLLECTED WORKS are exposed at only half that again, and the vault
  *     does not cover them at all (D16).
  *
@@ -39,6 +39,16 @@ const buffer = { alloy: 4_000, crystal: 1_000, deuterium: 0 };
 const floor = vaultProtects(6, 8, 8, 4);
 
 describe('raidableStock', () => {
+  it('takes about 15% less from both winning grades while preserving their ratio', () => {
+    expect(COMBAT.lootDecisive).toBe(0.60);
+    expect(COMBAT.lootPartial).toBe(0.30);
+    const open = { alloy: 10_000, crystal: 0, deuterium: 0 };
+    const empty = { alloy: 0, crystal: 0, deuterium: 0 };
+    expect(raidableStock(open, empty, empty, 'DECISIVE')).toBe(6_000);
+    expect(raidableStock(open, empty, empty, 'PARTIAL')).toBe(3_000);
+    expect(raidableStock(open, empty, empty, 'REPELLED')).toBe(0);
+  });
+
   it('is what an unlimited hold would carry away', () => {
     const loot = computeLoot(stock, buffer, floor, 'DECISIVE', Number.MAX_SAFE_INTEGER);
     expect(raidableStock(stock, buffer, floor, 'DECISIVE'))

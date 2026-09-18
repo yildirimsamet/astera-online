@@ -33,8 +33,8 @@ export const NO_LOOT: Loot = {
 /**
  * Cargo is filled with alloy and crystal in proportion to what is available.
  *
- * The 50% rule IS the repeat-raid decay system: successive raids take 50%, then
- * 25%, then 12.5% of the original pile. Diminishing returns arrive for free, with
+ * The decisive share IS the repeat-raid decay system: successive raids take 60%,
+ * then 24%, then 9.6% of the original exposed pile. Diminishing returns arrive for free, with
  * no cooldown table and no extra state.
  *
  * TWO PILES, TWO RATES (D16). Ore in storage is exposed in full, less the vault

@@ -24,6 +24,7 @@ import {
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchAttack } from '../src/services/mission.js';
+import { planetView } from '../src/services/planetView.js';
 import { launchHarvest } from '../src/services/mining.js';
 import { collectWorks } from '../src/services/build.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -530,6 +531,33 @@ describe('battle reports', () => {
       expect(attacker!.grade).toBe('PARTIAL');
       expect(attacker!.disruptedMinutes).toBe(0);
       expect(defender!.disruptedMinutes).toBe(0);
+    });
+
+    it('takes 15 loyalty from a lightly defeated colony below the fault gate and shows it', async () => {
+      await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, theirs));
+      await setLevel(f.db, theirs, 'CORE', 5);
+      const missionId = await raid();
+      const [report] = await f.db.select().from(battleReports)
+        .where(eq(battleReports.missionId, missionId));
+      expect(report!.grade).toBe('PARTIAL');
+      const [world] = await f.db.select().from(planets).where(eq(planets.id, theirs));
+      expect(world!.loyalty).toBe(85);
+      const view = await f.db.transaction((tx) => planetView(tx, theirs, f.clock));
+      expect(view.loyalty?.value).toBe(85);
+    });
+
+    it('does not take colony loyalty when the attack is repelled', async () => {
+      await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, theirs));
+      await giveUnits(f.db, theirs, { BASTION: 6 });
+      await giveUnits(f.db, mine, { DART: 1 });
+      const launch = await launchAttack(f.db, mine, theirs, { DART: 1 }, f.clock);
+      f.clock.set(settledAt(launch.arriveAt));
+      await worker().tick();
+      const [report] = await f.db.select().from(battleReports)
+        .where(eq(battleReports.missionId, launch.missionId));
+      expect(report!.grade).toBe('REPELLED');
+      const [world] = await f.db.select().from(planets).where(eq(planets.id, theirs));
+      expect(world!.loyalty).toBe(100);
     });
 
     it('leaves an undefended world producing after a light decisive raid earns no shield', async () => {

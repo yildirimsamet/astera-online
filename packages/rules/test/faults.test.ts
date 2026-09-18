@@ -147,6 +147,10 @@ describe('ritim — öğrenilebilir bir periyot olamaz', () => {
 });
 
 describe('sadakat', () => {
+  it('charges colony battle losses by the combat grade', () => {
+    expect(FAULT.battleLoyaltyLoss).toEqual({ DECISIVE: 30, PARTIAL: 15, REPELLED: 0 });
+  });
+
   it('arıza yokken dolar, dolunca durur', () => {
     expect(loyaltyRatePerHour(0)).toBeGreaterThan(0);
     expect(advanceLoyalty(0, 0, FAULT.loyaltyRecoverHours * 60)).toBe(FAULT.loyaltyMax);

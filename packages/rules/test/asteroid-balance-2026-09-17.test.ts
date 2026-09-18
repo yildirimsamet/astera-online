@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { ASTEROID_DYNAMIC, GALAXY_EVENTS, planAsteroidHour } from '../src/index.js';
+import { ASTEROID_DYNAMIC, GALAXY, GALAXY_EVENTS, generateAsteroidSchedule, planAsteroidHour } from '../src/index.js';
+import { mulberry32 } from '../src/rng.js';
 
 describe('2026-09-17 asteroid balance', () => {
+  it('halves the actual budgeted ore of the established field', () => {
+    const rocks = generateAsteroidSchedule(mulberry32(123), 1440, 123);
+    const yields = rocks.reduce<Record<number, number>>((counts, rock) => {
+      counts[rock.ore] = (counts[rock.ore] ?? 0) + 1;
+      return counts;
+    }, {});
+    expect(GALAXY.asteroidOreQuantum).toBe(200);
+    expect(yields).toEqual({ 200: 308, 400: 65 });
+  });
+
   it('opens one normal rock per active commander each hour', () => {
     expect(ASTEROID_DYNAMIC.perPlayerPerHour).toBe(1);
     expect(planAsteroidHour({

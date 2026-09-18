@@ -18,6 +18,7 @@ describe('the planet hero states colony loyalty', () => {
 
     const line = screen.getByTestId('loyalty-line');
     expect(line).toHaveTextContent('100%');
+    expect(line).toHaveTextContent('Partial defeat −15 · decisive defeat −30');
     expect(line.querySelector('[data-loyalty-bar]')).toHaveStyle({ width: '100%' });
   });
 

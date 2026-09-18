@@ -298,7 +298,7 @@ export interface LockedPlanet {
    */
   faults: FaultKind[];
   /**
-   * 0-100 on a colony past the Core gate; `FAULT.loyaltyMax` everywhere else.
+   * 0-100 on every colony; `FAULT.loyaltyMax` on a capital.
    *
    * Already advanced to `now`, like the ore. A caller that wants "how long has this
    * world got" asks `minutesUntilLoyaltyZero` with this and `faults.length`.
@@ -487,22 +487,21 @@ export async function loadLocked(
   /*
     SADAKAT DUVAR SAATİYLE İLERLER, üretken dakikalarla değil.
 
-    It is about NEGLECT, not about output: a raid that stopped the works did not repair
-    anything, and a world sitting broken through a disruption is still sitting broken.
+    The gradual drain is about NEGLECT, not output: a raid that stopped the works
+    did not repair anything, and a world sitting broken through a disruption is
+    still sitting broken.
     The shield already keeps wall time for the same kind of reason.
 
-    A world that cannot break holds the maximum rather than being left at whatever it
-    last had. `planetView` publishes null there, so the figure is never read — but a
-    colony demoted below the gate coming back with a half-empty bar it can no longer
-    refill is the sort of state nothing would ever repair.
+    Capitals have no loyalty, while colonies below the fault gate can still lose
+    it in battle and recover it on the same clock as every other colony.
   */
-  const breakable = faultsPossible({
+  const activeLoyaltyFaults = faultsPossible({
     kind: row.kind,
     coreLevel: levels.CORE,
     plantLevel: levels.DEUTERIUM_PLANT,
-  });
-  const loyalty = breakable
-    ? advanceLoyalty(row.loyalty, faults.length, (now.getTime() - row.lastTickAt.getTime()) / 60_000)
+  }) ? faults.length : 0;
+  const loyalty = row.kind === 'COLONY'
+    ? advanceLoyalty(row.loyalty, activeLoyaltyFaults, (now.getTime() - row.lastTickAt.getTime()) / 60_000)
     : FAULT.loyaltyMax;
 
   if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {

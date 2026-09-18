@@ -52,12 +52,16 @@ describe('ağır bir saldırı', () => {
   const HEAVY: Record<string, number> = { DART: 240, COURIER: 60 };
 
   /** Savunanın dayanamayacağı, ambarında hepsine yer olan bir akın. Kalkanı hak ettirir. */
-  const overwhelm = async (target: string) => {
+  const overwhelm = async (target: string, startingLoyalty?: number) => {
     await grant(f.db, target, 60_000, 15_000);
     await giveUnits(f.db, target, { DART: 2 });
     await giveUnits(f.db, mine, HEAVY);
     await fuelUp(f.db, mine);
     await levelWorld(f.db, f.planetIds);
+    if (startingLoyalty !== undefined) {
+      await f.db.update(planets).set({ loyalty: startingLoyalty, lastTickAt: f.clock.now() })
+        .where(eq(planets.id, target));
+    }
     const launch = await launchAttack(f.db, mine, target, HEAVY, f.clock);
     f.clock.set(settledAt(launch.arriveAt));
     await worker().tick();
@@ -97,6 +101,34 @@ describe('ağır bir saldırı', () => {
     const faults = await faultsOf(colony);
     expect(faults).toHaveLength(FAULT.attackFaults);
     expect(new Set(faults).size).toBe(FAULT.attackFaults);
+  });
+
+  it('ağır koloni yenilgisi sadakati 30 azaltır ve arıza izleyicisini yeni değerden kurar', async () => {
+    await overwhelm(colony);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(world!.loyalty).toBe(70);
+    const [watch] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'colony_secession'),
+      eq(scheduledEvents.refId, colony),
+      eq(scheduledEvents.status, 'pending'),
+    ));
+    expect(watch?.payload).toMatchObject({ target: 50 });
+  });
+
+  it('sadakat sıfıra inerse koloni kopuşunu hemen kuyruğa koyar', async () => {
+    await overwhelm(colony, 10);
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(world!.loyalty).toBe(0);
+    const [watch] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'colony_secession'),
+      eq(scheduledEvents.refId, colony),
+      eq(scheduledEvents.status, 'pending'),
+    ));
+    expect(watch?.payload).toMatchObject({ target: 0 });
+    expect(watch?.resolveAt.getTime()).toBe(f.clock.now().getTime());
+    await worker().tick();
+    const [seceded] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(seceded!.kind).toBe('NEUTRAL');
   });
 
   it('tek uygun arıza kaldıysa bir tane bırakır', async () => {
@@ -222,6 +254,7 @@ describe('ağır bir saldırı', () => {
   it('aynı varış iki kez işlenirse ikinci kez arıza bırakmaz', async () => {
     const { launch } = await overwhelm(colony);
     const before = await faultsOf(colony);
+    const [worldBefore] = await f.db.select().from(planets).where(eq(planets.id, colony));
     await f.db.update(scheduledEvents).set({ status: 'pending' }).where(and(
       eq(scheduledEvents.kind, 'mission_arrival'),
       eq(scheduledEvents.refId, launch.missionId),
@@ -238,6 +271,8 @@ describe('ağır bir saldırı', () => {
     expect(redelivered!.status).toBe('done');
     expect(redelivered!.attempts).toBeGreaterThanOrEqual(2);
     expect(await faultsOf(colony)).toHaveLength(before.length);
+    const [worldAfter] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(worldAfter!.loyalty).toBe(worldBefore!.loyalty);
   });
 
   /**
@@ -374,4 +409,3 @@ describe('arıza kırıcının sınırları', () => {
     expect(pending).toHaveLength(0);
   });
 });
-

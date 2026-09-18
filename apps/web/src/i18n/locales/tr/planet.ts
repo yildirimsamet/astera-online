@@ -614,6 +614,7 @@ export const faults = {
   },
   loyalty: {
     title: "Bu dünyanın sadakati",
+    battleLoss: "Hafif yenilgi −15 · ağır yenilgi −30",
     line: "%{{value}} — {{count}} şey bozukken düşüyor. Bu hızla {{time}} içinde sıfıra iner ve koloni bağımsızlığını ilan eder.",
     bar: "Sadakat %{{value}}",
     left: "{{time}} kaldı",

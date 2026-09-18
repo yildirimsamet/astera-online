@@ -192,8 +192,8 @@ counter cycle: SKIRMISHER ▸ BULWARK ▸ LANCE ▸ SKIRMISHER   at 1.6× / 0.62
 support hulls: prey to everything, deal nothing, shielded while escorted
 
 grade on VALUE destroyed:
-  all defenders dead        → DECISIVE → loot 70%
-  ≥42% of value destroyed   → PARTIAL  → loot 35%
+  all defenders dead        → DECISIVE → loot 60%
+  ≥42% of value destroyed   → PARTIAL  → loot 30%
   below that                → REPELLED → nothing
 
 defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
@@ -307,8 +307,8 @@ raidable = max(0, storage − vaultFloor) + works × 0.50
 loot     = min(raidable × gradeShare, surviving cargo)
 ```
 
-**The 70% rule is the repeat-raid decay system**: successive decisive raids take 70%, then 21%, then
-6.3% of the original pile. Diminishing returns arrive free, with no cooldown table and no extra state.
+**The 60% rule is the repeat-raid decay system**: successive decisive raids take 60%, then 24%, then
+9.6% of the original pile. Diminishing returns arrive free, with no cooldown table and no extra state.
 
 ### Debris
 
@@ -528,7 +528,7 @@ orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 2400, 3200, 4000]   dynamic weights [—, .44, .26, .17, .09, .04]
 legacy field  weights [—, .40, .27, .18, .10, .05] (kept deterministic)
-ore quantum   400 = one bare Prospector hold; every yield is a whole number of these
+ore quantum   200 = half a bare Prospector hold; daily ore budget also halved
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
 isotope       one seeded rock per 5 after hour 35, plus a bonus seam every 10 lanes = 11/50 (22%)
               10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
@@ -717,6 +717,8 @@ that rescale: each rock is offered the packets its level buys at the day's rate,
 whole one and never below one, against a running allowance. Measured over twelve seeds and thirty
 days it produces no zero-ore rock, no day over its cap, and total ore within about 3% of the old
 field. A laden craft also comes home at **half** speed rather than a third.
+The 2026-09-18 resource cut halves the ore table, the daily field budget, and the packet
+to 200; the bare Prospector still carries 400.
 
 The promise is for the BARE craft and is not extended to an upgraded one: Prospector Holds and a
 Derrick multiply the hold to figures like 1,000 and 2,080 that no single quantum divides. Making

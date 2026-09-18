@@ -352,8 +352,8 @@ function oreMix(rocks: readonly AsteroidSpec[], oreOf: (rock: AsteroidSpec) => n
  * properties follow, and every one of them is a requirement rather than a
  * by-product:
  *
- *   · EVERY YIELD IS A POSITIVE MULTIPLE OF `asteroidOreQuantum`, so a bare
- *     Prospector squadron empties a rock exactly and never flies for a remainder;
+ *   · EVERY YIELD IS A POSITIVE MULTIPLE OF `asteroidOreQuantum`, so the final
+ *     Prospector load is never smaller than one ore packet;
  *   · NO DAY EVER OUTSPENDS ITS ALLOWANCE, because the debit is checked before it
  *     is made rather than approximated by a factor — a quantised total can round
  *     UP past a continuous one, which is exactly how a cap gets silently breached;
@@ -430,13 +430,14 @@ export function generateAsteroidSchedule(
     baseCount,
   );
 
-  // Cap the established field against its original 10% allowance. The public
-  // monthly allowance is now 15%; scaling it back here keeps every live rock's
-  // ore byte-identical while reserving the added half for the new lane.
+  // Cap the established field against its original 10% allowance, then apply
+  // the ore cut. The public monthly allowance is now 15%; the lane ratio keeps
+  // the added allowance available for the new lane.
   for (let day = 0; day < SEASON.days; day++) {
     const today = asteroids.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const expandedBudget = monthlySupply('mining', day, SERVERS.capacity);
-    const budgetScale = ASTEROID_ESTABLISHED_SPAWN_PER_HOUR / GALAXY.asteroidSpawnPerHour;
+    const budgetScale = GALAXY.asteroidOreBudgetShare
+      * ASTEROID_ESTABLISHED_SPAWN_PER_HOUR / GALAXY.asteroidSpawnPerHour;
     const budget = {
       alloy: expandedBudget.alloy * budgetScale,
       crystal: expandedBudget.crystal * budgetScale,
@@ -468,12 +469,17 @@ function appendStandingAsteroidIncrease(
   );
 
   // The expanded allowance belongs to the expanded lane. Existing rocks keep
-  // their ore; only the new lane is reduced if its independent draws overshoot
-  // the remaining resource mix on a particular day.
+  // their cut ore; only the new lane is reduced if its independent draws
+  // overshoot the remaining resource mix on a particular day.
   for (let day = 0; day < SEASON.days; day++) {
     const existingToday = established.filter(r => Math.floor(r.appearsAt / 1440) === day);
     const laneToday = lane.filter(r => Math.floor(r.appearsAt / 1440) === day);
-    const budget = monthlySupply('mining', day, SERVERS.capacity);
+    const monthlyBudget = monthlySupply('mining', day, SERVERS.capacity);
+    const budget = {
+      alloy: monthlyBudget.alloy * GALAXY.asteroidOreBudgetShare,
+      crystal: monthlyBudget.crystal * GALAXY.asteroidOreBudgetShare,
+      deuterium: monthlyBudget.deuterium * GALAXY.asteroidOreBudgetShare,
+    };
     const existing = oreMix(existingToday, (rock) => rock.ore);
     quantiseDailyOre(laneToday, {
       alloy: Math.max(0, budget.alloy - existing.alloy),

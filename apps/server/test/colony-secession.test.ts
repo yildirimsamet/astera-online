@@ -98,6 +98,23 @@ describe('sadakat uyarıları', () => {
       .where(and(eq(scheduledEvents.kind, 'colony_secession'), eq(scheduledEvents.status, 'pending')));
     expect(pending).toHaveLength(0);
   });
+
+  it('çekirdek kapısı altına düşen koloninin eski uyarısını göndermez', async () => {
+    await watch();
+    const [event] = await f.db.select().from(scheduledEvents)
+      .where(eq(scheduledEvents.kind, 'colony_secession'));
+    await setLevel(f.db, colony, 'CORE', FAULT.minCoreLevel - 1);
+    await f.db.update(planets).set({ loyalty: 20, lastTickAt: event!.resolveAt })
+      .where(eq(planets.id, colony));
+    f.clock.set(new Date(event!.resolveAt.getTime() + 1000));
+    await worker().tick();
+    const notes = await f.db.select().from(notifications)
+      .where(eq(notifications.kind, 'colony_loyalty_warning'));
+    expect(notes).toHaveLength(0);
+    const pending = await f.db.select().from(scheduledEvents)
+      .where(and(eq(scheduledEvents.kind, 'colony_secession'), eq(scheduledEvents.status, 'pending')));
+    expect(pending).toHaveLength(0);
+  });
 });
 
 describe('koloni koptuğunda', () => {

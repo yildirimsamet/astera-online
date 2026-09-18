@@ -31,8 +31,9 @@ import { notify } from './notifications.js';
  * SADAKAT VE KOPUŞ. `docs/colony-faults-plan.md` §4-5.
  *
  * A colony that is left broken stops belonging to its commander. Loyalty falls while
- * faults stand — faster the more of them there are — and at zero the world secedes and
- * goes NEUTRAL, buildings and stock standing, for whoever gets there first.
+ * faults stand — faster the more of them there are — and a battle loss cuts it
+ * immediately. At zero the world secedes and goes NEUTRAL, buildings and stock
+ * standing, for whoever gets there first.
  *
  * THIS RE-OPENS D179, WHICH REMOVED THE ONLY OTHER WAY A WORLD WAS EVER HANDED BACK TO
  * NOBODY. `ownership.ts` still carries the note. It is the owner's decision, and what
@@ -65,6 +66,16 @@ export async function scheduleLoyaltyWatch(
     eq(scheduledEvents.refId, input.planetId),
     eq(scheduledEvents.status, 'pending'),
   ));
+  if (input.loyalty <= 0) {
+    await schedule(tx, {
+      seasonId: input.seasonId,
+      kind: 'colony_secession',
+      refId: input.planetId,
+      payload: { target: 0 },
+      resolveAt: input.now,
+    });
+    return;
+  }
   const target = nextLoyaltyMilestone(input.loyalty, input.activeCount);
   if (target === null) return;
   const minutes = minutesUntilLoyalty(input.loyalty, input.activeCount, target);
@@ -79,7 +90,7 @@ export async function scheduleLoyaltyWatch(
 }
 
 /**
- * Re-book after the fault set changed, reading the world for itself.
+ * Re-book after loyalty or the fault set changed, reading the world for itself.
  *
  * Called from both ends of a fault's life. Every fault that arrives or leaves moves
  * every instant ahead of this world, so a watch that was not re-booked would announce
@@ -91,18 +102,19 @@ export async function rescheduleLoyaltyWatch(
 ): Promise<void> {
   const [world] = await tx.select().from(planets).where(eq(planets.id, input.planetId));
   if (!world) return;
+  if (world.kind !== 'COLONY') return;
   const [levels, active] = await Promise.all([
     tx.select().from(buildings).where(eq(buildings.planetId, input.planetId)),
     tx.select({ kind: planetFaults.kind }).from(planetFaults)
       .where(eq(planetFaults.planetId, input.planetId)),
   ]);
   const core = levels.find((row) => row.type === 'CORE')?.level ?? 0;
-  if (!faultsPossible({ kind: world.kind, coreLevel: core, plantLevel: 0 })) return;
   await scheduleLoyaltyWatch(tx, {
     seasonId: input.seasonId,
     planetId: input.planetId,
     loyalty: world.loyalty,
-    activeCount: active.length,
+    activeCount: faultsPossible({ kind: world.kind, coreLevel: core, plantLevel: 0 })
+      ? active.length : 0,
     now: input.now,
   });
 }
@@ -123,11 +135,16 @@ export const onColonySecession: Handler = async ({ db, clock }, event) => {
 
     // Brings loyalty to `now` along with the ore; the figure below is never stale.
     const locked = await loadLocked(tx, planetId, clock, { requireLive: false });
-    const loyalty = advanceLoyalty(locked.loyalty, locked.faults.length, 0);
+    const activeCount = faultsPossible({
+      kind: locked.kind,
+      coreLevel: locked.buildings.CORE,
+      plantLevel: locked.buildings.DEUTERIUM_PLANT,
+    }) ? locked.faults.length : 0;
+    const loyalty = advanceLoyalty(locked.loyalty, activeCount, 0);
 
     if (loyalty > 0) {
       const target = typeof event.payload?.target === 'number' ? event.payload.target : null;
-      if (target !== null && loyalty <= target + 1e-6) {
+      if (activeCount > 0 && target !== null && loyalty <= target + 1e-6) {
         await notify(tx, {
           playerId: locked.playerId,
           kind: 'colony_loyalty_warning',
@@ -148,8 +165,8 @@ export const onColonySecession: Handler = async ({ db, clock }, event) => {
             planetId,
             planetName: locked.name,
             loyalty: Math.round(loyalty),
-            faults: locked.faults.length,
-            minutesLeft: Math.round(minutesUntilLoyaltyZero(loyalty, locked.faults.length) ?? 0),
+            faults: activeCount,
+            minutesLeft: Math.round(minutesUntilLoyaltyZero(loyalty, activeCount) ?? 0),
           },
         });
       }
@@ -157,7 +174,7 @@ export const onColonySecession: Handler = async ({ db, clock }, event) => {
         seasonId: event.seasonId,
         planetId,
         loyalty,
-        activeCount: locked.faults.length,
+        activeCount,
         now: clock.now(),
       });
       return;

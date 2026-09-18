@@ -1,9 +1,10 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { FAULT, FAULT_KINDS } from '@astera/rules';
-import { planetFaults, planets } from '../src/db/schema.js';
+import { planetFaults, planets, scheduledEvents } from '../src/db/schema.js';
 import { loadLocked } from '../src/services/planet.js';
 import { planetView } from '../src/services/planetView.js';
+import { rescheduleLoyaltyWatch } from '../src/services/loyalty.js';
 import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
@@ -171,9 +172,34 @@ describe('istemciye ne gidiyor', () => {
     expect(view.faults).toEqual([]);
   });
 
-  it('çekirdek kapısının altındaki koloni sadakat taşımaz', async () => {
+  it('çekirdek kapısının altındaki koloni savaş sadakatini gösterir, arıza taşımaz', async () => {
     await setLevel(f.db, f.planetIds[0]!, 'CORE', FAULT.minCoreLevel - 1);
     const view = await f.db.transaction((tx) => planetView(tx, f.planetIds[0]!, f.clock));
-    expect(view.loyalty).toBeNull();
+    expect(view.loyalty).toEqual({ value: 100, minutesLeft: null });
+    expect(view.faults).toEqual([]);
+  });
+
+  it('çekirdek kapısı altına düşen kolonide eski arıza sadakati düşürmez', async () => {
+    const id = f.planetIds[0]!;
+    await breakIt(f, id, 'CORE_OUTAGE');
+    await setLevel(f.db, id, 'CORE', FAULT.minCoreLevel - 1);
+    await f.db.update(planets).set({ loyalty: 70, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, id));
+    f.clock.advance(60);
+    const locked = await f.db.transaction((tx) => loadLocked(tx, id, f.clock));
+    expect(locked.loyalty).toBeGreaterThan(70);
+    const view = await f.db.transaction((tx) => planetView(tx, id, f.clock));
+    expect(view.loyalty?.minutesLeft).toBeNull();
+    await f.db.transaction((tx) => rescheduleLoyaltyWatch(tx, {
+      seasonId: f.seasonId,
+      planetId: id,
+      now: f.clock.now(),
+    }));
+    const pending = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'colony_secession'),
+      eq(scheduledEvents.refId, id),
+      eq(scheduledEvents.status, 'pending'),
+    ));
+    expect(pending).toHaveLength(0);
   });
 });

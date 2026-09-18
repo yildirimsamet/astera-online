@@ -607,8 +607,8 @@ describe('what a battle report explains', () => {
 
     const formula = within(document.querySelector<HTMLElement>('[data-combat-formula]')!);
     expect(formula.getByText('How the result is decided')).toBeVisible();
-    expect(formula.getByText(/DECISIVE.*every defending unit.*shield.*70%/)).toBeVisible();
-    expect(formula.getByText(/PARTIAL.*42%.*35%/)).toBeVisible();
+    expect(formula.getByText(/DECISIVE.*every defending unit.*shield.*60%/)).toBeVisible();
+    expect(formula.getByText(/PARTIAL.*42%.*30%/)).toBeVisible();
     expect(formula.getByText(/REPELLED.*less than 42%.*nothing/)).toBeVisible();
     expect(formula.queryByText(/survivors/i)).not.toBeInTheDocument();
   });

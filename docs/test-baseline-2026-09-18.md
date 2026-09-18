@@ -22,6 +22,16 @@ Tam çıktı: `/tmp/blindspace-baseline-tests-2026-09-18.log`
 - the owner-selected 32:16:1 resource value > does not silently reprice the current Dominion fleet value
 - finite monthly external supply > caps each day independently, including every possible captured pirate hull and its debris
 
+### Sonraki CR turunda görülen eski hatalar
+
+- instrument pricing carries the choice between them > makes the Telescope the dearest thing a planet can build — 2643 > 3287 beklentisi başarısız. Teleskop ve diğer cihaz fiyatları bu iki commit'te değiştirilmedi; test, asteroid alanı doğrulama koşusunda yeniden görüldü.
+- owner 30% economy experiment against the checkpoint > keeps the already-halved reward purse and Academy reward grant rather than halving again — ödül/Academy değerleri bu iki commit'te değiştirilmedi.
+
+Tam kurallar testinde 16 hata görüldü: ilk listedeki 15 hatanın 14'ü tekrarlandı,
+`Garbage Collector ... drinks the owner’s hand-set thirst` testi önceki commit'teki
+yakıt geri alımıyla düzeldi; yukarıdaki iki eski hata da görüldü. Tam çıktı:
+`/tmp/blindspace-t2-fulltest.log`.
+
 ## packages/sim (3)
 
 - economic fleet calibration uses the real resolver > sizes only whole, affordable hulls, including zero and sub-hull budgets

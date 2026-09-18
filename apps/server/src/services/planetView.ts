@@ -383,21 +383,23 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     /**
      * HOW MUCH OF THIS WORLD IS STILL YOURS, and how long that lasts.
      *
-     * NULL WHERE IT CANNOT MOVE — a capital, or a colony below the Core gate. A bar
-     * that can only ever read full is furniture, and this screen has no room for
-     * furniture at 350 wide.
+     * Capitals have no loyalty. Every colony may lose it in battle, including those
+     * below the Core fault gate.
      *
      * `minutesLeft` is the half that makes it a DECISION rather than a readout. The
      * commander does not need to know they are at 34%; they need to know they have
      * eleven hours, because that is the figure "do I fix this now or after work" is
      * answered with. Null while nothing is falling.
      */
-    loyalty: faultsPossible({
-      kind: p.kind,
-      coreLevel: p.buildings.CORE,
-      plantLevel: p.buildings.DEUTERIUM_PLANT,
-    })
-      ? { value: p.loyalty, minutesLeft: minutesUntilLoyaltyZero(p.loyalty, p.faults.length) }
+    loyalty: p.kind === 'COLONY'
+      ? {
+          value: p.loyalty,
+          minutesLeft: minutesUntilLoyaltyZero(p.loyalty, faultsPossible({
+            kind: p.kind,
+            coreLevel: p.buildings.CORE,
+            plantLevel: p.buildings.DEUTERIUM_PLANT,
+          }) ? p.faults.length : 0),
+        }
       : null,
     /** Absolute instants keep every client on the same queue clock. D4. */
     queues: {

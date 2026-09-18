@@ -264,12 +264,16 @@ composition are applied.
 
 | Grade | Condition | Loot |
 |---|---|---|
-| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | 70% of raidable stock |
-| `PARTIAL` | ≥42% of defender value destroyed | 35% |
+| `DECISIVE` | No defending units stand at contact, or none survive after the shield is depleted | 60% of raidable stock |
+| `PARTIAL` | ≥42% of defender value destroyed | 30% |
 | `REPELLED` | Below that | Nothing |
 
 Three grades rather than win/lose: binary outcomes make marginal attacks worthless and punish
 good-but-imperfect reads.
+
+A defending colony loses 30 loyalty on a decisive defeat and 15 on a partial defeat,
+even below the Core fault gate. A repelled attack costs no loyalty. Loyalty cannot fall
+below zero; at zero the colony secedes.
 
 **An Aegis covers a defending line; it is not one.** If no combat hull or ground gun stands at
 the world, the raid is a zero-round DECISIVE walkover and takes the ordinary decisive haul. The

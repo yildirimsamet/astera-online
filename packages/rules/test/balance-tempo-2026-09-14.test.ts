@@ -48,9 +48,9 @@ import { SEASON } from '../src/constants.js';
 const RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
 
 describe('the drill and the rock it meets', () => {
-  it('carries 400 units bare, which is the canonical ore packet', () => {
+  it('carries 400 units bare, twice the current ore packet', () => {
     expect(PROSPECTOR.hold).toBe(400);
-    expect(GALAXY.asteroidOreQuantum).toBe(400);
+    expect(GALAXY.asteroidOreQuantum).toBe(200);
     expect(prospectorHold([], {})).toBe(400);
   });
 

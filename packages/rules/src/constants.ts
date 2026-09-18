@@ -1027,16 +1027,17 @@ export const COMBAT = {
    * outcome is precisely what makes it safe to spend on the reward.
    */
   /**
-   * 0.65 → 0.70. The brief asks for a high rate because the game is PvP-first,
+   * 0.65 → 0.70. The brief asked for a high rate because the game is PvP-first,
    * and `docs/balance.md` records the loot dial as INERT on who wins a season —
    * which is precisely what makes it safe to spend on reward feel.
    *
-   * It is also the repeat-raid decay system: successive decisive raids take 70%,
-   * then 21%, then 6.3% of the original pile, with no cooldown table and no extra
-   * state.
+   * The 2026-09-18 cut to 0.60 is 14.3% less than the previous 0.70. The partial
+   * share moves from 0.35 to 0.30 with it, preserving its half-sized payout.
+   * Successive decisive raids now take 60%, then 24%, then 9.6% of the original
+   * exposed pile, with no cooldown table or extra state.
    */
-  lootDecisive: 0.70,
-  lootPartial: 0.35,
+  lootDecisive: 0.60,
+  lootPartial: 0.30,
 
   /**
    * PROVISIONAL. How much of an UNCOLLECTED buffer a raid can take, relative to
@@ -1944,12 +1945,9 @@ export const PROSPECTOR = {
   /**
    * Resource units one craft carries home, before a Derrick.
    *
-   * 300 → 400 (owner instruction, 2026-09-14) AND THE ROCKS MOVED WITH IT. This
-   * is the same number as `GALAXY.asteroidOreQuantum`: a field whose every yield
-   * is a multiple of one bare craft's hold is a field that never sends a squadron
-   * home for a twenty-unit remainder. Raising one without the other re-creates
-   * exactly the leftovers the change was made to delete, which is why the two are
-   * held together by `balance-tempo-2026-09-14.test.ts` rather than by a comment.
+   * 300 → 400 (owner instruction, 2026-09-14). Rock ore was originally counted
+   * in 400-unit packets to match this hold. The later resource halving changed
+   * those packets to 200 while leaving the craft's capacity at 400.
    */
   hold: 400,
   /**
@@ -2373,10 +2371,9 @@ export const GALAXY = {
   /**
    * THE UNIT A ROCK'S YIELD IS COUNTED IN. Owner instruction, 2026-09-14.
    *
-   * *"Kazıcı temel kapasitesini 400 yap ve asteroid cevherlerini 400'ün katlarına
-   * taşı."* One bare Prospector hold (`PROSPECTOR.hold`), and the two are the same
-   * number on purpose: a squadron that empties a rock empties it exactly, and no
-   * trip is ever made for the twenty units the last one could not fit.
+   * The original packet was one bare Prospector hold (400), so no trip was made
+   * for a tiny remainder. The resource halving makes this packet 200; the
+   * smallest remainder is now half a bare hold.
    *
    * IT BINDS THE BUDGET, NOT ONLY THE TABLE, and that is the half the first
    * attempt at this missed. The level table was never the whole story — a day's
@@ -2385,13 +2382,15 @@ export const GALAXY = {
    * `galaxy.ts` is where the rule is actually enforced; this is the figure it
    * enforces.
    *
-   * IT CANNOT PROMISE ZERO REMAINDER TO AN UPGRADED FLEET, and pretending
-   * otherwise would be the more expensive lie. Prospector Holds and a Derrick
-   * multiply the hold to figures like 1,000 and 2,080 that no single quantum
-   * divides. What this fixes is the BARE craft — the one every commander flies
-   * first and the one the complaint was about.
+   * The 2026-09-18 halving takes the packet from one bare 400-unit hold to half
+   * a hold. The daily ore budget is halved alongside it; otherwise the old
+   * cap would refill the smaller level table and leave actual rocks unchanged.
+   *
+   * Upgraded holds may also leave a partial final load; this packet keeps that
+   * remainder in predictable 200-unit steps.
    */
-  asteroidOreQuantum: 400,
+  asteroidOreQuantum: 200,
+  asteroidOreBudgetShare: 0.5,
 
   /** Legacy derived-field weights. Kept stable so an existing old-season rock never changes. */
   asteroidLevelWeights: [0, 0.4, 0.27, 0.18, 0.1, 0.05] as readonly number[],
@@ -3484,6 +3483,8 @@ export const FAULT = {
 
   /* ── loyalty ───────────────────────────────────────────────────────── */
   loyaltyMax: 100,
+  /** A colony loses loyalty when its defender loses a battle, even below the fault gate. */
+  battleLoyaltyLoss: { DECISIVE: 30, PARTIAL: 15, REPELLED: 0 },
   /** Eight faults standing → zero in exactly this. OWNER'S NUMBER. */
   loyaltyCollapseHours: 12,
   /** No fault standing → full in this. */

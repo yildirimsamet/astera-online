@@ -66,31 +66,34 @@ export function PlanetHero({
    * first question — is a big one good, which decision am I supposed to use it for —
    * has no answer without the time.
    *
-   * ABSENT WHERE IT CANNOT MOVE. A capital and a colony below the Core gate get null
-   * from the server. Breakable colonies always get a line, including at 100%, so the
-   * commander can confirm the healthy state before anything goes wrong.
+   * ABSENT WHERE IT CANNOT MOVE. Capitals get null from the server. Every colony
+   * gets a line, including at 100%, so the commander can confirm the healthy state
+   * before anything goes wrong.
    */
   const loyalty = planet.loyalty ?? null;
-  const loyaltyLine = loyalty && (
-    <div data-loyalty data-testid="loyalty-line" className="flex items-baseline gap-2 border-t border-line-soft pt-1">
-      <span className="legend text-faint">{t('faults.loyalty.title')}</span>
-      <span className="h-1 flex-1 overflow-hidden rounded-full bg-void/60">
-        <span
-          data-loyalty-bar
-          className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-bone/50'}`}
-          style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
-        />
-      </span>
-      <span className="num text-caption text-bone">
-        {t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}
-      </span>
-      {loyalty.minutesLeft !== null && (
-        <span className="num text-micro text-faint">
-          {t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}
+  const loyaltyLine = loyalty ? (
+    <div data-loyalty data-testid="loyalty-line" className="border-t border-line-soft pt-1">
+      <div className="flex items-baseline gap-2">
+        <span className="legend text-faint">{t('faults.loyalty.title')}</span>
+        <span className="h-1 flex-1 overflow-hidden rounded-full bg-void/60">
+          <span
+            data-loyalty-bar
+            className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-bone/50'}`}
+            style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
+          />
         </span>
-      )}
+        <span className="num text-caption text-bone">
+          {t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}
+        </span>
+        {loyalty.minutesLeft !== null && (
+          <span className="num text-micro text-faint">
+            {t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}
+          </span>
+        )}
+      </div>
+      <p className="mt-0.5 text-micro text-faint">{t('faults.loyalty.battleLoss')}</p>
     </div>
-  );
+  ) : null;
 
   if (compactMode) {
     return (

@@ -80,7 +80,7 @@ import {
 import { grantRecoveryShield, permanentFleetCost } from '../services/attackProtection.js';
 import { breakFaults, defenceOnline, onFaultSpawn, onVaultLeakFlush } from '../services/faults.js';
 import { onFaultRepairComplete } from '../services/faultRepair.js';
-import { onColonySecession } from '../services/loyalty.js';
+import { onColonySecession, rescheduleLoyaltyWatch } from '../services/loyalty.js';
 import { emptySeasonStats } from '../services/seasonArchive.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
@@ -908,6 +908,20 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         announce: false,
       })
       : [];
+
+    const loyaltyLoss = defender.kind === 'COLONY'
+      ? FAULT.battleLoyaltyLoss[result.grade]
+      : 0;
+    if (loyaltyLoss > 0) {
+      await tx.update(planets)
+        .set({ loyalty: Math.max(0, defender.loyalty - loyaltyLoss) })
+        .where(eq(planets.id, defender.planetId));
+      await rescheduleLoyaltyWatch(tx, {
+        seasonId: mission.seasonId,
+        planetId: defender.planetId,
+        now: defender.now,
+      });
+    }
 
     const dominionBreakdown = scoreEligible
       ? battleDominion(
