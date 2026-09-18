@@ -27,7 +27,6 @@ import {
   telescopeSlots,
   shieldHp,
   storageCap,
-  vaultProtects,
   type BuildingId,
   type BuildingLevels,
   type InstrumentId,
@@ -93,6 +92,8 @@ export interface Gain {
   label: string;
   now: string;
   next: string;
+  /** Keep a longer comparison visible on narrow upgrade rows. */
+  wrapOnRow?: true;
   /** Resource-shaped values use the game's learnt resource art, never initials. */
   resourcePair?: {
     now: { alloy: number; crystal: number; deuterium?: number };
@@ -189,42 +190,10 @@ export function buildingGain(
         }),
       };
     case 'VAULT': {
-      const current = vaultProtects(level, levels.REFINERY, levels.EXTRACTOR, levels.DEUTERIUM_PLANT);
-      const raised = vaultProtects(next, levels.REFINERY, levels.EXTRACTOR, levels.DEUTERIUM_PLANT);
-
       /**
-       * TWO METRICS, AND THE SECOND ONE IS WHAT KEEPS THE ROW HONEST.
-       *
-       * The Vault does two jobs: it sets the floor a raid cannot reach, and it
-       * sets how tall the STORE is. On a very young world the floor is held up by
-       * `ECON.openingFloorAlloy` — a flat grant that outgrows two hours of a
-       * Refinery-1 planet's output — so the protected pair does not move for the
-       * first level or two while the capacity does.
-       *
-       * Quoting an unchanged pair and still charging an exponential price is the
-       * single worst thing an upgrade screen can do. So when protection has not
-       * moved, the row states the ceiling instead, exactly as the Shipyard row
-       * switches to Veils once its accuracy figure flattens.
-       */
-      /**
-        THE STORE IS THE HEADLINE, AND ITS ABSENCE WAS A REAL COMPREHENSION BUG.
-        D190, owner report: *"kullanıcılar kasa logic'ini anlamakta güçlük çekiyor.
-        Sanıyorlar ki sadece belirli bir miktar kaynağı korur. Deponun kapasitesini
-        arttırdığını bilmiyor, anlayamıyorlar."*
-
-        This row used to carry both jobs. D169 removed the store half to fix a
-        different fault — a row that could quote an unchanged protected pair — and
-        took with it the only place in the game that said a Vault deepens the STORE.
-        The docblock above survived saying "it sets how tall the STORE is" while the
-        screen no longer did, and the producers' own role strings claim the storage
-        credit, so a player is actively taught the wrong owner.
-
-        BOTH FIGURES ARE QUOTED IN HOURS, which is the fix and not a formatting
-        choice. The Vault's effect is ONE number — hours — shared by all three
-        resources; each resource's amount is that number times its OWN rate, which
-        is why the protected alloy and the protected crystal differ and why that
-        difference is otherwise mystifying. Two moving numbers on one line: how deep
-        the store is, and how much of it a raid cannot reach.
+       * Store depth remains the purchase after the protected floor reaches its
+       * eight-hour cap. Keep both hour figures visible; resource amounts alone
+       * repeat at later levels and hide the capacity increase.
        */
       const hours = (level_: number) => i18n.t('gains.vault.value', {
         store: full(Math.round(storageHours(level_))),
@@ -234,10 +203,7 @@ export function buildingGain(
         label: i18n.t('gains.vault.label'),
         now: hours(level),
         next: hours(next),
-        resourcePair: {
-          now: current,
-          next: raised,
-        },
+        wrapOnRow: true,
       };
     }
     case 'SHIPYARD': {

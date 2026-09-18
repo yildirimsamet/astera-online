@@ -507,7 +507,7 @@ export function UpgradeRow({
             ) : completed ? (
               <p role="status" className="truncate text-caption text-faint">{completed}</p>
             ) : gain ? (
-              <p className="num truncate text-caption">
+              <p className={`num text-caption ${gain.wrapOnRow ? 'leading-snug' : 'truncate'}`}>
                 <span className="text-faint">{gain.label} </span>
                 {gain.resourcePair
                   ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />

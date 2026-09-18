@@ -68,15 +68,6 @@ const at = (level: number): BuildingLevels => ({
 
 describe('every upgrade row states something that actually changes', () => {
   /**
-   * THE VAULT ROW ALWAYS STATES PROTECTION NOW. D171.
-   *
-   * It used to fall back to the storage ceiling whenever a level bought no extra
-   * protection — the flat opening floor made that common on a young world, and a
-   * row quoting the same pair twice while charging is the worst thing an upgrade
-   * screen can do. D169 made the floor a SHARE of the store, so every level moves
-   * it by construction and the fallback became unreachable code. Both are gone.
-   */
-  /**
    * THE VAULT ROW STATES BOTH ITS JOBS, AND THIS TEST IS WHY. D190.
    *
    * Owner report: players believe the Vault only protects a fixed amount and do
@@ -87,9 +78,10 @@ describe('every upgrade row states something that actually changes', () => {
    *
    * A comprehension fix that no test holds is a comprehension fix with a shelf
    * life. This is the guard: whatever the row is reworded to, it must carry the
-   * depth of the store and the protected share of it, and both must move.
+   * depth of the store and the protected hours. Depth must always rise; protected
+   * hours can stop at the eight-hour cap.
    */
-  it('states the store depth and the protected slice, and moves both', () => {
+  it('states rising store depth and protection up to its cap', () => {
     for (const level of [0, 1, 3, 6, 12]) {
       const gain = buildingGain('VAULT', level, level, at(level));
       const figures = (text: string) =>
@@ -102,13 +94,13 @@ describe('every upgrade row states something that actually changes', () => {
       const [storeNext, safeNext] = figures(gain.next);
       // The store is the headline, so it is the larger of the pair...
       expect(storeNow!).toBeGreaterThan(safeNow!);
-      // ...and a level buys more of BOTH, which is the rule players were missing.
+      // Depth always grows; protection may stay at its eight-hour cap.
       expect(storeNext!).toBeGreaterThan(storeNow!);
       expect(safeNext!).toBeGreaterThanOrEqual(safeNow!);
     }
   });
 
-  it('never quotes the same protected pair twice', () => {
+  it('never quotes the same Vault outcome twice', () => {
     for (const level of [0, 1, 3, 6, 12]) {
       const gain = buildingGain('VAULT', level, level, at(level));
       expect(gain.now, `Vault ${String(level)}`).not.toBe(gain.next);
