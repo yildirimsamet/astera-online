@@ -120,6 +120,9 @@ describe('ağır bir saldırı', () => {
   });
 
   it('eşiğin altında kalan bir akın hiçbir şey bozmaz', async () => {
+    // A loss in a resource no world produces has no finite recovery time and always
+    // earns the shield; this fixture is about a raid BELOW the bar, so it makes fuel.
+    for (const id of f.planetIds) await setLevel(f.db, id, 'DEUTERIUM_PLANT', 8);
     await grant(f.db, colony, 400_000, 100_000);
     await giveUnits(f.db, colony, { DART: 2 });
     await giveUnits(f.db, mine, { DART: 60 });
