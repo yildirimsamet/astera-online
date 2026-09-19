@@ -2,7 +2,7 @@ import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { ABUSE, type Fleet, type Resources } from '@astera/rules';
-import { battleReports, missions, planets, players, strategicAssets } from '../src/db/schema.js';
+import { battleReports, botProfiles, missions, planets, players, strategicAssets } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchDeathStar } from '../src/services/strategic.js';
@@ -162,6 +162,26 @@ describe('the recovery shield', () => {
     const until = await recoveryOf(f.playerIds[1]!);
     expect(until).not.toBeNull();
     expect(until!.getTime())
+      .toBe(report.createdAt.getTime() + ABUSE.recoveryShieldHours * HOUR);
+  });
+
+  /**
+   * THE SERVER'S COMMANDERS RECOVER LIKE PEOPLE. Owner instruction, 2026-09-19:
+   * *"Unutma onlar gerçek insan gibi artık!"* — a bot beaten this badly gets the
+   * same hours, so nobody can farm one bot over and over.
+   */
+  it('gives a bot the same hours after the same defeat', async () => {
+    const [defender] = await f.db.select({ accountId: players.accountId }).from(players)
+      .where(eq(players.id, f.playerIds[1]!));
+    await f.db.insert(botProfiles).values({
+      accountId: defender!.accountId,
+      ordinal: 0,
+      persona: 'BALANCED',
+      nextActionAt: f.clock.now(),
+      createdAt: f.clock.now(),
+    });
+    const report = await overwhelm();
+    expect((await recoveryOf(f.playerIds[1]!))?.getTime())
       .toBe(report.createdAt.getTime() + ABUSE.recoveryShieldHours * HOUR);
   });
 

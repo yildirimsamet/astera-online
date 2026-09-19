@@ -240,6 +240,26 @@ export const COALESCE_MS = 250;
  * renders and across the stream reconnecting, and it is far easier to assert
  * against as a plain object than through a test renderer.
  */
+/**
+ * THE HEAVY LANE. 2026-09-19, the owner's first phone recording.
+ *
+ * In a full thousand-seat galaxy `/api/galaxy` is ~475 KB and the ladder ~194 KB,
+ * and GROWTH — a satellite installed, a Core tier crossed, a score moved, a clan
+ * changed — made every client read both at once and again 1.5 s later for
+ * consistency. With a roster of bots building all day that was a megabyte and a
+ * 140–214 ms stall every few seconds, second for second in the recording.
+ *
+ * Growth is not urgent, so it waits: one read at most every thirty seconds after
+ * the first event, and never sooner than `CONSISTENCY_MS` after the last one it
+ * covers — which is what the separate consistency re-read used to buy. Anything
+ * that changes the map in a way a player is watching for (a capture, a strike, a
+ * dome, a record) keeps the quick lane.
+ */
+export const HEAVY_COALESCE_MS = 30_000;
+/** How long every replica's projection cache needs to observe a commit. */
+export const CONSISTENCY_MS = 1_500;
+const HEAVY_KINDS: ReadonlySet<string> = new Set(['shard:world', 'shard:score', 'shard:clan']);
+
 export function shardCoalescer(
   flush: (reads: readonly (readonly string[])[]) => void,
   windowMs = COALESCE_MS,
@@ -247,12 +267,39 @@ export function shardCoalescer(
   /** Query keys waiting to be read, de-duplicated by their joined name. */
   let waiting = new Map<string, readonly string[]>();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let heavy = new Map<string, readonly string[]>();
+  let heavyTimer: ReturnType<typeof setTimeout> | undefined;
+  let heavyFirst = 0;
+  let heavyLast = 0;
+
+  const armHeavy = (): void => {
+    const due = Math.max(heavyFirst + HEAVY_COALESCE_MS, heavyLast + CONSISTENCY_MS);
+    heavyTimer = setTimeout(() => {
+      // An event landed inside the consistency window: wait it out, once more.
+      if (Date.now() < heavyLast + CONSISTENCY_MS) {
+        armHeavy();
+        return;
+      }
+      heavyTimer = undefined;
+      const reads = [...heavy.values()];
+      heavy = new Map();
+      flush(reads);
+    }, Math.max(0, due - Date.now()));
+  };
 
   return {
     note(kind: string): void {
       const reads = readsForShardEvent(kind);
       // An unknown kind must not arm a timer that will flush nothing.
       if (reads.length === 0) return;
+      if (HEAVY_KINDS.has(kind)) {
+        for (const key of reads) heavy.set(key.join('/'), key);
+        heavyLast = Date.now();
+        if (heavyTimer !== undefined) return;
+        heavyFirst = heavyLast;
+        armHeavy();
+        return;
+      }
       for (const key of reads) waiting.set(key.join('/'), key);
       if (timer !== undefined) return;
       timer = setTimeout(() => {
@@ -265,8 +312,11 @@ export function shardCoalescer(
     /** On unmount. A pending flush must not outlive the component that armed it. */
     cancel(): void {
       if (timer !== undefined) clearTimeout(timer);
+      if (heavyTimer !== undefined) clearTimeout(heavyTimer);
       timer = undefined;
+      heavyTimer = undefined;
       waiting = new Map();
+      heavy = new Map();
     },
   };
 }

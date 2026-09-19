@@ -2,8 +2,9 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { MULTI_WORLD, SERVERS, generateGalaxy, hashSeed, waitingColonySlots } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { planets, players, seasons, shards } from '../db/schema.js';
+import { planets, seasons, shards } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
+import { peopleIn } from './people.js';
 
 /**
  * Provisioning is separate from commander transfer: map/calendar construction
@@ -30,9 +31,7 @@ export async function ensureWaitingSeason(
       .orderBy(asc(shards.ordinal));
     for (const { season, shard } of candidates) {
       if (now >= season.endsAt) continue;
-      const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(players)
-        .where(eq(players.seasonId, season.id));
-      if ((count?.n ?? 0) >= shard.playerCap) continue;
+      if (await peopleIn(tx, season.id) >= shard.playerCap) continue;
       const worlds = await tx.select({ index: planets.slotIndex, x: planets.x, y: planets.y, z: planets.z })
         .from(planets).where(eq(planets.seasonId, season.id));
       const occupied = new Set(worlds.map((world) => world.index));

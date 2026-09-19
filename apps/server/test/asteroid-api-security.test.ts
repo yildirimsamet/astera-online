@@ -234,10 +234,14 @@ describe('asteroid API fog and launch authority', () => {
     expect((await field(authB)).asteroids.some((rock) => rock.id === targetId)).toBe(true);
 
     const earned = await app.inject({ method: 'GET', url: '/api/galaxy/traffic', headers: authB });
-    const earnedContacts = earned.json<{ contacts: { id: string; route?: unknown }[] }>().contacts;
+    const earnedContacts = earned.json<{
+      contacts: { id: string; route?: unknown; minutesRemaining?: number }[];
+    }>().contacts;
     expect(earnedContacts).toContainEqual(expect.objectContaining({ id: run.runId }));
-    expect(earnedContacts.find((contact) => contact.id === run.runId)?.route)
-      .toEqual(expect.any(Object));
+    // The race is earned: its clock arrives. Its line never does (owner, 2026-09-19).
+    const earnedRun = earnedContacts.find((contact) => contact.id === run.runId);
+    expect(earnedRun?.minutesRemaining).toEqual(expect.any(Number));
+    expect(earnedRun?.route).toBeUndefined();
   });
 
   it('keeps an already discovered race visible while its craft returns after the rock expires', async () => {
@@ -279,9 +283,12 @@ describe('asteroid API fog and launch authority', () => {
 
     const traffic = await app.inject({ method: 'GET', url: '/api/galaxy/traffic', headers: authB });
     expect(traffic.statusCode).toBe(200);
-    const contacts = traffic.json<{ contacts: { id: string; route?: unknown }[] }>().contacts;
+    const contacts = traffic.json<{
+      contacts: { id: string; route?: unknown; minutesRemaining?: number }[];
+    }>().contacts;
     expect(contacts).toContainEqual(expect.objectContaining({ id: run.runId }));
-    expect(contacts.find((contact) => contact.id === run.runId)?.route)
-      .toEqual(expect.any(Object));
+    const race = contacts.find((contact) => contact.id === run.runId);
+    expect(race?.minutesRemaining).toEqual(expect.any(Number));
+    expect(race?.route).toBeUndefined();
   });
 });

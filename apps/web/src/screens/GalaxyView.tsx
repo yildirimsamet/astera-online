@@ -137,6 +137,8 @@ import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
 import { GalaxyEventsGuide } from './GalaxyEventsGuide.js';
+import { FpsReadout } from '../ui/FpsReadout.js';
+import { setPerfExtra } from '../lib/perfSession.js';
 
 /** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
 /**
@@ -177,6 +179,20 @@ const SkinInventoryScreen = lazy(async () => import('./SkinInventoryScreen.js'))
  * if it moves — while the second tap on that same object opens its detail. For a
  * world the commander controls, that second tap opens management instead.
  */
+
+/**
+ * WHICH SHEET WAS OPEN, AS A NUMBER THE PERFORMANCE RECORDING CAN CARRY. Admin
+ * only (2026-09-19): a sample's context is numbers, and the second recording froze
+ * for 745 ms with "a sheet" open and no way to say which. 0 is none; the rest are
+ * their place in this list plus one, and the list only ever grows at the end.
+ */
+export const PERF_PANEL_CODES = [
+  'planet', 'research', 'intel', 'report', 'leaderboard', 'clan', 'chat', 'chronicle',
+  'rewards', 'announcements', 'feedback', 'donate', 'skin-shop', 'skin-inventory', 'admin',
+  'recap', 'menu', 'return',
+] as const;
+export const perfPanelCode = (panel: Panel): number =>
+  panel === null ? 0 : PERF_PANEL_CODES.indexOf(panel) + 1;
 
 export type Panel = 'planet' | 'research' | 'intel' | 'report' | 'leaderboard' | 'clan' | 'chat' | 'chronicle' | 'rewards' | 'announcements' | 'feedback' | 'donate' | 'skin-shop' | 'skin-inventory' | 'admin' | 'recap' | 'menu' | 'return' | null;
 
@@ -301,6 +317,8 @@ export function GalaxyView({
   /** The scripted lesson owns guidance during training. */
   showGuidance?: boolean;
 }) {
+  // The admin performance recorder notes which sheet was open that second.
+  useEffect(() => { setPerfExtra('panel', perfPanelCode(panel)); }, [panel]);
   const { t } = useTranslation();
   const returnStatus = useReturnStatus(showChat);
   const applyToReturn = useApplyToReturn();
@@ -1104,6 +1122,7 @@ export function GalaxyView({
               <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
             )}
         </DiscReadout>
+        <FpsReadout />
         {/*
           PRESSING THE MERCHANT'S CHIP FRAMES THE MERCHANT. D170, owner request.
 

@@ -1,5 +1,7 @@
 import { dirname, join } from 'node:path';
 import { z } from 'zod';
+import { MULTI_WORLD } from '@astera/rules';
+import { BOTS } from './services/bots/personas.js';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -120,6 +122,12 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /**
+   * HOW MANY OF THEM EACH LIVE GALAXY SEATS. `BOTS.perGalaxy` unless the operator
+   * says otherwise, and never more than the bot band holds (`MULTI_WORLD.botSlots`).
+   * The owner's plan is fifty to a hundred in a thousand-seat galaxy.
+   */
+  BOTS_PER_GALAXY: z.coerce.number().int().min(1).max(MULTI_WORLD.botSlots).default(BOTS.perGalaxy),
   // Explicit rollout switch. Disabling never re-enables destructive reclaim.
   SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   SILENT_SPACE_BATCH: z.coerce.number().int().min(1).max(20).default(5),

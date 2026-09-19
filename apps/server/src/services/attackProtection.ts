@@ -20,7 +20,6 @@ import {
 import type { Queryable, Tx } from '../db/client.js';
 import {
   battleReports,
-  botProfiles,
   buildings,
   missions,
   planets,
@@ -262,28 +261,6 @@ async function hasOutboundPvpStrike(
 }
 
 /**
- * IS THIS COMMANDER ONE THE SERVER IS PLAYING? D159.
- *
- * A bot is given no first-day shield for a stated reason — a shield on one would
- * remove a target from the disc for a day, on exactly the day a new commander has
- * the fewest of them — and the recovery shield is the same bargain for six hours
- * at a time. The server's commanders hold themselves to the rules people are
- * protected BY and claim none of the protections for themselves.
- *
- * Asked only once both thresholds have already been cleared, so the ordinary
- * battle pays nothing for it.
- */
-async function isServerCommander(db: Queryable, playerId: string): Promise<boolean> {
-  const [row] = await db
-    .select({ id: players.id })
-    .from(players)
-    .innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
-    .where(eq(players.id, playerId))
-    .limit(1);
-  return row !== undefined;
-}
-
-/**
  * GRANT OR EXTEND THE SIX-HOUR WINDOW AFTER ONE BATTLE. Owner instruction.
  *
  * JUDGED ON THE WHOLE LOOKBACK, NOT ON THIS BATTLE. Owner instruction, 2026-09-18:
@@ -377,9 +354,10 @@ export async function grantRecoveryShield(
  * ruled it grants the same recovery outright, so the threshold is skipped rather
  * than approximated from destroyed value.
  *
- * THE TWO REFUSALS THAT STILL APPLY are the ones that are not about the size of
+ * THE ONE REFUSAL THAT STILL APPLIES is the one that is not about the size of
  * the blow: a commander with a hostile fleet of their own in the air does not
- * collect a shield, and neither does one the server is playing.
+ * collect a shield. The server's own commanders collect it like anybody else
+ * since 2026-09-19 (owner: they are people now), so no one bot can be farmed.
  */
 export async function forceRecoveryShield(
   tx: Tx,
@@ -396,7 +374,6 @@ export async function forceRecoveryShield(
   },
 ): Promise<Date | null> {
   if (!recoveryShieldEnabled()) return null;
-  if (await isServerCommander(tx, input.playerId)) return null;
   if (await hasOutboundPvpStrike(tx, input.playerId)) return null;
 
   const [row] = await tx

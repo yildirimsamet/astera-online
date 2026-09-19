@@ -106,7 +106,7 @@ describe('traffic, as parsed', () => {
 
   it('parses a fleet with no route and no clock on it', () => {
     const parsed = trafficSchema.parse({ contacts: [contact({ fleet: { DART: 12, PIKE: 3 } })] });
-    expect(parsed.contacts[0]!.route).toBeUndefined();
+    expect(parsed.contacts[0]).not.toHaveProperty('route');
     expect(parsed.contacts[0]!.minutesRemaining).toBeUndefined();
     expect(parsed.contacts[0]!.fleet).toEqual({ DART: 12, PIKE: 3 });
   });
@@ -146,8 +146,13 @@ describe('traffic, as parsed', () => {
     expect(() => trafficSchema.parse({ contacts: [contact({ kind: 'incoming' })] })).toThrow();
   });
 
-  /** The drill is the stated exception: its leg and its clock are everyone's. */
-  it('parses a mining run with its whole leg and its time left', () => {
+  /**
+   * THE DRILL'S CLOCK IS EVERYONE'S; ITS LINE IS NOBODY'S. Owner, 2026-09-19: a
+   * stranger's drill route drew a line across the disc for everybody who had found
+   * the rock. The server stopped sending it, and a line that arrives anyway never
+   * reaches the renderer.
+   */
+  it('parses a mining run with its time left and never its line', () => {
     const parsed = trafficSchema.parse({
       contacts: [
         contact({
@@ -162,7 +167,7 @@ describe('traffic, as parsed', () => {
         }),
       ],
     });
-    expect(parsed.contacts[0]!.route?.to).toEqual({ x: 400, y: 0, z: 0 });
+    expect(parsed.contacts[0]).not.toHaveProperty('route');
     expect(parsed.contacts[0]!.minutesRemaining).toBe(9.5);
   });
 });

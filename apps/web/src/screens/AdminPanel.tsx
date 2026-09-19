@@ -5,21 +5,28 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import { useAdminFeedback, usePublishAnnouncement } from '../api/queries.js';
+import { useApi } from '../api/context.js';
+import {
+  retryPerfSession, startPerfSession, stopPerfSession, usePerfSession,
+} from '../lib/perfSession.js';
+import { formatClock } from '../ui/FpsReadout.js';
 import type { FeedbackKind } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { RichContent } from '../ui/RichContent.js';
 import { Button, EmptyState, Segmented, SkeletonText, Unreachable } from '../ui/kit/index.js';
 import { BellIcon, SendIcon } from '../ui/icons/index.js';
 
-type AdminTab = 'COMPOSE' | 'FEEDBACK';
+type AdminTab = 'COMPOSE' | 'FEEDBACK' | 'PERF';
 
 const ADMIN_TAB_ID: Record<AdminTab, string> = {
   COMPOSE: 'admin-compose-tab',
   FEEDBACK: 'admin-feedback-tab',
+  PERF: 'admin-perf-tab',
 };
 const ADMIN_PANEL_ID: Record<AdminTab, string> = {
   COMPOSE: 'admin-compose-panel',
   FEEDBACK: 'admin-feedback-panel',
+  PERF: 'admin-perf-panel',
 };
 
 export default function AdminPanel() {
@@ -38,6 +45,7 @@ export default function AdminPanel() {
           segments={[
             { id: 'COMPOSE', label: t('community.admin.composeTab') },
             { id: 'FEEDBACK', label: t('community.admin.feedbackTab') },
+            { id: 'PERF', label: t('community.admin.perfTab') },
           ]}
         />
       </div>
@@ -47,7 +55,7 @@ export default function AdminPanel() {
         aria-labelledby={ADMIN_TAB_ID[tab]}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-6"
       >
-        {tab === 'COMPOSE' ? <AnnouncementComposer /> : <AdminFeedbackList />}
+        {tab === 'COMPOSE' ? <AnnouncementComposer /> : tab === 'FEEDBACK' ? <AdminFeedbackList /> : <PerfRecorderPanel />}
       </div>
     </div>
   );
@@ -268,4 +276,86 @@ function feedbackLabelKey(kind: FeedbackKind):
   if (kind === 'BUG') return 'community.feedback.kinds.bug';
   if (kind === 'SUGGESTION') return 'community.feedback.kinds.suggestion';
   return 'community.feedback.kinds.praise';
+}
+
+/**
+ * THE PERFORMANCE RECORDER'S CONTROL. Owner request, 2026-09-19.
+ *
+ * One button that starts and stops, the elapsed time while it runs, and after it
+ * stops the figures a person reads first: the average and the low end of the frame
+ * rate, how often it hitched and froze, the longest stall, what the GPU was asked
+ * to draw, where memory went, and the worst moment with what was on the disc. The
+ * full second-by-second record is on the server for the rest.
+ */
+function PerfRecorderPanel() {
+  const { t } = useTranslation();
+  const api = useApi();
+  const perf = usePerfSession();
+  const recording = perf.status === 'recording';
+  const summary = perf.summary;
+
+  const rows: [string, string][] = summary
+    ? [
+      [t('community.admin.perfFpsAvg'), String(summary.fpsAvg ?? '—')],
+      [t('community.admin.perfFpsLow'), String(summary.fpsP5 ?? '—')],
+      [t('community.admin.perfHitches'), String(summary.hitches ?? 0)],
+      [t('community.admin.perfFreezes'), String(summary.freezes ?? 0)],
+      [t('community.admin.perfJankMax'), `${String(summary.jankMaxMs ?? 0)} ms`],
+      [t('community.admin.perfCalls'), `${String(summary.callsAvg ?? '—')} / ${String(summary.callsMax ?? '—')}`],
+      [t('community.admin.perfTriangles'), String(summary.trianglesMax ?? '—')],
+      [
+        t('community.admin.perfHeap'),
+        summary.heapStartMb === null
+          ? '—'
+          : `${String(summary.heapStartMb)} → ${String(summary.heapEndMb)} MB (${String(summary.heapMaxMb)})`,
+      ],
+      [t('community.admin.perfNetwork'), `${String(summary.requests ?? 0)} / ${String(summary.kb ?? 0)} KB`],
+    ]
+    : [];
+
+  return (
+    <section className="flex flex-col gap-3 py-1">
+      <p className="text-micro leading-snug text-dim">{t('community.admin.perfIntro')}</p>
+      <div className="flex items-center gap-3">
+        <Button
+          size="sm"
+          variant={recording ? 'default' : 'primary'}
+          disabled={perf.status === 'sending'}
+          onClick={() => {
+            if (recording) void stopPerfSession(api.postPerfSession);
+            else startPerfSession();
+          }}
+        >
+          {recording ? t('community.admin.perfStop') : t('community.admin.perfStart')}
+        </Button>
+        <span className="num text-micro text-faint" aria-live="polite">
+          {recording && `${t('community.admin.perfRecording')} · ${formatClock(perf.seconds)}`}
+          {perf.status === 'sending' && t('community.admin.perfSending')}
+          {perf.status === 'sent' && t('community.admin.perfSent')}
+          {perf.status === 'failed' && t('community.admin.perfFailed')}
+        </span>
+      </div>
+      {perf.status === 'failed' && (
+        <Button size="sm" onClick={() => { void retryPerfSession(api.postPerfSession); }}>
+          {t('community.admin.perfRetry')}
+        </Button>
+      )}
+      {rows.length > 0 && (
+        <dl className="plate divide-y divide-line-soft">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex items-baseline justify-between gap-3 px-2 py-1.5">
+              <dt className="text-micro text-dim">{label}</dt>
+              <dd className="num text-micro text-bone">{value}</dd>
+            </div>
+          ))}
+          {typeof summary?.worst1 === 'string' && (
+            <div className="px-2 py-1.5">
+              <dt className="text-micro text-dim">{t('community.admin.perfWorst')}</dt>
+              <dd className="num mt-0.5 break-words text-micro text-threat-ink">{summary.worst1}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+    </section>
+  );
 }

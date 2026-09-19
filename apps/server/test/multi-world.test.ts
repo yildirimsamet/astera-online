@@ -110,14 +110,14 @@ describe('current multi-world ruleset', () => {
     await truncateAll(db);
   });
 
-  it('creates the deterministic fixed 38/19/8 pool outside all capital slots', async () => {
+  it('creates the deterministic fixed 76/38/16 pool outside all capital slots', async () => {
     const f = await setup();
     // The current ruleset, which stopped being the Fleet V2 boundary at D156.
     expect(f.season.rulesetVersion).toBe(MULTI_WORLD.rulesetVersion);
-    expect(f.neutrals).toHaveLength(65);
-    expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(38);
-    expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(19);
-    expect(f.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(8);
+    expect(f.neutrals).toHaveLength(130);
+    expect(f.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(76);
+    expect(f.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(38);
+    expect(f.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(16);
     expect(f.neutrals.every((row) => row.world.slotIndex >= SERVERS.capacity)).toBe(true);
     expect(f.neutrals.every((row) => row.world.controllerPlayerId === null)).toBe(true);
     expect(f.neutrals.every((row) => row.world.alloy > 0 && row.world.crystal > 0)).toBe(true);

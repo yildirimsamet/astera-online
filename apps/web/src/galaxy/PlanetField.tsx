@@ -12,6 +12,7 @@ import { serverNow } from '../lib/clock.js';
 import { partitionPlanetSkins } from '../ui/planetSkins.js';
 import { PlanetSkinModel } from './PlanetSkinModel.jsx';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
+import { createViewMemo, viewChanged } from './viewMemo.js';
 
 /**
  * Every world in the disc, in sixteen draw calls.
@@ -574,16 +575,25 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   }, [camera, debug, group.nodes]);
 
   /**
-   * Billboarding, once per rendered frame.
+   * Billboarding, once per rendered frame IN WHICH THE VIEW MOVED.
    *
    * Every instance shares the camera's orientation, so this is a matrix compose per
-   * planet — trivial work — and it runs only on frames that are actually drawn,
-   * because the canvas renders on demand.
+   * planet. Trivial for three hundred; for a full thousand-seat galaxy it was the
+   * whole field re-faced and re-uploaded thirty times a second with the camera
+   * still, so it now skips any frame the view did not change (`viewMemo.ts`).
    */
+  const view = useRef(createViewMemo());
+  const faced = useRef<{ mesh: unknown; painted: unknown }>({ mesh: null, painted: null });
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh) return;
     const painted = hitboxes.current;
+    // A mesh that mounted since the last pass has never been faced at all.
+    if (faced.current.mesh !== mesh || faced.current.painted !== painted) {
+      faced.current = { mesh, painted };
+      view.current.primed = false;
+    }
+    if (!viewChanged(view.current, camera, group.nodes, 0)) return;
     group.nodes.forEach((node, i) => {
       UP.position.set(node.position[0], node.position[1], node.position[2]);
       UP.quaternion.copy(camera.quaternion);
@@ -876,9 +886,16 @@ function Pins({ nodes }: { nodes: readonly PlanetNode[] }) {
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
   }, [nodes, tint]);
 
+  const view = useRef(createViewMemo());
+  const faced = useRef<unknown>(null);
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
+    if (faced.current !== mesh) {
+      faced.current = mesh;
+      view.current.primed = false;
+    }
+    if (!viewChanged(view.current, camera, nodes, viewportHeight)) return;
     facing.copy(camera.quaternion).multiply(spin);
 
     nodes.forEach((node, i) => {
@@ -953,9 +970,16 @@ function EyeMarks({ nodes: all, open }: { nodes: readonly PlanetNode[]; open: bo
   // instanced draw has one material. Still two draw calls for the whole galaxy.
   const nodes = useMemo(() => eyeNodes(all, open), [all, open]);
 
+  const view = useRef(createViewMemo());
+  const faced = useRef<unknown>(null);
   useFrame(() => {
     const mesh = ref.current;
     if (!mesh || !(camera instanceof THREE.PerspectiveCamera)) return;
+    if (faced.current !== mesh) {
+      faced.current = mesh;
+      view.current.primed = false;
+    }
+    if (!viewChanged(view.current, camera, nodes, viewportHeight)) return;
     nodes.forEach((node, i) => {
       centre.set(node.position[0], node.position[1], node.position[2]);
       const scale = eyeMarkerScale(

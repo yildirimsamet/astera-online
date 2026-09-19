@@ -50,9 +50,11 @@ describe('multi-world strategic rules', () => {
       const capitals = galaxy.slots.filter((slot) => slot.index < MULTI_WORLD.capitalSlots);
       const neutrals = selectNeutralSlots(seed, galaxy.slots);
       expect(neutrals.length).toBeGreaterThan(0);
-      const worst = Math.max(...capitals.flatMap(
-        (capital) => neutrals.map((neutral) => distance(capital, neutral.slot)),
-      ));
+      // A running max: a thousand capitals × every neutral is too many to spread.
+      let worst = 0;
+      for (const capital of capitals) {
+        for (const neutral of neutrals) worst = Math.max(worst, distance(capital, neutral.slot));
+      }
       // Strictly inside: `launchSettlement` refuses an arrival AT the boundary.
       expect(fleetTravelExact(worst, settlementFleet, UNAIDED)).toBeLessThan(SETTLEMENT_CLAIM_MINUTES);
     }
@@ -95,15 +97,15 @@ describe('multi-world strategic rules', () => {
     expect(transferCargoCapacity({ DART: 99 }, {})).toBe(0);
   });
 
-  it('selects exactly 38/19/8 stable unique neutral slots after every capital and bot seat', () => {
+  it('selects exactly 76/38/16 stable unique neutral slots after every capital and bot seat', () => {
     const slots = generateGalaxy(8331, MULTI_WORLD.neutralSlotPool).slots;
     const first = selectNeutralSlots(8331, slots);
     const again = selectNeutralSlots(8331, slots);
     expect(again).toEqual(first);
-    expect(first.filter((entry) => entry.tier === 1)).toHaveLength(38);
-    expect(first.filter((entry) => entry.tier === 2)).toHaveLength(19);
-    expect(first.filter((entry) => entry.tier === 3)).toHaveLength(8);
-    expect(new Set(first.map((entry) => entry.slot.index))).toHaveLength(65);
+    expect(first.filter((entry) => entry.tier === 1)).toHaveLength(76);
+    expect(first.filter((entry) => entry.tier === 2)).toHaveLength(38);
+    expect(first.filter((entry) => entry.tier === 3)).toHaveLength(16);
+    expect(new Set(first.map((entry) => entry.slot.index))).toHaveLength(130);
     expect(first.every(
       (entry) => entry.slot.index >= SERVERS.capacity + MULTI_WORLD.botSlots,
     )).toBe(true);

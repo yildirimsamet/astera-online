@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 
 /**
  * WHO ASKS FOR FRAMES, AND HOW OFTEN. D53.
@@ -39,7 +39,6 @@ import { useFrame, useThree } from '@react-three/fiber';
  */
 export const AMBIENT_FPS = 24;
 
-const AMBIENT_MS = 1000 / AMBIENT_FPS;
 
 /**
  * HOW MANY DISPLAY FRAMES TO SKIP BETWEEN TWO AMBIENT ONES.
@@ -66,10 +65,96 @@ const AMBIENT_MS = 1000 / AMBIENT_FPS;
  * Capped at six so a pathological measurement (a tab that was hidden, a frame the
  * garbage collector ate) cannot park the scene.
  */
-export const frameStride = (refreshMs: number): number => {
+export const frameStride = (refreshMs: number): number => strideFor(AMBIENT_FPS, refreshMs);
+
+/**
+ * The same arithmetic for any rate: every Nth display frame, never slower than
+ * `fps`. `floor` for the reason above; capped at six for the reason above.
+ */
+export const strideFor = (fps: number, refreshMs: number): number => {
   if (!Number.isFinite(refreshMs) || refreshMs <= 0) return 1;
-  return Math.min(6, Math.max(1, Math.floor(AMBIENT_MS / refreshMs)));
+  return Math.min(6, Math.max(1, Math.floor(1000 / fps / refreshMs + STRIDE_TOLERANCE)));
 };
+
+/**
+ * A MEASURED DISPLAY IS NEVER EXACTLY ITS NOMINAL RATE. The refresh estimate is a
+ * smoothed rAF delta, and at 120Hz it settles at 8.35ms as readily as 8.33 — which
+ * put `floor(16.67 / 8.35)` at ONE and drew a sixty-frame moment at a hundred and
+ * twenty. Five hundredths of a stride absorbs the jitter; it can cost at most a
+ * display a couple of percent off its nominal rate a frame or two a second.
+ */
+const STRIDE_TOLERANCE = 0.05;
+
+/**
+ * THE RATES A MOMENT MAY RAISE THE DISC TO. 2026-09-19.
+ *
+ * `FullRate` used to call `invalidate()` from inside every frame — the display's
+ * own rate, so a 120Hz phone drew a bombardment, bloom and all, a hundred and
+ * twenty times a second. A meteor did the same for the second it crossed the sky,
+ * three slots at once, which measured to about a third of all the time the disc
+ * is open (two thirds in a shower). The payoff moments now go through the one
+ * ticker below, on vsync, and only raise the rate it strides at; a meteor raises
+ * nothing and steps at `METEOR_FPS`.
+ *
+ * Sixty is the display rate a payoff moment was designed at. Thirty for a streak
+ * is the owner's: a one-second meteor is a smooth line at thirty.
+ */
+export const FULL_RATE_FPS = 60;
+/** Anything crossing the disc — a drill, a probe, a fleet. Owner, 2026-09-19. */
+export const FLIGHT_FPS = 30;
+
+/**
+ * A METEOR STEPS TWELVE TIMES A SECOND, AND RAISES NOTHING. Owner instruction,
+ * 2026-09-19. It no longer asks the disc for frames at all; its streak simply
+ * moves in twelfths of a second at whatever rate the disc is drawn.
+ */
+export const METEOR_FPS = 12;
+
+/**
+ * How far to move a meteor this frame, and the clock it steps on.
+ *
+ * `phase` keeps the twelve-a-second rhythm, carrying what is left over past each
+ * step so a 30fps disc alternates two- and three-frame steps and still lands on
+ * twelve. `since` is the time since the last step, all of which the step spends,
+ * so the streak keeps its speed and only moves less often. A long frame is one
+ * step, never several.
+ */
+export interface MeteorClock {
+  readonly phase: number;
+  readonly since: number;
+}
+
+export const METEOR_CLOCK: MeteorClock = { phase: 0, since: 0 };
+
+export function meteorStep(clock: MeteorClock, delta: number): { advance: number; clock: MeteorClock } {
+  const step = 1 / METEOR_FPS;
+  const dt = Math.max(0, delta);
+  const phase = clock.phase + dt;
+  const since = clock.since + dt;
+  if (phase < step) return { advance: 0, clock: { phase, since } };
+  return { advance: since, clock: { phase: (phase - step) % step, since: 0 } };
+}
+
+/** Rates held for as long as something is mounted. */
+const holds = new Map<symbol, number>();
+
+/** Raise the disc to `fps` until the returned function is called. Idempotent to release. */
+export function holdRate(fps: number): () => void {
+  const key = Symbol('rate');
+  holds.set(key, fps);
+  return () => {
+    holds.delete(key);
+  };
+}
+
+/** The fastest rate anybody is asking for right now, and never under the floor. */
+export const currentFps = (): number => wantedFps();
+
+function wantedFps(): number {
+  let fps = AMBIENT_FPS;
+  for (const held of holds.values()) fps = Math.max(fps, held);
+  return fps;
+}
 
 /**
  * Smoothing on the measured refresh interval.
@@ -139,12 +224,12 @@ export function useAmbientFrames(): void {
       }
       previous = at;
 
-      if (skip > 0) {
+      // A rate raised since the last ask must not wait out the old stride.
+      const stride = strideFor(wantedFps(), refreshMs);
+      if (skip > 0 && skip < stride * creditFor(stride)) {
         skip -= 1;
         return;
       }
-
-      const stride = frameStride(refreshMs);
       const credit = creditFor(stride);
       // Frames bought, times frames each one is meant to last: the interval that
       // spends exactly what was bought and nothing more.
@@ -177,7 +262,7 @@ export function useCommittedDemandFrame(identity: string): void {
 }
 
 /**
- * EVERY FRAME THE DISPLAY WILL GIVE, FOR AS LONG AS THIS IS MOUNTED.
+ * THE FULL RATE, FOR AS LONG AS THIS IS MOUNTED.
  *
  * For the moments the ambient floor is far too slow for. The one that matters is
  * the bombardment: a round crosses the gap between a squadron and the world it is
@@ -187,18 +272,21 @@ export function useCommittedDemandFrame(identity: string): void {
  * and a half times a cycle — which does not read as a flicker, it reads as noise.
  *
  * Those ten seconds are the payoff of a decision made forty minutes ago and the
- * one visible reward the loop has. They are worth the display's real rate, and
- * nothing else on the disc has to pay for it: this asks only while it is mounted,
- * and `Bombardment` is mounted for exactly the engagement window.
+ * one visible reward the loop has. They are worth sixty frames a second, and
+ * nothing else on the disc has to pay for it: this holds the rate only while it
+ * is mounted, and `Bombardment` is mounted for exactly the engagement window.
  *
- * WHY A COMPONENT AND NOT A CALL IN EVERY `useFrame`. R3F is explicit about
- * `invalidate()` from inside a frame — it sets the pending count to two rather
- * than incrementing it — so forty rounds each asking would in fact be safe. One
- * mount says the intent once and cannot drift from it.
+ * SIXTY, NOT THE DISPLAY'S RATE. It asked from inside every frame until
+ * 2026-09-19, which on a 120Hz phone was twice the frames the moment was designed
+ * at, bloom included. The ticker strides it onto vsync like every other rate.
  */
 export function FullRate() {
-  useFrame((state) => {
-    state.invalidate();
-  });
+  useEffect(() => holdRate(FULL_RATE_FPS), []);
+  return null;
+}
+
+/** Hold `fps` for as long as `active` is true and this is mounted. */
+export function HoldRate({ fps, active }: { fps: number; active: boolean }) {
+  useEffect(() => (active ? holdRate(fps) : undefined), [active, fps]);
   return null;
 }

@@ -60,6 +60,7 @@ import {
 } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
+import { isPerson } from './people.js';
 import { publishShard } from '../stream/bus.js';
 import { addDominionCounters } from './dominion.js';
 import {
@@ -140,10 +141,12 @@ export async function listServers(db: Db, clock: Clock): Promise<ServerSummary[]
   const since = addMinutes(clock.now(), -SERVERS.onlineWindowMinutes);
 
   const [taken, active] = await Promise.all([
+    // People's capitals only: a bot's seat is never one a person could take (`people.ts`).
     db
       .select({ seasonId: planets.seasonId, n: sql<number>`count(*)::int` })
       .from(planets)
-      .where(eq(planets.kind, 'CAPITAL'))
+      .innerJoin(players, eq(players.id, planets.controllerPlayerId))
+      .where(and(eq(planets.kind, 'CAPITAL'), isPerson))
       .groupBy(planets.seasonId),
     db
       .select({ seasonId: players.seasonId, n: sql<number>`count(*)::int` })

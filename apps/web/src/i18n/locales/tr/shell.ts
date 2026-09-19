@@ -215,6 +215,10 @@ export const menu = {
     balanced: 'Çözünürlük dörtte üçe iner. Fark zor görülür, ısınma belirgin azalır.',
     low: 'Yarım çözünürlük, kenar yumuşatma kapalı. Eski telefonlar için.',
   },
+  fpsLabel: 'Kare hızı',
+  fpsOn: 'Açık',
+  fpsOff: 'Kapalı',
+  fpsHint: 'Galaksinin saniyede çizdiği kare. Hiçbir şey hareket etmezken 24–30 normaldir; hareket ve savaşta yükselir.',
 } as const;
 
 export const leaderboard = {

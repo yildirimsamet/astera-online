@@ -81,7 +81,13 @@ async function hourRow(f: Fixture, hourStartsAt: Date) {
 }
 
 describe('opening an hour', () => {
-  it('counts one rock for each commander who played in the last hour, and never a bot', async () => {
+  /**
+   * AN AWAKE BOT COUNTS LIKE A PERSON. Owner instruction, 2026-09-19, reversing the
+   * 2026-09-16 rule that left them out: with few people online the field stayed
+   * empty and the server's commanders had nothing to mine or hunt. A bot stamps
+   * `last_active_at` only while its roster has it awake, so a sleeping one is out.
+   */
+  it('counts one rock for each commander who played in the last hour, awake bots included', async () => {
     const f = await dynamicWorld(4);
     const hour = f.clock.now();
     // Two people at the controls, one who left over an hour ago, one the server plays.
@@ -95,10 +101,10 @@ describe('opening an hour', () => {
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
 
     const row = await hourRow(f, hour);
-    expect(row?.activePlayers).toBe(2);
+    expect(row?.activePlayers).toBe(3);
     expect(row?.levelWeights).toEqual(ASTEROID_DYNAMIC.levelWeights);
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour);
   });
 
   it('multiplies the hour by the shower that covers it', async () => {
@@ -462,7 +468,10 @@ describe('adopting the working-week calendar on a live season', () => {
     const now = at(2, 20, 40);
     await db.transaction((tx) => adoptLiveEventCalendar(tx, { now, seasonId: season.id }));
     const clock = new FixedClock(at(2, 21));
-    await new EventWorker(db, clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent).tick();
+    const worker = new EventWorker(db, clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
+    // Until the queue is empty: a thousand-seat galaxy's 130 caretakers put more
+    // due events ahead of the hour than one tick's batch of a hundred.
+    while ((await worker.tick()).claimed > 0) { /* drain */ }
     const [row] = await db.select().from(asteroidSpawnHours)
       .where(eq(asteroidSpawnHours.seasonId, season.id));
     expect(row?.hourStartsAt.getTime()).toBe(at(2, 21).getTime());

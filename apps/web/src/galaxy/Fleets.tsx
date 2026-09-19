@@ -2764,24 +2764,6 @@ function Foreign({
   const formationScale = formation.scale;
   const hitBox = useMemo(() => formationHitBox(slots, formationScale), [slots, formationScale]);
 
-  /**
-   * A MINING RUN'S LINE IS PUBLIC; NOTHING ELSE'S IS.
-   *
-   * Read straight off `route`, which the server only ever populates for `mining` —
-   * so this branch cannot be reached for a fleet or a probe however the payload is
-   * shaped. The fog is enforced there, not here.
-   *
-   * IT IS ONLY EVER WHAT IS LEFT TO FLY. Owner rule, and the same one your own
-   * craft obey: the near end is moved onto the craft every frame, so nothing drags
-   * a record of where it has been across the disc. A route is intent, not history —
-   * a line behind a craft says where it came from, which is the one thing this
-   * payload exists to withhold, and on a mining run it is simply clutter.
-   */
-  const route = useLine(contact.route !== undefined);
-  const ahead = useMemo(
-    () => (contact.route ? toWorld(contact.route.to) : null),
-    [contact.route],
-  );
 
   useFrame((_, delta) => {
     const node = group.current;
@@ -2845,14 +2827,6 @@ function Foreign({
     */
     easeHeading(node, aim, delta, headingSettled);
 
-    // The near end of a mining run's line follows the craft, so only what is left
-    // to fly is ever drawn. Three floats and a flag, once a frame.
-    if (route && ahead) {
-      const points = route.getAttribute('position') as THREE.BufferAttribute;
-      points.setXYZ(0, at[0], at[1], at[2]);
-      points.setXYZ(1, ahead[0], ahead[1], ahead[2]);
-      points.needsUpdate = true;
-    }
   });
 
   if (spent) return null;
@@ -2866,18 +2840,6 @@ function Foreign({
 
   return (
     <>
-      {route && (
-        <lineSegments geometry={route} frustumCulled={false}>
-          <lineBasicMaterial
-            color={ROUTE_COLOUR}
-            transparent
-            opacity={focused ? ROUTE_OPACITY_FOCUSED : ROUTE_OPACITY}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </lineSegments>
-      )}
-
       <group ref={group} name="contact" userData={{ craftId: contact.id }}>
         {/*
           Tappable, exactly like your own squadrons and the rocks. D24: somebody

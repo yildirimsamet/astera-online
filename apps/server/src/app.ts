@@ -153,6 +153,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
       batch: opts.env.WORKER_BATCH,
       staleMinutes: opts.env.WORKER_STALE_MINUTES,
       botsEnabled: opts.env.BOTS_ENABLED,
+      botsPerGalaxy: opts.env.BOTS_PER_GALAXY,
       silentSpaceEnabled: opts.env.SILENT_SPACE_ENABLED,
       silentSpaceBatch: opts.env.SILENT_SPACE_BATCH,
       silentSpaceMaxShards: opts.env.SILENT_SPACE_MAX_SHARDS,

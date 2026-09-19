@@ -86,11 +86,12 @@ const aegisOf = async (db: Fixture['db'], planetId: string) =>
     .where(and(eq(satellites.planetId, planetId), eq(satellites.type, 'AEGIS'))))[0]?.level ?? 0;
 
 describe('D209 caretaker seeding', () => {
-  it('seeds 38 / 19 / 8 worlds, each with its template garrison, dome and shield', async () => {
+  // Doubled for the thousand-seat galaxy, owner instruction 2026-09-19.
+  it('seeds 76 / 38 / 16 worlds, each with its template garrison, dome and shield', async () => {
     const g = await galaxy();
-    expect(g.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(38);
-    expect(g.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(19);
-    expect(g.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(8);
+    expect(g.neutrals.filter((row) => row.state.tier === 1)).toHaveLength(76);
+    expect(g.neutrals.filter((row) => row.state.tier === 2)).toHaveLength(38);
+    expect(g.neutrals.filter((row) => row.state.tier === 3)).toHaveLength(16);
 
     for (const tier of [1, 2, 3] as const) {
       const template = MULTI_WORLD.neutral[tier];

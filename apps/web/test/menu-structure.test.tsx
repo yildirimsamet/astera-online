@@ -233,13 +233,26 @@ describe('the menu groups what it offers', () => {
 
     const plate = view.container.querySelector('[data-device-settings]');
     expect(plate).not.toBeNull();
-    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(4);
+    expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(5);
 
     // Every control that was there before is still there, and still live.
     expect(screen.getByRole('group', { name: i18n.t('settings.choose') })).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
     expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) })).toBeInTheDocument();
+  });
+
+  /** A readout the player turns on, and one line under it saying what it counts. */
+  it('turns the fps readout on and off from the device plate', () => {
+    show();
+    const toggle = screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(i18n.t('menu.fpsHint'))).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   /** The way out stays last, and stays alone. */

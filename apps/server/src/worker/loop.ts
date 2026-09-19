@@ -21,6 +21,8 @@ export interface WorkerOptions {
    * process happened to boot would be the wrong default in every direction.
    */
   botsEnabled?: boolean;
+  /** `BOTS_PER_GALAXY`. Absent means the code's own roster, `BOTS.perGalaxy`. */
+  botsPerGalaxy?: number;
   silentSpaceEnabled?: boolean;
   silentSpaceBatch?: number;
   silentSpaceMaxShards?: number;
@@ -219,7 +221,7 @@ export class EventWorker {
       if (now.getTime() - this.botsSweptAt >= BOTS.sweepEveryMs) {
         this.botsSweptAt = now.getTime();
         try {
-          const bots = await runBotSweep(this.db, this.clock, this.log);
+          const bots = await runBotSweep(this.db, this.clock, this.log, this.opts.botsPerGalaxy);
           botTurns = bots.turns;
           if (bots.seated > 0) {
             this.log.info({ seated: bots.seated }, 'seated commanders on a live galaxy');

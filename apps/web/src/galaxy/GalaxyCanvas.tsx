@@ -86,6 +86,10 @@ import { recordAgeMinutes } from '../lib/dossier.js';
 import { RankBadge } from './RankBadge.jsx';
 import { useTranslation } from 'react-i18next';
 import { FaultMark } from '../ui/marks.js';
+import { FLIGHT_FPS, HoldRate } from './frames.js';
+import { galaxyFrames, useFpsMeterEnabled } from '../lib/fpsMeter.js';
+import { perfGalaxyFrame, setPerfExtra, setPerfGalaxyContext, usePerfSession } from '../lib/perfSession.js';
+import { anythingInFlight } from './flightRate.js';
 
 /**
  * THE GAME SURFACE.
@@ -871,6 +875,22 @@ export function GalaxyCanvas({
         openingMark={openingMark}
       />
       <AmbientTicker />
+      <FpsProbe />
+      <PerfProbe
+        focused={focus !== null}
+        context={{
+          planets: nodes.length,
+          shielded: nodes.filter((node) => node.shielded && node.intel !== 'UNKNOWN').length,
+          contacts: contacts.length,
+          pirates: contacts.filter((contact) => contact.kind === 'pirate').length,
+          ownFlights: pending.filter((thread) => thread.path !== undefined).length,
+          drills: runs.filter((run) => run.status !== 'done').length,
+          rocks: asteroids.length,
+          wrecks: wrecks.length,
+        }}
+      />
+      {/* Drills, probes and fleets cross the disc at thirty (owner, 2026-09-19). */}
+      <HoldRate fps={FLIGHT_FPS} active={anythingInFlight({ pending, runs, contacts })} />
     </Canvas>
   );
 }
@@ -1795,6 +1815,85 @@ function CoachTap({ subject, label, onTap }: {
       </Html>
     </group>
   );
+}
+
+/**
+ * Marks every frame the galaxy draws, for the readout in the corner. Only while
+ * the readout is on; otherwise it does nothing at all.
+ */
+function FpsProbe() {
+  const on = useFpsMeterEnabled();
+  useFrame(() => {
+    if (on) galaxyFrames.frame(performance.now());
+  });
+  return null;
+}
+
+/**
+ * THE GALAXY'S SIDE OF A PERFORMANCE RECORDING (admin only, 2026-09-19).
+ *
+ * While a recording runs, every draw is timed and counted. Two things make that
+ * honest:
+ *
+ *   · THE COUNT IS PER FRAME. The composer renders the scene and then its bloom and
+ *     vignette passes, and `renderer.info` resets on every one of those calls — so
+ *     read as-is it reports the last full-screen quad, not the galaxy. `autoReset`
+ *     is off for the recording and the probe resets it once a frame instead.
+ *   · THE TIME IS CPU SUBMISSION, summed over every `render` call the composer
+ *     makes. A GPU timer query is what would measure the GPU, and phones rarely
+ *     expose one; the stall figures (`displayFrame`) catch what the GPU costs.
+ *
+ * `useFrame` runs before its frame draws, so each call reports the frame before.
+ */
+function PerfProbe({ context, focused }: { context: Record<string, number>; focused: boolean }) {
+  const recording = usePerfSession().status === 'recording';
+  const gl = useThree((state) => state.gl);
+  const renderMs = useRef(0);
+  const key = JSON.stringify(context);
+
+  useEffect(() => {
+    setPerfGalaxyContext(JSON.parse(key) as Record<string, number>);
+  }, [key]);
+  useEffect(() => () => { setPerfGalaxyContext(null); }, []);
+  useEffect(() => { setPerfExtra('focus', focused ? 1 : 0); }, [focused]);
+
+  useEffect(() => {
+    if (!recording) return undefined;
+    const info = gl.info;
+    const autoReset = info.autoReset;
+    info.autoReset = false;
+    info.reset();
+    const original = gl.render.bind(gl);
+    gl.render = (scene, camera) => {
+      const started = performance.now();
+      original(scene, camera);
+      renderMs.current += performance.now() - started;
+    };
+    return () => {
+      gl.render = original;
+      info.autoReset = autoReset;
+    };
+  }, [gl, recording]);
+
+  useFrame((state) => {
+    if (!recording) return;
+    // How far the camera stands from what it orbits: zoomed in on a world, or
+    // out over the whole disc. Rounded, so it is a reading rather than noise.
+    const target = (state.controls as { target?: THREE.Vector3 } | null)?.target;
+    setPerfExtra('camera', Math.round(target ? state.camera.position.distanceTo(target) : state.camera.position.length()));
+    if (renderMs.current === 0) return;
+    const info = gl.info;
+    perfGalaxyFrame(renderMs.current, {
+      calls: info.render.calls,
+      triangles: info.render.triangles,
+      geometries: info.memory.geometries,
+      textures: info.memory.textures,
+      programs: info.programs?.length ?? 0,
+    });
+    renderMs.current = 0;
+    info.reset();
+  });
+  return null;
 }
 
 function AmbientTicker() {

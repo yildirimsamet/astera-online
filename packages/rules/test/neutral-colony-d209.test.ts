@@ -144,17 +144,18 @@ describe('D209 colony capacity', () => {
 });
 
 describe('D209 neutral counts', () => {
-  it('carries 38 / 19 / 8 caretaker worlds', () => {
-    expect(MULTI_WORLD.neutralCounts).toEqual({ 1: 38, 2: 19, 3: 8 });
+  // Doubled for the thousand-seat galaxy, owner instruction 2026-09-19.
+  it('carries 76 / 38 / 16 caretaker worlds', () => {
+    expect(MULTI_WORLD.neutralCounts).toEqual({ 1: 76, 2: 38, 3: 16 });
   });
 
-  it.each([1, 2, 3, 8331])('places all 65 on distinct non-capital slots for seed %i', (seed) => {
+  it.each([1, 2, 3, 8331])('places all 130 on distinct non-capital slots for seed %i', (seed) => {
     const slots = generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots;
     const chosen = selectNeutralSlots(seed, slots);
-    expect(chosen.filter((entry) => entry.tier === 1)).toHaveLength(38);
-    expect(chosen.filter((entry) => entry.tier === 2)).toHaveLength(19);
-    expect(chosen.filter((entry) => entry.tier === 3)).toHaveLength(8);
-    expect(new Set(chosen.map((entry) => entry.slot.index))).toHaveLength(65);
+    expect(chosen.filter((entry) => entry.tier === 1)).toHaveLength(76);
+    expect(chosen.filter((entry) => entry.tier === 2)).toHaveLength(38);
+    expect(chosen.filter((entry) => entry.tier === 3)).toHaveLength(16);
+    expect(new Set(chosen.map((entry) => entry.slot.index))).toHaveLength(130);
     expect(chosen.every((entry) => entry.slot.index >= MULTI_WORLD.capitalSlots)).toBe(true);
   });
 });

@@ -42,6 +42,7 @@ import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { publisherUrl } from '../lib/publisherPages.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
+import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -404,6 +405,7 @@ export function MenuPanel({
           <SoundSetting />
           <NowPlaying />
           <QualitySetting />
+          <FpsSetting />
           {/*
             THE WAY BACK TO A CHOICE ALREADY MADE, and it belongs in this group.
 
@@ -930,6 +932,34 @@ function QualitySetting() {
         value={quality}
         onSelect={setRenderQuality}
       />
+    </SettingRow>
+  );
+}
+
+/**
+ * THE FPS READOUT, ON OR OFF. Owner request, 2026-09-19. The number itself sits in
+ * a corner of the galaxy; this row is only the switch, and the line under it says
+ * what the number counts so a still disc reading 24 is not taken for a fault.
+ */
+function FpsSetting() {
+  const { t } = useTranslation();
+  const on = useFpsMeterEnabled();
+  return (
+    <SettingRow label={t('menu.fpsLabel')} {...(on ? { below: t('menu.fpsHint') } : {})}>
+      <button
+        type="button"
+        aria-pressed={on}
+        aria-label={`${t('menu.fpsLabel')}. ${on ? t('menu.fpsOn') : t('menu.fpsOff')}`}
+        onClick={() => {
+          haptic('tap');
+          setFpsMeterEnabled(!on);
+        }}
+        className={`socket rounded-control px-3 py-1.5 text-micro transition-colors ${
+          on ? 'text-crystal' : 'text-faint'
+        }`}
+      >
+        {on ? t('menu.fpsOn') : t('menu.fpsOff')}
+      </button>
     </SettingRow>
   );
 }

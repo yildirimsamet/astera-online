@@ -22,7 +22,6 @@ import { loadDotEnv, loadEnv } from '../env.js';
 import { systemClock } from '../clock.js';
 import { GameError } from '../services/planet.js';
 import { addBot, listBots, retireBot } from '../services/bots/roster.js';
-import { BOTS } from '../services/bots/personas.js';
 
 const { positionals } = parseArgs({ allowPositionals: true, options: {} });
 const [command, ...rest] = positionals;
@@ -63,10 +62,10 @@ if (command === undefined) {
         }
         const roster = await listBots(db);
         console.log(
-          `\n${String(roster.length)} on the roster; each live galaxy seats ${String(BOTS.perGalaxy)}.`,
+          `\n${String(roster.length)} on the roster; each live galaxy seats ${String(env.BOTS_PER_GALAXY)}.`,
         );
-        if (roster.length < BOTS.perGalaxy) {
-          console.log(`Add ${String(BOTS.perGalaxy - roster.length)} more to fill one galaxy.`);
+        if (roster.length < env.BOTS_PER_GALAXY) {
+          console.log(`Add ${String(env.BOTS_PER_GALAXY - roster.length)} more to fill one galaxy.`);
         }
         break;
       }
@@ -82,7 +81,7 @@ if (command === undefined) {
             + `  ${row.persona.padEnd(10)}  next ${row.nextActionAt.toISOString()}`,
           );
         }
-        console.log(`\n${String(roster.length)} total · ${String(BOTS.perGalaxy)} seated per live galaxy`);
+        console.log(`\n${String(roster.length)} total · ${String(env.BOTS_PER_GALAXY)} seated per live galaxy`);
         break;
       }
       case 'retire': {

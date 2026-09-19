@@ -9,6 +9,7 @@ import { GameError, loadLocked, recomputeWealth } from './planet.js';
 import { placeBuildingUpgrade } from './build.js';
 import { publishShard } from '../stream/bus.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
+import { peopleIn } from './people.js';
 import {
   lockGalaxyEventAudience,
   notifyActiveGalaxyEventsForPlayer,
@@ -221,9 +222,10 @@ export async function joinSeason(
             .where(and(eq(mainVacancies.seasonId, seasonId), isNull(mainVacancies.consumedAt)));
           for (const row of reserved) taken.add(row.slot);
         }
-        const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(players).where(eq(players.seasonId, seasonId));
         const slot = pickSpawnSlot(spec.slots, taken);
-        if (!slot || (count?.n ?? 0) >= shard.playerCap) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
+        // The cap is PEOPLE (`people.ts`); a bot's seat is bounded by its own band.
+        const full = seat === 'COMMANDER' && await peopleIn(tx, seasonId) >= shard.playerCap;
+        if (!slot || full) throw new GameError('SHARD_FULL', 'This galaxy is full', 409);
         await tx.update(mainVacancies).set({ consumedAt: now, consumedReason: 'NEW_JOIN' })
           .where(and(eq(mainVacancies.seasonId, seasonId), eq(mainVacancies.slotIndex, slot.index), isNull(mainVacancies.consumedAt)));
 

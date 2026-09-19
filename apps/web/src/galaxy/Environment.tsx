@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { paintDiscCanvas, paintNebulaCanvas } from './nebula.js';
 import { DISC_RADIUS } from './scene.js';
+import { METEOR_CLOCK, meteorStep, type MeteorClock } from './frames.js';
 
 /**
  * The space the game happens in.
@@ -604,9 +605,16 @@ function MeteorField({ pool }: { pool: number }) {
   // an Asteroid Shower now, so the old one has to go back explicitly.
   useEffect(() => () => { geometry.dispose(); }, [geometry]);
 
-  useFrame((state, delta) => {
+  const stepClock = useRef<MeteorClock>(METEOR_CLOCK);
+  useFrame((_state, frameDelta) => {
     const node = ref.current;
     if (!node) return;
+    // Twelve steps a second, each spending the whole time since the last one
+    // (owner, 2026-09-19; `meteorStep`). Between steps the streak holds still.
+    const step = meteorStep(stepClock.current, frameDelta);
+    stepClock.current = step.clock;
+    const delta = step.advance;
+    if (delta <= 0) return;
     const position = node.geometry.getAttribute('position');
     const colour = node.geometry.getAttribute('color');
 
@@ -647,10 +655,10 @@ function MeteorField({ pool }: { pool: number }) {
     position.needsUpdate = true;
     colour.needsUpdate = true;
 
-    // The scene renders on demand at twelve frames a second, which is plenty for a
-    // rock on a forty-minute orbit and useless for something crossing the sky in
-    // one second. While anything is in flight, ask for the next frame.
-    if (meteors.some((m) => m.wait <= 0)) state.invalidate();
+    // A streak asks for no frames of its own. It used to demand the display's full
+    // rate while in flight — 120 frames a second, bloom and all, for a third of
+    // every session on a 120Hz phone. It rides the disc's rate now and moves in
+    // twelfths of a second (owner, 2026-09-19).
   });
 
   return (

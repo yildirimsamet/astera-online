@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '../src/api/queries.js';
 import {
   COALESCE_MS,
+  CONSISTENCY_MS,
+  HEAVY_COALESCE_MS,
   isGlobalEvent,
   isPrivateEvent,
   isShardEvent,
@@ -155,16 +157,15 @@ describe('the coalescer', () => {
     c.note('shard:launch'); // traffic
     c.note('shard:arrival'); // traffic, mining
     c.note('shard:mining'); // mining, traffic
-    c.note('shard:world'); // galaxy
+    c.note('shard:impact'); // traffic, galaxy, planet, pending, mining
 
     vi.advanceTimersByTime(COALESCE_MS);
     expect(flush).toHaveBeenCalledTimes(1);
     const reads = flush.mock.calls[0]?.[0] as readonly (readonly string[])[];
-    expect(reads).toHaveLength(4);
+    expect(reads).toHaveLength(5);
     expect(reads).toContainEqual(keys.traffic);
     expect(reads).toContainEqual(keys.miningField);
     expect(reads).toContainEqual(keys.galaxy);
-    expect(reads).toContainEqual(keys.leaderboard);
   });
 
   /**
@@ -190,11 +191,11 @@ describe('the coalescer', () => {
 
     c.note('shard:launch');
     vi.advanceTimersByTime(COALESCE_MS);
-    c.note('shard:world');
+    c.note('shard:mining');
     vi.advanceTimersByTime(COALESCE_MS);
 
     expect(flush).toHaveBeenCalledTimes(2);
-    expect(flush.mock.calls[1]?.[0]).toEqual([keys.galaxy, keys.leaderboard]);
+    expect(flush.mock.calls[1]?.[0]).toEqual([keys.miningField, keys.traffic]);
   });
 
   /**
@@ -225,11 +226,74 @@ describe('the coalescer', () => {
     const c = shardCoalescer(flush);
     c.note('shard:launch');
     c.cancel();
-    c.note('shard:world');
+    c.note('shard:mining');
     vi.advanceTimersByTime(COALESCE_MS);
     expect(flush).toHaveBeenCalledTimes(1);
     // The launch was cancelled with the timer; only the new event survives.
+    expect(flush.mock.calls[0]?.[0]).toEqual([keys.miningField, keys.traffic]);
+  });
+});
+
+/**
+ * THE WHOLE GALAXY IS A HEAVY READ, AND GROWTH IS NOT URGENT. Owner's phone
+ * recording, 2026-09-19: `/api/galaxy` is ~475 KB and the ladder ~194 KB in a full
+ * thousand-seat galaxy, and every satellite a bot installed made every client read
+ * both — twice, with the consistency re-read — which lined up second for second
+ * with the recording's 140–214 ms stalls. Growth (`world`, `score`, `clan`) now
+ * waits for one read at most every thirty seconds, never sooner than the
+ * consistency window after the last event it covers.
+ */
+describe('the heavy lane', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reads the galaxy and the ladder once for a stream of growth, thirty seconds on', () => {
+    expect(HEAVY_COALESCE_MS).toBe(30_000);
+    const flush = vi.fn();
+    const c = shardCoalescer(flush);
+    for (let second = 0; second < 20; second += 1) {
+      c.note(second % 2 === 0 ? 'shard:world' : 'shard:score');
+      vi.advanceTimersByTime(1000);
+    }
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(HEAVY_COALESCE_MS - 20_000);
+    expect(flush).toHaveBeenCalledTimes(1);
     expect(flush.mock.calls[0]?.[0]).toEqual([keys.galaxy, keys.leaderboard]);
+  });
+
+  it('never reads sooner than the consistency window after the last event', () => {
+    const flush = vi.fn();
+    const c = shardCoalescer(flush);
+    c.note('shard:world');
+    vi.advanceTimersByTime(HEAVY_COALESCE_MS - 500);
+    c.note('shard:world');
+    vi.advanceTimersByTime(500);
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(CONSISTENCY_MS);
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the quick lane quick', () => {
+    const flush = vi.fn();
+    const c = shardCoalescer(flush);
+    c.note('shard:world');
+    c.note('shard:launch');
+    vi.advanceTimersByTime(COALESCE_MS);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect(flush.mock.calls[0]?.[0]).toEqual([keys.traffic]);
+  });
+
+  it('cancels its pending read too', () => {
+    const flush = vi.fn();
+    const c = shardCoalescer(flush);
+    c.note('shard:world');
+    c.cancel();
+    vi.advanceTimersByTime(HEAVY_COALESCE_MS * 2);
+    expect(flush).not.toHaveBeenCalled();
   });
 });
 

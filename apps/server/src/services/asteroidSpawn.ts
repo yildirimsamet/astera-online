@@ -1,4 +1,4 @@
-import { and, count, eq, gt, gte, isNotNull, isNull, lt, lte } from 'drizzle-orm';
+import { and, count, eq, gt, gte, isNotNull, lt, lte } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
@@ -12,7 +12,6 @@ import { minutesSince } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
   asteroidSpawnHours,
-  botProfiles,
   galaxyEventOccurrences,
   players,
   scheduledEvents,
@@ -60,10 +59,14 @@ export async function scheduleAsteroidHour(
 }
 
 /**
- * THE COMMANDERS WHO COUNT FOR THE NEXT HOUR: people, in this season, who played in
- * the last `activeWindowMinutes`. Owner instruction: *"bot hesaplar bu aktif sayıya
- * dahil edilmemeli."* A bot stamps `last_active_at` while its roster is awake, so it
- * is excluded by its profile row rather than by its activity.
+ * THE COMMANDERS WHO COUNT FOR THE NEXT HOUR: everybody in this season who played in
+ * the last `activeWindowMinutes` — the server's own commanders included since
+ * 2026-09-19 (owner, reversing the 2026-09-16 rule that left them out: with few
+ * people online the field stayed empty and the bots had nothing to mine or hunt).
+ *
+ * A bot counts only while it is awake: the roster stamps `last_active_at` when it
+ * is at the controls, and seating backdates it past this window (`sweep.ts`), so a
+ * sleeping or freshly seated one is not in the count.
  */
 export async function countActiveCommanders(
   db: Queryable,
@@ -74,11 +77,9 @@ export async function countActiveCommanders(
   const [row] = await db
     .select({ n: count() })
     .from(players)
-    .leftJoin(botProfiles, eq(botProfiles.accountId, players.accountId))
     .where(and(
       eq(players.seasonId, seasonId),
       gte(players.lastActiveAt, since),
-      isNull(botProfiles.accountId),
     ));
   return row?.n ?? 0;
 }

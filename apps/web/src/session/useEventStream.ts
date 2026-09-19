@@ -161,19 +161,8 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
     window.addEventListener('pageshow', scheduleLifecycleResync);
     window.addEventListener('online', scheduleLifecycleResync);
 
-    // A new capital is rare and changes the most heavily cached public payload.
-    // A second, coalesced read closes the cross-replica invalidation race where the
-    // first request can reach a replica just before its transaction NOTIFY does.
-    let worldConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleWorldConsistencyRead = (): void => {
-      if (worldConsistencyTimer !== null) return;
-      worldConsistencyTimer = setTimeout(() => {
-        worldConsistencyTimer = null;
-        if (controller.signal.aborted) return;
-        void client.invalidateQueries({ queryKey: keys.galaxy });
-        void client.invalidateQueries({ queryKey: keys.leaderboard });
-      }, 1500);
-    };
+    // A changed world's cross-replica consistency is the heavy lane's own delay now
+    // (`shardEvents.ts`): it reads once, never sooner than `CONSISTENCY_MS` after.
 
     let trafficConsistencyTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleTrafficConsistencyRead = (): void => {
@@ -231,7 +220,6 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
         if (readsForShardEvent(kind).some((key) => key[0] === keys.traffic[0])) {
           scheduleTrafficConsistencyRead();
         }
-        if (kind === 'shard:world') scheduleWorldConsistencyRead();
         return;
       }
 
@@ -326,7 +314,6 @@ export function useEventStream(enabled: boolean, onRollover?: () => void): void 
       window.removeEventListener('astera:placement-changed', onPlacementChanged);
       if (reconnectResyncTimer !== null) clearTimeout(reconnectResyncTimer);
       if (lifecycleResyncTimer !== null) clearTimeout(lifecycleResyncTimer);
-      if (worldConsistencyTimer !== null) clearTimeout(worldConsistencyTimer);
       if (trafficConsistencyTimer !== null) clearTimeout(trafficConsistencyTimer);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', scheduleLifecycleResync);

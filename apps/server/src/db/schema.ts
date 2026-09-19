@@ -253,6 +253,27 @@ export const announcementReads = pgTable('announcement_reads', {
   readAt: timestamp('read_at', { withTimezone: true }).notNull(),
 }, (t) => [primaryKey({ columns: [t.accountId, t.announcementId] })]);
 
+/**
+ * A PERFORMANCE RECORDING FROM THE OWNER'S OWN DEVICE. Owner request, 2026-09-19.
+ *
+ * A developer instrument: an admin plays for a while with the recorder on, and the
+ * phone sends one row back — the device, a summary, and one sample a second. The
+ * sample shape is validated at the route (`perfSessions.ts`); here it is stored as
+ * it came, because it is read by a person, not by the game.
+ */
+export const perfSessions = pgTable('perf_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').notNull().references(() => accounts.id),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  endedAt: timestamp('ended_at', { withTimezone: true }).notNull(),
+  device: jsonb('device').$type<Record<string, unknown>>().notNull(),
+  summary: jsonb('summary').$type<Record<string, unknown>>().notNull(),
+  samples: jsonb('samples').$type<Record<string, unknown>[]>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('perf_sessions_created_idx').on(t.createdAt),
+]);
+
 /** Player-to-operator messages. Content is always rendered as text, never as HTML. */
 export const feedbackEntries = pgTable('feedback_entries', {
   id: uuid('id').primaryKey().defaultRandom(),

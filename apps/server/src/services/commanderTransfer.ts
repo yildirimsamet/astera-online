@@ -10,6 +10,7 @@ import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderT
   intergalacticConvoyRuns } from '../db/schema.js';
 import { loadLocked } from './planet.js';
 import { lockAdmission } from './returnQueue.js';
+import { peopleIn } from './people.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
 import { publish, publishShard, publishSight } from '../stream/bus.js';
@@ -127,8 +128,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       for (const work of [...orders.filter(o => o.status === 'BUILDING'), ...research.filter(o => o.status === 'BUILDING'), ...assets.filter(a => a.status === 'BUILDING')]) {
         if (!events.some(e => e.refId === work.id)) defer('EVENT');
       }
-      const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(players).where(eq(players.seasonId, target.id));
-      if (!returning && (count?.n ?? 0) >= toShard.playerCap) defer('CAPACITY');
+      if (!returning && await peopleIn(tx, target.id) >= toShard.playerCap) defer('CAPACITY');
       const occupiedWorlds = await tx.select().from(planets).where(eq(planets.seasonId, target.id));
       const occupied = new Set(occupiedWorlds.map(w => w.slotIndex));
       const vacancies = returning ? await tx.select().from(mainVacancies).where(and(eq(mainVacancies.seasonId, target.id), isNull(mainVacancies.consumedAt))).for('update') : [];

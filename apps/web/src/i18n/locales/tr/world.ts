@@ -515,9 +515,9 @@ export const focus = {
     boundaryBattle:
       "O gezegenin üzerinde bir filo var ve ateş ediyor. Teleskop görüşündeyse tam formasyonu görünür; sahibi, geldiği yer ve kimin kazanacağı bilinmez.",
     boundarySalvage:
-      "Enkaz sahası, rota ve varış süresi herkese açıktır; aracın eve götürdüğü kaynak gizli kalır.",
+      "Enkaz sahası ve varış süresi herkese açıktır; rotası ve eve götürdüğü kaynak gizli kalır.",
     boundaryMining:
-      "Bu kayayı keşfettiğin için hedefi, rotayı ve varış süresini görürsün; aracın eve götürdüğü kaynak gizli kalır.",
+      "Bu kayayı keşfettiğin için hedefi ve varış süresini görürsün; rotası ve eve götürdüğü kaynak gizli kalır.",
     boundaryFleet:
       "Teleskop görüşünde aracın kendisini; bir filoysa gemi türlerini ve kesin adetlerini görüyorsun. Sahibi, çıkış ve varış yeri bilinmez.",
     boundaryUnknown:

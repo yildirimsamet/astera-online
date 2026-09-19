@@ -11,6 +11,7 @@ import {
   submitFeedback,
 } from '../services/community.js';
 import { GameError } from '../services/planet.js';
+import { perfSessionSchema, savePerfSession } from '../services/perfSessions.js';
 
 const announcementBody = z.object({
   title: z.string().trim().min(1).max(120).refine((title) => !/[<>]/u.test(title), {
@@ -50,6 +51,17 @@ export function registerCommunityRoutes(app: FastifyInstance): void {
   );
 
   app.get('/api/admin/feedback', { preHandler: requireAdmin }, async () => listFeedback(app.db));
+
+  /*
+    A PERFORMANCE RECORDING FROM AN ADMIN'S PHONE (2026-09-19). Two hours of
+    one-second samples is a couple of megabytes of JSON, so this one route takes a
+    larger body than the server default; everything else keeps the default.
+  */
+  app.post(
+    '/api/admin/perf',
+    { preHandler: requireAdmin, bodyLimit: 8 * 1024 * 1024 },
+    async (req) => savePerfSession(app.db, req.accountId!, perfSessionSchema.parse(req.body ?? {}), app.clock),
+  );
 
   app.post('/api/admin/announcements', { preHandler: requireAdmin }, async (req) => {
     const body = announcementBody.parse(req.body ?? {});

@@ -2,8 +2,17 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AMBIENT_FPS,
+  FLIGHT_FPS,
+  FULL_RATE_FPS,
   FullRate,
+  HoldRate,
+  METEOR_FPS,
+  currentFps,
   frameStride,
+  METEOR_CLOCK,
+  meteorStep,
+  holdRate,
+  strideFor,
   useAmbientFrames,
   useCommittedDemandFrame,
 } from '../src/galaxy/frames.js';
@@ -14,15 +23,9 @@ import {
  * `<Canvas>` in jsdom would mean a WebGL context that does not exist there.
  */
 const invalidate = vi.fn<(frames?: number) => void>();
-/** Whatever `FullRate` registered, so a "frame" can be run by hand. */
-let frameCallback: ((state: { invalidate: () => void }) => void) | null = null;
-
 vi.mock('@react-three/fiber', () => ({
   useThree: (select: (state: { invalidate: (frames?: number) => void }) => unknown) =>
     select({ invalidate }),
-  useFrame: (cb: (state: { invalidate: () => void }) => void) => {
-    frameCallback = cb;
-  },
 }));
 
 describe('DOM-backed demand frames', () => {
@@ -280,36 +283,187 @@ describe('the ambient ticker', () => {
 });
 
 /**
+ * A MOMENT ASKS FOR A RATE, NOT FOR EVERY FRAME. 2026-09-19.
+ *
+ * `FullRate` used to call `invalidate()` from inside every frame, which is the
+ * display's own rate — 120 bombardment frames a second on a 120Hz phone, with the
+ * bloom composer on each. And a meteor did the same for the second it crossed the
+ * sky, three slots at once, about a third of all the time the disc is open. Every
+ * rate now goes through the one ticker, vsync-aligned, and a moment only raises the
+ * rate it runs at: sixty for the payoff moments, thirty for a streak (owner).
+ */
+describe('the rate a moment asks for', () => {
+  const HZ = (hz: number): number => 1000 / hz;
+
+  it('is sixty for the payoff moments and thirty for anything in the air', () => {
+    expect(FULL_RATE_FPS).toBe(60);
+    expect(FLIGHT_FPS).toBe(30);
+  });
+
+  it('is never slower than asked, and never the whole display when it need not be', () => {
+    for (const hz of [60, 90, 120, 144]) {
+      for (const fps of [AMBIENT_FPS, FLIGHT_FPS, FULL_RATE_FPS]) {
+        const rate = hz / strideFor(fps, HZ(hz));
+        expect(rate, `${String(fps)}fps at ${String(hz)}Hz`).toBeGreaterThanOrEqual(fps);
+      }
+    }
+    expect(strideFor(FULL_RATE_FPS, HZ(120))).toBe(2);
+    expect(strideFor(FULL_RATE_FPS, HZ(60))).toBe(1);
+    expect(strideFor(FLIGHT_FPS, HZ(120))).toBe(4);
+    expect(strideFor(FLIGHT_FPS, HZ(60))).toBe(2);
+  });
+
+  it('keeps the ambient stride exactly what it was', () => {
+    for (const hz of [50, 60, 90, 120, 144]) {
+      expect(frameStride(HZ(hz))).toBe(strideFor(AMBIENT_FPS, HZ(hz)));
+    }
+  });
+});
+
+describe('the ticker under a raised rate', () => {
+  afterEach(() => {
+    invalidate.mockClear();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  function display(refreshMs: number) {
+    let now = 0;
+    let next = 1;
+    const queue = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback): number => {
+      const id = next++;
+      queue.set(id, cb);
+      return id;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number): void => {
+      queue.delete(id);
+    });
+    return {
+      step(): void {
+        now += refreshMs;
+        vi.setSystemTime(now);
+        const due = [...queue.values()];
+        queue.clear();
+        act(() => {
+          for (const cb of due) cb(now);
+        });
+      },
+    };
+  }
+
+  /** Frames bought over a settled stretch of display frames. */
+  const bought = (from: number): number =>
+    invalidate.mock.calls.slice(from).reduce((n, [frames]) => n + (frames ?? 1), 0);
+
+  it('draws a held moment at sixty on a 120Hz display, not at a hundred and twenty', () => {
+    vi.useFakeTimers();
+    const screen = display(1000 / 120);
+    renderHook(() => {
+      useAmbientFrames();
+    });
+    const release = holdRate(FULL_RATE_FPS);
+    for (let i = 0; i < 60; i += 1) screen.step();
+    const mark = invalidate.mock.calls.length;
+    for (let i = 0; i < 120; i += 1) screen.step();
+    // A second of display: sixty frames, give or take the one in flight.
+    expect(bought(mark)).toBeGreaterThanOrEqual(59);
+    expect(bought(mark)).toBeLessThanOrEqual(61);
+
+    release();
+    for (let i = 0; i < 60; i += 1) screen.step();
+    const after = invalidate.mock.calls.length;
+    for (let i = 0; i < 120; i += 1) screen.step();
+    expect(bought(after)).toBeLessThanOrEqual(25);
+  });
+
+  it('runs at the fastest rate anybody is holding, and no faster', () => {
+    const a = holdRate(FLIGHT_FPS);
+    const b = holdRate(FULL_RATE_FPS);
+    expect(currentFps()).toBe(FULL_RATE_FPS);
+    b();
+    // Releasing twice is harmless; the other hold still stands.
+    b();
+    expect(currentFps()).toBe(FLIGHT_FPS);
+    a();
+    expect(currentFps()).toBe(AMBIENT_FPS);
+  });
+});
+
+/**
+ * ANYTHING IN THE AIR IS DRAWN AT THIRTY. Owner instruction, 2026-09-19: a drill,
+ * a probe or a fleet crossing the disc must not step at the 24fps a 120Hz display
+ * strides the ambient floor to. It holds while something flies, and only then.
+ */
+describe('holding a rate while something flies', () => {
+  it('holds thirty while there is traffic and lets go when there is none', () => {
+    const view = renderHook(({ active }) => HoldRate({ fps: FLIGHT_FPS, active }), {
+      initialProps: { active: true },
+    });
+    expect(currentFps()).toBe(FLIGHT_FPS);
+    view.rerender({ active: false });
+    expect(currentFps()).toBe(AMBIENT_FPS);
+    view.rerender({ active: true });
+    expect(currentFps()).toBe(FLIGHT_FPS);
+    view.unmount();
+    expect(currentFps()).toBe(AMBIENT_FPS);
+  });
+});
+
+/**
+ * A METEOR STEPS TWELVE TIMES A SECOND. Owner instruction, 2026-09-19. It no
+ * longer raises the disc's rate at all; its streak simply moves in twelfths of a
+ * second, whatever rate the disc is being drawn at.
+ */
+describe('the meteor step', () => {
+  it('is twelve a second', () => {
+    expect(METEOR_FPS).toBe(12);
+  });
+
+  it('holds still between steps, keeps twelve a second, and loses no time', () => {
+    let clock = METEOR_CLOCK;
+    let moved = 0;
+    let steps = 0;
+    // Three seconds at 30fps.
+    for (let i = 0; i < 90; i += 1) {
+      const step = meteorStep(clock, 1 / 30);
+      clock = step.clock;
+      if (step.advance > 0) {
+        steps += 1;
+        moved += step.advance;
+      }
+    }
+    expect(steps).toBeGreaterThanOrEqual(35);
+    expect(steps).toBeLessThanOrEqual(36);
+    // The steps add up to the time that passed, less what waits for the next one.
+    expect(moved + clock.since).toBeCloseTo(3, 9);
+  });
+
+  it('takes a long frame as one step, not several', () => {
+    const step = meteorStep(METEOR_CLOCK, 0.5);
+    expect(step.advance).toBeCloseTo(0.5, 9);
+    expect(step.clock.since).toBe(0);
+    // And the rhythm does not owe a burst of steps afterwards.
+    expect(meteorStep(step.clock, 1 / 60).advance).toBe(0);
+  });
+});
+
+/**
  * THE TEN SECONDS THE WHOLE LOOP PAYS FOR. D53.
  *
  * Nothing in the bombardment ever asked for a frame, so the one moment in the game
  * a decision made forty minutes ago is cashed in was drawn at the rate chosen for a
- * rock creeping round a forty-minute orbit. `Meteors` and the camera rig have
- * always used this idiom; the volley was the one thing that did not.
+ * rock creeping round a forty-minute orbit. It holds the full rate for exactly as
+ * long as it is mounted — sixty frames, through the ticker.
  */
 describe('full rate', () => {
   afterEach(() => {
     invalidate.mockClear();
-    frameCallback = null;
   });
 
-  it('asks for another frame from inside every frame', () => {
-    FullRate();
-    expect(frameCallback, 'FullRate registered no frame callback at all').not.toBeNull();
-
-    // R3F is explicit about `invalidate()` called from within a `useFrame`: it sets
-    // the pending count to two rather than to one, so the loop always has a frame
-    // left over after rendering and never unwinds. That is what makes this
-    // self-sustaining for exactly as long as it is mounted.
-    const asked = vi.fn();
-    frameCallback?.({ invalidate: asked });
-    expect(asked).toHaveBeenCalledTimes(1);
-    frameCallback?.({ invalidate: asked });
-    expect(asked).toHaveBeenCalledTimes(2);
-  });
-
-  /** And it draws nothing of its own — it is a request, not an object. */
-  it('puts nothing in the scene', () => {
-    expect(FullRate()).toBeNull();
+  it('holds the full rate while mounted and lets go when it leaves', () => {
+    const view = renderHook(() => FullRate());
+    expect(view.result.current).toBeNull();
+    view.unmount();
   });
 });

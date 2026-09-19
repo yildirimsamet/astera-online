@@ -68,7 +68,7 @@ import { sensorHistoryForPlayer } from './sensorHistory.js';
  * outside every owned sphere the craft is absent, Radar makes it an anonymous
  * moving contact, and Telescope sight resolves the craft itself — including an
  * exact fleet manifest — without exposing its route. A discovered mining target
- * is the narrow route exception.
+ * gives away only its clock; its route stopped being published on 2026-09-19.
  *
  * What that means in the payload, and every line of it is deliberate:
  *
@@ -1390,12 +1390,14 @@ export function projectGalaxyTraffic(
       id: run.id,
       kind,
       ...slice,
-      // The line and the clock are the RACE, and the race needs the rock found.
+      /*
+        THE CLOCK IS THE RACE, AND THE RACE NEEDS THE ROCK FOUND. The LINE went on
+        2026-09-19 (owner): every stranger's Prospector drew one across the disc for
+        whoever had found its rock, which was clutter to read and a line per craft
+        to draw. The bearing window still animates the craft; nothing else does.
+      */
       ...(discovered
-        ? {
-            route: { from, to, departAt, arriveAt },
-            minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000),
-          }
+        ? { minutesRemaining: Math.max(0, (arriveAt.getTime() - now.getTime()) / 60_000) }
         : {}),
       craft: run.craft,
       // `minedAlloy` and `minedCrystal` are deliberately absent. What a run is

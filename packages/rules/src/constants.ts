@@ -3,6 +3,10 @@ import { RESOURCE_VALUE } from './valuation.js';
 import type { BuildingId, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
+/** Public chat is partitioned so a commander can read in the language they choose. */
+export const CHAT_LANGUAGES = ['tr', 'en', 'fr', 'de', 'es'] as const;
+export type ChatLanguage = (typeof CHAT_LANGUAGES)[number];
+
 /**
  * Every number the design can be wrong about, in one place.
  *
@@ -2282,26 +2286,29 @@ export const GALAXY = {
    * THE GALAXY IS LAYERED, RIM TO CORE. Owner instruction, 2026-09-18. Shares of
    * `radius`; every band is sampled uniformly by VOLUME inside its limits.
    *
-   *   · commander — every person's capital, on the outer shell. Every commander is
-   *     therefore the same distance from the centre, and where you were seeded no
-   *     longer decides how far the prize is;
+   *   · commander — every person's capital, on the outer shell. Widened to the
+   *     outer 35% on 2026-09-19 (owner) so a thousand people spread out; where you
+   *     were seeded moves the prize by at most that third, never across the disc;
    *   · bot — the server's commanders, one band deeper. Scattered all the way
    *     round, so a raider looking inward meets one before the neutral field and
    *     the pressure on any single person is diluted (owner: *"abartmadan"*);
    *   · neutral — the search pool neutral worlds are chosen from, inside the bots;
    *   · t1 / t2Share / t3Share — where each tier is aimed within that pool. T3 is the
-   *     contested core, T2 a ring around it, T1 the outer neutral band.
+   *     contested core, T2 a ring around it, T1 the outer neutral band. Each tier is
+   *     chosen only inside its own band (T3 below `t3Outer`, T2 up to `t1.inner`).
    *
    * THE ORDER IS THE CONTRACT: every commander outside every bot, every bot
    * outside every neutral, T1 outside T2 outside T3 (`galaxy-strata.test.ts`).
    */
   strata: {
-    commander: { inner: 0.8, outer: 1 },
-    bot: { inner: 0.72, outer: 0.8 },
-    neutral: { inner: 0, outer: 0.7 },
-    t1: { inner: 0.5, outer: 0.7 },
-    t2Share: 0.35,
-    t3Share: 0.12,
+    commander: { inner: 0.65, outer: 1 },
+    bot: { inner: 0.58, outer: 0.65 },
+    neutral: { inner: 0, outer: 0.56 },
+    t1: { inner: 0.4, outer: 0.56 },
+    t2Share: 0.28,
+    t3Share: 0.1,
+    /** Where T3's band ends and T2's begins. T2's ends at `t1.inner`. */
+    t3Outer: 0.2,
   },
 
   /**
@@ -3345,10 +3352,19 @@ export const MULTI_WORLD = {
    * of them. The owner expects 50–100 at most in a thousand-seat galaxy.
    */
   botSlots: 100,
-  /** 450 neutral candidates after every capital and bot address. */
-  neutralSlotPool: SERVERS.capacity + 100 + 450,
-  /** D209 (owner instruction): eight more T1, four more T2 and two more T3 than D97's 30/15/6. */
-  neutralCounts: { 1: 38, 2: 19, 3: 8 },
+  /**
+   * 600 neutral candidates after every capital and bot address. The inner 56% of
+   * the radius holds only so many addresses at `minSeparation`: at 700 some seeds
+   * could not place the pool at all and a season could not open. 600 placed every
+   * one of four hundred seeds, and still gives each tier's own band
+   * (`GALAXY.strata`) its full count.
+   */
+  neutralSlotPool: SERVERS.capacity + 100 + 600,
+  /**
+   * Owner instruction, 2026-09-19: doubled for the thousand-seat galaxy. D209's
+   * 38/19/8 was sized for three hundred commanders.
+   */
+  neutralCounts: { 1: 76, 2: 38, 3: 16 },
   /**
    * THE COMMAND CORE EACH COLONY SLOT OPENS AT. D209, owner instruction;
    * thresholds revised by the owner on 2026-09-13.

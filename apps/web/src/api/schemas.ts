@@ -2538,9 +2538,10 @@ export const intergalacticConvoyLaunchSchema = z.object({
  * about to reach. There is no field here for a modified client to turn into a
  * route.
  *
- * `route` and `minutesRemaining` are the single exception, and they are only ever
- * populated for an authorised `mining` contact: once this commander has discovered
- * the rock, its line and clock make the contested race visible.
+ * `minutesRemaining` is the single exception, only ever populated for an
+ * authorised `mining` contact: once this commander has discovered the rock, its
+ * clock makes the contested race visible. Its LINE was published too until
+ * 2026-09-19, when the owner removed it; there is no field for one now.
  *
  * Radar is a silhouette, Telescope is sight, and cargo is never public. `mass`
  * says roughly how much is crossing in the Radar band. `fleet` is present only
@@ -2630,14 +2631,6 @@ export const trafficSchema = z.object({
        */
       remembered: z.literal(true).optional(),
       craft: z.number().optional(),
-      route: z
-        .object({
-          from: vec,
-          to: vec,
-          departAt: z.coerce.date(),
-          arriveAt: z.coerce.date(),
-        })
-        .optional(),
       minutesRemaining: z.number().optional(),
       /**
        * A PUBLIC BOMBARDMENT WITH NO SENSOR CONTACT. D52/D123.
@@ -2810,6 +2803,9 @@ export const announcementsPageSchema = z.object({
 });
 export const announcementPublishedSchema = z.object({ announcement: announcementSchema });
 export const feedbackKindSchema = z.enum(['BUG', 'SUGGESTION', 'PRAISE']);
+/** A performance recording the server stored (admin only, 2026-09-19). */
+export const perfSessionSavedSchema = z.object({ id: z.string().uuid() });
+
 export const feedbackSubmittedSchema = z.object({
   feedback: z.object({ id: z.string().uuid(), createdAt: z.coerce.date() }),
 });

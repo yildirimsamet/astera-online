@@ -518,18 +518,24 @@ scaled ×1.5 by owner decision, so L8 still covers the whole galaxy and radar st
 telescope at every rung. The rock and pirate orbit bands scaled too, because they are geometry. The
 merchant's band did not, because it has to stay inside the trade window from the far rim (the window itself went 2h → 2h30 on 2026-09-19).
 
-**The galaxy is layered, rim to core (owner instruction, 2026-09-18; `GALAXY.strata`).** Shares of the
-radius, each band sampled uniformly by volume:
+**The galaxy is layered, rim to core (owner instruction, 2026-09-18; widened 2026-09-19;
+`GALAXY.strata`).** Shares of the radius, each band sampled uniformly by volume:
 
 | Band | Radius share | Who |
 |---|---|---|
-| Commander shell | 0.80–1.00 | every person's capital |
-| Bot band | 0.72–0.80 | the server's commanders (up to `MULTI_WORLD.botSlots` = 100) |
-| T1 | 0.50–0.70 | outer neutral band |
-| T2 | ≈0.35 | the ring around the core |
-| T3 | ≈0.12 | the contested core |
+| Commander shell | 0.65–1.00 | every person's capital |
+| Bot band | 0.58–0.65 | the server's commanders (up to `MULTI_WORLD.botSlots` = 100) |
+| T1 | 0.40–0.56 | outer neutral band, 76 worlds |
+| T2 | 0.20–0.40, aimed at ≈0.28 | the ring around the core, 38 worlds |
+| T3 | 0.00–0.20, aimed at ≈0.10 | the contested core, 16 worlds |
 
-Every commander therefore stands the same distance from the prize; the walk inward is the progression.
+The neutral counts doubled from D209's 38/19/8 for the thousand-seat galaxy (owner, 2026-09-19). Each
+tier is chosen only from its own band, so the layering holds in every galaxy rather than most. A
+galaxy's capacity counts PEOPLE: the server's commanders stand on their own addresses and never take a
+person's seat.
+
+Every commander stands on the same shell, within about a third of the radius of each other's distance
+from the prize; the walk inward is the progression.
 An arriving commander still takes the free shell address furthest from those already present, and a
 bot takes the free bot address furthest from the other bots, so the roster scatters all the way round,
 just inside the people. The bots dilute pressure on any single commander without replacing the
@@ -723,8 +729,9 @@ states the net figure against the bar, and whether it bought the shield.
 
 **And it cannot be earned by attacking.** A commander with a Raid or a Death Star of their own in
 the air collects nothing: a shield won while your fleet is still flying at somebody who can no
-longer answer inverts what the shield is for. The server's own commanders claim it no more than
-they claim the first day (D159).
+longer answer inverts what the shield is for. Since 2026-09-19 the server's own commanders claim it
+exactly as people do, along with the first day — which they wait out rather than break (owner: they
+are people now).
 
 **What it does not do.** It never turns a fleet back: anything legally in the air when the window
 opens still arrives, and a second heavy defeat pushes the end out to six hours from that battle

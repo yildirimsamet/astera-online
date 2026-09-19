@@ -1,6 +1,7 @@
 import type {
   BuildingId, GroundHullId, InstrumentId, MobileHullId, ResearchProjectId, SatelliteId,
 } from '@astera/rules';
+import type { Nerve } from './judgement.js';
 
 /**
  * COMMANDERS THE SERVER PLAYS, AND WHY THEY EXIST AT ALL. D159.
@@ -76,6 +77,13 @@ export interface BotPersona {
   readonly militaryShare: number;
   readonly prospectorTarget: 1 | 2;
   readonly flight: BotFlightWeights;
+  /**
+   * HOW SURE THIS HABIT HAS TO BE BEFORE IT FLIES AT ANYBODY. Owner decision,
+   * 2026-09-19: by habit. The raider settles for breaking a wall and will lose more
+   * of the wing doing it; everybody else wants the wall cleared in the worst case
+   * the reading allows. See `judgement.ts` for how it is read.
+   */
+  readonly nerve: Nerve;
 }
 
 export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
@@ -96,6 +104,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     groundMix: { BASTION: 0.6, THORN: 0.4 },
     defenceRatio: 1.2, militaryShare: 0.2, prospectorTarget: 1,
     flight: { probe: 2, mine: 3, harvest: 2, pirate: 1, attack: 1, idle: 5 },
+    nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
   },
   RAIDER: {
     id: 'RAIDER',
@@ -112,6 +121,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     groundMix: { THORN: 0.7, BASTION: 0.3 },
     defenceRatio: 0.45, militaryShare: 0.6, prospectorTarget: 1,
     flight: { probe: 4, mine: 1, harvest: 2, pirate: 3, attack: 6, idle: 3 },
+    nerve: { need: 'BREAKS', maxLoss: 0.45, lootOverFuel: 2 },
   },
   PROSPECTOR: {
     id: 'PROSPECTOR',
@@ -127,6 +137,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     groundMix: { BASTION: 0.5, THORN: 0.5 },
     defenceRatio: 0.9, militaryShare: 0.3, prospectorTarget: 2,
     flight: { probe: 2, mine: 8, harvest: 5, pirate: 1, attack: 2, idle: 4 },
+    nerve: { need: 'CLEARS', maxLoss: 0.2, lootOverFuel: 4 },
   },
   BALANCED: {
     id: 'BALANCED',
@@ -142,6 +153,7 @@ export const BOT_PERSONAS: Record<BotPersonaId, BotPersona> = {
     groundMix: { BASTION: 0.5, THORN: 0.5 },
     defenceRatio: 0.8, militaryShare: 0.4, prospectorTarget: 1,
     flight: { probe: 3, mine: 4, harvest: 3, pirate: 2, attack: 4, idle: 4 },
+    nerve: { need: 'CLEARS', maxLoss: 0.3, lootOverFuel: 3 },
   },
 };
 
@@ -302,8 +314,66 @@ export const BOTS = {
    */
   playerCoreFloorGap: 2,
   newPlayerGraceHours: 48,
-  playerRaidsPerDay: 2,
+  /**
+   * ONE BOT RAID A DAY ON ANY ONE PERSON, FROM THE WHOLE ROSTER TOGETHER. Owner
+   * instruction, 2026-09-19. It was two per bot, so eight bots could leave one
+   * person sixteen reports — the very pressure the roster exists to take off people.
+   */
+  botRaidsPerPersonPerDay: 1,
 
-  /** How often the worker looks at the roster at all. */
-  sweepEveryMs: 60_000,
+  /**
+   * THE BULLY, AND WHY THE ROSTER GOES LOOKING FOR THEM. Owner instruction,
+   * 2026-09-19: a commander who raided PEOPLE five times or more in the last day.
+   * Raids on the server's own commanders never count — those are the outlet.
+   * Every other person stays a target too, at weight 1: the bully is who they
+   * prefer, not the only one they see.
+   */
+  bullyRaidsPerDay: 5,
+  bullyTargetBias: 8,
+
+  /**
+   * THE WINGS A RAID MAY FLY, SMALLEST FIRST, as shares of the line. The judgement
+   * takes the first that wins; the top leaves a garrison, as a person does.
+   */
+  wingShares: [0.35, 0.5, 0.65, 0.8, 0.9] as readonly number[],
+  /**
+   * How much stronger than the band's top the wall is assumed to be. A reading is
+   * up to `recordFreshMinutes` old and ships come home; a person pads it too.
+   */
+  wallMargin: 1.25,
+  /**
+   * HOURS OF ALLOY PRODUCTION A BOT NEVER SPENDS ON BUILDINGS OR INSTRUMENTS. Owner
+   * decision, 2026-09-19: the roster is the outlet that takes raids off people, and
+   * a store scraped to zero every turn is an outlet nobody probes twice. Guns and
+   * ships are not held to it — insurance and the fleet are what a person spends a
+   * store on first, too.
+   */
+  stockReserveHours: 2,
+  /**
+   * HOW OLD A READING MAY BE FOR A FLEET TO FLY ON IT. A record counts as a record
+   * for `recordFreshMinutes`, but no person raids tonight on this morning's probe:
+   * past this the turn looks again instead.
+   */
+  readingFreshMinutes: 180,
+  /** Cargo hulls a bot keeps, so a raid's haul has a hold to come home in. */
+  courierTarget: 2,
+  /**
+   * A wall this many times the wing's firepower is refused without a forecast. Past
+   * the most favourable edge any reading allows (about 4.3× for a Dart line).
+   */
+  hopelessRatio: 5,
+  /**
+   * FORECASTS ONE TURN MAY RUN. Each is ~45 ms of fights on the worker that lands
+   * every raid on time (D52, a one-second tick); six keeps a turn's judgement well
+   * under that tick.
+   */
+  forecastsPerTurn: 6,
+
+  /**
+   * How often the worker looks at the roster at all. Twenty seconds since
+   * 2026-09-19: a full roster of a hundred needs about seven turns a minute and a
+   * one-minute sweep gave it three, so each bot waited half an hour. A sweep still
+   * plays at most `turnsPerSweep`, so no single tick blocks for longer than before.
+   */
+  sweepEveryMs: 20_000,
 } as const;

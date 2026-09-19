@@ -101,8 +101,14 @@ import {
   upgradeSchema,
   watchSchema,
   feedbackSubmittedSchema,
+  perfSessionSavedSchema,
 } from './schemas.js';
 import type { FeedbackKind } from './schemas.js';
+import type { PerfPayload } from '../lib/perfSession.js';
+import { gatedRead } from './gatedRead.js';
+
+/** The least time between two reads of the whole galaxy or the whole ladder. */
+const BIG_READ_GAP_MS = 5_000;
 
 /** The figures a refusal was built from, as the server sent them. */
 export type ErrorParams = Record<string, string | number>;
@@ -386,6 +392,8 @@ export class Api {
   sendFeedback = (kind: FeedbackKind, message: string) =>
     this.send('/api/feedback', feedbackSubmittedSchema, { method: 'POST', body: { kind, message } });
   adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
+  postPerfSession = (session: PerfPayload) =>
+    this.send('/api/admin/perf', perfSessionSavedSchema, { method: 'POST', body: { ...session } });
   publishAnnouncement = (title: string, bodyHtml: string) =>
     this.send('/api/admin/announcements', announcementPublishedSchema, {
       method: 'POST',
@@ -452,14 +460,18 @@ export class Api {
     planetId ? `/api/planets/${encodeURIComponent(planetId)}` : '/api/planet',
     planetSchema,
   );
-  galaxy = () => this.send('/api/galaxy', galaxySchema);
+  /**
+   * The whole galaxy and the whole ladder, each read at most once every five
+   * seconds whoever asks (`gatedRead.ts`, the owner's phone recording 2026-09-19).
+   */
+  galaxy = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
   skins = () => this.send('/api/skins', skinCollectionSchema);
   equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
       method: 'POST', body: { skinId },
     });
   traffic = () => this.send('/api/galaxy/traffic', trafficSchema);
-  leaderboard = () => this.send('/api/leaderboard', leaderboardSchema);
+  leaderboard = gatedRead(() => this.send('/api/leaderboard', leaderboardSchema), BIG_READ_GAP_MS);
   seasonArchive = (cursor?: number) => this.send(
     `/api/season-archive?limit=12${cursor === undefined ? '' : `&cursor=${String(cursor)}`}`,
     seasonArchiveSchema,

@@ -1,8 +1,8 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PIRATE, dynamicPirateHourOf, dynamicPirateIndex } from '@astera/rules';
 import { FixedClock } from '../src/clock.js';
-import { asteroidSpawnHours } from '../src/db/schema.js';
+import { asteroidSpawnHours, players } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import { openAsteroidHour } from '../src/services/asteroidSpawn.js';
@@ -65,15 +65,34 @@ describe('a ruleset-9 season', () => {
     expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 3 });
   });
 
-  it('never counts the server’s own commanders', async () => {
+  /**
+   * THE SERVER'S COMMANDERS COUNT WHILE THEY ARE AWAKE, AND NOT BEFORE. Owner
+   * instruction, 2026-09-19. Seated is not playing: a bot counts once its roster has
+   * stamped it at the controls.
+   */
+  it('counts the server’s commanders only once they are awake', async () => {
     const { db, clock, season } = await seasonWith(1, 9, 'EU-DYN-B');
     for (const name of ['Bot0', 'Bot1', 'Bot2', 'Bot3', 'Bot4', 'Bot5', 'Bot6', 'Bot7']) {
       await addBot(db, name, clock);
     }
     await ensureBotSeats(db, clock, silent);
     await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
-    // One person: 0.25 rounds to 0, and the floor makes it one.
+    // One person, eight seated but asleep: 0.25 rounds to 0, the floor makes it one.
     expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 1 });
+  });
+
+  it('sizes the hour to the people and the awake bots together', async () => {
+    const { db, clock, season } = await seasonWith(1, 9, 'EU-DYN-G');
+    for (const name of ['Bot0', 'Bot1', 'Bot2', 'Bot3', 'Bot4', 'Bot5', 'Bot6', 'Bot7']) {
+      await addBot(db, name, clock);
+    }
+    await ensureBotSeats(db, clock, silent);
+    // The roster stamps the awake ones at the controls, as the sweep does.
+    await db.update(players).set({ lastActiveAt: clock.now() })
+      .where(sql`${players.accountId} IN (SELECT account_id FROM bot_profiles)`);
+    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
+    // Nine at the controls: 9 × 0.25 = 2.25 → 2.
+    expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 2 });
   });
 
   it('publishes exactly the stored pirates, and resolves each by its handle and its index', async () => {

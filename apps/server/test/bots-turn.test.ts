@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 import { and, eq, sql } from 'drizzle-orm';
-import { botProfiles, buildOrders, buildings, missions, planets, players, units } from '../src/db/schema.js';
+import {
+  battleReports, botProfiles, buildOrders, buildings, missions, planets, players, probeReports, units,
+} from '../src/db/schema.js';
 import { addBot } from '../src/services/bots/roster.js';
 import { buildUnits } from '../src/services/build.js';
 import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import {
   BOT_AUTONOMOUS_LANES,
-  drawLane, openLanes, raidCandidates, raidingWing, runBotTurn, type BotSeat,
+  drawLane, openLanes, probeCandidates, raidCandidates, runBotTurn, type BotSeat,
 } from '../src/services/bots/brain.js';
 import { BOTS, BOT_PERSONAS, type BotPersona } from '../src/services/bots/personas.js';
+import { raidingWing } from '../src/services/bots/judgement.js';
 import { rememberWorld } from '../src/services/intel.js';
 import { planetView } from '../src/services/planetView.js';
 import { addMinutes } from '../src/clock.js';
@@ -58,7 +61,46 @@ const seatOf = async (): Promise<BotSeat> => {
 
 const viewOf = async () => f.db.transaction((tx) => planetView(tx, seat.planetId, f.clock));
 
-const remember = async (targetPlanetId: string, seenAt: Date): Promise<void> => {
+/**
+ * A RECORD IS WHAT A PROBE BROUGHT HOME: the outside of the world and its bands.
+ * The default reading is an open, full world — the fixture states the wall when
+ * the wall is what a test is about.
+ */
+const remember = async (
+  targetPlanetId: string,
+  seenAt: Date,
+  bands: {
+    defence?: { low: number; high: number };
+    stock?: { low: number; high: number };
+    fleetHome?: boolean;
+  } = {},
+): Promise<void> => {
+  const [scout] = await f.db.insert(missions).values({
+    seasonId: seat.seasonId,
+    kind: 'probe',
+    status: 'resolved',
+    ownerPlayerId: seat.playerId,
+    originPlanetId: seat.planetId,
+    targetPlanetId,
+    fleet: {},
+    distance: 10,
+    departAt: seenAt,
+    arriveAt: seenAt,
+  }).returning();
+  const [report] = await f.db.insert(probeReports).values({
+    observerPlayerId: seat.playerId,
+    targetPlanetId,
+    missionId: scout!.id,
+    accuracy: 1,
+    stock: bands.stock ?? { low: 40_000, high: 40_000 },
+    defence: bands.defence ?? { low: 0, high: 0 },
+    fleetSize: { low: 0, high: 0 },
+    shield: { low: 0, high: 0 },
+    unarmed: { low: 0, high: 0 },
+    fleetHome: bands.fleetHome ?? true,
+    detected: false,
+    createdAt: seenAt,
+  }).returning();
   await f.db.transaction(async (tx) => {
     await rememberWorld(tx, {
       observerPlayerId: seat.playerId,
@@ -66,15 +108,54 @@ const remember = async (targetPlanetId: string, seenAt: Date): Promise<void> => 
       seasonId: seat.seasonId,
       seenAt,
       source: 'PROBE',
+      reportId: report!.id,
     });
   });
 };
 
-/** Nobody in this fixture joined recently enough to be a protected newcomer. */
+/** A settled raid, as the report table records it — the only history the manners read. */
+const raided = async (attackerPlayerId: string, defenderPlayerId: string, targetPlanetId: string,
+  minutesAgo = 60): Promise<void> => {
+  const at = addMinutes(f.clock.now(), -minutesAgo);
+  const [battle] = await f.db.insert(missions).values({
+    seasonId: seat.seasonId,
+    kind: 'attack',
+    status: 'resolved',
+    ownerPlayerId: attackerPlayerId,
+    originPlanetId: targetPlanetId,
+    targetPlanetId,
+    fleet: {},
+    distance: 10,
+    departAt: at,
+    arriveAt: at,
+  }).returning();
+  await f.db.insert(battleReports).values({
+    seasonId: seat.seasonId,
+    missionId: battle!.id,
+    attackerPlayerId,
+    defenderPlayerId,
+    targetPlanetId,
+    targetKind: 'PLAYER',
+    grade: 'DECISIVE',
+    rounds: [],
+    loot: { alloy: 0, crystal: 0, deuterium: 0 },
+    attackerLosses: {},
+    defenderLosses: {},
+    createdAt: at,
+  });
+};
+
+/**
+ * Nobody in this fixture joined recently enough to be a protected newcomer, and
+ * nobody — bots included, since 2026-09-19 — still holds a first-day shield.
+ */
 const settleNeighbours = async (): Promise<void> => {
   await f.db
     .update(players)
-    .set({ joinedAt: addMinutes(f.clock.now(), -(BOTS.newPlayerGraceHours + 24) * 60) })
+    .set({
+      joinedAt: addMinutes(f.clock.now(), -(BOTS.newPlayerGraceHours + 24) * 60),
+      newcomerShieldUntil: null,
+    })
     .where(sql`true`);
 };
 
@@ -122,6 +203,40 @@ describe('a bot turn', () => {
       .from(buildOrders)
       .where(eq(buildOrders.planetId, seat.planetId));
     expect(orders.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * A BOT KEEPS A STORE A RAIDER CAN FIND. Owner decision, 2026-09-19: the roster is
+   * the outlet that takes pressure off people, and a world scraped to zero every
+   * seven minutes is an outlet nobody bothers to probe twice.
+   */
+  it('keeps two hours of production in the store instead of building with it', async () => {
+    expect(BOTS.stockReserveHours).toBe(2);
+    await grant(f.db, seat.planetId, 200_000, 80_000);
+    const rate = (await viewOf()).planet.alloyPerHour;
+    await f.db.update(planets)
+      .set({ alloy: rate * (BOTS.stockReserveHours - 0.1), crystal: 1_000_000, deuterium: 1_000_000 })
+      .where(eq(planets.id, seat.planetId));
+    await runBotTurn(f.db, f.clock, seat, silent);
+    const built = await f.db
+      .select({ id: buildOrders.id })
+      .from(buildOrders)
+      .where(and(eq(buildOrders.planetId, seat.planetId), eq(buildOrders.queue, 'CONSTRUCTION')));
+    expect(built).toHaveLength(0);
+  });
+
+  /** A raid brings the haul home in a hold; a bot keeps one, as a raider does. */
+  it('keeps cargo hulls to carry a haul home', async () => {
+    expect(BOTS.courierTarget).toBe(2);
+    await grant(f.db, seat.planetId, 200_000, 80_000);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+    // One yard order a turn, and the Prospector is ordered first.
+    const did: string[] = [];
+    for (let turn = 0; turn < 3; turn++) {
+      did.push(...(await runBotTurn(f.db, f.clock, seat, silent)).did);
+      f.clock.advance(1);
+    }
+    expect(did).toContain('ship:COURIER');
   });
 
   it('never lifts its Core past the ceiling the owner set', async () => {
@@ -339,6 +454,7 @@ describe('what a bot may raid', () => {
   it('weighs another bot above a person', async () => {
     await addBot(f.db, 'Yıldız', f.clock);
     await ensureBotSeats(f.db, f.clock, silent);
+    await settleNeighbours();
     const [other] = await f.db
       .select({ planetId: planets.id })
       .from(players)
@@ -360,6 +476,94 @@ describe('what a bot may raid', () => {
     expect(bot?.weight).toBe(BOTS.botTargetBias);
     expect(human?.weight).toBe(1);
     expect(bot!.weight).toBeGreaterThan(human!.weight);
+  });
+
+  /**
+   * ONE BOT RAID A DAY ON A PERSON, FROM ALL OF THEM TOGETHER. Owner instruction,
+   * 2026-09-19. The old manners counted per bot, so eight of them could each take
+   * their two and one person would wake to sixteen reports.
+   */
+  it('leaves a person alone for the day once any bot has struck them', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    expect(BOTS.botRaidsPerPersonPerDay).toBe(1);
+    await addBot(f.db, 'Yıldız', f.clock);
+    await ensureBotSeats(f.db, f.clock, silent);
+    const [other] = await f.db
+      .select({ playerId: players.id })
+      .from(players)
+      .where(and(
+        sql`${players.accountId} IN (SELECT account_id FROM bot_profiles)`,
+        sql`${players.id} <> ${seat.playerId}`,
+      ));
+    await raided(other!.playerId, f.playerIds[0]!, f.planetIds[0]!, 23 * 60);
+    expect(await raidCandidates(f.db, f.clock.now(), seat, await viewOf())).toHaveLength(0);
+  });
+
+  /** A report is written when the fleet LANDS; a raid still in the air counts too. */
+  it('counts a bot raid still in the air against the day', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    await f.db.insert(missions).values({
+      seasonId: seat.seasonId,
+      kind: 'attack',
+      status: 'in_flight',
+      ownerPlayerId: seat.playerId,
+      originPlanetId: seat.planetId,
+      targetPlanetId: f.planetIds[0]!,
+      fleet: { DART: 1 },
+      distance: 10,
+      departAt: f.clock.now(),
+      arriveAt: addMinutes(f.clock.now(), 30),
+    });
+    expect(await raidCandidates(f.db, f.clock.now(), seat, await viewOf())).toHaveLength(0);
+  });
+
+  it('forgets a bot raid once a day has passed', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    await raided(seat.playerId, f.playerIds[0]!, f.planetIds[0]!, 24 * 60 + 5);
+    expect(await raidCandidates(f.db, f.clock.now(), seat, await viewOf())).toHaveLength(1);
+  });
+
+  /**
+   * THE BULLY IS THE ONE THEY GO LOOKING FOR. Owner instruction, 2026-09-19: five
+   * or more raids on PEOPLE in a day. Raids on the server's own commanders are the
+   * outlet this feature wants to be used, so they never count.
+   */
+  it('weighs a commander who struck people five times today above everybody', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    for (let i = 0; i < 5; i++) await raided(f.playerIds[0]!, f.playerIds[1]!, f.planetIds[1]!, 30 + i);
+    const [bully] = await raidCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(bully?.weight).toBe(BOTS.bullyTargetBias);
+    expect(BOTS.bullyTargetBias).toBeGreaterThan(BOTS.botTargetBias);
+  });
+
+  it('does not call four raids a day bullying', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    for (let i = 0; i < 4; i++) await raided(f.playerIds[0]!, f.playerIds[1]!, f.planetIds[1]!, 30 + i);
+    const [person] = await raidCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(person?.weight).toBe(1);
+  });
+
+  it('never counts raids on the server’s own commanders against a person', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    for (let i = 0; i < 6; i++) await raided(f.playerIds[0]!, seat.playerId, seat.planetId, 30 + i);
+    const [person] = await raidCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(person?.weight).toBe(1);
+  });
+
+  /** A bully nobody has looked at yet is who the next probe goes to find. */
+  it('looks at a bully before anybody else it has no record of', async () => {
+    for (let i = 0; i < 5; i++) await raided(f.playerIds[1]!, f.playerIds[0]!, f.planetIds[0]!, 30 + i);
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    const bully = candidates.find((c) => c.planetId === f.planetIds[1]);
+    const person = candidates.find((c) => c.planetId === f.planetIds[0]);
+    expect(bully?.weight).toBe(BOTS.bullyTargetBias);
+    expect(person?.weight).toBe(1);
+  });
+
+  it('does not look again at a world it holds a fresh record of', async () => {
+    await remember(f.planetIds[0]!, f.clock.now());
+    const candidates = await probeCandidates(f.db, f.clock.now(), seat, await viewOf());
+    expect(candidates.map((c) => c.planetId)).not.toContain(f.planetIds[0]);
   });
 
   it('keeps a garrison at home rather than flying the whole fleet', () => {
@@ -395,6 +599,66 @@ describe('what a bot may raid', () => {
       f.clock.advance(1);
     }
     throw new Error('a bot with a fresh record, ships and fuel never raided');
+  });
+
+  /** Launches the turns a person would take and reports what flew where. */
+  const playTurns = async (turns: number) => {
+    for (let turn = 0; turn < turns; turn++) {
+      await runBotTurn(f.db, f.clock, seat, silent);
+      f.clock.advance(1);
+    }
+    return f.db
+      .select({ kind: missions.kind, target: missions.targetPlanetId })
+      .from(missions)
+      .where(and(eq(missions.originPlanetId, seat.planetId), eq(missions.ownerPlayerId, seat.playerId)));
+  };
+
+  /**
+   * A READING HOURS OLD IS LOOKED AT AGAIN BEFORE A FLEET GOES. A record stays a
+   * record for twelve hours, but no person raids on a morning's probe at night.
+   */
+  it('re-scouts a target whose reading has gone old rather than raiding on it', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    await remember(f.planetIds[0]!, addMinutes(f.clock.now(), -(BOTS.readingFreshMinutes + 5)));
+    await remember(f.planetIds[1]!, f.clock.now(), { defence: { low: 900_000, high: 900_000 } });
+    await giveUnits(f.db, seat.planetId, { DART: 30 });
+    await fuelUp(f.db, seat.planetId);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+
+    const flown = await playTurns(25);
+    expect(flown.filter((m) => m.kind === 'attack')).toEqual([]);
+    expect(flown).toContainEqual({ kind: 'probe', target: f.planetIds[0] });
+  });
+
+  /** A probe that found the fleet out saw a wall that comes home. */
+  it('does not trust a reading taken while the fleet was away', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    await remember(f.planetIds[0]!, f.clock.now(), { fleetHome: false });
+    await remember(f.planetIds[1]!, f.clock.now(), { defence: { low: 900_000, high: 900_000 } });
+    await giveUnits(f.db, seat.planetId, { DART: 30 });
+    await fuelUp(f.db, seat.planetId);
+    await setLevel(f.db, seat.planetId, 'HANGAR', 8);
+
+    const flown = await playTurns(25);
+    expect(flown.filter((m) => m.kind === 'attack')).toEqual([]);
+  });
+
+  /** The owner's report, as a fixture: two Darts and a world holding a war fleet. */
+  it('never throws a handful of ships at a wall its probe says it cannot beat', async () => {
+    f.clock.advance(BOTS.ceasefireMinutes + 1);
+    await remember(f.planetIds[0]!, f.clock.now(), { defence: { low: 400_000, high: 500_000 } });
+    await giveUnits(f.db, seat.planetId, { DART: 2 });
+    await fuelUp(f.db, seat.planetId);
+
+    for (let turn = 0; turn < 25; turn++) {
+      await runBotTurn(f.db, f.clock, seat, silent);
+      f.clock.advance(1);
+    }
+    const flying = await f.db
+      .select({ id: missions.id })
+      .from(missions)
+      .where(and(eq(missions.originPlanetId, seat.planetId), eq(missions.kind, 'attack')));
+    expect(flying).toHaveLength(0);
   });
 });
 

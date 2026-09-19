@@ -153,7 +153,9 @@ describe('Fleet V2 offline season cutover', () => {
       old.clock,
     );
     old.clock.set(settledAt(launch.arriveAt));
-    await worker.tick();
+    // Until the queue is empty: a thousand-seat galaxy opens with more due events
+    // (130 caretakers' reinforcements) than one tick's batch of a hundred.
+    while ((await worker.tick()).claimed > 0) { /* drain */ }
 
     const [report] = await old.db
       .select()

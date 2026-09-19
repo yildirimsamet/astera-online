@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
 import { unitModel } from './model.js';
-import { isWrecked, type PlanetNode } from './scene.js';
+import { isWrecked, type PlanetNode, type Vec3Tuple } from './scene.js';
 
 /**
  * EVERY INSTRUMENT ANYONE HAS BUILT, IN ORBIT, VISIBLE TO EVERYONE.
@@ -446,13 +446,32 @@ export const shieldTierOf = (level: number): 0 | 1 | 2 => (level >= 5 ? 2 : leve
  */
 const PANELS_AROUND = 12;
 
+/**
+ * ONE UNIT SPHERE, PLACED PER DOME BY `instanceMatrix`. 2026-09-19.
+ *
+ * The breath moved here from a `useFrame` per world: the same `1 + sin(0.7t + x)
+ * × 0.012` it always was, now one line of the program the dome was already drawn
+ * with. `aBreath` is 0 on a remembered dome, which never moved. The scale is
+ * uniform, so the instance matrix carries the normal without an inverse.
+ */
 const SHIELD_VERT = `
+  attribute vec3 aColour;
+  attribute float aOpacity;
+  attribute float aBreath;
+  attribute float aPhase;
+  uniform float uTime;
   varying vec3 vNormalW;
   varying vec3 vViewW;
+  varying vec3 vColour;
+  varying float vOpacity;
   void main() {
-    vec4 world = modelMatrix * vec4(position, 1.0);
-    vNormalW = normalize(mat3(modelMatrix) * normal);
+    float breath = 1.0 + sin(uTime * 0.7 + aPhase) * 0.012 * aBreath;
+    mat4 placed = modelMatrix * instanceMatrix;
+    vec4 world = placed * vec4(position * breath, 1.0);
+    vNormalW = normalize(mat3(placed) * normal);
     vViewW = normalize(cameraPosition - world.xyz);
+    vColour = aColour;
+    vOpacity = aOpacity;
     gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
@@ -470,8 +489,8 @@ const SHIELD_FRAG = `
   precision mediump float;
   varying vec3 vNormalW;
   varying vec3 vViewW;
-  uniform vec3 uColour;
-  uniform float uOpacity;
+  varying vec3 vColour;
+  varying float vOpacity;
   uniform float uDensity;
 
   const vec2 S = vec2(1.0, 1.7320508);
@@ -529,12 +548,77 @@ const SHIELD_FRAG = `
      * the player read their own world through the shield — the thing the owner
      * asked for and the thing a tinted sphere cannot do at any opacity.
      */
-    float alpha = edge * (0.13 + fresnel * 0.6) * uOpacity;
+    float alpha = edge * (0.13 + fresnel * 0.6) * vOpacity;
     if (alpha < 0.002) discard;
-    gl_FragColor = vec4(uColour, alpha);
+    gl_FragColor = vec4(vColour, alpha);
   }
 `;
 
+/** One dome, as the instanced draw reads it. */
+export interface ShieldInstance {
+  id: string;
+  position: Vec3Tuple;
+  /** The world's radius times its look's scale. */
+  radius: number;
+  colour: [number, number, number];
+  opacity: number;
+  /** A remembered dome is a snapshot and never breathes. */
+  breathes: boolean;
+  /** Offsets the breath per world, as the old per-group `useFrame` did with `x`. */
+  phase: number;
+}
+
+/**
+ * EVERY DOME THE PLAYER MAY SEE, AND HOW EACH ONE LOOKS. The same rule the
+ * per-world meshes followed: shielded and not UNKNOWN; your own graded by your
+ * own Aegis, everyone else's uniform (D15); a remembered one charcoal and still.
+ */
+export function shieldInstances(
+  nodes: readonly PlanetNode[],
+  ownLevel: number,
+  ownId: string | undefined,
+): ShieldInstance[] {
+  const tint = new THREE.Color();
+  return nodes
+    .filter((n) => n.shielded && n.intel !== 'UNKNOWN')
+    .map((node) => {
+      const remembered = node.intel === 'REMEMBERED';
+      const own = !remembered && node.id === ownId;
+      const style = shieldLook(own ? shieldTierOf(ownLevel) : 0, own, remembered);
+      tint.set(style.colour);
+      return {
+        id: node.id,
+        position: node.position,
+        radius: node.radius * style.scale,
+        colour: [tint.r, tint.g, tint.b],
+        opacity: style.opacity,
+        breathes: style.animated,
+        phase: node.position[0],
+      };
+    });
+}
+
+/**
+ * 24×16, FROM 48×32. The owner's first phone recording (2026-09-19) had 165 domes
+ * at 48×32 carrying ~490k of the frame's ~590k triangles. The panels and the limb
+ * glow are drawn per pixel in the fragment shader; the mesh only has to be round
+ * at the size a dome is seen, and a faint additive shell hides its facets.
+ */
+export const SHIELD_SEGMENTS = [24, 16] as const;
+
+/**
+ * EVERY DOME IN ONE DRAW. Owner decision, 2026-09-19.
+ *
+ * Each shielded world used to be its own mesh, material and frame callback — a
+ * draw call and a JS breath per dome, three to seven hundred of them in a full
+ * thousand-seat galaxy. Now: one unit sphere, one material, one instanced draw,
+ * and one uniform written per frame. Nothing about the look changed.
+ *
+ * ORDER-FREE, which is what makes one draw safe for transparent shells: they are
+ * additive with no depth write, and addition does not care which dome went first.
+ * Not frustum-culled as a whole — its instances span the disc, and a bounding
+ * sphere for all of them would never be off screen anyway.
+ */
 export function Shields({
   nodes,
   ownLevel,
@@ -545,47 +629,36 @@ export function Shields({
   ownLevel: number;
   ownId: string | undefined;
 }) {
-  // D25: the Aegis is on the ground, so it is no longer in the orbit list. The dome
-  // is still public — `shielded` is the boolean the server publishes for it.
-  const shielded = useMemo(
-    () => nodes.filter((n) => n.shielded && n.intel !== 'UNKNOWN'),
-    [nodes],
-  );
+  const domes = useMemo(() => shieldInstances(nodes, ownLevel, ownId), [nodes, ownLevel, ownId]);
+  const mesh = useRef<THREE.InstancedMesh>(null);
 
-  return (
-    <>
-      {shielded.map((node) => (
-        node.intel === 'REMEMBERED' ? (
-          <RememberedShell key={node.id} node={node} />
-        ) : (
-          <LiveShell
-            key={node.id}
-            node={node}
-            // Graded only where the level is legitimately known.
-            tier={node.id === ownId ? shieldTierOf(ownLevel) : 0}
-            own={node.id === ownId}
-          />
-        )
-      ))}
-    </>
-  );
-}
+  const geometry = useMemo(() => {
+    const g = new THREE.SphereGeometry(1, SHIELD_SEGMENTS[0], SHIELD_SEGMENTS[1]);
+    const count = Math.max(1, domes.length);
+    const colour = new Float32Array(count * 3);
+    const opacity = new Float32Array(count);
+    const breath = new Float32Array(count);
+    const phase = new Float32Array(count);
+    domes.forEach((dome, i) => {
+      colour.set(dome.colour, i * 3);
+      opacity[i] = dome.opacity;
+      breath[i] = dome.breathes ? 1 : 0;
+      phase[i] = dome.phase;
+    });
+    g.setAttribute('aColour', new THREE.InstancedBufferAttribute(colour, 3));
+    g.setAttribute('aOpacity', new THREE.InstancedBufferAttribute(opacity, 1));
+    g.setAttribute('aBreath', new THREE.InstancedBufferAttribute(breath, 1));
+    g.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phase, 1));
+    return g;
+  }, [domes]);
+  useEffect(() => () => { geometry.dispose(); }, [geometry]);
 
-function ShieldMesh({
-  node,
-  style,
-}: {
-  node: PlanetNode;
-  style: { colour: string; opacity: number; scale: number };
-}) {
-  const radius = node.radius * style.scale;
   const material = useMemo(
     () => new THREE.ShaderMaterial({
       vertexShader: SHIELD_VERT,
       fragmentShader: SHIELD_FRAG,
       uniforms: {
-        uColour: { value: new THREE.Color(style.colour) },
-        uOpacity: { value: style.opacity },
+        uTime: { value: 0 },
         // Whole cells around the equator, so the longitude seam closes.
         uDensity: { value: PANELS_AROUND / (2 * Math.PI) },
       },
@@ -595,40 +668,39 @@ function ShieldMesh({
       // Both faces: the far wall is what gives the limb its brightness.
       side: THREE.DoubleSide,
     }),
-    [style.colour, style.opacity],
+    [],
   );
-
   useEffect(() => () => { material.dispose(); }, [material]);
 
-  return (
-    <mesh renderOrder={3} material={material}>
-      <sphereGeometry args={[radius, 48, 32]} />
-    </mesh>
-  );
-}
-
-function LiveShell({ node, tier, own }: { node: PlanetNode; tier: 0 | 1 | 2; own: boolean }) {
-  const group = useRef<THREE.Group>(null);
-  const style = shieldLook(tier, own, false);
+  useLayoutEffect(() => {
+    const node = mesh.current;
+    if (!node) return;
+    const place = new THREE.Object3D();
+    domes.forEach((dome, i) => {
+      place.position.set(dome.position[0], dome.position[1], dome.position[2]);
+      place.scale.setScalar(dome.radius);
+      place.updateMatrix();
+      node.setMatrixAt(i, place.matrix);
+    });
+    node.count = domes.length;
+    node.instanceMatrix.needsUpdate = true;
+  }, [domes, geometry]);
 
   useFrame(({ clock }) => {
-    // A slow breath. Armour that is perfectly still reads as a modelling artefact.
-    const s = 1 + Math.sin(clock.elapsedTime * 0.7 + node.position[0]) * 0.012;
-    group.current?.scale.setScalar(s);
+    const time = material.uniforms.uTime;
+    if (time) time.value = clock.elapsedTime;
   });
 
+  if (domes.length === 0) return null;
   return (
-    <group ref={group} position={node.position}>
-      <ShieldMesh node={node} style={style} />
-    </group>
-  );
-}
-
-function RememberedShell({ node }: { node: PlanetNode }) {
-  const style = shieldLook(0, false, true);
-  return (
-    <group position={node.position}>
-      <ShieldMesh node={node} style={style} />
-    </group>
+    <instancedMesh
+      // A new table is a new buffer size; remount rather than resize in place.
+      key={domes.length}
+      ref={mesh}
+      args={[geometry, material, domes.length]}
+      frustumCulled={false}
+      renderOrder={3}
+      name="aegis-domes"
+    />
   );
 }

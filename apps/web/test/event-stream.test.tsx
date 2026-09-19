@@ -9,7 +9,7 @@ import {
   STRATEGIC_SIGHT_CONSISTENCY_MS,
   useEventStream,
 } from '../src/session/useEventStream.js';
-import { COALESCE_MS } from '../src/session/shardEvents.js';
+import { COALESCE_MS, HEAVY_COALESCE_MS } from '../src/session/shardEvents.js';
 
 /**
  * TWO FAMILIES ON ONE STREAM, AND THEY MUST NOT COST THE SAME. D53.
@@ -261,15 +261,20 @@ describe('the event stream', () => {
     expect(asked).toEqual([]);
   });
 
-  it('rechecks a new world after cross-replica caches have observed the commit', () => {
+  /**
+   * ONE READ OF THE WORLD, LATE ENOUGH TO BE CONSISTENT. It used to read at once and
+   * again 1.5 s later; the heavy lane reads once, well after every replica's cache
+   * has seen the commit (2026-09-19, see `shardEvents.ts`).
+   */
+  it('reads a changed world once, after the caches have observed it', () => {
     mountCaughtUp();
     fire('shard:world');
     act(() => { vi.advanceTimersByTime(COALESCE_MS); });
-    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(0);
 
-    act(() => { vi.advanceTimersByTime(1500 - COALESCE_MS); });
-    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(2);
-    expect(asked.filter((key) => key === 'leaderboard')).toHaveLength(2);
+    act(() => { vi.advanceTimersByTime(HEAVY_COALESCE_MS); });
+    expect(asked.filter((key) => key === 'galaxy')).toHaveLength(1);
+    expect(asked.filter((key) => key === 'leaderboard')).toHaveLength(1);
   });
 
   /* ── coming back after the channel was down ────────────────── */

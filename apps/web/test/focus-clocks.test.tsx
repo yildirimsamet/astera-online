@@ -160,7 +160,7 @@ describe("somebody else's salvage run", () => {
     );
     expect(screen.getByText(/somebody is salvaging/i)).toBeInTheDocument();
     expect(screen.getAllByText(/salvage run/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/the field, the route and the clock/i)).toBeInTheDocument();
+    expect(screen.getByText(/the field and the clock\. Its route/i)).toBeInTheDocument();
     expect(screen.getAllByText('7m').length).toBeGreaterThan(0);
     expect(screen.queryByText(/arrival unknown/i)).not.toBeInTheDocument();
   });

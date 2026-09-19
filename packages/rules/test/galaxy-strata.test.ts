@@ -54,7 +54,7 @@ describe('galaxy scale', () => {
 
   it('reserves room for up to a hundred server commanders on their own addresses', () => {
     expect(MULTI_WORLD.botSlots).toBe(100);
-    expect(MULTI_WORLD.neutralSlotPool).toBe(botEnd + 450);
+    expect(MULTI_WORLD.neutralSlotPool).toBe(botEnd + 600);
   });
 
   it('orders the strata strictly from rim to core with no overlap', () => {
@@ -64,7 +64,15 @@ describe('galaxy scale', () => {
     expect(bot.inner).toBeGreaterThan(neutral.outer);
     expect(t1.outer).toBeLessThanOrEqual(neutral.outer);
     expect(t1.inner).toBeGreaterThan(GALAXY.strata.t2Share);
-    expect(GALAXY.strata.t2Share).toBeGreaterThan(GALAXY.strata.t3Share);
+    expect(GALAXY.strata.t2Share).toBeGreaterThan(GALAXY.strata.t3Outer);
+    expect(GALAXY.strata.t3Outer).toBeGreaterThan(GALAXY.strata.t3Share);
+  });
+
+  /** Owner instruction, 2026-09-19: a wider commander shell, everything inside it moved in. */
+  it('gives commanders the outer thirty-five percent of the radius', () => {
+    expect(GALAXY.strata.commander).toEqual({ inner: 0.65, outer: 1 });
+    expect(GALAXY.strata.bot).toEqual({ inner: 0.58, outer: 0.65 });
+    expect(GALAXY.strata.neutral.outer).toBe(0.56);
   });
 });
 
@@ -172,9 +180,37 @@ describe('neutral tiers deepen toward the core', () => {
     }
   });
 
+  it('doubles the neutral field for a thousand seats', () => {
+    expect(MULTI_WORLD.neutralCounts).toEqual({ 1: 76, 2: 38, 3: 16 });
+  });
+
+  /**
+   * THE LAYERING IS BUILT, NOT HOPED FOR. Matched to the nearest address alone, one
+   * galaxy in ten put a T3 outside a T2 once the counts doubled; each tier now
+   * draws from its own band. Live seasons roll their seed, so many are checked.
+   */
+  /**
+   * AND EVERY GALAXY CAN BE BUILT AT ALL. A pool of 700 failed to place on some
+   * seeds — `generateGalaxy` threw and the season could not open. Seeds are hashed
+   * the way live seasons roll them, not counted, so they spread like real ones.
+   */
+  it('keeps every tier in order and at its full count across many galaxies', () => {
+    for (let i = 1; i <= 60; i++) {
+      const seed = (i * 2654435761) >>> 0;
+      const neutrals = selectNeutralSlots(seed, generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots);
+      const radii = (tier: 1 | 2 | 3): number[] => neutrals
+        .filter((entry) => entry.tier === tier)
+        .map((entry) => radiusOf(entry.slot));
+      const [t1, t2, t3] = [radii(1), radii(2), radii(3)];
+      expect([t1.length, t2.length, t3.length], `seed ${String(seed)}`).toEqual([76, 38, 16]);
+      expect(Math.min(...t1), `seed ${String(seed)}`).toBeGreaterThan(Math.max(...t2));
+      expect(Math.min(...t2), `seed ${String(seed)}`).toBeGreaterThan(Math.max(...t3));
+    }
+  }, 120_000);
+
   it('draws neutrals only from addresses past every capital and bot seat', () => {
     const neutrals = selectNeutralSlots(8331, generateGalaxy(8331, MULTI_WORLD.neutralSlotPool).slots);
-    expect(neutrals).toHaveLength(65);
+    expect(neutrals).toHaveLength(130);
     expect(neutrals.every((entry) => entry.slot.index >= botEnd)).toBe(true);
   });
 });

@@ -572,9 +572,9 @@ export const focus = {
     boundaryBattle:
       "A fleet is over that world and firing. If it is inside Telescope sight, its exact formation is visible; whose it is, where it came from and who wins are not.",
     boundarySalvage:
-      "A salvage run is public — the field, the route and the clock. What it brings home is not.",
+      "A salvage run is public — the field and the clock. Its route and what it brings home are not.",
     boundaryMining:
-      "You discovered this rock, so its mining race is visible: target, route and clock. What comes home remains private.",
+      "You discovered this rock, so its mining race is visible: target and clock. The route and what comes home stay private.",
     boundaryFleet:
       "Inside Telescope sight you can identify the craft itself; for a fleet, its exact hulls and counts are visible. Its owner, origin and destination are not.",
     boundaryUnknown:

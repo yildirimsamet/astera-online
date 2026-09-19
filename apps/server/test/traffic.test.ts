@@ -1089,12 +1089,18 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       return launchHarvest(f.db, a, field.id, 2, f.clock);
     };
 
-    it('shows the whole leg and the time left on it', async () => {
+    /**
+     * THE CLOCK, NOT THE LINE. Owner instruction, 2026-09-19: other people's drill
+     * routes were drawn across the disc for everybody who had found the rock — a
+     * line per stranger's Prospector, for nobody. The race keeps its clock and its
+     * craft count; the line is gone from the payload, so nothing has to draw it.
+     */
+    it('shows the time left on the leg, and no line', async () => {
       midFlight((await strangerMines()).arriveAt);
 
       const run = (await fetchContacts()).find((c) => c.kind === 'mining');
       expect(run).toBeDefined();
-      expect(run?.route).toBeDefined();
+      expect(run?.route).toBeUndefined();
       expect(run?.minutesRemaining).toBeGreaterThan(0);
       expect(run?.craft).toBe(2);
     });
@@ -1131,21 +1137,16 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       expect((await fetchContacts()).filter((c) => c.kind === 'mining')).toHaveLength(0);
     });
 
-    /**
-     * The carve-out has to stay a carve-out. A route on a fleet would give away a
-     * raid, and this is the guard against `route` being set on the wrong branch.
-     */
-    it('is the only kind that ever carries a route', async () => {
+    /** No stranger's craft carries a route any more, of any kind. Owner, 2026-09-19. */
+    it('never carries a route on anybody else’s craft', async () => {
       await strangersFight();
       await strangerMines();
       await strangerSalvages();
       f.clock.advance(2);
 
-      for (const contact of await fetchContacts()) {
-        if (contact.kind === 'mining' || contact.kind === 'harvest') {
-          expect(contact.route).toBeDefined();
-        } else expect(contact.route).toBeUndefined();
-      }
+      const contacts = await fetchContacts();
+      expect(contacts.length).toBeGreaterThan(0);
+      for (const contact of contacts) expect(contact.route).toBeUndefined();
     });
 
     /**
@@ -1168,7 +1169,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       const run = contacts.find((c) => c.kind === 'harvest');
       expect(run, 'a harvest was published as something else').toBeDefined();
       expect(contacts.some((c) => c.kind === 'mining')).toBe(false);
-      expect(run?.route).toBeDefined();
+      expect(run?.route).toBeUndefined();
       expect(run?.minutesRemaining).toBeGreaterThan(0);
       expect(run?.craft).toBe(2);
     });

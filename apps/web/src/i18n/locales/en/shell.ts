@@ -277,6 +277,11 @@ export const menu = {
     balanced: 'Three quarter resolution. Hard to see, markedly cooler.',
     low: 'Half resolution, no edge smoothing. For older phones.',
   },
+  /** A readout the player turns on. The hint says what the number counts. */
+  fpsLabel: 'Frame rate',
+  fpsOn: 'On',
+  fpsOff: 'Off',
+  fpsHint: 'Frames the galaxy draws each second. 24–30 when nothing moves is normal; it rises in motion and battle.',
 } as const;
 
 export const leaderboard = {

@@ -528,7 +528,7 @@ describe('the sensor horizon', () => {
   });
 
   /** D19 exposes the route after both craft sight and rock discovery are earned. */
-  it('shows a discovered distant mining run in full, line and clock included', async () => {
+  it('shows a discovered distant mining run with its clock and never its line', async () => {
     await eyes(5, 5);
     const rock = f.asteroids[0];
     if (!rock) throw new Error('private asteroid field is empty');
@@ -560,7 +560,8 @@ describe('the sensor horizon', () => {
 
     const mining = (await contacts()).find((c) => c.kind === 'mining');
     expect(mining, 'the public race was swallowed by the fog').toBeDefined();
-    expect(mining?.route, 'a race everybody can see keeps its whole line').toBeDefined();
+    // The line went on 2026-09-19 (owner); the clock is the race.
+    expect(mining?.route).toBeUndefined();
     expect(mining?.minutesRemaining).toBeGreaterThan(0);
   });
 

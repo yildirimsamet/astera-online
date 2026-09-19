@@ -268,9 +268,25 @@ export function selectNeutralSlots(
   if (capital.length < layout.capitalSlots || candidates.length < needed) return [];
 
   const used = new Set<number>();
+  /*
+    EACH TIER DRAWS FROM ITS OWN RADIAL BAND, so the layering is a property of the
+    selection rather than a hope about density. Matched to the nearest free address
+    alone, a tier spilled into its neighbour's shell whenever the core ran short of
+    addresses — one galaxy in ten once the counts doubled. A band too thin for its
+    tier (a small simulated galaxy) falls back to the whole pool.
+  */
+  const { t1: t1Band, t3Outer } = GALAXY.strata;
+  const within = (tier: NeutralTier) => (slot: PlanetSlot): boolean => {
+    const share = Math.hypot(slot.x, slot.y, slot.z) / GALAXY.radius;
+    if (tier === 3) return share < t3Outer;
+    if (tier === 2) return share >= t3Outer && share < t1Band.inner;
+    return share >= t1Band.inner;
+  };
   const take = (tier: NeutralTier): PlanetSlot[] => {
     const count = layout.neutralCounts[tier];
-    return selectNearTargets(candidates, used, neutralTargets(seed, tier, count));
+    const band = candidates.filter(within(tier));
+    const free = band.filter((slot) => !used.has(slot.index)).length;
+    return selectNearTargets(free >= count ? band : candidates, used, neutralTargets(seed, tier, count));
   };
   // Strategic strata get first choice of their constrained bands; T1 can use the remainder.
   const t3 = take(3);

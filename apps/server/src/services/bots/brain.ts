@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
 import {
   BUILD,
@@ -7,9 +7,7 @@ import {
   INSTRUMENT_IDS,
   SATELLITE_IDS,
   type BuildingId,
-  type Fleet,
   type GroundHullId,
-  type HullId,
   type InstrumentId,
   type MobileHullId,
   type ResearchProjectId,
@@ -25,13 +23,18 @@ import {
   hullBulk,
   mulberry32,
   piratePosition,
+  pirateHoard,
+  pirateStats,
+  shieldHp,
   plantCeiling,
   satelliteSlots,
   withinTierBand,
 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import { type Clock, minutesSince } from '../../clock.js';
-import { battleReports, buildings, planets, players, seasons } from '../../db/schema.js';
+import {
+  battleReports, buildings, missions, planets, players, probeReports, probeWorldMemories, seasons,
+} from '../../db/schema.js';
 import { GameError } from '../planet.js';
 import { buildUnits, collectWorks, installSatellite, raiseInstrument, upgradeBuilding } from '../build.js';
 import { completeResearch } from '../research.js';
@@ -47,6 +50,9 @@ import { peakCoreLevels } from '../player.js';
 import { researchLevels, techOf } from '../researchState.js';
 import type { PlanetView } from '../planetView.js';
 import { BOTS, personaNamed, type BotPersona } from './personas.js';
+import {
+  isBully, planPirateRaid, planWorldRaid, type ForecastBudget, type WallReading,
+} from './judgement.js';
 
 /**
  * WHAT ONE OF THEM DOES WHEN IT PICKS UP THE PHONE. D159.
@@ -152,6 +158,9 @@ const affordable = (view: PlanetView, cost: { alloy: number; crystal: number; de
   && view.planet.crystal - cost.crystal >= 0
   && view.planet.deuterium - cost.deuterium >= 0;
 
+/** The alloy a bot's buildings and instruments never spend. See `BOTS.stockReserveHours`. */
+const storeReserve = (view: PlanetView): number => view.planet.alloyPerHour * BOTS.stockReserveHours;
+
 /**
  * INSURANCE, BOUGHT FIRST AND NOT FROM WHAT IS LEFT OVER.
  *
@@ -228,9 +237,9 @@ async function raiseOneBuilding(
       if (level >= plantCeiling(rungLevel)) continue;
     }
     const cost = buildingCost(type, level);
-    // Keep half an hour of alloy production back, so the world is never scraped
-    // to zero the instant before somebody arrives.
-    if (!affordable(view, cost, view.planet.alloyPerHour * 0.5)) continue;
+    // Keep a store back, so the world is never scraped to zero the instant before
+    // somebody arrives — and is worth somebody arriving at. `BOTS.stockReserveHours`.
+    if (!affordable(view, cost, storeReserve(view))) continue;
     if (await attempt(did, `build:${type}`, log, () =>
       upgradeBuilding(db, seat.planetId, type, clock, seat.playerId))) return;
   }
@@ -249,7 +258,7 @@ async function buyOneInstrument(
   view: PlanetView, did: string[], log: FastifyBaseLogger,
 ): Promise<void> {
   if (view.queues.CONSTRUCTION.length >= BUILD.queueDepth) return;
-  const reserve = view.planet.alloy * persona.militaryShare;
+  const reserve = Math.max(view.planet.alloy * persona.militaryShare, storeReserve(view));
 
   for (const want of persona.wants) {
     if ((SATELLITE_IDS as readonly string[]).includes(want)) {
@@ -328,6 +337,18 @@ async function buyShips(
     && room >= hullBulk('PROSPECTOR')) {
     if (await attempt(did, 'ship:PROSPECTOR', log, () =>
       buildUnits(db, seat.planetId, 'PROSPECTOR', 1, clock, seat.playerId))) return;
+  }
+  /*
+    A HOLD FOR THE HAUL. A warship carries thirty to fifty; a raid of ten Darts
+    brings home three hundred, which is a flight for nothing. So a bot keeps a
+    couple of cargo hulls on the pad, and `raidingWing` takes them along.
+  */
+  const couriers = (view.fleet.COURIER ?? 0) + (view.fleetAway.COURIER ?? 0)
+    + queuedCount(view, 'YARD', 'COURIER');
+  const courierWant = Math.min(BOTS.courierTarget - couriers, Math.floor(room / hullBulk('COURIER')));
+  if (courierWant > 0 && view.buildings.SHIPYARD >= HULLS.COURIER.minShipyard) {
+    if (await attempt(did, 'ship:COURIER', log, () =>
+      buildUnits(db, seat.planetId, 'COURIER', courierWant, clock, seat.playerId))) return;
   }
   room = Math.max(0, room);
 
@@ -440,23 +461,38 @@ async function commitOneFlight(
     read leaves the ceasefire OFF — the default — so a missing row can never
     silently disarm every bot in a running galaxy.
   */
-  const [season] = await db
-    .select({ startsAt: seasons.startsAt })
-    .from(seasons)
-    .where(eq(seasons.id, seat.seasonId));
+  const [[season], [self]] = await Promise.all([
+    db.select({ startsAt: seasons.startsAt }).from(seasons).where(eq(seasons.id, seat.seasonId)),
+    db.select({ shieldUntil: players.newcomerShieldUntil }).from(players).where(eq(players.id, seat.playerId)),
+  ]);
   const ageMinutes = season
     ? (now.getTime() - season.startsAt.getTime()) / 60_000
     : Number.POSITIVE_INFINITY;
+  /*
+    ITS OWN FIRST DAY IS WAITED OUT, NEVER SPENT. Owner instruction, 2026-09-19. A
+    person may fire early and lose the shield; a bot does not — the raid lane stays
+    shut until the day is over, and nothing it does can end it sooner.
+  */
+  const shielded = self?.shieldUntil != null && self.shieldUntil > now;
 
-  const lane = drawLane(persona, openLanes(view, ageMinutes), rng);
+  const lane = drawLane(persona, openLanes(view, shielded ? 0 : ageMinutes), rng);
   if (!lane) return;
 
   switch (lane) {
     case 'probe': await sendProbe(db, clock, seat, view, did, log, rng); return;
     case 'mine': await sendMiner(db, clock, seat, view, now, did, log, rng); return;
     case 'harvest': await sendSalvage(db, clock, seat, view, now, did, log, rng); return;
-    case 'pirate': await raidPirate(db, clock, seat, view, now, did, log); return;
-    case 'attack': await sendRaid(db, clock, seat, view, did, log, rng); return;
+    case 'pirate': await raidPirate(db, clock, seat, persona, view, now, did, log); return;
+    case 'attack':
+      /*
+        NOTHING WORTH HITTING IS A REASON TO LOOK, NOT TO SIT. A person who opens
+        the raid sheet and finds every wall too tall sends a probe to find one that
+        is not; the turn's flight goes there instead of nowhere.
+      */
+      if (!(await sendRaid(db, clock, seat, persona, view, did, log, rng))) {
+        await sendProbe(db, clock, seat, view, did, log, rng);
+      }
+      return;
   }
 }
 
@@ -488,11 +524,48 @@ async function neighbourhood(db: Db, seat: BotSeat, view: PlanetView, limit = 24
     .slice(0, limit);
 }
 
+export interface ProbeCandidate {
+  readonly planetId: string;
+  readonly weight: number;
+}
+
+/** How many of the nearest unlooked-at worlds an ordinary probe chooses among. */
+const PROBE_NEAREST = 8;
+
+/**
+ * WHERE THE NEXT PROBE GOES: near, but not always the nearest — twelve commanders
+ * all probing their closest neighbour every evening is a pattern somebody would
+ * notice. A BULLY anywhere in the neighbourhood is looked at first (owner decision,
+ * 2026-09-19): the raid weights prefer them, and a raid needs a reading.
+ */
+export async function probeCandidates(
+  db: Db, now: Date, seat: BotSeat, view: PlanetView,
+): Promise<ProbeCandidate[]> {
+  const known = await rememberedWorlds(db, seat.playerId);
+  const cutoff = now.getTime() - BOTS.recordFreshMinutes * 60_000;
+  const looking = await probesInFlight(db, seat.playerId);
+  const stale = (await neighbourhood(db, seat, view))
+    .filter((world) => (known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff)
+    .filter((world) => !looking.has(world.id));
+  const botPlayers = await botPlayerIds(db, seat.seasonId);
+  const people = [...new Set(stale
+    .map((world) => world.playerId)
+    .filter((id): id is string => id !== null && !botPlayers.has(id)))];
+  const bullies = await bulliesAmong(db, people, botPlayers, new Date(now.getTime() - 24 * 60 * 60_000));
+
+  return stale.flatMap((world, rank): ProbeCandidate[] => {
+    if (world.playerId !== null && bullies.has(world.playerId)) {
+      return [{ planetId: world.id, weight: BOTS.bullyTargetBias }];
+    }
+    return rank < PROBE_NEAREST ? [{ planetId: world.id, weight: 1 }] : [];
+  });
+}
+
 /**
  * SCOUTING, AND IT IS THE LANE THAT MAKES THE REST HONEST.
  *
- * A raid needs a record (see `sendRaid`), and a record is what a probe brings home.
- * So the commander that has not looked at its neighbourhood spends its flight
+ * A raid needs a reading (see `sendRaid`), and a reading is what a probe brings
+ * home. So the commander that has not looked at its neighbourhood spends its flight
  * looking — which is both the rule the fog imposes and, not by coincidence, exactly
  * the traffic an empty-looking disc was missing.
  */
@@ -500,18 +573,14 @@ async function sendProbe(
   db: Db, clock: Clock, seat: BotSeat, view: PlanetView,
   did: string[], log: FastifyBaseLogger, rng: () => number,
 ): Promise<void> {
-  const known = await rememberedWorlds(db, seat.playerId);
-  const cutoff = clock.now().getTime() - BOTS.recordFreshMinutes * 60_000;
-  const candidates = (await neighbourhood(db, seat, view))
-    .filter((world) => (known.get(world.id)?.seenAt.getTime() ?? 0) < cutoff);
-  if (candidates.length === 0) return;
-
-  // Near, but not always the nearest: twelve commanders all probing their closest
-  // neighbour every evening is a pattern somebody would notice.
-  const pick = candidates[Math.floor(rng() * Math.min(candidates.length, 8))];
+  const candidates = await probeCandidates(db, clock.now(), seat, view);
+  const total = candidates.reduce((sum, world) => sum + world.weight, 0);
+  if (total <= 0) return;
+  let roll = rng() * total;
+  const pick = candidates.find((world) => (roll -= world.weight) <= 0) ?? candidates[0];
   if (!pick) return;
   await attempt(did, 'probe', log, () =>
-    launchProbe(db, seat.planetId, pick.id, clock, seat.playerId));
+    launchProbe(db, seat.planetId, pick.planetId, clock, seat.playerId));
 }
 
 /**
@@ -536,6 +605,35 @@ export interface RaidCandidate {
 }
 
 /**
+ * WHICH OF THESE PEOPLE HAVE BEEN STRIKING PEOPLE. Raids on anybody the server is
+ * not playing, over the last day; a raid on a bot is the outlet and is left out of
+ * the count on purpose. See `isBully`.
+ */
+async function bulliesAmong(
+  db: Db, people: readonly string[], roster: ReadonlySet<string>, since: Date,
+): Promise<Set<string>> {
+  if (people.length === 0) return new Set();
+  const bots = [...roster];
+  const rows = await db
+    .select({
+      attackerPlayerId: battleReports.attackerPlayerId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(battleReports)
+    .where(and(
+      inArray(battleReports.attackerPlayerId, [...people]),
+      eq(battleReports.targetKind, 'PLAYER'),
+      isNotNull(battleReports.defenderPlayerId),
+      bots.length > 0
+        ? sql`${battleReports.defenderPlayerId} NOT IN (${sql.join(bots.map((id) => sql`${id}`), sql`, `)})`
+        : sql`true`,
+      gt(battleReports.createdAt, since),
+    ))
+    .groupBy(battleReports.attackerPlayerId);
+  return new Set(rows.filter((row) => isBully(row.n)).map((row) => row.attackerPlayerId));
+}
+
+/**
  * WHICH WORLDS THIS COMMANDER MAY RAID — the whole of the restraint, in one place.
  *
  * Exported because it is the rule, not an implementation detail: what a bot is
@@ -552,14 +650,14 @@ export async function raidCandidates(
 
   const near = await neighbourhood(db, seat, view);
   /**
-   * TWO TABLE READS FOR THE WHOLE NEIGHBOURHOOD, NOT TWO PER WORLD. D166.
+   * A FEW TABLE READS FOR THE WHOLE NEIGHBOURHOOD, NOT A FEW PER WORLD. D166.
    *
    * The Core level and the day's raid count used to be fetched inside the loop, so
    * a bot with twenty-four neighbours in reach spent up to forty-eight sequential
    * round trips choosing one target — on the worker that also has to land every
    * raid in the galaxy on time, once per bot, several bots per sweep.
    *
-   * Both are the same question asked of a known id list, which is one query each.
+   * Each is one question asked of a known id list, which is one query each.
    * The loop below reads maps and the restraint rules are untouched.
    */
   const peopleWorlds = near.filter((world) => !(world.playerId !== null && botPlayers.has(world.playerId)));
@@ -581,8 +679,11 @@ export async function raidCandidates(
   const myPeak = peaks.get(seat.playerId) ?? 1;
   const coreOf = new Map<string, number>();
   const raidsOn = new Map<string, number>();
+  const bullies = new Set<string>();
   if (peopleWorlds.length > 0) {
-    const [cores, hits] = await Promise.all([
+    const people = [...new Set(peopleWorlds.map((world) => world.playerId!))];
+    const roster = [...botPlayers];
+    const [cores, hits, struck] = await Promise.all([
       db
         .select({ planetId: buildings.planetId, level: buildings.level })
         .from(buildings)
@@ -590,22 +691,36 @@ export async function raidCandidates(
           inArray(buildings.planetId, peopleWorlds.map((world) => world.id)),
           eq(buildings.type, 'CORE'),
         )),
+      /*
+        EVERY BOT'S RAIDS, NOT THIS ONE'S. Owner instruction, 2026-09-19: one bot
+        raid a day on any one person, from the whole roster together.
+
+        COUNTED BY LAUNCH, NOT BY REPORT. A report is written when the fleet lands,
+        so counting reports let a second bot — or this one's next turn — launch at
+        the same person while the first raid was still in the air.
+      */
       db
         .select({
-          defenderPlayerId: battleReports.defenderPlayerId,
+          defenderPlayerId: planets.controllerPlayerId,
           n: sql<number>`count(*)::int`,
         })
-        .from(battleReports)
+        .from(missions)
+        .innerJoin(planets, eq(planets.id, missions.targetPlanetId))
         .where(and(
-          eq(battleReports.attackerPlayerId, seat.playerId),
-          gt(battleReports.createdAt, dayAgo),
+          eq(missions.kind, 'attack'),
+          ne(missions.status, 'cancelled'),
+          inArray(missions.ownerPlayerId, roster),
+          inArray(planets.controllerPlayerId, people),
+          gt(missions.departAt, dayAgo),
         ))
-        .groupBy(battleReports.defenderPlayerId),
+        .groupBy(planets.controllerPlayerId),
+      bulliesAmong(db, people, botPlayers, dayAgo),
     ]);
     for (const row of cores) coreOf.set(row.planetId, row.level);
     for (const row of hits) {
       if (row.defenderPlayerId !== null) raidsOn.set(row.defenderPlayerId, row.n);
     }
+    for (const id of struck) bullies.add(id);
   }
 
   const candidates: RaidCandidate[] = [];
@@ -651,63 +766,150 @@ export async function raidCandidates(
       // A world with no CORE row has never been built on: treat it as level 1, the
       // same answer the per-world query gave.
       if ((coreOf.get(world.id) ?? 1) < view.buildings.CORE - BOTS.playerCoreFloorGap) continue;
-      if ((raidsOn.get(world.playerId!) ?? 0) >= BOTS.playerRaidsPerDay) continue;
+      if ((raidsOn.get(world.playerId!) ?? 0) >= BOTS.botRaidsPerPersonPerDay) continue;
     }
     candidates.push({
       planetId: world.id,
       distance: world.d,
-      weight: isBot ? BOTS.botTargetBias : 1,
+      weight: isBot
+        ? BOTS.botTargetBias
+        : world.playerId !== null && bullies.has(world.playerId) ? BOTS.bullyTargetBias : 1,
     });
   }
   return candidates;
 }
 
-/** Commit most of the line and keep a garrison; a world stripped bare is worth nothing. */
-export function raidingWing(fleet: Fleet, share: number): Fleet {
-  const send: Fleet = {};
-  for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
-    if (count <= 0 || HULLS[hull].ground || hull === 'PROSPECTOR') continue;
-    const n = Math.floor(count * share);
-    if (n > 0) send[hull] = n;
+/**
+ * WHAT THIS COMMANDER'S PROBES BROUGHT HOME, one reading per world, as the launch
+ * sheet reads them. A record a BATTLE left has no bands, so it is no reading: a
+ * person who only saw the outside of a world sends a probe before a fleet.
+ */
+async function readingsOf(
+  db: Db, observerPlayerId: string, planetIds: readonly string[],
+): Promise<Map<string, Reading>> {
+  const out = new Map<string, Reading>();
+  if (planetIds.length === 0) return out;
+  const rows = await db
+    .select({
+      planetId: probeWorldMemories.targetPlanetId,
+      silhouette: probeWorldMemories.silhouette,
+      defence: probeReports.defence,
+      stock: probeReports.stock,
+      shield: probeReports.shield,
+      unarmed: probeReports.unarmed,
+      classReading: probeReports.classReading,
+      fleetHome: probeReports.fleetHome,
+      seenAt: probeWorldMemories.seenAt,
+    })
+    .from(probeWorldMemories)
+    .innerJoin(probeReports, eq(probeReports.id, probeWorldMemories.reportId))
+    .where(and(
+      eq(probeWorldMemories.observerPlayerId, observerPlayerId),
+      isNull(probeWorldMemories.invalidatedAt),
+      inArray(probeWorldMemories.targetPlanetId, [...planetIds]),
+    ));
+  for (const row of rows) {
+    out.set(row.planetId, {
+      seenAt: row.seenAt,
+      fleetHome: row.fleetHome,
+      defence: row.defence,
+      stock: row.stock,
+      shield: row.shield,
+      unarmed: row.unarmed,
+      classReading: row.classReading,
+      doctrines: row.silhouette.doctrines ?? {},
+      domeCeiling: row.silhouette.shielded ? shieldHp(row.silhouette.coreLevel) : 0,
+    });
   }
-  return send;
+  return out;
 }
 
+/** A reading, and the two facts about it that decide whether to trust it at all. */
+interface Reading extends WallReading {
+  readonly seenAt: Date;
+  /** False when the probe found the fleet out: the wall it saw comes home. */
+  readonly fleetHome: boolean;
+}
+
+/** Worlds this commander has a probe in the air toward; one look at a time. */
+async function probesInFlight(db: Db, playerId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ target: missions.targetPlanetId })
+    .from(missions)
+    .where(and(
+      eq(missions.ownerPlayerId, playerId),
+      eq(missions.kind, 'probe'),
+      eq(missions.status, 'in_flight'),
+    ));
+  return new Set(rows.map((row) => row.target));
+}
+
+/** How many candidates one turn will read the lines for. Each is a few dozen fights. */
+const RAID_LOOKS = 4;
+
+/**
+ * THE RAID: weighted by the manners, judged by the forecast. Returns whether a
+ * fleet left, so a turn that found nothing worth hitting can spend its flight on
+ * looking instead.
+ */
 async function sendRaid(
-  db: Db, clock: Clock, seat: BotSeat,
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona,
   view: PlanetView, did: string[], log: FastifyBaseLogger, rng: () => number,
-): Promise<void> {
+): Promise<boolean> {
   const candidates = await raidCandidates(db, clock.now(), seat, view);
-  if (candidates.length === 0) return;
 
   /*
     THE SAME WALK, AND THE SAME ZERO RULE. D166 — see `drawLane`. A candidate worth
     nothing is not a candidate, so it is filtered before the draw rather than being
-    reachable on an `rng()` of exactly 0.
+    reachable on an `rng()` of exactly 0. Drawn WITHOUT replacement, so a wall too
+    tall for this wing hands the turn to the next world rather than ending it.
   */
-  const drawable = candidates.filter((world) => world.weight > 0);
-  if (drawable.length === 0) return;
-  const total = drawable.reduce((sum, world) => sum + world.weight, 0);
-  let roll = rng() * total;
-  const pick = drawable.find((world) => (roll -= world.weight) <= 0) ?? drawable[0];
-  if (!pick) return;
+  const pool = candidates.filter((world) => world.weight > 0);
+  const order: RaidCandidate[] = [];
+  while (pool.length > 0 && order.length < RAID_LOOKS) {
+    const total = pool.reduce((sum, world) => sum + world.weight, 0);
+    let roll = rng() * total;
+    const at = Math.max(0, pool.findIndex((world) => (roll -= world.weight) <= 0));
+    order.push(...pool.splice(at, 1));
+  }
+  if (order.length === 0) return false;
 
-  const send = raidingWing(view.fleet, 0.6 + rng() * 0.3);
-  if (Object.keys(send).length === 0) return;
-  /*
-    A BOT SPENDS ITS OWN FIRST-DAY SHIELD LIKE ANYBODY ELSE. D183.
-
-    The server's commanders join through `joinSeason` and are stamped with the same
-    day of shield, so without this a bot's first turns would be refused with
-    `SHIELD_WOULD_DROP` and spent on nothing — and a galaxy's opening day would go
-    quiet, which is the opposite of what D159 put bots there for.
-
-    Acknowledging is also the only symmetric answer: a bot that raids becomes
-    raidable, on exactly the terms a person does. Nothing here is a bot exemption —
-    it is a bot taking the same decision with the same price.
-  */
-  await attempt(did, 'attack', log, () =>
-    launchAttack(db, seat.planetId, pick.planetId, send, clock, seat.playerId, true));
+  const [readings, tech] = await Promise.all([
+    readingsOf(db, seat.playerId, order.map((world) => world.planetId)),
+    techOf(db, seat.playerId),
+  ]);
+  const budget: ForecastBudget = { left: BOTS.forecastsPerTurn };
+  const now = clock.now();
+  for (const pick of order) {
+    const reading = readings.get(pick.planetId);
+    if (!reading) continue;
+    /*
+      A READING HOURS OLD IS LOOKED AT AGAIN BEFORE A FLEET GOES. The record still
+      makes this world a candidate — it is worth looking at — but no person raids
+      tonight on this morning's probe. The turn's flight is the fresh look, once:
+      a probe already in the air is the look, and the next turn waits for it.
+    */
+    if (now.getTime() - reading.seenAt.getTime() > BOTS.readingFreshMinutes * 60_000) {
+      if ((await probesInFlight(db, seat.playerId)).has(pick.planetId)) continue;
+      return attempt(did, 'probe', log, () =>
+        launchProbe(db, seat.planetId, pick.planetId, clock, seat.playerId));
+    }
+    // The probe found the fleet out: the wall it measured is the part that stayed.
+    if (!reading.fleetHome) continue;
+    const plan = planWorldRaid({
+      fleet: view.fleet,
+      tech,
+      nerve: persona.nerve,
+      distance: pick.distance,
+      deuterium: view.planet.deuterium,
+      reading,
+    }, budget);
+    if (!plan) continue;
+      // Never acknowledging a shield drop: a bot waits its first day out (2026-09-19).
+    return attempt(did, 'attack', log, () =>
+      launchAttack(db, seat.planetId, pick.planetId, plan.wing, clock, seat.playerId));
+  }
+  return false;
 }
 
 /** Every commander in this galaxy the server is playing. */
@@ -780,30 +982,41 @@ async function sendSalvage(
  * a refusal would not.
  */
 async function raidPirate(
-  db: Db, clock: Clock, seat: BotSeat, view: PlanetView, now: Date,
+  db: Db, clock: Clock, seat: BotSeat, persona: BotPersona, view: PlanetView, now: Date,
   did: string[], log: FastifyBaseLogger,
 ): Promise<void> {
   const snapshot = await loadPirateSnapshot(db, seat.seasonId, now);
   const standing = snapshot.standing(now);
   if (standing.length === 0) return;
   const nowMinutes = minutesSince(snapshot.startsAt, now);
-
-  const send: Fleet = {};
-  for (const [hull, count] of Object.entries(view.fleet) as [HullId, number][]) {
-    if (count <= 0 || HULLS[hull].ground || hull === 'PROSPECTOR') continue;
-    const n = Math.floor(count * 0.7);
-    if (n > 0) send[hull] = n;
-  }
-  if (Object.keys(send).length === 0) return;
+  const tech = await techOf(db, seat.playerId);
+  const budget: ForecastBudget = { left: BOTS.forecastsPerTurn };
 
   const nearest = standing
     .map((spec) => ({ spec, d: distance(view.planet.position, piratePosition(spec, nowMinutes)) }))
     .sort((a, b) => a.d - b.d)
     .slice(0, 3);
 
-  for (const { spec } of nearest) {
+  for (const { spec, d } of nearest) {
+    /*
+      THE CREW IS WHAT IS LEFT OF IT, and the level's handicap is the one the raid
+      will be fought under. A level-four crew at a pad of three Darts is a loss a
+      person can see coming, and so can this.
+    */
+    const crew = snapshot.livingRosterOf(spec.index);
+    const plan = planPirateRaid({
+      fleet: view.fleet,
+      tech,
+      nerve: persona.nerve,
+      distance: d,
+      deuterium: view.planet.deuterium,
+      crew,
+      damageMult: pirateStats(spec.level).damageMult,
+      hoard: pirateHoard(crew),
+    }, budget);
+    if (!plan) continue;
     if (await attempt(did, 'pirate', log, () =>
-      launchPirateRaid(db, seat.planetId, pirateId(snapshot.key, spec.index), send, clock, seat.playerId))) {
+      launchPirateRaid(db, seat.planetId, pirateId(snapshot.key, spec.index), plan.wing, clock, seat.playerId))) {
       return;
     }
   }

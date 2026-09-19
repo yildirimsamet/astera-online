@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, lte, notInArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
-import { ACADEMY_STEPS, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
+import { ACADEMY_STEPS, ASTEROID_DYNAMIC, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
 import { botProfiles, planets, players, seasons, shards } from '../../db/schema.js';
@@ -61,6 +61,8 @@ export async function ensureBotSeats(
   db: Db,
   clock: Clock,
   log: FastifyBaseLogger,
+  /** `BOTS_PER_GALAXY`; the code's own roster when nobody configured one. */
+  perGalaxy: number = BOTS.perGalaxy,
 ): Promise<number> {
   const live = await db
     .select({ id: seasons.id, code: shards.code })
@@ -88,9 +90,9 @@ export async function ensureBotSeats(
 
   for (const season of eligible) {
     const here = placed.filter((row) => row.seasonId === season.id).length;
-    const need = BOTS.perGalaxy - here;
+    const need = perGalaxy - here;
     if (need <= 0) continue;
-    if (free.length < need) reportShortRoster(log, season.id, here + free.length);
+    if (free.length < need) reportShortRoster(log, season.id, here + free.length, perGalaxy);
     const taking = free.slice(0, need);
     free = free.slice(taking.length);
     for (const profile of taking) {
@@ -110,31 +112,21 @@ export async function ensureBotSeats(
         await db
           .update(players)
           .set({
+            // Past the asteroid/pirate activity window too: seated is not playing,
+            // and only an awake bot counts toward the hour (`countActiveCommanders`).
             lastActiveAt: new Date(
-              clock.now().getTime() - (SERVERS.onlineWindowMinutes + 1) * 60_000,
+              clock.now().getTime()
+                - (Math.max(SERVERS.onlineWindowMinutes, ASTEROID_DYNAMIC.activeWindowMinutes) + 1) * 60_000,
             ),
             /*
-              AND NO ATTACK SHIELD OF EITHER KIND. D183 · 2026-09-14.
-
-              `joinSeason` grants one to every commander, which is the rule and is
-              about a PERSON: it buys a beginner a day to build before the galaxy
-              can reach them, and it is given up by choosing to fire. A bot makes no
-              such choice and loses nothing by being raided — what a shield on one
-              would actually do is remove twelve targets from the disc for a day,
-              on exactly the day a new commander has the fewest of them.
-
-              This is the bot's own manners again (D159), the same shape as the
-              newcomer grace and the Core-floor band: the server's commanders hold
-              themselves to the rules people are protected BY, and claim none of the
-              protections for themselves. `raidCandidates` still refuses a shielded
-              PERSON, so nothing here lets a bot reach one.
+              THE FIRST-DAY SHIELD STAYS. Owner instruction, 2026-09-19: a bot opens
+              with the same day a person does and waits it out rather than breaking
+              it (`brain.ts` keeps the attack lane shut while it stands). It used to
+              be cleared here, on the reasoning that a shielded bot is a target the
+              disc loses for a day — the owner's answer is that they are people now.
             */
-            newcomerShieldUntil: null,
-            /*
-              The recovery shield is refused at the source (`forceRecoveryShield`
-              asks `isServerCommander`), so this is belt and braces for a profile
-              seated onto an account that already held one from an earlier season.
-            */
+            // A profile seated onto an account that still holds a recovery window
+            // from an earlier season starts this one without it.
             recoveryShieldUntil: null,
           })
           .where(eq(players.accountId, profile.accountId));
@@ -164,11 +156,11 @@ export async function ensureBotSeats(
  */
 const lastShortfall = new Map<string, number>();
 
-function reportShortRoster(log: FastifyBaseLogger, seasonId: string, have: number): void {
+function reportShortRoster(log: FastifyBaseLogger, seasonId: string, have: number, want: number): void {
   if (lastShortfall.get(seasonId) === have) return;
   lastShortfall.set(seasonId, have);
   log.warn(
-    { seasonId, want: BOTS.perGalaxy, have },
+    { seasonId, want, have },
     'the bot roster is short of names; add more with the bots CLI rather than expecting the sweep to invent them',
   );
 }
@@ -248,8 +240,9 @@ export async function runBotSweep(
   db: Db,
   clock: Clock,
   log: FastifyBaseLogger,
+  perGalaxy: number = BOTS.perGalaxy,
 ): Promise<BotSweepResult> {
-  const seated = await ensureBotSeats(db, clock, log);
+  const seated = await ensureBotSeats(db, clock, log, perGalaxy);
   const now = clock.now();
   const bots = await seatedBots(db);
   if (bots.length === 0) return { seated, awake: 0, turns: 0 };
