@@ -9,6 +9,7 @@ import type {
   Resources,
   SatelliteId,
   PlanetSkinId,
+  ChatLanguage,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
@@ -566,13 +567,13 @@ export class Api {
     this.clanMutation('/api/clan/chat/read', clanChatReadSchema, { messageId });
   markClanSeen = () => this.clanMutation('/api/clan/read', clanSeenSchema);
 
-  chatMessages = (before?: string) =>
-    this.send(`/api/chat/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
-  postChat = (content: string) =>
-    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content } });
-  chatUnread = () => this.send('/api/chat/unread', chatUnreadSchema);
-  markChatRead = (messageId: string) =>
-    this.send('/api/chat/read', chatReadSchema, { method: 'POST', body: { messageId } });
+  chatMessages = (language: ChatLanguage, before?: string) =>
+    this.send(`/api/chat/messages?language=${language}&limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
+  postChat = (language: ChatLanguage, content: string) =>
+    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content, language } });
+  chatUnread = (language: ChatLanguage) => this.send(`/api/chat/unread?language=${language}`, chatUnreadSchema);
+  markChatRead = (language: ChatLanguage, messageId: string) =>
+    this.send('/api/chat/read', chatReadSchema, { method: 'POST', body: { messageId, language } });
   chronicle = (before?: string) =>
     this.send(`/api/chronicle?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`, chroniclePageSchema);
   intel = () => this.send('/api/intel', intelSchema);

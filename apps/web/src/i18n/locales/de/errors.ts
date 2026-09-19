@@ -1,0 +1,234 @@
+/**
+ * EVERY REFUSAL, IN THE PLAYER'S LANGUAGE.
+ *
+ * The API answers a refusal with a stable machine CODE, an English sentence, and
+ * the figures that sentence was built from (`params`). The client localises off
+ * the code and fills in the params; the server's own sentence is the fallback for
+ * a code this build has never heard of — a server one deploy ahead must never
+ * leave the player staring at nothing.
+ *
+ * The English here is deliberately identical to what the server writes. That is
+ * not duplication for its own sake: it means an English player sees exactly the
+ * same words whether the code was recognised or not, so a missing entry is
+ * invisible rather than a change of voice mid-session.
+ */
+
+export const errors = {
+  ADMIN_FORBIDDEN: 'Administratorzugriff ist erforderlich',
+  PLANET_NOT_OWNED: 'Du kontrollierst diese Welt nicht',
+  WORLD_RECOVERING: 'Diese Welt erholt sich',
+  COLONY_SECESSION_PENDING: 'Diese Kolonie hat null Loyalität erreicht und trennt sich',
+  FAULT_ITEM_BROKEN: 'Repariere diesen Gegenstand, bevor du ihn verbesserst',
+  OCCUPATION_PROTECTED: 'Diese Welt steht unter Besatzungsschutz',
+  COLONY_CAP: 'Ihr Kommandokern kann keine weitere Kolonie beherbergen',
+  NO_ACTIVE_CLAIM: 'Es ist kein Vergleichsanspruch offen',
+  CLAIM_EXPIRED: 'Der Vergleichsanspruch ist abgelaufen',
+  TARGET_CHANGED: 'Diese Welt hat zuerst den Controller gewechselt',
+  SETTLEMENT_REQUIREMENTS: 'Eine Siedlung benötigt genau zwei Kuriere und ihre Gründungsfracht',
+  DEATH_STAR_EXISTS: 'Diese Welt hat ihre Todessternkapazität erreicht',
+  DEATH_STAR_NOT_READY: 'Auf dieser Welt ist kein Todesstern bereit',
+  DEATH_STAR_LOCKED: 'Todesstern-Voraussetzungen sind nicht erfüllt',
+  RECOVERY_WINDOW_TOO_SHORT: 'Das Wiederherstellungs- oder Anspruchsfenster wird vor dem Eintreffen geschlossen',
+  /** What is shown when nothing else is known. */
+  unknown: 'Etwas ist schief gelaufen',
+  unreachable: 'Kontakt zum Server verloren. Versuchen Sie es gleich noch einmal.',
+  streamFailed: 'Stream nicht verfügbar',
+
+  ALREADY_HARVESTING: 'Du hast dort bereits Schiff',
+  ALREADY_IN_CLAN: 'Verlasse zuerst deinen aktuellen Clan',
+  ALREADY_IN_ORBIT: 'Dieser Satellit ist bereits im Orbit',
+  ALREADY_MINING: 'Du hast bereits ein Schiff, das diesen Stein bearbeitet',
+  ALREADY_PLACED: 'Du befehligst bereits einen Planeten in einer anderen Galaxie',
+  ASTEROID_EMPTY: 'Dieser Stein wurde bereits abgetragen',
+  ASTEROID_GONE: 'Dieser Stein ist nicht auf der Scheibe',
+  ASTEROID_UNAVAILABLE: 'Dieser Asteroid ist für Ihre Sensoren nicht verfügbar',
+  AT_MAX_LEVEL: 'Ihr {{instrument}} ist auf dem höchsten Stand. Es gibt nichts weiter zu gewinnen.',
+  BAD_COUNT: 'Count muss eine positive Ganzzahl sein',
+  BAD_COUNT_craft: 'Senden Sie mindestens ein Fahrzeug',
+  BAD_COUNT_prospector: 'Senden Sie mindestens einen Prospektor',
+  BAD_CARGO: 'Frachtbeträge müssen ganze Zahlen sein und dürfen nicht negativ sein',
+  BAD_CLAN_AID_FLEET: 'Wählen Sie mindestens ein mobiles Schiff',
+  BAD_CLAN_CHAT_CURSOR: 'Dieser Teil der Clan-Konversation ist nicht mehr sichtbar',
+  BAD_CLAN_CURSOR: 'Dieser Teil der Clan-Geschichte ist nicht mehr sichtbar',
+  BAD_CLAN_DESCRIPTION: 'Halten Sie die Clanbeschreibung auf maximal 160 Zeichen beschränkt',
+  BAD_CLAN_MESSAGE: 'Schreiben Sie zwischen einem und 280 Zeichen',
+  BAD_CLAN_NAME: 'Wählen Sie einen Clannamen mit 3 bis 24 Zeichen',
+  BAD_CLAN_TAG: 'Verwenden Sie zwei bis fünf Buchstaben oder Ziffern für das Clan-Tag',
+  BAD_CREDENTIALS: 'Dieser Name und dieses Passwort stimmen nicht überein',
+  BAD_FLEET: 'Falsche Schiffsanzahl für {{hull}}',
+  BAD_REQUEST: 'Diese Anfrage konnte nicht gelesen werden',
+  BAD_SESSION: 'Sitzung ist ungültig oder abgelaufen',
+  BAD_SLOT: 'Teleskop L{{level}} kann {{slots}} Planeten beobachten',
+  TARGET_ALREADY_WATCHED: 'Ein weiterer Telescope-Slot beobachtet diese Welt bereits',
+  BUILD_ORDER_FINISHED: 'Dieser Auftrag ist bereits abgeschlossen',
+  BUILD_ORDER_HAS_DEPENDENTS: 'Stornieren Sie zuerst die abhängigen Aufträge dahinter',
+  RESEARCH_CANNOT_BE_CANCELLED: 'Gestartete Recherchen können nicht abgebrochen werden',
+  RESEARCH_QUEUE_FULL: '3 Forschungsprojekte stehen bereits in der Warteschlange. Warten Sie, bis einer fertig ist, bevor Sie einen weiteren hinzufügen.',
+  BUILD_ORDER_NOT_FOUND: 'Kein aktiver Buildauftrag mit dieser ID',
+  BASH_LIMIT: 'Du bist in letzter Zeit zu oft auf diesem Planeten gelandet',
+  TIER_BAND: "Die Gesamtstärke dieses Kommandanten liegt weit über Ihrer eigenen",
+  TIER_BAND_WEAK: "Die Gesamtstärke dieses Kommandanten liegt weit unter Ihrer eigenen",
+  CANNOT_INTERCEPT: 'Es wird die Scheibe verlassen, bevor Ihr Fahrzeug sie erreichen kann',
+  CONVOY_ALREADY_RAIDED: 'Diese Welt hat diesen intergalaktischen Konvoi bereits getroffen',
+  CONVOY_FLEET_ALREADY_AWAY: 'Diese Welt verfügt bereits über eine Flotte, die für den intergalaktischen Konvoi bestimmt ist',
+  CONVOY_NEEDS_COMBAT_FLEET: 'Senden Sie eine Flotte mit Feuerkraft',
+  CONVOY_OUT_OF_REACH: 'Der Konvoi wird vor dem Angriff verschwunden sein',
+  CONVOY_QUOTE_CHANGED: 'Der Konvoi hat sich über den von Ihnen bestätigten Start hinaus bewegt; Aktualisieren Sie das Angebot',
+  CONVOY_WINDOW_CLOSED: 'Es gibt keinen intergalaktischen Konvoi da draußen',
+  /**
+   * THE TWO SIDES OF THE FIRST-DAY SHIELD. D183.
+   *
+   * The first is a refusal about THEM and nothing closes it but time. The second is
+   * a price on YOU, and the launch sheet asks before it is ever seen — it reaches a
+   * player only when a client is behind or a launch is made from somewhere the
+   * question was not asked, so it has to state the whole rule on its own.
+   */
+  NEWCOMER_SHIELDED: 'Dieser Kommandant steht unter einem Schild und kann noch nicht überfallen werden',
+  /**
+   * A SIXTH MARK, AND A SQUADRON THAT ONLY JUST LANDED. D183.
+   *
+   * Both surfaces disable their control before either can be reached — the disc
+   * knows how many marks are standing, the rail draws the rest as a countdown — so
+   * these carry a client one deploy behind rather than the ordinary case.
+   */
+  RIVAL_LIMIT: 'Sie schauen sich bereits {{max}} Kommandeure an. Löschen Sie zuerst eines.',
+  PROSPECTORS_RESTING: 'Diese Schiffe sind gerade erst gelandet. Sie sind in Kürze wieder fertig.',
+  SHIELD_WOULD_DROP: 'Dadurch wird dein eigener Schild aufgegeben. Bestätigen Sie, trotzdem zu senden.',
+  /**
+   * THE RENDEZVOUS MOVED WHILE THE PLAYER WAS DECIDING. D183.
+   *
+   * Names the fresh minute, because a commander told only "that moved" learns
+   * nothing — and the number they need is the one the refusal just solved for. The
+   * screen behind it has already refetched, so pressing again is the whole fix.
+   */
+  RENDEZVOUS_MOVED: 'Es hat sich entlang seiner Umlaufbahn bewegt – der Flug ist jetzt {{minutes}}m. Überprüfen Sie es und senden Sie es erneut.',
+  /* Raised by the transfer lane with no detail and by the trade lane with one, so
+     it is written without interpolation: a placeholder rendered raw on the older
+     caller is worse than a sentence that fits both. */
+  CARGO_CAPACITY: 'Diese Ladung ist mehr, als dieser Konvoi transportieren kann',
+  TRANSFER_NEEDS_CARGO_HULL: 'Für den Transport von Ressourcen ist ein Kurier, Wanderer, Atlas oder Argosy erforderlich',
+  BAD_TRADE: 'Der Händler akzeptiert diesen Tausch nicht',
+  TRADE_WINDOW_CLOSED: 'Der Händler hat die Galaxie verlassen',
+  CHAT_RATE_LIMIT: 'Senden Sie höchstens fünf Nachrichten alle {{seconds}} Sekunden.',
+  BAD_CHAT_CURSOR: 'Dieser Teil der Konversation ist nicht mehr verfügbar',
+  CHAT_MESSAGE_NOT_VISIBLE: 'Diese Nachricht ist nicht mehr verfügbar',
+  CLANS_NEXT_SEASON: 'Clans werden in neueren Galaxien als dieser eröffnet',
+  CLAN_ADAPTING: 'Dies wird geöffnet, wenn die 12-stündige Clan-Anpassung abgeschlossen ist',
+  CLAN_AID_CANNOT_LAND: 'Diese Welt kann noch nicht genau diese Schiffsnutzlast empfangen',
+  CLAN_AID_CARGO_CAPACITY: 'Nur Kurier, Wanderer, Atlas und Argosy tragen Clanressourcen; Die Kapazität beträgt {{capacity}}',
+  CLAN_AID_DISABLED: 'Dieses Clanmitglied nimmt keine Hilfe an',
+  CLAN_AID_LIMIT: 'Diese Nutzlast übersteigt das fortlaufende 24-Stunden-Kontingent des Empfängers. Reduzieren Sie den Wert oder warten Sie, bis die Freigabe wieder vorhanden ist.',
+  CLAN_AID_MEMBERSHIP: 'Clan-Hilfe ist nur für aktuelle Clan-Mitglieder',
+  CLAN_AID_POLICY_COOLDOWN: 'Ihre Hilfspräferenz kühlt sich ab. Versuchen Sie es später noch einmal.',
+  CLAN_AID_SELF: 'Clanhilfe geht an einen Clanmitglied. Bewegen Sie Ihre eigenen Schiffe mit einem Transfer.',
+  CLAN_AID_TARGET: 'Wähle eine Welt, die von diesem Clanmitglied kontrolliert wird',
+  CLAN_APPLICATIONS_FULL: 'Für diesen Clan warten bereits fünf Bewerbungen',
+  CLAN_APPLICATION_LIMIT: 'Möglicherweise sind {{limit}}-Anwendungen geöffnet. Ziehen Sie eine zurück, bevor Sie sich erneut bewerben.',
+  CLAN_ATTACK_LIMIT: 'Ihr Clan kann in {{hours}} Stunden {{limit}} Angriffe auf einen Kommandanten starten',
+  CLAN_CEASEFIRE: 'Während des 24-Stunden-Waffenstillstands können Sie einen ehemaligen Clanmitglied nicht angreifen',
+  CLAN_CHAT_RATE_LIMIT: 'Versende höchstens {{limit}} Clan-Nachrichten alle {{seconds}} Sekunden',
+  CLAN_CORE_REQUIRED: 'Erhöhen Sie zuerst den Hauptbefehlskern auf L{{required}}',
+  CLAN_COST_REQUIRED: 'Die Hauptstadt benötigt {{alloy}} Legierung und {{crystal}} Kristall, um einen Clan zu gründen',
+  CLAN_DEPOT_NO_ROOM: 'Machen Sie Platz in der Hauptstadt, bevor Sie diese Clananteile beanspruchen',
+  CLAN_FRIENDLY_FIRE: 'Clanmitglieder können sich gegenseitig nicht angreifen, untersuchen oder schlagen',
+  CLAN_FULL: 'Dieser Clan hat bereits fünf Mitglieder',
+  CLAN_HOSTILE_FLIGHT_ACK_REQUIRED: 'Bereits gestartete Flüge werden weiterhin kämpfen. Bestätigen Sie dies, bevor Sie beitreten.',
+  CLAN_INVITATIONS_FULL: 'Auf deinen Clan warten bereits fünf Einladungen',
+  CLAN_INVITE_RATE: 'Du kannst {{limit}} Clan-Einladungen in {{hours}} Stunden versenden',
+  CLAN_LEADER_MUST_TRANSFER: 'Übertrage zuerst die Führung oder löse den Clan auf',
+  CLAN_LEADER_REQUIRED: 'Nur der Clan-Anführer kann das tun',
+  CLAN_MEMBERSHIP_LOCKED: 'Clan-Mitgliedschaftsaktionen sind nach dem Verlassen, Entfernen oder Auflösen 24 Stunden lang gesperrt',
+  CLAN_MEMBER_NOT_FOUND: 'Wählen Sie ein aktuelles Mitglied Ihres Clans',
+  CLAN_MESSAGE_NOT_VISIBLE: 'Diese Clan-Nachricht ist für Sie nicht sichtbar',
+  CLAN_NAME_TAKEN: 'Dieser Clanname wird in dieser Galaxie bereits verwendet',
+  CLAN_NOT_FOUND: 'Dieser Clan ist nicht mehr aktiv',
+  CLAN_NOT_RECRUITING: 'Dieser Clan akzeptiert keine Bewerbungen',
+  CLAN_REQUEST_CLOSED: 'Diese Clan-Anfrage ist nicht mehr offen',
+  CLAN_REQUEST_EXISTS: 'Es besteht bereits eine offene Anfrage zwischen Ihnen und diesem Clan',
+  CLAN_REQUEST_NOT_FOUND: 'Diese Clananfrage existiert nicht mehr',
+  CLAN_REQUEST_NOT_YOURS: 'Du kannst diese Clananfrage nicht beantworten',
+  CLAN_TAG_TAKEN: 'Dieses Clan-Tag wird in dieser Galaxie bereits verwendet\nDer',
+  CORE_CEILING: 'Kommandokern muss zuerst angehoben werden',
+  CROSS_SEASON: 'Dieser Planet befindet sich in einer anderen Galaxie',
+  EMPTY_FLEET: 'Senden Sie mindestens ein Schiff',
+  EMPTY_ANNOUNCEMENT: 'Fügen Sie einige Inhalte hinzu, bevor Sie die Ankündigung veröffentlichen',
+  FIELD_GONE: 'Davon ist nichts mehr übrig',
+  FLEET_ALREADY_COMMITTED: 'Sie haben bereits eine Flotte auf diesem Planeten stationiert',
+  FORBIDDEN: 'Du kannst diesen Planeten nicht angreifen',
+  GROUND_UNIT: '{{hull}}s können nicht reisen',
+  IMMOBILE_FLEET: 'Diese Flotte kann nicht reisen',
+  INSUFFICIENT_RESOURCES: 'Nicht genügend Ressourcen',
+  INSUFFICIENT_RESOURCES_probe: 'Nicht genügend Ressourcen für eine Sonde',
+  IDEMPOTENCY_CONFLICT: 'Diese Aktion wurde bereits mit anderen Details gesendet. Schließen Sie dieses Fenster und versuchen Sie es erneut.',
+  INTERNAL: 'Etwas ist schief gelaufen',
+  NEEDS_UPLINK: 'Bringen Sie zuerst einen Uplink in den Orbit',
+  NEEDS_DENSE_FUEL_CELLS: 'Erforscht zunächst dichte Brennstoffzellen',
+  NEEDS_GRAVITIC_CHARGES: 'Erforsche zuerst Gravitische Ladungen',
+  NEEDS_ISOTOPE_SPECTROMETRY: 'Forschungsisotopenspektrometrie vor dem Abbau dieser Anomalie',
+  NO_FREE_BAY: 'Alle {{total}} Flugschächte sind in Verwendung. Zuerst muss etwas landen.',
+  NO_FREE_CLAN_AID_BAY: 'Alle normalen und Clan-Aid-Flugbuchten sind in Gebrauch. Zuerst muss etwas landen.',
+  NO_FREE_SLOT: 'Heben Sie den Kommandokern für einen anderen Orbit-Slot an',
+  NO_PLANET: 'Treten Sie zuerst einer Galaxie bei',
+  NO_SEASON: '{{shard}} ist derzeit nicht geöffnet',
+  NO_SESSION: 'Kein Sitzungscookie',
+  NO_SUCH_ASTEROID: 'Kein solcher Asteroid',
+  NO_SUCH_FIELD: 'Kein solches Wrackfeld',
+  NO_SUCH_SERVER: 'Keine Galaxie mit diesem Namen',
+  NO_TELESCOPE: 'Installieren Sie zuerst ein Teleskop',
+  NOT_A_WARSHIP: 'Prospektorenmine; Sie überfallen nicht',
+  NOT_IN_CLAN: 'Du gehörst keinem Clan an',
+  NOT_ENOUGH_CRAFT: 'Nur {{available}} Prospektoren zu Hause',
+  NOT_ENOUGH_SHIPS: 'Nicht genügend {{hull}} zu Hause',
+  MINING_ALREADY_ARRIVED: 'Prospektoren können nicht zurückgerufen werden, nachdem sie ihr Ziel erreicht haben',
+  MINING_RUN_NOT_FOUND: 'Dieser Prospektor-Flug existiert nicht mehr',
+  OUT_OF_RANGE: 'Teleskop L{{level}} erreicht {{reach}} Einheiten; diese Welt ist {{distance}} entfernt',
+  PLANET_NOT_FOUND: 'Kein solcher Planet',
+  PLAYER_NOT_FOUND: 'Kein solcher Spieler',
+  PLAYER_ALREADY_IN_CLAN: 'Dieser Kommandant gehört bereits einem Clan an',
+  PROBE_ALREADY_OUT: 'Sie haben bereits eine Sonde, die diesen Planeten bearbeitet',
+  PROBE_COOLDOWN: 'Eine weitere Sonde kann in {{seconds}} Sekunden gestartet werden.',
+  PROSPECTOR_TRANSFER_FORBIDDEN: 'Prospektoren können nicht zwischen Welten übertragen werden',
+  PROSPECTOR_CAP: 'Sie dürfen {{max}} Prospektoren besitzen und Sie haben {{have}}.',
+  PROSPECTOR_CAP_atLimit: 'Sie haben bereits {{max}} Prospektoren. Das ist die Grenze.',
+  GROUND_SLOTS_FULL: 'Bodenstellungen voll: {{used}} / {{capacity}} Platz belegt; Diese Bestellung benötigt {{needed}}.',
+  HANGAR_FULL: 'Hangar voll: {{used}} / {{capacity}} Raum belegt; Diese Bestellung benötigt {{needed}}. Erhöhen Sie den Hangar, um mehr Platz zu schaffen.',
+  INSUFFICIENT_FUEL: 'Nicht genug Deuterium: Für diesen Start ist {{needed}} erforderlich, und Sie haben {{have}}.',
+  QUEUE_FULL: 'Die {{queue}}-Warteschlange ist voll',
+  QUEUE_SETTLING: 'Der abgeschlossene Auftrag wird jetzt abgewickelt',
+  /**
+   * The rehearsal cannot honour that, and it should never have been offered.
+   *
+   * A belt-and-braces line: the beats gate every control they cannot pay for, so
+   * reaching this means one slipped through. Better a sentence than the code.
+   */
+  RATE_LIMITED: 'Zu viele Anfragen. Versuchen Sie es in {{seconds}} Sekunden erneut.',
+  RESEARCH_CEILING: 'Deuteriumsynthese {{rung}} ermöglicht eine Raffinerie von {{ceiling}}. Recherchieren Sie zunächst weiter.',
+  RESEARCH_ALREADY_COMPLETE: 'Diese Forschung ist bereits abgeschlossen',
+  RESEARCH_NOT_DISCOVERED: 'Diese Forschung wurde nicht entdeckt',
+  RESEARCH_UNAVAILABLE: 'Diese Forschung ist noch nicht verfügbar',
+  RIVAL_NOT_VISIBLE: 'Diese Welt ist nicht in Ihrer Galaxie',
+  RIVAL_SELF: 'Sie können Ihre eigene Welt nicht als Rivalen markieren',
+  REHEARSAL_ONLY: 'Nicht, bis diese Welt dir gehört',
+  SEASON_ENDS_BEFORE_RETURN: 'Diese Staffel kann nicht vor Saisonende zurückkehren',
+  SEASON_ENDS_BEFORE_BUILD: 'Dieser Auftrag kann nicht vor Ende der Saison abgeschlossen werden',
+  SEASON_FROZEN: 'Diese Saison ist vorbei',
+  UNSAFE_HTML: 'Diese Ankündigung enthält unsichere oder nicht unterstützte aktive Inhalte',
+  SEASON_NOT_FOUND: 'Keine solche Saison',
+  SELF_ATTACK: 'Du kannst deinen eigenen Planeten nicht angreifen',
+  SELF_PROBE: 'Sie wissen bereits, was sich auf Ihrem eigenen Planeten befindet',
+  SELF_WATCH: 'Sie wissen bereits, was Ihre eigene Flotte tut',
+  SERVER_LOCKED: '{{shard}} ist noch nicht geöffnet',
+  SERVER_LOCKED_frontier: '{{shard}} wird geöffnet, sobald {{frontier}} voll ist. Treten Sie {{frontier}} bei.',
+  SHARD_FULL: '{{shard}} ist voll',
+  PLACEMENT_CHANGED: 'Deine Galaxie hat sich verändert. Aktualisieren Sie und versuchen Sie es erneut.',
+  RETURN_TARGET_UNAVAILABLE: 'Ihre ehemalige Galaxie ist derzeit nicht verfügbar.',
+  NOT_IN_WAITING: 'Du befindest dich bereits in einer Hauptgalaxie.',
+  WAITING_JOIN_FORBIDDEN: 'Wählen Sie eine verfügbare Hauptgalaxie aus, um mit dem Spielen zu beginnen.',
+  SHIPYARD_TOO_LOW: 'Benötigt Werft L{{level}}',
+  SLOT_COOLING: 'Dieser Slot wird noch neu ausgerichtet – noch {{minutes}} Minuten',
+  TARGET_PROSPECTOR_CAP: 'Diese Welt kann {{max}} Prospektoren enthalten und hat {{have}}.',
+  TARGET_HANGAR_FULL: 'Der Hangar dieser Welt ist voll: {{used}} / {{capacity}} Raum belegt; Diese Flotte benötigt {{needed}}.',
+  UNAUTHENTICATED: 'Melden Sie sich zuerst an',
+  UNKNOWN: 'Etwas ist schief gelaufen',
+  USERNAME_TAKEN: 'Dieser Name fliegt bereits',
+} as const;

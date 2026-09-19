@@ -20,6 +20,8 @@ import {
   usePostChat,
 } from '../api/queries.js';
 import { describeError } from '../i18n/errors.js';
+import { currentLanguage } from '../i18n/index.js';
+import { isLanguage, LANGUAGES, LANGUAGE_LABEL, type Language } from '../i18n/languages.js';
 import { chatRelativeTime } from '../lib/chatTime.js';
 import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
@@ -50,15 +52,16 @@ export function ChatScreen({
 }) {
   const { t } = useTranslation();
   const [channel, setChannel] = useState<ChatChannel>(initialChannel);
-  const [generalDraft, setGeneralDraft] = useState('');
+  const [chatLanguage, setChatLanguage] = useState<Language>(() => currentLanguage());
+  const [generalDrafts, setGeneralDrafts] = useState<Partial<Record<Language, string>>>({});
   const [clanDraft, setClanDraft] = useState('');
   const badge = useClanBadge();
   const inClan = badge.data?.membership !== null && badge.data?.membership !== undefined;
-  const general = useChatMessages();
-  const generalUnreadQuery = useChatUnread();
+  const general = useChatMessages(chatLanguage);
+  const generalUnreadQuery = useChatUnread(chatLanguage);
   const clan = useClanChat(inClan);
-  const postGeneral = usePostChat();
-  const markGeneral = useMarkChatRead();
+  const postGeneral = usePostChat(chatLanguage);
+  const markGeneral = useMarkChatRead(chatLanguage);
   const clanActions = useClanActions();
   const generalUnread = generalUnreadQuery.data?.count ?? 0;
   const clanUnread = badge.data?.clanChatUnread ?? 0;
@@ -92,6 +95,24 @@ export function ChatScreen({
   return (
     <div className="chat-type flex h-full min-h-0 flex-col">
       <div className="shrink-0 border-b border-line-soft bg-void px-3 py-2">
+        {channel === 'general' ? (
+          <label className="mb-2 block">
+            <span className="sr-only">{t('chat.languageLabel')}</span>
+            <select
+              aria-label={t('chat.languageLabel')}
+              className="field min-h-9 w-full py-1"
+              value={chatLanguage}
+              onChange={(event) => {
+                const next = event.currentTarget.value;
+                if (isLanguage(next)) setChatLanguage(next);
+              }}
+            >
+              {LANGUAGES.map((language) => (
+                <option key={language} value={language}>{LANGUAGE_LABEL[language]}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <Segmented
           segments={tabs}
           value={channel}
@@ -117,14 +138,16 @@ export function ChatScreen({
             <Waiting>{t('surface.waitingChat')}</Waiting>
           ) : (
             <ChannelPanel
-              key="general"
+              key={chatLanguage}
               messages={generalMessages}
               listLabel={t('chat.list')}
               empty={t('chat.empty')}
               loadingOlder={t('chat.loadingOlder')}
               placeholder={t('chat.placeholder')}
-              draft={generalDraft}
-              onDraft={setGeneralDraft}
+              draft={generalDrafts[chatLanguage] ?? ''}
+              onDraft={(draft) => {
+                setGeneralDrafts((current) => ({ ...current, [chatLanguage]: draft }));
+              }}
               onFocusPlanet={onFocusPlanet}
               hasNextPage={general.hasNextPage}
               fetchingOlder={general.isFetchingNextPage}

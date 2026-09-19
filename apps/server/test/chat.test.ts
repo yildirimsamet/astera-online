@@ -47,11 +47,11 @@ describe('galaxy chat', () => {
     await close();
   });
 
-  const post = (who: number, content: string) => app.inject({
+  const post = (who: number, content: string, language = 'tr') => app.inject({
     method: 'POST',
     url: '/api/chat/messages',
     headers: auth[who],
-    payload: { content },
+    payload: { content, language },
   });
 
   it('requires auth and never accepts a client-authored identity', async () => {
@@ -214,6 +214,71 @@ describe('galaxy chat', () => {
       app.inject({ method: 'POST', url: '/api/chat/read', headers: auth[0], payload: { messageId: older.id } }),
     ]);
     expect((await app.inject({ method: 'GET', url: '/api/chat/unread', headers: auth[0] })).json<{ count: number }>().count).toBe(0);
+  });
+
+  it('keeps histories and read markers separate for each chat language', async () => {
+    const german = (await post(0, 'Guten Abend', 'de')).json<{ message: { id: string; language: string } }>().message;
+    const french = (await post(1, 'Bonsoir', 'fr')).json<{ message: { id: string; language: string } }>().message;
+    expect(german.language).toBe('de');
+    expect(french.language).toBe('fr');
+
+    const germanList = await app.inject({
+      method: 'GET', url: '/api/chat/messages?language=de', headers: auth[1],
+    });
+    const frenchList = await app.inject({
+      method: 'GET', url: '/api/chat/messages?language=fr', headers: auth[0],
+    });
+    expect(germanList.json<{ messages: { content: string }[] }>().messages.map((m) => m.content))
+      .toEqual(['Guten Abend']);
+    expect(frenchList.json<{ messages: { content: string }[] }>().messages.map((m) => m.content))
+      .toEqual(['Bonsoir']);
+    const crossLanguageCursor = await app.inject({
+      method: 'GET', url: `/api/chat/messages?language=fr&before=${german.id}`, headers: auth[0],
+    });
+    expect(crossLanguageCursor.statusCode).toBe(400);
+
+    const wrongLanguageRead = await app.inject({
+      method: 'POST', url: '/api/chat/read', headers: auth[1],
+      payload: { messageId: german.id, language: 'fr' },
+    });
+    expect(wrongLanguageRead.statusCode).toBe(404);
+
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/unread?language=de', headers: auth[1],
+    })).json<{ count: number }>().count).toBe(1);
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/unread?language=fr', headers: auth[0],
+    })).json<{ count: number }>().count).toBe(1);
+
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/messages?language=it', headers: auth[0],
+    })).statusCode).toBe(400);
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/unread?language=it', headers: auth[0],
+    })).statusCode).toBe(400);
+    expect((await post(0, 'Ciao', 'it')).statusCode).toBe(400);
+    expect((await app.inject({
+      method: 'POST', url: '/api/chat/read', headers: auth[0],
+      payload: { messageId: french.id, language: 'it' },
+    })).statusCode).toBe(400);
+
+    await app.inject({
+      method: 'POST', url: '/api/chat/read', headers: auth[1],
+      payload: { messageId: german.id, language: 'de' },
+    });
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/unread?language=de', headers: auth[1],
+    })).json<{ count: number }>().count).toBe(0);
+    expect((await app.inject({
+      method: 'GET', url: '/api/chat/unread?language=fr', headers: auth[0],
+    })).json<{ count: number }>().count).toBe(1);
+  });
+
+  it('applies the message burst limit across all chat languages', async () => {
+    for (const language of ['tr', 'en', 'fr', 'de', 'es']) {
+      expect((await post(0, `Message in ${language}`, language)).statusCode).toBe(200);
+    }
+    expect((await post(0, 'Sixth message', 'tr')).statusCode).toBe(429);
   });
 
   it('rejects unread markers outside the caller season and malformed page limits', async () => {

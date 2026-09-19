@@ -1,0 +1,16 @@
+export const silentSpace = {
+  title: 'Du bist nach Silent Space gezogen',
+  body: 'Nach 48 Stunden Inaktivität haben wir Ihre Planeten in den Silent Space verschoben. Ihre Planeten und Ihr Fortschritt bleiben erhalten; Du kannst hier weiterspielen.',
+  returnTo: 'Bewerben Sie sich hier, um zu {{galaxy}} zurückzukehren.',
+  apply: 'Beantragen Sie die Rückgabe',
+  applying: 'Bewerben…',
+  later: 'Weiterspielen',
+  menu: 'Stiller Raum',
+  menuHint: 'Rückantrag',
+  reminder: 'Sie können sich später über Menü → Silent Space bewerben.',
+  queued: 'Ihr Rücksendeantrag befindet sich in der Warteschlange',
+  position: '{{galaxy}} · Position {{position}}',
+  queueHint: 'Wenn Platz frei wird, wird die älteste berechtigte Bewerbung berücksichtigt. Flüge oder unzureichender Platz auf dem Planeten können Ihre Rückkehr verzögern, aber Sie behalten Ihre Priorität.',
+  expiry: 'Ihre Bewerbung läuft nach 48 Stunden Inaktivität ab.',
+  unavailable: 'Ihre ehemalige Galaxie akzeptiert derzeit keine Rückkehranträge.',
+};

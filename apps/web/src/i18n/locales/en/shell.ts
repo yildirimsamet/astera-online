@@ -427,6 +427,7 @@ export const chat = {
   launcherClanUnread: 'Open chat — {{count}} unread in Clan',
   launcherBothUnread: 'Open chat — {{general}} unread in General, {{clan}} in Clan',
   channelsLabel: 'Chat channels',
+  languageLabel: 'Chat language',
   general: 'General',
   clan: 'Clan',
   channelUnread: '{{channel}} — {{count}} unread',

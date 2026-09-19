@@ -364,6 +364,7 @@ export const chat = {
   launcherClanUnread: 'Sohbeti aç — Klanda {{count}} okunmamış',
   launcherBothUnread: 'Sohbeti aç — Genelde {{general}}, Klanda {{clan}} okunmamış',
   channelsLabel: 'Sohbet kanalları',
+  languageLabel: 'Sohbet dili',
   general: 'Genel',
   clan: 'Klan',
   channelUnread: '{{channel}} — {{count}} okunmamış',

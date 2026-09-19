@@ -236,7 +236,7 @@ describe('the menu groups what it offers', () => {
     expect(plate?.querySelectorAll('[data-setting-row]')).toHaveLength(5);
 
     // Every control that was there before is still there, and still live.
-    expect(screen.getByRole('group', { name: i18n.t('settings.choose') })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: i18n.t('settings.choose') })).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
     expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();

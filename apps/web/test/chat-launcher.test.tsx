@@ -7,12 +7,13 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
 import i18n from '../src/i18n/index.js';
+import { currentLanguage } from '../src/i18n/index.js';
 import { ChatLauncher } from '../src/screens/ChatLauncher.js';
 
 function show(generalUnread: number, clanUnread = 0, onOpen = vi.fn()) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(keys.chatUnread, { count: generalUnread });
+  client.setQueryData(keys.chatUnreadFor(currentLanguage()), { count: generalUnread });
   client.setQueryData(keys.clanBadge, {
     available: true,
     membership: clanUnread > 0

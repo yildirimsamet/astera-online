@@ -65,8 +65,8 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
   ['launch', (a) => a.launch('p-1', { DART: 3 }), { targetPlanetId: 'p-1', fleet: { DART: 3 } }],
   ['watch', (a) => a.watch('p-1', 2), { targetPlanetId: 'p-1', slot: 2 }],
   ['probe', (a) => a.probe('p-1'), { targetPlanetId: 'p-1' }],
-  ['postChat', (a) => a.postChat('hello'), { content: 'hello' }],
-  ['markChatRead', (a) => a.markChatRead('00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001' }],
+  ['postChat', (a) => a.postChat('en', 'hello'), { content: 'hello', language: 'en' }],
+  ['markChatRead', (a) => a.markChatRead('en', '00000000-0000-4000-8000-000000000001'), { messageId: '00000000-0000-4000-8000-000000000001', language: 'en' }],
   ['quoteClanAid', (a) => a.quoteClanAid({
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',
     fleet: { COURIER: 2 }, cargo: { alloy: 400, crystal: 100, deuterium: 0 },

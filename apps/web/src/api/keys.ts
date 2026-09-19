@@ -37,7 +37,9 @@ export const keys = {
   clanAid: ['clan', 'aid'],
   clanChat: ['clan', 'chat'],
   chatMessages: ['chat', 'messages'],
+  chatMessagesFor: (language: ChatLanguage) => ['chat', 'messages', language] as const,
   chatUnread: ['chat', 'unread'],
+  chatUnreadFor: (language: ChatLanguage) => ['chat', 'unread', language] as const,
   chronicle: ['chronicle'],
   announcements: ['announcements'],
   adminFeedback: ['admin', 'feedback'],
@@ -55,3 +57,4 @@ export const keys = {
   miningStatus: ['mining', 'status'],
   miningStatusById: (planetId: string) => ['mining', 'status', planetId] as const,
 } as const;
+import type { ChatLanguage } from '@astera/rules';

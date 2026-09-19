@@ -8,6 +8,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { TRAFFIC, engagementEndsAt } from '@astera/rules';
+import type { ChatLanguage } from '@astera/rules';
 import type {
   Fleet,
   BuildingId,
@@ -52,6 +53,7 @@ import {
 } from '../lib/predict.js';
 import { useWorld } from './world.js';
 import { nextCrossing } from '../galaxy/crossing.js';
+import { currentLanguage } from '../i18n/index.js';
 
 /**
  * Re-exported so the fifteen call sites that read `keys` from here keep working.
@@ -839,22 +841,22 @@ export function useSetRival() {
   });
 }
 
-export function useChatMessages() {
+export function useChatMessages(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   return useInfiniteQuery({
-    queryKey: keys.chatMessages,
-    queryFn: ({ pageParam }) => api.chatMessages(pageParam ?? undefined),
+    queryKey: keys.chatMessagesFor(language),
+    queryFn: ({ pageParam }) => api.chatMessages(language, pageParam ?? undefined),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextBefore,
     staleTime: 15_000,
   });
 }
 
-export function useChatUnread(enabled = true) {
+export function useChatUnread(language: ChatLanguage = currentLanguage(), enabled = true) {
   const api = useApi();
   return useQuery({
-    queryKey: keys.chatUnread,
-    queryFn: api.chatUnread,
+    queryKey: keys.chatUnreadFor(language),
+    queryFn: () => api.chatUnread(language),
     enabled,
     ...READ,
   });
@@ -928,18 +930,18 @@ export function usePublishAnnouncement() {
   });
 }
 
-export function usePostChat() {
+export function usePostChat(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => api.postChat(content),
+    mutationFn: (content: string) => api.postChat(language, content),
     onMutate: async () => {
       // A GET started before Send cannot be allowed to land after the
       // authoritative POST response and erase the new message from the cache.
-      await client.cancelQueries({ queryKey: keys.chatMessages });
+      await client.cancelQueries({ queryKey: keys.chatMessagesFor(language) });
     },
     onSuccess: ({ message }) => {
-      client.setQueryData<InfiniteData<ChatPage, string | null>>(keys.chatMessages, (current) => {
+      client.setQueryData<InfiniteData<ChatPage, string | null>>(keys.chatMessagesFor(language), (current) => {
         if (!current) {
           return { pages: [{ messages: [message], nextBefore: null }], pageParams: [null] };
         }
@@ -950,23 +952,23 @@ export function usePostChat() {
           pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)],
         };
       });
-      void client.invalidateQueries({ queryKey: keys.chatUnread });
+      void client.invalidateQueries({ queryKey: keys.chatUnreadFor(language) });
     },
   });
 }
 
-export function useMarkChatRead() {
+export function useMarkChatRead(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (messageId: string) => api.markChatRead(messageId),
+    mutationFn: (messageId: string) => api.markChatRead(language, messageId),
     retry: 1,
     onMutate: async () => {
-      await client.cancelQueries({ queryKey: keys.chatUnread });
-      client.setQueryData(keys.chatUnread, { count: 0 });
+      await client.cancelQueries({ queryKey: keys.chatUnreadFor(language) });
+      client.setQueryData(keys.chatUnreadFor(language), { count: 0 });
     },
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: keys.chatUnread });
+      void client.invalidateQueries({ queryKey: keys.chatUnreadFor(language) });
     },
   });
 }

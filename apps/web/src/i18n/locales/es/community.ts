@@ -1,0 +1,110 @@
+export const community = {
+  announcements: {
+    eyebrow: 'Desde el mando de Astera',
+    title: 'Anuncios',
+    empty: 'Aún no hay anuncios. Las actualizaciones del equipo aparecerán aquí.',
+    new: 'NUEVO',
+  },
+  feedback: {
+    eyebrow: 'Canal directo',
+    title: 'Opiniones',
+    intro: 'Cuéntale al equipo de Astera qué ha fallado, qué podría mejorar el juego o qué te gusta tal como está.',
+    kindLabel: 'Tipo de mensaje',
+    kinds: { bug: 'Error', suggestion: 'Idea', praise: 'Algo que me gusta' },
+    messageLabel: 'Tu mensaje',
+    placeholder: 'Describe lo que pasó o lo que te gustaría ver...',
+    remaining: '{{count}} caracteres restantes',
+    send: 'Enviar opinión',
+    sending: 'Envío…',
+    sent: 'Hemos recibido tu mensaje. Gracias por ayudarnos a dar forma a Astera.',
+  },
+  admin: {
+    eyebrow: 'Operaciones',
+    title: 'Panel de administración',
+    menuLabel: 'Panel de administración',
+    menuHint: 'Publicar anuncios y leer comentarios de los jugadores.',
+    tabsLabel: 'Herramientas de administración',
+    composeTab: 'Anuncio',
+    feedbackTab: 'Opiniones',
+    perfTab: 'Rendimiento',
+    perfIntro: 'Inicia una grabación, cierra esta hoja y juega. Al detenerla se envía una medida por segundo al servidor.',
+    perfStart: 'Iniciar grabación',
+    perfStop: 'Detener y enviar',
+    perfRecording: 'Grabando',
+    perfSending: 'Enviando…',
+    perfSent: 'Guardado en el servidor',
+    perfFailed: 'No se pudo enviar. La grabación se conserva.',
+    perfRetry: 'Enviar de nuevo',
+    perfFpsAvg: 'fps medios',
+    perfFpsLow: '5 % más bajo de fps',
+    perfHitches: 'Tirones (>50 ms)',
+    perfFreezes: 'Congelaciones (>250 ms)',
+    perfJankMax: 'Parada más larga',
+    perfCalls: 'Llamadas de dibujo media / pico',
+    perfTriangles: 'Triángulos pico',
+    perfHeap: 'Memoria inicio → fin (pico)',
+    perfNetwork: 'Peticiones / datos',
+    perfWorst: 'Peor momento',
+    perfRec: 'GRAB',
+    securityNote: 'El servidor vuelve a filtrar HTML. Se rechazan los scripts, los controladores de eventos, los estilos en línea, los formularios y las incrustaciones que no sean de YouTube.',
+    titleLabel: 'Título',
+    titlePlaceholder: 'Actualizar título',
+    contentLabel: 'Contenido',
+    toolbarLabel: 'Formato de anuncio',
+    tools: {
+      bold: 'Negrita', italic: 'Cursiva', heading: 'Encabezado', bullets: 'Lista', quote: 'Cita',
+      link: 'Enlace', image: 'Imagen', video: 'YouTube',
+    },
+    linkPrompt: 'Pegar una URL de enlace',
+    imagePrompt: 'Pegue una URL de imagen HTTPS',
+    videoPrompt: 'Pega la URL de un vídeo de YouTube',
+    previewLabel: 'Vista previa en vivo',
+    previewHint: 'El mismo renderizador seguro que reciben los jugadores.',
+    mobilePreview: 'Móvil · 360 píxeles',
+    desktopPreview: 'Escritorio · 720 píxeles',
+    previewUntitled: 'Título del anuncio',
+    publish: 'Publicar anuncio',
+    publishing: 'Publicación…',
+    published: 'Anuncio publicado.',
+    feedbackEmpty: 'Aún no han llegado comentarios de los jugadores.',
+  },
+  donate: {
+    eyebrow: 'Soporte para el desarrollo en línea de Astera',
+    title: 'Apoya Astera Online',
+    menuLabel: 'Donar',
+    menuHint: 'Apoya el juego',
+    /*
+      THE ASK, IN THE DEVELOPER'S OWN VOICE.
+
+      Written first in Turkish by the person who pays these bills, and carried
+      into English rather than re-pitched: it is one human saying what the game
+      costs him, not a storefront. The four paragraphs answer four questions in
+      order — who funds it, what it costs, why it matters now, where the money
+      goes — and `noPressure` is the one that keeps the sheet from being a demand.
+    */
+    intro: 'Construyo Astera Online completamente por mi cuenta, sin inversión ni ingresos detrás.',
+    costs: 'Los servidores, la IA, el dominio y todos los demás costes técnicos salen de mi bolsillo, mes tras mes. No estoy trabajando ahora, así que esas facturas han empezado a pesarme.',
+    appeal: 'Si te encanta Astera Online y quieres que siga creciendo, incluso una pequeña contribución realmente significa mucho para mí. ❤️',
+    impact: "Lo que das va directamente a los costos de desarrollo y del servidor del juego, y me facilita seguir construyéndolo.",
+    supportLead: 'Si quieres apoyar el juego:',
+    noPressure: 'Y si no puedes, está completamente bien. Jugar, contárselo a un amigo o enviar comentarios también es una verdadera contribución. 🪐',
+    cryptoHeading: 'Cripto',
+    cryptoTrc20: 'USDT · TRC-20',
+    cryptoSolana: 'SOLANA',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    /*
+      TWO CONTROLS THAT READ "Copy" ARE ONE CONTROL TO A SCREEN READER.
+
+      The visible word stays short because the plate above it already names the
+      network; the accessible name has to carry that name too, and it has to
+      CHANGE with the state — otherwise the confirmation is visible only to
+      players who can see it.
+    */
+    copyLabel: 'Copiar dirección {{label}}',
+    copiedLabel: '{{label}} dirección copiada',
+    cardHeading: 'Shopier',
+    cardLabel: 'Aportar {{amount}} TL',
+    cardNote: 'Estamos preparando los enlaces de pago. Las tarjetas estarán disponibles pronto.',
+  },
+} as const;

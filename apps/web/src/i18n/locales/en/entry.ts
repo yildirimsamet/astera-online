@@ -112,7 +112,7 @@ export const loading = {
  * WHAT THE DOCUMENT ITSELF SAYS, outside React.
  *
  * The `<meta name="description">` a link preview and a search result read, and
- * which of the two install manifests the browser is pointed at. The NAME is not
+ * which localized install manifest the browser is pointed at. The NAME is not
  * here on purpose — "Astera Online" is the product, and a product does not get
  * translated (D54).
  */

@@ -1,8 +1,8 @@
 import { and, count, desc, eq, gt, isNull, lt, ne, or, sql } from 'drizzle-orm';
-import { CHAT } from '@astera/rules';
+import { CHAT, type ChatLanguage } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, chatMessages, clanMemberships, clans, planets, players } from '../db/schema.js';
+import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planets, players } from '../db/schema.js';
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
@@ -14,6 +14,7 @@ export interface ChatMessageView {
   username: string;
   clanTag: string | null;
   content: string;
+  language: ChatLanguage;
   createdAt: Date;
   self: boolean;
   /**
@@ -58,6 +59,7 @@ export async function readChat(
   accountId: string,
   limit: number,
   sight: LocationSight,
+  language: ChatLanguage = 'tr',
   before?: string,
   /** Configured admin logins, resolved at the boundary. Empty marks nobody. */
   adminUsernames: ReadonlySet<string> = new Set(),
@@ -68,7 +70,11 @@ export async function readChat(
     const [found] = await db
       .select({ createdAt: chatMessages.createdAt, id: chatMessages.id })
       .from(chatMessages)
-      .where(and(eq(chatMessages.id, before), eq(chatMessages.seasonId, me.player.seasonId)))
+      .where(and(
+        eq(chatMessages.id, before),
+        eq(chatMessages.seasonId, me.player.seasonId),
+        eq(chatMessages.language, language),
+      ))
       .limit(1);
     if (!found) throw new GameError('BAD_CHAT_CURSOR', 'That chat cursor is not visible', 400);
     cursor = found;
@@ -86,6 +92,7 @@ export async function readChat(
       clanTag: clans.tag,
       login: accounts.username,
       content: chatMessages.content,
+      language: chatMessages.language,
       createdAt: chatMessages.createdAt,
     })
     .from(chatMessages)
@@ -98,6 +105,7 @@ export async function readChat(
     .leftJoin(clans, and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)))
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
+      eq(chatMessages.language, language),
       cursor
         ? or(
             lt(chatMessages.createdAt, cursor.createdAt),
@@ -138,6 +146,7 @@ export async function postChat(
   accountId: string,
   content: string,
   clock: Clock,
+  language: ChatLanguage = 'tr',
   /** Same boundary resolution as `readChat`, so the sender sees their own mark. */
   adminUsernames: ReadonlySet<string> = new Set(),
 ): Promise<ChatMessageView> {
@@ -173,12 +182,14 @@ export async function postChat(
       .values({
         seasonId: me.player.seasonId,
         authorPlayerId: me.player.id,
+        language,
         content,
         createdAt,
       })
       .returning({
         id: chatMessages.id,
         authorPlayerId: chatMessages.authorPlayerId,
+        language: chatMessages.language,
         content: chatMessages.content,
         createdAt: chatMessages.createdAt,
       });
@@ -192,15 +203,21 @@ export async function postChat(
   });
 }
 
-export async function unreadChat(db: Db, accountId: string): Promise<number> {
+export async function unreadChat(db: Db, accountId: string, language: ChatLanguage = 'tr'): Promise<number> {
   const me = await chatPlayer(db, accountId);
+  const [marker] = await db
+    .select({ readAt: chatReadMarkers.readAt })
+    .from(chatReadMarkers)
+    .where(and(eq(chatReadMarkers.playerId, me.player.id), eq(chatReadMarkers.language, language)))
+    .limit(1);
   const [row] = await db
     .select({ value: count() })
     .from(chatMessages)
     .where(and(
       eq(chatMessages.seasonId, me.player.seasonId),
+      eq(chatMessages.language, language),
       ne(chatMessages.authorPlayerId, me.player.id),
-      me.player.lastChatReadAt ? gt(chatMessages.createdAt, me.player.lastChatReadAt) : undefined,
+      marker?.readAt ? gt(chatMessages.createdAt, marker.readAt) : undefined,
     ));
   return row?.value ?? 0;
 }
@@ -209,6 +226,7 @@ export async function markChatRead(
   db: Db,
   accountId: string,
   messageId: string,
+  language: ChatLanguage = 'tr',
 ): Promise<Date> {
   const me = await chatPlayer(db, accountId);
   return db.transaction(async (tx) => {
@@ -218,20 +236,33 @@ export async function markChatRead(
       .where(and(
         eq(chatMessages.id, messageId),
         eq(chatMessages.seasonId, me.player.seasonId),
+        eq(chatMessages.language, language),
       ))
       .limit(1);
     if (!message) throw new GameError('CHAT_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
 
-    const [locked] = await tx
-      .select({ readAt: players.lastChatReadAt })
+    const [lockedPlayer] = await tx
+      .select({ id: players.id })
       .from(players)
       .where(eq(players.id, me.player.id))
       .for('update');
-    if (!locked) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
-    const readAt = locked.readAt && locked.readAt > message.createdAt
+    if (!lockedPlayer) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+    const [locked] = await tx
+      .select({ readAt: chatReadMarkers.readAt })
+      .from(chatReadMarkers)
+      .where(and(
+        eq(chatReadMarkers.playerId, me.player.id),
+        eq(chatReadMarkers.language, language),
+      ))
+      .limit(1);
+    const readAt = locked?.readAt && locked.readAt > message.createdAt
       ? locked.readAt
       : message.createdAt;
-    await tx.update(players).set({ lastChatReadAt: readAt }).where(eq(players.id, me.player.id));
+    await tx.insert(chatReadMarkers).values({ playerId: me.player.id, language, readAt })
+      .onConflictDoUpdate({
+        target: [chatReadMarkers.playerId, chatReadMarkers.language],
+        set: { readAt },
+      });
     return readAt;
   });
 }

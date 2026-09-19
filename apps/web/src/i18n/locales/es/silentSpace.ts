@@ -1,0 +1,16 @@
+export const silentSpace = {
+  title: 'Te mudaste a Silent Space',
+  body: 'Después de 48 horas de inactividad, trasladamos tus planetas al Espacio Silencioso. Vuestros planetas y vuestro progreso se preservan; Puedes seguir jugando aquí.',
+  returnTo: 'Aplicar aquí para volver a {{galaxy}}.',
+  apply: 'Aplicar para regresar',
+  applying: 'Aplicando…',
+  later: 'Sigue jugando',
+  menu: 'Espacio silencioso',
+  menuHint: 'Solicitud de devolución',
+  reminder: 'Puedes aplicar más tarde desde Menú → Espacio Silencioso.',
+  queued: 'Su solicitud de devolución está en cola',
+  position: '{{galaxy}} · Posición {{position}}',
+  queueHint: 'Cuando se abre el espacio, se considera la solicitud elegible más antigua. Los vuelos o el espacio planetario insuficiente pueden retrasar su regreso, pero usted mantiene su prioridad.',
+  expiry: 'Su aplicación caduca después de 48 horas de inactividad.',
+  unavailable: 'Tu antigua galaxia no acepta solicitudes de devolución en este momento.',
+};

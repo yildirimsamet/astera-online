@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { keys } from '../src/api/keys.js';
-import i18n from '../src/i18n/index.js';
+import i18n, { currentLanguage } from '../src/i18n/index.js';
 import { ChatScreen } from '../src/screens/ChatScreen.js';
 
 const at = new Date('2026-08-22T08:00:00.000Z');
@@ -14,9 +14,9 @@ const scrollIntoView = vi.fn();
 const initial = {
   pages: [{
     messages: [
-      { id: 'one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci', content: 'Merhaba galaksi', createdAt: at, self: false },
-      { id: 'hidden', authorPlayerId: 'hidden', username: 'Gizli', content: 'Beni bulamazsın', createdAt: new Date(at.getTime() + 500), self: false },
-      { id: 'two', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage', content: 'Buradayım', createdAt: new Date(at.getTime() + 1000), self: true },
+      { id: 'one', authorPlayerId: 'other', planetId: 'other-planet', username: 'İzci', content: 'Merhaba galaksi', language: 'en', createdAt: at, self: false },
+      { id: 'hidden', authorPlayerId: 'hidden', username: 'Gizli', content: 'Beni bulamazsın', language: 'en', createdAt: new Date(at.getTime() + 500), self: false },
+      { id: 'two', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage', content: 'Buradayım', language: 'en', createdAt: new Date(at.getTime() + 1000), self: true },
     ],
     nextBefore: null,
   }],
@@ -32,7 +32,7 @@ function show(
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
   const post = vi.spyOn(api, 'postChat').mockResolvedValue({
     message: {
-      id: 'three', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage', content: 'Yeni mesaj',
+      id: 'three', authorPlayerId: 'mine', planetId: 'my-planet', username: 'Vantage', content: 'Yeni mesaj', language: 'en',
       createdAt: new Date(at.getTime() + 2000), self: true,
     },
   });
@@ -44,8 +44,9 @@ function show(
     },
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(keys.chatMessages, generalData);
-  client.setQueryData(keys.chatUnread, { count: 1 });
+  const language = currentLanguage();
+  client.setQueryData(keys.chatMessagesFor(language), generalData);
+  client.setQueryData(keys.chatUnreadFor(language), { count: 1 });
   client.setQueryData(keys.clanBadge, {
     available: true,
     membership: {
@@ -82,6 +83,45 @@ afterEach(async () => {
 });
 
 describe('galaxy chat surface', () => {
+  it('opens the public chat in the application language', async () => {
+    await i18n.changeLanguage('fr');
+    show();
+    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+  });
+
+  it('switches the public chat language without changing the app language', async () => {
+    const user = userEvent.setup();
+    show();
+    const select = screen.getByRole('combobox', { name: 'Chat language' });
+    expect(select).toHaveValue('en');
+
+    await user.selectOptions(select, 'fr');
+    expect(select).toHaveValue('fr');
+    expect(i18n.resolvedLanguage).toBe('en');
+  });
+
+  it('keeps each language’s history and unsent draft in its own chat', async () => {
+    const user = userEvent.setup();
+    const { client } = show();
+    client.setQueryData(keys.chatMessagesFor('fr'), {
+      pages: [{
+        messages: [{ ...initial.pages[0]!.messages[0]!, id: 'fr-one', content: 'Bonsoir', language: 'fr' }],
+        nextBefore: null,
+      }],
+      pageParams: [null],
+    });
+    const select = screen.getByRole('combobox', { name: 'Chat language' });
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
+    await user.selectOptions(select, 'fr');
+    expect(screen.getByText('Bonsoir')).toBeInTheDocument();
+    expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('');
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Brouillon français');
+    await user.selectOptions(select, 'en');
+    expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
+    await user.selectOptions(select, 'fr');
+    expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('Brouillon français');
+  });
   it('keeps the composer outside the independently scrolling message history', () => {
     show();
     const history = screen.getByRole('log', { name: 'Galaxy messages' });
@@ -98,6 +138,7 @@ describe('galaxy chat surface', () => {
     expect(screen.queryByText('Rim temiz')).not.toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Clan — 1 unread' }));
+    expect(screen.queryByRole('combobox', { name: 'Chat language' })).not.toBeInTheDocument();
     expect(screen.queryByText('Merhaba galaksi')).not.toBeInTheDocument();
     expect(screen.getByText('Rim temiz')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message your clan' })).toBeEnabled();
@@ -119,7 +160,7 @@ describe('galaxy chat surface', () => {
     expect(screen.getByText('İzci')).toBeInTheDocument();
     expect(screen.getByText('Merhaba galaksi')).toBeInTheDocument();
     expect(screen.queryByText(/planet/i)).not.toBeInTheDocument();
-    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('two'); });
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'two'); });
   });
 
   it('shows clan tags beside names in both channels, while leaving untagged names plain', async () => {
@@ -157,8 +198,8 @@ describe('galaxy chat surface', () => {
     const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
     await user.type(composer, '  Yeni mesaj  ');
     await user.click(screen.getByRole('button', { name: 'Send' }));
-    await waitFor(() => { expect(post).toHaveBeenCalledWith('Yeni mesaj'); });
-    expect(cancel).toHaveBeenCalledWith({ queryKey: keys.chatMessages });
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Yeni mesaj'); });
+    expect(cancel).toHaveBeenCalledWith({ queryKey: keys.chatMessagesFor('en') });
     expect(await screen.findByText('Yeni mesaj')).toBeInTheDocument();
     expect(composer).toHaveValue('');
   });
@@ -175,7 +216,7 @@ describe('galaxy chat surface', () => {
     await user.type(composer, 'Yeni mesaj');
     await user.click(screen.getByRole('button', { name: 'Send' }));
 
-    await waitFor(() => { expect(post).toHaveBeenCalledWith('Yeni mesaj'); });
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Yeni mesaj'); });
     await waitFor(() => { expect(history.scrollTop).toBe(900); });
     expect(scrollIntoView).not.toHaveBeenCalled();
   });
@@ -202,8 +243,8 @@ describe('galaxy chat surface', () => {
       scrollHeight = 900;
       return Promise.resolve({
         messages: [
-          { id: 'zero', authorPlayerId: 'other', username: 'Sable', content: 'Sıfırıncı', createdAt: new Date(at.getTime() - 2000), self: false },
-          { id: 'one', authorPlayerId: 'other', username: 'Sable', content: 'Birinci', createdAt: new Date(at.getTime() - 1000), self: false },
+          { id: 'zero', authorPlayerId: 'other', username: 'Sable', content: 'Sıfırıncı', language: 'en', createdAt: new Date(at.getTime() - 2000), self: false },
+          { id: 'one', authorPlayerId: 'other', username: 'Sable', content: 'Birinci', language: 'en', createdAt: new Date(at.getTime() - 1000), self: false },
         ],
         nextBefore: null,
       });
@@ -213,7 +254,7 @@ describe('galaxy chat surface', () => {
     fireEvent.scroll(history);
 
     expect(screen.queryByRole('button', { name: 'Load older messages' })).not.toBeInTheDocument();
-    await waitFor(() => { expect(older).toHaveBeenCalledWith('older-cursor'); });
+    await waitFor(() => { expect(older).toHaveBeenCalledWith('en', 'older-cursor'); });
     expect(await screen.findByText('Sıfırıncı')).toBeInTheDocument();
     await waitFor(() => { expect(history.scrollTop).toBe(300); });
   });
@@ -228,12 +269,12 @@ describe('galaxy chat surface', () => {
     });
     history.scrollTop = 240;
     fireEvent.scroll(history);
-    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('two'); });
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'two'); });
     vi.mocked(api.markChatRead).mockClear();
 
     scrollHeight = 980;
     act(() => {
-      client.setQueryData(keys.chatMessages, {
+      client.setQueryData(keys.chatMessagesFor('en'), {
         pages: [{
           messages: [
             ...initial.pages[0]!.messages,
@@ -251,7 +292,7 @@ describe('galaxy chat surface', () => {
 
     history.scrollTop = 680;
     fireEvent.scroll(history);
-    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('four'); });
+    await waitFor(() => { expect(api.markChatRead).toHaveBeenCalledWith('en', 'four'); });
   });
 
   it('continues following new messages while already at the bottom', async () => {
@@ -267,7 +308,7 @@ describe('galaxy chat surface', () => {
 
     scrollHeight = 980;
     act(() => {
-      client.setQueryData(keys.chatMessages, {
+      client.setQueryData(keys.chatMessagesFor('en'), {
         pages: [{
           messages: [
             ...initial.pages[0]!.messages,
@@ -318,7 +359,7 @@ describe('the admin speaking in chat', () => {
     const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
     vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(keys.chatMessages, {
+    client.setQueryData(keys.chatMessagesFor('en'), {
       pages: [{
         messages: [
           { id: 'm-admin', authorPlayerId: 'boss', username: 'Yönetici',
@@ -330,7 +371,7 @@ describe('the admin speaking in chat', () => {
       }],
       pageParams: [null],
     });
-    client.setQueryData(keys.chatUnread, { count: 0 });
+    client.setQueryData(keys.chatUnreadFor('en'), { count: 0 });
     return render(
       <QueryClientProvider client={client}>
         <ApiProvider api={api}>

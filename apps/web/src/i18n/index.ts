@@ -1,8 +1,11 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { de } from './locales/de/index.js';
 import { en } from './locales/en/index.js';
+import { es } from './locales/es/index.js';
+import { fr } from './locales/fr/index.js';
 import { tr } from './locales/tr/index.js';
-import { FALLBACK_LANGUAGE, detectLanguage, type Language } from './languages.js';
+import { FALLBACK_LANGUAGE, detectLanguage, isLanguage, type Language } from './languages.js';
 
 /** The single namespace every key lives under. See the note by `resources`. */
 export const NS = 'game';
@@ -14,9 +17,8 @@ export const NS = 'game';
  * over HTTP, and every version of that has the same shape: the first render has
  * no strings, so either the app suspends or it paints the keys and then corrects
  * itself. Principle 10 rules out both — "never a spinner where a decision should
- * be", and a flash of `landing.premise` is worse than a spinner. Two languages of
- * UI copy is a few tens of kilobytes in a bundle that ships eleven 3D models; the
- * trade is not close.
+ * be", and a flash of `landing.premise` is worse than a spinner. All five locale
+ * trees load with the game so the first screen is already in the chosen language.
  *
  * DETECTION IS OURS RATHER THAN THE PLUGIN'S. `i18next-browser-languagedetector`
  * would do the same job, but its default order puts a `?lng=` query parameter and
@@ -47,6 +49,9 @@ export const NS = 'game';
 const resources = {
   en: { [NS]: en },
   tr: { [NS]: tr },
+  fr: { [NS]: fr },
+  de: { [NS]: de },
+  es: { [NS]: es },
 } as const;
 
 void i18n.use(initReactI18next).init({
@@ -80,7 +85,7 @@ void i18n.use(initReactI18next).init({
 
 /** The language in use right now, narrowed to one this build actually has. */
 export const currentLanguage = (): Language =>
-  i18n.resolvedLanguage === 'en' ? 'en' : 'tr';
+  isLanguage(i18n.resolvedLanguage) ? i18n.resolvedLanguage : FALLBACK_LANGUAGE;
 
 /**
  * SWITCHING LIVES IN `document.ts`, NOT HERE, and that is a boundary rather than

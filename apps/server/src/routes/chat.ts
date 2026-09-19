@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CHAT } from '@astera/rules';
+import { CHAT, CHAT_LANGUAGES } from '@astera/rules';
 import { markChatRead, postChat, readChat, unreadChat } from '../services/chat.js';
 import { requireAuth } from './auth.js';
 
 const listQuery = z.object({
   before: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(50),
+  language: z.enum(CHAT_LANGUAGES).default('tr'),
 });
 const messageBody = z.object({
   content: z.string()
@@ -16,7 +17,9 @@ const messageBody = z.object({
       `Must contain at most ${String(CHAT.maxChars)} characters`,
     )),
 }).strict();
-const readBody = z.object({ messageId: z.string().uuid() }).strict();
+const languageBody = z.enum(CHAT_LANGUAGES).default('tr');
+const messageBodyWithLanguage = messageBody.extend({ language: languageBody });
+const readBody = z.object({ messageId: z.string().uuid(), language: languageBody }).strict();
 
 export function registerChatRoutes(app: FastifyInstance): void {
   app.get('/api/chat/messages', { preHandler: requireAuth }, async (req) => {
@@ -28,25 +31,25 @@ export function registerChatRoutes(app: FastifyInstance): void {
     ]);
     return readChat(
       app.db, req.accountId!, query.limit, { sensors, remembered },
-      query.before, app.adminUsernames,
+      query.language, query.before, app.adminUsernames,
     );
   });
 
   app.post('/api/chat/messages', { preHandler: requireAuth }, async (req) => {
-    const body = messageBody.parse(req.body);
+    const body = messageBodyWithLanguage.parse(req.body);
     return {
       message: await postChat(
-        app.db, req.accountId!, body.content, app.clock, app.adminUsernames,
+        app.db, req.accountId!, body.content, app.clock, body.language, app.adminUsernames,
       ),
     };
   });
 
   app.get('/api/chat/unread', { preHandler: requireAuth }, async (req) => ({
-    count: await unreadChat(app.db, req.accountId!),
+    count: await unreadChat(app.db, req.accountId!, listQuery.parse(req.query).language),
   }));
 
   app.post('/api/chat/read', { preHandler: requireAuth }, async (req) => {
     const body = readBody.parse(req.body);
-    return { ok: true as const, readAt: await markChatRead(app.db, req.accountId!, body.messageId) };
+    return { ok: true as const, readAt: await markChatRead(app.db, req.accountId!, body.messageId, body.language) };
   });
 }

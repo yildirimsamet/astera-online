@@ -11,7 +11,10 @@ import {
   type ResearchProjectId,
 } from '@astera/rules';
 import i18n from '../src/i18n/index.js';
+import { de } from '../src/i18n/locales/de/index.js';
 import { en } from '../src/i18n/locales/en/index.js';
+import { es } from '../src/i18n/locales/es/index.js';
+import { fr } from '../src/i18n/locales/fr/index.js';
 import { tr } from '../src/i18n/locales/tr/index.js';
 import {
   FALLBACK_LANGUAGE,
@@ -68,6 +71,8 @@ const tags = (text: string): Set<string> =>
 
 const ENGLISH = flatten(en);
 const TURKISH = flatten(tr);
+const LOCALES = { en, tr, fr, de, es } as const;
+const TRANSLATED_LOCALES = { fr, de, es } as const;
 
 describe('the Store protection promise', () => {
   it('states the live ten-percent, eight-hour rule on both decision surfaces', () => {
@@ -333,6 +338,57 @@ describe('the two languages hold the same keys', () => {
   });
 });
 
+describe('every added language keeps the locale contract', () => {
+  it.each(Object.entries(TRANSLATED_LOCALES))('%s has exactly the English leaves', (_, locale) => {
+    const tree = flatten(locale);
+    expect([...tree.keys()].sort()).toEqual([...ENGLISH.keys()].sort());
+  });
+
+  it('has no blank strings in any locale', () => {
+    const blank = Object.entries(LOCALES).flatMap(([language, locale]) =>
+      [...flatten(locale)]
+        .filter(([, text]) => text.trim().length === 0)
+        .map(([key]) => `${language}.${key}`),
+    );
+    expect(blank).toEqual([]);
+  });
+
+  it('keeps placeholders, markup slots, and plural pairs in every locale', () => {
+    const broken: string[] = [];
+    for (const [language, locale] of Object.entries(TRANSLATED_LOCALES)) {
+      const tree = flatten(locale);
+      for (const [key, english] of ENGLISH) {
+        const translated = tree.get(key);
+        if (!translated) {
+          broken.push(`${language}.${key}:missing`);
+          continue;
+        }
+        const missingPlaceholders = [...placeholders(english)].filter(
+          (name) => !placeholders(translated).has(name) && name !== 'count',
+        );
+        const inventedPlaceholders = [...placeholders(translated)].filter(
+          (name) => !placeholders(english).has(name),
+        );
+        if (missingPlaceholders.length > 0 || inventedPlaceholders.length > 0) {
+          broken.push(`${language}.${key}:placeholder`);
+        }
+        if ([...tags(english)].sort().join() !== [...tags(translated)].sort().join()) {
+          broken.push(`${language}.${key}:tag`);
+        }
+      }
+      for (const key of tree.keys()) {
+        if (key.endsWith('_one') && !tree.has(`${key.slice(0, -4)}_other`)) {
+          broken.push(`${language}.${key}:plural`);
+        }
+        if (key.endsWith('_other') && !tree.has(`${key.slice(0, -6)}_one`)) {
+          broken.push(`${language}.${key}:plural`);
+        }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
 describe('queue refusals name the player’s next move', () => {
   it('explains that the 3 waiting orders must finish or be cancelled', () => {
     expect(en.planet.blocked.queueFull).toMatch(/3 orders.*finish or cancel/i);
@@ -537,13 +593,21 @@ describe('which language a device lands in', () => {
     expect(detectLanguage(nav('tr-TR'))).toBe('tr');
   });
 
+  it.each([
+    ['fr-FR', 'fr'],
+    ['de-DE', 'de'],
+    ['es-ES', 'es'],
+  ] as const)('takes %s when the browser asks for it', (tag, language) => {
+    expect(detectLanguage(nav(tag))).toBe(language);
+  });
+
   /**
    * A browser that lists several languages has said something useful about the
    * second and third entries. Reading only `navigator.language` threw that away
    * and dropped a `de, en` device onto the fallback rather than onto English.
    */
   it('reads past the first entry rather than giving up on it', () => {
-    expect(detectLanguage(nav('de-DE', 'fr-FR', 'en-US'))).toBe('en');
+    expect(detectLanguage(nav('ja-JP', 'de-DE', 'en-US'))).toBe('de');
   });
 
   it('falls back to Turkish for a language this build does not have', () => {
@@ -552,7 +616,7 @@ describe('which language a device lands in', () => {
   });
 
   it('does not mistake an unknown tag for the fallback', () => {
-    expect(matchLanguage('de-DE')).toBeNull();
+    expect(matchLanguage('ja-JP')).toBeNull();
     expect(matchLanguage(undefined)).toBeNull();
     expect(matchLanguage('TR')).toBe('tr');
   });

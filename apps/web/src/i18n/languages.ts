@@ -1,5 +1,5 @@
 /**
- * THE TWO LANGUAGES, AND HOW A DEVICE IS ASKED WHICH ONE IT WANTS.
+ * THE FIVE LANGUAGES, AND HOW A DEVICE IS ASKED WHICH ONE IT WANTS.
  *
  * Kept out of `index.ts` so the detector and the language switcher can both read
  * it without importing the i18next instance — a module that pulls in the whole
@@ -11,19 +11,25 @@
  * English — detection runs first and the fallback only catches what it misses.
  */
 
-export const LANGUAGES = ['tr', 'en'] as const;
+export const LANGUAGES = ['tr', 'en', 'fr', 'de', 'es'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 /** What the switcher prints for each. Each language names itself, in itself. */
 export const LANGUAGE_LABEL: Record<Language, string> = {
   tr: 'Türkçe',
   en: 'English',
+  fr: 'Français',
+  de: 'Deutsch',
+  es: 'Español',
 };
 
 /** The two-letter code on the chip in the header. */
 export const LANGUAGE_SHORT: Record<Language, string> = {
   tr: 'TR',
   en: 'EN',
+  fr: 'FR',
+  de: 'DE',
+  es: 'ES',
 };
 
 export const FALLBACK_LANGUAGE: Language = 'tr';

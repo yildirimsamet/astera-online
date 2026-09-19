@@ -1,0 +1,234 @@
+/**
+ * EVERY REFUSAL, IN THE PLAYER'S LANGUAGE.
+ *
+ * The API answers a refusal with a stable machine CODE, an English sentence, and
+ * the figures that sentence was built from (`params`). The client localises off
+ * the code and fills in the params; the server's own sentence is the fallback for
+ * a code this build has never heard of — a server one deploy ahead must never
+ * leave the player staring at nothing.
+ *
+ * The English here is deliberately identical to what the server writes. That is
+ * not duplication for its own sake: it means an English player sees exactly the
+ * same words whether the code was recognised or not, so a missing entry is
+ * invisible rather than a change of voice mid-session.
+ */
+
+export const errors = {
+  ADMIN_FORBIDDEN: 'Se requiere acceso de administrador',
+  PLANET_NOT_OWNED: 'Tú no controlas ese mundo',
+  WORLD_RECOVERING: 'Ese mundo se está recuperando',
+  COLONY_SECESSION_PENDING: 'Esa colonia ha alcanzado la lealtad cero y se está separando',
+  FAULT_ITEM_BROKEN: 'Reparar este elemento antes de mejorarlo',
+  OCCUPATION_PROTECTED: 'Ese mundo está bajo protección de ocupación',
+  COLONY_CAP: 'Tu Núcleo de Mando no puede contener otra colonia',
+  NO_ACTIVE_CLAIM: 'No hay ningún reclamo de liquidación abierto',
+  CLAIM_EXPIRED: 'El reclamo de liquidación ha expirado',
+  TARGET_CHANGED: 'Ese mundo cambió de controlador primero',
+  SETTLEMENT_REQUIREMENTS: 'Un asentamiento necesita exactamente dos Mensajeros y su carga fundacional',
+  DEATH_STAR_EXISTS: 'Este mundo ha alcanzado su capacidad de Estrella de la Muerte',
+  DEATH_STAR_NOT_READY: 'Ninguna Estrella de la Muerte está lista en este mundo',
+  DEATH_STAR_LOCKED: 'No se cumplen los requisitos previos de la Estrella de la Muerte',
+  RECOVERY_WINDOW_TOO_SHORT: 'La ventana de recuperación o reclamación se cierra antes de la llegada.',
+  /** What is shown when nothing else is known. */
+  unknown: 'Algo salió mal',
+  unreachable: 'Se perdió contacto con el servidor. Inténtalo de nuevo en un momento.',
+  streamFailed: 'Transmisión no disponible',
+
+  ALREADY_HARVESTING: 'Ya tienes nave ahí',
+  ALREADY_IN_CLAN: 'Deja tu clan actual primero',
+  ALREADY_IN_ORBIT: 'Ese satélite ya está en órbita',
+  ALREADY_MINING: 'Ya tienes habilidad para trabajar esa roca.',
+  ALREADY_PLACED: 'Ya dominas un planeta en otra galaxia',
+  ASTEROID_EMPTY: 'Esa roca ya ha sido despojada',
+  ASTEROID_GONE: 'Esa piedra no está en el disco',
+  ASTEROID_UNAVAILABLE: 'Ese asteroide no está disponible para tus sensores',
+  AT_MAX_LEVEL: 'Tu {{instrument}} está en su nivel más alto. No hay nada más que ganar.',
+  BAD_COUNT: 'El recuento debe ser un número entero positivo',
+  BAD_COUNT_craft: 'Enviar al menos una nave',
+  BAD_COUNT_prospector: 'Enviar al menos un prospector',
+  BAD_CARGO: 'Los montos de carga deben ser números enteros y no pueden ser negativos.',
+  BAD_CLAN_AID_FLEET: 'Elige al menos un nave móvil',
+  BAD_CLAN_CHAT_CURSOR: 'Esa parte de la conversación del clan ya no es visible',
+  BAD_CLAN_CURSOR: 'Esa parte de la historia del clan ya no es visible',
+  BAD_CLAN_DESCRIPTION: 'Mantenga la descripción del clan en 160 caracteres o menos',
+  BAD_CLAN_MESSAGE: 'Escribe entre uno y 280 caracteres.',
+  BAD_CLAN_NAME: 'Elige un nombre de clan entre 3 y 24 caracteres',
+  BAD_CLAN_TAG: 'Utilice de dos a cinco letras o dígitos para la etiqueta del clan',
+  BAD_CREDENTIALS: 'Ese nombre y contraseña no coinciden',
+  BAD_FLEET: 'Recuento de envío incorrecto para {{hull}}',
+  BAD_REQUEST: 'Esa solicitud no se pudo leer.',
+  BAD_SESSION: 'La sesión no es válida o ha caducado',
+  BAD_SLOT: 'El telescopio L{{level}} puede observar los planetas {{slots}}',
+  TARGET_ALREADY_WATCHED: 'Otra ranura del Telescopio ya está observando ese mundo',
+  BUILD_ORDER_FINISHED: 'Ese pedido ya finalizó',
+  BUILD_ORDER_HAS_DEPENDENTS: 'Cancelar primero las órdenes dependientes detrás de esta',
+  RESEARCH_CANNOT_BE_CANCELLED: 'La investigación iniciada no se puede cancelar',
+  RESEARCH_QUEUE_FULL: '3 proyectos de investigación ya están en cola. Espere a que termine uno antes de agregar otro.',
+  BUILD_ORDER_NOT_FOUND: 'No hay orden de compilación activa para esa identificación',
+  BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
+  TIER_BAND: "La fuerza total de ese comandante está muy por encima de la tuya.",
+  TIER_BAND_WEAK: "La fuerza total de ese comandante está muy por debajo de la tuya.",
+  CANNOT_INTERCEPT: 'Saldrá del disco antes de que tu nave pueda alcanzarlo.',
+  CONVOY_ALREADY_RAIDED: 'Este mundo ya chocó contra este convoy intergaláctico',
+  CONVOY_FLEET_ALREADY_AWAY: 'Este mundo ya tiene una flota comprometida con el convoy intergaláctico',
+  CONVOY_NEEDS_COMBAT_FLEET: 'Envía una flota con potencia de fuego.',
+  CONVOY_OUT_OF_REACH: 'El convoy se habrá ido antes del ataque.',
+  CONVOY_QUOTE_CHANGED: 'El convoy avanzó más allá del lanzamiento que usted confirmó; actualizar la cotización',
+  CONVOY_WINDOW_CLOSED: 'No hay ningún convoy intergaláctico por ahí',
+  /**
+   * THE TWO SIDES OF THE FIRST-DAY SHIELD. D183.
+   *
+   * The first is a refusal about THEM and nothing closes it but time. The second is
+   * a price on YOU, and the launch sheet asks before it is ever seen — it reaches a
+   * player only when a client is behind or a launch is made from somewhere the
+   * question was not asked, so it has to state the whole rule on its own.
+   */
+  NEWCOMER_SHIELDED: 'Ese comandante está bajo un escudo y aún no puede ser atacado.',
+  /**
+   * A SIXTH MARK, AND A SQUADRON THAT ONLY JUST LANDED. D183.
+   *
+   * Both surfaces disable their control before either can be reached — the disc
+   * knows how many marks are standing, the rail draws the rest as a countdown — so
+   * these carry a client one deploy behind rather than the ordinary case.
+   */
+  RIVAL_LIMIT: 'Ya estás viendo los comandantes {{max}}. Limpia uno primero.',
+  PROSPECTORS_RESTING: 'Esas naves acaban de aterrizar. En breve estarán listos nuevamente.',
+  SHIELD_WOULD_DROP: 'Esto entrega tu propio escudo. Confirma para enviar de todos modos.',
+  /**
+   * THE RENDEZVOUS MOVED WHILE THE PLAYER WAS DECIDING. D183.
+   *
+   * Names the fresh minute, because a commander told only "that moved" learns
+   * nothing — and the number they need is the one the refusal just solved for. The
+   * screen behind it has already refetched, so pressing again is the whole fix.
+   */
+  RENDEZVOUS_MOVED: 'Se ha movido a lo largo de su órbita; el vuelo ahora es {{minutes}}m. Compruébalo y envíalo nuevamente.',
+  /* Raised by the transfer lane with no detail and by the trade lane with one, so
+     it is written without interpolation: a placeholder rendered raw on the older
+     caller is worse than a sentence that fits both. */
+  CARGO_CAPACITY: 'Esa carga es más de lo que este convoy puede transportar',
+  TRANSFER_NEEDS_CARGO_HULL: 'Para transportar recursos se necesita un Mensajero, Caminante, Atlas o Argosy.',
+  BAD_TRADE: 'El comerciante no acepta ese intercambio',
+  TRADE_WINDOW_CLOSED: 'El comerciante ha abandonado la galaxia.',
+  CHAT_RATE_LIMIT: 'Envía como máximo cinco mensajes cada {{seconds}} segundos.',
+  BAD_CHAT_CURSOR: 'Esa parte de la conversación ya no está disponible',
+  CHAT_MESSAGE_NOT_VISIBLE: 'Ese mensaje ya no está disponible',
+  CLANS_NEXT_SEASON: 'Se abren clanes en galaxias más nuevas que ésta.',
+  CLAN_ADAPTING: 'Esto se abre cuando se completa la adaptación del clan de 12 horas.',
+  CLAN_AID_CANNOT_LAND: 'Ese mundo aún no puede recibir esta carga útil exacta del nave.',
+  CLAN_AID_CARGO_CAPACITY: 'Solo Mensajero, Caminante, Atlas y Argosy llevan recursos del clan; la capacidad es {{capacity}}',
+  CLAN_AID_DISABLED: 'Ese compañero de clan no acepta ayuda.',
+  CLAN_AID_LIMIT: 'Esa carga útil supera la asignación continua de 24 horas del receptor. Redúzcalo o espere a que regrese la asignación.',
+  CLAN_AID_MEMBERSHIP: 'La ayuda del clan es solo para los compañeros de clan actuales',
+  CLAN_AID_POLICY_COOLDOWN: 'Tu preferencia de ayuda se está enfriando. Vuelve a intentarlo más tarde.',
+  CLAN_AID_SELF: 'La ayuda del clan va a un compañero de clan. Mueve tus propios naves con un transfer.',
+  CLAN_AID_TARGET: 'Elige un mundo controlado por ese compañero de clan',
+  CLAN_APPLICATIONS_FULL: 'Ese clan ya tiene cinco solicitudes en espera',
+  CLAN_APPLICATION_LIMIT: 'Es posible que tengas aplicaciones {{limit}} abiertas. Retira uno antes de volver a aplicar.',
+  CLAN_ATTACK_LIMIT: 'Tu clan puede lanzar ataques {{limit}} a un comandante en {{hours}} horas',
+  CLAN_CEASEFIRE: 'No puedes atacar a un antiguo compañero de clan durante el alto el fuego de 24 horas',
+  CLAN_CHAT_RATE_LIMIT: 'Enviar como máximo {{limit}} mensajes del clan cada {{seconds}} segundos',
+  CLAN_CORE_REQUIRED: 'Primero eleva el núcleo de comando capital a L{{required}}.',
+  CLAN_COST_REQUIRED: 'La capital necesita {{alloy}} Aleación y {{crystal}} Cristal para fundar un clan.',
+  CLAN_DEPOT_NO_ROOM: 'Haz espacio en la capital antes de reclamar estas acciones del clan',
+  CLAN_FRIENDLY_FIRE: 'Los compañeros de clan no pueden atacarse, sondearse ni golpearse entre sí.',
+  CLAN_FULL: 'Ese clan ya tiene cinco miembros.',
+  CLAN_HOSTILE_FLIGHT_ACK_REQUIRED: 'Los vuelos ya lanzados seguirán luchando. Confirma eso antes de unirte.',
+  CLAN_INVITATIONS_FULL: 'Tu clan ya tiene cinco invitaciones esperando',
+  CLAN_INVITE_RATE: 'Puedes enviar invitaciones al clan {{limit}} en {{hours}} horas',
+  CLAN_LEADER_MUST_TRANSFER: 'Primero transfiere el liderazgo o disuelve el clan.',
+  CLAN_LEADER_REQUIRED: 'Sólo el líder del clan puede hacer eso',
+  CLAN_MEMBERSHIP_LOCKED: 'Las acciones de membresía del clan están bloqueadas durante 24 horas después de abandonarlo, eliminarlo o disolverlo.',
+  CLAN_MEMBER_NOT_FOUND: 'Elige un miembro actual de tu clan',
+  CLAN_MESSAGE_NOT_VISIBLE: 'Ese mensaje del clan no es visible para ti',
+  CLAN_NAME_TAKEN: 'Ese nombre de clan ya se usa en esta galaxia.',
+  CLAN_NOT_FOUND: 'Ese clan ya no está activo',
+  CLAN_NOT_RECRUITING: 'Ese clan no acepta solicitudes.',
+  CLAN_REQUEST_CLOSED: 'Esa solicitud de clan ya no está abierta',
+  CLAN_REQUEST_EXISTS: 'Ya hay una solicitud abierta entre tú y ese clan',
+  CLAN_REQUEST_NOT_FOUND: 'Esa solicitud de clan ya no existe',
+  CLAN_REQUEST_NOT_YOURS: 'No puedes responder a esa solicitud del clan.',
+  CLAN_TAG_TAKEN: 'Esa etiqueta de clan ya se usa en esta galaxia',
+  CORE_CEILING: 'Núcleo de Mando debe activarse primero',
+  CROSS_SEASON: 'Ese planeta está en otra galaxia.',
+  EMPTY_FLEET: 'Enviar al menos un nave',
+  EMPTY_ANNOUNCEMENT: 'Agregar algún contenido antes de publicar el anuncio.',
+  FIELD_GONE: 'No queda nada de ello',
+  FLEET_ALREADY_COMMITTED: 'Ya tienes una flota comprometida con ese planeta.',
+  FORBIDDEN: 'No puedes atacar ese planeta.',
+  GROUND_UNIT: '{{hull}}s no pueden viajar',
+  IMMOBILE_FLEET: 'Esa flota no puede viajar',
+  INSUFFICIENT_RESOURCES: 'No hay suficientes recursos',
+  INSUFFICIENT_RESOURCES_probe: 'No hay suficientes recursos para una sonda',
+  IDEMPOTENCY_CONFLICT: 'Esta acción ya fue enviada con diferentes detalles. Cierra este panel y vuelve a intentarlo.',
+  INTERNAL: 'Algo salió mal',
+  NEEDS_UPLINK: 'Poner un enlace ascendente en órbita primero',
+  NEEDS_DENSE_FUEL_CELLS: 'Investiga primero las pilas de combustible densas',
+  NEEDS_GRAVITIC_CHARGES: 'Investiga primero las cargas gravíticas',
+  NEEDS_ISOTOPE_SPECTROMETRY: 'Investiga la espectrometría de isótopos antes de extraer esta anomalía',
+  NO_FREE_BAY: 'Todas las bahías de vuelo {{total}} están en uso. Algo tiene que aterrizar primero.',
+  NO_FREE_CLAN_AID_BAY: 'Todas las bahías de vuelo normales y de ayuda del clan están en uso. Algo tiene que aterrizar primero.',
+  NO_FREE_SLOT: 'Levantar el núcleo de comando para otra ranura de órbita',
+  NO_PLANET: 'Únete a una galaxia primero',
+  NO_SEASON: '{{shard}} no está abierto en este momento',
+  NO_SESSION: 'Sin cookie de sesión',
+  NO_SUCH_ASTEROID: 'No existe tal asteroide',
+  NO_SUCH_FIELD: 'No existe tal campo de restos de naufragio',
+  NO_SUCH_SERVER: 'Ninguna galaxia con ese nombre',
+  NO_TELESCOPE: 'Primero instale un telescopio',
+  NOT_A_WARSHIP: 'Prospectores míos; ellos no atacan',
+  NOT_IN_CLAN: 'No perteneces a ningún clan',
+  NOT_ENOUGH_CRAFT: 'Solo {{available}} Prospectores en casa',
+  NOT_ENOUGH_SHIPS: 'No hay suficiente {{hull}} en casa',
+  MINING_ALREADY_ARRIVED: 'Los buscadores no pueden ser llamados después de alcanzar su objetivo',
+  MINING_RUN_NOT_FOUND: 'Ese vuelo de Prospector ya no existe',
+  OUT_OF_RANGE: 'El telescopio L{{level}} alcanza las unidades {{reach}}; ese mundo está a {{distance}} de distancia',
+  PLANET_NOT_FOUND: 'No existe tal planeta',
+  PLAYER_NOT_FOUND: 'No existe tal jugador',
+  PLAYER_ALREADY_IN_CLAN: 'Ese comandante ya pertenece a un clan',
+  PROBE_ALREADY_OUT: 'Ya tienes una sonda trabajando en ese planeta.',
+  PROBE_COOLDOWN: 'Se puede iniciar otra sonda en {{seconds}} seg.',
+  PROSPECTOR_TRANSFER_FORBIDDEN: 'Los buscadores no se pueden transferir entre mundos',
+  PROSPECTOR_CAP: 'Puedes tener {{max}} Prospectores y tienes {{have}}.',
+  PROSPECTOR_CAP_atLimit: 'Ya tienes {{max}} Prospectores. Ese es el límite.',
+  GROUND_SLOTS_FULL: 'Emplazamientos en tierra llenos: {{used}} / {{capacity}} espacio utilizado; este pedido necesita {{needed}}.',
+  HANGAR_FULL: 'Hangar lleno: {{used}} / {{capacity}} sala utilizada; este pedido necesita {{needed}}. Levante el Hangar para tener más espacio.',
+  INSUFFICIENT_FUEL: 'No hay suficiente deuterio: ese lanzamiento necesita {{needed}} y tú tienes {{have}}.',
+  QUEUE_FULL: 'La cola {{queue}} está llena',
+  QUEUE_SETTLING: 'El pedido completado se está liquidando ahora',
+  /**
+   * The rehearsal cannot honour that, and it should never have been offered.
+   *
+   * A belt-and-braces line: the beats gate every control they cannot pay for, so
+   * reaching this means one slipped through. Better a sentence than the code.
+   */
+  RATE_LIMITED: 'Demasiadas solicitudes. Inténtalo de nuevo en {{seconds}} segundos.',
+  RESEARCH_CEILING: 'Síntesis de Deuterio {{rung}} permite una Refinería de {{ceiling}}. Investiga más primero.',
+  RESEARCH_ALREADY_COMPLETE: 'Esa investigación ya está completa',
+  RESEARCH_NOT_DISCOVERED: 'Esa investigación no ha sido descubierta',
+  RESEARCH_UNAVAILABLE: 'Esa investigación aún no está disponible',
+  RIVAL_NOT_VISIBLE: 'Ese mundo no está en tu galaxia.',
+  RIVAL_SELF: 'No puedes marcar tu propio mundo como rival',
+  REHEARSAL_ONLY: 'No hasta que este mundo sea tuyo',
+  SEASON_ENDS_BEFORE_RETURN: 'Ese escuadrón no puede regresar antes de que termine la temporada',
+  SEASON_ENDS_BEFORE_BUILD: 'Ese pedido no puede finalizar antes de que termine la temporada.',
+  SEASON_FROZEN: 'Esa temporada ha terminado',
+  UNSAFE_HTML: 'Ese anuncio contiene contenido activo no seguro o no compatible.',
+  SEASON_NOT_FOUND: 'No existe tal temporada',
+  SELF_ATTACK: 'No puedes atacar tu propio planeta.',
+  SELF_PROBE: 'Ya sabes lo que hay en tu propio planeta.',
+  SELF_WATCH: 'Ya sabes lo que hace tu propia flota',
+  SERVER_LOCKED: '{{shard}} aún no está abierto',
+  SERVER_LOCKED_frontier: '{{shard}} se abre una vez que {{frontier}} está lleno. Únase a {{frontier}}.',
+  SHARD_FULL: '{{shard}} está lleno',
+  PLACEMENT_CHANGED: 'Tu galaxia cambió. Actualiza e inténtalo de nuevo.',
+  RETURN_TARGET_UNAVAILABLE: 'Tu antigua galaxia no está disponible en este momento.',
+  NOT_IN_WAITING: 'Ya estás en una galaxia principal.',
+  WAITING_JOIN_FORBIDDEN: 'Elige una galaxia principal disponible para comenzar a jugar.',
+  SHIPYARD_TOO_LOW: 'Necesita Astillero L{{level}}',
+  SLOT_COOLING: 'Ese espacio aún se está realineando: quedan {{minutes}} minutos',
+  TARGET_PROSPECTOR_CAP: 'Ese mundo puede contener {{max}} Prospectores, y tiene {{have}}.',
+  TARGET_HANGAR_FULL: 'El Hangar de ese mundo está lleno: {{used}} / {{capacity}} habitación utilizada; esta flota necesita {{needed}}.',
+  UNAUTHENTICATED: 'Inicia sesión primero',
+  UNKNOWN: 'Algo salió mal',
+  USERNAME_TAKEN: 'Ese nombre ya vuela',
+} as const;

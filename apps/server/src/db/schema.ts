@@ -39,6 +39,7 @@ import type {
   PlanetSkinId,
   PlanetSkinStatus,
 } from '@astera/rules';
+import type { ChatLanguage } from '@astera/rules';
 
 /**
  * Seasonal and permanent tables. Nothing here stores a value that can be derived from a formula
@@ -849,11 +850,22 @@ export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
+  language: text('language').$type<ChatLanguage>().notNull().default('tr'),
   content: text('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
-  index('chat_messages_season_cursor_idx').on(t.seasonId, t.createdAt, t.id),
+  index('chat_messages_season_language_cursor_idx').on(t.seasonId, t.language, t.createdAt, t.id),
   index('chat_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
+]);
+
+/** One independent read marker per commander and public chat language. */
+export const chatReadMarkers = pgTable('chat_read_markers', {
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  language: text('language').$type<ChatLanguage>().notNull(),
+  readAt: timestamp('read_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.playerId, t.language] }),
+  index('chat_read_markers_player_idx').on(t.playerId),
 ]);
 
 /**

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
+import { CHAT_LANGUAGES, FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -1476,6 +1476,7 @@ export const clanDisbandSchema = z.object({ disbanded: z.literal(true), lockedUn
 export const clanSeenSchema = z.object({ readAt: z.coerce.date() });
 
 const chatMessageSchema = z.object({
+  language: z.enum(CHAT_LANGUAGES),
   id: z.string(),
   authorPlayerId: z.string(),
   planetId: z.string().optional(),
