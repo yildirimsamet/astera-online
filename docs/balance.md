@@ -215,7 +215,7 @@ must not be copied forward as the Fleet V2 price table.
 | Breacher | Lance | 55 | 300 | 78 | 0 | 1,250 | 550 | 200 | 3 | 4,125 |
 | Bastion | Bulwark · ground | 118 | 906 | — | — | 2,400 | 800 | 0 | 1 | 10,440 |
 | Thorn | Skirmisher · ground | 49 | 174 | — | — | 700 | 200 | 0 | 0 | 10,526 |
-| Prospector | Support · mining | 0 | 150 | 825 | 400 | 650 | 200 | 0 | 1 | — |
+| Prospector | Support · mining | 0 | 150 | 825 | 200 | 650 | 200 | 0 | 1 | — |
 
 **The table is priced on `atk · hp / value²`** — equal-budget power when damage is spread across a
 force. Not attack-per-resource, which is the quantity that made the old Bulwark lose every
@@ -528,7 +528,7 @@ orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 2400, 3200, 4000]   dynamic weights [—, .44, .26, .17, .09, .04]
 legacy field  weights [—, .40, .27, .18, .10, .05] (kept deterministic)
-ore quantum   200 = half a bare Prospector hold; daily ore budget also halved
+ore quantum   200 = one bare Prospector hold; daily ore budget also halved
 crystal share 0.175–0.455, rolled per rock (30% below the former 0.25–0.65 band)
 isotope       one seeded rock per 5 after hour 35, plus a bonus seam every 10 lanes = 11/50 (22%)
               10–25% Deuterium concentration, replacing Alloy; Crystal share remains intact
@@ -718,10 +718,12 @@ whole one and never below one, against a running allowance. Measured over twelve
 days it produces no zero-ore rock, no day over its cap, and total ore within about 3% of the old
 field. A laden craft also comes home at **half** speed rather than a third.
 The 2026-09-18 resource cut halves the ore table, the daily field budget, and the packet
-to 200; the bare Prospector still carries 400.
+to 200. The 2026-09-20 capacity cut then halves the bare Prospector from 400 to **200**;
+the Derrick and Prospector Holds remain multiplicative, so every effective hold is halved too.
 
 The promise is for the BARE craft and is not extended to an upgraded one: Prospector Holds and a
-Derrick multiply the hold to figures like 1,000 and 2,080 that no single quantum divides. Making
+Derrick multiply the hold to figures like 250, 350 and 500 that one quantum does not always divide.
+Making
 that guarantee would mean either free remainder collection or a rock whose yield changes per
 player, and the second is a worse game.
 

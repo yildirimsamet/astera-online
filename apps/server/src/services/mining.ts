@@ -39,6 +39,7 @@ import { assertFreeBay } from './flight.js';
 import {
   assertSeasonOpenThrough,
   assertWorldOperational,
+  buildingLevelsOf,
   GameError,
   loadLocked,
   lockSeason,
@@ -76,8 +77,9 @@ import { planetView, type PlanetView } from './planetView.js';
  * THE RACE IS DECIDED BY ARRIVAL TIME AND NOTHING ELSE. Ore is claimed inside the
  * transaction that resolves an arrival, under a lock on the claim row, so two
  * squadrons landing in the same second cannot both take the last of it. There is
- * no dwell time at the rock — a craft that arrives second takes whatever is left,
- * and one that arrives to find it stripped turns around empty.
+ * no dwell time at the rock — a craft that arrives second takes whatever is left.
+ * When one arrival strips the last ore, every squadron still travelling to that
+ * rock turns immediately at its current point instead of completing a dead leg.
  */
 
 /**
@@ -693,6 +695,104 @@ export async function recallMining(
 }
 
 /**
+ * A rock has just been stripped. Turn every squadron that is still travelling to
+ * it around at the point it occupies NOW, rather than letting it continue to an
+ * obsolete rendezvous.
+ *
+ * The conditional status update is the arbitration point with an arrival worker.
+ * A run that has already reached contact wins that race and is left alone; once
+ * this update wins, its old arrival event becomes the usual idempotent no-op.
+ */
+async function turnRunsFromExhaustedAsteroid(
+  tx: Tx,
+  seasonId: string,
+  asteroidIndex: number,
+  now: Date,
+): Promise<void> {
+  const candidates = await tx
+    .select()
+    .from(miningRuns)
+    .where(and(
+      eq(miningRuns.seasonId, seasonId),
+      eq(miningRuns.asteroidIndex, asteroidIndex),
+      eq(miningRuns.status, 'outbound'),
+      gt(miningRuns.arriveAt, now),
+    ));
+
+  let turned = false;
+  for (const run of candidates) {
+    const [home] = await tx.select().from(planets).where(eq(planets.id, run.planetId));
+    if (!home) throw new Error(`mining run ${run.id} references a missing planet`);
+
+    const [buildings, orbit] = await Promise.all([
+      buildingLevelsOf(tx, run.planetId),
+      orbitOf(tx, run.planetId),
+    ]);
+    const outbound = visualLeg(
+      home,
+      { x: run.interceptX, y: run.interceptY, z: run.interceptZ },
+      surfaceStandoff(worldRadius(buildings.CORE)),
+      0,
+    );
+    const duration = run.arriveAt.getTime() - run.departAt.getTime();
+    const progress = duration <= 0
+      ? 0
+      : Math.max(0, Math.min(1, (now.getTime() - run.departAt.getTime()) / duration));
+    const turn = {
+      x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+      y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+      z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+    };
+    const homeAt = addMinutes(
+      now,
+      travelExact(
+        distance(turn, outbound.from),
+        prospectorReturnSpeed(orbit, false),
+      ),
+    );
+
+    const claimed = await tx
+      .update(miningRuns)
+      .set({
+        status: 'returning',
+        interceptX: turn.x,
+        interceptY: turn.y,
+        interceptZ: turn.z,
+        // Returning projections already treat arriveAt as the return leg's start.
+        arriveAt: now,
+        homeAt,
+      })
+      .where(and(
+        eq(miningRuns.id, run.id),
+        eq(miningRuns.status, 'outbound'),
+        gt(miningRuns.arriveAt, now),
+      ))
+      .returning({ id: miningRuns.id });
+    if (!claimed[0]) continue;
+
+    turned = true;
+    if (home.controllerPlayerId) {
+      await notify(tx, {
+        playerId: home.controllerPlayerId,
+        kind: 'target_gone',
+        payload: { targetKind: 'ASTEROID', craft: run.craft },
+        at: now,
+        refId: run.id,
+      });
+      await publish(tx, home.controllerPlayerId, 'private:mining');
+    }
+    await schedule(tx, {
+      seasonId: run.seasonId,
+      kind: 'mining_return',
+      refId: run.id,
+      resolveAt: homeAt,
+    });
+  }
+
+  if (turned) await publishShard(tx, seasonId, 'mining');
+}
+
+/**
  * A squadron reaches the rock.
  *
  * Claims what it can carry and turns for home. Idempotent by the same mechanism
@@ -776,15 +876,18 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
         .update(asteroidClaims)
         .set({ oreTaken: alreadyTaken + claim.taken, updatedAt: now })
         .where(and(eq(asteroidClaims.seasonId, run.seasonId), eq(asteroidClaims.index, rockIndex)));
-      if (rock.isotopeRich && remaining - claim.taken <= 0) {
-        await recordGalaxyEvent(tx, {
-          seasonId: run.seasonId,
-          kind: 'isotope_exhausted',
-          refId: `${run.seasonId}:${String(rockIndex)}`,
-          subjectPlanetId: null,
-          payload: {},
-          occurredAt: now,
-        });
+      if (remaining - claim.taken <= 0) {
+        if (rock.isotopeRich) {
+          await recordGalaxyEvent(tx, {
+            seasonId: run.seasonId,
+            kind: 'isotope_exhausted',
+            refId: `${run.seasonId}:${String(rockIndex)}`,
+            subjectPlanetId: null,
+            payload: {},
+            occurredAt: now,
+          });
+        }
+        await turnRunsFromExhaustedAsteroid(tx, run.seasonId, rockIndex, now);
       }
     }
   }

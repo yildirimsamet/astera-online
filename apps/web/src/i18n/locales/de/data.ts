@@ -270,9 +270,9 @@ export const vocabulary = {
     PROSPECTOR: {
       name: 'Prospektor',
       tag: 'Miniert Asteroiden',
-      role: 'Minen von Asteroiden mit einer Basiskapazität von 300 · kann keiner Schlachtzugsflotte beitreten',
+      role: 'Minen von Asteroiden mit einer Basiskapazität von 200 · kann keiner Schlachtzugsflotte beitreten',
       pitch: 'Fängt einen sich bewegenden Asteroiden ab und gibt alles, was er transportieren kann, an die Werke zurück. Es kann nicht geplündert oder transferiert werden.',
-      detail: 'Ein Prospektor kann nur zu aufgedeckten Asteroiden und Trümmerfeldern geschickt werden. Seine Grundgeschwindigkeit beträgt 825 und sein Grundhalt beträgt 300; Eine Forschung von Derrick und Prospektor Holds kann sie verbessern. Jede Welt beginnt mit Platz für zwei; Prospektor Holds III eröffnet einen dritten Schiffsplatz. Es beteiligt sich nie an Razzien oder der Heimverteidigung.',
+      detail: 'Ein Prospektor kann nur zu aufgedeckten Asteroiden und Trümmerfeldern geschickt werden. Seine Grundgeschwindigkeit beträgt 825 und sein Grundhalt beträgt 200; Eine Forschung von Derrick und Prospektor Holds kann sie verbessern. Jede Welt beginnt mit Platz für zwei; Prospektor Holds III eröffnet einen dritten Schiffsplatz. Es beteiligt sich nie an Razzien oder der Heimverteidigung.',
     },
   },
 

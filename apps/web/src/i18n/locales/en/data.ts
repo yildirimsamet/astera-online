@@ -270,9 +270,9 @@ export const vocabulary = {
     PROSPECTOR: {
       name: 'Prospector',
       tag: 'Mines asteroids',
-      role: 'Mines asteroids with a base hold of 300 · cannot join a raid fleet',
+      role: 'Mines asteroids with a base hold of 200 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 300; a Derrick and Prospector Holds research can improve them. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 200; a Derrick and Prospector Holds research can improve them. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
     },
   },
 

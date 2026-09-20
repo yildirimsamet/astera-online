@@ -627,7 +627,9 @@ whole of it — so
 "which rock, and when" now also asks how long you are willing to be committed. It does not
 lower how much ore the galaxy takes out: the field is the bottleneck, not the round trip, and
 the same rocks are emptied either way. Laden salvage runs pay the same price. Empty
-craft return at normal speed, including when a rival has already emptied the target.
+craft return at normal speed. When one squadron takes a rock's last ore, every other
+outbound squadron aimed at that rock immediately makes a U-turn from its current position;
+it does not continue to the obsolete contact point.
 
 **Only short debris runs earn a cooldown (D183, owner correction 2026-09-13).**
 An outbound debris leg under one minute rests only the craft that flew it for one minute
@@ -782,6 +784,10 @@ you richer and moves you nowhere. Standing is still bought from people.
 The raw hoard is the pirate roster's build value ×1.82, split into 55% Alloy, 30% Crystal and
 1.125% Deuterium. D204 raised the former ×1.4 multiplier by 30% without changing those shares;
 combat grade and surviving cargo still decide how much of the raw hoard reaches home.
+
+When a raid destroys a pirate, every other fleet still travelling to that same pirate makes an
+immediate empty U-turn from its current position. The obsolete rendezvous event is harmless and
+cannot turn the fleet twice or produce a second warning.
 
 **What it deliberately is not.** Pirates never attack. There is no escalating threat, no defence
 minigame and no pirate faction with a memory. The system adds one target class and one new reason

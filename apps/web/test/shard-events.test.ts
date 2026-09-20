@@ -348,6 +348,14 @@ describe('what a private clan event asks the client to read', () => {
     ]);
   });
 
+  it('refreshes a pirate U-turn route and the origin world on every device', () => {
+    expect(readsForPrivateEvent('private:pirate')).toEqual([
+      keys.pending,
+      keys.planet,
+      keys.planets,
+    ]);
+  });
+
   it('refreshes only the two Telescope surfaces when a watched fleet moves', () => {
     expect(readsForPrivateEvent('private:sight')).toEqual([keys.galaxy, keys.intel]);
   });

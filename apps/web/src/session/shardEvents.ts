@@ -185,6 +185,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** A run launched on another tab/device moved this commander's own state. */
     case 'mining':
       return [keys.miningStatus, keys.pending, keys.planet];
+    /** A pirate fleet launched, made an early U-turn, or landed. */
+    case 'pirate':
+      return [keys.pending, keys.planet, keys.planets];
     /** Joined, left, kicked, promoted, disbanded, or the settings changed. */
     case 'clan-membership':
       return [

@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import { and, eq, sql } from 'drizzle-orm';
 import {
   DEBRIS,
+  ENGAGEMENT_STANDOFF,
   GALAXY,
   HULLS,
   PIRATE,
@@ -15,6 +16,9 @@ import {
   piratePosition,
   sensorSphere,
   sensorZone,
+  surfaceStandoff,
+  visualLeg,
+  worldRadius,
   type Fleet,
   type PirateSpec,
 } from '@astera/rules';
@@ -646,6 +650,110 @@ describe('what a pirate raid comes home with', () => {
       .from(units)
       .where(and(eq(units.planetId, mine), eq(units.location, 'home'), eq(units.hull, 'DART')));
     expect(home!.count).toBe(250);
+  });
+
+  it('U-turns every later fleet the instant another fleet destroys the pirate', async () => {
+    const target = await findVisible();
+    const [origin] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const other = f.planetIds[1]!;
+    await placeAt(f.db, other, { x: origin!.x, y: origin!.y, z: origin!.z });
+
+    const winner: Fleet = { DART: 250 };
+    const later: Fleet = { DART: 250, COURIER: 6 };
+    await grant(f.db, mine, 500_000, 100_000);
+    await grant(f.db, other, 500_000, 100_000);
+    await giveUnits(f.db, mine, winner);
+    await giveUnits(f.db, other, later);
+
+    const first = await launchPirateRaid(f.db, mine, target.id, winner, f.clock);
+    const second = await launchPirateRaid(f.db, other, target.id, later, f.clock);
+    const destroyedAt = settledAt(first.arriveAt);
+    expect(destroyedAt.getTime()).toBeLessThan(second.arriveAt.getTime());
+
+    f.clock.set(destroyedAt);
+    await worker().tick();
+
+    const [turned] = await f.db
+      .select()
+      .from(pirateRaids)
+      .where(eq(pirateRaids.id, second.raidId));
+    expect(turned!.status).toBe('returning');
+    expect(turned!.arriveAt.getTime()).toBe(destroyedAt.getTime());
+    expect(turned!.arriveAt.getTime()).toBeLessThan(second.arriveAt.getTime());
+    expect(turned!.homeAt).not.toBeNull();
+    expect(turned!.loot).toBeNull();
+
+    // This is the exact route payload the frontend animates. Its return starts at
+    // the stored U-turn point and at the destruction instant, not at the obsolete
+    // pirate rendezvous or its old contact time.
+    const { pendingThreads } = await import('../src/services/session.js');
+    const shown = (await pendingThreads(f.db, other, destroyedAt))
+      .find((thread) => thread.id === second.raidId);
+    expect(shown).toMatchObject({
+      leg: 'return',
+      path: {
+        from: { x: turned!.interceptX, y: turned!.interceptY, z: turned!.interceptZ },
+        departAt: destroyedAt,
+        arriveAt: turned!.homeAt,
+      },
+    });
+    const [core] = await f.db
+      .select()
+      .from(buildings)
+      .where(and(eq(buildings.planetId, other), eq(buildings.type, 'CORE')));
+    const outbound = visualLeg(
+      origin!,
+      second.intercept,
+      surfaceStandoff(worldRadius(core!.level)),
+      ENGAGEMENT_STANDOFF,
+    );
+    const progress = (destroyedAt.getTime() - second.departAt.getTime())
+      / (second.arriveAt.getTime() - second.departAt.getTime());
+    const beforeTurn = {
+      x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+      y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+      z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+    };
+    const afterTurn = visualLeg(
+      shown!.path!.from,
+      shown!.path!.to,
+      ENGAGEMENT_STANDOFF,
+      surfaceStandoff(worldRadius(core!.level)),
+    ).from;
+    // Route coordinates are persisted as PostgreSQL REAL (float32), so compare
+    // below that storage precision rather than pretending the wire kept doubles.
+    expect(afterTurn.x).toBeCloseTo(beforeTurn.x, 4);
+    expect(afterTurn.y).toBeCloseTo(beforeTurn.y, 4);
+    expect(afterTurn.z).toBeCloseTo(beforeTurn.z, 4);
+
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.playerId, f.playerIds[1]!),
+        eq(notifications.kind, 'target_gone'),
+      ));
+    expect(told).toHaveLength(1);
+    expect(told[0]!.refId).toBe(second.raidId);
+
+    // The old engagement event is harmless after the immediate turn.
+    f.clock.set(settledAt(second.arriveAt));
+    await worker().tick();
+    expect(await f.db
+      .select()
+      .from(notifications)
+      .where(and(
+        eq(notifications.playerId, f.playerIds[1]!),
+        eq(notifications.kind, 'target_gone'),
+      ))).toHaveLength(1);
+
+    f.clock.set(turned!.homeAt!);
+    await worker().tick();
+    const home = await f.db
+      .select()
+      .from(units)
+      .where(and(eq(units.planetId, other), eq(units.location, 'home')));
+    expect(Object.fromEntries(home.map((row) => [row.hull, row.count]))).toMatchObject(later);
   });
 
   /**

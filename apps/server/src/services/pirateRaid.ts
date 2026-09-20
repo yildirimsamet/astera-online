@@ -1,6 +1,7 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, gt, inArray } from 'drizzle-orm';
 import {
   DEBRIS,
+  ENGAGEMENT_STANDOFF,
   HULLS,
   MOBILE_HULLS,
   PIRATE,
@@ -22,6 +23,11 @@ import {
   resolveCombat,
   seededFrom,
   settleWreck,
+  surfaceStandoff,
+  toGame,
+  toWorld,
+  visualLeg,
+  worldRadius,
   pirateZone,
   type Fleet,
   type HullId,
@@ -57,6 +63,7 @@ import {
   GameError,
   assertSeasonOpenThrough,
   assertWorldOperational,
+  buildingLevelsOf,
   loadLocked,
   orbitOf,
   recomputePlayerWealth,
@@ -549,6 +556,10 @@ async function settleArrival(
       },
     });
 
+  if (wiped) {
+    await turnRaidsFromDestroyedPirate(tx, raid, spec, key, now);
+  }
+
   /**
    * MUTUAL ANNIHILATION PAYS NOTHING, AND FLIES NOTHING HOME. G6.
    *
@@ -744,6 +755,141 @@ async function tellTargetGone(
     at,
     refId: raid.id,
   });
+}
+
+/**
+ * Pirate return rendering normally starts one engagement standoff in front of the
+ * stored rendezvous. An early turn has no engagement, so store the point just far
+ * enough beyond the physical turn for that existing projection to begin exactly
+ * where the outbound marker was. The short-leg branch mirrors `visualLeg`'s
+ * half-leg clamp.
+ */
+function pirateReturnAnchor(turn: Vec3, home: Vec3): Vec3 {
+  const h = toWorld(home);
+  const t = toWorld(turn);
+  const dx = t[0] - h[0];
+  const dy = t[1] - h[1];
+  const dz = t[2] - h[2];
+  const distanceFromHome = Math.hypot(dx, dy, dz);
+  if (distanceFromHome <= 0) return turn;
+
+  const anchorDistance = distanceFromHome < ENGAGEMENT_STANDOFF
+    ? distanceFromHome * 2
+    : distanceFromHome + ENGAGEMENT_STANDOFF;
+  const scale = anchorDistance / distanceFromHome;
+  return toGame([
+    h[0] + dx * scale,
+    h[1] + dy * scale,
+    h[2] + dz * scale,
+  ]);
+}
+
+/**
+ * A pirate has just been destroyed. Fleets that are still on their outbound leg
+ * turn at their current position immediately; they do not fly on to the dead
+ * pirate's old rendezvous.
+ *
+ * Replacing the stored intercept with the turn point and `arriveAt` with the turn
+ * instant deliberately reuses every existing return projection. The stale arrival
+ * event remains safe because the conditional status update below owns the state
+ * transition.
+ */
+async function turnRaidsFromDestroyedPirate(
+  tx: Tx,
+  winner: PirateRaidRow,
+  spec: PirateSpec,
+  key: string,
+  now: Date,
+): Promise<void> {
+  const candidates = await tx
+    .select()
+    .from(pirateRaids)
+    .where(and(
+      eq(pirateRaids.seasonId, winner.seasonId),
+      eq(pirateRaids.pirateIndex, winner.pirateIndex),
+      eq(pirateRaids.status, 'outbound'),
+      gt(pirateRaids.arriveAt, now),
+    ));
+
+  let turned = false;
+  for (const raid of candidates) {
+    const [home] = await tx.select().from(planets).where(eq(planets.id, raid.planetId));
+    if (!home) throw new Error(`pirate raid ${raid.id} references a missing planet`);
+    const fleet = await fleetOfRaid(tx, raid.planetId, raid.id);
+    if (fleetCount(fleet) === 0) {
+      await tx
+        .update(pirateRaids)
+        .set({ status: 'done' })
+        .where(and(eq(pirateRaids.id, raid.id), eq(pirateRaids.status, 'outbound')));
+      continue;
+    }
+
+    const [buildings, orbit] = await Promise.all([
+      buildingLevelsOf(tx, raid.planetId),
+      orbitOf(tx, raid.planetId),
+    ]);
+    const outbound = visualLeg(
+      home,
+      { x: raid.interceptX, y: raid.interceptY, z: raid.interceptZ },
+      surfaceStandoff(worldRadius(buildings.CORE)),
+      ENGAGEMENT_STANDOFF,
+    );
+    const duration = raid.arriveAt.getTime() - raid.departAt.getTime();
+    const progress = duration <= 0
+      ? 0
+      : Math.max(0, Math.min(1, (now.getTime() - raid.departAt.getTime()) / duration));
+    const turn = {
+      x: outbound.from.x + (outbound.to.x - outbound.from.x) * progress,
+      y: outbound.from.y + (outbound.to.y - outbound.from.y) * progress,
+      z: outbound.from.z + (outbound.to.z - outbound.from.z) * progress,
+    };
+    const returnAnchor = pirateReturnAnchor(turn, home);
+    const homeAt = addMinutes(
+      now,
+      fleetTravelExact(
+        distance(turn, outbound.from),
+        fleet,
+        { boost: fleetSpeedMult(orbit), tech: raid.tech ?? {} },
+      ),
+    );
+
+    const claimed = await tx
+      .update(pirateRaids)
+      .set({
+        status: 'returning',
+        interceptX: returnAnchor.x,
+        interceptY: returnAnchor.y,
+        interceptZ: returnAnchor.z,
+        arriveAt: now,
+        homeAt,
+        loot: null,
+        salvage: null,
+        capturedHull: null,
+      })
+      .where(and(
+        eq(pirateRaids.id, raid.id),
+        eq(pirateRaids.status, 'outbound'),
+        gt(pirateRaids.arriveAt, now),
+      ))
+      .returning({ id: pirateRaids.id });
+    if (!claimed[0]) continue;
+
+    turned = true;
+    await tellTargetGone(tx, raid, {
+      callsign: pirateCallsign(key, raid.pirateIndex),
+      level: spec.level,
+      ships: fleetCount(fleet),
+    }, now);
+    await schedule(tx, {
+      seasonId: raid.seasonId,
+      kind: 'pirate_return',
+      refId: raid.id,
+      resolveAt: homeAt,
+    });
+    await publish(tx, raid.ownerPlayerId, 'private:pirate');
+  }
+
+  if (turned) await publishShard(tx, winner.seasonId, 'pirate');
 }
 
 /**

@@ -893,11 +893,11 @@ describe('mining', () => {
     });
 
     /**
-     * "First to arrive takes what it can carry; the next takes what is left; one
-     * that finds it empty goes home with nothing." That sentence is the feature,
-     * so it gets a test that runs both sides against one rock.
+     * The instant one squadron strips the rock, every other squadron still flying
+     * at it makes a U-turn from its CURRENT position. It must not spend the rest
+     * of the outbound leg travelling to a rendezvous that no longer exists.
      */
-    it('the second squadron gets only what the first left behind', async () => {
+    it('turns every later squadron around the instant the first strips the rock', async () => {
       const rock = waitForRock();
 
       // Enough craft between them to strip it several times over.
@@ -910,10 +910,9 @@ describe('mining', () => {
 
       const [early, late] =
         first.arriveAt <= second.arriveAt ? [first, second] : [second, first];
+      expect(early.arriveAt.getTime()).toBeLessThan(late.arriveAt.getTime());
 
       f.clock.set(early.arriveAt);
-      await worker(f).tick();
-      f.clock.set(late.arriveAt);
       await worker(f).tick();
 
       const [claim] = await f.db.select().from(asteroidClaims);
@@ -923,9 +922,50 @@ describe('mining', () => {
       const runs = await f.db.select().from(miningRuns);
       const total = runs.reduce((s, r) => s + r.minedAlloy + r.minedCrystal, 0);
       expect(Math.round(total)).toBeLessThanOrEqual(Math.ceil(rock.ore));
-      // The early one did strip it, so the late one came home empty-handed.
+      // The early one stripped it, so the late one is already flying home from
+      // wherever it was at that instant — before its old contact time.
       const lateRun = runs.find((r) => r.id === late.runId)!;
+      expect(lateRun.status).toBe('returning');
+      expect(lateRun.arriveAt.getTime()).toBe(early.arriveAt.getTime());
+      expect(lateRun.arriveAt.getTime()).toBeLessThan(late.arriveAt.getTime());
+      expect(lateRun.homeAt).not.toBeNull();
+      expect(lateRun.recalledAt).toBeNull();
       expect(lateRun.minedAlloy + lateRun.minedCrystal).toBe(0);
+
+      const latePlayer = lateRun.planetId === mine ? f.playerIds[0]! : f.playerIds[1]!;
+      const told = await f.db
+        .select()
+        .from(notifications)
+        .where(and(
+          eq(notifications.playerId, latePlayer),
+          eq(notifications.kind, 'target_gone'),
+        ));
+      expect(told).toHaveLength(1);
+      expect(told[0]!.refId).toBe(late.runId);
+
+      // The obsolete arrival may still be in the queue. It is a no-op: it cannot
+      // mine, turn again or send a duplicate warning.
+      f.clock.set(late.arriveAt);
+      await worker(f).tick();
+      expect(await f.db
+        .select()
+        .from(notifications)
+        .where(and(
+          eq(notifications.playerId, latePlayer),
+          eq(notifications.kind, 'target_gone'),
+        ))).toHaveLength(1);
+
+      f.clock.set(lateRun.homeAt!);
+      await worker(f).tick();
+      const [home] = await f.db
+        .select()
+        .from(units)
+        .where(and(
+          eq(units.planetId, lateRun.planetId),
+          eq(units.location, 'home'),
+          eq(units.hull, 'PROSPECTOR'),
+        ));
+      expect(home!.count).toBe(each);
     });
 
     it('allows a second independent run at a rock already being worked', async () => {

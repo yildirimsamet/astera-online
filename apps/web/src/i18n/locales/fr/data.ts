@@ -346,9 +346,9 @@ export const vocabulary = {
     PROSPECTOR: {
       name: 'Prospecteur',
       tag: 'Mines d\'astéroïdes',
-      role: 'Les astéroïdes miniers avec une base de 300 · ne peuvent pas rejoindre une flotte de raid',
+      role: 'Les astéroïdes miniers avec une base de 200 · ne peuvent pas rejoindre une flotte de raid',
       pitch: 'Intercepte un astéroïde en mouvement et renvoie ce qu\'il peut transporter aux Travaux. Il ne peut ni attaquer ni transférer.',
-      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base est de 825 et sa tenue de base est de 300 ; une recherche de Derrick et Prospector Holds peut les améliorer. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d\'artisanat. Il ne rejoint jamais les raids ou la défense intérieure.',
+      detail: 'Un prospecteur ne peut être envoyé que vers des astéroïdes et des champs de débris révélés. Sa vitesse de base est de 825 et sa tenue de base est de 200 ; une recherche de Derrick et Prospector Holds peut les améliorer. Chaque monde commence avec de la place pour deux ; Prospector Holds III ouvre un troisième emplacement d\'artisanat. Il ne rejoint jamais les raids ou la défense intérieure.',
     },
   },
 

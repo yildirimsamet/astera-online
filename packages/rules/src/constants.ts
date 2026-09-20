@@ -1595,7 +1595,7 @@ export const PROBE = {
  *
  * WHY THIS IS NOT A MINING BUFF. Income is `hold ÷ round trip` per craft, but the
  * GALAXY's mining income is bounded by the ore that exists — about 6,700 an hour
- * across every player, against a demand of two craft x 300 hold per planet per
+ * across every player, against a demand of two craft x 200 hold per planet per
  * trip. Supply has always been the binding constraint by two orders of magnitude,
  * so a shorter trip changes WHO reaches a rock first and how long a flight bay is
  * held, not how much ore the field yields. What it sharpens is D19's race, which
@@ -1953,11 +1953,12 @@ export const PROSPECTOR = {
   /**
    * Resource units one craft carries home, before a Derrick.
    *
-   * 300 → 400 (owner instruction, 2026-09-14). Rock ore was originally counted
-   * in 400-unit packets to match this hold. The later resource halving changed
-   * those packets to 200 while leaving the craft's capacity at 400.
+   * 400 → 200 (owner instruction, 2026-09-20). This halves every Prospector's
+   * effective capacity without changing the Derrick or Prospector Holds ladders:
+   * both remain multipliers over this base. One bare craft now carries one current
+   * 200-unit ore packet.
    */
-  hold: 400,
+  hold: 200,
   /**
    * HOW MANY A PLANET MAY EVER OWN. Owner's figure.
    *
@@ -2400,7 +2401,7 @@ export const GALAXY = {
    * entire 156, so the correct play was to stop upgrading anything and mine. The
    * owner spotted it from the feel of it before any of this was measured.
    *
-   * Now a rock is worth two to ten bare Prospector loads — a prize a squadron cannot
+   * Now a rock is worth four to twenty bare Prospector loads — a prize a squadron cannot
    * empty in one trip, so two players arriving minutes apart both come home with
    * something and both know they were beaten to it. That is the race D19 is for.
    *
@@ -2414,8 +2415,9 @@ export const GALAXY = {
    * `asteroidOreQuantum`, and it was flattened at both ends while it moved. The
    * old top was thirteen bare holds and the old bottom was two, which is not a
    * ladder of prizes so much as one prize and four consolations; five even steps
-   * from four holds to twenty read as a choice at every rung. The 2026-09-18
-   * halving makes the current ladder two through ten bare holds.
+   * from four holds to twenty read as a choice at every rung. The 2026-09-18 ore
+   * halving first made that two through ten; the 2026-09-20 hold halving restores
+   * the current ladder to four through twenty bare holds.
    */
   asteroidOreByLevel: [0, 800, 1600, 2400, 3200, 4000] as readonly number[],
 
@@ -2423,8 +2425,8 @@ export const GALAXY = {
    * THE UNIT A ROCK'S YIELD IS COUNTED IN. Owner instruction, 2026-09-14.
    *
    * The original packet was one bare Prospector hold (400), so no trip was made
-   * for a tiny remainder. The resource halving makes this packet 200; the
-   * smallest remainder is now half a bare hold.
+   * for a tiny remainder. The resource halving made this packet 200, and the
+   * later Prospector hold halving makes it one bare hold again.
    *
    * IT BINDS THE BUDGET, NOT ONLY THE TABLE, and that is the half the first
    * attempt at this missed. The level table was never the whole story — a day's
@@ -2433,9 +2435,10 @@ export const GALAXY = {
    * `galaxy.ts` is where the rule is actually enforced; this is the figure it
    * enforces.
    *
-   * The 2026-09-18 halving takes the packet from one bare 400-unit hold to half
-   * a hold. The daily ore budget is halved alongside it; otherwise the old
+   * The 2026-09-18 halving took the packet from one bare 400-unit hold to half
+   * a hold. The daily ore budget was halved alongside it; otherwise the old
    * cap would refill the smaller level table and leave actual rocks unchanged.
+   * The 2026-09-20 hold cut changes capacity, not the field budget.
    *
    * Upgraded holds may also leave a partial final load; this packet keeps that
    * remainder in predictable 200-unit steps.
