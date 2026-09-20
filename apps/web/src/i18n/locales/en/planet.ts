@@ -5,6 +5,7 @@
 
 export const planet = {
   recovery: "Recovery in progress · systems return in {{duration}}",
+  empActive: "EMP · Aegis at zero and unable to regenerate; ground defences cannot fire or take damage for {{duration}}.",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -14,6 +15,7 @@ export const planet = {
    */
   interceptor: {
     eyebrow: "Anti-strategic battery",
+    tally: "{{used}} of {{total}} charges loaded",
     none: "No charge loaded",
     building: "Loading · {{duration}}",
     paused: "Loading paused during recovery",
@@ -34,7 +36,8 @@ export const planet = {
   },
 
   deathStar: {
-    eyebrow: "Restricted strategic weapon",
+    eyebrow: "Tactical EMP weapon",
+    tally: "{{used}} of {{total}} weapons held",
     none: "No Death Star on this world",
     building: "Building · {{duration}}",
     paused: "Build paused during recovery",
@@ -43,36 +46,15 @@ export const planet = {
     build: "Build",
     started: "Death Star construction started",
     dangerHint:
-      "A one-way planet-breaker. It takes nothing and it loses nobody a world: it destroys, and it darkens, for two hours.",
+      "EMP: Aegis drops to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour.",
     readyHint:
-      "Armed. Select any enemy world. Two hours of recovery, whatever it is; no world ever changes hands.",
+      "Ready: drain an enemy Aegis and disable its ground defences for 1 hour. The defences cannot fire or take damage.",
     needProtocol: "Protocol",
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
     needOperational: "World operational",
     buildTime: "{{duration}} · one weapon · no recall",
 
-    /**
-     * WHAT AN IMPACT DOES, SAID PLAINLY, BEFORE THE MONEY IS SPENT. D113.
-     *
-     * This is the most expensive thing in the game and its effect was described
-     * as "devastates" — a word that answers nothing. Five lines of consequence and
-     * one line of what SURVIVES, because knowing what a strike cannot take is
-     * what makes it a decision rather than a hope.
-     */
-    effectsTitle: "What one impact does",
-    effectFleet: "Leaves every ship and gun on the world standing — the strike never touches a fleet",
-    effectStock: "Destroys half of everything stored and in the works",
-    effectCore:
-      "Takes one level off the Command Core and lowers buildings above the new Core ceiling",
-    effectAegis:
-      "Takes {{levels}} levels off the Aegis, and drops the shield to nothing",
-    effectDark:
-      "Darkens the world for 2 hours: no production, collection, construction, orders or launches",
-    /** D179: the strike is an OUTAGE. No world is lost and no fleet dies. */
-    effectCapital: "No world ever changes hands, capital or colony; the clock simply runs out",
-    effectSurvives:
-      "Buildings within the new Core ceiling, all research and other orbital hardware survive",
   },
   tabs: {
     label: "Planet categories",
@@ -81,9 +63,11 @@ export const planet = {
     orbitProblem: "Intel",
     orbitQuestion: "Build the tools that help you see rivals.",
     reachProblem: "Fleet",
-    reachQuestion: "Develop your ships, range and special projects here.",
+    reachQuestion: "Develop your ships and range here.",
     growProblem: "Production",
     growQuestion: "Grow your resources and building level limit here.",
+    tacticalProblem: "Tactical",
+    tacticalQuestion: "Build and manage tactical tools here.",
   },
 
   wallet: {
@@ -284,10 +268,6 @@ export const planet = {
     synthesisTag: "Raises the Refinery ceiling",
     synthesisRole:
       "Each rung opens three more Deuterium Refinery levels on every world you hold",
-    deathStarName: "Death Star Protocol",
-    deathStarTag: "Unlocks the Death Star",
-    deathStarRole:
-      "Lets this world build one Death Star. The first strike devastates its target; a second can capture only a colony or neutral world. A capital cannot be captured.",
     researchNeedCore: "Raise Command Core to L{{level}}",
     researchAct: "Research",
     researchComplete: "researched",

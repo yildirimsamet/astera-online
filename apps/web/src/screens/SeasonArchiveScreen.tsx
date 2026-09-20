@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n/index.js';
 import { fleetEntries, resourceValue } from '@astera/rules';
 import type {
+  SeasonArchiveLeaderboard,
   SeasonCommanderProfile,
   SeasonStatsSnapshot,
 } from '../api/schemas.js';
@@ -251,6 +252,7 @@ function ArchivedLeaderboard({
           className="field mt-2 min-h-11 w-full"
         />
       </header>
+      {board.data.record === null ? null : <GalaxyRecordPanel record={board.data.record} />}
       {rows.length === 0 ? (
         <div className="px-2 py-6"><EmptyState title={t('leaderboard.archive.noMatch')} /></div>
       ) : (
@@ -304,6 +306,91 @@ function ArchivedLeaderboard({
           ))}
         </ol>
       )}
+    </div>
+  );
+}
+
+function GalaxyRecordPanel({
+  record,
+}: {
+  record: NonNullable<SeasonArchiveLeaderboard['record']>;
+}) {
+  const { t } = useTranslation();
+  return (
+    <section
+      role="region"
+      aria-label={t('leaderboard.archive.galaxyRecord.title')}
+      className="border-b border-line-soft bg-raised/35 px-2 py-3"
+    >
+      <div className="plate plate-cut overflow-hidden border border-opportunity/25">
+        <header className="flex items-center gap-2 border-b border-line-soft px-3 py-2.5">
+          <Trophy won size={24} />
+          <div>
+            <h3 className="legend text-opportunity">{t('leaderboard.archive.galaxyRecord.title')}</h3>
+            <p className="text-micro text-faint">{t('leaderboard.archive.galaxyRecord.subtitle')}</p>
+          </div>
+        </header>
+        <div className="grid gap-px bg-line-soft sm:grid-cols-2">
+          {record.champion === null ? null : (
+            <RecordFact label={t('leaderboard.archive.galaxyRecord.champion')}>
+              <strong className="name text-bone">{record.champion.commanderName}</strong>
+              <span className="num text-label text-opportunity">{signed(record.champion.dominion)}</span>
+            </RecordFact>
+          )}
+          {record.clanPodium.length === 0 ? null : (
+            <RecordFact label={t('leaderboard.archive.galaxyRecord.clans')}>
+              {record.clanPodium.map((clan) => (
+                <span key={clan.rank} className="block truncate text-label text-bone">
+                  <span className="num mr-1 text-faint">{clan.rank}.</span>
+                  [{clan.tag}] {clan.name}
+                </span>
+              ))}
+            </RecordFact>
+          )}
+          {record.biggestBattle === null ? null : (
+            <RecordFact label={t('leaderboard.archive.galaxyRecord.biggestBattle')}>
+              <span className="text-label leading-snug text-bone">
+                {t('leaderboard.archive.galaxyRecord.battleLine', {
+                  attacker: record.biggestBattle.attackerName,
+                  defender: record.biggestBattle.defenderName,
+                  planet: record.biggestBattle.planetName,
+                  value: full(record.biggestBattle.totalLossValue),
+                })}
+              </span>
+            </RecordFact>
+          )}
+          {record.sharpestDominionSwing === null ? null : (
+            <RecordFact label={t('leaderboard.archive.galaxyRecord.dominionSwing')}>
+              <span className="text-label leading-snug text-bone">
+                {t('leaderboard.archive.galaxyRecord.swingLine', {
+                  attacker: record.sharpestDominionSwing.attackerName,
+                  defender: record.sharpestDominionSwing.defenderName,
+                  amount: signed(record.sharpestDominionSwing.amount),
+                })}
+              </span>
+            </RecordFact>
+          )}
+          {record.mostContestedWorld === null ? null : (
+            <RecordFact label={t('leaderboard.archive.galaxyRecord.contestedWorld')}>
+              <span className="text-label leading-snug text-bone">
+                {t('leaderboard.archive.galaxyRecord.worldLine', {
+                  planet: record.mostContestedWorld.planetName,
+                  count: record.mostContestedWorld.events,
+                })}
+              </span>
+            </RecordFact>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RecordFact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 bg-void/80 px-3 py-2.5">
+      <span className="legend mb-1 block text-faint">{label}</span>
+      {children}
     </div>
   );
 }

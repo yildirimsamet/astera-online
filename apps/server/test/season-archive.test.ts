@@ -8,6 +8,7 @@ import { TokenService } from '../src/auth/tokens.js';
 import {
   accounts,
   battleReports,
+  galaxyEvents,
   galaxyEventOccurrences,
   intergalacticConvoyRuns,
   miningRuns,
@@ -313,6 +314,104 @@ describe('completed season archive', () => {
     expect(body.ladder.filter((row) => row.self)).toHaveLength(1);
     expect(body.ladder.every((row) => row.resultId.length > 0)).toBe(true);
     expect(response.body).not.toContain(original[0]!.accountId);
+  });
+
+  it('seals the shared galaxy record before volatile battle and Chronicle rows disappear', async () => {
+    await fixture.db.update(players).set({ dominionTaken: 900 })
+      .where(eq(players.id, fixture.playerIds[0]!));
+    const names = await fixture.db.select({ id: players.id, name: accounts.displayName })
+      .from(players)
+      .innerJoin(accounts, eq(accounts.id, players.accountId));
+    const nameOf = new Map(names.map((row) => [row.id, row.name]));
+
+    const makeBattle = async ({
+      attacker,
+      defender,
+      target,
+      losses,
+      swing,
+    }: {
+      attacker: string;
+      defender: string;
+      target: string;
+      losses: number;
+      swing: number;
+    }) => {
+      const [mission] = await fixture.db.insert(missions).values({
+        seasonId: fixture.seasonId,
+        kind: 'attack',
+        status: 'resolved',
+        ownerPlayerId: attacker,
+        originPlanetId: fixture.planetIds[0]!,
+        targetPlanetId: target,
+        fleet: { DART: losses },
+        distance: 100,
+        departAt: fixture.clock.now(),
+        arriveAt: fixture.clock.now(),
+      }).returning({ id: missions.id });
+      await fixture.db.insert(battleReports).values({
+        seasonId: fixture.seasonId,
+        missionId: mission!.id,
+        attackerPlayerId: attacker,
+        defenderPlayerId: defender,
+        targetPlanetId: target,
+        targetKind: 'PLAYER',
+        grade: 'DECISIVE',
+        rounds: [],
+        loot: { alloy: 0, crystal: 0, deuterium: 0 },
+        attackerLosses: { DART: losses },
+        defenderLosses: { DART: losses },
+        dominionSwing: swing,
+        createdAt: fixture.clock.now(),
+      });
+    };
+    await makeBattle({
+      attacker: fixture.playerIds[0]!, defender: fixture.playerIds[1]!,
+      target: fixture.planetIds[1]!, losses: 10, swing: -450,
+    });
+    await makeBattle({
+      attacker: fixture.playerIds[1]!, defender: fixture.playerIds[2]!,
+      target: fixture.planetIds[2]!, losses: 1, swing: 20,
+    });
+    await fixture.db.insert(galaxyEvents).values([
+      {
+        seasonId: fixture.seasonId,
+        kind: 'control_transfer',
+        refId: 'record-control-1',
+        subjectPlanetId: fixture.planetIds[1]!,
+        payload: { planetName: 'Contested', commanderName: nameOf.get(fixture.playerIds[0]!)! },
+        occurredAt: fixture.clock.now(),
+      },
+      {
+        seasonId: fixture.seasonId,
+        kind: 'death_star_impact',
+        refId: 'record-strike-1',
+        subjectPlanetId: fixture.planetIds[1]!,
+        payload: { planetName: 'Contested', outcome: 'FIRST_STRIKE', capturable: true },
+        occurredAt: fixture.clock.now(),
+      },
+    ]);
+
+    await freeze();
+    await fixture.db.delete(battleReports).where(eq(battleReports.seasonId, fixture.seasonId));
+    await fixture.db.delete(galaxyEvents).where(eq(galaxyEvents.seasonId, fixture.seasonId));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/season-archive/${fixture.seasonId}/leaderboard`,
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json<{ record: unknown }>().record).toMatchObject({
+      version: 1,
+      champion: { commanderName: nameOf.get(fixture.playerIds[0]!), dominion: 900 },
+      biggestBattle: {
+        attackerName: nameOf.get(fixture.playerIds[0]!),
+        defenderName: nameOf.get(fixture.playerIds[1]!),
+      },
+      sharpestDominionSwing: { amount: -450 },
+      mostContestedWorld: { events: 3 },
+    });
   });
 
   it('opens a commander card by opaque result id and builds Genel from completed seasons only', async () => {

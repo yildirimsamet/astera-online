@@ -675,7 +675,7 @@ export const notifications = {
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Votre frappe de l\'Étoile de la Mort a été résolue.',
   deathStar: {
-    FIRST_STRIKE: 'Impact de l\'Étoile de la Mort · le monde est entré dans la reprise',
+    FIRST_STRIKE: 'Impact EMP · Aegis vidée ; défenses terrestres désactivées pendant 1 heure',
     CAPTURED: 'Impact de l\'Étoile de la Mort · colonie capturée',
     INEFFECTIVE: 'Impact de l\'Étoile de la Mort · aucun effet',
   },

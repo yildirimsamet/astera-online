@@ -45,6 +45,14 @@ export const galaxy = {
     title: "Galaksi etkinlikleri",
     intro: "Hafta içi ve hafta sonu tekrarlanan etkinliklerin saatleri burada.",
     timeZone: "Türkiye saati (UTC+3)",
+    nextLabel: "Sıradaki etkinlik",
+    nextUpcoming: "{{event}} · {{duration}} sonra",
+    localTime: "Yerel · {{time}}",
+    event: {
+      ASTEROID_SHOWER: "Asteroid Yağmuru",
+      TRADE_SHIP: "Ticaret Gemisi",
+      INTERGALACTIC_CONVOY: "Galaksilerarası Konvoy",
+    },
     dailyNote: "Hafta içi Pazartesi–Cuma, hafta sonu Cumartesi–Pazar. Saatler Türkiye saatidir.",
     days: {
       WEEKDAY: "Hafta içi",
@@ -79,6 +87,7 @@ export const galaxy = {
   clanmate: "Klan arkadaşın",
   rival: "Rakip",
   recovery: "Toparlanma açığı",
+  emp: "EMP kesintisi",
   claimOpen: "Hak açık",
 
   harvestAway: "{{count}} araç kalktı · enkaza {{minutes}} dk",
@@ -178,7 +187,7 @@ export const focus = {
       confirming: "Gönderiliyor…",
     },
     deathStar: "Ölüm Yıldızı",
-    deathStarStrike: "Ölüm Yıldızı · harap et",
+    deathStarStrike: "Ölüm Yıldızı · EMP darbesi",
 
     /**
      * DARBENİN İKİNCİ VURUŞU. Sahip raporu: *"yanlışlıkla"*.
@@ -190,12 +199,12 @@ export const focus = {
      * tezgâhın yanına aittir.
      */
     strikeConfirm: {
-      eyebrow: "Stratejik darbe",
-      title: "{{world}} harap edilecek",
+      eyebrow: "Taktiksel EMP darbesi",
+      title: "{{world}} savunmasını bastır",
       lead: "Ölüm Yıldızı darbeyle birlikte tükenir. Geri çağrılamaz ve hiçbir şey onu geri getirmez.",
-      outage: "Karanlık",
-      keeps: "Dünya komutanında kalır ve orada duran bütün filolar sağ çıkar.",
-      commit: "Darbeyi başlat",
+      outage: "EMP kesintisi",
+      keeps: "Aegis sıfırlanır ve 1 saat yenilenmez. Yer savunmaları 1 saat çalışmaz ve hasar almaz.",
+      commit: "EMP’yi fırlat",
       back: "Vazgeç",
     },
     deathStarUnavailable: "Hazır Ölüm Yıldızı yok",
@@ -209,13 +218,15 @@ export const focus = {
     kindNeutral: "Tarafsız",
     capitalProtected: "Ele geçirilemez ana gezegen",
     capitalProtectedHint:
-      "Ölüm Yıldızı bina siparişlerini yok eder; depodaki ve üretim havuzundaki kaynakları yarıya indirir, Çekirdeği bir ve Aegis’i iki seviye düşürür. Gemilere ve toplara dokunmaz, kontrol asla el değiştirmez.",
+      "Ölüm Yıldızı Aegis canını sıfırlar ve 1 saat yenilenmesini engeller; yer savunmaları 1 saat çalışmaz ve hasar almaz.",
     /** Silah kapalıyken ana gezegenin tek gerçek kuralı. `STRATEGIC_CRAFTING_ENABLED`. */
     capitalRaidOnlyHint:
       "Akın buradan yalnızca kaynak alır. Ana gezegen ne olursa olsun el değiştirmez.",
-    capitalRecovering: "Ana gezegen harap · ele geçirilemez",
+    capitalRecovering: "Ana gezegen toparlanıyor · ele geçirilemez",
     capitalRecoveringHint:
-      "Tekrar vurabilirsin: kalanın yarısı da gider ve toparlanma baştan başlar; kontrol yine el değiştirmez.",
+      "Yeni bir EMP darbesi bir saatlik bastırmayı yeniden başlatır; kontrol yine el değiştirmez.",
+    capitalEmp: "Ana gezegen EMP altında",
+    capitalEmpHint: "Bir saatlik EMP bitene kadar Aegis boş, yer savunmaları kapalı ve hasar almaz.",
     yourCapital: "Korunan ana gezegenin",
     yourColony: "Kolonin",
     transferHint: "Gemi ve kaynakları buraya tek yönlü aktarımla taşı.",
@@ -249,8 +260,6 @@ export const focus = {
       "2 Şilebin ve kuruluş kaynakların yola çıktı. Geri çağrılamazlar; ilk geçerli varış gezegeni alır.",
     claimCloses: "{{duration}} sonra kapanır",
     claimRaidStillOpen: "Tekrar akın yapılabilir; açık hakkın süresi uzamaz.",
-    claimDeathStarConsequence:
-      "Ölüm Yıldızı bu hakkı siler ve {{duration}} toparlanma başlatır. Hiçbir dünyayı ele geçirmez, kimseye de kaybettirmez — dünya kararır ve geri döner.",
     openColonySlot: "Koloni yuvası",
     colonySlotExplain:
       "Yalnızca 3. adımda gerekir. Kuruluş filosu kalkarken ana gezegendeki Komuta Çekirdeğinde kullanılabilir bir koloni yuvası olmalı.",
@@ -277,10 +286,11 @@ export const focus = {
     deathStarRoute: "Bu darbe ne yapar",
     /** Savunanın yarıştığı saat, sonunda tükenen şeyin adıyla. D167. */
     recoveryBreach: "Toparlanma · dünya karanlıkta",
+    empBreach: "EMP kesintisi · savunmalar kapalı",
     occupationProtected: "İşgal koruması",
     protectedFor: "{{duration}} boyunca vurulamaz veya ele geçirilemez.",
-    firstImpact: "Hasar + {{duration}} karanlık",
-    secondImpact: "Süre dolar · dünya olduğu gibi kalır",
+    firstImpact: "Aegis sıfır + {{duration}} EMP",
+    secondImpact: "EMP biter · savunmalar geri döner",
     deathStarReadyRequirement: "Ölüm Yıldızı hazır",
     deathStarReadyExplain:
       "Darbe için çıkış gezegeninde tamamlanmış bir Ölüm Yıldızı bekliyor olmalı.",
@@ -293,6 +303,8 @@ export const focus = {
      */
     recoveryDropWarning:
       "{{duration}} kaldı. O ana kadar hiçbir şey üretilmez ve hiçbir şey kalkamaz. Dünya senin kalır, filon da yerinde.",
+    empWarning:
+      "{{duration}} kaldı. Aegis yenilenmez; yer savunmaları ateş etmez ve hasar almaz. Diğer sistemler çalışmayı sürdürür.",
 
     eyebrow: "Sahibi: {{owner}}",
     location: "Dünya · {{planet}}",

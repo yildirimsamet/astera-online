@@ -162,6 +162,15 @@ describe('the focus rail’s two commitments', () => {
     expect(attack!.textContent).toMatch(/protected|shielded/i);
   });
 
+  it('keeps a protected EMP world unattackable while showing the EMP', () => {
+    show({}, {
+      state: { kind: 'EMP', until: new Date(NOW + 60 * 60_000) },
+      attackProtectedUntil: new Date(NOW + 2 * 60 * 60_000),
+    });
+    expect(document.querySelector('[data-attack]')).toBeDisabled();
+    expect(screen.getByText(/EMP/i)).toBeInTheDocument();
+  });
+
   /** A probe is not a raid: looking is untouched, which is the whole rule. */
   it('still offers a probe at a protected world', () => {
     show({}, { state: { kind: 'PROTECTED', until: new Date(NOW + 6 * 3_600_000) } });
@@ -369,8 +378,7 @@ describe('the focus rail’s two commitments', () => {
       </Wrapper>,
     );
     expect(screen.getByRole('button', { name: /death star/i })).toBeEnabled();
-    expect(screen.getByText(/death star clears this claim/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /raid again.*claim unchanged/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /raid again/i })).toBeEnabled();
 
     view.rerender(
       <Wrapper>
@@ -414,7 +422,7 @@ describe('the focus rail’s two commitments', () => {
    * D55/D113. What replaced the test is in `focus-sheet-owner-fixes.test.tsx`:
    * no essay, and the strike route and control still on the panel.
    */
-  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers a destructive Death Star strike against an uncapturable capital', () => {
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers an EMP strike against a capital', () => {
     const Wrapper = harness();
     render(
       <Wrapper>
@@ -439,18 +447,17 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByText(/uncapturable capital/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /death star.*devastate/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /death star.*emp strike/i })).toBeEnabled();
   });
 
-  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('explains that a recovering capital can be struck again but never captured', () => {
+  it.skipIf(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('offers another strike while the target is already under EMP', () => {
     const Wrapper = harness();
     render(
       <Wrapper>
         <PlanetFocus
           target={target({
             kind: 'CAPITAL',
-            state: { kind: 'RECOVERY', until: new Date(NOW + 5 * 60_000) },
+            state: { kind: 'EMP', until: new Date(NOW + 5 * 60_000) },
           })}
           planet={{ ...mine, strategic: {
             id: 'asset-capital-repeat',
@@ -471,9 +478,8 @@ describe('the focus rail’s two commitments', () => {
         />
       </Wrapper>,
     );
-    expect(screen.getByText(/capital devastated.*uncapturable/i)).toBeInTheDocument();
-    expect(screen.getByText(/strike again.*control still cannot change/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /death star.*devastate/i })).toBeEnabled();
+    expect(screen.getByText(/under EMP/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /death star.*emp strike/i })).toBeEnabled();
   });
 
   it('disables outbound commitments while the active world is recovering', () => {

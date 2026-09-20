@@ -602,7 +602,7 @@ export const notifications = {
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Tu ataque a la Estrella de la Muerte resuelto.',
   deathStar: {
-    FIRST_STRIKE: 'Impacto de la Estrella de la Muerte · el mundo entró en recuperación',
+    FIRST_STRIKE: 'Impacto EMP · Égida agotada; defensas terrestres desactivadas durante 1 hora',
     CAPTURED: 'Impacto de la Estrella de la Muerte · colonia capturada',
     INEFFECTIVE: 'Impacto de la Estrella de la Muerte · sin efecto',
   },

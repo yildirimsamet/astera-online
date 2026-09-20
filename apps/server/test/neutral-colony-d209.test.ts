@@ -198,6 +198,19 @@ describe('D209 free reinforcement', () => {
     expect(next?.getTime()).toBe(claimUntil.getTime());
     expect(await garrisonOf(g.db, target.world.id)).toEqual({});
   });
+
+  it('does not refill a neutral Aegis while its EMP lock is active', async () => {
+    const g = await galaxy();
+    const target = g.neutrals.find((row) => row.state.tier === 2)!;
+    const empUntil = new Date(g.clock.now().getTime() + 60 * 60_000);
+    await g.db.update(planets).set({ shield: 0, empUntil })
+      .where(eq(planets.id, target.world.id));
+
+    await g.db.transaction((tx) => reinforceNeutral(tx, target.world.id, g.clock.now()));
+    const [world] = await g.db.select({ shield: planets.shield }).from(planets)
+      .where(eq(planets.id, target.world.id));
+    expect(world?.shield).toBe(0);
+  });
 });
 
 describe('D209 capture stock', () => {
@@ -372,7 +385,7 @@ describe('D209 research reads the capital Core', () => {
     expect(order?.remainingSeconds).toBe(Math.ceil(researchMinutes(project.costAt(1), 2) * 60));
   });
 
-  it('refuses a Core-gated project from a colony when the capital is short, and allows it when it is not', async () => {
+  it('keeps the retired Death Star research closed regardless of the capital Core', async () => {
     const project = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL;
     const requiredCore = project.requiredCore!;
     f.clock.advance(project.availableAtMinutes + 1);
@@ -382,11 +395,12 @@ describe('D209 research reads the capital Core', () => {
     await setLevel(f.db, colony, 'CORE', requiredCore);
 
     await expect(completeResearch(f.db, colony, 'DEATH_STAR_PROTOCOL', f.clock))
-      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE', params: { requiredCore } });
+      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
 
     await setLevel(f.db, capital, 'CORE', requiredCore);
     await setLevel(f.db, colony, 'CORE', 1);
-    await expect(completeResearch(f.db, colony, 'DEATH_STAR_PROTOCOL', f.clock)).resolves.toBeDefined();
+    await expect(completeResearch(f.db, colony, 'DEATH_STAR_PROTOCOL', f.clock))
+      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
   });
 
   it('reports the capital Core on the research menu of every world', async () => {

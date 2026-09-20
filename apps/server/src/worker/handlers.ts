@@ -45,6 +45,7 @@ import {
   clans,
   debrisFields,
   dominionEvents,
+  galaxyEvents,
   intergalacticConvoyRuns,
   miningRuns,
   missions,
@@ -82,6 +83,7 @@ import { breakFaults, defenceOnline, onFaultSpawn, onVaultLeakFlush } from '../s
 import { onFaultRepairComplete } from '../services/faultRepair.js';
 import { onColonySecession, rescheduleLoyaltyWatch } from '../services/loyalty.js';
 import { emptySeasonStats } from '../services/seasonArchive.js';
+import { buildGalaxyRecord } from '../services/galaxyRecord.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
 import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
@@ -102,7 +104,6 @@ import {
   LEAD_TOLERANCE,
   inboundRadarLead,
   nextInboundRadarCheck,
-  recheckRadarLegsForWorld,
   wakeStrategicInterceptions,
 } from '../services/radar.js';
 import { resolveMiningArrival, resolveMiningReturn } from '../services/mining.js';
@@ -283,10 +284,6 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       */
       if (await interceptOwedShot(tx, mission)) return;
       const result = await applyDeathStarStrike(tx, mission, clock.now());
-      // Core loss changes the drawn endpoint and may cap Radar/Telescope. Wake
-      // every other inbound leg now so none keeps an obsolete crossing time.
-      await recheckRadarLegsForWorld(tx, mission.targetPlanetId, clock.now());
-      await wakeStrategicInterceptions(tx, mission.targetPlanetId, clock.now());
       const outcome = result.outcome;
       await tx.insert(strategicImpacts).values({
         seasonId: mission.seasonId,
@@ -370,11 +367,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       /**
        * AND THE CRAFT SAW THE WORLD IT REACHED. D151.
        *
-       * Written AFTER the strike rather than before it, so the record is the world
-       * the weapon LEFT: two Core levels down, the dome gone, and — on a capture —
-       * flying the striker's own flag. On a capture it is immediately redundant,
-       * because a world you hold resolves; on every other outcome it is the only
-       * place the crater's owner learns what their own weapon did.
+       * Written after the strike so the attacker remembers the world with its
+       * Aegis drained. No ownership or sensor topology changes on EMP impact.
        */
       await rememberVisitedWorld(tx, {
         observerPlayerId: mission.ownerPlayerId,
@@ -742,7 +736,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       silence it for one raid. `NON_COMBATANT_HULLS` pays for exactly the same branch
       one line up, for exactly the same reason.
     */
-    const defenceDark = !defenceOnline(defender.faults);
+    const defenceDark = !defenceOnline(defender.faults, defender.empUntil, defender.now);
     const defenders = garrisonOf(defender.homeFleet, defenceDark ? {} : defender.ground);
     // Seeded from the mission id: any report can be re-derived from its inputs,
     // which makes battles auditable and bug reports reproducible.
@@ -1858,6 +1852,8 @@ async function freezeSeason(
       miningRows,
       convoyRows,
       botRows,
+      chronicleRows,
+      worldRows,
     ] = await Promise.all([
       tx.select({
         attackerPlayerId: dominionEvents.attackerPlayerId,
@@ -1905,6 +1901,16 @@ async function freezeSeason(
       tx.select().from(intergalacticConvoyRuns)
         .where(inArray(intergalacticConvoyRuns.seasonId, cycleSeasons)),
       tx.select({ accountId: botProfiles.accountId }).from(botProfiles),
+      tx.select({
+        seasonId: galaxyEvents.seasonId,
+        kind: galaxyEvents.kind,
+        refId: galaxyEvents.refId,
+        subjectPlanetId: galaxyEvents.subjectPlanetId,
+        payload: galaxyEvents.payload,
+      }).from(galaxyEvents).where(eq(galaxyEvents.seasonId, seasonId)),
+      tx.select({ id: planets.id, name: planets.name })
+        .from(planets)
+        .where(eq(planets.seasonId, seasonId)),
     ]);
     assertDominionLedgers(roster, scoreEvents, season.rulesetVersion);
     assertClanDominionLedgers(
@@ -2127,19 +2133,37 @@ async function freezeSeason(
     if (values.length > 0) {
       await tx.insert(seasonResults).values(values).onConflictDoNothing();
     }
+    const galaxyRecord = buildGalaxyRecord({
+      seasonId,
+      ranked,
+      rankedClans,
+      reports,
+      events: chronicleRows,
+      worlds: worldRows,
+    });
     // WAITING is Silent Space: it preserves inactive commanders but is not a
     // season they entered or a ladder that pays into the next competitive world.
     if (rewardProgram && seasonShard.role !== 'WAITING') {
-      const eligible = values
-        .filter((row) => (
-          !botAccountIds.has(row.accountId)
-          && row.dominion >= rewardProgram.minimumDominion
-        ))
-        .slice(0, rewardProgram.tiers.length);
-      if (eligible.length > 0) {
-        await tx.insert(seasonRewardEntitlements).values(eligible.map((row, index) => {
-          const tier = rewardProgram.tiers[index];
-          if (!tier) throw new Error(`Missing season reward tier ${String(index + 1)}`);
+      /*
+        A PLACE MAY BE EMPTY, BUT IT MAY NEVER MOVE.
+
+        Bots compete on the same public ladder as everybody else. They cannot
+        receive persistent power, and zero-Dominion commanders have not earned a
+        prize, but removing either BEFORE assigning tiers promoted everybody below
+        them: the public #2 received the #1 package while the live reward card
+        truthfully called it the #2 place. First bind every tier to its global
+        rank, then omit recipients who cannot collect it. A bot winner therefore
+        leaves first prize unclaimed; it does not rewrite the race after it ends.
+      */
+      const earned = values.slice(0, rewardProgram.tiers.length).flatMap((row) => {
+        if (botAccountIds.has(row.accountId)
+          || row.dominion < rewardProgram.minimumDominion) return [];
+        const tier = rewardProgram.tiers[row.finalRank - 1];
+        if (!tier) throw new Error(`Missing season reward tier ${String(row.finalRank)}`);
+        return [{ row, tier }];
+      });
+      if (earned.length > 0) {
+        await tx.insert(seasonRewardEntitlements).values(earned.map(({ row, tier }) => {
           return {
             sourceCycleId: season.cycleId,
             sourceSeasonId: seasonId,
@@ -2157,6 +2181,7 @@ async function freezeSeason(
       status: 'frozen',
       closedAt: capturedThrough,
       endReason: event === null ? 'FORCED_WIPE' : 'SCHEDULED_END',
+      galaxyRecord,
     }).where(eq(seasons.id, seasonId));
     await publishShard(tx, seasonId, 'season');
   });

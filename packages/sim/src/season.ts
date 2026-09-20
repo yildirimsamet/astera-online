@@ -66,6 +66,7 @@ import {
   instrumentMaxed,
   mulberry32,
   resolveCombat,
+  strategicStockpile,
   scaleNeutralDeuteriumLoot,
   instrumentCost,
   interceptAsteroid,
@@ -237,6 +238,7 @@ export interface SimNeutralWorld {
   claimUntil: number | null;
   nextReinforcement: number | null;
   recoveryUntil: number;
+  empUntil: number;
   protectedUntil: number;
 }
 
@@ -274,7 +276,7 @@ export type StrategicMission =
       ownerId: number;
       targetId: number;
       arriveAt: number;
-      /** Launch-time stamp: a destructive flight can never become a capture by accident. */
+      /** Legacy launch stamp retained for parity with stored missions; EMP launches use false. */
       captureIntent: boolean;
     };
 
@@ -396,7 +398,7 @@ export interface World {
   mining: CrystalDiagnostics['mining'];
   neutrals: SimNeutralWorld[];
   strategicMissions: StrategicMission[];
-  deathStars: Map<number, { status: 'BUILDING' | 'READY'; readyAt: number }>;
+  deathStars: Map<number, { status: 'BUILDING' | 'READY'; readyAt: number }[]>;
   deathStarProtocol: Set<number>;
   neutralRaiders: Set<number>;
   nextStrategicMissionId: number;
@@ -515,6 +517,7 @@ export function buildWorld(cfg: SimConfig): World {
         claimUntil: null,
         nextReinforcement: template.reinforcementMinutes,
         recoveryUntil: 0,
+        empUntil: 0,
         protectedUntil: 0,
       };
     });
@@ -927,8 +930,9 @@ function syncNeutral(n: SimNeutralWorld, t: number, world: World): void {
   n.alloy = nextAlloy;
   n.crystal = nextCrystal;
   const maxShield = shieldHp(n.aegis);
+  const shieldHours = Math.max(0, t - Math.max(n.lastTick, n.empUntil)) / 60;
   n.shield = maxShield > 0
-    ? Math.min(maxShield, n.shield + maxShield * SHIELD.regenPerHour * hours)
+    ? Math.min(maxShield, n.shield + maxShield * SHIELD.regenPerHour * shieldHours)
     : 0;
   n.lastTick = t;
 }
@@ -961,7 +965,7 @@ function reinforceNeutralSim(n: SimNeutralWorld, t: number, world: World): void 
     }
   }
   n.aegis = Math.max(n.aegis, template.instruments.AEGIS);
-  n.shield = shieldHp(n.aegis);
+  n.shield = n.empUntil > t ? 0 : shieldHp(n.aegis);
   const target = { ...template.fleet, ...template.ground } as Fleet;
   for (const hull of ALL_HULLS) {
     const want = target[hull] ?? 0;
@@ -1055,7 +1059,9 @@ function tryNeutralRaid(p: SimPlayer, t: number, world: World): void {
     const send = raidFleetFor(p);
     if (!send) return;
     syncNeutral(n, t, world);
-    const defenceValue = fleetValue(n.fleet) + n.shield;
+    const activeDefenders = Object.fromEntries(fleetEntries(n.fleet)
+      .filter(([hull]) => n.empUntil <= t || !HULLS[hull].ground)) as Fleet;
+    const defenceValue = fleetValue(activeDefenders) + (n.empUntil > t ? 0 : n.shield);
     const attackValue = fleetValue(send);
     // T3 is intentionally not a blind farm: only the informed archetype models a
     // probe/counter-composition decision, and still demands a wide safety margin.
@@ -1105,19 +1111,21 @@ function tryTransferToColony(p: SimPlayer, t: number, world: World): void {
 }
 
 export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
-  const existing = world.deathStars.get(p.id);
-  if (existing?.status === 'BUILDING' && existing.readyAt <= t) {
-    existing.status = 'READY';
+  const existing = world.deathStars.get(p.id) ?? [];
+  for (const asset of existing) {
+    if (asset.status === 'BUILDING' && asset.readyAt <= t) asset.status = 'READY';
   }
-  if (existing?.status === 'READY') {
+  const ready = existing.find((asset) => asset.status === 'READY');
+  if (ready) {
     const target = world.neutrals
       .filter((n) => n.controllerId !== p.id && n.protectedUntil <= t)
-      .sort((a, b) => Number(b.recoveryUntil > t) - Number(a.recoveryUntil > t)
+      .sort((a, b) => Number(b.empUntil > t) - Number(a.empUntil > t)
         || distance(p, a) - distance(p, b) || a.id - b.id)[0];
     if (!target) return;
     const captureIntent = false;
     const arriveAt = t + travelMinutes(distance(p, target), DEATH_STAR.speed);
-    world.deathStars.delete(p.id);
+    existing.splice(existing.indexOf(ready), 1);
+    if (existing.length === 0) world.deathStars.delete(p.id);
     world.strategicMissions.push({
       id: world.nextStrategicMissionId++,
       kind: 'death_star',
@@ -1129,29 +1137,7 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
     world.strategic.deathStar.launches++;
     return;
   }
-  if (existing || t < RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes) return;
-  if (!world.deathStarProtocol.has(p.id)) {
-    const projected = projectedBuildState(p, world, 'RESEARCH');
-    // Already paid and waiting: the strategic asset cannot start until the
-    // research completion has made the permission durable.
-    if ((projected.research.DEATH_STAR_PROTOCOL ?? 0) > 0) return;
-    if (
-      (projected.research.GRAVITIC_CHARGES ?? 0) < 1
-      || projected.buildings.CORE < (RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0)
-    ) return;
-    const research = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1);
-    if (p.alloy < research.alloy || p.crystal < research.crystal || p.deuterium < research.deuterium) return;
-    const placed = enqueueSimBuild(p, t, world, {
-      queue: 'RESEARCH',
-      kind: 'RESEARCH',
-      subject: 'DEATH_STAR_PROTOCOL',
-      count: 1,
-      cost: research,
-      minutes: profileResearch('DEATH_STAR_PROTOCOL', 1).minutes,
-    });
-    if (placed) spendCrystal(world, 'research', research.crystal);
-    return;
-  }
+  if (existing.length >= strategicStockpile(0)) return;
   if (
     p.buildings.CORE < DEATH_STAR.requiredCore
     || p.buildings.SHIPYARD < DEATH_STAR.requiredShipyard
@@ -1161,27 +1147,15 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
   p.crystal -= DEATH_STAR.cost.crystal;
   p.deuterium -= DEATH_STAR.cost.deuterium;
   spendCrystal(world, 'combat', DEATH_STAR.cost.crystal);
-  world.deathStars.set(p.id, { status: 'BUILDING', readyAt: t + DEATH_STAR.buildMinutes });
+  existing.push({ status: 'BUILDING', readyAt: t + DEATH_STAR.buildMinutes });
+  world.deathStars.set(p.id, existing);
   world.strategic.deathStar.builds++;
 }
 
-/** D113. Mirrors `applyDeathStarStrike`: half the stores, the Core, and the Aegis. */
-function applyStrategicDamage(n: SimNeutralWorld, t: number): void {
-  const survives = (amount: number) =>
-    Math.floor(amount * (1 - DEATH_STAR.stockShareDestroyed));
-  n.alloy = survives(n.alloy);
-  n.crystal = survives(n.crystal);
-  n.deuterium = survives(n.deuterium);
-  const core = Math.max(0, n.buildings.CORE - 1);
-  n.buildings.CORE = core;
-  // Only what the Core ceiling forces down comes down with it.
-  for (const type of ['REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD'] as const) {
-    n.buildings[type] = Math.min(n.buildings[type], core);
-  }
-  n.aegis = Math.max(0, n.aegis - DEATH_STAR.aegisLevelsLost);
+/** Mirrors the server's non-damaging EMP strike. */
+function applyStrategicEmp(n: SimNeutralWorld, t: number): void {
   n.shield = 0;
-  // D179: the strike destroys no fleet, on any kind of world. The garrison stands.
-  n.claimUntil = null;
+  n.empUntil = t + DEATH_STAR.empMinutes;
   n.lastTick = t;
 }
 
@@ -1215,15 +1189,20 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     }
 
     syncNeutral(target, t, world);
+    const empActive = target.empUntil > t;
+    const inactiveGround = Object.fromEntries(fleetEntries(target.fleet)
+      .filter(([hull]) => empActive && HULLS[hull].ground)) as Fleet;
+    const defenders = Object.fromEntries(fleetEntries(target.fleet)
+      .filter(([hull]) => !empActive || !HULLS[hull].ground)) as Fleet;
     const result = resolveCombat(
       mission.fleet,
-      target.fleet,
-      target.shield,
+      defenders,
+      empActive ? 0 : target.shield,
       mulberry32((mission.id * 104729 + t) >>> 0),
       // A caretaker world researches nothing; the raider's doctrines still count.
       { attacker: { tech: p.tech }, defender: { tech: {} } },
     );
-    target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage };
+    target.fleet = { ...result.defenderSurvivors, ...result.defenceSalvage, ...inactiveGround };
     target.shield = result.shieldLeft;
     const loot = scaleNeutralDeuteriumLoot(computeLoot(
       { alloy: target.alloy, crystal: target.crystal, deuterium: target.deuterium },
@@ -1319,8 +1298,8 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     world.strategic.deathStar.misses++;
     return;
   }
-  applyStrategicDamage(target, t);
-  target.recoveryUntil = t + MULTI_WORLD.recoveryMinutes;
+  syncNeutral(target, t, world);
+  applyStrategicEmp(target, t);
   world.strategic.deathStar.firstHits++;
 
 }
@@ -1365,7 +1344,7 @@ function strategicWealth(p: SimPlayer, world: World): number {
     total += investedInInstrument('AEGIS', n.aegis);
     total += fleetValue(n.fleet) + n.alloy + n.crystal + n.deuterium;
   }
-  if (world.deathStars.has(p.id)) total += resourcesTotal(DEATH_STAR.cost);
+  total += (world.deathStars.get(p.id)?.length ?? 0) * resourcesTotal(DEATH_STAR.cost);
   for (const mission of world.strategicMissions.filter((m) => m.ownerId === p.id)) {
     if (mission.kind === 'death_star') total += resourcesTotal(DEATH_STAR.cost);
     if (mission.kind === 'settlement') {
@@ -2548,7 +2527,8 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
     + world.mining.crystalDelivered
     + world.mining.deuteriumDelivered;
   const deathStarValue = resourcesTotal(DEATH_STAR.cost);
-  const capitalHeldDeathStarValue = world.deathStars.size * deathStarValue;
+  const capitalHeldDeathStarValue = [...world.deathStars.values()]
+    .reduce((sum, assets) => sum + assets.length, 0) * deathStarValue;
   const remainingNeutral = ({ 1: 0, 2: 0, 3: 0 }) as Record<NeutralTier, number>;
   for (const neutral of world.neutrals) {
     if (neutral.controllerId === null) remainingNeutral[neutral.tier]++;

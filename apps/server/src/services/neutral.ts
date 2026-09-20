@@ -85,8 +85,12 @@ export function neutralEconomyAt(
   );
   const aegisLevel = orbitRows.find((row) => row.type === 'AEGIS')?.level ?? 0;
   const maxShield = shieldHp(aegisLevel);
+  const shieldStart = world.empUntil && world.empUntil > world.lastTickAt
+    ? world.empUntil
+    : world.lastTickAt;
+  const shieldHours = Math.max(0, now.getTime() - shieldStart.getTime()) / 3_600_000;
   const shield = maxShield > 0
-    ? Math.min(maxShield, world.shield + maxShield * SHIELD.regenPerHour * elapsedHours)
+    ? Math.min(maxShield, world.shield + maxShield * SHIELD.regenPerHour * shieldHours)
     : 0;
   return { alloy, crystal, shield };
 }
@@ -210,13 +214,25 @@ export async function resolveNeutralBattle(
   // Through the same definition the player battle uses, so a craft can never be
   // spared on one path and pulled into the line on the other. A neutral world has
   // no mining craft today; the shared call is what keeps that true if it ever does.
-  const defenders = garrisonOf(await neutralFleet(tx, mission.targetPlanetId), {});
+  const standing = await neutralFleet(tx, mission.targetPlanetId);
+  const defenceDark = neutral.empUntil !== null && neutral.empUntil > clock.now();
+  const ground = Object.fromEntries(
+    fleetEntries(standing).filter(([hull]) => HULLS[hull].ground),
+  ) as Fleet;
+  const mobile = Object.fromEntries(
+    fleetEntries(standing).filter(([hull]) => !HULLS[hull].ground),
+  ) as Fleet;
+  const defenders = garrisonOf(mobile, defenceDark ? {} : ground);
   const result = resolveCombat(
-    attackingFleet, defenders, neutral.shield, seededFrom(mission.id),
+    attackingFleet, defenders, defenceDark ? 0 : neutral.shield, seededFrom(mission.id),
     // A caretaker world researches nothing; the raider's doctrines still count. T9.
     { attacker: { tech: mission.tech ?? {} }, defender: { tech: {} } },
   );
-  await setNeutralFleet(tx, mission.targetPlanetId, result.defenderSurvivors);
+  const survivors: Fleet = { ...result.defenderSurvivors };
+  if (defenceDark) {
+    for (const [hull, count] of fleetEntries(ground)) survivors[hull] = count;
+  }
+  await setNeutralFleet(tx, mission.targetPlanetId, survivors);
   const [state] = await tx.select({ tier: neutralPlanetState.tier })
     .from(neutralPlanetState)
     .where(eq(neutralPlanetState.planetId, mission.targetPlanetId));
@@ -562,7 +578,9 @@ export async function reinforceNeutral(
     // delayed to the end of the 27-minute claim has regenerated only a fraction
     // of its wall naturally; returning the guard with that sliver would make the
     // server weaker than both the owner rule and the simulator's template fight.
-    shield: shieldHp(domeTarget),
+    shield: world.empUntil !== null && world.empUntil > now
+      ? 0
+      : shieldHp(domeTarget),
   }).where(eq(planets.id, planetId));
   const next = addMinutes(now, template.reinforcementMinutes);
   await tx.update(neutralPlanetState).set({ nextReinforcementAt: next })

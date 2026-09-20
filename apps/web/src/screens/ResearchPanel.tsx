@@ -111,7 +111,7 @@ const GROUPED = [
  * and not two copies of the same three ids.
  */
 const strategicOnly = (id: ResearchProjectId): boolean =>
-  !FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
+  !FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED
   && (id === 'DEATH_STAR_PROTOCOL' || id === 'INTERCEPTION_GRID' || id === 'STRATEGIC_STOCKPILE');
 
 interface SheetSpec {
@@ -620,7 +620,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           key={group.id}
           data-band={group.id}
           className={`plate overflow-hidden ${
-            !FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && group.id === 'strategic' ? 'hidden' : ''
+            !FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED && group.id === 'strategic' ? 'hidden' : ''
           }`}
         >
           {/*

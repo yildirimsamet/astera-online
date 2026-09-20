@@ -176,6 +176,9 @@ export function economyAt(
     plantLevel: levels.DEUTERIUM_PLANT,
     vaultLevel: levels.VAULT,
     aegisLevel: hardware.effectiveInstruments.AEGIS ?? 0,
+    shieldDisabledUntilMinutes: row.empUntil
+      ? minutesSince(season.startsAt, row.empUntil)
+      : null,
     production: productionMult(hardware.orbit),
     recoveryBoostUntilMinutes: row.recoveryBoostUntil
       ? minutesSince(season.startsAt, row.recoveryBoostUntil)
@@ -275,6 +278,7 @@ export interface LockedPlanet {
   shield: number;
   disruptedUntil: Date | null;
   recoveryUntil: Date | null;
+  empUntil: Date | null;
   protectedUntil: Date | null;
   /** The recovery shield's production boost on this world; see `planets.recoveryBoostUntil`. */
   recoveryBoostUntil: Date | null;
@@ -596,6 +600,7 @@ export async function loadLocked(
     shield: advanced.shield,
     disruptedUntil: row.disruptedUntil,
     recoveryUntil: row.recoveryUntil,
+    empUntil: row.empUntil,
     protectedUntil: row.protectedUntil,
     recoveryBoostUntil: row.recoveryBoostUntil,
     buildings: levels,

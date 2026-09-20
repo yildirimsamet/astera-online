@@ -13,7 +13,6 @@ import {
   crystalRate,
   buildingCost,
   DEATH_STAR,
-  sensorSphere,
 } from '@astera/rules';
 import {
   battleReports,
@@ -631,7 +630,7 @@ describe('current multi-world ruleset', () => {
     )).rejects.toMatchObject({ code: 'COLONY_CAP' });
   });
 
-  it('applies the exact first-strike damage matrix and pauses then resumes production', async () => {
+  it('applies a one-hour EMP without damaging stores, levels, fleets or construction', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Defender');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
@@ -702,34 +701,28 @@ describe('current multi-world ruleset', () => {
     await workerFor(f.db, f.clock).tick();
 
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
-    // HALF, NOT ALL (D113). The world was recovering-free and untouched since the
-    // fixture set it, so the stored figures are already current.
+    // EMP drains only the shield. The already stored resources and downtime survive.
     expect(struck).toMatchObject({
-      alloy: 4_500,
-      crystal: 4_000,
-      deuterium: 350,
-      bufferAlloy: 300,
-      bufferCrystal: 250,
-      bufferDeuterium: 20,
+      alloy: 9_000,
+      crystal: 8_000,
+      deuterium: 700,
+      bufferAlloy: 600,
+      bufferCrystal: 500,
+      bufferDeuterium: 40,
       shield: 0,
-      disruptedUntil: null,
+      disruptedUntil: new Date('2026-08-01T00:20:00.000Z'),
     });
-    // ONE WINDOW FOR EVERY KIND OF WORLD SINCE D179. This one was made a colony
-    // above and takes the same two hours a capital does.
-    expect(struck?.recoveryUntil?.getTime())
-      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(struck?.empUntil?.getTime())
+      .toBe(f.clock.now().getTime() + DEATH_STAR.empMinutes * 60_000);
+    expect(struck?.recoveryUntil).toBeNull();
     const levels = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, target.world.id))).map((row) => [row.type, row.level]));
-    // CORE drops. REFINERY was ON the old ceiling so the new Core pulls it down;
-    // EXTRACTOR and VAULT are already at the new ceiling and SHIPYARD is nowhere
-    // near it, so none of the three loses anything.
-    expect(levels).toMatchObject({ CORE: 5, REFINERY: 5, EXTRACTOR: 5, VAULT: 5, SHIPYARD: 3 });
+    expect(levels).toMatchObject({ CORE: 6, REFINERY: 6, EXTRACTOR: 5, VAULT: 5, SHIPYARD: 3 });
     const hardware = Object.fromEntries((await f.db.select().from(satellites)
       .where(eq(satellites.planetId, target.world.id))).map((row) => [row.type, row.level]));
-    // Aegis alone, and by two. Every other instrument keeps its stored level and
-    // is only ever capped by the Core it hangs off (D97).
+    // Its HP is zero, but even a high-level Aegis keeps its level.
     expect(hardware).toMatchObject({
-      AEGIS: 4 - DEATH_STAR.aegisLevelsLost,
+      AEGIS: 4,
       TELESCOPE: 3,
       RADAR: 2,
       UPLINK: 1,
@@ -762,20 +755,11 @@ describe('current multi-world ruleset', () => {
       .where(eq(battleReports.targetPlanetId, target.world.id))).toEqual([]);
     expect(await f.db.select().from(debrisFields)
       .where(eq(debrisFields.planetId, target.world.id))).toEqual([]);
-    const [paused] = await f.db.select().from(strategicAssets)
+    const [buildingAsset] = await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.planetId, target.world.id));
-    expect(paused?.status).toBe('PAUSED');
-    expect(paused?.remainingSeconds).toBeGreaterThan(28 * 60);
-    expect(paused?.remainingSeconds).toBeLessThanOrEqual(30 * 60);
+    expect(buildingAsset?.status).toBe('BUILDING');
+    expect(buildingAsset?.readyAt).toEqual(targetReadyAt);
 
-    f.clock.set(struck!.recoveryUntil!);
-    await workerFor(f.db, f.clock).tick();
-    const [resumed] = await f.db.select().from(strategicAssets)
-      .where(eq(strategicAssets.planetId, target.world.id));
-    expect(resumed?.status).toBe('BUILDING');
-    expect(resumed?.readyAt?.getTime()).toBe(
-      f.clock.now().getTime() + resumed!.remainingSeconds! * 1000,
-    );
     const [defenderScore] = await f.db.select().from(players).where(eq(players.id, defender.playerId));
     expect(defenderScore).toMatchObject({ dominionTaken: 0, dominionLost: 0 });
     /*
@@ -845,8 +829,8 @@ describe('current multi-world ruleset', () => {
       expect(struck).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null });
       // A world nobody holds takes the short window: there is no commander to
       // answer a deadline and nothing to be released from.
-      expect(struck?.recoveryUntil?.getTime())
-        .toBe(flight.arriveAt.getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+      expect(struck?.empUntil?.getTime())
+        .toBe(flight.arriveAt.getTime() + DEATH_STAR.empMinutes * 60_000);
     }
 
     // The neutral state row survives every strike — the world was never taken.
@@ -867,7 +851,7 @@ describe('current multi-world ruleset', () => {
       .toEqual({ THORN: 4 });
   });
 
-  it('serializes Death Star construction and never charges a rejected duplicate', async () => {
+  it('serializes two Death Star builds and never charges a rejected third', async () => {
     const f = await setup();
     const capital = f.joined.planetId;
     const purse = { alloy: 400_000, crystal: 200_000, deuterium: 40_000 };
@@ -879,17 +863,18 @@ describe('current multi-world ruleset', () => {
     const results = await Promise.allSettled([
       buildDeathStar(f.db, capital, f.clock),
       buildDeathStar(f.db, capital, f.clock),
+      buildDeathStar(f.db, capital, f.clock),
     ]);
-    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(2);
     const rejected = results.find((result) => result.status === 'rejected');
     expect(rejected).toMatchObject({ reason: { code: 'DEATH_STAR_EXISTS' } });
     expect(await f.db.select().from(strategicAssets)
-      .where(eq(strategicAssets.planetId, capital))).toHaveLength(1);
+      .where(eq(strategicAssets.planetId, capital))).toHaveLength(2);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, capital));
     expect(world).toMatchObject({
-      alloy: purse.alloy - DEATH_STAR.cost.alloy,
-      crystal: purse.crystal - DEATH_STAR.cost.crystal,
-      deuterium: purse.deuterium - DEATH_STAR.cost.deuterium,
+      alloy: purse.alloy - DEATH_STAR.cost.alloy * 2,
+      crystal: purse.crystal - DEATH_STAR.cost.crystal * 2,
+      deuterium: purse.deuterium - DEATH_STAR.cost.deuterium * 2,
     });
   });
 
@@ -914,7 +899,7 @@ describe('current multi-world ruleset', () => {
     expect(await f.db.select().from(strategicAssets)).toHaveLength(0);
   });
 
-  it('devastates a capital without reserving capacity or transferring control', async () => {
+  it('suppresses a capital without reserving capacity or transferring control', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Capital Defender');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
@@ -961,18 +946,15 @@ describe('current multi-world ruleset', () => {
     expect(struck).toMatchObject({
       kind: 'CAPITAL',
       controllerPlayerId: defender.playerId,
-      // Halved (D113). This world was already recovering, so nothing accrued
-      // between the fixture and the impact and these are exactly half of it.
-      alloy: 10_000,
-      crystal: 4_000,
-      deuterium: 1_000,
+      alloy: 20_000,
+      crystal: 8_000,
+      deuterium: 2_000,
     });
-    expect(struck?.recoveryUntil?.getTime())
-      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(struck?.empUntil?.getTime())
+      .toBe(f.clock.now().getTime() + DEATH_STAR.empMinutes * 60_000);
     const damaged = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
-    // Core 5 → 4; the Refinery was already under the new ceiling and stays put.
-    expect(damaged).toMatchObject({ CORE: 4, REFINERY: 4 });
+    expect(damaged).toMatchObject({ CORE: 5, REFINERY: 4 });
     /*
       THE CAPITAL'S FLEET IS STILL ON IT. D179. This asserted an empty table — the
       strike used to take every hull standing at home — and now asserts the exact
@@ -1001,12 +983,8 @@ describe('current multi-world ruleset', () => {
       // Empty since D179 — the ledger records what the strike took, and it no
       // longer takes ships.
       destroyedFleet: {},
-      destroyedResources: {
-        alloy: struck!.alloy + struck!.bufferAlloy,
-        crystal: struck!.crystal + struck!.bufferCrystal,
-        deuterium: struck!.deuterium + struck!.bufferDeuterium,
-      },
-      levelChanges: [{ kind: 'BUILDING', id: 'CORE', before: 5, after: 4 }],
+      destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [],
       destroyedOrders: [],
       shieldDestroyed: 0,
     });
@@ -1019,7 +997,6 @@ describe('current multi-world ruleset', () => {
      * a building the rule no longer drops, or count the Aegis on a world that has
      * none, and this moves. `real` is float4, hence the tolerance.
      */
-    const coreLoss = buildingCost('CORE', 4);
     /**
      * WHAT WAS DESTROYED EQUALS WHAT SURVIVED, which is the halving rule stated
      * as an identity rather than as a number. Read off the struck world so it
@@ -1029,25 +1006,19 @@ describe('current multi-world ruleset', () => {
      * It used to read `> 30_000`, a bound loose enough to pass both before and
      * after the strike stopped emptying the stores.
      */
-    const survived = struck!.alloy + struck!.crystal + struck!.deuterium
-      + struck!.bufferAlloy + struck!.bufferCrystal + struck!.bufferDeuterium;
     /*
       AND THE FLEET IS NO LONGER A TERM IN IT. D179. The damage figure is the sum of
       what the strike destroyed, so dropping the fleet from what it destroys drops
       it from here too — `fleetValue({ DART: 5, COURIER: 1 })` used to sit in this
       sum and its absence is the assertion.
     */
-    expect(ledger!.damage).toBeCloseTo(
-      survived + coreLoss.alloy + coreLoss.crystal + coreLoss.deuterium,
-      // Six piles, each floored, against a float4 column.
-      -1,
-    );
+    expect(ledger!.damage).toBe(0);
     const [asset] = await f.db.select().from(strategicAssets)
       .where(eq(strategicAssets.planetId, f.joined.planetId));
     expect(asset?.status).toBe('CONSUMED');
   });
 
-  it('records a delayed strike sensor loss at the promised arrival instant', async () => {
+  it('keeps sensor reach unchanged after a delayed EMP impact', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Delayed Sensor Defender');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
@@ -1060,6 +1031,8 @@ describe('current multi-world ruleset', () => {
     await giveSatellite(f.db, defender.planetId, 'UPLINK');
     await giveInstrument(f.db, defender.planetId, 'TELESCOPE', 3);
     await refreshSensorEpoch(f.db, defender.planetId, f.clock.now());
+    const [beforeEpoch] = await f.db.select().from(sensorEpochs)
+      .where(eq(sensorEpochs.planetId, defender.planetId));
     await f.db.insert(strategicAssets).values({
       planetId: f.joined.planetId,
       status: 'READY',
@@ -1081,14 +1054,9 @@ describe('current multi-world ruleset', () => {
       .from(sensorEpochs)
       .where(eq(sensorEpochs.planetId, defender.planetId))
       .orderBy(sensorEpochs.startsAt);
-    expect(epochs).toHaveLength(2);
+    expect(epochs).toHaveLength(1);
     expect(epochs[0]).toMatchObject({
-      reach: sensorSphere({ x: 0, y: 0, z: 0 }, 3, 0).identify,
-      endsAt: launched.arriveAt,
-    });
-    expect(epochs[1]).toMatchObject({
-      reach: sensorSphere({ x: 0, y: 0, z: 0 }, 2, 0).identify,
-      startsAt: launched.arriveAt,
+      reach: beforeEpoch!.reach,
       endsAt: null,
     });
   });
@@ -1103,7 +1071,7 @@ describe('current multi-world ruleset', () => {
    * order placed at Core 12 completing after a strike left Core 11 would have put
    * a Refinery at 12 — a level `build.ts` refuses to sell.
    */
-  it('burns every queued building order on impact and refunds nothing', async () => {
+  it('leaves queued building orders and their paid resources untouched', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Builder');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
@@ -1137,16 +1105,16 @@ describe('current multi-world ruleset', () => {
 
     const orders = await f.db.select().from(buildOrders)
       .where(eq(buildOrders.planetId, defender.planetId));
-    expect(orders.map((row) => row.status)).toEqual(['CANCELLED']);
+    expect(orders.map((row) => row.status)).toEqual(['BUILDING']);
     // Nothing came back: the survivor is exactly half the pre-strike purse, with
     // no refund folded into it.
     const [after] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
-    expect(after?.alloy).toBe(Math.floor(purse!.alloy / 2));
-    expect(after?.crystal).toBe(Math.floor(purse!.crystal / 2));
+    expect(after?.alloy).toBe(purse!.alloy);
+    expect(after?.crystal).toBe(purse!.crystal);
     // And the order can never complete into a level above the new Core.
     const levels = Object.fromEntries((await f.db.select().from(buildings)
       .where(eq(buildings.planetId, defender.planetId))).map((row) => [row.type, row.level]));
-    expect(levels).toMatchObject({ CORE: 7, REFINERY: 7 });
+    expect(levels).toMatchObject({ CORE: 8, REFINERY: 7 });
     /*
       EVERY CORE-BOUND BUILDING, not just the ones that were on the list when it
       was written. The Deuterium Refinery was added in T5 and left off it — the
@@ -1176,10 +1144,8 @@ describe('current multi-world ruleset', () => {
     // The value it cost is counted as damage rather than quietly vanishing.
     const [impact] = await f.db.select().from(strategicImpacts)
       .where(eq(strategicImpacts.missionId, launched.missionId));
-    const order = queuedBefore[0]!;
-    expect(impact!.damage).toBeGreaterThan(
-      order.cost.alloy + order.cost.crystal + order.cost.deuterium,
-    );
+    expect(impact!.damage).toBe(0);
+    expect(impact!.destroyedOrders).toEqual([]);
   });
 
   it('allows a destructive Death Star strike with no colony capacity', async () => {
@@ -1213,7 +1179,7 @@ describe('current multi-world ruleset', () => {
     });
   });
 
-  it('counts lazily accrued Works in Death Star damage without a defender refresh', async () => {
+  it('advances lazy Works at EMP arrival without counting them as damage', async () => {
     const f = await setup();
     const defenderAccount = await makeAccount(f.db, 'Sleeping Defender');
     const defender = await joinSeason(f.db, defenderAccount.id, f.season.id, f.clock);
@@ -1253,13 +1219,9 @@ describe('current multi-world ruleset', () => {
 
     const [ledger] = await f.db.select().from(strategicImpacts)
       .where(eq(strategicImpacts.missionId, launched.missionId));
-    const replacement = (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
-      .map(id => buildingCost(id, 4))
-      .reduce(
-        (sum, cost) => sum + cost.alloy + cost.crystal + cost.deuterium,
-        0,
-      );
-    expect(ledger!.damage).toBeGreaterThan(replacement);
+    const [struck] = await f.db.select().from(planets).where(eq(planets.id, defender.planetId));
+    expect(ledger!.damage).toBe(0);
+    expect(struck!.bufferAlloy + struck!.bufferCrystal).toBeGreaterThan(0);
   });
 
   /**
@@ -1388,7 +1350,7 @@ describe('current multi-world ruleset', () => {
     return launched;
   };
 
-  it('darkens a struck colony for the same two hours a capital takes', async () => {
+  it('suppresses a struck colony for one hour without taking control', async () => {
     const f = await setup();
     const colony = await withColony(f);
     const rival = await rivalPad(f, 'Colony Breaker');
@@ -1397,8 +1359,8 @@ describe('current multi-world ruleset', () => {
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, colony));
     // D167 gave a colony eight hours so its commander could race a deadline. D179
     // removed the deadline, so there is nothing left for the extra six to buy.
-    expect(struck?.recoveryUntil?.getTime())
-      .toBe(f.clock.now().getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(struck?.empUntil?.getTime())
+      .toBe(f.clock.now().getTime() + DEATH_STAR.empMinutes * 60_000);
     expect(struck?.controllerPlayerId).toBe(f.joined.playerId);
   });
 
@@ -1425,7 +1387,7 @@ describe('current multi-world ruleset', () => {
     const [dark] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(dark?.recoveryReliefAt).toBeNull();
 
-    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
+    f.clock.set(new Date(dark!.empUntil!.getTime() + 1_000));
     await workerFor(f.db, f.clock).tick();
 
     const [kept] = await f.db.select().from(planets).where(eq(planets.id, colony));
@@ -1460,7 +1422,7 @@ describe('current multi-world ruleset', () => {
    * on the ORIGIN of every launch, and this proves it for the one lane the owner
    * asked about by name — you cannot fly your surviving fleet out of a dark world.
    */
-  it('seals the bays of a struck world while it is dark', async () => {
+  it('keeps launch bays operational during EMP', async () => {
     const f = await setup();
     const colony = await withColony(f);
     await giveUnits(f.db, colony, { DART: 3 });
@@ -1469,15 +1431,6 @@ describe('current multi-world ruleset', () => {
     const rival = await rivalPad(f, 'Colony Breaker');
     await strike(f, rival.planetId, colony);
 
-    await expect(launchTransfer(
-      f.db, f.joined.playerId, colony, f.joined.planetId,
-      { DART: 1 }, { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
-    )).rejects.toMatchObject({ code: 'WORLD_RECOVERING' });
-
-    // ...and the moment the lights come back on, the same launch is fine.
-    const [dark] = await f.db.select().from(planets).where(eq(planets.id, colony));
-    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
-    await workerFor(f.db, f.clock).tick();
     await expect(launchTransfer(
       f.db, f.joined.playerId, colony, f.joined.planetId,
       { DART: 1 }, { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
@@ -1514,7 +1467,7 @@ describe('current multi-world ruleset', () => {
     const [answered] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(answered?.recoveryReliefAt).toBeNull();
     // The landing does NOT end the outage either — only the clock does.
-    expect(answered?.recoveryUntil?.getTime()).toBe(dark!.recoveryUntil!.getTime());
+    expect(answered?.empUntil?.getTime()).toBe(dark!.empUntil!.getTime());
   });
 
   /**
@@ -1552,8 +1505,8 @@ describe('current multi-world ruleset', () => {
 
     const [again] = await f.db.select().from(planets).where(eq(planets.id, colony));
     expect(again?.controllerPlayerId).toBe(f.joined.playerId);
-    expect(again?.recoveryUntil?.getTime())
-      .toBe(second.arriveAt.getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(again?.empUntil?.getTime())
+      .toBe(second.arriveAt.getTime() + DEATH_STAR.empMinutes * 60_000);
   });
 
   it('never releases a capital, however many times it is struck', async () => {
@@ -1567,10 +1520,10 @@ describe('current multi-world ruleset', () => {
 
     const first = await strike(f, f.joined.planetId, victim.planetId);
     const [dark] = await f.db.select().from(planets).where(eq(planets.id, victim.planetId));
-    expect(dark?.recoveryUntil?.getTime())
-      .toBe(first.arriveAt.getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(dark?.empUntil?.getTime())
+      .toBe(first.arriveAt.getTime() + DEATH_STAR.empMinutes * 60_000);
 
-    f.clock.set(new Date(dark!.recoveryUntil!.getTime() + 1_000));
+    f.clock.set(new Date(dark!.empUntil!.getTime() + 1_000));
     await workerFor(f.db, f.clock).tick();
     const [after] = await f.db.select().from(planets).where(eq(planets.id, victim.planetId));
     expect(after).toMatchObject({
@@ -1651,8 +1604,8 @@ describe('current multi-world ruleset', () => {
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
     expect(struck).toMatchObject({ kind: 'NEUTRAL', controllerPlayerId: null });
     // The LAST rocket set the clock: every impact restarts the window.
-    expect(struck?.recoveryUntil?.getTime())
-      .toBe(lateFlight.arriveAt.getTime() + MULTI_WORLD.recoveryMinutes * 60_000);
+    expect(struck?.empUntil?.getTime())
+      .toBe(lateFlight.arriveAt.getTime() + DEATH_STAR.empMinutes * 60_000);
     expect(struck?.protectedUntil).toBeNull();
 
     // Nobody is told they captured anything, and all three weapons are spent.

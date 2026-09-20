@@ -321,6 +321,18 @@ describe('lazy economy', () => {
     const after = advanceEconomy(state, { ...input, aegisLevel: 5 }, 300);
     expect(after.shield).toBeGreaterThan(0);
   });
+
+  it('blocks Aegis regeneration until the EMP minute, then resumes only for elapsed time after it', () => {
+    const emp = { ...input, aegisLevel: 5, shieldDisabledUntilMinutes: 60 };
+    const during = advanceEconomy(fresh(), emp, 59);
+    expect(during.shield).toBe(0);
+    const atEnd = advanceEconomy(during, emp, 60);
+    expect(atEnd.shield).toBe(0);
+    const after = advanceEconomy(atEnd, emp, 90);
+    const normalHalfHour = advanceEconomy(fresh(), { ...input, aegisLevel: 5 }, 30);
+    expect(after.shield).toBeCloseTo(normalHalfHour.shield, 6);
+    expect(after.bufferAlloy).toBeGreaterThan(during.bufferAlloy);
+  });
 });
 
 /**

@@ -939,7 +939,7 @@ function labelRank(
   if (node.isClanmate) return 2;
   if (node.dominionRank) return 3;
   if (rivalSlotOf(node, rivals) !== null) return 4;
-  if (node.state.kind === 'RECOVERY') return 5;
+  if (node.state.kind === 'RECOVERY' || node.state.kind === 'EMP') return 5;
   if (node.claimUntil && node.claimUntil.getTime() > serverNow()) return 5;
   return 6;
 }
@@ -982,6 +982,7 @@ function Labels({
       || node.stance === 'window'
       || rivalSlotOf(node, rivals) !== null
       || node.state.kind === 'RECOVERY'
+      || node.state.kind === 'EMP'
       || Boolean(node.claimUntil && node.claimUntil.getTime() > serverNow()))),
   );
 
@@ -1133,6 +1134,7 @@ function Labels({
                 </span>
               )}
               {node.state.kind === 'RECOVERY' && <span className="text-threat-ink">· {t('galaxy.recovery')}</span>}
+              {node.state.kind === 'EMP' && <span className="text-crystal">· {t('galaxy.emp')}</span>}
               {node.claimUntil && node.claimUntil.getTime() > serverNow() && (
                 <span className="text-opportunity">· {t('galaxy.claimOpen')}</span>
               )}

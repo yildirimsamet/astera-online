@@ -150,8 +150,16 @@ export class Projections {
     this.placements.set(accountId, placement);
   }
 
-  worlds(seasonId: string, now: Date): Promise<PublicWorld[]> {
-    return this.publicGalaxy.get(seasonId, () => publicWorlds(this.db, seasonId, now));
+  async worlds(seasonId: string, now: Date): Promise<PublicWorld[]> {
+    const load = () => publicWorlds(this.db, seasonId, now);
+    const worlds = await this.publicGalaxy.get(seasonId, load);
+    // EMP is a timed public state. A cached snapshot can outlive its end without
+    // another database mutation to publish; refresh it at the boundary.
+    if (worlds.some((world) => world.state.kind === 'EMP' && world.state.until <= now)) {
+      this.publicGalaxy.invalidate(seasonId);
+      return this.publicGalaxy.get(seasonId, load);
+    }
+    return worlds;
   }
 
   commander(accountId: string): Promise<CommanderTopology> {

@@ -675,7 +675,7 @@ export const notifications = {
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Ölüm Yıldızı darben sonuçlandı.',
   deathStar: {
-    FIRST_STRIKE: 'Ölüm Yıldızı darbesi · dünya toparlanmaya girdi',
+    FIRST_STRIKE: 'EMP darbesi · Aegis sıfırlandı; yer savunmaları 1 saat kapalı',
     CAPTURED: 'Ölüm Yıldızı darbesi · koloni ele geçirildi',
     INEFFECTIVE: 'Ölüm Yıldızı darbesi · etkisiz kaldı',
   },

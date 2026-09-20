@@ -129,6 +129,7 @@ describe('the three intel states', () => {
     coreTier?: number;
     satellites?: string[];
     shielded?: boolean;
+    attackProtectedUntil?: string | null;
     controller?: unknown;
     clan?: unknown;
     state?: { kind: string };
@@ -441,6 +442,17 @@ describe('the three intel states', () => {
     const struck = await world(far);
     expect(struck.intel).toBe('UNKNOWN');
     expect(struck.state?.kind, 'a strike is published to the whole galaxy').toBe('RECOVERY');
+  });
+
+  it('keeps launch protection visible when EMP masks the world state behind fog', async () => {
+    const empUntil = new Date(f.clock.now().getTime() + 3_600_000);
+    const protectedUntil = new Date(f.clock.now().getTime() + 2 * 3_600_000);
+    await f.db.update(planets).set({ empUntil, protectedUntil }).where(eq(planets.id, far));
+
+    const struck = await world(far);
+    expect(struck.intel).toBe('UNKNOWN');
+    expect(struck.state?.kind).toBe('EMP');
+    expect(struck.attackProtectedUntil).toBe(protectedUntil.toISOString());
   });
 
   it('never reaches past the ceiling, however good the telescope', async () => {

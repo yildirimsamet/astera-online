@@ -12,8 +12,10 @@
 
 export const planet = {
   recovery: "Toparlanma sürüyor · sistemler {{duration}} sonra açılır",
+  empActive: "EMP · Aegis sıfırda ve {{duration}} boyunca yenilenemez; yer savunmaları ateş etmez ve hasar almaz.",
   interceptor: {
     eyebrow: "Stratejik savunma bataryası",
+    tally: "{{total}} şarjın {{used}} tanesi yüklü",
     none: "Yüklü mühimmat yok",
     building: "Yükleniyor · {{duration}}",
     paused: "Toparlanma sırasında yükleme durdu",
@@ -34,7 +36,8 @@ export const planet = {
   },
 
   deathStar: {
-    eyebrow: "Kısıtlı stratejik silah",
+    eyebrow: "Taktiksel EMP silahı",
+    tally: "{{total}} silahtan {{used}} tanesi hazır veya üretimde",
     none: "Bu dünyada Ölüm Yıldızı yok",
     building: "Üretiliyor · {{duration}}",
     paused: "Toparlanma sırasında üretim duraklatıldı",
@@ -43,28 +46,15 @@ export const planet = {
     build: "Üret",
     started: "Ölüm Yıldızı üretimi başladı",
     dangerHint:
-      "Tek yönlü gezegen kırıcı. Hiçbir şey almaz, kimseye dünya kaybettirmez: yıkar ve iki saat karartır.",
+      "EMP: Aegis canını sıfırlar ve 1 saat yenilenmesini durdurur. Yer savunmaları bu sürede ateş etmez ve hasar almaz.",
     readyHint:
-      "Silahlı. Herhangi bir düşman dünyasını seç. Hangi dünya olursa olsun 2 saat toparlanma; hiçbir dünya el değiştirmez.",
+      "Hazır: hedefte Aegis canı sıfırlanır ve 1 saat yenilenmez; yer savunmaları ateş etmez ve hasar almaz.",
     needProtocol: "Protokol",
     needCore: "Çekirdek {{level}}. seviye",
     needShipyard: "Tersane {{level}}. seviye",
     needOperational: "Dünya çalışır durumda",
     buildTime: "{{duration}} · tek silah · geri çağrılamaz",
 
-    /** Tek darbenin ne yaptığı, para harcanmadan önce, açık açık. D113 · D167. */
-    effectsTitle: "Tek darbe ne yapar",
-    effectFleet: "Dünyada duran gemi ve topların hepsi yerinde kalır — darbe filoya hiç dokunmaz",
-    effectStock: "Depo ve üretim havuzundaki kaynakların yarısını yok eder",
-    effectCore:
-      "Komuta Çekirdeği’ni bir seviye indirir; yeni Çekirdek sınırını aşan binalar da bu seviyeye düşer",
-    effectAegis: "Aegis’i {{levels}} seviye indirir ve kalkanı sıfırlar",
-    effectDark:
-      "Dünyayı 2 saat karartır: üretim, toplama, inşa, sipariş ve fırlatma durur",
-    /** D179: darbe bir KESİNTİdir. Dünya da filo da kaybedilmez. */
-    effectCapital: "Ana gezegen olsun koloni olsun hiçbir dünya el değiştirmez; süre biter, o kadar",
-    effectSurvives:
-      "Yeni Çekirdek sınırını aşmayan binalar, araştırmalar ve diğer yörünge donanımları korunur",
   },
   tabs: {
     label: "Gezegen bölümleri",
@@ -75,9 +65,11 @@ export const planet = {
     orbitQuestion: "Rakipleri görmeni sağlayan araçları burada kurarsın.",
     reachProblem: "Filo",
     reachQuestion:
-      "Gemilerini, menzilini ve özel projelerini burada geliştirirsin.",
+      "Gemilerini ve menzilini burada geliştirirsin.",
     growProblem: "Üretim",
     growQuestion: "Kaynaklarını ve bina seviye sınırını burada büyütürsün.",
+    tacticalProblem: "Taktiksel",
+    tacticalQuestion: "Taktiksel araçlarını burada üretir ve yönetirsin.",
   },
 
   wallet: {
@@ -276,10 +268,6 @@ export const planet = {
     synthesisTag: "Rafineri seviye sınırını yükseltir",
     synthesisRole:
       "Her kademe, sahip olduğun bütün dünyalarda üç yeni Döteryum Rafinerisi seviyesi açar.",
-    deathStarName: "Ölüm Yıldızı Protokolü",
-    deathStarTag: "Ölüm Yıldızı’nı açar",
-    deathStarRole:
-      "Bu dünyada bir Ölüm Yıldızı üretmeni sağlar. Darbe evdeki birlikleri ve bina siparişlerini yok eder, depoyla üretim havuzunu yarıya indirir ve dünyayı iki saat devre dışı bırakır. Bu sürede ele geçirme emriyle verilen ikinci darbe yalnız koloni veya tarafsız dünyayı ele geçirir; ana gezegen ele geçirilemez.",
     researchNeedCore: "Komuta Çekirdeğini {{level}}. seviyeye yükselt",
     researchAct: "Araştır",
     researchComplete: "araştırıldı",

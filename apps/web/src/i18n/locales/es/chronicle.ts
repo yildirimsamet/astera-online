@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'Una incursión decisiva abrió una carrera de asentamiento público para este mundo.',
   deathStarImpact: 'Impacto de la Estrella de la Muerte en {{planet}}',
   deathStarOutcome: {
-    FIRST_STRIKE: 'El mundo quedó devastado y se oscureció. Su control no puede cambiar.',
-    CAPITAL_STRIKE: 'La capital quedó devastada y entró en recuperación. Su control no puede cambiar.',
-    CAPTURED: 'El mundo quedó devastado y se oscureció. Su control no puede cambiar.',
+    FIRST_STRIKE: 'El EMP agotó la Égida. Las defensas terrestres no disparan ni reciben daño durante una hora.',
+    CAPITAL_STRIKE: 'El EMP agotó la Égida. Las defensas terrestres no disparan ni reciben daño durante una hora.',
+    CAPTURED: 'El EMP agotó la Égida. Las defensas terrestres no disparan ni reciben daño durante una hora.',
     INEFFECTIVE: 'La protección o el estado objetivo absorbieron el golpe sin efecto.',
   },
   controlTransfer: '{{planet}} cambió de control',

@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'A decisive raid opened a public settlement race for this world.',
   deathStarImpact: 'Death Star impact at {{planet}}',
   deathStarOutcome: {
-    FIRST_STRIKE: 'The world was devastated and went dark. Its control cannot change.',
-    CAPITAL_STRIKE: 'The capital was devastated and entered recovery. Its control cannot change.',
-    CAPTURED: 'The world was devastated and went dark. Its control cannot change.',
+    FIRST_STRIKE: 'EMP drained Aegis. Ground defences are offline and cannot take damage for one hour.',
+    CAPITAL_STRIKE: 'EMP drained Aegis. Ground defences are offline and cannot take damage for one hour.',
+    CAPTURED: 'EMP drained Aegis. Ground defences are offline and cannot take damage for one hour.',
     INEFFECTIVE: 'Protection or target state absorbed the strike without effect.',
   },
   controlTransfer: '{{planet}} changed control',

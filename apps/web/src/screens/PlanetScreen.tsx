@@ -60,7 +60,8 @@ import { compact, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
-import { deathStarsOf } from '../lib/strategic.js';
+import { deathStarsOf, interceptorsOf } from '../lib/strategic.js';
+import { Tally } from '../ui/Tally.js';
 /** The commander's research ladders, off the payload the screen already holds. */
 import { techOf } from '../lib/navigation.js';
 /*
@@ -133,7 +134,7 @@ import { Button, Segmented } from '../ui/kit/index.js';
  * column: sixteen rows, most of them below the fold, and no way to compare two
  * decisions without scrolling past twelve others.
  *
- * This one is four tabs (interface.md I2). The order never changes, because a
+ * This one is five tabs (interface.md I2). The order never changes, because a
  * control that reorders itself destroys the muscle memory that makes it fast. The
  * section headings stay questions: a player arrives with a worry and should be
  * able to find the heading that matches it.
@@ -147,10 +148,10 @@ import { Button, Segmented } from '../ui/kit/index.js';
 type GroupId = PlanetGroup;
 
 /** Fixed order: the sequence a planet is actually built in. */
-const TABS: GroupId[] = ['grow', 'orbit', 'defend', 'reach'];
+const TABS: GroupId[] = ['grow', 'orbit', 'defend', 'reach', 'tactical'];
 
 /**
- * FOUR PROBLEMS, EACH NAMED BY THE WORRY IT ANSWERS.
+ * FIVE PROBLEMS, EACH NAMED BY THE WORRY IT ANSWERS.
  *
  * Keys rather than sentences. A heading question has one job — someone who
  * arrives worried should recognise their own worry in it — and a table of
@@ -162,6 +163,7 @@ const GROUPS = {
   orbit: { problem: 'planet.tabs.orbitProblem', question: 'planet.tabs.orbitQuestion' },
   reach: { problem: 'planet.tabs.reachProblem', question: 'planet.tabs.reachQuestion' },
   grow: { problem: 'planet.tabs.growProblem', question: 'planet.tabs.growQuestion' },
+  tactical: { problem: 'planet.tabs.tacticalProblem', question: 'planet.tabs.tacticalQuestion' },
 } as const satisfies Record<GroupId, { problem: string; question: string }>;
 
 /** Everything the detail sheet needs, gathered where the row already knows it. */
@@ -237,7 +239,7 @@ export function PlanetScreen({
       ? [...data.queues.CONSTRUCTION, ...data.queues.YARD].map((order) => order.finishesAt)
       : [];
     const strategicInstants = data
-      ? deathStarsOf(data)
+      ? [...deathStarsOf(data), ...interceptorsOf(data)]
         .filter((asset) => asset.status === 'BUILDING' && asset.readyAt !== null)
         .map((asset) => asset.readyAt)
       : [];
@@ -245,6 +247,7 @@ export function PlanetScreen({
       fault.repair === null ? [] : [fault.repair.readyAt]);
     const instants = [
       data?.planet.recoveryUntil,
+      data?.planet.empUntil,
       ...strategicInstants,
       ...queueInstants,
       ...repairInstants,
@@ -279,7 +282,7 @@ export function PlanetScreen({
       stopped = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [data?.deathStars, data?.faults, data?.planet.recoveryUntil, data?.queues, data?.strategic, refetch]);
+  }, [data?.deathStars, data?.interceptors, data?.interceptor, data?.faults, data?.planet.recoveryUntil, data?.planet.empUntil, data?.queues, data?.strategic, refetch]);
 
   useEffect(() => {
     if (!flashed) return;
@@ -355,7 +358,9 @@ export function PlanetScreen({
   const recovering = data.planet.recoveryUntil !== null
     && data.planet.recoveryUntil !== undefined
     && data.planet.recoveryUntil.getTime() > serverNow();
-  const strategicLive = deathStarsOf(data).length > 0;
+  const empActive = data.planet.empUntil !== null
+    && data.planet.empUntil !== undefined
+    && data.planet.empUntil.getTime() > serverNow();
 
   const goToNeed = (id: string): void => {
     // A research project is not on this screen at all. Hand it to the host, which
@@ -462,9 +467,9 @@ export function PlanetScreen({
           </div>
         )}
 
-        {!lesson && strategicLive && (
-          <div className="px-2">
-            <DeathStarForge planet={data} held={held} recovering={recovering} />
+        {empActive && (
+          <div className="mx-4 rounded-chip border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-caption text-cyan-100">
+            {t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })}
           </div>
         )}
 
@@ -478,10 +483,6 @@ export function PlanetScreen({
         <div className="flex flex-col gap-4 px-2">
           {!lesson && <OrbitContext planet={data} />}
 
-          {!lesson && active === 'reach' && !strategicLive && (
-            <DeathStarForge planet={data} held={held} recovering={recovering} />
-          )}
-
           <div
             id={`planet-panel-${active}`}
             role="tabpanel"
@@ -494,6 +495,9 @@ export function PlanetScreen({
               {active === 'orbit' && <Orbit {...shared} />}
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
               {active === 'grow' && <Grow {...shared} />}
+              {!lesson && active === 'tactical' && (
+                <DeathStarForge planet={data} held={held} recovering={recovering} />
+              )}
             </DecisionGroup>
           </div>
         </div>
@@ -887,7 +891,7 @@ function DeathStarForge({
   const now = useNow(1000);
   const weapons = deathStarsOf(planet);
   const primary = weapons[0];
-  const stockpile = strategicStockpile(techOf(planet).STRATEGIC_STOCKPILE ?? 0);
+  const stockpile = strategicStockpile(0);
   const readyCount = weapons.filter((asset) => asset.status === 'READY').length;
   const buildingCount = weapons.filter((asset) => asset.status !== 'READY').length;
   const activeBuild = weapons.find((asset) => asset.status === 'BUILDING');
@@ -898,9 +902,6 @@ function DeathStarForge({
         : (activeBuild.remainingSeconds ?? DEATH_STAR.buildMinutes * 60) * 1000
     ) / (DEATH_STAR.buildMinutes * 60_000))))
     : null;
-  const protocol = planet.research.some(
-    (project) => project.id === 'DEATH_STAR_PROTOCOL' && project.completed,
-  );
   const core = (planet.buildings.CORE ?? 0) >= DEATH_STAR.requiredCore;
   const yard = (planet.buildings.SHIPYARD ?? 0) >= DEATH_STAR.requiredShipyard;
   const affordable = held.alloy >= DEATH_STAR.cost.alloy
@@ -932,6 +933,12 @@ function DeathStarForge({
             <p className="legend text-alloy">
               {t('planet.deathStar.eyebrow')}
             </p>
+            <Tally
+              used={weapons.length}
+              total={stockpile}
+              label={t('planet.deathStar.tally', { used: weapons.length, total: stockpile })}
+              tone="threat"
+            />
           </div>
           <p className="headline mt-1 text-bone">
             {primary?.status === 'READY'
@@ -967,7 +974,6 @@ function DeathStarForge({
       {room && (
         <div className="relative z-[1] mt-3 border-t border-line-soft pt-3">
           <div className="grid grid-cols-2 gap-2" role="list">
-            <DeathStarNeed ok={protocol}>{t('planet.deathStar.needProtocol')}</DeathStarNeed>
             <DeathStarNeed ok={core}>
               {t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore })}
             </DeathStarNeed>
@@ -976,7 +982,6 @@ function DeathStarForge({
             </DeathStarNeed>
             <DeathStarNeed ok={!recovering}>{t('planet.deathStar.needOperational')}</DeathStarNeed>
           </div>
-          {!live && <DeathStarEffects />}
           <div className="mt-3 flex items-center justify-between gap-2">
             <div>
               <Price cost={DEATH_STAR.cost} held={held} layout='row' />
@@ -998,7 +1003,7 @@ function DeathStarForge({
             */}
             <Button
               variant="commit"
-              disabled={recovering || strategicBuild.isPending || !protocol
+              disabled={recovering || strategicBuild.isPending
                 || !core || !yard || !affordable}
               onClick={() => {
                 strategicBuild.mutate(undefined, {
@@ -1028,75 +1033,6 @@ function DeathStarForge({
   );
 }
 
-/**
- * WHAT AN IMPACT DOES, ON THE CARD THAT SELLS IT. D113.
- *
- * The forge said "devastates" and left the rest to be discovered by being on the
- * receiving end. Every number is read from `DEATH_STAR` and
- * `MULTI_WORLD.recoveryMinutes` so the card cannot drift from the strike — which
- * matters more since D179, when the strike stopped destroying fleets and stopped
- * being able to lose anybody a world. Two of these lines used to say the opposite.
- */
-function DeathStarEffects() {
-  const { t } = useTranslation();
-  /**
-   * FOLDED, AND SHUT ON ARRIVAL. D170, owner instruction.
-   *
-   * Seven lines of reference sat open under a purchase a commander makes once a
-   * season, so every visit to the fleet tab paid for a paragraph read once. The
-   * sheet's own rule covers this exactly — the row states the fact, the fold
-   * states the rule — and the fact here is the danger line above, which stays
-   * drawn. `useState` rather than `useAccordion`: this is one panel with no
-   * siblings to stay in step with, and it deliberately does NOT remember being
-   * opened. It is reference, wanted the first time and skipped after.
-   */
-  const [open, setOpen] = useState(false);
-  const lines = [
-    t('planet.deathStar.effectFleet'),
-    t('planet.deathStar.effectStock'),
-    t('planet.deathStar.effectCore'),
-    t('planet.deathStar.effectAegis', { levels: DEATH_STAR.aegisLevelsLost }),
-    t('planet.deathStar.effectDark'),
-    /* D179: the strike takes nothing and loses nobody a world. It is an outage. */
-    t('planet.deathStar.effectCapital'),
-  ];
-  /**
-   * `plate-inset` and NOT `plate-threat`. The lit states are reserved for a plate
-   * that is doing something right now — this one explains, which is reference and
-   * not state, so it is machined into the same face with no lift and no glow. The
-   * red lives where red belongs: on the marks and the legend, as `threat-ink`.
-   */
-  return (
-    <div className="plate plate-inset mt-3 flex flex-col gap-2 p-3">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-2 text-left"
-        aria-expanded={open}
-        onClick={() => { setOpen((was) => !was); }}
-      >
-        <span className="legend text-threat-ink">{t('planet.deathStar.effectsTitle')}</span>
-        <span aria-hidden className="text-caption text-faint">{open ? '−' : '+'}</span>
-      </button>
-      {open && (
-        <ul className="flex flex-col gap-2">
-          {lines.map((line) => (
-            <li key={line} className="flex gap-2 text-caption text-bone">
-              <span aria-hidden className="text-threat-ink">▪</span>
-              <span>{line}</span>
-            </li>
-          ))}
-          {/* What a strike CANNOT take, in the opposite hue. Half of understanding
-              a weapon is knowing where it stops. */}
-          <li className="flex gap-2 text-caption text-dim">
-            <span aria-hidden className="text-opportunity">▪</span>
-            <span>{t('planet.deathStar.effectSurvives')}</span>
-          </li>
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
   return (
     <span
@@ -1111,7 +1047,7 @@ function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
 }
 
 /**
- * FOUR TABS, FIXED ORDER, AND NO ADVICE ON THEM. Owner decision.
+ * FIVE TABS, FIXED ORDER, AND NO ADVICE ON THEM. Owner decision.
  *
  * A pip used to mark whichever problem the situation engine ranked highest. It is
  * gone: the screen states what each tab IS and leaves the choosing to the player,
@@ -1811,10 +1747,9 @@ function InterceptorBattery({
   const load = useBuildInterceptor();
   const say = useToast();
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
-  const charge = planet.interceptor ?? null;
-  const grid = planet.research.some(
-    (project) => project.id === ANTI_STRATEGIC.requiredResearch && project.completed,
-  );
+  const charges = interceptorsOf(planet);
+  const charge = charges[0] ?? null;
+  const room = charges.length < ANTI_STRATEGIC.maxCharges;
   const uplink = projected.effectiveOrbit.includes('UPLINK');
   const radar = uplink
     ? Math.min(projected.instruments.RADAR ?? 0, projected.buildings.CORE)
@@ -1832,7 +1767,7 @@ function InterceptorBattery({
     ? 'NO_RADAR'
     : charge
       ? charge.status
-      : grid && radarReady
+      : radarReady
         ? 'AVAILABLE'
         : 'LOCKED';
 
@@ -1849,8 +1784,19 @@ function InterceptorBattery({
           aria-hidden
           className="size-16 shrink-0 object-contain"
         />
-        <div className="min-w-0">
-          <p className="legend text-crystal/85">{t('planet.interceptor.eyebrow')}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="legend text-crystal/85">{t('planet.interceptor.eyebrow')}</p>
+            <Tally
+              used={charges.length}
+              total={ANTI_STRATEGIC.maxCharges}
+              label={t('planet.interceptor.tally', {
+                used: charges.length,
+                total: ANTI_STRATEGIC.maxCharges,
+              })}
+              tone="crystal"
+            />
+          </div>
           <p className="headline text-bone">
             {noRadarProtection
               ? t('planet.interceptor.noRadar')
@@ -1881,10 +1827,9 @@ function InterceptorBattery({
         rather than an alarm: the research and the Radar both point at the surface
         that would close them.
       */}
-      {charge === null && (
+      {room && !noRadarProtection && (
         <>
           <div className="grid grid-cols-2 gap-2" role="list">
-            <DeathStarNeed ok={grid}>{t('planet.interceptor.needResearch')}</DeathStarNeed>
             <DeathStarNeed ok={uplink}>{t('planet.interceptor.needUplink')}</DeathStarNeed>
             <DeathStarNeed ok={radarLevelMet}>
               {t('planet.interceptor.needRadar', { level: ANTI_STRATEGIC.requiredRadar })}
@@ -1905,9 +1850,9 @@ function InterceptorBattery({
             <Button
               className="!text-caption"
               variant="commit"
-              disabled={recovering || load.isPending || !grid || !radarReady || !affordable}
+              disabled={recovering || load.isPending || !radarReady || !affordable}
               onClick={() => {
-                if (!grid) { onNeed('RADAR'); return; }
+                if (!radarReady) { onNeed('RADAR'); return; }
                 load.mutate(undefined, {
                   onSuccess: () => { say(t('planet.interceptor.started')); },
                   onError: (error) => { say(describe(error), 'error'); },

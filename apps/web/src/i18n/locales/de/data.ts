@@ -602,7 +602,7 @@ export const notifications = {
   unlock: '{{title}} – {{body}}',
   deathStarFallback: 'Dein Todessternangriff wurde gelöst.',
   deathStar: {
-    FIRST_STRIKE: 'Einschlag des Todessterns · Die Welt begann sich zu erholen',
+    FIRST_STRIKE: 'EMP-Einschlag · Aegis entladen; Bodenverteidigungen 1 Stunde offline',
     CAPTURED: 'Einschlag des Todessterns · Kolonie erobert',
     INEFFECTIVE: 'Einschlag des Todessterns · keine Auswirkung',
   },

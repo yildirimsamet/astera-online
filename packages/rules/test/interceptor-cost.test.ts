@@ -15,7 +15,7 @@ import { ANTI_STRATEGIC, DEATH_STAR } from '../src/index.js';
  */
 describe('the strategic battery price', () => {
   it('is the owner’s table exactly', () => {
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43_100, crystal: 21_551, deuterium: 1_787 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
   });
 
   /** Still under the weapon, at D203's deliberately wider defensive margin. */

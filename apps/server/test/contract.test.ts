@@ -9,7 +9,7 @@ import {
   INSTRUMENT_IDS,
   RESEARCH_PROJECT_IDS,
   SATELLITE_IDS,
-  SENSOR,
+  SENSOR, MULTI_WORLD,
   CLAN, DEATH_STAR, DISRUPTION, GALAXY_EVENTS, REWARD_CHAINS, SHIELD, TRADE, alloyRate, flightSlots,
   groundLoad,
   groundSlots, rewardId, shieldHp,
@@ -19,6 +19,7 @@ import {
 } from '@astera/rules';
 import {
   buildings,
+  botProfiles,
   clanLootShares,
   galaxyEventOccurrences,
   galaxyEvents,
@@ -41,6 +42,7 @@ import { launchMining } from '../src/services/mining.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { buildApp } from '../src/app.js';
+import { nextPublicGalaxyEvent } from '../src/services/galaxyEvents.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
 import { TokenService } from '../src/auth/tokens.js';
 import {
@@ -405,9 +407,43 @@ describe('every payload the client parses', () => {
     expect(parsed.planets.some((p) => p.shielded)).toBe(true);
   });
 
-  it('GET /api/galaxy/events parses without exposing future occurrences', async () => {
+  it('GET /api/leaderboard marks only the caller as a bot for reward eligibility', async () => {
+    await f.db.insert(botProfiles).values({
+      accountId: f.accountIds[0]!,
+      ordinal: 0,
+      persona: 'RAIDER',
+      nextActionAt: f.clock.now(),
+      createdAt: f.clock.now(),
+    });
+    const parsed = leaderboardSchema.parse(await get('/api/leaderboard'));
+    expect(parsed.you?.isBot).toBe(true);
+    expect(parsed.ladder[0]).not.toHaveProperty('isBot');
+  });
+
+  it('GET /api/galaxy/events parses without exposing private future occurrences', async () => {
     const parsed = activeGalaxyEventsSchema.parse(await get('/api/galaxy/events'));
     expect(parsed.events).toEqual([]);
+    expect(parsed.next).toBeNull();
+  });
+
+  it('GET /api/galaxy/events reports the next start from the persisted public calendar', async () => {
+    await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.rulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    const startsAt = new Date(f.clock.now().getTime() + 30_000);
+    await f.db.insert(galaxyEventOccurrences).values({
+      seasonId: f.seasonId,
+      sequence: 999,
+      kind: 'TRADE_SHIP',
+      definitionVersion: GALAXY_EVENTS.definitions.TRADE_SHIP.version,
+      startsAt,
+      endsAt: new Date(startsAt.getTime() + TRADE_DURATION * 60_000),
+      effect: { rate: TRADE.rate },
+      createdAt: f.clock.now(),
+    });
+
+    expect(await nextPublicGalaxyEvent(f.db, f.accountIds[0]!, f.clock)).toMatchObject({ kind: 'TRADE_SHIP', startsAt });
+    const parsed = activeGalaxyEventsSchema.parse(await get('/api/galaxy/events'));
+    expect(parsed.next).toMatchObject({ kind: 'TRADE_SHIP', startsAt });
   });
 
   /**

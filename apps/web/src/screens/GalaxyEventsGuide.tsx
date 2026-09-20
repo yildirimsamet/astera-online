@@ -1,9 +1,57 @@
-import { GALAXY_EVENTS, type GalaxyEventDays } from '@astera/rules';
+import {
+  GALAXY_EVENTS,
+  type GalaxyEventDays,
+  type GalaxyEventKind,
+} from '@astera/rules';
 import { useTranslation } from 'react-i18next';
+import { useGalaxyEvents } from '../api/queries.js';
+import { serverNow } from '../lib/clock.js';
+import { duration, useNow } from '../lib/time.js';
 import { CargoIcon, CrystalIcon, GalaxyIcon } from '../ui/icons/index.js';
 import { Sheet } from '../ui/kit/Sheet.js';
 
 const twoDigits = (value: number): string => String(value).padStart(2, '0');
+const MINUTE_MS = 60_000;
+const DAY_MINUTES = 24 * 60;
+
+interface GuideWindow {
+  kind: GalaxyEventKind;
+  startsAtLocalMinute: number;
+  endsAtLocalMinute: number;
+  days?: GalaxyEventDays;
+}
+
+const runsOn = (days: GalaxyEventDays | undefined, localDay: number): boolean => {
+  const weekday = new Date(localDay * DAY_MINUTES * MINUTE_MS).getUTCDay();
+  const weekend = weekday === 0 || weekday === 6;
+  return days === undefined || (days === 'WEEKEND' ? weekend : !weekend);
+};
+
+const occurrence = (window: GuideWindow, localDay: number) => {
+  const offset = GALAXY_EVENTS.calendar.utcOffsetMinutes;
+  return {
+    kind: window.kind,
+    startsAt: new Date((localDay * DAY_MINUTES - offset + window.startsAtLocalMinute) * MINUTE_MS),
+    endsAt: new Date((localDay * DAY_MINUTES - offset + window.endsAtLocalMinute) * MINUTE_MS),
+  };
+};
+
+function nextOccurrence(window: GuideWindow, now: Date) {
+  const unixMinute = now.getTime() / MINUTE_MS;
+  const localDay = Math.floor((unixMinute + GALAXY_EVENTS.calendar.utcOffsetMinutes) / DAY_MINUTES);
+  for (let day = localDay; day <= localDay + 7; day += 1) {
+    if (!runsOn(window.days, day)) continue;
+    const item = occurrence(window, day);
+    if (item.endsAt.getTime() > now.getTime()) return item;
+  }
+  return null;
+}
+
+const deviceClock = (date: Date): string => new Intl.DateTimeFormat(undefined, {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+}).format(date);
 
 /** Fixed event windows are authored in Türkiye minutes; this only turns them into clock text. */
 export function eventWindow(startsAtLocalMinute: number, endsAtLocalMinute: number): string {
@@ -71,6 +119,7 @@ function byDays<T extends { readonly days?: GalaxyEventDays; readonly startsAtLo
 
 export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
+  const events = useGalaxyEvents();
   const asteroidGroups = byDays(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.windows);
   const tradeGroups = byDays(GALAXY_EVENTS.definitions.TRADE_SHIP.windows);
   const convoyGroups = byDays(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.windows);
@@ -83,6 +132,7 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
       onClose={onClose}
     >
       <div className="pb-2">
+        <NextEventSummary event={events.data?.next ?? null} />
         <div className="plate plate-inset flex items-center justify-between gap-3 rounded-chip px-3 py-2">
           <p className="text-caption leading-snug text-dim">{t('galaxy.eventsGuide.intro')}</p>
           <span className="legend shrink-0 rounded-full border border-crystal/25 bg-crystal/10 px-2 py-1 text-micro text-crystal">
@@ -102,6 +152,10 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
                 {group.windows.map((window) => (
                   <TimePill
                     key={window.startsAtLocalMinute}
+                    kind="ASTEROID_SHOWER"
+                    startsAtLocalMinute={window.startsAtLocalMinute}
+                    endsAtLocalMinute={window.endsAtLocalMinute}
+                    days={'days' in window ? window.days : undefined}
                     time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
                     detail={`×${String(window.effect.asteroidSpawnMultiplier)}`}
                   />
@@ -122,6 +176,9 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
                 {group.windows.map((window) => (
                   <TimePill
                     key={window.startsAtLocalMinute}
+                    kind="TRADE_SHIP"
+                    startsAtLocalMinute={window.startsAtLocalMinute}
+                    endsAtLocalMinute={window.endsAtLocalMinute}
                     time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
                   />
                 ))}
@@ -141,6 +198,10 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
                 {group.windows.map((window) => (
                   <TimePill
                     key={window.startsAtLocalMinute}
+                    kind="INTERGALACTIC_CONVOY"
+                    startsAtLocalMinute={window.startsAtLocalMinute}
+                    endsAtLocalMinute={window.endsAtLocalMinute}
+                    days={window.days}
                     time={eventWindow(window.startsAtLocalMinute, window.endsAtLocalMinute)}
                   />
                 ))}
@@ -154,6 +215,29 @@ export function GalaxyEventsGuide({ onClose }: { onClose: () => void }) {
         </p>
       </div>
     </Sheet>
+  );
+}
+
+function NextEventSummary({ event }: { event: { kind: GalaxyEventKind; startsAt: Date } | null }) {
+  const { t } = useTranslation();
+  const now = useNow(30_000);
+  if (!event || event.startsAt.getTime() <= now) return null;
+  const eventName = t(`galaxy.eventsGuide.event.${event.kind}`);
+  const left = duration((event.startsAt.getTime() - now) / MINUTE_MS);
+  return (
+    <div
+      role="status"
+      aria-label={t('galaxy.eventsGuide.nextLabel')}
+      className="plate plate-cut mb-3 border border-opportunity/30 bg-opportunity/8 px-3 py-3"
+    >
+      <span className="legend text-opportunity">{t('galaxy.eventsGuide.nextLabel')}</span>
+      <p className="name mt-1 text-bone">
+        {t('galaxy.eventsGuide.nextUpcoming', {
+          event: eventName,
+          duration: left,
+        })}
+      </p>
+    </div>
   );
 }
 
@@ -207,11 +291,28 @@ function DayRow({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-function TimePill({ time, detail }: { time: string; detail?: string }) {
+function TimePill({
+  kind,
+  startsAtLocalMinute,
+  endsAtLocalMinute,
+  days,
+  time,
+  detail,
+}: GuideWindow & { time: string; detail?: string }) {
+  const { t } = useTranslation();
+  const next = nextOccurrence({ kind, startsAtLocalMinute, endsAtLocalMinute, days }, new Date(serverNow()));
+  const local = next === null
+    ? null
+    : `${deviceClock(next.startsAt)}–${deviceClock(next.endsAt)}`;
   return (
-    <span className="plate plate-inset num inline-flex items-center gap-1 rounded-full px-2 py-1 text-label text-bone">
-      {time}
-      {detail === undefined ? null : <span className="text-crystal">{detail}</span>}
+    <span className="plate plate-inset inline-flex flex-col rounded-chip px-2 py-1 text-bone">
+      <span className="num inline-flex items-center gap-1 text-label">
+        <span>{time}</span>
+        {detail === undefined ? null : <span className="text-crystal">{detail}</span>}
+      </span>
+      {local === null ? null : (
+        <span className="text-micro text-faint">{t('galaxy.eventsGuide.localTime', { time: local })}</span>
+      )}
     </span>
   );
 }

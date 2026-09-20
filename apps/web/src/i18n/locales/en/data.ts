@@ -602,7 +602,7 @@ export const notifications = {
   unlock: '{{title}} — {{body}}',
   deathStarFallback: 'Your Death Star strike resolved.',
   deathStar: {
-    FIRST_STRIKE: 'Death Star impact · the world entered recovery',
+    FIRST_STRIKE: 'EMP impact · Aegis drained; ground defences offline for 1 hour',
     CAPTURED: 'Death Star impact · colony captured',
     INEFFECTIVE: 'Death Star impact · no effect',
   },

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ANTI_STRATEGIC, DEATH_STAR, ECONOMY_ADJUSTMENT, MULTI_WORLD } from '../src/index.js';
+import {
+  ANTI_STRATEGIC,
+  DEATH_STAR,
+  ECONOMY_ADJUSTMENT,
+  FEATURE_FLAGS,
+  strategicStockpile,
+} from '../src/index.js';
 
 const total = (r: { alloy: number; crystal: number; deuterium: number }): number =>
   r.alloy + r.crystal + r.deuterium;
@@ -28,14 +34,19 @@ const total = (r: { alloy: number; crystal: number; deuterium: number }): number
  * triples the weapon's price directly; the older damage-to-price measurements no
  * longer describe this owner-set balance.
  */
-describe('how long a struck world stays dark', () => {
-  /**
-   * ONE FIGURE, NOT TWO IDENTICAL ONES. `recoveryMinutesFor(kind)` is gone with the
-   * split it existed to express — a function that reads a world's kind and returns
-   * the same answer either way is a question nobody is asking any more.
-   */
-  it('gives every struck world the same two hours', () => {
-    expect(MULTI_WORLD.recoveryMinutes).toBe(2 * 60);
+describe('the tactical EMP contract', () => {
+  it('keeps the weapon enabled while its retired research projects stay closed', () => {
+    expect(FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED).toBe(true);
+    expect(FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED).toBe(false);
+  });
+
+  it('disables Aegis regeneration and ground defence for exactly one hour', () => {
+    expect(DEATH_STAR.empMinutes).toBe(60);
+  });
+
+  it('holds two weapons and two anti-battery charges without research', () => {
+    expect(strategicStockpile(0)).toBe(2);
+    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
   });
 });
 
@@ -47,8 +58,8 @@ describe('how long a struck world stays dark', () => {
  */
 describe('what the strategic pair costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 143_661, crystal: 71_832, deuterium: 5_952 });
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43_100, crystal: 21_551, deuterium: 1_787 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 71_831, crystal: 35_916, deuterium: 2_976 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
   });
 
   it('never lets stopping a strike cost more than making one', () => {

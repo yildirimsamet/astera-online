@@ -96,6 +96,7 @@ export function PlanetField({
         </SkinAssetBoundary>
       ))}
       <Atmospheres nodes={nodes} />
+      <EmpFields nodes={nodes} />
       <RecoveryScars nodes={nodes} />
       <Highlights
         nodes={nodes}
@@ -103,6 +104,69 @@ export function PlanetField({
         rivals={rivals}
       />
     </>
+  );
+}
+
+/** The one-hour tactical blackout: an electrical cage replaces the Aegis dome. */
+function EmpFields({ nodes }: { nodes: readonly PlanetNode[] }) {
+  const affected = nodes.filter((node) => node.state.kind === 'EMP');
+  return <>{affected.map((node) => <EmpField key={node.id} node={node} />)}</>;
+}
+
+function EmpField({ node }: { node: PlanetNode }) {
+  const root = useRef<THREE.Group>(null);
+  const shell = useRef<THREE.Mesh>(null);
+  const rings = useRef<(THREE.Mesh | null)[]>([]);
+
+  useFrame(({ clock }, delta) => {
+    if (root.current) root.current.rotation.y += delta * 0.24;
+    if (shell.current) {
+      const pulse = 0.94 + Math.sin(clock.elapsedTime * 2.8 + seededUnit(node.id, 7) * 6) * 0.06;
+      shell.current.scale.setScalar(pulse);
+      (shell.current.material as THREE.MeshBasicMaterial).opacity = 0.2 + pulse * 0.08;
+    }
+    rings.current.forEach((ring, i) => {
+      if (!ring) return;
+      ring.rotation.x += delta * (0.22 + i * 0.08);
+      ring.rotation.z -= delta * (0.32 + i * 0.06);
+      (ring.material as THREE.MeshBasicMaterial).opacity = 0.35
+        + Math.sin(clock.elapsedTime * (2 + i * 0.4) + i) * 0.15;
+    });
+  });
+
+  return (
+    <group ref={root} position={node.position} name={`emp-field-${node.id}`}>
+      <mesh ref={shell} scale={node.radius * 1.16} renderOrder={8}>
+        <icosahedronGeometry args={[1, 2]} />
+        <meshBasicMaterial
+          color="#55efff"
+          wireframe
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </mesh>
+      {[0, 1, 2].map((i) => (
+        <mesh
+          key={i}
+          ref={(mesh) => { rings.current[i] = mesh; }}
+          rotation={[i * 0.8, i * 1.1, i * 0.55]}
+          scale={node.radius * (1.23 + i * 0.05)}
+          renderOrder={9}
+        >
+          <torusGeometry args={[1, 0.012, 6, 48, Math.PI * 1.55]} />
+          <meshBasicMaterial
+            color={i === 2 ? '#a895ff' : '#7cf8ff'}
+            transparent
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      <pointLight color="#58eaff" intensity={0.85} distance={node.radius * 3.2} decay={2} />
+    </group>
   );
 }
 

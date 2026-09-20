@@ -774,6 +774,8 @@ export interface PlanetEconomyInput {
   /** The Deuterium Refinery. Zero on a world that has not researched one. T5. */
   plantLevel: number;
   aegisLevel: number;
+  /** Season minute before which the Aegis is forced to remain at zero. */
+  shieldDisabledUntilMinutes?: number | null;
   /**
    * The Vault level, because the STORE's ceiling depends on it. Economy v2.
    *
@@ -857,7 +859,11 @@ export function advanceEconomy(
     state.disruptedUntilMinutes,
     input.recoveryBoostUntilMinutes ?? null,
   );
-  const wall = (nowMinutes - state.lastTickMinutes) / 60;
+  const shieldStart = Math.max(
+    state.lastTickMinutes,
+    input.shieldDisabledUntilMinutes ?? state.lastTickMinutes,
+  );
+  const shieldWall = Math.max(0, nowMinutes - shieldStart) / 60;
 
   /*
     NOMINAL RATES FIRST, AND THE DISTINCTION IS LOAD-BEARING.
@@ -939,7 +945,7 @@ export function advanceEconomy(
     bufferDeuterium: deuterium.buffer,
     shield:
       maxShield > 0
-        ? Math.min(maxShield, state.shield + maxShield * SHIELD.regenPerHour * wall)
+        ? Math.min(maxShield, state.shield + maxShield * SHIELD.regenPerHour * shieldWall)
         : 0,
     lastTickMinutes: nowMinutes,
     disruptedUntilMinutes: state.disruptedUntilMinutes,

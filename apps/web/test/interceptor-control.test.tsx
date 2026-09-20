@@ -113,8 +113,8 @@ beforeEach(async () => {
 });
 
 describe('where it lives', () => {
-  it('keeps the temporarily disabled battery display-none', () => {
-    expect(block(show(armed()))).toHaveClass('hidden');
+  it('keeps the battery visible in Defend', () => {
+    expect(block(show(armed()))).not.toHaveClass('hidden');
   });
 
   it('is on Defend, beside the shield and the guns', () => {
@@ -151,12 +151,11 @@ describe('what it says it needs', () => {
     expect(stateOf(show(armed()))).toBe('AVAILABLE');
   });
 
-  it('names the research when the commander does not hold it', () => {
+  it('does not require the retired research', () => {
     const base = planetView();
     const view = show(armed({ research: base.research }));
-    expect(stateOf(view)).toBe('LOCKED');
-    expect(block(view)).toHaveTextContent(/Interception Grid/i);
-    expect(button(view)).toBeDisabled();
+    expect(stateOf(view)).toBe('AVAILABLE');
+    expect(button(view)).toBeEnabled();
   });
 
   it('names the Radar rung when it is too low', () => {
@@ -212,14 +211,16 @@ describe('the charge itself', () => {
     expect(stateOf(view)).toBe('BUILDING');
   });
 
-  /** One charge is the ceiling, and a loaded world says so rather than offering a second. */
-  it('offers no second charge on a loaded world', () => {
-    expect(ANTI_STRATEGIC.maxCharges).toBe(1);
+  it('shows one of two charges in a Tally and offers the second', () => {
+    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
     const view = show(armed({
       interceptor: { id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 },
+      interceptors: [{ id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
     }));
     expect(stateOf(view)).toBe('READY');
-    expect(button(view)).toBeNull();
+    expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-used', '1');
+    expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
+    expect(button(view)).toBeEnabled();
   });
 
   /**

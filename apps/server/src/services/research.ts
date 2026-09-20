@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
+  FEATURE_FLAGS,
   RESEARCH_PROJECTS,
   researchMinutes,
   type ResearchProjectId,
@@ -32,6 +33,12 @@ export interface CompleteResearchResult {
   planet: PlanetView;
 }
 
+const STRATEGIC_PROJECTS = new Set<ResearchProjectId>([
+  'DEATH_STAR_PROTOCOL',
+  'INTERCEPTION_GRID',
+  'STRATEGIC_STOCKPILE',
+]);
+
 /**
  * Commit one project to the commander's own research queue.
  *
@@ -46,6 +53,9 @@ export async function completeResearch(
   clock: Clock,
   expectedPlayerId?: string,
 ): Promise<CompleteResearchResult> {
+  if (!FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED && STRATEGIC_PROJECTS.has(projectId)) {
+    throw new GameError('RESEARCH_UNAVAILABLE', 'This research project is not available', 403);
+  }
   return db.transaction(async (tx) => {
     const [world] = await tx
       .select({ playerId: planets.controllerPlayerId })

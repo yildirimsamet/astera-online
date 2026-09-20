@@ -36,7 +36,7 @@ export type Screen = 'planet' | 'galaxy' | 'intel';
  * choice the design calls "the identity choice" without visiting three tabs.
  * `orbit` holds all five and nothing else.
  */
-export type PlanetGroup = 'defend' | 'orbit' | 'reach' | 'grow';
+export type PlanetGroup = 'defend' | 'orbit' | 'reach' | 'grow' | 'tactical';
 
 export interface Directive {
   id: string;

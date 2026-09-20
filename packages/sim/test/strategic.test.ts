@@ -24,16 +24,16 @@ import {
 } from '../src/season.js';
 
 describe('multi-world strategic simulation', () => {
-  it('builds the same live 38/19/8 shared neutral pool from the same seed', () => {
+  it('builds the same live 76/38/16 shared neutral pool from the same seed', () => {
     const first = buildWorld({ players: 50, days: 14, seed: 91273 });
     const second = buildWorld({ players: 50, days: 14, seed: 91273 });
 
     expect(first.neutrals.map((n) => [n.id, n.tier])).toEqual(
       second.neutrals.map((n) => [n.id, n.tier]),
     );
-    expect(first.neutrals.filter((n) => n.tier === 1)).toHaveLength(38);
-    expect(first.neutrals.filter((n) => n.tier === 2)).toHaveLength(19);
-    expect(first.neutrals.filter((n) => n.tier === 3)).toHaveLength(8);
+    expect(first.neutrals.filter((n) => n.tier === 1)).toHaveLength(76);
+    expect(first.neutrals.filter((n) => n.tier === 2)).toHaveLength(38);
+    expect(first.neutrals.filter((n) => n.tier === 3)).toHaveLength(16);
     for (const n of first.neutrals) {
       expect(n.id).toBeGreaterThanOrEqual(MULTI_WORLD.capitalSlots);
       // D209: each dome is its template's own.
@@ -145,11 +145,11 @@ describe('multi-world strategic simulation', () => {
     expect(attacker.alloy + attacker.crystal + attacker.deuterium).toBeGreaterThan(0);
   });
 
-  it('allows destructive strikes without capacity and never turns one into a surprise capture', () => {
+  it('allows EMP strikes without colony capacity and never turns one into a capture', () => {
     const capped = buildWorld({ players: 2, days: 1, seed: 5152 });
     const lowCore = capped.players[0]!;
     lowCore.buildings.CORE = 2;
-    capped.deathStars.set(lowCore.id, { status: 'READY', readyAt: 0 });
+    capped.deathStars.set(lowCore.id, [{ status: 'READY', readyAt: 0 }]);
     tryDeathStar(lowCore, 0, capped);
     const destructive = capped.strategicMissions.find((mission) => mission.kind === 'death_star')!;
     expect(destructive.captureIntent).toBe(false);
@@ -164,7 +164,7 @@ describe('multi-world strategic simulation', () => {
     const target = world.neutrals[0]!;
     world.neutrals = [target];
     attacker.buildings.CORE = DEATH_STAR.requiredCore;
-    world.deathStars.set(attacker.id, { status: 'READY', readyAt: 0 });
+    world.deathStars.set(attacker.id, [{ status: 'READY', readyAt: 0 }]);
     tryDeathStar(attacker, 0, world);
     const flight = world.strategicMissions.find((mission) => mission.kind === 'death_star')!;
     expect(flight.captureIntent).toBe(false);
@@ -174,7 +174,7 @@ describe('multi-world strategic simulation', () => {
     expect(world.strategic.deathStar.captures).toBe(0);
   });
 
-  it('models repeated outages without changing colony ownership', () => {
+  it('models repeated one-hour EMP windows without damaging the target', () => {
     const world = buildWorld({ players: 2, days: 14, seed: 5150 });
     const attacker = world.players[0]!;
     const target = world.neutrals[0]!;
@@ -184,7 +184,7 @@ describe('multi-world strategic simulation', () => {
     attacker.graviticCharges = true;
     // This case starts after the ordinary Construction queue has completed the
     // protocol; build-queue.test.ts owns the research timing itself.
-    world.deathStarProtocol.add(attacker.id);
+    // The retired protocol is deliberately not researched.
     /*
       FUNDED OFF THE PRICE RATHER THAN OFF A LITERAL. D203 tripled `DEATH_STAR.cost`
       and this purse stayed at its old figure, so the attacker could no longer
@@ -199,30 +199,35 @@ describe('multi-world strategic simulation', () => {
     };
     fund();
     const war = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes;
+    const stockBefore = target.alloy + target.crystal + target.deuterium;
+    const aegisBefore = target.aegis;
 
     tryDeathStar(attacker, war, world);
-    expect(world.deathStars.get(attacker.id)?.status).toBe('BUILDING');
+    expect(world.deathStars.get(attacker.id)?.[0]?.status).toBe('BUILDING');
     expect(world.strategic.deathStar.builds).toBe(1);
 
     tryDeathStar(attacker, war + DEATH_STAR.buildMinutes, world);
     expect(world.deathStars.has(attacker.id)).toBe(false);
     const first = world.strategicMissions.find((m) => m.kind === 'death_star')!;
     advanceStrategicLayer(world, first.arriveAt);
-    expect(target.recoveryUntil).toBeGreaterThan(first.arriveAt);
+    expect(target.empUntil).toBe(first.arriveAt + DEATH_STAR.empMinutes);
+    expect(target.alloy + target.crystal + target.deuterium).toBeGreaterThanOrEqual(stockBefore);
+    expect(target.aegis).toBe(aegisBefore);
+    expect(target.shield).toBe(0);
     expect(world.strategic.deathStar.firstHits).toBe(1);
 
     fund();
     tryDeathStar(attacker, first.arriveAt + 1, world);
-    expect(world.deathStars.get(attacker.id)?.status).toBe('BUILDING');
+    expect(world.deathStars.get(attacker.id)?.[0]?.status).toBe('BUILDING');
     const secondReady = first.arriveAt + 1 + DEATH_STAR.buildMinutes;
-    target.recoveryUntil = secondReady + 90; // An overlapping strike must not capture either.
+    target.empUntil = secondReady + 90;
     tryDeathStar(attacker, secondReady, world);
     const second = world.strategicMissions.find((m) => m.kind === 'death_star')!;
-    expect(second.arriveAt).toBeLessThan(target.recoveryUntil);
+    expect(second.arriveAt).toBeLessThan(target.empUntil);
     advanceStrategicLayer(world, second.arriveAt);
 
     expect(target.controllerId).toBeNull();
-    expect(target.recoveryUntil).toBe(second.arriveAt + MULTI_WORLD.recoveryMinutes);
+    expect(target.empUntil).toBe(second.arriveAt + DEATH_STAR.empMinutes);
     expect(target.protectedUntil).toBe(0);
     expect(world.strategic.deathStar).toMatchObject({
       builds: 2,
@@ -231,6 +236,39 @@ describe('multi-world strategic simulation', () => {
       captures: 0,
       misses: 0,
     });
+  });
+
+  it('holds at most two Death Stars at once in the balance simulation', () => {
+    const world = buildWorld({ players: 2, days: 14, seed: 5154 });
+    const attacker = world.players[0]!;
+    attacker.buildings.CORE = DEATH_STAR.requiredCore;
+    attacker.buildings.SHIPYARD = DEATH_STAR.requiredShipyard;
+    attacker.alloy = DEATH_STAR.cost.alloy * 3;
+    attacker.crystal = DEATH_STAR.cost.crystal * 3;
+    attacker.deuterium = DEATH_STAR.cost.deuterium * 3;
+    const time = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes;
+
+    tryDeathStar(attacker, time, world);
+    tryDeathStar(attacker, time, world);
+    const paid = attacker.alloy;
+    tryDeathStar(attacker, time, world);
+
+    expect(world.deathStars.get(attacker.id)).toHaveLength(2);
+    expect(attacker.alloy).toBe(paid);
+    expect(world.strategic.deathStar.builds).toBe(2);
+  });
+
+  it('keeps a neutral Aegis empty when reinforcement falls inside an EMP window', () => {
+    const world = buildWorld({ players: 2, days: 14, seed: 5155 });
+    const target = world.neutrals.find((neutral) => neutral.tier === 2)!;
+    const time = 100;
+    target.shield = 0;
+    target.empUntil = time + DEATH_STAR.empMinutes;
+    target.nextReinforcement = time;
+
+    advanceStrategicLayer(world, time);
+
+    expect(target.shield).toBe(0);
   });
 
   describe('D209 caretaker rules, mirrored from the server', () => {

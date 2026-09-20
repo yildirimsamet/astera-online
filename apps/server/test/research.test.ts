@@ -1032,6 +1032,13 @@ describe('what is open from the first minute', () => {
     expect(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.prerequisite).toBe('DEATH_STAR_PROTOCOL');
     expect((await stateOf('STRATEGIC_STOCKPILE')).available).toBe(false);
   });
+
+  it('refuses all three retired strategic projects through the direct API', async () => {
+    for (const id of ['DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
+      await expect(completeResearch(f.db, mine, id, f.clock))
+        .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
+    }
+  });
 });
 
 /**

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { Contact, PendingThread } from '../src/api/schemas.js';
 import {
   DEATH_STAR_IMPACT_MS,
-  deathStarBurstLayout,
   deathStarImpactCandidates,
   isDeathStarImpactVisible,
   mergeRetainedDeathStarImpacts,
@@ -44,21 +43,6 @@ const path = {
 };
 
 describe('the public Death Star impact', () => {
-  it('builds a stable but mission-specific multi-lobe explosion', () => {
-    const first = deathStarBurstLayout('mission-a');
-    expect(first).toHaveLength(22);
-    expect(deathStarBurstLayout('mission-a')).toEqual(first);
-    expect(deathStarBurstLayout('mission-b')).not.toEqual(first);
-    expect(first[0]?.delay).toBe(0);
-    for (const lobe of first) {
-      expect(lobe.offset.every(Number.isFinite)).toBe(true);
-      expect(lobe.delay).toBeGreaterThanOrEqual(0);
-      expect(lobe.delay).toBeLessThan(0.18);
-      expect(lobe.size).toBeGreaterThan(0);
-      expect(lobe.drift).toBeGreaterThan(0);
-    }
-  });
-
   it('uses an owned mission exact arrival and the target world scale', () => {
     const pending: PendingThread[] = [{
       id: 'mission-1',

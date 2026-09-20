@@ -47,7 +47,7 @@ describe('next-season Dominion rewards', () => {
     return event;
   };
 
-  it('skips bots and all-zero commanders without rewriting the displayed final rank', async () => {
+  it('leaves bot and zero-Dominion places empty instead of promoting lower commanders', async () => {
     await f.db.insert(botProfiles).values({
       accountId: f.accountIds[0]!,
       ordinal: 0,
@@ -80,20 +80,20 @@ describe('next-season Dominion rewards', () => {
     expect(rewards[0]).toMatchObject({
       accountId: f.accountIds[1],
       displayRank: 2,
-      rewardPlace: 1,
-      alloy: 2_000,
-      crystal: 1_500,
-      deuterium: 300,
+      rewardPlace: 2,
+      alloy: 1_750,
+      crystal: 1_250,
+      deuterium: 250,
       programVersion: 1,
       status: 'PENDING',
     });
     expect(rewards[1]).toMatchObject({
       accountId: f.accountIds[2],
       displayRank: 3,
-      rewardPlace: 2,
-      alloy: 1_750,
-      crystal: 1_250,
-      deuterium: 250,
+      rewardPlace: 3,
+      alloy: 1_500,
+      crystal: 1_000,
+      deuterium: 200,
       programVersion: 1,
       status: 'PENDING',
     });

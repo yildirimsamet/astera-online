@@ -58,7 +58,11 @@ import { refreshSensorEpoch } from './sensorHistory.js';
  * IT IS A SILENCE, NOT A LOSS. Repair the Core and the shield is back at whatever it
  * had regenerated to; nothing here writes the column down.
  */
-export const defenceOnline = (faults: FaultSet): boolean => !hasFault(faults, 'CORE_OUTAGE');
+export const defenceOnline = (
+  faults: FaultSet,
+  empUntil: Date | null = null,
+  now: Date = new Date(),
+): boolean => !hasFault(faults, 'CORE_OUTAGE') && !(empUntil && empUntil > now);
 
 /* ── the lifecycle ───────────────────────────────────────────────────── */
 

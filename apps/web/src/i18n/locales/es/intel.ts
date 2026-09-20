@@ -356,6 +356,7 @@ export const reports = {
   gradePartial: 'PARTIAL',
   gradeRepelled: 'REPELLED',
   strategicFirstStrike: 'IMPACT',
+  strategicEmpEffect: 'La Égida cayó a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo.',
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',

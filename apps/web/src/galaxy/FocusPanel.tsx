@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
+  DEATH_STAR,
   FEATURE_FLAGS,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
@@ -694,9 +695,12 @@ export function PlanetFocus({
    *
    * THE PROBE IS DELIBERATELY OUTSIDE IT. A shield stops raids, not sight.
    */
-  const shieldedUntil = target.state.kind === 'PROTECTED' && target.state.until.getTime() > now
-    ? target.state.until
-    : null;
+  const attackProtectedUntil = target.attackProtectedUntil;
+  const shieldedUntil = attackProtectedUntil && attackProtectedUntil.getTime() > now
+    ? attackProtectedUntil
+    : target.state.kind === 'PROTECTED' && target.state.until.getTime() > now
+      ? target.state.until
+      : null;
 
   const deathStarReady = readyDeathStar(planet) !== undefined;
   const hasDeathStar = deathStarsOf(planet).length > 0;
@@ -1139,7 +1143,7 @@ function StrikeConfirm({
       <div className="plate plate-inset mt-3 px-3 py-2">
         <ConfirmLine
           label={t('focus.planet.strikeConfirm.outage')}
-          value={duration(MULTI_WORLD.recoveryMinutes)}
+          value={duration(DEATH_STAR.empMinutes)}
         />
       </div>
 
@@ -1445,14 +1449,14 @@ function StrategicWorldGuide({
   }
 
   if (target.kind === 'CAPITAL') {
-    const recovery = target.state.kind === 'RECOVERY' ? target.state : null;
+    const emp = target.state.kind === 'EMP' ? target.state : null;
     return (
-      <div className={`mb-3 rounded-chip border px-3 py-3 ${ recovery ? 'border-alert/55 bg-alert/12' : 'border-crystal/30 bg-crystal/8' }`}>
+      <div className={`mb-3 rounded-chip border px-3 py-3 ${ emp ? 'border-crystal/55 bg-crystal/12' : 'border-crystal/30 bg-crystal/8' }`}>
         <div className="flex items-center gap-2">
           <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/45 text-crystal">◆</span>
           <div className="min-w-0 flex-1">
-            <p className={`legend ${ recovery ? 'text-threat-ink' : 'text-crystal' }`}>
-              {t(recovery ? 'focus.planet.capitalRecovering' : 'focus.planet.capitalProtected')}
+            <p className="legend text-crystal">
+              {t(emp ? 'focus.planet.capitalEmp' : 'focus.planet.capitalProtected')}
             </p>
             {/*
               WHAT A CAPITAL COSTS A RAIDER, IN THE VOCABULARY THAT IS ON SCREEN.
@@ -1469,14 +1473,14 @@ function StrategicWorldGuide({
             <p className="mt-1 text-label text-dim">
               {t(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
                 ? 'focus.planet.capitalRaidOnlyHint'
-                : recovery
-                  ? 'focus.planet.capitalRecoveringHint'
+                : emp
+                  ? 'focus.planet.capitalEmpHint'
                   : 'focus.planet.capitalProtectedHint')}
             </p>
           </div>
-          {recovery && (
-            <span className="num shrink-0 text-label text-threat-ink">
-              {duration((recovery.until.getTime() - now) / 60_000)}
+          {emp && (
+            <span className="num shrink-0 text-label text-crystal">
+              {duration((emp.until.getTime() - now) / 60_000)}
             </span>
           )}
         </div>
@@ -1644,23 +1648,19 @@ function StrategicWorldGuide({
               <AttackIcon className="mt-1 size-3.5 shrink-0 text-alloy" />
               <span>{t('focus.planet.claimRaidStillOpen')}</span>
             </p>
-            {/* The second way a claim ends is the weapon; with it off there is one. */}
-            {FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && (
-              <p className="flex items-start gap-2">
-                <span aria-hidden className="mt-px shrink-0 text-alert">◆</span>
-                <span>{t('focus.planet.claimDeathStarConsequence', {
-                  duration: duration(MULTI_WORLD.recoveryMinutes),
-                })}</span>
-              </p>
-            )}
           </div>
         )}
       </div>
     );
   }
 
-  const recovery = target.state.kind === 'RECOVERY' ? target.state : null;
-  const protectedState = target.state.kind === 'PROTECTED' ? target.state : null;
+  const emp = target.state.kind === 'EMP' ? target.state : null;
+  const attackProtectedUntil = target.attackProtectedUntil;
+  const protectedUntil = attackProtectedUntil && attackProtectedUntil.getTime() > now
+    ? attackProtectedUntil
+    : target.state.kind === 'PROTECTED' && target.state.until.getTime() > now
+      ? target.state.until
+      : null;
   /**
    * A ROUTE WITH NO VEHICLE IS NOT A ROUTE. `STRATEGIC_CRAFTING_ENABLED`.
    *
@@ -1675,42 +1675,42 @@ function StrategicWorldGuide({
    * (D98 · D183), so a commander looking at a freshly captured colony still needs
    * to be told why the attack control will not fire.
    */
-  if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && protectedState === null) return null;
+  if (!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED && protectedUntil === null) return null;
   return (
     <div className={`mb-3 rounded-chip border px-3 py-3 ${
-      recovery
-        ? 'border-alert/55 bg-alert/12'
+      emp
+        ? 'border-crystal/55 bg-crystal/12'
         : isRival ? 'border-alloy-glow/45 bg-alloy-glow/8' : 'border-line-soft bg-deep/65'
     }`}>
       <div className="flex items-center justify-between gap-2">
-        <p className={`legend ${recovery ? 'text-threat-ink' : 'text-bone'}`}>
-          {t(recovery
-            ? 'focus.planet.recoveryBreach'
-            : protectedState
+        <p className={`legend ${emp ? 'text-crystal' : 'text-bone'}`}>
+          {t(emp
+            ? 'focus.planet.empBreach'
+            : protectedUntil
               ? 'focus.planet.occupationProtected'
               : 'focus.planet.deathStarRoute')}
         </p>
-        {recovery && <span className="num text-label text-threat-ink">{duration((recovery.until.getTime() - now) / 60_000)}</span>}
+        {emp && <span className="num text-label text-crystal">{duration((emp.until.getTime() - now) / 60_000)}</span>}
       </div>
-      {protectedState ? (
+      {protectedUntil ? (
         <p className="mt-1 text-label text-dim">
-          {t('focus.planet.protectedFor', { duration: duration((protectedState.until.getTime() - now) / 60_000) })}
+          {t('focus.planet.protectedFor', { duration: duration((protectedUntil.getTime() - now) / 60_000) })}
         </p>
       ) : (
         <ol className="mt-2 grid grid-cols-2 items-start gap-2 text-center">
           <RouteStep
-            status={recovery ? 'complete' : 'current'}
-            open={isOpen('strike-1', !recovery)}
+            status={emp ? 'complete' : 'current'}
+            open={isOpen('strike-1', !emp)}
             onToggle={() => { toggleStep('strike-1'); }}
             number="1"
             label={t('focus.planet.firstImpact', {
-              duration: duration(MULTI_WORLD.recoveryMinutes),
+              duration: duration(DEATH_STAR.empMinutes),
             })}
             danger
           />
           <RouteStep
-            status={recovery ? 'current' : 'upcoming'}
-            open={isOpen('strike-2', Boolean(recovery))}
+            status={emp ? 'current' : 'upcoming'}
+            open={isOpen('strike-2', Boolean(emp))}
             onToggle={() => { toggleStep('strike-2'); }}
             number="2"
             label={t('focus.planet.secondImpact')}
@@ -1725,10 +1725,10 @@ function StrategicWorldGuide({
         that decides this world's fate: whoever holds it has until the clock runs
         out to put a ship on it, and nobody has to fire anything for it to fall.
       */}
-      {recovery && (
-        <p className="mt-2 text-label leading-snug text-threat-ink">
-          {t('focus.planet.recoveryDropWarning', {
-            duration: duration((recovery.until.getTime() - now) / 60_000),
+      {emp && (
+        <p className="mt-2 text-label leading-snug text-crystal">
+          {t('focus.planet.empWarning', {
+            duration: duration((emp.until.getTime() - now) / 60_000),
           })}
         </p>
       )}

@@ -80,9 +80,9 @@ export const research = {
   deathStarName: "Ölüm Yıldızı Protokolü",
   deathStarTag: "Ölüm Yıldızı’nı açar",
   deathStarRole:
-    "Komuta Çekirdeği 12 ve Tersane 5 olan bir dünyada, tek kullanımlık Ölüm Yıldızı inşa etmeni sağlar. Ana gezegen ele geçirilemez.",
+    "Ölüm Yıldızı artık bu araştırma olmadan üretilir; bu proje kapalıdır.",
   deathStarDetail:
-    "Her atış bir Ölüm Yıldızı tüketir. Depo ile üretim havuzundaki kaynakların yarısını siler; Komuta Çekirdeği’ni bir, Aegis’i iki seviye düşürür, binaları yeni Çekirdek sınırına indirir ve devam eden bina işlerini iadesiz iptal eder. Bütün filolar yerinde kalır ve dünya hiçbir zaman el değiştirmez. Dünya iki saat üretim yapamaz, kaynak toplayamaz, sipariş veremez veya araç fırlatamaz.",
+    "EMP darbesi Aegis canını sıfırlar ve 1 saat yenilenmesini durdurur. Yer savunmaları bu sürede ateş etmez ve hasar almaz.",
 
   synthesisName: "Döteryum Sentezi",
   synthesisTag: "Rafineri seviye sınırını yükseltir",

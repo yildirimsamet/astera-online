@@ -3,11 +3,41 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GalaxyEventsGuide } from '../src/screens/GalaxyEventsGuide.js';
 import i18n from '../src/i18n/index.js';
 
+const schedule = vi.hoisted(() => {
+  let next: { kind: 'ASTEROID_SHOWER'; startsAt: Date } | null = null;
+  return {
+    getNext: () => next,
+    setNext: (value: typeof next) => { next = value; },
+  };
+});
+vi.mock('../src/api/queries.js', () => ({
+  useGalaxyEvents: () => ({ data: { events: [], next: schedule.getNext() } }),
+}));
+
 beforeEach(async () => {
   await i18n.changeLanguage('tr');
+  schedule.setNext(null);
 });
 
 describe('galaxy events guide', () => {
+  it('leads with the next event countdown and labels device-local clock times', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-18T16:30:00.000Z'));
+    schedule.setNext({ kind: 'ASTEROID_SHOWER', startsAt: new Date('2026-09-18T17:00:00.000Z') });
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+
+    expect(screen.getByRole('status', { name: 'Sıradaki etkinlik' })).toHaveTextContent(
+      /Asteroid Yağmuru.*30d sonra/i,
+    );
+    expect(screen.getAllByText(/Yerel/i).length).toBeGreaterThan(0);
+    vi.useRealTimers();
+  });
+
+  it('does not invent a countdown when the server has no public upcoming event', () => {
+    render(<GalaxyEventsGuide onClose={vi.fn()} />);
+    expect(screen.queryByRole('status', { name: 'Sıradaki etkinlik' })).not.toBeInTheDocument();
+  });
+
   it('shows every recurring event in Turkish and labels the Türkiye clock', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
 

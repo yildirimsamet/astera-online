@@ -39,14 +39,11 @@ export interface ResearchProject {
 /**
  * HOW MANY STRATEGIC WEAPONS ONE WORLD MAY HOLD AT ONCE. T11.
  *
- * The research removes the CHORE — being at the keyboard the minute the first
- * finishes — and never the COST: the second is built after the first, for its own
- * full build. Two is the ceiling because a loaded defender holds exactly one charge
- * (`ANTI_STRATEGIC.maxCharges`): two is bait and blow, and a third would make the
- * charge a formality rather than an answer.
+ * Two is the default ceiling, independent of the retired Stockpile research.
+ * Each weapon is still built and paid for separately; the anti-battery likewise
+ * holds two charges by default.
  */
-export const strategicStockpile = (stockpileLevel: number): number =>
-  stockpileLevel > 0 ? 2 : 1;
+export const strategicStockpile = (_stockpileLevel: number): number => 2;
 
 /**
  * THE HIGHEST DEUTERIUM PLANT A COMMANDER MAY STAND, from their research rung.

@@ -356,6 +356,7 @@ export const reports = {
   gradePartial: 'PARTIAL',
   gradeRepelled: 'REPELLED',
   strategicFirstStrike: 'IMPACT',
+  strategicEmpEffect: 'Aegis dropped to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour.',
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',

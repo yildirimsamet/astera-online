@@ -53,6 +53,12 @@ export function LeaderboardScreen({ onFocusPlanet }: {
         row.clan?.tag ?? '',
         row.clan?.name ?? '',
       ].join(' ').toLocaleLowerCase(locale).includes(needle));
+  const mineIndex = board.data.ladder.findIndex((row) => row.playerId === mine);
+  // The first screenful is already visible. Below it, pin the local race so the
+  // reader never has to drag through hundreds of commanders just to find themself.
+  const nearby = needle.length === 0 && mineIndex >= 10
+    ? board.data.ladder.slice(Math.max(0, mineIndex - 1), mineIndex + 2)
+    : [];
 
   return (
     <div>
@@ -68,6 +74,25 @@ export function LeaderboardScreen({ onFocusPlanet }: {
           className="field min-h-11 w-full"
         />
       </div>
+      {nearby.length === 0 ? null : (
+        <section
+          role="region"
+          aria-label={t('leaderboard.nearby')}
+          className="border-b border-line-soft bg-raised/45 px-2 py-2"
+        >
+          <p className="legend mb-1.5 text-crystal">{t('leaderboard.nearby')}</p>
+          <div className="grid gap-1">
+            {nearby.map((row) => (
+              <NearbyRival
+                key={row.playerId}
+                row={row}
+                self={row.playerId === mine}
+                onFocusPlanet={onFocusPlanet}
+              />
+            ))}
+          </div>
+        </section>
+      )}
       {rows.length === 0 ? (
         <div className="px-2 py-6"><EmptyState title={t('leaderboard.noMatch')} /></div>
       ) : (
@@ -183,6 +208,61 @@ export function LeaderboardScreen({ onFocusPlanet }: {
       })}
     </ol>
       )}
+    </div>
+  );
+}
+
+type LeaderboardRow = NonNullable<ReturnType<typeof useLeaderboard>['data']>['ladder'][number];
+
+/** Three dense lines: enough to compare the immediate race without duplicating the full table. */
+function NearbyRival({
+  row,
+  self,
+  onFocusPlanet,
+}: {
+  row: LeaderboardRow;
+  self: boolean;
+  onFocusPlanet: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const identity = (
+    <>
+      {row.clan ? <span className="text-crystal">[{row.clan.tag}]</span> : null}
+      <span className="truncate">{row.username}</span>
+      {self ? <span className="text-crystal">{t('leaderboard.you')}</span> : null}
+    </>
+  );
+
+  return (
+    <div
+      aria-current={self ? 'true' : undefined}
+      className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 rounded-chip px-2 py-1.5 ${
+        self ? 'border border-crystal/30 bg-crystal/10' : 'border border-line-soft bg-void/35'
+      }`}
+    >
+      <span className={`num text-center text-label ${self ? 'text-crystal' : 'text-faint'}`}>
+        {row.rank}
+      </span>
+      {self || row.planetId === undefined ? (
+        <span className="name flex min-w-0 items-baseline gap-1.5 text-label text-bone">
+          {identity}
+        </span>
+      ) : (
+        <button
+          type="button"
+          aria-label={commanderLabel(row.username, row.clan?.tag)}
+          className="name flex min-w-0 items-baseline gap-1.5 text-left text-label text-bone underline decoration-bone/35 underline-offset-2"
+          onClick={() => {
+            haptic('tap');
+            onFocusPlanet(row.planetId!);
+          }}
+        >
+          {identity}
+        </button>
+      )}
+      <span className={`num text-label ${row.score > 0 ? 'text-opportunity' : row.score < 0 ? 'text-threat' : 'text-dim'}`}>
+        {row.score === 0 ? full(0) : signed(row.score)}
+      </span>
     </div>
   );
 }

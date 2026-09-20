@@ -92,9 +92,9 @@ export const research = {
   deathStarName: "Death Star Protocol",
   deathStarTag: "Unlocks the Death Star",
   deathStarRole:
-    "Lets a world with Command Core 12 and Shipyard 5 build the single-use Death Star. A capital can never be captured.",
+    "The Death Star now builds without this research; this project is unavailable.",
   deathStarDetail:
-    "Every strike consumes one Death Star. It removes half the resources in storage and the Works, lowers the Command Core by one level and Aegis by two, clamps buildings to the new Core ceiling, and cancels building work without a refund. Every fleet remains standing and the world never changes hands. For two hours the world cannot produce, collect, place orders or launch.",
+    "An EMP strike drains Aegis to zero and prevents regeneration for one hour. Ground defences cannot fire or take damage during that hour.",
 
   synthesisName: "Deuterium Synthesis",
   synthesisTag: "Raises the Refinery ceiling",

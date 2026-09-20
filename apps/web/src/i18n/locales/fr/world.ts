@@ -50,6 +50,14 @@ export const galaxy = {
     intro:
       "Les horaires des événements récurrents de semaine et de week-end sont indiqués ici.",
     timeZone: "Heure de Turquie (UTC+3)",
+    nextLabel: "Prochain événement",
+    nextUpcoming: "{{event}} · dans {{duration}}",
+    localTime: "Heure locale · {{time}}",
+    event: {
+      ASTEROID_SHOWER: "Pluie d’Astéroïdes",
+      TRADE_SHIP: "Vaisseau marchand",
+      INTERGALACTIC_CONVOY: "Convoi Intergalactique",
+    },
     dailyNote:
       "Semaine : lundi à vendredi. Week-end : samedi et dimanche. Les horaires sont indiqués à l’heure de Turquie.",
     days: {
@@ -88,6 +96,7 @@ export const galaxy = {
   clanmate: "Membre de ton clan",
   rival: "Rival",
   recovery: "Fenêtre de récupération",
+  emp: "Panne EMP",
   claimOpen: "Revendication ouverte",
   harvestAway: "{{count}} appareils partis · épave dans {{minutes}} min",
   miningAway: "{{count}} appareils partis · astéroïde dans {{minutes}} min",
@@ -185,7 +194,7 @@ export const focus = {
       confirming: "Envoi…",
     },
     deathStar: "Étoile de la Mort",
-    deathStarStrike: "Étoile de la Mort · ravager",
+    deathStarStrike: "Étoile de la Mort · frappe EMP",
     /**
 
   * LE DEUXIÈME COÛT DE LA FRAPPE. Rapport au propriétaire : « par erreur ».
@@ -198,13 +207,13 @@ export const focus = {
   * où l’arme est produite.
     */
     strikeConfirm: {
-      eyebrow: "Frappe stratégique",
-      title: "{{world}} sera ravagé",
-      lead: "L’Étoile de la Mort est consommée par la frappe. Aucun rappel n’est possible et rien ne peut la récupérer.",
-      outage: "Obscurité",
+      eyebrow: "Frappe EMP tactique",
+      title: "Neutraliser {{world}}",
+      lead: "L’Étoile de la Mort est consommée par la frappe. Aucun rappel n’est possible.",
+      outage: "Panne EMP",
       keeps:
-        "Le monde reste à son commandant et toutes les flottes présentes survivent.",
-      commit: "Lancer la frappe",
+        "L’Aegis est vidée et ne se régénère pas pendant une heure. Les défenses terrestres restent désactivées et ne subissent aucun dégât.",
+      commit: "Lancer l’EMP",
       back: "Annuler",
     },
     deathStarUnavailable: "Aucune Étoile de la Mort prête",
@@ -219,13 +228,15 @@ export const focus = {
     kindNeutral: "Neutre",
     capitalProtected: "Planète capitale impossible à capturer",
     capitalProtectedHint:
-      "L’Étoile de la Mort détruit les commandes de construction ; réduit de moitié les ressources du Dépôt et du stock de production ; fait perdre un niveau au Noyau et deux niveaux à l’Aegis. Elle ne touche ni les vaisseaux ni les canons, et le contrôle ne change jamais de mains.",
+      "L’Étoile de la Mort vide l’Aegis et bloque sa régénération pendant une heure ; les défenses terrestres restent désactivées et ne subissent aucun dégât.",
     /** Seule vraie règle de la planète capitale lorsque l’arme est désactivée. `STRATEGIC_CRAFTING_ENABLED`. */
     capitalRaidOnlyHint:
       "Un raid ne peut prendre ici que des ressources. Une planète capitale ne change jamais de mains.",
-    capitalRecovering: "Planète capitale ravagée · impossible à capturer",
+    capitalRecovering: "Planète capitale en récupération · impossible à capturer",
     capitalRecoveringHint:
-      "Tu peux la frapper à nouveau : la moitié de ce qui reste sera encore détruite et la récupération recommencera depuis le début ; le contrôle ne changera toujours pas de mains.",
+      "Une autre frappe EMP relance la suppression d’une heure ; le contrôle reste inchangé.",
+    capitalEmp: "Capitale sous EMP",
+    capitalEmpHint: "L’Aegis est vide et les défenses terrestres sont désactivées et invulnérables pendant une heure.",
     yourCapital: "Ta planète capitale protégée",
     yourColony: "Ta colonie",
     transferHint:
@@ -266,8 +277,6 @@ export const focus = {
     claimCloses: "se ferme dans {{duration}}",
     claimRaidStillOpen:
       "Un nouveau raid reste possible ; il ne prolonge pas la revendication ouverte.",
-    claimDeathStarConsequence:
-      "L’Étoile de la Mort annule cette revendication et déclenche {{duration}} de récupération. Elle ne capture aucun monde et n’en fait perdre aucun — la planète s’éteint puis revient.",
     openColonySlot: "Emplacement de colonie",
     colonySlotExplain:
       "Nécessaire uniquement à l’étape 3. Au départ de la flotte de fondation, un emplacement de colonie doit être disponible dans le Noyau de Commandement de la planète capitale.",
@@ -294,6 +303,7 @@ export const focus = {
     deathStarRoute: "Effets de cette frappe",
     /** Horloge du défenseur, nommée d’après ce qui expire à la fin. D167. */
     recoveryBreach: "Récupération · monde plongé dans le noir",
+    empBreach: "Panne EMP · défenses désactivées",
     occupationProtected: "Protection d’occupation",
     protectedFor: "Impossible à frapper ou capturer pendant {{duration}}.",
     firstImpact: "Dégâts + {{duration}} d’obscurité",
@@ -311,6 +321,7 @@ export const focus = {
      */
     recoveryDropWarning:
       "{{duration}} restantes. Jusqu’à ce moment, rien n’est produit et rien ne peut décoller. Le monde reste à toi et ta flotte reste sur place.",
+    empWarning: "{{duration}} restantes. L’Aegis ne se régénère pas ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
     eyebrow: "Propriétaire : {{owner}}",
     location: "Monde · {{planet}}",
     /** Un monde hors de toute portée et jamais sondé n’a pas d’autre nom. D127. */

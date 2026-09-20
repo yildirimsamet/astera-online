@@ -46,6 +46,14 @@ export const galaxy = {
     title: "Galaxieereignisse",
     intro: "Diese Ereignisse kehren an Werktagen und am Wochenende zu festen Zeiten wieder.",
     timeZone: "Türkische Zeit (UTC+3)",
+    nextLabel: "Nächstes Ereignis",
+    nextUpcoming: "{{event}} · in {{duration}}",
+    localTime: "Ortszeit · {{time}}",
+    event: {
+      ASTEROID_SHOWER: "Asteroidenschauer",
+      TRADE_SHIP: "Handelsschiff",
+      INTERGALACTIC_CONVOY: "Intergalaktischer Konvoi",
+    },
     dailyNote: "Werktage: Montag bis Freitag. Wochenende: Samstag und Sonntag. Alle Zeiten gelten für die Türkei.",
     days: {
       WEEKDAY: "Wochentage",
@@ -81,6 +89,7 @@ export const galaxy = {
   clanmate: "Clanmitglied",
   rival: "Rivale",
   recovery: "Schutz nach Rückkehr durchbrochen",
+  emp: "EMP-Ausfall",
   claimOpen: "Kann beansprucht werden",
 
   /** What a launch says as it leaves. */
@@ -189,7 +198,7 @@ export const focus = {
       confirming: "Versand erfolgt…",
     },
     deathStar: "Todesstern",
-    deathStarStrike: "Todesstern · vernichten",
+    deathStarStrike: "Todesstern · EMP-Angriff",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -201,12 +210,12 @@ export const focus = {
      * what a strike does belongs beside the forge that builds one.
      */
     strikeConfirm: {
-      eyebrow: "Strategischer Schlag",
-      title: "Vernichte {{world}}",
-      lead: "Der Todesstern wird durch den Angriff vernichtet. Es kann nicht zurückgerufen werden und nichts bringt es zurück.",
-      outage: "Dunkelheit",
-      keeps: "Die Welt bleibt bei ihrem Kommandanten und jede Flotte, die dort steht, überlebt.",
-      commit: "Starten Sie den Schlag",
+      eyebrow: "Taktischer EMP-Schlag",
+      title: "{{world}} unterdrücken",
+      lead: "Der Todesstern wird beim Angriff verbraucht. Er kann nicht zurückgerufen werden.",
+      outage: "EMP-Ausfall",
+      keeps: "Aegis wird geleert und regeneriert eine Stunde lang nicht. Bodenverteidigungen bleiben offline und erleiden keinen Schaden.",
+      commit: "EMP starten",
       back: "Feuer einstellen",
     },
     deathStarUnavailable: "Kein Todesstern bereit",
@@ -220,7 +229,7 @@ export const focus = {
     kindNeutral: "Neutral",
     capitalProtected: "Nicht einnehmbares Hauptwelt",
     capitalProtectedHint:
-      "Ein Todesstern halbiert seine Vorräte und erhöht seinen Kern um eine Stufe. Es zerstört kein Schiff und die Kontrolle ändert sich nie.",
+      "Ein Todesstern leert die Aegis und blockiert ihre Regeneration für eine Stunde; Bodenverteidigungen bleiben offline und erleiden keinen Schaden.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -230,9 +239,11 @@ export const focus = {
      */
     capitalRaidOnlyHint:
       "Ein Überfall benötigt Ressourcen und sonst nichts. Eine Hauptstadt wechselt niemals den Besitzer, egal, was darauf landet.",
-    capitalRecovering: "Hauptwelt zerstört · uneinnehmbar",
+    capitalRecovering: "Hauptwelt erholt sich · uneinnehmbar",
     capitalRecoveringHint:
-      "Sie können erneut zuschlagen: Die Hälfte von dem, was noch übrig ist, geht weg und die Wiederherstellung beginnt von vorne; Die Kontrolle kann sich immer noch nicht ändern.",
+      "Ein weiterer EMP-Angriff startet die einstündige Unterdrückung neu; die Kontrolle bleibt unverändert.",
+    capitalEmp: "Hauptwelt unter EMP",
+    capitalEmpHint: "Aegis ist leer und Bodenverteidigungen sind eine Stunde lang offline und unverwundbar.",
     yourCapital: "Ihr geschütztes Hauptwelt",
     yourColony: "Deine Kolonie",
     transferHint: "Bewegen Sie Raumschiffe und Ressourcen mit einem einfachen Transfer hierher.",
@@ -267,8 +278,6 @@ export const focus = {
     claimCloses: "Schließt in {{duration}}",
     claimRaidStillOpen:
       "Ein weiterer Überfall ist möglich; dieser Anspruch wird dadurch nicht erweitert.",
-    claimDeathStarConsequence:
-      "Ein Todesstern löscht diesen Anspruch und startet {{duration}} der Wiederherstellung. Es nimmt keine Welt und verliert niemanden – die Welt wird dunkel und kommt zurück.",
     openColonySlot: "Kolonie-Slot",
     colonySlotExplain:
       "Wird nur für Schritt 3 benötigt. Der Kommandokern Ihrer Hauptstadt muss einen ungenutzten Kolonieplatz bieten, wenn die Gründungsflotte abreist.",
@@ -295,6 +304,7 @@ export const focus = {
     deathStarRoute: "Was ein Streik bewirkt",
     /** The clock a defender is racing, named for what runs out at the end of it. */
     recoveryBreach: "Erholung · Welt dunkel",
+    empBreach: "EMP-Ausfall · Verteidigung offline",
     occupationProtected: "Arbeitsschutz",
     protectedFor: "Kann für {{duration}} nicht getroffen oder gefangen werden.",
     firstImpact: "Schaden + {{duration}} Dunkelheit",
@@ -312,6 +322,7 @@ export const focus = {
      */
     recoveryDropWarning:
       "{{duration}} übrig. Bis dahin wird nichts produziert und nichts gestartet. Die Welt bleibt Ihnen und Ihre Flotte ist intakt.",
+    empWarning: "{{duration}} verbleiben. Aegis regeneriert nicht; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
 
     eyebrow: "Wird von {{owner}} gehalten",
     location: "Welt · {{planet}}",

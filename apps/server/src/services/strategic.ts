@@ -1,19 +1,12 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import {
-  FAULT,
   ANTI_STRATEGIC,
-  BUILDING_IDS,
   DEATH_STAR,
-  MULTI_WORLD,
   interceptionRange,
   strategicStockpile,
-  buildingCost,
   distance,
-  fleetValue,
-  instrumentCost,
   maxRadarRange,
   travelExact,
-  type BuildingId,
   type Fleet,
   type Resources,
 } from '@astera/rules';
@@ -22,25 +15,17 @@ import type { Db, Tx } from '../db/client.js';
 import {
   buildings,
   missions,
-  neutralPlanetState,
   planets,
-  satellites,
   strategicAssets,
   type StrategicDestroyedOrder,
   type StrategicLevelChange,
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
-import { destroyBuildingOrders } from './buildQueue.js';
 import { assertFreeBay } from './flight.js';
-import { breakFaults, defenceOnline } from './faults.js';
 import { advanceNeutralEconomy } from './neutral.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
-import {
-  assertAttackProtections,
-  forceRecoveryShield,
-  recoveryShieldEnabled,
-} from './attackProtection.js';
+import { assertAttackProtections } from './attackProtection.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -50,82 +35,21 @@ import {
   saveResources,
 } from './planet.js';
 import { planetView } from './planetView.js';
-import { hasResearch, researchLevels } from './researchState.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
-import { refreshSensorEpoch } from './sensorHistory.js';
-
-/**
- * WHAT AN IMPACT COSTS THE WORLD IT LANDS ON. D113.
- *
- * The Core is the only building a strike lowers directly. Every other building
- * is bound by `CORE_CEILING` — `build.ts` refuses to raise one to or past the
- * Core — so a Core that has just fallen leaves anything sitting on the old
- * ceiling one level above a limit the game will not otherwise let you reach.
- * Those are clamped back to the new Core, which is why a Refinery sometimes
- * drops with the Core and sometimes does not: it drops exactly when the Core
- * required it to.
- */
-/*
-  EVERY REMAINING BUILDING IS CLAMPED, AND THE STRIKE DESTROYS NOTHING. T4.
-
-  A strike drops the Core, and no building may stand above it — so a Yard does
-  fall, and the world can land under its own fleet. That overflow is legal by
-  design: the rule is that nothing NEW comes in, never that something already
-  there goes. A strike that also deleted the ships it left no room for would be
-  doing the one thing the whole capacity design refuses.
-*/
-const CORE_BOUND_BUILDINGS = [
-  'REFINERY', 'EXTRACTOR', 'VAULT', 'SHIPYARD', 'DEUTERIUM_PLANT',
-] as const;
-/*
-  AND THE FLEET IS NOT TOUCHED EITHER. D179, owner instruction.
-
-  `DESTROYED_HOME = ALL_HULLS` stood here and the delete that read it took every
-  hull standing at home — the defender's whole standing force, on any world, the
-  Prospector included. It was the strike's largest single number and the loudest
-  thing about it, and it is gone.
-
-  WHAT REPLACES IT IS THE OUTAGE. The ships survive but may not move: the recovery
-  window seals the bays through `assertWorldOperational`, and `startAttack` refuses
-  a raid on a recovering world, so for two hours the fleet is present, safe and
-  useless. That is the shape the owner asked for — the commander keeps what they
-  built and loses the tempo.
-
-  NOTHING IS EXEMPTED, NEUTRALS INCLUDED. A garrison on a world nobody holds
-  survives a strike too, so softening a fortified neutral with a rocket before
-  settling it is no longer a play. That was weighed and chosen: one sentence the
-  whole galaxy can hold beats an exception nobody would find.
-*/
-const BUILDING_TYPES = new Set<string>(BUILDING_IDS);
-const isBuildingId = (value: string): value is BuildingId => BUILDING_TYPES.has(value);
-
-/** Half of a stale figure is not half of what is there — see `stockShareDestroyed`. */
-const survives = (amount: number): number =>
-  Math.floor(amount * (1 - DEATH_STAR.stockShareDestroyed));
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
     const planet = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(planet);
-    if (!(await hasResearch(tx, planet.playerId, DEATH_STAR.requiredResearch))) {
-      throw new GameError('DEATH_STAR_LOCKED', 'Research Death Star Protocol first', 403);
-    }
     if (
       planet.buildings.CORE < DEATH_STAR.requiredCore
       || planet.buildings.SHIPYARD < DEATH_STAR.requiredShipyard
     ) {
       throw new GameError('DEATH_STAR_LOCKED', 'Raise Core and Shipyard first', 403);
     }
-    /**
-     * HOW MANY MAY BE ON THE PAD AT ONCE. T11.
-     *
-     * Counted rather than existence-checked, because the stockpile research raises
-     * the ceiling from one to two. Under the planet row lock `loadLocked` already
-     * holds, so the count-then-insert cannot race — which is now the only guard,
-     * the partial unique index having been relaxed to admit the second weapon.
-     */
+    /** Count under the planet row lock so two may exist, but a third cannot race in. */
     const live = await tx
       .select({ id: strategicAssets.id, readyAt: strategicAssets.readyAt })
       .from(strategicAssets)
@@ -134,11 +58,9 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
         eq(strategicAssets.type, 'DEATH_STAR'),
         inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
       ));
-    const allowed = strategicStockpile(
-      (await researchLevels(tx, planet.playerId)).get('STRATEGIC_STOCKPILE') ?? 0,
-    );
+    const allowed = strategicStockpile(0);
     if (live.length >= allowed) {
-      throw new GameError('DEATH_STAR_EXISTS', 'This world already has one', 409, {
+      throw new GameError('DEATH_STAR_EXISTS', 'This world has reached its Death Star capacity', 409, {
         held: live.length,
         allowed,
       });
@@ -151,15 +73,7 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
 
-    /**
-     * SERIAL, AND THAT IS THE WHOLE BALANCE OF THE STOCKPILE. T11.
-     *
-     * The second weapon starts when the first is finished, never beside it — so two
-     * weapons still cost two full builds and what the research removes is the CHORE
-     * of being at the keyboard at the exact minute. Built in parallel it would be a
-     * same-hour double strike: the bait and the blow D139 prices one charge against
-     * arriving together for the price of one wait.
-     */
+    /** Two weapons are allowed by default, but they are still built serially. */
     const queueHead = live.reduce<Date>(
       (latest, row) => (row.readyAt && row.readyAt > latest ? row.readyAt : latest),
       planet.now,
@@ -219,11 +133,6 @@ export async function buildInterceptor(
   return db.transaction(async (tx) => {
     const planet = await loadLocked(tx, planetId, clock, { expectedPlayerId });
     assertWorldOperational(planet);
-    if (!(await hasResearch(tx, planet.playerId, ANTI_STRATEGIC.requiredResearch))) {
-      throw new GameError('INTERCEPTOR_LOCKED', 'Research the Interception Grid first', 403, {
-        requiredRadar: ANTI_STRATEGIC.requiredRadar,
-      });
-    }
     /*
       THE RADAR RUNG IS A BUILD REQUIREMENT, NOT A RUNTIME SURPRISE.
 
@@ -255,7 +164,7 @@ export async function buildInterceptor(
         inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
       ));
     if (live.length >= ANTI_STRATEGIC.maxCharges) {
-      throw new GameError('INTERCEPTOR_LOADED', 'That world is already loaded', 409, {
+      throw new GameError('INTERCEPTOR_LOADED', 'That world has reached its interceptor capacity', 409, {
         max: ANTI_STRATEGIC.maxCharges,
       });
     }
@@ -373,19 +282,7 @@ export async function launchDeathStar(
       acknowledgeShieldLoss: acknowledgeShieldLoss ?? false,
     });
 
-    /**
-     * A STRIKE IS NEVER AN ACQUISITION ANY MORE. D167 — owner instruction.
-     *
-     * D98/D105/D113 made a second impact inside the recovery window transfer the
-     * colony to the attacker, which is why launching one used to reserve colony
-     * capacity and refuse when the window would close before impact. That whole
-     * route is gone: the weapon darkens a world and starts a DEADLINE its commander
-     * has to answer, and a colony that goes unanswered is released to NOBODY.
-     *
-     * So there is no capture intent to declare, no capacity to reserve, and no
-     * `RECOVERY_WINDOW_TOO_SHORT` — a second strike is simply another strike, and
-     * its only effect on a world already dark is to restart the clock.
-     */
+    /** A strike never changes control; hitting an EMP-active world restarts the hour. */
     /*
       THE WEAPON, AND ONLY THE WEAPON. T12.
 
@@ -489,35 +386,13 @@ export async function launchDeathStar(
     };
   });
 }
-
 /**
- * EVERY strategic build on the world, not the first row that came back. T12.
+ * Apply the tactical EMP payload.
  *
- * A bombardment stops strategic construction (D113), and a world may now have two
- * things under construction — the weapon and the charge that shoots one down. The
- * singular read left one of them building straight through the strike, which is
- * both the wrong outcome and an invisible one: nothing on screen distinguishes a
- * build that survived a bombardment from a build that was never hit.
+ * Impact advances lazy economy first, then drains only the active Aegis charge.
+ * Buildings, stores, units, orders, research, ownership, and construction remain
+ * untouched. The timestamp is also the fire-control blackout for ground defences.
  */
-async function pauseBuildingAsset(tx: Tx, planetId: string, now: Date): Promise<void> {
-  const assets = await tx
-    .select()
-    .from(strategicAssets)
-    .where(and(eq(strategicAssets.planetId, planetId), eq(strategicAssets.status, 'BUILDING')))
-    .for('update');
-  for (const asset of assets) {
-    if (!asset.readyAt) continue;
-    await tx
-      .update(strategicAssets)
-      .set({
-        status: 'PAUSED',
-        remainingSeconds: Math.max(0, Math.ceil((asset.readyAt.getTime() - now.getTime()) / 1000)),
-        readyAt: null,
-      })
-      .where(and(eq(strategicAssets.id, asset.id), eq(strategicAssets.status, 'BUILDING')));
-  }
-}
-
 export async function applyDeathStarStrike(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -532,8 +407,8 @@ export async function applyDeathStarStrike(
   destroyedOrders: StrategicDestroyedOrder[];
   shieldDestroyed: number;
 }> {
-  const noDamage = (previousPlayerId: string | null) => ({
-    outcome: 'INEFFECTIVE' as const,
+  const empty = (previousPlayerId: string | null, outcome: 'FIRST_STRIKE' | 'INEFFECTIVE') => ({
+    outcome,
     previousPlayerId,
     damage: 0,
     destroyedFleet: {},
@@ -547,28 +422,15 @@ export async function applyDeathStarStrike(
     .from(planets)
     .where(eq(planets.id, mission.targetPlanetId))
     .for('update');
-  if (!target) {
-    return noDamage(null);
-  }
+  if (!target) return empty(null, 'INEFFECTIVE');
   if (target.controllerPlayerId === mission.ownerPlayerId) {
-    return noDamage(target.controllerPlayerId);
+    return empty(target.controllerPlayerId, 'INEFFECTIVE');
   }
   if (target.protectedUntil !== null && target.protectedUntil > now) {
-    return noDamage(target.controllerPlayerId);
+    return empty(target.controllerPlayerId, 'INEFFECTIVE');
   }
 
-  /**
-   * PRODUCTION IS LAZY, AND HALVING MAKES THAT LOAD-BEARING. D113.
-   *
-   * A commander does not have to open a world for its Works to exist, so the
-   * stored row is whatever it was at the last tick. Zeroing a stale figure and
-   * zeroing a current one give the same answer, which is why this only ever had
-   * to advance an OWNED target — to get the damage number right. Halving does
-   * not: half of a figure an hour old leaves the defender with less than half of
-   * what they actually had, silently. So both kinds of world are brought to
-   * `now` first, a neutral through its own advance because nothing else does it.
-   */
-  const advancedTarget = target.controllerPlayerId && target.kind !== 'NEUTRAL'
+  const owned = target.controllerPlayerId && target.kind !== 'NEUTRAL'
     ? await loadLocked(
         tx,
         target.id,
@@ -576,234 +438,22 @@ export async function applyDeathStarStrike(
         { expectedPlayerId: target.controllerPlayerId },
       )
     : null;
-  const advancedNeutral = target.kind === 'NEUTRAL'
+  const neutral = target.kind === 'NEUTRAL'
     ? await advanceNeutralEconomy(tx, target.id, now)
     : null;
-  const held = {
-    alloy: advancedTarget?.alloy ?? advancedNeutral?.alloy ?? target.alloy,
-    crystal: advancedTarget?.crystal ?? advancedNeutral?.crystal ?? target.crystal,
-    // A neutral never passively produces Deuterium (D97), so its row is current.
-    deuterium: advancedTarget?.deuterium ?? target.deuterium,
-    bufferAlloy: advancedTarget?.bufferAlloy ?? target.bufferAlloy,
-    bufferCrystal: advancedTarget?.bufferCrystal ?? target.bufferCrystal,
-    bufferDeuterium: advancedTarget?.bufferDeuterium ?? target.bufferDeuterium,
-  };
-
-  const [buildingRows, aegisRows] = await Promise.all([
-    tx.select().from(buildings).where(eq(buildings.planetId, target.id)),
-    tx.select().from(satellites).where(and(
-      eq(satellites.planetId, target.id),
-      eq(satellites.type, 'AEGIS'),
-    )),
-  ]);
-  /*
-    ALWAYS EMPTY SINCE D179, AND KEPT RATHER THAN DELETED. The impact record, the
-    chronicle and the defender's report all carry this field; emptying it at the
-    source retires the behaviour in ONE place and leaves every reader working. A
-    reader that must not draw an empty list already checks, because a strike on a
-    world with no ships on it has always produced exactly this.
-  */
-  const destroyedFleet: Fleet = {};
-
-  const coreBefore = buildingRows.find((row) => row.type === 'CORE')?.level ?? 0;
-  const coreAfter = Math.max(0, coreBefore - 1);
-  const levelChanges: StrategicLevelChange[] = [];
-  /**
-   * The Core, plus whatever the Core's fall pulled down with it. Reported rather
-   * than assumed: a Refinery two levels under the ceiling loses nothing, and the
-   * `damage` figure has to say so or the impact record overstates what happened.
-   */
-  const buildingDamage = buildingRows.reduce((sum, row) => {
-    if (!isBuildingId(row.type)) return sum;
-    const after = row.type === 'CORE' ? coreAfter : Math.min(row.level, coreAfter);
-    if (after < row.level) {
-      levelChanges.push({ kind: 'BUILDING', id: row.type, before: row.level, after });
-    }
-    let lost = 0;
-    for (let level = after; level < row.level; level++) {
-      const cost = buildingCost(row.type, level);
-      lost += cost.alloy + cost.crystal + cost.deuterium;
-    }
-    return sum + lost;
-  }, 0);
-  const aegisDamage = aegisRows.reduce((sum, row) => {
-    const after = Math.max(0, row.level - DEATH_STAR.aegisLevelsLost);
-    if (after < row.level) {
-      levelChanges.push({ kind: 'INSTRUMENT', id: 'AEGIS', before: row.level, after });
-    }
-    let lost = 0;
-    for (let level = after; level < row.level; level++) {
-      const cost = instrumentCost('AEGIS', level);
-      lost += cost.alloy + cost.crystal + cost.deuterium;
-    }
-    return sum + lost;
-  }, 0);
-  const resourcesDestroyed =
-    (held.alloy - survives(held.alloy))
-    + (held.crystal - survives(held.crystal))
-    + (held.deuterium - survives(held.deuterium))
-    + (held.bufferAlloy - survives(held.bufferAlloy))
-    + (held.bufferCrystal - survives(held.bufferCrystal))
-    + (held.bufferDeuterium - survives(held.bufferDeuterium));
-  const destroyedResources: Resources = {
-    alloy: (held.alloy - survives(held.alloy))
-      + (held.bufferAlloy - survives(held.bufferAlloy)),
-    crystal: (held.crystal - survives(held.crystal))
-      + (held.bufferCrystal - survives(held.bufferCrystal)),
-    deuterium: (held.deuterium - survives(held.deuterium))
-      + (held.bufferDeuterium - survives(held.bufferDeuterium)),
-  };
-  /*
-    A DARK DOME IS NOT A DOME THIS STRIKE BURNT THROUGH. `CORE_OUTAGE`.
-
-    The column still holds whatever the Aegis had regenerated to — a Core outage
-    silences the hardware, it does not drain the shield — so reading it here would have
-    the report claiming credit for destroying something that was never lit. The write
-    below still zeroes it, because a strike takes the dome down either way.
-  */
-  const shieldDestroyed = advancedTarget && !defenceOnline(advancedTarget.faults)
-    ? 0
-    : advancedTarget?.shield ?? target.shield;
-  const strippedValue = resourcesDestroyed + buildingDamage + aegisDamage + fleetValue(destroyedFleet);
+  const shieldDestroyed = owned?.shield ?? neutral?.shield ?? target.shield;
+  const empUntil = addMinutes(now, DEATH_STAR.empMinutes);
 
   await tx
     .update(planets)
-    .set({
-      alloy: survives(held.alloy),
-      crystal: survives(held.crystal),
-      deuterium: survives(held.deuterium),
-      bufferAlloy: survives(held.bufferAlloy),
-      bufferCrystal: survives(held.bufferCrystal),
-      bufferDeuterium: survives(held.bufferDeuterium),
-      shield: 0,
-      disruptedUntil: null,
-      lastTickAt: now,
-    })
+    .set({ shield: 0, empUntil, lastTickAt: now })
     .where(eq(planets.id, target.id));
-  await tx
-    .update(buildings)
-    .set({ level: coreAfter })
-    .where(and(eq(buildings.planetId, target.id), eq(buildings.type, 'CORE')));
-  await tx
-    .update(buildings)
-    .set({ level: sql`LEAST(${buildings.level}, ${coreAfter})` })
-    .where(and(
-      eq(buildings.planetId, target.id),
-      inArray(buildings.type, [...CORE_BOUND_BUILDINGS]),
-    ));
-  await tx
-    .update(satellites)
-    .set({ level: sql`GREATEST(0, ${satellites.level} - ${DEATH_STAR.aegisLevelsLost})` })
-    .where(and(eq(satellites.planetId, target.id), eq(satellites.type, 'AEGIS')));
-  await tx
-    .update(neutralPlanetState)
-    .set({ claimUntil: null })
-    .where(eq(neutralPlanetState.planetId, target.id));
-  /**
-   * The scaffolding goes with everything else, and nothing comes back. Owner
-   * instruction at D113. It is also what stops a building order placed under a
-   * high Core from completing after the strike and standing above the low one —
-   * `applyOrderEffect` never re-reads the ceiling. See `destroyBuildingOrders`.
-   */
-  const burned = await destroyBuildingOrders(tx, target.id, now);
-  const burnedValue = burned.reduce(
-    (sum, order) => sum + order.cost.alloy + order.cost.crystal + order.cost.deuterium,
-    0,
-  );
-  // The impact record counts the scaffolding, because the defender paid for it and
-  // it is as gone as the fleet standing beside it.
-  const damage = strippedValue + burnedValue;
-  await pauseBuildingAsset(tx, target.id, now);
-  // This post changed when the mission arrived. A delayed worker must not grant
-  // minutes of Telescope discoveries that the struck world never had.
-  await refreshSensorEpoch(tx, target.id, mission.arriveAt);
 
-  /**
-   * THE STRIKE STARTS AN OUTAGE. IT NEVER TAKES A WORLD AND NEVER LOSES ONE. D179.
-   *
-   * The route this line has walked is worth keeping: D105/D113 handed a colony to
-   * the attacker when a second impact landed inside the window; D167 removed that
-   * and made the window a DEADLINE instead, releasing an unanswered colony to
-   * nobody; D179 removes the deadline too, on the owner's instruction after
-   * sustained player complaint.
-   *
-   * SO NOTHING HAPPENS AT THE END OF THIS CLOCK EXCEPT THE LIGHTS COMING BACK ON.
-   * Every world keeps its controller through a strike and out the other side —
-   * capital, colony and neutral alike — and `MULTI_WORLD.recoveryMinutes` is the
-   * same two hours for all three, because an outage does not care what kind of
-   * world it is darkening.
-   *
-   * `recoveryReliefAt` IS NO LONGER WRITTEN BY ANYTHING and is cleared here only so
-   * a row stamped before this shipped cannot outlive the rule it belonged to.
-   */
-  const recoveryUntil = addMinutes(now, MULTI_WORLD.recoveryMinutes);
-  await tx
-    .update(planets)
-    .set({ recoveryUntil, protectedUntil: null, recoveryReliefAt: null })
-    .where(eq(planets.id, target.id));
-  await schedule(tx, {
-    seasonId: mission.seasonId,
-    kind: 'recovery_end',
-    refId: target.id,
-    payload: { expectedUntil: recoveryUntil.toISOString() },
-    resolveAt: recoveryUntil,
-  });
-  /**
-   * AND THE COMMANDER GETS THE SAME SIX HOURS A HEAVY RAID BUYS. Owner
-   * instruction, 2026-09-14.
-   *
-   * OUTRIGHT, WITHOUT THE LOSS TEST. The raid rule measures a share of what was
-   * raidable, and a strike takes nothing raidable — it DESTROYS half the stores,
-   * drops the Core with everything standing on it and burns the queue behind it,
-   * and none of that lands in anybody's hold for a share to be computed from.
-   * Approximating one out of destroyed value would be a second loot formula, which
-   * is exactly what the rule is written to avoid.
-   *
-   * TWO CLOCKS, AND THEY MEASURE DIFFERENT THINGS. `recoveryUntil` above darkens
-   * THIS WORLD for two hours (D179); this protects the COMMANDER, on every world
-   * they hold, for four. Neither replaces the other and neither reads the other.
-   */
-  const recoveryShieldUntil = target.controllerPlayerId && target.kind !== 'NEUTRAL'
-    ? await forceRecoveryShield(tx, {
-      playerId: target.controllerPlayerId,
-      planetId: target.id,
-      now,
-    })
-    : null;
-  if (recoveryShieldUntil) await publishShard(tx, mission.seasonId, 'protection');
-  /*
-    THE STRIKE BREAKS THE COLONY TOO. A strike earns the recovery window outright (above),
-    so it is by definition a blow heavy enough for `FAULT.attackFaults` — keyed on the
-    switch rather than on `recoveryShieldUntil`, for the reason the raid lane records:
-    `forceRecoveryShield` refuses a commander with a raid in the air and a server-played
-    one, and neither refusal made the strike any lighter.
-
-    FIRST_STRIKE ONLY, AND THAT IS STRUCTURAL: this is the branch where the world is still
-    the defender's. The capturing strike hands it over through `transferPlanetControl`,
-    which keeps whatever is broken and starts the new owner's loyalty again.
-  */
-  if (recoveryShieldEnabled() && target.controllerPlayerId && target.kind === 'COLONY') {
-    await breakFaults(tx, {
-      seasonId: mission.seasonId,
-      planetId: target.id,
-      now,
-      count: FAULT.attackFaults,
-      seed: `strike:${mission.id}`,
-    });
-  }
-  if (target.controllerPlayerId) await recomputePlayerWealth(tx, target.controllerPlayerId);
   return {
-    outcome: 'FIRST_STRIKE',
-    previousPlayerId: target.controllerPlayerId,
-    damage,
-    destroyedFleet,
-    destroyedResources,
-    levelChanges,
-    destroyedOrders: burned,
+    ...empty(target.controllerPlayerId, 'FIRST_STRIKE'),
     shieldDestroyed,
   };
 }
-
 async function resumePausedAsset(
   tx: Tx,
   planetId: string,

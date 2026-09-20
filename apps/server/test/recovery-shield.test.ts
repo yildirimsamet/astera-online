@@ -458,16 +458,11 @@ describe('the recovery shield', () => {
 
   /* ── the Death Star's own door ───────────────────────────── */
 
-  /**
-   * A STRIKE GRANTS IT OUTRIGHT. Owner instruction: it halves a world's stores,
-   * takes a Core level with everything standing on it and burns the queue behind
-   * it, and it carries no loot for a share to be measured against — so the
-   * threshold is skipped rather than approximated from destroyed value. The
-   * world's own two-hour recovery runs alongside and is untouched.
-   */
-  it('is granted by a Death Star impact, beside the world’s own outage', async () => {
+  it('grants no attack protection and allows an immediate raid after the EMP lands', async () => {
     await grant(f.db, theirs, 200_000, 50_000);
-    await setLevel(f.db, mine, 'CORE', 5);
+    await levelWorld(f.db, f.planetIds);
+    await giveUnits(f.db, mine, { DART: 1 });
+    await fuelUp(f.db, mine);
     await f.db.insert(strategicAssets).values({
       planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
     });
@@ -476,12 +471,13 @@ describe('the recovery shield', () => {
     await worker().tick();
 
     const until = await recoveryOf(f.playerIds[1]!);
-    expect(until).not.toBeNull();
+    expect(until).toBeNull();
     const [struck] = await f.db.select().from(planets).where(eq(planets.id, theirs));
-    expect(struck?.recoveryUntil).not.toBeNull();
-    // Two independent clocks: the world is dark for two hours, the commander is
-    // unreachable for six.
-    expect(until!.getTime()).toBeGreaterThan(struck!.recoveryUntil!.getTime());
+    expect(struck?.recoveryUntil).toBeNull();
+    expect(struck?.empUntil?.getTime()).toBeGreaterThan(f.clock.now().getTime());
+
+    await expect(launchAttack(f.db, mine, theirs, { DART: 1 }, f.clock))
+      .resolves.toBeDefined();
   });
 
   /* ── the rollout switch ──────────────────────────────────── */
@@ -627,7 +623,7 @@ describe('the recovery shield', () => {
     expect((await boostOf(colony))?.getTime()).toBe(extended!.getTime());
   });
 
-  it('boosts the world a Death Star struck', async () => {
+  it('does not boost production on an EMP-struck world', async () => {
     await grant(f.db, theirs, 200_000, 50_000);
     await setLevel(f.db, mine, 'CORE', 5);
     await f.db.insert(strategicAssets).values({
@@ -638,8 +634,8 @@ describe('the recovery shield', () => {
     await worker().tick();
 
     const until = await recoveryOf(f.playerIds[1]!);
-    expect(until).not.toBeNull();
-    expect((await boostOf(theirs))?.getTime()).toBe(until!.getTime());
+    expect(until).toBeNull();
+    expect(await boostOf(theirs)).toBeNull();
   });
 
   it('grants no boost while the feature is staged off', async () => {

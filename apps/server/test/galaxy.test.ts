@@ -48,6 +48,8 @@ interface GalaxyPlanet {
   coreTier: number;
   satellites: string[];
   shielded: boolean;
+  attackProtectedUntil?: string | null;
+  state: { kind: string; until?: string };
   isSelf: boolean;
   /** How much of this world the caller has earned. D127. */
   intel?: 'RESOLVED' | 'REMEMBERED' | 'UNKNOWN';
@@ -364,9 +366,9 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      */
     expect(keys.sort()).toEqual(
       [
-        'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel', 'isCapital', 'isOwned',
-        'isSelf', 'kind', 'name', 'owner', 'position', 'satellites', 'shielded', 'state',
-        'dominionRank',
+        'attackProtectedUntil', 'controller', 'coreLevel', 'coreTier', 'fleet', 'id', 'intel',
+        'isCapital', 'isOwned', 'isSelf', 'kind', 'name', 'owner', 'position', 'satellites',
+        'shielded', 'state', 'dominionRank',
       ].sort(),
     );
     expect(target.intel).toBe('RESOLVED');
@@ -403,6 +405,43 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
      */
     expect(Object.values(after)).not.toContain(LEVEL);
     expect(after.coreTier).not.toBe(LEVEL);
+  });
+
+  it('shows an active EMP field instead of an Aegis dome and clears it at expiry', async () => {
+    await galaxy();
+    await giveInstrument(f.db, theirs, 'AEGIS', 7);
+    const until = new Date(f.clock.now().getTime() + 60 * 60_000);
+    await f.db.update(planets).set({ shield: 0, empUntil: until })
+      .where(eq(planets.id, theirs));
+    await publishShard(f.db, f.seasonId, 'world');
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBeGreaterThan(0);
+    });
+
+    const struck = (await galaxy()).find((world) => world.id === theirs)!;
+    expect(struck.state.kind).toBe('EMP');
+    expect(struck.shielded).toBe(false);
+
+    f.clock.advance(60);
+    const restored = (await galaxy()).find((world) => world.id === theirs)!;
+    expect(restored.state.kind).not.toBe('EMP');
+    expect(restored.shielded).toBe(true);
+  });
+
+  it('keeps attack protection visible when it overlaps an EMP', async () => {
+    await galaxy();
+    const protectedUntil = new Date(f.clock.now().getTime() + 2 * 60 * 60_000);
+    const empUntil = new Date(f.clock.now().getTime() + 60 * 60_000);
+    await f.db.update(planets).set({ protectedUntil, empUntil })
+      .where(eq(planets.id, theirs));
+    await publishShard(f.db, f.seasonId, 'world');
+    await vi.waitFor(() => {
+      expect(app.projections.status().publicGalaxy.invalidations).toBeGreaterThan(0);
+    });
+
+    const world = (await galaxy()).find((candidate) => candidate.id === theirs)!;
+    expect(world.state.kind).toBe('EMP');
+    expect(world.attackProtectedUntil).toBe(protectedUntil.toISOString());
   });
 
   it('publishes the fault mark only on the caller\'s own broken worlds', async () => {

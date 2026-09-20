@@ -226,6 +226,33 @@ describe('komuta merkezinde kesinti', () => {
     expect(await groundAt(mine)).toBe(20);
   });
 
+  it('EMP altındaki bütün yer savunmalarını savaştan ve hasardan çıkarır', async () => {
+    await giveUnits(f.db, mine, { THORN: 20, HARPOON: 10, BASTION: 5 });
+    await f.db.update(planets).set({
+      shield: 0,
+      empUntil: new Date(f.clock.now().getTime() + 60 * 60_000),
+    }).where(eq(planets.id, mine));
+    const report = await raid();
+    for (const hull of ['THORN', 'HARPOON', 'BASTION']) {
+      expect(report.defenderFleet).not.toHaveProperty(hull);
+    }
+    const rows = await f.db.select().from(units).where(eq(units.planetId, mine));
+    expect(Object.fromEntries(rows.filter((row) => row.location === 'home')
+      .map((row) => [row.hull, row.count]))).toMatchObject({
+      THORN: 20,
+      HARPOON: 10,
+      BASTION: 5,
+    });
+  });
+
+  it('EMP süresi dolduğunda yer savunmalarını yeniden savaşa alır', async () => {
+    await giveUnits(f.db, mine, { THORN: 20 });
+    await f.db.update(planets).set({ empUntil: f.clock.now() })
+      .where(eq(planets.id, mine));
+    const report = await raid();
+    expect(report.defenderFleet).toMatchObject({ THORN: 20 });
+  });
+
   it('arıza varken kalkan söner', async () => {
     await setLevel(f.db, mine, 'CORE', 8);
     await f.db.update(planets).set({ shield: 5_000 }).where(eq(planets.id, mine));

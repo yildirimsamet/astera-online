@@ -239,6 +239,36 @@ export const seasonArchiveSchema = z.object({
 
 export const seasonArchiveLeaderboardSchema = z.object({
   season: archivedSeasonContext,
+  record: z.object({
+    version: z.literal(1),
+    champion: z.object({
+      commanderName: z.string(),
+      dominion: dominionInteger,
+    }).nullable(),
+    clanPodium: z.array(z.object({
+      rank: z.number().int().positive(),
+      name: z.string(),
+      tag: z.string(),
+      dominion: dominionInteger,
+    })).max(3),
+    biggestBattle: z.object({
+      attackerName: z.string(),
+      defenderName: z.string(),
+      planetName: z.string(),
+      totalLossValue: z.number().nonnegative(),
+      occurredAt: z.coerce.date(),
+    }).nullable(),
+    sharpestDominionSwing: z.object({
+      attackerName: z.string(),
+      defenderName: z.string(),
+      amount: dominionInteger,
+      occurredAt: z.coerce.date(),
+    }).nullable(),
+    mostContestedWorld: z.object({
+      planetName: z.string(),
+      events: z.number().int().positive(),
+    }).nullable(),
+  }).nullable(),
   ladder: z.array(z.object({
     resultId: z.string().uuid(),
     rank: z.number().int().positive(),
@@ -596,6 +626,10 @@ const knownGalaxyEventKinds: ReadonlySet<string> = new Set(
  * merchant on it so the drop can never be the reason a kind is missing again.
  */
 export const activeGalaxyEventsSchema = z.object({
+  next: z.object({
+    kind: z.enum(['ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY']),
+    startsAt: z.coerce.date(),
+  }).nullable().default(null),
   events: z.array(z.unknown()).transform((rows, context) => rows.flatMap((row, index) => {
     const identity = z.object({ kind: z.string() }).passthrough().safeParse(row);
     if (!identity.success || !knownGalaxyEventKinds.has(identity.data.kind)) return [];
@@ -668,6 +702,7 @@ export const planetSchema = z.object({
     shieldPerHour: z.number(),
     disruptedUntil: z.coerce.date().nullable(),
     recoveryUntil: z.coerce.date().nullable().optional(),
+    empUntil: z.coerce.date().nullable().optional(),
     protectedUntil: z.coerce.date().nullable().optional(),
     /**
      * THIS WORLD WORKS DOUBLE UNTIL THIS INSTANT. 2026-09-16.
@@ -774,6 +809,8 @@ export const planetSchema = z.object({
    * missing key simply means no charge is known.
    */
   interceptor: strategicAsset.nullable().optional(),
+  /** All live anti-battery charges, ready first. */
+  interceptors: z.array(strategicAsset).optional(),
   /**
    * WHAT IS BROKEN ON THIS WORLD, AND WHAT PUTTING IT RIGHT COSTS. Koloni arızaları.
    *
@@ -1094,6 +1131,7 @@ export const galaxySchema = z.object({
        * behind a probe, and that is the number that decides the raid.
        */
       shielded: z.boolean().default(false),
+      attackProtectedUntil: z.coerce.date().nullable().optional(),
       isSelf: z.boolean(),
       isOwned: z.boolean().optional(),
       /** Present only on one of the caller's own worlds with at least one live fault. */
@@ -1103,6 +1141,7 @@ export const galaxySchema = z.object({
       clanmate: z.boolean().optional(),
       state: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('NORMAL') }),
+        z.object({ kind: z.literal('EMP'), until: z.coerce.date() }),
         z.object({ kind: z.literal('RECOVERY'), until: z.coerce.date() }),
         z.object({ kind: z.literal('PROTECTED'), until: z.coerce.date() }),
       ]).default({ kind: 'NORMAL' }),
@@ -1177,6 +1216,7 @@ export const leaderboardSchema = z.object({
       coreTier: z.number().optional(),
       score: dominionInteger,
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      isBot: z.boolean().default(false),
     })
     .nullable(),
 });

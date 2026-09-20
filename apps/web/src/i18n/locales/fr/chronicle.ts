@@ -38,9 +38,9 @@ neutralClaim: 'Fenêtre de revendication ouverte sur {{planet}} · palier {{tier
 neutralClaimDetail: 'Un raid décisif a déclenché une course publique à la colonisation de ce monde.',
 deathStarImpact: 'Frappe de l’Étoile de la Mort sur {{planet}}',
 deathStarOutcome: {
-FIRST_STRIKE: 'Le monde a été ravagé et plongé dans les ténèbres. Son contrôle ne peut pas changer de mains.',
-CAPITAL_STRIKE: 'La planète capitale a été ravagée et entre en phase de reconstruction. Son contrôle ne peut pas changer de mains.',
-CAPTURED: 'Le monde a été ravagé et plongé dans les ténèbres. Son contrôle ne peut pas changer de mains.',
+FIRST_STRIKE: 'L’EMP a vidé l’Aegis. Les défenses terrestres ne tirent pas et ne subissent aucun dégât pendant une heure.',
+CAPITAL_STRIKE: 'L’EMP a vidé l’Aegis. Les défenses terrestres ne tirent pas et ne subissent aucun dégât pendant une heure.',
+CAPTURED: 'L’EMP a vidé l’Aegis. Les défenses terrestres ne tirent pas et ne subissent aucun dégât pendant une heure.',
 INEFFECTIVE: 'La protection ou l’état de la cible a rendu la frappe inefficace.',
 },
 controlTransfer: '{{planet}} a changé de mains',

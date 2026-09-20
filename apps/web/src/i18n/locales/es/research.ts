@@ -92,9 +92,9 @@ export const research = {
   deathStarName: "Protocolo de la Estrella de la Muerte",
   deathStarTag: "Desbloquea la Estrella de la Muerte",
   deathStarRole:
-    "Permite que un mundo con Núcleo de Mando 12 y Astillero 5 construya la Estrella de la Muerte de un solo uso. Una capital nunca puede ser capturada.",
+    "La Estrella de la Muerte ahora se construye sin esta investigación; el proyecto no está disponible.",
   deathStarDetail:
-    "Cada golpe consume una Estrella de la Muerte. Elimina la mitad de los recursos almacenados y las Obras, reduce el Núcleo de Comando en un nivel y la Égida en dos, sujeta los edificios al nuevo techo del Núcleo y cancela los trabajos de construcción sin reembolso. Todas las flotas permanecen en pie y el mundo nunca cambia de manos. Durante dos horas el mundo no puede producir, recoger, realizar pedidos ni lanzar.",
+    "Un ataque EMP vacía la Égida e impide su regeneración durante una hora. Las defensas terrestres no disparan ni reciben daño durante ese tiempo.",
 
   synthesisName: "Síntesis de deuterio",
   synthesisTag: "Eleva el techo de la Refinería",

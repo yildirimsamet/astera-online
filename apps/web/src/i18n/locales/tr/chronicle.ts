@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'Kesin bir akın, bu dünya için herkese açık bir yerleşim yarışı başlattı.',
   deathStarImpact: '{{planet}} üzerinde Ölüm Yıldızı darbesi',
   deathStarOutcome: {
-    FIRST_STRIKE: 'Dünya harap oldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
-    CAPITAL_STRIKE: 'Ana gezegen harap oldu ve toparlanmaya girdi. Kontrolü el değiştiremez.',
-    CAPTURED: 'Dünya harap oldu ve karanlığa gömüldü. Kontrolü el değiştiremez.',
+    FIRST_STRIKE: 'EMP, Aegis canını sıfırladı. Yer savunmaları 1 saat ateş etmez ve hasar almaz.',
+    CAPITAL_STRIKE: 'EMP, Aegis canını sıfırladı. Yer savunmaları 1 saat ateş etmez ve hasar almaz.',
+    CAPTURED: 'EMP, Aegis canını sıfırladı. Yer savunmaları 1 saat ateş etmez ve hasar almaz.',
     INEFFECTIVE: 'Koruma veya hedef durumu darbeyi etkisiz bıraktı.',
   },
   controlTransfer: '{{planet}} el değiştirdi',

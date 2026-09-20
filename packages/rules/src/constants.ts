@@ -1750,8 +1750,12 @@ export const RESEARCH_TECH = {
 
 /** Temporary release switch: keep the authored strategic system intact while
  * its two crafting doors and direct research permissions are unavailable. */
-export const FEATURE_FLAGS: Readonly<Record<'STRATEGIC_CRAFTING_ENABLED', boolean>> = {
-  STRATEGIC_CRAFTING_ENABLED: false,
+export const FEATURE_FLAGS: Readonly<Record<
+  'STRATEGIC_CRAFTING_ENABLED' | 'STRATEGIC_RESEARCH_ENABLED',
+  boolean
+>> = {
+  STRATEGIC_CRAFTING_ENABLED: true,
+  STRATEGIC_RESEARCH_ENABLED: false,
 };
 
 /**
@@ -1767,12 +1771,9 @@ export const FEATURE_FLAGS: Readonly<Record<'STRATEGIC_CRAFTING_ENABLED', boolea
  * many words. The timed radar ring is already drawn on the disc (D126), so a weapon
  * dying on it is a rule with a picture: the explosion happens in space, over the
  * ring, beside the world; the Radar rung suddenly buys something enormous; and an
- * attacker who scouts can read the reach and price the risk before spending 221,445.
+ * attacker who scouts can read the reach and price the risk before launching.
  *
- * ONE CHARGE, AND THE NUMBER IS THE WHOLE INTERLOCK. At two, a loaded defender is
- * immune to a commander who may only stockpile two weapons, and the Death Star
- * stops existing. At one, the answer is on the board: send the first as bait, land
- * the second. T11 is that answer, which is why the two ship together.
+ * Two charges can be loaded by default, matching the weapon's two-asset cap.
  */
 export const ANTI_STRATEGIC = {
   /**
@@ -1785,38 +1786,14 @@ export const ANTI_STRATEGIC = {
    */
   requiredRadar: 3,
   requiredResearch: 'INTERCEPTION_GRID',
-  maxCharges: 1,
+  maxCharges: 2,
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
-  /**
-   * ABOUT THREE TENTHS OF WHAT IT STOPS, SET BY HAND. D170/D179/D203, owner figures.
-   *
-   * The battery and the weapon are priced against EACH OTHER rather than
-   * separately — that is the whole interlock, and it is the reason this number may
-   * never be edited alone. A cheap defence throws D113's work away; a defence
-   * nobody can afford leaves the strike unanswerable.
-   *
-   * THE FLOOR IS THE ONE RULE THAT CANNOT BEND: answering a strike must cost LESS
-   * than making one. Above that line the battery is a defender's investment; at or
-   * past it an attacker drains a defender simply by launching, and firing becomes
-   * profitable without ever landing. D203 raises the battery to 66,438 while the
-   * weapon rises to 221,445 — about 30%, inside the band both tests hold.
-   *
-   * FINAL FIGURES, like `DEATH_STAR.cost` and the research tables. No tempo scale
-   * runs on top of them — what the sheet quotes is what a person typed — so the
-   * two sides of the interlock can be compared by reading them.
-   *
-   * It still reloads in half the time the weapon takes to build, because a
-   * defender who spent their shot should not be defenceless for the rest of the
-   * hour. `interceptor-cost.test.ts` holds the ratio against the weapon and
-   * `strategic-strike.test.ts` holds the floor and the half. Typed rather than
-   * read off `DEATH_STAR.buildMinutes` only because that object is declared
-   * below this one; the test is what keeps the two in step.
-   */
+  /** Half-price owner retune; still cheaper and faster than the weapon it stops. */
   cost: {
-    alloy: 43_100,
-    crystal: 21_551,
-    deuterium: 1_787,
+    alloy: 21_550,
+    crystal: 10_776,
+    deuterium: 894,
   },
   buildMinutes: 30 * ECONOMY_ADJUSTMENT.buildTime,
 } as const;
@@ -3468,17 +3445,9 @@ export const MULTI_WORLD = {
 /**
  * THE STRATEGIC WEAPON, RE-SPECIFIED AT D113 — owner instruction.
  *
- * What an impact DOES is a few things and no more, so it can be said in one
- * sentence on the screen before anybody spends 221,445 resources on it: half of
- * everything stored is gone, the Command Core loses a level, the Aegis two, and
- * the world produces nothing for two hours. Since D179 every fleet on the ground
- * survives it.
- *
- * The old strike zeroed the stores and lowered four buildings, which was both
- * harder to describe and effectively unrecoverable. Halving is a rule a player
- * can hold in their head and reason about twice: hit again inside the window and
- * half of what is LEFT goes, so a second strike is a real decision rather than a
- * repeat of an already-total loss.
+ * The tactical payload drains Aegis charge and disables ground defences for one
+ * hour. It changes no levels, destroys no units or resources, and does not stop
+ * production. A second hit restarts the one-hour EMP window.
  */
 export const DEATH_STAR = {
   type: 'DEATH_STAR',
@@ -3493,28 +3462,8 @@ export const DEATH_STAR = {
   requiredCore: 12,
   requiredShipyard: 5,
   requiredResearch: 'DEATH_STAR_PROTOCOL',
-  /**
-   * SET BY HAND, NOT SCALED. D167/D179/D203 — owner figures, and the exception is
-   * deliberate.
-   *
-   * Everything else in this file is priced through `scalePrice` so a tempo change
-   * carries it. This weapon is priced against WHAT IT DOES, which is a judgement
-   * about the galaxy rather than about the economy's pace, so the number is written
-   * out where it can be read and argued with.
-   *
-   * 66,000 → 32,500 AT D179, roughly half, on the owner's instruction; the later
-   * economy table then set it to 73,815. D203 triples every resource component to
-   * the 221,445 figure below. What it does shrank first: D167 priced it at "put somebody
-   * else's colony on the table for the whole galaxy", and D179 took that away along
-   * with the fleet it used to destroy. The buyer now takes NOTHING home — no loot,
-   * no Dominion, no world — so what is left to pay for is denial.
-   *
-   * MEASURED AT D179, before this price change and against a full store: the strike
-   * destroys about 102,000 at a Core 12 world and about 420,000 at a Core 17 one.
-   * D203 is a direct owner retune, not a new return-on-damage claim.
-   * `ANTI_STRATEGIC.cost` moved by 50% in the same instruction.
-   */
-  cost: { alloy: 143_661, crystal: 71_832, deuterium: 5_952 },
+  /** Half-price owner retune, kept as an explicit final price. */
+  cost: { alloy: 71_831, crystal: 35_916, deuterium: 2_976 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
    * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`
@@ -3523,24 +3472,8 @@ export const DEATH_STAR = {
   buildMinutes: 60 * ECONOMY_ADJUSTMENT.buildTime,
   /** Owner-approved strategic travel speed after local interception playtesting. */
   speed: 1_250,
-  /**
-   * Share of the target's stores an impact destroys, stock and works alike.
-   *
-   * A SHARE AND NOT A WIPE, so the arithmetic composes: a second impact inside
-   * the recovery window takes half of the remainder. Anything that reads this
-   * must advance the world's lazy economy FIRST — half of a figure that is one
-   * tick stale is not half of what is there.
-   */
-  stockShareDestroyed: 0.5,
-  /**
-   * Levels an impact takes off the Aegis. Owner decision at D113.
-   *
-   * The one instrument a strike still touches directly, because it is the thing
-   * that would otherwise blunt the next one. Everything else in orbit is only
-   * ever capped by the Core it hangs off — stored levels survive, exactly as D97
-   * requires, and come back when the Core does.
-   */
-  aegisLevelsLost: 2,
+  /** EMP blackout duration: Aegis cannot regenerate and ground guns stay offline. */
+  empMinutes: 60,
   /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,

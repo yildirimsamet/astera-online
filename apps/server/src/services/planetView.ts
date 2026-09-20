@@ -125,11 +125,10 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
     ))
     .orderBy(desc(strategicAssets.startedAt), desc(strategicAssets.id));
-  const [[player], weapons, [interceptor], queued, researchQueue, colonies] = await Promise.all([
+  const [[player], weapons, interceptorRows, queued, researchQueue, colonies] = await Promise.all([
     tx.select().from(players).where(eq(players.id, p.playerId)),
     strategicOfType('DEATH_STAR'),
-    // `maxCharges` is one, so the newest charge is the only charge.
-    strategicOfType('INTERCEPTOR').limit(1),
+    strategicOfType('INTERCEPTOR'),
     tx
       .select()
       .from(buildOrders)
@@ -139,6 +138,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     colonyStanding(tx, p.playerId),
   ]);
   const pad = weapons.toSorted(padOrder);
+  const interceptors = interceptorRows.toSorted(padOrder);
 
   /**
    * THE RATES THE ECONOMY ACTUALLY RUNS AT — Foundry included. D52a.
@@ -311,6 +311,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       shieldPerHour: Math.round(shieldMax * SHIELD.regenPerHour),
       disruptedUntil: p.disruptedUntil,
       recoveryUntil: p.recoveryUntil,
+      empUntil: p.empUntil,
       protectedUntil: p.protectedUntil,
       /**
        * THE STRUCK WORLD WORKS DOUBLE UNTIL THIS INSTANT. 2026-09-16.
@@ -412,8 +413,9 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     strategic: pad[0] ? strategicView(pad[0]) : null,
     /** Every weapon on this world's pad, in `padOrder`. Up to the stockpile's two. T11. */
     deathStars: pad.map(strategicView),
-    /** The anti-strategic charge, which is its own asset and its own answer. T10. */
-    interceptor: interceptor ? strategicView(interceptor) : null,
+    /** Compatibility head plus the complete two-charge battery. */
+    interceptor: interceptors[0] ? strategicView(interceptors[0]) : null,
+    interceptors: interceptors.map(strategicView),
     colonies,
     fleet: p.homeFleet,
     ground: p.ground,

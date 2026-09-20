@@ -358,6 +358,7 @@ export const reports = {
   gradePartial: "PARTIEL",
   gradeRepelled: "REPOUSSÉ",
   strategicFirstStrike: "IMPACT",
+  strategicEmpEffect: "L’Aegis est tombée à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps.",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",

@@ -316,6 +316,7 @@ export const reports = {
   gradePartial: 'KISMİ',
   gradeRepelled: 'PÜSKÜRTÜLDÜ',
   strategicFirstStrike: 'İSABET',
+  strategicEmpEffect: 'Aegis canı sıfırlandı ve 1 saat yenilenmez. Yer savunmaları bu sürede ateş etmez ve hasar almaz.',
   strategicCaptured: 'ELE GEÇİRİLDİ',
   strategicIneffective: 'ETKİSİZ',
   strategicIntercepted: 'HAVADA VURULDU',

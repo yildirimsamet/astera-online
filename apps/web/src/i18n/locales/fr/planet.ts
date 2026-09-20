@@ -12,8 +12,10 @@
   */
 export const planet = {
   recovery: "Récupération en cours · systèmes disponibles dans {{duration}}",
+  empActive: "EMP · Aegis à zéro et sans régénération pendant {{duration}} ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
   interceptor: {
     eyebrow: "Batterie de défense stratégique",
+    tally: "{{used}} munitions sur {{total}} chargées",
     none: "Aucune munition chargée",
     building: "Chargement · {{duration}}",
     paused: "Chargement interrompu pendant la récupération",
@@ -33,7 +35,8 @@ export const planet = {
     buildTime: "{{duration}} · une munition · consommée au tir",
   },
   deathStar: {
-    eyebrow: "Arme stratégique limitée",
+    eyebrow: "Arme EMP tactique",
+    tally: "{{used}} armes sur {{total}} disponibles",
     none: "Aucune Étoile de la Mort sur ce monde",
     building: "Construction · {{duration}}",
     paused: "Construction interrompue pendant la récupération",
@@ -43,31 +46,14 @@ export const planet = {
     build: "Construire",
     started: "Construction de l’Étoile de la Mort lancée",
     dangerHint:
-      "Destructeur planétaire à sens unique. Il ne rapporte rien et ne fait perdre aucun monde à personne : il ravage la cible et la plonge dans le noir pendant deux heures.",
+      "EMP : l’Aegis tombe à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps.",
     readyHint:
-      "Armée. Choisis n’importe quel monde ennemi. Quel que soit le monde visé, il subira 2 heures de récupération ; aucun monde ne changera de mains.",
+      "Prête : l’Aegis de la cible tombe à zéro et ne se régénère pas pendant 1 heure ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
     needProtocol: "Protocole",
     needCore: "Noyau niveau {{level}}",
     needShipyard: "Chantier Spatial niveau {{level}}",
     needOperational: "Monde opérationnel",
     buildTime: "{{duration}} · une arme · aucun rappel possible",
-    /** Ce que produit une frappe unique, clairement expliqué avant toute dépense. D113 · D167. */
-    effectsTitle: "Effets d’une frappe",
-    effectFleet:
-      "Tous les vaisseaux et canons présents sur le monde restent en place — la frappe ne touche jamais la flotte",
-    effectStock:
-      "Détruit la moitié des ressources du Dépôt et du stock de production",
-    effectCore:
-      "Fait perdre un niveau au Noyau de Commandement ; les bâtiments dépassant sa nouvelle limite redescendent eux aussi à ce niveau",
-    effectAegis:
-      "Fait perdre {{levels}} niveaux à l’Aegis et vide entièrement son bouclier",
-    effectDark:
-      "Plonge le monde dans le noir pendant 2 heures : production, collecte, construction, commandes et lancements sont interrompus",
-    /** D179 : la frappe est une INTERRUPTION. Ni le monde ni la flotte ne sont perdus. */
-    effectCapital:
-      "Qu’il s’agisse de la planète capitale ou d’une colonie, aucun monde ne change de mains ; les deux heures passent, puis tout reprend",
-    effectSurvives:
-      "Les bâtiments ne dépassant pas la nouvelle limite du Noyau, les recherches et les autres équipements orbitaux sont préservés",
   },
   tabs: {
     label: "Sections de la planète",
@@ -79,10 +65,12 @@ export const planet = {
       "Construis ici les outils qui te permettent d’observer tes rivaux.",
     reachProblem: "Flotte",
     reachQuestion:
-      "Développe ici tes vaisseaux, ta portée et tes projets spéciaux.",
+      "Développe ici tes vaisseaux et ta portée.",
     growProblem: "Production",
     growQuestion:
       "Augmente ici tes ressources et la limite de niveau de tes bâtiments.",
+    tacticalProblem: "Tactique",
+    tacticalQuestion: "Construis et gère ici les outils tactiques.",
   },
   wallet: {
     inTheWorks: "<0>{{amount}}</0> dans le stock de production",
@@ -282,10 +270,6 @@ export const planet = {
     synthesisTag: "Augmente le niveau maximal de la Raffinerie",
     synthesisRole:
       "Chaque palier débloque trois niveaux supplémentaires de Raffinerie de Deutérium sur tous les mondes que tu possèdes.",
-    deathStarName: "Protocole de l’Étoile de la Mort",
-    deathStarTag: "Débloque l’Étoile de la Mort",
-    deathStarRole:
-      "Permet de construire une Étoile de la Mort sur ce monde. Sa frappe détruit les unités présentes et les commandes de construction, réduit de moitié le Dépôt et le stock de production, puis désactive le monde pendant deux heures. Pendant cette période, une seconde frappe lancée avec un ordre de capture ne peut prendre le contrôle que d’une colonie ou d’un monde neutre ; une planète capitale ne peut jamais être capturée.",
     researchNeedCore: "Améliore le Noyau de Commandement au niveau {{level}}",
     researchAct: "Rechercher",
     researchComplete: "recherchée",

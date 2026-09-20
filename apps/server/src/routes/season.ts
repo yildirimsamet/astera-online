@@ -182,6 +182,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         closedAt: context.season.closedAt,
         endReason: context.season.endReason,
       },
+      record: context.season.galaxyRecord,
       ladder: rows.map((row) => ({
         resultId: row.publicId,
         rank: row.finalRank,

@@ -51,7 +51,7 @@ vi.mock('../src/api/queries.js', async () => {
   };
 });
 
-const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach') => {
+const show = (focusGroup?: 'grow' | 'orbit' | 'defend' | 'reach' | 'tactical') => {
   current = rich();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -142,6 +142,31 @@ describe('the sheet opens on production', () => {
 });
 
 describe('what a Death Star strike actually does', () => {
+  it('lives only in the Tactical tab and shows its two-charge tally', () => {
+    const tactical = show('tactical');
+    const forge = tactical.container.querySelector('[data-strategic-state]');
+    expect(forge).not.toBeNull();
+    expect(forge?.querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
+    tactical.unmount();
+
+    const fleet = show('reach');
+    expect(fleet.container.querySelector('[data-strategic-state]')).toBeNull();
+  });
+
+  it('explains an active EMP on the affected planet without claiming production is stopped', () => {
+    current = rich();
+    current = { ...current, planet: {
+      ...current.planet,
+      empUntil: new Date(Date.now() + 60 * 60_000),
+    } };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><ToastProvider>
+      <PlanetScreen focusGroup="defend" />
+    </ToastProvider></QueryClientProvider>);
+    expect(screen.getByText(/EMP.*Aegis|Aegis.*EMP/i)).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('planet.recovery', { duration: '1h' }))).not.toBeInTheDocument();
+  });
+
   /**
    * THE COPY WAS TWO DECISIONS OUT OF DATE. D167 replaced acquisition with a
    * DEADLINE: a strike no longer takes anything and a second strike takes nothing
@@ -155,7 +180,7 @@ describe('what a Death Star strike actually does', () => {
    * mechanic that does not exist is the most costly copy error the sheet can make.
    */
   it('states the deadline rather than a capture', () => {
-    show('reach');
+    show('tactical');
     const hint = screen.getByText(i18n.t('planet.deathStar.dangerHint'));
     expect(hint).toBeInTheDocument();
     for (const forbidden of ['ele geçir', 'capture']) {
@@ -164,35 +189,15 @@ describe('what a Death Star strike actually does', () => {
     }
   });
 
-  /**
-   * ONE WINDOW, AND WHAT SURVIVES IT. D179.
-   *
-   * This read "names both recovery windows and what the colony loses" and asserted
-   * an 8 in the released line. There is no colony drop and no second window: the
-   * card now states the two hours and the fleet that lives through them.
-   */
-  it('names the one recovery window and says the fleet survives it', () => {
-    expect(i18n.t('planet.deathStar.effectDark')).toMatch(/2/);
-    for (const forbidden of ['sahipsiz', 'released', '8 saat', '8 hours']) {
-      expect(i18n.t('planet.deathStar.effectDark').toLowerCase()).not.toContain(forbidden);
-      expect(i18n.t('planet.deathStar.effectCapital').toLowerCase()).not.toContain(forbidden);
-    }
-    // The fleet line is the reversal, so it is asserted rather than assumed.
-    expect(i18n.t('planet.deathStar.effectFleet').toLowerCase()).toMatch(/kal|surviv|stand/);
-  });
-
-  /**
-   * FOLDED, AND SHUT ON ARRIVAL. Owner instruction.
-   *
-   * Six lines of reference under a purchase nobody makes twice is height spent on
-   * every visit to pay for one. The rule is still one tap away, which is what
-   * progressive disclosure means: the row states the fact, the fold states the
-   * rule.
-   */
-  it('folds the effects list and starts it shut', () => {
-    show('reach');
-    const toggle = screen.getByRole('button', { name: i18n.t('planet.deathStar.effectsTitle') });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByText(i18n.t('planet.deathStar.effectFleet'))).not.toBeInTheDocument();
+  it('states the complete EMP rule directly without a redundant effects panel', () => {
+    show('tactical');
+    const copy = i18n.t('planet.deathStar.dangerHint');
+    expect(copy).toMatch(/Aegis/i);
+    expect(copy).toMatch(/1|hour|saat/i);
+    expect(copy).toMatch(/savunma|defence/i);
+    expect(copy).toMatch(/hasar almaz|cannot .*take damage|invulnerable/i);
+    expect(screen.getByText(copy)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /tek darbe ne yapar|what one impact does/i }))
+      .not.toBeInTheDocument();
   });
 });

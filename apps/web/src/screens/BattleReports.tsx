@@ -365,6 +365,7 @@ function StrategicReportSheet({
     (sum, order) => sum + order.cost.alloy + order.cost.crystal + order.cost.deuterium,
     0,
   );
+  const emp = report.outcome === 'FIRST_STRIKE' && report.damage === 0;
 
   return (
     <Sheet
@@ -390,6 +391,10 @@ function StrategicReportSheet({
               ? 'reports.strategicTelescopeTrigger'
               : 'reports.strategicRadarTrigger')}
           </p>
+        </div>
+      ) : emp ? (
+        <div className="plate plate-inset p-3 text-body text-bone">
+          {t('reports.strategicEmpEffect')}
         </div>
       ) : (
         <div className="space-y-3">

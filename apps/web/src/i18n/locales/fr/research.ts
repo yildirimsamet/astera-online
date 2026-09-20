@@ -77,9 +77,9 @@ export const research = {
   deathStarName: "Protocole de l’Étoile de la Mort",
   deathStarTag: "Débloque l’Étoile de la Mort",
   deathStarRole:
-    "Permet de construire une Étoile de la Mort à usage unique sur un monde disposant d’un Noyau de Commandement de niveau 12 et d’un Chantier Spatial de niveau 5. Une planète capitale ne peut pas être capturée.",
+    "L’Étoile de la Mort se construit désormais sans cette recherche ; ce projet est indisponible.",
   deathStarDetail:
-    "Chaque tir consomme une Étoile de la Mort. Il détruit la moitié des ressources du Dépôt et du stock de production ; fait perdre un niveau au Noyau de Commandement et deux niveaux à l’Aegis ; ramène les bâtiments dépassant la nouvelle limite du Noyau à cette limite et annule sans remboursement les travaux de construction en cours. Toutes les flottes restent en place et le monde ne change jamais de mains. Pendant deux heures, le monde ne peut ni produire, ni collecter des ressources, ni lancer de commandes, ni faire décoller d’appareils.",
+    "Une frappe EMP vide l’Aegis et bloque sa régénération pendant une heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant cette période.",
   synthesisName: "Synthèse du Deutérium",
   synthesisTag: "Augmente le niveau maximal de la Raffinerie",
   synthesisRole:

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -63,6 +63,8 @@ async function show({
   forced = false,
   archiveFailure = false,
   noRewards = false,
+  liveScore = 0,
+  isBot = false,
 } = {}) {
   await i18n.changeLanguage('en');
   const fetch = vi.fn();
@@ -72,9 +74,9 @@ async function show({
   client.setQueryData(keys.leaderboard, {
     ladder: [
       { rank: 1, playerId: 'live-other', username: 'Live Rival', score: 20 },
-      { rank: 2, playerId: 'live-self', username: 'Live Self', score: 0 },
+      { rank: 2, playerId: 'live-self', username: 'Live Self', score: liveScore },
     ],
-    you: { rank: 2, playerId: 'live-self', username: 'Live Self', score: 0 },
+    you: { rank: 2, playerId: 'live-self', username: 'Live Self', score: liveScore, isBot },
   });
   client.setQueryData(keys.season, {
     seasonId, shard: 'EU-1', shardName: 'Orion', seed: 1, status: 'live',
@@ -98,6 +100,23 @@ async function show({
   }
   client.setQueryData(keys.archivedLeaderboard(seasonId), {
     season: { seasonId, ordinal: 1, shard: 'EU-1', shardName: 'Orion', status: 'frozen', startsAt, endsAt },
+    record: {
+      version: 1,
+      champion: { commanderName: 'Archive Ace', dominion: 12_500 },
+      clanPodium: [
+        { rank: 1, name: 'Orbit Guard', tag: 'ORB', dominion: 4_500 },
+        { rank: 2, name: 'Deep Watch', tag: 'DWP', dominion: 3_200 },
+      ],
+      biggestBattle: {
+        attackerName: 'Archive Ace', defenderName: 'Rival Prime', planetName: 'Aster Prime',
+        totalLossValue: 8_400, occurredAt: new Date('2026-01-20T12:00:00.000Z'),
+      },
+      sharpestDominionSwing: {
+        attackerName: 'Archive Ace', defenderName: 'Rival Prime', amount: 900,
+        occurredAt: new Date('2026-01-20T12:00:00.000Z'),
+      },
+      mostContestedWorld: { planetName: 'Aster Prime', events: 7 },
+    },
     ladder: [{
       resultId,
       rank: 1,
@@ -275,6 +294,17 @@ describe('season archive surface', () => {
     expect(screen.getByRole('tab', { name: 'Season 1' })).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('opens a completed galaxy with its shared permanent record above the standings', async () => {
+    await show();
+    await userEvent.setup().click(screen.getByRole('button', { name: /Season 1 · EU-1/i }));
+
+    const record = screen.getByRole('region', { name: 'Galaxy Record' });
+    expect(within(record).getByText('Archive Ace')).toBeVisible();
+    expect(within(record).getByText('[ORB] Orbit Guard')).toBeVisible();
+    expect(within(record).getAllByText(/Archive Ace.*Rival Prime/)).toHaveLength(2);
+    expect(within(record).getByText(/Aster Prime.*7 conflict records/)).toBeVisible();
+  });
+
   /**
    * THE QUESTION THE WHOLE FEATURE EXISTS TO ANSWER, ASKED MID-SEASON.
    *
@@ -286,7 +316,7 @@ describe('season archive surface', () => {
    * them find themselves in a table.
    */
   it('shows what the season is being played for, and where the reader stands', async () => {
-    await show();
+    await show({ liveScore: 1 });
     const user = userEvent.setup();
 
     expect(screen.getByText('End of season prize')).toBeVisible();
@@ -311,6 +341,21 @@ describe('season archive surface', () => {
     // And the reader's own position, said as a position.
     expect(screen.getByText('Rank 2 · you are winning this')).toBeVisible();
     expect(screen.getByText(/lands the moment you found your world/)).toBeVisible();
+  });
+
+  it('does not promise a prize to a top-ten commander below minimum Dominion', async () => {
+    await show({ liveScore: 0 });
+
+    expect(screen.queryByText('Rank 2 · you are winning this')).toBeNull();
+    expect(screen.getByText('Rank 2')).toBeVisible();
+    expect(screen.getByText('1 more Dominion to qualify for a prize.')).toBeVisible();
+  });
+
+  it('does not promise a prize to a bot account with a winning score', async () => {
+    await show({ liveScore: 10, isBot: true });
+
+    expect(screen.queryByText('Rank 2 · you are winning this')).toBeNull();
+    expect(screen.getByText('Bots keep their rank but cannot receive a season prize.')).toBeVisible();
   });
 
   /** A galaxy whose cycle predates the program promises nothing, and shows nothing. */

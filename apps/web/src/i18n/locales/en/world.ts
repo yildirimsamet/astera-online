@@ -46,6 +46,14 @@ export const galaxy = {
     title: "Galaxy events",
     intro: "The windows that repeat through the working week and at the weekend.",
     timeZone: "Türkiye time (UTC+3)",
+    nextLabel: "Next event",
+    nextUpcoming: "{{event}} · in {{duration}}",
+    localTime: "Local · {{time}}",
+    event: {
+      ASTEROID_SHOWER: "Asteroid Shower",
+      TRADE_SHIP: "Trade Ship",
+      INTERGALACTIC_CONVOY: "Intergalactic Convoy",
+    },
     dailyNote: "Weekdays are Monday–Friday, the weekend Saturday–Sunday. Times are Türkiye time.",
     days: {
       WEEKDAY: "Weekdays",
@@ -81,6 +89,7 @@ export const galaxy = {
   clanmate: "Clanmate",
   rival: "Rival",
   recovery: "Recovery breach",
+  emp: "EMP blackout",
   claimOpen: "Claim open",
 
   /** What a launch says as it leaves. */
@@ -189,7 +198,7 @@ export const focus = {
       confirming: "Dispatching…",
     },
     deathStar: "Death Star",
-    deathStarStrike: "Death Star · devastate",
+    deathStarStrike: "Death Star · EMP strike",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -201,12 +210,12 @@ export const focus = {
      * what a strike does belongs beside the forge that builds one.
      */
     strikeConfirm: {
-      eyebrow: "Strategic strike",
-      title: "Devastate {{world}}",
+      eyebrow: "Tactical EMP strike",
+      title: "Suppress {{world}}",
       lead: "The Death Star is consumed by the strike. It cannot be recalled and nothing brings it back.",
-      outage: "Darkness",
-      keeps: "The world stays with its commander and every fleet standing there survives.",
-      commit: "Launch the strike",
+      outage: "EMP blackout",
+      keeps: "Aegis is emptied and cannot regenerate for one hour. Ground defences stay offline and take no damage.",
+      commit: "Launch EMP",
       back: "Hold fire",
     },
     deathStarUnavailable: "No Death Star ready",
@@ -220,7 +229,7 @@ export const focus = {
     kindNeutral: "Neutral",
     capitalProtected: "Uncapturable capital",
     capitalProtectedHint:
-      "A Death Star halves its stores and takes a level off its Core. It destroys no craft and control never changes.",
+      "A Death Star empties Aegis and blocks its regeneration for one hour; ground defences stay offline and take no damage.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -230,9 +239,11 @@ export const focus = {
      */
     capitalRaidOnlyHint:
       "A raid takes resources and nothing else. A capital never changes hands, whatever lands on it.",
-    capitalRecovering: "Capital devastated · uncapturable",
+    capitalRecovering: "Capital recovering · uncapturable",
     capitalRecoveringHint:
-      "You may strike again: half of what is LEFT goes and the recovery restarts; control still cannot change.",
+      "Another EMP strike restarts the one-hour suppression; control still cannot change.",
+    capitalEmp: "Capital under EMP",
+    capitalEmpHint: "Aegis is empty and ground defences are offline and invulnerable until the one-hour EMP ends.",
     yourCapital: "Your protected capital",
     yourColony: "Your colony",
     transferHint: "Move craft and resources here with a one-way transfer.",
@@ -267,8 +278,6 @@ export const focus = {
     claimCloses: "Closes in {{duration}}",
     claimRaidStillOpen:
       "Another raid is possible; it does not extend this claim.",
-    claimDeathStarConsequence:
-      "A Death Star clears this claim and starts {{duration}} of recovery. It takes no world and loses nobody one — the world goes dark, and comes back.",
     openColonySlot: "Colony slot",
     colonySlotExplain:
       "Needed only for step 3. Your capital's Command Core must provide an unused colony slot when the founding fleet leaves.",
@@ -295,10 +304,11 @@ export const focus = {
     deathStarRoute: "What a strike does",
     /** The clock a defender is racing, named for what runs out at the end of it. */
     recoveryBreach: "Recovery · world dark",
+    empBreach: "EMP blackout · defences offline",
     occupationProtected: "Occupation protection",
     protectedFor: "Cannot be struck or captured for {{duration}}.",
-    firstImpact: "Damage + {{duration}} dark",
-    secondImpact: "The clock runs out · the world is unchanged",
+    firstImpact: "Aegis zero + {{duration}} EMP",
+    secondImpact: "EMP ends · defences return",
     deathStarReadyRequirement: "Death Star ready",
     deathStarReadyExplain:
       "A strike needs a completed Death Star waiting at the launch world.",
@@ -312,6 +322,8 @@ export const focus = {
      */
     recoveryDropWarning:
       "{{duration}} left. Nothing is produced and nothing can launch until then. The world stays yours and your fleet is intact.",
+    empWarning:
+      "{{duration}} left. Aegis cannot regenerate; ground defences neither fire nor take damage.",
 
     eyebrow: "Held by {{owner}}",
     location: "World · {{planet}}",

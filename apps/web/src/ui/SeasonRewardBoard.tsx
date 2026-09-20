@@ -51,7 +51,11 @@ export function SeasonRewardBoard({
   const places = program.tiers.length;
   const tableOpen = tiers.isOpen('tiers');
   const yours = board?.you?.rank ?? null;
-  const winning = yours !== null && yours <= places;
+  const minimumNeeded = board?.you
+    ? Math.max(0, program.minimumDominion - board.you.score)
+    : 0;
+  const winning = yours !== null && yours <= places && minimumNeeded === 0
+    && board?.you?.isBot !== true;
   const mine = winning ? program.tiers.find((tier) => tier.place === yours) ?? null : null;
 
   /**
@@ -64,7 +68,7 @@ export function SeasonRewardBoard({
    */
   const cutoff = board?.ladder.find((row) => row.rank === places) ?? null;
   const behind = !winning && cutoff && board?.you
-    ? Math.max(0, cutoff.score - board.you.score)
+    ? Math.max(0, cutoff.score - board.you.score + 1)
     : null;
 
   const left = season?.status === 'live'
@@ -88,7 +92,7 @@ export function SeasonRewardBoard({
       </header>
 
       <p className="mt-2 text-label leading-snug text-dim">
-        {t('leaderboard.rewards.explain', { places })}
+        {t('leaderboard.rewards.explain', { places, minimum: full(program.minimumDominion) })}
       </p>
 
       <div className="plate plate-cut mt-3 overflow-hidden">
@@ -170,7 +174,11 @@ export function SeasonRewardBoard({
               {t('leaderboard.rewards.standing', { place: yours })}
             </p>
             <p className="mt-1 text-body leading-snug text-bone">
-              {behind === null
+              {board?.you?.isBot === true
+                ? t('leaderboard.rewards.botIneligible')
+                : minimumNeeded > 0
+                ? t('leaderboard.rewards.minimum', { score: full(minimumNeeded) })
+                : behind === null
                 ? t('leaderboard.rewards.climb', { places })
                 : t('leaderboard.rewards.behind', { score: full(behind), places })}
             </p>

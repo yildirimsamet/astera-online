@@ -144,7 +144,7 @@ describe('the interception grid', () => {
       expect(await interceptors(f, defender, 'CONSUMED')).toHaveLength(1);
       // And the world was never struck.
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).toBeNull();
+      expect(world?.empUntil).toBeNull();
     });
 
     /**
@@ -340,7 +340,7 @@ describe('the interception grid', () => {
       f.clock.set(launched.arriveAt);
       await worker.tick();
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).toBeNull();
+      expect(world?.empUntil).toBeNull();
       const impacts = await f.db.select().from(strategicImpacts)
         .where(eq(strategicImpacts.missionId, launched.missionId));
       expect(impacts.map((impact) => impact.outcome)).toEqual(['INTERCEPTED']);
@@ -354,7 +354,7 @@ describe('the interception grid', () => {
 
       expect(await interceptors(f, defender, 'READY')).toHaveLength(1);
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).not.toBeNull();
+      expect(world?.empUntil).not.toBeNull();
     });
 
     it('fires through Telescope sight when Radar is below L3', async () => {
@@ -385,8 +385,11 @@ describe('the interception grid', () => {
         kind: 'COLONY',
       }).where(eq(planets.id, colony));
       await placeAt(f.db, colony, { x: 2_000 });
+      await setLevel(f.db, colony, 'CORE', 8);
       await giveSatellite(f.db, colony, 'UPLINK');
       await giveInstrument(f.db, colony, 'TELESCOPE', 1);
+      expect((await f.db.transaction((tx) => planetView(tx, colony, f.clock)))
+        .effectiveInstruments.TELESCOPE).toBe(1);
 
       const launched = await strike();
 
@@ -408,7 +411,7 @@ describe('the interception grid', () => {
       await strike();
 
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).not.toBeNull();
+      expect(world?.empUntil).not.toBeNull();
     });
 
     it('lets the strike land once the charge is spent', async () => {
@@ -426,7 +429,7 @@ describe('the interception grid', () => {
       await strike();
 
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).not.toBeNull();
+      expect(world?.empUntil).not.toBeNull();
     });
 
     /** A caretaker world has no commander, no research and nothing to fire. */
@@ -493,7 +496,7 @@ describe('the interception grid', () => {
       expect(await struckOutcome(launched.missionId)).toEqual(['INTERCEPTED']);
       expect(await interceptors(f, defender, 'CONSUMED')).toHaveLength(1);
       const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      expect(world?.recoveryUntil).toBeNull();
+      expect(world?.empUntil).toBeNull();
       // Recorded where the weapon crossed the ring, not where the worker woke.
       const [shot] = await f.db.select().from(strategicInterceptions)
         .where(eq(strategicInterceptions.missionId, launched.missionId));
@@ -598,11 +601,11 @@ describe('the interception grid', () => {
   });
 
   describe('what it takes to have one', () => {
-    it('cannot be built without the research', async () => {
+    it('can be built without the retired research', async () => {
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
       await expect(buildInterceptor(f.db, defender, f.clock))
-        .rejects.toMatchObject({ code: 'INTERCEPTOR_LOCKED' });
+        .resolves.toBeTruthy();
     });
 
     it('cannot be built on a world with no circle to fire along', async () => {
@@ -615,8 +618,9 @@ describe('the interception grid', () => {
         } });
     });
 
-    it('refuses a second charge while one is already loaded', async () => {
+    it('allows a second charge but refuses a third', async () => {
       await armDefender();
+      await expect(buildInterceptor(f.db, defender, f.clock)).resolves.toBeTruthy();
       await expect(buildInterceptor(f.db, defender, f.clock))
         .rejects.toMatchObject({ code: 'INTERCEPTOR_LOADED' });
     });
@@ -696,10 +700,10 @@ describe('stockpiling a second Death Star', () => {
     f.clock.advance(250);
   });
 
-  it('allows only one without the stockpile research', async () => {
+  it('allows two by default without the retired stockpile research', async () => {
     await buildDeathStar(f.db, capital, f.clock);
     await expect(buildDeathStar(f.db, capital, f.clock))
-      .rejects.toMatchObject({ code: 'DEATH_STAR_EXISTS' });
+      .resolves.toBeTruthy();
   });
 
   it('allows a second once the research is held', async () => {
@@ -1067,9 +1071,9 @@ describe('two weapons against one charge', () => {
     const intercepted = rows.filter((row) => row.status === 'resolved'
       && row.arriveAt > f.clock.now());
     void intercepted;
-    // One world was struck: recovery is the mark a strike actually landed.
+    // One world was struck: the EMP timer marks a strike that landed.
     const [world] = await f.db.select().from(planets).where(eq(planets.id, defender));
-    expect(world?.recoveryUntil).not.toBeNull();
+    expect(world?.empUntil).not.toBeNull();
   });
 });
 
@@ -1213,12 +1217,8 @@ describe('a world holding both kinds of strategic asset', () => {
     });
   });
 
-  /**
-   * A strike stops strategic construction (D113). With two builds standing it has
-   * to stop BOTH — pausing one and leaving the other running is a world that kept
-   * building through a bombardment.
-   */
-  describe('under bombardment', () => {
+  /** EMP disables only the Aegis and ground defences; both builds keep their clocks. */
+  describe('under EMP', () => {
     const smash = async () => {
       await setLevel(f.db, attacker, 'CORE', DEATH_STAR.requiredCore);
       await setLevel(f.db, attacker, 'SHIPYARD', DEATH_STAR.requiredShipyard);
@@ -1229,55 +1229,17 @@ describe('a world holding both kinds of strategic asset', () => {
       await workerFor(f).tick();
     };
 
-    it('pauses both builds', async () => {
+    it('leaves weapon and battery construction untouched', async () => {
       await put(defender, 'DEATH_STAR', 'BUILDING');
       await put(defender, 'INTERCEPTOR', 'BUILDING');
+      const before = await assetsOn(defender);
 
       await smash();
 
       const rows = await assetsOn(defender);
       expect(rows).toHaveLength(2);
-      expect(rows.every((row) => row.status === 'PAUSED')).toBe(true);
-      expect(rows.every((row) => (row.remainingSeconds ?? 0) > 0)).toBe(true);
-    });
-
-    it('resumes both when the recovery window closes', async () => {
-      await put(defender, 'DEATH_STAR', 'BUILDING');
-      await put(defender, 'INTERCEPTOR', 'BUILDING');
-
-      await smash();
-      const [struck] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      f.clock.set(struck!.recoveryUntil!);
-      await workerFor(f).tick();
-
-      const rows = await assetsOn(defender);
-      expect(rows.every((row) => row.status === 'BUILDING'), JSON.stringify(rows)).toBe(true);
-      for (const row of rows) {
-        expect(row.readyAt?.getTime())
-          .toBe(f.clock.now().getTime() + (row.remainingSeconds ?? 0) * 1000);
-      }
-    });
-
-    /** Each paused build gets its own completion event back, not one between them. */
-    it('schedules a completion for each resumed build', async () => {
-      await put(defender, 'DEATH_STAR', 'BUILDING');
-      await put(defender, 'INTERCEPTOR', 'BUILDING');
-
-      await smash();
-      const [struck] = await f.db.select().from(planets).where(eq(planets.id, defender));
-      f.clock.set(struck!.recoveryUntil!);
-      await workerFor(f).tick();
-
-      const rows = await assetsOn(defender);
-      const pending = await f.db
-        .select()
-        .from(scheduledEvents)
-        .where(and(
-          eq(scheduledEvents.kind, 'death_star_ready'),
-          eq(scheduledEvents.status, 'pending'),
-        ));
-      expect(pending.map((row) => row.refId).sort())
-        .toEqual(rows.map((row) => row.id).sort());
+      expect(rows.every((row) => row.status === 'BUILDING')).toBe(true);
+      expect(rows.map((row) => row.readyAt)).toEqual(before.map((row) => row.readyAt));
     });
   });
 });

@@ -68,9 +68,9 @@ describe('monthly economy', () => {
     expect(purse.deuterium).toBe(0);
   });
   it('links the other purchases and moving targets to the same economy', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 143661, crystal: 71832, deuterium: 5952 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 71831, crystal: 35916, deuterium: 2976 });
     expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
-    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 43100, crystal: 21551, deuterium: 1787 });
+    expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21550, crystal: 10776, deuterium: 894 });
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
     expect(CLAN.creationCost.alloy).toBe(Math.ceil(profileIncome(6).alloy * 8));
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });

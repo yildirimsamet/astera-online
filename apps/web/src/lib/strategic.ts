@@ -13,5 +13,9 @@ export function deathStarsOf(planet: PlanetView): readonly StrategicAsset[] {
   return planet.deathStars ?? (planet.strategic ? [planet.strategic] : []);
 }
 
+export function interceptorsOf(planet: PlanetView): readonly StrategicAsset[] {
+  return planet.interceptors ?? (planet.interceptor ? [planet.interceptor] : []);
+}
+
 export const readyDeathStar = (planet: PlanetView): StrategicAsset | undefined =>
   deathStarsOf(planet).find((asset) => asset.status === 'READY');

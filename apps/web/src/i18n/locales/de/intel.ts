@@ -356,6 +356,7 @@ export const reports = {
   gradePartial: 'PARTIAL',
   gradeRepelled: 'REPELLED',
   strategicFirstStrike: 'IMPACT',
+  strategicEmpEffect: 'Die Aegis fiel auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.',
   strategicCaptured: 'CAPTURED',
   strategicIneffective: 'INEFFECTIVE',
   strategicIntercepted: 'INTERCEPTED',

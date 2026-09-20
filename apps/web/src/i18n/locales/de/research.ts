@@ -92,9 +92,9 @@ export const research = {
   deathStarName: "Todesstern-Protokoll",
   deathStarTag: "Schaltet den Todesstern frei",
   deathStarRole:
-    "Lässt eine Welt mit Kommandokern 12 und Shipyard 5 den Einweg-Todesstern bauen. Eine Hauptstadt kann niemals erobert werden.",
+    "Der Todesstern wird jetzt ohne diese Forschung gebaut; dieses Projekt ist nicht verfügbar.",
   deathStarDetail:
-    "Jeder Schlag verbraucht einen Todesstern. Es entfernt die Hälfte der Ressourcen im Lager und in den Werken, senkt den Kommandokern um eine Stufe und die Aegis um zwei, klemmt Gebäude an die neue Kernobergrenze und bricht Bauarbeiten ohne Rückerstattung ab. Jede Flotte bleibt stehen und die Welt wechselt nie den Besitzer. Zwei Stunden lang kann die Welt nicht produzieren, sammeln, Bestellungen aufgeben oder starten.",
+    "Ein EMP-Angriff entlädt die Aegis und verhindert eine Stunde lang ihre Regeneration. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.",
 
   synthesisName: "Deuteriumsynthese",
   synthesisTag: "Erhöht die Raffinerie-Obergrenze",

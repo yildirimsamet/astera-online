@@ -801,6 +801,42 @@ export async function activeGalaxyEvents(
   });
 }
 
+/** Only the next public fixed-window start is disclosed; legacy random windows stay secret. */
+export async function nextPublicGalaxyEvent(db: Db, accountId: string, clock: Clock) {
+  const [me] = await db
+    .select({
+      seasonId: players.seasonId,
+      rulesetVersion: seasons.rulesetVersion,
+      seasonStatus: seasons.status,
+    })
+    .from(players)
+    .innerJoin(seasons, eq(players.seasonId, seasons.id))
+    .where(eq(players.accountId, accountId))
+    .limit(1);
+  if (!me) throw new GameError('NO_PLANET', 'Join a galaxy first', 404);
+  if (me.seasonStatus !== 'live') return null;
+
+  const kinds = galaxyEventKindsForRuleset(me.rulesetVersion);
+  if (kinds.length === 0) return null;
+  const definitions = galaxyEventConfigForRuleset(me.rulesetVersion).definitions;
+  const fixedKinds = kinds.filter(
+    (kind) => definitions[kind].schedule === 'FIXED_DAILY',
+  );
+  if (fixedKinds.length === 0) return null;
+
+  const [next] = await db
+    .select({ kind: galaxyEventOccurrences.kind, startsAt: galaxyEventOccurrences.startsAt })
+    .from(galaxyEventOccurrences)
+    .where(and(
+      eq(galaxyEventOccurrences.seasonId, me.seasonId),
+      gt(galaxyEventOccurrences.startsAt, clock.now()),
+      inArray(galaxyEventOccurrences.kind, fixedKinds),
+    ))
+    .orderBy(asc(galaxyEventOccurrences.startsAt), asc(galaxyEventOccurrences.kind))
+    .limit(1);
+  return next ?? null;
+}
+
 /**
  * THE MERCHANT ONE OCCURRENCE ID NAMES, OR NULL. D156.
  *

@@ -5,6 +5,7 @@
 
 export const planet = {
   recovery: "Recuperación en curso · los sistemas regresan en {{duration}}",
+  empActive: "EMP · Égida a cero y sin regeneración durante {{duration}}; las defensas terrestres no disparan ni reciben daño.",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -14,6 +15,7 @@ export const planet = {
    */
   interceptor: {
     eyebrow: "Batería antiestratégica",
+    tally: "{{used}} de {{total}} cargas disponibles",
     none: "Sin cargo cargado",
     building: "Cargando · {{duration}}",
     paused: "Carga pausada durante la recuperación",
@@ -34,7 +36,8 @@ export const planet = {
   },
 
   deathStar: {
-    eyebrow: "Arma estratégica restringida",
+    eyebrow: "Arma EMP táctica",
+    tally: "{{used}} de {{total}} armas disponibles",
     none: "No hay Estrella de la Muerte en este mundo",
     building: "Edificio · {{duration}}",
     paused: "Compilación pausada durante la recuperación",
@@ -43,36 +46,15 @@ export const planet = {
     build: "Construir",
     started: "Comenzó la construcción de la Estrella de la Muerte",
     dangerHint:
-      "Un rompeplanetas unidireccional. No hace falta nada y no pierde a nadie un mundo: destruye, y oscurece, durante dos horas.",
+      "EMP: la Égida cae a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo.",
     readyHint:
-      "Armado. Selecciona cualquier mundo enemigo. Dos horas de recuperación, sea lo que sea; ningún mundo cambia jamás de manos.",
+      "Preparada: la Égida del objetivo cae a cero y no se regenera durante 1 hora; las defensas terrestres no disparan ni reciben daño.",
     needProtocol: "Protocolo",
     needCore: "Núcleo L{{level}}",
     needShipyard: "Astillero L{{level}}",
     needOperational: "Operativo mundial",
     buildTime: "{{duration}} · un arma · sin recuperación",
 
-    /**
-     * WHAT AN IMPACT DOES, SAID PLAINLY, BEFORE THE MONEY IS SPENT. D113.
-     *
-     * This is the most expensive thing in the game and its effect was described
-     * as "devastates" — a word that answers nothing. Five lines of consequence and
-     * one line of what SURVIVES, because knowing what a strike cannot take is
-     * what makes it a decision rather than a hope.
-     */
-    effectsTitle: "¿Qué hace un impacto?",
-    effectFleet: "Deja en pie todos los naves y cañones del mundo: el ataque nunca toca a una flota",
-    effectStock: "Destruye la mitad de todo lo almacenado y en proceso",
-    effectCore:
-      "Quita un nivel del Núcleo de Mando y baja los edificios por encima del nuevo techo del Core.",
-    effectAegis:
-      "Quita niveles {{levels}} de la Égida y deja caer el escudo a la nada.",
-    effectDark:
-      "Oscurece el mundo durante 2 horas: sin producción, recogida, construcción, pedidos ni lanzamientos",
-    /** D179: the strike is an OUTAGE. No world is lost and no fleet dies. */
-    effectCapital: "Ningún mundo cambia jamás de manos, de capital o de colonia; el tiempo simplemente se acaba",
-    effectSurvives:
-      "Los edificios dentro del nuevo techo del Núcleo, toda la investigación y otro hardware orbital sobreviven",
   },
   tabs: {
     label: "Categorías de planetas",
@@ -81,9 +63,11 @@ export const planet = {
     orbitProblem: "Intel",
     orbitQuestion: "Crea las herramientas que te ayudarán a ver a tus rivales.",
     reachProblem: "Flota",
-    reachQuestion: "Desarrolla tus naves, alcance y proyectos especiales aquí.",
+    reachQuestion: "Desarrolla tus naves y alcance aquí.",
     growProblem: "Producción",
     growQuestion: "Haga crecer sus recursos y el límite de nivel de construcción aquí.",
+    tacticalProblem: "Táctico",
+    tacticalQuestion: "Construye y administra herramientas tácticas aquí.",
   },
 
   wallet: {
@@ -284,10 +268,6 @@ export const planet = {
     synthesisTag: "Eleva el techo de la Refinería",
     synthesisRole:
       "Cada peldaño abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
-    deathStarName: "Protocolo de la Estrella de la Muerte",
-    deathStarTag: "Desbloquea la Estrella de la Muerte",
-    deathStarRole:
-      "Permite que este mundo construya una Estrella de la Muerte. El primer golpe devasta su objetivo; un segundo sólo puede capturar una colonia o un mundo neutral. Una capital no puede ser capturada.",
     researchNeedCore: "Elevar el núcleo de comando a L{{level}}",
     researchAct: "Investigación",
     researchComplete: "investigado",

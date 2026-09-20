@@ -89,8 +89,11 @@ export interface PublicWorld {
   satellites: SatelliteId[];
   /** Is there a dome. Never how strong it is. */
   shielded: boolean;
+  /** Independent of EMP: a protected world still refuses attack launches. */
+  attackProtectedUntil: Date | null;
   state:
     | { kind: 'NORMAL' }
+    | { kind: 'EMP'; until: Date }
     | { kind: 'RECOVERY'; until: Date }
     | { kind: 'PROTECTED'; until: Date };
   neutral?: {
@@ -301,8 +304,11 @@ export async function publicWorlds(
       commanderProtection === null ? null : new Date(commanderProtection.until),
     ].filter((at): at is Date => at !== null && at > now)
       .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
-    const state = r.planet.recoveryUntil && r.planet.recoveryUntil > now
-      ? { kind: 'RECOVERY' as const, until: r.planet.recoveryUntil }
+    const empActive = r.planet.empUntil !== null && r.planet.empUntil > now;
+    const state = empActive
+      ? { kind: 'EMP' as const, until: r.planet.empUntil! }
+      : r.planet.recoveryUntil && r.planet.recoveryUntil > now
+        ? { kind: 'RECOVERY' as const, until: r.planet.recoveryUntil }
       : shieldedUntil
         ? { kind: 'PROTECTED' as const, until: shieldedUntil }
         : { kind: 'NORMAL' as const };
@@ -324,7 +330,8 @@ export async function publicWorlds(
       satellites: installed.get(r.planet.id) ?? [],
       // A dome is public hardware, and a dark dome is a public physical state too.
       // Keep the fault itself private; publish only the observable consequence.
-      shielded: shielded.has(r.planet.id) && !darkCores.has(r.planet.id),
+      shielded: shielded.has(r.planet.id) && !darkCores.has(r.planet.id) && !empActive,
+      attackProtectedUntil: shieldedUntil,
       state,
       ...(r.clanId && r.clanName && r.clanTag
         ? { clan: { id: r.clanId, name: r.clanName, tag: r.clanTag } }

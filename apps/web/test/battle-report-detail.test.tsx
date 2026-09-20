@@ -119,6 +119,29 @@ beforeEach(async () => {
 });
 
 describe('what a battle report explains', () => {
+  it('shows only the EMP rule for a new non-damaging Death Star report', async () => {
+    const strategic: StrategicBattleReport = {
+      kind: 'STRATEGIC', id: 'emp-1', missionId: 'emp-mission-1',
+      at: new Date('2026-08-26T12:00:00.000Z'), attacking: false,
+      opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2',
+      yourPlanet: 'Vantage-3', outcome: 'FIRST_STRIKE', damage: 0,
+      destroyedFleet: {},
+      destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 800, trigger: null,
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [strategic] });
+    const api = { reports: () => Promise.resolve({ reports: [strategic] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports />
+    </ApiProvider></QueryClientProvider>);
+
+    await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
+    expect(screen.getByText(/Aegis dropped to zero/)).toBeVisible();
+    expect(screen.queryByText('Destroyed resources')).not.toBeInTheDocument();
+    expect(screen.queryByText('Construction destroyed')).not.toBeInTheDocument();
+  });
+
   it('shows every durable Death Star consequence to both report sides', async () => {
     const strategic: StrategicBattleReport = {
       kind: 'STRATEGIC',

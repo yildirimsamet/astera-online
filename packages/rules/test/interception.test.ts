@@ -67,9 +67,8 @@ describe('the interception grid', () => {
    * is on the board: send the first as bait, land the second. Each feature is the
    * other's cost.
    */
-  it('holds exactly one charge, which is what the stockpile is the answer to', () => {
-    expect(ANTI_STRATEGIC.maxCharges).toBe(1);
-    expect(strategicStockpile(1)).toBeGreaterThan(ANTI_STRATEGIC.maxCharges);
+  it('holds two charges by default', () => {
+    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
   });
 
   it('costs a real share of what it destroys, and never more', () => {
@@ -117,8 +116,8 @@ describe('the interception grid', () => {
  * turns two hits inside a recovery window into a colony changing hands.
  */
 describe('the strategic stockpile', () => {
-  it('allows one weapon without the research and two with it', () => {
-    expect(strategicStockpile(0)).toBe(1);
+  it('allows two weapons without the retired research', () => {
+    expect(strategicStockpile(0)).toBe(2);
     expect(strategicStockpile(1)).toBe(2);
   });
 

@@ -5,6 +5,7 @@
 
 export const planet = {
   recovery: "Wiederherstellung läuft · Systeme kehren in {{duration}} zurück",
+  empActive: "EMP · Aegis bei null und für {{duration}} ohne Regeneration; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -14,6 +15,7 @@ export const planet = {
    */
   interceptor: {
     eyebrow: "Antistrategische Batterie",
+    tally: "{{used}} von {{total}} Ladungen geladen",
     none: "Keine Gebühr geladen",
     building: "wird geladen · {{duration}}",
     paused: "Der Ladevorgang wurde während der Wiederherstellung angehalten",
@@ -34,7 +36,8 @@ export const planet = {
   },
 
   deathStar: {
-    eyebrow: "Eingeschränkte strategische Waffe",
+    eyebrow: "Taktische EMP-Waffe",
+    tally: "{{used}} von {{total}} Waffen vorhanden",
     none: "Kein Todesstern auf dieser Welt",
     building: "Gebäude · {{duration}}",
     paused: "Build wurde während der Wiederherstellung angehalten",
@@ -43,36 +46,15 @@ export const planet = {
     build: "Build",
     started: "Der Bau des Todessterns hat begonnen",
     dangerHint:
-      "Ein Einweg-Planetenbrecher. Es braucht nichts und es verliert niemanden eine Welt: Es zerstört und es verdunkelt sich für zwei Stunden.",
+      "EMP: Die Aegis fällt auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.",
     readyHint:
-      "Bewaffnet. Wählen Sie eine beliebige feindliche Welt aus. Zwei Stunden Erholung, was auch immer es sein mag; Keine Welt wechselt jemals den Besitzer.",
+      "Bereit: Die Aegis des Ziels fällt auf null und regeneriert sich 1 Stunde lang nicht; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
     needProtocol: "-Protokoll",
     needCore: "Kern L{{level}}",
     needShipyard: "Werft L{{level}}",
     needOperational: "Welt betriebsbereit",
     buildTime: "{{duration}} · eine Waffe · kein Rückruf",
 
-    /**
-     * WHAT AN IMPACT DOES, SAID PLAINLY, BEFORE THE MONEY IS SPENT. D113.
-     *
-     * This is the most expensive thing in the game and its effect was described
-     * as "devastates" — a word that answers nothing. Five lines of consequence and
-     * one line of what SURVIVES, because knowing what a strike cannot take is
-     * what makes it a decision rather than a hope.
-     */
-    effectsTitle: "Was ein Aufprall bewirkt",
-    effectFleet: "Lässt jedes Schiff und jede Waffe auf der Welt stehen – der Angriff berührt niemals eine Flotte",
-    effectStock: "Zerstört die Hälfte von allem, was gelagert und in Arbeit ist",
-    effectCore:
-      "Entfernt eine Ebene vom Kommandokern und senkt Gebäude über die neue Kerndecke ab",
-    effectAegis:
-      "Entzieht der Aegis {{levels}} Stufen und lässt den Schild auf nichts fallen",
-    effectDark:
-      "Verdunkelt die Welt für 2 Stunden: keine Produktion, Sammlung, Bau, Bestellungen oder Produkteinführungen",
-    /** D179: the strike is an OUTAGE. No world is lost and no fleet dies. */
-    effectCapital: "Keine Welt wechselt jemals den Besitzer, weder Hauptstadt noch Kolonie; Die Uhr läuft einfach ab",
-    effectSurvives:
-      "Gebäude innerhalb der neuen Kerndecke, sämtliche Forschungs- und andere Orbitalhardware bleibt erhalten",
   },
   tabs: {
     label: "Planetenkategorien",
@@ -81,9 +63,11 @@ export const planet = {
     orbitProblem: "Intel",
     orbitQuestion: "Erstellen Sie die Tools, die Ihnen helfen, Konkurrenten zu erkennen.",
     reachProblem: "Flotte",
-    reachQuestion: "Entwickeln Sie hier Ihre Schiffe, Reichweite und Sonderprojekte.",
+    reachQuestion: "Entwickeln Sie hier Ihre Schiffe und Reichweite.",
     growProblem: "Produktion",
     growQuestion: "Erweitern Sie hier Ihre Ressourcen und Ihr Gebäudelevel-Limit.",
+    tacticalProblem: "Taktisch",
+    tacticalQuestion: "Taktische Werkzeuge hier bauen und verwalten.",
   },
 
   wallet: {
@@ -284,10 +268,6 @@ export const planet = {
     synthesisTag: "Erhöht die Raffinerie-Obergrenze",
     synthesisRole:
       "Jede Sprosse öffnet drei weitere Ebenen der Deuterium-Raffinerie auf jeder Welt, die Sie besitzen",
-    deathStarName: "Todesstern-Protokoll",
-    deathStarTag: "Schaltet den Todesstern frei",
-    deathStarRole:
-      "Lässt diese Welt einen Todesstern bauen. Der erste Schlag zerstört sein Ziel; Eine Sekunde kann nur eine Kolonie oder eine neutrale Welt erobern. Eine Hauptstadt kann nicht erobert werden.",
     researchNeedCore: "Befehlskern auf L{{level}} erhöhen",
     researchAct: "Forschung",
     researchComplete: "recherchiert",

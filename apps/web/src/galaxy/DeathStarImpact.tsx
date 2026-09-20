@@ -7,10 +7,7 @@ import { serverNow } from '../lib/clock.js';
 import { FullRate } from './frames.jsx';
 import {
   ringTexture,
-  fireTexture,
   publicEffectIntensity,
-  smokeTexture,
-  sparkTexture,
 } from './vfx.js';
 import { toWorld, type PlanetNode, type Vec3Tuple } from './scene.js';
 
@@ -195,242 +192,116 @@ export function TimedImpact({ event }: { event: DeathStarImpactEvent }) {
   return active ? <Impact event={event} /> : null;
 }
 
-interface BurstLobe {
-  offset: Vec3Tuple;
-  delay: number;
-  size: number;
-  drift: number;
-}
-
-/** Stable particles: everybody watching one mission sees the same destruction. */
-const seeded = (text: string): (() => number) => {
-  let state = 2166136261;
-  for (let i = 0; i < text.length; i += 1) {
-    state ^= text.charCodeAt(i);
-    state = Math.imul(state, 16777619);
-  }
-  return () => {
-    state = (state + 0x6d2b79f5) | 0;
-    let value = Math.imul(state ^ (state >>> 15), 1 | state);
-    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
-    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-  };
-};
-
-export function deathStarBurstLayout(id: string, count = 22): BurstLobe[] {
-  const random = seeded(id);
-  return Array.from({ length: count }, (_, i) => {
-    const angle = random() * Math.PI * 2;
-    const radial = 0.14 + random() * 0.76;
-    return {
-      offset: [
-        Math.cos(angle) * radial,
-        (random() - 0.5) * 0.72,
-        Math.sin(angle) * radial,
-      ],
-      delay: i === 0 ? 0 : 0.018 + random() * 0.16,
-      size: 0.7 + random() * 1.15,
-      drift: 0.5 + random() * 1.1,
-    };
-  });
-}
-
 function Impact({ event }: { event: DeathStarImpactEvent }) {
   const root = useRef<THREE.Group>(null);
-  const core = useRef<THREE.Sprite>(null);
+  const flash = useRef<THREE.Sprite>(null);
   const rings = useRef<(THREE.Sprite | null)[]>([]);
-  const fireballs = useRef<(THREE.Sprite | null)[]>([]);
-  const smokeClouds = useRef<(THREE.Sprite | null)[]>([]);
   const shell = useRef<THREE.Mesh>(null);
+  const arcs = useRef<(THREE.Mesh | null)[]>([]);
   const light = useRef<THREE.PointLight>(null);
-  const fire = useMemo(fireTexture, []);
   const ring = useMemo(ringTexture, []);
-  const smoke = useMemo(smokeTexture, []);
-  const lobes = useMemo(() => deathStarBurstLayout(event.id), [event.id]);
 
-  useFrame(() => {
+  useFrame((_state, delta) => {
     const elapsed = Math.max(0, serverNow() - event.at) / DEATH_STAR_IMPACT_MS;
     if (root.current) root.current.visible = elapsed < 1;
-    const pulse = Math.min(1, elapsed * 8.5);
-    if (core.current) {
-      const size = event.radius * (0.7 + pulse * 4.6);
-      core.current.scale.set(size, size, 1);
-      core.current.material.opacity = Math.max(0, 1 - elapsed * 3.7) * event.intensity;
+    const opening = Math.min(1, elapsed * 12);
+    const fade = Math.max(0, 1 - elapsed);
+
+    if (flash.current) {
+      const size = event.radius * (0.6 + opening * 3.4);
+      flash.current.scale.set(size, size, 1);
+      flash.current.material.opacity = Math.max(0, 1 - elapsed * 5) * event.intensity;
     }
-    for (const [i, sprite] of rings.current.entries()) {
-      if (!sprite) continue;
-      const offset = i * 0.105;
-      const progress = Math.max(0, Math.min(1, (elapsed - offset) / (0.38 + i * 0.1)));
-      const size = event.radius * (0.9 + progress * (4.7 + i * 0.75));
-      sprite.visible = elapsed >= offset && progress < 1;
+    rings.current.forEach((sprite, i) => {
+      if (!sprite) return;
+      const delay = i * 0.07;
+      const progress = Math.max(0, Math.min(1, (elapsed - delay) / 0.5));
+      sprite.visible = elapsed >= delay && progress < 1;
+      const size = event.radius * (1 + progress * (5.5 + i));
       sprite.scale.set(size, size, 1);
       sprite.material.opacity = Math.sin(progress * Math.PI)
-        * (0.56 - i * 0.17)
+        * (0.75 - i * 0.16)
         * event.intensity;
-    }
-    lobes.forEach((lobe, i) => {
-      const sprite = fireballs.current[i];
-      if (!sprite) return;
-      const progress = Math.max(0, Math.min(1, (elapsed - lobe.delay) / 0.5));
-      const visible = elapsed >= lobe.delay && progress < 1;
-      sprite.visible = visible;
-      // Ignition starts across the struck hemisphere, not as one regular blob at
-      // the exact centre. The lobe then tears outward from that surface point.
-      const travel = event.radius * (0.34 + lobe.drift * progress);
-      sprite.position.set(
-        lobe.offset[0] * travel,
-        lobe.offset[1] * travel,
-        lobe.offset[2] * travel,
-      );
-      const size = event.radius * lobe.size * (0.26 + Math.sin(progress * Math.PI) * 0.92);
-      sprite.scale.set(size, size, 1);
-      sprite.material.opacity = visible
-        ? Math.sin(progress * Math.PI) * 0.88 * event.intensity
-        : 0;
-    });
-    lobes.slice(0, 9).forEach((lobe, i) => {
-      const sprite = smokeClouds.current[i];
-      if (!sprite) return;
-      const delay = 0.14 + lobe.delay * 0.6;
-      const progress = Math.max(0, Math.min(1, (elapsed - delay) / 0.78));
-      sprite.visible = elapsed >= delay && progress < 1;
-      const travel = event.radius * lobe.drift * (0.48 + progress * 1.55);
-      sprite.position.set(
-        lobe.offset[0] * travel,
-        lobe.offset[1] * travel + event.radius * progress * 0.3,
-        lobe.offset[2] * travel,
-      );
-      const size = event.radius * lobe.size * (0.72 + progress * 2.4);
-      sprite.scale.set(size, size, 1);
-      sprite.material.rotation = i * 0.79 + progress * (i % 2 === 0 ? 0.35 : -0.35);
-      sprite.material.opacity = Math.sin(progress * Math.PI) * 0.54 * event.intensity;
     });
     if (shell.current) {
-      const progress = Math.min(1, elapsed / 0.18);
-      shell.current.scale.setScalar(event.radius * (1.01 + progress * 0.12));
-      const material = shell.current.material as THREE.MeshBasicMaterial;
-      material.opacity = Math.max(0, (1 - progress) * 0.52) * event.intensity;
+      shell.current.rotation.y += delta * 4.2;
+      shell.current.rotation.z -= delta * 2.7;
+      shell.current.scale.setScalar(event.radius * (1.05 + opening * 0.75));
+      (shell.current.material as THREE.MeshBasicMaterial).opacity =
+        Math.max(0, 0.62 - elapsed * 0.75) * event.intensity;
     }
+    arcs.current.forEach((arc, i) => {
+      if (!arc) return;
+      arc.rotation.x += delta * (2.1 + i * 0.5);
+      arc.rotation.y -= delta * (2.8 + i * 0.35);
+      arc.scale.setScalar(event.radius * (1.2 + opening * (1.4 + i * 0.18)));
+      (arc.material as THREE.MeshBasicMaterial).opacity =
+        Math.max(0, fade * (0.8 - i * 0.12)) * event.intensity;
+    });
     if (light.current) {
-      light.current.intensity = Math.max(0, 52 * (1 - elapsed * 2.4) ** 3)
+      light.current.intensity = Math.max(0, 60 * (1 - elapsed * 3.2) ** 3)
         * event.intensity;
     }
   });
 
   return (
-    <group ref={root} name="death-star-impact" position={event.position}>
+    <group ref={root} name="death-star-emp-impact" position={event.position}>
       <FullRate />
-      <pointLight ref={light} color="#ff7840" distance={event.radius * 22} intensity={52} decay={2} />
-      <sprite ref={core} renderOrder={1310}>
-        <spriteMaterial map={fire} color="#fff4d4" transparent depthTest={false} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      <pointLight ref={light} color="#63f5ff" distance={event.radius * 24} intensity={60} decay={2} />
+      <sprite ref={flash} renderOrder={1310}>
+        <spriteMaterial
+          map={ring}
+          color="#e8ffff"
+          transparent
+          depthTest={false}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
       </sprite>
-      {['#ffe8b8', '#ff512f'].map((colour, i) => (
-        <sprite
-          key={colour}
-          ref={(node) => { rings.current[i] = node; }}
-          renderOrder={1307 - i}
-        >
-          <spriteMaterial map={ring} color={colour} transparent depthTest={false} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      {['#bffcff', '#53d9ff', '#8b7cff'].map((colour, i) => (
+        <sprite key={colour} ref={(node) => { rings.current[i] = node; }} renderOrder={1308 - i}>
+          <spriteMaterial
+            map={ring}
+            color={colour}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
         </sprite>
       ))}
-      {lobes.map((lobe, i) => (
-        <sprite
-          key={`fire-${String(i)}`}
-          ref={(node) => { fireballs.current[i] = node; }}
-          position={lobe.offset}
-          renderOrder={1305}
-        >
-          <spriteMaterial map={fire} color={i % 3 === 0 ? '#fff0ba' : '#ff7538'} transparent depthTest={false} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-        </sprite>
-      ))}
-      {lobes.slice(0, 9).map((lobe, i) => (
-        <sprite
-          key={`smoke-${String(i)}`}
-          ref={(node) => { smokeClouds.current[i] = node; }}
-          position={lobe.offset}
-          renderOrder={1299}
-        >
-          <spriteMaterial map={smoke} color={i % 2 === 0 ? '#6e4a47' : '#423b43'} transparent depthTest={false} depthWrite={false} />
-        </sprite>
-      ))}
-      <ImpactDebris event={event} />
-      <mesh ref={shell} renderOrder={1300}>
-        <sphereGeometry args={[1, 32, 24]} />
-        <meshBasicMaterial color="#ff3b19" transparent opacity={0.78} depthTest={false} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      <mesh ref={shell} renderOrder={1305}>
+        <icosahedronGeometry args={[1, 2]} />
+        <meshBasicMaterial
+          color="#52eaff"
+          wireframe
+          transparent
+          depthTest={false}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
       </mesh>
+      {[0, 1, 2].map((i) => (
+        <mesh
+          key={i}
+          ref={(node) => { arcs.current[i] = node; }}
+          rotation={[i * 0.9, i * 0.65, i * 1.15]}
+          renderOrder={1306}
+        >
+          <torusGeometry args={[1, 0.018 + i * 0.004, 8, 64, Math.PI * (1.15 + i * 0.2)]} />
+          <meshBasicMaterial
+            color={i === 2 ? '#a58cff' : '#7af7ff'}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
     </group>
-  );
-}
-
-function ImpactDebris({ event }: { event: DeathStarImpactEvent }) {
-  const points = useRef<THREE.Points>(null);
-  const spark = useMemo(sparkTexture, []);
-  const particles = useMemo(() => {
-    const random = seeded(`${event.id}:debris`);
-    return Array.from({ length: 96 }, () => {
-      const theta = random() * Math.PI * 2;
-      const z = random() * 2 - 1;
-      const radial = Math.sqrt(Math.max(0, 1 - z * z));
-      const speed = event.radius * (0.75 + random() * 2.1);
-      return {
-        velocity: new THREE.Vector3(Math.cos(theta) * radial, z * 0.7, Math.sin(theta) * radial)
-          .multiplyScalar(speed),
-        delay: random() * 0.24,
-      };
-    });
-  }, [event.id, event.radius]);
-  const geometry = useMemo(() => {
-    const buffer = new THREE.BufferGeometry();
-    buffer.setAttribute('position', new THREE.BufferAttribute(new Float32Array(particles.length * 3), 3));
-    return buffer;
-  }, [particles.length]);
-  const material = useMemo(() => new THREE.PointsMaterial({
-    map: spark,
-    color: '#ffb34c',
-    size: event.radius * 0.12,
-    transparent: true,
-    opacity: 1,
-    depthTest: false,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    sizeAttenuation: true,
-    toneMapped: false,
-  }), [event.radius, spark]);
-
-  useFrame(() => {
-    const elapsed = Math.max(0, serverNow() - event.at) / 1_000;
-    const position = geometry.getAttribute('position') as THREE.BufferAttribute;
-    particles.forEach((particle, i) => {
-      const seconds = Math.max(0, elapsed - particle.delay);
-      const drag = Math.max(0, 1 - seconds * 0.055);
-      position.setXYZ(
-        i,
-        particle.velocity.x * seconds * drag,
-        particle.velocity.y * seconds * drag - event.radius * 0.045 * seconds * seconds,
-        particle.velocity.z * seconds * drag,
-      );
-    });
-    position.needsUpdate = true;
-    material.opacity = Math.max(0, 1 - elapsed / 6.3) * event.intensity;
-    if (points.current) points.current.visible = elapsed < DEATH_STAR_IMPACT_MS / 1_000;
-  });
-
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
-
-  return (
-    <points
-      ref={points}
-      geometry={geometry}
-      material={material}
-      frustumCulled={false}
-      renderOrder={1304}
-      name="death-star-impact-debris"
-    />
   );
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../src/api/client.js';
@@ -43,17 +43,37 @@ afterEach(async () => {
 describe('the Dominion leaderboard', () => {
   it('renders a hundred rows with identity, planet, tier and score', async () => {
     await show();
+    const ladder = screen.getByRole('list', { name: 'Leaderboard' });
     expect(screen.getAllByRole('listitem')).toHaveLength(100);
-    expect(screen.getByText('İzci')).toBeInTheDocument();
+    expect(within(ladder).getByText('İzci')).toBeInTheDocument();
     expect(screen.getByText(/World 42 · Tier 3/)).toBeInTheDocument();
-    expect(screen.getByText('+8')).toBeInTheDocument();
+    expect(within(ladder).getByText('+8')).toBeInTheDocument();
   });
 
   it('highlights the caller and seeds its sigil from planetId', async () => {
     await show();
-    const mine = screen.getByText('İzci').closest('li');
+    const ladder = screen.getByRole('list', { name: 'Leaderboard' });
+    const mine = within(ladder).getByText('İzci').closest('li');
     expect(mine).toHaveAttribute('aria-current', 'true');
     expect(mine?.querySelector('img')).toHaveAttribute('src', planetArt('planet-42'));
+  });
+
+  it('pins one rival above and below a commander who is deep in the ladder', async () => {
+    await show();
+    const nearby = screen.getByRole('region', { name: 'Your closest rivals' });
+
+    expect(within(nearby).getByText('Commander 41')).toBeVisible();
+    expect(within(nearby).getByText('İzci')).toBeVisible();
+    expect(within(nearby).getByText('Commander 43')).toBeVisible();
+    expect(within(nearby).queryByText('Commander 40')).toBeNull();
+    expect(within(nearby).getByText('You')).toBeVisible();
+  });
+
+  it('hides the nearby-rival strip while searching so results stay unambiguous', async () => {
+    await show();
+    await userEvent.setup().type(screen.getByRole('searchbox'), 'World 12');
+
+    expect(screen.queryByRole('region', { name: 'Your closest rivals' })).toBeNull();
   });
 
   it('routes another commander name to the existing Galaxy focus', async () => {
@@ -84,8 +104,9 @@ describe('the Dominion leaderboard', () => {
 
   it('localises the panel in Turkish without folding dotted İ', async () => {
     await show('tr');
-    expect(screen.getByRole('list', { name: 'Liderlik tablosu' })).toBeInTheDocument();
-    expect(screen.getByText('İzci')).toBeInTheDocument();
+    const ladder = screen.getByRole('list', { name: 'Liderlik tablosu' });
+    expect(ladder).toBeInTheDocument();
+    expect(within(ladder).getByText('İzci')).toBeInTheDocument();
     expect(screen.getByText(/World 42 · 3\. kademe/)).toBeInTheDocument();
 
     const user = userEvent.setup();

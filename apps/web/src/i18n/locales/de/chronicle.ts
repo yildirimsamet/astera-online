@@ -38,9 +38,9 @@ export const chronicle = {
   neutralClaimDetail: 'Ein entscheidender Überfall eröffnete ein öffentliches Siedlungsrennen für diese Welt.',
   deathStarImpact: 'Einschlag des Todessterns bei {{planet}}',
   deathStarOutcome: {
-    FIRST_STRIKE: 'Die Welt war zerstört und wurde dunkel. Seine Kontrolle kann sich nicht ändern.',
-    CAPITAL_STRIKE: 'Die Hauptstadt wurde verwüstet und erholte sich. Seine Kontrolle kann sich nicht ändern.',
-    CAPTURED: 'Die Welt war zerstört und wurde dunkel. Seine Kontrolle kann sich nicht ändern.',
+    FIRST_STRIKE: 'EMP entlud die Aegis. Bodenverteidigungen feuern eine Stunde lang nicht und erleiden keinen Schaden.',
+    CAPITAL_STRIKE: 'EMP entlud die Aegis. Bodenverteidigungen feuern eine Stunde lang nicht und erleiden keinen Schaden.',
+    CAPTURED: 'EMP entlud die Aegis. Bodenverteidigungen feuern eine Stunde lang nicht und erleiden keinen Schaden.',
     INEFFECTIVE: 'Schutz oder Zielstaat hat den Schlag ohne Wirkung absorbiert.',
   },
   controlTransfer: '{{planet}} hat die Kontrolle geändert',

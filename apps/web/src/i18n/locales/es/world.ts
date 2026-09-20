@@ -46,6 +46,14 @@ export const galaxy = {
     title: "Eventos de galaxia",
     intro: "Estos eventos vuelven a celebrarse a horas fijas entre semana y los fines de semana.",
     timeZone: "Hora de Turquía (UTC+3)",
+    nextLabel: "Próximo evento",
+    nextUpcoming: "{{event}} · en {{duration}}",
+    localTime: "Hora local · {{time}}",
+    event: {
+      ASTEROID_SHOWER: "Lluvia de asteroides",
+      TRADE_SHIP: "Buque comercial",
+      INTERGALACTIC_CONVOY: "Convoy intergaláctico",
+    },
     dailyNote: "Días laborables: de lunes a viernes. Fin de semana: sábado y domingo. Todas las horas son de Turquía.",
     days: {
       WEEKDAY: "Días laborables",
@@ -81,6 +89,7 @@ export const galaxy = {
   clanmate: "Compañero de clan",
   rival: "Rival",
   recovery: "Protección de regreso vulnerada",
+  emp: "Apagón EMP",
   claimOpen: "Disponible para reclamar",
 
   /** What a launch says as it leaves. */
@@ -189,7 +198,7 @@ export const focus = {
       confirming: "Despachando…",
     },
     deathStar: "Estrella de la Muerte",
-    deathStarStrike: "Estrella de la Muerte · devastar",
+    deathStarStrike: "Estrella de la Muerte · ataque EMP",
 
     /**
      * THE SECOND BEAT ON A STRIKE. Owner report: *"yanlışlıkla"*.
@@ -201,12 +210,12 @@ export const focus = {
      * what a strike does belongs beside the forge that builds one.
      */
     strikeConfirm: {
-      eyebrow: "Golpe estratégico",
-      title: "Devastar {{world}}",
-      lead: "La Estrella de la Muerte es consumida por el golpe. No se puede recordar y nada lo devuelve.",
-      outage: "Oscuridad",
-      keeps: "El mundo permanece con su comandante y cada flota que se encuentra allí sobrevive.",
-      commit: "Lanzar la ataque",
+      eyebrow: "Ataque EMP táctico",
+      title: "Suprimir {{world}}",
+      lead: "La Estrella de la Muerte se consume con el ataque. No puede ser retirada.",
+      outage: "Apagón EMP",
+      keeps: "La Égida se vacía y no se regenera durante una hora. Las defensas terrestres quedan fuera de línea y no reciben daño.",
+      commit: "Lanzar EMP",
       back: "Mantenga el fuego",
     },
     deathStarUnavailable: "No hay Estrella de la Muerte lista",
@@ -220,7 +229,7 @@ export const focus = {
     kindNeutral: "Neutro",
     capitalProtected: "Capital incapturable",
     capitalProtectedHint:
-      "Una Estrella de la Muerte reduce a la mitad sus reservas y le quita un nivel a su Núcleo. No destruye ninguna nave y el control nunca cambia.",
+      "Una Estrella de la Muerte vacía la Égida y bloquea su regeneración durante una hora; las defensas terrestres quedan fuera de línea y no reciben daño.",
     /**
      * WHAT A CAPITAL IS WHILE THE WEAPON IS OFF. `STRATEGIC_CRAFTING_ENABLED`.
      *
@@ -230,9 +239,11 @@ export const focus = {
      */
     capitalRaidOnlyHint:
       "Una incursión requiere recursos y nada más. Una capital nunca cambia de manos, sea lo que sea que acabe en ella.",
-    capitalRecovering: "Capital devastado · incapturable",
+    capitalRecovering: "Capital recuperándose · incapturable",
     capitalRecoveringHint:
-      "Puedes volver a atacar: la mitad de lo que queda se va y la recuperación se reinicia; El control todavía no puede cambiar.",
+      "Otro ataque EMP reinicia la supresión de una hora; el control permanece igual.",
+    capitalEmp: "Capital bajo EMP",
+    capitalEmpHint: "La Égida está vacía y las defensas terrestres quedan fuera de línea e invulnerables durante una hora.",
     yourCapital: "Tu capital protegido",
     yourColony: "Tu colonia",
     transferHint: "Mueve naves y recursos aquí con una transferencia unidireccional.",
@@ -267,8 +278,6 @@ export const focus = {
     claimCloses: "Cierra en {{duration}}",
     claimRaidStillOpen:
       "Otra incursión es posible; no amplía esta afirmación.",
-    claimDeathStarConsequence:
-      "Una Estrella de la Muerte borra este reclamo e inicia {{duration}} la recuperación. No se necesita ningún mundo y no se pierde a nadie: el mundo se oscurece y regresa.",
     openColonySlot: "Espacio de colonia",
     colonySlotExplain:
       "Solo es necesario para el paso 3. El núcleo de comando de tu capital debe proporcionar un espacio de colonia no utilizado cuando la flota fundadora se vaya.",
@@ -295,6 +304,7 @@ export const focus = {
     deathStarRoute: "Qué hace una ataque",
     /** The clock a defender is racing, named for what runs out at the end of it. */
     recoveryBreach: "Recuperación · mundo oscuro",
+    empBreach: "Apagón EMP · defensas desconectadas",
     occupationProtected: "Protección laboral",
     protectedFor: "No se puede golpear ni capturar por {{duration}}.",
     firstImpact: "Daño + {{duration}} oscuro",
@@ -312,6 +322,7 @@ export const focus = {
      */
     recoveryDropWarning:
       "Quedan {{duration}}. Hasta entonces no se produce nada ni se pueden lanzar flotas. El mundo sigue siendo tuyo y tu flota está intacta.",
+    empWarning: "Quedan {{duration}}. La Égida no se regenera; las defensas terrestres no disparan ni reciben daño.",
 
     eyebrow: "En poder de {{owner}}",
     location: "Mundo · {{planet}}",

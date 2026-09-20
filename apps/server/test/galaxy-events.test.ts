@@ -30,6 +30,7 @@ import {
 import { tradeShipOf } from '../src/services/tradeField.js';
 import {
   activeGalaxyEvents,
+  nextPublicGalaxyEvent,
   ensureGalaxyEventLifecycleEvents,
   loadGalaxyEventSchedule,
   lockGalaxyEventAudience,
@@ -80,6 +81,18 @@ describe('persisted galaxy events', () => {
     }
     return { db, clock, season, playerIds, accountIds };
   }
+
+  it('keeps legacy random future event times private', async () => {
+    const { db, clock, accountIds } = await world(1, 7);
+    expect(await nextPublicGalaxyEvent(db, accountIds[0]!, clock)).toBeNull();
+  });
+
+  it('does not promise a fixed event after its season was frozen early', async () => {
+    const { db, clock, season, accountIds } = await world(1);
+    expect(await nextPublicGalaxyEvent(db, accountIds[0]!, clock)).not.toBeNull();
+    await db.update(seasons).set({ status: 'frozen' }).where(eq(seasons.id, season.id));
+    expect(await nextPublicGalaxyEvent(db, accountIds[0]!, clock)).toBeNull();
+  });
 
   /**
    * RESTAMPING A LIVE SEASON. D178.

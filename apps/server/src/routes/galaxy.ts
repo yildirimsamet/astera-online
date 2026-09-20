@@ -3,6 +3,7 @@ import { coreTier, distance } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
+  botProfiles,
   buildings,
   clanMemberships,
   clans,
@@ -203,6 +204,11 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
             && world.neutral.claimUntil.getTime() > now.getTime();
           const publicMoments = {
             state: world.state,
+            // EMP is the visible effect, but it must not hide simultaneous
+            // launch protection. Both are public and affect this decision.
+            ...(world.attackProtectedUntil
+              ? { attackProtectedUntil: world.attackProtectedUntil }
+              : {}),
             /**
              * A LIVE CLAIM WINDOW ONLY, AND ONLY ITS CLOCK.
              *
@@ -354,10 +360,12 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
   app.get('/api/leaderboard', { preHandler: requireAuth }, async (req) => {
     const self = await app.projections.commander(req.accountId!);
 
-    const [sensors, remembered, adminPlayerIds] = await Promise.all([
+    const [sensors, remembered, adminPlayerIds, botRows] = await Promise.all([
       app.projections.sensorsFor(self.playerId, self.planetIds),
       app.projections.rememberedFor(self.playerId),
       adminPlayerIdsInSeason(app.db, self.seasonId, app.adminUsernames),
+      app.db.select({ accountId: botProfiles.accountId }).from(botProfiles)
+        .where(eq(botProfiles.accountId, req.accountId!)).limit(1),
     ]);
 
     const score = playerDominionSql;
@@ -435,9 +443,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       };
     });
 
-    return {
-      ladder,
-      you: ladder.find((e) => e.playerId === self.playerId) ?? null,
-    };
+    const you = ladder.find((entry) => entry.playerId === self.playerId);
+    return { ladder, you: you ? { ...you, isBot: botRows.length > 0 } : null };
   });
 }

@@ -370,6 +370,32 @@ export const returnQueueCounters = pgTable('return_queue_counters', {
   lastSequence: bigint('last_sequence', { mode: 'bigint' }).notNull().default(sql`0`),
 }, (t) => [primaryKey({ columns: [t.cycleId, t.targetShardId] })]);
 
+/** One immutable, shared answer to “what happened in this galaxy?” */
+export interface GalaxyRecord {
+  version: 1;
+  champion: { commanderName: string; dominion: number } | null;
+  clanPodium: {
+    rank: number;
+    name: string;
+    tag: string;
+    dominion: number;
+  }[];
+  biggestBattle: {
+    attackerName: string;
+    defenderName: string;
+    planetName: string;
+    totalLossValue: number;
+    occurredAt: string;
+  } | null;
+  sharpestDominionSwing: {
+    attackerName: string;
+    defenderName: string;
+    amount: number;
+    occurredAt: string;
+  } | null;
+  mostContestedWorld: { planetName: string; events: number } | null;
+}
+
 export const seasons = pgTable('seasons', {
   id: uuid('id').primaryKey().defaultRandom(),
   shardId: uuid('shard_id').notNull().references(() => shards.id),
@@ -409,6 +435,8 @@ export const seasons = pgTable('seasons', {
   closedAt: timestamp('closed_at', { withTimezone: true }),
   /** Why the immutable result was sealed; independent from telemetry completeness. */
   endReason: text('end_reason').$type<'SCHEDULED_END' | 'FORCED_WIPE'>(),
+  /** Freeze-time public history snapshot; null only before freeze and on legacy seasons. */
+  galaxyRecord: jsonb('galaxy_record').$type<GalaxyRecord>(),
 }, (t) => [
   index('seasons_shard_status_idx').on(t.shardId, t.status),
   check('seasons_end_reason_check', sql`${t.endReason} IS NULL OR ${t.endReason} IN ('SCHEDULED_END', 'FORCED_WIPE')`),
@@ -1042,6 +1070,8 @@ export const planets = pgTable('planets', {
   /** Legacy raid downtime; new battles never write it. Kept until old rows and clients age out. */
   disruptedUntil: timestamp('disrupted_until', { withTimezone: true }),
   recoveryUntil: timestamp('recovery_until', { withTimezone: true }),
+  /** Tactical EMP blackout. Production continues; Aegis and ground fire-control do not. */
+  empUntil: timestamp('emp_until', { withTimezone: true }),
   /**
    * WHEN THIS WORLD STOPS WORKING DOUBLE. Owner instruction, 2026-09-16.
    *
@@ -1352,7 +1382,7 @@ export const missions = pgTable('missions', {
   distance: real('distance').notNull(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
-  /** Frozen at launch: destructive rockets may never become accidental captures. D97. */
+  /** Legacy launch flag retained for old mission rows; new EMP launches always write false. */
   deathStarCapture: boolean('death_star_capture').notNull().default(false),
   /**
    * The outbound leg this one is coming home from.
@@ -1566,11 +1596,11 @@ export const strategicAssets = pgTable('strategic_assets', {
    *
    * This was a partial UNIQUE index enforcing one live asset per world — belt and
    * braces beside the count check in `buildDeathStar`. A commander may now keep two
-   * weapons and, separately, an interception charge, and Postgres cannot express
+   * weapons and, separately, two interception charges, and Postgres cannot express
    * "at most two" as a unique index. The guard is the PLANET ROW LOCK, which every
    * one of these paths already takes through `loadLocked` before it counts: the
-   * count-then-insert is serialised by it, and `concurrency.test.ts` proves the
-   * two-simultaneous-builds case still resolves to exactly one.
+   * count-then-insert is serialised by it, so concurrent requests cannot pass the
+   * per-type caps.
    */
   index('strategic_assets_planet_active_idx').on(t.planetId, t.status),
   index('strategic_assets_mission_idx').on(t.missionId),
