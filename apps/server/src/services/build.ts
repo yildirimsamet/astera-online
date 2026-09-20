@@ -482,8 +482,8 @@ const NEEDS_UPLINK = new Set<InstrumentId>(['TELESCOPE', 'RADAR']);
  * PUT A SATELLITE IN ORBIT. D25.
  *
  * Bought once, never raised, and it takes one of the slots the Command Core opens
- * at levels 1, 3, 5 and 9. Four satellites and four slots is not a checklist,
- * because the fourth slot is a Core 9 planet — for the part of a season anybody
+ * at levels 6, 9, 12 and 15. Four satellites and four slots is not a checklist,
+ * because the fourth slot is a Core 15 planet — for the part of a season anybody
  * actually plays, a world runs one, two or three of them, and which ones is who it
  * is.
  *

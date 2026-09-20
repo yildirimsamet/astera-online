@@ -166,12 +166,15 @@ export const planet = {
     groundBand:
       "Défenses terrestres (capacité augmentée par le Noyau de Commandement)",
     groundNote:
-      "Elles ne quittent jamais la planète. Le Hérisson obtient un avantage contre la classe Rempart, le Bastion contre la classe Lance.",
+      "Elles ne quittent jamais la planète. Le Hérisson contre les Remparts, le Harpon les Escarmoucheurs et le Bastion les Lances.",
     thornNone:
       "Défense terrestre légère. Forte contre la classe Rempart, faible contre la classe Lance.",
     thornStanding:
       "{{count}} présents au sol. Forts contre la classe Rempart, faibles contre la classe Lance.",
     thornGain: "Hérisson",
+    harpoonNone: "Défense terrestre Lance, forte contre les Escarmoucheurs et faible contre les Remparts.",
+    harpoonStanding: "{{count}} en place. Forte contre les Escarmoucheurs et faible contre les Remparts.",
+    harpoonGain: "Harpon",
     bastionNone:
       "Défense terrestre lourde. Forte contre la classe Lance, faible contre les Escarmoucheurs.",
     bastionStanding:
@@ -198,7 +201,7 @@ export const planet = {
     slotsFree_other: "{{count}} emplacements encore libres ci-dessus",
     slotsNone: "orbite pleine",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: " · +1 au niveau {{level}} du Noyau",
+    slotsNext: "+1 au niveau {{level}} du Noyau",
     rackLabel: "Emplacements orbitaux",
     slotEmpty: "Libre",
     inactiveSatellite:
@@ -326,7 +329,8 @@ export const planet = {
     uplink: "Antenne en orbite",
     orbitSlot: "emplacement orbital libre",
     shipyard: "Chantier Spatial niveau {{level}}",
-    research: "Requis : {{research}} {{level}}",
+    research: "{{research}} {{level}}",
+    requirements: "Requis : {{requirements}}",
     plantRung: "Recherche un palier supplémentaire de Synthèse du Deutérium",
     maxed: "niveau maximal",
     queueFull:
@@ -522,7 +526,7 @@ export const launch = {
   shieldWarning:
     "Ce raid fera tomber ton bouclier de premier jour. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   recoveryShieldWarning:
-    "Ce raid mettra fin à ton bouclier de récupération et au bonus de production de +100 %. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
+    "Ce raid mettra fin à ton bouclier de récupération et au bonus de production de +50 %. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   fleetsave:
     "Les vaisseaux en vol ne peuvent pas être pillés. Ta planète, elle, peut l’être.",
 } as const;

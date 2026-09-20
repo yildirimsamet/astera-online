@@ -36,7 +36,7 @@ const flat = () => () => 0.5;
 
 describe('counter cycle', () => {
   /**
-   * THE ANTI-TURTLE TOOL, AND IT IS NO LONGER FREE. Economy v2 prices both ground
+   * THE ANTI-TURTLE TOOL, AND IT IS NO LONGER FREE. Economy v2 prices every ground
    * guns at 1.6x equal-budget power, because they can never leave, never loot and
    * never take Dominion — so breaking a wall now costs the attacker something.
    *
@@ -666,9 +666,10 @@ describe('the garrison', () => {
   });
 
   it('puts the emplacements in the line beside them', () => {
-    expect(garrisonOf({ DART: 4 }, { BASTION: 3, THORN: 5 })).toEqual({
+    expect(garrisonOf({ DART: 4 }, { BASTION: 3, HARPOON: 2, THORN: 5 })).toEqual({
       DART: 4,
       BASTION: 3,
+      HARPOON: 2,
       THORN: 5,
     });
   });

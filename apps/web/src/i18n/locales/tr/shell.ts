@@ -26,8 +26,8 @@ export const statusBar = {
     hint: 'Toparlanma kalkanı: {{duration}} boyunca sana akın yapılamaz',
   },
   recoveryBoost: {
-    mark: 'Üretim +%100 hızlı',
-    note: 'Koruma boyunca +%100 üretim',
+    mark: 'Üretim +%50 hızlı',
+    note: 'Koruma boyunca +%50 üretim',
   },
   bays: {
     hint: '{{total}} rampanın {{used}} tanesi dolu',

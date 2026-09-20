@@ -255,6 +255,11 @@ export const vocabulary = {
       pitch: 'Defensa terrestre pesada con ventaja contra cascos clase Lanza; vulnerable a los hostigadores.',
       detail: 'Los bastiones nunca abandonan el planeta. Su clase Baluarte les da una ventaja contra los cascos de clase Lanza, mientras que los Hostigadores reciben la ventaja contra ellos. Después del combate, el 60% de los cañones terrestres destruidos se restauran, redondeando hacia abajo.',
     },
+    HARPOON: {
+      name: 'Arpón', tag: 'Cañón terrestre Lanza', role: 'Defensa terrestre · emplazamiento Lanza estacionario',
+      pitch: 'Rompe formaciones de Hostigadores; vulnerable a Baluartes.',
+      detail: 'Los Arpones nunca abandonan el planeta. Su clase Lanza les da ventaja contra Hostigadores, mientras que los Baluartes los contrarrestan. Usan capacidad terrestre; el 60 % de los cañones destruidos se reconstruye tras el combate, redondeando hacia abajo.',
+    },
     THORN: {
       name: 'Espina',
       tag: 'Cañones terrestres ligeros',
@@ -412,7 +417,7 @@ export const gains = {
     engineeringScope:
       'Ingeniería I abre el Nivel 3 e Ingeniería II abre el Nivel 4. Los cascos individuales también pueden requerir potencia, armadura, propulsión o cargas gravíticas.',
     groundLabel: 'Fuerza de defensa terrestre',
-    groundScope: '{{bastion}} y {{thorn}} en cada mundo que tengas.',
+    groundScope: '{{bastion}}, {{harpoon}} y {{thorn}} en cada mundo que tengas.',
     yardLabel: 'Tiempo de construcción del nave',
     robotsLabel: 'Tiempo de construcción de la estructura',
     holdsLabel: 'Retención del prospector',

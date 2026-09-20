@@ -265,9 +265,9 @@ describe('a probe reading the shape of a wall', () => {
   });
 
   it('gives the split, in tens that add up to a hundred, to a good probe', () => {
-    expect(classReading({ BASTION: 1, THORN: 4 }, good)).toEqual({
+    expect(classReading({ BASTION: 1, HARPOON: 2, THORN: 4 }, good)).toEqual({
       kind: 'SHARES',
-      shares: { SKIRMISHER: 50, BULWARK: 50, LANCE: 0 },
+      shares: { SKIRMISHER: 40, BULWARK: 30, LANCE: 30 },
     });
     fc.assert(fc.property(
       fc.record({

@@ -1,6 +1,6 @@
 import { HULLS } from './hulls.js';
 import type { HullId } from './types.js';
-import { profileIncome, profileBuilding, profileInvoice, profileHull } from './economy-profile.js';
+import { producerOutputMult, profileIncome, profileBuilding, profileInvoice, profileHull } from './economy-profile.js';
 import { ECONOMY_ADJUSTMENT } from './tempo.js';
 import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
@@ -56,7 +56,7 @@ export const hasSatellite = (orbit: SatelliteSet, id: SatelliteId): boolean =>
 /**
  * HOW MANY BODIES A PLANET MAY KEEP IN ORBIT. D25.
  *
- * Owner's figure: the Command Core opens a slot at levels 1, 3, 5 and 9. Nothing
+ * Owner's figure: the Command Core opens a slot at levels 6, 9, 12 and 15. Nothing
  * else grants one, and there is no separate building to detour through — capacity
  * arrives as a by-product of the growth every player is doing anyway.
  *
@@ -67,7 +67,7 @@ export const hasSatellite = (orbit: SatelliteSet, id: SatelliteId): boolean =>
  * you work toward, not the state you play in.
  */
 export const satelliteSlots = (coreLevel: number): number =>
-  coreLevel >= 9 ? 4 : coreLevel >= 5 ? 3 : coreLevel >= 3 ? 2 : coreLevel >= 1 ? 1 : 0;
+  coreLevel >= 15 ? 4 : coreLevel >= 12 ? 3 : coreLevel >= 9 ? 2 : coreLevel >= 6 ? 1 : 0;
 
 /**
  * HOW MANY CRAFT A PLANET MAY HAVE IN THE AIR AT ONCE. D28.
@@ -188,10 +188,11 @@ const alloyLift = (level: number): number => {
  * Refinery and the Extractor both at 1 and neither can ever go down.
  */
 export const alloyRate = (level: number): number =>
-  profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * alloyLift(level);
+  profileIncome(level).alloy * ECONOMY_ADJUSTMENT.producerOutput * alloyLift(level)
+    * producerOutputMult(level);
 
 export const crystalRate = (level: number): number =>
-  profileIncome(level).crystal * ECONOMY_ADJUSTMENT.producerOutput;
+  profileIncome(level).crystal * ECONOMY_ADJUSTMENT.producerOutput * producerOutputMult(level);
 
 /** Cost to go from `level` to `level + 1`. */
 export function upgradeCost(level: number): Resources {
@@ -395,7 +396,8 @@ export const collectorCap = (ratePerHour: number): number =>
  * measurement it is held against.
  */
 export const deuteriumRate = (level: number): number =>
-  profileIncome(Math.max(0, level)).deuterium * ECONOMY_ADJUSTMENT.producerOutput;
+  profileIncome(Math.max(0, level)).deuterium * ECONOMY_ADJUSTMENT.producerOutput
+    * producerOutputMult(level);
 
 /**
  * DEUTERIUM ARRIVES TWO WAYS, SO THE CEILING IS SIZED FROM BOTH. T5, corrected.

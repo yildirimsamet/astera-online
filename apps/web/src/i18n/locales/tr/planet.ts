@@ -162,12 +162,15 @@ export const planet = {
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",
     groundBand: "Yerdekiler (kapasite komuta çekirdeği ile artar)",
     groundNote:
-      "Gezegenden ayrılmazlar. Kirpi Sur sınıfına, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
+      "Gezegenden ayrılmazlar. Kirpi Sur’a, Zıpkın Akıncıya, Tabya ise Mızrak sınıfına karşı üstünlük kazanır.",
     thornNone:
       "Hafif yer savunmasıdır. Sur sınıfına karşı güçlü, Mızrak sınıfına karşı zayıftır.",
     thornStanding:
       "Yerde {{count}} tane var. Sur sınıfına güçlü, Mızrak sınıfına zayıf.",
     thornGain: "Kirpi",
+    harpoonNone: "Mızrak sınıfı yer savunmasıdır. Akıncı sınıfına karşı güçlü, Sur sınıfına karşı zayıftır.",
+    harpoonStanding: "Yerde {{count}} tane var. Akıncı sınıfına güçlü, Sur sınıfına zayıf.",
+    harpoonGain: "Zıpkın",
     bastionNone:
       "Ağır yer savunmasıdır. Mızrak sınıfına karşı güçlü, Akıncı sınıfına karşı zayıftır.",
     bastionStanding:
@@ -191,7 +194,7 @@ export const planet = {
     slotsFree_other: "Yukarıda {{count}} yuva daha boş",
     slotsNone: "yörünge dolu",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: " · Çekirdek {{level}}. seviyede +1",
+    slotsNext: "Çekirdek {{level}}. seviyede +1",
     rackLabel: "Yörünge yuvaları",
     slotEmpty: "Boş",
     inactiveSatellite:
@@ -321,7 +324,8 @@ export const planet = {
     uplink: "yörüngede Anten",
     orbitSlot: "boş yörünge yuvası",
     shipyard: "Tersane {{level}}. seviye",
-    research: "Gerekli: {{research}} {{level}}",
+    research: "{{research}} {{level}}",
+    requirements: "Önce şunlar gerekli: {{requirements}}",
     plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",
     queueFull:
@@ -519,7 +523,7 @@ export const launch = {
   shieldWarning:
     "Bu akın ilk gün kalkanını bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   recoveryShieldWarning:
-    "Bu akın toparlanma kalkanını ve +%100 üretimi bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
+    "Bu akın toparlanma kalkanını ve +%50 üretimi bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   fleetsave: "Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.",
 } as const;
 

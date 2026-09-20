@@ -255,6 +255,11 @@ export const vocabulary = {
       pitch: 'Schwere Bodenverteidigung mit einem Vorteil gegenüber Rümpfen der Lanzenklasse; anfällig für Scharmützler.',
       detail: 'Bastionen verlassen niemals den Planeten. Ihre Bollwerk-Klasse verschafft ihnen einen Vorteil gegenüber Rümpfen der Lanzenklasse, während Scharmützler ihnen gegenüber einen Vorteil haben. Nach dem Kampf werden 60 % der zerstörten Bodengeschütze wiederhergestellt (abgerundet).',
     },
+    HARPOON: {
+      name: 'Harpune', tag: 'Lanzen-Bodengeschütz', role: 'Bodenverteidigung · ortsfeste Lanzenstellung',
+      pitch: 'Durchbricht Plänklerformationen; anfällig gegen Bollwerke.',
+      detail: 'Harpunen verlassen den Planeten nie. Als Lanzen haben sie einen Vorteil gegen Plänkler, während Bollwerke sie kontern. Sie belegen Bodenkapazität; 60 % zerstörter Bodengeschütze werden nach dem Kampf abgerundet wiederhergestellt.',
+    },
     THORN: {
       name: 'Dorn',
       tag: 'Leichte Bodengeschütze',
@@ -412,7 +417,7 @@ export const gains = {
     engineeringScope:
       'Technik I eröffnet Stufe 3 und Technik II eröffnet Stufe 4. Einzelne Rümpfe können auch Energie, Panzerung, Antrieb oder Gravitationsladungen erfordern.',
     groundLabel: 'Bodenverteidigungsstärke',
-    groundScope: '{{bastion}} und {{thorn}} auf jeder Welt, die du besitzt.',
+    groundScope: '{{bastion}}, {{harpoon}} und {{thorn}} auf jeder Welt, die du besitzt.',
     yardLabel: 'Schiffsbauzeit',
     robotsLabel: 'Strukturerstellungszeit',
     holdsLabel: 'Prospektor-Haltestelle',

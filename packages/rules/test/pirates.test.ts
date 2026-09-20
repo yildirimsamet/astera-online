@@ -191,7 +191,7 @@ describe('the pirate roster', () => {
 
   it('never leaks a hull that cannot fly, and never one above its level', () => {
     /*
-      `Hull.tier` is null on BASTION, THORN and PROSPECTOR. A bare `tier <= level`
+      `Hull.tier` is null on BASTION, HARPOON, THORN and PROSPECTOR. A bare `tier <= level`
       compares null against a number, which TypeScript refuses and JavaScript would
       have answered `true` for — putting a ground gun in a fleet that flies. The
       pool filter reads `?? Infinity` for exactly this, and this test is what keeps

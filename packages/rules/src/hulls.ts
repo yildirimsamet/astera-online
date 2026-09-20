@@ -116,6 +116,12 @@ export const HULLS: Record<HullId, Hull> = {
    */
   BASTION: { id: 'BASTION', name: 'Bastion', tier: null, family: 'PRESERVED', profile: 'EMPLACEMENT', cls: 'BULWARK', atk: 118, hp: 906, speed: 0, cargo: 0, alloy: scalePrice(2400, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(800, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: true },
   /**
+   * THE SPEAR GUN. Lance-class ground defence completes the counter triangle:
+   * it breaks Thorn/Skirmisher formations and yields to Bastion/Bulwark forces.
+   * Its economic power follows the same 1.6x stationary premium as both peers.
+   */
+  HARPOON: { id: 'HARPOON', name: 'Harpoon', tier: null, family: 'PRESERVED', profile: 'EMPLACEMENT', cls: 'LANCE', atk: 240, hp: 150, speed: 0, cargo: 0, alloy: scalePrice(1200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(300, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: true },
+  /**
    * THE LIGHT GUN. D27. Skirmisher-class, so it tears into heavy hulls and is
    * picked apart by Lances — the exact inverse of the Bastion, which is its whole
    * reason to exist.
@@ -124,10 +130,10 @@ export const HULLS: Record<HullId, Hull> = {
    * has no other way to defend anything, and `ABUSE.bashLimit` is all that stands
    * between them and a developed neighbour.
    *
-   * BOTH GROUND HULLS ARE PRICED AT 1.6× EQUAL-BUDGET POWER, and that multiplier is
+   * ALL GROUND HULLS ARE PRICED AT 1.6× EQUAL-BUDGET POWER, and that multiplier is
    * what they are paid for never leaving: they cannot loot, cannot take Dominion,
    * and cannot be part of a decision made anywhere but at home. The two sit in
-   * OPPOSITE CLASSES so that "how much defence" becomes "what KIND" — a question
+   * DISTINCT CLASSES so that "how much defence" becomes "what KIND" — a question
    * only the information layer can answer.
    */
   THORN: { id: 'THORN', name: 'Thorn', tier: null, family: 'PRESERVED', profile: 'EMPLACEMENT', cls: 'SKIRMISHER', atk: 49, hp: 174, speed: 0, cargo: 0, alloy: scalePrice(700, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 0, requiredResearch: [], ground: true },
@@ -306,7 +312,7 @@ export const hullBulk = (id: HullId): number => BULK[id];
  * rather than authored, so a parallel table of "how fast is this thing" would drift
  * from the speed it is supposed to describe the first time either moved.
  *
- * `null` for anything with no class trip — the two guns and the Prospector.
+ * `null` for anything with no class trip — the three guns and the Prospector.
  */
 const ROUND_TRIP: Record<HullId, number | null> = Object.fromEntries(
   ALL_HULLS.map(id => [id, profileHull(HULLS[id]).referenceRoundTrip]),
@@ -427,7 +433,7 @@ export function fleetValue(fleet: Fleet): number {
  * that bar grow while the force they were sending stood still.
  *
  * ATTACK IS THE TEST, and it is the owner's own words. A hull that cannot fire is
- * not part of the force being compared — the two ground guns are (they fire), the
+ * not part of the force being compared — the three ground guns are (they fire), the
  * three transports and the Prospector are not (they do not). Derived from `atk`
  * rather than from a list, so a fourth transport is excluded the day it is added
  * rather than the day somebody notices it inflating a comparison.
@@ -478,7 +484,7 @@ export function unarmedCount(fleet: Fleet): number {
  * first. A number nobody can check against anything else on the page is the exact
  * failure this whole surface exists to fix.
  *
- * Ground hulls are counted. The two guns sit in opposite classes on purpose (D27),
+ * Ground hulls are counted. The three guns cover all counter classes on purpose (D27),
  * a probe's defence band is taken over everything standing on the world, and a
  * share that dropped them would describe a different wall than the one being flown
  * at.

@@ -27,7 +27,7 @@ export const skins = {
   modelUnavailable: 'Modell nicht verfügbar',
   normal: 'Normal',
   recovery: 'Wiederherstellungsschild',
-  recoveryNote: 'Nach einem schweren Angriff trägt der getroffene Planet dieses beschädigte Modell, solange sein sechsstündiger Wiederherstellungsschild anhält. Es ist in der Haut enthalten.',
+  recoveryNote: 'Nach einem schweren Angriff trägt der getroffene Planet dieses beschädigte Modell, solange sein achtstündiger Wiederherstellungsschild anhält. Es ist in der Haut enthalten.',
   collection: 'Die Sammlung',
   owned: 'Im Besitz',
   comingSoon: 'Demnächst verfügbar',

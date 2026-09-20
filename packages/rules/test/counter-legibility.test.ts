@@ -138,11 +138,12 @@ describe('classShares', () => {
 
   /**
    * A probe's defence band is `fleetValue` over everything standing on the world,
-   * and the two ground guns sit in OPPOSITE classes on purpose (D27). A share that
+   * and the three ground guns cover all counter classes on purpose (D27). A share that
    * dropped them would describe a different wall than the one being flown at.
    */
-  it('counts the ground guns, in their own opposed classes', () => {
+  it('counts the ground guns in all three counter classes', () => {
     expect(classShares({ THORN: 5 }).SKIRMISHER).toBe(1);
+    expect(classShares({ HARPOON: 5 }).LANCE).toBe(1);
     expect(classShares({ BASTION: 5 }).BULWARK).toBe(1);
   });
 });

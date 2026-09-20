@@ -37,8 +37,8 @@ export const statusBar = {
     hint: 'Schutzschild: Noch {{duration}} lang kann dich niemand überfallen',
   },
   recoveryBoost: {
-    mark: 'Produktion +100 %',
-    note: 'Während des Schutzes produziert deine Welt doppelt so viel',
+    mark: 'Produktion +50 %',
+    note: 'Während des Schutzes produziert deine Welt 50 % mehr',
   },
   bays: {
     hint: '{{used}} von {{total}} Startrampen belegt',

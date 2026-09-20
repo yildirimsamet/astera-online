@@ -255,6 +255,11 @@ export const vocabulary = {
       pitch: 'Heavy ground defence with an advantage against Lance-class hulls; vulnerable to Skirmishers.',
       detail: 'Bastions never leave the planet. Their Bulwark class gives them an advantage against Lance-class hulls, while Skirmishers receive the advantage against them. After combat, 60% of destroyed ground guns are restored, rounded down.',
     },
+    HARPOON: {
+      name: 'Harpoon', tag: 'Spear ground gun', role: 'Ground defence · a stationary Lance emplacement',
+      pitch: 'Breaks Skirmisher formations; vulnerable to Bulwarks.',
+      detail: 'Harpoons never leave the planet. Their Lance class gives them an advantage against Skirmishers, while Bulwark-class hulls receive the advantage against them. They use ground capacity; 60% of destroyed ground guns are restored after combat, rounded down.',
+    },
     THORN: {
       name: 'Thorn',
       tag: 'Light ground guns',
@@ -412,7 +417,7 @@ export const gains = {
     engineeringScope:
       'Engineering I opens Tier 3 and Engineering II opens Tier 4. Individual hulls can also require Power, Armor, Propulsion or Gravitic Charges.',
     groundLabel: 'Ground defence strength',
-    groundScope: '{{bastion}} and {{thorn}} on every world you hold.',
+    groundScope: '{{bastion}}, {{harpoon}} and {{thorn}} on every world you hold.',
     yardLabel: 'Ship build time',
     robotsLabel: 'Structure build time',
     holdsLabel: 'Prospector hold',

@@ -34,7 +34,7 @@ const planet = (
 ): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
+      buildings: { CORE: 12, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
       orbitSlots: 3,
       fleet: {},
       score: { wealth: 10_000, dominion: 0 },
@@ -94,6 +94,18 @@ const show = (
 };
 
 describe('the orbit surface', () => {
+  it('shows every unmet instrument prerequisite at once', () => {
+    const view = show({
+      buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+      orbit: [],
+      orbitSlots: 0,
+      instruments: { RADAR: 1 },
+    });
+    const row = view.container.querySelector('#row-RADAR');
+    expect(row).toHaveTextContent(/Uplink/i);
+    expect(row).toHaveTextContent(/Core L2/i);
+  });
+
   it('distinguishes owned hardware from effects disabled by Core damage or a lost Uplink', () => {
     const view = show({
       buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
@@ -122,6 +134,7 @@ describe('the orbit surface', () => {
     expect(screen.queryByRole('heading', { name: 'Aegis' })).toBeNull();
     await userEvent.click(screen.getByRole('tab', { name: 'Defend' }));
     expect(screen.getByRole('heading', { name: 'Aegis' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Harpoon' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Production' }));
     expect(screen.getByRole('heading', { name: 'Foundry' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
@@ -188,13 +201,14 @@ describe('the orbit surface', () => {
   });
 
   it('names the Core level that opens the next slot, rather than only refusing', () => {
-    show({ buildings: { CORE: 1, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbitSlots: 1 });
-    expect(screen.getByText(/\+1 at Core L3/i)).toBeInTheDocument();
+    show({ buildings: { CORE: 1, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbitSlots: 0 });
+    expect(screen.getByText('+1 at Core L6')).toBeInTheDocument();
   });
 
   it('says the orbit is full instead of leaving the player to discover it', () => {
     show({ orbit: ['UPLINK', 'FOUNDRY', 'DERRICK'], orbitSlots: 3 });
-    expect(screen.getByText(/orbit is full/i)).toBeInTheDocument();
+    expect(screen.getByText(/orbit is full/i).parentElement)
+      .toHaveTextContent('orbit is full · +1 at Core L15');
   });
 
   /**
@@ -307,7 +321,7 @@ describe('the orbit surface', () => {
  */
 describe('the slot ladder the meter draws', () => {
   it('matches the rules at every Core level it claims to', () => {
-    for (const [core, slots] of [[1, 1], [2, 1], [3, 2], [4, 2], [5, 3], [8, 3], [9, 4], [20, 4]] as const) {
+    for (const [core, slots] of [[1, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [14, 3], [15, 4], [20, 4]] as const) {
       expect(satelliteSlots(core), `Core ${String(core)}`).toBe(slots);
     }
   });
@@ -542,6 +556,16 @@ describe('the Deuterium Refinery', () => {
       buildings: { CORE: 2, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 2 },
     }, 'grow');
     expect(view.container.querySelector('#row-DEUTERIUM_PLANT')).toHaveTextContent(/Core/i);
+  });
+
+  it('shows the Core and research gates together when both are unmet', () => {
+    const view = show({
+      research: rung(0),
+      buildings: { CORE: 2, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0, DEUTERIUM_PLANT: 2 },
+    }, 'grow');
+    const row = view.container.querySelector('#row-DEUTERIUM_PLANT');
+    expect(row).toHaveTextContent(/Core L3/i);
+    expect(row).toHaveTextContent(/Deuterium Synthesis/i);
   });
 
   it('can be pointed at from another tab', async () => {

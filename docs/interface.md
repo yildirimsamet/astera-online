@@ -214,7 +214,7 @@ item lives where a player would look for its outcome, never where the code store
 
 - Production: Core, Refinery, Extractor, the production Foundry and the Vault.
 - Intel: Uplink, Telescope, Radar and Veil.
-- Defend: Aegis and both ground batteries.
+- Defend: Aegis and all three ground batteries.
 - Fleet: Shipyard, Derrick, Beacon, research and every mobile hull.
 
 The four satellites therefore no longer sit together. Their shared constraint does: an orbit

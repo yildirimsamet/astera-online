@@ -213,7 +213,7 @@ store fills, an order commits part of it, and production continues while that or
 involuntary sawtooth, not any score incentive, is what makes raiding worth doing. **Cost lumpiness
 and bounded build throughput are hard requirements, not tuning preferences.**
 
-## Fleet — twenty-two mobile hulls, one mining craft and two ground guns
+## Fleet — twenty-two mobile hulls, one mining craft and three ground guns
 
 Every Fleet V2 hull is a fixed authored profile. The player does not allocate stat points or fit
 modules; the decision is which hulls to build and combine. A higher tier converts cost into stats
@@ -228,8 +228,9 @@ and never replaces every lower-tier role.
 | **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Same-price Fortress alternative with more attack and less hull | Trades hull for attack and speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
 | **Courier / Wayfarer / Atlas / Argosy** | 1 / 2 / 3 / 4 | Support | Fast/light through slow/deep cargo choices | Deal no damage; capacity and speed prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
-| **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, 10k/5k; flies only with a warship; collects nothing while defending |
+| **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, live 13k/6.5k after the fleet metal adjustment; flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
+| **Harpoon** | — | Lance, ground | Spear battery against Skirmisher formations | Cannot travel; Bulwark counters it |
 | **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
 | **Prospector** | — | Support, mining | Mines rocks and harvests wreckage; two per planet, three from Prospector Holds 3 | Cannot raid, defend or transfer between worlds; an outbound run may be recalled only before contact; a short debris leg rests only its own craft (D183) |
 
@@ -311,12 +312,12 @@ door around the information game.
 Aegis shield → ground defence → home fleet → loot phase → disruption
 ```
 
-**Ground defence is two guns in opposite classes (D27), and choosing between them is the
-defender's only composition decision.** A Bastion is Bulwark-class: it breaks Lance-class hulls and is
-overwhelmed by swarms. A Thorn is Skirmisher-class: it tears into heavy hulls and is picked
-apart by Lance-class hulls. Build one kind and a raider who scouts you brings its counter; build both and
-you are strong against nothing in particular. **"How much defence do they have" becomes "what
-KIND", which is a question only the information layer can answer.**
+**Ground defence has one gun in each counter class (D27).** A Bastion is Bulwark-class: it breaks
+Lance-class hulls and is overwhelmed by swarms. A Harpoon is Lance-class: it breaks Skirmishers
+and yields to Bulwarks. A Thorn is Skirmisher-class: it tears into heavy hulls and is picked apart
+by Lances. Build one kind and a raider who scouts you brings its counter; mix them and trade a
+sharp counter for broader coverage. **"How much defence do they have" becomes "what KIND", which
+is a question only the information layer can answer.**
 
 **60% of destroyed ground units rebuild free.** Durable defence puts genuine uncertainty back
 into the attack decision — with consumable defence ~95% of attacks resolved DECISIVE, and if
@@ -477,7 +478,7 @@ They are what the information game is made of, and each has a ladder.
 the **Beacon** (fleet speed).
 
 **The Command Core opens a slot at L1, L3, L5 and L9.** Four satellites against four slots is
-not a checklist, because the fourth slot is a Core 9 planet: for the part of a season anybody
+not a checklist, because the fourth slot is a Core 15 planet: for the part of a season anybody
 plays, a world runs one, two or three, and **which ones is who it is**.
 
 **The Uplink is the one gate in the whole system.** It multiplies nothing and defends nothing;
@@ -680,15 +681,15 @@ flies as it always did, because a newcomer nobody can read is a newcomer nobody 
 The protected commander's permanent HUD also names their own raid immunity and counts down the
 time left; the launch confirmation explains that choosing to attack spends it.
 
-### The recovery shield — six hours after a heavy defeat (2026-09-14, reworked 2026-09-15, 2026-09-16, 2026-09-18)
+### The recovery shield — eight hours after a heavy defeat (reworked 2026-09-20)
 
 The first day answers "what protects somebody who has not started yet". This answers the question
 it cannot: **what happens to a commander who has already committed to the war and just lost
-badly.** When the NET loss of the last six hours reaches **eight average hours of that commander's
+badly.** When the NET loss of the last six hours reaches **four average hours of that commander's
 own production** (owner, 2026-09-18; see *Judged on the lookback* below), the defeat that got it there leaves
-them unreachable for six hours, on every world they hold, against Raid and Death Star. **While it
-stands, the world that was struck produces +100%** (owner instruction, 2026-09-16): the works fill
-twice as fast, the collector ceiling does not grow, and the boost ends with the shield — including
+them unreachable for eight hours, on every world they hold, against Raid and Death Star. **While it
+stands, the world that was struck produces +50%** (owner instruction, 2026-09-20): the works fill
+half again as fast, the collector ceiling does not grow, and the boost ends with the shield — including
 the instant the commander spends it by attacking. The header marks each store with a rising arrow
 and states the rule and its countdown. A Death
 Star impact on a player's world grants it outright — it destroys rather than loots, so there is
@@ -705,16 +706,16 @@ the first day answers.
 battle carried off PLUS every hull it destroyed that did not rebuild from its own wreckage — the
 permanent loss, the same resource bundle Dominion is scored from. Loot and permanent fleet cost
 are added per resource; Alloy, Crystal and Deuterium are each divided by that resource's hourly
-output across every world the commander holds, then the three durations are averaged. A positive
-loss in a resource none of those worlds produces has no finite recovery time.
+output across every world the commander holds, then the three durations are averaged. A loss in a
+resource none of those worlds produces is repriced by resource value into the first resource they
+can produce; only a commander producing nothing at all has no finite recovery time.
 
 The unit is the whole point. A beginner and a developed commander are asked for the same number of
 HOURS, so the absolute figure the developed one has to lose is larger by exactly the ratio of
 their works, and no second ladder has to be kept in step with the Core. A commander caught with an
 empty store is judged on what the defeat cost them rather than on a ceiling they were nowhere
-near — which is precisely what the first version of this rule got wrong, and why it was replaced
-one day after it shipped. The average must reach six hours (it was "exceed eight" until
-2026-09-18); the protection window is six.
+near — which is precisely what the first version of this rule got wrong, and why it was replaced.
+The average must reach four hours; the protection window is eight.
 
 **Judged on the lookback, not on one battle** (owner instruction, 2026-09-18: *"ufak ufak saldırı
 yemeye devam ederse oyuncu hiç gelişme şansı bulamıyor"*). On every PvP defeat that cost anything,
@@ -722,7 +723,7 @@ the server sums every PvP defeat in the last six hours (this one included, on an
 commander holds) and subtracts the PROFIT of every raid the commander made on another commander in
 the same hours — loot home minus their own permanently lost hulls, on the same three clocks. A raid
 that lost money subtracts nothing; caretaker worlds and pirates are on neither side. Because the
-lookback equals the window, a shield cannot chain: by the time it ends, the defeats that bought it
+lookback is shorter than the shield, so it cannot chain: by the time it ends, the defeats that bought it
 have aged out — unless the commander spent it early by attacking, in which case they still count.
 A repelled raid that cost nothing does not re-ask the question. The defender's battle report
 states the net figure against the bar, and whether it bought the shield.
@@ -734,7 +735,7 @@ exactly as people do, along with the first day — which they wait out rather th
 are people now).
 
 **What it does not do.** It never turns a fleet back: anything legally in the air when the window
-opens still arrives, and a second heavy defeat pushes the end out to six hours from that battle
+opens still arrives, and a second heavy defeat pushes the end out to eight hours from that battle
 rather than stacking a second window. Pirates, probes, mining, transfers, settlement, trade and
 clan aid neither grant it nor spend it.
 

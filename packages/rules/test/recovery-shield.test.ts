@@ -53,11 +53,10 @@ const oneDefeat = (input: { lootLost: Resources; fleetLost: Resources; productio
 
 describe('what counts as a heavy defeat', () => {
   it('states the bar as hours of the defender’s own production', () => {
-    // Owner instruction, 2026-09-18: eight hours of production (was six), six looked back.
-    expect(ABUSE.recoveryLossHours).toBe(8);
+    expect(ABUSE.recoveryLossHours).toBe(4);
     expect(ABUSE.recoveryLookbackHours).toBe(6);
     // The recovery window and its loss threshold are independent owner controls.
-    expect(ABUSE.recoveryShieldHours).toBe(6);
+    expect(ABUSE.recoveryShieldHours).toBe(8);
   });
 
   /**
@@ -69,20 +68,20 @@ describe('what counts as a heavy defeat', () => {
    */
   it('adds what was carried off to what was destroyed', () => {
     const loot = lossWorthHours(2);
-    const fleet = lossWorthHours(3);
+    const fleet = lossWorthHours(1);
     expect(recoveryLossHours(loot, NOTHING, PRODUCTION)).toBeCloseTo(2, 9);
-    expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(3, 9);
+    expect(recoveryLossHours(NOTHING, fleet, PRODUCTION)).toBeCloseTo(1, 9);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: loot, fleetLost: NOTHING, production: PRODUCTION })))
       .toBe(false);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: NOTHING, fleetLost: fleet, production: PRODUCTION })))
       .toBe(false);
-    expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(5, 9);
+    expect(recoveryLossHours(loot, fleet, PRODUCTION)).toBeCloseTo(3, 9);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: loot, fleetLost: fleet, production: PRODUCTION })))
       .toBe(false);
-    // 2 + 6 = 8 hours: exactly the bar.
+    // 2 + 2 = 4 hours: exactly the bar.
     expect(earnsRecoveryShield(oneDefeat({
       lootLost: loot,
-      fleetLost: lossWorthHours(6),
+      fleetLost: lossWorthHours(2),
       production: PRODUCTION,
     }))).toBe(true);
   });
@@ -93,7 +92,7 @@ describe('what counts as a heavy defeat', () => {
     expect(recoveryLossHours(uneven, NOTHING, PRODUCTION)).toBeCloseTo(11 / 3, 9);
   });
 
-  it('grants from the bar itself: six hours exactly is enough', () => {
+  it('grants from the bar itself: four hours exactly is enough', () => {
     const at = lossWorthHours(ABUSE.recoveryLossHours);
     expect(earnsRecoveryShield(oneDefeat({ lootLost: at, fleetLost: NOTHING, production: PRODUCTION })))
       .toBe(true);
@@ -158,10 +157,10 @@ describe('what counts as a heavy defeat', () => {
     const noPlant: Resources = { alloy: 1_000, crystal: 500, deuterium: 0 };
     const check = {
       defeats: [{ loot: { alloy: 0, crystal: 0, deuterium: 600 }, fleetLost: NOTHING }],
-      raids: [{ loot: { alloy: 3_000, crystal: 0, deuterium: 0 }, fleetLost: NOTHING }],
+      raids: [{ loot: { alloy: 9_000, crystal: 0, deuterium: 0 }, fleetLost: NOTHING }],
       production: noPlant,
     };
-    expect(netRecoveryLossHours(check)).toBeCloseTo(6.4 - 1, 9);
+    expect(netRecoveryLossHours(check)).toBeCloseTo(6.4 - 3, 9);
     expect(earnsRecoveryShield(check)).toBe(false);
   });
 
@@ -207,7 +206,7 @@ describe('what counts as a heavy defeat', () => {
    */
   it('asks a bigger commander for a proportionally bigger loss', () => {
     const small: Resources = { alloy: 200, crystal: 100, deuterium: 2 };
-    const large: Resources = { alloy: 4_000, crystal: 2_000, deuterium: 60 };
+    const large: Resources = { alloy: 6_000, crystal: 3_000, deuterium: 90 };
     const loss = { alloy: 20_000, crystal: 10_000, deuterium: 200 };
     expect(earnsRecoveryShield(oneDefeat({ lootLost: loss, fleetLost: NOTHING, production: small })))
       .toBe(true);
@@ -239,24 +238,24 @@ describe('what the last six hours cost, net', () => {
 
   it('adds small defeats until together they clear the bar', () => {
     const check = {
-      defeats: [defeat(2), defeat(2), defeat(2), defeat(2)], raids: [], production: PRODUCTION,
+      defeats: [defeat(2), defeat(2)], raids: [], production: PRODUCTION,
     };
-    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
+    expect(netRecoveryLossHours(check)).toBeCloseTo(4, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
-    expect(earnsRecoveryShield({ ...check, defeats: [defeat(2), defeat(2), defeat(2)] })).toBe(false);
+    expect(earnsRecoveryShield({ ...check, defeats: [defeat(2)] })).toBe(false);
   });
 
   it('subtracts the profit of the commander’s own raids', () => {
-    const check = { defeats: [defeat(5), defeat(5)], raids: [raid(3, 1)], production: PRODUCTION };
-    // 10 hours lost, one raid netted 3 − 1 = 2 hours: 8 left, exactly the bar.
-    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
+    const check = { defeats: [defeat(3), defeat(3)], raids: [raid(3, 1)], production: PRODUCTION };
+    // Six hours lost, one raid netted two hours: four left, exactly the bar.
+    expect(netRecoveryLossHours(check)).toBeCloseTo(4, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
     expect(earnsRecoveryShield({ ...check, raids: [raid(3, 1), raid(1, 0)] })).toBe(false);
   });
 
   it('ignores a raid that lost more than it carried home', () => {
-    const check = { defeats: [defeat(8)], raids: [raid(1, 5), raid(0, 3)], production: PRODUCTION };
-    expect(netRecoveryLossHours(check)).toBeCloseTo(8, 9);
+    const check = { defeats: [defeat(4)], raids: [raid(1, 5), raid(0, 3)], production: PRODUCTION };
+    expect(netRecoveryLossHours(check)).toBeCloseTo(4, 9);
     expect(earnsRecoveryShield(check)).toBe(true);
   });
 
@@ -328,16 +327,16 @@ describe('what the last six hours cost, net', () => {
 });
 
 describe('the recovery window', () => {
-  it('runs six hours from the instant the battle resolved', () => {
-    expect(recoveryShieldUntil(NOW)).toBe(NOW + 6 * HOUR);
+  it('runs eight hours from the instant the battle resolved', () => {
+    expect(recoveryShieldUntil(NOW)).toBe(NOW + 8 * HOUR);
   });
 
   it('extends to the later end rather than adding a second window', () => {
     const first = recoveryShieldUntil(NOW);
-    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 7 * HOUR);
+    expect(extendRecoveryShield(first, NOW + HOUR)).toBe(NOW + 9 * HOUR);
     expect(extendRecoveryShield(NOW + 9 * HOUR, NOW)).toBe(NOW + 9 * HOUR);
-    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 6 * HOUR);
-    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 6 * HOUR);
+    expect(extendRecoveryShield(null, NOW)).toBe(NOW + 8 * HOUR);
+    expect(extendRecoveryShield(Number.NaN, NOW)).toBe(NOW + 8 * HOUR);
   });
 });
 

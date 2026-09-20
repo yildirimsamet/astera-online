@@ -171,12 +171,15 @@ export const planet = {
     groundBand: "En tierra (la capacidad aumenta según el nivel central)",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
-      "Las armas terrestres nunca abandonan el mundo. Las espinas contrarrestan los cascos de clase Baluarte; Los bastiones contrarrestan los cascos clase Lanza.",
+      "Las armas terrestres nunca abandonan el mundo. Las Espinas contrarrestan Baluartes, los Arpones Hostigadores y los Bastiones Lanzas.",
     thornNone:
       "Cañones ligeros con ventaja contra cascos clase Baluarte; vulnerable a los cascos clase Lanza.",
     thornStanding:
       "{{count}} de pie. Fuerte contra cascos clase Baluarte; débil contra cascos clase Lanza.",
     thornGain: "Espinas",
+    harpoonNone: "Defensa terrestre Lanza. Fuerte contra Hostigadores y débil contra Baluartes.",
+    harpoonStanding: "{{count}} desplegados. Fuerte contra Hostigadores y débil contra Baluartes.",
+    harpoonGain: "Arpones",
     bastionNone:
       "Cañones pesados ​​con ventaja contra cascos clase Lanza; vulnerable a los hostigadores.",
     bastionStanding:
@@ -201,7 +204,7 @@ export const planet = {
     slotsFree_other: "{{count}} espacios aún libres arriba\nLa órbita",
     slotsNone: "está llena",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: "· +1 en el núcleo L{{level}}",
+    slotsNext: "+1 en el núcleo L{{level}}",
     rackLabel: "Ranuras de órbita",
     slotEmpty: "Vacío",
     inactiveSatellite:
@@ -330,6 +333,7 @@ export const planet = {
     orbitSlot: "un espacio orbital libre",
     shipyard: "Astillero L{{level}}",
     research: "{{research}} {{level}}",
+    requirements: "Requiere: {{requirements}}",
     maxed: "en su nivel más alto",
     /** The one building with a second ceiling: its research rung. T5. */
     plantRung: "Investiga otro peldaño de la síntesis de deuterio",
@@ -559,7 +563,7 @@ export const launch = {
     "Esto renuncia a tu escudo del primer día. Una vez que desaparezca, otros comandantes también podrán atacarte.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
-    "Esto renuncia a tu escudo de recuperación y su +100% de producción. Una vez que desaparezca, otros comandantes también podrán atacarte.",
+    "Esto renuncia a tu escudo de recuperación y su +50% de producción. Una vez que desaparezca, otros comandantes también podrán atacarte.",
   fleetsave: "Los naves en vuelo no pueden ser asaltados. Tu planeta puede.",
 } as const;
 

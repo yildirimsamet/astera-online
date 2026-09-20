@@ -2067,7 +2067,7 @@ export const SHIELD = {
 /**
  * LEGACY RAID-DISRUPTION FIGURES.
  *
- * PvP no longer writes a production deadline: recovery protection and its doubled
+ * PvP no longer writes a production deadline: recovery protection and its boosted
  * output are the comeback mechanic. These values remain while old report payloads
  * and already-persisted `disrupted_until` rows age out safely across mixed clients.
  */
@@ -2143,8 +2143,7 @@ export const ABUSE = {
   /**
    * HOW LONG A COMMANDER IS SAFE AFTER A HEAVY DEFEAT. Owner instruction,
    * 2026-09-14: *"Ağır bir PvP kaybından sonra 4 saatlik saldırı koruması ver."*
-   * Raised to SIX on 2026-09-16: *"Saldırı yiyen'e verdiğimiz kalkanın süresi 6 saat
-   * olmalı"* — and the same instruction added `recoveryProductionMult`, so the window
+   * Raised to EIGHT on 2026-09-20, with `recoveryProductionMult`, so the window
    * is now a rebuild the struck world is actively paid for rather than only a pause.
    *
    * IT IS THE FIRST-DAY SHIELD'S CONTRACT, NOT A SECOND MECHANISM. Same scope —
@@ -2154,7 +2153,7 @@ export const ABUSE = {
    * earned again, so it answers the question a beginner's window cannot: what
    * happens to somebody who has already committed to the war and just lost badly.
    *
-   * SIX HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
+   * EIGHT HOURS BECAUSE IT IS A REBUILD, NOT A REST. A raid resolves in minutes and
    * this game is played in gaps, so the window has to be long enough to open the
    * game once and put an order in, and short enough that a defeat is not a day off
    * the board for whoever won. Production timers came down a quarter in the same
@@ -2166,12 +2165,11 @@ export const ABUSE = {
    * make "has this commander ever fired" — which the first-day rule answers by
    * PRESENCE — unanswerable the first time a recovery shield was granted and spent.
    */
-  recoveryShieldHours: 6,
+  recoveryShieldHours: 8,
 
   /**
    * WHAT THE STRUCK WORLD'S WORKS MAKE WHILE THE RECOVERY SHIELD STANDS. Owner
-   * instruction, 2026-09-16: *"bu kalkan aktifken saldırı yediği gezegendeki üretim
-   * %100 boostlanmalı."*
+   * Owner revision, 2026-09-20: the struck world's output is boosted by 50%.
    *
    * THE WORLD THAT WAS HIT, NOT EVERY WORLD. The shield is the commander's (a raider
    * cannot reach any of their worlds), but the boost belongs to the world whose
@@ -2182,10 +2180,10 @@ export const ABUSE = {
    * the owner's words are "while this shield is active".
    *
    * THE COLLECTOR DOES NOT GROW. The works fill the same vessel twice as fast; a
-   * ceiling that doubled for six hours would shrink back and clamp away ore the
+   * ceiling that grew for eight hours would shrink back and clamp away ore the
    * commander had already made. `productionHours` is the one statement of the rule.
    */
-  recoveryProductionMult: 2,
+  recoveryProductionMult: 1.5,
 
   /**
    * HOW MUCH WORK A DEFEAT HAS TO COST TO BE WORTH A WINDOW. Owner's design,
@@ -2215,14 +2213,12 @@ export const ABUSE = {
    * resource, divided by that resource's hourly production across all worlds, then
    * the Alloy, Crystal and Deuterium durations are averaged.
    *
-   * EIGHT HOURS, AND THE BAR ITSELF COUNTS. Owner instruction, 2026-09-18: *"son 6
-   * saatteki net kaybın kendi 8 saatlik üretimine denk gelecek şekilde."* It was six
-   * earlier the same day (and eight-and-strict before that); the window is still
-   * `recoveryShieldHours`, and this number defines only how much net loss earns it.
+   * FOUR HOURS, AND THE BAR ITSELF COUNTS. Owner revision, 2026-09-20. The shield
+   * duration remains independent; this number defines only how much net loss earns it.
    *
    * NET, OVER `recoveryLookbackHours`. The loss is no longer one battle's: see there.
    */
-  recoveryLossHours: 8,
+  recoveryLossHours: 4,
 
   /**
    * HOW FAR BACK A DEFEAT KEEPS COUNTING TOWARD THE NEXT SHIELD. Owner instruction,
@@ -2234,8 +2230,8 @@ export const ABUSE = {
    * commander in it (a raid that lost money subtracts nothing). Five raids that each
    * stayed under the bar now add up to the one heavy raid they cost as much as.
    *
-   * SIX, THE SHIELD'S OWN LENGTH, AND THAT IS WHAT STOPS SHIELDS CHAINING. A commander
-   * cannot be hit while shielded, so by the time the window ends every defeat that
+   * SIX, NOW SHORTER THAN THE EIGHT-HOUR SHIELD, stops shields chaining. A commander
+   * cannot be hit while shielded, so by the time protection ends every defeat that
    * bought it has aged out of the lookback — unless they drop it themselves by
    * attacking, in which case those defeats rightly still count.
    */
@@ -2893,18 +2889,12 @@ export const SALVAGE = {
   /** Wreck one surviving collector lifts, in resource units. Owner's number. */
   perCollector: 15_000,
   /**
-   * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction:
-   * *"19.1 döteryum yakıt çok. 10 yap."* Priced off its value like every other hull
-   * it would drink 191 (19.1 per `FUEL.reference` units), two and a half Argosies,
-   * for a hull that fires nothing and carries nothing. 100 was the card's 10 per
-   * thousand units. `hullFuelMass` reads it; nothing else may.
-   *
-   * HALVED TO 50 WITH THE REST OF THE FLEET, 2026-09-14. It is hand-set rather
-   * than priced, so `FUEL.perValue` cannot reach it — and "every ship that burns
-   * deuterium" has to include the one hull that is exempt from the formula, or the
-   * instruction quietly skipped its most-complained-about case.
+   * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction,
+   * 2026-09-20: the card must quote 50 deuterium. `hullFuelRate` reads one tenth of
+   * this route mass at `FUEL.reference`, so 500 is the authored mass behind that
+   * visible 50. `hullFuelMass` reads it; nothing else may derive it from price.
    */
-  fuelMass: 50,
+  fuelMass: 500,
 } as const;
 
 /**
@@ -3609,7 +3599,7 @@ export const FAULT = {
    * Two if two fit, one if one does, none if the world is already fully broken. The
    * trigger is the recovery-shield bar rather than a second threshold of its own: the game
    * already has one statement of "this blow was heavy", and a fault bar that disagreed
-   * with it would give a commander six hours of immunity for a raid that left their
+   * with it would give a commander eight hours of immunity for a raid that left their
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,

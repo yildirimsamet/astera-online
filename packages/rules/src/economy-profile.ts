@@ -1,5 +1,5 @@
 /** Shared executable economy. No I/O, clock, mutable selection or runtime dependencies. */
-import type { BuildingId, Hull, ResearchProjectId, Resources } from './types.js';
+import type { BuildingId, GroundHullId, Hull, ResearchProjectId, Resources } from './types.js';
 import { resourceValue } from './valuation.js';
 
 /**
@@ -58,6 +58,22 @@ export function profileIncome(level: number): Resources {
   if (!Number.isInteger(level) || level < 0 || level > 100) throw new Error('Invalid income level');
   return { alloy: 100 * level ** 1.3, crystal: 50 * level ** 1.3, deuterium: 4 * level ** 1.2 };
 }
+
+/**
+ * Producer rungs beyond 12 must still pay back inside a 30-day season. Output
+ * gains accelerate by six per cent of the base curve per late rung, while their
+ * invoice horizon grows at 1.25x instead of the global 1.5x.
+ */
+export const PRODUCER_LATE_CURVE = {
+  startsAfter: 12,
+  outputLiftPerLevel: 0.06,
+  costGrowth: 1.25,
+} as const;
+
+export const producerOutputMult = (level: number): number =>
+  level <= PRODUCER_LATE_CURVE.startsAfter
+    ? 1
+    : 1 + (level - PRODUCER_LATE_CURVE.startsAfter) * PRODUCER_LATE_CURVE.outputLiftPerLevel;
 
 /** Each component consumes its own reference production-hours; there is no automatic conversion. */
 export function profileInvoice(income: Resources, hours: Resources): Resources {
@@ -120,7 +136,10 @@ export function profileBuilding(
   const income = profileIncome(level), previous = profileIncome(level - 1);
   const delta = { alloy: income.alloy - previous.alloy, crystal: income.crystal - previous.crystal,
     deuterium: income.deuterium - previous.deuterium };
-  const horizon = 0.5 * 1.5 ** (level - 1) * stretch(level, days);
+  const producer = id === 'REFINERY' || id === 'EXTRACTOR' || id === 'DEUTERIUM_PLANT';
+  const lateProducerSteps = producer ? Math.max(0, level - PRODUCER_LATE_CURVE.startsAfter) : 0;
+  const horizon = 0.5 * 1.5 ** (level - 1) * stretch(level, days)
+    * (PRODUCER_LATE_CURVE.costGrowth / 1.5) ** lateProducerSteps;
   const labor = Math.min(480, 2 * 1.36 ** (level - 1));
   const shares: Record<BuildingId, Resources> = {
     REFINERY: { alloy: 0.8, crystal: 0.2, deuterium: 0 },
@@ -233,6 +252,15 @@ export const profileFlightSpeed = (roundTripMinutes: number): number =>
   2500 * ECONOMY_PROFILE.distanceFactor / (roundTripMinutes - 1 / 6);
 
 export interface ProfileHull extends Hull { bulk: number; workMinutes: number; referenceRoundTrip: number | null }
+
+/** Authored stationary profiles; exhaustive so a new ground id cannot inherit a peer by accident. */
+const GROUND_PROFILE = {
+  THORN: { alloy: 600, crystal: 150, atk: 42, hp: 215, bulk: 6, workMinutes: 3 },
+  HARPOON: { alloy: 1200, crystal: 300, atk: 240, hp: 150, bulk: 10, workMinutes: 6 },
+  BASTION: { alloy: 2400, crystal: 600, atk: 144, hp: 1000, bulk: 18, workMinutes: 10 },
+} as const satisfies Record<GroundHullId, {
+  alloy: number; crystal: number; atk: number; hp: number; bulk: number; workMinutes: number;
+}>;
 
 /** Full real roster: keep identities, requirements and roles. No cargo hull is borrowed as a combat slot. */
 /**
@@ -364,9 +392,10 @@ export function profileHull(live: Hull): ProfileHull {
     cargo: Math.round((COMBAT_HOLD[tier - 1]! * roundTrip) / PIVOT_ROUND_TRIP),
     bulk: Math.ceil(bulk[tier - 1]! * premium), workMinutes: work[tier - 1]! * premium,
     referenceRoundTrip: roundTrip };
-  if (live.ground) return { ...common, alloy: id === 'THORN' ? 600 : 2400, crystal: id === 'THORN' ? 150 : 600,
-    deuterium: 0, atk: id === 'THORN' ? 42 : 144, hp: id === 'THORN' ? 215 : 1000,
-    speed: 0, cargo: 0, bulk: id === 'THORN' ? 6 : 18, workMinutes: id === 'THORN' ? 3 : 10, referenceRoundTrip: null };
+  if (live.ground) {
+    const emplacement = GROUND_PROFILE[id as GroundHullId];
+    return { ...common, ...emplacement, deuterium: 0, speed: 0, cargo: 0, referenceRoundTrip: null };
+  }
   if (id === 'PROSPECTOR') return { ...common, atk: 0, hp: 150, alloy: 600, crystal: 180, deuterium: 0,
     speed: live.speed, cargo: live.cargo, bulk: 4, workMinutes: 5, referenceRoundTrip: null };
   /*

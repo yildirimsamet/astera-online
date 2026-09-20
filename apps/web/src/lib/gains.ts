@@ -551,6 +551,7 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         combat('BASTION', 'EMPLACEMENT_DOCTRINE'),
         i18n.t('gains.research.groundScope', {
           bastion: hullLabel('BASTION'),
+          harpoon: hullLabel('HARPOON'),
           thorn: hullLabel('THORN'),
         }),
       );

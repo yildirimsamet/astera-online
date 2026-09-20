@@ -115,6 +115,7 @@ export const HULL_ART: Record<HullId, string | null> = {
    * a battery's only ladder is how many guns are in it.
    */
   BASTION: `${BASE}/general/bastion_1.png`,
+  HARPOON: `${BASE}/general/harpoon_1.png`,
   THORN: `${BASE}/general/thorn_1.png`,
   /**
    * The craft's own render, at its first tier.
@@ -179,7 +180,7 @@ export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
 /**
  * A GROUND BATTERY, TIERED BY HOW MANY GUNS ARE STANDING.
  *
- * The two ground guns are the only hardware in the game with three renders and no
+ * The three ground guns are the only hardware in the game with three renders and no
  * level, so rule ONE at the top of this file needed one restatement to apply: a
  * battery's ladder is its COUNT. One gun is a gun; six is an emplacement, and the
  * renders say exactly that — a single barrel, then a heavier one, then a bank of
@@ -191,7 +192,7 @@ export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;
  * buying instead of an empty well.
  */
 export const groundArt = (id: GroundHullId, standing: number): string =>
-  `${BASE}/general/${id === 'BASTION' ? 'bastion' : 'thorn'}_${String(tierOf(standing))}.png`;
+  `${BASE}/general/${id.toLowerCase()}_${String(tierOf(standing))}.png`;
 
 /**
  * What the battery becomes with one more gun — or null when it looks the same.
@@ -356,6 +357,7 @@ export const HULL_MODEL: Record<HullId, string> = {
   // Ground defence never travels, so it is never drawn in transit. Present only
   // so the map is total and nothing has to guard against a missing key.
   BASTION: MODEL.bastion,
+  HARPOON: MODEL.bastion,
   THORN: MODEL.thorn,
   PROSPECTOR: MODEL.drill,
 };
@@ -371,7 +373,7 @@ export const HULL_MODEL: Record<HullId, string> = {
  * read by the hull and by its fire.
  *
  * Zero — never undefined — for anything with no authored pose: the probe, the
- * drill and the two ground guns, none of which are in the Fleet V2 manifest.
+ * drill and the three ground guns, none of which are in the Fleet V2 manifest.
  */
 export const hullPoseLift = (hull: HullId): number =>
   MODEL_POSE[HULL_MODEL[hull]]?.height ?? 0;

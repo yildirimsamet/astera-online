@@ -121,7 +121,7 @@ export function UpgradeRow({
    *
    * It takes the same slot as `level` and never appears with it, because the two
    * answer the same question about two different things — a building is at a rung
-   * it climbed, a hull was BUILT at one. A hull with no tier (the two guns, the
+   * it climbed, a hull was BUILT at one. A hull with no tier (the three guns, the
    * Prospector) passes nothing rather than a blank mark.
    */
   tierMark?: string;

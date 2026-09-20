@@ -75,7 +75,7 @@ export interface PirateSpec extends OrbitElements {
 /** Everything that flies, at or below this level. Ground guns and drills cannot. */
 function poolFor(level: PirateLevel): readonly MobileHullId[] {
   /*
-    `?? Infinity` IS LOAD-BEARING. `Hull.tier` is null on BASTION, THORN and
+    `?? Infinity` IS LOAD-BEARING. `Hull.tier` is null on BASTION, HARPOON, THORN and
     PROSPECTOR — the catalogue explicitly kept outside Fleet V2 progression. A
     bare `tier <= level` is a type error against null and would have been `true`
     at runtime, which is how a ground emplacement ends up in a fleet that flies.

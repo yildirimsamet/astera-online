@@ -107,9 +107,10 @@ describe('the hull table is priced on equal-budget power', () => {
     }
   });
 
-  /** The two ground guns sit in opposite classes, so defence is a CHOICE. D27. */
-  it('keeps the two ground guns in opposite counter classes', () => {
-    expect(HULLS.THORN.cls).not.toBe(HULLS.BASTION.cls);
+  /** One ground gun per class completes the counter triangle. D27. */
+  it('covers every counter class with a ground gun', () => {
+    expect(new Set(GROUND_HULLS.map((id) => HULLS[id].cls)))
+      .toEqual(new Set(['SKIRMISHER', 'LANCE', 'BULWARK']));
     expect(HULLS.THORN.minShipyard).toBe(0);
   });
 
@@ -203,7 +204,7 @@ describe('the hull table is priced on equal-budget power', () => {
  * sending" grow while the force they were sending stood still.
  *
  * ATTACK IS THE TEST, and it is the player's own words. A hull that cannot fire is
- * not part of the force being compared — the two ground guns are (they fire), the
+ * not part of the force being compared — the three ground guns are (they fire), the
  * transports and the Prospector are not (they do not). It stays priced in RESOURCES
  * rather than in attack, because the other side of that comparison is a probe's
  * defence band and both sides have to be the same quantity to be a comparison at

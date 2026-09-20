@@ -230,7 +230,7 @@ export type ClassReading =
  * Read the counter-cycle shape of a defending line, as a probe of this accuracy can.
  *
  * Only what FIRES is weighed, by value — the same axis `combatValue` measures the
- * wall on — so the two ground guns count in their own classes and a hangar of
+ * wall on — so the three ground guns count in their own classes and a hangar of
  * transports counts for nothing. Transports are a separate reading (`unarmedCount`).
  */
 export function classReading(line: Fleet, accuracy: number): ClassReading {

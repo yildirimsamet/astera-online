@@ -18,7 +18,7 @@ const retired = ['WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER'] as 
 describe('Fleet V2 server boundary', () => {
   it('accepts every current hull and rejects every retired ordinary hull', () => {
     for (const id of FLEET_V2_HULLS) expect(allHullIdSchema.safeParse(id).success).toBe(true);
-    for (const id of ['BASTION', 'THORN', 'PROSPECTOR']) {
+    for (const id of ['BASTION', 'HARPOON', 'THORN', 'PROSPECTOR']) {
       expect(allHullIdSchema.safeParse(id).success).toBe(true);
     }
     for (const id of retired) expect(allHullIdSchema.safeParse(id).success).toBe(false);
@@ -30,6 +30,7 @@ describe('Fleet V2 server boundary', () => {
     expect(mobileFleetSchema.safeParse({ ...fleet, WASP: 1 }).success).toBe(false);
     expect(mobileFleetSchema.safeParse({ ...fleet, ALIEN_DREADNOUGHT: 1 }).success).toBe(false);
     expect(mobileFleetSchema.safeParse({ BASTION: 1 }).success).toBe(false);
+    expect(mobileFleetSchema.safeParse({ HARPOON: 1 }).success).toBe(false);
   });
 
   it('lets onboarding stage exactly two Darts but never a retired hull', () => {

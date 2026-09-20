@@ -99,11 +99,10 @@ probe memory. The former development-tier attack band is retired; repeat farming
 `ABUSE.bashLimit`.
 
 
-**Ground defence** — the two guns that never leave a planet: the **Bastion** (heavy,
-Bulwark-class, breaks Lances, overwhelmed by swarms) and the **Thorn** (light, cheap,
-Skirmisher-class, tears into heavy hulls, picked apart by Lances). Opposite classes on
-purpose, so what a planet is strong *against* is a choice the defender makes and a question
-the attacker has to answer. D27.
+**Ground defence** — the three guns that never leave a planet: the **Bastion** (Bulwark,
+breaks Lances), **Harpoon** (Lance, breaks Skirmishers) and **Thorn** (Skirmisher, breaks
+Bulwarks). One per counter class, so what a planet is strong *against* is a choice the defender
+makes and a question the attacker has to answer. D27.
 
 **Flight bay** — one of the slots a planet has for fleets or mining craft that are away. Every
 raid, transfer and mining run holds one for its whole round trip; probes are exempt. The Command Core opens them at
@@ -213,7 +212,7 @@ bought once, and has no levels at all. Each changes a different number across th
 planet, which is where player identity comes from. D25.
 
 **Orbit slot** — Opened by the Command Core at L1, L3, L5 and L9. Four slots against four
-satellites is not a checklist: the fourth is a Core 9 planet, so most worlds run one, two
+satellites is not a checklist: the fourth is a Core 15 planet, so most worlds run one, two
 or three all season. The Orbital Ring, which used to sell these, was retired in D22.
 
 **Lazy tick / lazy evaluation** — Continuous state (resources, shields) is computed on read

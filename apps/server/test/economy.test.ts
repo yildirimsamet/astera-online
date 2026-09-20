@@ -519,7 +519,7 @@ describe('what may be in the air at once', () => {
  *
  * Ground INSTRUMENTS are levelled, gated by price and by the Command Core, and take
  * no orbit slot. Orbit SATELLITES are bought once at a flat price and take one of
- * the slots the Core opens at levels 1, 3, 5 and 9. Mixing the two rules up is the
+ * the slots the Core opens at levels 6, 9, 12 and 15. Mixing the two rules up is the
  * muddle this decision exists to end, so both are pinned here.
  */
 describe('raising ground instruments', () => {
@@ -646,10 +646,10 @@ describe('raising ground instruments', () => {
 
   it('still refuses to raise one past the Command Core', async () => {
     await setLevel(f.db, mine, 'CORE', 1);
-    await expect(raiseInstrument(f.db, mine, 'RADAR', f.clock)).resolves.toMatchObject({
+    await expect(raiseInstrument(f.db, mine, 'VEIL', f.clock)).resolves.toMatchObject({
       level: 1,
     });
-    await expect(raiseInstrument(f.db, mine, 'RADAR', f.clock)).rejects.toMatchObject({
+    await expect(raiseInstrument(f.db, mine, 'VEIL', f.clock)).rejects.toMatchObject({
       code: 'CORE_CEILING',
     });
   });
@@ -699,7 +699,7 @@ describe('the Uplink gate', () => {
  * SATELLITES ARE RATIONED BY SLOTS, AND THE CORE OPENS THEM. D25.
  *
  * Four satellites and four slots is not a checklist because the fourth slot is a
- * Core 9 planet. For the part of a season anybody actually plays, a world runs one,
+ * Core 15 planet. For the part of a season anybody actually plays, a world runs one,
  * two or three of them, and which ones is who it is.
  */
 describe('putting satellites in orbit', () => {
@@ -712,8 +712,8 @@ describe('putting satellites in orbit', () => {
     await grant(f.db, mine, 400_000, 200_000);
   });
 
-  it('gives a fresh planet exactly one slot', async () => {
-    await setLevel(f.db, mine, 'CORE', 1);
+  it('opens the first slot at Core 6', async () => {
+    await setLevel(f.db, mine, 'CORE', 6);
     await expect(installSatellite(f.db, mine, 'FOUNDRY', f.clock)).resolves.toMatchObject({
       type: 'FOUNDRY',
     });
@@ -722,12 +722,12 @@ describe('putting satellites in orbit', () => {
     });
   });
 
-  it('opens the next slot at Core 3, 5 and 9', async () => {
+  it('opens slots at Core 6, 9, 12 and 15', async () => {
     for (const [core, wanted] of [
-      [1, 'FOUNDRY'],
-      [3, 'UPLINK'],
-      [5, 'DERRICK'],
-      [9, 'BEACON'],
+      [6, 'FOUNDRY'],
+      [9, 'UPLINK'],
+      [12, 'DERRICK'],
+      [15, 'BEACON'],
     ] as const) {
       await setLevel(f.db, mine, 'CORE', core);
       await expect(installSatellite(f.db, mine, wanted, f.clock)).resolves.toMatchObject({

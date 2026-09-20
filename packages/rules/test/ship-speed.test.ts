@@ -83,7 +83,7 @@ describe('D152 Ship Propulsion ladder', () => {
     for (const id of MOBILE_HULLS) {
       expect(hullTech({ SHIP_PROPULSION: 4 }, id)).toMatchObject({ atk: 1, hp: 1 });
     }
-    for (const id of ['BASTION', 'THORN', 'PROSPECTOR'] as const satisfies readonly HullId[]) {
+    for (const id of ['BASTION', 'HARPOON', 'THORN', 'PROSPECTOR'] as const satisfies readonly HullId[]) {
       expect(hullTech({ SHIP_PROPULSION: 4 }, id), id).toEqual({ atk: 1, hp: 1, speed: 1 });
     }
   });

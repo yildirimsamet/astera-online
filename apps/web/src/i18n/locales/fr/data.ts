@@ -331,6 +331,11 @@ export const vocabulary = {
       pitch: 'Défense terrestre lourde avec un avantage contre les coques de classe Lance ; vulnérable aux tirailleurs.',
       detail: 'Les bastions ne quittent jamais la planète. Leur classe Bulwark leur donne un avantage contre les coques de classe Lance, tandis que les tirailleurs reçoivent l\'avantage contre eux. Après le combat, 60 % des canons terrestres détruits sont restaurés, arrondis à l\'inférieur.',
     },
+    HARPOON: {
+      name: 'Harpon', tag: 'Canon terrestre Lance', role: 'Défense au sol · emplacement Lance immobile',
+      pitch: 'Perce les formations d’Escarmoucheurs ; vulnérable aux Remparts.',
+      detail: 'Les Harpons ne quittent jamais la planète. Leur classe Lance leur donne l’avantage contre les Escarmoucheurs, tandis que les Remparts les contrent. Ils utilisent la capacité au sol ; 60 % des canons détruits sont reconstruits après le combat, arrondi à l’inférieur.',
+    },
     THORN: {
       name: 'Épine',
       tag: 'Canons légers au sol',
@@ -488,7 +493,7 @@ export const gains = {
     engineeringScope:
       'L\'ingénierie I ouvre le niveau 3 et l\'ingénierie II ouvre le niveau 4. Les coques individuelles peuvent également nécessiter des charges de puissance, de blindage, de propulsion ou gravitiques.',
     groundLabel: 'Force de défense au sol',
-    groundScope: '{{bastion}} et {{thorn}} sur chaque monde que vous possédez.',
+    groundScope: '{{bastion}}, {{harpoon}} et {{thorn}} sur chaque monde que vous possédez.',
     yardLabel: 'Temps de construction des navires',
     robotsLabel: 'Temps de construction de la structure',
     holdsLabel: 'Prise de prospecteur',

@@ -47,6 +47,14 @@ async function open(over: Partial<BattleReport> = {}) {
 }
 
 describe.each(['tr', 'en'])('battle clarity in %s', language => {
+  it('names the defender’s attacked planet in the report heading', async () => {
+    await i18n.changeLanguage(language);
+    const dialog = await open({ attacking: false, yourPlanet: 'Colony-Target', opponentPlanet: 'Enemy-Origin' });
+    const heading = dialog.querySelector('header p');
+    expect(heading).toHaveTextContent('Colony-Target');
+    expect(heading).toHaveTextContent(i18n.t('reports.attackedPlanet', { planet: 'Colony-Target' }));
+  });
+
   it('states the end result before enemy losses or calculations', async () => {
     await i18n.changeLanguage(language);
     const dialog = await open();

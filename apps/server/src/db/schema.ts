@@ -643,7 +643,7 @@ export const players = pgTable('players', {
    * `effectiveAttackProtection` is the only place either is interpreted.
    *
    * Earned again and again, unlike the first day's. `extendRecoveryShield` pushes
-   * the end out to six hours from the newest defeat and never stacks two windows.
+   * the end out to eight hours from the newest defeat and never stacks two windows.
    */
   recoveryShieldUntil: timestamp('recovery_shield_until', { withTimezone: true }),
   /**

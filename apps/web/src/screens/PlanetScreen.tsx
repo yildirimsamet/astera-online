@@ -1260,22 +1260,20 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
     const coreGate = id === 'HANGAR'
       ? nextLevel >= hangarCeiling(core) ? HANGAR.coreGate[nextLevel + 1] ?? null : null
       : id !== 'CORE' && nextLevel >= core ? core + 1 : null;
-    const blocked: Blocked | undefined =
-      hangarMaxed
-        ? { reason: i18n.t('planet.blocked.maxed') }
-        : coreGate !== null
+    const prerequisites = [
+      ...(coreGate === null ? [] : [i18n.t('planet.blocked.core', { level: coreGate })]),
+      ...(plantCapped ? [i18n.t('planet.blocked.plantRung')] : []),
+    ];
+    const blocked: Blocked | undefined = hangarMaxed
+      ? { reason: i18n.t('planet.blocked.maxed') }
+      : prerequisites.length > 0
         ? {
-          reason: i18n.t('planet.blocked.core', { level: coreGate }),
-          onFix: () => { onNeed('CORE'); },
+          reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
+          onFix: () => { onNeed(coreGate !== null ? 'CORE' : 'DEUTERIUM_SYNTHESIS'); },
         }
         : orders.length >= BUILD.queueDepth
           ? { reason: i18n.t('planet.blocked.queueFull') }
-          : plantCapped
-            ? {
-              reason: i18n.t('planet.blocked.plantRung'),
-              onFix: () => { onNeed('DEUTERIUM_SYNTHESIS'); },
-            }
-            : undefined;
+          : undefined;
 
     return {
       level,
@@ -1348,18 +1346,21 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
     const completed = instrumentMaxed(id, nextLevel)
       ? i18n.t('planet.blocked.maxed')
       : undefined;
+    const needsCore = nextLevel >= core;
+    const prerequisites = [
+      ...(needsUplink ? [i18n.t('planet.blocked.uplink')] : []),
+      ...(needsCore ? [i18n.t('planet.blocked.core', { level: core + 1 })] : []),
+    ];
     const blocked: Blocked | undefined = completed
       ? undefined
-      : needsUplink
-        ? { reason: i18n.t('planet.blocked.uplink'), onFix: () => { onNeed('UPLINK'); } }
-        : nextLevel >= core
-          ? {
-            reason: i18n.t('planet.blocked.core', { level: core + 1 }),
-            onFix: () => { onNeed('CORE'); },
-          }
-          : orders.length >= BUILD.queueDepth
-            ? { reason: i18n.t('planet.blocked.queueFull') }
-            : undefined;
+      : prerequisites.length > 0
+        ? {
+          reason: i18n.t('planet.blocked.requirements', { requirements: prerequisites.join(' · ') }),
+          onFix: () => { onNeed(needsUplink ? 'UPLINK' : 'CORE'); },
+        }
+        : orders.length >= BUILD.queueDepth
+          ? { reason: i18n.t('planet.blocked.queueFull') }
+          : undefined;
 
     return {
       level,
@@ -1567,7 +1568,7 @@ const coreRole = (capped: number): string =>
     : i18n.t('planet.roles.coreClear');
 
 /** Where the Command Core opens another slot. Mirrors `satelliteSlots` in the rules. */
-const ORBIT_UNLOCKS = [1, 3, 5, 9] as const;
+const ORBIT_UNLOCKS = [6, 9, 12, 15] as const;
 
 function Defend({
   planet,
@@ -1587,6 +1588,7 @@ function Defend({
   const aegis = instrument('AEGIS', instrumentLabel('AEGIS'), onNeed);
   const shipyard = planet.buildings.SHIPYARD ?? 0;
   const bastion = HULLS.BASTION;
+  const harpoon = HULLS.HARPOON;
   const thorn = HULLS.THORN;
   const yardOrders = planet.queues?.YARD ?? [];
   const yardProjection = projectedQueueState(planet, 'YARD');
@@ -1595,6 +1597,9 @@ function Defend({
     .reduce((sum, order) => sum + order.count, 0);
   const queuedBastions = yardOrders
     .filter((order) => order.kind === 'HULL' && order.subject === 'BASTION')
+    .reduce((sum, order) => sum + order.count, 0);
+  const queuedHarpoons = yardOrders
+    .filter((order) => order.kind === 'HULL' && order.subject === 'HARPOON')
     .reduce((sum, order) => sum + order.count, 0);
   const ground = fleetCount(planet.ground);
   const groundCapacity = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
@@ -1607,6 +1612,7 @@ function Defend({
    * `groundArt` renders exactly that.
    */
   const thornsStanding = planet.ground.THORN ?? 0;
+  const harpoonsStanding = planet.ground.HARPOON ?? 0;
   const bastionsStanding = planet.ground.BASTION ?? 0;
 
   return (
@@ -1625,10 +1631,10 @@ function Defend({
       />
 
       {/*
-        TWO GUNS, AND THE BAND SAYS WHY THERE ARE TWO. D27.
+        THREE GUNS COMPLETE THE COUNTER TRIANGLE.
 
         A defender used to have no composition choice at all — one ground hull meant
-        "how much" was the whole decision. These two are opposite classes, so what a
+        "how much" was the whole decision. These three span every combat class, so what a
         planet is strong AGAINST is now a choice, and it is the choice an attacker
         has to scout to discover.
       */}
@@ -1682,6 +1688,39 @@ function Defend({
             ? { queued: t('planet.queue.unitsQueued', { count: queuedThorns }) }
             : {})}
           queuedActionable
+        />
+      </div>
+
+      <div id="row-HARPOON">
+        <UpgradeRow
+          faulty={!!faults.get('HARPOON')}
+          art={groundArt('HARPOON', Math.max(1, harpoonsStanding))}
+          nextArt={nextGroundArt('HARPOON', harpoonsStanding)}
+          name={hullLabel('HARPOON')}
+          tag={hullTag('HARPOON')}
+          stats={{ atk: harpoon.atk, hp: harpoon.hp, speed: harpoon.speed, cargo: harpoon.cargo }}
+          role={harpoonsStanding === 0
+            ? t('planet.defend.harpoonNone')
+            : t('planet.defend.harpoonStanding', { count: harpoonsStanding })}
+          gain={{ label: t('planet.defend.harpoonGain'), now: String(harpoonsStanding), next: String(harpoonsStanding + 1) }}
+          cost={{ alloy: harpoon.alloy, crystal: harpoon.crystal }}
+          held={held}
+          income={income}
+          takes={orderMinutes('DEFENCE', { ...harpoon, deuterium: 0 }, planet, 1, { hull: 'HARPOON' })}
+          unowned={harpoonsStanding === 0}
+          onOpen={() => { onBuild('HARPOON'); }}
+          {...(shipyard < harpoon.minShipyard
+            ? { blocked: {
+              reason: t('planet.blocked.shipyard', { level: harpoon.minShipyard }),
+              onFix: () => { onNeed('SHIPYARD'); },
+            } satisfies Blocked }
+            : yardOrders.length >= BUILD.queueDepth
+              ? { blocked: { reason: t('planet.blocked.queueFull') } satisfies Blocked }
+              : {})}
+          {...(queuedHarpoons > 0 ? { queued: t('planet.queue.unitsQueued', { count: queuedHarpoons }) } : {})}
+          queuedActionable
+          verb="build"
+          onAct={() => { onBuild('HARPOON'); }}
         />
       </div>
 
@@ -1973,7 +2012,7 @@ function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; co
 
   return (
     <span className="num text-label text-dim">
-      {used >= slots ? (
+      {used >= slots && slots > 0 ? (
         /*
           AMBER, NOT RED (interface.md I0/I1). A full rack is a ceiling the
           commander can raise by building a Core level; it is not something being
@@ -1981,7 +2020,9 @@ function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; co
           ignore where it means an attack.
         */
         <span className="text-alloy">{t('planet.orbit.slotsNone')}</span>
-      ) : next !== undefined ? (
+      ) : null}
+      {used >= slots && slots > 0 && next !== undefined ? ' · ' : null}
+      {next !== undefined ? (
         <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
       ) : null}
       <span className="sr-only">{t('planet.orbit.slotsUsed', { used, total: slots })}</span>
@@ -2054,33 +2095,30 @@ function OrbitContext({ planet }: { planet: PlanetView }) {
 
 const RESEARCH_RUNG = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
 
-/** First actionable catalog gate for a hull; no hull identity is hard-coded here. */
+/** Every catalog gate for a hull, with the first one retained as the fix target. */
 function hullAccessBlock(
   id: HullId,
   shipyard: number,
   state: ProjectedQueueState,
   onNeed: (id: string) => void,
 ): Blocked | undefined {
-  const missing = HULLS[id].requiredResearch.find(
+  const missing = HULLS[id].requiredResearch.filter(
     ({ project, level }) => (state.research.get(project) ?? 0) < level,
   );
-  if (missing) {
-    return {
-      reason: i18n.t('planet.blocked.research', {
-        research: researchName(missing.project),
-        level: RESEARCH_RUNG[missing.level] ?? `L${String(missing.level)}`,
-      }),
-      onFix: () => { onNeed(missing.project); },
-    };
-  }
   const minimum = HULLS[id].minShipyard;
-  if (shipyard < minimum) {
-    return {
-      reason: i18n.t('planet.blocked.shipyard', { level: minimum }),
-      onFix: () => { onNeed('SHIPYARD'); },
-    };
-  }
-  return undefined;
+  const needsShipyard = shipyard < minimum;
+  if (!needsShipyard && missing.length === 0) return undefined;
+  const requirements = [
+    ...(needsShipyard ? [i18n.t('planet.blocked.shipyard', { level: minimum })] : []),
+    ...missing.map(({ project, level }) => i18n.t('planet.blocked.research', {
+      research: researchName(project),
+      level: RESEARCH_RUNG[level] ?? `L${String(level)}`,
+    })),
+  ];
+  return {
+    reason: i18n.t('planet.blocked.requirements', { requirements: requirements.join(' · ') }),
+    onFix: () => { onNeed(needsShipyard ? 'SHIPYARD' : missing[0]!.project); },
+  };
 }
 
 /**
@@ -2814,7 +2852,7 @@ function BuildSheet({
    * owns — the same picture the row they tapped was wearing.
    */
   const art =
-    hull === 'BASTION' || hull === 'THORN'
+    hull === 'BASTION' || hull === 'HARPOON' || hull === 'THORN'
       ? groundArt(hull, Math.max(1, planet.ground[hull] ?? 0))
       : HULL_ART[hull];
 

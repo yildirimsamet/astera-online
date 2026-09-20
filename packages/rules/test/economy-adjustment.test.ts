@@ -5,7 +5,7 @@ import {
   academyExitGrant, alloyRate, buildingCost, buildingMinutes, buildMinutes, constructionThroughput,
   crystalRate, defenceMinutes, defenceThroughput, deuteriumRate, hullWorkMinutes,
   ECONOMY_ADJUSTMENT, RESEARCH_CRYSTAL_DISCOUNT,
-  profileBuilding, profileHull, profileIncome, profileResearch, researchMinutes,
+  producerOutputMult, profileBuilding, profileHull, profileIncome, profileResearch, researchMinutes,
   rewardPurse, robotSpeedMult, satelliteCost, satelliteMinutes, shipMinutes,
   yardSpeedMult, yardThroughput,
   type HullId, type TechLevels,
@@ -20,7 +20,7 @@ const checkpointPrices: Record<HullId, readonly [number, number, number]> = {
   PRAETORIAN: [2250, 563, 8], ATLAS: [3600, 1000, 48], NULLIFIER: [2070, 518, 7],
   GARBAGE_COLLECTOR: [10000, 5000, 0], CATACLYSM: [4500, 1200, 20],
   CORSAIR: [4500, 1200, 20], CITADEL: [5625, 1500, 25], PALADIN: [5625, 1500, 25],
-  ARGOSY: [9000, 2600, 130], BASTION: [2400, 600, 0], THORN: [600, 150, 0],
+  ARGOSY: [9000, 2600, 130], BASTION: [2400, 600, 0], HARPOON: [1200, 300, 0], THORN: [600, 150, 0],
   PROSPECTOR: [600, 180, 0],
 };
 const technologies: readonly TechLevels[] = [{}, { AI_ROBOTS: 5, YARD_AUTOMATION: 5 }];
@@ -56,9 +56,10 @@ describe('owner 30% economy experiment against the checkpoint', () => {
       const alloyMultiplier = level < 1 || level >= 10 ? 1
         : level <= 6 ? 1.25
           : 1 + 0.25 * (10 - level) / 4;
-      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.70 * alloyMultiplier, 8);
-      expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.70, 8);
-      expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.70, 8);
+      const late = producerOutputMult(level);
+      expect(alloyRate(level)).toBeCloseTo(reference.alloy * 0.70 * alloyMultiplier * late, 8);
+      expect(crystalRate(level)).toBeCloseTo(reference.crystal * 0.70 * late, 8);
+      expect(deuteriumRate(level)).toBeCloseTo(reference.deuterium * 0.70 * late, 8);
     }
     for (const id of BUILDING_IDS) {
       expect(buildingCost(id, 5)).toEqual(profileBuilding(id, 6).cost);
@@ -139,7 +140,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
     expect(academyExitGrant(TUTORIAL_EXIT.claimedRewards))
       .toEqual({ alloy: 2223, crystal: 1089, deuterium: 0 });
     // Dearer Academy purchases can change its remainder; do not compensate with a new free grant.
-    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2518, crystal: 1484, deuterium: 46 });
+    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2458, crystal: 1460, deuterium: 46 });
     expect(TUTORIAL_EXIT.queue?.seconds)
       .toBe(Math.ceil(222 / 60 * ECONOMY_ADJUSTMENT.buildTime * 60));
   });

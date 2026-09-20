@@ -16,7 +16,7 @@ const fleetV2Combat = [
 ] as const;
 const fleetV2Cargo = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
 const fleetV2 = [...fleetV2Combat, ...fleetV2Cargo] as const;
-const preserved = ['BASTION', 'THORN', 'PROSPECTOR'] as const;
+const preserved = ['BASTION', 'HARPOON', 'THORN', 'PROSPECTOR'] as const;
 
 const hullTechAt = (tech: TechLevels, id: string): RuntimeHullTech =>
   (rules.hullTech as unknown as (
@@ -91,7 +91,7 @@ describe('Fleet V2 research effects — D148', () => {
 
     // D169: the doctrine ladder is authored, not derived from the ceiling.
     const preservedDirectFactor = rules.RESEARCH_TECH.doctrineLadder.at(-1) ?? 1;
-    for (const id of ['BASTION', 'THORN'] as const) {
+    for (const id of ['BASTION', 'HARPOON', 'THORN'] as const) {
       const effect = hullTechAt(emplacement, id);
       expect(effect.atk, `${id} preserved attack factor`).toBeCloseTo(preservedDirectFactor, 12);
       expect(effect.hp, `${id} preserved hp factor`).toBeCloseTo(preservedDirectFactor, 12);

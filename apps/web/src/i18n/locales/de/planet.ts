@@ -171,12 +171,15 @@ export const planet = {
     groundBand: "Am Boden (Kapazität erhöht sich je nach Kernstufe)",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
-      "Bodengeschütze verlassen niemals die Welt. Dornen kontern Rümpfe der Bollwerkklasse; Bastionen wirken den Rümpfen der Lanzenklasse entgegen.",
+      "Bodengeschütze verlassen niemals die Welt. Dornen kontern Bollwerke, Harpunen Plänkler und Bastionen Lanzen.",
     thornNone:
       "Leichte Geschütze mit Vorteil gegenüber Rümpfen der Bollwerkklasse; anfällig für Rümpfe der Lanzenklasse.",
     thornStanding:
       "{{count}} steht. Stark gegen Rümpfe der Bollwerkklasse; schwach gegen Rümpfe der Lanzenklasse.",
     thornGain: "Dornen",
+    harpoonNone: "Lanzen-Bodenverteidigung. Stark gegen Plänkler, schwach gegen Bollwerke.",
+    harpoonStanding: "{{count}} stationiert. Stark gegen Plänkler, schwach gegen Bollwerke.",
+    harpoonGain: "Harpunen",
     bastionNone:
       "Schwere Geschütze mit Vorteil gegenüber Rümpfen der Lanzenklasse; anfällig für Scharmützler.",
     bastionStanding:
@@ -201,7 +204,7 @@ export const planet = {
     slotsFree_other: "{{count}} Slots frei\nDie",
     slotsNone: "-Umlaufbahn ist voll",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: "· +1 am Kern L{{level}}",
+    slotsNext: "+1 am Kern L{{level}}",
     rackLabel: "Orbit-Slots",
     slotEmpty: "Leer",
     inactiveSatellite:
@@ -330,6 +333,7 @@ export const planet = {
     orbitSlot: "ein freier Orbit-Slot",
     shipyard: "Werft L{{level}}",
     research: "{{research}} {{level}}",
+    requirements: "Erfordert: {{requirements}}",
     maxed: "auf höchstem Niveau",
     /** The one building with a second ceiling: its research rung. T5. */
     plantRung: "Erforschen Sie eine weitere Stufe der Deuteriumsynthese",
@@ -559,7 +563,7 @@ export const launch = {
     "Dadurch wird Ihr Ersttagsschild aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
-    "Dadurch wird Ihr Wiederherstellungsschild und dessen +100 % Leistung aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
+    "Dadurch wird Ihr Wiederherstellungsschild und dessen +50 % Leistung aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
   fleetsave: "Schiffe im Flug können nicht überfallen werden. Ihr Planet kann.",
 } as const;
 

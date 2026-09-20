@@ -37,8 +37,8 @@ export const statusBar = {
     hint: 'Escudo de recuperación: no puedes ser atacado por {{duration}}',
   },
   recoveryBoost: {
-    mark: 'Producción +100 %',
-    note: 'Producción duplicada mientras dure la protección',
+    mark: 'Producción +50 %',
+    note: 'Producción un 50 % mayor mientras dure la protección',
   },
   bays: {
     hint: '{{used}} de {{total}} plataformas de lanzamiento ocupadas',

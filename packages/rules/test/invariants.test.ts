@@ -1175,7 +1175,7 @@ describe('what the information layer costs', () => {
  * The four ground instruments are gated by price alone — any of them, in any
  * order — so the multiplier is the only thing making a choice between them cost
  * anything. The four orbit satellites are gated by SLOTS, which the Command Core
- * opens at levels 1, 3, 5 and 9, and each is bought once at a flat price.
+ * opens at levels 6, 9, 12 and 15, and each is bought once at a flat price.
  */
 describe('instrument pricing carries the choice between them', () => {
   it('makes every instrument dearer than a building at the same level', () => {
@@ -1189,22 +1189,18 @@ describe('instrument pricing carries the choice between them', () => {
     }
   });
 
-  /**
-   * THIS ASSERTED BOTH HALVES OF A CONTRADICTION. D191.
-   *
-   * Under the title "makes the Telescope the dearest", it checked that the
-   * multiplier table says Telescope is dearer AND that the two prices come out
-   * EQUAL. Both passed, because `instrumentCost` had stopped reading its `id` and
-   * the table went unconsulted — so the assertion that should have caught the
-   * defect was the thing certifying it. The title was right all along.
-   */
-  it('makes the Telescope the dearest thing a planet can build', () => {
-    for (const id of INSTRUMENT_IDS) {
-      if (id === 'TELESCOPE') continue;
-      expect(INSTRUMENT_COST_MULT.TELESCOPE).toBeGreaterThan(INSTRUMENT_COST_MULT[id]);
-      expect(instrumentCost('TELESCOPE', 2).alloy).toBeGreaterThan(instrumentCost(id, 2).alloy);
-      expect(instrumentCost('TELESCOPE', 2).crystal).toBeGreaterThan(instrumentCost(id, 2).crystal);
-    }
+  /** Telescope keeps a premium over Radar; both sensors receive the live discount. */
+  it('prices Telescope above Radar and both sensors below the countermeasures', () => {
+    expect(INSTRUMENT_COST_MULT.TELESCOPE).toBeGreaterThan(INSTRUMENT_COST_MULT.RADAR);
+    const telescope = instrumentCost('TELESCOPE', 2);
+    const radar = instrumentCost('RADAR', 2);
+    const aegis = instrumentCost('AEGIS', 2);
+    const veil = instrumentCost('VEIL', 2);
+    expect(telescope.alloy).toBeGreaterThan(radar.alloy);
+    expect(telescope.crystal).toBeGreaterThan(radar.crystal);
+    expect(telescope.alloy).toBeLessThan(aegis.alloy);
+    expect(telescope.crystal).toBeLessThan(aegis.crystal);
+    expect(veil).toEqual(aegis);
   });
 
   it('never gets cheaper as it goes up', () => {
@@ -1238,18 +1234,19 @@ describe('instrument pricing carries the choice between them', () => {
  * THE ORBIT, AND THE SLOTS THAT RATION IT. D25.
  *
  * Four satellites and four slots would be a checklist rather than a choice, and the
- * thing that stops it being one is WHEN the slots arrive: the fourth is a Core 9
+ * thing that stops it being one is WHEN the slots arrive: the fourth is a Core 15
  * planet, which is most of a season away. For the part of the game anybody actually
  * plays, a world runs one, two or three of them and which ones is who it is.
  */
 describe('satellites in orbit', () => {
-  it('opens a slot at Core 1, 3, 5 and 9, and nowhere else', () => {
+  it('opens a slot at Core 6, 9, 12 and 15, and nowhere else', () => {
     const at = (core: number): number => satelliteSlots(core);
     expect(at(0)).toBe(0);
-    expect([at(1), at(2)]).toEqual([1, 1]);
-    expect([at(3), at(4)]).toEqual([2, 2]);
-    expect([at(5), at(6), at(7), at(8)]).toEqual([3, 3, 3, 3]);
-    expect([at(9), at(20)]).toEqual([4, 4]);
+    expect([at(1), at(5)]).toEqual([0, 0]);
+    expect([at(6), at(8)]).toEqual([1, 1]);
+    expect([at(9), at(11)]).toEqual([2, 2]);
+    expect([at(12), at(14)]).toEqual([3, 3]);
+    expect([at(15), at(20)]).toEqual([4, 4]);
   });
 
   it('never takes a slot away as the Core goes up', () => {
@@ -1260,7 +1257,7 @@ describe('satellites in orbit', () => {
 
   /** The set has to fit, or one of the four could never be built by anybody. */
   it('has room for every satellite that exists, eventually', () => {
-    expect(satelliteSlots(9)).toBe(SATELLITE_IDS.length);
+    expect(satelliteSlots(15)).toBe(SATELLITE_IDS.length);
   });
 
   /**

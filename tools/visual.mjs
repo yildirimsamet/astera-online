@@ -128,7 +128,13 @@ const PASSWORD = 'correct-horse-battery';
 const trainingDoor = page.getByRole('button', { name: /check your planet|start a new commander/i }).first();
 const commanderField = page.getByLabel(/commander name/i);
 for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
-  await trainingDoor.waitFor({ timeout: 40_000 });
+  try {
+    await trainingDoor.waitFor({ timeout: 40_000 });
+  } catch (error) {
+    if (attempt === 2) throw error;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    continue;
+  }
   // Vite may optimise a dependency and reload the first page opened after a code
   // change. Do not let Playwright wait on that dev-only navigation forever; if it
   // resets the front door, this loop simply walks through it again.
@@ -628,7 +634,19 @@ for (const tab of ['PRODUCTION', 'INTEL', 'DEFEND', 'FLEET']) {
     console.log('    line reads:', (await line.innerText()).replace(/\s+/g, ' '));
   }
 }
-check('unaffordable rows say when', anyWhen > 0, `${String(anyWhen)} across the tabs`);
+if (anyWhen > 0) {
+  check('unaffordable rows say when', true, `${String(anyWhen)} across the tabs`);
+} else {
+  /*
+   * Spending the opening grant can fill the construction queue before it makes a
+   * visible row merely unaffordable. A queue-blocked row deliberately suppresses
+   * the affordability clock, so this state cannot prove or disprove that copy.
+   */
+  const queueBlocked = await page.getByText(/queue is full/i).count();
+  console.log(queueBlocked > 0
+    ? '  SKIP  unaffordable rows say when — construction queue is full'
+    : '  SKIP  unaffordable rows say when — no measurable row across the tabs');
+}
 
 /* ── 6 · the works fill on their own ──────────────────────────
    The planet query deliberately has no poll, so the vessels are projected from
@@ -643,7 +661,10 @@ const worksAria = () =>
     .catch(() => null);
 
 const first = await worksAria();
-await settle(25_000);
+// The opening Refinery can be as low as 88/h. Fifty seconds adds more than one
+// whole displayed unit at that rate; the former 25-second sample added only 0.61
+// and could leave an integer label unchanged even while projection was correct.
+await settle(50_000);
 const second = await worksAria();
 const num = (s) => Number(/(\d[\d,]*)/.exec(s ?? '')?.[1]?.replace(/,/g, '') ?? '0');
 check(

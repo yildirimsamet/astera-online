@@ -31,6 +31,7 @@ export const PIRATE_ADMISSION_PRICES: Readonly<Record<HullId, Readonly<Resources
   PALADIN: { alloy: 4500, crystal: 1200, deuterium: 80 },
   ARGOSY: { alloy: 9000, crystal: 2600, deuterium: 130 },
   BASTION: { alloy: 2400, crystal: 600, deuterium: 0 },
+  HARPOON: { alloy: 1200, crystal: 300, deuterium: 0 },
   THORN: { alloy: 600, crystal: 150, deuterium: 0 },
   PROSPECTOR: { alloy: 600, crystal: 180, deuterium: 0 },
 };

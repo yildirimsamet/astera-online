@@ -157,7 +157,7 @@ describe('the recovery shield', () => {
 
   /* ── what earns it ───────────────────────────────────────── */
 
-  it('gives the defender six hours after a battle that took half of everything', async () => {
+  it('gives the defender eight hours after a battle that took half of everything', async () => {
     const report = await overwhelm();
     const until = await recoveryOf(f.playerIds[1]!);
     expect(until).not.toBeNull();
@@ -250,13 +250,13 @@ describe('the recovery shield', () => {
    * A colony deliberately left with almost nothing in it loses ALL of its raidable
    * stock to a single Wasp. Under the rule that shipped on 2026-09-14 that was a
    * hundred per cent of the share, and the whole commander — capital included —
-   * went behind six hours of immunity for the price of one hull; a floor written
+   * went behind eight hours of immunity for the price of one hull; a floor written
    * against total STORAGE was bolted on to refuse it, and the floor is what the
    * live field then proved unusable.
    *
    * The hours rule has no such hole to plug, because it never measures a SHARE of
    * anything. Three units of alloy is three units of alloy: a few seconds of this
-   * commander's works, nowhere near the eight-hour bar, whatever fraction of the
+   * commander's works, nowhere near the four-hour bar, whatever fraction of the
    * bare world it happened to represent. That is the property this test holds.
    */
   it('gives nothing for losing everything on a world that held nothing', async () => {
@@ -339,7 +339,7 @@ describe('the recovery shield', () => {
     const extended = await recoveryOf(f.playerIds[1]!);
     expect(extended).not.toBeNull();
 
-    // Pushed out to six hours from the SECOND battle, not twelve from the first.
+    // Pushed out to eight hours from the SECOND battle, not sixteen from the first.
     expect(extended!.getTime()).toBeGreaterThan(granted!.getTime());
     expect(extended!.getTime() - granted!.getTime())
       .toBeLessThan(ABUSE.recoveryShieldHours * HOUR);
@@ -400,7 +400,7 @@ describe('the recovery shield', () => {
     expect(scout.missionId).toBeTypeOf('string');
   });
 
-  it('lets the raid through the moment the six hours are over', async () => {
+  it('lets the raid through the moment the eight hours are over', async () => {
     await overwhelm();
     f.clock.advance(ABUSE.recoveryShieldHours * 60 + 1);
     await giveUnits(f.db, mine, { DART: 10 });
@@ -572,11 +572,11 @@ describe('the recovery shield', () => {
     expect(await boostOf(mine)).toBeNull();
   });
 
-  it('makes the struck world’s works fill twice as fast', async () => {
+  it('makes the struck world’s works fill fifty per cent faster', async () => {
     await overwhelm();
     const struck = await alloyOverAnHour(theirs);
-    expect(struck.made).toBeGreaterThan(struck.rate * 2 - 2);
-    expect(struck.made).toBeLessThan(struck.rate * 2 + 2);
+    expect(struck.made).toBeGreaterThan(struck.rate * 1.5 - 2);
+    expect(struck.made).toBeLessThan(struck.rate * 1.5 + 2);
   });
 
   it('publishes the boost on the world it applies to, and drops it when it ends', async () => {

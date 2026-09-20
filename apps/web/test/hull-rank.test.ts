@@ -32,7 +32,7 @@ describe('the rank a hull wears in the galaxy', () => {
   });
 
   /**
-   * The probe, the drill and the two ground guns carry no tier — they are outside
+   * The probe, the drill and the three ground guns carry no tier — they are outside
    * Fleet V2 progression entirely (D148) — so there is no rank to state and the
    * owner's exclusion needs no second list to fall out of step with.
    */

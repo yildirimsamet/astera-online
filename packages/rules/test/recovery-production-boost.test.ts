@@ -14,9 +14,7 @@ import {
 } from '../src/index.js';
 
 /**
- * THE STRUCK WORLD WORKS DOUBLE WHILE THE RECOVERY SHIELD STANDS. Owner instruction,
- * 2026-09-16: *"Saldırı yiyen'e verdiğimiz kalkanın süresi 6 saat olmalı ve ek olarak
- * bu kalkan aktifken saldırı yediği gezegendeki üretim %100 boostlanmalı."*
+ * THE STRUCK WORLD WORKS AT +50% WHILE ITS EIGHT-HOUR RECOVERY SHIELD STANDS.
  *
  * The pure half lives here: how many hours of production a span is worth when part
  * of it is boosted, and what the lazy tick does with that. Who gets the boost, and
@@ -24,9 +22,9 @@ import {
  */
 
 describe('the recovery production boost, as a figure', () => {
-  it('is a hundred per cent on a six-hour window', () => {
-    expect(ABUSE.recoveryShieldHours).toBe(6);
-    expect(ABUSE.recoveryProductionMult).toBe(2);
+  it('is fifty per cent on an eight-hour window', () => {
+    expect(ABUSE.recoveryShieldHours).toBe(8);
+    expect(ABUSE.recoveryProductionMult).toBe(1.5);
   });
 });
 
@@ -37,14 +35,14 @@ describe('production hours across a span', () => {
     expect(productionHours(0, 120, 0, null)).toBe(2);
   });
 
-  it('doubles every minute the boost covers', () => {
-    expect(productionHours(0, 120, 0, 120)).toBe(4);
-    expect(productionHours(0, 120, 0, 500)).toBe(4);
+  it('adds fifty per cent for every minute the boost covers', () => {
+    expect(productionHours(0, 120, 0, 120)).toBe(3);
+    expect(productionHours(0, 120, 0, 500)).toBe(3);
   });
 
-  it('doubles only the part of the span before the boost ends', () => {
+  it('boosts only the part of the span before the boost ends', () => {
     // One boosted hour and one ordinary hour.
-    expect(productionHours(0, 120, 0, 60)).toBe(3);
+    expect(productionHours(0, 120, 0, 60)).toBe(2.5);
   });
 
   it('adds nothing once the boost ended before the span began', () => {
@@ -62,7 +60,7 @@ describe('production hours across a span', () => {
    */
   it('boosts only productive minutes inside a disruption', () => {
     // Offline until 30, boosted until 90: 60 productive boosted + 30 ordinary.
-    expect(productionHours(0, 120, 30, 90)).toBe((90 + 60) / 60);
+    expect(productionHours(0, 120, 30, 90)).toBe(2);
     // A boost that ends while the works are still offline adds nothing.
     expect(productionHours(0, 120, 60, 45)).toBe(1);
   });
@@ -94,11 +92,11 @@ describe('the lazy tick under a recovery boost', () => {
     disruptedUntilMinutes: 0,
   });
 
-  it('fills the works twice as fast while boosted', () => {
+  it('fills the works fifty per cent faster while boosted', () => {
     const boosted = advanceEconomy(fresh(), { ...input, recoveryBoostUntilMinutes: 360 }, 60);
-    expect(boosted.bufferAlloy).toBeCloseTo(alloyRate(5) * 2, 6);
-    expect(boosted.bufferCrystal).toBeCloseTo(crystalRate(4) * 2, 6);
-    expect(boosted.bufferDeuterium).toBeCloseTo(deuteriumRate(3) * 2, 6);
+    expect(boosted.bufferAlloy).toBeCloseTo(alloyRate(5) * 1.5, 6);
+    expect(boosted.bufferCrystal).toBeCloseTo(crystalRate(4) * 1.5, 6);
+    expect(boosted.bufferDeuterium).toBeCloseTo(deuteriumRate(3) * 1.5, 6);
   });
 
   it('reads exactly as before when no boost is given', () => {
@@ -106,15 +104,15 @@ describe('the lazy tick under a recovery boost', () => {
       .toEqual(advanceEconomy(fresh(), input, 60));
   });
 
-  it('stops doubling at the instant the boost ends', () => {
+  it('stops boosting at the instant the boost ends', () => {
     const after = advanceEconomy(fresh(), { ...input, recoveryBoostUntilMinutes: 30 }, 60);
-    expect(after.bufferAlloy).toBeCloseTo(alloyRate(5) * 1.5, 6);
+    expect(after.bufferAlloy).toBeCloseTo(alloyRate(5) * 1.25, 6);
   });
 
   /**
    * THE COLLECTOR DOES NOT GROW WITH THE BOOST, AND THAT IS LOAD-BEARING.
    *
-   * A ceiling that doubled for six hours would shrink back when the shield fell, and
+   * A ceiling that grew for eight hours would shrink back when the shield fell, and
    * the next tick would clamp the buffer down to it — the commander would lose ore
    * they had already made. So the boost fills the SAME vessel faster; it never makes
    * the vessel bigger.

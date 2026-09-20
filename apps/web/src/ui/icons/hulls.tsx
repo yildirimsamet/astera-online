@@ -10,13 +10,14 @@ import { FLEET_V2_ASSET_MANIFEST } from '../fleet-v2-assets.js';
  * why: they need to read as *things* rather than as symbols. One viewing angle for all
  * one — top-down, nose up — chosen once and never mixed. Fleet V2 mobile craft use
  * their canonical supplied icon renders below; these hand-authored marks remain only
- * for the three preserved craft whose assets were explicitly left unchanged:
+ * for the four preserved craft whose assets were explicitly left unchanged:
  *
  *   BASTION  a turret on a heavy base plate, no engines and no wings. The plate is
  *            the whole point: it is what says this thing can never leave the planet.
  *   THORN    the same base plate — because it also never leaves — carrying three
  *            thin spikes instead of one heavy barrel. Read side by side with a
  *            Bastion the plate says "ground" and the spikes say "many, light".
+ *   HARPOON  the shared base carrying a long spear rail: stationary Lance defence.
  *   PROSPECTOR a deep hold with an asymmetric cutting head, unmistakably not a gun
  */
 
@@ -70,6 +71,18 @@ export function BastionHull(props: IconProps) {
   );
 }
 
+/** Lance emplacement: one long spear rail on the shared stationary base. */
+export function HarpoonHull(props: IconProps) {
+  return (
+    <Silhouette {...props}>
+      <path d="M4.5 45.2 8.8 36.4h30.4l4.3 8.8Z" />
+      <path d="M12 35.2v-7.1h24v7.1Z" />
+      <path d="M20.2 28.1 22.3 4.5h3.4l2.1 23.6Z" />
+      <path d="m17.1 12.4 6.9-8 6.9 8-6.9-3.2Z" />
+    </Silhouette>
+  );
+}
+
 /**
  * The Prospector: a hauler's body with a cutting head, and no gun anywhere.
  *
@@ -93,6 +106,7 @@ function ProspectorHull(props: IconProps) {
 
 const PRESERVED_HULL_ICON = {
   BASTION: BastionHull,
+  HARPOON: HarpoonHull,
   THORN: ThornHull,
   PROSPECTOR: ProspectorHull,
 } as const;

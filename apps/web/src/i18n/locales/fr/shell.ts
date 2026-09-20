@@ -28,8 +28,8 @@ export const statusBar = {
     hint: "Bouclier de récupération : aucun raid ne peut te viser pendant {{duration}}",
   },
   recoveryBoost: {
-    mark: "Production +100 %",
-    note: "Production +100 % pendant la protection",
+    mark: "Production +50 %",
+    note: "Production +50 % pendant la protection",
   },
   bays: {
     hint: "{{used}} rampes occupées sur {{total}}",

@@ -171,12 +171,15 @@ export const planet = {
     groundBand: "On the ground (capacity is increased by core level) ",
     /* The figures moved into `CapacityBar`; the band keeps the RULE. */
     groundNote:
-      "Ground guns never leave the world. Thorns counter Bulwark-class hulls; Bastions counter Lance-class hulls.",
+      "Ground guns never leave the world. Thorns counter Bulwarks, Harpoons counter Skirmishers, and Bastions counter Lances.",
     thornNone:
       "Light guns with an advantage against Bulwark-class hulls; vulnerable to Lance-class hulls.",
     thornStanding:
       "{{count}} standing. Strong against Bulwark-class hulls; weak against Lance-class hulls.",
     thornGain: "Thorns",
+    harpoonNone: "Lance-class ground defence. Strong against Skirmishers and weak against Bulwarks.",
+    harpoonStanding: "{{count}} standing. Strong against Skirmishers and weak against Bulwarks.",
+    harpoonGain: "Harpoons",
     bastionNone:
       "Heavy guns with an advantage against Lance-class hulls; vulnerable to Skirmishers.",
     bastionStanding:
@@ -201,7 +204,7 @@ export const planet = {
     slotsFree_other: "{{count}} slots still free above",
     slotsNone: "orbit is full",
     slotsUsed: "{{used}}/{{total}}",
-    slotsNext: " · +1 at Core L{{level}}",
+    slotsNext: "+1 at Core L{{level}}",
     rackLabel: "Orbit slots",
     slotEmpty: "Empty",
     inactiveSatellite:
@@ -330,6 +333,7 @@ export const planet = {
     orbitSlot: "a free orbit slot",
     shipyard: "Shipyard L{{level}}",
     research: "{{research}} {{level}}",
+    requirements: "Requires: {{requirements}}",
     maxed: "at its highest level",
     /** The one building with a second ceiling: its research rung. T5. */
     plantRung: "Research another rung of Deuterium Synthesis",
@@ -559,7 +563,7 @@ export const launch = {
     "This gives up your first-day shield. Once it is gone, other commanders can raid you too.",
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
-    "This gives up your recovery shield and its +100% output. Once it is gone, other commanders can raid you too.",
+    "This gives up your recovery shield and its +50% output. Once it is gone, other commanders can raid you too.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
 } as const;
 

@@ -766,10 +766,11 @@ happened to be looking. Measured over five seeds, raw active-field growth at +5 
 unchanged to six decimal places. Gated on the occurrence's definition version (4 → **5**), so a
 window that has already opened keeps the arrival times its rocks were derived under.
 
-**Six hours of protection after a heavy defeat, measured in the defender's own production
-hours (reworked 2026-09-17; bar set to eight hours, the bar itself counting, 2026-09-18).** A commander whose net loss over the last six hours reaches **eight average hours** of
+**Eight hours of protection after a heavy defeat, measured in the defender's own production
+hours (reworked 2026-09-20; bar set to four hours and the production boost to +50%).** A commander whose net loss over the last six hours reaches **four average hours** of
 their own works — everything carried off PLUS every hull destroyed that did not rebuild from its
-own wreckage — is unreachable for six hours, on every world they hold, against Raid and Death Star.
+own wreckage — is unreachable for eight hours, on every world they hold, against Raid and Death Star.
+The struck world produces at +50% while that shield stands.
 The window and the loss bar are independent controls. It is the first-day
 shield's contract, earned rather than given, and given up the same way; a Death Star impact on a
 player's world grants it outright.
@@ -785,8 +786,8 @@ zero to the rule meant to notice a heavy defeat.
 
 *Three resource clocks.* Loot and permanent fleet cost are first added per resource. Each Alloy,
 Crystal and Deuterium loss is divided by that resource's hourly production across every world,
-and the three durations are averaged. Zero loss contributes zero hours; positive loss with zero
-production has no finite recovery time and crosses the bar.
+and the three durations are averaged. Zero loss contributes zero hours; a loss in a resource the
+commander cannot produce is repriced into the first resource they can produce.
 
 *Eight hours is the owner-set bar.* The earlier 97-battle measurement used the superseded combined
 resource-value formula and does not describe this rule's grant rate. `battle_reports.recovery_loss_hours`

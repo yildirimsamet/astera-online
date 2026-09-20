@@ -6,25 +6,17 @@ export type HullId =
   | 'TEMPEST' | 'BALLISTA' | 'LEVIATHAN' | 'PRAETORIAN' | 'ATLAS' | 'NULLIFIER'
   | 'GARBAGE_COLLECTOR'
   | 'CATACLYSM' | 'CORSAIR' | 'CITADEL' | 'PALADIN' | 'ARGOSY'
-  | 'BASTION' | 'THORN'
+  | 'BASTION' | 'HARPOON' | 'THORN'
   | 'PROSPECTOR';
 
 /**
- * Never leaves the planet. TWO OF THEM, AND THAT IS THE POINT. D27.
+ * Never leaves the planet. One emplacement for every combat-counter class.
  *
- * With a single ground hull its counter-class is a binary the design cannot win:
- * make it BULWARK-class and the cheapest ship in the game hard-counters every
- * defence anybody can build, so defence returns a third of its cost and nobody
- * buys it; make it LANCE-class and the only answer is a Shipyard-4 hull at twelve
- * times a Wasp, so raiding stops paying and sitting still wins the season. Both
- * branches were implemented and measured — see `docs/balance.md`.
- *
- * Two hulls in DIFFERENT classes turn that dead end into the decision the game is
- * about: the defender chooses what to be strong against, and the attacker has to
- * find out before they commit. "How much defence do they have" becomes "what KIND",
- * and that is a question only the information layer can answer.
+ * The three ids complete the same Skirmisher/Lance/Bulwark counter cycle used by
+ * mobile combat. A defender chooses which incoming class to answer, and an
+ * attacker has to scout that composition before committing.
  */
-export type GroundHullId = 'BASTION' | 'THORN';
+export type GroundHullId = 'BASTION' | 'HARPOON' | 'THORN';
 
 /**
  * Flies, but never on an attack. D19.

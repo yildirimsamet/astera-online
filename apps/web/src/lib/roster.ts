@@ -15,7 +15,7 @@ import { HULLS, MOBILE_HULLS, type HullFamily, type MobileHullId } from '@astera
  * grouping at all: a player who has learnt the shipyard would be reading the
  * picker's bands off a memory that is now wrong.
  *
- * PRESERVED IS NOT A FLEET FAMILY. The two ground guns never leave and the drill
+ * PRESERVED IS NOT A FLEET FAMILY. The three ground guns never leave and the drill
  * is not a warship; neither belongs in a band beside hulls that can be aimed at
  * something. Both surfaces handle them separately, and the type says so rather
  * than leaving it to a filter each caller writes again.

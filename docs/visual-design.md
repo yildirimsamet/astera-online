@@ -274,7 +274,7 @@ no baked colour. Exported as React components in `apps/web/src/ui/icons/`. They 
 | `general/command_core_1..3` | 3 | Command Core row and its ladder (tier by level) |
 | `general/vault_1..3` | 3 | Same pattern for the Vault |
 | `general/shipyard_1..3` | 3 | Same pattern for the Shipyard |
-| `general/bastion_1..3`, `thorn_1..3` | 6 | The two ground guns. **Tiered by how many are STANDING, not by a level** — a gun has no level, so a battery's ladder is its count (`groundArt`) |
+| `general/bastion_1..3`, `harpoon_1..3`, `thorn_1..3` | 9 | The three ground guns. **Tiered by how many are STANDING, not by a level** — a gun has no level, so a battery's ladder is its count (`groundArt`) |
 | `drills/drill_1..3` | 3 | The Prospector: shipyard row, build sheet, and the craft drawn in the galaxy |
 | `sattelites/sattelite_type_1..4` | 4 | **The four satellites, one render each and untiered** — a satellite has no levels (D25). Foundry / Beacon / Derrick / Uplink, in file order |
 | `ships/ship_1..4` | 4 | Wasp / Lance / Bulwark / Hauler |
@@ -297,7 +297,7 @@ regenerates them on a build; `art.test.ts` is what catches a missing one.
 
 ### What is missing
 
-Every building, every instrument and both ground guns now have a render. `ui/marks.tsx` is
+Every building, every instrument and all three ground guns now have a render. `ui/marks.tsx` is
 down to the Core, the Vault and the lock — the first two are the unreachable floor of an art
 well, and the lock marks a STATE, which no photograph can.
 

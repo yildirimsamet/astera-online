@@ -153,12 +153,12 @@ describe('the instrument renders', () => {
 /**
  * A GROUND BATTERY IS THE ONE LADDER READ OFF A COUNT.
  *
- * The two guns have three renders each and no level, so their tier comes from how
+ * The ground guns have three renders each and no level, so their tier comes from how
  * many are standing. The risk this guards is the off-by-one that would make the
  * row advertise the battery you already own as the one you are about to buy.
  */
 describe('the ground gun renders', () => {
-  it('give both guns a picture at every size of battery', () => {
+  it('gives every gun a picture at every size of battery', () => {
     for (const id of GROUND_HULLS) {
       for (const standing of [1, 2, 3, 4, 5, 12, 60]) {
         const url = groundArt(id, standing);
@@ -176,10 +176,12 @@ describe('the ground gun renders', () => {
     }
   });
 
-  /** The two guns are opposite classes (D27) and must never wear one another's art. */
-  it('keeps the heavy gun and the light gun apart', () => {
+  /** Distinct counter classes must never wear one another's art. */
+  it('keeps all three gun families apart', () => {
     for (const standing of [1, 3, 5]) {
       expect(groundArt('BASTION', standing)).not.toBe(groundArt('THORN', standing));
+      expect(groundArt('HARPOON', standing)).not.toBe(groundArt('THORN', standing));
+      expect(groundArt('HARPOON', standing)).not.toBe(groundArt('BASTION', standing));
     }
   });
 
@@ -202,7 +204,7 @@ describe('the ground gun renders', () => {
 
 describe('the hull renders', () => {
   /**
-   * The two ground guns were the last `null`s here, on the grounds that a turret
+   * The ground guns were the last `null`s here, on the grounds that a turret
    * drawn as a ship claims it can leave. They have turret art now, so the table is
    * total — and a caller that only knows a hull id gets the tier-1 emplacement.
    */

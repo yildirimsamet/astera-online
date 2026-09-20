@@ -597,8 +597,8 @@ describe('battle reports', () => {
       /*
         AND HAND BACK THE WINDOW THAT FIRST RAID EARNED. 2026-09-15.
 
-        A defeat exceeding eight average hours of the defender's own production buys them
-        six hours of immunity, and a raid heavy enough to cross that bar is
+        A defeat exceeding four average hours of the defender's own production buys them
+        eight hours of immunity, and a raid heavy enough to cross that bar is
         comfortably that — so the second launch below would be refused for a reason
         this test is not about. `recovery-shield.test.ts` owns whether the window is
         granted correctly; this one owns what `disrupted_minutes` says, and it needs

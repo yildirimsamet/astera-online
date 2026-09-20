@@ -72,6 +72,15 @@ const rowFor = (view: ReturnType<typeof render>, hull: string) =>
   view.container.querySelector<HTMLElement>(`[data-hull-id="${hull}"]`)!;
 
 describe('a hull row says where its craft are', () => {
+  it('shows every unmet hull prerequisite at once', async () => {
+    const view = await show({});
+    const row = rowFor(view, 'CATACLYSM');
+    expect(row).toHaveTextContent(/Shipyard L6/i);
+    expect(row).toHaveTextContent(/Starship Engineering II/i);
+    expect(row).toHaveTextContent(/Ship Power IV/i);
+    expect(row).toHaveTextContent(/Ship Armor II/i);
+  });
+
   it('states home and away together', async () => {
     const view = await show({ DART: 3 }, { DART: 2 });
     expect(within(rowFor(view, 'DART')).getByTestId('hull-where'))
@@ -133,7 +142,7 @@ describe('a hull row says where its craft are', () => {
 
   /**
    * A GUN AND A PROSPECTOR HAVE NO TIER, and an empty mark is worse than none.
-   * Asserted on the component, because the two guns and the Prospector are not in
+   * Asserted on the component, because the three guns and the Prospector are not in
    * the `reach` group this file renders — a fixture that had to pull in another
    * band to prove a negative would be testing the band, not the mark.
    */

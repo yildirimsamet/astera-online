@@ -264,8 +264,16 @@ export function BattleReports({
                   that a pirate row can still offer, so it stands in.
                 */}
                 <p className="num mt-1 text-label text-faint">
-                  {report.pirate ? report.yourPlanet : report.opponentPlanet}
-                  {(report.pirate ? report.yourPlanet : report.opponentPlanet) !== '' && ' · '}
+                  {report.pirate
+                    ? report.yourPlanet
+                    : report.attacking
+                      ? report.opponentPlanet
+                      : t('reports.attackedPlanet', { planet: report.yourPlanet })}
+                  {(report.pirate
+                    ? report.yourPlanet
+                    : report.attacking
+                      ? report.opponentPlanet
+                      : report.yourPlanet) !== '' && ' · '}
                   {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
                   {t('reports.rounds', { count: report.rounds.length })}
                 </p>
@@ -493,17 +501,12 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
 
   return (
     <Sheet
-      eyebrow={t(
-        report.pirate
-          ? 'reports.sheetYouRaidedPirate'
-          : report.attacking
-            ? 'reports.sheetYouRaided'
-            : 'reports.sheetTheyRaided',
-        {
+      eyebrow={report.attacking || report.pirate
+        ? t(report.pirate ? 'reports.sheetYouRaidedPirate' : 'reports.sheetYouRaided', {
           opponent: opponentOf(report),
           planet: report.opponentPlanet,
-        },
-      )}
+        })
+        : `${t('reports.sheetTheyRaided', { opponent: opponentOf(report) })} · ${t('reports.attackedPlanet', { planet: report.yourPlanet })}`}
       title={verdictTitle(report)}
       reading
       onClose={onClose}

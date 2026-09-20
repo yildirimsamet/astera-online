@@ -74,7 +74,7 @@ describe('mission fuel', () => {
   });
 
   it('leaves ground defence out of it — it never travels', () => {
-    expect(missionFuel({ BASTION: 5, THORN: 5 }, NEIGHBOUR, 2)).toBe(0);
+    expect(missionFuel({ BASTION: 5, HARPOON: 5, THORN: 5 }, NEIGHBOUR, 2)).toBe(0);
   });
 
   describe('what it costs to play', () => {
@@ -166,6 +166,7 @@ describe('fuel per craft', () => {
   /** A gun that never leaves the ground never burns a drop, and must not read `0.0`. */
   it('charges nothing to a hull that cannot travel', () => {
     expect(hullFuelRate('BASTION')).toBe(0);
+    expect(hullFuelRate('HARPOON')).toBe(0);
     expect(hullFuelRate('THORN')).toBe(0);
   });
 
@@ -213,7 +214,7 @@ describe('D195 fuel by hull value', () => {
     expect(FUEL).not.toHaveProperty('tierMultiplier');
     for (const id of MOBILE_HULLS) {
       const previous = HULLS[id].profile === 'COLLECTOR'
-        ? 50
+        ? 500
         : Math.max(1, Math.ceil(
           value(id) * FUEL.perValue
           * (FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip)),
@@ -281,7 +282,7 @@ describe('D195 fuel by hull value', () => {
   it('charges a ground hull nothing at all', () => {
     expect(hullFuelMass('BASTION')).toBe(0);
     expect(hullFuelMass('THORN')).toBe(0);
-    expect(fuelMass({ BASTION: 5, THORN: 5 })).toBe(0);
+    expect(fuelMass({ BASTION: 5, HARPOON: 5, THORN: 5 })).toBe(0);
   });
 
   /** Nothing that flies is ever free to move, however cheap it is. */

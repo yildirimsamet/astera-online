@@ -331,6 +331,11 @@ export const vocabulary = {
       pitch: 'Kargı, Pençe ve Söndürücü ağırlıklı saldırılara dayanır; Akıncı sınıfı filolara karşı zayıftır.',
       detail: 'Tabya gezegenden ayrılamaz ve yer savunması kapasitesini kullanır. Sur sınıfında olduğu için Mızrak sınıfına karşı güçlü, Akıncı sınıfına karşı zayıftır. Yok edilen yer savunmalarının %60’ı aşağı yuvarlanarak enkazdan yeniden kurulur.',
     },
+    HARPOON: {
+      name: 'Zıpkın', tag: 'Mızrak yer topu', role: 'Yer savunması · gezegenden ayrılmayan Mızrak mevzisi',
+      pitch: 'Akıncı birliklerini deler; Sur sınıfına karşı zayıftır.',
+      detail: 'Zıpkınlar gezegenden ayrılmaz. Mızrak sınıfı oldukları için Akıncılara karşı üstünlük kazanır, Sur sınıfı gövdeler ise onları karşılar. Yer kapasitesi kullanırlar; yok edilen yer toplarının %60’ı çatışmadan sonra aşağı yuvarlanarak yeniden kurulur.',
+    },
     THORN: {
       name: 'Kirpi',
       tag: 'Hafif yer topu',
@@ -488,7 +493,7 @@ export const gains = {
     engineeringScope:
       'Mühendislik I üçüncü, Mühendislik II dördüncü seviyeyi açar. Gemiler ayrıca Güç, Zırh, İtki veya Gravitik Yükler isteyebilir.',
     groundLabel: 'Yer savunması gücü',
-    groundScope: 'Elindeki her dünyadaki {{bastion}} ve {{thorn}}.',
+    groundScope: 'Elindeki her dünyadaki {{bastion}}, {{harpoon}} ve {{thorn}}.',
     yardLabel: 'Gemi yapım süresi',
     robotsLabel: 'Yapı kurulum süresi',
     holdsLabel: 'Kazıcı ambarı',

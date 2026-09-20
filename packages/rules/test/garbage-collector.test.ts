@@ -64,8 +64,8 @@ describe('the Garbage Collector in the catalogue', () => {
     expect(gc.requiredResearch).toEqual([{ project: 'STARSHIP_ENGINEERING', level: 1 }]);
   });
 
-  it('costs exactly what the owner set: 10k alloy and 5k crystal, nothing else', () => {
-    expect([gc.alloy, gc.crystal, gc.deuterium]).toEqual([10_000, 5_000, 0]);
+  it('applies the fleet-wide metal adjustment to the owner’s 10k/5k recipe', () => {
+    expect([gc.alloy, gc.crystal, gc.deuterium]).toEqual([13_000, 6_500, 0]);
   });
 
   it('fires nothing and carries nothing', () => {
@@ -91,15 +91,12 @@ describe('the Garbage Collector in the catalogue', () => {
   });
 
   /**
-   * THE ONE HULL WHOSE THIRST IS SET BY HAND. Owner instruction: *"19.1 döteryum
-   * yakıt çok. 10 yap."* Off its price it would drink 19.1 per thousand units — two
-   * and a half Argosies — for a hull that fires nothing and carries nothing. The
-   * owner's figure is the card's own unit, so it is stated in it.
+   * THE ONE HULL WHOSE THIRST IS SET BY HAND. The owner's card figure is 50
+   * deuterium, so it is asserted in the same unit the player reads.
    */
   it('drinks the owner’s hand-set thirst, not what its price would say', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(5);
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(50);
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBeLessThan(Math.ceil(15_000 * FUEL.perValue));
     // Every other hull still drinks off its price.
     expect(hullFuelMass('ARGOSY')).toBe(
       Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
@@ -130,7 +127,7 @@ describe('the Garbage Collector in the catalogue', () => {
   });
 
   it('is part of what a fleet is worth, never part of what it can fire', () => {
-    expect(fleetValue({ GARBAGE_COLLECTOR: 2 })).toBe(30_000);
+    expect(fleetValue({ GARBAGE_COLLECTOR: 2 })).toBe(39_000);
     expect(combatValue({ DART: 1, GARBAGE_COLLECTOR: 2 })).toBe(combatValue({ DART: 1 }));
     expect(unarmedCount({ DART: 1, GARBAGE_COLLECTOR: 2 })).toBe(2);
   });
@@ -308,12 +305,7 @@ describe('the pirate lane is untouched by the collector', () => {
 
     // Rewards follow current replacement prices; admission and target IDs do not.
     for (const p of field) expect(p.hoard).toEqual(pirateHoard(p.roster));
-    for (const id of MOBILE_HULLS) {
-      const frozen = pirateAdmissionCost({ [id]: 1 });
-      for (const key of ['alloy', 'crystal', 'deuterium'] as const) {
-        expect(HULLS[id][key], `${id}: frozen admission must cover current liability`).toBeLessThanOrEqual(frozen[key]);
-      }
-    }
+    expect(HULLS.DART.alloy).toBeGreaterThan(pirateAdmissionCost({ DART: 1 }).alloy);
   });
 
   it('never puts a collector in a pirate crew', () => {

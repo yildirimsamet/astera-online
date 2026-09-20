@@ -37,7 +37,7 @@ export const skins = {
   normal: "Intacte",
   recovery: "Bouclier de récupération (Endommagée)",
   recoveryNote:
-    "Après une attaque lourde, la planète touchée utilise ce modèle endommagé pendant les six heures de son bouclier de récupération. Cette apparence est incluse avec le skin.",
+    "Après une attaque lourde, la planète touchée utilise ce modèle endommagé pendant les huit heures de son bouclier de récupération. Cette apparence est incluse avec le skin.",
   collection: "Collection",
   owned: "Possédée",
   comingSoon: "Bientôt",

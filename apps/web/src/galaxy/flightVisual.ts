@@ -11,6 +11,7 @@ export const HULL_LIGHT: Record<HullId, { glow: string; flame: string }> = {
     { glow: asset.light.color, flame: asset.trail.color },
   ])) as Record<keyof typeof FLEET_V2_ASSET_MANIFEST, { glow: string; flame: string }>,
   BASTION: { glow: '#ff6548', flame: '#ffad78' },
+  HARPOON: { glow: '#b968ff', flame: '#dda8ff' },
   THORN: { glow: '#ff7845', flame: '#ffc07c' },
   PROSPECTOR: { glow: '#ffb057', flame: '#ffd9a8' },
 };
@@ -30,6 +31,7 @@ export const HULL_VISUAL_SCALE: Record<HullId, number> = {
     asset.scale,
   ])) as Record<keyof typeof FLEET_V2_ASSET_MANIFEST, number>,
   BASTION: 1,
+  HARPOON: 1,
   THORN: 1,
   PROSPECTOR: 1,
 };

@@ -51,7 +51,7 @@ const fleetV2 = [
 ] as const;
 
 const fleetV2Ids = fleetV2.map(({ id }) => id);
-const preservedIds = ['BASTION', 'THORN', 'PROSPECTOR'] as const;
+const preservedIds = ['BASTION', 'HARPOON', 'THORN', 'PROSPECTOR'] as const;
 const retiredIds = ['WASP', 'LANCE', 'BULWARK', 'HAULER', 'RUNNER', 'BREACHER'] as const;
 const shipyardGate = {
   DART: 0,
@@ -153,7 +153,7 @@ describe('Fleet V2 catalog contract — D148', () => {
     expect([...Object.keys(HULLS)].sort()).toEqual([...fleetV2Ids, ...preservedIds].sort());
     expect([...ALL_HULLS].sort()).toEqual([...fleetV2Ids, ...preservedIds].sort());
     expect([...MOBILE_HULLS].sort()).toEqual([...fleetV2Ids].sort());
-    expect(GROUND_HULLS).toEqual(['BASTION', 'THORN']);
+    expect(GROUND_HULLS).toEqual(['BASTION', 'HARPOON', 'THORN']);
     expect(NON_COMBATANT_HULLS).toEqual(['PROSPECTOR']);
 
     for (const retired of retiredIds) {
@@ -225,6 +225,10 @@ describe('Fleet V2 catalog contract — D148', () => {
   it('leaves the ground and mining craft numerically untouched', () => {
     expect(HULLS.BASTION).toMatchObject({
       id: 'BASTION', cls: 'BULWARK', atk: 144, hp: 1000, speed: 0, cargo: 0,
+      minShipyard: 1, ground: true,
+    });
+    expect(HULLS.HARPOON).toMatchObject({
+      id: 'HARPOON', cls: 'LANCE', atk: 240, hp: 150, speed: 0, cargo: 0,
       minShipyard: 1, ground: true,
     });
     expect(HULLS.THORN).toMatchObject({

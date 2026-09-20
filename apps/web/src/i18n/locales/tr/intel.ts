@@ -107,6 +107,7 @@ export const reports = {
   sheetYouRaided: 'Hedef: {{opponent}} · {{planet}}',
   sheetYouRaidedPirate: 'Hedef: {{opponent}}',
   sheetTheyRaided: 'Saldıran: {{opponent}}',
+  attackedPlanet: 'Saldırılan gezegen: {{planet}}',
   heldAgainstYou: '{{planet}} savunmayı sürdürdü. Bu saldırıdan ganimet alamadın.',
   brokenByYou: '{{planet}} üzerindeki savunmaya zarar verdin.',
   /**
