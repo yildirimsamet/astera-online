@@ -14,6 +14,7 @@ import { skins } from './skins.js';
 import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
+import { clanWar } from './clanWar.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
@@ -27,5 +28,5 @@ export const de: Resources = {
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,
   vocabulary, gains, directives, notifications, units, errors, onboarding, research, rewards,
-  skins, seasonRecap, chronicle, clan, community, trade, convoy,
+  skins, seasonRecap, chronicle, clan, clanWar, community, trade, convoy,
 };

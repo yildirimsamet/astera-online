@@ -4,7 +4,8 @@ import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'driz
 import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
-import { accounts, buildOrders, clanMemberships, clanRequests, clans, commanderTransfers, debrisFields, mainVacancies,
+import { accounts, buildOrders, clanMemberships, clanRequests, clans,
+  clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
   intergalacticConvoyRuns } from '../db/schema.js';
@@ -88,6 +89,36 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         const [application] = await tx.select().from(returnApplications).where(eq(returnApplications.id, applicationId)).for('update', { noWait: true });
         if (application?.playerId !== playerId || application.status !== 'QUEUED' || now >= application.expiresAt
           || application.cycleId !== source.cycleId || application.targetShardId !== target.shardId || player.homeShardId !== target.shardId) defer('APPLICATION');
+      }
+      // A joint operation has live roles that do not always have a generic
+      // mission row (a marked target or a staged leader-capital wave). Moving any
+      // coordinator, target or contributor would split one state machine across
+      // two seasons, so both OUT and RETURN wait for the operation to settle.
+      const relatedJointWars = await tx
+        .selectDistinct({ id: clanWarOperations.id })
+        .from(clanWarOperations)
+        .leftJoin(
+          clanWarContributions,
+          eq(clanWarContributions.operationId, clanWarOperations.id),
+        )
+        .where(and(
+          ne(clanWarOperations.status, 'COMPLETED'),
+          or(
+            eq(clanWarOperations.leaderPlayerId, playerId),
+            eq(clanWarOperations.targetPlayerId, playerId),
+            inArray(clanWarOperations.stagingPlanetId, ids),
+            inArray(clanWarOperations.targetPlanetId, ids),
+            eq(clanWarContributions.playerId, playerId),
+            inArray(clanWarContributions.originPlanetId, ids),
+          ),
+        ));
+      if (relatedJointWars.length > 0) {
+        await tx.select({ id: clanWarOperations.id })
+          .from(clanWarOperations)
+          .where(inArray(clanWarOperations.id, relatedJointWars.map((row) => row.id)))
+          .orderBy(asc(clanWarOperations.id))
+          .for('update', { noWait: true });
+        defer('FLIGHT');
       }
       // Others can still attack an inactive commander. Neither cancel nor teleport a launched fleet.
       const [flight] = await tx.select({ id: missions.id }).from(missions).where(and(eq(missions.status, 'in_flight'),

@@ -665,6 +665,7 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       >
         {t('reports.q.who')}
       </h2>
+      {report.jointWar && <JointWarForces report={report} />}
       {/* Defending, the Aegis is part of the reader's own board — see above. */}
       {!report.attacking && <ShieldImpact report={report} />}
 
@@ -892,6 +893,83 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       </div>
     </Sheet>
   );
+}
+
+function JointWarForces({ report }: { report: OrdinaryReport }) {
+  const { t } = useTranslation();
+  const joint = report.jointWar;
+  if (!joint) return null;
+  return <section data-joint-war className="plate plate-inset mt-3 p-3">
+    <h3 className="text-title font-semibold text-bone">
+      {t('clanWar.report.title', { tag: joint.clan.tag })}
+    </h3>
+    <p className="mt-1 text-caption text-dim">
+      {t('clanWar.report.summary', {
+        count: joint.attackerCount,
+        sent: unitCount(joint.sent),
+        lost: unitCount(joint.losses),
+        returned: unitCount(joint.survivors),
+      })}
+    </p>
+    <p className="mt-1 text-caption text-faint">
+      {t('clanWar.report.ratio', {
+        attackers: joint.attackerCount,
+        defenders: joint.defenderCount,
+      })}
+    </p>
+    {joint.baseExchange !== null && joint.adjustedTransfer !== null && (
+      <p className="mt-1 text-caption text-crystal">
+        {t('clanWar.report.audit', {
+          base: signed(joint.baseExchange),
+          adjusted: signed(joint.adjustedTransfer),
+        })}
+      </p>
+    )}
+    {joint.participants.map((participant) => <div key={participant.playerId}
+      className="mt-3 border-t border-white/10 pt-3">
+      <p className="font-semibold text-bone">{participant.name}</p>
+      <p className="mt-1 text-caption text-dim">
+        {t('clanWar.report.participant', {
+          sent: unitCount(participant.sent),
+          lost: unitCount(participant.losses),
+          returned: unitCount(participant.survivors),
+          loot: full(participant.loot.alloy + participant.loot.crystal + participant.loot.deuterium),
+          salvage: full(participant.salvage.alloy + participant.salvage.crystal
+            + participant.salvage.deuterium),
+          dominion: signed(participant.dominion),
+        })}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {participant.waves.map((wave) => <li key={wave.id} className="text-caption text-faint">
+          {t('clanWar.report.wave', {
+            world: wave.originPlanetName,
+            sent: unitCount(wave.sent),
+            lost: unitCount(wave.losses),
+            returned: unitCount(wave.survivors),
+          })}
+          <span className="block text-dim">{t('clanWar.report.waveRewards', {
+            loot: full(wave.loot.alloy + wave.loot.crystal + wave.loot.deuterium),
+            salvage: full(wave.salvage.alloy + wave.salvage.crystal + wave.salvage.deuterium),
+          })}</span>
+          <span className="block text-dim">
+            {wave.destinationPlanetName
+              ? t('clanWar.report.waveState', {
+                  status: t(`clanWar.status.${wave.status}`),
+                  destination: wave.destinationPlanetName,
+                })
+              : t(`clanWar.status.${wave.status}`)}
+          </span>
+          {wave.returnAt && <span className="block text-dim">
+            {t('clanWar.report.returnAt', {
+              time: new Intl.DateTimeFormat(t('units.numberLocale'), {
+                dateStyle: 'short', timeStyle: 'short',
+              }).format(wave.returnAt),
+            })}
+          </span>}
+        </li>)}
+      </ul>
+    </div>)}
+  </section>;
 }
 
 /**

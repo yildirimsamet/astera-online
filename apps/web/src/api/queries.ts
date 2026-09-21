@@ -11,6 +11,7 @@ import { TRAFFIC, engagementEndsAt } from '@astera/rules';
 import type { ChatLanguage } from '@astera/rules';
 import type {
   Fleet,
+  Resources,
   BuildingId,
   HullId,
   InstrumentId,
@@ -37,6 +38,7 @@ import type {
   SeasonInfo,
   notificationsSchema,
   FeedbackKind,
+  ClanWar,
 } from './schemas.js';
 import type { ClanAidInput, IntergalacticConvoyLaunchInput } from './client.js';
 import { useApi } from './context.js';
@@ -643,6 +645,65 @@ export function useClanAid(enabled = true) {
   return useQuery({ queryKey: keys.clanAid, queryFn: api.clanAid, enabled, ...READ });
 }
 
+export function useClanWar(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanWar, queryFn: api.clanWar, enabled, ...READ });
+}
+
+/** War writes affect a small set of reads; each response is parsed by Api. */
+export function useClanWarActions() {
+  const api = useApi();
+  const client = useQueryClient();
+  const { activePlanetId } = useWorld();
+  const applyPlanet = useApplyPlanet();
+  const refresh = (): void => {
+    void client.invalidateQueries({ queryKey: keys.clanWar });
+    void client.invalidateQueries({ queryKey: keys.pending });
+    void client.invalidateQueries({ queryKey: keys.traffic });
+  };
+  return {
+    target: useMutation({ mutationFn: (planetId: string) => api.markClanWarTarget(planetId),
+      onSuccess: refresh }),
+    cancel: useMutation({ mutationFn: () => api.cancelClanWar(), onSuccess: refresh }),
+    start: useMutation({ mutationFn: (acknowledgeShieldLoss: boolean) =>
+      api.startClanWar(acknowledgeShieldLoss), onSuccess: refresh }),
+    quote: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet }) =>
+      api.quoteClanWar(input) }),
+    contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
+      acknowledgeShieldLoss: boolean }) => api.contributeClanWar(input),
+      onSuccess: async (result) => {
+        await applyPlanet(result.planet);
+        /*
+          Pending and traffic are viewpoints from the contribution's origin.
+          Only hand them to the global selected-world caches when that is the
+          world the player is looking through. The null id is the supported
+          capital alias used by legacy embeds and tests.
+        */
+        const resultIsActive = activePlanetId === null
+          || result.planet.planet.id === activePlanetId;
+        if (resultIsActive) {
+          client.setQueryData(keys.pending, { pending: result.pending });
+          client.setQueryData(keys.traffic, result.traffic);
+        }
+        client.setQueryData<ClanWar>(keys.clanWar, (current) =>
+          current ? { ...current, operation: result.war } : current);
+        refresh();
+      } }),
+    recall: useMutation({ mutationFn: (id: string) => api.recallClanWar(id), onSuccess: refresh }),
+    donate: useMutation({ mutationFn: (input: { planetId: string; resources: Resources }) =>
+      api.donateClanTreasury(input), onSuccess: () => {
+        void client.invalidateQueries({ queryKey: keys.clanWar });
+        void client.invalidateQueries({ queryKey: keys.planets });
+        void client.invalidateQueries({ queryKey: keys.planet });
+      } }),
+    upgrade: useMutation({ mutationFn: (level: number) => api.upgradeClanLevel(level),
+      onSuccess: () => {
+        void client.invalidateQueries({ queryKey: keys.clanWar });
+        void client.invalidateQueries({ queryKey: keys.clanLeaderboard });
+      } }),
+  };
+}
+
 export function useClanEvents(enabled = true) {
   const api = useApi();
   return useInfiniteQuery({
@@ -730,7 +791,8 @@ export function useClanActions() {
     mutationFn: (enabled: boolean) => api.setClanAidPolicy(enabled),
     onSuccess: refreshClan,
   });
-  const disband = useMutation({ mutationFn: () => api.disbandClan(), onSuccess: refreshPublicClan });
+  const disband = useMutation({ mutationFn: (acknowledgeTreasuryBurn: boolean) =>
+    api.disbandClan(acknowledgeTreasuryBurn), onSuccess: refreshPublicClan });
   const claimDepot = useMutation({
     mutationFn: () => api.claimClanDepot(),
     onSuccess: async (result) => {

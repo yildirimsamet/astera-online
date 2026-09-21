@@ -17,6 +17,11 @@ import {
   accounts,
   attackCommitments,
   battleReports,
+  clanWarContributions,
+  clanWarDominionEvents,
+  clanWarMissions,
+  clanWarOperations,
+  clanWarParticipantResults,
   clans,
   missions,
   pirateRaids,
@@ -33,6 +38,15 @@ import { addDominionCounters } from './dominion.js';
 
 /** The wire's ceiling for `recovery.lossHours`: finite, and far past any bar. */
 const RECOVERY_HOURS_CAP = 999;
+
+function subtractFleet(sent: Fleet, lost: Fleet): Fleet {
+  const survivors: Fleet = {};
+  for (const [hull, count] of Object.entries(sent)) {
+    const remainder = count - (lost[hull as keyof Fleet] ?? 0);
+    if (remainder > 0) survivors[hull as keyof Fleet] = remainder;
+  }
+  return survivors;
+}
 
 /**
  * BATTLE REPORTS — the closing link of the loop.
@@ -252,6 +266,43 @@ export interface BattleReportView {
   /** Public identities frozen when the attack left, not mutable current membership. */
   attackerClan: { id: string; name: string; tag: string } | null;
   defenderClan: { id: string; name: string; tag: string } | null;
+  jointWar?: {
+    operationId: string;
+    clan: { id: string; name: string; tag: string };
+    coordinatorPlayerId: string;
+    target: { playerId: string; planetId: string; name: string; x: number; y: number; z: number };
+    attackerCount: number;
+    defenderCount: number;
+    baseExchange: number | null;
+    adjustedTransfer: number | null;
+    sent: Fleet;
+    losses: Fleet;
+    survivors: Fleet;
+    participants: {
+      playerId: string;
+      name: string;
+      sent: Fleet;
+      losses: Fleet;
+      survivors: Fleet;
+      loot: Resources;
+      salvage: Resources;
+      dominion: number;
+      waves: {
+        id: string;
+        originPlanetId: string;
+        originPlanetName: string;
+        sent: Fleet;
+        losses: Fleet;
+        survivors: Fleet;
+        loot: Resources;
+        salvage: Resources;
+        status: string;
+        returnAt: Date | null;
+        destinationPlanetId: string | null;
+        destinationPlanetName: string | null;
+      }[];
+    }[];
+  };
 }
 
 type BattleReportRoundView = Omit<
@@ -319,9 +370,18 @@ async function readBattleReportsIn(
   playerId: string,
   limit: number,
 ): Promise<{ reports: ReportView[]; rivals: RivalSummaryView[] }> {
+  const ownJointResults = await tx
+    .select({ reportId: clanWarParticipantResults.reportId, operationId: clanWarParticipantResults.operationId,
+      dominionDelta: clanWarParticipantResults.dominionDelta })
+    .from(clanWarParticipantResults)
+    .where(eq(clanWarParticipantResults.playerId, playerId));
+  const participantReportIds = ownJointResults
+    .map((result) => result.reportId)
+    .filter((id): id is string => id !== null);
   const mine = or(
     eq(battleReports.attackerPlayerId, playerId),
     eq(battleReports.defenderPlayerId, playerId),
+    ...(participantReportIds.length > 0 ? [inArray(battleReports.id, participantReportIds)] : []),
   );
   const impactMine = or(
     eq(strategicImpacts.attackerPlayerId, playerId),
@@ -338,6 +398,8 @@ async function readBattleReportsIn(
     // through memory. Only the identity, ledger and observed-loss fields matter.
     tx
       .select({
+        id: battleReports.id,
+        clanWarOperationId: battleReports.clanWarOperationId,
         attackerPlayerId: battleReports.attackerPlayerId,
         defenderPlayerId: battleReports.defenderPlayerId,
         attackerLosses: battleReports.attackerLosses,
@@ -356,6 +418,31 @@ async function readBattleReportsIn(
   ]);
 
   if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
+
+  const operationIds = [...new Set(history.map((row) => row.clanWarOperationId)
+    .filter((id): id is string => id !== null))];
+  const operationRows = operationIds.length === 0 ? [] : await tx.select().from(clanWarOperations)
+    .where(inArray(clanWarOperations.id, operationIds));
+  const operationById = new Map(operationRows.map((operation) => [operation.id, operation]));
+  const detailOperationIds = [...new Set(rows.map((row) => row.clanWarOperationId)
+    .filter((id): id is string => id !== null))];
+  const jointReportIds = rows.filter((row) => row.clanWarOperationId !== null).map((row) => row.id);
+  const [jointResults, jointWaves, jointAudit] = await Promise.all([
+    jointReportIds.length === 0 ? Promise.resolve([]) : tx.select().from(clanWarParticipantResults)
+      .where(inArray(clanWarParticipantResults.reportId, jointReportIds)),
+    detailOperationIds.length === 0 ? Promise.resolve([]) : tx.select().from(clanWarContributions)
+      .where(inArray(clanWarContributions.operationId, detailOperationIds)),
+    detailOperationIds.length === 0 ? Promise.resolve([]) : tx.select().from(clanWarDominionEvents)
+      .where(inArray(clanWarDominionEvents.operationId, detailOperationIds)),
+  ]);
+  const resultByReport = new Map<string, typeof jointResults>();
+  for (const result of jointResults) {
+    if (!result.reportId) continue;
+    resultByReport.set(result.reportId, [...(resultByReport.get(result.reportId) ?? []), result]);
+  }
+  const resultForViewer = new Map(ownJointResults
+    .filter((result) => result.reportId !== null)
+    .map((result) => [result.reportId!, result]));
 
   /*
     ONLY THE ROWS THAT HAVE A MISSION. A pirate report's `missionId` is NULL, and
@@ -392,9 +479,16 @@ async function readBattleReportsIn(
 
   // One query for every opponent rather than one per report.
   const opponentIds = history
-    .map((r) => r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId)
+    .map((r) => {
+      const operation = r.clanWarOperationId === null
+        ? undefined : operationById.get(r.clanWarOperationId);
+      return operation
+        ? r.defenderPlayerId === playerId ? operation.leaderPlayerId : r.defenderPlayerId
+        : r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId;
+    })
     .concat(impacts.map((r) =>
       r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId))
+    .concat(jointResults.map((result) => result.playerId))
     .filter((id): id is string => id !== null);
   const opponents = await tx
     .select({ id: players.id, name: accounts.displayName, planet: planets.name, planetId: planets.id })
@@ -446,6 +540,14 @@ async function readBattleReportsIn(
           .where(inArray(missions.id, launchIds)))
           .map((row) => [row.id, row.originPlanetId]),
       );
+  const returnDestinations = detailOperationIds.length === 0 ? [] : await tx
+    .select({ contributionId: clanWarMissions.contributionId, planetId: missions.targetPlanetId })
+    .from(clanWarMissions)
+    .innerJoin(missions, eq(missions.id, clanWarMissions.missionId))
+    .where(and(inArray(clanWarMissions.operationId, detailOperationIds), eq(clanWarMissions.leg, 'BATTLE_RETURN')));
+  const destinationByWave = new Map(returnDestinations
+    .filter((row): row is typeof row & { contributionId: string } => row.contributionId !== null)
+    .map((row) => [row.contributionId, row.planetId]));
 
   /**
    * A PIRATE BATTLE STILL HAS ONE WORLD IN IT: the one that launched. D150.
@@ -487,6 +589,8 @@ async function readBattleReportsIn(
     ...impacts.map((row) => row.targetPlanetId),
     ...originByMission.values(),
     ...raidRows.map((raid) => raid.planetId),
+    ...jointWaves.map((wave) => wave.originPlanetId),
+    ...destinationByWave.values(),
   ])].filter((id): id is string => id !== null);
   const worldNames = named.length === 0
     ? []
@@ -499,8 +603,15 @@ async function readBattleReportsIn(
   const spatiallyCurrent = await spatialHistory(tx, playerId, [...named, ...opponents.map(opponent => opponent.planetId)]);
 
   const viewOf = (row: (typeof rows)[number]): BattleReportView => {
-    const attacking = row.attackerPlayerId === playerId;
-    const opponentId = attacking ? row.defenderPlayerId : row.attackerPlayerId;
+    const operation = row.clanWarOperationId === null
+      ? undefined : operationById.get(row.clanWarOperationId);
+    const personal = row.clanWarOperationId === null
+      ? undefined : (resultByReport.get(row.id) ?? []).find((result) => result.playerId === playerId);
+    const attacking = operation
+      ? row.defenderPlayerId !== playerId
+      : row.attackerPlayerId === playerId;
+    const opponentId = attacking ? row.defenderPlayerId
+      : operation?.leaderPlayerId ?? row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
     const neutral = row.targetKind === 'NEUTRAL';
     /*
@@ -510,7 +621,9 @@ async function readBattleReportsIn(
     */
     const raid = row.pirateRaidId === null ? undefined : raidById.get(row.pirateRaidId);
 
-    const yourLosses = attacking ? row.attackerLosses : row.defenderLosses;
+    const yourLosses = attacking
+      ? operation ? personal?.losses ?? {} : row.attackerLosses
+      : row.defenderLosses;
     const theirLosses = attacking ? row.defenderLosses : row.attackerLosses;
     /**
      * Dominion, read from the report rather than derived.
@@ -521,8 +634,9 @@ async function readBattleReportsIn(
      * salvages back — and a report that disagrees with the ladder is worse than a
      * report with one fewer line on it.
      */
-    const dominion =
-      row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
+    const dominion = operation && attacking
+      ? personal?.dominionDelta ?? 0
+      : row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
     const hasDominionAudit =
       row.dominionRuleVersion !== null
       && row.dominionRuleVersion >= MULTI_WORLD.dominionLinearRulesetVersion
@@ -530,7 +644,7 @@ async function readBattleReportsIn(
       && row.dominionAttackerLossValue !== null
       && row.dominionDefenderLossValue !== null
       && row.dominionRawExchange !== null;
-    const dominionBreakdown = hasDominionAudit
+    const dominionBreakdown = operation ? null : hasDominionAudit
       ? attacking
         ? {
             ruleVersion: row.dominionRuleVersion!,
@@ -623,19 +737,22 @@ async function readBattleReportsIn(
       yourPlanet: raid
         ? targetById.get(raid.planetId) ?? ''
         : attacking
-          ? targetById.get(originByMission.get(row.missionId ?? '') ?? '') ?? ''
+          ? operation
+            ? targetById.get(jointWaves.find((wave) => wave.operationId === operation.id
+              && wave.playerId === playerId)?.originPlanetId ?? operation.stagingPlanetId) ?? ''
+            : targetById.get(originByMission.get(row.missionId ?? '') ?? '') ?? ''
           : targetById.get(row.targetPlanetId ?? '') ?? '',
       neutral,
       yourLosses,
       theirLosses,
-      yourFleet: attacking ? row.attackerFleet : row.defenderFleet,
+      yourFleet: attacking ? operation ? personal?.sent ?? {} : row.attackerFleet : row.defenderFleet,
       // What arrived over the reader's own world — see the field. One direction:
       // the attacker learns nothing here about what was standing at the target.
       theirFleet: attacking ? {} : row.attackerFleet,
       // Signed from the caller's side: what you took, or what was taken.
-      lootAlloy: attacking ? row.loot.alloy : -row.loot.alloy,
-      lootCrystal: attacking ? row.loot.crystal : -row.loot.crystal,
-      lootDeuterium: attacking ? deuteriumOf(row.loot) : -deuteriumOf(row.loot),
+      lootAlloy: attacking ? operation ? personal?.loot.alloy ?? 0 : row.loot.alloy : -row.loot.alloy,
+      lootCrystal: attacking ? operation ? personal?.loot.crystal ?? 0 : row.loot.crystal : -row.loot.crystal,
+      lootDeuterium: attacking ? operation ? personal?.loot.deuterium ?? 0 : deuteriumOf(row.loot) : -deuteriumOf(row.loot),
       dominion,
       dominionBreakdown,
       shieldAbsorbed: row.shieldAbsorbed,
@@ -659,17 +776,63 @@ async function readBattleReportsIn(
       */
       disruptedMinutes: row.disruptedMinutes,
       wreckValue: row.wreckValue,
-      salvage: {
-        alloy: row.salvage.alloy,
-        crystal: row.salvage.crystal,
-        deuterium: deuteriumOf(row.salvage),
-      },
-      attackerClan: commitment?.attackerClanId
+      salvage: operation && attacking
+        ? personal?.salvage ?? { alloy: 0, crystal: 0, deuterium: 0 }
+        : {
+          alloy: row.salvage.alloy,
+          crystal: row.salvage.crystal,
+          deuterium: deuteriumOf(row.salvage),
+        },
+      attackerClan: operation
+        ? { id: operation.clanId, name: operation.clanName, tag: operation.clanTag }
+        : commitment?.attackerClanId
         ? clanById.get(commitment.attackerClanId) ?? null
         : null,
-      defenderClan: commitment?.defenderClanId
+      defenderClan: operation?.defenderScoreClanId
+        ? clanById.get(operation.defenderScoreClanId) ?? null
+        : commitment?.defenderClanId
         ? clanById.get(commitment.defenderClanId) ?? null
         : null,
+      ...(operation ? { jointWar: {
+        operationId: operation.id,
+        clan: { id: operation.clanId, name: operation.clanName, tag: operation.clanTag },
+        coordinatorPlayerId: operation.leaderPlayerId,
+        target: { playerId: operation.targetPlayerId, planetId: operation.targetPlanetId,
+          name: operation.targetPlanetName, x: operation.targetX, y: operation.targetY,
+          z: operation.targetZ },
+        attackerCount: (resultByReport.get(row.id) ?? []).length,
+        defenderCount: 1,
+        baseExchange: jointAudit.find((audit) => audit.operationId === operation.id)?.baseExchange ?? null,
+        adjustedTransfer: jointAudit.find((audit) => audit.operationId === operation.id)?.adjustedTransfer ?? null,
+        sent: row.attackerFleet,
+        losses: row.attackerLosses,
+        survivors: subtractFleet(row.attackerFleet, row.attackerLosses),
+        participants: (resultByReport.get(row.id) ?? []).map((result) => ({
+          playerId: result.playerId,
+          name: byId.get(result.playerId)?.name ?? 'Former commander',
+          sent: result.sent,
+          losses: result.losses,
+          survivors: result.survivors,
+          loot: result.loot,
+          salvage: result.salvage,
+          dominion: result.dominionDelta,
+          waves: jointWaves.filter((wave) => wave.operationId === operation.id
+            && wave.playerId === result.playerId && wave.battleAt !== null).map((wave) => ({
+              id: wave.id,
+              originPlanetId: wave.originPlanetId,
+              originPlanetName: targetById.get(wave.originPlanetId) ?? '',
+              sent: wave.fleet,
+              losses: wave.losses ?? {},
+              survivors: wave.survivors ?? {},
+              loot: wave.loot ?? { alloy: 0, crystal: 0, deuterium: 0 },
+              salvage: wave.salvage ?? { alloy: 0, crystal: 0, deuterium: 0 },
+              status: wave.status,
+              returnAt: wave.returnAt,
+              destinationPlanetId: destinationByWave.get(wave.id) ?? null,
+              destinationPlanetName: targetById.get(destinationByWave.get(wave.id) ?? '') ?? null,
+            })),
+        })),
+      } } : {}),
     };
   };
 
@@ -717,11 +880,22 @@ async function readBattleReportsIn(
 
   const rivals = new Map<string, RivalSummaryView>();
   for (const row of history) {
-    const attacking = row.attackerPlayerId === playerId;
-    const opponentId = attacking ? row.defenderPlayerId : row.attackerPlayerId;
+    const operation = row.clanWarOperationId === null
+      ? undefined : operationById.get(row.clanWarOperationId);
+    const attacking = operation
+      ? row.defenderPlayerId !== playerId
+      : row.attackerPlayerId === playerId;
+    const personal = operation ? resultForViewer.get(row.id) : undefined;
+    // A coordinator who launched no hulls sees the report but did not establish
+    // a personal rivalry or earn a share of the team's Dominion.
+    if (operation && attacking && !personal) continue;
+    const opponentId = attacking ? row.defenderPlayerId
+      : operation?.leaderPlayerId ?? row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
     if (!opponent || !spatiallyCurrent(opponent.planetId, row.createdAt)) continue;
-    const signed = row.dominionSwing === null ? 0 : attacking ? row.dominionSwing : -row.dominionSwing;
+    const signed = operation && attacking
+      ? personal?.dominionDelta ?? 0
+      : row.dominionSwing === null ? 0 : attacking ? row.dominionSwing : -row.dominionSwing;
     const theirs = attacking ? row.defenderLosses : row.attackerLosses;
     const hasKnownFleet = Object.values(theirs).some((count) => count > 0);
     const current = rivals.get(opponent.planetId);

@@ -14,6 +14,7 @@ import {
 } from '../db/schema.js';
 import { GameError, lockSeason } from './planet.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
+import { revalidateClanWarTargetPlanet } from './clanWar.js';
 import { armFaults } from './faults.js';
 
 export interface CommanderWorld {
@@ -366,6 +367,16 @@ export async function transferPlanetControl(
   });
 
   await refreshSensorEpoch(tx, input.targetPlanetId, input.now);
+  /*
+    A CLAN AIMING AT THIS WORLD IS AIMING AT SOMEBODY WHO IS NO LONGER ON IT.
+
+    Only an operation that has NOT launched is cancelled; a combined strike already
+    in the air keeps the ordinary in-flight semantics of any other raid. The hook is
+    a speed-up rather than the authority — `clanWar` re-checks the target on every
+    read and every mutation — but without it a clan would go on staging fuel toward
+    a target that cannot be hit.
+  */
+  await revalidateClanWarTargetPlanet(tx, input.targetPlanetId, input.now);
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
 }
 

@@ -208,6 +208,15 @@ describe('a foreign contact, as rendered', () => {
     expect(screen.getByText(/^unknown$/i)).toBeInTheDocument();
   });
 
+  it('names a joint fleet only at exact fleet sight', () => {
+    const clanFleet = { clanId: 'clan', tag: 'OG', label: '[OG] Klan Filosu' };
+    const exact = show(contact({ fleet: { DART: 3 }, clanFleet }));
+    expect(screen.getByText('[OG] Klan Filosu')).toBeInTheDocument();
+    exact.unmount();
+    show(contact({ kind: 'unknown', fleet: undefined, clanFleet }));
+    expect(screen.queryByText('[OG] Klan Filosu')).not.toBeInTheDocument();
+  });
+
   it('states an early Radar threat in words without inventing an arrival time', () => {
     show(contact({ kind: 'unknown', mass: undefined, inbound: true }));
     expect(screen.getByText(/this contact is coming for you/i)).toBeInTheDocument();

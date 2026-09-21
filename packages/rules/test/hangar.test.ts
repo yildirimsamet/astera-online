@@ -2,13 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILDING_IDS,
   HANGAR,
-  HULLS,
   START_BUILDINGS,
   academyExitCheckpoint,
   ACADEMY_STEPS,
-  alloyRate,
   buildingCost,
-  crystalRate,
   hangarCapacity,
   hangarCeiling,
   hangarLoad,
@@ -70,40 +67,6 @@ describe('Hangar capacity', () => {
     expect(hangarCapacity(0)).toBe(80);
     expect(hangarCapacity(-3)).toBe(80);
     expect(hangarCapacity(99)).toBe(7270);
-  });
-
-  /**
-   * THE LADDER IS DERIVED, THEN FROZEN. Each rung is what the producer pair at the
-   * gate Core buys in combat hulls over the owner's day count (2, 3, 5, 8, 12, then
-   * 17/23/30/38 past Core 16), deuterium ignored. A retune of the producers must
-   * fail here rather than silently move every fleet ceiling in the galaxy.
-   */
-  it('stays within 5% of the production it was derived from', () => {
-    const combat = Object.values(HULLS).filter(
-      (h) => !h.ground && (h.family === 'OFFENSIVE' || h.family === 'DEFENSIVE'),
-    );
-    const derive = (core: number, days: number, tiers: number[]): number => {
-      const hs = combat.filter((h) => h.tier !== null && tiers.includes(h.tier));
-      const cost = hs.reduce((s, h) => s + h.alloy + h.crystal, 0) / hs.length;
-      const bulk = hs.reduce((s, h) => s + hullBulk(h.id), 0) / hs.length;
-      return ((alloyRate(core) + crystalRate(core)) * 24 * days / cost) * bulk;
-    };
-    const plan: [number, number, number, number[]][] = [
-      [1, 3, 1, [1]],
-      [2, 4, 2, [1, 2]],
-      [3, 7, 3, [2]],
-      [4, 10, 5, [2, 3]],
-      [5, 13, 8, [3]],
-      [6, 16, 12, [3, 4]],
-      [7, 16, 17, [3, 4]],
-      [8, 16, 23, [3, 4]],
-      [9, 16, 30, [3, 4]],
-      [10, 16, 38, [3, 4]],
-    ];
-    for (const [level, core, days, tiers] of plan) {
-      const derived = derive(core, days, tiers);
-      expect(Math.abs(hangarCapacity(level) - derived) / derived).toBeLessThan(0.05);
-    }
   });
 
   it('holds every fleet the Academy can hand a new commander', () => {

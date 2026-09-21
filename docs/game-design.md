@@ -896,9 +896,28 @@ worlds or membership cannot erase them.
 
 The social surface is deliberately bounded: applications and invitations expire in 24 hours,
 only the leader manages seats, and clan chat is seasonal plain text with no direct messages or
-attachments. There are no clan levels, officers, technology, shared radar, diplomacy, wars or
-resource prizes. The system creates five-person stories without creating a parallel strategy
-game a three-person studio would have to operate.
+attachments. Seasons before ruleset 10 have no clan levels or joint war. Ruleset 10 adds a
+ten-rung Clan Hangar and one joint operation per clan; it does not add officers, clan technology,
+shared radar or diplomacy.
+
+Members fund the new ladder through a capped treasury. Every resource can accumulate only up to
+the next rung's exact price, every rung costs the matching personal Hangar upgrade, and the Clan
+Hangar holds twice that personal rung. Donations are irreversible, only the leader upgrades, and
+disbanding destroys the remaining treasury with an audit entry.
+
+A joint operation begins when the leader marks a discovered hostile player world in Galaxy Focus.
+The leader's capital is frozen as the staging world and the mark expires after 24 hours. Mature
+members may send any number of separately recallable waves; each keeps its owner's technology,
+personal Hangar load and physical ownership. Support at staging is escrow and never defends the
+leader's world. The strike can leave only when every support wave has arrived and the combined pool
+contains a combat hull. A new target remains locked until every survivor or recalled wave is home.
+
+Joint war shares the existing combat rules. It pays participants directly through surviving cargo,
+so the ordinary 10% clan loot share does not apply. A head-count advantage changes only Dominion:
+an outnumbering win is discounted and an outnumbering loss is amplified, while combat itself is
+unchanged. The target mark shares no sensor reading, and the combined fleet exposes the clan tag
+only at the same exact-identity sensor threshold that would reveal an ordinary fleet. The system
+creates five-person stories without creating a second technology or diplomacy game.
 
 ## Competition — Dominion
 

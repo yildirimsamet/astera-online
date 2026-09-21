@@ -19,6 +19,7 @@ export const clan = {
     strength: 'Kuvvetler',
     members: 'Üyeler',
     aid: 'Yardım',
+    compact: { overview: 'Özet', strength: 'Güç', members: 'Üye', aid: 'Yardım' },
   },
   strength: {
     heading: 'klan kuvvetleri',

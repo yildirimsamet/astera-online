@@ -23,6 +23,13 @@ import {
   clanAidPolicySchema,
   clanAidQuoteSchema,
   clanAidSchema,
+  clanWarSchema,
+  clanWarQuoteSchema,
+  clanWarTargetResultSchema,
+  clanWarStartResultSchema,
+  clanWarRecallResultSchema,
+  clanWarContributionResultSchema,
+  clanTreasuryResultSchema,
   clanBadgeSchema,
   clanChatPageSchema,
   clanChatPostSchema,
@@ -507,6 +514,7 @@ export class Api {
   );
   clanDepot = () => this.send('/api/clan/depot', clanDepotSchema);
   clanAid = () => this.send('/api/clan/aid', clanAidSchema);
+  clanWar = () => this.send('/api/clan/war', clanWarSchema);
   clanChat = (before?: string) => this.send(
     `/api/clan/chat?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`,
     clanChatPageSchema,
@@ -526,6 +534,23 @@ export class Api {
 
   quoteClanAid = (input: ClanAidInput) =>
     this.send('/api/clan/aid/quote', clanAidQuoteSchema, { method: 'POST', body: { ...input } });
+  quoteClanWar = (input: { originPlanetId: string; fleet: Fleet }) =>
+    this.send('/api/clan/war/contributions/quote', clanWarQuoteSchema,
+      { method: 'POST', body: { ...input } });
+  markClanWarTarget = (targetPlanetId: string) =>
+    this.clanMutation('/api/clan/war/target', clanWarTargetResultSchema, { targetPlanetId });
+  cancelClanWar = () => this.clanMutation('/api/clan/war/cancel', clanWarTargetResultSchema);
+  startClanWar = (acknowledgeShieldLoss: boolean) =>
+    this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss });
+  contributeClanWar = (input: { originPlanetId: string; fleet: Fleet; acknowledgeShieldLoss: boolean }) =>
+    this.clanMutation('/api/clan/war/contributions', clanWarContributionResultSchema, input);
+  recallClanWar = (contributionId: string) =>
+    this.clanMutation(`/api/clan/war/contributions/${encodeURIComponent(contributionId)}/recall`,
+      clanWarRecallResultSchema);
+  donateClanTreasury = (input: { planetId: string; resources: Resources }) =>
+    this.clanMutation('/api/clan/treasury/donate', clanTreasuryResultSchema, input);
+  upgradeClanLevel = (expectedLevel: number) =>
+    this.clanMutation('/api/clan/level/upgrade', clanTreasuryResultSchema, { expectedLevel });
   createClan = (input: { name: string; tag: string; description: string; recruiting: boolean }) =>
     this.clanMutation('/api/clan/create', clanCreatedSchema, input);
   applyToClan = (clanId: string) =>
@@ -557,7 +582,9 @@ export class Api {
     this.clanMutation('/api/clan/settings', clanSettingsSchema, { description, recruiting });
   setClanAidPolicy = (enabled: boolean) =>
     this.clanMutation('/api/clan/aid-policy', clanAidPolicySchema, { enabled });
-  disbandClan = () => this.clanMutation('/api/clan/disband', clanDisbandSchema);
+  disbandClan = (acknowledgeTreasuryBurn = false) => this.clanMutation(
+    '/api/clan/disband', clanDisbandSchema, { acknowledgeTreasuryBurn },
+  );
   claimClanDepot = () => this.clanMutation('/api/clan/depot/claim', clanDepotClaimSchema);
   launchClanAid = (input: ClanAidInput) =>
     this.clanMutation('/api/clan/aid/launch', clanAidLaunchSchema, { ...input });

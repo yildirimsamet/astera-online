@@ -358,7 +358,8 @@ describe('the settlement pays for the leg its settlers fly', () => {
       .limit(1);
     if (!neutral) throw new Error('a v3 season must seed neutral worlds');
 
-    await setLevel(db, joined.planetId, 'CORE', 8);
+    // Core 9 opens the first colony slot; this fixture is about the fuel bill.
+    await setLevel(db, joined.planetId, 'CORE', 9);
     await placeAt(db, joined.planetId, { x: HOME });
     await placeAt(db, neutral.world.id, { x: CLAIM });
     await db.update(planets).set({ alloy: 40_000, crystal: 20_000 })

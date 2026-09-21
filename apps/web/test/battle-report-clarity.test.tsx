@@ -128,6 +128,36 @@ describe.each(['tr', 'en'])('battle clarity in %s', language => {
 });
 
 describe('bounded and historical report information', () => {
+  it('shows joint participants and each wave return without exposing a defender roster to attackers', async () => {
+    const dialog = await open({ jointWar: {
+      operationId: 'op', clan: { id: 'clan', name: 'Orion Guard', tag: 'OG' },
+      coordinatorPlayerId: 'leader',
+      target: { playerId: 'enemy', planetId: 'target', name: 'Example-91', x: 1, y: 2, z: 3 },
+      attackerCount: 2, defenderCount: 1, baseExchange: 100, adjustedTransfer: 50,
+      sent: { DART: 10 }, losses: { DART: 4 }, survivors: { DART: 6 },
+      participants: [{ playerId: 'member', name: 'Scout', sent: { DART: 10 },
+        losses: { DART: 4 }, survivors: { DART: 6 },
+        loot: { alloy: 100, crystal: 0, deuterium: 0 },
+        salvage: { alloy: 0, crystal: 0, deuterium: 0 }, dominion: 50,
+        waves: [{ id: 'wave', originPlanetId: 'origin', originPlanetName: 'Home',
+          sent: { DART: 10 }, losses: { DART: 4 }, survivors: { DART: 6 },
+          loot: { alloy: 100, crystal: 0, deuterium: 0 },
+          salvage: { alloy: 25, crystal: 0, deuterium: 0 },
+          status: 'RETURNING', returnAt: new Date('2026-09-15T02:00:00Z'),
+          destinationPlanetId: 'origin', destinationPlanetName: 'Haven' }],
+      }],
+    } });
+    const joint = dialog.querySelector('[data-joint-war]');
+    expect(joint).toHaveTextContent('[OG]');
+    expect(joint).toHaveTextContent('Scout');
+    expect(joint).toHaveTextContent('Home');
+    expect(joint).toHaveTextContent('100');
+    expect(joint).toHaveTextContent('Dominion audit: +100 base → +50 adjusted');
+    expect(joint).toHaveTextContent('25 salvage');
+    expect(joint).toHaveTextContent('Flying home → Haven');
+    expect(dialog.querySelector('[data-their-board="arrived"]')).toBeNull();
+  });
+
   it('adds rebuilt guns only after battle, never to a round’s firing force', async () => {
     const dialog = await open({ attacking: false, grade: 'DECISIVE',
       yourFleet: { BASTION: 10 }, yourLosses: { BASTION: 10 }, defenceSalvage: { BASTION: 6 },

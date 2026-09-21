@@ -22,6 +22,8 @@ import type { Db, Queryable } from '../db/client.js';
 import {
   battleReports,
   buildings,
+  clanWarMissions,
+  clanWarOperations,
   intergalacticConvoyRuns,
   missions,
   notifications,
@@ -40,6 +42,7 @@ import { GameError } from './planet.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
 import { dockEndsAt } from './trade.js';
+import { isHostileMission } from './flight.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -598,6 +601,8 @@ export async function pendingThreads(
         targetZ: targetPlanet.z,
         originCoreLevel: originCore.level,
         targetCoreLevel: targetCore.level,
+        clanWarLeg: clanWarMissions.leg,
+        clanWarTag: clanWarOperations.clanTag,
       })
       .from(missions)
       .innerJoin(originPlanet, eq(missions.originPlanetId, originPlanet.id))
@@ -610,6 +615,8 @@ export async function pendingThreads(
         targetCore,
         and(eq(targetCore.planetId, targetPlanet.id), eq(targetCore.type, 'CORE')),
       )
+      .leftJoin(clanWarMissions, eq(clanWarMissions.missionId, missions.id))
+      .leftJoin(clanWarOperations, eq(clanWarOperations.id, clanWarMissions.operationId))
       .where(
         and(
           eq(missions.status, 'in_flight'),
@@ -662,7 +669,7 @@ export async function pendingThreads(
        * Everything else about a foreign craft belongs to the public contact list,
        * where it arrives with no owner, no route and no name.
        */
-      if ((m.kind !== 'attack' && m.kind !== 'death_star') || !ownedIds.includes(m.targetPlanetId)) continue;
+      if (!isHostileMission(m, row.clanWarLeg) || !ownedIds.includes(m.targetPlanetId)) continue;
       const radar = radarByPlanet.get(m.targetPlanetId) ?? 0;
       const reach = radarRange(radar);
       const oneWay = (m.arriveAt.getTime() - m.departAt.getTime()) / 60_000;
@@ -714,7 +721,9 @@ export async function pendingThreads(
         arriveAt: m.arriveAt,
         ...(radarRevealsSize(radar) ? { mass: massClass(m.fleet) } : {}),
         ...(radarRevealsComposition(radar) ? { fleet: m.fleet } : {}),
-        ...(radarRevealsOrigin(radar) ? { originName: row.originName } : {}),
+        ...(radarRevealsOrigin(radar)
+          ? { originName: row.clanWarTag ? `[${row.clanWarTag}] Klan Filosu` : row.originName }
+          : {}),
       });
       continue;
     }

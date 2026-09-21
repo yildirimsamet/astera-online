@@ -21,6 +21,7 @@ import { abandonTradeRun } from '../services/trade.js';
 import { abandonIntergalacticConvoyRun } from '../services/intergalacticConvoyRaid.js';
 import { allocateClanLoot } from '../services/clanLoot.js';
 import { capitalPlanet } from '../services/ownership.js';
+import { abandonClanWarLeg, clanWarEscrowPlanetIds } from '../services/clanWar.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -108,6 +109,23 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
       .returning();
     // Already resolved by a retry that won, or already abandoned. Nothing to undo.
     if (!mission) return false;
+
+    if (mission.kind === 'clan_war') {
+      const capital = await capitalPlanet(tx, mission.ownerPlayerId);
+      const escrowPlanetIds = await clanWarEscrowPlanetIds(tx, mission.id);
+      for (const planetId of [...new Set([
+        mission.originPlanetId,
+        mission.targetPlanetId,
+        capital.id,
+        ...escrowPlanetIds,
+      ])].sort()) {
+        await tx.select({ id: planets.id }).from(planets)
+          .where(eq(planets.id, planetId)).for('update');
+      }
+      await abandonClanWarLeg(tx, mission, at);
+      await publishShard(tx, mission.seasonId, 'arrival');
+      return true;
+    }
 
     const storagePlanetId = ownerOf(mission);
     const capital = await capitalPlanet(tx, mission.ownerPlayerId);

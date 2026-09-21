@@ -7,6 +7,7 @@ import {
   jsonb,
   check,
   doublePrecision,
+  foreignKey,
   pgEnum,
   pgTable,
   primaryKey,
@@ -38,6 +39,7 @@ import type {
   TechLevels,
   PlanetSkinId,
   PlanetSkinStatus,
+  JointWarFuelLeg,
 } from '@astera/rules';
 import type { ChatLanguage } from '@astera/rules';
 
@@ -54,6 +56,16 @@ export const seasonStatus = pgEnum('season_status', ['pending', 'live', 'frozen'
 export const planetKind = pgEnum('planet_kind', ['CAPITAL', 'COLONY', 'NEUTRAL']);
 export const missionKind = pgEnum('mission_kind', [
   'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star', 'clan_transfer',
+  /**
+   * EVERY LEG OF A CLAN'S JOINT WAR, and one value rather than four. 2026-09-20.
+   *
+   * Which leg a row actually is lives in `clan_war_missions.leg`, because a leg is
+   * a fact about an operation rather than about the mission table, and four enum
+   * values would have to be appended in lockstep with a relation that already
+   * answers the question. Appended last: the order of this enum is its physical
+   * identity in Postgres.
+   */
+  'clan_war',
 ]);
 export const missionStatus = pgEnum('mission_status', ['in_flight', 'resolved', 'cancelled']);
 export const eventStatus = pgEnum('event_status', ['pending', 'processing', 'done', 'failed']);
@@ -114,6 +126,8 @@ export const eventKind = pgEnum('event_kind', [
   'fault_repair_complete',
   'vault_leak_flush',
   'colony_secession',
+  /** A clan's marked target reaching the end of its twenty-four hours. 2026-09-20. */
+  'clan_war_expiry',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -748,6 +762,27 @@ export const clans = pgTable('clans', {
   tag: text('tag').notNull(),
   description: text('description').notNull().default(''),
   recruiting: boolean('recruiting').notNull().default(true),
+  /**
+   * THE KLAN HANGARI RUNG, AND NULL IS NOT ZERO. 2026-09-20.
+   *
+   * NULL means this clan belongs to a season dealt before the joint war existed:
+   * it has no level, no treasury it may spend, and every war and treasury mutation
+   * refuses. A clan founded at `MULTI_WORLD.clanJointWarRulesetVersion` or above is
+   * written `1` at creation and is never null again. The distinction is the whole
+   * of "no backfill" — a default of 0 or 1 would have silently opened the feature
+   * on every live galaxy.
+   */
+  level: integer('level'),
+  /**
+   * THE SHARED PURSE. Capped per resource at the NEXT rung's price, never a bank.
+   *
+   * The cap is a service rule rather than a CHECK because it moves with the level;
+   * what the column guarantees is only that a balance is a non-negative safe
+   * integer, which is what the ledger arithmetic everywhere else assumes.
+   */
+  treasuryAlloy: bigint('treasury_alloy', { mode: 'number' }).notNull().default(0),
+  treasuryCrystal: bigint('treasury_crystal', { mode: 'number' }).notNull().default(0),
+  treasuryDeuterium: bigint('treasury_deuterium', { mode: 'number' }).notNull().default(0),
   dominionTaken: bigint('dominion_taken', { mode: 'number' }).notNull().default(0),
   dominionLost: bigint('dominion_lost', { mode: 'number' }).notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
@@ -763,6 +798,16 @@ export const clans = pgTable('clans', {
     'clans_dominion_range_check',
     sql`${t.dominionTaken} BETWEEN 0 AND 9007199254740991
       AND ${t.dominionLost} BETWEEN 0 AND 9007199254740991`,
+  ),
+  check(
+    'clans_level_check',
+    sql`${t.level} IS NULL OR ${t.level} BETWEEN 1 AND 10`,
+  ),
+  check(
+    'clans_treasury_range_check',
+    sql`${t.treasuryAlloy} BETWEEN 0 AND 9007199254740991
+      AND ${t.treasuryCrystal} BETWEEN 0 AND 9007199254740991
+      AND ${t.treasuryDeuterium} BETWEEN 0 AND 9007199254740991`,
   ),
 ]);
 
@@ -1444,7 +1489,20 @@ export const attackCommitments = pgTable('attack_commitments', {
   launchedAt: timestamp('launched_at', { withTimezone: true }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 }, (t) => [
-  uniqueIndex('attack_commitments_mission_idx').on(t.missionId),
+  /**
+   * ONE ROW PER ATTACKER PER MISSION — not one row per mission. 2026-09-20.
+   *
+   * An ordinary raid has exactly one attacker, so this is the same constraint it
+   * has always been for every launch in the game. A clan's joint strike is one
+   * mission with up to five commanders behind it, and each of them spends their
+   * OWN twelve-hour bash quota against the defender: five rows, one mission.
+   *
+   * The two quota queries read it differently and deliberately. The personal
+   * ceiling counts ROWS, so a member who sent three waves still spends one. The
+   * clan ceiling counts DISTINCT MISSIONS, so a five-member strike is one attack
+   * against the clan's five — not five.
+   */
+  uniqueIndex('attack_commitments_mission_idx').on(t.missionId, t.attackerPlayerId),
   index('attack_commitments_personal_idx')
     .on(t.attackerPlayerId, t.targetPlayerId, t.expiresAt),
   index('attack_commitments_clan_idx').on(t.quotaClanId, t.targetPlayerId, t.expiresAt),
@@ -1740,6 +1798,21 @@ export const battleReports = pgTable('battle_reports', {
   targetPlanetId: uuid('target_planet_id').references(() => planets.id),
   /** The pirate raid this report settles. NULL for every world battle. D150. */
   pirateRaidId: uuid('pirate_raid_id').references(() => pirateRaids.id),
+  /**
+   * THE CLAN OPERATION THIS REPORT SETTLES, AND WHY IT IS NOT A FOURTH BINDER.
+   *
+   * A joint war still lands as ONE mission against ONE world, so `missionId`,
+   * `targetPlanetId` and `targetKind = 'PLAYER'` are filled exactly as they are
+   * for an ordinary raid and the exact-one binder CHECK above is untouched. This
+   * column says only that the attacking side was a pool rather than a person, and
+   * where the per-participant breakdown lives.
+   *
+   * NULL on every report that is not a joint war, which is every report written
+   * before 2026-09-20.
+   */
+  clanWarOperationId: uuid('clan_war_operation_id').references(
+    (): AnyPgColumn => clanWarOperations.id,
+  ),
   targetKind: text('target_kind').$type<'PLAYER' | 'NEUTRAL' | 'PIRATE'>().notNull().default('PLAYER'),
   grade: text('grade').$type<Grade>().notNull(),
   rounds: jsonb('rounds').$type<CombatRound[]>().notNull(),
@@ -1880,6 +1953,17 @@ export const battleReports = pgTable('battle_reports', {
           AND ${t.missionId} IS NULL
           AND ${t.targetPlanetId} IS NULL)`,
   ),
+  /**
+   * THE SWING IS THE RAW EXCHANGE — EXCEPT WHERE A RULE SAYS OTHERWISE.
+   *
+   * Since D2's linear ruleset an ordinary battle's transfer IS its raw exchange,
+   * and that equality is what stops a report quietly disagreeing with the ladder.
+   * A clan's joint war is the one documented divergence: the team exchange is
+   * corrected for the head-count advantage (`adjustJointDominion`), so the swing
+   * is deliberately a fraction or a multiple of the raw figure and BOTH are
+   * stored so the correction can be audited. The exemption is keyed on the
+   * operation binder rather than on a flag, so nothing else can claim it.
+   */
   check(
     'battle_reports_dominion_audit_check',
     sql`(${t.dominionEligible} IS NULL
@@ -1906,6 +1990,7 @@ export const battleReports = pgTable('battle_reports', {
             + ${t.dominionDefenderLossValue} - ${t.dominionAttackerLossValue}
           AND ${t.dominionSwing} IS NOT NULL
           AND (${t.dominionRuleVersion} < 7
+            OR ${t.clanWarOperationId} IS NOT NULL
             OR ${t.dominionRawExchange} = ${t.dominionSwing}))`,
   ),
   check(
@@ -1920,6 +2005,406 @@ export const battleReports = pgTable('battle_reports', {
           OR ${t.dominionDefenderLossValue} BETWEEN 0 AND 9007199254740991)
       AND (${t.dominionRawExchange} IS NULL
           OR ${t.dominionRawExchange} BETWEEN -9007199254740991 AND 9007199254740991)`,
+  ),
+  /** One report per joint operation; a redelivered settlement must not write a second. */
+  uniqueIndex('battle_reports_clan_war_operation_idx')
+    .on(t.clanWarOperationId)
+    .where(sql`${t.clanWarOperationId} IS NOT NULL`),
+]);
+
+/* ── klan ortak savaşı ──────────────────────────────────────── */
+
+/**
+ * KLAN ORTAK SAVAŞI — the persistent state machine. Owner design, 2026-09-20.
+ *
+ * A joint war is NOT an attack with extra rows. It is an operation with a life of
+ * its own: a target is marked, members fly support to the leader's capital and
+ * wait there in escrow, the leader launches one combined strike, and every
+ * survivor flies home to the world it left from. Each of those is a state a
+ * player can see, a worker can resume and a crash can be recovered from, which is
+ * why it is a table rather than a flag on a mission.
+ *
+ * THE FOUR TABLES AND WHAT EACH ONE OWNS:
+ *   - `clan_war_operations`    the target, the clock, the state and its close reason
+ *   - `clan_war_contributions` one wave: whose it is, what it is, what it paid, how it ended
+ *   - `clan_war_missions`      which flight is which leg of which of the two above
+ *   - `clan_war_participant_results` one settled commander's aggregate, for the report
+ *
+ * Nothing here duplicates what another of them already states. A mission's leg is
+ * read from the relation rather than stored twice on a contribution, and a wave's
+ * outcome lives on the wave rather than in a second result table.
+ */
+export type ClanWarStatus = 'ASSEMBLING' | 'ATTACKING' | 'RETURNING' | 'COMPLETED';
+
+/** Why an operation stopped being open. NULL while it is still assembling or attacking. */
+export type ClanWarCloseReason =
+  | 'BATTLE'
+  | 'LEADER_CANCEL'
+  | 'EXPIRED'
+  | 'TARGET_CHANGED'
+  | 'FAILED';
+
+export const clanWarOperations = pgTable('clan_war_operations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  /** Identity frozen at marking; a rename must not rewrite a historical report. */
+  clanName: text('clan_name').notNull(),
+  clanTag: text('clan_tag').notNull(),
+  leaderPlayerId: uuid('leader_player_id').notNull().references(() => players.id),
+  /**
+   * THE LEADER'S PROTECTED CAPITAL AS IT STOOD WHEN THE TARGET WAS MARKED.
+   *
+   * Snapshotted rather than looked up, because members commit fuel for a flight to
+   * THIS world: a leader who settles a nearer capital mid-operation must not move
+   * the rendezvous under a wave that is already paid for and in the air.
+   */
+  stagingPlanetId: uuid('staging_planet_id').notNull().references(() => planets.id),
+  targetPlanetId: uuid('target_planet_id').notNull().references(() => planets.id),
+  targetPlayerId: uuid('target_player_id').notNull().references(() => players.id),
+  /** Target identity frozen for the report and for the clan's own war tab. */
+  targetPlanetName: text('target_planet_name').notNull(),
+  targetX: real('target_x').notNull(),
+  targetY: real('target_y').notNull(),
+  targetZ: real('target_z').notNull(),
+  status: text('status').$type<ClanWarStatus>().notNull().default('ASSEMBLING'),
+  closeReason: text('close_reason').$type<ClanWarCloseReason>(),
+  /** Mature launch snapshots, used only for clan Dominion attribution. */
+  attackerScoreClanId: uuid('attacker_score_clan_id').references(() => clans.id),
+  defenderScoreClanId: uuid('defender_score_clan_id').references(() => clans.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /** Exactly twenty-four hours after `created_at`; the service owns that equality. */
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+}, (t) => [
+  /**
+   * ONE OPEN OPERATION PER CLAN, ENFORCED BY THE DATABASE.
+   *
+   * Two leaders cannot exist, but one leader with two tabs can send two marks, and
+   * the losing request must fail rather than strand a second pool of everybody's
+   * ships. `COMPLETED` is the only state that releases the clan, which is also the
+   * rule that "every return must be home before a new target" is written in.
+   */
+  uniqueIndex('clan_war_operations_open_idx')
+    .on(t.clanId)
+    .where(sql`${t.status} <> 'COMPLETED'`),
+  index('clan_war_operations_expiry_idx').on(t.seasonId, t.status, t.expiresAt),
+  index('clan_war_operations_target_idx').on(t.targetPlanetId, t.status),
+  index('clan_war_operations_target_player_idx').on(t.targetPlayerId, t.status),
+  check(
+    'clan_war_operations_status_check',
+    sql`${t.status} IN ('ASSEMBLING', 'ATTACKING', 'RETURNING', 'COMPLETED')`,
+  ),
+  check(
+    'clan_war_operations_close_reason_check',
+    sql`${t.closeReason} IS NULL
+      OR ${t.closeReason} IN ('BATTLE', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED')`,
+  ),
+  check('clan_war_operations_window_check', sql`${t.expiresAt} > ${t.createdAt}`),
+  /**
+   * THE STATE AND ITS CLOCK CANNOT CONTRADICT EACH OTHER.
+   *
+   * Every one of these has a recovery path behind it: a worker redelivery writing
+   * `COMPLETED` without a reason, a failed launch leaving `started_at` on an
+   * assembling row, a cancel claiming a battle that never happened. Each would be
+   * a row no reader could explain, so the row is refused instead.
+   */
+  check(
+    'clan_war_operations_lifecycle_check',
+    sql`CASE ${t.status}
+          WHEN 'ASSEMBLING' THEN ${t.startedAt} IS NULL AND ${t.resolvedAt} IS NULL
+            AND ${t.completedAt} IS NULL AND ${t.closeReason} IS NULL
+          WHEN 'ATTACKING' THEN ${t.startedAt} IS NOT NULL AND ${t.resolvedAt} IS NULL
+            AND ${t.completedAt} IS NULL AND ${t.closeReason} IS NULL
+          WHEN 'RETURNING' THEN ${t.closeReason} IS NOT NULL AND ${t.completedAt} IS NULL
+          WHEN 'COMPLETED' THEN ${t.closeReason} IS NOT NULL AND ${t.completedAt} IS NOT NULL
+          ELSE false
+        END`,
+  ),
+  /** A settled battle is the only thing that can have resolved, and it must have launched. */
+  check(
+    'clan_war_operations_battle_check',
+    sql`(${t.resolvedAt} IS NULL OR ${t.closeReason} = 'BATTLE')
+      AND (${t.closeReason} IS DISTINCT FROM 'BATTLE'
+        OR (${t.startedAt} IS NOT NULL AND ${t.resolvedAt} IS NOT NULL))
+      AND (${t.closeReason} IS DISTINCT FROM 'FAILED' OR ${t.startedAt} IS NOT NULL)`,
+  ),
+]);
+
+/**
+ * ONE WAVE, AND THE BOUNDARY OF EVERYTHING THAT IS CHARGED ONCE.
+ *
+ * A contribution is created whole and never grown: a commander sending more ships
+ * creates another row. That is what keeps fuel, the research snapshot and the
+ * idempotency key each attached to exactly one quantity of ships, so a retry can
+ * never add a second wave's worth of fuel to a first wave's record.
+ */
+export type ClanWarContributionStatus =
+  | 'OUTBOUND'
+  | 'STAGED'
+  | 'RECALL_ORDERED'
+  | 'IN_BATTLE'
+  | 'RETURNING'
+  | 'HOME'
+  | 'LOST';
+
+/**
+ * PHYSICAL flies; LEADER_CAPITAL is already standing on the staging world.
+ *
+ * The leader's own capital fleet is added and removed instantly — no travel, no
+ * flight bay, no staging leg of fuel — because it never goes anywhere to join the
+ * pool. Every other wave, the leader's own colonies included, flies.
+ */
+export type ClanWarContributionSource = 'PHYSICAL' | 'LEADER_CAPITAL';
+
+export interface ClanWarFuelLeg {
+  leg: JointWarFuelLeg;
+  distance: number;
+  fuel: number;
+}
+
+export const clanWarContributions = pgTable('clan_war_contributions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  operationId: uuid('operation_id').notNull().references(() => clanWarOperations.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  playerId: uuid('player_id').notNull().references(() => players.id),
+  /** Where the wave left from, and where its survivors are owed a landing. */
+  originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
+  sourceKind: text('source_kind').$type<ClanWarContributionSource>()
+    .notNull().default('PHYSICAL'),
+  /** The wave as it was sent. Never edited; a bigger wave is a second row. */
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  /** THE OWNER'S research at the instant they committed. Never the leader's. */
+  tech: jsonb('tech').$type<TechLevels>().notNull(),
+  /**
+   * THE `units.location` THIS WAVE'S SHIPS SIT IN FOR ITS WHOLE LIFE.
+   *
+   * `units` is keyed `(planet, hull, location)`, so two waves of Darts out of the
+   * same world would overwrite one another under a shared location. Each wave gets
+   * its own opaque value and the rows stay on the ORIGIN world under the owner —
+   * which is precisely what keeps the ships counted in their owner's personal
+   * Hangar and out of the staging world's defence.
+   */
+  unitLocation: text('unit_location').notNull(),
+  /** Room taken out of the Klan Hangarı while this wave is live. `hangarLoad` units. */
+  reservedBulk: real('reserved_bulk').notNull(),
+  /** Deuterium taken once, up front, for every leg this wave will ever fly. */
+  fuelPaid: real('fuel_paid').notNull(),
+  fuelLegs: jsonb('fuel_legs').$type<ClanWarFuelLeg[]>().notNull(),
+  status: text('status').$type<ClanWarContributionStatus>().notNull().default('OUTBOUND'),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  stagedAt: timestamp('staged_at', { withTimezone: true }),
+  recalledAt: timestamp('recalled_at', { withTimezone: true }),
+  battleAt: timestamp('battle_at', { withTimezone: true }),
+  returnAt: timestamp('return_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  /* Settlement snapshots. Null until the combined strike resolves. */
+  losses: jsonb('losses').$type<Fleet>(),
+  survivors: jsonb('survivors').$type<Fleet>(),
+  loot: jsonb('loot').$type<Resources>(),
+  salvage: jsonb('salvage').$type<Resources>(),
+  /** Post-shield, overkill-capped damage credited to this wave. Feeds Dominion only. */
+  hullDamage: real('hull_damage'),
+}, (t) => [
+  uniqueIndex('clan_war_contributions_unit_location_idx').on(t.unitLocation),
+  /** Candidate key for the mission relation's same-operation foreign key. */
+  uniqueIndex('clan_war_contributions_id_operation_idx').on(t.id, t.operationId),
+  index('clan_war_contributions_operation_idx').on(t.operationId, t.status),
+  index('clan_war_contributions_player_idx').on(t.playerId, t.status),
+  index('clan_war_contributions_origin_idx').on(t.originPlanetId, t.status),
+  check(
+    'clan_war_contributions_status_check',
+    sql`${t.status} IN ('OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE',
+      'RETURNING', 'HOME', 'LOST')`,
+  ),
+  check(
+    'clan_war_contributions_source_check',
+    sql`${t.sourceKind} IN ('PHYSICAL', 'LEADER_CAPITAL')`,
+  ),
+  check(
+    'clan_war_contributions_amounts_check',
+    sql`${t.reservedBulk} >= 0 AND ${t.fuelPaid} >= 0`,
+  ),
+]);
+
+/** Which flight is which leg of which operation. The only place a leg is named. */
+export type ClanWarLeg = 'SUPPORT_OUT' | 'SUPPORT_RETURN' | 'COMBINED_ATTACK' | 'BATTLE_RETURN';
+
+export const clanWarMissions = pgTable('clan_war_missions', {
+  missionId: uuid('mission_id').primaryKey().references(() => missions.id),
+  operationId: uuid('operation_id').notNull().references(() => clanWarOperations.id),
+  /** NULL only for the one aggregate strike; every other leg belongs to a wave. */
+  contributionId: uuid('contribution_id'),
+  leg: text('leg').$type<ClanWarLeg>().notNull(),
+}, (t) => [
+  foreignKey({
+    columns: [t.contributionId, t.operationId],
+    foreignColumns: [clanWarContributions.id, clanWarContributions.operationId],
+    name: 'clan_war_missions_contribution_operation_fk',
+  }),
+  /** One combined strike per operation, whatever a redelivered launch tries. */
+  uniqueIndex('clan_war_missions_aggregate_idx')
+    .on(t.operationId, t.leg)
+    .where(sql`${t.contributionId} IS NULL`),
+  /** One of each leg per wave, whatever a retried return planner tries. */
+  uniqueIndex('clan_war_missions_contribution_leg_idx')
+    .on(t.contributionId, t.leg)
+    .where(sql`${t.contributionId} IS NOT NULL`),
+  index('clan_war_missions_operation_idx').on(t.operationId),
+  check(
+    'clan_war_missions_leg_check',
+    sql`${t.leg} IN ('SUPPORT_OUT', 'SUPPORT_RETURN', 'COMBINED_ATTACK', 'BATTLE_RETURN')`,
+  ),
+  check(
+    'clan_war_missions_binding_check',
+    sql`(${t.leg} = 'COMBINED_ATTACK') = (${t.contributionId} IS NULL)`,
+  ),
+]);
+
+/**
+ * ONE COMMANDER'S WHOLE PART IN ONE OPERATION, aggregated across their waves.
+ *
+ * This is what the report is projected from and what decides who may READ it —
+ * authority comes from having been in the battle, not from current membership, so
+ * a commander who leaves the clan afterwards keeps their own history.
+ */
+export const clanWarParticipantResults = pgTable('clan_war_participant_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  operationId: uuid('operation_id').notNull().references(() => clanWarOperations.id),
+  reportId: uuid('report_id').references(() => battleReports.id),
+  /** A snapshot, deliberately without a foreign key: a reclaimed seat must not erase history. */
+  playerId: uuid('player_id').notNull(),
+  sent: jsonb('sent').$type<Fleet>().notNull(),
+  losses: jsonb('losses').$type<Fleet>().notNull(),
+  survivors: jsonb('survivors').$type<Fleet>().notNull(),
+  loot: jsonb('loot').$type<Resources>().notNull(),
+  salvage: jsonb('salvage').$type<Resources>().notNull(),
+  hullDamage: real('hull_damage').notNull().default(0),
+  /** The unnormalised score this commander earned, and the transfer it became. */
+  dominionRaw: bigint('dominion_raw', { mode: 'number' }).notNull().default(0),
+  dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('clan_war_participant_results_idx').on(t.operationId, t.playerId),
+  index('clan_war_participant_results_player_idx').on(t.playerId, t.createdAt),
+  index('clan_war_participant_results_report_idx').on(t.reportId),
+  check(
+    'clan_war_participant_results_range_check',
+    sql`${t.hullDamage} >= 0
+      AND ${t.dominionRaw} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.dominionDelta} BETWEEN -9007199254740991 AND 9007199254740991`,
+  ),
+]);
+
+/**
+ * THE JOINT WAR'S OWN SCORE JOURNAL, beside `dominion_events` and never inside it.
+ *
+ * `dominion_events` is one attacker against one defender and is unique per
+ * mission; a joint war moves score for up to five attackers at once. Squeezing
+ * that into the older table would have meant relaxing a uniqueness constraint the
+ * ordinary lane depends on, so the ordinary lane keeps its shape and this table
+ * carries the rest.
+ *
+ * Ids are snapshots without foreign keys, exactly as `dominion_events` explains:
+ * a season freeze must still be able to reproduce a ledger after either seat has
+ * been reclaimed.
+ */
+export const clanWarDominionEvents = pgTable('clan_war_dominion_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  operationId: uuid('operation_id').notNull(),
+  reportId: uuid('report_id'),
+  playerId: uuid('player_id').notNull(),
+  role: text('role').$type<'ATTACKER' | 'DEFENDER'>().notNull(),
+  rulesetVersion: integer('ruleset_version').notNull(),
+  /** Distinct commanders with at least one hull in the fight, on each side. */
+  attackerCount: integer('attacker_count').notNull(),
+  defenderCount: integer('defender_count').notNull(),
+  /** Team exchange before the head-count correction, and after it. */
+  baseExchange: bigint('base_exchange', { mode: 'number' }).notNull(),
+  adjustedTransfer: bigint('adjusted_transfer', { mode: 'number' }).notNull(),
+  /** This commander's own movement, exactly as the ledger recorded it. */
+  delta: bigint('delta', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('clan_war_dominion_events_idx').on(t.operationId, t.playerId, t.role),
+  index('clan_war_dominion_events_season_idx').on(t.seasonId),
+  index('clan_war_dominion_events_player_idx').on(t.playerId),
+  check('clan_war_dominion_events_role_check', sql`${t.role} IN ('ATTACKER', 'DEFENDER')`),
+  check(
+    'clan_war_dominion_events_count_check',
+    sql`${t.attackerCount} >= 1 AND ${t.defenderCount} >= 1 AND ${t.rulesetVersion} > 0`,
+  ),
+  check(
+    'clan_war_dominion_events_range_check',
+    sql`${t.baseExchange} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.adjustedTransfer} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.delta} BETWEEN -9007199254740991 AND 9007199254740991`,
+  ),
+]);
+
+/**
+ * IMMUTABLE AUDIT BEHIND THE TREASURY BALANCE.
+ *
+ * Donations are irreversible and a disband burns what is left, so the cached
+ * balance on `clans` is the only figure a player ever sees and this is the only
+ * record of how it got there. The CHECKs below are the shape of each kind: a
+ * donation only ever adds, a level-up only ever spends and climbs exactly one
+ * rung, and a burn has no actor because nobody chose it wave by wave.
+ */
+export type ClanTreasuryEventKind = 'DONATION' | 'LEVEL_UP' | 'DISBAND_BURN';
+
+export const clanTreasuryEvents = pgTable('clan_treasury_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  /** NULL only on a system burn nobody performed resource by resource. */
+  actorPlayerId: uuid('actor_player_id').references(() => players.id),
+  /** The world a donation came out of. NULL on anything that is not a donation. */
+  sourcePlanetId: uuid('source_planet_id').references(() => planets.id),
+  kind: text('kind').$type<ClanTreasuryEventKind>().notNull(),
+  /** Signed deltas: positive into the purse, negative out of it. */
+  alloy: bigint('alloy', { mode: 'number' }).notNull().default(0),
+  crystal: bigint('crystal', { mode: 'number' }).notNull().default(0),
+  deuterium: bigint('deuterium', { mode: 'number' }).notNull().default(0),
+  levelBefore: integer('level_before'),
+  levelAfter: integer('level_after'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('clan_treasury_events_clan_idx').on(t.clanId, t.createdAt),
+  index('clan_treasury_events_actor_idx').on(t.actorPlayerId, t.createdAt),
+  check(
+    'clan_treasury_events_kind_check',
+    sql`${t.kind} IN ('DONATION', 'LEVEL_UP', 'DISBAND_BURN')`,
+  ),
+  check(
+    'clan_treasury_events_shape_check',
+    sql`CASE ${t.kind}
+          WHEN 'DONATION' THEN ${t.actorPlayerId} IS NOT NULL
+            AND ${t.sourcePlanetId} IS NOT NULL
+            AND ${t.alloy} >= 0 AND ${t.crystal} >= 0 AND ${t.deuterium} >= 0
+            AND ${t.alloy} + ${t.crystal} + ${t.deuterium} > 0
+            AND ${t.levelBefore} IS NULL AND ${t.levelAfter} IS NULL
+          WHEN 'LEVEL_UP' THEN ${t.actorPlayerId} IS NOT NULL
+            AND ${t.sourcePlanetId} IS NULL
+            AND ${t.alloy} <= 0 AND ${t.crystal} <= 0 AND ${t.deuterium} <= 0
+            AND ${t.levelBefore} BETWEEN 1 AND 9
+            AND ${t.levelAfter} = ${t.levelBefore} + 1
+          WHEN 'DISBAND_BURN' THEN ${t.sourcePlanetId} IS NULL
+            AND ${t.alloy} <= 0 AND ${t.crystal} <= 0 AND ${t.deuterium} <= 0
+            AND ${t.levelBefore} IS NULL AND ${t.levelAfter} IS NULL
+          ELSE false
+        END`,
+  ),
+  check(
+    'clan_treasury_events_range_check',
+    sql`${t.alloy} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.crystal} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.deuterium} BETWEEN -9007199254740991 AND 9007199254740991`,
   ),
 ]);
 

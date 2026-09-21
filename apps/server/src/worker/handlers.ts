@@ -30,7 +30,6 @@ import {
   travelExact,
   vaultProtects,
   type Fleet,
-  type Ledger,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Tx } from '../db/client.js';
@@ -42,6 +41,9 @@ import {
   buildOrders,
   clanMemberships,
   clanScoreEvents,
+  clanWarContributions,
+  clanWarMissions,
+  clanWarOperations,
   clans,
   debrisFields,
   dominionEvents,
@@ -86,6 +88,11 @@ import { emptySeasonStats } from '../services/seasonArchive.js';
 import { buildGalaxyRecord } from '../services/galaxyRecord.js';
 import { clearMissionUnits, fleetOfMission } from '../services/mission.js';
 import { resolvePirateArrival, resolvePirateReturn } from '../services/pirateRaid.js';
+import {
+  clanWarEscrowPlanetIds,
+  resolveClanWarExpiry,
+  resolveClanWarLeg,
+} from '../services/clanWar.js';
 import { resolveTradeArrival, resolveTradeReturn } from '../services/trade.js';
 import {
   resolveIntergalacticConvoyArrival,
@@ -150,8 +157,18 @@ import {
   dominionScore,
 } from '../services/dominion.js';
 import { adminPlayerIdsInSeason } from '../services/admin.js';
+import {
+  flyingAlloy,
+  flyingCrystal,
+  flyingDeuterium,
+  flyingValue,
+  identityOfPlanet,
+  lockLedgers,
+  saveLedger,
+} from '../services/battleSettlement.js';
 import { resolveClanAid } from '../services/clanAid.js';
 import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
+import { isHostileMission } from '../services/flight.js';
 
 export interface HandlerContext {
   db: Db;
@@ -179,29 +196,6 @@ async function claimMission(tx: Tx, missionId: string) {
 }
 
 /** Lock every Dominion ledger in one stable player-id order. */
-async function lockLedgers(
-  tx: Tx,
-  playerIds: readonly string[],
-): Promise<Map<string, Ledger & { id: string }>> {
-  const ids = [...new Set(playerIds)].sort();
-  if (ids.length === 0) return new Map();
-  const rows = await tx
-    .select({ id: players.id, taken: players.dominionTaken, lost: players.dominionLost })
-    .from(players)
-    .where(inArray(players.id, ids))
-    .orderBy(players.id)
-    .for('update');
-  if (rows.length !== ids.length) throw new Error('mission player vanished before arrival');
-  return new Map(rows.map((row) => [row.id, row]));
-}
-
-async function saveLedger(tx: Tx, ledger: Ledger & { id: string }): Promise<void> {
-  await tx
-    .update(players)
-    .set({ dominionTaken: ledger.taken, dominionLost: ledger.lost })
-    .where(eq(players.id, ledger.id));
-}
-
 /* ── mission arrival ────────────────────────────────────────── */
 
 /**
@@ -249,13 +243,32 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         eq(planets.controllerPlayerId, mission.ownerPlayerId),
         eq(planets.kind, 'CAPITAL'),
       ));
+    const jointEscrowPlanetIds = mission.kind === 'clan_war'
+      ? await clanWarEscrowPlanetIds(tx, mission.id)
+      : [];
     const lockedPlanetIds = [...new Set([
       mission.originPlanetId,
       mission.targetPlanetId,
       ...(ownerCapital ? [ownerCapital.id] : []),
+      ...jointEscrowPlanetIds,
     ])].sort();
     for (const id of lockedPlanetIds) {
       await tx.select({ id: planets.id }).from(planets).where(eq(planets.id, id)).for('update');
+    }
+
+    /*
+      A JOINT WAR LEG IS DISPATCHED BEFORE EVERY GENERIC BRANCH. Klan Ortak Savaşı.
+
+      `mission_kind` carries one value for all four legs — which leg this actually
+      is lives in `clan_war_missions` — so the relation is consulted first and the
+      operation's own resolver takes it from there. Placed ahead of the ordinary
+      branches deliberately: a clan-war mission must never fall through into the
+      generic attack, transfer or return handling, each of which would settle it
+      as something it is not.
+    */
+    if (mission.kind === 'clan_war') {
+      await resolveClanWarLeg(tx, mission, clock.now(), adminUsernames);
+      return;
     }
 
     if (mission.kind === 'death_star') {
@@ -681,8 +694,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       !adminPlayerIds.has(mission.ownerPlayerId)
       && !adminPlayerIds.has(targetWorld.controllerPlayerId);
     // Clan management takes a clan row before its player rows. Pre-lock the
-    // score snapshots in stable order, then take player ledgers, so settlement
-    // follows season→planet→clan→player everywhere and cannot form a cycle.
+    // score snapshots in stable order, then take player ledgers, so the shared
+    // cross-system rows follow season→planet→clan→player and cannot form a cycle.
     if (scoreEligible) await lockClanBattleScore(tx, mission.id);
     // Launches already hold their sorted planet rows before player state. This
     // remains after every clan row above, and every player is locked by id, so a
@@ -1321,30 +1334,6 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
  * destroyed. A destroyed ship is wreckage whatever it was built for; the only
  * exclusion the rule wants is the one that already has a salvage mechanism.
  */
-const flyingValue = (fleet: Fleet): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce(
-      (sum, [id, n]) =>
-        sum + n * (HULLS[id].alloy + HULLS[id].crystal + HULLS[id].deuterium),
-      0,
-    );
-
-const flyingAlloy = (fleet: Fleet): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce((sum, [id, n]) => sum + n * HULLS[id].alloy, 0);
-
-const flyingCrystal = (fleet: Fleet): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce((sum, [id, n]) => sum + n * HULLS[id].crystal, 0);
-
-const flyingDeuterium = (fleet: Fleet): number =>
-  fleetEntries(fleet)
-    .filter(([id]) => !HULLS[id].ground)
-    .reduce((sum, [id, n]) => sum + n * HULLS[id].deuterium, 0);
-
 async function settleReturn(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -1474,6 +1463,15 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
     const [mission] = await tx.select().from(missions).where(eq(missions.id, missionId));
     // Nothing to warn about if it already landed or was somehow cancelled.
     if (mission?.status !== 'in_flight') return;
+    const [joint] = mission.kind === 'clan_war'
+      ? await tx
+          .select({ leg: clanWarMissions.leg, clanTag: clanWarOperations.clanTag })
+          .from(clanWarMissions)
+          .innerJoin(clanWarOperations, eq(clanWarOperations.id, clanWarMissions.operationId))
+          .where(eq(clanWarMissions.missionId, mission.id))
+          .limit(1)
+      : [];
+    if (!isHostileMission(mission, joint?.leg)) return;
 
     const now = clock.now();
     const remaining = (mission.arriveAt.getTime() - now.getTime()) / 60_000;
@@ -1585,16 +1583,18 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
         ...(radarRevealsOrigin(radarLevel)
           ? {
               fleet: mission.fleet,
-              ...(await identityOfPlanet(tx, mission.originPlanetId).then((origin) =>
-                origin
-                  ? {
-                      originPlanetId: mission.originPlanetId,
-                      originUsername: origin.username,
-                      originPlanetName: origin.planetName,
-                      ...(origin.clanTag ? { originClanTag: origin.clanTag } : {}),
-                    }
-                  : {},
-              )),
+              ...(joint?.leg === 'COMBINED_ATTACK'
+                ? { originUsername: 'Klan Filosu', originClanTag: joint.clanTag }
+                : await identityOfPlanet(tx, mission.originPlanetId).then((origin) =>
+                    origin
+                      ? {
+                          originPlanetId: mission.originPlanetId,
+                          originUsername: origin.username,
+                          originPlanetName: origin.planetName,
+                          ...(origin.clanTag ? { originClanTag: origin.clanTag } : {}),
+                        }
+                      : {},
+                  )),
             }
           : {}),
       },
@@ -1604,31 +1604,6 @@ export const onRadarWarning: Handler = async ({ db, clock }, event) => {
   });
 };
 
-
-async function identityOfPlanet(
-  tx: Tx,
-  planetId: string,
-): Promise<{ username: string; planetName: string; clanTag: string | null } | undefined> {
-  const [row] = await tx
-    .select({
-      username: accounts.displayName,
-      planetName: planets.name,
-      clanTag: clans.tag,
-    })
-    .from(planets)
-    .innerJoin(players, eq(planets.controllerPlayerId, players.id))
-    .innerJoin(accounts, eq(players.accountId, accounts.id))
-    .leftJoin(
-      clanMemberships,
-      and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)),
-    )
-    .leftJoin(
-      clans,
-      and(eq(clans.id, clanMemberships.clanId), isNull(clans.disbandedAt)),
-    )
-    .where(eq(planets.id, planetId));
-  return row;
-}
 
 /**
  * A squadron meets its rock. D19.
@@ -1752,7 +1727,7 @@ async function freezeSeason(
       // Recovery guard for pre-D85 rows and same-instant worker ordering. Delete
       // this processing event and replace it atomically; EventWorker's later
       // `complete()` update simply finds no old row.
-      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount]] = await Promise.all([
+      const [[missionCount], [miningCount], [buildCount], [strategicCount], [researchCount], [pirateCount], [tradeCount], [convoyCount], [clanWarCount]] = await Promise.all([
       tx
         .select({ n: sql<number>`count(*)::int` })
         .from(missions)
@@ -1786,6 +1761,12 @@ async function freezeSeason(
           eq(intergalacticConvoyRuns.seasonId, seasonId),
           ne(intergalacticConvoyRuns.status, 'done'),
         )),
+      tx.select({ n: sql<number>`count(*)::int` }).from(clanWarContributions)
+        .where(and(
+          eq(clanWarContributions.seasonId, seasonId),
+          inArray(clanWarContributions.status,
+            ['OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE', 'RETURNING']),
+        )),
       ]);
       if (
         (missionCount?.n ?? 0) > 0
@@ -1796,6 +1777,7 @@ async function freezeSeason(
         || (pirateCount?.n ?? 0) > 0
         || (tradeCount?.n ?? 0) > 0
         || (convoyCount?.n ?? 0) > 0
+        || (clanWarCount?.n ?? 0) > 0
       ) {
         await tx.delete(scheduledEvents).where(eq(scheduledEvents.id, event.id));
         await schedule(tx, {
@@ -2576,7 +2558,24 @@ export const onConvoyReturn: Handler = async ({ db, clock }, event) => {
   });
 };
 
+/**
+ * A CLAN'S MARKED TARGET REACHING THE END OF ITS TWENTY-FOUR HOURS.
+ *
+ * The timely path. Reads and mutations finalise the same expiry inline when they
+ * notice it first, and both take the operation row `FOR UPDATE`, so a redelivered
+ * event, a leader cancelling in the same instant and a start racing the clock all
+ * resolve to one winner.
+ */
+export const onClanWarExpiry: Handler = async ({ db, clock }, event) => {
+  if (!event.refId) throw new Error('clan_war_expiry without refId');
+  const operationId = event.refId;
+  await db.transaction(async (tx) => {
+    await resolveClanWarExpiry(tx, operationId, clock.now());
+  });
+};
+
 export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
+  clan_war_expiry: onClanWarExpiry,
   mission_arrival: onMissionArrival,
   radar_warning: onRadarWarning,
   strategic_intercept: onStrategicIntercept,

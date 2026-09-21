@@ -461,6 +461,10 @@ export function PlanetFocus({
   onTransfer,
   onInstallTelescope,
   onLaunched,
+  showClanTargetAction = false,
+  clanTargetReason = null,
+  clanTargetPending = false,
+  onMarkClanTarget,
   settlementInFlight = false,
   open,
   onToggle,
@@ -498,6 +502,10 @@ export function PlanetFocus({
   onInstallTelescope: () => void;
   /** Called with the target's name once a probe is away, so the disc can follow it. */
   onLaunched: (targetName: string) => void;
+  showClanTargetAction?: boolean;
+  clanTargetReason?: string | null;
+  clanTargetPending?: boolean;
+  onMarkClanTarget?: () => void;
   /** An outbound colony mission already targets this world. */
   settlementInFlight?: boolean;
   open: boolean;
@@ -893,6 +901,14 @@ export function PlanetFocus({
           {!target.clanmate && (
             <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
           )}
+          {showClanTargetAction && <div className="basis-full">
+            <button type="button" className="slab slab-primary min-h-9 w-full px-3 text-label"
+              disabled={clanTargetReason !== null || clanTargetPending}
+              onClick={onMarkClanTarget}>
+              {t('clanWar.markTarget')}
+            </button>
+            {clanTargetReason && <p className="mt-1 text-caption text-dim">{clanTargetReason}</p>}
+          </div>}
           {!target.clanmate && <button
             type="button"
             // Marked so a surface outside this panel can point at the commitment.
@@ -3193,7 +3209,9 @@ export function ContactFocus({
                   ? 'focus.contact.eyebrowProbe'
                   : 'focus.contact.eyebrowMoving',
       )}
-      title={t(battle ? 'focus.contact.titleBattle' : CONTACT_TITLE[contact.kind])}
+      title={contact.kind === 'fleet' && exactFleet && contact.clanFleet
+        ? contact.clanFleet.label
+        : t(battle ? 'focus.contact.titleBattle' : CONTACT_TITLE[contact.kind])}
       open={open}
       onToggle={onToggle}
       onClose={onClose}
@@ -3327,7 +3345,9 @@ export function ContactFocus({
       */}
       <p className="mt-3 text-caption leading-snug text-dim">
         {t(
-          battle
+          contact.kind === 'fleet' && exactFleet && contact.clanFleet
+            ? 'clanWar.contactBoundary'
+            : battle
             ? 'focus.contact.boundaryBattle'
             : salvage
               ? 'focus.contact.boundarySalvage'

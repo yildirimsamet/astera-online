@@ -21,6 +21,12 @@ import {
   clanRaidRoster,
   clanRequests,
   clanScoreEvents,
+  clanTreasuryEvents,
+  clanWarContributions,
+  clanWarDominionEvents,
+  clanWarMissions,
+  clanWarOperations,
+  clanWarParticipantResults,
   clans,
   debrisFields,
   dominionEvents,
@@ -563,6 +569,27 @@ export async function wipeAllServers(
     // this seasonal wipe, never into the next galaxy.
     await tx.delete(clanLootShares);
     await tx.delete(clanScoreEvents);
+    /*
+      THE JOINT WAR UNWINDS INNERMOST FIRST, AND IT DRAGS `battle_reports` UP WITH
+      IT. 2026-09-20.
+
+      Every foreign key here is `no action`, so the order is forced end to end:
+      a joint report carries `clan_war_operation_id`, an operation points at
+      `clans`, and this wipe has always taken `clans` down before the reports. One
+      of those three had to move, and the report is the only one with nothing
+      pointing at it once the participant rows are gone — `dominion_events` and
+      `strategic_impacts` are independent of it, so nothing downstream notices.
+
+      `clan_war_missions` also points at `missions`, which is why it cannot wait
+      for the generic mission sweep further down.
+    */
+    await tx.delete(clanWarDominionEvents);
+    await tx.delete(clanWarParticipantResults);
+    await tx.delete(clanWarMissions);
+    await tx.delete(clanWarContributions);
+    await tx.delete(battleReports);
+    await tx.delete(clanWarOperations);
+    await tx.delete(clanTreasuryEvents);
     await tx.delete(clanRaidRoster);
     await tx.delete(attackCommitments);
     await tx.delete(clanAidCommitments);
@@ -597,7 +624,7 @@ export async function wipeAllServers(
     await tx.delete(strategicInterceptions);
     await tx.delete(strategicImpacts);
     await tx.delete(dominionEvents);
-    await tx.delete(battleReports);
+    // `battle_reports` came down with the clan-war block above; see the note there.
     /*
       THE WRECKAGE COMES DOWN BEFORE THE RAID THAT MADE IT. D150.
 

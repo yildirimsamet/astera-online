@@ -324,7 +324,9 @@ Seasonal and permanent tables, with **nothing storing a value derivable from a f
 `sensor_epochs` · `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·
 `request_log` · `clans` · `clan_memberships` · `clan_requests` · `clan_ceasefires` ·
 `clan_messages` · `clan_events` · `attack_commitments` · `clan_aid_commitments` ·
-`clan_raid_roster` · `clan_loot_shares` · `clan_score_events`
+`clan_raid_roster` · `clan_loot_shares` · `clan_score_events` · `clan_treasury_events` ·
+`clan_war_operations` · `clan_war_contributions` · `clan_war_missions` ·
+`clan_war_participant_results` · `clan_war_dominion_events`
 
 Schema: `apps/server/src/db/schema.ts`. Migrations: `apps/server/drizzle/`.
 
@@ -380,6 +382,29 @@ commitment rows rather than counting reports or successful arrivals. Raid roster
 events snapshot membership at attack launch, so a later leave cannot rewrite a battle.
 Loot shares belong to players, not to a clan treasury, and survive clan disband until the
 season graph is wiped.
+
+**Joint war is one operation row plus owned waves.** `clan_war_operations` is the state machine:
+`ASSEMBLING → ATTACKING → RETURNING → COMPLETED`, with cancel, expiry, target drift and worker
+failure entering `RETURNING`. Its partial unique index permits one non-completed operation per
+clan. `clan_war_contributions` keeps owner, origin, fleet, technology, fuel and settlement
+snapshots per wave. Every wave has a unique `units.location`, so two waves from one world cannot
+overwrite each other. `clan_war_missions` names support, combined and return legs; its composite
+foreign key requires a mission's contribution and operation to agree.
+
+The lock order is season, sorted involved worlds, clan, sorted players, operation and contribution.
+Start locks the shared pool before checking participant eligibility, personal/clan attack quotas
+and protections. The normal attack lane takes the same player locks, so a personal launch and a
+joint launch cannot both spend the last quota. Target-change hooks use `SKIP LOCKED` only as a fast
+path; every authoritative read or mutation revalidates and commits closure after contention clears.
+
+All four physical legs use ordinary `missions` and `mission_arrival` events. The relation dispatches
+them to the joint handler before generic mission code. Conditional mission claims, unique leg
+indexes and one settlement transaction make redelivery inert: combat, report, ledgers, loot shares
+and return missions commit together. Expiry races start/cancel under the operation lock. Permanent
+support failure lands that wave intact, combined failure returns the whole pool without a report,
+and return failure atomically delivers its ships and haul. Reclaim/account deletion defer every
+active coordinator, target or contributor; terminal graphs and season wipes delete children before
+missions, operations, worlds, players and clans.
 
 Any transaction touching worlds locks the season, then all involved world ids ascending,
 before taking recipient/quota advisory locks; a pure clan mutation locks season, clan and

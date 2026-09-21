@@ -59,6 +59,11 @@ import {
 } from './planet.js';
 import { planetView } from './planetView.js';
 import { clanDominionSql, dominionScore, playerDominionSql } from './dominion.js';
+import { burnClanTreasury, startingClanLevel } from './clanTreasury.js';
+import {
+  assertClanWarMembershipUnlocked,
+  revalidateClanWarTargetMembership,
+} from './clanWar.js';
 
 export interface ClanActor {
   playerId: string;
@@ -275,6 +280,16 @@ export interface PublicClanView {
   memberCount: number;
   score: number;
   /**
+   * THE KLAN HANGARI RUNG, AND THE ONLY PART OF THE WAR ECONOMY THAT IS PUBLIC.
+   *
+   * How big a clan's shared hangar is answers "is this clan worth fearing" and
+   * "is it worth applying to", which are both public questions. What it has SAVED
+   * and what is currently standing in that hangar are not: they would hand every
+   * rival the clan's next operation before it launches. Null in a season dealt
+   * before the joint war.
+   */
+  level: number | null;
+  /**
    * WHO IS IN IT — on the profile, never on the listing. D183.
    *
    * A clan is a public institution and its roster is part of what it is: the one
@@ -325,6 +340,7 @@ export async function listPublicClans(
         leaderName,
         memberCount,
         score: clanScoreSql,
+        level: clans.level,
       })
       .from(clans)
       .leftJoin(clanMemberships, eq(clanMemberships.clanId, clans.id))
@@ -367,6 +383,7 @@ export async function publicClan(
       leaderName,
       memberCount,
       score: clanScoreSql,
+      level: clans.level,
     })
     .from(clans)
     .leftJoin(clanMemberships, eq(clanMemberships.clanId, clans.id))
@@ -720,6 +737,14 @@ export async function createClan(
     tag,
     description,
     recruiting: input.recruiting,
+    /*
+      LEVEL 1, OR NO LEVEL AT ALL. Klan Ortak Savaşı, 2026-09-20.
+
+      Written from the SEASON's ruleset rather than defaulted on the column, so a
+      galaxy dealt before the joint war keeps clans with no level, no purse and no
+      war — the whole of "no backfill", decided once, here.
+    */
+    level: startingClanLevel(season.rulesetVersion),
     createdAt: now,
   }).returning();
   if (!clan) throw new Error('clan insert returned no row');
@@ -1039,6 +1064,15 @@ export async function acceptClanRequest(
     aidPolicyChangedAt: input.now,
   });
   await bindOpenAttacksToClan(tx, candidate.id, clan.id, input.now);
+  /*
+    THE NEW MEMBER MIGHT BE THE CLAN'S OWN TARGET. Klan Ortak Savaşı, 2026-09-20.
+
+    A clan cannot go on staging a joint war against somebody who just joined it —
+    the strike would be friendly fire, which is refused everywhere else in the
+    game. Only an operation that has NOT launched is cancelled; a combined strike
+    already in the air keeps the ordinary in-flight acknowledgement above.
+  */
+  await revalidateClanWarTargetMembership(tx, candidate.id, clan.id, input.now);
   await tx.update(clanRequests).set({ status: 'CLOSED', resolvedAt: input.now }).where(and(
     eq(clanRequests.playerId, candidate.id),
     eq(clanRequests.status, 'PENDING'),
@@ -1199,6 +1233,10 @@ export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) 
   if (mine.role === 'LEADER') {
     throw new GameError('CLAN_LEADER_MUST_TRANSFER', 'Transfer leadership or disband the clan first', 409);
   }
+  await assertClanWarMembershipUnlocked(tx, {
+    clanId: membership.clanId,
+    playerId: input.actor.playerId,
+  });
   await separateMember(tx, {
     actor: input.actor,
     membershipId: mine.id,
@@ -1227,6 +1265,10 @@ export async function kickClanMember(
   await lockClanPlayers(tx, members.map((member) => member.playerId));
   const target = members.find((member) => member.playerId === input.playerId);
   if (!target) throw new GameError('CLAN_MEMBER_NOT_FOUND', 'That commander is not in your clan', 404);
+  await assertClanWarMembershipUnlocked(tx, {
+    clanId: leader.clanId,
+    playerId: target.playerId,
+  });
   const targetName = await displayNameOf(tx, target.playerId);
   await separateMember(tx, {
     actor: input.actor,
@@ -1259,6 +1301,12 @@ export async function transferClanLeadership(
   if (current?.role !== 'LEADER') {
     throw new GameError('CLAN_LEADER_REQUIRED', 'You are no longer the clan leader', 403);
   }
+  /*
+    THE STAGING WORLD IS THE LEADER'S CAPITAL, so handing the clan over mid-operation
+    would move the rendezvous every committed wave is flying to — and hand the
+    launch decision to somebody the contributors did not commit under.
+  */
+  await assertClanWarMembershipUnlocked(tx, { clanId: leader.clanId });
   await tx.update(clanMemberships).set({ role: 'MEMBER' }).where(eq(clanMemberships.id, current.id));
   await tx.update(clanMemberships).set({ role: 'LEADER' }).where(eq(clanMemberships.id, next.id));
   const nextName = await displayNameOf(tx, next.playerId);
@@ -1277,9 +1325,32 @@ export async function transferClanLeadership(
   return { leaderPlayerId: next.playerId };
 }
 
-export async function disbandClan(tx: Tx, input: { actor: ClanActor; now: Date }) {
+export async function disbandClan(
+  tx: Tx,
+  input: {
+    actor: ClanActor;
+    now: Date;
+    /**
+     * A DISBAND DESTROYS THE CLAN PURSE, so the leader has to say so out loud.
+     *
+     * Every unit in it was given by somebody who cannot take it back, and the
+     * confirmation is the one moment the game can name that before it happens.
+     * Omitted or false is fine while the purse is empty — there is nothing to
+     * warn about — and refuses with `CLAN_TREASURY_BURN_UNCONFIRMED` otherwise.
+     */
+    acknowledgeTreasuryBurn?: boolean;
+  },
+) {
   await lockSeason(tx, input.actor.seasonId);
-  const { membership: leader } = await lockLedClan(tx, input.actor);
+  const { clan, membership: leader } = await lockLedClan(tx, input.actor);
+  // Dissolving the clan mid-operation would strand every wave in its pool.
+  await assertClanWarMembershipUnlocked(tx, { clanId: leader.clanId });
+  const burned = await burnClanTreasury(tx, {
+    clan,
+    actorPlayerId: input.actor.playerId,
+    acknowledged: input.acknowledgeTreasuryBurn === true,
+    now: input.now,
+  });
   const members = await activeMemberRows(tx, leader.clanId);
   const memberIds = members.map((member) => member.playerId);
   await lockClanPlayers(tx, memberIds);
@@ -1290,6 +1361,7 @@ export async function disbandClan(tx: Tx, input: { actor: ClanActor; now: Date }
     kind: 'DISBANDED',
     actorPlayerId: input.actor.playerId,
     actorName: input.actor.displayName,
+    payload: { burnedTreasury: burned },
     at: input.now,
   });
   await tx.update(clanMemberships).set({ leftAt: input.now }).where(and(
@@ -1453,6 +1525,14 @@ export async function reconcileClanPlayerReclaim(
         at: input.now,
       });
     } else {
+      // System disband follows the same zero-sum treasury path as a leader's
+      // explicit disband. There is no human confirmation or actor on this path.
+      await burnClanTreasury(tx, {
+        clan,
+        actorPlayerId: null,
+        acknowledged: true,
+        now: input.now,
+      });
       const remainingIds = remaining.map((member) => member.playerId);
       await addCeasefires(tx, input.seasonId, clan.id, remainingIds, remainingIds, input.now);
       if (remainingIds.length > 0) {

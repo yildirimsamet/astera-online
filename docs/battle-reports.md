@@ -23,7 +23,7 @@ nowhere. Measured against the four questions in `interface.md`, the old sheet fa
 **Clarity** (an empty rounds plate for a walkover) and **Interaction cost** (twelve sections in
 one scroll, the least consequential ones first).
 
-## The seven reports
+## The seven base reports and the joint-war variant
 
 `kind` splits two ways in the payload and seven ways to a reader. Each row lists only what
 differs from the common spine above.
@@ -37,6 +37,29 @@ differs from the common spine above.
 | B1 | Your strategic weapon struck | `STRATEGIC`, `attacking` | level changes, destroyed orders, halved stock | — |
 | B2 | You were struck | `STRATEGIC`, defending | the same, as losses | — |
 | B3 | The strike was intercepted | `outcome: 'INTERCEPTED'` | which instrument fired (`trigger`) | damage figures that did not happen |
+
+A joint war is an A1/A4 battle with an optional `jointWar` projection. It keeps the legacy
+verdict, losses, loot and viewer-relative fleet fields, then adds the operation/clan/coordinator
+snapshot, aggregate sent/lost/survived totals, team Dominion audit and participant cards. Multiple
+waves are grouped under their player and retain origin, sent, losses, survivors, loot, salvage,
+personal Dominion and return destination/status. The immutable report is the fallback for return
+status; a live operation read may show a later status while ships are still coming home.
+
+### Joint-war access and fog
+
+| Viewer | Access | Full attacker waves | Full defender start/survivors | Personal result |
+|---|---|---:|---:|---:|
+| Attacking participant | yes, including after leaving the clan | yes | no; verified defender losses/floor only | own |
+| Fleetless coordinator | yes | yes | no; verified defender losses/floor only | none |
+| Defender | yes | yes, with contributor identities | yes | defender outcome |
+| Current clanmate who did not participate | no | no | no | none |
+| Outsider | no | no | no | none |
+
+Report authority comes from the battle-time participant/coordinator snapshots, not current clan
+membership. `attacking` is likewise viewer-relative: participant or coordinator is attacking;
+only the defender is defending. The technical leader stored as aggregate mission owner never
+grants participant rivalry, loot or Dominion. Traffic can expose `[TAG] Klan Filosu` at exact sight,
+but it never supplies participant names or cargo.
 
 ### The fog line, and why the report looks thin without it on screen
 

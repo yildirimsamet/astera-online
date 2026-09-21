@@ -485,8 +485,9 @@ application decision, depot claim or unread message. Cold start fetches only the
 badge; opening the row lazy-loads the full projection without unmounting the Galaxy.
 
 A commander outside a clan sees invitations first, then search/directory, their applications
-and the Core-7 creation card. A member sees four ordinary words in one segmented control:
-Overview, Members, Aid and Chat. Overview leads with a static five-socket formation rack —
+and the Core-7 creation card. A member sees five ordinary words in one segmented control:
+Overview, Strength, Members, Aid and War. The selected tab alone loads its heavier read. Overview
+leads with a static five-socket formation rack —
 filled seats name people, empty seats say they are open, and an adapting seat shows its exact
 unlock time — then the personal clan-loot depot and season standings. It is not a Tactical
 Network, skill tree or animated command table.
@@ -502,6 +503,24 @@ that only Haulers carry resources, remaining 24-hour allowance, bay use, exact a
 deadline. An opaque refusal applies to a ship gift that cannot land without revealing another
 player's Shipyard or research. The Overview depot shows three
 personal balances and one Claim action; it never resembles a leader bank.
+
+The War tab reads as one commitment from top to bottom: purpose, separate Clan Hangar capacity,
+capped treasury and next cost, target/staging/expiry, all player waves, contribution quote, leader
+controls, then the return lock. The quote shows every fuel leg, available fuel, bay use, personal
+Hangar load, shared capacity, earliest return, latest safe start, refusals and the exact shield
+acknowledgement before Send. Each wave stays in the comparison list with owner technology context,
+ETA/status and an own-wave recall action. Start is disabled with visible text while support is
+inbound, the pool is empty or it contains no combat hull; RETURNING explains why another target is
+still locked.
+
+Only a leader focusing a discovered foreign player world in a ruleset-10 season sees **Mark clan
+target**. An open operation or a season with less than 24 hours left leaves the action visible but
+disabled with its reason. Success closes the focus rail and opens the Clan War tab; it never opens
+the ordinary attack sheet. The target mark shares identity, world and coordinates only.
+
+Countdowns use the client/server clock and do not poll each second. Operation state is text with a
+polite live region, disabled reasons are visible without a tooltip, controls retain the segmented
+tab keyboard semantics, and the grid/flex layout stays inside the 350 px phone target.
 
 Clan tag is a compact public identity in Galaxy focus, commander standings and battle reports.
 The clan room carries its own short seasonal standings instead of nesting another full ladder.

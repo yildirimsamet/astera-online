@@ -15,7 +15,18 @@
 import { afterAll, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { giveUnits, makeAccount, seedWorld, testDb } from './helpers.js';
-import { commanderTransfers, mainVacancies, planets, players, seasons, shards, units } from '../src/db/schema.js';
+import {
+  clanWarContributions,
+  clanWarOperations,
+  clans,
+  commanderTransfers,
+  mainVacancies,
+  planets,
+  players,
+  seasons,
+  shards,
+  units,
+} from '../src/db/schema.js';
 import { departToSilentSpace, describeSilentSpaceDeparture, runSilentSpaceSweep } from '../src/services/silentSpace.js';
 import { transferCommander } from '../src/services/commanderTransfer.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
@@ -89,6 +100,72 @@ it('still refuses an owner-requested move while a fleet is in the air, and write
   const [stayed] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
   expect(stayed).toMatchObject({ seasonId: f.seasonId, placementVersion: 0 });
 });
+
+it.each(['leader', 'target', 'contributor'] as const)(
+  'defers an owner-requested move for an active joint-war %s',
+  async (role) => {
+    const f = await seedWorld(3);
+    const [clan] = await f.db.insert(clans).values({
+      seasonId: f.seasonId,
+      name: 'Joint Guard',
+      nameKey: 'joint guard',
+      tag: 'JG',
+      level: 1,
+      createdAt: f.clock.now(),
+    }).returning();
+    const leaderIndex = role === 'leader' ? 0 : 1;
+    const targetIndex = role === 'target' ? 0 : 2;
+    const [operation] = await f.db.insert(clanWarOperations).values({
+      seasonId: f.seasonId,
+      clanId: clan!.id,
+      clanName: clan!.name,
+      clanTag: clan!.tag,
+      leaderPlayerId: f.playerIds[leaderIndex]!,
+      stagingPlanetId: f.planetIds[leaderIndex]!,
+      targetPlanetId: f.planetIds[targetIndex]!,
+      targetPlayerId: f.playerIds[targetIndex]!,
+      targetPlanetName: `Target ${role}`,
+      targetX: 1,
+      targetY: 2,
+      targetZ: 3,
+      createdAt: f.clock.now(),
+      expiresAt: new Date(f.clock.now().getTime() + 24 * 3_600_000),
+    }).returning();
+    if (role === 'contributor') {
+      await f.db.insert(clanWarContributions).values({
+        seasonId: f.seasonId,
+        operationId: operation!.id,
+        clanId: clan!.id,
+        playerId: f.playerIds[0]!,
+        originPlanetId: f.planetIds[0]!,
+        fleet: { DART: 1 },
+        tech: {},
+        unitLocation: `clan-war-transfer-${operation!.id}`,
+        reservedBulk: 3,
+        fuelPaid: 0,
+        fuelLegs: [],
+        status: 'STAGED',
+        sentAt: f.clock.now(),
+        stagedAt: f.clock.now(),
+      });
+    }
+    const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
+
+    const result = await transferCommander(
+      f.db,
+      f.playerIds[0]!,
+      waiting!.id,
+      f.clock,
+      undefined,
+      { ownerRequested: true },
+    );
+
+    expect(result.status).toBe('FLIGHT');
+    const [player] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    expect(player!.seasonId).toBe(f.seasonId);
+    expect(await f.db.select().from(commanderTransfers)).toHaveLength(0);
+  },
+);
 
 /** Absence remains the only automatic reason to leave. */
 it('does not waive the activity clock for the sweep or for an ordinary transfer', async () => {

@@ -31,6 +31,16 @@ export const CLAN = {
   extraAidBays: 1,
   attackWindowMinutes: 12 * 60,
   attackLimit: 5,
+  /**
+   * HOW LONG A MARKED JOINT-WAR TARGET STAYS MARKED. Owner decision, 2026-09-20.
+   *
+   * Twenty-four hours, exactly, and it is the clock the whole operation is built
+   * on: long enough that members in different time zones can each get one fleet
+   * to the staging world, short enough that a clan cannot sit on a claim over a
+   * target and deny it to everybody else indefinitely. If the strike has not
+   * launched by then the operation cancels itself and every wave flies home.
+   */
+  warTargetMinutes: 24 * 60,
   raidLootShare: 0.10,
   minimumLootRoster: 2,
   purseProductionHours: 2,

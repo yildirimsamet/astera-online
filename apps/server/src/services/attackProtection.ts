@@ -21,6 +21,9 @@ import type { Queryable, Tx } from '../db/client.js';
 import {
   battleReports,
   buildings,
+  clanWarContributions,
+  clanWarOperations,
+  clanWarParticipantResults,
   missions,
   planets,
   players,
@@ -77,6 +80,23 @@ export const protectionFrom = (
   recoveryShieldEnabled() ? recoveryUntil?.getTime() ?? null : null,
   now.getTime(),
 );
+
+/** The world-level occupation/recovery gate shared by every PvP launch lane. */
+export function assertWorldAttackable(
+  world: Pick<typeof planets.$inferSelect, 'protectedUntil' | 'recoveryUntil'>,
+  now: Date,
+): void {
+  if (world.protectedUntil !== null && world.protectedUntil > now) {
+    throw new GameError('OCCUPATION_PROTECTED', 'That world is protected', 409, {
+      until: world.protectedUntil.toISOString(),
+    });
+  }
+  if (world.recoveryUntil !== null && world.recoveryUntil > now) {
+    throw new GameError('WORLD_RECOVERING', 'That world is recovering', 409, {
+      until: world.recoveryUntil.toISOString(),
+    });
+  }
+}
 
 /**
  * WHAT THIS COMMANDER'S WORKS TURN OUT IN AN HOUR, ACROSS EVERY WORLD.
@@ -190,8 +210,9 @@ async function lookbackLedger(
   now: Date,
 ): Promise<{ defeats: RecoveryLedgerEntry[]; raids: RecoveryLedgerEntry[] }> {
   const since = new Date(now.getTime() - ABUSE.recoveryLookbackHours * 3_600_000);
-  const rows = await db
+  const [rows, jointRaids] = await Promise.all([db
     .select({
+      clanWarOperationId: battleReports.clanWarOperationId,
       attackerPlayerId: battleReports.attackerPlayerId,
       defenderPlayerId: battleReports.defenderPlayerId,
       loot: battleReports.loot,
@@ -208,7 +229,19 @@ async function lookbackLedger(
       ),
       gt(battleReports.createdAt, since),
       lte(battleReports.createdAt, now),
-    ));
+    )), db
+      .select({
+        loot: clanWarParticipantResults.loot,
+        losses: clanWarParticipantResults.losses,
+      })
+      .from(clanWarParticipantResults)
+      .innerJoin(battleReports, eq(battleReports.id, clanWarParticipantResults.reportId))
+      .where(and(
+        eq(clanWarParticipantResults.playerId, playerId),
+        gt(battleReports.createdAt, since),
+        lte(battleReports.createdAt, now),
+      )),
+  ]);
   const defeats: RecoveryLedgerEntry[] = [];
   const raids: RecoveryLedgerEntry[] = [];
   for (const row of rows) {
@@ -217,9 +250,13 @@ async function lookbackLedger(
         loot: row.loot,
         fleetLost: permanentFleetCost(row.defenderLosses, row.defenceSalvage),
       });
-    } else if (row.attackerPlayerId === playerId && row.defenderPlayerId !== playerId) {
+    } else if (row.clanWarOperationId === null
+      && row.attackerPlayerId === playerId && row.defenderPlayerId !== playerId) {
       raids.push({ loot: row.loot, fleetLost: permanentFleetCost(row.attackerLosses, {}) });
     }
+  }
+  for (const row of jointRaids) {
+    raids.push({ loot: row.loot, fleetLost: permanentFleetCost(row.losses, {}) });
   }
   return { defeats, raids };
 }
@@ -257,7 +294,34 @@ async function hasOutboundPvpStrike(
       ne(planets.controllerPlayerId, playerId),
     ))
     .limit(1);
-  return row !== undefined;
+  if (row !== undefined) return true;
+
+  /*
+    HULLS IN A CLAN'S JOINT POOL ARE AN OUTBOUND STRIKE. Klan Ortak Savaşı.
+
+    A contributed wave is not a `missions` row while it waits in escrow, so
+    without this a commander whose ships are already committed to an operation
+    could take a beating, collect eight hours of immunity, and then have their
+    fleet arrive at the defender anyway — a shield earned WHILE attacking, which
+    is the exact inversion this refusal exists to prevent.
+
+    It also closes the other half: because no shield can be earned here, the
+    leader's launch never has to silently spend one a member did not offer.
+  */
+  const [committed] = await db
+    .select({ id: clanWarContributions.id })
+    .from(clanWarContributions)
+    .innerJoin(
+      clanWarOperations,
+      eq(clanWarOperations.id, clanWarContributions.operationId),
+    )
+    .where(and(
+      eq(clanWarContributions.playerId, playerId),
+      inArray(clanWarContributions.status, ['OUTBOUND', 'STAGED', 'IN_BATTLE']),
+      inArray(clanWarOperations.status, ['ASSEMBLING', 'ATTACKING']),
+    ))
+    .limit(1);
+  return committed !== undefined;
 }
 
 /**
@@ -460,6 +524,58 @@ export async function forceRecoveryShield(
  * A NEUTRAL TARGET IS OUTSIDE IT ENTIRELY. There is no commander to protect and
  * none to charge; settling is not the reaching-out this rule is about.
  */
+/** Both stored windows for a set of commanders, read as one live protection each. */
+async function protectionsOf(
+  tx: Queryable,
+  playerIds: readonly string[],
+  now: Date,
+): Promise<Map<string, AttackProtection | null>> {
+  const rows = await tx
+    .select({
+      id: players.id,
+      newcomer: players.newcomerShieldUntil,
+      recovery: players.recoveryShieldUntil,
+    })
+    .from(players)
+    .where(inArray(players.id, [...playerIds]));
+  return new Map(rows.map((row) => [
+    row.id,
+    protectionFrom(row.newcomer, row.recovery, now),
+  ]));
+}
+
+/** The one sentence a protected target is refused with, wherever it is asked. */
+function refuseProtectedTarget(protection: AttackProtection | null): void {
+  if (!protection) return;
+  throw new GameError(
+    'NEWCOMER_SHIELDED',
+    protection.kind === 'RECOVERY'
+      ? 'That commander is under a recovery shield'
+      : 'That commander is still under their first-day shield',
+    409,
+    { until: new Date(protection.until).toISOString(), protection: protection.kind },
+  );
+}
+
+/**
+ * THE TARGET HALF ALONE, FOR SURFACES THAT ASK WITHOUT COMMITTING.
+ *
+ * Marking a clan's joint-war target is a statement of intent, not a launch: no
+ * fleet moves, no fuel is spent, and the leader's own shield stays exactly where
+ * it is until a wave is actually sent. So the question here is only "can this
+ * commander be reached at all", and the answer has to be the same sentence the
+ * launch gate gives — which is why it shares `refuseProtectedTarget` rather than
+ * growing a second opinion about what a shield means.
+ */
+export async function assertTargetReachable(
+  tx: Queryable,
+  defenderPlayerId: string,
+  now: Date,
+): Promise<void> {
+  const protections = await protectionsOf(tx, [defenderPlayerId], now);
+  refuseProtectedTarget(protections.get(defenderPlayerId) ?? null);
+}
+
 export async function assertAttackProtections(
   tx: Tx,
   input: {
@@ -472,30 +588,10 @@ export async function assertAttackProtections(
   if (input.defenderPlayerId === null) return;
 
   const ids = [...new Set([input.attackerPlayerId, input.defenderPlayerId])];
-  const rows = await tx
-    .select({
-      id: players.id,
-      newcomer: players.newcomerShieldUntil,
-      recovery: players.recoveryShieldUntil,
-    })
-    .from(players)
-    .where(inArray(players.id, ids));
-  const protectionOf = (id: string): AttackProtection | null => {
-    const row = rows.find((candidate) => candidate.id === id);
-    return row ? protectionFrom(row.newcomer, row.recovery, input.now) : null;
-  };
+  const protections = await protectionsOf(tx, ids, input.now);
+  const protectionOf = (id: string): AttackProtection | null => protections.get(id) ?? null;
 
-  const theirs = protectionOf(input.defenderPlayerId);
-  if (theirs) {
-    throw new GameError(
-      'NEWCOMER_SHIELDED',
-      theirs.kind === 'RECOVERY'
-        ? 'That commander is under a recovery shield'
-        : 'That commander is still under their first-day shield',
-      409,
-      { until: new Date(theirs.until).toISOString(), protection: theirs.kind },
-    );
-  }
+  refuseProtectedTarget(protectionOf(input.defenderPlayerId));
 
   const mine = protectionOf(input.attackerPlayerId);
   if (!mine) return;

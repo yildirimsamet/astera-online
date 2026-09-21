@@ -48,11 +48,11 @@ If context is lost: `CLAUDE.md → docs/decisions.md → docs/balance.md → cod
 **ANAYASA ALLAHIN EMRİ ŞART**
 
 1. Requirement'ı analiz et
-2. Tüm happy path ve tüm edge case'leri çıkar.
-3. Bu task'ı yaparken; nerelere dokunulacak dokunacak? Çalışan bir logic'i kıracakmıyız veya kırabilir miyiz detaylıca incele.
+2. Tüm happy path ve tüm edge case'leri çıkart. Eksik, yanlış, çelişkili veya ucu açık sorular varsa owner'a sor. Tüm bu çıktıyı not al.
+3. Bu task'ı yaparken; nerelere dokunulacak dokunacak? Çalışan bir logic'i kıracakmıyız veya kırabilir miyiz detaylıca incele not'una ekle.
 3. Önce testleri yaz/güncelle/ekle
 4. Gerekli testleri çalıştır → FAIL
-5. Implementation yaz
+5. **Implementation yaz (Her zaman şunu düşünmelisin: şuan bu yaptığım işi en temiz, en basit, en stabil, en az bug çıkartacak şekilde ve istenilen ile tamamen uyumlu bir şekilde nasıl yaparım. Over engineering yapmaya gerek yok. Kod yazmadan veya kod silerek veya bazı ufak tefek güncellemeler ile çözülebiliyor mu incelemelisin.)**
 6. Gerekli testleri çalıştır → PASS
 7. Son bir code review yap: eksik, yanlış, hatalı, unutulan bir yer var mı kontrol et. Bir yeri kırdık mı kontrol et.
 7. Tüm testleri çalıştır.

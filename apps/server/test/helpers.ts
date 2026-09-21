@@ -89,6 +89,8 @@ export async function truncateAll(db: Db): Promise<void> {
              probe_world_memories, probe_reports, watches,
              clan_loot_shares, clan_score_events, clan_raid_roster, attack_commitments,
              clan_aid_commitments, clan_messages, clan_events, clan_requests,
+             clan_war_dominion_events, clan_war_participant_results, clan_war_missions,
+             clan_war_contributions, clan_war_operations, clan_treasury_events,
              clan_ceasefires, clan_memberships, clans,
              strategic_interceptions, strategic_impacts, dominion_events, battle_reports,
              scheduled_events, research_orders, build_orders, strategic_assets, missions, mining_runs,

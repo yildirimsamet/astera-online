@@ -41,6 +41,7 @@ export * from './research.js';
 export * from './strategic.js';
 export * from './view.js';
 export * from './clan.js';
+export * from './clanWar.js';
 export * from './academy.js';
 export * from './returnQueue.js';
 export * from './inactivity.js';

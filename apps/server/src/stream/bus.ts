@@ -84,7 +84,13 @@ export const SHARD_PREFIX = 'shard:';
 export const PRIVATE_PREFIX = 'private:';
 export const GLOBAL_PREFIX = 'global:';
 
-export type ClanPrivateEventKind = 'membership' | 'request' | 'chat' | 'depot' | 'aid';
+/**
+ * APPEND-ONLY. A client that does not know a kind ignores it; a client that
+ * expects one the server stopped sending stalls on a screen that never refreshes.
+ * `treasury` and `war` arrived with Klan Ortak Savaşı, 2026-09-20.
+ */
+export type ClanPrivateEventKind =
+  | 'membership' | 'request' | 'chat' | 'depot' | 'aid' | 'treasury' | 'war';
 
 /** `JSON.parse` throws on malformed input; the schema handles everything else. */
 function safeJson(raw: string): unknown {

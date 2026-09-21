@@ -35,6 +35,7 @@ export const keys = {
   clanEvents: ['clan', 'events'],
   clanDepot: ['clan', 'depot'],
   clanAid: ['clan', 'aid'],
+  clanWar: ['clan', 'war'],
   clanChat: ['clan', 'chat'],
   chatMessages: ['chat', 'messages'],
   chatMessagesFor: (language: ChatLanguage) => ['chat', 'messages', language] as const,

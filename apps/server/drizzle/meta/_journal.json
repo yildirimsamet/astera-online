@@ -722,6 +722,34 @@
       "when": 1789889021857,
       "tag": "0102_easy_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1789922694275,
+      "tag": "0103_uneven_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1789926728877,
+      "tag": "0104_hesitant_alice",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1789927991727,
+      "tag": "0105_sparkling_enchantress",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1789934245952,
+      "tag": "0106_small_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

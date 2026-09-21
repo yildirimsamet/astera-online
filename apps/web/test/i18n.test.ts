@@ -241,6 +241,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'planet.queue.segment',
   'notifications.composition',
   'notifications.join',
+  // Two server-supplied names separated by punctuation; there is no prose to translate.
+  'clanWar.wave',
   // The away-fleet note's list: "83 Dart · 2 Courier". The sentence around it is
   // translated (`launch.away`); the pair and the separator carry no words. Its
   // own keys rather than the notification pair above, because no surface shares
@@ -474,8 +476,10 @@ describe('decision sheets explain every item', () => {
     expect(en.research.deathStarDetail).toContain('never changes hands');
     expect(tr.research.deathStarDetail).toContain('el değiştirmez');
     expect(tr.research.deathStarDetail).not.toContain('ayrı hazırlanan');
-    expect(en.research.deathStarDetail).toContain('two hours');
-    expect(tr.research.deathStarDetail).toContain('iki saat');
+    expect(en.research.deathStarDetail).toContain('one hour');
+    expect(tr.research.deathStarDetail).toContain('1 saat');
+    expect(en.research.deathStarDetail).toContain('Production continues');
+    expect(tr.research.deathStarDetail).toContain('Üretim sürer');
   });
 });
 

@@ -16,6 +16,12 @@ import {
   clanMemberships,
   clanMessages,
   clanRaidRoster,
+  clanTreasuryEvents,
+  clanWarContributions,
+  clanWarDominionEvents,
+  clanWarMissions,
+  clanWarOperations,
+  clanWarParticipantResults,
   clanRequests,
   debrisFields,
   intergalacticConvoyRuns,
@@ -287,6 +293,28 @@ export async function busy(
     .limit(1);
   if (flight) return true;
 
+  // A marked target and a staged wave have no in-flight mission. Removing any
+  // coordinator, target or contributor here would break the operation's foreign
+  // keys or erase an escrowed fleet. Account deletion shares this predicate.
+  const [jointWar] = await tx
+    .select({ id: clanWarOperations.id })
+    .from(clanWarOperations)
+    .leftJoin(clanWarContributions,
+      eq(clanWarContributions.operationId, clanWarOperations.id))
+    .where(and(
+      inArray(clanWarOperations.status, ['ASSEMBLING', 'ATTACKING', 'RETURNING']),
+      or(
+        eq(clanWarOperations.leaderPlayerId, playerId),
+        eq(clanWarOperations.targetPlayerId, playerId),
+        inArray(clanWarOperations.stagingPlanetId, planetIds),
+        inArray(clanWarOperations.targetPlanetId, planetIds),
+        eq(clanWarContributions.playerId, playerId),
+        inArray(clanWarContributions.originPlanetId, planetIds),
+      ),
+    ))
+    .limit(1);
+  if (jointWar) return true;
+
   if (rows.raidIds.length > 0) {
     // A world with a raid in the air is never reclaimed: the fleet is real, and
     // taking the seat would delete it mid-flight.
@@ -383,7 +411,49 @@ export async function demolish(
     convoyIds: string[];
   },
 ): Promise<void> {
-  const { missionIds, fieldIds, runIds, raidIds, tradeIds, convoyIds } = rows;
+  let { missionIds } = rows;
+  const { fieldIds, runIds, raidIds, tradeIds, convoyIds } = rows;
+
+  /*
+    TERMINAL JOINT WARS ARE SEASON HISTORY, BUT THEIR LIVE FOREIGN KEYS ARE NOT.
+
+    Active operations were refused by `busy`; anything reaching here is terminal.
+    Remove the whole operation graph because its report and combined mission are
+    shared by every participant and cannot be cut into one commander's fragment.
+    The same trade already applies to ordinary reports during reclaim.
+  */
+  const relatedOperations = await tx
+    .select({ id: clanWarOperations.id })
+    .from(clanWarOperations)
+    .leftJoin(clanWarContributions,
+      eq(clanWarContributions.operationId, clanWarOperations.id))
+    .where(or(
+      eq(clanWarOperations.leaderPlayerId, playerId),
+      eq(clanWarOperations.targetPlayerId, playerId),
+      inArray(clanWarOperations.stagingPlanetId, planetIds),
+      inArray(clanWarOperations.targetPlanetId, planetIds),
+      eq(clanWarContributions.playerId, playerId),
+      inArray(clanWarContributions.originPlanetId, planetIds),
+    ));
+  const operationIds = [...new Set(relatedOperations.map((row) => row.id))];
+  if (operationIds.length > 0) {
+    const warMissionIds = (await tx.select({ id: clanWarMissions.missionId })
+      .from(clanWarMissions)
+      .where(inArray(clanWarMissions.operationId, operationIds))).map((row) => row.id);
+    missionIds = [...new Set([...missionIds, ...warMissionIds])];
+    await tx.delete(clanWarDominionEvents)
+      .where(inArray(clanWarDominionEvents.operationId, operationIds));
+    await tx.delete(clanWarParticipantResults)
+      .where(inArray(clanWarParticipantResults.operationId, operationIds));
+    await tx.delete(clanWarMissions)
+      .where(inArray(clanWarMissions.operationId, operationIds));
+    await tx.delete(clanWarContributions)
+      .where(inArray(clanWarContributions.operationId, operationIds));
+    await tx.delete(battleReports)
+      .where(inArray(battleReports.clanWarOperationId, operationIds));
+    await tx.delete(clanWarOperations)
+      .where(inArray(clanWarOperations.id, operationIds));
+  }
 
   /**
    * Season-scoped only, and `account_rewards` is deliberately absent from this
@@ -400,6 +470,10 @@ export async function demolish(
   // but personal rows cannot survive their player. Everything else below is a
   // live reservation or a player-owned projection and is removed child-first.
   await tx.delete(clanLootShares).where(eq(clanLootShares.playerId, playerId));
+  await tx.delete(clanTreasuryEvents).where(or(
+    eq(clanTreasuryEvents.actorPlayerId, playerId),
+    inArray(clanTreasuryEvents.sourcePlanetId, planetIds),
+  ));
   if (missionIds.length > 0) {
     await tx.delete(clanRaidRoster).where(inArray(clanRaidRoster.missionId, missionIds));
   }

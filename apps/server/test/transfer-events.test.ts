@@ -20,6 +20,10 @@ describe('transfer event classification', () => {
   it.each(['season_end', 'season_rollover', 'season_act', 'galaxy_event_start', 'galaxy_event_end'])('keeps galaxy-global %s in its source', (kind) => {
     expect(transferEventDisposition(kind, 'pending', 101, 100)).toBe('KEEP');
   });
+  it('keeps a clan-owned joint war timer where the clan is', () => {
+    expect(transferEventDisposition('clan_war_expiry', 'pending', 101, 100)).toBe('KEEP');
+    expect(transferEventDisposition('clan_war_expiry', 'processing', 101, 100)).toBe('KEEP');
+  });
   it('defers unknown active kinds and requires neutral-world ownership reconciliation', () => {
     expect(transferEventDisposition('future_kind', 'pending', 101, 100)).toBe('DEFER');
     expect(transferEventDisposition('neutral_reinforce', 'pending', 101, 100)).toBe('RECONCILE');

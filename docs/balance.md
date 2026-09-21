@@ -485,6 +485,9 @@ clan          5 seats · Core 7 · create 8,500 A + 5,100 C · adapt 12 h
               aid ×1.10, +1 aid-only bay · receiver limit 4 h A/C + 20% D cap / 24 h
               raid share 10% · purse 2 h A/C + 10% D cap · protected ceiling 49%
               personal bash 3 + clan bash 5 per target commander / 12 h
+joint war     ruleset 10+ · target 24 h · mature members · one open operation
+              Clan Hangar L1–10: 160/360/940/1,620/3,100/4,580/6,500/8,800/11,480/14,540
+              each upgrade costs the matching personal Hangar rung; treasury cap = next cost
 ```
 
 **The clan economy is bounded at both entry and receipt (D114).** Creation removes the
@@ -500,6 +503,26 @@ attacker's landing. Rounding and blocked shares stay with the attacker. The purs
 production ceiling and the stricter `vault protection + unclaimed ≤ 49% of storage` ceiling
 keep claimable safety below the design's half-store raidable invariant. Existing shares are
 never deleted if a later world loss lowers the ceiling; new credits simply stop.
+
+**Joint-war cost is paid at commitment.** A physical wave pays the existing per-leg mission fuel
+formula for `origin → staging`, `staging → target` and `target → origin`; the leader's capital wave
+pays only `staging → target → staging`. Each leg rounds independently. Recall, cancel and worker
+recovery neither refund nor charge again. The wave continues to occupy the owner's personal Hangar,
+and physical waves hold their origin flight bay until HOME or LOST. The Clan Hangar independently
+counts STAGED/IN_BATTLE load as used and OUTBOUND load as reserved; the battle or recall releases
+shared capacity while the ships can still be physically returning and occupying personal room.
+
+Loot is max-min fair across players with surviving cargo, then proportional across that player's
+surviving waves; integer remainders use stable player/contribution ids. Garbage Collector salvage
+is proportional to surviving collector lift and any remainder stays public wreckage. The ordinary
+10% clan share is absent from this lane.
+
+The Dominion base remains `loot + enemy permanent loss − own permanent loss`. Combat does not read
+head count. When attackers outnumber defenders, a positive base is multiplied by
+`defenders / attackers`; a negative base is multiplied by `attackers / defenders`, truncated
+toward zero. The adjusted team transfer is divided by each participant's signed raw contribution,
+with deterministic remainders, and the defender receives its exact opposite. A fleetless
+coordinator spends quota/protection but receives no participant share.
 
 **The Death Star's economic effect remains explicitly unmeasured.** The reachability
 figures below belong to the older, cheaper weapon and are retained only as history; D203's

@@ -19,6 +19,8 @@ import {
   usePirates,
   usePlanet,
   useClanBadge,
+  useClanWar,
+  useClanWarActions,
   useReports,
   useSeason,
   useSetRival,
@@ -62,6 +64,7 @@ import {
   planTradeRoute,
 } from '../lib/navigation.js';
 import { outOfBandAbove } from '../lib/band.js';
+import { clanTargetDecision } from '../lib/clanTarget.js';
 import { launchFault } from '../lib/faults.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
 import {
@@ -456,6 +459,10 @@ export function GalaxyView({
   useContactWindows(traffic.data?.contacts, sensors);
 
   const [focus, setFocus] = useState<Focus | null>(null);
+  const [clanInitialTab, setClanInitialTab] = useState<'overview' | 'war'>('overview');
+  const clanWar = useClanWar(clanBadge.data?.membership?.role === 'LEADER'
+    && focus?.kind === 'planet');
+  const clanWarActions = useClanWarActions();
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
   /** The world that was active before focusing another controlled world. */
   const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
@@ -970,6 +977,19 @@ export function GalaxyView({
   );
 
   const selected = focus?.kind === 'planet' ? planets.find((p) => p.id === focus.id) : undefined;
+  const selectedClanId = selected?.clan?.id;
+  const clanTarget = clanTargetDecision({
+    leader: clanBadge.data?.membership?.role === 'LEADER',
+    available: clanWar.data?.available === true,
+    realForeignPlayer: selected?.controller?.kind === 'PLAYER'
+      && selected.intel !== 'UNKNOWN' && selected.isOwned !== true,
+    sameClan: selectedClanId !== undefined
+      && selectedClanId === clanBadge.data?.membership?.clanId,
+    operationOpen: clanWar.data?.operation != null
+      && clanWar.data.operation.status !== 'COMPLETED',
+    seasonEndsAt: season.data?.endsAt ?? null,
+    now,
+  });
   const transferOrigin = transferOriginId === null
     ? undefined
     : worlds.find((world) => world.planet.id === transferOriginId);
@@ -1248,6 +1268,19 @@ export function GalaxyView({
           */
           rivalSlot={rivalSlotFor(season.data?.rivals ?? [], selected)}
           now={now}
+          showClanTargetAction={clanTarget.visible}
+          clanTargetReason={clanTarget.reason ? t(`clanWar.${clanTarget.reason}`) : null}
+          clanTargetPending={clanWarActions.target.isPending}
+          onMarkClanTarget={() => {
+            clanWarActions.target.mutate(selected.id, {
+              onSuccess: () => {
+                setClanInitialTab('war');
+                close();
+                onPanel('clan');
+              },
+              onError: (error) => { say(describe(error), 'error'); },
+            });
+          }}
           settlementInFlight={settlementInFlight}
           onClose={close}
           onLaunched={() => {
@@ -1764,11 +1797,11 @@ export function GalaxyView({
           bleed
           eyebrow={t('clan.outside.eyebrow')}
           title={t('clan.tabs.label')}
-          onClose={() => { onPanel(null); }}
+          onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
           <div className="h-full overflow-y-auto overscroll-contain">
             <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
-              <ClanScreen />
+              <ClanScreen initialTab={clanInitialTab} />
             </Suspense>
           </div>
         </Sheet>

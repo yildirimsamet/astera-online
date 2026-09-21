@@ -27,9 +27,11 @@ import {
   type SensorZone,
   type Vec3,
 } from '@astera/rules';
-import type { Db, Queryable } from '../db/client.js';
+import type { Queryable } from '../db/client.js';
 import {
   buildings,
+  clanWarMissions,
+  clanWarOperations,
   intergalacticConvoyRuns,
   miningRuns,
   missions,
@@ -41,7 +43,7 @@ import {
   tradeRuns,
   units,
 } from '../db/schema.js';
-import { legBelongsTo } from './flight.js';
+import { isHostileMission, legBelongsTo } from './flight.js';
 import { instrumentLevels, levelOf } from './intel.js';
 import { loadMiningSnapshot } from './mining.js';
 import { discoveredAsteroidIndexes } from './asteroidField.js';
@@ -210,6 +212,8 @@ export interface Contact {
   endAt: Date;
   /** Exact hull composition, present only for a fleet inside Telescope sight. */
   fleet?: Fleet;
+  /** Combined strikes only, after exact Telescope identification. */
+  clanFleet?: { clanId: string; tag: string; label: string };
   /**
    * THIS WINDOW ENDS WHERE THE CRAFT DOES, RATHER THAN PART OF THE WAY ALONG.
    *
@@ -495,6 +499,7 @@ function windowOf(
  */
 export interface TrafficSnapshot {
   missionRows: { mission: typeof missions.$inferSelect }[];
+  clanFleetByMission: ReadonlyMap<string, { clanId: string; tag: string; label: string }>;
   miningRows: { run: typeof miningRuns.$inferSelect }[];
   /** Raids in the air at a pirate. Somebody else's is a craft like any other. D150. */
   pirateRaidRows: { raid: typeof pirateRaids.$inferSelect }[];
@@ -547,7 +552,7 @@ export interface TrafficSnapshot {
  * commander's filter into another's.
  */
 export async function loadTrafficSnapshot(
-  db: Db,
+  db: Queryable,
   seasonId: string,
   now: Date = new Date(),
 ): Promise<TrafficSnapshot> {
@@ -604,6 +609,22 @@ export async function loadTrafficSnapshot(
       )),
   ]);
 
+  const jointMissionIds = missionRows
+    .filter(({ mission }) => mission.kind === 'clan_war')
+    .map(({ mission }) => mission.id);
+  const combined = jointMissionIds.length === 0 ? [] : await db
+    .select({ missionId: clanWarMissions.missionId, clanId: clanWarOperations.clanId,
+      tag: clanWarOperations.clanTag })
+    .from(clanWarMissions)
+    .innerJoin(clanWarOperations, eq(clanWarOperations.id, clanWarMissions.operationId))
+    .where(and(
+      inArray(clanWarMissions.missionId, jointMissionIds),
+      eq(clanWarMissions.leg, 'COMBINED_ATTACK'),
+    ));
+  const clanFleetByMission = new Map(combined.map((row) => [row.missionId, {
+    clanId: row.clanId, tag: row.tag, label: `[${row.tag}] Klan Filosu`,
+  }]));
+
   const ids = new Set<string>();
   for (const { mission } of missionRows) {
     ids.add(mission.originPlanetId);
@@ -635,6 +656,7 @@ export async function loadTrafficSnapshot(
   if (ids.size === 0) {
     return {
       missionRows,
+      clanFleetByMission,
       miningRows,
       pirateRaidRows,
       tradeRunRows,
@@ -675,6 +697,7 @@ export async function loadTrafficSnapshot(
   );
   return {
     missionRows,
+    clanFleetByMission,
     miningRows,
     pirateRaidRows,
     tradeRunRows,
@@ -888,7 +911,7 @@ export async function sensorPosts(
 }
 
 export async function galaxyTraffic(
-  db: Db,
+  db: Queryable,
   seasonId: string,
   ownPlanetId: string | null,
   now: Date,
@@ -957,6 +980,7 @@ export function projectGalaxyTraffic(
 ): Contact[] {
   const {
     missionRows,
+    clanFleetByMission,
     miningRows,
     pirateRaidRows,
     tradeRunRows,
@@ -1028,8 +1052,10 @@ export function projectGalaxyTraffic(
     /** Where the craft is RIGHT NOW, which is the only distance a radius means. */
     craft: Vec3,
   ): SensorPost | null => {
-    if (mission.kind !== 'attack' && mission.kind !== 'death_star') return null;
-    if (mission.parentMissionId !== null) return null;
+    if (!isHostileMission(
+      mission,
+      clanFleetByMission.has(mission.id) ? 'COMBINED_ATTACK' : null,
+    )) return null;
     const post = sensors.find((sensor) => sensor.planetId === mission.targetPlanetId);
     if (!post) return null;
     return radarSensesIntent(post.detect, distance(post.at, craft)) ? post : null;
@@ -1140,8 +1166,10 @@ export function projectGalaxyTraffic(
      * whole engagement, and that is exactly the ten seconds worth watching. It
      * used to blink out at `arriveAt` for everybody except the attacker.
      */
-    const engaging =
-      mission.kind === 'attack' && now.getTime() >= arrive && now.getTime() < engagementEndsAt(arrive);
+    const engaging = isHostileMission(
+      mission,
+      clanFleetByMission.has(mission.id) ? 'COMBINED_ATTACK' : null,
+    ) && now.getTime() >= arrive && now.getTime() < engagementEndsAt(arrive);
 
     if (engaging) {
       const endsAt = new Date(engagementEndsAt(arrive));
@@ -1216,6 +1244,9 @@ export function projectGalaxyTraffic(
         engagement,
         mass: massClass(mission.fleet),
         fleet: mission.fleet,
+        ...(clanFleetByMission.has(mission.id)
+          ? { clanFleet: clanFleetByMission.get(mission.id) }
+          : {}),
       });
       continue;
     }
@@ -1309,6 +1340,9 @@ export function projectGalaxyTraffic(
       // Sight resolves the actual hulls and their counts. Radar never reaches
       // this branch, so an exact manifest cannot leak into a CONTACT payload.
       ...(kind === 'fleet' ? { fleet: mission.fleet } : {}),
+      ...(clanFleetByMission.has(mission.id)
+        ? { clanFleet: clanFleetByMission.get(mission.id) }
+        : {}),
     });
   }
 

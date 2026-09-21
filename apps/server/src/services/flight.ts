@@ -1,12 +1,15 @@
-import { and, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql } from 'drizzle-orm';
 import { clanBayAvailable, flightSlots, hasFault, type FaultSet } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
+  clanWarContributions,
+  clanWarMissions,
   intergalacticConvoyRuns,
   miningRuns,
   missions,
   pirateRaids,
   tradeRuns,
+  type ClanWarLeg,
 } from '../db/schema.js';
 import { GameError } from './planet.js';
 
@@ -48,12 +51,30 @@ import { GameError } from './planet.js';
 const isReturnLeg = or(eq(missions.kind, 'return'), isNotNull(missions.parentMissionId));
 const isOutboundLeg = and(ne(missions.kind, 'return'), isNull(missions.parentMissionId));
 
+/**
+ * A JOINT WAR LEG IS COUNTED BY ITS CONTRIBUTION, NOT BY ITS MISSIONS.
+ *
+ * One contributed wave flies up to three legs — out to the staging world, in with
+ * the combined strike, home again — and each of those is a `missions` row. Counted
+ * generically that is a wave taking two or three bays at once, and a wave WAITING
+ * at the staging world taking none at all, which would let a commander park a
+ * fleet abroad and launch a fresh raid out of the empty bay it left behind.
+ *
+ * So joint-war missions are excluded here and the CONTRIBUTION is counted below:
+ * one bay at the origin world, held from the moment the wave leaves until it is
+ * `HOME` or `LOST`, which is exactly the D28 rule stated about the right object.
+ */
+const isClanWarLeg = sql`EXISTS (
+  SELECT 1 FROM ${clanWarMissions} WHERE ${clanWarMissions.missionId} = ${missions.id}
+)`;
+
 const minesOf = (planetId: string) =>
   and(
     eq(missions.status, 'in_flight'),
     // Probes are paid intelligence packets paced per target, not fleet squadrons.
     // They remain visible and pending, but never consume an ordinary flight bay.
     ne(missions.kind, 'probe'),
+    not(isClanWarLeg),
     or(
       and(isOutboundLeg, eq(missions.originPlanetId, planetId)),
       and(isReturnLeg, eq(missions.targetPlanetId, planetId)),
@@ -90,6 +111,23 @@ export const legBelongsTo = (mission: Leg, planetId: string): boolean =>
   mission.kind === 'return' || mission.parentMissionId !== null
     ? mission.targetPlanetId === planetId
     : mission.originPlanetId === planetId;
+
+/**
+ * Whether this exact flight leg is an attack aimed at its target.
+ *
+ * A joint-war mission kind names four physically different legs, so `kind` alone
+ * cannot answer this question. Only the aggregate strike is hostile; support and
+ * both return legs remain ordinary traffic. Keeping that distinction here makes
+ * traffic intent, the defender's pending strip and the scheduled warning agree.
+ */
+export const isHostileMission = (
+  mission: Pick<typeof missions.$inferSelect, 'kind' | 'parentMissionId'>,
+  clanWarLeg: ClanWarLeg | null = null,
+): boolean => mission.parentMissionId === null && (
+  mission.kind === 'attack'
+  || mission.kind === 'death_star'
+  || (mission.kind === 'clan_war' && clanWarLeg === 'COMBINED_ATTACK')
+);
 
 /** Craft this planet currently has off the ground, across every kind of flight. */
 export async function baysInUse(tx: Queryable, planetId: string): Promise<number> {
@@ -157,11 +195,29 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       ),
     );
 
+  /**
+   * ONE CONTRIBUTED WAVE IS ONE BAY AT THE WORLD IT LEFT, FOR ITS WHOLE LIFE.
+   *
+   * Outbound, waiting in escrow, in the battle and on the way home are all the
+   * same commitment: those ships are out. `LEADER_CAPITAL` waves take none —
+   * they never leave the staging world, so there is nothing for a bay to hold —
+   * and a wave that is `HOME` or `LOST` has released it.
+   */
+  const [contributed] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(clanWarContributions)
+    .where(and(
+      eq(clanWarContributions.originPlanetId, planetId),
+      eq(clanWarContributions.sourceKind, 'PHYSICAL'),
+      notInArray(clanWarContributions.status, ['HOME', 'LOST']),
+    ));
+
   return (flights?.n ?? 0)
     + (mining?.n ?? 0)
     + (pirate?.n ?? 0)
     + (trade?.n ?? 0)
-    + (convoy?.n ?? 0);
+    + (convoy?.n ?? 0)
+    + (contributed?.n ?? 0);
 }
 
 export interface BayCount {

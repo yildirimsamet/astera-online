@@ -3248,7 +3248,16 @@ export const MULTI_WORLD = {
    * fixed public-event calendar and Intergalactic Convoy. Older seasons retain
    * their persisted random calendars; this default affects new seasons only.
    */
-  rulesetVersion: 9,
+  rulesetVersion: 10,
+  /**
+   * KLAN ORTAK SAVAŞI, AND ITS OWN BOUNDARY. Owner design, 2026-09-20.
+   *
+   * Clan level, the clan treasury and the joint war operation exist only in a
+   * season created at or above this ruleset. A live season is never backfilled:
+   * its clans keep `level = null`, every treasury and war mutation refuses, and
+   * its Dominion, reports and raid loot semantics stay exactly as they were dealt.
+   */
+  clanJointWarRulesetVersion: 10,
   /**
    * 9 · 2026-09-19: pirates spawn per ACTIVE commander, hour by hour (`PIRATE.dynamic`),
    * instead of the per-seat lane derived from the key. A season created below this

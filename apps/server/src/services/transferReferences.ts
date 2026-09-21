@@ -16,7 +16,17 @@ type EventStatus = typeof eventStatus.enumValues[number];
  * the same behaviour and taught the next reader that "galaxy-wide" and "bolted to one
  * planet" are the same category.
  */
-type Policy = 'PERSONAL' | 'BLOCKER' | 'GLOBAL' | 'NEUTRAL' | 'WORLD';
+/**
+ * `CLAN` IS THE SIXTH, AND IT ARRIVED WITH KLAN ORTAK SAVAŞI. 2026-09-20.
+ *
+ * A joint war's expiry belongs to a CLAN's operation, which a commander transfer
+ * does not touch: the player row, its membership and the operation it is standing
+ * in are all exactly where they were, and only the account driving them changed.
+ * So the timer keeps running where it is — KEEP — and it is named rather than
+ * folded into GLOBAL, because teaching the next reader that "galaxy-wide" and
+ * "bolted to one clan" are the same category is how the next event gets it wrong.
+ */
+type Policy = 'PERSONAL' | 'BLOCKER' | 'GLOBAL' | 'NEUTRAL' | 'WORLD' | 'CLAN';
 export type TransferEventDisposition = 'MOVE' | 'KEEP' | 'DEFER' | 'RECONCILE';
 
 /** Every new persisted kind must decide its transfer semantics before compilation. */
@@ -51,6 +61,7 @@ export const TRANSFER_EVENT_POLICIES = {
   fault_repair_complete: 'WORLD',
   vault_leak_flush: 'WORLD',
   colony_secession: 'WORLD',
+  clan_war_expiry: 'CLAN',
 } as const satisfies Record<EventKind, Policy>;
 
 /**
@@ -69,7 +80,7 @@ export function transferEventDisposition(
   if (status === 'done') return 'KEEP';
   const policies: Readonly<Record<string, Policy | undefined>> = TRANSFER_EVENT_POLICIES;
   const policy = policies[kind];
-  if (policy === 'GLOBAL' || policy === 'WORLD') return 'KEEP';
+  if (policy === 'GLOBAL' || policy === 'WORLD' || policy === 'CLAN') return 'KEEP';
   if (status !== 'pending') return 'DEFER';
   if (policy === 'PERSONAL') return resolveAt > now ? 'MOVE' : 'DEFER';
   if (policy === 'NEUTRAL') return 'RECONCILE';

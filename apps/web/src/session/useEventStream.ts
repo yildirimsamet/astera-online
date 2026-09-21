@@ -68,6 +68,7 @@ const LIVE_READS = [
   keys.clanEvents,
   keys.clanDepot,
   keys.clanAid,
+  keys.clanWar,
   keys.clanChat,
 ] as const;
 

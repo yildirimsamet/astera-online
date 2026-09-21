@@ -4,6 +4,39 @@ import type { Db, Tx } from '../db/client.js';
 import { requestLog } from '../db/schema.js';
 import { GameError } from './planet.js';
 
+const COMMITTED_GAME_ERROR = '__asteraCommittedGameError' as const;
+
+interface CommittedGameError {
+  [COMMITTED_GAME_ERROR]: {
+    code: string;
+    message: string;
+    status: number;
+    params?: GameError['params'];
+  };
+}
+
+/**
+ * Return an API refusal after the surrounding idempotent transaction commits.
+ *
+ * A few state-machine commands must persist a repair they discover and still tell
+ * the caller why the requested action did not happen. Throwing inside the callback
+ * would roll that repair back. The marker is stored with the idempotency response,
+ * then converted back to the same GameError only after commit (and on every replay).
+ */
+export function commitGameError(error: GameError): never {
+  return {
+    [COMMITTED_GAME_ERROR]: {
+      code: error.code,
+      message: error.message,
+      status: error.status,
+      params: error.params,
+    },
+  } as never;
+}
+
+const isCommittedGameError = (value: unknown): value is CommittedGameError =>
+  typeof value === 'object' && value !== null && COMMITTED_GAME_ERROR in value;
+
 const canonicalJson = (value: unknown): string => {
   if (value === undefined) return '"__undefined__"';
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -74,6 +107,10 @@ export async function idempotentMutation<T>(
     });
     return serialisable;
   });
+  if (isCommittedGameError(response)) {
+    const error = response[COMMITTED_GAME_ERROR];
+    throw new GameError(error.code, error.message, error.status, error.params);
+  }
   // Observe only after the transaction commits. A failed mutation or insert is
   // neither an accepted command nor a replay and must not inflate success data.
   input.onOutcome?.(outcome);

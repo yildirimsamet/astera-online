@@ -94,7 +94,7 @@ export const research = {
   deathStarRole:
     "The Death Star now builds without this research; this project is unavailable.",
   deathStarDetail:
-    "An EMP strike drains Aegis to zero and prevents regeneration for one hour. Ground defences cannot fire or take damage during that hour.",
+    "An EMP strike drains Aegis to zero and prevents regeneration for one hour. Ground defences cannot fire or take damage during that hour. Production continues, and the world never changes hands.",
 
   synthesisName: "Deuterium Synthesis",
   synthesisTag: "Raises the Refinery ceiling",

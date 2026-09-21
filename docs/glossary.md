@@ -234,7 +234,8 @@ because the client interpolates it.
 `target` is the attacker's home — it travels *backwards*, which has already caused one bug.
 
 **Clan** — A seasonal, same-galaxy team with five fixed seats. It is cooperation and a public
-identity, not alliance diplomacy: there are no treaties, wars, officers or shared radar.
+identity, not alliance diplomacy: there are no treaties, officers or shared radar. Ruleset 10
+adds one bounded joint-war operation at a time; earlier seasons have no clan level or joint war.
 
 **Adaptation period** — The first 12 hours after joining. Tag, chat and friendly-fire protection
 start immediately; aid, loot sharing, clan score and detailed history begin when it ends.
@@ -246,6 +247,23 @@ receiver-wide rolling allowance prevents account pooling.
 
 **Clan depot / loot share** — Personal claimable resources offered from 10% of ordinary PvP
 loot only after surviving attackers return. It is not a clan treasury and has no leader access.
+
+**Clan Treasury** — The shared, audit-backed purse used only for Clan Hangar upgrades. Each
+resource is capped at the next rung's cost. Donations are irreversible, the leader alone spends
+the exact upgrade cost, and disband burns what remains.
+
+**Clan Hangar** — The joint-war pool's shared bulk ceiling. At clan level 1–10 it holds exactly
+twice the matching personal Hangar rung and costs that personal rung's upgrade price. A contributed
+ship still occupies its owner's personal Hangar as well.
+
+**Joint-war pool** — All live contribution waves bound to one marked clan target. The fleet fights
+as one board while every wave keeps its owner, origin, technology, losses, cargo and return route.
+Support standing at the leader's capital is escrow and does not defend that world.
+
+**Active joint-war participant** — A mature clan member with at least one hull in the combined
+battle. Multiple waves still count as one participant. A fleetless leader is the coordinator:
+they spend launch quota and protection and may read the report, but do not enter loot, participant
+Dominion or attacker head count.
 
 
 ## Design vocabulary

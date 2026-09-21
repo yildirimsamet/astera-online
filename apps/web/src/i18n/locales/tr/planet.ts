@@ -312,7 +312,7 @@ export const planet = {
     uplink: "yörüngede Anten",
     orbitSlot: "boş yörünge yuvası",
     shipyard: "Tersane {{level}}. seviye",
-    research: "{{research}} {{level}}",
+    research: "{{research}} {{level}}. seviye",
     requirements: "Önce şunlar gerekli: {{requirements}}",
     plantRung: "Bir kademe daha Döteryum Sentezi araştır",
     maxed: "en üst seviyede",

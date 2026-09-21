@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, count, countDistinct, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { ABUSE, CLAN } from '@astera/rules';
 import { addMinutes } from '../clock.js';
 import type { Queryable, Tx } from '../db/client.js';
@@ -147,8 +147,20 @@ export async function prepareClanAttack(
     // They are both twelve hours today; reading one off the other is how they stop
     // agreeing the first time either moves.
     const clanSince = addMinutes(input.now, -CLAN.attackWindowMinutes);
+    /*
+      DISTINCT MISSIONS, NOT ROWS. Klan Ortak Savaşı, 2026-09-20.
+
+      A joint strike writes one commitment row per participating commander so each
+      of them spends their own personal quota — see the index on
+      `attack_commitments`. Counted as rows here, a five-member strike would burn
+      the clan's whole twelve-hour ceiling in one launch. It is ONE attack by the
+      clan, so the clan's ceiling counts the missions.
+
+      An ordinary raid has exactly one row per mission, so this returns exactly
+      what it always did for every launch that is not a joint war.
+    */
     const [clanRecent] = await tx
-      .select({ value: count() })
+      .select({ value: countDistinct(attackCommitments.missionId) })
       .from(attackCommitments)
       .where(and(
         eq(attackCommitments.quotaClanId, attackerMembership.clanId),
@@ -289,3 +301,145 @@ export const membershipsForPlayers = (tx: Queryable, playerIds: string[]) => tx
   .select()
   .from(clanMemberships)
   .where(and(inArray(clanMemberships.playerId, playerIds), isNull(clanMemberships.leftAt)));
+
+
+/* ── the clan's joint strike ────────────────────────────────────── */
+
+export interface JointParticipantQuota {
+  playerId: string;
+  /** False for the coordinating leader when they put no hulls in the pool. */
+  fought: boolean;
+}
+
+export interface PreparedJointAttack {
+  quotaClanId: string;
+  attackerClanId: string;
+  defenderClanId: string | null;
+  attackerScoreClanId: string | null;
+  defenderScoreClanId: string | null;
+  participants: JointParticipantQuota[];
+}
+
+/**
+ * EVERY COMMANDER BEHIND ONE COMBINED STRIKE, CHECKED AND CHARGED SEPARATELY.
+ *
+ * THE TWO CEILINGS PULL IN OPPOSITE DIRECTIONS AND BOTH ARE RIGHT. A joint strike
+ * is FIVE commanders reaching for one defender, so each of them spends one of
+ * their own three twelve-hour hits — otherwise a clan could rotate members and
+ * farm a single world without anybody ever reaching their limit. It is also ONE
+ * attack by the clan, so it costs one of the clan's five — otherwise a full clan
+ * would exhaust its own ceiling in a single launch and joint war would be a
+ * once-a-day mechanic. Same table, two readings; see the index on
+ * `attack_commitments` and the `countDistinct` above.
+ *
+ * THE COORDINATING LEADER IS IN THE QUOTA AND OUT OF THE FIGHT. A leader who sent
+ * no hulls still chose the target and pulled the trigger, so they spend a personal
+ * hit and give up their own shield. What they do not get is a share of the loot,
+ * a line in the Dominion split, or a place in the head count the ratio is computed
+ * from — they were not in the battle.
+ *
+ * THE ADVISORY LOCKS ARE TAKEN IN UUID ORDER, one per participant against this
+ * defender plus one for the clan, so two clans launching at the same commander in
+ * the same instant queue rather than cross.
+ */
+export async function prepareJointClanAttack(
+  tx: Tx,
+  input: {
+    clanId: string;
+    participants: readonly JointParticipantQuota[];
+    targetPlayerId: string;
+    now: Date;
+  },
+): Promise<PreparedJointAttack> {
+  const ordered = [...input.participants].sort((a, b) => (a.playerId < b.playerId ? -1 : 1));
+  const since = addMinutes(input.now, -ABUSE.bashWindowMinutes);
+
+  for (const participant of ordered) {
+    await assertClanHostilityAllowed(tx, participant.playerId, input.targetPlayerId, input.now);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`personal-attack:${participant.playerId}:${input.targetPlayerId}`}))`);
+    const [personal] = await tx
+      .select({ value: count() })
+      .from(attackCommitments)
+      .where(and(
+        eq(attackCommitments.attackerPlayerId, participant.playerId),
+        eq(attackCommitments.targetPlayerId, input.targetPlayerId),
+        gt(attackCommitments.launchedAt, since),
+      ));
+    if ((personal?.value ?? 0) >= ABUSE.bashLimit) {
+      throw new GameError(
+        'BASH_LIMIT',
+        'A commander in this pool has hit that world too many times recently',
+        403,
+        { limit: ABUSE.bashLimit, hours: ABUSE.bashWindowMinutes / 60, playerId: participant.playerId },
+      );
+    }
+  }
+
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-attack:${input.clanId}:${input.targetPlayerId}`}))`);
+  const clanSince = addMinutes(input.now, -CLAN.attackWindowMinutes);
+  const [clanRecent] = await tx
+    .select({ value: countDistinct(attackCommitments.missionId) })
+    .from(attackCommitments)
+    .where(and(
+      eq(attackCommitments.quotaClanId, input.clanId),
+      eq(attackCommitments.targetPlayerId, input.targetPlayerId),
+      gt(attackCommitments.launchedAt, clanSince),
+    ));
+  if ((clanRecent?.value ?? 0) >= CLAN.attackLimit) {
+    throw new GameError(
+      'CLAN_ATTACK_LIMIT',
+      'Your clan has reached its attack limit for that commander',
+      403,
+      { limit: CLAN.attackLimit, hours: CLAN.attackWindowMinutes / 60 },
+    );
+  }
+
+  const defenderMembership = await activeClanMembership(tx, input.targetPlayerId);
+  return {
+    quotaClanId: input.clanId,
+    attackerClanId: input.clanId,
+    defenderClanId: defenderMembership?.clanId ?? null,
+    /*
+      THE ATTACKING CLAN IS ALWAYS ITS OWN SCORE CLAN HERE. Every participant had
+      to be mature to put hulls in the pool, and the operation is the clan's by
+      construction — unlike an ordinary raid, where a fresh member's launch scores
+      for nobody.
+    */
+    attackerScoreClanId: input.clanId,
+    defenderScoreClanId: membershipIsMature(defenderMembership, input.now)
+      ? defenderMembership.clanId
+      : null,
+    participants: ordered,
+  };
+}
+
+/**
+ * ONE COMMITMENT ROW PER COMMANDER, ALL AGAINST ONE MISSION.
+ *
+ * NO `clanRaidRoster`. That table feeds the ordinary raid's ten-percent share to
+ * every mature member of the clan; a joint war pays the people who actually flew
+ * (`allocateJointLoot`) and deliberately does not touch that path at all.
+ */
+export async function recordJointClanAttack(
+  tx: Tx,
+  input: PreparedJointAttack & {
+    missionId: string;
+    seasonId: string;
+    targetPlayerId: string;
+    now: Date;
+  },
+): Promise<void> {
+  await tx.insert(attackCommitments).values(input.participants.map((participant) => ({
+    seasonId: input.seasonId,
+    missionId: input.missionId,
+    attackerPlayerId: participant.playerId,
+    targetPlayerId: input.targetPlayerId,
+    quotaClanId: input.quotaClanId,
+    attackerClanId: input.attackerClanId,
+    defenderClanId: input.defenderClanId,
+    attackerScoreClanId: input.attackerScoreClanId,
+    defenderScoreClanId: input.defenderScoreClanId,
+    launchedAt: input.now,
+    expiresAt: addMinutes(input.now, CLAN.attackWindowMinutes),
+  })));
+}

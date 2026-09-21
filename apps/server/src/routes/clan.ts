@@ -21,6 +21,16 @@ import {
   transferClanLeadership,
   updateClanSettings,
 } from '../services/clan.js';
+import { donateToClanTreasury, upgradeClanLevel } from '../services/clanTreasury.js';
+import {
+  cancelClanWarOperation,
+  markClanWarTarget,
+  quoteClanWarContribution,
+  readClanWar,
+  recallClanWarContribution,
+  sendClanWarContribution,
+  startClanWar,
+} from '../services/clanWar.js';
 import { idempotentMutation } from '../services/idempotency.js';
 import { claimClanLoot, readClanDepot } from '../services/clanLoot.js';
 import { markClanChatRead, postClanChat, readClanChat } from '../services/clanChat.js';
@@ -31,6 +41,7 @@ import { mobileFleetSchema } from '../schemas/fleet.js';
 
 const uuidParam = z.object({ clanId: z.string().uuid() }).strict();
 const requestParam = z.object({ requestId: z.string().uuid() }).strict();
+const contributionParam = z.object({ contributionId: z.string().uuid() }).strict();
 const listQuery = z.object({
   search: z.string().trim().max(40).optional(),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
@@ -62,6 +73,52 @@ const resourcesBody = z.object({
   alloy: z.number().int().min(0),
   crystal: z.number().int().min(0),
   deuterium: z.number().int().min(0),
+}).strict();
+/**
+ * A DONATION IS WHOLE UNITS OUT OF ONE WORLD THE CALLER HOLDS.
+ *
+ * The ceiling is the clan's, so it is not expressible here and is checked inside
+ * the transaction; what this refuses is the shape — fractions, negatives and a
+ * request that moves nothing at all.
+ */
+const donateBody = z.object({
+  planetId: z.string().uuid(),
+  resources: resourcesBody,
+}).strict();
+/**
+ * The rung the caller believes they are buying. Checked rather than trusted, so
+ * two taps cannot buy two rungs and a member cannot be surprised by a level
+ * somebody else's purse paid for while they were reading the screen.
+ */
+const upgradeBody = z.object({
+  expectedLevel: z.number().int().min(1).max(9),
+}).strict();
+/**
+ * Disbanding destroys the clan purse and nobody is refunded, so the leader has to
+ * say so. Absent reads as false, which is safe: the refusal names what would burn.
+ */
+const disbandBody = z.object({
+  acknowledgeTreasuryBurn: z.boolean().default(false),
+}).strict();
+/** The world the clan is going to hit. Everything else about it is server-decided. */
+const warTargetBody = z.object({ targetPlanetId: z.string().uuid() }).strict();
+/**
+ * The leader has read that launching gives up their own shield, and said yes.
+ * Only a fleetless coordinator can still be holding one by this point, but the
+ * field is always accepted so the client never has to know which case it is in.
+ */
+const warStartBody = z.object({
+  acknowledgeShieldLoss: z.boolean().default(false),
+}).strict();
+const warQuoteBody = z.object({
+  originPlanetId: z.string().uuid(),
+  fleet: mobileFleetSchema,
+}).strict();
+const warContributionBody = z.object({
+  originPlanetId: z.string().uuid(),
+  fleet: mobileFleetSchema,
+  /** The sender has read that this gives up their own shield, and said yes. */
+  acknowledgeShieldLoss: z.boolean().default(false),
 }).strict();
 const aidBody = z.object({
   originPlanetId: z.string().uuid(),
@@ -106,6 +163,18 @@ export function registerClanRoutes(app: FastifyInstance): void {
 
   app.get('/api/clan/strength', { preHandler: requireAuth }, async (req) =>
     readClanStrength(app.db, req.accountId!));
+
+  /**
+   * THE CLAN'S OWN WAR SCREEN, and members only.
+   *
+   * The purse, the rung and the shared hangar are what decide whether a clan's
+   * next operation is worth fearing. A rival reading them would be reading the
+   * clan's plan; the public profile carries `level` and nothing else.
+   */
+  app.get('/api/clan/war', { preHandler: requireAuth }, async (req) => {
+    const actor = await clanActor(app.db, req.accountId!);
+    return readClanWar(app.db, actor, app.clock.now());
+  });
 
   app.get('/api/clans', { preHandler: requireAuth }, async (req) =>
     listPublicClans(app.db, req.accountId!, listQuery.parse(req.query)));
@@ -290,17 +359,155 @@ export function registerClanRoutes(app: FastifyInstance): void {
     }, (tx) => setClanAidPolicy(tx, { actor, enabled: body.enabled, now }));
   });
 
-  app.post('/api/clan/disband', { preHandler: requireAuth }, async (req) => {
+  app.post('/api/clan/war/target', { preHandler: requireAuth }, async (req) => {
+    const body = warTargetBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.war.target',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => markClanWarTarget(tx, {
+      actor,
+      targetPlanetId: body.targetPlanetId,
+      clock: { now: () => now },
+    }));
+  });
+
+  /** Decides nothing: the dispatch recomputes every figure under its own locks. */
+  app.post('/api/clan/war/contributions/quote', { preHandler: requireAuth }, async (req) => {
+    const body = warQuoteBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return quoteClanWarContribution(app.db, {
+      actor,
+      originPlanetId: body.originPlanetId,
+      fleet: body.fleet,
+      clock: { now: () => now },
+    });
+  });
+
+  app.post('/api/clan/war/contributions', { preHandler: requireAuth }, async (req) => {
+    const body = warContributionBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.war.contribute',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => sendClanWarContribution(tx, {
+      actor,
+      originPlanetId: body.originPlanetId,
+      fleet: body.fleet,
+      acknowledgeShieldLoss: body.acknowledgeShieldLoss,
+      clock: { now: () => now },
+    }));
+  });
+
+  app.post('/api/clan/war/contributions/:contributionId/recall', {
+    preHandler: requireAuth,
+  }, async (req) => {
+    const { contributionId } = contributionParam.parse(req.params);
     emptyBody.parse(req.body ?? {});
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.war.recall',
+      key: idempotencyKey(req),
+      body: { contributionId },
+      now,
+    }, (tx) => recallClanWarContribution(tx, {
+      actor,
+      contributionId,
+      clock: { now: () => now },
+    }));
+  });
+
+  app.post('/api/clan/war/start', { preHandler: requireAuth }, async (req) => {
+    const body = warStartBody.parse(req.body ?? {});
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.war.start',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => startClanWar(tx, {
+      actor,
+      acknowledgeShieldLoss: body.acknowledgeShieldLoss,
+      clock: { now: () => now },
+    }));
+  });
+
+  app.post('/api/clan/war/cancel', { preHandler: requireAuth }, async (req) => {
+    emptyBody.parse(req.body ?? {});
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.war.cancel',
+      key: idempotencyKey(req),
+      body: {},
+      now,
+    }, (tx) => cancelClanWarOperation(tx, { actor, clock: { now: () => now } }));
+  });
+
+  app.post('/api/clan/treasury/donate', { preHandler: requireAuth }, async (req) => {
+    const body = donateBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.treasury.donate',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => donateToClanTreasury(tx, {
+      actor,
+      planetId: body.planetId,
+      resources: body.resources,
+      clock: { now: () => now },
+    }));
+  });
+
+  app.post('/api/clan/level/upgrade', { preHandler: requireAuth }, async (req) => {
+    const body = upgradeBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.level.upgrade',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => upgradeClanLevel(tx, {
+      actor,
+      expectedLevel: body.expectedLevel,
+      clock: { now: () => now },
+    }));
+  });
+
+  app.post('/api/clan/disband', { preHandler: requireAuth }, async (req) => {
+    const body = disbandBody.parse(req.body ?? {});
     const actor = await clanActor(app.db, req.accountId!);
     const now = app.clock.now();
     return idempotentMutation(app.db, {
       playerId: actor.playerId,
       operation: 'clan.disband',
       key: idempotencyKey(req),
-      body: {},
+      body,
       now,
-    }, (tx) => disbandClan(tx, { actor, now }));
+    }, (tx) => disbandClan(tx, {
+      actor,
+      now,
+      acknowledgeTreasuryBurn: body.acknowledgeTreasuryBurn,
+    }));
   });
 
   app.post('/api/clan/depot/claim', { preHandler: requireAuth }, async (req) => {

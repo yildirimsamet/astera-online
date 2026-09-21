@@ -24,6 +24,7 @@ import {
 import { schedule } from '../worker/queue.js';
 import type { Handler } from '../worker/handlers.js';
 import { loadLocked } from './planet.js';
+import { revalidateClanWarTargetPlanet } from './clanWar.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { notify } from './notifications.js';
 
@@ -359,5 +360,11 @@ export async function secedeColony(
     refId: notificationRefId,
     payload: { planetId, planetName: world.name, cause: 'SECESSION' },
   });
+
+  /*
+    A SECEDED WORLD HAS NO COMMANDER ON IT, so a clan aiming at it is aiming at
+    nobody. Same rule as a capture: only an operation that has not launched yet.
+  */
+  await revalidateClanWarTargetPlanet(tx, planetId, now);
   return true;
 }

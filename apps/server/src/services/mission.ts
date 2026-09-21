@@ -38,7 +38,7 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
-import { assertAttackProtections } from './attackProtection.js';
+import { assertAttackProtections, assertWorldAttackable } from './attackProtection.js';
 import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
@@ -213,16 +213,7 @@ export async function launchAttack(
 
     const [me] = await tx.select().from(players).where(eq(players.id, origin.playerId));
     if (!me) throw new GameError('PLAYER_NOT_FOUND', 'No such player', 404);
-    if (target.protectedUntil !== null && target.protectedUntil > origin.now) {
-      throw new GameError('OCCUPATION_PROTECTED', 'That world is protected', 409, {
-        until: target.protectedUntil.toISOString(),
-      });
-    }
-    if (target.recoveryUntil !== null && target.recoveryUntil > origin.now) {
-      throw new GameError('WORLD_RECOVERING', 'That world is recovering', 409, {
-        until: target.recoveryUntil.toISOString(),
-      });
-    }
+    assertWorldAttackable(target, origin.now);
     const [them] = target.controllerPlayerId
       ? await tx.select().from(players).where(eq(players.id, target.controllerPlayerId))
       : [];

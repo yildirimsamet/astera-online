@@ -31,6 +31,7 @@ import {
   useClanLeaderboard,
   useClanProfile,
   useClanStrength,
+  useClanWar,
   useGalaxy,
   useLeaderboard,
 } from '../api/queries.js';
@@ -80,8 +81,9 @@ import {
   Unreachable,
   Waiting,
 } from '../ui/kit/index.js';
+import { ClanWarPanel } from './ClanWarPanel.js';
 
-type ClanTab = 'overview' | 'strength' | 'members' | 'aid';
+type ClanTab = 'overview' | 'strength' | 'members' | 'aid' | 'war';
 type Actions = ReturnType<typeof useClanActions>;
 type Member = ClanMemberHome['members'][number];
 
@@ -120,12 +122,12 @@ function useLiveClanHome(home: ClanHome | undefined): ClanHome | undefined {
 }
 
 /** One mobile-first surface: discovery outside, command console inside. */
-export function ClanScreen() {
+export function ClanScreen({ initialTab = 'overview' }: { initialTab?: ClanTab }) {
   const { t } = useTranslation();
   const home = useClanHome();
   const actions = useClanActions();
   const galaxy = useGalaxy();
-  const [tab, setTab] = useState<ClanTab>('overview');
+  const [tab, setTab] = useState<ClanTab>(initialTab);
   const marked = useRef(false);
   const liveHome = useLiveClanHome(home.data);
   const member: ClanMemberHome | null = liveHome?.state === 'MEMBER' ? liveHome : null;
@@ -135,6 +137,8 @@ export function ClanScreen() {
   const standings = useClanLeaderboard(member !== null && tab === 'overview');
   const aid = useClanAid(member !== null && tab === 'aid');
   const strength = useClanStrength(member !== null && tab === 'strength');
+  const war = useClanWar(member !== null && tab === 'war');
+  const { worlds } = useWorld();
   const commanders = useLeaderboard(member !== null && tab === 'members');
 
   useEffect(() => {
@@ -169,11 +173,16 @@ export function ClanScreen() {
    */
   const inside = liveHome;
 
+  const tabLabel = (id: 'overview' | 'strength' | 'members' | 'aid') => <>
+    <span className="sm:hidden">{t(`clan.tabs.compact.${id}`)}</span>
+    <span className="hidden sm:inline">{t(`clan.tabs.${id}`)}</span>
+  </>;
   const tabs = [
-    { id: 'overview' as const, label: t('clan.tabs.overview') },
-    { id: 'strength' as const, label: t('clan.tabs.strength') },
-    { id: 'members' as const, label: t('clan.tabs.members') },
-    { id: 'aid' as const, label: t('clan.tabs.aid') },
+    { id: 'overview' as const, label: tabLabel('overview'), hint: t('clan.tabs.overview') },
+    { id: 'strength' as const, label: tabLabel('strength'), hint: t('clan.tabs.strength') },
+    { id: 'members' as const, label: tabLabel('members'), hint: t('clan.tabs.members') },
+    { id: 'aid' as const, label: tabLabel('aid'), hint: t('clan.tabs.aid') },
+    { id: 'war' as const, label: t('clanWar.tab') },
   ];
 
   return (
@@ -215,6 +224,11 @@ export function ClanScreen() {
             selfPlayerId={commanders.data?.you?.playerId ?? galaxy.data?.you.playerId}
             actions={actions}
           />
+        ) : tab === 'war' ? (
+          war.isError ? <Unreachable what={t('clanWar.tab')} onRetry={() => { void war.refetch(); }} />
+            : war.data ? <ClanWarPanel war={war.data} role={inside.clan.role}
+              mature={inside.clan.mature} worlds={worlds} />
+              : <Waiting>{t('clan.waiting')}</Waiting>
         ) : (
           <ClanAidPanel
             home={inside}
@@ -481,6 +495,9 @@ function ClanOutside({
                           <div className="flex flex-wrap items-center gap-2">
                             <Chip tone="crystal">[{clan.tag}]</Chip>
                             <strong className="name truncate text-bone">{clan.name}</strong>
+                            {clan.level !== null && (
+                              <Chip tone="opportunity">{t('clanWar.level', { level: clan.level })}</Chip>
+                            )}
                           </div>
                           <p className="mt-2 text-caption leading-relaxed text-dim">
                             {clan.description || t('clan.noDescription')}
@@ -628,6 +645,11 @@ function ClanProfile({
           <p className="text-caption leading-relaxed text-dim">
             {clan.description || t('clan.noDescription')}
           </p>
+          {clan.level !== null && (
+            <p className="mt-2 text-label text-crystal">
+              {t('clanWar.level', { level: clan.level })}
+            </p>
+          )}
           <p className="mt-2 text-label text-faint">
             {t('clan.directory.meta', {
               leader: clan.leaderName,
@@ -1243,6 +1265,10 @@ function ClanMembers({
 }) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState<{ kind: 'kick' | 'leadership' | 'leave' | 'disband'; member?: Member } | null>(null);
+  const treasury = useClanWar(confirm?.kind === 'disband' && home.clan.role === 'LEADER');
+  const burn = treasury.data?.treasury;
+  const burnsTreasury = burn !== undefined
+    && burn.alloy + burn.crystal + burn.deuterium > 0;
   const [hostileRequest, setHostileRequest] = useState<string | null>(null);
   const [invitee, setInvitee] = useState('');
   const [description, setDescription] = useState(home.clan.description);
@@ -1270,7 +1296,8 @@ function ClanMembers({
     } else if (confirm.kind === 'leave') {
       actions.leave.mutate(undefined, { onSuccess: () => { setConfirm(null); } });
     } else if (confirm.kind === 'disband') {
-      actions.disband.mutate(undefined, { onSuccess: () => { setConfirm(null); } });
+      if (!treasury.data) return;
+      actions.disband.mutate(burnsTreasury, { onSuccess: () => { setConfirm(null); } });
     }
   };
 
@@ -1459,11 +1486,21 @@ function ClanMembers({
           {confirm && !confirm.member ? (
             <Confirmation
               title={confirm.kind === 'disband' ? t('clan.danger.disbandTitle') : t('clan.danger.leaveTitle')}
-              body={confirm.kind === 'disband' ? t('clan.danger.disbandConfirmBody') : t('clan.danger.leaveConfirmBody')}
+              body={confirm.kind === 'disband'
+                ? treasury.isError
+                  ? t('clanWar.treasuryUnknown')
+                  : burnsTreasury
+                    ? t('clanWar.disbandBurn', {
+                      alloy: full(burn.alloy), crystal: full(burn.crystal),
+                      deuterium: full(burn.deuterium),
+                    })
+                    : t('clan.danger.disbandConfirmBody')
+                : t('clan.danger.leaveConfirmBody')}
               confirm={confirm.kind === 'disband' ? t('clan.danger.disbandConfirm') : t('clan.danger.leaveConfirm')}
               onCancel={() => { setConfirm(null); }}
               onConfirm={runConfirm}
-              busy={actions.disband.isPending || actions.leave.isPending}
+              busy={actions.disband.isPending || actions.leave.isPending
+                || (confirm.kind === 'disband' && !treasury.data)}
             />
           ) : null}
           <MutationError mutation={actions.disband} />

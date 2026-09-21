@@ -82,7 +82,7 @@ export const research = {
   deathStarRole:
     "Ölüm Yıldızı artık bu araştırma olmadan üretilir; bu proje kapalıdır.",
   deathStarDetail:
-    "EMP darbesi Aegis canını sıfırlar ve 1 saat yenilenmesini durdurur. Yer savunmaları bu sürede ateş etmez ve hasar almaz.",
+    "EMP darbesi Aegis canını sıfırlar ve 1 saat yenilenmesini durdurur. Yer savunmaları bu sürede ateş etmez ve hasar almaz. Üretim sürer; dünya el değiştirmez.",
 
   synthesisName: "Döteryum Sentezi",
   synthesisTag: "Rafineri seviye sınırını yükseltir",

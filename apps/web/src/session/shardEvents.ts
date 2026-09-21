@@ -215,6 +215,10 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
      */
     case 'clan-aid':
       return [keys.clanAid, keys.clanHome, keys.planet, keys.planets, keys.pending, keys.traffic];
+    case 'clan-war':
+      return [keys.clanWar, keys.pending, keys.planet, keys.planets, keys.traffic, keys.reports];
+    case 'clan-treasury':
+      return [keys.clanWar, keys.planet, keys.planets, keys.leaderboard, keys.clanLeaderboard];
     default:
       return null;
   }

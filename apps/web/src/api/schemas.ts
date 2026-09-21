@@ -1238,6 +1238,8 @@ export const publicClanSchema = z.object({
   leaderName: z.string(),
   memberCount: z.number().int().nonnegative(),
   score: dominionInteger,
+  /** Public seasonal progression; null preserves clans from pre-level seasons. */
+  level: z.number().int().min(1).max(10).nullable().default(null),
   /**
    * WHO IS IN IT. D183, owner report: *"Sıradan bir kullanıcı bir klanda kimler
    * var onu bile göremiyor."*
@@ -1432,6 +1434,90 @@ export const clanAidSchema = z.object({
     allowanceReleasesAt: z.coerce.date(),
     resolvedAt: z.coerce.date().nullable(),
   })),
+});
+
+/** One member-only read for the purse, shared capacity and current operation. */
+const clanWarContributionStatus = z.enum([
+  'OUTBOUND', 'STAGED', 'RECALL_ORDERED', 'IN_BATTLE', 'RETURNING', 'HOME', 'LOST',
+]);
+const clanWarOperationSchema = z.object({
+  id: z.string(),
+  status: z.enum(['ASSEMBLING', 'ATTACKING', 'RETURNING', 'COMPLETED']),
+  closeReason: z.enum(['BATTLE', 'LEADER_CANCEL', 'EXPIRED', 'TARGET_CHANGED', 'FAILED']).nullable(),
+  leaderPlayerId: z.string(),
+  target: z.object({ playerId: z.string(), username: z.string(), planetId: z.string(),
+    planetName: z.string(), position: vec3 }),
+  staging: z.object({ planetId: z.string(), name: z.string(), position: vec3 }),
+  createdAt: z.coerce.date(), expiresAt: z.coerce.date(),
+  startedAt: z.coerce.date().nullable(), resolvedAt: z.coerce.date().nullable(),
+  completedAt: z.coerce.date().nullable(),
+  startShieldWouldDrop: z.object({
+    kind: z.enum(['NEWCOMER', 'RECOVERY']),
+    until: z.coerce.date(),
+  }).nullable().default(null),
+  contributions: z.array(z.object({
+    id: z.string(), playerId: z.string(), username: z.string(),
+    originPlanetId: z.string(), originPlanetName: z.string(),
+    sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']),
+    status: clanWarContributionStatus, fleet, bulk: z.number().nonnegative(),
+    fuelPaid: z.number().nonnegative(), sentAt: z.coerce.date(),
+    arrivesAt: z.coerce.date().nullable(), mine: z.boolean(), canRecall: z.boolean(),
+  })),
+  pool: z.object({ combatHulls: z.number().int().nonnegative(),
+    waves: z.number().int().nonnegative(), participants: z.number().int().nonnegative() }),
+});
+
+export const clanWarSchema = z.object({
+  available: z.boolean(), level: z.number().int().min(1).max(10).nullable(),
+  maxLevel: z.boolean(), treasury: resources, nextCost: resources.nullable(),
+  room: resources.nullable(), canUpgrade: z.boolean(),
+  hangar: z.object({ used: z.number().nonnegative(), reserved: z.number().nonnegative(),
+    total: z.number().nonnegative() }),
+  serverNow: z.coerce.date(), operation: clanWarOperationSchema.nullable(),
+});
+export type ClanWar = z.infer<typeof clanWarSchema>;
+
+export const clanWarQuoteSchema = z.object({
+  ok: z.boolean(), refusals: z.array(z.object({ code: z.string(), message: z.string() })),
+  sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']), bulk: z.number().nonnegative(),
+  fuel: z.object({
+    legs: z.array(z.object({ leg: z.enum(['ORIGIN_TO_STAGING', 'STAGING_TO_TARGET',
+      'TARGET_TO_ORIGIN', 'TARGET_TO_STAGING']), distance: z.number().nonnegative(),
+      fuel: z.number().nonnegative() })),
+    total: z.number().nonnegative(), available: z.number().nonnegative(),
+  }),
+  travel: z.object({ stagingMinutes: z.number().nonnegative(),
+    combinedMinutes: z.number().nonnegative(), returnMinutes: z.number().nonnegative(),
+    stagingEta: z.coerce.date().nullable(), earliestHome: z.coerce.date().nullable() }),
+  bays: z.object({ used: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+  personalHangar: z.object({ used: z.number().nonnegative(), total: z.number().nonnegative(),
+    afterSend: z.number().nonnegative() }),
+  clanHangar: z.object({ used: z.number().nonnegative(), reserved: z.number().nonnegative(),
+    total: z.number().nonnegative(), afterSend: z.number().nonnegative() }),
+  latestStartAt: z.coerce.date().nullable(), canFinishBeforeSeasonEnd: z.boolean(),
+  shieldWouldDrop: z.object({ kind: z.enum(['NEWCOMER', 'RECOVERY']),
+    until: z.coerce.date() }).nullable(),
+});
+export type ClanWarQuote = z.infer<typeof clanWarQuoteSchema>;
+
+export const clanTreasuryResultSchema = z.object({
+  level: z.number().int().min(1).max(10), treasury: resources,
+  nextCost: resources.nullable(), room: resources.nullable(),
+  capacity: z.number().nonnegative(), canUpgrade: z.boolean(),
+});
+export const clanWarTargetResultSchema = z.object({ operation: clanWarOperationSchema });
+export const clanWarStartResultSchema = z.object({ missionId: z.string(),
+  arriveAt: z.coerce.date(), resolveAt: z.coerce.date(),
+  participants: z.number().int().nonnegative(), operation: clanWarOperationSchema });
+export const clanWarRecallResultSchema = z.object({ contributionId: z.string(),
+  status: clanWarContributionStatus });
+export const clanWarContributionResultSchema = z.object({
+  contributionId: z.string(), sourceKind: z.enum(['PHYSICAL', 'LEADER_CAPITAL']),
+  status: clanWarContributionStatus, fuelPaid: z.number().nonnegative(),
+  reservedBulk: z.number().nonnegative(), stagedAt: z.coerce.date().nullable(),
+  planet: planetSchema, pending: z.array(z.lazy(() => pendingThread)),
+  war: clanWarOperationSchema,
+  traffic: z.lazy(() => trafficSchema),
 });
 
 export const clanAidQuoteSchema = z.object({
@@ -2130,6 +2216,31 @@ const ordinaryBattleReport = z.object({
       /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
       attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      jointWar: z.object({
+        operationId: z.string(),
+        clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }),
+        coordinatorPlayerId: z.string(),
+        target: z.object({ playerId: z.string(), planetId: z.string(), name: z.string(),
+          x: z.number(), y: z.number(), z: z.number() }),
+        attackerCount: z.number().int().positive(),
+        defenderCount: z.number().int().positive(),
+        baseExchange: z.number().nullable(),
+        adjustedTransfer: z.number().nullable(),
+        sent: fleet, losses: fleet, survivors: fleet,
+        participants: z.array(z.object({
+          playerId: z.string(), name: z.string(),
+          sent: fleet, losses: fleet, survivors: fleet,
+          loot: resources, salvage: resources, dominion: z.number(),
+          waves: z.array(z.object({
+            id: z.string(), originPlanetId: z.string(), originPlanetName: z.string(),
+            sent: fleet, losses: fleet, survivors: fleet,
+            loot: resources, salvage: resources,
+            status: clanWarContributionStatus, returnAt: z.coerce.date().nullable(),
+            destinationPlanetId: z.string().nullable(),
+            destinationPlanetName: z.string().nullable().default(null),
+          })),
+        })),
+      }).optional(),
     });
 
 const strategicBattleReport = z.object({
@@ -2641,6 +2752,8 @@ export const trafficSchema = z.object({
       mass: massClass.optional(),
       /** Exact hull tally, only for an identified fleet inside Telescope sight. */
       fleet: fleet.optional(),
+      /** Identified combined strike; Radar contacts never carry this identity. */
+      clanFleet: z.object({ clanId: z.string(), tag: z.string(), label: z.string() }).optional(),
       /**
        * HOW HARD A PIRATE HITS. IDENTIFIED PIRATES ONLY. D150.
        *

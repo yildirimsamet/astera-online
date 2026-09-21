@@ -71,12 +71,12 @@ const directory = {
     {
       id: 'clan-orbit', name: 'Orbit Wardens', tag: 'ORB',
       description: 'Watch the rim. Bring everyone home.', recruiting: true,
-      leaderName: 'Vantage', memberCount: 2, score: 840, members: [],
+      leaderName: 'Vantage', memberCount: 2, score: 840, level: 3, members: [],
     },
     {
       id: 'clan-night', name: 'Night Couriers', tag: 'N7',
       description: 'Cargo before glory.', recruiting: false,
-      leaderName: 'Ada', memberCount: 5, score: 120, members: [],
+      leaderName: 'Ada', memberCount: 5, score: 120, level: null, members: [],
     },
   ],
   total: 2,
@@ -247,6 +247,7 @@ describe('clan command surface', () => {
     await waitFor(() => { expect(profile).toHaveBeenCalledWith('clan-orbit'); });
     expect(await screen.findByText('Vantage')).toBeInTheDocument();
     expect(screen.getByText('Ada')).toBeInTheDocument();
+    expect(screen.getAllByText('Clan level 3').length).toBeGreaterThanOrEqual(1);
     // No world, no position: a roster is not an address book.
     expect(screen.queryByText(/Kestrel|Orrery/)).toBeNull();
   });
@@ -339,6 +340,26 @@ describe('clan command surface', () => {
     expect(screen.queryByRole('button', { name: 'Leave clan' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Remove Ada' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Transfer leadership to Ada' })).toBeInTheDocument();
+  });
+
+  it('names the treasury that disbanding burns and sends explicit acknowledgement', async () => {
+    const { api, client } = show({ ...member, clan: { ...member.clan, mature: true, matureAt: now } });
+    client.setQueryData(keys.clanWar, {
+      available: true, level: 2, maxLevel: false,
+      treasury: { alloy: 100, crystal: 20, deuterium: 3 },
+      nextCost: { alloy: 200, crystal: 40, deuterium: 6 },
+      room: { alloy: 100, crystal: 20, deuterium: 3 }, canUpgrade: false,
+      hangar: { used: 0, reserved: 0, total: 360 },
+      serverNow: new Date(), operation: null,
+    });
+    const disband = vi.spyOn(api, 'disbandClan').mockResolvedValue({ disbanded: true, lockedUntil: later });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: 'Members' }));
+    await user.click(screen.getByRole('button', { name: 'Disband clan' }));
+    expect(screen.getByText(/100 alloy.*20 crystal.*3 deuterium/i)).toBeInTheDocument();
+    expect(disband).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Yes, disband clan' }));
+    await waitFor(() => { expect(disband).toHaveBeenCalledWith(true); });
   });
 
   it('keeps a maximum-length clan identity readable on a phone-sized header', () => {
