@@ -560,6 +560,7 @@ export const notifications = {
   fleetFallback: 'Your fleet is home.',
   fleetHomeLooted: 'Fleet home{{where}} · {{count}} ships · +{{amount}} looted',
   fleetHomeEmpty: 'Fleet home{{where}} · {{count}} ships · empty-handed',
+  fleetHomeRecalled: 'Fleet home{{where}} · {{count}} ships · called back before it struck',
   /** Nothing looted, but the collectors' salvage follows it — so not "empty-handed". */
   fleetHomeBare: 'Fleet home{{where}} · {{count}} ships',
   /**

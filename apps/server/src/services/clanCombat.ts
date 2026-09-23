@@ -284,6 +284,7 @@ export async function hasHostileFlightWithClan(
       where m.status = 'in_flight'
         and m.parent_mission_id is null
         and m.kind in ('attack', 'probe', 'death_star')
+        and m.recalled_at is null
         and (
           (m.owner_player_id = ${candidatePlayerId}
             and target.player_id in (${sql.join(memberPlayerIds.map((id) => sql`${id}::uuid`), sql`, `)}))

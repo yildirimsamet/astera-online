@@ -725,7 +725,7 @@ describe('joint report visibility', () => {
 
 describe('joint fleet traffic', () => {
   it('classifies only COMBINED_ATTACK as hostile among the four joint-war legs', () => {
-    const mission = { kind: 'clan_war' as const, parentMissionId: null };
+    const mission = { kind: 'clan_war' as const, parentMissionId: null, recalledAt: null };
     expect(isHostileMission(mission, 'SUPPORT_OUT')).toBe(false);
     expect(isHostileMission(mission, 'SUPPORT_RETURN')).toBe(false);
     expect(isHostileMission(mission, 'COMBINED_ATTACK')).toBe(true);

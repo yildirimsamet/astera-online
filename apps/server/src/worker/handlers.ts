@@ -486,6 +486,19 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       return;
     }
 
+    /*
+      A RAID THAT TURNED LANDS AT HOME AND FIGHTS NOTHING. K8.
+
+      Stored forwards — origin home, target the world it was flying at — and its ships still
+      parked under the mission at home, so it settles exactly like a return leg with nothing in
+      the hold. No battle, no report, no loot; the owner is told it is back from the world it
+      turned away from.
+    */
+    if (mission.kind === 'attack' && mission.recalledAt !== null) {
+      await settleReturn(tx, mission, mission.originPlanetId, clock.now(), mission.targetPlanetId);
+      return;
+    }
+
     if (mission.kind === 'probe') {
       /**
        * A probe coming home.
@@ -1388,6 +1401,8 @@ async function settleReturn(
   mission: typeof missions.$inferSelect,
   homePlanetId: string,
   at: Date,
+  /** The world the fleet is back from. A return leg flies backwards, so by default its origin. */
+  fromPlanetId: string = mission.originPlanetId,
 ): Promise<void> {
   // The mission's original home may have changed controller while the fleet was
   // away. Ownership follows `mission.ownerPlayerId`; delivery follows that
@@ -1430,8 +1445,7 @@ async function settleReturn(
 
   const [planet] = await tx.select().from(planets).where(eq(planets.id, destinationPlanetId));
   if (planet?.controllerPlayerId === mission.ownerPlayerId) {
-    // A return leg flies backwards, so the world it came FROM is its origin.
-    const from = await identityOfPlanet(tx, mission.originPlanetId);
+    const from = await identityOfPlanet(tx, fromPlanetId);
     await notify(tx, {
       playerId: mission.ownerPlayerId,
       kind: 'fleet_returned',
@@ -1440,8 +1454,10 @@ async function settleReturn(
         // kind and the client has to tell them apart before it can read a single
         // field — a mining run's payload has no `ships` in it and never did.
         trip: 'raid',
+        // Turned before it struck (K8): no battle was fought, so it is not "empty-handed".
+        ...(mission.recalledAt !== null ? { recalled: true } : {}),
         ships: fleetCount(returning),
-        fromPlanetId: mission.originPlanetId,
+        fromPlanetId,
         fromUsername: from?.username ?? null,
         fromPlanetName: from?.planetName ?? null,
         ...(from?.clanTag ? { fromClanTag: from.clanTag } : {}),

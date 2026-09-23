@@ -119,11 +119,15 @@ export const legBelongsTo = (mission: Leg, planetId: string): boolean =>
  * cannot answer this question. Only the aggregate strike is hostile; support and
  * both return legs remain ordinary traffic. Keeping that distinction here makes
  * traffic intent, the defender's pending strip and the scheduled warning agree.
+ *
+ * A RAID THAT TURNED (K8) IS NOT AIMED AT ANYTHING ANY MORE. It is flying home, so
+ * the defender's strip drops it, its scheduled warning stays silent and the galaxy
+ * draws it as ordinary traffic — like a return leg, which is what it has become.
  */
 export const isHostileMission = (
-  mission: Pick<typeof missions.$inferSelect, 'kind' | 'parentMissionId'>,
+  mission: Pick<typeof missions.$inferSelect, 'kind' | 'parentMissionId' | 'recalledAt'>,
   clanWarLeg: ClanWarLeg | null = null,
-): boolean => mission.parentMissionId === null && (
+): boolean => mission.parentMissionId === null && mission.recalledAt === null && (
   mission.kind === 'attack'
   || mission.kind === 'death_star'
   || (mission.kind === 'clan_war' && clanWarLeg === 'COMBINED_ATTACK')

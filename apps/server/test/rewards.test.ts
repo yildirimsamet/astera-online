@@ -15,6 +15,7 @@ import {
 } from '../src/db/schema.js';
 import { buildUnits } from '../src/services/build.js';
 import { launchAttack } from '../src/services/mission.js';
+import { recallFlight } from '../src/services/movement.js';
 import { launchProbe } from '../src/services/intel.js';
 import { claimReward, grantReward, rewardsView } from '../src/services/rewards.js';
 import { reclaimIdleSeats } from '../src/services/reclaim.js';
@@ -209,6 +210,22 @@ describe('rewards', () => {
    * the ships back. Nothing was scouted and nothing was fought, so paying for it
    * would mean the game handing out alloy for its own worker falling over.
    */
+  /**
+   * A RAID CALLED BACK RAIDED NOTHING. K8: it turned before it arrived and no battle
+   * was fought. Counting its launch would pay the RAID chain for launching and
+   * recalling at a neighbour, which costs nothing but fuel.
+   */
+  it('does not count a raid that was called back', async () => {
+    await grant(f.db, mine, 20_000, 8_000);
+    await levelWorld(f.db, f.planetIds);
+    await giveUnits(f.db, mine, { DART: 20 });
+    const raid = await launchAttack(f.db, mine, other, { DART: 2 }, f.clock);
+    expect((await chainOf('RAID')).progress).toBe(1);
+
+    await recallFlight(f.db, raid.missionId, f.clock, f.playerIds[0]!);
+    expect((await chainOf('RAID')).progress).toBe(0);
+  });
+
   it('does not count a flight the server had to abandon', async () => {
     await grant(f.db, mine, 20_000, 8_000);
     await levelWorld(f.db, f.planetIds);

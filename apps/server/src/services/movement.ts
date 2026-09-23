@@ -25,7 +25,9 @@ import {
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
+  attackCommitments,
   buildings,
+  clanRaidRoster,
   missions,
   neutralPlanetState,
   planets,
@@ -583,14 +585,18 @@ async function rerouteToSafeHome(
  * against a fleetsave — and turn a decision with a cost into a safety switch. Half an hour out is
  * half an hour back, and in that half hour the world it left is still short of its garrison.
  *
- * TRANSFERS ONLY. An attack committed is committed; that irreversibility is what makes the raid a
- * bet rather than a probe with a refund.
+ * TRANSFERS AND RAIDS. A raid turns by the same rule since K8 (owner, 2026-09-23;
+ * docs/ui-v2/gozlemevi.md). The bet survives because the turn is not free: the fuel stays spent and
+ * the way home is as long as the way out was. A turned raid fights nothing, so it lands home like a
+ * return leg (`onMissionArrival`), stops being a hostile flight (`isHostileMission`), and gives back
+ * the launch's entry in `attack_commitments` — the repeat-attack limit and the clan quota count
+ * hits, and this one never landed. Probes, settlements, Death Stars and clan-war legs do not turn.
  *
  * NO FUEL IS CHARGED AND NONE IS RETURNED. The flight was paid for at launch, and a fleet in the
  * air has no access to a store to be charged from — the same rule every other leg in this file
  * obeys.
  */
-export async function recallTransfer(
+export async function recallFlight(
   db: Db,
   missionId: string,
   clock: Clock,
@@ -608,15 +614,16 @@ export async function recallTransfer(
       throw new GameError('PLANET_NOT_OWNED', 'That is not your flight', 403);
     }
     /*
-      ONE TURN, ON AN OUTBOUND TRANSFER THAT IS STILL IN THE AIR.
+      ONE TURN, ON AN OUTBOUND TRANSFER OR RAID THAT IS STILL IN THE AIR.
 
       `recalledAt` is the guard against a second turn: a flight that can keep turning around never
       has to land, which is the "fleet parked in space" the pace ceiling exists to prevent.
       `arriveAt` is the guard against recalling something that is already down — the worker may not
-      have committed it yet, but the decision window closed when the ships reached the world.
+      have committed it yet, but the decision window closed when the ships reached the world — for a
+      raid, the moment its engagement begins. There is no earlier lock: a second out still turns.
     */
     if (
-      mission.kind !== 'transfer'
+      (mission.kind !== 'transfer' && mission.kind !== 'attack')
       || mission.status !== 'in_flight'
       || mission.recalledAt !== null
       || mission.parentMissionId !== null
@@ -653,6 +660,10 @@ export async function recallTransfer(
         eq(scheduledEvents.kind, 'mission_arrival'),
         eq(scheduledEvents.status, 'pending'),
       ));
+    if (mission.kind === 'attack') {
+      await tx.delete(clanRaidRoster).where(eq(clanRaidRoster.missionId, mission.id));
+      await tx.delete(attackCommitments).where(eq(attackCommitments.missionId, mission.id));
+    }
     await publishShard(tx, mission.seasonId, 'launch');
     return { missionId: mission.id, arriveAt };
   });

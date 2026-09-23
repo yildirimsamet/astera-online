@@ -474,6 +474,10 @@ export const launch = {
   back: "Geri",
   launching: "Kalkıyor",
   commit: "Gönder — geri dönüşü yok",
+  /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
+  commitWorld: "Gönder",
+  recallNote:
+    "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",
   send: "{{count}} gemi gönder",
   launched:

@@ -763,6 +763,14 @@ export function LaunchSheet({
       footer={
         <>
         <FleetLossWarning loss={loss} />
+        {/*
+          A RAID ON A WORLD MAY BE TURNED ONCE WHILE IT FLIES (K8), and the button used to say it
+          could not. Stated where the commitment is made; a pirate raid is still final, and the
+          Academy has no recall to offer, so neither says anything.
+        */}
+        {confirming && !pirate && !lesson && (
+          <p data-launch-recall className="mb-2 text-caption text-dim">{t('launch.recallNote')}</p>
+        )}
         {
         confirming ? (
           <div className="flex gap-2">
@@ -862,7 +870,7 @@ export function LaunchSheet({
             >
               {shipyardRevolt
                 ? t('launch.shipyardRevolt')
-                : busy ? t('launch.launching') : t('launch.commit')}
+                : busy ? t('launch.launching') : pirate ? t('launch.commit') : t('launch.commitWorld')}
             </Button>
           </div>
         ) : (

@@ -194,6 +194,11 @@ export async function fleetTruthFor(
     if (m.kind !== 'attack') continue;
     const cur = out.get(m.originPlanetId);
     if (!cur || cur.expectedHomeAt) continue;
+    // A raid that turned (K8) is already on its way home: it lands at `arriveAt`.
+    if (m.recalledAt !== null) {
+      out.set(m.originPlanetId, { status: 'AWAY', expectedHomeAt: m.arriveAt });
+      continue;
+    }
     // It has not turned around yet. The way back is flown at FULL speed whatever pace the raid
     // went out at, so the return leg is the outbound one times its pace. Self-review
     // 2026-09-23, R2: read as symmetric, a quarter-pace raid was reported away four times too long.

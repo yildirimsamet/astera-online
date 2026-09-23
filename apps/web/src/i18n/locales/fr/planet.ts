@@ -472,6 +472,10 @@ export const launch = {
   back: "Retour",
   launching: "Décollage",
   commit: "Envoyer — aucun rappel possible",
+  /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
+  commitWorld: "Envoyer",
+  recallNote:
+    "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Le carburant n'est pas remboursé.",
   chooseFleet: "Choisis ta flotte",
   send: "Envoyer {{count}} vaisseaux",
   launched:

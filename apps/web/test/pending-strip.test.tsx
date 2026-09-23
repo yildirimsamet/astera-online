@@ -32,7 +32,7 @@ vi.mock('../src/api/queries.js', async () => {
     useMining: () => ({ data: { runs } }),
     useTraffic: () => ({ data: { contacts } }),
     useRecallMining: () => ({ mutate: recall, isPending: false }),
-    useRecallTransfer: () => ({ mutate: recallFleet, isPending: false }),
+    useRecallFlight: () => ({ mutate: recallFleet, isPending: false }),
   };
 });
 
@@ -284,9 +284,17 @@ describe('the pending strip', () => {
     expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
   });
 
-  it('never offers recall on a raid, whatever the server sent', async () => {
-    show([thread({ kind: 'fleet', id: 'm-8' })]);
+  /** K8 (owner, 2026-09-23): a raid turns by the transfer rule, on the server's word alone. */
+  it('offers recall on a raid the server says may be turned, and none on one it does not', async () => {
+    recallFleet.mockReset();
+    const out = show([thread({ kind: 'fleet', id: 'm-8', recallable: true })]);
     const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    await user.click(screen.getByRole('button', { name: /recall fleet/i }));
+    expect(recallFleet).toHaveBeenCalledWith({ missionId: 'm-8' }, expect.any(Object));
+
+    out.unmount();
+    show([thread({ kind: 'fleet', id: 'm-8' })]);
     await user.click(screen.getByRole('button', { name: /open flights/i }));
     expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
   });

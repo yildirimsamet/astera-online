@@ -1941,18 +1941,18 @@ export function useHarvest() {
 
 /** Turn only an outbound Prospector run around and apply its physical return leg. */
 /**
- * CALL A TRANSFER BACK. Owner decision, 2026-09-21.
+ * CALL A TRANSFER OR A RAID BACK. Owner decisions 2026-09-21 and 2026-09-23 (K8).
  *
  * NO OPTIMISTIC UPDATE, unlike the mining recall beside it. A turn-around rewrites the flight's
  * arrival and its whole drawn leg, and the honest version of that picture is the one the server
  * computes — guessing it here would put a squadron on the disc flying a line the server never
  * agreed to, for as long as the refetch takes.
  */
-export function useRecallTransfer() {
+export function useRecallFlight() {
   const api = useApi();
   const invalidate = useInvalidator();
   return useMutation({
-    mutationFn: ({ missionId }: { missionId: string }) => api.recallTransfer(missionId),
+    mutationFn: ({ missionId }: { missionId: string }) => api.recallFlight(missionId),
     onSuccess: () => { invalidate(['pending'], ['planet'], ['planets']); },
   });
 }

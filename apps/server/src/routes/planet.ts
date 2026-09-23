@@ -26,7 +26,7 @@ import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
-import { launchSettlement, launchTransfer, recallTransfer } from '../services/movement.js';
+import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
 import { cancelBuildOrder } from '../services/buildQueue.js';
 
 /**
@@ -337,7 +337,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   /**
-   * Launch an attack. IRREVERSIBLE — there is no recall endpoint, by design.
+   * Launch an attack. It may be turned once while it flies (`/api/fleet/:missionId/recall`, K8).
    *
    * The response leads with the exposure window because that is the line the UI
    * is built around: "home defence after launch, and for how long".
@@ -403,12 +403,10 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   /**
-   * CALL A TRANSFER BACK. Owner decision, 2026-09-21.
+   * CALL A TRANSFER OR A RAID BACK. Owner decisions 2026-09-21 (transfers) and 2026-09-23 (raids, K8).
    *
-   * The counterpart to `/api/fleet/launch`, which has no such endpoint and never will: a raid
-   * committed is committed. This lane is a commander's own logistics between their own worlds, and
-   * the service decides everything — that it is a transfer, that it is still in the air, that it
-   * has not already turned once, and that it belongs to the caller.
+   * The service decides everything — that it is a transfer or a raid, that it is still in the air,
+   * that it has not already turned once, and that it belongs to the caller.
    */
   app.post('/api/fleet/:missionId/recall', { preHandler: requireAuth }, async (req) => {
     const { missionId } = z
@@ -417,7 +415,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       .parse(req.params);
     z.object({}).strict().parse(req.body ?? {});
     const owner = await ownedPlanet(app.db, req.accountId!, await myPlanet(req.accountId!));
-    return recallTransfer(app.db, missionId, app.clock, owner.playerId);
+    return recallFlight(app.db, missionId, app.clock, owner.playerId);
   });
 
   app.post('/api/fleet/settle', { preHandler: requireAuth }, async (req) => {

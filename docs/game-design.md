@@ -189,8 +189,8 @@ reference trip. The later 10–30% tier surcharge was removed on 2026-09-18. D12
 makes the same axis an *economic* one.
 
 **Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
-cheaper raid, it is a stranded fleet, and a launched raid cannot be recalled. A raid pays both
-legs at launch; a transfer (at the half HOMEWARD rate, see below), a settlement and an empty-hold
+cheaper raid, it is a stranded fleet, and a raid that is turned around (see recall below) keeps
+none of it back. A raid pays both legs at launch; a transfer (at the half HOMEWARD rate, see below), a settlement and an empty-hold
 clan ship gift pay one leg, while a
 resource-carrying clan transport pays its planned outbound and return legs. Deuterium loaded
 as cargo is already spent as far as the flight is concerned — the guard reads the sum. No system
@@ -547,9 +547,12 @@ reset continues. Activation status and measured acceptance are recorded in deplo
   100 / 75 / 50 / 25 / 10 % speed. A slower rung lands later and burns exactly the same fuel. No
   paced flight may stay up past 12 hours (full speed is always allowed, however long). The way
   home is always flown at full speed. Pirates, settlements and lessons fly at full speed.
-- **Transfer recall.** A commander's own transfer may be turned around ONCE while still in the
-  air; the way home takes as long as was already flown, costs nothing more, and always lands.
-  A raid cannot be recalled today (the owner decided on 2026-09-23 to change that; not yet built).
+- **Recall (transfers, and raids since K8).** A commander's own transfer or raid may be turned
+  around ONCE while still flying toward its target — a raid until its engagement begins, with no
+  earlier lock; the way home takes as long as was already flown, costs nothing more, refunds no
+  fuel, and always lands. A turned raid fights nothing: no report, no loot, no count against the
+  repeat-attack limit or the RAID reward chain, and the defender's warning drops. Probes,
+  settlements, Death Stars, pirate raids and clan-war legs keep their own rules.
 - **The landing pause.** A world that has just received a transfer cannot send a transfer out for
   five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
 - **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate

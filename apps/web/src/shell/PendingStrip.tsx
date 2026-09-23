@@ -5,7 +5,7 @@ import {
   useMining,
   usePending,
   useRecallMining,
-  useRecallTransfer,
+  useRecallFlight,
   useTraffic,
 } from '../api/queries.js';
 import { threadKey } from '../galaxy/threadKey.js';
@@ -196,8 +196,8 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
           ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
           : {}),
       /*
-        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer that is still
-        turnable on this tick; a raid never carries it, because a raid committed is committed.
+        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer or a raid (K8)
+        that is still turnable on this tick, and never twice.
       */
       ...(thread.recallable === true && thread.id !== undefined
         ? { recallMission: { missionId: thread.id } }
@@ -241,7 +241,7 @@ export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) =
   const { t } = useTranslation();
   const { items, now } = useAirborne();
   const recall = useRecallMining();
-  const recallFleet = useRecallTransfer();
+  const recallFleet = useRecallFlight();
   const say = useToast();
 
   return (

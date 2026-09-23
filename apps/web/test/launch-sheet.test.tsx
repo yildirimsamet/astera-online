@@ -1195,7 +1195,7 @@ describe('how much of a wall the wing takes', () => {
     expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /send 20 ships/i }));
-    expect(screen.getByRole('button', { name: /launch.*no recall/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch$/i })).toBeVisible();
     expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('button', { name: /send 20 ships/i })).toBeVisible();
@@ -1399,9 +1399,66 @@ describe('choosing how fast to fly', () => {
     await user.click(rungs[1]!);
     // Send opens the confirmation; the commit button underneath it is the launch.
     await user.click(screen.getByRole('button', { name: /^send/i }));
-    await user.click(screen.getByRole('button', { name: /launch — no recall/i }));
+    await user.click(screen.getByRole('button', { name: /^launch$/i }));
 
     const sent = calls.find((c) => c.url.includes('/api/fleet/launch'));
     expect(sent?.body.pace).toBe(0.75);
+  });
+});
+
+/**
+ * A RAID ON A WORLD CAN BE TURNED NOW (K8), AND THE SHEET MUST SAY SO.
+ *
+ * The commit read "Launch — no recall" for every raid; since K8 that is the opposite of
+ * the rule on a world, and a screen that states the opposite of the rule is worse than
+ * one that says nothing (the transfer sheet learned the same lesson). A pirate raid is
+ * still final, and the Academy has no recall to offer, so neither promises one.
+ */
+describe('what the sheet promises about turning a raid back', () => {
+  const holding = planetView({ fleet: { DART: 4 } }, { deuterium: 500_000 });
+  const pirateTarget: PirateContact = {
+    id: 'pirate-1',
+    callsign: 'VEX7',
+    zone: 'IDENTIFIED',
+    at: { x: 400, y: 0, z: 0 },
+    expiresInMinutes: 180,
+    reachMinutes: 12,
+    reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
+    level: 2,
+    fleet: { VIPER: 3, COURIER: 1 },
+    damageMult: 0.65,
+    mass: 'MEDIUM',
+  };
+  const confirmWith = async (ui: ReactNode): Promise<void> => {
+    render(ui, { wrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
+    await user.click(screen.getByRole('button', { name: /^send/i }));
+  };
+
+  it('launches a raid on a world with the recall rule beside the button', async () => {
+    await confirmWith(
+      <LaunchSheet planet={holding} target={{ kind: 'world', world: target }} onClose={vi.fn()} onLaunched={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: /^launch$/i })).toBeVisible();
+    expect(screen.getByText(/recalled once while in flight/i)).toBeVisible();
+    expect(screen.queryByText(/no recall/i)).toBeNull();
+  });
+
+  it('still tells a pirate raid that it cannot be turned', async () => {
+    await confirmWith(
+      <LaunchSheet planet={holding} target={{ kind: 'pirate', pirate: pirateTarget }} onClose={vi.fn()} onLaunched={vi.fn()} />,
+    );
+    expect(screen.getByRole('button', { name: /launch — no recall/i })).toBeVisible();
+    expect(screen.queryByText(/recalled once/i)).toBeNull();
+  });
+
+  it('promises nothing about a recall inside a lesson, where the Academy has none', async () => {
+    await confirmWith(
+      <AcademyLessonContext.Provider value="raid">
+        <LaunchSheet planet={holding} target={{ kind: 'world', world: target }} onClose={vi.fn()} onLaunched={vi.fn()} />
+      </AcademyLessonContext.Provider>,
+    );
+    expect(screen.queryByText(/recalled once/i)).toBeNull();
   });
 });

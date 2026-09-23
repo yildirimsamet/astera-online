@@ -134,7 +134,7 @@ export async function verifyAcademy(out) {
           }
           await launch.getByRole('button', { name: /^Send \d+ ships$|^\d+ gemi gönder$/ }).click();
           await page.screenshot({ path: `${out}/academy-${id}-launch.png` });
-          await launch.getByRole('button', { name: /^Launch|^Gönder —/i }).click();
+          await launch.getByRole('button', { name: /^Launch|^Gönder/i }).click();
         }
       } else if (id === 'pirateReport' || id === 'raidReport') {
         await page.locator('[data-academy-signals] > button').click();

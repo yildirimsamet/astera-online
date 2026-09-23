@@ -2,12 +2,15 @@ import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { missions, notifications, planets, units } from '../src/db/schema.js';
-import { launchTransfer, recallTransfer } from '../src/services/movement.js';
+import { launchTransfer, recallFlight } from '../src/services/movement.js';
 import { launchAttack } from '../src/services/mission.js';
+import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   fuelUp,
+  giveInstrument,
+  giveSatellite,
   giveUnits,
   placeAt,
   grant,
@@ -38,8 +41,9 @@ afterAll(async () => {
  * "catch the fleet while it is out" — the one counter-play a raider has against fleetsave — and
  * turn the whole package into a safety switch instead of a decision with a cost.
  *
- * AN ATTACK IS STILL IRREVERSIBLE. The recall is for a commander's own logistics; a raid committed
- * is a raid committed, which is what makes the bet a bet.
+ * A RAID TURNS TOO, SINCE K8 (owner, 2026-09-23), by the same rule — see `attack-recall.test.ts`.
+ * The bet survives because the turn is not free: the fuel stays spent and the way home takes as long
+ * as the way out did.
  */
 describe('recalling a fleet', () => {
   let f: Fixture;
@@ -82,7 +86,7 @@ describe('recalling a fleet', () => {
     expect(await unitsAt(mine)).toBe(4);
 
     f.clock.advance(1);
-    const recall = await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    const recall = await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
 
     f.clock.set(new Date(recall.arriveAt.getTime() + 1_000));
     await worker().tick();
@@ -95,7 +99,7 @@ describe('recalling a fleet', () => {
     const launched = await sendTransfer();
     f.clock.advance(7);
     const turnedAt = f.clock.now();
-    const recall = await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    const recall = await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
 
     const flown = (turnedAt.getTime() - departedAt.getTime()) / 60_000;
     const back = (recall.arriveAt.getTime() - turnedAt.getTime()) / 60_000;
@@ -108,7 +112,7 @@ describe('recalling a fleet', () => {
     await setLevel(f.db, mine, 'HANGAR', 0);
     await giveUnits(f.db, mine, { DART: 400 });
     f.clock.advance(1);
-    const recall = await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    const recall = await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
 
     f.clock.set(new Date(recall.arriveAt.getTime() + 1_000));
     await worker().tick();
@@ -121,7 +125,7 @@ describe('recalling a fleet', () => {
       { alloy: 600, crystal: 200, deuterium: 0 }, { DART: 10, COURIER: 4 },
     );
     f.clock.advance(1);
-    const recall = await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    const recall = await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
 
     f.clock.set(new Date(recall.arriveAt.getTime() + 1_000));
     await worker().tick();
@@ -130,12 +134,13 @@ describe('recalling a fleet', () => {
     expect(after!.alloy).toBeCloseTo(before!.alloy, 0);
   });
 
-  it('refuses to recall an attack', async () => {
-    await giveUnits(f.db, mine, { DART: 20 });
-    await grant(f.db, other, 20_000, 2_000);
-    const raid = await launchAttack(f.db, mine, other, { DART: 5 }, f.clock, f.playerIds[0]);
+  /** A probe goes, looks and comes home; K8 turns raids around, not scouts. `attack-recall.test.ts` has the raids. */
+  it('refuses to recall a probe', async () => {
+    await giveSatellite(f.db, mine, 'UPLINK');
+    await giveInstrument(f.db, mine, 'TELESCOPE', 1);
+    const probe = await launchProbe(f.db, mine, other, f.clock);
     await expect(
-      recallTransfer(f.db, raid.missionId, f.clock, f.playerIds[0]!),
+      recallFlight(f.db, probe.missionId, f.clock, f.playerIds[0]!),
     ).rejects.toMatchObject({ code: 'NOT_RECALLABLE' });
   });
 
@@ -144,7 +149,7 @@ describe('recalling a fleet', () => {
     f.clock.set(new Date(launched.arriveAt.getTime() + 1_000));
     await worker().tick();
     await expect(
-      recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!),
+      recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!),
     ).rejects.toMatchObject({ code: 'NOT_RECALLABLE' });
   });
 
@@ -152,7 +157,7 @@ describe('recalling a fleet', () => {
     const launched = await sendTransfer();
     f.clock.advance(1);
     await expect(
-      recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[1]!),
+      recallFlight(f.db, launched.missionId, f.clock, f.playerIds[1]!),
     ).rejects.toMatchObject({ code: 'PLANET_NOT_OWNED' });
   });
 
@@ -160,16 +165,16 @@ describe('recalling a fleet', () => {
   it('refuses to recall a flight that is already coming home', async () => {
     const launched = await sendTransfer();
     f.clock.advance(2);
-    await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
     await expect(
-      recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!),
+      recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!),
     ).rejects.toMatchObject({ code: 'NOT_RECALLABLE' });
   });
 
   it('records where it turned around, so the disc can draw the way back', async () => {
     const launched = await sendTransfer();
     f.clock.advance(3);
-    await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
     expect(row?.recalledAt).toBeTruthy();
     expect(row?.recallFrom).toBeTruthy();
@@ -188,7 +193,7 @@ describe('recalling a fleet', () => {
   it('lists a recalled transfer as coming home to the world it left', async () => {
     const launched = await sendTransfer();
     f.clock.advance(3);
-    await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
     const threads = await pendingThreads(f.db, mine, f.clock.now());
     const thread = threads.find((t) => t.id === launched.missionId);
     expect(thread).toBeDefined();
@@ -231,7 +236,7 @@ describe('recalling a fleet', () => {
       f.db, f.playerIds[0]!, colony, mine, { DART: 6 }, EMPTY, f.clock,
     );
     f.clock.advance(3);
-    await recallTransfer(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
     await f.db.update(planets)
       .set({ controllerPlayerId: f.playerIds[1]! })
       .where(eq(planets.id, colony));
@@ -332,7 +337,7 @@ describe('the pause after a transfer lands', () => {
     );
     f.clock.advance(1);
     await expect(
-      recallTransfer(f.db, out.missionId, f.clock, f.playerIds[0]!),
+      recallFlight(f.db, out.missionId, f.clock, f.playerIds[0]!),
     ).resolves.toBeTruthy();
   });
 });

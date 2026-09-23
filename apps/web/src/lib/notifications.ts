@@ -166,6 +166,8 @@ const raidResult = z.object({
 const returned = z.discriminatedUnion('trip', [
   z.object({
     trip: z.literal('raid'),
+    /** Turned before it struck (K8): no battle was fought. */
+    recalled: z.boolean().optional(),
     ships: z.number(),
     fromPlanetId: z.string().optional(),
     fromUsername: z.string().nullable().optional(),
@@ -891,6 +893,10 @@ export function describeNotification(notification: NotificationView, now: number
         const where = trip.fromUsername || trip.fromPlanetName || trip.fromName
           ? i18n.t('notifications.fleetFrom', { origin })
           : '';
+        // Called back before it struck (K8): "empty-handed" would say it fought and found nothing.
+        if (trip.recalled === true) {
+          return i18n.t('notifications.fleetHomeRecalled', { where, count: trip.ships });
+        }
         const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
         const lifted = salvageClause(trip);
         return withSalvage(i18n.t(

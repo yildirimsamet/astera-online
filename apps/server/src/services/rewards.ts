@@ -98,8 +98,9 @@ async function flightCounts(tx: Tx, planetId: string): Promise<{ probes: number;
   const rows = await tx
     .select({
       probes: sql<number>`count(*) filter (where ${missions.kind} = 'probe')::int`,
+      // A raid called back (K8) raided nothing: it turned before it arrived.
       raided: sql<number>`count(distinct ${missions.targetPlanetId})
-                          filter (where ${missions.kind} = 'attack')::int`,
+                          filter (where ${missions.kind} = 'attack' and ${missions.recalledAt} is null)::int`,
     })
     .from(missions)
     /**

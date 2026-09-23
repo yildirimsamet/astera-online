@@ -657,7 +657,7 @@ export class Api {
       method: 'POST', body: { type: explicitType ?? planetIdOrType as SatelliteId },
     });
 
-  /** IRREVERSIBLE. There is no recall endpoint, by design. */
+  /** May be turned once while it flies: `recallFlight` (K8). */
   /**
    * `acknowledgeShieldLoss` is the commander saying they have read what this costs
    * THEM. D183 — a raid launched under the first-day shield spends it, and the
@@ -682,8 +682,8 @@ export class Api {
       },
     });
 
-  /** Turn a transfer around. The server decides whether this flight may be recalled at all. */
-  recallTransfer = (missionId: string) =>
+  /** Turn a transfer or a raid around (K8). The server decides whether this flight may be recalled at all. */
+  recallFlight = (missionId: string) =>
     this.send(
       `/api/fleet/${encodeURIComponent(missionId)}/recall`,
       movementLaunchSchema.pick({ missionId: true, arriveAt: true }),
@@ -795,7 +795,7 @@ export class Api {
    *
    * The rendezvous table is an instantaneous solve and a stale one can name a
    * different lap of the orbit entirely — 5.1 minutes to 56.3 in the worst measured
-   * case. A raid cannot be recalled, so the launch carries the quote and the server
+   * case. A pirate raid cannot be recalled, so the launch carries the quote and the server
    * refuses rather than flying the fleet at an answer nobody read.
    */
   raidPirate = (

@@ -634,6 +634,7 @@ export const notifications = {
   fleetFallback: 'Votre flotte est à la maison.',
   fleetHomeLooted: 'Accueil de la flotte{{where}} · Navires {{count}} · +{{amount}} pillés',
   fleetHomeEmpty: 'Accueil de la flotte{{where}} · {{count}} navires · les mains vides',
+  fleetHomeRecalled: "Flotte rentrée{{where}} · {{count}} vaisseaux · rappelée avant l'assaut",
   fleetHomeBare: 'Accueil de la flotte{{where}} · Navires {{count}}',
   /**
    * THE MERCHANT'S OWN HOMECOMING. D166.

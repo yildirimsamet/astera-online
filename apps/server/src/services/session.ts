@@ -150,8 +150,8 @@ export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
   /**
-   * Set only on an outbound transfer that may still be turned around — the same facts
-   * `recallTransfer` checks. Owner decision, 2026-09-21.
+   * Set only on an outbound transfer or raid that may still be turned around — the same facts
+   * `recallFlight` checks. Owner decisions 2026-09-21 (transfers) and 2026-09-23 (raids, K8).
    */
   recallable?: true;
   /**
@@ -749,6 +749,9 @@ export async function pendingThreads(
     // 2026-09-23, R1): the disc already drew it so, and the strip said "outbound,
     // to the old destination" to a commander who had just pulled it back.
     const returning = m.kind === 'return' || m.parentMissionId !== null || m.recalledAt !== null;
+    // Stored backwards (origin = the far world): a return leg and a rerouted leg. A turned raid is
+    // stored forwards, so it is named after the world it turned back from like a return leg, K8.
+    const backwards = m.kind === 'return' || m.parentMissionId !== null;
     pending.push({
       /**
        * THE MISSION'S OWN ID, ON YOUR OWN CRAFT ONLY. D52.
@@ -776,18 +779,18 @@ export async function pendingThreads(
       */
       targetName: m.kind === 'transfer'
         ? (m.recalledAt !== null ? row.originName : row.targetName)
-        : returning ? row.originName : row.targetName,
+        : backwards ? row.originName : row.targetName,
       targetPlanetId: m.kind === 'transfer'
         ? (m.recalledAt !== null ? m.originPlanetId : m.targetPlanetId)
-        : returning ? m.originPlanetId : m.targetPlanetId,
+        : backwards ? m.originPlanetId : m.targetPlanetId,
       /*
         WHETHER THE COMMANDER MAY STILL TURN THIS AROUND. Owner decision, 2026-09-21.
 
         Stated by the server because the strip cannot work it out: it is the same set of facts
-        `recallTransfer` checks, and a client that guessed would offer a button the server then
+        `recallFlight` checks, and a client that guessed would offer a button the server then
         refuses — on the one screen a commander reaches for while a raid is inbound.
       */
-      ...(m.kind === 'transfer'
+      ...((m.kind === 'transfer' || m.kind === 'attack')
         && m.recalledAt === null
         && m.parentMissionId === null
         && m.arriveAt.getTime() > now.getTime()

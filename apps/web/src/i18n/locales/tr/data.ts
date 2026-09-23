@@ -634,6 +634,7 @@ export const notifications = {
   fleetFallback: 'Filon evde.',
   fleetHomeLooted: 'Filo evde{{where}} · {{count}} gemi · +{{amount}} ganimet',
   fleetHomeEmpty: 'Filo evde{{where}} · {{count}} gemi · eli boş',
+  fleetHomeRecalled: 'Filo evde{{where}} · {{count}} gemi · saldırmadan geri çağrıldı',
   fleetHomeBare: 'Filo evde{{where}} · {{count}} gemi',
   /**
    * THE MERCHANT'S OWN HOMECOMING. D166.

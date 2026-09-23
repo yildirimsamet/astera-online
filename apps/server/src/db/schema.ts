@@ -1481,7 +1481,7 @@ export const missions = pgTable('missions', {
    * WHEN THE COMMANDER TURNED IT AROUND, AND WHERE. Owner decision, 2026-09-21.
    *
    * Null on every flight that was never recalled, which is nearly all of them. Set together and
-   * only once: `recallTransfer` refuses a second turn, because a flight that can keep turning is
+   * only once: `recallFlight` refuses a second turn, because a flight that can keep turning is
    * a flight with no end.
    *
    * `arriveAt` is REWRITTEN to the new landing when this is set, so everything that reads an

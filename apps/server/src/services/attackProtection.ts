@@ -290,6 +290,8 @@ async function hasOutboundPvpStrike(
       eq(missions.ownerPlayerId, playerId),
       eq(missions.status, 'in_flight'),
       inArray(missions.kind, ['attack', 'death_star']),
+      // A raid that turned (K8) is a fleet coming home, like a return leg.
+      isNull(missions.recalledAt),
       ne(planets.kind, 'NEUTRAL'),
       ne(planets.controllerPlayerId, playerId),
     ))

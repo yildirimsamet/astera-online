@@ -498,6 +498,10 @@ export const launch = {
   back: "Zurück",
   launching: "wird gestartet",
   commit: "Start – kein Rückruf",
+  /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
+  commitWorld: "Starten",
+  recallNote:
+    "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Treibstoff wird nicht erstattet.",
   chooseFleet: "Wählen Sie eine Flotte",
   send: "Senden Sie {{count}} Schiffe",
   launched: "Gestartet. Verfügbar für {{duration}} · {{count}} Einheiten.",

@@ -22,7 +22,7 @@ vi.mock('../../src/api/queries.js', async () => {
     useMining: () => ({ data: { runs: [] } }),
     useTraffic: () => ({ data: { contacts: [] } }),
     useRecallMining: () => ({ mutate: vi.fn(), isPending: false }),
-    useRecallTransfer: () => ({ mutate: vi.fn(), isPending: false }),
+    useRecallFlight: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
 
