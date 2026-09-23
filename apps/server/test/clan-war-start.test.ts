@@ -1,5 +1,5 @@
 import { pino } from 'pino';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ABUSE, CLAN, MULTI_WORLD, TRAVEL, fleetSpeed } from '@astera/rules';
 import {
@@ -33,6 +33,7 @@ import {
 } from '../src/services/clanWar.js';
 import { rememberWorld } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
+import { recheckRadarLegsForWorld, wakeInboundRadarWarnings } from '../src/services/radar.js';
 import { EventWorker } from '../src/worker/loop.js';
 import { ensureWaitingSeason } from '../src/services/waitingServers.js';
 import {
@@ -242,6 +243,81 @@ describe('launching the combined strike', () => {
     expect(events.map((row) => row.kind).sort()).toEqual(['mission_arrival', 'radar_warning']);
   });
 
+  it('wakes a combined strike when Radar is installed after its warning chain ended', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const launched = await start(f);
+    await f.db.delete(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'radar_warning'),
+      eq(scheduledEvents.refId, launched.missionId),
+    ));
+
+    await wakeInboundRadarWarnings(f.db, f.planetIds[2]!, f.clock.now());
+
+    const warnings = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'radar_warning'),
+      eq(scheduledEvents.refId, launched.missionId),
+    ));
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({ status: 'pending', resolveAt: f.clock.now() });
+  });
+
+  it('rechecks a combined strike warning when either Core changes', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const launched = await start(f);
+    const future = new Date(f.clock.now().getTime() + 60_000);
+    await f.db.update(scheduledEvents).set({ resolveAt: future }).where(and(
+      eq(scheduledEvents.kind, 'radar_warning'),
+      eq(scheduledEvents.refId, launched.missionId),
+    ));
+
+    await recheckRadarLegsForWorld(f.db, f.planetIds[2]!, f.clock.now());
+
+    const [warning] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'radar_warning'),
+      eq(scheduledEvents.refId, launched.missionId),
+    ));
+    expect(warning!.resolveAt).toEqual(f.clock.now());
+  });
+
+  it('requires acknowledgement before a combined-strike target joins the attacking clan', async () => {
+    const f = await setup();
+    const clanId = await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const launched = await start(f);
+    const candidate = await clanActor(f.db, f.accountIds[2]!);
+    const application = await f.db.transaction((tx) => applyToClan(tx, {
+      actor: candidate,
+      clanId,
+      now: f.clock.now(),
+    }));
+    const leader = await clanActor(f.db, f.accountIds[0]!);
+
+    await expect(f.db.transaction((tx) => acceptClanRequest(tx, {
+      actor: leader,
+      requestId: application.requestId,
+      acknowledgeHostile: false,
+      now: f.clock.now(),
+    }))).rejects.toMatchObject({ code: 'CLAN_HOSTILE_FLIGHT_ACK_REQUIRED' });
+    await expect(f.db.transaction((tx) => acceptClanRequest(tx, {
+      actor: leader,
+      requestId: application.requestId,
+      acknowledgeHostile: true,
+      now: f.clock.now(),
+    }))).resolves.toMatchObject({ hostileFlightsContinue: true });
+
+    const [mission] = await f.db.select().from(missions)
+      .where(eq(missions.id, launched.missionId));
+    expect(mission?.status).toBe('in_flight');
+    expect((await operationRow(f)).status).toBe('ATTACKING');
+  });
+
   it('is the leader’s alone', async () => {
     const f = await setup();
     await readyOperation(f);
@@ -306,7 +382,8 @@ describe('launching the combined strike', () => {
     // The leader still spends quota and protection when they coordinate the
     // launch, so their eligibility must be rechecked even without a wave.
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 16);
-    await setLevel(f.db, f.planetIds[2]!, 'CORE', 1);
+    await setLevel(f.db, f.planetIds[1]!, 'CORE', 7);
+    await setLevel(f.db, f.planetIds[2]!, 'CORE', 7);
 
     await expect(start(f)).rejects.toMatchObject({ code: 'CLAN_WAR_PARTICIPANT_INELIGIBLE' });
     expect((await operationRow(f)).status).toBe('ASSEMBLING');

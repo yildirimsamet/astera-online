@@ -10,6 +10,12 @@ import { and, eq, gt, inArray, or } from 'drizzle-orm';
 import type { Queryable } from '../db/client.js';
 import { missions, planets, scheduledEvents } from '../db/schema.js';
 
+const INBOUND_RADAR_MISSION_KINDS: (typeof missions.$inferSelect.kind)[] = [
+  'attack',
+  'death_star',
+  'clan_war',
+];
+
 interface InboundLeg {
   from: Vec3;
   to: Vec3;
@@ -97,7 +103,7 @@ export async function recheckRadarLegsForWorld(
     .from(missions)
     .where(and(
       eq(missions.status, 'in_flight'),
-      inArray(missions.kind, ['attack', 'death_star']),
+      inArray(missions.kind, INBOUND_RADAR_MISSION_KINDS),
       or(eq(missions.originPlanetId, planetId), eq(missions.targetPlanetId, planetId)),
     ));
 
@@ -130,7 +136,7 @@ export async function wakeInboundRadarWarnings(
       eq(missions.status, 'in_flight'),
       gt(missions.arriveAt, now),
       eq(missions.targetPlanetId, planetId),
-      inArray(missions.kind, ['attack', 'death_star']),
+      inArray(missions.kind, INBOUND_RADAR_MISSION_KINDS),
     ));
   if (inbound.length === 0) return;
 
