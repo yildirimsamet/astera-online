@@ -70,9 +70,12 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   kontrolü, Teleskop "dışarıda" saati uyar. Fırlatma sayfası dünya baskınında "Launch" + kural notu, korsan baskınında
   "no recall", Akademi'de not yok; dönüş bildirimi "called back before it struck". Gerçek oyunda görüldü (onay, Filo
   sayfasında düğme, çevrildikten sonra "home from …"). Yeni sunucu testi `attack-recall.test.ts` (16).
-- **F3.3 E4 Filo sayfası:** sekmeler Havada (B11 satırı: ilerleme, kalan, hız etiketi S1, geri çağırma önizlemesi
-  "X dk'da evde"; buton yalnız `recallable` iken) · Evde (dünya başına garnizon) · Hangar (dünya başına kapasite);
-  başlıkta uçuş yuvası + Hangar doluluğu; satıra dokunmak kamerayı gemiye götürür. `FleetSheet` ara sayfasının yerine.
+- ~~F3.3 E4 Filo sayfası~~ `bb725cf`: `v2/hud/FleetPage.tsx` (sunum) + `v2/shell/FleetHost.tsx` (veri) + `lib/fleetPage.ts`
+  (`legProgress`, `recallPreview`, `paceShown`, `garrisonOf`, `roomOf`). Başlıkta aktif dünyanın uçuş yuvası ve Hangar'ı;
+  Havada = `useAirborne` satırları (geri sayım, bacak dolgusu — dönüşte sağdan —, hız, varış saati, geri çağırma
+  sütununda "back in X"); Evde = dünya başına garnizon (sınıf şekilli çipler, dışarıdaki sayısı); Hangar = dünya başına
+  Hangar ve zemin, doluysa sarı, üstte tek cümlelik kural. `FleetSheet` ve testi silindi. Galeride `?view=fleet`,
+  `fleet-home`, `fleet-room`. Gerçek oyunda baskın + geri çağırma ile görüldü.
 - **F3.4 B14/E3 fırlatma bileşeni:** tek anatomi; önce saldırı, korsan (hız yok), sonda; sonra transfer, yerleşim,
   ticaret, konvoy baskını, klan dalgası (teklif otomatik), Ölüm Yıldızı. B10 hız seçici, bilgi ızgarası, uyarı satırı
   ("Başkent X süre zayıf kalır" + geri çağırma notu), B9 basılı tut. Akademi dersleri (`data-academy-launch`, Max
