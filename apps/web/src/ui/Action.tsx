@@ -296,7 +296,6 @@ export function StatStrip({
   room,
   salvage,
   size = 'row',
-  showLabels = false,
 }: {
   atk: number;
   hp: number;
@@ -325,21 +324,18 @@ export function StatStrip({
    */
   salvage?: number;
   size?: 'row' | 'card';
-  /** Launch decisions must not require memorising stat icons. */
-  showLabels?: boolean;
 }) {
   const big = size === 'card';
   const lifts = salvage !== undefined && salvage > 0;
 
   return (
-    <div className={`stats ${big ? 'stats-card' : ''} ${showLabels ? '!grid grid-cols-5 !gap-2' : ''}`}>
+    <div className={`stats ${big ? 'stats-card' : ''}`}>
       <Stat
         icon={<AttackIcon className={big ? 'size-4' : 'size-3'} />}
         tone="attack"
         label={i18n.t('action.statAttack')}
         value={atk}
         big={big}
-        showLabel={showLabels}
       />
       <Stat
         icon={<HullIcon className={big ? 'size-4' : 'size-3'} />}
@@ -347,7 +343,6 @@ export function StatStrip({
         label={i18n.t('action.statHull')}
         value={hp}
         big={big}
-        showLabel={showLabels}
       />
       <Stat
         icon={<SpeedIcon className={big ? 'size-4' : 'size-3'} />}
@@ -358,7 +353,6 @@ export function StatStrip({
         // is slow rather than fixed in place.
         text={speed === 0 ? i18n.t('action.statSpeedFixed') : undefined}
         big={big}
-        showLabel={showLabels}
       />
       {lifts ? (
         <Stat
@@ -367,8 +361,7 @@ export function StatStrip({
           label={i18n.t('action.statSalvage')}
           value={salvage}
           big={big}
-          showLabel={showLabels}
-        />
+          />
       ) : (
         <Stat
           icon={<CargoIcon className={big ? 'size-4' : 'size-3'} />}
@@ -377,8 +370,7 @@ export function StatStrip({
           value={cargo}
           text={cargo === 0 ? i18n.t('action.statCargoNone') : undefined}
           big={big}
-          showLabel={showLabels}
-        />
+          />
       )}
       {room !== undefined && (
         <Stat
@@ -387,8 +379,7 @@ export function StatStrip({
           label={i18n.t('action.statRoom')}
           value={room}
           big={big}
-          showLabel={showLabels}
-        />
+          />
       )}
       <Stat
         icon={<Mark of="deuterium" className={big ? 'size-4' : 'size-3'} />}
@@ -403,7 +394,6 @@ export function StatStrip({
             : i18n.t('action.statFuelRate', { value: decimal(fuel) })
         }
         big={big}
-        showLabel={showLabels}
       />
     </div>
   );
@@ -416,7 +406,6 @@ function Stat({
   value,
   text,
   big,
-  showLabel = false,
 }: {
   icon: ReactNode;
   tone: 'attack' | 'hull' | 'speed' | 'cargo' | 'salvage' | 'fuel' | 'room';
@@ -424,16 +413,41 @@ function Stat({
   value: number;
   text?: string;
   big: boolean;
-  showLabel?: boolean;
 }) {
   return (
     <div className={`stat stat-${tone}`} title={label} aria-label={`${label}: ${text ?? compact(value)}`}>
       <span aria-hidden className="stat-icon">{icon}</span>
       <span className="stat-body">
-        {(big || showLabel) && <span className={big ? 'legend' : 'text-label text-dim'}>{label}</span>}
-        <span className={`stat-value ${showLabel ? '!text-label' : ''}`}>{text ?? compact(value)}</span>
+        {big && <span className="legend">{label}</span>}
+        <span className="stat-value">{text ?? compact(value)}</span>
       </span>
     </div>
+  );
+}
+
+/**
+ * WHAT THE MARKS ON A ROW OF STRIPS MEAN, SAID ONCE. D142: a launch decision must not
+ * require memorising stat icons — and a label in every cell fitted in English and cut
+ * to "Ge…" in German. One legend over the list names each mark in every language; the
+ * rows under it stay icon and value, and each cell still names itself to a reader.
+ */
+export function StatLegend() {
+  const items: { icon: ReactNode; tone: string; label: string }[] = [
+    { icon: <AttackIcon className="size-3" />, tone: 'attack', label: i18n.t('action.statAttack') },
+    { icon: <HullIcon className="size-3" />, tone: 'hull', label: i18n.t('action.statHull') },
+    { icon: <SpeedIcon className="size-3" />, tone: 'speed', label: i18n.t('action.statSpeed') },
+    { icon: <CargoIcon className="size-3" />, tone: 'cargo', label: i18n.t('action.statCargo') },
+    { icon: <Mark of="deuterium" className="size-3" />, tone: 'fuel', label: i18n.t('action.statFuel') },
+  ];
+  return (
+    <p data-stat-legend className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {items.map((item) => (
+        <span key={item.tone} className={`stat stat-${item.tone} !gap-1`}>
+          <span aria-hidden className="stat-icon">{item.icon}</span>
+          <span className="text-micro text-v2-ink-3">{item.label}</span>
+        </span>
+      ))}
+    </p>
   );
 }
 

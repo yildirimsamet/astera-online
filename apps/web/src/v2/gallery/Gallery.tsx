@@ -2,6 +2,12 @@ import { useState, type ReactNode } from 'react';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
+import type { GalaxyPlanet } from '../../api/schemas.js';
+import { LaunchSheet } from '../../screens/LaunchSheet.js';
+import { SettlementSheet } from '../../screens/SettlementSheet.js';
+import { TransferSheet } from '../../screens/TransferSheet.js';
+// Development only: the same world the tests draw, so the gallery needs no server.
+import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
@@ -119,6 +125,15 @@ const airborne: AirborneItem[] = [
   },
 ];
 
+const rival: GalaxyPlanet = {
+  id: 'p2', name: 'Tharsis', owner: 'Sable', position: { x: 120, y: 0, z: 80 }, coreTier: 2, coreLevel: 6,
+  intel: 'RESOLVED', state: { kind: 'NORMAL' }, satellites: [], shielded: false, isSelf: false,
+};
+const launchWorld = planetView(
+  { fleet: { DART: 40, TALON: 12, RAMPART: 4, COURIER: 6 }, fleetAway: { DART: 8 } },
+  { alloy: 40_000, crystal: 20_000, deuterium: 12_000 },
+);
+
 /** The Fleet page with its tab held here, as the host holds it in the game. */
 function GalleryFleet({ first }: { first: FleetTab }) {
   const [tab, setTab] = useState<FleetTab>(first);
@@ -193,6 +208,45 @@ function Views({ view }: { view: string }) {
         onToggleRadar={noop}
         onOpenEvents={noop}
         onClose={noop}
+      />
+    );
+  }
+  if (view === 'launch' || view === 'launch-pirate') {
+    return (
+      <LaunchSheet
+        planet={launchWorld}
+        target={view === 'launch'
+          ? { kind: 'world', world: rival }
+          : { kind: 'pirate', pirate: {
+              id: 'pirate-1', callsign: 'VEX7', zone: 'IDENTIFIED', at: { x: 400, y: 0, z: 0 },
+              expiresInMinutes: 180, reachMinutes: 12,
+              reach: [{ hull: 'DART', minutes: 12, distance: 900, at: { x: 900, y: 0, z: 0 } }],
+              level: 2, fleet: { VIPER: 3, COURIER: 1 }, damageMult: 0.65, mass: 'MEDIUM' } }}
+        onClose={noop}
+        onLaunched={noop}
+      />
+    );
+  }
+  if (view === 'transfer') {
+    return (
+      <TransferSheet
+        target={{ id: 'p-9', name: 'Hollow', position: { x: 600, y: 0, z: 200 } }}
+        planet={launchWorld}
+        onClose={noop}
+        onLaunched={noop}
+      />
+    );
+  }
+  if (view === 'settlement') {
+    return (
+      <SettlementSheet
+        target={{ ...rival, kind: 'NEUTRAL', owner: '', name: 'Neutral T1-50',
+          neutral: { tier: 1, claimUntil: new Date(NOW + 42 * MIN) } } satisfies GalaxyPlanet}
+        planet={launchWorld}
+        now={NOW}
+        pending={false}
+        onClose={noop}
+        onConfirm={noop}
       />
     );
   }

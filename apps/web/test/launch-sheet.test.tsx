@@ -110,10 +110,16 @@ describe('choosing a fleet to attack with', () => {
     ] as const) {
       expect(row.querySelector(`.stat-${cls} .stat-value`)).toHaveTextContent(compact(expected));
     }
-    expect(within(row).getByText('Attack')).toBeVisible();
-    expect(within(row).getByText('Durability')).toBeVisible();
-    expect(within(row).getByText('Speed')).toBeVisible();
-    expect(within(row).getByText('Cargo')).toBeVisible();
+    /*
+      THE LABELS ARE ON THE SCREEN, ONCE, BESIDE THE SAME MARKS (D142: no icon is
+      memorised). Per row they either fit in English or truncated to "Ge…" in German;
+      a legend over the list reads in every language and every row names each value.
+    */
+    const legend = view.container.querySelector<HTMLElement>('[data-stat-legend]')!;
+    for (const label of ['Attack', 'Durability', 'Speed', 'Cargo', 'Fuel']) {
+      expect(within(legend).getByText(label)).toBeVisible();
+    }
+    expect(within(row).getByLabelText(/^Attack: /)).toBeInTheDocument();
   });
   it('quotes the Academy leg and opens cargo without overwriting live folds', async () => {
     localStorage.setItem('astera.accordion.launch', '[]');

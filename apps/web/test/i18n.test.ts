@@ -364,6 +364,15 @@ describe('every added language keeps the locale contract', () => {
    * separator. Seen at 350 px in German: "134 Welten· 1 Pirat" — two of them had
    * lost the space before the dot, in German and Spanish.
    */
+  /*
+    Seen on the v2 launch sheet in German: "40 Startseite" (a homepage) for the ships at
+    home, and a one-way flight headed "Einbahnstraße" (a one-way street).
+  */
+  it('says "at home" and "one way" in German, not a homepage and a street', () => {
+    expect(de.launch.atHome).not.toMatch(/Startseite/);
+    expect(de.launch.oneWay).not.toMatch(/Einbahnstra/);
+  });
+
   it('opens every appended galaxy count with its own spaced separator', () => {
     const appended = ['fleetAway', 'rocks', 'pirates_one', 'pirates_other', 'wrecks_one', 'wrecks_other'];
     const glued = Object.entries(LOCALES).flatMap(([language, locale]) => {

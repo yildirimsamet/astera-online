@@ -17,7 +17,7 @@ import { familyGroups } from '../lib/roster.js';
 import { useAccordion } from '../lib/accordion.js';
 import { useLaunchPlan } from '../lib/useLaunchPlan.js';
 import { serverNow } from '../lib/clock.js';
-import { StatStrip } from '../ui/Action.js';
+import { StatLegend, StatStrip } from '../ui/Action.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
@@ -151,7 +151,6 @@ export function LaunchSheet({
               cargo={fleetCargo({ [hull]: 1 }, mods.tech)}
               salvage={salvageCapacity({ [hull]: 1 })}
               fuel={hullFuelRate(hull)}
-              showLabels
             />
           </div>
         </div>
@@ -280,9 +279,12 @@ export function LaunchSheet({
         </div>
 
         <section data-launch-fleet className="grid gap-1.5">
-          <div className="flex items-baseline justify-between gap-2 px-1">
-            <h3 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('launch.fleetHeading')}</h3>
-            <span className="text-micro text-v2-ink-3">{t('launch.perShipStats')}</span>
+          <div className="grid gap-1 px-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('launch.fleetHeading')}</h3>
+              <span className="text-micro text-v2-ink-3">{t('launch.perShipStats')}</span>
+            </div>
+            <StatLegend />
           </div>
           {/*
             WHAT IS ALREADY IN THE AIR, DRAWN AS THE SHIPS THEMSELVES. Absent and

@@ -65,7 +65,12 @@ describe('settlement confirmation', () => {
     expect(screen.getByText(/founding cost is spent and the world opens on its tier.s stock/i))
       .toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /dispatch colony ships/i }));
+    // A spend that cannot be undone is held, not tapped (K4): a tap alone commits nothing.
+    const commit = screen.getByRole('button', { name: /dispatch colony ships/i });
+    fireEvent.click(commit);
+    expect(onConfirm).not.toHaveBeenCalled();
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
     expect(onConfirm).toHaveBeenCalledOnce();
   });
 

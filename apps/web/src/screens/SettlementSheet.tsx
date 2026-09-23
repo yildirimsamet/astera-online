@@ -5,7 +5,8 @@ import { full } from '../lib/format.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
 import { countdown, duration } from '../lib/time.js';
-import { Button, Sheet } from '../ui/kit/index.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 
 /**
  * Settlement is an irreversible launch into a public race. The focus rail
@@ -57,41 +58,27 @@ export function SettlementSheet({
         : t('focus.planet.settlementConfirm.title', { world: target.name })}
       onClose={onClose}
       footer={
-        <Button
-          variant="commit"
-          size="lg"
-          full
-          disabled={pending || launchBlocked}
-          onClick={onConfirm}
-        >
-          {launchBlocked
+        // A spend that cannot be undone is held, not tapped (B9, K4).
+        <HoldButton
+          label={t('focus.planet.settlementConfirm.confirm')}
+          disabledReason={launchBlocked
             ? t('faults.launchBlock.SHIPYARD_REVOLT')
-            : pending
-            ? t('focus.planet.settlementConfirm.confirming')
-            : t('focus.planet.settlementConfirm.confirm')}
-        </Button>
+            : pending ? t('focus.planet.settlementConfirm.confirming') : null}
+          onCommit={onConfirm}
+        />
       }
     >
-      {/*
-        FOUR CLASSES IN THIS FILE RESOLVED TO NOTHING, and the sheet had been
-        shipping without any of them: `plate-crystal` (the lit tone is `plate-lit`),
-        `rounded-panel` (no such radius), `text-muted` (the ink is `text-dim`) and
-        a `text-title text-figure` pair where the second silently overrode the
-        first. A commitment surface that renders as a flat unlit box is exactly
-        the "every screen looks like a different designer made it" the owner
-        reported; `surface-vocabulary.test.ts` now refuses a class that means
-        nothing.
-      */}
-      <div className="plate plate-lit px-3 py-3">
-        <p className="headline">
+      {/* The race and the price of losing it, before any figure: this is what the press decides. */}
+      <div className="mt-1 rounded-control border border-v2-self/40 bg-v2-self/10 px-3 py-2.5">
+        <p className="text-caption font-semibold text-v2-ink">
           {t('focus.planet.settlementConfirm.race')}
         </p>
-        <p className="mt-2 text-body text-dim">
+        <p className="mt-1.5 text-caption leading-snug text-v2-ink-2">
           {t('focus.planet.settlementConfirm.noRecall')}
         </p>
       </div>
 
-      <dl className="mt-2 grid grid-cols-2 gap-px overflow-hidden rounded-plate bg-line/50">
+      <dl className="mt-2 grid grid-cols-2 gap-1.5">
         <SettlementFact
           label={t('focus.planet.settlementConfirm.transports')}
           value={String(MULTI_WORLD.settlement.transports)}
@@ -140,14 +127,9 @@ export function SettlementSheet({
 
 function SettlementFact({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
   return (
-    /*
-      A CELL IN A HAIRLINE GRID, so the ground is opaque on purpose — the `gap-px`
-      above is what draws the rules between them, and a translucent cell would
-      show the sheet through its own table. It is not a card and takes no plate.
-    */
-    <div className={`bg-plate px-3 py-3${wide ? ' col-span-2' : ''}`}>
-      <dt className="legend">{label}</dt>
-      <dd className="num mt-1 text-body text-bone">{value}</dd>
+    <div className={`rounded-control border border-v2-line bg-v2-panel px-2.5 py-1.5${wide ? ' col-span-2' : ''}`}>
+      <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</dt>
+      <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{value}</dd>
     </div>
   );
 }
