@@ -452,6 +452,7 @@ export const directives = {
   inboundAction: 'Spend it now',
 
   undefendedTitle: 'This world has no ground defence',
+  undefendedShieldedTitle: 'Your shield ends in {{duration}}: build a ground defence',
   undefendedDetail: '{{amount}} is exposed to raids. Build Thorns or Bastions for permanent defence.',
   undefendedAction: 'Build defence',
 

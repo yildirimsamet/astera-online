@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { directives, primary, type Situation } from '../src/lib/directives.js';
-import type { GalaxyView, PlanetView } from '../src/api/schemas.js';
+import type { GalaxyView, IntelView, PlanetView } from '../src/api/schemas.js';
 import { planetView } from './fixtures.js';
 
 /**
@@ -72,6 +72,8 @@ const situation = (over: Partial<Situation> = {}): Situation => {
     intel: over.intel,
     pending,
     held: over.held ?? { alloy: 400, crystal: 100 },
+    ...(over.shieldUntil === undefined ? {} : { shieldUntil: over.shieldUntil }),
+    ...(over.now === undefined ? {} : { now: over.now }),
   };
 };
 
@@ -190,6 +192,59 @@ describe('the situation engine', () => {
         situation({ planet: planet({ ground: {} }), held: { alloy: 120, crystal: 10 } }),
       );
       expect(list.some((d) => d.id === 'undefended')).toBe(false);
+    });
+
+    /**
+     * A SHIELD IS NOT A THREAT. Spec H1 (docs/ui-v2/gozlemevi.md).
+     *
+     * A newcomer opens the game behind a day of protection and was met with a red
+     * THREAT card telling them a raid takes everything — while no raid could be
+     * launched at them at all. Red is for something happening to you; under the
+     * shield the same facts are preparation, and the card says when that ends.
+     */
+    describe('while the attack shield holds', () => {
+      const now = Date.parse('2026-09-23T12:00:00Z');
+      const shieldUntil = new Date(now + 2 * 60 * 60_000);
+      const scannedIntel: IntelView = {
+        watching: [],
+        probeReports: [],
+        probeCooldowns: [],
+        radarLog: [{ at: new Date(now - 60_000), bearing: 'N', originPlanetName: null }],
+        probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
+      };
+      const exposedWorld: Partial<Situation> = {
+        planet: planet({ ground: {} }),
+        held: { alloy: 4000, crystal: 400 },
+        intel: scannedIntel,
+      };
+
+      it('raises no threat on an undefended, exposed, scanned world', () => {
+        const list = directives(situation({ ...exposedWorld, shieldUntil, now }));
+        expect(list.filter((d) => d.kind === 'threat')).toEqual([]);
+        expect(list.find((d) => d.id === 'undefended')?.kind).toBe('growth');
+        expect(list.find((d) => d.id === 'exposed-stock')?.kind).toBe('growth');
+        expect(list.find((d) => d.id === 'scanned')?.kind).toBe('growth');
+      });
+
+      it('says when the shield ends', () => {
+        const list = directives(situation({ ...exposedWorld, shieldUntil, now }));
+        expect(list.find((d) => d.id === 'undefended')?.title).toBe('Your shield ends in 2h 00m: build a ground defence');
+      });
+
+      it('turns back into a threat the moment the shield ends', () => {
+        const list = directives(situation({ ...exposedWorld, shieldUntil, now: shieldUntil.getTime() }));
+        expect(list.find((d) => d.id === 'undefended')?.kind).toBe('threat');
+        expect(list.find((d) => d.id === 'undefended')?.title).toBe('This world has no ground defence');
+      });
+
+      /** A fleet already in the air is real whatever the shield says. */
+      it('keeps an inbound fleet a threat', () => {
+        const list = directives(situation({
+          ...exposedWorld, shieldUntil, now,
+          pending: [{ kind: 'incoming', targetName: 'Home', minutesRemaining: 5, arriveAt: new Date(now + 300_000) }],
+        }));
+        expect(list.find((d) => d.id === 'inbound')?.kind).toBe('threat');
+      });
     });
   });
 

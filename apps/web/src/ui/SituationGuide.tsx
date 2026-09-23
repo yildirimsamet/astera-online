@@ -28,7 +28,7 @@ export function SituationGuide({ situation, onAct, now = serverNow() }: {
   if (situation.planet.academyStep == null) return null;
 
   // Reuse the host's clock; a cached minutesRemaining must never freeze a warning.
-  const next = primary(directives({ ...situation, pending: situation.pending.map((thread) => ({
+  const next = primary(directives({ ...situation, now, pending: situation.pending.map((thread) => ({
     ...thread, minutesRemaining: minutesLeft(thread.arriveAt, now),
   })) }));
   return next ? <DirectiveCard directive={next} onAct={onAct} /> : null;

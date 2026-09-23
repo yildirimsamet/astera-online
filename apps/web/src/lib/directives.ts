@@ -58,6 +58,16 @@ export interface Situation {
   pending: PendingThread[];
   /** Projected stock, so a directive agrees with the number on screen. */
   held: { alloy: number; crystal: number; deuterium?: number };
+  /**
+   * WHEN THE ATTACK SHIELD ENDS, IF ONE HOLDS (`season.shieldUntil`). Spec H1.
+   *
+   * Newcomer or recovery, no raid can be launched at this commander until then, so
+   * what would otherwise be a threat is preparation — and red is for something
+   * happening to you. A fleet already in the air stays a threat regardless.
+   */
+  shieldUntil?: Date | null;
+  /** The instant the shield is read against: the host's server clock. */
+  now?: number;
 }
 
 export function directives(s: Situation): Directive[] {
@@ -69,6 +79,10 @@ export function directives(s: Situation): Directive[] {
   const stock = s.held.alloy + s.held.crystal + (s.held.deuterium ?? 0);
   const protectedFloor = planet.planet.vaultFloor;
   const exposed = Math.max(0, stock - protectedFloor);
+  const shieldLeftMs = s.shieldUntil ? s.shieldUntil.getTime() - (s.now ?? Date.now()) : 0;
+  const shielded = shieldLeftMs > 0;
+  /** What a danger to this world is while nothing can be launched at it. */
+  const danger: DirectiveKind = shielded ? 'growth' : 'threat';
 
   /* ── threats ──────────────────────────────────────────────── */
 
@@ -92,8 +106,10 @@ export function directives(s: Situation): Directive[] {
   if (ground === 0 && exposed > protectedFloor) {
     out.push({
       id: 'undefended',
-      kind: 'threat',
-      title: i18n.t('directives.undefendedTitle'),
+      kind: danger,
+      title: shielded
+        ? i18n.t('directives.undefendedShieldedTitle', { duration: duration(shieldLeftMs / 60_000) })
+        : i18n.t('directives.undefendedTitle'),
       detail: i18n.t('directives.undefendedDetail', { amount: full(exposed) }),
       action: { label: i18n.t('directives.undefendedAction'), screen: 'planet', group: 'defend' },
       weight: 820,
@@ -114,7 +130,7 @@ export function directives(s: Situation): Directive[] {
     const next = nextFloor.alloy + nextFloor.crystal;
     out.push({
       id: 'exposed-stock',
-      kind: 'threat',
+      kind: danger,
       title: i18n.t('directives.exposedTitle', { amount: full(exposed) }),
       detail: i18n.t('directives.exposedDetail', {
         now: full(protectedFloor),
@@ -129,7 +145,7 @@ export function directives(s: Situation): Directive[] {
   if (scans > 0) {
     out.push({
       id: 'scanned',
-      kind: 'threat',
+      kind: danger,
       title: i18n.t('directives.scannedTitle', { count: scans }),
       detail: i18n.t('directives.scannedDetail'),
       action: { label: i18n.t('directives.scannedAction'), screen: 'intel' },

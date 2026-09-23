@@ -452,6 +452,7 @@ export const directives = {
   inboundAction: 'Jetzt ausgeben',
 
   undefendedTitle: 'Diese Welt hat keine Bodenverteidigung',
+  undefendedShieldedTitle: 'Ihr Schild endet in {{duration}}: Bauen Sie eine Bodenverteidigung',
   undefendedDetail: '{{amount}} ist Überfalls ausgesetzt. Bauen Sie Dornen oder Bastionen zur dauerhaften Verteidigung.',
   undefendedAction: 'Verteidigung aufbauen',
 

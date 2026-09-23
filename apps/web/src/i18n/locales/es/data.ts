@@ -452,6 +452,7 @@ export const directives = {
   inboundAction: 'Gástalo ahora',
 
   undefendedTitle: 'Este mundo no tiene defensa terrestre.',
+  undefendedShieldedTitle: 'Tu escudo termina en {{duration}}: construye una defensa terrestre.',
   undefendedDetail: '{{amount}} está expuesto a redadas. Construye espinas o bastiones para una defensa permanente.',
   undefendedAction: 'Construir defensa',
 

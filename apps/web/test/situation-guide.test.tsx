@@ -27,6 +27,23 @@ describe('the visible next action', () => {
     view.rerender(<SituationGuide situation={s} now={now + 60_000} onAct={vi.fn()} />);
     expect(act().textContent).toContain('1m');
   });
+  /** Spec H1: the host's clock reaches the engine, so a shielded world is never told it is in danger. */
+  it('reads the attack shield against the host clock', () => {
+    const now = Date.parse('2026-09-23T12:00:00Z');
+    const s: Situation = { ...situation(), held: { alloy: 4000, crystal: 400, deuterium: 0 },
+      shieldUntil: new Date(now + 90 * 60_000) };
+    const view = render(<SituationGuide situation={s} now={now} onAct={vi.fn()} />);
+    expect(view.container.textContent).toContain('Your shield ends in 1h 30m');
+    expect(view.container.textContent).not.toMatch(/threat/i);
+    view.rerender(<SituationGuide situation={s} now={now + 90 * 60_000} onAct={vi.fn()} />);
+    expect(view.container.textContent).toMatch(/threat/i);
+  });
+
+  it('passes the attack shield from the galaxy host', () => {
+    const source = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
+    expect(source).toMatch(/shieldUntil: season\.data\.shieldUntil/);
+  });
+
   it('does not compete with a focused world rail in the galaxy host', () => {
     // As in trade-wiring.test: this regression is a missing host condition,
     // not behavior inside the standalone card.

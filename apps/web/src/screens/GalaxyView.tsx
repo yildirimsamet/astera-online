@@ -1561,7 +1561,8 @@ export function GalaxyView({
           <SituationGuide
             now={now}
             situation={{ planet: planet.data, galaxy: galaxy.data, intel: intel.data,
-              pending: threads, held: planet.data.planet }}
+              pending: threads, held: planet.data.planet,
+              shieldUntil: season.data.shieldUntil }}
             onAct={({ action }) => {
               if (action.screen === 'planet') {
                 if (action.planetId) selectPlanet(action.planetId);

@@ -527,6 +527,7 @@ export const directives = {
   inboundAction: 'Hemen harca',
 
   undefendedTitle: 'Bu gezegende yer savunması yok',
+  undefendedShieldedTitle: 'Kalkanın {{duration}} sonra biter: yer savunması kur',
   undefendedDetail:
     '{{amount}} kaynak akına açık. Kalıcı savunma için Kirpi veya Tabya kurabilirsin.',
   undefendedAction: 'Savunma kur',

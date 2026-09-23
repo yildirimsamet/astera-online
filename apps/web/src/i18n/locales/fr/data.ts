@@ -527,6 +527,7 @@ export const directives = {
   inboundAction: 'Dépensez-le maintenant',
 
   undefendedTitle: 'Ce monde n\'a pas de défense terrestre',
+  undefendedShieldedTitle: 'Votre bouclier tombe dans {{duration}} : construisez une défense terrestre',
   undefendedDetail:
     '{{amount}} est exposé aux raids. Construisez des épines ou des bastions pour une défense permanente.',
   undefendedAction: 'Construire la défense',
