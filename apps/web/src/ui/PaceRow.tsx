@@ -26,10 +26,10 @@ export function PaceRow({
   const { t } = useTranslation();
   if (paces.length <= 1) return null;
   return (
-    <div {...data} className="mt-3">
+    <div {...data} className="grid gap-1 font-v2-ui">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-caption text-dim">{t('launch.pace')}</span>
-        <div role="radiogroup" aria-label={t('launch.pace')} className="flex gap-1">
+        <span className="text-caption text-v2-ink-2">{t('launch.pace')}</span>
+        <div role="radiogroup" aria-label={t('launch.pace')} className="flex gap-0.5 rounded-control border border-v2-line bg-v2-panel p-0.5">
           {paces.map((rung) => (
             <button
               key={rung}
@@ -37,8 +37,8 @@ export function PaceRow({
               role="radio"
               aria-checked={rung === pace}
               onClick={() => { onChange(rung); }}
-              className={`rounded-cell px-2 py-1 text-micro tabular-nums ${
-                rung === pace ? 'bg-accent/20 text-bright' : 'bg-black/20 text-faint'
+              className={`rounded-chip px-2 py-1 font-v2-mono text-micro tabular-nums ${
+                rung === pace ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'text-v2-ink-3'
               }`}
             >
               {rung === 1 ? t('launch.paceFull') : `${String(Math.round(rung * 100))}%`}
@@ -46,7 +46,7 @@ export function PaceRow({
           ))}
         </div>
       </div>
-      <p className="mt-1 text-micro text-faint">{hint}</p>
+      <p className="text-micro leading-snug text-v2-ink-3">{hint}</p>
     </div>
   );
 }

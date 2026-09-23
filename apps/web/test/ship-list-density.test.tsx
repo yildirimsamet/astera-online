@@ -218,14 +218,13 @@ describe('what the attack sheet no longer spends a plate on', () => {
     const view = launch({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    await user.click(screen.getByRole('button', { name: /^send/i }));
     /*
-      The confirmation step is where the plate's two facts now live: `launch.warning`
-      names the garrison that stays behind and states the launch is irreversible,
-      and `launch.fleetsave` gives the rule that makes the risk cut both ways.
+      The price line under the ships is where the plate's facts now live, before the
+      held commit: the garrison that stays behind (and, since K8, no claim that a raid
+      at a world cannot be turned), and the fleetsave rule.
     */
-    expect(view.container.textContent).toMatch(/cannot be recalled/i);
-    expect(view.container.textContent).toMatch(/holds \d+ units until it comes back/i);
+    expect(view.container.textContent).not.toMatch(/cannot be recalled/i);
+    expect(view.container.textContent).toMatch(/holds \d+ units until this fleet is home/i);
     expect(view.container.textContent).toMatch(/cannot be raided/i);
   });
 });

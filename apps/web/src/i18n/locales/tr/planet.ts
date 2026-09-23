@@ -476,6 +476,15 @@ export const launch = {
   commit: "Gönder — geri dönüşü yok",
   /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
   commitWorld: "Gönder",
+  /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
+  holdWorld_one: "{{count}} gemi gönder",
+  holdWorld_other: "{{count}} gemi gönder",
+  holdPirate_one: "{{count}} gemi gönder — geri dönüşü yok",
+  holdPirate_other: "{{count}} gemi gönder — geri dönüşü yok",
+  warningWorld: "Bu filo dönene kadar dünyanda {{count}} birim kalır.",
+  warningPirate: "Geri çağrılamaz. Bu filo dönene kadar dünyanda {{count}} birim kalır.",
+  exposed: "Açıkta",
+  baysFree: "{{count}} boş",
   recallNote:
     "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",

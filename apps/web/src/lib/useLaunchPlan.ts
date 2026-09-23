@@ -599,5 +599,7 @@ export function useLaunchPlan({
     paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
     lines, matchups, hint, loss, escape, notes, refusal, commit,
+    /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
+    classReading: report?.classReading ?? null,
   };
 }

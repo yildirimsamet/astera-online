@@ -44,7 +44,7 @@ export const academy = {
     "shipyard": "Tersane filonu üretir. 1. seviyeye geliştir.",
     "shipyardReward": "Tersane ödülünü al.",
     "darts": "İki Ok üret. Bu hafif savaş gemileriyle korsana saldıracağız.",
-    "pirate": "Yakındaki korsanı seç ve iki Ok'u da gönder. Kalkan filo geri çağrılamaz.",
+    "pirate": "Yakındaki korsanı seç ve iki Ok'u da gönder. Korsan baskını geri çağrılamaz.",
     "pirateReport": "Filon döndü. Savaş bildirimini aç; kayıpları ve ganimeti inceleyip raporu kapat.",
     "pirateReward": "Zafer korsan ödülü kazandırdı. Ödülünü al.",
     "shipsReward": "İlk savaş gemilerini üretmenin ödülünü al.",

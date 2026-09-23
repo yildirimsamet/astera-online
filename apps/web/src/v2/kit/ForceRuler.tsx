@@ -191,7 +191,7 @@ export function ForceRuler({
       </div>
 
       {(escape ?? lines) && (
-        <ul className="flex flex-col gap-0.5 font-v2-mono text-micro text-v2-ink-2">
+        <ul data-testid="ruler-lines" className="flex flex-col gap-0.5 font-v2-mono text-micro text-v2-ink-2">
           {escape && (
             <li className="flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2.5 w-0 border-l border-dashed border-v2-warn" />
@@ -226,7 +226,7 @@ export function ForceRuler({
         </div>
       )}
 
-      {notes.length > 0 && <p className="text-micro text-v2-ink-3">{notes.join(t('counter.lineJoin'))}</p>}
+      {notes.length > 0 && <p data-testid="ruler-notes" className="text-micro text-v2-ink-3">{notes.join(t('counter.lineJoin'))}</p>}
 
       {children}
     </section>

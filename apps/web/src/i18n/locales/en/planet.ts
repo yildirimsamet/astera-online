@@ -500,6 +500,15 @@ export const launch = {
   commit: "Launch — no recall",
   /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
   commitWorld: "Launch",
+  /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
+  holdWorld_one: "Launch {{count}} ship",
+  holdWorld_other: "Launch {{count}} ships",
+  holdPirate_one: "Launch {{count}} ship — no recall",
+  holdPirate_other: "Launch {{count}} ships — no recall",
+  warningWorld: "Your world holds {{count}} units until this fleet is home.",
+  warningPirate: "No recall. Your world holds {{count}} units until this fleet is home.",
+  exposed: "Exposed",
+  baysFree: "{{count}} free",
   recallNote:
     "Can be recalled once while in flight — it returns in the time already flown. Fuel is not refunded.",
   chooseFleet: "Choose a fleet",

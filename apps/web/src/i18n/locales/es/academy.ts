@@ -44,7 +44,7 @@ export const academy = {
     shipyard: 'El Astillero construye tus naves. Mejóralo hasta el nivel 1.',
     shipyardReward: 'Recoge la recompensa del Astillero.',
     darts: 'Construye dos Dart. Estas naves de combate ligeras se enfrentarán a un pirata.',
-    pirate: 'Selecciona al pirata cercano y envía los dos Dart. Una vez lanzada, no podrás retirar la flota.',
+    pirate: 'Selecciona al pirata cercano y envía los dos Dart. Un ataque a un pirata no se puede retirar.',
     pirateReport: 'Tu flota ha vuelto. Abre el aviso de combate, revisa las pérdidas y el botín, y cierra el informe.',
     pirateReward: 'Vencer al pirata te ha dado una recompensa. Recógela.',
     shipsReward: 'Recoge la recompensa por construir tus primeras naves de combate.',

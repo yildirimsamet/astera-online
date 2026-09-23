@@ -500,6 +500,15 @@ export const launch = {
   commit: "Start – kein Rückruf",
   /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
   commitWorld: "Starten",
+  /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
+  holdWorld_one: "{{count}} Schiff starten",
+  holdWorld_other: "{{count}} Schiffe starten",
+  holdPirate_one: "{{count}} Schiff starten – kein Rückruf",
+  holdPirate_other: "{{count}} Schiffe starten – kein Rückruf",
+  warningWorld: "Deine Welt hält {{count}} Einheiten, bis diese Flotte zurück ist.",
+  warningPirate: "Kein Rückruf. Deine Welt hält {{count}} Einheiten, bis diese Flotte zurück ist.",
+  exposed: "Ungeschützt",
+  baysFree: "{{count}} frei",
   recallNote:
     "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Treibstoff wird nicht erstattet.",
   chooseFleet: "Wählen Sie eine Flotte",

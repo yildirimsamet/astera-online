@@ -474,6 +474,15 @@ export const launch = {
   commit: "Envoyer — aucun rappel possible",
   /** A raid on a world, which may be turned once while it flies (K8); a pirate raid keeps `commit`. */
   commitWorld: "Envoyer",
+  /** B14: the held commit, and the price line under the ships (K8: a world raid turns). */
+  holdWorld_one: "Lancer {{count}} vaisseau",
+  holdWorld_other: "Lancer {{count}} vaisseaux",
+  holdPirate_one: "Lancer {{count}} vaisseau — aucun rappel",
+  holdPirate_other: "Lancer {{count}} vaisseaux — aucun rappel",
+  warningWorld: "Ton monde garde {{count}} unités jusqu'au retour de cette flotte.",
+  warningPirate: "Aucun rappel. Ton monde garde {{count}} unités jusqu'au retour de cette flotte.",
+  exposed: "Exposé",
+  baysFree: "{{count}} libres",
   recallNote:
     "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Le carburant n'est pas remboursé.",
   chooseFleet: "Choisis ta flotte",

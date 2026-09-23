@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -104,11 +104,17 @@ function show(shieldUntil: Date | null, world: GalaxyPlanet = target) {
 beforeEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('the first-day shield on the launch sheet', () => {
+  // Picking a ship is enough to read the price: it is written before the held commit (B14).
   const commit = async () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    await user.click(screen.getByRole('button', { name: /^send/i }));
     return user;
+  };
+  /** The held commit (K4); Enter twice is the keyboard's hold. */
+  const hold = () => {
+    const button = screen.getByRole('button', { name: /^launch/i });
+    fireEvent.keyDown(button, { key: 'Enter' });
+    fireEvent.keyDown(button, { key: 'Enter' });
   };
 
   it('says nothing at all to a commander who has no shield', async () => {
@@ -130,10 +136,10 @@ describe('the first-day shield on the launch sheet', () => {
 
   it('sends the acknowledgement only once the commander has confirmed', async () => {
     const { launch } = show(new Date(Date.now() + 6 * 3_600_000));
-    const user = await commit();
+    await commit();
     expect(launch).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: /launch|commit|confirm/i }));
+    hold();
     await waitFor(() => { expect(launch).toHaveBeenCalled(); });
     // The flag rides the launch that was confirmed, never a launch that was not.
     expect(launch.mock.calls[0]).toContain(true);
@@ -157,16 +163,16 @@ describe('the first-day shield on the launch sheet', () => {
 
   it('sends no acknowledgement for a neutral world, because none is spent', async () => {
     const { launch } = show(new Date(Date.now() + 6 * 3_600_000), neutral);
-    const user = await commit();
-    await user.click(screen.getByRole('button', { name: /launch|commit|confirm/i }));
+    await commit();
+    hold();
     await waitFor(() => { expect(launch).toHaveBeenCalled(); });
     expect(launch.mock.calls[0]).not.toContain(true);
   });
 
   it('sends no acknowledgement when there is no shield to spend', async () => {
     const { launch } = show(null);
-    const user = await commit();
-    await user.click(screen.getByRole('button', { name: /launch|commit|confirm/i }));
+    await commit();
+    hold();
     await waitFor(() => { expect(launch).toHaveBeenCalled(); });
     expect(launch.mock.calls[0]).not.toContain(true);
   });

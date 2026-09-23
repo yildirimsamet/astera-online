@@ -44,7 +44,7 @@ export const academy = {
     "shipyard": "Le Chantier Spatial construit les vaisseaux de ta flotte. Améliore-le au niveau 1.",
     "shipyardReward": "Récupère la récompense du Chantier Spatial.",
     "darts": "Construis deux Flèches. Nous allons attaquer un pirate avec ces chasseurs légers.",
-    "pirate": "Sélectionne le pirate à proximité et envoie tes deux Flèches. Une flotte déjà lancée ne peut pas être rappelée.",
+    "pirate": "Sélectionne le pirate à proximité et envoie tes deux Flèches. Un raid contre un pirate ne peut pas être rappelé.",
     "pirateReport": "Ta flotte est de retour. Ouvre la notification de combat, examine les pertes et le butin, puis ferme le rapport.",
     "pirateReward": "Ta victoire contre le pirate t'a rapporté une récompense. Récupère-la.",
     "shipsReward": "Récupère la récompense obtenue pour avoir construit tes premiers vaisseaux de combat.",

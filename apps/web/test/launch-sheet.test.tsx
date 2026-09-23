@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
@@ -102,7 +102,8 @@ describe('choosing a fleet to attack with', () => {
     const view = render(<LaunchSheet target={{ kind: 'world', world: target }} planet={planet}
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
     const row = view.container.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
-    expect(within(row).getByText('Per ship · includes your research')).toBeVisible();
+    // Said once over the list rather than on every row (compact, B14).
+    expect(screen.getByText('Per ship · includes your research')).toBeVisible();
     for (const [cls, expected] of [
       ['attack', HULLS.DART.atk * stats.atk], ['hull', HULLS.DART.hp * stats.hp],
       ['speed', HULLS.DART.speed * stats.speed], ['cargo', fleetCargo({ DART: 1 }, tech)],
@@ -396,17 +397,15 @@ describe('what the launch costs the world it leaves', () => {
     show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    await user.click(screen.getByRole('button', { name: /^send/i }));
-    // Four at home, one packed: three hold.
-    expect(document.body.textContent).toMatch(/holds 3 units until it comes back/i);
-    expect(document.body.textContent).toMatch(/cannot be recalled/i);
+    // Four at home, one packed: three hold — written before the button, and true since K8.
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/holds 3 units until this fleet is home/i);
+    expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
 
   it('still teaches fleetsave, which is what makes the risk cut both ways', async () => {
     show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    await user.click(screen.getByRole('button', { name: /^send/i }));
     expect(document.body.textContent).toMatch(/cannot be raided/i);
   });
 });
@@ -445,7 +444,7 @@ describe('the fuel this launch burns', () => {
    */
   it('draws the tank INSIDE the force box, not as a block under it', async () => {
     await packOne(10_000);
-    const box = document.querySelector('[data-force-compare]');
+    const box = document.querySelector('[data-force-ruler]');
     expect(box, 'the force comparison is not on the sheet').not.toBeNull();
 
     /*
@@ -466,7 +465,7 @@ describe('the fuel this launch burns', () => {
   /** And it is the last thing in that box, under both force bars. */
   it('puts the tank below the two force bars', async () => {
     await packOne(10_000);
-    const box = document.querySelector('[data-force-compare]')!;
+    const box = document.querySelector('[data-force-ruler]')!;
     const parts = [...box.querySelectorAll('[data-part], [data-launch-meters]')]
       .map((node) => node.getAttribute('data-launch-meters') !== null
         ? 'fuel'
@@ -746,7 +745,7 @@ describe('committing a fleet at a pirate', () => {
     // Drop it and the same wing is offered the earlier rendezvous instead.
     await user.click(screen.getByRole('button', { name: /fewer rampart/i }));
     await user.click(screen.getByRole('button', { name: /fewer rampart/i }));
-    expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^launch/i })).toBeEnabled();
   });
 
   /**
@@ -766,7 +765,7 @@ describe('committing a fleet at a pirate', () => {
     const user = userEvent.setup();
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
-    expect(screen.getByRole('button', { name: /send/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^launch/i })).toBeEnabled();
   });
 
   /**
@@ -815,15 +814,14 @@ describe('committing a fleet at a pirate', () => {
   });
 
   /** The bet is the same bet, so the last screen before it says the same thing. */
-  it('keeps the confirmation step and the fleetsave line', async () => {
+  it('writes the fleetsave line before the button, with no second screen', async () => {
     open(pirate());
     const user = userEvent.setup();
     await openAllBands(user);
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
-    await user.click(screen.getByRole('button', { name: /send/i }));
 
     expect(screen.getByText(/ships in flight cannot be raided/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /back/i })).toBeNull();
   });
 });
 
@@ -875,7 +873,7 @@ describe('a fleet that cannot fight', () => {
     await packAll('courier');
     await packAll('dart');
 
-    const commit = screen.getByRole('button', { name: /send/i });
+    const commit = screen.getByRole('button', { name: /^launch/i });
     expect(commit).toBeEnabled();
   });
 });
@@ -1095,7 +1093,7 @@ describe('how much of a wall the wing takes', () => {
    */
   it('names the majority and says the remainder was not read', async () => {
     await open(read({ classReading: { kind: 'DOMINANT', cls: 'LANCE' } }));
-    const block = document.querySelector('[data-launch-matchup]');
+    const block = document.querySelector('[data-matchup-wall]');
     expect(block).not.toBeNull();
     expect(block!.textContent).toMatch(/yarıdan fazla|more than half/i);
     expect(block!.textContent).toMatch(/okunmadı|unread/i);
@@ -1103,14 +1101,14 @@ describe('how much of a wall the wing takes', () => {
 
   it('refuses to name a single counter for an evenly mixed wall', async () => {
     await open(read({ classReading: { kind: 'EVEN' } }));
-    const block = document.querySelector('[data-launch-matchup]');
+    const block = document.querySelector('[data-matchup-wall]');
     expect(block).not.toBeNull();
     expect(block!.textContent).toMatch(/tek bir sert counter yok|no single hard counter/i);
   });
 
   it('says nothing at all when the probe read no shape', async () => {
     await open(read({ classReading: undefined }));
-    expect(document.querySelector('[data-launch-matchup]')).toBeNull();
+    expect(document.querySelector('[data-matchup-wall]')).toBeNull();
   });
 
   /**
@@ -1125,7 +1123,7 @@ describe('how much of a wall the wing takes', () => {
     await open(read({
       classReading: { kind: 'SHARES', shares: { SKIRMISHER: 10, BULWARK: 30, LANCE: 60 } },
     }));
-    const wall = document.querySelector('[data-launch-wall]');
+    const wall = document.querySelector('[data-matchup-wall]');
     expect(wall).not.toBeNull();
     expect(wall!.textContent).toMatch(/60/);
     expect(wall!.textContent).toMatch(/30/);
@@ -1141,9 +1139,11 @@ describe('how much of a wall the wing takes', () => {
    */
   it('names the majority as a floor, and the unread remainder', async () => {
     await open(read({ classReading: { kind: 'DOMINANT', cls: 'LANCE' } }));
-    const wall = document.querySelector('[data-launch-wall]');
+    const wall = document.querySelector('[data-matchup-wall]');
     expect(wall).not.toBeNull();
-    expect(wall!.textContent).toMatch(/≥\s*50/);
+    // The floor is said in words ("more than half"), never as a bare 50%.
+    expect(wall!.textContent).toMatch(/more than half/i);
+    expect(wall!.textContent).not.toMatch(/(^|[^≥])50%/);
   });
 
   /** A full split is exact, so it carries no floor mark. */
@@ -1151,13 +1151,13 @@ describe('how much of a wall the wing takes', () => {
     await open(read({
       classReading: { kind: 'SHARES', shares: { SKIRMISHER: 10, BULWARK: 30, LANCE: 60 } },
     }));
-    const wall = document.querySelector('[data-launch-wall]');
+    const wall = document.querySelector('[data-matchup-wall]');
     expect(wall!.textContent).not.toMatch(/≥/);
   });
 
   it('draws no distribution when the reading resolved none', async () => {
     await open(read({ classReading: { kind: 'EVEN' } }));
-    expect(document.querySelector('[data-launch-wall]')).toBeNull();
+    expect(document.querySelector('[data-matchup-wall]')!.textContent).not.toMatch(/%/);
   });
 
   it('draws no lines before a ship is picked', () => {
@@ -1166,14 +1166,14 @@ describe('how much of a wall the wing takes', () => {
         onClose={vi.fn()} onLaunched={vi.fn()} />,
       { wrapper },
     );
-    expect(screen.queryByTestId('compare-lines')).toBeNull();
+    expect(screen.queryByTestId('ruler-lines')).toBeNull();
   });
 
   it('draws the lines the battle engine gives this wing against the wall the probe read', async () => {
     const intel = read();
     await open(intel);
     const expected = forecastLines({ TALON: 20 }, inputFor(intel));
-    const said = await screen.findByTestId('compare-lines');
+    const said = await screen.findByTestId('ruler-lines');
     expect(said).toHaveTextContent(compact(expected.clears.low));
     expect(said).toHaveTextContent(compact(expected.breaks.low));
   });
@@ -1182,24 +1182,19 @@ describe('how much of a wall the wing takes', () => {
     const intel = read();
     await open(intel);
     const expected = forecastLoss({ TALON: 20 }, { low: 4_000, high: 6_000 }, inputFor(intel));
-    const loss = await screen.findByTestId('compare-loss');
+    const loss = await screen.findByTestId('ruler-loss');
     expect(loss).toHaveTextContent(String(Math.round(expected.low * 100)));
     expect(loss).toHaveTextContent(String(Math.round(expected.high * 100)));
   });
 
-  it('keeps a total-loss warning at both the selection and confirmation controls without launching', async () => {
+  it('keeps a total-loss warning beside the held commit, without launching', async () => {
     await open(read({ defence: { low: 1_000_000, high: 2_000_000 } }), target, [],
       planetView({ fleet: { TALON: 20 } }, { deuterium: 20000 }));
-    const loss = await screen.findByTestId('compare-loss');
+    const loss = await screen.findByTestId('ruler-loss');
     expect(loss).toHaveTextContent('100%');
-    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /send 20 ships/i }));
-    expect(screen.getByRole('button', { name: /^launch$/i })).toBeVisible();
-    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByRole('button', { name: /send 20 ships/i })).toBeVisible();
-    expect(screen.getByText('High risk: None of your ships may return.')).toBeVisible();
+    const footer = document.querySelector<HTMLElement>('[data-launch-commit]')!;
+    expect(within(footer).getByText('High risk: None of your ships may return.')).toBeVisible();
+    expect(within(footer).getByRole('button', { name: /^launch 20 ships$/i })).toBeVisible();
   });
 
   /**
@@ -1211,9 +1206,9 @@ describe('how much of a wall the wing takes', () => {
    */
   it('draws no lines and no loss when nobody has looked', async () => {
     await open(undefined);
-    expect(await screen.findByTestId('compare-unknown')).toBeInTheDocument();
-    expect(screen.queryByTestId('compare-lines')).toBeNull();
-    expect(screen.queryByTestId('compare-loss')).toBeNull();
+    await vi.waitFor(() => { expect(document.querySelector('[data-part="unknown"]')).not.toBeNull(); });
+    expect(screen.queryByTestId('ruler-lines')).toBeNull();
+    expect(screen.queryByTestId('ruler-loss')).toBeNull();
   });
 
   /** A reading written before D199 has no shape, no charge and no hangar — and says so. */
@@ -1222,7 +1217,7 @@ describe('how much of a wall the wing takes', () => {
       read({ classReading: undefined, shield: undefined, unarmed: undefined }),
       { ...target, shielded: true },
     );
-    const notes = await screen.findByTestId('compare-notes');
+    const notes = await screen.findByTestId('ruler-notes');
     expect(notes).toHaveTextContent(/shield charge not measured/i);
     expect(notes).toHaveTextContent(/shape of the wall not read/i);
     expect(notes).toHaveTextContent(/transports not counted/i);
@@ -1244,13 +1239,13 @@ describe('how much of a wall the wing takes', () => {
     );
     const bare = forecastLines({ TALON: 20 }, inputFor(intel));
     expect(compact(bounded.clears.low)).not.toBe(compact(bare.clears.low));
-    expect(await screen.findByTestId('compare-lines')).toHaveTextContent(compact(bounded.clears.low));
+    expect(await screen.findByTestId('ruler-lines')).toHaveTextContent(compact(bounded.clears.low));
   });
 
   /** Seen on the phone: "5 transports" off a band that read 1–5. A band is printed as one. */
   it('counts the transports in the line as the band the probe read', async () => {
     await open(read({ unarmed: { low: 1, high: 5 } }));
-    expect(await screen.findByTestId('compare-notes')).toHaveTextContent(/1–5 transports stand in the line/i);
+    expect(await screen.findByTestId('ruler-notes')).toHaveTextContent(/1–5 transports stand in the line/i);
   });
 
   it('passes on what the probe and the Telescope already said', async () => {
@@ -1258,7 +1253,7 @@ describe('how much of a wall the wing takes', () => {
       read({ detected: true, fleetHome: false }),
       { ...target, fleet: { status: 'AWAY', staleMinutes: 0, etaMinutes: null, clarity: 'FULL' } },
     );
-    const notes = await screen.findByTestId('compare-notes');
+    const notes = await screen.findByTestId('ruler-notes');
     expect(notes).toHaveTextContent(/your probe was seen/i);
     expect(notes).toHaveTextContent(/some of their fleet was out at the look/i);
     expect(notes).toHaveTextContent(/telescope: their fleet is out now/i);
@@ -1292,7 +1287,7 @@ describe('how much of a wall the wing takes', () => {
       wreckValue: 0,
     } as const satisfies BattleReport;
     await open(read(), target, [last]);
-    expect(await screen.findByTestId('compare-notes')).toHaveTextContent(/last raid sank mostly bulwark/i);
+    expect(await screen.findByTestId('ruler-notes')).toHaveTextContent(/last raid sank mostly bulwark/i);
   });
 
   it('reads a pirate crew it can see as one exact line', async () => {
@@ -1322,7 +1317,7 @@ describe('how much of a wall the wing takes', () => {
       wall: { kind: 'EXACT', fleet: crew },
     });
     expect(expected.clears.low).toBe(expected.clears.high);
-    const said = await screen.findByTestId('compare-lines');
+    const said = await screen.findByTestId('ruler-lines');
     expect(said).toHaveTextContent(compact(expected.clears.low));
     expect(said).not.toHaveTextContent(new RegExp(`${compact(expected.clears.low)}–`));
   });
@@ -1397,9 +1392,11 @@ describe('choosing how fast to fly', () => {
     const rungs = within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!)
       .getAllByRole('radio');
     await user.click(rungs[1]!);
-    // Send opens the confirmation; the commit button underneath it is the launch.
-    await user.click(screen.getByRole('button', { name: /^send/i }));
-    await user.click(screen.getByRole('button', { name: /^launch$/i }));
+    // The commit is held (K4); Enter twice is the keyboard's hold.
+    const commit = screen.getByRole('button', { name: /^launch/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    await vi.waitFor(() => { expect(calls.some((c) => c.url.includes('/api/fleet/launch'))).toBe(true); });
 
     const sent = calls.find((c) => c.url.includes('/api/fleet/launch'));
     expect(sent?.body.pace).toBe(0.75);
@@ -1433,14 +1430,13 @@ describe('what the sheet promises about turning a raid back', () => {
     render(ui, { wrapper });
     const user = userEvent.setup();
     await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '2');
-    await user.click(screen.getByRole('button', { name: /^send/i }));
   };
 
   it('launches a raid on a world with the recall rule beside the button', async () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'world', world: target }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /^launch$/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships$/i })).toBeVisible();
     expect(screen.getByText(/recalled once while in flight/i)).toBeVisible();
     expect(screen.queryByText(/no recall/i)).toBeNull();
   });
@@ -1449,7 +1445,7 @@ describe('what the sheet promises about turning a raid back', () => {
     await confirmWith(
       <LaunchSheet planet={holding} target={{ kind: 'pirate', pirate: pirateTarget }} onClose={vi.fn()} onLaunched={vi.fn()} />,
     );
-    expect(screen.getByRole('button', { name: /launch — no recall/i })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^launch 2 ships — no recall$/i })).toBeVisible();
     expect(screen.queryByText(/recalled once/i)).toBeNull();
   });
 

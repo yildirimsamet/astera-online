@@ -44,7 +44,7 @@ export const academy = {
     shipyard: 'Die Werft baut deine Schiffe. Verbessere sie auf Stufe 1.',
     shipyardReward: 'Hol dir die Belohnung für die Werft.',
     darts: 'Baue zwei Dart. Diese leichten Kampfschiffe treten gegen einen Piraten an.',
-    pirate: 'Wähle den nahen Piraten und schicke beide Dart los. Eine gestartete Flotte kannst du nicht zurückrufen.',
+    pirate: 'Wähle den nahen Piraten und schicke beide Dart los. Einen Piratenangriff kannst du nicht zurückrufen.',
     pirateReport: 'Deine Flotte ist zurück. Öffne die Kampfmeldung, sieh dir Verluste und Beute an und schließe den Bericht.',
     pirateReward: 'Für deinen Sieg über den Piraten gibt es eine Belohnung. Hol sie dir.',
     shipsReward: 'Hol dir die Belohnung für deine ersten Kampfschiffe.',

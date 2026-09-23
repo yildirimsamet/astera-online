@@ -132,9 +132,16 @@ export async function verifyAcademy(out) {
             await max.click();
             await page.waitForTimeout(200);
           }
-          await launch.getByRole('button', { name: /^Send \d+ ships$|^\d+ gemi gönder$/ }).click();
+          // The commit is held (B9, K4): press, keep the finger down past the hold, release.
+          const commit = launch.locator('[data-launch-commit] button:not(:disabled)');
+          await commit.waitFor();
           await page.screenshot({ path: `${out}/academy-${id}-launch.png` });
-          await launch.getByRole('button', { name: /^Launch|^Gönder/i }).click();
+          const box = await commit.boundingBox();
+          if (!box) throw new Error('The held commit has no box');
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.waitForTimeout(900);
+          await page.mouse.up();
         }
       } else if (id === 'pirateReport' || id === 'raidReport') {
         await page.locator('[data-academy-signals] > button').click();

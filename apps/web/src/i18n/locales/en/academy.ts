@@ -44,7 +44,7 @@ export const academy = {
     "shipyard": "The Shipyard builds your fleet. Upgrade it to level 1.",
     "shipyardReward": "Claim your Shipyard reward.",
     "darts": "Build two Darts. These light combat ships will take on a pirate.",
-    "pirate": "Select the nearby pirate and send both Darts. A launched fleet cannot be recalled.",
+    "pirate": "Select the nearby pirate and send both Darts. A pirate raid cannot be recalled.",
     "pirateReport": "Your fleet is home. Open its battle notification, inspect the losses and loot, then close the report.",
     "pirateReward": "Victory earned a pirate reward. Claim it.",
     "shipsReward": "Claim the reward for producing your first combat ships.",

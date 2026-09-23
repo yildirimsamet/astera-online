@@ -1,5 +1,7 @@
 import { academyLessonFleet } from '@astera/rules';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { de } from '../src/i18n/locales/de/index.js';
 import { en } from '../src/i18n/locales/en/index.js';
@@ -8,6 +10,13 @@ import { fr } from '../src/i18n/locales/fr/index.js';
 import { tr } from '../src/i18n/locales/tr/index.js';
 import { LAUNCH_HAND_SELECTORS, academyGateSelectors, handPick } from '../src/onboarding/Academy.jsx';
 import { QuantityStepper } from '../src/ui/QuantityStepper.js';
+import { Api } from '../src/api/client.js';
+import { ApiProvider } from '../src/api/context.js';
+import type { GalaxyPlanet } from '../src/api/schemas.js';
+import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
+import { LaunchSheet } from '../src/screens/LaunchSheet.js';
+import { ToastProvider } from '../src/ui/Toast.js';
+import { planetView } from './fixtures.js';
 
 /**
  * THE HAND FILLS THE PICKER BEFORE IT POINTS AT THE BUTTON THAT SPENDS IT.
@@ -55,10 +64,42 @@ describe('the tutorial hand inside a launch sheet', () => {
       '[data-academy-launch] [data-count-max] button:not(:disabled)',
     );
     const commit = LAUNCH_HAND_SELECTORS.indexOf(
-      '[data-academy-launch] [data-sheet-panel] > div:last-child button:last-child',
+      '[data-academy-launch] [data-launch-commit] button:not(:disabled)',
     );
     expect(max).toBeGreaterThanOrEqual(0);
     expect(commit).toBeGreaterThan(max);
+  });
+
+  /*
+    THE HELD COMMIT, FOUND ON THE REAL SHEET (B14, K4). The v2 sheet has no two-step
+    footer for a positional selector to land on; the hold button carries its own
+    marker, and it only matches once the lesson's fleet is chosen — before that it
+    is disabled with its reason, so the hand stays on the Max presses.
+  */
+  it('finds the held commit on the real launch sheet only once the fleet is chosen', async () => {
+    const holding = planetView({ fleet: { DART: 2 } }, { deuterium: 500_000 });
+    const world: GalaxyPlanet = {
+      id: 'p2', name: 'Tharsis', owner: 'Sable', position: { x: 120, y: 0, z: 80 }, coreTier: 2, coreLevel: 6,
+      intel: 'RESOLVED' as const, state: { kind: 'NORMAL' as const }, satellites: [], shielded: false, isSelf: false,
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <ToastProvider>
+            <AcademyLessonContext.Provider value="pirate">
+              <div data-academy-launch>
+                <LaunchSheet planet={holding} target={{ kind: 'world', world }} onClose={vi.fn()} onLaunched={vi.fn()} />
+              </div>
+            </AcademyLessonContext.Provider>
+          </ToastProvider>
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+    expect(view.baseElement.querySelectorAll(LAUNCH_HAND_SELECTORS[1])).toHaveLength(0);
+    await userEvent.click(view.baseElement.querySelector<HTMLElement>(LAUNCH_HAND_SELECTORS[0])!);
+    expect(view.baseElement.querySelectorAll(LAUNCH_HAND_SELECTORS[1])).toHaveLength(1);
   });
 });
 
@@ -168,6 +209,25 @@ describe('the two launch lessons are the same lesson', () => {
     filled four: a player who trusted the card and stepped down to two was
     refused, silently.
   */
+  /*
+    K8: a raid at a world turns once in flight; a pirate raid never does. The pirate
+    lesson taught "a launched fleet cannot be recalled" as a rule about every fleet,
+    which the next lesson — a raid at a world — would then contradict.
+  */
+  it('says the PIRATE raid cannot be recalled, not every launched fleet', () => {
+    expect(en.academy.steps.pirate).toMatch(/pirate raid cannot be recalled/i);
+    const generic = {
+      en: /a launched fleet cannot be recalled/i,
+      tr: /kalkan filo geri çağrılamaz/i,
+      de: /eine gestartete flotte/i,
+      fr: /une flotte déjà lancée/i,
+      es: /una vez lanzada/i,
+    };
+    for (const [lng, words] of Object.entries({ en, tr, de, es, fr })) {
+      expect(words.academy.steps.pirate, lng).not.toMatch(generic[lng as keyof typeof generic]);
+    }
+  });
+
   it('asks the raid for every Dart, not a count the picker will not fill', () => {
     expect(academyLessonFleet('raid').DART).toBeGreaterThan(2);
     const two = { en: /\btwo\b/i, tr: /\biki\b/i, de: /\bzwei\b/i, es: /\bdos\b/i, fr: /\bdeux\b/i };

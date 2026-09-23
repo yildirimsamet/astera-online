@@ -161,7 +161,7 @@ export function handPick(nodes: readonly Element[], viewportHeight: number): Ele
 
 export const LAUNCH_HAND_SELECTORS = [
   '[data-academy-launch] [data-count-max] button:not(:disabled)',
-  '[data-academy-launch] [data-sheet-panel] > div:last-child button:last-child',
+  '[data-academy-launch] [data-launch-commit] button:not(:disabled)',
 ] as const;
 const exercise = new Set<AcademyStepId>(['welcome', 'core', 'refinery', 'extractor', 'vault', 'aegis', 'shipyard', 'darts', 'prospector', 'reinforcements', 'courier', 'pirate', 'mine', 'raid', 'telescope']);
 

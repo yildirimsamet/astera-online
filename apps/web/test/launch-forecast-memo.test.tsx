@@ -91,13 +91,13 @@ describe('the forecast on the launch sheet', () => {
       await userEvent.click(band);
     }
     await userEvent.click(screen.getByRole('button', { name: /max talon/i }));
-    await screen.findByTestId('compare-lines');
+    await screen.findByTestId('ruler-lines');
     const settled = vi.mocked(forecastLines).mock.calls.length;
     expect(settled).toBeGreaterThan(0);
 
     view.rerender(wrap(sheet()));
     view.rerender(wrap(sheet()));
-    await screen.findByTestId('compare-lines');
+    await screen.findByTestId('ruler-lines');
     expect(vi.mocked(forecastLines).mock.calls.length).toBe(settled);
   });
 });
