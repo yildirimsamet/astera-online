@@ -358,6 +358,23 @@ describe('every added language keeps the locale contract', () => {
     expect(english).toEqual([]);
   });
 
+  /*
+   * The View sheet's count line is one string per count, each carrying its own
+   * separator. Seen at 350 px in German: "134 Welten· 1 Pirat" — two of them had
+   * lost the space before the dot, in German and Spanish.
+   */
+  it('opens every appended galaxy count with its own spaced separator', () => {
+    const appended = ['fleetAway', 'rocks', 'pirates_one', 'pirates_other', 'wrecks_one', 'wrecks_other'];
+    const glued = Object.entries(LOCALES).flatMap(([language, locale]) => {
+      const tree = flatten(locale);
+      return appended
+        .map((key) => `galaxy.${key}`)
+        .filter((key) => !tree.get(key)?.startsWith(' · '))
+        .map((key) => `${language}.${key}`);
+    });
+    expect(glued).toEqual([]);
+  });
+
   it('has no blank strings in any locale', () => {
     const blank = Object.entries(LOCALES).flatMap(([language, locale]) =>
       [...flatten(locale)]
