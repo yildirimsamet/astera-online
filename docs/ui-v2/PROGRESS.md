@@ -16,7 +16,10 @@
 ## Çalışma kuralları (CLAUDE.md, zorunlu)
 - TDD: test → FAIL → kod → PASS → review. Yalnız stil/CSS istisna.
 - `pnpm verify` sıfır tip ve lint hatası; kırmızı test seti aşağıdaki listeden büyümez.
-- Sunucu testleri paylaşılan `astera_test` veritabanını kullanır (localhost:5433); yalnız sunucuya dokunulunca ve seri çalıştır.
+- Sunucu testleri bu worktree'de özel `astera_uiv2_test` veritabanında koşar (adı `_test` ile bitmeli;
+  `DATABASE_URL=postgres://astera:astera@localhost:5433/astera_uiv2_test npx vitest run <dosyalar>`, apps/server),
+  paylaşılan `astera_test`'e dokunma. **Sahip talimatı (2026-09-23):** tam sunucu paketi ~40 dk; iş sırasında yalnız
+  dokunulan kodun test dosyaları, tam paket yalnız teslimde bir kez. Web paketi hızlı, commit öncesi koşar.
 - Her yeni metin 5 dilde (tr, en, de, fr, es); testler İngilizce çalışır.
 - **Görmeden tasarım yok (sahip talimatı 2026-09-23: "Gözü kapalı yapmamalısın").** Her v2 bileşeni
   `apps/web/v2-gallery.html` galerisine (`src/v2/gallery/Gallery.tsx`, örnek veriyle) eklenir ve commit'ten önce
@@ -57,12 +60,16 @@ Kod: `screens/LaunchSheet.tsx` (bugünkü fırlatma, ~1.300 satır; mantığı y
 kartları (`screens/GalaxyView.tsx` odak rayı), sunucu `services/movement.ts` (`recallTransfer`), `services/session.ts`
 (`recallable`, pending projeksiyonu), `routes/planet.ts` (saldırı rotası "IRREVERSIBLE"), `api/client.ts`.
 Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişmemiş.
-- **F3.0** Sunucuya dokunmadan önce sunucu testlerinin taban çizgisi bir kez, seri ölçülür (paylaşılan `astera_test`).
-- **F3.1 S1:** pending thread'e `pace` (`missions.pace` var). Sözleşme testi: %50 hızla atılan saldırı `pace: 0.5` döner;
-  web `pendingThread` şeması alanı okur.
-- **F3.2 S2 (K8):** saldırı geri çağırma. `recallTransfer` genelleştirilir; yoldayken bir kez, dönüş = uçulan süre,
-  yakıt iadesi yok, iniş her zaman sığar, son dakika kilidi yok; hedefte savaş kaydı yok, tekrar saldırı sınırına
-  sayılmaz; trafik ve radar dönüşü normal uçuş gibi görür. `session.ts` `recallable` saldırıyı kapsar.
+- ~~F3.0~~ Taban çizgisi yeniden ölçülmedi (sahip: "bilinen hatalar", yeniden ölçme); ilgili dosyalarda görülen
+  kırmızılar HEAD'de de kırmızı olduğu doğrulanarak aşağıya yazıldı.
+- ~~F3.1 S1~~ `1b5bd95`: kendi uçuşlarında `pace` (`missions.pace`); dönüş bacağı 1; gelen saldırıda yok. Web şeması
+  okur (0 < pace ≤ 1).
+- ~~F3.2 S2 (K8)~~ `c29a1c2`: `recallFlight` (eski `recallTransfer`) saldırıyı da çevirir; geri çağrılan baskın dönüş
+  bacağı gibi iner (rapor, ganimet yok), `attack_commitments` satırı silinir; `isHostileMission` çevrilmiş baskını
+  düşmanca saymaz (gelen uyarı, radar bildirimi, trafik inbound); RAID ödülü, toparlanma kalkanı, klan üyelik
+  kontrolü, Teleskop "dışarıda" saati uyar. Fırlatma sayfası dünya baskınında "Launch" + kural notu, korsan baskınında
+  "no recall", Akademi'de not yok; dönüş bildirimi "called back before it struck". Gerçek oyunda görüldü (onay, Filo
+  sayfasında düğme, çevrildikten sonra "home from …"). Yeni sunucu testi `attack-recall.test.ts` (16).
 - **F3.3 E4 Filo sayfası:** sekmeler Havada (B11 satırı: ilerleme, kalan, hız etiketi S1, geri çağırma önizlemesi
   "X dk'da evde"; buton yalnız `recallable` iken) · Evde (dünya başına garnizon) · Hangar (dünya başına kapasite);
   başlıkta uçuş yuvası + Hangar doluluğu; satıra dokunmak kamerayı gemiye götürür. `FleetSheet` ara sayfasının yerine.
@@ -216,6 +223,10 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
 - `tools/visual.mjs`: hibe harcama döngüsünün `dismiss()`'i Üs sayfasını da kapatıyor, "affordable in" sekme turu hiçbir
   şey ölçmüyor (önceden var) → F5'te Üs ile.
 - `clanWar.noTarget` 5 dilde var olmayan "Galaxy Focus" denetimini anıyor → F6.
+- de/es/fr `notifications.fleetHome*` çevirileri kötü ("Flottenheimat", "Accueil de la flotte", "Inicio de la flota")
+  — önceden var; bildirimler F7'de (E10) ele alınırken düzeltilmeli.
+- Akademi turu (`tools/visual.mjs --academy`) S2 sonrası yeniden koşulmadı; araç Türkçe düğmeyi artık `^Gönder` ile
+  arıyor. F3.4'te fırlatma bileşeniyle birlikte koşulacak.
 - **İki v2 Sheet üst üste açılırsa Escape ikisini birden kapatır** (her biri `window`'u dinliyor). F2'de zil sayfası
   ile bağlam kartı üst üste gelebilirse en üstteki kapanacak şekilde çöz.
 - `QueueLane` hücresi 350 px'te ~55 px metin alanı bırakıyor; uzun İngilizce/Almanca adlar kesilir (render yanında
@@ -233,4 +244,6 @@ typecheck 0 hata · lint 0 hata.
 - web (14): `api-bodies.test.ts` disbandClan; `build-sheet.test.tsx` strategic hardware ×4; `chronicle-screen.test.tsx`
   capital strike; `locked-rows.test.tsx` research gate; `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2;
   `research-gains.test.ts` ×2; `surface-vocabulary.test.ts` "names no colour, size or radius the theme does not publish".
-- server: ölçülmedi (paylaşılan veritabanı; F3'te sunucuya dokunmadan önce ölçülecek).
+- server (tam paket ölçülmedi; ilgili dosyalarda görülen, HEAD'de de kırmızı): `contract.test.ts` ×4 ("GET /api/planet
+  parses" hangar/ground şekli; devre dışı Ölüm Yıldızı/önleyici rotaları 404 yerine 200); `intel-states.test.ts` ×3
+  (klan sensör küresi, teleskop erişimi).
