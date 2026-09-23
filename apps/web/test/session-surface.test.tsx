@@ -3,7 +3,7 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useProjected } from '../src/lib/projection.js';
 import { describeNotification, isAlarming, isUrgent } from '../src/lib/notifications.js';
-import { arrivalOf } from '../src/shell/PendingStrip.js';
+import { arrivalOf } from '../src/lib/flights.js';
 import { LoadingScreen } from '../src/shell/LoadingScreen.js';
 import { Bays } from '../src/shell/StatusBar.js';
 import type { PlanetView } from '../src/api/schemas.js';

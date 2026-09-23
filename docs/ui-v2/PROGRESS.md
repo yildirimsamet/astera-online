@@ -38,13 +38,25 @@
 | F10 | Temizlik | Bekliyor |
 
 ## Sıradaki iş
-**F1 · v2 temeli.** Sıra: (1) token'lar, (2) yazı tipi, (3) ikonlar, (4) kit bileşenleri.
-- ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
-- ~~F1.2 yazı tipleri~~ bitti.
-- ~~F1.3 ikonlar~~ bitti.
-- **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, ~~B12 halkaları~~, ~~kaynak ölçeri~~,
-  ~~B5~~, ~~B6~~, ~~v2 Sheet~~, **sonra B12'nin kuyruk sayfası** (iptal → `Confirm`; `ui/QueueStrip.tsx`
-  içindeki `CancelConfirm` dışa aktarılıp yeniden kullanılır — "iptal Confirm açar" testi orada).
+**F2 · v2 HUD, kabuk, bilgi mimarisi.** Şartname: B1–B4, B13, K1, "Her yüzeyin yeni yeri" tablosu
+(`grep -n "^#### B1 ·\|^#### B13 ·\|Her yüzeyin yeni yeri" docs/ui-v2/gozlemevi.md`). Kod: `src/App.tsx`,
+`src/screens/GalaxyView.tsx` (çizim ~1034–1900), `src/shell/{StatusBar,PendingStrip,Signals,MenuPanel}.tsx`,
+`src/onboarding/Rehearsal.tsx` (aynı kabuğu çizmeli). Her adım yayınlanabilir kalır; özellik kaybolmaz.
+- **F2.1 saf mantık (lib + test):** `lib/nowLine.ts` (B2 öncelik 1–6), `lib/dock.ts` (B4 rozet kuralları),
+  `lib/contextSlot.ts` (B3 öncelik A–D + "1 tehdit" hapı), `lib/collect.ts` (B13 eşik/tutar; `StatusBar` `Works`'ten çıkar).
+- **F2.2 v2/hud sunum bileşenleri:** `Dock`, `NowLine`, `TopBar` (komutan çipi + kalkan işareti, dünya işareti ≥2
+  dünyada, 3× `ResourceMeter`, zil), `CollectBubble` (B13, `GalaxyCanvas`'ta `<Html>` ile kendi dünyaya bağlı).
+- **F2.3 zil sayfası (K1):** v2 Sheet, sekmeler Sinyaller · Kronik · Sohbet (mevcut `Signals` listesi, `ChronicleScreen`,
+  `ChatScreen` yeniden kullanılır); sohbet okunmamış noktası zile.
+- **F2.4 kabuk:** `v2/shell/GameShell.tsx` (App ve Rehearsal ortak): üstte TopBar + NowLine, altta Dock
+  (`--v2-dock-h` yazar). Dock → Galaksi (tekrar dokununca aktif dünyaya uç), Üs = `planet`, Filo = yeni sayfa
+  (`PendingStrip` içeriği + `Bays`), İstihbarat = `intel`, Klan = `clan`. Komutan çipi → `menu`. Ölçer → Ekonomi
+  (ara çözüm: Üs `grow`). Dünya işareti → `WorldsPanel`.
+- **F2.5 GalaxyView temizliği:** `DiscControls`, `SensorToggles` (→ sağ üst "Görünüm" çipi: katmanlar + olay rehberi),
+  `ChatLauncher`/`ChronicleLauncher` (→ zil), `DiscReadout` (→ Görünüm çipi başlığı; F6'da Komutan başı),
+  `ActiveGalaxyEvent` (→ bağlam yuvası "olay"), `SituationGuide` (→ bağlam yuvası "öneri"), odak kartları bağlam
+  yuvasında. Silinen bileşenin testi silinir; korunan davranış yeni testte yaşar.
+- **F2.6** Rehearsal aynı kabuk. **F2.7** faz sonu review + tek oturum görsel kontrol (350 ve 1280 px).
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
