@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { ClarityState } from '@astera/rules';
 import { ageTier } from '../../src/lib/clarity.js';
+import i18n from '../../src/i18n/index.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../../src/v2/kit/Freshness.js';
 
 /**
@@ -33,6 +34,14 @@ describe('the age of a reading', () => {
     expect(container.firstElementChild).toHaveAttribute('data-age', 'aging');
     rerender(<AgeStamp minutes={0} />);
     expect(container.textContent).toBe('live');
+  });
+
+  it('follows the language on its own', async () => {
+    const { container } = render(<AgeStamp minutes={240} />);
+    await act(async () => { await i18n.changeLanguage('tr'); });
+    expect(container.textContent).toMatch(/önce$/);
+    await act(async () => { await i18n.changeLanguage('en'); });
+    expect(container.textContent).toBe('4h 00m ago');
   });
 });
 

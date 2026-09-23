@@ -51,14 +51,16 @@ export function MatchupLine({ wing, reading }: { wing: Fleet; reading: ClassRead
   if (!matchups) return null;
 
   const parts: ReactNode[] = [];
-  if (matchups.kind === 'MIXED' || matchups.wall === null) {
-    parts.push(t('counter.matchupMixed'));
-  } else if (matchups.kind === 'MAJORITY') {
+  // The KIND decides the wording. A full split whose two largest classes tie has no
+  // `wall` to name, and it is still a full split: every class it measured is printed.
+  if (matchups.kind === 'MAJORITY' && matchups.wall !== null) {
     parts.push(
       <Named cls={matchups.wall} tone="text-v2-ink">
         {t('counter.matchupMajority', { class: combatClassLabel(matchups.wall) })}
       </Named>,
     );
+  } else if (matchups.kind !== 'SPLIT') {
+    parts.push(t('counter.matchupMixed'));
   } else {
     parts.push(t('counter.matchupSplit'));
     for (const row of matchups.wallShares) {

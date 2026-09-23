@@ -55,6 +55,16 @@ describe('the matchup line', () => {
     expect(wall(container)).toBe('Read split · Lance 60% · Bulwark 30% · Skirmisher 10% · Bring Bulwark');
   });
 
+  it('keeps a full split whose two largest classes tie', () => {
+    const { container } = render(
+      <MatchupLine wing={none} reading={{ kind: 'SHARES', shares: { LANCE: 50, BULWARK: 50, SKIRMISHER: 0 } }} />,
+    );
+    expect(wall(container)).toMatch(/^Read split · /);
+    expect(wall(container)).toContain('Lance 50%');
+    expect(wall(container)).toContain('Bulwark 50%');
+    expect(wall(container)).not.toContain('Mixed defence');
+  });
+
   it('leaves a class the probe measured at nothing off the wall', () => {
     const { container } = render(
       <MatchupLine wing={none} reading={{ kind: 'SHARES', shares: { LANCE: 70, BULWARK: 30, SKIRMISHER: 0 } }} />,

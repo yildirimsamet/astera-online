@@ -64,6 +64,8 @@ export function ClarityMark({ state }: { state: ClarityState }) {
 
 /** How old a probe or report fact is: "live", "18m ago", "4h 00m ago". */
 export function AgeStamp({ minutes }: { minutes: number }) {
+  // `staleness` reads i18n directly; subscribing here re-words the stamp when the language changes.
+  useTranslation();
   const tier = ageTier(minutes);
   const tone = tier === 'fresh' || tier === 'aging' ? 'text-v2-ink-2' : 'text-v2-ink-3';
   return <span data-age={tier} className={`font-v2-mono text-label ${tone}`}>{staleness(minutes)}</span>;

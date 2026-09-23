@@ -54,7 +54,7 @@ export function QueueSheet({ queues, now, cancelling, onCancel, onClose }: Queue
               label={t(label)}
               orders={queues[lane]}
               now={now}
-              busy={cancelling !== undefined}
+              cancelling={cancelling}
               onAsk={setAsking}
             />
           ))}
@@ -80,13 +80,13 @@ function Lane({
   label,
   orders,
   now,
-  busy,
+  cancelling,
   onAsk,
 }: {
   label: string;
   orders: readonly BuildOrderView[];
   now: number;
-  busy: boolean;
+  cancelling: string | undefined;
   onAsk: (order: BuildOrderView) => void;
 }) {
   const { t } = useTranslation();
@@ -120,12 +120,12 @@ function Lane({
               {order.finishesAt && (
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={cancelling !== undefined}
                   aria-label={t('planet.queue.cancelOne', { name: buildOrderLabel(order) })}
                   onClick={() => { onAsk(order); }}
                   className="shrink-0 rounded-control border border-v2-line-hi px-2.5 py-1 text-caption text-v2-ink-2 disabled:opacity-40"
                 >
-                  {t('planet.queue.cancel')}
+                  {t(cancelling === order.id ? 'planet.queue.cancelling' : 'planet.queue.cancel')}
                 </button>
               )}
             </li>

@@ -85,9 +85,26 @@ describe('the sheet', () => {
     render(<Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half', 'full']}>body</Sheet>);
     const handle = screen.getByRole('button', { name: 'Expand' });
     drag(handle, 600, 500);
-    fireEvent.click(handle);
+    // The browser's click at the end of a pointer gesture carries `detail` 1.
+    fireEvent.click(handle, { detail: 1 });
     expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
-    fireEvent.click(handle);
+    fireEvent.click(handle, { detail: 1 });
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
+  });
+
+  it('still answers the handle after a pull that began on the title', async () => {
+    render(<Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half', 'full']}>body</Sheet>);
+    drag(screen.getByRole('heading', { name: 'Kestrel' }), 600, 500);
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
+    await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
+  });
+
+  it('never swallows a keyboard press on the handle', () => {
+    render(<Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half', 'full']}>body</Sheet>);
+    drag(screen.getByRole('heading', { name: 'Kestrel' }), 600, 500);
+    // Enter on a focused button is a click with no pointer behind it (`detail` 0).
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }), { detail: 0 });
     expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
   });
 

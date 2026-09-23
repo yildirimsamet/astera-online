@@ -127,6 +127,12 @@
   v2 Confirm gerekince buradan taşınır). Confirm açıkken Escape yalnız Confirm'ü kapatır. Zamansız siparişte iptal
   yok; bir iptal uçuştayken hepsi kilitli. `QueueLane.tsx` artık `OrderRing`, `OrderName`, `orderLeft` dışa aktarıyor.
 - **F1 bitti (2026-09-23).** Workspace `typecheck` + `lint` temiz; web: bilinen 14 kırmızı aynen, v2 testleri yeşil.
+- **F1 faz sonu review'u (2026-09-23)** — eski koda dokunulan yerler temiz (`directives()`'in tek çağıranı
+  `SituationGuide`; `LaunchSheet` ipucu birebir; Plex Mono eski arayüzde yalnız duyuru kod bloklarında). Bulunan ve
+  testle düzeltilen: (1) B6 — eşit en büyük paylı SHARES okuması "karışık" diye bölüşümü düşürüyordu (artık tür
+  karar veriyor); (2) Sheet — başlıktan sürüklemeden sonra tutamaç dokunuşu yutuluyordu (her hareket temiz başlar)
+  ve klavye Enter'ı da yutulabiliyordu (`detail 0` asla yutulmaz); (3) `AgeStamp` dil değişimine abone değildi;
+  (4) kuyruk sayfası uçuştaki iptalin satırında "Cancelling…" yazıyor.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
@@ -138,7 +144,18 @@
   modeller `tools/models.mjs` ile meshopt'a çevrilecek, düşük LOD üretilecek.
 - **K3:** yazı tipi değişir, boyutlar değişmez (gövde 12 px).
 
+## F10'a devredilenler (temizlikte silinmemeli / taşınmalı)
+- v2'nin kullandığı eski ad alanlarındaki metin anahtarları: `statusBar.{alloy,crystal,deuterium}Label`,
+  `planet.queue.*`, `counter.*` (compare/lines/escape/matchup/loss), `dossier.shapeUnreadNote`, `clarity.*`,
+  `sheet.back/close`, `units.*`. Eski bileşen silinince anahtar kalır (ya da v2 ad alanına taşınır).
+- `bg-clarity-*` token'ları (`ClarityMark` parlaklık rampası).
+- `CancelConfirm` + eski `Confirm`/`Sheet` (kuyruk sayfası iptali bunlarla açılıyor) → v2 Confirm'e taşınır.
+
 ## Açık sorunlar
+- **İki v2 Sheet üst üste açılırsa Escape ikisini birden kapatır** (her biri `window`'u dinliyor). F2'de zil sayfası
+  ile bağlam kartı üst üste gelebilirse en üstteki kapanacak şekilde çöz.
+- `QueueLane` hücresi 350 px'te ~55 px metin alanı bırakıyor; uzun İngilizce/Almanca adlar kesilir (render yanında
+  durduğu için kabul). F5'te görsel kontrol.
 - **Ölü sınıflar (başlangıçtan, sahibin son işlerinden):** `ui/PaceRow.tsx` `bg-accent/20`, `text-bright`;
   `screens/PlanetScreen.tsx` `bg-cyan-400/10`, `border-cyan-400/40`, `text-cyan-100` — temada yoklar, hiçbir şey
   çizmiyorlar (`surface-vocabulary.test.ts` kırmızısının sebebi). PaceRow B10 ile, PlanetScreen F5 ile değişecek;

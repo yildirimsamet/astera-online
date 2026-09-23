@@ -90,6 +90,8 @@ export function Sheet({
   }, []);
 
   const onPull = (event: ReactPointerEvent): void => {
+    // Every gesture starts clean: a pull that ended on the title must not swallow the next tap.
+    dragged.current = false;
     const from = event.clientY;
     if (release.current) window.removeEventListener('pointerup', release.current);
     const up = (end: PointerEvent): void => {
@@ -135,11 +137,11 @@ export function Sheet({
           <button
             type="button"
             aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
-            onClick={() => {
-              if (dragged.current) {
-                dragged.current = false;
-                return;
-              }
+            onClick={(event) => {
+              const afterPull = dragged.current;
+              dragged.current = false;
+              // Only a pointer click can be the tail of a pull; a key press (`detail` 0) never is.
+              if (afterPull && event.detail !== 0) return;
               settle(atTop ? 'down' : 'up');
             }}
             className="flex h-4 w-full items-center justify-center"

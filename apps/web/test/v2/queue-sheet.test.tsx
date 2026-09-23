@@ -91,8 +91,13 @@ describe('the queue sheet', () => {
     expect(screen.getByText('committing…')).toBeInTheDocument();
   });
 
-  it('holds every cancel while one is in flight', () => {
-    render(<QueueSheet queues={queues} now={NOW} cancelling="a" onCancel={vi.fn()} onClose={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Cancel Dart' })).toBeDisabled();
+  it('holds every cancel while one is in flight, and says which one it is', () => {
+    const two = { CONSTRUCTION: [] as BuildOrderView[], YARD: [dart('a', -5, 12), dart('b', 12, 30)] };
+    render(<QueueSheet queues={two} now={NOW} cancelling="a" onCancel={vi.fn()} onClose={vi.fn()} />);
+    const [first, second] = screen.getAllByRole('button', { name: 'Cancel Dart' });
+    expect(first).toBeDisabled();
+    expect(first).toHaveTextContent('Cancelling…');
+    expect(second).toBeDisabled();
+    expect(second).toHaveTextContent(/^Cancel$/);
   });
 });
