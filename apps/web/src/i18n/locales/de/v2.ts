@@ -27,3 +27,11 @@ export const ruler = {
   /** The button that closes that gap. */
   probe: 'Sonde senden',
 };
+
+/** Das v2-Blatt: sein Griff. */
+export const handle = {
+  /** Opens the sheet one height further. */
+  expand: 'Erweitern',
+  /** At the top: settles it one height lower. */
+  collapse: 'Einklappen',
+};

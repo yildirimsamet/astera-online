@@ -43,7 +43,7 @@
 - ~~F1.2 yazı tipleri~~ bitti.
 - ~~F1.3 ikonlar~~ bitti.
 - **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, ~~B12 halkaları~~, ~~kaynak ölçeri~~,
-  ~~B5~~, ~~B6~~, **v2 Sheet**, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
+  ~~B5~~, ~~B6~~, ~~v2 Sheet~~, **sonra B12'nin kuyruk sayfası** (iptal → `Confirm`; `ui/QueueStrip.tsx`
   içindeki `CancelConfirm` dışa aktarılıp yeniden kullanılır — "iptal Confirm açar" testi orada).
 
 ## Biten işler
@@ -113,6 +113,14 @@
   (Bring = `text-v2-self` amblemli, Single/Probe = `text-v2-warn`), sonra kalan okunmadı. UNREAD: `counter.noteShapeUnread`
   · `dossier.shapeUnreadNote`. NONE / okuma yok: hiçbir şey. Satır 2 (`data-matchup-wing`): kanadın her sınıfı için
   `matchupExposure`. Yeni metin yok, hepsi mevcut anahtarlar.
+- F1.4 · v2 Sheet: `lib/sheet.ts` — `Detent` = `peek` | `half` | `full`, `nextDetent(detents, cur, 'up'|'down')` (yukarı
+  tepede durur, en alttan aşağı `null` = kapan), `dragStep(dy)` (±40 px eşik). `apps/web/src/v2/kit/Sheet.tsx` —
+  `detents` (varsayılan half+full; bağlam kartı `['peek','half','full']`), yükseklik peek `max-h-[140px]` / half
+  `55dvh` / full `92dvh`; tutamaç butonu (`handle.expand` / tepede `handle.collapse`, 5 dil) dokununca bir basamak;
+  baş bölgesinden sürükleme (bırakma `window`'da dinlenir, sürüklemeden sonraki tıklama yutulur); peek'te perde yok
+  ve `aria-modal=false` (galaksi canlı), half/full'de `data-scrim` (`useOwnPress`); Escape, X, `onBack`; `children`
+  fonksiyon olabilir (detent'i alır: kart → dosya). `bottom: var(--v2-dock-h, 0px)` — F2'de kabuk dock yüksekliğini
+  bu değişkene yazacak. Masaüstünde `max-w-xl` ortalı. Build'de yeni sınıfların hepsi derlendi (kontrol edildi).
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi

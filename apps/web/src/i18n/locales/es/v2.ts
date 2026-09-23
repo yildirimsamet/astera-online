@@ -27,3 +27,11 @@ export const ruler = {
   /** The button that closes that gap. */
   probe: 'Enviar una sonda',
 };
+
+/** La hoja v2: su asa. */
+export const handle = {
+  /** Opens the sheet one height further. */
+  expand: 'Ampliar',
+  /** At the top: settles it one height lower. */
+  collapse: 'Reducir',
+};

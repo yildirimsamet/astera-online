@@ -27,3 +27,11 @@ export const ruler = {
   /** The button that closes that gap. */
   probe: 'Sonda gönder',
 };
+
+/** v2 sayfası: tutamacı. */
+export const handle = {
+  /** Opens the sheet one height further. */
+  expand: 'Genişlet',
+  /** At the top: settles it one height lower. */
+  collapse: 'Daralt',
+};

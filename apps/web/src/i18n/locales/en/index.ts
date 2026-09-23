@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { hold, lane, meter, ruler } from './v2.js';
+import { handle, hold, lane, meter, ruler } from './v2.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -98,6 +98,7 @@ export const en = {
   lane,
   meter,
   ruler,
+  handle,
 } as const;
 
 /**

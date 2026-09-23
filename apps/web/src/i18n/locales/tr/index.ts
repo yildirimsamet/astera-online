@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { hold, lane, meter, ruler } from './v2.js';
+import { handle, hold, lane, meter, ruler } from './v2.js';
 import type { Resources } from '../en/index.js';
 
 /**
@@ -92,4 +92,5 @@ export const tr: Resources = {
   lane,
   meter,
   ruler,
+  handle,
 };
