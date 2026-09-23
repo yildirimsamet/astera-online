@@ -43,6 +43,15 @@ export function compact(value: number): string {
 }
 
 /**
+ * A STORE ON THE TOP BAR (spec B1): whole up to 99,999, short above it.
+ *
+ * Whole where a price is still checked against it digit by digit; past six
+ * figures three meters no longer fit a 350px bar, and the economy detail one tap
+ * away prints the full figure.
+ */
+export const stock = (value: number): string => (Math.round(value) < 100_000 ? full(value) : compact(value));
+
+/**
  * A FIGURE TOO SMALL TO ROUND. Owner report — the per-craft fuel rate.
  *
  * `compact` rounds, which is right for everything a player spends and wrong for a

@@ -11,3 +11,11 @@ export const lane = {
   /** Une place vide dans la file. */
   free: '+ Place libre',
 };
+
+/** B1 : une jauge de ressource dans la barre du haut. */
+export const meter = {
+  /** Read by a screen reader: the stock against the store. */
+  reading: '{{resource}} : {{value}} sur {{cap}}',
+  /** The same, when the store is full. */
+  full: '{{resource}} : {{value}} sur {{cap}}, entrepôt plein',
+};

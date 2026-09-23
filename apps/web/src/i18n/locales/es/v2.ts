@@ -11,3 +11,11 @@ export const lane = {
   /** Un hueco vacío en la cola. */
   free: '+ Hueco libre',
 };
+
+/** B1: un medidor de recurso en la barra superior. */
+export const meter = {
+  /** Read by a screen reader: the stock against the store. */
+  reading: '{{resource}}: {{value}} de {{cap}}',
+  /** The same, when the store is full. */
+  full: '{{resource}}: {{value}} de {{cap}}, almacén lleno',
+};

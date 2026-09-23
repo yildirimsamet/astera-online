@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { hold, lane } from './v2.js';
+import { hold, lane, meter } from './v2.js';
 import type { Resources } from '../en/index.js';
 
 /** French resources share the source language's structure and interpolation contract. */
@@ -83,4 +83,5 @@ export const fr: Resources = {
   convoy,
   hold,
   lane,
+  meter,
 };

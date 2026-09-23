@@ -13,3 +13,11 @@ export const lane = {
   /** A slot in the lane with nothing in it. */
   free: '+ Free slot',
 };
+
+/** B1: a resource meter on the top bar. */
+export const meter = {
+  /** Read by a screen reader: the stock against the store. */
+  reading: '{{resource}}: {{value}} of {{cap}}',
+  /** The same, when the store is full. */
+  full: '{{resource}}: {{value}} of {{cap}}, store full',
+};

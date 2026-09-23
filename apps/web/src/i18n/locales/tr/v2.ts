@@ -11,3 +11,11 @@ export const lane = {
   /** Hatta boş duran yer. */
   free: '+ Boş hat',
 };
+
+/** B1: üst çubuktaki kaynak ölçeri. */
+export const meter = {
+  /** Read by a screen reader: the stock against the store. */
+  reading: '{{resource}}: {{value}} / {{cap}}',
+  /** The same, when the store is full. */
+  full: '{{resource}}: {{value}} / {{cap}}, depo dolu',
+};

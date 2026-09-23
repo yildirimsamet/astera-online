@@ -11,3 +11,11 @@ export const lane = {
   /** Ein leerer Platz in der Schlange. */
   free: '+ Freier Platz',
 };
+
+/** B1: eine Ressourcenanzeige in der oberen Leiste. */
+export const meter = {
+  /** Read by a screen reader: the stock against the store. */
+  reading: '{{resource}}: {{value}} von {{cap}}',
+  /** The same, when the store is full. */
+  full: '{{resource}}: {{value}} von {{cap}}, Lager voll',
+};
