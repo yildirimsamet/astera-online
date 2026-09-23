@@ -77,7 +77,9 @@ export function TopBar({
   ].join(' · ');
 
   return (
-    <header className="flex h-12 items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui">
+    // The notch is added to the row, not taken from it: `viewport-fit=cover` makes the
+    // inset real on a notched phone, and inside a fixed h-12 it left the row ~1 px.
+    <header className="flex h-[calc(3rem+env(safe-area-inset-top))] items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui">
       <button
         type="button"
         aria-label={chipName}
