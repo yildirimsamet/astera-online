@@ -1,6 +1,7 @@
 import type { ClarityState, FleetStatus } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n/index.js';
+import { CLARITY_BARS, CLARITY_WORD } from '../lib/clarity.js';
 import { staleness } from '../lib/time.js';
 
 /**
@@ -16,14 +17,6 @@ import { staleness } from '../lib/time.js';
  * Rendering the second as the first would tell the player they know something
  * they do not, which is the one lie this UI is not allowed to tell.
  */
-
-const SEGMENTS: Record<ClarityState, number> = {
-  FULL: 5,
-  CLEAR: 4,
-  INTERMITTENT: 3,
-  DEGRADED: 2,
-  BLIND: 1,
-};
 
 const TONE: Record<ClarityState, string> = {
   FULL: 'text-clarity-full',
@@ -43,15 +36,6 @@ const FILL: Record<ClarityState, string> = {
 
 export const clarityTone = (state: ClarityState): string => TONE[state];
 
-/** The band as a word, for the screen reader. Keys, so it follows the language. */
-const STATE_WORD = {
-  FULL: 'clarity.stateFull',
-  CLEAR: 'clarity.stateClear',
-  INTERMITTENT: 'clarity.stateIntermittent',
-  DEGRADED: 'clarity.stateDegraded',
-  BLIND: 'clarity.stateBlind',
-} as const satisfies Record<ClarityState, string>;
-
 /**
  * THE READING, AS THREE KEYS RATHER THAN A TEMPLATE.
  *
@@ -68,12 +52,12 @@ const FLEET_WORD = {
 
 /** Signal-strength bars. Five steps, one per clarity band. */
 export function ClarityBars({ state }: { state: ClarityState }) {
-  const lit = SEGMENTS[state];
+  const lit = CLARITY_BARS[state];
   return (
     <span
       className="inline-flex items-end gap-[2px]"
       role="img"
-      aria-label={i18n.t('clarity.barsLabel', { state: i18n.t(STATE_WORD[state]) })}
+      aria-label={i18n.t('clarity.barsLabel', { state: i18n.t(CLARITY_WORD[state]) })}
     >
       {[0, 1, 2, 3, 4].map((i) => (
         <span

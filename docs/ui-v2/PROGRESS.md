@@ -42,7 +42,7 @@
 - ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
 - ~~F1.2 yazı tipleri~~ bitti.
 - ~~F1.3 ikonlar~~ bitti.
-- **F1.4 kit (sıradaki), bu sırayla:** B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
+- **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, **B12** halka sayaç, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
@@ -74,6 +74,16 @@
   onay tıklaması `useOwnPress` ile; `disabledReason` varsa etiket yerine sebep, silahsız. `tone`: `self` | `hostile`.
   Metinler yeni ad alanı `hold` (`locales/*/v2.ts`, dizinlere kayıtlı) — v2 kit metinleri bu dosyalara eklenir.
   Tailwind v2 sınıflarını derliyor (build'de `--color-v2-self` ve `bg-v2-self/10` görüldü).
+- F1.4 · B8 `d6c7894`: `apps/web/src/v2/kit/ClassEmblem.tsx` — SKIRMISHER `c-sk` ▲, BULWARK `c-bw` ⬢, LANCE `c-ln` ◆,
+  SUPPORT `c-sp` ●; `classEmblemId(cls)`; başlık `combatClassLabel` (i18n/names.ts); `decorative` yazılı adın
+  yanında sessiz. Renk yok: rengi kimin gemisi olduğu verir.
+- F1.4 · B7: `apps/web/src/lib/clarity.ts` — `CLARITY_BARS` (FULL 5 … BLIND 1), `CLARITY_WORD` (i18n anahtarları),
+  `ageTier(dk)` → `fresh` <60 · `aging` <360 · `stale` <1440 · `old` (K11). Eski `ui/Clarity.tsx` artık bunları içe
+  aktarıyor (F10'da eski silinince v2 kırılmasın). `apps/web/src/v2/kit/Freshness.tsx` — `ClarityMark` (5 çubuk +
+  kelime, tek `role="img"`), `AgeStamp` (`staleness()`, `data-age`), `AgedThumb` (yuvarlak resim; netlik →
+  `brightness-*`, yaş → `.v2-grain` + `old`'da soluk; BLIND → kesikli çerçeve + "?", resim yok, `alt` etiket olur).
+  Gren `src/v2/surfaces.css` (styles.css içe aktarıyor; SVG gürültü, `data-age` ile şiddet). **F10 notu:** yanan
+  çubuklar eski `bg-clarity-*` token'larını kullanıyor (parlaklık rampası); F10 bunları silmemeli, v2'ye taşımalı.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
