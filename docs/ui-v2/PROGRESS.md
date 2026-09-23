@@ -41,8 +41,8 @@
 **F1 · v2 temeli.** Sıra: (1) token'lar, (2) yazı tipi, (3) ikonlar, (4) kit bileşenleri.
 - ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
 - ~~F1.2 yazı tipleri~~ bitti.
-- **F1.3 ikonlar (sıradaki):** `docs/ui-v2/icons.svg` → `apps/web/src/v2/icons/`.
-- F1.4 kit: B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
+- ~~F1.3 ikonlar~~ bitti.
+- **F1.4 kit (sıradaki), bu sırayla:** B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
@@ -65,6 +65,9 @@
   latin-ext dahil); IBM Plex Mono 400/500 artık gerçekten içe aktarılıyor (bugünkü tema adı kullanıyordu ama
   hiç yüklemiyordu → sistem yazı tipine düşüyordu). Genişlik: Tailwind `font-stretch-75%` / `font-stretch-125%`.
   Koruyucu: `test/v2/fonts.test.ts` (içe aktarım + aile adı paketin tanımladığıyla aynı).
+- F1.3 (2026-09-23): `apps/web/src/v2/icons.tsx` — tek `Icon` bileşeni, `id` ile seçilir (`i-*` çizgi 1.75,
+  `c-*` dolgu amblem, `m-*`/`sel` işaret 1.6); `isIconId` tip koruyucusu. 40 şekil `docs/ui-v2/icons.svg` ile
+  birebir (test şekil şekil karşılaştırıyor: `test/v2/icons.test.tsx`). Başlıksız ikon `aria-hidden`.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
