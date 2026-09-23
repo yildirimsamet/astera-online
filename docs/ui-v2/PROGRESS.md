@@ -52,6 +52,23 @@
 | F9 | 3D gezegenler (16 `.glb`, Draco → meshopt, LOD) | Bekliyor |
 | F10 | Temizlik | Bekliyor |
 
+## Sahip geri bildirimi (2026-09-24) — F3'ün geri kalanından ÖNCE
+Sahip: *"Bana o tasarımları gösterip başka bir şey yapmamalısın."* Taslak ekran görüntüleri
+`docs/ui-v2/design-mocks/` altında (image*.png): HUD (image, image copy 4), atmosfer, renk, netlik, ekranlar
+(image copy 5: dosya, fırlatma, filo; 6: üs, rapor, istihbarat; 7: araştırma, klan, sen yokken; 8: masaüstü).
+Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler:
+1. Aktif gezegene yakınlaşma belli değil → sağ üstte küçük saydam "eve dön" düğmesi (eski disk Home'u gibi).
+2. Aktif olay kart kapanınca görünmüyor → Now hattının altında solda küçük saydam olay çipi ("⇄ Ticaret gemisi 47 dk").
+3. Havuz (Works) nerede, nasıl toplanır belli değil.
+4. Zil düğmesi: eski daha güzeldi → taslaktaki gibi kenarlıklı küçük kare, sayaç rozeti KIRMIZI.
+5. Sol üst komutan çipi profil düğmesi gibi görünüyor ama menü açıyor.
+6. Dock saydam olsun, altında galaksi görünsün.
+7. Sohbet düğmesi görünür bir yere geri gelsin (küçük, saydam; okunmamış işaretli).
+8. Üs › Production: rafinerilerin render'ı varken kaynak ikonları kullanılıyor (?).
+9. Üs sekmeleri yazıları taşıyor ("PRODUCTIONNTEL"); kısaltma/kesme yok.
+10. Now hattı taslaktaki gibi değil: kenarlara yapışık şerit yerine içeriden yuvarlak kart.
+11. Genel: taslaklara benzer olmalı (fırlatma satırları tek satır + küçük stepper, Filo tam sayfa, vb.).
+
 ## Sıradaki iş
 **F3 · Hedef dosyası, Fırlatma, Filo; S1, S2.** Şartname: B10, B11, B14, E2, E3, E4, K8 ve sunucu tablosu S1/S2
 (`grep -n "^#### B10 ·\|^#### B11 ·\|^#### B14 ·\|^#### E2 ·\|^#### E3 ·\|^#### E4 ·\|^| K8\|^| S1\|^| S2" docs/ui-v2/gozlemevi.md`).
