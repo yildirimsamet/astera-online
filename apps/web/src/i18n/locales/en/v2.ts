@@ -21,3 +21,11 @@ export const meter = {
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} of {{cap}}, store full',
 };
+
+/** B5: the force ruler. */
+export const ruler = {
+  /** In place of the defence strip when nothing was ever measured. */
+  unknown: 'No probe: their defence is unknown',
+  /** The button that closes that gap. */
+  probe: 'Send a probe',
+};

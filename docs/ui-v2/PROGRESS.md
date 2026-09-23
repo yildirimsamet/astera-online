@@ -43,7 +43,7 @@
 - ~~F1.2 yazı tipleri~~ bitti.
 - ~~F1.3 ikonlar~~ bitti.
 - **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, ~~B12 halkaları~~, ~~kaynak ölçeri~~,
-  **B5** (+ kaçış çizgisi), B6, v2 Sheet, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
+  ~~B5~~, **B6**, v2 Sheet, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
   içindeki `CancelConfirm` dışa aktarılıp yeniden kullanılır — "iptal Confirm açar" testi orada).
 
 ## Biten işler
@@ -97,6 +97,15 @@
   değer + 2 px çizgi (kaynak rengi, `data-fill`), dolu/taşmışta ucunda `bg-v2-warn` çentik (`data-full`), kırmızı yok;
   `onOpen` varsa buton, yoksa `role="img"`; ad `meter.reading` / `meter.full` (5 dil), kaynak adı `statusBar.*Label`.
   Vault güvenli dilimi (`vaultProtected`) üst çubukta yok; şartnameye göre E5 üretim satırında.
+- F1.4 · B5 güç cetveli: `lib/ruler.ts` — `ForceReading`/`ForceLines` tipleri buraya taşındı (eski `ForceCompare`
+  yeniden dışa aktarıyor, `LaunchSheet` değişmedi) ve `rulerTop(...)` = en büyük × 1,15, iki anlamlı basamağa yukarı.
+  `apps/web/src/v2/kit/ForceRuler.tsx` — eski `ForceCompare` ile aynı proplar (+ `onProbe`): kanat şeridi (`bg-v2-self`),
+  savunma şeridi (tabana kadar dolu `bg-v2-ink-3`, bant `.v2-hatch`), şeritte `clears` (turkuaz kenar) / `breaks`
+  (açık kenar) aralık işaretleri ve `escape-line` (sarı kesikli); açıklama listesi mevcut `counter.escapeAt`,
+  `linesClears`, `linesBreaks`; hüküm `counter.escape{Run,Stand,Unsure}`; kayıp, notlar, "Bu ne?" kuralı (+ kaçış
+  kuralı). Bakılmamışsa şerit yok: `ruler.unknown` + `ruler.probe` butonu (5 dil). `.v2-hatch` `surfaces.css`'te.
+  **Sapma (şartnameye uygun):** eski bileşen, okuma varken çizgileri eksene katmayıp kırpıyordu; şartname
+  `breaks` üstünü eksene katıyor, v2 öyle yapıyor. `children` B6 satırı için.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi

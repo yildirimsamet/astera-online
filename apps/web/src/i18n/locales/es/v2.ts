@@ -19,3 +19,11 @@ export const meter = {
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} de {{cap}}, almacén lleno',
 };
+
+/** B5: la regla de fuerzas. */
+export const ruler = {
+  /** In place of the defence strip when nothing was ever measured. */
+  unknown: 'Sin sonda: su defensa es desconocida',
+  /** The button that closes that gap. */
+  probe: 'Enviar una sonda',
+};

@@ -19,3 +19,11 @@ export const meter = {
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} / {{cap}}, depo dolu',
 };
+
+/** B5: güç cetveli. */
+export const ruler = {
+  /** In place of the defence strip when nothing was ever measured. */
+  unknown: 'Sonda yok: savunma bilinmiyor',
+  /** The button that closes that gap. */
+  probe: 'Sonda gönder',
+};

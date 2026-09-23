@@ -19,3 +19,11 @@ export const meter = {
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} von {{cap}}, Lager voll',
 };
+
+/** B5: das Kräftelineal. */
+export const ruler = {
+  /** In place of the defence strip when nothing was ever measured. */
+  unknown: 'Keine Sonde: ihre Verteidigung ist unbekannt',
+  /** The button that closes that gap. */
+  probe: 'Sonde senden',
+};

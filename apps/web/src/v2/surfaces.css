@@ -21,3 +21,16 @@
 .v2-grain[data-age='aging']::after {
   opacity: 0.3;
 }
+
+/*
+ * HATCH: the part of a reading nobody measured (B5). The same mark wherever a
+ * figure is a band rather than a point — a probe's defence, a forecast line the
+ * reading leaves open — so a commander who learns it once reads it everywhere.
+ */
+.v2-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-v2-ink-2) 55%, transparent) 0 3px,
+    color-mix(in oklab, var(--color-v2-ink-2) 15%, transparent) 3px 6px
+  );
+}

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ESCAPE, type EscapeVerdict } from '@astera/rules';
 import { compact } from '../lib/format.js';
+import type { ForceLines, ForceReading } from '../lib/ruler.js';
 import { staleness } from '../lib/time.js';
 
 /**
@@ -38,26 +39,8 @@ import { staleness } from '../lib/time.js';
  * while the figures, estimate and fuel stay together as the fleet is adjusted.
  */
 
-export interface ForceReading {
-  low: number;
-  high: number;
-  /** Where it came from, already worded: `sourceLabel` from the dossier. */
-  source: string;
-  /**
-   * MINUTES SINCE IT WAS TRUE — NULL MEANS LIVE, and that is not zero.
-   *
-   * A world's defence is a frozen record and a pirate in a Telescope circle is
-   * being looked at right now. Printing "0m old" over a live reading would demote
-   * current sight to a very fresh memory.
-   */
-  ageMinutes: number | null;
-}
-
-/** `forecastLines`: armed-unit resource value at each limit, least to most favourable. */
-export interface ForceLines {
-  clears: { low: number; high: number };
-  breaks: { low: number; high: number };
-}
+/** The shapes live in `lib/ruler.ts`, shared with the v2 force ruler (B5). */
+export type { ForceLines, ForceReading } from '../lib/ruler.js';
 
 const HATCH = 'repeating-linear-gradient(45deg, rgb(255 255 255 / 22%) 0 3px, transparent 3px 6px)';
 
