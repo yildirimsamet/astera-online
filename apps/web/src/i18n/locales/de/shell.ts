@@ -137,7 +137,7 @@ export const signals = {
   eventsHeading: 'Was ist passiert?',
   openEvent: 'Zugehöriger Bericht öffnen',
   /** The eyebrow on a galaxy-wide row, so it is never mistaken for personal news. */
-  worldEvent: 'Galaxy-Ereignis',
+  worldEvent: 'Galaxie-Ereignis',
   empty:
     'Noch nichts. Die Galaxie sagt Ihnen, wann eine Flotte gegen Sie vorgeht, wann eine Sonde gefangen wird und wann Ihre eigenen Schiffe heimkehren.',
   repeat: '×{{count}}',

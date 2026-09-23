@@ -1,7 +1,7 @@
 export const chronicle = {
   eyebrow: 'Die letzten 24 Stunden',
-  title: 'Galaxy Chronicle',
-  launcher: 'Öffnen Sie den Galaxy Chronicle',
+  title: 'Galaxie-Chronik',
+  launcher: 'Galaxie-Chronik öffnen',
   launcherQuiet: 'Galaxie ruhig',
   launcherBombardment: '{{planet}} unter Beschuss',
   launcherCoreTier: '{{planet}} hat Stufe {{tier}} erreicht',

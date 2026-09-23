@@ -346,6 +346,18 @@ describe('every added language keeps the locale contract', () => {
     expect([...tree.keys()].sort()).toEqual([...ENGLISH.keys()].sort());
   });
 
+  /*
+   * Seen in the v2 bell at 350 px: a German signal headed "GALAXY-EREIGNIS" in a
+   * tree that says "Galaxie" everywhere else. "Galaxy Focus" is excepted: it names a
+   * control and is written that way in every language until the clan pages move (F6).
+   */
+  it('names the galaxy in German, not in English', () => {
+    const english = [...flatten(de)]
+      .filter(([, text]) => /\bGalaxy\b(?! Focus)/.test(text))
+      .map(([key, text]) => `${key}: ${text}`);
+    expect(english).toEqual([]);
+  });
+
   it('has no blank strings in any locale', () => {
     const blank = Object.entries(LOCALES).flatMap(([language, locale]) =>
       [...flatten(locale)]
