@@ -188,7 +188,7 @@ function Shell({
        * commitment is inside it — without leaving the rest of the screen live too.
        */
       data-focus-rail
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 border-t border-line bg-void/92"
+      className="pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 border-t border-line bg-void/92"
       aria-label={t('focus.shellLabel', { title })}
     >
       {/* The rail. Always present, and the whole control when collapsed. */}

@@ -101,6 +101,8 @@ export const view = {
   radar: 'Radar-Reichweite',
   radarDetail: 'Wo dein Radar vor anfliegenden Flotten warnt',
   events: 'Leitfaden zu Galaxie-Ereignissen',
+  /** The round button under the View chip: the disc's old Home mark. */
+  home: 'Zu deiner Welt fliegen',
 };
 
 /** B3: der Kontextplatz, immer nur eine Karte. */

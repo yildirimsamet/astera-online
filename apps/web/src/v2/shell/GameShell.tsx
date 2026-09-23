@@ -120,11 +120,16 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         onNow={setNowOpen}
       />
 
-      <main className="relative flex-1">{galaxy({ homeRequest, worldsRequest, onPanel: route })}</main>
-
-      <div className="relative z-50 shrink-0">
-        <HudDock active={active} onSelect={onSelect} />
-      </div>
+      {/*
+        THE GALAXY RUNS UNDER THE DOCK (owner, 2026-09-24): the dock is see-through and floats over
+        the bottom of the scene, so everything the galaxy anchors to its foot sits `--v2-dock-h` up.
+      */}
+      <main className="relative flex-1">
+        {galaxy({ homeRequest, worldsRequest, onPanel: route })}
+        <div className="absolute inset-x-0 bottom-0 z-50">
+          <HudDock active={active} onSelect={onSelect} />
+        </div>
+      </main>
 
       {fleetOpen && (
         <FleetHost

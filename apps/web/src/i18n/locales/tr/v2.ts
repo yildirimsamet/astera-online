@@ -101,6 +101,8 @@ export const view = {
   radar: 'Radar menzili',
   radarDetail: 'Radarının gelen filoyu haber verdiği alan',
   events: 'Galaksi olayları rehberi',
+  /** The round button under the View chip: the disc's old Home mark. */
+  home: 'Dünyana uç',
 };
 
 /** B3: bağlam yuvası, bir seferde tek kart. */

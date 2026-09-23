@@ -5,6 +5,7 @@ import { contextSlot, slotKey, threatKeyOf } from '../../lib/contextSlot.js';
 import type { Directive, DirectiveKind } from '../../lib/directives.js';
 import { compact } from '../../lib/format.js';
 import { useAccordion } from '../../lib/accordion.js';
+import { EVENT_NAME } from '../../lib/nowLine.js';
 import { contactFor, flightTitle, incomingDetail } from '../../lib/flights.js';
 import { countdown } from '../../lib/time.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
@@ -33,12 +34,6 @@ const SUGGESTION_LABEL = {
   growth: 'directives.kindGrowth',
   idle: 'directives.kindIdle',
 } as const satisfies Record<DirectiveKind, string>;
-
-const EVENT_NAME = {
-  TRADE_SHIP: 'trade.chip',
-  INTERGALACTIC_CONVOY: 'galaxy.intergalacticConvoy',
-  ASTEROID_SHOWER: 'galaxy.asteroidShower',
-} as const satisfies Record<ActiveGalaxyEvent['kind'], string>;
 
 interface Action {
   label: string;
@@ -359,5 +354,7 @@ export function ContextSlot({
     );
   }
 
-  return card === null ? null : <div className="pointer-events-none absolute inset-x-2 bottom-2 z-20">{card}</div>;
+  return card === null
+    ? null
+    : <div className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20">{card}</div>;
 }

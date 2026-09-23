@@ -39,7 +39,7 @@ describe('Galaxy pressed again', () => {
    * focus instead, which is right for a lesson and wrong for the dock.
    */
   it('flies home and primes the active world, as the disc Home mark did', () => {
-    const home = source.slice(source.indexOf('useRequest(homeRequest'), source.indexOf('useRequest(worldsRequest'));
+    const home = source.slice(source.indexOf('const flyHome'), source.indexOf('useRequest(homeRequest'));
     expect(home).toMatch(/close\(\);\s*focusPlanet\(activePlanetId\);\s*setHomeSignal/);
   });
 
@@ -47,6 +47,22 @@ describe('Galaxy pressed again', () => {
     const app = readFileSync('src/App.tsx', 'utf8');
     expect(app).toMatch(/homeRequest=\{homeRequest\}/);
     expect(app).not.toMatch(/goHome=\{goHome\}/);
+  });
+});
+
+describe('the galaxy corners (owner, 2026-09-24)', () => {
+  it('flies home from the round button exactly as the dock does', () => {
+    expect(source).toMatch(/useRequest\(homeRequest, flyHome\)/);
+    expect(source).toMatch(/<HomeChip onHome=\{flyHome\} \/>/);
+  });
+
+  it('keeps the event chips out of the way while a selection has the screen', () => {
+    expect(source).toMatch(/!slotSelected && \(\s*<EventChips/);
+    expect(source).toMatch(/selected=\{slotSelected\}/);
+  });
+
+  it('opens the chat under the bell, and never in the rehearsal', () => {
+    expect(source).toMatch(/showGuidance && showChat && \(\s*<ChatChip[\s\S]*?onPanel\('chat'\)/);
   });
 });
 

@@ -95,7 +95,8 @@ export function nowEntries(input: NowInput): NowEntry[] {
   return entries.sort((a, b) => a.tier - b.tier || a.at - b.at);
 }
 
-const EVENT_NAME = {
+/** Each galaxy event by its own name, for every surface that names one. */
+export const EVENT_NAME = {
   TRADE_SHIP: 'trade.chip',
   INTERGALACTIC_CONVOY: 'galaxy.intergalacticConvoy',
   ASTEROID_SHOWER: 'galaxy.asteroidShower',

@@ -49,7 +49,7 @@ export function Dock({ active, badges, onSelect, disabled = [] }: DockProps) {
   return (
     <nav
       aria-label={t('dock.label')}
-      className="flex border-t border-v2-line bg-v2-deep pb-[env(safe-area-inset-bottom)] font-v2-ui"
+      className="flex border-t border-v2-line/70 bg-gradient-to-t from-v2-deep/95 to-v2-deep/60 pb-[env(safe-area-inset-bottom)] font-v2-ui"
     >
       {DOCK_TABS.map((tab) => {
         const label = t(LABEL[tab]);

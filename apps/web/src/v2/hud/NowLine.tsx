@@ -44,12 +44,14 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose }: 
 
   return (
     <>
+      {/* An inset card under the top bar, as the mock draws it — not a strip bled to the edges. */}
+      <div className="px-2.5 pt-2">
       <button
         type="button"
         data-tone={enemy ? 'hostile' : 'self'}
         onClick={onOpen}
-        className={`flex h-7 w-full items-center gap-2 border-b px-3 text-left font-v2-ui ${
-          enemy ? 'border-v2-hostile/40 bg-v2-hostile/15' : 'border-v2-line bg-v2-panel/85'
+        className={`flex h-8 w-full items-center gap-2 rounded-control border px-3 text-left font-v2-ui ${
+          enemy ? 'border-v2-hostile/50 bg-v2-hostile/15' : 'border-v2-line bg-v2-panel/85'
         }`}
       >
         <span className="sr-only">{t('now.label')}</span>
@@ -72,6 +74,7 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose }: 
           <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">+{entries.length - 1}</span>
         )}
       </button>
+      </div>
 
       {open && (
         <Sheet title={t('now.sheet')} onClose={onClose}>

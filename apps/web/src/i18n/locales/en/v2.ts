@@ -103,6 +103,8 @@ export const view = {
   radar: 'Radar reach',
   radarDetail: 'Where your radar warns of incoming fleets',
   events: 'Galaxy events guide',
+  /** The round button under the View chip: the disc's old Home mark. */
+  home: 'Fly to your world',
 };
 
 /** B3: the context slot, one card at a time. */

@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
+import { ChatChip, EventChips, HomeChip } from '../v2/hud/GalaxyCorners.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
@@ -24,6 +25,7 @@ import {
   usePending,
   usePirates,
   usePlanet,
+  useChatUnread,
   useClanBadge,
   useClanWar,
   useClanWarActions,
@@ -355,6 +357,7 @@ export function GalaxyView({
   // The clan mark on the disc needs to know whether there is a clan layer at all,
   // and whether anything is waiting inside it. Same read the menu row used.
   const clanBadge = useClanBadge();
+  const chatUnread = useChatUnread().data?.count ?? 0;
   const say = useToast();
   const now = useNow(5_000);
   /**
@@ -1009,6 +1012,8 @@ export function GalaxyView({
   const showPlanetFocus = selected
     ? planetFocusRailVisible(selected.isOwned === true, transferOriginId)
     : false;
+  /** Something on the disc has the screen (B3): the context slot yields, the event chips step aside. */
+  const slotSelected = showPlanetFocus || (focus !== null && !(focus.kind === 'planet' && focus.id === activePlanetId));
   const settlementInFlight = selected !== undefined && threads.some((thread) =>
     thread.kind === 'settlement'
     && thread.leg === 'outbound'
@@ -1025,12 +1030,14 @@ export function GalaxyView({
   };
 
   // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
-  useRequest(homeRequest, () => {
+  /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
+  const flyHome = (): void => {
     if (activePlanetId === null) return;
     close();
     focusPlanet(activePlanetId);
     setHomeSignal((n) => n + 1);
-  });
+  };
+  useRequest(homeRequest, flyHome);
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
 
   const toggle = (): void => {
@@ -1103,6 +1110,23 @@ export function GalaxyView({
       */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
+          {/*
+            THE EVENTS RUNNING NOW, with their time left (owner, 2026-09-24): the context card
+            says it once and is closed; this stays. Not while something is selected — the
+            selection keeps its screen (B3), and the attack pill takes this corner then.
+          */}
+          {showGuidance && season.data?.status === 'live' && !slotSelected && (
+            <EventChips
+              events={activeEvents(galaxyEvents.data?.events ?? [], now)}
+              now={now}
+              onOpen={(event) => {
+                if (event.kind === 'TRADE_SHIP') setFocus({ kind: 'tradeShip', id: event.id });
+                else if (event.kind === 'INTERGALACTIC_CONVOY') setFocus({ kind: 'intergalacticConvoy', id: event.id });
+                else { setEventsGuideOpen(true); return; }
+                setDetail(true);
+              }}
+            />
+          )}
           <FpsReadout />
         </div>
 
@@ -1116,8 +1140,15 @@ export function GalaxyView({
           `data-sensor-toggles`, not `data-disc-controls`: the chip carries the sensor
           switches now, and the Academy reveals it with them for its Telescope exercise.
         */}
-        <div data-sensor-toggles className="pointer-events-none">
-          <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
+        <div className="pointer-events-none flex flex-col items-end gap-1.5">
+          <div data-sensor-toggles className="pointer-events-none">
+            <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
+          </div>
+          {/* Home and chat, back in plain sight (owner, 2026-09-24): never under a card or a rail. */}
+          {showGuidance && <HomeChip onHome={flyHome} />}
+          {showGuidance && showChat && (
+            <ChatChip unread={chatUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
+          )}
         </div>
       </div>
 
@@ -1453,7 +1484,7 @@ export function GalaxyView({
         })()}
 
       {season.data?.status === 'frozen' && panel === null && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-30 mx-auto w-full max-w-sm px-2">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto w-full max-w-sm px-2">
           <NextSeason endsAt={season.data.endsAt} />
         </div>
       )}
@@ -1487,7 +1518,7 @@ export function GalaxyView({
       {showGuidance && planet.data && panel === null && season.data?.status === 'live' && (
         <ContextSlot
           now={now}
-          selected={showPlanetFocus || (focus !== null && !(focus.kind === 'planet' && focus.id === activePlanetId))}
+          selected={slotSelected}
           threats={threads.filter((thread) => thread.kind === 'incoming')}
           contacts={contacts}
           events={activeEvents(galaxyEvents.data?.events ?? [], now)}

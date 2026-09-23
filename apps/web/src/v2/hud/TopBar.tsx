@@ -131,13 +131,14 @@ export function TopBar({
         aria-label={bell.unseen > 0 ? t('signals.beaconUnread', { count: bell.unseen }) : t('signals.beacon')}
         {...(bell.urgent ? { 'data-urgent': '' } : {})}
         onClick={onBell}
-        className="relative grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
+        className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line-hi bg-v2-panel/70 text-v2-ink"
       >
-        <Icon id="i-bell" className={`size-5 ${bell.urgent ? 'animate-pulse text-v2-ink' : ''}`} />
+        <Icon id="i-bell" className={`size-4 ${bell.urgent ? 'animate-pulse' : ''}`} />
+        {/* Red, as the mock and the owner have it: the count is the one thing on the bar that asks to be read. */}
         {bell.unseen > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-v2-self px-1 text-center font-v2-mono text-micro leading-4 text-v2-self-ink"
+            className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-v2-hostile px-1 text-center font-v2-mono text-micro font-semibold leading-4 text-v2-ink ring-2 ring-v2-deep"
           >
             {bell.unseen > 9 ? '9+' : bell.unseen}
           </span>

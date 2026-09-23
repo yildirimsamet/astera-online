@@ -101,6 +101,8 @@ export const view = {
   radar: 'Portée du radar',
   radarDetail: 'Où ton radar signale les flottes entrantes',
   events: 'Guide des événements galactiques',
+  /** The round button under the View chip: the disc's old Home mark. */
+  home: 'Aller à ton monde',
 };
 
 /** B3 : l’emplacement de contexte, une carte à la fois. */
