@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { combatValue, type Fleet } from '@astera/rules';
@@ -34,6 +34,13 @@ const event: IntergalacticConvoyEvent = {
     shipDropChanceAtFullQuality: 0.15,
     maxAwardedShips: 3,
   },
+};
+
+/** The held commit (B9, K4): its one button, and Enter twice as the keyboard's hold. */
+const commitControl = () => within(screen.getByTestId('convoy-commit')).getByRole('button');
+const hold = () => {
+  fireEvent.keyDown(commitControl(), { key: 'Enter' });
+  fireEvent.keyDown(commitControl(), { key: 'Enter' });
 };
 
 describe('the intergalactic convoy commitment surface', () => {
@@ -93,8 +100,10 @@ describe('the intergalactic convoy commitment surface', () => {
     expect(screen.getByText('Firepower').nextSibling).toHaveTextContent(/[1-9]/);
     // The column names the cap the occurrence carries, not a figure baked into copy.
     expect(screen.getByText('4h cap')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('convoy-review'));
-    fireEvent.click(screen.getByTestId('convoy-confirm'));
+    // This strike is final; the sheet says so of the strike, not of every launch (K8).
+    expect(screen.getByText(/this strike cannot be recalled/i)).toBeInTheDocument();
+    expect(screen.queryByText(/a launch cannot be recalled/i)).toBeNull();
+    hold();
 
     await waitFor(() => { expect(launch).toHaveBeenCalledTimes(1); });
     const [input, key] = launch.mock.calls[0] as [
@@ -115,10 +124,8 @@ describe('the intergalactic convoy commitment surface', () => {
     const launch = openSheet({ DART: 2, PIKE: 3 });
     fireEvent.click(screen.getByRole('button', { name: 'Send every Dart' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send every Pike' }));
-    fireEvent.click(screen.getByTestId('convoy-review'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Send fewer Dart' }));
-    expect(screen.queryByTestId('convoy-confirm')).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Dart quantity' })).toHaveValue('1');
     expect(screen.getByText('Firepower').nextSibling).toHaveTextContent(
       full(combatValue({ DART: 1, PIKE: 3 })),
@@ -126,12 +133,11 @@ describe('the intergalactic convoy commitment surface', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Send fewer Dart' }));
     expect(screen.getByRole('textbox', { name: 'Dart quantity' })).toHaveValue('0');
-    expect(screen.getByTestId('convoy-review')).toBeEnabled();
+    expect(commitControl()).toBeEnabled();
     expect(screen.getByText('Firepower').nextSibling).toHaveTextContent(
       full(combatValue({ PIKE: 3 })),
     );
-    fireEvent.click(screen.getByTestId('convoy-review'));
-    fireEvent.click(screen.getByTestId('convoy-confirm'));
+    hold();
     await waitFor(() => { expect(launch).toHaveBeenCalledTimes(1); });
     expect(launch.mock.calls[0]?.[0]).toHaveProperty('fleet', { PIKE: 3 });
   });
@@ -143,22 +149,22 @@ describe('the intergalactic convoy commitment surface', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Dart quantity' }), {
       target: { value },
     });
-    expect(screen.getByTestId('convoy-review')).toBeEnabled();
+    expect(commitControl()).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Send more Dart' }));
     expect(screen.getByRole('textbox', { name: 'Dart quantity' })).toHaveValue('1');
-    expect(screen.getByTestId('convoy-review')).toBeEnabled();
+    expect(commitControl()).toBeEnabled();
   });
 
   it('requires a wing after removing every ship and firepower when only transports remain', () => {
     openSheet({ DART: 1, COURIER: 1 });
     fireEvent.click(screen.getByRole('button', { name: 'Send every Dart' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send fewer Dart' }));
-    expect(screen.getByTestId('convoy-review')).toBeDisabled();
-    expect(screen.getByTestId('convoy-review')).toHaveTextContent('Choose a strike wing');
+    expect(commitControl()).toBeDisabled();
+    expect(commitControl()).toHaveTextContent('Choose a strike wing');
     fireEvent.click(screen.getByRole('button', { name: 'Send every Courier' }));
-    expect(screen.getByTestId('convoy-review')).toBeDisabled();
-    expect(screen.getByTestId('convoy-review')).toHaveTextContent('Send at least one armed ship');
+    expect(commitControl()).toBeDisabled();
+    expect(commitControl()).toHaveTextContent('Send at least one armed ship');
     fireEvent.click(screen.getByRole('button', { name: 'Send more Dart' }));
-    expect(screen.getByTestId('convoy-review')).toBeEnabled();
+    expect(commitControl()).toBeEnabled();
   });
 });

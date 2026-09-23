@@ -11,7 +11,7 @@ export const convoy = {
   engagement: 'Firing window: 5 seconds.',
   engagementLabel: 'Firing window',
   engagementDuration: '5 sec',
-  irreversible: 'A launch cannot be recalled. Fuel for both legs is paid up front.',
+  irreversible: 'This strike cannot be recalled. Fuel for both legs is paid up front.',
   sheetEyebrow: '{{duration}} left in this crossing',
   sheetTitle: 'Strike the convoy',
   fleetHeading: 'Strike wing',

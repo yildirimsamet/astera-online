@@ -5,6 +5,7 @@ import { roomOf } from '../../lib/fleetPage.js';
 import type { GalaxyPlanet } from '../../api/schemas.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
+import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
@@ -231,6 +232,24 @@ function Views({ view }: { view: string }) {
     return (
       <TransferSheet
         target={{ id: 'p-9', name: 'Hollow', position: { x: 600, y: 0, z: 200 } }}
+        planet={launchWorld}
+        onClose={noop}
+        onLaunched={noop}
+      />
+    );
+  }
+  if (view === 'convoy') {
+    return (
+      <IntergalacticConvoySheet
+        event={{
+          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'INTERGALACTIC_CONVOY',
+          startsAt: new Date(NOW - 10 * MIN), endsAt: new Date(NOW + 110 * MIN),
+          appearsAtMinute: 1140, expiresAtMinute: 1260,
+          route: { from: { x: -2000, y: 0, z: 0 }, to: { x: 2000, y: 0, z: 0 }, velocity: { x: 100 / 3, y: 0, z: 0 }, speed: 100 / 3 },
+          visual: { formationVersion: 1 },
+          rewardPolicy: { resourceCapHours: 4, fullRewardForceRatio: 1, shipDropFullFirepower: 5780, shipDropChanceAtFullQuality: 0.15, maxAwardedShips: 3 },
+        }}
+        seasonStart={new Date(NOW - 1150 * MIN)}
         planet={launchWorld}
         onClose={noop}
         onLaunched={noop}

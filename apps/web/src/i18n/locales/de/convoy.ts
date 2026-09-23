@@ -11,7 +11,7 @@ export const convoy = {
   engagement: 'Schussfenster: 5 Sekunden.',
   engagementLabel: 'Schussfenster',
   engagementDuration: '5 Sek.',
-  irreversible: 'Ein gestarteter Angriff kann nicht zurückgerufen werden. Den Treibstoff für Hin- und Rückflug bezahlst du beim Start.',
+  irreversible: 'Dieser Schlag kann nicht zurückgerufen werden. Den Treibstoff für Hin- und Rückflug bezahlst du beim Start.',
   sheetEyebrow: 'Noch {{duration}} für diese Durchreise',
   sheetTitle: 'Konvoi angreifen',
   fleetHeading: 'Angriffsflotte',

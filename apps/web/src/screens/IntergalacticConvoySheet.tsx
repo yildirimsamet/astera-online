@@ -29,19 +29,14 @@ import { hullLabel } from '../i18n/names.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Button, Sheet } from '../ui/kit/index.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 const GOODS = ['alloy', 'crystal', 'deuterium'] as const;
 
-interface Confirmation {
-  key: string;
-  quotedAt: Date;
-  route: IntergalacticConvoyRoute;
-}
-
-/** Dedicated commitment surface: no defender forecast, casualties, or recall. */
+/** Dedicated commitment surface: no defender forecast, casualties, or recall. Held commit (B9, K4). */
 export function IntergalacticConvoySheet({
   event,
   seasonStart,
@@ -63,7 +58,6 @@ export function IntergalacticConvoySheet({
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
   const now = useNow(5_000);
   const [fleet, setFleet] = useState<Fleet>({});
-  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const mods = flightModifiers(planet);
   const nowMinutes = (now - seasonStart.getTime()) / 60_000;
   const firepower = combatValue(fleet);
@@ -99,7 +93,6 @@ export function IntergalacticConvoySheet({
         effect: event.rewardPolicy,
       })
     : null;
-  const shownRoute = confirmation?.route ?? route;
 
   useEffect(() => {
     onAim?.(route?.rendezvous ?? null);
@@ -112,7 +105,7 @@ export function IntergalacticConvoySheet({
   );
   const ships = fleetCount(fleet);
   const windowOpen = now < event.endsAt.getTime();
-  const fuel = shownRoute?.fuel ?? 0;
+  const fuel = route?.fuel ?? 0;
   /*
     THE SPENT QUOTA IS ORDERED AHEAD OF THE FLEET STATE, because it is the one
     refusal no amount of choosing fixes: this world is finished with this convoy
@@ -150,7 +143,49 @@ export function IntergalacticConvoySheet({
       if (selected > 0) next[hull] = selected;
       return next;
     });
-    setConfirmation(null);
+  };
+
+  /**
+   * THE QUOTE IS STAMPED WHEN THE HOLD COMPLETES. D201.
+   *
+   * The server's freshness guard counts from `quotedAt`, and the route is solved again at that
+   * same instant so the age and the figures describe one moment. The old review step stamped it
+   * at the first press and flew it at the second; a held commit is one act, so it is one stamp,
+   * and the budget is spent on nothing but the request.
+   */
+  const commit = (): void => {
+    const quotedAt = serverNow();
+    const fresh: IntergalacticConvoyRoute | null = planIntergalacticConvoyRoute(
+      planet.planet.position,
+      event,
+      (quotedAt - seasonStart.getTime()) / 60_000,
+      fleet,
+      planet.fleet,
+      planet.ground,
+      mods,
+    );
+    if (!fresh) {
+      say(t('convoy.cannotReach'), 'error');
+      return;
+    }
+    launch.mutate({
+      occurrenceId: event.id,
+      fleet,
+      quotedAt: new Date(quotedAt),
+      quotedFlightSeconds: fresh.oneWayMinutes * 60,
+      quotedArriveAt: new Date(quotedAt + fresh.oneWayMinutes * 60_000),
+      idempotencyKey: createIdempotencyKey(),
+    }, {
+      onSuccess: (result) => {
+        say(t('convoy.launched', { duration: duration(result.flightSeconds / 60) }));
+        onLaunched();
+      },
+      onError: (error) => {
+        say(error instanceof ApiError && error.code === 'CONVOY_QUOTE_CHANGED'
+          ? t('convoy.quoteChanged')
+          : describe(error), 'error');
+      },
+    });
   };
 
   return (
@@ -158,113 +193,45 @@ export function IntergalacticConvoySheet({
       eyebrow={t('convoy.sheetEyebrow', { duration: duration(minutesLeft) })}
       title={t('convoy.sheetTitle')}
       onClose={onClose}
-      footer={confirmation && quote ? (
-        <div className="flex gap-2">
-          <Button className="flex-1" onClick={() => { setConfirmation(null); }}>
-            {t('convoy.back')}
-          </Button>
-          <Button
-            testId="convoy-confirm"
-            variant="commit"
-            size="lg"
-            className="flex-[2]"
-            disabled={launch.isPending || launchBlocked}
-            onClick={() => {
-              launch.mutate({
-                occurrenceId: event.id,
-                fleet,
-                quotedAt: confirmation.quotedAt,
-                quotedFlightSeconds: confirmation.route.oneWayMinutes * 60,
-                quotedArriveAt: new Date(
-                  confirmation.quotedAt.getTime() + confirmation.route.oneWayMinutes * 60_000,
-                ),
-                idempotencyKey: confirmation.key,
-              }, {
-                onSuccess: (result) => {
-                  say(t('convoy.launched', { duration: duration(result.flightSeconds / 60) }));
-                  onLaunched();
-                },
-                onError: (error) => {
-                  if (error instanceof ApiError && error.code === 'CONVOY_QUOTE_CHANGED') {
-                    say(t('convoy.quoteChanged'), 'error');
-                  } else {
-                    say(describe(error), 'error');
-                  }
-                  setConfirmation(null);
-                },
-              });
-            }}
-          >
-            {launchBlocked
-              ? t('faults.launchBlock.SHIPYARD_REVOLT')
-              : launch.isPending ? t('convoy.sending') : t('convoy.commit')}
-          </Button>
+      detents={['full']}
+      footer={
+        <div data-testid="convoy-commit">
+          <HoldButton
+            tone="hostile"
+            label={t('convoy.commit')}
+            disabledReason={launch.isPending ? t('convoy.sending') : refusal}
+            onCommit={commit}
+          />
         </div>
-      ) : (
-        <Button
-          testId="convoy-review"
-          variant="commit"
-          size="lg"
-          full
-          disabled={refusal !== null}
-          onClick={() => {
-            /*
-              THE QUOTE IS STAMPED AT THE PRESS, NOT AT THE LAST TICK. D201.
-
-              `now` comes from a five-second interval, so `new Date(now)` handed the
-              server a quote that was already up to five seconds old before the
-              confirmation sheet had even been drawn — five seconds spent out of the
-              only budget the freshness guard has. The route is solved again at the
-              same instant so the age and the figures on the sheet describe one
-              moment rather than two.
-            */
-            const quotedAt = serverNow();
-            const fresh = planIntergalacticConvoyRoute(
-              planet.planet.position,
-              event,
-              (quotedAt - seasonStart.getTime()) / 60_000,
-              fleet,
-              planet.fleet,
-              planet.ground,
-              mods,
-            );
-            if (!fresh) return;
-            setConfirmation({
-              key: createIdempotencyKey(),
-              quotedAt: new Date(quotedAt),
-              route: fresh,
-            });
-          }}
-        >
-          {refusal ?? t('convoy.reviewing')}
-        </Button>
-      )}
+      }
     >
-      <p className="text-caption leading-snug text-bone">{t('convoy.boundary')}</p>
-      <p className="mt-1 text-caption text-dim">{t('convoy.engagement')}</p>
-      <p className="mt-1 text-caption text-dim">{t('convoy.irreversible')}</p>
+      <div className="mt-1 grid gap-1 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+        <p className="text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
+        <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.engagement')}</p>
+        <p className="text-micro leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
+      </div>
 
-      <h3 className="legend mt-5">{t('convoy.fleetHeading')}</h3>
-      <div className="mt-2 space-y-2">
+      <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.fleetHeading')}</h3>
+      <div className="mt-1.5 overflow-hidden rounded-control border border-v2-line">
         {owned.map((hull) => {
           const available = planet.fleet[hull] ?? 0;
           const art = HULL_ART[hull];
           return (
-            <div key={hull} data-hull-row={hull} className="rounded-chip border border-line-soft px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span data-art className="socket size-10 shrink-0 rounded-control">
+            <div key={hull} data-hull-row={hull} className={`grid gap-2 border-b border-v2-line px-2.5 py-2.5 last:border-b-0 ${(fleet[hull] ?? 0) > 0 ? 'bg-v2-hostile/5' : ''}`}>
+              <div className="flex items-center gap-2.5">
+                <span data-art className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise">
                   {art ? (
                     <img src={art} alt="" aria-hidden className="size-9 object-contain" loading="lazy" />
                   ) : (
-                    <HullMark hull={hull} className="size-6 text-dim" />
+                    <HullMark hull={hull} className="size-6 text-v2-ink-3" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="name block truncate text-bone">{hullLabel(hull)}</span>
-                  <span className="num text-label text-dim">{t('convoy.atHome', { count: available })}</span>
+                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
+                  <span className="font-v2-mono text-micro text-v2-ink-3">{t('convoy.atHome', { count: available })}</span>
                 </span>
               </div>
-              <div className="mt-2">
+              <div>
                 <QuantityStepper
                   value={fleet[hull] ?? 0}
                   min={0}
@@ -283,7 +250,7 @@ export function IntergalacticConvoySheet({
         })}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
         <Reading label={t('convoy.firepower')} value={full(firepower)} />
         <Reading label={t('convoy.cargo')} value={full(cargo)} />
         <Reading
@@ -306,27 +273,27 @@ export function IntergalacticConvoySheet({
         it means, so the heading row states all three once and the rows stay as
         tight as they were.
       */}
-      <h3 className="legend mt-5">{t('convoy.actual')}</h3>
-      <div className="mt-2 space-y-2">
+      <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.actual')}</h3>
+      <div className="mt-1.5 grid gap-1.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
         <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2">
           <span />
-          <span className="legend text-micro text-faint">{t('convoy.cap', { hours: event.rewardPolicy.resourceCapHours })}</span>
-          <span className="legend text-micro text-faint">{t('convoy.raw')}</span>
-          <span className="legend min-w-14 text-right text-micro text-faint">
+          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('convoy.cap', { hours: event.rewardPolicy.resourceCapHours })}</span>
+          <span className="text-micro uppercase tracking-wide text-v2-ink-3">{t('convoy.raw')}</span>
+          <span className="min-w-14 text-right text-micro uppercase tracking-wide text-v2-ink-3">
             {t('convoy.landed')}
           </span>
         </div>
         {GOODS.map((good) => (
           <div key={good} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 text-caption">
             <img src={RESOURCE_ART[good]} alt={t(`trade.${good}`)} className="size-4 object-contain" />
-            <span className="num text-faint">{full(productionCap[good])}</span>
-            <span className="num text-dim">{full(quote?.rawResourceReward[good] ?? ZERO[good])}</span>
-            <span className="num min-w-14 text-right text-bone">{full(quote?.resourceReward[good] ?? ZERO[good])}</span>
+            <span className="font-v2-mono text-v2-ink-3">{full(productionCap[good])}</span>
+            <span className="font-v2-mono text-v2-ink-2">{full(quote?.rawResourceReward[good] ?? ZERO[good])}</span>
+            <span className="min-w-14 text-right font-v2-mono text-v2-ink">{full(quote?.resourceReward[good] ?? ZERO[good])}</span>
           </div>
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
         <Reading
           label={t('convoy.shipChance')}
           value={`${compact((quote?.shipDropChance ?? 0) * 100)}%`}
@@ -340,8 +307,8 @@ export function IntergalacticConvoySheet({
               })
             : '—'}
         />
-        <Reading label={t('convoy.outbound')} value={shownRoute ? duration(shownRoute.oneWayMinutes) : '—'} />
-        <Reading label={t('convoy.home')} value={shownRoute ? duration(shownRoute.exposureMinutes) : '—'} />
+        <Reading label={t('convoy.outbound')} value={route ? duration(route.oneWayMinutes) : '—'} />
+        <Reading label={t('convoy.home')} value={route ? duration(route.exposureMinutes) : '—'} />
         <Reading label={t('convoy.fuel')} value={full(fuel)} />
       </div>
     </Sheet>
@@ -350,9 +317,9 @@ export function IntergalacticConvoySheet({
 
 function Reading({ label, value }: { label: string; value: string }) {
   return (
-    <div className="plate plate-inset rounded-chip px-3 py-2">
-      <p className="legend text-micro text-faint">{label}</p>
-      <p className="num mt-1 text-body text-bone">{value}</p>
+    <div className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-1.5">
+      <p className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
+      <p className="mt-0.5 font-v2-mono text-caption text-v2-ink">{value}</p>
     </div>
   );
 }
