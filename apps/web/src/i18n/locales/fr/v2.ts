@@ -90,3 +90,15 @@ export const topBar = {
   /** The shield's time on the commander chip: whole hours, rounded down. */
   hours: '{{h}}h',
 };
+
+/** La puce Vue : calques, guide des événements et légende de la galaxie. */
+export const view = {
+  chip: 'Vue',
+  title: 'Vue',
+  layers: 'Calques',
+  telescope: 'Portée du télescope',
+  telescopeDetail: 'Où tes mondes voient l’état des flottes',
+  radar: 'Portée du radar',
+  radarDetail: 'Où ton radar signale les flottes entrantes',
+  events: 'Guide des événements galactiques',
+};

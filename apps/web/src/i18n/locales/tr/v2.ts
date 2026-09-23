@@ -90,3 +90,15 @@ export const topBar = {
   /** The shield's time on the commander chip: whole hours, rounded down. */
   hours: '{{h}}s',
 };
+
+/** Görünüm çipi ve sayfası: katmanlar, olay rehberi ve galaksi başlığı. */
+export const view = {
+  chip: 'Görünüm',
+  title: 'Görünüm',
+  layers: 'Katmanlar',
+  telescope: 'Teleskop menzili',
+  telescopeDetail: 'Dünyalarının filo durumunu gördüğü alan',
+  radar: 'Radar menzili',
+  radarDetail: 'Radarının gelen filoyu haber verdiği alan',
+  events: 'Galaksi olayları rehberi',
+};

@@ -12,10 +12,10 @@ import { Gallery } from '../../src/v2/gallery/Gallery.js';
 describe('the v2 gallery', () => {
   it('draws every section', () => {
     render(<ToastProvider><Gallery view={null} /></ToastProvider>);
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(9);
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(10);
   });
 
-  it.each(['peek', 'queue', 'bell'])('draws the %s view', (view) => {
+  it.each(['peek', 'queue', 'bell', 'view'])('draws the %s view', (view) => {
     render(<ToastProvider><Gallery view={view} /></ToastProvider>);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });

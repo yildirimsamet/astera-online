@@ -92,3 +92,15 @@ export const topBar = {
   /** The shield's time on the commander chip: whole hours, rounded down. */
   hours: '{{h}}h',
 };
+
+/** The View chip and sheet: layers, the events guide and the galaxy caption. */
+export const view = {
+  chip: 'View',
+  title: 'View',
+  layers: 'Layers',
+  telescope: 'Telescope reach',
+  telescopeDetail: 'Where your worlds see fleet status',
+  radar: 'Radar reach',
+  radarDetail: 'Where your radar warns of incoming fleets',
+  events: 'Galaxy events guide',
+};

@@ -90,3 +90,15 @@ export const topBar = {
   /** The shield's time on the commander chip: whole hours, rounded down. */
   hours: '{{h}}h',
 };
+
+/** Der Ansicht-Chip: Ebenen, Ereignisführer und die Galaxie-Überschrift. */
+export const view = {
+  chip: 'Ansicht',
+  title: 'Ansicht',
+  layers: 'Ebenen',
+  telescope: 'Teleskop-Reichweite',
+  telescopeDetail: 'Wo deine Welten den Flottenstatus sehen',
+  radar: 'Radar-Reichweite',
+  radarDetail: 'Wo dein Radar vor anfliegenden Flotten warnt',
+  events: 'Leitfaden zu Galaxie-Ereignissen',
+};

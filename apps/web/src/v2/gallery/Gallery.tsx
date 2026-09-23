@@ -7,6 +7,7 @@ import { CollectBubble } from '../hud/CollectBubble.js';
 import { Dock } from '../hud/Dock.js';
 import { NowLine } from '../hud/NowLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
+import { ViewChip, ViewSheet } from '../hud/ViewSheet.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
 import { ForceRuler } from '../kit/ForceRuler.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../kit/Freshness.js';
@@ -97,6 +98,22 @@ function Views({ view }: { view: string }) {
         signals={<p className="text-caption text-v2-ink-2">Signal rows draw here (SignalsFeed).</p>}
         chronicle={null}
         chat={null}
+      />
+    );
+  }
+  if (view === 'view') {
+    return (
+      <ViewSheet
+        shard="EU-1"
+        online={6}
+        onlineToday={41}
+        counts={{ worlds: 212, fleetsAway: 3, rocks: 9, pirates: 2, wrecks: 1 }}
+        telescope
+        onToggleTelescope={noop}
+        radar={false}
+        onToggleRadar={noop}
+        onOpenEvents={noop}
+        onClose={noop}
       />
     );
   }
@@ -219,6 +236,13 @@ export function Gallery({ view }: { view: string | null }) {
           />
         </Section>
       </div>
+
+      <Section title="view chip">
+        <div className="flex gap-2 px-3">
+          <ViewChip layersOn onOpen={noop} />
+          <ViewChip layersOn={false} onOpen={noop} />
+        </div>
+      </Section>
 
       <Section title="B4 · dock">
         <Dock active="galaxy" badges={quiet} onSelect={noop} />

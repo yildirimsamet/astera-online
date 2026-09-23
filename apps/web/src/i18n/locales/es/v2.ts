@@ -90,3 +90,15 @@ export const topBar = {
   /** The shield's time on the commander chip: whole hours, rounded down. */
   hours: '{{h}}h',
 };
+
+/** El chip Vista: capas, guía de eventos y la leyenda de la galaxia. */
+export const view = {
+  chip: 'Vista',
+  title: 'Vista',
+  layers: 'Capas',
+  telescope: 'Alcance del telescopio',
+  telescopeDetail: 'Donde tus mundos ven el estado de las flotas',
+  radar: 'Alcance del radar',
+  radarDetail: 'Donde tu radar avisa de flotas entrantes',
+  events: 'Guía de eventos galácticos',
+};
