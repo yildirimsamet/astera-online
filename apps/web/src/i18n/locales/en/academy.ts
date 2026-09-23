@@ -54,7 +54,7 @@ export const academy = {
     "research": "Research improves your whole commander's capabilities. No research purchase is needed in this lesson.",
     "reinforcements": "Build two more Darts for the next raid.",
     "courier": "Build one Courier. Cargo ships carry loot but need combat ships to protect them.",
-    "raid": "Send two Darts and one Courier to the training world. The Courier brings more loot home.",
+    "raid": "Send all your Darts and the Courier to the training world. The Courier brings more loot home.",
     "raidReport": "Open the battle notification, inspect what your cargo ship brought home, then close the report.",
     "departure": "Congratulations! Your buildings, surviving fleet and earned resources will move into your real galaxy."
   }

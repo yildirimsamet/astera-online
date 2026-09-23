@@ -1,5 +1,11 @@
+import { academyLessonFleet } from '@astera/rules';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { de } from '../src/i18n/locales/de/index.js';
+import { en } from '../src/i18n/locales/en/index.js';
+import { es } from '../src/i18n/locales/es/index.js';
+import { fr } from '../src/i18n/locales/fr/index.js';
+import { tr } from '../src/i18n/locales/tr/index.js';
 import { LAUNCH_HAND_SELECTORS, academyGateSelectors, handPick } from '../src/onboarding/Academy.jsx';
 import { QuantityStepper } from '../src/ui/QuantityStepper.js';
 
@@ -152,6 +158,22 @@ describe('the two launch lessons are the same lesson', () => {
       id, busy: false, isMenu: false, row: undefined,
     });
     expect(academyGateSelectors(shape('pirate'))).toEqual(academyGateSelectors(shape('raid')));
+  });
+
+  /*
+    THE CARD MUST NOT NAME A COUNT THE PICKER WILL NOT PRODUCE. The raid sends
+    every Dart standing — the pirate lesson's survivors plus the two
+    reinforcements (`academyLessonFleet('raid')`) — and Max, the only gesture the
+    hand teaches, fills exactly that. The card said "two Darts" while the picker
+    filled four: a player who trusted the card and stepped down to two was
+    refused, silently.
+  */
+  it('asks the raid for every Dart, not a count the picker will not fill', () => {
+    expect(academyLessonFleet('raid').DART).toBeGreaterThan(2);
+    const two = { en: /\btwo\b/i, tr: /\biki\b/i, de: /\bzwei\b/i, es: /\bdos\b/i, fr: /\bdeux\b/i };
+    for (const [lng, words] of Object.entries({ en, tr, de, es, fr })) {
+      expect(words.academy.steps.raid, lng).not.toMatch(two[lng as keyof typeof two]);
+    }
   });
 });
 

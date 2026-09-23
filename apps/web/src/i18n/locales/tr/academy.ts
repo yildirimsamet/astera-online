@@ -54,7 +54,7 @@ export const academy = {
     "research": "Araştırma, komutanının bütün gezegenlerindeki yeteneklerini geliştirir. Bu derste araştırma satın alman gerekmiyor.",
     "reinforcements": "Bir sonraki saldırı için iki Ok daha üret.",
     "courier": "Bir Kurye üret. Kargo gemileri ganimet taşır; korunmak için savaş gemilerine ihtiyaç duyar.",
-    "raid": "Eğitim gezegenine iki Ok ve bir Kurye gönder. Kurye daha fazla ganimeti eve getirir.",
+    "raid": "Eğitim gezegenine tüm Oklarını ve Kuryeyi gönder. Kurye daha fazla ganimeti eve getirir.",
     "raidReport": "Savaş bildirimini aç, kargo geminin getirdiklerini inceleyip raporu kapat.",
     "departure": "Tebrikler! Binaların, hayatta kalan filon ve kazandığın kaynaklar gerçek galaksine taşınacak."
   }

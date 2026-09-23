@@ -54,7 +54,7 @@ export const academy = {
     "research": "La Recherche améliore les capacités de ton commandant sur toutes ses planètes. Tu n'as pas besoin d'acheter de recherche pendant cette leçon.",
     "reinforcements": "Construis deux Flèches supplémentaires pour la prochaine attaque.",
     "courier": "Construis un Cargo. Les vaisseaux cargo transportent le butin, mais ont besoin de vaisseaux de combat pour les protéger.",
-    "raid": "Envoie deux Flèches et un Cargo vers la planète d'entraînement. Le Cargo te permettra de rapporter davantage de butin.",
+    "raid": "Envoie toutes tes Flèches et le Cargo vers la planète d'entraînement. Le Cargo te permettra de rapporter davantage de butin.",
     "raidReport": "Ouvre la notification de combat, examine ce que ton Cargo a rapporté, puis ferme le rapport.",
     "departure": "Félicitations ! Tes bâtiments, les vaisseaux de ta flotte qui ont survécu et les ressources que tu as obtenues seront transférés dans ta véritable galaxie."
   }

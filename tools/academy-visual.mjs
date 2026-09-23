@@ -49,6 +49,9 @@ export async function verifyAcademy(out) {
     await page.locator('[data-academy]').waitFor();
     requests.length = 0;
     let finished = false;
+    // Pressed once: the View sheet closes on the press, so a second pass through the
+    // Telescope step would find the switch hidden again and toggle the circle off.
+    let telescopeSwitched = false;
     for (let n = 0; n < 400; n++) {
       if (await page.getByLabel(/^(Commander name|Komutan adı)$/).count()) { finished = true; break; }
       const card = page.locator('[data-beat-card]');
@@ -98,7 +101,11 @@ export async function verifyAcademy(out) {
       const tab = { production: 'grow', intel: 'orbit', defend: 'defend', fleet: 'reach' }[id];
       if (tab) {
         await page.locator(`[data-tab="${tab}"]`).click();
-      } else if (id === 'telescope' && await page.locator('[data-sensor-toggle="telescope"]').getAttribute('aria-pressed') !== 'true') {
+      } else if (id === 'telescope' && !telescopeSwitched) {
+        telescopeSwitched = true;
+        // The switch lives in the v2 View sheet: open it first.
+        await page.locator('[data-view-chip]').click();
+        await page.waitForTimeout(800);
         await page.locator('[data-sensor-toggle="telescope"]').click();
         await page.waitForTimeout(1500);
         await page.screenshot({ path: `${out}/academy-telescope.png` });
@@ -106,12 +113,25 @@ export async function verifyAcademy(out) {
         await page.waitForTimeout(1000);
       } else if (await card.getByRole('button', { name: /^(Show the target|Hedefi göster)$/ }).count()) {
         await card.getByRole('button', { name: /^(Show the target|Hedefi göster)$/ }).click();
+        // The camera flies onto the target and the lesson asks for a tap on it (the
+        // Academy's `coachTap`): the launch opens from that tap, not from the button.
+        const tapTarget = page.locator('[data-academy-tap-target]');
+        await tapTarget.waitFor({ timeout: 15_000 });
+        await page.waitForTimeout(1500);
+        await tapTarget.click({ force: true });
         if (id === 'mine') {
           await page.locator('[data-academy-mining]').getByRole('button', { name: /send|gönder/i }).click();
         } else {
           const launch = page.locator('[data-academy-launch]');
-          await launch.getByRole('textbox', { name: /^(Dart quantity|Ok adedi)$/i }).fill('2');
-          if (id === 'raid') await launch.getByRole('textbox', { name: /^(Courier quantity|Kurye adedi)$/i }).fill('1');
+          // Max on every row, as the hand teaches: the lesson's fleet is
+          // `academyLessonFleet`, and a count typed by hand (the raid once got two
+          // Darts of four) is refused by the Academy's API without a toast.
+          for (let row = 0; row < 4; row += 1) {
+            const max = launch.locator('[data-count-max] button:not(:disabled)').first();
+            if (!(await max.count())) break;
+            await max.click();
+            await page.waitForTimeout(200);
+          }
           await launch.getByRole('button', { name: /^Send \d+ ships$|^\d+ gemi gönder$/ }).click();
           await page.screenshot({ path: `${out}/academy-${id}-launch.png` });
           await launch.getByRole('button', { name: /^Launch|^Gönder —/i }).click();

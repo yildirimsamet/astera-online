@@ -54,7 +54,7 @@ export const academy = {
     research: 'La investigación mejora las capacidades de todo tu mando. En esta lección no necesitas comprar ninguna mejora de investigación.',
     reinforcements: 'Construye dos Dart más para la próxima incursión.',
     courier: 'Construye un Mensajero. Las naves de carga transportan botín, pero necesitan escolta de combate.',
-    raid: 'Envía dos Dart y un Mensajero al mundo de entrenamiento. El Mensajero traerá más botín.',
+    raid: 'Envía todos tus Dart y el Mensajero al mundo de entrenamiento. El Mensajero traerá más botín.',
     raidReport: 'Abre el aviso de combate, comprueba lo que ha traído tu nave de carga y cierra el informe.',
     departure: '¡Enhorabuena! Tus edificios, las naves supervivientes y los recursos ganados pasarán a tu galaxia real.',
   },

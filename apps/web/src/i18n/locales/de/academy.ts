@@ -54,7 +54,7 @@ export const academy = {
     research: 'Forschung verbessert die Fähigkeiten deines Kommandanten. In dieser Lektion musst du noch nichts erforschen.',
     reinforcements: 'Baue zwei weitere Dart für den nächsten Überfall.',
     courier: 'Baue einen Kurier. Frachtschiffe transportieren Beute, brauchen aber Kampfschiffe zu ihrem Schutz.',
-    raid: 'Schicke zwei Dart und einen Kurier zur Übungswelt. Mit dem Kurier bringst du mehr Beute zurück.',
+    raid: 'Schicke alle deine Dart und den Kurier zur Übungswelt. Mit dem Kurier bringst du mehr Beute zurück.',
     raidReport: 'Öffne die Kampfmeldung, sieh dir die Beute deines Frachters an und schließe den Bericht.',
     departure: 'Glückwunsch! Deine Gebäude, deine verbliebene Flotte und deine verdienten Ressourcen ziehen mit dir in deine echte Galaxie.',
   },
