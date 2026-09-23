@@ -2257,6 +2257,44 @@ export const ABUSE = {
 } as const;
 
 /**
+ * TAKTİK GERİ ÇEKİLME — THE FLEET ESCAPE. Owner decision, 2026-09-23.
+ *
+ * OGame's tactical retreat, corrected twice by this engine's own numbers. The ships
+ * in a defending line lift off instead of fighting when the arriving wing fires at
+ * least `ratio` times what the line fires, the line would have been wiped out
+ * anyway, and the world's tank pays for the lift. The guns and the Aegis stay. The
+ * whole rule is `escape.ts`; these are its two dials.
+ *
+ * NOT A BULLY SWITCH ALONE. Owner, rejecting a commander-wide version: fights at
+ * 1–3× between equals stay ordinary, and a raider who keeps sending just under the
+ * line meets the bash limit and the recovery shield instead. Measured 2026-09-23: an
+ * attacker whose Shipyard is one level above the target's Veil can size a wing
+ * inside the window every time, so this rule stops blind overkill, not a careful
+ * killer. The Veil is the defender's lever against that.
+ */
+export const ESCAPE = {
+  /**
+   * THREE, AND FIXED. Measured 2026-09-23, the engine clears a mirrored line from
+   * 1.5× and the counter-built lines tried from 3×, so a 1:2 fight between near-equals
+   * is untouched. Whether running could forfeit a fight the line might have held is
+   * not the ratio's job: the DECISIVE guard in `resolveRaid` answers it, whatever the
+   * research, counters or Aegis. A RANDOM threshold was measured and
+   * refused: a raider plays the bottom of any range and a defender can only count
+   * on the top, so a roll between 3 and 4 raised the informed raider's kill rate
+   * from 72% to 87%.
+   */
+  ratio: 3,
+  /**
+   * THE LIFT IS A LAUNCH, SO IT BURNS LIKE ONE (T6). Owner: *"yakıt yetmedi,
+   * kaçamadı"*. The ships pay `missionFuel` for a round trip of this many units —
+   * 52 deuterium for a 48k T2 line, about two hours of a level-6 plant. A short hop
+   * would round to a drop and the gate would never close, which is a rule with no
+   * decision in it.
+   */
+  fuelDistance: 600,
+} as const;
+
+/**
  * THE MARKS A COMMANDER MAY KEEP ON THE DISC. D183, owner instruction:
  * *"Rival 5 kişiye kadar olsun. Farklı renklerde olsun. İnsanlar birden fazla
  * kişiyi işaretlemek istiyor."*
@@ -3362,8 +3400,16 @@ export const MULTI_WORLD = {
    * THE RULESET A NEW SEASON IS CREATED AT. 7 → 8 at D201, with the authored
    * fixed public-event calendar and Intergalactic Convoy. Older seasons retain
    * their persisted random calendars; this default affects new seasons only.
+   * 10 → 11 on 2026-09-23 with the fleet escape (`fleetEscapeRulesetVersion`).
    */
-  rulesetVersion: 10,
+  rulesetVersion: 11,
+  /**
+   * TAKTİK GERİ ÇEKİLME ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
+   * 2026-09-23. A live season keeps the battle rule it was dealt: a fleet its owner
+   * left home against a 10× raid under the old rule is not told mid-season that it
+   * would now have run. See `ESCAPE` and `escape.ts`.
+   */
+  fleetEscapeRulesetVersion: 11,
   /**
    * KLAN ORTAK SAVAŞI, AND ITS OWN BOUNDARY. Owner design, 2026-09-20.
    *

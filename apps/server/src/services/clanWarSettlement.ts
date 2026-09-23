@@ -13,9 +13,10 @@ import {
   fleetCargo,
   fleetCount,
   fleetEntries,
+  fleetEscapeApplies,
   garrisonOf,
   raidableStock,
-  resolveJointCombat,
+  resolveRaid,
   salvageCapacity,
   seededFrom,
   settleWreck,
@@ -248,19 +249,34 @@ export async function resolveClanWarBattle(
     war is re-derivable from its inputs, and a redelivered settlement would
     produce the same board (it never runs twice — `claimMission` sees to that).
   */
-  const result = resolveJointCombat(
+  /*
+    TAKTİK GERİ ÇEKİLME READS THE WHOLE POOL. Owner decision, 2026-09-23. The waves
+    arrive as one wing, so they are weighed together against the line — and a raid
+    the ships ran from is re-resolved from this same seed against the guns alone.
+  */
+  const raid = resolveRaid({
     stacks,
-    defenders,
-    defenceDark ? 0 : defender.shield,
-    seededFrom(mission.id),
-    { tech: defenderTech },
-  );
+    line: defenders,
+    shield: defenceDark ? 0 : defender.shield,
+    rng: () => seededFrom(mission.id),
+    defender: { tech: defenderTech },
+    deuterium: defender.deuterium,
+    escape: fleetEscapeApplies(input.rulesetVersion),
+  });
+  const result = raid.result;
+  const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
+  const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
+  const stood: Fleet = {};
+  for (const [hull, count] of fleetEntries(defenders)) {
+    if ((escaped[hull] ?? 0) === 0) stood[hull] = count;
+  }
 
   /* ── the defender's world ─────────────────────────────────────── */
 
   const defenderHome: Fleet = {};
   for (const [hull, standing] of fleetEntries(defender.homeFleet)) {
-    defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull)
+    // A ship that lifted off is as absent from the survivors as a Prospector.
+    defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull) || (escaped[hull] ?? 0) > 0
       ? standing
       : result.defenderSurvivors[hull] ?? 0;
   }
@@ -271,10 +287,11 @@ export async function resolveClanWarBattle(
   }
   await setUnits(tx, defender.planetId, defenderHome, 'home');
 
+  // The lift burned before anything reached a hold (see the raid lane).
   const exposedStock = {
     alloy: defender.alloy,
     crystal: defender.crystal,
-    deuterium: defender.deuterium,
+    deuterium: defender.deuterium - liftFuel,
   };
   const exposedBuffer = {
     alloy: defender.bufferAlloy,
@@ -321,7 +338,7 @@ export async function resolveClanWarBattle(
   await saveResources(tx, defender.planetId, {
     alloy: defender.alloy - loot.fromStock.alloy,
     crystal: defender.crystal - loot.fromStock.crystal,
-    deuterium: defender.deuterium - loot.fromStock.deuterium,
+    deuterium: exposedStock.deuterium - loot.fromStock.deuterium,
     bufferAlloy: defender.bufferAlloy - loot.fromBuffer.alloy,
     bufferCrystal: defender.bufferCrystal - loot.fromBuffer.crystal,
     bufferDeuterium: defender.bufferDeuterium - loot.fromBuffer.deuterium,
@@ -519,9 +536,10 @@ export async function resolveClanWarBattle(
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
     attackerFleet: aggregateOf(stacks),
-    defenderFleet: defenders,
+    defenderFleet: stood,
     defenceSalvage: result.defenceSalvage,
     colonyFaults,
+    fleetEscape: raid.escape,
     disruptedMinutes: 0,
     wreckValue: wreck ? wreck.alloy + wreck.crystal + wreck.deuterium : 0,
     salvage,
@@ -716,6 +734,9 @@ export async function resolveClanWarBattle(
       unitsLost: fleetCount(result.defenderLosses),
       theirLosses: fleetCount(result.attackerLosses),
       attackers: attackerCount,
+      ...(raid.escape
+        ? { escape: raid.escape.kind, escapeShips: fleetCount(raid.escape.ships) }
+        : {}),
       disruptedMinutes: 0,
     },
     at: defender.now,
@@ -739,6 +760,7 @@ export async function resolveClanWarBattle(
         unitsLost: fleetCount(lostByPlayer.get(playerId) ?? {}),
         shipsHome: fleetCount(survivedByPlayer.get(playerId) ?? {}),
         dominion: deltaByPlayer.get(playerId) ?? 0,
+        ...(raid.escape?.kind === 'ESCAPED' ? { targetFled: true } : {}),
       },
       at: defender.now,
       refId: mission.id,
@@ -773,6 +795,7 @@ export async function resolveClanWarBattle(
         unitsLost: fleetCount(result.attackerLosses),
         shipsHome: fleetCount(result.attackerSurvivors),
         dominion: adjusted,
+        ...(raid.escape?.kind === 'ESCAPED' ? { targetFled: true } : {}),
       },
       at: defender.now,
       refId: mission.id,

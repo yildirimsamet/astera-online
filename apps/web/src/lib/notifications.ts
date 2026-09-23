@@ -119,6 +119,9 @@ const raided = z.object({
   theirLosses: z.number().optional(),
   /** Optional: rows written before the works were reported are still readable. */
   disruptedMinutes: z.number().optional(),
+  /** Taktik geri çekilme: the ships ran, or would have and the tank was dry. */
+  escape: z.enum(['ESCAPED', 'STRANDED']).optional(),
+  escapeShips: z.number().int().nonnegative().optional(),
 });
 
 const raidResult = z.object({
@@ -149,6 +152,8 @@ const raidResult = z.object({
   unitsLost: z.number(),
   shipsHome: z.number(),
   dominion: z.number().int().safe().optional(),
+  /** The line emptied in front of the raid. Nothing about what it held. */
+  targetFled: z.boolean().optional(),
 });
 
 /**
@@ -688,6 +693,18 @@ export function describeNotification(notification: NotificationView, now: number
        * zero, and the works stated first because it is the largest of the three.
        */
       const clauses: string[] = [];
+      /*
+        THE SHIPS ARE THE HEADLINE WHEN THEY RAN — or when they could not. Without it a
+        defender whose whole fleet just outlived a raid three times its size read only
+        what was carried off, and one whose tank was dry read "20 units lost" with
+        nothing to say it was the fuel, not the fight, that lost them.
+      */
+      const { escape, escapeShips } = parsed.data;
+      if (escape === 'ESCAPED') {
+        clauses.push(i18n.t('notifications.raidedEscaped', { count: escapeShips ?? 0 }));
+      } else if (escape === 'STRANDED') {
+        clauses.push(i18n.t('notifications.raidedStranded', { count: escapeShips ?? 0 }));
+      }
       if (disruptedMinutes !== undefined && disruptedMinutes > 0) {
         clauses.push(i18n.t('notifications.raidedWorks', { time: duration(disruptedMinutes) }));
       }
@@ -743,6 +760,8 @@ export function describeNotification(notification: NotificationView, now: number
         const name = hullName(capturedHull);
         if (name !== null) took.unshift(i18n.t('pirate.captured', { hull: name }));
       }
+      // The line emptied in front of the raid: said first, because it is why nothing died.
+      if (parsed.data.targetFled === true) took.unshift(i18n.t('notifications.raidTargetFled'));
       const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
       return i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),

@@ -558,6 +558,15 @@ export function resolveJointCombat(
 }
 
 /**
+ * THE ONE ATTACKER AS A STACK — the exact stack `resolveCombat` has always fought
+ * with. Exported so a caller that needs the joint resolver's shape for a lone raid
+ * (`resolveRaid`) hands it the same stack rather than a lookalike: the parity test
+ * in `test/clan-war` holds only for this one.
+ */
+export const soloStack = (fleet: Fleet, side: CombatSide): JointAttackerStack =>
+  ({ contributionId: '', playerId: '', fleet, tech: side });
+
+/**
  * ONE ATTACKER, ONE DEFENDER — the ordinary raid, and every battle in the game
  * that is not a clan's joint war.
  *
@@ -573,7 +582,7 @@ export function resolveCombat(
   tech: CombatTech,
 ): CombatResult {
   const joint = resolveJointCombat(
-    [{ contributionId: '', playerId: '', fleet: attacker, tech: tech.attacker }],
+    [soloStack(attacker, tech.attacker)],
     defender,
     shield,
     rng,

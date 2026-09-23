@@ -1,6 +1,7 @@
 import { spatialHistory } from './spatialHistory.js';
 import { and, desc, eq, inArray, or } from 'drizzle-orm';
 import {
+  type EscapeOutcome,
   type FaultKind,
   MULTI_WORLD,
   PIRATE,
@@ -234,6 +235,17 @@ export interface BattleReportView {
    * probe is sold to learn, and a raid is not a probe.
    */
   colonyFaults: FaultKind[];
+  /**
+   * TAKTİK GERİ ÇEKİLME, TOLD TO EACH SIDE ONLY WHAT IT SAW. Owner decision, 2026-09-23.
+   *
+   * The defender gets the whole record: which ships lifted off and what the lift
+   * burned, or — `STRANDED` — that they would have run and the tank could not pay.
+   * The raider watched a line empty in front of it, so it is told the ships ran and
+   * nothing else: WHAT ran is a probe's product (D127), and a dry tank is a fact
+   * about somebody else's stores. A stranded fleet fought, and to the raider that
+   * report reads as any other fight — null.
+   */
+  fleetEscape: EscapeOutcome | { kind: 'ESCAPED' } | null;
   /**
    * WHERE THIS DEFEAT LEFT THE READER AGAINST THE RECOVERY SHIELD. DEFENDER ONLY.
    * Owner instruction, 2026-09-18.
@@ -763,6 +775,9 @@ async function readBattleReportsIn(
       cargoLimited: attacking && row.cargoLimited,
       defenceSalvage: attacking ? {} : row.defenceSalvage,
       colonyFaults: attacking ? [] : row.colonyFaults,
+      fleetEscape: attacking
+        ? row.fleetEscape?.kind === 'ESCAPED' ? { kind: 'ESCAPED' } : null
+        : row.fleetEscape,
       recovery: attacking || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
         ? null
         : {

@@ -32,6 +32,7 @@ import {
   satelliteSlots,
   satelliteCost,
   strategicStockpile,
+  fleetEscapeApplies,
   type BuildingId,
   type BuildingLevels,
   type HullId,
@@ -110,6 +111,7 @@ import { ActionButton, Price, StatStrip, TimeCost } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
+import { EscapeReadout } from '../ui/EscapeReadout.js';
 import { QueueStrip } from '../ui/QueueStrip.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { ClassChip, CounterCycle, CounterLine } from '../ui/CounterMark.js';
@@ -1554,9 +1556,14 @@ function Defend({
   const thornsStanding = planet.ground.THORN ?? 0;
   const harpoonsStanding = planet.ground.HARPOON ?? 0;
   const bastionsStanding = planet.ground.BASTION ?? 0;
+  // Taktik geri çekilme: stated on this tab only in a season dealt the rule.
+  const escapeRuled = fleetEscapeApplies(planet.rulesetVersion ?? 0);
 
   return (
     <>
+      {escapeRuled && (
+        <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium} />
+      )}
 
       <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />
       <InstrumentItemRow

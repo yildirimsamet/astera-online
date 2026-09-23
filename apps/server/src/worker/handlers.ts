@@ -25,8 +25,10 @@ import {
   SEASON,
   SERVERS,
   seasonRankRewardProgram,
-  resolveCombat,
+  fleetEscapeApplies,
+  resolveRaid,
   settleWreck,
+  soloStack,
   travelExact,
   vaultProtects,
   type Fleet,
@@ -758,12 +760,32 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     */
     const defenceDark = !defenceOnline(defender.faults, defender.empUntil, defender.now);
     const defenders = garrisonOf(defender.homeFleet, defenceDark ? {} : defender.ground);
-    // Seeded from the mission id: any report can be re-derived from its inputs,
-    // which makes battles auditable and bug reports reproducible.
-    const result = resolveCombat(
-      attackingFleet, defenders, defenceDark ? 0 : defender.shield, seededFrom(missionId),
-      { attacker: { tech: attackerTech }, defender: { tech: defenderTech } },
-    );
+    /*
+      TAKTİK GERİ ÇEKİLME. Owner decision, 2026-09-23 (`escape.ts`).
+
+      Seeded from the mission id: any report can be re-derived from its inputs, which
+      makes battles auditable and bug reports reproducible — and a raid the ships ran
+      from is resolved twice from that same seed, once standing and once without them.
+      The tank read here is the one the lift burns from; a season dealt before the
+      rule never runs.
+    */
+    const raid = resolveRaid({
+      stacks: [soloStack(attackingFleet, { tech: attackerTech })],
+      line: defenders,
+      shield: defenceDark ? 0 : defender.shield,
+      rng: () => seededFrom(missionId),
+      defender: { tech: defenderTech },
+      deuterium: defender.deuterium,
+      escape: fleetEscapeApplies(season.rulesetVersion),
+    });
+    const result = raid.result;
+    const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
+    const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
+    // The line that actually stood — the guns alone when the ships ran.
+    const stood: Fleet = {};
+    for (const [hull, count] of fleetEntries(defenders)) {
+      if ((escaped[hull] ?? 0) === 0) stood[hull] = count;
+    }
 
     // Defender: survivors, plus whatever salvages out of the wreckage.
     const defenderHome: Fleet = {};
@@ -776,8 +798,12 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
        * change that stops a raid killing miners would, without this branch,
        * delete every one of them on every raid instead. The rule and its
        * bookkeeping have to move together.
+       *
+       * AND SO IS A SHIP THAT LIFTED OFF. The escape resolves the raid against the
+       * guns alone, so the ships are exactly as absent from its survivors as a
+       * Prospector — and would be deleted by the same `?? 0`.
        */
-      defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull)
+      defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull) || (escaped[hull] ?? 0) > 0
         ? standing
         : result.defenderSurvivors[hull] ?? 0;
     }
@@ -797,10 +823,16 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
      * two different columns — deriving one from the other would silently overdraw
      * whichever pile happened to be smaller.
      */
+    /*
+      THE LIFT IS BURNED BEFORE THE RAIDER LOADS. The ships took off as the wing
+      arrived, so the deuterium they flew on was gone before anything reached a hold;
+      what the raider can take is what the tank held after. `resolveRaid` already
+      refused the lift to a tank that could not pay it, so this never goes negative.
+    */
     const exposedStock = {
       alloy: defender.alloy,
       crystal: defender.crystal,
-      deuterium: defender.deuterium,
+      deuterium: defender.deuterium - liftFuel,
     };
     const exposedBuffer = {
       alloy: defender.bufferAlloy,
@@ -861,7 +893,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     await saveResources(tx, defender.planetId, {
       alloy: defender.alloy - loot.fromStock.alloy,
       crystal: defender.crystal - loot.fromStock.crystal,
-      deuterium: defender.deuterium - loot.fromStock.deuterium,
+      deuterium: exposedStock.deuterium - loot.fromStock.deuterium,
       bufferAlloy: defender.bufferAlloy - loot.fromBuffer.alloy,
       bufferCrystal: defender.bufferCrystal - loot.fromBuffer.crystal,
       bufferDeuterium: defender.bufferDeuterium - loot.fromBuffer.deuterium,
@@ -1025,9 +1057,10 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defenderLosses: result.defenderLosses,
       // The two rosters that were on the board. Each side is shown only its own.
       attackerFleet: attackingFleet,
-      defenderFleet: defenders,
+      defenderFleet: stood,
       defenceSalvage: result.defenceSalvage,
       colonyFaults,
+      fleetEscape: raid.escape,
       /** Historical reports retain this field, but PvP no longer stops production. */
       disruptedMinutes: 0,
       // Below `DEBRIS.minimum` no field is written at all, so the report says
@@ -1274,6 +1307,10 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         // report, so this reveals nothing new — it lets "you repelled a raid" say
         // what the raid paid, which is the difference between a fact and a result.
         theirLosses: fleetCount(result.attackerLosses),
+        // Taktik geri çekilme: the ships ran, or would have and the tank was dry.
+        ...(raid.escape
+          ? { escape: raid.escape.kind, escapeShips: fleetCount(raid.escape.ships) }
+          : {}),
         /** Kept in the payload for older clients; new raids never stop the works. */
         disruptedMinutes: 0,
       },
@@ -1304,6 +1341,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         unitsLost: fleetCount(result.attackerLosses),
         shipsHome: fleetCount(result.attackerSurvivors),
         dominion: dominionSwing,
+        // That the line emptied, and nothing about what it held. See `reports.ts`.
+        ...(raid.escape?.kind === 'ESCAPED' ? { targetFled: true } : {}),
       },
       at: defender.now,
       refId: missionId,

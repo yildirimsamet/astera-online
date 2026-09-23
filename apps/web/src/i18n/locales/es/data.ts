@@ -538,6 +538,13 @@ export const notifications = {
   raidedLost_one: '{{count}} unidad perdida',
   raidedLost_other: '{{count}} unidades perdidas',
   raidedNothing: 'Allanado · no consiguieron nada',
+  /** Taktik geri çekilme, defensor: las naves despegaron, o el depósito no alcanzó. */
+  raidedEscaped_one: '{{count}} nave despegó',
+  raidedEscaped_other: '{{count}} naves despegaron',
+  raidedStranded_one: 'el depósito no alcanzó para {{count}} nave',
+  raidedStranded_other: 'el depósito no alcanzó para {{count}} naves',
+  /** Taktik geri çekilme, atacante: la línea se vació — nada sobre lo que tenía. */
+  raidTargetFled: 'sus naves despegaron',
 
   raidResultFallback: 'Tu incursión resuelta.',
   raidWiped: '{{target}} retenido · tu flota fue destruida · {{count}} naves perdidos',

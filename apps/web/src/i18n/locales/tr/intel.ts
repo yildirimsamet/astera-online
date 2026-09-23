@@ -381,6 +381,12 @@ export const reports = {
     worksYours: 'Tesislerin {{duration}} boyunca devre dışı kaldı.',
     salvageTheirs: 'Hurdacıları, enkaz dağılmadan {{amount}} değerinde hurda topladı.',
     /** Koloni arızaları: ağır bir yenilginin bozdukları. Yalnızca savunan. */
+    /** Taktik geri çekilme. Savunan: ne kaçtı, kalkış ne yaktı ya da neden kaçamadı. */
+    escaped_one: 'Gemin savaştan önce kaçtı (−{{fuel}} Döteryum): saldırı hattını üçe bir geçiyordu.',
+    escaped_other: '{{count}} gemin savaştan önce kaçtı (−{{fuel}} Döteryum): saldırı hattını üçe bir geçiyordu.',
+    stranded: 'Gemilerin kaçacaktı ama yakıt yetmedi: {{fuel}} Döteryum gerekiyordu, depoda {{available}} vardı.',
+    /** Saldıran: hat akının önünde boşaldı; ne tuttuğu söylenmez. */
+    fled: 'Gemileri savaştan önce kaçtı: üçe bir geçilen ve silinecek bir hat, yakıtı yetiyorsa kaçar.',
     colonyFaults: 'Bu yenilgide {{planet}} üzerinde bozulanlar: {{faults}}.',
     /**
      * Toparlanma kalkanı, yalnızca savunan: bu savaş anında son pencerenin NET kaybı,

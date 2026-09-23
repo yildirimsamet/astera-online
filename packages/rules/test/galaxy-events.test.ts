@@ -459,8 +459,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
   });
 
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
-    // Ruleset 10 (2026-09-20, Klan Ortak Savaşı) keeps the fixed calendar.
-    expect(MULTI_WORLD.rulesetVersion).toBe(10);
+    // Ruleset 10 (2026-09-20, Klan Ortak Savaşı) and 11 (2026-09-23, the fleet
+    // escape) keep the fixed calendar.
+    expect(MULTI_WORLD.rulesetVersion).toBe(11);
     expect(MULTI_WORLD.rulesetVersion).toBeGreaterThanOrEqual(MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion);
     expect(GALAXY_EVENTS.version).toBe(4);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);

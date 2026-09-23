@@ -429,6 +429,12 @@ export const reports = {
     /** The defender's copy of what the raider's collectors lifted. D200. */
     salvageTheirs: 'Ihre Müllsammler hoben {{amount}} des Wracks auf, bevor es treiben konnte.',
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
+    /** Taktik geri çekilme. Verteidiger: was abhob und was der Start verbrannte, oder warum nicht. */
+    escaped_one: 'Dein Schiff ist vor dem Kampf abgehoben (−{{fuel}} Deuterium): der Angriff war deiner Linie drei zu eins überlegen.',
+    escaped_other: 'Deine {{count}} Schiffe sind vor dem Kampf abgehoben (−{{fuel}} Deuterium): der Angriff war deiner Linie drei zu eins überlegen.',
+    stranded: 'Deine Schiffe wären abgehoben, doch der Tank reichte nicht: {{fuel}} Deuterium nötig, {{available}} vorhanden.',
+    /** Angreifer: die Linie leerte sich vor dem Angriff; nichts über ihren Inhalt. */
+    fled: 'Ihre Schiffe sind vor dem Kampf abgehoben: eine drei zu eins unterlegene Linie, die ausgelöscht würde, flieht, wenn ihr Tank es bezahlt.',
     colonyFaults: 'Auf {{planet}} durch diese Niederlage gebrochen: {{faults}}.',
     /**
      * Recovery shield, defender only: the NET loss of the lookback at this battle, in

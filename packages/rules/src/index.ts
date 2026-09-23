@@ -24,6 +24,7 @@ export * from './tech.js';
 export * from './travel.js';
 export * from './combat.js';
 export * from './forecast.js';
+export * from './escape.js';
 export * from './loot.js';
 export * from './salvage.js';
 export * from './intel.js';

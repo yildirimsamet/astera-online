@@ -259,6 +259,8 @@ export interface LockedPlanet {
   seasonId: string;
   seasonStart: Date;
   seasonEndsAt: Date;
+  /** The rule set the season was dealt, read off the row this lock already holds. */
+  rulesetVersion: number;
   name: string;
   x: number; y: number; z: number;
   /**
@@ -590,6 +592,7 @@ export async function loadLocked(
     seasonId: row.seasonId,
     seasonStart: season.startsAt,
     seasonEndsAt: season.endsAt,
+    rulesetVersion: season.rulesetVersion,
     name: row.name,
     x: row.x, y: row.y, z: row.z,
     academyStep: row.academyStep,

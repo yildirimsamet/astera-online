@@ -70,6 +70,9 @@ import {
   instrumentMaxed,
   mulberry32,
   resolveCombat,
+  resolveRaid,
+  soloStack,
+  fleetEscapeApplies,
   strategicStockpile,
   scaleNeutralDeuteriumLoot,
   instrumentCost,
@@ -2743,7 +2746,7 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
 
 /* ── mission resolution ────────────────────────────────────────── */
 
-function resolveMission(m: Mission, t: number, world: World, stats: DayStats): void {
+export function resolveMission(m: Mission, t: number, world: World, stats: DayStats): void {
   const atk = world.players[m.from];
   const def = world.players[m.to];
   if (!atk || !def) return;
@@ -2764,18 +2767,31 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   // The server's definition, not a second copy of it: a bot whose miners fight
   // would price defence against a line the live game never puts on the board.
   const defenders = garrisonOf(def.fleet, def.ground);
-  // Seeded from the mission, so any battle can be re-derived from its inputs.
-  const rng = mulberry32((m.from * 7919 + m.to * 104729 + m.arriveAt) >>> 0);
-  const r = resolveCombat(m.fleet, defenders, def.shield, rng, {
-    attacker: { tech: atk.tech },
+  /*
+    Seeded from the mission, so any battle can be re-derived from its inputs — and
+    through `resolveRaid`, the server's own rule, so a line that would lift off on
+    the live board lifts off here too (taktik geri çekilme, ruleset 11).
+  */
+  const seed = (m.from * 7919 + m.to * 104729 + m.arriveAt) >>> 0;
+  const raid = resolveRaid({
+    stacks: [soloStack(m.fleet, { tech: atk.tech })],
+    line: defenders,
+    shield: def.shield,
+    rng: () => mulberry32(seed),
     defender: { tech: def.tech },
+    deuterium: def.deuterium,
+    escape: fleetEscapeApplies(MULTI_WORLD.rulesetVersion),
   });
+  const r = raid.result;
+  const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
+  // The lift burns before the raider loads, exactly as the server debits it.
+  if (raid.escape?.kind === 'ESCAPED') def.deuterium -= raid.escape.fuel;
 
   for (const k of Object.keys(def.fleet) as (keyof Fleet)[]) {
     // Carried across by hand for the same reason the server does it: a craft that
-    // was never in the line is absent from the survivors, and `?? 0` would read
-    // that absence as annihilation.
-    if (NON_COMBATANT_HULLS.includes(k)) continue;
+    // was never in the line — a Prospector, or a ship that lifted off — is absent
+    // from the survivors, and `?? 0` would read that absence as annihilation.
+    if (NON_COMBATANT_HULLS.includes(k) || (escaped[k] ?? 0) > 0) continue;
     def.fleet[k] = r.defenderSurvivors[k] ?? 0;
   }
   for (const k of Object.keys(def.ground) as (keyof Fleet)[]) {

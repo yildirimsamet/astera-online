@@ -429,6 +429,12 @@ export const reports = {
     /** The defender's copy of what the raider's collectors lifted. D200. */
     salvageTheirs: 'Their Garbage Collectors lifted {{amount}} of the wreckage before it could drift.',
     /** Koloni arızaları: what a heavy defeat broke. Defender only. */
+    /** Taktik geri çekilme. Defender: what ran and what the lift burned, or why it could not. */
+    escaped_one: 'Your ship lifted off before the fight (−{{fuel}} Deuterium): the raid outgunned your line three to one.',
+    escaped_other: 'Your {{count}} ships lifted off before the fight (−{{fuel}} Deuterium): the raid outgunned your line three to one.',
+    stranded: 'Your ships would have lifted off, but the tank was short: {{fuel}} Deuterium needed, {{available}} held.',
+    /** Raider: the line emptied in front of the raid, and nothing about what it held. */
+    fled: 'Their ships lifted off before the fight: a line outgunned three to one that would be wiped out runs if its tank can pay.',
     colonyFaults: 'Broken on {{planet}} by this defeat: {{faults}}.',
     /**
      * Recovery shield, defender only: the NET loss of the lookback at this battle, in

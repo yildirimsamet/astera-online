@@ -149,6 +149,11 @@ export const planet = {
     strategicBand: "Strategische Verteidigung",
     strategicNote:
       "Eine Ladung zerstört den nächsten Todesstern, der von Radar 3 entdeckt oder im Visier des Teleskops identifiziert wurde. Die Ladung wird verbraucht, wenn es abgefeuert wird.",
+    /** Taktik geri çekilme: die eigene Schwelle des Verteidigers und der Treibstoff dafür. */
+    escapeReady:
+      "Taktischer Rückzug · ein Angriff mit {{at}}+ Feuerkraft, der diese Linie auslöschen würde, findet deine Schiffe nicht mehr vor · der Start verbrennt {{fuel}} Deuterium",
+    escapeShort:
+      "Taktischer Rückzug · deine Schiffe würden vor {{at}}+ Feuerkraft fliehen, doch der Start braucht {{fuel}} Deuterium und der Tank hält {{stock}}",
     shieldBand: "Schild",
     shieldNote:
       "Aegis absorbiert Schaden, bevor er Ihre Einheiten erreicht, und regeneriert jede Stunde 35 % seines Maximums.",

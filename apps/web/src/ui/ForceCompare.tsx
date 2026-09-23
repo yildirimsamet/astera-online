@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ESCAPE, type EscapeVerdict } from '@astera/rules';
 import { compact } from '../lib/format.js';
 import { staleness } from '../lib/time.js';
 
@@ -66,6 +67,7 @@ export function ForceCompare({
   lines = null,
   loss = null,
   notes = [],
+  escape = null,
   children,
 }: {
   yours: number;
@@ -76,6 +78,17 @@ export function ForceCompare({
   loss?: { low: number; high: number } | null;
   /** What the lines could not see, and what else is known about the reading — a phrase each. */
   notes?: readonly string[];
+  /**
+   * TAKTİK GERİ ÇEKİLME ON THE ENEMY AXIS. Owner decision, 2026-09-23.
+   *
+   * `at` is the line firepower at or under which their ships lift off instead of
+   * fighting — a third of this wing's — drawn as a tick on their bar, because it is
+   * the same quantity the bar measures. `verdict` is `escapeVerdict` on the reading:
+   * the rule applied to what was bought, never the answer, and null with no reading.
+   * Absent wherever the rule does not apply: a pirate, a caretaker world, a season
+   * dealt before it.
+   */
+  escape?: { at: number; verdict: EscapeVerdict | null } | null;
   /**
    * WHAT THE LAUNCH COSTS, INSIDE THIS BOX RATHER THAN UNDER IT. D183, owner
    * correction: *"aynı kutunun içinde altında olsun. güç gösteren kutu sticky,
@@ -129,6 +142,11 @@ export function ForceCompare({
         {explained ? (
           <p data-testid="compare-rule" className="mt-2 text-body leading-relaxed text-dim">
             {t('counter.compareRule')}
+          </p>
+        ) : null}
+        {explained && escape ? (
+          <p data-testid="compare-escape-rule" className="mt-2 text-body leading-relaxed text-dim">
+            {t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}
           </p>
         ) : null}
       </div>
@@ -188,7 +206,7 @@ export function ForceCompare({
         </div>
 
         {theirs ? (
-          <div className="socket flex h-1.5 w-full overflow-hidden rounded-full">
+          <div className="socket relative flex h-1.5 w-full overflow-hidden rounded-full">
             <span
               data-part="theirs"
               className="h-full bg-threat/60 transition-[width] duration-200"
@@ -205,6 +223,15 @@ export function ForceCompare({
               className="h-full transition-[width] duration-200"
               style={{ width: `${String(share(theirs.high) - share(theirs.low))}%`, backgroundImage: HATCH }}
             />
+            {/* Where their ships stop fighting: a tick on the same scale as the band. */}
+            {escape && (
+              <span
+                aria-hidden
+                data-part="escape-line"
+                className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-bone"
+                style={{ left: `${String(share(escape.at))}%` }}
+              />
+            )}
           </div>
         ) : (
           /*
@@ -259,6 +286,21 @@ export function ForceCompare({
         <p data-testid="compare-lines" className="num mt-2 grid grid-cols-2 gap-1 text-micro leading-relaxed">
           <span className="text-opportunity">{t('counter.linesClears', { at: span(lines.clears) })}</span>
           <span className="text-alloy">{t('counter.linesBreaks', { at: span(lines.breaks) })}</span>
+        </p>
+      )}
+      {escape && (
+        <p data-testid="compare-escape" className="mt-1 text-micro leading-relaxed text-bone/80">
+          <span className="num">{t('counter.escapeAt', { at: compact(escape.at) })}</span>
+          {escape.verdict === null ? null : (
+            <>
+              {t('counter.lineJoin')}
+              {escape.verdict === 'RUN'
+                ? t('counter.escapeRun')
+                : escape.verdict === 'STAND'
+                  ? t('counter.escapeStand')
+                  : t('counter.escapeUnsure')}
+            </>
+          )}
         </p>
       )}
       {lossShare !== null && (

@@ -77,6 +77,28 @@ void [
 ];
 
 const fleet = z.record(hullId, z.number());
+
+/**
+ * WHAT THE DEFENDING SHIPS DID ON A RAID, AS EACH SIDE IS TOLD IT. Taktik geri çekilme.
+ *
+ * `ESCAPED` carries `ships` and `fuel` on the defender's copy and neither on the
+ * raider's, who watched the line empty and learned nothing about it — one variant with
+ * two optional fields rather than two variants, which TypeScript would fold into one.
+ * `STRANDED` is only ever the defender's.
+ */
+const fleetEscapeRecord = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('ESCAPED'),
+    ships: fleet.optional(),
+    fuel: z.number().int().nonnegative().optional(),
+  }),
+  z.object({
+    kind: z.literal('STRANDED'),
+    ships: fleet,
+    fuel: z.number().int().nonnegative(),
+    available: z.number().int().nonnegative(),
+  }),
+]);
 const techLevels = z.record(researchProjectId, z.number().int().nonnegative());
 const vec3 = z.object({ x: z.number(), y: z.number(), z: z.number() });
 const resources = z.object({ alloy: z.number(), crystal: z.number(), deuterium: z.number() });
@@ -449,6 +471,12 @@ export const seasonSchema = z.object({
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
   playerCap: z.number(),
+  /**
+   * The rule set this season was dealt. Optional so a client one deploy ahead of the
+   * server still parses; read through `fleetEscapeApplies` and its siblings, never
+   * compared by hand.
+   */
+  rulesetVersion: z.number().int().positive().optional(),
   players: z.number(),
   /**
    * Commanders whose last authenticated request was inside the online window.
@@ -892,6 +920,11 @@ export const planetSchema = z.object({
     groundUsed: z.number(),
   }).optional(),
   score: z.object({ wealth: z.number(), dominion: dominionInteger }),
+  /**
+   * The rule set this world's season was dealt. Optional for a rolling deploy; the
+   * Defend tab reads it through `fleetEscapeApplies`, never by hand.
+   */
+  rulesetVersion: z.number().int().positive().optional(),
 });
 
 export const planetsSchema = z.object({
@@ -2222,6 +2255,13 @@ const ordinaryBattleReport = z.object({
        * sends nothing and the report simply has no line for it.
        */
       colonyFaults: z.array(z.enum(FAULT_KINDS)).optional(),
+      /**
+       * TAKTİK GERİ ÇEKİLME. The defender's full record — what ran and what the lift
+       * burned, or that the tank could not pay — or the raider's bare `ESCAPED`: the
+       * line emptied, and nothing about what it held. Null where the rule never came
+       * into it, and on a server that predates it.
+       */
+      fleetEscape: fleetEscapeRecord.nullish(),
       /**
        * Defender only: the lookback's NET loss in hours of the reader's production at
        * this battle, and whether it bought the recovery shield. Optional for a rolling

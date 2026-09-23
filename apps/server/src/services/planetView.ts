@@ -487,6 +487,14 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * beginner's card in front of a season-old commander on a new phone.
      */
     academyStep: p.academyStep,
+    /**
+     * THE RULE SET THIS WORLD'S SEASON WAS DEALT. Taktik geri çekilme, 2026-09-23.
+     *
+     * The Defend tab states the fleet-escape threshold only in a season that has the
+     * rule, and it reads that here — off its own world — rather than asking for a
+     * second payload the planet screen otherwise never needs.
+     */
+    rulesetVersion: p.rulesetVersion,
     score: {
       wealth: player?.wealth ?? 0,
       dominion: dominion({

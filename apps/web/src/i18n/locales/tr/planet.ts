@@ -149,6 +149,11 @@ export const planet = {
     strategicBand: "Stratejik savunma",
     strategicNote:
       "Yüklü mühimmat, 3. seviye Radarın algıladığı veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder; ateşlenince tükenir.",
+    /** Taktik geri çekilme: savunanın kendi eşiği ve kalkışın yakıtı. */
+    escapeReady:
+      "Taktik geri çekilme · {{at}}+ ateş gücünde ve bu hattı silecek bir akın gemilerini bulamaz · kalkış {{fuel}} Döteryum yakar",
+    escapeShort:
+      "Taktik geri çekilme · gemilerin {{at}}+ ateş gücündeki bir akından kaçardı ama kalkış {{fuel}} Döteryum ister, depoda {{stock}} var",
     shieldBand: "Kalkan",
     shieldNote:
       "Aegis hasarı birliklerine ulaşmadan önce karşılar. Seviyeler azami kalkanı artırır; yenilenme hızı azami değerin saatte %35’idir.",

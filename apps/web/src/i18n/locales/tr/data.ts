@@ -613,6 +613,13 @@ export const notifications = {
   raidedLost_one: '{{count}} birlik kayıp',
   raidedLost_other: '{{count}} birlik kayıp',
   raidedNothing: 'Akın yedin · eli boş döndüler',
+  /** Taktik geri çekilme, savunan: gemiler kaçtı ya da yakıt yetmedi. */
+  raidedEscaped_one: '{{count}} gemin kaçtı',
+  raidedEscaped_other: '{{count}} gemin kaçtı',
+  raidedStranded_one: 'yakıt yetmedi, {{count}} gemin kaçamadı',
+  raidedStranded_other: 'yakıt yetmedi, {{count}} gemin kaçamadı',
+  /** Taktik geri çekilme, saldıran: hat boşaldı — ne tuttuğuna dair hiçbir şey. */
+  raidTargetFled: 'gemileri kaçtı',
 
   raidResultFallback: 'Akının sonuçlandı.',
   raidWiped: '{{target}} dayandı. Filon yok edildi, {{count}} gemi kayıp',

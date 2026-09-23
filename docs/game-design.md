@@ -334,6 +334,35 @@ is a question only the information layer can answer.**
 into the attack decision — with consumable defence ~95% of attacks resolved DECISIVE, and if
 blind raiding never fails there is nothing for information to reduce.
 
+### Taktik geri çekilme — the fleet escape (owner decision, 2026-09-23; ruleset 11)
+
+**The ships of a defending line lift off instead of fighting when the wing that arrived fires at
+least three times what the line fires AND the line would have been wiped out anyway — if the
+world's tank pays the lift.** OGame's tactical retreat, corrected twice by this engine's numbers
+(`escape.ts`). Both sides are measured in `combatValue`, the axis the probe's defence band and the
+launch sheet already share; the line counts its guns, and the wing counts only what fires, so
+cargo cannot buy the threshold. The guns and the Aegis stay and fight alone, the stores are still
+raided, and every downstream rule reads the battle that actually happened. Nothing moves on the
+disc: the ships are simply still at home afterwards.
+
+- **Why the DECISIVE guard.** On the ratio alone, a wall of transports that fires 9k and holds
+  off a 27k raid every time would run from it and hand over the stores, and a fleet under a
+  charged Aegis would leave the dome to a walkover. A line only runs from a fight it had already
+  lost, so the escape saves ships and never costs the defender anything (a property test).
+- **The lift is a launch (T6).** `missionFuel` for a 600-unit round trip, from the tank including
+  the vault share, all or nothing, burned before the raider loads. Short → `STRANDED`: the line
+  stands and the defender is told why.
+- **Fixed, public, per battle.** A random threshold was measured and refused: a raider plays the
+  bottom of any range and a defender can only count on the top (72% → 87% kills at par). A
+  commander-wide version was refused by the owner: 1–3× fights between equals are the game, and a
+  raider sending just under the line meets the bash limit and the recovery shield. Measured, a
+  raider whose Shipyard is one level over the target's Veil sizes a wing inside the window every
+  time — this rule stops blind overkill, and the Veil is the defender's lever against the rest.
+- **Who is told what.** The defender's planet states its own threshold and lift; the raider's
+  launch sheet draws the line on the enemy axis with a verdict from the reading; the report tells
+  the defender what ran and what it burned (or why it could not), and the raider only that the
+  ships ran. No public galaxy event.
+
 ### Disruption
 
 A successful raid knocks the target's works offline: 15 min on DECISIVE, 5 on PARTIAL and 0 on REPELLED (D73). A later raid refreshes this window but cannot stack it beyond 15 minutes from now.

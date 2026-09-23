@@ -10,6 +10,9 @@ import {
   combatValue,
   forecastLines,
   forecastLoss,
+  escapeLine,
+  escapeVerdict,
+  fleetEscapeApplies,
   matchupsAgainst,
   hullFuelRate,
   hullTech,
@@ -518,6 +521,29 @@ export function LaunchSheet({
   );
 
   /**
+   * TAKTİK GERİ ÇEKİLME, DRAWN WHERE THE WING IS SIZED. Owner decision, 2026-09-23.
+   *
+   * Only at another commander's world in a season dealt the rule: a caretaker and a
+   * pirate never run, and a live season keeps the battle it was dealt. The line is a
+   * third of this wing's firepower on the enemy axis; the verdict is the rule applied
+   * to the reading — outmatched AND cleared — and the tank stays the raider's unknown,
+   * which the copy says rather than the sheet guessing.
+   */
+  const escapeRuled = target.kind === 'world'
+    && target.world.kind !== 'NEUTRAL'
+    && fleetEscapeApplies(season.data?.rulesetVersion ?? 0);
+  const escape = useMemo(() => {
+    if (!escapeRuled || fleetCount(settled) === 0) return null;
+    const power = combatValue(settled);
+    return {
+      at: escapeLine(settled),
+      verdict: opposing !== null && lines !== null
+        ? escapeVerdict(power, { low: opposing.low, high: opposing.high }, lines.clears)
+        : null,
+    };
+  }, [escapeRuled, settled, opposing?.low, opposing?.high, lines]);
+
+  /**
    * WHAT THE LINES COULD NOT SEE, AND WHAT THIS COMMANDER ALREADY PAID TO KNOW.
    * D199.
    *
@@ -912,7 +938,14 @@ export function LaunchSheet({
         and the deuterium it burns — both move on the same "+", so they travel
         together or they are not a comparison at all.
       */}
-      <ForceCompare yours={combatValue(sending)} theirs={opposing} lines={lines} loss={loss} notes={notes}>
+      <ForceCompare
+        yours={combatValue(sending)}
+        theirs={opposing}
+        lines={lines}
+        loss={loss}
+        notes={notes}
+        escape={escape}
+      >
         {/*
           THE COUNTER CYCLE, WHERE THE FLEET IS CHOSEN — with the reading's own limit beside it.
           `matchupsAgainst` answers null for a wall the probe never read, so this appears exactly

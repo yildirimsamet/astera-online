@@ -538,6 +538,13 @@ export const notifications = {
   raidedLost_one: '{{count}} unit lost',
   raidedLost_other: '{{count}} units lost',
   raidedNothing: 'Raided · they got nothing',
+  /** Taktik geri çekilme, defender: the ships ran, or the tank could not lift them. */
+  raidedEscaped_one: '{{count}} ship lifted off',
+  raidedEscaped_other: '{{count}} ships lifted off',
+  raidedStranded_one: 'the tank could not lift {{count}} ship',
+  raidedStranded_other: 'the tank could not lift {{count}} ships',
+  /** Taktik geri çekilme, raider: the line emptied — nothing about what it held. */
+  raidTargetFled: 'their ships lifted off',
 
   raidResultFallback: 'Your raid resolved.',
   raidWiped: '{{target}} held · your fleet was destroyed · {{count}} ships lost',

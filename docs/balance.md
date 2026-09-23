@@ -208,6 +208,12 @@ grade on VALUE destroyed:
 defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 ```
 
+```
+fleet escape (ruleset 11, `ESCAPE`):
+  ships run ⇔ combatValue(wing) ≥ 3 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
+  lift = missionFuel(ships, 600, 2)   — 52 for a 48k T2 line, 12 for 20 Darts
+```
+
 ### Pre-Fleet V2 executable baseline
 
 This table documents the currently executable catalog and retires at the D148 season cutover. It

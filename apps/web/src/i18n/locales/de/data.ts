@@ -538,6 +538,13 @@ export const notifications = {
   raidedLost_one: '{{count}} Einheit verloren',
   raidedLost_other: '{{count}} Einheiten verloren',
   raidedNothing: 'Überfallen · Sie haben nichts',
+  /** Taktik geri çekilme, Verteidiger: die Schiffe sind abgehoben, oder der Tank reichte nicht. */
+  raidedEscaped_one: '{{count}} Schiff abgehoben',
+  raidedEscaped_other: '{{count}} Schiffe abgehoben',
+  raidedStranded_one: 'der Tank reichte nicht für {{count}} Schiff',
+  raidedStranded_other: 'der Tank reichte nicht für {{count}} Schiffe',
+  /** Taktik geri çekilme, Angreifer: die Linie leerte sich — nichts über ihren Inhalt. */
+  raidTargetFled: 'ihre Schiffe sind abgehoben',
 
   raidResultFallback: 'Dein Überfall wurde gelöst.',
   raidWiped: '{{target}} gehalten · Ihre Flotte wurde zerstört · {{count}} Schiffe verloren',

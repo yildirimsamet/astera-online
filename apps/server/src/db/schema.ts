@@ -22,6 +22,7 @@ import type {
   CombatRound,
   BuildQueueId,
   ClassReading,
+  EscapeOutcome,
   FaultKind,
   Fleet,
   Grade,
@@ -2004,6 +2005,21 @@ export const battleReports = pgTable('battle_reports', {
    * learning which of a colony's systems just went dark would be a free probe.
    */
   colonyFaults: jsonb('colony_faults').$type<FaultKind[]>().notNull().default([]),
+  /**
+   * TAKTİK GERİ ÇEKİLME — WHAT THE DEFENDING SHIPS DID. Owner decision, 2026-09-23.
+   *
+   * `ESCAPED`: the ships lifted off and never stood in the line — `defender_fleet`
+   * and `defender_losses` are the guns' alone, and `fuel` came out of the tank before
+   * the loot. `STRANDED`: they would have run and the tank could not pay, so the
+   * fight on this row is the one they stood in. Null wherever the rule never came
+   * into it, and on every row written before it existed.
+   *
+   * RECORDED, NOT DERIVED: which ships stood at home at the instant of the fight is
+   * nowhere else once they have flown on. DEFENDER ONLY in full on the way out
+   * (`reports.ts`) — the raider learns that the ships ran, never what they were, and
+   * never that a tank was dry.
+   */
+  fleetEscape: jsonb('fleet_escape').$type<EscapeOutcome>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),

@@ -613,6 +613,13 @@ export const notifications = {
   raidedLost_one: 'Unité {{count}} perdue',
   raidedLost_other: '{{count}} unités perdues',
   raidedNothing: 'Perquisitionné · ils n\'ont rien obtenu',
+  /** Taktik geri çekilme, défenseur : les vaisseaux ont décollé, ou le réservoir n’a pas suffi. */
+  raidedEscaped_one: '{{count}} vaisseau a décollé',
+  raidedEscaped_other: '{{count}} vaisseaux ont décollé',
+  raidedStranded_one: 'le réservoir n’a pas suffi pour {{count}} vaisseau',
+  raidedStranded_other: 'le réservoir n’a pas suffi pour {{count}} vaisseaux',
+  /** Taktik geri çekilme, attaquant : la ligne s’est vidée — rien sur son contenu. */
+  raidTargetFled: 'leurs vaisseaux ont décollé',
 
   raidResultFallback: 'Votre raid est résolu.',
   raidWiped: '{{target}} détenu · votre flotte a été détruite · {{count}} navires perdus',

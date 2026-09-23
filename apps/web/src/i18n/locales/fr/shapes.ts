@@ -50,6 +50,13 @@ export const counter = {
   compareUnknownWhy: "Une sonde permettrait d’obtenir une valeur pour ce camp.",
   compareLabel:
     "Tu envoies {{yours}} ; dernière estimation de leur monde : {{theirs}}",
+  /** Taktik geri çekilme dans la comparaison : le verdict et la règle un geste plus loin. */
+  escapeRun: 'Leur ligne est sous un tiers de ton feu : si leur réservoir suffit, leurs vaisseaux décollent et seuls les canons combattent.',
+  escapeStand: 'Leurs vaisseaux restent et combattent : la lecture dépasse un tiers de ton feu ou ce que cette aile balaie.',
+  escapeUnsure: 'La lecture chevauche la ligne de fuite : leurs vaisseaux pourraient décoller.',
+  escapeAt: 'Leurs vaisseaux fuient sous {{at}}',
+  escapeRule:
+    'Retraite tactique : une ligne face à au moins trois fois sa propre puissance de feu, que ce raid anéantirait, fait décoller ses vaisseaux au lieu de combattre, si le réservoir du monde paie un aller-retour de {{distance}} unités. Les canons restent, et les stocks sont tout de même pillés.',
   compareRuleToggle: "Qu’est-ce que c’est ?",
   compareMeaning:
     "Il s’agit du coût en ressources, pas des dégâts d’attaque. Une grande flotte ne garantit pas à elle seule la victoire.",

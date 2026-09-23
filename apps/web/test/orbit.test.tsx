@@ -3,8 +3,8 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BUILDING_IDS, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, RESEARCH_PROJECT_IDS,
-  SATELLITES, SATELLITE_IDS, satelliteSlots,
+  BUILDING_IDS, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
+  RESEARCH_PROJECT_IDS, SATELLITES, SATELLITE_IDS, satelliteSlots,
 } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -635,5 +635,28 @@ describe('nothing is sold without a control', () => {
       ...RESEARCH_PROJECT_IDS,
     ]);
     expect([...(await rowsAcrossEveryTab())].filter((id) => !known.has(id))).toEqual([]);
+  });
+});
+
+/**
+ * TAKTİK GERİ ÇEKİLME ON THE DEFEND TAB. Owner decision, 2026-09-23.
+ *
+ * The threshold is stated where a player looks for their world's defence, and only in a
+ * season dealt the rule — read off the world's own payload, never a second query.
+ */
+describe('the escape threshold on Defend', () => {
+  it('states it when the season was dealt the rule and ships stand at home', () => {
+    show({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion, fleet: { DART: 20 } }, 'defend');
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent('28k');
+  });
+
+  it('says nothing in a season dealt before it', () => {
+    show({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion - 1, fleet: { DART: 20 } }, 'defend');
+    expect(screen.queryByTestId('escape-readout')).toBeNull();
+  });
+
+  it('says nothing to a server that does not send the ruleset', () => {
+    show({ fleet: { DART: 20 } }, 'defend');
+    expect(screen.queryByTestId('escape-readout')).toBeNull();
   });
 });

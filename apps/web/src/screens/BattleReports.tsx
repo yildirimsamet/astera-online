@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ABUSE, COMBAT, HULLS, fleetEntries, type Grade, type HullId } from '@astera/rules';
+import { ABUSE, COMBAT, HULLS, fleetCount, fleetEntries, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -986,6 +986,33 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   const salvaged = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
   const lines: { key: string; tone: string; text: string }[] = [];
 
+  /*
+    TAKTİK GERİ ÇEKİLME, FIRST, because it is why the rest of the page reads as it does:
+    a defender whose losses say nothing and whose fleet is still at home, or a raider
+    whose DECISIVE sank no ships. Owner decision, 2026-09-23.
+
+    Each side is told what it saw. The defender reads what ran and what the lift burned,
+    or what the lift needed against what the tank held. The raider reads only that the
+    line emptied — and never a stranded record, which is a fact about somebody else's
+    tank; the server already sends the raider none, and this guard keeps it that way.
+  */
+  const escape = report.fleetEscape ?? null;
+  if (escape?.kind === 'ESCAPED' && report.attacking) {
+    lines.push({ key: 'escape', tone: 'text-alloy', text: t('reports.effects.fled') });
+  } else if (escape?.kind === 'ESCAPED' && escape.ships !== undefined && escape.fuel !== undefined) {
+    lines.push({
+      key: 'escape',
+      tone: 'text-opportunity',
+      text: t('reports.effects.escaped', { count: fleetCount(escape.ships), fuel: escape.fuel }),
+    });
+  } else if (escape?.kind === 'STRANDED' && !report.attacking) {
+    lines.push({
+      key: 'escape',
+      tone: 'text-threat-ink',
+      text: t('reports.effects.stranded', { fuel: escape.fuel, available: escape.available }),
+    });
+  }
+
   // A current report gets the drawn before→after Aegis card above. Keep this
   // sentence only for a legacy report whose old payload knows the absorbed total
   // but cannot honestly reconstruct either endpoint.
@@ -1128,6 +1155,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
             key={line.key}
             className={`text-caption leading-snug ${line.tone}`}
             {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
+            {...(line.key === 'escape' ? { 'data-fleet-escape': '' } : {})}
             {...(line.key === 'recovery' ? { 'data-recovery-shield': '' } : {})}
           >
             {line.text}

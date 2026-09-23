@@ -1300,6 +1300,14 @@ season. A complete 30-day TRT-aligned season must contain 120 Asteroid Shower, 1
 live season. Rollback with active convoy runs is drain-first: close new launches, keep an
 arrival/return-capable worker until every run is `done`, and leave the additive enum/table in place.
 
+Ruleset 11 (taktik geri çekilme, 2026-09-23) is also a forward boundary. Apply additive migration
+`0112_tiresome_magus.sql` (`battle_reports.fleet_escape jsonb`, nullable), then deploy the
+escape-aware worker/server and the web client before creating any ruleset-11 season. A live
+ruleset-10 season never runs the rule — the gate is `fleetEscapeApplies(season.rulesetVersion)` —
+so the image may go out mid-season. Waiting shards copy their source season's ruleset, so a Silent
+Space opened during a ruleset-10 cycle stays returnable. Rollback leaves the column in place; an
+older image reading a ruleset-11 season simply fights every raid in full.
+
 `season wipe --yes` opens successors at `clock.now()` and currently has no `--starts-at` option.
 An owner-requested immediate wipe at an arbitrary TRT minute is therefore still an exact 30-day
 season, but it is not a TRT-day-aligned season: the planner deliberately omits a fixed event window

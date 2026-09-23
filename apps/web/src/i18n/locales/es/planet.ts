@@ -149,6 +149,11 @@ export const planet = {
     strategicBand: "Defensa estratégica",
     strategicNote:
       "Una carga destruye la siguiente Estrella de la Muerte detectada por el Radar 3 o identificada en la mira del Telescopio. La carga se gasta cuando dispara.",
+    /** Taktik geri çekilme: el umbral del propio defensor y el combustible que cuesta. */
+    escapeReady:
+      "Retirada táctica · un ataque de {{at}}+ de fuego que aniquilaría esta línea no encuentra tus naves · el despegue quema {{fuel}} de Deuterio",
+    escapeShort:
+      "Retirada táctica · tus naves huirían de un ataque de {{at}}+ de fuego, pero el despegue necesita {{fuel}} de Deuterio y el depósito tiene {{stock}}",
     shieldBand: "Escudo",
     shieldNote:
       "Égida absorbe el daño antes de que llegue a tus unidades y se regenera el 35% de su máximo cada hora.",

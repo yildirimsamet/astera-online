@@ -88,6 +88,10 @@ and 60% of destroyed ground units rebuild free.
 **DECISIVE / PARTIAL / REPELLED** — The three battle grades, by share of defender *value*
 destroyed. Loot 70% / 35% / 0% of raidable stock, still bounded by survivor cargo.
 
+**Taktik geri çekilme (fleet escape)** — The ships in a defending line lift off instead of
+fighting when the raid fires at least three times the line and would wipe it out, if the tank pays
+the lift. `ESCAPED` or `STRANDED` on the report; guns never run. Ruleset 11 onward.
+
 **Salvage** — The 60% of destroyed ground defence that rebuilds free. It exists so that
 blind raiding can actually fail.
 

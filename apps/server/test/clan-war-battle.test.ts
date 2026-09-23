@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, MULTI_WORLD, SERVERS, fleetValue } from '@astera/rules';
+import { CLAN, MULTI_WORLD, SERVERS, escapeFuel, fleetValue } from '@astera/rules';
 import {
   battleReports,
   clanRaidRoster,
@@ -942,5 +942,47 @@ describe('the outcomes that are not a clean win', () => {
     await workerFor(f).tick();
     expect(await f.db.select().from(battleReports)).toHaveLength(first.length);
     expect(await f.db.select().from(clanWarParticipantResults)).toHaveLength(2);
+  });
+});
+
+/* ── taktik geri çekilme ────────────────────────────────────────── */
+
+/**
+ * THE ESCAPE READS THE WHOLE POOL. Owner decision, 2026-09-23.
+ *
+ * A joint war is one wing arriving at once, so the waves are added up before they are
+ * weighed against the line — three commanders who each send a match for it are three
+ * times it, exactly as one commander sending all three would be. The rule itself is
+ * `packages/rules/test/escape.test.ts`; this holds the settlement's bookkeeping.
+ */
+describe('a combined strike and the fleet escape', () => {
+  const garrison = async (f: Fixture) => {
+    const rows = await f.db.select().from(units).where(eq(units.planetId, f.planetIds[2]!));
+    return rows.filter((row) => row.location === 'home' && row.count > 0)
+      .reduce<Record<string, number>>((fleet, row) => ({ ...fleet, [row.hull]: row.count }), {});
+  };
+
+  it('lets the defending ships lift off when the waves together outgun the line three to one', async () => {
+    const f = await setup();
+    await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    await fightIt(f);
+
+    const report = (await f.db.select().from(battleReports))[0]!;
+    expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: { DART: 4 }, fuel: escapeFuel({ DART: 4 }) });
+    expect(report.defenderLosses).toEqual({});
+    expect(report.defenderFleet).toEqual({});
+    expect(await garrison(f)).toEqual({ DART: 4 });
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[2]!));
+    expect(world!.deuterium).toBeCloseTo(2_000 - escapeFuel({ DART: 4 }) - report.loot.deuterium, 0);
+  });
+
+  it('keeps a joint war in a season dealt before the rule on the old one', async () => {
+    const f = await setup();
+    await fightIt(f);
+    const report = (await f.db.select().from(battleReports))[0]!;
+    expect(report.fleetEscape).toBeNull();
+    expect(report.defenderLosses).toEqual({ DART: 4 });
+    expect(await garrison(f)).toEqual({});
   });
 });
