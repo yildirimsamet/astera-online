@@ -16,8 +16,8 @@ vi.mock('../src/api/world.js', () => ({ WorldProvider: ({ children }: { children
 // The v2 shell draws the galaxy through its render prop; its HUD reads the API, which
 // this boundary test has no use for (the old header and strip were stubbed the same way).
 vi.mock('../src/v2/shell/GameShell.js', () => ({
-  GameShell: ({ galaxy }: { galaxy: (shell: { goHome: number; worldsRequest: number; onPanel: () => void }) => ReactNode }) =>
-    galaxy({ goHome: 0, worldsRequest: 0, onPanel: () => undefined }),
+  GameShell: ({ galaxy }: { galaxy: (shell: { homeRequest: number; worldsRequest: number; onPanel: () => void }) => ReactNode }) =>
+    galaxy({ homeRequest: 0, worldsRequest: 0, onPanel: () => undefined }),
 }));
 vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ onReplayAcademy }: { onReplayAcademy: () => void }) =>
   <button onClick={onReplayAcademy}>Replay Academy</button> }));

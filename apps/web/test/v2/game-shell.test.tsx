@@ -66,9 +66,9 @@ const shell = () => render(
     onPanel={onPanel}
     onFocusPlanet={vi.fn()}
     onFocusCraft={vi.fn()}
-    galaxy={({ goHome, worldsRequest, onPanel: route }) => (
+    galaxy={({ homeRequest, worldsRequest, onPanel: route }) => (
       <div>
-        <p>{`home ${String(goHome)} worlds ${String(worldsRequest)}`}</p>
+        <p>{`home ${String(homeRequest)} worlds ${String(worldsRequest)}`}</p>
         <button type="button" onClick={() => { route('chat'); }}>galaxy asks for chat</button>
       </div>
     )}

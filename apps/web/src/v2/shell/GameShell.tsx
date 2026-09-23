@@ -28,7 +28,7 @@ export interface GameShellProps {
   /** Frame one of the player's craft (or a contact) from the Fleet page. */
   onFocusCraft: (focus: StripFocus) => void;
   /** The galaxy, handed the shell's counted requests and its router. */
-  galaxy: (shell: { goHome: number; worldsRequest: number; onPanel: ShellRoute }) => ReactNode;
+  galaxy: (shell: { homeRequest: number; worldsRequest: number; onPanel: ShellRoute }) => ReactNode;
 }
 
 /**
@@ -49,7 +49,7 @@ export interface GameShellProps {
 export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
-  const [goHome, setGoHome] = useState(0);
+  const [homeRequest, setHomeRequest] = useState(0);
   const [worldsRequest, setWorldsRequest] = useState(0);
   const openSignals = useOpenSignals();
   const flight = usePlanet().data?.flight ?? null;
@@ -86,7 +86,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       case 'stay':
         return;
       case 'home':
-        setGoHome((n) => n + 1);
+        setHomeRequest((n) => n + 1);
         return;
       case 'galaxy':
         clearPages();
@@ -114,7 +114,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         onBell={() => { openBell('signals'); }}
       />
 
-      <main className="relative flex-1">{galaxy({ goHome, worldsRequest, onPanel: route })}</main>
+      <main className="relative flex-1">{galaxy({ homeRequest, worldsRequest, onPanel: route })}</main>
 
       <div className="relative z-50 shrink-0">
         <HudDock active={active} onSelect={onSelect} />

@@ -168,20 +168,19 @@ await settle(3000);
 await shot('01-galaxy');
 
 // A narrow front-door regression run, independent of the older scene survey.
-// A card that shares pixels with Chat/Chronicle is not a usable next action.
+// The next action is the context slot's suggestion (v2 shell, B3): it must fit the
+// phone and sit above the dock rather than under it.
 if (process.argv.includes('--onboarding')) {
   try {
-    const guide = page.getByRole('button', { name: /this world has no ground defence/i });
+    const guide = page.getByRole('button', { name: 'Build defence' });
     await guide.waitFor();
     const bounds = await guide.boundingBox();
     if (!bounds || bounds.x < 0 || bounds.x + bounds.width > PHONE.width) {
       throw new Error(`Next-action card does not fit the phone: ${JSON.stringify(bounds)}`);
     }
-    for (const label of [/open galaxy chat/i, /galaxy chronicle/i]) {
-      const launcher = await page.getByRole('button', { name: label }).boundingBox();
-      if (!launcher || bounds.y + bounds.height > launcher.y) {
-        throw new Error(`Next-action card overlaps ${String(label)}`);
-      }
+    const dockBox = await page.getByRole('navigation').last().boundingBox();
+    if (!dockBox || bounds.y + bounds.height > dockBox.y) {
+      throw new Error('Next-action card overlaps the dock');
     }
     await guide.click();
     await page.getByRole('button', { name: /^close$/i }).first().waitFor();
@@ -481,7 +480,9 @@ await shot('03-focus');
 // D163 moved Home directly onto the disc; the old Worlds control no longer exists.
 await dismiss();
 const camBefore = await page.evaluate(() => window.__galaxy.camera.position.toArray());
-await page.locator('[data-disc-control="home"]').click();
+// The dock's Galaxy tab, pressed while lit, is Home (D163): the disc's mark left with the v2 shell.
+const dock = page.getByRole('navigation').last();
+await dock.getByRole('button', { name: /^Galaxy/ }).click();
 await settle(3000);
 const camAfter = await page.evaluate(() => window.__galaxy.camera.position.toArray());
 const homeTarget = await page.evaluate(() => window.__galaxy.controls?.target?.toArray() ?? null);

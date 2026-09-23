@@ -208,7 +208,7 @@ export function App() {
           setPanel(null);
           setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
         }}
-        galaxy={({ goHome, worldsRequest, onPanel }) => (
+        galaxy={({ homeRequest, worldsRequest, onPanel }) => (
           <GalaxyView
             panel={panel}
             onPanel={onPanel}
@@ -224,7 +224,7 @@ export function App() {
             }}
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
-            goHome={goHome}
+            homeRequest={homeRequest}
             worldsRequest={worldsRequest}
           />
         )}

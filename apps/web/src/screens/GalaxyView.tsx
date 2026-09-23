@@ -234,6 +234,7 @@ export function GalaxyView({
   allowFocus,
   goHome,
   worldsRequest,
+  homeRequest,
   showChat = true,
   showGuidance = true,
 }: {
@@ -318,6 +319,13 @@ export function GalaxyView({
    * The disc's own transfer mark that used to open it is gone with `DiscControls`.
    */
   worldsRequest?: number;
+  /**
+   * Bumped from outside to fly home the way the disc's Home mark did (D163): clear
+   * the focus, focus the active world — so the next tap on it opens management —
+   * and raise the home signal. The v2 dock's Galaxy tab, pressed while lit.
+   * `goHome` is the Academy's flight (D56), which leaves nothing focused.
+   */
+  homeRequest?: number;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -595,7 +603,6 @@ export function GalaxyView({
     setTransferOriginId(null);
     setHomeSignal((n) => n + 1);
   });
-  useRequest(worldsRequest, () => { setWorldsOpen(true); });
   const [viewOpen, setViewOpen] = useState(false);
   /** The element the scene lends over the active world; the collect bubble is portalled into it. */
   const [homeAnchor, setHomeAnchor] = useState<HTMLDivElement | null>(null);
@@ -1014,6 +1021,15 @@ export function GalaxyView({
     setStrikingConvoy(false);
     setSettlingTargetId(null);
   };
+
+  // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
+  useRequest(homeRequest, () => {
+    if (activePlanetId === null) return;
+    close();
+    focusPlanet(activePlanetId);
+    setHomeSignal((n) => n + 1);
+  });
+  useRequest(worldsRequest, () => { setWorldsOpen(true); });
 
   const toggle = (): void => {
     setDetail((open) => !open);

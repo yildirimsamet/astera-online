@@ -26,6 +26,25 @@ describe('the galaxy host', () => {
   });
 });
 
+describe('Galaxy pressed again', () => {
+  /**
+   * THE OLD HOME MARK'S THREE STEPS (D163), NOT THE ACADEMY'S FLIGHT (D56). Home
+   * clears the focus, focuses the active world — so the very next tap on it opens
+   * management — and raises the home signal. The Academy's `goHome` clears the
+   * focus instead, which is right for a lesson and wrong for the dock.
+   */
+  it('flies home and primes the active world, as the disc Home mark did', () => {
+    const home = source.slice(source.indexOf('useRequest(homeRequest'), source.indexOf('useRequest(worldsRequest'));
+    expect(home).toMatch(/close\(\);\s*focusPlanet\(activePlanetId\);\s*setHomeSignal/);
+  });
+
+  it('is what the app hands the shell’s home request to', () => {
+    const app = readFileSync('src/App.tsx', 'utf8');
+    expect(app).toMatch(/homeRequest=\{homeRequest\}/);
+    expect(app).not.toMatch(/goHome=\{goHome\}/);
+  });
+});
+
 describe('the View chip in the Academy', () => {
   /**
    * The Academy hides `[data-sensor-toggles]` until its Telescope exercise and
