@@ -502,6 +502,9 @@ export const launch = {
   exposedFor: "Exposed for {{duration}}",
   oneWay: "One way",
   oneWayUnknown: "—",
+  pace: "Flight speed",
+  paceHint: "Slower lands later. The fuel is the same, and nothing may stay up past 12h.",
+  paceFull: "Full",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "No flight bay free",
   noFuel: "Not enough deuterium",
@@ -550,6 +553,10 @@ export const launch = {
 export const transfer = {
   /** What the flight burns, beside the figure. T6. */
   fuel: "fuel for the flight",
+  cooldown: "Unloading — {{duration}} left",
+  homewardFuel: "Half rate — between your own worlds. An attack pays full.",
+  /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
+  paceHint: "Slower lands later — ships in flight cannot be raided. Same fuel; nothing stays up past 12h.",
   fuelShort: "short {{short}}",
   eyebrow: "World transfer",
   eta: "ETA",
@@ -560,11 +567,12 @@ export const transfer = {
   alloy: "Alloy",
   crystal: "Crystal",
   deuterium: "Deuterium",
-  commit: "Transfer — no recall",
+  commit: "Transfer",
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
-  irreversible:
-    "One way. Ground defence cannot move; cargo space comes only from Courier, Wayfarer, Atlas and Argosy.",
+  /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  rules:
+    "Can be recalled once while in flight — it returns in the time already flown. Ground defence cannot move; cargo space comes only from Courier, Wayfarer, Atlas and Argosy.",
   hullNone: "None at this world",
   holdReady: "Courier, Wayfarer, Atlas and Argosy carry the ore. Hold: {{capacity}}.",
   destinationLabel: "Destination Hangar",

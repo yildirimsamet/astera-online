@@ -76,6 +76,7 @@ const remember = async (
   } = {},
 ): Promise<void> => {
   const [scout] = await f.db.insert(missions).values({
+    fuelPaid: 0,
     seasonId: seat.seasonId,
     kind: 'probe',
     status: 'resolved',
@@ -118,6 +119,7 @@ const raided = async (attackerPlayerId: string, defenderPlayerId: string, target
   minutesAgo = 60): Promise<void> => {
   const at = addMinutes(f.clock.now(), -minutesAgo);
   const [battle] = await f.db.insert(missions).values({
+    fuelPaid: 0,
     seasonId: seat.seasonId,
     kind: 'attack',
     status: 'resolved',
@@ -503,6 +505,7 @@ describe('what a bot may raid', () => {
   it('counts a bot raid still in the air against the day', async () => {
     await remember(f.planetIds[0]!, f.clock.now());
     await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: seat.seasonId,
       kind: 'attack',
       status: 'in_flight',

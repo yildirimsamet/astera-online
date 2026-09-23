@@ -158,6 +158,49 @@ const assertAidPayload = (fleet: Fleet, cargo: Resources): void => {
 };
 
 /**
+ * A SHIELDED COMMANDER'S ORE DOES NOT LEAVE. Plan §15.6 — *"korumalı/yeni oyuncu kaynağının klan
+ * yardımı ve transferle dışa akışı denetlenir."*
+ *
+ * THE OTHER HALF OF THE SYBIL DEFENCE. Gating who counts toward the asteroid supply stops fake
+ * accounts inflating the sky; it does nothing about fake accounts being FARMED. Every new
+ * commander lands with an opening grant and an Academy exit worth thousands of alloy-equivalent,
+ * and clan aid is the ONLY lane that moves resources between two different commanders — a
+ * transfer checks both ends belong to the same one. So a hundred throwaway accounts could be
+ * emptied into one real account in an afternoon, and this is where that is refused.
+ *
+ * OUTBOUND ONLY. A clan helping a newcomer is what the feature is for; what is refused is the
+ * newcomer's ore flowing out while they still stand behind the shield that protects them. The
+ * moment the shield lapses they may send like anybody else.
+ */
+async function senderShieldUntil(
+  db: Queryable,
+  senderPlayerId: string,
+  now: Date,
+): Promise<Date | null> {
+  const [sender] = await db
+    .select({ shieldUntil: players.newcomerShieldUntil })
+    .from(players)
+    .where(eq(players.id, senderPlayerId));
+  return sender?.shieldUntil != null && sender.shieldUntil > now ? sender.shieldUntil : null;
+}
+
+async function assertSenderNotShielded(
+  db: Queryable,
+  senderPlayerId: string,
+  now: Date,
+): Promise<void> {
+  const until = await senderShieldUntil(db, senderPlayerId, now);
+  if (until !== null) {
+    throw new GameError(
+      'SHIELDED_SENDER',
+      'Resources cannot leave a commander who is still under the newcomer shield',
+      403,
+      { until: until.toISOString() },
+    );
+  }
+}
+
+/**
  * THE HOLD REFUSAL, AND IT IS SEPARATE BECAUSE IT NEEDS THE COMMANDER. D197.
  *
  * Since Cargo Holds lifts a clan delivery too, the capacity is a function of the
@@ -381,6 +424,12 @@ export async function quoteClanAid(
     possibleReturnAt: returnAt.toISOString(),
     canFinishBeforeSeasonEnd: returnAt <= season.endsAt,
     travelMinutes,
+    /**
+     * THE SENDER'S NEWCOMER SHIELD, SAID BEFORE THE BUTTON. Self-review 2026-09-23, R4: the
+     * refusal used to arrive only on commit. Null once it has lapsed.
+     */
+    senderShieldUntil: (await senderShieldUntil(db, input.senderPlayerId, input.now))?.toISOString()
+      ?? null,
   };
 }
 
@@ -418,6 +467,7 @@ export async function launchClanAid(
   },
 ) {
   assertAidPayload(input.fleet, input.cargo);
+  await assertSenderNotShielded(tx, input.senderPlayerId, input.clock.now());
   const capital = await capitalPlanet(tx, input.senderPlayerId);
   const lockedWorlds = await lockWorlds(tx, [capital.id, input.originPlanetId, input.targetPlanetId]);
   const origin = await loadLocked(tx, input.originPlanetId, input.clock, {
@@ -474,6 +524,7 @@ export async function launchClanAid(
   const arriveAt = addMinutes(origin.now, oneWay);
   assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
   const [mission] = await tx.insert(missions).values({
+    fuelPaid: fuel,
     seasonId: origin.seasonId,
     kind: 'clan_transfer',
     ownerPlayerId: input.senderPlayerId,
@@ -556,6 +607,8 @@ async function startAidReturn(
   if (!from) throw new Error('clan aid target vanished before reroute');
   const arriveAt = new Date(now.getTime() + commitment.returnTravelSeconds * 1_000);
   const [returnMission] = await tx.insert(missions).values({
+    // A return leg is already paid for: fuel is charged in full at the outbound launch.
+    fuelPaid: 0,
     seasonId: mission.seasonId,
     kind: 'clan_transfer',
     ownerPlayerId: commitment.senderPlayerId,

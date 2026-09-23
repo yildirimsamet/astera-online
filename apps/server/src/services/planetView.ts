@@ -323,6 +323,18 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
       productionBoostUntil: p.recoveryBoostUntil !== null && p.recoveryBoostUntil > p.now
         ? p.recoveryBoostUntil
         : null,
+      /**
+       * NO TRANSFER MAY LEAVE THIS WORLD UNTIL THIS INSTANT. Faz 2A.3.
+       *
+       * Published so the transfer sheet can say so BEFORE the commander packs a squadron. A rule
+       * that only ever appears as a refusal on commit is a rule the player learns by losing a
+       * decision to it, and this one fires at exactly the moment they are in a hurry.
+       *
+       * Null once it has passed, like the boost above it, so no surface compares it to a clock.
+       */
+      transferReadyAt: p.transferReadyAt !== null && p.transferReadyAt > p.now
+        ? p.transferReadyAt
+        : null,
     },
     buildings: p.buildings,
     nextCosts: Object.fromEntries(

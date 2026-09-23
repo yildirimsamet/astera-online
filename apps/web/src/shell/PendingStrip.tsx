@@ -1,7 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { fleetCount } from '@astera/rules';
-import { useMining, usePending, useRecallMining, useTraffic } from '../api/queries.js';
+import {
+  useMining,
+  usePending,
+  useRecallMining,
+  useRecallTransfer,
+  useTraffic,
+} from '../api/queries.js';
 import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
@@ -56,6 +62,7 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
    */
   const traffic = useTraffic();
   const recall = useRecallMining();
+  const recallFleet = useRecallTransfer();
   const say = useToast();
   const now = useNow(1000);
   const threads = data?.pending ?? [];
@@ -97,6 +104,13 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
         : contactFor(thread, seen)
           ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
           : {}),
+      /*
+        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer that is still
+        turnable on this tick; a raid never carries it, because a raid committed is committed.
+      */
+      ...(thread.recallable === true && thread.id !== undefined
+        ? { recallMission: { missionId: thread.id } }
+        : {}),
     })),
     ...runs.map((run): AirborneItem => ({
       key: `run:${run.id}`,
@@ -237,6 +251,46 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
                     {focus && <span aria-hidden className="self-center text-faint">›</span>}
                   </>
                 );
+                /*
+                  THE SAME ROW, FOR THE SAME ACT. A commander who has learned to pull a drill back
+                  should not have to learn a second control to pull a squadron back, so the fleet
+                  recall wears the Prospector recall's shape — one glyph, one label, one tap, on
+                  the screen they are already looking at when a raid is inbound.
+                */
+                const recallMission = item.recallMission;
+                if (recallMission) {
+                  return (
+                    <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpen(false);
+                          if (focus) onFocus?.(focus);
+                        }}
+                        className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                      >
+                        {body}
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('pendingStrip.recallFleet')}
+                        disabled={recallFleet.isPending}
+                        onClick={() => {
+                          recallFleet.mutate(recallMission, {
+                            onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
+                            onError: (error) => { say(describe(error), 'error'); },
+                          });
+                        }}
+                        className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
+                      >
+                        <ReturnedIcon className="size-4" />
+                        {recallFleet.isPending
+                          ? t('pendingStrip.recallingFleet')
+                          : t('pendingStrip.recallFleet')}
+                      </button>
+                    </div>
+                  );
+                }
                 const recallInput = item.recall;
                 if (recallInput) {
                   return (
@@ -315,6 +369,8 @@ interface AirborneItem {
   span: { from: number; to: number } | null;
   focus?: StripFocus;
   recall?: { runId: string; originPlanetId: string | undefined };
+  /** A transfer the SERVER says may still be turned around. Owner decision, 2026-09-21. */
+  recallMission?: { missionId: string };
 }
 
 /**

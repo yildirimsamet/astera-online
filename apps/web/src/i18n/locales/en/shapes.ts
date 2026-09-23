@@ -102,4 +102,13 @@ export const counter = {
   noteLastRaid: 'Last raid sank mostly {{class}}',
   mixMostly: 'Mostly {{class}}',
   mixEven: 'No single class dominates',
+  matchupMajority: 'Mostly {{class}} — more than half',
+  matchupRemainder: 'the remainder is unread and may counter you',
+  matchupUnread: "{{share}}% unread",
+  matchupMixed: 'Mixed defence — no single hard counter',
+  matchupSplit: 'Read split',
+  matchupBring: 'Bring {{class}}',
+  matchupSingle: 'Your wing is single-class — its counter may be in the unread part',
+  matchupExposure: 'strong {{strong}}% · weak {{weak}}%',
+  matchupProbe: 'a probe two Shipyard levels up reveals the split',
 } as const;

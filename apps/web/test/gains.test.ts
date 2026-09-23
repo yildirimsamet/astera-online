@@ -13,8 +13,12 @@ import {
   HANGAR,
   START_BUILDINGS,
   hangarCapacity,
+  producerPaybackHours,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
+import { duration } from '../src/lib/time.js';
+
+const LOCALES = ['en', 'tr', 'de', 'es', 'fr'] as const;
 
 /**
  * AN UPGRADE ROW MUST NEVER SAY "X -> X".
@@ -167,11 +171,40 @@ describe('the Hangar and the Core gate', () => {
     expect(buildingGain('HANGAR', HANGAR.maxLevel - 1, 0, at(9)).maxed).toBeUndefined();
   });
 
-  it('says so on the Core row when the next Core opens a Hangar rung', () => {
-    expect(buildingGain('CORE', 6, 0, at(6)).unlocks).toMatch(/Hangar 3/);
-    expect(buildingGain('CORE', 15, 0, at(15)).unlocks).toMatch(/Hangar 6/);
-    expect(buildingGain('CORE', 7, 0, at(7)).unlocks ?? '').not.toMatch(/Hangar/);
+  /**
+   * THE CORE ROW NO LONGER SELLS A HANGAR RUNG. Owner decision 2026-09-22, review finding 8.
+   *
+   * This row used to say "Opens Hangar 3" on a Core 6, and that was true while the Core gated the
+   * Hangar. It does not any more — a commander raises the Hangar at any Core — so the line was
+   * sending a fleet-path player to buy a Core rung for room they could already buy directly,
+   * which is the one thing the decision exists to stop.
+   */
+  it('never claims a Core rung opens a Hangar rung', () => {
+    for (const level of [1, 3, 6, 9, 12, 15, 16, 20]) {
+      expect(buildingGain('CORE', level, 0, at(level)).unlocks ?? '', `core ${String(level)}`)
+        .not.toMatch(/Hangar/i);
+    }
   });
+});
+
+/**
+ * THE HANGAR'S OWN WORDS DESCRIBE THE HANGAR THAT SHIPS. Review finding 8.
+ *
+ * Every locale's role and detail line still said "new rungs open at Command Core 4, 7, 10, 13 and
+ * 16" — a gate the server stopped enforcing. A player reading it would raise the Core before the
+ * Hangar, which is precisely what the owner removed the gate to spare them.
+ */
+describe('what the Hangar says about itself', () => {
+  const gateSequence = /4,\s*7,\s*10,\s*13/;
+  for (const locale of LOCALES) {
+    it(`names no Core gate in ${locale}`, async () => {
+      const { vocabulary } = await import(`../src/i18n/locales/${locale}/data.ts`) as {
+        vocabulary: { building: { HANGAR: { role: string; detail: string } } };
+      };
+      expect(vocabulary.building.HANGAR.role).not.toMatch(gateSequence);
+      expect(vocabulary.building.HANGAR.detail).not.toMatch(gateSequence);
+    });
+  }
 });
 
 describe('the instrument ceiling', () => {
@@ -279,4 +312,41 @@ describe('the rows that switch metric once their headline flattens', () => {
     // And the figure it names climbs rather than bottoming out at BLIND.
     expect(instrumentGain('VEIL', 8).next).not.toBe(instrumentGain('VEIL', 4).next);
   });
+});
+
+/**
+ * HOW LONG A PRODUCER RUNG TAKES TO PAY FOR ITSELF, WHERE THE RUNG IS BOUGHT. Faz 4.1, 2026-09-22.
+ *
+ * The chat logs did this sum by hand (*"60000 harcıyom, saatte 200 daha fazla… 300 saatte amorti"*)
+ * and the owner's whole complaint was the answer. A number every commander computes to decide
+ * whether to keep climbing belongs on the ladder, in the game's own arithmetic — the rung's price
+ * over what it adds, `producerPaybackHours` — so the sunset is something they SEE coming.
+ */
+describe('what a producer rung says about paying for itself', () => {
+  it('quotes the payback on every producer rung and on nothing else', () => {
+    for (const id of BUILDING_IDS) {
+      const gain = buildingGain(id, 10, 0, at(10));
+      if (id === 'REFINERY' || id === 'EXTRACTOR' || id === 'DEUTERIUM_PLANT') {
+        expect(gain.repays, id).toMatch(/\d/);
+      } else {
+        expect(gain.repays, id).toBeUndefined();
+      }
+    }
+  });
+
+  it('is the rules payback, shortened by whatever lifts this world’s output', () => {
+    const plain = buildingGain('REFINERY', 11, 0, at(11));
+    const boosted = buildingGain('REFINERY', 11, 0, at(11), 2);
+    expect(plain.repays).toBe(`Pays for itself in ${duration(producerPaybackHours('REFINERY', 11) * 60)}`);
+    expect(boosted.repays).toBe(`Pays for itself in ${duration(producerPaybackHours('REFINERY', 11) * 30)}`);
+  });
+
+  for (const locale of LOCALES) {
+    it(`says it as one sentence with the time in it, in ${locale}`, async () => {
+      const { gains } = await import(`../src/i18n/locales/${locale}/data.ts`) as {
+        gains: { repays: string };
+      };
+      expect(gains.repays).toContain('{{time}}');
+    });
+  }
 });

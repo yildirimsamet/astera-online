@@ -11,6 +11,13 @@
  */
 
 export const errors = {
+  /** The movement package's refusals. Self-review 2026-09-23, R4. */
+  BAD_PACE: 'Bu, uçuş hızlarından biri değil',
+  PACE_TOO_SLOW: 'Bu hızda filo 12 saatlik sınırdan fazla havada kalır. Daha hızlı birini seç',
+  NOT_RECALLABLE: 'Bu uçuş artık geri çağrılamaz — indi ya da zaten bir kez döndü',
+  NOT_FOUND: 'Bu artık yok',
+  SHIELDED_SENDER: 'Yeni oyuncu kalkanın sürerken başka bir komutana kaynak gönderemezsin',
+  TRANSFER_COOLDOWN: 'Bu dünya son filoyu indiriyor — {{seconds}} sn sonra yeniden transfer gönderebilirsin',
   ADMIN_FORBIDDEN: 'Bu alan için admin yetkisi gerekiyor',
   PLANET_NOT_OWNED: 'Bu dünyayı kontrol etmiyorsun',
   WORLD_RECOVERING: 'Bu dünya toparlanma sürecinde',

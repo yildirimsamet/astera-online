@@ -224,11 +224,15 @@ describe('the pirate hoard', () => {
     const previousWorth = fleetValue(roster) * 1.4;
 
     expect(PIRATE.hoardValueMult).toBeCloseTo(1.4 * 1.3, 12);
-    expect(pirateHoard(roster)).toEqual({
-      alloy: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.alloy),
-      crystal: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.crystal),
-      deuterium: Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.deuterium),
-    });
+    /*
+      THE ORE ONLY. Owner decision, 2026-09-22: deuterium left the value ladder and is now priced
+      off the pirate's own thirst (`PIRATE.hoardFuelMult`), because it is fuel and the question a
+      raider asks of it is whether the prize covers the flight. The D204 raise is a claim about the
+      ORE purse, and that claim is unchanged.
+    */
+    const hoard = pirateHoard(roster);
+    expect(hoard.alloy).toBe(Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.alloy));
+    expect(hoard.crystal).toBe(Math.floor(previousWorth * 1.3 * PIRATE.hoardShare.crystal));
   });
 
   it('is priced off what the pirate is worth, not off what a player owns', () => {
@@ -239,20 +243,21 @@ describe('the pirate hoard', () => {
       /*
         THE SHARES ARE THE MULTIPLIER'S SECOND HALF, so the test reads both.
 
-        This used to compare against `fleetValue * hoardValueMult` alone, which
-        silently assumed the three shares sum to exactly 1. They no longer do:
-        the owner halved the deuterium share and it was NOT redistributed, so a
-        hoard is deliberately worth less than `hoardValueMult` says on its own.
-        Asserting the product of both numbers keeps the real invariant — the
-        hoard is what the shares say and nothing is lost but rounding — while
-        still failing on a typo in either.
+        This used to compare against `fleetValue * hoardValueMult` alone, which silently assumed
+        the three shares sum to exactly 1. They never did, and since 2026-09-22 the deuterium is
+        not on this ladder at all — it is priced off the pirate's own thirst, because it is fuel
+        and the question a raider asks of it is whether the prize covers the flight
+        (`PIRATE.hoardFuelMult`). What this test owns is the ORE: it is what the pirate is worth
+        times the shares, and nothing is lost but rounding.
       */
-      const shares = PIRATE.hoardShare.alloy + PIRATE.hoardShare.crystal
-        + PIRATE.hoardShare.deuterium;
+      const shares = PIRATE.hoardShare.alloy + PIRATE.hoardShare.crystal;
       const want = fleetValue(roster) * PIRATE.hoardValueMult * shares;
-      // Within rounding of the multiplier: three floors, never more.
-      expect(resourcesTotal(hoard)).toBeGreaterThan(want - 4);
-      expect(resourcesTotal(hoard)).toBeLessThanOrEqual(want);
+      const ore = hoard.alloy + hoard.crystal;
+      // Within rounding of the multiplier: two floors, never more.
+      expect(ore).toBeGreaterThan(want - 3);
+      expect(ore).toBeLessThanOrEqual(want);
+      // And the fuel half is present and priced elsewhere.
+      expect(hoard.deuterium).toBeGreaterThan(0);
       expect(hoard.alloy).toBeGreaterThan(0);
       expect(hoard.crystal).toBeGreaterThan(0);
       expect(Number.isInteger(hoard.alloy)).toBe(true);
@@ -547,12 +552,27 @@ describe('the pirate schedule', () => {
     expect(field.length / established.length).toBeGreaterThan(2.9);
     expect(field.length / established.length).toBeLessThan(3.1);
 
-    // Both earlier lanes are pinned, not just the first: the +50% lane is as live
-    // as the original one and a re-deal of it would move just as many claims.
-    expect(createHash('sha256').update(JSON.stringify(established)).digest('hex'))
-      .toBe('176c0e9a4352c4fa964c6ccae41ba53db2d6b22423cd57e8a1d5c322c5b9b9d3');
-    expect(createHash('sha256').update(JSON.stringify(increased)).digest('hex'))
-      .toBe('f097ea6db249036536fa708952abd0c3b672e470b1628172450e9f0429ad096b');
+    /*
+      BOTH EARLIER LANES ARE PINNED, not just the first: the +50% lane is as live as the original
+      one and a re-deal of it would move just as many claims.
+
+      THE DIGEST COVERS THE CONTACT'S IDENTITY AND NOT ITS PRIZE. What it exists to catch is a
+      RENUMBERING — a pirate's public handle is an HMAC of its lane index, so a re-deal silently
+      re-aims every claim, every `pirate_state` row and every raid already in the air. The hoard is
+      a consequence of the roster rather than part of who the contact IS, and hashing it made every
+      legitimate reward tune read as "you renumbered the field" (the 2026-09-22 deuterium change
+      tripped it exactly that way). Everything that decides WHICH contact this is — index, level,
+      roster, orbit and window — is still in the hash.
+    */
+    const identity = (field: typeof established): string => createHash('sha256')
+      .update(JSON.stringify(field.map(({ hoard: _hoard, ...rest }) => rest)))
+      .digest('hex');
+    expect(identity(established))
+      .toBe('496162a9cd4508818e94e6d0220c8422ac32a5550b79583843e7e2bf781d3f5e');
+    expect(identity(increased))
+      .toBe('72519a87c9fa7d1979fa6ffc01a662e91742b31db90d77f1dc5f58663711f518');
+    // And the prize is still deterministic for a given lane, which the roster above pins.
+    expect(established[0]!.hoard).toEqual(increased[0]!.hoard);
   });
 
   it('rolls levels in the advertised proportions', () => {

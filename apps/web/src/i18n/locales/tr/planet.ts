@@ -479,6 +479,9 @@ export const launch = {
   exposedFor: "{{duration}} boyunca açıksın",
   oneWay: "Tek yön",
   oneWayUnknown: "—",
+  pace: "Uçuş hızı",
+  paceHint: "Yavaş olan geç varır. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
+  paceFull: "Tam",
   /* Bu taahhüdün reddedilme sebepleri; her biri butonun üzerinde yazılı. */
   noBay: "Boş uçuş yuvası yok",
   noFuel: "Döteryum yetmiyor",
@@ -517,6 +520,10 @@ export const launch = {
 
 export const transfer = {
   fuel: "uçuş yakıtı",
+  cooldown: "Boşaltılıyor — {{duration}} kaldı",
+  homewardFuel: "Yarı fiyat — kendi dünyaların arasında. Saldırı tam öder.",
+  /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
+  paceHint: "Yavaş olan geç varır — havadaki gemi yağmalanamaz. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
   fuelShort: "{{short}} eksik",
   eyebrow: "Dünyalar arası transfer",
   eta: "Varış",
@@ -527,11 +534,12 @@ export const transfer = {
   alloy: "Alaşım",
   crystal: "Kristal",
   deuterium: "Döteryum",
-  commit: "Transfer et — geri çağrılamaz",
+  commit: "Transfer et",
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
-  irreversible:
-    "Tek yönlüdür. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah, Atlas ve Argosi sağlar.",
+  /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  rules:
+    "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah, Atlas ve Argosi sağlar.",
   hullNone: "Bu dünyada yok",
   holdReady: "Madeni Kurye, Seyyah, Atlas ve Argosi taşır. Ambar: {{capacity}}.",
   destinationLabel: "Hedef Hangarı",

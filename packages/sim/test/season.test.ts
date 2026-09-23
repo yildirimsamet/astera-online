@@ -298,7 +298,7 @@ describe('VFR still catches a vault that covers everything', () => {
       ledger: { taken: 0, lost: 0 },
       attacks: [], scoutsSent: 0, lootToday: 0, lossToday: 0, disruptedToday: 0,
       wealthNow: 1, wealthHistory: [1],
-      recentHits: new Map(), intel: new Map(), neighbours: [],
+      recentHits: new Map(), raidsTaken: [], intel: new Map(), neighbours: [],
       ...over,
       isotopeSpectrometry: over.isotopeSpectrometry ?? false,
       denseFuelCells: over.denseFuelCells ?? false,

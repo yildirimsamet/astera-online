@@ -14,7 +14,7 @@ export const vocabulary = {
     EXTRACTOR: { name: 'Kristallextraktor', tag: 'Macht Kristall', role: 'Kristall pro Stunde und Kristallspeicher', detail: 'Jedes Level erhöht das passive Kristalleinkommen und die Lagerung. Kristall ist die seltenere Hälfte der Kosten für fortschrittliche Hardware, Instrumente und Forschung.' },
     VAULT: { name: 'Speicher', tag: 'Vertieft den Shop', role: 'Erweitert den Ressourcenspeicher und lässt 10 % Spielraum für die nächsten passenden Legierungs- und Kristallhersteller-Upgrades. Die unteren 10 %, deren Produktionszeit auf 8 Stunden begrenzt ist, sind vor Überfällen sicher.', detail: 'Der Speicher wächst zunächst um seine erstellte Produktionsstundenleiter. Wenn diese Etage auf hohen Ebenen zu klein ist, wird Lager L erweitert, um 110 % der Legierungskosten der Legierungsraffinerie L→L+1 und des Kristallextraktors L→L+1 der Kristallkosten aufzunehmen. das daraus resultierende Stundenfenster gilt auch für Deuterium. Ein Überfall kann nicht die unteren 10 % des Lagers oder 8 Stunden der Produktion dieser Ressource erreichen. Der Speicher kämpft nicht und reduziert den eingehenden Schaden nicht.' },
     SHIPYARD: { name: 'Werft', tag: 'Schaltet bessere Schiffe frei', role: 'Schaltet Rümpfe frei, beschleunigt den Schiffs- und Bodenverteidigungsbau und stellt Sondengenauigkeit und Tarnung ein', detail: 'Höhere Level eröffnen neue Rumpfklassen und fertigen Schiffe und Bodenverteidigungen schneller. Sie verbessern außerdem die Messwerte Ihrer Sonden und erschweren das Erfassen Ihrer eigenen Sonden. Werftebenen fügen keine Warteschlangenplätze hinzu.' },
-    HANGAR: { name: 'Hangar', tag: 'Legt fest, wie viel Flotte hineinpasst', role: 'Flottenraum auf dieser Welt · Neue Sprossen sind bei Kommandokern 4, 7, 10, 13 und 16 geöffnet', detail: 'Jedes Schiff nimmt aufgrund seiner Größe Hangarraum ein, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein vollständiger Hangar wird gebaut und erhält keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Die Sprossen 2–6 öffnen sich an den Kommandokernen 4, 7, 10, 13 und 16; Bei Core 16 können die Sprossen 7–10 allein mit Ressourcen gekauft werden.' },
+    HANGAR: { name: 'Hangar', tag: 'Legt fest, wie viel Flotte hineinpasst', role: 'Flottenraum auf dieser Welt · bei jedem Kommandokern ausbaubar', detail: 'Jedes Schiff belegt Hangarraum nach seiner Größe, auch Schiffe außerhalb der Heimat; Bodenverteidigungen nicht. Ein voller Hangar baut und empfängt keine weiteren Schiffe, verliert aber nichts, was er bereits enthält. Jede Stufe kostet ein Drittel der Flotte, für die sie Platz schafft; die oberen Stufen kosten daher mehr, als eine Welt ohne ausgebauten Speicher auf einmal fassen kann.' },
     DEUTERIUM_PLANT: { name: 'Deuterium-Raffinerie', tag: 'Stellt Deuterium her', role: 'Deuterium pro Stunde und Brennstoffspeicher · die Obergrenze wird durch die Deuteriumsynthese festgelegt', detail: 'Jede Stufe erhöht die passive Deuteriumproduktion und die Menge, die gespeichert werden kann. Flotteneinführung von Deuteriumtreibstoffen; Erforsche die nächste Deuterium-Synthese-Sprung, wenn die Raffinerie ihre Level-Obergrenze erreicht.' },
   },
 
@@ -302,6 +302,8 @@ export const vocabulary = {
 
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
+  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
+  repays: 'Amortisiert sich in {{time}}',
   rangeUnits: '{{count}} Einheiten',
 
   core: {
@@ -310,7 +312,6 @@ export const gains = {
     releases_one: 'Gibt das {{count}} blockierte Upgrade frei',
     releases_other: 'Gibt {{count}} blockierte Upgrades frei',
     raisesCap: 'Erhöht die Niveauobergrenze für Gebäude',
-    opensHangar: 'öffnet Hangar {{rung}} · {{then}}',
   },
   hangar: {
     label: 'Flottenraum',

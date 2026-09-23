@@ -4,6 +4,9 @@ import {
   MULTI_WORLD,
   canAttack,
   distance,
+  allowedPaces,
+  exposureMinutes,
+  isMissionPace,
   engagementEndsAt,
   fleetCount,
   UNAIDED,
@@ -101,6 +104,15 @@ export async function launchAttack(
    * the player saying they have read the price.
    */
   acknowledgeShieldLoss?: boolean,
+  /**
+   * HOW FAST THE COMMANDER WANTS THIS TO ARRIVE. Owner decision, 2026-09-21.
+   *
+   * Omitted is full speed, which is what every launch flew before the choice existed. It is
+   * validated against `allowedPaces` rather than merely against the ladder, because the ceiling
+   * depends on THIS flight: the slowest rung is a legal choice for a neighbour and an illegal one
+   * for a world across the disc.
+   */
+  pace?: number,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -347,12 +359,33 @@ export async function launchAttack(
      * quote on this screen a lie. Written here because it is the kind of asymmetry
      * somebody tidies up later without knowing why it was chosen.
      */
+    /**
+     * THE PACE IS CHECKED AGAINST THIS FLIGHT, NOT AGAINST THE LADDER, AND BEFORE THE TANK.
+     *
+     * `allowedPaces` answers both questions at once — is this a rung at all, and does it land
+     * inside the ceiling — so the two refusals stay distinguishable to the surface while sharing
+     * one source of truth. It runs ahead of `assertFuel` because an order that was never legal
+     * should not come back as "you cannot afford it": the commander would go and buy deuterium.
+     */
+    const mods = { boost: fleetSpeedMult(origin.orbit), tech: await techOf(tx, origin.playerId) };
+    const chosenPace = pace ?? 1;
+    if (!isMissionPace(chosenPace)) {
+      throw new GameError('BAD_PACE', 'that is not a flight speed this fleet can be set to', 400);
+    }
+    if (!allowedPaces(dist, requested, mods).includes(chosenPace)) {
+      throw new GameError(
+        'PACE_TOO_SLOW',
+        'at that speed the fleet would be in the air past the twelve-hour ceiling',
+        400,
+      );
+    }
+
     const fuel = missionFuel(requested, dist, 2);
     // A raid carries no hold on the way out, so the whole store is the tank.
     assertFuel(fuel, origin.deuterium);
     // The Beacon in orbit, if there is one. D25.
-    const tech = await techOf(tx, origin.playerId);
-    const oneWay = fleetTravelExact(dist, requested, { boost: fleetSpeedMult(origin.orbit), tech });
+    const tech = mods.tech;
+    const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
     const arriveAt = addMinutes(origin.now, oneWay);
     /**
      * THE ENGAGEMENT. D44.
@@ -369,11 +402,15 @@ export async function launchAttack(
      * holding for exactly as long as the fleet is actually there.
      */
     const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
-    assertSeasonOpenThrough(origin, addMinutes(resolveAt, oneWay));
+    // The survivors fly home at FULL speed whatever pace went out (self-review 2026-09-23, R6):
+    // measuring the way back at the outbound pace refused slow raids that land home in time.
+    const homeward = fleetTravelExact(dist, requested, { ...mods, pace: 1 });
+    assertSeasonOpenThrough(origin, addMinutes(resolveAt, homeward));
 
     const [mission] = await tx
       .insert(missions)
       .values({
+        fuelPaid: fuel,
         seasonId: origin.seasonId,
         kind: 'attack',
         /*
@@ -391,6 +428,7 @@ export async function launchAttack(
         targetPlanetId,
         fleet: requested,
         distance: dist,
+        pace: chosenPace,
         departAt: origin.now,
         arriveAt,
       })
@@ -497,7 +535,8 @@ export async function launchAttack(
     return {
       missionId: mission!.id,
       arriveAt,
-      exposureMinutes: oneWay * 2,
+      // Out at the chosen pace, home at full speed — the survivors do not keep the choice. D-pace.
+      exposureMinutes: exposureMinutes(oneWay, homeward),
       homeDefenceAfter,
       /**
        * Built by the SAME function the GET route uses, deliberately. A hand-rolled

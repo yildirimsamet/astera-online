@@ -285,6 +285,7 @@ export const clan = {
     fits: 'Fits',
     overLimit: 'Too much',
     cannotLand: 'That world cannot yet use every ship in this gift.',
+    senderShielded: 'Your newcomer shield keeps your resources home for another {{duration}}. Aid can leave once it lapses.',
     tooLate: 'The flight and a possible return cannot finish before the season ends.',
     possibleReturn: 'If the whole convoy must turn back, it can be safely home in {{duration}}.',
     plannedReturn: 'After delivery, the transport will be home in {{duration}}.',

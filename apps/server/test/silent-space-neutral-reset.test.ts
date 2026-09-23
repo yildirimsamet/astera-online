@@ -107,7 +107,7 @@ it('uses another available neutral site when one has an incoming fleet', async (
   const [vacancy] = await f.db.select().from(mainVacancies).where(eq(mainVacancies.kind, 'COLONY'));
   await f.db.insert(planets).values({ seasonId: f.seasonId, kind: 'NEUTRAL', name: 'Other site', slotIndex: 701, x: 1600, y: 0, z: 0, lastTickAt: f.clock.now() });
   await f.db.insert(mainVacancies).values({ cycleId: vacancy!.cycleId, seasonId: f.seasonId, departureTransferId: vacancy!.departureTransferId, kind: 'COLONY', slotIndex: 701, x: 1600, y: 0, z: 0, createdAt: new Date(f.clock.now().getTime() + 1) });
-  await f.db.insert(missions).values({ seasonId: f.seasonId, kind: 'probe', ownerPlayerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, targetPlanetId: neutral!.id, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: new Date(f.clock.now().getTime() + 60_000) });
+  await f.db.insert(missions).values({ fuelPaid: 0, seasonId: f.seasonId, kind: 'probe', ownerPlayerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, targetPlanetId: neutral!.id, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: new Date(f.clock.now().getTime() + 60_000) });
   const application = await enqueueReturn(f.db, f.accountIds[0]!, f.clock, 1);
   expect((await transferCommander(f.db, f.playerIds[0]!, f.seasonId, f.clock, application.id)).status).toBe('MOVED');
   const [returned] = await f.db.select().from(planets).where(eq(planets.id, colony!.id));

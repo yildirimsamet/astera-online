@@ -16,6 +16,7 @@
  *
  *   pnpm balance:goal
  */
+import { basename } from 'node:path';
 
 import {
   BUILD,
@@ -65,7 +66,7 @@ const RESEARCH_ORDER: readonly ResearchProjectId[] = [
   'DEATH_STAR_PROTOCOL',
 ];
 
-const TARGET_BUILDINGS = {
+export const TARGET_BUILDINGS = {
   CORE: 12,
   REFINERY: 12,
   EXTRACTOR: 12,
@@ -585,6 +586,43 @@ function recordMilestones(now: number, state: SimState): void {
   }
 }
 
+/**
+ * HOW MANY SATELLITES THE PACKAGE ASKS FOR — never more than its own Core can hold.
+ *
+ * It asked for all four (`SATELLITE_IDS.every`) while the target Core was 12, and
+ * `satelliteSlots(12)` is three; the fourth slot opens at Core 15. `satelliteCandidate` refuses a
+ * satellite past the Core's slots, so the checklist could never complete and every run printed a
+ * FAIL that measured this file rather than the economy.
+ *
+ * DERIVED FROM THE TARGET CORE RATHER THAN RE-PICKED, so moving `TARGET_BUILDINGS.CORE` can never
+ * silently re-open the same hole. The target levels themselves are a calibration decision and are
+ * not changed here.
+ */
+export const DEVELOPMENT_SATELLITE_TARGET = satelliteSlots(TARGET_BUILDINGS.CORE);
+
+/**
+ * WHY THIS GOAL CANNOT BE REACHED, OR NULL WHEN IT CAN.
+ *
+ * A checklist the rules forbid is a harness bug, and its symptom — a run that never finishes — is
+ * indistinguishable from a balance result unless something says so out loud. Checked before the
+ * simulation runs rather than inferred from its output.
+ */
+export function unreachableGoalReason(): string | null {
+  if (DEVELOPMENT_SATELLITE_TARGET < 1) {
+    return `Core ${String(TARGET_BUILDINGS.CORE)} opens no orbit slot`;
+  }
+  if (DEVELOPMENT_SATELLITE_TARGET > SATELLITE_IDS.length) {
+    return `the package asks for ${String(DEVELOPMENT_SATELLITE_TARGET)} satellites and only `
+      + `${String(SATELLITE_IDS.length)} exist`;
+  }
+  for (const [id, level] of Object.entries(TARGET_BUILDINGS)) {
+    if (id !== 'CORE' && level > TARGET_BUILDINGS.CORE) {
+      return `${id} ${String(level)} is above its Core ceiling of ${String(TARGET_BUILDINGS.CORE)}`;
+    }
+  }
+  return null;
+}
+
 function developmentPackageReached(state: SimState): boolean {
   return state.buildings.CORE >= TARGET_BUILDINGS.CORE
     && state.buildings.REFINERY >= TARGET_BUILDINGS.REFINERY
@@ -592,7 +630,7 @@ function developmentPackageReached(state: SimState): boolean {
     && state.buildings.VAULT >= TARGET_BUILDINGS.VAULT
     && (state.instruments.TELESCOPE ?? 0) >= TARGET_INSTRUMENTS.TELESCOPE
     && (state.instruments.RADAR ?? 0) >= TARGET_INSTRUMENTS.RADAR
-    && SATELLITE_IDS.every((id) => state.orbit.includes(id));
+    && state.orbit.length >= DEVELOPMENT_SATELLITE_TARGET;
 }
 
 function targetReached(state: SimState): boolean {
@@ -846,39 +884,55 @@ function printFieldSupplyCeiling(): void {
   );
 }
 
-const primary = printScenarioTable();
-printMiningSensitivity(ACTIVITY[0]!);
-printBehaviourSensitivity(ACTIVITY[0]!);
-printMilestones(primary);
-printProductionLadder();
-printBudget(primary);
-printCalibrationDiagnosis(primary);
-printFieldSupplyCeiling();
+/**
+ * THE RUN. Behind an entrypoint guard so the file can be imported — a top-level simulation means
+ * any test that reads a constant from here also runs a season and sets `process.exitCode`.
+ */
+function main(): void {
+ if (unreachableGoalReason() !== null) {
+   console.error(`FAIL: the goal itself is unreachable — ${String(unreachableGoalReason())}.`);
+   process.exitCode = 1;
+   return;
+ }
+  const primary = printScenarioTable();
+  printMiningSensitivity(ACTIVITY[0]!);
+  printBehaviourSensitivity(ACTIVITY[0]!);
+  printMilestones(primary);
+  printProductionLadder();
+  printBudget(primary);
+  printCalibrationDiagnosis(primary);
+  printFieldSupplyCeiling();
 
-const halfBudget = bestFoundryTier(ACTIVITY[0]!, true, 300, DEVELOPMENT_SHARE);
-const halfBudgetDevelopment =
-  halfBudget.state.milestones.get('Development package complete') ?? null;
+  const halfBudget = bestFoundryTier(ACTIVITY[0]!, true, 300, DEVELOPMENT_SHARE);
+  const halfBudgetDevelopment =
+    halfBudget.state.milestones.get('Development package complete') ?? null;
 
-if (primary.reachedAt === null) {
-  console.error(`\nFAIL: the primary route did not finish inside ${String(MAX_DAYS)} days.`);
-  process.exitCode = 1;
-} else {
-  const delta = primary.reachedAt / 1440 - TARGET_DAYS;
-  console.log(
-    `\nTARGET DELTA: primary ideal route is ${Math.abs(delta).toFixed(2)} days `
-    + `${delta > 0 ? 'slower' : 'faster'} than the ${String(TARGET_DAYS)}-day calibration anchor.`,
-  );
+  if (primary.reachedAt === null) {
+    console.error(`\nFAIL: the primary route did not finish inside ${String(MAX_DAYS)} days.`);
+    process.exitCode = 1;
+  } else {
+    const delta = primary.reachedAt / 1440 - TARGET_DAYS;
+    console.log(
+      `\nTARGET DELTA: primary ideal route is ${Math.abs(delta).toFixed(2)} days `
+      + `${delta > 0 ? 'slower' : 'faster'} than the ${String(TARGET_DAYS)}-day calibration anchor.`,
+    );
+  }
+
+  if (
+    halfBudgetDevelopment === null
+    || halfBudgetDevelopment < DEVELOPMENT_MIN_DAYS * 1440
+    || halfBudgetDevelopment > DEVELOPMENT_MAX_DAYS * 1440
+  ) {
+    console.error(
+      `\nFAIL: reserving ${String(DEVELOPMENT_SHARE * 100)}% for development must finish the `
+      + `development package in ${String(DEVELOPMENT_MIN_DAYS)}-${String(DEVELOPMENT_MAX_DAYS)} days; `
+      + `measured ${formatDuration(halfBudgetDevelopment)}.`,
+    );
+    process.exitCode = 1;
+  }
+
 }
 
-if (
-  halfBudgetDevelopment === null
-  || halfBudgetDevelopment < DEVELOPMENT_MIN_DAYS * 1440
-  || halfBudgetDevelopment > DEVELOPMENT_MAX_DAYS * 1440
-) {
-  console.error(
-    `\nFAIL: reserving ${String(DEVELOPMENT_SHARE * 100)}% for development must finish the `
-    + `development package in ${String(DEVELOPMENT_MIN_DAYS)}-${String(DEVELOPMENT_MAX_DAYS)} days; `
-    + `measured ${formatDuration(halfBudgetDevelopment)}.`,
-  );
-  process.exitCode = 1;
+if (process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]))) {
+  main();
 }

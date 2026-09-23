@@ -285,6 +285,7 @@ describe('battle reports', () => {
     const [firstBattle] = await f.db.select().from(battleReports);
     f.clock.advance(1);
     const [secondMission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       ownerPlayerId: f.playerIds[0]!,
@@ -313,6 +314,7 @@ describe('battle reports', () => {
     });
     f.clock.advance(1);
     const [strike] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       ownerPlayerId: f.playerIds[0]!,

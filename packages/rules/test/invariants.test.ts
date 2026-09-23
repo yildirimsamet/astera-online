@@ -60,7 +60,7 @@ import {
   generateGalaxy,
   median,
   mulberry32,
-  paybackHours,
+  producerPaybackHours,
   resolveCombat,
   travelExact,
   travelMinutes,
@@ -964,7 +964,10 @@ describe('every producer rung is worth more than the one below it', () => {
    */
   it('quotes a finite payback for every rung it sells', () => {
     for (let level = 0; level <= 40; level += 1) {
-      expect(paybackHours(level), `L${String(level)}`).toBeLessThan(Infinity);
+      for (const producer of ['REFINERY', 'EXTRACTOR', 'DEUTERIUM_PLANT'] as const) {
+        expect(producerPaybackHours(producer, level), `${producer} L${String(level)}`)
+          .toBeLessThan(Infinity);
+      }
     }
   });
 });
@@ -1162,10 +1165,18 @@ describe('what the information layer costs', () => {
    * measured failure comes back — dearer instruments push wealth into the OTHER
    * un-losable holding and drop ARR through its floor.
    */
+  /**
+   * ANCHORED TO THE HOUR, NOT TO THE CORE. Faz 4.1 moved the Core onto the producer curve, so a
+   * late Core rung stopped being the yardstick it was (407,516 at Core 18 → 14,419). What the band
+   * guards never lived in the Core's price: it is whether owning the layer competes with PRODUCTION,
+   * and production did not move. The old anchor was 66.6 hours of a Refinery-and-Extractor-18
+   * world's output; the band is the same quarter-to-double around it.
+   */
   it('costs about one late building step — a real trade, not a formality', () => {
-    const lateStep = tot(buildingCost('CORE', 18));
-    expect(fourAtMax).toBeLessThan(lateStep * 2);
-    expect(fourAtMax).toBeGreaterThan(lateStep / 4);
+    const lateStepHours = 66.6;
+    const hours = fourAtMax / (alloyRate(18) + crystalRate(18));
+    expect(hours).toBeLessThan(lateStepHours * 2);
+    expect(hours).toBeGreaterThan(lateStepHours / 4);
   });
 });
 
@@ -1609,7 +1620,14 @@ describe('the tempo — every ratio a hull speed is measured against', () => {
    * with it. This is the guard against them coming back one craft at a time.
    */
   it('leaves no launch overhead anywhere in the model', () => {
-    expect(Object.keys(TRAVEL)).toEqual(['distanceFactor']);
+    /*
+      THE GUARD IS ABOUT OVERHEAD, NOT ABOUT THE KEY COUNT. It asserted the exact key list, which
+      made it fire on `pacedFlightCapMinutes` — a ceiling on a pace the COMMANDER chooses, not a
+      charge the model adds to every flight. The list is still enumerated so nothing arrives here
+      unnoticed; what is forbidden is now stated rather than implied.
+    */
+    expect(Object.keys(TRAVEL)).toEqual(['distanceFactor', 'pacedFlightCapMinutes']);
+    for (const key of Object.keys(TRAVEL)) expect(key).not.toMatch(/launch|overhead/i);
     expect('launchMinutes' in PROBE).toBe(false);
     expect('launchMinutes' in PROSPECTOR).toBe(false);
   });

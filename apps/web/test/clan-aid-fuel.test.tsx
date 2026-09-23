@@ -230,3 +230,37 @@ describe('the fuel a clan gift burns', () => {
     });
   });
 });
+
+/**
+ * THE SENDER'S SHIELD, SAID BEFORE THE BUTTON. Self-review 2026-09-23, R4.
+ *
+ * The server refuses aid out of a commander still behind the newcomer shield. The refusal used to
+ * arrive only on commit — in English — so the whole convoy was packed for nothing. The quote now
+ * carries the shield, and the sheet holds the button and says how long is left.
+ */
+describe('a sender still behind the newcomer shield', () => {
+  it('holds the send and says why, from the quote', async () => {
+    const { api } = show(5_000);
+    const until = new Date(Date.now() + 90 * 60_000);
+    vi.spyOn(api, 'quoteClanAid').mockResolvedValue({ ...quote, senderShieldUntil: until });
+    await packOneCourier();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeDisabled();
+    });
+    expect(document.querySelector('[data-aid-shielded]')).toHaveTextContent(/shield/i);
+  });
+
+  it('sends as before once the shield has lapsed', async () => {
+    const { api } = show(5_000);
+    vi.spyOn(api, 'quoteClanAid').mockResolvedValue({ ...quote, senderShieldUntil: null });
+    await packOneCourier();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /send — no recall/i })).toBeEnabled();
+    });
+    expect(document.querySelector('[data-aid-shielded]')).toBeNull();
+  });
+});

@@ -102,4 +102,13 @@ export const counter = {
   noteLastRaid: 'La última incursión se hundió en su mayor parte {{class}}',
   mixMostly: 'Mayormente {{class}}',
   mixEven: 'Ninguna clase domina',
+  matchupMajority: 'Mayoría {{class}} — más de la mitad',
+  matchupRemainder: 'el resto no se leyó y puede contrarrestarte',
+  matchupUnread: "{{share}} % sin leer",
+  matchupMixed: 'Defensa mixta — ningún contador único',
+  matchupSplit: 'División leída',
+  matchupBring: 'Lleva {{class}}',
+  matchupSingle: 'Tu flota es de una sola clase — su contador puede estar en la parte no leída',
+  matchupExposure: 'fuerte {{strong}}% · débil {{weak}}%',
+  matchupProbe: 'una sonda dos niveles de astillero por encima revela la división',
 } as const;

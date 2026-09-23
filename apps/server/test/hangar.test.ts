@@ -195,26 +195,34 @@ describe('the Hangar', () => {
   });
 
   /**
-   * THE CORE OPENS THE RUNGS. Owner design: Hangar 2 at Core 4, 3 at 7, 4 at 10,
-   * 5 at 13, 6 at 16 — and a Core-16 world may buy 7 to 10 with resources alone.
+   * THE CORE NO LONGER OPENS THE RUNGS. Owner decision, 2026-09-22: *"tier atlamadan bir kullanıcı
+   * filocu olabilmeli."*
+   *
+   * This suite held the gate rung by rung — Core 6 refuses Hangar 3, Core 4 caps the ladder at 2 —
+   * and that rule is gone. What replaced it is the ore: a Core-4 world makes 531 alloy an hour and
+   * cannot hold one late rung's price at once, so production refuses what the gate used to.
+   * `packages/rules/test/hangar-free-of-core.test.ts` carries that measurement; these are the
+   * SERVER's half of it.
    */
   describe('raising the Hangar', () => {
-    it('refuses a rung the Core has not opened, and names the Core it needs', async () => {
+    it('raises a rung at a Core that would once have refused it', async () => {
       await setLevel(f.db, home, 'CORE', 6);
       await setLevel(f.db, home, 'HANGAR', 2);
-      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock)).rejects.toMatchObject({
-        code: 'CORE_CEILING',
-        params: { requiredCore: 7 },
-      });
+      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock))
+        .resolves.toMatchObject({ level: 3 });
     });
 
-    it('allows the rung the moment its Core gate is reached', async () => {
-      await setLevel(f.db, home, 'CORE', 7);
-      await setLevel(f.db, home, 'HANGAR', 2);
-      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock)).resolves.toMatchObject({ level: 3 });
+    it('raises rung after rung without the Core moving at all', async () => {
+      await setLevel(f.db, home, 'CORE', 4);
+      await grant(f.db, home, 50_000_000, 20_000_000);
+      await setLevel(f.db, home, 'HANGAR', 1);
+      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock))
+        .resolves.toMatchObject({ level: 2 });
+      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock))
+        .resolves.toMatchObject({ level: 3 });
     });
 
-    it('lets a Core-16 world buy the rungs past six, and stops at ten', async () => {
+    it('lets a world buy the rungs past six, and stops at ten', async () => {
       await setLevel(f.db, home, 'CORE', 16);
       await grant(f.db, home, 50_000_000, 20_000_000);
       await setLevel(f.db, home, 'HANGAR', 6);
@@ -226,13 +234,13 @@ describe('the Hangar', () => {
       });
     });
 
-    it('does not let a queued order walk past the gate', async () => {
-      await setLevel(f.db, home, 'CORE', 4);
-      await setLevel(f.db, home, 'HANGAR', 1);
-      expect(hangarCeiling(4)).toBe(2);
-      await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock)).resolves.toMatchObject({ level: 2 });
+    /** The ore is the bound that remains, and it is still enforced. */
+    it('still refuses a rung nobody can pay for', async () => {
+      await setLevel(f.db, home, 'CORE', 16);
+      await setLevel(f.db, home, 'HANGAR', 8);
+      await grant(f.db, home, 0, 0);
       await expect(upgradeBuilding(f.db, home, 'HANGAR', f.clock)).rejects.toMatchObject({
-        code: 'CORE_CEILING',
+        code: 'INSUFFICIENT_RESOURCES',
       });
     });
   });

@@ -8,7 +8,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { TRAFFIC, engagementEndsAt } from '@astera/rules';
-import type { ChatLanguage } from '@astera/rules';
+import type { ChatLanguage, MissionPace } from '@astera/rules';
 import type {
   Fleet,
   Resources,
@@ -665,8 +665,9 @@ export function useClanWarActions() {
     target: useMutation({ mutationFn: (planetId: string) => api.markClanWarTarget(planetId),
       onSuccess: refresh }),
     cancel: useMutation({ mutationFn: () => api.cancelClanWar(), onSuccess: refresh }),
-    start: useMutation({ mutationFn: (acknowledgeShieldLoss: boolean) =>
-      api.startClanWar(acknowledgeShieldLoss), onSuccess: refresh }),
+    start: useMutation({ mutationFn: ({ acknowledgeShieldLoss, pace }: {
+      acknowledgeShieldLoss: boolean; pace: MissionPace;
+    }) => api.startClanWar(acknowledgeShieldLoss, pace), onSuccess: refresh }),
     quote: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet }) =>
       api.quoteClanWar(input) }),
     contribute: useMutation({ mutationFn: (input: { originPlanetId: string; fleet: Fleet;
@@ -1939,6 +1940,23 @@ export function useHarvest() {
 }
 
 /** Turn only an outbound Prospector run around and apply its physical return leg. */
+/**
+ * CALL A TRANSFER BACK. Owner decision, 2026-09-21.
+ *
+ * NO OPTIMISTIC UPDATE, unlike the mining recall beside it. A turn-around rewrites the flight's
+ * arrival and its whole drawn leg, and the honest version of that picture is the one the server
+ * computes — guessing it here would put a squadron on the disc flying a line the server never
+ * agreed to, for as long as the refetch takes.
+ */
+export function useRecallTransfer() {
+  const api = useApi();
+  const invalidate = useInvalidator();
+  return useMutation({
+    mutationFn: ({ missionId }: { missionId: string }) => api.recallTransfer(missionId),
+    onSuccess: () => { invalidate(['pending'], ['planet'], ['planets']); },
+  });
+}
+
 export function useRecallMining() {
   const api = useApi();
   const { activePlanetId } = useWorld();
@@ -1982,12 +2000,12 @@ export function useLaunch() {
   return useMutation({
     scope: lane.scope,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss }:
-      { targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean },
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace }:
+      { targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace },
     ) =>
       activePlanetId
-        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss),
+        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       /**
@@ -2025,11 +2043,12 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ targetPlanetId, fleet, cargo }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
-    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo),
+      pace?: MissionPace;
+    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

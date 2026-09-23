@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
 import { compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
@@ -105,7 +105,7 @@ describe('world transfer sheet', () => {
     expect(alloyRow).toHaveTextContent('Sending');
     expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(HULLS.COURIER.cargo));
     expect(alloyRow).not.toHaveTextContent('stays here');
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 
   it('accepts a directly typed hull count and clamps it to the ships at home', async () => {
@@ -167,7 +167,7 @@ describe('world transfer sheet', () => {
       }),
     ).toBeInTheDocument();
     expect(document.querySelector('[data-full]')).not.toBeNull();
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeDisabled();
   });
 
   it('sends a squadron the destination Hangar can hold', async () => {
@@ -192,7 +192,7 @@ describe('world transfer sheet', () => {
 
     await user.click(screen.getByRole('button', { name: 'More Dart' }));
     expect(document.querySelector('[data-full]')).toBeNull();
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 
   /**
@@ -331,7 +331,7 @@ describe('what a transfer burns', () => {
     fireEvent.change(deuterium, { target: { value: '30' } });
 
     expect(Number((deuterium as HTMLInputElement).value)).toBeLessThan(30);
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
     expect(view.container.querySelector('[data-transfer-fuel]')).toHaveTextContent(/\d/);
     expect(mutate).not.toHaveBeenCalled();
   });
@@ -341,7 +341,7 @@ describe('what a transfer burns', () => {
     open(50_000);
     await load(user);
 
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 });
 
@@ -430,7 +430,7 @@ describe('the deuterium a transfer spends twice', () => {
       .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1));
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 });
 
@@ -451,7 +451,8 @@ describe('the deuterium a transfer spends twice', () => {
  */
 describe('the deuterium a transfer may actually load', () => {
   const far = { ...target, position: { x: 1900, y: 0, z: 0 } };
-  const flight = (fleet: Record<string, number>) => missionFuel(fleet, 1900, 1);
+  /** The homeward rate, because both ends of a transfer are this commander's own worlds. */
+  const flight = (fleet: Record<string, number>) => missionFuel(fleet, 1900, 1, 'HOMEWARD');
 
   const open = (deuterium: number, fleet: Record<string, number> = { ATLAS: 2 }) => render(
     <ToastProvider>
@@ -496,7 +497,7 @@ describe('the deuterium a transfer may actually load', () => {
 
     await user.click(screen.getByRole('button', { name: 'More Atlas' }));
     expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }));
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 
   /**
@@ -508,7 +509,7 @@ describe('the deuterium a transfer may actually load', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Atlas' }));
 
     expect(Number(slider(/Deuterium/i).max)).toBe(0);
-    expect(screen.getByRole('button', { name: /transfer — no recall/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeDisabled();
   });
 });
 
@@ -530,5 +531,145 @@ describe('the garrison left behind', () => {
     );
     const firepower = compact(combatValue(garrisonOf(planet.fleet, planet.ground)));
     expect(screen.getByText(new RegExp(`${firepower} firepower`, 'i'))).toBeInTheDocument();
+  });
+});
+
+/**
+ * THE SPEED A TRANSFER FLIES AT. Review 2026-09-22, finding #1 · plan §15.5a.
+ *
+ * The server has taken a pace on this lane since Faz 2A and the sheet never offered one, so the
+ * one launch whose whole point can be the flight itself — a fleetsave, ships kept in the air
+ * until the raid has passed — was the one launch that could not be slowed.
+ */
+describe('choosing how fast a transfer flies', () => {
+  beforeEach(() => { mutate.mockReset(); });
+
+  const open = () => render(
+    <ToastProvider>
+      <TransferSheet
+        target={target}
+        planet={planetView({ fleet: { DART: 4 } }, { id: 'capital-1', deuterium: 50_000 })}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  it('offers the speeds this flight may take, and moves the arrival with them', async () => {
+    const user = userEvent.setup();
+    const view = open();
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+
+    const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]');
+    expect(row).toBeTruthy();
+    const rungs = within(row!).getAllByRole('radio');
+    expect(rungs.length).toBeGreaterThan(1);
+    expect(rungs[0]).toBeChecked();
+
+    const eta = view.container.querySelector<HTMLElement>('[data-transfer-eta]')!;
+    const atFullSpeed = eta.textContent;
+    await user.click(rungs[rungs.length - 1]!);
+    expect(rungs[rungs.length - 1]).toBeChecked();
+    expect(eta.textContent).not.toBe(atFullSpeed);
+  });
+
+  /** Why anyone would slow a transfer, on the row: the fleetsave, and the same fuel. */
+  it('says what a slower transfer buys where the choice is made', async () => {
+    const user = userEvent.setup();
+    const view = open();
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    const row = view.container.querySelector<HTMLElement>('[data-transfer-pace]')!;
+    expect(row).toHaveTextContent(/cannot be raided/i);
+    expect(row).toHaveTextContent(/same fuel/i);
+  });
+
+  it('shows no speeds while nothing is packed', () => {
+    expect(open().container.querySelector('[data-transfer-pace]')).toBeNull();
+  });
+
+  it('sends the chosen speed with the transfer', async () => {
+    const user = userEvent.setup();
+    const view = open();
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    const rungs = within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!)
+      .getAllByRole('radio');
+    await user.click(rungs[1]!);
+    await user.click(screen.getByRole('button', { name: /^transfer$/i }));
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate.mock.calls[0]![0]).toMatchObject({ targetPlanetId: target.id, pace: 0.75 });
+  });
+});
+
+/**
+ * THE UNLOADING PAUSE ENDS ON THE SCREEN, NOT ON THE NEXT FETCH. Review 2026-09-22, finding #4.
+ *
+ * The server clears `transferReadyAt` only on a fresh read, and nothing refetches the planet at
+ * that instant — so a sheet that took the field's presence as the lock stayed locked after the
+ * pause had passed, until some unrelated refresh happened to land.
+ */
+describe('the pause after a squadron lands', () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  const open = (readyInMs: number) => render(
+    <ToastProvider>
+      <TransferSheet
+        target={target}
+        planet={planetView(
+          { fleet: { DART: 4 } },
+          { id: 'capital-1', deuterium: 50_000, transferReadyAt: new Date(Date.now() + readyInMs) },
+        )}
+        onClose={vi.fn()}
+        onLaunched={vi.fn()}
+      />
+    </ToastProvider>,
+  );
+
+  it('holds the transfer while the pause runs, and says how long is left', () => {
+    open(3 * 60_000);
+    fireEvent.click(screen.getByRole('button', { name: 'More Dart' }));
+    const button = screen.getByRole('button', { name: /unloading/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('opens the transfer the moment the pause ends, with the sheet still open', () => {
+    vi.useFakeTimers();
+    open(2_000);
+    fireEvent.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(screen.getByRole('button', { name: /unloading/i })).toBeDisabled();
+
+    act(() => { vi.advanceTimersByTime(3_000); });
+    expect(screen.queryByRole('button', { name: /unloading/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+  });
+
+  it('treats a pause already in the past as no pause at all', () => {
+    open(-1_000);
+    fireEvent.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+  });
+});
+
+/**
+ * A TRANSFER CAN BE CALLED BACK NOW, AND THE SHEET SAID IT COULD NOT. Faz 2A.4 follow-up.
+ *
+ * The commit read "Transfer — no recall" and the rule line "One way" — true when they were
+ * written, false since the recall shipped. A screen that tells the commander the opposite of the
+ * rule is worse than one that says nothing.
+ */
+describe('what the sheet promises about the flight', () => {
+  it('no longer calls a transfer one-way or unrecallable', () => {
+    render(
+      <ToastProvider>
+        <TransferSheet
+          target={target}
+          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1' })}
+          onClose={vi.fn()}
+          onLaunched={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    expect(screen.queryByText(/no recall|one way/i)).toBeNull();
+    expect(screen.getByText(/recalled once while in flight/i)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   DEBRIS,
   FAULT,
+  drawAttackFaults,
   drawFaults,
   faultsPossible,
   hasFault,
@@ -271,6 +272,22 @@ export async function breakFaults(
     count: number;
     /** What made this happen, so the same cause always draws the same faults. */
     seed: string;
+    /**
+     * WHICH LANE THIS BREAK IS, AND IT DECIDES THE POOL. Required, never defaulted.
+     *
+     * `CLOCK` draws from all eight; `ATTACK` spares the production line, because the same blow
+     * just bought the defender eight hours of BOOSTED output and an outage would take it straight
+     * back (`FAULT.attackSpares`).
+     *
+     * A default would pick one of those two silently for whoever writes the next caller, and the
+     * wrong pick is invisible until a balance number looks wrong months later — the exact failure
+     * the `spawnEventId` guard below was written for.
+     *
+     * Named `lane` rather than `cause` because `scheduleNextFaultSpawn` takes a `cause` too, one
+     * line away, and it means an event id — two adjacent calls with one word for two things is a
+     * trap for whoever reads this next.
+     */
+    lane: 'CLOCK' | 'ATTACK';
     spawnEventId?: string;
     /**
      * Whether each fault gets its own notification. The clock's faults do; a battle's do
@@ -293,7 +310,8 @@ export async function breakFaults(
   }
   const state = await faultStateOf(tx, input.planetId);
   if (!state) return [];
-  const drawn = drawFaults(
+  const draw = input.lane === 'ATTACK' ? drawAttackFaults : drawFaults;
+  const drawn = draw(
     { kind: state.kind, coreLevel: state.coreLevel, plantLevel: state.plantLevel },
     state.active,
     input.count,
@@ -443,6 +461,7 @@ export const onFaultSpawn: Handler = async ({ db, clock }, event) => {
       now,
       count: 1,
       seed: `spawn:${event.id}`,
+      lane: 'CLOCK',
       spawnEventId: event.id,
     });
   });

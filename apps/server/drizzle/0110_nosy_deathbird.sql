@@ -1,0 +1,1 @@
+ALTER TABLE "planets" ADD COLUMN "transfer_ready_at" timestamp with time zone;

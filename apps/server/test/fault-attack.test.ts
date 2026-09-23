@@ -103,6 +103,21 @@ describe('ağır bir saldırı', () => {
     expect(new Set(faults).size).toBe(FAULT.attackFaults);
   });
 
+  /**
+   * KALKANIN SÖZÜNÜ, ONU VEREN OLAY GERİ ALAMAZ.
+   *
+   * Aynı yenilgi hem `recoveryProductionMult` (%50 fazla üretim, 8 saat) hem iki arıza veriyordu;
+   * sekizin üçü üretimi durdurduğu için iki çekilişte %64 ihtimalle telafi iptal oluyordu.
+   * `FAULT.attackSpares` o üçünü saldırı havuzundan çıkarıyor.
+   */
+  it('savaşın açtığı arızalar üretim hattına dokunmaz', async () => {
+    const { report } = await overwhelm(colony);
+    expect(report.recoveryShieldUntil, 'fixture kalkanı hak etmedi').not.toBeNull();
+    const faults = await faultsOf(colony);
+    expect(faults).toHaveLength(FAULT.attackFaults);
+    for (const kind of faults) expect(FAULT.attackSpares).not.toContain(kind);
+  });
+
   it('ağır koloni yenilgisi sadakati 30 azaltır ve arıza izleyicisini yeni değerden kurar', async () => {
     await overwhelm(colony);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, colony));
@@ -188,7 +203,7 @@ describe('ağır bir saldırı', () => {
     const { breakFaults } = await import('../src/services/faults.js');
     const written = await f.db.transaction((tx) => breakFaults(tx, {
       seasonId: f.seasonId, planetId: colony, now: f.clock.now(),
-      count: FAULT.attackFaults, seed: 'test-below-gate',
+      count: FAULT.attackFaults, seed: 'test-below-gate', lane: 'ATTACK',
     }));
     expect(written).toEqual([]);
     expect(await faultsOf(colony)).toHaveLength(0);
@@ -360,7 +375,7 @@ describe('arıza kırıcının sınırları', () => {
     const { breakFaults } = await import('../src/services/faults.js');
     await expect(f.db.transaction((tx) => breakFaults(tx, {
       seasonId: f.seasonId, planetId: colony, now: f.clock.now(),
-      count: 2, seed: 'x', spawnEventId: '00000000-0000-4000-8000-000000000001',
+      count: 2, seed: 'x', lane: 'CLOCK', spawnEventId: '00000000-0000-4000-8000-000000000001',
     }))).rejects.toThrow(/spawnEventId/);
     expect(await f.db.select().from(planetFaults)).toHaveLength(0);
   });

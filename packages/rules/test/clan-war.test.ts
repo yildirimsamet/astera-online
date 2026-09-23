@@ -70,9 +70,22 @@ describe('the clan hangar ladder', () => {
     }
   });
 
-  it('prices a rung at the personal Hangar rung it mirrors, never doubled', () => {
+  /**
+   * TWICE THE ROOM, TWICE THE INVOICE. Owner decision, 2026-09-22, reversing "never doubled".
+   *
+   * The old rule bought double room at the personal price, which made every cut to the personal
+   * ladder a free cut to the clan's price per unit of room. Plan 2B.3 cut the late personal rungs
+   * by 35–75%; unchanged, this would have handed clans that cut twice over. Doubling keeps the
+   * coupling and closes the multiplier — see `hangar-price.test.ts` for the per-unit equality.
+   */
+  it('prices a rung at twice the personal Hangar rung it mirrors', () => {
     for (let level = 1; level <= 9; level++) {
-      expect(clanLevelUpgradeCost(level)).toEqual(buildingCost('HANGAR', level));
+      const personal = buildingCost('HANGAR', level);
+      expect(clanLevelUpgradeCost(level)).toEqual({
+        alloy: personal.alloy * 2,
+        crystal: personal.crystal * 2,
+        deuterium: personal.deuterium * 2,
+      });
     }
   });
 

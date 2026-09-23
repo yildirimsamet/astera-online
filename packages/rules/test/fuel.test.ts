@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const fleetBulk = (fleet: Record<string, number | undefined>): number =>
   Object.entries(fleet).reduce((sum, [id, n]) => sum + (n ?? 0) * hullBulk(id as never), 0);
 import {
+  SALVAGE,
   FUEL,
   GALAXY_SPAN,
   HULLS,
@@ -214,7 +215,8 @@ describe('D195 fuel by hull value', () => {
     expect(FUEL).not.toHaveProperty('tierMultiplier');
     for (const id of MOBILE_HULLS) {
       const previous = HULLS[id].profile === 'COLLECTOR'
-        ? 500
+        // The one hand-set thirst in the catalogue; the figure is recalibrated, the rule is not.
+        ? SALVAGE.fuelMass
         : Math.max(1, Math.ceil(
           value(id) * FUEL.perValue
           * (FUEL.pivotRoundTrip / (hullRoundTrip(id) ?? FUEL.pivotRoundTrip)),

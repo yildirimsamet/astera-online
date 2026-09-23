@@ -313,6 +313,7 @@ export const clan = {
     overLimit: "Dépassement",
     cannotLand:
       "Ce monde ne peut pas encore utiliser tous les vaisseaux de ce don.",
+    senderShielded: 'Votre bouclier de nouveau venu garde vos ressources chez vous encore {{duration}}. L’aide pourra partir ensuite.',
     tooLate:
       "Le vol et, si nécessaire, le retour ne peuvent pas être terminés avant la fin de la saison.",
     possibleReturn:

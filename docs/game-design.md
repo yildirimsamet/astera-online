@@ -86,7 +86,7 @@ fight.
 | **Crystal Extractor** | Crystal/hr and crystal storage | Slow, but gates everything interesting |
 | **Vault** | Storage capacity and protected stock | A larger purchase window vs investment elsewhere |
 | **Shipyard** | Unlocks hulls, sets probe stealth and build throughput | Reach vs growth |
-| **Hangar** | Fleet room on this world (ships, by `bulk`) | Grow the Core to grow the fleet |
+| **Hangar** | Fleet room on this world (ships, by `bulk`) | Room or economy? Its own ladder, free of the Core since plan 2B.6 (2026-09-22) |
 
 **The Hangar (restored 2026-09-18, reverses D184).** Commanders held their Core low to stay
 inside the beginners' tier band and printed an unbounded fleet there. A world's ships — home,
@@ -125,6 +125,16 @@ Queue gates read the world projected through every earlier order. A commander ma
 Core 1→2 and then Refinery 1→2; they may not use a later order to justify an earlier one. Core and
 Shipyard now sell throughput as well as access. Ground defence uses a faster derived throughput so
 one Thorn at Shipyard 0 still completes inside the narrowest Radar L3 warning.
+
+### The producer curve — one slope for a thirty-day season (Faz 4.1, 2026-09-22/23)
+
+A producer rung costs *hours × the output it really adds*, so its payback is the hours: `×1.5` a
+rung through the calibrated opening (rung ≤ 6), then `×1.16` (`ECONOMY_CURVE`). Refinery 10–12
+repay in about a day, 15→16 in two, 20→21 in four and a half, so the rational sunset lands in the
+last week. The Core has its own gentler slope (`×1.35`) that keeps its LEVEL where the level-indexed
+rules were balanced — emplacements, flight bays, the attack tier, colony loyalty — and leans to
+crystal past the opening. The Vault, the Shipyard and the Hangar keep their own prices. Each producer
+rung shows its payback on the ladder sheet. Numbers: `docs/balance.md`.
 
 ### Flight bays — concurrent operations, not construction
 
@@ -179,8 +189,9 @@ reference trip. The later 10–30% tier surcharge was removed on 2026-09-18. D12
 makes the same axis an *economic* one.
 
 **Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
-cheaper raid, it is a stranded fleet, and a launched fleet cannot be recalled. A raid pays both
-legs at launch; a transfer, a settlement and an empty-hold clan ship gift pay one leg, while a
+cheaper raid, it is a stranded fleet, and a launched raid cannot be recalled. A raid pays both
+legs at launch; a transfer (at the half HOMEWARD rate, see below), a settlement and an empty-hold
+clan ship gift pay one leg, while a
 resource-carrying clan transport pays its planned outbound and return legs. Deuterium loaded
 as cargo is already spent as far as the flight is concerned — the guard reads the sum. No system
 path ever asks for more (a rerouted leg flies on what was paid) and no cancellation gives any
@@ -228,7 +239,7 @@ and never replaces every lower-tier role.
 | **Warden / Sentinel / Praetorian / Paladin** | 1 / 2 / 3 / 4 | Bulwark | Same-price Fortress alternative with more attack and less hull | Trades hull for attack and speed (18-minute trip against the Fortress's 25, D207); smaller hold, more fuel |
 | **Courier / Wayfarer / Atlas / Argosy** | 1 / 2 / 3 / 4 | Support | Fast/light through slow/deep cargo choices | Deal no damage; capacity and speed prevent a universal choice |
 | **Nullifier** | 3 | Lance specialist | Additional class-adjusted damage only into a live Aegis | Poor generic combat efficiency; Gravitic Charges gate |
-| **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 15k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200) | Fires nothing, carries nothing, live 13k/6.5k after the fleet metal adjustment; flies only with a warship; collects nothing while defending |
+| **Garbage Collector** | 3 | Support specialist | Each one that survives lifts up to 7.5k of its own battle's wreck, in the wreck's mix, before the rest forms the public field (D200; 15k → 7.5k on 2026-09-22) | Fires nothing, carries nothing, 13k/6.5k; burns 100 deuterium per thousand units and takes 40 Hangar room (2026-09-22); flies only with a warship; collects nothing while defending |
 | **Bastion** | — | Bulwark, ground | Durable heavy defence against Lance | Cannot travel; Skirmisher counters it |
 | **Harpoon** | — | Lance, ground | Spear battery against Skirmisher formations | Cannot travel; Bulwark counters it |
 | **Thorn** | — | Skirmisher, ground | Opening-tier durable defence against Bulwark | Cannot travel; Lance counters it |
@@ -500,6 +511,20 @@ to five successful moves. The placement notice links to return applications. Nor
 reset continues. Activation status and measured acceptance are recorded in deployment docs.
 
 ## Galaxy, travel and mining
+
+### Flight speed, recall and the landing pause (Faz 2A, owner decisions 2026-09-21)
+
+- **Pace.** Every world-to-world launch — raid, transfer and the clan joint strike — may fly at
+  100 / 75 / 50 / 25 / 10 % speed. A slower rung lands later and burns exactly the same fuel. No
+  paced flight may stay up past 12 hours (full speed is always allowed, however long). The way
+  home is always flown at full speed. Pirates, settlements and lessons fly at full speed.
+- **Transfer recall.** A commander's own transfer may be turned around ONCE while still in the
+  air; the way home takes as long as was already flown, costs nothing more, and always lands.
+  A raid cannot be recalled today (the owner decided on 2026-09-23 to change that; not yet built).
+- **The landing pause.** A world that has just received a transfer cannot send a transfer out for
+  five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
+- **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate
+  (`FUEL.laneShare.HOMEWARD`); raids pay full at every pace.
 
 **One true sphere**, radius 3000 and therefore a maximum point-to-point crossing of 6000. Every
 gameplay coordinate — not merely its horizontal projection — lies inside that sphere. The three
@@ -872,6 +897,8 @@ and private chat at once.
 
 The cooperation has three concrete answers to “why join?” First, members can send physical
 ship gifts or Hauler resource deliveries with a 10% travel bonus and one aid-only flight bay.
+A commander still behind the newcomer shield may receive aid but not send it (plan §15.6, the
+Sybil guard); the aid quote says so before the button does.
 Loaded transports return to their launch world after delivery; empty convoys transfer ownership.
 Second,
 10% of ordinary PvP loot that safely returns is split into claimable personal shares for the

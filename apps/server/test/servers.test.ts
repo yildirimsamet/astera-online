@@ -810,6 +810,7 @@ describe('servers', () => {
       const [mission] = await db
         .insert(missions)
         .values({
+          fuelPaid: 0,
           seasonId: placement.seasonId,
           kind: 'attack',
           ownerPlayerId: placement.playerId,

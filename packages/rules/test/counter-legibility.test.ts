@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CombatClass } from '../src/types.js';
 import {
   ALL_HULLS,
   COMBAT,
@@ -53,21 +54,26 @@ describe('the cycle as data', () => {
 });
 
 describe('counters / counteredBy agree with the resolver', () => {
+  /*
+    NO `!` NEEDED, AND THAT IS THE POINT. `counters` and `counteredBy` are overloaded so a
+    CombatClass in gives a CombatClass out — the cycle is closed, and the type says so. The
+    runtime check stays: it proves the implementation honours what the overload promises.
+  */
   it('a class is strong against the one it counters', () => {
     for (const cls of COMBAT_CLASSES) {
-      const prey = counters(cls);
-      expect(prey).not.toBeNull();
-      expect(counterMult(cls, prey!)).toBe(COMBAT.strongMult);
+      const prey: CombatClass = counters(cls);
+      expect(COMBAT_CLASSES).toContain(prey);
+      expect(counterMult(cls, prey)).toBe(COMBAT.strongMult);
     }
   });
 
   it('a class is weak against the one that counters it', () => {
     for (const cls of COMBAT_CLASSES) {
-      const predator = counteredBy(cls);
-      expect(predator).not.toBeNull();
-      expect(counterMult(cls, predator!)).toBe(COMBAT.weakMult);
+      const predator: CombatClass = counteredBy(cls);
+      expect(COMBAT_CLASSES).toContain(predator);
+      expect(counterMult(cls, predator)).toBe(COMBAT.weakMult);
       // ...and the relation is symmetric in the way the cycle claims.
-      expect(counterMult(predator!, cls)).toBe(COMBAT.strongMult);
+      expect(counterMult(predator, cls)).toBe(COMBAT.strongMult);
     }
   });
 

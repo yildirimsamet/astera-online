@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SALVAGE,
   ABUSE,
   GROUND_HULLS,
   HULLS,
@@ -15,8 +16,15 @@ const value = (cost: { alloy: number; crystal: number; deuterium: number }): num
   cost.alloy + cost.crystal * 2 + cost.deuterium * 32;
 
 describe('owner requests from 2026-09-20', () => {
-  it('quotes the Garbage Collector at 50 deuterium fuel', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(50);
+  /**
+   * THE FIGURE MOVED, THE RULE DID NOT. The 2026-09-20 request was that the card quote a hand-set
+   * thirst at all, rather than one derived from the hull's price — and it still does. The number
+   * itself was raised to 100 on 2026-09-22 as part of the collector's recalibration, so this asks
+   * the constant rather than a remembered figure. See `collector-calibration.test.ts`.
+   */
+  it('quotes the Garbage Collector at its hand-set deuterium thirst', () => {
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass / 10);
+    expect(SALVAGE.fuelMass).toBe(1_000);
   });
 
   it('opens satellite slots only at Command Core 6, 9, 12 and 15', () => {

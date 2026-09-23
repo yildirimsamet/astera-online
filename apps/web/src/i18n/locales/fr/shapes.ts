@@ -77,4 +77,13 @@ export const counter = {
     "Lors du dernier raid, les pertes étaient principalement de classe {{class}}",
   mixMostly: "Principalement {{class}}",
   mixEven: "Aucune classe dominante",
+  matchupMajority: 'Majorité {{class}} — plus de la moitié',
+  matchupRemainder: 'le reste n\'a pas été lu et peut vous contrer',
+  matchupUnread: "{{share}} % non lu",
+  matchupMixed: 'Défense mixte — aucun contre unique',
+  matchupSplit: 'Répartition lue',
+  matchupBring: 'Prenez {{class}}',
+  matchupSingle: 'Votre flotte est mono-classe — son contre peut être dans la partie non lue',
+  matchupExposure: 'fort {{strong}} % · faible {{weak}} %',
+  matchupProbe: 'une sonde deux niveaux de chantier au-dessus révèle la répartition',
 } as const;

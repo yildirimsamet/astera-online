@@ -125,18 +125,27 @@ That gap is the effort gradient.
 ### The payback curve is the brake
 
 ```
-paybackHours(L) = totalCost(L) / (alloyRate(L+1) − alloyRate(L))
-worthInvesting  = paybackHours(L) < hoursRemaining × 0.70
+producerPaybackHours(P, L) = resourceValue(buildingCost(P, L)) / resourceValue(marginalOutput(P, L))
+worthInvesting             = producerPaybackHours(P, L) < hoursRemaining × 0.70
 ```
 
-| Level | 1 | 8 | 12 | 16 | 18 |
-|---|---|---|---|---|---|
-| Payback | 0.9 h | 5.8 h | 18.3 h | 59.6 h | 108.3 h |
+**One curve since Faz 4.1 (2026-09-22, `ECONOMY_CURVE`).** A producer rung is priced as *hours × the
+output it really adds*, so its payback IS the hours: `×1.5` a rung through the calibrated opening
+(rung ≤ 6), then `×1.16` a rung. The Core has its own gentler slope, `×1.35` past the opening
+(owner decision 2026-09-23), so its LEVEL stays where ground emplacements, flight bays, the attack
+tier and colony loyalty were balanced (sim day-30 median 17, top tenth 19); past the opening its
+recipe leans to crystal (0.55 / 0.45, value-neutral) to keep the crystal-spend invariant. The Vault,
+the Shipyard and the Hangar keep their own prices. The owner's 2026-09-20 late output lift
+(+6 % of output a rung past 12) is kept and priced in, so it no longer bends payback.
 
-Cost grows at 1.54 against production at 1.10, so payback lengthens with level. **That drift is what
-stops a 14-day season running away**, and it produces the sunset: every player independently stops
-building on the last day, with no rule announcing it. **If you change the cost curve, re-derive the
-season length.**
+| Refinery rung | 5→6 | 10→11 | 12→13 | 15→16 | 20→21 | 24→25 |
+|---|---|---|---|---|---|---|
+| Payback | 9.3 h | 24 h | 33 h | 51 h | 108 h | 195 h |
+
+The sunset still comes: a Refinery-20 world stops on day ~23.6 of 30. The live season before this
+change stalled at Refinery 11 on day 5 (median, `build_orders`), with paybacks of 4–7 days at
+L10–15 — the owner's *"3-5 gün saçmalık"*. **If you change the curve, re-run
+`packages/rules/test/producer-curve.test.ts` and the sim's progression by day.**
 
 ### The crystal share is derived, not chosen
 

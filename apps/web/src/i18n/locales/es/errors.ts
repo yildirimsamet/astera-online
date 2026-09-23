@@ -14,6 +14,13 @@
  */
 
 export const errors = {
+  /** The movement package's refusals. Self-review 2026-09-23, R4. */
+  BAD_PACE: 'Esa no es una de las velocidades de vuelo',
+  PACE_TOO_SLOW: 'A esa velocidad la flota seguiría en vuelo más allá del límite de 12 h. Elige una más rápida',
+  NOT_RECALLABLE: 'Ese vuelo ya no se puede recuperar: aterrizó o ya dio la vuelta una vez',
+  NOT_FOUND: 'Eso ya no existe',
+  SHIELDED_SENDER: 'Mientras dure tu escudo de novato no puedes enviar recursos a otro comandante',
+  TRANSFER_COOLDOWN: 'Este mundo aún descarga el último escuadrón: podrás transferir de nuevo en {{seconds}} s',
   ADMIN_FORBIDDEN: 'Se requiere acceso de administrador',
   PLANET_NOT_OWNED: 'Tú no controlas ese mundo',
   WORLD_RECOVERING: 'Ese mundo se está recuperando',

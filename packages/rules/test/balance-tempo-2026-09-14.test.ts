@@ -179,9 +179,13 @@ describe('fuel', () => {
     expect(FUEL.perValue).toBe(0.0055);
   });
 
+  /**
+   * The point of this one is the ABSENCE of a tier lift: the collector burns its authored base and
+   * nothing the tier table would add. The base itself was recalibrated on 2026-09-22, so the test
+   * reads the constant rather than the figure it held that day.
+   */
   it('uses the Garbage Collector base without a tier-three lift', () => {
-    expect(SALVAGE.fuelMass).toBe(500);
-    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(500);
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
   });
 
   it('leaves no fuel-charged mobile hull free to move, and no ground gun charged', () => {

@@ -326,6 +326,7 @@ describe('teleskop arızası', () => {
       now: brokeAt,
       count: 1,
       seed: 'only-telescope-remains',
+      lane: 'CLOCK',
     }));
     expect(written).toEqual(['TELESCOPE_FAULT']);
 

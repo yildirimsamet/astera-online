@@ -66,10 +66,22 @@ describe('the private pirate field', () => {
     expect(field.length / establishedLength).toBeGreaterThan(2.9);
     expect(field.length / establishedLength).toBeLessThan(3.1);
 
-    expect(createHash('sha256')
-      .update(JSON.stringify(field.slice(0, establishedLength)))
-      .digest('hex'))
-      .toBe('db190c424e1eb67ee8b0ccb18506c90509dd87c7dbf7f533dd75f8f0ee621f9b');
+    /*
+      THE DIGEST COVERS THE CONTACT'S IDENTITY AND NOT ITS PRIZE.
+
+      What it exists to catch is a RENUMBERING — a pirate's id is an HMAC of its lane index, so a
+      re-deal silently re-aims every claim and every raid already in the air. The hoard is a
+      consequence of the roster rather than part of who the contact IS, and hashing it made every
+      legitimate reward tune read as a re-deal (the 2026-09-22 deuterium repricing tripped it
+      exactly that way). Index, level, roster, orbit and window are all still in the hash, which is
+      everything that decides WHICH contact this is. `packages/rules/test/pirates.test.ts` holds
+      the same narrowing for the pure schedule.
+    */
+    const identity = (lane: typeof field): string => createHash('sha256')
+      .update(JSON.stringify(lane.map(({ hoard: _hoard, ...rest }) => rest)))
+      .digest('hex');
+    expect(identity(field.slice(0, establishedLength)))
+      .toBe('f73b4262a8f902ce3111f0159e6a05eca16d8aee831d0f4728bc35070fca4429');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {

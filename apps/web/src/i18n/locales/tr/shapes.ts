@@ -70,4 +70,13 @@ export const counter = {
   noteLastRaid: 'Son akında ağırlıklı {{class}} düştü',
   mixMostly: 'Ağırlıklı olarak {{class}}',
   mixEven: 'Baskın bir sınıf yok',
+  matchupMajority: 'Ağırlıklı {{class}} — yarıdan fazla',
+  matchupRemainder: 'kalanı okunmadı, seni karşılayabilir',
+  matchupUnread: "%{{share}} okunamadı",
+  matchupMixed: 'Karma savunma — tek bir sert counter yok',
+  matchupSplit: 'Okunan dağılım',
+  matchupBring: '{{class}} getir',
+  matchupSingle: 'Filon tek sınıf — counteri okunmayan kısımda olabilir',
+  matchupExposure: 'güçlü %{{strong}} · zayıf %{{weak}}',
+  matchupProbe: '2 tersane seviyesi üstü sonda dağılımı açar',
 } as const;

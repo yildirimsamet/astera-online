@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { ABUSE, CLAN, MULTI_WORLD, fleetSpeed } from '@astera/rules';
+import { ABUSE, CLAN, MULTI_WORLD, TRAVEL, fleetSpeed } from '@astera/rules';
 import {
   attackCommitments,
   clanCeasefires,
@@ -29,6 +29,7 @@ import {
   sendClanWarContribution,
   startClanWar,
   resolveClanWarExpiry,
+  projectOperation,
 } from '../src/services/clanWar.js';
 import { rememberWorld } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -440,6 +441,7 @@ describe('what a combined strike costs in quota', () => {
     await landStaging(f);
     for (let hit = 1; hit < ABUSE.bashLimit; hit += 1) {
       const [historical] = await f.db.insert(missions).values({
+        fuelPaid: 0,
         seasonId: f.seasonId,
         kind: 'attack',
         status: 'resolved',
@@ -576,6 +578,7 @@ describe('what a combined strike costs in quota', () => {
       await f.db.insert(attackCommitments).values({
         seasonId: f.seasonId,
         missionId: (await f.db.insert(missions).values({
+          fuelPaid: 0,
           seasonId: f.seasonId,
           kind: 'attack',
           ownerPlayerId: f.playerIds[1]!,
@@ -749,6 +752,110 @@ describe('once the strike is in the air', () => {
       expect(after).toMatchObject({ status: 'RETURNING', closeReason: 'LEADER_CANCEL' });
       expect(combined).toHaveLength(0);
       expect(await f.db.select().from(attackCommitments)).toHaveLength(0);
+    }
+  });
+});
+
+/* ── when the strike lands ──────────────────────────────────────── */
+
+/**
+ * THE LEADER CHOOSES WHEN THE JOINT STRIKE LANDS. Review 2026-09-22, finding #2 · plan §15.5a.
+ *
+ * The pace rungs were offered on every personal launch and refused here by the strict body —
+ * `Unrecognized key(s) in object: 'pace'` — so the one attack most about TIMING, five commanders
+ * arriving together at the hour the target is least ready, was the one that could not choose it.
+ * Only the combined leg is paced; survivors fly home at full speed, as on every other lane.
+ */
+describe('choosing when the joint strike lands', () => {
+  const startAt = (f: Fixture, pace: number) =>
+    f.db.transaction(async (tx) => startClanWar(tx, {
+      actor: await clanActor(tx, f.accountIds[0]!),
+      acknowledgeShieldLoss: true,
+      pace,
+      clock: f.clock,
+    }));
+  const strikeMinutes = async (f: Fixture) =>
+    (await projectOperation(f.db, await operationRow(f), f.playerIds[0], f.clock.now()))
+      .pool.strikeMinutes;
+
+  it('publishes the full-speed strike once a wave is staged, and not before', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    expect(await strikeMinutes(f)).toBeNull();
+    await landStaging(f);
+    expect(await strikeMinutes(f)).toBeGreaterThan(0);
+  });
+
+  it('flies the combined leg at the chosen pace and records it', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const full = (await strikeMinutes(f))!;
+
+    const result = await startAt(f, 0.5);
+    const [mission] = await f.db.select().from(missions)
+      .where(eq(missions.id, result.missionId));
+    const minutes = (mission!.arriveAt.getTime() - mission!.departAt.getTime()) / 60_000;
+    expect(minutes).toBeCloseTo(full / 0.5, 3);
+    expect(mission!.pace).toBe(0.5);
+  });
+
+  it('refuses a speed that is not a rung, and launches nothing', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+
+    await expect(startAt(f, 0.37)).rejects.toMatchObject({ code: 'BAD_PACE' });
+    expect((await operationRow(f)).status).toBe('ASSEMBLING');
+    expect(await f.db.select().from(attackCommitments)).toHaveLength(0);
+  });
+
+  it('refuses a rung that would keep the strike up past the ceiling, and launches nothing', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await f.db.update(planets).set({ x: sql`${planets.x} + 20000` })
+      .where(eq(planets.id, f.planetIds[2]!));
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const full = (await strikeMinutes(f))!;
+    expect(full).toBeLessThanOrEqual(TRAVEL.pacedFlightCapMinutes);
+    expect(full / 0.1).toBeGreaterThan(TRAVEL.pacedFlightCapMinutes);
+
+    await expect(startAt(f, 0.1)).rejects.toMatchObject({ code: 'PACE_TOO_SLOW' });
+    expect((await operationRow(f)).status).toBe('ASSEMBLING');
+    expect(await f.db.select().from(attackCommitments)).toHaveLength(0);
+  });
+
+  it('takes the pace over HTTP instead of rejecting the field', async () => {
+    const f = await setup();
+    await readyOperation(f);
+    await send(f, 1, f.planetIds[1]!, { DART: 15 });
+    await landStaging(f);
+    const { buildApp } = await import('../src/app.js');
+    const { TokenService } = await import('../src/auth/tokens.js');
+    const { testEnv } = await import('./helpers.js');
+    const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
+    await built.app.ready();
+    try {
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const response = await built.app.inject({
+        method: 'POST',
+        url: '/api/clan/war/start',
+        headers: {
+          authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}`,
+          'idempotency-key': 'clan-war-start-pace-0001',
+        },
+        payload: { acknowledgeShieldLoss: true, pace: 0.5 },
+      });
+      expect(response.statusCode).toBe(200);
+      const [mission] = await f.db.select().from(missions)
+        .where(eq(missions.id, (response.json<{ missionId: string }>()).missionId));
+      expect(mission!.pace).toBe(0.5);
+    } finally {
+      await built.close();
     }
   });
 });

@@ -60,6 +60,30 @@ export function dynamicAsteroidHourOf(index: number): number | null {
   return Math.floor((index - ASTEROID_DYNAMIC.indexBase) / ASTEROID_DYNAMIC.indexSpanPerHour);
 }
 
+/**
+ * THE POPULATION AN HOUR SPAWNS AGAINST — a rolling mean, never the last hour's headcount.
+ *
+ * Plan §15.6: *"ham 1 saatlik login yerine yuvarlanan/tavanlı uygun-aktif nüfus."* The raw count
+ * hands one coordinated login the whole galaxy's sky for an hour, and hands one quiet hour an
+ * empty one. The window IS the cap: a spike is divided by it, and a real rise still arrives — over
+ * hours rather than at once.
+ *
+ * `recent` is the figure each of the previous hours spawned against, newest first; an hour with no
+ * history behind it simply is its own figure. Only `windowHours - 1` of them are read, so the
+ * window cannot silently widen as a season gets longer.
+ */
+export function supplyPopulation(eligibleNow: number, recent: readonly number[]): number {
+  if (!Number.isInteger(eligibleNow) || eligibleNow < 0) {
+    throw new RangeError('eligibleNow must be a non-negative integer');
+  }
+  const window = [eligibleNow, ...recent.slice(0, ASTEROID_DYNAMIC.supply.windowHours - 1)];
+  const divisor = Math.max(window.length, Math.min(
+    ASTEROID_DYNAMIC.supply.windowHours,
+    recent.length + 1,
+  ));
+  return Math.round(window.reduce((sum, n) => sum + n, 0) / divisor);
+}
+
 export interface PlanAsteroidHourInput {
   /** Non-bot commanders active in the window before the hour opened. */
   activePlayers: number;

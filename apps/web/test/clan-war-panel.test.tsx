@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -151,5 +151,49 @@ describe('clan war decision surface', () => {
     expect(launch).toBeDisabled();
     await userEvent.setup().click(screen.getByRole('checkbox', { name: /shield will end/i }));
     expect(launch).toBeEnabled();
+  });
+});
+
+/**
+ * THE LEADER CHOOSES WHEN THE JOINT STRIKE LANDS. Review 2026-09-22, finding #2 · plan §15.5a.
+ *
+ * The rungs are worth nothing without the arrival they move, so the server hands the panel the
+ * combined leg at full speed and the row divides it — the leader watches "lands in" change.
+ */
+describe('choosing when the joint strike lands', () => {
+  const timed = (strikeMinutes: number | null) => clanWarSchema.parse({ ...launchReady, operation: {
+    ...launchReady.operation!,
+    pool: { ...launchReady.operation!.pool, strikeMinutes },
+  } });
+
+  it('offers the speeds and moves the arrival with them', async () => {
+    show(timed(60), 'LEADER', [origin]);
+    const row = document.querySelector<HTMLElement>('[data-clan-pace]');
+    expect(row).toBeTruthy();
+    const rungs = within(row!).getAllByRole('radio');
+    expect(rungs.length).toBeGreaterThan(1);
+    expect(rungs[0]).toBeChecked();
+
+    const eta = document.querySelector<HTMLElement>('[data-clan-strike-eta]')!;
+    const atFullSpeed = eta.textContent;
+    await userEvent.setup().click(rungs[rungs.length - 1]!);
+    expect(eta.textContent).not.toBe(atFullSpeed);
+  });
+
+  it('sends the chosen speed with the launch', async () => {
+    const { api } = show(timed(60), 'LEADER', [origin]);
+    const started = vi.spyOn(api, 'startClanWar').mockReturnValue(new Promise(() => undefined));
+    const user = userEvent.setup();
+    const rungs = within(document.querySelector<HTMLElement>('[data-clan-pace]')!).getAllByRole('radio');
+    await user.click(rungs[1]!);
+    await user.click(screen.getByRole('button', { name: /start joint attack/i }));
+
+    expect(started).toHaveBeenCalledWith(false, 0.75);
+  });
+
+  it('shows no speeds until a wave is staged to time', () => {
+    show(timed(null), 'LEADER', [origin]);
+    expect(document.querySelector('[data-clan-pace]')).toBeNull();
+    expect(document.querySelector('[data-clan-strike-eta]')).toBeNull();
   });
 });

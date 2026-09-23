@@ -360,17 +360,25 @@ describe('predicting a build', () => {
     expect(predictBuild(predictBuild(first!, 'DART', 1)!, 'DART', 1)).toBeNull();
   });
 
-  it('declines a Hangar rung the Core has not opened', () => {
-    const view = (core: number) => planetView(
+  /**
+   * A HANGAR RUNG IS OFFERED AT ANY CORE. Owner decision, 2026-09-22 — the client's prediction
+   * used to decline the rung until the Core opened it, which is the rule that has gone: a
+   * fleet-path commander may buy room without climbing the tier band for it. The ore is the bound
+   * that remains, and the ore is checked below.
+   */
+  it('offers a Hangar rung at any Core, and still refuses one nobody can pay for', () => {
+    const view = (core: number, alloy: number) => planetView(
       {
         buildings: { CORE: core, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4, HANGAR: 2 },
         nextCosts: { HANGAR: buildingCost('HANGAR', 2) },
       },
-      { alloy: 5_000_000, crystal: 5_000_000 },
+      { alloy, crystal: 5_000_000 },
     );
-    expect(predictUpgrade(view(6), 'HANGAR')).toBeNull();
-    expect(predictUpgrade(view(7), 'HANGAR')?.queues?.CONSTRUCTION[0])
-      .toMatchObject({ kind: 'BUILDING', subject: 'HANGAR' });
+    for (const core of [1, 6, 7, 16]) {
+      expect(predictUpgrade(view(core, 5_000_000), 'HANGAR')?.queues?.CONSTRUCTION[0], `core ${String(core)}`)
+        .toMatchObject({ kind: 'BUILDING', subject: 'HANGAR' });
+    }
+    expect(predictUpgrade(view(16, 0), 'HANGAR')).toBeNull();
   });
 
   it('keeps ground emplacements in their own capacity pool', () => {

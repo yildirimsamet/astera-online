@@ -257,6 +257,7 @@ describe('ruleset-v3 clans', () => {
     await giveUnits(f.db, f.planetIds[0]!, { DART: 2, BASTION: 1 });
     await giveUnits(f.db, f.planetIds[1]!, { PIKE: 3, PROSPECTOR: 1 });
     await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'transfer',
       status: 'in_flight',
@@ -339,6 +340,7 @@ describe('ruleset-v3 clans', () => {
     const targetPlayerId = f.playerIds[5]!;
     for (let attacker = 0; attacker < CLAN.maxMembers; attacker += 1) {
       const [mission] = await f.db.insert(missions).values({
+        fuelPaid: 0,
         seasonId: f.seasonId,
         kind: 'attack',
         status: 'resolved',
@@ -867,6 +869,7 @@ describe('ruleset-v3 clans', () => {
     expect(purseBefore.get(f.playerIds[0]!)!.alloy).toBeGreaterThan(0);
 
     const roots = await f.db.insert(missions).values([0, 1].map((index) => ({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack' as const,
       status: 'resolved' as const,
@@ -882,6 +885,7 @@ describe('ruleset-v3 clans', () => {
       (playerId, slot) => ({ missionId: root.id, clanId: result.clanId, playerId, slot }),
     )));
     const returns = await f.db.insert(missions).values(roots.map((root) => ({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'return' as const,
       status: 'resolved' as const,
@@ -1060,6 +1064,7 @@ describe('ruleset-v3 clans', () => {
       string,
     ];
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       status: 'resolved',

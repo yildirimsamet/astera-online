@@ -34,6 +34,8 @@ export const clanWar = {
   noOrigin: 'Dünyalarından birini seç.', noFleet: 'En az bir gemi seç.',
   quoteFirst: 'Göndermeden önce rotayı hesapla.',
   launch: 'Ortak saldırıyı başlat', cancel: 'Hedefi iptal et',
+  strikeEta: 'Vuruş kalkıştan {{time}} sonra iner',
+  paceHint: 'Yavaş olan geç varır — vuruş saatini sen seç. Ek yakıt yok; sağ kalanlar tam hızla döner; hiçbir filo 12 saatten fazla havada kalamaz.',
   inboundReason: 'Destek filosu geliyor, bekleyin.',
   noCombatReason: 'Havuzda en az bir savaş gemisi olmalı.',
   noWaveReason: 'Başlatmadan önce havuza gemi katılmalı.',

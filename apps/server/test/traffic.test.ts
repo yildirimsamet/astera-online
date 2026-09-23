@@ -335,6 +335,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   it('replays a resolved Death Star impact for the exact public effect window', async () => {
     const arriveAt = f.clock.now();
     const [impact] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',
@@ -347,6 +348,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
       arriveAt,
     }).returning();
     const [staleImpact] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',
@@ -419,6 +421,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
     const interceptedAt = f.clock.now();
     const arriveAt = new Date(interceptedAt.getTime() + 60_000);
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',
@@ -454,6 +457,7 @@ describe('galaxy traffic — motion in public, intent in private', () => {
   it('shares an interception with participants and Telescope witnesses only', async () => {
     const now = f.clock.now();
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',

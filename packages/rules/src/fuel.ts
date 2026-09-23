@@ -83,11 +83,26 @@ export function fuelMass(fleet: Fleet): number {
  * recalled. The caller passes the legs the mission will actually fly and pays for
  * all of them before it leaves.
  */
-export function missionFuel(fleet: Fleet, distance: number, legs: 1 | 2): number {
+export type FuelLane = keyof typeof FUEL.laneShare;
+
+export function missionFuel(
+  fleet: Fleet,
+  distance: number,
+  legs: 1 | 2,
+  /**
+   * WHICH LANE THIS IS. `HOSTILE` — the default, and what every caller meant before the lanes
+   * existed — is the undiscounted rate. `HOMEWARD` is a commander moving their own ships between
+   * their own worlds; see `FUEL.laneShare`.
+   *
+   * The share is applied INSIDE the per-leg rounding, so the shortest homeward hop still costs a
+   * drop and `fuelMass` stays the whole integer the rest of this file relies on.
+   */
+  lane: FuelLane = 'HOSTILE',
+): number {
   const mass = fuelMass(fleet);
   if (mass <= 0) return 0;
   const span = Math.max(0, distance);
-  return Math.ceil((mass * span) / FUEL.scale) * legs;
+  return Math.ceil((mass * span * FUEL.laneShare[lane]) / FUEL.scale) * legs;
 }
 
 /**

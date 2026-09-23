@@ -285,6 +285,7 @@ export const clan = {
     fits: 'Passt',
     overLimit: 'Zu viel',
     cannotLand: 'Diese Welt kann noch nicht jedes Schiff in dieser Gabe nutzen.',
+    senderShielded: 'Dein Neulingsschild hält deine Ressourcen noch {{duration}} zu Hause. Danach kannst du Hilfe senden.',
     tooLate: 'Der Flug und ein möglicher Rückflug können nicht vor Saisonende abgeschlossen sein.',
     possibleReturn: 'Wenn der gesamte Konvoi umkehren muss, kann er in {{duration}} sicher zu Hause sein.',
     plannedReturn: 'Nach der Lieferung wird der Transport in {{duration}} zu Hause sein.',

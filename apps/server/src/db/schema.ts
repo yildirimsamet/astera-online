@@ -40,6 +40,7 @@ import type {
   PlanetSkinId,
   PlanetSkinStatus,
   JointWarFuelLeg,
+  Vec3,
 } from '@astera/rules';
 import type { ChatLanguage } from '@astera/rules';
 
@@ -1081,6 +1082,17 @@ export const seasonTelemetrySegments = pgTable('season_telemetry_segments', {
 ]);
 
 export const planets = pgTable('planets', {
+  /**
+   * WHEN THIS WORLD MAY SEND A TRANSFER OUT AGAIN. Owner plan, Faz 2A.3.
+   *
+   * Stamped every time a squadron LANDS here, so a wing cannot be bounced between two of a
+   * commander's own worlds fast enough to never be on the ground. Null on a world nothing has
+   * landed on, and on every row older than the column.
+   *
+   * It holds the transfer lane only — an attack from a world that was just reinforced is a
+   * legitimate move, and a recall is not a launch from anywhere.
+   */
+  transferReadyAt: timestamp('transfer_ready_at', { withTimezone: true }),
   id: uuid('id').primaryKey().defaultRandom(),
   /** Seasonal choice; the account entitlement is checked when it is changed. */
   equippedSkinId: text('equipped_skin_id'),
@@ -1424,7 +1436,64 @@ export const missions = pgTable('missions', {
   cargo: jsonb('cargo').$type<Resources>(),
   /** Founding fee held until success; returned on failure. Null on older missions. */
   settlementEscrow: jsonb('settlement_escrow').$type<Resources>(),
+    /**
+   * DEUTERIUM PAID AT LAUNCH, AND IT IS STORED RATHER THAN RE-DERIVED.
+   *
+   * A raid's real profit is `loot + salvage - permanent hull loss - FUEL`, and the fuel was the
+   * one term nothing kept. It is reconstructible in principle — `fleet`, `distance` and `tech` are
+   * all snapshotted here — but only against TODAY'S rate constants, and this repository
+   * deliberately preserves a generated object's identity across balance changes. A fuel figure
+   * that moves when `FUEL.perValue` is retuned would quietly restate every past raid's ledger.
+   *
+   * NOT NULLABLE, so no lane can launch without answering — the compiler found all fifteen insert
+   * sites the day this landed, which is the only reliable way to visit them all.
+   *
+   * ROWS OLDER THAN THIS COLUMN CARRY 0, AND THAT ZERO MEANS "UNRECORDED". `missions` has no
+   * cascade from `seasons` and is never cleared, so every past cycle's flights are still here and
+   * the migration had to give them something. Their real fuel cannot be recovered: recomputing it
+   * from `fleet` and `distance` would charge TODAY's `FUEL.perValue` to a flight that paid an
+   * older one. **Pre-migration missions are not admissible to `raidLedger`** — a zero there would
+   * price an unmeasured raid as a free one, which is the single reading this column exists to
+   * prevent.
+   */
+  fuelPaid: real('fuel_paid').notNull(),
   distance: real('distance').notNull(),
+  /**
+   * HOW FAST THE COMMANDER TOLD IT TO FLY. Owner decision, 2026-09-21.
+   *
+   * One of `MISSION_PACES`, validated at launch against `allowedPaces` — a pace is only offered
+   * while the flight it produces lands inside `TRAVEL.pacedFlightCapMinutes`, so the same rung is
+   * not available for a hop next door and a crossing of the galaxy.
+   *
+   * IT IS STORED, NOT RE-DERIVED, for the same reason `fuelPaid` is: `arriveAt` already records
+   * when this flight lands, but nothing else would say whether the commander CHOSE that or simply
+   * flew at whatever their hulls do, and a fleet that took nine hours on purpose is a different
+   * decision from one that took nine hours because it is slow.
+   *
+   * RETURN LEGS ARE ALWAYS 1. A commander chooses when their raid ARRIVES; the way home is not
+   * a decision they still hold, and an attack cannot be recalled.
+   *
+   * DEFAULTS TO 1, which is what every flight before this column flew.
+   */
+  pace: real('pace').notNull().default(1),
+  /**
+   * WHEN THE COMMANDER TURNED IT AROUND, AND WHERE. Owner decision, 2026-09-21.
+   *
+   * Null on every flight that was never recalled, which is nearly all of them. Set together and
+   * only once: `recallTransfer` refuses a second turn, because a flight that can keep turning is
+   * a flight with no end.
+   *
+   * `arriveAt` is REWRITTEN to the new landing when this is set, so everything that reads an
+   * arrival — the queue, the radar, the client countdown — keeps reading one field and cannot
+   * disagree about when the ships are down.
+   *
+   * THE POINT IS STORED RATHER THAN RECOMPUTED. Where a fleet turned is a fact about a moment that
+   * has passed; deriving it later would need the outbound arrival this row no longer holds, and
+   * the origin's Beacon as it stood then. One jsonb settles it, and the disc draws the way home
+   * from exactly the point the server turned it at.
+   */
+  recalledAt: timestamp('recalled_at', { withTimezone: true }),
+  recallFrom: jsonb('recall_from').$type<Vec3>(),
   departAt: timestamp('depart_at', { withTimezone: true }).notNull(),
   arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
   /** Legacy launch flag retained for old mission rows; new EMP launches always write false. */
@@ -2760,7 +2829,24 @@ export const asteroidSpawnHours = pgTable('asteroid_spawn_hours', {
   seasonId: uuid('season_id').notNull().references(() => seasons.id),
   hourStartsAt: timestamp('hour_starts_at', { withTimezone: true }).notNull(),
   spawnFrom: timestamp('spawn_from', { withTimezone: true }).notNull(),
+  /**
+   * THE FIGURE THIS HOUR SPAWNED AGAINST — a rolling mean of recent eligible counts, frozen here
+   * with the lanes so a rock's identity survives every later balance change.
+   */
   activePlayers: integer('active_players').notNull(),
+  /**
+   * WHAT THE GALAXY ACTUALLY HELD THIS HOUR: commanders past the Sybil gate who played in the
+   * window. Plan §15.6.
+   *
+   * Separate from `activePlayers` because the rolling window averages the RAW counts — averaging
+   * its own smoothed output would filter twice, and a genuine rise in population would crawl
+   * toward the truth without ever arriving.
+   *
+   * Hours written before the column existed are BACKFILLED from `activePlayers` by migration 0111,
+   * never left at 0: the rolling window reads this figure, and a zero there is an empty galaxy —
+   * after a mid-season deploy it would have spawned five hours against a sixth of the sky.
+   */
+  eligiblePlayers: integer('eligible_players').notNull().default(0),
   lanes: jsonb('lanes').$type<AsteroidHourLane[]>().notNull(),
   /** Frozen generation input; changing balance must not reroll an existing rock. */
   levelWeights: jsonb('level_weights').$type<readonly number[]>().notNull()

@@ -1,0 +1,1 @@
+ALTER TABLE "missions" ADD COLUMN "pace" real DEFAULT 1 NOT NULL;

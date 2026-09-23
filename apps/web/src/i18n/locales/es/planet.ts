@@ -502,6 +502,9 @@ export const launch = {
   exposedFor: "Expuesto para {{duration}}",
   oneWay: "Solo ida",
   oneWayUnknown: "—",
+  pace: "Velocidad de vuelo",
+  paceHint: "Más lento llega más tarde. El combustible es el mismo y nada permanece más de 12 h en vuelo.",
+  paceFull: "Total",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "Ninguna bahía de vuelo libre",
   noFuel: "No hay suficiente deuterio",
@@ -550,6 +553,10 @@ export const launch = {
 export const transfer = {
   /** What the flight burns, beside the figure. T6. */
   fuel: "combustible para el vuelo",
+  cooldown: "Descargando: quedan {{duration}}",
+  homewardFuel: "Media tarifa: entre tus propios mundos. Un ataque paga completo.",
+  /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
+  paceHint: "Más lento llega más tarde: las naves en vuelo no pueden ser saqueadas. Mismo combustible; nada permanece más de 12 h en vuelo.",
   fuelShort: "corto {{short}}",
   eyebrow: "Transferencia mundial",
   eta: "ETA",
@@ -560,11 +567,12 @@ export const transfer = {
   alloy: "Aleación",
   crystal: "Cristal",
   deuterium: "Deuterio",
-  commit: "Transferencia: sin recuperación",
+  commit: "Transferir",
   sending: "Despacho",
   launched: "Transferencia iniciada · {{duration}}",
-  irreversible:
-    "Solo ida. La defensa terrestre no puede moverse; El espacio de carga proviene únicamente de Mensajero, Caminante, Atlas y Argosy.",
+  /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  rules:
+    "Se puede recuperar una vez en vuelo: vuelve en el tiempo que ya ha volado. La defensa terrestre no puede moverse; el espacio de carga proviene únicamente de Mensajero, Caminante, Atlas y Argosy.",
   hullNone: "Ninguno en este mundo",
   holdReady: "Mensajero, Caminante, Atlas y Argosy llevan el mineral. Mantenga presionado: {{capacity}}.",
   destinationLabel: "Hangar de destino",

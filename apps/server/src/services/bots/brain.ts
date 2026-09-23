@@ -229,7 +229,8 @@ async function raiseOneBuilding(
       exists for the people playing.
     */
     if (type === 'CORE' && level >= BOTS.coreCeiling) continue;
-    // The Hangar has its own gate on the same Core: rungs open at tier changes.
+    // The Hangar climbs its own ladder, free of the Core since plan 2B.6; everything else answers
+    // to the Core.
     if (type === 'HANGAR' ? level >= hangarCeiling(core) : type !== 'CORE' && level >= core) continue;
     if (type === 'DEUTERIUM_PLANT') {
       const rungLevel = view.research

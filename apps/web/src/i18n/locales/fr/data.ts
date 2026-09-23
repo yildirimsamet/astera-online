@@ -65,8 +65,8 @@ export const vocabulary = {
     HANGAR: {
       name: 'Hangar',
       tag: 'Définit la taille de la flotte',
-      role: 'Espace de flotte sur ce monde  · nouveaux échelons ouverts aux niveaux 4, 7, 10, 13 et 16 du Noyau de commandement',
-      detail: 'Chaque navire occupe de l\'espace dans le hangar en raison de sa taille, y compris les navires loin de chez eux ; les défenses terrestres ne le font pas. Un hangar plein ne construit et ne reçoit plus de navires, mais ne perd rien de ce qu\'il contient déjà. Les échelons 2 à 6 s\'ouvrent aux niveaux 4, 7, 10, 13 et 16 du Noyau de commandement ; au niveau 16, les échelons 7 à 10 peuvent être achetés uniquement avec des ressources.',
+      role: 'Espace de flotte sur ce monde · s\'améliore à tout niveau du Noyau de commandement',
+      detail: 'Chaque navire occupe de l\'espace dans le hangar selon sa taille, y compris les navires loin de chez eux ; les défenses terrestres non. Un hangar plein ne construit et ne reçoit plus de navires, mais ne perd rien de ce qu\'il contient déjà. Chaque échelon coûte un tiers de la flotte à laquelle il fait de la place ; les échelons supérieurs coûtent donc plus qu\'un monde sans Magasin amélioré ne peut contenir d\'un coup.',
     },
     DEUTERIUM_PLANT: {
       name: 'Raffinerie de deutérium',
@@ -379,6 +379,8 @@ export const vocabulary = {
 } as const;
 
 export const gains = {
+  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
+  repays: 'Rentabilisé en {{time}}',
   rangeUnits: 'Unités {{count}}',
 
   core: {
@@ -387,7 +389,6 @@ export const gains = {
     releases_one: 'Libère la mise à niveau bloquée {{count}}',
     releases_other: 'Libère les mises à niveau bloquées {{count}}',
     raisesCap: 'Relève le plafond des bâtiments',
-    opensHangar: 'Ouvre le hangar {{rung}} · {{then}}',
   },
   hangar: {
     label: 'Salle de flotte',

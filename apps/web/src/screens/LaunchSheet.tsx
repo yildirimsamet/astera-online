@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  allowedPaces,
+  type MissionPace,
   COMBAT_HULLS,
   HULLS,
   dominantClass,
@@ -8,6 +10,7 @@ import {
   combatValue,
   forecastLines,
   forecastLoss,
+  matchupsAgainst,
   hullFuelRate,
   hullTech,
   fleetCargo,
@@ -37,6 +40,7 @@ import { useAccordion } from '../lib/accordion.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import { StatStrip } from '../ui/Action.js';
+import { PaceRow } from '../ui/PaceRow.js';
 import { Band } from '../ui/UpgradeRow.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
@@ -178,10 +182,39 @@ export function LaunchSheet({
    * means the slowest ship selected cannot get there at all, which is the same
    * refusal the launch will make.
    */
-  const planned = target.kind === 'pirate'
+  /**
+   * HOW FAST THE COMMANDER WANTS THIS TO ARRIVE. Owner decision, 2026-09-21.
+   *
+   * Held here rather than derived, because it is the one thing on this sheet the player states
+   * instead of the sheet computing: the ladder narrows as the wing and the target change, and a
+   * rung that stops being legal falls back to full speed rather than refusing the launch.
+   */
+  const [wantedPace, setWantedPace] = useState<MissionPace>(1);
+  const unpaced = target.kind === 'pirate'
     ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, mods)
     : planRoute(
         planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, mods,
+      );
+  /**
+   * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
+   *
+   * A pirate is on a closed orbit, so its leg is a rendezvous SOLVE against a moving target that
+   * the server answers; slowing the wing moves the meeting point, not just the clock. The raid
+   * endpoint takes no pace, so offering the rungs here would change the minutes on screen and then
+   * fly at full speed. The pirate lane gets this when the intercept solve does.
+   *
+   * AND NOT DURING A LESSON, for the same reason: the Academy pins its leg to six seconds, so a
+   * rung would offer to slow down a flight whose length the tutorial has already decided.
+   */
+  const paces = target.kind === 'world' && !lesson
+    ? allowedPaces(unpaced?.distance ?? 0, sending, mods)
+    : [1 as MissionPace];
+  const pace = paces.includes(wantedPace) ? wantedPace : 1;
+  const paced = useMemo(() => ({ ...mods, pace }), [mods, pace]);
+  const planned = target.kind === 'pirate'
+    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, paced)
+    : planRoute(
+        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, paced,
       );
   const route = lesson && planned ? { ...planned,
     oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
@@ -450,6 +483,33 @@ export function LaunchSheet({
     () => (hasReading && fleetCount(settled) > 0 ? forecastLines(settled, forecastInput) : null),
     [hasReading, settled, forecastInput],
   );
+  /**
+   * WHAT THE WING'S CLASSES DO AGAINST THE WALL THE PROBE READ — AND WHAT IT DID NOT READ.
+   *
+   * The counter cycle decides the fight: measured, the correct class loses a quarter of what a
+   * mirror loses against the same wall. Until now its numbers lived only in the battle report,
+   * which a commander reads after the fleet is gone.
+   *
+   * IT CARRIES THE UNREAD SHARE ON PURPOSE. A par probe names only the majority, so a pure wall
+   * and a 51/49 wall read identically — and the same advice against those two costs 256,277 and
+   * 504,946 alloy-equivalent. The surface states what was bought and never more.
+   */
+  const matchups = useMemo(
+    () => matchupsAgainst(settled, report?.classReading),
+    [settled, report?.classReading],
+  );
+
+  /** The single most useful next action, or nothing when the wing already covers what was read. */
+  const hint = useMemo(() => {
+    if (!matchups) return null;
+    if (matchups.beats !== null && !matchups.rows.some((row) => row.cls === matchups.beats)) {
+      return t('counter.matchupBring', { class: combatClassLabel(matchups.beats) });
+    }
+    if (matchups.wingSingleClass && matchups.unknownShare > 0) return t('counter.matchupSingle');
+    if (matchups.kind === 'MIXED') return t('counter.matchupProbe');
+    return null;
+  }, [matchups, t]);
+
   const loss = useMemo(
     () => (lines !== null && opposing !== null
       ? forecastLoss(settled, { low: opposing.low, high: opposing.high }, forecastInput)
@@ -756,6 +816,7 @@ export function LaunchSheet({
                       acknowledgement of a cost.
                     */
                     ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
+                    pace,
                   },
                   {
                     onSuccess: (result) => {
@@ -852,6 +913,89 @@ export function LaunchSheet({
         together or they are not a comparison at all.
       */}
       <ForceCompare yours={combatValue(sending)} theirs={opposing} lines={lines} loss={loss} notes={notes}>
+        {/*
+          THE COUNTER CYCLE, WHERE THE FLEET IS CHOSEN — with the reading's own limit beside it.
+          `matchupsAgainst` answers null for a wall the probe never read, so this appears exactly
+          when the composition was bought. The caveat lines are not hedging: a majority reading
+          genuinely leaves half the wall unmeasured, and that half can carry this wing's counter.
+        */}
+        {matchups && (
+          <div data-launch-matchup className="mt-2 space-y-1">
+            <p className="legend text-dim">
+              {matchups.kind === 'MIXED'
+                ? t('counter.matchupMixed')
+                : matchups.kind === 'SPLIT'
+                  ? t('counter.matchupSplit')
+                  : matchups.wall === null
+                    ? t('counter.matchupMixed')
+                    : t('counter.matchupMajority', { class: combatClassLabel(matchups.wall) })}
+              {matchups.unknownShare > 0 && matchups.kind !== 'MIXED'
+                ? ` — ${t('counter.matchupRemainder')}`
+                : ''}
+            </p>
+            {/*
+              WHAT THE PROBE ACTUALLY READ, BEFORE ANY OF IT IS ABOUT THE PLAYER'S WING.
+
+              The row below answers "what does MY Bulwark do here" and needs a wing to be keyed
+              by; this answers "what is over there", which is the thing the probe was paid for and
+              the thing a commander is choosing a wing AGAINST. Without it a full split arrived as
+              two percentages hanging off one chip, and a commander who had not picked a ship yet
+              saw no distribution at all — the plan's own acceptance test for this surface is that
+              a SHARES reading may not silently drop a class.
+
+              The unread remainder rides the same line, because "60% Lance" and "60% Lance and 40%
+              I could not see" are different facts and only one of them is true.
+            */}
+            {matchups.wallShares.length > 0 && (
+              <div data-launch-wall className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {matchups.wallShares.map((row) => (
+                  <span key={row.cls} className="inline-flex shrink-0 items-center gap-1">
+                    <ClassChip cls={row.cls} />
+                    {/*
+                      A MAJORITY READING'S SHARE IS A FLOOR, AND THE ROW SAYS SO.
+
+                      A par probe cannot tell a pure Lance wall from a 52.6% one — both come back
+                      `DOMINANT` — so what it resolved is "at least half". The heading beside it
+                      already says "more than half", and a bare 50% told the player two different
+                      things on one line. A full split is exact and carries no mark.
+                    */}
+                    <span className="num text-micro text-bone">
+                      {matchups.kind === 'MAJORITY' ? '≥' : ''}{Math.round(row.share * 100)}%
+                    </span>
+                  </span>
+                ))}
+                {matchups.unknownShare > 0 && (
+                  <span className="num text-micro text-faint">
+                    {t('counter.matchupUnread', {
+                      share: Math.round(matchups.unknownShare * 100),
+                    })}
+                  </span>
+                )}
+              </div>
+            )}
+            {matchups.rows.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {matchups.rows.map((row) => (
+                  <span key={row.cls} className="inline-flex shrink-0 items-center gap-1">
+                    <ClassChip cls={row.cls} />
+                    <span className="num text-micro text-dim">
+                      {t('counter.matchupExposure', {
+                        strong: Math.round(row.strongShare * 100),
+                        weak: Math.round(row.weakShare * 100),
+                      })}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/*
+              ONE HINT, AND ONLY WHEN IT CHANGES WHAT THE COMMANDER WOULD DO. Congratulating a
+              correct choice spends a line to say nothing, and an empty paragraph still takes
+              height on a 350-wide screen.
+            */}
+            {hint !== null && <p className="text-micro text-alloy/80">{hint}</p>}
+          </div>
+        )}
         {(route !== null) || planet.capacity ? (
           <div data-launch-meters className="mt-2 gap-2">
             {route !== null && (
@@ -904,6 +1048,28 @@ export function LaunchSheet({
           value={route === null ? t('launch.oneWayUnknown') : route.distance.toFixed(0)}
         />
       </div>
+      {/*
+        HOW FAST TO FLY IT — and the rungs are not the point, the ARRIVAL is.
+
+        The figure directly above is what this row moves, which is why it sits under it rather than
+        beside the fleet: a commander is choosing between "lands while I sleep" and "lands before I
+        leave", and the only honest way to show that is to let them watch the ETA change.
+
+        THE TWO RULES A PLAYER NEEDS AT THIS MOMENT ARE ON THE ROW, not in a wiki: the fuel does
+        not move, and nothing may stay up past the ceiling. Without the first, everyone assumes
+        slow is cheap (it is in every other game of this shape); without the second, the missing
+        rungs on a long flight look like a bug.
+
+        Hidden when only full speed is legal — an immobile wing, or a crossing already past the
+        ceiling — which `PaceRow` does itself.
+      */}
+      <PaceRow
+        data-launch-pace
+        paces={paces}
+        pace={pace}
+        onChange={setWantedPace}
+        hint={t('launch.paceHint')}
+      />
       {/*
         THE ONE MODIFIER THE FIGHT HAS, ON THE SURFACE WHERE IT IS PRICED. D124.
 

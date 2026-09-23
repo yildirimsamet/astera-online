@@ -2,10 +2,26 @@ import { describe, expect, it } from 'vitest';
 import { COMBAT_HULLS, HULLS, fleetEntries, missionFuel } from '@astera/rules';
 import { economicFleetValue, fleetAtEconomicBudget, fleetAtWallet, measureFleetBattle, runFleetCalibration } from '../src/fleet-calibration.js';
 
+/**
+ * PRICED OFF `HULLS`, NEVER OFF A REMEMBERED NUMBER. Owner review, 2026-09-21, closing the three
+ * reds §17.2 assigned to Faz 1.1.
+ *
+ * These read `840`, `419`, a literal wallet and `-420`, all of which were the Dart's and Viper's
+ * prices on the day they were written. A hull rebalance then made three calibration tests fail
+ * while nothing about the calibration was wrong — which is the worst kind of red, because it says
+ * "the measurement is broken" when the measurement is fine.
+ *
+ * Every figure below is now derived from the catalogue, so a price change moves the test with the
+ * game and only a real defect in `fleetAtEconomicBudget` / `fleetAtWallet` / `measureFleetBattle`
+ * can turn one red.
+ */
+const econ = (id: 'DART' | 'VIPER'): number =>
+  HULLS[id].alloy + 2 * HULLS[id].crystal + 32 * HULLS[id].deuterium;
+
 describe('economic fleet calibration uses the real resolver', () => {
   it('sizes only whole, affordable hulls, including zero and sub-hull budgets', () => {
-    expect(fleetAtEconomicBudget('DART', 840)).toEqual({ DART: 2 });
-    expect(fleetAtEconomicBudget('DART', 419)).toEqual({});
+    expect(fleetAtEconomicBudget('DART', econ('DART') * 2)).toEqual({ DART: 2 });
+    expect(fleetAtEconomicBudget('DART', econ('DART') - 1)).toEqual({});
     expect(fleetAtEconomicBudget('DART', 0)).toEqual({});
     for (const budget of [-1, NaN, Infinity]) expect(() => fleetAtEconomicBudget('DART', budget)).toThrow();
     for (const id of COMBAT_HULLS) {
@@ -37,12 +53,36 @@ describe('economic fleet calibration uses the real resolver', () => {
   });
 
   it('compares physical wallets without converting spare ore or granting missing fuel', () => {
-    const wallet = { alloy: 750, crystal: 180, deuterium: 2 };
+    /*
+      A PURSE THAT HOLDS EXACTLY ONE VIPER AND EXACTLY TWO DARTS, whatever those two cost today.
+      The Viper is the larger of the two packets in every resource, so its price IS the purse — and
+      two Darts fit inside it while three do not, which is what makes both assertions below say
+      something about the sizer rather than about a remembered number.
+    */
+    const wallet = {
+      alloy: HULLS.VIPER.alloy,
+      crystal: HULLS.VIPER.crystal,
+      deuterium: HULLS.VIPER.deuterium,
+    };
+    const fits = Math.min(
+      Math.floor(wallet.alloy / HULLS.DART.alloy),
+      Math.floor(wallet.crystal / HULLS.DART.crystal),
+    );
+    expect(fits).toBe(2);
     expect(fleetAtWallet({ VIPER: 1 }, wallet)).toEqual({ VIPER: 1 });
     expect(fleetAtWallet({ DART: 1 }, wallet)).toEqual({ DART: 2 });
-    expect(fleetAtWallet({ DART: 1 }, { alloy: 3000, crystal: 0, deuterium: 100 })).toEqual({});
-    expect(fleetAtWallet({ DART: 1 }, { alloy: 300, crystal: 60, deuterium: 0 }, 600)).toEqual({});
-    expect(wallet).toEqual({ alloy: 750, crystal: 180, deuterium: 2 });
+    // Alloy alone never buys a hull that also wants crystal, however much of it there is.
+    expect(fleetAtWallet({ DART: 1 }, { alloy: HULLS.DART.alloy * 8, crystal: 0, deuterium: 100 }))
+      .toEqual({});
+    // And a purse one unit short of a single hull buys none of it.
+    expect(fleetAtWallet(
+      { DART: 1 },
+      { alloy: HULLS.DART.alloy - 1, crystal: HULLS.DART.crystal, deuterium: 0 },
+      600,
+    )).toEqual({});
+    expect(wallet).toEqual({
+      alloy: HULLS.VIPER.alloy, crystal: HULLS.VIPER.crystal, deuterium: HULLS.VIPER.deuterium,
+    });
     for (const invalid of [{}, { DART: 0 }, { DART: 1.5 }, { THORN: 1 }]) {
       expect(() => fleetAtWallet(invalid, wallet)).toThrow();
     }
@@ -75,7 +115,12 @@ describe('economic fleet calibration uses the real resolver', () => {
         buffer: { alloy: 0, crystal: 0, deuterium: 0 },
         protected: { alloy: 0, crystal: 0, deuterium: 0 }, distance: 600 } });
     expect(loss.meanLoot).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
-    expect(loss.meanNet).toBe(-420 - loss.fuel * 32);
+    /*
+      THE WHOLE COMMITTED HULL, PRICED ON THE REPLACEMENT BASE. A+2C+32D, the same base the fuel
+      below it is priced on — mixing the two was the defect the raid ledger was built to make
+      impossible, and this line is where the sim states the same rule.
+    */
+    expect(loss.meanNet).toBe(-econ('DART') - loss.fuel * 32);
   });
 
   const report = () => runFleetCalibration({ samples: 64, budgets: [240_000] });

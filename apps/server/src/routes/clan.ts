@@ -109,6 +109,8 @@ const warTargetBody = z.object({ targetPlanetId: z.string().uuid() }).strict();
  */
 const warStartBody = z.object({
   acknowledgeShieldLoss: z.boolean().default(false),
+  /** The combined leg's pace; the service checks the rung against this flight. Plan §15.5a. */
+  pace: z.number().positive().max(1).optional(),
 }).strict();
 const warQuoteBody = z.object({
   originPlanetId: z.string().uuid(),
@@ -441,6 +443,7 @@ export function registerClanRoutes(app: FastifyInstance): void {
     }, (tx) => startClanWar(tx, {
       actor,
       acknowledgeShieldLoss: body.acknowledgeShieldLoss,
+      pace: body.pace,
       clock: { now: () => now },
     }));
   });

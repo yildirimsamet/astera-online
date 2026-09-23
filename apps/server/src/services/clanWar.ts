@@ -21,11 +21,14 @@ import {
   maxRadarRange,
   travelExact,
   hangarLoad,
+  isMissionPace,
   jointWarFuelLegs,
+  pacesForMinutes,
   type FaultKind,
   type Fleet,
   type HullId,
   type JointWarFuelLeg,
+  type TechLevels,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import { commitGameError } from './idempotency.js';
@@ -196,7 +199,16 @@ export interface ClanWarOperationView {
   startShieldWouldDrop: { kind: 'NEWCOMER' | 'RECOVERY'; until: string } | null;
   contributions: ClanWarContributionView[];
   /** Room the pool is holding right now, so the composer and the list agree. */
-  pool: { combatHulls: number; waves: number; participants: number };
+  pool: {
+    combatHulls: number;
+    waves: number;
+    participants: number;
+    /**
+     * The combined leg at FULL speed, for the staged pool — the figure the leader's pace rungs
+     * divide. Null while nothing is staged or the operation is no longer gathering.
+     */
+    strikeMinutes: number | null;
+  };
 }
 
 
@@ -313,6 +325,7 @@ export async function projectOperation(
         sourceKind: clanWarContributions.sourceKind,
         status: clanWarContributions.status,
         fleet: clanWarContributions.fleet,
+        tech: clanWarContributions.tech,
         reservedBulk: clanWarContributions.reservedBulk,
         fuelPaid: clanWarContributions.fuelPaid,
         sentAt: clanWarContributions.sentAt,
@@ -352,6 +365,23 @@ export async function projectOperation(
   const pooled = waves.filter(
     (wave) => wave.status === 'OUTBOUND' || wave.status === 'STAGED',
   );
+  /*
+    WHEN THE STRIKE WOULD LAND, SO THE LEADER CAN CHOOSE IT. Review 2026-09-22, #2.
+    Off the same speed and the same live positions `startClanWar` flies by, and only for the waves
+    it would actually launch — a wave still outbound blocks the launch anyway.
+  */
+  const staged = waves.filter((wave) => wave.status === 'STAGED');
+  let strikeMinutes: number | null = null;
+  if (operation.status === 'ASSEMBLING' && staged.length > 0 && staging[0]) {
+    const [targetAt] = await db
+      .select({ x: planets.x, y: planets.y, z: planets.z })
+      .from(planets)
+      .where(eq(planets.id, operation.targetPlanetId))
+      .limit(1);
+    const speed = await strikeSpeed(db, operation.stagingPlanetId, staged);
+    const minutes = targetAt ? travelExact(distance(staging[0], targetAt), speed) : Infinity;
+    strikeMinutes = Number.isFinite(minutes) ? minutes : null;
+  }
   const pool = {
     combatHulls: pooled.reduce(
       (sum, wave) => sum + COMBAT_HULLS.reduce((n, hull) => n + (wave.fleet[hull] ?? 0), 0),
@@ -359,6 +389,7 @@ export async function projectOperation(
     ),
     waves: pooled.length,
     participants: new Set(pooled.map((wave) => wave.playerId)).size,
+    strikeMinutes,
   };
   let startShieldWouldDrop: ClanWarOperationView['startShieldWouldDrop'] = null;
   if (operation.status === 'ASSEMBLING' && viewerPlayerId === operation.leaderPlayerId) {
@@ -1448,6 +1479,7 @@ export async function sendClanWarContribution(
   if (!instant) {
     const arriveAt = addMinutes(now, context.stagingMinutes);
     const [mission] = await tx.insert(missions).values({
+      fuelPaid: context.fuel,
       seasonId: context.operation.seasonId,
       kind: 'clan_war',
       ownerPlayerId: input.actor.playerId,
@@ -1693,6 +1725,8 @@ export async function planContributionReturn(
   }));
   const leg = contribution.status === 'IN_BATTLE' ? 'BATTLE_RETURN' : 'SUPPORT_RETURN';
   const [mission] = await tx.insert(missions).values({
+    // A return leg is already paid for: fuel is charged in full at the outbound launch.
+    fuelPaid: 0,
     seasonId: operation.seasonId,
     kind: 'clan_war',
     ownerPlayerId: contribution.playerId,
@@ -2091,9 +2125,19 @@ export interface ClanWarStartResult {
  */
 export async function startClanWar(
   tx: Tx,
-  input: { actor: ClanActor; acknowledgeShieldLoss: boolean; clock: Clock },
+  input: {
+    actor: ClanActor;
+    acknowledgeShieldLoss: boolean;
+    /** The combined leg's pace, one of `MISSION_PACES`. Full speed when absent. */
+    pace?: number;
+    clock: Clock;
+  },
 ): Promise<ClanWarStartResult> {
   const now = input.clock.now();
+  const chosenPace = input.pace ?? 1;
+  if (!isMissionPace(chosenPace)) {
+    throw new GameError('BAD_PACE', 'that is not a flight speed this fleet can be set to', 400);
+  }
   const season = await lockSeason(tx, input.actor.seasonId);
 
   const standing = await activeClanMembership(tx, input.actor.playerId);
@@ -2180,6 +2224,32 @@ export async function startClanWar(
     );
   }
 
+  const combined: Fleet = {};
+  for (const wave of pool) {
+    for (const [hull, n] of Object.entries(wave.fleet) as [HullId, number][]) {
+      combined[hull] = (combined[hull] ?? 0) + n;
+    }
+  }
+  const slowest = await strikeSpeed(tx, staging.id, pool);
+  if (!Number.isFinite(slowest) || slowest <= 0) {
+    throw new GameError('IMMOBILE_FLEET', 'That pool cannot travel', 409);
+  }
+  const span = distance(staging, target);
+  /*
+    THE LEADER CHOOSES WHEN IT LANDS, and the rung is checked against THIS leg before any shield
+    or quota is touched — the same order the personal raid lane keeps. Only the combined leg is
+    paced; survivors come home at full speed like every other lane (plan §15.5a).
+  */
+  const fullSpeed = travelExact(span, slowest);
+  if (!pacesForMinutes(fullSpeed).includes(chosenPace)) {
+    throw new GameError(
+      'PACE_TOO_SLOW',
+      'at that speed the fleet would be in the air past the twelve-hour ceiling',
+      400,
+    );
+  }
+  const oneWay = fullSpeed / chosenPace;
+
   const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
   await lockClanPlayers(tx, [...fighters, operation.targetPlayerId]);
 
@@ -2259,30 +2329,6 @@ export async function startClanWar(
     });
   }
 
-  /*
-    THE STRIKE FLIES AT ITS SLOWEST SHIP, and each wave's pace is read with its
-    OWN owner's propulsion. A Beacon over the staging world lifts the whole
-    formation, because that is the world it leaves from — it is not a way to
-    borrow another commander's research.
-  */
-  const boost = fleetSpeedMult(orbitFromRows(
-    await tx.select({ slot: satellites.slot, type: satellites.type })
-      .from(satellites).where(eq(satellites.planetId, staging.id)),
-    await coreLevelOf(tx, staging.id),
-  ));
-  const combined: Fleet = {};
-  let slowest = Number.POSITIVE_INFINITY;
-  for (const wave of pool) {
-    for (const [hull, n] of Object.entries(wave.fleet) as [HullId, number][]) {
-      combined[hull] = (combined[hull] ?? 0) + n;
-    }
-    slowest = Math.min(slowest, fleetSpeed(wave.fleet, wave.tech) * boost);
-  }
-  if (!Number.isFinite(slowest) || slowest <= 0) {
-    throw new GameError('IMMOBILE_FLEET', 'That pool cannot travel', 409);
-  }
-  const span = distance(staging, target);
-  const oneWay = travelExact(span, slowest);
   const arriveAt = addMinutes(now, oneWay);
   const resolveAt = new Date(engagementEndsAt(arriveAt.getTime()));
   /*
@@ -2307,6 +2353,8 @@ export async function startClanWar(
   }
 
   const [mission] = await tx.insert(missions).values({
+    // Each contributor paid on their own row; see `clan_war_contributions.fuelPaid`.
+    fuelPaid: 0,
     seasonId: operation.seasonId,
     kind: 'clan_war',
     /*
@@ -2325,6 +2373,7 @@ export async function startClanWar(
     distance: span,
     departAt: now,
     arriveAt,
+    pace: chosenPace,
   }).returning();
   if (!mission) throw new Error('clan war combined mission insert returned no row');
   await tx.insert(clanWarMissions).values({
@@ -2387,11 +2436,34 @@ export async function startClanWar(
   };
 }
 
-const coreLevelOf = async (tx: Tx, planetId: string): Promise<number> => {
+const coreLevelOf = async (tx: Queryable, planetId: string): Promise<number> => {
   const [row] = await tx.select({ level: buildings.level }).from(buildings)
     .where(and(eq(buildings.planetId, planetId), eq(buildings.type, 'CORE'))).limit(1);
   return row?.level ?? 1;
 };
+
+/**
+ * THE STRIKE FLIES AT ITS SLOWEST SHIP, and each wave's pace is read with its OWN owner's
+ * propulsion. A Beacon over the staging world lifts the whole formation, because that is the world
+ * it leaves from — it is not a way to borrow another commander's research.
+ *
+ * One definition for the launch and for the leader's screen, so the arrival the rungs quote is
+ * the arrival the strike flies.
+ */
+async function strikeSpeed(
+  db: Queryable,
+  stagingPlanetId: string,
+  pool: readonly { fleet: Fleet; tech: TechLevels }[],
+): Promise<number> {
+  const boost = fleetSpeedMult(orbitFromRows(
+    await db.select({ slot: satellites.slot, type: satellites.type })
+      .from(satellites).where(eq(satellites.planetId, stagingPlanetId)),
+    await coreLevelOf(db, stagingPlanetId),
+  ));
+  let slowest = Number.POSITIVE_INFINITY;
+  for (const wave of pool) slowest = Math.min(slowest, fleetSpeed(wave.fleet, wave.tech) * boost);
+  return slowest;
+}
 
 const faultsOfPlanet = async (tx: Tx, planetId: string): Promise<FaultKind[]> => {
   const rows = await tx.select({ kind: planetFaults.kind }).from(planetFaults)

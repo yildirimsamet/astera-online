@@ -1,4 +1,5 @@
 import {
+  HULLS,
   FLEET_V2_HULLS,
   MULTI_WORLD,
   type TechLevels,
@@ -42,11 +43,15 @@ describe('Fleet V2 server boundary', () => {
 });
 
 describe('authoritative Fleet V2 production access', () => {
-  const cataclysmTech: TechLevels = {
-    STARSHIP_ENGINEERING: 2,
-    SHIP_POWER: 4,
-    SHIP_ARMOR: 2,
-  };
+  /**
+   * BUILT FROM THE CATALOGUE, NOT FROM REMEMBERED RUNGS. The gate redesign (plan 2B.2) narrowed
+   * tier 4 to one role-relevant doctrine, and a hand-written tech fixture turned that into a red
+   * test about a server rule that was behaving exactly as it should. Read the requirement off the
+   * hull and the fixture follows the game.
+   */
+  const cataclysmTech: TechLevels = Object.fromEntries(
+    HULLS.CATACLYSM.requiredResearch.map(({ project, level }) => [project, level]),
+  );
 
   const accessError = (run: () => void): unknown => {
     try {
@@ -62,9 +67,12 @@ describe('authoritative Fleet V2 production access', () => {
       .toBeNull();
     expect(accessError(() => { assertHullProductionAccess('CATACLYSM', 5, cataclysmTech); }))
       .toBe('SHIPYARD_TOO_LOW');
-    expect(accessError(() => {
-      assertHullProductionAccess('CATACLYSM', 6, { ...cataclysmTech, SHIP_POWER: 3 });
-    })).toBe('NEEDS_HULL_RESEARCH');
+    // One rung short on ANY requirement the hull names is still a refusal.
+    for (const { project, level } of HULLS.CATACLYSM.requiredResearch) {
+      expect(accessError(() => {
+        assertHullProductionAccess('CATACLYSM', 6, { ...cataclysmTech, [project]: level - 1 });
+      }), project).toBe('NEEDS_HULL_RESEARCH');
+    }
   });
 
   it('keeps level-one hulls available without research', () => {

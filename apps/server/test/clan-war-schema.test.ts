@@ -105,6 +105,7 @@ async function makeContribution(
 async function makeMission(): Promise<string> {
   const departAt = f.clock.now();
   const [row] = await f.db.insert(missions).values({
+    fuelPaid: 0,
     seasonId: f.seasonId,
     kind: 'clan_war',
     ownerPlayerId: f.playerIds[0]!,

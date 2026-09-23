@@ -835,14 +835,20 @@ describe('the Hangar row', () => {
     expect(document.querySelector('[data-hangar-room]')).toHaveTextContent(String(hangarCapacity(2)));
   });
 
-  it('names the Core gate of the next rung, not the next Core level', () => {
-    hangarWorld(5, 2);
-    expect(document.querySelector('#row-HANGAR')).toHaveTextContent('Core L7');
-  });
-
-  it('offers the rung once the Core has opened it', () => {
-    hangarWorld(7, 2);
-    expect(document.querySelector('#row-HANGAR')).not.toHaveTextContent('Core L');
+  /**
+   * THE ROW ASKS NOTHING OF THE CORE ANY MORE. Owner decision, 2026-09-22 — a fleet-path commander
+   * must be able to buy room without being pushed up the tier band for it, and the ore already
+   * refuses what the gate used to (see `hangar-free-of-core.test.ts`).
+   *
+   * It used to name the gate — "Core L7" at Core 5 — which was the right screen for the rule that
+   * existed. With no gate there is nothing to name, at any Core.
+   */
+  it('names no Core requirement, at any Core', () => {
+    for (const core of [1, 5, 7, 16]) {
+      hangarWorld(core, 2);
+      expect(document.querySelector('#row-HANGAR'), `core ${String(core)}`)
+        .not.toHaveTextContent('Core L');
+    }
   });
 
   it('says the ladder is over at the top rung', () => {

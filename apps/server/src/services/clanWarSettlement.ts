@@ -343,6 +343,7 @@ export async function resolveClanWarBattle(
       now: defender.now,
       count: FAULT.attackFaults,
       seed: `clan-war:${mission.id}`,
+      lane: 'ATTACK',
       announce: false,
     })
     : [];

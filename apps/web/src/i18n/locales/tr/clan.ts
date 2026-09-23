@@ -280,6 +280,7 @@ export const clan = {
     fits: 'Sığıyor',
     overLimit: 'Fazla',
     cannotLand: 'O dünya bu hediyedeki her gemiyi henüz kullanamaz.',
+    senderShielded: 'Yeni oyuncu kalkanın kaynaklarını {{duration}} daha evde tutuyor. Kalkan bitince yardım gönderebilirsin.',
     tooLate: 'Uçuş ve gerekirse dönüş sezon bitmeden tamamlanamaz.',
     possibleReturn: 'Konvoy bütünüyle geri dönmek zorunda kalırsa {{duration}} içinde güvenle evde olabilir.',
     plannedReturn: 'Teslimattan sonra taşıma filosu {{duration}} içinde evde olacak.',

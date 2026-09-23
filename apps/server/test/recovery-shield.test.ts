@@ -686,6 +686,7 @@ describe('the recovery shield', () => {
   }) => {
     const at = new Date(f.clock.now().getTime() - input.ago);
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       status: 'resolved',

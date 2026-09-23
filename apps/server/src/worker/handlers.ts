@@ -397,10 +397,15 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
     if (mission.kind === 'transfer') {
       const outcome = await resolveTransfer(tx, mission, clock.now());
       if (outcome !== 'DELIVERED') {
+        // The world that closed its doors: a recalled flight was landing where it LEFT from.
+        // Self-review 2026-09-23, R8.
+        const landingPlanetId = mission.recalledAt !== null
+          ? mission.originPlanetId
+          : mission.targetPlanetId;
         const [target] = await tx
           .select({ name: planets.name })
           .from(planets)
-          .where(eq(planets.id, mission.targetPlanetId));
+          .where(eq(planets.id, landingPlanetId));
         await notify(tx, {
           playerId: mission.ownerPlayerId,
           kind: 'fleet_returned',
@@ -408,7 +413,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
             trip: 'transfer_rerouted',
             reason: outcome === 'REROUTED_CAPACITY' ? 'CAPACITY' : 'OWNERSHIP',
             craft: fleetCount(mission.fleet),
-            targetPlanetId: mission.targetPlanetId,
+            targetPlanetId: landingPlanetId,
             targetPlanetName: target?.name ?? 'an unknown world',
           },
           at: clock.now(),
@@ -604,6 +609,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       const [ret] = await tx
         .insert(missions)
         .values({
+          // A return leg is already paid for: fuel is charged in full at the outbound launch.
+          fuelPaid: 0,
           seasonId: mission.seasonId,
           kind: 'probe',
           ownerPlayerId: mission.ownerPlayerId,
@@ -911,6 +918,7 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
         now: defender.now,
         count: FAULT.attackFaults,
         seed: `attack:${missionId}`,
+        lane: 'ATTACK',
         // Told in this battle's report below rather than as notifications. Owner decision.
         announce: false,
       })
@@ -1144,6 +1152,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       const [ret] = await tx
         .insert(missions)
         .values({
+          // A return leg is already paid for: fuel is charged in full at the outbound launch.
+          fuelPaid: 0,
           seasonId: mission.seasonId,
           kind: 'return',
           ownerPlayerId: mission.ownerPlayerId,

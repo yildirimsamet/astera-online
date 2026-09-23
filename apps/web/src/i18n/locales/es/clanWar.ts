@@ -34,6 +34,8 @@ export const clanWar = {
   noOrigin: 'Elige uno de tus mundos.', noFleet: 'Elige al menos una nave.',
   quoteFirst: 'Comprueba la ruta antes de enviar.',
   launch: 'Iniciar ataque conjunto', cancel: 'Cancelar objetivo',
+  strikeEta: 'El ataque llega {{time}} después del lanzamiento',
+  paceHint: 'Más lento llega más tarde: elige la hora del golpe. Sin combustible extra; los supervivientes vuelven a toda velocidad; nada permanece más de 12 h en vuelo.',
   inboundReason: 'Llegan refuerzos. Espera a que aterricen.',
   noCombatReason: 'El grupo necesita al menos una nave de combate.',
   noWaveReason: 'El grupo necesita una contribución antes de salir.',

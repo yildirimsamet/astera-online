@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   HULLS,
   TRANSFER_CARGO_HULLS,
+  allowedPaces,
   distance,
   missionFuel,
   fleetCount,
@@ -15,14 +16,16 @@ import {
   transferCargoCapacity,
   type Fleet,
   type HullId,
+  type MissionPace,
   type Vec3,
 } from '@astera/rules';
 import { useTransfer } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
-import { duration } from '../lib/time.js';
+import { duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
+import { PaceRow } from '../ui/PaceRow.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { SpendBar } from '../ui/SpendBar.js';
@@ -140,6 +143,21 @@ export function TransferSheet({
   // travels explicitly instead of being re-read from the now-changed selector.
   const transfer = useTransfer(planet.planet.id);
   const launchBlocked = launchFault(planet.faults, 'fleet') !== null;
+  /**
+   * THE FIVE MINUTES AFTER A SQUADRON LANDED HERE. Faz 2A.3.
+   *
+   * Read on the sheet rather than discovered on commit. The pause fires at exactly the moment a
+   * commander is in a hurry — a raid is inbound and they are trying to move the fleet — and a rule
+   * they can only learn by losing that attempt to it is not a rule they can plan around.
+   *
+   * AGAINST A TICKING CLOCK, NOT THE FIELD'S PRESENCE. The server sends null once the pause has
+   * passed — but only on a fresh read, and nothing refetches the planet at that instant, so a
+   * sheet that treated "the field is set" as the lock stayed locked after the five minutes were
+   * over (review 2026-09-22, #4). The clock only ticks each second while there is a pause to count.
+   */
+  const cooldownUntil = planet.planet.transferReadyAt ?? null;
+  const now = useNow(cooldownUntil === null ? 60_000 : 1_000);
+  const cooling = cooldownUntil !== null && cooldownUntil.getTime() > now;
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
   /**
@@ -166,9 +184,20 @@ export function TransferSheet({
   const defencePowerNow = combatValue(garrisonOf(planet.fleet, planet.ground));
   /** The one distance this sheet is about: the ETA, the fuel and the trim share it. */
   const span = distance(planet.planet.position, target.position);
+  /**
+   * HOW FAST THIS TRANSFER FLIES. Plan §15.5a, review 2026-09-22 #1.
+   *
+   * The server has taken a pace on this lane since Faz 2A; the sheet never offered one, so the
+   * launch most likely to WANT a slow flight — a fleetsave, ships kept in the air until a raid has
+   * passed — was the one that could not be slowed. Held as the player's wish and narrowed to what
+   * this wing may legally fly, falling back to full speed rather than refusing.
+   */
+  const [wantedPace, setWantedPace] = useState<MissionPace>(1);
+  const paces: readonly MissionPace[] = fleetCount(fleet) > 0 ? allowedPaces(span, fleet, mods) : [1];
+  const pace = paces.includes(wantedPace) ? wantedPace : 1;
   const eta = useMemo(
-    () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, mods) : 0,
-    [fleet, span, mods],
+    () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, { ...mods, pace }) : 0,
+    [fleet, span, mods, pace],
   );
   /**
    * WHAT THE FLIGHT ITSELF BURNS, AND IT WAS NOWHERE ON THIS SCREEN. T6.
@@ -184,7 +213,7 @@ export function TransferSheet({
    * the worse half — a screen causing a refusal it cannot explain.
    */
   const fuel = useMemo(
-    () => fleetCount(fleet) > 0 ? missionFuel(fleet, span, 1) : 0,
+    () => fleetCount(fleet) > 0 ? missionFuel(fleet, span, 1, 'HOMEWARD') : 0,
     [fleet, span],
   );
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
@@ -204,7 +233,8 @@ export function TransferSheet({
   const incomingRoom = hangarLoad(fleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
     || destinationUsed + incomingRoom <= destinationTotal;
-  const valid = !launchBlocked && fleetCount(fleet) > 0 && loaded <= capacity && destinationFits
+  const valid = !launchBlocked && !cooling
+    && fleetCount(fleet) > 0 && loaded <= capacity && destinationFits
     && cargo.alloy <= planet.planet.alloy
     && cargo.crystal <= planet.planet.crystal
     && cargo.deuterium <= planet.planet.deuterium
@@ -220,7 +250,7 @@ export function TransferSheet({
       into the state the ceiling exists to remove — a screen offering a launch the
       server will refuse — because the flight got dearer after the load was set.
     */
-    const room = Math.max(0, planet.planet.deuterium - missionFuel(next, span, 1));
+    const room = Math.max(0, planet.planet.deuterium - missionFuel(next, span, 1, 'HOMEWARD'));
     setCargo((current) => fitCargo(
       { ...current, deuterium: Math.min(current.deuterium, room) },
       transferCargoCapacity(next, mods.tech),
@@ -239,7 +269,7 @@ export function TransferSheet({
           full
           disabled={!valid || transfer.isPending}
           onClick={() => {
-            transfer.mutate({ targetPlanetId: target.id, fleet, cargo }, {
+            transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace }, {
               onSuccess: () => {
                 say(t('transfer.launched', { duration: duration(eta) }));
                 onLaunched();
@@ -250,7 +280,11 @@ export function TransferSheet({
         >
           {launchBlocked
             ? t('faults.launchBlock.SHIPYARD_REVOLT')
-            : transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
+            : cooling
+              ? t('transfer.cooldown', {
+                  duration: duration((cooldownUntil.getTime() - now) / 60_000),
+                })
+              : transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
         </Button>
       )}
     >
@@ -265,7 +299,7 @@ export function TransferSheet({
         these are the same facts and now wear the same shapes.
       */}
       <div className="grid grid-cols-2 gap-2 pt-2">
-        <p className="plate px-3 py-2 text-caption text-dim">
+        <p data-transfer-eta className="plate px-3 py-2 text-caption text-dim">
           {t('transfer.eta')} <strong className="text-bone">{eta > 0 ? duration(eta) : '—'}</strong>
         </p>
         <p className="plate px-3 py-2 text-caption text-dim">
@@ -280,6 +314,17 @@ export function TransferSheet({
           </strong>
         </p>
       </div>
+      {/*
+        The rungs sit under the ETA they move, as on the raid sheet — and the sentence under them is
+        this lane's own: a transfer is slowed to stay in the air, not to land on time.
+      */}
+      <PaceRow
+        data-transfer-pace
+        paces={paces}
+        pace={pace}
+        onChange={setWantedPace}
+        hint={t('transfer.paceHint')}
+      />
       {fuel > 0 && (
         <div data-transfer-fuel className="plate mt-2 px-3 py-3">
           {/*
@@ -295,6 +340,16 @@ export function TransferSheet({
             tone="deuterium"
             label={t('transfer.fuel')}
           />
+          {/*
+            WHY THIS NUMBER IS SMALLER THAN THE RAID SHEET'S. Owner decision, 2026-09-21.
+
+            A discount nobody is told about is not a discount, it is an inconsistency: the same
+            wing over the same distance quotes two prices on two screens, and the commander has no
+            way to learn which is the exception. One line, where the figure is — the rule and its
+            boundary together, so "can I just fly slowly to a raid and pay less" is answered before
+            it is asked.
+          */}
+          <p className="mt-1.5 text-micro text-faint">{t('transfer.homewardFuel')}</p>
         </div>
       )}
       {destinationTotal !== undefined && destinationUsed !== undefined && (
@@ -517,7 +572,7 @@ export function TransferSheet({
           );
         })}
       </div>
-      <p className="mt-3 text-caption text-dim">{t('transfer.irreversible')}</p>
+      <p className="mt-3 text-caption text-dim">{t('transfer.rules')}</p>
     </Sheet>
   );
 }

@@ -338,6 +338,7 @@ describe('completed season archive', () => {
       swing: number;
     }) => {
       const [mission] = await fixture.db.insert(missions).values({
+        fuelPaid: 0,
         seasonId: fixture.seasonId,
         kind: 'attack',
         status: 'resolved',
@@ -829,6 +830,7 @@ describe('completed season archive', () => {
     });
 
     const [mission] = await fixture.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: fixture.seasonId,
       kind: 'attack',
       status: 'resolved',

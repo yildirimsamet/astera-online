@@ -150,6 +150,7 @@ describe('seasonal rival marker', () => {
   it('still moves after a Death Star has landed between the pair', async () => {
     await set(f.planetIds[1]!);
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',
@@ -212,6 +213,7 @@ describe('seasonal rival marker', () => {
   it('still moves after a battle and after a probe reading', async () => {
     await set(f.planetIds[1]!);
     const [battle] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       status: 'resolved',
@@ -238,6 +240,7 @@ describe('seasonal rival marker', () => {
       createdAt: f.clock.now(),
     });
     const [scout] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'probe',
       status: 'in_flight',

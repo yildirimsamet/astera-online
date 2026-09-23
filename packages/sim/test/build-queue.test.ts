@@ -4,6 +4,7 @@ import {
   buildWorld,
   enqueueSimBuild,
   projectedBuildState,
+  runSeason,
   totalWealth,
 } from '../src/index.js';
 
@@ -161,5 +162,34 @@ describe('the simulator build queue mirror', () => {
 
     advanceBuildQueues(world, 2);
     expect(player.instruments.AEGIS).toBe(1);
+  });
+});
+
+/**
+ * A DAILY LOOK AT THE WORLD, FOR MEASUREMENT ONLY. 2026-09-22, sim-vs-production study.
+ *
+ * Comparing the model with the live galaxy needs the model's state at day 3, day 6, day 9 of a
+ * THIRTY-day season — and a season cut short at day 9 is a different season, because every bot's
+ * sunset decision reads the time left. So the season runs to its real end and is observed on the
+ * way; the observer is called after the day's report and must not be able to change the outcome.
+ */
+describe('observing a season day by day', () => {
+  it('calls the observer once per completed day, in order, with the live world', () => {
+    const seen: number[] = [];
+    let observed: unknown = null;
+    const { world } = runSeason({
+      players: 3, days: 2, seed: 5,
+      onDay: (day, w) => { seen.push(day); observed = w; },
+    });
+    expect(seen).toEqual([1, 2]);
+    expect(observed).toBe(world);
+  });
+
+  it('leaves the season exactly as it would have been unobserved', () => {
+    const plain = runSeason({ players: 4, days: 2, seed: 6 });
+    const watched = runSeason({ players: 4, days: 2, seed: 6, onDay: () => undefined });
+    expect(watched.days.map((d) => d.invariants)).toEqual(plain.days.map((d) => d.invariants));
+    expect(watched.world.players.map((p) => p.buildings))
+      .toEqual(plain.world.players.map((p) => p.buildings));
   });
 });

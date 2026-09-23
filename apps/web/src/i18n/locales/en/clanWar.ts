@@ -34,6 +34,8 @@ export const clanWar = {
   noOrigin: 'Choose one of your worlds.', noFleet: 'Choose at least one ship.',
   quoteFirst: 'Check the route before sending.',
   launch: 'Start joint attack', cancel: 'Cancel target',
+  strikeEta: 'Strike lands {{time}} after launch',
+  paceHint: 'Slower lands later — choose the hour it hits. No extra fuel; survivors fly home at full speed; nothing stays up past 12h.',
   inboundReason: 'Support fleet is arriving. Wait for it.',
   noCombatReason: 'At least one combat ship must be in the pool.',
   noWaveReason: 'The pool needs a contribution before launch.',

@@ -1,7 +1,10 @@
 import { HULLS } from './hulls.js';
 import type { HullId } from './types.js';
-import { producerOutputMult, profileIncome, profileBuilding, profileInvoice, profileHull } from './economy-profile.js';
+import {
+  alloyLift, producerOutputMult, profileIncome, profileBuilding, profileInvoice, profileHull,
+} from './economy-profile.js';
 import { ECONOMY_ADJUSTMENT } from './tempo.js';
+import { resourceValue } from './valuation.js';
 import { robotSpeedMult, yardSpeedMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import {
@@ -116,22 +119,46 @@ export const hangarCapacity = (hangarLevel: number): number => {
 };
 
 /**
- * THE TALLEST HANGAR THIS COMMAND CORE ALLOWS. The rungs open at the Core levels
- * where a development tier changes (`coreTier`), and a Core-16 world may buy every
- * rung the ladder has. The one statement of the gate: the build door, the strike
- * clamp and the client all read it.
+ * THE TALLEST HANGAR A COMMANDER MAY BUILD — WHICH IS NOW ALL OF IT, AT ANY CORE.
+ * Owner decision, 2026-09-22.
+ *
+ * *"Komuta merkezini level atlamadan istedigim gibi hangar'ı level atlatabileyim … tier atlamadan
+ * bir kullanıcı filocu olabilmeli."*
+ *
+ * THE GATE EXISTED FOR A REAL REASON (2026-09-18): commanders held the Core low to sit inside the
+ * beginners' tier band and printed an unbounded fleet there. The owner's answer is that the ore
+ * already closes that door, and the measurement agrees: a Core-4 world makes 531 alloy an hour, so
+ * climbing this ladder costs 65 days of production in a thirty-day season and FILLING it costs
+ * another 167 — and its whole store is 8,355 against a late rung's 71,760, so it cannot hold one
+ * rung's price at once. No building may exceed the Core, so a commander who refuses to raise it
+ * cannot raise the Refinery that would pay for this either.
+ *
+ * The gate was charging a second time for something production had already refused. One bound is
+ * left — the ore — instead of two. `hangar-free-of-core.test.ts` holds that measurement, so a
+ * producer retune that makes a low Core rich enough to climb the ladder fails there.
+ *
+ * KEPT AS A FUNCTION rather than deleted: the build door, the strike clamp and the client all read
+ * it, and a ceiling that is the top of the ladder is still a ceiling.
  */
-export function hangarCeiling(coreLevel: number): number {
-  let top = 0;
-  for (let rung = 1; rung <= HANGAR.maxLevel; rung++) {
-    if (coreLevel >= HANGAR.coreGate[rung]!) top = rung;
-  }
-  return top;
+export function hangarCeiling(_coreLevel: number): number {
+  return HANGAR.maxLevel;
 }
 
-/** The rung a Core opens by itself; what a live world is handed when the Hangar returns. */
-export const hangarSeedLevel = (coreLevel: number): number =>
-  Math.min(HANGAR.seedTop, hangarCeiling(coreLevel));
+/**
+ * WHAT A WORLD IS HANDED, WHICH IS A DIFFERENT QUESTION FROM WHAT IT MAY BUY.
+ *
+ * A neutral template and a world migrating onto the Hangar are GIVEN a rung; nobody paid for it,
+ * so it is sized to the world's development. That is why this still reads `HANGAR.coreGate` — the
+ * table survives the 2026-09-22 decision as a STAGING map rather than a purchase gate. Deriving it
+ * from `hangarCeiling` instead would now hand every world in the galaxy rung six for nothing.
+ */
+export const hangarSeedLevel = (coreLevel: number): number => {
+  let seeded = 0;
+  for (let rung = 1; rung <= HANGAR.seedTop; rung++) {
+    if (coreLevel >= HANGAR.coreGate[rung]!) seeded = rung;
+  }
+  return seeded;
+};
 
 export const flightSlots = (coreLevel: number): number =>
   3 + Math.floor(Math.max(0, coreLevel) / 3);
@@ -163,22 +190,6 @@ export const drillSpeedMult = (orbit: SatelliteSet): number =>
 /** Every fleet that leaves this planet flies this much faster. */
 export const fleetSpeedMult = (orbit: SatelliteSet): number =>
   hasSatellite(orbit, 'BEACON') ? SATELLITES.BEACON.speed : 1;
-
-/**
- * THE OPENING LIFT ON ALLOY, AND IT ENDS BY DECAYING. See `ECONOMY_ADJUSTMENT`.
- *
- * Flat across the opening, then a straight line back to 1.00 at
- * `alloyLiftEndLevel` — the version with an EDGE at L9 made the next upgrade a
- * downgrade, which is the one thing a ladder may never do.
- */
-const alloyLift = (level: number): number => {
-  const { earlyAlloyOutputMultiplier: lift, earlyAlloyMaxLevel: flat, alloyLiftEndLevel: end }
-    = ECONOMY_ADJUSTMENT;
-  if (level < 1) return 1;
-  if (level <= flat) return lift;
-  if (level >= end) return 1;
-  return 1 + (lift - 1) * (end - level) / (end - flat);
-};
 
 /**
  * `base × L × growth^L` per hour. See `ECON.alloyBase` for why the linear factor
@@ -503,29 +514,74 @@ export const shieldHp = (level: number): number =>
   level <= 0 ? 0 : Math.round(SHIELD.base * Math.pow(SHIELD.mult, level));
 
 /**
- * Hours for an upgrade at `level` to repay its own cost.
- *
- * TOTAL cost against the MARGINAL gain, and both had to be re-derived. The gain is
- * no longer `rate × (mult − 1)`: production is `base × L × growth^L`, whose
- * marginal is `base × growth^L × (0.1L + 1.1)`, so the old closed form was simply
- * the wrong derivative. Taking the difference of two rates cannot go stale the
- * next time the shape moves.
- *
- * Cost grows at 1.56 against production at 1.10, so payback lengthens with level.
- * THAT DRIFT IS WHAT STOPS A 14-DAY SEASON RUNNING AWAY, and it is what produces
- * the sunset: every player independently stops building on the final day, with no
- * rule announcing it.
+ * THE THREE BUILDINGS THAT PRODUCE. Named as a type so a payback question cannot be asked of a
+ * Vault or a Hangar — neither has an output to divide a price by, and the old helper's willingness
+ * to answer for them is half of what made it wrong.
  */
-export function paybackHours(level: number): number {
-  const cost = upgradeCost(level);
-  const gain = alloyRate(level + 1) - alloyRate(level);
-  if (gain <= 0) return Infinity;
-  return (cost.alloy + cost.crystal + cost.deuterium) / gain;
+export type ProducerId = Extract<BuildingId, 'REFINERY' | 'EXTRACTOR' | 'DEUTERIUM_PLANT'>;
+
+/**
+ * WHAT ONE MORE RUNG ADDS PER HOUR, IN THAT PRODUCER'S OWN RESOURCE.
+ *
+ * A vector rather than a number, because the thing being bought and the thing being earned have to
+ * be weighed on the same scale and `resourceValue` is the only scale that knows deuterium is worth
+ * thirty-two alloy. A plant's gain expressed as a bare count of deuterium, divided into a price
+ * denominated in alloy and crystal, is not a ratio of anything.
+ */
+export function marginalOutput(producer: ProducerId, level: number): Resources {
+  const at = (l: number): Resources => ({
+    alloy: producer === 'REFINERY' ? alloyRate(l) : 0,
+    crystal: producer === 'EXTRACTOR' ? crystalRate(l) : 0,
+    deuterium: producer === 'DEUTERIUM_PLANT' ? deuteriumRate(l) : 0,
+  });
+  const next = at(level + 1);
+  const now = at(level);
+  return {
+    alloy: next.alloy - now.alloy,
+    crystal: next.crystal - now.crystal,
+    deuterium: next.deuterium - now.deuterium,
+  };
 }
 
-/** Is building still rational, this many hours before the season ends? */
-export const worthInvesting = (level: number, hoursRemaining: number): boolean =>
-  paybackHours(level) < hoursRemaining * SEASON.investmentHorizonShare;
+/**
+ * HOURS FOR A PRODUCER RUNG TO REPAY ITS OWN PRICE — the live price, against its own output.
+ *
+ * IT REPLACES `paybackHours(level)`, WHICH WAS WRONG IN BOTH DIRECTIONS. That function took no
+ * building, read the legacy shared `upgradeCost()` rather than the live `buildingCost()`, summed
+ * the price as `alloy + crystal + deuterium` — a valuation the game uses nowhere — and divided it
+ * by the ALLOY gain whatever building was being asked about. Measured against the truth it
+ * reported 0.40x at L8, crossed at L16, and reported 5.66x at L25.
+ *
+ * THAT IS NOT A COSMETIC DRIFT. `worthInvesting` is the one consumer, and the SIMULATOR hands it
+ * every building in an archetype's build order to decide whether a modelled commander builds. So
+ * the model over-built early and under-built late relative to the real game, and every balance
+ * reading taken from it inherited the error.
+ *
+ * ONE VALUATION ON BOTH SIDES. `resourceValue` (A + 2C + 32D) is the replacement-effort scale the
+ * rest of the economy is priced in; using it for the invoice and for the gain is what makes the
+ * quotient a number of hours rather than a mixture of two units.
+ *
+ * `Infinity` when a rung adds nothing, which is the honest answer to "when does this repay".
+ */
+export function producerPaybackHours(producer: ProducerId, level: number): number {
+  const gain = resourceValue(marginalOutput(producer, level));
+  if (gain <= 0) return Infinity;
+  return resourceValue(buildingCost(producer, level)) / gain;
+}
+
+/**
+ * Is this producer rung still rational, this many hours before the season ends?
+ *
+ * THE PRODUCER IS REQUIRED because the three repay at very different speeds — the plant is roughly
+ * twice the Refinery at every rung — and a single curve answering for all of them is the defect
+ * this pair was rewritten to remove.
+ */
+export const worthInvesting = (
+  producer: ProducerId,
+  level: number,
+  hoursRemaining: number,
+): boolean =>
+  producerPaybackHours(producer, level) < hoursRemaining * SEASON.investmentHorizonShare;
 
 /* ── Build time ─────────────────────────────────────────────────── */
 

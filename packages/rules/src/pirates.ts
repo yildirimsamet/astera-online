@@ -1,8 +1,9 @@
 import { monthlyPirateSupplyAtRate } from './monthly-supply.js';
 import { PIRATE_ADMISSION_PRICES } from './pirate-admission-prices.js';
-import { PIRATE, SEASON, DEBRIS } from './constants.js';
+import { FUEL, PIRATE, SEASON, DEBRIS } from './constants.js';
 import { COMBAT_HULLS, HULLS, MOBILE_HULLS, fleetEntries, fleetValue } from './hulls.js';
 import { orbitDiscoveredAt, orbitRadius } from './galaxy.js';
+import { missionFuel } from './fuel.js';
 import { orbitPosition } from './galaxy.js';
 import { mulberry32 } from './rng.js';
 import type { OrbitElements, SensorEpoch } from './galaxy.js';
@@ -154,7 +155,27 @@ function hoardAtValue(value: number, valueMult: number): Resources {
 }
 
 export function pirateHoard(roster: Fleet): Resources {
-  return hoardAtValue(fleetValue(roster), PIRATE.hoardValueMult);
+  /*
+    THE ORE OFF ITS VALUE, THE FUEL OFF ITS THIRST. Owner decision, 2026-09-22.
+
+    Alloy and crystal stay priced against what the pirate is WORTH, which is what makes the prize
+    legible before launch — a Telescope shows the roster, so a commander can estimate the reward.
+
+    Deuterium is priced against what the pirate would BURN, because deuterium is fuel and the
+    question a raider is really asking is whether the prize covers the flight. A share of the
+    hoard could not answer that: it read as a garnish (1.3%) while paying nearly four times a
+    proportionate raid's fuel. See `PIRATE.hoardFuelMult`.
+
+    `hoardAtValue` still answers the ADMISSION budget above, deliberately unchanged — that path is
+    frozen on the pre-D204 valuation so a reward tune cannot re-index a field commanders may
+    already be flying at.
+  */
+  const ore = hoardAtValue(fleetValue(roster), PIRATE.hoardValueMult);
+  return {
+    alloy: ore.alloy,
+    crystal: ore.crystal,
+    deuterium: missionFuel(roster, FUEL.reference, 1) * PIRATE.hoardFuelMult,
+  };
 }
 
 /** Frozen component liability, independent of live hull discounts. D208. */

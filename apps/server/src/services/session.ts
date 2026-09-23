@@ -150,6 +150,11 @@ export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
   /**
+   * Set only on an outbound transfer that may still be turned around — the same facts
+   * `recallTransfer` checks. Owner decision, 2026-09-21.
+   */
+  recallable?: true;
+  /**
    * `trade` IS A CONVOY OUT AT THE MERCHANT. D156.
    *
    * It is on this payload for the same reason `pirate` is, and the gap is the one
@@ -732,7 +737,11 @@ export async function pendingThreads(
     // planet that was raided, so the name worth showing is at the other end. Read
     // off the same rule that decided the leg was yours, rather than off a column —
     // the two agree for an owned leg and only one of them is the definition.
-    const returning = m.kind === 'return' || m.parentMissionId !== null;
+    //
+    // A RECALLED transfer is coming home too, to the world it left (self-review
+    // 2026-09-23, R1): the disc already drew it so, and the strip said "outbound,
+    // to the old destination" to a commander who had just pulled it back.
+    const returning = m.kind === 'return' || m.parentMissionId !== null || m.recalledAt !== null;
     pending.push({
       /**
        * THE MISSION'S OWN ID, ON YOUR OWN CRAFT ONLY. D52.
@@ -753,8 +762,30 @@ export async function pendingThreads(
         : m.kind === 'transfer' || m.kind === 'settlement' || m.kind === 'death_star'
           ? m.kind
           : 'fleet',
-      targetName: returning ? row.originName : row.targetName,
-      targetPlanetId: returning ? m.originPlanetId : m.targetPlanetId,
+      /*
+        A TRANSFER IS NAMED AFTER WHERE IT IS GOING — the strip reads it as "Transfer → X". Its
+        rows are not swapped like a return leg's: a rerouted leg already targets the safe world, and
+        a recalled one is going back to its own origin. Self-review 2026-09-23, R1.
+      */
+      targetName: m.kind === 'transfer'
+        ? (m.recalledAt !== null ? row.originName : row.targetName)
+        : returning ? row.originName : row.targetName,
+      targetPlanetId: m.kind === 'transfer'
+        ? (m.recalledAt !== null ? m.originPlanetId : m.targetPlanetId)
+        : returning ? m.originPlanetId : m.targetPlanetId,
+      /*
+        WHETHER THE COMMANDER MAY STILL TURN THIS AROUND. Owner decision, 2026-09-21.
+
+        Stated by the server because the strip cannot work it out: it is the same set of facts
+        `recallTransfer` checks, and a client that guessed would offer a button the server then
+        refuses — on the one screen a commander reaches for while a raid is inbound.
+      */
+      ...(m.kind === 'transfer'
+        && m.recalledAt === null
+        && m.parentMissionId === null
+        && m.arriveAt.getTime() > now.getTime()
+        ? { recallable: true }
+        : {}),
       minutesRemaining: minutes,
       arriveAt: m.arriveAt,
       // Probes have legs too now that they fly home — "returning from" and
@@ -774,13 +805,25 @@ export async function pendingThreads(
        * marker.
        */
       fleet: m.fleet,
-      // Yours, so you may watch it fly.
-      path: {
-        from: { x: row.originX, y: row.originY, z: row.originZ },
-        to: { x: row.targetX, y: row.targetY, z: row.targetZ },
-        departAt: m.departAt,
-        arriveAt: m.arriveAt,
-      },
+      /*
+        Yours, so you may watch it fly — and a RECALLED flight is drawn flying the other way, from
+        the point it actually turned at back to the world it left. Without this the disc would
+        teleport the wing to its old destination and fly it home from there, which is a picture of
+        a journey that never happened. `missions.recallFrom` holds that point.
+      */
+      path: m.recalledAt !== null && m.recallFrom !== null
+        ? {
+            from: m.recallFrom,
+            to: { x: row.originX, y: row.originY, z: row.originZ },
+            departAt: m.recalledAt,
+            arriveAt: m.arriveAt,
+          }
+        : {
+            from: { x: row.originX, y: row.originY, z: row.originZ },
+            to: { x: row.targetX, y: row.targetY, z: row.targetZ },
+            departAt: m.departAt,
+            arriveAt: m.arriveAt,
+          },
     });
   }
 

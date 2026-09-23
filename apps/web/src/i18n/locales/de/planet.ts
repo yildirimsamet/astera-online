@@ -502,6 +502,9 @@ export const launch = {
   exposedFor: "Verfügbar für {{duration}}",
   oneWay: "Einbahnstraße",
   oneWayUnknown: "—",
+  pace: "Fluggeschwindigkeit",
+  paceHint: "Langsamer landet später. Gleicher Treibstoff, und nichts bleibt über 12 Std. in der Luft.",
+  paceFull: "Voll",
   /* The five reasons this commitment can be refused, each stated on the button. */
   noBay: "Kein Flugplatz frei",
   noFuel: "Nicht genügend Deuterium",
@@ -550,6 +553,10 @@ export const launch = {
 export const transfer = {
   /** What the flight burns, beside the figure. T6. */
   fuel: "Treibstoff für den Flug",
+  cooldown: "Entladen – noch {{duration}}",
+  homewardFuel: "Halber Tarif – zwischen eigenen Welten. Ein Angriff zahlt voll.",
+  /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
+  paceHint: "Langsamer landet später – Schiffe im Flug können nicht überfallen werden. Gleicher Treibstoff; nichts bleibt über 12 Std. in der Luft.",
   fuelShort: "kurz {{short}}",
   eyebrow: "Welttransfer",
   eta: "ETA",
@@ -560,11 +567,12 @@ export const transfer = {
   alloy: "Legierung",
   crystal: "Kristall",
   deuterium: "Deuterium",
-  commit: "Übertragung – kein Rückruf",
+  commit: "Übertragen",
   sending: "Versand",
   launched: "Übertragung gestartet · {{duration}}",
-  irreversible:
-    "Eine Richtung. Die Bodenverteidigung kann sich nicht bewegen; Der Laderaum stammt nur von Kurier, Wanderer, Atlas und Argosy.",
+  /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  rules:
+    "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Die Bodenverteidigung kann sich nicht bewegen; Laderaum stammt nur von Kurier, Wanderer, Atlas und Argosy.",
   hullNone: "Keine auf dieser Welt",
   holdReady: "Kurier, Wanderer, Atlas und Argosy tragen das Erz. Halten: {{capacity}}.",
   destinationLabel: "Zielhangar",

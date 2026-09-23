@@ -6,10 +6,14 @@ import {
   fleetCount,
   fleetSpeedMult,
   fleetTravelExact,
+  allowedPaces,
+  isMissionPace,
   hangarCapacity,
   hangarLoad,
+  interpolatePosition,
   missionFuel,
   prospectorCeiling,
+  TRANSFER_COOLDOWN_MINUTES,
   prospectorRoom,
   resourcesTotal,
   transferCargoCapacity,
@@ -20,7 +24,14 @@ import {
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
-import { buildings, missions, neutralPlanetState, planets, units } from '../db/schema.js';
+import {
+  buildings,
+  missions,
+  neutralPlanetState,
+  planets,
+  scheduledEvents,
+  units,
+} from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
@@ -194,6 +205,15 @@ export async function launchTransfer(
   fleet: Fleet,
   cargo: Resources,
   clock: Clock,
+  /**
+   * HOW FAST TO FLY IT. Owner decision, 2026-09-21.
+   *
+   * THIS IS THE LANE THE CHOICE EXISTS FOR. A commander who is about to be asleep sends the fleet
+   * to their own colony and picks a pace that lands it after they are back — the raid that arrives
+   * in between finds an empty hangar. Omitted is full speed, which is what every transfer flew
+   * before the choice existed.
+   */
+  pace?: number,
 ) {
   validateTransferFleet(fleet);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
@@ -256,6 +276,22 @@ export async function launchTransfer(
     if (origin.alloy < cargo.alloy || origin.crystal < cargo.crystal || origin.deuterium < cargo.deuterium) {
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
+    /*
+      THE PAUSE AFTER A SQUADRON LANDED HERE. Faz 2A.3 — `TRANSFER_COOLDOWN_MINUTES`.
+
+      Refused at launch rather than smoothed over, because the whole point is that the fleet is on
+      the ground and catchable for those minutes. The ATTACK lane never reads this: reinforcing a
+      world is not a reason it may not fight from there.
+    */
+    if (origin.transferReadyAt !== null && origin.transferReadyAt > origin.now) {
+      const seconds = Math.ceil((origin.transferReadyAt.getTime() - origin.now.getTime()) / 1_000);
+      throw new GameError(
+        'TRANSFER_COOLDOWN',
+        'That world is still unloading the last squadron',
+        409,
+        { seconds },
+      );
+    }
     await assertFreeBay(tx, originPlanetId, origin.buildings.CORE, origin.faults);
     // Refused at LAUNCH as well as on arrival, so a player is never charged a
     // flight for craft that could not have landed. Both worlds are already held
@@ -265,8 +301,34 @@ export async function launchTransfer(
     const blocked = await landingBlock(tx, targetPlanetId, fleet);
     if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
     const dist = distance(origin, target);
-    // One leg: a transfer arrives and stays. The craft become the destination's. T6.
-    const fuel = missionFuel(fleet, dist, 1);
+    /*
+      THE PACE IS CHECKED BEFORE THE TANK, exactly as the attack lane checks it. Review finding 3,
+      2026-09-22: this lane asked the tank first, so an impossible pace on an empty tank came back
+      as INSUFFICIENT_FUEL — and a commander goes and buys deuterium for an order the server would
+      have refused whatever they paid. An order that was never legal should say so first.
+    */
+    const mods = { boost: fleetSpeedMult(origin.orbit), tech };
+    const chosenPace = pace ?? 1;
+    if (!isMissionPace(chosenPace)) {
+      throw new GameError('BAD_PACE', 'that is not a flight speed this fleet can be set to', 400);
+    }
+    if (!allowedPaces(dist, fleet, mods).includes(chosenPace)) {
+      throw new GameError(
+        'PACE_TOO_SLOW',
+        'at that speed the fleet would be in the air past the twelve-hour ceiling',
+        400,
+      );
+    }
+    /*
+      ONE LEG, AT THE HOMEWARD RATE. T6 + owner decision 2026-09-21.
+
+      One leg because a transfer arrives and stays — the craft become the destination's. Homeward
+      because both ends are already checked to be this commander's own worlds a few lines up
+      (`PLANET_NOT_OWNED` on the origin, the controller check on the target), which is exactly the
+      flight the discount is for: it reaches nobody else, so cutting its price cannot cut the price
+      of reach. `FUEL.laneShare` states the whole argument.
+    */
+    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD');
     /*
       THE CARGO IS ALREADY SPOKEN FOR. T6.
 
@@ -278,11 +340,12 @@ export async function launchTransfer(
       `assertFuel` is that sum, and it is now the only place any launch states it.
     */
     assertFuel(fuel, origin.deuterium, cargo.deuterium);
-    const oneWay = fleetTravelExact(dist, fleet, { boost: fleetSpeedMult(origin.orbit), tech });
+    const oneWay = fleetTravelExact(dist, fleet, { ...mods, pace: chosenPace });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
     assertSeasonOpenThrough(origin, arriveAt);
     const [mission] = await tx.insert(missions).values({
+      fuelPaid: fuel,
       seasonId: origin.seasonId,
       kind: 'transfer',
       ownerPlayerId,
@@ -292,6 +355,7 @@ export async function launchTransfer(
       cargo,
       tech,
       distance: dist,
+      pace: chosenPace,
       departAt: origin.now,
       arriveAt,
     }).returning();
@@ -358,7 +422,15 @@ export async function launchSettlement(
       throw new GameError('SETTLEMENT_REQUIREMENTS', 'Settlement resources are missing', 409);
     }
     const dist = distance(origin, neutral.world);
-    // One leg: the settlers land and become the colony. T6.
+    /*
+      ONE LEG, FULL SPEED, FULL RATE — and each of those three is deliberate.
+
+      One leg because the settlers land and become the colony (T6). FULL SPEED because a claim has
+      a WINDOW: `settlementCanArrive` refuses a flight that cannot reach the world before the claim
+      expires, so offering a commander a slower pace would be offering them a way to miss it. FULL
+      RATE because the far end is not their world yet — the homeward discount is for moving ships
+      between worlds a commander already holds, and a claim flight reaches somewhere new.
+    */
     const fuel = missionFuel(fleet, dist, 1);
     /*
       THE FOUNDING STOCK TRAVELS WITH THEM, SO IT IS SPENT BEFORE THE FLIGHT IS. T6.
@@ -382,6 +454,7 @@ export async function launchSettlement(
     }
     assertSeasonOpenThrough(origin, arriveAt);
     const [mission] = await tx.insert(missions).values({
+      fuelPaid: fuel,
       seasonId: origin.seasonId,
       kind: 'settlement',
       ownerPlayerId,
@@ -444,8 +517,15 @@ async function rerouteToSafeHome(
   now: Date,
 ): Promise<void> {
   const homeId = await safeHomePlanet(tx, mission.ownerPlayerId, mission.originPlanetId);
+  /*
+    WHERE THE FLEET ACTUALLY IS WHEN THIS FIRES. A reroute happens at the end of a leg, so the
+    craft are over the world the leg was AIMED at — which for a recalled flight is the world it
+    launched from, not the one it had been sent to. Reading `targetPlanetId` unconditionally would
+    measure the new leg from a world the fleet turned away from hours ago.
+  */
+  const fromId = mission.recalledAt !== null ? mission.originPlanetId : mission.targetPlanetId;
   const [from, home] = await Promise.all([
-    tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId)).then((rows) => rows[0]),
+    tx.select().from(planets).where(eq(planets.id, fromId)).then((rows) => rows[0]),
     tx.select().from(planets).where(eq(planets.id, homeId)).then((rows) => rows[0]),
   ]);
   if (!from || !home) throw new Error('reroute endpoint vanished');
@@ -459,10 +539,12 @@ async function rerouteToSafeHome(
   if (!Number.isFinite(oneWay)) throw new Error('rerouted transfer has no mobile craft');
   const arriveAt = addMinutes(now, oneWay);
   const [returnMission] = await tx.insert(missions).values({
+    // A return leg is already paid for: fuel is charged in full at the outbound launch.
+    fuelPaid: 0,
     seasonId: mission.seasonId,
     kind: 'transfer',
     ownerPlayerId: mission.ownerPlayerId,
-    originPlanetId: mission.targetPlanetId,
+    originPlanetId: fromId,
     targetPlanetId: homeId,
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
@@ -489,6 +571,93 @@ async function rerouteToSafeHome(
   });
 }
 
+/**
+ * CALL YOUR OWN FLEET BACK. Owner decision, 2026-09-21.
+ *
+ * THE LOUDEST LOSS IN THE CHAT LOGS IS A FLEET, NOT A MINE. *"Ben sabah kalktım sıfırım."* A
+ * commander could watch a raid close on the world their ships were flying to and do nothing about
+ * it, because a launch was final the instant it left. This is the one decision they get back.
+ *
+ * THE WAY HOME TAKES AS LONG AS WAS ALREADY FLOWN, and that is the whole balance of it. An instant
+ * recall would delete "catch the fleet while it is out" — the only counter-play a raider has
+ * against a fleetsave — and turn a decision with a cost into a safety switch. Half an hour out is
+ * half an hour back, and in that half hour the world it left is still short of its garrison.
+ *
+ * TRANSFERS ONLY. An attack committed is committed; that irreversibility is what makes the raid a
+ * bet rather than a probe with a refund.
+ *
+ * NO FUEL IS CHARGED AND NONE IS RETURNED. The flight was paid for at launch, and a fleet in the
+ * air has no access to a store to be charged from — the same rule every other leg in this file
+ * obeys.
+ */
+export async function recallTransfer(
+  db: Db,
+  missionId: string,
+  clock: Clock,
+  expectedPlayerId: string,
+): Promise<{ missionId: string; arriveAt: Date }> {
+  return db.transaction(async (tx) => {
+    const now = clock.now();
+    const [mission] = await tx
+      .select()
+      .from(missions)
+      .where(eq(missions.id, missionId))
+      .for('update');
+    if (!mission) throw new GameError('NOT_FOUND', 'That flight no longer exists', 404);
+    if (mission.ownerPlayerId !== expectedPlayerId) {
+      throw new GameError('PLANET_NOT_OWNED', 'That is not your flight', 403);
+    }
+    /*
+      ONE TURN, ON AN OUTBOUND TRANSFER THAT IS STILL IN THE AIR.
+
+      `recalledAt` is the guard against a second turn: a flight that can keep turning around never
+      has to land, which is the "fleet parked in space" the pace ceiling exists to prevent.
+      `arriveAt` is the guard against recalling something that is already down — the worker may not
+      have committed it yet, but the decision window closed when the ships reached the world.
+    */
+    if (
+      mission.kind !== 'transfer'
+      || mission.status !== 'in_flight'
+      || mission.recalledAt !== null
+      || mission.parentMissionId !== null
+      || now.getTime() >= mission.arriveAt.getTime()
+    ) {
+      throw new GameError('NOT_RECALLABLE', 'That flight cannot be called back', 409);
+    }
+
+    const [from] = await tx.select().from(planets).where(eq(planets.id, mission.originPlanetId));
+    const [to] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+    if (!from || !to) throw new Error('recall endpoint vanished');
+
+    // Where it actually is, on the true centres — the standoff is a drawing detail the disc adds.
+    const turnedAt = interpolatePosition(
+      from, to, mission.departAt.getTime(), mission.arriveAt.getTime(), now.getTime(),
+    );
+    const flownMinutes = (now.getTime() - mission.departAt.getTime()) / 60_000;
+    const arriveAt = addMinutes(now, flownMinutes);
+
+    await tx
+      .update(missions)
+      .set({ recalledAt: now, recallFrom: turnedAt, arriveAt })
+      .where(eq(missions.id, mission.id));
+    /*
+      THE LANDING MOVES WITH IT. The arrival was already queued for the far world's clock; leaving
+      it there would land the ships at the wrong minute, and inserting a second one would land them
+      twice. `radar.ts` reschedules the same way.
+    */
+    await tx
+      .update(scheduledEvents)
+      .set({ resolveAt: arriveAt })
+      .where(and(
+        eq(scheduledEvents.refId, mission.id),
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.status, 'pending'),
+      ));
+    await publishShard(tx, mission.seasonId, 'launch');
+    return { missionId: mission.id, arriveAt };
+  });
+}
+
 export async function resolveTransfer(
   tx: Tx,
   mission: typeof missions.$inferSelect,
@@ -499,10 +668,24 @@ export async function resolveTransfer(
    * the same one-way move between the commander's worlds. Only a destination
    * that became invalid while the fleet was airborne can create a return leg.
    */
+  /**
+   * A RECALLED FLIGHT LANDS WHERE IT LEFT FROM, AND IT ALWAYS LANDS. Owner decision, 2026-09-21.
+   *
+   * Chat: *`hangar dolu diye geri donuyordu`*. A fleet coming home is not an arrival to be
+   * refused — there is nowhere else for it to go, and bouncing it would be the exact bug the
+   * reroute path exists to avoid. So the capacity check below is skipped, like it is for every
+   * other system leg, and the destination is the world the ships started at.
+   *
+   * The OWNERSHIP check still applies: a commander who lost the world they launched from while the
+   * fleet was in the air is rerouted to a world they still hold, the same as any other arrival.
+   */
+  const landingPlanetId = mission.recalledAt !== null
+    ? mission.originPlanetId
+    : mission.targetPlanetId;
   const [target] = await tx
     .select()
     .from(planets)
-    .where(eq(planets.id, mission.targetPlanetId))
+    .where(eq(planets.id, landingPlanetId))
     .for('update');
   if (target?.controllerPlayerId !== mission.ownerPlayerId) {
     await rerouteToSafeHome(tx, mission, now);
@@ -519,12 +702,27 @@ export async function resolveTransfer(
    * is ever deleted to enforce a limit, so refusing a rerouted leg would only
    * bounce it between worlds forever.
    */
-  if (mission.parentMissionId === null && await landingBlock(tx, target.id, mission.fleet)) {
+  if (
+    mission.parentMissionId === null
+    && mission.recalledAt === null
+    && await landingBlock(tx, target.id, mission.fleet)
+  ) {
     await rerouteToSafeHome(tx, mission, now);
     return 'REROUTED_CAPACITY';
   }
   await clearReservedFleet(tx, mission);
   await addUnits(tx, target.id, mission.fleet);
+  /*
+    THE SQUADRON IS ON THE GROUND, AND STAYS THERE FOR A MOMENT. Faz 2A.3.
+
+    Stamped on the world it landed on, including a recalled flight coming home: the bounce this
+    closes works in either direction, and a recall that reset nothing would leave the hole open.
+    Being CAUGHT by the pause is what a recall is exempt from, not causing one.
+  */
+  await tx
+    .update(planets)
+    .set({ transferReadyAt: addMinutes(now, TRANSFER_COOLDOWN_MINUTES) })
+    .where(eq(planets.id, target.id));
   const stock = mission.cargo ?? EMPTY;
   const escrow = mission.settlementEscrow ?? EMPTY;
   const cargo = { alloy: stock.alloy + escrow.alloy, crystal: stock.crystal + escrow.crystal, deuterium: stock.deuterium + escrow.deuterium };

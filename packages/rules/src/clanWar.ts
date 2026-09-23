@@ -66,15 +66,29 @@ export function clanHangarCapacity(level: number): number {
 }
 
 /**
- * WHAT THE NEXT RUNG COSTS — the personal Hangar's own price at this level, and
- * not twice it. Owner decision: the room doubles, the invoice does not.
+ * WHAT THE NEXT RUNG COSTS — TWICE the personal Hangar's price, for twice the room.
+ * Owner decision, 2026-09-22, replacing "the room doubles, the invoice does not".
  *
- * Delegated to `buildingCost` so the clan ladder cannot drift from the building
- * ladder it mirrors. There is NO cost at the top rung, and that absence is the
- * rule that closes donation and upgrade at level 10 rather than a separate flag.
+ * THE OLD RULE HAD A HIDDEN COUPLING. A clan rung bought double room at the personal invoice, so
+ * every cut to the personal ladder halved the clan's price per unit of room — for free, without
+ * anybody choosing it. Plan 2B.3 cut the late personal rungs by 35–75%; under the old rule that
+ * would have handed clans the same cut twice over.
+ *
+ * Doubling the invoice keeps the coupling and closes the multiplier: a unit of clan room now costs
+ * exactly what a unit of personal room costs, at every rung, whatever the personal ladder does
+ * next. `hangar-price.test.ts` holds that equality.
+ *
+ * Still delegated to `buildingCost` so the clan ladder cannot drift from the building ladder it
+ * mirrors. There is NO cost at the top rung, and that absence is the rule that closes donation and
+ * upgrade at level 10 rather than a separate flag.
  */
 export function clanLevelUpgradeCost(currentLevel: number): Resources {
-  return buildingCost('HANGAR', assertClanLevel(currentLevel, CLAN_LEVEL_MAX - 1));
+  const personal = buildingCost('HANGAR', assertClanLevel(currentLevel, CLAN_LEVEL_MAX - 1));
+  return {
+    alloy: personal.alloy * 2,
+    crystal: personal.crystal * 2,
+    deuterium: personal.deuterium * 2,
+  };
 }
 
 /* ── fuel ───────────────────────────────────────────────────────── */

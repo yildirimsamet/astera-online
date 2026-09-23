@@ -105,6 +105,7 @@ describe('season lifecycle', () => {
     await f.db.update(players).set({ dominionTaken: 100 }).where(eq(players.id, f.playerIds[1]!));
     await f.db.update(players).set({ dominionLost: 50 }).where(eq(players.id, f.playerIds[2]!));
     const [strike] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',
@@ -285,6 +286,7 @@ describe('season lifecycle', () => {
     const origin = f.planetIds[0]!;
     const target = f.planetIds[1]!;
     await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       ownerPlayerId: f.playerIds[0]!,
@@ -344,6 +346,7 @@ describe('season lifecycle', () => {
 
   it('waits for every snapshot, then wipes and opens successors atomically', async () => {
     const [resolvedMission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'attack',
       status: 'resolved',

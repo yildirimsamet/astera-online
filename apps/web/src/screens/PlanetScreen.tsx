@@ -18,7 +18,6 @@ import {
   groundLoad,
   groundSlots,
   hangarCapacity,
-  hangarCeiling,
   hangarLoad,
   hullBulk,
   hullFuelRate,
@@ -1193,9 +1192,14 @@ function useBuildingAction(planet: PlanetView, onFlash: (id: string) => void) {
       instruments do: a ladder that is over offers no way past it.
     */
     const hangarMaxed = id === 'HANGAR' && nextLevel >= HANGAR.maxLevel;
-    const coreGate = id === 'HANGAR'
-      ? nextLevel >= hangarCeiling(core) ? HANGAR.coreGate[nextLevel + 1] ?? null : null
-      : id !== 'CORE' && nextLevel >= core ? core + 1 : null;
+    /*
+      THE HANGAR ASKS NOTHING OF THE CORE ANY MORE. Owner decision, 2026-09-22 — a fleet-path
+      commander must be able to buy room without being pushed up the tier band for it. Every other
+      building still may not exceed the Core.
+    */
+    const coreGate = id === 'HANGAR' || id === 'CORE'
+      ? null
+      : nextLevel >= core ? core + 1 : null;
     const prerequisites = [
       ...(coreGate === null ? [] : [i18n.t('planet.blocked.core', { level: coreGate })]),
       ...(plantCapped ? [i18n.t('planet.blocked.plantRung')] : []),

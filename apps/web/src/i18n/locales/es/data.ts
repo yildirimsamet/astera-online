@@ -14,7 +14,7 @@ export const vocabulary = {
     EXTRACTOR: { name: 'Extractor de cristales', tag: 'Hace cristal', role: 'Cristal por hora y almacenamiento de cristal', detail: 'Cada nivel aumenta los ingresos y el almacenamiento de cristales pasivos. El cristal es la mitad más rara del hardware, los instrumentos y los costos de investigación avanzados.' },
     VAULT: { name: 'Almacenar', tag: 'Profundiza la almacén', role: 'Amplía el almacenamiento de recursos y deja un 10% de margen para las próximas actualizaciones de productores de cristales y aleaciones correspondientes. El 10% inferior, con un límite de 8 horas de producción, está a salvo de redadas.', detail: 'La Almacén crece primero según su escala de horas de producción creada por su autor. En niveles altos, si ese piso es demasiado pequeño, la Almacén L se expande para contener el 110% del costo de aleación de Refinería de aleación L→L+1 y el costo de cristal Extractor de cristal L→L+1; la ventana horaria resultante también se aplica al deuterio. Una incursión no puede alcanzar el 10% inferior de la almacén u 8 horas de producción de ese recurso, lo que sea menor. La Almacén no lucha ni reduce el daño recibido.' },
     SHIPYARD: { name: 'Astillero', tag: 'Desbloquea mejores naves', role: 'Desbloquea cascos · acelera la construcción de naves y defensa terrestre · establece la precisión y el sigilo de la sonda', detail: 'Los niveles más altos abren nuevas clases de cascos y completan naves y defensas terrestres más rápido. También agudizan las lecturas de sus sondas y hacen que sus propias sondas sean más difíciles de detectar. Los niveles de astillero no añaden espacios en la cola.' },
-    HANGAR: { name: 'Hangar', tag: 'Establece cuánta flota cabe', role: 'Espacio de flota en este mundo · nuevos peldaños abiertos en Núcleo de Mando 4, 7, 10, 13 y 16', detail: 'Cada nave ocupa espacio en el Hangar según su tamaño, incluidos los naves que viajan fuera de casa; las defensas terrestres no lo hacen. Un Hangar completo construye y no recibe más naves, pero no pierde nada de lo que ya tiene. Los peldaños 2 a 6 se abren en Núcleo de Mando 4, 7, 10, 13 y 16; En Core 16, los peldaños 7 a 10 se pueden comprar solo con recursos.' },
+    HANGAR: { name: 'Hangar', tag: 'Establece cuánta flota cabe', role: 'Espacio de flota en este mundo · se mejora con cualquier Núcleo de Mando', detail: 'Cada nave ocupa espacio en el Hangar según su tamaño, incluidas las naves que viajan fuera de casa; las defensas terrestres no. Un Hangar lleno no construye ni recibe más naves, pero no pierde nada de lo que ya tiene. Cada peldaño cuesta un tercio de la flota a la que hace sitio, así que los peldaños superiores cuestan más de lo que un mundo sin Almacenar mejorado puede guardar de una vez.' },
     DEUTERIUM_PLANT: { name: 'Refinería de deuterio', tag: 'Produce deuterio', role: 'Deuterio por hora y almacenamiento de combustible · su techo lo fija Deuterio Síntesis', detail: 'Cada nivel aumenta la producción pasiva de deuterio y la cantidad que se puede almacenar. El deuterio alimenta los lanzamientos de flotas; investiga el siguiente peldaño de síntesis de deuterio cuando la refinería alcance su nivel máximo.' },
   },
 
@@ -302,6 +302,8 @@ export const vocabulary = {
 
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
+  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
+  repays: 'Se amortiza en {{time}}',
   rangeUnits: '{{count}} unidades',
 
   core: {
@@ -310,7 +312,6 @@ export const gains = {
     releases_one: 'lanza la actualización bloqueada de {{count}}',
     releases_other: 'Lanza {{count}} actualizaciones bloqueadas',
     raisesCap: 'Eleva el nivel del techo de los edificios',
-    opensHangar: 'Abre Hangar {{rung}} · {{then}}',
   },
   hangar: {
     label: 'Sala de flota',

@@ -1086,6 +1086,80 @@ describe('how much of a wall the wing takes', () => {
     };
   };
 
+  /**
+   * THE COUNTER CYCLE, AND THE LIMIT OF WHAT THE PROBE BOUGHT.
+   *
+   * A par probe names only the majority, so a pure wall and a 51/49 wall read identically —
+   * measured, the same advice against those two costs 256,277 and 504,946 alloy-equivalent. The
+   * sheet may state what was read and must never imply the rest.
+   */
+  it('names the majority and says the remainder was not read', async () => {
+    await open(read({ classReading: { kind: 'DOMINANT', cls: 'LANCE' } }));
+    const block = document.querySelector('[data-launch-matchup]');
+    expect(block).not.toBeNull();
+    expect(block!.textContent).toMatch(/yarıdan fazla|more than half/i);
+    expect(block!.textContent).toMatch(/okunmadı|unread/i);
+  });
+
+  it('refuses to name a single counter for an evenly mixed wall', async () => {
+    await open(read({ classReading: { kind: 'EVEN' } }));
+    const block = document.querySelector('[data-launch-matchup]');
+    expect(block).not.toBeNull();
+    expect(block!.textContent).toMatch(/tek bir sert counter yok|no single hard counter/i);
+  });
+
+  it('says nothing at all when the probe read no shape', async () => {
+    await open(read({ classReading: undefined }));
+    expect(document.querySelector('[data-launch-matchup]')).toBeNull();
+  });
+
+  /**
+   * THE READING THE PROBE WAS PAID FOR, ALL OF IT. Owner review, 2026-09-21.
+   *
+   * The strip showed `strong/weak` percentages for the classes the PLAYER had picked and nothing
+   * else, so a full `SHARES` reading arrived as two numbers hanging off one chip with the
+   * target's own class names gone. The plan's acceptance test for 0.2 is explicit: a SHARES
+   * reading must not silently drop a non-zero class.
+   */
+  it('names every class of a SHARES reading with its share', async () => {
+    await open(read({
+      classReading: { kind: 'SHARES', shares: { SKIRMISHER: 10, BULWARK: 30, LANCE: 60 } },
+    }));
+    const wall = document.querySelector('[data-launch-wall]');
+    expect(wall).not.toBeNull();
+    expect(wall!.textContent).toMatch(/60/);
+    expect(wall!.textContent).toMatch(/30/);
+    expect(wall!.textContent).toMatch(/10/);
+  });
+
+  /**
+   * A MAJORITY READING NAMES ONE CLASS AND ADMITS THE REST — AND ITS FIGURE IS A FLOOR.
+   *
+   * A par probe cannot tell a pure Lance wall from a 52.6% one: both come back `DOMINANT: LANCE`.
+   * So the share it resolved is "at least half", and the heading beside it already says "more than
+   * half". Printing a bare `50%` there told the player two different things on one line.
+   */
+  it('names the majority as a floor, and the unread remainder', async () => {
+    await open(read({ classReading: { kind: 'DOMINANT', cls: 'LANCE' } }));
+    const wall = document.querySelector('[data-launch-wall]');
+    expect(wall).not.toBeNull();
+    expect(wall!.textContent).toMatch(/≥\s*50/);
+  });
+
+  /** A full split is exact, so it carries no floor mark. */
+  it('names a SHARES reading exactly, with no floor mark', async () => {
+    await open(read({
+      classReading: { kind: 'SHARES', shares: { SKIRMISHER: 10, BULWARK: 30, LANCE: 60 } },
+    }));
+    const wall = document.querySelector('[data-launch-wall]');
+    expect(wall!.textContent).not.toMatch(/≥/);
+  });
+
+  it('draws no distribution when the reading resolved none', async () => {
+    await open(read({ classReading: { kind: 'EVEN' } }));
+    expect(document.querySelector('[data-launch-wall]')).toBeNull();
+  });
+
   it('draws no lines before a ship is picked', () => {
     render(
       <LaunchSheet target={{ kind: 'world', world: target }} planet={holding} intel={read()}
@@ -1251,5 +1325,83 @@ describe('how much of a wall the wing takes', () => {
     const said = await screen.findByTestId('compare-lines');
     expect(said).toHaveTextContent(compact(expected.clears.low));
     expect(said).not.toHaveTextContent(new RegExp(`${compact(expected.clears.low)}–`));
+  });
+
+});
+
+describe('choosing how fast to fly', () => {
+  /**
+   * THE PACE ROW. Owner decision, 2026-09-21.
+   *
+   * The choice is worth nothing if the player cannot see what it buys, so the rungs are not the
+   * surface — the ARRIVAL is. Picking one moves the one-way figure the sheet already quotes, and
+   * the row states the two rules a commander needs at that moment: slower costs the same fuel, and
+   * nothing may stay in the air past twelve hours.
+   */
+  it('offers the flight speeds this particular flight may take, and moves the arrival with them', async () => {
+    const planet = planetView({ fleet: { DART: 20 } });
+    const view = render(<LaunchSheet target={{ kind: 'world', world: target }} planet={planet}
+      onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '5');
+
+    const row = view.container.querySelector<HTMLElement>('[data-launch-pace]');
+    expect(row).toBeTruthy();
+    const rungs = within(row!).getAllByRole('radio');
+    expect(rungs.length).toBeGreaterThan(1);
+    expect(rungs[0]).toBeChecked();
+
+    const figures = view.container.querySelector<HTMLElement>('[data-launch-figures]')!;
+    const atFullSpeed = figures.textContent;
+    await user.click(rungs[rungs.length - 1]!);
+    expect(rungs[rungs.length - 1]).toBeChecked();
+    expect(figures.textContent).not.toBe(atFullSpeed);
+  });
+
+  /**
+   * THE CHOSEN RUNG HAS TO REACH THE SERVER, and the request body is where that is provable:
+   * `Api.launch` is an instance property, so there is no prototype to spy on, and asserting on the
+   * wire is the stronger check anyway — it catches a sheet that holds the right pace and forgets
+   * to send it.
+   */
+  it('sends the chosen speed with the launch', async () => {
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? init.body : '{}';
+      calls.push({ url, body: JSON.parse(body) as Record<string, unknown> });
+      return Promise.resolve(new Response(JSON.stringify({
+        missionId: 'm1',
+        arriveAt: new Date().toISOString(),
+        exposureMinutes: 10,
+        homeDefenceAfter: 0,
+        pending: [],
+      }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    const paceWrapper = ({ children }: { children: ReactNode }) => {
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const api = new Api({ fetch: fetchMock as unknown as typeof globalThis.fetch });
+      return (
+        <QueryClientProvider client={client}>
+          <ApiProvider api={api}>
+            <ToastProvider>{children}</ToastProvider>
+          </ApiProvider>
+        </QueryClientProvider>
+      );
+    };
+
+    const view = render(<LaunchSheet target={{ kind: 'world', world: target }}
+      planet={planetView({ fleet: { DART: 20 } }, { deuterium: 50_000 })}
+      onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper: paceWrapper });
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: /dart quantity/i }), '5');
+    const rungs = within(view.container.querySelector<HTMLElement>('[data-launch-pace]')!)
+      .getAllByRole('radio');
+    await user.click(rungs[1]!);
+    // Send opens the confirmation; the commit button underneath it is the launch.
+    await user.click(screen.getByRole('button', { name: /^send/i }));
+    await user.click(screen.getByRole('button', { name: /launch — no recall/i }));
+
+    const sent = calls.find((c) => c.url.includes('/api/fleet/launch'));
+    expect(sent?.body.pace).toBe(0.75);
   });
 });

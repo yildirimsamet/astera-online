@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEUTERIUM,
+  ECONOMY_ADJUSTMENT,
   MULTI_WORLD,
   RESEARCH_PROJECTS,
   START_BUILDINGS,
@@ -11,6 +12,7 @@ import {
   deuteriumRate,
   deuteriumStorageCap,
   plantCeiling,
+  producerOutputMult,
   vaultProtects,
   type PlanetEconomyState,
 } from '../src/index.js';
@@ -74,9 +76,13 @@ describe('the deuterium refinery', () => {
    * a tenfold change as happily as on this one.
    */
   it('uses the monthly plant curve independently of contested mining', () => {
-    expect(deuteriumRate(1)).toBe(4);
-    expect(deuteriumRate(7)).toBeCloseTo(4 * 7 ** 1.2);
-    expect(deuteriumRate(plantCeiling(5))).toBeCloseTo(4 * plantCeiling(5) ** 1.2);
+    // The monthly curve, through the owner's two producer-wide dials: the 30% output cut
+    // (`ECONOMY_ADJUSTMENT.producerOutput`) and the 2026-09-20 late lift past rung 12.
+    const cut = ECONOMY_ADJUSTMENT.producerOutput;
+    expect(deuteriumRate(1)).toBeCloseTo(4 * cut, 9);
+    expect(deuteriumRate(7)).toBeCloseTo(4 * 7 ** 1.2 * cut, 9);
+    const top = plantCeiling(5);
+    expect(deuteriumRate(top)).toBeCloseTo(4 * top ** 1.2 * cut * producerOutputMult(top), 9);
   });
 
   it('is a fraction of what the other two produce, at every level', () => {

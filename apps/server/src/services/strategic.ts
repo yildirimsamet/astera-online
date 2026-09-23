@@ -309,6 +309,8 @@ export async function launchDeathStar(
     const [mission] = await tx
       .insert(missions)
       .values({
+        // The weapon is the cost. A strike burns no deuterium.
+        fuelPaid: 0,
         seasonId: origin.seasonId,
         kind: 'death_star',
         ownerPlayerId: origin.playerId,

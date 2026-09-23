@@ -65,8 +65,8 @@ export const vocabulary = {
     HANGAR: {
       name: 'Hangar',
       tag: 'Filonun sığacağı yeri belirler',
-      role: 'Bu dünyadaki filo alanı · yeni seviyeler Komuta Çekirdeği 4, 7, 10, 13 ve 16’da açılır',
-      detail: 'Her gemi büyüklüğü kadar Hangar alanı kullanır; görevde olan gemiler de sayılır, yer savunmaları sayılmaz. Hangar dolunca yeni gemi üretilemez ve bu dünyaya gemi gönderilemez, ama eldekiler kaybolmaz. 2–6. seviyeler Komuta Çekirdeği 4, 7, 10, 13 ve 16’da açılır; Çekirdek 16’dan sonra 7–10. seviyeler yalnızca kaynakla alınır.',
+      role: 'Bu dünyadaki filo alanı · Komuta Çekirdeği\'nden bağımsız yükseltilir',
+      detail: 'Her gemi büyüklüğü kadar Hangar alanı kullanır; görevde olan gemiler de sayılır, yer savunmaları sayılmaz. Hangar dolunca yeni gemi üretilemez ve bu dünyaya gemi gönderilemez, ama eldekiler kaybolmaz. Her seviye açtığı alana sığan filonun üçte biri kadar tutar; bu yüzden üst seviyeler, Depo\'su yükseltilmemiş bir dünyanın bir seferde tutabileceğinden pahalıdır.',
     },
     DEUTERIUM_PLANT: {
       name: 'Döteryum Rafinerisi',
@@ -379,6 +379,8 @@ export const vocabulary = {
 } as const;
 
 export const gains = {
+  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
+  repays: 'Kendini {{time}} içinde öder',
   rangeUnits: '{{count}} birim',
 
   core: {
@@ -387,7 +389,6 @@ export const gains = {
     releases_one: 'Tıkanan {{count}} yükseltmeyi açar',
     releases_other: 'Tıkanan {{count}} yükseltmeyi açar',
     raisesCap: 'Binaların ulaşabileceği seviye sınırını yükseltir',
-    opensHangar: 'Hangar {{rung}} açılır · {{then}}',
   },
   hangar: {
     label: 'Filo alanı',

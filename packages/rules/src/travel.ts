@@ -71,7 +71,32 @@ export interface FlightModifiers {
   readonly boost: number;
   /** The commander's own ladders — frozen at launch for an attacker (D137). */
   readonly tech: TechLevels;
+  /**
+   * THE ONE MODIFIER THAT IS A DECISION RATHER THAN A POSSESSION. Owner decision, 2026-09-21.
+   *
+   * A Beacon and a doctrine are things a commander HAS; the pace is something they CHOOSE, once,
+   * for this flight. Omitted means full speed, and that is the only default in this interface
+   * with a right answer: every caller that predates the choice flew at full speed, so `?? 1`
+   * restates their flight rather than guessing at it.
+   */
+  readonly pace?: MissionPace;
 }
+
+/**
+ * THE RUNGS, AND WHY THEY ARE RUNGS.
+ *
+ * A free ETA field would be more expressive and much worse to use: on a 350-wide screen the
+ * commander is picking between "lands while I sleep" and "lands before I leave", not tuning a
+ * number. Five rungs put the whole ladder on one row, and the slowest turns a two-hour hop into
+ * a twenty-hour one — far past the cap, which is what makes the cap the binding rule rather
+ * than the ladder.
+ */
+export const MISSION_PACES = [1, 0.75, 0.5, 0.25, 0.1] as const;
+
+export type MissionPace = typeof MISSION_PACES[number];
+
+export const isMissionPace = (value: number): value is MissionPace =>
+  (MISSION_PACES as readonly number[]).includes(value);
 
 /**
  * A FLIGHT NOBODY IS FLYING. Named rather than written out as `{ boost: 1, tech:
@@ -94,7 +119,7 @@ export const UNAIDED: FlightModifiers = { boost: 1, tech: {} };
  * description of what is happening.
  */
 export const fleetPace = (fleet: Fleet, mods: FlightModifiers): number =>
-  fleetSpeed(fleet, mods.tech) * mods.boost;
+  fleetSpeed(fleet, mods.tech) * mods.boost * (mods.pace ?? 1);
 
 /** One-way flight time for a wing, unrounded. */
 export const fleetTravelExact = (
@@ -110,8 +135,53 @@ export const fleetTravelMinutes = (
   mods: FlightModifiers,
 ): number => Math.ceil(fleetTravelExact(dist, fleet, mods));
 
-/** Minutes the origin planet is left weakened: out, plus back. */
-export const exposureMinutes = (oneWay: number): number => oneWay * 2;
+/**
+ * WHICH PACES THIS PARTICULAR FLIGHT MAY BE TOLD TO TAKE.
+ *
+ * Full speed is always among them when the wing can move at all — see `pacedFlightCapMinutes`. The
+ * rest are offered only while they land inside the cap, so the answer depends on the distance and
+ * on what is flying, which is the honest shape: the same choice is not available for a hop across
+ * the neighbourhood and a crossing of the galaxy.
+ *
+ * AN IMMOBILE WING GETS NOTHING, not a full-speed rung it could not fly.
+ */
+export const allowedPaces = (
+  dist: number,
+  fleet: Fleet,
+  mods: FlightModifiers,
+): readonly MissionPace[] => {
+  if (!Number.isFinite(fleetTravelExact(dist, fleet, { ...mods, pace: 1 }))) return [];
+  return MISSION_PACES.filter(
+    (pace) => pace === 1
+      || fleetTravelExact(dist, fleet, { ...mods, pace }) <= TRAVEL.pacedFlightCapMinutes,
+  );
+};
+
+/**
+ * THE SAME RUNGS, FOR A LEG ALREADY TIMED AT FULL SPEED. Review 2026-09-22, #2.
+ *
+ * A joint clan strike has no single fleet to hand `allowedPaces` — it flies at its slowest wave,
+ * each on its own owner's propulsion — so the server times the leg and this states the rule on the
+ * minutes. Flight time is inversely proportional to speed, so a rung's leg is `full / pace`.
+ */
+export const pacesForMinutes = (fullSpeedMinutes: number): readonly MissionPace[] => {
+  if (!Number.isFinite(fullSpeedMinutes)) return [];
+  return MISSION_PACES.filter(
+    (pace) => pace === 1 || fullSpeedMinutes / pace <= TRAVEL.pacedFlightCapMinutes,
+  );
+};
+
+/**
+ * MINUTES THE ORIGIN PLANET IS LEFT WEAKENED: out, plus back.
+ *
+ * `homeward` defaults to the outbound leg, which is what every flight was before a commander could
+ * choose a pace: one speed, two identical legs. It is a separate argument because a paced launch
+ * is NOT symmetric — the commander buys when the raid arrives, and the survivors come home at full
+ * speed — and doubling the slow leg would overstate by hours the one figure the raid sheet is
+ * built around.
+ */
+export const exposureMinutes = (oneWay: number, homeward: number = oneWay): number =>
+  oneWay + homeward;
 
 /**
  * Where a fleet is right now, interpolated from two timestamps.

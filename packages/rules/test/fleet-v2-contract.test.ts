@@ -116,25 +116,30 @@ const researchGate: Record<string, readonly { project: string; level: number }[]
   GARBAGE_COLLECTOR: [
     { project: 'STARSHIP_ENGINEERING', level: 1 },
   ],
+  /*
+    ONE ROLE-RELEVANT DOCTRINE, AT THE OPENING RUNG. Plan 2B.2, 2026-09-22.
+
+    These four carried two doctrines each and three of them carried one at level 4, so unlocking
+    the tier-4 wall meant buying most of the research tree — a quarter of the whole measured fleet
+    path. The architecture is now one gate per question: Shipyard for size, Engineering for
+    permission, one family doctrine for role. `gate-architecture.test.ts` states it as a rule; this
+    table is the catalogue's own copy of the answer.
+  */
   CATACLYSM: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
-    { project: 'SHIP_POWER', level: 4 },
-    { project: 'SHIP_ARMOR', level: 2 },
+    { project: 'SHIP_POWER', level: 2 },
   ],
   CITADEL: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
-    { project: 'SHIP_ARMOR', level: 4 },
-    { project: 'SHIP_POWER', level: 2 },
+    { project: 'SHIP_ARMOR', level: 2 },
   ],
   CORSAIR: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
     { project: 'SHIP_POWER', level: 2 },
-    { project: 'SHIP_PROPULSION', level: 4 },
   ],
   PALADIN: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
     { project: 'SHIP_ARMOR', level: 2 },
-    { project: 'SHIP_POWER', level: 2 },
   ],
   ARGOSY: [
     { project: 'STARSHIP_ENGINEERING', level: 2 },
@@ -210,15 +215,27 @@ describe('Fleet V2 catalog contract — D148', () => {
       SHIP_POWER: 2,
     })).toBe(true);
 
+    /*
+      THE PERMISSION AND THE ROLE, AND NOTHING ELSE. Both must be present and both must be deep
+      enough; a second family's ladder is now specialisation and is not consulted at all.
+    */
     expect(hullRequirementsMet('CATACLYSM', {
-      STARSHIP_ENGINEERING: 2,
-      SHIP_POWER: 4,
-      SHIP_ARMOR: 1,
+      STARSHIP_ENGINEERING: 1,
+      SHIP_POWER: 2,
     })).toBe(false);
     expect(hullRequirementsMet('CATACLYSM', {
       STARSHIP_ENGINEERING: 2,
-      SHIP_POWER: 4,
-      SHIP_ARMOR: 2,
+      SHIP_POWER: 1,
+    })).toBe(false);
+    expect(hullRequirementsMet('CATACLYSM', {
+      STARSHIP_ENGINEERING: 2,
+      SHIP_POWER: 2,
+    })).toBe(true);
+    // Armour is a Cataclysm's specialisation, never its permission: having none changes nothing.
+    expect(hullRequirementsMet('CATACLYSM', {
+      STARSHIP_ENGINEERING: 2,
+      SHIP_POWER: 2,
+      SHIP_ARMOR: 0,
     })).toBe(true);
   });
 

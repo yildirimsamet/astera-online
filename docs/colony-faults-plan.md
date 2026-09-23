@@ -647,7 +647,18 @@ direk en az 2 tane arıza rastgele eklensin. eklenemiyorsa 1 eklensin, tüm arı
 varsa bişey olmasın."*
 
 **Kural:** iki uygun arıza varsa iki, bir varsa bir, hiç yoksa hiçbir şey
-(`FAULT.attackFaults = 2`, `drawFaults` — yerine koymadan çekim).
+(`FAULT.attackFaults = 2`, `drawAttackFaults` — yerine koymadan çekim).
+
+**ÜRETİM HATTI SALDIRI HAVUZUNDA DEĞİL** (2026-09-21, `FAULT.attackSpares`). Aynı yenilgi
+`ABUSE.recoveryShieldHours` + `recoveryProductionMult` ile dünyaya 8 saat koruma ve %50 fazla üretim
+veriyor; sekiz arızanın üçü (rafineri, çıkarıcı, tesis) üretimi durduruyor ve iki çekilişte en az
+birinin gelme olasılığı **%64**. Telafi, onu veren olay tarafından iptal ediliyordu — oyuncu birebir
+bildirdi: *"akın yedim üretim 15 dk durdu diyor, millete boost bana anti boost sanırım"*.
+
+Darbe hâlâ iki şey kırıyor (kasa, çekirdek, teleskop, tersane, kazıcılar); yalnızca az önce yardım
+sözü verilen yeri kırmıyor. **Saatin kendi çekilişi (`fault_spawn`, `drawFaults`) sekizinin de
+hakkını saklı tutuyor** — bakımsız koloni rafinerisini hâlâ kaybedebilir; artık bunun sebebi bir
+savaş olamaz. `breakFaults` bu yüzden zorunlu bir `lane: 'CLOCK' | 'ATTACK'` alıyor.
 
 **Tetik iki yerde, ikisi de mevcut kalkan kararına bağlı — ikinci bir eşik yok:**
 

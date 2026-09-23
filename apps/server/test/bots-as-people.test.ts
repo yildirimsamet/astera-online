@@ -69,6 +69,7 @@ describe('a bot’s first day', () => {
     f.clock.advance(BOTS.ceasefireMinutes + 1);
     // A fresh, open reading of a world it could otherwise hit.
     const [scout] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: bot!.seasonId, kind: 'probe', status: 'resolved',
       ownerPlayerId: bot!.playerId, originPlanetId: bot!.planetId, targetPlanetId: target!.planetId,
       fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: f.clock.now(),

@@ -705,6 +705,14 @@ export const planetSchema = z.object({
     empUntil: z.coerce.date().nullable().optional(),
     protectedUntil: z.coerce.date().nullable().optional(),
     /**
+     * NO TRANSFER MAY LEAVE THIS WORLD UNTIL THIS INSTANT. Faz 2A.3.
+     *
+     * The five minutes after a squadron lands, so a fleet cannot be bounced between two of a
+     * commander's own worlds fast enough to never be on the ground. Null once it has passed, and
+     * absent from a server that predates it.
+     */
+    transferReadyAt: z.coerce.date().nullable().optional(),
+    /**
      * THIS WORLD WORKS DOUBLE UNTIL THIS INSTANT. 2026-09-16.
      *
      * The recovery shield's production boost on the world a heavy defeat struck.
@@ -1464,7 +1472,9 @@ const clanWarOperationSchema = z.object({
     arrivesAt: z.coerce.date().nullable(), mine: z.boolean(), canRecall: z.boolean(),
   })),
   pool: z.object({ combatHulls: z.number().int().nonnegative(),
-    waves: z.number().int().nonnegative(), participants: z.number().int().nonnegative() }),
+    waves: z.number().int().nonnegative(), participants: z.number().int().nonnegative(),
+    /** The combined leg at full speed for the staged pool; what the leader's pace rungs divide. */
+    strikeMinutes: z.number().nonnegative().nullable().default(null) }),
 });
 
 export const clanWarSchema = z.object({
@@ -1548,6 +1558,11 @@ export const clanAidQuoteSchema = z.object({
   possibleReturnAt: z.coerce.date(),
   canFinishBeforeSeasonEnd: z.boolean(),
   travelMinutes: z.number().nonnegative(),
+  /**
+   * The sender's newcomer shield, which holds their resources home. Self-review 2026-09-23, R4.
+   * Optional for a rolling deploy against a server that predates it.
+   */
+  senderShieldUntil: z.coerce.date().nullable().optional(),
 });
 
 export const clanAidLaunchSchema = z.object({
@@ -1972,6 +1987,18 @@ const pendingThread = z.object({
    * even when the world has no visible name. Optional for rolling deploys.
    */
   targetPlanetId: z.string().optional(),
+  /**
+   * WHETHER THIS FLIGHT MAY BE TURNED AROUND. Owner decision, 2026-09-21.
+   *
+   * The SERVER decides, and the client only obeys: recallability depends on facts the strip does
+   * not hold — that it is a transfer, that it has not already turned once, that it is still in the
+   * air on this tick. A client that guessed would offer a button the server then refuses, which is
+   * worse than no button on the one screen a commander reaches for when a raid is inbound.
+   *
+   * Absent on every flight that cannot be recalled, which is most of them, and on any server that
+   * predates the field.
+   */
+  recallable: z.boolean().optional(),
   /**
    * THE CONTACT ON THE DISC THIS WARNING IS ABOUT. `incoming` ONLY. D162.
    *

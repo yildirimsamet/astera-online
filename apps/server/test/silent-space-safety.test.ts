@@ -48,7 +48,7 @@ it.each(['research', 'pirate'] as const)('waits for committed %s before freezing
 });
 it('folds the whole cycle story once and rolls over waiting worlds and return applications', async () => {
   const f = await seedWorld(2);
-  const [mission] = await f.db.insert(missions).values({ seasonId: f.seasonId, kind: 'death_star', status: 'resolved', ownerPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: f.clock.now() }).returning();
+  const [mission] = await f.db.insert(missions).values({ fuelPaid: 0, seasonId: f.seasonId, kind: 'death_star', status: 'resolved', ownerPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: f.clock.now() }).returning();
   await f.db.insert(strategicImpacts).values({ seasonId: f.seasonId, missionId: mission!.id, attackerPlayerId: f.playerIds[0]!, defenderPlayerId: f.playerIds[1]!, targetPlanetId: f.planetIds[1]!, outcome: 'FIRST_STRIKE', damage: 12345, destroyedFleet: {}, createdAt: f.clock.now() });
   f.clock.advance(48 * 60);
   const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
@@ -71,7 +71,7 @@ it('folds the whole cycle story once and rolls over waiting worlds and return ap
 
 it('preserves reports but detaches their spatial evidence after a round trip', async () => {
   const f = await seedWorld(2);
-  const [mission] = await f.db.insert(missions).values({ seasonId: f.seasonId, kind: 'probe', status: 'resolved', ownerPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: f.clock.now() }).returning();
+  const [mission] = await f.db.insert(missions).values({ fuelPaid: 0, seasonId: f.seasonId, kind: 'probe', status: 'resolved', ownerPlayerId: f.playerIds[0]!, originPlanetId: f.planetIds[0]!, targetPlanetId: f.planetIds[1]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: f.clock.now() }).returning();
   await f.db.insert(probeReports).values({ missionId: mission!.id, observerPlayerId: f.playerIds[0]!, targetPlanetId: f.planetIds[1]!, accuracy: 1, stock: { low: 1, high: 1 }, defence: { low: 0, high: 0 }, fleetSize: { low: 1, high: 1 }, fleetHome: true, detected: false, createdAt: f.clock.now(), deliveredAt: f.clock.now() });
   await f.db.insert(battleReports).values({ missionId: mission!.id, seasonId: f.seasonId, attackerPlayerId: f.playerIds[0]!, defenderPlayerId: f.playerIds[1]!, targetPlanetId: f.planetIds[1]!, grade: 'REPELLED', rounds: [], loot: { alloy: 0, crystal: 0, deuterium: 0 }, attackerLosses: {}, defenderLosses: { DART: 1 }, createdAt: f.clock.now() });
   f.clock.advance(48 * 60);
@@ -194,7 +194,7 @@ it('serializes return and new admission at the last reserved seat', async () => 
 it.each(missionKind.enumValues)('keeps an incoming %s flight in its original galaxy', async kind => {
   const f = await seedWorld(2);
   f.clock.advance(48 * 60);
-  await f.db.insert(missions).values({ seasonId: f.seasonId, kind, ownerPlayerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, targetPlanetId: f.planetIds[0]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: new Date(f.clock.now().getTime() + 60_000) });
+  await f.db.insert(missions).values({ fuelPaid: 0, seasonId: f.seasonId, kind, ownerPlayerId: f.playerIds[1]!, originPlanetId: f.planetIds[1]!, targetPlanetId: f.planetIds[0]!, fleet: {}, distance: 10, departAt: f.clock.now(), arriveAt: new Date(f.clock.now().getTime() + 60_000) });
   const waiting = await ensureWaitingSeason(f.db, f.seasonId, f.clock);
   expect((await transferCommander(f.db, f.playerIds[0]!, waiting!.id, f.clock)).status).toBe('FLIGHT');
 });

@@ -110,10 +110,22 @@ const VERDICT_ARROW: Record<Verdict, string> = {
 /**
  * HOW ONE HULL CLASS FARES AGAINST A KNOWN ENEMY CLASS.
  *
- * Only ever rendered where the enemy's class is something the commander has
- * EARNED — a battle they fought, a rival record. A probe reports a defence value
- * and a ship count and never a composition (D127), so a matchup drawn from probe
- * data would be the interface inventing the one reading the player did not buy.
+ * Only ever rendered where the enemy's class is something the commander has EARNED. The interface
+ * may never invent a reading the player did not buy — that rule has not moved, and it is the
+ * reason this component spent a long time drawn by nothing.
+ *
+ * WHAT MOVED WAS WHAT A PROBE SELLS. This block used to end *"a probe reports a defence value and
+ * a ship count and never a composition (D127)"*, which was true when it was written and stopped
+ * being true at D199: `classReading` ships inside the report now, and a par reading — accuracy
+ * 0.55, exactly what an equal Shipyard buys — names the majority class. The component stayed shut
+ * against a rule that had already changed, so the cycle that decides every fight in the game was
+ * legible only in the battle report, after the fleet was gone.
+ *
+ * `matchupsAgainst` (rules/forecast) is the gate now, and it carries the UNREAD share beside the
+ * read one: a majority reading leaves half the wall unmeasured, and that half can hold this wing's
+ * own counter. A surface that printed one answer for a pure wall and a 51/49 wall would be the
+ * invented precision D127 forbids — measured, the same advice against those two costs 256,277 and
+ * 504,946 alloy-equivalent.
  */
 export function MatchupMark({
   attacker,

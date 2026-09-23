@@ -408,6 +408,8 @@ export async function resolveNeutralBattle(
     );
     const arriveAt = addMinutes(clock.now(), home);
     const [returnMission] = await tx.insert(missions).values({
+      // A return leg is already paid for: fuel is charged in full at the outbound launch.
+      fuelPaid: 0,
       seasonId: mission.seasonId,
       kind: 'return',
       ownerPlayerId: mission.ownerPlayerId,
@@ -460,6 +462,8 @@ export async function returnAttackUntouched(
     ),
   );
   const [ret] = await tx.insert(missions).values({
+    // A return leg is already paid for: fuel is charged in full at the outbound launch.
+    fuelPaid: 0,
     seasonId: mission.seasonId,
     kind: 'return',
     ownerPlayerId: mission.ownerPlayerId,

@@ -485,6 +485,7 @@ describe('the sensor horizon', () => {
   it('shows a strategic strike to the whole galaxy', async () => {
     const arriveAt = f.clock.now();
     const [mission] = await f.db.insert(missions).values({
+      fuelPaid: 0,
       seasonId: f.seasonId,
       kind: 'death_star',
       status: 'resolved',

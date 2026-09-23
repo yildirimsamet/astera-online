@@ -1,6 +1,6 @@
 import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
 import { RESOURCE_VALUE } from './valuation.js';
-import type { BuildingId, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
+import type { BuildingId, FaultKind, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
 
 /** Public chat is partitioned so a commander can read in the language they choose. */
@@ -102,7 +102,7 @@ export const ECON = {
    *
    * D161 MOVED THE INCOME PAIR TO 52.8 / 118.8 AND THIS FIGURE STAYED. Re-deriving
    * it (0.3538, holding the charge at 0.79 of income) was tried first and refused
-   * by measurement, not by taste: it pushes `paybackHours(1)` from 0.98 to 1.03,
+   * by measurement, not by taste: it pushes `producerPaybackHours('REFINERY', 1)` from 0.98 to 1.03,
    * and the first upgrade repaying inside a single session is the day-zero promise
    * the opening is built on. So the charged share falls to 0.65 of the income
    * share — still inside the 0.6–1.0 band `invariants.test.ts` enforces, and on
@@ -692,11 +692,21 @@ export const START_BUILDINGS = {
 export const HANGAR = {
   /** Room per rung; index is the rung, and rung 0 (no row) reads as the base. */
   capacity: [80, 80, 180, 470, 810, 1550, 2290, 3250, 4400, 5740, 7270],
-  /** Command Core a rung needs; index is the rung. Rungs above 6 need only Core 16. */
+  /**
+   * THE DEVELOPMENT STAGE EACH RUNG BELONGS TO; index is the rung.
+   *
+   * IT IS NO LONGER A PURCHASE GATE. Owner decision, 2026-09-22: a commander may raise the Hangar
+   * at any Core, so a fleet-path player is not forced up the tier band to buy room they have
+   * already paid for in ore (`hangarCeiling` carries the measurement that made that safe).
+   *
+   * What the table still answers is what a world is GIVEN rather than what it may buy —
+   * `hangarSeedLevel` sizes a neutral template and a migrating world by it — and which combat tier
+   * a rung is sized for, which is where `NAVY_RUNG_TIER` and the bankability reference read it.
+   */
   coreGate: [0, 1, 4, 7, 10, 13, 16, 16, 16, 16, 16],
   /** The last rung a Core opens by itself; above it every rung is purchased. */
   seedTop: 6,
-  /** Prices live with every other price, in `profileBuilding`. */
+  /** Prices live with every other price, in `profileBuilding` — including `HANGAR_LATE_COST`. */
   maxLevel: 10,
 } as const;
 
@@ -1139,6 +1149,19 @@ export const COMBAT = {
  */
 export const TRAVEL = {
   distanceFactor: ECONOMY_PROFILE.distanceFactor,
+  /**
+   * HOW LONG A COMMANDER MAY CHOOSE TO STAY IN THE AIR. Owner decision, 2026-09-21.
+   *
+   * Twelve hours is a night and a working day, which is exactly the player this item is for:
+   * the chat logs lose people when their FLEET dies, not when their mines are emptied, and the
+   * ones losing it are asleep or at work when the raid lands.
+   *
+   * IT IS A CEILING ON THE CHOICE, NEVER ON THE FLIGHT. A crossing of a thousand-seat galaxy can
+   * already run past this at full speed; `allowedPaces` therefore never refuses full speed. Without
+   * the ceiling the slowest rung turns any distance into indefinite safety — a fleet parked in
+   * space is a fleet removed from the game while its owner still owns it.
+   */
+  pacedFlightCapMinutes: 12 * 60,
 } as const;
 
 /**
@@ -1800,6 +1823,23 @@ export const ANTI_STRATEGIC = {
 
 export const FUEL = {
   scale: 10_000,
+  /**
+   * WHAT THE LANE DOES TO THE PRICE. Owner decision, 2026-09-21: half, and only homeward.
+   *
+   * A GLOBAL FUEL CUT WAS MEASURED AND KILLED. Fuel is linear in distance, so cutting it
+   * everywhere cuts the price of REACH — distance stops being protection, and every merchant
+   * quote moves with it. What the chat logs actually ask for is narrower: people leave when their
+   * FLEET dies while they are asleep, and the flight that answers that reaches nobody else —
+   * a commander moving their own ships between their own worlds.
+   *
+   * HALF RATHER THAN FREE. A nightly fleetsave has to be affordable or the mobility package is a
+   * control nobody can use; free would take the decision out of it entirely and make parking the
+   * fleet in the air the costless default.
+   *
+   * AN ATTACK PAYS THE UNDISCOUNTED RATE AT EVERY PACE. Flying slowly buys arrival time and
+   * nothing else — see `MISSION_PACES`.
+   */
+  laneShare: { HOSTILE: 1, HOMEWARD: 0.5 } as const,
   /**
    * WHAT A UNIT OF HULL VALUE COSTS TO MOVE. D195, owner instruction, replacing
    * D153's tier ladder outright.
@@ -2761,6 +2801,33 @@ export const ASTEROID_DYNAMIC = {
   /** A commander counts as active for the next hour if they played in this window. */
   activeWindowMinutes: 60,
   /**
+   * WHO COUNTS TOWARD THE SKY, AND HOW FAST THAT FIGURE MAY MOVE. Plan §15.6 — *"Sybil sınırı
+   * şart"*.
+   *
+   * Paying the galaxy one rock per active commander is the right rule and an open door: accounts
+   * are free, so a raw headcount of whoever logged in pays for accounts rather than for players.
+   *
+   * BOTH GATES, NOT EITHER. The plan writes "24 saat / küçük Core eşiği"; read as OR it defends
+   * nothing, because a throwaway account passes the clock by doing nothing for a day and a
+   * scripted one passes a small Core in minutes. Required together they cost a day AND real
+   * production per fake commander, which is the defence.
+   *
+   * A NEW COMMANDER STILL GETS THE FIELD — this is about what they ADD to the global supply, never
+   * about what they may fly at.
+   *
+   * AND THE FIGURE IS ROLLING. A raw hour lets one coordinated login move the whole galaxy's sky
+   * and one quiet hour empty it; averaging over `windowHours` divides a spike by the window while
+   * still letting a genuine rise arrive, over hours instead of in one.
+   */
+  supply: {
+    /** Time in the season before a commander adds to the global supply. */
+    graceMinutes: 24 * 60,
+    /** …and the Core they must have reached. Both are required. */
+    coreLevel: 3,
+    /** Hours averaged into the figure an hour spawns against. */
+    windowHours: 6,
+  },
+  /**
    * The highest level a rock may roll, by season day: *"İlk gün sadece level 1-2,
    * ikinci gün level 1-2-3, üçüncü gün 1-2-3-4, dördüncü gün artık hepsi."* The last
    * entry holds for every later day.
@@ -2866,15 +2933,29 @@ export const DEBRIS = {
  * resolves. Wreckage stays Wealth and never Dominion (D2), whoever takes it.
  */
 export const SALVAGE = {
-  /** Wreck one surviving collector lifts, in resource units. Owner's number. */
-  perCollector: 15_000,
+  /**
+   * WRECK ONE SURVIVING COLLECTOR LIFTS, in resource units. Owner's number, halved 2026-09-22.
+   *
+   * IT WAS 15,000, AND THAT MADE THE HULL FREE MONEY. Measured: a collector cost 26,000 AE, lifted
+   * 15,000 a trip against 1,920 AE of fuel, and so repaid itself in TWO trips and then ran for
+   * ever at no cost. The chat logs' complaint — *"eşit güçteysek bile adam kafa atıp geçiyor,
+   * hurdacı ile toplayıp geçiyor"* — is that arithmetic, not the wreck rule: the owner closed the
+   * origin-split fix on 2026-09-21 and sent the question here instead (*"Hurdacıyı düzenleriz
+   * kalibre ederiz"*).
+   *
+   * Halved, with the thirst tripled and the room it occupies raised to 40, a fleet of collectors
+   * is a real commitment of hangar space, ore and deuterium. The wreck is still public and still
+   * the attacker's to take; what changed is what taking it costs.
+   */
+  perCollector: 7_500,
   /**
    * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction,
-   * 2026-09-20: the card must quote 50 deuterium. `hullFuelRate` reads one tenth of
-   * this route mass at `FUEL.reference`, so 500 is the authored mass behind that
-   * visible 50. `hullFuelMass` reads it; nothing else may derive it from price.
+   * 2026-09-20 and raised 2026-09-22: the card must quote **100** deuterium, double the 50 it
+   * quoted before. `hullFuelRate` reads one tenth of this route mass at `FUEL.reference`, so 1,000
+   * is the authored mass behind that visible 100. `hullFuelMass` reads it; nothing else may derive
+   * it from price.
    */
-  fuelMass: 500,
+  fuelMass: 1_000,
 } as const;
 
 /**
@@ -3093,6 +3174,25 @@ export const PIRATE = {
    */
   hoardRewardScale: 1.3,
   hoardValueMult: 1.82,
+  /**
+   * WHAT A PIRATE PAYS IN DEUTERIUM: this multiple of what its OWN hulls burn over one
+   * `FUEL.reference` span. Owner decision, 2026-09-22.
+   *
+   * THE DEUTERIUM WAS A SHARE OF THE HOARD AND THAT WAS THE DEFECT. Fuel is what makes a raid cost
+   * something (D136), so the rule has always been that a hoard must not refill the tank it
+   * emptied — but the share was measured against the HOARD (1.3%, comfortably "a garnish") instead
+   * of against the FLIGHT. Measured against the flight, a level-4 hoard paid 1,155 deuterium for a
+   * raid burning 294: the lane refuelled itself nearly four times over, silently, for twelve days.
+   *
+   * PRICING IT OFF THE PIRATE'S OWN THIRST puts the reward and the cost in the same unit, so
+   * over-committing is punished by arithmetic rather than by a cap: bring twice the pirate's
+   * strength and the prize roughly doubles your fuel back; bring five times and it pays nothing;
+   * bring eight and the raid costs you deuterium.
+   *
+   * FIVE, chosen across the owner's stated 4–6 by measuring that curve — at four a two-times wing
+   * returns only 1.6x, at six a five-times wing still breaks even.
+   */
+  hoardFuelMult: 5,
   /** Frozen admission valuation; reward tuning must not re-index a live pirate field. */
   hoardAdmissionValueMult: 1.4,
   /**
@@ -3241,6 +3341,21 @@ export const PIRATE = {
    */
   bearingMs: TRAFFIC.refreshMs * 2,
 } as const;
+
+/**
+ * THE PAUSE AFTER A SQUADRON LANDS ON ONE OF YOUR OWN WORLDS. Owner plan, Faz 2A.3.
+ *
+ * Recall and a chosen pace together make a fleet very hard to catch; without a floor they make it
+ * impossible. Bounce a wing between two of your own worlds with an instant turnaround and it is
+ * never on the ground when a raid arrives — so the one counter-play a raider has, the moment of
+ * landing, has to last long enough to BE a moment.
+ *
+ * FIVE MINUTES, ON ARRIVAL RATHER THAN ON LAUNCH. Raid waves land fifteen to twenty minutes apart,
+ * so this does not break a chase; it closes the bounce, which needs the turnaround to be instant
+ * to work at all. It holds the TRANSFER lane only: reinforcing a world is not a reason that world
+ * may not fight from there, and a recall is not a launch.
+ */
+export const TRANSFER_COOLDOWN_MINUTES = 5;
 
 export const MULTI_WORLD = {
   /**
@@ -3548,6 +3663,33 @@ export const FAULT = {
    * colony running — or break a colony over a raid the shield called a scratch.
    */
   attackFaults: 2,
+  /**
+   * WHAT A HEAVY DEFEAT MAY NOT BREAK, AND THE REASON IS ANOTHER RULE'S PROMISE.
+   *
+   * `ABUSE.recoveryShieldHours` hands the struck world eight hours of cover and
+   * `recoveryProductionMult` hands it fifty per cent more output for the whole of them —
+   * *"a rebuild the struck world is actively paid for"*. `attackFaults` above fires on the SAME
+   * trigger, and three of the eight kinds shut a producer off: measured over the draw, a 64%
+   * chance that at least one of the two lands on the very line the shield just promised to boost.
+   *
+   * So the defeat kept its punishment and the recovery kept its name, and the player was handed
+   * both at once. Reported exactly that way: *"akın yedim üretim 15 dk durdu diyor, millete boost
+   * bana anti boost sanırım"* (2026-09-21).
+   *
+   * THE NARROWING IS ONLY THE ATTACK LANE. The clock's own fault (`fault_spawn`, one at a time)
+   * still draws from all eight: a colony nobody looks after must still be able to lose its
+   * refinery, which is the whole of what loyalty models. What changed is that a BATTLE may no
+   * longer be the cause of it.
+   *
+   * A blow still breaks two things — the Vault, the Core, the Telescope, the Shipyard or the
+   * drills. The world is still visibly hurt; it is simply not hurt in the one place it was just
+   * told it would be helped.
+   *
+   * IT IS A LIST RATHER THAN A PREDICATE because `faults.ts` branches on no fault's identity
+   * anywhere else (see its header), and one named exception a reader can enumerate is cheaper to
+   * keep honest than a rule spread across three files.
+   */
+  attackSpares: ['REFINERY_OUTAGE', 'EXTRACTOR_OUTAGE', 'PLANT_OUTAGE'] as readonly FaultKind[],
 
   /* ── loyalty ───────────────────────────────────────────────────────── */
   loyaltyMax: 100,

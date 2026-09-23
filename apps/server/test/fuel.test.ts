@@ -117,7 +117,14 @@ describe('fuel', () => {
     expect(await deuteriumAt(f, mine)).toBe(3);
   });
 
-  it('charges a transfer for the one leg it flies', async () => {
+  /**
+   * ONE LEG, AND AT HALF THE RATE. Owner decision, 2026-09-21.
+   *
+   * The leg count was always one — a transfer arrives and stays. The HALF is new: both ends of a
+   * transfer are the same commander's worlds, so it is the one flight whose price can be cut
+   * without cutting the price of REACH. An attack pays the undiscounted rate at every pace.
+   */
+  it('charges a transfer for the one leg it flies, at the homeward rate', async () => {
     // Room for the forty Darts that land: this test is about fuel, not the Hangar.
     await setLevel(f.db, target, 'HANGAR', 3);
     await f.db
@@ -133,7 +140,11 @@ describe('fuel', () => {
       { alloy: 0, crystal: 0, deuterium: 0 }, f.clock,
     );
 
-    expect(await deuteriumAt(f, mine)).toBe(5_000 - missionFuel({ DART: 40 }, dist, 1));
+    expect(await deuteriumAt(f, mine))
+      .toBe(5_000 - missionFuel({ DART: 40 }, dist, 1, 'HOMEWARD'));
+    // And that really is a discount rather than the same number under a new name.
+    expect(missionFuel({ DART: 40 }, dist, 1, 'HOMEWARD'))
+      .toBeLessThan(missionFuel({ DART: 40 }, dist, 1));
   });
 
   describe('what never pays', () => {

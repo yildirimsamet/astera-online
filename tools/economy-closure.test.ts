@@ -62,7 +62,10 @@ it('pays for fuel industry, cargo and information in the same physical developme
   expect(r.spent.alloy).toBeGreaterThan(10000);
   expect(q.milestones.firstT3Day).toBeGreaterThanOrEqual(3);
   expect(q.milestones.firstT3Day).toBeLessThanOrEqual(4);
-  expect(q.milestones.firstT4Day).toBeGreaterThanOrEqual(7);
-  expect(q.milestones.firstT4Day).toBeLessThanOrEqual(8);
+  // Day 7–8 before plan 2B.2 narrowed the tier-4 gate to Engineering 2 plus ONE doctrine at L2
+  // and Faz 4.1 cheapened the producer ladder; both were meant to bring T4 forward, and the
+  // average closure now fields it on day 6 (self-review 2026-09-23, R9).
+  expect(q.milestones.firstT4Day).toBeGreaterThanOrEqual(5.5);
+  expect(q.milestones.firstT4Day).toBeLessThanOrEqual(7);
   expect(q.maxResourceError).toBeLessThan(1e-7); expect(q.maxHullError).toBe(0);
 });

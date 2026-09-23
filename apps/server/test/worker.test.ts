@@ -260,6 +260,7 @@ describe('event worker', () => {
       const [raw] = await f.db
         .insert(missions)
         .values({
+          fuelPaid: 0,
           seasonId: f.seasonId,
           kind: 'attack',
           ownerPlayerId: f.playerIds[0]!,

@@ -26,7 +26,7 @@ import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
-import { launchSettlement, launchTransfer } from '../services/movement.js';
+import { launchSettlement, launchTransfer, recallTransfer } from '../services/movement.js';
 import { cancelBuildOrder } from '../services/buildQueue.js';
 
 /**
@@ -91,6 +91,15 @@ const launchBody = z.object({
    * player did not choose to spend.
    */
   acknowledgeShieldLoss: z.boolean().optional(),
+  /**
+   * HOW FAST TO FLY IT. Owner decision, 2026-09-21.
+   *
+   * Parsed as a plain number rather than an enum of the ladder, so the refusal comes from
+   * `allowedPaces` — the rule that knows about THIS flight — instead of from a schema that would
+   * have to be kept in step with it and would give the same answer for "not a rung" and "too slow
+   * for this distance".
+   */
+  pace: z.number().positive().max(1).optional(),
 }).strict();
 
 export function registerPlanetRoutes(app: FastifyInstance): void {
@@ -345,6 +354,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       app.clock,
       owner.playerId,
       body.acknowledgeShieldLoss ?? false,
+      body.pace,
     );
   });
 
@@ -376,6 +386,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         crystal: z.number().int().min(0),
         deuterium: z.number().int().min(0),
       }).strict(),
+      /** How fast to fly it. Validated by `allowedPaces`, which knows about THIS flight. */
+      pace: z.number().positive().max(1).optional(),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchTransfer(
@@ -386,7 +398,26 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.fleet,
       body.cargo,
       app.clock,
+      body.pace,
     );
+  });
+
+  /**
+   * CALL A TRANSFER BACK. Owner decision, 2026-09-21.
+   *
+   * The counterpart to `/api/fleet/launch`, which has no such endpoint and never will: a raid
+   * committed is committed. This lane is a commander's own logistics between their own worlds, and
+   * the service decides everything — that it is a transfer, that it is still in the air, that it
+   * has not already turned once, and that it belongs to the caller.
+   */
+  app.post('/api/fleet/:missionId/recall', { preHandler: requireAuth }, async (req) => {
+    const { missionId } = z
+      .object({ missionId: z.string().uuid() })
+      .strict()
+      .parse(req.params);
+    z.object({}).strict().parse(req.body ?? {});
+    const owner = await ownedPlanet(app.db, req.accountId!, await myPlanet(req.accountId!));
+    return recallTransfer(app.db, missionId, app.clock, owner.playerId);
   });
 
   app.post('/api/fleet/settle', { preHandler: requireAuth }, async (req) => {

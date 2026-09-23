@@ -11,7 +11,6 @@ import {
   groundSlots,
   HANGAR,
   hangarCapacity,
-  hangarCeiling,
   hangarLoad,
   hullBulk,
   plantCeiling,
@@ -183,26 +182,19 @@ export async function collectWorks(
 /**
  * THE HANGAR HAS ITS OWN CEILING, AND IT IS STILL THE CORE'S. 2026-09-18.
  *
- * Its rungs open at the Core levels where a development tier changes, not one per
- * Core level: `hangarCeiling` is the one statement of that gate. The refusal names
- * the Core the next rung needs, so the client can say "Core 7" rather than "raise
- * your Core" to someone standing at Core 6. Off the PROJECTED Core, so a Core
- * already queued ahead counts, exactly as the ordinary ceiling reads it.
+ * IT ASKS NOTHING OF THE COMMAND CORE ANY MORE. Owner decision, 2026-09-22: *"tier atlamadan bir
+ * kullanıcı filocu olabilmeli."* A fleet-path commander was forced up the Core ladder — and
+ * therefore up the tier band — to buy room they had already paid for in ore. The economy closes
+ * the door the gate used to: a Core-4 world cannot hold one late rung's price at once, let alone
+ * buy nine and fill them. `hangarCeiling` carries the measurement.
+ *
+ * The top of the ladder is still a refusal, because there is nothing above it to sell.
  */
-function assertHangarRung(level: number, core: number): void {
+function assertHangarRung(level: number): void {
   if (level >= HANGAR.maxLevel) {
     throw new GameError('AT_MAX_LEVEL', 'Your Hangar is at its highest level.', 400, {
       building: 'HANGAR',
     });
-  }
-  if (level >= hangarCeiling(core)) {
-    const requiredCore = HANGAR.coreGate[level + 1] ?? HANGAR.coreGate[HANGAR.maxLevel];
-    throw new GameError(
-      'CORE_CEILING',
-      `Hangar ${String(level + 1)} needs Command Core ${String(requiredCore)}.`,
-      400,
-      { requiredCore },
-    );
   }
 }
 
@@ -217,7 +209,7 @@ export async function placeBuildingUpgrade(
   const level = context.projected.buildings[type];
 
   if (type === 'HANGAR') {
-    assertHangarRung(level, context.projected.buildings.CORE);
+    assertHangarRung(level);
   } else if (type !== 'CORE' && level >= context.projected.buildings.CORE) {
     throw new GameError('CORE_CEILING', 'Command Core must be raised first');
   }

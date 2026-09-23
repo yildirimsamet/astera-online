@@ -1082,6 +1082,19 @@ export function projectGalaxyTraffic(
     origin: Vec3,
     target: Vec3,
   ): { from: Vec3; to: Vec3 } => {
+    /*
+      A RECALLED FLIGHT IS FLYING BACK FROM OPEN SPACE. Owner decision, 2026-09-21.
+
+      It turned around mid-leg, so neither stored planet is where it started: the start is the
+      point in `recallFrom` and there is no world there to stand off from. The end is the world it
+      left, and it is LANDING rather than arriving, so it takes the surface clearance a return
+      leg takes.
+    */
+    if (mission.recalledAt !== null && mission.recallFrom !== null) {
+      const homeCore = coreLevels.get(mission.originPlanetId);
+      const surface = homeCore === undefined ? 0 : surfaceStandoff(worldRadius(homeCore));
+      return visualLeg(mission.recallFrom, origin, 0, surface);
+    }
     const returning = mission.kind === 'return' || mission.parentMissionId !== null;
     const home = returning ? mission.targetPlanetId : mission.originPlanetId;
     const foreign = returning ? mission.originPlanetId : mission.targetPlanetId;
@@ -1251,7 +1264,13 @@ export function projectGalaxyTraffic(
       continue;
     }
 
-    const slice = windowOf(origin, target, mission.departAt, mission.arriveAt, now);
+    /*
+      A RECALLED FLIGHT'S LEG BEGAN WHEN IT TURNED, not when it launched. `drawnLeg` already gives
+      the two endpoints of the way home; timing it from `departAt` would draw the same craft
+      crawling that shorter line over the whole original flight.
+    */
+    const legDepartAt = mission.recalledAt ?? mission.departAt;
+    const slice = windowOf(origin, target, legDepartAt, mission.arriveAt, now);
     if (!slice) continue;
 
     // A return leg is still a fleet: the hull is what the neon names, and a

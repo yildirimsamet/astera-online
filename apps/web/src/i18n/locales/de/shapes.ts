@@ -102,4 +102,13 @@ export const counter = {
   noteLastRaid: 'Beim letzten Angriff sanken größtenteils {{class}}',
   mixMostly: 'Meistens {{class}}',
   mixEven: 'Keine einzelne Klasse dominiert',
+  matchupMajority: 'Überwiegend {{class}} — mehr als die Hälfte',
+  matchupRemainder: 'der Rest ist ungelesen und kann dich kontern',
+  matchupUnread: "{{share}} % ungelesen",
+  matchupMixed: 'Gemischte Verteidigung — kein einzelner harter Konter',
+  matchupSplit: 'Gelesene Aufteilung',
+  matchupBring: '{{class}} mitnehmen',
+  matchupSingle: 'Deine Flotte ist einklassig — ihr Konter kann im ungelesenen Teil sein',
+  matchupExposure: 'stark {{strong}}% · schwach {{weak}}%',
+  matchupProbe: 'eine Sonde zwei Werftstufen höher zeigt die Aufteilung',
 } as const;

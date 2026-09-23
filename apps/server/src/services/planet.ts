@@ -282,6 +282,8 @@ export interface LockedPlanet {
   protectedUntil: Date | null;
   /** The recovery shield's production boost on this world; see `planets.recoveryBoostUntil`. */
   recoveryBoostUntil: Date | null;
+  /** When this world may send a transfer out again. Faz 2A.3; see `planets.transferReadyAt`. */
+  transferReadyAt: Date | null;
   buildings: BuildingLevels;
   /** Ground installations, with their levels. */
   instruments: InstrumentLevels;
@@ -603,6 +605,7 @@ export async function loadLocked(
     empUntil: row.empUntil,
     protectedUntil: row.protectedUntil,
     recoveryBoostUntil: row.recoveryBoostUntil,
+    transferReadyAt: row.transferReadyAt,
     buildings: levels,
     instruments,
     effectiveInstruments,

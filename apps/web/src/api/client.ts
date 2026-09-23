@@ -10,6 +10,7 @@ import type {
   SatelliteId,
   PlanetSkinId,
   ChatLanguage,
+  MissionPace,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
@@ -540,8 +541,8 @@ export class Api {
   markClanWarTarget = (targetPlanetId: string) =>
     this.clanMutation('/api/clan/war/target', clanWarTargetResultSchema, { targetPlanetId });
   cancelClanWar = () => this.clanMutation('/api/clan/war/cancel', clanWarTargetResultSchema);
-  startClanWar = (acknowledgeShieldLoss: boolean) =>
-    this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss });
+  startClanWar = (acknowledgeShieldLoss: boolean, pace: MissionPace = 1) =>
+    this.clanMutation('/api/clan/war/start', clanWarStartResultSchema, { acknowledgeShieldLoss, pace });
   contributeClanWar = (input: { originPlanetId: string; fleet: Fleet; acknowledgeShieldLoss: boolean }) =>
     this.clanMutation('/api/clan/war/contributions', clanWarContributionResultSchema, input);
   recallClanWar = (contributionId: string) =>
@@ -667,6 +668,8 @@ export class Api {
     targetOrFleet: string | Fleet,
     explicitFleet?: Fleet,
     acknowledgeShieldLoss?: boolean,
+    /** How fast to fly it. Omitted is full speed, which is what every launch flew before D-pace. */
+    pace?: MissionPace,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -675,8 +678,17 @@ export class Api {
           ? { originPlanetId: originOrTargetPlanetId, targetPlanetId: targetOrFleet, fleet: explicitFleet }
           : { targetPlanetId: originOrTargetPlanetId, fleet: targetOrFleet }),
         ...(acknowledgeShieldLoss ? { acknowledgeShieldLoss: true } : {}),
+        ...(pace !== undefined && pace !== 1 ? { pace } : {}),
       },
     });
+
+  /** Turn a transfer around. The server decides whether this flight may be recalled at all. */
+  recallTransfer = (missionId: string) =>
+    this.send(
+      `/api/fleet/${encodeURIComponent(missionId)}/recall`,
+      movementLaunchSchema.pick({ missionId: true, arriveAt: true }),
+      { method: 'POST', body: {} },
+    );
 
   watch = (targetPlanetId: string, slot: number, observerPlanetId?: string) =>
     this.send('/api/intel/watch', watchSchema, {
@@ -691,9 +703,13 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
-      method: 'POST', body: { originPlanetId, targetPlanetId, fleet, cargo },
+      method: 'POST',
+      body: {
+        originPlanetId, targetPlanetId, fleet, cargo,
+        ...(pace !== undefined && pace !== 1 ? { pace } : {}),
+      },
     });
 
   settle = (originPlanetId: string, targetPlanetId: string) =>

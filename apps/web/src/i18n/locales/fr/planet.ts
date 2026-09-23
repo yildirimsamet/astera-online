@@ -477,6 +477,9 @@ export const launch = {
   exposedFor: "Exposé pendant {{duration}}",
   oneWay: "Aller simple",
   oneWayUnknown: "—",
+  pace: "Vitesse de vol",
+  paceHint: "Plus lent arrive plus tard. Même carburant, et rien ne reste en vol au-delà de 12 h.",
+  paceFull: "Pleine",
   /* Raisons pour lesquelles cet engagement peut être refusé ; chacune apparaît sur le bouton. */
   noBay: "Aucune baie de vol libre",
   noFuel: "Pas assez de Deutérium",
@@ -516,6 +519,10 @@ export const launch = {
 } as const;
 export const transfer = {
   fuel: "carburant de vol",
+  cooldown: "Déchargement — {{duration}} restantes",
+  homewardFuel: "Demi-tarif — entre vos propres mondes. Une attaque paie plein.",
+  /** Under the pace rungs: what a slower TRANSFER buys — time in the air. */
+  paceHint: "Plus lent arrive plus tard — les vaisseaux en vol ne peuvent pas être pillés. Même carburant ; rien ne reste en vol au-delà de 12 h.",
   fuelShort: "{{short}} manquants",
   eyebrow: "Transfert interplanétaire",
   eta: "Arrivée",
@@ -527,11 +534,12 @@ export const transfer = {
   alloy: "Alliage",
   crystal: "Cristal",
   deuterium: "Deutérium",
-  commit: "Transférer — aucun rappel possible",
+  commit: "Transférer",
   sending: "Départ en cours",
   launched: "Transfert lancé · {{duration}}",
-  irreversible:
-    "Le trajet est à sens unique. Les défenses terrestres ne peuvent pas être transférées ; seuls les Cargos, Voyageurs, Atlas et Argosi apportent de la capacité de transport.",
+  /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
+  rules:
+    "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Les défenses terrestres ne peuvent pas être transférées ; seuls les Cargos, Voyageurs, Atlas et Argosi apportent de la capacité de transport.",
   hullNone: "Aucun sur ce monde",
   holdReady:
     "Les ressources sont transportées par les Cargos, Voyageurs, Atlas et Argosi. Soute : {{capacity}}.",

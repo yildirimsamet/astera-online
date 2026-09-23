@@ -473,6 +473,7 @@ describe('GET /api/galaxy — fog enforced in the response', () => {
       now: f.clock.now(),
       count: 1,
       seed: 'only-core-remains',
+      lane: 'CLOCK',
     }));
     expect(written).toEqual(['CORE_OUTAGE']);
     await vi.waitFor(() => {

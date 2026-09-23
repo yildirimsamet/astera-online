@@ -7,7 +7,12 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import i18n from '../src/i18n/index.js';
+import { HULLS } from '@astera/rules';
+import { researchName } from '../src/i18n/names.js';
 import { UpgradeRow } from '../src/ui/UpgradeRow.js';
+
+/** The same numerals the screen prints; see `RESEARCH_RUNG` in `PlanetScreen`. */
+const RUNG = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
 
 /**
  * WHERE EACH HULL IS, ON ITS OWN ROW. Owner report: the line that read
@@ -72,13 +77,27 @@ const rowFor = (view: ReturnType<typeof render>, hull: string) =>
   view.container.querySelector<HTMLElement>(`[data-hull-id="${hull}"]`)!;
 
 describe('a hull row says where its craft are', () => {
+  /**
+   * EVERY UNMET PREREQUISITE, WHATEVER THE CATALOGUE SAYS THEY ARE.
+   *
+   * The row used to be checked against four remembered strings, and the gate redesign (plan 2B.2,
+   * one role-relevant doctrine instead of two ladders) turned that into a red test about a screen
+   * that was behaving perfectly. What the row owes the player is that NOTHING is left off — so it
+   * is asked against the hull's own requirement list, and a future gate change moves the test with
+   * the game instead of against it.
+   */
   it('shows every unmet hull prerequisite at once', async () => {
     const view = await show({});
     const row = rowFor(view, 'CATACLYSM');
-    expect(row).toHaveTextContent(/Shipyard L6/i);
-    expect(row).toHaveTextContent(/Starship Engineering II/i);
-    expect(row).toHaveTextContent(/Ship Power IV/i);
-    expect(row).toHaveTextContent(/Ship Armor II/i);
+    expect(row).toHaveTextContent(
+      new RegExp(`Shipyard L${String(HULLS.CATACLYSM.minShipyard)}`, 'i'),
+    );
+    expect(HULLS.CATACLYSM.requiredResearch.length).toBeGreaterThan(0);
+    for (const { project, level } of HULLS.CATACLYSM.requiredResearch) {
+      expect(row, `${project} ${String(level)}`).toHaveTextContent(
+        `${researchName(project)} ${RUNG[level] ?? `L${String(level)}`}`,
+      );
+    }
   });
 
   it('states home and away together', async () => {

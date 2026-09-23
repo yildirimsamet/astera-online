@@ -139,8 +139,16 @@ describe('owner 30% economy experiment against the checkpoint', () => {
     expect(rewardPurse()).toEqual({ alloy: 22743, crystal: 11149, deuterium: 0 });
     expect(academyExitGrant(TUTORIAL_EXIT.claimedRewards))
       .toEqual({ alloy: 2223, crystal: 1089, deuterium: 0 });
-    // Dearer Academy purchases can change its remainder; do not compensate with a new free grant.
-    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2458, crystal: 1460, deuterium: 46 });
+    /*
+      Dearer Academy purchases can change its remainder; do not compensate with a new free grant.
+
+      THE CRYSTAL MOVED BY ONE ON 2026-09-22 AND THAT IS CORRECT. The tutorial flies a raid at a
+      pirate and collects its hoard, and the hoard's deuterium is now priced off the pirate's own
+      thirst rather than off its value (`PIRATE.hoardFuelMult`). `computeLoot` scales all three
+      piles by ONE factor when the hold is short, so a smaller deuterium pile changes the factor
+      and therefore the crystal that comes home. The grant itself was not touched.
+    */
+    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2458, crystal: 1461, deuterium: 46 });
     expect(TUTORIAL_EXIT.queue?.seconds)
       .toBe(Math.ceil(222 / 60 * ECONOMY_ADJUSTMENT.buildTime * 60));
   });

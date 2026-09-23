@@ -1,9 +1,10 @@
-import { and, count, eq, gt, gte, isNotNull, lt, lte } from 'drizzle-orm';
+import { and, count, desc, eq, gt, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
   MULTI_WORLD,
   planAsteroidHour,
+  supplyPopulation,
   planPirateHour,
   type AsteroidHourLane,
   type PirateHourLane,
@@ -11,6 +12,8 @@ import {
 import { minutesSince } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
+  buildings,
+  planets,
   asteroidSpawnHours,
   galaxyEventOccurrences,
   players,
@@ -84,6 +87,88 @@ export async function countActiveCommanders(
   return row?.n ?? 0;
 }
 
+/**
+ * WHO PAYS FOR THE SKY. Plan §15.6 — *"Sybil sınırı şart"*.
+ *
+ * One rock an hour per active commander is the right rule and an open door: `countActiveCommanders`
+ * is a raw `lastActiveAt` sweep, so a hundred free accounts logging in bought a hundred rocks an
+ * hour for whoever made them. The gate is the two things a fake account does not have — a DAY in
+ * the season and a CORE that took real production to raise.
+ *
+ * BOTH, NOT EITHER. The plan writes "24 saat / küçük Core eşiği"; read as OR it defends nothing,
+ * because a throwaway passes the clock by doing nothing for a day and a script passes a small Core
+ * in minutes. Required together they cost a day AND production per fake commander.
+ *
+ * AND ONLY OF COMMANDERS WHO ARRIVED AFTER THE DOORS OPENED. Sybil is about INJECTING accounts
+ * into a running galaxy; everybody present at the start is the baseline population, not an
+ * injection. Gating them too would empty the sky for a season's first day — which is the one day
+ * a new commander decides whether this game is worth playing, and the exact opening the whole
+ * chat-log analysis is about. So a founder counts from the first hour, and a late arrival serves
+ * the day and raises the Core.
+ *
+ * A NEW COMMANDER IS NOT LOCKED OUT OF ANYTHING EITHER WAY — they fly at the same field. This
+ * decides only what they ADD to it.
+ *
+ * The Core is the commander's best world, read the way `peakCoreLevels` reads it, so a second
+ * colony cannot dilute the figure.
+ */
+export async function countEligibleCommanders(
+  db: Queryable,
+  seasonId: string,
+  at: Date,
+): Promise<number> {
+  const [season] = await db
+    .select({ startsAt: seasons.startsAt })
+    .from(seasons)
+    .where(eq(seasons.id, seasonId));
+  if (!season) return 0;
+  const grace = ASTEROID_DYNAMIC.supply.graceMinutes * 60_000;
+  const activeSince = new Date(at.getTime() - ASTEROID_DYNAMIC.activeWindowMinutes * 60_000);
+  const foundedBy = new Date(season.startsAt.getTime() + grace);
+  const joinedBefore = new Date(at.getTime() - grace);
+  const rows = await db
+    .select({
+      playerId: players.id,
+      joinedAt: players.joinedAt,
+      peak: sql<number>`max(${buildings.level})::int`,
+    })
+    .from(players)
+    .innerJoin(planets, eq(planets.controllerPlayerId, players.id))
+    .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
+    .where(and(
+      eq(players.seasonId, seasonId),
+      gte(players.lastActiveAt, activeSince),
+    ))
+    .groupBy(players.id);
+  return rows.filter((row) => row.joinedAt <= foundedBy
+    || (row.joinedAt <= joinedBefore && row.peak >= ASTEROID_DYNAMIC.supply.coreLevel)).length;
+}
+
+/**
+ * THE FIGURE THE HOUR ACTUALLY SPAWNS AGAINST — the rolling mean of recent eligible counts.
+ *
+ * The window reads the RAW counts each hour recorded, never the smoothed figures they produced:
+ * averaging its own output filters twice and a genuine rise would crawl toward the truth without
+ * ever arriving. See `supplyPopulation`.
+ */
+async function rollingSupply(
+  db: Queryable,
+  seasonId: string,
+  hourStart: Date,
+  eligibleNow: number,
+): Promise<number> {
+  const rows = await db
+    .select({ eligible: asteroidSpawnHours.eligiblePlayers })
+    .from(asteroidSpawnHours)
+    .where(and(
+      eq(asteroidSpawnHours.seasonId, seasonId),
+      lt(asteroidSpawnHours.hourStartsAt, hourStart),
+    ))
+    .orderBy(desc(asteroidSpawnHours.hourStartsAt))
+    .limit(ASTEROID_DYNAMIC.supply.windowHours - 1);
+  return supplyPopulation(eligibleNow, rows.map((row) => row.eligible));
+}
+
 const showerEffect = z.object({ asteroidSpawnMultiplier: z.number().finite().gt(1) });
 
 /**
@@ -135,7 +220,14 @@ export async function openAsteroidHour(
       ? input.now
       : earliest;
 
-    const activePlayers = await countActiveCommanders(tx, season.id, input.now > hourStart ? input.now : hourStart);
+    /*
+      TWO FIGURES, TWO QUESTIONS. `eligiblePlayers` is what the galaxy actually held this hour —
+      the input the rolling window averages. `activePlayers` is what the hour SPAWNS against, and
+      it is frozen with the lanes so a rock's identity survives every later balance change.
+    */
+    const countAt = input.now > hourStart ? input.now : hourStart;
+    const eligiblePlayers = await countEligibleCommanders(tx, season.id, countAt);
+    const activePlayers = await rollingSupply(tx, season.id, hourStart, eligiblePlayers);
     const showerRows = await tx.select().from(galaxyEventOccurrences).where(and(
       eq(galaxyEventOccurrences.seasonId, season.id),
       eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),
@@ -173,6 +265,7 @@ export async function openAsteroidHour(
       hourStartsAt: hourStart,
       spawnFrom,
       activePlayers,
+      eligiblePlayers,
       lanes,
       levelWeights: ASTEROID_DYNAMIC.levelWeights,
       pirateLane,

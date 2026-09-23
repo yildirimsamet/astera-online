@@ -12,6 +12,13 @@
 * ce ne sont pas des erreurs, mais les règles du jeu.
   */
   export const errors = {
+  /** The movement package's refusals. Self-review 2026-09-23, R4. */
+  BAD_PACE: 'Ce n’est pas l’une des vitesses de vol',
+  PACE_TOO_SLOW: 'À cette vitesse la flotte resterait en vol au-delà de la limite de 12 h. Choisissez plus rapide',
+  NOT_RECALLABLE: 'Ce vol ne peut plus être rappelé — il a atterri ou a déjà fait demi-tour une fois',
+  NOT_FOUND: 'Cela n’existe plus',
+  SHIELDED_SENDER: 'Tant que votre bouclier de nouveau venu dure, vous ne pouvez pas envoyer de ressources à un autre commandant',
+  TRANSFER_COOLDOWN: 'Ce monde décharge encore le dernier escadron — nouveau transfert possible dans {{seconds}} s',
   ADMIN_FORBIDDEN: 'Cette zone nécessite les droits administrateur',
   PLANET_NOT_OWNED: 'Tu ne contrôles pas ce monde',
   WORLD_RECOVERING: 'Ce monde est encore en reconstruction',

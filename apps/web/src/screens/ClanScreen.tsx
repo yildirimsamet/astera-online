@@ -1556,6 +1556,10 @@ function ClanAidPanel({
     : null;
   const payloadKey = payload ? JSON.stringify(payload) : '';
   const quote = quotedKey === payloadKey ? actions.quoteAid.data : undefined;
+  /** The sender's newcomer shield, still standing, holds the aid home. R4, 2026-09-23. */
+  const shieldedUntil = quote?.senderShieldUntil != null && quote.senderShieldUntil.getTime() > now
+    ? quote.senderShieldUntil
+    : null;
   /*
     CARGO HOLDS LIFTS THIS HOLD TOO, SINCE D197. The sheet has to quote the figure
     the server will check, so it reads the same research the server does —
@@ -1806,6 +1810,12 @@ function ClanAidPanel({
                 </div>
                 {!quote.canLand ? <p className="mt-3 text-caption text-threat">{t('clan.aid.cannotLand')}</p> : null}
                 {!quote.canFinishBeforeSeasonEnd ? <p className="mt-3 text-caption text-threat">{t('clan.aid.tooLate')}</p> : null}
+                {/* Said here, before the button, rather than as a refusal on commit. R4, 2026-09-23. */}
+                {shieldedUntil !== null ? (
+                  <p data-aid-shielded className="mt-3 text-caption text-threat">
+                    {t('clan.aid.senderShielded', { duration: duration(minutesUntil(shieldedUntil, now)) })}
+                  </p>
+                ) : null}
                 <p className="mt-3 text-label text-faint">
                   {t(resourceDelivery ? 'clan.aid.plannedReturn' : 'clan.aid.possibleReturn', {
                     duration: duration(minutesUntil(quote.possibleReturnAt, now)),
@@ -1827,7 +1837,7 @@ function ClanAidPanel({
                   // `fuelled` is the live read of the sender's own store; the
                   // quote's `hasFuel` is a snapshot of the same sum taken one
                   // round trip ago, and the launch refuses on the live one.
-                  disabled={launchBlocked || !quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
+                  disabled={launchBlocked || shieldedUntil !== null || !quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
                   onClick={() => {
                     if (!payload) return;
                     actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });

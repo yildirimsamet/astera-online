@@ -7,6 +7,7 @@ import {
   COMBAT_HULLS as RULE_COMBAT_HULLS,
   DEATH_STAR,
   DEUTERIUM,
+  HANGAR,
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   PROSPECTOR,
@@ -22,6 +23,8 @@ import {
   deuteriumRate,
   deuteriumStorageCap,
   hullWorkMinutes,
+  hangarCapacity,
+  hangarLoad,
   profileResearch,
   GROUND_HULLS,
   HULLS,
@@ -37,6 +40,7 @@ import {
   buildingMinutes,
   canAttack,
   collect,
+  fuzzBand,
   computeLoot,
   crystalRate,
   distance,
@@ -84,6 +88,11 @@ import {
   storageCap,
   travelMinutes,
   worthInvesting,
+  classReading,
+  probeAccuracy,
+  COMBAT_CLASSES,
+  type ClassReading,
+  type CombatClass,
   vaultProtects,
   wealth,
   type BuildingId,
@@ -103,6 +112,180 @@ import {
   type Resources,
   type ResearchProjectId,
 } from '@astera/rules';
+
+/**
+ * HOW MUCH SEASON A NON-PRODUCER NEEDS LEFT TO BE WORTH BUILDING — THE FLOOR, NOT THE RULE.
+ *
+ * A Vault, a Shipyard or a Hangar has no output to repay a price with, so `worthInvesting` cannot
+ * answer for them — it takes a producer now, precisely because the three producers repay at very
+ * different speeds. What these buy instead is a CAPABILITY, and a capability landing in the last
+ * hours of a season buys nothing whatever it cost.
+ *
+ * Six hours is a use window, not a payback: long enough to hold an order, fill a hangar or bank a
+ * night's production behind the new ceiling. It is a model-of-the-player rule and lives here rather
+ * than in `@astera/rules` for that reason — the GAME does not refuse a late Vault, a rational
+ * commander does.
+ *
+ * IT IS NO LONGER THE WHOLE ANSWER. This window alone is what the first version of `0.4` shipped,
+ * and a review found it answering the wrong question in both directions: a Vault got bought on a
+ * world nobody had ever raided, and a Shipyard rung got bought with no time to build the hull it
+ * opened. Each of the three now has the test its own payoff asks — see `stillWorthBuilding` — and
+ * this stays as the floor underneath all of them.
+ */
+const NON_PRODUCER_USE_HOURS = 6;
+
+/** The three ladders a Command Core opens. A Core is judged by whichever of them it unlocks. */
+const PRODUCERS = ['REFINERY', 'EXTRACTOR', 'DEUTERIUM_PLANT'] as const;
+
+/** Everything a termination decision may read. Narrow on purpose: no rule here may see the world. */
+export interface TerminationInput {
+  kind: BuildingId;
+  level: number;
+  /** Hours of season left AFTER this rung finishes — already net of the build queue. */
+  productiveHours: number;
+  buildings: Readonly<Record<BuildingId, number>>;
+  tech: TechLevels;
+  /** What is standing at home, for the one rule that is about room. */
+  homeFleet: Fleet;
+  /**
+   * AND WHAT IS IN THE AIR, because the Hangar counts that too.
+   *
+   * The server charges a berth for every hull a commander owns, flying or not (`totalUnitsOf`) —
+   * which is exactly why a recalled fleet always fits. Reading only the home roster made a world
+   * with one ship at home and twenty-five out read as empty.
+   */
+  awayFleet?: Fleet;
+  /**
+   * AND WHAT IS ALREADY ORDERED IN THE YARD. The server counts a queued hull against the room it
+   * will need (`projected.units`), so a Hangar filled by orders is as full as one filled by ships.
+   */
+  queuedBulk?: number;
+  /** Minutes at which this commander was raided. The Vault's whole reason to exist. */
+  raidsTaken: readonly number[];
+  /** Season hours so far, so a raid COUNT can become a raid RATE. */
+  elapsedHours: number;
+}
+
+/**
+ * SHOULD A RATIONAL COMMANDER STILL PAY FOR THIS RUNG? Plan §15.3, item 0.4.
+ *
+ * ONE QUESTION PER PAYOFF, because these buildings do not have one payoff between them:
+ *
+ *   · a PRODUCER repays in ore, so it is judged by its own payback curve — `worthInvesting`, which
+ *     takes the producer's identity precisely because the three repay at very different speeds;
+ *   · the CORE has no output at all and is only reached here once a producer is at its ceiling, so
+ *     what it really buys is that producer's next rung, and it is judged by that;
+ *   · a SHIPYARD rung buys a HULL — so it is worth its price while that hull can still be built;
+ *   · a HANGAR rung buys ROOM — so it is worth its price only while the ceiling is actually
+ *     binding and there is time to fill what it adds;
+ *   · a VAULT rung buys PROTECTION — worthless on a world nobody raids, so it is judged against
+ *     the raids this commander has actually taken.
+ *
+ * IT IS A MODEL OF A PLAYER, NOT A GAME RULE. The game refuses none of these; a commander with a
+ * season ending in an hour does. That is why it lives in the simulator and takes no `World`: a rule
+ * that could see the whole galaxy would be modelling omniscience, which is the defect this package
+ * has already been caught in once.
+ */
+export function stillWorthBuilding(input: TerminationInput): boolean {
+  const { kind, level, productiveHours, buildings } = input;
+  if (kind === 'REFINERY' || kind === 'EXTRACTOR' || kind === 'DEUTERIUM_PLANT') {
+    return worthInvesting(kind, level, productiveHours);
+  }
+  if (kind === 'CORE') {
+    /*
+      THE CORE HAS NO OUTPUT OF ITS OWN, so it is judged by the rungs it UNLOCKS — and by the
+      producers that are actually standing at its ceiling, not always by the Refinery.
+
+      That distinction is the 2026-09-22 review's finding and it is a real one: this branch said
+      "judge it by the rung it unlocks" and then asked the Refinery's curve whatever was there. At
+      Core 8 / Refinery 7 / Extractor 8 the Core's next level unlocks an EXTRACTOR rung, and the
+      two curves disagree — 39 hours of payback against 57 — so a Core was refused on the payback
+      of a rung it was not buying.
+      A Core unlocks EVERY producer at its ceiling, so one that would repay is reason enough; the
+      others do not have to agree. A producer with room left under the Core is not unlocked by this
+      level at all and is not consulted.
+    */
+    const unlocked = PRODUCERS.filter((id) => buildings[id] >= level);
+    return unlocked.some((id) => worthInvesting(id, buildings[id], productiveHours));
+  }
+
+  // Nothing below is worth buying if it lands too late to be used at all.
+  if (productiveHours < NON_PRODUCER_USE_HOURS) return false;
+
+  if (kind === 'SHIPYARD') {
+    /*
+      THE RUNG IS WORTH ITS PRICE WHILE THE HULL IT OPENS CAN STILL BE FLOWN.
+
+      A rung that opens NOTHING still buys build SPEED (`hullWorkMinutes` reads the Shipyard
+      level), so it falls through to the use window rather than being refused: refusing it would
+      model a commander who stops improving their yard the moment the catalogue runs out.
+    */
+    const opened = MOBILE_HULLS.filter(
+      (h) => HULLS[h].minShipyard === level + 1 && hullBuildable(h, level + 1, input.tech),
+    );
+    if (opened.length === 0) return true;
+    const quickest = Math.min(
+      ...opened.map((h) => hullWorkMinutes(h, 1, level + 1, input.tech)),
+    );
+    return productiveHours >= quickest / 60;
+  }
+
+  if (kind === 'HANGAR') {
+    /*
+      ROOM IS ONLY WORTH BUYING WHEN THE CEILING IS THE THING STOPPING YOU.
+
+      A world flying a tenth of its capacity does not need a bigger hangar; it needs ships. The
+      share is deliberately high — this is the "is it BINDING" test the plan asks for, not "is it
+      getting full".
+
+      IT COUNTS THE FLEET IN THE AIR TOO. The server charges a berth for every hull a commander
+      owns, flying or not, which is why a recalled fleet always fits — reading only the home
+      roster made a world with one ship at home and twenty-five out read as empty.
+    */
+    const held = hangarLoad(input.homeFleet) + hangarLoad(input.awayFleet ?? {})
+      + (input.queuedBulk ?? 0);
+    return held >= hangarCapacity(level) * HANGAR_BINDING_SHARE;
+  }
+
+  {
+    /*
+      AND WHAT IS LEFT IS THE VAULT. No `kind` test, because every other building has returned:
+      the compiler has narrowed this to `VAULT` and a check it can prove would be decoration.
+
+      A LOCK IS WORTH BUYING WHILE SOMEBODY IS STILL GOING TO TRY THE DOOR.
+
+      The test is whether at least one more raid is expected behind this rung before the season
+      ends, at the rate this commander has actually been raided. Late in a season that fails, which
+      is the whole point of this item: *"otherwise the bots buy a Vault or a Hangar right before
+      the wipe."* With no raids on record yet there is no evidence either way, and a commander who
+      has not been hit is not a commander who never will be — so the use window above is the
+      answer, exactly as it was before this item existed.
+
+      THE STRICTER FORM WAS WRITTEN, MEASURED AND REJECTED. Requiring the rung to PAY FOR ITSELF —
+      `protectionGained x raidsAhead x lootShare >= cost` — is the literal reading of the plan's
+      wording, and it refuses every Vault rung past about the fourth, because the protection a rung
+      adds is flat while its price is not (at producer L5 the gain/cost ratio runs 3.80, 2.18, 0.61,
+      0.38, 0.24). Measured over the five fixture seeds that inverted an archetype claim: the turtle
+      stopped buying deep Vaults, spent the ore on producers and out-earned the grinder, breaking
+      `turtling may pay, but never beats the informed player` and pushing SV out of band on all five
+      seeds instead of three.
+
+      That is not a termination rule, it is an OPTIMISER — and this function is a model of a player,
+      not a solver for one. What a turtle wants is decided by its build order; how long a season has
+      to run for that want to still make sense is decided here. The measurement is recorded in the
+      plan so the stricter form can be reconsidered deliberately in Faz 4, where the seeded bands
+      are recalibrated, rather than arriving as a side effect of a tidy-up.
+    */
+    if (input.raidsTaken.length === 0 || input.elapsedHours <= 0) return true;
+    const raidsAhead = (input.raidsTaken.length / input.elapsedHours) * productiveHours;
+    return raidsAhead >= 1;
+  }
+}
+
+/** How full a hangar has to be before its ceiling is the thing stopping construction. */
+const HANGAR_BINDING_SHARE = 0.9;
+
+
 import {
   ARCHETYPES,
   ARCHETYPE_NAMES,
@@ -114,6 +297,29 @@ import {
 } from './archetypes.js';
 import { measure, type Invariants } from './invariants.js';
 import { nextDecision, type ActivityProfile } from './player-calendar.js';
+
+/**
+ * WHAT ONE PROBE RUN LEAVES BEHIND.
+ *
+ * `reading` is a CLASS READING and not a roster. The field used to be
+ * `composition: Fleet` holding `{ ...q.fleet, ...q.ground }` — every hull and every count,
+ * whatever the scout's Shipyard or the target's Veil — which made every composition finding
+ * on this model a measurement of omniscience rather than of play. See `probeIntel`.
+ */
+export interface SimIntel {
+  /**
+   * WHAT A RAID COULD CARRY OFF, AS THE PROBE READ IT — never the raw pile.
+   *
+   * This was the exact sum of the target's stores and works, which broke the same rule twice: a
+   * Veil bought a simulated world no privacy at all, and the vault floor — most of a developed
+   * world's store — was counted as loot. The server answers this question with `computeLoot` at
+   * the DECISIVE grade and then fuzzes it through `fuzzBand`; so does this. See `probeIntel`.
+   */
+  takeable: number;
+  defence: number;
+  reading: ClassReading;
+  at: number;
+}
 
 export interface SimPlayer {
   id: number;
@@ -149,8 +355,16 @@ export interface SimPlayer {
   wealthNow: number;
   wealthHistory: number[];
   recentHits: Map<number, number[]>;
+  /**
+   * MINUTES AT WHICH THIS COMMANDER WAS RAIDED. The defender's side of `recentHits`.
+   *
+   * `recentHits` is the ATTACKER's record of who they have hit, for the bash limit. Nothing kept
+   * the other half, so nothing could answer "does this world get raided" — and the Vault's whole
+   * payoff is that question. One array, appended where a battle is booked.
+   */
+  raidsTaken: number[];
   /** What a probe last measured: what could be carried off, and what defends it. */
-  intel: Map<number, { stock: number; defence: number; composition: Fleet; at: number }>;
+  intel: Map<number, SimIntel>;
   neighbours: { id: number; d: number }[];
   /** Seasonal permission only; reset with this simulated world. */
   isotopeSpectrometry: boolean;
@@ -349,6 +563,12 @@ export interface SimConfig {
    * their deliberately small sample the production neutral layout.
    */
   neutralLayout?: NeutralLayout & { slotPool: number };
+  /**
+   * Measurement-only observer, called after each completed day's report. It sees the live world so
+   * a study can sample day 9 of a thirty-day season without cutting the season short — a shorter
+   * season is a different season, because every bot's sunset reads the time left.
+   */
+  onDay?: (day: number, world: World) => void;
 }
 
 export type CrystalSpendCategory =
@@ -470,7 +690,7 @@ export function buildWorld(cfg: SimConfig): World {
     attacks: [], scoutsSent: 0,
     lootToday: 0, lossToday: 0, disruptedToday: 0,
     wealthNow: 0, wealthHistory: [],
-    recentHits: new Map(), intel: new Map(),
+    recentHits: new Map(), raidsTaken: [], intel: new Map(),
     neighbours: [],
     isotopeSpectrometry: false,
     denseFuelCells: false,
@@ -831,7 +1051,7 @@ const queuedWealth = (p: SimPlayer): number =>
   [...p.queues.CONSTRUCTION, ...p.queues.YARD, ...p.queues.RESEARCH]
     .reduce((sum, order) => sum + resourcesTotal(order.cost), 0);
 
-function enqueueHullOrder(
+export function enqueueHullOrder(
   p: SimPlayer,
   hull: HullId,
   count: number,
@@ -848,12 +1068,19 @@ function enqueueHullOrder(
     together do not would end the season with a fleet the live game refuses, and
     every band measured off it would be measuring a different game.
   */
-  // D184: the Hangar is gone, so only emplacements answer to a ceiling. A fleet is
-  // braked by price, fuel and loss — the same three a real commander feels.
+  /*
+    THE HANGAR CAME BACK ON 2026-09-18 AND THIS DID NOT (review 2026-09-22, #7). It still read
+    "D184: the Hangar is gone", so a bot ended a season with 4,772 room of fleet on an 80-room
+    Hangar. Counted the way `build.ts` counts it: every hull this commander owns — at home, in the
+    air, out mining — plus what the yard queue will add. The Hangar's own level is the current one;
+    a rung rising in CONSTRUCTION does not lend room to a hull that may finish first.
+  */
+  const needed = hullBulk(hull) * count;
   if (HULLS[hull].ground) {
-    const needed = hullBulk(hull) * count;
     const load = groundLoad(p.fleet) + queuedYardBulk(p, true);
     if (load + needed > groundSlots(p.buildings.CORE)) return false;
+  } else if (needed > hangarRoom(p, world)) {
+    return false;
   }
   const unit = hullPrice(world, hull);
   const cost = {
@@ -1539,21 +1766,144 @@ export function adaptiveMix(
  * and a bot that has scouted nobody falls back to its own habits, which is the
  * honest model of a player guessing from what they would build themselves.
  */
-function expectedDefence(p: SimPlayer, t: number, fallback: Composition): Fleet {
-  const seen: Fleet = {};
-  let reports = 0;
-  for (const known of p.intel.values()) {
+/**
+ * WHAT A PROBE OF THIS ACCURACY LEARNS ABOUT A LINE — the shipped rule, not the roster.
+ *
+ * The model used to record `{ ...q.fleet, ...q.ground }`: every hull and every count, whatever the
+ * scout's Shipyard or the target's Veil. The real probe sells far less. At par accuracy — 0.55,
+ * what an equal Shipyard buys — it names the majority CLASS and nothing else; the whole split costs
+ * two rungs over the target's Veil (`INTEL.classSharesAccuracy`).
+ *
+ * A thin naming of the rules function, so the model cannot drift from the product it is modelling.
+ */
+export const readingOfLine = (line: Fleet, accuracy: number): ClassReading =>
+  classReading(line, accuracy);
+
+/** Everything about a target a probe touches. Narrow on purpose: a probe reads a world, not a player. */
+export type ProbeTarget = Pick<
+  SimPlayer,
+  | 'alloy' | 'crystal' | 'deuterium'
+  | 'bufferAlloy' | 'bufferCrystal' | 'bufferDeuterium'
+  | 'fleet' | 'ground' | 'instruments' | 'buildings'
+>;
+
+/**
+ * ONE PROBE RUN, PRICED THE WAY THE SERVER PRICES IT.
+ *
+ * Three questions, matching `resolveProbe` in the server: how much could be carried off, how much
+ * of the wall fires, and what SHAPE fires. Only the first two were ever asked here; the third was
+ * answered with the roster itself, so a Veil bought a simulated wall no privacy at all and an
+ * archetype that "adapts its composition" was really one that had been handed the answer.
+ *
+ * The firepower figure is still exact, where the server fuzzes it into a band. That is a separate
+ * and larger change — it moves target SELECTION, not the hull mix — and the composition experiment
+ * this unblocks does not rest on it.
+ */
+export function probeIntel(
+  scoutShipyard: number,
+  q: ProbeTarget,
+  t: number,
+  rng: Rng,
+): SimIntel {
+  const line = garrisonOf(q.fleet, q.ground);
+  const accuracy = probeAccuracy(scoutShipyard, q.instruments.VEIL ?? 0);
+  /*
+    THE SAME TWO STEPS THE SERVER TAKES, IN THE SAME ORDER. `resolveProbe`:
+
+      1. `computeLoot` at the DECISIVE grade with no cargo cap — the MOST this world can be made to
+         give up, with the vault floor already out and the works exposed at half;
+      2. `fuzzBand`, so what comes back is a reading rather than a fact.
+
+    The model used to skip both and record the exact sum of the stores and the works. On a
+    developed world the vault floor is most of the store, so that figure was not merely precise —
+    it was a different quantity from the one a raid comes home with.
+  */
+  const raidable = computeLoot(
+    { alloy: q.alloy, crystal: q.crystal, deuterium: q.deuterium },
+    { alloy: q.bufferAlloy, crystal: q.bufferCrystal, deuterium: q.bufferDeuterium },
+    vaultProtects(
+      q.buildings.VAULT, q.buildings.REFINERY, q.buildings.EXTRACTOR, q.buildings.DEUTERIUM_PLANT,
+    ),
+    'DECISIVE',
+    Number.MAX_SAFE_INTEGER,
+  );
+  return {
+    takeable: fuzzBand(raidable.alloy + raidable.crystal + raidable.deuterium, accuracy, rng).mid,
+    defence: fleetValue(line),
+    reading: readingOfLine(line, accuracy),
+    // A probe is a flight; the reading is worth its age from when it LANDS.
+    at: t + 8,
+  };
+}
+
+/**
+ * THE ROSTER PRIOR, REBUILT FROM CLASS READINGS ALONE.
+ *
+ * A commander who has scouted their neighbourhood knows its SHAPE — mostly Lance, an even mix —
+ * and not which Lance. So the line this returns carries the class proportions that were read and
+ * one representative hull per class.
+ *
+ * THE HULL IDENTITIES ARE A MODELLING CONVENIENCE AND MUST STAY ONE. The only consumer is
+ * `adaptiveMix`, which scores through `tradeScore` and therefore through `counterMult`, and that
+ * reads the CLASS. Picking a representative is how a class share becomes something the scorer can
+ * take; it is not a claim about which hull is out there.
+ *
+ * A reading that resolved no class contributes nothing — `EVEN` and `UNREAD` are exactly the cases
+ * where a commander learned the shape is unreadable, and inventing a share for them would put the
+ * omniscience back in through the other door.
+ */
+export function expectedLineFromReadings(readings: readonly ClassReading[]): Fleet {
+  const shares: Record<CombatClass, number> = { SKIRMISHER: 0, BULWARK: 0, LANCE: 0 };
+  let read = 0;
+  for (const reading of readings) {
+    if (reading.kind === 'DOMINANT') {
+      shares[reading.cls] += 1;
+      read++;
+    } else if (reading.kind === 'SHARES') {
+      const sum = COMBAT_CLASSES.reduce((total, cls) => total + Math.max(0, reading.shares[cls]), 0);
+      if (sum <= 0) continue;
+      for (const cls of COMBAT_CLASSES) shares[cls] += Math.max(0, reading.shares[cls]) / sum;
+      read++;
+    }
+  }
+  if (read === 0) return {};
+
+  const line: Fleet = {};
+  for (const cls of COMBAT_CLASSES) {
+    if (shares[cls] <= 0) continue;
+    const representative = REPRESENTATIVE[cls];
+    line[representative] = (shares[cls] / read) * 10_000
+      / (HULLS[representative].alloy + HULLS[representative].crystal);
+  }
+  return line;
+}
+
+/** One hull per class, to carry a class share into a scorer that only reads classes. */
+const REPRESENTATIVE: Record<CombatClass, CombatHullId> = {
+  SKIRMISHER: 'DART',
+  BULWARK: 'RAMPART',
+  LANCE: 'PIKE',
+};
+
+export function expectedDefence(
+  intel: ReadonlyMap<number, SimIntel>,
+  t: number,
+  fallback: Composition,
+): Fleet {
+  const fresh: ClassReading[] = [];
+  for (const known of intel.values()) {
     // What a neighbourhood BUILDS moves far more slowly than the stock in its
     // stores, so a day-old reading is still worth having.
     if (t - known.at > 1440) continue;
-    const value = fleetValue(known.composition);
-    if (value <= 0) continue;
-    reports++;
-    for (const [id, n] of fleetEntries(known.composition)) {
-      seen[id] = (seen[id] ?? 0) + (n * 10_000) / value;
-    }
+    fresh.push(known.reading);
   }
-  if (reports === 0) {
+  /**
+   * A READING THAT RESOLVED NOTHING IS NOT A REPORT. `expectedLineFromReadings` returns an empty
+   * line for `EVEN`, `UNREAD` and `NONE` alike, and an empty line means the commander has learned
+   * nothing to counter — so they fly their own habits, exactly as if they had never looked.
+   */
+  const seen = expectedLineFromReadings(fresh);
+  if (fleetEntries(seen).length === 0) {
     for (const [id, share] of Object.entries(fallback) as [CombatHullId, number][]) {
       seen[id] = (share * 10_000) / (HULLS[id].alloy + HULLS[id].crystal);
     }
@@ -1595,6 +1945,36 @@ const ownedProspectors = (p: SimPlayer, world: World): number =>
  * the same lesson D131 records — a rule honoured on one path and forgotten on
  * another is the failure mode this code base has already shipped once.
  */
+/**
+ * EVERY HULL THIS COMMANDER HAS IN THE AIR, as one fleet.
+ *
+ * The berth follows the ship, not the parking space: the server charges a Hangar berth for every
+ * hull a commander owns whether it is standing at home or flying, which is exactly why a recalled
+ * fleet always fits. `ownedHangarLoad` used to walk both mission lists for this and was deleted
+ * when the Hangar was; it is back because the Hangar is.
+ */
+function awayFleetOf(p: SimPlayer, world: World): Fleet {
+  const away: Fleet = {};
+  const add = (fleet: Fleet): void => {
+    for (const [id, n] of fleetEntries(fleet)) away[id] = (away[id] ?? 0) + n;
+  };
+  for (const mission of world.missions) if (mission.from === p.id) add(mission.fleet);
+  for (const mission of world.strategicMissions) {
+    if (mission.ownerId === p.id && mission.kind === 'neutral_attack') add(mission.fleet);
+  }
+  // A Prospector out mining is still a hull this commander owns, and still holds its berth.
+  for (const run of world.miningRuns) if (run.playerId === p.id) add({ PROSPECTOR: run.craft });
+  return away;
+}
+
+/** Room every hull this commander owns takes in the Hangar, wherever it is. What `build.ts` counts. */
+export const ownedHangarLoad = (p: SimPlayer, world: World): number =>
+  hangarLoad(p.fleet) + hangarLoad(awayFleetOf(p, world));
+
+/** Hangar room still free for a new yard order: owned hulls and queued ones both hold theirs. */
+const hangarRoom = (p: SimPlayer, world: World): number =>
+  Math.max(0, hangarCapacity(p.buildings.HANGAR) - ownedHangarLoad(p, world) - queuedYardBulk(p, false));
+
 const ownedMissionHull = (p: SimPlayer, world: World, hull: MobileHullId): number =>
   (p.fleet[hull] ?? 0)
   + world.missions
@@ -1870,12 +2250,28 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
    * simply did not know it. A commander with two days left does not build a mine
    * that repays in four — they build fleets, which is what the last act is for.
    */
+  /*
+    AND THE NON-PRODUCERS NEEDED THEIR OWN ANSWER. `worthInvesting` now requires a producer,
+    because the three repay at very different speeds and a single curve answering for all of them
+    was the defect it was rewritten to remove — but the loop below walks the WHOLE build order, and
+    a Vault, a Shipyard or a Hangar has no output to divide a price by at all.
+
+    Judging them by the Refinery's curve, which is what happened before, is not a smaller error
+    than having no rule: it let a bot buy a Vault in the last hour because a MINE would still have
+    repaid, and it refused one at mid-season because a mine would not.
+
+    So each kind answers the question its own payoff asks. A producer repays; everything else has a
+    USE WINDOW, and the honest minimum is that the thing must finish with enough season left to be
+    used for what it does. `NON_PRODUCER_USE_HOURS` is that floor: a building landing inside the
+    last few hours buys nothing whatever its price.
+  */
   for (let pass = 0; pass < 3; pass++) {
     for (const key of a.buildOrder) {
       if (p.queues.CONSTRUCTION.length >= BUILD.queueDepth) break;
       const projected = projectedBuildState(p, world, 'CONSTRUCTION');
       const lvl = projected.buildings[key];
-      if (key !== 'CORE' && lvl >= projected.buildings.CORE) continue;
+      // The Hangar answers to its own ladder, not the Core (plan 2B.6); everything else to the Core.
+      if (key === 'HANGAR' ? lvl >= HANGAR.maxLevel : key !== 'CORE' && lvl >= projected.buildings.CORE) continue;
       // The plant answers to its research rung as well as to the Core. T5.
       if (key === 'DEUTERIUM_PLANT' && lvl >= plantCeiling(synthesisRung(p))) continue;
       const cost = buildingCost(key, lvl);
@@ -1891,19 +2287,32 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         // producer is already at its ceiling, and only after that newly-unlocked
         // producer could finish behind it. This prevents a rational bot ending the
         // season with a paid Core whose sole payoff can no longer be constructed.
-        const producerAt = Math.max(
-          projected.buildings.REFINERY,
-          projected.buildings.EXTRACTOR,
-        );
-        if (producerAt < lvl) continue;
-        const producerMinutes = buildingMinutes(
-          'REFINERY', producerAt + 1, projected.research,
-        );
+        /*
+          THE WAIT IS THE UNLOCKED PRODUCER'S OWN, for the same reason the decision below is: the
+          Core is bought for a rung, and the rung that arrives soonest is the one that decides how
+          much season is left to earn in.
+        */
+        const unlocked = PRODUCERS.filter((id) => projected.buildings[id] >= lvl);
+        if (unlocked.length === 0) continue;
+        const producerMinutes = Math.min(...unlocked.map((id) => buildingMinutes(
+          id, projected.buildings[id] + 1, projected.research,
+        )));
         const producerReadyAt = readyAt
           + Math.max(1, Math.ceil(producerMinutes * 60)) / 60;
         productiveHours = Math.max(0, (world.totalMinutes - producerReadyAt) / 60);
       }
-      if (!worthInvesting(lvl, productiveHours)) continue;
+      if (!stillWorthBuilding({
+        kind: key,
+        level: lvl,
+        productiveHours,
+        buildings: projected.buildings,
+        tech: p.tech,
+        homeFleet: p.fleet,
+        awayFleet: awayFleetOf(p, world),
+        queuedBulk: queuedYardBulk(p, false),
+        raidsTaken: p.raidsTaken,
+        elapsedHours: t / 60,
+      })) continue;
       if (
         p.alloy >= cost.alloy && p.crystal >= cost.crystal &&
         p.alloy - cost.alloy > alloyRate(p.buildings.REFINERY) * 0.5
@@ -2039,7 +2448,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
     });
     const mix = a.adaptsComposition
       ? adaptiveMix(
-        yard, a.composition, expectedDefence(p, t, a.composition), affordableHulls, p.tech,
+        yard, a.composition, expectedDefence(p.intel, t, a.composition), affordableHulls, p.tech,
       )
       : a.composition;
 
@@ -2072,6 +2481,8 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
           if (price.deuterium > 0) {
             n = Math.min(n, Math.floor(deuteriumForShips() / price.deuterium));
           }
+          // A commander builds what the Hangar can berth; the bar is on the build sheet.
+          n = Math.min(n, Math.floor(hangarRoom(p, world) / hullBulk(hull)));
           let committed = 0;
           if (n > 0) {
             if (enqueueHullOrder(p, hull, n, t, world, 'combat')) committed = n;
@@ -2093,6 +2504,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         Math.floor((p.alloy * 0.2) / price.alloy),
         Math.floor(p.crystal / price.crystal),
         Math.floor(deuteriumForShips() / price.deuterium),
+        Math.floor(hangarRoom(p, world) / hullBulk('COURIER')),
       );
       if (n > 0) enqueueHullOrder(p, 'COURIER', n, t, world, 'hauler');
     }
@@ -2115,6 +2527,7 @@ function runSession(p: SimPlayer, t: number, world: World, rng: Rng): void {
         price.deuterium > 0
           ? Math.floor(deuteriumForShips() / price.deuterium)
           : Number.MAX_SAFE_INTEGER,
+        Math.floor(hangarRoom(p, world) / hullBulk(cargoHull)),
       );
       if (n > 0) {
         enqueueHullOrder(p, cargoHull, n, t, world, 'hauler');
@@ -2218,17 +2631,33 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
       blindCaps.alloy + blindCaps.crystal + blindCaps.deuterium
       + blindWorks.alloy + blindWorks.crystal + blindWorks.deuterium
     ) * 0.35;
-    const stock = scouted && known ? known.stock : blindPrior * (0.45 + rng() * 1.5);
-    // The vault floor is read off the same side as the estimate above it: a blind
-    // attacker cannot know the target's Vault any more than their store.
-    const vaultOf = scouted ? q : p;
-    const vault = vaultProtects(
-      vaultOf.buildings.VAULT,
-      vaultOf.buildings.REFINERY,
-      vaultOf.buildings.EXTRACTOR,
-      vaultOf.buildings.DEUTERIUM_PLANT,
-    );
-    const expectedLoot = Math.max(0, stock - (vault.alloy + vault.crystal)) * 0.5;
+    /**
+     * WHAT THIS TARGET IS WORTH FLYING AT — and the two sides answer it from different places.
+     *
+     * A SCOUTED target's figure is the PROBE'S, and nothing more: `probeIntel` already ran the
+     * loot rules and fuzzed the result, exactly as `resolveProbe` does. The model used to take the
+     * probe's raw pile and then re-derive the loot from the TARGET'S OWN Vault, Refinery,
+     * Extractor and Plant levels — facts no probe reports — so a scouted attacker was reading the
+     * defender's building board. Subtracting a vault floor here as well would also take it off
+     * twice.
+     *
+     * A BLIND target's figure is the attacker's own economy, and the vault floor it is measured
+     * against is the attacker's own too: a commander who knows nothing about a world cannot know
+     * its Vault any more than its store.
+     */
+    let expectedLoot: number;
+    if (scouted && known) {
+      expectedLoot = known.takeable;
+    } else {
+      const stock = blindPrior * (0.45 + rng() * 1.5);
+      const vault = vaultProtects(
+        p.buildings.VAULT,
+        p.buildings.REFINERY,
+        p.buildings.EXTRACTOR,
+        p.buildings.DEUTERIUM_PLANT,
+      );
+      expectedLoot = Math.max(0, stock - (vault.alloy + vault.crystal)) * 0.5;
+    }
     const flight = travelMinutes(nb.d, speed);
     // A blind attacker cannot make this risk discount. That is the whole point.
     const risk = defence !== null ? 1 + defence / Math.max(1, fleetValue(p.fleet)) : 1.6;
@@ -2264,14 +2693,7 @@ function tryAttack(p: SimPlayer, t: number, world: World, rng: Rng): void {
     if ((best.q.instruments.AEGIS ?? 0) > 0 && best.q.shield > 0) {
       p.shieldInsightSeen = true;
     }
-    p.intel.set(best.q.id, {
-      stock:
-        best.q.alloy + best.q.crystal + best.q.deuterium
-        + best.q.bufferAlloy + best.q.bufferCrystal + best.q.bufferDeuterium,
-      defence: fleetValue({ ...best.q.fleet, ...best.q.ground }),
-      composition: { ...best.q.fleet, ...best.q.ground },
-      at: t + 8,
-    });
+    p.intel.set(best.q.id, probeIntel(p.buildings.SHIPYARD, best.q, t, rng));
     return; // spends the session on the probe
   }
 
@@ -2435,6 +2857,8 @@ function resolveMission(m: Mission, t: number, world: World, stats: DayStats): v
   const hits = atk.recentHits.get(def.id) ?? [];
   hits.push(t);
   atk.recentHits.set(def.id, hits);
+  // The defender's own record of it, which nothing kept before. See `SimPlayer.raidsTaken`.
+  def.raidsTaken.push(t);
 
   if (fleetCount(r.attackerSurvivors) > 0) {
     world.missions.push({
@@ -2500,6 +2924,7 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
       }
       const day = t / 1440;
       days.push({ day, stats, invariants: measure(day, world.players, stats) });
+      cfg.onDay?.(day, world);
       for (const p of world.players) {
         p.wealthHistory.push(p.wealthNow);
         p.lootToday = 0;

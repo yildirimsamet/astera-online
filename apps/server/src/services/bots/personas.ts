@@ -284,8 +284,14 @@ export const BOTS = {
    * them off the podium, and it is the whole of "exempt": eight tireless
    * commanders with no ceiling would own the top of a ladder that exists for the
    * people playing.
+   *
+   * 9 → 16, owner decision 2026-09-23 (self-review R5): the AVERAGE of the Core
+   * distribution Faz 4.1's curve produces (sim medians on days 6–30 run 13–17, about
+   * 16). A raid is legal only inside ±1 tier, and at Core 9 the bots — targets of
+   * half the live galaxy's PvP — would have fallen out of reach of nearly every
+   * commander on the new curve, sending those raids onto people instead.
    */
-  coreCeiling: 9,
+  coreCeiling: 16,
   /** Alloy-equivalent value of ships one of them will hold. `fleetValue` units. */
   fleetValueCeiling: 260_000,
 

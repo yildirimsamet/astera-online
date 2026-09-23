@@ -10,14 +10,18 @@ import {
   instrumentCost,
   crystalRate,
   deuteriumRate,
+  marginalOutput,
+  resourceValue,
+  buildingCost,
   deuteriumStorageCap,
   minutesUntilCollectorFull,
-  paybackHours,
+  producerPaybackHours,
   productiveMinutes,
   storageCap,
   upgradeCost,
   vaultProtects,
   worthInvesting,
+  producerOutputMult,
 } from '../src/index.js';
 
 describe('production and cost curves', () => {
@@ -98,8 +102,12 @@ describe('production and cost curves', () => {
     for (let level = 7; level <= 9; level += 1) {
       expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * lift(level), 8);
     }
-    for (const level of [10, 11, 20, 100]) {
+    for (const level of [10, 11, 12]) {
       expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70, 8);
+    }
+    // Past 12 the owner's 2026-09-20 late lift rides on top — the opening lift is long gone.
+    for (const level of [13, 20, 100]) {
+      expect(alloyRate(level)).toBeCloseTo(100 * level ** 1.3 * 0.70 * producerOutputMult(level), 8);
     }
 
     // The two rungs the flat bands broke, in the units the screen quotes.
@@ -109,8 +117,8 @@ describe('production and cost curves', () => {
         .toBeGreaterThan(storageCap(alloyRate(level - 1), 9));
     }
     expect(alloyRate(10) / alloyRate(9)).toBeGreaterThan(1.07);
-    expect(paybackHours(9)).toBeLessThan(Infinity);
-    expect(worthInvesting(9, 300)).toBe(true);
+    expect(producerPaybackHours('REFINERY', 9)).toBeLessThan(Infinity);
+    expect(worthInvesting('REFINERY', 9, 300)).toBe(true);
   });
 
   /**
@@ -150,15 +158,48 @@ describe('production and cost curves', () => {
    * reaches it, and its job is to be expensive enough that nobody tries.
    */
   it('payback lengthens with level — the brake on a runaway season', () => {
-    const curve = [1, 5, 10, 15].map(paybackHours);
+    const curve = [1, 5, 10, 15].map((level) => producerPaybackHours('REFINERY', level));
     for (let i = 1; i < curve.length; i++) {
       expect(curve[i]!).toBeGreaterThan(curve[i - 1]!);
     }
     // The opening has to repay inside a session — that is the day-zero dopamine.
-    expect(paybackHours(1)).toBeLessThan(1);
+    expect(producerPaybackHours('REFINERY', 1)).toBeLessThan(1);
     // ...and the late game has to stop repaying inside a season, or it runs away.
-    expect(paybackHours(10)).toBeGreaterThan(4);
-    expect(paybackHours(18)).toBeGreaterThan(24);
+    expect(producerPaybackHours('REFINERY', 10)).toBeGreaterThan(4);
+    expect(producerPaybackHours('REFINERY', 18)).toBeGreaterThan(24);
+  });
+
+  /**
+   * EVERY PRODUCER ANSWERS FOR ITSELF, and before this they all answered as the Refinery.
+   *
+   * The helper took no building and priced every rung off `upgradeCost()` — the legacy shared
+   * curve — against the ALLOY gain. Measured against the live `buildingCost`, it reported 0.40x
+   * the truth at L8 and 5.66x at L25, and `worthInvesting` hands that figure to the simulator's
+   * build decisions. A tool that is wrong in both directions at different ends of the ladder
+   * cannot be used to tune the ladder.
+   */
+  it('prices each producer from its own live cost and its own marginal output', () => {
+    for (const producer of ['REFINERY', 'EXTRACTOR', 'DEUTERIUM_PLANT'] as const) {
+      const cost = resourceValue(buildingCost(producer, 10));
+      const gain = resourceValue(marginalOutput(producer, 10));
+      expect(producerPaybackHours(producer, 10)).toBeCloseTo(cost / gain, 6);
+    }
+  });
+
+  /** The plant is the dearest of the three to repay, which is what makes fuel scarce. */
+  it('keeps the deuterium plant the slowest to repay', () => {
+    for (const level of [5, 10, 15]) {
+      expect(producerPaybackHours('DEUTERIUM_PLANT', level))
+        .toBeGreaterThan(producerPaybackHours('REFINERY', level));
+    }
+  });
+
+  /** Cost and output are weighed on ONE scale; mixing A+C+D with A+2C+32D is how the old one lied. */
+  it('weighs cost and output on the same valuation', () => {
+    const plant = producerPaybackHours('DEUTERIUM_PLANT', 8);
+    const raw = (buildingCost('DEUTERIUM_PLANT', 8).alloy + buildingCost('DEUTERIUM_PLANT', 8).crystal)
+      / (deuteriumRate(9) - deuteriumRate(8));
+    expect(plant).not.toBeCloseTo(raw, 0);
   });
 
   /**
@@ -167,10 +208,10 @@ describe('production and cost curves', () => {
    * rule fires.
    */
   it('stops being rational near the end of a season — the sunset phase', () => {
-    expect(worthInvesting(10, 300)).toBe(true);
-    expect(worthInvesting(10, 6)).toBe(false);
+    expect(worthInvesting('REFINERY', 10, 300)).toBe(true);
+    expect(worthInvesting('REFINERY', 10, 6)).toBe(false);
     // Deep in the ladder it is already irrational with days left to run.
-    expect(worthInvesting(18, 72)).toBe(false);
+    expect(worthInvesting('REFINERY', 18, 72)).toBe(false);
   });
 });
 

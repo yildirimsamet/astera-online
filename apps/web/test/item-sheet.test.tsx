@@ -262,3 +262,46 @@ describe('a satellite, which has no levels at all', () => {
     expect(screen.queryByRole('button', { name: /put in orbit/i })).toBeNull();
   });
 });
+
+/**
+ * THE LADDER SHOWS WHEN CLIMBING STOPS PAYING. Faz 4.1, 2026-09-22.
+ *
+ * Each producer rung states how long it takes to pay for itself, so the sheet draws the curve the
+ * owner's brief was about — about a day at Refinery 10–12, growing rung by rung — and the sunset is
+ * a thing a commander sees coming rather than works out on paper.
+ */
+describe('a producer ladder', () => {
+  it('states what every rung takes to pay for itself', () => {
+    render(
+      <ItemSheet
+        item={{ kind: 'building', id: 'REFINERY' }}
+        name="Alloy Refinery"
+        role="Makes alloy."
+        planet={planet()}
+        held={{ alloy: 100_000, crystal: 50_000 }}
+        pending={false}
+        onAct={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const lines = [...document.querySelectorAll<HTMLElement>('[data-gain-repays]')];
+    expect(lines.length).toBeGreaterThanOrEqual(3);
+    for (const line of lines) expect(line).toHaveTextContent(/pays for itself in \d/i);
+  });
+
+  it('says nothing about payback on a building that produces nothing', () => {
+    render(
+      <ItemSheet
+        item={{ kind: 'building', id: 'VAULT' }}
+        name="Vault"
+        role="Protects."
+        planet={planet()}
+        held={{ alloy: 100_000, crystal: 50_000 }}
+        pending={false}
+        onAct={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('[data-gain-repays]')).toBeNull();
+  });
+});

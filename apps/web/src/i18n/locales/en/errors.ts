@@ -14,6 +14,13 @@
  */
 
 export const errors = {
+  /** The movement package's refusals. Self-review 2026-09-23, R4. */
+  BAD_PACE: 'That is not one of the flight speeds',
+  PACE_TOO_SLOW: 'At that speed the fleet would stay in the air past the 12-hour limit. Pick a faster speed',
+  NOT_RECALLABLE: 'That flight can no longer be called back — it has landed, or already turned once',
+  NOT_FOUND: 'That no longer exists',
+  SHIELDED_SENDER: 'While your newcomer shield lasts, you cannot send resources to another commander',
+  TRANSFER_COOLDOWN: 'This world is still unloading the last squadron — you can send a transfer again in {{seconds}} s',
   ADMIN_FORBIDDEN: 'Admin access is required',
   PLANET_NOT_OWNED: 'You do not control that world',
   WORLD_RECOVERING: 'That world is recovering',

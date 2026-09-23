@@ -78,8 +78,43 @@ export function drawFaults(
   count: number,
   rng: Rng,
 ): FaultKind[] {
+  return drawFrom(eligibleFaults(world, active), count, rng);
+}
+
+/**
+ * WHAT A HEAVY DEFEAT BREAKS — the clock's draw minus the production line.
+ *
+ * A SEPARATE FUNCTION RATHER THAN A FLAG ON `drawFaults`, and the name is the whole reason. An
+ * optional `exclude` argument is a rule a caller can forget, and the two callers that owe this one
+ * (a battle's settlement and a clan war's) live in different files from each other and from the
+ * rule. A function nobody can call by accident cannot be omitted by accident either.
+ *
+ * See `FAULT.attackSpares` for why the production faults are spared: the recovery shield promises
+ * the struck world MORE output for eight hours, and an outage drawn by the same blow takes it
+ * straight back.
+ *
+ * Everything else is `drawFaults`: same pool rules, same without-replacement draw, same silence on
+ * a world that cannot break. Fewer than `count` come back when fewer fit.
+ */
+export function drawAttackFaults(
+  world: FaultWorld,
+  active: FaultSet,
+  count: number,
+  rng: Rng,
+): FaultKind[] {
+  return drawFrom(
+    eligibleFaults(world, active).filter((kind) => !FAULT.attackSpares.includes(kind)),
+    count,
+    rng,
+  );
+}
+
+/**
+ * The draw both lanes share. Without replacement: the pool is spliced as it is read, so one blow
+ * can never land the same fault twice.
+ */
+function drawFrom(pool: FaultKind[], count: number, rng: Rng): FaultKind[] {
   if (!(count > 0)) return [];
-  const pool = eligibleFaults(world, active);
   const drawn: FaultKind[] = [];
   while (drawn.length < count && pool.length > 0) {
     const [picked] = pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1);

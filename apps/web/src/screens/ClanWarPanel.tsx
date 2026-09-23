@@ -1,4 +1,6 @@
-import { MOBILE_HULLS, fleetCount, type Fleet, type HullId, type Resources } from '@astera/rules';
+import {
+  MOBILE_HULLS, fleetCount, pacesForMinutes, type Fleet, type HullId, type MissionPace, type Resources,
+} from '@astera/rules';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
@@ -7,8 +9,9 @@ import type { ClanWar, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
-import { countdown, useNow } from '../lib/time.js';
+import { countdown, duration, useNow } from '../lib/time.js';
 import { Button, Plate } from '../ui/kit/index.js';
+import { PaceRow } from '../ui/PaceRow.js';
 
 const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 const RESOURCE_KEYS = ['alloy', 'crystal', 'deuterium'] as const;
@@ -30,6 +33,7 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
   const [quotedKey, setQuotedKey] = useState<string | null>(null);
   const [acknowledgeShield, setAcknowledgeShield] = useState(false);
   const [acknowledgeStartShield, setAcknowledgeStartShield] = useState(false);
+  const [wantedPace, setWantedPace] = useState<MissionPace>(1);
   const selectedOriginId = originId.length > 0 ? originId : (worlds[0]?.planet.id ?? '');
   const selectedDonorId = donorId.length > 0 ? donorId : (worlds[0]?.planet.id ?? '');
   const origin = worlds.find((world) => world.planet.id === selectedOriginId);
@@ -47,6 +51,14 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
       : inbound ? t('clanWar.inboundReason')
         : operation.pool.waves === 0 ? t('clanWar.noWaveReason')
           : operation.pool.combatHulls === 0 ? t('clanWar.noCombatReason') : null;
+  /*
+    WHEN THE STRIKE LANDS IS THE LEADER'S CALL. Review 2026-09-22, #2 · plan §15.5a.
+    The server times the combined leg at full speed; the rungs divide it, so the arrival on screen
+    is the arrival the strike flies. A rung that stops being legal falls back to full speed.
+  */
+  const strikeMinutes = operation?.pool.strikeMinutes ?? null;
+  const strikePaces = strikeMinutes === null ? [] : pacesForMinutes(strikeMinutes);
+  const strikePace = strikePaces.includes(wantedPace) ? wantedPace : 1;
 
   const setCount = (hull: HullId, value: number): void => {
     const next = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
@@ -250,11 +262,19 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
             {t('clanWar.acknowledgeShield')}
           </label>
         </>}
-        <div className="grid grid-cols-2 gap-2">
+        {strikeMinutes !== null && <>
+          <p data-clan-strike-eta className="text-caption text-dim">{t('clanWar.strikeEta', {
+            time: duration(strikeMinutes / strikePace) })}</p>
+          <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={setWantedPace}
+            hint={t('clanWar.paceHint')} />
+        </>}
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <Button variant="commit" size="sm" disabled={startReason !== null
             || (operation.startShieldWouldDrop !== null && !acknowledgeStartShield)
             || actions.start.isPending}
-            onClick={() => { actions.start.mutate(acknowledgeStartShield); }}>{t('clanWar.launch')}</Button>
+            onClick={() => { actions.start.mutate({
+              acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace,
+            }); }}>{t('clanWar.launch')}</Button>
           <Button size="sm" variant="ghost" disabled={actions.cancel.isPending}
             onClick={() => { actions.cancel.mutate(); }}>{t('clanWar.cancel')}</Button>
         </div>

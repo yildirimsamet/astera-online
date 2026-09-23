@@ -1,5 +1,6 @@
 /** Shared executable economy. No I/O, clock, mutable selection or runtime dependencies. */
 import type { BuildingId, GroundHullId, Hull, ResearchProjectId, Resources } from './types.js';
+import { ECONOMY_ADJUSTMENT } from './tempo.js';
 import { resourceValue } from './valuation.js';
 
 /**
@@ -60,20 +61,110 @@ export function profileIncome(level: number): Resources {
 }
 
 /**
- * Producer rungs beyond 12 must still pay back inside a 30-day season. Output
- * gains accelerate by six per cent of the base curve per late rung, while their
- * invoice horizon grows at 1.25x instead of the global 1.5x.
+ * LATE PRODUCER OUTPUT ACCELERATES. Owner request, 2026-09-20: output gains past rung 12 grow by six
+ * per cent of the base curve a rung. It used to travel with a price exception (x1.25 invoice growth
+ * past 12); that half is now `ECONOMY_CURVE`'s job.
  */
-export const PRODUCER_LATE_CURVE = {
+export const PRODUCER_LATE_OUTPUT = {
   startsAfter: 12,
-  outputLiftPerLevel: 0.06,
-  costGrowth: 1.25,
+  liftPerLevel: 0.06,
 } as const;
 
 export const producerOutputMult = (level: number): number =>
-  level <= PRODUCER_LATE_CURVE.startsAfter
+  level <= PRODUCER_LATE_OUTPUT.startsAfter
     ? 1
-    : 1 + (level - PRODUCER_LATE_CURVE.startsAfter) * PRODUCER_LATE_CURVE.outputLiftPerLevel;
+    : 1 + (level - PRODUCER_LATE_OUTPUT.startsAfter) * PRODUCER_LATE_OUTPUT.liftPerLevel;
+
+/**
+ * ONE INVOICE CURVE FOR THE PRODUCERS AND THE CORE THAT GATES THEM. Plan §15.7 (Faz 4.1),
+ * owner decision 2026-09-22.
+ *
+ * A rung's price is `hours x the income it adds`, so its payback is the hours, and the curve IS the
+ * growth of those hours. It was `1.5` per rung all the way up — while income grows as `L^1.3`, a
+ * marginal gain of about x1.07 a rung — so payback compounded at x1.45 a rung against a season that
+ * does not grow. The owner's brief put the cost of that plainly: Refinery 10, 11 and 12 are LOW
+ * levels in this economy, and a three-to-five day payback there ended the producer ladder on day
+ * five. The live season shows it: the field reached Refinery 11 by day 5 and stopped.
+ *
+ * TWO SLOPES, ONE SEAM. The opening keeps its calibrated `1.5` through `openingTop` — the Academy
+ * and the rehearsal teach those rungs and nothing about the late ladder is a reason to re-teach
+ * them. Past it every rung's hours grow by `growth`, so payback runs about a day at Refinery 10–12,
+ * two at 16, and four and a half at 20, where the rational sunset lands in the last week.
+ *
+ * THE CORE HAS ITS OWN, GENTLER SLOPE — `coreGrowth`. Owner decision, 2026-09-23. No producer may
+ * pass the Core, so a world at its own ceiling pays the Core rung AND the producer rungs for its
+ * next level; left on the old slope the Core froze the whole ladder at Core 12 (measured in the sim).
+ * On the producers' slope it went the other way: the sim's median reached Core 25 by day 30, and
+ * ground emplacements, flight bays, the attack tier and colony loyalty — all read off the Core LEVEL
+ * and balanced for Core ~12–18 — would each have needed re-balancing. The owner chose the middle:
+ * the Core's level stays where the live game already plays (median 13, top 17 on day 9), and below
+ * the Core ceiling a producer rung still repays in about a day.
+ *
+ * The Vault, the Shipyard and the Hangar keep their own prices; they buy protection, hulls and room,
+ * not output, and are not part of this decision.
+ *
+ * THE L12 PRICE EXCEPTION IS GONE; THE LATE OUTPUT LIFT STAYS. `PRODUCER_LATE_CURVE` used to do
+ * two things: bend the invoice to x1.25 past rung 12, and add six per cent of output a rung. The
+ * first is this curve's job now. The second is the owner's own request of 2026-09-20 (Refinery 14
+ * at 2,400 an hour, 15 at 2,750, late gains that accelerate), pinned in
+ * `owner-request-2026-09-20.test.ts`, and it is kept — priced on what it adds, see
+ * `producerOutputShare`, so it no longer bends the payback curve either.
+ */
+export const ECONOMY_CURVE = {
+  /** The last rung priced on the opening slope. */
+  openingTop: 6,
+  openingGrowth: 1.5,
+  /** Growth of a producer rung's repayment hours past the opening. */
+  growth: 1.16,
+  /** The Core's own growth past the opening — keeps its LEVEL in the range the level rules expect. */
+  coreGrowth: 1.35,
+} as const;
+
+const curveHours = (level: number, growth: number): number =>
+  ECONOMY_CURVE.openingGrowth ** (Math.min(level, ECONOMY_CURVE.openingTop) - 1)
+  * growth ** Math.max(0, level - ECONOMY_CURVE.openingTop);
+
+/**
+ * THE OPENING LIFT ON ALLOY, AND IT ENDS BY DECAYING. See `ECONOMY_ADJUSTMENT`.
+ *
+ * Flat across the opening, then a straight line back to 1.00 at `alloyLiftEndLevel` — the version
+ * with an EDGE at L9 made the next upgrade a downgrade, which is the one thing a ladder may never
+ * do. It lives beside the invoice because the Refinery's price now reads it (see `profileBuilding`).
+ */
+export const alloyLift = (level: number): number => {
+  const { earlyAlloyOutputMultiplier: lift, earlyAlloyMaxLevel: flat, alloyLiftEndLevel: end }
+    = ECONOMY_ADJUSTMENT;
+  if (level < 1) return 1;
+  if (level <= flat) return lift;
+  if (level >= end) return 1;
+  return 1 + (lift - 1) * (end - level) / (end - flat);
+};
+
+/**
+ * WHAT A PRODUCER RUNG ACTUALLY ADDS, AS A SHARE OF WHAT THE PROFILE SAYS IT ADDS. Faz 4.1 + 4.2.
+ *
+ * A rung is priced as `hours x the income it adds`, and the profile's delta is not what it adds
+ * wherever a multiplier sits on the output:
+ *
+ *   · the opening alloy lift DECAYS from L6 to L10, so each Refinery rung there adds less alloy than
+ *     its profile delta — 190, 145, 132, 118, 103 an hour — and a price read off the profile made
+ *     payback jump from seven hours to eighty-two across four rungs: the dead zone, landing on a new
+ *     commander's first two days;
+ *   · the late output lift (`producerOutputMult`) makes every rung past 12 add MORE, and priced off
+ *     the profile the payback fell off a cliff at 12→13 and then climbed again — the second seam.
+ *
+ * Priced on the output it really adds, every producer's payback follows the one curve: hours over
+ * `producerOutput`, whatever lifts sit on the ladder. The flat opening keeps its calibrated prices —
+ * the Refinery there still repays a quarter faster, which is what the opening lift was for.
+ */
+const producerOutputShare = (id: BuildingId, level: number): number => {
+  if (id === 'REFINERY' && level <= ECONOMY_ADJUSTMENT.earlyAlloyMaxLevel) return 1;
+  const key = id === 'REFINERY' ? 'alloy' : id === 'EXTRACTOR' ? 'crystal' : 'deuterium';
+  const lift = (l: number): number => (id === 'REFINERY' ? alloyLift(l) : 1) * producerOutputMult(l);
+  const at = (l: number): number => profileIncome(l)[key] * lift(l);
+  const profile = profileIncome(level)[key] - profileIncome(level - 1)[key];
+  return profile > 0 ? (at(level) - at(level - 1)) / profile : 1;
+};
 
 /** Each component consumes its own reference production-hours; there is no automatic conversion. */
 export function profileInvoice(income: Resources, hours: Resources): Resources {
@@ -109,10 +200,41 @@ const stretch = (level: number, days: number = ECONOMY_PROFILE.progressionDays) 
  */
 const HANGAR_PRICE_STAGE = [1, 1, 4, 7, 10, 13, 16, 18, 19, 20, 21] as const;
 /**
- * A rung costs a quarter more than the Core upgrade that opens it. Owner decision,
- * 2026-09-18 (was ×2): the Core is the real gate, so the Hangar stays a modest add-on.
+ * A rung costs a quarter more than the Core upgrade at its stage USED to. Owner decision,
+ * 2026-09-18 (was ×2). Since Faz 4.1 the Core rides `ECONOMY_CURVE` and the Hangar does not: the
+ * staged rungs keep the original slope, so this reads as "a quarter over the old Core stage", and
+ * the Core's reprice cannot move the Hangar silently. `hangar.test.ts` holds the figures.
  */
 const HANGAR_PRICE_MULT = 1.25;
+
+/**
+ * WHAT THE LATE HANGAR RUNGS COST — AUTHORED, AND DERIVED ONCE FROM THE FLEET THEY HOLD.
+ * Plan §15.5b item 2B.3, owner decision 2026-09-22.
+ *
+ * THE DEFECT, MEASURED: against the formation that fills the room each rung adds, the ladder
+ * charged 5% · 4% · 13% · 14% · 51% · 60% · 77% · 100% · 133%. The top rung cost a third MORE than
+ * every ship it could hold — and at Core 16 a commander's whole alloy store is 50,252 against a
+ * price of 931,263, eighteen full stores. Production past a store's ceiling overflows and is lost,
+ * so those were not expensive rungs. They could not be bought at all, by anyone, ever.
+ *
+ * THE RULE: one third of the reference formation, in that formation's own resource mix. The
+ * opening rungs are deliberately absent — they already cost 4–14% of what they hold, and a
+ * commander learning the game must not pay for this fix.
+ *
+ * WRITTEN DOWN RATHER THAN COMPUTED AT RUNTIME, because 2B.3 is explicit that a hull rebalance
+ * must not silently reprice infrastructure — and because the formation lives in `hulls.ts`, which
+ * imports this file. `hangar-price.test.ts` holds these figures against the third they came from,
+ * so a rebalance turns a test RED rather than quietly moving the economy.
+ *
+ * Keyed by the rung being BOUGHT; rungs 2–5 fall through to the staged curve below.
+ */
+export const HANGAR_LATE_COST: Readonly<Record<number, Resources>> = {
+  6: { alloy: 71_760, crystal: 17_940, deuterium: 0 },
+  7: { alloy: 136_509, crystal: 36_400, deuterium: 0 },
+  8: { alloy: 163_324, crystal: 43_550, deuterium: 0 },
+  9: { alloy: 190_138, crystal: 50_700, deuterium: 0 },
+  10: { alloy: 219_390, crystal: 58_500, deuterium: 0 },
+};
 
 export interface ProfileBuilding {
   cost: Resources;
@@ -137,14 +259,24 @@ export function profileBuilding(
   const delta = { alloy: income.alloy - previous.alloy, crystal: income.crystal - previous.crystal,
     deuterium: income.deuterium - previous.deuterium };
   const producer = id === 'REFINERY' || id === 'EXTRACTOR' || id === 'DEUTERIUM_PLANT';
-  const lateProducerSteps = producer ? Math.max(0, level - PRODUCER_LATE_CURVE.startsAfter) : 0;
-  const horizon = 0.5 * 1.5 ** (level - 1) * stretch(level, days)
-    * (PRODUCER_LATE_CURVE.costGrowth / 1.5) ** lateProducerSteps;
+  // The producers and the Core ride `ECONOMY_CURVE`, each on its own slope; everything else keeps
+  // the original one.
+  const slope = producer ? curveHours(level, ECONOMY_CURVE.growth)
+    : id === 'CORE' ? curveHours(level, ECONOMY_CURVE.coreGrowth)
+      : 1.5 ** (level - 1);
+  const horizon = 0.5 * slope * stretch(level, days)
+    * (producer ? producerOutputShare(id, level) : 1);
   const labor = Math.min(480, 2 * 1.36 ** (level - 1));
   const shares: Record<BuildingId, Resources> = {
     REFINERY: { alloy: 0.8, crystal: 0.2, deuterium: 0 },
     EXTRACTOR: { alloy: 0.4, crystal: 0.6, deuterium: 0 },
-    CORE: { alloy: 0.65, crystal: 0.35, deuterium: 0 },
+    // Past the opening the Core leans to crystal: on its own steeper slope it is most of a level's
+    // price, and the old 0.65/0.35 pushed a level's crystal charge under the floor
+    // `invariants.test.ts` holds. Value-neutral — a crystal is worth two alloy. Owner decision
+    // 2026-09-23 (the Core's own curve).
+    CORE: level > ECONOMY_CURVE.openingTop
+      ? { alloy: 0.55, crystal: 0.45, deuterium: 0 }
+      : { alloy: 0.65, crystal: 0.35, deuterium: 0 },
     VAULT: { alloy: 0.8, crystal: 0.8, deuterium: 0 },
     SHIPYARD: { alloy: 1.3, crystal: 1, deuterium: 0 },
     DEUTERIUM_PLANT: { alloy: 0.6, crystal: 1.2, deuterium: 0 },
@@ -164,6 +296,19 @@ export function profileBuilding(
   // A Hangar rung is raised at the pace of the stage it is priced at, not of its rung.
   const work = id === 'HANGAR' ? Math.min(480, 2 * 1.36 ** (referenceLevel - 1)) : labor;
   const hours = { alloy: h * shares[id].alloy, crystal: h * shares[id].crystal, deuterium: 0 };
+
+  /**
+   * THE LATE HANGAR RUNGS ARE PRICED BY THE FLEET THEY HOLD, NOT BY AN ECONOMY STAGE.
+   * Plan 2B.3, owner decision 2026-09-22 — see `HANGAR.lateCost` for the measurement and the rule.
+   *
+   * It lands HERE rather than in `buildingCost` so there is exactly one answer to "what does this
+   * rung cost": the timer beside it is authored work and is unaffected, which is the existing rule
+   * that a building's clock is not its invoice.
+   */
+  const authored = id === 'HANGAR' ? HANGAR_LATE_COST[level] : undefined;
+  if (authored) {
+    return { cost: authored, minutes: work, referenceLevel, repaymentHours: h, recipeHours: hours };
+  }
 
   /**
    * PAST THE LAST GATE THE YARD SELLS A STRAIGHT LINE, SO IT COSTS ONE. D185.
@@ -353,6 +498,9 @@ const PIVOT_ROUND_TRIP = 20;
  */
 const ESCORT_ROUND_TRIP = 18;
 
+/** Hangar room a collector occupies, by tier. Hand-set like its price; owner decision 2026-09-22. */
+const COLLECTOR_BULK = [8, 17, 40, 86] as const;
+
 export function profileHull(live: Hull): ProfileHull {
   const id = live.id, tier = live.tier ?? 1;
   const steps = [1, 2.5, 6, 15], base = [300, 750, 1800, 4500];
@@ -408,7 +556,13 @@ export function profileHull(live: Hull): ProfileHull {
   */
   if (live.profile === 'COLLECTOR') return { ...common, atk: 0, hp: Math.round(90 * steps[tier - 1]!),
     alloy: live.alloy, crystal: live.crystal, deuterium: live.deuterium, cargo: 0,
-    bulk: [3, 6, 14, 30][tier - 1]!, referenceRoundTrip: PIVOT_ROUND_TRIP,
+    /*
+      ITS ROOM IS HAND-SET TOO, LIKE ITS PRICE AND ITS THIRST. Owner decision, 2026-09-22: 40, up
+      from the support table's 14. A collector is a claw and a hold for wreckage, and the hold is
+      the point — a fleet of them has to compete with warships for the hangar, or lifting a field
+      costs nothing anybody feels. See `SALVAGE.perCollector` for the measurement.
+    */
+    bulk: COLLECTOR_BULK[tier - 1]!, referenceRoundTrip: PIVOT_ROUND_TRIP,
     speed: profileFlightSpeed(PIVOT_ROUND_TRIP) };
   if (support) return { ...common, atk: 0, hp: Math.round(90 * steps[tier - 1]!),
     alloy: [600, 1500, 3600, 9000][tier - 1]!, crystal: [150, 400, 1000, 2600][tier - 1]!,

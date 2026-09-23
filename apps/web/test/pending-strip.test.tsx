@@ -22,6 +22,7 @@ let rows: PendingThread[] = [];
 let runs: MiningRun[] = [];
 let contacts: Contact[] = [];
 const recall = vi.fn();
+const recallFleet = vi.fn();
 
 vi.mock('../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../src/api/queries.js');
@@ -31,6 +32,7 @@ vi.mock('../src/api/queries.js', async () => {
     useMining: () => ({ data: { runs } }),
     useTraffic: () => ({ data: { contacts } }),
     useRecallMining: () => ({ mutate: recall, isPending: false }),
+    useRecallTransfer: () => ({ mutate: recallFleet, isPending: false }),
   };
 });
 
@@ -252,6 +254,41 @@ describe('the pending strip', () => {
   it('does not count completed mining rows as airborne', () => {
     show([], [run({ status: 'done' })]);
     expect(screen.getByText(/nothing in flight/i)).toBeInTheDocument();
+  });
+
+  /**
+   * CALLING YOUR OWN TRANSFER BACK. Owner decision, 2026-09-21.
+   *
+   * The same row shape as the Prospector recall, deliberately: a commander who has learned to pull
+   * a drill back should not have to learn a second control to pull a squadron back. It shows only
+   * while the flight can actually be turned — once it has been recalled, or once it is down, the
+   * button would be a promise the server refuses.
+   */
+  it('offers recall on an outbound transfer the server says may be turned', async () => {
+    recallFleet.mockReset();
+    const out = show([thread({
+      kind: 'transfer', id: 'm-7', recallable: true,
+      path: {
+        from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 0 },
+        departAt: new Date(Date.now() - 60_000), arriveAt: new Date(Date.now() + 60_000),
+      },
+    })]);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    await user.click(screen.getByRole('button', { name: /recall fleet/i }));
+    expect(recallFleet).toHaveBeenCalledWith({ missionId: 'm-7' }, expect.any(Object));
+
+    out.unmount();
+    show([thread({ kind: 'transfer', id: 'm-7', recallable: false })]);
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
+  });
+
+  it('never offers recall on a raid, whatever the server sent', async () => {
+    show([thread({ kind: 'fleet', id: 'm-8' })]);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /open flights/i }));
+    expect(screen.queryByRole('button', { name: /recall fleet/i })).toBeNull();
   });
 
   it('offers recall only while a Prospector run is outbound', async () => {

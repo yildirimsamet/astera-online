@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALL_HULLS, ECONOMY_ADJUSTMENT, HULLS, YARD_GATE_TOP, alloyRate, buildingCost, crystalRate,
-  yardThroughput,
+  producerOutputMult, yardThroughput,
 } from '../src/index.js';
 
 /** The last rung that unlocks a hull, read off the table rather than typed. */
@@ -11,6 +11,21 @@ const LAST_GATE = Math.max(...ALL_HULLS.map((id) => HULLS[id].minShipyard));
 const hoursAt = (level: number): number => {
   const cost = buildingCost('SHIPYARD', level - 1);
   return (cost.alloy + cost.crystal) / (alloyRate(level) + crystalRate(level));
+};
+
+/**
+ * THE SAME HOUR WITHOUT THE LATE OUTPUT LIFT — the hour the flat regime is priced on. Faz 4.1.
+ *
+ * The owner's 2026-09-20 request lifts producer output six per cent a rung past 12, and it is kept.
+ * The Yard is NOT repriced for it: its whole ladder past the gate must still fit one season of the
+ * frozen reference (below), and pricing it on the lifted hour breaks that bound. So "the same time
+ * for the same speed" is held in the profile's hours, and a late world — whose real hour is bigger —
+ * buys yard speed for a little LESS of its own time. A gift of the lift, stated rather than hidden.
+ */
+const profileHoursAt = (level: number): number => {
+  const cost = buildingCost('SHIPYARD', level - 1);
+  const lift = producerOutputMult(level);
+  return (cost.alloy + cost.crystal) / ((alloyRate(level) + crystalRate(level)) / lift);
 };
 
 /**
@@ -66,9 +81,11 @@ describe('the Yard ladder', () => {
    */
   it('charges a constant number of production-hours for every rung past the gate', () => {
     const plateau: number = ECONOMY_ADJUSTMENT.alloyLiftEndLevel;
-    const flat = hoursAt(plateau);
+    const flat = profileHoursAt(plateau);
     for (let level = plateau; level <= 21; level++) {
-      expect(hoursAt(level), `rung ${String(level)}`).toBeCloseTo(flat, 2);
+      expect(profileHoursAt(level), `rung ${String(level)}`).toBeCloseTo(flat, 2);
+      // And in the world's own lifted hour it never costs MORE than the plateau.
+      expect(hoursAt(level), `rung ${String(level)}`).toBeLessThanOrEqual(flat + 0.001);
     }
     // Inside the taper the rung is cheaper still, never dearer than the plateau.
     for (let level = LAST_GATE + 1; level < plateau; level++) {

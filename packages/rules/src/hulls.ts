@@ -9,8 +9,10 @@ import type {
   GroundHullId,
   Hull,
   HullClass,
+  HullFamily,
   HullId,
   MobileHullId,
+  ResearchProjectId,
 } from './types.js';
 
 /**
@@ -76,7 +78,7 @@ export const HULLS: Record<HullId, Hull> = {
    */
   GARBAGE_COLLECTOR: { id: 'GARBAGE_COLLECTOR', name: 'Garbage Collector', tier: 3, family: 'SPECIALIST', profile: 'COLLECTOR', cls: 'SUPPORT', atk: 0, hp: 540, speed: 151, cargo: 0, alloy: 10_000, crystal: 5_000, deuterium: 0, minShipyard: 4, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 1 }], ground: false },
 
-  CATACLYSM: { id: 'CATACLYSM', name: 'Cataclysm', tier: 4, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 800, hp: 448, speed: 106, cargo: 160, alloy: scalePrice(4200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1700, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(325, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 4 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
+  CATACLYSM: { id: 'CATACLYSM', name: 'Cataclysm', tier: 4, family: 'OFFENSIVE', profile: 'STRIKER', cls: 'LANCE', atk: 800, hp: 448, speed: 106, cargo: 160, alloy: scalePrice(4200, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1700, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(325, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
   /**
    * THE TOP TIER'S SKIRMISHER, AND THE REASON THE TIER EXISTS AT ALL. D196.
    *
@@ -87,8 +89,8 @@ export const HULLS: Record<HullId, Hull> = {
    * number: this entry carries identity, gates and role, and the shared economy
    * prices it like everything else.
    */
-  CORSAIR: { id: 'CORSAIR', name: 'Corsair', tier: 4, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 360, hp: 1331, speed: 202, cargo: 285, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 2 }, { project: 'SHIP_PROPULSION', level: 4 }], ground: false },
-  CITADEL: { id: 'CITADEL', name: 'Citadel', tier: 4, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 300, hp: 1656, speed: 56, cargo: 180, alloy: scalePrice(5000, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(2100, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(300, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 4 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  CORSAIR: { id: 'CORSAIR', name: 'Corsair', tier: 4, family: 'OFFENSIVE', profile: 'RAIDER', cls: 'SKIRMISHER', atk: 360, hp: 1331, speed: 202, cargo: 285, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  CITADEL: { id: 'CITADEL', name: 'Citadel', tier: 4, family: 'DEFENSIVE', profile: 'FORTRESS', cls: 'BULWARK', atk: 300, hp: 1656, speed: 56, cargo: 180, alloy: scalePrice(5000, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(2100, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(300, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
   /**
    * THE TOP TIER'S ESCORT — the middle of a spread that had only its two ends. D196.
    *
@@ -98,7 +100,7 @@ export const HULLS: Record<HullId, Hull> = {
    * the fewest. Bulwark-class like the Citadel, so it answers a Lance and falls to
    * a Skirmisher; cheaper than one, because it buys guns with the armour it gives up.
    */
-  PALADIN: { id: 'PALADIN', name: 'Paladin', tier: 4, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 339, hp: 1413, speed: 121, cargo: 475, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 2 }, { project: 'SHIP_POWER', level: 2 }], ground: false },
+  PALADIN: { id: 'PALADIN', name: 'Paladin', tier: 4, family: 'DEFENSIVE', profile: 'ESCORT', cls: 'BULWARK', atk: 339, hp: 1413, speed: 121, cargo: 475, alloy: scalePrice(4500, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(1200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: scalePrice(80, ECONOMY_TEMPO.hullPrice), minShipyard: 6, requiredResearch: [{ project: 'STARSHIP_ENGINEERING', level: 2 }, { project: 'SHIP_ARMOR', level: 2 }], ground: false },
   /**
    * THE TOP TIER'S TRANSPORT. D196, closing D195b's asymmetry: combat ran to tier 4
    * and logistics stopped at 3, so a Cataclysm fleet escorted an Atlas.
@@ -379,12 +381,26 @@ const inCycle = (cls: HullClass): cls is CombatClass => cls !== 'SUPPORT';
  * outside the cycle in both directions, and a chip reading "Courier ▸ strong vs
  * Bulwark" would be teaching a rule that does not exist.
  */
-export const counters = (cls: HullClass): CombatClass | null =>
-  inCycle(cls) ? COUNTERS[cls] : null;
+export function counters(cls: CombatClass): CombatClass;
+export function counters(cls: HullClass): CombatClass | null;
+export function counters(cls: HullClass): CombatClass | null {
+  return inCycle(cls) ? COUNTERS[cls] : null;
+}
 
-/** What is strong against THIS class — the thing to be afraid of. Null for SUPPORT. */
-export const counteredBy = (cls: HullClass): CombatClass | null =>
-  inCycle(cls) ? COMBAT_CLASSES.find((other) => COUNTERS[other] === cls) ?? null : null;
+/**
+ * What is strong against THIS class — the thing to be afraid of. Null for SUPPORT.
+ *
+ * BOTH OF THESE ARE OVERLOADED BECAUSE THE CYCLE IS CLOSED OVER THE THREE COMBAT CLASSES, and a
+ * caller that already holds a `CombatClass` should not have to prove that again. The `| null`
+ * exists for SUPPORT alone (see `counters` for why it is not an oversight), and a caller inside
+ * the cycle was otherwise left either widening its own type or reaching for the non-null assertion
+ * this codebase bans. The overload states the fact once, here, where the cycle is defined.
+ */
+export function counteredBy(cls: CombatClass): CombatClass;
+export function counteredBy(cls: HullClass): CombatClass | null;
+export function counteredBy(cls: HullClass): CombatClass | null {
+  return inCycle(cls) ? COMBAT_CLASSES.find((other) => COUNTERS[other] === cls) ?? null : null;
+}
 
 export function counterMult(attacker: HullClass, defender: HullClass): number {
   if (attacker === 'SUPPORT') return 0;
@@ -582,4 +598,49 @@ export function fleetDiff(before: Fleet, after: Fleet): Fleet {
     if (n > 0) d[id] = n;
   }
   return d;
+}
+
+/* ── the gate architecture ────────────────────────────────────── */
+
+/**
+ * THREE GATES, EACH ANSWERING A DIFFERENT QUESTION. Plan §15.5b, item 2B.2.
+ *
+ *   · the SHIPYARD is the physical gate — can this world build something this big at all;
+ *   · `STARSHIP_ENGINEERING` is the permission — may this commander build starships of this class;
+ *   · a DOCTRINE is the ROLE — one role-relevant ladder, at `DOCTRINE_OPENS_AT`, opens the hull.
+ *
+ * Tier 3 was already built this way. Tier 4 was not: a Citadel wanted Engineering 2 AND Armour 4
+ * AND Power 2, so "unlock the tier-4 wall" meant "buy most of the research tree", and the measured
+ * fleet path put a quarter of its whole cost in research (first `navy-package` cut, 25.3% at T4).
+ *
+ * THE DOCTRINE REQUIREMENT IS NOT REMOVED, only narrowed to one rung. Making it optional pushes
+ * every commander to the same universal mixed roster and lets an under-teched one field a tier-4
+ * wall as though it were ready — which is a different and worse problem than an expensive gate.
+ */
+export const DOCTRINE_OF_FAMILY = {
+  OFFENSIVE: 'SHIP_POWER',
+  DEFENSIVE: 'SHIP_ARMOR',
+  CARGO: 'SHIP_PROPULSION',
+} as const satisfies Partial<Record<HullFamily, ResearchProjectId>>;
+
+/**
+ * THE RUNG THAT OPENS A HULL — and everything above it is specialisation.
+ *
+ * Two, because one is the rung a commander reaches on the way to anything and would gate nothing.
+ * Levels 3–5 are bought because they make a wall harder, never because a hull refuses to exist
+ * without them.
+ */
+export const DOCTRINE_OPENS_AT = 2;
+
+/**
+ * The single doctrine a hull is opened by, or `null` when it is opened by nothing but permission.
+ *
+ * A SPECIALIST answers with the weapon it carries rather than with a family ladder: a Nullifier is
+ * gated on Gravitic Charges because that IS its role, and a Garbage Collector on nothing at all.
+ */
+export function hullDoctrine(id: HullId): ResearchProjectId | null {
+  const doctrine = HULLS[id].requiredResearch.find(
+    (row) => row.project !== 'STARSHIP_ENGINEERING',
+  );
+  return doctrine?.project ?? null;
 }

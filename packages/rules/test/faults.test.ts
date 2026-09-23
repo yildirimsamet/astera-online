@@ -7,6 +7,7 @@ import {
   crystalRate,
   deuteriumRate,
   deuteriumStorageCap,
+  drawAttackFaults,
   drawFault,
   drawFaults,
   eligibleFaults,
@@ -507,5 +508,70 @@ describe('bir seferde birden fazla arıza', () => {
       for (const kind of drawFaults(colony(12, 4), [], 2, mulberry32(seed))) seen.add(kind);
     }
     expect(seen.size).toBe(FAULT_KINDS.length);
+  });
+});
+
+/**
+ * AĞIR BİR YENİLGİ, KALKANIN AZ ÖNCE SÖZ VERDİĞİ ÜRETİMİ KIRAMAZ.
+ *
+ * `ABUSE.recoveryShieldHours` + `recoveryProductionMult` bir yenilgiden sonra dünyaya 8 saat koruma
+ * ve %50 fazla üretim veriyor. `FAULT.attackFaults` ise AYNI olayda iki arıza çekiyor ve sekiz
+ * arızanın üçü (rafineri, çıkarıcı, tesis) doğrudan üretimi durduruyor — iki çekilişte en az
+ * birinin gelme olasılığı %64. Yani söz verilen telafi, onu veren olay tarafından iptal ediliyordu.
+ *
+ * Oyuncu birebir bildirdi: *"akın yedim üretim 15 dk durdu diyor, millete boost bana anti boost
+ * sanırım"* (2026-09-21).
+ *
+ * ÇÖZÜM DAR: yenilgi hâlâ iki şey kırıyor — ama üretim hattını değil. Saatin kendi çekilişi
+ * (`drawFaults`) sekizinin de hakkını saklı tutuyor; değişen yalnızca SALDIRININ havuzu.
+ */
+describe('saldırı arızaları üretimi kırmaz', () => {
+  it('kaçınılan arızalar tek yerde tanımlı ve üç üretim hattı', () => {
+    expect([...FAULT.attackSpares].sort()).toEqual(
+      ['EXTRACTOR_OUTAGE', 'PLANT_OUTAGE', 'REFINERY_OUTAGE'],
+    );
+  });
+
+  it('hiçbir tohumda üretim arızası çekmez', () => {
+    for (let seed = 0; seed < 500; seed++) {
+      for (const kind of drawAttackFaults(colony(12, 4), [], 2, mulberry32(seed))) {
+        expect(FAULT.attackSpares).not.toContain(kind);
+      }
+    }
+  });
+
+  it('yer varsa yine tam sayıda ve birbirinden farklı çeker', () => {
+    for (let seed = 0; seed < 500; seed++) {
+      const drawn = drawAttackFaults(colony(12, 4), [], FAULT.attackFaults, mulberry32(seed));
+      expect(drawn).toHaveLength(FAULT.attackFaults);
+      expect(new Set(drawn).size).toBe(FAULT.attackFaults);
+    }
+  });
+
+  it('kırılabilir üretim dışı arıza kalmadıysa sessizce hiçbir şey çekmez', () => {
+    const standing = FAULT_KINDS.filter((kind) => !FAULT.attackSpares.includes(kind));
+    expect(drawAttackFaults(colony(12, 4), standing, 2, mulberry32(1))).toEqual([]);
+  });
+
+  it('tek bir uygun arıza kaldıysa bir tane çeker', () => {
+    const standing = FAULT_KINDS.filter(
+      (kind) => kind !== 'VAULT_LEAK' && !FAULT.attackSpares.includes(kind),
+    );
+    expect(drawAttackFaults(colony(12, 4), standing, 2, mulberry32(1))).toEqual(['VAULT_LEAK']);
+  });
+
+  it('kıramayan dünyalarda saatin kuralıyla aynı susar', () => {
+    expect(drawAttackFaults({ kind: 'CAPITAL', coreLevel: 20, plantLevel: 8 }, [], 2, mulberry32(1)))
+      .toEqual([]);
+    expect(drawAttackFaults(colony(FAULT.minCoreLevel - 1, 4), [], 2, mulberry32(1))).toEqual([]);
+  });
+
+  /** REGRESYON: saatin çekilişi dokunulmadı — daraltma YALNIZCA saldırı lanesinde. */
+  it('saatin kendi çekilişi hâlâ üretim arızası çekebilir', () => {
+    const seen = new Set<FaultKind>();
+    for (let seed = 0; seed < 500; seed++) {
+      for (const kind of drawFaults(colony(12, 4), [], 2, mulberry32(seed))) seen.add(kind);
+    }
+    for (const spared of FAULT.attackSpares) expect(seen).toContain(spared);
   });
 });

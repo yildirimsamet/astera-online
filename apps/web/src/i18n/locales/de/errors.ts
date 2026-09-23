@@ -14,6 +14,13 @@
  */
 
 export const errors = {
+  /** The movement package's refusals. Self-review 2026-09-23, R4. */
+  BAD_PACE: 'Das ist keine der Fluggeschwindigkeiten',
+  PACE_TOO_SLOW: 'Bei diesem Tempo bliebe die Flotte über das 12-Stunden-Limit in der Luft. Wähle ein schnelleres',
+  NOT_RECALLABLE: 'Dieser Flug kann nicht mehr zurückgerufen werden – er ist gelandet oder hat schon einmal gewendet',
+  NOT_FOUND: 'Das gibt es nicht mehr',
+  SHIELDED_SENDER: 'Solange dein Neulingsschild aktiv ist, kannst du keinem anderen Kommandanten Ressourcen senden',
+  TRANSFER_COOLDOWN: 'Diese Welt entlädt noch das letzte Geschwader – in {{seconds}} s kannst du wieder übertragen',
   ADMIN_FORBIDDEN: 'Administratorzugriff ist erforderlich',
   PLANET_NOT_OWNED: 'Du kontrollierst diese Welt nicht',
   WORLD_RECOVERING: 'Diese Welt erholt sich',

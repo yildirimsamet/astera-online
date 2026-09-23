@@ -34,6 +34,8 @@ export const clanWar = {
   noOrigin: 'Wähle eine deiner Welten.', noFleet: 'Wähle mindestens ein Schiff.',
   quoteFirst: 'Prüfe vor dem Senden die Route.',
   launch: 'Gemeinsamen Angriff starten', cancel: 'Ziel aufheben',
+  strikeEta: 'Der Schlag landet {{time}} nach dem Start',
+  paceHint: 'Langsamer landet später – wähle die Stunde des Einschlags. Kein Zusatztreibstoff; Überlebende fliegen mit voller Geschwindigkeit heim; nichts bleibt über 12 Std. in der Luft.',
   inboundReason: 'Unterstützung ist unterwegs. Warte auf ihre Ankunft.',
   noCombatReason: 'Mindestens ein Kampfschiff muss im Verband sein.',
   noWaveReason: 'Vor dem Start wird ein Beitrag benötigt.',

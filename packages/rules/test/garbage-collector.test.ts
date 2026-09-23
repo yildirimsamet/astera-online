@@ -91,12 +91,19 @@ describe('the Garbage Collector in the catalogue', () => {
   });
 
   /**
-   * THE ONE HULL WHOSE THIRST IS SET BY HAND. The owner's card figure is 50
-   * deuterium, so it is asserted in the same unit the player reads.
+   * THE ONE HULL WHOSE THIRST IS SET BY HAND, and the rule is the hand rather than the figure.
+   *
+   * The card quoted 50 from 2026-09-20 and quotes 100 from 2026-09-22; what has never changed is
+   * that the number is AUTHORED and that the card and the charge read the same mass. Asserting the
+   * figure here as well would make a recalibration look like a broken rule.
    */
   it('drinks the owner’s hand-set thirst, not what its price would say', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(50);
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass / 10);
     expect(hullFuelMass('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass);
+    // And it is genuinely hand-set: its price would say something else entirely.
+    expect(hullFuelMass('GARBAGE_COLLECTOR')).not.toBe(
+      Math.ceil(resourceValue(HULLS.GARBAGE_COLLECTOR) * FUEL.perValue),
+    );
     // Every other hull still drinks off its price.
     expect(hullFuelMass('ARGOSY')).toBe(
       Math.ceil(resourceValue(HULLS.ARGOSY) * FUEL.perValue * (FUEL.pivotRoundTrip / 38)),
@@ -166,19 +173,28 @@ describe('the Garbage Collector in a fight', () => {
 });
 
 describe('what a collector lifts off a wreck', () => {
-  it('is fifteen thousand a hull, and only collectors count', () => {
-    expect(SALVAGE.perCollector).toBe(15_000);
+  /**
+   * ONE HULL'S ROOM, AND ONLY COLLECTORS COUNT.
+   *
+   * The figure itself was 15,000 and is now `SALVAGE.perCollector`, halved in the 2026-09-22
+   * recalibration — so this asks the constant. What it is really holding is the OTHER half: a
+   * warship or a transport standing in the same wreck lifts nothing at all, whatever it is.
+   * `collector-calibration.test.ts` holds the number and the reasoning behind it.
+   */
+  it('is one hull\'s room a collector, and only collectors count', () => {
     expect(salvageCapacity({})).toBe(0);
     expect(salvageCapacity({ DART: 40, ARGOSY: 3 })).toBe(0);
-    expect(salvageCapacity({ GARBAGE_COLLECTOR: 1 })).toBe(15_000);
-    expect(salvageCapacity({ DART: 4, GARBAGE_COLLECTOR: 3 })).toBe(45_000);
+    expect(salvageCapacity({ GARBAGE_COLLECTOR: 1 })).toBe(SALVAGE.perCollector);
+    expect(salvageCapacity({ DART: 4, GARBAGE_COLLECTOR: 3 })).toBe(SALVAGE.perCollector * 3);
   });
 
+  /** Half the wreck, so the proportions are readable however the lift is calibrated. */
   it('takes in the wreck’s own proportions and leaves the rest in orbit', () => {
-    const wreck = { alloy: 20_000, crystal: 8_000, deuterium: 2_000 };
+    const unit = SALVAGE.perCollector / 15;
+    const wreck = { alloy: unit * 20, crystal: unit * 8, deuterium: unit * 2 };
     const { salvage, field } = settleWreck(wreck, { GARBAGE_COLLECTOR: 1 });
-    expect(salvage).toEqual({ alloy: 10_000, crystal: 4_000, deuterium: 1_000 });
-    expect(field).toEqual({ alloy: 10_000, crystal: 4_000, deuterium: 1_000 });
+    expect(salvage).toEqual({ alloy: unit * 10, crystal: unit * 4, deuterium: unit });
+    expect(field).toEqual({ alloy: unit * 10, crystal: unit * 4, deuterium: unit });
   });
 
   it('never takes more than its room, however big the wreck', () => {
@@ -191,9 +207,11 @@ describe('what a collector lifts off a wreck', () => {
   });
 
   it('takes the whole wreck when it has the room, and leaves no field behind', () => {
-    const wreck = { alloy: 6_000.4, crystal: 2_500.9, deuterium: 300.2 };
+    // Comfortably inside one collector's room, whatever that room is calibrated to.
+    const unit = SALVAGE.perCollector / 15;
+    const wreck = { alloy: unit * 6 + 0.4, crystal: unit * 2.5 + 0.9, deuterium: unit * 0.3 + 0.2 };
     const { salvage, field } = settleWreck(wreck, { GARBAGE_COLLECTOR: 1 });
-    expect(salvage).toEqual({ alloy: 6_000, crystal: 2_500, deuterium: 300 });
+    expect(salvage).toEqual({ alloy: unit * 6, crystal: unit * 2.5, deuterium: unit * 0.3 });
     expect(field).toBeNull();
   });
 
@@ -215,8 +233,8 @@ describe('what a collector lifts off a wreck', () => {
   });
 
   it('keeps the public floor on what is LEFT, not on what the battle made', () => {
-    // 15,200 made, 15,000 lifted: 200 stays, and 200 is no field at all.
-    const made = { alloy: 15_200, crystal: 0, deuterium: 0 };
+    // One collector's room plus 200: the 200 stays behind, and 200 is no field at all.
+    const made = { alloy: SALVAGE.perCollector + 200, crystal: 0, deuterium: 0 };
     expect(settleWreck(made, { GARBAGE_COLLECTOR: 1 }).field).toBeNull();
     // No collector: the old rule, exactly.
     expect(settleWreck({ alloy: DEBRIS.minimum - 1, crystal: 0, deuterium: 0 }, {}).field).toBeNull();

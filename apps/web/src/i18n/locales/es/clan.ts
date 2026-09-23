@@ -285,6 +285,7 @@ export const clan = {
     fits: 'Se adapta',
     overLimit: 'Demasiado',
     cannotLand: 'Ese mundo aún no puede usar todos los naves de este regalo.',
+    senderShielded: 'Tu escudo de novato retiene tus recursos en casa {{duration}} más. Podrás enviar ayuda cuando termine.',
     tooLate: 'El vuelo y un posible regreso no pueden finalizar antes de que termine la temporada.',
     possibleReturn: 'Si todo el convoy debe regresar, puede regresar a casa de forma segura en {{duration}}.',
     plannedReturn: 'Después de la entrega, el transporte estará en casa en {{duration}}.',

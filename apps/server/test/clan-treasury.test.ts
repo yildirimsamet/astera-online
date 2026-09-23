@@ -3,7 +3,6 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   MULTI_WORLD,
   SERVERS,
-  buildingCost,
   clanHangarCapacity,
   clanLevelUpgradeCost,
 } from '@astera/rules';
@@ -130,7 +129,12 @@ describe('a joint-war clan opens at level one with nothing saved', () => {
     expect(view.available).toBe(true);
     expect(view.level).toBe(1);
     expect(view.treasury).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
-    expect(view.nextCost).toEqual(buildingCost('HANGAR', 1));
+    /*
+      TWICE THE PERSONAL RUNG, FOR TWICE THE ROOM. Owner decision, 2026-09-22 — read through
+      `clanLevelUpgradeCost` rather than `buildingCost` so the clan ladder's own rule is what this
+      asserts, not the personal ladder it is derived from.
+    */
+    expect(view.nextCost).toEqual(clanLevelUpgradeCost(1));
     expect(view.hangar.total).toBe(clanHangarCapacity(1));
     expect(view.hangar.used).toBe(0);
     expect(view.hangar.reserved).toBe(0);
