@@ -30,7 +30,7 @@ export const academy = {
     "foundry": "La Fonderie augmente ta production depuis l'orbite. Tu n'as pas besoin de la construire pour l'instant.",
     "intel": "Le Renseignement te permet de repérer les opportunités et d'évaluer les risques avant d'envoyer ta flotte. Appuie sur l'onglet Renseignement.",
     "uplink": "La Liaison Orbitale soutient le réseau de capteurs en orbite. Elle débloque les améliorations du Télescope et du Radar.",
-    "telescope": "Appuie sur le bouton Télescope pour afficher son champ de vision. Tu peux identifier les vaisseaux qui se trouvent dans cette zone.",
+    "telescope": "Ouvre Vue et active la portée du télescope pour afficher son champ de vision. Tu peux identifier les vaisseaux qui se trouvent dans cette zone.",
     "radar": "Le Radar détecte les mouvements à plus grande distance. Détecter une flotte ne signifie pas connaître les vaisseaux qui la composent.",
     "veil": "Le Voile dissimule aux observateurs les informations concernant ta planète. Il ne rend pas ta flotte invisible.",
     "defend": "La Défense protège tes ressources et augmente le prix à payer pour tout assaillant. Appuie sur l'onglet Défense.",

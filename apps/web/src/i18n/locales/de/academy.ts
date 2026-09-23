@@ -30,7 +30,7 @@ export const academy = {
     foundry: 'Die Gießerei steigert die Produktion aus dem Orbit. Du musst sie jetzt noch nicht bauen.',
     intel: 'Aufklärung zeigt dir Chancen und hilft dir, vor einem Start Risiken einzuschätzen. Öffne den Reiter „Aufklärung“.',
     uplink: 'Der Uplink verbindet deine Sensoren im Orbit. Er schaltet Verbesserungen für Teleskop und Radar frei.',
-    telescope: 'Schalte das Teleskop ein, um deinen Sichtbereich zu sehen. Schiffe innerhalb dieses Bereichs kannst du identifizieren.',
+    telescope: 'Öffne Ansicht und schalte die Teleskop-Reichweite ein, um deinen Sichtbereich zu sehen. Schiffe innerhalb dieses Bereichs kannst du identifizieren.',
     radar: 'Das Radar erkennt Bewegungen aus größerer Entfernung. Welche Schiffe eine Flotte genau enthält, verrät es dir allein noch nicht.',
     veil: 'Der Schleier verbirgt Informationen über deine Welt vor Beobachtern. Deine Flotten macht er nicht unsichtbar.',
     defend: 'Verteidigung schützt deine Vorräte und macht Angriffe teurer. Öffne den Reiter „Verteidigung“.',

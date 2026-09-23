@@ -30,7 +30,7 @@ export const academy = {
     foundry: 'La Fundición aumenta la producción desde la órbita. Por ahora no necesitas construirla.',
     intel: 'La inteligencia te ayuda a descubrir oportunidades y calcular riesgos antes de actuar. Abre la pestaña «Inteligencia».',
     uplink: 'El Enlace sostiene tu red de sensores orbitales y desbloquea mejoras para el telescopio y el radar.',
-    telescope: 'Activa el telescopio para ver tu campo de visión. Dentro de él puedes identificar las naves.',
+    telescope: 'Abre Vista y activa el alcance del telescopio para ver tu campo de visión. Dentro de él puedes identificar las naves.',
     radar: 'El radar detecta movimientos más lejanos, pero por sí solo no revela la composición exacta de una flota.',
     veil: 'El Velo oculta información sobre tu mundo a quienes te observan. No vuelve invisibles a tus flotas.',
     defend: 'La defensa protege tus recursos y encarece los ataques enemigos. Abre la pestaña «Defensa».',

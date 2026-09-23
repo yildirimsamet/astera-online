@@ -26,6 +26,17 @@ describe('the galaxy host', () => {
   });
 });
 
+describe('the View chip in the Academy', () => {
+  /**
+   * The Academy hides `[data-sensor-toggles]` until its Telescope exercise and
+   * `[data-disc-controls]` always. The chip carries the switches now, so it answers
+   * to the first rule — or the exercise could never be reached.
+   */
+  it('answers to the rule that reveals the sensor switches for the Telescope exercise', () => {
+    expect(source).toMatch(/<div data-sensor-toggles className="pointer-events-none">\s*<ViewChip/);
+  });
+});
+
 describe('the collect bubble on the world', () => {
   const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
 

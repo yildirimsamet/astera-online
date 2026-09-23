@@ -9,6 +9,7 @@ export function ViewChip({ layersOn, onOpen }: { layersOn: boolean; onOpen: () =
   return (
     <button
       type="button"
+      data-view-chip=""
       onClick={() => { haptic('tap'); onOpen(); }}
       className={`pointer-events-auto flex h-8 items-center gap-1.5 rounded-full border bg-v2-deep/85 px-2.5 font-v2-ui text-caption ${
         layersOn ? 'border-v2-self/50 text-v2-ink' : 'border-v2-line text-v2-ink-2'
@@ -36,12 +37,15 @@ export interface ViewSheetProps {
 }
 
 function Layer({
+  id,
   icon,
   label,
   detail,
   on,
   onPress,
 }: {
+  /** Which instrument: the Academy's Telescope exercise points at `[data-sensor-toggle="telescope"]`. */
+  id: 'telescope' | 'radar';
   icon: IconId;
   label: string;
   detail: string;
@@ -51,6 +55,7 @@ function Layer({
   return (
     <button
       type="button"
+      data-sensor-toggle={id}
       role="switch"
       aria-checked={on}
       onClick={() => { haptic('tap'); onPress(); }}
@@ -124,15 +129,28 @@ export function ViewSheet({
 
         <div>
           <p className="text-micro uppercase tracking-wide text-v2-ink-3">{t('view.layers')}</p>
+          {/*
+            A LAYER IS SWITCHED TO BE SEEN: the sheet closes on the press so the circle
+            it drew is on screen at once — and the Academy's Telescope exercise, which
+            offers no close button, is never left under a sheet.
+          */}
           <Layer
+            id="telescope"
             icon="i-telescope"
             label={t('view.telescope')}
             detail={t('view.telescopeDetail')}
             on={telescope}
-            onPress={onToggleTelescope}
+            onPress={() => { onToggleTelescope(); onClose(); }}
           />
           {radar !== undefined && onToggleRadar !== undefined && (
-            <Layer icon="i-radar" label={t('view.radar')} detail={t('view.radarDetail')} on={radar} onPress={onToggleRadar} />
+            <Layer
+              id="radar"
+              icon="i-radar"
+              label={t('view.radar')}
+              detail={t('view.radarDetail')}
+              on={radar}
+              onPress={() => { onToggleRadar(); onClose(); }}
+            />
           )}
         </div>
 

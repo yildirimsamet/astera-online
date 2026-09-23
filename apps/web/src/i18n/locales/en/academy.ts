@@ -30,7 +30,7 @@ export const academy = {
     "foundry": "The Foundry boosts production from orbit. You do not need to build one now.",
     "intel": "Intel helps you see opportunities and judge risks before launching. Tap the Intel tab.",
     "uplink": "Uplink supports your orbital sensor network. It unlocks Telescope and Radar upgrades.",
-    "telescope": "Tap the Telescope switch to draw your sight radius. Inside it you can identify ships.",
+    "telescope": "Open View and switch on Telescope reach to draw your sight radius. Inside it you can identify ships.",
     "radar": "Radar detects movement farther away. Detection alone does not reveal a fleet's exact composition.",
     "veil": "Veil hides information about your world from observers. It does not make your fleet invisible.",
     "defend": "Defend protects your resources and makes an attack more costly. Tap the Defend tab.",

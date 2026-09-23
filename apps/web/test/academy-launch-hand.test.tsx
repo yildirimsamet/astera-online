@@ -101,6 +101,16 @@ describe('what a lesson leaves pressable', () => {
     }
   });
 
+  /**
+   * THE TELESCOPE SWITCH LIVES BEHIND THE VIEW CHIP NOW (v2 shell). The lesson has to
+   * leave both pressable — the chip that opens the View sheet and the switch inside
+   * it — or the exercise cannot be finished. The switch comes first so the hand moves
+   * onto it the moment the sheet is open.
+   */
+  it('leaves the View chip and the Telescope switch inside it pressable in the Telescope exercise', () => {
+    expect(academyGateSelectors(state({ id: 'telescope' }))).toEqual(['[data-sensor-toggle="telescope"]', '[data-view-chip]']);
+  });
+
   it('lights the tap target the hand points at while aiming', () => {
     expect(academyGateSelectors(state())).toContain('[data-academy-tap-target]');
   });

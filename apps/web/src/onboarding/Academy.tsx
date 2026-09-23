@@ -121,7 +121,8 @@ export function academyGateSelectors(state: {
   if (state.id === 'welcome') return ['canvas', '[data-academy-home]'];
   if (state.busy) return ['canvas'];
   if (state.isMenu) return [`[data-tab="${academyGroup(state.id)}"]`];
-  if (state.id === 'telescope') return ['[data-sensor-toggle="telescope"]'];
+  // The switch lives in the v2 View sheet: the chip that opens it must be pressable too.
+  if (state.id === 'telescope') return ['[data-sensor-toggle="telescope"]', '[data-view-chip]'];
   if (state.row) {
     return [`#row-${state.row}`, '[data-item-sheet]', '[data-build-sheet]',
       '[data-sheet-panel] [data-commit]', '[data-academy-launch]'];
@@ -228,7 +229,8 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
       '[data-build-sheet] [data-commit] button', '[data-item-sheet] [data-act] button',
       ...LAUNCH_HAND_SELECTORS,
       '[data-academy-mining] [data-focus-rail] button', '[data-signal-id] button',
-      ...(state.id === 'telescope' ? ['[data-sensor-toggle="telescope"]'] : []),
+      // The switch first: once the View sheet is open the hand moves off the chip onto it.
+      ...(state.id === 'telescope' ? ['[data-sensor-toggle="telescope"]', '[data-view-chip]'] : []),
       ...(state.row ? [`#row-${state.row}`] : []),
       '[data-academy-target]', '[data-academy-signals] > button',
       ...(state.id === 'research' ? ['[data-sheet-panel]'] : []),

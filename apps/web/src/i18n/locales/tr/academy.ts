@@ -30,7 +30,7 @@ export const academy = {
     "foundry": "Dökümhane yörüngeden üretimini artırır. Şimdi kurman gerekmiyor.",
     "intel": "İstihbarat, filonu göndermeden önce fırsatları görmeni ve riski tartmanı sağlar. İstihbarat sekmesine dokun.",
     "uplink": "Uplink yörünge sensör ağını destekler. Teleskop ve Radar geliştirmelerini açar.",
-    "telescope": "Teleskop düğmesine dokunarak görüş alanını çiz. Bu alanın içindeki gemileri tanıyabilirsin.",
+    "telescope": "Görünüm'ü aç ve Teleskop menzilini açarak görüş alanını çiz. Bu alanın içindeki gemileri tanıyabilirsin.",
     "radar": "Radar daha uzaktaki hareketleri algılar. Algılamak, filonun hangi gemilerden oluştuğunu bilmek değildir.",
     "veil": "Örtü, gezegenin hakkındaki bilgileri gözlemcilerden saklar. Filonu görünmez yapmaz.",
     "defend": "Savunma, kaynaklarını korur ve saldırganın ödeyeceği bedeli artırır. Savunma sekmesine dokun.",

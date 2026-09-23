@@ -29,6 +29,7 @@ describe('the view chip', () => {
     render(<ViewChip layersOn onOpen={onOpen} />);
     await userEvent.click(screen.getByRole('button', { name: 'View' }));
     expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute('data-view-chip');
   });
 });
 
@@ -73,6 +74,26 @@ describe('the view sheet', () => {
     expect(radar).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(radar);
     expect(onToggleRadar).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * A LAYER IS SWITCHED TO BE SEEN. The sheet closes on the press so the circle it
+   * just drew is on screen at once — and the Academy's Telescope exercise, which
+   * offers no close button, is not left under a sheet.
+   */
+  it('closes itself once a layer is switched, so the result shows on the map', async () => {
+    const onClose = vi.fn();
+    const onToggleTelescope = vi.fn();
+    render(<ViewSheet {...props({ onClose, onToggleTelescope })} />);
+    await userEvent.click(screen.getByRole('switch', { name: /Telescope reach/ }));
+    expect(onToggleTelescope).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks each layer by its instrument, for the Academy to point at', () => {
+    render(<ViewSheet {...props({ radar: false, onToggleRadar: vi.fn() })} />);
+    expect(screen.getByRole('switch', { name: /Telescope reach/ })).toHaveAttribute('data-sensor-toggle', 'telescope');
+    expect(screen.getByRole('switch', { name: /Radar reach/ })).toHaveAttribute('data-sensor-toggle', 'radar');
   });
 
   it('opens the galaxy events guide', async () => {

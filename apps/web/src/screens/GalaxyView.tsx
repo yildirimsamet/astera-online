@@ -1080,8 +1080,8 @@ export function GalaxyView({
         dock carries Base, Fleet, Intel and Clan (and Galaxy pressed again flies
         home), the bell carries chat and the chronicle, the world mark opens the
         Worlds sheet, and the caption and switches sit in the View sheet behind the
-        one chip at top right. `data-disc-controls` keeps the Academy's rule hiding
-        the corner controls during a lesson.
+        one chip at top right, which the Academy hides with the sensor switches
+        until its Telescope exercise (`data-sensor-toggles`).
       */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
@@ -1094,7 +1094,11 @@ export function GalaxyView({
         */}
         <HitboxLegend />
 
-        <div data-disc-controls className="pointer-events-none">
+        {/*
+          `data-sensor-toggles`, not `data-disc-controls`: the chip carries the sensor
+          switches now, and the Academy reveals it with them for its Telescope exercise.
+        */}
+        <div data-sensor-toggles className="pointer-events-none">
           <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
         </div>
       </div>
