@@ -30,6 +30,7 @@ import { combatClassLabel, hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { fieldedAtLeast, recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
+import { matchupHint } from '../lib/matchup.js';
 import { duration, durationPrecise, staleness } from '../lib/time.js';
 import {
   MOBILE,
@@ -504,13 +505,10 @@ export function LaunchSheet({
 
   /** The single most useful next action, or nothing when the wing already covers what was read. */
   const hint = useMemo(() => {
-    if (!matchups) return null;
-    if (matchups.beats !== null && !matchups.rows.some((row) => row.cls === matchups.beats)) {
-      return t('counter.matchupBring', { class: combatClassLabel(matchups.beats) });
-    }
-    if (matchups.wingSingleClass && matchups.unknownShare > 0) return t('counter.matchupSingle');
-    if (matchups.kind === 'MIXED') return t('counter.matchupProbe');
-    return null;
+    const said = matchups ? matchupHint(matchups) : null;
+    if (said === null) return null;
+    if (said.kind === 'BRING') return t('counter.matchupBring', { class: combatClassLabel(said.cls) });
+    return t(said.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe');
   }, [matchups, t]);
 
   const loss = useMemo(

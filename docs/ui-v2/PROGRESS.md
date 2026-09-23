@@ -43,7 +43,7 @@
 - ~~F1.2 yazı tipleri~~ bitti.
 - ~~F1.3 ikonlar~~ bitti.
 - **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, ~~B12 halkaları~~, ~~kaynak ölçeri~~,
-  ~~B5~~, **B6**, v2 Sheet, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
+  ~~B5~~, ~~B6~~, **v2 Sheet**, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
   içindeki `CancelConfirm` dışa aktarılıp yeniden kullanılır — "iptal Confirm açar" testi orada).
 
 ## Biten işler
@@ -106,6 +106,13 @@
   kuralı). Bakılmamışsa şerit yok: `ruler.unknown` + `ruler.probe` butonu (5 dil). `.v2-hatch` `surfaces.css`'te.
   **Sapma (şartnameye uygun):** eski bileşen, okuma varken çizgileri eksene katmayıp kırpıyordu; şartname
   `breaks` üstünü eksene katıyor, v2 öyle yapıyor. `children` B6 satırı için.
+- F1.4 · B6 karşı sınıf satırı: `lib/matchup.ts` `matchupHint(m)` → BRING cls / SINGLE / PROBE / null (LaunchSheet'teki
+  mantık buraya taşındı, `LaunchSheet` artık bunu çağırıyor). `apps/web/src/v2/kit/MatchupLine.tsx` — props
+  `wing`, `reading` (`ClassReading`); `matchupsAgainst` içeride. Satır 1 (`data-matchup-wall`): MAJORITY "◆ Mostly
+  Lance — more than half", SPLIT "Read split · ◆ Lance 60% · …" (sıfır pay yok), MIXED "Mixed defence…"; sonra ipucu
+  (Bring = `text-v2-self` amblemli, Single/Probe = `text-v2-warn`), sonra kalan okunmadı. UNREAD: `counter.noteShapeUnread`
+  · `dossier.shapeUnreadNote`. NONE / okuma yok: hiçbir şey. Satır 2 (`data-matchup-wing`): kanadın her sınıfı için
+  `matchupExposure`. Yeni metin yok, hepsi mevcut anahtarlar.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
