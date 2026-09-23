@@ -115,3 +115,27 @@ export const slot = {
   pill: 'Angriffe im Anflug: {{count}}',
   dismiss: 'Schließen',
 };
+
+/** E4: the Fleet page — in flight, at home, the Hangar. */
+export const fleetPage = {
+  views: "Flottenansichten",
+  air: "In der Luft",
+  home: "Daheim",
+  bays: "Flugplätze",
+  hangar: "Hangar",
+  pace: "{{pct}} % Tempo",
+  recall: "Zurückrufen",
+  recallHome: "zurück {{time}}",
+  recalling: "Kehrt um…",
+  emptyAir: "Nichts in der Luft. Tippe in der Galaxie auf eine Welt, einen Felsen oder einen Piraten, um Schiffe zu senden.",
+  shipsHome_one: "{{count}} Schiff daheim",
+  shipsHome_other: "{{count}} Schiffe daheim",
+  away: "{{count}} unterwegs",
+  noShips: "Keine Schiffe daheim",
+  capital: "Hauptwelt",
+  colony: "Kolonie",
+  roomRule: "Platz für jedes Schiff einer Welt – daheim, unterwegs und in der Werft. Ein voller Hangar stoppt die Werft und eingehende Transfers; eine zurückgerufene Flotte passt immer.",
+  ground: "Bodenverteidigung",
+  ceiling: "bis {{shown}} mit diesem Kern",
+  full: "Voll",
+};

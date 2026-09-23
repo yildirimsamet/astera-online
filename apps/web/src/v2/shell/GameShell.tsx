@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { usePlanet } from '../../api/queries.js';
 import type { DockTab } from '../../lib/dock.js';
 import { bellTabFor, dockAction, tabOfPanel } from '../../lib/shellRoute.js';
 import type { Panel, PanelStop } from '../../screens/GalaxyView.jsx';
 import type { StripFocus } from '../../shell/PendingStrip.js';
 import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
-import { FleetSheet } from '../hud/FleetSheet.js';
 import { BellHost } from './BellHost.js';
+import { FleetHost } from './FleetHost.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 
@@ -54,7 +53,6 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   const [homeRequest, setHomeRequest] = useState(0);
   const [worldsRequest, setWorldsRequest] = useState(0);
   const openSignals = useOpenSignals();
-  const flight = usePlanet().data?.flight ?? null;
 
   /** Leave whatever page is open, so the next thing opens alone. */
   const clearPages = (): void => {
@@ -129,8 +127,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       </div>
 
       {fleetOpen && (
-        <FleetSheet
-          flight={flight}
+        <FleetHost
           onFocus={(focus) => { onFocusCraft(focus); }}
           onClose={() => { setFleetOpen(false); }}
         />

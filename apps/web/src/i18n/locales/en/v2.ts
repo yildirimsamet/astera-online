@@ -117,3 +117,27 @@ export const slot = {
   pill: 'Incoming attacks: {{count}}',
   dismiss: 'Dismiss',
 };
+
+/** E4: the Fleet page — in flight, at home, the Hangar. */
+export const fleetPage = {
+  views: "Fleet views",
+  air: "In flight",
+  home: "At home",
+  bays: "Flight bays",
+  hangar: "Hangar",
+  pace: "{{pct}}% speed",
+  recall: "Recall",
+  recallHome: "back in {{time}}",
+  recalling: "Turning…",
+  emptyAir: "Nothing in the air. Tap a world, a rock or a pirate on the galaxy to send ships.",
+  shipsHome_one: "{{count}} ship home",
+  shipsHome_other: "{{count}} ships home",
+  away: "{{count}} away",
+  noShips: "No ships at home",
+  capital: "Capital",
+  colony: "Colony",
+  roomRule: "Room for every ship a world owns — home, away and in the yard. A full Hangar stops the yard and transfers in; a recalled fleet always fits.",
+  ground: "Ground defence",
+  ceiling: "up to {{shown}} at this Core",
+  full: "Full",
+};

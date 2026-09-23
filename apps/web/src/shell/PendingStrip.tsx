@@ -19,6 +19,7 @@ import {
 } from '../lib/flights.js';
 import type { CraftFocus } from '../galaxy/ownCraft.js';
 import type { Focus } from '../galaxy/FocusPanel.js';
+import { legProgress } from '../lib/fleetPage.js';
 import { countdown, useNow } from '../lib/time.js';
 import { FlightBar } from '../ui/FlightBar.js';
 import {
@@ -93,7 +94,7 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
             */}
             <span className="min-w-0 flex-1">
               <FlightBar
-                progress={progressOf(shown.span, now)}
+                progress={legProgress(shown.span, now)}
                 direction={
                   shown.incoming ? 'incoming' : shown.leg === 'return' ? 'back' : 'out'
                 }
@@ -170,6 +171,7 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
         : t('pendingStrip.craftUnknown')),
       arrival: arrivalOf(thread),
       leg: thread.leg,
+      ...(thread.pace === undefined ? {} : { pace: thread.pace }),
       incoming: thread.kind === 'incoming',
       engages: thread.kind === 'fleet' && thread.leg === 'outbound',
       mark: thread.kind,
@@ -278,7 +280,7 @@ export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) =
                 */}
                 <span className="mt-1.5 block">
                   <FlightBar
-                    progress={progressOf(item.span, now)}
+                    progress={legProgress(item.span, now)}
                     direction={
                       item.incoming ? 'incoming' : item.leg === 'return' ? 'back' : 'out'
                     }
@@ -398,6 +400,8 @@ export interface AirborneItem {
   detail: string;
   arrival: number;
   leg?: 'outbound' | 'return';
+  /** The pace this leg flies at, 1 = full speed; your own threads only (S1). */
+  pace?: number;
   incoming: boolean;
   engages: boolean;
   /** Which of the seven things this is, so the row can wear its own glyph. */
@@ -419,7 +423,7 @@ export interface AirborneItem {
  * which is *what am I looking at*, was the one thing they had to read for. Each
  * now leads with the glyph the rest of the game already uses for that act.
  */
-type FlightMark =
+export type FlightMark =
   | 'fleet' | 'probe' | 'incoming' | 'transfer' | 'settlement' | 'death_star'
   | 'mining' | 'salvage' | 'pirate' | 'trade' | 'intergalactic_convoy';
 
@@ -439,20 +443,6 @@ const MARK: Record<FlightMark, (props: { className?: string }) => ReactNode> = {
   // the pirate line above — the glyph names the ACT, not the destination. D156.
   trade: SendIcon,
   intergalactic_convoy: AttackIcon,
-};
-
-/**
- * HOW FAR ALONG, AS A FRACTION OF THIS LEG. Null where the leg is not knowable.
- *
- * Clamped at both ends: a payload can be a few seconds stale on either side of a
- * departure or an arrival, and a marker drawn past the end of its own track reads
- * as a bug rather than as a late read.
- */
-const progressOf = (span: { from: number; to: number } | null, now: number): number | null => {
-  if (!span) return null;
-  const length = span.to - span.from;
-  if (length <= 0) return 1;
-  return Math.max(0, Math.min(1, (now - span.from) / length));
 };
 
 /**

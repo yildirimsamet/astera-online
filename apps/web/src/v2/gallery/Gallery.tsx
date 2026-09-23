@@ -1,10 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
+import { roomOf } from '../../lib/fleetPage.js';
+import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
 import { CollectBubble } from '../hud/CollectBubble.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
+import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
 import { NowLine, type NowLineProps } from '../hud/NowLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
@@ -94,6 +97,59 @@ function GalleryNow(props: Pick<NowLineProps, 'entries' | 'now'>) {
   return <NowLine {...props} open={open} onOpen={() => { setOpen(true); }} onClose={() => { setOpen(false); }} />;
 }
 
+const airborne: AirborneItem[] = [
+  {
+    key: 'in', title: 'Attack → Thistle', detail: 'Heavy mass · 90 craft', arrival: NOW + 6 * MIN,
+    incoming: true, engages: false, mark: 'incoming', span: null,
+  },
+  {
+    key: 'raid', title: 'Your fleet → Kestrel', detail: '24 craft', arrival: NOW + 8 * MIN, leg: 'outbound', pace: 0.75,
+    incoming: false, engages: true, mark: 'fleet', span: { from: NOW - 5 * MIN, to: NOW + 8 * MIN },
+    focus: { kind: 'thread', key: 'raid' }, recallMission: { missionId: 'm-1' },
+  },
+  {
+    key: 'home', title: 'Your fleet home from Hollow', detail: '12 craft', arrival: NOW + 14 * MIN, leg: 'return',
+    incoming: false, engages: false, mark: 'fleet', span: { from: NOW - 6 * MIN, to: NOW + 14 * MIN },
+    focus: { kind: 'thread', key: 'home' },
+  },
+  {
+    key: 'run', title: 'Prospector → Rock 7', detail: '1 drill', arrival: NOW + 3 * MIN, leg: 'outbound',
+    incoming: false, engages: false, mark: 'mining', span: { from: NOW - 2 * MIN, to: NOW + 3 * MIN },
+    focus: { kind: 'run', id: 'run-1' }, recall: { runId: 'run-1', originPlanetId: 'p-1' },
+  },
+];
+
+/** The Fleet page with its tab held here, as the host holds it in the game. */
+function GalleryFleet({ first }: { first: FleetTab }) {
+  const [tab, setTab] = useState<FleetTab>(first);
+  return (
+    <FleetPage
+      tab={tab}
+      onTab={setTab}
+      now={NOW}
+      bays={{ used: 2, total: 3 }}
+      hangar={{ used: 612, total: 810 }}
+      flights={airborne}
+      worlds={[
+        {
+          id: 'p-1', name: 'Thistle', capital: true, active: true,
+          fleet: { DART: 40, TALON: 12, COURIER: 6, WARDEN: 2 }, away: 36,
+          room: roomOf({ hangar: 810, hangarUsed: 612, hangarCeiling: 1550, ground: 60, groundUsed: 48 }),
+        },
+        {
+          id: 'p-2', name: 'Hollow', capital: false, active: false,
+          fleet: {}, away: 12,
+          room: roomOf({ hangar: 180, hangarUsed: 180, hangarCeiling: 470, ground: 20, groundUsed: 4 }),
+        },
+      ]}
+      recalling={null}
+      onFocus={noop}
+      onRecall={noop}
+      onClose={noop}
+    />
+  );
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
@@ -139,6 +195,9 @@ function Views({ view }: { view: string }) {
         onClose={noop}
       />
     );
+  }
+  if (view === 'fleet' || view === 'fleet-home' || view === 'fleet-room') {
+    return <GalleryFleet first={view === 'fleet-home' ? 'home' : view === 'fleet-room' ? 'room' : 'air'} />;
   }
   if (view === 'peek') {
     return (

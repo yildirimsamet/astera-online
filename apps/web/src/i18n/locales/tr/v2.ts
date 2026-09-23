@@ -115,3 +115,27 @@ export const slot = {
   pill: 'Gelen saldırı: {{count}}',
   dismiss: 'Kapat',
 };
+
+/** E4: the Fleet page — in flight, at home, the Hangar. */
+export const fleetPage = {
+  views: "Filo görünümleri",
+  air: "Havada",
+  home: "Evde",
+  bays: "Uçuş yuvaları",
+  hangar: "Hangar",
+  pace: "%{{pct}} hız",
+  recall: "Geri çağır",
+  recallHome: "eve {{time}}",
+  recalling: "Dönüyor…",
+  emptyAir: "Havada bir şey yok. Gemi göndermek için galakside bir dünyaya, kayaya ya da korsana dokun.",
+  shipsHome_one: "Evde {{count}} gemi",
+  shipsHome_other: "Evde {{count}} gemi",
+  away: "{{count}} dışarıda",
+  noShips: "Evde gemi yok",
+  capital: "Başkent",
+  colony: "Koloni",
+  roomRule: "Dünyanın sahip olduğu her gemi için yer — evde, dışarıda ve tersanede. Dolu Hangar tersaneyi ve gelen transferi durdurur; geri çağrılan filo her zaman sığar.",
+  ground: "Yer savunması",
+  ceiling: "bu Çekirdek’le en çok {{shown}}",
+  full: "Dolu",
+};

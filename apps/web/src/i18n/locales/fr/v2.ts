@@ -115,3 +115,27 @@ export const slot = {
   pill: 'Attaques en approche : {{count}}',
   dismiss: 'Fermer',
 };
+
+/** E4: the Fleet page — in flight, at home, the Hangar. */
+export const fleetPage = {
+  views: "Vues de la flotte",
+  air: "En vol",
+  home: "À quai",
+  bays: "Baies de vol",
+  hangar: "Hangar",
+  pace: "vitesse {{pct}} %",
+  recall: "Rappeler",
+  recallHome: "retour {{time}}",
+  recalling: "Demi-tour…",
+  emptyAir: "Rien en vol. Touche un monde, un astéroïde ou un pirate dans la galaxie pour envoyer des vaisseaux.",
+  shipsHome_one: "{{count}} vaisseau à quai",
+  shipsHome_other: "{{count}} vaisseaux à quai",
+  away: "{{count}} en route",
+  noShips: "Aucun vaisseau à quai",
+  capital: "Capitale",
+  colony: "Colonie",
+  roomRule: "Place pour chaque vaisseau d'un monde — à quai, en route et au chantier. Un Hangar plein arrête le chantier et les transferts entrants ; une flotte rappelée trouve toujours sa place.",
+  ground: "Défense au sol",
+  ceiling: "jusqu'à {{shown}} avec ce Noyau",
+  full: "Plein",
+};

@@ -55,8 +55,8 @@ vi.mock('../../src/v2/shell/BellHost.js', () => ({
   ),
 }));
 
-vi.mock('../../src/v2/hud/FleetSheet.js', () => ({
-  FleetSheet: ({ onClose }: { onClose: () => void }) => (
+vi.mock('../../src/v2/shell/FleetHost.js', () => ({
+  FleetHost: ({ onClose }: { onClose: () => void }) => (
     <div role="dialog" aria-label="fleet"><button type="button" onClick={onClose}>close fleet</button></div>
   ),
 }));

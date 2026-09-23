@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { bell, dock, handle, hold, lane, meter, now, ruler, slot, topBar, view } from './v2.js';
+import { bell, dock, fleetPage, handle, hold, lane, meter, now, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
 /** ES — translated from the English resource tree. */
@@ -29,5 +29,5 @@ export const es: Resources = {
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,
   vocabulary, gains, directives, notifications, units, errors, onboarding, research, rewards,
-  skins, seasonRecap, chronicle, clan, clanWar, community, trade, convoy, hold, lane, meter, ruler, handle, dock, now, bell, topBar, view, slot,
+  skins, seasonRecap, chronicle, clan, clanWar, community, trade, convoy, hold, lane, meter, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage,
 };

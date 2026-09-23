@@ -115,3 +115,27 @@ export const slot = {
   pill: 'Ataques en camino: {{count}}',
   dismiss: 'Cerrar',
 };
+
+/** E4: the Fleet page — in flight, at home, the Hangar. */
+export const fleetPage = {
+  views: "Vistas de la flota",
+  air: "En vuelo",
+  home: "En casa",
+  bays: "Bahías de vuelo",
+  hangar: "Hangar",
+  pace: "velocidad {{pct}} %",
+  recall: "Recuperar",
+  recallHome: "vuelta {{time}}",
+  recalling: "Volviendo…",
+  emptyAir: "Nada en vuelo. Toca un mundo, una roca o un pirata en la galaxia para enviar naves.",
+  shipsHome_one: "{{count}} nave en casa",
+  shipsHome_other: "{{count}} naves en casa",
+  away: "{{count}} fuera",
+  noShips: "No hay naves en casa",
+  capital: "Capital",
+  colony: "Colonia",
+  roomRule: "Espacio para cada nave de un mundo: en casa, fuera y en el astillero. Un Hangar lleno detiene el astillero y los traslados entrantes; una flota recuperada siempre cabe.",
+  ground: "Defensa terrestre",
+  ceiling: "hasta {{shown}} con este Núcleo",
+  full: "Lleno",
+};
