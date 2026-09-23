@@ -206,7 +206,7 @@ export function QueueStrip({
  * A resource with nothing in it is not drawn: most orders cost no Deuterium and
  * a row of zeroes is three lines of nothing on a 350pt screen.
  */
-function CancelConfirm({
+export function CancelConfirm({
   order,
   pending,
   onConfirm,

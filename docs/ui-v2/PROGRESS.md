@@ -26,8 +26,8 @@
 |---|---|---|
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası + fleet escape güncellemesi, gezegen modelleri | Tamam |
 | F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Tamam (074f338, a7b8348) |
-| F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Sırada |
-| F2 | v2 HUD (B1–B4), kabuk, IA | Bekliyor |
+| F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Tamam |
+| F2 | v2 HUD (B1–B4), kabuk, IA | Sırada |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Bekliyor |
 | F4 | E6 Rapor, S4 | Bekliyor |
 | F5 | E5 Üs + Araştırma (K6, K9) | Bekliyor |
@@ -121,6 +121,12 @@
   ve `aria-modal=false` (galaksi canlı), half/full'de `data-scrim` (`useOwnPress`); Escape, X, `onBack`; `children`
   fonksiyon olabilir (detent'i alır: kart → dosya). `bottom: var(--v2-dock-h, 0px)` — F2'de kabuk dock yüksekliğini
   bu değişkene yazacak. Masaüstünde `max-w-xl` ortalı. Build'de yeni sınıfların hepsi derlendi (kontrol edildi).
+- F1.4 · B12 kuyruk sayfası: `apps/web/src/v2/kit/QueueSheet.tsx` — v2 Sheet içinde iki hat (İnşaat, Tersane),
+  her siparişte halka + ad + kalan + "İptal"; hat başında "ends HH:MM"; boş hat `planet.queue.idle`. İptal →
+  `CancelConfirm` (artık `ui/QueueStrip.tsx`'ten dışa aktarılıyor; eski `Confirm`/eski `Sheet` üstünde — **F10:**
+  v2 Confirm gerekince buradan taşınır). Confirm açıkken Escape yalnız Confirm'ü kapatır. Zamansız siparişte iptal
+  yok; bir iptal uçuştayken hepsi kilitli. `QueueLane.tsx` artık `OrderRing`, `OrderName`, `orderLeft` dışa aktarıyor.
+- **F1 bitti (2026-09-23).** Workspace `typecheck` + `lint` temiz; web: bilinen 14 kırmızı aynen, v2 testleri yeşil.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
