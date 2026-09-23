@@ -24,7 +24,7 @@ import { ActionButton, ResourceAmounts } from './Action.js';
 import {
   buildingGain, instrumentGain, satelliteGain, type Gain,
 } from '../lib/gains.js';
-import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, tierOf } from './assets.js';
+import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, nextBuildingArt, tierOf } from './assets.js';
 import { CoreMark, VaultMark } from './marks.js';
 import { SpendBar } from './SpendBar.js';
 import { Tally } from './Tally.js';
@@ -569,15 +569,13 @@ function artFor(item: ItemRef, level: number): string | null {
  *
  * No longer decides whether art is drawn — every rung shows its own picture now —
  * only whether that picture is marked as an arrival. Instruments re-tier at L3 and
- * L5, and so do the Command Core, the Vault and the Shipyard; the Refinery and
- * Extractor wear the resource they produce and never light up.
+ * L5; a building lights up exactly where its render changes, read off the art
+ * itself — a hand-kept list of tiered buildings had already missed the Hangar.
  */
-const TIERED_BUILDINGS = new Set<BuildingId>(['CORE', 'VAULT', 'SHIPYARD']);
-
 const tierChangesAt = (item: ItemRef, level: number): boolean =>
-  item.kind !== 'satellite' &&
-  (item.kind === 'instrument' || TIERED_BUILDINGS.has(item.id)) &&
-  tierOf(level) !== tierOf(level - 1);
+  item.kind === 'instrument'
+    ? tierOf(level) !== tierOf(level - 1)
+    : item.kind === 'building' && nextBuildingArt(item.id, level - 1) !== null;
 
 /**
  * The stand-in for an item with no render.

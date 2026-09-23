@@ -76,6 +76,23 @@ describe('the building renders', () => {
     expect(Object.keys(BUILDING_ART)).toHaveLength(BUILDING_IDS.length);
   });
 
+  /**
+   * THE BUILDING, NOT WHAT IT MAKES (owner, 2026-09-24). The Refinery and the
+   * Extractor wore the alloy rock and the crystal while their own three renders sat
+   * in the repo; on the Production tab that put two resources where two buildings
+   * should be. The Deuterium Plant has no render yet, so it keeps wearing deuterium.
+   */
+  it('draws the Refinery and the Extractor as buildings, tier by tier', () => {
+    for (const [tier, levels] of LEVELS_PER_TIER) {
+      for (const level of levels) {
+        expect(buildingArt('REFINERY', level)).toContain(`resources/alloy_refinery_${String(tier)}.png`);
+        expect(buildingArt('EXTRACTOR', level)).toContain(`resources/crystal_extractor_${String(tier)}.png`);
+      }
+    }
+    expect(BUILDING_ART.REFINERY).toContain('alloy_refinery_1.png');
+    expect(BUILDING_ART.EXTRACTOR).toContain('crystal_extractor_1.png');
+  });
+
   it('resolves the untiered fallback table too', () => {
     for (const [id, url] of Object.entries(BUILDING_ART)) {
       expect(url, `BUILDING_ART.${id} is blank`).not.toBeNull();
@@ -90,17 +107,15 @@ describe('the building renders', () => {
    * unmarked.
    */
   it('promise the next tier only where the picture actually changes', () => {
-    const tiering: BuildingId[] = ['CORE', 'VAULT', 'SHIPYARD'];
+    const tiering: BuildingId[] = ['CORE', 'VAULT', 'SHIPYARD', 'HANGAR', 'REFINERY', 'EXTRACTOR'];
     for (const id of tiering) {
       expect(nextBuildingArt(id, 1), `${id} L1→L2 stays inside tier 1`).toBeNull();
       expect(nextBuildingArt(id, 2), `${id} L2→L3 crosses into tier 2`).toBe(buildingArt(id, 3));
       expect(nextBuildingArt(id, 4), `${id} L4→L5 crosses into tier 3`).toBe(buildingArt(id, 5));
       expect(nextBuildingArt(id, 9), `${id} is at the top of its ladder`).toBeNull();
     }
-    // The two that wear the resource they produce never promise anything.
-    for (const id of ['REFINERY', 'EXTRACTOR'] as const) {
-      for (const level of [1, 2, 4, 9]) expect(nextBuildingArt(id, level)).toBeNull();
-    }
+    // The one that still wears the resource it produces never promises anything.
+    for (const level of [1, 2, 4, 9]) expect(nextBuildingArt('DEUTERIUM_PLANT', level)).toBeNull();
   });
 });
 

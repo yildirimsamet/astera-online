@@ -108,6 +108,45 @@ describe('the level ladder', () => {
   });
 });
 
+/**
+ * THE ARRIVAL FOLLOWS THE PICTURE. A hand-kept list said which buildings re-tier,
+ * and it had already missed the Hangar; the Refinery's renders made it two wrong.
+ * A rung is marked where its picture differs from the one before — nothing else.
+ */
+describe('a building whose render tiers', () => {
+  const showBuilding = (id: 'REFINERY' | 'HANGAR') =>
+    render(
+      <ItemSheet
+        item={{ kind: 'building', id }}
+        name={id}
+        role="Makes alloy."
+        planet={planet({ buildings: { CORE: 6, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1, HANGAR: 1 } })}
+        held={{ alloy: 100_000, crystal: 50_000 }}
+        pending={false}
+        onAct={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+  const rung = (level: number): HTMLElement => {
+    const row = screen.getByText(`L${String(level)}`).closest('div.flex');
+    if (!row) throw new Error(`no row for L${String(level)}`);
+    return row as HTMLElement;
+  };
+
+  it.each(['REFINERY', 'HANGAR'] as const)('marks the rung where the %s changes hands', (id) => {
+    showBuilding(id);
+    expect(rung(2).innerHTML).not.toContain('ring-crystal');
+    expect(rung(3).innerHTML).toContain('ring-crystal');
+    expect(rung(4).innerHTML).not.toContain('ring-crystal');
+  });
+
+  it('shows the refinery itself on every rung', () => {
+    showBuilding('REFINERY');
+    const src = within(rung(3)).getAllByRole('presentation', { hidden: true })[0]?.getAttribute('src');
+    expect(src).toContain('alloy_refinery_2.png');
+  });
+});
+
 describe('what the ladder charges', () => {
   /**
    * D22. An instrument is dearer than a building at the same level, and the sheet

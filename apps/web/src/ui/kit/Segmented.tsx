@@ -64,7 +64,15 @@ export function Segmented<T extends string>({
   role?: 'group' | 'tablist';
   size?: 'sm' | 'md';
   className?: string;
-  /** No track and square ends — for a bar pinned to the edge of a surface. */
+  /**
+   * THE BASE'S CATEGORY BAR, DRAWN AS THE GÖZLEMEVI SWITCH (owner, 2026-09-24).
+   *
+   * Every label whole: "PRODUCTION" in equal fifths ran into "INTEL" at 350, and a
+   * cut or an abbreviation is not the answer. Each segment is as wide as its word and
+   * takes a share of what is left; a language whose five words outrun the bar scrolls
+   * it sideways rather than overprinting. Sentence case, because the engraved
+   * uppercase is what made the words too long for the bar to begin with.
+   */
   flush?: boolean;
   /** `data-{marker}` on each segment, for the onboarding gate and the harness. */
   marker?: 'tab';
@@ -107,10 +115,10 @@ export function Segmented<T extends string>({
       onKeyDown={move}
       className={
         flush
-          ? `grid gap-1 px-3 py-2 ${className}`
+          ? `mx-3 my-2 flex gap-0.5 overflow-x-auto rounded-control border border-v2-line bg-v2-panel p-0.5 font-v2-ui [scrollbar-width:none] ${className}`
           : `plate plate-sunk grid gap-1 rounded-control p-1 ${className}`
       }
-      style={{ gridTemplateColumns: `repeat(${String(segments.length)}, minmax(0, 1fr))` }}
+      {...(flush ? {} : { style: { gridTemplateColumns: `repeat(${String(segments.length)}, minmax(0, 1fr))` } })}
     >
       {segments.map((segment) => {
         const on = segment.id === value;
@@ -138,13 +146,17 @@ export function Segmented<T extends string>({
               haptic('tap');
               onSelect(segment.id);
             }}
-            className={`legend rounded-chip transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${
-              size === 'sm' ? 'min-h-9 px-2' : 'min-h-11 px-2'
-            } ${
-              on
-                ? 'bg-raised text-bone shadow-[inset_0_1px_0_rgb(255_255_255/12%),0_1px_0_rgb(0_0_0/45%)]'
-                : 'text-faint hover:text-dim'
-            }`}
+            className={flush
+              ? `min-h-9 flex-auto shrink-0 whitespace-nowrap rounded-chip px-2 text-label font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-v2-self ${
+                on ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'text-v2-ink-3 hover:text-v2-ink-2'
+              }`
+              : `legend rounded-chip transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crystal ${
+                size === 'sm' ? 'min-h-9 px-2' : 'min-h-11 px-2'
+              } ${
+                on
+                  ? 'bg-raised text-bone shadow-[inset_0_1px_0_rgb(255_255_255/12%),0_1px_0_rgb(0_0_0/45%)]'
+                  : 'text-faint hover:text-dim'
+              }`}
           >
             {segment.mark ? (
               // `gap-1` and nothing else: the mark rides with the label rather than

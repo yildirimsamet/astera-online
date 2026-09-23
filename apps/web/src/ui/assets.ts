@@ -535,14 +535,13 @@ export const SATELLITE_ART: Record<SatelliteId, string> = {
 /**
  * Buildings, at the tier their level puts them in.
  *
- * The Command Core, the Vault and now the Shipyard ship with three renders each.
- * All three were once wired to `null` — the interface drew a line-art mark while
- * finished art of the exact thing sat unused in the repo. They tier by level, so
- * raising one visibly replaces the structure, which is the anticipation hook this
- * file exists for.
+ * Every building but the Deuterium Plant ships with three renders. The Core, the
+ * Vault and the Shipyard were once wired to `null`, and the Refinery and the
+ * Extractor to the alloy rock and the crystal — two resources where the Production
+ * tab named two buildings (owner, 2026-09-24). They tier by level, so raising one
+ * visibly replaces the structure, which is the anticipation hook this file exists for.
  *
- * The Refinery and Extractor stay on the resource they produce, which reads better
- * at row size than a building would — that is a choice, not a missing asset.
+ * The Deuterium Plant has no render yet, so it wears the deuterium it makes.
  */
 export function buildingArt(id: BuildingId, level: number): string | null {
   const tier = tierOf(level);
@@ -552,14 +551,14 @@ export function buildingArt(id: BuildingId, level: number): string | null {
     case 'VAULT':
       return `${BASE}/general/vault_${String(tier)}.png`;
     case 'REFINERY':
-      return RESOURCE_ART.alloy;
+      return `${BASE}/resources/alloy_refinery_${String(tier)}.png`;
     case 'EXTRACTOR':
-      return RESOURCE_ART.crystal;
+      return `${BASE}/resources/crystal_extractor_${String(tier)}.png`;
     case 'SHIPYARD':
       return `${BASE}/general/shipyard_${String(tier)}.png`;
     case 'HANGAR':
       return `${BASE}/general/hangar_${String(tier)}.png`;
-    /** It makes deuterium, so it wears deuterium — the Refinery and Extractor idiom. */
+    /** No render of its own yet: it makes deuterium, so it wears deuterium. */
     case 'DEUTERIUM_PLANT':
       return RESOURCE_ART.deuterium;
   }
@@ -569,10 +568,10 @@ export function buildingArt(id: BuildingId, level: number): string | null {
  * The art one level on, or null when nothing visibly changes.
  *
  * Compares the RENDERS rather than the tiers, which is not the same question here:
- * the Refinery and the Extractor wear the resource they produce at every level, so
- * a tier check said "new hardware at L3" and handed back the identical picture. No
- * caller passed it on, so nothing was ever drawn — but the promise this function
- * makes is "something changes", and it was only true for three of five buildings.
+ * the Deuterium Plant wears the resource it produces at every level, so a tier
+ * check would say "new hardware at L3" and hand back the identical picture. The
+ * promise this function makes is "something changes", and the ladder's arrival
+ * mark reads it rather than keeping a list of its own.
  */
 export function nextBuildingArt(id: BuildingId, level: number): string | null {
   const next = buildingArt(id, level + 1);
@@ -582,8 +581,8 @@ export function nextBuildingArt(id: BuildingId, level: number): string | null {
 /** Kept for callers that do not know a level. Prefer `buildingArt`. */
 export const BUILDING_ART: Record<BuildingId, string | null> = {
   CORE: `${BASE}/general/command_core_1.png`,
-  REFINERY: RESOURCE_ART.alloy,
-  EXTRACTOR: RESOURCE_ART.crystal,
+  REFINERY: `${BASE}/resources/alloy_refinery_1.png`,
+  EXTRACTOR: `${BASE}/resources/crystal_extractor_1.png`,
   VAULT: `${BASE}/general/vault_1.png`,
   SHIPYARD: `${BASE}/general/shipyard_1.png`,
   DEUTERIUM_PLANT: RESOURCE_ART.deuterium,
