@@ -12,7 +12,7 @@ import { Icon } from '../icons.js';
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
   half: 'max-h-[55dvh]',
-  full: 'h-[92dvh]',
+  full: 'h-[92dvh] max-h-full',
 };
 
 const PAGE: readonly Detent[] = ['half', 'full'];

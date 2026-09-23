@@ -7,12 +7,11 @@ import { LandingScreen } from './screens/LandingScreen.jsx';
 import { Academy } from './onboarding/Academy.jsx';
 import { ServersScreen } from './screens/ServersScreen.jsx';
 import { GalaxyView, type Panel, type PanelStop } from './screens/GalaxyView.jsx';
-import { PendingStrip } from './shell/PendingStrip.js';
 import { LoadingScreen } from './shell/LoadingScreen.js';
-import { StatusBar } from './shell/StatusBar.js';
 import { useAmbientMusic } from './lib/music.js';
 import { WorldProvider } from './api/world.js';
 import { Button } from './ui/kit/index.js';
+import { GameShell } from './v2/shell/GameShell.js';
 import type { StripFocus } from './shell/PendingStrip.js';
 import {
   nextPanelFocus,
@@ -27,14 +26,13 @@ import {
  * `landing` and `servers` exist to get a player to the third and are never seen
  * again inside a season (D21). The third is the whole product:
  *
- * A header that never leaves, the galaxy, and a strip that says what is in flight.
- * Nothing else. There is no tab bar, no scrolling page, and no screen you navigate
- * to — every surface the game has opens over the disc and closes back onto it.
- *
- * The two survivors are the two things that must be true at all times regardless
- * of what the player is looking at: what you are holding, and what is still coming.
- * The second is Design Law #1 — "every session must end with something in flight" —
- * and a law you cannot see is a law nobody plays by.
+ * The galaxy, framed by the Gözlemevi shell (`v2/shell/GameShell.tsx`): the top bar
+ * and the Now line above it, five labelled tabs below it (K1). The galaxy never
+ * closes — every tab but Galaxy opens a page over it, and the dock stays one press
+ * from any page. What must be true at all times still is: what you are holding
+ * (the meters), what is coming soonest (the Now line), and what is in the air
+ * (the Fleet tab's ring) — Design Law #1, "every session must end with something
+ * in flight", kept visible.
  *
  * THE RETURN OVERLAY IS GONE. D23.
  *
@@ -49,7 +47,7 @@ import {
  * The news itself did not go anywhere. Every line it carried is an event, and
  * events live in Signals, where the beacon pulses until they are read and they can
  * be read when the player chooses rather than before they are allowed in. What is
- * still in flight is on the strip below, permanently — which is a stronger reading
+ * still in flight is on the Now line and the Fleet tab, permanently — a stronger reading
  * of Design Law #1 than a screen shown once and dismissed.
  */
 export function App() {
@@ -196,41 +194,41 @@ export function App() {
 
   return (
     <WorldProvider>
-    <div className="relative z-10 flex h-dvh flex-col overflow-hidden">
-      <StatusBar
+      {/*
+        THE GÖZLEMEVİ SHELL (docs/ui-v2/gozlemevi.md, F2): top bar and Now line above
+        the galaxy, the dock below it, the bell and the Fleet page on top. It replaced
+        `StatusBar` and `PendingStrip` here; the rehearsal still draws those until F2.6.
+      */}
+      <GameShell
         commander={session.me.displayName}
-        onOpen={openPanel}
+        panel={panel}
+        onPanel={openPanel}
         onFocusPlanet={focusPlanet}
+        onFocusCraft={(focus) => {
+          setPanel(null);
+          setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
+        }}
+        galaxy={({ goHome, worldsRequest, onPanel }) => (
+          <GalaxyView
+            panel={panel}
+            onPanel={onPanel}
+            panelStop={panelStop}
+            panelFocus={panelFocus}
+            focusRequest={planetFocus}
+            craftFocusRequest={craftFocus}
+            commander={session.me.displayName}
+            isAdmin={session.me.isAdmin}
+            pastResult={session.me.latestResult}
+            onSignOut={() => {
+              void signOut();
+            }}
+            onPlacementLost={rollover}
+            onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
+            goHome={goHome}
+            worldsRequest={worldsRequest}
+          />
+        )}
       />
-
-      <main className="relative flex-1">
-        <GalaxyView
-          panel={panel}
-          onPanel={openPanel}
-          panelStop={panelStop}
-          panelFocus={panelFocus}
-          focusRequest={planetFocus}
-          craftFocusRequest={craftFocus}
-          commander={session.me.displayName}
-          isAdmin={session.me.isAdmin}
-          pastResult={session.me.latestResult}
-          onSignOut={() => {
-            void signOut();
-          }}
-          onPlacementLost={rollover}
-          onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
-        />
-      </main>
-
-      <div className="shrink-0">
-        <PendingStrip
-          onFocus={(focus) => {
-            setPanel(null);
-            setCraftFocus((current) => ({ focus, request: (current?.request ?? 0) + 1 }));
-          }}
-        />
-      </div>
-    </div>
     </WorldProvider>
   );
 }

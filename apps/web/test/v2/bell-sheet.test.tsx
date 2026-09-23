@@ -52,6 +52,14 @@ describe('the bell sheet', () => {
     expect(screen.queryByText('2 new')).toBeNull();
   });
 
+  /** Seen in the game: an empty feed stood 92% of the screen tall. Only chat needs a page. */
+  it('is as tall as its feed, and a full page for chat', () => {
+    const { rerender } = render(<BellSheet {...props()} />);
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
+    rerender(<BellSheet {...props({ tab: 'chat' })} />);
+    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
+  });
+
   it('lets the chat log own its scrolling', () => {
     const { container, rerender } = render(<BellSheet {...props()} />);
     expect(container.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');

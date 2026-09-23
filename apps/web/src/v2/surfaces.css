@@ -35,3 +35,12 @@
     color-mix(in oklab, var(--color-v2-ink-2) 15%, transparent) 3px 6px
   );
 }
+
+/*
+ * THE SHELL PUBLISHES THE DOCK'S HEIGHT (B4). Every sheet — v2 and the old kit —
+ * ends above it, so a tab is always one press from any page. Outside the shell
+ * (the Academy, the rehearsal) nothing sets it and sheets take the full screen.
+ */
+.v2-shell {
+  --v2-dock-h: calc(4rem + env(safe-area-inset-bottom));
+}

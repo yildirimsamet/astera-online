@@ -15,6 +15,7 @@ import { planetView } from '../fixtures.js';
 let planet: PlanetView = planetView();
 let notifications: NotificationView[] = [];
 let clanAttention = 0;
+let clanAvailable = true;
 
 vi.mock('../../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../src/api/queries.js');
@@ -24,7 +25,7 @@ vi.mock('../../src/api/queries.js', async () => {
     usePending: () => ({ data: { pending: [] } }),
     useMining: () => ({ data: { runs: [] } }),
     useNotifications: () => ({ data: { notifications } }),
-    useClanBadge: () => ({ data: { available: true, attentionCount: clanAttention, clanChatUnread: 0 } }),
+    useClanBadge: () => ({ data: { available: clanAvailable, attentionCount: clanAttention, clanChatUnread: 0 } }),
   };
 });
 
@@ -36,6 +37,7 @@ beforeEach(() => {
   planet = planetView();
   notifications = [];
   clanAttention = 0;
+  clanAvailable = true;
 });
 
 describe('the wired dock', () => {
@@ -65,6 +67,12 @@ describe('the wired dock', () => {
     notifications = [note('raid_result'), note('probe_report'), note('probe_report', true), note('fleet_returned')];
     render(<HudDock active="galaxy" onSelect={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Intel · New reports: 2' })).toBeInTheDocument();
+  });
+
+  it('leaves Clan inert in a season with no clan layer', () => {
+    clanAvailable = false;
+    render(<HudDock active="galaxy" onSelect={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Clan' })).toBeDisabled();
   });
 
   it('carries the clan’s attention', () => {

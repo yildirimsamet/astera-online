@@ -42,5 +42,5 @@ export function HudDock({ active, onSelect }: { active: DockTab | null; onSelect
     clanAttention: clan?.attentionCount ?? 0,
   });
 
-  return <Dock active={active} badges={badges} onSelect={onSelect} />;
+  return <Dock active={active} badges={badges} onSelect={onSelect} {...(clan?.available === false ? { disabled: ['clan'] } : {})} />;
 }

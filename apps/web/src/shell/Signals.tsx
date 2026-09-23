@@ -254,7 +254,8 @@ export function SignalsFeed({
         </div>
       )}
 
-      <p className="legend mb-2">{t('signals.eventsHeading')}</p>
+      {/* A heading only when "Right now" stands above it to be told apart from. */}
+      {status.length > 0 && <p className="legend mb-2">{t('signals.eventsHeading')}</p>}
       {events.length === 0 ? (
         <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
           <BellIcon className="size-10 text-faint" />

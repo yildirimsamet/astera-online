@@ -93,6 +93,17 @@ describe('the signals beacon', () => {
     expect(marked).toHaveBeenCalledWith(['a', 'future']);
   });
 
+  /**
+   * ONE HEADING WHEN THERE IS ONE LIST. Seen on the v2 bell: its title is "What
+   * happened", and the feed printed "WHAT HAPPENED" again right under it. The
+   * heading only earns its line when "Right now" stands above it to be told apart.
+   */
+  it('heads the news only when a standing state sits above it', async () => {
+    mount([notification({ id: 'a' })]);
+    await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));
+    expect(screen.queryByText('What happened')).toBeNull();
+  });
+
   it('shows the news itself once opened', async () => {
     mount([notification({ id: 'a' })]);
     await userEvent.click(screen.getByRole('button', { name: 'Signals — 1 unread' }));

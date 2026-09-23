@@ -56,6 +56,17 @@ describe('the dock', () => {
     expect(screen.getByRole('button', { name: 'Fleet · In the air: 2' })).toHaveTextContent('2');
   });
 
+  /** A season with no clan layer: the tab keeps its place (the order never moves) and does nothing. */
+  it('keeps an unavailable tab in its place, inert', async () => {
+    const onSelect = vi.fn();
+    render(<Dock active="galaxy" badges={quiet} onSelect={onSelect} disabled={['clan']} />);
+    const clan = screen.getByRole('button', { name: /Clan/ });
+    expect(clan).toBeDisabled();
+    await userEvent.click(clan);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+  });
+
   it('counts craft up even when none of them has a path to ring', () => {
     const { container } = render(
       <Dock active={null} badges={{ ...quiet, fleet: { airborne: 1, progress: null } }} onSelect={vi.fn()} />,

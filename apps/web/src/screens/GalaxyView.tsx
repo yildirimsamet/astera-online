@@ -1,5 +1,7 @@
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
+import { useRequest } from '../lib/useRequest.js';
+import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
@@ -84,7 +86,6 @@ import { TradeSheet } from './TradeSheet.jsx';
 import { SettlementSheet } from './SettlementSheet.js';
 import { TransferSheet } from './TransferSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
-import { DiscControls } from '../galaxy/DiscControls.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
 import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
@@ -96,17 +97,11 @@ import { FeedbackScreen } from './FeedbackScreen.js';
 import { DonateScreen } from './DonateScreen.js';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
-import { ChatScreen } from './ChatScreen.jsx';
-import { ChatLauncher, type ChatChannel } from './ChatLauncher.jsx';
-import { ChronicleLauncher } from './ChronicleLauncher.jsx';
-import { ChronicleScreen } from './ChronicleScreen.jsx';
 import { Sheet, Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
-import { DiscReadout } from './DiscReadout.jsx';
-import { SensorToggles } from '../galaxy/SensorToggles.jsx';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
 import {
   SeasonRecap,
@@ -236,6 +231,7 @@ export function GalaxyView({
   coachTap = null,
   allowFocus,
   goHome,
+  worldsRequest,
   showChat = true,
   showGuidance = true,
 }: {
@@ -315,6 +311,11 @@ export function GalaxyView({
    * tracked drags the camera straight back and the flight appears to do nothing.
    */
   goHome?: number;
+  /**
+   * Bumped from outside to open the Worlds sheet: the v2 shell's world mark (B1).
+   * The disc's own transfer mark that used to open it is gone with `DiscControls`.
+   */
+  worldsRequest?: number;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -547,7 +548,6 @@ export function GalaxyView({
   const [strikingConvoy, setStrikingConvoy] = useState(false);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
-  const [chatChannel, setChatChannel] = useState<ChatChannel>('general');
   const reportedLostPlacement = useRef(false);
   useEffect(() => {
     if (
@@ -588,14 +588,13 @@ export function GalaxyView({
    * already frames the opening, and re-triggering it here would fight that with an
    * ease starting from the frame it just set.
    */
-  const askedHome = useRef(goHome);
-  useEffect(() => {
-    if (goHome === undefined || goHome === askedHome.current) return;
-    askedHome.current = goHome;
+  useRequest(goHome, () => {
     setFocus(null);
     setTransferOriginId(null);
     setHomeSignal((n) => n + 1);
-  }, [goHome]);
+  });
+  useRequest(worldsRequest, () => { setWorldsOpen(true); });
+  const [viewOpen, setViewOpen] = useState(false);
 
   /**
    * THE DISC COMES UP UNDER A COVER, NOT AFTER ONE. Owner decision.
@@ -1068,122 +1067,34 @@ export function GalaxyView({
         {...(allowFocus ? { allowFocus } : {})}
       />
 
-      {/* ── the only chrome on the canvas ───────────────────── */}
+      {/*
+        ── ONE THING PER CORNER (K1). ──────────────────────────────────────────
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-1">
-        {/*
-          THE DISC READOUT, TAKEN DOWN A SIZE. Owner decision.
-
-          It is a caption on a map, not a panel: it names what is out there and it
-          is read once a session. At `frame px-3 py-2` with a 12px numeral it was
-          competing with the worlds for the top-left corner of the only screen the
-          game has, on the device the game is aimed at. Smaller box, smaller type,
-          and the tracking on the label eased off so it still reads at 9px.
-        */}
-        <div className="pointer-events-none flex min-w-0 flex-col items-start">
-        <DiscReadout
-          shard={season.data?.shard ?? ''}
-          online={season.data?.online}
-          onlineToday={season.data?.onlineToday}
-        >
+        The disc's caption, the sensor switches, the four marks (`DiscControls`) and
+        the chat and chronicle launchers all left this layer with the v2 shell: the
+        dock carries Base, Fleet, Intel and Clan (and Galaxy pressed again flies
+        home), the bell carries chat and the chronicle, the world mark opens the
+        Worlds sheet, and the caption and switches sit in the View sheet behind the
+        one chip at top right. `data-disc-controls` keeps the Academy's rule hiding
+        the corner controls during a lesson.
+      */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
+        <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
+          <FpsReadout />
           {/*
-            THE CODE ON THE LEFT, WHO IS IN HERE ON THE RIGHT. D154.
-
-            `justify-between` rather than a gap, because the two are not a phrase:
-            one names the place and the other counts the people in it. The galaxy's
-            poetic name and the word "disc" used to sit on that left side and are
-            gone — see `DiscReadout` — which is what made room for the day figure
-            beside the live one.
-
-            Green is the system's own `opportunity`, which is what the disc already
-            uses for a fleet in the air — the colour means "somebody is doing
-            something" everywhere else on this screen, and a commander at the
-            controls is the same fact.
-
-            HIDDEN, NOT ZEROED, when a figure is absent: both counts are optional on
-            the payload so a client ahead of its server still parses, and "0
-            online" on a screen you are personally looking at is a lie.
+            PRESSING THE MERCHANT'S CHIP FRAMES THE MERCHANT. D170, owner request.
+            Until the v2 context slot takes the event card (B3), the chip stays here.
           */}
-            {t('galaxy.worlds', { count: planets.length })}
-            {windowsOpen(planets) > 0 && (
-              <span className="text-opportunity">
-                {t('galaxy.fleetAway', { count: windowsOpen(planets) })}
-              </span>
-            )}
-            {asteroids.length > 0 && (
-              <span className="text-crystal">{t('galaxy.rocks', { count: asteroids.length })}</span>
-            )}
-            {/*
-              AND HOW MANY PIRATES ARE STANDING IN YOUR CIRCLES RIGHT NOW. D150.
-
-              Counted beside the rocks because it answers the same question they
-              do — what is out there worth flying at — and because a pirate is the
-              one target class that LEAVES. A commander who cannot see the number
-              go up has no reason to look at the disc between sessions.
-
-              IT IS WHAT THIS CALLER CAN SEE, NOT WHAT EXISTS. `/api/pirates` is
-              already fog-filtered per commander, so this counts sightings rather
-              than the lane; a galaxy-wide tally would be a number nobody earned.
-            */}
-            {visiblePirates > 0 && (
-              <span className="text-threat">
-                {t('galaxy.pirates', { count: visiblePirates })}
-              </span>
-            )}
-            {/*
-              WRECKAGE IS COUNTED HERE BECAUSE IT IS PUBLIC. D32.
-
-              A field is a landmark at a known address with a clock on it, and the
-              whole value of the mechanic is that somebody who is not at war notices
-              it. Making a player spot amber motes on a dark disc would hide the one
-              thing it exists to advertise.
-            */}
-            {wrecks.length > 0 && (
-              <span className="text-alloy">{t('galaxy.wrecks', { count: wrecks.length })}</span>
-            )}
-        </DiscReadout>
-        <FpsReadout />
-        {/*
-          PRESSING THE MERCHANT'S CHIP FRAMES THE MERCHANT. D170, owner request.
-
-          The chip announced the one craft every commander in the galaxy can see
-          and then refused to be touched. It hands back the OCCURRENCE id, which is
-          exactly what `Focus` of kind `tradeShip` carries, so the press is the same
-          selection the disc already makes — camera and rail both follow.
-        */}
-        <ActiveGalaxyEvent
-          onFocusTrade={(id) => {
-            setFocus({ kind: 'tradeShip', id });
-            setDetail(true);
-          }}
-          onFocusConvoy={(id) => {
-            setFocus({ kind: 'intergalacticConvoy', id });
-            setDetail(true);
-          }}
-        />
-
-        {/*
-          THE TWO INSTRUMENTS' OWN SWITCHES, UNDER THE CAPTION THAT NAMES THE DISC.
-          Owner instruction. They are wrapped with the readout rather than dropped
-          into the `DiscControls` grid opposite, because that grid is four ways OFF
-          the disc and these two go nowhere — see `SensorToggles`.
-        */}
-        {/*
-          NO ACTIVE WORLD, NO SWITCHES. Both act on the active world alone, so
-          without one they would be two controls that do nothing when pressed —
-          which teaches that the pair is decorative.
-        */}
-        <SensorToggles
-          telescope={showTelescopeReach}
-          onToggleTelescope={() => { setShowTelescopeReach((on) => !on); }}
-          onOpenGalaxyEvents={() => { setEventsGuideOpen(true); }}
-          {...(hasRadar
-            ? {
-                radar: showRadarReach,
-                onToggleRadar: () => { setShowRadarReach((on) => !on); },
-              }
-            : {})}
-        />
+          <ActiveGalaxyEvent
+            onFocusTrade={(id) => {
+              setFocus({ kind: 'tradeShip', id });
+              setDetail(true);
+            }}
+            onFocusConvoy={(id) => {
+              setFocus({ kind: 'intergalacticConvoy', id });
+              setDetail(true);
+            }}
+          />
         </div>
 
         {/*
@@ -1192,52 +1103,34 @@ export function GalaxyView({
         */}
         <HitboxLegend />
 
-        {/*
-          THREE MARKS RATHER THAN A WORD, and two of them came out of the menu.
-
-          A labelled button in the corner of a map reads as browser chrome — the
-          owner's note was that it "looks like a home page" — so the worlds glyph
-          has been a mark at low opacity since D132. Research and the clan are two
-          more things a commander DOES rather than looks up, and behind a hamburger
-          a player who never opened that sheet never learned the game had them.
-
-          See `DiscControls` for why the order is fixed and why nothing is painted.
-        */}
-        <DiscControls
-          onOpenResearch={() => { onPanel('research'); }}
-          onOpenClan={() => { onPanel('clan'); }}
-          onOpenIntel={() => { onPanel('intel'); }}
-          /*
-            THE PLANET GLYPH IS THE CAMERA MOVE ITSELF NOW. D163.
-
-            The same three steps the sheet's own button used to take: clear the
-            focus so a tracked subject cannot drag the camera straight back, focus
-            the world (which also makes the next direct tap open management rather
-            than focusing it twice), and raise the home signal.
-          */
-          onGoHome={() => {
-            if (activePlanetId === null) return;
-            close();
-            focusPlanet(activePlanetId);
-            setHomeSignal((n) => n + 1);
-          }}
-          onOpenTransfer={() => { setWorldsOpen(true); }}
-          canTransfer={worlds.length > 1}
-          clanAvailable={clanBadge.data?.available ?? false}
-          clanWaiting={clanBadge.data?.attentionCount ?? 0}
-        />
+        <div data-disc-controls className="pointer-events-none">
+          <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
+        </div>
       </div>
 
-      {showChat && (
-        <>
-          <ChronicleLauncher onOpen={() => { onPanel('chronicle'); }} />
-          <ChatLauncher
-            onOpen={(channel) => {
-              setChatChannel(channel);
-              onPanel('chat');
-            }}
-          />
-        </>
+      {viewOpen && (
+        <ViewSheet
+          shard={season.data?.shard ?? ''}
+          {...(season.data?.online === undefined ? {} : { online: season.data.online })}
+          {...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday })}
+          counts={{
+            worlds: planets.length,
+            fleetsAway: windowsOpen(planets),
+            rocks: asteroids.length,
+            pirates: visiblePirates,
+            wrecks: wrecks.length,
+          }}
+          telescope={showTelescopeReach}
+          onToggleTelescope={() => { setShowTelescopeReach((on) => !on); }}
+          {...(hasRadar
+            ? { radar: showRadarReach, onToggleRadar: () => { setShowRadarReach((on) => !on); } }
+            : {})}
+          onOpenEvents={() => {
+            setViewOpen(false);
+            setEventsGuideOpen(true);
+          }}
+          onClose={() => { setViewOpen(false); }}
+        />
       )}
 
       {/*
@@ -1805,46 +1698,6 @@ export function GalaxyView({
               <ClanScreen initialTab={clanInitialTab} />
             </Suspense>
           </div>
-        </Sheet>
-      )}
-
-      {showChat && panel === 'chat' && (
-        <Sheet
-          contained
-          bleed
-          eyebrow={t('chat.eyebrow')}
-          title={t('chat.title')}
-          onClose={() => {
-            onPanel(null);
-          }}
-        >
-          <ChatScreen
-            initialChannel={chatChannel}
-            onFocusPlanet={(planetId) => {
-              onPanel(null);
-              focusPlanet(planetId);
-            }}
-          />
-        </Sheet>
-      )}
-
-      {showChat && panel === 'chronicle' && (
-        <Sheet
-          eyebrow={t('chronicle.eyebrow')}
-          title={t('chronicle.title')}
-          onClose={() => { onPanel(null); }}
-        >
-          <ChronicleScreen
-              focusablePlanetIds={planets.map((candidate) => candidate.id)}
-              onFocusPlanet={(planetId) => {
-                if (planetId === planet.data?.planet.id) {
-                  onPanel('planet');
-                  return;
-                }
-                onPanel(null);
-                focusPlanet(planetId);
-              }}
-          />
         </Sheet>
       )}
 

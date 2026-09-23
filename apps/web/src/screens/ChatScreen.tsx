@@ -28,7 +28,6 @@ import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
 import { ClanIcon, SendIcon } from '../ui/icons/index.js';
 import { Button, EmptyState, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
-import type { ChatChannel } from './ChatLauncher.js';
 
 interface MessageRow {
   id: string;
@@ -42,6 +41,9 @@ interface MessageRow {
   /** The author speaks with admin authority. Marked in gold; see the row below. */
   admin?: boolean;
 }
+
+/** Which room: the galaxy's general channel or the commander's clan. */
+export type ChatChannel = 'general' | 'clan';
 
 export function ChatScreen({
   onFocusPlanet,

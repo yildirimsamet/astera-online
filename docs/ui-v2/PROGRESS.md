@@ -75,6 +75,17 @@
   (dar genişlik; iki satır + tireleme denendi, Linux Chromium'da tiresiz bölündüğü için geri alındı); gren 56 px'te
   görünmüyordu (daha kaba, daha güçlü; `stale` doygunluk da düşürür); "yarım" sayfa az içerikte boş kalıyordu
   (`half` artık tavan: `max-h-[55dvh]`); zil sayfasının başlığı ilk sekmeyle aynıydı (artık "Neler oldu").
+- **F2.4 kabuk bağlandı:** `App` artık `v2/shell/GameShell.tsx` çiziyor (HudTop + NowLine üstte, HudDock altta, zil =
+  `BellHost`, Filo = `FleetSheet`); `GalaxyView`'den `DiscControls`, `SensorToggles`, `DiscReadout`, sohbet/kronik
+  başlatıcıları ve `chat`/`chronicle` panelleri kalktı (bileşenler ve testleri silindi; davranışları `view-sheet`,
+  `bell-host`, `dock`, `game-shell` testlerinde). Sağ üstte Görünüm çipi (`v2/hud/ViewSheet.tsx`). `worldsRequest` /
+  `goHome` sayaçları `lib/useRequest.ts`. `.v2-shell` `--v2-dock-h` yayınlıyor; eski `ui/kit/Sheet` da artık dock'un
+  üstünde biter (`bottom: var(--v2-dock-h, 0px)`, `max-h-full`). Klan katmanı olmayan sezonda Klan sekmesi yerinde, pasif.
+  **Gerçek oyunda görsel kontrol:** `tools/v2-shell.mjs` (ayrı veritabanı `astera_ui_v2` @5433, API :3199, web :5199;
+  kurulum betiğin başında). Görülüp düzeltilen: zil başlığı akışın başlığıyla aynıydı (akış başlığı artık yalnız
+  "Right now" varken), boş zil %92 yükseklikteydi (sohbet dışı sekmeler içerik kadar). Açık kalan (F2.5): eski
+  `SituationGuide` kartı dock'tan yüksekte duruyor ve kalkanlıyken "WEAKNESS" başlığı taşıyor → bağlam yuvası.
+  Eski `PlanetScreen` sekme şeridinde 350 px'te "PRODUCTION" ile "INTEL" üst üste biniyor (önceden var; F5'te Üs yeniden yapılıyor).
 - Karar (şartname yorumu): B3 "öneri" = `directives()` içinde `inbound` dışındaki ilk yönerge (tehdit kartı onu zaten
   taşıyor). B2 "dokununca saat" = satıra dokununca açılan listede her zamanlayıcının saati de yazar.
 

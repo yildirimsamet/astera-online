@@ -106,7 +106,9 @@ export function Sheet({
   const dismiss = useOwnPress(onClose);
 
   return (
-    <div className="fixed inset-0 z-[40] flex flex-col justify-end">
+    // Above the v2 dock when one is on screen (`--v2-dock-h`, published by `.v2-shell`), so a
+    // tab stays one press away from any page; the full screen everywhere else.
+    <div className="fixed inset-x-0 top-0 z-[40] flex flex-col justify-end" style={{ bottom: 'var(--v2-dock-h, 0px)' }}>
       <button
         type="button"
         aria-hidden="true"
@@ -120,7 +122,7 @@ export function Sheet({
         aria-label={title}
         data-sheet-panel
         className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] ${
-          contained ? 'h-[88dvh]' : 'max-h-[100dvh]'
+          contained ? 'h-[88dvh] max-h-full' : 'max-h-full'
         } ${reading ? 'mx-auto w-full max-w-3xl' : ''}`}
       >
         <header className="relative flex shrink-0 items-start gap-2 px-2 pb-3 pt-3">

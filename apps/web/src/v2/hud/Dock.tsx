@@ -27,6 +27,11 @@ export interface DockProps {
   badges: DockBadges;
   /** Every press, the active tab's included: pressing Galaxy again flies home (the host's call). */
   onSelect: (tab: DockTab) => void;
+  /**
+   * Tabs that keep their place but do nothing — a season with no clan layer. The
+   * order never moves, so a thumb that learned it is never wrong.
+   */
+  disabled?: readonly DockTab[];
 }
 
 /**
@@ -38,7 +43,7 @@ export interface DockProps {
  * ring on Fleet filling toward your next own landing beside how many are up, the
  * unseen reports on Intel, what the clan needs on Clan.
  */
-export function Dock({ active, badges, onSelect }: DockProps) {
+export function Dock({ active, badges, onSelect, disabled = [] }: DockProps) {
   const { t } = useTranslation();
 
   return (
@@ -67,8 +72,9 @@ export function Dock({ active, badges, onSelect }: DockProps) {
             type="button"
             aria-label={said === null ? label : `${label} · ${said}`}
             {...(on ? { 'aria-current': 'page' as const } : {})}
+            disabled={disabled.includes(tab)}
             onClick={() => { onSelect(tab); }}
-            className={`relative flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 ${
+            className={`relative flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 disabled:opacity-35 ${
               on ? 'text-v2-ink' : 'text-v2-ink-3'
             }`}
           >
