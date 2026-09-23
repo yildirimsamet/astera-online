@@ -42,7 +42,9 @@
 - ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
 - ~~F1.2 yazı tipleri~~ bitti.
 - ~~F1.3 ikonlar~~ bitti.
-- **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, **B12** halka sayaç, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
+- **F1.4 kit (sıradaki), bu sırayla:** ~~B9~~, ~~B8~~, ~~B7~~, ~~B12 halkaları~~, **kaynak ölçeri** (B1 içindeki),
+  B5 (+ kaçış çizgisi), B6, v2 Sheet, sonra B12'nin kuyruk sayfası (iptal → `Confirm`; `ui/QueueStrip.tsx`
+  içindeki `CancelConfirm` dışa aktarılıp yeniden kullanılır — "iptal Confirm açar" testi orada).
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
@@ -84,6 +86,12 @@
   `brightness-*`, yaş → `.v2-grain` + `old`'da soluk; BLIND → kesikli çerçeve + "?", resim yok, `alt` etiket olur).
   Gren `src/v2/surfaces.css` (styles.css içe aktarıyor; SVG gürültü, `data-age` ile şiddet). **F10 notu:** yanan
   çubuklar eski `bg-clarity-*` token'larını kullanıyor (parlaklık rampası); F10 bunları silmemeli, v2'ye taşımalı.
+- F1.4 · B12 halkaları: `lib/orders.ts` `orderProgress(order, now)` (yalnız baş koşar; başlamamış/zamansız 0, biten 1).
+  `apps/web/src/v2/kit/QueueLane.tsx` — `BUILD.queueDepth` (3) hücre: sipariş = konik halka (`data-ring`,
+  `data-progress`) + içinde render + ad + `×N` (yalnız >1) + bitişe kalan (`countdown`); zamansız sipariş
+  `planet.queue.committing` / `staged`; boş yer "+ Boş hat" (`lane.free`, 5 dil). Hücre `onOpen` çağırır; iptal
+  işareti yok (yarısı yanar, kuyruk sayfasında). Not: sunucu bina/alet/uydu siparişinde `count: 1` yazar; `count`
+  yalnız gövdede anlamlı (`lib/orders.ts` yorumu "seviye taşır" diyor, eskimiş).
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi

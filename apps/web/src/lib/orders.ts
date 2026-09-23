@@ -80,3 +80,18 @@ export function buildOrderArt(order: BuildOrderView): string | null {
         : null;
   }
 }
+
+/**
+ * How much of an order is built, 0 to 1, by its own server-timed clock.
+ *
+ * Only the head of a lane is ever running (D4): an order that has not reached its
+ * start is 0 rather than a share of the wait, and one the server has not timed
+ * yet (optimistic, staged) is 0. A finished order holds at 1 until the next read
+ * takes it off the lane.
+ */
+export function orderProgress(order: BuildOrderView, now: number): number {
+  if (!order.startedAt) return 0;
+  const start = order.startedAt.getTime();
+  const span = Math.max(1, order.finishesAt.getTime() - start);
+  return Math.max(0, Math.min(1, (now - start) / span));
+}

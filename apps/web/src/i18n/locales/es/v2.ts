@@ -5,3 +5,9 @@ export const hold = {
   hint: 'Mantén pulsado o pulsa Intro dos veces para confirmar',
   confirm: '{{label}} · ¿seguro?',
 };
+
+/** B12: una cola de obra dibujada como anillos. */
+export const lane = {
+  /** Un hueco vacío en la cola. */
+  free: '+ Hueco libre',
+};

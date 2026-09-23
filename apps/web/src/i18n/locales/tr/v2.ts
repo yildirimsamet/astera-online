@@ -5,3 +5,9 @@ export const hold = {
   hint: 'Basılı tut ya da onaylamak için iki kez Enter’a bas',
   confirm: '{{label}} · emin misin?',
 };
+
+/** B12: halka olarak çizilen kuyruk hattı. */
+export const lane = {
+  /** Hatta boş duran yer. */
+  free: '+ Boş hat',
+};

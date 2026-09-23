@@ -7,3 +7,9 @@ export const hold = {
   /** The inline second step after one Enter. */
   confirm: '{{label}} · sure?',
 };
+
+/** B12: a build lane drawn as rings. */
+export const lane = {
+  /** A slot in the lane with nothing in it. */
+  free: '+ Free slot',
+};
