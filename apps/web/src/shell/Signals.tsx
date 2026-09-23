@@ -68,49 +68,26 @@ export interface Status {
   go?: Panel;
 }
 
-export function Signals({
-  onOpen,
-  onFocusPlanet,
-}: {
-  onOpen: (
-    panel: Panel,
-    stop?: PanelStop,
-    reportMissionId?: string,
-    focus?: { planetId?: string; group?: string; itemId?: string },
-  ) => void;
-  onFocusPlanet: (planetId: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  /**
-   * WHAT WAS NEW WHEN YOU OPENED IT.
-   *
-   * Marking read is optimistic — the player HAS read them, and a badge that waits
-   * for a round trip to clear is a badge that looks stuck. But the rows are drawn
-   * from the same data, so the optimism greyed out every line in the same frame
-   * the sheet appeared, and the one question the surface exists to answer — WHICH
-   * of these is new — was unanswerable by the time it could be asked.
-   *
-   * The count comes from the live data and clears at once. The highlighting comes
-   * from this snapshot and holds until the sheet is closed.
-   */
-  const [justRead, setJustRead] = useState<ReadonlySet<string>>(new Set());
+/** Where a signal's press lands: the panel, its shelf, the report, the row. */
+export type SignalGo = (
+  panel: Panel,
+  stop?: PanelStop,
+  reportMissionId?: string,
+  focus?: { planetId?: string; group?: string; itemId?: string },
+) => void;
+
+/**
+ * THE FEED, READ ONCE FOR EVERY SURFACE THAT SHOWS IT: the old beacon and the v2
+ * bell sheet (K1) count and list exactly the same rows.
+ */
+function useSignalFeed() {
   const { data } = useNotifications();
   const planet = usePlanet();
-  const markSeen = useMarkSeen();
   const now = useNow(30_000);
   // Stock is projected forward between fetches, so "almost full" is judged
   // against what the player is actually holding rather than what we last read.
   const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 5000);
 
-  /**
-   * Only what this build can actually put into words.
-   *
-   * A kind from a newer server renders nothing, so counting it would light a
-   * badge that reading cannot clear — and a badge that cannot be cleared is how
-   * players learn to ignore badges. It is still marked seen when the sheet opens,
-   * for the same reason.
-   */
   const events = useMemo(
     () => (data?.notifications ?? []).filter((n) => describeNotification(n, now) !== null),
     [data, now],
@@ -118,6 +95,39 @@ export function Signals({
   const groups = useMemo(() => group(events), [events]);
   const unseen = events.filter((n) => !n.seen).length;
   const status = planet.data ? statusOf(planet.data, held) : [];
+  return { events, groups, unseen, status, now };
+}
+
+/**
+ * OPENING THE FEED IS WHAT MARKS IT READ. Loading the app is not: a player who
+ * starts the game and immediately closes it has not been told anything.
+ *
+ * Every unseen id in the payload, not only the ones this build can describe — a
+ * row nobody can be shown must not hold the badge open. Returns the ids it just
+ * marked, so the rows stay lit for the reader who opened them.
+ */
+export function useOpenSignals(): () => ReadonlySet<string> {
+  const { data } = useNotifications();
+  const markSeen = useMarkSeen();
+  return () => {
+    const fresh = (data?.notifications ?? []).filter((n) => !n.seen).map((n) => n.id);
+    if (fresh.length > 0) markSeen.mutate(fresh);
+    return new Set(fresh);
+  };
+}
+
+export function Signals({
+  onOpen,
+  onFocusPlanet,
+}: {
+  onOpen: SignalGo;
+  onFocusPlanet: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [justRead, setJustRead] = useState<ReadonlySet<string>>(new Set());
+  const { unseen, status } = useSignalFeed();
+  const openSignals = useOpenSignals();
 
   return (
     <>
@@ -127,14 +137,7 @@ export function Signals({
         onClick={() => {
           haptic('tap');
           setOpen(true);
-          // Opening is what marks them read. Loading the app is not: a player who
-          // starts the game and immediately closes it has not been told anything.
-          //
-          // Every unseen id in the payload, not only the ones this build can
-          // describe — a row nobody can be shown must not hold the badge open.
-          const fresh = (data?.notifications ?? []).filter((n) => !n.seen).map((n) => n.id);
-          setJustRead(new Set(fresh));
-          if (fresh.length > 0) markSeen.mutate(fresh);
+          setJustRead(openSignals());
         }}
         /**
          * UNREAD IS LOUD. Owner decision.
@@ -171,7 +174,6 @@ export function Signals({
           </>
         )}
       </button>
-
       {open && (
         <Sheet
           eyebrow={
@@ -183,68 +185,95 @@ export function Signals({
             setJustRead(new Set());
           }}
         >
-          {status.length > 0 && (
-            <div className="mb-6 mt-2">
-              <p className="legend mb-2">{t('signals.statusHeading')}</p>
-              <div className="plate plate-inset">
-                {status.map((item) => (
-                  <button
-                    key={item.line}
-                    type="button"
-                    disabled={!item.go}
-                    onClick={() => {
-                      if (!item.go) return;
-                      onOpen(item.go);
-                      setOpen(false);
-                    }}
-                    className="flex w-full items-start gap-2 border-b border-line-soft p-3 text-left last:border-b-0"
-                  >
-                    <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal'}`} aria-hidden>
-                      <StatusGlyph kind={item.kind} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-body text-bone">{item.line}</span>
-                      <span className="mt-1 block text-caption text-faint">{item.detail}</span>
-                    </span>
-                    {item.go && (
-                      <span aria-hidden className="shrink-0 text-body text-faint">
-                        →
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <p className="legend mb-2">{t('signals.eventsHeading')}</p>
-          {events.length === 0 ? (
-            <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
-              <BellIcon className="size-10 text-faint" />
-              <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
-            </div>
-          ) : (
-            <div className="plate plate-inset">
-              {groups.map((entry) => (
-                <Event
-                  key={entry.event.id}
-                  event={entry.event}
-                  repeats={entry.repeats}
-                  unread={!entry.event.seen || justRead.has(entry.event.id)}
-                  now={now}
-                  onGo={(panel, stop, reportMissionId, focus) => {
-                    onOpen(panel, stop, reportMissionId, focus);
-                    setOpen(false);
-                  }}
-                  onFocusPlanet={(planetId) => {
-                    setOpen(false);
-                    onFocusPlanet(planetId);
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <SignalsFeed
+            justRead={justRead}
+            onGo={(panel, stop, reportMissionId, focus) => {
+              onOpen(panel, stop, reportMissionId, focus);
+              setOpen(false);
+            }}
+            onFocusPlanet={(planetId) => {
+              setOpen(false);
+              onFocusPlanet(planetId);
+            }}
+          />
         </Sheet>
+      )}
+    </>
+  );
+}
+
+/**
+ * THE FEED ITSELF: what is true right now (status), then what happened (events).
+ * The v2 bell sheet's Signals tab draws this same body.
+ */
+export function SignalsFeed({
+  justRead,
+  onGo,
+  onFocusPlanet,
+}: {
+  /** Ids marked read by this opening; they stay lit until the feed closes. */
+  justRead: ReadonlySet<string>;
+  onGo: SignalGo;
+  onFocusPlanet: (planetId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const { events, groups, status, now } = useSignalFeed();
+
+  return (
+    <>
+      {status.length > 0 && (
+        <div className="mb-6 mt-2">
+          <p className="legend mb-2">{t('signals.statusHeading')}</p>
+          <div className="plate plate-inset">
+            {status.map((item) => (
+              <button
+                key={item.line}
+                type="button"
+                disabled={!item.go}
+                onClick={() => {
+                  if (!item.go) return;
+                  onGo(item.go);
+                }}
+                className="flex w-full items-start gap-2 border-b border-line-soft p-3 text-left last:border-b-0"
+              >
+                <span className={`mt-1 grid size-9 shrink-0 place-items-center rounded-chip border ${item.tone === 'threat' ? 'border-threat/45 bg-threat/10 text-threat' : item.tone === 'alloy' ? 'border-alloy/35 bg-alloy/10 text-alloy' : 'border-crystal/35 bg-crystal/10 text-crystal'}`} aria-hidden>
+                  <StatusGlyph kind={item.kind} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body text-bone">{item.line}</span>
+                  <span className="mt-1 block text-caption text-faint">{item.detail}</span>
+                </span>
+                {item.go && (
+                  <span aria-hidden className="shrink-0 text-body text-faint">
+                    →
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="legend mb-2">{t('signals.eventsHeading')}</p>
+      {events.length === 0 ? (
+        <div className="grid justify-items-center gap-2 border border-dashed border-line-soft px-6 py-8 text-center text-dim">
+          <BellIcon className="size-10 text-faint" />
+          <p className="max-w-[28ch] text-body leading-relaxed">{t('signals.empty')}</p>
+        </div>
+      ) : (
+        <div className="plate plate-inset">
+          {groups.map((entry) => (
+            <Event
+              key={entry.event.id}
+              event={entry.event}
+              repeats={entry.repeats}
+              unread={!entry.event.seen || justRead.has(entry.event.id)}
+              now={now}
+              onGo={onGo}
+              onFocusPlanet={onFocusPlanet}
+            />
+          ))}
+        </div>
       )}
     </>
   );

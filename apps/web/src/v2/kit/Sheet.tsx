@@ -26,6 +26,8 @@ export interface SheetProps {
   footer?: ReactNode;
   /** The caller owns the body's insets (edge-to-edge rows). */
   bleed?: boolean;
+  /** The body does not scroll; its child owns scrolling (a chat log). */
+  contained?: boolean;
 }
 
 /**
@@ -58,6 +60,7 @@ export function Sheet({
   children,
   footer,
   bleed = false,
+  contained = false,
 }: SheetProps) {
   const { t } = useTranslation();
   const [detent, setDetent] = useState<Detent>(detents[0] ?? 'half');
@@ -174,7 +177,10 @@ export function Sheet({
           </header>
         </div>
 
-        <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${bleed ? '' : 'px-3 pb-3'}`}>
+        <div
+          data-sheet-body=""
+          className={`min-h-0 flex-1 ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
+        >
           {typeof children === 'function' ? children(detent) : children}
         </div>
 

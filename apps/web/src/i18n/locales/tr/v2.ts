@@ -69,3 +69,14 @@ export const now = {
   /** The clock time beside a countdown in the sheet. */
   at: 'saat {{time}}',
 };
+
+/** K1: zil sayfası, üç sekme. */
+export const bell = {
+  /** The tab list, for a screen reader. */
+  label: 'Sinyaller, kronik ve sohbet',
+  signals: 'Sinyaller',
+  chronicle: 'Kronik',
+  chat: 'Sohbet',
+  /** The dot on Chat, read aloud. */
+  chatUnread: '{{count}} okunmamış',
+};

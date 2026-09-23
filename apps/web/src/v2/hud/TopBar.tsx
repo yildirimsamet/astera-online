@@ -61,7 +61,7 @@ export function TopBar({
     : t('statusBar.menuHint', { name: commander });
 
   return (
-    <header className="flex h-12 items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui backdrop-blur-sm">
+    <header className="flex h-12 items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui">
       <button
         type="button"
         aria-label={chipName}
@@ -110,7 +110,7 @@ export function TopBar({
         onClick={onBell}
         className="relative grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
       >
-        <Icon id="i-bell" className={`size-5 ${bell.urgent ? 'motion-safe:animate-pulse text-v2-ink' : ''}`} />
+        <Icon id="i-bell" className={`size-5 ${bell.urgent ? 'animate-pulse text-v2-ink' : ''}`} />
         {bell.unseen > 0 && (
           <span
             aria-hidden="true"

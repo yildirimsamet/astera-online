@@ -50,7 +50,7 @@ export function NowLine({ entries, now, contacts = [] }: NowLineProps) {
         <span className="sr-only">{t('now.label')}</span>
         <span
           aria-hidden="true"
-          className={`size-2 shrink-0 rounded-full ${enemy ? 'bg-v2-hostile motion-safe:animate-pulse' : 'bg-v2-self'}`}
+          className={`size-2 shrink-0 rounded-full ${enemy ? 'bg-v2-hostile animate-pulse' : 'bg-v2-self'}`}
         />
         <span
           {...(enemy ? { 'aria-live': 'polite' as const } : {})}

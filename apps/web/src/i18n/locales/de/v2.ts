@@ -69,3 +69,14 @@ export const now = {
   /** The clock time beside a countdown in the sheet. */
   at: 'um {{time}}',
 };
+
+/** K1: das Glocken-Blatt, drei Tabs. */
+export const bell = {
+  /** The tab list, for a screen reader. */
+  label: 'Signale, Chronik und Chat',
+  signals: 'Signale',
+  chronicle: 'Chronik',
+  chat: 'Chat',
+  /** The dot on Chat, read aloud. */
+  chatUnread: '{{count}} ungelesen',
+};

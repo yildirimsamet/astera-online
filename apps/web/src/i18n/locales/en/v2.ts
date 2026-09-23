@@ -71,3 +71,14 @@ export const now = {
   /** The clock time beside a countdown in the sheet. */
   at: 'at {{time}}',
 };
+
+/** K1: the bell sheet, three tabs. */
+export const bell = {
+  /** The tab list, for a screen reader. */
+  label: 'Signals, chronicle and chat',
+  signals: 'Signals',
+  chronicle: 'Chronicle',
+  chat: 'Chat',
+  /** The dot on Chat, read aloud. */
+  chatUnread: '{{count}} unread',
+};

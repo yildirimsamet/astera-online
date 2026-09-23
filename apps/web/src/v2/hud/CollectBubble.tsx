@@ -49,8 +49,8 @@ export function CollectBubble({ state, pending, onCollect, onOpenBase }: Collect
       aria-label={state.full ? t('statusBar.works.hintFull') : t('statusBar.works.hintCollect', { amount: full(state.waiting) })}
       {...(state.full ? { 'data-full': '' } : {})}
       onClick={onCollect}
-      className={`pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-self/60 bg-v2-self/20 px-2.5 font-v2-mono text-caption font-medium text-v2-ink backdrop-blur-sm disabled:opacity-60 ${
-        state.full ? 'motion-safe:animate-pulse' : ''
+      className={`pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-self/60 bg-v2-self/20 px-2.5 font-v2-mono text-caption font-medium text-v2-ink disabled:opacity-60 ${
+        state.full ? 'animate-pulse' : ''
       }`}
     >
       <Icon id="i-collect" className="size-3.5 text-v2-self" />+{compact(state.waiting)}

@@ -158,6 +158,14 @@ describe('the sheet', () => {
     expect(screen.getByText('dossier')).toBeInTheDocument();
   });
 
+  it('lets a contained body own its own scrolling', () => {
+    const { container, rerender } = render(<Sheet title="Kestrel" onClose={vi.fn()}>body</Sheet>);
+    expect(container.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');
+    rerender(<Sheet title="Kestrel" onClose={vi.fn()} contained>body</Sheet>);
+    expect(container.querySelector('[data-sheet-body]')).toHaveClass('overflow-hidden');
+    expect(container.querySelector('[data-sheet-body]')).not.toHaveClass('overflow-y-auto');
+  });
+
   it('offers a way back when it was opened from another surface', async () => {
     const onBack = vi.fn();
     render(<Sheet title="Kestrel" onClose={vi.fn()} onBack={onBack}>body</Sheet>);

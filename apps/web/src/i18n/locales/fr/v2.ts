@@ -69,3 +69,14 @@ export const now = {
   /** The clock time beside a countdown in the sheet. */
   at: 'à {{time}}',
 };
+
+/** K1 : la feuille de la cloche, trois onglets. */
+export const bell = {
+  /** The tab list, for a screen reader. */
+  label: 'Signaux, chronique et discussion',
+  signals: 'Signaux',
+  chronicle: 'Chronique',
+  chat: 'Discussion',
+  /** The dot on Chat, read aloud. */
+  chatUnread: '{{count}} non lus',
+};
