@@ -39,11 +39,8 @@
 
 ## Sıradaki iş
 **F1 · v2 temeli.** Sıra: (1) token'lar, (2) yazı tipi, (3) ikonlar, (4) kit bileşenleri.
-- **F1.1 token'lar** — şartname: `grep -n "^:root{" -A10 docs/ui-v2/gozlemevi.md` ve "On anlam, on renk" bölümü.
-  Karar verilecek: Tailwind v4 `@theme` içinde çakışmayan adlar (bugünkü `--color-alloy` vb. ile aynı ad yok);
-  F10'da kalıcı adlara çevrilir. Koruyucu test önce: her v2 rengi tek yerde, kanallar (`--ch-*` deseni) tanımlı;
-  v2 bileşenleri ham hex yazmaz. Mevcut `palette.test.ts` / `surface-vocabulary.test.ts` desenini oku.
-- F1.2 Archivo: `@fontsource-variable/archivo`'nun genişlik eksenini (wdth 62–125) içerip içermediğini kontrol et.
+- ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
+- **F1.2 Archivo (sıradaki):** `@fontsource-variable/archivo`'nun genişlik eksenini (wdth 62–125) içerip içermediğini kontrol et.
 - F1.3 ikonlar: `docs/ui-v2/icons.svg` → `apps/web/src/v2/icons/`.
 - F1.4 kit: B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
 
@@ -57,6 +54,13 @@
   `SituationGuide` saati geçirir, `GalaxyView` `season.data.shieldUntil` verir; 5 dilde `undefendedShieldedTitle`).
   **H2** `a7b8348` — "Depo dolu" etiketi `text-threat` yerine `text-alloy`. İkisi de canlı sezon için master'a
   cherry-pick edilebilir (sahibe hash'ler verildi). Web: bilinen 14 kırmızı aynen, +7 yeni test yeşil.
+- F1.1 (2026-09-23): `apps/web/src/v2/tokens.css` — `@theme` içinde `v2-` önekli renkler (şartname değerleri),
+  5 rakip slotu, `font-v2-ui` / `font-v2-mono`, `ease-v2`; `styles.css` içe aktarıyor. Kullanım: Tailwind
+  sınıfları (`bg-v2-panel`, `text-v2-ink-2`, `bg-v2-self/15`); CSS'te `var(--color-v2-*)` + `color-mix()`.
+  Kanal (`--ch-*`) deseni v2'de yok: opaklık Tailwind değiştiricisiyle. Koruyucu: `test/v2/tokens.test.ts`
+  (değerler, çakışmasızlık, kontrast, `src/v2` altında ham renk yasağı). `surface-vocabulary.test.ts` artık
+  v2 token'larını da okuyor. Tailwind kullanılmayan tema değişkenlerini derlemeye koymuyor; bileşenler
+  kullanınca çıkar (F1.4'te kontrol et).
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
@@ -69,7 +73,10 @@
 - **K3:** yazı tipi değişir, boyutlar değişmez (gövde 12 px).
 
 ## Açık sorunlar
-- (yok)
+- **Ölü sınıflar (başlangıçtan, sahibin son işlerinden):** `ui/PaceRow.tsx` `bg-accent/20`, `text-bright`;
+  `screens/PlanetScreen.tsx` `bg-cyan-400/10`, `border-cyan-400/40`, `text-cyan-100` — temada yoklar, hiçbir şey
+  çizmiyorlar (`surface-vocabulary.test.ts` kırmızısının sebebi). PaceRow B10 ile, PlanetScreen F5 ile değişecek;
+  canlı sezonda düzeltilmesi istenirse sahibe söylendi.
 
 ## Bilinen kırmızı testler (2026-09-23 @ a64b230, worktree)
 typecheck 0 hata · lint 0 hata.

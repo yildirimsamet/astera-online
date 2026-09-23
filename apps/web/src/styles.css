@@ -2,6 +2,7 @@
 @import '@fontsource-variable/ibm-plex-sans';
 @import '@fontsource-variable/saira/standard.css';
 @import './styles/chrome.css';
+@import './v2/tokens.css';
 
 /**
  * TWO SURFACES THAT NO UTILITY CAN REACH.

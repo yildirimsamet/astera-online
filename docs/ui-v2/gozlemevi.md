@@ -534,7 +534,7 @@ Bölüm 1 tasarımın ne olduğunu anlatır. Bu bölüm onu Astera kod tabanına
 }
 ```
 
-Rakip işaretleri (K2 onayıyla): bugünkü 5 slot rengi korunur, paletle çakışmayan tonlara çekilir. Gren dokusu (bilgi yaşı, B7) SVG `feTurbulence` gürültüsüdür: `baseFrequency .85`, `numOctaves 2`, `mix-blend-mode: overlay`, opaklık yaşa göre 0 / .35 / .6.
+Rakip işaretleri (K2 onayıyla): 5 slot rengi korunur, paletle çakışmayan macenta–menekşe ailesine çekilir: `#f25cd3`, `#b07cff`, `#ff8fc4`, `#d8b4fe`, `#c2479e` (bugünkü `RIVAL_COLOURS` turuncu, sarı ve mavi tonları tehdit, uyarı ve klan renkleriyle çakışıyordu). Kodda: `apps/web/src/v2/tokens.css`, adlar `v2-` önekli (F10'da kalkar). Gren dokusu (bilgi yaşı, B7) SVG `feTurbulence` gürültüsüdür: `baseFrequency .85`, `numOctaves 2`, `mix-blend-mode: overlay`, opaklık yaşa göre 0 / .35 / .6.
 
 **Bir faz ne zaman biter?** O fazın kabul kriterlerinin her biri bir test olarak yazılmış ve yeşil olduğunda, 350 px'te görsel doğrulama yapıldığında ve yeni metinler 5 dile eklendiğinde. Kriter, test olmadan "bitti" sayılmaz.
 

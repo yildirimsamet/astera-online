@@ -32,7 +32,8 @@ import { describe, expect, it } from 'vitest';
  */
 
 const ROOT = 'src';
-const theme = readFileSync(`${ROOT}/styles.css`, 'utf8');
+/** The current theme and the Gözlemevi tokens it imports (`src/v2/tokens.css`, until F10 merges them). */
+const theme = `${readFileSync(`${ROOT}/styles.css`, 'utf8')}\n${readFileSync(`${ROOT}/v2/tokens.css`, 'utf8')}`;
 const chrome = readFileSync(`${ROOT}/styles/chrome.css`, 'utf8');
 
 /** Every class the two stylesheets actually define. */

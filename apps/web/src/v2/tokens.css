@@ -1,0 +1,61 @@
+/**
+ * GÖZLEMEVİ TOKENS — the v2 interface. Spec: docs/ui-v2/gozlemevi.md ("On anlam, on renk").
+ *
+ * Ten hues and each one means exactly one thing. Red is something happening to you
+ * and nothing else; teal is you and your move (the one primary button on a screen);
+ * blue is your clan; magenta a commander you marked. Resources wear their own hue
+ * and never appear without their icon. Warn is a gap you can close — a missing
+ * resource, a free slot, production going to waste — never a danger.
+ *
+ * Prefixed `v2-` because the current theme is still live beside it and already
+ * owns names like `alloy` and `panel` with different values. Phase F10 removes the
+ * old theme and drops the prefix. `test/v2/tokens.test.ts` holds the values to the
+ * spec and refuses a raw colour anywhere else under `src/v2`.
+ *
+ * Opacity is a Tailwind modifier (`bg-v2-self/15`) or `color-mix()` in CSS; a hue
+ * is never restated as a second literal.
+ */
+@theme {
+  /* ── ground ─ deepest first; the canvas sits at void */
+  --color-v2-void: #04060b;
+  --color-v2-deep: #080d18;
+  --color-v2-panel: #0d1422;
+  --color-v2-raise: #131c2f;
+  --color-v2-line: #1d2842;
+  --color-v2-line-hi: #2c3c60;
+
+  /* ── ink ─ cool, lit by the same instrument as the panel under it */
+  --color-v2-ink: #eef3ff;
+  --color-v2-ink-2: #a4b1cd;
+  --color-v2-ink-3: #66738f;
+
+  /* ── relationship ─ who a thing belongs to */
+  --color-v2-self: #2ee6c8;
+  --color-v2-self-ink: #032520;
+  --color-v2-ally: #5b8cff;
+  --color-v2-neutral: #8c97ad;
+  --color-v2-rival: #f25cd3;
+  --color-v2-hostile: #ff4b4b;
+
+  /* Five rival marks keep five colours (K2), pulled into the magenta–violet
+     family so none of them is a colour the disc already spends. */
+  --color-v2-rival-1: #f25cd3;
+  --color-v2-rival-2: #b07cff;
+  --color-v2-rival-3: #ff8fc4;
+  --color-v2-rival-4: #d8b4fe;
+  --color-v2-rival-5: #c2479e;
+
+  /* ── resources and states */
+  --color-v2-alloy: #f2a14a;
+  --color-v2-crystal: #7fd0ff;
+  --color-v2-deut: #a8ea4c;
+  --color-v2-warn: #ffcc4d;
+  --color-v2-premium: #e6c77e;
+
+  /* ── type ─ one family, width as hierarchy (K3); sizes stay on the current scale */
+  --font-v2-ui: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --font-v2-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── motion ─ one curve: fast out, settles without bounce */
+  --ease-v2: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
