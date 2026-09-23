@@ -1,5 +1,3 @@
-<!-- ÜRETİLMİŞ DOSYA. Elle düzenleme: gozlemevi.html düzenlenir, sonra `python3 docs/ui-v2/to_markdown.py` çalıştırılır. -->
-
 ASTERA · GÖZLEMEVİ
 
 *Vizyon* [Oyun](#oyun)[İlkeler](#ilkeler)[Atmosfer](#atmosfer)[Renk](#renk)[Tipografi](#tip)[İkonlar](#ikon)[HUD](#hud)[Ekranlar](#ekranlar)[Masaüstü](#masaustu)[Sadelik](#sadelik) *Devir* [Başla](#devir)[Durum](#durum)[Kod](#kod)[Kurallar](#kurallar)[Hatalar](#hatalar)[Kararlar](#kararlar)[Mimari](#mimari)[Bileşenler](#bilesenler)[Ekranlar](#ekran-sart)[Sunucu](#sunucu)[Varlıklar](#varlik)[Plan](#plan)[Sorular](#sorular)[Sözlük](#sozluk)
@@ -521,7 +519,22 @@ Bölüm 1 tasarımın ne olduğunu anlatır. Bu bölüm onu Astera kod tabanına
 - Oyuncunun okuduğu her metin 5 dilde yazılır: `apps/web/src/i18n/locales/{tr,en,de,fr,es}`. Cümle JSX'te birleştirilmez; sayılar adlandırılmış parametre olarak geçer.
 - Ana döngüye, risk/ödüle, PvP'ye, sahipliğe, ilerlemeye ya da kimliğe dokunan her değişiklik önce sahibin onayını alır. Bu belgede bunlar [Karar defteri](#kararlar)nde toplandı.
 
-**Bölüm 1'deki mockup'lar hakkında.** Komutan adları, gezegen adları ve sayılar örnektir; kural olan her şey [Doğrulanmış kurallar](#kurallar) tablosunda kod referansıyla yazılıdır. Bu sayfanın kendi renkleri, yazı tipleri ve SVG ikonları, önerilen tasarım token'larının kendisidir: kaynak kodundaki `:root` değişkenleri ve `<symbol>` tanımları doğrudan alınabilir.
+**Bölüm 1'deki mockup'lar hakkında.** Komutan adları, gezegen adları ve sayılar örnektir; kural olan her şey [Doğrulanmış kurallar](#kurallar) tablosunda kod referansıyla yazılıdır. Önerilen tasarım token'ları aşağıda; SVG ikonlar (`i-*` glif, `c-*` sınıf amblemi, `m-*` harita işareti, `sel` seçim çerçevesi) `docs/ui-v2/icons.svg` içinde. Mockup'ların HTML'i yalnız git geçmişinde: `git show 08bf3f6:docs/ui-v2/gozlemevi.html`.
+
+```css
+:root{
+  color-scheme:dark;
+  --void:#04060B;--deep:#080D18;--panel:#0D1422;--raise:#131C2F;--line:#1D2842;--line-hi:#2C3C60;
+  --ink:#EEF3FF;--ink-2:#A4B1CD;--ink-3:#66738F;
+  --self:#2EE6C8;--self-ink:#032520;--ally:#5B8CFF;--neutral:#8C97AD;--rival:#F25CD3;--hostile:#FF4B4B;
+  --warn:#FFCC4D;--alloy:#F2A14A;--crystal:#7FD0FF;--deut:#A8EA4C;--premium:#E6C77E;
+  --f-ui:"Archivo","Helvetica Neue",Arial,system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+```
+
+Rakip işaretleri (K2 onayıyla): bugünkü 5 slot rengi korunur, paletle çakışmayan tonlara çekilir. Gren dokusu (bilgi yaşı, B7) SVG `feTurbulence` gürültüsüdür: `baseFrequency .85`, `numOctaves 2`, `mix-blend-mode: overlay`, opaklık yaşa göre 0 / .35 / .6.
 
 **Bir faz ne zaman biter?** O fazın kabul kriterlerinin her biri bir test olarak yazılmış ve yeşil olduğunda, 350 px'te görsel doğrulama yapıldığında ve yeni metinler 5 dile eklendiğinde. Kriter, test olmadan "bitti" sayılmaz.
 

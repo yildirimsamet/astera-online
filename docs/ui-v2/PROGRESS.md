@@ -2,13 +2,13 @@
 
 **Bağlam sıkıştırıldıysa ya da yeni oturumsan önce bunu oku.** Okuma sırası:
 1. Bu dosya (özellikle "Sıradaki iş").
-2. `docs/ui-v2/gozlemevi.md` (okuma kopyası, ~1.000 satır) içinde sıradaki işin kimliğiyle geçen bölüm;
+2. `docs/ui-v2/gozlemevi.md` (şartname, ~1.000 satır) içinde sıradaki işin kimliğiyle geçen bölüm;
    tamamını okuma: `grep -n "B9 ·\|E3 ·\|^| K8" docs/ui-v2/gozlemevi.md` ile bul, o aralığı oku.
 3. İlgili kod. Şartname ile kod çelişirse **kod kazanır**; çelişki buraya ve şartnameye yazılır.
 
-- Şartname kaynağı: `docs/ui-v2/gozlemevi.html` (mockup'lar dahil, sahibin baktığı sayfa). **Yalnız bu dosya düzenlenir**;
-  ardından `python3 docs/ui-v2/to_markdown.py` ile `gozlemevi.md` yeniden üretilir. `.md` elle düzenlenmez. Artifact: https://claude.ai/artifact/E3me7XbaVBVuf98Bxfg8pU
-  (yeniden yayın: `python3 docs/ui-v2/publish.py <scratchpad-dizini>` → oradaki `index.html`'i aynı URL'ye yayınla).
+- **Şartname:** `docs/ui-v2/gozlemevi.md` — tek kaynak, doğrudan düzenlenir (sahip kararı 2026-09-23: HTML ve
+  artifact bırakıldı). İkonlar `docs/ui-v2/icons.svg`; mockup HTML'i yalnız geçmişte (commit 08bf3f6,
+  `docs/ui-v2/gozlemevi.html`).
 - Onaylı plan: `~/.claude/plans/bu-g-revi-sen-yapacaks-n-fluttering-sketch.md`.
 - Dal / worktree: `ui-v2` @ `.claude/worktrees/ui-v2` (ana ağaca dokunma, `git stash` yok). Master her faz başında birleştirilir.
 - Yayın: bayrak yok; önümüzdeki sezonla. K1–K11 sahip tarafından 2026-09-23'te tamamen onaylandı.
@@ -46,6 +46,8 @@ buradan master'a commit atılamaz; hash sahibe verilir, o cherry-pick eder).
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
   işlendi (kural 16/16b, B5, B15, E5); karar defteri "onaylandı"; 16 gezegen `.glb` dala eklendi.
+  Sonra sahip kararıyla şartname yalnız Markdown'a geçti; HTML, betikler ve artifact bırakıldı; ikonlar `icons.svg`'ye,
+  token listesi şartnameye taşındı.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
@@ -58,9 +60,7 @@ buradan master'a commit atılamaz; hash sahibe verilir, o cherry-pick eder).
 - **K3:** yazı tipi değişir, boyutlar değişmez (gövde 12 px).
 
 ## Açık sorunlar
-- **Artifact güncellenemiyor (2026-09-23):** https://claude.ai/artifact/E3me7XbaVBVuf98Bxfg8pU için yeniden yayın
-  reddedildi ("sunucu bu artifact'ı güncelleme için tanımıyor"; silinmiş ya da artık bu hesabın değil). Sahibe soruldu:
-  yeni bir artifact açılsın mı? Şartnamenin doğru kopyası repoda olduğu için iş bundan etkilenmiyor.
+- (yok)
 
 ## Bilinen kırmızı testler (2026-09-23 @ a64b230, worktree)
 typecheck 0 hata · lint 0 hata.
