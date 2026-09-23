@@ -1,0 +1,603 @@
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  allowedPaces,
+  type MissionPace,
+  COMBAT_HULLS,
+  dominantClass,
+  fleetCount,
+  combatValue,
+  forecastLines,
+  forecastLoss,
+  escapeLine,
+  escapeVerdict,
+  fleetEscapeApplies,
+  matchupsAgainst,
+  salvageCapacity,
+  shieldHp,
+  wallKnowledgeOf,
+  type Fleet,
+  type ForecastInput,
+  type MobileHullId,
+} from '@astera/rules';
+import { useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
+import type { IntelView, PlanetView, Report } from '../api/schemas.js';
+import { combatClassLabel } from '../i18n/names.js';
+import { serverNow } from '../lib/clock.js';
+import { fieldedAtLeast, recordAgeMinutes, sourceLabel } from '../lib/dossier.js';
+import { matchupHint } from '../lib/matchup.js';
+import { duration } from '../lib/time.js';
+import {
+  MOBILE,
+  homeDefenceAfter,
+  planPirateRoute,
+  planRoute,
+  flightModifiers,
+} from '../lib/navigation.js';
+import { useAcademyLesson } from '../onboarding/lessonScope.js';
+import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
+import { type ForceReading } from '../ui/ForceCompare.js';
+import type { LaunchTarget } from '../screens/LaunchSheet.js';
+import { describe, useToast } from '../ui/Toast.js';
+
+/**
+ * EVERYTHING A LAUNCH DECIDES BEFORE IT IS DRAWN. Spec B14, F3.4a.
+ *
+ * Lifted verbatim out of `LaunchSheet` so the v2 composer and the sheet it replaces read one
+ * statement of the rules — the route and its pace, the fuel, what stays home, the reading of the
+ * target, the forecast lines, the escape line, the notes, every reason the launch would be
+ * refused, and the commitment itself. It draws nothing.
+ */
+export function useLaunchPlan({
+  target,
+  planet,
+  intel,
+  reports = [],
+  onLaunched,
+  onAim,
+}: {
+  target: LaunchTarget;
+  planet: PlanetView;
+  intel?: IntelView | undefined;
+  reports?: readonly Report[];
+  onLaunched: () => void;
+  onAim?: ((at: { x: number; y: number; z: number } | null) => void) | undefined;
+}) {
+  const { t } = useTranslation();
+  const launch = useLaunch();
+  const raid = useRaidPirate();
+  const say = useToast();
+  const [sending, setSending] = useState<Fleet>({});
+  const lesson = useAcademyLesson();
+  /**
+   * THE COMMANDER'S OWN RAID IMMUNITY, IF THEY STILL HAVE ONE. D183 · 2026-09-14.
+   *
+   * EITHER SHIELD, because either is spent by this launch: the server composes the
+   * first day and the recovery window into one instant and names which is standing.
+   *
+   * A raid at another COMMANDER's world spends it; a pirate is not a commander and
+   * costs nothing (`assertAttackProtections` takes a `defenderPlayerId` and a pirate
+   * has none), so the price is only ever quoted on the lane that actually charges
+   * it.
+   *
+   * AND A CARETAKER WORLD IS NOT A COMMANDER EITHER. `target.kind === 'world'` is
+   * this file's "the target is a planet" discriminator and says nothing about
+   * WHOSE planet — so on its own it quoted the shield against every neutral raid,
+   * a cost the server never charges. `mission.ts` decides on exactly the value
+   * read here (`defenderPlayerId: target.kind === 'NEUTRAL' ? null : …`), so the
+   * two sides now answer from the same discriminator instead of from two
+   * different ideas of what a target is.
+   *
+   * AN UNSURVEYED WORLD STILL PAYS, and that asymmetry is deliberate. `kind` is
+   * optional on the public payload, and the safe direction is to WARN: the server
+   * refuses an unacknowledged launch outright (`SHIELD_WOULD_DROP`), so a missing
+   * warning costs a refusal, while a missing acknowledgement on a real commander's
+   * world would be a shield spent on a press that never mentioned it.
+   *
+   * Read off the season payload rather than the planet's, because the shield
+   * belongs to the commander and not to the world the fleet is leaving — the same
+   * reason D168 measures the attack band on the commander.
+   */
+  const season = useSeason();
+  const shieldUntil = season.data?.shieldUntil ?? null;
+  const spendsShield = target.kind === 'world'
+    && target.world.kind !== 'NEUTRAL'
+    && shieldUntil !== null
+    && shieldUntil.getTime() > serverNow();
+
+  const pirate = target.kind === 'pirate' ? target.pirate : null;
+  // The commander's own ladders AND the origin's Beacon, off the payload, so the
+  // preview quotes exactly what the server will charge, carry and fly. T8 · D180.
+  // Kept per payload: the forecast below keys on `mods.tech`, and a fresh object
+  // every render would re-run a few dozen battles for nothing. D199.
+  const mods = useMemo(() => flightModifiers(planet), [planet]);
+  /**
+   * THE LEG, AND ONLY ITS OUTBOUND HALF DIFFERS.
+   *
+   * A world sits still and the client solves its own leg. A pirate is on a closed
+   * orbit, so the rendezvous is a numerical solve against a moving target and the
+   * SERVER answers it — per hull standing at this world, so the sheet can quote the
+   * exact minute for whatever has been picked without a second request. `null`
+   * means the slowest ship selected cannot get there at all, which is the same
+   * refusal the launch will make.
+   */
+  /**
+   * HOW FAST THE COMMANDER WANTS THIS TO ARRIVE. Owner decision, 2026-09-21.
+   *
+   * Held here rather than derived, because it is the one thing on this sheet the player states
+   * instead of the sheet computing: the ladder narrows as the wing and the target change, and a
+   * rung that stops being legal falls back to full speed rather than refusing the launch.
+   */
+  const [wantedPace, setWantedPace] = useState<MissionPace>(1);
+  const unpaced = target.kind === 'pirate'
+    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, mods)
+    : planRoute(
+        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, mods,
+      );
+  /**
+   * WORLD TARGETS ONLY, FOR NOW — and the reason is that a quote must not lie.
+   *
+   * A pirate is on a closed orbit, so its leg is a rendezvous SOLVE against a moving target that
+   * the server answers; slowing the wing moves the meeting point, not just the clock. The raid
+   * endpoint takes no pace, so offering the rungs here would change the minutes on screen and then
+   * fly at full speed. The pirate lane gets this when the intercept solve does.
+   *
+   * AND NOT DURING A LESSON, for the same reason: the Academy pins its leg to six seconds, so a
+   * rung would offer to slow down a flight whose length the tutorial has already decided.
+   */
+  const paces = target.kind === 'world' && !lesson
+    ? allowedPaces(unpaced?.distance ?? 0, sending, mods)
+    : [1 as MissionPace];
+  const pace = paces.includes(wantedPace) ? wantedPace : 1;
+  const paced = useMemo(() => ({ ...mods, pace }), [mods, pace]);
+  const planned = target.kind === 'pirate'
+    ? planPirateRoute(target.pirate.reach, sending, planet.fleet, planet.ground, paced)
+    : planRoute(
+        planet.planet.position, target.world.position, sending, planet.fleet, planet.ground, paced,
+      );
+  const route = lesson && planned ? { ...planned,
+    oneWayMinutes: ACADEMY_LEG_SECONDS / 60, exposureMinutes: (ACADEMY_LEG_SECONDS * 2 + 10) / 60 } : planned;
+  const aim = route?.rendezvous ?? null;
+  /**
+   * HAND THE AIM POINT TO THE DISC, AND TAKE IT BACK ON THE WAY OUT.
+   *
+   * The cleanup is the load-bearing half: a mark left behind by a closed sheet is
+   * a target sitting on the galaxy as though the player had committed to it. It
+   * runs on unmount and on every change of the point, so the disc holds at most
+   * one, and it is always the one this selection would actually fly to.
+   *
+   * Depends on the COORDINATES rather than on the object, because `route` is
+   * rebuilt on every render and an object identity would republish the same point
+   * on each keystroke in the picker.
+   */
+  useEffect(() => {
+    onAim?.(aim);
+    return () => { onAim?.(null); };
+  }, [onAim, aim?.x, aim?.y, aim?.z]);
+
+  const total = fleetCount(sending);
+  /** Wreck the chosen collectors can lift, if they come through the fight. D200. */
+  const salvageRoom = salvageCapacity(sending);
+  /**
+   * A LAUNCH TAKES A FLIGHT BAY, and this screen never said so. D28.
+   *
+   * `assertFreeBay` fires server-side for every launch there is, so a commander
+   * with none learned it as a toast after committing — the pirate rail had already
+   * been taught to state it, and the rule is not different for a world.
+   * `interface.md`: an unavailable action stays visible with its reason.
+   */
+  const baysFree = Math.max(0, planet.flight.total - planet.flight.used);
+  /** It will be gone before anything could reach it. Pirates only: worlds keep. */
+  const tooLate = pirate !== null
+    && route !== null
+    && route.oneWayMinutes >= pirate.expiresInMinutes;
+  const busy = launch.isPending || raid.isPending;
+  const shipyardRevolt = (planet.faults ?? []).some(
+    (fault) => fault.kind === 'SHIPYARD_REVOLT',
+  );
+  /*
+    READ HERE RATHER THAN OFF THE ROUTE, because the garrison is a fact about this
+    world and this selection and does not stop being true when there is no route to
+    quote — nothing picked yet, or a rendezvous the chosen wing cannot make. Same
+    helper both planners use, so the two figures cannot drift on one screen.
+  */
+  const holding = homeDefenceAfter(planet.fleet, planet.ground, sending);
+  /**
+   * A RAID AT A WORLD NEEDS SOMETHING THAT CAN FIGHT. Owner report.
+   *
+   * `launchAttack` refuses a fleet with no combat hull in it — `NOT_A_WARSHIP`,
+   * thrown before the transaction even opens — and this sheet did not, so a
+   * commander could pack a hold of Couriers, press the one irreversible control
+   * in the game, sit through the confirmation step and learn the rule from a red
+   * toast. Every other reason this commitment can be refused is already stated on
+   * the button before it is pressed; this one was the exception.
+   *
+   * A PIRATE IS NOT THE SAME TARGET. `launchPirateRaid` takes any mobile hull —
+   * sending cargo at a pirate is a bad decision, not an illegal one — so the
+   * refusal is scoped to the target that actually carries it.
+   */
+  const needsWarship = target.kind === 'world'
+    && total > 0
+    && !COMBAT_HULLS.some((hull) => (sending[hull] ?? 0) > 0);
+  const canSend = total > 0
+    && !shipyardRevolt
+    && route !== null
+    && route.oneWayMinutes > 0
+    && !tooLate
+    && baysFree > 0
+    && !needsWarship
+    // The server refuses this too; offering a control that cannot work is worse
+    // than refusing early, because it teaches a rule that is not true.
+    && route.fuel <= planet.planet.deuterium;
+
+  /**
+   * WHERE THE REST OF THE FLEET IS. Owner report.
+   *
+   * `planet.fleet` is only what is STANDING on this world, which is the right
+   * number to offer — nothing in the air can be launched again. But a hull that
+   * is entirely away loses its row altogether, so the sheet read as a fleet that
+   * had shrunk, with nothing on it to say why. A raid is a twelve-minute round
+   * trip and a mining run is longer; players forget what they sent.
+   *
+   * MOBILE hulls only. `fleetAway` also carries Prospectors out on a run, and
+   * naming those here would promise a craft this sheet can never send.
+   *
+   * THE SENTENCE MAY NOT PROMISE A RETURN. `fleetAway` is every unit of this
+   * world whose `location` is not `home`, and a transfer or a settlement fleet
+   * never comes back — `resolveTransfer` and `resolveSettlement` hand it to the
+   * destination world for good. So the caption says what is true of every mission
+   * kind: these are away, and only what is standing here can be sent.
+   */
+  const away = MOBILE.map((hull) => ({ hull, count: planet.fleetAway[hull] ?? 0 })).filter(
+    (entry) => entry.count > 0,
+  );
+  /**
+   * Launchable ships at home — NOT `fleetCount(planet.fleet)`, which counts the
+   * Prospector too. A world whose only craft at home was a miner showed an empty
+   * list and no explanation for it.
+   */
+  const atHome = MOBILE.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
+
+  /**
+   * WHAT A LESSON LETS THE COMMANDER PICK, AND WHY IT IS A CEILING NOT A HINT.
+   *
+   * The Academy teaches one gesture for filling this picker — press Max — and its
+   * hand points at nothing else. So inside a mission lesson the picker may only
+   * offer numbers Max is allowed to produce, or the tutorial teaches a gesture
+   * that gets the launch refused. It did: the raid lesson wanted two Darts while
+   * three were standing, Max sent three, the private API refused it, and the
+   * Academy silences toasts — so the commit button simply did nothing.
+   *
+   * `academyLessonFleet` is the single statement of what each lesson sends, read
+   * here and by the Academy's own API, so the picker and the refusal cannot
+   * disagree. Outside a lesson this is `null` and the sheet is the ordinary one:
+   * everything standing at home, up to what is standing at home.
+   */
+  const allowance = lesson === 'pirate' || lesson === 'raid' ? academyLessonFleet(lesson) : null;
+  const roomFor = (hull: MobileHullId): number => {
+    const home = planet.fleet[hull] ?? 0;
+    return allowance ? Math.min(home, allowance[hull] ?? 0) : home;
+  };
+
+  const set = (hull: MobileHullId, value: number): void => {
+    setSending((current) => ({ ...current, [hull]: Math.max(0, Math.min(roomFor(hull), value)) }));
+  };
+
+  /**
+   * HOW OLD THE TARGET IS, ON THE SURFACE WHERE THE FLEET STOPS BEING RECALLABLE.
+   * D151.
+   *
+   * The dossier stamps the age on every fact it draws from a record, and the disc
+   * label names the record under the world. This sheet — the last screen before an
+   * irreversible commitment — said only "Attack", and printed a name and a
+   * commander copied out of a frozen silhouette exactly as it prints them for a
+   * world under a live Telescope.
+   *
+   * IT ADDS NO FACT. Every figure on this sheet is one the player had already
+   * bought; what was missing was the PROVENANCE of them, which is the half an
+   * information game cannot leave off its commitment surface. `null` on a live
+   * reading, because a reading has no age and inventing one is the same lie
+   * inverted.
+   *
+   * ON `serverNow()`, LIKE THE DISC LABEL. D51 · D52. `seenAt` is server-authored,
+   * so a device `Date.now()` subtracts two different epochs and prints the age plus
+   * whatever that phone's clock is wrong by — the same record then read one age
+   * under the world and another on the sheet, and the sheet was the wrong one.
+   */
+  const recordAge = target.kind === 'world'
+    ? recordAgeMinutes(target.world, serverNow())
+    : null;
+
+  /**
+   * WHAT IS STANDING AT THE TARGET, ON THE AXIS THE FLEET IS MEASURED IN.
+   *
+   * `combatValue` on both sides, because that is the one quantity a commander can
+   * already read of somebody else's world: a probe's defence band IS
+   * `combatValue(homeFleet)`, fuzzed at the look. Until now nothing in the game
+   * expressed the player's own ships in the same units, so the band was a figure
+   * with nothing to be compared to.
+   *
+   * WHAT CAN FIRE, NOT WHAT IT COST. D183, owner report: *"Yük gemisi ekliyorum
+   * gücüm artıyor ama yük gemilerinin saldırısı 0."* Both sides read `fleetValue`
+   * until then — resources sunk in — so packing an Atlas for the loot grew the bar
+   * labelled "Sending" without adding a shot to what was sent. `combatValue` is the
+   * same resource scale over the hulls that fire, on both sides at once: changing
+   * one of them alone would have made the comparison a category error instead of a
+   * misleading one.
+   *
+   * THE TWO TARGET KINDS ARE HONESTLY DIFFERENT HERE, and the difference is the
+   * whole economy of the intel layer:
+   *
+   *   · A WORLD is a memory. The band has width (the probe fuzzed it) and an age
+   *     (the world has moved on), and both are drawn.
+   *   · A PIRATE is current sight. An IDENTIFIED contact hands over its exact
+   *     roster, so the reading has no width and no age — a solid bar beside the
+   *     world's hatched one, which is what paying for a look buys.
+   *
+   * Null in every other case, and null draws NO enemy bar. An empty bar would say
+   * the target is undefended, on the one screen where that mistake cannot be taken
+   * back.
+   */
+  const report = target.kind === 'world'
+    ? intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.world.id)
+    : undefined;
+  const opposing: ForceReading | null = (() => {
+    if (target.kind === 'pirate') {
+      const roster = target.pirate.fleet;
+      if (!roster) return null;
+      // The same axis as the wing's, so the two bars are one comparison. D183.
+      const exact = combatValue(roster);
+      return { low: exact, high: exact, source: sourceLabel('public'), ageMinutes: null };
+    }
+    if (!report) return null;
+    return {
+      low: report.defence.low,
+      high: report.defence.high,
+      source: sourceLabel('probe'),
+      ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000),
+    };
+  })();
+
+  /**
+   * EVERYTHING THIS COMMANDER HOLDS ABOUT THE WALL, AS THE BATTLE ENGINE READS IT.
+   * D199.
+   *
+   * Their own research (frozen at launch, so today's is the one), and whatever the
+   * probe brought home: the wall's shape, the Aegis charge, the transports in the
+   * line and the doctrine. A pirate under Telescope sight is the crew itself. What
+   * is missing is left to the forecast's own range rather than guessed — an unread
+   * wall widens the lines, it does not move them.
+   */
+  /*
+    KEYED ON WHAT IT READS, NOT ON THE TARGET OBJECT. The parent builds `target` as a
+    fresh literal every render and a pirate's entry is rebuilt on every poll as it
+    moves; its crew is kept by the query's structural sharing while it is unchanged,
+    and so is the probe report.
+  */
+  const isPirate = target.kind === 'pirate';
+  const pirateCrew = target.kind === 'pirate' ? target.pirate.fleet : undefined;
+  const pirateHandicap = target.kind === 'pirate' ? target.pirate.damageMult : undefined;
+  /*
+    AN UNMEASURED DOME IS ANYTHING UP TO THE MOST THIS WORLD CAN HOLD. The dome is
+    public and so is the Core that caps its Aegis (a caretaker's Aegis stops at 3,
+    under every tier's Core), so a charge nobody read runs from empty to that. It
+    was counted as empty, which drew the kindest lines while a note said "not
+    measured".
+  */
+  const domeCeiling = target.kind === 'world' && target.world.shielded ? shieldHp(target.world.coreLevel) : 0;
+  const forecastInput = useMemo<ForecastInput>(() => {
+    const none = { low: 0, high: 0 };
+    if (isPirate) {
+      return {
+        attackerTech: mods.tech,
+        defenderTech: {},
+        ...(pirateHandicap === undefined ? {} : { defenderDamageMult: pirateHandicap }),
+        shield: none,
+        unarmed: none,
+        wall: pirateCrew ? { kind: 'EXACT', fleet: pirateCrew } : { kind: 'UNKNOWN' },
+      };
+    }
+    return {
+      attackerTech: mods.tech,
+      defenderTech: report?.doctrines ?? {},
+      shield: report?.shield ?? { low: 0, high: domeCeiling },
+      unarmed: report?.unarmed ?? none,
+      wall: wallKnowledgeOf(report?.classReading),
+    };
+  }, [isPirate, pirateCrew, pirateHandicap, report, mods.tech, domeCeiling]);
+
+  /*
+    A FEW DOZEN BATTLES PER READING, SO IT WAITS FOR THE THUMB. The picker renders
+    the new count first and the lines follow in the deferred pass; on a phone a "+"
+    must never stall behind a forecast.
+
+    AND ONLY AGAINST A READING. With nobody having looked, every input about the
+    wall — research, dome, transports — is a guess, and the guess was always the
+    kindest wall there is. The lines are what a probe buys; before one, the box says
+    "never measured" and nothing else.
+  */
+  const settled = useDeferredValue(sending);
+  const hasReading = opposing !== null;
+  const lines = useMemo(
+    () => (hasReading && fleetCount(settled) > 0 ? forecastLines(settled, forecastInput) : null),
+    [hasReading, settled, forecastInput],
+  );
+  /**
+   * WHAT THE WING'S CLASSES DO AGAINST THE WALL THE PROBE READ — AND WHAT IT DID NOT READ.
+   *
+   * The counter cycle decides the fight: measured, the correct class loses a quarter of what a
+   * mirror loses against the same wall. Until now its numbers lived only in the battle report,
+   * which a commander reads after the fleet is gone.
+   *
+   * IT CARRIES THE UNREAD SHARE ON PURPOSE. A par probe names only the majority, so a pure wall
+   * and a 51/49 wall read identically — and the same advice against those two costs 256,277 and
+   * 504,946 alloy-equivalent. The surface states what was bought and never more.
+   */
+  const matchups = useMemo(
+    () => matchupsAgainst(settled, report?.classReading),
+    [settled, report?.classReading],
+  );
+
+  /** The single most useful next action, or nothing when the wing already covers what was read. */
+  const hint = useMemo(() => {
+    const said = matchups ? matchupHint(matchups) : null;
+    if (said === null) return null;
+    if (said.kind === 'BRING') return t('counter.matchupBring', { class: combatClassLabel(said.cls) });
+    return t(said.kind === 'SINGLE' ? 'counter.matchupSingle' : 'counter.matchupProbe');
+  }, [matchups, t]);
+
+  const loss = useMemo(
+    () => (lines !== null && opposing !== null
+      ? forecastLoss(settled, { low: opposing.low, high: opposing.high }, forecastInput)
+      : null),
+    [lines, settled, opposing?.low, opposing?.high, forecastInput],
+  );
+
+  /**
+   * TAKTİK GERİ ÇEKİLME, DRAWN WHERE THE WING IS SIZED. Owner decision, 2026-09-23.
+   *
+   * Only at another commander's world in a season dealt the rule: a caretaker and a
+   * pirate never run, and a live season keeps the battle it was dealt. The line is a
+   * third of this wing's firepower on the enemy axis; the verdict is the rule applied
+   * to the reading — outmatched AND cleared — and the tank stays the raider's unknown,
+   * which the copy says rather than the sheet guessing.
+   */
+  const escapeRuled = target.kind === 'world'
+    && target.world.kind !== 'NEUTRAL'
+    && fleetEscapeApplies(season.data?.rulesetVersion ?? 0);
+  const escape = useMemo(() => {
+    if (!escapeRuled || fleetCount(settled) === 0) return null;
+    const power = combatValue(settled);
+    return {
+      at: escapeLine(settled),
+      verdict: opposing !== null && lines !== null
+        ? escapeVerdict(power, { low: opposing.low, high: opposing.high }, lines.clears)
+        : null,
+    };
+  }, [escapeRuled, settled, opposing?.low, opposing?.high, lines]);
+
+  /**
+   * WHAT THE LINES COULD NOT SEE, AND WHAT THIS COMMANDER ALREADY PAID TO KNOW.
+   * D199.
+   *
+   * Each phrase changes how the band is read and none opens anything new: the probe
+   * says whether it was caught and whether ships were out, the Telescope says where
+   * they are now, and the last raid here says what died. The gaps are stated so a
+   * narrow line is never mistaken for a certain one.
+   */
+  const notes: string[] = [];
+  if (target.kind === 'world') {
+    const world = target.world;
+    if (world.shielded && !report?.shield) notes.push(t('counter.noteShieldUnmeasured'));
+    if (report) {
+      const shape = report.classReading;
+      if (!shape || shape.kind === 'UNREAD') notes.push(t('counter.noteShapeUnread'));
+      if (!report.unarmed) notes.push(t('counter.noteUnarmedUnknown'));
+      else if (report.unarmed.high > 0) {
+        const { low, high } = report.unarmed;
+        notes.push(t('counter.noteUnarmed', {
+          count: high,
+          band: low === high ? String(high) : `${String(low)}${t('units.rangeJoin')}${String(high)}`,
+        }));
+      }
+      if (report.detected) notes.push(t('counter.noteSeen'));
+      if (!report.fleetHome) notes.push(t('counter.noteSomeAway'));
+    }
+    if (world.fleet?.status === 'AWAY') notes.push(t('counter.noteTelescopeAway'));
+    else if (world.fleet?.status === 'HOME') notes.push(t('counter.noteTelescopeHome'));
+    const fought = fieldedAtLeast(reports, world.id);
+    const mostly = fought ? dominantClass(fought.fleet) : null;
+    if (mostly !== null && mostly !== 'SUPPORT') {
+      notes.push(t('counter.noteLastRaid', { class: combatClassLabel(mostly) }));
+    }
+  }
+
+  /**
+   * A DISABLED CONTROL STATES ITS OWN REASON, and there are six of them. `interface.md`: an
+   * unavailable action stays visible with the reason on it. Null when the launch can go.
+   *
+   * THE TWO SPEED REFUSALS ARE NOT THE SAME REFUSAL. An empty reach table means nothing standing
+   * at this world can catch it; a table with no row for the slowest ship SELECTED means this fleet
+   * cannot — a faster one could.
+   */
+  const refusal: string | null = shipyardRevolt
+    ? t('launch.shipyardRevolt')
+    : total === 0
+      ? t('launch.chooseFleet')
+      : baysFree <= 0
+        ? t('launch.noBay')
+        : route === null
+          ? (pirate?.reach.length === 0 ? t('launch.unreachable') : t('launch.tooSlow'))
+          : tooLate
+            ? t('launch.tooLate')
+            : route.fuel > planet.planet.deuterium
+              ? t('launch.noFuel')
+              : needsWarship
+                ? t('launch.noEscort')
+                : null;
+
+  /**
+   * THE COMMITMENT. TWO ENDPOINTS, ONE ACT: a raid at a world and a raid at a pirate are
+   * different routes because they are different tables, but they are the same commitment.
+   * `onRefused` hands a server refusal back to the surface that asked.
+   */
+  const commit = (onRefused: () => void): void => {
+    if (pirate) {
+      raid.mutate(
+        {
+          pirateId: pirate.id,
+          fleet: sending,
+          /*
+            THE MINUTE ON THIS SCREEN RIDES THE LAUNCH. D183. A pirate's rendezvous is an
+            instantaneous solve, and a table even half a minute old can name a different lap of
+            the orbit; the server refuses rather than flying a fleet at an answer nobody read.
+            `undefined` when the lesson has overridden the figure: the Academy quotes its own
+            flight time and the live server would rightly refuse it.
+          */
+          ...(lesson || route === null ? {} : { quotedMinutes: route.oneWayMinutes }),
+        },
+        {
+          onSuccess: (result) => {
+            say(t('pirate.send', { count: fleetCount(result.fleet), duration: duration(result.flightMinutes) }));
+            onLaunched();
+          },
+          onError: (err) => {
+            say(describe(err), 'error');
+            onRefused();
+          },
+        },
+      );
+      return;
+    }
+    if (target.kind !== 'world') return;
+    launch.mutate(
+      {
+        targetPlanetId: target.world.id,
+        fleet: sending,
+        /*
+          THE ANSWER TO A QUESTION THAT HAS ALREADY BEEN ASKED. D183. Sent only when there is
+          actually a shield to spend, so a launch that costs nothing carries no acknowledgement.
+        */
+        ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
+        pace,
+      },
+      {
+        onSuccess: (result) => {
+          say(t('launch.launched', { duration: duration(result.exposureMinutes), count: result.homeDefenceAfter }));
+          onLaunched();
+        },
+        onError: (err) => {
+          say(describe(err), 'error');
+          onRefused();
+        },
+      },
+    );
+  };
+
+  return {
+    sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
+    paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
+    shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
+    lines, matchups, hint, loss, escape, notes, refusal, commit,
+  };
+}
