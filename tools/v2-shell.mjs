@@ -24,7 +24,10 @@ await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 });
+// The game reads `navigator.language` when nothing is stored, so the browser's locale is the switch.
+const LOCALE = { en: 'en-GB', tr: 'tr-TR', de: 'de-DE', fr: 'fr-FR', es: 'es-ES' }[LNG] ?? 'en-GB';
 const page = await browser.newPage({
+  locale: LOCALE,
   viewport: { width: 350, height: 812 },
   deviceScaleFactor: 2,
   isMobile: true,
@@ -50,7 +53,6 @@ const closeAll = async () => {
   }
 };
 
-await page.addInitScript((lng) => { try { localStorage.setItem('i18nextLng', lng); } catch { /* private mode */ } }, LNG);
 await page.goto(WEB, { waitUntil: 'domcontentloaded' });
 
 /**

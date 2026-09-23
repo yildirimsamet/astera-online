@@ -98,7 +98,7 @@ function Card({
             <Icon id="i-close" className="size-3.5" />
           </button>
         </div>
-        <p className="pr-2 text-body font-semibold leading-snug text-v2-ink">{title}</p>
+        {title && <p className="pr-2 text-body font-semibold leading-snug text-v2-ink">{title}</p>}
         <div className="pr-2 text-caption leading-snug text-v2-ink-2">{detail}</div>
         {actions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-2">
@@ -312,11 +312,13 @@ export function ContextSlot({
   } else if (slot.card === 'event' && events.length > 0) {
     const eventKey = events.map((event) => event.id).join('+');
     const several = events.length > 1;
+    const [first] = events;
     card = (
       <Card
         tone="self"
         eyebrow={t('slot.event')}
-        title={events.map((event) => t(EVENT_NAME[event.kind])).join(' · ')}
+        // One event is named by the title; several are named on their own rows (seen in the game: both, twice).
+        title={several || !first ? '' : t(EVENT_NAME[first.kind])}
         detail={(
           <ul className="flex flex-col gap-1.5">
             {events.map((event) => (
