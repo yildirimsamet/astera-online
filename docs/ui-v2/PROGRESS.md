@@ -58,7 +58,9 @@ buradan master'a commit atılamaz; hash sahibe verilir, o cherry-pick eder).
 - **K3:** yazı tipi değişir, boyutlar değişmez (gövde 12 px).
 
 ## Açık sorunlar
-- (yok)
+- **Artifact güncellenemiyor (2026-09-23):** https://claude.ai/artifact/E3me7XbaVBVuf98Bxfg8pU için yeniden yayın
+  reddedildi ("sunucu bu artifact'ı güncelleme için tanımıyor"; silinmiş ya da artık bu hesabın değil). Sahibe soruldu:
+  yeni bir artifact açılsın mı? Şartnamenin doğru kopyası repoda olduğu için iş bundan etkilenmiyor.
 
 ## Bilinen kırmızı testler (2026-09-23 @ a64b230, worktree)
 typecheck 0 hata · lint 0 hata.
