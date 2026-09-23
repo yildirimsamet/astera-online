@@ -1,0 +1,7 @@
+/** Gözlemevi v2 kiti — yeni bileşenlerin metinleri (docs/ui-v2/gozlemevi.md). */
+
+/** B9: basılı tutarak gönder. */
+export const hold = {
+  hint: 'Basılı tut ya da onaylamak için iki kez Enter’a bas',
+  confirm: '{{label}} · emin misin?',
+};

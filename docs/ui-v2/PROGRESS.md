@@ -68,6 +68,12 @@
 - F1.3 (2026-09-23): `apps/web/src/v2/icons.tsx` — tek `Icon` bileşeni, `id` ile seçilir (`i-*` çizgi 1.75,
   `c-*` dolgu amblem, `m-*`/`sel` işaret 1.6); `isIconId` tip koruyucusu. 40 şekil `docs/ui-v2/icons.svg` ile
   birebir (test şekil şekil karşılaştırıyor: `test/v2/icons.test.tsx`). Başlıksız ikon `aria-hidden`.
+- F1.4 · B9 (2026-09-23): `apps/web/src/v2/kit/HoldButton.tsx` — `HOLD_MS = 600`; basma butonun kendi
+  `pointerdown`'ında başlar (orta/sağ tuş hariç; jsdom'da `button` tanımsız geldiği için `=== 0` değil),
+  bırakınca/dışarı kayınca/blur'da iptal; Space basılı tutulur; Enter satır içi iki adımlı onay (4 sn);
+  onay tıklaması `useOwnPress` ile; `disabledReason` varsa etiket yerine sebep, silahsız. `tone`: `self` | `hostile`.
+  Metinler yeni ad alanı `hold` (`locales/*/v2.ts`, dizinlere kayıtlı) — v2 kit metinleri bu dosyalara eklenir.
+  Tailwind v2 sınıflarını derliyor (build'de `--color-v2-self` ve `bg-v2-self/10` görüldü).
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
