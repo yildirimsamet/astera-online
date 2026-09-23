@@ -76,10 +76,21 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   sütununda "back in X"); Evde = dünya başına garnizon (sınıf şekilli çipler, dışarıdaki sayısı); Hangar = dünya başına
   Hangar ve zemin, doluysa sarı, üstte tek cümlelik kural. `FleetSheet` ve testi silindi. Galeride `?view=fleet`,
   `fleet-home`, `fleet-room`. Gerçek oyunda baskın + geri çağırma ile görüldü.
-- **F3.4 B14/E3 fırlatma bileşeni:** tek anatomi; önce saldırı, korsan (hız yok), sonda; sonra transfer, yerleşim,
-  ticaret, konvoy baskını, klan dalgası (teklif otomatik), Ölüm Yıldızı. B10 hız seçici, bilgi ızgarası, uyarı satırı
-  ("Başkent X süre zayıf kalır" + geri çağırma notu), B9 basılı tut. Akademi dersleri (`data-academy-launch`, Max
-  eli) kırılmamalı: `tools/visual.mjs --academy` ile doğrulanır.
+- ~~F3.4a~~ `7c55044`: `LaunchSheet` mantığı birebir `lib/useLaunchPlan.ts`'e taşındı (rota, hız, yakıt, okuma, tahmin,
+  kaçış, notlar, ders sınırı, `refusal`, `commit`, `classReading`); sayfa yalnız çizer.
+- ~~F3.4b~~ `1859f29`: saldırı + korsan v2 anatomisinde (`screens/LaunchSheet.tsx`, aynı dışa aktarım): yapışkan
+  `ForceRuler` (+ `MatchupLine`, yakıt çubuğu içinde — D183), aileye göre gemi satırları (sınıf şekli, istatistik,
+  `QuantityStepper`), `PaceRow` (B10; v2 renklerine geçti, transfer/klan da etkilendi, iki ölü sınıf kalktı), bilgi
+  ızgarası (`data-launch-figures`: tek yön + iniş saati, açıkta, kargo, boş yuva, mesafe), alt bölümde ücret satırı
+  (`data-launch-warning`; dünya/korsan ayrı, K8 doğru), kalkan uyarısı, geri çağırma notu + fleetsave, `HoldButton`
+  (`data-launch-commit`; iki adımlı onay kalktı). Akademi eli `[data-launch-commit] button:not(:disabled)`;
+  `tools/academy-visual.mjs` basılı tutuyor; 39 ders tarayıcıda geçti. Eski onayın "This cannot be recalled" metni
+  dünya baskınında K8'e aykırıydı → düzeldi; korsan dersi artık "korsan baskını geri çağrılamaz" diyor.
+- **F3.4c (sıradaki):** aynı anatomiye tek tek: transfer (`TransferSheet`), yerleşim, ticaret, konvoy baskını, klan
+  dalgası (teklif otomatik; `clan.ts` "Send — no recall" metni klan dalgası geri çağrılabildiği için kontrol
+  edilecek), Ölüm Yıldızı. Her birinin "no recall" metni kendi kuralına göre doğrulanır.
+- F3.4 açık notlar: `QuantityStepper` hâlâ eski görünümde (paylaşılan denetim; F5'te Üs yapı sayfalarıyla v2'ye);
+  yapışkan cetvel uzun listede satırların üstünü örtüyor (tasarım gereği; masaüstünde F8'de iki sütun).
 - **F3.5 E2 hedef dosyası:** odak kartı → dosya (v2 Sheet peek/half/full); sıra, yasaklar ve ret nedenleri şartnamedeki gibi.
 - **F3.6** faz sonu review + gerçek oyunda görsel tur (350 ve 1280 px, 5 dil).
 
