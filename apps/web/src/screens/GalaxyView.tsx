@@ -1,7 +1,11 @@
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
+import { createPortal } from 'react-dom';
 import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
+import { ContextSlot } from '../v2/hud/ContextSlot.js';
+import { CollectHost } from '../v2/shell/CollectHost.js';
+import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW } from '@astera/rules';
 import { NextSeason } from '../ui/NextSeason.js';
@@ -55,7 +59,6 @@ import {
 } from '../galaxy/FocusPanel.jsx';
 import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
-import { SituationGuide } from '../ui/SituationGuide.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { activeTradeShip } from '../lib/trade.js';
@@ -133,7 +136,6 @@ import {
 } from '../shell/panelRoute.js';
 import type { ReachRing } from '../galaxy/SensorRings.jsx';
 import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
-import { ActiveGalaxyEvent } from './ActiveGalaxyEvent.js';
 import { GalaxyEventsGuide } from './GalaxyEventsGuide.js';
 import { FpsReadout } from '../ui/FpsReadout.js';
 import { setPerfExtra } from '../lib/perfSession.js';
@@ -595,6 +597,8 @@ export function GalaxyView({
   });
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
   const [viewOpen, setViewOpen] = useState(false);
+  /** The element the scene lends over the active world; the collect bubble is portalled into it. */
+  const [homeAnchor, setHomeAnchor] = useState<HTMLDivElement | null>(null);
 
   /**
    * THE DISC COMES UP UNDER A COVER, NOT AFTER ONE. Owner decision.
@@ -1059,6 +1063,7 @@ export function GalaxyView({
         onFocus={onFocus}
         homeSignal={homeSignal}
         openingHome={openingHome}
+        {...(showGuidance && season.data?.status === 'live' ? { onHomeAnchor: setHomeAnchor } : {})}
         aim={aim}
         coachTap={coachTap}
         openWide={openWide ?? false}
@@ -1081,20 +1086,6 @@ export function GalaxyView({
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
           <FpsReadout />
-          {/*
-            PRESSING THE MERCHANT'S CHIP FRAMES THE MERCHANT. D170, owner request.
-            Until the v2 context slot takes the event card (B3), the chip stays here.
-          */}
-          <ActiveGalaxyEvent
-            onFocusTrade={(id) => {
-              setFocus({ kind: 'tradeShip', id });
-              setDetail(true);
-            }}
-            onFocusConvoy={(id) => {
-              setFocus({ kind: 'intergalacticConvoy', id });
-              setDetail(true);
-            }}
-          />
         </div>
 
         {/*
@@ -1447,30 +1438,69 @@ export function GalaxyView({
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
 
-      {showGuidance && !showPlanetFocus && planet.data && panel === null && season.data?.status === 'live'
-        && (focus === null || (focus.kind === 'planet' && focus.id === activePlanetId)) && (
-        // Chat and Chronicle occupy bottom-2 + h-9; leave their entire row clear.
-        <div className="absolute bottom-14 left-2 right-2 z-10 max-w-sm">
-          <SituationGuide
-            now={now}
-            situation={{ planet: planet.data, galaxy: galaxy.data, intel: intel.data,
-              pending: threads, held: planet.data.planet,
-              shieldUntil: season.data.shieldUntil }}
-            onAct={({ action }) => {
-              if (action.screen === 'planet') {
-                if (action.planetId) selectPlanet(action.planetId);
-                setRequestedPlanetGroup(action.group ?? 'grow');
-                onPanel('planet');
-              } else if (action.screen === 'intel') {
-                onPanel('intel');
-              } else {
-                onPanel(null);
-                if (action.planetId) focusPlanet(action.planetId);
-                else setFocus(null);
-              }
-            }}
-          />
-        </div>
+      {/*
+        THE COLLECT BUBBLE (B13), over the world itself. Portalled from here into the
+        anchor the scene lends, so it keeps this tree's providers (see `onHomeAnchor`).
+      */}
+      {homeAnchor && panel === null && createPortal(
+        <CollectHost
+          onOpenBase={() => {
+            setRequestedPlanetGroup('grow');
+            onPanel('planet');
+          }}
+        />,
+        homeAnchor,
+      )}
+
+      {/*
+        ── THE CONTEXT SLOT (B3): one card at the foot of the galaxy. ─────────────
+
+        An attack coming for you, else the galaxy's events, else one suggestion — and
+        while the player has something selected its own panel keeps the screen and an
+        attack waits as a pill. It replaced the event chip that sat top-left and the
+        `SituationGuide` card, whose rules it keeps (`slotSuggestion`): only a
+        commander who came through the Academy is coached, and the shield is read
+        against this host's clock (H1) — `shieldUntil: season.data.shieldUntil`.
+      */}
+      {showGuidance && planet.data && panel === null && season.data?.status === 'live' && (
+        <ContextSlot
+          now={now}
+          selected={showPlanetFocus || (focus !== null && !(focus.kind === 'planet' && focus.id === activePlanetId))}
+          threats={threads.filter((thread) => thread.kind === 'incoming')}
+          contacts={contacts}
+          events={activeEvents(galaxyEvents.data?.events ?? [], now)}
+          suggestion={slotSuggestion({ planet: planet.data, galaxy: galaxy.data, intel: intel.data,
+            pending: threads, held: planet.data.planet,
+            shieldUntil: season.data.shieldUntil }, now)}
+          onPrepare={(thread) => {
+            if (thread.targetPlanetId) selectPlanet(thread.targetPlanetId);
+            setRequestedPlanetGroup('defend');
+            onPanel('planet');
+          }}
+          onLook={(contactId) => {
+            setFocus({ kind: 'contact', id: contactId });
+            setDetail(true);
+          }}
+          onShowEvent={(event) => {
+            if (event.kind === 'TRADE_SHIP') setFocus({ kind: 'tradeShip', id: event.id });
+            else if (event.kind === 'INTERGALACTIC_CONVOY') setFocus({ kind: 'intergalacticConvoy', id: event.id });
+            setDetail(true);
+          }}
+          onAct={({ action }) => {
+            if (action.screen === 'planet') {
+              if (action.planetId) selectPlanet(action.planetId);
+              setRequestedPlanetGroup(action.group ?? 'grow');
+              onPanel('planet');
+            } else if (action.screen === 'intel') {
+              onPanel('intel');
+            } else {
+              onPanel(null);
+              if (action.planetId) focusPlanet(action.planetId);
+              else setFocus(null);
+            }
+          }}
+          onClearSelection={close}
+        />
       )}
 
       {panel === 'planet' && planet.data && (

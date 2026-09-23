@@ -53,10 +53,25 @@ const closeAll = async () => {
 await page.addInitScript((lng) => { try { localStorage.setItem('i18nextLng', lng); } catch { /* private mode */ } }, LNG);
 await page.goto(WEB, { waitUntil: 'domcontentloaded' });
 
+/**
+ * SIGN IN INSTEAD, when `COMMANDER` names one that exists (and `PASSWORD` is its own).
+ * A state that takes hours to reach — full works, a finished queue — is staged in the
+ * private database for that commander and photographed without a new signup.
+ */
+const SIGN_IN = process.env.COMMANDER;
+if (SIGN_IN) {
+  const door = page.getByRole('button', { name: /i already have a commander|zaten bir komutanım var/i }).first();
+  await door.waitFor({ timeout: 40_000 });
+  await door.click({ noWaitAfter: true });
+  await page.getByLabel(/commander name|komutan adı/i).fill(SIGN_IN);
+  await page.getByLabel(/password|şifre|parola/i).fill(process.env.PASSWORD ?? 'correct-horse-battery');
+  await page.getByRole('button', { name: /^sign in$|^giriş yap$/i }).click();
+}
+
 const COMMANDER = `shell${String(Date.now()).slice(-8)}`;
 const trainingDoor = page.getByRole('button', { name: /check your planet|start a new commander|gezegenine bak|yeni komutan/i }).first();
 const commanderField = page.getByLabel(/commander name|komutan adı/i);
-for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
+for (let attempt = 0; attempt < 3 && !SIGN_IN && !(await commanderField.isVisible().catch(() => false)); attempt += 1) {
   try {
     await trainingDoor.waitFor({ timeout: 40_000 });
   } catch (error) {
@@ -70,15 +85,25 @@ for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(()
   await skip.click({ noWaitAfter: true });
   await settle(1500);
 }
-await commanderField.waitFor({ timeout: 20_000 });
-await commanderField.fill(COMMANDER);
-await page.getByRole('button', { name: /^continue$|^devam$/i }).click();
-await page.getByLabel(/password|şifre|parola/i).fill('correct-horse-battery');
-await page.getByRole('button', { name: /^claim the planet$|gezegeni al/i }).click();
+if (!SIGN_IN) {
+  await commanderField.waitFor({ timeout: 20_000 });
+  await commanderField.fill(COMMANDER);
+  await page.getByRole('button', { name: /^continue$|^devam$/i }).click();
+  await page.getByLabel(/password|şifre|parola/i).fill('correct-horse-battery');
+  await page.getByRole('button', { name: /^claim the planet$|gezegeni al/i }).click();
+}
 await page.waitForSelector('canvas', { timeout: 60_000 });
 await settle(6000);
 await closeAll();
 await shot('01-galaxy');
+
+// The collect bubble, when the works hold enough to raise it (B13).
+const bubble = page.getByRole('button', { name: /^(Collect|Topla)|full|dolu/i }).first();
+if (await bubble.isVisible().catch(() => false)) {
+  await bubble.click({ force: true });
+  await settle(1500);
+  await shot('01b-collected');
+}
 
 const dock = page.getByRole('navigation').last();
 const tab = async (name, file) => {

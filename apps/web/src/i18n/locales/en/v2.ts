@@ -104,3 +104,16 @@ export const view = {
   radarDetail: 'Where your radar warns of incoming fleets',
   events: 'Galaxy events guide',
 };
+
+/** B3: the context slot, one card at a time. */
+export const slot = {
+  incoming: 'Incoming attack',
+  prepare: 'Prepare defence',
+  look: 'Look at it',
+  event: 'Galaxy event',
+  show: 'Show me',
+  lands: 'lands in {{time}}',
+  ends: 'ends in {{time}}',
+  pill: 'Incoming attacks: {{count}}',
+  dismiss: 'Dismiss',
+};

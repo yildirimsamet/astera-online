@@ -102,3 +102,16 @@ export const view = {
   radarDetail: 'Donde tu radar avisa de flotas entrantes',
   events: 'Guía de eventos galácticos',
 };
+
+/** B3: el espacio de contexto, una tarjeta cada vez. */
+export const slot = {
+  incoming: 'Ataque en camino',
+  prepare: 'Preparar la defensa',
+  look: 'Mirarlo',
+  event: 'Evento galáctico',
+  show: 'Mostrar',
+  lands: 'llega en {{time}}',
+  ends: 'termina en {{time}}',
+  pill: 'Ataques en camino: {{count}}',
+  dismiss: 'Cerrar',
+};

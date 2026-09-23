@@ -12,7 +12,7 @@ import { Gallery } from '../../src/v2/gallery/Gallery.js';
 describe('the v2 gallery', () => {
   it('draws every section', () => {
     render(<ToastProvider><Gallery view={null} /></ToastProvider>);
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(10);
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(11);
   });
 
   it.each(['peek', 'queue', 'bell', 'view'])('draws the %s view', (view) => {

@@ -102,3 +102,16 @@ export const view = {
   radarDetail: 'Wo dein Radar vor anfliegenden Flotten warnt',
   events: 'Leitfaden zu Galaxie-Ereignissen',
 };
+
+/** B3: der Kontextplatz, immer nur eine Karte. */
+export const slot = {
+  incoming: 'Angriff im Anflug',
+  prepare: 'Verteidigung vorbereiten',
+  look: 'Ansehen',
+  event: 'Galaxie-Ereignis',
+  show: 'Zeigen',
+  lands: 'landet in {{time}}',
+  ends: 'endet in {{time}}',
+  pill: 'Angriffe im Anflug: {{count}}',
+  dismiss: 'Schließen',
+};

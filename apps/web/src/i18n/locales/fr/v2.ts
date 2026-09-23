@@ -102,3 +102,16 @@ export const view = {
   radarDetail: 'Où ton radar signale les flottes entrantes',
   events: 'Guide des événements galactiques',
 };
+
+/** B3 : l’emplacement de contexte, une carte à la fois. */
+export const slot = {
+  incoming: 'Attaque en approche',
+  prepare: 'Préparer la défense',
+  look: 'Regarder',
+  event: 'Événement galactique',
+  show: 'Montrer',
+  lands: 'arrive dans {{time}}',
+  ends: 'finit dans {{time}}',
+  pill: 'Attaques en approche : {{count}}',
+  dismiss: 'Fermer',
+};

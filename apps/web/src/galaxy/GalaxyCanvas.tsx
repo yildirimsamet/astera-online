@@ -255,6 +255,13 @@ export interface GalaxyCanvasProps {
   /** The Academy entrance flies toward home once, over two seconds. */
   openingHome?: boolean;
   /**
+   * An anchor element over the active world, in the scene, handed to the caller
+   * (B13's collect bubble rides the planet as the camera moves). ONLY AN ANCHOR:
+   * drei's `<Html>` renders into a React root of its own, so anything drawn inside
+   * it loses every provider — the caller portals its content in from its own tree.
+   */
+  onHomeAnchor?: (element: HTMLDivElement | null) => void;
+  /**
    * Which worlds may be selected at all. D56.
    *
    * Absent means every world, which is the game. The rehearsal narrows it beat by
@@ -315,6 +322,7 @@ export function GalaxyCanvas({
   coachTap = null,
   sightRadius,
   openingHome = false,
+  onHomeAnchor,
   allowFocus,
   onReady,
 }: GalaxyCanvasProps) {
@@ -857,6 +865,15 @@ export function GalaxyCanvas({
       )}
 
       <DevBridge />
+      {onHomeAnchor && (
+        <Html position={home} center zIndexRange={[20, 0]}>
+          {/*
+            Under the world rather than over it: the world's own name plate sits above
+            the planet, and a bubble there covered it (seen in the game).
+          */}
+          <div ref={onHomeAnchor} className="translate-y-10" />
+        </Html>
+      )}
       {openingHome && <Html position={home} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
         <span ref={openingMark} data-academy-home data-academy-home-ready="false" className="pointer-events-none block size-px" />
       </Html>}

@@ -102,3 +102,16 @@ export const view = {
   radarDetail: 'Radarının gelen filoyu haber verdiği alan',
   events: 'Galaksi olayları rehberi',
 };
+
+/** B3: bağlam yuvası, bir seferde tek kart. */
+export const slot = {
+  incoming: 'Gelen saldırı',
+  prepare: 'Savunmayı hazırla',
+  look: 'Ona bak',
+  event: 'Galaksi olayı',
+  show: 'Göster',
+  lands: '{{time}} sonra iner',
+  ends: '{{time}} sonra biter',
+  pill: 'Gelen saldırı: {{count}}',
+  dismiss: 'Kapat',
+};

@@ -1,4 +1,15 @@
-import type { Directive } from './directives.js';
+import type { ActiveGalaxyEvent, PendingThread } from '../api/schemas.js';
+import { directives, type Directive, type Situation } from './directives.js';
+import { minutesLeft } from './time.js';
+
+/**
+ * An incoming attack, named by where and when it lands. An inbound thread carries
+ * no mission id (the attacker's is not the defender's to know), and its place in
+ * a list moves as others land — so a dismissed card is remembered by its target
+ * and its instant, and a new attack is a new key.
+ */
+export const threatKeyOf = (thread: PendingThread): string =>
+  `${thread.targetPlanetId ?? thread.targetName}@${String(thread.arriveAt.getTime())}`;
 
 export type SlotCard = 'threat' | 'selected' | 'event' | 'suggestion';
 
@@ -57,3 +68,29 @@ export function contextSlot(input: SlotInput): Slot {
  */
 export const suggestionOf = (list: readonly Directive[]): Directive | null =>
   list.find((directive) => directive.id !== 'inbound') ?? null;
+
+/**
+ * THE ADVICE THE SLOT MAY OFFER, AND TO WHOM — the rules `SituationGuide` kept.
+ *
+ * Only a commander who came through the Academy is coached (owner instruction:
+ * the guide is the written half of onboarding; `academyStep` is the server's word
+ * for it). The host's clock reaches the engine twice: the shield is read against
+ * it (H1), and every flight's minutes are recomputed from its absolute landing,
+ * so a cached `minutesRemaining` never freezes a warning.
+ */
+export function slotSuggestion(situation: Situation, now: number): Directive | null {
+  if (situation.planet.academyStep == null) return null;
+  return suggestionOf(directives({
+    ...situation,
+    now,
+    pending: situation.pending.map((thread) => ({ ...thread, minutesRemaining: minutesLeft(thread.arriveAt, now) })),
+  }));
+}
+
+/**
+ * The galaxy events running at `now`: from their start up to, not including, their
+ * end — the half-open window the old event chip kept, so a card never outlives its
+ * event by the second the server already considers it over.
+ */
+export const activeEvents = (events: readonly ActiveGalaxyEvent[], now: number): ActiveGalaxyEvent[] =>
+  events.filter((event) => event.startsAt.getTime() <= now && now < event.endsAt.getTime());

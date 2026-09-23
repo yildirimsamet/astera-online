@@ -4,6 +4,7 @@ import { nowEntries } from '../../lib/nowLine.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
 import { CollectBubble } from '../hud/CollectBubble.js';
+import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { Dock } from '../hud/Dock.js';
 import { NowLine } from '../hud/NowLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
@@ -67,6 +68,20 @@ const topBar: TopBarProps = {
   onWorld: noop,
   onResource: noop,
   onBell: noop,
+};
+
+const slotBase: ContextSlotProps = {
+  now: NOW,
+  selected: false,
+  threats: [],
+  contacts: [],
+  events: [],
+  suggestion: null,
+  onPrepare: noop,
+  onLook: noop,
+  onShowEvent: noop,
+  onAct: noop,
+  onClearSelection: noop,
 };
 
 const quiet: DockBadges = { base: false, fleet: { airborne: 0, progress: null }, intel: 0, clan: 0 };
@@ -236,6 +251,34 @@ export function Gallery({ view }: { view: string | null }) {
           />
         </Section>
       </div>
+
+      <Section title="B3 · context slot">
+        <div className="relative h-36">
+          <ContextSlot {...slotBase} threats={[thread('incoming', 9)]} />
+        </div>
+        <div className="relative h-32">
+          <ContextSlot
+            {...slotBase}
+            events={[{ id: 'e1', kind: 'ASTEROID_SHOWER', startsAt: at(-60), endsAt: at(30), asteroidSpawnMultiplier: 2 }]}
+          />
+        </div>
+        <div className="relative h-36">
+          <ContextSlot
+            {...slotBase}
+            suggestion={{
+              id: 'undefended',
+              kind: 'growth',
+              title: 'Your shield ends in 3h 00m: build a ground defence',
+              detail: '456 is exposed to raids. Build Thorns or Bastions for permanent defence.',
+              action: { label: 'Build defence', screen: 'planet', group: 'defend' },
+              weight: 820,
+            }}
+          />
+        </div>
+        <div className="relative h-12">
+          <ContextSlot {...slotBase} selected threats={[thread('incoming', 9), thread('incoming', 20)]} />
+        </div>
+      </Section>
 
       <Section title="view chip">
         <div className="flex gap-2 px-3">
