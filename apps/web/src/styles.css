@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/ibm-plex-sans';
 @import '@fontsource-variable/saira/standard.css';
+/* Gözlemevi v2 faces (K3): Archivo with its width axis, Plex Mono for data stamps. */
+@import '@fontsource-variable/archivo/standard.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
 @import './styles/chrome.css';
 @import './v2/tokens.css';
 

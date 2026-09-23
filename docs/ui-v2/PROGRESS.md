@@ -40,8 +40,8 @@
 ## Sıradaki iş
 **F1 · v2 temeli.** Sıra: (1) token'lar, (2) yazı tipi, (3) ikonlar, (4) kit bileşenleri.
 - ~~F1.1 token'lar~~ bitti (bkz. Biten işler).
-- **F1.2 Archivo (sıradaki):** `@fontsource-variable/archivo`'nun genişlik eksenini (wdth 62–125) içerip içermediğini kontrol et.
-- F1.3 ikonlar: `docs/ui-v2/icons.svg` → `apps/web/src/v2/icons/`.
+- ~~F1.2 yazı tipleri~~ bitti.
+- **F1.3 ikonlar (sıradaki):** `docs/ui-v2/icons.svg` → `apps/web/src/v2/icons/`.
 - F1.4 kit: B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
 
 ## Biten işler
@@ -61,6 +61,10 @@
   (değerler, çakışmasızlık, kontrast, `src/v2` altında ham renk yasağı). `surface-vocabulary.test.ts` artık
   v2 token'larını da okuyor. Tailwind kullanılmayan tema değişkenlerini derlemeye koymuyor; bileşenler
   kullanınca çıkar (F1.4'te kontrol et).
+- F1.2 (2026-09-23): `@fontsource-variable/archivo` eklendi (`standard.css`: wght 100–900 + wdth 62–125,
+  latin-ext dahil); IBM Plex Mono 400/500 artık gerçekten içe aktarılıyor (bugünkü tema adı kullanıyordu ama
+  hiç yüklemiyordu → sistem yazı tipine düşüyordu). Genişlik: Tailwind `font-stretch-75%` / `font-stretch-125%`.
+  Koruyucu: `test/v2/fonts.test.ts` (içe aktarım + aile adı paketin tanımladığıyla aynı).
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
