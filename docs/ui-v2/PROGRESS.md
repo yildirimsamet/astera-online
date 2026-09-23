@@ -57,6 +57,14 @@
   `ActiveGalaxyEvent` (→ bağlam yuvası "olay"), `SituationGuide` (→ bağlam yuvası "öneri"), odak kartları bağlam
   yuvasında. Silinen bileşenin testi silinir; korunan davranış yeni testte yaşar.
 - **F2.6** Rehearsal aynı kabuk. **F2.7** faz sonu review + tek oturum görsel kontrol (350 ve 1280 px).
+- Durum: ~~F2.1~~ `98a09fa` · ~~F2.2~~ `73b9d6c`, `8012378` · ~~F2.3~~ `1efb94d` · **F2.4 kabuk sırada.**
+  Hazır parçalar: `lib/{nowLine,collect,dock,contextSlot,bell,flights}.ts`; `v2/hud/{Dock,NowLine,TopBar,CollectBubble,BellSheet}.tsx`;
+  `v2/kit/Segmented.tsx`; v2 Sheet `contained`. `shell/Signals.tsx` artık `SignalsFeed` + `useOpenSignals` dışa aktarıyor
+  (zil sayfasının Sinyaller sekmesi bunu çizer; açılış okundu işaretler). Bağlam yuvası B3'ün sunum bileşeni henüz yok
+  (F2.5'te GalaxyView içinde kurulacak). **Koruyucular:** `motion-safe:`/`motion-reduce:` ve `backdrop-blur` yasak
+  (`no-reduced-motion.test.ts`, `sharpness.test.ts`); her commit'ten önce TAM web paketi.
+- Karar (şartname yorumu): B3 "öneri" = `directives()` içinde `inbound` dışındaki ilk yönerge (tehdit kartı onu zaten
+  taşıyor). B2 "dokununca saat" = satıra dokununca açılan listede her zamanlayıcının saati de yazar.
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
