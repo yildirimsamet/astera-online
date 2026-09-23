@@ -4,6 +4,8 @@
 export const hold = {
   hint: 'Mantén pulsado o pulsa Intro dos veces para confirmar',
   confirm: '{{label}} · ¿seguro?',
+  /** Shown on the face after a release that came too soon. */
+  release: 'Mantén pulsado para confirmar',
 };
 
 /** B12: una cola de obra dibujada como anillos. */
@@ -72,6 +74,8 @@ export const now = {
 
 /** K1: la hoja de la campana, tres pestañas. */
 export const bell = {
+  /** The sheet's name: all three tabs answer it. */
+  title: 'Qué pasó',
   /** The tab list, for a screen reader. */
   label: 'Señales, crónica y chat',
   signals: 'Señales',
@@ -79,4 +83,10 @@ export const bell = {
   chat: 'Chat',
   /** The dot on Chat, read aloud. */
   chatUnread: '{{count}} sin leer',
+};
+
+/** B1: la barra superior. */
+export const topBar = {
+  /** The shield's time on the commander chip: whole hours, rounded down. */
+  hours: '{{h}}h',
 };

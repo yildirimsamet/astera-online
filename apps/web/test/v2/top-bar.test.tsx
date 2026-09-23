@@ -95,7 +95,12 @@ describe('the top bar', () => {
     const { rerender } = render(<TopBar {...props({ shield: { until: NOW + 7 * 3_600_000, kind: 'NEWCOMER' } })} />);
     const chip = screen.getByRole('button', { name: /^Commander Samet/ });
     expect(chip).toHaveAttribute('data-shielded');
-    expect(within(chip).getByText('7h 00m')).toBeInTheDocument();
+    // Whole hours on the chip, rounded down so it never promises time it does not have;
+    // the exact figure is in its name and, in the last hour, on the Now line.
+    expect(within(chip).getByText('7h')).toBeInTheDocument();
+    expect(chip).toHaveAccessibleName(/7h 00m/);
+    rerender(<TopBar {...props({ shield: { until: NOW + 42 * 60_000, kind: 'NEWCOMER' } })} />);
+    expect(within(screen.getByRole('button', { name: /^Commander Samet/ })).getByText('42m')).toBeInTheDocument();
     rerender(<TopBar {...props({ shield: { until: NOW - 1, kind: 'NEWCOMER' } })} />);
     expect(screen.getByRole('button', { name: /^Commander Samet/ })).not.toHaveAttribute('data-shielded');
   });

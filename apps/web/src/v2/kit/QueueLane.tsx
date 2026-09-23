@@ -33,7 +33,15 @@ export function OrderRing({ order, now }: { order: BuildOrderView; now: number }
 export function OrderName({ order }: { order: BuildOrderView }) {
   return (
     <span className="flex min-w-0 items-baseline gap-1">
-      <span className="truncate font-v2-ui text-caption font-semibold text-v2-ink">{buildOrderLabel(order)}</span>
+      {/*
+        Archivo's narrow width holds "Alloy Refinery" whole in a third of a 350 px row.
+        A German compound still ends in an ellipsis: a two-line wrap was tried, and
+        where the browser has no hyphenation dictionary it split the word mid-syllable
+        with no hyphen, which read worse. The queue sheet prints the name at full width.
+      */}
+      <span className="truncate font-v2-ui text-caption font-semibold text-v2-ink font-stretch-condensed">
+        {buildOrderLabel(order)}
+      </span>
       {order.count > 1 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">×{order.count}</span>}
     </span>
   );

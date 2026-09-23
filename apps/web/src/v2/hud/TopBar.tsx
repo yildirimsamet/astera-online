@@ -59,6 +59,12 @@ export function TopBar({
   const shieldLeft = shield ? shield.until - now : 0;
   const shielded = shield !== null && shieldLeft > 0;
   const shieldTime = shielded ? duration(shieldLeft / 60_000) : '';
+  // The chip carries whole hours, rounded down so it never promises time it does
+  // not have; the exact figure is in its name and, in the last hour, on the Now line.
+  const shieldMinutes = Math.floor(shieldLeft / 60_000);
+  const shieldShort = shieldMinutes >= 60
+    ? t('topBar.hours', { h: Math.floor(shieldMinutes / 60) })
+    : t('units.minutes', { m: Math.max(1, shieldMinutes) });
   // A badge may only promise what the surface behind it can show: the commander
   // page holds the rewards, so they are the chip's one dot.
   const chipName = [
@@ -85,13 +91,13 @@ export function TopBar({
           {rewards > 0 && (
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-v2-self ring-2 ring-v2-deep" />
           )}
-          {shielded && (
-            <span aria-hidden="true" className="absolute -bottom-1 -right-1 grid size-3.5 place-items-center rounded-full bg-v2-deep text-v2-self">
-              <Icon id="i-shield" className="size-3" />
-            </span>
-          )}
         </span>
-        {shielded && <span className="font-v2-mono text-micro leading-none text-v2-self">{shieldTime}</span>}
+        {shielded && (
+          <span aria-hidden="true" className="mt-0.5 flex items-center gap-0.5 text-v2-self">
+            <Icon id="i-shield" className="size-2.5" />
+            <span className="font-v2-mono text-micro leading-none">{shieldShort}</span>
+          </span>
+        )}
       </button>
 
       {world && (

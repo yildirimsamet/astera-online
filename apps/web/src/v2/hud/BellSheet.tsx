@@ -37,8 +37,9 @@ export function BellSheet({ tab, onTab, onClose, unseen, chatUnread, signals, ch
 
   return (
     <Sheet
-      title={t('signals.title')}
-      eyebrow={unseen > 0 ? t('signals.eyebrowUnread', { count: unseen }) : t('signals.eyebrowRead')}
+      // Named for all three tabs: a "Signals" title over the chronicle misled (seen on the gallery).
+      title={t('bell.title')}
+      {...(tab === 'signals' && unseen > 0 ? { eyebrow: t('signals.eyebrowUnread', { count: unseen }) } : {})}
       onClose={onClose}
       detents={ONLY_FULL}
       contained={tab === 'chat'}

@@ -4,6 +4,8 @@
 export const hold = {
   hint: 'Basılı tut ya da onaylamak için iki kez Enter’a bas',
   confirm: '{{label}} · emin misin?',
+  /** Shown on the face after a release that came too soon. */
+  release: 'Onaylamak için basılı tut',
 };
 
 /** B12: halka olarak çizilen kuyruk hattı. */
@@ -72,6 +74,8 @@ export const now = {
 
 /** K1: zil sayfası, üç sekme. */
 export const bell = {
+  /** The sheet's name: all three tabs answer it. */
+  title: 'Neler oldu',
   /** The tab list, for a screen reader. */
   label: 'Sinyaller, kronik ve sohbet',
   signals: 'Sinyaller',
@@ -79,4 +83,10 @@ export const bell = {
   chat: 'Sohbet',
   /** The dot on Chat, read aloud. */
   chatUnread: '{{count}} okunmamış',
+};
+
+/** B1: üst çubuk. */
+export const topBar = {
+  /** The shield's time on the commander chip: whole hours, rounded down. */
+  hours: '{{h}}s',
 };

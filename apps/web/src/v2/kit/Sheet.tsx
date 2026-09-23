@@ -4,9 +4,14 @@ import { dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Icon } from '../icons.js';
 
+/**
+ * Peek and half are ceilings: a sheet with little in it is only as tall as its
+ * content, because empty height is space with no purpose (seen on the gallery: a
+ * two-row queue sheet stood half the screen tall). Full is a page, and fills.
+ */
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
-  half: 'h-[55dvh]',
+  half: 'max-h-[55dvh]',
   full: 'h-[92dvh]',
 };
 

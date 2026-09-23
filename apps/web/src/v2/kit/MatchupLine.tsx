@@ -5,11 +5,18 @@ import { combatClassLabel } from '../../i18n/names.js';
 import { matchupHint } from '../../lib/matchup.js';
 import { ClassEmblem } from './ClassEmblem.js';
 
-/** A class named in the line: its emblem, then its words. */
+/**
+ * A class named in the line: its emblem, then its words.
+ *
+ * INLINE, NOT FLEX. An inline-flex span sits its own baseline on the emblem's foot,
+ * which dropped every " · " after it to the floor of the line so the separators
+ * read as full stops (seen on the gallery). An inline emblem aligned to the middle
+ * leaves the text on the line's own baseline.
+ */
 function Named({ cls, tone, children }: { cls: CombatClass; tone: string; children: ReactNode }) {
   return (
-    <span data-class={cls} className={`inline-flex items-center gap-1 ${tone}`}>
-      <ClassEmblem cls={cls} decorative className="size-3 shrink-0" />
+    <span data-class={cls} className={`whitespace-nowrap ${tone}`}>
+      <ClassEmblem cls={cls} decorative className="mr-1 inline-block size-3 align-middle" />
       {children}
     </span>
   );

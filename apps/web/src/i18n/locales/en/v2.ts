@@ -6,6 +6,8 @@ export const hold = {
   hint: 'Press and hold, or press Enter twice to confirm',
   /** The inline second step after one Enter. */
   confirm: '{{label}} · sure?',
+  /** Shown on the face after a release that came too soon. */
+  release: 'Hold to confirm',
 };
 
 /** B12: a build lane drawn as rings. */
@@ -74,6 +76,8 @@ export const now = {
 
 /** K1: the bell sheet, three tabs. */
 export const bell = {
+  /** The sheet's name: all three tabs answer it. */
+  title: 'What happened',
   /** The tab list, for a screen reader. */
   label: 'Signals, chronicle and chat',
   signals: 'Signals',
@@ -81,4 +85,10 @@ export const bell = {
   chat: 'Chat',
   /** The dot on Chat, read aloud. */
   chatUnread: '{{count}} unread',
+};
+
+/** B1: the top bar. */
+export const topBar = {
+  /** The shield's time on the commander chip: whole hours, rounded down. */
+  hours: '{{h}}h',
 };

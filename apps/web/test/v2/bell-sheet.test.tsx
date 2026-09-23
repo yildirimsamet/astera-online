@@ -26,7 +26,8 @@ const props = (over: Partial<BellSheetProps> = {}): BellSheetProps => ({
 describe('the bell sheet', () => {
   it('opens on the tab it is given and shows only that tab', () => {
     render(<BellSheet {...props({ tab: 'chronicle' })} />);
-    expect(screen.getByRole('dialog', { name: 'Signals' })).toBeInTheDocument();
+    // Named for all three tabs, not for the first: a "Signals" title over the chronicle misled.
+    expect(screen.getByRole('dialog', { name: 'What happened' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Chronicle' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('chronicle rows')).toBeInTheDocument();
     expect(screen.queryByText('signal rows')).toBeNull();
@@ -44,9 +45,11 @@ describe('the bell sheet', () => {
     expect(screen.getByRole('tab', { name: 'Chat · 4 unread' })).toBeInTheDocument();
   });
 
-  it('says how many signals are new', () => {
-    render(<BellSheet {...props({ unseen: 2 })} />);
+  it('says how many signals are new, on the signals tab', () => {
+    const { rerender } = render(<BellSheet {...props({ unseen: 2 })} />);
     expect(screen.getByText('2 new')).toBeInTheDocument();
+    rerender(<BellSheet {...props({ unseen: 2, tab: 'chronicle' })} />);
+    expect(screen.queryByText('2 new')).toBeNull();
   });
 
   it('lets the chat log own its scrolling', () => {

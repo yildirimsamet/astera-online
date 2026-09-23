@@ -7,12 +7,22 @@ import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 export const HOLD_MS = 600;
 /** How long an unanswered Enter confirm stays armed. */
 const CONFIRM_MS = 4_000;
+/** How long "hold to confirm" stays on the face after a release that came too soon. */
+const NUDGE_MS = 1_600;
+/** The face ring: r = 6 on a 16 box. */
+const RING = 2 * Math.PI * 6;
 
 const TONE = {
   /** Your move: every launch. */
-  self: { frame: 'border-v2-self/60 bg-v2-self/10', fill: 'bg-v2-self/35', bar: 'bg-v2-self' },
+  self: { frame: 'border-v2-self/60 bg-v2-self/10', fill: 'bg-v2-self/35', bar: 'bg-v2-self', ring: 'stroke-v2-self', track: 'stroke-v2-self/35' },
   /** The strategic weapon: the one launch drawn in the colour of harm. */
-  hostile: { frame: 'border-v2-hostile/60 bg-v2-hostile/10', fill: 'bg-v2-hostile/35', bar: 'bg-v2-hostile' },
+  hostile: {
+    frame: 'border-v2-hostile/60 bg-v2-hostile/10',
+    fill: 'bg-v2-hostile/35',
+    bar: 'bg-v2-hostile',
+    ring: 'stroke-v2-hostile',
+    track: 'stroke-v2-hostile/35',
+  },
 } as const;
 
 export interface HoldButtonProps {
@@ -38,6 +48,11 @@ export interface HoldButtonProps {
  *
  * KEYBOARDS HOLD SPACE; ENTER CONFIRMS TWICE. Someone who cannot hold a key gets an
  * inline second step instead of a timer, and a screen reader is told both ways.
+ *
+ * A TAP IS NOT A HOLD, AND THE FACE SAYS SO. A ring beside the label says "hold"
+ * before anyone presses, and fills with the hold; a release that came too soon
+ * puts "hold to confirm" on the face for a moment. Found on the gallery: with the
+ * hint only in a screen-reader line, a tap did nothing and said nothing.
  */
 export function HoldButton({ label, onCommit, disabledReason = null, tone = 'self' }: HoldButtonProps) {
   const { t } = useTranslation();
@@ -45,16 +60,26 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
   const timer = useRef<number | null>(null);
   const [holding, setHolding] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [nudge, setNudge] = useState(false);
 
-  const stop = (): void => {
+  /** Ends a hold. `released` is a finger or key let go: if the hold had not gone through, say how. */
+  const stop = (released = false): void => {
+    if (released && timer.current !== null) setNudge(true);
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     setHolding(false);
   };
 
+  useEffect(() => {
+    if (!nudge) return undefined;
+    const expiry = window.setTimeout(() => { setNudge(false); }, NUDGE_MS);
+    return () => { window.clearTimeout(expiry); };
+  }, [nudge]);
+
   const start = (): void => {
     if (disabledReason !== null || timer.current !== null) return;
     haptic('tap');
+    setNudge(false);
     setHolding(true);
     timer.current = window.setTimeout(() => {
       timer.current = null;
@@ -122,13 +147,13 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
           if (event.button !== 1 && event.button !== 2) start();
           confirmPress.onPointerDown();
         }}
-        onPointerUp={stop}
-        onPointerLeave={stop}
-        onPointerCancel={stop}
+        onPointerUp={() => { stop(true); }}
+        onPointerLeave={() => { stop(); }}
+        onPointerCancel={() => { stop(); }}
         onContextMenu={(event) => { event.preventDefault(); }}
         onClick={confirmPress.onClick}
         onKeyDown={onKeyDown}
-        onKeyUp={(event) => { if (event.key === ' ') stop(); }}
+        onKeyUp={(event) => { if (event.key === ' ') stop(true); }}
         onBlur={() => { stop(); setConfirming(false); }}
         className={`relative flex h-11 w-full touch-manipulation select-none items-center justify-center overflow-hidden rounded-control border px-3 font-v2-ui text-body font-bold text-v2-ink ${tones.frame}`}
       >
@@ -152,7 +177,28 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
             transitionDuration: holding ? `${String(HOLD_MS)}ms` : '0ms',
           }}
         />
-        <span className="relative">{confirming ? t('hold.confirm', { label }) : label}</span>
+        <span className="relative flex items-center gap-2">
+          <svg data-hold-ring="" viewBox="0 0 16 16" aria-hidden="true" className="size-4 shrink-0 -rotate-90">
+            <circle cx="8" cy="8" r="6" fill="none" strokeWidth="2" className={tones.track} />
+            <circle
+              cx="8"
+              cy="8"
+              r="6"
+              fill="none"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeDasharray={RING}
+              className={tones.ring}
+              style={{
+                strokeDashoffset: holding ? 0 : RING,
+                transitionProperty: 'stroke-dashoffset',
+                transitionTimingFunction: 'linear',
+                transitionDuration: holding ? `${String(HOLD_MS)}ms` : '0ms',
+              }}
+            />
+          </svg>
+          {confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : label}
+        </span>
       </button>
       <span id={hintId} className="sr-only">{t('hold.hint')}</span>
     </>

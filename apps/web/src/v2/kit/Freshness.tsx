@@ -32,10 +32,11 @@ const DIM: Record<ClarityState, string> = {
   BLIND: '',
 };
 
+/** Grain alone could not tell six hours from twenty on a 56 px thumbnail; colour drains with it. */
 const FADE: Record<AgeTier, string> = {
   fresh: '',
   aging: '',
-  stale: '',
+  stale: 'saturate-[.7]',
   old: 'opacity-60 saturate-50',
 };
 

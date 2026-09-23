@@ -4,6 +4,8 @@
 export const hold = {
   hint: 'Gedrückt halten oder zum Bestätigen zweimal Enter drücken',
   confirm: '{{label}} · sicher?',
+  /** Shown on the face after a release that came too soon. */
+  release: 'Zum Bestätigen gedrückt halten',
 };
 
 /** B12: eine Bauschlange als Ringe. */
@@ -72,6 +74,8 @@ export const now = {
 
 /** K1: das Glocken-Blatt, drei Tabs. */
 export const bell = {
+  /** The sheet's name: all three tabs answer it. */
+  title: 'Was geschah',
   /** The tab list, for a screen reader. */
   label: 'Signale, Chronik und Chat',
   signals: 'Signale',
@@ -79,4 +83,10 @@ export const bell = {
   chat: 'Chat',
   /** The dot on Chat, read aloud. */
   chatUnread: '{{count}} ungelesen',
+};
+
+/** B1: die obere Leiste. */
+export const topBar = {
+  /** The shield's time on the commander chip: whole hours, rounded down. */
+  hours: '{{h}}h',
 };

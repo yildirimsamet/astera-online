@@ -18,7 +18,12 @@
 - `pnpm verify` sıfır tip ve lint hatası; kırmızı test seti aşağıdaki listeden büyümez.
 - Sunucu testleri paylaşılan `astera_test` veritabanını kullanır (localhost:5433); yalnız sunucuya dokunulunca ve seri çalıştır.
 - Her yeni metin 5 dilde (tr, en, de, fr, es); testler İngilizce çalışır.
-- Görsel doğrulama (`node tools/visual.mjs`) yalnız sahip isterse ya da faz sonunda tek oturumda.
+- **Görmeden tasarım yok (sahip talimatı 2026-09-23: "Gözü kapalı yapmamalısın").** Her v2 bileşeni
+  `apps/web/v2-gallery.html` galerisine (`src/v2/gallery/Gallery.tsx`, örnek veriyle) eklenir ve commit'ten önce
+  fotoğraflanıp okunur: sunucu `pnpm --filter @astera/web exec vite --port 5199 --strictPort --host 127.0.0.1`,
+  kamera `node tools/v2-gallery.mjs <çıktı> en tr de` (350 px DPR 2 bölüm bölüm + 1280 px + sayfa görünümleri;
+  hesap açmaz, kayıt limitine takılmaz). Uzun dillerde (tr, de, fr) taşma bakılır. Gerçek oyun kabuğa bağlandıktan
+  sonra `node tools/visual.mjs` ile (kayıt limiti: ~5 koşu / 30 dk).
 - Boyutlar sıkı: gövde 12 px (sahibin "büyük yazı yok" talimatı).
 
 ## Durum
@@ -63,6 +68,13 @@
   (zil sayfasının Sinyaller sekmesi bunu çizer; açılış okundu işaretler). Bağlam yuvası B3'ün sunum bileşeni henüz yok
   (F2.5'te GalaxyView içinde kurulacak). **Koruyucular:** `motion-safe:`/`motion-reduce:` ve `backdrop-blur` yasak
   (`no-reduced-motion.test.ts`, `sharpness.test.ts`); her commit'ten önce TAM web paketi.
+- **Galeri incelemesi (2026-09-23) — testlerin yakalamadığı, ekranda görülüp düzeltilenler:** komutan çipinde kalkan
+  simgesi süreye biniyordu (artık simge + tam saat, "7h"/"7s", aşağı yuvarlanır); B6'da `inline-flex` amblemler taban
+  çizgisini kaydırıp " · " ayırıcılarını nokta gibi gösteriyordu (artık satır içi, `align-middle`); B9'da görünür
+  "basılı tut" ipucu yoktu (artık yüzde dolan halka + erken bırakınca `hold.release`); kuyruk adları kesiliyordu
+  (dar genişlik; iki satır + tireleme denendi, Linux Chromium'da tiresiz bölündüğü için geri alındı); gren 56 px'te
+  görünmüyordu (daha kaba, daha güçlü; `stale` doygunluk da düşürür); "yarım" sayfa az içerikte boş kalıyordu
+  (`half` artık tavan: `max-h-[55dvh]`); zil sayfasının başlığı ilk sekmeyle aynıydı (artık "Neler oldu").
 - Karar (şartname yorumu): B3 "öneri" = `directives()` içinde `inbound` dışındaki ilk yönerge (tehdit kartı onu zaten
   taşıyor). B2 "dokununca saat" = satıra dokununca açılan listede her zamanlayıcının saati de yazar.
 

@@ -49,6 +49,34 @@ describe('the hold-to-commit button', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  /**
+   * A TAP IS NOT A HOLD, AND THE BUTTON SAYS SO. Seen on the gallery: nothing on
+   * the face told a player to hold, so a tap would simply do nothing. The ring on
+   * the face says it before; a release that came too soon says it after.
+   */
+  it('shows a ring on its face that fills with the hold', () => {
+    const { button } = setup();
+    expect(button.querySelector('[data-hold-ring]')).not.toBeNull();
+  });
+
+  it('tells a player who let go too soon to hold, then goes back to its label', () => {
+    const { button } = setup();
+    fireEvent.pointerDown(button, { button: 0 });
+    act(() => { vi.advanceTimersByTime(150); });
+    fireEvent.pointerUp(button);
+    expect(button).toHaveTextContent('Hold to confirm');
+    act(() => { vi.advanceTimersByTime(2_000); });
+    expect(button).toHaveTextContent('Launch 74 ships');
+  });
+
+  it('says nothing after a hold that went through', () => {
+    const { button } = setup();
+    fireEvent.pointerDown(button, { button: 0 });
+    act(() => { vi.advanceTimersByTime(HOLD_MS); });
+    fireEvent.pointerUp(button);
+    expect(button).toHaveTextContent('Launch 74 ships');
+  });
+
   it('cancels when the finger slides off', () => {
     const { onCommit, button } = setup();
     fireEvent.pointerDown(button, { button: 0 });
