@@ -2,11 +2,12 @@
 
 **Bağlam sıkıştırıldıysa ya da yeni oturumsan önce bunu oku.** Okuma sırası:
 1. Bu dosya (özellikle "Sıradaki iş").
-2. `docs/ui-v2/gozlemevi.html` içinde sıradaki işin kimliğiyle geçen bölüm (tamamını okuma;
-   `grep -n "B9\|id=\"bilesenler\"" docs/ui-v2/gozlemevi.html` gibi ara).
+2. `docs/ui-v2/gozlemevi.md` (okuma kopyası, ~1.000 satır) içinde sıradaki işin kimliğiyle geçen bölüm;
+   tamamını okuma: `grep -n "B9 ·\|E3 ·\|^| K8" docs/ui-v2/gozlemevi.md` ile bul, o aralığı oku.
 3. İlgili kod. Şartname ile kod çelişirse **kod kazanır**; çelişki buraya ve şartnameye yazılır.
 
-- Şartname (tek doğru kopya): `docs/ui-v2/gozlemevi.html`. Artifact: https://claude.ai/artifact/E3me7XbaVBVuf98Bxfg8pU
+- Şartname kaynağı: `docs/ui-v2/gozlemevi.html` (mockup'lar dahil, sahibin baktığı sayfa). **Yalnız bu dosya düzenlenir**;
+  ardından `python3 docs/ui-v2/to_markdown.py` ile `gozlemevi.md` yeniden üretilir. `.md` elle düzenlenmez. Artifact: https://claude.ai/artifact/E3me7XbaVBVuf98Bxfg8pU
   (yeniden yayın: `python3 docs/ui-v2/publish.py <scratchpad-dizini>` → oradaki `index.html`'i aynı URL'ye yayınla).
 - Onaylı plan: `~/.claude/plans/bu-g-revi-sen-yapacaks-n-fluttering-sketch.md`.
 - Dal / worktree: `ui-v2` @ `.claude/worktrees/ui-v2` (ana ağaca dokunma, `git stash` yok). Master her faz başında birleştirilir.
@@ -24,7 +25,7 @@
 | Faz | İçerik | Durum |
 |---|---|---|
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası + fleet escape güncellemesi, gezegen modelleri | Tamam |
-| F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — master'a | Sırada |
+| F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Sırada |
 | F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Bekliyor |
 | F2 | v2 HUD (B1–B4), kabuk, IA | Bekliyor |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Bekliyor |
@@ -37,9 +38,10 @@
 | F10 | Temizlik | Bekliyor |
 
 ## Sıradaki iş
-**F0 · H1** — şartname: `grep -n "H1" docs/ui-v2/gozlemevi.html`. Kod: `apps/web/src/lib/directives.ts`
+**F0 · H1** — şartname: `grep -n "^| H1" docs/ui-v2/gozlemevi.md`. Kod: `apps/web/src/lib/directives.ts`
 ("zemin savunması yok" kuralı kalkanı kontrol etmiyor). Test önce: kalkanlı, yer savunmasız gezegende
-hiçbir yönerge `threat` değil; kalkan bitince `threat`. Master'a ayrı küçük commit.
+hiçbir yönerge `threat` değil; kalkan bitince `threat`. Ayrı küçük commit (master ana ağaçta açık olduğu için
+buradan master'a commit atılamaz; hash sahibe verilir, o cherry-pick eder).
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
