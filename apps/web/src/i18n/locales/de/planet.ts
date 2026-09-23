@@ -586,6 +586,9 @@ export const transfer = {
   crystal: "Kristall",
   deuterium: "Deuterium",
   commit: "Übertragen",
+  /** B14: what stops a transfer, on the held commit rather than a grey button. */
+  noRoom: "Kein Platz im Ziel-Hangar",
+  overLoad: "Mehr als der Laderaum trägt",
   sending: "Versand",
   launched: "Übertragung gestartet · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */

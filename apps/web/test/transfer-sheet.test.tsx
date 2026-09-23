@@ -167,7 +167,8 @@ describe('world transfer sheet', () => {
       }),
     ).toBeInTheDocument();
     expect(document.querySelector('[data-full]')).not.toBeNull();
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeDisabled();
+    // The held commit says why (B14): a full destination, not a grey button.
+    expect(screen.getByRole('button', { name: /no room in the destination hangar/i })).toBeDisabled();
   });
 
   it('sends a squadron the destination Hangar can hold', async () => {
@@ -238,7 +239,7 @@ describe('world transfer sheet', () => {
       expect(screen.getByText(/no Courier, Wayfarer, Atlas or Argosy/i)).toBeInTheDocument();
       // Never `0 / 0`, which reads as a limit the player is up against when what
       // is true is that there is no hold on this mission at all.
-      expect(screen.getByText('Cargo')).toHaveTextContent('Cargo —');
+      expect(screen.getByText('Cargo').nextElementSibling).toHaveTextContent('—');
     });
 
     it('tells a world that owns a carrier to put one in the fleet', () => {
@@ -509,7 +510,7 @@ describe('the deuterium a transfer may actually load', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'More Atlas' }));
 
     expect(Number(slider(/Deuterium/i).max)).toBe(0);
-    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /not enough deuterium/i })).toBeDisabled();
   });
 });
 
@@ -587,6 +588,14 @@ describe('choosing how fast a transfer flies', () => {
     expect(open().container.querySelector('[data-transfer-pace]')).toBeNull();
   });
 
+  it('names what stops the transfer on the held commit, and holds nothing back once it can go', async () => {
+    open();
+    expect(screen.getByRole('button', { name: /choose a fleet/i })).toBeDisabled();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
+    expect(document.querySelector('[data-transfer-commit]')).not.toBeNull();
+  });
+
   it('sends the chosen speed with the transfer', async () => {
     const user = userEvent.setup();
     const view = open();
@@ -594,7 +603,10 @@ describe('choosing how fast a transfer flies', () => {
     const rungs = within(view.container.querySelector<HTMLElement>('[data-transfer-pace]')!)
       .getAllByRole('radio');
     await user.click(rungs[1]!);
-    await user.click(screen.getByRole('button', { name: /^transfer$/i }));
+    // The commit is held (K4); Enter twice is the keyboard's hold.
+    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
 
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(mutate.mock.calls[0]![0]).toMatchObject({ targetPlanetId: target.id, pace: 0.75 });

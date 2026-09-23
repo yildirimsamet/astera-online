@@ -23,7 +23,7 @@ import { useTransfer } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
-import { duration, useNow } from '../lib/time.js';
+import { clockTime, duration, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
@@ -33,7 +33,9 @@ import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { flightModifiers } from '../lib/navigation.js';
 import { launchFault } from '../lib/faults.js';
-import { Button, Sheet } from '../ui/kit/index.js';
+import { serverNow } from '../lib/clock.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 const MOVABLE = (Object.keys(HULLS) as HullId[]).filter(
@@ -233,12 +235,6 @@ export function TransferSheet({
   const incomingRoom = hangarLoad(fleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
     || destinationUsed + incomingRoom <= destinationTotal;
-  const valid = !launchBlocked && !cooling
-    && fleetCount(fleet) > 0 && loaded <= capacity && destinationFits
-    && cargo.alloy <= planet.planet.alloy
-    && cargo.crystal <= planet.planet.crystal
-    && cargo.deuterium <= planet.planet.deuterium
-    && fuelled;
 
   const setShip = (id: HullId, value: number) => {
     const max = planet.fleet[id] ?? 0;
@@ -257,322 +253,255 @@ export function TransferSheet({
     ));
   };
 
+  /**
+   * WHAT STOPS THIS TRANSFER, ON THE HELD COMMIT (B14). The button used to grey out in silence for
+   * every reason but the revolt and the pause; a control that will not press states why.
+   */
+  const refusal: string | null = launchBlocked
+    ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    : cooling
+      ? t('transfer.cooldown', { duration: duration((cooldownUntil.getTime() - now) / 60_000) })
+      : fleetCount(fleet) === 0
+        ? t('launch.chooseFleet')
+        : !destinationFits
+          ? t('transfer.noRoom')
+          : loaded > capacity
+              || cargo.alloy > planet.planet.alloy
+              || cargo.crystal > planet.planet.crystal
+              || cargo.deuterium > planet.planet.deuterium
+            ? t('transfer.overLoad')
+            : !fuelled
+              ? t('launch.noFuel')
+              : null;
+  const landsAt = eta > 0 ? clockTime(new Date(serverNow() + eta * 60_000)) : null;
+  const holdsLine = t('transfer.homeDefence', {
+    ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
+    power: compact(homeDefence),
+  });
+
   return (
     <Sheet
+      detents={['full']}
       eyebrow={t('transfer.eyebrow')}
       title={target.name}
       onClose={onClose}
       footer={(
-        <Button
-          variant="commit"
-          size="lg"
-          full
-          disabled={!valid || transfer.isPending}
-          onClick={() => {
-            transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace }, {
-              onSuccess: () => {
-                say(t('transfer.launched', { duration: duration(eta) }));
-                onLaunched();
-              },
-              onError: (error) => { say(describe(error), 'error'); },
-            });
-          }}
-        >
-          {launchBlocked
-            ? t('faults.launchBlock.SHIPYARD_REVOLT')
-            : cooling
-              ? t('transfer.cooldown', {
-                  duration: duration((cooldownUntil.getTime() - now) / 60_000),
-                })
-              : transfer.isPending ? t('transfer.sending') : t('transfer.commit')}
-        </Button>
+        <div data-transfer-commit className="grid gap-2">
+          {/* THE RULE, BEFORE THE BUTTON: it turns once; what the origin keeps heads the sheet. */}
+          <p className="text-micro leading-snug text-v2-ink-3">{t('transfer.rules')}</p>
+          <HoldButton
+            label={t('transfer.commit')}
+            disabledReason={transfer.isPending ? t('transfer.sending') : refusal}
+            onCommit={() => {
+              transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace }, {
+                onSuccess: () => {
+                  say(t('transfer.launched', { duration: duration(eta) }));
+                  onLaunched();
+                },
+                onError: (error) => { say(describe(error), 'error'); },
+              });
+            }}
+          />
+        </div>
       )}
     >
-      {/*
-        THE FLIGHT, AND THEN THE THREE CEILINGS IT HAS TO CLEAR. Owner instruction.
-
-        This sheet used to be five grey sentences stacked on top of each other —
-        an ETA, a `400 / 1200`, a fuel line, a "Destination Hangar after landing:
-        18 + 12 / 40" and a defence tally — every one of them a quantity measured
-        against a limit, and every one of them written out for the player to
-        assemble. The launch sheet next door has drawn its equivalents since D142;
-        these are the same facts and now wear the same shapes.
-      */}
-      <div className="grid grid-cols-2 gap-2 pt-2">
-        <p data-transfer-eta className="plate px-3 py-2 text-caption text-dim">
-          {t('transfer.eta')} <strong className="text-bone">{eta > 0 ? duration(eta) : '—'}</strong>
-        </p>
-        <p className="plate px-3 py-2 text-caption text-dim">
-          {t('transfer.capacity')}{' '}
-          <strong className={loaded > capacity ? 'text-threat-ink' : 'text-bone'}>
-            {/*
-              An em dash rather than `0 / 0`, which reads as a limit the player is
-              up against when what is true is that this mission has no hold at all.
-              The ETA cell beside it has said absence this way since it was written.
-            */}
-            {capacity > 0 ? `${compact(loaded)} / ${compact(capacity)}` : '—'}
-          </strong>
-        </p>
-      </div>
-      {/*
-        The rungs sit under the ETA they move, as on the raid sheet — and the sentence under them is
-        this lane's own: a transfer is slowed to stay in the air, not to land on time.
-      */}
-      <PaceRow
-        data-transfer-pace
-        paces={paces}
-        pace={pace}
-        onChange={setWantedPace}
-        hint={t('transfer.paceHint')}
-      />
-      {fuel > 0 && (
-        <div data-transfer-fuel className="plate mt-2 px-3 py-3">
-          {/*
-            THE TANK, MINUS WHAT THE FLIGHT BURNS — and the store it is measured
-            against is what is left AFTER the hold takes its deuterium, which is
-            the exact sum the server's guard uses. Loading the last of the tank as
-            cargo now visibly eats the fuel bar rather than producing a refusal on
-            commit with nothing on screen to explain it.
-          */}
-          <SpendBar
-            stock={Math.max(0, spendableDeuterium)}
-            spend={fuel}
-            tone="deuterium"
-            label={t('transfer.fuel')}
-          />
-          {/*
-            WHY THIS NUMBER IS SMALLER THAN THE RAID SHEET'S. Owner decision, 2026-09-21.
-
-            A discount nobody is told about is not a discount, it is an inconsistency: the same
-            wing over the same distance quotes two prices on two screens, and the commander has no
-            way to learn which is the exception. One line, where the figure is — the rule and its
-            boundary together, so "can I just fly slowly to a raid and pay less" is answered before
-            it is asked.
-          */}
-          <p className="mt-1.5 text-micro text-faint">{t('transfer.homewardFuel')}</p>
-        </div>
-      )}
-      {destinationTotal !== undefined && destinationUsed !== undefined && (
-        <div data-transfer-destination className="mt-2">
-          {/*
-            THE DESTINATION'S ROOM, IN THE BAR THE BUILD SHEET ALREADY TAUGHT. The
-            order's segment grows as ships are added, so a transfer that will not
-            fit is visible while it is being packed, not when it is refused.
-          */}
-          <CapacityBar
-            total={destinationTotal}
-            used={destinationUsed}
-            incoming={incomingRoom}
-            label={t('transfer.destinationLabel')}
-          />
-        </div>
-      )}
-      <h3 className="legend mt-2">{t('transfer.fleet')}</h3>
-      {/*
-        WHAT THIS WORLD IS LEFT HOLDING, drawn the way the raid sheet draws it:
-        the garrison as a bar, with the part that flies away carved off it. A
-        transfer is not an attack, so the departing slice is alloy rather than
-        threat red — this is a decision about logistics, not one about exposure —
-        but the shape is deliberately the same, because the consequence is.
-      */}
-      <div
-        data-origin-defence
-        className="socket mt-2 flex h-3 w-full overflow-hidden rounded-full"
-        role="img"
-        aria-label={t('transfer.homeDefence', {
-          ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
-          power: compact(homeDefence),
-        })}
-      >
-        <span
-          data-part="holds"
-          className="h-full bg-bone/60 transition-[width] duration-200"
-          style={{ width: `${String(share(homeDefence, defencePowerNow))}%` }}
-        />
-        <span
-          data-part="leaves"
-          className="h-full bg-alloy/70 transition-[width] duration-200"
-          style={{ width: `${String(share(defencePowerNow - homeDefence, defencePowerNow))}%` }}
-        />
-      </div>
-      <p className="mt-2 text-label text-dim">
-        {t('transfer.homeDefence', {
-          ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
-          power: compact(homeDefence),
-        })}
-      </p>
-      <div className="mt-2 space-y-2">
+      <div className="flex flex-col gap-3 pt-1">
         {/*
-          THE ORE CARRIERS ARE ALWAYS LISTED, whether or not this world owns one.
-          The list used to be "hulls with more than none of them here", so a
-          commander with no Hauler saw no Hauler row, a cargo readout of `0 / 0`,
-          three sliders pinned at zero and the reason written nowhere at all. The
-          server has refused that transfer for as long as it has existed; the
-          screen simply never said the sentence. A row at zero with a reason beside
-          it is the sentence.
+          WHAT THIS WORLD IS LEFT HOLDING, the garrison as a bar with the part that flies away carved
+          off it — alloy, not threat red: a transfer is logistics, not exposure, but the consequence
+          has the same shape.
         */}
-        {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || CARRIES_ORE(id)).map((id) => {
-          const held = planet.fleet[id] ?? 0;
-          const art = HULL_ART[id];
-          return (
-            <div
-              key={id}
-              data-hull-row={id}
-              data-owned={held > 0 ? 'true' : 'false'}
-              className={`min-h-14 rounded-chip border border-line-soft px-3 py-2 ${(fleet[id] ?? 0) > 0 ? 'bg-crystal/[0.05]' : ''
-                }`}
-            >
-              <div className="flex items-center gap-2">
-                {/*
-              THE SHIP, NOT ITS NAME. The raid sheet next door has shown the render
-              since it was written; this one — the other half of the same verb —
-              listed hull names as plain text, so a player learning which craft
-              carries ore had to already know what a Runner was.
+        <div className="grid gap-1">
+          <div
+            data-origin-defence
+            className="flex h-2 w-full overflow-hidden rounded-full bg-v2-line"
+            role="img"
+            aria-label={holdsLine}
+          >
+            <span
+              data-part="holds"
+              className="h-full bg-v2-ink-2 transition-[width] duration-200"
+              style={{ width: `${String(share(homeDefence, defencePowerNow))}%` }}
+            />
+            <span
+              data-part="leaves"
+              className="h-full bg-v2-alloy transition-[width] duration-200"
+              style={{ width: `${String(share(defencePowerNow - homeDefence, defencePowerNow))}%` }}
+            />
+          </div>
+          <p className="text-micro text-v2-ink-3">{holdsLine}</p>
+        </div>
 
-              A HULL THIS WORLD DOES NOT OWN IS DRAWN AND GREYED rather than left
-              out (I1, and D132's rule that a row at zero states its reason). The
-              art at 35% behind an amber count says "this exists, you have none"
-              in the same shape the whole game uses for a thing not yet owned.
-            */}
-                <span data-art className="socket size-10 shrink-0 rounded-control">
-                  {art ? (
-                    <img
-                      src={art}
-                      alt=""
-                      aria-hidden
-                      className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <HullMark hull={id} className="size-6 text-dim" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="name block truncate text-bone">{hullName(id) ?? id}</span>
-                  {/*
-                HOW MANY ARE HERE, AS PIPS WHERE THE EYE CAN COUNT THEM. A roster
-                holds a handful of anything expensive, and "/3" is a figure to
-                read where three marks is a quantity to see. Past eight the rack
-                would be a smear, so the numeral takes over — which is the same
-                threshold `Tally` is sized for everywhere else.
-              */}
-                  {held > 0 ? (
-                    held <= 8 ? (
-                      <span className="mt-1 flex items-center gap-2">
-                        <Tally
-                          used={fleet[id] ?? 0}
-                          total={held}
-                          size="sm"
-                          label={t('transfer.hullPacked', {
-                            packed: fleet[id] ?? 0,
-                            held,
-                            name: hullName(id) ?? id,
-                          })}
+        <section className="grid gap-1.5">
+          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.fleet')}</h3>
+          {/*
+            THE ORE CARRIERS ARE ALWAYS LISTED, whether or not this world owns one: a row at zero with
+            its reason beside it is the sentence the server's refusal never had on screen.
+          */}
+          <div className="overflow-hidden rounded-control border border-v2-line">
+            {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || CARRIES_ORE(id)).map((id) => {
+              const held = planet.fleet[id] ?? 0;
+              const art = HULL_ART[id];
+              return (
+                <div
+                  key={id}
+                  data-hull-row={id}
+                  data-owned={held > 0 ? 'true' : 'false'}
+                  className={`grid gap-2 border-b border-v2-line px-2.5 py-2.5 last:border-b-0 ${(fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    {/* A hull this world does not own is drawn and greyed rather than left out (I1, D132). */}
+                    <span data-art className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise">
+                      {art ? (
+                        <img
+                          src={art}
+                          alt=""
+                          aria-hidden
+                          className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
+                          loading="lazy"
                         />
-                      </span>
-                    ) : (
-                      <span className="num mt-1 block text-label text-dim">
-                        {fleet[id] ?? 0}
-                        <span className="text-faint">/{held}</span>
-                      </span>
-                    )
-                  ) : (
-                    <span className="mt-1 block text-label text-alloy">{t('transfer.hullNone')}</span>
-                  )}
-                </span>
-              </div>
-              <div className="mt-2">
-                <QuantityStepper
-                  value={fleet[id] ?? 0}
-                  min={0}
-                  max={held}
-                  onChange={(value) => { setShip(id, value); }}
-                  decreaseLabel={t('launch.fewer', { name: hullName(id) ?? id })}
-                  increaseLabel={t('launch.more', { name: hullName(id) ?? id })}
-                  valueLabel={t('launch.quantity', { name: hullName(id) ?? id })}
-                  editable
-                  maxLabel={t('launch.max', { name: hullName(id) ?? id })}
-                  maxText={t('launch.maxShort')}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <h3 className="legend mt-2">{t('transfer.cargo')}</h3>
-      {/*
-        PERMANENT, AND IT CHANGES WHAT IT SAYS RATHER THAN WHETHER IT IS THERE. A
-        line that only appears when something is wrong teaches nothing the first
-        time and is missed the second; this one is where the rule lives, and it
-        reports which of the three states the mission is in. Amber, not red:
-        `interface.md` reserves red for an attack, and a missing system is an
-        absence.
-      */}
-      <p className={`mt-1 text-caption ${capacity > 0 ? 'text-dim' : 'text-threat'}`}>
-        {capacity > 0
-          ? t('transfer.holdReady', { capacity: compact(capacity) })
-          : ownsCarrier
-            ? t('transfer.holdNeedsLoad')
-            : t('transfer.holdNoCarrier')}
-      </p>
-      <div className="mt-2 space-y-3">
-        {RESOURCE_ORDER.map((resource) => {
-          const stock = Math.floor(planet.planet[resource]);
-          const otherCargo = loaded - cargo[resource];
-          const max = loadCeiling(resource, { stock, capacity, otherCargo, fuel });
-          const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
-          return (
-            <label key={resource} className="plate plate-inset block rounded-chip px-3 py-3">
-              <span className="flex items-center gap-2">
-                {/*
-                THE SUBSTANCE IS ITS OWN RENDER. Three sliders under three grey
-                words were the same control three times; the art is what the
-                header has taught since the first session, and it identifies the
-                row before the label is read.
-              */}
-                <img
-                  src={RESOURCE_ART[resource]}
-                  alt=""
-                  aria-hidden
-                  className="size-4 shrink-0 object-contain"
-                />
-                <span className="legend flex-1 text-dim">{t(`transfer.${resource}`)}</span>
-              </span>
-              {/*
-              WHAT LEAVES THE STORE, AS THE STORE LOSING IT. `x / y` under a
-              slider is the player doing the subtraction; the spend bar draws the
-              hole the load makes, and it is the same shape the fuel line above it
-              uses — because loading ore and burning fuel are the same act against
-              the same three stores.
+                      ) : (
+                        <HullMark hull={id} className="size-6 text-v2-ink-3" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-caption font-semibold text-v2-ink">{hullName(id) ?? id}</span>
+                      {/* How many are here, as pips the eye can count; past eight the numeral takes over. */}
+                      {held > 0 ? (
+                        held <= 8 ? (
+                          <span className="mt-1 flex items-center gap-2">
+                            <Tally
+                              used={fleet[id] ?? 0}
+                              total={held}
+                              size="sm"
+                              label={t('transfer.hullPacked', {
+                                packed: fleet[id] ?? 0,
+                                held,
+                                name: hullName(id) ?? id,
+                              })}
+                            />
+                          </span>
+                        ) : (
+                          <span className="mt-1 block font-v2-mono text-micro text-v2-ink-2">
+                            {fleet[id] ?? 0}
+                            <span className="text-v2-ink-3">/{held}</span>
+                          </span>
+                        )
+                      ) : (
+                        <span className="mt-1 block text-micro text-v2-warn">{t('transfer.hullNone')}</span>
+                      )}
+                    </span>
+                  </div>
+                  <QuantityStepper
+                    value={fleet[id] ?? 0}
+                    min={0}
+                    max={held}
+                    onChange={(value) => { setShip(id, value); }}
+                    decreaseLabel={t('launch.fewer', { name: hullName(id) ?? id })}
+                    increaseLabel={t('launch.more', { name: hullName(id) ?? id })}
+                    valueLabel={t('launch.quantity', { name: hullName(id) ?? id })}
+                    editable
+                    maxLabel={t('launch.max', { name: hullName(id) ?? id })}
+                    maxText={t('launch.maxShort')}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="grid gap-1.5">
+          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.cargo')}</h3>
+          {/*
+            PERMANENT, AND IT CHANGES WHAT IT SAYS: which of the three hold states this mission is in.
+            Warn, not red: red is for an attack, and a missing carrier is an absence.
+          */}
+          <p className={`px-1 text-caption ${capacity > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
+            {capacity > 0
+              ? t('transfer.holdReady', { capacity: compact(capacity) })
+              : ownsCarrier
+                ? t('transfer.holdNeedsLoad')
+                : t('transfer.holdNoCarrier')}
+          </p>
+          <div className="grid gap-2">
+            {RESOURCE_ORDER.map((resource) => {
+              const stock = Math.floor(planet.planet[resource]);
+              const otherCargo = loaded - cargo[resource];
+              const max = loadCeiling(resource, { stock, capacity, otherCargo, fuel });
+              const fill = max > 0 ? Math.min(100, (cargo[resource] / max) * 100) : 0;
+              return (
+                <label key={resource} className="block rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+                  <span className="flex items-center gap-2">
+                    <img src={RESOURCE_ART[resource]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
+                    <span className="flex-1 text-micro uppercase tracking-wide text-v2-ink-3">{t(`transfer.${resource}`)}</span>
+                  </span>
+                  {/* What leaves the store, drawn as the store losing it — the fuel line's own shape. */}
+                  <span className="mt-2 block">
+                    <SpendBar
+                      stock={stock}
+                      spend={cargo[resource]}
+                      tone={resource}
+                      label={t('transfer.cargoSending')}
+                      readout="spend"
+                      compactSize
+                    />
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={max}
+                    step={1}
+                    value={cargo[resource]}
+                    onChange={(event) => {
+                      const value = Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0));
+                      setCargo((current) => ({ ...current, [resource]: value }));
+                    }}
+                    style={{ '--slider-fill': `${String(fill)}%` } as CSSProperties}
+                    className={`slider slider-${resource} mt-2 w-full`}
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* The rungs over the figures they move; a transfer is slowed to stay in the air, not to land on time. */}
+        <PaceRow data-transfer-pace paces={paces} pace={pace} onChange={setWantedPace} hint={t('transfer.paceHint')} />
+
+        <dl className="grid grid-cols-2 gap-1.5">
+          <div data-transfer-eta className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
+            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.eta')}</dt>
+            <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{eta > 0 ? duration(eta) : '—'}</dd>
+            {landsAt && <dd className="font-v2-mono text-micro text-v2-ink-3">{t('now.at', { time: landsAt })}</dd>}
+          </div>
+          <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
+            <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.capacity')}</dt>
+            {/* An em dash rather than `0 / 0`: this mission has no hold at all, which is not a limit. */}
+            <dd className={`mt-0.5 font-v2-mono text-caption ${loaded > capacity ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+              {capacity > 0 ? `${compact(loaded)} / ${compact(capacity)}` : '—'}
+            </dd>
+          </div>
+        </dl>
+
+        {fuel > 0 && (
+          <div data-transfer-fuel className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+            {/*
+              THE TANK, MINUS WHAT THE FLIGHT BURNS, measured against what is left AFTER the hold takes
+              its deuterium — the exact sum the server's guard uses.
             */}
-              <span className="mt-2 block">
-                <SpendBar
-                  stock={stock}
-                  spend={cargo[resource]}
-                  tone={resource}
-                  label={t('transfer.cargoSending')}
-                  readout="spend"
-                  compactSize
-                />
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={max}
-                step={1}
-                value={cargo[resource]}
-                onChange={(event) => {
-                  const value = Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0));
-                  setCargo((current) => ({ ...current, [resource]: value }));
-                }}
-                style={{ '--slider-fill': `${String(fill)}%` } as CSSProperties}
-                className={`slider slider-${resource} mt-2 w-full`}
-              />
-            </label>
-          );
-        })}
+            <SpendBar stock={Math.max(0, spendableDeuterium)} spend={fuel} tone="deuterium" label={t('transfer.fuel')} />
+            {/* Why this is smaller than the raid sheet's: the rule and its boundary, where the figure is. */}
+            <p className="mt-1.5 text-micro text-v2-ink-3">{t('transfer.homewardFuel')}</p>
+          </div>
+        )}
+
+        {destinationTotal !== undefined && destinationUsed !== undefined && (
+          <div data-transfer-destination>
+            {/* The destination's room in the bar the build sheet taught; the order's segment grows as ships are added. */}
+            <CapacityBar total={destinationTotal} used={destinationUsed} incoming={incomingRoom} label={t('transfer.destinationLabel')} />
+          </div>
+        )}
       </div>
-      <p className="mt-3 text-caption text-dim">{t('transfer.rules')}</p>
     </Sheet>
   );
 }
