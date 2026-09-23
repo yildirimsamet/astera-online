@@ -86,9 +86,15 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   (`data-launch-commit`; iki adımlı onay kalktı). Akademi eli `[data-launch-commit] button:not(:disabled)`;
   `tools/academy-visual.mjs` basılı tutuyor; 39 ders tarayıcıda geçti. Eski onayın "This cannot be recalled" metni
   dünya baskınında K8'e aykırıydı → düzeldi; korsan dersi artık "korsan baskını geri çağrılamaz" diyor.
-- **F3.4c (sıradaki):** aynı anatomiye tek tek: transfer (`TransferSheet`), yerleşim, ticaret, konvoy baskını, klan
-  dalgası (teklif otomatik; `clan.ts` "Send — no recall" metni klan dalgası geri çağrılabildiği için kontrol
-  edilecek), Ölüm Yıldızı. Her birinin "no recall" metni kendi kuralına göre doğrulanır.
+- F3.4c ilerleme: ~~transfer~~ `f8e0f83` (v2 Sheet/renk, B14 sırası, `HoldButton` + ret nedenleri: filo yok, varış
+  Hangar'ı dolu, ambar aşımı, yakıt yok); ~~yerleşim~~ `8bdc902` (basılı tut; tek dokunuş artık kuruluş bedelini
+  harcamıyor). Aynı commit: galeriye sorgu/API sağlayıcıları (fetch hiç yanıt vermez) + `?view=launch`,
+  `launch-pirate`, `transfer`, `settlement` (hesap açmadan 5 dilde çekim); gemi satırında etiketli istatistik şeridi
+  Almancada üst üste biniyor/kesiliyordu → satırda ikon+değer, listenin üstünde tek `StatLegend` (D142 korunur);
+  Almanca "Startseite"/"Einbahnstraße" yanlış çevirileri düzeldi.
+- **F3.4c (sıradaki):** galaksiler arası konvoy (`IntergalacticConvoySheet`), ticaret (`TradeSheet`), klan dalgası
+  (`ClanWarPanel`; teklif otomatik; `clan.ts` "Send — no recall" metni klan dalgası geri çağrılabildiği için kontrol
+  edilecek), Ölüm Yıldızı onayı (`FocusPanel`). Her birinin "no recall" metni kendi kuralına göre doğrulanır.
 - F3.4 açık notlar: `QuantityStepper` hâlâ eski görünümde (paylaşılan denetim; F5'te Üs yapı sayfalarıyla v2'ye);
   yapışkan cetvel uzun listede satırların üstünü örtüyor (tasarım gereği; masaüstünde F8'de iki sütun).
 - **F3.5 E2 hedef dosyası:** odak kartı → dosya (v2 Sheet peek/half/full); sıra, yasaklar ve ret nedenleri şartnamedeki gibi.
@@ -245,8 +251,12 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   ile bağlam kartı üst üste gelebilirse en üstteki kapanacak şekilde çöz.
 - `QueueLane` hücresi 350 px'te ~55 px metin alanı bırakıyor; uzun İngilizce/Almanca adlar kesilir (render yanında
   durduğu için kabul). F5'te görsel kontrol.
-- **Ölü sınıflar (başlangıçtan, sahibin son işlerinden):** `ui/PaceRow.tsx` `bg-accent/20`, `text-bright`;
-  `screens/PlanetScreen.tsx` `bg-cyan-400/10`, `border-cyan-400/40`, `text-cyan-100` — temada yoklar, hiçbir şey
+- Kırılgan: `research-panel.test.tsx` "opens a clear, item-specific explanation for every project" tek başına ~4,6 s;
+  tam paketin yükü altında 5 s zaman aşımını bir kez aştı (değişiklikle ilgisiz).
+- Transfer sayfasında bu dünyada olmayan dört taşıyıcı ölü stepper'larla tam satır kaplıyor (D132 gereği listeleniyor);
+  tek satırlık nota indirmek F3 incelemesinde değerlendirilecek. Yerleşim metni (de) "Sie" hitabı kullanıyor.
+- **Ölü sınıflar (başlangıçtan, sahibin son işlerinden):** ~~`ui/PaceRow.tsx` `bg-accent/20`, `text-bright`~~ (F3.4b'de
+  v2'ye geçti); `screens/PlanetScreen.tsx` `bg-cyan-400/10`, `border-cyan-400/40`, `text-cyan-100` — temada yoklar, hiçbir şey
   çizmiyorlar (`surface-vocabulary.test.ts` kırmızısının sebebi). PaceRow B10 ile, PlanetScreen F5 ile değişecek;
   canlı sezonda düzeltilmesi istenirse sahibe söylendi.
 
