@@ -547,8 +547,8 @@ Bu tablo her faz sonunda güncellenir. Ayrıntılı ilerleme repoda `docs/ui-v2/
 | Faz | İçerik | Durum |
 |---|---|---|
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası, fleet escape güncellemesi | Tamam |
-| F0 | H1, H2 (master'a) | Sırada |
-| F1 | v2 token, yazı tipi, ikon, kit | Bekliyor |
+| F0 | H1, H2 (ui-v2'de; master'a cherry-pick: 074f338, a7b8348) | Tamam |
+| F1 | v2 token, yazı tipi, ikon, kit | Sırada |
 | F2 | v2 HUD | Bekliyor |
 | F3 | Dosya, Fırlatma, Filo, S1, S2 | Bekliyor |
 | F4 | Rapor, S4 | Bekliyor |

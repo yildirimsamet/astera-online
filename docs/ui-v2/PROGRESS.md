@@ -25,8 +25,8 @@
 | Faz | İçerik | Durum |
 |---|---|---|
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası + fleet escape güncellemesi, gezegen modelleri | Tamam |
-| F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Sırada |
-| F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Bekliyor |
+| F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Tamam (074f338, a7b8348) |
+| F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Sırada |
 | F2 | v2 HUD (B1–B4), kabuk, IA | Bekliyor |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Bekliyor |
 | F4 | E6 Rapor, S4 | Bekliyor |
@@ -38,16 +38,25 @@
 | F10 | Temizlik | Bekliyor |
 
 ## Sıradaki iş
-**F0 · H1** — şartname: `grep -n "^| H1" docs/ui-v2/gozlemevi.md`. Kod: `apps/web/src/lib/directives.ts`
-("zemin savunması yok" kuralı kalkanı kontrol etmiyor). Test önce: kalkanlı, yer savunmasız gezegende
-hiçbir yönerge `threat` değil; kalkan bitince `threat`. Ayrı küçük commit (master ana ağaçta açık olduğu için
-buradan master'a commit atılamaz; hash sahibe verilir, o cherry-pick eder).
+**F1 · v2 temeli.** Sıra: (1) token'lar, (2) yazı tipi, (3) ikonlar, (4) kit bileşenleri.
+- **F1.1 token'lar** — şartname: `grep -n "^:root{" -A10 docs/ui-v2/gozlemevi.md` ve "On anlam, on renk" bölümü.
+  Karar verilecek: Tailwind v4 `@theme` içinde çakışmayan adlar (bugünkü `--color-alloy` vb. ile aynı ad yok);
+  F10'da kalıcı adlara çevrilir. Koruyucu test önce: her v2 rengi tek yerde, kanallar (`--ch-*` deseni) tanımlı;
+  v2 bileşenleri ham hex yazmaz. Mevcut `palette.test.ts` / `surface-vocabulary.test.ts` desenini oku.
+- F1.2 Archivo: `@fontsource-variable/archivo`'nun genişlik eksenini (wdth 62–125) içerip içermediğini kontrol et.
+- F1.3 ikonlar: `docs/ui-v2/icons.svg` → `apps/web/src/v2/icons/`.
+- F1.4 kit: B9 basılı tut (`ui/kit/useOwnPress.ts` üstüne), B8, B7, B12, kaynak ölçeri, B5 (+ kaçış çizgisi), B6, v2 Sheet.
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
   işlendi (kural 16/16b, B5, B15, E5); karar defteri "onaylandı"; 16 gezegen `.glb` dala eklendi.
   Sonra sahip kararıyla şartname yalnız Markdown'a geçti; HTML, betikler ve artifact bırakıldı; ikonlar `icons.svg`'ye,
   token listesi şartnameye taşındı.
+- F0 (2026-09-23): **H1** `074f338` — kalkan varken "yer savunması yok", "açıktaki stok" ve "tarama" yönergeleri
+  `growth`; yer savunması kartı kalkanın bitişini söyler; `inbound` tehdit kalır (`Situation.shieldUntil/now`,
+  `SituationGuide` saati geçirir, `GalaxyView` `season.data.shieldUntil` verir; 5 dilde `undefendedShieldedTitle`).
+  **H2** `a7b8348` — "Depo dolu" etiketi `text-threat` yerine `text-alloy`. İkisi de canlı sezon için master'a
+  cherry-pick edilebilir (sahibe hash'ler verildi). Web: bilinen 14 kırmızı aynen, +7 yeni test yeşil.
 
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
