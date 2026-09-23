@@ -20,6 +20,13 @@ describe('the visual verification journey', () => {
     expect(harness).toContain("name: 'Build defence'");
   });
 
+  it('clears a live galaxy event out of the slot first, since the event outranks advice (B3)', () => {
+    const onboarding = harness.slice(harness.indexOf("process.argv.includes('--onboarding')"));
+    const dismiss = onboarding.indexOf("getByRole('region', { name: /^galaxy event$/i })");
+    expect(dismiss).toBeGreaterThan(-1);
+    expect(dismiss).toBeLessThan(onboarding.indexOf("name: 'Build defence'"));
+  });
+
   it('measures camera home with the current shared world transform', () => {
     const expectedHomeSection = harness.slice(
       harness.indexOf('const expectedHome ='),

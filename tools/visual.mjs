@@ -172,6 +172,12 @@ await shot('01-galaxy');
 // phone and sit above the dock rather than under it.
 if (process.argv.includes('--onboarding')) {
   try {
+    // A live galaxy event outranks advice in the one slot; dismissing it is the
+    // player's way to the suggestion behind it.
+    const event = page.getByRole('region', { name: /^galaxy event$/i });
+    if (await event.isVisible().catch(() => false)) {
+      await event.getByRole('button', { name: 'Dismiss' }).click();
+    }
     const guide = page.getByRole('button', { name: 'Build defence' });
     await guide.waitFor();
     const bounds = await guide.boundingBox();
