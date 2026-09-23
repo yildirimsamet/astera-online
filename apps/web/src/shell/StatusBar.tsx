@@ -401,7 +401,7 @@ function Works({
           onClick={() => {
             onOpen('planet');
           }}
-          className="shrink-0 self-center text-micro leading-tight text-threat underline-offset-2 hover:underline"
+          className="shrink-0 self-center text-micro leading-tight text-alloy underline-offset-2 hover:underline"
         >
           {t('statusBar.works.storeFull')}
         </button>
