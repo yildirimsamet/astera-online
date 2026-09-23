@@ -549,8 +549,8 @@ Bu tablo her faz sonunda güncellenir. Ayrıntılı ilerleme repoda `docs/ui-v2/
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası, fleet escape güncellemesi | Tamam |
 | F0 | H1, H2 (ui-v2'de; master'a cherry-pick: 074f338, a7b8348) | Tamam |
 | F1 | v2 token, yazı tipi, ikon, kit | Tamam (ui-v2 dalı) |
-| F2 | v2 HUD | Sırada |
-| F3 | Dosya, Fırlatma, Filo, S1, S2 | Bekliyor |
+| F2 | v2 HUD, kabuk, bağlam yuvası, toplama balonu, zil sayfası | Tamam (ui-v2 dalı) |
+| F3 | Dosya, Fırlatma, Filo, S1, S2 | Sırada |
 | F4 | Rapor, S4 | Bekliyor |
 | F5–F8 | Üs, İstihbarat, Klan, Sen yokken, Masaüstü | Bekliyor |
 | F9 | 3D gezegenler | Bekliyor (varlıklar geldi) |

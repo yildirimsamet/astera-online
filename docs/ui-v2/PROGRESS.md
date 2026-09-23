@@ -24,6 +24,13 @@
   kamera `node tools/v2-gallery.mjs <çıktı> en tr de` (350 px DPR 2 bölüm bölüm + 1280 px + sayfa görünümleri;
   hesap açmaz, kayıt limitine takılmaz). Uzun dillerde (tr, de, fr) taşma bakılır. Gerçek oyun kabuğa bağlandıktan
   sonra `node tools/visual.mjs` ile (kayıt limiti: ~5 koşu / 30 dk).
+- **Gerçek oyunda kamera (F2'den beri):** özel veritabanı `astera_ui_v2` (@5433; `astera` ve test veritabanlarına
+  dokunma), API `DATABASE_URL=postgres://astera:astera@localhost:5433/astera_ui_v2 PORT=3199 npx tsx src/index.ts`
+  (apps/server), web `ASTERA_API=http://localhost:3199 npx vite --port 5199 --strictPort --host 127.0.0.1` (apps/web).
+  `COMMANDER=shell83807481 node tools/v2-shell.mjs <çıktı> [en|tr]` kayıt açmadan girer (şifre `correct-horse-battery`);
+  diğer diller için girişten sonra `localStorage['astera.language']` değiştirilip sayfa yenilenir. Saatlerce
+  sürecek durumlar bu veritabanında sahnelenir (ör. `players.newcomer_shield_until`, `planets.buffer_*`).
+  Akademi: `WEB=http://127.0.0.1:5199 node tools/visual.mjs <çıktı> --academy` (39 ders baştan sona).
 - Boyutlar sıkı: gövde 12 px (sahibin "büyük yazı yok" talimatı).
 
 ## Durum
@@ -32,8 +39,8 @@
 | Adım 0 | Worktree, başlangıç ölçümü, şartname kopyası + fleet escape güncellemesi, gezegen modelleri | Tamam |
 | F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Tamam (074f338, a7b8348) |
 | F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Tamam |
-| F2 | v2 HUD (B1–B4), kabuk, IA | Sırada |
-| F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Bekliyor |
+| F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
+| F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Sırada |
 | F4 | E6 Rapor, S4 | Bekliyor |
 | F5 | E5 Üs + Araştırma (K6, K9) | Bekliyor |
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
@@ -43,51 +50,28 @@
 | F10 | Temizlik | Bekliyor |
 
 ## Sıradaki iş
-**F2 · v2 HUD, kabuk, bilgi mimarisi.** Şartname: B1–B4, B13, K1, "Her yüzeyin yeni yeri" tablosu
-(`grep -n "^#### B1 ·\|^#### B13 ·\|Her yüzeyin yeni yeri" docs/ui-v2/gozlemevi.md`). Kod: `src/App.tsx`,
-`src/screens/GalaxyView.tsx` (çizim ~1034–1900), `src/shell/{StatusBar,PendingStrip,Signals,MenuPanel}.tsx`,
-`src/onboarding/Rehearsal.tsx` (aynı kabuğu çizmeli). Her adım yayınlanabilir kalır; özellik kaybolmaz.
-- **F2.1 saf mantık (lib + test):** `lib/nowLine.ts` (B2 öncelik 1–6), `lib/dock.ts` (B4 rozet kuralları),
-  `lib/contextSlot.ts` (B3 öncelik A–D + "1 tehdit" hapı), `lib/collect.ts` (B13 eşik/tutar; `StatusBar` `Works`'ten çıkar).
-- **F2.2 v2/hud sunum bileşenleri:** `Dock`, `NowLine`, `TopBar` (komutan çipi + kalkan işareti, dünya işareti ≥2
-  dünyada, 3× `ResourceMeter`, zil), `CollectBubble` (B13, `GalaxyCanvas`'ta `<Html>` ile kendi dünyaya bağlı).
-- **F2.3 zil sayfası (K1):** v2 Sheet, sekmeler Sinyaller · Kronik · Sohbet (mevcut `Signals` listesi, `ChronicleScreen`,
-  `ChatScreen` yeniden kullanılır); sohbet okunmamış noktası zile.
-- **F2.4 kabuk:** `v2/shell/GameShell.tsx` (App ve Rehearsal ortak): üstte TopBar + NowLine, altta Dock
-  (`--v2-dock-h` yazar). Dock → Galaksi (tekrar dokununca aktif dünyaya uç), Üs = `planet`, Filo = yeni sayfa
-  (`PendingStrip` içeriği + `Bays`), İstihbarat = `intel`, Klan = `clan`. Komutan çipi → `menu`. Ölçer → Ekonomi
-  (ara çözüm: Üs `grow`). Dünya işareti → `WorldsPanel`.
-- **F2.5 GalaxyView temizliği:** `DiscControls`, `SensorToggles` (→ sağ üst "Görünüm" çipi: katmanlar + olay rehberi),
-  `ChatLauncher`/`ChronicleLauncher` (→ zil), `DiscReadout` (→ Görünüm çipi başlığı; F6'da Komutan başı),
-  `ActiveGalaxyEvent` (→ bağlam yuvası "olay"), `SituationGuide` (→ bağlam yuvası "öneri"), odak kartları bağlam
-  yuvasında. Silinen bileşenin testi silinir; korunan davranış yeni testte yaşar.
-- **F2.6** Rehearsal aynı kabuk. **F2.7** faz sonu review + tek oturum görsel kontrol (350 ve 1280 px).
-- Durum: ~~F2.1~~ `98a09fa` · ~~F2.2~~ `73b9d6c`, `8012378` · ~~F2.3~~ `1efb94d` · **F2.4 kabuk sırada.**
-  Hazır parçalar: `lib/{nowLine,collect,dock,contextSlot,bell,flights}.ts`; `v2/hud/{Dock,NowLine,TopBar,CollectBubble,BellSheet}.tsx`;
-  `v2/kit/Segmented.tsx`; v2 Sheet `contained`. `shell/Signals.tsx` artık `SignalsFeed` + `useOpenSignals` dışa aktarıyor
-  (zil sayfasının Sinyaller sekmesi bunu çizer; açılış okundu işaretler). Bağlam yuvası B3'ün sunum bileşeni henüz yok
-  (F2.5'te GalaxyView içinde kurulacak). **Koruyucular:** `motion-safe:`/`motion-reduce:` ve `backdrop-blur` yasak
-  (`no-reduced-motion.test.ts`, `sharpness.test.ts`); her commit'ten önce TAM web paketi.
-- **Galeri incelemesi (2026-09-23) — testlerin yakalamadığı, ekranda görülüp düzeltilenler:** komutan çipinde kalkan
-  simgesi süreye biniyordu (artık simge + tam saat, "7h"/"7s", aşağı yuvarlanır); B6'da `inline-flex` amblemler taban
-  çizgisini kaydırıp " · " ayırıcılarını nokta gibi gösteriyordu (artık satır içi, `align-middle`); B9'da görünür
-  "basılı tut" ipucu yoktu (artık yüzde dolan halka + erken bırakınca `hold.release`); kuyruk adları kesiliyordu
-  (dar genişlik; iki satır + tireleme denendi, Linux Chromium'da tiresiz bölündüğü için geri alındı); gren 56 px'te
-  görünmüyordu (daha kaba, daha güçlü; `stale` doygunluk da düşürür); "yarım" sayfa az içerikte boş kalıyordu
-  (`half` artık tavan: `max-h-[55dvh]`); zil sayfasının başlığı ilk sekmeyle aynıydı (artık "Neler oldu").
-- **F2.4 kabuk bağlandı:** `App` artık `v2/shell/GameShell.tsx` çiziyor (HudTop + NowLine üstte, HudDock altta, zil =
-  `BellHost`, Filo = `FleetSheet`); `GalaxyView`'den `DiscControls`, `SensorToggles`, `DiscReadout`, sohbet/kronik
-  başlatıcıları ve `chat`/`chronicle` panelleri kalktı (bileşenler ve testleri silindi; davranışları `view-sheet`,
-  `bell-host`, `dock`, `game-shell` testlerinde). Sağ üstte Görünüm çipi (`v2/hud/ViewSheet.tsx`). `worldsRequest` /
-  `goHome` sayaçları `lib/useRequest.ts`. `.v2-shell` `--v2-dock-h` yayınlıyor; eski `ui/kit/Sheet` da artık dock'un
-  üstünde biter (`bottom: var(--v2-dock-h, 0px)`, `max-h-full`). Klan katmanı olmayan sezonda Klan sekmesi yerinde, pasif.
-  **Gerçek oyunda görsel kontrol:** `tools/v2-shell.mjs` (ayrı veritabanı `astera_ui_v2` @5433, API :3199, web :5199;
-  kurulum betiğin başında). Görülüp düzeltilen: zil başlığı akışın başlığıyla aynıydı (akış başlığı artık yalnız
-  "Right now" varken), boş zil %92 yükseklikteydi (sohbet dışı sekmeler içerik kadar). Açık kalan (F2.5): eski
-  `SituationGuide` kartı dock'tan yüksekte duruyor ve kalkanlıyken "WEAKNESS" başlığı taşıyor → bağlam yuvası.
-  Eski `PlanetScreen` sekme şeridinde 350 px'te "PRODUCTION" ile "INTEL" üst üste biniyor (önceden var; F5'te Üs yeniden yapılıyor).
-- Karar (şartname yorumu): B3 "öneri" = `directives()` içinde `inbound` dışındaki ilk yönerge (tehdit kartı onu zaten
-  taşıyor). B2 "dokununca saat" = satıra dokununca açılan listede her zamanlayıcının saati de yazar.
+**F3 · Hedef dosyası, Fırlatma, Filo; S1, S2.** Şartname: B10, B11, B14, E2, E3, E4, K8 ve sunucu tablosu S1/S2
+(`grep -n "^#### B10 ·\|^#### B11 ·\|^#### B14 ·\|^#### E2 ·\|^#### E3 ·\|^#### E4 ·\|^| K8\|^| S1\|^| S2" docs/ui-v2/gozlemevi.md`).
+Kod: `screens/LaunchSheet.tsx` (bugünkü fırlatma, ~1.300 satır; mantığı yeniden kullanılır), `shell/PendingStrip.tsx`
+(`FlightList`, `useAirborne`; F2'de Filo sayfası bunu çiziyor), `v2/hud/FleetSheet.tsx` (ara sayfa), galaksinin odak
+kartları (`screens/GalaxyView.tsx` odak rayı), sunucu `services/movement.ts` (`recallTransfer`), `services/session.ts`
+(`recallable`, pending projeksiyonu), `routes/planet.ts` (saldırı rotası "IRREVERSIBLE"), `api/client.ts`.
+Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişmemiş.
+- **F3.0** Sunucuya dokunmadan önce sunucu testlerinin taban çizgisi bir kez, seri ölçülür (paylaşılan `astera_test`).
+- **F3.1 S1:** pending thread'e `pace` (`missions.pace` var). Sözleşme testi: %50 hızla atılan saldırı `pace: 0.5` döner;
+  web `pendingThread` şeması alanı okur.
+- **F3.2 S2 (K8):** saldırı geri çağırma. `recallTransfer` genelleştirilir; yoldayken bir kez, dönüş = uçulan süre,
+  yakıt iadesi yok, iniş her zaman sığar, son dakika kilidi yok; hedefte savaş kaydı yok, tekrar saldırı sınırına
+  sayılmaz; trafik ve radar dönüşü normal uçuş gibi görür. `session.ts` `recallable` saldırıyı kapsar.
+- **F3.3 E4 Filo sayfası:** sekmeler Havada (B11 satırı: ilerleme, kalan, hız etiketi S1, geri çağırma önizlemesi
+  "X dk'da evde"; buton yalnız `recallable` iken) · Evde (dünya başına garnizon) · Hangar (dünya başına kapasite);
+  başlıkta uçuş yuvası + Hangar doluluğu; satıra dokunmak kamerayı gemiye götürür. `FleetSheet` ara sayfasının yerine.
+- **F3.4 B14/E3 fırlatma bileşeni:** tek anatomi; önce saldırı, korsan (hız yok), sonda; sonra transfer, yerleşim,
+  ticaret, konvoy baskını, klan dalgası (teklif otomatik), Ölüm Yıldızı. B10 hız seçici, bilgi ızgarası, uyarı satırı
+  ("Başkent X süre zayıf kalır" + geri çağırma notu), B9 basılı tut. Akademi dersleri (`data-academy-launch`, Max
+  eli) kırılmamalı: `tools/visual.mjs --academy` ile doğrulanır.
+- **F3.5 E2 hedef dosyası:** odak kartı → dosya (v2 Sheet peek/half/full); sıra, yasaklar ve ret nedenleri şartnamedeki gibi.
+- **F3.6** faz sonu review + gerçek oyunda görsel tur (350 ve 1280 px, 5 dil).
 
 ## Biten işler
 - Adım 0 (2026-09-23): worktree `ui-v2` @ a64b230; şartname kopyası; fleet escape (a64b230) şartnameye
@@ -177,6 +161,30 @@
   ve klavye Enter'ı da yutulabiliyordu (`detail 0` asla yutulmaz); (3) `AgeStamp` dil değişimine abone değildi;
   (4) kuyruk sayfası uçuştaki iptalin satırında "Cancelling…" yazıyor.
 
+- **F2 · v2 HUD, kabuk, bilgi mimarisi (2026-09-23).** Saf mantık `98a09fa` (`lib/{nowLine,collect,dock,contextSlot,
+  bell,flights,shellRoute,useRequest}.ts`); sunum `73b9d6c`, `8012378`, `1efb94d`, `bc84a4c`, `7c23d3d` (`v2/hud/{Dock,NowLine,
+  TopBar,CollectBubble,BellSheet,FleetSheet,ViewSheet,ContextSlot}.tsx`, `v2/kit/Segmented.tsx`, galeri); kabuk `4383861`,
+  `2bc2867`, `a94ee0d` (`v2/shell/{GameShell,HudTop,HudDock,BellHost,CollectHost}.tsx`; `App` bunu çiziyor); bağlam yuvası
+  ve toplama balonu `d4f45fd`, `ee732ac`. GalaxyView'den `DiscControls`, `SensorToggles`, `DiscReadout`, sohbet/kronik
+  başlatıcıları, `SituationGuide`, `DirectiveCard`, `ActiveGalaxyEvent` testleriyle silindi; davranışları v2
+  testlerinde. Toplama balonu drei `<Html>` içinde değil: sahne bir çapa öğesi verir, galaksi `createPortal` ile
+  çizer (`<Html>` kendi React köküdür, sağlayıcıları kaybeder).
+- **F2.5–F2.6 düzeltmeleri:** Akademi Teleskop dersi Görünüm çipinden ulaşılır `a227cc0`; dock'ta Galaksi'ye tekrar
+  basmak disk Home'u gibi (odağı temizler, aktif dünyayı odaklar, bir dokunuş yönetimi açar; D163) `2480843`; Akademi
+  baskın dersi "iki Dart" diyordu, ders ve Max dört gönderiyor — metin sayı söylemiyor, `tools/academy-visual.mjs` Max'e
+  basıyor `b4f5ea8` (**canlı sezon için master'a cherry-pick adayı**); `tools/visual.mjs` dock ve yuvaya göre
+  `a1a561b`, `ec91890`. **F2.6 kararı:** Akademi kendi kabuğunda kalır (şartname: "Onboarding bu işin kapsamı dışında;
+  yalnız token'ları alır", E1 "Lesson modu: bugünkü kısıtlar korunur"); `Rehearsal.tsx` fiilen ölü → F10.
+- **F2 faz sonu review'u (2026-09-23)** `b2b3f7a`, `d776697`, `ce77854`, `660d1cb` — bulunan ve testle düzeltilen:
+  (1) bağlam yuvası kapatılan kartları kendi tutuyordu ama her sayfa açılışında sökülüyor → Üs'e gidip gelince hepsi
+  geri geliyordu; kayıt artık GalaxyView'de; (2) olay kartı olay kümesiyle hatırlanıyordu → biri bitince kapatılmış
+  diğeri geri geliyordu; artık olay başına; (3) Now hattının zamanlayıcı sayfası kendi durumuydu, sayfalarla aynı
+  katmanda: dock'a basınca Üs üstüne açılıyor, Üs kapanınca altta kalan sayfa beliriyordu; kabuk tutuyor, her
+  gezintide kapatıyor; (4) üst çubuk `h-12` + çentik dolgusu çentikli telefonda satırı ~1 px bırakıyordu
+  (`viewport-fit=cover`); (5) Almanca "Galaxy-Ereignis", "Galaxy Chronicle" (Sie ile) ve de/es sayım ayırıcılarında
+  eksik boşluk ("134 Welten· 1 Pirat"). Gerçek oyunda 350 px'te 5 dil ve 1280 px görüldü. Tam web paketi: bilinen 14
+  kırmızı aynen.
+
 ## Şartnameden sapmalar ve eklemeler
 - **Fleet escape (a64b230, şartnameden sonra geldi):** güç cetvelinde üçüncü "kaçar" çizgisi
   (`escapeLine`), `escapeVerdict` hükmü, Savunma sekmesinde `EscapeReadout`, raporda kaçış metinleri.
@@ -193,8 +201,21 @@
   `sheet.back/close`, `units.*`. Eski bileşen silinince anahtar kalır (ya da v2 ad alanına taşınır).
 - `bg-clarity-*` token'ları (`ClarityMark` parlaklık rampası).
 - `CancelConfirm` + eski `Confirm`/`Sheet` (kuyruk sayfası iptali bunlarla açılıyor) → v2 Confirm'e taşınır.
+- `onboarding/Rehearsal.tsx` fiilen ölü (yalnız `onboarding-skip` testi çiziyor) → testiyle silinir.
+- `GalaxyView` `goHome` (Akademi'nin uçuşu, D56) ve `homeRequest` (dock, D163) ikisi de yaşıyor; Akademi v2'ye geçerse biri kalkar.
 
 ## Açık sorunlar
+- **Akademi eski HUD'u öğretiyor** (StatusBar, PendingStrip); mezun olan oyuncu galakside v2'yi görüyor. Şartname
+  gereği kapsam dışı; sahibe soruldu mu: hayır — F10 öncesi sahibe sorulacak.
+- **Masaüstü (1280):** üst çubuk ölçerleri, Now hattı ve dock tüm genişliğe yayılıyor (ölçer ~390 px, Now hattının
+  sayacı en sağda) → F8 (E11). Sayfalar zaten `max-w-xl` ortalı.
+- GalaxyView'in kendi sayfaları (Görünüm, Dünyalar, odak rayı) dock'tan açılan bir sayfanın altında kalır, o kapanınca
+  geri görünür (eski düzen, bilerek korundu). Kabuğun kendi sayfaları (zil, Filo, Now) her gezintide kapanır.
+- Eski `LaunchSheet`: yapışkan "Sending / Standing there" kutusu 350 px'te ilk gemi satırının üstünü örtüyor → F3 (E3).
+- Üs: "Build defence" Savunma sekmesini açıyor ama içerik ekranın altında (depo ve kuyruklar önce) → F5.
+- `tools/visual.mjs`: hibe harcama döngüsünün `dismiss()`'i Üs sayfasını da kapatıyor, "affordable in" sekme turu hiçbir
+  şey ölçmüyor (önceden var) → F5'te Üs ile.
+- `clanWar.noTarget` 5 dilde var olmayan "Galaxy Focus" denetimini anıyor → F6.
 - **İki v2 Sheet üst üste açılırsa Escape ikisini birden kapatır** (her biri `window`'u dinliyor). F2'de zil sayfası
   ile bağlam kartı üst üste gelebilirse en üstteki kapanacak şekilde çöz.
 - `QueueLane` hücresi 350 px'te ~55 px metin alanı bırakıyor; uzun İngilizce/Almanca adlar kesilir (render yanında
