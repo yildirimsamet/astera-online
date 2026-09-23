@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Contact } from '../../api/schemas.js';
 import { describeNow, type NowEntry } from '../../lib/nowLine.js';
@@ -12,6 +11,13 @@ export interface NowLineProps {
   now: number;
   /** The disc's contacts, so an inbound line says whether the attacker is in sight. */
   contacts?: readonly Contact[];
+  /**
+   * The timers sheet, held by the shell: every move the shell makes closes it, so it
+   * is never left open under a page the player went on to.
+   */
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
 }
 
 /**
@@ -28,9 +34,8 @@ export interface NowLineProps {
  * A tap opens every timer, each with its countdown and the clock time it lands
  * at — the answer a countdown otherwise makes the player compute.
  */
-export function NowLine({ entries, now, contacts = [] }: NowLineProps) {
+export function NowLine({ entries, now, contacts = [], open, onOpen, onClose }: NowLineProps) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
   const head = entries[0];
   if (!head) return null;
 
@@ -42,7 +47,7 @@ export function NowLine({ entries, now, contacts = [] }: NowLineProps) {
       <button
         type="button"
         data-tone={enemy ? 'hostile' : 'self'}
-        onClick={() => { setOpen(true); }}
+        onClick={onOpen}
         className={`flex h-7 w-full items-center gap-2 border-b px-3 text-left font-v2-ui ${
           enemy ? 'border-v2-hostile/40 bg-v2-hostile/15' : 'border-v2-line bg-v2-panel/85'
         }`}
@@ -69,7 +74,7 @@ export function NowLine({ entries, now, contacts = [] }: NowLineProps) {
       </button>
 
       {open && (
-        <Sheet title={t('now.sheet')} onClose={() => { setOpen(false); }}>
+        <Sheet title={t('now.sheet')} onClose={onClose}>
           <ul className="flex flex-col">
             {entries.map((entry) => {
               const said = describeNow(entry, contacts);

@@ -22,8 +22,13 @@ vi.mock('../../src/api/queries.js', async () => {
 });
 
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
-  HudTop: (p: { onCommander: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void }) => (
+  HudTop: (p: {
+    onCommander: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
+    nowOpen: boolean; onNow: (open: boolean) => void;
+  }) => (
     <div>
+      <button type="button" onClick={() => { p.onNow(true); }}>now line</button>
+      {p.nowOpen && <div role="dialog" aria-label="timers" />}
       <button type="button" onClick={p.onCommander}>chip</button>
       <button type="button" onClick={p.onWorlds}>world mark</button>
       <button type="button" onClick={p.onEconomy}>meter</button>
@@ -126,6 +131,22 @@ describe('the v2 shell', () => {
     expect(screen.getByRole('dialog', { name: 'bell chat 0' })).toBeInTheDocument();
     expect(onPanel).not.toHaveBeenCalled();
     expect(openSignals).not.toHaveBeenCalled();
+  });
+
+  /**
+   * THE TIMERS SHEET GOES WHEN THE PLAYER MOVES. Found in review: it was the Now
+   * line's own state, drawn from the top bar at the pages' own layer, so a dock
+   * press opened the base over it and closing the base uncovered a sheet the
+   * player had left behind — and Escape closed both.
+   */
+  it('closes the timers sheet on every move the shell makes', async () => {
+    shell();
+    for (const press of ['tab base', 'tab fleet', 'bell', 'chip', 'world mark', 'galaxy asks for chat']) {
+      await userEvent.click(screen.getByRole('button', { name: 'now line' }));
+      expect(screen.getByRole('dialog', { name: 'timers' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: press }));
+      expect(screen.queryByRole('dialog', { name: 'timers' }), press).toBeNull();
+    }
   });
 
   it('routes the chip, the world mark and the meters', async () => {

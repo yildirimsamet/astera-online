@@ -25,6 +25,9 @@ export interface HudTopProps {
   /** A resource meter: the economy detail. */
   onEconomy: () => void;
   onBell: () => void;
+  /** The Now line's timers sheet, held by the shell. */
+  nowOpen: boolean;
+  onNow: (open: boolean) => void;
 }
 
 /**
@@ -35,7 +38,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell }: HudTopProps) {
+export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, nowOpen, onNow }: HudTopProps) {
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const planet = usePlanet();
@@ -83,7 +86,14 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell }: 
         onResource={onEconomy}
         onBell={onBell}
       />
-      <NowLine entries={entries} now={now} contacts={contacts} />
+      <NowLine
+        entries={entries}
+        now={now}
+        contacts={contacts}
+        open={nowOpen}
+        onOpen={() => { onNow(true); }}
+        onClose={() => { onNow(false); }}
+      />
     </div>
   );
 }

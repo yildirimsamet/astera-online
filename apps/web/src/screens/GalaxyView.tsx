@@ -604,6 +604,8 @@ export function GalaxyView({
     setHomeSignal((n) => n + 1);
   });
   const [viewOpen, setViewOpen] = useState(false);
+  /** The context slot's closed cards (B3), kept here because the slot unmounts under every page. */
+  const [slotDismissed, setSlotDismissed] = useState<ReadonlySet<string>>(new Set());
   /** The element the scene lends over the active world; the collect bubble is portalled into it. */
   const [homeAnchor, setHomeAnchor] = useState<HTMLDivElement | null>(null);
 
@@ -1520,6 +1522,8 @@ export function GalaxyView({
             }
           }}
           onClearSelection={close}
+          dismissed={slotDismissed}
+          onDismiss={(keys) => { setSlotDismissed((current) => new Set([...current, ...keys])); }}
         />
       )}
 

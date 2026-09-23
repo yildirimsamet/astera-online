@@ -1,9 +1,10 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ActiveGalaxyEvent, Contact, PendingThread } from '../../src/api/schemas.js';
 import type { Directive } from '../../src/lib/directives.js';
-import { activeEvents, threatKeyOf } from '../../src/lib/contextSlot.js';
+import { activeEvents, slotKey, threatKeyOf } from '../../src/lib/contextSlot.js';
 import { ContextSlot, type ContextSlotProps } from '../../src/v2/hud/ContextSlot.js';
 
 /**
@@ -64,8 +65,22 @@ const props = (over: Partial<ContextSlotProps> = {}): ContextSlotProps => ({
   onShowEvent: vi.fn(),
   onAct: vi.fn(),
   onClearSelection: vi.fn(),
+  dismissed: new Set(),
+  onDismiss: vi.fn(),
   ...over,
 });
+
+/** The host's memory of closed cards, as the galaxy keeps it: outside the slot. */
+function Hosted(over: Partial<ContextSlotProps>) {
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  return (
+    <ContextSlot
+      {...props(over)}
+      dismissed={dismissed}
+      onDismiss={(keys) => { setDismissed((current) => new Set([...current, ...keys])); }}
+    />
+  );
+}
 
 const convoy: ActiveGalaxyEvent = {
   id: '00000000-0000-4000-8000-000000000003',
@@ -139,7 +154,7 @@ describe('the context slot', () => {
   });
 
   it('falls to the event, then the suggestion, as each is dismissed', async () => {
-    render(<ContextSlot {...props({ threats: [attack(9)], events: [shower], suggestion: growth })} />);
+    render(<Hosted threats={[attack(9)]} events={[shower]} suggestion={growth} />);
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.getByRole('region', { name: 'Galaxy event' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
@@ -211,10 +226,45 @@ describe('the context slot', () => {
   });
 
   it('brings a new attack back after an old one was dismissed', async () => {
-    const { rerender } = render(<ContextSlot {...props({ threats: [attack(9)] })} />);
+    const { rerender } = render(<Hosted threats={[attack(9)]} />);
     await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('region')).toBeNull();
-    rerender(<ContextSlot {...props({ threats: [attack(9), attack(4, 'colony')] })} />);
+    rerender(<Hosted threats={[attack(9), attack(4, 'colony')]} />);
     expect(screen.getByRole('region', { name: 'Incoming attack' })).toBeInTheDocument();
+  });
+
+  /**
+   * AN EVENT IS CLOSED ON ITS OWN, NOT AS PART OF A SET. Found in review: the card
+   * was remembered by the joined ids of every event on it, so when the merchant left
+   * the convoy the player had already closed came straight back as a "new" card.
+   */
+  it('keeps a closed event closed when an event it shared the card with ends', async () => {
+    const { rerender } = render(<Hosted events={[trade, convoy]} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    rerender(<Hosted events={[convoy]} />);
+    expect(screen.queryByRole('region')).toBeNull();
+  });
+
+  it('brings a new event back alone, without the ones already closed', async () => {
+    const { rerender } = render(<Hosted events={[trade]} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    rerender(<Hosted events={[trade, convoy]} />);
+    const card = screen.getByRole('region', { name: 'Galaxy event' });
+    expect(within(card).getAllByRole('button', { name: 'Show me' })).toHaveLength(1);
+    expect(within(card).getByText('Intergalactic Convoy')).toBeInTheDocument();
+  });
+
+  /**
+   * THE MEMORY LIVES IN THE HOST. Found in review: the slot is drawn only while no
+   * page is open, so a memory it kept itself was wiped by every visit to the base
+   * and every closed card came back. The galaxy, which never unmounts, keeps it.
+   */
+  it('leaves the memory of closed cards to its host', async () => {
+    const onDismiss = vi.fn();
+    const { rerender } = render(<ContextSlot {...props({ threats: [attack(9)], onDismiss })} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(onDismiss).toHaveBeenCalledWith([slotKey('threat', threatKeyOf(attack(9)))]);
+    rerender(<ContextSlot {...props({ threats: [attack(9)], dismissed: new Set([slotKey('threat', threatKeyOf(attack(9)))]) })} />);
+    expect(screen.queryByRole('region')).toBeNull();
   });
 });

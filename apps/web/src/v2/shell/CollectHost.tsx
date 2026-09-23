@@ -10,7 +10,8 @@ import { CollectBubble } from '../hud/CollectBubble.js';
 /**
  * THE COLLECT BUBBLE, WIRED. Spec B13 (docs/ui-v2/gozlemevi.md).
  *
- * Drawn over the active world by the galaxy (`GalaxyCanvas`'s `homeOverlay`). It
+ * Drawn over the active world: the galaxy portals it into the anchor the scene
+ * lends there (`GalaxyCanvas`'s `onHomeAnchor`), so it keeps this tree's providers. It
  * reads the works projected second by second — the planet query has no poll, so
  * a bubble fed only by fetches would never rise — and collects with the request
  * and the toast the header's Works control used, which it replaced: the amount

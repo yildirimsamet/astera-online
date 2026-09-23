@@ -49,6 +49,8 @@ export interface GameShellProps {
 export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
+  /** The Now line's timers sheet: closed by every move below, never left under a page. */
+  const [nowOpen, setNowOpen] = useState(false);
   const [homeRequest, setHomeRequest] = useState(0);
   const [worldsRequest, setWorldsRequest] = useState(0);
   const openSignals = useOpenSignals();
@@ -56,12 +58,14 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
 
   /** Leave whatever page is open, so the next thing opens alone. */
   const clearPages = (): void => {
+    setNowOpen(false);
     setBell(null);
     setFleetOpen(false);
     if (panel !== null) onPanel(null);
   };
 
   const openBell = (tab: BellTab): void => {
+    setNowOpen(false);
     setFleetOpen(false);
     if (panel !== null) onPanel(null);
     setBell({ tab, justRead: tab === 'signals' ? openSignals() : new Set() });
@@ -73,6 +77,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       openBell(tab);
       return;
     }
+    setNowOpen(false);
     setBell(null);
     setFleetOpen(false);
     onPanel(next, stop, reportMissionId, focus);
@@ -81,6 +86,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   const active: DockTab | null = bell ? null : tabOfPanel(panel, fleetOpen);
 
   const onSelect = (tab: DockTab): void => {
+    setNowOpen(false);
     const action = dockAction(tab, active);
     switch (action.kind) {
       case 'stay':
@@ -112,6 +118,8 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         }}
         onEconomy={() => { route('planet', undefined, undefined, { group: 'grow' }); }}
         onBell={() => { openBell('signals'); }}
+        nowOpen={nowOpen}
+        onNow={setNowOpen}
       />
 
       <main className="relative flex-1">{galaxy({ homeRequest, worldsRequest, onPanel: route })}</main>

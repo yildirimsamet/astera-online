@@ -21,6 +21,11 @@ describe('the galaxy host', () => {
     expect(source).not.toMatch(/<SituationGuide\b|<ActiveGalaxyEvent\b/);
   });
 
+  /** The slot is unmounted under every page; what the player closed must outlive it. */
+  it('keeps the closed cards in the galaxy, which outlives the slot', () => {
+    expect(source).toMatch(/dismissed=\{slotDismissed\}/);
+  });
+
   it('keeps the slot out of the Academy and the rehearsal', () => {
     expect(source).toMatch(/\{showGuidance && planet\.data && panel === null/);
   });

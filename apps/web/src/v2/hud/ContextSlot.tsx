@@ -215,6 +215,13 @@ export interface ContextSlotProps {
   onShowEvent: (event: ActiveGalaxyEvent) => void;
   onAct: (directive: Directive) => void;
   onClearSelection: () => void;
+  /**
+   * The cards the player closed, by `slotKey`, and how to add to them. Held by the
+   * host: the slot is unmounted under every page, and a memory it kept itself was
+   * wiped by each visit to the base.
+   */
+  dismissed: ReadonlySet<string>;
+  onDismiss: (keys: readonly string[]) => void;
 }
 
 /**
@@ -223,7 +230,8 @@ export interface ContextSlotProps {
  * One card at the foot of the galaxy, never two: the nearest attack coming for
  * you, else the galaxy event, else one suggestion (`contextSlot` decides). A card
  * closed is remembered by what it was about, so it stays closed while a new
- * attack, event or suggestion still arrives.
+ * attack, event or suggestion still arrives. Each event is closed on its own, so
+ * one leaving the card never brings back another the player already closed.
  *
  * A SELECTION KEEPS ITS SCREEN. When the player has picked something the disc's
  * own panel draws it, and an attack does not tear it away: it waits as a red pill
@@ -244,9 +252,10 @@ export function ContextSlot({
   onShowEvent,
   onAct,
   onClearSelection,
+  dismissed,
+  onDismiss,
 }: ContextSlotProps) {
   const { t } = useTranslation();
-  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [lookingAtThreat, setLookingAtThreat] = useState(false);
 
   // A new selection is the player's context again: the pill goes back to being a pill.
@@ -255,19 +264,16 @@ export function ContextSlot({
   }, [selected]);
 
   const nearest = [...threats].sort((a, b) => a.arriveAt.getTime() - b.arriveAt.getTime())[0] ?? null;
+  const open = events.filter((event) => !dismissed.has(slotKey('event', event.id)));
   const slot = contextSlot({
     threatId: nearest ? threatKeyOf(nearest) : null,
     threats: threats.length,
     selected,
-    // The set is the key: a card closed over one set of events comes back for a new one.
-    eventId: events.length > 0 ? events.map((event) => event.id).join('+') : null,
+    eventId: open.length > 0 ? open.map((event) => event.id).join('+') : null,
     suggestionId: suggestion?.id ?? null,
     dismissed,
     lookingAtThreat,
   });
-  const dismiss = (key: string): void => {
-    setDismissed((current) => new Set([...current, key]));
-  };
 
   if (slot.card === 'selected' || slot.card === null) {
     if (slot.threatPill === 0) return null;
@@ -304,15 +310,14 @@ export function ContextSlot({
           ...(contact ? [{ label: t('slot.look'), onPress: () => { onLook(contact.id); } }] : []),
         ]}
         onDismiss={() => {
-          dismiss(slotKey('threat', threatKeyOf(nearest)));
+          onDismiss([slotKey('threat', threatKeyOf(nearest))]);
           setLookingAtThreat(false);
         }}
       />
     );
-  } else if (slot.card === 'event' && events.length > 0) {
-    const eventKey = events.map((event) => event.id).join('+');
-    const several = events.length > 1;
-    const [first] = events;
+  } else if (slot.card === 'event' && open.length > 0) {
+    const several = open.length > 1;
+    const [first] = open;
     card = (
       <Card
         tone="self"
@@ -321,7 +326,7 @@ export function ContextSlot({
         title={several || !first ? '' : t(EVENT_NAME[first.kind])}
         detail={(
           <ul className="flex flex-col gap-1.5">
-            {events.map((event) => (
+            {open.map((event) => (
               <li key={event.id} className="flex items-center gap-2">
                 <span className="min-w-0 flex-1">
                   {several && <span className="mr-1 font-semibold text-v2-ink">{t(EVENT_NAME[event.kind])}</span>}
@@ -341,7 +346,7 @@ export function ContextSlot({
           </ul>
         )}
         actions={[]}
-        onDismiss={() => { dismiss(slotKey('event', eventKey)); }}
+        onDismiss={() => { onDismiss(open.map((event) => slotKey('event', event.id))); }}
       />
     );
   } else if (slot.card === 'suggestion' && suggestion) {
@@ -349,7 +354,7 @@ export function ContextSlot({
       <Suggestion
         directive={suggestion}
         onAct={onAct}
-        onDismiss={() => { dismiss(slotKey('suggestion', suggestion.id)); }}
+        onDismiss={() => { onDismiss([slotKey('suggestion', suggestion.id)]); }}
       />
     );
   }

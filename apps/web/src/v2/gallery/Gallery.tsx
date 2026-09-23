@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import type { DockBadges } from '../../lib/dock.js';
@@ -6,7 +6,7 @@ import { BellSheet } from '../hud/BellSheet.js';
 import { CollectBubble } from '../hud/CollectBubble.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { Dock } from '../hud/Dock.js';
-import { NowLine } from '../hud/NowLine.js';
+import { NowLine, type NowLineProps } from '../hud/NowLine.js';
 import { TopBar, type TopBarProps } from '../hud/TopBar.js';
 import { ViewChip, ViewSheet } from '../hud/ViewSheet.js';
 import { ClassEmblem } from '../kit/ClassEmblem.js';
@@ -82,9 +82,17 @@ const slotBase: ContextSlotProps = {
   onShowEvent: noop,
   onAct: noop,
   onClearSelection: noop,
+  dismissed: new Set(),
+  onDismiss: noop,
 };
 
 const quiet: DockBadges = { base: false, fleet: { airborne: 0, progress: null }, intel: 0, clan: 0 };
+
+/** The Now line with its sheet held here, as the shell holds it in the game. */
+function GalleryNow(props: Pick<NowLineProps, 'entries' | 'now'>) {
+  const [open, setOpen] = useState(false);
+  return <NowLine {...props} open={open} onOpen={() => { setOpen(true); }} onClose={() => { setOpen(false); }} />;
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -168,8 +176,8 @@ export function Gallery({ view }: { view: string | null }) {
       </Section>
 
       <Section title="B2 · now line">
-        <NowLine entries={nowEntries({ now: NOW, threads: [thread('incoming', 4.2), thread('transfer', 9)], runs: [], builds: [], research: [], events: [], shieldUntil: null })} now={NOW} />
-        <NowLine entries={nowEntries({ now: NOW, threads: [thread('fleet', 18, { leg: 'outbound', fleet: { DART: 12 } })], runs: [], builds: construction, research: [], events: [], shieldUntil: null })} now={NOW} />
+        <GalleryNow entries={nowEntries({ now: NOW, threads: [thread('incoming', 4.2), thread('transfer', 9)], runs: [], builds: [], research: [], events: [], shieldUntil: null })} now={NOW} />
+        <GalleryNow entries={nowEntries({ now: NOW, threads: [thread('fleet', 18, { leg: 'outbound', fleet: { DART: 12 } })], runs: [], builds: construction, research: [], events: [], shieldUntil: null })} now={NOW} />
       </Section>
 
       <div className="flex flex-col gap-5 px-3">

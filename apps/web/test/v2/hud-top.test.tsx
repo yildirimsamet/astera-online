@@ -43,7 +43,9 @@ vi.mock('../../src/api/world.js', () => ({
   }),
 }));
 
-const handlers = () => ({ onCommander: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn() });
+const handlers = () => ({
+  onCommander: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(), nowOpen: false, onNow: vi.fn(),
+});
 
 beforeEach(() => {
   planet = planetView();

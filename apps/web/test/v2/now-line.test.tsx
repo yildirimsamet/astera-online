@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView, PendingThread } from '../../src/api/schemas.js';
 import i18n from '../../src/i18n/index.js';
 import { nowEntries, type NowInput } from '../../src/lib/nowLine.js';
@@ -38,18 +38,21 @@ const refinery: BuildOrderView = {
   cost: { alloy: 1, crystal: 0, deuterium: 0 },
 };
 
+/** The sheet's open state belongs to the shell; closed unless a test opens it. */
+const closed = () => ({ open: false, onOpen: vi.fn(), onClose: vi.fn() });
+
 const entries = (over: Partial<NowInput>) => nowEntries({
   now: NOW, threads: [], runs: [], builds: [], research: [], events: [], shieldUntil: null, ...over,
 });
 
 describe('the Now line', () => {
   it('is not in the page when nothing is timed', () => {
-    const { container } = render(<NowLine entries={[]} now={NOW} />);
+    const { container } = render(<NowLine entries={[]} now={NOW} {...closed()} />);
     expect(container.innerHTML).toBe('');
   });
 
   it('leads with an enemy, in red, and announces it once', () => {
-    render(<NowLine entries={entries({ threads: [thread('transfer', 60_000), thread('incoming', 252_000)] })} now={NOW} />);
+    render(<NowLine entries={entries({ threads: [thread('transfer', 60_000), thread('incoming', 252_000)] })} now={NOW} {...closed()} />);
     const line = screen.getByRole('button', { name: /Most urgent timer/ });
     expect(line).toHaveAttribute('data-tone', 'hostile');
     expect(within(line).getByText('Inbound → Kestrel')).toHaveAttribute('aria-live', 'polite');
@@ -58,34 +61,34 @@ describe('the Now line', () => {
   });
 
   it('draws your own timers in your colour', () => {
-    render(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} />);
+    render(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />);
     const line = screen.getByRole('button', { name: /Most urgent timer/ });
     expect(line).toHaveAttribute('data-tone', 'self');
     expect(within(line).queryByText(/^\+/)).toBeNull();
   });
 
   it('names work by what is being built', () => {
-    render(<NowLine entries={entries({ builds: [refinery] })} now={NOW} />);
+    render(<NowLine entries={entries({ builds: [refinery] })} now={NOW} {...closed()} />);
     expect(screen.getByText(buildOrderLabel(refinery))).toBeInTheDocument();
     expect(screen.getByText('Work finishing')).toBeInTheDocument();
     expect(screen.getByText('2m 00s')).toBeInTheDocument();
   });
 
   it('counts down in the reader’s language', async () => {
-    render(<NowLine entries={entries({ threads: [thread('transfer', 252_000)] })} now={NOW} />);
+    render(<NowLine entries={entries({ threads: [thread('transfer', 252_000)] })} now={NOW} {...closed()} />);
     await act(async () => { await i18n.changeLanguage('tr'); });
     expect(screen.getByText('4d 12sn')).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage('en'); });
   });
 
   it('opens every timer with the clock time each lands at', async () => {
-    render(
-      <NowLine
-        entries={entries({ threads: [thread('incoming', 252_000), thread('transfer', 600_000)], builds: [refinery] })}
-        now={NOW}
-      />,
-    );
+    const list = entries({ threads: [thread('incoming', 252_000), thread('transfer', 600_000)], builds: [refinery] });
+    const onOpen = vi.fn();
+    const { rerender } = render(<NowLine entries={list} now={NOW} {...closed()} onOpen={onOpen} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /Most urgent timer/ }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    rerender(<NowLine entries={list} now={NOW} {...closed()} open />);
     const sheet = screen.getByRole('dialog', { name: 'Timers' });
     expect(within(sheet).getAllByRole('listitem')).toHaveLength(3);
     expect(within(sheet).getAllByText(/^at /)).toHaveLength(3);
