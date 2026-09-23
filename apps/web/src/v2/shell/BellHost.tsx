@@ -1,0 +1,80 @@
+import { useChatUnread, useClanBadge, useGalaxy } from '../../api/queries.js';
+import { useWorld } from '../../api/world.js';
+import { ChatScreen } from '../../screens/ChatScreen.js';
+import { ChronicleScreen } from '../../screens/ChronicleScreen.js';
+import { SignalsFeed, type SignalGo } from '../../shell/Signals.js';
+import { BellSheet, type BellTab } from '../hud/BellSheet.js';
+
+export interface BellHostProps {
+  tab: BellTab;
+  onTab: (tab: BellTab) => void;
+  onClose: () => void;
+  /** Ids this opening marked read (`useOpenSignals`); they stay lit and their count heads the sheet. */
+  justRead: ReadonlySet<string>;
+  /** A signal's destination: a panel, its shelf, a report. */
+  onGo: SignalGo;
+  /** Fly the camera to a world. */
+  onFocusPlanet: (planetId: string) => void;
+  /** Open the base: the chronicle's line about the player's own active world lands there. */
+  onOpenPlanet: () => void;
+}
+
+/**
+ * THE BELL SHEET, WIRED. Decision K1 (docs/ui-v2/gozlemevi.md).
+ *
+ * Each tab draws the screen that already exists for it — `SignalsFeed`, the
+ * galaxy chronicle, chat — and every way out of them closes the sheet first so
+ * the camera move is seen. Chat opens on the channel with something unread, as
+ * the old launcher did.
+ */
+export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, onOpenPlanet }: BellHostProps) {
+  const { activePlanetId } = useWorld();
+  const galaxy = useGalaxy();
+  const generalUnread = useChatUnread().data?.count ?? 0;
+  const clanUnread = useClanBadge().data?.clanChatUnread ?? 0;
+  const planetIds = galaxy.data?.planets.map((planet) => planet.id);
+
+  const fly = (planetId: string): void => {
+    onClose();
+    onFocusPlanet(planetId);
+  };
+
+  return (
+    <BellSheet
+      tab={tab}
+      onTab={onTab}
+      onClose={onClose}
+      unseen={justRead.size}
+      chatUnread={generalUnread + clanUnread}
+      signals={(
+        <SignalsFeed
+          justRead={justRead}
+          onGo={(panel, stop, reportMissionId, focus) => {
+            onClose();
+            onGo(panel, stop, reportMissionId, focus);
+          }}
+          onFocusPlanet={fly}
+        />
+      )}
+      chronicle={(
+        <ChronicleScreen
+          {...(planetIds ? { focusablePlanetIds: planetIds } : {})}
+          onFocusPlanet={(planetId) => {
+            if (planetId === activePlanetId) {
+              onClose();
+              onOpenPlanet();
+              return;
+            }
+            fly(planetId);
+          }}
+        />
+      )}
+      chat={(
+        <ChatScreen
+          initialChannel={generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general'}
+          onFocusPlanet={fly}
+        />
+      )}
+    />
+  );
+}
