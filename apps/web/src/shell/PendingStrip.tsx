@@ -55,95 +55,8 @@ export type StripFocus = CraftFocus | Extract<Focus, { kind: 'contact' }>;
  */
 export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => void }) {
   const { t } = useTranslation();
-  const { data } = usePending();
-  const mining = useMining();
-  /**
-   * THE DISC'S OWN CONTACT LIST, READ HERE FOR ONE THING ONLY. D162.
-   *
-   * An inbound warning carries no path, so the only way this strip can offer to
-   * LOOK at the fleet coming for you is to check whether the caller's circles are
-   * covering it — and the honest answer to that is the contact list itself, not a
-   * second sight calculation on the client. Present means focusable; absent means
-   * the row stays a statement.
-   */
-  const traffic = useTraffic();
-  const recall = useRecallMining();
-  const recallFleet = useRecallTransfer();
-  const say = useToast();
-  const now = useNow(1000);
-  const threads = data?.pending ?? [];
-  const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
-  const seen = traffic.data?.contacts ?? [];
+  const { items, now } = useAirborne();
   const [open, setOpen] = useState(false);
-
-  const items: AirborneItem[] = [
-    ...threads.map((thread, index): AirborneItem => ({
-      key: `thread:${threadKey(thread, index)}`,
-      title: flightTitle(thread),
-      detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
-        ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
-        : t('pendingStrip.craftUnknown')),
-      arrival: arrivalOf(thread),
-      leg: thread.leg,
-      incoming: thread.kind === 'incoming',
-      engages: thread.kind === 'fleet' && thread.leg === 'outbound',
-      mark: thread.kind,
-      /*
-        THE LEG'S OWN TWO INSTANTS, and null for an inbound attack — the server
-        sends no `path` for somebody else's fleet, deliberately (D123), so there
-        is no honest position to draw and `FlightBar` says so with a dashed track
-        rather than inventing one.
-      */
-      span: thread.path
-        ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
-        : null,
-      /*
-        TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
-
-        Your own craft is focused by its thread. A warning has no path — the route
-        is what Radar L5 does not sell — so it is focused through the CONTACT the
-        disc is already drawing, and only when there is one. No contact, no
-        control: the fog is enforced in the contact query, not here.
-      */
-      ...(thread.path
-        ? { focus: { kind: 'thread' as const, key: threadKey(thread, index) } }
-        : contactFor(thread, seen)
-          ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
-          : {}),
-      /*
-        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer that is still
-        turnable on this tick; a raid never carries it, because a raid committed is committed.
-      */
-      ...(thread.recallable === true && thread.id !== undefined
-        ? { recallMission: { missionId: thread.id } }
-        : {}),
-    })),
-    ...runs.map((run): AirborneItem => ({
-      key: `run:${run.id}`,
-      title: runTitle(run),
-      detail: t('pendingStrip.drillCount', { count: run.craft }),
-      arrival: runArrival(run),
-      leg: run.status === 'returning' ? 'return' : 'outbound',
-      incoming: false,
-      engages: false,
-      mark: run.targetKind === 'debris' ? 'salvage' : 'mining',
-      /*
-        A RUN HAS TWO LEGS AND THEY ARE DIFFERENT SPANS. Out is depart → arrive;
-        home is arrive → `homeAt`, which is only set once the rock has been
-        worked. Reusing the outbound span for the return would draw a craft
-        already home the moment it started back.
-      */
-      span: run.status === 'returning'
-        ? run.homeAt
-          ? { from: run.arriveAt.getTime(), to: run.homeAt.getTime() }
-          : null
-        : { from: run.departAt.getTime(), to: run.arriveAt.getTime() },
-      focus: { kind: 'run', id: run.id },
-      ...(run.status === 'outbound' && run.recalledAt === null && run.arriveAt.getTime() > now
-        ? { recall: { runId: run.id, originPlanetId: run.planetId } }
-        : {}),
-    })),
-  ].sort((a, b) => a.arrival - b.arrival || a.key.localeCompare(b.key));
 
   const incoming = items.find((item) => item.incoming);
   const soonest = items[0];
@@ -213,155 +126,273 @@ export function PendingStrip({ onFocus }: { onFocus?: (focus: StripFocus) => voi
           title={t('pendingStrip.sheetTitle')}
           onClose={() => { setOpen(false); }}
         >
-          {items.length === 0 ? (
-            <p className="pt-2 text-body text-dim">{t('pendingStrip.sheetEmpty')}</p>
-          ) : (
-            <div className="space-y-2 pt-2">
-              {items.map((item) => {
-                const focus = item.focus;
-                const body = (
-                  <>
-                    <Mark of={item.mark} incoming={item.incoming} />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline gap-2">
-                        <span className="name min-w-0 flex-1 truncate text-bone">
-                          {item.title}
-                        </span>
-                        <span
-                          className={`num shrink-0 text-caption ${
-                            item.incoming ? 'text-threat-ink' : 'text-crystal'
-                          }`}
-                        >
-                          {countdown(item.arrival - now)}
-                        </span>
-                      </span>
-                      {/*
-                        THE JOURNEY, UNDER THE NAME AND ACROSS THE FULL ROW.
-
-                        "12m" is the same string for a fleet two minutes from a
-                        target and a fleet two minutes from home carrying the
-                        loot, and those are opposite situations. The leg says
-                        which, so the countdown finally means one thing.
-                      */}
-                      <span className="mt-1.5 block">
-                        <FlightBar
-                          progress={progressOf(item.span, now)}
-                          direction={
-                            item.incoming ? 'incoming' : item.leg === 'return' ? 'back' : 'out'
-                          }
-                          tone={item.incoming ? 'threat' : 'crystal'}
-                        />
-                      </span>
-                      <span className="mt-1 block text-label text-faint">{item.detail}</span>
-                    </span>
-                    {focus && <span aria-hidden className="self-center text-faint">›</span>}
-                  </>
-                );
-                /*
-                  THE SAME ROW, FOR THE SAME ACT. A commander who has learned to pull a drill back
-                  should not have to learn a second control to pull a squadron back, so the fleet
-                  recall wears the Prospector recall's shape — one glyph, one label, one tap, on
-                  the screen they are already looking at when a raid is inbound.
-                */
-                const recallMission = item.recallMission;
-                if (recallMission) {
-                  return (
-                    <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpen(false);
-                          if (focus) onFocus?.(focus);
-                        }}
-                        className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
-                      >
-                        {body}
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={t('pendingStrip.recallFleet')}
-                        disabled={recallFleet.isPending}
-                        onClick={() => {
-                          recallFleet.mutate(recallMission, {
-                            onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
-                            onError: (error) => { say(describe(error), 'error'); },
-                          });
-                        }}
-                        className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
-                      >
-                        <ReturnedIcon className="size-4" />
-                        {recallFleet.isPending
-                          ? t('pendingStrip.recallingFleet')
-                          : t('pendingStrip.recallFleet')}
-                      </button>
-                    </div>
-                  );
-                }
-                const recallInput = item.recall;
-                if (recallInput) {
-                  return (
-                    <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOpen(false);
-                          if (focus) onFocus?.(focus);
-                        }}
-                        className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
-                      >
-                        {body}
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={t('pendingStrip.recallProspectors')}
-                        disabled={recall.isPending}
-                        onClick={() => {
-                          recall.mutate(recallInput, {
-                            onSuccess: () => {
-                              say(t('pendingStrip.recallStarted'));
-                            },
-                            onError: (error) => {
-                              say(describe(error), 'error');
-                            },
-                          });
-                        }}
-                        className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
-                      >
-                        <ReturnedIcon className="size-4" />
-                        {recall.isPending
-                          ? t('pendingStrip.recallingProspectors')
-                          : t('pendingStrip.recallProspectors')}
-                      </button>
-                    </div>
-                  );
-                }
-                return focus ? (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      onFocus?.(focus);
-                    }}
-                    className="plate flex min-h-14 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
-                  >
-                    {body}
-                  </button>
-                ) : (
-                  <div key={item.key} className="plate flex min-h-14 items-start gap-2 px-3 py-3">
-                    {body}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <FlightList
+            onFocus={(focus) => { onFocus?.(focus); }}
+            onDone={() => { setOpen(false); }}
+          />
         </Sheet>
       )}
     </>
   );
 }
 
-interface AirborneItem {
+/**
+ * EVERYTHING OF YOURS IN THE AIR, AND THE ENEMY COMING FOR YOU, SOONEST FIRST.
+ *
+ * Mission threads and mining runs meet here even though the API keeps them
+ * separate. Read by the strip and by the v2 Fleet page, so both list the same rows.
+ */
+export function useAirborne(): { items: AirborneItem[]; now: number } {
+  const { t } = useTranslation();
+  const { data } = usePending();
+  const mining = useMining();
+  /**
+   * THE DISC'S OWN CONTACT LIST, READ HERE FOR ONE THING ONLY. D162.
+   *
+   * An inbound warning carries no path, so the only way this strip can offer to
+   * LOOK at the fleet coming for you is to check whether the caller's circles are
+   * covering it — and the honest answer to that is the contact list itself, not a
+   * second sight calculation on the client. Present means focusable; absent means
+   * the row stays a statement.
+   */
+  const traffic = useTraffic();
+  const now = useNow(1000);
+  const threads = data?.pending ?? [];
+  const runs = (mining.data?.runs ?? []).filter((run) => run.status !== 'done');
+  const seen = traffic.data?.contacts ?? [];
+
+  const items: AirborneItem[] = [
+    ...threads.map((thread, index): AirborneItem => ({
+      key: `thread:${threadKey(thread, index)}`,
+      title: flightTitle(thread),
+      detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
+        ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
+        : t('pendingStrip.craftUnknown')),
+      arrival: arrivalOf(thread),
+      leg: thread.leg,
+      incoming: thread.kind === 'incoming',
+      engages: thread.kind === 'fleet' && thread.leg === 'outbound',
+      mark: thread.kind,
+      /*
+        THE LEG'S OWN TWO INSTANTS, and null for an inbound attack — the server
+        sends no `path` for somebody else's fleet, deliberately (D123), so there
+        is no honest position to draw and `FlightBar` says so with a dashed track
+        rather than inventing one.
+      */
+      span: thread.path
+        ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
+        : null,
+      /*
+        TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
+
+        Your own craft is focused by its thread. A warning has no path — the route
+        is what Radar L5 does not sell — so it is focused through the CONTACT the
+        disc is already drawing, and only when there is one. No contact, no
+        control: the fog is enforced in the contact query, not here.
+      */
+      ...(thread.path
+        ? { focus: { kind: 'thread' as const, key: threadKey(thread, index) } }
+        : contactFor(thread, seen)
+          ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
+          : {}),
+      /*
+        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer that is still
+        turnable on this tick; a raid never carries it, because a raid committed is committed.
+      */
+      ...(thread.recallable === true && thread.id !== undefined
+        ? { recallMission: { missionId: thread.id } }
+        : {}),
+    })),
+    ...runs.map((run): AirborneItem => ({
+      key: `run:${run.id}`,
+      title: runTitle(run),
+      detail: t('pendingStrip.drillCount', { count: run.craft }),
+      arrival: runArrival(run),
+      leg: run.status === 'returning' ? 'return' : 'outbound',
+      incoming: false,
+      engages: false,
+      mark: run.targetKind === 'debris' ? 'salvage' : 'mining',
+      /*
+        A RUN HAS TWO LEGS AND THEY ARE DIFFERENT SPANS. Out is depart → arrive;
+        home is arrive → `homeAt`, which is only set once the rock has been
+        worked. Reusing the outbound span for the return would draw a craft
+        already home the moment it started back.
+      */
+      span: run.status === 'returning'
+        ? run.homeAt
+          ? { from: run.arriveAt.getTime(), to: run.homeAt.getTime() }
+          : null
+        : { from: run.departAt.getTime(), to: run.arriveAt.getTime() },
+      focus: { kind: 'run', id: run.id },
+      ...(run.status === 'outbound' && run.recalledAt === null && run.arriveAt.getTime() > now
+        ? { recall: { runId: run.id, originPlanetId: run.planetId } }
+        : {}),
+    })),
+  ].sort((a, b) => a.arrival - b.arrival || a.key.localeCompare(b.key));
+  return { items, now };
+}
+
+/**
+ * THE FLIGHT ROSTER: each row focusable where there is something to look at, and
+ * the recall on the rows that can still be called back. `onDone` closes whatever
+ * sheet holds the list before the camera moves.
+ */
+export function FlightList({ onFocus, onDone }: { onFocus: (focus: StripFocus) => void; onDone: () => void }) {
+  const { t } = useTranslation();
+  const { items, now } = useAirborne();
+  const recall = useRecallMining();
+  const recallFleet = useRecallTransfer();
+  const say = useToast();
+
+  return (
+    <>
+    {items.length === 0 ? (
+      <p className="pt-2 text-body text-dim">{t('pendingStrip.sheetEmpty')}</p>
+    ) : (
+      <div className="space-y-2 pt-2">
+        {items.map((item) => {
+          const focus = item.focus;
+          const body = (
+            <>
+              <Mark of={item.mark} incoming={item.incoming} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline gap-2">
+                  <span className="name min-w-0 flex-1 truncate text-bone">
+                    {item.title}
+                  </span>
+                  <span
+                    className={`num shrink-0 text-caption ${
+                      item.incoming ? 'text-threat-ink' : 'text-crystal'
+                    }`}
+                  >
+                    {countdown(item.arrival - now)}
+                  </span>
+                </span>
+                {/*
+                  THE JOURNEY, UNDER THE NAME AND ACROSS THE FULL ROW.
+
+                  "12m" is the same string for a fleet two minutes from a
+                  target and a fleet two minutes from home carrying the
+                  loot, and those are opposite situations. The leg says
+                  which, so the countdown finally means one thing.
+                */}
+                <span className="mt-1.5 block">
+                  <FlightBar
+                    progress={progressOf(item.span, now)}
+                    direction={
+                      item.incoming ? 'incoming' : item.leg === 'return' ? 'back' : 'out'
+                    }
+                    tone={item.incoming ? 'threat' : 'crystal'}
+                  />
+                </span>
+                <span className="mt-1 block text-label text-faint">{item.detail}</span>
+              </span>
+              {focus && <span aria-hidden className="self-center text-faint">›</span>}
+            </>
+          );
+          /*
+            THE SAME ROW, FOR THE SAME ACT. A commander who has learned to pull a drill back
+            should not have to learn a second control to pull a squadron back, so the fleet
+            recall wears the Prospector recall's shape — one glyph, one label, one tap, on
+            the screen they are already looking at when a raid is inbound.
+          */
+          const recallMission = item.recallMission;
+          if (recallMission) {
+            return (
+              <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDone();
+                    if (focus) onFocus(focus);
+                  }}
+                  className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                >
+                  {body}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('pendingStrip.recallFleet')}
+                  disabled={recallFleet.isPending}
+                  onClick={() => {
+                    recallFleet.mutate(recallMission, {
+                      onSuccess: () => { say(t('pendingStrip.recallFleetStarted')); },
+                      onError: (error) => { say(describe(error), 'error'); },
+                    });
+                  }}
+                  className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
+                >
+                  <ReturnedIcon className="size-4" />
+                  {recallFleet.isPending
+                    ? t('pendingStrip.recallingFleet')
+                    : t('pendingStrip.recallFleet')}
+                </button>
+              </div>
+            );
+          }
+          const recallInput = item.recall;
+          if (recallInput) {
+            return (
+              <div key={item.key} className="plate flex min-h-14 w-full items-stretch">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDone();
+                    if (focus) onFocus(focus);
+                  }}
+                  className="flex min-w-0 flex-1 items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+                >
+                  {body}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t('pendingStrip.recallProspectors')}
+                  disabled={recall.isPending}
+                  onClick={() => {
+                    recall.mutate(recallInput, {
+                      onSuccess: () => {
+                        say(t('pendingStrip.recallStarted'));
+                      },
+                      onError: (error) => {
+                        say(describe(error), 'error');
+                      },
+                    });
+                  }}
+                  className="flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 border-l border-line-soft px-3 text-label text-alloy transition-colors hover:bg-alloy/[0.06] disabled:opacity-50"
+                >
+                  <ReturnedIcon className="size-4" />
+                  {recall.isPending
+                    ? t('pendingStrip.recallingProspectors')
+                    : t('pendingStrip.recallProspectors')}
+                </button>
+              </div>
+            );
+          }
+          return focus ? (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => {
+                onDone();
+                onFocus(focus);
+              }}
+              className="plate flex min-h-14 w-full items-start gap-2 px-3 py-3 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+            >
+              {body}
+            </button>
+          ) : (
+            <div key={item.key} className="plate flex min-h-14 items-start gap-2 px-3 py-3">
+              {body}
+            </div>
+          );
+        })}
+      </div>
+    )}
+    </>
+  );
+}
+
+export interface AirborneItem {
   key: string;
   title: string;
   detail: string;

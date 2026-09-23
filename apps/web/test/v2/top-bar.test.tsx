@@ -23,6 +23,8 @@ const props = (over: Partial<TopBarProps> = {}): TopBarProps => ({
     deuterium: { value: 860, cap: 4_000 },
   },
   bell: { unseen: 0, urgent: false },
+  rewards: 0,
+  boosted: false,
   onCommander: vi.fn(),
   onWorld: vi.fn(),
   onResource: vi.fn(),
@@ -71,6 +73,22 @@ describe('the top bar', () => {
     rerender(<TopBar {...props({ bell: { unseen: 12, urgent: true } })} />);
     expect(screen.getByRole('button', { name: 'Signals — 12 unread' })).toHaveAttribute('data-urgent');
     expect(screen.getByText('9+')).toBeInTheDocument();
+  });
+
+  it('dots the commander chip while rewards wait behind it', () => {
+    const { rerender } = render(<TopBar {...props()} />);
+    expect(screen.getByRole('button', { name: /^Commander Samet/ })).not.toHaveAttribute('data-attention');
+    rerender(<TopBar {...props({ rewards: 2 })} />);
+    const chip = screen.getByRole('button', { name: /^Commander Samet/ });
+    expect(chip).toHaveAttribute('data-attention');
+    expect(chip).toHaveAccessibleName(/2 rewards waiting/);
+  });
+
+  it('marks every store while production is boosted', () => {
+    const { rerender } = render(<TopBar {...props()} />);
+    expect(screen.queryAllByRole('img', { name: 'Output boosted +50%' })).toHaveLength(0);
+    rerender(<TopBar {...props({ boosted: true })} />);
+    expect(screen.getAllByRole('img', { name: 'Output boosted +50%' })).toHaveLength(3);
   });
 
   it('wears the shield on the commander chip while it holds, with its time', () => {

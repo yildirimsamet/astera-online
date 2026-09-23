@@ -17,6 +17,10 @@ export interface TopBarProps {
   stock: Record<Resource, { value: number; cap: number }>;
   /** `bellState(...)`. */
   bell: { unseen: number; urgent: boolean };
+  /** Rewards waiting to be claimed behind the commander chip (`useRewards().claimable`). */
+  rewards: number;
+  /** The recovery boost is running on the active world. */
+  boosted: boolean;
   onCommander: () => void;
   onWorld: () => void;
   /** A meter opens the economy detail. */
@@ -44,6 +48,8 @@ export function TopBar({
   world,
   stock,
   bell,
+  rewards,
+  boosted,
   onCommander,
   onWorld,
   onResource,
@@ -53,12 +59,16 @@ export function TopBar({
   const shieldLeft = shield ? shield.until - now : 0;
   const shielded = shield !== null && shieldLeft > 0;
   const shieldTime = shielded ? duration(shieldLeft / 60_000) : '';
-  const chipName = shielded
-    ? `${t('statusBar.menuHint', { name: commander })} · ${t(
-      shield.kind === 'RECOVERY' ? 'statusBar.recoveryShield.hint' : 'statusBar.newcomerShield.hint',
-      { duration: shieldTime },
-    )}`
-    : t('statusBar.menuHint', { name: commander });
+  // A badge may only promise what the surface behind it can show: the commander
+  // page holds the rewards, so they are the chip's one dot.
+  const chipName = [
+    t('statusBar.menuHint', { name: commander }),
+    ...(shielded
+      ? [t(shield.kind === 'RECOVERY' ? 'statusBar.recoveryShield.hint' : 'statusBar.newcomerShield.hint', { duration: shieldTime })]
+      : []),
+    ...(boosted ? [t('statusBar.recoveryBoost.note')] : []),
+    ...(rewards > 0 ? [t('statusBar.menuWaiting', { count: rewards })] : []),
+  ].join(' · ');
 
   return (
     <header className="flex h-12 items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui">
@@ -66,11 +76,15 @@ export function TopBar({
         type="button"
         aria-label={chipName}
         {...(shielded ? { 'data-shielded': '' } : {})}
+        {...(rewards > 0 ? { 'data-attention': '' } : {})}
         onClick={onCommander}
         className="flex shrink-0 flex-col items-center"
       >
         <span className="relative grid size-7 place-items-center rounded-full border border-v2-line-hi bg-v2-raise text-caption font-bold uppercase text-v2-ink">
           {commander.slice(0, 1)}
+          {rewards > 0 && (
+            <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-v2-self ring-2 ring-v2-deep" />
+          )}
           {shielded && (
             <span aria-hidden="true" className="absolute -bottom-1 -right-1 grid size-3.5 place-items-center rounded-full bg-v2-deep text-v2-self">
               <Icon id="i-shield" className="size-3" />
@@ -98,6 +112,7 @@ export function TopBar({
             resource={resource}
             value={stock[resource].value}
             cap={stock[resource].cap}
+            boosted={boosted}
             onOpen={() => { onResource(resource); }}
           />
         ))}
