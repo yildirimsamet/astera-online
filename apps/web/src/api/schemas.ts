@@ -2033,6 +2033,14 @@ const pendingThread = z.object({
    */
   recallable: z.boolean().optional(),
   /**
+   * THE PACE THIS LEG FLIES AT, 1 = full speed. YOUR OWN CRAFT ONLY. Spec S1.
+   *
+   * The Fleet page labels a slowed flight with it. A return leg reads 1: the survivors
+   * fly home at full speed whatever went out. Absent on an inbound attack and on any
+   * server that predates the field.
+   */
+  pace: z.number().positive().max(1).optional(),
+  /**
    * THE CONTACT ON THE DISC THIS WARNING IS ABOUT. `incoming` ONLY. D162.
    *
    * An inbound warning has no `path` and never will — the attacker's route is not

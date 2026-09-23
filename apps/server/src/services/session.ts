@@ -233,6 +233,13 @@ export interface PendingThread {
   /** Which way a fleet of yours is flying. Absent for `incoming`. */
   leg?: 'outbound' | 'return';
   /**
+   * THE PACE THIS LEG FLIES AT (`missions.pace`, 1 = full speed). YOUR OWN MISSIONS ONLY.
+   * Spec S1: the Fleet page labels a slowed flight. A return leg reads 1 — the survivors
+   * fly home at full speed whatever went out (`launchAttack`). Never on `incoming`: how the
+   * attacker chose to fly is theirs.
+   */
+  pace?: number;
+  /**
    * What is in it. YOUR OWN MISSIONS, OR AN INBOUND ATTACK AT RADAR L5. D123.
    *
    * THE COMMENT THAT USED TO BE HERE WAS RIGHT AND THEN WAS OVERTAKEN TWICE.
@@ -792,6 +799,7 @@ export async function pendingThreads(
       // "heading for" are different states of the same craft and the strip should
       // not have to guess which.
       leg: returning ? 'return' : 'outbound',
+      pace: m.pace,
       /**
        * What is actually in it.
        *

@@ -491,6 +491,34 @@ describe('what is in flight', () => {
   });
 
   /**
+   * THE PACE IT FLIES AT. Spec S1 (docs/ui-v2/gozlemevi.md).
+   *
+   * The Fleet page labels a slowed flight, and a raid sent at half speed that shows
+   * nothing about it reads as a clock gone wrong. The survivors fly home at full
+   * speed whatever went out (`launchAttack`), so the return leg says so too.
+   */
+  it('carries the pace your own craft flies at, and full speed on the way home', async () => {
+    const launch = await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock, undefined, undefined, 0.5);
+    const [out] = await pendingThreads(f.db, mine, f.clock.now());
+    expect(out!.pace).toBe(0.5);
+
+    f.clock.set(settledAt(launch.arriveAt));
+    await worker().tick();
+    const [home] = await pendingThreads(f.db, mine, f.clock.now());
+    expect(home!.leg).toBe('return');
+    expect(home!.pace).toBe(1);
+  });
+
+  it('gives an inbound attack no pace: the defender is not told how the attacker chose to fly', async () => {
+    await giveSatellite(f.db, theirs, 'UPLINK');
+    await giveInstrument(f.db, theirs, 'RADAR', 5);
+    await launchAttack(f.db, mine, theirs, { DART: 20 }, f.clock, undefined, undefined, 0.5);
+    const [inbound] = await pendingThreads(f.db, theirs, f.clock.now());
+    expect(inbound!.kind).toBe('incoming');
+    expect(inbound!.pace).toBeUndefined();
+  });
+
+  /**
    * A return leg is stored with its origin and target swapped, so the name worth
    * showing is at the other end — otherwise a fleet coming home would be labelled
    * with the player's own world.
