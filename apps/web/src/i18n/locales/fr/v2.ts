@@ -35,3 +35,37 @@ export const handle = {
   /** At the top: settles it one height lower. */
   collapse: 'Réduire',
 };
+
+/** B4 : le dock, cinq onglets dans un ordre fixe. */
+export const dock = {
+  /** The navigation landmark, for a screen reader. */
+  label: 'Navigation principale',
+  galaxy: 'Galaxie',
+  base: 'Base',
+  fleet: 'Flotte',
+  intel: 'Renseignement',
+  clan: 'Clan',
+  /** The dot on Base, read aloud. */
+  baseWaiting: 'Quelque chose à collecter ou à réparer',
+  /** Beside the Fleet ring: your own craft in the air. */
+  airborne: 'En vol : {{count}}',
+  /** The count on Intel: reports you have not seen. */
+  reports: 'Nouveaux rapports : {{count}}',
+  /** The count on Clan. */
+  attention: 'En attente de toi : {{count}}',
+};
+
+/** B2 : la ligne Maintenant, le minuteur qui compte le plus. */
+export const now = {
+  /** The line, for a screen reader. */
+  label: 'Minuteur le plus urgent',
+  /** The sheet one tap under it: every timer. */
+  sheet: 'Minuteurs',
+  work: 'Travaux bientôt finis',
+  research: 'Recherche bientôt finie',
+  event: 'Événement bientôt fini',
+  shield: 'Ton bouclier tombe',
+  shieldDetail: 'Ensuite, les raids peuvent t’atteindre',
+  /** The clock time beside a countdown in the sheet. */
+  at: 'à {{time}}',
+};

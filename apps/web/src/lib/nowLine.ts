@@ -1,11 +1,16 @@
+import { fleetCount } from '@astera/rules';
 import type {
   ActiveGalaxyEvent,
   BuildOrderView,
+  Contact,
   MiningRun,
   PendingThread,
   ResearchQueueOrderView,
 } from '../api/schemas.js';
-import { runArrival } from './flights.js';
+import i18n from '../i18n/index.js';
+import { researchName } from '../i18n/names.js';
+import { contactFor, flightTitle, incomingDetail, runArrival, runTitle } from './flights.js';
+import { buildOrderLabel } from './orders.js';
 
 const MINUTE = 60_000;
 /** Your own strike is lifted over every other arrival in its last ten minutes. */
@@ -88,4 +93,45 @@ export function nowEntries(input: NowInput): NowEntry[] {
   }
 
   return entries.sort((a, b) => a.tier - b.tier || a.at - b.at);
+}
+
+const EVENT_NAME = {
+  TRADE_SHIP: 'trade.chip',
+  INTERGALACTIC_CONVOY: 'galaxy.intergalacticConvoy',
+  ASTEROID_SHOWER: 'galaxy.asteroidShower',
+} as const satisfies Record<ActiveGalaxyEvent['kind'], string>;
+
+/**
+ * WHAT A NOW-LINE TIMER IS CALLED, AND ONE CLAUSE ABOUT IT.
+ *
+ * Flights read exactly as the flight board reads them (`lib/flights.ts`); work is
+ * named by what is being built; events by their own name.
+ */
+export function describeNow(
+  entry: NowEntry,
+  contacts: readonly Contact[] = [],
+): { title: string; detail: string | null } {
+  switch (entry.kind) {
+    case 'incoming':
+      return { title: flightTitle(entry.thread), detail: incomingDetail(entry.thread, contactFor(entry.thread, contacts)) };
+    case 'strike':
+    case 'flight':
+      return {
+        title: flightTitle(entry.thread),
+        detail: entry.thread.fleet ? i18n.t('pendingStrip.craftCount', { count: fleetCount(entry.thread.fleet) }) : null,
+      };
+    case 'run':
+      return { title: runTitle(entry.run), detail: i18n.t('pendingStrip.craftCount', { count: entry.run.craft }) };
+    case 'build':
+      return { title: buildOrderLabel(entry.order), detail: i18n.t('now.work') };
+    case 'research':
+      return {
+        title: `${researchName(entry.order.projectId)} ${i18n.t('itemSheet.rungLevel', { level: entry.order.level })}`,
+        detail: i18n.t('now.research'),
+      };
+    case 'event':
+      return { title: i18n.t(EVENT_NAME[entry.event.kind]), detail: i18n.t('now.event') };
+    case 'shield':
+      return { title: i18n.t('now.shield'), detail: i18n.t('now.shieldDetail') };
+  }
 }

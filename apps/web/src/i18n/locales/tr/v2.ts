@@ -35,3 +35,37 @@ export const handle = {
   /** At the top: settles it one height lower. */
   collapse: 'Daralt',
 };
+
+/** B4: dock, sabit sırada beş sekme. */
+export const dock = {
+  /** The navigation landmark, for a screen reader. */
+  label: 'Ana gezinme',
+  galaxy: 'Galaksi',
+  base: 'Üs',
+  fleet: 'Filo',
+  intel: 'İstihbarat',
+  clan: 'Klan',
+  /** The dot on Base, read aloud. */
+  baseWaiting: 'Toplanacak ya da onarılacak bir şey var',
+  /** Beside the Fleet ring: your own craft in the air. */
+  airborne: 'Havada: {{count}}',
+  /** The count on Intel: reports you have not seen. */
+  reports: 'Yeni rapor: {{count}}',
+  /** The count on Clan. */
+  attention: 'Seni bekleyen: {{count}}',
+};
+
+/** B2: Şimdi hattı, en önemli tek zamanlayıcı. */
+export const now = {
+  /** The line, for a screen reader. */
+  label: 'En acil zamanlayıcı',
+  /** The sheet one tap under it: every timer. */
+  sheet: 'Zamanlayıcılar',
+  work: 'İş bitiyor',
+  research: 'Araştırma bitiyor',
+  event: 'Olay bitiyor',
+  shield: 'Kalkanın bitiyor',
+  shieldDetail: 'Sonrasında saldırıya açıksın',
+  /** The clock time beside a countdown in the sheet. */
+  at: 'saat {{time}}',
+};
