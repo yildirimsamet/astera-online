@@ -199,4 +199,8 @@ export const roomBar = {
   incoming: 'this order {{value}}',
   free: 'free {{value}}',
   reading: '{{label}}: {{used}} of {{total}} taken',
+  returnFits: 'A returning fleet always fits: ships away keep their room.',
+  nextHangar: 'Hangar {{level}} makes it {{from}} → {{to}}.',
+  gunsStay: 'Guns never leave the world.',
+  nextCore: 'Command Core {{level}} makes it {{from}} → {{to}}.',
 };

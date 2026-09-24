@@ -115,7 +115,6 @@ import {
 import { Price, useOrderDuration } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
-import { CapacityBar } from '../ui/CapacityBar.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { ClassChip, CounterCycle } from '../ui/CounterMark.js';
@@ -1460,7 +1459,6 @@ function Defend({
   const harpoon = HULLS.HARPOON;
   const thorn = HULLS.THORN;
   const yardOrders = planet.queues?.YARD ?? [];
-  const yardProjection = projectedQueueState(planet, 'YARD');
   const queuedThorns = yardOrders
     .filter((order) => order.kind === 'HULL' && order.subject === 'THORN')
     .reduce((sum, order) => sum + order.count, 0);
@@ -1471,8 +1469,6 @@ function Defend({
     .filter((order) => order.kind === 'HULL' && order.subject === 'HARPOON')
     .reduce((sum, order) => sum + order.count, 0);
   const ground = fleetCount(planet.ground);
-  const groundCapacity = planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0);
-  const groundUsed = groundLoad(yardProjection.units);
   /**
    * How many guns of each kind are on the plate.
    *
@@ -1524,13 +1520,7 @@ function Defend({
         world's battery may be and how much of it is spoken for — so the card
         drops the block and the per-hull count and states its space as space.
       */}
-      <div className="px-3 py-2">
-        <CapacityBar
-          total={groundCapacity}
-          used={groundUsed}
-          incoming={0}
-        />
-      </div>
+      <GroundRoom planet={planet} />
 
       <div className="grid grid-cols-2 gap-2">
       <div id="row-THORN">
@@ -2223,14 +2213,7 @@ function Reach({
         />
       </div>
       </div>
-      <div data-hangar-room className="px-3 py-2">
-        <CapacityBar
-          total={hangarTotal}
-          used={hangarUsed}
-          incoming={0}
-          label={t('planet.capacity.hangarBand')}
-        />
-      </div>
+      <HangarRoom planet={planet} />
 
       {/*
         THE CATALOGUE FOLDS. Owner instruction.
@@ -2567,6 +2550,74 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
         />
       </div>
     </>
+  );
+}
+
+/* ── the room sections (D2) ─────────────────────────────────── */
+
+/**
+ * THE HANGAR, PART BY PART, AND WHAT ITS NEXT RUNG DOES TO IT. D2 (owner, round 2: no
+ * grey fill). Ships away keep their room for the whole round trip, which is why a
+ * returning fleet always fits — said here, where a full Hangar would otherwise worry.
+ */
+function HangarRoom({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const room = roomParts(planet, false);
+  // The rung an order placed now would buy: whatever is queued lands first.
+  const level = projectedQueueState(planet, 'CONSTRUCTION').buildings.HANGAR;
+  const next = level < HANGAR.maxLevel ? level + 1 : null;
+  return (
+    <div data-hangar-room className="flex flex-col gap-1.5">
+      <RoomBar label={t('roomBar.hangar')} total={room.total} home={room.home} away={room.away} queued={room.queued} />
+      <p className="px-1 text-micro leading-snug text-v2-ink-2">
+        {t('roomBar.returnFits')}
+        {next !== null && (
+          <> {t('roomBar.nextHangar', { level: next, from: compact(hangarCapacity(level)), to: compact(hangarCapacity(next)) })}</>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** The three guns, in the order the Defend tab sells them. */
+const GUNS = ['THORN', 'HARPOON', 'BASTION'] as const;
+
+/**
+ * THE GROUND, WITH ITS GUNS NAMED AND NO GUN'S PICTURE (owner, round 2: the room is not
+ * one gun's), and which Command Core grows it and by how much.
+ */
+function GroundRoom({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const room = roomParts(planet, true);
+  const core = projectedQueueState(planet, 'CONSTRUCTION').buildings.CORE;
+  let next: number | null = null;
+  for (let level = core + 1; level <= core + 40 && next === null; level += 1) {
+    if (groundSlots(level) > groundSlots(core)) next = level;
+  }
+  return (
+    <div data-ground-room className="flex flex-col gap-1.5">
+      <RoomBar label={t('roomBar.ground')} total={room.total} home={room.home} away={room.away} queued={room.queued}>
+        <p className="flex flex-wrap gap-1.5 pt-0.5">
+          {GUNS.map((gun) => {
+            const standing = planet.ground[gun] ?? 0;
+            return (
+              <span
+                key={gun}
+                className={`rounded-chip border border-v2-line px-1.5 py-0.5 text-micro ${standing > 0 ? 'text-v2-ink' : 'text-v2-ink-3'}`}
+              >
+                {hullLabel(gun)} <span className="font-v2-mono">{standing}</span>
+              </span>
+            );
+          })}
+        </p>
+      </RoomBar>
+      <p className="px-1 text-micro leading-snug text-v2-ink-2">
+        {t('roomBar.gunsStay')}
+        {next !== null && (
+          <> {t('roomBar.nextCore', { level: next, from: compact(groundSlots(core)), to: compact(groundSlots(next)) })}</>
+        )}
+      </p>
+    </div>
   );
 }
 

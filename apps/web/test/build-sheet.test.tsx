@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   COMBAT,
   DEATH_STAR,
+  HANGAR,
   HULLS,
   PROSPECTOR,
   groundSlots,
@@ -18,7 +19,7 @@ import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import { duration } from '../src/lib/time.js';
-import { factor } from '../src/lib/format.js';
+import { compact, factor } from '../src/lib/format.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -590,7 +591,7 @@ describe('the quantity picker', () => {
   it('still draws the room a gun answers to', async () => {
     show({ capacity: { ground: groundSlots(6), groundUsed: 0 } }, 'defend');
     await openSheet('Thorn');
-    expect(document.querySelector('[data-room-bar]')).toHaveTextContent(/ground room/i);
+    expect(document.querySelector('[data-build-sheet] [data-room-bar]')).toHaveTextContent(/ground room/i);
   });
 
   /** The order's own share of the room moves under the stepper: the rule teaching itself. */
@@ -600,7 +601,7 @@ describe('the quantity picker', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    const room = document.querySelector<HTMLElement>('[data-room-bar]')!;
+    const room = document.querySelector<HTMLElement>('[data-build-sheet] [data-room-bar]')!;
     expect(room).toHaveTextContent(/hangar room/i);
     expect(room.querySelector('[data-part="home"]')).not.toBeNull();
     expect(room.querySelector('[data-part="incoming"]')).not.toBeNull();
@@ -1017,5 +1018,83 @@ describe('a building already in the queue', () => {
     const spoken = within(row as HTMLElement).getByTestId('order-time').textContent;
     expect(spoken).toContain(duration(buildingMinutes('REFINERY', 5, {})));
     expect(spoken).not.toContain(duration(buildingMinutes('REFINERY', 4, {})));
+  });
+});
+
+/**
+ * THE ROOM SECTIONS ON THE TABS. D2 (owner, round 2): the Hangar and the ground are
+ * drawn part by part in the commander's own colour — never a grey fill — and each says
+ * what raising it does to the room, where the player decides whether to.
+ */
+describe('the room sections', () => {
+  const now = new Date();
+  const yard = (subject: string, count: number) => ({
+    id: `${subject}-${String(count)}`,
+    queue: 'YARD' as const,
+    slot: 0,
+    kind: 'HULL' as const,
+    subject,
+    count,
+    startedAt: now,
+    finishesAt: new Date(now.getTime() + 60_000),
+    cost: { alloy: 0, crystal: 0, deuterium: 0 },
+  });
+
+  it('draws the Hangar as home, away and queued', () => {
+    show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 2 },
+      fleet: { DART: 10 },
+      fleetAway: { DART: 2 },
+      capacity: { hangar: hangarCapacity(2), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
+      queues: { CONSTRUCTION: [], YARD: [yard('DART', 1)] },
+    });
+    const room = document.querySelector<HTMLElement>('[data-hangar-room] [data-room-bar]')!;
+    expect(room).toHaveTextContent(/hangar room/i);
+    for (const part of ['home', 'away', 'queued']) {
+      expect(room.querySelector(`[data-part="${part}"]`), part).not.toBeNull();
+    }
+    const dart = hullBulk('DART');
+    expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`home ${String(10 * dart)}`);
+    expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`away ${String(2 * dart)}`);
+  });
+
+  it('says what the next Hangar rung does to the room, and that a returning fleet fits', () => {
+    show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: 2 },
+      capacity: { hangar: hangarCapacity(2), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
+    });
+    const section = document.querySelector<HTMLElement>('[data-hangar-room]')!;
+    expect(section).toHaveTextContent(`Hangar 3 makes it ${compact(hangarCapacity(2))} → ${compact(hangarCapacity(3))}`);
+    expect(section).toHaveTextContent(/returning fleet always fits/i);
+  });
+
+  it('says nothing about a next rung at the top of the ladder', () => {
+    show({
+      buildings: { CORE: 6, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 4, HANGAR: HANGAR.maxLevel },
+      capacity: { hangar: hangarCapacity(HANGAR.maxLevel), hangarUsed: 0, ground: groundSlots(6), groundUsed: 0 },
+    });
+    expect(document.querySelector('[data-hangar-room]')).not.toHaveTextContent(/makes it/);
+  });
+
+  /** Owner, round 2: no particular gun's picture in the ground room; the guns are named. */
+  it('draws the ground room with the guns standing named, and no gun picture', () => {
+    show({ ground: { THORN: 3, HARPOON: 1 } }, 'defend');
+    const section = document.querySelector<HTMLElement>('[data-ground-room]')!;
+    expect(section.querySelector('[data-room-bar]')).toHaveTextContent(/ground room/i);
+    expect(section.querySelector('[data-part="home"]')).not.toBeNull();
+    expect(section).toHaveTextContent('Thorn 3');
+    expect(section).toHaveTextContent('Harpoon 1');
+    expect(section).toHaveTextContent('Bastion 0');
+    expect(section.querySelector('img')).toBeNull();
+  });
+
+  it('says which Core grows the ground, and by how much', () => {
+    show({}, 'defend');
+    let next = 7;
+    while (groundSlots(next) === groundSlots(6)) next += 1;
+    expect(document.querySelector('[data-ground-room]')).toHaveTextContent(
+      `Command Core ${String(next)} makes it ${compact(groundSlots(6))} → ${compact(groundSlots(next))}`,
+    );
+    expect(document.querySelector('[data-ground-room]')).toHaveTextContent(/never leave/i);
   });
 });

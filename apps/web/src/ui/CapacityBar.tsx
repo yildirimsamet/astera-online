@@ -39,6 +39,10 @@ import { compact } from '../lib/format.js';
  * shape that has already made the point; a player who reads none of them still
  * knows whether the thing they want fits.
  */
+/** The order on screen: your colour, striped — the same mark `RoomBar` gives "this order". */
+const INCOMING =
+  'repeating-linear-gradient(90deg, var(--color-v2-self) 0 3px, color-mix(in srgb, var(--color-v2-self) 55%, transparent) 3px 6px)';
+
 export function CapacityBar({
   total,
   used,
@@ -119,21 +123,21 @@ export function CapacityBar({
           total: Math.round(total),
         })}
       >
+        {/* What is spoken for is yours: your colour, never a grey fill (owner, 2026-09-24). */}
         <span
           data-part="used"
-          className="h-full bg-gradient-to-b from-bone/55 to-bone/35"
+          className="h-full bg-v2-self"
           style={{ width: `${String(usedShare)}%` }}
         />
         {/*
-          The order is the brightest thing on the card because it is the only part
-          the player is deciding, and it carries the leading-edge glow `Meter` uses
-          for the same reason: energy arriving rather than paint already applied.
-          Crystal is this interface's colour for "the thing you are doing now".
+          The order is the one part the player is deciding, so it is marked apart
+          from what is already spoken for: the same colour, striped and outlined —
+          the mark `RoomBar` gives "this order".
         */}
         <span
           data-part="incoming"
-          className="h-full bg-crystal shadow-[0_0_8px_var(--color-crystal-glow)] transition-[width] duration-200"
-          style={{ width: `${String(incomingShare)}%` }}
+          className="h-full ring-1 ring-inset ring-v2-self transition-[width] duration-200"
+          style={{ width: `${String(incomingShare)}%`, backgroundImage: INCOMING }}
         />
         <span data-part="free" className="h-full" style={{ width: `${String(freeShare)}%` }} />
       </div>

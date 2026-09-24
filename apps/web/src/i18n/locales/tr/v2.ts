@@ -194,4 +194,8 @@ export const roomBar = {
   incoming: 'bu sipariş {{value}}',
   free: 'boş {{value}}',
   reading: '{{label}}: {{total}} yerin {{used}} kadarı dolu',
+  returnFits: 'Dönen filo her zaman sığar: dışarıdaki gemiler yerini korur.',
+  nextHangar: 'Hangar {{level}} odayı {{from}} → {{to}} yapar.',
+  gunsStay: 'Toplar dünyadan ayrılmaz.',
+  nextCore: 'Komuta Çekirdeği {{level}} odayı {{from}} → {{to}} yapar.',
 };

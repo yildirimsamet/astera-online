@@ -194,4 +194,8 @@ export const roomBar = {
   incoming: 'este pedido {{value}}',
   free: 'libre {{value}}',
   reading: '{{label}}: {{used}} de {{total}} ocupado',
+  returnFits: 'Una flota que vuelve siempre cabe: las naves fuera conservan su espacio.',
+  nextHangar: 'El hangar {{level}} lo lleva de {{from}} → {{to}}.',
+  gunsStay: 'Los cañones nunca dejan el mundo.',
+  nextCore: 'El Núcleo de comando {{level}} lo lleva de {{from}} → {{to}}.',
 };

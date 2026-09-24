@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { compact } from '../../lib/format.js';
 
@@ -50,6 +50,7 @@ export function RoomBar({
   away,
   queued,
   incoming = 0,
+  children,
 }: {
   label: string;
   total: number;
@@ -58,6 +59,8 @@ export function RoomBar({
   queued: number;
   /** The order on the sheet; zero where nothing is being ordered. */
   incoming?: number;
+  /** What the section adds inside the card, under the legend (the ground's guns). */
+  children?: ReactNode;
 }) {
   const { t } = useTranslation();
   const taken = home + away + queued;
@@ -100,6 +103,7 @@ export function RoomBar({
         ))}
         <span>{t('roomBar.free', { value: compact(free) })}</span>
       </p>
+      {children}
     </section>
   );
 }

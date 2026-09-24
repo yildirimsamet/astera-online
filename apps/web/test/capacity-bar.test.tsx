@@ -51,6 +51,22 @@ describe('the capacity bar', () => {
     }
   });
 
+  /**
+   * Owner, 2026-09-24 round 2: "Beyaz/gri ilerleme çubukları kafa karıştırıyor". What is
+   * spoken for is yours, so it wears your colour; the order on screen is the same colour
+   * striped — never bone, never grey.
+   */
+  it('wears your colour, not white or grey', () => {
+    const view = bar({ incoming: 20 });
+    const used = view.container.querySelector<HTMLElement>('[data-part="used"]')!;
+    const incoming = view.container.querySelector<HTMLElement>('[data-part="incoming"]')!;
+    expect(used).toHaveClass('bg-v2-self');
+    for (const part of [used, incoming]) {
+      expect(part.className).not.toMatch(/bone|grey|gray|white|ink/);
+    }
+    expect(incoming.style.backgroundImage).toContain('--color-v2-self');
+  });
+
   it('sizes what is used against the whole', () => {
     expect(widthOf(bar({ total: 200, used: 50, incoming: 0 }), 'used')).toBeCloseTo(25, 1);
   });

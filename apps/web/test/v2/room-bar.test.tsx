@@ -58,6 +58,11 @@ describe('the room bar', () => {
     expect(document.querySelector('[data-room-legend]')).toHaveTextContent(/free 0/);
   });
 
+  it('carries what the section adds inside its card', () => {
+    render(<RoomBar label="Ground room" total={20} home={4} away={0} queued={0}><span data-extra="">Thorn 2</span></RoomBar>);
+    expect(document.querySelector('[data-room-bar] [data-extra]')).toHaveTextContent('Thorn 2');
+  });
+
   it('survives a world with no room at all', () => {
     render(<RoomBar label="Hangar room" total={0} home={0} away={0} queued={0} />);
     expect(part('home')).toBeNull();
