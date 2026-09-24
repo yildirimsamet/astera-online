@@ -440,6 +440,8 @@ export const planetHero = {
   /** The one force unit, on the one world the commander knows exactly. D199. */
   firepower: "Potencia de fuego",
   perHourSuffix: "/h",
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  orbit: "Órbita",
   disrupted: "Producción detenida · allanada · {{countdown}}",
   defence: "Defensa",
   defenceNone: "Ninguno",

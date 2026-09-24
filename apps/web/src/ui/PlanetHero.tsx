@@ -5,17 +5,20 @@ import {
   fleetCount,
   fleetEntries,
   garrisonOf,
+  satelliteSlots,
   unarmedCount,
 } from '@astera/rules';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { PlanetView } from '../api/schemas.js';
+import { satelliteLabel } from '../i18n/names.js';
 import { compact, full } from '../lib/format.js';
+import { projectedQueueState } from '../lib/predict.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
-import { ShieldIcon } from './icons/index.js';
+import { LockIcon, ShieldIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 
 /**
@@ -90,31 +93,19 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
       */}
       <div data-planet-subject className="flex flex-col items-center gap-1 pb-1 pt-1">
         <div data-planet-portrait className="flex flex-col items-center">
-          <div className="relative grid size-[156px] place-items-center" aria-hidden>
+          <div className="relative grid size-[156px] place-items-center">
             <div
+              aria-hidden
               className="pointer-events-none absolute inset-[-10px]"
               style={{ background: 'radial-gradient(55% 50% at 50% 48%, rgba(46,230,200,0.10) 0%, transparent 70%)' }}
             />
-            <div className="absolute size-[140px] rounded-full border border-v2-line-hi/60" />
-            <div className="absolute size-[140px] animate-[spin_84s_linear_infinite]">
-              {planet.orbit.map((type, i) => {
-                const angle = (i / Math.max(1, planet.orbit.length)) * 360;
-                return (
-                  <img
-                    key={type}
-                    src={SATELLITE_ART[type]}
-                    alt=""
-                    className="absolute left-1/2 top-1/2 size-7 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]"
-                    style={{ transform: `rotate(${String(angle)}deg) translate(70px) rotate(${String(-angle)}deg) translate(-50%, -50%)` }}
-                  />
-                );
-              })}
-            </div>
+            <div aria-hidden className="absolute size-[140px] rounded-full border border-v2-line-hi/60" />
             <PlanetSigil
               seed={planet.planet.id}
               size={104}
               shielded={coreOnline && planet.planet.shield > 0}
             />
+            <OrbitSockets planet={planet} />
           </div>
           <p className="v2-name max-w-full truncate text-body">{planet.planet.name}</p>
           <div className="flex items-baseline gap-1.5 text-micro text-v2-ink-3">
@@ -124,6 +115,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
             <span aria-hidden>·</span>
             <TierMark planet={planet} />
           </div>
+          <OrbitLine planet={planet} />
         </div>
       </div>
       <ProductionRow planet={planet} />
@@ -156,6 +148,105 @@ function TierMark({ planet }: { planet: PlanetView }) {
   return (
     <p data-planet-tier className="v2-legend mt-1 text-center text-micro">
       {t('planetHero.tier', { tier: coreTier(planet.buildings.CORE ?? 0) })}
+    </p>
+  );
+}
+
+/**
+ * THE ORBIT'S SOCKETS, WHERE THE SATELLITES FLY. E5: "yörüngede uydu yuvaları (dolu,
+ * boş, kilitli + açılacağı Çekirdek)".
+ *
+ * The four satellites share one scarce set of sockets, and D108 kept that rack above
+ * every category so the trade is read before any tab is opened. The hero stands above
+ * every tab, so the rack became the ring itself: every socket the Core can ever open,
+ * at a fixed place on it — a satellite where one is fitted, an empty ring where one
+ * could be, a lock with the Core level that opens it where the Core is still short.
+ *
+ * READ OFF THE QUEUE, as the rack was: a Core level or a satellite already paid for
+ * counts, so buying one never shows a socket that the next minute contradicts. The
+ * thresholds come from `satelliteSlots` itself, never from a copy of its numbers.
+ */
+const MOST_SOCKETS = satelliteSlots(Number.MAX_SAFE_INTEGER);
+/** The ring's radius and the four places on it: the diagonals, clear of the name and the bubble. */
+const SOCKET_ANGLES = [225, 315, 45, 135] as const;
+
+/** The lowest Core level at which the socket at `index` exists. */
+const socketOpensAt = (index: number): number => {
+  let level = 0;
+  while (satelliteSlots(level) <= index) level += 1;
+  return level;
+};
+
+function orbitOf(planet: PlanetView) {
+  const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const core = projected.buildings.CORE;
+  const total = satelliteSlots(core);
+  const next = total < MOST_SOCKETS ? socketOpensAt(total) : null;
+  return { fitted: projected.orbit, total, next };
+}
+
+function OrbitSockets({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const { fitted, total } = orbitOf(planet);
+  return (
+    <div role="group" aria-label={t('planet.orbit.rackLabel')} className="pointer-events-none absolute inset-0">
+      {Array.from({ length: MOST_SOCKETS }, (_, index) => {
+        const satellite = fitted[index];
+        const state = satellite ? 'held' : index < total ? 'open' : 'locked';
+        const angle = SOCKET_ANGLES[index % SOCKET_ANGLES.length] ?? 0;
+        const label = satellite
+          ? satelliteLabel(satellite)
+          : state === 'open'
+            ? t('planet.orbit.slotEmpty')
+            : t('planet.orbit.slotsNext', { level: socketOpensAt(index) });
+        return (
+          <span
+            key={index}
+            data-orbit-slot={state}
+            role="img"
+            aria-label={label}
+            title={label}
+            className={`absolute left-1/2 top-1/2 grid size-7 place-items-center rounded-full ${
+              state === 'held'
+                ? 'border border-v2-self/50 bg-v2-panel'
+                : state === 'open'
+                  ? 'border border-dashed border-v2-line-hi bg-v2-deep/60'
+                  : 'border border-v2-line bg-v2-deep/80 text-v2-ink-3'
+            }`}
+            style={{ transform: `rotate(${String(angle)}deg) translate(70px) rotate(${String(-angle)}deg) translate(-50%, -50%)` }}
+          >
+            {satellite && (
+              <img src={SATELLITE_ART[satellite]} alt="" className="size-6 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]" />
+            )}
+            {state === 'locked' && (
+              <>
+                <LockIcon className="size-3" />
+                <span className="absolute -bottom-3.5 font-v2-mono text-micro text-v2-ink-3">{socketOpensAt(index)}</span>
+              </>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The orbit in words, under the world: sockets used, full or not, and where the next one opens. */
+function OrbitLine({ planet }: { planet: PlanetView }) {
+  const { t } = useTranslation();
+  const { fitted, total, next } = orbitOf(planet);
+  const used = Math.min(fitted.length, total);
+  const full = total > 0 && used >= total;
+  const parts: ReactNode[] = [];
+  if (total > 0) {
+    parts.push(<span key="used">{t('planetHero.orbit')} <span>{t('planet.orbit.slotsUsed', { used, total })}</span></span>);
+  }
+  /* A full orbit is a ceiling the Core raises: a gap in yellow, never a threat's red (K2). */
+  if (full) parts.push(<span key="full" className="text-v2-warn">{t('planet.orbit.slotsNone')}</span>);
+  if (next !== null) parts.push(<span key="next">{t('planet.orbit.slotsNext', { level: next })}</span>);
+  return (
+    <p data-testid="orbit-line" className="mt-0.5 text-center font-v2-mono text-micro text-v2-ink-3">
+      {parts.map((part, index) => <Fragment key={String(index)}>{index > 0 && ' · '}{part}</Fragment>)}
     </p>
   );
 }

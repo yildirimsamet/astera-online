@@ -489,8 +489,6 @@ export function PlanetScreen({
         />
 
         <div className="flex flex-col gap-4 px-2">
-          {!lesson && <OrbitContext planet={data} />}
-
           <div
             id={`planet-panel-${active}`}
             role="tabpanel"
@@ -1425,9 +1423,6 @@ const coreRole = (capped: number): string =>
     ? i18n.t('planet.roles.coreCapped', { count: capped })
     : i18n.t('planet.roles.coreClear');
 
-/** Where the Command Core opens another slot. Mirrors `satelliteSlots` in the rules. */
-const ORBIT_UNLOCKS = [6, 9, 12, 15] as const;
-
 function Defend({
   planet,
   held,
@@ -1862,108 +1857,6 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
         />
       ))}
     </>
-  );
-}
-
-/**
- * WHAT THE RACK BELOW CANNOT SAY, AND NOTHING IT ALREADY SAYS. D142.
- *
- * This docblock used to promise "filled pips for what is up, empty ones for what
- * is open" and the code printed `2 / 4 slots used` — a description of a picture
- * that had been replaced by its own caption. It was also the THIRD statement of
- * the same fact on one header: `OrbitRack` sits directly underneath and draws
- * every socket at full size, with its art in the taken ones and a dashed outline
- * on the free ones.
- *
- * So the fraction is gone and what is left is the half no rack can draw: that
- * there are no sockets left, or which Core level opens the next one. A player who
- * reads this before shopping never meets the refusal — which was always the point
- * of the line, and never the point of the numbers in it.
- */
-function OrbitSlotCount({ slots, used, core }: { slots: number; used: number; core: number }) {
-  const { t } = useTranslation();
-  const next = ORBIT_UNLOCKS.find((level) => level > core);
-
-  return (
-    <span className="num text-label text-dim">
-      {used >= slots && slots > 0 ? (
-        /*
-          AMBER, NOT RED (interface.md I0/I1). A full rack is a ceiling the
-          commander can raise by building a Core level; it is not something being
-          done to them, and threat red spent here is threat red a player learns to
-          ignore where it means an attack.
-        */
-        <span className="text-alloy">{t('planet.orbit.slotsNone')}</span>
-      ) : null}
-      {used >= slots && slots > 0 && next !== undefined ? ' · ' : null}
-      {next !== undefined ? (
-        <span className="text-faint">{t('planet.orbit.slotsNext', { level: next })}</span>
-      ) : null}
-      <span className="sr-only">{t('planet.orbit.slotsUsed', { used, total: slots })}</span>
-    </span>
-  );
-}
-
-function OrbitRack({ slots, orbit }: { slots: number; orbit: SatelliteId[] }) {
-  const { t } = useTranslation();
-  return (
-    <div
-      className="grid gap-2 border-b border-line-soft bg-void/15 p-3"
-      style={{ gridTemplateColumns: `repeat(${String(Math.max(1, slots))}, minmax(0, 1fr))` }}
-      aria-label={t('planet.orbit.rackLabel')}
-    >
-      {Array.from({ length: Math.max(1, slots) }, (_, index) => {
-        const satellite = orbit[index];
-        return (
-          <div
-            key={index}
-            className={`relative flex min-h-16 min-w-0 flex-col items-center justify-center rounded-chip border px-1 py-2 ${satellite ? 'border-crystal/30 bg-crystal/[0.06]' : 'border-dashed border-line bg-void/30'}`}
-          >
-            <span className="num absolute left-1.5 top-1 text-micro text-faint">{index + 1}</span>
-            {satellite ? (
-              <>
-                <img
-                  src={SATELLITE_ART[satellite]}
-                  alt=""
-                  aria-hidden
-                  className="size-8 object-contain"
-                />
-                <span className="legend mt-1 w-full truncate text-center text-bone">
-                  {satelliteLabel(satellite)}
-                </span>
-              </>
-            ) : (
-              <span className="text-micro text-faint">{t('planet.orbit.slotEmpty')}</span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * THE SHARED COST OF FOUR DECISIONS.
- *
- * Satellites now live beside the outcome they create, but all four still consume
- * the same scarce sockets. Keeping the rack above every category makes that trade
- * visible before a player opens any one of them (D108).
- */
-function OrbitContext({ planet }: { planet: PlanetView }) {
-  const { t } = useTranslation();
-  const projected = projectedQueueState(planet, 'CONSTRUCTION');
-  const slots = satelliteSlots(projected.buildings.CORE);
-  return (
-    <section className="plate plate-inset overflow-hidden" aria-label={t('planet.orbit.contextLabel')}>
-      <div className="flex items-baseline gap-2 border-b border-line-soft bg-void/30 px-3 py-2">
-        <h2 className="legend text-crystal/85">
-          {t('planet.orbit.contextLabel')}
-        </h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-        <OrbitSlotCount slots={slots} used={projected.orbit.length} core={projected.buildings.CORE} />
-      </div>
-      <OrbitRack slots={slots} orbit={projected.orbit} />
-    </section>
   );
 }
 

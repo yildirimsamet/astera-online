@@ -422,6 +422,8 @@ export const planetHero = {
   tier: "palier {{tier}}",
   firepower: "Puissance de feu",
   perHourSuffix: "/h",
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  orbit: "Orbite",
   disrupted: "Raid subi, production interrompue · {{countdown}}",
   defence: "Défense",
   defenceNone: "Aucune",

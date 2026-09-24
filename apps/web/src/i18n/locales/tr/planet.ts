@@ -425,6 +425,8 @@ export const planetHero = {
   tier: "{{tier}}. kademe",
   firepower: "Ateş gücü",
   perHourSuffix: "/sa",
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  orbit: "Yörünge",
   disrupted: "Akın yedin, üretim durdu · {{countdown}}",
   defence: "Savunma",
   defenceNone: "Yok",

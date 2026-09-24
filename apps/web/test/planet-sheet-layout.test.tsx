@@ -216,6 +216,13 @@ describe('the Base and its Defence tab', () => {
     expect(screen.queryByTestId('planet-firepower')).toBeNull();
   });
 
+  /** D108's rack became the world's own ring (E5): the sockets are drawn once, above every tab. */
+  it('draws the orbit on the world, not as a rack over the tabs', () => {
+    show('grow');
+    expect(document.querySelectorAll('[data-orbit-slot]').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('region', { name: 'Orbit network' })).toBeNull();
+  });
+
   it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {
     show('defend');
     for (const id of ['planet-firepower', 'planet-defence', 'planet-shield', 'planet-exposed']) {

@@ -160,12 +160,13 @@ describe('the orbit surface', () => {
     expect(screen.getByText('2/3')).toBeInTheDocument();
   });
 
+  /** The rack is the world's ring now (E5): each socket is its satellite's picture, named. */
   it('names the occupant of every orbit slot and leaves open capacity visible', () => {
     show({ orbit: ['UPLINK', 'FOUNDRY'], orbitSlots: 3 });
-    const rack = screen.getByLabelText('Orbit slots');
-    expect(rack).toHaveTextContent('Uplink');
-    expect(rack).toHaveTextContent('Foundry');
-    expect(rack).toHaveTextContent('Empty');
+    const rack = screen.getByRole('group', { name: 'Orbit slots' });
+    expect(within(rack).getByRole('img', { name: 'Uplink' })).toBeInTheDocument();
+    expect(within(rack).getByRole('img', { name: 'Foundry' })).toBeInTheDocument();
+    expect(within(rack).getByRole('img', { name: 'Empty' })).toBeInTheDocument();
   });
 
   /** On the Defence tab's head, beside the Aegis it measures (E5). */
