@@ -62,8 +62,16 @@ describe('the Fleet page', () => {
   it('heads the page with the flight bays and the Hangar room', () => {
     render(<FleetPage {...props()} />);
     expect(screen.getByText('Flight bays')).toBeInTheDocument();
-    expect(screen.getByText('1/3')).toBeInTheDocument();
-    expect(screen.getByText('54/80')).toBeInTheDocument();
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    expect(screen.getByText('54 / 80')).toBeInTheDocument();
+  });
+
+  /** The mock's "Havada · 5": how many are up, read before the list is. */
+  it('counts what is in the air on its tab', () => {
+    const { rerender } = render(<FleetPage {...props()} />);
+    expect(screen.getByRole('tab', { name: 'In flight · 1' })).toBeInTheDocument();
+    rerender(<FleetPage {...props({ flights: [] })} />);
+    expect(screen.getByRole('tab', { name: 'In flight' })).toBeInTheDocument();
   });
 
   it('lists each flight with its countdown, how far along it is and the clock it lands at', () => {
@@ -96,8 +104,10 @@ describe('the Fleet page', () => {
   it('offers a recall only where the server allows, saying how long the way home would take', () => {
     const { rerender } = render(<FleetPage {...props({ flights: [flight({ recallMission: { missionId: 'm-1' } })] })} />);
     const recall = screen.getByRole('button', { name: /recall/i });
-    // Four minutes out, so four minutes back.
-    expect(recall).toHaveTextContent('back in 4m 00s');
+    // Four minutes out, so four minutes back — said on the row, beside the button (the mock).
+    expect(recall).toHaveTextContent(/^Recall$/);
+    expect(recall).toHaveAccessibleName('Recall · If recalled, home in 4m 00s');
+    expect(recall.closest('li')).toHaveTextContent('If recalled, home in 4m 00s');
 
     rerender(<FleetPage {...props({ flights: [flight()] })} />);
     expect(screen.queryByRole('button', { name: /recall/i })).toBeNull();

@@ -127,7 +127,7 @@ export const fleetPage = {
   hangar: "Hangar",
   pace: "vitesse {{pct}} %",
   recall: "Rappeler",
-  recallHome: "retour {{time}}",
+  recallHome: "Rappelée, de retour dans {{time}}",
   recalling: "Demi-tour…",
   emptyAir: "Rien en vol. Touche un monde, un astéroïde ou un pirate dans la galaxie pour envoyer des vaisseaux.",
   shipsHome_one: "{{count}} vaisseau à quai",

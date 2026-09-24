@@ -62,12 +62,10 @@ const MARK: Record<FlightMark, IconId> = {
 function Room({ label, used, total }: { label: string; used: number; total: number }) {
   const atCap = used >= total;
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate text-micro uppercase tracking-wide text-v2-ink-3">{label}</span>
-        <span className={`font-v2-mono text-caption ${atCap ? 'text-v2-warn' : 'text-v2-ink'}`}>{`${full(used)}/${full(total)}`}</span>
-      </div>
-      <span aria-hidden="true" className="mt-1 block h-0.5 rounded-full bg-v2-line">
+    <div className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+      <span className="block truncate text-micro text-v2-ink-3">{label}</span>
+      <span className={`mt-0.5 block font-v2-mono text-body font-semibold ${atCap ? 'text-v2-warn' : 'text-v2-ink'}`}>{`${full(used)} / ${full(total)}`}</span>
+      <span aria-hidden="true" className="mt-1.5 block h-1 rounded-full bg-v2-line">
         <span
           className={`block h-full rounded-full ${atCap ? 'bg-v2-warn' : 'bg-v2-self'}`}
           style={{ width: `${String(total > 0 ? Math.min(100, (used / total) * 100) : 0)}%` }}
@@ -80,10 +78,10 @@ function Room({ label, used, total }: { label: string; used: number; total: numb
 /**
  * ONE FLIGHT, ONE ROW. Spec B11.
  *
- * What it is, the time left, a track filled to where it is on this leg, and one
- * line of detail: the craft, the pace when it is not full speed, the clock it lands
- * at. A flight the server says may still turn carries the recall at its right edge
- * with the price written under it — the way home, as long as the way out so far.
+ * What it is and the time left, one line of detail — the craft, the pace when it
+ * is not full speed, the clock it lands at — and a track filled to where it is on
+ * this leg. A flight the server says may still turn carries a last line, as the mock
+ * draws it: the price of turning in words ("home in 42m"), and the Recall beside it.
  */
 function FlightRow({
   item,
@@ -123,14 +121,15 @@ function FlightRow({
       <span className="grid min-w-0 flex-1 gap-1">
         <span className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{item.title}</span>
-          <span className={`shrink-0 font-v2-mono text-caption tabular-nums ${hostile ? 'text-v2-hostile' : 'text-v2-self'}`}>
+          <span className={`shrink-0 font-v2-mono text-caption font-semibold tabular-nums ${hostile ? 'text-v2-hostile' : 'text-v2-ink'}`}>
             {countdown(item.arrival - now)}
           </span>
         </span>
+        <span className="truncate text-micro text-v2-ink-3">{detail}</span>
         <span
           aria-hidden="true"
           data-progress={progress === null ? undefined : String(Math.round(progress * 100) / 100)}
-          className={`block h-0.5 rounded-full ${progress === null ? 'bg-v2-line/60' : 'bg-v2-line'}`}
+          className={`mt-0.5 block h-[3px] rounded-full ${progress === null ? 'bg-v2-line/60' : 'bg-v2-line'}`}
         >
           {progress !== null && (
             <span
@@ -139,45 +138,38 @@ function FlightRow({
             />
           )}
         </span>
-        <span className="truncate text-micro text-v2-ink-3">{detail}</span>
       </span>
     </>
   );
+  const price = home && !recalling ? t('fleetPage.recallHome', { time: countdown(home.backInMs) }) : null;
 
   return (
-    <li
-      data-tone={hostile ? 'hostile' : 'self'}
-      className="flex items-stretch overflow-hidden rounded-control border border-v2-line bg-v2-panel"
-    >
+    <li data-tone={hostile ? 'hostile' : 'self'} className="border-b border-v2-line/70 py-2.5 last:border-b-0">
       {item.focus ? (
         <button
           type="button"
           aria-label={item.title}
           onClick={() => { onFocus(item); }}
-          className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left"
+          className="flex w-full min-w-0 items-start gap-2.5 text-left"
         >
           {body}
         </button>
       ) : (
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2">{body}</div>
+        <div className="flex min-w-0 items-start gap-2.5">{body}</div>
       )}
       {turnable && (
-        <button
-          type="button"
-          aria-label={[
-            t('fleetPage.recall'),
-            recalling ? t('fleetPage.recalling') : home ? t('fleetPage.recallHome', { time: countdown(home.backInMs) }) : null,
-          ].filter(Boolean).join(' · ')}
-          disabled={recalling}
-          onClick={() => { onRecall(item); }}
-          className="flex w-24 shrink-0 flex-col items-center justify-center gap-0.5 border-l border-v2-line px-1.5 text-v2-warn disabled:opacity-50"
-        >
-          <Icon id="m-recover" className="size-3.5" />
-          <span className="text-micro font-semibold">{recalling ? t('fleetPage.recalling') : t('fleetPage.recall')}</span>
-          {home && !recalling && (
-            <span className="whitespace-nowrap font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.recallHome', { time: countdown(home.backInMs) })}</span>
-          )}
-        </button>
+        <div className="mt-1.5 flex items-center gap-2 pl-[2.625rem]">
+          <span className="min-w-0 flex-1 truncate text-micro text-v2-ink-3">{recalling ? t('fleetPage.recalling') : price}</span>
+          <button
+            type="button"
+            aria-label={[t('fleetPage.recall'), recalling ? t('fleetPage.recalling') : price].filter(Boolean).join(' · ')}
+            disabled={recalling}
+            onClick={() => { onRecall(item); }}
+            className="shrink-0 rounded-control border border-v2-line-hi bg-v2-raise px-2.5 py-1 text-micro font-semibold text-v2-ink disabled:opacity-50"
+          >
+            {t('fleetPage.recall')}
+          </button>
+        </div>
       )}
     </li>
   );
@@ -279,28 +271,28 @@ export function FleetPage({
 }: FleetPageProps) {
   const { t } = useTranslation();
   return (
-    <Sheet title={t('dock.fleet')} onClose={onClose}>
+    <Sheet title={t('dock.fleet')} onClose={onClose} detents={['full']}>
       <div className="flex flex-col gap-2.5 pt-1">
-        {(bays !== null || hangar !== null) && (
-          <div className="grid grid-cols-2 gap-2">
-            {bays && <Room label={t('fleetPage.bays')} used={bays.used} total={bays.total} />}
-            {hangar && <Room label={t('fleetPage.hangar')} used={hangar.used} total={hangar.total} />}
-          </div>
-        )}
         <Segmented
           label={t('fleetPage.views')}
           options={[
-            { id: 'air', label: t('fleetPage.air') },
+            { id: 'air', label: flights.length > 0 ? `${t('fleetPage.air')} · ${String(flights.length)}` : t('fleetPage.air') },
             { id: 'home', label: t('fleetPage.home') },
             { id: 'room', label: t('fleetPage.hangar') },
           ]}
           value={tab}
           onChange={onTab}
         />
+        {(bays !== null || hangar !== null) && (
+          <div className="grid grid-cols-2 gap-2">
+            {bays && <Room label={t('fleetPage.bays')} used={bays.used} total={bays.total} />}
+            {hangar && <Room label={t('fleetPage.hangar')} used={hangar.used} total={hangar.total} />}
+          </div>
+        )}
         {tab === 'air' && (flights.length === 0 ? (
           <p className="px-1 py-2 text-caption text-v2-ink-3">{t('fleetPage.emptyAir')}</p>
         ) : (
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col">
             {flights.map((item) => (
               <FlightRow
                 key={item.key}

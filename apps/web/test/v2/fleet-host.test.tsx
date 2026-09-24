@@ -80,8 +80,8 @@ describe('the wired Fleet page', () => {
   it('heads the page with the active world’s flight bays and Hangar', () => {
     host();
     expect(screen.getByRole('dialog', { name: 'Fleet' })).toBeInTheDocument();
-    expect(screen.getByText('1/4')).toBeInTheDocument();
-    expect(screen.getByText('54/80')).toBeInTheDocument();
+    expect(screen.getByText('1 / 4')).toBeInTheDocument();
+    expect(screen.getByText('54 / 80')).toBeInTheDocument();
   });
 
   it('lists the flights with the pace the server states', () => {
