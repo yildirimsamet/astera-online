@@ -4,19 +4,24 @@ import { Icon, type IconId } from '../icons.js';
 import { Sheet } from '../kit/Sheet.js';
 
 /** The chip at top right of the galaxy: the one control in that corner. */
+/**
+ * THE VIEW CHIP: the telescope, round, like the corner's other buttons. Owner,
+ * 2026-09-24: the icon says it — Home and chat carry no word either. The word stays
+ * as its accessible name; a teal ring says a layer is drawn.
+ */
 export function ViewChip({ layersOn, onOpen }: { layersOn: boolean; onOpen: () => void }) {
   const { t } = useTranslation();
   return (
     <button
       type="button"
       data-view-chip=""
+      aria-label={t('view.chip')}
       onClick={() => { haptic('tap'); onOpen(); }}
-      className={`pointer-events-auto flex h-8 items-center gap-1.5 rounded-full border bg-v2-deep/85 px-2.5 font-v2-ui text-caption ${
-        layersOn ? 'border-v2-self/50 text-v2-ink' : 'border-v2-line text-v2-ink-2'
+      className={`pointer-events-auto grid size-9 place-items-center rounded-full border bg-v2-panel/60 ${
+        layersOn ? 'border-v2-self/60 text-v2-self' : 'border-v2-line-hi text-v2-ink-2'
       }`}
     >
-      <Icon id="i-telescope" className={`size-4 ${layersOn ? 'text-v2-self' : ''}`} />
-      {t('view.chip')}
+      <Icon id="i-telescope" className="size-4" />
     </button>
   );
 }
@@ -24,9 +29,6 @@ export function ViewChip({ layersOn, onOpen }: { layersOn: boolean; onOpen: () =
 export interface ViewSheetProps {
   /** The galaxy's short code. */
   shard: string;
-  online?: number;
-  onlineToday?: number;
-  counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number };
   telescope: boolean;
   onToggleTelescope: () => void;
   /** Absent until the active world runs a Radar: no dead switch. */
@@ -91,9 +93,6 @@ function Layer({
  */
 export function ViewSheet({
   shard,
-  online,
-  onlineToday,
-  counts,
   telescope,
   onToggleTelescope,
   radar,
@@ -105,28 +104,6 @@ export function ViewSheet({
   return (
     <Sheet title={t('view.title')} eyebrow={shard} onClose={onClose}>
       <div className="flex flex-col gap-3">
-        <div className="rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2">
-          {/* The galaxy's code is the sheet's eyebrow; this box says who is in it and what is out there. */}
-          <div className="flex items-center gap-2 text-caption">
-            {online !== undefined && (
-              <span className="flex items-center gap-1.5 text-v2-ink-2">
-                <span aria-hidden="true" className="size-1.5 rounded-full bg-v2-self" />
-                <span>{t('galaxy.online', { count: online })}</span>
-                {onlineToday !== undefined && (
-                  <span className="text-v2-ink-3">{t('galaxy.onlineToday', { count: onlineToday })}</span>
-                )}
-              </span>
-            )}
-          </div>
-          <p data-testid="view-caption" className="mt-1 font-v2-mono text-micro text-v2-ink">
-            {t('galaxy.worlds', { count: counts.worlds })}
-            {counts.fleetsAway > 0 && <span className="text-v2-self">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
-            {counts.rocks > 0 && <span className="text-v2-crystal">{t('galaxy.rocks', { count: counts.rocks })}</span>}
-            {counts.pirates > 0 && <span className="text-v2-hostile">{t('galaxy.pirates', { count: counts.pirates })}</span>}
-            {counts.wrecks > 0 && <span className="text-v2-alloy">{t('galaxy.wrecks', { count: counts.wrecks })}</span>}
-          </p>
-        </div>
-
         <div>
           <p className="text-micro uppercase tracking-wide text-v2-ink-3">{t('view.layers')}</p>
           {/*

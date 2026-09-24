@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '../../src/i18n/index.js';
 import { ViewChip, ViewSheet, type ViewSheetProps } from '../../src/v2/hud/ViewSheet.js';
+import { GalaxyReadout } from '../../src/v2/hud/GalaxyCorners.js';
 
 /**
  * THE VIEW CHIP. The "every surface's new place" table (docs/ui-v2/gozlemevi.md):
@@ -13,9 +14,6 @@ import { ViewChip, ViewSheet, type ViewSheetProps } from '../../src/v2/hud/ViewS
 
 const props = (over: Partial<ViewSheetProps> = {}): ViewSheetProps => ({
   shard: 'EU-1',
-  online: 6,
-  onlineToday: 41,
-  counts: { worlds: 212, fleetsAway: 3, rocks: 9, pirates: 0, wrecks: 1 },
   telescope: true,
   onToggleTelescope: vi.fn(),
   onOpenEvents: vi.fn(),
@@ -24,33 +22,50 @@ const props = (over: Partial<ViewSheetProps> = {}): ViewSheetProps => ({
 });
 
 describe('the view chip', () => {
-  it('opens the view', async () => {
+  /** Owner, 2026-09-24: the telescope says it; the word beside it was the only word in the corner. */
+  it('opens the view, and says so with its icon alone', async () => {
     const onOpen = vi.fn();
     render(<ViewChip layersOn onOpen={onOpen} />);
-    await userEvent.click(screen.getByRole('button', { name: 'View' }));
+    const chip = screen.getByRole('button', { name: 'View' });
+    expect(chip.textContent).toBe('');
+    await userEvent.click(chip);
     expect(onOpen).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: 'View' })).toHaveAttribute('data-view-chip');
+    expect(chip).toHaveAttribute('data-view-chip');
   });
 });
 
-describe('the view sheet', () => {
-  it('names the galaxy by its code and says who is in it, now and today', () => {
-    render(<ViewSheet {...props()} />);
-    expect(screen.getByText('EU-1')).toBeInTheDocument();
+/**
+ * WHAT IS OUT THERE, AT A GLANCE (owner, 2026-09-24): who is in the galaxy and what it
+ * holds, back at the top right where the disc's caption was — not a sheet away.
+ */
+describe('the galaxy readout', () => {
+  const counts = { worlds: 212, fleetsAway: 3, rocks: 9, pirates: 0, wrecks: 1 };
+
+  it('says who is in it, now and today', () => {
+    render(<GalaxyReadout online={6} onlineToday={41} counts={counts} />);
     expect(screen.getByText('6 online')).toBeInTheDocument();
     expect(screen.getByText('41 in 24h')).toBeInTheDocument();
   });
 
   it('omits a figure an older server does not send', () => {
-    render(<ViewSheet {...props({ onlineToday: undefined })} />);
+    render(<GalaxyReadout online={6} counts={counts} />);
     expect(screen.queryByText(/24h/)).toBeNull();
   });
 
   it('counts what is out there, leaving out what is not', () => {
-    render(<ViewSheet {...props()} />);
+    render(<GalaxyReadout online={6} counts={counts} />);
     const caption = screen.getByTestId('view-caption');
     expect(caption).toHaveTextContent(/212 worlds/);
+    expect(caption).toHaveTextContent(/rock/i);
     expect(caption).not.toHaveTextContent(/pirate/i);
+  });
+});
+
+describe('the view sheet', () => {
+  it('names the galaxy by its code, and leaves the counts to the corner', () => {
+    render(<ViewSheet {...props()} />);
+    expect(screen.getByText('EU-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('view-caption')).toBeNull();
   });
 
   it('always offers the Telescope layer and reports its switch', async () => {
@@ -103,11 +118,11 @@ describe('the view sheet', () => {
     expect(onOpenEvents).toHaveBeenCalledTimes(1);
   });
 
-  it('speaks Turkish', async () => {
-    render(<ViewSheet {...props()} />);
+  it('speaks Turkish, and so does the readout', async () => {
+    render(<><ViewSheet {...props()} /><GalaxyReadout online={6} counts={{ worlds: 212, fleetsAway: 0, rocks: 0, pirates: 0, wrecks: 0 }} /></>);
     await act(async () => { await i18n.changeLanguage('tr'); });
-    expect(within(screen.getByRole('dialog')).getByText('6 çevrimiçi')).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: /Teleskop menzili/ })).toBeInTheDocument();
+    expect(screen.getByText('6 çevrimiçi')).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByRole('switch', { name: /Teleskop menzili/ })).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage('en'); });
   });
 });

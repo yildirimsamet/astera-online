@@ -204,9 +204,6 @@ function Views({ view }: { view: string }) {
     return (
       <ViewSheet
         shard="EU-1"
-        online={6}
-        onlineToday={41}
-        counts={{ worlds: 212, fleetsAway: 3, rocks: 9, pirates: 2, wrecks: 1 }}
         telescope
         onToggleTelescope={noop}
         radar={false}

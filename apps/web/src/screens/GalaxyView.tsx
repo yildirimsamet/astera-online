@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
-import { ChatChip, EventChips, HomeChip } from '../v2/hud/GalaxyCorners.js';
+import { ChatChip, EventChips, GalaxyReadout, HomeChip } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
@@ -1059,6 +1059,18 @@ export function GalaxyView({
   const chatButton = showGuidance && showChat
     ? <ChatChip unread={chatUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
+  /** The galaxy's readout: who is in it and what it holds (top right). */
+  const galaxyReadout = {
+    ...(season.data?.online === undefined ? {} : { online: season.data.online }),
+    ...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday }),
+    counts: {
+      worlds: planets.length,
+      fleetsAway: windowsOpen(planets),
+      rocks: asteroids.length,
+      pirates: visiblePirates,
+      wrecks: wrecks.length,
+    },
+  };
   /** The context slot draws at the foot while the season is live and no page is open. */
   const slotShown = showGuidance && Boolean(planet.data) && panel === null && season.data?.status === 'live';
 
@@ -1163,6 +1175,8 @@ export function GalaxyView({
           switches now, and the Academy reveals it with them for its Telescope exercise.
         */}
         <div className="pointer-events-none flex flex-col items-end gap-1.5">
+          {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
+          {showGuidance && <GalaxyReadout {...galaxyReadout} />}
           <div data-sensor-toggles className="pointer-events-none">
             <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
           </div>
@@ -1174,15 +1188,6 @@ export function GalaxyView({
       {viewOpen && (
         <ViewSheet
           shard={season.data?.shard ?? ''}
-          {...(season.data?.online === undefined ? {} : { online: season.data.online })}
-          {...(season.data?.onlineToday === undefined ? {} : { onlineToday: season.data.onlineToday })}
-          counts={{
-            worlds: planets.length,
-            fleetsAway: windowsOpen(planets),
-            rocks: asteroids.length,
-            pirates: visiblePirates,
-            wrecks: wrecks.length,
-          }}
           telescope={showTelescopeReach}
           onToggleTelescope={() => { setShowTelescopeReach((on) => !on); }}
           {...(hasRadar
