@@ -335,8 +335,6 @@ export const focus = {
     distance: "Mesafe",
     reach: "Varış süren",
     reachUnknown: "—",
-    known: "Bildiklerin",
-    knownOf: "{{total}} üzerinden {{have}}",
 
     headlineFleetAway: "Filo dışarıda",
     headlineFleetHome: "Filo evde",

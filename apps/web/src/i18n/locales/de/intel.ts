@@ -505,6 +505,27 @@ export const clarity = {
 
 /** What you know about another world, and how you know it. */
 export const dossier = {
+  /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
+  page: {
+    rival: "Rivale {{n}}",
+    range: "Distanz {{d}}",
+    flight: "{{time}} Flug",
+    unreachable: "Unerreichbar",
+    known: "Bekannt {{have}}/{{total}}",
+    lookNone: "Noch keine Sonde hat hineingesehen",
+    wing: "Dein Geschwader daheim",
+    power: "Stärke",
+    loot: "Beute",
+    lootTag: "Schätzung",
+    lootMeaning: "Was ein Sieg mitnehmen könnte, laut Sonde – der Anteil des Speichers ist schon abgezogen.",
+    lootDecisive: "Klarer Sieg",
+    lootPartial: "Teilsieg",
+    lootDeuterium: "davon Deuterium {{band}}",
+    lootHold: "Dein Laderaum {{cargo}}",
+    lootShort: "Dein Laderaum fasst {{cargo}}; das meiste bliebe zurück.",
+    colony: "Kolonie",
+    colonyRule: "Ein klarer Sieg nimmt {{decisive}} Loyalität, ein Teilsieg {{partial}}. Bei null wird die Kolonie mit Gebäuden und Vorrat neutral – wer zuerst landet, nimmt sie.",
+  },
   sourcePublic: 'Öffentlich',
   sourceTelescope: 'Teleskop',
   sourceProbe: '-Sonde',

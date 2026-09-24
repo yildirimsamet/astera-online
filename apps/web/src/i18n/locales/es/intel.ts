@@ -505,6 +505,27 @@ export const clarity = {
 
 /** What you know about another world, and how you know it. */
 export const dossier = {
+  /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
+  page: {
+    rival: "Rival {{n}}",
+    range: "Distancia {{d}}",
+    flight: "vuelo de {{time}}",
+    unreachable: "Fuera de alcance",
+    known: "Conocido {{have}}/{{total}}",
+    lookNone: "Ninguna sonda ha mirado dentro",
+    wing: "Tu ala en casa",
+    power: "Poder",
+    loot: "Botín",
+    lootTag: "estimación",
+    lootMeaning: "Lo que una victoria podría llevarse, según la sonda — la parte del Almacén ya está descontada.",
+    lootDecisive: "Victoria decisiva",
+    lootPartial: "Victoria parcial",
+    lootDeuterium: "de ello deuterio {{band}}",
+    lootHold: "Tu bodega {{cargo}}",
+    lootShort: "Tu bodega lleva {{cargo}}; la mayor parte se quedaría atrás.",
+    colony: "Colonia",
+    colonyRule: "Una victoria decisiva quita {{decisive}} de lealtad, una parcial {{partial}}. A cero, la colonia pasa a neutral con sus edificios y su reserva: la toma quien llegue primero.",
+  },
   sourcePublic: 'Público',
   sourceTelescope: 'Telescopio',
   sourceProbe: 'Sonda',

@@ -352,8 +352,6 @@ export const focus = {
     distance: "Distance",
     reach: "Ton temps d’arrivée",
     reachUnknown: "—",
-    known: "Ce que tu sais",
-    knownOf: "{{have}} sur {{total}}",
     headlineFleetAway: "Flotte absente",
     headlineFleetHome: "Flotte présente",
     headlineVeiled: "Sous Voile",

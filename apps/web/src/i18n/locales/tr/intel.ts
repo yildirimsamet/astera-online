@@ -451,6 +451,27 @@ export const clarity = {
 } as const;
 
 export const dossier = {
+  /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
+  page: {
+    rival: "Rakip {{n}}",
+    range: "Mesafe {{d}}",
+    flight: "uçuş {{time}}",
+    unreachable: "Ulaşılamaz",
+    known: "Bilinen {{have}}/{{total}}",
+    lookNone: "Buraya henüz sonda gitmedi",
+    wing: "Evdeki kanadın",
+    power: "Güç",
+    loot: "Ganimet",
+    lootTag: "tahmin",
+    lootMeaning: "Sondanın okuduğu, bir zaferin götürebileceği miktar — Depo payı zaten düşülmüş.",
+    lootDecisive: "Kesin zafer",
+    lootPartial: "Kısmi zafer",
+    lootDeuterium: "içinde döteryum {{band}}",
+    lootHold: "Kargon {{cargo}}",
+    lootShort: "Kargon {{cargo}}; ganimetin büyük kısmı geride kalır.",
+    colony: "Koloni",
+    colonyRule: "Kesin zafer sadakatinden {{decisive}}, kısmi zafer {{partial}} düşürür. Sıfırda koloni, binaları ve stokuyla nötr olur; ilk gelen alır.",
+  },
   sourcePublic: 'Herkese açık',
   sourceTelescope: 'Teleskop',
   sourceProbe: 'Sonda',

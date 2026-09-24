@@ -75,6 +75,7 @@ import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
+import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 
 /**
@@ -584,7 +585,6 @@ export function PlanetFocus({
   }
 
   const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
-  const reach = reachMinutes(planet.planet.position, target.position, planet.fleet, flightModifiers(planet));
   const away = target.fleet?.status === 'AWAY';
   const known = headline(read, target);
   const originRecovering = Boolean(
@@ -1008,19 +1008,13 @@ export function PlanetFocus({
         </p>
       )}
 
-      <div className="mb-3 grid grid-cols-3 gap-2">
-        <Figure label={t('focus.planet.distance')} value={String(Math.round(read.range))} />
-        <Figure
-          label={t('focus.planet.reach')}
-          value={reach === null ? t('focus.planet.reachUnknown') : duration(reach)}
-        />
-        <Figure
-          label={t('focus.planet.known')}
-          value={t('focus.planet.knownOf', {
-            have: read.facts.length,
-            total: read.facts.length + read.gaps.length,
-          })}
-        />
+      {/*
+        THE DOSSIER (E2): the mark, the range and the flight; the reading's source and age;
+        power against the wing at home with the counter cycle; the haul against the hold; on
+        a colony, the loyalty rule. The facts and gaps below are what it was built from.
+      */}
+      <div className="mb-3">
+        <TargetDossier target={target} planet={planet} intel={intel} reports={reports} rivalSlot={rivalSlot} now={now} />
       </div>
 
       {(rivalSlot !== null || rival) && (

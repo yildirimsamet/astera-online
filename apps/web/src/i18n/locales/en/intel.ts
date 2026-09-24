@@ -505,6 +505,27 @@ export const clarity = {
 
 /** What you know about another world, and how you know it. */
 export const dossier = {
+  /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
+  page: {
+    rival: "Rival {{n}}",
+    range: "Range {{d}}",
+    flight: "{{time}} flight",
+    unreachable: "Out of reach",
+    known: "Known {{have}}/{{total}}",
+    lookNone: "No probe has looked inside",
+    wing: "Your wing at home",
+    power: "Power",
+    loot: "Loot",
+    lootTag: "estimate",
+    lootMeaning: "What a win could carry off, as the probe read it — the Store's share is already off.",
+    lootDecisive: "Decisive win",
+    lootPartial: "Partial win",
+    lootDeuterium: "of it deuterium {{band}}",
+    lootHold: "Your hold {{cargo}}",
+    lootShort: "Your hold carries {{cargo}}; most of it would stay behind.",
+    colony: "Colony",
+    colonyRule: "A decisive win takes {{decisive}} of its loyalty, a partial one {{partial}}. At zero the colony secedes to neutral with its buildings and stock, for whoever lands first.",
+  },
   sourcePublic: 'Public',
   sourceTelescope: 'Telescope',
   sourceProbe: 'Probe',

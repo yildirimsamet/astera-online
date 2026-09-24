@@ -135,6 +135,15 @@ describe('what it says about the reading', () => {
     expect(container.textContent).toMatch(/not a chance of winning/i);
   });
 
+  /** The launch weighs the fleet being sent; the dossier (E2) weighs what stands home. */
+  it('names the wing as the surface weighing it does', () => {
+    const { rerender } = render(<ForceRuler yours={30_000} theirs={reading} />);
+    expect(screen.getByText('Sending')).toBeInTheDocument();
+    rerender(<ForceRuler yours={30_000} theirs={reading} yoursLabel="Your wing at home" />);
+    expect(screen.getByText('Your wing at home')).toBeInTheDocument();
+    expect(screen.queryByText('Sending')).toBeNull();
+  });
+
   it('keeps the rule one tap deep', () => {
     render(<ForceRuler yours={30_000} theirs={reading} lines={lines} escape={{ at: 10_000, verdict: null }} />);
     expect(screen.getByText(/Resource cost, not attack damage/)).toBeVisible();

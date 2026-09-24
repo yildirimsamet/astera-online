@@ -518,6 +518,27 @@ export const clarity = {
   unwatched: "non surveillée",
 } as const;
 export const dossier = {
+  /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
+  page: {
+    rival: "Rival {{n}}",
+    range: "Distance {{d}}",
+    flight: "vol de {{time}}",
+    unreachable: "Hors de portée",
+    known: "Connu {{have}}/{{total}}",
+    lookNone: "Aucune sonde n’a regardé dedans",
+    wing: "Ton escadre au monde",
+    power: "Puissance",
+    loot: "Butin",
+    lootTag: "estimation",
+    lootMeaning: "Ce qu’une victoire pourrait emporter, selon la sonde — la part du Magasin est déjà retirée.",
+    lootDecisive: "Victoire décisive",
+    lootPartial: "Victoire partielle",
+    lootDeuterium: "dont deutérium {{band}}",
+    lootHold: "Ta soute {{cargo}}",
+    lootShort: "Ta soute prend {{cargo}} ; l’essentiel resterait sur place.",
+    colony: "Colonie",
+    colonyRule: "Une victoire décisive retire {{decisive}} de loyauté, une partielle {{partial}}. À zéro, la colonie devient neutre avec ses bâtiments et son stock : le premier arrivé la prend.",
+  },
   sourcePublic: "Public",
   sourceTelescope: "Télescope",
   sourceProbe: "Sonde",

@@ -32,6 +32,8 @@ export interface ForceRulerProps {
   onProbe?: () => void;
   /** The matchup line (B6) rides under the ruler. */
   children?: ReactNode;
+  /** What the wing is: the fleet being sent (the default) or, in the dossier, what stands home. */
+  yoursLabel?: string;
 }
 
 /**
@@ -58,6 +60,7 @@ export function ForceRuler({
   escape = null,
   onProbe,
   children,
+  yoursLabel,
 }: ForceRulerProps) {
   const { t } = useTranslation();
   const [explained, setExplained] = useState(false);
@@ -121,7 +124,7 @@ export function ForceRuler({
       {/* ── the wing: counted, exact, no doubt to draw ── */}
       <div className="flex flex-col gap-1">
         <div className="flex items-baseline justify-between gap-2 text-caption">
-          <span className="text-v2-ink-2">{t('counter.compareYours')}</span>
+          <span className="text-v2-ink-2">{yoursLabel ?? t('counter.compareYours')}</span>
           <span className="font-v2-mono text-v2-self">{compact(yours)}</span>
         </div>
         <div className="relative h-1.5 rounded-full bg-v2-line">

@@ -365,8 +365,6 @@ export const focus = {
     distance: "Distance",
     reach: "Your reach",
     reachUnknown: "—",
-    known: "Known",
-    knownOf: "{{have}} of {{total}}",
 
     headlineFleetAway: "Fleet away",
     headlineFleetHome: "Fleet home",
