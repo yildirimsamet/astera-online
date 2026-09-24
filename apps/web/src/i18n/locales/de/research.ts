@@ -44,6 +44,8 @@ export const research = {
     "Schaltet die zerstörerischste Waffe der Galaxie, ihre defensive Antwort und zusätzliche Lagerkapazität frei.",
 
   act: "Forschung",
+  details: "Details",
+  cannotAfford: "Nicht genug Rohstoffe",
   complete: "recherchiert",
   /**
    * WHAT IS HAPPENING TO A PROJECT ALREADY BOUGHT. D183.

@@ -44,6 +44,8 @@ export const research = {
     "Unlocks the galaxy’s most destructive weapon, its defensive answer and additional stock capacity.",
 
   act: "Research",
+  details: "Details",
+  cannotAfford: "Not enough resources",
   complete: "researched",
   /**
    * WHAT IS HAPPENING TO A PROJECT ALREADY BOUGHT. D183.

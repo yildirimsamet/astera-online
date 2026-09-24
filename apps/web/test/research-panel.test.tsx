@@ -1000,3 +1000,37 @@ describe('the sheet portrait', () => {
     expect(sheet.querySelector('.item-portrait-index')).toBeNull();
   });
 });
+
+/**
+ * THE CONSTELLATION OVER THE LIST. Spec E8 · K9: "Sırada ne var?" at one glance — a
+ * map of every project, and under it the card of the one selected: what it becomes,
+ * what stands in front of it, what it costs and the research press. The list stays
+ * below as the detail, one row per project.
+ */
+describe('the research constellation', () => {
+  it('opens on a map of every project with a card under it, and the list keeps one row each', () => {
+    const view = show();
+    expect(view.container.querySelectorAll('[data-constellation] [data-star]')).toHaveLength(16);
+    const card = view.container.querySelector('[data-constellation-card]');
+    expect(card).not.toBeNull();
+    expect(card!.querySelector('[id^="row-"]')).toBeNull();
+  });
+
+  it('shows the tapped project in the card', () => {
+    const view = show();
+    fireEvent.click(view.container.querySelector('[data-star="SHIP_ARMOR"]')!);
+    const name = row(view, 'SHIP_ARMOR').querySelector('h3')?.textContent ?? '';
+    expect(view.container.querySelector('[data-constellation-card]')).toHaveTextContent(name);
+    expect(view.container.querySelector('[data-star="SHIP_ARMOR"]')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('researches from the card', () => {
+    mutate.mockClear();
+    const view = show({ research: allOpen() });
+    fireEvent.click(view.container.querySelector('[data-star="STARSHIP_ENGINEERING"]')!);
+    const card = view.container.querySelector<HTMLElement>('[data-constellation-card]')!;
+    fireEvent.click(within(card).getByRole('button', { name: /^research$/i }));
+    expect(mutate).toHaveBeenCalled();
+    expect(mutate.mock.calls[0]?.[0]).toBe('STARSHIP_ENGINEERING');
+  });
+});

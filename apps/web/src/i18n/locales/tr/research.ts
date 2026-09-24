@@ -36,6 +36,8 @@ export const research = {
     "Ölüm Yıldızı’nı, onu durduran Önleme Ağını ve ikinci silah kapasitesini açar.",
 
   act: "Araştır",
+  details: "Ayrıntılar",
+  cannotAfford: "Kaynak yetmiyor",
   complete: "araştırıldı",
   rowRunning: "Araştırılıyor",
   rowQueued: "Sırada",

@@ -8,6 +8,8 @@ import {
   type ResearchProjectId,
 } from '@astera/rules';
 import { useCompleteResearch, usePlanet } from '../api/queries.js';
+import { RESEARCH_GROUPS } from '../lib/constellation.js';
+import { ResearchConstellation, type StarState } from '../v2/hud/ResearchConstellation.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
@@ -15,7 +17,7 @@ import { clockTime, untilReady, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
 import { RESEARCH_ART } from '../ui/assets.js';
 import { researchGain, type Gain } from '../lib/gains.js';
-import { ActionButton, Price } from '../ui/Action.js';
+import { ActionButton, Price, TimeCost } from '../ui/Action.js';
 import { Band, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { useAccordion } from '../lib/accordion.js';
@@ -45,57 +47,8 @@ import { QueueStrip } from '../ui/QueueStrip.js';
  * Yard queues remain independent.
  */
 
-/**
- * FOUR GROUPS, AND NONE OF THEM HAS ONE ROW IN IT.
- *
- * The integration plan asked for five and put Cargo Holds in a "Logistics" band on
- * its own. A band with a single row under it is a heading, not a group: it costs a
- * full band of vertical space on a phone to separate one card from the three it
- * belongs with. What you make and what you carry are both industry.
- *
- * FRONTIER IS FIRST because it is the only group whose cards are FOUND rather than
- * bought, so it is the one a player has to read rather than scan.
- */
-const GROUPED = [
-  {
-    id: 'frontier',
-    label: 'research.frontierBand',
-    note: 'research.frontierNote',
-    projects: [
-      'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
-    ],
-  },
-  {
-    id: 'industry',
-    label: 'research.industryBand',
-    note: 'research.industryNote',
-    /** The two build queues sit side by side: what flies, then what stands. D198. */
-    projects: [
-      'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'AI_ROBOTS',
-      'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
-    ],
-  },
-  {
-    id: 'doctrine',
-    label: 'research.doctrineBand',
-    note: 'research.doctrineNote',
-    projects: [
-      'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR',
-      'SHIP_PROPULSION', 'EMPLACEMENT_DOCTRINE',
-    ],
-  },
-  {
-    id: 'strategic',
-    label: 'research.strategicBand',
-    note: 'research.strategicNote',
-    projects: ['INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'],
-  },
-] as const satisfies readonly {
-  id: string;
-  label: string;
-  note: string;
-  projects: readonly ResearchProjectId[];
-}[];
+/** The four groups, one statement shared with the constellation (`lib/constellation.ts`). */
+const GROUPED = RESEARCH_GROUPS;
 
 /**
  * THE THREE ROWS THAT BELONG TO THE WEAPON, AND ONE PLACE THAT SAYS SO.
@@ -149,6 +102,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const [focused, setFocused] = useState<ResearchProjectId | null>(null);
   /** Frontier leads because its cards are FOUND rather than bought — see `GROUPED`. */
   const bands = useAccordion('research', [GROUPED[0].id]);
+  /** The star the commander tapped; until then the card follows what is next. */
+  const [picked, setPicked] = useState<ResearchProjectId | null>(null);
 
   useEffect(() => {
     if (!focused) return;
@@ -480,7 +435,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     return undefined;
   };
 
-  const row = (id: ResearchProjectId) => {
+  /** Everything a project's row and the constellation's card both draw, derived once. */
+  const specFor = (id: ResearchProjectId) => {
     const state = planet.research.find((candidate) => candidate.id === id);
     if (!state) return null;
     const { name, tag, role, detail } = copy(id);
@@ -519,6 +475,13 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         ? { queued: t(onQueue === 'running' ? 'research.rowRunning' : 'research.rowQueued') }
         : {}),
     };
+    return { state, name, tag, role, level, maxLevel, gain, spec };
+  };
+
+  const row = (id: ResearchProjectId) => {
+    const derived = specFor(id);
+    if (!derived) return null;
+    const { state, name, tag, role, level, maxLevel, gain, spec } = derived;
 
     return (
       <div
@@ -564,9 +527,52 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     );
   };
 
+  /*
+    THE CONSTELLATION (E8 · K9): what is next, at one glance. The selection opens on the
+    project in the lane, else the first one a commander can start now, else the first.
+  */
+  const firstOpen = RESEARCH_GROUPS.flatMap((group) => [...group.projects])
+    .filter((id) => !strategicOnly(id))
+    .find((id) => {
+      const derived = specFor(id);
+      return derived !== null && !derived.spec.blocked && !derived.spec.completed && !derived.spec.queued;
+    });
+  const chosen: ResearchProjectId = picked ?? running?.projectId ?? firstOpen ?? 'ISOTOPE_SPECTROMETRY';
+  const chosenSpec = specFor(chosen);
+  const stars: StarState[] = RESEARCH_GROUPS.flatMap((group) => [...group.projects]).flatMap((id) => {
+    const derived = specFor(id);
+    if (!derived) return [];
+    return [{
+      id,
+      name: derived.name,
+      level: derived.level,
+      maxLevel: derived.maxLevel,
+      locked: derived.spec.blocked !== undefined && !derived.spec.completed,
+      running: researchQueue.some((order) => order.projectId === id),
+    }];
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-caption leading-snug text-faint">{t('research.premise')}</p>
+
+      <ResearchConstellation
+        stars={stars}
+        selected={chosen}
+        onSelect={setPicked}
+        dimStrategic={!FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED}
+      />
+      {chosenSpec && (
+        <ConstellationCard
+          spec={chosenSpec.spec}
+          art={RESEARCH_ART[chosen]}
+          takes={orderMinutes('RESEARCH', chosenSpec.state.cost, planet, 1, { research: chosen, level: chosenSpec.level + 1 })}
+          held={held}
+          pending={research.isPending}
+          onOpen={() => { setSheet(chosenSpec.spec); }}
+          onAct={() => { buy(chosen, chosenSpec.name); }}
+        />
+      )}
 
       <section className="plate plate-inset overflow-hidden" aria-label={t('research.queueTitle')}>
         <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
@@ -655,6 +661,86 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * THE CARD UNDER THE CONSTELLATION (E8): the selected project's name and rung, what
+ * the next rung buys, what stands in front of it — a door where it has one — its
+ * price and time, and the research press. The detail sheet is one tap away.
+ */
+function ConstellationCard({
+  spec,
+  art,
+  takes,
+  held,
+  pending,
+  onOpen,
+  onAct,
+}: {
+  spec: SheetSpec;
+  art: string | undefined;
+  takes: number | undefined;
+  held: { alloy: number; crystal: number; deuterium: number };
+  pending: boolean;
+  onOpen: () => void;
+  onAct: () => void;
+}) {
+  const { t } = useTranslation();
+  const short = spec.cost.alloy > held.alloy || spec.cost.crystal > held.crystal || spec.cost.deuterium > held.deuterium;
+  const refusal = spec.completed ?? spec.queued ?? spec.blocked?.reason ?? (short ? t('research.cannotAfford') : null);
+  return (
+    <section data-constellation-card className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui">
+      <div className="flex items-start gap-3">
+        {art && <img src={art} alt="" aria-hidden className="size-14 shrink-0 object-contain" />}
+        <div className="grid min-w-0 flex-1 gap-0.5">
+          <p className="flex items-baseline gap-2">
+            <span className="v2-name text-caption">{spec.name}</span>
+            <span className="font-v2-mono text-micro text-v2-ink-3">
+              {spec.maxLevel > 1 ? `${String(spec.level)} → ${String(Math.min(spec.maxLevel, spec.level + 1))}` : ''}
+            </span>
+          </p>
+          <p className="text-micro leading-snug text-v2-ink-2">{spec.role}</p>
+          <p className="font-v2-mono text-micro text-v2-ink-2">
+            <span className="text-v2-ink-3">{spec.gain.label} </span>
+            {spec.gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{spec.gain.next}</span>
+          </p>
+          {spec.blocked && !spec.completed && (
+            spec.blocked.onFix ? (
+              <button type="button" onClick={spec.blocked.onFix} className="text-left text-micro leading-snug text-v2-warn">
+                {spec.blocked.reason} →
+              </button>
+            ) : (
+              <p className="text-micro leading-snug text-v2-warn">{spec.blocked.reason}</p>
+            )
+          )}
+        </div>
+      </div>
+      {!spec.completed && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Price cost={spec.cost} held={held} layout="row" />
+          {takes === undefined ? null : <TimeCost minutes={takes} />}
+        </div>
+      )}
+      <div className="grid grid-cols-[auto_1fr] gap-2">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="min-h-10 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 text-caption font-semibold text-v2-ink"
+        >
+          {t('research.details')}
+        </button>
+        <button
+          type="button"
+          data-primary
+          disabled={refusal !== null || pending}
+          onClick={onAct}
+          className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+        >
+          {refusal ?? t('research.act')}
+        </button>
+      </div>
+    </section>
   );
 }
 

@@ -169,3 +169,9 @@ export const baseSwitch = {
   world: 'Bu dünya',
   research: 'Araştırma',
 } as const;
+
+/** E8 · K9: the research constellation. */
+export const researchMap = {
+  label: 'Araştırma haritası',
+  closed: '{{group}} · kapalı',
+} as const;

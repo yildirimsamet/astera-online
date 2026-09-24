@@ -34,6 +34,8 @@ export const research = {
   strategicNote:
     "Débloque l’Étoile de la Mort, le Réseau d’Interception qui peut l’arrêter et la capacité d’une deuxième arme.",
   act: "Rechercher",
+  details: "Détails",
+  cannotAfford: "Ressources insuffisantes",
   complete: "recherchée",
   rowRunning: "En cours",
   rowQueued: "En attente",

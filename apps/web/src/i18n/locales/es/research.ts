@@ -44,6 +44,8 @@ export const research = {
     "Desbloquea el arma más destructiva de la galaxia, su respuesta defensiva y capacidad de almacenamiento adicional.",
 
   act: "Investigación",
+  details: "Detalles",
+  cannotAfford: "Recursos insuficientes",
   complete: "investigado",
   /**
    * WHAT IS HAPPENING TO A PROJECT ALREADY BOUGHT. D183.
