@@ -77,7 +77,35 @@ Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıld
     ikinci satırda küçük, bantlar ince başlık, cetvel kartsız, figürler tek kart, basılı tut turkuaz ve "Basılı tut ·"
     önekli). Kalan fark bilinçli: cetvelin "ne temsil ettiği" satırı yüzeyde kalır (netlik; testi var).
 
+## Sahip geri bildirimi 2 (2026-09-24 akşam) — F6'dan ÖNCE, bu sırayla
+Sahip: *"Bunlar önemli. Gerekirse işini durdur bunları baştan planla."* F6 (İstihbarat) okumada durduruldu, kod yazılmadı.
+Sahibin sorusuna cevap (3. madde): İstihbarat ve Klan savaş odası F6'ydı (sırası gelmişti); **eşya sheet'leri, kapasite
+bölümleri, ÖY/önleyici kartları Üs'ün yüzeyleriydi ve F5 onlarsız kapatıldı — atlandı**; klan ekranının geri kalanı ve sohbet
+sheet'i şartnamenin faz listesinde yoktu (yalnız E9 savaş odası, K1 "sohbet zilde") — plan boşluğu, şimdi eklendi.
+Mock yok: eşya sheet'i, klan ekranının tamamı, sohbet, kapasite, ÖY kartları → mock dilinden türetilir (fırlatma sheet'i
+`image copy 5` orta, savaş odası `image copy 7` orta, Üs kartları `image copy 6` sol). Dört soru her yüzeyde uygulanır.
+
+**A · Galaksi ekranı (küçük, net):**
+- A1 (madde 1) Zil sayfası yalnız **Sinyaller · Kronik**; Sohbet sekmesi kalkar (K1'in bu kısmı sahip kararıyla geri alındı).
+  Sohbet kendi sayfasında açılır; okunmamış noktası yalnız sohbet düğmesinde.
+- A2 (madde 2) Sohbet düğmesi galakside **sağ alt**, dock'un hemen üstü (başparmak); bağlam kartı/toplama balonuyla çakışmaz.
+- A3 (madde 6) Görünüm sayfasındaki galaksi özeti (çevrimiçi, kaya, enkaz, korsan) galakside **sağ üstte**, kompakt ve
+  saydam; Görünüm çipi yalnız teleskop ikonu (yazısız; erişilebilir adı kalır).
+**B (madde 4)** Menü kartlarındaki "kendini X içinde öder" (`gains.repays`) kalkar.
+**C (madde 5)** Toplanan her yerde (galaksi balonu, Üs cüzdanı) havuz **kaynak başına** yazılır (ikon + miktar): arızada
+bir kaynak durur, depo doluyken kısmi toplama olur — tek sayı ("1,5b") hangi kaynağın kaldığını söylemez.
+**D · Eski görünümde kalan yüzeyler, mock diline göre baştan (madde 3):**
+- D1 Eşya detay sheet'leri: `ItemSheet` (bina/alet/uydu yükseltme) ve `BuildSheet` (gemi/top üretimi, miktar).
+- D2 Sekmelerdeki kapasite bölümleri (Hangar odası, yer savunması odası; `CapacityBar`).
+- D3 Ölüm Yıldızı kartı (`DeathStarForge`) ve önleyici bataryası kartı (`InterceptorBattery`).
+- D4 İstihbarat sheet'inin tamamı (E7 + K11).
+- D5 Klan sheet'inin tamamı (E9 savaş odası dahil, üyeler, yardım vb.).
+- D6 Sohbet sheet'i (A1 ile kendi sayfası).
+Sonra F7 (Sen yokken), F8, F9, F10 planlandığı gibi.
+
 ## Sıradaki iş
+**A1 → A2 → A3 → B → C, sonra D1…D6** (yukarıdaki "Sahip geri bildirimi 2"). F6'nın E7/E9'u D4/D5'e katıldı.
+
 **F6 · E7 İstihbarat (K11 yaş dili) + E9 Klan savaş odası + Komutan sayfası.** Şartname:
 `grep -n "^#### E7 ·\|^#### E9 ·\|^| K11\|Komutan sayfası" docs/ui-v2/gozlemevi.md`; mock `design-mocks/image copy 6.png` sağ
 (İstihbarat: gözlem defteri) ve `image copy 7.png` orta (Klan savaş odası). Kod: İstihbarat sayfası (`screens/Intel*`), telescope
