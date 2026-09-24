@@ -117,6 +117,17 @@ routes" (koloni arızası türleri listede yok — birleşimden önce de kırmı
 `design/gen.py`; yeniden üretmek için oradaki dosyalar okunur). **Sahip onay verene kadar D kodu yazılmaz.** Onaydan sonra
 sıra: D1 → D2 → D3 → D4 → D5 → D6, her biri TDD + görsel doğrulama.
 
+**Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
+- Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
+- Bina/alet resimleri seviyelere yayılır (bugün `tierOf`: 1–2 / 3–4 / 5+ — 5'ten sonra hiç değişmiyor). Öneri (sahibe
+  soruldu): tavanı olan merdivende 3 resim tavana eşit bölünür (`ceil(level×3/max)`: Hangar 10 → 1–3 / 4–6 / 7–10,
+  Teleskop/Radar 8 → 1–2 / 3–5 / 6–8), tavansızda sahibin örneği 1–8 / 9–14 / 15+; tek resimli (Döteryum Tesisi) sabit.
+- Yer odasında belirli bir topun resmi yok (ileride hangar gibi bir resim gelebilir).
+- Beyaz/gri ilerleme çubukları kafa karıştırıyor: site genelinde anlamlı renklere (senin rengin üç tonda: evde / dışarıda /
+  sırada; lejant aynı) — D işlerinde taranıp değiştirilecek (ör. sadakat `bg-v2-ink/50`, istihbarat aralık çubukları).
+- **Sheet'ler içerik kadar açılır**; içerik sığmazsa tam açılır ve kayar (v2 `Sheet`'e içerik boyu "fit" yüksekliği).
+  Sohbet gibi sayfa olanlar tam kalır.
+
 **F6 · E7 İstihbarat (K11 yaş dili) + E9 Klan savaş odası + Komutan sayfası.** Şartname:
 `grep -n "^#### E7 ·\|^#### E9 ·\|^| K11\|Komutan sayfası" docs/ui-v2/gozlemevi.md`; mock `design-mocks/image copy 6.png` sağ
 (İstihbarat: gözlem defteri) ve `image copy 7.png` orta (Klan savaş odası). Kod: İstihbarat sayfası (`screens/Intel*`), telescope
