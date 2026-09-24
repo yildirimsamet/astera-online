@@ -32,6 +32,12 @@ export interface DockProps {
    * order never moves, so a thumb that learned it is never wrong.
    */
   disabled?: readonly DockTab[];
+  /**
+   * A page is open over the galaxy (a tab's, the fleet, the bell, the timers). Owner,
+   * 2026-09-24: the dock is fully see-through over the galaxy and backs itself only
+   * then, so the tabs still read over a page's own content.
+   */
+  over?: boolean;
 }
 
 /**
@@ -43,13 +49,17 @@ export interface DockProps {
  * ring on Fleet filling toward your next own landing beside how many are up, the
  * unseen reports on Intel, what the clan needs on Clan.
  */
-export function Dock({ active, badges, onSelect, disabled = [] }: DockProps) {
+export function Dock({ active, badges, onSelect, disabled = [], over = false }: DockProps) {
   const { t } = useTranslation();
 
   return (
     <nav
       aria-label={t('dock.label')}
-      className="flex border-t border-v2-line/70 bg-gradient-to-t from-v2-deep/95 to-v2-deep/60 pb-[env(safe-area-inset-bottom)] font-v2-ui"
+      className={`flex pb-[env(safe-area-inset-bottom)] font-v2-ui ${
+        over
+          ? 'border-t border-v2-line/70 bg-gradient-to-t from-v2-deep/95 to-v2-deep/60'
+          : '[text-shadow:0_1px_3px_var(--color-v2-void)]'
+      }`}
     >
       {DOCK_TABS.map((tab) => {
         const label = t(LABEL[tab]);

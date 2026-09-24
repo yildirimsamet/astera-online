@@ -38,8 +38,8 @@ vi.mock('../../src/v2/shell/HudTop.js', () => ({
 }));
 
 vi.mock('../../src/v2/shell/HudDock.js', () => ({
-  HudDock: ({ active, onSelect }: { active: string | null; onSelect: (tab: string) => void }) => (
-    <nav aria-label={`dock ${active ?? 'none'}`}>
+  HudDock: ({ active, onSelect, over }: { active: string | null; onSelect: (tab: string) => void; over: boolean }) => (
+    <nav aria-label={`dock ${active ?? 'none'}`} {...(over ? { 'data-over': '' } : {})}>
       {['galaxy', 'base', 'fleet', 'intel', 'clan'].map((tab) => (
         <button key={tab} type="button" onClick={() => { onSelect(tab); }}>{`tab ${tab}`}</button>
       ))}
@@ -115,6 +115,28 @@ describe('the v2 shell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'tab galaxy' }));
     expect(screen.queryByRole('dialog', { name: 'fleet' })).toBeNull();
     expect(screen.getByText('home 0 worlds 0')).toBeInTheDocument();
+  });
+
+  /**
+   * THE DOCK IS SEE-THROUGH OVER THE GALAXY (owner, 2026-09-24): no backing at all while
+   * nothing is open, so the scene runs to the bottom edge; a page open over the galaxy —
+   * a tab's, the fleet, the bell — gets it back, so the tabs read over the page.
+   */
+  it('backs the dock only while a page is open over the galaxy', async () => {
+    shell();
+    expect(screen.getByRole('navigation')).not.toHaveAttribute('data-over');
+    await userEvent.click(screen.getByRole('button', { name: 'tab fleet' }));
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-over', '');
+    await userEvent.click(screen.getByRole('button', { name: 'tab galaxy' }));
+    expect(screen.getByRole('navigation')).not.toHaveAttribute('data-over');
+    await userEvent.click(screen.getByRole('button', { name: 'bell' }));
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-over', '');
+  });
+
+  it('backs the dock under a tab’s page', () => {
+    panel = 'planet';
+    shell();
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-over', '');
   });
 
   it('opens the bell on Signals and marks the feed read', async () => {

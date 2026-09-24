@@ -127,7 +127,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       <main className="relative flex-1">
         {galaxy({ homeRequest, worldsRequest, onPanel: route })}
         <div className="absolute inset-x-0 bottom-0 z-50">
-          <HudDock active={active} onSelect={onSelect} />
+          <HudDock active={active} onSelect={onSelect} over={active !== 'galaxy' || nowOpen} />
         </div>
       </main>
 

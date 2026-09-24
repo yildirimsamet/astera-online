@@ -14,6 +14,16 @@ import { Dock } from '../../src/v2/hud/Dock.js';
 const quiet: DockBadges = { base: false, fleet: { airborne: 0, progress: null }, intel: 0, clan: 0 };
 
 describe('the dock', () => {
+  /** Owner, 2026-09-24: fully transparent while closed; the gradient only under an open page. */
+  it('lets the galaxy through while no page is open, and backs itself when one is', () => {
+    const { rerender } = render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} />);
+    const nav = screen.getByRole('navigation');
+    expect(nav).not.toHaveClass('bg-gradient-to-t');
+    expect(nav).not.toHaveClass('border-t');
+    rerender(<Dock active="base" badges={quiet} onSelect={vi.fn()} over />);
+    expect(screen.getByRole('navigation')).toHaveClass('bg-gradient-to-t');
+  });
+
   it('names its five tabs in the one order', () => {
     render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} />);
     const nav = screen.getByRole('navigation', { name: 'Main' });
