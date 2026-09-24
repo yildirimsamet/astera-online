@@ -60,6 +60,12 @@ describe('the report scene', () => {
     expect(scene).toHaveTextContent('3 rounds');
   });
 
+  /** A walkover had no rounds; "0 rounds" reads as a bug, so the count is left out. */
+  it('counts no rounds where nobody fought', () => {
+    render(<ReportScene report={report({ rounds: [] })} word="Decisive victory" />);
+    expect(document.querySelector('[data-report-scene]')).not.toHaveTextContent(/0 rounds/);
+  });
+
   it('shows the haul from the reader’s side, and says when the hold filled', () => {
     render(<ReportScene report={report()} word="Partial victory" />);
     const loot = document.querySelector<HTMLElement>('[data-report-loot]')!;

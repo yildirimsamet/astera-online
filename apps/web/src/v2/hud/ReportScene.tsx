@@ -113,7 +113,12 @@ export function ReportScene({ report, word, colonyTarget = false, onAttackAgain 
             <h2 data-report-word className={`text-figure font-bold uppercase leading-tight tracking-tight ${tone}`}>{word}</h2>
           )}
           <p className="truncate text-micro text-v2-ink-3">
-            {time} · {t('reportScene.rounds', { count: report.rounds.length })} · {report.opponentName}
+            {[
+              time,
+              // A walkover had no rounds, and "0 rounds" reads as a fault rather than a fact.
+              ...(report.rounds.length > 0 ? [t('reportScene.rounds', { count: report.rounds.length })] : []),
+              report.opponentName,
+            ].join(' · ')}
           </p>
         </div>
       </div>
