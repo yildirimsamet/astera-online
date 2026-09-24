@@ -7,6 +7,8 @@ export interface SegmentedOption<T extends string> {
   dot?: boolean;
   /** What the dot means, read after the label. */
   dotLabel?: string;
+  /** The whole accessible name, where the caller already words it ("Clan — 2 unread"). */
+  name?: string;
 }
 
 export interface SegmentedProps<T extends string> {
@@ -60,7 +62,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, t
             role="tab"
             aria-selected={on}
             tabIndex={on ? 0 : -1}
-            aria-label={option.dot && option.dotLabel ? `${option.label} · ${option.dotLabel}` : option.label}
+            aria-label={option.name ?? (option.dot && option.dotLabel ? `${option.label} · ${option.dotLabel}` : option.label)}
             onClick={() => { onChange(option.id); }}
             onKeyDown={(event) => { onKeyDown(event, index); }}
             className={`relative flex items-center justify-center gap-1 truncate rounded-chip px-2 py-1.5 text-caption font-medium ${

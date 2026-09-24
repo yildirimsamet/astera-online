@@ -57,6 +57,12 @@ describe('the segmented switch', () => {
     expect(onChange.mock.calls.map(([id]) => id as string)).toEqual(['chat', 'signals']);
   });
 
+  /** A caller that already words the whole reading ("Clan — 2 unread") names the option itself. */
+  it('takes a whole accessible name for an option when given one', () => {
+    render(<Segmented label="Channels" options={[{ id: 'a', label: 'Clan', dot: true, name: 'Clan — 2 unread' }]} value="a" onChange={vi.fn()} />);
+    expect(screen.getByRole('tab', { name: 'Clan — 2 unread' })).toBeInTheDocument();
+  });
+
   /** A panel below it can name itself after the option that shows it. */
   it('gives each option an id when asked', () => {
     render(<Segmented label="Bell" options={options} value="signals" onChange={vi.fn()} tabId={(id) => `bell-${id}`} />);

@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
   type SyntheticEvent,
   type UIEvent,
 } from 'react';
@@ -27,7 +26,9 @@ import { commanderLabel } from '../lib/identity.js';
 import { haptic } from '../lib/haptics.js';
 import { useNow } from '../lib/time.js';
 import { ClanIcon, SendIcon } from '../ui/icons/index.js';
-import { Button, EmptyState, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { Segmented } from '../v2/kit/Segmented.js';
+import { EmptyState } from '../v2/kit/Surface.js';
 
 interface MessageRow {
   id: string;
@@ -80,15 +81,17 @@ export function ChatScreen({
   const tabs = [
     {
       id: 'general' as const,
-      label: <ChannelLabel tone="general" unread={generalUnread}>{t('chat.general')}</ChannelLabel>,
-      hint: generalUnread > 0
+      label: t('chat.general'),
+      dot: generalUnread > 0,
+      name: generalUnread > 0
         ? t('chat.channelUnread', { channel: t('chat.general'), count: generalUnread })
         : t('chat.general'),
     },
     {
       id: 'clan' as const,
-      label: <ChannelLabel tone="clan" unread={clanUnread}>{t('chat.clan')}</ChannelLabel>,
-      hint: clanUnread > 0
+      label: t('chat.clan'),
+      dot: clanUnread > 0,
+      name: clanUnread > 0
         ? t('chat.channelUnread', { channel: t('chat.clan'), count: clanUnread })
         : t('chat.clan'),
     },
@@ -96,13 +99,26 @@ export function ChatScreen({
 
   return (
     <div className="chat-type flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-line-soft bg-void px-3 py-2">
+      {/*
+        D6: the two rooms and, for the galaxy's room, its language — one row, the
+        language a small select at the end rather than a page-wide field.
+      */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-v2-line px-3 pb-2">
+        <div className="min-w-0 flex-1">
+          <Segmented
+            options={tabs}
+            value={channel}
+            onChange={setChannel}
+            label={t('chat.channelsLabel')}
+            tabId={(id) => `chat-tab-${id}`}
+          />
+        </div>
         {channel === 'general' ? (
-          <label className="mb-2 block">
+          <label className="shrink-0">
             <span className="sr-only">{t('chat.languageLabel')}</span>
             <select
               aria-label={t('chat.languageLabel')}
-              className="field min-h-9 w-full py-1"
+              className="h-8 max-w-[7.5rem] rounded-control border border-v2-line-hi bg-v2-deep px-2 text-micro text-v2-ink outline-none focus:border-v2-self"
               value={chatLanguage}
               onChange={(event) => {
                 const next = event.currentTarget.value;
@@ -115,16 +131,6 @@ export function ChatScreen({
             </select>
           </label>
         ) : null}
-        <Segmented
-          segments={tabs}
-          value={channel}
-          onSelect={setChannel}
-          label={t('chat.channelsLabel')}
-          role="tablist"
-          size="sm"
-          panelId={(id) => `chat-panel-${id}`}
-          tabId={(id) => `chat-tab-${id}`}
-        />
       </div>
 
       <div
@@ -196,28 +202,6 @@ export function ChatScreen({
         )}
       </div>
     </div>
-  );
-}
-
-function ChannelLabel({
-  children,
-  unread,
-  tone,
-}: {
-  children: ReactNode;
-  unread: number;
-  tone: 'general' | 'clan';
-}) {
-  return (
-    <span className="inline-flex items-center justify-center gap-1.5">
-      <span>{children}</span>
-      {unread > 0 ? (
-        <span
-          className={`size-2 rounded-full ${tone === 'general' ? 'bg-threat' : 'bg-opportunity'}`}
-          aria-hidden="true"
-        />
-      ) : null}
-    </span>
   );
 }
 
@@ -335,16 +319,17 @@ function ChannelPanel({
     onPost(content, () => { onDraft(''); });
   };
 
+  // Your own words in your colour; in the clan's room, in the allies' colour.
   const selfSurface = tone === 'general'
-    ? 'border-crystal/25 bg-crystal/8'
-    : 'border-opportunity/30 bg-opportunity/8';
-  const selfInk = tone === 'general' ? 'text-crystal' : 'text-opportunity';
+    ? 'border-v2-self/35 bg-v2-self/10'
+    : 'border-v2-ally/40 bg-v2-ally/10';
+  const selfInk = tone === 'general' ? 'text-v2-self' : 'text-v2-ally';
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div
         ref={history}
-        className="relative min-h-0 flex-1 overflow-y-auto px-2 pb-3"
+        className="relative min-h-0 flex-1 overflow-y-auto px-3 pb-3"
         role="log"
         aria-label={listLabel}
         aria-live="polite"
@@ -352,79 +337,71 @@ function ChannelPanel({
         onScroll={handleHistoryScroll}
       >
         {fetchingOlder ? (
-          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-faint" role="status">
+          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-micro text-v2-ink-3" role="status">
             {loadingOlder}
           </div>
         ) : null}
         {messages.length === 0 ? (
           <div className="py-6"><EmptyState title={empty} /></div>
         ) : (
-          <ol className="space-y-2 py-3">
+          <ol className="flex flex-col gap-2.5 py-3">
             {messages.map((message) => (
-              <li
-                key={message.id}
-                data-chat-message={message.id}
-                /*
-                  THE ADMIN IS RINGED IN GOLD — QUIETLY. Owner instruction, twice.
-
-                  A galaxy-wide room has no other way to say "this one is
-                  answerable for the game". The border repeats what the name
-                  already says, so the mark survives a wall of scrolling text and
-                  one glance finds the official word without reading a name.
-
-                  THE FIRST ATTEMPT WAS TOO LOUD and was reported as such: a 1px
-                  rule at full saturation still shouts beside the `border-line-soft`
-                  on every message around it. The weight was never the problem —
-                  the SHADE was. At 35% it is the same hairline every other message
-                  has, tinted, which is the house idiom here and the same mix
-                  `styles.css` uses for a plate. The name keeps full strength: it
-                  is small, it is the signal, and it is what a reader looks for.
-
-                  It wins over BOTH ordinary surfaces, self included: an admin's
-                  own message is still an admin's message.
-                */
-                className={`max-w-[88%] rounded-control border px-3 py-2 ${
-                  message.admin === true
-                    ? `${message.self ? 'ml-auto' : 'mr-auto'} border-alloy/35 bg-deep`
-                    : message.self ? `ml-auto ${selfSurface}` : 'mr-auto border-line-soft bg-deep'
-                }`}
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  {message.self ? (
-                    <strong data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
-                  ) : message.planetId !== undefined ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const planetId = message.planetId;
-                        if (planetId === undefined) return;
-                        haptic('tap');
-                        onFocusPlanet(planetId);
-                      }}
-                      data-chat-author
-                      className={`name truncate underline decoration-bone/35 underline-offset-2 ${
-                        message.admin === true ? 'text-alloy' : 'text-bone'
-                      }`}
-                    >
-                      {commanderLabel(message.username, message.clanTag)}
-                    </button>
-                  ) : (
-                    <span data-chat-author className={`name truncate ${message.admin === true ? 'text-alloy' : 'text-bone'}`}>{commanderLabel(message.username, message.clanTag)}</span>
-                  )}
-                  <time className="shrink-0 text-micro text-faint" dateTime={message.createdAt.toISOString()}>
-                    {chatRelativeTime(message.createdAt, now, t)}
-                  </time>
+              <li key={message.id} className={`flex items-start gap-2 ${message.self ? 'justify-end' : ''}`}>
+                {!message.self && (
+                  <span aria-hidden="true" className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line-hi bg-v2-raise font-v2-mono text-micro font-bold text-v2-ink-2">
+                    {initials(message.username)}
+                  </span>
+                )}
+                <div
+                  data-chat-message={message.id}
+                  /*
+                    THE ADMIN IS RINGED IN GOLD — QUIETLY. Owner instruction, twice: the
+                    same hairline every message has, tinted at 35%, and the name at full
+                    strength. It wins over both ordinary surfaces, self included.
+                  */
+                  className={`min-w-0 max-w-[84%] rounded-control border px-2.5 py-1.5 ${message.self ? 'rounded-tr-cell' : 'rounded-tl-cell'} ${
+                    message.admin === true
+                      ? 'border-v2-premium/35 bg-v2-deep'
+                      : message.self ? selfSurface : 'border-v2-line bg-v2-deep'
+                  }`}
+                >
+                  <div className="flex items-baseline gap-2">
+                    {message.self ? (
+                      <strong data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-v2-premium' : selfInk}`}>{commanderLabel(message.username, message.clanTag)}</strong>
+                    ) : message.planetId !== undefined ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const planetId = message.planetId;
+                          if (planetId === undefined) return;
+                          haptic('tap');
+                          onFocusPlanet(planetId);
+                        }}
+                        data-chat-author
+                        className={`min-w-0 truncate text-caption font-semibold underline decoration-v2-ink-3/50 underline-offset-2 ${
+                          message.admin === true ? 'text-v2-premium' : 'text-v2-ink'
+                        }`}
+                      >
+                        {commanderLabel(message.username, message.clanTag)}
+                      </button>
+                    ) : (
+                      <span data-chat-author className={`min-w-0 truncate text-caption font-semibold ${message.admin === true ? 'text-v2-premium' : 'text-v2-ink'}`}>{commanderLabel(message.username, message.clanTag)}</span>
+                    )}
+                    <time className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3" dateTime={message.createdAt.toISOString()}>
+                      {chatRelativeTime(message.createdAt, now, t)}
+                    </time>
+                  </div>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-caption leading-snug text-v2-ink-2">
+                    {message.content}
+                  </p>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap break-words text-body leading-relaxed text-dim">
-                  {message.content}
-                </p>
               </li>
             ))}
           </ol>
         )}
       </div>
 
-      <form onSubmit={submit} className="shrink-0 border-t border-line-soft bg-void/80 px-2 pb-3 pt-3">
+      <form onSubmit={submit} className="shrink-0 border-t border-v2-line px-3 pb-2 pt-2">
         <div className="flex items-center gap-2">
           <label className="min-w-0 flex-1">
             <span className="sr-only">{placeholder}</span>
@@ -435,23 +412,22 @@ function ChannelPanel({
               onChange={(event) => {
                 onDraft(Array.from(event.currentTarget.value).slice(0, maxChars).join(''));
               }}
-              className="field block min-h-11 resize-none py-3"
+              className="block h-10 w-full resize-none rounded-pill border border-v2-line-hi bg-v2-deep px-4 py-2.5 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self"
             />
           </label>
-          <Button
+          <button
             type="submit"
-            size="md"
-            variant="primary"
+            aria-label={t('chat.send')}
             disabled={!draft.trim() || posting}
-            icon={<SendIcon className="size-4" />}
-            className="flex"
+            onClick={() => { haptic('tap'); }}
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
           >
-            {t('chat.send')}
-          </Button>
+            <SendIcon className="size-4" />
+          </button>
         </div>
         <div className="mt-1 flex min-h-4 justify-between gap-2 text-micro">
-          <span className="text-threat-ink">{postError ? describeError(postError) : ''}</span>
-          <span className="ml-auto text-faint">
+          <span className="text-v2-warn">{postError ? describeError(postError) : ''}</span>
+          <span className="ml-auto text-v2-ink-3">
             {t('chat.remaining', { count: maxChars - Array.from(draft).length })}
           </span>
         </div>
@@ -459,3 +435,6 @@ function ChannelPanel({
     </div>
   );
 }
+
+/** Two letters for a commander's badge beside their words. */
+const initials = (name: string): string => Array.from(name.trim()).slice(0, 2).join('').toLocaleUpperCase();

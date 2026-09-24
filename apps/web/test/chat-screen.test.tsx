@@ -183,7 +183,7 @@ describe('galaxy chat surface', () => {
   it('underlines and routes only commanders whose location is known', async () => {
     const { onFocusPlanet } = show();
     const username = screen.getByRole('button', { name: 'İzci' });
-    expect(username).toHaveClass('name', 'underline');
+    expect(username).toHaveClass('underline');
     expect(screen.getByText('Gizli')).not.toHaveClass('underline');
     expect(screen.queryByRole('button', { name: 'Gizli' })).not.toBeInTheDocument();
     await userEvent.setup().click(username);
@@ -401,16 +401,17 @@ describe('the admin speaking in chat', () => {
     const view = golden();
     const row = view.container.querySelector('[data-chat-message="m-admin"]');
     expect(row, 'the admin message has no row').not.toBeNull();
-    expect(row!.className).toMatch(/\bborder-alloy\/35\b/);
+    // D6: the gold is the Gözlemevi's premium hue now; the quiet 35% ring is the rule.
+    expect(row!.className).toMatch(/\bborder-v2-premium\/35\b/);
     expect(row!.className, 'the border is at full strength again')
-      .not.toMatch(/\bborder-alloy(?![/\d])/);
-    expect(row!.querySelector('[data-chat-author]')!.className).toContain('text-alloy');
+      .not.toMatch(/\bborder-v2-premium(?![/\d])/);
+    expect(row!.querySelector('[data-chat-author]')!.className).toContain('text-v2-premium');
   });
 
   it('leaves an ordinary commander untouched', () => {
     const view = golden();
     const row = view.container.querySelector('[data-chat-message="m-player"]');
-    expect(row!.className).not.toContain('border-alloy');
-    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-alloy');
+    expect(row!.className).not.toContain('border-v2-premium');
+    expect(row!.querySelector('[data-chat-author]')!.className).not.toContain('text-v2-premium');
   });
 });
