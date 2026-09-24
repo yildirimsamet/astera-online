@@ -216,3 +216,21 @@ describe('bounded and historical report information', () => {
     expect(within(first).getByText(i18n.t('reports.calculation.yourShot'))).toBeVisible();
   });
 });
+
+/** S4: the balance's fuel term arrives with the report; a server a deploy behind sends none. */
+describe('the fuel a report carries', () => {
+  const parse = (over: Record<string, unknown>) => reportsSchema.parse({ rivals: [], reports: [{
+    id: 'fuel', missionId: 'fuel-mission', at: '2026-09-15T01:23:00Z',
+    grade: 'PARTIAL', attacking: true, opponentName: 'Example', opponentPlanet: 'Example-91',
+    opponentPlanetId: 'target', neutral: false, yourPlanet: 'Home-237',
+    yourFleet: wing, yourLosses: {}, theirFleet: {}, theirLosses: casualties, rounds,
+    lootAlloy: 0, lootCrystal: 0, lootDeuterium: 0, dominion: 0,
+    ...over,
+  }] }).reports[0] as BattleReport;
+
+  it('reads what the launch paid, and nothing where the server said nothing', () => {
+    expect(parse({ fuelPaid: 320 }).fuelPaid).toBe(320);
+    expect(parse({ fuelPaid: null }).fuelPaid).toBeNull();
+    expect(parse({}).fuelPaid ?? null).toBeNull();
+  });
+});

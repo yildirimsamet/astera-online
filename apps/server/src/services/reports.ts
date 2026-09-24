@@ -95,6 +95,16 @@ export interface BattleReportView {
   /** The pirate raid this settles, when there was no world on the other side. D150. */
   pirateRaidId: string | null;
   /**
+   * THE DEUTERIUM THE READER'S OWN LAUNCH PAID. S4 (docs/ui-v2/gozlemevi.md).
+   *
+   * The balance line is loot, fuel and loss, and fuel was the one term the report did not
+   * carry. Read off what was stored at launch — `missions.fuel_paid`, or the reader's own
+   * waves' `fuel_paid` in a joint war — never re-derived at today's rates. Null for the
+   * defender, who paid nothing; for a pirate raid, whose launch stores no fuel; and where
+   * the launch predates the column, whose 0 means "unrecorded", never "free".
+   */
+  fuelPaid: number | null;
+  /**
    * WHAT WAS ON THE OTHER SIDE WHEN IT WAS NOT A COMMANDER. D150.
    *
    * Structured rather than a sentence, because the sentence belongs to the client's
@@ -543,15 +553,13 @@ async function readBattleReportsIn(
    * the mission's origin, which is why the launch rows are read here.
    */
   const launchIds = [...missionIds, ...impacts.map((row) => row.missionId)];
-  const originByMission = launchIds.length === 0
-      ? new Map<string, string>()
-      : new Map(
-        (await tx
-          .select({ id: missions.id, originPlanetId: missions.originPlanetId })
-          .from(missions)
-          .where(inArray(missions.id, launchIds)))
-          .map((row) => [row.id, row.originPlanetId]),
-      );
+  const launchRows = launchIds.length === 0 ? [] : await tx
+    .select({ id: missions.id, originPlanetId: missions.originPlanetId, fuelPaid: missions.fuelPaid })
+    .from(missions)
+    .where(inArray(missions.id, launchIds));
+  const originByMission = new Map(launchRows.map((row) => [row.id, row.originPlanetId]));
+  /** S4: the fuel each launch paid, as stored at launch (0 = before the column existed). */
+  const fuelByMission = new Map(launchRows.map((row) => [row.id, row.fuelPaid]));
   const returnDestinations = detailOperationIds.length === 0 ? [] : await tx
     .select({ contributionId: clanWarMissions.contributionId, planetId: missions.targetPlanetId })
     .from(clanWarMissions)
@@ -698,11 +706,21 @@ async function readBattleReportsIn(
     const firstRound = rounds[0];
     const lastRound = rounds.at(-1);
 
+    /* S4: what the reader's own launch paid, if it was the reader's launch and was recorded. */
+    const paid = !attacking || raid
+      ? 0
+      : operation
+        ? jointWaves
+          .filter((wave) => wave.operationId === operation.id && wave.playerId === playerId)
+          .reduce((sum, wave) => sum + wave.fuelPaid, 0)
+        : fuelByMission.get(row.missionId ?? '') ?? 0;
+
     return {
       kind: 'BATTLE',
       id: row.id,
       missionId: row.missionId,
       pirateRaidId: row.pirateRaidId,
+      fuelPaid: paid > 0 ? paid : null,
       /*
         THE CAPTURE IS WRITTEN AFTER THE REPORT AND READ WITH IT.
 

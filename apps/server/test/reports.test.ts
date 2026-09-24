@@ -102,6 +102,8 @@ interface ReportView {
   shieldBefore: number | null;
   shieldAfter: number | null;
   cargoLimited: boolean;
+  /** S4: the deuterium the reader's own launch paid; null for the defender and where unrecorded. */
+  fuelPaid: number | null;
   defenceSalvage: Record<string, number>;
   disruptedMinutes: number;
   wreckValue: number;
@@ -180,6 +182,29 @@ describe('battle reports', () => {
     expect(report!.rounds[0]!.attackerDamage).toBeGreaterThan(0);
     // The whole point: you learn what they were defending with.
     expect(fleetCount(report!.theirLosses)).toBeGreaterThan(0);
+  });
+
+  /**
+   * S4 (docs/ui-v2/gozlemevi.md): the balance line is loot, fuel and loss, and the fuel was
+   * the one term the report did not carry. `missions.fuel_paid` is written at launch; the
+   * attacker reads it, the defender paid nothing and is told nothing.
+   */
+  it('tells the attacker the fuel their launch paid, and the defender nothing', async () => {
+    const missionId = await raid();
+    const [mission] = await f.db.select({ fuelPaid: missions.fuelPaid }).from(missions).where(eq(missions.id, missionId));
+    expect(mission!.fuelPaid).toBeGreaterThan(0);
+    const [attacker] = await reportsFor(0);
+    const [defender] = await reportsFor(1);
+    expect(attacker!.fuelPaid).toBe(mission!.fuelPaid);
+    expect(defender!.fuelPaid).toBeNull();
+  });
+
+  /** A launch older than the column carries 0, which means "unrecorded", never "free". */
+  it('says nothing about fuel a launch never recorded', async () => {
+    const missionId = await raid();
+    await f.db.update(missions).set({ fuelPaid: 0 }).where(eq(missions.id, missionId));
+    const [attacker] = await reportsFor(0);
+    expect(attacker!.fuelPaid).toBeNull();
   });
 
   /** Both sides were there. Both get the same facts, from their own side. */

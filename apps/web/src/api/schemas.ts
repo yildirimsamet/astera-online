@@ -2176,6 +2176,13 @@ const ordinaryBattleReport = z.object({
        */
       pirateRaidId: z.string().nullish(),
       /**
+       * THE DEUTERIUM THE READER'S OWN LAUNCH PAID. S4.
+       *
+       * The balance's fuel term, as stored at launch. Null for the defender, for a pirate
+       * raid, and for a launch older than the record; absent from a server a deploy behind.
+       */
+      fuelPaid: z.number().nonnegative().nullish(),
+      /**
        * What was on the other side, when it was not a commander. IDENTIFIED sight.
        *
        * `damageMult` is the fight's only combat modifier and `capturedHull` is its

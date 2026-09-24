@@ -691,6 +691,13 @@ describe('joint report visibility', () => {
     if (member.reports[0]?.kind !== 'BATTLE' || defender.reports[0]?.kind !== 'BATTLE') return;
     expect(member.reports[0].yourFleet.DART).toBe(20);
     expect(member.reports[0].theirFleet).toEqual({});
+    // S4: a participant's balance carries what their own waves paid up front; the defender's none.
+    const paid = (await f.db.select({ fuelPaid: clanWarContributions.fuelPaid }).from(clanWarContributions)
+      .where(eq(clanWarContributions.playerId, f.playerIds[1]!)))
+      .reduce((sum, wave) => sum + wave.fuelPaid, 0);
+    expect(paid).toBeGreaterThan(0);
+    expect(member.reports[0].fuelPaid).toBe(paid);
+    expect(defender.reports[0].fuelPaid).toBeNull();
     expect(defender.reports[0].theirFleet.DART).toBe(50);
     expect(member.reports[0].jointWar?.participants).toHaveLength(2);
     expect(member.reports[0].jointWar?.participants.find((result) => result.playerId === f.playerIds[1])
