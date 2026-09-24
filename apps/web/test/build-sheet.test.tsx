@@ -279,21 +279,25 @@ describe('the two build queues', () => {
     }, 'grow');
 
     /*
-      THE LIST BECAME A TIMELINE. Owner instruction: a segment forty pixels wide
-      carries the RENDER rather than the name, so what is asserted is the shape —
-      one segment per order, the lane's ending, and the name surviving as the
-      accessible label a screen reader hears.
+      THE LANES ARE RINGS (B12): one ring per order, filling as the head builds, the
+      name surviving as the accessible label a screen reader hears.
     */
     const queues = screen.getByRole('region', { name: 'Build queues' });
     expect(within(queues).getByText('Construction')).toBeInTheDocument();
     expect(within(queues).getByText('Yard')).toBeInTheDocument();
-    const segments = queues.querySelectorAll('[data-segment]');
-    expect(segments).toHaveLength(2);
-    expect(segments[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
-    expect(segments[1]?.getAttribute('aria-label') ?? '').toMatch(/Dart/);
+    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(2);
+    const lanes = within(queues).getAllByRole('button');
+    expect(lanes[0]?.getAttribute('aria-label') ?? '').toMatch(/Command Core/);
+    expect(lanes[1]?.getAttribute('aria-label') ?? '').toMatch(/Dart/);
     expect(within(queues).getByText('×2')).toBeInTheDocument();
-    // Both lanes now say when their work ends, which no screen used to carry.
-    expect(queues.querySelectorAll('[data-lane-ends]')).toHaveLength(2);
+
+    /*
+      A LANE IS A GLANCE; THE SHEET IS WHERE WORK IS UNDONE (B12). The tap opens the queue
+      sheet, and both lanes say there when their work ends, which no screen used to carry.
+    */
+    await userEvent.click(lanes[0]!);
+    const sheet = await screen.findByRole('dialog', { name: 'Build queues' });
+    expect(sheet.querySelectorAll('[data-lane-ends]')).toHaveLength(2);
 
     /*
       THE PRICE MOVED FROM A TOOLTIP TO A SHEET. Owner report.
@@ -305,7 +309,7 @@ describe('the two build queues', () => {
       sheet's own grammar; what this asserts is the wiring: one press asks, the
       confirmation fires, and the right order id reaches the mutation.
     */
-    const [cancel] = within(queues).getAllByRole('button', { name: /^Cancel / });
+    const [cancel] = within(sheet).getAllByRole('button', { name: /^Cancel / });
     expect(cancel).not.toHaveAttribute('title');
     await userEvent.click(cancel!);
     expect(cancelOrder, 'the first press cancelled without asking').not.toHaveBeenCalled();
@@ -316,7 +320,7 @@ describe('the two build queues', () => {
     expectMutationCallbacks(cancelOrder.mock.calls[0]?.[1]);
   });
 
-  it('does not offer a fake cancellation before the placement response supplies an id', () => {
+  it('does not offer a fake cancellation before the placement response supplies an id', async () => {
     cancelOrder.mockClear();
     show({
       queues: {
@@ -340,9 +344,11 @@ describe('the two build queues', () => {
       send a guaranteed 404 is worse than no control.
     */
     const queues = screen.getByRole('region', { name: 'Build queues' });
-    expect(queues.querySelectorAll('[data-segment]')).toHaveLength(1);
-    expect(queues.querySelector('[data-cancel]')).toBeNull();
-    expect(queues.querySelector('[data-lane-ends]')).toBeNull();
+    expect(queues.querySelectorAll('[data-ring]')).toHaveLength(1);
+    await userEvent.click(within(queues).getAllByRole('button')[0]!);
+    const sheet = await screen.findByRole('dialog', { name: 'Build queues' });
+    expect(within(sheet).queryByRole('button', { name: /^Cancel / })).toBeNull();
+    expect(sheet.querySelector('[data-lane-ends]')).toBeNull();
     expect(cancelOrder).not.toHaveBeenCalled();
   });
 

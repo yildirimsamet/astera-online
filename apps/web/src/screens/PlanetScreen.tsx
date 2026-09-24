@@ -44,7 +44,6 @@ import {
   usePlanet,
   useBuild,
   useBuildInterceptor,
-  useCancelBuildOrder,
   useInstallSatellite,
   useRaiseInstrument,
   useUpgrade,
@@ -112,7 +111,6 @@ import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { PlanetHero } from '../ui/PlanetHero.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
-import { QueueStrip } from '../ui/QueueStrip.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
 import { ClassChip, CounterCycle, CounterLine } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
@@ -123,6 +121,7 @@ import { Sheet } from '../ui/kit/index.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Segmented } from '../ui/kit/index.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
+import { BaseQueues } from '../v2/shell/BaseQueues.js';
 
 /**
  * MY PLANET.
@@ -459,7 +458,7 @@ export function PlanetScreen({
         </div>}
 
         <div className="flex flex-col gap-2 px-2">
-          <BuildQueues planet={data} />
+          <BaseQueues planet={data} />
           <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
         </div>
 
@@ -785,95 +784,6 @@ function FaultRepairs({
   );
 }
 
-function BuildQueues({ planet }: { planet: PlanetView }) {
-  const { t } = useTranslation();
-  const now = useNow(1000);
-  const cancel = useCancelBuildOrder();
-  const say = useToast();
-  const queues = planet.queues ?? { CONSTRUCTION: [], YARD: [] };
-  const working = queues.CONSTRUCTION.length + queues.YARD.length;
-
-  /**
-   * NOTHING BUILDING IS ONE LINE, NOT TWO ROWS OF EMPTY SOCKETS. Owner report:
-   * *"Üretim sıraları sectionda üretim yoksa bile full section açık bom bom
-   * duruyor."*
-   *
-   * `interface.md` I6b says a rationed thing draws its empty slots, and that is
-   * right while ONE queue is running — three sockets with one filled is how a
-   * commander reads "two more will fit". It is not right when the whole section is
-   * empty: six empty sockets under two headings say only that nothing is happening,
-   * and they say it in about a third of a 350-wide screen.
-   *
-   * The capacity stays on the header, so the rule the sockets were teaching is
-   * still on screen when there is nothing to draw them around.
-   */
-  if (working === 0) {
-    return (
-      <section
-        data-queues-idle
-        className="plate plate-inset flex items-baseline gap-2 px-3 py-2"
-        aria-label={t('planet.queue.title')}
-      >
-        <h2 className="legend text-bone">{t('planet.queue.title')}</h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-        <span className="text-caption text-faint">{t('planet.queue.idle')}</span>
-        <span className="num text-micro text-faint">
-          {t('planet.queue.capacity', { count: BUILD.queueDepth })}
-        </span>
-      </section>
-    );
-  }
-
-  return (
-    <section className="plate plate-inset overflow-hidden" aria-label={t('planet.queue.title')}>
-      <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
-        <h2 className="legend text-bone">
-          {t('planet.queue.title')}
-        </h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-        <span className="num text-micro text-faint">
-          {t('planet.queue.capacity', { count: BUILD.queueDepth })}
-        </span>
-      </header>
-      <QueueStrip
-        label={t('planet.queue.construction')}
-        orders={queues.CONSTRUCTION}
-        now={now}
-        cancelling={cancel.isPending ? cancel.variables : undefined}
-        onCancel={(order) => {
-          cancel.mutate(order.id, {
-            onSuccess: (result) => {
-              say(t('planet.queue.cancelled', {
-                alloy: full(result.refund.alloy),
-                crystal: full(result.refund.crystal),
-                deuterium: full(result.refund.deuterium),
-              }));
-            },
-            onError: (error) => { say(describe(error), 'error'); },
-          });
-        }}
-      />
-      <QueueStrip
-        label={t('planet.queue.yard')}
-        orders={queues.YARD}
-        now={now}
-        cancelling={cancel.isPending ? cancel.variables : undefined}
-        onCancel={(order) => {
-          cancel.mutate(order.id, {
-            onSuccess: (result) => {
-              say(t('planet.queue.cancelled', {
-                alloy: full(result.refund.alloy),
-                crystal: full(result.refund.crystal),
-                deuterium: full(result.refund.deuterium),
-              }));
-            },
-            onError: (error) => { say(describe(error), 'error'); },
-          });
-        }}
-      />
-    </section>
-  );
-}
 
 function DeathStarForge({
   planet,

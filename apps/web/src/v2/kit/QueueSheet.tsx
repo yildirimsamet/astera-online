@@ -101,7 +101,7 @@ function Lane({
       <div className="flex items-baseline justify-between gap-2 border-b border-v2-line pb-1">
         <p id={labelId} className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
         {ends && (
-          <span className="font-v2-mono text-micro text-v2-ink-3">
+          <span data-lane-ends className="font-v2-mono text-micro text-v2-ink-3">
             {t('planet.queue.ends', { time: clockTime(ends) })}
           </span>
         )}
