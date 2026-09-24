@@ -200,6 +200,16 @@ export const surface = {
  * and the day one of them is reworded the other must not move with it.
  */
 export const menu = {
+  /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
+  profile: {
+    label: 'Your commander',
+    noClan: 'No clan',
+    seasonDay: 'Season day {{day}}',
+    rank: 'Rank',
+    worlds: 'Worlds',
+    shield: 'Shield',
+    shieldNone: 'None',
+  },
   eyebrow: 'Commander',
   /*
     THE GROUP NAMES. Four words doing the work nine identical rows could not: a

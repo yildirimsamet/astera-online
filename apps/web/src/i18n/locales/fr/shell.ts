@@ -153,6 +153,16 @@ export const surface = {
  * ouvrait cette vue ; modifier l’un ne doit pas faire dériver l’autre.
  */
 export const menu = {
+  /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
+  profile: {
+    label: 'Ton commandant',
+    noClan: 'Sans clan',
+    seasonDay: 'Jour {{day}} de la saison',
+    rank: 'Rang',
+    worlds: 'Mondes',
+    shield: 'Bouclier',
+    shieldNone: 'Aucun',
+  },
   eyebrow: "Commandant",
   seasonHeading: "Cette saison",
   asteraHeading: "Équipe Astera",

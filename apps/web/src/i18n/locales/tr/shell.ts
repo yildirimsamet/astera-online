@@ -155,6 +155,16 @@ export const surface = {
  * yazıldığında diğeri onunla birlikte kaymamalı.
  */
 export const menu = {
+  /* The card the Commander page opens on: who, where, and how you stand (owner, 2026-09-24). */
+  profile: {
+    label: 'Komutanın',
+    noClan: 'Klansız',
+    seasonDay: 'Sezon günü {{day}}',
+    rank: 'Sıra',
+    worlds: 'Dünyalar',
+    shield: 'Kalkan',
+    shieldNone: 'Yok',
+  },
   eyebrow: 'Komutan',
   seasonHeading: 'Bu sezon',
   asteraHeading: 'Astera ekibi',

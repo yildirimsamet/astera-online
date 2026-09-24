@@ -56,6 +56,12 @@ describe('the top bar', () => {
     expect(all.onBell).toHaveBeenCalledTimes(1);
   });
 
+  /** The mock's avatar: two letters in a square, not one in a circle (owner, 2026-09-24). */
+  it('wears the commander’s initials', () => {
+    render(<TopBar {...props({ commander: 'Kestrel Sable' })} />);
+    expect(within(screen.getByRole('button', { name: /^Commander Kestrel Sable/ })).getByText('KS')).toBeInTheDocument();
+  });
+
   it('draws the world mark only once there is a second world', async () => {
     const { rerender } = render(<TopBar {...props()} />);
     expect(screen.queryByRole('button', { name: /CAPITAL|COLONY/ })).toBeNull();

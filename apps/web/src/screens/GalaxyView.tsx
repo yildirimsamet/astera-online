@@ -5,6 +5,7 @@ import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, HomeChip } from '../v2/hud/GalaxyCorners.js';
+import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
@@ -1627,6 +1628,10 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
+          {/* The page the avatar opens starts on the commander (owner, 2026-09-24). */}
+          <div className="mb-4">
+            <CommanderHost name={commander} />
+          </div>
           <MenuPanel
             galaxy={season.data?.shardName ?? null}
             shard={season.data?.shard ?? null}

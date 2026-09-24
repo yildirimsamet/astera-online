@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
 import { Icon } from '../icons.js';
 import { ResourceMeter } from '../kit/ResourceMeter.js';
+import { initials } from './CommanderCard.js';
 
 type Resource = 'alloy' | 'crystal' | 'deuterium';
 
@@ -88,8 +89,8 @@ export function TopBar({
         onClick={onCommander}
         className="flex shrink-0 flex-col items-center"
       >
-        <span className="relative grid size-7 place-items-center rounded-full border border-v2-line-hi bg-v2-raise text-caption font-bold uppercase text-v2-ink">
-          {commander.slice(0, 1)}
+        <span className="relative grid size-7 place-items-center rounded-control border border-v2-self/70 bg-v2-raise text-caption font-bold text-v2-ink">
+          {initials(commander)}
           {rewards > 0 && (
             <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-v2-self ring-2 ring-v2-deep" />
           )}
