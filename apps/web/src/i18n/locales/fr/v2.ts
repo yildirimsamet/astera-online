@@ -6,6 +6,7 @@ export const hold = {
   confirm: '{{label}} · sûr ?',
   /** Shown on the face after a release that came too soon. */
   release: 'Maintenir pour confirmer',
+  verb: 'Maintenir',
 };
 
 /** B12 : une file de production en anneaux. */

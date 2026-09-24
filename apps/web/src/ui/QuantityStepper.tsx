@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { haptic } from '../lib/haptics.js';
 import { Button, IconButton } from './kit/index.js';
 
 interface QuantityStepperProps {
@@ -26,6 +27,11 @@ interface QuantityStepperProps {
    */
   resetLabel?: string;
   resetText?: string;
+  /**
+   * `v2` is the Gözlemevi's row control (B14): minus, the count and plus in one
+   * bordered group, Max as a word beside it. The same presses, labels and markers.
+   */
+  look?: 'plate' | 'v2';
 }
 
 /** One exact count control for build, launch and any later fleet commitment. */
@@ -42,6 +48,7 @@ export function QuantityStepper({
   maxText = maxLabel,
   resetLabel,
   resetText = resetLabel,
+  look = 'plate',
 }: QuantityStepperProps) {
   const upper = Math.max(min, max);
   const current = Math.max(min, Math.min(upper, Math.floor(value)));
@@ -72,6 +79,66 @@ export function QuantityStepper({
     onChange(next);
   };
 
+  const field = (className: string) => (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      aria-label={valueLabel}
+      readOnly={!editable}
+      value={editable ? draft : String(current)}
+      onChange={editable ? enter : undefined}
+      className={className}
+    />
+  );
+
+  if (look === 'v2') {
+    const step = (label: string, disabled: boolean, next: number, face: string) => (
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => { haptic('tap'); commit(next); }}
+        className="w-7 text-body text-v2-ink-2 disabled:text-v2-ink-3/40"
+      >
+        {face}
+      </button>
+    );
+    return (
+      <div className="flex shrink-0 items-center gap-1.5 font-v2-ui">
+        <div className="flex h-7 items-stretch overflow-hidden rounded-control border border-v2-line-hi bg-v2-deep/60">
+          {step(decreaseLabel, current <= min, current - 1, '−')}
+          {field('w-9 border-x border-v2-line bg-transparent text-center font-v2-mono text-caption font-semibold text-v2-ink outline-none')}
+          {step(increaseLabel, current >= upper, current + 1, '+')}
+        </div>
+        <span data-count-max>
+          <button
+            type="button"
+            aria-label={maxLabel}
+            disabled={current >= upper}
+            onClick={() => { haptic('tap'); commit(upper); }}
+            className="px-0.5 text-caption font-semibold text-v2-self disabled:text-v2-ink-3"
+          >
+            {maxText}
+          </button>
+        </span>
+        {resetLabel !== undefined && (
+          <span data-count-reset>
+            <button
+              type="button"
+              aria-label={resetLabel}
+              disabled={current <= min}
+              onClick={() => { haptic('tap'); commit(min); }}
+              className="px-0.5 text-caption text-v2-ink-2 disabled:text-v2-ink-3"
+            >
+              {resetText}
+            </button>
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-end gap-2">
       <IconButton
@@ -82,16 +149,7 @@ export function QuantityStepper({
       >
         −
       </IconButton>
-      <input
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        aria-label={valueLabel}
-        readOnly={!editable}
-        value={editable ? draft : String(current)}
-        onChange={editable ? enter : undefined}
-        className="num plate plate-sunk h-9 w-9 rounded-control px-2 text-center text-title text-bone outline-none"
-      />
+      {field('num plate plate-sunk h-9 w-9 rounded-control px-2 text-center text-title text-bone outline-none')}
       <IconButton
         ariaLabel={increaseLabel}
         disabled={current >= upper}

@@ -474,6 +474,8 @@ export const planetHero = {
 
 /** The commitment. Everything here is supporting detail for one line. */
 export const launch = {
+  /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
+  backAt: "zurück {{time}}",
   fuel: "Kraftstoff",
   eyebrow: "Angriff",
   /**

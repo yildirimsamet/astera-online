@@ -9,7 +9,7 @@ import {
   type MobileHullId,
 } from '@astera/rules';
 import type { GalaxyPlanet, IntelView, PirateContact, PlanetView, Report } from '../api/schemas.js';
-import { combatClassLabel, hullLabel } from '../i18n/names.js';
+import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
 import { clockTime, duration, durationPrecise, staleness } from '../lib/time.js';
 import { MOBILE } from '../lib/navigation.js';
@@ -119,53 +119,51 @@ export function LaunchSheet({
       <div
         key={hull}
         data-hull-row={hull}
-        className={`grid gap-2 border-b border-v2-line px-1 py-2.5 last:border-b-0 ${chosen > 0 ? 'bg-v2-self/5' : ''}`}
+        className={`grid gap-1 border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${chosen > 0 ? 'bg-v2-self/5' : ''}`}
       >
-        <div className="flex items-center gap-2.5">
-          <div data-art className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise">
+        <div className="flex items-center gap-2">
+          <div data-art className="grid size-8 shrink-0 place-items-center">
             {art ? (
-              <img src={art} alt="" aria-hidden className="size-9 object-contain" width={36} height={36} loading="lazy" />
+              <img src={art} alt="" aria-hidden className="size-8 object-contain" width={32} height={32} loading="lazy" />
             ) : (
               <HullMark hull={hull} className="size-6 text-v2-ink-3" />
             )}
           </div>
-          <div className="grid min-w-0 flex-1 gap-1">
-            <div className="flex items-baseline gap-1.5">
-              <p className="truncate text-caption font-semibold text-v2-ink">{hullLabel(hull)}</p>
+          <div className="grid min-w-0 flex-1">
+            <p className="flex min-w-0 items-center gap-1 text-caption font-semibold text-v2-ink">
+              <span className="truncate">{hullLabel(hull)}</span>
               {/*
-                THE ROLE IT FIGHTS AS, not the band it was bought under. D124: the
-                picker groups by family, which says nothing about how a hull fights.
+                THE ROLE IT FIGHTS AS, not the band it was bought under (D124): the
+                emblem, named for a reader; the matchup line above names it in words.
               */}
-              <span className="flex shrink-0 items-center gap-1 text-micro text-v2-ink-3">
-                <ClassEmblem cls={HULLS[hull].cls} className="size-2.5" decorative />
-                {combatClassLabel(HULLS[hull].cls)}
-              </span>
-              <span className="ml-auto shrink-0 font-v2-mono text-micro text-v2-ink-3">
-                {t('launch.atHome', { count: available })}
-              </span>
-            </div>
-            <StatStrip
-              atk={HULLS[hull].atk * tech.atk}
-              hp={HULLS[hull].hp * tech.hp}
-              speed={HULLS[hull].speed * tech.speed}
-              cargo={fleetCargo({ [hull]: 1 }, mods.tech)}
-              salvage={salvageCapacity({ [hull]: 1 })}
-              fuel={hullFuelRate(hull)}
-            />
+              <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 shrink-0 text-v2-ink-2" />
+            </p>
+            <span className="font-v2-mono text-micro text-v2-ink-3">{t('launch.atHome', { count: available })}</span>
           </div>
+          <QuantityStepper
+            look="v2"
+            value={chosen}
+            min={0}
+            max={roomFor(hull)}
+            onChange={(value) => { set(hull, value); }}
+            decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
+            increaseLabel={t('launch.more', { name: hullLabel(hull) })}
+            valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
+            editable
+            maxLabel={t('launch.max', { name: hullLabel(hull) })}
+            maxText={t('launch.maxShort')}
+          />
         </div>
-        <QuantityStepper
-          value={chosen}
-          min={0}
-          max={roomFor(hull)}
-          onChange={(value) => { set(hull, value); }}
-          decreaseLabel={t('launch.fewer', { name: hullLabel(hull) })}
-          increaseLabel={t('launch.more', { name: hullLabel(hull) })}
-          valueLabel={t('launch.quantity', { name: hullLabel(hull) })}
-          editable
-          maxLabel={t('launch.max', { name: hullLabel(hull) })}
-          maxText={t('launch.maxShort')}
-        />
+        <div className="pl-10 [&_.stat-value]:text-caption! [&_.stat-value]:text-v2-ink-2! [&_.stats]:gap-x-2.5!">
+          <StatStrip
+            atk={HULLS[hull].atk * tech.atk}
+            hp={HULLS[hull].hp * tech.hp}
+            speed={HULLS[hull].speed * tech.speed}
+            cargo={fleetCargo({ [hull]: 1 }, mods.tech)}
+            salvage={salvageCapacity({ [hull]: 1 })}
+            fuel={hullFuelRate(hull)}
+          />
+        </div>
       </div>
     );
   };
@@ -194,6 +192,10 @@ export function LaunchSheet({
 
   const landsAt = route !== null && route.oneWayMinutes > 0
     ? clockTime(new Date(serverNow() + route.oneWayMinutes * 60_000))
+    : null;
+  /** When the world is covered again: the mock's "Dönüş 23:06". */
+  const homeAt = route !== null && route.exposureMinutes > 0
+    ? clockTime(new Date(serverNow() + route.exposureMinutes * 60_000))
     : null;
 
   return (
@@ -228,7 +230,7 @@ export function LaunchSheet({
           */}
           {total > 0 && (
             <div className="grid gap-1">
-              <p data-launch-warning className="text-caption leading-snug text-v2-ink">
+              <p data-launch-warning className="text-caption leading-snug text-v2-warn">
                 {pirate ? t('launch.warningPirate', { count: holding }) : t('launch.warningWorld', { count: holding })}
               </p>
               {spendsShield && (
@@ -244,7 +246,6 @@ export function LaunchSheet({
             </div>
           )}
           <HoldButton
-            tone="hostile"
             label={pirate ? t('launch.holdPirate', { count: total }) : t('launch.holdWorld', { count: total })}
             disabledReason={busy ? t('launch.launching') : refusal}
             onCommit={() => { commit(() => undefined); }}
@@ -260,7 +261,7 @@ export function LaunchSheet({
           figures a wing is adjusted against move on the same "+", so they travel
           together while the ships scroll under them.
         */}
-        <div className="sticky top-0 z-10 -mx-3 bg-v2-panel px-3 pb-1">
+        <div className="sticky top-0 z-10 -mx-3 border-b border-v2-line bg-v2-panel px-3 pb-2.5">
           <ForceRuler
             yours={combatValue(sending)}
             theirs={opposing}
@@ -272,7 +273,7 @@ export function LaunchSheet({
             {classReading && <MatchupLine wing={sending} reading={classReading} />}
             {route !== null && (
               <div data-launch-meters className="mt-2">
-                <SpendBar stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
+                <SpendBar compactSize stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
               </div>
             )}
           </ForceRuler>
@@ -322,7 +323,7 @@ export function LaunchSheet({
           )}
           {/* A lesson reads as one list, in the order the lesson means; the ordinary picker keeps its bands. */}
           {lessonOrder !== null ? (
-            <div className="rounded-control border border-v2-line">{lessonOrder.map(row)}</div>
+            <div>{lessonOrder.map(row)}</div>
           ) : (
             groups.map(({ family, hulls }) => {
               // A lone band never folds: hiding the only group costs a tap to save nothing.
@@ -331,22 +332,22 @@ export function LaunchSheet({
               const count = hulls.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
               const label = t(`planet.reach.family.${family}.label`);
               return (
-                <section key={family} data-fleet-family={family} className="overflow-hidden rounded-control border border-v2-line">
+                <section key={family} data-fleet-family={family}>
                   {foldable ? (
                     <button
                       type="button"
                       aria-expanded={open}
                       onClick={() => { families.toggle(family); }}
-                      className="flex w-full items-center gap-2 bg-v2-raise px-2.5 py-1.5 text-left"
+                      className="flex w-full items-center gap-2 border-b border-v2-line px-1 py-1.5 text-left"
                     >
                       <span className="min-w-0 flex-1 truncate text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</span>
                       <span className="font-v2-mono text-micro text-v2-ink-3">{count}</span>
                       <Icon id="i-chev" className={`size-3 text-v2-ink-3 ${open ? '-rotate-90' : 'rotate-90'}`} />
                     </button>
                   ) : (
-                    <p className="bg-v2-raise px-2.5 py-1.5 text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</p>
+                    <p className="border-b border-v2-line px-1 py-1.5 text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</p>
                   )}
-                  {open && <div className="px-1.5">{hulls.map(row)}</div>}
+                  {open && <div>{hulls.map(row)}</div>}
                 </section>
               );
             })
@@ -379,7 +380,7 @@ export function LaunchSheet({
           (D182) — a raid lands at an authoritative instant — with the clock it lands at
           beside it; the exposure is the shape of the bet.
         */}
-        <dl data-launch-figures className="grid grid-cols-3 gap-1.5">
+        <dl data-launch-figures className="grid grid-cols-3 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
           <Figure
             label={t('launch.oneWay')}
             value={route !== null && route.oneWayMinutes > 0 ? durationPrecise(route.oneWayMinutes) : t('launch.oneWayUnknown')}
@@ -389,6 +390,7 @@ export function LaunchSheet({
           <Figure
             label={t('launch.exposed')}
             value={route !== null && route.exposureMinutes > 0 ? duration(route.exposureMinutes) : t('launch.oneWayUnknown')}
+            {...(homeAt ? { sub: t('launch.backAt', { time: homeAt }) } : {})}
           />
           <Figure label={t('launch.cargo')} value={compact(route?.cargo ?? 0)} />
           <Figure
@@ -416,9 +418,9 @@ function Figure({
   tone?: 'threat';
 }) {
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
-      <dt className="truncate text-micro uppercase tracking-wide text-v2-ink-3">{label}</dt>
-      <dd className={`mt-0.5 font-v2-mono text-caption ${tone === 'threat' ? 'text-v2-hostile' : 'text-v2-ink'}`}>{value}</dd>
+    <div className="min-w-0">
+      <dt className="truncate text-micro text-v2-ink-3">{label}</dt>
+      <dd className={`mt-0.5 font-v2-mono text-caption font-semibold ${tone === 'threat' ? 'text-v2-hostile' : 'text-v2-ink'}`}>{value}</dd>
       {sub && <dd className="font-v2-mono text-micro text-v2-ink-3">{sub}</dd>}
     </div>
   );

@@ -458,6 +458,8 @@ export const planetHero = {
 } as const;
 
 export const launch = {
+  /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
+  backAt: "dönüş {{time}}",
   fuel: "Yakıt",
   eyebrow: "Saldırı",
   /** Kayda dayanarak yapılan taahhüt. Hedefin ne kadar eski olduğu burada söylenir. D151. */
@@ -521,7 +523,7 @@ export const launch = {
   more: "{{name}} artır",
   quantity: "{{name}} adedi",
   max: "{{name}} için en fazla",
-  maxShort: "En fazla",
+  maxShort: "Maks",
   noShips:
     "Evde gemi yok. Tersanede yap ya da dışarıdakilerin dönmesini bekle.",
   warning:

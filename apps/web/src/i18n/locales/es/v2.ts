@@ -6,6 +6,7 @@ export const hold = {
   confirm: '{{label}} · ¿seguro?',
   /** Shown on the face after a release that came too soon. */
   release: 'Mantén pulsado para confirmar',
+  verb: 'Mantén',
 };
 
 /** B12: una cola de obra dibujada como anillos. */

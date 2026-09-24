@@ -197,7 +197,6 @@ export function IntergalacticConvoySheet({
       footer={
         <div data-testid="convoy-commit">
           <HoldButton
-            tone="hostile"
             label={t('convoy.commit')}
             disabledReason={launch.isPending ? t('convoy.sending') : refusal}
             onCommit={commit}
@@ -212,16 +211,16 @@ export function IntergalacticConvoySheet({
       </div>
 
       <h3 className="mt-4 px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('convoy.fleetHeading')}</h3>
-      <div className="mt-1.5 overflow-hidden rounded-control border border-v2-line">
+      <div className="mt-1">
         {owned.map((hull) => {
           const available = planet.fleet[hull] ?? 0;
           const art = HULL_ART[hull];
           return (
-            <div key={hull} data-hull-row={hull} className={`grid gap-2 border-b border-v2-line px-2.5 py-2.5 last:border-b-0 ${(fleet[hull] ?? 0) > 0 ? 'bg-v2-hostile/5' : ''}`}>
-              <div className="flex items-center gap-2.5">
-                <span data-art className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise">
+            <div key={hull} data-hull-row={hull} className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${(fleet[hull] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}>
+              <div className="flex items-center gap-2">
+                <span data-art className="grid size-8 shrink-0 place-items-center">
                   {art ? (
-                    <img src={art} alt="" aria-hidden className="size-9 object-contain" loading="lazy" />
+                    <img src={art} alt="" aria-hidden className="size-8 object-contain" loading="lazy" />
                   ) : (
                     <HullMark hull={hull} className="size-6 text-v2-ink-3" />
                   )}
@@ -230,9 +229,8 @@ export function IntergalacticConvoySheet({
                   <span className="block truncate text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
                   <span className="font-v2-mono text-micro text-v2-ink-3">{t('convoy.atHome', { count: available })}</span>
                 </span>
-              </div>
-              <div>
                 <QuantityStepper
+                  look="v2"
                   value={fleet[hull] ?? 0}
                   min={0}
                   max={available}
@@ -250,7 +248,7 @@ export function IntergalacticConvoySheet({
         })}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
         <Reading label={t('convoy.firepower')} value={full(firepower)} />
         <Reading label={t('convoy.cargo')} value={full(cargo)} />
         <Reading
@@ -293,7 +291,7 @@ export function IntergalacticConvoySheet({
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
+      <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
         <Reading
           label={t('convoy.shipChance')}
           value={`${compact((quote?.shipDropChance ?? 0) * 100)}%`}
@@ -317,9 +315,9 @@ export function IntergalacticConvoySheet({
 
 function Reading({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-1.5">
-      <p className="text-micro uppercase tracking-wide text-v2-ink-3">{label}</p>
-      <p className="mt-0.5 font-v2-mono text-caption text-v2-ink">{value}</p>
+    <div className="min-w-0">
+      <p className="text-micro text-v2-ink-3">{label}</p>
+      <p className="mt-0.5 font-v2-mono text-caption font-semibold text-v2-ink">{value}</p>
     </div>
   );
 }

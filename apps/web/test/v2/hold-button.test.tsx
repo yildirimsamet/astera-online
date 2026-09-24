@@ -134,10 +134,16 @@ describe('the hold-to-commit button', () => {
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
 
+  /** The mock's "Basılı tut · 74 gemiyi gönder": the gesture is named before anyone presses. */
+  it('names the gesture on its face', () => {
+    const { button } = setup();
+    expect(button).toHaveTextContent(/^Hold · Launch 74 ships$/);
+  });
+
   it('prints the reason instead of arming when it cannot commit', () => {
     const { onCommit, button } = setup({ disabledReason: 'Shielded for 4h' });
     expect(button).toBeDisabled();
-    expect(button).toHaveTextContent('Shielded for 4h');
+    expect(button).toHaveTextContent(/^Shielded for 4h$/);
     fireEvent.pointerDown(button, { button: 0 });
     act(() => { vi.advanceTimersByTime(HOLD_MS * 2); });
     expect(onCommit).not.toHaveBeenCalled();

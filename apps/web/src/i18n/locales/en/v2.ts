@@ -8,6 +8,8 @@ export const hold = {
   confirm: '{{label}} · sure?',
   /** Shown on the face after a release that came too soon. */
   release: 'Hold to confirm',
+  /** Before the label on the face, as the mock's "Basılı tut · 74 gemiyi gönder"; the hint already tells a reader. */
+  verb: 'Hold',
 };
 
 /** B12: a build lane drawn as rings. */

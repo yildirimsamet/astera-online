@@ -95,7 +95,7 @@ export function ForceRuler({
         yours: compact(yours),
         theirs: theirs ? range(theirs) : t('counter.compareUnknown'),
       })}
-      className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 font-v2-ui"
+      className="flex flex-col gap-2 font-v2-ui"
     >
       <div>
         <div className="flex items-center justify-between gap-2">
@@ -124,7 +124,7 @@ export function ForceRuler({
           <span className="text-v2-ink-2">{t('counter.compareYours')}</span>
           <span className="font-v2-mono text-v2-self">{compact(yours)}</span>
         </div>
-        <div className="relative h-2 rounded-full bg-v2-line">
+        <div className="relative h-1.5 rounded-full bg-v2-line">
           <span
             data-part="yours"
             className="absolute inset-y-0 left-0 rounded-full bg-v2-self transition-[width] duration-200"
@@ -149,7 +149,7 @@ export function ForceRuler({
           {theirs && <span className="shrink-0 font-v2-mono text-v2-ink">{range(theirs)}</span>}
         </div>
         {theirs ? (
-          <div className="relative my-1 h-2 rounded-full bg-v2-line">
+          <div className="relative my-1 h-1.5 rounded-full bg-v2-line">
             <span
               data-part="band-floor"
               className="absolute inset-y-0 left-0 rounded-l-full bg-v2-ink-3"
@@ -191,7 +191,7 @@ export function ForceRuler({
       </div>
 
       {(escape ?? lines) && (
-        <ul data-testid="ruler-lines" className="flex flex-col gap-0.5 font-v2-mono text-micro text-v2-ink-2">
+        <ul data-testid="ruler-lines" className="flex flex-wrap gap-x-3 gap-y-0.5 font-v2-mono text-micro text-v2-ink-2">
           {escape && (
             <li className="flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2.5 w-0 border-l border-dashed border-v2-warn" />

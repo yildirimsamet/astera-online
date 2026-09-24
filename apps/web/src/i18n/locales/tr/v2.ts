@@ -6,6 +6,7 @@ export const hold = {
   confirm: '{{label}} · emin misin?',
   /** Shown on the face after a release that came too soon. */
   release: 'Onaylamak için basılı tut',
+  verb: 'Basılı tut',
 };
 
 /** B12: halka olarak çizilen kuyruk hattı. */

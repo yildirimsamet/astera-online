@@ -197,7 +197,10 @@ export function HoldButton({ label, onCommit, disabledReason = null, tone = 'sel
               }}
             />
           </svg>
-          {confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : label}
+          {confirming ? t('hold.confirm', { label }) : nudge ? t('hold.release') : (
+            // The gesture, named on the face; a reader hears it from the hint, not twice.
+            <span><span aria-hidden="true">{`${t('hold.verb')} · `}</span>{label}</span>
+          )}
         </span>
       </button>
       <span id={hintId} className="sr-only">{t('hold.hint')}</span>

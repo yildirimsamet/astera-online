@@ -338,7 +338,7 @@ export function TransferSheet({
             THE ORE CARRIERS ARE ALWAYS LISTED, whether or not this world owns one: a row at zero with
             its reason beside it is the sentence the server's refusal never had on screen.
           */}
-          <div className="overflow-hidden rounded-control border border-v2-line">
+          <div>
             {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || CARRIES_ORE(id)).map((id) => {
               const held = planet.fleet[id] ?? 0;
               const art = HULL_ART[id];
@@ -347,17 +347,17 @@ export function TransferSheet({
                   key={id}
                   data-hull-row={id}
                   data-owned={held > 0 ? 'true' : 'false'}
-                  className={`grid gap-2 border-b border-v2-line px-2.5 py-2.5 last:border-b-0 ${(fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}
+                  className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${(fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}
                 >
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2">
                     {/* A hull this world does not own is drawn and greyed rather than left out (I1, D132). */}
-                    <span data-art className="grid size-10 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise">
+                    <span data-art className="grid size-8 shrink-0 place-items-center">
                       {art ? (
                         <img
                           src={art}
                           alt=""
                           aria-hidden
-                          className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
+                          className={`size-8 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
                           loading="lazy"
                         />
                       ) : (
@@ -391,8 +391,8 @@ export function TransferSheet({
                         <span className="mt-1 block text-micro text-v2-warn">{t('transfer.hullNone')}</span>
                       )}
                     </span>
-                  </div>
                   <QuantityStepper
+                    look="v2"
                     value={fleet[id] ?? 0}
                     min={0}
                     max={held}
@@ -404,6 +404,7 @@ export function TransferSheet({
                     maxLabel={t('launch.max', { name: hullName(id) ?? id })}
                     maxText={t('launch.maxShort')}
                   />
+                  </div>
                 </div>
               );
             })}

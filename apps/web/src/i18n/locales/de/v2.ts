@@ -6,6 +6,7 @@ export const hold = {
   confirm: '{{label}} · sicher?',
   /** Shown on the face after a release that came too soon. */
   release: 'Zum Bestätigen gedrückt halten',
+  verb: 'Halten',
 };
 
 /** B12: eine Bauschlange als Ringe. */

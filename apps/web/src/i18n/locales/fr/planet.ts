@@ -456,6 +456,8 @@ export const planetHero = {
   atRiskValue: "{{amount}} exposés",
 } as const;
 export const launch = {
+  /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
+  backAt: "retour {{time}}",
   fuel: "Carburant",
   eyebrow: "Attaque",
   /** Engagement fondé sur un relevé. L’ancienneté de la cible est indiquée ici. D151. */
