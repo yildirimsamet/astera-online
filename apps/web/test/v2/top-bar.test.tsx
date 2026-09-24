@@ -76,9 +76,11 @@ describe('the top bar', () => {
     const bell = screen.getByRole('button', { name: 'Signals — 3 unread' });
     expect(within(bell).getByText('3')).toBeInTheDocument();
     expect(bell).not.toHaveAttribute('data-urgent');
+    expect(within(bell).getByText('3')).not.toHaveClass('animate-pulse');
     rerender(<TopBar {...props({ bell: { unseen: 12, urgent: true } })} />);
     expect(screen.getByRole('button', { name: 'Signals — 12 unread' })).toHaveAttribute('data-urgent');
-    expect(screen.getByText('9+')).toBeInTheDocument();
+    // Owner, 2026-09-24: the red count beats with the bell, not only the bell.
+    expect(screen.getByText('9+')).toHaveClass('animate-pulse');
   });
 
   it('dots the commander chip while rewards wait behind it', () => {

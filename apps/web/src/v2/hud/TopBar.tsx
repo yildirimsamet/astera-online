@@ -146,7 +146,10 @@ export function TopBar({
         {bell.unseen > 0 && (
           <span
             aria-hidden="true"
-            className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-v2-hostile px-1 text-center font-v2-mono text-micro font-semibold leading-4 text-v2-ink ring-2 ring-v2-deep"
+            // The count beats with the bell (owner, 2026-09-24) — only when the bell does, for the same reason.
+            className={`absolute -right-1.5 -top-1.5 min-w-4 rounded-full bg-v2-hostile px-1 text-center font-v2-mono text-micro font-semibold leading-4 text-v2-ink ring-2 ring-v2-deep ${
+              bell.urgent ? 'animate-pulse' : ''
+            }`}
           >
             {bell.unseen > 9 ? '9+' : bell.unseen}
           </span>

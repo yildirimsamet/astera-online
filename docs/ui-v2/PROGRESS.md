@@ -126,9 +126,9 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
   yolları (görev, transfer, yardım, korsan, ticaret, konvoy) sahipliği zaten yeniden doğruluyor. Açık not: korsan
   baskınının (`pirate_arrival/return`) hiç `abandon`/stranded ağı yok (gösterilmiş hata değil). [x]
 - **B · HUD ufak (1, 12, 13).** NowLine noktası her zaman nabız; zil rozeti zil ikonuyla birlikte nabız (acil);
-  "Dünyana uç" ile "Görünüm" düğmelerinin yeri değişir (ev üstte). [ ]
+  "Dünyana uç" ile "Görünüm" düğmelerinin yeri değişir (ev üstte). [x]
 - **C · Galaksi olayı kartı (11).** Kapatılan olay kartı yeniden açılışta dönmesin: kapatılan `event:<id>` anahtarları
-  cihazda (localStorage, try/catch) olay bitene kadar saklanır. [ ]
+  cihazda (localStorage, try/catch) 3 gün saklanır; saldırı ve öneri kartı saklanmaz. [x]
 - **D · Üs ekonomisi (4, 5, 6).** Kuyrukta başı dışındaki bekleyen siparişlerde geri sayım yok, sarı kum saati +
   "Sırada"; Works satırı yeniden: dolan bir havuz (dolum çubukları + miktar + "Topla"), büyük sayılarda taşmaz,
   dolunca uyarı; depo çubukları yeniden bölmeli (tırtıklı), korunan bölmeler kalkanlı parantez içinde. [ ]

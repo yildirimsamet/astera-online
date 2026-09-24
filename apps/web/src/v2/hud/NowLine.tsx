@@ -55,9 +55,11 @@ export function NowLine({ entries, now, contacts = [], open, onOpen, onClose }: 
         }`}
       >
         <span className="sr-only">{t('now.label')}</span>
+        {/* Something is running: the dot beats for every timer (owner, 2026-09-24), in its owner's colour. */}
         <span
           aria-hidden="true"
-          className={`size-2 shrink-0 rounded-full ${enemy ? 'bg-v2-hostile animate-pulse' : 'bg-v2-self'}`}
+          data-now-dot=""
+          className={`size-2 shrink-0 animate-pulse rounded-full ${enemy ? 'bg-v2-hostile' : 'bg-v2-self'}`}
         />
         <span
           {...(enemy ? { 'aria-live': 'polite' as const } : {})}

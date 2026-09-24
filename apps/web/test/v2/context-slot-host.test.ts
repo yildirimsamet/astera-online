@@ -32,6 +32,15 @@ describe('the galaxy host', () => {
   });
 });
 
+/** Owner, 2026-09-24: a closed event card came back on every return to the game. */
+describe('the slot’s closed cards', () => {
+  it('starts from what this device remembers and remembers each close', () => {
+    expect(source).toMatch(/useState<ReadonlySet<string>>\(\(\) => readDismissed\(serverNow\(\)\)\)/);
+    const dismiss = source.slice(source.indexOf('onDismiss={(keys) =>'));
+    expect(dismiss.slice(0, 200)).toMatch(/rememberDismissed\(keys, serverNow\(\)\)/);
+  });
+});
+
 describe('Galaxy pressed again', () => {
   /**
    * THE OLD HOME MARK'S THREE STEPS (D163), NOT THE ACADEMY'S FLIGHT (D56). Home

@@ -66,6 +66,7 @@ import { threadKey } from '../galaxy/threadKey.js';
 import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
+import { readDismissed, rememberDismissed } from '../lib/slotMemory.js';
 import { activeTradeShip } from '../lib/trade.js';
 import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
 import {
@@ -622,8 +623,12 @@ export function GalaxyView({
     setHomeSignal((n) => n + 1);
   });
   const [viewOpen, setViewOpen] = useState(false);
-  /** The context slot's closed cards (B3), kept here because the slot unmounts under every page. */
-  const [slotDismissed, setSlotDismissed] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * The context slot's closed cards (B3), kept here because the slot unmounts under every page,
+   * and on this device for an event (owner, 2026-09-24: a closed event card came back on every
+   * return to the game) — `lib/slotMemory.ts`.
+   */
+  const [slotDismissed, setSlotDismissed] = useState<ReadonlySet<string>>(() => readDismissed(serverNow()));
   /** The element the scene lends over the active world; the collect bubble is portalled into it. */
   const [homeAnchor, setHomeAnchor] = useState<HTMLDivElement | null>(null);
 
@@ -1193,11 +1198,11 @@ export function GalaxyView({
         <div className="pointer-events-none flex flex-col items-end gap-1.5">
           {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
           {showGuidance && <GalaxyReadout {...galaxyReadout} />}
+          {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
+          {showGuidance && <HomeChip onHome={flyHome} />}
           <div data-sensor-toggles className="pointer-events-none">
             <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
           </div>
-          {/* Home, back in plain sight (owner, 2026-09-24): never under a card or a rail. */}
-          {showGuidance && <HomeChip onHome={flyHome} />}
         </div>
       </div>
 
@@ -1601,7 +1606,10 @@ export function GalaxyView({
           }}
           onClearSelection={close}
           dismissed={slotDismissed}
-          onDismiss={(keys) => { setSlotDismissed((current) => new Set([...current, ...keys])); }}
+          onDismiss={(keys) => {
+            rememberDismissed(keys, serverNow());
+            setSlotDismissed((current) => new Set([...current, ...keys]));
+          }}
         />
       )}
 

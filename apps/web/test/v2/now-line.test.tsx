@@ -60,6 +60,17 @@ describe('the Now line', () => {
     expect(within(line).getByText('+1')).toBeInTheDocument();
   });
 
+  /** Owner, 2026-09-24: the dot beats on every timer, not only an enemy's — something is running. */
+  it('beats the dot in front of every timer, yours and an enemy’s', () => {
+    const { container, rerender } = render(
+      <NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />,
+    );
+    const dot = () => container.querySelector('[data-now-dot]');
+    expect(dot()).toHaveClass('animate-pulse', 'bg-v2-self');
+    rerender(<NowLine entries={entries({ threads: [thread('incoming', 60_000)] })} now={NOW} {...closed()} />);
+    expect(dot()).toHaveClass('animate-pulse', 'bg-v2-hostile');
+  });
+
   it('draws your own timers in your colour', () => {
     render(<NowLine entries={entries({ threads: [thread('transfer', 60_000)] })} now={NOW} {...closed()} />);
     const line = screen.getByRole('button', { name: /Most urgent timer/ });

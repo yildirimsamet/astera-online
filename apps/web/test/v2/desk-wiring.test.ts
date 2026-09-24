@@ -12,6 +12,15 @@ const galaxy = readFileSync('src/screens/GalaxyView.tsx', 'utf8');
 const app = readFileSync('src/App.tsx', 'utf8');
 const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
 
+/** Owner, 2026-09-24: Home ("Fly to your world") above the View chip in the right-hand stack. */
+describe('the galaxy’s right-hand stack', () => {
+  it('puts Home above the View chip', () => {
+    const stack = galaxy.slice(galaxy.indexOf('<GalaxyReadout'));
+    expect(stack.indexOf('<HomeChip')).toBeGreaterThan(0);
+    expect(stack.indexOf('<HomeChip')).toBeLessThan(stack.indexOf('<ViewChip'));
+  });
+});
+
 describe('Space and Esc on the galaxy', () => {
   it('brings the selection back into frame on Space, or flies home with nothing selected', () => {
     const center = galaxy.slice(galaxy.indexOf('useRequest(centerRequest'), galaxy.indexOf('useRequest(clearRequest'));
