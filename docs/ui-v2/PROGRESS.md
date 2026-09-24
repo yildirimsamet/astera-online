@@ -117,10 +117,13 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   `launch-pirate`, `transfer`, `settlement` (hesap açmadan 5 dilde çekim); gemi satırında etiketli istatistik şeridi
   Almancada üst üste biniyor/kesiliyordu → satırda ikon+değer, listenin üstünde tek `StatLegend` (D142 korunur);
   Almanca "Startseite"/"Einbahnstraße" yanlış çevirileri düzeldi.
-- F3.4c ~~konvoy~~ (v2 + basılı tut, satırlar B14 satırı; geri bildirimle birlikte).
-- **F3.4c (sıradaki):** ticaret (`TradeSheet`), klan dalgası
-  (`ClanWarPanel`; teklif otomatik; `clan.ts` "Send — no recall" metni klan dalgası geri çağrılabildiği için kontrol
-  edilecek), Ölüm Yıldızı onayı (`FocusPanel`). Her birinin "no recall" metni kendi kuralına göre doğrulanır.
+- F3.4c ~~konvoy~~ (v2 + basılı tut, satırlar B14 satırı; geri bildirimle birlikte) · ~~ticaret~~ `d9d6a98` (v2 Sheet,
+  iki adımlı onay yerine basılı tut, "geri çağrılamaz" + dışarıda kalma süresi düğmeden önce, taşıyıcı satırları B14,
+  "Veriyorum" seçici v2 anahtar; `trade.back/commit` silindi) · ~~klan dalgası~~ `786e851` (teklif kendiliğinden,
+  350 ms yerleşince; "Hesapla" düğmesi yok; stepper satırları; basılı tut, sebep düğmede; "saldırı başlayana kadar geri
+  çağrılabilir" kuralı düğmeden önce — sunucunun `canRecall`'u; "Send — no recall" metni klan YARDIMININ, doğru) ·
+  ~~Ölüm Yıldızı~~ `d457469` (raydaki basış v2 yarım sayfa açar, bedeli yazar, "EMP'yi fırlat" basılı tut; portal
+  ile body'ye; "Hold fire" kalktı; yıkım `Confirm`'de kalır). Galeride `trade`, `wave`, `strike` görünümleri.
 - F3.4 açık notlar: `QuantityStepper`'ın `look="v2"` görünümü fırlatma/transfer/konvoyda; Üs, ticaret ve klan
   çağıranları eski görünümde (F5 ve kendi işlerinde geçer);
   yapışkan cetvel uzun listede satırların üstünü örtüyor (tasarım gereği; masaüstünde F8'de iki sütun).
