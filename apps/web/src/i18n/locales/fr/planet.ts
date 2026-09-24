@@ -72,9 +72,6 @@ export const planet = {
     tacticalProblem: "Tactique",
     tacticalQuestion: "Construis et gère ici les outils tactiques.",
   },
-  wallet: {
-    inTheWorks: "<0>{{amount}}</0> dans le stock de production",
-  },
   queue: {
     ends: "se termine à {{time}}",
     segment: "{{name}} · {{duration}}",

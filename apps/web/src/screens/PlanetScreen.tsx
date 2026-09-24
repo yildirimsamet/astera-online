@@ -1,6 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
   ANTI_STRATEGIC,
@@ -56,7 +56,7 @@ import { FaultSheet } from './FaultSheet.js';
 import { FaultProvider, useFaults } from './faultScope.js';
 
 import type { PlanetGroup } from '../lib/directives.js';
-import { compact, full } from '../lib/format.js';
+import { full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
@@ -122,6 +122,7 @@ import { describe, useToast } from '../ui/Toast.js';
 import { Sheet } from '../ui/kit/index.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Segmented } from '../ui/kit/index.js';
+import { CollectHost } from '../v2/shell/CollectHost.js';
 
 /**
  * MY PLANET.
@@ -629,9 +630,9 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
  * are holding are different numbers under D16, and running them together would
  * quietly restore the belief that the collector exists to break.
  */
-function Wallet({ held }: { held: Projected }) {
+function Wallet({ held, onStore }: { held: Projected; onStore: () => void }) {
   const { t } = useTranslation();
-  const waiting = Math.round(held.bufferAlloy + held.bufferCrystal + held.bufferDeuterium);
+  const lesson = useAcademyLesson();
 
   /*
     `full()` AND NEVER `compact()`. The header's own store already carried that
@@ -657,17 +658,14 @@ function Wallet({ held }: { held: Projected }) {
         <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-4 object-contain" />
         <span className="num text-deuterium">{full(held.deuterium)}</span>
       </span>
-      {waiting >= 1 && (
-        <span className="ml-auto text-label text-faint">
-          {/* Which side of the figure the phrase sits on is the language's call:
-              English puts "in the works" after it, Turkish puts "havuzda" before. */}
-          <Trans
-            i18nKey="planet.wallet.inTheWorks"
-            values={{ amount: compact(waiting) }}
-            components={[<span key="n" className="num text-dim" />]}
-          />
-        </span>
-      )}
+      {/*
+        THE WORKS, COLLECTED WHERE THEY ARE NAMED (owner, 2026-09-24). This was a
+        caption — "1.2k in the works" — with no way to act on it, and the bubble over
+        the world only rises at a tenth. Not in the Academy: its fetch refuses writes.
+      */}
+      <span className="ml-auto">
+        {lesson ? null : <CollectHost place="base" onOpenBase={onStore} />}
+      </span>
     </div>
   );
 }
@@ -1077,7 +1075,7 @@ function Tabs({
   // against a price.
   return (
     <div className="sticky top-0 z-20 border-y border-line-soft bg-deep">
-      <Wallet held={held} />
+      <Wallet held={held} onStore={() => { onSelect('grow'); }} />
       {/*
         `data-tab` is how a surface outside this screen points at a category: the
         onboarding lights the one a beat is working in, because a dimmed screen

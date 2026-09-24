@@ -30,6 +30,7 @@ vi.mock('../src/api/queries.js', async () => {
     usePending: () => ({ data: undefined }),
     useReports: () => ({ data: undefined }),
     useUpgrade: () => ({ mutate: vi.fn(), isPending: false }),
+    useCollect: () => ({ mutate: vi.fn(), isPending: false }),
     useBuild: () => ({ mutate: vi.fn(), isPending: false }),
     useCompleteResearch: () => ({ mutate: vi.fn(), isPending: false }),
     useInstallSatellite: () => ({ mutate: vi.fn(), isPending: false }),

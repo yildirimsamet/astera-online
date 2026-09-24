@@ -17,7 +17,7 @@ import { CollectBubble } from '../hud/CollectBubble.js';
  * and the toast the header's Works control used, which it replaced: the amount
  * that came in, or the part that would not fit.
  */
-export function CollectHost({ onOpenBase }: { onOpenBase: () => void }) {
+export function CollectHost({ onOpenBase, place = 'world' }: { onOpenBase: () => void; place?: 'world' | 'base' }) {
   const { t } = useTranslation();
   const planet = usePlanet();
   const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 1_000);
@@ -38,6 +38,7 @@ export function CollectHost({ onOpenBase }: { onOpenBase: () => void }) {
       state={state}
       pending={collect.isPending}
       onOpenBase={onOpenBase}
+      place={place}
       onCollect={() => {
         haptic('commit');
         collect.mutate(undefined, {

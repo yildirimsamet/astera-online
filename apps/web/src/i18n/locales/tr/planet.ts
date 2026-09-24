@@ -72,9 +72,6 @@ export const planet = {
     tacticalQuestion: "Taktiksel araçlarını burada üretir ve yönetirsin.",
   },
 
-  wallet: {
-    inTheWorks: "havuzda <0>{{amount}}</0>",
-  },
 
   queue: {
     ends: "{{time}}’de biter",

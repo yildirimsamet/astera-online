@@ -70,9 +70,6 @@ export const planet = {
     tacticalQuestion: "Taktische Werkzeuge hier bauen und verwalten.",
   },
 
-  wallet: {
-    inTheWorks: "<0>{{amount}}</0> in Arbeit",
-  },
 
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
