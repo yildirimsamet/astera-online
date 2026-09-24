@@ -122,7 +122,11 @@ function useLiveClanHome(home: ClanHome | undefined): ClanHome | undefined {
 }
 
 /** One mobile-first surface: discovery outside, command console inside. */
-export function ClanScreen({ initialTab = 'overview' }: { initialTab?: ClanTab }) {
+export function ClanScreen({ initialTab = 'overview', onOpenClanChat }: {
+  initialTab?: ClanTab;
+  /** The war room's "Clan chat" (E9): chat, as its own page, on the clan channel. */
+  onOpenClanChat?: () => void;
+}) {
   const { t } = useTranslation();
   const home = useClanHome();
   const actions = useClanActions();
@@ -220,7 +224,11 @@ export function ClanScreen({ initialTab = 'overview' }: { initialTab?: ClanTab }
         ) : tab === 'war' ? (
           war.isError ? <Unreachable what={t('clanWar.tab')} onRetry={() => { void war.refetch(); }} />
             : war.data ? <ClanWarPanel war={war.data} role={inside.clan.role}
-              mature={inside.clan.mature} worlds={worlds} />
+              mature={inside.clan.mature} worlds={worlds}
+              members={[...inside.members].sort((a, b) => a.slot - b.slot)
+                .map((seat) => ({ playerId: seat.playerId, username: seat.username }))}
+              selfPlayerId={galaxy.data?.you.playerId}
+              {...(onOpenClanChat ? { onOpenClanChat } : {})} />
               : <Waiting>{t('clan.waiting')}</Waiting>
         ) : (
           <ClanAidPanel

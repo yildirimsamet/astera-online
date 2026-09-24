@@ -8,6 +8,7 @@ import type { StripFocus } from '../../shell/PendingStrip.js';
 import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
 import type { AwayDoor } from '../../lib/awayStory.js';
+import type { ChatChannel } from '../../screens/ChatScreen.js';
 import { AwayHost } from './AwayHost.js';
 import { BellHost } from './BellHost.js';
 import { ChatHost } from './ChatHost.js';
@@ -42,6 +43,8 @@ export interface GameShellProps {
     centerRequest: number;
     clearRequest: number;
     onPanel: ShellRoute;
+    /** Open chat as its own page, on a given room (the war room's "Clan chat", E9). */
+    onOpenChat: (channel?: ChatChannel) => void;
   }) => ReactNode;
 }
 
@@ -69,6 +72,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatChannel, setChatChannel] = useState<ChatChannel | undefined>(undefined);
   /** The Now line's timers sheet: closed by every move below, never left under a page. */
   const [nowOpen, setNowOpen] = useState(false);
   const [homeRequest, setHomeRequest] = useState(0);
@@ -109,6 +113,13 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
     setBell({ tab, justRead: tab === 'signals' ? openSignals() : new Set() });
   };
 
+  /** Chat, its own page: on the room asked for, or — with none — on what is unread. */
+  const openChat = (channel?: ChatChannel): void => {
+    clearPages();
+    setChatChannel(channel);
+    setChatOpen(true);
+  };
+
   const route: ShellRoute = (next, stop, reportMissionId, focus) => {
     const tab = bellTabFor(next);
     if (tab) {
@@ -116,8 +127,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       return;
     }
     if (next === 'chat') {
-      clearPages();
-      setChatOpen(true);
+      openChat();
       return;
     }
     setNowOpen(false);
@@ -233,7 +243,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
           />
         )}
         <main className="relative min-w-0 flex-1">
-          {galaxy({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route })}
+          {galaxy({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat: openChat })}
           {!desk && <div className="absolute inset-x-0 bottom-0 z-50">{dock}</div>}
         </main>
       </div>
@@ -249,7 +259,11 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       )}
 
       {chatOpen && (
-        <ChatHost onClose={() => { setChatOpen(false); }} onFocusPlanet={onFocusPlanet} />
+        <ChatHost
+          onClose={() => { setChatOpen(false); }}
+          onFocusPlanet={onFocusPlanet}
+          {...(chatChannel ? { channel: chatChannel } : {})}
+        />
       )}
 
       {bell && (

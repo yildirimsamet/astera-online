@@ -21,6 +21,24 @@ describe('the galaxy’s right-hand stack', () => {
   });
 });
 
+/** E9: "Clan chat" in the war room opens the clan channel; the room knows its crew. */
+describe('the war room wiring', () => {
+  const clanScreen = readFileSync('src/screens/ClanScreen.tsx', 'utf8');
+
+  it('opens clan chat from the war room through the galaxy and the app', () => {
+    const screen = galaxy.slice(galaxy.indexOf('<ClanScreen'));
+    expect(screen.slice(0, 300)).toMatch(/onOpenClanChat: \(\) => \{ onOpenChat\('clan'\); \}/);
+    expect(app).toMatch(/onOpenChat=\{onOpenChat\}/);
+  });
+
+  it('seats the clan’s members in the war room, with the commander known', () => {
+    const panel = clanScreen.slice(clanScreen.indexOf('<ClanWarPanel'));
+    expect(panel.slice(0, 400)).toMatch(/members=\{/);
+    expect(panel.slice(0, 400)).toMatch(/selfPlayerId=\{/);
+    expect(panel.slice(0, 500)).toMatch(/\{ onOpenClanChat \}/);
+  });
+});
+
 describe('Space and Esc on the galaxy', () => {
   it('brings the selection back into frame on Space, or flies home with nothing selected', () => {
     const center = galaxy.slice(galaxy.indexOf('useRequest(centerRequest'), galaxy.indexOf('useRequest(clearRequest'));

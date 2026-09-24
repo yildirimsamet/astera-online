@@ -1,406 +1,468 @@
-import {
-  MOBILE_HULLS, fleetCount, pacesForMinutes, type Fleet, type HullId, type MissionPace, type Resources,
-} from '@astera/rules';
-import { useEffect, useState } from 'react';
+import { CLAN, HULLS, MOBILE_HULLS, fleetCount, pacesForMinutes, type MissionPace } from '@astera/rules';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
-import { ApiError } from '../api/client.js';
 import type { ClanWar, PlanetView } from '../api/schemas.js';
 import { describeError } from '../i18n/errors.js';
 import { hullName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
-import { Button, Plate } from '../v2/kit/Surface.js';
-import { HULL_ART, planetArt } from '../ui/assets.js';
-import { HullMark } from '../ui/icons/hulls.js';
+import { planetArt, RESOURCE_ART } from '../ui/assets.js';
 import { PaceRow } from '../ui/PaceRow.js';
-import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { initials } from '../v2/hud/CommanderCard.js';
+import { Icon } from '../v2/icons.js';
+import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Button, Plate } from '../v2/kit/Surface.js';
+import { Toggle } from '../v2/kit/Toggle.js';
+import { ClanDonateSheet } from './ClanDonateSheet.js';
+import { ClanWaveSheet } from './ClanWaveSheet.js';
 
-/** How long the picked fleet has to sit still before its quote is asked for. */
-const QUOTE_SETTLE_MS = 350;
+/** A commander who can sit in the war room: the clan's members, in their seat order. */
+export interface WarSeatMember {
+  playerId: string;
+  username: string;
+}
 
-const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+type Operation = NonNullable<ClanWar['operation']>;
+type Wave = Operation['contributions'][number];
+
 const RESOURCE_KEYS = ['alloy', 'crystal', 'deuterium'] as const;
+const FILL = { alloy: 'bg-v2-alloy', crystal: 'bg-v2-crystal', deuterium: 'bg-v2-deut' } as const;
+const EMPTY = { alloy: 'bg-v2-alloy/15', crystal: 'bg-v2-crystal/15', deuterium: 'bg-v2-deut/15' } as const;
 
-/** The operation, purse and fleet quote sit together because they decide one commitment. */
-export function ClanWarPanel({ war, role, mature, worlds }: {
+/**
+ * THE WAR ROOM. E9, and the mock: "Operasyon, toplanma noktasından hedefe uzanan bir hat
+ * üzerinde dalgalar olarak görünür. Beş koltuk katkılarıyla birlikte gösterilir. Form
+ * doldurmak yerine 'Dalga gönder' standart fırlatma ekranını açar."
+ *
+ * Top to bottom, the order a member reads it in: the target and the line the waves fly on,
+ * named at both ends and at every wave still flying; the five seats with each commander's
+ * share of the strike (tap one for their wave); the clan hangar; the one-line rule and the
+ * two ways on — clan chat and "Send a wave", which opens the launch page. Below the fold,
+ * designed in the same hand: the leader's held launch with its pace, the shared treasury as
+ * progress toward the next level with its own gift page, and why the room exists.
+ *
+ * No browser form controls: worlds are chips, amounts are sliders, agreements are switches.
+ */
+export function ClanWarPanel({ war, role, mature, worlds, members = [], selfPlayerId, onOpenClanChat }: {
   war: ClanWar;
   role: 'LEADER' | 'MEMBER';
   mature: boolean;
   worlds: readonly PlanetView[];
+  members?: readonly WarSeatMember[];
+  selfPlayerId?: string | undefined;
+  onOpenClanChat?: () => void;
 }) {
   const { t } = useTranslation();
   const actions = useClanWarActions();
   const now = useNow();
-  const [originId, setOriginId] = useState('');
-  const [donorId, setDonorId] = useState('');
-  const [fleet, setFleet] = useState<Fleet>({});
-  const [donation, setDonation] = useState<Resources>({ ...ZERO });
-  const [quotedKey, setQuotedKey] = useState<string | null>(null);
-  const [acknowledgeShield, setAcknowledgeShield] = useState(false);
+  const [waveOpen, setWaveOpen] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
   const [acknowledgeStartShield, setAcknowledgeStartShield] = useState(false);
   const [wantedPace, setWantedPace] = useState<MissionPace>(1);
-  const selectedOriginId = originId.length > 0 ? originId : (worlds[0]?.planet.id ?? '');
-  const selectedDonorId = donorId.length > 0 ? donorId : (worlds[0]?.planet.id ?? '');
-  const origin = worlds.find((world) => world.planet.id === selectedOriginId);
-  const donor = worlds.find((world) => world.planet.id === selectedDonorId);
-  const quoteKey = `${selectedOriginId}:${JSON.stringify(fleet)}`;
-  const quote = quotedKey === quoteKey ? actions.quote.data : undefined;
-  const blockingRefusals = quote?.refusals.filter((refusal) => refusal.code !== 'SHIELD_WOULD_DROP') ?? [];
-  const quoteCanSend = quote !== undefined && (quote.ok
-    || (quote.shieldWouldDrop !== null && blockingRefusals.length === 0));
   const operation = war.operation;
-  const currentWaves = operation?.contributions ?? [];
-  const inbound = currentWaves.some((wave) => wave.status === 'OUTBOUND');
-  const startReason = role !== 'LEADER' ? t('clanWar.onlyLeader')
-    : operation?.status !== 'ASSEMBLING' ? t('clanWar.notAssembling')
-      : inbound ? t('clanWar.inboundReason')
-        : operation.pool.waves === 0 ? t('clanWar.noWaveReason')
-          : operation.pool.combatHulls === 0 ? t('clanWar.noCombatReason') : null;
-  /*
-    WHEN THE STRIKE LANDS IS THE LEADER'S CALL. Review 2026-09-22, #2 · plan §15.5a.
-    The server times the combined leg at full speed; the rungs divide it, so the arrival on screen
-    is the arrival the strike flies. A rung that stops being legal falls back to full speed.
-  */
-  const strikeMinutes = operation?.pool.strikeMinutes ?? null;
-  const strikePaces = strikeMinutes === null ? [] : pacesForMinutes(strikeMinutes);
-  const strikePace = strikePaces.includes(wantedPace) ? wantedPace : 1;
-
-  const setCount = (hull: HullId, value: number): void => {
-    const next = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
-    setFleet((current) => ({ ...current, [hull]: next }));
-    setQuotedKey(null);
-  };
-
-  /*
-    THE QUOTE ASKS ITSELF (B14). The route, the fuel, the bays and the refusals follow the
-    ships as they are picked, once the picking settles; a button between the fleet and its
-    price was one press that only ever said "show me". A reply for a fleet since changed
-    is never shown: it is filed under the key it was asked with.
-  */
-  const requestQuote = actions.quote.mutate;
-  const originPlanetId = origin?.planet.id ?? null;
-  useEffect(() => {
-    if (originPlanetId === null || fleetCount(fleet) === 0) return;
-    const asked = `${originPlanetId}:${JSON.stringify(fleet)}`;
-    const timer = setTimeout(() => {
-      requestQuote({ originPlanetId, fleet }, { onSuccess: () => { setQuotedKey(asked); } });
-    }, QUOTE_SETTLE_MS);
-    return () => { clearTimeout(timer); };
-  }, [requestQuote, originPlanetId, fleet]);
-
-  /** Why the wave cannot go yet, on the held button's face — or null when it can. */
-  const waveRefusal = !origin ? t('clanWar.noOrigin')
-    : fleetCount(fleet) === 0 ? t('clanWar.noFleet')
-      : actions.contribute.isPending ? t('clanWar.sending')
-        : quote === undefined ? (actions.quote.isError ? describeError(actions.quote.error) : t('clanWar.quoting'))
-          : blockingRefusals[0] ? describeError(new ApiError(blockingRefusals[0].code, blockingRefusals[0].message, 409))
-            : quote.shieldWouldDrop !== null && !acknowledgeShield ? t('clanWar.acknowledgeFirst')
-              : quoteCanSend ? null : t('clanWar.quoting');
-
-  /** The strike's whole weight, so each wave's share of it can be drawn. */
-  const totalBulk = currentWaves.reduce((sum, wave) => sum + wave.bulk, 0);
 
   if (!war.available) return <p className="px-2 py-4 text-body text-v2-ink-2">{t('clanWar.unavailable')}</p>;
 
   const hangar = <ClanHangar war={war} />;
-  const purposeCard = (
+  const treasury = <Treasury war={war} role={role} canGive={worlds.length > 0} onDonate={() => { setDonateOpen(true); }} />;
+  const purpose = (
     <Plate className="p-3">
       <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.purpose')}</h3>
       <p className="mt-1 text-micro leading-snug text-v2-ink-2">{t('clanWar.purposeHint')}</p>
     </Plate>
   );
-  const treasuryCard = (
-    <Plate className="p-3">
-      <h3 className="text-body font-semibold text-v2-ink">{t('clanWar.treasury')}</h3>
-      <p className="mt-1 text-caption text-v2-ink-2">{war.maxLevel ? t('clanWar.maxLevel') : t('clanWar.nextCost')}</p>
-      <div className="mt-2 grid grid-cols-3 gap-1 text-center">
-        {RESOURCE_KEYS.map((key) => <div key={key} className="min-w-0 rounded-control bg-v2-void/70 p-2">
-          <span className="block truncate text-caption text-v2-ink-2">{t(`clan.resources.${key}`)}</span>
-          <strong className="font-v2-mono tabular-nums block text-body text-v2-ink">{full(war.treasury[key])}</strong>
-          {war.nextCost ? <span className="font-v2-mono tabular-nums block text-caption text-v2-ink-2">/ {full(war.nextCost[key])}</span> : null}
-        </div>)}
-      </div>
-      {!war.maxLevel && <>
-        <label className="mt-3 block text-caption text-v2-ink-2" htmlFor="clan-war-donor">{t('clanWar.selectWorld')}</label>
-        <select id="clan-war-donor" className="mt-1 w-full rounded-control bg-v2-void p-2 text-body text-v2-ink"
-          value={selectedDonorId} onChange={(event) => {
-            setDonorId(event.target.value);
-            setDonation({ ...ZERO });
-          }}>
-          {worlds.map((world) => <option key={world.planet.id} value={world.planet.id}>{world.planet.name}</option>)}
-        </select>
-        <div className="mt-2 grid grid-cols-3 gap-1">
-          {RESOURCE_KEYS.map((key) => {
-            const available = Math.max(0, Math.floor(donor?.planet[key] ?? 0));
-            const limit = Math.min(war.room?.[key] ?? 0, available);
-            return <label key={key} className="min-w-0 text-caption text-v2-ink-2">
-            <span className="block truncate">{t(`clan.resources.${key}`)}</span>
-            <span className="font-v2-mono tabular-nums block text-v2-ink-3">{t('clanWar.available', { amount: full(available) })}</span>
-            <input type="number" min={0} max={limit} value={donation[key]}
-              className="mt-1 w-full rounded-control bg-v2-void p-2 text-body text-v2-ink"
-              onChange={(event) => { setDonation((current) => ({ ...current,
-                [key]: Math.min(limit, Math.max(0, Math.floor(Number(event.target.value) || 0))) })); }} />
-          </label>;
-          })}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" disabled={!donor || actions.donate.isPending
-            || RESOURCE_KEYS.every((key) => donation[key] === 0)
-            || RESOURCE_KEYS.some((key) => donation[key] > Math.min(
-              war.room?.[key] ?? 0,
-              Math.max(0, Math.floor(donor.planet[key])),
-            ))}
-            onClick={() => { if (donor) actions.donate.mutate({ planetId: donor.planet.id,
-              resources: donation }, { onSuccess: () => { setDonation({ ...ZERO }); } }); }}>
-            {t('clanWar.donate')}
-          </Button>
-          {role === 'LEADER' && <Button size="sm" variant="primary"
-            disabled={!war.canUpgrade || war.level === null || actions.upgrade.isPending}
-            onClick={() => { if (war.level !== null) actions.upgrade.mutate(war.level); }}>
-            {t('clanWar.upgrade')}
-          </Button>}
-        </div>
-      </>}
-      {actions.donate.isError && <p role="alert" className="mt-2 text-caption text-v2-hostile">{describeError(actions.donate.error)}</p>}
-      {actions.upgrade.isError && <p role="alert" className="mt-2 text-caption text-v2-hostile">{describeError(actions.upgrade.error)}</p>}
-    </Plate>
+  const donation = donateOpen && (
+    <ClanDonateSheet war={war} worlds={worlds} onClose={() => { setDonateOpen(false); }} />
   );
 
-  return <div className="flex min-w-0 flex-col gap-3 pb-5">
-    {!operation ? <>
-      {purposeCard}
-    <Plate className="p-3">
-      <h3 className="text-body font-semibold text-v2-ink">{t('clanWar.target')}</h3>
-      <p className="mt-2 text-body leading-relaxed text-v2-ink-2">{t('clanWar.noTarget')}</p>
-    </Plate>
-      {hangar}
-      {treasuryCard}
-    </> : <>
+  if (!operation) {
+    return (
+      <div className="flex min-w-0 flex-col gap-3 pb-5">
+        {purpose}
+        <Plate className="p-3">
+          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.target')}</h3>
+          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('clanWar.noTarget')}</p>
+        </Plate>
+        {hangar}
+        {treasury}
+        {donation}
+      </div>
+    );
+  }
+
+  const assembling = operation.status === 'ASSEMBLING';
+  const inbound = operation.contributions.some((wave) => wave.status === 'OUTBOUND');
+  const startReason = operation.status !== 'ASSEMBLING' ? t('clanWar.notAssembling')
+    : inbound ? t('clanWar.inboundReason')
+      : operation.pool.waves === 0 ? t('clanWar.noWaveReason')
+        : operation.pool.combatHulls === 0 ? t('clanWar.noCombatReason') : null;
+  /*
+    WHEN THE STRIKE LANDS IS THE LEADER'S CALL. Review 2026-09-22, #2 · plan §15.5a.
+    The server times the combined leg at full speed; the rungs divide it, so the arrival on screen
+    is the arrival the strike flies. A rung that stops being legal falls back to full speed.
+  */
+  const strikeMinutes = operation.pool.strikeMinutes ?? null;
+  const strikePaces = strikeMinutes === null ? [] : pacesForMinutes(strikeMinutes);
+  const strikePace = strikePaces.includes(wantedPace) ? wantedPace : 1;
+  const strikeRefusal = startReason
+    ?? (operation.startShieldWouldDrop !== null && !acknowledgeStartShield ? t('clanWar.acknowledgeFirst')
+      : actions.start.isPending ? t('clanWar.starting') : null);
+  const sendRefusal = !mature ? t('clanWar.immature') : null;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3 pb-5">
       <WarTarget operation={operation} now={now} />
+      <Seats operation={operation} members={members} selfPlayerId={selfPlayerId} now={now} />
+      {hangar}
 
-      <Plate className="p-3">
-        <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.waves')}</h3>
-        <p className="mt-0.5 text-micro text-v2-ink-2">{t('clanWar.techHint')}</p>
-        {currentWaves.length === 0 ? <p className="mt-2 text-caption text-v2-ink-2">{t('clanWar.noWaves')}</p>
-          : <ul className="mt-2 flex flex-col gap-2">
-            {currentWaves.map((wave) => <li key={wave.id} className="min-w-0 rounded-control border border-v2-line p-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-1">
-                <strong className="break-words text-caption text-v2-ink">{t('clanWar.wave', {
-                  name: wave.username, world: wave.originPlanetName })}</strong>
-                <span className="text-micro text-v2-self">{t(`clanWar.status.${wave.status}`)}</span>
-              </div>
-              {/* Each commander's share of the strike, in the allies' colour. */}
-              <span aria-hidden="true" className="mt-1.5 block h-1 overflow-hidden rounded-full bg-v2-line">
-                <span data-wave-share="" className="block h-full rounded-full bg-v2-ally"
-                  style={{ width: `${String(Math.round((wave.bulk / Math.max(1, totalBulk)) * 100))}%` }} />
-              </span>
-              <p className="mt-1 text-micro text-v2-ink-2">{t('clanWar.waveMeta', {
-                ships: fleetCount(wave.fleet), bulk: full(wave.bulk) })}</p>
-              <p className="break-words text-micro text-v2-ink-3">{MOBILE_HULLS.filter((hull) => (wave.fleet[hull] ?? 0) > 0)
-                .map((hull) => `${hullName(hull)} ×${wave.fleet[hull] ?? 0}`).join(' · ')}</p>
-              {wave.arrivesAt && <p className="text-micro text-v2-ink-2">{t('clanWar.eta', {
-                time: countdown(wave.arrivesAt.getTime() - now) })}</p>}
-              {wave.canRecall && <Button size="sm" variant="ghost" disabled={actions.recall.isPending}
-                onClick={() => { actions.recall.mutate(wave.id); }}>{t('clanWar.recall')}</Button>}
-            </li>)}
-          </ul>}
-      </Plate>
-
-      {operation.status === 'ASSEMBLING' && <Plate className="p-3">
-        <h3 className="text-body font-semibold text-v2-ink">{t('clanWar.composer')}</h3>
-        {!mature ? <p className="mt-2 text-body text-v2-ink-2">{t('clanWar.immature')}</p> : <>
-          <label className="mt-2 block text-caption text-v2-ink-2" htmlFor="clan-war-origin">{t('clanWar.origin')}</label>
-          <select id="clan-war-origin" className="mt-1 w-full rounded-control bg-v2-void p-2 text-body text-v2-ink"
-            value={selectedOriginId} onChange={(event) => {
-              setOriginId(event.target.value);
-              setFleet({});
-              setQuotedKey(null);
-              setAcknowledgeShield(false);
-            }}>
-            {worlds.map((world) => <option key={world.planet.id} value={world.planet.id}>{world.planet.name}</option>)}
-          </select>
-          {/* The launch's own row (B14): the ship, how many stand home, the stepper at its right. */}
-          <div className="mt-2">
-            {MOBILE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0).map((hull) => {
-              const held = origin?.fleet[hull] ?? 0;
-              const art = HULL_ART[hull];
-              return <div key={hull} data-hull-row={hull}
-                className={`flex items-center gap-2 border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${
-                  (fleet[hull] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}>
-                <span data-art className="grid size-8 shrink-0 place-items-center">
-                  {art ? <img src={art} alt="" aria-hidden className="size-8 object-contain" loading="lazy" />
-                    : <HullMark hull={hull} className="size-6 text-v2-ink-3" />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</span>
-                  <span className="block font-v2-mono text-micro text-v2-ink-3">{t('launch.atHome', { count: held })}</span>
-                </span>
-                <QuantityStepper
-                  look="v2"
-                  value={fleet[hull] ?? 0}
-                  min={0}
-                  max={held}
-                  onChange={(value) => { setCount(hull, value); }}
-                  decreaseLabel={t('launch.fewer', { name: hullName(hull) })}
-                  increaseLabel={t('launch.more', { name: hullName(hull) })}
-                  valueLabel={t('launch.quantity', { name: hullName(hull) })}
-                  editable
-                  maxLabel={t('launch.max', { name: hullName(hull) })}
-                  maxText={t('launch.maxShort')}
-                />
-              </div>;
-            })}
+      {assembling && (
+        <div className="flex flex-col gap-2">
+          <p className="rounded-control border border-v2-line bg-v2-deep/50 px-3 py-2 text-micro leading-snug text-v2-ink-2">
+            {t('clanWar.roomNote')}
+          </p>
+          {sendRefusal && <p className="text-micro text-v2-warn">{sendRefusal}</p>}
+          <div className="grid grid-cols-[auto_1fr] gap-2">
+            <button
+              type="button"
+              onClick={onOpenClanChat}
+              disabled={!onOpenClanChat}
+              className="flex min-h-10 items-center gap-1.5 rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink disabled:opacity-40"
+            >
+              <Icon id="i-chat" className="size-4" />
+              {t('clanWar.chat')}
+            </button>
+            <button
+              type="button"
+              disabled={sendRefusal !== null || worlds.length === 0}
+              onClick={() => { setWaveOpen(true); }}
+              className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:opacity-40"
+            >
+              {t('clanWar.composer')} ›
+            </button>
           </div>
-          {quote && <div className="mt-3 rounded-control border border-v2-line p-2 text-caption">
-            <p className="text-v2-ink">{t('clanWar.fuel')}: {full(quote.fuel.total)} / {full(quote.fuel.available)}</p>
-            {quote.fuel.legs.map((leg) => <p key={leg.leg} className="break-words text-v2-ink-2">
-              {t('clanWar.fuelLeg', { leg: t(`clanWar.fuelLegName.${leg.leg}`),
-                distance: full(leg.distance), fuel: full(leg.fuel) })}
-            </p>)}
-            <p className="mt-1 text-v2-ink-2">{t('clanWar.bay', quote.bays)}</p>
-            <p className="text-v2-ink-2">{t('clanWar.personal', {
-              used: full(quote.personalHangar.used), total: full(quote.personalHangar.total),
-              after: full(quote.personalHangar.afterSend) })}</p>
-            <p className="text-v2-ink-2">{t('clanWar.pool', {
-              after: full(quote.clanHangar.afterSend), total: full(quote.clanHangar.total) })}</p>
-            {quote.travel.earliestHome && <p className="text-v2-ink-2">{t('clanWar.earliestHome', {
-              time: countdown(quote.travel.earliestHome.getTime() - now) })}</p>}
-            {quote.latestStartAt && <p className="text-v2-ink-2">{t('clanWar.latestStart', {
-              time: countdown(quote.latestStartAt.getTime() - now) })}</p>}
-            {blockingRefusals.map((refusal) => <p key={refusal.code} role="alert" className="text-v2-hostile">
-              {describeError(new ApiError(refusal.code, refusal.message, 409))}</p>)}
-            {quote.shieldWouldDrop && <>
-              <p className="mt-2 text-v2-hostile">{t('clanWar.shield', { kind: quote.shieldWouldDrop.kind })}</p>
-              <label className="mt-1 flex items-start gap-2 text-v2-ink">
-                <input type="checkbox" checked={acknowledgeShield}
-                  onChange={(event) => { setAcknowledgeShield(event.target.checked); }} />
+        </div>
+      )}
+
+      {role === 'LEADER' && assembling && (
+        <Plate className="flex flex-col gap-2 p-3">
+          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.leaderTitle')}</h3>
+          {strikeMinutes !== null && (
+            <>
+              <p data-clan-strike-eta className="text-caption text-v2-ink-2">{t('clanWar.strikeEta', {
+                time: duration(strikeMinutes / strikePace) })}</p>
+              <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={setWantedPace}
+                hint={t('clanWar.paceHint')} />
+            </>
+          )}
+          {operation.startShieldWouldDrop && (
+            <div className="flex flex-col gap-1 rounded-control border border-v2-hostile/40 bg-v2-hostile/5 px-2.5 py-2">
+              <p className="text-caption text-v2-hostile">{t('clanWar.launchShield', { kind: operation.startShieldWouldDrop.kind })}</p>
+              <Toggle tone="hostile" checked={acknowledgeStartShield} onChange={setAcknowledgeStartShield}>
                 {t('clanWar.acknowledgeShield')}
-              </label>
-            </>}
-          </div>}
-          {/*
-            THE PRICE, BEFORE THE BUTTON (K4, K8): a wave turns until the strike starts. The
-            button is held and says on its face why it cannot go yet.
-          */}
-          <div data-wave-commit className="mt-3 grid gap-1.5">
-            {quote && <p className="text-micro leading-snug text-v2-ink-3">{t('clanWar.recallRule')}</p>}
+              </Toggle>
+            </div>
+          )}
+          {/* Irreversible — every wave flies into battle — so it is held (K4), its reason on its face. */}
+          <div data-strike-commit="">
             <HoldButton
-              label={t('clanWar.send')}
-              disabledReason={waveRefusal}
+              label={t('clanWar.launch')}
+              disabledReason={strikeRefusal}
               onCommit={() => {
-                if (!origin) return;
-                actions.contribute.mutate({ originPlanetId: origin.planet.id, fleet, acknowledgeShieldLoss: acknowledgeShield },
-                  { onSuccess: () => { setFleet({}); setQuotedKey(null); setAcknowledgeShield(false); } });
+                actions.start.mutate({ acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace });
               }}
             />
           </div>
-          {actions.contribute.isError && <p role="alert" className="mt-2 text-caption text-v2-hostile">
-            {describeError(actions.contribute.error)}</p>}
-        </>}
-      </Plate>}
-
-      {role === 'LEADER' && operation.status === 'ASSEMBLING' && <Plate className="p-3">
-        {startReason && <p className="mb-2 text-caption text-v2-ink-2">{startReason}</p>}
-        {operation.startShieldWouldDrop && <>
-          <p className="mb-2 text-caption text-v2-hostile">{t('clanWar.launchShield', {
-            kind: operation.startShieldWouldDrop.kind,
-          })}</p>
-          <label className="mb-2 flex items-start gap-2 text-caption text-v2-ink">
-            <input type="checkbox" checked={acknowledgeStartShield}
-              onChange={(event) => { setAcknowledgeStartShield(event.target.checked); }} />
-            {t('clanWar.acknowledgeShield')}
-          </label>
-        </>}
-        {strikeMinutes !== null && <>
-          <p data-clan-strike-eta className="text-caption text-v2-ink-2">{t('clanWar.strikeEta', {
-            time: duration(strikeMinutes / strikePace) })}</p>
-          <PaceRow data-clan-pace paces={strikePaces} pace={strikePace} onChange={setWantedPace}
-            hint={t('clanWar.paceHint')} />
-        </>}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="commit" size="sm" disabled={startReason !== null
-            || (operation.startShieldWouldDrop !== null && !acknowledgeStartShield)
-            || actions.start.isPending}
-            onClick={() => { actions.start.mutate({
-              acknowledgeShieldLoss: acknowledgeStartShield, pace: strikePace,
-            }); }}>{t('clanWar.launch')}</Button>
           <Button size="sm" variant="ghost" disabled={actions.cancel.isPending}
             onClick={() => { actions.cancel.mutate(); }}>{t('clanWar.cancel')}</Button>
-        </div>
-        {actions.start.isError && <p role="alert" className="mt-2 text-caption text-v2-hostile">{describeError(actions.start.error)}</p>}
-        {actions.cancel.isError && <p role="alert" className="mt-2 text-caption text-v2-hostile">{describeError(actions.cancel.error)}</p>}
-      </Plate>}
+          {actions.start.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.start.error)}</p>}
+          {actions.cancel.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.cancel.error)}</p>}
+        </Plate>
+      )}
 
-      {operation.status === 'RETURNING' && <Plate className="p-3">
-        <h3 className="text-body font-semibold text-v2-ink">{t('clanWar.returning')}</h3>
-        <p className="mt-2 text-body text-v2-ink-2">{t('clanWar.returningHint')}</p>
-      </Plate>}
+      {operation.status === 'RETURNING' && (
+        <Plate className="p-3">
+          <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.returning')}</h3>
+          <p className="mt-1 text-caption text-v2-ink-2">{t('clanWar.returningHint')}</p>
+        </Plate>
+      )}
 
-      {hangar}
-      {treasuryCard}
-      {purposeCard}
-    </>}
-  </div>;
+      {treasury}
+      {purpose}
+      {donation}
+      {waveOpen && (
+        <ClanWaveSheet
+          operation={operation}
+          worlds={worlds}
+          onClose={() => { setWaveOpen(false); }}
+          onSent={() => { setWaveOpen(false); }}
+        />
+      )}
+    </div>
+  );
 }
 
 /** Where the gathering point sits on the line; the target is the far end. */
 const GATHER = 72;
 
+/** Where a wave stands on the line, or null when it is off it (home, lost, recalled). */
+function placeOf(wave: Wave, now: number): number | null {
+  if (wave.status === 'STAGED') return GATHER;
+  if (wave.status === 'IN_BATTLE') return 100;
+  if (wave.status !== 'OUTBOUND') return null;
+  if (!wave.arrivesAt) return GATHER / 2;
+  const span = wave.arrivesAt.getTime() - wave.sentAt.getTime();
+  const done = span > 0 ? (now - wave.sentAt.getTime()) / span : 1;
+  return Math.max(4, Math.min(1, done) * GATHER);
+}
+
+/** A label near either end is pinned inside the row rather than centred off its edge. */
+const anchor = (at: number): string => (at < 14 ? 'translate-x-0' : at > 86 ? '-translate-x-full' : '-translate-x-1/2');
+
 /**
- * THE TARGET AND THE GATHERING, AS ONE PICTURE. E9: who is struck, where the clan gathers,
- * how long the target holds, and every wave as a mark on its way — flying to the gathering
- * point, waiting there, or in the battle at the far end.
+ * THE TARGET AND THE LINE THE WAVES FLY ON. E9: who is struck, where the clan gathers, how
+ * long the target holds, and every wave as a mark on the line — flying to the gathering
+ * point (named, with its ships and the time it lands there), waiting there (counted at the
+ * gathering), or in the battle at the far end.
  */
-function WarTarget({ operation, now }: { operation: NonNullable<ClanWar['operation']>; now: number }) {
+function WarTarget({ operation, now }: { operation: Operation; now: number }) {
   const { t } = useTranslation();
-  const place = (wave: NonNullable<ClanWar['operation']>['contributions'][number]): number | null => {
-    if (wave.status === 'STAGED') return GATHER;
-    if (wave.status === 'IN_BATTLE') return 100;
-    if (wave.status !== 'OUTBOUND') return null;
-    if (!wave.arrivesAt) return GATHER / 2;
-    const span = wave.arrivesAt.getTime() - wave.sentAt.getTime();
-    const done = span > 0 ? (now - wave.sentAt.getTime()) / span : 1;
-    return Math.max(4, Math.min(1, done) * GATHER);
-  };
+  const flying = operation.contributions
+    .map((wave) => ({ wave, at: placeOf(wave, now) }))
+    .filter((entry): entry is { wave: Wave; at: number } => entry.at !== null && entry.wave.status === 'OUTBOUND')
+    .sort((a, b) => a.at - b.at);
+  const staged = operation.contributions.filter((wave) => wave.status === 'STAGED').length;
+
   return (
-    <Plate className="flex flex-col gap-2 p-3">
-      <div data-war-target="" className="flex flex-col gap-2">
+    <Plate className="flex flex-col gap-3 p-3">
+      <div data-war-target="" className="flex flex-col gap-3">
         <div className="flex items-center gap-2.5">
           <img src={planetArt(operation.target.planetId)} alt="" className="size-11 shrink-0 rounded-full object-cover" />
           <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-baseline gap-x-1.5">
+            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <span className="text-micro text-v2-ink-3">{t('clanWar.target')}</span>
-              <span className="break-words text-caption font-semibold text-v2-ink">{operation.target.username} · {operation.target.planetName}</span>
+              <span className="rounded-chip border border-v2-rival/60 px-1 font-v2-mono text-micro font-semibold leading-4 text-v2-rival">
+                {operation.target.username}
+              </span>
+              <span className="break-words text-caption font-semibold text-v2-ink">{operation.target.planetName}</span>
             </p>
-            <p className="text-micro text-v2-ink-2">
-              {t('clanWar.staging', { world: operation.staging.name })}
-              {operation.status === 'ASSEMBLING' && <> · {t('clanWar.expires', { time: countdown(operation.expiresAt.getTime() - now) })}</>}
-            </p>
+            {operation.status === 'ASSEMBLING' && (
+              <p className="text-micro text-v2-ink-2">{t('clanWar.expires', { time: countdown(operation.expiresAt.getTime() - now) })}</p>
+            )}
           </div>
           <span aria-live="polite" className="shrink-0 text-micro font-semibold text-v2-self">
             {t(`clanWar.operationStatus.${operation.status}`)}
           </span>
         </div>
-        <div aria-hidden="true" className="relative h-6">
-          <span className="absolute inset-x-1 top-1/2 h-0.5 -translate-y-1/2 rounded-full bg-v2-line-hi" />
-          <span className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-v2-ally bg-v2-panel" style={{ left: `${String(GATHER)}%` }} />
-          <span className="absolute right-0 top-1/2 size-3 -translate-y-1/2 rotate-45 border-2 border-v2-ink-2 bg-v2-panel" />
+
+        <div data-war-line="" className="relative h-[4.5rem] font-v2-ui">
+          {/* Waves in flight, named above the line on two alternating rows so neighbours never collide. */}
+          {flying.map(({ wave, at }, index) => (
+            <span
+              key={`label-${wave.id}`}
+              data-wave-label=""
+              className={`absolute flex items-center gap-1 whitespace-nowrap text-micro leading-none text-v2-ink-2 ${anchor(at)} ${index % 2 === 0 ? 'top-0' : 'top-3.5'}`}
+              style={{ left: `${String(at)}%` }}
+            >
+              <span className="font-semibold text-v2-ink">{wave.username} · {fleetCount(wave.fleet)}</span>
+              {wave.arrivesAt && (
+                <span className="font-v2-mono text-v2-ink-3">{duration(Math.max(1, (wave.arrivesAt.getTime() - now) / 60_000))}</span>
+              )}
+            </span>
+          ))}
+          {staged > 0 && (
+            <span className={`absolute top-0 whitespace-nowrap text-micro font-semibold leading-none text-v2-ally ${anchor(GATHER)}`} style={{ left: `${String(GATHER)}%` }}>
+              {t('clanWar.readyCount', { count: staged })}
+            </span>
+          )}
+
+          <span aria-hidden="true" className="absolute inset-x-1 top-8 h-0.5 -translate-y-1/2 rounded-full bg-v2-ally/30" />
+          <span aria-hidden="true" className="absolute left-1 top-8 h-0.5 -translate-y-1/2 rounded-full bg-v2-ally/70" style={{ width: `${String(GATHER)}%` }} />
+          <span aria-hidden="true" className="absolute top-8 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-v2-ally bg-v2-panel" style={{ left: `${String(GATHER)}%` }} />
+          <span aria-hidden="true" className="absolute right-0 top-8 size-3.5 -translate-y-1/2 rounded-full border-2 border-v2-rival bg-v2-panel" />
           {operation.contributions.map((wave) => {
-            const at = place(wave);
+            const at = placeOf(wave, now);
             return at === null ? null : (
               <span
                 key={wave.id}
                 data-wave-marker=""
                 title={wave.username}
-                className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-v2-ally"
+                className="absolute top-8 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-v2-ally ring-2 ring-v2-panel"
                 style={{ left: `${String(at)}%` }}
               />
             );
           })}
+
+          <span className={`absolute top-12 whitespace-nowrap text-micro text-v2-ink-2 ${anchor(GATHER)}`} style={{ left: `${String(GATHER)}%` }}>
+            {t('clanWar.gatherAt', { world: operation.staging.name })}
+          </span>
+          <span className="absolute right-0 top-12 whitespace-nowrap text-micro text-v2-ink-2">{t('clanWar.target')}</span>
         </div>
       </div>
+    </Plate>
+  );
+}
+
+/**
+ * THE FIVE SEATS. The clan's commanders as the mock seats them — initials, a name, and
+ * under each the share of the strike their waves carry (you in your colour, allies in
+ * theirs); the open seats say so. A seat opens that commander's waves below it: where each
+ * came from, what it carries, where it is, and — on yours — the recall.
+ */
+function Seats({ operation, members, selfPlayerId, now }: {
+  operation: Operation;
+  members: readonly WarSeatMember[];
+  selfPlayerId: string | undefined;
+  now: number;
+}) {
+  const { t } = useTranslation();
+  const actions = useClanWarActions();
+  const waves = operation.contributions;
+  // A commander who left mid-operation still has a wave in the strike: they keep a seat.
+  const seated = [...members];
+  for (const wave of waves) {
+    if (!seated.some((member) => member.playerId === wave.playerId)) {
+      seated.push({ playerId: wave.playerId, username: wave.username });
+    }
+  }
+  const seats = seated.slice(0, Math.max(CLAN.maxMembers, 1));
+  const totalBulk = waves.reduce((sum, wave) => sum + wave.bulk, 0);
+  const bulkOf = (playerId: string): number =>
+    waves.filter((wave) => wave.playerId === playerId).reduce((sum, wave) => sum + wave.bulk, 0);
+  const firstWithWave = seats.find((member) => member.playerId === selfPlayerId && bulkOf(member.playerId) > 0)
+    ?? seats.find((member) => waves.some((wave) => wave.playerId === member.playerId));
+  const [chosen, setChosen] = useState<string | null>(null);
+  const selected = seats.find((member) => member.playerId === chosen) ?? firstWithWave ?? null;
+  const theirs = selected ? waves.filter((wave) => wave.playerId === selected.playerId) : [];
+
+  return (
+    <Plate className="flex flex-col gap-3 p-3">
+      <div role="group" aria-label={t('clanWar.seats')} className="grid grid-cols-5 gap-1.5">
+        {Array.from({ length: CLAN.maxMembers }, (_, index) => {
+          const member = seats[index];
+          if (!member) {
+            return (
+              <button key={`open-${String(index)}`} type="button" disabled
+                className="flex min-w-0 flex-col items-center gap-1 text-v2-ink-3">
+                <span className="grid size-10 place-items-center rounded-control border border-dashed border-v2-line-hi text-body">+</span>
+                <span className="max-w-full truncate text-micro">{t('clanWar.seatEmpty')}</span>
+              </button>
+            );
+          }
+          const self = member.playerId === selfPlayerId;
+          const share = totalBulk > 0 ? Math.round((bulkOf(member.playerId) / totalBulk) * 100) : 0;
+          const on = selected?.playerId === member.playerId;
+          return (
+            <button
+              key={member.playerId}
+              type="button"
+              aria-pressed={on}
+              aria-label={`${member.username} · ${String(share)}%`}
+              {...(self ? { 'data-self': '' } : {})}
+              onClick={() => { setChosen(member.playerId); }}
+              className="flex min-w-0 flex-col items-center gap-1"
+            >
+              <span className={`grid size-10 place-items-center rounded-control border font-v2-mono text-caption font-semibold ${
+                self ? 'border-v2-self/70 text-v2-self' : 'border-v2-line-hi text-v2-ink'
+              } ${on ? 'bg-v2-raise ring-2 ring-v2-ink/30' : 'bg-v2-panel'}`}>
+                {initials(member.username)}
+              </span>
+              <span aria-hidden="true" className="h-1 w-8 overflow-hidden rounded-full bg-v2-ally/15">
+                <span data-seat-share="" className={`block h-full rounded-full ${self ? 'bg-v2-self' : 'bg-v2-ally'}`} style={{ width: `${String(share)}%` }} />
+              </span>
+              <span className={`max-w-full truncate text-micro ${self ? 'text-v2-self' : 'text-v2-ink-2'}`}>
+                {self ? t('clanWar.seatYou') : member.username}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selected && (
+        <div data-seat-waves="" className="flex flex-col gap-2 border-t border-v2-line/70 pt-2.5">
+          {theirs.length === 0 ? (
+            <p className="text-caption text-v2-ink-2">{t('clanWar.seatNoWave', { name: selected.username })}</p>
+          ) : theirs.map((wave) => (
+            <div key={wave.id} className="flex flex-col gap-1">
+              <p className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="break-words text-caption font-semibold text-v2-ink">{t('clanWar.wave', { name: wave.username, world: wave.originPlanetName })}</span>
+                <span className="text-micro text-v2-self">{t(`clanWar.status.${wave.status}`)}</span>
+              </p>
+              <p className="flex flex-wrap gap-x-2 gap-y-0.5 text-micro text-v2-ink-2">
+                {MOBILE_HULLS.filter((hull) => (wave.fleet[hull] ?? 0) > 0).map((hull) => (
+                  <span key={hull} className="flex items-center gap-1">
+                    <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 text-v2-ink-3" />
+                    {hullName(hull)} ×{wave.fleet[hull] ?? 0}
+                  </span>
+                ))}
+              </p>
+              <p className="font-v2-mono text-micro text-v2-ink-3">
+                {t('clanWar.waveMeta', { ships: fleetCount(wave.fleet), bulk: full(wave.bulk) })}
+                {wave.arrivesAt && <> · {t('clanWar.eta', { time: countdown(wave.arrivesAt.getTime() - now) })}</>}
+              </p>
+              {wave.canRecall && (
+                <Button size="sm" variant="ghost" disabled={actions.recall.isPending}
+                  onClick={() => { actions.recall.mutate(wave.id); }}>{t('clanWar.recall')}</Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Plate>
+  );
+}
+
+/**
+ * THE SHARED TREASURY, AS PROGRESS. What the treasury holds against what the next level
+ * costs, resource by resource in their own colours — the gap is the reason to give — with
+ * the gift on its own page and, for the leader, the upgrade once it is paid for.
+ */
+function Treasury({ war, role, canGive, onDonate }: {
+  war: ClanWar;
+  role: 'LEADER' | 'MEMBER';
+  canGive: boolean;
+  onDonate: () => void;
+}) {
+  const { t } = useTranslation();
+  const actions = useClanWarActions();
+  return (
+    <Plate className="flex flex-col gap-2.5 p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.treasury')}</h3>
+        <span className="text-micro text-v2-ink-3">{war.maxLevel ? t('clanWar.maxLevel') : t('clanWar.nextCost')}</span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {RESOURCE_KEYS.map((key) => {
+          const have = war.treasury[key];
+          const need = war.nextCost?.[key] ?? 0;
+          const share = need > 0 ? Math.min(100, Math.round((have / need) * 100)) : 100;
+          return (
+            <div key={key} data-treasury={key} className="grid grid-cols-[0.875rem_minmax(0,1fr)_auto] items-center gap-2">
+              <img src={RESOURCE_ART[key]} alt="" aria-hidden className="size-3.5 object-contain" />
+              <span aria-hidden="true" className={`h-1.5 overflow-hidden rounded-full ${EMPTY[key]}`}>
+                <span className={`block h-full rounded-full ${FILL[key]}`} style={{ width: `${String(share)}%` }} />
+              </span>
+              <span className="font-v2-mono text-micro text-v2-ink">
+                {full(have)}{need > 0 && <span className="text-v2-ink-3"> / {full(need)}</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {!war.maxLevel && (
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" disabled={!canGive} onClick={onDonate}>{t('clanWar.donate')}</Button>
+          {role === 'LEADER' && (
+            <Button size="sm" variant="primary"
+              disabled={!war.canUpgrade || war.level === null || actions.upgrade.isPending}
+              onClick={() => { if (war.level !== null) actions.upgrade.mutate(war.level); }}>
+              {t('clanWar.upgrade')}
+            </Button>
+          )}
+        </div>
+      )}
+      {actions.upgrade.isError && <p role="alert" className="text-caption text-v2-warn">{describeError(actions.upgrade.error)}</p>}
     </Plate>
   );
 }
@@ -415,16 +477,19 @@ function ClanHangar({ war }: { war: ClanWar }) {
       <div data-clan-hangar="" className="flex flex-col gap-1.5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-caption font-semibold text-v2-ink">{t('clanWar.hangar')}</h3>
-          <strong className="font-v2-mono tabular-nums text-micro text-v2-self">{t('clanWar.level', { level: war.level ?? 1 })}</strong>
+          <strong className="font-v2-mono tabular-nums text-micro text-v2-ink">
+            {full(war.hangar.used)} / {full(war.hangar.total)}
+            <span className="ml-2 font-v2-ui font-normal text-v2-self">{t('clanWar.level', { level: war.level ?? 1 })}</span>
+          </strong>
         </div>
-        <span aria-hidden="true" className="flex h-1.5 overflow-hidden rounded-full bg-v2-line">
+        <span aria-hidden="true" className="flex h-1.5 overflow-hidden rounded-full bg-v2-ally/15">
           <span data-part="used" className="h-full bg-v2-ally" style={{ width: share(war.hangar.used) }} />
           <span data-part="reserved" className="h-full" style={{ width: share(war.hangar.reserved), backgroundColor: 'color-mix(in srgb, var(--color-v2-ally) 42%, transparent)' }} />
         </span>
-        <p className="text-caption text-v2-ink">{t('clanWar.capacity', {
+        <p className="text-micro text-v2-ink-2">{t('clanWar.capacity', {
           used: full(war.hangar.used), reserved: full(war.hangar.reserved), total: full(war.hangar.total),
         })}</p>
-        <p className="text-micro leading-snug text-v2-ink-2">{t('clanWar.hangarHint')}</p>
+        <p className="text-micro leading-snug text-v2-ink-3">{t('clanWar.hangarHint')}</p>
       </div>
     </Plate>
   );

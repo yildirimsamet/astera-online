@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useChatUnread, useClanBadge } from '../../api/queries.js';
-import { ChatScreen } from '../../screens/ChatScreen.js';
+import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
 import { Sheet } from '../kit/Sheet.js';
 
 /**
@@ -12,7 +12,12 @@ import { Sheet } from '../kit/Sheet.js';
  * unread, as the old launcher did; a world named in a message flies the camera there
  * after the page closes, so the move is seen.
  */
-export function ChatHost({ onClose, onFocusPlanet }: { onClose: () => void; onFocusPlanet: (planetId: string) => void }) {
+export function ChatHost({ onClose, onFocusPlanet, channel }: {
+  onClose: () => void;
+  onFocusPlanet: (planetId: string) => void;
+  /** The room it was asked to open on (the war room's "Clan chat", E9); unread decides otherwise. */
+  channel?: ChatChannel;
+}) {
   const { t } = useTranslation();
   const generalUnread = useChatUnread().data?.count ?? 0;
   const clanUnread = useClanBadge().data?.clanChatUnread ?? 0;
@@ -21,7 +26,7 @@ export function ChatHost({ onClose, onFocusPlanet }: { onClose: () => void; onFo
     <Sheet title={t('bell.chat')} onClose={onClose} detents={['full']} contained>
       <div className="min-h-0 flex-1">
         <ChatScreen
-          initialChannel={generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general'}
+          initialChannel={channel ?? (generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general')}
           onFocusPlanet={(planetId) => {
             onClose();
             onFocusPlanet(planetId);

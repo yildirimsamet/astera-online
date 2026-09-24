@@ -67,6 +67,7 @@ import type { PlanetGroup } from '../lib/directives.js';
 import { haptic } from '../lib/haptics.js';
 import { serverNow } from '../lib/clock.js';
 import { readDismissed, rememberDismissed } from '../lib/slotMemory.js';
+import type { ChatChannel } from './ChatScreen.js';
 import { activeTradeShip } from '../lib/trade.js';
 import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
 import {
@@ -244,6 +245,7 @@ export function GalaxyView({
   homeRequest,
   centerRequest,
   clearRequest,
+  onOpenChat,
   showChat = true,
   showGuidance = true,
 }: {
@@ -341,6 +343,8 @@ export function GalaxyView({
    */
   centerRequest?: number;
   clearRequest?: number;
+  /** Open chat as its own page on a given room: the war room's "Clan chat" (E9). */
+  onOpenChat?: (channel?: ChatChannel) => void;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -1844,7 +1848,10 @@ export function GalaxyView({
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
           <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
-            <ClanScreen initialTab={clanInitialTab} />
+            <ClanScreen
+              initialTab={clanInitialTab}
+              {...(onOpenChat ? { onOpenClanChat: () => { onOpenChat('clan'); } } : {})}
+            />
           </Suspense>
         </V2Sheet>
       )}

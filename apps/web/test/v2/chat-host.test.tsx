@@ -42,6 +42,12 @@ describe('the chat page', () => {
     expect(screen.getByText('chat on clan')).toBeInTheDocument();
   });
 
+  /** The war room's "Clan chat" (E9) opens the clan channel whatever is unread. */
+  it('opens on the channel it is asked for', () => {
+    render(<ChatHost channel="clan" onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    expect(screen.getByText('chat on clan')).toBeInTheDocument();
+  });
+
   it('closes through its host', async () => {
     const onClose = vi.fn();
     render(<ChatHost onClose={onClose} onFocusPlanet={vi.fn()} />);

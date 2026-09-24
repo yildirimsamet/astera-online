@@ -118,7 +118,10 @@ Web: tsc + lint temiz, tam paket 4185 yeşil, yalnız bilinen 9 kırmızı. Sunu
 (9 maket ↔ oyun; maketler `design-mocks/` değil sahibin sohbette verdiği 9 resim, scratchpad `images/18..26.png`).
 Sahip kuralı: maketler kaydırılamıyor, alt kısımları görünmüyor — **her aşamada maketin göstermediği alt bölümleri de
 incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
-- [ ] **M1 Klan savaş odası** (E9): beş koltuk + katkı çubukları, hat üstünde etiketli dalgalar ve uç etiketleri,
+- [x] **M1 Klan savaş odası** (E9) — `ClanWarPanel` (hat etiketleri, `Seats`, `Treasury`, basılı başlatma),
+  `ClanWaveSheet`, `ClanDonateSheet`, kit `ChoiceChips`/`Toggle`/`Figure`; sohbet klan kanalında (`onOpenChat`).
+  Not: dalgalar için dalga başına hız yok — sunucu kuralı toplanma + liderin saldırı hızı; aynı anda varış böyle sağlanıyor.
+  : beş koltuk + katkı çubukları, hat üstünde etiketli dalgalar ve uç etiketleri,
   "Dalga gönder ›" standart fırlatma ekranını açar (hız seçimiyle aynı anda varış), Klan sohbeti düğmesi, kısa kural
   notu; tarayıcı form elemanları (açılır liste, sayı kutusu) kalkar (hazine bağışı dahil); alt bölümler maket dilinde.
 - [ ] **M2 Hedef dosyası** (E2): eski olgu listesi dosyaya katlanır (tekrar yok), kaynak başına ganimet çubukları,

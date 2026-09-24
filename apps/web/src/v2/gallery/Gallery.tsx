@@ -15,6 +15,7 @@ import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
 import { ReportScene } from '../hud/ReportScene.js';
+import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
@@ -289,6 +290,11 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
     client.setQueryData(keys.leaderboard, { ladder: [], you: null });
     client.setQueryData(keys.clanEvents, { pages: [{ events: [], nextBefore: null }], pageParams: [null] });
     client.setQueryData(keys.clanAid, { transfers: [] });
+    // Two worlds of the commander's own, so the wave page has a world to send from and a choice.
+    client.setQueryData(keys.planets, {
+      playerId: 'me', seasonId: 's-gallery', capitalPlanetId: launchWorld.planet.id,
+      planets: [launchWorld, planetView({ fleet: { DART: 12, PIKE: 4 } }, { id: 'p-hollow', name: 'Hollow', alloy: 3_400, crystal: 1_200, deuterium: 600 })],
+    });
     // The war room (E9): an operation assembling on a rival, three waves in, one staged.
     const wave = (id: string, playerId: string, username: string, status: 'OUTBOUND' | 'STAGED', hulls: Record<string, number>, minutes: number, mine = false) => ({
       id, playerId, username, originPlanetId: `o-${id}`, originPlanetName: `${username}'s world`, sourceKind: 'PHYSICAL',
@@ -322,7 +328,9 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
   });
   return (
     <Sheet title="Clan" eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
-      <ClanScreen initialTab={tab} />
+      <WorldProvider>
+        <ClanScreen initialTab={tab} onOpenClanChat={noop} />
+      </WorldProvider>
     </Sheet>
   );
 }

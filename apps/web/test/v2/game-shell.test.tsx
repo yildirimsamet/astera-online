@@ -72,8 +72,8 @@ vi.mock('../../src/v2/shell/BellHost.js', () => ({
 }));
 
 vi.mock('../../src/v2/shell/ChatHost.js', () => ({
-  ChatHost: ({ onClose }: { onClose: () => void }) => (
-    <div role="dialog" aria-label="chat"><button type="button" onClick={onClose}>close chat</button></div>
+  ChatHost: ({ onClose, channel }: { onClose: () => void; channel?: string }) => (
+    <div role="dialog" aria-label={channel ? `chat ${channel}` : 'chat'}><button type="button" onClick={onClose}>close chat</button></div>
   ),
 }));
 
@@ -106,11 +106,12 @@ const shell = () => render(
     onPanel={onPanel}
     onFocusPlanet={onFocusPlanet}
     onFocusCraft={onFocusCraft}
-    galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route }) => (
+    galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route, onOpenChat }) => (
       <div>
         <p>{`home ${String(homeRequest)} worlds ${String(worldsRequest)}`}</p>
         <p>{`center ${String(centerRequest)} clear ${String(clearRequest)}`}</p>
         <button type="button" onClick={() => { route('chat'); }}>galaxy asks for chat</button>
+        <button type="button" onClick={() => { onOpenChat('clan'); }}>galaxy asks for clan chat</button>
       </div>
     )}
   />,
@@ -309,6 +310,19 @@ describe('the v2 shell', () => {
     expect(screen.getByRole('navigation')).toHaveAttribute('data-over', '');
     await userEvent.click(screen.getByRole('button', { name: 'close chat' }));
     expect(screen.queryByRole('dialog', { name: 'chat' })).toBeNull();
+  });
+
+  /** E9: the war room's "Clan chat" opens chat on the clan channel, as its own page. */
+  it('opens chat on the clan channel when the war room asks for it', async () => {
+    panel = 'clan';
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for clan chat' }));
+    expect(screen.getByRole('dialog', { name: 'chat clan' })).toBeInTheDocument();
+    expect(onPanel).toHaveBeenLastCalledWith(null);
+    await userEvent.click(screen.getByRole('button', { name: 'close chat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for chat' }));
+    // The next ordinary open decides by what is unread again.
+    expect(screen.getByRole('dialog', { name: 'chat' })).toBeInTheDocument();
   });
 
   it('closes chat when the dock moves', async () => {

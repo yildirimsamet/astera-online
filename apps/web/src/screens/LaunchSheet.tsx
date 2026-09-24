@@ -29,6 +29,7 @@ import { Icon } from '../v2/icons.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Figure } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 
@@ -402,26 +403,5 @@ export function LaunchSheet({
         </dl>
       </div>
     </Sheet>
-  );
-}
-
-function Figure({
-  label,
-  value,
-  sub,
-  tone,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  /** Red for a figure that is the reason the commit will refuse. */
-  tone?: 'threat';
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="truncate text-micro text-v2-ink-3">{label}</dt>
-      <dd className={`mt-0.5 font-v2-mono text-caption font-semibold ${tone === 'threat' ? 'text-v2-hostile' : 'text-v2-ink'}`}>{value}</dd>
-      {sub && <dd className="font-v2-mono text-micro text-v2-ink-3">{sub}</dd>}
-    </div>
   );
 }
