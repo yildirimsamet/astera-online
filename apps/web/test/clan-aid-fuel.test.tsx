@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { distance, missionFuel } from '@astera/rules';
@@ -228,6 +228,26 @@ describe('the fuel a clan gift burns', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /send — no recall/i })).toBeEnabled();
     });
+  });
+
+  /**
+   * A GIFT CANNOT BE RECALLED, SO IT IS HELD, NEVER TAPPED. D5 and K4: every irreversible
+   * commit in the game is a hold (or Enter twice on a keyboard).
+   */
+  it('sends only on a hold, because a gift cannot be called back', async () => {
+    const { api } = show(5_000);
+    vi.spyOn(api, 'quoteClanAid').mockResolvedValue(quote);
+    const launch = vi.spyOn(api, 'launchClanAid').mockImplementation(() => new Promise<never>(() => undefined));
+    await packOneCourier();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Check flight' }));
+    const send = await screen.findByRole('button', { name: /send — no recall/i });
+    await waitFor(() => { expect(send).toBeEnabled(); });
+    await userEvent.setup().click(send);
+    expect(launch).not.toHaveBeenCalled();
+    fireEvent.keyDown(send, { key: 'Enter' });
+    fireEvent.keyDown(send, { key: 'Enter' });
+    await waitFor(() => { expect(launch).toHaveBeenCalledOnce(); });
   });
 });
 

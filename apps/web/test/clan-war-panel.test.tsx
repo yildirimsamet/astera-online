@@ -227,3 +227,50 @@ describe('choosing when the joint strike lands', () => {
     expect(document.querySelector('[data-clan-strike-eta]')).toBeNull();
   });
 });
+
+/**
+ * THE WAR ROOM AT A GLANCE. E9 and D5: the target and the gathering lead, each wave is a
+ * mark on its way to the gathering point, each commander's share of the strike is a bar,
+ * and the clan hangar is drawn in the allies' colour rather than stated as a sentence.
+ */
+describe('the war room at a glance', () => {
+  const twoWaves = clanWarSchema.parse({ ...empty, hangar: { used: 120, reserved: 40, total: 160 }, operation: {
+    ...active.operation!,
+    contributions: [
+      { id: 'w1', playerId: 'a', username: 'Scout', originPlanetId: 'o1', originPlanetName: 'Origin A', sourceKind: 'PHYSICAL',
+        status: 'OUTBOUND', fleet: { DART: 3 }, bulk: 3, fuelPaid: 18, sentAt: '2026-09-20T12:01:00Z',
+        arrivesAt: '2026-09-20T12:10:00Z', mine: false, canRecall: false },
+      { id: 'w2', playerId: 'b', username: 'Mira', originPlanetId: 'o2', originPlanetName: 'Origin B', sourceKind: 'PHYSICAL',
+        status: 'STAGED', fleet: { DART: 9 }, bulk: 9, fuelPaid: 30, sentAt: '2026-09-20T12:01:00Z',
+        arrivesAt: null, mine: false, canRecall: false },
+    ],
+    pool: { combatHulls: 12, waves: 2, participants: 2 },
+  } });
+
+  it('leads with the target, ahead of the hangar and the treasury', () => {
+    show(twoWaves);
+    const target = document.querySelector('[data-war-target]')!;
+    const hangar = document.querySelector('[data-clan-hangar]')!;
+    expect(target).toHaveTextContent('Vega');
+    expect(target.compareDocumentPosition(hangar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('marks every wave on its way to the gathering point', () => {
+    show(twoWaves);
+    expect(document.querySelectorAll('[data-war-target] [data-wave-marker]')).toHaveLength(2);
+  });
+
+  it('gives each wave its share of the strike', () => {
+    show(twoWaves);
+    const shares = [...document.querySelectorAll<HTMLElement>('[data-wave-share]')].map((bar) => bar.style.width);
+    expect(shares).toEqual(['25%', '75%']);
+  });
+
+  it('draws the clan hangar in the allies’ colour, used then reserved', () => {
+    show(twoWaves);
+    const hangar = document.querySelector<HTMLElement>('[data-clan-hangar]')!;
+    expect(hangar.querySelector('[data-part="used"]')).toHaveClass('bg-v2-ally');
+    expect(hangar.querySelector<HTMLElement>('[data-part="used"]')!.style.width).toBe('75%');
+    expect(hangar.querySelector<HTMLElement>('[data-part="reserved"]')!.style.width).toBe('25%');
+  });
+});

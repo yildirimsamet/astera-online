@@ -9,6 +9,8 @@ import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
+import { ClanScreen } from '../../screens/ClanScreen.js';
+import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
@@ -240,8 +242,69 @@ function GalleryIntel() {
   );
 }
 
+/**
+ * A CLAN FROM THE INSIDE. D5. The camera's commander is clanless, so the member room —
+ * the identity card, the seats, the treasury, forces, the crew, aid and the war room —
+ * is photographed here.
+ */
+function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid' | 'war' }) {
+  const client = useQueryClient();
+  useState(() => {
+    const ago = (minutes: number) => new Date(NOW - minutes * MIN);
+    const person = (playerId: string, username: string, slot: number, active: number, role: 'LEADER' | 'MEMBER' = 'MEMBER') => ({
+      playerId, username, role, slot, joinedAt: ago(9000), matureAt: ago(8000), mature: true, aidEnabled: true,
+      lastActiveAt: ago(active), activeRecently: active < 30,
+    });
+    const clan = { id: 'c-nova', name: 'Nova Collective', tag: 'NOVA' };
+    client.setQueryData(keys.clanHome, {
+      state: 'MEMBER',
+      clan: { ...clan, description: 'We send together, we come home together.', recruiting: true, score: 1_240,
+        role: 'LEADER', matureAt: ago(8000), mature: true, aidEnabled: true },
+      members: [
+        person('me', 'Vantage', 0, 0, 'LEADER'), person('mira', 'Mira', 1, 4), person('orin', 'Orin', 2, 12), person('tarn', 'Tarn', 3, 180),
+      ],
+      requests: [],
+    });
+    client.setQueryData(keys.clanDepot, {
+      resources: { alloy: 12_400, crystal: 3_100, deuterium: 860 },
+      purseRemaining: { alloy: 3_100, crystal: 800, deuterium: 200 },
+    });
+    client.setQueryData(keys.clanLeaderboard, {
+      clans: [
+        { id: 'c-orb', name: 'Orbital Guild', tag: 'ORB', rank: 1, self: false, score: 2_900, memberCount: 5, level: null, recruiting: false, leaderName: 'Ada', description: '', members: [] },
+        { id: 'c-nova', name: 'Nova Collective', tag: 'NOVA', rank: 2, self: true, score: 1_240, memberCount: 4, level: null, recruiting: true, leaderName: 'Vantage', description: '', members: [] },
+      ],
+    });
+    client.setQueryData(keys.clanStrength, {
+      clan,
+      totals: { clanDominion: 1_240, memberDominion: 41_500, ships: 252, fleetValue: 128_000, groundDefences: 46, worlds: 7, activeFlights: 3 },
+      composition: [{ hull: 'DART', count: 142 }, { hull: 'PIKE', count: 60 }, { hull: 'RAMPART', count: 38 }, { hull: 'COURIER', count: 12 }],
+      members: [
+        { playerId: 'me', username: 'Vantage', role: 'LEADER', dominion: 14_200, ships: 90, worlds: 2 },
+        { playerId: 'mira', username: 'Mira', role: 'MEMBER', dominion: 11_800, ships: 70, worlds: 2 },
+        { playerId: 'orin', username: 'Orin', role: 'MEMBER', dominion: 9_100, ships: 52, worlds: 2 },
+        { playerId: 'tarn', username: 'Tarn', role: 'MEMBER', dominion: 6_400, ships: 40, worlds: 1 },
+      ],
+    });
+    client.setQueryData(keys.leaderboard, { ladder: [], you: null });
+    client.setQueryData(keys.clanEvents, { pages: [{ events: [], nextBefore: null }], pageParams: [null] });
+    client.setQueryData(keys.clanAid, { transfers: [] });
+    client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
+    return null;
+  });
+  return (
+    <Sheet title="Clan" eyebrow="Seasonal clans" onClose={noop} detents={['full']} bleed>
+      <ClanScreen initialTab={tab} />
+    </Sheet>
+  );
+}
+
 function Views({ view }: { view: string }) {
   if (view === 'intel') return <GalleryIntel />;
+  if (view === 'clan') return <GalleryClan tab="overview" />;
+  if (view === 'clan-strength') return <GalleryClan tab="strength" />;
+  if (view === 'clan-members') return <GalleryClan tab="members" />;
+  if (view === 'clan-aid') return <GalleryClan tab="aid" />;
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }

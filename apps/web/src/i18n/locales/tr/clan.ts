@@ -1,4 +1,6 @@
 export const clan = {
+  /** The clan sheet's title (D5). */
+  title: 'Klan',
   surfaceName: 'klanın',
   waiting: 'Klan komutası açılıyor',
   noDescription: 'Henüz klan açıklaması yok.',

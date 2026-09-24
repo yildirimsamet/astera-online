@@ -1,4 +1,6 @@
 export const clan = {
+  /** The clan sheet's title (D5). */
+  title: 'Clan',
   surfaceName: 'tu clan',
   waiting: 'Comando de apertura del clan',
   noDescription: 'Aún no hay descripción del clan.',

@@ -67,6 +67,9 @@ import {
   GalaxyIcon,
   LeaderboardIcon,
 } from '../ui/icons/index.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { Segmented } from '../v2/kit/Segmented.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 import {
   Button,
   Chip,
@@ -75,12 +78,9 @@ import {
   Plate,
   PriceTag,
   Section,
-  Sheet,
-  Segmented,
   Stat,
-  Unreachable,
-  Waiting,
-} from '../ui/kit/index.js';
+} from '../v2/kit/Surface.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
 import { ClanWarPanel } from './ClanWarPanel.js';
 
 type ClanTab = 'overview' | 'strength' | 'members' | 'aid' | 'war';
@@ -173,30 +173,23 @@ export function ClanScreen({ initialTab = 'overview' }: { initialTab?: ClanTab }
    */
   const inside = liveHome;
 
-  const tabLabel = (id: 'overview' | 'strength' | 'members' | 'aid') => <>
-    <span className="sm:hidden">{t(`clan.tabs.compact.${id}`)}</span>
-    <span className="hidden sm:inline">{t(`clan.tabs.${id}`)}</span>
-  </>;
   const tabs = [
-    { id: 'overview' as const, label: tabLabel('overview'), hint: t('clan.tabs.overview') },
-    { id: 'strength' as const, label: tabLabel('strength'), hint: t('clan.tabs.strength') },
-    { id: 'members' as const, label: tabLabel('members'), hint: t('clan.tabs.members') },
-    { id: 'aid' as const, label: tabLabel('aid'), hint: t('clan.tabs.aid') },
+    { id: 'overview' as const, label: t('clan.tabs.overview') },
+    { id: 'strength' as const, label: t('clan.tabs.strength') },
+    { id: 'members' as const, label: t('clan.tabs.members') },
+    { id: 'aid' as const, label: t('clan.tabs.aid') },
     { id: 'war' as const, label: t('clanWar.tab') },
   ];
 
   return (
     <div className="flex flex-col">
       <ClanHeader home={inside} />
-      <div className="sticky top-0 z-10 border-y border-line-soft bg-void px-3 py-2">
+      <div className="sticky top-0 z-10 border-y border-v2-line bg-v2-void px-3 py-2">
         <Segmented
-          segments={tabs}
+          options={tabs}
           value={tab}
-          onSelect={setTab}
+          onChange={setTab}
           label={t('clan.tabs.label')}
-          role="tablist"
-          size="sm"
-          panelId={(id) => `clan-panel-${id}`}
           tabId={(id) => `clan-tab-${id}`}
         />
       </div>
@@ -246,36 +239,36 @@ export function ClanScreen({ initialTab = 'overview' }: { initialTab?: ClanTab }
 
 function ClanHeader({ home }: { home: ClanMemberHome }) {
   const { t } = useTranslation();
+  /*
+    THE CLAN'S IDENTITY IN ONE CARD. D5: the tag as its badge in the allies' colour, the
+    name, the role, the motto, and the two figures a member reads it for — how full the
+    crew is and what the clan has won together.
+  */
   return (
-    <header className="relative overflow-hidden px-2 pb-5 pt-2">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(89,200,255,0.13),transparent_42%)]" />
-      <div className="relative flex items-start gap-2">
-        <span className="socket grid size-12 shrink-0 place-items-center rounded-control text-crystal">
-          <ClanIcon className="size-7" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Chip tone="crystal">[{home.clan.tag}]</Chip>
-            {home.clan.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
-          </div>
-          <h3 className="headline mt-2 break-words text-pretty text-readout text-bone">{home.clan.name}</h3>
-          <p className="mt-1 text-caption leading-relaxed text-dim">
-            {home.clan.description || t('clan.noDescription')}
-          </p>
+    <header className="mx-3 mt-1 flex items-center gap-3 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
+      <span className="grid size-12 shrink-0 place-items-center rounded-control border border-v2-ally/60 bg-v2-ally/10 px-1 text-center font-v2-mono text-micro font-bold text-v2-ally">
+        {home.clan.tag}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <h3 className="min-w-0 break-words text-body font-semibold text-v2-ink">{home.clan.name}</h3>
+          {home.clan.role === 'LEADER' ? <Chip tone="alloy">{t('clan.leader')}</Chip> : null}
         </div>
-      </div>
-      <div className="relative mt-2 grid grid-cols-2 gap-2">
-        <Plate sunk className="px-3 py-3">
-          <Stat label={t('clan.membersCountLabel')} value={`${String(home.members.length)} / ${String(CLAN.maxMembers)}`} size="sm" />
-        </Plate>
-        <Plate sunk className="px-3 py-3">
-          <Stat
-            label={t('clan.scoreLabel')}
-            value={home.clan.score === 0 ? full(0) : signed(home.clan.score)}
-            tone={home.clan.score > 0 ? 'opportunity' : home.clan.score < 0 ? 'threat' : 'dim'}
-            size="sm"
-          />
-        </Plate>
+        <p className="mt-0.5 text-micro leading-snug text-v2-ink-2">
+          {home.clan.description || t('clan.noDescription')}
+        </p>
+        <p className="mt-1 flex flex-wrap gap-x-3 text-micro text-v2-ink-3">
+          <span>
+            {t('clan.membersCountLabel')}{' '}
+            <span className="font-v2-mono text-v2-ink">{`${String(home.members.length)} / ${String(CLAN.maxMembers)}`}</span>
+          </span>
+          <span>
+            {t('clan.scoreLabel')}{' '}
+            <span className={`font-v2-mono ${home.clan.score > 0 ? 'text-v2-self' : home.clan.score < 0 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+              {home.clan.score === 0 ? full(0) : signed(home.clan.score)}
+            </span>
+          </span>
+        </p>
       </div>
     </header>
   );
@@ -330,28 +323,25 @@ function ClanOutside({
   };
 
   return (
-    <div className="flex flex-col gap-7 px-2 py-2">
-      <header className="plate plate-cut relative overflow-hidden px-5 py-6">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_15%,rgba(89,200,255,0.16),transparent_45%)]" />
-        <ClanIcon className="relative size-7 text-crystal" />
-        <p className="legend relative mt-2 text-crystal">{t('clan.outside.eyebrow')}</p>
-        <h3 className="headline relative mt-2 text-readout text-bone">{t('clan.outside.title')}</h3>
-        <p className="relative mt-3 max-w-[42ch] text-body leading-relaxed text-dim">
-          {t('clan.outside.body')}
-        </p>
+    <div className="flex flex-col gap-4 px-3 py-2">
+      <header className="rounded-control border border-v2-line bg-v2-panel px-3 py-3">
+        <h3 className="text-body font-semibold text-v2-ink">{t('clan.outside.title')}</h3>
+        <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('clan.outside.body')}</p>
       </header>
 
       <Section label={t('clan.benefits.heading')}>
+        <div className="grid grid-cols-2 gap-1.5">
         <Benefit icon={<GalaxyIcon className="size-5" />} title={t('clan.benefits.safeTitle')} body={t('clan.benefits.safeBody')} />
         <Benefit icon={<LeaderboardIcon className="size-5" />} title={t('clan.benefits.lootTitle')} body={t('clan.benefits.lootBody')} />
         <Benefit icon={<ClockIcon className="size-5" />} title={t('clan.benefits.aidTitle')} body={t('clan.benefits.aidBody')} />
         <Benefit icon={<ClanIcon className="size-5" />} title={t('clan.benefits.recordTitle')} body={t('clan.benefits.recordBody')} />
+        </div>
       </Section>
 
       {hasDepot ? (
         <Section label={t('clan.depot.formerHeading')}>
           <Plate tone="opportunity" className="px-2 py-2">
-            <p className="text-body text-bone">{t('clan.depot.formerBody')}</p>
+            <p className="text-body text-v2-ink">{t('clan.depot.formerBody')}</p>
             <ResourceFigures resources={depot} className="mt-3" />
             <Button
               className="mt-2"
@@ -375,8 +365,8 @@ function ClanOutside({
                 <Plate key={request.id} className="px-2 py-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="name truncate text-bone">[{request.clanTag}] {request.clanName}</p>
-                      <p className="mt-1 text-caption text-faint">
+                      <p className="font-semibold truncate text-v2-ink">[{request.clanTag}] {request.clanName}</p>
+                      <p className="mt-1 text-caption text-v2-ink-3">
                         {request.kind === 'INVITATION'
                           ? t('clan.requests.invitation')
                           : t(`clan.requests.status.${request.status}`)}
@@ -449,7 +439,7 @@ function ClanOutside({
               maxLength={40}
               onChange={(event) => { setSearchDraft(event.currentTarget.value); }}
               placeholder={t('clan.directory.search')}
-              className="field min-h-11"
+              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10"
             />
           </label>
           <Button type="submit">{t('clan.directory.find')}</Button>
@@ -488,21 +478,21 @@ function ClanOutside({
                       onClick={() => { setInspecting(clan.id); }}
                     >
                       <div className="flex items-start gap-2">
-                        <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-crystal">
+                        <span className="rounded-control bg-v2-deep grid size-8 shrink-0 place-items-center rounded-control text-v2-self">
                           <ClanIcon className="size-4" />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <Chip tone="crystal">[{clan.tag}]</Chip>
-                            <strong className="name truncate text-bone">{clan.name}</strong>
+                            <strong className="font-semibold truncate text-v2-ink">{clan.name}</strong>
                             {clan.level !== null && (
                               <Chip tone="opportunity">{t('clanWar.level', { level: clan.level })}</Chip>
                             )}
                           </div>
-                          <p className="mt-2 text-caption leading-relaxed text-dim">
+                          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
                             {clan.description || t('clan.noDescription')}
                           </p>
-                          <p className="mt-2 text-label text-faint">
+                          <p className="mt-2 text-label text-v2-ink-3">
                             {t('clan.directory.meta', {
                               leader: clan.leaderName,
                               members: clan.memberCount,
@@ -551,7 +541,7 @@ function ClanOutside({
             {directory.isFetchingNextPage ? t('clan.directory.loadingMore') : t('clan.directory.more')}
           </Button>
         ) : null}
-        {notice ? <p role="status" className="text-caption text-opportunity">{notice}</p> : null}
+        {notice ? <p role="status" className="text-caption text-v2-self">{notice}</p> : null}
         <MutationError mutation={actions.apply} />
       </Section>
 
@@ -642,22 +632,22 @@ function ClanProfile({
         <Waiting>{t('clan.profile.loading')}</Waiting>
       ) : (
         <>
-          <p className="text-caption leading-relaxed text-dim">
+          <p className="text-caption leading-relaxed text-v2-ink-2">
             {clan.description || t('clan.noDescription')}
           </p>
           {clan.level !== null && (
-            <p className="mt-2 text-label text-crystal">
+            <p className="mt-2 text-label text-v2-self">
               {t('clanWar.level', { level: clan.level })}
             </p>
           )}
-          <p className="mt-2 text-label text-faint">
+          <p className="mt-2 text-label text-v2-ink-3">
             {t('clan.directory.meta', {
               leader: clan.leaderName,
               members: clan.memberCount,
               score: clan.score === 0 ? full(0) : signed(clan.score),
             })}
           </p>
-          <h3 className="legend mt-4 mb-2">
+          <h3 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-4 mb-2">
             {t('clan.profile.roster', { count: clan.members.length })}
           </h3>
           {/*
@@ -670,15 +660,15 @@ function ClanProfile({
               <li
                 key={mate.playerId}
                 data-clan-member={mate.playerId}
-                className="flex items-baseline justify-between gap-2 border-b border-line-soft pb-1 last:border-0"
+                className="flex items-baseline justify-between gap-2 border-b border-v2-line pb-1 last:border-0"
               >
                 <span className="flex min-w-0 items-baseline gap-2">
-                  <strong className="name truncate text-bone">{mate.username}</strong>
+                  <strong className="font-semibold truncate text-v2-ink">{mate.username}</strong>
                   {mate.role === 'LEADER' && (
-                    <span className="legend text-crystal">{t('clan.profile.leader')}</span>
+                    <span className="text-micro font-semibold uppercase tracking-wide text-v2-self">{t('clan.profile.leader')}</span>
                   )}
                 </span>
-                <span className="num shrink-0 text-caption text-dim">
+                <span className="font-v2-mono tabular-nums shrink-0 text-caption text-v2-ink-2">
                   {mate.dominion === 0 ? full(0) : signed(mate.dominion)}
                 </span>
               </li>
@@ -692,12 +682,12 @@ function ClanProfile({
 
 function Benefit({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
-    <Plate className="flex items-start gap-2 px-2 py-2">
-      <span className="socket grid size-10 shrink-0 place-items-center rounded-control text-crystal">{icon}</span>
-      <span className="min-w-0">
-        <strong className="name block text-bone">{title}</strong>
-        <span className="mt-1 block text-caption leading-relaxed text-dim">{body}</span>
+    <Plate className="flex flex-col gap-1 px-2.5 py-2">
+      <span className="flex items-center gap-1.5">
+        <span className="shrink-0 text-v2-self [&>svg]:size-4">{icon}</span>
+        <strong className="min-w-0 text-caption font-semibold leading-tight text-v2-ink">{title}</strong>
       </span>
+      <span className="text-micro leading-snug text-v2-ink-2">{body}</span>
     </Plate>
   );
 }
@@ -726,25 +716,22 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
   return (
     <Section label={t('clan.found.heading')}>
       <Plate className="px-2 py-2">
-        <div className="grid grid-cols-2 gap-2">
-          <div className={`rounded-control border px-3 py-3 ${coreReady ? 'border-opportunity/30 bg-opportunity/5' : 'border-line-soft bg-deep'}`}>
-            <CoreIcon className="size-5 text-crystal" />
-            <p className="name mt-2 text-bone">
-              {t('clan.found.core', { current: home.creation.coreLevel, required: home.creation.requiredCoreLevel })}
-            </p>
-          </div>
-          <div className={`rounded-control border px-3 py-3 ${home.creation.affordable ? 'border-opportunity/30 bg-opportunity/5' : 'border-line-soft bg-deep'}`}>
-            <p className="legend">{t('clan.found.cost')}</p>
-            <PriceTag
-              className="mt-3"
-              alloy={home.creation.cost.alloy}
-              crystal={home.creation.cost.crystal}
-              exact
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-chip border px-2 py-0.5 text-micro font-semibold ${coreReady ? 'border-v2-self/50 text-v2-self' : 'border-v2-warn/50 text-v2-warn'}`}
+          >
+            <CoreIcon className="size-3.5" />
+            {t('clan.found.core', { current: home.creation.coreLevel, required: home.creation.requiredCoreLevel })}
+          </span>
+          <span className="text-micro text-v2-ink-3">{t('clan.found.cost')}</span>
+          <PriceTag
+            alloy={home.creation.cost.alloy}
+            crystal={home.creation.cost.crystal}
+            exact
+          />
         </div>
         {locked ? (
-          <p className="mt-3 text-caption text-threat">
+          <p className="mt-3 text-caption text-v2-hostile">
             {t('clan.found.locked', { duration: duration(minutesUntil(home.creation.unlockedAt!, now)) })}
           </p>
         ) : null}
@@ -752,28 +739,28 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
 
         <form onSubmit={submit} className="mt-2 flex flex-col gap-2">
           <label>
-            <span className="legend mb-1 block">{t('clan.found.nameLabel')}</span>
+            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.nameLabel')}</span>
             <input
               value={name}
               maxLength={CLAN.nameMaxChars}
               onChange={(event) => { setName(event.currentTarget.value); }}
               placeholder={t('clan.found.namePlaceholder')}
-              className="field min-h-11"
+              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10"
             />
           </label>
           <label>
-            <span className="legend mb-1 block">{t('clan.found.tagLabel')}</span>
+            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.tagLabel')}</span>
             <input
               value={tag}
               maxLength={CLAN.tagMaxChars}
               onChange={(event) => { setTag(event.currentTarget.value.toUpperCase()); }}
               placeholder="ORB"
               autoCapitalize="characters"
-              className="field min-h-11 uppercase"
+              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10 uppercase"
             />
           </label>
           <label>
-            <span className="legend mb-1 block">{t('clan.found.descriptionLabel')}</span>
+            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.found.descriptionLabel')}</span>
             <textarea
               value={description}
               rows={3}
@@ -781,29 +768,29 @@ function FoundClan({ home, actions }: { home: ClanOutsideHome; actions: Actions 
                 setDescription(Array.from(event.currentTarget.value).slice(0, CLAN.descriptionMaxChars).join(''));
               }}
               placeholder={t('clan.found.descriptionPlaceholder')}
-              className="field resize-none"
+              className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self resize-none"
             />
-            <span className="mt-1 block text-right text-micro text-faint">
+            <span className="mt-1 block text-right text-micro text-v2-ink-3">
               {t('clan.charactersLeft', { count: CLAN.descriptionMaxChars - Array.from(description).length })}
             </span>
           </label>
-          <label className="plate plate-sunk flex items-center gap-2 px-3 py-3">
+          <label className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-deep px-3 py-2">
             <input
               type="checkbox"
               checked={recruiting}
               onChange={(event) => { setRecruiting(event.currentTarget.checked); }}
-              className="size-5 accent-[var(--color-crystal)]"
+              className="size-4 accent-[var(--color-v2-self)]"
             />
             <span>
-              <span className="name block text-bone">{t('clan.found.recruiting')}</span>
-              <span className="mt-1 block text-label text-faint">{t('clan.found.recruitingHint')}</span>
+              <span className="block text-caption font-semibold text-v2-ink">{t('clan.found.recruiting')}</span>
+              <span className="block text-micro text-v2-ink-3">{t('clan.found.recruitingHint')}</span>
             </span>
           </label>
-          <Button type="submit" full size="lg" variant="primary" disabled={!canCreate || actions.create.isPending}>
+          <Button type="submit" full variant="primary" disabled={!canCreate || actions.create.isPending}>
             {t('clan.found.submit')}
           </Button>
         </form>
-        {created ? <p role="status" className="mt-3 text-caption text-opportunity">{t('clan.found.created')}</p> : null}
+        {created ? <p role="status" className="mt-3 text-caption text-v2-self">{t('clan.found.created')}</p> : null}
         <MutationError mutation={actions.create} />
       </Plate>
     </Section>
@@ -834,13 +821,13 @@ function ClanOverview({
       {!home.clan.mature ? (
         <Plate tone="lit" cut className="px-2 py-2">
           <div className="flex items-start gap-2">
-            <ClockIcon className="mt-0.5 size-5 shrink-0 text-crystal" />
+            <ClockIcon className="mt-0.5 size-5 shrink-0 text-v2-self" />
             <div>
-              <p className="name text-bone">{t('clan.adaptation.title')}</p>
-              <p className="mt-1 text-caption leading-relaxed text-dim">
+              <p className="font-semibold text-v2-ink">{t('clan.adaptation.title')}</p>
+              <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
                 {t('clan.adaptation.openNow')}
               </p>
-              <p className="mt-2 text-caption leading-relaxed text-crystal">
+              <p className="mt-2 text-caption leading-relaxed text-v2-self">
                 {t('clan.adaptation.opensLater', {
                   duration: duration(minutesUntil(home.clan.matureAt, now)),
                 })}
@@ -850,8 +837,8 @@ function ClanOverview({
         </Plate>
       ) : (
         <Plate tone="opportunity" className="px-2 py-2">
-          <p className="name text-opportunity">{t('clan.adaptation.readyTitle')}</p>
-          <p className="mt-1 text-caption leading-relaxed text-dim">{t('clan.adaptation.readyBody')}</p>
+          <p className="font-semibold text-v2-self">{t('clan.adaptation.readyTitle')}</p>
+          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('clan.adaptation.readyBody')}</p>
         </Plate>
       )}
 
@@ -873,7 +860,7 @@ function ClanOverview({
           <Waiting>{t('clan.depot.waiting')}</Waiting>
         ) : (
           <Plate className="px-2 py-2">
-            <p className="text-caption leading-relaxed text-dim">{t('clan.depot.body')}</p>
+            <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.depot.body')}</p>
             <ResourceFigures resources={depot.data.resources} className="mt-2" />
             <Button
               full
@@ -893,8 +880,8 @@ function ClanOverview({
       <Section label={t('clan.history.heading')}>
         {!home.clan.mature ? (
           <Plate sunk className="px-2 py-5 text-center">
-            <ClockIcon className="mx-auto size-5 text-faint" />
-            <p className="mt-2 text-caption text-dim">{t('clan.history.adapting')}</p>
+            <ClockIcon className="mx-auto size-5 text-v2-ink-3" />
+            <p className="mt-2 text-caption text-v2-ink-2">{t('clan.history.adapting')}</p>
           </Plate>
         ) : events.isError ? (
           <Unreachable what={t('clan.history.heading')} onRetry={() => { void events.refetch(); }} />
@@ -903,7 +890,7 @@ function ClanOverview({
         ) : history.length === 0 ? (
           <EmptyState title={t('clan.history.empty')} />
         ) : (
-          <ol className="divide-y divide-line-soft rounded-plate border border-line-soft bg-deep/60">
+          <ol className="divide-y divide-v2-line rounded-control border border-v2-line bg-deep/60">
             {history.map((event) => <ClanEventRow key={event.id} event={event} now={now} />)}
           </ol>
         )}
@@ -950,13 +937,13 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
   return (
     <div className="flex flex-col gap-7">
       <Plate tone="opportunity" cut="lg" className="relative overflow-hidden px-2 py-5">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_18%,color-mix(in_srgb,var(--color-opportunity)_19%,transparent),transparent_46%)]" />
+        <div className="pointer-events-none absolute inset-0" />
         <div className="relative">
-          <p className="legend text-opportunity">[{strength.clan.tag}] {strength.clan.name}</p>
-          <h2 className="headline mt-2 max-w-[18ch] text-title text-bone">
+          <p className="text-micro font-semibold uppercase tracking-wide text-v2-self">[{strength.clan.tag}] {strength.clan.name}</p>
+          <h2 className="font-semibold mt-2 max-w-[18ch] text-body font-semibold text-v2-ink">
             {t('clan.strength.title')}
           </h2>
-          <p className="mt-2 max-w-[44ch] text-caption leading-relaxed text-dim">
+          <p className="mt-2 max-w-[44ch] text-caption leading-relaxed text-v2-ink-2">
             {t('clan.strength.body')}
           </p>
           <div className="mt-5 grid grid-cols-2 gap-2">
@@ -1022,16 +1009,16 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
         ) : (
           <ol className="space-y-2">
             {strength.composition.map((entry) => (
-              <li key={entry.hull} className="plate plate-sunk px-3 py-3">
+              <li key={entry.hull} className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep px-3 py-3">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="name text-bone">{hullName(entry.hull) ?? entry.hull}</span>
-                  <span className="num text-body text-crystal">{full(entry.count)}</span>
+                  <span className="font-semibold text-v2-ink">{hullName(entry.hull) ?? entry.hull}</span>
+                  <span className="font-v2-mono tabular-nums text-body text-v2-self">{full(entry.count)}</span>
                 </div>
                 <div className="mt-2 flex h-1.5 gap-px" aria-hidden="true">
                   {Array.from({ length: 10 }, (_, index) => (
                     <span
                       key={index}
-                      className={`flex-1 rounded-cell ${index < Math.ceil((entry.count / largest) * 10) ? 'bg-crystal/80' : 'bg-line/60'}`}
+                      className={`flex-1 rounded-cell ${index < Math.ceil((entry.count / largest) * 10) ? 'bg-v2-self' : 'bg-v2-line'}`}
                     />
                   ))}
                 </div>
@@ -1056,15 +1043,15 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
         working, not the standing.
       */}
       <Section label={t('clan.strength.membersHeading')} aside={t('clan.strength.membersCount', { count: strength.members.length })}>
-        <ol className="divide-y divide-line-soft overflow-hidden rounded-plate border border-line-soft bg-deep/60">
+        <ol className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-deep/60">
           {strength.members.map((member) => (
             <li key={member.playerId} className="px-3 py-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="name min-w-0 truncate text-bone">{member.username}</span>
+                <span className="font-semibold min-w-0 truncate text-v2-ink">{member.username}</span>
                 {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
               </div>
               <div
-                className="socket mt-2 h-2 w-full overflow-hidden rounded-full"
+                className="rounded-control bg-v2-deep mt-2 h-2 w-full overflow-hidden rounded-full"
                 role="img"
                 aria-label={t('clan.strength.memberLine', {
                   dominion: full(member.dominion),
@@ -1074,13 +1061,13 @@ function ClanStrengthView({ strength }: { strength: ClanStrength }) {
               >
                 <span
                   data-member-share
-                  className="block h-full rounded-full bg-opportunity/70"
+                  className="block h-full rounded-full bg-v2-self"
                   style={{
                     width: `${String(Math.max(0, Math.min(100, (member.dominion / strongest) * 100)))}%`,
                   }}
                 />
               </div>
-              <p className="mt-1.5 text-caption text-dim">
+              <p className="mt-1.5 text-caption text-v2-ink-2">
                 {t('clan.strength.memberLine', {
                   dominion: full(member.dominion),
                   ships: full(member.ships),
@@ -1111,10 +1098,10 @@ function ClanSeats({ members, now }: { members: readonly Member[]; now: number }
                 key={slot}
                 role="listitem"
                 aria-label={t('clan.seats.openLabel', { slot: slot + 1 })}
-                className="grid min-w-0 place-items-center rounded-control border border-dashed border-line-soft px-1 py-3"
+                className="grid min-w-0 place-items-center rounded-control border border-dashed border-v2-line px-1 py-3"
               >
-                <span className="grid size-8 place-items-center rounded-full border border-line-soft text-caption text-faint">+</span>
-                <span className="legend mt-2 truncate text-micro">{t('clan.seats.open')}</span>
+                <span className="grid size-8 place-items-center rounded-full border border-v2-line text-caption text-v2-ink-3">+</span>
+                <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-2 truncate text-micro">{t('clan.seats.open')}</span>
               </div>
             );
           }
@@ -1125,13 +1112,13 @@ function ClanSeats({ members, now }: { members: readonly Member[]; now: number }
               role="listitem"
               aria-label={t('clan.seats.memberLabel', { slot: slot + 1, name: member.username })}
               title={member.username}
-              className="min-w-0 rounded-control border border-crystal/20 bg-crystal/5 px-1 py-3 text-center"
+              className="min-w-0 rounded-control border border-v2-self/20 bg-v2-self/5 px-1 py-3 text-center"
             >
-              <span className="socket mx-auto grid size-8 place-items-center rounded-full text-caption text-crystal">
+              <span className="rounded-control bg-v2-deep mx-auto grid size-8 place-items-center rounded-full text-caption text-v2-self">
                 {initial}
               </span>
-              <span className="name mt-2 block truncate text-micro text-bone">{member.username}</span>
-              <span className={`mt-1 block truncate text-micro ${member.mature ? 'text-opportunity' : 'text-crystal'}`}>
+              <span className="font-semibold mt-2 block truncate text-micro text-v2-ink">{member.username}</span>
+              <span className={`mt-1 block truncate text-micro ${member.mature ? 'text-v2-self' : 'text-v2-ink-3'}`}>
                 {member.role === 'LEADER'
                   ? t('clan.seats.leader')
                   : member.mature
@@ -1176,7 +1163,7 @@ function ClanStandings({
       ) : rows.length === 0 ? (
         <EmptyState title={t('clan.standings.empty')} />
       ) : (
-        <ol className="divide-y divide-line-soft rounded-plate border border-line-soft bg-deep/60">
+        <ol className="divide-y divide-v2-line rounded-control border border-v2-line bg-deep/60">
           {rows.map((clan, index) => {
             const separated = index === 5;
             return (
@@ -1184,17 +1171,17 @@ function ClanStandings({
                 key={clan.id}
                 aria-current={clan.self ? 'true' : undefined}
                 className={`grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 ${
-                  clan.self ? 'bg-crystal/8' : ''
-                } ${separated ? 'border-t-2 border-crystal/25' : ''}`}
+                  clan.self ? 'bg-v2-self/10' : ''
+                } ${separated ? 'border-t-2 border-v2-self/25' : ''}`}
               >
-                <span className={`num text-center text-body ${clan.self ? 'text-crystal' : 'text-faint'}`}>
+                <span className={`font-v2-mono tabular-nums text-center text-body ${clan.self ? 'text-v2-self' : 'text-v2-ink-3'}`}>
                   {clan.rank}
                 </span>
                 <span className="min-w-0">
-                  <span className="name block truncate text-bone">
-                    <span className="text-crystal">[{clan.tag}]</span> {clan.name}
+                  <span className="font-semibold block truncate text-v2-ink">
+                    <span className="text-v2-self">[{clan.tag}]</span> {clan.name}
                   </span>
-                  <span className="mt-1 block truncate text-micro text-faint">
+                  <span className="mt-1 block truncate text-micro text-v2-ink-3">
                     {t('clan.standings.crew', { members: clan.memberCount })}
                     {clan.self ? ` · ${t('clan.you')}` : ''}
                   </span>
@@ -1219,18 +1206,18 @@ function ClanStandings({
                       no `xs` breakpoint, so hiding it below one would have hidden
                       it on every phone the game is played on.
                     */
-                    className="relative block h-2 w-12 shrink-0 overflow-hidden rounded-full bg-line/50"
+                    className="relative block h-2 w-12 shrink-0 overflow-hidden rounded-full bg-v2-line"
                   >
                     <span
                       data-clan-score
                       className={`absolute inset-y-0 ${
-                        clan.score < 0 ? 'right-1/2 bg-threat/70' : 'left-1/2 bg-opportunity/70'
+                        clan.score < 0 ? 'right-1/2 bg-v2-hostile/70' : 'left-1/2 bg-v2-self'
                       }`}
                       style={{ width: `${String((Math.abs(clan.score) / widest) * 50)}%` }}
                     />
-                    <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
+                    <span className="absolute inset-y-0 left-1/2 w-px bg-v2-self" />
                   </span>
-                  <span className={`num text-body ${clan.score > 0 ? 'text-opportunity' : clan.score < 0 ? 'text-threat' : 'text-dim'}`}>
+                  <span className={`font-v2-mono tabular-nums text-body ${clan.score > 0 ? 'text-v2-self' : clan.score < 0 ? 'text-v2-hostile' : 'text-v2-ink-2'}`}>
                     {clan.score === 0 ? full(0) : signed(clan.score)}
                   </span>
                 </span>
@@ -1246,8 +1233,8 @@ function ClanStandings({
 function SmallRule({ title, body }: { title: string; body: string }) {
   return (
     <Plate sunk className="px-3 py-3">
-      <p className="name text-bone">{title}</p>
-      <p className="mt-1 text-label leading-relaxed text-faint">{body}</p>
+      <p className="font-semibold text-v2-ink">{title}</p>
+      <p className="mt-1 text-label leading-relaxed text-v2-ink-3">{body}</p>
     </Plate>
   );
 }
@@ -1313,20 +1300,20 @@ function ClanMembers({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <strong className="name truncate text-bone">{member.username}</strong>
+                        <strong className="font-semibold truncate text-v2-ink">{member.username}</strong>
                         {self ? <Chip tone="crystal">{t('clan.you')}</Chip> : null}
                         {member.role === 'LEADER' ? <Chip tone="opportunity">{t('clan.leader')}</Chip> : null}
                       </div>
-                      <p className="mt-1 text-label text-faint">
+                      <p className="mt-1 text-label text-v2-ink-3">
                         {member.mature ? t('clan.members.ready') : t('clan.members.adapting')}
                         {' · '}
                         {member.activeRecently ? t('clan.members.active') : t('clan.members.away')}
                       </p>
                     </div>
-                    <span className={`size-2 shrink-0 rounded-full ${member.activeRecently ? 'bg-opportunity' : 'bg-line'}`} aria-hidden />
+                    <span className={`size-2 shrink-0 rounded-full ${member.activeRecently ? 'bg-v2-self' : 'bg-v2-line-hi'}`} aria-hidden />
                   </div>
                   {home.clan.role === 'LEADER' && !self ? (
-                    <div className="mt-3 flex flex-wrap gap-2 border-t border-line-soft pt-3">
+                    <div className="mt-3 flex flex-wrap gap-2 border-t border-v2-line pt-3">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1378,8 +1365,8 @@ function ClanMembers({
             ) : (
               home.requests.filter((request) => request.kind === 'APPLICATION').map((request) => (
                 <Plate key={request.id} className="px-2 py-2">
-                  <p className="name text-bone">{request.username}</p>
-                  <p className="mt-1 text-label text-faint">{t('clan.applications.expires', { duration: duration(minutesUntil(request.expiresAt, now)) })}</p>
+                  <p className="font-semibold text-v2-ink">{request.username}</p>
+                  <p className="mt-1 text-label text-v2-ink-3">{t('clan.applications.expires', { duration: duration(minutesUntil(request.expiresAt, now)) })}</p>
                   <div className="mt-3 flex gap-2">
                     <Button size="sm" variant="primary" disabled={actions.accept.isPending} onClick={() => { accept(request.id, false); }}>
                       {t('clan.requests.accept')}
@@ -1407,10 +1394,10 @@ function ClanMembers({
 
           <Section label={t('clan.invite.heading')}>
             <Plate className="px-2 py-2">
-              <p className="text-caption leading-relaxed text-dim">{t('clan.invite.body')}</p>
+              <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.invite.body')}</p>
               <label className="mt-3 block">
                 <span className="sr-only">{t('clan.invite.choose')}</span>
-                <select value={invitee} onChange={(event) => { setInvitee(event.currentTarget.value); }} className="field min-h-11">
+                <select value={invitee} onChange={(event) => { setInvitee(event.currentTarget.value); }} className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10">
                   <option value="">{t('clan.invite.choose')}</option>
                   {candidates.map((candidate) => <option key={candidate.playerId} value={candidate.playerId}>{candidate.username}</option>)}
                 </select>
@@ -1432,7 +1419,7 @@ function ClanMembers({
           <Section label={t('clan.settings.heading')}>
             <Plate className="px-2 py-2">
               <label>
-                <span className="legend mb-1 block">{t('clan.settings.description')}</span>
+                <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{t('clan.settings.description')}</span>
                 <textarea
                   value={description}
                   rows={3}
@@ -1440,7 +1427,7 @@ function ClanMembers({
                     setDescription(Array.from(event.currentTarget.value).slice(0, CLAN.descriptionMaxChars).join(''));
                     setSaved(false);
                   }}
-                  className="field resize-none"
+                  className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self resize-none"
                 />
               </label>
               <label className="mt-3 flex items-center gap-2">
@@ -1448,9 +1435,9 @@ function ClanMembers({
                   type="checkbox"
                   checked={recruiting}
                   onChange={(event) => { setRecruiting(event.currentTarget.checked); setSaved(false); }}
-                  className="size-5 accent-[var(--color-crystal)]"
+                  className="size-4 accent-[var(--color-v2-self)]"
                 />
-                <span className="name text-bone">{t('clan.settings.recruiting')}</span>
+                <span className="font-semibold text-v2-ink">{t('clan.settings.recruiting')}</span>
               </label>
               <Button
                 className="mt-2"
@@ -1462,7 +1449,7 @@ function ClanMembers({
               >
                 {t('clan.settings.save')}
               </Button>
-              {saved ? <p role="status" className="mt-2 text-caption text-opportunity">{t('clan.settings.saved')}</p> : null}
+              {saved ? <p role="status" className="mt-2 text-caption text-v2-self">{t('clan.settings.saved')}</p> : null}
               <Note>{t('clan.settings.identityLocked')}</Note>
               <MutationError mutation={actions.settings} />
             </Plate>
@@ -1472,7 +1459,7 @@ function ClanMembers({
 
       <Section label={t('clan.danger.heading')}>
         <Plate tone="threat" className="px-2 py-2">
-          <p className="text-caption leading-relaxed text-dim">
+          <p className="text-caption leading-relaxed text-v2-ink-2">
             {home.clan.role === 'LEADER' ? t('clan.danger.leaderBody') : t('clan.danger.memberBody')}
           </p>
           <Button
@@ -1621,9 +1608,9 @@ function ClanAidPanel({
   if (!home.clan.mature) {
     return (
       <Plate tone="lit" cut className="px-5 py-6 text-center">
-        <ClockIcon className="mx-auto size-7 text-crystal" />
-        <h3 className="headline mt-3 text-title text-bone">{t('clan.aid.adaptingTitle')}</h3>
-        <p className="mx-auto mt-2 max-w-[38ch] text-caption leading-relaxed text-dim">
+        <ClockIcon className="mx-auto size-7 text-v2-self" />
+        <h3 className="font-semibold mt-3 text-body font-semibold text-v2-ink">{t('clan.aid.adaptingTitle')}</h3>
+        <p className="mx-auto mt-2 max-w-[38ch] text-caption leading-relaxed text-v2-ink-2">
           {t('clan.aid.adaptingBody', { duration: duration(minutesUntil(home.clan.matureAt, now)) })}
         </p>
       </Plate>
@@ -1635,8 +1622,8 @@ function ClanAidPanel({
       <Section label={t('clan.aid.receiveHeading')}>
         <Plate className="flex items-center gap-2 px-2 py-2">
           <div className="min-w-0 flex-1">
-            <p className="name text-bone">{home.clan.aidEnabled ? t('clan.aid.receiving') : t('clan.aid.paused')}</p>
-            <p className="mt-1 text-caption leading-relaxed text-faint">{t('clan.aid.receiveHint')}</p>
+            <p className="font-semibold text-v2-ink">{home.clan.aidEnabled ? t('clan.aid.receiving') : t('clan.aid.paused')}</p>
+            <p className="mt-1 text-caption leading-relaxed text-v2-ink-3">{t('clan.aid.receiveHint')}</p>
           </div>
           <Button
             size="sm"
@@ -1652,7 +1639,7 @@ function ClanAidPanel({
 
       <Section label={t('clan.aid.sendHeading')}>
         <Plate tone="lit" className="px-2 py-2">
-          <p className="text-caption leading-relaxed text-dim">{t('clan.aid.explainer')}</p>
+          <p className="text-caption leading-relaxed text-v2-ink-2">{t('clan.aid.explainer')}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Chip tone="crystal">{t('clan.aid.speed')}</Chip>
             <Chip tone="opportunity">{t('clan.aid.extraBay')}</Chip>
@@ -1689,16 +1676,16 @@ function ClanAidPanel({
               />
             </div>
 
-            <div className="mt-5 border-t border-line-soft pt-2">
-              <p className="legend">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
+            <div className="mt-5 border-t border-v2-line pt-2">
+              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t(resourceDelivery ? 'clan.aid.transportShips' : 'clan.aid.ships')}</p>
               <div className="mt-3 flex flex-col gap-2">
                 {CLAN_TRANSFERABLE_HULLS.map((hull) => {
                   const available = origin?.fleet[hull] ?? 0;
                   return (
                     <div key={hull} className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="name truncate text-bone">{hullName(hull) ?? hull}</p>
-                        <p className="mt-1 text-label text-faint">{t('clan.aid.available', { count: available })}</p>
+                        <p className="font-semibold truncate text-v2-ink">{hullName(hull) ?? hull}</p>
+                        <p className="mt-1 text-label text-v2-ink-3">{t('clan.aid.available', { count: available })}</p>
                       </div>
                       <QuantityStepper
                         value={fleet[hull] ?? 0}
@@ -1717,8 +1704,8 @@ function ClanAidPanel({
               </div>
             </div>
 
-            <div className="mt-5 border-t border-line-soft pt-2">
-              <p className="legend">{t('clan.aid.cargo')}</p>
+            <div className="mt-5 border-t border-v2-line pt-2">
+              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clan.aid.cargo')}</p>
               {/*
                 THE HOLD, IN THE BAR THE BUILD SHEET AND THE TRANSFER SHEET BOTH
                 DRAW. "1,200 / 4,000" is a fraction the player converts into the
@@ -1735,11 +1722,11 @@ function ClanAidPanel({
                   label={t('clan.aid.cargo')}
                 />
               </div>
-              <p className="mt-1 text-label text-faint">{t('clan.aid.transportOnly')}</p>
+              <p className="mt-1 text-label text-v2-ink-3">{t('clan.aid.transportOnly')}</p>
               <div className="mt-3 grid grid-cols-3 gap-2">
                 {(['alloy', 'crystal', 'deuterium'] as const).map((kind) => (
                   <label key={kind}>
-                    <span className="legend mb-1 block truncate">{t(`clan.resources.${kind}`)}</span>
+                    <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block truncate">{t(`clan.resources.${kind}`)}</span>
                     <input
                       type="number"
                       min={0}
@@ -1747,7 +1734,7 @@ function ClanAidPanel({
                       step={1}
                       value={cargo[kind]}
                       onChange={(event) => { updateCargo(kind, event.currentTarget.valueAsNumber); }}
-                      className="field min-h-11 px-2 text-right num"
+                      className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self min-h-11 px-2 text-right font-v2-mono tabular-nums"
                     />
                   </label>
                 ))}
@@ -1755,7 +1742,7 @@ function ClanAidPanel({
             </div>
 
             {fuel > 0 && (
-              <div data-aid-fuel className="mt-5 rounded-control border border-line-soft px-3 py-3">
+              <div data-aid-fuel className="mt-5 rounded-control border border-v2-line px-3 py-3">
                 {/*
                   THE TANK, MINUS WHAT THE FLIGHT BURNS — measured against what is
                   left AFTER the hold takes its deuterium, which is the exact sum
@@ -1797,7 +1784,7 @@ function ClanAidPanel({
                   is the one figure in this quote a sender reads to find out
                   whether it can land at all.
                 */}
-                <div className="mt-3 flex items-center justify-between gap-2 rounded-control border border-line-soft px-3 py-2">
+                <div className="mt-3 flex items-center justify-between gap-2 rounded-control border border-v2-line px-3 py-2">
                   <Tally
                     used={quote.bay.used}
                     total={quote.bay.total}
@@ -1808,15 +1795,15 @@ function ClanAidPanel({
                     {quote.bay.available ? t('clan.aid.bayReady') : t('clan.aid.bayFull')}
                   </Chip>
                 </div>
-                {!quote.canLand ? <p className="mt-3 text-caption text-threat">{t('clan.aid.cannotLand')}</p> : null}
-                {!quote.canFinishBeforeSeasonEnd ? <p className="mt-3 text-caption text-threat">{t('clan.aid.tooLate')}</p> : null}
+                {!quote.canLand ? <p className="mt-3 text-caption text-v2-hostile">{t('clan.aid.cannotLand')}</p> : null}
+                {!quote.canFinishBeforeSeasonEnd ? <p className="mt-3 text-caption text-v2-hostile">{t('clan.aid.tooLate')}</p> : null}
                 {/* Said here, before the button, rather than as a refusal on commit. R4, 2026-09-23. */}
                 {shieldedUntil !== null ? (
-                  <p data-aid-shielded className="mt-3 text-caption text-threat">
+                  <p data-aid-shielded className="mt-3 text-caption text-v2-hostile">
                     {t('clan.aid.senderShielded', { duration: duration(minutesUntil(shieldedUntil, now)) })}
                   </p>
                 ) : null}
-                <p className="mt-3 text-label text-faint">
+                <p className="mt-3 text-label text-v2-ink-3">
                   {t(resourceDelivery ? 'clan.aid.plannedReturn' : 'clan.aid.possibleReturn', {
                     duration: duration(minutesUntil(quote.possibleReturnAt, now)),
                   })}
@@ -1824,32 +1811,38 @@ function ClanAidPanel({
                 <ResourceFigures resources={quote.remaining} className="mt-2" label={t('clan.aid.remainingLimit')} />
                 <ResourceFigures resources={quote.value} className="mt-2" label={t('clan.aid.limitValue')} />
                 {quote.nextReleaseAt ? (
-                  <p className="mt-3 text-label text-faint">
+                  <p className="mt-3 text-label text-v2-ink-3">
                     {t('clan.aid.nextLimit', {
                       duration: duration(minutesUntil(quote.nextReleaseAt, now)),
                     })}
                   </p>
                 ) : null}
-                <Button
-                  full
-                  className="mt-2"
-                  variant="commit"
-                  // `fuelled` is the live read of the sender's own store; the
-                  // quote's `hasFuel` is a snapshot of the same sum taken one
-                  // round trip ago, and the launch refuses on the live one.
-                  disabled={launchBlocked || shieldedUntil !== null || !quote.canLand || !quote.withinAllowance || !quote.bay.available || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending}
-                  onClick={() => {
-                    if (!payload) return;
-                    actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
-                  }}
-                >
-                  {launchBlocked
-                    ? t('faults.launchBlock.SHIPYARD_REVOLT')
-                    : t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
-                </Button>
+                {/*
+                  A GIFT CANNOT BE CALLED BACK, SO IT IS HELD (K4). D5: the same hold every
+                  irreversible commit in the game asks for; the reasons it is refused are
+                  stated above it, so the refused face keeps the verb.
+                  `fuelled` is the live read of the sender's own store; the quote's
+                  `hasFuel` is a snapshot of the same sum taken one round trip ago, and the
+                  launch refuses on the live one.
+                */}
+                <div className="mt-2">
+                  <HoldButton
+                    label={t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')}
+                    disabledReason={launchBlocked
+                      ? t('faults.launchBlock.SHIPYARD_REVOLT')
+                      : shieldedUntil !== null || !quote.canLand || !quote.withinAllowance || !quote.bay.available
+                        || !quote.canFinishBeforeSeasonEnd || !fuelled || actions.launchAid.isPending
+                        ? t(resourceDelivery ? 'clan.aid.launchDelivery' : 'clan.aid.launch')
+                        : null}
+                    onCommit={() => {
+                      if (!payload) return;
+                      actions.launchAid.mutate(payload, { onSuccess: () => { setLaunched(true); setFleet({}); setCargo({ ...ZERO }); setQuotedKey(null); } });
+                    }}
+                  />
+                </div>
               </Plate>
             ) : null}
-            {launched ? <p role="status" className="mt-3 text-caption text-opportunity">{t('clan.aid.launched')}</p> : null}
+            {launched ? <p role="status" className="mt-3 text-caption text-v2-self">{t('clan.aid.launched')}</p> : null}
             <MutationError mutation={actions.launchAid} />
           </Plate>
         )}
@@ -1867,12 +1860,12 @@ function ClanAidPanel({
                 <Plate className="px-2 py-2">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="name truncate text-bone">
+                      <p className="font-semibold truncate text-v2-ink">
                         {transfer.direction === 'OUTGOING'
                           ? t('clan.aid.toCommander', { name: transfer.counterpart.username })
                           : t('clan.aid.fromCommander', { name: transfer.counterpart.username })}
                       </p>
-                      <p className="mt-1 text-label text-faint">
+                      <p className="mt-1 text-label text-v2-ink-3">
                         {transfer.origin.name} → {transfer.target.name}
                       </p>
                     </div>
@@ -1880,7 +1873,7 @@ function ClanAidPanel({
                       {t(`clan.aid.status.${transfer.status}`)}
                     </Chip>
                   </div>
-                  <p className="mt-3 text-caption text-dim">
+                  <p className="mt-3 text-caption text-v2-ink-2">
                     {t('clan.aid.manifest', { ships: fleetCount(transfer.fleet), cargo: full(resourceTotal(transfer.cargo)) })}
                   </p>
                 </Plate>
@@ -1897,8 +1890,8 @@ function ClanEventRow({ event, now }: { event: ClanEvent; now: number }) {
   const { t } = useTranslation();
   return (
     <li className="px-2 py-3">
-      <p className="text-body text-bone">{describeClanEvent(event, t)}</p>
-      <p className="mt-1 text-micro text-faint">{chatRelativeTime(event.occurredAt, now, t)}</p>
+      <p className="text-body text-v2-ink">{describeClanEvent(event, t)}</p>
+      <p className="mt-1 text-micro text-v2-ink-3">{chatRelativeTime(event.occurredAt, now, t)}</p>
     </li>
   );
 }
@@ -1938,8 +1931,8 @@ function Confirmation({
   const { t } = useTranslation();
   return (
     <Plate tone="threat" className="mt-2 px-2 py-2" as="aside">
-      <p className="name text-threat-ink">{title}</p>
-      <p className="mt-2 text-caption leading-relaxed text-dim">{body}</p>
+      <p className="font-semibold text-v2-hostile">{title}</p>
+      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{body}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" disabled={busy} onClick={onConfirm}>{confirm}</Button>
         <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>{t('clan.cancel')}</Button>
@@ -1961,8 +1954,8 @@ function SelectField({
 }) {
   return (
     <label>
-      <span className="legend mb-1 block">{label}</span>
-      <select value={value} onChange={(event) => { onChange(event.currentTarget.value); }} className="field min-h-11">
+      <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-1 block">{label}</span>
+      <select value={value} onChange={(event) => { onChange(event.currentTarget.value); }} className="w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self h-10">
         {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
     </label>
@@ -1991,7 +1984,7 @@ function ResourceFigures({
   const { t } = useTranslation();
   return (
     <div className={className}>
-      {label ? <p className="legend mb-2">{label}</p> : null}
+      {label ? <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mb-2">{label}</p> : null}
       <div className="grid grid-cols-3 gap-2">
         <ResourceFigure of="alloy" label={t('clan.resources.alloy')} value={resources.alloy} />
         <ResourceFigure of="crystal" label={t('clan.resources.crystal')} value={resources.crystal} />
@@ -2002,9 +1995,9 @@ function ResourceFigures({
 }
 
 const RESOURCE_INK = {
-  alloy: 'text-alloy',
-  crystal: 'text-crystal',
-  deuterium: 'text-deuterium',
+  alloy: 'text-v2-alloy',
+  crystal: 'text-v2-crystal',
+  deuterium: 'text-v2-deut',
 } as const;
 
 function ResourceFigure({
@@ -2017,22 +2010,22 @@ function ResourceFigure({
   value: number;
 }) {
   return (
-    <div className="plate plate-sunk min-w-0 px-2 py-3 text-center">
+    <div className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep min-w-0 px-2 py-3 text-center">
       <img
         src={RESOURCE_ART[of]}
         alt=""
         aria-hidden
         className="mx-auto size-5 object-contain"
       />
-      <p className={`readout mt-1 truncate text-body ${RESOURCE_INK[of]}`}>{full(value)}</p>
-      <p className="legend mt-1 truncate text-micro">{label}</p>
+      <p className={`font-v2-mono mt-1 truncate text-body ${RESOURCE_INK[of]}`}>{full(value)}</p>
+      <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3 mt-1 truncate text-micro">{label}</p>
     </div>
   );
 }
 
 function MutationError({ mutation }: { mutation: Pick<UseMutationResult, 'isError' | 'error'> }) {
   return mutation.isError
-    ? <p role="alert" className="mt-3 text-caption leading-relaxed text-threat">{describeError(mutation.error)}</p>
+    ? <p role="alert" className="mt-3 text-caption leading-relaxed text-v2-hostile">{describeError(mutation.error)}</p>
     : null;
 }
 

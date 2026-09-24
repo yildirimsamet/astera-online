@@ -1811,19 +1811,18 @@ export function GalaxyView({
       )}
 
       {panel === 'clan' && (
-        <Sheet
-          contained
+        // D5: the Gözlemevi sheet; its body scrolls, so the clan tabs stay pinned on top.
+        <V2Sheet
           bleed
+          detents={['fit']}
           eyebrow={t('clan.outside.eyebrow')}
-          title={t('clan.tabs.label')}
+          title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
         >
-          <div className="h-full overflow-y-auto overscroll-contain">
-            <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
-              <ClanScreen initialTab={clanInitialTab} />
-            </Suspense>
-          </div>
-        </Sheet>
+          <Suspense fallback={<Waiting>{t('clan.waiting')}</Waiting>}>
+            <ClanScreen initialTab={clanInitialTab} />
+          </Suspense>
+        </V2Sheet>
       )}
 
       {/*
