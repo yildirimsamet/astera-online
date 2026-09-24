@@ -112,10 +112,16 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**F7 · E10 Sen yokken (K5) + S3.** Şartname: `grep -n "^#### E10 ·\|^| K5\|S3" docs/ui-v2/gozlemevi.md`. Galaksinin ilk
-karesinden sonra, bloke etmeden; eşik (öneri 30 dk) ve en az bir durum dışı giriş; en fazla 3 satır (alarm, kazanç, fırsat)
-tek eylemle; `lastSeenAt` GET'te değil kapatma onayında (POST) ilerler; yerelleştirme istemcide (sunucu tür + parametre, S3).
-Sunucu TDD `astera_uiv2_test` üzerinde seri.
+**F8 · E11 Masaüstü (K10).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`. Geniş ekranda büyütme değil
+sütun: solda dünyalar/uçuşlar/kuyruklar, ortada galaksi, sağda bağlam kartı/dosya; klavye 1–5 sekmeler, Space seçiliye odak,
+Esc kapatır; raster görseller doğal boyutunu aşmaz. 1280 ve 1920 px'te görsel doğrulama.
+
+**F7 (tamam):** S3 `16cc039` — GET `/api/session/return` hiçbir şey yazmaz, `asOf` döner; POST `/api/session/return/seen`
+pencereyi `asOf`'a kadar kapatır (geri gitmez, şimdiyi aşmaz) ve kilit-açmaları o an kaydeder; girişler tür + parametre.
+E10 `4263ad5` — `AwayHost` galaksiden sonra ister, 30 dk eşik + en az bir giriş; en fazla 3 satır (tehdit → kazanç → fırsat,
+önce her türden biri), her satırda tek kapı; her çıkış onaydır; anlatacak bir şey yoksa hemen kapatır; oyuncu buradayken
+pencere 5 dk'da bir şimdiye çekilir (eski 1. hata: oyunun ortasında yeniden yükleme yokluk sayılmaz). 5 dil.
+**Not (sunucu):** `/api/session/return` artık yan etkisiz; tam sunucu paketi teslimde koşulacak.
 
 **D (tamam):** D1–D6 ve 2. tur kuralları bitti. Kapanış çubuk taraması `aeb6e67` (sadakat, transfer/ticaret evde kalan
 savunma, rapor sahnesi hayatta kalanlar, SurvivorBar, ForceRuler tabanı artık kimin olduğunu söyleyen renkte). Eski kitte
