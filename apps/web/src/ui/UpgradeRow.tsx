@@ -823,20 +823,25 @@ export function Band({
 }) {
   const lesson = useAcademyLesson();
   if (lesson && lesson !== 'research') return null;
+  /*
+    A HEADING OVER CARDS, NOT A BOX AROUND THEM (E5, the mock's section labels). The
+    cards under it draw their own surfaces, so the band is a name, a hairline, the count
+    a shut band owes the reader, and the fold's chevron — nothing that competes with them.
+  */
   const body = (
     <>
-      <div className="flex min-w-0 items-baseline gap-2">
-        <h3 className="legend text-crystal/85">{label}</h3>
-        <span className="rail-soft flex-1" />
+      <div className="flex min-w-0 items-center gap-2">
+        <h3 className="v2-legend shrink-0 text-v2-ink-2">{label}</h3>
+        <span className="h-px flex-1 bg-v2-line" />
         {count === undefined ? null : (
-          <span className="num shrink-0 text-micro text-faint">{count}</span>
+          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{count}</span>
         )}
         {aside}
         {onToggle === undefined ? null : (
           <svg
             aria-hidden
             viewBox="0 0 20 20"
-            className={`size-3.5 shrink-0 text-faint transition-transform duration-200 ${
+            className={`size-3.5 shrink-0 text-v2-ink-3 transition-transform duration-200 ${
               open === true ? 'rotate-90' : ''
             }`}
             fill="none"
@@ -847,11 +852,11 @@ export function Band({
           </svg>
         )}
       </div>
-      {note && <p className="text-caption leading-snug text-faint">{note}</p>}
+      {note && <p className="text-micro leading-snug text-v2-ink-3">{note}</p>}
     </>
   );
 
-  const shell = 'flex w-full flex-col gap-1 border-b border-line-soft bg-void/30 px-3 py-2 text-left';
+  const shell = 'flex w-full flex-col gap-0.5 px-1 pb-0.5 pt-2 text-left font-v2-ui';
 
   if (onToggle === undefined) return <div className={shell}>{body}</div>;
 
@@ -863,39 +868,40 @@ export function Band({
         haptic('tap');
         onToggle();
       }}
-      className={`${shell} transition-colors hover:bg-bone/[0.03] active:bg-raised/60`}
+      className={`${shell} rounded-control transition-colors hover:bg-v2-ink/[0.03] active:bg-v2-raise/60`}
     >
       {body}
     </button>
   );
 }
 
-/** A section headed by the problem it solves, not by where the code keeps it. */
+/**
+ * A section headed by the problem it solves, not by where the code keeps it.
+ *
+ * THE TAB ALREADY SAYS ITS NAME (E5). The selected tab reads "Production" right above
+ * this, so the heading stays for a screen reader and the eye gets the one line it does
+ * not have yet: what the tab is for. The children draw their own surfaces — the Base's
+ * cards — so no plate goes round them.
+ */
 export function DecisionGroup({
   problem,
   question,
   children,
   aside,
-  bare = false,
 }: {
   problem: string;
   question: string;
   aside?: ReactNode;
   children: ReactNode;
-  /** The children draw their own surfaces (the Base's cards), so no plate goes round them. */
-  bare?: boolean;
 }) {
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex flex-col gap-1">
-        <header className="flex items-baseline gap-2">
-          <h2 className="headline shrink-0">{problem}</h2>
-          <span className="rail-soft flex-1" />
-          {aside}
-        </header>
-        <p className="text-caption text-faint">{question}</p>
-      </div>
-      {bare ? <div className="flex flex-col gap-2">{children}</div> : <div className="plate plate-inset overflow-hidden">{children}</div>}
+    <section className="flex flex-col gap-2 font-v2-ui">
+      <header className="flex items-baseline gap-2 px-1">
+        <h2 className="sr-only">{problem}</h2>
+        <p className="min-w-0 flex-1 text-caption leading-snug text-v2-ink-2">{question}</p>
+        {aside}
+      </header>
+      <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
 }

@@ -496,7 +496,7 @@ export function PlanetScreen({
             className={recovering ? 'pointer-events-none opacity-50' : ''}
             aria-disabled={recovering}
           >
-            <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)} bare={active === 'grow'}>
+            <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
               {active === 'defend' && <Defend {...shared} onBuild={openBuild} />}
               {active === 'orbit' && <Orbit {...shared} />}
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
