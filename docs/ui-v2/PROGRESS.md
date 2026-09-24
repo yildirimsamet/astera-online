@@ -43,8 +43,8 @@
 | F0 | H1 (`lib/directives.ts` kalkanlıyken tehdit), H2 (`shell/StatusBar.tsx` depo dolu kırmızısı) — `ui-v2`'ye commit, sahip master'a cherry-pick eder | Tamam (074f338, a7b8348) |
 | F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Tamam |
 | F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
-| F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Sırada |
-| F4 | E6 Rapor, S4 | Bekliyor |
+| F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Tamam (faz incelemesi `fa16b98`, `e7f062e`) |
+| F4 | E6 Rapor, S4 | Sırada |
 | F5 | E5 Üs + Araştırma (K6, K9) | Bekliyor |
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
@@ -78,7 +78,14 @@ Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıld
     önekli). Kalan fark bilinçli: cetvelin "ne temsil ettiği" satırı yüzeyde kalır (netlik; testi var).
 
 ## Sıradaki iş
-**F3 · Hedef dosyası, Fırlatma, Filo; S1, S2.** Şartname: B10, B11, B14, E2, E3, E4, K8 ve sunucu tablosu S1/S2
+**F4 · E6 Savaş raporu (B15) + S4 ödenen yakıt.** Şartname: `grep -n "^#### B15 ·\|^#### E6 ·\|^| S4" docs/ui-v2/gozlemevi.md`;
+mock `design-mocks/image copy 6.png` orta ("KISMİ ZAFER"). Kod: `screens/BattleReports*`/rapor sayfası (bugünkü görünüm),
+sunucu `services/reports.ts` `viewOf` (S4: `missions.fuel_paid` kalkışta yazılıyor → rapora dön), rapor şeması
+(`api/schemas.ts`). Kural 15 (saldırgana karşı tarafın kalanları asla), taktik geri çekilme metinleri (`BattleReports`).
+F3 kapanışı: web paketi 14 bilinen kırmızı (büyümedi), web lint/tsc temiz, Akademi tarayıcıda 39/39, galeri 5 dilde
+(araç artık her görünümü taze sayfada çekiyor). Sunucu tam paketi teslimde koşulacak (sahip talimatı).
+
+**F3 (tamam) · Hedef dosyası, Fırlatma, Filo; S1, S2.** Şartname: B10, B11, B14, E2, E3, E4, K8 ve sunucu tablosu S1/S2
 (`grep -n "^#### B10 ·\|^#### B11 ·\|^#### B14 ·\|^#### E2 ·\|^#### E3 ·\|^#### E4 ·\|^| K8\|^| S1\|^| S2" docs/ui-v2/gozlemevi.md`).
 Kod: `screens/LaunchSheet.tsx` (bugünkü fırlatma, ~1.300 satır; mantığı yeniden kullanılır), `shell/PendingStrip.tsx`
 (`FlightList`, `useAirborne`; F2'de Filo sayfası bunu çiziyor), `v2/hud/FleetSheet.tsx` (ara sayfa), galaksinin odak
