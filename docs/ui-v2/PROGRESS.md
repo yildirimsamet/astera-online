@@ -112,10 +112,9 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D5 · Klan sheet'inin tamamı** (Özet, Güç, Üyeler, Yardım — gönderim basılı tut —, Savaş = E9 savaş odası, Klan yok).
-Tasarım: tuval `D5-ozet`, `D5-guc`, `D5-uyeler`, `D5-yardim`, `D5-savas`, `D5-klansiz`; mock `design-mocks/image copy 7.png`
-orta (savaş odası); şartname `grep -n "^#### E9 ·" docs/ui-v2/gozlemevi.md`. Kod: `screens/ClanScreen.tsx`,
-`screens/ClanWarPanel.tsx`. Beyaz/gri çubuk taraması (sadakat `bg-v2-ink/50`, klan yardım kargosu). Sonra D6.
+**D6 · Sohbet sheet'i** (A1 ile kendi sayfası, `ChatHost`). Tasarım: tuval `D6-sohbet`. Sayfa olduğu için tam yükseklik
+kalır (sahip: "sohbet gibi sayfa olanlar tam kalır"). Sonra D'nin kapanış taraması (kalan beyaz/gri çubuklar, eski kitte kalan
+sheet'ler) ve F7.
 
 Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
 (kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
@@ -148,6 +147,13 @@ rakipler slot renginde ve dokununca galakside, "Bildiklerin" tek listesi: canlı
 süreli "Pencere" çipi, sonda okuması yaş greniyle — K11 mevcut `ageTier`/`AgedThumb`), Raporlar (sonda kartları aralık
 satırları senin renginde, filo evdeyken keskin/dışarıdayken açık, "Dosyayı aç"; savaş listesi aynen), Radar (gerçek ölçekli
 halka, 24 saat çizgisi — son 6 saat kırmızı —, kayıt). v2 Sheet `fit` içinde. Galeri `?view=intel` dolu hâli çizer.
+
+**D5 (tamam) `d3d1175`:** Klan odası v2 Sheet ve v2 yüzeylerde: `v2/kit/Surface.tsx` eski kitin `Section`, `Plate`, `Button`,
+`Chip`, `EmptyState`, `Note`, `Stat`, `PriceTag` prop'larını alır (mantık değişmeden dil değişti), sınıflar v2 jetonlarına
+(gri dolgu yok, klan kimliği müttefik mavisi). Üye başlığı tek kimlik kartı; klansızken kompakt kart + 2×2 fayda + tek satır
+kuruluş kapısı. Klan yardımı geri çağrılamaz → basılı tut (K4). Savaş odası (E9): hedef + toplanma hattında dalgalar önde,
+dalga başına pay çubuğu, klan hangarı çubuk. Galeri `?view=clan|clan-strength|clan-members|clan-aid|wave`.
+**Kalan (D5 dışı, not):** Güç sekmesinin iri istatistik kartları ve üyeler listesinin tasarımdaki satır düzeni ince ayar ister.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
