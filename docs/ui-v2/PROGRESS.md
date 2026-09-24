@@ -143,6 +143,14 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   - **F3.5d** `Shell` → v2 çerçeve: kapalı = bağlam kartı (başlık + tek güç satırı + Sonda/Saldırı planla, mock),
     açık = yarım/tam dosya; eylemler ve ret nedenleri (bant, tekrar sınırı, kalkan süresi, köken toparlanıyor, tersane
     isyanı) korunur; yerleşim/klan hedefi/Ölüm Yıldızı kontrolleri kaybolmaz. Diğer odak türleri aynı çerçeveyi alır.
+  - Durum: ~~F3.5a~~ `727e8e3` (`useTargetReading`) · ~~F3.5b~~ `1de64fd` (`lootEstimate`) · ~~F3.5c~~ `8e19f7d`
+    (`v2/hud/TargetDossier`: çipler, okuma kaynağı+yaş — sonda yoksa "henüz sonda gitmedi", evdeki kanatla `ForceRuler`
+    + `MatchupLine`, ganimet bandı ↔ ambar, koloni kuralı `FAULT.battleLoyaltyLoss` + `services/loyalty.ts` kopuş kuralı;
+    `ForceRuler.yoursLabel`) · ~~F3.5d~~ `0ad18c4` (kapalı = içeriden kart, açık = üstü yuvarlak dosya; düğmeler v2, ekran
+    başına tek birincil `data-primary`; iç renkler v2 eşlemesiyle; K2: son dakika/karşılanmamış/ret = sarı, kırmızı yalnız
+    tehdit) + `43d37e5` (kapalı kartta mock'un güç satırı + Sonda/Saldır). Akademi tarayıcıda 39/39.
+  - Kalan küçük farklar: dosya başlığı hâlâ eski `Headline`/`WorldKind` metinleri (v2 renkte); `Band` (UpgradeRow,
+    paylaşılan) F5'te Üs'le v2'ye; toplama balonu yakın ölçekte gezegenin üstüne biniyor (mock sağ üstte).
 - **F3.6** faz sonu review + gerçek oyunda görsel tur (350 ve 1280 px, 5 dil).
 
 ## Biten işler
