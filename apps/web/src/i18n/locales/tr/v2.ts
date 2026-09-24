@@ -199,3 +199,29 @@ export const roomBar = {
   gunsStay: 'Toplar dünyadan ayrılmaz.',
   nextCore: 'Komuta Çekirdeği {{level}} odayı {{from}} → {{to}} yapar.',
 };
+
+export const away = {
+  eyebrow: '{{duration}} yoktun',
+  title: 'Sen yokken',
+  all: 'Tümü ({{count}})',
+  done: 'Tamam',
+  taken: '{{loot}} alındı · {{lost}} birim kaybı',
+  held: 'Hattı tutarken {{lost}} birim kaybı',
+  looted: '+{{loot}} ganimet · {{lost}} gemi kaybı',
+  scan_one: 'Bir tarama seni buldu',
+  scan_other: '{{count}} tarama seni buldu',
+  scanDetail: 'Biri senin resmini çıkarıyor.',
+  convoySecured: 'Konvoy ödülleri alındı',
+  convoyDelivered: 'Konvoy ödülleri teslim edildi',
+  convoyDetail_one: '+{{resources}} kaynak · {{count}} ödül gemisi',
+  convoyDetail_other: '+{{resources}} kaynak · {{count}} ödül gemisi',
+  accrued: '+{{alloy}} alaşım · +{{crystal}} kristal',
+  accruedDetail: 'Sen yokken üretildi',
+  door: {
+    report: 'Rapor',
+    intel: 'Radar',
+    base: 'Üs',
+    orbit: 'Kur',
+    signals: 'Sinyaller',
+  },
+};

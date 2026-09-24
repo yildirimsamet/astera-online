@@ -199,3 +199,29 @@ export const roomBar = {
   gunsStay: 'Geschütze verlassen die Welt nie.',
   nextCore: 'Befehlskern {{level}} macht daraus {{from}} → {{to}}.',
 };
+
+export const away = {
+  eyebrow: '{{duration}} weg',
+  title: 'Während du weg warst',
+  all: 'Alle ({{count}})',
+  done: 'Verstanden',
+  taken: '{{loot}} geraubt · {{lost}} Einheiten verloren',
+  held: '{{lost}} Einheiten beim Halten verloren',
+  looted: '+{{loot}} erbeutet · {{lost}} Schiffe verloren',
+  scan_one: 'Ein Scan hat dich gefunden',
+  scan_other: '{{count}} Scans haben dich gefunden',
+  scanDetail: 'Jemand macht sich ein Bild von dir.',
+  convoySecured: 'Konvoi-Beute gesichert',
+  convoyDelivered: 'Konvoi-Beute geliefert',
+  convoyDetail_one: '+{{resources}} Ressourcen · {{count}} Beuteschiff',
+  convoyDetail_other: '+{{resources}} Ressourcen · {{count}} Beuteschiffe',
+  accrued: '+{{alloy}} Legierung · +{{crystal}} Kristall',
+  accruedDetail: 'Hergestellt, während du weg warst',
+  door: {
+    report: 'Bericht',
+    intel: 'Radar',
+    base: 'Basis',
+    orbit: 'Installieren',
+    signals: 'Signale',
+  },
+};

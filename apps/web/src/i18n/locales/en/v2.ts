@@ -204,3 +204,30 @@ export const roomBar = {
   gunsStay: 'Guns never leave the world.',
   nextCore: 'Command Core {{level}} makes it {{from}} → {{to}}.',
 };
+
+/** E10: while you were away — the return story, worded from its kinds (S3). */
+export const away = {
+  eyebrow: 'Away {{duration}}',
+  title: 'While you were away',
+  all: 'All ({{count}})',
+  done: 'Got it',
+  taken: '{{loot}} taken · {{lost}} units lost',
+  held: '{{lost}} units lost holding the line',
+  looted: '+{{loot}} looted · {{lost}} ships lost',
+  scan_one: 'A scan found you',
+  scan_other: '{{count}} scans found you',
+  scanDetail: 'Someone is building a picture of you.',
+  convoySecured: 'Convoy prizes secured',
+  convoyDelivered: 'Convoy prizes delivered',
+  convoyDetail_one: '+{{resources}} resources · {{count}} prize ship',
+  convoyDetail_other: '+{{resources}} resources · {{count}} prize ships',
+  accrued: '+{{alloy}} alloy · +{{crystal}} crystal',
+  accruedDetail: 'Made while you were away',
+  door: {
+    report: 'Report',
+    intel: 'Radar',
+    base: 'Base',
+    orbit: 'Install',
+    signals: 'Signals',
+  },
+};

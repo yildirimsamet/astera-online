@@ -61,6 +61,17 @@ vi.mock('../../src/v2/shell/ChatHost.js', () => ({
   ),
 }));
 
+vi.mock('../../src/v2/shell/AwayHost.js', () => ({
+  AwayHost: ({ onDoor, onAll }: { onDoor: (door: string) => void; onAll: () => void }) => (
+    <div aria-label="away story">
+      {['report', 'intel', 'base', 'orbit', 'signals'].map((door) => (
+        <button key={door} type="button" onClick={() => { onDoor(door); }}>{`away ${door}`}</button>
+      ))}
+      <button type="button" onClick={onAll}>away all</button>
+    </div>
+  ),
+}));
+
 vi.mock('../../src/v2/shell/FleetHost.js', () => ({
   FleetHost: ({ onClose }: { onClose: () => void }) => (
     <div role="dialog" aria-label="fleet"><button type="button" onClick={onClose}>close fleet</button></div>
@@ -90,6 +101,27 @@ beforeEach(() => {
   panel = null;
   onPanel.mockClear();
   openSignals.mockClear();
+});
+
+/** E10: the return story sits in the shell; each of its doors opens the page that answers it. */
+describe('the return story in the shell', () => {
+  it('opens the battle list, the intel sheet and the base from its lines', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'away report' }));
+    expect(onPanel).toHaveBeenLastCalledWith('intel', 'battles', undefined, undefined);
+    await userEvent.click(screen.getByRole('button', { name: 'away intel' }));
+    expect(onPanel).toHaveBeenLastCalledWith('intel', undefined, undefined, undefined);
+    await userEvent.click(screen.getByRole('button', { name: 'away base' }));
+    expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { group: 'grow' });
+    await userEvent.click(screen.getByRole('button', { name: 'away orbit' }));
+    expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { group: 'orbit' });
+  });
+
+  it('opens the whole list in Signals', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'away all' }));
+    expect(screen.getByRole('dialog', { name: /^bell signals/ })).toBeInTheDocument();
+  });
 });
 
 describe('the v2 shell', () => {

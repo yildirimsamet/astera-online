@@ -199,3 +199,29 @@ export const roomBar = {
   gunsStay: 'Los cañones nunca dejan el mundo.',
   nextCore: 'El Núcleo de comando {{level}} lo lleva de {{from}} → {{to}}.',
 };
+
+export const away = {
+  eyebrow: 'Fuera {{duration}}',
+  title: 'Mientras no estabas',
+  all: 'Todo ({{count}})',
+  done: 'Entendido',
+  taken: '{{loot}} robado · {{lost}} unidades perdidas',
+  held: '{{lost}} unidades perdidas al resistir',
+  looted: '+{{loot}} saqueado · {{lost}} naves perdidas',
+  scan_one: 'Un escaneo te encontró',
+  scan_other: '{{count}} escaneos te encontraron',
+  scanDetail: 'Alguien está armando una imagen de ti.',
+  convoySecured: 'Botín del convoy asegurado',
+  convoyDelivered: 'Botín del convoy entregado',
+  convoyDetail_one: '+{{resources}} recursos · {{count}} nave de botín',
+  convoyDetail_other: '+{{resources}} recursos · {{count}} naves de botín',
+  accrued: '+{{alloy}} aleación · +{{crystal}} cristal',
+  accruedDetail: 'Producido mientras no estabas',
+  door: {
+    report: 'Informe',
+    intel: 'Radar',
+    base: 'Base',
+    orbit: 'Instalar',
+    signals: 'Señales',
+  },
+};

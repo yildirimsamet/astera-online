@@ -5,6 +5,8 @@ import type { Panel, PanelStop } from '../../screens/GalaxyView.jsx';
 import type { StripFocus } from '../../shell/PendingStrip.js';
 import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
+import type { AwayDoor } from '../../lib/awayStory.js';
+import { AwayHost } from './AwayHost.js';
 import { BellHost } from './BellHost.js';
 import { ChatHost } from './ChatHost.js';
 import { FleetHost } from './FleetHost.js';
@@ -93,6 +95,27 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
 
   const active: DockTab | null = bell || chatOpen ? null : tabOfPanel(panel, fleetOpen);
 
+  /** Where each line of the return story (E10) takes the player. */
+  const openAway = (door: AwayDoor): void => {
+    switch (door) {
+      case 'report':
+        route('intel', 'battles');
+        return;
+      case 'intel':
+        route('intel');
+        return;
+      case 'base':
+        route('planet', undefined, undefined, { group: 'grow' });
+        return;
+      case 'orbit':
+        route('planet', undefined, undefined, { group: 'orbit' });
+        return;
+      case 'signals':
+        openBell('signals');
+        return;
+    }
+  };
+
   const onSelect = (tab: DockTab): void => {
     setNowOpen(false);
     const action = dockAction(tab, active);
@@ -140,6 +163,9 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
           <HudDock active={active} onSelect={onSelect} over={active !== 'galaxy' || nowOpen} />
         </div>
       </main>
+
+      {/* E10: asked for after the galaxy is up, never before it (K5). */}
+      <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} />
 
       {fleetOpen && (
         <FleetHost

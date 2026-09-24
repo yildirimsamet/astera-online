@@ -47,6 +47,8 @@ export const keys = {
   notifications: ['notifications'],
   unlocks: ['unlocks'],
   pending: ['pending'],
+  /** The return story, read once a session (E10). */
+  returnStory: ['session', 'return'],
   traffic: ['traffic'],
   reports: ['reports'],
   rewards: ['rewards'],

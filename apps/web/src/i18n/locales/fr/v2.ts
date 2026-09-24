@@ -199,3 +199,29 @@ export const roomBar = {
   gunsStay: 'Les canons ne quittent jamais le monde.',
   nextCore: 'Le Noyau de commande {{level}} la porte de {{from}} → {{to}}.',
 };
+
+export const away = {
+  eyebrow: 'Absent {{duration}}',
+  title: 'Pendant ton absence',
+  all: 'Tout ({{count}})',
+  done: 'Compris',
+  taken: '{{loot}} pris · {{lost}} unités perdues',
+  held: '{{lost}} unités perdues en tenant la ligne',
+  looted: '+{{loot}} pillés · {{lost}} vaisseaux perdus',
+  scan_one: 'Un scan t’a trouvé',
+  scan_other: '{{count}} scans t’ont trouvé',
+  scanDetail: 'Quelqu’un se fait une image de toi.',
+  convoySecured: 'Butin du convoi sécurisé',
+  convoyDelivered: 'Butin du convoi livré',
+  convoyDetail_one: '+{{resources}} ressources · {{count}} vaisseau pris',
+  convoyDetail_other: '+{{resources}} ressources · {{count}} vaisseaux pris',
+  accrued: '+{{alloy}} alliage · +{{crystal}} cristal',
+  accruedDetail: 'Produit pendant ton absence',
+  door: {
+    report: 'Rapport',
+    intel: 'Radar',
+    base: 'Base',
+    orbit: 'Installer',
+    signals: 'Signaux',
+  },
+};
