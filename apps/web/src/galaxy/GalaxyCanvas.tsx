@@ -3,6 +3,7 @@ import { Canvas, useFrame, useStore, useThree } from '@react-three/fiber';
 import { Html, OrbitControls, Preload } from '@react-three/drei';
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing';
 import { useGpuContext } from './gpuContext.js';
+import { ViewOffset } from './ViewOffset.js';
 import * as THREE from 'three';
 import type {
   AsteroidView,
@@ -895,6 +896,8 @@ export function GalaxyCanvas({
         sceneReady={sceneReady}
         openingMark={openingMark}
       />
+      {/* E11: a page docked on the right does not hide the camera's subject. */}
+      <ViewOffset />
       <AmbientTicker />
       <FpsProbe />
       <PerfProbe
