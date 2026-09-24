@@ -12,6 +12,7 @@ import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
 import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
 import { Sheet } from '../ui/kit/index.js';
+import { ReportScene } from '../v2/hud/ReportScene.js';
 import './battle-report.css';
 
 /**
@@ -165,11 +166,17 @@ export function BattleReportDoor({
   missionId,
   onClose,
   onUnavailable,
+  onAttackAgain,
+  colonyOf,
 }: {
   missionId: string;
   onClose: () => void;
   /** No such report, or the request failed: fall back to the list. */
   onUnavailable: () => void;
+  /** E6: back to the raided world's dossier. The galaxy offers it; a list with no disc does not. */
+  onAttackAgain?: (planetId: string) => void;
+  /** Whether a world on the disc is a colony, for the scene's loyalty rule. */
+  colonyOf?: (planetId: string) => boolean;
 }) {
   const { data, isPending, isError } = useReports();
   const report = data ? reportFor(data.reports, missionId) : undefined;
@@ -182,7 +189,14 @@ export function BattleReportDoor({
   if (!report) return null;
   return report.kind === 'STRATEGIC'
     ? <StrategicReportSheet report={report} onClose={onClose} />
-    : <ReportSheet report={report} onClose={onClose} />;
+    : (
+      <ReportSheet
+        report={report}
+        onClose={onClose}
+        {...(onAttackAgain ? { onAttackAgain } : {})}
+        {...(colonyOf ? { colonyOf } : {})}
+      />
+    );
 }
 
 export function BattleReports({
@@ -485,8 +499,19 @@ function GradeMark({ report }: { report: OrdinaryReport }) {
   );
 }
 
-function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () => void }) {
+function ReportSheet({
+  report,
+  onClose,
+  onAttackAgain,
+  colonyOf,
+}: {
+  report: OrdinaryReport;
+  onClose: () => void;
+  onAttackAgain?: (planetId: string) => void;
+  colonyOf?: (planetId: string) => boolean;
+}) {
   const { t } = useTranslation();
+  const target = report.attacking ? report.opponentPlanetId ?? null : null;
   const perspective = report.attacking ? 'attacking' : 'defending';
   const whyGrade = report.grade === 'DECISIVE' && report.rounds.length === 0
     ? 'WALKOVER'
@@ -517,6 +542,19 @@ function ReportSheet({ report, onClose }: { report: OrdinaryReport; onClose: () 
       onClose={onClose}
     >
       <div data-battle-report className="battle-report">
+      {/*
+        THE SCENE FIRST (B15, the mock's "KISMİ ZAFER"): the world, the haul, both sides, one
+        sentence of why and the balance. The sheet's title already carries the verdict and is
+        its accessible name, so the scene stands a dot in the verdict's colour in for the word.
+        The four questions below are the scene's detail.
+      */}
+      <div className="mb-4">
+        <ReportScene
+          report={report}
+          colonyTarget={target !== null && (colonyOf?.(target) ?? false)}
+          {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
+        />
+      </div>
       {/*
         THE FOUR QUESTIONS A READER ARRIVES WITH, IN THE ORDER THEY ASK THEM.
         Owner report · `docs/battle-reports.md`.

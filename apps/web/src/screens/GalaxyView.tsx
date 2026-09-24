@@ -1806,6 +1806,13 @@ export function GalaxyView({
             onPanel(null);
           }}
           onUnavailable={openBattleList}
+          /* E6: "Yeniden saldır" goes back to the raided world, its dossier open. */
+          onAttackAgain={(planetId) => {
+            onPanel(null);
+            focusPlanet(planetId);
+            setDetail(true);
+          }}
+          colonyOf={(planetId) => planets.find((world) => world.id === planetId)?.kind === 'COLONY'}
         />
       )}
 

@@ -10,6 +10,7 @@ import { TransferSheet } from '../../screens/TransferSheet.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
+import { ReportScene } from '../hud/ReportScene.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
@@ -259,6 +260,33 @@ function Views({ view }: { view: string }) {
         onClose={noop}
         onLaunched={noop}
       />
+    );
+  }
+  if (view === 'report') {
+    return (
+      <Sheet title="Kestrel" onClose={noop} detents={['full']}>
+        <ReportScene
+          word="Partial victory"
+          colonyTarget
+          onAttackAgain={noop}
+          report={{
+            id: 'b1', missionId: 'm1', at: new Date(NOW - 20 * MIN), grade: 'PARTIAL', attacking: true,
+            opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel', neutral: false, yourPlanet: 'Bellwether',
+            rounds: [
+              { round: 1, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 6 }, defenderLosses: { PIKE: 10 } },
+              { round: 2, attackerDamage: 640, defenderDamage: 120, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 3, TALON: 1 }, defenderLosses: { PIKE: 8, RAMPART: 8 } },
+              { round: 3, attackerDamage: 90, defenderDamage: 40, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: {}, defenderLosses: { BASTION: 2 } },
+            ],
+            yourLosses: { DART: 9, TALON: 1 },
+            theirLosses: { PIKE: 18, RAMPART: 8, BASTION: 2 },
+            yourFleet: { DART: 23, TALON: 19, RAMPART: 10, COURIER: 8 },
+            theirFleet: {},
+            lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240,
+            dominion: 120, dominionBreakdown: null, shieldAbsorbed: 0, cargoLimited: true,
+            defenceSalvage: {}, disruptedMinutes: 0, wreckValue: 0, fuelPaid: 320,
+          }}
+        />
+      </Sheet>
     );
   }
   if (view === 'strike') {

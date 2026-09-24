@@ -142,3 +142,23 @@ export const fleetPage = {
   ceiling: "jusqu'à {{shown}} avec ce Noyau",
   full: "Plein",
 };
+
+/** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
+export const reportScene = {
+  eyebrow: "Rapport de combat · {{planet}}",
+  rounds_one: "{{count}} tour",
+  rounds_other: "{{count}} tours",
+  you: "Toi",
+  destroyed: "{{count}} détruits",
+  hidden: "Ce qui leur reste et le reste du terrain restent cachés ; un rapport ne dit que ce que tu as détruit.",
+  whyHeading: "Pourquoi ?",
+  why: "La plupart de tes pertes étaient des {{lost}} : {{by}} est fort contre eux, et {{bring}} est fort contre {{by}}.",
+  balance: "Bilan",
+  balanceLoot: "butin {{amount}}",
+  balanceFuel: "carburant −{{amount}}",
+  balanceLost: "pertes {{list}}",
+  balanceNone: "aucune perte",
+  cargoFull: "soute pleine",
+  colonyRule: "Loyauté d’une colonie : une victoire décisive retire {{decisive}}, une partielle {{partial}}.",
+  again: "Attaquer à nouveau",
+} as const;

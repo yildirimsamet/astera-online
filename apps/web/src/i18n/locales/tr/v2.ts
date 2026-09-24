@@ -142,3 +142,23 @@ export const fleetPage = {
   ceiling: "bu Çekirdek’le en çok {{shown}}",
   full: "Dolu",
 };
+
+/** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
+export const reportScene = {
+  eyebrow: "Savaş raporu · {{planet}}",
+  rounds_one: "{{count}} tur",
+  rounds_other: "{{count}} tur",
+  you: "Sen",
+  destroyed: "{{count}} yok edildi",
+  hidden: "Kalanları ve sahaya çıkardığı filo gizli; rapor yalnızca yok ettiğini söyler.",
+  whyHeading: "Neden?",
+  why: "Kayıplarının çoğu {{lost}}: {{by}} onlara karşı güçlü, {{bring}} de {{by}} karşısında güçlü.",
+  balance: "Bilanço",
+  balanceLoot: "ganimet {{amount}}",
+  balanceFuel: "yakıt −{{amount}}",
+  balanceLost: "kayıp {{list}}",
+  balanceNone: "kayıp yok",
+  cargoFull: "ambar doldu",
+  colonyRule: "Koloni sadakati: kesin zafer {{decisive}}, kısmi zafer {{partial}} düşürür.",
+  again: "Yeniden saldır",
+} as const;

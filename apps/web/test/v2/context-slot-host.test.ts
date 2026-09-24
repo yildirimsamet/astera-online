@@ -66,6 +66,15 @@ describe('the galaxy corners (owner, 2026-09-24)', () => {
   });
 });
 
+describe('the report door in the galaxy (E6)', () => {
+  /** "Yeniden saldır (dosyaya gider)": the raided world, focused, with its dossier open. */
+  it('sends Attack again to the raided world’s open dossier', () => {
+    const door = source.slice(source.indexOf('<BattleReportDoor'), source.indexOf("{panel === 'intel' && ("));
+    expect(door).toMatch(/onAttackAgain=\{\(planetId\) => \{\s*onPanel\(null\);\s*focusPlanet\(planetId\);\s*setDetail\(true\);/);
+    expect(door).toMatch(/colonyOf=\{\(planetId\) => planets\.find\(\(world\) => world\.id === planetId\)\?\.kind === 'COLONY'\}/);
+  });
+});
+
 describe('the View chip in the Academy', () => {
   /**
    * The Academy hides `[data-sensor-toggles]` until its Telescope exercise and

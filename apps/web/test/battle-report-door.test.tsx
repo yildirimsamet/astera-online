@@ -90,7 +90,7 @@ describe('the door a battle notification opens', () => {
 
     // The sheet, not a row: the grade is its title and the opponent its eyebrow.
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(/Sable/)).toBeInTheDocument();
+    expect(screen.getByRole('dialog').querySelector('header')).toHaveTextContent(/Sable/);
     expect(onUnavailable).not.toHaveBeenCalled();
   });
 
@@ -185,5 +185,44 @@ describe('where a report opens', () => {
     expect(scrollTo).not.toHaveBeenCalled();
     expect(document.querySelector('[data-sheet-scroll]')?.scrollTop).toBe(0);
     expect(document.querySelector('[data-battle-verdict]')).not.toBeNull();
+  });
+});
+
+/**
+ * THE REPORT OPENS ON ITS SCENE (B15), AND E6'S "YENIDEN SALDIR" GOES BACK TO THE TARGET.
+ * The galaxy hosts the door and knows the world; the button is offered only there, and
+ * only on the attacker's copy of a fight at a world.
+ */
+describe('the report scene in the sheet', () => {
+  const openWith = (
+    reports: BattleReport[],
+    props: { onAttackAgain?: (planetId: string) => void; colonyOf?: (planetId: string) => boolean },
+  ) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports });
+    const api = { reports: () => Promise.resolve({ reports }) } as unknown as Api;
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <BattleReportDoor missionId="mission-b1" onClose={vi.fn()} onUnavailable={vi.fn()} {...props} />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+  };
+
+  it('stages the fight at the top of the sheet', async () => {
+    openWith([report()], {});
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog.querySelector('[data-report-scene]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Attack again' })).toBeNull();
+  });
+
+  it('takes the attacker back to the world they raided', async () => {
+    const onAttackAgain = vi.fn();
+    openWith([report({ attacking: true, opponentPlanetId: 'p2' })], { onAttackAgain, colonyOf: (id) => id === 'p2' });
+    const again = await screen.findByRole('button', { name: 'Attack again' });
+    again.click();
+    expect(onAttackAgain).toHaveBeenCalledWith('p2');
+    expect(document.querySelector('[data-report-colony]')).not.toBeNull();
   });
 });

@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { bell, dock, fleetPage, handle, hold, lane, meter, now, ruler, slot, topBar, view } from './v2.js';
+import { bell, dock, fleetPage, handle, hold, lane, meter, now, reportScene, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
 /**
@@ -100,4 +100,5 @@ export const tr: Resources = {
   view,
   slot,
   fleetPage,
+  reportScene,
 };
