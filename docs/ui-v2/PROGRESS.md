@@ -112,10 +112,24 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D1…D6 — ÖNCE TASARIM ONAYI** (sahip 2026-09-24: *"Tek tek tasarla, kodlamaya geçmeden önce tasarımları bana göster"*).
-13 ekranlık tasarım tuvali yayında: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq (kaynak betiği: oturum scratchpad
-`design/gen.py`; yeniden üretmek için oradaki dosyalar okunur). **Sahip onay verene kadar D kodu yazılmaz.** Onaydan sonra
-sıra: D1 → D2 → D3 → D4 → D5 → D6, her biri TDD + görsel doğrulama.
+**D2 · Sekmelerdeki kapasite bölümleri** (Hangar odası, yer odası; bugün `CapacityBar`, beyaz/gri dolgu). D1'de yapılan
+`v2/kit/RoomBar` + `lib/room.ts roomParts` bağlanır (evde / dışarıda / sırada, lejantlı); yer odasında topun resmi yok.
+Tasarım: tuval `D2-kapasite`. Sonra D3 → D4 → D5 → D6, her biri TDD + görsel doğrulama.
+
+Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
+(kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
+
+**D1 (tamam):**
+- `c5fb2a2` `ItemSheet` v2: `fit` sheet; kahraman (duran resim + sonraki seviyenin kazancı), kural "Nasıl çalışır ›" arkasında;
+  sonraki 3 seviye kazanç/fiyat/süre ile (ilk basamak kahramanı tekrarlamaz, Çekirdek'te seviye iki kez yazılmaz, etiketi
+  farklı basamak etiketini söyler, tavanda durur); "Yeni görünüm · Sv.N"; `NeedBar` (tutulan kaynak renginde, eksik sarı
+  taralı); alt bar fiyat + süre + inşaat sırası + "~X sonra yeter" diyen birincil; kapı sarı. Uydu: yörünge soketleri (dolu /
+  kesikli hedef / boş / kilitli), yuva kartı ("sonra 0 boş kalır; Komuta Çekirdeği 9 bir yuva daha açar"). `artTier`
+  (tavanlıda üçte bir, tavansızda 1–8/9–14/15+). İç içe sheet'te Escape yalnız üsttekini kapatır (`claimEscape`; iki kit).
+- `80bcb92` `BuildSheet` v2: kahraman (sınıf çipi, evde·dışarıda — topta "N kurulu", resim, 6 etiketli değer), kural bir
+  dokunuş derinde, eşleşme satırı çarpanlarla (`factor`: ×1,6 / ×0,625; zayıf sarı), sınıf döngüsü kendi dokunuşunda,
+  v2 stepper "Maks · N" + neyin durdurduğu (kaynak / Hangar / yer / yuva; derste yalnız ders sayısı), `RoomBar`, eksikte
+  `NeedBar`, alt bar parti fiyatı + süre + tersane sırası. Akademi 39/39; EN/TR/DE 350 px'te görüldü.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
@@ -398,6 +412,8 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
 - `GalaxyView` `goHome` (Akademi'nin uçuşu, D56) ve `homeRequest` (dock, D163) ikisi de yaşıyor; Akademi v2'ye geçerse biri kalkar.
 
 ## Açık sorunlar
+- Almanca Üs başlığında kaynak satırı sıkışıyor (sayılar ikonlara değiyor, "Produktionslager voll" iki satır) — D1 sırasında
+  görüldü, kapsam dışı; F8/F10'dan önce bakılmalı.
 - **Akademi eski HUD'u öğretiyor** (StatusBar, PendingStrip); mezun olan oyuncu galakside v2'yi görüyor. Şartname
   gereği kapsam dışı; sahibe soruldu mu: hayır — F10 öncesi sahibe sorulacak.
 - **Masaüstü (1280):** üst çubuk ölçerleri, Now hattı ve dock tüm genişliğe yayılıyor (ölçer ~390 px, Now hattının
