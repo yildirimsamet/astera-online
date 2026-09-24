@@ -289,6 +289,34 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
     client.setQueryData(keys.leaderboard, { ladder: [], you: null });
     client.setQueryData(keys.clanEvents, { pages: [{ events: [], nextBefore: null }], pageParams: [null] });
     client.setQueryData(keys.clanAid, { transfers: [] });
+    // The war room (E9): an operation assembling on a rival, three waves in, one staged.
+    const wave = (id: string, playerId: string, username: string, status: 'OUTBOUND' | 'STAGED', hulls: Record<string, number>, minutes: number, mine = false) => ({
+      id, playerId, username, originPlanetId: `o-${id}`, originPlanetName: `${username}'s world`, sourceKind: 'PHYSICAL',
+      status, fleet: hulls, bulk: Object.values(hulls).reduce((a, b) => a + b, 0), fuelPaid: 40,
+      sentAt: ago(minutes).toISOString(), arrivesAt: status === 'OUTBOUND' ? new Date(NOW + 40 * MIN).toISOString() : null,
+      mine, canRecall: mine,
+    });
+    client.setQueryData(keys.clanWar, clanWarSchema.parse({
+      available: true, level: 3, maxLevel: false,
+      treasury: { alloy: 18_000, crystal: 6_000, deuterium: 900 },
+      nextCost: { alloy: 30_000, crystal: 10_000, deuterium: 1_500 },
+      room: { alloy: 40_000, crystal: 12_000, deuterium: 2_000 }, canUpgrade: false,
+      hangar: { used: 184, reserved: 12, total: 360 },
+      serverNow: new Date(NOW).toISOString(),
+      operation: {
+        id: 'op', status: 'ASSEMBLING', closeReason: null, leaderPlayerId: 'me',
+        target: { playerId: 'vex', username: 'VEX', planetId: 'p-kestrel', planetName: 'Kestrel', position: { x: 40, y: 0, z: 30 } },
+        staging: { planetId: 'p-mira', name: 'Mira', position: { x: 0, y: 0, z: 0 } },
+        createdAt: ago(60).toISOString(), expiresAt: new Date(NOW + 23 * 60 * MIN + 48 * MIN).toISOString(),
+        startedAt: null, resolvedAt: null, completedAt: null,
+        contributions: [
+          wave('w1', 'mira', 'Mira', 'STAGED', { RAMPART: 38 }, 50),
+          wave('w2', 'orin', 'Orin', 'OUTBOUND', { DART: 22 }, 10),
+          wave('w3', 'me', 'Vantage', 'OUTBOUND', { DART: 30, PIKE: 8 }, 5, true),
+        ],
+        pool: { combatHulls: 98, waves: 3, participants: 3 },
+      },
+    }));
     client.setQueryData(keys.galaxy, { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
     return null;
   });
@@ -305,6 +333,7 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
+  if (view === 'clan-war') return <GalleryClan tab="war" />;
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
