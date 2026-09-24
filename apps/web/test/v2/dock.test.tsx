@@ -85,3 +85,27 @@ describe('the dock', () => {
     expect(screen.getByRole('button', { name: 'Fleet · In the air: 1' })).toBeInTheDocument();
   });
 });
+
+/** E11 · K10: on a desk the dock is a tab bar in the top bar, and says which key opens each tab. */
+describe('the dock as the desk tab bar', () => {
+  it('keeps the five names in the one order, each with its key', () => {
+    render(<Dock active="galaxy" badges={quiet} onSelect={vi.fn()} bar />);
+    const tabs = within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('button');
+    expect(tabs.map((tab) => tab.getAttribute('aria-keyshortcuts'))).toEqual(['1', '2', '3', '4', '5']);
+    expect(tabs.map((tab) => tab.querySelector('kbd')?.textContent)).toEqual(['1', '2', '3', '4', '5']);
+  });
+
+  it('is never the see-through phone dock: it sits in the top bar, which has its own ground', () => {
+    render(<Dock active="base" badges={quiet} onSelect={vi.fn()} bar over />);
+    const nav = screen.getByRole('navigation');
+    expect(nav).not.toHaveClass('bg-gradient-to-t');
+    expect(nav).toHaveAttribute('data-bar');
+  });
+
+  it('carries the same badges and the same routing', async () => {
+    const onSelect = vi.fn();
+    render(<Dock active="galaxy" badges={{ ...quiet, intel: 3 }} onSelect={onSelect} bar />);
+    await userEvent.click(screen.getByRole('button', { name: 'Intel · New reports: 3' }));
+    expect(onSelect).toHaveBeenCalledWith('intel');
+  });
+});

@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Panel } from '../../src/screens/GalaxyView.js';
 import { GameShell } from '../../src/v2/shell/GameShell.js';
 
@@ -24,9 +25,10 @@ vi.mock('../../src/api/queries.js', async () => {
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
   HudTop: (p: {
     onCommander: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
-    nowOpen: boolean; onNow: (open: boolean) => void;
+    nowOpen: boolean; onNow: (open: boolean) => void; tabs?: ReactNode;
   }) => (
     <div>
+      {p.tabs !== undefined && <div aria-label="top tabs">{p.tabs}</div>}
       <button type="button" onClick={() => { p.onNow(true); }}>now line</button>
       {p.nowOpen && <div role="dialog" aria-label="timers" />}
       <button type="button" onClick={p.onCommander}>chip</button>
@@ -37,9 +39,23 @@ vi.mock('../../src/v2/shell/HudTop.js', () => ({
   ),
 }));
 
+vi.mock('../../src/v2/shell/OutlineHost.js', () => ({
+  OutlineHost: ({ onFocusPlanet, onFocusCraft, onRoute }: {
+    onFocusPlanet: (id: string) => void;
+    onFocusCraft: (focus: { kind: string; key: string }) => void;
+    onRoute: (panel: string) => void;
+  }) => (
+    <aside aria-label="outline">
+      <button type="button" onClick={() => { onFocusPlanet('p-2'); }}>outline world</button>
+      <button type="button" onClick={() => { onFocusCraft({ kind: 'thread', key: 'm-1' }); }}>outline flight</button>
+      <button type="button" onClick={() => { onRoute('research'); }}>outline research</button>
+    </aside>
+  ),
+}));
+
 vi.mock('../../src/v2/shell/HudDock.js', () => ({
-  HudDock: ({ active, onSelect, over }: { active: string | null; onSelect: (tab: string) => void; over: boolean }) => (
-    <nav aria-label={`dock ${active ?? 'none'}`} {...(over ? { 'data-over': '' } : {})}>
+  HudDock: ({ active, onSelect, over, bar }: { active: string | null; onSelect: (tab: string) => void; over: boolean; bar?: boolean }) => (
+    <nav aria-label={`dock ${active ?? 'none'}`} {...(over ? { 'data-over': '' } : {})} {...(bar ? { 'data-bar': '' } : {})}>
       {['galaxy', 'base', 'fleet', 'intel', 'clan'].map((tab) => (
         <button key={tab} type="button" onClick={() => { onSelect(tab); }}>{`tab ${tab}`}</button>
       ))}
@@ -80,27 +96,124 @@ vi.mock('../../src/v2/shell/FleetHost.js', () => ({
 
 let panel: Panel = null;
 const onPanel = vi.fn((next: Panel) => { panel = next; });
+const onFocusPlanet = vi.fn();
+const onFocusCraft = vi.fn();
 
 const shell = () => render(
   <GameShell
     commander="Samet"
     panel={panel}
     onPanel={onPanel}
-    onFocusPlanet={vi.fn()}
-    onFocusCraft={vi.fn()}
-    galaxy={({ homeRequest, worldsRequest, onPanel: route }) => (
+    onFocusPlanet={onFocusPlanet}
+    onFocusCraft={onFocusCraft}
+    galaxy={({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route }) => (
       <div>
         <p>{`home ${String(homeRequest)} worlds ${String(worldsRequest)}`}</p>
+        <p>{`center ${String(centerRequest)} clear ${String(clearRequest)}`}</p>
         <button type="button" onClick={() => { route('chat'); }}>galaxy asks for chat</button>
       </div>
     )}
   />,
 );
 
+/** The window as wide as a desk (≥1100 px), or as a phone. */
+const desk = (wide: boolean): void => {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: wide && query === '(min-width: 1100px)',
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+};
+
 beforeEach(() => {
   panel = null;
   onPanel.mockClear();
+  onFocusPlanet.mockClear();
+  onFocusCraft.mockClear();
   openSignals.mockClear();
+});
+
+afterEach(() => { vi.unstubAllGlobals(); });
+
+/** E11 · K10: a desk opens columns instead of scaling the phone up. */
+describe('the shell on a desk', () => {
+  it('keeps the phone layout on a phone: the dock at the foot, no outline', () => {
+    desk(false);
+    shell();
+    expect(screen.queryByRole('complementary', { name: 'outline' })).toBeNull();
+    expect(screen.queryByLabelText('top tabs')).toBeNull();
+    expect(screen.getByRole('navigation')).not.toHaveAttribute('data-bar');
+  });
+
+  it('puts the tabs in the top bar and the outline beside the galaxy', () => {
+    desk(true);
+    shell();
+    expect(screen.getByRole('complementary', { name: 'outline' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveAttribute('data-bar', '');
+    expect(screen.getByLabelText('top tabs')).toContainElement(nav);
+  });
+
+  it('shows a world or a flight from the outline on the galaxy, leaving the page that was open', async () => {
+    desk(true);
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'tab fleet' }));
+    await userEvent.click(screen.getByRole('button', { name: 'outline world' }));
+    expect(onFocusPlanet).toHaveBeenCalledWith('p-2');
+    expect(screen.queryByRole('dialog', { name: 'fleet' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'bell' }));
+    await userEvent.click(screen.getByRole('button', { name: 'outline flight' }));
+    expect(onFocusCraft).toHaveBeenCalledWith({ kind: 'thread', key: 'm-1' });
+    expect(screen.queryByRole('dialog', { name: /^bell/ })).toBeNull();
+  });
+
+  it('opens a lane’s page from the outline through the shell’s router', async () => {
+    desk(true);
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'outline research' }));
+    expect(onPanel).toHaveBeenLastCalledWith('research', undefined, undefined, undefined);
+  });
+});
+
+/** E11: 1–5 are the tabs, Space brings the camera to the selection, Esc lets go of it. */
+describe('the desk keyboard in the shell', () => {
+  it('opens the five tabs by their numbers', () => {
+    shell();
+    fireEvent.keyDown(window, { key: '2' });
+    expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, undefined);
+    fireEvent.keyDown(window, { key: '3' });
+    expect(screen.getByRole('dialog', { name: 'fleet' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: '4' });
+    expect(onPanel).toHaveBeenLastCalledWith('intel', undefined, undefined, undefined);
+    expect(screen.queryByRole('dialog', { name: 'fleet' })).toBeNull();
+  });
+
+  it('asks the galaxy to bring the selection into view on Space, and to let go of it on Esc', () => {
+    shell();
+    fireEvent.keyDown(window, { key: ' ' });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('center 1 clear 1')).toBeInTheDocument();
+  });
+
+  it('leaves Space and Esc to a page that is open', () => {
+    shell();
+    const page = document.createElement('div');
+    page.setAttribute('data-sheet-panel', '');
+    document.body.append(page);
+    fireEvent.keyDown(window, { key: ' ' });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('center 0 clear 0')).toBeInTheDocument();
+    page.remove();
+  });
+
+  it('never takes a number typed into a field', () => {
+    shell();
+    const field = document.createElement('input');
+    document.body.append(field);
+    fireEvent.keyDown(field, { key: '2' });
+    expect(onPanel).not.toHaveBeenCalled();
+    field.remove();
+  });
 });
 
 /** E10: the return story sits in the shell; each of its doors opens the page that answers it. */

@@ -64,6 +64,12 @@
   --font-v2-ui: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-v2-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* ── widths ─ E11 · K10: two columns from 700 px (galaxy + right panel), three from
+     1100 px (outline + galaxy + right panel, the tabs in the top bar). `useMedia`'s
+     DESK_QUERY is the same 1100. */
+  --breakpoint-v2-split: 700px;
+  --breakpoint-v2-desk: 1100px;
+
   /* ── motion ─ one curve: fast out, settles without bounce */
   --ease-v2: cubic-bezier(0.2, 0.8, 0.2, 1);
 }

@@ -231,3 +231,18 @@ export const away = {
     signals: 'Signals',
   },
 };
+
+/** E11: the desk outline — worlds, what is in the air, the work queues. */
+export const outline = {
+  label: 'Outline',
+  worlds: 'Worlds',
+  air: 'In the air',
+  airEmpty: 'Nothing in the air — launch from a world’s card.',
+  queues: 'Queues',
+  research: 'Research',
+  idle_one: 'Idle · {{count}} slot free',
+  idle_other: 'Idle · {{count}} slots free',
+  filled: '{{count}} of {{total}}',
+  threat_one: '{{count}} attack coming',
+  threat_other: '{{count}} attacks coming',
+};

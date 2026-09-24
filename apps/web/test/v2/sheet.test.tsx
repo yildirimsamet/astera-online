@@ -243,3 +243,32 @@ describe('the sheet', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * E11 · K10: FROM 700 PX, "PAGES IN THE RIGHT COLUMN OR IN THE MIDDLE, 720 PX AT MOST".
+ * A page (a tab's, the Fleet, the bell) is a column on the right with the galaxy live
+ * beside it; a dialog (an item, a build, the return story) stands in the middle over
+ * the dim. Layout itself is CSS; what is held here is which one a sheet is.
+ */
+describe('the sheet on a wide screen', () => {
+  it('is a page, unless it only ever fits its content — then it is a dialog', () => {
+    const { unmount } = render(<Sheet title="Fleet" onClose={vi.fn()} detents={['full']}>body</Sheet>);
+    expect(screen.getByRole('dialog', { name: 'Fleet' })).toHaveAttribute('data-placement', 'page');
+    unmount();
+    render(<Sheet title="Refinery" onClose={vi.fn()} detents={['fit']}>body</Sheet>);
+    expect(screen.getByRole('dialog', { name: 'Refinery' })).toHaveAttribute('data-placement', 'dialog');
+  });
+
+  it('lets a page that fits its content on a phone say it is a page (Intel, Clan)', () => {
+    render(<Sheet title="Intel" onClose={vi.fn()} detents={['fit']} placement="page">body</Sheet>);
+    expect(screen.getByRole('dialog', { name: 'Intel' })).toHaveAttribute('data-placement', 'page');
+  });
+
+  it('lets the galaxy beside a page stay live, and keeps the dim behind a dialog', () => {
+    const { container, unmount } = render(<Sheet title="Fleet" onClose={vi.fn()} detents={['full']}>body</Sheet>);
+    expect(container.querySelector('[data-scrim]')).toHaveClass('v2-split:hidden');
+    unmount();
+    const dialog = render(<Sheet title="Refinery" onClose={vi.fn()} detents={['fit']}>body</Sheet>);
+    expect(dialog.container.querySelector('[data-scrim]')).not.toHaveClass('v2-split:hidden');
+  });
+});

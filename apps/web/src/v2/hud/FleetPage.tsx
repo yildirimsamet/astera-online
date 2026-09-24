@@ -83,7 +83,7 @@ function Room({ label, used, total }: { label: string; used: number; total: numb
  * this leg. A flight the server says may still turn carries a last line, as the mock
  * draws it: the price of turning in words ("home in 42m"), and the Recall beside it.
  */
-function FlightRow({
+export function FlightRow({
   item,
   now,
   recalling,
@@ -94,12 +94,14 @@ function FlightRow({
   now: number;
   recalling: boolean;
   onFocus: (item: AirborneItem) => void;
-  onRecall: (item: AirborneItem) => void;
+  /** Absent where the row is a glance (the desk outline): the recall lives on the Fleet page. */
+  onRecall?: (item: AirborneItem) => void;
 }) {
   const { t } = useTranslation();
   const progress = legProgress(item.span, now);
   const pace = paceShown(item.pace);
-  const turnable = item.leg !== 'return' && (item.recallMission !== undefined || item.recall !== undefined);
+  const turnable = onRecall !== undefined && item.leg !== 'return'
+    && (item.recallMission !== undefined || item.recall !== undefined);
   const home = item.span ? recallPreview(item.span.from, now) : null;
   const hostile = item.incoming;
   const detail = [

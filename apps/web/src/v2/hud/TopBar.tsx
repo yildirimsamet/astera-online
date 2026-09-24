@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
 import { Icon } from '../icons.js';
@@ -27,6 +28,8 @@ export interface TopBarProps {
   /** A meter opens the economy detail. */
   onResource: (resource: Resource) => void;
   onBell: () => void;
+  /** E11 · K10: on a desk the five tabs sit here, between the meters and the bell. */
+  tabs?: ReactNode;
 }
 
 const RESOURCES: readonly Resource[] = ['alloy', 'crystal', 'deuterium'];
@@ -55,6 +58,7 @@ export function TopBar({
   onWorld,
   onResource,
   onBell,
+  tabs,
 }: TopBarProps) {
   const { t } = useTranslation();
   const shieldLeft = shield ? shield.until - now : 0;
@@ -114,7 +118,8 @@ export function TopBar({
         </button>
       )}
 
-      <div className="grid min-w-0 flex-1 grid-cols-3 gap-2">
+      {/* On a desk the meters keep a phone's reach; a 600 px bar would read no better than 160. */}
+      <div className={`grid min-w-0 flex-1 grid-cols-3 gap-2 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
         {RESOURCES.map((resource) => (
           <ResourceMeter
             key={resource}
@@ -126,6 +131,8 @@ export function TopBar({
           />
         ))}
       </div>
+
+      {tabs !== undefined && <div className="ml-auto flex h-full shrink-0">{tabs}</div>}
 
       <button
         type="button"

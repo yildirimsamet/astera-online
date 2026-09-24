@@ -7,7 +7,7 @@ import {
   type ResearchProjectId,
   type SatelliteId,
 } from '@astera/rules';
-import type { BuildOrderView } from '../api/schemas.js';
+import type { BuildOrderView, ResearchQueueOrderView } from '../api/schemas.js';
 import {
   buildingName,
   hullLabel,
@@ -79,6 +79,26 @@ export function buildOrderArt(order: BuildOrderView): string | null {
         ? RESEARCH_ART[order.subject as ResearchProjectId]
         : null;
   }
+}
+
+/**
+ * The research queue in the build queue's shape, so the same rings draw it: the rung
+ * being bought is the count, as a building's level is. The Research page and the desk
+ * outline both read it (E11).
+ */
+export function researchQueueOrders(queue: readonly ResearchQueueOrderView[]): BuildOrderView[] {
+  return queue.map((order) => ({
+    id: order.id,
+    queue: 'CONSTRUCTION',
+    slot: order.slot,
+    kind: 'RESEARCH',
+    subject: order.projectId,
+    count: order.level,
+    cost: order.cost,
+    ...('optimistic' in order
+      ? { optimistic: true as const }
+      : { startedAt: order.startedAt, finishesAt: order.finishesAt }),
+  }));
 }
 
 /**

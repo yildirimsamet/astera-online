@@ -17,6 +17,29 @@ const HEIGHT: Record<Detent, string> = {
   full: 'h-[92dvh] max-h-full',
 };
 
+/**
+ * E11 · K10: FROM 700 PX, "PAGES IN THE RIGHT COLUMN OR IN THE MIDDLE, 720 PX AT MOST".
+ *
+ * A page is a column on the right, the whole height between the top bar and the dock,
+ * and the galaxy beside it stays live (no dim). A dialog — a sheet that only ever
+ * fits its content: an item, a build, the return story — stands in the middle over
+ * the dim, as tall as what it holds. The phone is unchanged.
+ */
+type Placement = 'page' | 'dialog';
+
+const FRAME: Record<Placement, { holder: string; scrim: string; panel: string }> = {
+  page: {
+    holder: 'v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
+    scrim: 'v2-split:hidden',
+    panel: 'v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
+  },
+  dialog: {
+    holder: 'v2-split:top-(--v2-top-h) v2-split:items-center v2-split:justify-center v2-split:p-6',
+    scrim: '',
+    panel: 'v2-split:max-h-full! v2-split:max-w-[32rem]! v2-split:rounded-sheet v2-split:border-b',
+  },
+};
+
 const PAGE: readonly Detent[] = ['half', 'full'];
 
 export interface SheetProps {
@@ -35,6 +58,11 @@ export interface SheetProps {
   bleed?: boolean;
   /** The body does not scroll; its child owns scrolling (a chat log). */
   contained?: boolean;
+  /**
+   * Wide screens only (E11): a page docks to the right, a dialog stands in the middle.
+   * Default: a dialog when it only ever fits its content, a page otherwise.
+   */
+  placement?: Placement;
 }
 
 /**
@@ -68,6 +96,7 @@ export function Sheet({
   footer,
   bleed = false,
   contained = false,
+  placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
 }: SheetProps) {
   const { t } = useTranslation();
   const [detent, setDetent] = useState<Detent>(detents[0] ?? 'half');
@@ -123,7 +152,7 @@ export function Sheet({
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col justify-end"
+      className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col justify-end ${FRAME[placement].holder}`}
       style={{ bottom: 'var(--v2-dock-h, 0px)' }}
     >
       {modal && (
@@ -133,7 +162,7 @@ export function Sheet({
           tabIndex={-1}
           data-scrim=""
           {...dismiss}
-          className="pointer-events-auto absolute inset-0 bg-v2-void/60"
+          className={`pointer-events-auto absolute inset-0 bg-v2-void/60 ${FRAME[placement].scrim}`}
         />
       )}
       <div
@@ -142,8 +171,9 @@ export function Sheet({
         aria-modal={modal}
         aria-label={title}
         data-detent={detent}
+        data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${HEIGHT[detent]}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div className="shrink-0 touch-none" onPointerDown={onPull}>
           <button
@@ -156,7 +186,8 @@ export function Sheet({
               if (afterPull && event.detail !== 0) return;
               settle(atTop ? 'down' : 'up');
             }}
-            className="flex h-4 w-full items-center justify-center"
+            // A column on a wide screen has one height: its handle would promise a pull that does nothing.
+            className={`flex h-4 w-full items-center justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
           >
             <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
           </button>

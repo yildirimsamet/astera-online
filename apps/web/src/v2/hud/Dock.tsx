@@ -38,6 +38,11 @@ export interface DockProps {
    * then, so the tabs still read over a page's own content.
    */
   over?: boolean;
+  /**
+   * E11 · K10: on a desk the dock is a tab bar in the top bar — the icon beside the
+   * name, and the key that opens it (1–5, `shortcutOf`).
+   */
+  bar?: boolean;
 }
 
 /**
@@ -49,19 +54,22 @@ export interface DockProps {
  * ring on Fleet filling toward your next own landing beside how many are up, the
  * unseen reports on Intel, what the clan needs on Clan.
  */
-export function Dock({ active, badges, onSelect, disabled = [], over = false }: DockProps) {
+export function Dock({ active, badges, onSelect, disabled = [], over = false, bar = false }: DockProps) {
   const { t } = useTranslation();
 
   return (
     <nav
       aria-label={t('dock.label')}
-      className={`flex pb-[env(safe-area-inset-bottom)] font-v2-ui ${
-        over
-          ? 'border-t border-v2-line/70 bg-gradient-to-t from-v2-deep/95 to-v2-deep/60'
-          : '[text-shadow:0_1px_3px_var(--color-v2-void)]'
+      {...(bar ? { 'data-bar': '' } : {})}
+      className={`flex font-v2-ui ${
+        bar
+          ? 'h-full items-stretch'
+          : over
+            ? 'border-t border-v2-line/70 bg-gradient-to-t from-v2-deep/95 to-v2-deep/60 pb-[env(safe-area-inset-bottom)]'
+            : 'pb-[env(safe-area-inset-bottom)] [text-shadow:0_1px_3px_var(--color-v2-void)]'
       }`}
     >
-      {DOCK_TABS.map((tab) => {
+      {DOCK_TABS.map((tab, index) => {
         const label = t(LABEL[tab]);
         const on = tab === active;
         const said = tab === 'base' && badges.base
@@ -81,14 +89,22 @@ export function Dock({ active, badges, onSelect, disabled = [], over = false }: 
             key={tab}
             type="button"
             aria-label={said === null ? label : `${label} · ${said}`}
+            aria-keyshortcuts={String(index + 1)}
             {...(on ? { 'aria-current': 'page' as const } : {})}
             disabled={disabled.includes(tab)}
             onClick={() => { onSelect(tab); }}
-            className={`relative flex h-16 min-w-0 flex-1 flex-col items-center justify-center gap-1 disabled:opacity-35 ${
-              on ? 'text-v2-ink' : 'text-v2-ink-3'
-            }`}
+            className={`relative flex min-w-0 disabled:opacity-35 ${
+              bar
+                ? 'items-center gap-1.5 px-2.5 hover:text-v2-ink'
+                : 'h-16 flex-1 flex-col items-center justify-center gap-1'
+            } ${on ? 'text-v2-ink' : 'text-v2-ink-3'}`}
           >
-            {on && <span aria-hidden="true" className="absolute inset-x-4 top-0 h-0.5 rounded-b-full bg-v2-self" />}
+            {on && (
+              <span
+                aria-hidden="true"
+                className={`absolute h-0.5 bg-v2-self ${bar ? 'inset-x-2.5 bottom-0 rounded-t-full' : 'inset-x-4 top-0 rounded-b-full'}`}
+              />
+            )}
             <span className="relative grid size-8 place-items-center">
               {progress !== null && (
                 <span
@@ -118,6 +134,11 @@ export function Dock({ active, badges, onSelect, disabled = [], over = false }: 
               )}
             </span>
             <span className="max-w-full truncate px-0.5 text-caption font-stretch-semi-condensed">{label}</span>
+            {bar && (
+              <kbd className="rounded-sm border border-v2-line-hi px-1 font-v2-mono text-micro leading-4 text-v2-ink-3">
+                {index + 1}
+              </kbd>
+            )}
           </button>
         );
       })}

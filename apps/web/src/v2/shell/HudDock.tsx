@@ -13,11 +13,13 @@ import { Dock } from '../hud/Dock.js';
  * the soonest landing. Intel: unseen battle and probe reports. Clan: the clan's
  * own attention count, the same figure the old disc mark read.
  */
-export function HudDock({ active, onSelect, over = false }: {
+export function HudDock({ active, onSelect, over = false, bar = false }: {
   active: DockTab | null;
   onSelect: (tab: DockTab) => void;
   /** A page is open over the galaxy: the dock backs itself (see `Dock`). */
   over?: boolean;
+  /** The desk's tab bar in the top bar (E11). */
+  bar?: boolean;
 }) {
   const now = useNow(1_000);
   const planet = usePlanet();
@@ -53,6 +55,7 @@ export function HudDock({ active, onSelect, over = false }: {
       badges={badges}
       onSelect={onSelect}
       over={over}
+      bar={bar}
       {...(clan?.available === false ? { disabled: ['clan'] } : {})}
     />
   );

@@ -1,5 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DockTab } from '../../lib/dock.js';
+import { DESK_QUERY, useMedia } from '../../lib/media.js';
+import { shortcutOf } from '../../lib/shortcuts.js';
 import { bellTabFor, dockAction, tabOfPanel } from '../../lib/shellRoute.js';
 import type { Panel, PanelStop } from '../../screens/GalaxyView.jsx';
 import type { StripFocus } from '../../shell/PendingStrip.js';
@@ -12,6 +14,7 @@ import { ChatHost } from './ChatHost.js';
 import { FleetHost } from './FleetHost.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
+import { OutlineHost } from './OutlineHost.js';
 
 /** Open a page: the panel, its shelf, the report, the row — as the app's router takes it. */
 export type ShellRoute = (
@@ -29,8 +32,17 @@ export interface GameShellProps {
   onFocusPlanet: (planetId: string) => void;
   /** Frame one of the player's craft (or a contact) from the Fleet page. */
   onFocusCraft: (focus: StripFocus) => void;
-  /** The galaxy, handed the shell's counted requests and its router. */
-  galaxy: (shell: { homeRequest: number; worldsRequest: number; onPanel: ShellRoute }) => ReactNode;
+  /**
+   * The galaxy, handed the shell's counted requests and its router: fly home, open the
+   * worlds, bring the selection into view (Space), let go of it (Esc).
+   */
+  galaxy: (shell: {
+    homeRequest: number;
+    worldsRequest: number;
+    centerRequest: number;
+    clearRequest: number;
+    onPanel: ShellRoute;
+  }) => ReactNode;
 }
 
 /**
@@ -47,6 +59,11 @@ export interface GameShellProps {
  * Chat is its own page (owner, 2026-09-24), opened from its button on the galaxy.
  * Opening the bell on Signals marks the feed read, as the old beacon did; opening it
  * on the chronicle, or opening chat, does not — nobody has seen the signals yet.
+ *
+ * ON A DESK (E11 · K10, ≥1100 px) the phone is not scaled up: the tabs move into the
+ * top bar, the outline (worlds, flights, queues) opens as a column beside the galaxy,
+ * and pages dock to the right (both sheet kits). The keyboard works at every width:
+ * 1–5 the tabs, Space the selection, Esc lets go (`shortcutOf`).
  */
 export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
@@ -56,7 +73,24 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   const [nowOpen, setNowOpen] = useState(false);
   const [homeRequest, setHomeRequest] = useState(0);
   const [worldsRequest, setWorldsRequest] = useState(0);
+  const [centerRequest, setCenterRequest] = useState(0);
+  const [clearRequest, setClearRequest] = useState(0);
   const openSignals = useOpenSignals();
+  const desk = useMedia(DESK_QUERY);
+  const top = useRef<HTMLDivElement>(null);
+  const [topHeight, setTopHeight] = useState<number | null>(null);
+
+  /**
+   * The top bar and the Now line are as tall as what they hold; a page docked to the
+   * right on a wide screen starts under both (`--v2-top-h`, read by both sheet kits).
+   */
+  useEffect(() => {
+    const node = top.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => { setTopHeight(node.offsetHeight); });
+    observer.observe(node);
+    return () => { observer.disconnect(); };
+  }, []);
 
   /** Leave whatever page is open, so the next thing opens alone. */
   const clearPages = (): void => {
@@ -116,7 +150,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
     }
   };
 
-  const onSelect = (tab: DockTab): void => {
+  const onSelectTab = (tab: DockTab): void => {
     setNowOpen(false);
     const action = dockAction(tab, active);
     switch (action.kind) {
@@ -138,8 +172,33 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
     }
   };
 
+  // The keys read the latest routing without re-subscribing on every render.
+  const selectTab = useRef(onSelectTab);
+  selectTab.current = onSelectTab;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      const shortcut = shortcutOf(event, document.querySelector('[data-sheet-panel]') !== null);
+      if (shortcut === null) return;
+      if (shortcut.kind === 'tab') selectTab.current(shortcut.tab);
+      else if (shortcut.kind === 'center') setCenterRequest((n) => n + 1);
+      else setClearRequest((n) => n + 1);
+      // Space would scroll the page under the galaxy; a number has nothing to type into.
+      if (shortcut.kind !== 'clear') event.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); };
+  }, []);
+
+  const dock = (
+    <HudDock active={active} onSelect={onSelectTab} over={active !== 'galaxy' || nowOpen} bar={desk} />
+  );
+
   return (
-    <div className="v2-shell relative z-10 flex h-dvh flex-col overflow-hidden bg-v2-void">
+    <div
+      className="v2-shell relative z-10 flex h-dvh flex-col overflow-hidden bg-v2-void"
+      {...(topHeight === null ? {} : { style: { '--v2-top-h': `${String(topHeight)}px` } as CSSProperties })}
+    >
+      <div ref={top} className="shrink-0">
       <HudTop
         commander={commander}
         onCommander={() => { route('menu'); }}
@@ -151,18 +210,33 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         onBell={() => { openBell('signals'); }}
         nowOpen={nowOpen}
         onNow={setNowOpen}
+        {...(desk ? { tabs: dock } : {})}
       />
+      </div>
 
       {/*
         THE GALAXY RUNS UNDER THE DOCK (owner, 2026-09-24): the dock is see-through and floats over
         the bottom of the scene, so everything the galaxy anchors to its foot sits `--v2-dock-h` up.
       */}
-      <main className="relative flex-1">
-        {galaxy({ homeRequest, worldsRequest, onPanel: route })}
-        <div className="absolute inset-x-0 bottom-0 z-50">
-          <HudDock active={active} onSelect={onSelect} over={active !== 'galaxy' || nowOpen} />
-        </div>
-      </main>
+      <div className="relative flex min-h-0 flex-1">
+        {desk && (
+          <OutlineHost
+            onFocusPlanet={(planetId) => {
+              clearPages();
+              onFocusPlanet(planetId);
+            }}
+            onFocusCraft={(focus) => {
+              clearPages();
+              onFocusCraft(focus);
+            }}
+            onRoute={route}
+          />
+        )}
+        <main className="relative min-w-0 flex-1">
+          {galaxy({ homeRequest, worldsRequest, centerRequest, clearRequest, onPanel: route })}
+          {!desk && <div className="absolute inset-x-0 bottom-0 z-50">{dock}</div>}
+        </main>
+      </div>
 
       {/* E10: asked for after the galaxy is up, never before it (K5). */}
       <AwayHost onDoor={openAway} onAll={() => { openBell('signals'); }} />

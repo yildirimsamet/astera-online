@@ -211,7 +211,7 @@ function Shell({
         from the dock up, rounded at the top, 65dvh at most — the missing third is the
         world being decided about.
       */
-      className={`pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 font-v2-ui ${open ? '' : 'px-2.5 pb-2'}`}
+      className={`pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 font-v2-ui v2-split:left-auto v2-split:w-80 ${open ? '' : 'px-2.5 pb-2'}`}
       aria-label={t('focus.shellLabel', { title })}
     >
       <div

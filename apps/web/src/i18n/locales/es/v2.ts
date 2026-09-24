@@ -225,3 +225,17 @@ export const away = {
     signals: 'Señales',
   },
 };
+
+export const outline = {
+  label: 'Resumen',
+  worlds: 'Mundos',
+  air: 'En vuelo',
+  airEmpty: 'Nada en vuelo — lanza desde la tarjeta de un mundo.',
+  queues: 'Colas',
+  research: 'Investigación',
+  idle_one: 'Inactiva · {{count}} hueco libre',
+  idle_other: 'Inactiva · {{count}} huecos libres',
+  filled: '{{count}} de {{total}}',
+  threat_one: '{{count}} ataque en camino',
+  threat_other: '{{count}} ataques en camino',
+};

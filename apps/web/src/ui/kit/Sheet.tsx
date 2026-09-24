@@ -110,13 +110,13 @@ export function Sheet({
   return (
     // Above the v2 dock when one is on screen (`--v2-dock-h`, published by `.v2-shell`), so a
     // tab stays one press away from any page; the full screen everywhere else.
-    <div className="fixed inset-x-0 top-0 z-[40] flex flex-col justify-end" style={{ bottom: 'var(--v2-dock-h, 0px)' }}>
+    <div className="fixed inset-x-0 top-0 z-[40] flex flex-col justify-end v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]" style={{ bottom: 'var(--v2-dock-h, 0px)' }}>
       <button
         type="button"
         aria-hidden="true"
         tabIndex={-1}
         {...dismiss}
-        className={`absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] ${lesson ? 'bg-transparent' : 'bg-void/80'}`}
+        className={`absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] v2-split:hidden ${lesson ? 'bg-transparent' : 'bg-void/80'}`}
       />
       <div
         ref={panel}
@@ -124,7 +124,7 @@ export function Sheet({
         aria-modal="true"
         aria-label={title}
         data-sheet-panel
-        className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] ${
+        className={`plate plate-flush relative flex animate-[sheet-in_340ms_var(--ease-hardware)] flex-col overflow-hidden rounded-b-none rounded-t-sheet pb-[env(safe-area-inset-bottom)] v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-l v2-split:border-t-0 ${
           contained ? 'h-[88dvh] max-h-full' : 'max-h-full'
         } ${reading ? 'mx-auto w-full max-w-3xl' : ''}`}
       >

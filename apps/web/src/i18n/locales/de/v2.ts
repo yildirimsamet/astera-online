@@ -225,3 +225,17 @@ export const away = {
     signals: 'Signale',
   },
 };
+
+export const outline = {
+  label: 'Übersicht',
+  worlds: 'Welten',
+  air: 'In der Luft',
+  airEmpty: 'Nichts in der Luft — starte von der Karte einer Welt.',
+  queues: 'Warteschlangen',
+  research: 'Forschung',
+  idle_one: 'Leer · {{count}} Platz frei',
+  idle_other: 'Leer · {{count}} Plätze frei',
+  filled: '{{count}} von {{total}}',
+  threat_one: '{{count}} Angriff unterwegs',
+  threat_other: '{{count}} Angriffe unterwegs',
+};

@@ -241,6 +241,8 @@ export function GalaxyView({
   goHome,
   worldsRequest,
   homeRequest,
+  centerRequest,
+  clearRequest,
   showChat = true,
   showGuidance = true,
 }: {
@@ -332,6 +334,12 @@ export function GalaxyView({
    * `goHome` is the Academy's flight (D56), which leaves nothing focused.
    */
   homeRequest?: number;
+  /**
+   * E11 · K10, the desk keyboard. Space: bring what is selected back into frame, or fly
+   * home with nothing selected. Esc with no page open: let go of the selection.
+   */
+  centerRequest?: number;
+  clearRequest?: number;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -567,6 +575,7 @@ export function GalaxyView({
   const [strikingConvoy, setStrikingConvoy] = useState(false);
   const [settlingTargetId, setSettlingTargetId] = useState<string | null>(null);
   const [homeSignal, setHomeSignal] = useState(0);
+  const [centerSignal, setCenterSignal] = useState(0);
   const reportedLostPlacement = useRef(false);
   useEffect(() => {
     if (
@@ -1051,6 +1060,11 @@ export function GalaxyView({
   };
   useRequest(homeRequest, flyHome);
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
+  useRequest(centerRequest, () => {
+    if (focus === null) flyHome();
+    else setCenterSignal((n) => n + 1);
+  });
+  useRequest(clearRequest, () => { if (focus !== null) close(); });
 
   /**
    * CHAT'S BUTTON, LOW ON THE RIGHT (owner, 2026-09-24): back where it was, above the dock,
@@ -1122,6 +1136,7 @@ export function GalaxyView({
         onReady={onReady}
         onFocus={onFocus}
         homeSignal={homeSignal}
+        centerSignal={centerSignal}
         openingHome={openingHome}
         {...(showGuidance && season.data?.status === 'live' ? { onHomeAnchor: setHomeAnchor } : {})}
         aim={aim}
@@ -1815,6 +1830,7 @@ export function GalaxyView({
         <V2Sheet
           bleed
           detents={['fit']}
+          placement="page"
           eyebrow={t('clan.outside.eyebrow')}
           title={t('clan.title')}
           onClose={() => { setClanInitialTab('overview'); onPanel(null); }}
@@ -1855,6 +1871,7 @@ export function GalaxyView({
         <V2Sheet
           bleed
           detents={['fit']}
+          placement="page"
           eyebrow={t('galaxy.panelIntelEyebrow')}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {

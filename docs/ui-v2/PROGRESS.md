@@ -112,9 +112,20 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**F8 · E11 Masaüstü (K10).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`. Geniş ekranda büyütme değil
-sütun: solda dünyalar/uçuşlar/kuyruklar, ortada galaksi, sağda bağlam kartı/dosya; klavye 1–5 sekmeler, Space seçiliye odak,
-Esc kapatır; raster görseller doğal boyutunu aşmaz. 1280 ve 1920 px'te görsel doğrulama.
+**ARA İŞ (sahip, 2026-09-24): 13 maddelik geri bildirim listesi F8'den önce.** Liste ve plan: aşağıdaki "Geri bildirim 3"
+bölümü. Bittiğinde F8'e dönülür.
+
+**F8 · E11 Masaüstü (K10) — yarıda (F8a commit'li).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`.
+Biten (F8a): kırılımlar `v2-split` 700 / `v2-desk` 1100 (`tokens.css`, `lib/media.ts` `DESK_QUERY`); ≥1100 dock üst çubukta
+sekme çubuğu (`Dock bar`, 1–5 tuş ipucu), solda 260 px `Outline` (Dünyalar · Havada · Kuyruklar; `lib/outline.ts`,
+`OutlineHost`); `--v2-dock-h` 0; ≥700 v2 Sheet `placement`: sayfa sağ sütun (440 / min(720, 50vw), karartma yok, tam boy),
+diyalog (yalnız `fit`: eşya, inşa, sen yokken) ortada 32 rem; İstihbarat ve Klan `placement="page"`; eski kit Sheet sağ
+sütun; bağlam kartı ve odak paneli ≥700 sağda 320 px; `--v2-top-h` kabuk ölçer. Klavye (`lib/shortcuts.ts`): 1–5 sekme,
+Space seçiliyi çerçeveye getirir (`centerSignal` → `Rig`) / seçim yoksa eve uçar, sayfa yokken Esc seçimi bırakır.
+1280 ve 1920'de fotoğraflandı.
+Kalan: sayfa açıkken galaksi merkezinin görünür alana kayması (seçili dünya sayfanın altında kalabiliyor); raster
+görsellerin doğal boyut denetimi (Üs kartları 720 px sütunda); eski kit sayfalarının (menü, sıralama) masaüstü görünümü;
+700–1099 aralığının fotoğrafı; Almanca üst çubuk.
 
 **F7 (tamam):** S3 `16cc039` — GET `/api/session/return` hiçbir şey yazmaz, `asOf` döner; POST `/api/session/return/seen`
 pencereyi `asOf`'a kadar kapatır (geri gitmez, şimdiyi aşmaz) ve kilit-açmaları o an kaydeder; girişler tür + parametre.

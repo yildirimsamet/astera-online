@@ -225,3 +225,17 @@ export const away = {
     signals: 'Sinyaller',
   },
 };
+
+export const outline = {
+  label: 'Taslak',
+  worlds: 'Dünyalar',
+  air: 'Havada',
+  airEmpty: 'Havada filo yok — bir dünyanın kartından gönder.',
+  queues: 'Kuyruklar',
+  research: 'Araştırma',
+  idle_one: 'Boş · {{count}} yer açık',
+  idle_other: 'Boş · {{count}} yer açık',
+  filled: '{{count}} / {{total}}',
+  threat_one: '{{count}} saldırı geliyor',
+  threat_other: '{{count}} saldırı geliyor',
+};

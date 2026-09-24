@@ -282,7 +282,7 @@ export function ContextSlot({
   const foot = (content: ReactNode) => (
     <div
       data-slot-foot
-      className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20 flex flex-col gap-2"
+      className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20 flex flex-col gap-2 v2-split:left-auto v2-split:w-80"
     >
       {corner !== undefined && <div className="flex justify-end">{corner}</div>}
       {content}

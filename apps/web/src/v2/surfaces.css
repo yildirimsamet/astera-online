@@ -43,6 +43,15 @@
  */
 .v2-shell {
   --v2-dock-h: calc(4rem + env(safe-area-inset-bottom));
+  /* The top bar and the Now line; the shell measures the real height (`--v2-top-h` inline). */
+  --v2-top-h: calc(3rem + env(safe-area-inset-top));
+}
+
+/* E11 · K10: on a desk the tabs are in the top bar, so nothing stands at the foot. */
+@media (min-width: 1100px) {
+  .v2-shell {
+    --v2-dock-h: 0px;
+  }
 }
 
 /*

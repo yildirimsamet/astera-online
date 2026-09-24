@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   useGalaxyEvents,
   useMining,
@@ -28,6 +29,8 @@ export interface HudTopProps {
   /** The Now line's timers sheet, held by the shell. */
   nowOpen: boolean;
   onNow: (open: boolean) => void;
+  /** E11: the desk tab bar, drawn in the top bar (the shell decides when). */
+  tabs?: ReactNode;
 }
 
 /**
@@ -38,7 +41,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, nowOpen, onNow }: HudTopProps) {
+export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, nowOpen, onNow, tabs }: HudTopProps) {
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const planet = usePlanet();
@@ -85,6 +88,7 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, no
         onWorld={onWorlds}
         onResource={onEconomy}
         onBell={onBell}
+        {...(tabs === undefined ? {} : { tabs })}
       />
       <NowLine
         entries={entries}

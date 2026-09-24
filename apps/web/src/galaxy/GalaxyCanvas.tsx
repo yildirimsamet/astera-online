@@ -224,6 +224,8 @@ export interface GalaxyCanvasProps {
   onFocus: (focus: Focus | null) => void;
   /** Bumped by the HOME button to re-centre on the player's own world. */
   homeSignal: number;
+  /** Bumped to bring the selection back into frame after the player panned away (E11: Space). */
+  centerSignal?: number;
   /**
    * Open on the whole disc, with nothing selected. D56.
    *
@@ -316,6 +318,7 @@ export function GalaxyCanvas({
   focus,
   onFocus,
   homeSignal,
+  centerSignal = 0,
   aim = null,
   openWide = false,
   wideDistance = WHOLE_DISC_DISTANCE,
@@ -880,6 +883,7 @@ export function GalaxyCanvas({
       <Rig
         home={home}
         homeSignal={homeSignal}
+        centerSignal={centerSignal}
         subject={subject}
         focusKey={focusKey}
         approach={approach}
@@ -1240,6 +1244,7 @@ export function GalaxyPlanetName({ node }: { node: PlanetNode }) {
 function Rig({
   home,
   homeSignal,
+  centerSignal,
   subject,
   focusKey,
   approach,
@@ -1253,6 +1258,8 @@ function Rig({
 }: {
   home: [number, number, number];
   homeSignal: number;
+  /** Re-take the current subject, as a fresh selection would (E11: Space). 0 is never a request. */
+  centerSignal: number;
   /**
    * Where the camera should be looking, read fresh each frame.
    *
@@ -1396,6 +1403,21 @@ function Rig({
     // `live` is read through a ref by design: this must not re-run when the data
     // behind the subject refetches, only when the player picks something else.
   }, [focusKey, approach, exactApproach]);
+
+  /**
+   * BRING THE SELECTION BACK. A player who panned off what they selected released the
+   * leash; asking for it again (Space on a desk) takes the subject as a fresh selection
+   * would. Keyed on the signal alone, so a refetch never re-frames.
+   */
+  useEffect(() => {
+    if (centerSignal === 0) return;
+    const at = live.current?.();
+    if (!at) return;
+    mode.current = 'follow';
+    acquired.current = true;
+    ease.current = null;
+    goTo(at[0], at[1], at[2], approach, exactApproach);
+  }, [centerSignal]);
 
   /**
    * HOME re-frames rather than teleports: an instant cut loses every sense of

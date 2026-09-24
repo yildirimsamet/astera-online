@@ -14,6 +14,7 @@ import { ResearchConstellation, type StarState } from '../v2/hud/ResearchConstel
 import { QueueLane } from '../v2/kit/QueueLane.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { percent } from '../lib/format.js';
+import { researchQueueOrders } from '../lib/orders.js';
 import { serverNow } from '../lib/clock.js';
 import { clockTime, untilReady, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
@@ -172,18 +173,7 @@ export function ResearchPanel({ onNeed, focus }: {
     if (!order) return null;
     return order.slot === 0 ? 'running' : 'queued';
   };
-  const queueOrders: BuildOrderView[] = researchQueue.map((order) => ({
-    id: order.id,
-    queue: 'CONSTRUCTION',
-    slot: order.slot,
-    kind: 'RESEARCH',
-    subject: order.projectId,
-    count: order.level,
-    cost: order.cost,
-    ...('optimistic' in order
-      ? { optimistic: true as const }
-      : { startedAt: order.startedAt, finishesAt: order.finishesAt }),
-  }));
+  const queueOrders = researchQueueOrders(researchQueue);
 
   const copy = (id: ResearchProjectId): { name: string; tag: string; role: string; detail: string } => {
     switch (id) {
