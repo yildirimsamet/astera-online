@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { readFileSync } from 'node:fs';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -257,11 +257,14 @@ describe('a Death Star strike asks before it leaves', () => {
     expect(within(screen.getByRole('dialog')).getByText(/Grimhold/)).toBeInTheDocument();
   });
 
-  it('launches once the commander confirms', async () => {
+  /** Held since K4 (B9: every launch and the Death Star); Enter twice is the keyboard's hold. */
+  it('launches once the commander holds', async () => {
     const onDeathStar = vi.fn();
     const view = show(onDeathStar);
     await userEvent.click(view.container.querySelector('[data-death-star]')!);
-    await userEvent.click(within(screen.getByRole('dialog')).getByTestId('confirm-commit'));
+    const hold = screen.getByRole('dialog').querySelector<HTMLElement>('[data-hold]')!;
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onDeathStar).toHaveBeenCalledTimes(1);
   });
 
@@ -419,7 +422,7 @@ describe('the refusal fits the phone it is refused on', () => {
 
   it.each(['tr', 'en'])('keeps every confirm refusal on one line (%s)', async (lang) => {
     await i18n.changeLanguage(lang);
-    for (const key of ['planet.queue.confirm.back', 'focus.planet.strikeConfirm.back'] as const) {
+    for (const key of ['planet.queue.confirm.back'] as const) {
       expect(i18n.t(key).length, `${lang}/${key}: "${i18n.t(key)}"`).toBeLessThanOrEqual(CEILING);
     }
     await i18n.changeLanguage('en');
@@ -442,10 +445,16 @@ describe('both confirmations are the same object', () => {
    * on one day is the easiest possible place for that to happen again, so they
    * are one component and this is what says so.
    */
-  it('is one component, used by both', () => {
+  /**
+   * UNTIL K4 SPLIT THEM BY WHAT THEY DO. Destroying something — a cancelled order burns
+   * half of it — stays on `Confirm`, which can say what is lost; a launch, the Death
+   * Star's included, is held (B9). Each kind is still one component.
+   */
+  it('confirms a destruction and holds a launch', () => {
     const queue = readFileSync('src/ui/QueueStrip.tsx', 'utf8');
     const focus = readFileSync('src/galaxy/FocusPanel.tsx', 'utf8');
     expect(queue).toContain('Confirm');
-    expect(focus).toContain('Confirm');
+    expect(focus).toMatch(/<HoldButton\b/);
+    expect(focus).not.toMatch(/<Confirm\b/);
   });
 });

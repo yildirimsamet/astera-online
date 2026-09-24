@@ -9,6 +9,7 @@ import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
+import { StrikeSheet } from '../../galaxy/FocusPanel.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
@@ -259,6 +260,9 @@ function Views({ view }: { view: string }) {
         onLaunched={noop}
       />
     );
+  }
+  if (view === 'strike') {
+    return <StrikeSheet target={rival} onConfirm={noop} onClose={noop} />;
   }
   if (view === 'wave') {
     const war = clanWarSchema.parse({

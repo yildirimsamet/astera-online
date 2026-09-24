@@ -205,7 +205,6 @@ export const focus = {
       outage: "EMP kesintisi",
       keeps: "Aegis sıfırlanır ve 1 saat yenilenmez. Yer savunmaları 1 saat çalışmaz ve hasar almaz.",
       commit: "EMP’yi fırlat",
-      back: "Vazgeç",
     },
     deathStarUnavailable: "Hazır Ölüm Yıldızı yok",
     deathStarProtected: "Ölüm Yıldızı · hedef korumada",

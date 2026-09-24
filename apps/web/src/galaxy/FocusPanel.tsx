@@ -73,7 +73,9 @@ import { Band } from '../ui/UpgradeRow.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { Confirm, ConfirmLine, useOwnPress } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/index.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 
 /**
  * FOCUS — what is this thing, and what do I know about it?
@@ -1105,7 +1107,7 @@ export function PlanetFocus({
         `GalaxyView` fires.
       */}
       {striking && onDeathStar && (
-        <StrikeConfirm
+        <StrikeSheet
           target={target}
           onClose={() => { setStriking(false); }}
           onConfirm={() => {
@@ -1126,12 +1128,11 @@ export function PlanetFocus({
  * of the owner's report — then what is consumed, then what the target actually
  * suffers, then what it does NOT (D179: the world stays, the fleet survives).
  *
- * It is not the essay this panel used to draw under every world. That argued for
- * the rocket to somebody merely looking; this states a price to somebody who has
- * already pressed. The difference is the whole reason one was removed and the
- * other added on the same day.
+ * HELD, NOT CONFIRMED (K4, B9: every launch and the Death Star). The sheet states the
+ * price and the press that spends it is a hold; the close is the way back, so there is
+ * no second "hold fire" button beside it.
  */
-function StrikeConfirm({
+export function StrikeSheet({
   target,
   onConfirm,
   onClose,
@@ -1145,30 +1146,28 @@ function StrikeConfirm({
     ? t('focus.planet.unsurveyedTitle')
     : target.name;
 
-  return (
-    <Confirm
+  // THROUGH A PORTAL: the focus shell is `absolute z-20`, a stacking context that would
+  // paint the strip and the toasts over this sheet's scrim (the confirm's old fault).
+  return createPortal(
+    <V2Sheet
+      detents={['half']}
       eyebrow={t('focus.planet.strikeConfirm.eyebrow')}
       title={t('focus.planet.strikeConfirm.title', { world })}
-      confirmLabel={t('focus.planet.strikeConfirm.commit')}
-      backLabel={t('focus.planet.strikeConfirm.back')}
-      onConfirm={onConfirm}
       onClose={onClose}
     >
-      <p className="text-body text-bone">{t('focus.planet.strikeConfirm.lead')}</p>
-
-      <div className="plate plate-inset mt-3 px-3 py-2">
-        <ConfirmLine
-          label={t('focus.planet.strikeConfirm.outage')}
-          value={duration(DEATH_STAR.empMinutes)}
-        />
+      <div data-strike-sheet className="flex flex-col gap-2.5 pt-1 font-v2-ui">
+        <p className="text-caption leading-snug text-v2-ink">{t('focus.planet.strikeConfirm.lead')}</p>
+        <div className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+          <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
+          <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
+        </div>
+        {/* And what it does NOT do, because D179 took the teeth out and a commander
+            about to spend twenty thousand alloy should know what they are buying. */}
+        <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
+        <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} />
       </div>
-
-      {/* And what it does NOT do, because D179 took the teeth out and a commander
-          about to spend twenty thousand alloy should know what they are buying. */}
-      <p className="mt-3 text-caption text-dim">
-        {t('focus.planet.strikeConfirm.keeps')}
-      </p>
-    </Confirm>
+    </V2Sheet>,
+    document.body,
   );
 }
 

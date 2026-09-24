@@ -214,7 +214,6 @@ export const focus = {
       keeps:
         "L’Aegis est vidée et ne se régénère pas pendant une heure. Les défenses terrestres restent désactivées et ne subissent aucun dégât.",
       commit: "Lancer l’EMP",
-      back: "Annuler",
     },
     deathStarUnavailable: "Aucune Étoile de la Mort prête",
     deathStarProtected: "Étoile de la Mort · cible protégée",

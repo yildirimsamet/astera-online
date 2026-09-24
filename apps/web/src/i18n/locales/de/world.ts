@@ -216,7 +216,6 @@ export const focus = {
       outage: "EMP-Ausfall",
       keeps: "Aegis wird geleert und regeneriert eine Stunde lang nicht. Bodenverteidigungen bleiben offline und erleiden keinen Schaden.",
       commit: "EMP starten",
-      back: "Feuer einstellen",
     },
     deathStarUnavailable: "Kein Todesstern bereit",
     deathStarProtected: "Todesstern · Ziel geschützt",

@@ -216,7 +216,6 @@ export const focus = {
       outage: "Apagón EMP",
       keeps: "La Égida se vacía y no se regenera durante una hora. Las defensas terrestres quedan fuera de línea y no reciben daño.",
       commit: "Lanzar EMP",
-      back: "Mantenga el fuego",
     },
     deathStarUnavailable: "No hay Estrella de la Muerte lista",
     deathStarProtected: "Estrella de la Muerte · objetivo protegido",

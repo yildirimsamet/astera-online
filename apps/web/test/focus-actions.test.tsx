@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  DEATH_STAR,
   FEATURE_FLAGS,
   GALAXY_SPAN,
   MULTI_WORLD,
@@ -235,6 +236,52 @@ describe('the focus rail’s two commitments', () => {
     );
 
     expect(document.querySelector('[data-death-star]')).toBeEnabled();
+  });
+
+  /**
+   * A LAUNCH IS HELD (K4, B9): "tüm fırlatmalar ve Ölüm Yıldızı". The press opens a
+   * sheet that names the world and what the strike spends; a tap on its commit does
+   * nothing, a hold fires, and there is no second "hold fire" button — the sheet's
+   * close is the way back.
+   */
+  it('fires the Death Star on a hold, from a sheet that names the world and its price', () => {
+    const Wrapper = harness();
+    const onDeathStar = vi.fn();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()}
+          planet={{
+            ...mine,
+            deathStars: [{ id: 'weapon-ready', status: 'READY' as const, readyAt: new Date(NOW), remainingSeconds: 0 }],
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={onDeathStar}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    fireEvent.click(document.querySelector<HTMLElement>('[data-death-star]')!);
+    const sheet = document.querySelector<HTMLElement>('[data-strike-sheet]')!;
+    expect(sheet).toHaveTextContent(/consumed by the strike/i);
+    expect(sheet).toHaveTextContent(duration(DEATH_STAR.empMinutes));
+    expect(within(sheet).queryByRole('button', { name: /hold fire/i })).toBeNull();
+
+    const hold = sheet.querySelector<HTMLElement>('[data-hold]')!;
+    expect(hold).toHaveTextContent(/launch emp/i);
+    fireEvent.click(hold);
+    expect(onDeathStar).not.toHaveBeenCalled();
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    fireEvent.keyDown(hold, { key: 'Enter' });
+    expect(onDeathStar).toHaveBeenCalledTimes(1);
   });
 
   it('shows a current clanmate identity without offering hostile controls', () => {

@@ -216,7 +216,6 @@ export const focus = {
       outage: "EMP blackout",
       keeps: "Aegis is emptied and cannot regenerate for one hour. Ground defences stay offline and take no damage.",
       commit: "Launch EMP",
-      back: "Hold fire",
     },
     deathStarUnavailable: "No Death Star ready",
     deathStarProtected: "Death Star · target protected",
