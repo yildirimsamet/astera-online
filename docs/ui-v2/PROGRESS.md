@@ -114,7 +114,23 @@ routes" (koloni arızası türleri listede yok — birleşimden önce de kırmı
 ## Sıradaki iş
 **Geri bildirim 3 (13 madde) bitti** — aşağıda, commit'lerle (45f496f · eb18bf0 · 4a846b1 · 0c75629 · 1e63c0d · fc4ce2d).
 Web: tsc + lint temiz, tam paket 4185 yeşil, yalnız bilinen 9 kırmızı. Sunucu: madencilik/ayrılma/ilgili 8 dosya yeşil
-(tam paket teslimde). **Sıradaki: F9 · 3D gezegenler (K7)** — plan: 16 `.glb` (Draco) → meshopt + düşük LOD (`tools/models.mjs`), Sektör
+(tam paket teslimde). **ARA FAZ M · Maket uyumu (sahip, 2026-09-25) — F9'dan önce.** Denetim: https://claude.ai/artifact/VyrqNoX9a4qZ8vtbd3gYoS
+(9 maket ↔ oyun; maketler `design-mocks/` değil sahibin sohbette verdiği 9 resim, scratchpad `images/18..26.png`).
+Sahip kuralı: maketler kaydırılamıyor, alt kısımları görünmüyor — **her aşamada maketin göstermediği alt bölümleri de
+incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
+- [ ] **M1 Klan savaş odası** (E9): beş koltuk + katkı çubukları, hat üstünde etiketli dalgalar ve uç etiketleri,
+  "Dalga gönder ›" standart fırlatma ekranını açar (hız seçimiyle aynı anda varış), Klan sohbeti düğmesi, kısa kural
+  notu; tarayıcı form elemanları (açılır liste, sayı kutusu) kalkar (hazine bağışı dahil); alt bölümler maket dilinde.
+- [ ] **M2 Hedef dosyası** (E2): eski olgu listesi dosyaya katlanır (tekrar yok), kaynak başına ganimet çubukları,
+  sonda satırında sinyal çubukları, güç lejantı tek satır, rakip çipi başlıkta.
+- [ ] **M3 Fırlatma** (E3): başlık kök → hedef + rakip çipi, tek kanat cetveli + sınıf ipucu, sade gemi satırları,
+  özet: Varış/Dönüş/Yakıt/Kargo(ganimet)/Uçuş yuvası/Evde kalan.
+- [ ] **M4 Savaş raporu + Sen yokken** (E6, E10): sinematik kahraman, İzle/Klana, istihbarat güncelleme satırı; sen
+  yokken sadakat/arıza satırı, teleskop fırsatı türü (sunucu), kapı biçimi, "Galaksiye dön".
+- [ ] **M5 Ortak:** rakip renkleri v2 K2 tonlarına, TR süre biçimi (sa/dk), üst çubuk sayfaların üstünde, eski kit
+  başlıkları (Üs, Araştırma).
+
+**Sonra: F9 · 3D gezegenler (K7)** — plan: 16 `.glb` (Draco) → meshopt + düşük LOD (`tools/models.mjs`), Sektör
 ölçeğinde görünür/yakın dünyalar düşük LOD 3D, odak ve Yörünge'de tam model, uzakta PNG billboard kalır; görünüm başına
 1 draw call; hata olursa PNG'ye düşer.
 
