@@ -112,8 +112,10 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D1…D6** (yukarıdaki "Sahip geri bildirimi 2"): D1 eşya sheet'leri, D2 kapasite bölümleri, D3 ÖY/önleyici kartları, D4
-İstihbarat (E7+K11), D5 Klan (E9 dahil tamamı), D6 Sohbet sayfası.
+**D1…D6 — ÖNCE TASARIM ONAYI** (sahip 2026-09-24: *"Tek tek tasarla, kodlamaya geçmeden önce tasarımları bana göster"*).
+13 ekranlık tasarım tuvali yayında: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq (kaynak betiği: oturum scratchpad
+`design/gen.py`; yeniden üretmek için oradaki dosyalar okunur). **Sahip onay verene kadar D kodu yazılmaz.** Onaydan sonra
+sıra: D1 → D2 → D3 → D4 → D5 → D6, her biri TDD + görsel doğrulama.
 
 **F6 · E7 İstihbarat (K11 yaş dili) + E9 Klan savaş odası + Komutan sayfası.** Şartname:
 `grep -n "^#### E7 ·\|^#### E9 ·\|^| K11\|Komutan sayfası" docs/ui-v2/gozlemevi.md`; mock `design-mocks/image copy 6.png` sağ
