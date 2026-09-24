@@ -103,8 +103,17 @@ bir kaynak durur, depo doluyken kısmi toplama olur — tek sayı ("1,5b") hangi
 - D6 Sohbet sheet'i (A1 ile kendi sayfası).
 Sonra F7 (Sen yokken), F8, F9, F10 planlandığı gibi.
 
+Biten: **A1+A2** `7647328` (zil Sinyaller·Kronik; sohbet `ChatHost` kendi sayfası; düğme sağ altta bağlam yuvasının
+`corner`'ında — kartın üstünde, seçimde gizli, donuk sezonda sonraki-sezon kartının üstünde) · **A3** `c523823`
+(`GalaxyReadout` sağ üstte, Görünüm çipi yuvarlak ikon) · **B** `b2dc8aa` (`gains.repays` ve metni kalktı) · **C** `0a68033`
+(`collectState.each/noRoom`; balon ve Üs havuz düğmesi kaynak başına, depo almayan kaynak sarı; "1 rock" çoğul düzeltmesi).
+Birleşim: master `15e4dc3` `b118777`'de alındı (movement/clanCombat/transfer-recall çakışmaları iki niyet korunarak çözüldü;
+etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `notifications.test.ts` "is the list the client
+routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
+
 ## Sıradaki iş
-**A1 → A2 → A3 → B → C, sonra D1…D6** (yukarıdaki "Sahip geri bildirimi 2"). F6'nın E7/E9'u D4/D5'e katıldı.
+**D1…D6** (yukarıdaki "Sahip geri bildirimi 2"): D1 eşya sheet'leri, D2 kapasite bölümleri, D3 ÖY/önleyici kartları, D4
+İstihbarat (E7+K11), D5 Klan (E9 dahil tamamı), D6 Sohbet sayfası.
 
 **F6 · E7 İstihbarat (K11 yaş dili) + E9 Klan savaş odası + Komutan sayfası.** Şartname:
 `grep -n "^#### E7 ·\|^#### E9 ·\|^| K11\|Komutan sayfası" docs/ui-v2/gozlemevi.md`; mock `design-mocks/image copy 6.png` sağ
