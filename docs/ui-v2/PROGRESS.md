@@ -45,7 +45,7 @@
 | F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Tamam (faz incelemesi `fa16b98`, `e7f062e`) |
 | F4 | E6 Rapor, S4 | Tamam (`35d7bf6`, `d52bc68`, `aad6e0d`) |
-| F5 | E5 Üs + Araştırma (K6, K9) | Sürüyor (K6, K9 tamam; E5 kalanı "Sıradaki iş"te) |
+| F5 | E5 Üs + Araştırma (K6, K9) | Sürüyor (K6, K9, E5 büyük ölçüde tamam; Band başlığı + faz incelemesi kaldı) |
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
 | F8 | E11 Masaüstü | Bekliyor |
@@ -88,15 +88,31 @@ tavan, tutulan önkoşul, `hullDoor` ile açtığı gemiler, tek yerde söylenen
 yıldızı seçer; stratejik üçlü bayrak kapalıyken haritada kapalı, sunucu da reddediyor; hat `QueueLane`, hücre projeyi seçer).
 Testte bayrak getter'lı `vi.mock` ile çevriliyor (stratejik kapıların testleri bayrak açıkken koşar).
 
-**F5'te kalan (E5), sırayla:**
-1. **Üretim satırı** (mock: kahramanın altında üç sütun — `+1,24b /sa`, depo çubuğu, "depo %62 · güvenli %35"): bugünkü
-   `PlanetHero` okuma kartları (Ateş gücü, üretim, Savunma, Kalkan) + ayrı DEPO bloğu + "Saldırı gemileri" listesi yerine.
-   Önce bu üçünü sınayan testler okunur; bilgi nereye taşınır kararı (savunma/kalkan → Savunma sekmesi?) testle verilir.
-2. Kahramanda uydu yuvaları yörüngede (dolu / boş / kilitli + açılacağı Çekirdek, B13) ve toplama balonu sağ üstte.
-3. Koloni: arıza + sadakat bloğu en üstte (`FaultRepairs` bugün kuyrukların altında).
-4. Savunma sekmesi: `EscapeReadout` satırı v2 renkleriyle (yakıt yetmiyorsa sarı).
-5. Diğer sekmeler (Sensör, Savunma, Tersane) iki sütun kart; paylaşılan `Band` başlığı v2.
-6. Ölü sınıflar: kurtarma/EMP bantları (`bg-cyan-400/10` …) v2 token'ına → `surface-vocabulary` kırmızısı kapanmalı.
+**F5 E5 işleri (hepsi gerçek oyunda 350 px'te görüldü):**
+1. ~~Üretim satırı~~ `92dc01d`: kahramanın altında kaynak başına `+oran /sa`, depo çubuğu (Kasa dilimi D190 çerçevesi ve
+   kalkanıyla), "depo %62 · güvenli %35", dolunca sarı "depo dolu". Ateş gücü, savunma, kalkan, açıktaki miktar ve filo
+   `DefenceReadings` olarak Savunma sekmesinin başında (hiçbir bilgi düşmedi). `PlanetHero`'nun ulaşılmaz tam ekran dalı ve
+   `PlanetScreen` `embedded` prop'u silindi.
+2. ~~Uydu yuvaları~~ `c5352f0`: kahramanın yörüngesinde 4 sabit yuva (dolu = uydu, boş = kesikli halka, kilitli = kilit +
+   açılacağı Çekirdek, eşikler `satelliteSlots`'tan), altında "Yörünge 1/2 · Çekirdek 12'de +1"; sekmelerin üstündeki
+   D108 rafı (`OrbitContext`, `ORBIT_UNLOCKS` kopyası) kalktı. Toplama balonu bilerek cüzdanda (yapışkan, her sekmeden).
+3. ~~Koloni arızaları en üstte~~ `92dc01d` (sadakat satırının hemen üstünde, sarı çerçeve).
+4. ~~EscapeReadout sarı~~ `92dc01d`.
+5. ~~Diğer sekmeler iki sütun kart~~ `c917c46` (gövde kartında kademe + ev/dış adın altında, D195c). **Kalan:** paylaşılan
+   `Band` başlığı hâlâ eski görünüm; `DecisionGroup` yalnız Üretim'de `bare`.
+6. ~~Ölü sınıflar~~ `92dc01d`: `surface-vocabulary` yeşil (bilinen kırmızılardan çıktı).
+
+Sahip isteği (2026-09-24, sonra) `5dcb54a`: dock hiçbir sayfa açık değilken tamamen saydam (gradyan ve çizgi yok, etikette
+gölge), sayfa açılınca gradyan. `b9fea67`: `StarField` (tohumlu durağan gökyüzü) **yalnız** gezegen bölümünde ve
+takımyıldız kutusunda — tüm sayfada değil (sahip açıkça istemedi); haritada her dairenin içinde yıldız (seviye 0 soluk
+beyaz, seviye arttıkça turkuaz ve parlak). Gökyüzü renkleri `--color-v2-sky-*` token'ı; Tailwind v4 bir değişkeni
+yalnız kaynakta adı tam geçiyorsa yayımlıyor — parçadan kurulan ad tarayıcıya boş gider.
+
+**Ders:** v2 ham renk koruması (`test/v2/tokens.test.ts`) `ReportScene`'den (F4) beri kırmızıydı, fark edilmedi. Her
+commit öncesi `npx vitest run test/v2` klasörün tamamı koşulur.
+
+**F5'te kalan:** paylaşılan `Band` başlığı v2 (+ tüm sekmelerde `bare`); F5 faz sonu incelemesi (etkilenen yerler:
+PlanetScreen sekmeleri, Akademi dersleri Üs'te — `tools/visual.mjs --academy` koşusu).
 
 **F4 (tamam) · E6 Savaş raporu (B15) + S4.** `35d7bf6` S4: `readBattleReports` saldırana `fuelPaid` (dünya baskını
 `missions.fuel_paid`, ortak savaşta kendi dalgalarının toplamı; savunana, korsana ve kolon öncesi 0'a null); web şeması
