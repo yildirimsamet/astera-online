@@ -379,8 +379,6 @@ export const vocabulary = {
 } as const;
 
 export const gains = {
-  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
-  repays: 'Kendini {{time}} içinde öder',
   rangeUnits: '{{count}} birim',
 
   core: {

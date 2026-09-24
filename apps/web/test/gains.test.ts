@@ -13,10 +13,8 @@ import {
   HANGAR,
   START_BUILDINGS,
   hangarCapacity,
-  producerPaybackHours,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
-import { duration } from '../src/lib/time.js';
 
 const LOCALES = ['en', 'tr', 'de', 'es', 'fr'] as const;
 
@@ -315,38 +313,14 @@ describe('the rows that switch metric once their headline flattens', () => {
 });
 
 /**
- * HOW LONG A PRODUCER RUNG TAKES TO PAY FOR ITSELF, WHERE THE RUNG IS BOUGHT. Faz 4.1, 2026-09-22.
- *
- * The chat logs did this sum by hand (*"60000 harcıyom, saatte 200 daha fazla… 300 saatte amorti"*)
- * and the owner's whole complaint was the answer. A number every commander computes to decide
- * whether to keep climbing belongs on the ladder, in the game's own arithmetic — the rung's price
- * over what it adds, `producerPaybackHours` — so the sunset is something they SEE coming.
+ * NO PAYBACK LINE ON A MENU ITEM. Owner, 2026-09-24: "Menü itemlardaki: Pays for itself kısmını
+ * kaldır." It stood on every producer rung since Faz 4.1; the owner took it off. What a rung buys
+ * — its output now → next — stays; the sum of when it pays back is the commander's again.
  */
 describe('what a producer rung says about paying for itself', () => {
-  it('quotes the payback on every producer rung and on nothing else', () => {
+  it('says nothing about it, on any building', () => {
     for (const id of BUILDING_IDS) {
-      const gain = buildingGain(id, 10, 0, at(10));
-      if (id === 'REFINERY' || id === 'EXTRACTOR' || id === 'DEUTERIUM_PLANT') {
-        expect(gain.repays, id).toMatch(/\d/);
-      } else {
-        expect(gain.repays, id).toBeUndefined();
-      }
+      expect('repays' in buildingGain(id, 10, 0, at(10)), id).toBe(false);
     }
   });
-
-  it('is the rules payback, shortened by whatever lifts this world’s output', () => {
-    const plain = buildingGain('REFINERY', 11, 0, at(11));
-    const boosted = buildingGain('REFINERY', 11, 0, at(11), 2);
-    expect(plain.repays).toBe(`Pays for itself in ${duration(producerPaybackHours('REFINERY', 11) * 60)}`);
-    expect(boosted.repays).toBe(`Pays for itself in ${duration(producerPaybackHours('REFINERY', 11) * 30)}`);
-  });
-
-  for (const locale of LOCALES) {
-    it(`says it as one sentence with the time in it, in ${locale}`, async () => {
-      const { gains } = await import(`../src/i18n/locales/${locale}/data.ts`) as {
-        gains: { repays: string };
-      };
-      expect(gains.repays).toContain('{{time}}');
-    });
-  }
 });

@@ -393,9 +393,6 @@ function Rung({
           WHEN CLIMBING STOPS PAYING, one rung at a time. Faz 4.1: the column of these is the curve,
           so a commander sees the sunset coming rather than working it out on paper.
         */}
-        {gain.repays && (
-          <p data-gain-repays className="num mt-0.5 text-label text-faint">{gain.repays}</p>
-        )}
       </div>
 
       <span className="num shrink-0 pt-1 text-right text-label text-faint">

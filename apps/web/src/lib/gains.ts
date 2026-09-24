@@ -19,7 +19,6 @@ import {
   deuteriumRate,
   deuteriumStorageCap,
   instrumentMaxed,
-  producerPaybackHours,
   probeAccuracy,
   radarRange,
   sensorSphere,
@@ -32,14 +31,12 @@ import {
   type InstrumentId,
   type SatelliteId,
   type HullId,
-  type ProducerId,
   type ResearchProjectId,
 } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact, full, percent } from './format.js';
-import { duration } from './time.js';
 
 /**
  * WHAT YOU GET IF YOU PRESS IT.
@@ -114,14 +111,6 @@ export interface Gain {
   /** Something new becomes possible — stated as a capability, not a rule. */
   unlocks?: string;
   /**
-   * HOW LONG THIS RUNG TAKES TO PAY FOR ITSELF, on the producers. Faz 4.1, 2026-09-22.
-   *
-   * The chat logs did this sum by hand to decide whether to keep climbing, and the owner's whole
-   * complaint was its answer. The game's own arithmetic — the rung's price over what it adds —
-   * divided by whatever lifts this world's output, so the sunset is something the ladder shows.
-   */
-  repays?: string;
-  /**
    * There is no next level. D36.
    *
    * Set only where the instrument's own tables are exhausted, and it is the row's
@@ -132,13 +121,7 @@ export interface Gain {
   maxed?: true;
 }
 
-/** The producer's own payback for the rung above `level`, on this world's output. */
-const repays = (id: ProducerId, level: number, production: number): { repays?: string } => {
-  const hours = producerPaybackHours(id, level) / Math.max(production, Number.EPSILON);
-  return Number.isFinite(hours)
-    ? { repays: i18n.t('gains.repays', { time: duration(hours * 60) }) }
-    : {};
-};
+;
 
 /**
  * WHAT ONE MORE LEVEL ACTUALLY BUYS.
@@ -199,7 +182,6 @@ export function buildingGain(
           now: compact(storageCap(alloyRate(level) * production, levels.VAULT)),
           next: compact(storageCap(alloyRate(next) * production, levels.VAULT)),
         }),
-        ...repays('REFINERY', level, production),
       };
     case 'EXTRACTOR':
       return {
@@ -210,7 +192,6 @@ export function buildingGain(
           now: compact(storageCap(crystalRate(level) * production, levels.VAULT)),
           next: compact(storageCap(crystalRate(next) * production, levels.VAULT)),
         }),
-        ...repays('EXTRACTOR', level, production),
       };
     case 'VAULT': {
       /**
@@ -290,7 +271,6 @@ export function buildingGain(
             levels.VAULT,
           )),
         }),
-        ...repays('DEUTERIUM_PLANT', level, production),
       };
   }
 }

@@ -302,8 +302,6 @@ export const vocabulary = {
 
 /** WHAT YOU GET IF YOU PRESS IT. */
 export const gains = {
-  /** Under a producer rung: its price over what it adds, on this world's output. Faz 4.1. */
-  repays: 'Se amortiza en {{time}}',
   rangeUnits: '{{count}} unidades',
 
   core: {
