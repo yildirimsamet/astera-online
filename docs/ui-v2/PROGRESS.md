@@ -112,9 +112,10 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D4 · İstihbarat sheet'inin tamamı (E7 + K11 yaş dili).** Gözlem (işaretli rakipler) · Raporlar · Radar. Tasarım: tuval
-`D4-gozlem`, `D4-raporlar`, `D4-radar`; şartname `grep -n "^#### E7 ·\|^| K11" docs/ui-v2/gozlemevi.md`. Beyaz/gri çubuk
-taraması (istihbarat aralık çubukları) burada. Sonra D5 → D6, her biri TDD + görsel doğrulama.
+**D5 · Klan sheet'inin tamamı** (Özet, Güç, Üyeler, Yardım — gönderim basılı tut —, Savaş = E9 savaş odası, Klan yok).
+Tasarım: tuval `D5-ozet`, `D5-guc`, `D5-uyeler`, `D5-yardim`, `D5-savas`, `D5-klansiz`; mock `design-mocks/image copy 7.png`
+orta (savaş odası); şartname `grep -n "^#### E9 ·" docs/ui-v2/gozlemevi.md`. Kod: `screens/ClanScreen.tsx`,
+`screens/ClanWarPanel.tsx`. Beyaz/gri çubuk taraması (sadakat `bg-v2-ink/50`, klan yardım kargosu). Sonra D6.
 
 Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
 (kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
@@ -141,6 +142,12 @@ gereksinimler çip (eksik olan sarı kapı → ilgili satır), fiyat + süre, il
 basılı tut (K4); şarj dokunuş. **Sapma:** tasarım tuvali önleyiciyi Taktiksel'de çizmişti; Savunma'da kalmasının kararı
 (T10/T12) testli olduğu için yeri değişmedi — sahip isterse taşınır. ÖY testleri sahibin açtığı Taktiksel sekmesine taşındı
 (`09c0bb5`); bilinen dört kırmızı böylece kapandı.
+
+**D4 (tamam) `b36c55a`:** İstihbarat üç raf (E7): Gözlem (teleskop soketleri + sonraki seviyenin kilitli soketi, işaretli
+rakipler slot renginde ve dokununca galakside, "Bildiklerin" tek listesi: canlı okuma netlik çubuklu ve dışarıdaki filoya
+süreli "Pencere" çipi, sonda okuması yaş greniyle — K11 mevcut `ageTier`/`AgedThumb`), Raporlar (sonda kartları aralık
+satırları senin renginde, filo evdeyken keskin/dışarıdayken açık, "Dosyayı aç"; savaş listesi aynen), Radar (gerçek ölçekli
+halka, 24 saat çizgisi — son 6 saat kırmızı —, kayıt). v2 Sheet `fit` içinde. Galeri `?view=intel` dolu hâli çizer.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
@@ -458,7 +465,7 @@ typecheck 0 hata · lint 0 hata.
 - rules (4): `academy.test.ts` "makes the Academy exit whole…"; `economy-profile.test.ts` "links the other purchases…";
   `intergalactic-convoy.test.ts` "uses combat-only firepower…"; `transport-ladder.test.ts` "carries more than it cost…".
 - sim (1): `season.test.ts` "TAX holds its band".
-- web (9, 2026-09-24 D3 sonu tam paket): `api-bodies.test.ts` disbandClan; ~~`build-sheet.test.tsx` strategic hardware ×4~~
+- web (9, 2026-09-24 D3/D4 sonu tam paket): `api-bodies.test.ts` disbandClan; ~~`build-sheet.test.tsx` strategic hardware ×4~~
   (D3'te ocak Taktiksel sekmesine göre yeniden yazıldı, yeşil); `chronicle-screen.test.tsx` capital strike; `locked-rows.test.tsx` research gate (test dünyasında Tersane yok, kapı Tersane'ye
   gidiyor — öncül eskimiş); `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2; `research-gains.test.ts` ×2.
   ~~`surface-vocabulary.test.ts`~~ F5'te (`92dc01d`) yeşile döndü.
