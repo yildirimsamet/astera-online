@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ANTI_STRATEGIC } from '@astera/rules';
+import { ANTI_STRATEGIC, HULLS } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { STRATEGIC_ART } from '../src/ui/assets.js';
 import i18n from '../src/i18n/index.js';
@@ -292,7 +292,7 @@ describe('a hull gated on research', () => {
     );
   };
 
-  const showReach = (onOpenResearch?: () => void) => {
+  const showReach = (onOpenResearch?: (project: string) => void) => {
     current = gated();
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
@@ -327,6 +327,8 @@ describe('a hull gated on research', () => {
     const view = showReach(onOpenResearch);
     await userEvent.click(await fixFrom(view, 'TEMPEST'));
     expect(onOpenResearch).toHaveBeenCalledOnce();
+    // The door says which project, so the research map opens on it rather than on its default.
+    expect(HULLS.TEMPEST.requiredResearch.map((need) => need.project)).toContain(onOpenResearch.mock.calls[0]?.[0]);
   });
 
   it("sends the Nullifier's fix to the same place", async () => {
@@ -334,6 +336,7 @@ describe('a hull gated on research', () => {
     const view = showReach(onOpenResearch);
     await userEvent.click(await fixFrom(view, 'NULLIFIER'));
     expect(onOpenResearch).toHaveBeenCalledOnce();
+    expect(HULLS.NULLIFIER.requiredResearch.map((need) => need.project)).toContain(onOpenResearch.mock.calls[0]?.[0]);
   });
 
   /** With no host to take it, the reason still stands and only the jump is gone. */

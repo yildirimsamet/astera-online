@@ -87,6 +87,7 @@ import {
   transferCargoCapacity,
   travelMinutes,
   type MobileHullId,
+  type ResearchProjectId,
 } from '@astera/rules';
 import { LaunchSheet } from './LaunchSheet.jsx';
 import { TradeSheet } from './TradeSheet.jsx';
@@ -401,6 +402,8 @@ export function GalaxyView({
     [galaxyEvents.data, now],
   );
   const [requestedPlanetGroup, setRequestedPlanetGroup] = useState<PlanetGroup | null>(null);
+  /** The project a Base door asked research for; the map opens on it (E8). */
+  const [researchFocus, setResearchFocus] = useState<ResearchProjectId | null>(null);
   /** The row a notification asked for, cleared the moment the sheet has used it. */
   const [requestedItem, setRequestedItem] = useState<string | null>(null);
 
@@ -1033,7 +1036,10 @@ export function GalaxyView({
 
   // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
   /** K6: the Base's two pages, one switch apart. */
-  const openBase = (view: BaseView): void => { onPanel(view === 'world' ? 'planet' : 'research'); };
+  const openBase = (view: BaseView): void => {
+    setResearchFocus(null);
+    onPanel(view === 'world' ? 'planet' : 'research');
+  };
 
   /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
   const flyHome = (): void => {
@@ -1574,7 +1580,8 @@ export function GalaxyView({
         >
           <BaseSwitch value="world" onChange={openBase} />
           <PlanetScreen
-            onOpenResearch={() => {
+            onOpenResearch={(project) => {
+              setResearchFocus(project);
               onPanel('research');
             }}
             {...(requestedPlanetGroup ?? planetGroup
@@ -1600,11 +1607,13 @@ export function GalaxyView({
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
+            setResearchFocus(null);
             onPanel(null);
           }}
         >
           <BaseSwitch value="research" onChange={openBase} />
           <ResearchPanel
+            {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
               // A Core shortfall is the capital's to fix, whichever world is open (D209).
               const world = researchNeedWorld(id, capitalPlanetId);

@@ -1,3 +1,5 @@
+import { RESEARCH_PROJECTS, type ResearchProjectId } from '@astera/rules';
+
 /**
  * WHICH WORLD A RESEARCH CARD'S FIX OPENS. D209, owner instruction.
  *
@@ -9,4 +11,13 @@
  */
 export function researchNeedWorld(id: string, capitalPlanetId: string | null): string | null {
   return id === 'CORE' ? capitalPlanetId : null;
+}
+
+/**
+ * IS THIS REQUIREMENT A RESEARCH PROJECT? A refusal names its fix by id — a building, a
+ * hull, a satellite or a project — and only a project opens the research map, on itself.
+ * Own keys only: `toString` is on every object and is no project.
+ */
+export function isResearchProject(id: string): id is ResearchProjectId {
+  return Object.hasOwn(RESEARCH_PROJECTS, id);
 }

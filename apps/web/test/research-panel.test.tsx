@@ -134,7 +134,7 @@ vi.mock('../src/api/queries.js', async () => {
 const show = (
   over: Partial<Omit<PlanetView, 'planet'>> = {},
   stock: Partial<PlanetView['planet']> = {},
-  props: { onNeed?: (id: string) => void } = {},
+  props: { onNeed?: (id: string) => void; focus?: ResearchProjectId } = {},
 ) => {
   current = world(over, stock);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -1080,6 +1080,13 @@ describe('the research constellation', () => {
     const view = show();
     const card = pick(view, 'SHIP_ARMOR');
     expect(card).toHaveTextContent('Ship Armor');
+    expect(star(view, 'SHIP_ARMOR')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  /** A door elsewhere ("Ship Armor II first") lands on the project it named, not on the default. */
+  it('opens on the project a door asked for', () => {
+    const view = show({ researchQueue: [researchOrder('CARGO_HOLDS', new Date('2026-08-28T11:30:00.000Z'))] }, {}, { focus: 'SHIP_ARMOR' });
+    expect(view.container.querySelector('[data-constellation-card="SHIP_ARMOR"]')).not.toBeNull();
     expect(star(view, 'SHIP_ARMOR')).toHaveAttribute('aria-pressed', 'true');
   });
 

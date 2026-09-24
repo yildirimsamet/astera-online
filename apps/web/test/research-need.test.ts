@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { researchNeedWorld } from '../src/lib/researchNeed.js';
+import { isResearchProject, researchNeedWorld } from '../src/lib/researchNeed.js';
 
 /**
  * D209 — OWNER INSTRUCTION: research is gated by the CAPITAL's Command Core, so the
@@ -17,5 +17,14 @@ describe('researchNeedWorld', () => {
 
   it('asks for no world change when the capital is not known', () => {
     expect(researchNeedWorld('CORE', null)).toBeNull();
+  });
+});
+
+/** A requirement's id is a building, a hull, a satellite or a project: only the last opens research. */
+describe('which requirement is a research project', () => {
+  it('knows a project by its id, and nothing else as one', () => {
+    expect(isResearchProject('SHIP_ARMOR')).toBe(true);
+    expect(isResearchProject('SHIPYARD')).toBe(false);
+    expect(isResearchProject('toString')).toBe(false);
   });
 });

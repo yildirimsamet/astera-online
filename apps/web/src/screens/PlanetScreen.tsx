@@ -7,7 +7,6 @@ import {
   FEATURE_FLAGS,
   BUILD,
   HULLS,
-  RESEARCH_PROJECTS,
   DEATH_STAR,
   FAULT,
   FAULT_KINDS,
@@ -39,7 +38,9 @@ import {
   type InstrumentId,
   type SatelliteId,
   type FaultKind,
+  type ResearchProjectId,
 } from '@astera/rules';
+import { isResearchProject } from '../lib/researchNeed.js';
 import {
   usePlanet,
   useBuild,
@@ -202,7 +203,7 @@ export function PlanetScreen({
    * sheet. They are not any more, and a jump that fell through to `'grow'` left
    * the player standing on the Command Core with no idea why.
    */
-  onOpenResearch?: () => void;
+  onOpenResearch?: (project: ResearchProjectId) => void;
 }) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
@@ -363,8 +364,9 @@ export function PlanetScreen({
   const goToNeed = (id: string): void => {
     // A research project is not on this screen at all. Hand it to the host, which
     // is the only thing that can open the surface it IS on.
-    if (Object.hasOwn(RESEARCH_PROJECTS, id)) {
-      onOpenResearch?.();
+    if (isResearchProject(id)) {
+      // Named, so the map opens on the project this door asked for (E8).
+      onOpenResearch?.(id);
       return;
     }
     const home = TAB_OF[id];

@@ -82,7 +82,11 @@ interface SheetSpec {
   queued?: string;
 }
 
-export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
+export function ResearchPanel({ onNeed, focus }: {
+  onNeed?: (id: string) => void;
+  /** The project a door elsewhere asked for ("Ship Armor II first"): the map opens on it. */
+  focus?: ResearchProjectId;
+}) {
   const { t } = useTranslation();
   const { data, dataUpdatedAt, isError, refetch } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt, 5000);
@@ -99,7 +103,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    * sending the player to the planet sheet is what `TAB_OF` once did by accident,
    * and it landed them on a tab with no research on it at all.
    */
-  const [picked, setPicked] = useState<ResearchProjectId | null>(null);
+  const [picked, setPicked] = useState<ResearchProjectId | null>(focus ?? null);
 
   /**
    * WAKE ON THE MOMENTS THIS SCREEN'S OWN PAYLOAD ALREADY NAMES. D52 · D53.
