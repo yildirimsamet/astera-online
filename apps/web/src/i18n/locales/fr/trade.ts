@@ -80,8 +80,6 @@ export const trade = {
   /* ── confirmation ───────────────────────────────────────────── */
   send: "Envoyer le convoi",
   sending: "Départ en cours",
-  back: "Retour",
-  commit: "Envoyer — aucun rappel possible",
   warning:
     "Un convoi lancé ne peut pas être rappelé. Il restera en vol pendant {{duration}}.",
   fleetsave:

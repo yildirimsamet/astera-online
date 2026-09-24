@@ -7,6 +7,8 @@ import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
+import { TradeSheet } from '../../screens/TradeSheet.js';
+import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
@@ -251,6 +253,22 @@ function Views({ view }: { view: string }) {
         }}
         seasonStart={new Date(NOW - 1150 * MIN)}
         planet={launchWorld}
+        onClose={noop}
+        onLaunched={noop}
+      />
+    );
+  }
+  if (view === 'trade') {
+    return (
+      <TradeSheet
+        merchant={{
+          id: '2f0a2e0e-6e64-4b1e-9c0e-3b3a5f6f4d11', kind: 'TRADE_SHIP',
+          startsAt: new Date(NOW - 30 * MIN), endsAt: new Date(NOW + 150 * MIN),
+          rate: TRADE.rate, appearsAtMinute: 570, expiresAtMinute: 750,
+          orbit: { radius: 1_100, period: (2 * Math.PI * 1_100) / TRADE.speed, phase: 0.7, inclination: 0.4, ascendingNode: 1.9, speed: TRADE.speed },
+        }}
+        seasonStart={new Date(NOW - 600 * MIN)}
+        planet={planetView({ fleet: { ATLAS: 12, COURIER: 3, DART: 4 } }, { alloy: 5_000, crystal: 5_000, deuterium: 5_000 })}
         onClose={noop}
         onLaunched={noop}
       />

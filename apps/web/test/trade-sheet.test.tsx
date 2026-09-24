@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,8 +93,8 @@ const sheet = (
   { wrapper },
 );
 
-/** The one control whose label carries the refusal. */
-const commit = (): HTMLElement => screen.getByTestId('trade-commit');
+/** The one control whose label carries the refusal: the held button (K4). */
+const commit = (): HTMLElement => within(screen.getByTestId('trade-commit')).getByRole('button');
 
 /**
  * Drag a range input to a value.
@@ -573,16 +573,23 @@ describe('the rendezvous is drawn while the decision is open', () => {
 /* ── the commitment ──────────────────────────────────────────── */
 
 describe('committing the convoy', () => {
-  it('takes two presses and warns that nothing can be recalled', async () => {
+  /**
+   * HELD, WITH THE PRICE BEFORE THE BUTTON (K4, B14). The second screen is gone: what
+   * it said — nothing can be recalled, what stays home — is on the sheet before the
+   * press, because a price read after the decision is not decision support.
+   */
+  it('says before the hold that nothing can be recalled, and has no second step', async () => {
     sheet();
     const user = userEvent.setup();
+    expect(screen.queryByText(/A launched convoy cannot be recalled/i)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
     await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
 
-    await user.click(commit());
     expect(screen.getByText(/A launched convoy cannot be recalled/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
+    expect(commit()).toHaveAttribute('data-hold');
+    await user.click(commit());
+    expect(screen.queryByRole('button', { name: /back/i })).toBeNull();
   });
 
   it('posts exactly the body the server parses', async () => {
@@ -627,8 +634,10 @@ describe('committing the convoy', () => {
     await user.click(screen.getByRole('button', { name: /max atlas/i }));
     await user.click(screen.getByRole('button', { name: /^Deuterium$/i }));
     setAmount(/deuterium to give/i, 200);
-    await user.click(commit());
-    await user.click(screen.getByTestId('trade-confirm'));
+    // The commit is held (K4); Enter twice is the keyboard's hold.
+    fireEvent.keyDown(commit(), { key: 'Enter' });
+    fireEvent.keyDown(commit(), { key: 'Enter' });
+    await waitFor(() => { expect(fetchMock).toHaveBeenCalled(); });
 
     const call = fetchMock.mock.calls.at(-1);
     expect(call?.[0]).toContain('/api/trade/launch');

@@ -35,7 +35,9 @@ import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { Tally } from '../ui/Tally.js';
 import { HullMark } from '../ui/icons/hulls.js';
-import { Button, Segmented, Sheet } from '../ui/kit/index.js';
+import { Segmented } from '../ui/kit/index.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
 
 /**
@@ -140,7 +142,6 @@ export function TradeSheet({
    * single number silently overwrites a choice somebody made.
    */
   const [lead, setLead] = useState<number | null>(null);
-  const [confirming, setConfirming] = useState(false);
 
   /**
    * A COARSE CLOCK, AND IT IS LOAD-BEARING RATHER THAN COSMETIC.
@@ -293,14 +294,12 @@ export function TradeSheet({
     const ceiling = largestOffer(store, room, give, rate);
     setFleet(next);
     if (offer >= top) setOffer(ceiling);
-    setConfirming(false);
   };
 
   const pickGive = (good: TradeGood): void => {
     setGive(good);
     setOffer(largestOffer(Math.floor(planet.planet[good]), hold, good, rate));
     setLead(null);
-    setConfirming(false);
   };
 
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
@@ -341,72 +340,57 @@ export function TradeSheet({
 
   return (
     <Sheet
+      detents={['full']}
       eyebrow={t('trade.sheetEyebrow', { duration: duration(minutesLeft) })}
       title={t('trade.sheetTitle')}
       onClose={onClose}
-      footer={
-        confirming ? (
-          <div className="flex gap-2">
-            <Button
-              className="flex-1"
-              onClick={() => { setConfirming(false); }}
-            >
-              {t('trade.back')}
-            </Button>
-            <Button
-              testId="trade-confirm"
-              variant="commit"
-              size="lg"
-              className="flex-[2]"
-              disabled={launch.isPending || launchBlocked}
-              onClick={() => {
+      footer={(
+        <div className="grid gap-2">
+          {/*
+            THE PRICE, BEFORE THE BUTTON (K4, B14). The second screen said it after the
+            decision; a trade that would go says it here: it cannot be turned, and for how
+            long this world does without the ships.
+          */}
+          {refusal === null && (
+            <div data-trade-warning className="grid gap-1">
+              <p className="text-caption leading-snug text-v2-warn">
+                {t('trade.warning', { duration: duration(route?.exposureMinutes ?? 0) })}
+              </p>
+              <p className="text-micro leading-snug text-v2-ink-3">{t('trade.fleetsave')}</p>
+            </div>
+          )}
+          <div data-testid="trade-commit">
+            <HoldButton
+              label={t('trade.send')}
+              /*
+                A DISABLED CONTROL STATES ITS OWN REASON. `interface.md`: an unavailable
+                action stays visible with the reason on it.
+              */
+              disabledReason={launchBlocked
+                ? t('faults.launchBlock.SHIPYARD_REVOLT')
+                : launch.isPending ? t('trade.sending') : refusal}
+              onCommit={() => {
                 launch.mutate(
-                  {
-                    occurrenceId: merchant.id,
-                    fleet,
-                    give: offered,
-                    want,
-                  },
+                  { occurrenceId: merchant.id, fleet, give: offered, want },
                   {
                     onSuccess: (result) => {
                       say(t('trade.launched', { duration: duration(result.flightMinutes) }));
                       onLaunched();
                     },
-                    onError: (error) => {
-                      say(describe(error), 'error');
-                      setConfirming(false);
-                    },
+                    onError: (error) => { say(describe(error), 'error'); },
                   },
                 );
               }}
-            >
-              {launchBlocked
-                ? t('faults.launchBlock.SHIPYARD_REVOLT')
-                : launch.isPending ? t('trade.sending') : t('trade.commit')}
-            </Button>
+            />
           </div>
-        ) : (
-          <Button
-            testId="trade-commit"
-            variant="commit"
-            size="lg"
-            full
-            disabled={refusal !== null}
-            onClick={() => { setConfirming(true); }}
-          >
-            {/*
-              A DISABLED CONTROL STATES ITS OWN REASON. `interface.md`: an
-              unavailable action stays visible with the reason on it, because a
-              button that simply will not press teaches nothing.
-            */}
-            {refusal ?? t('trade.send')}
-          </Button>
-        )
-      }
+        </div>
+      )}
     >
+      <div className="flex flex-col gap-3 pt-1">
       {/* ── the convoy, first, because it sets every maximum below ── */}
-      <h3 className="legend mt-1">{t('trade.convoyHeading')}</h3>
-      <div className="mt-2 space-y-2">
+      <section className="grid gap-1.5">
+      <h3 className={HEADING}>{t('trade.convoyHeading')}</h3>
+      <div>
         {/*
           THE THREE CARRIERS AND NOTHING ELSE. Owner instruction: *"Filo yollarken
           sadece cargo gemilerimizi seçebilmeliyiz."* A warship in a trade convoy
@@ -428,35 +412,34 @@ export function TradeSheet({
               key={id}
               data-hull-row={id}
               data-owned={held > 0 ? 'true' : 'false'}
-              className={`min-h-14 rounded-chip border border-line-soft px-3 py-2 ${
-                (fleet[id] ?? 0) > 0 ? 'bg-crystal/[0.05]' : ''
+              className={`border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${
+                (fleet[id] ?? 0) > 0 ? 'bg-v2-self/5' : ''
               }`}
             >
               <div className="flex items-center gap-2">
-                <span data-art className="socket size-10 shrink-0 rounded-control">
+                <span data-art className="grid size-8 shrink-0 place-items-center">
                   {art ? (
                     <img
                       src={art}
                       alt=""
                       aria-hidden
-                      className={`size-9 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
+                      className={`size-8 object-contain ${held > 0 ? '' : 'opacity-35 grayscale'}`}
                       loading="lazy"
                     />
                   ) : (
-                    <HullMark hull={id} className="size-6 text-dim" />
+                    <HullMark hull={id} className="size-6 text-v2-ink-3" />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="name block truncate text-bone">{hullLabel(id)}</span>
-                  <span className="num mt-1 block text-label text-dim">
+                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullLabel(id)}</span>
+                  <span className={`block font-v2-mono text-micro ${held > 0 ? 'text-v2-ink-3' : 'text-v2-warn'}`}>
                     {held > 0
                       ? t('trade.carrierRoom', { count: held, volume: full(holdOf(id, mods.tech)) })
                       : t('trade.hullNone')}
                   </span>
                 </span>
-              </div>
-              <div className="mt-2">
                 <QuantityStepper
+                  look="v2"
                   value={fleet[id] ?? 0}
                   min={0}
                   max={held}
@@ -473,6 +456,7 @@ export function TradeSheet({
           );
         })}
       </div>
+      </section>
 
       {/*
         THE HOLD, AS ONE NUMBER, DIRECTLY UNDER WHAT SETS IT. A bar was drawn here
@@ -482,7 +466,7 @@ export function TradeSheet({
       */}
       <p
         data-testid="trade-hold"
-        className={`mt-3 text-body ${carrying ? 'text-dim' : 'text-alloy'}`}
+        className={`px-1 text-caption ${carrying ? 'text-v2-ink-2' : 'text-v2-warn'}`}
       >
         {carrying
           ? t('trade.holdReading', { volume: full(hold) })
@@ -490,9 +474,9 @@ export function TradeSheet({
       </p>
 
       {/* ── what leaves ─────────────────────────────────────────── */}
-      <h3 className="legend mt-5">{t('trade.offerHeading')}</h3>
+      <h3 className={`${HEADING} mt-2`}>{t('trade.offerHeading')}</h3>
       <Segmented
-        className="mt-2"
+        flush
         label={t('trade.givePick')}
         segments={(['alloy', 'crystal', 'deuterium'] as const).map((good) => ({
           id: good,
@@ -501,7 +485,7 @@ export function TradeSheet({
         value={give}
         onSelect={pickGive}
       />
-      <label className="plate plate-inset mt-2 block rounded-chip px-3 py-3">
+      <label className="block rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
         <span className="flex items-center gap-2">
           <img
             src={RESOURCE_ART[give]}
@@ -509,8 +493,8 @@ export function TradeSheet({
             aria-hidden
             className="size-4 shrink-0 object-contain"
           />
-          <span className="legend flex-1 text-dim">{t(`trade.${give}`)}</span>
-          <span data-testid="trade-offer" className="num shrink-0 text-title text-bone">
+          <span className="flex-1 text-caption text-v2-ink-2">{t(`trade.${give}`)}</span>
+          <span data-testid="trade-offer" className="shrink-0 font-v2-mono text-body font-semibold text-v2-ink">
             {full(amount)}
           </span>
         </span>
@@ -533,7 +517,6 @@ export function TradeSheet({
           aria-label={t('trade.giveAmount', { resource: t(`trade.${give}`) })}
           onChange={(event) => {
             setOffer(Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0)));
-            setConfirming(false);
           }}
           style={{ '--slider-fill': `${String(share(amount, Math.max(1, top)))}%` } as CSSProperties}
           className={`slider slider-${give} mt-2 w-full`}
@@ -543,7 +526,7 @@ export function TradeSheet({
           değil."* The number alone is half an answer — the other half is whether
           to wait for the mine or add a ship, and only the wall knows that.
         */}
-        <span data-testid="trade-ceiling" className="mt-2 block text-caption text-faint">
+        <span data-testid="trade-ceiling" className="mt-2 block text-micro text-v2-ink-3">
           {t(wall === 'hold' ? 'trade.ceilingHold' : 'trade.ceilingStore', {
             amount: full(top),
             worth: full((top * rate[give]) / rate[dear]),
@@ -553,13 +536,13 @@ export function TradeSheet({
       </label>
 
       {/* ── what comes home ─────────────────────────────────────── */}
-      <h3 className="legend mt-5">
+      <h3 className={`${HEADING} mt-2`}>
         {t('trade.askHeading')}
-        <span className="num ml-2 text-dim">{t('trade.askUnits', { units: full(units) })}</span>
+        <span className="ml-2 font-v2-mono normal-case tracking-normal text-v2-ink-2">{t('trade.askUnits', { units: full(units) })}</span>
       </h3>
       <div
         data-testid="trade-split"
-        className="plate plate-inset mt-2 rounded-chip px-3 py-3"
+        className="rounded-control border border-v2-line bg-v2-panel px-3 py-2.5"
       >
         {/*
           BOTH ENDS OF THE SWAP, READ OFF ONE CONTROL. The units are already bought;
@@ -584,8 +567,8 @@ export function TradeSheet({
                 className="size-5 shrink-0 object-contain"
               />
               <span className="min-w-0">
-                <span className="legend block truncate text-dim">{t(`trade.${good}`)}</span>
-                <span data-take={good} className="num block text-title text-bone">
+                <span className="block truncate text-micro text-v2-ink-3">{t(`trade.${good}`)}</span>
+                <span data-take={good} className="block font-v2-mono text-body font-semibold text-v2-ink">
                   {full(want[good])}
                 </span>
               </span>
@@ -602,14 +585,13 @@ export function TradeSheet({
           aria-label={t('trade.splitLabel')}
           onChange={(event) => {
             setLead(Math.max(0, Math.floor(event.currentTarget.valueAsNumber || 0)));
-            setConfirming(false);
           }}
           style={{
             '--slider-fill': `${String(share(want[dear] - splitFloor, Math.max(1, splitTop - splitFloor)))}%`,
           } as CSSProperties}
           className={`slider slider-${dear} mt-3 w-full`}
         />
-        <div className="mt-2 flex justify-between text-caption text-faint">
+        <div className="mt-2 flex justify-between text-micro text-v2-ink-3">
           <span>{t('trade.splitToward', { resource: t(`trade.${cheap}`) })}</span>
           <span>{t('trade.splitToward', { resource: t(`trade.${dear}`) })}</span>
         </div>
@@ -630,28 +612,28 @@ export function TradeSheet({
         sentence appears only when the return is the binding one — the other way
         round it would be noise on a screen that already has enough.
       */}
-      <div data-testid="trade-legs" className="plate mt-3 px-3 py-2">
+      <div data-testid="trade-legs" className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
         <div className="flex items-baseline justify-between gap-2 text-caption">
-          <span className="text-faint">{t('trade.legOut')}</span>
-          <span className={`num ${returnDecides ? 'text-dim' : 'text-bone'}`}>
+          <span className="text-v2-ink-3">{t('trade.legOut')}</span>
+          <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink-2' : 'text-v2-ink'}`}>
             {full(quote.outboundVolume)}
           </span>
-          <span className="text-faint">{t('trade.legHome')}</span>
-          <span className={`num ${returnDecides ? 'text-bone' : 'text-dim'}`}>
+          <span className="text-v2-ink-3">{t('trade.legHome')}</span>
+          <span className={`font-v2-mono ${returnDecides ? 'text-v2-ink' : 'text-v2-ink-2'}`}>
             {full(quote.returnVolume)}
           </span>
-          <span className="text-faint">{t('trade.legHold')}</span>
-          <span className="num text-dim">{full(hold)}</span>
+          <span className="text-v2-ink-3">{t('trade.legHold')}</span>
+          <span className="font-v2-mono text-v2-ink-2">{full(hold)}</span>
         </div>
         {returnDecides && (
-          <p className="mt-2 text-caption leading-snug text-alloy">
+          <p className="mt-2 text-caption leading-snug text-v2-warn">
             {t('trade.legReturnDecides')}
           </p>
         )}
       </div>
 
       {/* ── the flight ──────────────────────────────────────────── */}
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
         <Figure
           label={t('trade.figureOut')}
           value={route === null ? t('trade.figureNone') : duration(route.oneWayMinutes)}
@@ -668,7 +650,7 @@ export function TradeSheet({
       </div>
 
       {fuel > 0 && (
-        <div data-testid="trade-fuel" className="plate mt-3 px-3 py-3">
+        <div data-testid="trade-fuel" className="rounded-control border border-v2-line bg-v2-panel px-3 py-2.5">
           {/*
             THE TANK, MINUS WHAT THE MERCHANT WAS PAID. `assertFuel`'s guard is on
             the SUM — deuterium in a hold has already left this world as far as the
@@ -686,8 +668,8 @@ export function TradeSheet({
       )}
 
       {/* A launch takes a flight bay, and a rack this small is counted, not read. */}
-      <div className="mt-3 flex items-center gap-2">
-        <span className="legend flex-1 text-dim">{t('trade.bays')}</span>
+      <div className="flex items-center gap-2 px-1">
+        <span className="flex-1 text-caption text-v2-ink-2">{t('trade.bays')}</span>
         <Tally
           used={planet.flight.used}
           total={planet.flight.total}
@@ -707,7 +689,7 @@ export function TradeSheet({
       */}
       <div
         data-origin-defence
-        className="socket mt-3 flex h-3 w-full overflow-hidden rounded-full"
+        className="flex h-2 w-full overflow-hidden rounded-full bg-v2-line"
         role="img"
         aria-label={t('trade.homeDefence', {
           ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
@@ -716,32 +698,23 @@ export function TradeSheet({
       >
         <span
           data-part="holds"
-          className="h-full bg-bone/60 transition-[width] duration-200"
+          className="h-full bg-v2-ink-2 transition-[width] duration-200"
           style={{ width: `${String(share(holdingPower, powerNow))}%` }}
         />
         <span
           data-part="leaves"
-          className="h-full bg-alloy/70 transition-[width] duration-200"
+          className="h-full bg-v2-alloy transition-[width] duration-200"
           style={{ width: `${String(share(powerNow - holdingPower, powerNow))}%` }}
         />
       </div>
-      <p className="mt-2 text-label text-dim">
+      <p className="-mt-1.5 text-micro text-v2-ink-3">
         {t('trade.homeDefence', {
           ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
           power: compact(holdingPower),
         })}
       </p>
 
-      {confirming && (
-        <>
-          <p className="mt-6 text-body leading-relaxed text-threat-ink">
-            {t('trade.warning', {
-              duration: duration(route?.exposureMinutes ?? 0),
-            })}
-          </p>
-          <p className="mt-2 text-body leading-relaxed text-dim">{t('trade.fleetsave')}</p>
-        </>
-      )}
+      </div>
     </Sheet>
   );
 }
@@ -755,6 +728,9 @@ export function TradeSheet({
  */
 const holdOf = (id: HullId, tech: TechLevels): number => transferCargoCapacity({ [id]: 1 }, tech);
 
+/** A section's name, as the launch and transfer sheets set it. */
+const HEADING = 'px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
+
 function Figure({
   label,
   value,
@@ -766,9 +742,9 @@ function Figure({
   tone?: 'threat';
 }) {
   return (
-    <div>
-      <p className="legend">{label}</p>
-      <p className={`num mt-1 text-title ${tone === 'threat' ? 'text-threat-ink' : 'text-bone'}`}>
+    <div className="min-w-0">
+      <p className="truncate text-micro text-v2-ink-3">{label}</p>
+      <p className={`mt-0.5 font-v2-mono text-caption font-semibold ${tone === 'threat' ? 'text-v2-hostile' : 'text-v2-ink'}`}>
         {value}
       </p>
     </div>

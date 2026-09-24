@@ -65,7 +65,8 @@ export function Segmented<T extends string>({
   size?: 'sm' | 'md';
   className?: string;
   /**
-   * THE BASE'S CATEGORY BAR, DRAWN AS THE GÖZLEMEVI SWITCH (owner, 2026-09-24).
+   * THE GÖZLEMEVI SWITCH: the Base's category bar and the trade's give picker (owner,
+   * 2026-09-24). The caller places it; the bar brings no margin of its own.
    *
    * Every label whole: "PRODUCTION" in equal fifths ran into "INTEL" at 350, and a
    * cut or an abbreviation is not the answer. Each segment is as wide as its word and
@@ -115,7 +116,7 @@ export function Segmented<T extends string>({
       onKeyDown={move}
       className={
         flush
-          ? `mx-3 my-2 flex gap-0.5 overflow-x-auto rounded-control border border-v2-line bg-v2-panel p-0.5 font-v2-ui [scrollbar-width:none] ${className}`
+          ? `flex gap-0.5 overflow-x-auto rounded-control border border-v2-line bg-v2-panel p-0.5 font-v2-ui [scrollbar-width:none] ${className}`
           : `plate plate-sunk grid gap-1 rounded-control p-1 ${className}`
       }
       {...(flush ? {} : { style: { gridTemplateColumns: `repeat(${String(segments.length)}, minmax(0, 1fr))` } })}

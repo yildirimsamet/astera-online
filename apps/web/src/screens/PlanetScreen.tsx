@@ -1083,6 +1083,7 @@ function Tabs({
       */}
       <Segmented
         flush
+        className="mx-3 my-2"
         marker="tab"
         role="tablist"
         label={t('planet.tabs.label')}
