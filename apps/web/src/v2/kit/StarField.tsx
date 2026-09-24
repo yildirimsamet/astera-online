@@ -26,7 +26,13 @@ function stream(seed: number): () => number {
 
 interface Star { x: number; y: number; r: number; o: number; tone: string; glow: boolean }
 
-/** Mostly faint pinpricks, a few brighter, a handful with a halo — how a deep field reads. */
+/**
+ * Mostly faint pinpricks, a few brighter, a handful with a halo — how a deep field reads.
+ *
+ * A BACKDROP, NOT A SUBJECT (owner, 2026-09-24): the sky behind the world read too loud,
+ * and on the research map its stars competed with the projects'. Radius at most 0.95 px
+ * and brightness at most 0.6, so anything drawn on it stands in front of it.
+ */
 const STARS: readonly Star[] = (() => {
   const next = stream(0x5eed_2026);
   return Array.from({ length: 220 }, () => {
@@ -37,8 +43,8 @@ const STARS: readonly Star[] = (() => {
     return {
       x,
       y,
-      r: size > 0.97 ? 1.2 : size > 0.8 ? 0.85 : 0.5,
-      o: 0.3 + next() * 0.65,
+      r: size > 0.97 ? 0.95 : size > 0.8 ? 0.65 : 0.4,
+      o: 0.18 + next() * 0.42,
       // Blue-white through white to a rare warm one: temperature, not a rainbow.
       tone: hue > 0.9 ? 'var(--color-v2-sky-warm)' : hue > 0.6 ? 'var(--color-v2-sky-cool)' : 'var(--color-v2-ink)',
       glow: size > 0.97,
@@ -54,10 +60,10 @@ const STARS: readonly Star[] = (() => {
 const haze = (variable: string, share: number): string =>
   `color-mix(in srgb, var(${variable}) ${String(share)}%, transparent)`;
 const NEBULA = [
-  `radial-gradient(60% 32% at 16% 20%, ${haze('--color-v2-sky-blue', 30)}, transparent 70%)`,
-  `radial-gradient(50% 30% at 88% 66%, ${haze('--color-v2-sky-violet', 26)}, transparent 70%)`,
-  `radial-gradient(40% 22% at 60% 38%, ${haze('--color-v2-self', 10)}, transparent 75%)`,
-  `radial-gradient(90% 30% at 40% 52%, ${haze('--color-v2-sky-drift', 22)}, transparent 75%)`,
+  `radial-gradient(60% 32% at 16% 20%, ${haze('--color-v2-sky-blue', 22)}, transparent 70%)`,
+  `radial-gradient(50% 30% at 88% 66%, ${haze('--color-v2-sky-violet', 19)}, transparent 70%)`,
+  `radial-gradient(40% 22% at 60% 38%, ${haze('--color-v2-self', 7)}, transparent 75%)`,
+  `radial-gradient(90% 30% at 40% 52%, ${haze('--color-v2-sky-drift', 16)}, transparent 75%)`,
 ].join(', ');
 
 export function StarField({ className = '' }: { className?: string }) {
@@ -67,7 +73,7 @@ export function StarField({ className = '' }: { className?: string }) {
         {/* A soft falloff, never a disc: a ring around a dot would read as a project star. */}
         <defs>
           <radialGradient id="v2-sky-glow">
-            <stop offset="0%" style={{ stopColor: 'var(--color-v2-sky-cool)', stopOpacity: 0.55 }} />
+            <stop offset="0%" style={{ stopColor: 'var(--color-v2-sky-cool)', stopOpacity: 0.3 }} />
             <stop offset="100%" style={{ stopColor: 'var(--color-v2-sky-cool)', stopOpacity: 0 }} />
           </radialGradient>
         </defs>

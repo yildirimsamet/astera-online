@@ -124,30 +124,32 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
             aria-pressed={on}
             aria-label={`${star.name} · ${String(star.level)}/${String(star.maxLevel)}`}
             onClick={() => { onSelect(node.id); }}
-            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${dim || star.locked ? 'opacity-50' : ''}`}
+            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${dim || star.locked ? 'opacity-60' : ''}`}
             style={{ left: `${String(node.x * 100)}%`, top: `calc(${String(node.y * 100)}% - 6px)` }}
           >
             {/*
               A STAR IN EVERY RING (owner, 2026-09-24). The ring is the project; the star in
-              it is how far up its ladder: a faint white one at nothing held, then teal,
-              brighter and glowing the higher it stands (E8: "parlaklık = seviye / en yüksek").
+              it is how far up its ladder: a white one at nothing held, then teal, brighter and
+              glowing the higher it stands (E8: "parlaklık = seviye / en yüksek"). Larger and
+              brighter than any star of the sky behind it (owner, 2026-09-24: "görmekte
+              zorlanılıyor"), held or not.
             */}
             <span className="relative grid size-3.5 place-items-center">
               <span
                 className={`absolute inset-0 rounded-full border ${
-                  star.level > 0 ? 'border-v2-self/70 bg-v2-self/15' : 'border-v2-ink-2/70 bg-v2-deep/60'
+                  star.level > 0 ? 'border-v2-self bg-v2-self/20' : 'border-v2-ink-2 bg-v2-deep/70'
                 }`}
               />
               <svg
                 data-star-glyph
                 viewBox="0 0 10 10"
                 aria-hidden="true"
-                className={`relative size-2.5 ${
+                className={`relative size-3 ${
                   star.level > 0
-                    ? 'fill-v2-self drop-shadow-[0_0_4px_color-mix(in_srgb,var(--color-v2-self)_80%,transparent)]'
-                    : 'fill-v2-ink'
+                    ? 'fill-v2-self drop-shadow-[0_0_5px_color-mix(in_srgb,var(--color-v2-self)_90%,transparent)]'
+                    : 'fill-v2-ink drop-shadow-[0_0_3px_color-mix(in_srgb,var(--color-v2-ink)_60%,transparent)]'
                 }`}
-                style={{ opacity: star.level > 0 ? 0.55 + 0.45 * share : 0.55 }}
+                style={{ opacity: star.level > 0 ? 0.8 + 0.2 * share : 0.85 }}
               >
                 <path d="M5 0 L6.1 3.9 L10 5 L6.1 6.1 L5 10 L3.9 6.1 L0 5 L3.9 3.9 Z" />
               </svg>

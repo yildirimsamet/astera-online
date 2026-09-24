@@ -52,6 +52,11 @@ describe('the store bar', () => {
     expect(root.innerHTML).not.toMatch(/hostile/);
   });
 
+  it('lights one cell for any stock at all — a little is not nothing', () => {
+    const root = bar({ value: 169, cap: 4_500 });
+    expect(cells(root).filter((cell) => cell.hasAttribute('data-lit'))).toHaveLength(1);
+  });
+
   it('reads an empty or capless store as empty', () => {
     expect(cells(bar({ value: 0 })).some((cell) => cell.hasAttribute('data-lit'))).toBe(false);
     expect(cells(bar({ cap: 0 })).some((cell) => cell.hasAttribute('data-lit'))).toBe(false);

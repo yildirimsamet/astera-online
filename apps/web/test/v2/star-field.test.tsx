@@ -28,6 +28,23 @@ describe('the star field', () => {
     expect(second).toBe(first);
   });
 
+  /**
+   * A BACKDROP, NOT A SUBJECT (owner, 2026-09-24): the sky behind the world was too loud,
+   * and on the research map its stars competed with the projects' own. No sky star is
+   * wider than a pixel's radius or brighter than 0.6; every project star is at least 0.8.
+   */
+  it('stays quieter than anything that stands on it', () => {
+    const view = render(<StarField />);
+    const dots = [...view.container.querySelectorAll('[data-sky] circle:not([fill^="url"])')];
+    expect(Math.max(...dots.map((dot) => Number(dot.getAttribute('r'))))).toBeLessThanOrEqual(1);
+    expect(Math.max(...dots.map((dot) => Number(dot.getAttribute('opacity'))))).toBeLessThanOrEqual(0.6);
+
+    const stars = RESEARCH_PROJECT_IDS.map((id, index) => ({ id, name: id, level: index % 2, maxLevel: 3, locked: false, running: false }));
+    const map = render(<ResearchConstellation stars={stars} selected={null} onSelect={vi.fn()} />);
+    const glyphs = [...map.container.querySelectorAll<SVGElement>('[data-star-glyph]')];
+    expect(Math.min(...glyphs.map((glyph) => Number(glyph.style.opacity)))).toBeGreaterThanOrEqual(0.8);
+  });
+
   it('keeps its stars round on any shape of section', () => {
     const view = render(<StarField />);
     const svg = view.container.querySelector('[data-sky] svg');

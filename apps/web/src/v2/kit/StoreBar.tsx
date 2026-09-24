@@ -35,7 +35,8 @@ export function StoreBar({
   cells?: number;
 }) {
   const share = cap <= 0 ? 0 : Math.min(1, Math.max(0, value) / cap);
-  const lit = Math.round(share * cells);
+  // Any stock lights a cell: 169 of 4.5k is not an empty store.
+  const lit = share > 0 ? Math.max(1, Math.round(share * cells)) : 0;
   const full = cap > 0 && value >= cap;
   const safeCells = safe > 0 && cap > 0 ? Math.max(1, Math.round(Math.min(1, safe / cap) * cells)) : 0;
   // One cell's width, and the run of `n` cells with the gaps between them.

@@ -136,7 +136,7 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
 - **E · İstihbarat (7).** Sonda raporu aralık çubukları: ölçeğin ne olduğu görünür (0 → ölçek, senin değerin çizgisi),
   hizalamanın anlamı okunur. [ ]
 - **F · Yıldız arka planları (2, 3).** Üs kahramanındaki gökyüzü daha soluk; Araştırma takımyıldızında arka plan
-  yıldızları küçük/sönük, düğüm yıldızları büyük/parlak, araştırılmış ve araştırılmamış düğümler biraz daha parlak. [ ]
+  yıldızları küçük/sönük, düğüm yıldızları büyük/parlak, araştırılmış ve araştırılmamış düğümler biraz daha parlak. [x]
 - **G · Galaksi sahnesi (9, 10).** Uçan her şeyin dış çizgisi %50 ince, renk parlaklığı %25 az; galaktik konvoyun
   rüzgârı yerine sade hız çizgileri ("rüzgârı delen araç"). [ ]
 
