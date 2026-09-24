@@ -45,8 +45,8 @@
 | F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Tamam (faz incelemesi `fa16b98`, `e7f062e`) |
 | F4 | E6 Rapor, S4 | Tamam (`35d7bf6`, `d52bc68`, `aad6e0d`) |
-| F5 | E5 Üs + Araştırma (K6, K9) | Sürüyor (K6, K9, E5 büyük ölçüde tamam; Band başlığı + faz incelemesi kaldı) |
-| F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
+| F5 | E5 Üs + Araştırma (K6, K9) | Tamam (`5b80f0b` … `642b16c`) |
+| F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Sırada |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
 | F8 | E11 Masaüstü | Bekliyor |
 | F9 | 3D gezegenler (16 `.glb`, Draco → meshopt, LOD) | Bekliyor |
@@ -78,7 +78,13 @@ Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıld
     önekli). Kalan fark bilinçli: cetvelin "ne temsil ettiği" satırı yüzeyde kalır (netlik; testi var).
 
 ## Sıradaki iş
-**F5 · E5 Üs + Araştırma segmenti (K6) + takımyıldız (K9).** Şartname: `grep -n "^#### E5 ·\|^| K6\|^| K9" docs/ui-v2/gozlemevi.md`;
+**F6 · E7 İstihbarat (K11 yaş dili) + E9 Klan savaş odası + Komutan sayfası.** Şartname:
+`grep -n "^#### E7 ·\|^#### E9 ·\|^| K11\|Komutan sayfası" docs/ui-v2/gozlemevi.md`; mock `design-mocks/image copy 6.png` sağ
+(İstihbarat: gözlem defteri) ve `image copy 7.png` orta (Klan savaş odası). Kod: İstihbarat sayfası (`screens/Intel*`), telescope
+rafı, `lib/dossier.ts`, `screens/ClanWarPanel.tsx`, Komutan sayfası (`v2/shell/CommanderHost.tsx`, menü). Açık not F6'ya:
+`clanWar.noTarget` 5 dilde var olmayan "Galaxy Focus" denetimini anıyor.
+
+**F5 (tamam) · E5 Üs + Araştırma segmenti (K6) + takımyıldız (K9).** Şartname: `grep -n "^#### E5 ·\|^| K6\|^| K9" docs/ui-v2/gozlemevi.md`;
 mock `design-mocks/image copy 6.png` sol (Üs) ve `image copy 7.png` sol (Araştırma takımyıldızı). Kod: `screens/PlanetScreen.tsx`
 (Üs; `PlanetHero`, cüzdan, kuyruklar, sekmeler, `UpgradeRow` kartları, `Band`), `screens/ResearchPanel.tsx`.
 
@@ -111,8 +117,11 @@ yalnız kaynakta adı tam geçiyorsa yayımlıyor — parçadan kurulan ad taray
 **Ders:** v2 ham renk koruması (`test/v2/tokens.test.ts`) `ReportScene`'den (F4) beri kırmızıydı, fark edilmedi. Her
 commit öncesi `npx vitest run test/v2` klasörün tamamı koşulur.
 
-**F5'te kalan:** paylaşılan `Band` başlığı v2 (+ tüm sekmelerde `bare`); F5 faz sonu incelemesi (etkilenen yerler:
-PlanetScreen sekmeleri, Akademi dersleri Üs'te — `tools/visual.mjs --academy` koşusu).
+**F5 kapanışı:** `61ff6dd` bant başlığı v2 ve tüm sekmeler çıplak (sekme adını tekrar eden başlık yalnız ekran okuyucuya);
+faz incelemesi `53c2498` (Üs'teki araştırma kapısı projeyi söyler, harita o yıldızda açılır; `isResearchProject`),
+`642b16c` (de/es kuyruk başlığı "kuyruk oluştur" diyordu, de "keine Sicherheit", es Aegis'i çevirmiş; yüzdede bölünmez boşluk;
+yer bandı etiketi iki kez). Akademi turu 39/39 (araç artık menünün kuyruğa süzülmesinin oturmasını bekliyor — kart ızgarası
+yolu uzattı). Tam web paketi: 13 kırmızı, hepsi bilinen (`surface-vocabulary` kapandı). 350 px'te tr/de/fr görüldü.
 
 **F4 (tamam) · E6 Savaş raporu (B15) + S4.** `35d7bf6` S4: `readBattleReports` saldırana `fuelPaid` (dünya baskını
 `missions.fuel_paid`, ortak savaşta kendi dalgalarının toplamı; savunana, korsana ve kolon öncesi 0'a null); web şeması
@@ -372,9 +381,10 @@ typecheck 0 hata · lint 0 hata.
 - rules (4): `academy.test.ts` "makes the Academy exit whole…"; `economy-profile.test.ts` "links the other purchases…";
   `intergalactic-convoy.test.ts` "uses combat-only firepower…"; `transport-ladder.test.ts` "carries more than it cost…".
 - sim (1): `season.test.ts` "TAX holds its band".
-- web (14): `api-bodies.test.ts` disbandClan; `build-sheet.test.tsx` strategic hardware ×4; `chronicle-screen.test.tsx`
-  capital strike; `locked-rows.test.tsx` research gate; `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2;
-  `research-gains.test.ts` ×2; `surface-vocabulary.test.ts` "names no colour, size or radius the theme does not publish".
+- web (13, 2026-09-24 F5 sonu tam paket): `api-bodies.test.ts` disbandClan; `build-sheet.test.tsx` strategic hardware ×4;
+  `chronicle-screen.test.tsx` capital strike; `locked-rows.test.tsx` research gate (test dünyasında Tersane yok, kapı Tersane'ye
+  gidiyor — öncül eskimiş); `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2; `research-gains.test.ts` ×2.
+  ~~`surface-vocabulary.test.ts`~~ F5'te (`92dc01d`) yeşile döndü.
 - server (tam paket ölçülmedi; ilgili dosyalarda görülen, HEAD'de de kırmızı): `contract.test.ts` ×4 ("GET /api/planet
   parses" hangar/ground şekli; devre dışı Ölüm Yıldızı/önleyici rotaları 404 yerine 200); `intel-states.test.ts` ×3
   (klan sensör küresi, teleskop erişimi).
