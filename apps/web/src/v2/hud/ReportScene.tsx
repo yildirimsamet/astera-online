@@ -59,8 +59,9 @@ function Side({
           </p>
           {!onlyLosses && (
             <span aria-hidden="true" className="flex h-1 overflow-hidden rounded-full bg-v2-line">
-              <span className="h-full bg-v2-ink-2" style={{ width: `${String((row.left / row.sent) * 100)}%` }} />
-              <span className="v2-hatch h-full bg-v2-hostile/40" style={{ width: `${String((row.lost / row.sent) * 100)}%` }} />
+              {/* What is left of yours is your colour; of theirs, still a threat to you. */}
+              <span className={`h-full ${side === 'yours' ? 'bg-v2-self' : 'bg-v2-hostile/60'}`} style={{ width: `${String((row.left / row.sent) * 100)}%` }} />
+              <span className={`v2-hatch h-full ${side === 'yours' ? 'bg-v2-hostile/40' : 'bg-v2-self/40'}`} style={{ width: `${String((row.lost / row.sent) * 100)}%` }} />
             </span>
           )}
         </div>

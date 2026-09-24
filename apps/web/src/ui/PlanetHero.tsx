@@ -67,7 +67,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
             <span className="h-1 flex-1 overflow-hidden rounded-full bg-v2-deep/60">
               <span
                 data-loyalty-bar
-                className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-v2-ink/50'}`}
+                className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-v2-self'}`}
                 style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
               />
             </span>

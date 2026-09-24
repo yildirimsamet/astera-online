@@ -22,6 +22,14 @@ describe('the planet hero states colony loyalty', () => {
     expect(line.querySelector('[data-loyalty-bar]')).toHaveStyle({ width: '100%' });
   });
 
+  /** Owner, round 2: no grey bars. A colony's loyalty is yours, so it wears your colour. */
+  it('draws loyalty in your colour, never grey', () => {
+    render(<PlanetHero planet={planetView({ loyalty: { value: 80, minutesLeft: null } })} />);
+    const bar = screen.getByTestId('loyalty-line').querySelector('[data-loyalty-bar]')!;
+    expect(bar).toHaveClass('bg-v2-self');
+    expect(bar.className).not.toMatch(/ink|bone|grey|gray/);
+  });
+
   it('does not invent loyalty for a payload without it', () => {
     render(<PlanetHero planet={planetView()} />);
     expect(screen.queryByTestId('loyalty-line')).toBeNull();

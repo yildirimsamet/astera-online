@@ -155,7 +155,7 @@ export function ForceRuler({
           <div className="relative my-1 h-1.5 rounded-full bg-v2-line">
             <span
               data-part="band-floor"
-              className="absolute inset-y-0 left-0 rounded-l-full bg-v2-ink-3"
+              className="absolute inset-y-0 left-0 rounded-l-full bg-v2-hostile/45"
               style={{ width: pct(share(theirs.low)) }}
             />
             <span

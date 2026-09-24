@@ -698,7 +698,7 @@ export function TradeSheet({
       >
         <span
           data-part="holds"
-          className="h-full bg-v2-ink-2 transition-[width] duration-200"
+          className="h-full bg-v2-self transition-[width] duration-200"
           style={{ width: `${String(share(holdingPower, powerNow))}%` }}
         />
         <span

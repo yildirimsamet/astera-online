@@ -107,7 +107,7 @@ export function SurvivorBar({
       <span aria-hidden className="socket relative flex h-2 w-full min-w-0 overflow-hidden rounded-full">
         <span
           data-part="alive"
-          className={`h-full ${side === 'theirs' ? 'bg-threat/70' : 'bg-bone/70'}`}
+          className={`h-full ${side === 'theirs' ? 'bg-threat/70' : 'bg-v2-self'}`}
           style={{ width: `${String(alivePart)}%` }}
         />
         <span
