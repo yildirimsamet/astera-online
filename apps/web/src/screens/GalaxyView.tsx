@@ -6,6 +6,7 @@ import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, HomeChip } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
+import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
@@ -1031,6 +1032,9 @@ export function GalaxyView({
   };
 
   // The shell's requests, answered once each (`useRequest`): see `homeRequest`.
+  /** K6: the Base's two pages, one switch apart. */
+  const openBase = (view: BaseView): void => { onPanel(view === 'world' ? 'planet' : 'research'); };
+
   /** Home, the disc's old mark (D163): clear the focus, focus the active world, raise the home signal. */
   const flyHome = (): void => {
     if (activePlanetId === null) return;
@@ -1568,6 +1572,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
+          <BaseSwitch value="world" onChange={openBase} />
           <PlanetScreen
             embedded
             onOpenResearch={() => {
@@ -1599,6 +1604,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
+          <BaseSwitch value="research" onChange={openBase} />
           <ResearchPanel
             onNeed={(id) => {
               // A Core shortfall is the capital's to fix, whichever world is open (D209).

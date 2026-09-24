@@ -162,3 +162,10 @@ export const reportScene = {
   colonyRule: "Loyauté d’une colonie : une victoire décisive retire {{decisive}}, une partielle {{partial}}.",
   again: "Attaquer à nouveau",
 } as const;
+
+/** K6: the switch at the top of the Base — this world, or the commander's research. */
+export const baseSwitch = {
+  label: 'Base',
+  world: 'Ce monde',
+  research: 'Recherche',
+} as const;

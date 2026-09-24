@@ -162,3 +162,10 @@ export const reportScene = {
   colonyRule: "Lealtad de una colonia: una victoria decisiva quita {{decisive}}, una parcial {{partial}}.",
   again: "Atacar de nuevo",
 } as const;
+
+/** K6: the switch at the top of the Base — this world, or the commander's research. */
+export const baseSwitch = {
+  label: 'Base',
+  world: 'Este mundo',
+  research: 'Investigación',
+} as const;

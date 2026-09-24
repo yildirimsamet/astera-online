@@ -162,3 +162,10 @@ export const reportScene = {
   colonyRule: "Koloni sadakati: kesin zafer {{decisive}}, kısmi zafer {{partial}} düşürür.",
   again: "Yeniden saldır",
 } as const;
+
+/** K6: the switch at the top of the Base — this world, or the commander's research. */
+export const baseSwitch = {
+  label: 'Üs',
+  world: 'Bu dünya',
+  research: 'Araştırma',
+} as const;
