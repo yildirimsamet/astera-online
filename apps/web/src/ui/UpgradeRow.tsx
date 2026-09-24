@@ -107,6 +107,7 @@ export function UpgradeRow({
   highlighted = false,
   faulty = false,
   flash = false,
+  layout = 'row',
 }: {
   art?: string | null;
   /** The art one level from now, when it visibly changes. */
@@ -215,6 +216,11 @@ export function UpgradeRow({
   faulty?: boolean;
   /** Set briefly after a successful purchase. */
   flash?: boolean;
+  /**
+   * THE BASE'S CARD (E5): the same facts, the render on top and the name whole under it,
+   * two to a row. The row stays the default for every other surface.
+   */
+  layout?: 'row' | 'card';
 }) {
   const { t } = useTranslation();
   const nameRef = useRef<HTMLHeadingElement>(null);
@@ -254,6 +260,152 @@ export function UpgradeRow({
           shortCrystal > 0 ? (shortCrystal / Math.max(1, income.crystalPerHour)) * 60 : 0,
         )
       : null;
+
+  if (layout === 'card') {
+    const levelMark = maxLevel !== undefined && maxLevel > 1
+      ? <Rungs level={level ?? 0} max={maxLevel} next={!completed} />
+      : level !== undefined && level > 0
+        ? <span className="font-v2-mono">L{level}</span>
+        : tierMark ?? null;
+    return (
+      <div
+        data-layout="card"
+        data-progression-state={completed ? 'complete' : queued ? 'queued' : locked ? 'locked' : unowned ? 'available-unowned' : 'owned'}
+        data-faulty={faulty ? '' : undefined}
+        className={`group relative flex h-full flex-col overflow-hidden rounded-control border bg-v2-panel font-v2-ui ${
+          highlighted ? 'border-v2-self/60 ring-1 ring-v2-self/40' : 'border-v2-line'
+        } ${faulty ? 'bg-v2-ink/[0.04]' : ''} ${flash ? 'sweep' : ''}`}
+      >
+        {onOpen && (
+          <button
+            type="button"
+            aria-label={t('upgradeRow.about', { name })}
+            data-open-item
+            className="absolute inset-0 z-0 outline-none transition-colors hover:bg-v2-ink/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-v2-self/70"
+            onClick={() => {
+              haptic('tap');
+              onOpen();
+            }}
+          />
+        )}
+        {faulty && (
+          <span data-fault-mark aria-hidden className="pointer-events-none absolute right-2 top-2 z-20 text-v2-ink-3">
+            <FaultMark />
+          </span>
+        )}
+        {/* THE RENDER ON TOP, at the size it was drawn for (never a favicon). */}
+        <div
+          data-art
+          className="pointer-events-none relative z-10 grid h-[96px] place-items-center bg-[radial-gradient(60%_60%_at_50%_45%,rgb(46_60_96/45%),transparent_75%)]"
+        >
+          {art ? (
+            <img
+              src={art}
+              alt=""
+              aria-hidden
+              className={`size-[84px] object-contain transition-transform duration-300 group-hover:scale-[1.04] ${
+                artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''
+              }`}
+              loading="lazy"
+            />
+          ) : (
+            <span className={artLocked ? 'opacity-20' : unowned ? 'opacity-65' : ''}>{mark}</span>
+          )}
+          {artLocked && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <LockMark />
+            </span>
+          )}
+          {levelMark !== null && (
+            <span className={`absolute left-1.5 top-1.5 rounded-chip border border-v2-line-hi bg-v2-deep/80 px-1 text-micro text-v2-ink-2 ${flash ? 'pop' : ''}`}>
+              {levelMark}
+            </span>
+          )}
+        </div>
+        <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-1 px-2 pb-2 pt-1.5">
+          {/* THE NAME WHOLE: it wraps, it is never cut. */}
+          <h3 className="v2-name text-caption leading-tight [overflow-wrap:anywhere]">{name}</h3>
+          {nameAside && <span className="font-v2-mono text-micro text-v2-ink-3">{nameAside}</span>}
+          {(nameBadge !== undefined || tag) && (
+            <div className="flex flex-wrap items-center gap-1">
+              {nameBadge}
+              {tag && <p className="text-micro leading-snug text-v2-ink-3">{tag}</p>}
+            </div>
+          )}
+          {inactive ? (
+            <p className="text-micro leading-snug text-v2-warn">{inactive}</p>
+          ) : blocked && !acknowledging ? (
+            blocked.onFix ? (
+              <button
+                type="button"
+                data-blocked-reason
+                data-has-fix
+                onClick={(event) => {
+                  event.stopPropagation();
+                  haptic('tap');
+                  blocked.onFix?.();
+                }}
+                className="pointer-events-auto relative z-[1] -mx-1 flex items-start gap-1 rounded-chip px-1 text-left text-micro leading-snug text-v2-warn hover:bg-v2-warn/10"
+              >
+                <span>{blocked.reason}</span>
+                <span aria-hidden className="shrink-0">→</span>
+              </button>
+            ) : (
+              <p data-blocked-reason className="text-micro leading-snug text-v2-warn">{blocked.reason}</p>
+            )
+          ) : queued ? (
+            <p role="status" className="text-micro leading-snug text-v2-self">{queued}</p>
+          ) : completed ? (
+            <p role="status" className="text-micro leading-snug text-v2-ink-3">{completed}</p>
+          ) : gain ? (
+            <p className="font-v2-mono text-micro leading-snug">
+              <span className="text-v2-ink-3">{gain.label} </span>
+              {gain.resourcePair
+                ? <ResourceAmounts resources={gain.resourcePair.now} label={gain.now} />
+                : <span className="text-v2-ink-2">{gain.now}</span>}
+              <span className="mx-1 text-v2-ink-3" aria-label={t('upgradeRow.becomes')}>→</span>
+              {gain.resourcePair
+                ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
+                : <span className="text-v2-self">{gain.next}</span>}
+            </p>
+          ) : (
+            <p className="text-micro leading-snug text-v2-ink-3">{role}</p>
+          )}
+          {!completed && (!queued || queuedActionable) && (
+            <div className="mt-auto flex flex-wrap items-center gap-x-1 gap-y-0.5 pt-0.5">
+              <Price cost={cost} held={held} layout="row" />
+              {takes === undefined ? null : <TimeCost minutes={takes} />}
+            </div>
+          )}
+          {!affordable && !blocked && (!queued || queuedActionable) && waitMinutes !== null && (
+            <p className="text-micro leading-snug text-v2-ink-3">
+              <Trans
+                i18nKey="upgradeRow.affordableIn"
+                values={{ duration: duration(waitMinutes) }}
+                components={[<span key="n" className="font-v2-mono text-v2-warn" />]}
+              />
+            </p>
+          )}
+          {!onOpen && (
+            <span data-act className="pointer-events-auto mt-1">
+              <ActionButton
+                verb={verb}
+                cost={cost}
+                held={held}
+                {...(blocked && !acknowledging ? { blocked } : {})}
+                {...(completed || acknowledging || (queued && !queuedActionable)
+                  ? { completed: completed ?? queued }
+                  : {})}
+                onAct={onAct}
+                pending={pending}
+                {...(actionLabel ? { label: actionLabel } : {})}
+              />
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -712,11 +864,14 @@ export function DecisionGroup({
   question,
   children,
   aside,
+  bare = false,
 }: {
   problem: string;
   question: string;
   aside?: ReactNode;
   children: ReactNode;
+  /** The children draw their own surfaces (the Base's cards), so no plate goes round them. */
+  bare?: boolean;
 }) {
   return (
     <section className="flex flex-col gap-2">
@@ -728,7 +883,7 @@ export function DecisionGroup({
         </header>
         <p className="text-caption text-faint">{question}</p>
       </div>
-      <div className="plate plate-inset overflow-hidden">{children}</div>
+      {bare ? <div className="flex flex-col gap-2">{children}</div> : <div className="plate plate-inset overflow-hidden">{children}</div>}
     </section>
   );
 }

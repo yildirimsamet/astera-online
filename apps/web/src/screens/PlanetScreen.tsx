@@ -491,7 +491,7 @@ export function PlanetScreen({
             className={recovering ? 'pointer-events-none opacity-50' : ''}
             aria-disabled={recovering}
           >
-            <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
+            <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)} bare={active === 'grow'}>
               {active === 'defend' && <Defend {...shared} onBuild={openBuild} />}
               {active === 'orbit' && <Orbit {...shared} />}
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
@@ -2406,8 +2406,11 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
   return (
     <>
+      {/* E5: the buildings as cards, two to a row, the render on top (the mock's Base). */}
+      <div className="grid grid-cols-2 gap-2">
       <div id="row-CORE">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('CORE')}
           art={buildingArt('CORE', Math.max(1, core.level))}
           nextArt={nextBuildingArt('CORE', core.actionLevel)}
@@ -2444,6 +2447,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       */}
       <div id="row-REFINERY">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('REFINERY')}
           art={buildingArt('REFINERY', refinery.level)}
           name={buildingName('REFINERY')}
@@ -2485,6 +2489,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
       <div id="row-EXTRACTOR">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('EXTRACTOR')}
           art={buildingArt('EXTRACTOR', extractor.level)}
           name={buildingName('EXTRACTOR')}
@@ -2534,6 +2539,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       */}
       <div id="row-DEUTERIUM_PLANT">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('DEUTERIUM_PLANT')}
           art={buildingArt('DEUTERIUM_PLANT', plant.level)}
           name={buildingName('DEUTERIUM_PLANT')}
@@ -2575,6 +2581,7 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
 
       <div id="row-VAULT">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('VAULT')}
           art={buildingArt('VAULT', Math.max(1, vault.level))}
           nextArt={nextBuildingArt('VAULT', vault.actionLevel)}
@@ -2607,6 +2614,8 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
           highlighted={focused === 'VAULT'}
           flash={flashed === 'VAULT'}
         />
+      </div>
+
       </div>
 
       <Band label={t('planet.grow.multiplierBand')} note={t('planet.grow.multiplierNote')} />
