@@ -55,6 +55,12 @@ vi.mock('../../src/v2/shell/BellHost.js', () => ({
   ),
 }));
 
+vi.mock('../../src/v2/shell/ChatHost.js', () => ({
+  ChatHost: ({ onClose }: { onClose: () => void }) => (
+    <div role="dialog" aria-label="chat"><button type="button" onClick={onClose}>close chat</button></div>
+  ),
+}));
+
 vi.mock('../../src/v2/shell/FleetHost.js', () => ({
   FleetHost: ({ onClose }: { onClose: () => void }) => (
     <div role="dialog" aria-label="fleet"><button type="button" onClick={onClose}>close fleet</button></div>
@@ -147,12 +153,24 @@ describe('the v2 shell', () => {
     expect(screen.getByRole('navigation', { name: 'dock none' })).toBeInTheDocument();
   });
 
-  it('sends chat and the chronicle to the bell rather than to a page, without marking signals read', async () => {
+  /** Owner, 2026-09-24: chat is its own page, opened from its button on the galaxy — not a bell tab. */
+  it('opens chat as a page of its own, not under the bell, and marks no signal read', async () => {
     shell();
     await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for chat' }));
-    expect(screen.getByRole('dialog', { name: 'bell chat 0' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'chat' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /^bell/ })).toBeNull();
     expect(onPanel).not.toHaveBeenCalled();
     expect(openSignals).not.toHaveBeenCalled();
+    expect(screen.getByRole('navigation')).toHaveAttribute('data-over', '');
+    await userEvent.click(screen.getByRole('button', { name: 'close chat' }));
+    expect(screen.queryByRole('dialog', { name: 'chat' })).toBeNull();
+  });
+
+  it('closes chat when the dock moves', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for chat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'tab base' }));
+    expect(screen.queryByRole('dialog', { name: 'chat' })).toBeNull();
   });
 
   /**

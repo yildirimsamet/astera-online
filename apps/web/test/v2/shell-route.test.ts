@@ -51,8 +51,9 @@ describe('what a tab does', () => {
 });
 
 describe('what moved under the bell', () => {
-  it('sends chat and the chronicle to the bell sheet', () => {
-    expect(bellTabFor('chat')).toBe('chat');
+  /** Owner, 2026-09-24: chat left the bell for its own page; the chronicle stays. */
+  it('sends the chronicle to the bell sheet, and chat to a page of its own', () => {
+    expect(bellTabFor('chat')).toBeNull();
     expect(bellTabFor('chronicle')).toBe('chronicle');
     expect(bellTabFor('planet')).toBeNull();
     expect(bellTabFor(null)).toBeNull();

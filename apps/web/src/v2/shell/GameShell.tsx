@@ -6,6 +6,7 @@ import type { StripFocus } from '../../shell/PendingStrip.js';
 import { useOpenSignals } from '../../shell/Signals.js';
 import type { BellTab } from '../hud/BellSheet.js';
 import { BellHost } from './BellHost.js';
+import { ChatHost } from './ChatHost.js';
 import { FleetHost } from './FleetHost.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
@@ -34,20 +35,21 @@ export interface GameShellProps {
  * THE v2 SHELL. Spec B1–B4, K1 and the "every surface's new place" table
  * (docs/ui-v2/gozlemevi.md).
  *
- * The top bar and the Now line above the galaxy, the dock under it, and the two
- * sheets the shell owns itself: the bell (signals, chronicle, chat) and the
- * Fleet page. The galaxy never unmounts; every page opens over it and sits above
+ * The top bar and the Now line above the galaxy, the dock under it, and the three
+ * sheets the shell owns itself: the bell (signals, chronicle), chat and the Fleet
+ * page. The galaxy never unmounts; every page opens over it and sits above
  * the dock (`.v2-shell` publishes `--v2-dock-h`, which both sheet kits read), so
  * a tab is always one press from any page.
  *
- * Chat and the chronicle are bell tabs now (K1): a route to either opens the bell
- * instead of a page. Opening the bell on Signals marks the feed read, as the old
- * beacon did; opening it on chat or the chronicle does not, because nobody has
- * seen the signals yet.
+ * The chronicle is a bell tab (K1): a route to it opens the bell instead of a page.
+ * Chat is its own page (owner, 2026-09-24), opened from its button on the galaxy.
+ * Opening the bell on Signals marks the feed read, as the old beacon did; opening it
+ * on the chronicle, or opening chat, does not — nobody has seen the signals yet.
  */
 export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCraft, galaxy }: GameShellProps) {
   const [bell, setBell] = useState<{ tab: BellTab; justRead: ReadonlySet<string> } | null>(null);
   const [fleetOpen, setFleetOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   /** The Now line's timers sheet: closed by every move below, never left under a page. */
   const [nowOpen, setNowOpen] = useState(false);
   const [homeRequest, setHomeRequest] = useState(0);
@@ -59,12 +61,14 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
     setNowOpen(false);
     setBell(null);
     setFleetOpen(false);
+    setChatOpen(false);
     if (panel !== null) onPanel(null);
   };
 
   const openBell = (tab: BellTab): void => {
     setNowOpen(false);
     setFleetOpen(false);
+    setChatOpen(false);
     if (panel !== null) onPanel(null);
     setBell({ tab, justRead: tab === 'signals' ? openSignals() : new Set() });
   };
@@ -75,13 +79,19 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       openBell(tab);
       return;
     }
+    if (next === 'chat') {
+      clearPages();
+      setChatOpen(true);
+      return;
+    }
     setNowOpen(false);
     setBell(null);
     setFleetOpen(false);
+    setChatOpen(false);
     onPanel(next, stop, reportMissionId, focus);
   };
 
-  const active: DockTab | null = bell ? null : tabOfPanel(panel, fleetOpen);
+  const active: DockTab | null = bell || chatOpen ? null : tabOfPanel(panel, fleetOpen);
 
   const onSelect = (tab: DockTab): void => {
     setNowOpen(false);
@@ -136,6 +146,10 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
           onFocus={(focus) => { onFocusCraft(focus); }}
           onClose={() => { setFleetOpen(false); }}
         />
+      )}
+
+      {chatOpen && (
+        <ChatHost onClose={() => { setChatOpen(false); }} onFocusPlanet={onFocusPlanet} />
       )}
 
       {bell && (

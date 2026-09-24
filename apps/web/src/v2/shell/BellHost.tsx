@@ -1,6 +1,5 @@
-import { useChatUnread, useClanBadge, useGalaxy } from '../../api/queries.js';
+import { useGalaxy } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
-import { ChatScreen } from '../../screens/ChatScreen.js';
 import { ChronicleScreen } from '../../screens/ChronicleScreen.js';
 import { SignalsFeed, type SignalGo } from '../../shell/Signals.js';
 import { BellSheet, type BellTab } from '../hud/BellSheet.js';
@@ -22,16 +21,13 @@ export interface BellHostProps {
 /**
  * THE BELL SHEET, WIRED. Decision K1 (docs/ui-v2/gozlemevi.md).
  *
- * Each tab draws the screen that already exists for it — `SignalsFeed`, the
- * galaxy chronicle, chat — and every way out of them closes the sheet first so
- * the camera move is seen. Chat opens on the channel with something unread, as
- * the old launcher did.
+ * Each tab draws the screen that already exists for it — `SignalsFeed` and the
+ * galaxy chronicle — and every way out of them closes the sheet first so the camera
+ * move is seen. Chat is a page of its own (`ChatHost`).
  */
 export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, onOpenPlanet }: BellHostProps) {
   const { activePlanetId } = useWorld();
   const galaxy = useGalaxy();
-  const generalUnread = useChatUnread().data?.count ?? 0;
-  const clanUnread = useClanBadge().data?.clanChatUnread ?? 0;
   const planetIds = galaxy.data?.planets.map((planet) => planet.id);
 
   const fly = (planetId: string): void => {
@@ -45,7 +41,6 @@ export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, o
       onTab={onTab}
       onClose={onClose}
       unseen={justRead.size}
-      chatUnread={generalUnread + clanUnread}
       signals={(
         <SignalsFeed
           justRead={justRead}
@@ -67,12 +62,6 @@ export function BellHost({ tab, onTab, onClose, justRead, onGo, onFocusPlanet, o
             }
             fly(planetId);
           }}
-        />
-      )}
-      chat={(
-        <ChatScreen
-          initialChannel={generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general'}
-          onFocusPlanet={fly}
         />
       )}
     />

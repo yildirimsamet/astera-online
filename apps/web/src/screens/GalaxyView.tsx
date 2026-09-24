@@ -1051,6 +1051,17 @@ export function GalaxyView({
   useRequest(homeRequest, flyHome);
   useRequest(worldsRequest, () => { setWorldsOpen(true); });
 
+  /**
+   * CHAT'S BUTTON, LOW ON THE RIGHT (owner, 2026-09-24): back where it was, above the dock,
+   * where a thumb reaches it — people chat live, and it keeps them coming back. It rides the
+   * context slot's corner so it stands above a card and never under one.
+   */
+  const chatButton = showGuidance && showChat
+    ? <ChatChip unread={chatUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
+    : null;
+  /** The context slot draws at the foot while the season is live and no page is open. */
+  const slotShown = showGuidance && Boolean(planet.data) && panel === null && season.data?.status === 'live';
+
   const toggle = (): void => {
     setDetail((open) => !open);
   };
@@ -1155,11 +1166,8 @@ export function GalaxyView({
           <div data-sensor-toggles className="pointer-events-none">
             <ViewChip layersOn={showTelescopeReach || showRadarReach} onOpen={() => { setViewOpen(true); }} />
           </div>
-          {/* Home and chat, back in plain sight (owner, 2026-09-24): never under a card or a rail. */}
+          {/* Home, back in plain sight (owner, 2026-09-24): never under a card or a rail. */}
           {showGuidance && <HomeChip onHome={flyHome} />}
-          {showGuidance && showChat && (
-            <ChatChip unread={chatUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
-          )}
         </div>
       </div>
 
@@ -1495,9 +1503,15 @@ export function GalaxyView({
         })()}
 
       {season.data?.status === 'frozen' && panel === null && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto w-full max-w-sm px-2">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] z-30 mx-auto flex w-full max-w-sm flex-col gap-2 px-2">
+          {chatButton && <div className="flex justify-end">{chatButton}</div>}
           <NextSeason endsAt={season.data.endsAt} />
         </div>
+      )}
+
+      {/* Chat still in reach on a galaxy with no slot and no next-season card. */}
+      {chatButton && panel === null && !slotShown && season.data?.status !== 'frozen' && (
+        <div className="pointer-events-none absolute bottom-[calc(var(--v2-dock-h,96px)+0.5rem)] right-2 z-20">{chatButton}</div>
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
@@ -1526,8 +1540,9 @@ export function GalaxyView({
         commander who came through the Academy is coached, and the shield is read
         against this host's clock (H1) — `shieldUntil: season.data.shieldUntil`.
       */}
-      {showGuidance && planet.data && panel === null && season.data?.status === 'live' && (
+      {slotShown && planet.data && season.data && (
         <ContextSlot
+          {...(chatButton ? { corner: chatButton } : {})}
           now={now}
           selected={slotSelected}
           threats={threads.filter((thread) => thread.kind === 'incoming')}

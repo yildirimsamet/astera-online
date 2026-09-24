@@ -4,11 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { BellSheet, type BellSheetProps } from '../../src/v2/hud/BellSheet.js';
 
 /**
- * THE BELL SHEET. Decision K1 (docs/ui-v2/gozlemevi.md).
- *
- * Signals, the galaxy chronicle and chat were three buttons scattered over the
- * disc; they are one sheet under the bell with three tabs. Chat's unread dot
- * moves onto its tab.
+ * THE BELL SHEET. Decision K1 (docs/ui-v2/gozlemevi.md), revised by the owner on
+ * 2026-09-24: the bell holds what happened — Signals and the Chronicle. Chat left
+ * it for a button of its own on the galaxy, where a thumb reaches it.
  */
 
 const props = (over: Partial<BellSheetProps> = {}): BellSheetProps => ({
@@ -16,10 +14,8 @@ const props = (over: Partial<BellSheetProps> = {}): BellSheetProps => ({
   onTab: vi.fn(),
   onClose: vi.fn(),
   unseen: 0,
-  chatUnread: 0,
   signals: <p>signal rows</p>,
   chronicle: <p>chronicle rows</p>,
-  chat: <p>chat log</p>,
   ...over,
 });
 
@@ -36,13 +32,14 @@ describe('the bell sheet', () => {
   it('switches tabs through its host', async () => {
     const onTab = vi.fn();
     render(<BellSheet {...props({ onTab })} />);
-    await userEvent.click(screen.getByRole('tab', { name: /^Chat/ }));
-    expect(onTab).toHaveBeenCalledWith('chat');
+    await userEvent.click(screen.getByRole('tab', { name: 'Chronicle' }));
+    expect(onTab).toHaveBeenCalledWith('chronicle');
   });
 
-  it('carries chat’s unread dot on the chat tab', () => {
-    render(<BellSheet {...props({ chatUnread: 4 })} />);
-    expect(screen.getByRole('tab', { name: 'Chat · 4 unread' })).toBeInTheDocument();
+  it('holds Signals and the Chronicle, and no chat', () => {
+    render(<BellSheet {...props()} />);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Signals', 'Chronicle']);
+    expect(screen.queryByRole('tab', { name: /chat/i })).toBeNull();
   });
 
   it('says how many signals are new, on the signals tab', () => {
@@ -52,18 +49,9 @@ describe('the bell sheet', () => {
     expect(screen.queryByText('2 new')).toBeNull();
   });
 
-  /** Seen in the game: an empty feed stood 92% of the screen tall. Only chat needs a page. */
-  it('is as tall as its feed, and a full page for chat', () => {
-    const { rerender } = render(<BellSheet {...props()} />);
+  /** Seen in the game: an empty feed stood 92% of the screen tall. */
+  it('is as tall as its feed', () => {
+    render(<BellSheet {...props()} />);
     expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'half');
-    rerender(<BellSheet {...props({ tab: 'chat' })} />);
-    expect(screen.getByRole('dialog')).toHaveAttribute('data-detent', 'full');
-  });
-
-  it('lets the chat log own its scrolling', () => {
-    const { container, rerender } = render(<BellSheet {...props()} />);
-    expect(container.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');
-    rerender(<BellSheet {...props({ tab: 'chat' })} />);
-    expect(container.querySelector('[data-sheet-body]')).toHaveClass('overflow-hidden');
   });
 });

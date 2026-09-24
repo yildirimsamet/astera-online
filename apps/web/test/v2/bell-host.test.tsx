@@ -6,22 +6,17 @@ import { BellHost } from '../../src/v2/shell/BellHost.js';
 /**
  * THE BELL SHEET, WIRED. Decision K1 (docs/ui-v2/gozlemevi.md).
  *
- * Each tab draws the screen that already exists for it — the signals feed, the
- * galaxy chronicle, chat — and every way out of them closes the sheet first. The
- * chronicle's own-world line opens the base rather than flying to it; chat opens
- * on the channel with something unread.
+ * Each tab draws the screen that already exists for it — the signals feed and the
+ * galaxy chronicle — and every way out of them closes the sheet first. The
+ * chronicle's own-world line opens the base rather than flying to it. Chat is a page
+ * of its own now (`chat-host.test.tsx`).
  */
-
-let clanChatUnread = 0;
-let generalUnread = 0;
 
 vi.mock('../../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../src/api/queries.js');
   return {
     ...actual,
     useGalaxy: () => ({ data: undefined }),
-    useChatUnread: () => ({ data: { count: generalUnread } }),
-    useClanBadge: () => ({ data: { available: true, attentionCount: 0, clanChatUnread } }),
   };
 });
 
@@ -47,11 +42,8 @@ vi.mock('../../src/screens/ChronicleScreen.js', () => ({
   ),
 }));
 
-vi.mock('../../src/screens/ChatScreen.js', () => ({
-  ChatScreen: ({ initialChannel }: { initialChannel?: string }) => <p>chat on {initialChannel}</p>,
-}));
 
-const setup = (tab: 'signals' | 'chronicle' | 'chat', justRead: ReadonlySet<string> = new Set()) => {
+const setup = (tab: 'signals' | 'chronicle', justRead: ReadonlySet<string> = new Set()) => {
   const on = { onTab: vi.fn(), onClose: vi.fn(), onGo: vi.fn(), onFocusPlanet: vi.fn(), onOpenPlanet: vi.fn() };
   render(<BellHost tab={tab} justRead={justRead} {...on} />);
   return on;
@@ -80,11 +72,9 @@ describe('the wired bell sheet', () => {
     expect(on.onFocusPlanet).toHaveBeenCalledWith('far');
   });
 
-  it('opens chat on the channel with something unread, and dots the tab', () => {
-    clanChatUnread = 2;
-    generalUnread = 0;
-    setup('chat');
-    expect(screen.getByText('chat on clan')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Chat · 2 unread' })).toBeInTheDocument();
+  it('draws no chat: chat is a page of its own now', () => {
+    setup('signals');
+    expect(screen.queryByText(/chat on/)).toBeNull();
+    expect(screen.queryByRole('tab', { name: /chat/i })).toBeNull();
   });
 });

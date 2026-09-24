@@ -45,7 +45,11 @@ export function dockAction(tab: DockTab, active: DockTab | null): DockAction {
   return { kind: 'panel', panel: PAGE[tab] };
 }
 
-/** K1: chat and the chronicle are tabs of the bell sheet now, not pages of their own. */
-export function bellTabFor(panel: Panel): 'chat' | 'chronicle' | null {
-  return panel === 'chat' || panel === 'chronicle' ? panel : null;
+/**
+ * K1: the chronicle is a tab of the bell sheet, not a page of its own. Chat was too,
+ * until the owner gave it back its own page and button (2026-09-24): `GameShell`
+ * opens it itself.
+ */
+export function bellTabFor(panel: Panel): 'chronicle' | null {
+  return panel === 'chronicle' ? panel : null;
 }

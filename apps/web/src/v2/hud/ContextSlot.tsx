@@ -217,6 +217,13 @@ export interface ContextSlotProps {
    */
   dismissed: ReadonlySet<string>;
   onDismiss: (keys: readonly string[]) => void;
+  /**
+   * THE FOOT-RIGHT CORNER: chat's button (owner, 2026-09-24), low on the right where a
+   * thumb reaches it. It stands right above the card in the same column — never under
+   * it — and alone above the dock when there is no card; while a selection keeps the
+   * screen, its panel has the foot and the corner gives way (H5).
+   */
+  corner?: ReactNode;
 }
 
 /**
@@ -249,6 +256,7 @@ export function ContextSlot({
   onClearSelection,
   dismissed,
   onDismiss,
+  corner,
 }: ContextSlotProps) {
   const { t } = useTranslation();
   const [lookingAtThreat, setLookingAtThreat] = useState(false);
@@ -270,9 +278,23 @@ export function ContextSlot({
     lookingAtThreat,
   });
 
+  /** The foot of the galaxy: the corner over the card, one column, above the dock. */
+  const foot = (content: ReactNode) => (
+    <div
+      data-slot-foot
+      className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20 flex flex-col gap-2"
+    >
+      {corner !== undefined && <div className="flex justify-end">{corner}</div>}
+      {content}
+    </div>
+  );
+
   if (slot.card === 'selected' || slot.card === null) {
-    if (slot.threatPill === 0) return null;
+    const lone = slot.card === null && corner !== undefined ? foot(null) : null;
+    if (slot.threatPill === 0) return lone;
     return (
+      <>
+      {lone}
       <div className="pointer-events-none absolute left-2 top-2 z-20">
         <button
           type="button"
@@ -287,6 +309,7 @@ export function ContextSlot({
           {slot.threatPill}
         </button>
       </div>
+      </>
     );
   }
 
@@ -354,7 +377,6 @@ export function ContextSlot({
     );
   }
 
-  return card === null
-    ? null
-    : <div className="pointer-events-none absolute inset-x-2 bottom-[calc(var(--v2-dock-h,0px)+0.5rem)] z-20">{card}</div>;
+  if (card === null) return corner === undefined ? null : foot(null);
+  return foot(card);
 }

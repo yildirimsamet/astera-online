@@ -216,6 +216,33 @@ describe('the context slot', () => {
     localStorage.clear();
   });
 
+  /**
+   * THE FOOT-RIGHT CORNER (owner, 2026-09-24): chat lives low on the right where a thumb
+   * reaches it. It stands right above the card, never under it, and alone above the dock
+   * when there is no card; while a selection keeps the screen, its panel has the foot (H5).
+   */
+  describe('its corner', () => {
+    const corner = <button type="button">chat</button>;
+
+    it('stands alone at the foot when there is no card', () => {
+      render(<ContextSlot {...props({ corner })} />);
+      expect(screen.getByRole('button', { name: 'chat' })).toBeInTheDocument();
+    });
+
+    it('stands right above the card, in the same column, never under it', () => {
+      render(<ContextSlot {...props({ corner, threats: [attack(9)] })} />);
+      const button = screen.getByRole('button', { name: 'chat' });
+      const card = screen.getByRole('region', { name: 'Incoming attack' });
+      expect(button.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(button.closest('[data-slot-foot]')).toBe(card.closest('[data-slot-foot]'));
+    });
+
+    it('gives way while a selection keeps the screen', () => {
+      render(<ContextSlot {...props({ corner, selected: true })} />);
+      expect(screen.queryByRole('button', { name: 'chat' })).toBeNull();
+    });
+  });
+
   it('leaves a selection its screen, with the attack as a pill that takes the player to it', async () => {
     const onClearSelection = vi.fn();
     render(<ContextSlot {...props({ selected: true, threats: [attack(9), attack(20)], onClearSelection })} />);

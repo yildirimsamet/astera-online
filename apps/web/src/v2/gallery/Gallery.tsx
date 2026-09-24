@@ -195,10 +195,8 @@ function Views({ view }: { view: string }) {
         onTab={noop}
         onClose={noop}
         unseen={2}
-        chatUnread={4}
         signals={<p className="text-caption text-v2-ink-2">Signal rows draw here (SignalsFeed).</p>}
         chronicle={null}
-        chat={null}
       />
     );
   }
