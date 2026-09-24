@@ -72,26 +72,26 @@ export function PlanetHero({
    */
   const loyalty = planet.loyalty ?? null;
   const loyaltyLine = loyalty ? (
-    <div data-loyalty data-testid="loyalty-line" className="border-t border-line-soft pt-1">
+    <div data-loyalty data-testid="loyalty-line" className="border-t border-v2-line/70 pt-1">
       <div className="flex items-baseline gap-2">
-        <span className="legend text-faint">{t('faults.loyalty.title')}</span>
-        <span className="h-1 flex-1 overflow-hidden rounded-full bg-void/60">
+        <span className="v2-legend text-v2-ink-3">{t('faults.loyalty.title')}</span>
+        <span className="h-1 flex-1 overflow-hidden rounded-full bg-v2-deep/60">
           <span
             data-loyalty-bar
-            className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-bone/50'}`}
+            className={`block h-full rounded-full ${loyalty.value <= 25 ? 'bg-alert' : 'bg-v2-ink/50'}`}
             style={{ width: `${String(Math.max(2, Math.round(loyalty.value)))}%` }}
           />
         </span>
-        <span className="num text-caption text-bone">
+        <span className="font-v2-mono text-caption text-v2-ink">
           {t('faults.loyalty.bar', { value: Math.round(loyalty.value) })}
         </span>
         {loyalty.minutesLeft !== null && (
-          <span className="num text-micro text-faint">
+          <span className="font-v2-mono text-micro text-v2-ink-3">
             {t('faults.loyalty.left', { time: duration(loyalty.minutesLeft) })}
           </span>
         )}
       </div>
-      <p className="mt-0.5 text-micro text-faint">{t('faults.loyalty.battleLoss')}</p>
+      <p className="mt-0.5 text-micro text-v2-ink-3">{t('faults.loyalty.battleLoss')}</p>
     </div>
   ) : null;
 
@@ -111,36 +111,50 @@ export function PlanetHero({
           changes is which half is loud. CAPITAL WORLD is what the header does
           not say.
         */}
-        <div
-          data-planet-subject
-          className="flex items-center gap-2 border-b border-line-soft pb-1"
-        >
-          {/* The portrait and the one fact about it that is not drawn. */}
-          <div data-planet-portrait className="shrink-0">
-            <div className="relative grid size-20 place-items-center" aria-hidden>
-              <span
-                className={`absolute top-0 size-2.5 ${
-                  planet.planet.kind === 'COLONY'
-                    ? 'rotate-180 bg-opportunity [clip-path:polygon(50%_0,100%_100%,0_100%)]'
-                    : 'rotate-45 border border-crystal bg-crystal/30'
-                }`}
+        {/*
+          THE WORLD IS THE HERO (E5, the mock's Base): the portrait centred and large, its
+          satellites on the ring around it, the name and the kind under it. The readings
+          follow in a row of their own, so none of them is squeezed beside the picture.
+        */}
+        <div data-planet-subject className="flex flex-col items-center gap-1 pb-1 pt-1">
+          <div data-planet-portrait className="flex flex-col items-center">
+            <div className="relative grid size-[156px] place-items-center" aria-hidden>
+              <div
+                className="pointer-events-none absolute inset-[-10px]"
+                style={{ background: 'radial-gradient(55% 50% at 50% 48%, rgba(46,230,200,0.10) 0%, transparent 70%)' }}
               />
+              <div className="absolute size-[140px] rounded-full border border-v2-line-hi/60" />
+              <div className="absolute size-[140px] animate-[spin_84s_linear_infinite]">
+                {planet.orbit.map((type, i) => {
+                  const angle = (i / Math.max(1, planet.orbit.length)) * 360;
+                  return (
+                    <img
+                      key={type}
+                      src={SATELLITE_ART[type]}
+                      alt=""
+                      className="absolute left-1/2 top-1/2 size-7 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]"
+                      style={{ transform: `rotate(${String(angle)}deg) translate(70px) rotate(${String(-angle)}deg) translate(-50%, -50%)` }}
+                    />
+                  );
+                })}
+              </div>
               <PlanetSigil
                 seed={planet.planet.id}
-                size={68}
+                size={104}
                 shielded={coreOnline && planet.planet.shield > 0}
               />
             </div>
-            <TierMark planet={planet} />
+            <p className="v2-name max-w-full truncate text-body">{planet.planet.name}</p>
+            <div className="flex items-baseline gap-1.5 text-micro text-v2-ink-3">
+              <span className={`uppercase tracking-wide ${planet.planet.kind === 'COLONY' ? 'text-v2-self' : 'text-v2-ink-2'}`}>
+                {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
+              </span>
+              <span aria-hidden>·</span>
+              <TierMark planet={planet} />
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className={`name truncate ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
-              {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
-            </p>
-            <p className="legend mt-1 truncate">{planet.planet.name}</p>
-          </div>
-          <Readouts planet={planet} coreOnline={coreOnline} />
         </div>
+        <Readouts planet={planet} coreOnline={coreOnline} />
         
         <Verdicts planet={planet} exposed={exposed} coreOnline={coreOnline} />
         {disruptedFor > 0 && <Disrupted ms={disruptedFor} />}
@@ -170,7 +184,7 @@ export function PlanetHero({
           />
 
 
-          <div className="absolute size-[132px] rounded-full border border-line-soft/50" />
+          <div className="absolute size-[132px] rounded-full border border-v2-line/70/50" />
           <div className="absolute size-[132px] animate-[spin_84s_linear_infinite]">
             {orbitals.map((type, i) => {
               const angle = (i / Math.max(1, orbitals.length)) * 360;
@@ -199,13 +213,13 @@ export function PlanetHero({
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className={`legend mb-1 ${ planet.planet.kind === 'COLONY' ? 'text-opportunity' : 'text-crystal' }`}>
+          <p className={`v2-legend mb-1 ${ planet.planet.kind === 'COLONY' ? 'text-v2-self' : 'text-crystal' }`}>
             {t(planet.planet.kind === 'COLONY' ? 'planetHero.colony' : 'planetHero.capital')}
           </p>
-          <h1 className="headline text-figure leading-tight text-bone">
+          <h1 className="v2-name text-figure leading-tight text-v2-ink">
             {planet.planet.name}
           </h1>
-          <div className="plate plate-inset mt-2 px-3 py-2">
+          <div className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 mt-2 px-3 py-2">
             <Firepower planet={planet} coreOnline={coreOnline} />
           </div>
           <div className="mt-2 flex gap-2">
@@ -247,7 +261,7 @@ export function PlanetHero({
 function TierMark({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   return (
-    <p data-planet-tier className="legend mt-1 text-center text-micro">
+    <p data-planet-tier className="v2-legend mt-1 text-center text-micro">
       {t('planetHero.tier', { tier: coreTier(planet.buildings.CORE ?? 0) })}
     </p>
   );
@@ -277,8 +291,8 @@ function Firepower({ planet, coreOnline }: { planet: PlanetView; coreOnline: boo
         beside the portrait, which was already cut. The launch sheet's heading has
         the room and carries the glyph; this carries the word.
       */}
-      <p className="legend">{t('planetHero.firepower')}</p>
-      <p data-testid="planet-firepower" className="readout mt-1 text-body text-bone">
+      <p className="v2-legend">{t('planetHero.firepower')}</p>
+      <p data-testid="planet-firepower" className="font-v2-mono font-semibold mt-1 text-body text-v2-ink">
         {full(combatValue(garrisonOf(planet.fleet, coreOnline ? planet.ground : {})))}
       </p>
     </>
@@ -298,8 +312,8 @@ function Readouts({ planet, coreOnline }: { planet: PlanetView; coreOnline: bool
       could press. `--text-figure` is 21px, still the largest thing here, and it
       leaves the block readable as one group instead of one number and some others.
     */
-    <div className="flex items-stretch gap-1 ml-auto">
-      <div className="plate plate-inset flex-1 px-2 py-2 min-w-[80px]">
+    <div className="flex items-stretch gap-2">
+      <div className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 flex-1 px-2 py-2 min-w-[80px]">
         <Firepower planet={planet} coreOnline={coreOnline} />
       </div>
       {/*
@@ -314,7 +328,7 @@ function Readouts({ planet, coreOnline }: { planet: PlanetView; coreOnline: bool
         plate shares a fixed-height flex row with Firepower where a fourth line
         would push the whole sheet down.
       */}
-      <div data-testid="planet-rates" className="plate plate-inset flex-1 px-2 py-2 min-w-[100px]">
+      <div data-testid="planet-rates" className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 flex-1 px-2 py-2 min-w-[100px]">
         <div className="space-y-0.5">
           <Rate
             id="alloy"
@@ -348,7 +362,7 @@ function Readouts({ planet, coreOnline }: { planet: PlanetView; coreOnline: bool
 function Disrupted({ ms }: { ms: number }) {
   const { t } = useTranslation();
   return (
-    <p className="num mt-3 rounded-chip border border-threat/40 bg-threat/10 px-3 py-2 text-center text-caption text-threat-ink">
+    <p className="font-v2-mono mt-3 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 text-center text-caption text-v2-hostile">
       {t('planetHero.disrupted', { countdown: countdown(ms) })}
     </p>
   );
@@ -418,7 +432,7 @@ function Verdicts({
                     cells={8}
                     label={t('planetHero.shieldMeter')}
                   />
-                  <p className="mt-1 text-micro text-faint">
+                  <p className="mt-1 text-micro text-v2-ink-3">
                     {t('planetHero.shieldRegen', { amount: compact(planet.planet.shieldPerHour) })}
                   </p>
                 </div>
@@ -509,7 +523,7 @@ function StoreBar({ held, cap, safe, tone }: {
             style={{ opacity: i < lit ? 0.9 : 1 }}
           />
         ))}
-        {over && <span aria-hidden className="absolute -right-0.5 -top-0.5 h-[11px] w-[3px] rounded-cell bg-bone/90" />}
+        {over && <span aria-hidden className="absolute -right-0.5 -top-0.5 h-[11px] w-[3px] rounded-cell bg-v2-ink/90" />}
       </span>
       {/*
         THE PROTECTED ZONE IS A BRACKET AROUND THE CELLS, NOT A DIFFERENT FILL.
@@ -531,7 +545,7 @@ function StoreBar({ held, cap, safe, tone }: {
           />
           <span
             aria-hidden
-            className="pointer-events-none absolute top-0 -translate-x-1/2 text-bone"
+            className="pointer-events-none absolute top-0 -translate-x-1/2 text-v2-ink"
             style={{ left: `${String((safeCells / CELLS) * 50)}%` }}
           >
             <ShieldIcon className="size-2.5" />
@@ -553,10 +567,10 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
   ] as const;
 
   return (
-    <div className="plate plate-inset col-span-2 flex flex-col gap-1.5 px-3 py-2">
+    <div className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 col-span-2 flex flex-col gap-1.5 px-3 py-2">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="legend">{t('planetHero.storeLabel')}</p>
-        <p className={`num text-label ${exposed > 0 ? 'text-alloy' : 'text-opportunity'}`}>
+        <p className="v2-legend">{t('planetHero.storeLabel')}</p>
+        <p className={`font-v2-mono text-label ${exposed > 0 ? 'text-alloy' : 'text-v2-self'}`}>
           {t('planetHero.atRiskValue', { amount: compact(exposed) })}
         </p>
       </div>
@@ -572,15 +586,15 @@ function VaultVerdict({ planet, exposed }: { planet: PlanetView; exposed: number
             })}
           >
             <img src={RESOURCE_ART[id]} alt="" aria-hidden className="size-4 shrink-0 object-contain" />
-            <span className="num w-[86px] shrink-0 truncate text-caption text-bone">
+            <span className="font-v2-mono w-[86px] shrink-0 truncate text-caption text-v2-ink">
               {compact(Math.floor(held))}
-              <span className="text-faint">{`/${compact(cap)}`}</span>
+              <span className="text-v2-ink-3">{`/${compact(cap)}`}</span>
             </span>
             <StoreBar held={held} cap={cap} safe={safeAmount} tone={id} />
           </div>
         ))}
       </div>
-      <p className="text-micro leading-snug text-faint">{t('planetHero.storeRule')}</p>
+      <p className="text-micro leading-snug text-v2-ink-3">{t('planetHero.storeRule')}</p>
     </div>
   );
 }
@@ -592,11 +606,11 @@ function Rate(
   return (
     <p
       {...(id === undefined ? {} : { 'data-testid': `rate-${id}` })}
-      className={`num flex items-center gap-2 text-caption ${tone}`}
+      className={`font-v2-mono flex items-center gap-2 text-caption ${tone}`}
     >
       <img src={art} alt="" aria-hidden className="size-3.5 object-contain" />
       {compact(value)}
-      <span className="text-micro text-faint">{t('planetHero.perHourSuffix')}</span>
+      <span className="text-micro text-v2-ink-3">{t('planetHero.perHourSuffix')}</span>
     </p>
   );
 }
@@ -617,8 +631,8 @@ function Rate(
 const TONE = {
   gap: 'text-alloy',
   warn: 'text-alloy',
-  good: 'text-opportunity',
-  neutral: 'text-dim',
+  good: 'text-v2-self',
+  neutral: 'text-v2-ink-2',
 } as const;
 
 function Verdict({
@@ -635,14 +649,14 @@ function Verdict({
   testId?: string;
 }) {
   return (
-    <div data-testid={testId} className="plate plate-inset px-3 py-2">
-      <p className="legend">{label}</p>
+    <div data-testid={testId} className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 px-3 py-2">
+      <p className="v2-legend">{label}</p>
       {/* A verdict is a WORD — "Weak", "None". A word does not need 18px to land,
          and at 18px two of them beside a 30px figure read as a third heading level
          nobody asked for. */}
-      <p className={`readout mt-1 text-body ${TONE[tone]}`}>{value}</p>
+      <p className={`font-v2-mono font-semibold mt-1 text-body ${TONE[tone]}`}>{value}</p>
       {typeof detail === 'string'
-        ? <p className="num mt-1 text-micro text-faint">{detail}</p>
+        ? <p className="font-v2-mono mt-1 text-micro text-v2-ink-3">{detail}</p>
         : detail}
     </div>
   );
