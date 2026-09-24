@@ -114,7 +114,9 @@ routes" (koloni arızası türleri listede yok — birleşimden önce de kırmı
 ## Sıradaki iş
 **Geri bildirim 3 (13 madde) bitti** — aşağıda, commit'lerle (45f496f · eb18bf0 · 4a846b1 · 0c75629 · 1e63c0d · fc4ce2d).
 Web: tsc + lint temiz, tam paket 4185 yeşil, yalnız bilinen 9 kırmızı. Sunucu: madencilik/ayrılma/ilgili 8 dosya yeşil
-(tam paket teslimde). **Sıradaki: F8'e dönüş** (aşağıdaki "Kalan").
+(tam paket teslimde). **Sıradaki: F9 · 3D gezegenler (K7)** — plan: 16 `.glb` (Draco) → meshopt + düşük LOD (`tools/models.mjs`), Sektör
+ölçeğinde görünür/yakın dünyalar düşük LOD 3D, odak ve Yörünge'de tam model, uzakta PNG billboard kalır; görünüm başına
+1 draw call; hata olursa PNG'ye düşer.
 
 ### Geri bildirim 3 (sahip, 2026-09-24) — 13 madde, gruplu plan
 Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
@@ -142,7 +144,7 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
 - **G · Galaksi sahnesi (9, 10).** Uçan her şeyin dış çizgisi %50 ince, renk parlaklığı %25 az; galaktik konvoyun
   rüzgârı yerine sade hız çizgileri ("rüzgârı delen araç"): 12 çizgi, tek instanced draw, gürültü yok. [x]
 
-**F8 · E11 Masaüstü (K10) — yarıda (F8a commit'li).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`.
+**F8 · E11 Masaüstü (K10) — tamam (41b4eab · 650776d).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`.
 Biten (F8a): kırılımlar `v2-split` 700 / `v2-desk` 1100 (`tokens.css`, `lib/media.ts` `DESK_QUERY`); ≥1100 dock üst çubukta
 sekme çubuğu (`Dock bar`, 1–5 tuş ipucu), solda 260 px `Outline` (Dünyalar · Havada · Kuyruklar; `lib/outline.ts`,
 `OutlineHost`); `--v2-dock-h` 0; ≥700 v2 Sheet `placement`: sayfa sağ sütun (440 / min(720, 50vw), karartma yok, tam boy),
@@ -150,9 +152,11 @@ diyalog (yalnız `fit`: eşya, inşa, sen yokken) ortada 32 rem; İstihbarat ve 
 sütun; bağlam kartı ve odak paneli ≥700 sağda 320 px; `--v2-top-h` kabuk ölçer. Klavye (`lib/shortcuts.ts`): 1–5 sekme,
 Space seçiliyi çerçeveye getirir (`centerSignal` → `Rig`) / seçim yoksa eve uçar, sayfa yokken Esc seçimi bırakır.
 1280 ve 1920'de fotoğraflandı.
-Kalan: sayfa açıkken galaksi merkezinin görünür alana kayması (seçili dünya sayfanın altında kalabiliyor); raster
-görsellerin doğal boyut denetimi (Üs kartları 720 px sütunda); eski kit sayfalarının (menü, sıralama) masaüstü görünümü;
-700–1099 aralığının fotoğrafı; Almanca üst çubuk.
+Sonra: sağa yaslı sayfa açıkken kameranın öznesi açık alanın ortasında (`ViewOffset`: projeksiyon kaydırması,
+`lib/cover.ts` `rightCover`; diyalog ve telefon alt sayfası etkilemez) `650776d`. Kabul: 1280/1920 (EN) ve 1100/1280 (DE)
+her ekranda ölçüldü — hiçbir raster görsel doğal boyutunu aşmıyor (`upscale-check`); DE sekme çubuğu 1100'de sığıyor;
+900'de iki sütun doğrulandı. Filo sayfası içerik kadar açılıyor (`c8f0b95`, sahip 2026-09-25).
+F10'a devreden: eski kit Komutan sayfasında DE sabit etiket sütunu kesiliyor ("BILDQUALIT…", "DATENSCHU…").
 
 **F7 (tamam):** S3 `16cc039` — GET `/api/session/return` hiçbir şey yazmaz, `asOf` döner; POST `/api/session/return/seen`
 pencereyi `asOf`'a kadar kapatır (geri gitmez, şimdiyi aşmaz) ve kilit-açmaları o an kaydeder; girişler tür + parametre.
