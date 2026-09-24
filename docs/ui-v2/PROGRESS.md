@@ -112,9 +112,14 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D6 · Sohbet sheet'i** (A1 ile kendi sayfası, `ChatHost`). Tasarım: tuval `D6-sohbet`. Sayfa olduğu için tam yükseklik
-kalır (sahip: "sohbet gibi sayfa olanlar tam kalır"). Sonra D'nin kapanış taraması (kalan beyaz/gri çubuklar, eski kitte kalan
-sheet'ler) ve F7.
+**F7 · E10 Sen yokken (K5) + S3.** Şartname: `grep -n "^#### E10 ·\|^| K5\|S3" docs/ui-v2/gozlemevi.md`. Galaksinin ilk
+karesinden sonra, bloke etmeden; eşik (öneri 30 dk) ve en az bir durum dışı giriş; en fazla 3 satır (alarm, kazanç, fırsat)
+tek eylemle; `lastSeenAt` GET'te değil kapatma onayında (POST) ilerler; yerelleştirme istemcide (sunucu tür + parametre, S3).
+Sunucu TDD `astera_uiv2_test` üzerinde seri.
+
+**D (tamam):** D1–D6 ve 2. tur kuralları bitti. Kapanış çubuk taraması `aeb6e67` (sadakat, transfer/ticaret evde kalan
+savunma, rapor sahnesi hayatta kalanlar, SurvivorBar, ForceRuler tabanı artık kimin olduğunu söyleyen renkte). Eski kitte
+kalan ama D kapsamı dışındaki yüzeyler (sezon arşivi, liderlik, menü, PendingStrip) F10 temizliğine.
 
 Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
 (kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
@@ -154,6 +159,10 @@ halka, 24 saat çizgisi — son 6 saat kırmızı —, kayıt). v2 Sheet `fit` i
 kuruluş kapısı. Klan yardımı geri çağrılamaz → basılı tut (K4). Savaş odası (E9): hedef + toplanma hattında dalgalar önde,
 dalga başına pay çubuğu, klan hangarı çubuk. Galeri `?view=clan|clan-strength|clan-members|clan-aid|wave`.
 **Kalan (D5 dışı, not):** Güç sekmesinin iri istatistik kartları ve üyeler listesinin tasarımdaki satır düzeni ince ayar ister.
+
+**D6 (tamam) `98a4af8`:** Sohbet: iki oda v2 anahtarında (sekme adları tam: "Genel — 1 okunmamış"), dil seçici satır
+sonunda küçük; mesajlar balon (baş harfler, kendi mesajın sağda senin renginde / klanda müttefik renginde, yönetici sessiz
+altın halka — artık `premium`), hap şeklinde yazma alanı + yuvarlak gönder.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
