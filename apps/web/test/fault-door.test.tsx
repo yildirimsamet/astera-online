@@ -142,6 +142,19 @@ describe('arızalı satırın kapısı', () => {
 
 /** Onarım şeridi: bir yokluk, ve sahibin talimatı tam olarak o yokluk. */
 describe('onarım şeridi', () => {
+  /**
+   * E5: "Koloni: arıza ve sadakat bloğu en üstte." Bir arıza dünyanın kendisinden,
+   * üretiminden ve kuyruklarından önce okunur — kırık olan şey, oyuncunun ilk yapacağı iştir.
+   */
+  it('dünyanın ve kuyrukların üstünde, sadakatle birlikte en başta durur', () => {
+    show([fault('VAULT_LEAK')], 'grow');
+    const strip = screen.getByRole('region', { name: 'Repairs' });
+    const subject = document.querySelector('[data-planet-subject]')!;
+    const loyalty = screen.getByTestId('loyalty-line');
+    expect(strip.compareDocumentPosition(subject) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(loyalty.compareDocumentPosition(subject) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('hiç arıza yokken hiçbir şey çizmez', () => {
     show([], 'grow');
     expect(screen.queryByRole('region', { name: 'Repairs' })).toBeNull();

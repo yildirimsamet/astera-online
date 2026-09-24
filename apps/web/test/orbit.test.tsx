@@ -168,10 +168,11 @@ describe('the orbit surface', () => {
     expect(rack).toHaveTextContent('Empty');
   });
 
+  /** On the Defence tab's head, beside the Aegis it measures (E5). */
   it('shows the live Aegis charge, capacity and recovery rate', () => {
     show(
       { instruments: { AEGIS: 3 } },
-      'orbit',
+      'defend',
       { shield: 80, shieldMax: 120, shieldPerHour: 48 },
     );
     expect(screen.getByText('80 / 120')).toBeInTheDocument();

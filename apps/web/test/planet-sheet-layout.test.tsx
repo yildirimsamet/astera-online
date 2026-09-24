@@ -202,3 +202,24 @@ describe('what a Death Star strike actually does', () => {
       .not.toBeInTheDocument();
   });
 });
+
+/**
+ * THE BASE CARRIES PRODUCTION; THE DEFENCE TAB CARRIES WHAT STANDS. E5, the mock's
+ * Base: the world, then one production row, then the queues and the tabs. What the
+ * hero used to stack under the world — firepower, the defence and shield verdicts,
+ * the fleet — opens the tab whose question it answers, so none of it is lost.
+ */
+describe('the Base and its Defence tab', () => {
+  it('draws the production row under the world, and not the defence readings', () => {
+    show('grow');
+    expect(screen.getByTestId('planet-rates')).toBeInTheDocument();
+    expect(screen.queryByTestId('planet-firepower')).toBeNull();
+  });
+
+  it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {
+    show('defend');
+    for (const id of ['planet-firepower', 'planet-defence', 'planet-shield', 'planet-exposed']) {
+      expect(screen.getByTestId(id), id).toBeInTheDocument();
+    }
+  });
+});

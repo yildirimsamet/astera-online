@@ -28,6 +28,8 @@ import { compact } from '../lib/format.js';
  * NOTHING TO SAY WITHOUT SHIPS. Guns never run, and a Prospector never stands in the
  * line, so a world with neither armed nor unarmed ships at home gets no line at all.
  *
+ * A DRY TANK IS A GAP YOU CAN CLOSE (E5 · K2): yellow, never the red of a threat.
+ *
  * THE GUNS ARE COUNTED AS IF ONLINE. An outage or an EMP takes them out of the line
  * and lowers the real threshold; the readout states the ordinary rule rather than
  * tracking a fault clock the Defend tab already shows beside it.
@@ -57,7 +59,7 @@ export function EscapeReadout({
     <p
       data-testid="escape-readout"
       {...(short ? { 'data-short': '' } : {})}
-      className={`px-3 py-2 text-caption leading-snug ${short ? 'text-threat-ink' : 'text-dim'}`}
+      className={`px-3 py-2 text-caption leading-snug ${short ? 'text-v2-warn' : 'text-v2-ink-2'}`}
     >
       {short
         ? t('planet.defend.escapeShort', { at, fuel, stock })

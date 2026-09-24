@@ -1574,7 +1574,6 @@ export function GalaxyView({
         >
           <BaseSwitch value="world" onChange={openBase} />
           <PlanetScreen
-            embedded
             onOpenResearch={() => {
               onPanel('research');
             }}

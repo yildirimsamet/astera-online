@@ -23,7 +23,7 @@ export interface ResearchConstellationProps {
 }
 
 /** A line down a column runs under the labels on it; a patch of the sheet's colour keeps them read. */
-const HALO = 'rounded-sm bg-v2-panel/85 px-0.5';
+const HALO = 'rounded-cell bg-v2-panel/85 px-0.5';
 
 /** Where each group's name sits in its quarter: the left pair on the left, the right pair on the right. */
 const LABEL_SIDE: Record<ResearchGroupId, 'left' | 'right'> = {

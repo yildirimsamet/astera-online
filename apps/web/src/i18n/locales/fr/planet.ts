@@ -454,6 +454,10 @@ export const planetHero = {
   deuteriumSafe: "{{amount}} Deutérium protégés",
   atRisk: "À risque",
   atRiskValue: "{{amount}} exposés",
+  /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
+  storeShare: "stock {{pct}} %",
+  safeShare: "à l’abri {{pct}} %",
+  storeFull: "stock plein",
 } as const;
 export const launch = {
   /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */

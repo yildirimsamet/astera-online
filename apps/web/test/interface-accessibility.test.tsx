@@ -57,7 +57,7 @@ describe('mobile access', () => {
 
 describe('the planet remains the visual subject', () => {
   it('keeps the locked commander-first title rule while restoring planet art in the embedded sheet', () => {
-    const view = render(<PlanetHero planet={planetView()} compact />);
+    const view = render(<PlanetHero planet={planetView()} />);
     expect(view.container.querySelector('[data-planet-subject]')).not.toBeNull();
     expect(screen.getByText('Kestrel-12')).toBeVisible();
     expect(view.container.querySelector('[data-planet-subject] img')).not.toBeNull();

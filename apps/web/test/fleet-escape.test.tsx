@@ -233,7 +233,11 @@ describe('the defender’s own readout', () => {
 
   it('warns when the tank cannot pay for the lift', () => {
     render(<EscapeReadout fleet={LINE} ground={{}} deuterium={LIFT - 1} />);
-    expect(screen.getByTestId('escape-readout')).toHaveAttribute('data-short', '');
+    const line = screen.getByTestId('escape-readout');
+    expect(line).toHaveAttribute('data-short', '');
+    // E5 · K2: a tank you can fill is a gap you can close — yellow, never a threat's red.
+    expect(line).toHaveClass('text-v2-warn');
+    expect(line.className).not.toMatch(/threat|hostile/);
   });
 
   it('has nothing to say about a world with no ships to lift', () => {

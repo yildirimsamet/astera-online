@@ -470,6 +470,10 @@ export const planetHero = {
   deuteriumSafe: "{{amount}} deuterium safe",
   atRisk: "At risk",
   atRiskValue: "{{amount}} exposed",
+  /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
+  storeShare: "store {{pct}}%",
+  safeShare: "safe {{pct}}%",
+  storeFull: "store full",
 } as const;
 
 /** The commitment. Everything here is supporting detail for one line. */

@@ -455,6 +455,10 @@ export const planetHero = {
   deuteriumSafe: "{{amount}} döteryum güvende",
   atRisk: "Risk altında",
   atRiskValue: "{{amount}} açıkta",
+  /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
+  storeShare: "depo %{{pct}}",
+  safeShare: "güvenli %{{pct}}",
+  storeFull: "depo dolu",
 } as const;
 
 export const launch = {

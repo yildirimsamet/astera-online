@@ -50,19 +50,9 @@ describe('a commander can read their own world’s tier', () => {
     expect(mark).toHaveTextContent(new RegExp(`\\b${String(tier)}\\b`));
   });
 
-  /**
-   * BOTH SHAPES OF THE HERO, because the sheet a world opens in is the compact
-   * one and the full one is what a wider surface draws. A figure that appeared in
-   * only one of them would be a fact that comes and goes with the layout.
-   */
-  it('states it in the compact sheet too', () => {
-    const view = render(<PlanetHero planet={at(9)} compact />);
-    expect(view.container.querySelector('[data-planet-tier]')).toHaveTextContent(/\b3\b/);
-  });
-
   /** Under the portrait, which is what the owner asked for and where it belongs. */
-  it.each([false, true])('puts it under the world’s portrait (compact: %s)', (compact) => {
-    const view = render(<PlanetHero planet={at(9)} compact={compact} />);
+  it('puts it under the world’s portrait', () => {
+    const view = render(<PlanetHero planet={at(9)} />);
     const subject = view.container.querySelector('[data-planet-portrait]');
     expect(subject, 'the portrait is not marked').not.toBeNull();
     expect(within(subject as HTMLElement).getByText(/\b3\b/)).toBeInTheDocument();
@@ -74,8 +64,8 @@ describe('a commander can read their own world’s tier', () => {
    * this — a unit, a count, a stamp — and anything larger competes with the
    * world's own name two centimetres away.
    */
-  it.each([false, true])('sets it in micro type (compact: %s)', (compact) => {
-    const view = render(<PlanetHero planet={at(9)} compact={compact} />);
+  it('sets it in micro type', () => {
+    const view = render(<PlanetHero planet={at(9)} />);
     expect(view.container.querySelector('[data-planet-tier]')).toHaveClass('text-micro');
   });
 

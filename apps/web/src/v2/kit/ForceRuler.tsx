@@ -85,7 +85,7 @@ export function ForceRuler({
       <span
         data-part={part}
         aria-hidden="true"
-        className={`absolute -inset-y-1 rounded-sm border ${edge} ${width > 0 ? 'v2-hatch' : ''}`}
+        className={`absolute -inset-y-1 rounded-cell border ${edge} ${width > 0 ? 'v2-hatch' : ''}`}
         style={{ left: pct(left), width: pct(width) }}
       />
     );
@@ -203,13 +203,13 @@ export function ForceRuler({
           )}
           {lines && (
             <li className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-sm border border-v2-self" />
+              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-cell border border-v2-self" />
               {t('counter.linesClears', { at: range(lines.clears) })}
             </li>
           )}
           {lines && (
             <li className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-sm border border-v2-ink-2" />
+              <span aria-hidden="true" className="h-2.5 w-1.5 rounded-cell border border-v2-ink-2" />
               {t('counter.linesBreaks', { at: range(lines.breaks) })}
             </li>
           )}

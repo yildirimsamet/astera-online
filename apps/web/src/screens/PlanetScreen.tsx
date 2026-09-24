@@ -108,7 +108,7 @@ import {
 } from '../i18n/names.js';
 import { ActionButton, Price, StatStrip, TimeCost } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
-import { PlanetHero } from '../ui/PlanetHero.js';
+import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
@@ -182,7 +182,6 @@ export interface SheetSpec {
 export function PlanetScreen({
   focusGroup,
   focusItem,
-  embedded = false,
   onOpenResearch,
 }: {
   focusGroup?: GroupId;
@@ -195,8 +194,6 @@ export function PlanetScreen({
    * only who is allowed to ask for them.
    */
   focusItem?: string;
-  /** Rendered inside a panel over the live galaxy rather than as a full screen. */
-  embedded?: boolean;
   /**
    * Take the player to the research surface. T12.
    *
@@ -453,23 +450,33 @@ export function PlanetScreen({
         sixteen-pixel gutter, and no owner to change when it was wrong.
       */}
       <div className="flex flex-col gap-3 pb-2">
+        {/*
+          WHAT IS BROKEN LEADS (E5: "arıza ve sadakat bloğu en üstte"). A fault is the
+          first thing to do on a world that has one, so it sits above the world itself,
+          with the loyalty line the hero opens on right under it.
+        */}
+        {(data.faults?.length ?? 0) > 0 && (
+          <div className="px-2 pt-2">
+            <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
+          </div>
+        )}
+
         {!lesson && <div className="px-2 pt-2">
-          <PlanetHero planet={data} compact={embedded} />
+          <PlanetHero planet={data} />
         </div>}
 
         <div className="flex flex-col gap-2 px-2">
           <BaseQueues planet={data} />
-          <FaultRepairs planet={data} onOpen={(fault) => { setFaultSheet(fault.id); }} />
         </div>
 
         {recovering && (
-          <div className="mx-4 rounded-chip border border-alert/40 bg-alert/10 px-3 py-2 text-caption text-threat-ink">
+          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
             {t('planet.recovery', { duration: duration((data.planet.recoveryUntil!.getTime() - serverNow()) / 60_000) })}
           </div>
         )}
 
         {empActive && (
-          <div className="mx-4 rounded-chip border border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-caption text-cyan-100">
+          <div className="mx-2 rounded-chip border border-v2-hostile/40 bg-v2-hostile/10 px-3 py-2 font-v2-ui text-caption text-v2-hostile">
             {t('planet.empActive', { duration: duration((data.planet.empUntil!.getTime() - serverNow()) / 60_000) })}
           </div>
         )}
@@ -720,14 +727,14 @@ function FaultRepairs({
     .toSorted((a, b) => FAULT_KINDS.indexOf(a.kind) - FAULT_KINDS.indexOf(b.kind));
 
   return (
-    <section className="plate plate-inset overflow-hidden" aria-label={t('faults.strip.title')}>
-      <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
-        <h2 className="legend flex items-center gap-1 text-bone">
+    <section className="overflow-hidden rounded-control border border-v2-warn/40 bg-v2-panel font-v2-ui" aria-label={t('faults.strip.title')}>
+      <header className="flex items-baseline gap-2 border-b border-v2-line px-3 py-2">
+        <h2 className="v2-legend flex items-center gap-1 text-v2-warn">
           <FaultMark className="size-[13px]" />
           {t('faults.strip.title')}
         </h2>
-        <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-        <span className="num text-micro text-faint">
+        <span className="h-px flex-1 bg-gradient-to-r from-v2-line to-transparent" />
+        <span className="font-v2-mono text-micro text-v2-ink-3">
           {t('faults.strip.capacity', { count: FAULT.repairSlots })}
         </span>
       </header>
@@ -745,13 +752,13 @@ function FaultRepairs({
               className="flex w-full items-center gap-2 px-3 py-2 text-left"
               onClick={() => { onOpen(fault); }}
             >
-              <span className="legend shrink-0 text-faint">
+              <span className="v2-legend shrink-0 text-v2-ink-3">
                 {t('faults.strip.lane', { slot: (fault.repair?.slot ?? 0) + 1 })}
               </span>
-              <span className="min-w-0 flex-1 truncate text-caption text-dim">
+              <span className="min-w-0 flex-1 truncate text-caption text-v2-ink-2">
                 {t(`faults.name.${fault.kind}`)}
               </span>
-              <span className="num shrink-0 text-caption text-bone">
+              <span className="shrink-0 font-v2-mono text-caption text-v2-ink">
                 {fault.repair ? countdown(fault.repair.readyAt.getTime() - now) : ''}
               </span>
             </button>
@@ -762,13 +769,13 @@ function FaultRepairs({
             <button
               type="button"
               data-fault-lane="waiting"
-              className="flex w-full items-center gap-2 border-t border-line-soft px-3 py-2 text-left first:border-t-0"
+              className="flex w-full items-center gap-2 border-t border-v2-line px-3 py-2 text-left first:border-t-0"
               onClick={() => { onOpen(fault); }}
             >
-              <span className="min-w-0 flex-1 truncate text-caption text-bone">
+              <span className="min-w-0 flex-1 truncate text-caption text-v2-ink">
                 {t(`faults.name.${fault.kind}`)}
               </span>
-              <span className="num shrink-0 text-caption text-faint">
+              <span className="shrink-0 font-v2-mono text-caption text-v2-ink-3">
                 {fault.cost.crystal > 0
                   ? t('faults.strip.priceBoth', {
                     alloy: full(fault.cost.alloy),
@@ -1470,6 +1477,8 @@ function Defend({
 
   return (
     <>
+      {/* What stands here and what a raid could take: the tab's question, answered first (E5). */}
+      {!lesson && <DefenceReadings planet={planet} />}
       {escapeRuled && (
         <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium} />
       )}

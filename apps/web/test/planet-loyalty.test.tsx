@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { PlanetHero } from '../src/ui/PlanetHero.js';
+import { DefenceReadings, PlanetHero } from '../src/ui/PlanetHero.js';
 import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
 
@@ -37,16 +37,21 @@ describe('the planet hero reflects a command-core outage', () => {
     repair: null,
   };
 
-  it('hides the Aegis dome and excludes offline ground guns from firepower', () => {
-    const view = render(<PlanetHero planet={planetView({
-      fleet: {},
-      ground: { THORN: 5 },
-      faults: [coreFault],
-    }, { shield: 800, shieldMax: 1_000, shieldPerHour: 100 })} />);
+  const outage = planetView({
+    fleet: {},
+    ground: { THORN: 5 },
+    faults: [coreFault],
+  }, { shield: 800, shieldMax: 1_000, shieldPerHour: 100 });
 
-    expect(screen.getByTestId('planet-firepower')).toHaveTextContent('0');
-    expect(screen.getByTestId('planet-shield')).toHaveTextContent(/offline/i);
+  it('hides the Aegis dome', () => {
+    const view = render(<PlanetHero planet={outage} />);
     expect(view.container.querySelector('[data-planet-portrait] [class~="border-crystal/35"]'))
       .toBeNull();
+  });
+
+  it('excludes offline ground guns from firepower and says the shield is dark', () => {
+    render(<DefenceReadings planet={outage} />);
+    expect(screen.getByTestId('planet-firepower')).toHaveTextContent('0');
+    expect(screen.getByTestId('planet-shield')).toHaveTextContent(/offline/i);
   });
 });
