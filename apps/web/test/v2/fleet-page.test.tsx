@@ -59,6 +59,18 @@ const props = (over: Partial<FleetPageProps> = {}): FleetPageProps => ({
 });
 
 describe('the Fleet page', () => {
+  /**
+   * AS TALL AS WHAT IT HOLDS (owner, 2026-09-25): with nothing in the air the page stood at
+   * full height over empty space. It opens to its content, a page at most, and scrolls the
+   * rest; on a wide screen it is still a page, a column on the right.
+   */
+  it('opens as tall as what it holds, and is still a page on a wide screen', () => {
+    render(<FleetPage {...props({ flights: [] })} />);
+    const page = screen.getByRole('dialog', { name: 'Fleet' });
+    expect(page).toHaveAttribute('data-detent', 'fit');
+    expect(page).toHaveAttribute('data-placement', 'page');
+  });
+
   it('heads the page with the flight bays and the Hangar room', () => {
     render(<FleetPage {...props()} />);
     expect(screen.getByText('Flight bays')).toBeInTheDocument();

@@ -273,7 +273,8 @@ export function FleetPage({
 }: FleetPageProps) {
   const { t } = useTranslation();
   return (
-    <Sheet title={t('dock.fleet')} onClose={onClose} detents={['full']}>
+    // As tall as what it holds, a page at most (owner, 2026-09-25); a column on a wide screen.
+    <Sheet title={t('dock.fleet')} onClose={onClose} detents={['fit']} placement="page">
       <div className="flex flex-col gap-2.5 pt-1">
         <Segmented
           label={t('fleetPage.views')}
