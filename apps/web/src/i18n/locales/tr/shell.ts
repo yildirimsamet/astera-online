@@ -41,6 +41,10 @@ export const statusBar = {
     idle: '—',
     hintFull: 'Havuz doldu, hemen topla',
     hintCollect: '{{amount}} topla',
+    /** Each waiting resource by name, in the bubble's accessible name (owner, 2026-09-24). */
+    alloy: '{{amount}} alaşım',
+    crystal: '{{amount}} kristal',
+    deuterium: '{{amount}} döteryum',
     collected: '{{amount}} toplandı',
     collectedPartly: '{{moved}} toplandı, {{held}} sığmadı',
     storeFull: 'Depo dolu',

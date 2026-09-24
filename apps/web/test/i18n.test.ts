@@ -380,7 +380,7 @@ describe('every added language keeps the locale contract', () => {
   });
 
   it('opens every appended galaxy count with its own spaced separator', () => {
-    const appended = ['fleetAway', 'rocks', 'pirates_one', 'pirates_other', 'wrecks_one', 'wrecks_other'];
+    const appended = ['fleetAway_one', 'fleetAway_other', 'rocks_one', 'rocks_other', 'pirates_one', 'pirates_other', 'wrecks_one', 'wrecks_other'];
     const glued = Object.entries(LOCALES).flatMap(([language, locale]) => {
       const tree = flatten(locale);
       return appended

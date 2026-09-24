@@ -58,3 +58,31 @@ describe('the collect bubble', () => {
     expect(empty).toMatchObject({ waiting: 0, ripe: false, full: false, blocked: false });
   });
 });
+
+/**
+ * RESOURCE BY RESOURCE (owner, 2026-09-24): a faulty refinery stops one resource, and a
+ * partly full store leaves one resource behind after a collect — one total ("1.5k")
+ * says neither. The works are read per resource, and so is the room the store has left.
+ */
+describe('the works, resource by resource', () => {
+  it('says what each vessel holds', () => {
+    const state = collectState(input({ works: { alloy: 150.7, crystal: 50, deuterium: 0 } }));
+    expect(state.each).toEqual({ alloy: 150.7, crystal: 50, deuterium: 0 });
+  });
+
+  it('names the resources the store has no room left for', () => {
+    const state = collectState(input({
+      works: { alloy: 500, crystal: 300, deuterium: 0 },
+      store: { alloy: 10_000, crystal: 2_000, deuterium: 0 },
+    }));
+    expect(state.noRoom).toEqual(['alloy']);
+  });
+
+  it('names nothing as out of room when nothing of it is waiting', () => {
+    const state = collectState(input({
+      works: { alloy: 0, crystal: 300, deuterium: 0 },
+      store: { alloy: 10_000, crystal: 0, deuterium: 0 },
+    }));
+    expect(state.noRoom).toEqual([]);
+  });
+});

@@ -52,6 +52,10 @@ export const statusBar = {
     idle: '—',
     hintFull: 'El depósito de producción está lleno: recoge los recursos',
     hintCollect: 'Recoger {{amount}}',
+    /** Each waiting resource by name, in the bubble's accessible name (owner, 2026-09-24). */
+    alloy: '{{amount}} aleación',
+    crystal: '{{amount}} cristal',
+    deuterium: '{{amount}} deuterio',
     collected: '{{amount}} recogidos',
     collectedPartly: '{{moved}} recogidos · No había sitio para {{held}}',
     storeFull: 'Almacén lleno',

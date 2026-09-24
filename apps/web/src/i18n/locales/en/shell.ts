@@ -52,6 +52,10 @@ export const statusBar = {
     idle: '—',
     hintFull: 'Works are full — collect now',
     hintCollect: 'Collect {{amount}}',
+    /** Each waiting resource by name, in the bubble's accessible name (owner, 2026-09-24). */
+    alloy: '{{amount}} alloy',
+    crystal: '{{amount}} crystal',
+    deuterium: '{{amount}} deuterium',
     collected: 'Collected {{amount}}',
     collectedPartly: 'Collected {{moved}} · {{held}} would not fit',
     storeFull: 'Store full',

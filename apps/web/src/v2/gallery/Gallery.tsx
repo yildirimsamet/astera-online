@@ -443,9 +443,9 @@ export function Gallery({ view }: { view: string | null }) {
             <ResourceMeter resource="deuterium" value={0} cap={0} />
           </div>
           <div className="flex flex-wrap gap-2">
-            <CollectBubble state={{ waiting: 3_200, ripe: true, full: false, movable: 3_200, blocked: false }} pending={false} onCollect={noop} onOpenBase={noop} />
-            <CollectBubble state={{ waiting: 9_800, ripe: true, full: true, movable: 9_800, blocked: false }} pending={false} onCollect={noop} onOpenBase={noop} />
-            <CollectBubble state={{ waiting: 4_000, ripe: true, full: false, movable: 0, blocked: true }} pending={false} onCollect={noop} onOpenBase={noop} />
+            <CollectBubble state={{ waiting: 3_200, ripe: true, full: false, movable: 3_200, blocked: false, each: { alloy: 2_000, crystal: 1_200, deuterium: 0 }, noRoom: [] }} pending={false} onCollect={noop} onOpenBase={noop} />
+            <CollectBubble state={{ waiting: 9_800, ripe: true, full: true, movable: 9_800, blocked: false, each: { alloy: 6_000, crystal: 3_000, deuterium: 800 }, noRoom: ['crystal'] }} pending={false} onCollect={noop} onOpenBase={noop} />
+            <CollectBubble state={{ waiting: 4_000, ripe: true, full: false, movable: 0, blocked: true, each: { alloy: 4_000, crystal: 0, deuterium: 0 }, noRoom: ['alloy'] }} pending={false} onCollect={noop} onOpenBase={noop} />
           </div>
           <Segmented
             label="Bell"

@@ -26,9 +26,18 @@ export interface CollectState {
   movable: number;
   /** Something is waiting and storage can take none of it. */
   blocked: boolean;
+  /**
+   * WHAT EACH VESSEL HOLDS (owner, 2026-09-24). A faulty refinery stops one resource and
+   * a nearly full store leaves one behind after a collect; one total says neither.
+   */
+  each: Triple;
+  /** The resources waiting that the store has no room left for, in store order. */
+  noRoom: WorksResource[];
 }
 
 const KEYS = ['alloy', 'crystal', 'deuterium'] as const;
+export type WorksResource = (typeof KEYS)[number];
+export const WORKS_RESOURCES: readonly WorksResource[] = KEYS;
 
 /**
  * THE WORKS, READ FOR THE ONE DECISION THEY ASK FOR: COLLECT NOW OR NOT.
@@ -51,5 +60,7 @@ export function collectState({ caps, works, store, storeCaps }: CollectInput): C
     full,
     movable,
     blocked: waiting >= 1 && movable < 1,
+    each: { alloy: works.alloy, crystal: works.crystal, deuterium: works.deuterium },
+    noRoom: KEYS.filter((key) => works[key] >= 1 && storeCaps[key] - store[key] < 1),
   };
 }

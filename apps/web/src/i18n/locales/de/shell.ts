@@ -52,6 +52,10 @@ export const statusBar = {
     idle: '—',
     hintFull: 'Das Produktionslager ist voll – hol die Ressourcen ab',
     hintCollect: '{{amount}} abholen',
+    /** Each waiting resource by name, in the bubble's accessible name (owner, 2026-09-24). */
+    alloy: '{{amount}} Legierung',
+    crystal: '{{amount}} Kristall',
+    deuterium: '{{amount}} Deuterium',
     collected: '{{amount}} abgeholt',
     collectedPartly: '{{moved}} abgeholt · Für {{held}} war kein Platz',
     storeFull: 'Speicher voll',

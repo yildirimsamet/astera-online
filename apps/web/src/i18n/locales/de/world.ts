@@ -15,8 +15,10 @@ export const galaxy = {
   /** The same population over a day, so an off-peak galaxy still reads as inhabited. */
   onlineToday: "{{count}} in den letzten 24 Std.",
   worlds: "{{count}} Welten",
-  fleetAway: " · {{count}} Flotte unterwegs",
-  rocks: " · {{count}} Asteroiden",
+  fleetAway_one: " · {{count}} Flotte unterwegs",
+  fleetAway_other: " · {{count}} Flotten unterwegs",
+  rocks_one: " · {{count}} Asteroid",
+  rocks_other: " · {{count}} Asteroiden",
   pirates_one: " · {{count}} Pirat",
   pirates_other: " · {{count}} Piraten",
   wrecks_one: " · {{count}} Wrack",

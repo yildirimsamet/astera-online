@@ -44,7 +44,7 @@ describe('the wired collect bubble', () => {
   it('collects once the works are worth it, in one request', async () => {
     planet = planetView({}, { bufferAlloy: 400, bufferCrystal: 30 });
     host();
-    await userEvent.click(screen.getByRole('button', { name: 'Collect 430' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Collect 400 alloy, 30 crystal' }));
     expect(mutate).toHaveBeenCalledTimes(1);
   });
 
