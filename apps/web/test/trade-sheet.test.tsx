@@ -592,6 +592,18 @@ describe('committing the convoy', () => {
     expect(screen.queryByRole('button', { name: /back/i })).toBeNull();
   });
 
+  /** The price is said for a trade that would go; a revolt refuses on the button instead. */
+  it('says no price while the shipyard revolt holds every launch', async () => {
+    sheet({ planet: trader({ faults: [{
+      id: 'f1', kind: 'SHIPYARD_REVOLT', startedAt: new Date(NOW - 60_000),
+      cost: { alloy: 300, crystal: 0, deuterium: 0 }, repair: null,
+    }] }) });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /max atlas/i }));
+    expect(commit()).toBeDisabled();
+    expect(screen.queryByText(/A launched convoy cannot be recalled/i)).toBeNull();
+  });
+
   it('posts exactly the body the server parses', async () => {
     const fetchMock = vi.fn<typeof globalThis.fetch>(() => Promise.resolve(new Response(
       JSON.stringify({
