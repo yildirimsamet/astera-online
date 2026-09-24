@@ -127,7 +127,22 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
 - F3.4 açık notlar: `QuantityStepper`'ın `look="v2"` görünümü fırlatma/transfer/konvoyda; Üs, ticaret ve klan
   çağıranları eski görünümde (F5 ve kendi işlerinde geçer);
   yapışkan cetvel uzun listede satırların üstünü örtüyor (tasarım gereği; masaüstünde F8'de iki sütun).
-- **F3.5 E2 hedef dosyası:** odak kartı → dosya (v2 Sheet peek/half/full); sıra, yasaklar ve ret nedenleri şartnamedeki gibi.
+- **F3.5 E2 hedef dosyası** (mock: `design-mocks/image copy 5.png` sol, bağlam kartı `image.png`). Bugün yabancı dünya
+  `galaxy/FocusPanel.tsx` `PlanetFocus` (eski kit `Shell` rayı) ile açılıyor; `lib/dossier.ts` (olgu/boşluk, kaynak+yaş)
+  zaten saf. Parçalar:
+  - **F3.5a** `useLaunchPlan`'deki hedef okumasını (`report`, `opposing`, `forecastInput`, `lines`, `matchups`, `hint`,
+    `loss`, `escape`, `notes`) `lib/useTargetReading.ts`'e birebir taşı (fırlatma testleri korur); dosya aynı hook'u
+    evdeki savaş kanadıyla çağırır.
+  - **F3.5b** `lib/lootEstimate.ts` (saf, test): probe `stock` bandı ZATEN `computeLoot × vaultProtects` (kesin zafer,
+    sınırsız ambar; `services/intel.ts`), `deuteriumStock` onun döteryum payı. Tahmin = bant ↔ evdeki kargo; kısmi
+    zafer `COMBAT.lootPartial/lootDecisive` oranı; kargo bandın altındaysa sarı "büyük kısmı geride kalır".
+  - **F3.5c** `v2/hud/TargetDossier.tsx` (sunum): başlık çipleri (rakip işareti, mesafe, uçuş), kaynak+yaş satırı
+    (`Freshness`), Güç (`ForceRuler`, kanat = evdeki savaş gemileri), Okunan dağılım (yüzde yalnız SHARES) +
+    `MatchupLine`, yer savunması (biliniyorsa), Ganimet, Koloni kuralı (yalnız COLONY; değer yok), Geçmiş
+    (`RivalHistory`); olgu/boşluk satırları v2'de.
+  - **F3.5d** `Shell` → v2 çerçeve: kapalı = bağlam kartı (başlık + tek güç satırı + Sonda/Saldırı planla, mock),
+    açık = yarım/tam dosya; eylemler ve ret nedenleri (bant, tekrar sınırı, kalkan süresi, köken toparlanıyor, tersane
+    isyanı) korunur; yerleşim/klan hedefi/Ölüm Yıldızı kontrolleri kaybolmaz. Diğer odak türleri aynı çerçeveyi alır.
 - **F3.6** faz sonu review + gerçek oyunda görsel tur (350 ve 1280 px, 5 dil).
 
 ## Biten işler
