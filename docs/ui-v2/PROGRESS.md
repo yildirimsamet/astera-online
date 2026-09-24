@@ -45,7 +45,7 @@
 | F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Tamam (faz incelemesi `fa16b98`, `e7f062e`) |
 | F4 | E6 Rapor, S4 | Tamam (`35d7bf6`, `d52bc68`, `aad6e0d`) |
-| F5 | E5 Üs + Araştırma (K6, K9) | Sırada |
+| F5 | E5 Üs + Araştırma (K6, K9) | Sürüyor (K6, K9 tamam; E5 kalanı "Sıradaki iş"te) |
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
 | F8 | E11 Masaüstü | Bekliyor |
@@ -80,8 +80,23 @@ Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıld
 ## Sıradaki iş
 **F5 · E5 Üs + Araştırma segmenti (K6) + takımyıldız (K9).** Şartname: `grep -n "^#### E5 ·\|^| K6\|^| K9" docs/ui-v2/gozlemevi.md`;
 mock `design-mocks/image copy 6.png` sol (Üs) ve `image copy 7.png` sol (Araştırma takımyıldızı). Kod: `screens/PlanetScreen.tsx`
-(Üs; `PlanetHero`, cüzdan, kuyruklar, sekmeler, `UpgradeRow` kartları, `Band`), `screens/ResearchPanel.tsx`. F4'ten devreden:
-paylaşılan `Band` başlığı (UpgradeRow) v2'ye; Üs kahramanında toplama balonu (mock: gezegenin sağ üstü).
+(Üs; `PlanetHero`, cüzdan, kuyruklar, sekmeler, `UpgradeRow` kartları, `Band`), `screens/ResearchPanel.tsx`.
+
+F5'te biten: K6 anahtarı `5b80f0b`; kahraman (dünya ortada) `e23530b`; kuyruklar halka + iptal sayfası `54cf5be`; Büyüme
+sekmesi iki sütun kart `1196c56`; takımyıldız + kart `71d3277`; **liste kalktı** `dd44743` (yıldız → kart; kart basamak,
+tavan, tutulan önkoşul, `hullDoor` ile açtığı gemiler, tek yerde söylenen ret — düzeltilebilen kapı sarı düğme, önkoşulda
+yıldızı seçer; stratejik üçlü bayrak kapalıyken haritada kapalı, sunucu da reddediyor; hat `QueueLane`, hücre projeyi seçer).
+Testte bayrak getter'lı `vi.mock` ile çevriliyor (stratejik kapıların testleri bayrak açıkken koşar).
+
+**F5'te kalan (E5), sırayla:**
+1. **Üretim satırı** (mock: kahramanın altında üç sütun — `+1,24b /sa`, depo çubuğu, "depo %62 · güvenli %35"): bugünkü
+   `PlanetHero` okuma kartları (Ateş gücü, üretim, Savunma, Kalkan) + ayrı DEPO bloğu + "Saldırı gemileri" listesi yerine.
+   Önce bu üçünü sınayan testler okunur; bilgi nereye taşınır kararı (savunma/kalkan → Savunma sekmesi?) testle verilir.
+2. Kahramanda uydu yuvaları yörüngede (dolu / boş / kilitli + açılacağı Çekirdek, B13) ve toplama balonu sağ üstte.
+3. Koloni: arıza + sadakat bloğu en üstte (`FaultRepairs` bugün kuyrukların altında).
+4. Savunma sekmesi: `EscapeReadout` satırı v2 renkleriyle (yakıt yetmiyorsa sarı).
+5. Diğer sekmeler (Sensör, Savunma, Tersane) iki sütun kart; paylaşılan `Band` başlığı v2.
+6. Ölü sınıflar: kurtarma/EMP bantları (`bg-cyan-400/10` …) v2 token'ına → `surface-vocabulary` kırmızısı kapanmalı.
 
 **F4 (tamam) · E6 Savaş raporu (B15) + S4.** `35d7bf6` S4: `readBattleReports` saldırana `fuelPaid` (dünya baskını
 `missions.fuel_paid`, ortak savaşta kendi dalgalarının toplamı; savunana, korsana ve kolon öncesi 0'a null); web şeması
