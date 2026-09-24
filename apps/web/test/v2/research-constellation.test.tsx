@@ -49,6 +49,13 @@ describe('the research constellation', () => {
     expect(document.querySelectorAll('[data-constellation] line').length).toBeGreaterThan(0);
   });
 
+  it('says which group each star stands in, and names every group', () => {
+    show();
+    expect(document.querySelector('[data-star="SHIP_ARMOR"]')).toHaveAttribute('data-group', 'doctrine');
+    expect([...document.querySelectorAll('[data-region]')].map((region) => region.getAttribute('data-region')))
+      .toEqual(['frontier', 'industry', 'doctrine', 'strategic']);
+  });
+
   it('selects on a tap', async () => {
     const onSelect = vi.fn();
     show('SHIP_POWER', onSelect);

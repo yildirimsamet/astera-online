@@ -28,7 +28,8 @@ export const research = {
   runningLabel: "Under way",
   runningFinishes: "finishes {{time}}",
   idleLabel: "Nothing under way",
-  idleHint: "Start a project below. Up to three can wait here; once started, they cannot be cancelled.",
+  idleHint:
+    "Pick a star on the map. Up to three projects can wait here.",
 
   frontierBand: "Frontier",
   frontierNote:

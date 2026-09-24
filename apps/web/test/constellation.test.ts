@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RESEARCH_PROJECTS, RESEARCH_PROJECT_IDS, type ResearchProjectId } from '@astera/rules';
-import { constellationLayout, RESEARCH_GROUPS } from '../src/lib/constellation.js';
+import { ALL_HULLS, HULLS, RESEARCH_PROJECTS, RESEARCH_PROJECT_IDS, type ResearchProjectId } from '@astera/rules';
+import { constellationLayout, hullDoor, RESEARCH_GROUPS } from '../src/lib/constellation.js';
 
 /**
  * THE RESEARCH CONSTELLATION'S LAYOUT. Spec E8 · K9 (docs/ui-v2/gozlemevi.md).
@@ -77,6 +77,37 @@ describe('the research constellation', () => {
       const region = layout.regions.find((candidate) => candidate.group === node.group)!;
       expect(node.y - region.y, `${node.id} sits on its group's name`).toBeGreaterThanOrEqual(0.07);
       expect(node.y + LABEL_H - (region.y + region.h), `${node.id}'s label runs into the next group`).toBeLessThanOrEqual(0.005);
+    }
+  });
+});
+
+/**
+ * WHAT A PROJECT'S NEXT DOOR OPENS. Spec E8: the card names "açtığı gemiler
+ * (`HULLS[*].requiredResearch`)" — the next rung of this project that a hull asks
+ * for, and every hull asking for it there.
+ */
+describe('the ships a research rung opens', () => {
+  it('names the rung and the hulls that ask for it', () => {
+    expect(hullDoor('SHIP_ARMOR', 1)).toEqual({ level: 2, hulls: ['LEVIATHAN', 'PRAETORIAN', 'CITADEL', 'PALADIN'] });
+    expect(hullDoor('STARSHIP_ENGINEERING', 0)?.level).toBe(1);
+    expect(hullDoor('STARSHIP_ENGINEERING', 0)?.hulls).toHaveLength(7);
+    expect(hullDoor('STARSHIP_ENGINEERING', 1)).toEqual({
+      level: 2,
+      hulls: ['CATACLYSM', 'CORSAIR', 'CITADEL', 'PALADIN', 'ARGOSY'],
+    });
+  });
+
+  it('has nothing to say once every door is open, or on a project no hull asks for', () => {
+    expect(hullDoor('SHIP_ARMOR', 2)).toBeNull();
+    expect(hullDoor('CARGO_HOLDS', 0)).toBeNull();
+  });
+
+  /** Derived from the rules, so a new hull with a research gate is named without a copy. */
+  it('names every hull a research gates, on the rung that opens it', () => {
+    for (const hull of ALL_HULLS) {
+      for (const need of HULLS[hull].requiredResearch) {
+        expect(hullDoor(need.project, need.level - 1)?.hulls, `${hull} ← ${need.project}`).toContain(hull);
+      }
     }
   });
 });

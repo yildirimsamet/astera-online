@@ -24,11 +24,12 @@ export const research = {
   queueCapacity: "{{count}} Steckplätze",
   queueLane: "Commander-Forschung",
   queueGlobalHint:
-    "Diese Warteschlange gehört Ihrem Kommandanten und begonnene Forschungen können nicht abgebrochen werden. Bau und Hof laufen auf jeder Welt getrennt weiter.",
-  runningLabel: "Unterwegs",
-  runningFinishes: "beendet {{time}}",
-  idleLabel: "Nichts im Gange",
-  idleHint: "Starten Sie unten ein Projekt. Hier können bis zu drei Personen warten; Einmal gestartet, können sie nicht mehr abgebrochen werden.",
+    "Diese Warteschlange gehört deinem Kommandanten, und begonnene Forschung lässt sich nicht abbrechen. Bau und Werft laufen auf jeder Welt getrennt weiter.",
+  runningLabel: "Läuft",
+  runningFinishes: "endet {{time}}",
+  idleLabel: "Nichts läuft",
+  idleHint:
+    "Wähle einen Stern auf der Karte. Bis zu drei Projekte können hier warten.",
 
   frontierBand: "Grenze",
   frontierNote:
@@ -57,15 +58,15 @@ export const research = {
   rowRunning: "Recherchieren",
   rowQueued: "In der Warteschlange",
 
-  needCore: "Erhöhen Sie den Kommandokern Ihrer Hauptstadt auf L{{level}}",
-  queueFull: "3 Forschungsprojekte stehen bereits in der Warteschlange. Warten Sie, bis einer fertig ist, bevor Sie einen weiteren hinzufügen.",
+  needCore: "Hebe den Kommandokern deiner Hauptstadt auf L{{level}}",
+  queueFull: "3 Forschungsprojekte stehen bereits in der Warteschlange. Warte, bis eines fertig ist, bevor du ein weiteres hinzufügst.",
   at: "Erforschbar in {{duration}}",
   warAt: "Kriegshandlung wird in {{duration}} eröffnet",
   isotopeFirst: "Forschungsisotopenspektrometrie zuerst",
-  prerequisiteFirst: "Erforschen Sie zuerst {{name}}",
+  prerequisiteFirst: "Erforsche zuerst {{name}}",
   graviticFirst: "Erforsche zuerst Gravitische Ladungen",
-  cargoInsight: "Füllen Sie Ihre Fracht in einem Überfall auf, solange Beute übrig bleibt",
-  shieldInsight: "Lassen Sie eine Aegis mindestens {{share}} Ihres Schlachtzugsschadens absorbieren",
+  cargoInsight: "Fülle in einem Überfall deinen Frachtraum, solange Beute übrig bleibt",
+  shieldInsight: "Lass eine Aegis mindestens {{share}} deines Überfallschadens absorbieren",
 
   sheetEyebrow: "Forschungsprojekt",
   sheetComplete: "Forschung abgeschlossen",
@@ -101,7 +102,7 @@ export const research = {
   synthesisName: "Deuteriumsynthese",
   synthesisTag: "Erhöht die Raffinerie-Obergrenze",
   synthesisRole:
-    "Jede Sprosse öffnet drei weitere Ebenen der Deuterium-Raffinerie auf jeder Welt, die Sie besitzen",
+    "Jede Sprosse öffnet drei weitere Stufen der Deuterium-Raffinerie auf jeder deiner Welten",
   synthesisDetail:
     "Jede Forschungsstufe erhöht die Obergrenze der Deuterium-Raffinerie auf jeder Welt um drei Stufen. Sie bauen die Raffinerieebenen immer noch separat, in denen Sie Treibstoff produzieren müssen.",
   yardName: "Yard-Automatisierung",
@@ -136,19 +137,19 @@ export const research = {
   powerName: "Schiffsenergie",
   powerTag: "Löst den Angriff eines Kriegsschiffs aus",
   powerRole:
-    "Erhöht den Angriff jedes Kriegsschiffs in Ihrer Flotte und erfüllt fortgeschrittene Offensivbautore. Frachtrümpfe und Bodenverteidigung bleiben davon unberührt.",
+    "Erhöht den Angriff jedes Kriegsschiffs deiner Flotte und erfüllt fortgeschrittene Offensiv-Baubedingungen. Frachtrümpfe und Bodenverteidigung bleiben unberührt.",
   powerDetail:
     "Jede Sprosse erhöht den normalen Angriff auf jedes Kriegsschiff, einschließlich des Nullifiers, und gilt für Schiffe, die Sie bereits besitzen. Es fügt keinen Angriff auf Transporter hinzu und wirkt sich nicht auf Bastion, Thorn, Prospektor oder Sonden aus. Ein Angreifer trägt seine Startzeitebene; Ein Verteidiger liest die Kampfzeitstufe vor.",
   armorName: "Schiffspanzerung",
   armorTag: "Erhöht die Schiffsrumpfstärke",
   armorRole:
-    "Erhöht die Rumpfstärke für jedes Schiff Ihrer Flotte, einschließlich Transportschiffen, und erfüllt fortgeschrittene Verteidigungsbautore.",
+    "Erhöht die Rumpfstärke jedes Schiffs deiner Flotte, Transporter eingeschlossen, und erfüllt fortgeschrittene Defensiv-Baubedingungen.",
   armorDetail:
     "Jede Sprosse erhöht die Rumpfstärke für jedes Schiff in Ihrer Flotte, einschließlich Kurier, Wanderer, Atlas und Argosy. Bastion, Thorn, Prospektor oder Sonden sind davon nicht betroffen. Ein Angreifer trägt seine Startzeitebene; Ein Verteidiger liest die Kampfzeitstufe vor.",
   propulsionName: "Schiffsantrieb",
   propulsionTag: "Erhöht die Flottengeschwindigkeit",
   propulsionRole:
-    "Erhöht die Geschwindigkeit jedes Schiffes in Ihrer Flotte und trägt zum Atlas-Tor bei. Es öffnet sich nach „Dense Fuel Cells“.",
+    "Erhöht die Geschwindigkeit jedes Schiffs deiner Flotte und zählt zur Atlas-Baubedingung. Öffnet sich nach „Dichte Brennstoffzellen“.",
   propulsionDetail:
     "Jede der vier Stufen erhöht die Nenngeschwindigkeit jedes Schiffes in Ihrer Flotte um ein Viertel, während die letzte Stufe sie verdoppelt und jeden Flug halbiert. Eine gemischte Flotte bewegt sich immer noch mit der Geschwindigkeit ihres langsamsten Mitglieds, sodass der Antrieb eine ausgewählte Zusammensetzung verbessert, ohne ihr Profil zu löschen. Es wirkt sich nicht auf Prospektoren oder Sonden aus und nur Missionen, die nach Abschluss angeboten werden, erhalten den Gewinn.",
   groundDoctrineName: "Einlagerungslehre",

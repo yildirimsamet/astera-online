@@ -53,8 +53,8 @@ export interface QueueLaneProps {
   orders: readonly BuildOrderView[];
   /** Server time, ticking, so the running ring fills without a refetch. */
   now: number;
-  /** Opens the queue sheet, where an order is cancelled behind `Confirm`. */
-  onOpen: () => void;
+  /** Opens the queue sheet, where an order is cancelled behind `Confirm` — or, on research, the order's project. */
+  onOpen: (order: BuildOrderView) => void;
 }
 
 /**
@@ -84,7 +84,7 @@ export function QueueLane({ label, orders, now, onOpen }: QueueLaneProps) {
             <button
               key={order.id}
               type="button"
-              onClick={onOpen}
+              onClick={() => { onOpen(order); }}
               aria-label={t('planet.queue.segment', { name: buildOrderLabel(order), duration: left })}
               className="flex h-11 min-w-0 items-center gap-1.5 rounded-control border border-v2-line bg-v2-panel px-1.5 text-left"
             >

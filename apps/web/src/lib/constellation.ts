@@ -1,4 +1,4 @@
-import type { ResearchProjectId } from '@astera/rules';
+import { ALL_HULLS, HULLS, type HullId, type ResearchProjectId } from '@astera/rules';
 
 /**
  * FOUR GROUPS, AND NONE OF THEM HAS ONE ROW IN IT. (Moved here from `ResearchPanel`
@@ -136,4 +136,24 @@ export function constellationLayout(
     edges,
     regions: groups.map((group) => ({ group: group.id, x: QUARTER[group.id].x, y: QUARTER[group.id].y, w: 0.5, h: 0.5 })),
   };
+}
+
+/**
+ * THE NEXT DOOR THIS PROJECT HOLDS FOR A SHIP. Spec E8: the card names the hulls a
+ * research opens (`HULLS[*].requiredResearch`) — at the lowest rung above `level` that
+ * any hull asks for, every hull asking for it there; null once every such door is open.
+ *
+ * A hull may ask for more than this ladder (Engineering, a Shipyard level): the card
+ * says what this project's part of it is, and the Shipyard states the rest.
+ */
+export function hullDoor(project: ResearchProjectId, level: number): { level: number; hulls: HullId[] } | null {
+  let door: { level: number; hulls: HullId[] } | null = null;
+  for (const hull of ALL_HULLS) {
+    for (const need of HULLS[hull].requiredResearch) {
+      if (need.project !== project || need.level <= level) continue;
+      if (door === null || need.level < door.level) door = { level: need.level, hulls: [hull] };
+      else if (need.level === door.level) door.hulls.push(hull);
+    }
+  }
+  return door;
 }

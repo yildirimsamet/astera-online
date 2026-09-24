@@ -256,7 +256,7 @@ export const planet = {
     doctrineTag: "Mejor ataque y armadura.",
     doctrineRole:
       "Las bonificaciones generales y de clase se acumulan, pero su multiplicador de combate combinado tiene un límite del 25 %. Los contadores de clases siguen siendo la mayor ventaja.",
-    yardName: "Automatización de patios",
+    yardName: "Automatización de astilleros",
     yardTag: "Construye naves más rápido",
     yardRole:
       "Reduce el tiempo de construcción de cada casco · El Astillero aún marca la curva",
@@ -653,7 +653,7 @@ export const faults = {
     VAULT_LEAK: "Fuga de bóveda",
     CORE_OUTAGE: "Apagón del núcleo de comando",
     TELESCOPE_FAULT: "Fallo del telescopio",
-    SHIPYARD_REVOLT: "Revuelta en el patio",
+    SHIPYARD_REVOLT: "Revuelta en el astillero",
     PROSPECTOR_FAULT: "Prospección en pozo",
   },
   /** What it stops, in the player's terms. One sentence, no hedging. */
@@ -664,7 +664,7 @@ export const faults = {
     VAULT_LEAK: "La bóveda está entrando en órbita, y cualquiera cuyo telescopio llegue a este mundo puede ver el campo y volar hacia él.",
     CORE_OUTAGE: "El núcleo está oscuro: la égida está caída y los cañones terrestres no tienen control de fuego. Los naves en casa todavía luchan. Si alguien aterriza ahora, aterrizará en un mundo abierto.",
     TELESCOPE_FAULT: "El telescopio está ciego. Este mundo no ve más allá del ojo desnudo hasta que sea reparado.",
-    SHIPYARD_REVOLT: "El patio se ha retirado. Nada sale de este mundo: ni incursiones, ni transferencias, ni convoyes. Las naves que ya están en el aire todavía regresan a casa.",
+    SHIPYARD_REVOLT: "El astillero se ha retirado. Nada sale de este mundo: ni incursiones, ni transferencias, ni convoyes. Las naves que ya están en el aire todavía regresan a casa.",
     PROSPECTOR_FAULT: "El foso está cerrado. No se puede enviar ningún Prospector desde este mundo. Las naves que ya están disponibles todavía se pueden recuperar.",
   },
   toll: {

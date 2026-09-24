@@ -1,15 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEUTERIUM,
-  FEATURE_FLAGS,
   RESEARCH_MAX_LEVEL,
   RESEARCH_PROJECTS,
   RESEARCH_PROJECT_IDS,
   type ResearchProjectId,
 } from '@astera/rules';
+import type * as Rules from '@astera/rules';
 import { ResearchPanel } from '../src/screens/ResearchPanel.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -36,6 +36,25 @@ import { planetView } from './fixtures.js';
  *    With one research queue shared across a commander's worlds, a row that is
  *    merely un-pressable teaches nothing.
  */
+
+/**
+ * THE STRATEGIC RELEASE SWITCH, TURNED PER TEST. `STRATEGIC_RESEARCH_ENABLED` is off this
+ * season and the server refuses the three projects behind it, so their card says
+ * closed before anything else. Their other doors — the War clock, the Core, the
+ * project in front — are written for the day it opens, and are tested with it open.
+ */
+const flags = vi.hoisted(() => ({ strategicResearch: false }));
+vi.mock('@astera/rules', async () => {
+  const actual = await vi.importActual<typeof Rules>('@astera/rules');
+  return {
+    ...actual,
+    FEATURE_FLAGS: {
+      ...actual.FEATURE_FLAGS,
+      get STRATEGIC_RESEARCH_ENABLED() { return flags.strategicResearch; },
+    },
+  };
+});
+const openStrategicResearch = (): void => { flags.strategicResearch = true; };
 
 const ALL = RESEARCH_PROJECT_IDS;
 const GROUPS = ['frontier', 'industry', 'doctrine', 'strategic'] as const;
@@ -119,53 +138,48 @@ const show = (
 ) => {
   current = world(over, stock);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const view = render(
+  return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
         <ResearchPanel {...props} />
       </ToastProvider>
     </QueryClientProvider>,
   );
-  /*
-    THE FOUR BANDS FOLD, and only one is open on arrival — fifteen project cards is
-    several screens of a 350-wide phone otherwise. Every test in this file is about
-    a PROJECT rather than about the fold, so they reach past it here; the fold's own
-    behaviour lives in `accordion-memory.test.ts`.
-
-    `fireEvent` rather than `userEvent` so `show` stays synchronous and no test
-    signature has to move for a layout decision.
-  */
-  for (const band of screen.queryAllByRole('button', { expanded: false })) {
-    fireEvent.click(band);
-  }
-  return view;
 };
 
 type View = ReturnType<typeof render>;
 
-const row = (view: View, id: ResearchProjectId): HTMLElement => {
-  const found = view.container.querySelector<HTMLElement>(`#row-${id}`);
-  expect(found, `no row for ${id}`).not.toBeNull();
+const star = (view: View, id: ResearchProjectId): HTMLElement => {
+  const found = view.container.querySelector<HTMLElement>(`[data-star="${id}"]`);
+  expect(found, `no star for ${id}`).not.toBeNull();
   return found!;
 };
 
-const progression = (view: View, id: ResearchProjectId): string | null =>
-  row(view, id).querySelector('[data-progression-state]')
-    ?.getAttribute('data-progression-state') ?? null;
-
 /**
- * WHERE A SHUT ROW STATES ITS REASON.
+ * PICK A PROJECT ON THE MAP AND READ ITS CARD. K9 (E8): the constellation replaced
+ * the four-band list, so what a project's row used to carry, the card under the map
+ * carries now — for whichever star was tapped last.
  *
- * The caption, not a button: a row that opens a detail sheet renders a chevron
- * where an inline action would go (`UpgradeRow`), so the sentence in the row IS
- * the whole statement of why. The sheet carries the control.
+ * `fireEvent` rather than `userEvent` so `pick` stays synchronous and no test's
+ * shape has to move for a layout decision.
  */
-const reason = (view: View, id: ResearchProjectId): string =>
-  row(view, id).querySelector('[data-blocked-reason]')?.textContent ?? '';
+const pick = (view: View, id: ResearchProjectId): HTMLElement => {
+  fireEvent.click(star(view, id));
+  const card = view.container.querySelector<HTMLElement>(`[data-constellation-card="${id}"]`);
+  expect(card, `the card does not show ${id}`).not.toBeNull();
+  return card!;
+};
 
-/** Open one project's sheet — the row is the summary, the sheet is the decision. */
+const progression = (view: View, id: ResearchProjectId): string | null =>
+  pick(view, id).getAttribute('data-progression-state');
+
+/** Where a shut project states its reason: the card's own line, the arrow of a door aside. */
+const reason = (view: View, id: ResearchProjectId): string =>
+  pick(view, id).querySelector('[data-blocked-reason]')?.textContent ?? '';
+
+/** Open one project's sheet — the card is the decision, the sheet the whole picture. */
 const open = async (view: View, id: ResearchProjectId): Promise<HTMLElement> => {
-  const opener = row(view, id).querySelector<HTMLElement>('[data-open-item]');
+  const opener = pick(view, id).querySelector<HTMLElement>('[data-open-item]');
   expect(opener, `${id} does not open`).not.toBeNull();
   await userEvent.click(opener!);
   const sheet = view.baseElement.querySelector<HTMLElement>('[data-item-sheet]');
@@ -179,6 +193,7 @@ const act = (sheet: HTMLElement): HTMLElement | null =>
 
 beforeEach(async () => {
   mutate.mockClear();
+  flags.strategicResearch = false;
   // jsdom has no layout, so it has no `scrollIntoView`. `chat-screen.test.tsx`
   // stubs it the same way; the component calls it unguarded, as `PlanetScreen`
   // has since it gained the same "go to the thing blocking you" behaviour.
@@ -187,41 +202,38 @@ beforeEach(async () => {
 });
 
 describe('every project is reachable', () => {
-  it('keeps every Death Star-only project display-none while strategic crafting is off', () => {
-    const view = show();
-    expect(row(view, 'DEATH_STAR_PROTOCOL')).toHaveClass('hidden');
-    expect(row(view, 'INTERCEPTION_GRID')).toHaveClass('hidden');
-    expect(row(view, 'GRAVITIC_CHARGES')).not.toHaveClass('hidden');
-    expect(row(view, 'STRATEGIC_STOCKPILE')).toHaveClass('hidden');
-    expect(view.container.querySelector('[data-band="strategic"]')).toHaveClass('hidden');
-  });
-
   /**
-   * AND THE BAND'S COUNTER COUNTS WHAT IS THERE. Owner report.
-   *
-   * Frontier carries four projects and one of them is `display: none` while the
-   * weapon is off, so the header promised four and opened onto three. A count is
-   * the only thing a closed band says about itself — a commander who opens it
-   * looking for the fourth row has been sent to find something that is not there,
-   * which is `interface.md`'s first question failing on a single digit.
+   * THE WEAPON'S THREE PROJECTS STAY ON THE MAP, SHUT, while the switch is off: the
+   * spec draws the strategic group dim rather than cutting it (E8), and the server
+   * refuses them (`services/research.ts`), so no card offers what cannot be bought.
    */
-  it.skipIf(FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED)('counts only the rows a closed band would open onto', () => {
+  it('keeps every Death Star-only project shut while strategic research is off', () => {
     const view = show();
-    const count = (band: string): string =>
-      view.container.querySelector(`[data-band="${band}"] .num`)?.textContent ?? '';
-    expect(count('frontier')).toBe('3');
-    expect(count('doctrine')).toBe('5');
+    for (const id of ['DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
+      expect(star(view, id), id).toHaveAttribute('data-locked', '');
+      expect(reason(view, id), id).toMatch(/closed for now/i);
+      expect(within(pick(view, id)).queryByRole('button', { name: /^research$/i }), id).toBeNull();
+    }
+    expect(star(view, 'GRAVITIC_CHARGES')).not.toHaveAttribute('data-locked');
+    expect(view.container.querySelector('[data-region="strategic"]')).toHaveTextContent(/closed/i);
   });
 
-  it('renders a row for all fifteen projects', () => {
+  it('opens them like any other once the switch is on', () => {
+    openStrategicResearch();
     const view = show();
-    for (const id of ALL) expect(row(view, id)).toBeInTheDocument();
+    expect(reason(view, 'INTERCEPTION_GRID')).toBe('');
+    expect(within(pick(view, 'INTERCEPTION_GRID')).getByRole('button', { name: /^research$/i })).toBeEnabled();
   });
 
-  it('renders each project exactly once', () => {
+  it('draws a star for every project, and each opens its card', () => {
+    const view = show();
+    for (const id of ALL) expect(pick(view, id)).toBeInTheDocument();
+  });
+
+  it('draws each project exactly once', () => {
     const view = show();
     for (const id of ALL) {
-      expect(view.container.querySelectorAll(`#row-${id}`), id).toHaveLength(1);
+      expect(view.container.querySelectorAll(`[data-star="${id}"]`), id).toHaveLength(1);
     }
   });
 
@@ -229,10 +241,10 @@ describe('every project is reachable', () => {
    * Derived rather than typed, so a sixteenth project in the rules package fails
    * here until someone gives it a home on this screen.
    */
-  it('renders nothing the rules package does not have', () => {
+  it('draws nothing the rules package does not have', () => {
     const view = show();
-    const rendered = [...view.container.querySelectorAll('[id^="row-"]')]
-      .map((element) => element.id.slice('row-'.length))
+    const rendered = [...view.container.querySelectorAll('[data-star]')]
+      .map((element) => element.getAttribute('data-star') ?? '')
       .sort();
     expect(rendered).toEqual([...ALL].sort());
   });
@@ -253,11 +265,11 @@ describe('every project is reachable', () => {
 
 describe('the groups', () => {
   const bands = (view: View): string[] =>
-    [...view.container.querySelectorAll('[data-band]')]
-      .map((element) => element.getAttribute('data-band') ?? '');
+    [...view.container.querySelectorAll('[data-region]')]
+      .map((element) => element.getAttribute('data-region') ?? '');
 
   const groupOf = (view: View, id: ResearchProjectId): string =>
-    row(view, id).closest('[data-band]')?.getAttribute('data-band') ?? '';
+    star(view, id).getAttribute('data-group') ?? '';
 
   it('lists four groups in a fixed order', () => {
     expect(bands(show())).toEqual([...GROUPS]);
@@ -295,8 +307,10 @@ describe('the groups', () => {
 
   it('heads every group with a name', () => {
     const view = show();
-    for (const band of view.container.querySelectorAll('[data-band] h3')) {
-      expect(band.textContent.trim().length).toBeGreaterThan(0);
+    const regions = view.container.querySelectorAll('[data-region]');
+    expect(regions).toHaveLength(GROUPS.length);
+    for (const region of regions) {
+      expect(region.textContent.trim().length).toBeGreaterThan(0);
     }
   });
 });
@@ -309,7 +323,7 @@ describe('a levelled project shows how far up it is', () => {
    */
   it('draws the rung held and the ceiling', () => {
     const view = show({ research: allOpen({ CARGO_HOLDS: { level: 2 } }) });
-    const card = row(view, 'CARGO_HOLDS');
+    const card = pick(view, 'CARGO_HOLDS');
     expect(card.querySelectorAll('[data-rung]'))
       .toHaveLength(RESEARCH_MAX_LEVEL.CARGO_HOLDS);
     expect(card.querySelectorAll('[data-rung="held"]')).toHaveLength(2);
@@ -338,7 +352,7 @@ describe('a levelled project shows how far up it is', () => {
    */
   it('draws no ladder on a project with one rung', () => {
     const view = show({ research: allOpen({ GRAVITIC_CHARGES: { level: 1, completed: true } }) });
-    expect(row(view, 'GRAVITIC_CHARGES').querySelectorAll('[data-rung]')).toHaveLength(0);
+    expect(pick(view, 'GRAVITIC_CHARGES').querySelectorAll('[data-rung]')).toHaveLength(0);
   });
 
   it('reads a project at its ceiling as complete', () => {
@@ -411,7 +425,7 @@ describe('a closed door states its reason', () => {
         },
       }),
     });
-    expect(row(view, 'ISOTOPE_SPECTROMETRY')).toHaveTextContent(/Researchable in/i);
+    expect(pick(view, 'ISOTOPE_SPECTROMETRY')).toHaveTextContent(/Researchable in/i);
   });
 
   it('names the raid condition behind Dense Fuel Cells once the isotope is held', () => {
@@ -424,7 +438,7 @@ describe('a closed door states its reason', () => {
         },
       }),
     });
-    expect(row(view, 'DENSE_FUEL_CELLS')).toHaveTextContent(/Fill your cargo in one raid/i);
+    expect(pick(view, 'DENSE_FUEL_CELLS')).toHaveTextContent(/Fill your cargo in one raid/i);
   });
 
   it('states the exact shield share behind Gravitic Charges', () => {
@@ -438,7 +452,7 @@ describe('a closed door states its reason', () => {
       }),
     });
     const share = Math.round(DEUTERIUM.graviticDiscoveryShieldShare * 100);
-    expect(row(view, 'GRAVITIC_CHARGES')).toHaveTextContent(new RegExp(String(share)));
+    expect(pick(view, 'GRAVITIC_CHARGES')).toHaveTextContent(new RegExp(String(share)));
   });
 
   it('points at the isotope when nothing downstream has been found yet', () => {
@@ -450,11 +464,12 @@ describe('a closed door states its reason', () => {
         },
       }),
     });
-    expect(row(view, 'DENSE_FUEL_CELLS')).toHaveTextContent(/Isotope Spectrometry first/i);
+    expect(pick(view, 'DENSE_FUEL_CELLS')).toHaveTextContent(/Isotope Spectrometry first/i);
   });
 
   /** D113's ordering: an act clock is not something you can fix by building. */
   it('names the War clock on the Protocol rather than claiming Gravitic is missing', () => {
+    openStrategicResearch();
     const view = show({
       research: allOpen({
         GRAVITIC_CHARGES: { level: 1, completed: true, available: false },
@@ -465,18 +480,19 @@ describe('a closed door states its reason', () => {
         },
       }),
     });
-    const protocol = row(view, 'DEATH_STAR_PROTOCOL');
+    const protocol = pick(view, 'DEATH_STAR_PROTOCOL');
     expect(protocol).toHaveTextContent(/War act opens in/i);
     expect(protocol).not.toHaveTextContent(/Gravitic Charges first/i);
   });
 
   it('names the Core level a project still needs', () => {
+    openStrategicResearch();
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     expect(need).toBeGreaterThan(1);
     const view = show({
       buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
-    expect(row(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
@@ -486,6 +502,7 @@ describe('a closed door states its reason', () => {
    * the REASON still shows and only the shortcut is missing.
    */
   it('offers the Core as a fix when the host can take it', async () => {
+    openStrategicResearch();
     const onNeed = vi.fn();
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show(
@@ -501,21 +518,23 @@ describe('a closed door states its reason', () => {
 
   /** D209: the Core that gates research is the capital's, read on every world. */
   it('gates a project on the capital Core, however tall the world showing it', () => {
+    openStrategicResearch();
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show({
       buildings: { CORE: need + 3, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
       researchCore: need - 1,
     });
-    expect(row(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
   it('still states the Core reason with no host to take the fix', () => {
+    openStrategicResearch();
     const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
     const view = show({
       buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
-    expect(row(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
@@ -527,7 +546,7 @@ describe('a closed door states its reason', () => {
    * planet sheet, and land on a tab that has no research on it at all, which is
    * exactly what `TAB_OF` did after the cards moved.
    */
-  it('scrolls to the prerequisite rather than leaving the screen', async () => {
+  it('selects the prerequisite on the map rather than leaving the screen', async () => {
     const onNeed = vi.fn();
     const view = show(
       {
@@ -547,10 +566,25 @@ describe('a closed door states its reason', () => {
     await userEvent.click(fix!);
     // The host is never called: nothing about this refusal lives off this screen.
     expect(onNeed).not.toHaveBeenCalled();
-    expect(row(view, 'ISOTOPE_SPECTROMETRY')).toHaveAttribute('data-focused', 'true');
+    expect(star(view, 'ISOTOPE_SPECTROMETRY')).toHaveAttribute('aria-pressed', 'true');
+    expect(view.container.querySelector('[data-constellation-card="ISOTOPE_SPECTROMETRY"]')).not.toBeNull();
+  });
+
+  it('selects the prerequisite from the card’s own door as well', () => {
+    const view = show({
+      research: allOpen({
+        DENSE_FUEL_CELLS: {
+          discovered: false, available: false,
+          queueDiscovered: false, queueAvailable: false,
+        },
+      }),
+    });
+    fireEvent.click(within(pick(view, 'DENSE_FUEL_CELLS')).getByRole('button', { name: /Isotope Spectrometry first/i }));
+    expect(star(view, 'ISOTOPE_SPECTROMETRY')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('points the Protocol at Gravitic Charges the same way', async () => {
+    openStrategicResearch();
     const view = show({
       research: allOpen({
         DEATH_STAR_PROTOCOL: {
@@ -561,7 +595,7 @@ describe('a closed door states its reason', () => {
     });
     expect(reason(view, 'DEATH_STAR_PROTOCOL')).toMatch(/Gravitic Charges first/i);
     await userEvent.click(act(await open(view, 'DEATH_STAR_PROTOCOL'))!);
-    expect(row(view, 'GRAVITIC_CHARGES')).toHaveAttribute('data-focused', 'true');
+    expect(star(view, 'GRAVITIC_CHARGES')).toHaveAttribute('aria-pressed', 'true');
   });
 
   /**
@@ -593,30 +627,32 @@ describe('a closed door states its reason', () => {
 
   it('names the project a stat ladder stands behind rather than a spent clock', () => {
     const view = show({ research: allOpen(behindProject('SHIP_POWER')) });
-    const power = row(view, 'SHIP_POWER');
+    const power = pick(view, 'SHIP_POWER');
     expect(power).toHaveTextContent(/Starship Engineering first/i);
     expect(power).not.toHaveTextContent(/Researchable in/i);
   });
 
   it('names Gravitic Charges behind the Interception Grid', () => {
+    openStrategicResearch();
     const view = show({ research: allOpen(behindProject('INTERCEPTION_GRID')) });
-    const grid = row(view, 'INTERCEPTION_GRID');
+    const grid = pick(view, 'INTERCEPTION_GRID');
     expect(grid).toHaveTextContent(/Gravitic Charges first/i);
     expect(grid).not.toHaveTextContent(/Researchable in/i);
   });
 
   it('names the Protocol behind the Stockpile', () => {
+    openStrategicResearch();
     const view = show({ research: allOpen(behindProject('STRATEGIC_STOCKPILE')) });
-    expect(row(view, 'STRATEGIC_STOCKPILE'))
+    expect(pick(view, 'STRATEGIC_STOCKPILE'))
       .toHaveTextContent(/Death Star Protocol first/i);
   });
 
-  it('scrolls to the prerequisite it named', async () => {
+  it('selects the prerequisite it named', async () => {
     const onNeed = vi.fn();
     const view = show({ research: allOpen(behindProject('SHIP_POWER')) }, {}, { onNeed });
     await userEvent.click(act(await open(view, 'SHIP_POWER'))!);
     expect(onNeed).not.toHaveBeenCalled();
-    expect(row(view, 'STARSHIP_ENGINEERING')).toHaveAttribute('data-focused', 'true');
+    expect(star(view, 'STARSHIP_ENGINEERING')).toHaveAttribute('aria-pressed', 'true');
   });
 
   /**
@@ -625,12 +661,13 @@ describe('a closed door states its reason', () => {
    * same ordering D113 gave the Protocol.
    */
   it('keeps a clock that has not run out ahead of the prerequisite', () => {
+    openStrategicResearch();
     const view = show({
       research: allOpen(behindProject('INTERCEPTION_GRID', {
         availableAt: new Date(Date.now() + 7_200_000),
       })),
     });
-    const grid = row(view, 'INTERCEPTION_GRID');
+    const grid = pick(view, 'INTERCEPTION_GRID');
     expect(grid).toHaveTextContent(/Researchable in/i);
     expect(grid).not.toHaveTextContent(/Gravitic Charges first/i);
   });
@@ -695,6 +732,30 @@ describe('the commander research queue', () => {
     });
     expect(view.container.querySelector('[data-research-finishes]')?.textContent ?? '')
       .toMatch(/\d/);
+  });
+
+  /** E8: "Araştırma hattı (3 yuva) görünür" — the lane, one cell per slot, free ones said. */
+  it('draws the research lane, one cell per slot', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+      ],
+    });
+    const lane = view.getByRole('group', { name: /Commander research/i });
+    expect(within(lane).getByRole('button', { name: /Yard Automation/ })).toBeInTheDocument();
+    expect(lane.querySelectorAll('[data-free-slot]')).toHaveLength(2);
+  });
+
+  it('selects a project on the map from its cell in the lane', () => {
+    const view = show({
+      researchQueue: [
+        researchOrder('YARD_AUTOMATION', new Date('2026-08-28T11:30:00.000Z')),
+        researchOrder('CARGO_HOLDS', new Date('2026-08-28T12:30:00.000Z'), 1),
+      ],
+    });
+    const lane = view.getByRole('group', { name: /Commander research/i });
+    fireEvent.click(within(lane).getByRole('button', { name: /Cargo Holds/ }));
+    expect(star(view, 'CARGO_HOLDS')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('says so when nothing is running', () => {
@@ -795,8 +856,8 @@ describe('the commander research queue', () => {
       ],
     });
     expect(reason(view, 'ISOTOPE_SPECTROMETRY')).toBe('');
-    expect(row(view, 'ISOTOPE_SPECTROMETRY')).toHaveTextContent(/Researching/i);
-    expect(row(view, 'ISOTOPE_SPECTROMETRY')).not.toHaveTextContent(/Researchable in/i);
+    expect(pick(view, 'ISOTOPE_SPECTROMETRY')).toHaveTextContent(/Researching/i);
+    expect(pick(view, 'ISOTOPE_SPECTROMETRY')).not.toHaveTextContent(/Researchable in/i);
   });
 
   it('says a project waiting behind another is queued, not running', () => {
@@ -810,8 +871,8 @@ describe('the commander research queue', () => {
       ],
     });
     expect(reason(view, 'CARGO_HOLDS')).toBe('');
-    expect(row(view, 'CARGO_HOLDS')).toHaveTextContent(/In queue/i);
-    expect(row(view, 'CARGO_HOLDS')).not.toHaveTextContent(/Researchable in/i);
+    expect(pick(view, 'CARGO_HOLDS')).toHaveTextContent(/In queue/i);
+    expect(pick(view, 'CARGO_HOLDS')).not.toHaveTextContent(/Researchable in/i);
   });
 
   it('marks a project queued on this world rather than calling it blocked', () => {
@@ -877,9 +938,9 @@ describe('in Turkish', () => {
         },
       }),
     });
-    expect(row(view, 'DENSE_FUEL_CELLS'))
+    expect(pick(view, 'DENSE_FUEL_CELLS'))
       .toHaveTextContent('Bir akında ambarını doldur; hedefte ganimet kalsın');
-    expect(row(view, 'GRAVITIC_CHARGES'))
+    expect(pick(view, 'GRAVITIC_CHARGES'))
       .toHaveTextContent('Aegis akın hasarının en az %25’ini emsin');
   });
 
@@ -890,6 +951,7 @@ describe('in Turkish', () => {
    * countdown was never the refusal; the prerequisite was.
    */
   it('names the prerequisite instead of a countdown of none', () => {
+    openStrategicResearch();
     const view = show({
       research: allOpen({
         INTERCEPTION_GRID: {
@@ -899,7 +961,7 @@ describe('in Turkish', () => {
         },
       }),
     });
-    const grid = row(view, 'INTERCEPTION_GRID');
+    const grid = pick(view, 'INTERCEPTION_GRID');
     expect(grid).toHaveTextContent('Önce Gravitik Yükler araştırmasını tamamla');
     expect(grid).not.toHaveTextContent(/sonra araştırılabilir/);
   });
@@ -907,31 +969,30 @@ describe('in Turkish', () => {
   it('names every project and every group', () => {
     const view = show();
     for (const id of ALL) {
-      expect(row(view, id).textContent.trim().length, id).toBeGreaterThan(0);
+      expect(pick(view, id).textContent.trim().length, id).toBeGreaterThan(0);
     }
-    for (const band of view.container.querySelectorAll('[data-band] h3')) {
-      expect(band.textContent.trim().length).toBeGreaterThan(0);
+    for (const region of view.container.querySelectorAll('[data-region]')) {
+      expect(region.textContent.trim().length).toBeGreaterThan(0);
     }
   });
 });
 
 /**
- * THE ROW/SHEET GRAMMAR, WHICH CAME WITH THE CARDS. D109.
+ * THE OPEN-THEN-DECIDE GRAMMAR, ON THE MAP. D109.
  *
- * `orbit.test.tsx` walks this for every item kind on the planet sheet and used to
- * include Isotope Spectrometry among them. Research left that screen, so the case
- * left with it: a card never commits money inline — it opens, and the sheet is
- * where the decision is made.
+ * A card never committed money inline — it opened, and the sheet was the decision.
+ * K9 keeps the grammar and moves it: a star is the row, and tapping it only opens
+ * the card under the map, which is the decision (E8: "…fiyat, süre, Araştır"). The
+ * sheet behind "Details" carries the same press with the whole picture.
  */
-describe('the row and sheet grammar', () => {
+describe('the open-then-decide grammar', () => {
   it('opens every project before it offers a commitment', async () => {
+    // The grammar, not the doors: every project purchasable, the weapon's three too.
+    openStrategicResearch();
     for (const id of ALL) {
       const view = show();
-      const card = row(view, id);
-      expect(
-        within(card).queryByRole('button', { name: /^research$/i }),
-        id,
-      ).toBeNull();
+      pick(view, id);
+      expect(mutate, id).not.toHaveBeenCalled();
       const sheet = await open(view, id);
       expect(within(sheet).getByRole('button', { name: /research/i }), id).toBeInTheDocument();
       view.unmount();
@@ -1002,33 +1063,70 @@ describe('the sheet portrait', () => {
 });
 
 /**
- * THE CONSTELLATION OVER THE LIST. Spec E8 · K9: "Sırada ne var?" at one glance — a
- * map of every project, and under it the card of the one selected: what it becomes,
- * what stands in front of it, what it costs and the research press. The list stays
- * below as the detail, one row per project.
+ * THE CONSTELLATION IN PLACE OF THE LIST. Spec E8 · K9: "Sırada ne var?" at one
+ * glance — a map of every project, and under it the card of the one selected: what
+ * it becomes, what stands in front of it, what it opens, what it costs, and the press.
  */
 describe('the research constellation', () => {
-  it('opens on a map of every project with a card under it, and the list keeps one row each', () => {
+  it('opens on a map of every project with one card under it, and no list', () => {
     const view = show();
     expect(view.container.querySelectorAll('[data-constellation] [data-star]')).toHaveLength(16);
-    const card = view.container.querySelector('[data-constellation-card]');
-    expect(card).not.toBeNull();
-    expect(card!.querySelector('[id^="row-"]')).toBeNull();
+    expect(view.container.querySelectorAll('[data-constellation-card]')).toHaveLength(1);
+    expect(view.container.querySelector('[data-band]')).toBeNull();
+    expect(view.container.querySelector('[id^="row-"]')).toBeNull();
   });
 
   it('shows the tapped project in the card', () => {
     const view = show();
-    fireEvent.click(view.container.querySelector('[data-star="SHIP_ARMOR"]')!);
-    const name = row(view, 'SHIP_ARMOR').querySelector('h3')?.textContent ?? '';
-    expect(view.container.querySelector('[data-constellation-card]')).toHaveTextContent(name);
-    expect(view.container.querySelector('[data-star="SHIP_ARMOR"]')).toHaveAttribute('aria-pressed', 'true');
+    const card = pick(view, 'SHIP_ARMOR');
+    expect(card).toHaveTextContent('Ship Armor');
+    expect(star(view, 'SHIP_ARMOR')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('opens on the project in the lane, else the first one open', () => {
+    const running = show({
+      researchQueue: [researchOrder('CARGO_HOLDS', new Date('2026-08-28T11:30:00.000Z'))],
+    });
+    expect(running.container.querySelector('[data-constellation-card="CARGO_HOLDS"]')).not.toBeNull();
+    running.unmount();
+    const idle = show();
+    expect(idle.container.querySelector('[data-constellation-card="ISOTOPE_SPECTROMETRY"]')).not.toBeNull();
+  });
+
+  /** E8: "önkoşul" on the card — held, it is said with a tick; missing, the door says it. */
+  it('names a prerequisite already held', () => {
+    const view = show({ research: allOpen({ STARSHIP_ENGINEERING: { level: 1 }, SHIP_ARMOR: { level: 1 } }) });
+    expect(pick(view, 'SHIP_ARMOR').querySelector('[data-prerequisite]'))
+      .toHaveTextContent(/Needs Starship Engineering/);
+  });
+
+  /** E8: "açtığı gemiler (`HULLS[*].requiredResearch`)" — the next rung that opens a hull, and which. */
+  it('names the ships the next door opens, at its rung', () => {
+    const view = show({ research: allOpen({ STARSHIP_ENGINEERING: { level: 1 }, SHIP_ARMOR: { level: 1 } }) });
+    const opens = pick(view, 'SHIP_ARMOR').querySelector<HTMLElement>('[data-opens]');
+    expect(opens).not.toBeNull();
+    expect(opens).toHaveTextContent(/Level 2 opens/);
+    expect(opens).toHaveTextContent(/Leviathan/);
+    expect(opens).toHaveTextContent(/Praetorian/);
+  });
+
+  it('says nothing about ships once every door on the ladder is open', () => {
+    const view = show({ research: allOpen({ SHIP_ARMOR: { level: 2 } }) });
+    expect(pick(view, 'SHIP_ARMOR').querySelector('[data-opens]')).toBeNull();
+    expect(pick(view, 'CARGO_HOLDS').querySelector('[data-opens]')).toBeNull();
+  });
+
+  it('draws four ships at most and counts the rest', () => {
+    const view = show();
+    const opens = pick(view, 'STARSHIP_ENGINEERING').querySelector<HTMLElement>('[data-opens]');
+    expect(opens!.querySelectorAll('[data-hull]')).toHaveLength(4);
+    expect(opens).toHaveTextContent('+3');
   });
 
   it('researches from the card', () => {
     mutate.mockClear();
     const view = show({ research: allOpen() });
-    fireEvent.click(view.container.querySelector('[data-star="STARSHIP_ENGINEERING"]')!);
-    const card = view.container.querySelector<HTMLElement>('[data-constellation-card]')!;
+    const card = pick(view, 'STARSHIP_ENGINEERING');
     fireEvent.click(within(card).getByRole('button', { name: /^research$/i }));
     expect(mutate).toHaveBeenCalled();
     expect(mutate.mock.calls[0]?.[0]).toBe('STARSHIP_ENGINEERING');

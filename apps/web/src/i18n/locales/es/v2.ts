@@ -174,4 +174,11 @@ export const baseSwitch = {
 export const researchMap = {
   label: 'Mapa de investigación',
   closed: '{{group}} · cerrado',
+  /** The strategic three while their release switch is off: the server refuses them. */
+  shut: 'Cerrado por ahora',
+  /** A prerequisite already held, said on the card. */
+  needs: 'Requiere {{name}}',
+  /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
+  opensAt: 'El nivel {{level}} abre',
+  opens: 'Abre',
 } as const;

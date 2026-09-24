@@ -24,11 +24,12 @@ export const research = {
   queueCapacity: "{{count}} ranuras",
   queueLane: "Investigación del comandante",
   queueGlobalHint:
-    "Esta cola pertenece a tu comandante y la investigación iniciada no se puede cancelar. La construcción y el patio en cada mundo siguen funcionando por separado.",
+    "Esta cola pertenece a tu comandante y la investigación iniciada no se puede cancelar. La construcción y el astillero de cada mundo siguen funcionando por separado.",
   runningLabel: "En marcha",
   runningFinishes: "finaliza {{time}}",
   idleLabel: "No hay nada en marcha",
-  idleHint: "Inicie un proyecto a continuación. Hasta tres pueden esperar aquí; una vez iniciados no se pueden cancelar.",
+  idleHint:
+    "Elige una estrella en el mapa. Hasta tres proyectos pueden esperar aquí.",
 
   frontierBand: "Frontera",
   frontierNote:
@@ -70,7 +71,7 @@ export const research = {
   sheetEyebrow: "Proyecto de investigación",
   sheetComplete: "Investigación completa",
   sheetCost: "Costo de investigación",
-  sheetOnce: "Colocado en la cola de investigación de todo tu comandante. No utiliza un espacio de Construcción o Patio.",
+  sheetOnce: "Colocado en la cola de investigación de todo tu comandante. No utiliza un espacio de Construcción ni de Astillero.",
   sheetRung: "Rung {{level}} de {{max}}. Cada peldaño se compra por separado.",
 
   isotopeName: "Espectrometría de isótopos",
@@ -104,10 +105,10 @@ export const research = {
     "Cada peldaño abre tres niveles más de Refinería de Deuterio en cada mundo que tengas",
   synthesisDetail:
     "Cada peldaño de investigación eleva el techo de la Refinería de Deuterio en tres niveles en cada mundo. Aún construyes esos niveles de Refinería por separado donde necesitas producción de combustible.",
-  yardName: "Automatización de patios",
+  yardName: "Automatización de astilleros",
   yardTag: "Construye naves más rápido",
   yardRole:
-    "Acorta el tiempo de construcción de naves móviles sin afectar los cañones terrestres ni la capacidad del patio.",
+    "Acorta el tiempo de construcción de naves móviles sin afectar los cañones terrestres ni la capacidad del astillero.",
   yardDetail:
     "Cada peldaño reduce el tiempo de cada pedido futuro de naves móviles en tus mundos, incluidos los Prospectores. No acelera las defensas terrestres, no reduce los precios de los recursos ni agrega espacios en la cola de Yard.",
   robotsName: "Robots con IA",

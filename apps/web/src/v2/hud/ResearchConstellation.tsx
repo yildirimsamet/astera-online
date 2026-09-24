@@ -64,9 +64,10 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
         return (
           <p
             key={region.group}
+            data-region={region.group}
             className={`absolute text-micro font-semibold uppercase tracking-wide ${dim ? 'text-v2-ink-3/60' : 'text-v2-ink-3'}`}
             style={{
-              top: `${String(region.y * 100 + 1.5)}%`,
+              top: `${String(region.y * 100 + 0.5)}%`,
               ...(LABEL_SIDE[region.group] === 'left'
                 ? { left: `${String(region.x * 100 + 2)}%` }
                 : { right: `${String((1 - region.x - region.w) * 100 + 2)}%` }),
@@ -110,13 +111,14 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
             key={node.id}
             type="button"
             data-star={node.id}
+            data-group={node.group}
             data-level={String(star.level)}
             {...(star.locked ? { 'data-locked': '' } : {})}
             {...(star.running ? { 'data-running': '' } : {})}
             aria-pressed={on}
             aria-label={`${star.name} · ${String(star.level)}/${String(star.maxLevel)}`}
             onClick={() => { onSelect(node.id); }}
-            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-0.5 ${dim || star.locked ? 'opacity-50' : ''}`}
+            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${dim || star.locked ? 'opacity-50' : ''}`}
             style={{ left: `${String(node.x * 100)}%`, top: `calc(${String(node.y * 100)}% - 6px)` }}
           >
             <span className="relative grid size-3 place-items-center">
@@ -125,7 +127,7 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
               ) : (
                 <span className="size-3 rounded-full border border-v2-ink-2" />
               )}
-              {on && <span className="absolute -inset-1.5 rounded-full border border-dashed border-v2-self" />}
+              {on && <span className="absolute -inset-1 rounded-full border border-dashed border-v2-self" />}
               {star.running && <span className="absolute -inset-1 animate-ping rounded-full border border-v2-self/70" />}
             </span>
             <span className={`max-w-full truncate text-micro leading-tight ${HALO} ${on ? 'text-v2-ink' : 'text-v2-ink-2'}`}>{star.name}</span>

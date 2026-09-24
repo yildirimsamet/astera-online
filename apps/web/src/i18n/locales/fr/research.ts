@@ -20,7 +20,7 @@ export const research = {
   runningFinishes: "se termine à {{time}}",
   idleLabel: "Aucune recherche en cours",
   idleHint:
-    "Lance un projet ci-dessous. Jusqu’à trois projets peuvent attendre dans cette file ; une fois commencés, ils ne peuvent plus être annulés.",
+    "Choisis une étoile sur la carte. Jusqu’à trois projets peuvent attendre dans cette file.",
   frontierBand: "Pointe",
   frontierNote:
     "Ces recherches se découvrent grâce à certains événements de la galaxie. Une fois découvertes, elles doivent être terminées en dépensant des ressources et du temps de recherche.",

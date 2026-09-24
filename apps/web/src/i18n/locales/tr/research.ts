@@ -20,7 +20,7 @@ export const research = {
   runningFinishes: "{{time}}’de biter",
   idleLabel: "Sürmekte olan araştırma yok",
   idleHint:
-    "Aşağıdan bir proje başlat. Burada üç proje sıraya girebilir; başladığında iptal edilemez.",
+    "Haritadan bir yıldız seç. Burada üç proje sıraya girebilir.",
 
   frontierBand: "Ufuk",
   frontierNote:

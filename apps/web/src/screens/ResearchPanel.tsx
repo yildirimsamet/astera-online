@@ -5,25 +5,27 @@ import {
   DEUTERIUM,
   RESEARCH_PROJECTS,
   FEATURE_FLAGS,
+  type HullId,
   type ResearchProjectId,
 } from '@astera/rules';
 import { useCompleteResearch, usePlanet } from '../api/queries.js';
-import { RESEARCH_GROUPS } from '../lib/constellation.js';
+import { RESEARCH_GROUPS, hullDoor } from '../lib/constellation.js';
 import { ResearchConstellation, type StarState } from '../v2/hud/ResearchConstellation.js';
+import { QueueLane } from '../v2/kit/QueueLane.js';
 import type { BuildOrderView, PlanetView } from '../api/schemas.js';
 import { percent } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { clockTime, untilReady, useNow } from '../lib/time.js';
 import { useProjected } from '../lib/projection.js';
-import { RESEARCH_ART } from '../ui/assets.js';
+import { HULL_ART, RESEARCH_ART } from '../ui/assets.js';
+import { hullLabel } from '../i18n/names.js';
 import { researchGain, type Gain } from '../lib/gains.js';
 import { ActionButton, Price, TimeCost } from '../ui/Action.js';
-import { Band, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
+import type { Blocked } from '../ui/UpgradeRow.js';
+import { Rungs } from '../ui/Rungs.js';
 import { orderMinutes } from '../lib/orderTime.js';
-import { useAccordion } from '../lib/accordion.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { Note, Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
-import { QueueStrip } from '../ui/QueueStrip.js';
+import { Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
 
 /**
  * EVERY RESEARCH PROJECT, ON ONE SURFACE THAT IS NOT A WORLD. T12.
@@ -38,30 +40,27 @@ import { QueueStrip } from '../ui/QueueStrip.js';
  *
  * WHAT WENT WRONG BEFORE THIS EXISTED. Fifteen projects were priced, queued and
  * applied by the server; four of them rendered. T5, T8, T9, T10 and T11 all
- * shipped ladders a player had no control to buy. The row list here is generated
- * from `GROUPED` and `test/research-panel` checks it against
+ * shipped ladders a player had no control to buy. The map here is drawn from
+ * `RESEARCH_GROUPS` and `test/research-panel` checks its stars against
  * `RESEARCH_PROJECT_IDS`, so a sixteenth project cannot be added without a home.
+ *
+ * WHAT IT LOOKS LIKE (E8 · K9). A constellation — a star per project, a quarter of
+ * the sky per group — and under it the card of the selected one, which is the
+ * decision. It replaced four folding bands of rows: "what is next?" at one glance,
+ * where the list took a scroll per group to answer it.
  *
  * WHERE THE ORDER ACTUALLY GOES. Onto the commander's RESEARCH queue. The world
  * in view only pays the cost and supplies its Core level; its Construction and
  * Yard queues remain independent.
  */
 
-/** The four groups, one statement shared with the constellation (`lib/constellation.ts`). */
-const GROUPED = RESEARCH_GROUPS;
-
 /**
- * THE THREE ROWS THAT BELONG TO THE WEAPON, AND ONE PLACE THAT SAYS SO.
+ * THE THREE PROJECTS THAT BELONG TO THE WEAPON, AND ONE PLACE THAT SAYS SO.
  *
- * `STRATEGIC_CRAFTING_ENABLED` hides them with `display: none` rather than
- * dropping them from the tree, so a row keeps its id, its sheet and its place in
- * every test that names it — the flag is a release switch, not a deletion.
- *
- * BUT A BAND'S COUNTER READ `projects.length`, and Frontier carries four rows
- * with one of them hidden: the closed header promised four and opened onto three.
- * A count is the only thing a closed band says about itself, so both the header
- * and the rows have to ask the same question — which is why this is a function
- * and not two copies of the same three ids.
+ * `STRATEGIC_RESEARCH_ENABLED` is a release switch, not a deletion. While it is off
+ * the server refuses these three (`services/research.ts`), so they stay on the map,
+ * dim, and their card says closed before anything else: nothing below that door can
+ * open them, which makes it the widest refusal `doorOf` has.
  */
 const strategicOnly = (id: ResearchProjectId): boolean =>
   !FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED
@@ -92,26 +91,15 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   const now = useNow(1000);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
   /**
-   * A PREREQUISITE IS THREE ROWS UP, NOT ON ANOTHER SCREEN.
+   * THE STAR THE COMMANDER TAPPED; until then the card follows what is next.
    *
-   * `onNeed` hands a refusal to the host, and the Core genuinely lives there. A
-   * research prerequisite does not: it is a card on this list, and sending the
-   * player to the planet sheet to find it is what `TAB_OF` did by accident once
-   * the cards moved — it landed them on a tab with no research on it at all.
+   * A PREREQUISITE IS ON THIS MAP, NOT ON ANOTHER SCREEN. `onNeed` hands a refusal
+   * to the host, and the Core genuinely lives there. A research prerequisite does
+   * not: it is a star a few stars away, so a door that names one selects it —
+   * sending the player to the planet sheet is what `TAB_OF` once did by accident,
+   * and it landed them on a tab with no research on it at all.
    */
-  const [focused, setFocused] = useState<ResearchProjectId | null>(null);
-  /** Frontier leads because its cards are FOUND rather than bought — see `GROUPED`. */
-  const bands = useAccordion('research', [GROUPED[0].id]);
-  /** The star the commander tapped; until then the card follows what is next. */
   const [picked, setPicked] = useState<ResearchProjectId | null>(null);
-
-  useEffect(() => {
-    if (!focused) return;
-    document.getElementById(`row-${focused}`)
-      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    const id = window.setTimeout(() => { setFocused(null); }, 2600);
-    return () => { window.clearTimeout(id); };
-  }, [focused]);
 
   /**
    * WAKE ON THE MOMENTS THIS SCREEN'S OWN PAYLOAD ALREADY NAMES. D52 · D53.
@@ -324,6 +312,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
    * Ordered from the widest refusal to the narrowest, because a card should say the
    * thing that would still be true after everything else was solved.
    *
+   *   0. the release switch is off — the server refuses the project outright
    *   1. the commander Research queue is full
    *   2. the season has not opened this act yet — no amount of building fixes it
    *   3. the discovery has not happened — a condition to play out, not to buy
@@ -340,6 +329,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     completed: boolean,
   ): Blocked | undefined => {
     if (completed) return undefined;
+    if (strategicOnly(id)) return { reason: t('researchMap.shut') };
     /*
       A PROJECT ALREADY ON THE QUEUE HAS NO DOOR LEFT. D183, owner report:
       *"Que'da olan bir araştırma menü item'da 'birazdan sonra araştırılabilir'
@@ -378,13 +368,13 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
         if (id === 'DEATH_STAR_PROTOCOL') {
           return {
             reason: t('research.graviticFirst'),
-            onFix: () => { setFocused('GRAVITIC_CHARGES'); },
+            onFix: () => { setPicked('GRAVITIC_CHARGES'); },
           };
         }
         if (!(isotope?.completed ?? false)) {
           return {
             reason: t('research.isotopeFirst'),
-            onFix: () => { setFocused('ISOTOPE_SPECTROMETRY'); },
+            onFix: () => { setPicked('ISOTOPE_SPECTROMETRY'); },
           };
         }
         return {
@@ -417,7 +407,7 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
       if (behind !== null && !(state.queuePrerequisiteMet ?? state.prerequisiteMet ?? true)) {
         return {
           reason: t('research.prerequisiteFirst', { name: copy(behind).name }),
-          onFix: () => { setFocused(behind); },
+          onFix: () => { setPicked(behind); },
         };
       }
       return { reason: t('research.at', { duration: untilOpen }) };
@@ -478,67 +468,27 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
     return { state, name, tag, role, level, maxLevel, gain, spec };
   };
 
-  const row = (id: ResearchProjectId) => {
-    const derived = specFor(id);
-    if (!derived) return null;
-    const { state, name, tag, role, level, maxLevel, gain, spec } = derived;
-
-    return (
-      <div
-        key={id}
-        id={`row-${id}`}
-        data-focused={focused === id ? 'true' : undefined}
-        className={strategicOnly(id) ? 'hidden' : undefined}
-      >
-        <UpgradeRow
-          art={RESEARCH_ART[id]}
-          name={name}
-          level={level}
-          maxLevel={maxLevel}
-          tag={tag}
-          role={role}
-          gain={gain}
-          cost={state.cost}
-          held={held}
-          income={{
-            alloyPerHour: planet.planet.alloyPerHour,
-            crystalPerHour: planet.planet.crystalPerHour,
-          }}
-          /*
-            RESEARCH RUNS ON THE FUNDING WORLD'S CURRENT CORE — `research.ts` reads
-            `planet.buildings.CORE` and never consults a build queue, because D134
-            gave research its own commander-wide lane rather than a slot in
-            CONSTRUCTION. `orderMinutes` honours that asymmetry rather than tidying
-            it away; a quote the server contradicts is worse than no quote.
-          */
-          takes={orderMinutes('RESEARCH', state.cost, planet, 1, { research: id, level: level + 1 })}
-          unowned={level === 0}
-          {...(spec.blocked ? { blocked: spec.blocked } : {})}
-          {...(spec.completed ? { completed: spec.completed } : {})}
-          {...(spec.queued ? { queued: spec.queued } : {})}
-          verb="install"
-          actionLabel={t('research.act')}
-          onAct={() => { buy(id, name); }}
-          onOpen={() => { setSheet(spec); }}
-          pending={research.isPending}
-          highlighted={focused === id}
-        />
-      </div>
-    );
-  };
-
   /*
     THE CONSTELLATION (E8 · K9): what is next, at one glance. The selection opens on the
     project in the lane, else the first one a commander can start now, else the first.
   */
   const firstOpen = RESEARCH_GROUPS.flatMap((group) => [...group.projects])
-    .filter((id) => !strategicOnly(id))
     .find((id) => {
       const derived = specFor(id);
       return derived !== null && !derived.spec.blocked && !derived.spec.completed && !derived.spec.queued;
     });
   const chosen: ResearchProjectId = picked ?? running?.projectId ?? firstOpen ?? 'ISOTOPE_SPECTROMETRY';
   const chosenSpec = specFor(chosen);
+  /** E8: the card names the prerequisite once it is held; a missing one is the card's door. */
+  const behind = RESEARCH_PROJECTS[chosen].prerequisite;
+  const behindHeld = behind !== null
+    && (chosenSpec?.state.queuePrerequisiteMet ?? chosenSpec?.state.prerequisiteMet ?? true);
+  const opens = chosenSpec ? hullDoor(chosen, chosenSpec.level) : null;
+  /** The lane's cells select their project: the lane is the map's other index. */
+  const pickOrder = (order: BuildOrderView): void => {
+    const id = researchQueue.find((candidate) => candidate.id === order.id)?.projectId;
+    if (id) setPicked(id);
+  };
   const stars: StarState[] = RESEARCH_GROUPS.flatMap((group) => [...group.projects]).flatMap((id) => {
     const derived = specFor(id);
     if (!derived) return [];
@@ -553,8 +503,8 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-caption leading-snug text-faint">{t('research.premise')}</p>
+    <div className="flex flex-col gap-3 font-v2-ui">
+      <p className="text-caption leading-snug text-v2-ink-2">{t('research.premise')}</p>
 
       <ResearchConstellation
         stars={stars}
@@ -569,84 +519,39 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
           takes={orderMinutes('RESEARCH', chosenSpec.state.cost, planet, 1, { research: chosen, level: chosenSpec.level + 1 })}
           held={held}
           pending={research.isPending}
+          prerequisite={behind !== null && behindHeld ? copy(behind).name : null}
+          opens={opens === null ? null : { ...opens, permission: chosenSpec.maxLevel === 1 }}
           onOpen={() => { setSheet(chosenSpec.spec); }}
           onAct={() => { buy(chosen, chosenSpec.name); }}
         />
       )}
 
-      <section className="plate plate-inset overflow-hidden" aria-label={t('research.queueTitle')}>
-        <header className="flex items-baseline gap-2 border-b border-line-soft px-3 py-2">
-          <h2 className="legend text-bone">{t('research.queueTitle')}</h2>
-          <span className="h-px flex-1 bg-gradient-to-r from-line-soft to-transparent" />
-          <span className="num text-micro text-faint">
-            {t('research.queueCapacity', { count: BUILD.queueDepth })}
-          </span>
-        </header>
-        <QueueStrip
-          label={t('research.queueLane')}
-          orders={queueOrders}
-          now={now}
-        />
-        <p className="px-3 pb-3 text-label leading-snug text-faint">
-          {t('research.queueGlobalHint')}
-        </p>
-      </section>
-
-      {running ? (
-        <div data-research-running className="plate flex flex-col gap-1 p-2">
-          <p className="legend text-crystal/85">{t('research.runningLabel')}</p>
-          <p className="name text-bone">{copy(running.projectId).name}</p>
-          <p className="text-label text-faint">
-            <span data-research-finishes className="num">
+      {/*
+        THE LANE (E8: "Araştırma hattı (3 yuva) görünür"). One queue for every world
+        the commander holds, drawn as the Base draws its own (B12); research cannot be
+        cancelled, so a cell selects its project on the map instead of opening a sheet.
+      */}
+      <section aria-label={t('research.queueTitle')} className="flex flex-col gap-1.5">
+        <QueueLane label={t('research.queueLane')} orders={queueOrders} now={now} onOpen={pickOrder} />
+        {running ? (
+          <p data-research-running className="text-micro leading-snug text-v2-ink-2">
+            <span className="text-v2-self">{t('research.runningLabel')}</span>
+            {' · '}
+            <span className="text-v2-ink">{copy(running.projectId).name}</span>
+            {' · '}
+            <span data-research-finishes className="font-v2-mono">
               {t('research.runningFinishes', { time: clockTime(running.finishesAt) })}
             </span>
           </p>
-        </div>
-      ) : (
-        <div data-research-idle className="plate flex flex-col gap-1 p-2">
-          <p className="legend">{t('research.idleLabel')}</p>
-          <p className="text-label leading-snug text-faint">{t('research.idleHint')}</p>
-        </div>
-      )}
-
-      {/*
-        FOUR BANDS, FIFTEEN PROJECTS, AND ONLY ONE BAND OPEN. Owner instruction.
-
-        Every project row carries art, a name, what it unlocks, its gate, a price in
-        three resources and now a build time — a tall card by necessity, and fifteen
-        of them is several screens before a commander has seen what research even
-        offers. The bands were already the right grouping; they simply drew all of
-        their contents at once.
-
-        The choice is REMEMBERED (`useAccordion`): somebody working through Doctrine
-        for a week should not reopen Doctrine every visit.
-      */}
-      {GROUPED.map((group) => (
-        <section
-          key={group.id}
-          data-band={group.id}
-          className={`plate overflow-hidden ${
-            !FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED && group.id === 'strategic' ? 'hidden' : ''
-          }`}
-        >
-          {/*
-            The two keys are written out rather than built from `group.id`. A
-            template literal would type-check as one union member and quietly stop
-            checking the other three — and a missing key on this screen prints its
-            own path on a phone.
-          */}
-          <Band
-            label={t(group.label)}
-            {...(bands.isOpen(group.id) ? { note: t(group.note) } : {})}
-            count={group.projects.filter((id) => !strategicOnly(id)).length}
-            open={bands.isOpen(group.id)}
-            onToggle={() => { bands.toggle(group.id); }}
-          />
-          {bands.isOpen(group.id) ? group.projects.map(row) : null}
-        </section>
-      ))}
-
-      <Note>{t('research.sheetOnce')}</Note>
+        ) : (
+          <p data-research-idle className="text-micro leading-snug text-v2-ink-2">
+            <span className="text-v2-ink">{t('research.idleLabel')}</span>
+            {' · '}
+            {t('research.idleHint')}
+          </p>
+        )}
+        <p className="text-micro leading-snug text-v2-ink-3">{t('research.queueGlobalHint')}</p>
+      </section>
 
       {sheet && (
         <ProjectSheet
@@ -665,9 +570,14 @@ export function ResearchPanel({ onNeed }: { onNeed?: (id: string) => void }) {
 }
 
 /**
- * THE CARD UNDER THE CONSTELLATION (E8): the selected project's name and rung, what
- * the next rung buys, what stands in front of it — a door where it has one — its
- * price and time, and the research press. The detail sheet is one tap away.
+ * THE CARD UNDER THE CONSTELLATION (E8): the selected project's name and rungs, what
+ * it does, what the next rung buys and where the ladder ends, the prerequisite it
+ * stands on, the ships its next door opens, its price and time — and the press.
+ *
+ * A REFUSAL IS SAID ONCE, WHERE THE PRESS WOULD BE. The sheet's `ActionButton` does
+ * the same: a door with a fix is a button that takes it (yellow, a gap you can close
+ * — K2), one without is the sentence in the button's place. The research press only
+ * appears when there is nothing in front of it.
  */
 function ConstellationCard({
   spec,
@@ -675,6 +585,8 @@ function ConstellationCard({
   takes,
   held,
   pending,
+  prerequisite,
+  opens,
   onOpen,
   onAct,
 }: {
@@ -683,39 +595,89 @@ function ConstellationCard({
   takes: number | undefined;
   held: { alloy: number; crystal: number; deuterium: number };
   pending: boolean;
+  /** The project in front of this one, by name, once it is held. */
+  prerequisite: string | null;
+  /** The next rung that opens a hull, and which; `permission` when the project has one rung. */
+  opens: { level: number; hulls: readonly HullId[]; permission: boolean } | null;
   onOpen: () => void;
   onAct: () => void;
 }) {
   const { t } = useTranslation();
   const short = spec.cost.alloy > held.alloy || spec.cost.crystal > held.crystal || spec.cost.deuterium > held.deuterium;
-  const refusal = spec.completed ?? spec.queued ?? spec.blocked?.reason ?? (short ? t('research.cannotAfford') : null);
+  const door = spec.completed === undefined && spec.queued === undefined ? spec.blocked : undefined;
+  const state = spec.completed
+    ? 'complete'
+    : spec.queued
+      ? 'queued'
+      : spec.blocked
+        ? 'locked'
+        : spec.level === 0
+          ? 'available-unowned'
+          : 'owned';
+  const shown = opens?.hulls.slice(0, 4) ?? [];
   return (
-    <section data-constellation-card className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui">
+    <section
+      data-constellation-card={spec.id}
+      data-progression-state={state}
+      className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-panel p-3"
+    >
       <div className="flex items-start gap-3">
-        {art && <img src={art} alt="" aria-hidden className="size-14 shrink-0 object-contain" />}
-        <div className="grid min-w-0 flex-1 gap-0.5">
-          <p className="flex items-baseline gap-2">
-            <span className="v2-name text-caption">{spec.name}</span>
-            <span className="font-v2-mono text-micro text-v2-ink-3">
-              {spec.maxLevel > 1 ? `${String(spec.level)} → ${String(Math.min(spec.maxLevel, spec.level + 1))}` : ''}
-            </span>
-          </p>
+        {/* Grey means "you do not have this": the sheet's rule and its number (`ItemSheet`). */}
+        {art && (
+          <img
+            src={art}
+            alt=""
+            aria-hidden
+            className={`size-14 shrink-0 object-contain ${spec.level === 0 ? 'opacity-45 grayscale' : ''}`}
+          />
+        )}
+        <div className="grid min-w-0 flex-1 gap-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <h3 className="v2-name min-w-0 text-caption">{spec.name}</h3>
+            {spec.maxLevel > 1 && <Rungs level={spec.level} max={spec.maxLevel} next={!spec.completed} />}
+          </div>
           <p className="text-micro leading-snug text-v2-ink-2">{spec.role}</p>
           <p className="font-v2-mono text-micro text-v2-ink-2">
-            <span className="text-v2-ink-3">{spec.gain.label} </span>
-            {spec.gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{spec.gain.next}</span>
+            <span className="font-v2-ui text-v2-ink-3">{spec.gain.label} </span>
+            {spec.gain.maxed ? spec.gain.now : (
+              <>
+                {spec.gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{spec.gain.next}</span>
+              </>
+            )}
+            {spec.gain.ceiling !== undefined && spec.gain.maxed !== true && (
+              <span className="text-v2-ink-3"> · {t('upgradeRow.ceiling', { value: spec.gain.ceiling })}</span>
+            )}
           </p>
-          {spec.blocked && !spec.completed && (
-            spec.blocked.onFix ? (
-              <button type="button" onClick={spec.blocked.onFix} className="text-left text-micro leading-snug text-v2-warn">
-                {spec.blocked.reason} →
-              </button>
-            ) : (
-              <p className="text-micro leading-snug text-v2-warn">{spec.blocked.reason}</p>
-            )
+          {prerequisite !== null && spec.completed === undefined && (
+            <p data-prerequisite className="text-micro text-v2-ink-3">
+              {t('researchMap.needs', { name: prerequisite })} <span className="text-v2-self">✓</span>
+            </p>
           )}
         </div>
       </div>
+      {opens && (
+        <div data-opens className="flex flex-wrap items-center gap-1.5">
+          <span className="text-micro text-v2-ink-3">
+            {opens.permission ? t('researchMap.opens') : t('researchMap.opensAt', { level: opens.level })}
+          </span>
+          {shown.map((hull) => {
+            const picture = HULL_ART[hull];
+            return (
+              <span
+                key={hull}
+                data-hull={hull}
+                className="flex items-center gap-1 rounded-chip border border-v2-line bg-v2-raise/60 py-0.5 pr-1.5 pl-0.5 text-micro text-v2-ink"
+              >
+                {picture && <img src={picture} alt="" aria-hidden className="size-4 object-contain" />}
+                {hullLabel(hull)}
+              </span>
+            );
+          })}
+          {opens.hulls.length > shown.length && (
+            <span className="font-v2-mono text-micro text-v2-ink-3">+{opens.hulls.length - shown.length}</span>
+          )}
+        </div>
+      )}
       {!spec.completed && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Price cost={spec.cost} held={held} layout="row" />
@@ -725,20 +687,37 @@ function ConstellationCard({
       <div className="grid grid-cols-[auto_1fr] gap-2">
         <button
           type="button"
+          data-open-item
           onClick={onOpen}
           className="min-h-10 rounded-control border border-v2-line-hi bg-v2-raise/60 px-3 text-caption font-semibold text-v2-ink"
         >
           {t('research.details')}
         </button>
-        <button
-          type="button"
-          data-primary
-          disabled={refusal !== null || pending}
-          onClick={onAct}
-          className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
-        >
-          {refusal ?? t('research.act')}
-        </button>
+        {door ? (
+          door.onFix ? (
+            <button
+              type="button"
+              onClick={door.onFix}
+              className="min-h-10 rounded-control border border-v2-warn/50 px-3 py-1.5 text-left text-caption leading-snug font-semibold text-v2-warn"
+            >
+              <span data-blocked-reason>{door.reason}</span> →
+            </button>
+          ) : (
+            <p className="flex min-h-10 items-center rounded-control border border-v2-line px-3 py-1.5 text-caption leading-snug text-v2-ink-2">
+              <span data-blocked-reason>{door.reason}</span>
+            </p>
+          )
+        ) : (
+          <button
+            type="button"
+            data-primary
+            disabled={spec.completed !== undefined || spec.queued !== undefined || short || pending}
+            onClick={onAct}
+            className="min-h-10 rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3"
+          >
+            {spec.completed ?? spec.queued ?? (short ? t('research.cannotAfford') : t('research.act'))}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -746,8 +725,8 @@ function ConstellationCard({
 
 /**
  * THE FULL PICTURE BEHIND ONE CARD. Moved here from `PlanetScreen` with the rest
- * of research: the row is the summary, the sheet is the decision, and after T12
- * this screen is its only caller.
+ * of research: the card is the decision, the sheet behind "Details" the whole of
+ * it — the long explanation, the ceiling, the rung being paid for.
  */
 function ProjectSheet({
   spec,
