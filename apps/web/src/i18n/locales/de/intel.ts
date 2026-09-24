@@ -84,6 +84,7 @@ export const intel = {
     ships: 'Schiffe',
     accuracyHome: '{{percent}} Genauigkeit · Flotte war zu Hause',
     accuracyOut: '{{percent}} Genauigkeit · Flotte war ausgefallen',
+    scaleNote: 'Jeder Balken beginnt bei null: das Band ist ihre Schätzung, die türkise Linie deine Welt.',
     estimateNote: 'Bei diesen Zahlen handelt es sich um geschätzte Bereiche. Der Wert der bewaffneten Einheit schließt den Schild und unbewaffnete Schiffe aus.',
     caught: 'Sie haben es erwischt\nDie',
     /* Two words beside the signal bars, which carry the accuracy themselves. */

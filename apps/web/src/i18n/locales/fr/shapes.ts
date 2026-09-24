@@ -18,6 +18,7 @@ export const spend = {
 export const rangeBand = {
   join: " – ",
   reading: "{{label}} : quelque part entre {{low}} et {{high}}",
+  yours: "le tien {{value}}",
 } as const;
 /** Direction de l’appareil et position sur son trajet : `FlightBar`. */
 export const flightBar = {

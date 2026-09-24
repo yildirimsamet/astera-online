@@ -18,6 +18,7 @@ export const spend = {
 export const rangeBand = {
   join: ' – ',
   reading: '{{label}}: {{low}} ile {{high}} arasında bir yerde',
+  yours: 'seninki {{value}}',
 } as const;
 
 /** Aracın yönü ve yolun neresinde olduğu: `FlightBar`. */

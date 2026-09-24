@@ -79,6 +79,7 @@ export const intel = {
     /** `{{percent}}` buraya yerel yüzde biçiminde geliyor; işaret `format.percent`'te. */
     accuracyHome: '{{percent}} doğruluk · filo evdeydi',
     accuracyOut: '{{percent}} doğruluk · filo dışarıdaydı',
+    scaleNote: 'Her çubuk sıfırdan başlar: bant onların tahmini, turkuaz çizgi senin dünyan.',
     estimateNote: 'Sayılar tahmin aralığıdır. Silahlı birlik değeri, kalkanı ve silahsız gemileri içermez.',
     caught: 'sondayı yakaladılar',
     /* Sinyal çubuklarının yanındaki iki kelime; isabeti çubuklar taşıyor. */

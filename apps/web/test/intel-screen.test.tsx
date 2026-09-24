@@ -106,8 +106,9 @@ const planet = (telescope: number, radar: number) => ({
     id: 'p1',
     name: 'Home',
     position: { x: 0, y: 0, z: 0 },
-    alloy: 500, crystal: 120, alloyCap: 5000, crystalCap: 1000,
-    bufferAlloy: 0, bufferCrystal: 0, bufferAlloyCap: 100, bufferCrystalCap: 100,
+    alloy: 500, crystal: 120, deuterium: 0, alloyCap: 5000, crystalCap: 1000,
+    bufferAlloy: 0, bufferCrystal: 0, bufferDeuterium: 0, bufferAlloyCap: 100, bufferCrystalCap: 100,
+    vaultCapacity: { alloy: 100, crystal: 20, deuterium: 0 },
     alloyPerHour: 100, crystalPerHour: 30,
     shield: 0, shieldCap: 0, disruptedUntil: null,
     dominion: 0, wealth: 0,
@@ -115,7 +116,7 @@ const planet = (telescope: number, radar: number) => ({
   buildings: { CORE: 4, REFINERY: 2, EXTRACTOR: 2, VAULT: 1, SHIPYARD: 1 },
   instruments: { TELESCOPE: telescope, RADAR: radar, AEGIS: 0, VEIL: 0 },
   orbit: [],
-  fleet: {},
+  fleet: { DART: 10 },
   ground: {},
   flight: { used: 0, total: 3 },
   fleetAway: {},
@@ -603,14 +604,41 @@ describe('what a probe brought back', () => {
     expect(screen.getAllByText(/3\.4k/).length).toBeGreaterThan(0);
   });
 
-  /** Owner, round 2: no grey bars. Sharp (fleet home) in full colour, blurred (out) lighter. */
-  it('draws the reading in colour, sharper when the fleet was home', async () => {
+  /**
+   * Owner, round 2: no grey bars — and teal is YOU (K2), so their reading wears the colour
+   * of a world that is not yours: sharp with the fleet home, lighter with it out.
+   */
+  it('draws their reading in their colour, sharper when the fleet was home', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400), report(100, 400, { targetPlanetId: 'q5', fleetHome: false })] });
     await shelf('Reports');
     const bands = [...document.querySelectorAll<HTMLElement>('[data-part="band"]')];
-    expect(bands[0]).toHaveClass('bg-v2-self');
-    expect(bands[3]).not.toHaveClass('bg-v2-self');
-    for (const band of bands) expect(band.className).not.toMatch(/bone|grey|gray|white/);
+    expect(bands[0]).toHaveClass('bg-v2-neutral');
+    expect(bands[3]).not.toHaveClass('bg-v2-neutral');
+    for (const band of bands) expect(band.className).not.toMatch(/self|bone|grey|gray|white/);
+  });
+
+  /**
+   * Owner, 2026-09-24: "neye göre sağa, neye göre ortada, neye göre sola yaslanıyor
+   * anlaşılmıyor." Each row is a line from zero with YOUR world's same measure on it, in
+   * your colour, so the band's place reads as smaller or bigger than yours.
+   */
+  it('marks your own world on every row, in your colour, and says so', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Reports');
+    const marks = [...document.querySelectorAll<HTMLElement>('[data-range-band] [data-you]')];
+    expect(marks).toHaveLength(3);
+    for (const mark of marks) expect(mark).toHaveClass('bg-v2-self');
+    expect(screen.getByRole('img', { name: 'Ships: somewhere between 100 and 400 · yours 10' })).toBeInTheDocument();
+    expect(screen.getByText(/the teal line is your world/)).toBeVisible();
+  });
+
+  it('puts a reading bigger than yours to the right of your mark', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Reports');
+    const ships = [...document.querySelectorAll<HTMLElement>('[data-range-band]')][2]!;
+    const you = Number.parseFloat(ships.querySelector<HTMLElement>('[data-you]')!.style.left);
+    const start = Number.parseFloat(ships.querySelector<HTMLElement>('[data-part="band"]')!.style.left);
+    expect(start).toBeGreaterThan(you);
   });
 
   it('shows the accuracy as signal strength and says the figure out loud', async () => {

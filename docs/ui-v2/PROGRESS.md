@@ -134,7 +134,8 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
   dolunca uyarı; depo çubukları yeniden bölmeli (tırtıklı), korunan bölmeler kalkanlı parantez içinde. Depo 3 tam
   genişlik satır (kısa sütunda parantez kare görünüyordu); Works kahramanın altında `WorksPool`, cüzdan yalnız depo. [x]
 - **E · İstihbarat (7).** Sonda raporu aralık çubukları: ölçeğin ne olduğu görünür (0 → ölçek, senin değerin çizgisi),
-  hizalamanın anlamı okunur. [ ]
+  hizalamanın anlamı okunur. Sayı doğrusu 0'dan, bant hedefin (nötr renk), turkuaz çizgi senin aktif dünyanın aynı
+  ölçüsü (`lib/probeScale.ts`); eksen ikisinin büyüğüne göre. [x]
 - **F · Yıldız arka planları (2, 3).** Üs kahramanındaki gökyüzü daha soluk; Araştırma takımyıldızında arka plan
   yıldızları küçük/sönük, düğüm yıldızları büyük/parlak, araştırılmış ve araştırılmamış düğümler biraz daha parlak. [x]
 - **G · Galaksi sahnesi (9, 10).** Uçan her şeyin dış çizgisi %50 ince, renk parlaklığı %25 az; galaktik konvoyun

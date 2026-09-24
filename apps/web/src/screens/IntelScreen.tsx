@@ -11,6 +11,7 @@ import {
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
+import { probeAxis, yardstickOf, type Yardstick } from '../lib/probeScale.js';
 import type { IntelView } from '../api/schemas.js';
 import { rivalColour } from '../galaxy/PlanetField.js';
 import { compact, full, percent } from '../lib/format.js';
@@ -192,7 +193,12 @@ export function IntelScreen({
               tabId={(id) => `intel-tab-${id}`}
             />
             <div role="tabpanel" aria-labelledby="intel-tab-probes" hidden={stop !== 'probes'}>
-              <ProbeShelf probes={probeReports} now={now} {...(onOpenDossier ? { onOpenDossier } : {})} />
+              <ProbeShelf
+                probes={probeReports}
+                now={now}
+                yours={planet.data ? yardstickOf(planet.data) : null}
+                {...(onOpenDossier ? { onOpenDossier } : {})}
+              />
             </div>
             <div role="tabpanel" aria-labelledby="intel-tab-battles" hidden={stop !== 'battles'}>
               <BattleReports
@@ -522,7 +528,13 @@ const fresh = (scan: Scan, now: number): boolean => now - scan.at.getTime() < 6 
  * reading taken with the fleet at home is sharp and wears the full colour; one taken
  * with the fleet out is lighter, because a fleet away is a fleet not counted.
  */
-function ProbeShelf({ probes, now, onOpenDossier }: { probes: readonly Probe[]; now: number; onOpenDossier?: (planetId: string) => void }) {
+function ProbeShelf({ probes, now, yours, onOpenDossier }: {
+  probes: readonly Probe[];
+  now: number;
+  /** Your active world, measured as a probe measures; null until it has loaded. */
+  yours: Yardstick | null;
+  onOpenDossier?: (planetId: string) => void;
+}) {
   const { t } = useTranslation();
   if (probes.length === 0) {
     return (
@@ -538,7 +550,9 @@ function ProbeShelf({ probes, now, onOpenDossier }: { probes: readonly Probe[]; 
   }
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-micro leading-snug text-v2-ink-3">{t('intel.probes.estimateNote')}</p>
+      <p className="text-micro leading-snug text-v2-ink-3">
+        {t('intel.probes.estimateNote')} {yours !== null && t('intel.probes.scaleNote')}
+      </p>
       {probes.map((report) => {
         const minutes = (now - report.at.getTime()) / 60_000;
         const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
@@ -561,9 +575,9 @@ function ProbeShelf({ probes, now, onOpenDossier }: { probes: readonly Probe[]; 
               </div>
             </div>
             <div className="flex flex-col gap-1">
-              <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} />
-              <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} />
-              <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} />
+              <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} mine={yours?.stock ?? null} />
+              <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} mine={yours?.defence ?? null} />
+              <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} mine={yours?.ships ?? null} />
             </div>
             {(report.detected || onOpenDossier) && (
               <div className="flex items-center justify-between gap-2">
@@ -602,33 +616,47 @@ function SignalBars({ lit, label }: { lit: number; label: string }) {
   );
 }
 
-const BLURRED: CSSProperties = { backgroundColor: 'color-mix(in srgb, var(--color-v2-self) 42%, transparent)' };
+const BLURRED: CSSProperties = { backgroundColor: 'color-mix(in srgb, var(--color-v2-neutral) 45%, transparent)' };
 
 /**
- * ONE READING AS THE SPAN IT IS. The scale is the top of the reading — a probe does not
- * report the world's ceiling — and a band has a floor, because a perfect read is zero
- * wide and a zero-width band is no picture.
+ * ONE READING ON A NUMBER LINE, WITH YOU ON IT. Owner, 2026-09-24: "neye göre sağa, neye
+ * göre ortada, neye göre sola yaslanıyor anlaşılmıyor" — each row was scaled to its own
+ * top, so every band touched the right edge and nothing on it was comparable.
+ *
+ * Now the line starts at zero and runs to the larger of the reading and YOUR world's same
+ * measure (`probeAxis`, `yardstickOf`): the band is their estimate in the colour of a world
+ * that is not yours, the teal line is you (K2). Left of the line is smaller than yours,
+ * right of it bigger — the comparison a raid is decided on. A band keeps a floor, because a
+ * perfect read is zero wide and a zero-width band is no picture.
  */
-function RangeRow({ label, low, high, sharp }: { label: string; low: number; high: number; sharp: boolean }) {
+function RangeRow({ label, low, high, sharp, mine }: { label: string; low: number; high: number; sharp: boolean; mine: number | null }) {
   const { t } = useTranslation();
-  const top = Math.max(1, high);
-  const start = Math.max(0, Math.min(100, (Math.max(0, low) / top) * 100));
-  const width = Math.max(3, 100 - start);
+  const { start, width, you } = probeAxis(low, high, mine);
+  const reading = t('rangeBand.reading', { label, low: compact(Math.max(0, low)), high: compact(high) });
   return (
-    <div data-range-band className="grid grid-cols-[5rem_1fr_auto] items-center gap-2">
+    <div data-range-band className="grid grid-cols-[5rem_minmax(0,1fr)_4.75rem] items-center gap-2">
       <span className="truncate text-micro text-v2-ink-3">{label}</span>
       <span
         role="img"
-        aria-label={t('rangeBand.reading', { label, low: compact(Math.max(0, low)), high: compact(high) })}
-        className="relative block h-1.5 overflow-hidden rounded-full bg-v2-line"
+        aria-label={mine === null ? reading : `${reading} · ${t('rangeBand.yours', { value: compact(mine) })}`}
+        className="relative block h-2.5"
       >
+        {/* The axis: a hairline from zero, not a grey bar. */}
+        <span aria-hidden className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-v2-line-hi" />
         <span
           data-part="band"
-          className={`absolute inset-y-0 rounded-full ${sharp ? 'bg-v2-self' : ''}`}
+          className={`absolute inset-y-0.5 rounded-full ${sharp ? 'bg-v2-neutral' : ''}`}
           style={{ left: `${String(start)}%`, width: `${String(width)}%`, ...(sharp ? {} : BLURRED) }}
         />
+        {you !== null && (
+          <span
+            data-you=""
+            className="absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-v2-self"
+            style={{ left: `${String(you)}%` }}
+          />
+        )}
       </span>
-      <span className="font-v2-mono text-micro text-v2-ink-2">{`${compact(Math.max(0, low))}–${compact(high)}`}</span>
+      <span className="truncate text-right font-v2-mono text-micro text-v2-ink-2">{`${compact(Math.max(0, low))}–${compact(high)}`}</span>
     </div>
   );
 }

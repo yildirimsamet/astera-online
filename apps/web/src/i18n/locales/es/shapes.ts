@@ -23,6 +23,7 @@ export const spend = {
 export const rangeBand = {
   join: ' – ',
   reading: '{{label}}: en algún lugar entre {{low}} y {{high}}',
+  yours: 'el tuyo {{value}}',
 } as const;
 
 /** Which way a craft is pointing and how far it has got: `FlightBar`. */

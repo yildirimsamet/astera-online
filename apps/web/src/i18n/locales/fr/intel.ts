@@ -86,6 +86,7 @@ export const intel = {
     /** `{{percent}}` arrive déjà dans le format local ; le signe est géré par `format.percent`. */
     accuracyHome: "{{percent}} de précision · la flotte était présente",
     accuracyOut: "{{percent}} de précision · la flotte était absente",
+    scaleNote: "Chaque barre part de zéro : la bande est leur estimation, la ligne turquoise ton monde.",
     estimateNote:
       "Les nombres sont des estimations. La valeur des unités armées n’inclut ni le bouclier ni les vaisseaux sans armes.",
     caught: "la sonde a été détectée",
