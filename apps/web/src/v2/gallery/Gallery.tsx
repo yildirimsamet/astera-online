@@ -8,6 +8,8 @@ import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
+import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
+import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
 // Development only: the same world the tests draw, so the gallery needs no server.
 import { planetView } from '../../../test/fixtures.js';
@@ -257,6 +259,27 @@ function Views({ view }: { view: string }) {
         onLaunched={noop}
       />
     );
+  }
+  if (view === 'wave') {
+    const war = clanWarSchema.parse({
+      available: true, level: 2, maxLevel: false,
+      treasury: { alloy: 1200, crystal: 800, deuterium: 90 },
+      nextCost: { alloy: 4000, crystal: 3000, deuterium: 300 },
+      room: { alloy: 2800, crystal: 2200, deuterium: 210 }, canUpgrade: false,
+      hangar: { used: 184, reserved: 40, total: 360 },
+      serverNow: new Date(NOW).toISOString(),
+      operation: {
+        id: 'op', status: 'ASSEMBLING', closeReason: null, leaderPlayerId: 'leader',
+        target: { playerId: 'enemy', username: 'VEX', planetId: 'target', planetName: 'Kestrel', position: { x: 1, y: 2, z: 3 } },
+        staging: { planetId: 'home', name: 'Mira', position: { x: 0, y: 0, z: 0 } },
+        createdAt: new Date(NOW - 60 * MIN).toISOString(), expiresAt: new Date(NOW + 23 * 60 * MIN).toISOString(),
+        startedAt: null, resolvedAt: null, completedAt: null,
+        contributions: [{ id: 'w1', playerId: 'p1', username: 'Orin', originPlanetId: 'o1', originPlanetName: 'Orin', sourceKind: 'PHYSICAL',
+          status: 'STAGED', fleet: { DART: 22 }, bulk: 22, fuelPaid: 40, sentAt: new Date(NOW - 30 * MIN).toISOString(), arrivesAt: null, mine: false, canRecall: false }],
+        pool: { combatHulls: 22, waves: 1, participants: 1 },
+      },
+    });
+    return <div className="mx-auto max-w-[420px] p-3"><ClanWarPanel war={war} role="MEMBER" mature worlds={[launchWorld]} /></div>;
   }
   if (view === 'trade') {
     return (

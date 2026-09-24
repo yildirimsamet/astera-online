@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -52,6 +52,24 @@ function show(
   return { api, client };
 }
 
+/** The held commit of the wave composer; its face carries the reason it cannot send. */
+const send = (): HTMLElement => within(document.querySelector<HTMLElement>('[data-wave-commit]')!).getByRole('button');
+
+const shieldQuote = {
+  ok: false,
+  refusals: [{ code: 'SHIELD_WOULD_DROP', message: 'Sending drops your shield' }],
+  sourceKind: 'PHYSICAL' as const, bulk: 1,
+  fuel: { legs: [], total: 2, available: 50 },
+  travel: { stagingMinutes: 2, combinedMinutes: 3, returnMinutes: 4,
+    stagingEta: new Date('2026-09-20T12:02:00Z'),
+    earliestHome: new Date('2026-09-20T12:09:00Z') },
+  bays: { used: 0, total: 3 },
+  personalHangar: { used: 12, total: 160, afterSend: 11 },
+  clanHangar: { used: 0, reserved: 0, total: 160, afterSend: 1 },
+  latestStartAt: new Date('2026-09-21T11:00:00Z'), canFinishBeforeSeasonEnd: true,
+  shieldWouldDrop: { kind: 'NEWCOMER' as const, until: new Date('2026-09-21T12:00:00Z') },
+};
+
 describe('clan war decision surface', () => {
   it('explains shared capacity and where a leader selects a target', () => {
     show();
@@ -79,44 +97,56 @@ describe('clan war decision surface', () => {
     expect(screen.getByText(/support.*arriv|destek filosu/i)).toBeInTheDocument();
   });
 
-  it('lets a protected commander send after acknowledging the quote warning', async () => {
+  /**
+   * THE QUOTE ASKS ITSELF (B14). "Hesapla" was a button between the fleet and its
+   * price: the route, the fuel and the refusals now follow the ships as they are picked.
+   */
+  it('quotes the wave by itself once ships are picked, with no button to press', async () => {
     const { api } = show(active, 'MEMBER', [origin]);
-    vi.spyOn(api, 'quoteClanWar').mockResolvedValue({
-      ok: false,
-      refusals: [{ code: 'SHIELD_WOULD_DROP', message: 'Sending drops your shield' }],
-      sourceKind: 'PHYSICAL', bulk: 1,
-      fuel: { legs: [], total: 2, available: 50 },
-      travel: { stagingMinutes: 2, combinedMinutes: 3, returnMinutes: 4,
-        stagingEta: new Date('2026-09-20T12:02:00Z'),
-        earliestHome: new Date('2026-09-20T12:09:00Z') },
-      bays: { used: 0, total: 3 },
-      personalHangar: { used: 12, total: 160, afterSend: 11 },
-      clanHangar: { used: 0, reserved: 0, total: 160, afterSend: 1 },
-      latestStartAt: new Date('2026-09-21T11:00:00Z'), canFinishBeforeSeasonEnd: true,
-      shieldWouldDrop: { kind: 'NEWCOMER', until: new Date('2026-09-21T12:00:00Z') },
-    });
-    const user = userEvent.setup();
-    await user.clear(screen.getByRole('spinbutton', { name: /dart/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /dart/i }), '1');
-    await user.click(screen.getByRole('button', { name: /check route|quote/i }));
+    const quote = vi.spyOn(api, 'quoteClanWar').mockResolvedValue(shieldQuote);
+    expect(screen.queryByRole('button', { name: /check route|quote/i })).toBeNull();
+    expect(send()).toHaveTextContent(/choose at least one ship/i);
 
-    const send = await screen.findByRole('button', { name: /send wave|send/i });
-    expect(send).toBeDisabled();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+
+    await waitFor(() => { expect(quote).toHaveBeenCalledWith({ originPlanetId: 'origin-a', fleet: { DART: 1 } }); });
+    expect(await screen.findByText(/called back until the strike starts/i)).toBeInTheDocument();
+  });
+
+  it('holds the send until a protected commander acknowledges the shield, then sends on the hold', async () => {
+    const { api } = show(active, 'MEMBER', [origin]);
+    vi.spyOn(api, 'quoteClanWar').mockResolvedValue(shieldQuote);
+    // Never settles: what is asserted is the request the hold sends.
+    const contribute = vi.spyOn(api, 'contributeClanWar').mockReturnValue(new Promise<never>(() => undefined));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+
+    await waitFor(() => { expect(send()).toHaveTextContent(/confirm the shield/i); });
+    expect(send()).toBeDisabled();
     await user.click(screen.getByRole('checkbox', { name: /shield will end/i }));
-    expect(send).toBeEnabled();
+    expect(send()).toBeEnabled();
+    expect(send()).toHaveAttribute('data-hold');
+
+    // The commit is held (K4); Enter twice is the keyboard's hold.
+    fireEvent.keyDown(send(), { key: 'Enter' });
+    fireEvent.keyDown(send(), { key: 'Enter' });
+    await waitFor(() => {
+      expect(contribute).toHaveBeenCalledWith({ originPlanetId: 'origin-a', fleet: { DART: 1 }, acknowledgeShieldLoss: true });
+    });
   });
 
   it('clears a composed fleet when its origin world changes', async () => {
     show(active, 'MEMBER', [origin, other]);
     const user = userEvent.setup();
-    await user.clear(screen.getByRole('spinbutton', { name: /dart/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /dart/i }), '5');
-    expect(screen.getByRole('button', { name: /check route|quote/i })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /max.*dart/i }));
+    expect(screen.getByRole('textbox', { name: /dart/i })).not.toHaveValue('0');
 
     await user.selectOptions(document.querySelector<HTMLSelectElement>('#clan-war-origin')!, 'origin-b');
 
-    expect(screen.queryByRole('spinbutton', { name: /dart/i })).toBeNull();
-    expect(screen.getByRole('button', { name: /check route|quote/i })).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: /dart/i })).toBeNull();
+    expect(send()).toHaveTextContent(/choose at least one ship/i);
+    expect(send()).toBeDisabled();
   });
 
   it('keeps donation and fleet origins independent and caps a gift by world stock', async () => {

@@ -1,7 +1,7 @@
 import {
   MOBILE_HULLS, fleetCount, pacesForMinutes, type Fleet, type HullId, type MissionPace, type Resources,
 } from '@astera/rules';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClanWarActions } from '../api/queries.js';
 import { ApiError } from '../api/client.js';
@@ -11,7 +11,14 @@ import { hullName } from '../i18n/names.js';
 import { full } from '../lib/format.js';
 import { countdown, duration, useNow } from '../lib/time.js';
 import { Button, Plate } from '../ui/kit/index.js';
+import { HULL_ART } from '../ui/assets.js';
+import { HullMark } from '../ui/icons/hulls.js';
 import { PaceRow } from '../ui/PaceRow.js';
+import { QuantityStepper } from '../ui/QuantityStepper.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
+
+/** How long the picked fleet has to sit still before its quote is asked for. */
+const QUOTE_SETTLE_MS = 350;
 
 const ZERO: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
 const RESOURCE_KEYS = ['alloy', 'crystal', 'deuterium'] as const;
@@ -65,6 +72,32 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
     setFleet((current) => ({ ...current, [hull]: next }));
     setQuotedKey(null);
   };
+
+  /*
+    THE QUOTE ASKS ITSELF (B14). The route, the fuel, the bays and the refusals follow the
+    ships as they are picked, once the picking settles; a button between the fleet and its
+    price was one press that only ever said "show me". A reply for a fleet since changed
+    is never shown: it is filed under the key it was asked with.
+  */
+  const requestQuote = actions.quote.mutate;
+  const originPlanetId = origin?.planet.id ?? null;
+  useEffect(() => {
+    if (originPlanetId === null || fleetCount(fleet) === 0) return;
+    const asked = `${originPlanetId}:${JSON.stringify(fleet)}`;
+    const timer = setTimeout(() => {
+      requestQuote({ originPlanetId, fleet }, { onSuccess: () => { setQuotedKey(asked); } });
+    }, QUOTE_SETTLE_MS);
+    return () => { clearTimeout(timer); };
+  }, [requestQuote, originPlanetId, fleet]);
+
+  /** Why the wave cannot go yet, on the held button's face — or null when it can. */
+  const waveRefusal = !origin ? t('clanWar.noOrigin')
+    : fleetCount(fleet) === 0 ? t('clanWar.noFleet')
+      : actions.contribute.isPending ? t('clanWar.sending')
+        : quote === undefined ? (actions.quote.isError ? describeError(actions.quote.error) : t('clanWar.quoting'))
+          : blockingRefusals[0] ? describeError(new ApiError(blockingRefusals[0].code, blockingRefusals[0].message, 409))
+            : quote.shieldWouldDrop !== null && !acknowledgeShield ? t('clanWar.acknowledgeFirst')
+              : quoteCanSend ? null : t('clanWar.quoting');
 
   if (!war.available) return <p className="px-2 py-4 text-body text-dim">{t('clanWar.unavailable')}</p>;
 
@@ -195,22 +228,38 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
             }}>
             {worlds.map((world) => <option key={world.planet.id} value={world.planet.id}>{world.planet.name}</option>)}
           </select>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {MOBILE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0).map((hull) =>
-              <label key={hull} className="min-w-0 text-caption text-dim">{hullName(hull)} · {origin?.fleet[hull] ?? 0}
-                <input type="number" min={0} max={origin?.fleet[hull] ?? 0} value={fleet[hull] ?? 0}
-                  className="mt-1 w-full rounded-control bg-void p-2 text-body text-bone"
-                  onChange={(event) => { setCount(hull, Math.min(
-                    Number(event.target.value), origin?.fleet[hull] ?? 0,
-                  )); }} />
-              </label>)}
+          {/* The launch's own row (B14): the ship, how many stand home, the stepper at its right. */}
+          <div className="mt-2">
+            {MOBILE_HULLS.filter((hull) => (origin?.fleet[hull] ?? 0) > 0).map((hull) => {
+              const held = origin?.fleet[hull] ?? 0;
+              const art = HULL_ART[hull];
+              return <div key={hull} data-hull-row={hull}
+                className={`flex items-center gap-2 border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${
+                  (fleet[hull] ?? 0) > 0 ? 'bg-v2-self/5' : ''}`}>
+                <span data-art className="grid size-8 shrink-0 place-items-center">
+                  {art ? <img src={art} alt="" aria-hidden className="size-8 object-contain" loading="lazy" />
+                    : <HullMark hull={hull} className="size-6 text-v2-ink-3" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-caption font-semibold text-v2-ink">{hullName(hull)}</span>
+                  <span className="block font-v2-mono text-micro text-v2-ink-3">{t('launch.atHome', { count: held })}</span>
+                </span>
+                <QuantityStepper
+                  look="v2"
+                  value={fleet[hull] ?? 0}
+                  min={0}
+                  max={held}
+                  onChange={(value) => { setCount(hull, value); }}
+                  decreaseLabel={t('launch.fewer', { name: hullName(hull) })}
+                  increaseLabel={t('launch.more', { name: hullName(hull) })}
+                  valueLabel={t('launch.quantity', { name: hullName(hull) })}
+                  editable
+                  maxLabel={t('launch.max', { name: hullName(hull) })}
+                  maxText={t('launch.maxShort')}
+                />
+              </div>;
+            })}
           </div>
-          <Button size="sm" className="mt-3" disabled={!origin || fleetCount(fleet) === 0 || actions.quote.isPending}
-            onClick={() => { if (origin) actions.quote.mutate({ originPlanetId: origin.planet.id, fleet },
-              { onSuccess: () => { setQuotedKey(quoteKey); } }); }}>{t('clanWar.quote')}</Button>
-          {!origin && <p className="mt-1 text-caption text-dim">{t('clanWar.noOrigin')}</p>}
-          {origin && fleetCount(fleet) === 0 && <p className="mt-1 text-caption text-dim">{t('clanWar.noFleet')}</p>}
-          {actions.quote.isError && <p role="alert" className="mt-2 text-caption text-threat">{describeError(actions.quote.error)}</p>}
           {quote && <div className="mt-3 rounded-control border border-line-soft p-2 text-caption">
             <p className="text-bone">{t('clanWar.fuel')}: {full(quote.fuel.total)} / {full(quote.fuel.available)}</p>
             {quote.fuel.legs.map((leg) => <p key={leg.leg} className="break-words text-dim">
@@ -237,14 +286,23 @@ export function ClanWarPanel({ war, role, mature, worlds }: {
                 {t('clanWar.acknowledgeShield')}
               </label>
             </>}
-            <Button variant="commit" size="sm" className="mt-3 w-full" disabled={!quoteCanSend
-              || (quote.shieldWouldDrop !== null && !acknowledgeShield) || actions.contribute.isPending}
-              onClick={() => { if (origin) actions.contribute.mutate({ originPlanetId: origin.planet.id,
-                fleet, acknowledgeShieldLoss: acknowledgeShield }, { onSuccess: () => {
-                  setFleet({}); setQuotedKey(null); setAcknowledgeShield(false);
-                } }); }}>{t('clanWar.send')}</Button>
           </div>}
-          {!quote && fleetCount(fleet) > 0 && <p className="mt-1 text-caption text-dim">{t('clanWar.quoteFirst')}</p>}
+          {/*
+            THE PRICE, BEFORE THE BUTTON (K4, K8): a wave turns until the strike starts. The
+            button is held and says on its face why it cannot go yet.
+          */}
+          <div data-wave-commit className="mt-3 grid gap-1.5">
+            {quote && <p className="text-micro leading-snug text-v2-ink-3">{t('clanWar.recallRule')}</p>}
+            <HoldButton
+              label={t('clanWar.send')}
+              disabledReason={waveRefusal}
+              onCommit={() => {
+                if (!origin) return;
+                actions.contribute.mutate({ originPlanetId: origin.planet.id, fleet, acknowledgeShieldLoss: acknowledgeShield },
+                  { onSuccess: () => { setFleet({}); setQuotedKey(null); setAcknowledgeShield(false); } });
+              }}
+            />
+          </div>
           {actions.contribute.isError && <p role="alert" className="mt-2 text-caption text-threat">
             {describeError(actions.contribute.error)}</p>}
         </>}
