@@ -75,6 +75,7 @@ import { RESOURCE_ART } from '../ui/assets.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { useOwnPress } from '../ui/kit/index.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
+import { Icon } from '../v2/icons.js';
 import { TargetDossier } from '../v2/hud/TargetDossier.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 
@@ -128,6 +129,15 @@ export type Focus =
   | { kind: 'intergalacticConvoy'; id: string };
 
 /* ── shared chrome ───────────────────────────────────────────── */
+
+/**
+ * THE GÖZLEMEVI'S BUTTONS (K2). One primary per surface, in your colour, marked
+ * `data-primary` so a test can hold the rule; everything else is outlined. A disabled
+ * control keeps its words — its reason is on its face — and only dims.
+ */
+const BTN = 'flex min-h-10 items-center justify-center gap-1.5 rounded-control px-3 text-center font-v2-ui text-caption font-semibold leading-tight transition-colors disabled:cursor-not-allowed';
+const BTN_PRIMARY = `${BTN} bg-v2-self text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-3`;
+const BTN_GHOST = `${BTN} border border-v2-line-hi bg-v2-raise/60 text-v2-ink disabled:text-v2-ink-3`;
 
 /**
  * FOCUS OPENS CLOSED. Owner decision.
@@ -191,90 +201,85 @@ function Shell({
        * commitment is inside it — without leaving the rest of the screen live too.
        */
       data-focus-rail
-      className="pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 border-t border-line bg-void/92"
+      data-open={open ? 'true' : 'false'}
+      /*
+        THE MOCK'S TWO SHAPES (image.png, image copy 5). Closed, the context card: inset,
+        rounded, over the galaxy, which stays the screen (I5). Open, the dossier: a sheet
+        from the dock up, rounded at the top, 65dvh at most — the missing third is the
+        world being decided about.
+      */
+      className={`pointer-events-auto absolute inset-x-0 bottom-[var(--v2-dock-h,0px)] z-20 font-v2-ui ${open ? '' : 'px-2.5 pb-2'}`}
       aria-label={t('focus.shellLabel', { title })}
     >
-      {/* The rail. Always present, and the whole control when collapsed. */}
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button
-          type="button"
-          {...toggle}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          {art}
-          <span className="min-w-0 flex-1">
-            <span className="legend block">{eyebrow}</span>
-            <span className="name block truncate text-bone">
-              {title}
-            </span>
-          </span>
-          <span className="min-w-0 shrink-0 text-right text-caption leading-tight text-dim">
-            {summary}
-          </span>
-          <span
-            aria-hidden
-            className={`shrink-0 text-faint transition-transform ${open ? 'rotate-180' : ''}`}
+      <div
+        className={open
+          ? 'mx-auto max-w-xl overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel shadow-[0_-12px_32px_rgb(0_0_0/45%)]'
+          : 'mx-auto max-w-xl overflow-hidden rounded-control border border-v2-line bg-v2-panel/95 shadow-[0_8px_24px_rgb(0_0_0/40%)]'}
+      >
+        {/* The header. Always present, and the whole control when closed. */}
+        <div className="flex items-center gap-2 py-2 pl-3 pr-1.5">
+          <button
+            type="button"
+            {...toggle}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
           >
-            &#9650;
-          </span>
-        </button>
-        <button
-          type="button"
-          aria-label={t('focus.clear')}
-          {...clear}
-          className="flex size-11 shrink-0 items-center justify-center rounded-chip text-figure leading-none text-faint hover:bg-raised hover:text-bone"
-        >
-          &times;
-        </button>
+            {art}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</span>
+              <span className="block truncate text-body font-semibold text-v2-ink">{title}</span>
+            </span>
+            <span className="min-w-0 shrink-0 text-right text-micro leading-tight text-v2-ink-2">
+              {summary}
+            </span>
+            <span aria-hidden className="grid size-7 shrink-0 place-items-center text-v2-ink-3">
+              <Icon id="i-chev" className={`size-3.5 transition-transform ${open ? 'rotate-90' : '-rotate-90'}`} />
+            </span>
+          </button>
+          <button
+            type="button"
+            aria-label={t('focus.clear')}
+            {...clear}
+            className="grid size-9 shrink-0 place-items-center rounded-control text-v2-ink-3 hover:bg-v2-raise hover:text-v2-ink"
+          >
+            <Icon id="i-close" className="size-4" />
+          </button>
+        </div>
+
+        {open && (
+          /*
+            THE BODY IS 65dvh AT MOST, AND THE MISSING THIRD IS THE PRODUCT. Owner report:
+            a world with any intel on it put the commander into a scroll before they had
+            finished the first fact, and a decision taken over two screens is a different
+            decision from one taken over one (`interface.md`'s fourth question). It goes
+            no further: what is left above is the world being decided about (I5).
+          */
+          <div className="max-h-[65dvh] overflow-y-auto overscroll-contain border-t border-v2-line">
+            {/*
+              Every focus card goes through this shell, so wrapping it here is what
+              stops a frozen season offering launches, probes and settlements it
+              would refuse. The clear (x) above sits OUTSIDE it on purpose: looking
+              around the final galaxy is the one thing still on offer.
+            */}
+            <GameActions>
+              <div className="px-3 py-3">{children}</div>
+              {/*
+                THE ACTIONS WRAP, AND A COMMITMENT GETS A ROW TO ITSELF. A refusal
+                rides a control's label ("Death Star · origin recovering"), and wrapping
+                costs one row where squeezing four across set it below the size anything
+                else on screen may be.
+              */}
+              {actions && (
+                <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-v2-line bg-v2-panel px-3 py-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
+                  {actions}
+                </div>
+              )}
+            </GameActions>
+          </div>
+        )}
       </div>
 
-      {open && (
-        /*
-          THE BODY IS 70dvh, AND THE MISSING 30 IS THE PRODUCT. Owner report.
-
-          52dvh on the 812pt phone this game is budgeted against is roughly 420pt
-          of body — and the rail above it and the commit row inside it are both
-          inside that figure, so a world with any intel on it put the commander
-          into a scroll before they had finished reading the first fact. That is
-          `interface.md`'s fourth question, measured: a decision taken over two
-          screens is a different decision from one taken over one.
-
-          It does not go further, and the ceiling is the reason the rail exists at
-          all. I5: the galaxy never closes. What is left above this is the world
-          being decided about — take that and this stops being a panel over a
-          living disc and becomes a page with a picture behind it.
-        */
-        <div className="max-h-[65dvh] overflow-y-auto overscroll-contain border-t border-line-soft">
-          {/*
-            Every focus card goes through this shell, so wrapping it here is what
-            stops a frozen season offering launches, probes and settlements it
-            would refuse. The clear (x) above sits OUTSIDE it on purpose: looking
-            around the final galaxy is the one thing still on offer.
-          */}
-          <GameActions>
-            <div className="px-2 py-3">{children}</div>
-            {/*
-              THE ACTIONS WRAP, AND A COMMITMENT GETS A ROW TO ITSELF.
-
-              Up to four slabs used to share one line across a 390px phone — about
-              eighty-five pixels each — and they were held at `text-[9px]` to make
-              that fit. Two of them can carry a REFUSAL REASON as their label
-              ("Death Star · origin recovering"), so the most consequential surface
-              in the game was setting sentences below the size anything else on
-              screen is allowed to be. Wrapping costs one row of height and gives
-              every label the width it needs.
-            */}
-            {actions && (
-              <div className="sticky bottom-0 flex flex-wrap gap-2 border-t border-line-soft bg-void/95 px-2 py-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
-                {actions}
-              </div>
-            )}
-          </GameActions>
-        </div>
-      )}
-
-      {/* Keeps the rail clear of the home indicator when it is the only thing shown. */}
+      {/* Keeps the card clear of the home indicator when it is the only thing shown. */}
       {!open && <div className="h-[env(safe-area-inset-bottom)]" />}
     </section>
   );
@@ -303,24 +308,24 @@ function FactRow({ fact }: { fact: Fact }) {
 
   return (
     <div
-      className={`border-l-2 py-2 pl-3 ${ fact.opportunity ? 'border-opportunity' : stale ? 'border-alloy/40' : 'border-crystal/40' }`}
+      className={`border-l-2 py-2 pl-3 ${ fact.opportunity ? 'border-v2-self' : stale ? 'border-alloy/40' : 'border-v2-self/40' }`}
     >
       <div className="flex items-baseline gap-2">
-        <p className="legend">{fact.label}</p>
-        <span className="legend ml-auto shrink-0">
+        <p className="v2-legend">{fact.label}</p>
+        <span className="v2-legend ml-auto shrink-0">
           {sourceLabel(fact.source)}
           {fact.ageMinutes !== null && (
-            <span className={stale ? 'text-alloy' : ''}> · {staleness(fact.ageMinutes)}</span>
+            <span className={stale ? 'text-v2-warn' : ''}> · {staleness(fact.ageMinutes)}</span>
           )}
           {confidence && <span> · {confidence}</span>}
         </span>
       </div>
       <p
-        className={`num mt-1 text-body ${ fact.opportunity ? 'text-opportunity' : 'text-bone' }`}
+        className={`font-v2-mono mt-1 text-body ${ fact.opportunity ? 'text-v2-self' : 'text-v2-ink' }`}
       >
         {fact.value}
       </p>
-      {fact.note && <p className="mt-1 text-label leading-snug text-faint">{fact.note}</p>}
+      {fact.note && <p className="mt-1 text-label leading-snug text-v2-ink-3">{fact.note}</p>}
     </div>
   );
 }
@@ -360,7 +365,7 @@ function GapRow({
   const [showWhy, setShowWhy] = useState(false);
 
   return (
-    <div data-gap className="rounded-chip border border-dashed border-line px-3 py-2">
+    <div data-gap className="rounded-chip border border-dashed border-v2-line px-3 py-2">
       <button
         type="button"
         aria-expanded={showWhy}
@@ -368,12 +373,12 @@ function GapRow({
         onClick={() => { setShowWhy((open) => !open); }}
       >
         <span className="flex items-baseline gap-2">
-          <span className="legend">{label}</span>
-          <span className="legend ml-auto shrink-0">{t('focus.unknown')}</span>
+          <span className="v2-legend">{label}</span>
+          <span className="v2-legend ml-auto shrink-0">{t('focus.unknown')}</span>
           <svg
             aria-hidden
             viewBox="0 0 20 20"
-            className={`size-3.5 shrink-0 text-faint transition-transform duration-200 ${
+            className={`size-3.5 shrink-0 text-v2-ink-3 transition-transform duration-200 ${
               showWhy ? 'rotate-90' : ''
             }`}
             fill="none"
@@ -384,14 +389,14 @@ function GapRow({
           </svg>
         </span>
         {/* The FACT is never folded: it is the reading, not the argument. */}
-        <span data-gap-missing className="mt-1 block text-body text-alloy">{missing}</span>
+        <span data-gap-missing className="mt-1 block text-body text-v2-warn">{missing}</span>
       </button>
 
       {showWhy && (
-        <p data-gap-why className="mt-1 text-label leading-snug text-dim">{why}</p>
+        <p data-gap-why className="mt-1 text-label leading-snug text-v2-ink-2">{why}</p>
       )}
       {/* A refusal is not a pitch — it is why the control below will not work. */}
-      {blocked && <p className="mt-1 text-label leading-snug text-threat">{blocked}</p>}
+      {blocked && <p className="mt-1 text-label leading-snug text-v2-warn">{blocked}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
@@ -787,7 +792,7 @@ export function PlanetFocus({
           {!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL' && (
           <button
             type="button"
-            className="slab slab-ghost min-w-[8rem] flex-1 whitespace-normal px-3 leading-tight"
+            className={`${BTN_GHOST} min-w-[8rem] flex-1 whitespace-normal`}
             /*
               THE CONTROL WEARS THE MARK'S OWN COLOUR. D183 — the reticle on the
               disc, the dot in the menu and this button are the same hue, so the
@@ -832,7 +837,7 @@ export function PlanetFocus({
             <p
               data-settle-reason
               role="note"
-              className="plate plate-inset basis-full px-2 py-1 text-label leading-snug text-dim"
+              className="rounded-control border border-v2-line bg-v2-panel bg-v2-deep/40 basis-full px-2 py-1 text-label leading-snug text-v2-ink-2"
             >
               {settlementBlockReason}
             </p>
@@ -840,7 +845,7 @@ export function PlanetFocus({
           {onSettle && claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT' && (
             <button
               type="button"
-              className="slab slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight"
+              className={`${BTN_GHOST} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
               disabled={!settlementReady}
               onClick={onSettle}
             >
@@ -867,7 +872,7 @@ export function PlanetFocus({
             <button
               type="button"
               data-death-star
-              className="slab slab-commit basis-full whitespace-normal px-3 leading-tight"
+              className={`${BTN_GHOST} basis-full whitespace-normal`}
               disabled={!deathStarEnabled}
               onClick={() => { setStriking(true); }}
             >
@@ -904,12 +909,12 @@ export function PlanetFocus({
             <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
           )}
           {showClanTargetAction && <div className="basis-full">
-            <button type="button" className="slab slab-primary min-h-9 w-full px-3 text-label"
+            <button type="button" className={`${BTN_GHOST} w-full`}
               disabled={clanTargetReason !== null || clanTargetPending}
               onClick={onMarkClanTarget}>
               {t('clanWar.markTarget')}
             </button>
-            {clanTargetReason && <p className="mt-1 text-caption text-dim">{clanTargetReason}</p>}
+            {clanTargetReason && <p className="mt-1 text-caption text-v2-ink-2">{clanTargetReason}</p>}
           </div>}
           {!target.clanmate && <button
             type="button"
@@ -918,7 +923,8 @@ export function PlanetFocus({
             // rail, because nothing else on it is affordable out of the opening
             // grant — a probe alone needs crystal the mandatory upgrades spent.
             data-attack
-            className="slab slab-commit slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight"
+            data-primary
+            className={`${BTN_PRIMARY} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
             /*
               THE BAND IS ORDERED FIRST, AND THAT MATCHES THE SERVER. `canAttack`
               raises the two tier codes ahead of `BASH_LIMIT` because a permanent
@@ -944,12 +950,11 @@ export function PlanetFocus({
             {/*
               THE ONE IRREVERSIBLE CONTROL IN THE GAME NOW CARRIES A MARK.
 
-              `slab-commit` is reserved for the launch and nothing else, and the
-              glyph is the second half of that same argument: on a rail where
-              every other control is a slab of the same size, weight and colour
-              family, shape is what a thumb recognises before the word is read.
-              `.slab` is already a flex row with an 8px gap, so the icon needs no
-              layout of its own.
+              The primary — your colour, one per surface (K2) — is the launch's and
+              nothing else's, and the glyph is the second half of that argument: on
+              a card where the other controls share one size and weight, shape is
+              what a thumb recognises before the word is read. `BTN` is already a
+              flex row with a gap, so the icon needs no layout of its own.
             */}
             <AttackIcon className="size-4 shrink-0" />
             {/*
@@ -1003,7 +1008,7 @@ export function PlanetFocus({
       />
       )}
       {away && (
-        <p className="mb-3 rounded-chip border border-opportunity/40 bg-opportunity/10 px-3 py-2 text-body text-opportunity">
+        <p className="mb-3 rounded-chip border border-v2-self/40 bg-v2-self/10 px-3 py-2 text-body text-v2-self">
           {t('focus.planet.windowOpen')}
         </p>
       )}
@@ -1215,20 +1220,20 @@ function OwnedPlanetFocus({
         </span>
       )}
     >
-      <div className="rounded-chip border border-crystal/35 bg-crystal/8 px-3 py-3">
-        <p className="legend text-crystal">{t('focus.planet.transferRoute')}</p>
+      <div className="rounded-chip border border-v2-self/35 bg-v2-self/8 px-3 py-3">
+        <p className="v2-legend text-v2-self">{t('focus.planet.transferRoute')}</p>
         <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <div className="min-w-0">
-            <p className="legend text-faint">{t('focus.planet.transferOrigin')}</p>
-            <p className="name mt-1 truncate text-bone">{origin.planet.name}</p>
+            <p className="v2-legend text-v2-ink-3">{t('focus.planet.transferOrigin')}</p>
+            <p className="v2-name mt-1 truncate text-v2-ink">{origin.planet.name}</p>
           </div>
-          <span aria-hidden className="text-title text-crystal">→</span>
+          <span aria-hidden className="text-title text-v2-self">→</span>
           <div className="min-w-0 text-right">
-            <p className="legend text-faint">{t('focus.planet.transferTarget')}</p>
-            <p className="name mt-1 truncate text-bone">{target.name}</p>
+            <p className="v2-legend text-v2-ink-3">{t('focus.planet.transferTarget')}</p>
+            <p className="v2-name mt-1 truncate text-v2-ink">{target.name}</p>
           </div>
         </div>
-        <p className="mt-3 text-label leading-snug text-dim">
+        <p className="mt-3 text-label leading-snug text-v2-ink-2">
           {t('focus.planet.transferHint')}
         </p>
       </div>
@@ -1248,7 +1253,8 @@ function OwnedPlanetFocus({
       {onTransfer && (
         <button
           type="button"
-          className="slab slab-primary w-full whitespace-normal px-3 leading-tight"
+          data-primary
+          className={`${BTN_PRIMARY} w-full whitespace-normal`}
           disabled={originRecovering || originShipyardRevolt}
           onClick={onTransfer}
         >
@@ -1273,10 +1279,10 @@ function WorldKind({
 }) {
   const { t } = useTranslation();
   return (
-    <span className="legend flex items-center gap-1">
+    <span className="v2-legend flex items-center gap-1">
       <span className={target.kind === 'CAPITAL'
-        ? 'text-crystal'
-        : target.kind === 'COLONY' ? 'text-opportunity' : 'text-dim'}>
+        ? 'text-v2-self'
+        : target.kind === 'COLONY' ? 'text-v2-self' : 'text-v2-ink-2'}>
         {t(target.kind === 'CAPITAL'
           ? 'focus.planet.kindCapital'
           : target.kind === 'COLONY'
@@ -1333,10 +1339,10 @@ function Requirement({
   };
 
   const tone = ok === null
-    ? 'border-crystal/35 bg-crystal/10 text-crystal'
+    ? 'border-v2-self/35 bg-v2-self/10 text-v2-self'
     : ok
-      ? 'border-opportunity/35 bg-opportunity/10 text-opportunity'
-      : 'border-alert/35 bg-alert/10 text-threat-ink';
+      ? 'border-v2-self/35 bg-v2-self/10 text-v2-self'
+      : 'border-v2-warn/40 bg-v2-warn/10 text-v2-warn';
 
   return (
     <span className="relative inline-flex">
@@ -1357,7 +1363,7 @@ function Requirement({
           id={tooltipId}
           role="tooltip"
           aria-live="polite"
-          className="fixed z-[100] rounded-chip border border-crystal/45 bg-void px-3 py-2 text-left text-label leading-snug text-bone shadow-[0_0_20px_rgba(98,215,232,0.18)]"
+          className="fixed z-[100] rounded-chip border border-v2-self/45 bg-v2-deep px-3 py-2 text-left text-label leading-snug text-v2-ink shadow-[0_0_20px_rgba(98,215,232,0.18)]"
           style={tooltipPosition}
         >
           {explanation}
@@ -1438,18 +1444,18 @@ function StrategicWorldGuide({
 
   if (target.isOwned) {
     return (
-      <div className="mb-3 flex items-center gap-2 rounded-chip border border-crystal/35 bg-crystal/8 px-3 py-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/50 text-crystal">
+      <div className="mb-3 flex items-center gap-2 rounded-chip border border-v2-self/35 bg-v2-self/8 px-3 py-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-self/50 text-v2-self">
           {target.kind === 'CAPITAL' ? '◆' : '▲'}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="legend text-crystal">
+          <p className="v2-legend text-v2-self">
             {t(target.kind === 'CAPITAL' ? 'focus.planet.yourCapital' : 'focus.planet.yourColony')}
           </p>
-          <p className="mt-1 text-label text-dim">{t('focus.planet.transferHint')}</p>
+          <p className="mt-1 text-label text-v2-ink-2">{t('focus.planet.transferHint')}</p>
         </div>
         {standing && (
-          <span className="num shrink-0 text-micro text-crystal">
+          <span className="font-v2-mono shrink-0 text-micro text-v2-self">
             {standing.colonies + standing.reservations}/{standing.capacity}
           </span>
         )}
@@ -1460,11 +1466,11 @@ function StrategicWorldGuide({
   if (target.kind === 'CAPITAL') {
     const emp = target.state.kind === 'EMP' ? target.state : null;
     return (
-      <div className={`mb-3 rounded-chip border px-3 py-3 ${ emp ? 'border-crystal/55 bg-crystal/12' : 'border-crystal/30 bg-crystal/8' }`}>
+      <div className={`mb-3 rounded-chip border px-3 py-3 ${ emp ? 'border-v2-self/55 bg-v2-self/12' : 'border-v2-self/30 bg-v2-self/8' }`}>
         <div className="flex items-center gap-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-full border border-crystal/45 text-crystal">◆</span>
+          <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-self/45 text-v2-self">◆</span>
           <div className="min-w-0 flex-1">
-            <p className="legend text-crystal">
+            <p className="v2-legend text-v2-self">
               {t(emp ? 'focus.planet.capitalEmp' : 'focus.planet.capitalProtected')}
             </p>
             {/*
@@ -1479,7 +1485,7 @@ function StrategicWorldGuide({
               as a rule. The flag-off line states the rule that IS live: raids take
               resources here and control never moves.
             */}
-            <p className="mt-1 text-label text-dim">
+            <p className="mt-1 text-label text-v2-ink-2">
               {t(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
                 ? 'focus.planet.capitalRaidOnlyHint'
                 : emp
@@ -1488,7 +1494,7 @@ function StrategicWorldGuide({
             </p>
           </div>
           {emp && (
-            <span className="num shrink-0 text-label text-crystal">
+            <span className="font-v2-mono shrink-0 text-label text-v2-self">
               {duration((emp.until.getTime() - now) / 60_000)}
             </span>
           )}
@@ -1508,10 +1514,10 @@ function StrategicWorldGuide({
     const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.charge.crystal;
     return (
       <div className={`mb-3 rounded-chip border px-3 py-3 ${
-        claimActive ? 'border-opportunity/50 bg-opportunity/10' : 'border-line-soft bg-deep/65'
+        claimActive ? 'border-v2-self/50 bg-v2-self/10' : 'border-v2-line/70 bg-deep/65'
       }`}>
         <div className="flex items-center gap-2">
-          <p className={`legend ${ claimActive ? 'text-opportunity' : 'text-bone' }`}>
+          <p className={`v2-legend ${ claimActive ? 'text-v2-self' : 'text-v2-ink' }`}>
             {t(phase === 'SETTLEMENT_IN_FLIGHT'
               ? 'focus.planet.settlementInFlight'
               : claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
@@ -1642,19 +1648,19 @@ function StrategicWorldGuide({
           </RouteStep>
         </ol>
         {claimActive && (
-          <p className="mt-2 text-center text-body text-bone">
+          <p className="mt-2 text-center text-body text-v2-ink">
             {t('focus.planet.claimRaceExplain')}
           </p>
         )}
         {claimActive && until && (
-          <p className="num mt-2 text-center text-body text-opportunity">
+          <p className="font-v2-mono mt-2 text-center text-body text-v2-self">
             {t('focus.planet.claimCloses', { duration: duration((until.getTime() - now) / 60_000) })}
           </p>
         )}
         {claimActive && (
-          <div className="mt-2 grid gap-1 border-t border-opportunity/20 pt-2 text-label leading-snug text-dim">
+          <div className="mt-2 grid gap-1 border-t border-v2-self/20 pt-2 text-label leading-snug text-v2-ink-2">
             <p className="flex items-start gap-2">
-              <AttackIcon className="mt-1 size-3.5 shrink-0 text-alloy" />
+              <AttackIcon className="mt-1 size-3.5 shrink-0 text-v2-warn" />
               <span>{t('focus.planet.claimRaidStillOpen')}</span>
             </p>
           </div>
@@ -1688,21 +1694,21 @@ function StrategicWorldGuide({
   return (
     <div className={`mb-3 rounded-chip border px-3 py-3 ${
       emp
-        ? 'border-crystal/55 bg-crystal/12'
-        : isRival ? 'border-alloy-glow/45 bg-alloy-glow/8' : 'border-line-soft bg-deep/65'
+        ? 'border-v2-self/55 bg-v2-self/12'
+        : isRival ? 'border-alloy-glow/45 bg-alloy-glow/8' : 'border-v2-line/70 bg-deep/65'
     }`}>
       <div className="flex items-center justify-between gap-2">
-        <p className={`legend ${emp ? 'text-crystal' : 'text-bone'}`}>
+        <p className={`v2-legend ${emp ? 'text-v2-self' : 'text-v2-ink'}`}>
           {t(emp
             ? 'focus.planet.empBreach'
             : protectedUntil
               ? 'focus.planet.occupationProtected'
               : 'focus.planet.deathStarRoute')}
         </p>
-        {emp && <span className="num text-label text-crystal">{duration((emp.until.getTime() - now) / 60_000)}</span>}
+        {emp && <span className="font-v2-mono text-label text-v2-self">{duration((emp.until.getTime() - now) / 60_000)}</span>}
       </div>
       {protectedUntil ? (
-        <p className="mt-1 text-label text-dim">
+        <p className="mt-1 text-label text-v2-ink-2">
           {t('focus.planet.protectedFor', { duration: duration((protectedUntil.getTime() - now) / 60_000) })}
         </p>
       ) : (
@@ -1735,7 +1741,7 @@ function StrategicWorldGuide({
         out to put a ship on it, and nobody has to fire anything for it to fall.
       */}
       {emp && (
-        <p className="mt-2 text-label leading-snug text-crystal">
+        <p className="mt-2 text-label leading-snug text-v2-self">
           {t('focus.planet.empWarning', {
             duration: duration((emp.until.getTime() - now) / 60_000),
           })}
@@ -1785,10 +1791,10 @@ function RouteStep({
   children?: ReactNode;
 }) {
   const tone = status === 'current'
-    ? danger ? 'border-alert/45 bg-alert/10 text-threat-ink' : 'border-opportunity/45 bg-opportunity/10 text-opportunity'
+    ? danger ? 'border-v2-warn/40 bg-v2-warn/10 text-v2-warn' : 'border-v2-self/45 bg-v2-self/10 text-v2-self'
     : status === 'complete'
-      ? 'border-crystal/30 bg-crystal/5 text-crystal'
-      : 'border-line-soft bg-void/25 text-faint';
+      ? 'border-v2-self/30 bg-v2-self/5 text-v2-self'
+      : 'border-v2-line/70 bg-v2-deep/25 text-v2-ink-3';
   /**
    * ONLY THE PROSE FOLDS. THE REQUIREMENTS NEVER DO.
    *
@@ -1810,7 +1816,7 @@ function RouteStep({
       <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-micro">
         {status === 'complete' ? '✓' : number}
       </span>
-      <span className="legend block min-w-0 flex-1 leading-tight">{label}</span>
+      <span className="v2-legend block min-w-0 flex-1 leading-tight">{label}</span>
       {hasDetail && (
         <svg
           aria-hidden
@@ -1840,7 +1846,7 @@ function RouteStep({
       ) : header}
 
       {open && description !== undefined && (
-        <span data-step-detail className="mt-2 block text-label leading-snug text-dim">
+        <span data-step-detail className="mt-2 block text-label leading-snug text-v2-ink-2">
           {description}
         </span>
       )}
@@ -1882,15 +1888,15 @@ function RivalHistory({
       aria-label={t('focus.planet.rivalHeading')}
     >
       <div className="flex items-baseline gap-2">
-        <h3 className="legend text-alloy">{t('focus.planet.rivalHeading')}</h3>
+        <h3 className="v2-legend text-v2-warn">{t('focus.planet.rivalHeading')}</h3>
         {marked && (
-          <span className="legend ml-auto text-alloy">
+          <span className="v2-legend ml-auto text-v2-warn">
             {t('focus.planet.rivalMarkedBadge')}
           </span>
         )}
       </div>
-      <p className="mt-1 text-caption leading-snug text-dim">{story}</p>
-      {marked && <p className="mt-2 text-micro leading-snug text-faint">{t('focus.planet.rivalPurpose')}</p>}
+      <p className="mt-1 text-caption leading-snug text-v2-ink-2">{story}</p>
+      {marked && <p className="mt-2 text-micro leading-snug text-v2-ink-3">{t('focus.planet.rivalPurpose')}</p>}
       {summary && (
         <div className="mt-2 grid grid-cols-4 gap-2">
           <Figure label={t('focus.planet.rivalEncounters')} value={String(summary.battles)} />
@@ -1906,7 +1912,7 @@ function RivalHistory({
         </div>
       )}
       {lastAt > 0 && (
-        <p className="legend mt-2">
+        <p className="v2-legend mt-2">
           {t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) })}
         </p>
       )}
@@ -1919,25 +1925,25 @@ function Headline({ of }: { of: HeadlineKind }) {
   const { t } = useTranslation();
   switch (of.kind) {
     case 'fleet-away':
-      return <span className="text-opportunity">{t('focus.planet.headlineFleetAway')}</span>;
+      return <span className="text-v2-self">{t('focus.planet.headlineFleetAway')}</span>;
     case 'fleet-home':
       return <span>{t('focus.planet.headlineFleetHome')}</span>;
     case 'veiled':
-      return <span className="text-dim">{t('focus.planet.headlineVeiled')}</span>;
+      return <span className="text-v2-ink-2">{t('focus.planet.headlineVeiled')}</span>;
     case 'probed':
       return (
-        <span className="text-dim">
+        <span className="text-v2-ink-2">
           {t('focus.planet.headlineProbed', { age: staleness(of.ageMinutes) })}
         </span>
       );
     case 'fought':
       return (
-        <span className="text-dim">
+        <span className="text-v2-ink-2">
           {t('focus.planet.headlineFought', { age: staleness(of.ageMinutes) })}
         </span>
       );
     case 'none':
-      return <span className="text-faint">{t('focus.planet.headlineNone')}</span>;
+      return <span className="text-v2-ink-3">{t('focus.planet.headlineNone')}</span>;
   }
 }
 
@@ -1972,7 +1978,7 @@ function CloseGap({
   if (gap.closes === 'telescope') {
     if (telescope === 0) {
       return (
-        <button type="button" className="slab slab-ghost w-full" onClick={onInstallTelescope}>
+        <button type="button" className={`${BTN_GHOST} w-full`} onClick={onInstallTelescope}>
           {t('focus.planet.installTelescope')}
         </button>
       );
@@ -1986,7 +1992,7 @@ function CloseGap({
             <button
               key={slot}
               type="button"
-              className="slab slab-ghost"
+              className={BTN_GHOST}
               disabled={watch.isPending}
               onClick={() => {
                 watch.mutate(
@@ -2068,13 +2074,13 @@ function ProbeControl({
     that the flex row wraps and each takes a line again, which is the right
     degradation.
   */
-  const shape = 'slab-compact min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)] leading-tight';
+  const shape = 'min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]';
 
   if (readyAt !== undefined && readyAt.getTime() > now) {
     return (
       <button
         type="button"
-        className={`slab ${shape}`}
+        className={`${BTN_GHOST} ${shape}`}
         disabled
         /*
           THE WHOLE SENTENCE SURVIVES FOR ANYONE WHO CANNOT SEE THE LAYOUT.
@@ -2088,7 +2094,7 @@ function ProbeControl({
       >
         <EyeIcon className="size-4 shrink-0" />
         {t('focus.planet.probeShort')}
-        <span className="num text-micro text-faint">
+        <span className="font-v2-mono text-micro text-v2-ink-3">
           {duration((readyAt.getTime() - now) / 60_000)}
         </span>
       </button>
@@ -2097,7 +2103,7 @@ function ProbeControl({
   return (
     <button
       type="button"
-      className={`slab slab-primary ${shape}`}
+      className={`${BTN_GHOST} ${shape}`}
       // The verb is the label; the sentence — cost and all — is the accessible name.
       aria-label={t('focus.planet.sendProbe', {
         alloy: compact(PROBE.alloy),
@@ -2238,10 +2244,10 @@ export function AsteroidFocus({
           <Trans
             i18nKey={rock.isotopeRich ? 'focus.asteroid.summaryAnomaly' : 'focus.asteroid.summaryOre'}
             values={{ amount: compact(rock.oreRemaining) }}
-            components={[<span key="n" className="text-crystal" />]}
+            components={[<span key="n" className="text-v2-self" />]}
           />
           {' · '}
-          <span className={minutesLeft < 60 ? 'text-threat' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 60 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
         </span>
       }
       actions={
@@ -2258,7 +2264,8 @@ export function AsteroidFocus({
         {run && <MiningCommitments run={run} lane="asteroid" />}
           <button
             type="button"
-            className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+            data-primary
+            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
             disabled={
               busy || launchBlock !== undefined || needsSpectrometry || craftAvailable < 1 || tooLate || resting !== null
             }
@@ -2321,7 +2328,7 @@ export function AsteroidFocus({
       </div>
 
       {rock.isotopeRich && (
-        <p className="mt-3 border-l border-deuterium/60 pl-3 text-caption leading-snug text-deuterium">
+        <p className="mt-3 border-l border-deuterium/60 pl-3 text-caption leading-snug text-v2-deut">
           {t('focus.asteroid.deuteriumRoute')}
         </p>
       )}
@@ -2333,18 +2340,18 @@ export function AsteroidFocus({
          * make that decision worse without the player doing anything wrong —
          * so it is stated here, with the fix, rather than reported on arrival.
          */
-        <p className="mt-3 text-caption leading-snug text-alloy">
+        <p className="mt-3 text-caption leading-snug text-v2-warn">
           {t('focus.asteroid.spill', { room: compact(worksRoom), lost: compact(spill) })}
         </p>
       )}
 
-      <p className="mt-3 text-caption leading-snug text-dim">
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
         {rock.oreRemaining < rock.ore
           ? t('focus.asteroid.taken', { amount: compact(rock.ore - rock.oreRemaining) })
           : t('focus.asteroid.untouched')}
       </p>
 
-      <p className="num mt-2 text-label text-faint">
+      <p className="font-v2-mono mt-2 text-label text-v2-ink-3">
         {t('focus.asteroid.fleetLine', {
           count: craftAvailable,
           hold: compact(craftHold),
@@ -2354,13 +2361,13 @@ export function AsteroidFocus({
 
       {/* The one thing a Derrick changes about this trip, priced as a reason. */}
       {!derrick && derrickHold > craftHold && (
-        <p className="mt-1 text-label leading-snug text-faint">
+        <p className="mt-1 text-label leading-snug text-v2-ink-3">
           <Trans
             i18nKey="focus.asteroid.derrickPitch"
             values={{ name: satelliteLabel('DERRICK'), hold: compact(derrickHold) }}
             components={[
-              <span key="n" className="text-bone" />,
-              <span key="h" className="num text-crystal" />,
+              <span key="n" className="text-v2-ink" />,
+              <span key="h" className="font-v2-mono text-v2-self" />,
             ]}
           />
         </p>
@@ -2372,7 +2379,7 @@ export function AsteroidFocus({
         question that matters is whether the craft gets there first.
       */}
       {reach !== null && !tooLate && (
-        <p className="mt-1 text-label leading-snug text-faint">
+        <p className="mt-1 text-label leading-snug text-v2-ink-3">
           {t('focus.asteroid.intercept', {
             reach: duration(reach),
             spare: duration(minutesLeft - reach),
@@ -2479,7 +2486,7 @@ export function PirateFocus({
       onClose={onClose}
       summary={
         <span>
-          <span className={pirate.expiresInMinutes < 30 ? 'text-threat' : ''}>
+          <span className={pirate.expiresInMinutes < 30 ? 'text-v2-warn' : ''}>
             {duration(pirate.expiresInMinutes)}
           </span>
           {soonest !== null && ` · ${t('pirate.reach', { duration: duration(soonest) })}`}
@@ -2497,11 +2504,12 @@ export function PirateFocus({
       */
       actions={
         raiding ? (
-          <p className="num text-caption text-crystal">{t('pirate.alreadyRaiding')}</p>
+          <p className="font-v2-mono text-caption text-v2-self">{t('pirate.alreadyRaiding')}</p>
         ) : (
           <button
             type="button"
-            className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+            data-primary
+            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
             disabled={launchBlocked || !hasShips}
             onClick={onAttack}
           >
@@ -2516,7 +2524,7 @@ export function PirateFocus({
         <Figure
           label={t('pirate.leavesIn')}
           value={duration(pirate.expiresInMinutes)}
-          tone={pirate.expiresInMinutes < 30 ? 'threat' : undefined}
+          tone={pirate.expiresInMinutes < 30 ? 'alloy' : undefined}
         />
         <Figure
           label={t('pirate.reachLabel')}
@@ -2553,7 +2561,7 @@ export function PirateFocus({
         player who cannot read it is being asked to price a fight blind.
       */}
       {identified && pirate.damageMult !== undefined && (
-        <p className="mt-3 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
+        <p className="mt-3 border-l border-v2-self/60 pl-3 text-caption leading-snug text-v2-self">
           {t('pirate.damagePenalty', { percent: Math.round((1 - pirate.damageMult) * 100) })}
         </p>
       )}
@@ -2566,13 +2574,13 @@ export function PirateFocus({
         to inform. One line, no panel: this is a caveat, not a section.
       */}
       {pirate.remembered === true && (
-        <p className="mt-3 border-l border-line pl-3 text-caption leading-snug text-faint">
+        <p className="mt-3 border-l border-v2-line pl-3 text-caption leading-snug text-v2-ink-3">
           {t('pirate.remembered')}
         </p>
       )}
 
       {/* Actual sight carries the actual crew; a radar return carries a size. */}
-      <p className="legend mt-2 mb-2">{t('pirate.roster')}</p>
+      <p className="v2-legend mt-2 mb-2">{t('pirate.roster')}</p>
       {crewEntries.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {/*
@@ -2593,22 +2601,22 @@ export function PirateFocus({
             <span
               key={hull}
               data-crew-hull={hull}
-              className="flex items-center gap-1.5 rounded-chip border border-line px-2 py-1"
+              className="flex items-center gap-1.5 rounded-chip border border-v2-line px-2 py-1"
             >
-              <HullMark hull={hull} className="size-4 text-dim" />
-              <span data-crew-name className="text-micro text-dim">{hullLabel(hull)}</span>
-              <span className="num text-caption text-bone">{count}</span>
+              <HullMark hull={hull} className="size-4 text-v2-ink-2" />
+              <span data-crew-name className="text-micro text-v2-ink-2">{hullLabel(hull)}</span>
+              <span className="font-v2-mono text-caption text-v2-ink">{count}</span>
             </span>
           ))}
         </div>
       ) : (
-        <p className="text-caption text-faint">{t('pirate.rosterUnknown')}</p>
+        <p className="text-caption text-v2-ink-3">{t('pirate.rosterUnknown')}</p>
       )}
 
-      <p className="mt-3 text-caption leading-snug text-faint">{t('pirate.captureHint')}</p>
-      <p className="mt-1 text-caption leading-snug text-faint">{t('pirate.hoardHint')}</p>
-      <p className="mt-3 text-caption leading-snug text-dim">{t('pirate.boundary')}</p>
-      <p className="mt-2 text-caption leading-snug text-threat-ink">{t('pirate.outbound')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink-3">{t('pirate.captureHint')}</p>
+      <p className="mt-1 text-caption leading-snug text-v2-ink-3">{t('pirate.hoardHint')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('pirate.boundary')}</p>
+      <p className="mt-2 text-caption leading-snug text-v2-warn">{t('pirate.outbound')}</p>
     </Shell>
   );
 }
@@ -2681,7 +2689,7 @@ export function IntergalacticConvoyFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 15 ? 'text-threat' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 15 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
           {reachMinutes !== null
             ? ` · ${t('convoy.summaryReach', { duration: duration(reachMinutes) })}`
             : ''}
@@ -2691,7 +2699,8 @@ export function IntergalacticConvoyFocus({
         <button
           type="button"
           data-testid="convoy-open"
-          className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+          data-primary
+            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
           disabled={refusal !== null}
           onClick={onRaid}
         >
@@ -2706,8 +2715,8 @@ export function IntergalacticConvoyFocus({
           value={`${compact(convoy.rewardPolicy.shipDropChanceAtFullQuality * 100)}%`}
         />
       </div>
-      <p className="mt-3 text-caption leading-snug text-bone">{t('convoy.boundary')}</p>
-      <p className="mt-1 text-caption leading-snug text-dim">{t('convoy.irreversible')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink">{t('convoy.boundary')}</p>
+      <p className="mt-1 text-caption leading-snug text-v2-ink-2">{t('convoy.irreversible')}</p>
     </Shell>
   );
 }
@@ -2785,7 +2794,7 @@ export function TradeFocus({
       onClose={onClose}
       summary={(
         <span>
-          <span className={minutesLeft < 30 ? 'text-threat' : ''}>{duration(minutesLeft)}</span>
+          <span className={minutesLeft < 30 ? 'text-v2-warn' : ''}>{duration(minutesLeft)}</span>
           {reach !== null && ` · ${t('trade.summaryReach', { duration: duration(reach) })}`}
         </span>
       )}
@@ -2793,7 +2802,8 @@ export function TradeFocus({
         <button
           type="button"
           data-testid="trade-open"
-          className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+          data-primary
+            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
           disabled={launchBlocked || !hasCraft || !hasCarrier || tooLate}
           onClick={onTrade}
         >
@@ -2825,7 +2835,7 @@ export function TradeFocus({
         so current and persisted historical rates both render without fractions.
         D208's 1 · 2 · 32 rate reads 32 Alloy · 16 Crystal · 1 Deuterium.
       */}
-      <p className="legend mb-2">{t('trade.rateHeading')}</p>
+      <p className="v2-legend mb-2">{t('trade.rateHeading')}</p>
       <div data-testid="trade-rate" className="space-y-2">
         {TRADE_RESOURCES.map((resource) => {
           const anchor = rateAnchor(merchant.rate);
@@ -2844,7 +2854,7 @@ export function TradeFocus({
                 className="size-4 shrink-0 object-contain"
               />
               <span
-                className="socket h-2.5 min-w-0 flex-1 overflow-hidden rounded-full"
+                className="rounded-control border border-v2-line bg-v2-raise h-2.5 min-w-0 flex-1 overflow-hidden rounded-full"
                 role="img"
                 aria-label={t('trade.rateReading', {
                   amount: full(amount),
@@ -2856,7 +2866,7 @@ export function TradeFocus({
                   style={{ width: `${String(Math.max(2, (amount / widest) * 100))}%` }}
                 />
               </span>
-              <span className="num w-14 shrink-0 text-right text-caption text-bone">
+              <span className="font-v2-mono w-14 shrink-0 text-right text-caption text-v2-ink">
                 {full(amount)}
               </span>
             </div>
@@ -2900,7 +2910,7 @@ export function TradeFocus({
         />
       </div>
 
-      <p className="mt-3 text-caption leading-snug text-dim">{t('trade.boundary')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('trade.boundary')}</p>
     </Shell>
   );
 }
@@ -2911,7 +2921,7 @@ const TRADE_RESOURCES = ['alloy', 'crystal', 'deuterium'] as const;
 /** Each substance's own colour, so a bar is identified before it is read. */
 const RATE_FILL: Record<(typeof TRADE_RESOURCES)[number], string> = {
   alloy: 'bg-alloy/80',
-  crystal: 'bg-crystal/80',
+  crystal: 'bg-v2-self/80',
   deuterium: 'bg-deuterium/80',
 };
 
@@ -2985,7 +2995,7 @@ export function RunFocus({
       </div>
 
       {returning ? (
-        <p className="mt-3 text-body leading-snug text-bone">
+        <p className="mt-3 text-body leading-snug text-v2-ink">
           {run.minedAlloy + run.minedCrystal + run.minedDeuterium > 0
             ? t(
                 run.minedDeuterium > 0
@@ -3000,13 +3010,13 @@ export function RunFocus({
             : t(salvage ? 'focus.run.emptySalvage' : 'focus.run.emptyRock')}
         </p>
       ) : salvage ? (
-        <p className="mt-3 text-caption leading-snug text-dim">
+        <p className="mt-3 text-caption leading-snug text-v2-ink-2">
           {t('focus.run.salvageNote', {
             clock: wreck ? t('focus.run.salvageClock', { duration: duration(wreck.minutesLeft) }) : '',
           })}
         </p>
       ) : (
-        <p className="mt-3 text-caption leading-snug text-dim">{t('focus.run.miningNote')}</p>
+        <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('focus.run.miningNote')}</p>
       )}
     </Shell>
   );
@@ -3068,10 +3078,10 @@ export function ThreadFocus({
             .map(([hull, n]) => (
               <span
                 key={hull}
-                className="flex items-center gap-2 rounded-chip border border-line-soft px-2 py-1"
+                className="flex items-center gap-2 rounded-chip border border-v2-line/70 px-2 py-1"
               >
-                <HullMark hull={hull} className="size-4 text-dim" />
-                <span className="num text-caption text-bone">
+                <HullMark hull={hull} className="size-4 text-v2-ink-2" />
+                <span className="font-v2-mono text-caption text-v2-ink">
                   {n} {hullLabel(hull)}
                 </span>
               </span>
@@ -3079,7 +3089,7 @@ export function ThreadFocus({
         </div>
       )}
 
-      <p className="mt-3 text-caption leading-snug text-dim">
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
         {t(thread.leg === 'return' ? 'focus.thread.returning' : 'focus.thread.outbound')}
       </p>
     </Shell>
@@ -3210,7 +3220,7 @@ export function ContactFocus({
       onClose={onClose}
       summary={
         mining ? (
-          <span className="text-alloy">
+          <span className="text-v2-warn">
             {contact.minutesRemaining === undefined
               ? t('focus.contact.working')
               : duration(contact.minutesRemaining)}
@@ -3224,12 +3234,12 @@ export function ContactFocus({
             standing on the world.
           */
           <>
-            <span className="text-threat-ink">
+            <span className="text-v2-hostile">
               {exactCount === null
                 ? massLabel ?? t('focus.contact.bombarding')
                 : t('focus.contact.craftCount', { count: exactCount })}
             </span>
-            <span className="block text-label text-faint">{t('focus.contact.settling')}</span>
+            <span className="block text-label text-v2-ink-3">{t('focus.contact.settling')}</span>
           </>
         ) : (
           /*
@@ -3245,12 +3255,12 @@ export function ContactFocus({
             player holds, and the panel says so rather than leaving a gap.
           */
           <>
-            <span className={massLabel || exactCount !== null ? '' : 'text-faint'}>
+            <span className={massLabel || exactCount !== null ? '' : 'text-v2-ink-3'}>
               {exactCount === null
                 ? massLabel ?? t('focus.contact.unattributed')
                 : t('focus.contact.craftCount', { count: exactCount })}
             </span>
-            <span className="block text-label text-faint">
+            <span className="block text-label text-v2-ink-3">
               {t(contact.inbound === true
                 ? 'focus.contact.inboundNoClock'
                 : 'focus.contact.arrivalUnknown')}
@@ -3299,10 +3309,10 @@ export function ContactFocus({
           {exactEntries.map(([hull, count]) => (
             <span
               key={hull}
-              className="flex items-center gap-2 rounded-chip border border-line-soft px-2 py-1"
+              className="flex items-center gap-2 rounded-chip border border-v2-line/70 px-2 py-1"
             >
-              <HullMark hull={hull} className="size-4 text-dim" />
-              <span className="num text-caption text-bone">
+              <HullMark hull={hull} className="size-4 text-v2-ink-2" />
+              <span className="font-v2-mono text-caption text-v2-ink">
                 {count} {hullLabel(hull)}
               </span>
             </span>
@@ -3317,18 +3327,18 @@ export function ContactFocus({
         reads as a bug while a stated absence reads as a price.
       */}
       {unidentified && (
-        <p className="mt-3 text-caption text-faint">{t('focus.contact.unknownHint')}</p>
+        <p className="mt-3 text-caption text-v2-ink-3">{t('focus.contact.unknownHint')}</p>
       )}
       {radarKind !== undefined && (
-        <p className="mt-3 text-caption text-crystal/80">
+        <p className="mt-3 text-caption text-v2-self/80">
           {t('focus.contact.radarKind', { kind: t(CONTACT_TITLE[radarKind]).toLowerCase() })}
         </p>
       )}
       {massLabel !== null && exactFleet === undefined && !mining && (
-        <p className="mt-3 text-caption text-faint">{t('focus.contact.massHint')}</p>
+        <p className="mt-3 text-caption text-v2-ink-3">{t('focus.contact.massHint')}</p>
       )}
       {contact.inbound === true && !battle && (
-        <p className="mt-3 text-caption text-threat-ink">{t('focus.contact.inboundHint')}</p>
+        <p className="mt-3 text-caption text-v2-hostile">{t('focus.contact.inboundHint')}</p>
       )}
 
       {/*
@@ -3336,7 +3346,7 @@ export function ContactFocus({
         thing that sends a player to the Telescope — an absence they cannot see is
         an absence they will not pay to close.
       */}
-      <p className="mt-3 text-caption leading-snug text-dim">
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">
         {t(
           contact.kind === 'fleet' && exactFleet && contact.clanFleet
             ? 'clanWar.contactBoundary'
@@ -3352,12 +3362,12 @@ export function ContactFocus({
         )}
       </p>
       {!mining && !battle && (
-        <p className="mt-2 text-caption leading-snug text-faint">
+        <p className="mt-2 text-caption leading-snug text-v2-ink-3">
           {t('focus.contact.telescopeHint')}
         </p>
       )}
       {battle && (
-        <p className="mt-2 text-caption leading-snug text-faint">{t('focus.contact.wreckHint')}</p>
+        <p className="mt-2 text-caption leading-snug text-v2-ink-3">{t('focus.contact.wreckHint')}</p>
       )}
     </Shell>
   );
@@ -3403,7 +3413,7 @@ function MiningCommitments({ run, lane }: {
       ].filter((batch) => batch.count > 0);
 
   return batches.map((batch) => (
-    <p key={batch.status} className={`num text-caption ${lane === 'asteroid' ? 'text-crystal' : 'text-alloy'}`}>
+    <p key={batch.status} className={`font-v2-mono text-caption ${lane === 'asteroid' ? 'text-v2-self' : 'text-v2-warn'}`}>
       {t(lane === 'asteroid' ? 'focus.asteroid.working' : 'focus.debris.working', {
         count: batch.count,
         state: t(
@@ -3436,7 +3446,7 @@ function CraftRests({ cooldowns, now, lane }: {
 }) {
   const { t } = useTranslation();
   return cooldowns?.filter((rest) => rest.readyAt.getTime() > now).map((rest) => (
-    <p key={rest.runId} className="num text-caption text-dim">
+    <p key={rest.runId} className="font-v2-mono text-caption text-v2-ink-2">
       {rest.craft} × {t(lane === 'asteroid' ? 'focus.asteroid.resting' : 'focus.debris.resting', {
         duration: countdown(rest.readyAt.getTime() - now),
       })}
@@ -3471,11 +3481,11 @@ function CraftPicker({
   if (available < 2) return null;
   return (
     <div className="mt-3">
-      <p className="legend mb-2">{t('focus.craftPicker.label')}</p>
+      <p className="v2-legend mb-2">{t('focus.craftPicker.label')}</p>
       <div className="flex items-center gap-2 mb-2">
         {/* The chosen count is LIT AND RAISED, the same grammar every other
             segmented control in the game uses. It used to be cyan text plus a
-            `border-crystal/60` that never drew, because `.btn` sets no border
+            `border-v2-self/60` that never drew, because `.btn` sets no border
             width — so on a picker whose whole job is to say which number is
             selected, half the answer was a declaration the browser dropped. */}
         {Array.from({ length: available }, (_, i) => i + 1).map((n) => (
@@ -3483,7 +3493,7 @@ function CraftPicker({
             key={n}
             type="button"
             aria-pressed={value === n}
-            className={`slab flex-1 ${value === n ? 'slab-primary' : ''}`}
+            className={`${BTN} flex-1 ${value === n ? 'bg-v2-raise text-v2-ink ring-1 ring-v2-line-hi' : 'border border-v2-line text-v2-ink-3'}`}
             onClick={() => {
               onPick(n);
             }}
@@ -3569,10 +3579,10 @@ export function DebrisFocus({
           <Trans
             i18nKey="focus.debris.summarySalvage"
             values={{ amount: compact(left) }}
-            components={[<span key="n" className="text-alloy" />]}
+            components={[<span key="n" className="text-v2-warn" />]}
           />
           {' · '}
-          <span className={field.minutesLeft < 30 ? 'text-threat' : ''}>
+          <span className={field.minutesLeft < 30 ? 'text-v2-hostile' : ''}>
             {duration(field.minutesLeft)}
           </span>
         </span>
@@ -3582,7 +3592,8 @@ export function DebrisFocus({
         {run && <MiningCommitments run={run} lane="debris" />}
           <button
             type="button"
-            className="slab slab-primary basis-full whitespace-normal px-3 leading-tight max-h-10 min-h-10"
+            data-primary
+            className={`${BTN_PRIMARY} basis-full whitespace-normal`}
             disabled={busy || launchBlock !== undefined || craftAvailable < 1 || tooLate || resting !== null}
             onClick={() => {
               onSend(sending);
@@ -3627,12 +3638,12 @@ export function DebrisFocus({
       </div>
 
       {spill > 0 && !run && (
-        <p className="mt-3 text-caption leading-snug text-alloy">
+        <p className="mt-3 text-caption leading-snug text-v2-warn">
           {t('focus.debris.spill', { room: compact(worksRoom), lost: compact(spill) })}
         </p>
       )}
 
-      <p className="mt-3 text-caption leading-snug text-dim">{t('focus.debris.body')}</p>
+      <p className="mt-3 text-caption leading-snug text-v2-ink-2">{t('focus.debris.body')}</p>
     </Shell>
   );
 }
@@ -3667,18 +3678,18 @@ function Figure({
 }) {
   const colour =
     tone === 'crystal'
-      ? 'text-crystal'
+      ? 'text-v2-self'
       : tone === 'alloy'
-        ? 'text-alloy'
+        ? 'text-v2-warn'
         : tone === 'opportunity'
-          ? 'text-opportunity'
+          ? 'text-v2-self'
         : tone === 'threat'
-          ? 'text-threat'
-          : 'text-bone';
+          ? 'text-v2-hostile'
+          : 'text-v2-ink';
   return (
     <div {...(testId ? { 'data-testid': testId } : {})}>
-      <p className="legend">{label}</p>
-      <p className={`num mt-1 text-body ${colour}`}>
+      <p className="v2-legend">{label}</p>
+      <p className={`font-v2-mono mt-1 text-body ${colour}`}>
         {value}
       </p>
     </div>

@@ -44,3 +44,29 @@
 .v2-shell {
   --v2-dock-h: calc(4rem + env(safe-area-inset-bottom));
 }
+
+/*
+ * THE LEGEND AND THE NAME, IN THE GÖZLEMEVI'S TYPE (K3). The old `.legend` and `.name`
+ * were engraved uppercase display faces; these are their v2 readings for the surfaces
+ * carried over from the old kit (the focus panel first). In `components`, so a colour
+ * utility written beside them still wins.
+ */
+@layer components {
+  .v2-legend {
+    font-family: var(--font-v2-ui);
+    font-size: var(--text-micro);
+    line-height: 1.3;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-v2-ink-3);
+  }
+
+  .v2-name {
+    font-family: var(--font-v2-ui);
+    font-size: var(--text-caption);
+    line-height: 1.3;
+    font-weight: 600;
+    color: var(--color-v2-ink);
+  }
+}

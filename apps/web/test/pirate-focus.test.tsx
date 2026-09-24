@@ -198,14 +198,18 @@ describe('the pirate rail', () => {
     expect(screen.queryByText(/not on your sensors now/i)).toBeNull();
   });
 
-  /** The deadline is the reason to hurry, so it leads and it turns red near the end. */
+  /**
+   * The deadline is the reason to hurry, so it leads and it turns warn near the end —
+   * never red, which K2 keeps for what is coming for you.
+   */
   it('states the deadline, and marks it when it is nearly up', () => {
     const { unmount } = panel(identified({ expiresInMinutes: 180 }), { DART: 10 });
     expect(screen.getAllByText(/3h/).length).toBeGreaterThan(0);
     unmount();
 
     panel(identified({ expiresInMinutes: 12 }), { DART: 10 });
-    expect(document.querySelector('.text-threat')).toBeTruthy();
+    expect(document.querySelector('[data-focus-rail] .text-v2-warn')).toBeTruthy();
+    expect(document.querySelector('[data-focus-rail] .text-v2-hostile')).toBeNull();
   });
 });
 

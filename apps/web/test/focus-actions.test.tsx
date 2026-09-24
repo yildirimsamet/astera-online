@@ -121,8 +121,10 @@ describe('the focus rail’s two commitments', () => {
     expect(attack!.textContent).toMatch(/attack/i);
     // A glyph, beside the label rather than instead of it.
     expect(attack!.querySelector('svg')).not.toBeNull();
-    // And it is still the one control wearing the irreversible weight.
-    expect(attack!.className).toContain('slab-commit');
+    // And it is still the one control wearing the irreversible weight: the surface's one
+    // primary, in your colour (K2 — one primary per screen).
+    expect(attack).toHaveAttribute('data-primary');
+    expect(document.querySelectorAll('[data-focus-rail] [data-primary]')).toHaveLength(1);
   });
 
   it('refuses before opening the picker when the origin shipyard is in revolt', () => {
@@ -189,7 +191,7 @@ describe('the focus rail’s two commitments', () => {
     const probe = screen.getByRole('button', { name: /probe/i });
     expect(probe.querySelector('svg')).not.toBeNull();
     // Not the commit weight: a probe is a spend, not the irreversible bet.
-    expect(probe.className).not.toContain('slab-commit');
+    expect(probe).not.toHaveAttribute('data-primary');
   });
 
   /**
@@ -985,14 +987,14 @@ describe('the focus rail’s two commitments', () => {
     // The far rim: the longest settlement flight the map can produce. Under the
     // old thirty-minute window this read as unreachable and the route was a lie.
     settlementRig(neutralAt(GALAXY_SPAN, null));
-    expect(reachChip()).toContain('opportunity');
-    expect(reachChip()).not.toContain('alert');
+    expect(reachChip()).toContain('text-v2-self');
+    expect(reachChip()).not.toContain('text-v2-warn');
   });
 
   it('still refuses a settlement the open window cannot contain', () => {
     // Same distance, but only ten minutes of the window are left.
     settlementRig(neutralAt(GALAXY_SPAN, new Date(NOW + 10 * 60_000)));
-    expect(reachChip()).toContain('alert');
+    expect(reachChip()).toContain('text-v2-warn');
     expect(screen.getByRole('button', { name: /found colony.*arrives too late/i })).toBeDisabled();
   });
 
