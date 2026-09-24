@@ -33,6 +33,7 @@ export const planet = {
     needUplink: "Yörüngede Anten",
     needOperational: "Dünya çalışır durumda",
     buildTime: "{{duration}} · tek mühimmat · ateşlenince biter",
+    buildSecond: 'İkinci şarjı sıraya koy',
   },
 
   deathStar: {
@@ -55,6 +56,7 @@ export const planet = {
     needOperational: "Dünya çalışır durumda",
     buildTime: "{{duration}} · tek silah · geri çağrılamaz",
 
+    needs: 'Gerekli: {{need}}',
   },
   tabs: {
     label: "Gezegen bölümleri",

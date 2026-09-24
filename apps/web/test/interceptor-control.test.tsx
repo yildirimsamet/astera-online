@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ANTI_STRATEGIC, HULLS } from '@astera/rules';
@@ -105,8 +105,9 @@ const block = (view: View): HTMLElement => {
 const stateOf = (view: View): string | null =>
   block(view).getAttribute('data-interceptor-state');
 
+/** The commit. The requirement chips above it are doors, and buttons too. */
 const button = (view: View): HTMLButtonElement | null =>
-  block(view).querySelector<HTMLButtonElement>('button');
+  block(view).querySelector<HTMLButtonElement>('[data-act] button');
 
 beforeEach(async () => {
   build.mockClear();
@@ -231,6 +232,28 @@ describe('the charge itself', () => {
    * The charge remains stored, but calling the battery simply "Ready" tells the
    * commander to trust a circle this world no longer has.
    */
+  /** D3 (owner, round 2): charges are a tally — loaded, loading, empty. */
+  it('draws its charges as loaded and loading cells', () => {
+    const view = show(armed({
+      interceptors: [
+        { id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 },
+        { id: 'a2', status: 'BUILDING', readyAt: new Date(Date.now() + 10 * 60_000), remainingSeconds: 30 * 60 },
+      ],
+    }));
+    expect([...block(view).querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
+      .toEqual(['ready', 'loading']);
+    expect(block(view).querySelector('[data-charge-progress]')).toHaveClass('bg-v2-self');
+  });
+
+  it('sends a Radar too low to be trusted to the Radar', async () => {
+    const view = show(armed({ instruments: { RADAR: ANTI_STRATEGIC.requiredRadar - 1 } }));
+    // jsdom has no layout; the screen scrolls the row it points at into view.
+    Element.prototype.scrollIntoView = vi.fn();
+    const doors = within(block(view)).getByRole('list');
+    await userEvent.click(within(doors).getByRole('button', { name: new RegExp(`radar l${String(ANTI_STRATEGIC.requiredRadar)}`, 'i') }));
+    expect(screen.getByRole('tab', { name: 'Intel' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('marks a loaded charge as lacking Radar protection when its Uplink is inactive', () => {
     const view = show(armed({
       instruments: { RADAR: 5 },

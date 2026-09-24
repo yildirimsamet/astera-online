@@ -33,6 +33,7 @@ export const planet = {
     needUplink: "Uplink in orbit",
     needOperational: "World operational",
     buildTime: "{{duration}} · one charge · spent on firing",
+    buildSecond: 'Load the second charge',
   },
 
   deathStar: {
@@ -55,6 +56,7 @@ export const planet = {
     needOperational: "World operational",
     buildTime: "{{duration}} · one weapon · no recall",
 
+    needs: 'Needs {{need}}',
   },
   tabs: {
     label: "Planet categories",

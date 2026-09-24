@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -117,38 +117,48 @@ const show = (
 };
 
 describe('strategic hardware hierarchy', () => {
-  it('keeps the temporarily disabled Death Star forge display-none', async () => {
-    const view = show({}, 'grow');
+  const tactical = async () => { await userEvent.click(screen.getByRole('tab', { name: 'Tactical' })); };
+  const forgeOf = (view: ReturnType<typeof show>): HTMLElement => {
+    const forge = view.container.querySelector<HTMLElement>('[data-strategic-state]');
+    if (!forge) throw new Error('the forge does not render');
+    return forge;
+  };
+
+  /** The owner gave the forge its own tab (09c0bb5): it is there, and nowhere else. */
+  it('keeps the Death Star forge on the Tactical tab', async () => {
+    const view = show({}, 'reach');
     expect(view.container.querySelector('[data-strategic-state]')).toBeNull();
-    await userEvent.click(screen.getByRole('tab', { name: 'Fleet' }));
-    expect(view.container.querySelector('[data-strategic-state="LOCKED"]')).toHaveClass('hidden');
+    await tactical();
+    expect(forgeOf(view)).toHaveAttribute('data-strategic-state', 'LOCKED');
+    expect(forgeOf(view)).not.toHaveClass('hidden');
   });
 
-  it('raises a live strategic asset above every tab because it is now planet state', () => {
-    const view = show({
-      strategic: {
-        id: 'asset-1',
-        status: 'READY',
-        readyAt: null,
-        remainingSeconds: 0,
-      },
-    }, 'grow');
-    const forge = view.container.querySelector('[data-strategic-state="READY"]');
-    const tabs = screen.getByRole('tab', { name: 'Production' }).parentElement?.parentElement ?? null;
-    expect(forge).not.toBeNull();
-    expect(tabs).not.toBeNull();
-    if (!forge || !tabs) throw new Error('strategic state and tabs must both render');
-    expect(forge.compareDocumentPosition(tabs) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  /** A requirement is a door (I1): the fixable one goes where the fix is. */
+  it('names what the build still needs, and sends a missing building to its row', async () => {
+    const view = show({}, 'reach');
+    await tactical();
+    const needs = within(forgeOf(view)).getAllByRole('listitem');
+    expect(needs.map((need) => need.dataset.met)).toEqual(['false', 'false', 'true']);
+    // jsdom has no layout; the screen scrolls the row it points at into view.
+    Element.prototype.scrollIntoView = vi.fn();
+    const doors = within(forgeOf(view)).getByRole('list');
+    await userEvent.click(within(doors).getByRole('button', { name: new RegExp(`core l${String(DEATH_STAR.requiredCore)}`, 'i') }));
+    expect(screen.getByRole('tab', { name: 'Production' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('refuses the build with the first thing it needs, rather than a dead button', async () => {
+    const view = show({}, 'reach');
+    await tactical();
+    const act = forgeOf(view).querySelector<HTMLButtonElement>('[data-act] button')!;
+    expect(act).toBeDisabled();
+    expect(act).toHaveTextContent(new RegExp(`core l${String(DEATH_STAR.requiredCore)}`, 'i'));
   });
 
   /**
-   * THE STOCKPILE IS AN ACTION, NOT ONLY A RULES NUMBER.
-   *
-   * The server has always admitted a second weapon after the research, but the
-   * forge hid its build control as soon as ANY weapon existed. That made the
-   * researched capacity unreachable from the only surface that builds one.
+   * THE STOCKPILE IS AN ACTION, NOT ONLY A RULES NUMBER — and a Death Star cannot be
+   * cancelled, so it is held (K4), never tapped.
    */
-  it('offers the second weapon while one slot in a researched stockpile is free', async () => {
+  it('offers the second weapon while one slot in a researched stockpile is free, on a hold', async () => {
     buildDeathStar.mockClear();
     const base = rich();
     const ready = {
@@ -173,53 +183,53 @@ describe('strategic hardware hierarchy', () => {
         deuteriumCap: DEATH_STAR.cost.deuterium * 4,
       },
     );
+    await tactical();
 
-    const forge = view.container.querySelector<HTMLElement>('[data-strategic-state="READY"]');
-    expect(forge).not.toBeNull();
+    const forge = forgeOf(view);
+    expect(forge).toHaveAttribute('data-strategic-state', 'READY');
     expect(forge).toHaveAttribute('data-strategic-count', '1');
     expect(forge).toHaveAttribute('data-strategic-capacity', '2');
-    const button = within(forge!).getByRole('button', { name: 'Build' });
+    const button = within(forge).getByRole('button', { name: 'Build' });
     expect(button).toBeEnabled();
 
+    // A tap is not a commitment.
     await userEvent.click(button);
+    expect(buildDeathStar).not.toHaveBeenCalled();
+    // The keyboard's hold: Enter, then Enter to confirm.
+    fireEvent.keyDown(button, { key: 'Enter' });
+    fireEvent.keyDown(button, { key: 'Enter' });
     expect(buildDeathStar).toHaveBeenCalledOnce();
   });
 
   /**
-   * A READY FIRST WEAPON MUST NOT HIDE THE SECOND ONE STILL BEING BUILT.
-   * `remainingSeconds` is a frozen build-duration field; `readyAt` is the live
-   * clock, so halfway through a build must draw halfway rather than two percent.
+   * A READY FIRST WEAPON MUST NOT HIDE THE SECOND ONE STILL BEING BUILT, and the build
+   * reads the live clock: halfway through draws halfway, not two percent.
    */
-  it('shows both weapons and derives the active build progress from readyAt', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-11T12:00:00.000Z'));
-    try {
-      const ready = {
-        id: 'asset-ready',
-        status: 'READY' as const,
-        readyAt: new Date('2026-09-11T11:00:00.000Z'),
-        remainingSeconds: 0,
-      };
-      const building = {
-        id: 'asset-building',
-        status: 'BUILDING' as const,
-        readyAt: new Date(Date.now() + DEATH_STAR.buildMinutes * 30_000),
-        // Deliberately frozen at the full duration, exactly as the server stores it.
-        remainingSeconds: DEATH_STAR.buildMinutes * 60,
-      };
-      const view = show({
-        strategic: ready,
-        deathStars: [ready, building],
-      });
+  it('draws both weapons as charges and the build from readyAt', async () => {
+    const ready = {
+      id: 'asset-ready',
+      status: 'READY' as const,
+      readyAt: new Date(Date.now() - 3_600_000),
+      remainingSeconds: 0,
+    };
+    const building = {
+      id: 'asset-building',
+      status: 'BUILDING' as const,
+      readyAt: new Date(Date.now() + DEATH_STAR.buildMinutes * 30_000),
+      // Deliberately frozen at the full duration, exactly as the server stores it.
+      remainingSeconds: DEATH_STAR.buildMinutes * 60,
+    };
+    const view = show({ strategic: ready, deathStars: [ready, building] });
+    await tactical();
 
-      const forge = view.container.querySelector<HTMLElement>('[data-strategic-state="READY"]');
-      expect(forge).toHaveAttribute('data-strategic-count', '2');
-      expect(forge).toHaveTextContent(/1 ready.*1 building/i);
-      expect(forge?.querySelector<HTMLElement>('[data-strategic-progress]'))
-        .toHaveStyle({ width: '50%' });
-    } finally {
-      vi.useRealTimers();
-    }
+    const forge = forgeOf(view);
+    expect(forge).toHaveAttribute('data-strategic-count', '2');
+    expect(forge).toHaveTextContent(/1 ready.*1 building/i);
+    expect([...forge.querySelectorAll<HTMLElement>('[data-tally] [data-cell]')].map((cell) => cell.dataset.cell))
+      .toEqual(['ready', 'loading']);
+    const progress = forge.querySelector<HTMLElement>('[data-strategic-progress]')!;
+    expect(Number.parseFloat(progress.style.width)).toBeCloseTo(50, 0);
+    expect(progress).toHaveClass('bg-v2-self');
   });
 
   /** A ready first slot must not suppress the wake-up for the second slot. */

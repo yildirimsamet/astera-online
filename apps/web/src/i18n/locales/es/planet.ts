@@ -33,6 +33,7 @@ export const planet = {
     needUplink: "Enlace ascendente en órbita",
     needOperational: "Operativo mundial",
     buildTime: "{{duration}} · una carga · gastada en disparar",
+    buildSecond: 'Cargar la segunda carga',
   },
 
   deathStar: {
@@ -55,6 +56,7 @@ export const planet = {
     needOperational: "Operativo mundial",
     buildTime: "{{duration}} · un arma · sin recuperación",
 
+    needs: 'Requiere {{need}}',
   },
   tabs: {
     label: "Categorías de planetas",

@@ -64,8 +64,7 @@ import { compact, decimal, factor, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
-import { deathStarsOf, interceptorsOf } from '../lib/strategic.js';
-import { Tally } from '../ui/Tally.js';
+import { buildShare, deathStarsOf, interceptorsOf } from '../lib/strategic.js';
 /** The commander's research ladders, off the payload the screen already holds. */
 import { techOf } from '../lib/navigation.js';
 /*
@@ -112,7 +111,7 @@ import {
   satelliteTag,
   researchName,
 } from '../i18n/names.js';
-import { Price, useOrderDuration } from '../ui/Action.js';
+import { useOrderDuration } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
@@ -123,11 +122,13 @@ import { useAccordion } from '../lib/accordion.js';
 import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Button, Segmented } from '../ui/kit/index.js';
+import { Segmented } from '../ui/kit/index.js';
 import { affordWait } from '../lib/afford.js';
 import { roomParts } from '../lib/room.js';
 import { Icon } from '../v2/icons.js';
+import { ChargeTally } from '../v2/kit/ChargeTally.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
+import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { RoomBar } from '../v2/kit/RoomBar.js';
@@ -515,7 +516,7 @@ export function PlanetScreen({
               {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
-                <DeathStarForge planet={data} held={held} recovering={recovering} />
+                <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
               )}
             </DecisionGroup>
           </div>
@@ -803,14 +804,24 @@ function FaultRepairs({
 }
 
 
+/**
+ * THE DEATH STAR FORGE, ON THE TACTICAL TAB (09c0bb5). D3.
+ *
+ * The weapon's slots as charges (loaded, building, empty), what it does in one line,
+ * and — while a slot is free — what the build still needs as doors, its price and its
+ * time, and a HOLD to build: a Death Star cannot be cancelled, so it is never a tap (K4).
+ * A refused hold says the first thing it needs rather than going dead.
+ */
 function DeathStarForge({
   planet,
   held,
   recovering,
+  onNeed,
 }: {
   planet: PlanetView;
   held: Projected;
   recovering: boolean;
+  onNeed: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const say = useToast();
@@ -822,52 +833,52 @@ function DeathStarForge({
   const readyCount = weapons.filter((asset) => asset.status === 'READY').length;
   const buildingCount = weapons.filter((asset) => asset.status !== 'READY').length;
   const activeBuild = weapons.find((asset) => asset.status === 'BUILDING');
-  const progress = activeBuild
-    ? Math.max(0, Math.min(100, 100 * (1 - (
-      activeBuild.readyAt
-        ? activeBuild.readyAt.getTime() - now
-        : (activeBuild.remainingSeconds ?? DEATH_STAR.buildMinutes * 60) * 1000
-    ) / (DEATH_STAR.buildMinutes * 60_000))))
-    : null;
+  const progress = activeBuild ? buildShare(activeBuild, DEATH_STAR.buildMinutes, now) : null;
   const core = (planet.buildings.CORE ?? 0) >= DEATH_STAR.requiredCore;
   const yard = (planet.buildings.SHIPYARD ?? 0) >= DEATH_STAR.requiredShipyard;
-  const affordable = held.alloy >= DEATH_STAR.cost.alloy
-    && held.crystal >= DEATH_STAR.cost.crystal
-    && held.deuterium >= DEATH_STAR.cost.deuterium;
+  const short = {
+    alloy: Math.max(0, DEATH_STAR.cost.alloy - held.alloy),
+    crystal: Math.max(0, DEATH_STAR.cost.crystal - held.crystal),
+    deuterium: Math.max(0, DEATH_STAR.cost.deuterium - held.deuterium),
+  };
   const live = weapons.length > 0;
   const room = weapons.length < stockpile;
+  const needCore = t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore });
+  const needShipyard = t('planet.deathStar.needShipyard', { level: DEATH_STAR.requiredShipyard });
+  const needOperational = t('planet.deathStar.needOperational');
+  const refusal = !core
+    ? t('planet.deathStar.needs', { need: needCore })
+    : !yard
+      ? t('planet.deathStar.needs', { need: needShipyard })
+      : recovering
+        ? t('planet.deathStar.needs', { need: needOperational })
+        : shortfall(short, planet);
 
   return (
-    <div
+    <section
       data-strategic-state={primary?.status ?? 'LOCKED'}
       data-strategic-count={weapons.length}
       data-strategic-capacity={stockpile}
-      className={`death-star-forge ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'} ${readyCount > 0 ? 'death-star-forge-ready' : ''}`}
+      className={`flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
-      <div className="relative z-[1] flex items-start gap-2">
-        <div className={`death-star-art relative grid shrink-0 place-items-center overflow-hidden rounded-chip ${live ? 'size-[72px]' : 'size-24'}`}>
-          <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-alloy/70 to-transparent" />
-          <img
-            src={RESEARCH_ART.DEATH_STAR_PROTOCOL}
-            alt=""
-            aria-hidden
-            className={`${live ? 'size-16' : 'size-[88px]'} object-contain`}
-          />
-        </div>
+      <div className="flex items-start gap-3">
+        <img
+          src={RESEARCH_ART.DEATH_STAR_PROTOCOL}
+          alt=""
+          aria-hidden
+          className={`size-[70px] shrink-0 object-contain ${live ? '' : 'opacity-60 grayscale'}`}
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="death-star-danger-light" aria-hidden />
-            <p className="legend text-alloy">
-              {t('planet.deathStar.eyebrow')}
-            </p>
-            <Tally
-              used={weapons.length}
+          <p className="flex items-center justify-between gap-2">
+            <span className={TACTICAL_HEADING}>{t('planet.deathStar.eyebrow')}</span>
+            <ChargeTally
+              ready={readyCount}
+              loading={buildingCount}
               total={stockpile}
               label={t('planet.deathStar.tally', { used: weapons.length, total: stockpile })}
-              tone="threat"
             />
-          </div>
-          <p className="headline mt-1 text-bone">
+          </p>
+          <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
             {primary?.status === 'READY'
               ? t('planet.deathStar.ready')
               : primary?.status === 'PAUSED'
@@ -881,7 +892,7 @@ function DeathStarForge({
                   : t('planet.deathStar.none')}
           </p>
           {live && (
-            <p className="num text-micro text-faint" data-strategic-stock>
+            <p className="font-v2-mono text-micro text-v2-ink-3" data-strategic-stock>
               {t('planet.deathStar.stock', {
                 ready: readyCount,
                 building: buildingCount,
@@ -890,86 +901,97 @@ function DeathStarForge({
               })}
             </p>
           )}
-          <p className="mt-1 text-caption leading-snug text-dim">
-            {t(readyCount > 0
-              ? 'planet.deathStar.readyHint'
-              : 'planet.deathStar.dangerHint')}
+          {progress !== null && <ChargeProgress share={progress} mark="data-strategic-progress" />}
+          <p className="mt-1 text-caption leading-snug text-v2-ink-2">
+            {t(readyCount > 0 ? 'planet.deathStar.readyHint' : 'planet.deathStar.dangerHint')}
           </p>
         </div>
       </div>
 
       {room && (
-        <div className="relative z-[1] mt-3 border-t border-line-soft pt-3">
-          <div className="grid grid-cols-2 gap-2" role="list">
-            <DeathStarNeed ok={core}>
-              {t('planet.deathStar.needCore', { level: DEATH_STAR.requiredCore })}
-            </DeathStarNeed>
-            <DeathStarNeed ok={yard}>
-              {t('planet.deathStar.needShipyard', { level: DEATH_STAR.requiredShipyard })}
-            </DeathStarNeed>
-            <DeathStarNeed ok={!recovering}>{t('planet.deathStar.needOperational')}</DeathStarNeed>
+        <>
+          <ul className="flex flex-wrap gap-1.5">
+            <TacticalNeed ok={core} onFix={() => { onNeed('CORE'); }}>{needCore}</TacticalNeed>
+            <TacticalNeed ok={yard} onFix={() => { onNeed('SHIPYARD'); }}>{needShipyard}</TacticalNeed>
+            <TacticalNeed ok={!recovering}>{needOperational}</TacticalNeed>
+          </ul>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Cost cost={DEATH_STAR.cost} held={held} />
+            <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
+              <Icon id="i-clock" className="size-3 shrink-0" />
+              {t('planet.deathStar.buildTime', { duration: duration(DEATH_STAR.buildMinutes) })}
+            </span>
           </div>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <div>
-              <Price cost={DEATH_STAR.cost} held={held} layout='row' />
-              <p className="legend text-micro mt-1">
-                {t('planet.deathStar.buildTime', {
-                  duration: duration(DEATH_STAR.buildMinutes),
-                })}
-              </p>
-            </div>
-            {/*
-              THE SAME SLAB EVERY OTHER PURCHASE USES, IN THE STRATEGIC HUE.
-
-              This was a fifth button system — its own amber gradient, its own
-              2.5px radius, its own 0.68rem type and its own disabled state — so
-              the most expensive thing a commander ever buys did not look like a
-              purchase at all. The plate around it already carries the weight
-              (mass, material, the danger light); `visual-design.md` is explicit
-              that strategic red stays a restrained accent rather than a costume.
-            */}
-            <Button
-              variant="commit"
-              disabled={recovering || strategicBuild.isPending
-                || !core || !yard || !affordable}
-              onClick={() => {
+          <div data-act>
+            <HoldButton
+              label={t('planet.deathStar.build')}
+              disabledReason={strategicBuild.isPending ? t('planet.deathStar.started') : refusal}
+              onCommit={() => {
                 strategicBuild.mutate(undefined, {
                   onSuccess: () => { say(t('planet.deathStar.started')); },
                   onError: (error) => { say(describe(error), 'error'); },
                 });
               }}
-            >
-              {t('planet.deathStar.build')}
-            </Button>
+            />
           </div>
-        </div>
+        </>
       )}
-
-      {progress !== null && (
-        <div className="relative z-[1] mt-3 h-1.5 overflow-hidden rounded-full bg-black/45">
-          <span
-            data-strategic-progress
-            className="block h-full bg-gradient-to-r from-alloy/45 via-alloy to-bone"
-            style={{
-              width: `${String(progress)}%`
-            }}
-          />
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 
-function DeathStarNeed({ ok, children }: { ok: boolean; children: ReactNode }) {
+const TACTICAL_HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
+
+/** What a purse that cannot pay says in place of the commit: when, or that it cannot tell. */
+function shortfall(
+  short: { alloy: number; crystal: number; deuterium: number },
+  planet: PlanetView,
+): string | null {
+  if (short.alloy === 0 && short.crystal === 0 && short.deuterium === 0) return null;
+  // Deuterium has no rate on this payload, so a fuel shortfall says so rather than when.
+  const wait = short.deuterium > 0
+    ? null
+    : affordWait(short, { alloyPerHour: planet.planet.alloyPerHour, crystalPerHour: planet.planet.crystalPerHour });
+  return wait === null ? i18n.t('itemSheet.short') : i18n.t('itemSheet.affordIn', { duration: duration(wait) });
+}
+
+/** A build under way, in your colour: never the grey fill round 2 retired. */
+function ChargeProgress({ share, mark }: { share: number; mark: 'data-strategic-progress' | 'data-charge-progress' }) {
   return (
-    <span
-      role="listitem"
-      data-met={ok ? 'true' : 'false'}
-      className="legend death-star-need flex min-h-9 items-center gap-2 rounded-chip border px-2 py-1"
-    >
-      <span aria-hidden>{ok ? '●' : '○'}</span>
-      {children}
+    <span aria-hidden="true" className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-v2-line">
+      <span {...{ [mark]: '' }} className="block h-full bg-v2-self" style={{ width: `${String(share)}%` }} />
     </span>
+  );
+}
+
+/**
+ * ONE REQUIREMENT, AS A CHIP. Met reads quiet; unmet is warn — a gap the commander can
+ * close, never red (I1) — and where there is somewhere to close it, it is the door.
+ */
+function TacticalNeed({ ok, onFix, children }: { ok: boolean; onFix?: () => void; children: ReactNode }) {
+  const chip = 'flex items-center gap-1 rounded-chip border px-2 py-0.5 text-micro';
+  if (ok) {
+    return (
+      <li data-met="true" className={`${chip} border-v2-line text-v2-ink-2`}>
+        <span aria-hidden="true" className="text-v2-self">✓</span>
+        {children}
+      </li>
+    );
+  }
+  return (
+    <li data-met="false" className="flex">
+      {onFix ? (
+        <button type="button" onClick={onFix} className={`${chip} border-v2-warn/50 font-semibold text-v2-warn`}>
+          <span aria-hidden="true">○</span>
+          {children} ›
+        </button>
+      ) : (
+        <span className={`${chip} border-v2-warn/50 text-v2-warn`}>
+          <span aria-hidden="true">○</span>
+          {children}
+        </span>
+      )}
+    </li>
   );
 }
 
@@ -1682,9 +1704,12 @@ function InterceptorBattery({
   const { t } = useTranslation();
   const load = useBuildInterceptor();
   const say = useToast();
+  const now = useNow(1000);
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
   const charges = interceptorsOf(planet);
   const charge = charges[0] ?? null;
+  const loaded = charges.filter((asset) => asset.status === 'READY').length;
+  const loading = charges.find((asset) => asset.status !== 'READY');
   const room = charges.length < ANTI_STRATEGIC.maxCharges;
   const uplink = projected.effectiveOrbit.includes('UPLINK');
   const radar = uplink
@@ -1695,9 +1720,11 @@ function InterceptorBattery({
   const recovering = planet.planet.recoveryUntil !== null
     && planet.planet.recoveryUntil !== undefined
     && planet.planet.recoveryUntil.getTime() > serverNow();
-  const affordable = held.alloy >= ANTI_STRATEGIC.cost.alloy
-    && held.crystal >= ANTI_STRATEGIC.cost.crystal
-    && held.deuterium >= ANTI_STRATEGIC.cost.deuterium;
+  const short = {
+    alloy: Math.max(0, ANTI_STRATEGIC.cost.alloy - held.alloy),
+    crystal: Math.max(0, ANTI_STRATEGIC.cost.crystal - held.crystal),
+    deuterium: Math.max(0, ANTI_STRATEGIC.cost.deuterium - held.deuterium),
+  };
   const noRadarProtection = charge?.status === 'READY' && !radarReady;
   const state = noRadarProtection
     ? 'NO_RADAR'
@@ -1706,49 +1733,67 @@ function InterceptorBattery({
       : radarReady
         ? 'AVAILABLE'
         : 'LOCKED';
+  const needUplink = t('planet.interceptor.needUplink');
+  const needRadar = t('planet.interceptor.needRadar', { level: ANTI_STRATEGIC.requiredRadar });
+  const needOperational = t('planet.interceptor.needOperational');
+  // The effective rung is what fires (see above), so an Uplink missing is named first.
+  const refusal = !uplink
+    ? t('planet.deathStar.needs', { need: needUplink })
+    : !radarReady
+      ? t('planet.deathStar.needs', { need: needRadar })
+      : recovering
+        ? t('planet.deathStar.needs', { need: needOperational })
+        : shortfall(short, planet);
+  const needs = (
+    <ul className="flex flex-wrap gap-1.5">
+      <TacticalNeed ok={uplink} onFix={() => { onNeed('UPLINK'); }}>{needUplink}</TacticalNeed>
+      <TacticalNeed ok={radarLevelMet} onFix={() => { onNeed('RADAR'); }}>{needRadar}</TacticalNeed>
+      {room && !noRadarProtection && <TacticalNeed ok={!recovering}>{needOperational}</TacticalNeed>}
+    </ul>
+  );
 
   return (
-    <div
+    <section
       data-interceptor-state={state}
-      className={`plate flex flex-col gap-2 border-b border-line-soft p-3 last:border-b-0 ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
+      className={`flex flex-col gap-2.5 rounded-control border border-v2-line bg-v2-panel p-3 font-v2-ui ${FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED ? '' : 'hidden'}`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-3">
         <img
           data-interceptor-art
           src={STRATEGIC_ART.interceptor}
           alt=""
           aria-hidden
-          className="size-16 shrink-0 object-contain"
+          className={`size-[70px] shrink-0 object-contain ${charges.length > 0 ? '' : 'opacity-60 grayscale'}`}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="legend text-crystal/85">{t('planet.interceptor.eyebrow')}</p>
-            <Tally
-              used={charges.length}
+          <p className="flex items-center justify-between gap-2">
+            <span className={TACTICAL_HEADING}>{t('planet.interceptor.eyebrow')}</span>
+            <ChargeTally
+              ready={loaded}
+              loading={charges.length - loaded}
               total={ANTI_STRATEGIC.maxCharges}
-              label={t('planet.interceptor.tally', {
-                used: charges.length,
-                total: ANTI_STRATEGIC.maxCharges,
-              })}
-              tone="crystal"
+              label={t('planet.interceptor.tally', { used: charges.length, total: ANTI_STRATEGIC.maxCharges })}
             />
-          </div>
-          <p className="headline text-bone">
+          </p>
+          <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
             {noRadarProtection
               ? t('planet.interceptor.noRadar')
               : charge?.status === 'READY'
                 ? t('planet.interceptor.ready')
-              : charge?.status === 'PAUSED'
-                ? t('planet.interceptor.paused')
-                : charge?.status === 'BUILDING'
-                  ? t('planet.interceptor.building', {
-                    duration: charge.readyAt
-                      ? untilReady((charge.readyAt.getTime() - serverNow()) / 60_000)
-                      : duration((charge.remainingSeconds ?? 0) / 60),
-                  })
-                  : t('planet.interceptor.none')}
+                : charge?.status === 'PAUSED'
+                  ? t('planet.interceptor.paused')
+                  : charge?.status === 'BUILDING'
+                    ? t('planet.interceptor.building', {
+                      duration: charge.readyAt
+                        ? untilReady((charge.readyAt.getTime() - now) / 60_000)
+                        : duration((charge.remainingSeconds ?? 0) / 60),
+                    })
+                    : t('planet.interceptor.none')}
           </p>
-          <p className="text-caption leading-snug text-dim">
+          {loading && (
+            <ChargeProgress share={buildShare(loading, ANTI_STRATEGIC.buildMinutes, now)} mark="data-charge-progress" />
+          )}
+          <p className="mt-1 text-caption leading-snug text-v2-ink-2">
             {t(noRadarProtection
               ? 'planet.interceptor.noRadarHint'
               : charge?.status === 'READY'
@@ -1760,55 +1805,38 @@ function InterceptorBattery({
 
       {/*
         THE REQUIREMENTS STAY ON SCREEN UNTIL A CHARGE EXISTS, and each is a door
-        rather than an alarm: the research and the Radar both point at the surface
-        that would close them.
+        rather than an alarm: the Uplink and the Radar both point at the row that
+        would close them. A loaded charge whose ring went dark shows them again.
       */}
       {room && !noRadarProtection && (
         <>
-          <div className="grid grid-cols-2 gap-2" role="list">
-            <DeathStarNeed ok={uplink}>{t('planet.interceptor.needUplink')}</DeathStarNeed>
-            <DeathStarNeed ok={radarLevelMet}>
-              {t('planet.interceptor.needRadar', { level: ANTI_STRATEGIC.requiredRadar })}
-            </DeathStarNeed>
-            <DeathStarNeed ok={!recovering}>
-              {t('planet.interceptor.needOperational')}
-            </DeathStarNeed>
+          {needs}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Cost cost={ANTI_STRATEGIC.cost} held={held} />
+            <span className="flex items-center gap-1 font-v2-mono text-micro text-v2-ink-3">
+              <Icon id="i-clock" className="size-3 shrink-0" />
+              {t('planet.interceptor.buildTime', { duration: duration(ANTI_STRATEGIC.buildMinutes) })}
+            </span>
           </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <div>
-              <Price cost={ANTI_STRATEGIC.cost} held={held} layout='row' />
-              <p className="legend text-micro mt-1">
-                {t('planet.interceptor.buildTime', {
-                  duration: duration(ANTI_STRATEGIC.buildMinutes),
-                })}
-              </p>
-            </div>
-            <Button
-              className="!text-caption"
-              variant="commit"
-              disabled={recovering || load.isPending || !radarReady || !affordable}
+          <span data-act className="block">
+            <button
+              type="button"
+              disabled={refusal !== null || load.isPending}
               onClick={() => {
-                if (!radarReady) { onNeed('RADAR'); return; }
                 load.mutate(undefined, {
                   onSuccess: () => { say(t('planet.interceptor.started')); },
                   onError: (error) => { say(describe(error), 'error'); },
                 });
               }}
+              className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
             >
-              {t('planet.interceptor.build')}
-            </Button>
-          </div>
+              {refusal ?? (charges.length > 0 ? t('planet.interceptor.buildSecond') : t('planet.interceptor.build'))}
+            </button>
+          </span>
         </>
       )}
-      {charge !== null && !radarReady && (
-        <div className="grid grid-cols-2 gap-2" role="list">
-          <DeathStarNeed ok={uplink}>{t('planet.interceptor.needUplink')}</DeathStarNeed>
-          <DeathStarNeed ok={radarLevelMet}>
-            {t('planet.interceptor.needRadar', { level: ANTI_STRATEGIC.requiredRadar })}
-          </DeathStarNeed>
-        </div>
-      )}
-    </div>
+      {charge !== null && !radarReady && needs}
+    </section>
   );
 }
 

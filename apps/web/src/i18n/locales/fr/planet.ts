@@ -33,6 +33,7 @@ export const planet = {
     needUplink: "Antenne en orbite",
     needOperational: "Monde opérationnel",
     buildTime: "{{duration}} · une munition · consommée au tir",
+    buildSecond: 'Charger la seconde charge',
   },
   deathStar: {
     eyebrow: "Arme EMP tactique",
@@ -54,6 +55,7 @@ export const planet = {
     needShipyard: "Chantier Spatial niveau {{level}}",
     needOperational: "Monde opérationnel",
     buildTime: "{{duration}} · une arme · aucun rappel possible",
+    needs: 'Requiert {{need}}',
   },
   tabs: {
     label: "Sections de la planète",
