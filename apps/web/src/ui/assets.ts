@@ -363,6 +363,24 @@ export const HULL_MODEL: Record<HullId, string> = {
 };
 
 /**
+ * The cheaper geometry used once a formation hull is screen-small.
+ *
+ * Ground batteries do not travel, and the Prospector currently has no derived
+ * LOD. Keeping the map total lets the formation renderer retain its hook order if
+ * one nevertheless appears in an older payload; those entries simply reuse their
+ * full model rather than disappearing.
+ */
+export const HULL_LOD_MODEL: Record<HullId, string> = {
+  ...Object.fromEntries(
+    Object.entries(FLEET_V2_ASSET_MANIFEST).map(([id, entry]) => [id, entry.lodModel]),
+  ) as Pick<Record<HullId, string>, keyof typeof FLEET_V2_ASSET_MANIFEST>,
+  BASTION: MODEL.bastion,
+  HARPOON: MODEL.bastion,
+  THORN: MODEL.thorn,
+  PROSPECTOR: MODEL.drill,
+};
+
+/**
  * HOW HIGH A HULL IS DRAWN ABOVE ITS OWN ORIGIN, in the units `Hull` is scaled in.
  *
  * THE FLAME HAS TO KNOW THIS, which is the whole reason it is a function rather

@@ -7,6 +7,7 @@ import { DYSON_MODEL } from '../ui/assets.js';
 import { unitModel } from './model.js';
 import { STANCE_LIGHT, isWrecked, type PlanetNode } from './scene.js';
 import { resolvedOnly } from './Satellites.jsx';
+import { sphereInFrustum } from './frustum.js';
 
 /**
  * WHAT A SEASON OF DEVELOPMENT LOOKS LIKE FROM ORBIT.
@@ -420,16 +421,29 @@ const RIM_ALPHA = 0.26;
  * while it is about twenty-two pixels across and drops it below that, where it is
  * a smudge rather than a structure.
  *
- * WHAT IT DOES NOT DO IS BOUND THE TRIANGLES. The disc is only fifty units in
- * radius, so nothing in a galaxy is ever far enough away for this to bite, and
- * `frustumCulled` is off for the reason every instanced mesh here has it off — one
- * mesh spans the whole disc. A late-season galaxy where sixty worlds have reached
- * Core 18 therefore submits sixty × four × 6,970 triangles every frame, on screen
- * or not. That is the heaviest thing in the scene by a wide margin and it wants a
- * per-instance frustum test before it matters; it cannot matter yet, because Core
- * 9 is days of play away and the simulator's peak over a whole season is 18.
+ * The frame loop applies this per instance beside a real frustum test, then
+ * compacts survivors into full and low-detail buffers. The InstancedMeshes keep
+ * `frustumCulled=false` because their geometry bounds still describe only the
+ * origin; culling is already done correctly before their matrices are uploaded.
  */
 const MIN_ANGULAR_RADIUS = 1 / 90;
+/** Full struts are only useful while the shell is roughly seventy pixels across. */
+const FULL_ANGULAR_RADIUS = 1 / 28;
+
+export type DysonLod = 'full' | 'low' | 'hidden';
+
+export function dysonLod(radius: number, distance: number): DysonLod {
+  if (radius < distance * MIN_ANGULAR_RADIUS) return 'hidden';
+  if (radius < distance * FULL_ANGULAR_RADIUS) return 'low';
+  return 'full';
+}
+
+/** A 192-triangle silhouette ring with the same measured inner and outer radii. */
+export function createDysonLowGeometry(): THREE.TorusGeometry {
+  const tube = (1 - SHELL_OPENING) / 2;
+  const centre = SHELL_OPENING + tube;
+  return new THREE.TorusGeometry(centre, tube, 4, 24);
+}
 
 useGLTF.preload(RING, false);
 
@@ -527,14 +541,19 @@ function Shell({
 }) {
   const look = shellLook(index, wrecked);
   const copies = STAGE_COPIES[index]!;
-  const body = useRef<THREE.InstancedMesh>(null);
-  const rim = useRef<THREE.InstancedMesh>(null);
+  const fullBody = useRef<THREE.InstancedMesh>(null);
+  const fullRim = useRef<THREE.InstancedMesh>(null);
+  const lowBody = useRef<THREE.InstancedMesh>(null);
+  const lowRim = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const { scene } = useGLTF(RING, false);
 
   // Quantised exactly like the satellites and the rocks, so the raw geometry would
   // be sized by an arbitrary integer range rather than by the number below.
   const source = useMemo(() => unitModel(scene), [scene]);
+  const lowGeometry = useMemo(createDysonLowGeometry, []);
+  const projection = useMemo(() => new THREE.Matrix4(), []);
+  const frustum = useMemo(() => new THREE.Frustum(), []);
 
   const bodyMaterial = useMemo(() => {
     if (!source) return null;
@@ -604,8 +623,9 @@ function Shell({
     () => () => {
       rimMaterial.dispose();
       bodyMaterial?.dispose();
+      lowGeometry.dispose();
     },
-    [bodyMaterial, rimMaterial],
+    [bodyMaterial, lowGeometry, rimMaterial],
   );
 
   const wearers = useMemo<Wearer[]>(
@@ -660,21 +680,27 @@ function Shell({
    * afterwards is silently ignored, which is a whole galaxy at full brightness.
    */
   useLayoutEffect(() => {
-    const node = body.current;
-    if (!node) return;
-    node.setColorAt(0, tint.setRGB(1, 1, 1));
-    if (node.instanceColor) node.instanceColor.needsUpdate = true;
-    if (!Array.isArray(node.material)) node.material.needsUpdate = true;
+    for (const node of [fullBody.current, lowBody.current]) {
+      if (!node) continue;
+      node.setColorAt(0, tint.setRGB(1, 1, 1));
+      if (node.instanceColor) node.instanceColor.needsUpdate = true;
+      if (!Array.isArray(node.material)) node.material.needsUpdate = true;
+    }
   }, [tint]);
 
   useFrame(({ clock }) => {
-    const shell = body.current;
-    const edge = rim.current;
-    if (!shell || !edge) return;
+    const detailed = fullBody.current;
+    const detailedEdge = fullRim.current;
+    const cheap = lowBody.current;
+    const cheapEdge = lowRim.current;
+    if (!detailed || !detailedEdge || !cheap || !cheapEdge) return;
+    projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projection);
     const t = clock.elapsedTime;
     const spinY = (t / PERIOD_Y) * Math.PI * 2;
     const spinX = (t / PERIOD_X) * Math.PI * 2;
-    let drawn = 0;
+    let fullDrawn = 0;
+    let lowDrawn = 0;
 
     wearers.forEach((wearer) => {
       const [px, py, pz] = wearer.planet.position;
@@ -685,7 +711,10 @@ function Shell({
         camera.position.y - py,
         camera.position.z - pz,
       );
-      if (radius < distance * MIN_ANGULAR_RADIUS) return;
+      const lod = dysonLod(radius, distance);
+      if (lod === 'hidden' || !sphereInFrustum(frustum, wearer.planet.position, radius)) return;
+      const shell = lod === 'full' ? detailed : cheap;
+      const edge = lod === 'full' ? detailedEdge : cheapEdge;
 
       /**
        * Tilt first, then the world's own two spins, so the tumble happens about the
@@ -716,19 +745,31 @@ function Shell({
         DUMMY.position.set(px, py, pz);
         DUMMY.scale.setScalar(radius);
         DUMMY.updateMatrix();
+        const drawn = lod === 'full' ? fullDrawn : lowDrawn;
         shell.setMatrixAt(drawn, DUMMY.matrix);
         edge.setMatrixAt(drawn, DUMMY.matrix);
         // Beside the matrix, never in a separate pass — see the effect above.
         shell.setColorAt(drawn, tint.setRGB(light, light, light));
-        drawn += 1;
+        if (lod === 'full') fullDrawn += 1;
+        else lowDrawn += 1;
       }
     });
 
-    shell.count = drawn;
-    edge.count = drawn;
-    if (shell.instanceColor) shell.instanceColor.needsUpdate = true;
-    shell.instanceMatrix.needsUpdate = true;
-    edge.instanceMatrix.needsUpdate = true;
+    const updateBucket = (
+      shell: THREE.InstancedMesh,
+      edge: THREE.InstancedMesh,
+      count: number,
+    ): void => {
+      shell.count = count;
+      edge.count = count;
+      shell.visible = count > 0;
+      edge.visible = count > 0;
+      if (shell.instanceColor) shell.instanceColor.needsUpdate = true;
+      shell.instanceMatrix.needsUpdate = true;
+      edge.instanceMatrix.needsUpdate = true;
+    };
+    updateBucket(detailed, detailedEdge, fullDrawn);
+    updateBucket(cheap, cheapEdge, lowDrawn);
   });
 
   if (!source || !bodyMaterial || wearers.length === 0) return null;
@@ -747,19 +788,35 @@ function Shell({
         the camera looked away from the centre — same reason as the worlds.
       */}
       <instancedMesh
-        ref={rim}
+        ref={fullRim}
         args={[source.geometry, rimMaterial, instances]}
         frustumCulled={false}
         renderOrder={1}
-        name="dyson-shell-rim"
+        name="dyson-shell-rim-full"
         raycast={() => null}
       />
       <instancedMesh
-        ref={body}
+        ref={fullBody}
         args={[source.geometry, bodyMaterial, instances]}
         frustumCulled={false}
         renderOrder={2}
-        name="dyson-shells"
+        name="dyson-shells-full"
+        raycast={() => null}
+      />
+      <instancedMesh
+        ref={lowRim}
+        args={[lowGeometry, rimMaterial, instances]}
+        frustumCulled={false}
+        renderOrder={1}
+        name="dyson-shell-rim-low"
+        raycast={() => null}
+      />
+      <instancedMesh
+        ref={lowBody}
+        args={[lowGeometry, bodyMaterial, instances]}
+        frustumCulled={false}
+        renderOrder={2}
+        name="dyson-shells-low"
         raycast={() => null}
       />
     </>

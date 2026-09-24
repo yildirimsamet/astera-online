@@ -124,6 +124,7 @@ export interface HitboxMaterialProps {
   readonly transparent: true;
   readonly opacity: number;
   readonly colorWrite: boolean;
+  readonly visible: boolean;
   readonly depthWrite: false;
   readonly side: THREE.Side;
   readonly toneMapped: false;
@@ -131,15 +132,16 @@ export interface HitboxMaterialProps {
 
 /**
  * The props both states share, so the switch never changes anything that would
- * force a shader recompile — `transparent` stays true, only `opacity`,
- * `colorWrite` and `side` move, and Three.js applies all three per draw.
+ * force a shader recompile — `transparent` stays true, while Three applies the
+ * remaining state per draw or excludes the material from the render list.
  */
 export const hitboxMaterialProps = (kind: HitboxKind, debug: boolean): HitboxMaterialProps => ({
   color: HITBOX_COLOURS[kind],
   transparent: true,
   opacity: debug ? HITBOX_OPACITY : 0,
-  // `colorWrite: false` rather than `visible: false`: an invisible object is not
-  // raycast at all, which would leave nothing to press.
+  // Material visibility removes the wasted draw without hiding the object from
+  // Three's raycaster. Object visibility would also remove the press target.
+  visible: debug,
   colorWrite: debug,
   depthWrite: false,
   side: debug ? THREE.DoubleSide : THREE.FrontSide,

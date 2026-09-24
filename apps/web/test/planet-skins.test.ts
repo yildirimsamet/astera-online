@@ -5,14 +5,48 @@ import { z } from 'zod';
 import { PLANET_SKIN_IDS } from '@astera/rules';
 import { planetSkinVisual, partitionPlanetSkins } from '../src/ui/planetSkins.js';
 import { createPlanetSkinMaterial } from '../src/galaxy/planetSkinMaterial.js';
+import { maskOpaquePlanetBillboard } from '../src/galaxy/planetBillboardMaterial.js';
 import * as THREE from 'three';
-import { unitPlanetGeometry } from '../src/galaxy/PlanetSkinModel.js';
+import {
+  planetSkinBillboardVisible,
+  planetSkinLod,
+  unitPlanetGeometry,
+} from '../src/galaxy/PlanetSkinModel.js';
 import { galaxySchema, skinCollectionSchema } from '../src/api/schemas.js';
 import { PLANET_SKIN_CATALOG } from '../src/ui/skinCatalog.js';
 
 const served = (url: string): string => resolve(process.cwd(), 'public', url.replace(/^\//, ''));
 
+const geometrySchema = z.object({
+  accessors: z.array(z.object({ count: z.number() })),
+  meshes: z.array(z.object({
+    primitives: z.array(z.object({
+      indices: z.number().optional(),
+      attributes: z.object({ POSITION: z.number() }),
+    })),
+  })),
+});
+
+const glbTriangles = (binary: Buffer): number => {
+  const jsonLength = binary.readUInt32LE(12);
+  const gltf = geometrySchema.parse(JSON.parse(binary.toString('utf8', 20, 20 + jsonLength)));
+  return gltf.meshes.reduce((total, mesh) => total + mesh.primitives.reduce((sum, primitive) => {
+    const accessor = gltf.accessors[primitive.indices ?? primitive.attributes.POSITION];
+    return sum + (accessor?.count ?? 0) / 3;
+  }, 0), 0);
+};
+
 describe('first planet skin visuals', () => {
+  it('starts full and low planet requests together instead of waterfalling', () => {
+    const source = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    expect(source).toMatch(/useGLTF\(\s*\[visual\.modelUrl, visual\.lowModelUrl\],\s*false,?\s*\)/);
+  });
+
+  it('compacts off-screen 3D skin instances before uploading their matrices', () => {
+    const source = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    expect(source).toContain('sphereInFrustum(frustum, node.position, node.radius)');
+  });
+
   it('serves four distinct screenshots of the actual looks for selection cards', () => {
     const images = PLANET_SKIN_IDS.map((id) => {
       const path = served(PLANET_SKIN_CATALOG[id].image);
@@ -34,6 +68,10 @@ describe('first planet skin visuals', () => {
       const struck = planetSkinVisual(id, 'RECOVERY_SHIELD');
       expect(normal?.modelUrl).toBe('/assets/models/test_planet_modal.glb');
       expect(struck?.modelUrl).toBe('/assets/models/patlamis_gezegen_2.glb');
+      expect(normal?.lowModelUrl).toBe('/assets/models/test_planet_modal_lod.glb');
+      expect(struck?.lowModelUrl).toBe('/assets/models/patlamis_gezegen_2_lod.glb');
+      expect(normal?.billboardUrl).toBe(PLANET_SKIN_CATALOG[id].image);
+      expect(struck?.billboardUrl).toBe(PLANET_SKIN_CATALOG[id].image);
       expect(struck?.finish.kind).toBe('PALETTE');
       if (normal?.finish.kind === 'PALETTE' && struck?.finish.kind === 'PALETTE') {
         expect(struck.finish.palette).toEqual(normal.finish.palette);
@@ -44,11 +82,18 @@ describe('first planet skin visuals', () => {
       }
       for (const visual of [normal, struck]) {
         expect(visual?.modelUrl).toMatch(/^\/assets\/models\/[a-z0-9_]+\.glb$/);
+        expect(visual?.lowModelUrl).toMatch(/^\/assets\/models\/[a-z0-9_]+\.glb$/);
         const modelPath = served(visual?.modelUrl ?? '');
+        const lowModelPath = served(visual?.lowModelUrl ?? '');
         expect(existsSync(modelPath), id).toBe(true);
+        expect(existsSync(lowModelPath), id).toBe(true);
         const binary = readFileSync(modelPath);
+        const lowBinary = readFileSync(lowModelPath);
         expect(binary.toString('ascii', 0, 4), id).toBe('glTF');
+        expect(lowBinary.toString('ascii', 0, 4), id).toBe('glTF');
         expect(statSync(modelPath).size, id).toBeLessThan(256 * 1024);
+        expect(statSync(lowModelPath).size, id).toBeLessThan(statSync(modelPath).size);
+        expect(glbTriangles(lowBinary), id).toBeLessThan(glbTriangles(binary) / 4);
         const jsonLength = binary.readUInt32LE(12);
         const gltf = z.object({
           extensionsUsed: z.array(z.string()).optional(),
@@ -118,9 +163,11 @@ describe('first planet skin visuals', () => {
     const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial());
     mesh.scale.setScalar(10);
     const output = unitPlanetGeometry(mesh);
+    const cached = unitPlanetGeometry(mesh);
     expect(output.getAttribute('position').array).toBeInstanceOf(Float32Array);
     expect(output.boundingSphere?.center.length()).toBeLessThan(0.001);
     expect(output.boundingSphere?.radius).toBeCloseTo(1);
+    expect(cached).toBe(output);
     output.dispose();
     geometry.dispose();
   });
@@ -141,5 +188,28 @@ describe('first planet skin visuals', () => {
       skin: { id: 'planet-future', status: 'NORMAL' },
     });
     expect(partitionPlanetSkins([world]).png).toHaveLength(1);
+  });
+
+  it('moves a skin from full model to low model and finally its PNG billboard', () => {
+    expect(planetSkinLod(1, 20)).toBe('full');
+    expect(planetSkinLod(1, 40)).toBe('low');
+    expect(planetSkinLod(1, 91)).toBe('billboard');
+  });
+
+  it('keeps loading fallbacks and the shared far billboard bucket complementary', () => {
+    expect(planetSkinBillboardVisible('full', 'near')).toBe(true);
+    expect(planetSkinBillboardVisible('low', 'near')).toBe(true);
+    expect(planetSkinBillboardVisible('billboard', 'near')).toBe(false);
+    expect(planetSkinBillboardVisible('full', 'far')).toBe(false);
+    expect(planetSkinBillboardVisible('billboard', 'far')).toBe(true);
+    expect(planetSkinBillboardVisible('full', 'all')).toBe(true);
+    expect(planetSkinBillboardVisible('billboard', 'all')).toBe(true);
+  });
+
+  it('cuts the opaque catalogue preview background away on far billboards', () => {
+    const shader = { fragmentShader: '#include <alphatest_fragment>' };
+    maskOpaquePlanetBillboard(shader);
+    expect(shader.fragmentShader).toContain('skinBillboardRadius');
+    expect(shader.fragmentShader).toContain('#include <alphatest_fragment>');
   });
 });

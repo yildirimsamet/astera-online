@@ -27,7 +27,21 @@ export interface UnitModel {
   material: THREE.Material;
 }
 
+/** `useGLTF` keeps scenes stable, so a weak scene key shares the baked geometry. */
+const UNIT_MODEL_CACHE = new WeakMap<THREE.Object3D, UnitModel | null>();
+
+/**
+ * Keep a visually opaque body late in the transparent queue without paying
+ * Three's default two-pass cost for a double-sided transparent material.
+ */
+export function configureOpaqueTransparentBody(material: THREE.Material): void {
+  material.transparent = true;
+  material.depthWrite = true;
+  material.forceSinglePass = true;
+}
+
 export function unitModel(scene: THREE.Object3D): UnitModel | null {
+  if (UNIT_MODEL_CACHE.has(scene)) return UNIT_MODEL_CACHE.get(scene) ?? null;
   const meshes: THREE.Mesh[] = [];
   scene.updateWorldMatrix(true, true);
   scene.traverse((node) => {
@@ -35,7 +49,10 @@ export function unitModel(scene: THREE.Object3D): UnitModel | null {
   });
 
   const first = meshes[0];
-  if (!first) return null;
+  if (!first) {
+    UNIT_MODEL_CACHE.set(scene, null);
+    return null;
+  }
 
   const geometry = first.geometry.clone();
   // The node's own transform, which is where a quantised model keeps its scale.
@@ -50,7 +67,9 @@ export function unitModel(scene: THREE.Object3D): UnitModel | null {
   }
 
   const material = Array.isArray(first.material) ? first.material[0]! : first.material;
-  return { geometry, material };
+  const unit = { geometry, material };
+  UNIT_MODEL_CACHE.set(scene, unit);
+  return unit;
 }
 
 

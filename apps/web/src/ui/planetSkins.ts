@@ -1,10 +1,12 @@
 import {
   planetSkinAppearance,
+  planetSkinById,
   type PlanetBaseModelId,
   type PlanetPaletteId,
   type PlanetSkinStatus,
   type SkinAttachment,
 } from '@astera/rules';
+import { PLANET_SKIN_CATALOG } from './skinCatalog.js';
 
 type Rgb = readonly [number, number, number];
 
@@ -29,6 +31,11 @@ export interface PlanetModelTuning {
 const MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'intact-planet': '/assets/models/test_planet_modal.glb',
   'fractured-planet': '/assets/models/patlamis_gezegen_2.glb',
+};
+
+const LOW_MODEL_URLS: Record<PlanetBaseModelId, string> = {
+  'intact-planet': '/assets/models/test_planet_modal_lod.glb',
+  'fractured-planet': '/assets/models/patlamis_gezegen_2_lod.glb',
 };
 
 /** The crack mask is read from each model's own base colour map. */
@@ -63,6 +70,8 @@ const PALETTES: Record<PlanetPaletteId, PlanetPalette> = {
 
 export interface PlanetSkinVisual {
   readonly modelUrl: string;
+  readonly lowModelUrl: string;
+  readonly billboardUrl: string;
   readonly finish:
     | { readonly kind: 'AUTHORED' }
     | { readonly kind: 'PALETTE'; readonly palette: PlanetPalette; readonly tuning: PlanetModelTuning };
@@ -71,11 +80,15 @@ export interface PlanetSkinVisual {
 
 /** Null leaves the existing planet PNG as the safe fallback. */
 export function planetSkinVisual(id: string, status: PlanetSkinStatus = 'NORMAL'): PlanetSkinVisual | null {
+  const skin = planetSkinById(id);
+  if (!skin) return null;
   const recipe = planetSkinAppearance(id, status);
   if (!recipe) return null;
   const tuned = MODEL_TUNING[recipe.baseModelId];
   return {
     modelUrl: MODEL_URLS[recipe.baseModelId],
+    lowModelUrl: LOW_MODEL_URLS[recipe.baseModelId],
+    billboardUrl: PLANET_SKIN_CATALOG[skin.id].image,
     finish: recipe.finish.kind === 'AUTHORED'
       ? { kind: 'AUTHORED' }
       : {

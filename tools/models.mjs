@@ -7,6 +7,7 @@
  *
  *   node tools/models.mjs            # optimise everything
  *   node tools/models.mjs --inspect  # just report on what is there
+ *   node tools/models.mjs --lod-only # rebuild only derived LOD variants
  *
  * WHY IT EXISTS. The first model to arrive was a 3.48 MB Tripo export whose
  * geometry was already excellent — 976 triangles — and whose texture was a
@@ -143,12 +144,40 @@ const DEFAULT_POLICY = { texture: 512, simplify: false };
  * exception this pipeline has been bitten by before.
  *
  * THE RATIO IS PER MODEL, because a ceiling is not a ratio: at 10,188 triangles a
- * Paladin needs a 49% cut and a Ballista at 5,049 needs 1%. `error` is tighter
- * than anything else in this file (0.005 against the satellites' 0.01) for the
- * same reason the ships were exempt in the first place — the silhouette is the
- * asset.
+ * Paladin needs a 49% cut and a Ballista at 5,049 needs 1%. The error bound stays
+ * tighter than scenery, but it must still let the simplifier reach the declared
+ * ceiling; the post-build assertion below rejects a silent miss.
  */
 const SHIP_TRIANGLE_CEILING = 5_000;
+const SHIP_LOD_TRIANGLE_CEILING = 3_000;
+
+/** Every mobile hull in `FLEET_V2_ASSET_MANIFEST`, mirrored for the offline tool. */
+const FLEET_V2_MODEL_PATHS = new Set([
+  'dart', 'pike', 'rampart', 'warden', 'courier',
+  'viper', 'talon', 'stronghold', 'sentinel', 'wayfarer',
+  'tempest', 'ballista', 'leviathan', 'praetorian', 'atlas', 'nullifier',
+  'garbage-collector', 'cataclysm', 'corsair', 'citadel', 'paladin', 'argosy',
+].map((name) => `ships/${name}.glb`));
+
+/** Derived variants: planet mid-detail assets and one low hull for every mobile craft. */
+const LOD_VARIANTS = {
+  'test_planet_modal.glb': {
+    output: 'test_planet_modal_lod.glb', texture: 256, simplify: true, ratio: 0.14, error: 0.02,
+  },
+  'patlamis_gezegen_2.glb': {
+    output: 'patlamis_gezegen_2_lod.glb', texture: 256, simplify: true, ratio: 0.14, error: 0.02,
+  },
+  ...Object.fromEntries([...FLEET_V2_MODEL_PATHS].map((path) => [path, {
+    output: path.replace(/\.glb$/, '_lod.glb'),
+    texture: 256,
+    simplify: true,
+    triangleCeiling: SHIP_LOD_TRIANGLE_CEILING,
+    // These variants take over only once a hull is roughly sub-60px on mobile.
+    // A looser geometric error is required for thin fins and claws to reach the
+    // actual triangle ceiling; the post-build assertion below is authoritative.
+    error: 0.1,
+  }])),
+};
 
 /**
  * THE MERCHANT IS EXEMPT BY INSTRUCTION. It is the one craft in the game nobody
@@ -168,6 +197,12 @@ const PATH_POLICY = {
   'ships/pike.glb': { texture: 800, simplify: false },
   'ships/praetorian.glb': { texture: 736, simplify: false },
   'ships/citadel.glb': { texture: 752, simplify: false },
+  // These three already shipped with 512px plates. Keep that approved VRAM and
+  // transfer footprint while applying the geometry ceiling; regenerating them at
+  // the roster default would make the files 25–61% larger for no flight-size gain.
+  'ships/argosy.glb': { texture: 512, simplify: false },
+  'ships/corsair.glb': { texture: 512, simplify: false },
+  'ships/paladin.glb': { texture: 512, simplify: false },
   /*
     D200. At the ceiling's own 0.005 the simplifier stalls at 7,182 of 9,810 — its
     arms and claws are long thin runs the error bound will not collapse — so this
@@ -178,19 +213,6 @@ const PATH_POLICY = {
     texture: 736, simplify: true, ratio: SHIP_TRIANGLE_CEILING / 9_810, error: 0.01,
   },
 };
-
-/**
- * Fleet V2 hulls all carry three maps and render at roughly 40–60px in flight.
- * Physical review showed that the former 256px plate erased authored surface
- * detail. A 768px plate keeps each runtime GLB in the requested 200–300 KiB
- * band while preserving every source triangle.
- */
-const FLEET_V2_MODEL_PATHS = new Set([
-  'dart', 'pike', 'rampart', 'warden', 'courier',
-  'viper', 'talon', 'stronghold', 'sentinel', 'wayfarer',
-  'tempest', 'ballista', 'leviathan', 'praetorian', 'atlas', 'nullifier',
-  'cataclysm', 'citadel',
-].map((name) => `ships/${name}.glb`));
 
 /** The first path segment under SOURCE names the kind. */
 const policyFor = (relPath) => {
@@ -203,6 +225,7 @@ const policyFor = (relPath) => {
 
 const inspectOnly = process.argv.includes('--inspect');
 const fleetV2Only = process.argv.includes('--fleet-v2');
+const lodOnly = process.argv.includes('--lod-only');
 /**
  * `--only=ships/garbage-collector.glb` optimises that one source and nothing else,
  * so adding a hull does not re-encode every approved model beside it.
@@ -268,6 +291,13 @@ if (fleetV2Only) {
   );
 }
 
+if (lodOnly) {
+  sources = sources.filter((source) => {
+    const rel = relative(SOURCE, source).replaceAll('\\', '/');
+    return LOD_VARIANTS[rel] !== undefined;
+  });
+}
+
 if (onlyPath !== undefined) {
   sources = sources.filter((source) => relative(SOURCE, source).replaceAll('\\', '/') === onlyPath);
 }
@@ -277,30 +307,7 @@ if (sources.length === 0) {
   process.exit(0);
 }
 
-for (const source of sources) {
-  const target = join(OUT, relative(SOURCE, source));
-  const before = describe(source);
-
-  if (inspectOnly) {
-    console.log(`${relative(SOURCE, source)}: ${kb(before.bytes)} · ${before.triangles} tris · ${before.images.join(', ')}`);
-    continue;
-  }
-
-  const rel = relative(SOURCE, source).replaceAll('\\', '/');
-  const base = policyFor(relative(SOURCE, source));
-  /*
-    A ship over the ceiling is cut to it, whatever its policy row says about
-    textures. Anything already under it is left exactly alone: a 1% trim buys
-    nothing and spends silhouette.
-  */
-  const capped = rel.startsWith('ships/')
-    && !UNCAPPED_CRAFT.has(rel)
-    && !base.simplify
-    && before.triangles > SHIP_TRIANGLE_CEILING;
-  const policy = capped
-    ? { ...base, simplify: true, ratio: SHIP_TRIANGLE_CEILING / before.triangles, error: 0.005 }
-    : base;
-
+function optimise(source, target, policy) {
   mkdirSync(dirname(target), { recursive: true });
   execFileSync(
     'npx',
@@ -311,9 +318,6 @@ for (const source of sources) {
       target,
       '--texture-size',
       String(policy.texture),
-      // WebP over KTX2 only because encoding KTX2 needs the `ktx` binary, which is
-      // not a dependency worth adding for one ship. KTX2 stays compressed in VRAM
-      // and is the better answer once there are many models.
       '--texture-compress',
       'webp',
       '--compress',
@@ -326,11 +330,87 @@ for (const source of sources) {
     ],
     { stdio: 'pipe' },
   );
+}
 
-  const after = describe(target);
-  const shrunk = (before.bytes / after.bytes).toFixed(1);
-  console.log(
-    `${relative(SOURCE, source)}: ${kb(before.bytes)} → ${kb(after.bytes)} (${shrunk}x) · ` +
-      `${before.triangles} → ${after.triangles} tris`,
-  );
+/**
+ * gltf-transform's ratio targets vertices, while this project's budgets count
+ * submitted triangles. Thin, split geometry can therefore miss a triangle cap
+ * even when the first ratio is mathematically exact. Tighten only the ratio and
+ * retry a bounded number of times; the error tolerance remains the visual guard.
+ */
+function optimiseWithinTriangleCeiling(source, target, policy, ceiling) {
+  let next = policy;
+  let after = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    optimise(source, target, next);
+    after = describe(target);
+    if (after.triangles <= ceiling || !next.simplify) return after;
+    next = {
+      ...next,
+      ratio: Math.max(0.01, next.ratio * (ceiling / after.triangles) * 0.95),
+    };
+  }
+  return after;
+}
+
+for (const source of sources) {
+  const rel = relative(SOURCE, source).replaceAll('\\', '/');
+  const target = join(OUT, rel);
+  const before = describe(source);
+
+  if (inspectOnly) {
+    console.log(`${relative(SOURCE, source)}: ${kb(before.bytes)} · ${before.triangles} tris · ${before.images.join(', ')}`);
+    continue;
+  }
+
+  const base = policyFor(relative(SOURCE, source));
+  /*
+    A ship over the ceiling is cut to it, whatever its policy row says about
+    textures. Anything already under it is left exactly alone: a 1% trim buys
+    nothing and spends silhouette.
+  */
+  const capped = rel.startsWith('ships/')
+    && !UNCAPPED_CRAFT.has(rel)
+    && !base.simplify
+    && before.triangles > SHIP_TRIANGLE_CEILING;
+  const policy = capped
+    ? { ...base, simplify: true, ratio: SHIP_TRIANGLE_CEILING / before.triangles, error: 0.01 }
+    : base;
+
+  if (!lodOnly) {
+    const after = FLEET_V2_MODEL_PATHS.has(rel)
+      ? optimiseWithinTriangleCeiling(source, target, policy, SHIP_TRIANGLE_CEILING)
+      : (optimise(source, target, policy), describe(target));
+    if (FLEET_V2_MODEL_PATHS.has(rel) && after.triangles > SHIP_TRIANGLE_CEILING) {
+      throw new Error(
+        `${rel} exceeds the ${String(SHIP_TRIANGLE_CEILING)} triangle ceiling: ` +
+        `${String(after.triangles)}`,
+      );
+    }
+    const shrunk = (before.bytes / after.bytes).toFixed(1);
+    console.log(
+      `${relative(SOURCE, source)}: ${kb(before.bytes)} → ${kb(after.bytes)} (${shrunk}x) · ` +
+        `${before.triangles} → ${after.triangles} tris`,
+    );
+  }
+
+  const lod = LOD_VARIANTS[rel];
+  if (lod) {
+    const lodTarget = join(OUT, lod.output);
+    const lodPolicy = lod.triangleCeiling === undefined
+      ? lod
+      : { ...lod, ratio: Math.min(1, lod.triangleCeiling / before.triangles) };
+    const after = lod.triangleCeiling === undefined
+      ? (optimise(source, lodTarget, lodPolicy), describe(lodTarget))
+      : optimiseWithinTriangleCeiling(source, lodTarget, lodPolicy, lod.triangleCeiling);
+    if (lod.triangleCeiling !== undefined && after.triangles > lod.triangleCeiling) {
+      throw new Error(
+        `${lod.output} exceeds the ${String(lod.triangleCeiling)} triangle ceiling: ` +
+        `${String(after.triangles)}`,
+      );
+    }
+    console.log(
+      `${rel} → ${lod.output}: ${kb(after.bytes)} · ${before.triangles} → ${after.triangles} tris`,
+    );
+  }
 }

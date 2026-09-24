@@ -9,11 +9,38 @@ import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
+import { sphereInFrustum } from './frustum.js';
 
 type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
 
+const FULL_ANGULAR_RADIUS = 1 / 28;
+const MODEL_ANGULAR_RADIUS = 1 / 90;
+
+export type PlanetSkinLod = 'full' | 'low' | 'billboard';
+export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
+
+/** Palette/status buckets share the same meshes returned by the GLTF cache. */
+const UNIT_PLANET_GEOMETRY_CACHE = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
+
+export function planetSkinLod(radius: number, distance: number): PlanetSkinLod {
+  if (radius >= distance * FULL_ANGULAR_RADIUS) return 'full';
+  if (radius >= distance * MODEL_ANGULAR_RADIUS) return 'low';
+  return 'billboard';
+}
+
+export function planetSkinBillboardVisible(
+  lod: PlanetSkinLod,
+  mode: PlanetSkinBillboardMode,
+): boolean {
+  if (mode === 'all') return true;
+  return mode === 'far' ? lod === 'billboard' : lod !== 'billboard';
+}
+
 /** gltfpack positions are often quantised integers; bake transforms only in floats. */
 export function unitPlanetGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
+  const cached = UNIT_PLANET_GEOMETRY_CACHE.get(mesh);
+  if (cached) return cached;
   mesh.updateWorldMatrix(true, false);
   const geometry = new THREE.BufferGeometry();
   for (const [name, attribute] of Object.entries(mesh.geometry.attributes)) {
@@ -37,6 +64,7 @@ export function unitPlanetGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
     geometry.scale(1 / sphere.radius, 1 / sphere.radius, 1 / sphere.radius);
     geometry.computeBoundingSphere();
   }
+  UNIT_PLANET_GEOMETRY_CACHE.set(mesh, geometry);
   return geometry;
 }
 
@@ -60,29 +88,51 @@ export function PlanetSkinModel({
   status,
   nodes,
   onSelect,
+  galaxyLod = false,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
+  /** The shop preview has no billboard peer, so only the galaxy enables switching. */
+  galaxyLod?: boolean;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
   if (!visual) return null;
-  return <LoadedPlanetSkinModel visual={visual} nodes={nodes} onSelect={onSelect} />;
+  return (
+    <LoadedPlanetSkinModel
+      visual={visual}
+      nodes={nodes}
+      onSelect={onSelect}
+      galaxyLod={galaxyLod}
+    />
+  );
 }
 
 function LoadedPlanetSkinModel({
   visual,
   nodes,
   onSelect,
+  galaxyLod,
 }: {
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
+  galaxyLod: boolean;
 }) {
-  const { scene } = useGLTF(visual.modelUrl, false);
+  const loaded = useGLTF(
+    [visual.modelUrl, visual.lowModelUrl],
+    false,
+  );
+  const scene = loaded[0]!.scene;
+  const lowScene = loaded[1]!.scene;
   const model = useMemo(() => firstMesh(scene), [scene]);
+  const lowModel = useMemo(() => firstMesh(lowScene), [lowScene]);
   const geometry = useMemo(() => model ? unitPlanetGeometry(model) : null, [model]);
+  const lowGeometry = useMemo(
+    () => lowModel ? unitPlanetGeometry(lowModel) : null,
+    [lowModel],
+  );
   const dressed = useMemo(() => {
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
@@ -90,48 +140,87 @@ function LoadedPlanetSkinModel({
     if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
     return { material: source.clone(), uniforms: null };
   }, [model, visual]);
-  const body = useRef<THREE.InstancedMesh>(null);
+  const lowDressed = useMemo(() => {
+    if (!lowModel) return null;
+    const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
+    if (!source) return null;
+    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
+    return { material: source.clone(), uniforms: null };
+  }, [lowModel, visual]);
+  const fullBody = useRef<THREE.InstancedMesh>(null);
+  const lowBody = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
+  const hitNodes = useRef<SkinNode[]>([]);
   const helper = useMemo(() => new THREE.Object3D(), []);
   const tint = useMemo(() => new THREE.Color(), []);
+  const projection = useMemo(() => new THREE.Matrix4(), []);
+  const frustum = useMemo(() => new THREE.Frustum(), []);
 
   useEffect(() => () => {
-    geometry?.dispose();
+    // Geometry is owned by the weak GLTF mesh cache and shared by every look.
     dressed?.material.dispose();
-  }, [geometry, dressed]);
+    lowDressed?.material.dispose();
+  }, [dressed, lowDressed]);
 
   useLayoutEffect(() => {
-    const mesh = body.current;
-    if (!mesh) return;
-    nodes.forEach((node, i) => {
-      const light = bodyLight(node.stance, node.intel);
-      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
-      mesh.setColorAt(i, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
-    });
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
-  }, [nodes, tint, dressed]);
+    for (const mesh of [fullBody.current, lowBody.current, hits.current]) {
+      if (!mesh) continue;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      if (mesh === hits.current) continue;
+      mesh.setColorAt(0, tint.setRGB(1, 1, 1));
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
+    }
+  }, [tint]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ camera, clock }) => {
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
-    const mesh = body.current;
-    if (!mesh) return;
-    nodes.forEach((node, i) => {
+    if (lowDressed?.uniforms) lowDressed.uniforms.time.value = clock.elapsedTime;
+    const full = fullBody.current;
+    const low = lowBody.current;
+    if (!full || !low) return;
+    projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projection);
+    let fullCount = 0;
+    let lowCount = 0;
+    let hitCount = 0;
+    nodes.forEach((node) => {
+      const distance = camera.position.distanceTo(helper.position.set(...node.position));
+      const lod = galaxyLod ? planetSkinLod(node.radius, distance) : 'full';
+      if (lod === 'billboard') return;
+      if (!sphereInFrustum(frustum, node.position, node.radius)) return;
       helper.position.set(...node.position);
       helper.rotation.set(0, phase(node.id) + clock.elapsedTime * 0.08, 0);
       helper.scale.setScalar(node.radius * 0.96);
       helper.updateMatrix();
-      mesh.setMatrixAt(i, helper.matrix);
-      hits.current?.setMatrixAt(i, helper.matrix);
+      const mesh = lod === 'full' ? full : low;
+      const index = lod === 'full' ? fullCount++ : lowCount++;
+      mesh.setMatrixAt(index, helper.matrix);
+      const light = bodyLight(node.stance, node.intel);
+      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
+      mesh.setColorAt(index, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      hits.current?.setMatrixAt(hitCount, helper.matrix);
+      hitNodes.current[hitCount] = node;
+      hitCount += 1;
     });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (hits.current) hits.current.instanceMatrix.needsUpdate = true;
+    for (const [mesh, count] of [[full, fullCount], [low, lowCount]] as const) {
+      mesh.count = count;
+      mesh.visible = count > 0;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    if (hits.current) {
+      hits.current.count = hitCount;
+      hits.current.visible = hitCount > 0;
+      hits.current.instanceMatrix.needsUpdate = true;
+    }
+    hitNodes.current.length = hitCount;
   });
 
-  if (!geometry || !dressed || nodes.length === 0) return null;
+  if (!geometry || !lowGeometry || !dressed || !lowDressed || nodes.length === 0) return null;
   const select = (event: ThreeEvent<PointerEvent>) => {
     if (!wasTap()) return;
-    const node = nodes[event.instanceId ?? -1];
+    const node = hitNodes.current[event.instanceId ?? -1];
     if (!node || !onSelect) return;
     markHit();
     event.stopPropagation();
@@ -141,9 +230,16 @@ function LoadedPlanetSkinModel({
   return (
     <>
       <instancedMesh
-        ref={body}
-        name="planet-skin-models"
+        ref={fullBody}
+        name="planet-skin-models-full"
         args={[geometry, dressed.material, nodes.length]}
+        frustumCulled={false}
+        raycast={() => null}
+      />
+      <instancedMesh
+        ref={lowBody}
+        name="planet-skin-models-low"
+        args={[lowGeometry, lowDressed.material, nodes.length]}
         frustumCulled={false}
         raycast={() => null}
       />
@@ -156,7 +252,7 @@ function LoadedPlanetSkinModel({
           onPointerUp={select}
         >
           <sphereGeometry args={[1, 12, 8]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          <HitboxMaterial kind="planet" />
         </instancedMesh>
       )}
     </>
