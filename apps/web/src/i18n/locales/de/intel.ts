@@ -507,6 +507,9 @@ export const clarity = {
 export const dossier = {
   /* The E2 target dossier (docs/ui-v2/gozlemevi.md), in the mock's words. */
   page: {
+    peekWing: "dein Geschwader {{value}}",
+    peekDefence: "Verteidigung {{band}}",
+    peekDefenceUnknown: "Verteidigung unbekannt",
     rival: "Rivale {{n}}",
     range: "Distanz {{d}}",
     flight: "{{time}} Flug",

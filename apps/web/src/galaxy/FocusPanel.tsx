@@ -160,6 +160,7 @@ function Shell({
   summary,
   children,
   actions,
+  peek,
   open,
   onToggle,
   onClose,
@@ -171,6 +172,8 @@ function Shell({
   summary: ReactNode;
   children: ReactNode;
   actions?: ReactNode;
+  /** What the closed card shows under its header: the mock's glance and its commitments. */
+  peek?: ReactNode;
   open: boolean;
   onToggle: () => void;
   onClose: () => void;
@@ -245,6 +248,12 @@ function Shell({
             <Icon id="i-close" className="size-4" />
           </button>
         </div>
+
+        {!open && peek && (
+          <GameActions>
+            <div className="flex flex-col gap-2 border-t border-v2-line/60 px-3 pb-2.5 pt-2">{peek}</div>
+          </GameActions>
+        )}
 
         {open && (
           /*
@@ -751,6 +760,90 @@ export function PlanetFocus({
   const unsurveyed = target.intel === 'UNKNOWN';
   const anonymous = unsurveyed && !target.clanmate;
 
+  const probeControl = !target.clanmate && (
+    <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
+  );
+  /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
+  const attackControl = !target.clanmate && (
+          <button
+            type="button"
+            // Marked so a surface outside this panel can point at the commitment.
+            // The onboarding opens exactly this path and refuses the rest of the
+            // rail, because nothing else on it is affordable out of the opening
+            // grant — a probe alone needs crystal the mandatory upgrades spent.
+            data-attack
+            data-primary
+            className={`${BTN_PRIMARY} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
+            /*
+              THE BAND IS ORDERED FIRST, AND THAT MATCHES THE SERVER. `canAttack`
+              raises the two tier codes ahead of `BASH_LIMIT` because a permanent
+              refusal outranks a temporary one — telling a commander to wait out a
+              window that will not make the fight legal sends them away and back
+              for the same no. The same argument puts it ahead of a shield clock
+              here: the shield expires, the development gap does not.
+            */
+            aria-label={t(originShipyardRevolt
+              ? 'focus.planet.attackShipyardRevolt'
+              : outOfBand
+              ? 'focus.planet.attackOutOfBand'
+              : shieldedUntil !== null
+                ? 'focus.planet.attackProtected'
+                : originRecovering
+                  ? 'focus.planet.attackOriginRecovering'
+                  : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+                    ? 'focus.planet.attackNeutralAgain'
+                    : 'focus.planet.attack')}
+            disabled={originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
+            onClick={onAttack}
+          >
+            {/*
+              THE ONE IRREVERSIBLE CONTROL IN THE GAME NOW CARRIES A MARK.
+
+              The primary — your colour, one per surface (K2) — is the launch's and
+              nothing else's, and the glyph is the second half of that argument: on
+              a card where the other controls share one size and weight, shape is
+              what a thumb recognises before the word is read. `BTN` is already a
+              flex row with a gap, so the icon needs no layout of its own.
+            */}
+            <AttackIcon className="size-4 shrink-0" />
+            {/*
+              THE REASON RIDES THE LABEL, and it names the CLOCK rather than the
+              rule: "protected for 4h" is a fact a commander can plan against,
+              where "that commander is new" is trivia about somebody else.
+            */}
+            {originShipyardRevolt
+              ? t('focus.planet.attackShipyardRevoltShort')
+              : outOfBand
+              ? t('focus.planet.attackOutOfBandShort')
+              : shieldedUntil !== null
+              ? t('focus.planet.attackProtectedShort', {
+                duration: countdown(shieldedUntil.getTime() - now),
+              })
+              : t(originRecovering
+                ? 'focus.planet.attackOriginRecovering'
+                : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
+                  ? 'focus.planet.attackNeutralAgain'
+                  : 'focus.planet.attackShort')}
+          </button>
+  );
+
+  /*
+    THE CARD'S ONE LINE OF POWER (the mock's context card): the wing at home against the
+    probe's band, or the plain fact that nobody has measured it. The dossier behind the tap
+    has the ruler; this is the glance that decides whether to take it.
+  */
+  const probeBand = intel?.probeReports.find((r) => r.spatiallyCurrent !== false && r.targetPlanetId === target.id)?.defence;
+  const peekPower = [
+    t('dossier.page.peekWing', { value: compact(combatValue(planet.fleet)) }),
+    probeBand
+      ? t('dossier.page.peekDefence', {
+        band: probeBand.low === probeBand.high
+          ? compact(probeBand.low)
+          : `${compact(probeBand.low)}${t('units.rangeJoin')}${compact(probeBand.high)}`,
+      })
+      : t('dossier.page.peekDefenceUnknown'),
+  ].join(' · ');
+
   return (
     <Shell
       art={<PlanetSigil seed={target.id} size={40} dark={known.kind === 'none'} />}
@@ -768,6 +861,18 @@ export function PlanetFocus({
           {!unsurveyed && <WorldKind target={target} rivalSlot={rivalSlot} />}
           <Headline of={known} />
         </span>
+      )}
+      peek={target.clanmate ? undefined : (
+        <>
+          <p className="flex items-baseline justify-between gap-2 text-micro">
+            <span className="v2-legend">{t('dossier.page.power')}</span>
+            <span className="truncate font-v2-mono text-v2-ink-2">{peekPower}</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {probeControl}
+            {attackControl}
+          </div>
+        </>
       )}
       /**
        * THE COMMITMENT, AND IT IS ALWAYS ON OFFER NOW. D127.
@@ -905,9 +1010,7 @@ export function PlanetFocus({
             A probe at a clanmate is `CLAN_FRIENDLY_FIRE` before it is anything
             else, so both are hidden there rather than offered and refused.
           */}
-          {!target.clanmate && (
-            <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
-          )}
+          {probeControl}
           {showClanTargetAction && <div className="basis-full">
             <button type="button" className={`${BTN_GHOST} w-full`}
               disabled={clanTargetReason !== null || clanTargetPending}
@@ -916,66 +1019,7 @@ export function PlanetFocus({
             </button>
             {clanTargetReason && <p className="mt-1 text-caption text-v2-ink-2">{clanTargetReason}</p>}
           </div>}
-          {!target.clanmate && <button
-            type="button"
-            // Marked so a surface outside this panel can point at the commitment.
-            // The onboarding opens exactly this path and refuses the rest of the
-            // rail, because nothing else on it is affordable out of the opening
-            // grant — a probe alone needs crystal the mandatory upgrades spent.
-            data-attack
-            data-primary
-            className={`${BTN_PRIMARY} min-w-[7.5rem] flex-1 basis-[calc(50%-0.25rem)]`}
-            /*
-              THE BAND IS ORDERED FIRST, AND THAT MATCHES THE SERVER. `canAttack`
-              raises the two tier codes ahead of `BASH_LIMIT` because a permanent
-              refusal outranks a temporary one — telling a commander to wait out a
-              window that will not make the fight legal sends them away and back
-              for the same no. The same argument puts it ahead of a shield clock
-              here: the shield expires, the development gap does not.
-            */
-            aria-label={t(originShipyardRevolt
-              ? 'focus.planet.attackShipyardRevolt'
-              : outOfBand
-              ? 'focus.planet.attackOutOfBand'
-              : shieldedUntil !== null
-                ? 'focus.planet.attackProtected'
-                : originRecovering
-                  ? 'focus.planet.attackOriginRecovering'
-                  : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                    ? 'focus.planet.attackNeutralAgain'
-                    : 'focus.planet.attack')}
-            disabled={originShipyardRevolt || outOfBand || originRecovering || shieldedUntil !== null}
-            onClick={onAttack}
-          >
-            {/*
-              THE ONE IRREVERSIBLE CONTROL IN THE GAME NOW CARRIES A MARK.
-
-              The primary — your colour, one per surface (K2) — is the launch's and
-              nothing else's, and the glyph is the second half of that argument: on
-              a card where the other controls share one size and weight, shape is
-              what a thumb recognises before the word is read. `BTN` is already a
-              flex row with a gap, so the icon needs no layout of its own.
-            */}
-            <AttackIcon className="size-4 shrink-0" />
-            {/*
-              THE REASON RIDES THE LABEL, and it names the CLOCK rather than the
-              rule: "protected for 4h" is a fact a commander can plan against,
-              where "that commander is new" is trivia about somebody else.
-            */}
-            {originShipyardRevolt
-              ? t('focus.planet.attackShipyardRevoltShort')
-              : outOfBand
-              ? t('focus.planet.attackOutOfBandShort')
-              : shieldedUntil !== null
-              ? t('focus.planet.attackProtectedShort', {
-                duration: countdown(shieldedUntil.getTime() - now),
-              })
-              : t(originRecovering
-                ? 'focus.planet.attackOriginRecovering'
-                : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
-                  ? 'focus.planet.attackNeutralAgain'
-                  : 'focus.planet.attackShort')}
-          </button>}
+          {attackControl}
           </>
         )}
     >

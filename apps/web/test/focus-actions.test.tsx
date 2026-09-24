@@ -107,6 +107,59 @@ const show = (
   );
 };
 
+/**
+ * THE CLOSED CARD IS THE MOCK'S CONTEXT CARD (image.png): the world, one line of power —
+ * the wing at home against the probe's band, or "unknown" — and its two commitments, so a
+ * raid is one press from the tap that chose the world. The dossier is the second tap.
+ */
+describe('the closed card', () => {
+  const closed = (over: Partial<IntelView> = {}) => {
+    const Wrapper = harness();
+    const onAttack = vi.fn();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()}
+          planet={mine}
+          intel={{ ...intel, ...over }}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={onAttack}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open={false}
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    return { onAttack };
+  };
+
+  it('offers the probe and the attack without opening, beside one line of power', () => {
+    const { onAttack } = closed();
+    const rail = document.querySelector<HTMLElement>('[data-focus-rail]')!;
+    expect(rail).toHaveTextContent(/your wing .* · defence unknown/i);
+    expect(within(rail).getByRole('button', { name: /probe/i })).toBeInTheDocument();
+    fireEvent.click(rail.querySelector<HTMLElement>('[data-attack]')!);
+    expect(onAttack).toHaveBeenCalledTimes(1);
+    // The dossier itself stays behind the second tap.
+    expect(rail.querySelector('[data-target-dossier]')).toBeNull();
+  });
+
+  it('reads the probe band on the card once a probe has looked', () => {
+    closed({
+      probeReports: [{
+        targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+        at: new Date(NOW - 60 * 60_000), accuracy: 0.8, detected: false,
+        stock: { low: 100, high: 200 }, deuteriumStock: null,
+        defence: { low: 27_000, high: 53_000 }, fleetSize: { low: 2, high: 5 }, fleetHome: true,
+      }],
+    });
+    expect(document.querySelector('[data-focus-rail]')).toHaveTextContent(`defence ${compact(27_000)}–${compact(53_000)}`);
+  });
+});
+
 describe('the focus rail’s two commitments', () => {
   it('leads with the commander and keeps the planet as location context', () => {
     show();
