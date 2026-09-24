@@ -112,10 +112,9 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D3 · Ölüm Yıldızı kartı (`DeathStarForge`) + önleyici bataryası kartı (`InterceptorBattery`).** Şarj `Tally` tarzı
-hücrelerle (yüklü turkuaz, yüklenen çerçeveli, boş koyu); ÖY üretimi basılı tut (K4, geri dönüşsüz). Tasarım: tuval
-`D3-taktik`. Bilinen kırmızılar `build-sheet.test.tsx` "strategic hardware hierarchy" ×4 bu kartlara ait — D3'te karar verilir.
-Sonra D4 → D5 → D6, her biri TDD + görsel doğrulama.
+**D4 · İstihbarat sheet'inin tamamı (E7 + K11 yaş dili).** Gözlem (işaretli rakipler) · Raporlar · Radar. Tasarım: tuval
+`D4-gozlem`, `D4-raporlar`, `D4-radar`; şartname `grep -n "^#### E7 ·\|^| K11" docs/ui-v2/gozlemevi.md`. Beyaz/gri çubuk
+taraması (istihbarat aralık çubukları) burada. Sonra D5 → D6, her biri TDD + görsel doğrulama.
 
 Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
 (kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
@@ -135,6 +134,13 @@ Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval:
 **D2 (tamam) `0f425b9`:** Filo sekmesinde Hangar odası, Savunma'da yer odası `RoomBar` (evde / dışarıda / sırada, lejantlı)
 + bir sonraki Hangar basamağının / Komuta Çekirdeği'nin odayı ne yaptığı ("dönen filo her zaman sığar", "toplar dünyadan
 ayrılmaz"); yer odası üç topu adıyla sayar, top resmi yok. `CapacityBar` (Transfer, klan yardımı) gri dolguyu bıraktı.
+
+**D3 (tamam) `f31005a`:** Ölüm Yıldızı ocağı (Taktiksel sekme) ve önleyici bataryası (Savunma) v2 kart: yuvalar
+`ChargeTally` (yüklü turkuaz, yüklenen çerçeveli, boş koyu), üretim ilerlemesi canlı saatten (`buildShare`) turkuaz çubuk,
+gereksinimler çip (eksik olan sarı kapı → ilgili satır), fiyat + süre, ilk eksiği söyleyen düğme. ÖY iptal edilemez →
+basılı tut (K4); şarj dokunuş. **Sapma:** tasarım tuvali önleyiciyi Taktiksel'de çizmişti; Savunma'da kalmasının kararı
+(T10/T12) testli olduğu için yeri değişmedi — sahip isterse taşınır. ÖY testleri sahibin açtığı Taktiksel sekmesine taşındı
+(`09c0bb5`); bilinen dört kırmızı böylece kapandı.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
@@ -452,8 +458,8 @@ typecheck 0 hata · lint 0 hata.
 - rules (4): `academy.test.ts` "makes the Academy exit whole…"; `economy-profile.test.ts` "links the other purchases…";
   `intergalactic-convoy.test.ts` "uses combat-only firepower…"; `transport-ladder.test.ts` "carries more than it cost…".
 - sim (1): `season.test.ts` "TAX holds its band".
-- web (13, 2026-09-24 F5 sonu tam paket): `api-bodies.test.ts` disbandClan; `build-sheet.test.tsx` strategic hardware ×4;
-  `chronicle-screen.test.tsx` capital strike; `locked-rows.test.tsx` research gate (test dünyasında Tersane yok, kapı Tersane'ye
+- web (9, 2026-09-24 D3 sonu tam paket): `api-bodies.test.ts` disbandClan; ~~`build-sheet.test.tsx` strategic hardware ×4~~
+  (D3'te ocak Taktiksel sekmesine göre yeniden yazıldı, yeşil); `chronicle-screen.test.tsx` capital strike; `locked-rows.test.tsx` research gate (test dünyasında Tersane yok, kapı Tersane'ye
   gidiyor — öncül eskimiş); `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2; `research-gains.test.ts` ×2.
   ~~`surface-vocabulary.test.ts`~~ F5'te (`92dc01d`) yeşile döndü.
 - server (tam paket ölçülmedi; ilgili dosyalarda görülen, HEAD'de de kırmızı): `contract.test.ts` ×4 ("GET /api/planet
