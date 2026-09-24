@@ -56,18 +56,26 @@
 Sahip: *"Bana o tasarımları gösterip başka bir şey yapmamalısın."* Taslak ekran görüntüleri
 `docs/ui-v2/design-mocks/` altında (image*.png): HUD (image, image copy 4), atmosfer, renk, netlik, ekranlar
 (image copy 5: dosya, fırlatma, filo; 6: üs, rapor, istihbarat; 7: araştırma, klan, sen yokken; 8: masaüstü).
-Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler:
-1. Aktif gezegene yakınlaşma belli değil → sağ üstte küçük saydam "eve dön" düğmesi (eski disk Home'u gibi).
-2. Aktif olay kart kapanınca görünmüyor → Now hattının altında solda küçük saydam olay çipi ("⇄ Ticaret gemisi 47 dk").
-3. Havuz (Works) nerede, nasıl toplanır belli değil.
-4. Zil düğmesi: eski daha güzeldi → taslaktaki gibi kenarlıklı küçük kare, sayaç rozeti KIRMIZI.
-5. Sol üst komutan çipi profil düğmesi gibi görünüyor ama menü açıyor.
-6. Dock saydam olsun, altında galaksi görünsün.
-7. Sohbet düğmesi görünür bir yere geri gelsin (küçük, saydam; okunmamış işaretli).
-8. Üs › Production: rafinerilerin render'ı varken kaynak ikonları kullanılıyor (?).
-9. Üs sekmeleri yazıları taşıyor ("PRODUCTIONNTEL"); kısaltma/kesme yok.
-10. Now hattı taslaktaki gibi değil: kenarlara yapışık şerit yerine içeriden yuvarlak kart.
-11. Genel: taslaklara benzer olmalı (fırlatma satırları tek satır + küçük stepper, Filo tam sayfa, vb.).
+Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıldı, gerçek oyunda / galeride görüldü):
+1. ~~Aktif gezegene yakınlaşma~~ `8ffcde3`: sağda View'ın altında yuvarlak saydam Home (`flyHome`, dock'un ikinci
+   Galaksi basışıyla aynı).
+2. ~~Aktif olay~~ `8ffcde3`: Now hattının altında solda olay çipleri (kalan süreyle); seçim varken çekilir (B3).
+3. ~~Havuz~~ `2b30f0d`: Üs cüzdanında `CollectBubble place="base"` — ilk birimden itibaren, yanında havuzun adı
+   ("Havuz"/"Works", doluysa sarı "Havuz dolu"); depo doluysa Üretim sekmesine (Depo). Galaksi balonu %10 eşiğinde kalır.
+4. ~~Zil~~ `8ffcde3`: kenarlıklı küçük kare, rozet kırmızı.
+5. ~~Komutan çipi~~ `03e2c68`: Komutan sayfası komutan kartıyla açılır (avatar, klan, galaksi + sezon günü, sıra /
+   alan, dünyalar / en çok, kalkan); çip taslaktaki gibi iki harfli kare. Menü kalemleri kartın altında.
+6. ~~Dock saydam~~ `8ffcde3`.
+7. ~~Sohbet~~ `8ffcde3`: Home'un altında yuvarlak düğme, okunmamışta nokta.
+8. ~~Rafineri görselleri~~ `a04ffe6`: Rafineri/Çıkarıcı kendi 3 kademeli render'larıyla; Döteryum Tesisi'nin render'ı
+   yok, döteryum görselinde kalır. "Yeni donanım" işareti artık resmin değiştiği yerden okunur (Hangar'ı da düzeltti).
+9. ~~Üs sekmeleri~~ `a04ffe6`: v2 anahtar görünümü, her etiket tam, içerik genişliğinde; sığmayan dil yana kayar
+   (Fransızca 350'de sığıyor).
+10. ~~Now hattı~~ `8ffcde3`: içeriden kart.
+11. ~~Taslaklara benzerlik~~ `86bfdd0` Filo (tam sayfa, sekmeler önce ve sayılı, çizgili satırlar, geri çağırma satırın
+    altında cümleyle); `c532bf5` Fırlatma/transfer/konvoy (tek satır gemi + kompakt "− 32 + Maks", D142 istatistikleri
+    ikinci satırda küçük, bantlar ince başlık, cetvel kartsız, figürler tek kart, basılı tut turkuaz ve "Basılı tut ·"
+    önekli). Kalan fark bilinçli: cetvelin "ne temsil ettiği" satırı yüzeyde kalır (netlik; testi var).
 
 ## Sıradaki iş
 **F3 · Hedef dosyası, Fırlatma, Filo; S1, S2.** Şartname: B10, B11, B14, E2, E3, E4, K8 ve sunucu tablosu S1/S2
@@ -109,10 +117,12 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
   `launch-pirate`, `transfer`, `settlement` (hesap açmadan 5 dilde çekim); gemi satırında etiketli istatistik şeridi
   Almancada üst üste biniyor/kesiliyordu → satırda ikon+değer, listenin üstünde tek `StatLegend` (D142 korunur);
   Almanca "Startseite"/"Einbahnstraße" yanlış çevirileri düzeldi.
-- **F3.4c (sıradaki):** galaksiler arası konvoy (`IntergalacticConvoySheet`), ticaret (`TradeSheet`), klan dalgası
+- F3.4c ~~konvoy~~ (v2 + basılı tut, satırlar B14 satırı; geri bildirimle birlikte).
+- **F3.4c (sıradaki):** ticaret (`TradeSheet`), klan dalgası
   (`ClanWarPanel`; teklif otomatik; `clan.ts` "Send — no recall" metni klan dalgası geri çağrılabildiği için kontrol
   edilecek), Ölüm Yıldızı onayı (`FocusPanel`). Her birinin "no recall" metni kendi kuralına göre doğrulanır.
-- F3.4 açık notlar: `QuantityStepper` hâlâ eski görünümde (paylaşılan denetim; F5'te Üs yapı sayfalarıyla v2'ye);
+- F3.4 açık notlar: `QuantityStepper`'ın `look="v2"` görünümü fırlatma/transfer/konvoyda; Üs, ticaret ve klan
+  çağıranları eski görünümde (F5 ve kendi işlerinde geçer);
   yapışkan cetvel uzun listede satırların üstünü örtüyor (tasarım gereği; masaüstünde F8'de iki sütun).
 - **F3.5 E2 hedef dosyası:** odak kartı → dosya (v2 Sheet peek/half/full); sıra, yasaklar ve ret nedenleri şartnamedeki gibi.
 - **F3.6** faz sonu review + gerçek oyunda görsel tur (350 ve 1280 px, 5 dil).
