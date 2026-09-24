@@ -112,9 +112,10 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**D2 · Sekmelerdeki kapasite bölümleri** (Hangar odası, yer odası; bugün `CapacityBar`, beyaz/gri dolgu). D1'de yapılan
-`v2/kit/RoomBar` + `lib/room.ts roomParts` bağlanır (evde / dışarıda / sırada, lejantlı); yer odasında topun resmi yok.
-Tasarım: tuval `D2-kapasite`. Sonra D3 → D4 → D5 → D6, her biri TDD + görsel doğrulama.
+**D3 · Ölüm Yıldızı kartı (`DeathStarForge`) + önleyici bataryası kartı (`InterceptorBattery`).** Şarj `Tally` tarzı
+hücrelerle (yüklü turkuaz, yüklenen çerçeveli, boş koyu); ÖY üretimi basılı tut (K4, geri dönüşsüz). Tasarım: tuval
+`D3-taktik`. Bilinen kırmızılar `build-sheet.test.tsx` "strategic hardware hierarchy" ×4 bu kartlara ait — D3'te karar verilir.
+Sonra D4 → D5 → D6, her biri TDD + görsel doğrulama.
 
 Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval: https://claude.ai/artifact/J4sm7UHkX2bpB8GNJXy9bq
 (kaynak betiği: oturum scratchpad `design/gen.py` + `patch2.py`).
@@ -130,6 +131,10 @@ Tasarımlar onaylı (sahip: *"Resim dağılımı uygun, D1'den başla"*). Tuval:
   dokunuş derinde, eşleşme satırı çarpanlarla (`factor`: ×1,6 / ×0,625; zayıf sarı), sınıf döngüsü kendi dokunuşunda,
   v2 stepper "Maks · N" + neyin durdurduğu (kaynak / Hangar / yer / yuva; derste yalnız ders sayısı), `RoomBar`, eksikte
   `NeedBar`, alt bar parti fiyatı + süre + tersane sırası. Akademi 39/39; EN/TR/DE 350 px'te görüldü.
+
+**D2 (tamam) `0f425b9`:** Filo sekmesinde Hangar odası, Savunma'da yer odası `RoomBar` (evde / dışarıda / sırada, lejantlı)
++ bir sonraki Hangar basamağının / Komuta Çekirdeği'nin odayı ne yaptığı ("dönen filo her zaman sığar", "toplar dünyadan
+ayrılmaz"); yer odası üç topu adıyla sayar, top resmi yok. `CapacityBar` (Transfer, klan yardımı) gri dolguyu bıraktı.
 
 **Sahibin tasarım turu 2 kuralları (2026-09-24) — D kodlanırken uygulanacak:**
 - Şarjlı şeyler (Ölüm Yıldızı, önleyici) şarjı `Tally` tarzı hücrelerle gösterir (yüklü turkuaz, yüklenen çerçeveli, boş koyu).
