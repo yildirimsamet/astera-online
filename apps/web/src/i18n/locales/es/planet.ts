@@ -538,7 +538,7 @@ export const launch = {
   salvage: "Tus recolectores levantan hasta {{amount}} de los restos del naufragio si sobreviven.",
   distance: "Distancia",
   fleetHeading: "Flota",
-  atHome: "{{count}} inicio",
+  atHome: "{{count}} en casa",
   perShipStats: "Por nave · incluye tu investigación",
   away: "{{fleet}} de distancia en un vuelo. Sólo se pueden enviar naves que se encuentren en este mundo.",
   awaySeparator: " · ",

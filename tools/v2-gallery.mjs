@@ -50,11 +50,18 @@ for (const lng of LANGUAGES) {
       }
     }
 
+    // A fresh page per view: after the full-page shot and the sections, one long-lived
+    // page ran out of capture surface around the thirteenth view ("Unable to capture
+    // screenshot"), and every view photographed alone was fine.
     for (const view of VIEWS) {
-      await page.goto(`${WEB}/v2-gallery.html?lng=${lng}&view=${view}`, { waitUntil: 'networkidle' });
-      await page.evaluate(() => document.fonts.ready);
-      await page.waitForTimeout(300);
-      await page.screenshot({ path: `${OUT}/${lng}-${size.name}-${view}.png` });
+      const shot = await browser.newPage({ viewport: size.viewport, deviceScaleFactor: size.scale });
+      shot.on('pageerror', (error) => errors.push(String(error)));
+      shot.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+      await shot.goto(`${WEB}/v2-gallery.html?lng=${lng}&view=${view}`, { waitUntil: 'networkidle' });
+      await shot.evaluate(() => document.fonts.ready);
+      await shot.waitForTimeout(300);
+      await shot.screenshot({ path: `${OUT}/${lng}-${size.name}-${view}.png` });
+      await shot.close();
     }
 
     if (errors.length > 0) console.log(`console errors (${lng}, ${size.name}):`, errors.slice(0, 5));

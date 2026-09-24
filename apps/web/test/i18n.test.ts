@@ -373,6 +373,12 @@ describe('every added language keeps the locale contract', () => {
     expect(de.launch.oneWay).not.toMatch(/Einbahnstra/);
   });
 
+  /* The same slip in Spanish, seen at 350 on the v2 launch rows: "40 inicio" (a start page). */
+  it('says "at home" in Spanish, not a start page', () => {
+    expect(es.launch.atHome).not.toMatch(/inicio/);
+    expect(es.launch.atHome).toMatch(/en casa/);
+  });
+
   it('opens every appended galaxy count with its own spaced separator', () => {
     const appended = ['fleetAway', 'rocks', 'pirates_one', 'pirates_other', 'wrecks_one', 'wrecks_other'];
     const glued = Object.entries(LOCALES).flatMap(([language, locale]) => {
