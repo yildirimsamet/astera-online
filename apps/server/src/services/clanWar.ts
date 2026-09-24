@@ -2251,26 +2251,28 @@ export async function startClanWar(
   const oneWay = fullSpeed / chosenPace;
 
   const fighters = [...new Set(pool.map((wave) => wave.playerId))].sort();
-  await lockClanPlayers(tx, [...fighters, operation.targetPlayerId]);
+  const eligibleAttackers = [...new Set([...fighters, operation.leaderPlayerId])].sort();
+  await lockClanPlayers(tx, [...eligibleAttackers, operation.targetPlayerId]);
 
   /*
-    EVERY PARTICIPANT, ON THEIR OWN ACCOUNT, AGAIN. Maturity, the development band
-    and the clan they are still in — a day is long enough for any of the three to
-    have moved, and a pool carrying somebody who may not fight this commander is
-    not a pool that may launch.
+    EVERY COMMANDER BEHIND THE STRIKE, ON THEIR OWN ACCOUNT, AGAIN. Maturity, the
+    development band and the clan they are still in — a day is long enough for any
+    of the three to have moved. The fleetless leader is included because pulling
+    the trigger spends their quota and shield; their eligibility cannot be lent
+    by a member whose hulls are in the pool.
   */
-  const peaks = await peakCoreLevels(tx, [...fighters, operation.targetPlayerId]);
-  const fighterSeasonRows = await tx
+  const peaks = await peakCoreLevels(tx, [...eligibleAttackers, operation.targetPlayerId]);
+  const attackerSeasonRows = await tx
     .select({ id: players.id, seasonId: players.seasonId })
     .from(players)
-    .where(inArray(players.id, fighters));
-  const fighterSeasons = new Map(fighterSeasonRows.map((row) => [row.id, row.seasonId]));
+    .where(inArray(players.id, eligibleAttackers));
+  const attackerSeasons = new Map(attackerSeasonRows.map((row) => [row.id, row.seasonId]));
   const targetPeak = peaks.get(operation.targetPlayerId) ?? 1;
   const ineligible: string[] = [];
-  for (const playerId of fighters) {
+  for (const playerId of eligibleAttackers) {
     const membership = await activeClanMembership(tx, playerId);
     if (membership?.clanId !== clan.id
-      || fighterSeasons.get(playerId) !== operation.seasonId
+      || attackerSeasons.get(playerId) !== operation.seasonId
       || membership.matureAt > now) {
       ineligible.push(playerId);
       continue;
@@ -2285,7 +2287,7 @@ export async function startClanWar(
   if (ineligible.length > 0) {
     throw new GameError(
       'CLAN_WAR_PARTICIPANT_INELIGIBLE',
-      'A commander in this pool may no longer fight that target',
+      'A commander behind this strike may no longer fight that target',
       409,
       { playerIds: ineligible.join(',') },
     );

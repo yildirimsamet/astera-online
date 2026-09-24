@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
   PROBE,
@@ -188,11 +188,21 @@ export type Handler = (ctx: HandlerContext, event: EventRow) => Promise<void>;
  * handling idempotent: an event delivered twice does nothing the second time,
  * so a crashed-and-retried worker cannot double-resolve a battle.
  */
-async function claimMission(tx: Tx, missionId: string) {
+async function claimMission(tx: Tx, missionId: string, eventResolveAt: Date) {
   const rows = await tx
     .update(missions)
     .set({ status: 'resolved' })
-    .where(and(eq(missions.id, missionId), eq(missions.status, 'in_flight')))
+    .where(and(
+      eq(missions.id, missionId),
+      eq(missions.status, 'in_flight'),
+      /*
+        A CLAIMED ARRIVAL CAN OUTLIVE THE ETA IT WAS CLAIMED FOR. A transfer recall
+        replaces its queue row, but the worker may already hold the deleted row in
+        memory. The persisted ETA is authoritative: an event from before that ETA
+        cannot settle the mission, even after its transaction resumes.
+      */
+      lte(missions.arriveAt, eventResolveAt),
+    ))
     .returning();
   return rows[0] ?? null;
 }
@@ -213,8 +223,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
 
   await db.transaction(async (tx) => {
     const season = await lockSeason(tx, event.seasonId);
-    const mission = await claimMission(tx, missionId);
-    if (!mission) return; // already resolved by another worker
+    const mission = await claimMission(tx, missionId, event.resolveAt);
+    if (!mission) return; // already resolved, or this queue row was superseded
 
     /**
      * THE WHOLE GALAXY WATCHES A FLIGHT END. D53.

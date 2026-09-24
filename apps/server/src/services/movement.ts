@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   HULLS,
   MULTI_WORLD,
@@ -648,18 +648,25 @@ export async function recallFlight(
       .set({ recalledAt: now, recallFrom: turnedAt, arriveAt })
       .where(eq(missions.id, mission.id));
     /*
-      THE LANDING MOVES WITH IT. The arrival was already queued for the far world's clock; leaving
-      it there would land the ships at the wrong minute, and inserting a second one would land them
-      twice. `radar.ts` reschedules the same way.
+      THE LANDING MOVES WITH IT, EVEN AFTER A WORKER CLAIMED THE OLD ROW. Updating a pending row is
+      insufficient: a processing worker keeps that row in memory and `complete()` runs after its
+      handler. Delete-and-replace gives the return its own durable event; completing the deleted
+      row becomes a no-op, while the handler's mission-ETA guard makes its stale in-memory copy
+      inert.
     */
     await tx
-      .update(scheduledEvents)
-      .set({ resolveAt: arriveAt })
+      .delete(scheduledEvents)
       .where(and(
         eq(scheduledEvents.refId, mission.id),
         eq(scheduledEvents.kind, 'mission_arrival'),
-        eq(scheduledEvents.status, 'pending'),
+        inArray(scheduledEvents.status, ['pending', 'processing']),
       ));
+    await schedule(tx, {
+      seasonId: mission.seasonId,
+      kind: 'mission_arrival',
+      refId: mission.id,
+      resolveAt: arriveAt,
+    });
     if (mission.kind === 'attack') {
       await tx.delete(clanRaidRoster).where(eq(clanRaidRoster.missionId, mission.id));
       await tx.delete(attackCommitments).where(eq(attackCommitments.missionId, mission.id));

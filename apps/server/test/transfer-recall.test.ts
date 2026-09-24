@@ -1,12 +1,14 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { missions, notifications, planets, units } from '../src/db/schema.js';
+import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchTransfer, recallFlight } from '../src/services/movement.js';
 import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
+import { onMissionArrival } from '../src/worker/handlers.js';
+import { complete } from '../src/worker/queue.js';
 import {
   fuelUp,
   giveInstrument,
@@ -92,6 +94,45 @@ describe('recalling a fleet', () => {
     await worker().tick();
     expect(await unitsAt(mine)).toBe(14);
     expect(await unitsAt(colony)).toBe(0);
+  });
+
+  it('does not let a pre-claimed outbound arrival teleport a recalled fleet home', async () => {
+    const launched = await sendTransfer();
+    const [claimed] = await f.db
+      .update(scheduledEvents)
+      .set({
+        status: 'processing',
+        claimedAt: launched.arriveAt,
+        attempts: 1,
+      })
+      .where(and(
+        eq(scheduledEvents.kind, 'mission_arrival'),
+        eq(scheduledEvents.refId, launched.missionId),
+      ))
+      .returning();
+    expect(claimed?.status).toBe('processing');
+
+    const oldArrival = launched.arriveAt;
+    f.clock.set(new Date(oldArrival.getTime() - 100));
+    const recalled = await recallFlight(f.db, launched.missionId, f.clock, f.playerIds[0]!);
+    expect(recalled.arriveAt.getTime()).toBeGreaterThan(oldArrival.getTime());
+
+    // The worker already owns the old row in memory and resumes after recall commits.
+    f.clock.set(new Date(oldArrival.getTime() + 1));
+    await onMissionArrival({ db: f.db, clock: f.clock }, claimed!);
+    await complete(f.db, claimed!.id);
+
+    const [mission] = await f.db.select().from(missions)
+      .where(eq(missions.id, launched.missionId));
+    expect(mission).toMatchObject({ status: 'in_flight', recalledAt: expect.any(Date) as Date });
+    expect(await unitsAt(mine)).toBe(4);
+    const live = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'mission_arrival'),
+      eq(scheduledEvents.refId, launched.missionId),
+      eq(scheduledEvents.status, 'pending'),
+    ));
+    expect(live).toHaveLength(1);
+    expect(live[0]!.resolveAt).toEqual(recalled.arriveAt);
   });
 
   it('takes exactly as long to come back as it had already flown', async () => {
