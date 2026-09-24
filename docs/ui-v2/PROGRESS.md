@@ -112,8 +112,9 @@ etkilenen sunucu testleri 126/126). Sunucu bilinen kırmızısına eklenen: `not
 routes" (koloni arızası türleri listede yok — birleşimden önce de kırmızı).
 
 ## Sıradaki iş
-**ARA İŞ (sahip, 2026-09-24): 13 maddelik geri bildirim listesi F8'den önce.** Liste ve plan: aşağıdaki "Geri bildirim 3"
-bölümü. Bittiğinde F8'e dönülür.
+**Geri bildirim 3 (13 madde) bitti** — aşağıda, commit'lerle (45f496f · eb18bf0 · 4a846b1 · 0c75629 · 1e63c0d · fc4ce2d).
+Web: tsc + lint temiz, tam paket 4185 yeşil, yalnız bilinen 9 kırmızı. Sunucu: madencilik/ayrılma/ilgili 8 dosya yeşil
+(tam paket teslimde). **Sıradaki: F8'e dönüş** (aşağıdaki "Kalan").
 
 ### Geri bildirim 3 (sahip, 2026-09-24) — 13 madde, gruplu plan
 Durum işaretleri: [ ] bekliyor · [x] bitti (commit).

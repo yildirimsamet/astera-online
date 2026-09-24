@@ -63,7 +63,7 @@ export function StoreBar({
           <span
             data-safe=""
             data-safe-cells={String(safeCells)}
-            className="pointer-events-none absolute -bottom-[3px] -left-[3px] top-[9px] rounded-sm border border-v2-ink/80"
+            className="pointer-events-none absolute -bottom-[3px] -left-[3px] top-[9px] rounded-cell border border-v2-ink/80"
             style={{ width: `calc(${run(safeCells)} + 6px)` }}
           />
           <span

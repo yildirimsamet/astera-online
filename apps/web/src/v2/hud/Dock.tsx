@@ -135,7 +135,7 @@ export function Dock({ active, badges, onSelect, disabled = [], over = false, ba
             </span>
             <span className="max-w-full truncate px-0.5 text-caption font-stretch-semi-condensed">{label}</span>
             {bar && (
-              <kbd className="rounded-sm border border-v2-line-hi px-1 font-v2-mono text-micro leading-4 text-v2-ink-3">
+              <kbd className="rounded-cell border border-v2-line-hi px-1 font-v2-mono text-micro leading-4 text-v2-ink-3">
                 {index + 1}
               </kbd>
             )}
