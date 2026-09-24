@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { planets, players } from '../db/schema.js';
 import { GameError } from '../services/planet.js';
 import {
+  acknowledgeReturn,
   buildReturnPayload,
   currentUnlocks,
   listNotifications,
@@ -14,6 +15,8 @@ import { readBattleReports } from '../services/reports.js';
 import { requireAuth } from './auth.js';
 
 const seenBody = z.object({ ids: z.array(z.string().uuid()).max(200).optional() });
+/** The instant the return story was read (`asOf`): the window closes up to there. S3. */
+const returnSeenBody = z.object({ asOf: z.coerce.date() });
 
 /** Long enough to be cheap, short enough that proxies do not time the socket out. */
 const HEARTBEAT_MS = 25_000;
@@ -55,12 +58,20 @@ export function registerSessionRoutes(app: FastifyInstance): void {
    * "While you were gone."
    *
    * The first thing a returning player sees, and the mechanism behind Design Law
-   * #1. Reading it advances `lastSeenAt`, so calling it twice in a row correctly
-   * reports nothing the second time.
+   * #1. READING IT CHANGES NOTHING (S3): a reload that reads it again tells the same
+   * story. The player's dismissal, below, is what closes the window.
    */
   app.get('/api/session/return', { preHandler: requireAuth }, async (req) => {
     const playerId = await me(req.accountId!);
     return buildReturnPayload(app.db, playerId, app.clock);
+  });
+
+  /** The player dismissed the story: close the window up to what they were shown. S3. */
+  app.post('/api/session/return/seen', { preHandler: requireAuth }, async (req) => {
+    const { asOf } = returnSeenBody.parse(req.body ?? {});
+    const playerId = await me(req.accountId!);
+    await acknowledgeReturn(app.db, playerId, asOf, app.clock);
+    return { ok: true as const };
   });
 
   /**

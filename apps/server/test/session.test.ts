@@ -5,6 +5,7 @@ import { radarLead, radarRange } from '@astera/rules';
 import { missions, notifications, planets, players, satellites, scanEvents, watches } from '../src/db/schema.js';
 import { CHANNEL, EventBus, publish, publishGlobal, publishShard } from '../src/stream/bus.js';
 import {
+  acknowledgeReturn,
   buildReturnPayload,
   currentUnlocks,
   listNotifications,
@@ -208,7 +209,8 @@ describe('the return payload', () => {
     const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
     const result = payload.entries.find((e) => e.kind === 'raid_result');
     expect(result).toBeDefined();
-    expect(['DECISIVE', 'PARTIAL', 'REPELLED']).toContain(result!.title);
+    // S3: a kind and its parameters; the client words it in the reader's language.
+    expect(result?.kind === 'raid_result' && ['DECISIVE', 'PARTIAL', 'REPELLED'].includes(result.params.grade)).toBe(true);
   });
 
   it('mentions that someone scanned you', async () => {
@@ -322,10 +324,8 @@ describe('the return payload', () => {
     expect(convoy).toHaveLength(1);
     expect(convoy[0]).toMatchObject({
       kind: 'fleet_returned',
-      title: 'Convoy prizes delivered',
+      params: { resources: 1_540, ships: 2 },
     });
-    expect(convoy[0]?.detail).toContain('+1,540 resources');
-    expect(convoy[0]?.detail).toContain('2 prize ships');
   });
 
   it('keeps a strategic scan ahead of a crowded convoy recap', async () => {
@@ -370,17 +370,74 @@ describe('the return payload', () => {
     expect(payload.entries.some((entry) => entry.kind === 'accrued')).toBe(true);
   });
 
-  /** Reading advances the window, so refreshing does not replay old news. */
-  it('the second read in a row reports nothing new', async () => {
+  /**
+   * S3 · READING IS NOT SEEING. The old read advanced `lastSeenAt`, so a phone that
+   * reloaded the tab consumed the story before anyone had looked at it. A read changes
+   * nothing; the player's dismissal is what closes the window.
+   */
+  it('reads the same story twice, and moves nothing', async () => {
+    await grant(f.db, mine, 40_000, 4_000);
+    await raid(f, theirs, mine, 40);
+    const [before] = await f.db.select({ at: players.lastSeenAt }).from(players).where(eq(players.id, myPlayer));
+
+    const first = await buildReturnPayload(f.db, myPlayer, f.clock);
+    const second = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(second.awayMinutes).toBe(first.awayMinutes);
+    expect(second.entries.filter((e) => e.kind === 'raided')).toHaveLength(first.entries.filter((e) => e.kind === 'raided').length);
+    const [after] = await f.db.select({ at: players.lastSeenAt }).from(players).where(eq(players.id, myPlayer));
+    expect(after?.at.getTime()).toBe(before?.at.getTime());
+  });
+
+  it('hands back when it read, so a dismissal closes exactly what was shown', async () => {
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(payload.asOf.getTime()).toBe(f.clock.now().getTime());
+  });
+
+  /** The dismissal closes the window: refreshing does not replay old news. */
+  it('reports nothing new once the player has dismissed it', async () => {
     await grant(f.db, mine, 40_000, 4_000);
     await raid(f, theirs, mine, 40);
 
     const first = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(first.entries.length).toBeGreaterThan(0);
+    await acknowledgeReturn(f.db, myPlayer, first.asOf, f.clock);
 
     const second = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(second.awayMinutes).toBe(0);
     expect(second.entries.filter((e) => e.kind === 'raided')).toHaveLength(0);
+  });
+
+  /** A late or forged dismissal can neither reopen old news nor close the future. */
+  it('never moves the window back, nor past the present', async () => {
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    await acknowledgeReturn(f.db, myPlayer, payload.asOf, f.clock);
+    const [closed] = await f.db.select({ at: players.lastSeenAt }).from(players).where(eq(players.id, myPlayer));
+
+    await acknowledgeReturn(f.db, myPlayer, new Date(payload.asOf.getTime() - 3_600_000), f.clock);
+    const [back] = await f.db.select({ at: players.lastSeenAt }).from(players).where(eq(players.id, myPlayer));
+    expect(back?.at.getTime()).toBe(closed?.at.getTime());
+
+    f.clock.advance(10);
+    await acknowledgeReturn(f.db, myPlayer, new Date(f.clock.now().getTime() + 86_400_000), f.clock);
+    const [ahead] = await f.db.select({ at: players.lastSeenAt }).from(players).where(eq(players.id, myPlayer));
+    expect(ahead?.at.getTime()).toBe(f.clock.now().getTime());
+  });
+
+  /** S3: the client localises; the server sends what happened, not how to say it. */
+  it('speaks in kinds and parameters, never in sentences', async () => {
+    await grant(f.db, mine, 40_000, 4_000);
+    await raid(f, theirs, mine, 40);
+    f.clock.advance(300);
+
+    const payload = await buildReturnPayload(f.db, myPlayer, f.clock);
+    expect(payload.entries.length).toBeGreaterThan(0);
+    for (const entry of payload.entries) {
+      expect(entry).not.toHaveProperty('title');
+      expect(entry).not.toHaveProperty('detail');
+      expect(entry).toHaveProperty('params');
+    }
+    const raided = payload.entries.find((e) => e.kind === 'raided');
+    expect(raided?.kind === 'raided' && typeof raided.params.lost === 'number' && typeof raided.params.loot === 'number').toBe(true);
   });
 
   /**
@@ -411,7 +468,10 @@ describe('the return payload', () => {
     expect((await buildReturnPayload(f.db, myPlayer, f.clock)).newUnlocks).toEqual([]);
   });
 
-  /** And an unlock nothing has announced yet is still announced exactly once. */
+  /**
+   * And an unlock nothing has announced yet is named until the player dismisses the
+   * story — a read no longer consumes it — and then never again.
+   */
   it('announces an unlock the live path has not reached, then never again', async () => {
     await f.db
       .insert(watches)
@@ -424,6 +484,17 @@ describe('the return payload', () => {
 
     const first = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(first.newUnlocks).toContain('EXPLORER');
+    expect(first.entries.some((e) => e.kind === 'unlock' && e.params.unlock === 'EXPLORER')).toBe(true);
+
+    // Read again before anyone dismissed it: still there.
+    expect((await buildReturnPayload(f.db, myPlayer, f.clock)).newUnlocks).toContain('EXPLORER');
+
+    await acknowledgeReturn(f.db, myPlayer, first.asOf, f.clock);
+    const told = await f.db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.playerId, myPlayer), eq(notifications.kind, 'unlock')));
+    expect(told.filter((n) => n.payload.unlock === 'EXPLORER')).toHaveLength(1);
 
     const second = await buildReturnPayload(f.db, myPlayer, f.clock);
     expect(second.newUnlocks).toEqual([]);

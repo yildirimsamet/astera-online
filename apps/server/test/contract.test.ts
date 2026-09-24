@@ -113,6 +113,7 @@ import {
   reportsSchema,
   researchCompleteSchema,
   returnSchema,
+  returnSeenSchema,
   rewardClaimSchema,
   rivalSetSchema,
   rewardsSchema,
@@ -1993,6 +1994,15 @@ describe('every payload the client parses', () => {
     const parsed = placementSchema.parse(joined.json());
     expect(parsed.shard).toBe(shard!.code);
     expect(parsed.planetId).toBeTruthy();
+  });
+
+  /** S3: reading the story twice tells it twice; the dismissal closes it at what was read. */
+  it('POST /api/session/return/seen closes the story at what was read', async () => {
+    const read = returnSchema.parse(await get('/api/session/return'));
+    const again = returnSchema.parse(await get('/api/session/return'));
+    expect(again.asOf.getTime()).toBeGreaterThanOrEqual(read.asOf.getTime());
+    expect(again.awayMinutes).toBeGreaterThanOrEqual(read.awayMinutes);
+    expect(returnSeenSchema.parse(await post('/api/session/return/seen', { asOf: read.asOf.toISOString() })).ok).toBe(true);
   });
 
   it('POST /api/notifications/seen parses', async () => {

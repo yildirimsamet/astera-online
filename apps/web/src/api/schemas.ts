@@ -2129,19 +2129,31 @@ export const deathStarLaunchSchema = z.object({
   ...withPlanet,
 });
 
+/**
+ * THE RETURN STORY, AS KINDS AND PARAMETERS. S3: the server says what happened, this
+ * client words it in the reader's language; reading it moves nothing, and `asOf` is
+ * what a dismissal closes the window up to.
+ */
+const returnEntry = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('raid_result'), params: z.object({ grade, loot: z.number(), lost: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('raided'), params: z.object({ grade, loot: z.number(), lost: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('scan_detected'), params: z.object({ count: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('convoy_result'), params: z.object({ resources: z.number(), ships: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('fleet_returned'), params: z.object({ resources: z.number(), ships: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('accrued'), params: z.object({ alloy: z.number(), crystal: z.number() }), at: z.coerce.date() }),
+  z.object({ kind: z.literal('unlock'), params: z.object({ unlock: unlockable }), at: z.coerce.date() }),
+]);
+
 export const returnSchema = z.object({
   awayMinutes: z.number(),
-  entries: z.array(
-    z.object({
-      kind: z.enum(['fleet_returned', 'convoy_result', 'raided', 'raid_result', 'scan_detected', 'accrued', 'unlock']),
-      title: z.string(),
-      detail: z.string(),
-      at: z.coerce.date(),
-    }),
-  ),
+  asOf: z.coerce.date(),
+  entries: z.array(returnEntry),
   pending: z.array(pendingThread),
   newUnlocks: z.array(unlockable),
 });
+
+/** The dismissal's answer: the window is closed up to what was read. */
+export const returnSeenSchema = z.object({ ok: z.literal(true) });
 
 export const unlocksSchema = z.object({ unlocked: z.array(unlockable) });
 

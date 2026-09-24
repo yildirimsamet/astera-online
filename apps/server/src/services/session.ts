@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   alloyRate,
@@ -14,6 +14,7 @@ import {
   ENGAGEMENT_STANDOFF,
   visualLeg,
   type Fleet,
+  type Grade,
   type MassClass,
   type PirateLevel,
 } from '@astera/rules';
@@ -139,12 +140,19 @@ export type ReturnEntryKind =
   | 'accrued'
   | 'unlock';
 
-export interface ReturnEntry {
-  kind: ReturnEntryKind;
-  title: string;
-  detail: string;
-  at: Date;
-}
+/**
+ * ONE LINE OF THE RETURN STORY, AS A KIND AND ITS PARAMETERS. S3.
+ *
+ * It used to carry an English title and detail, so a Turkish commander read "You were
+ * raided" on a Turkish screen. The server says what happened; the client words it in
+ * the reader's language.
+ */
+export type ReturnEntry =
+  | { kind: 'raid_result' | 'raided'; params: { grade: Grade; loot: number; lost: number }; at: Date }
+  | { kind: 'scan_detected'; params: { count: number }; at: Date }
+  | { kind: 'convoy_result' | 'fleet_returned'; params: { resources: number; ships: number }; at: Date }
+  | { kind: 'accrued'; params: { alloy: number; crystal: number }; at: Date }
+  | { kind: 'unlock'; params: { unlock: Unlockable }; at: Date };
 
 export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
@@ -301,6 +309,8 @@ export interface PendingThread {
 
 export interface ReturnPayload {
   awayMinutes: number;
+  /** The instant this was read. A dismissal closes the window up to here and no further (S3). */
+  asOf: Date;
   entries: ReturnEntry[];
   /** Design Law #1 — what is still in flight. Never allowed to be empty by accident. */
   pending: PendingThread[];
@@ -317,7 +327,6 @@ const MAX_ENTRIES = 5;
  * that is the one place they are announced.
  */
 const CONVOY_RECAP_LINES = 2;
-const fmt = (n: number): string => Math.round(n).toLocaleString('en-US');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -340,11 +349,9 @@ const convoyRecap = (
     typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount < 0)) return null;
   const resourceTotal = (resources as number[]).reduce((sum, amount) => sum + amount, 0);
   const shipTotal = (awarded as number[]).reduce((sum, amount) => sum + amount, 0);
-  const shipLabel = `${String(shipTotal)} prize ship${shipTotal === 1 ? '' : 's'}`;
   return {
     kind: delivered ? 'fleet_returned' : 'convoy_result',
-    title: delivered ? 'Convoy prizes delivered' : 'Convoy prizes secured',
-    detail: `+${fmt(resourceTotal)} resources · ${shipLabel} ${delivered ? 'delivered' : 'returning home'}`,
+    params: { resources: Math.round(resourceTotal), ships: shipTotal },
     at,
   };
 };
@@ -355,8 +362,10 @@ const convoyRecap = (
  * It must answer *what happened?* before the player asks. Three kinds of line:
  * what I did, what accrued, what is new. Never more than five, never a wall of logs.
  *
- * Reading it advances `lastSeenAt`, so the window is genuinely "since you last
- * looked" rather than a rolling guess.
+ * READING IT CHANGES NOTHING. S3: it used to advance `lastSeenAt` and record the
+ * unlocks it named, so a phone that reloaded a backgrounded tab consumed the story
+ * before anybody had looked at it. The player's dismissal (`acknowledgeReturn`) is
+ * what closes the window, up to the `asOf` this hands back.
  */
 export async function buildReturnPayload(
   db: Db,
@@ -399,24 +408,11 @@ export async function buildReturnPayload(
     const mine = r.attackerPlayerId === playerId;
     const loot = r.loot.alloy + r.loot.crystal + deuteriumOf(r.loot);
     const lost = fleetCount(mine ? r.attackerLosses : r.defenderLosses);
-    entries.push(
-      mine
-        ? {
-            kind: 'raid_result',
-            title: r.grade,
-            detail: `+${fmt(loot)} looted · ${String(lost)} ships lost`,
-            at: r.createdAt,
-          }
-        : {
-            kind: 'raided',
-            title: r.grade === 'REPELLED' ? 'You repelled a raid' : 'You were raided',
-            detail:
-              r.grade === 'REPELLED'
-                ? `${String(lost)} units lost holding the line`
-                : `−${fmt(loot)} taken · ${String(lost)} units lost`,
-            at: r.createdAt,
-          },
-    );
+    entries.push({
+      kind: mine ? 'raid_result' : 'raided',
+      params: { grade: r.grade, loot: Math.round(loot), lost },
+      at: r.createdAt,
+    });
   }
 
   /* someone was looking at you */
@@ -432,12 +428,7 @@ export async function buildReturnPayload(
     );
   const scanCount = scans[0]?.n ?? 0;
   if (scanCount > 0) {
-    entries.push({
-      kind: 'scan_detected',
-      title: scanCount === 1 ? 'Scan detected' : `${String(scanCount)} scans detected`,
-      detail: 'Someone is building a picture of you.',
-      at: now,
-    });
+    entries.push({ kind: 'scan_detected', params: { count: scanCount }, at: now });
   }
 
   /**
@@ -509,12 +500,7 @@ export async function buildReturnPayload(
       .filter((building) => building.type === 'EXTRACTOR')
       .reduce((total, building) => total + crystalRate(building.level) * hours, 0);
     if (alloy >= 1) {
-      entries.push({
-        kind: 'accrued',
-        title: `+${fmt(alloy)} alloy`,
-        detail: crystal >= 1 ? `+${fmt(crystal)} crystal` : 'accumulated while you were away',
-        at: now,
-      });
+      entries.push({ kind: 'accrued', params: { alloy: Math.round(alloy), crystal: Math.round(crystal) }, at: now });
     }
   }
 
@@ -529,28 +515,42 @@ export async function buildReturnPayload(
    * endpoint no client calls (D23), so the unlock would have been consumed by a
    * route nobody reads and never shown to anybody.
    */
-  const newUnlocks = await db.transaction((tx) => announceUnlocks(tx, playerId, now));
-  for (const u of newUnlocks) {
-    entries.push({
-      kind: 'unlock',
-      title: UNLOCK_COPY[u].title,
-      detail: UNLOCK_COPY[u].body,
-      at: now,
-    });
+  // Named, not recorded: the dismissal records them through `announceUnlocks` (S3).
+  const seen = new Set(player.unlocksSeen);
+  const newUnlocks = (await currentUnlocks(db, playerId)).filter((unlock) => !seen.has(unlock));
+  for (const unlock of newUnlocks) {
+    entries.push({ kind: 'unlock', params: { unlock }, at: now });
   }
 
   /* Design Law #1 — what is still in flight */
   const pending = await pendingThreads(db, planet.id, now);
 
-  // Advance the window. What has been announced is recorded by `announceUnlocks`.
-  await db.update(players).set({ lastSeenAt: now }).where(eq(players.id, playerId));
-
   return {
     awayMinutes,
+    asOf: now,
     entries: entries.slice(0, MAX_ENTRIES),
     pending,
     newUnlocks,
   };
+}
+
+/**
+ * THE PLAYER DISMISSED THE STORY: close the window up to what they were shown. S3.
+ *
+ * Never backwards (a late or replayed dismissal cannot reopen old news) and never
+ * past the present (a forged instant cannot swallow what has not happened yet). The
+ * unlocks the story named are recorded here, through the one path that records them.
+ */
+export async function acknowledgeReturn(db: Db, playerId: string, asOf: Date, clock: Clock): Promise<void> {
+  const now = clock.now();
+  const until = asOf.getTime() > now.getTime() ? now : asOf;
+  await db.transaction(async (tx) => {
+    await tx
+      .update(players)
+      .set({ lastSeenAt: until })
+      .where(and(eq(players.id, playerId), lt(players.lastSeenAt, until)));
+    await announceUnlocks(tx, playerId, now);
+  });
 }
 
 /* ── what is still in flight ────────────────────────────────── */
