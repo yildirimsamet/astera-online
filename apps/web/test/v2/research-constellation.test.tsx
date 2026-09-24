@@ -39,6 +39,14 @@ describe('the research constellation', () => {
     expect(document.querySelector('[data-star="SHIP_ARMOR"]')).toHaveAttribute('data-running', '');
   });
 
+  /** Owner, 2026-09-24: every project's ring holds a star, whatever its level. */
+  it('puts a star inside every project’s ring', () => {
+    show();
+    for (const node of document.querySelectorAll('[data-star]')) {
+      expect(node.querySelector('[data-star-glyph]'), node.getAttribute('data-star') ?? '').not.toBeNull();
+    }
+  });
+
   it('names a prerequisite in another group under the star', () => {
     show();
     expect(document.querySelector('[data-star="SHIP_PROPULSION"]')).toHaveTextContent('← Dense Fuel Cells');

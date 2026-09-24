@@ -20,6 +20,7 @@ import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
 import { LockIcon, ShieldIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
+import { StarField } from '../v2/kit/StarField.js';
 
 /**
  * "This is MY planet."
@@ -91,7 +92,9 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
         THE WORLD IS THE HERO (E5, the mock's Base): the portrait centred and large, its
         satellites on the ring around it, the name and the kind under it.
       */}
-      <div data-planet-subject className="flex flex-col items-center gap-1 pb-1 pt-1">
+      <div data-planet-subject className="relative isolate flex flex-col items-center gap-1 overflow-hidden rounded-control pb-3 pt-3">
+        {/* The world on the galaxy, as the mock draws it: the sky is this section's alone. */}
+        <StarField className="absolute inset-0 -z-10" />
         <div data-planet-portrait className="flex flex-col items-center">
           <div className="relative grid size-[156px] place-items-center">
             <div

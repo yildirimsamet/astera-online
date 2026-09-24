@@ -102,7 +102,7 @@ export function ReportScene({ report, word, colonyTarget = false, onAttackAgain 
           src={planetArt(report.opponentPlanetId ?? world)}
           alt=""
           aria-hidden
-          className="size-14 shrink-0 rounded-full object-cover shadow-[0_0_24px_rgb(46_230_200/15%)]"
+          className="size-14 shrink-0 rounded-full object-cover shadow-[0_0_24px_color-mix(in_srgb,var(--color-v2-self)_15%,transparent)]"
         />
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 truncate text-micro uppercase tracking-wide text-v2-ink-3">

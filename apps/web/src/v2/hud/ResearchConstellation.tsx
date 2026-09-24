@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RESEARCH_PROJECTS, type ResearchProjectId } from '@astera/rules';
 import { RESEARCH_GROUPS, constellationLayout, type ResearchGroupId } from '../../lib/constellation.js';
+import { StarField } from '../kit/StarField.js';
 
 export interface StarState {
   id: ResearchProjectId;
@@ -22,8 +23,11 @@ export interface ResearchConstellationProps {
   dimStrategic?: boolean;
 }
 
-/** A line down a column runs under the labels on it; a patch of the sheet's colour keeps them read. */
-const HALO = 'rounded-cell bg-v2-panel/85 px-0.5';
+/**
+ * A line down a column runs under the labels on it; a feathered patch of the night keeps
+ * them read — soft-edged, so over the sky it is a shadow, not a box.
+ */
+const HALO = 'rounded-full bg-v2-deep/70 px-1 shadow-[0_0_6px_3px_color-mix(in_srgb,var(--color-v2-deep)_70%,transparent)]';
 
 /** Where each group's name sits in its quarter: the left pair on the left, the right pair on the right. */
 const LABEL_SIDE: Record<ResearchGroupId, 'left' | 'right'> = {
@@ -55,8 +59,10 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
       data-constellation
       role="group"
       aria-label={t('researchMap.label')}
-      className="relative aspect-[1/1.05] w-full overflow-hidden bg-[radial-gradient(60%_55%_at_50%_48%,rgb(24_36_64/55%),transparent_85%)] font-v2-ui"
+      className="relative isolate aspect-[1/1.05] w-full overflow-hidden rounded-control font-v2-ui"
     >
+      {/* The map on the galaxy, as the mock draws it (owner, 2026-09-24). */}
+      <StarField className="absolute inset-0 -z-10" />
       {layout.regions.map((region) => {
         const group = RESEARCH_GROUPS.find((candidate) => candidate.id === region.group);
         if (!group) return null;
@@ -121,12 +127,30 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
             className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${dim || star.locked ? 'opacity-50' : ''}`}
             style={{ left: `${String(node.x * 100)}%`, top: `calc(${String(node.y * 100)}% - 6px)` }}
           >
-            <span className="relative grid size-3 place-items-center">
-              {star.level > 0 ? (
-                <span className="size-3 rounded-full bg-v2-self shadow-[0_0_8px_rgb(46_230_200/60%)]" style={{ opacity: 0.35 + 0.65 * share }} />
-              ) : (
-                <span className="size-3 rounded-full border border-v2-ink-2" />
-              )}
+            {/*
+              A STAR IN EVERY RING (owner, 2026-09-24). The ring is the project; the star in
+              it is how far up its ladder: a faint white one at nothing held, then teal,
+              brighter and glowing the higher it stands (E8: "parlaklık = seviye / en yüksek").
+            */}
+            <span className="relative grid size-3.5 place-items-center">
+              <span
+                className={`absolute inset-0 rounded-full border ${
+                  star.level > 0 ? 'border-v2-self/70 bg-v2-self/15' : 'border-v2-ink-2/70 bg-v2-deep/60'
+                }`}
+              />
+              <svg
+                data-star-glyph
+                viewBox="0 0 10 10"
+                aria-hidden="true"
+                className={`relative size-2.5 ${
+                  star.level > 0
+                    ? 'fill-v2-self drop-shadow-[0_0_4px_color-mix(in_srgb,var(--color-v2-self)_80%,transparent)]'
+                    : 'fill-v2-ink'
+                }`}
+                style={{ opacity: star.level > 0 ? 0.55 + 0.45 * share : 0.55 }}
+              >
+                <path d="M5 0 L6.1 3.9 L10 5 L6.1 6.1 L5 10 L3.9 6.1 L0 5 L3.9 3.9 Z" />
+              </svg>
               {on && <span className="absolute -inset-1 rounded-full border border-dashed border-v2-self" />}
               {star.running && <span className="absolute -inset-1 animate-ping rounded-full border border-v2-self/70" />}
             </span>

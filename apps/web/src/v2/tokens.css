@@ -52,6 +52,14 @@
   --color-v2-warn: #ffcc4d;
   --color-v2-premium: #e6c77e;
 
+  /* ── sky ─ decoration only, never a meaning: the still sky behind the world and the
+     research map (StarField). Star temperatures and the nebula's two drifts. */
+  --color-v2-sky-cool: #cfe3ff;
+  --color-v2-sky-warm: #ffd9a8;
+  --color-v2-sky-blue: #2e78aa;
+  --color-v2-sky-violet: #7846b4;
+  --color-v2-sky-drift: #284682;
+
   /* ── type ─ one family, width as hierarchy (K3); sizes stay on the current scale */
   --font-v2-ui: 'Archivo Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-v2-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
