@@ -63,7 +63,7 @@ describe('the production row states all three hourly rates', () => {
     expect(screen.queryByText('Per hour')).not.toBeInTheDocument();
   });
 
-  it('draws one column per resource', () => {
+  it('draws one row per resource', () => {
     render(<PlanetHero planet={world()} />);
     const row = screen.getByTestId('planet-rates');
     expect(row.querySelectorAll('[data-resource]')).toHaveLength(3);
@@ -71,27 +71,31 @@ describe('the production row states all three hourly rates', () => {
   });
 });
 
-describe('the production row states the store under each rate', () => {
-  it('says how full the store is and how much of it a raid cannot take', () => {
+/**
+ * THE STORE ROWS (owner, 2026-09-24): back to one full-width row per resource, as the
+ * store was drawn before the redesign — its figures, its cells, and the part a raid
+ * cannot take bracketed under the Vault's shield; the rate at the row's end. In three
+ * narrow columns the bracket read as a square.
+ */
+describe('the store rows', () => {
+  it('reads each store as held of cap beside its cells', () => {
     render(<PlanetHero planet={world({
       alloy: 620,
       alloyCap: 1000,
       vaultProtected: { alloy: 350, crystal: 0, deuterium: 0 },
     })} />);
     const alloy = column('alloy');
-    expect(alloy).toHaveTextContent('store 62%');
-    expect(alloy).toHaveTextContent('safe 35%');
-    expect(alloy.querySelector('[data-fill]')).toHaveStyle({ width: '62%' });
-    expect(alloy.querySelector('[data-safe]')).toHaveStyle({ width: '35%' });
+    expect(within(alloy).getByTestId('store-alloy')).toHaveTextContent(`${compact(620)}/${compact(1000)}`);
+    expect(alloy.querySelectorAll('[data-cell]')).toHaveLength(12);
+    expect(alloy.querySelector('[data-safe]')).toHaveAttribute('data-safe-cells', '4');
   });
 
   /** H2 and K2: a full store is a gap you can close — yellow, never the red of a threat. */
   it('says a full store is full, in the colour of a gap', () => {
     render(<PlanetHero planet={world({ crystal: 1200, crystalCap: 1000 })} />);
     const crystal = column('crystal');
-    const full = within(crystal).getByText(/store full/i);
-    expect(full).toHaveClass('text-v2-warn');
-    expect(crystal.querySelector('[data-fill]')).toHaveStyle({ width: '100%' });
+    expect(within(crystal).getByTestId('store-crystal')).toHaveClass('text-v2-warn');
+    expect(crystal.querySelector('[data-full-cap]')).not.toBeNull();
     expect(crystal.querySelector('.text-v2-hostile')).toBeNull();
   });
 
@@ -99,6 +103,11 @@ describe('the production row states the store under each rate', () => {
     render(<PlanetHero planet={world({ vaultProtected: { alloy: 500, crystal: 100, deuterium: 0 } })} />);
     expect(column('deuterium').querySelector('[data-safe]')).toBeNull();
     expect(column('alloy').querySelector('[data-safe]')).not.toBeNull();
+  });
+
+  it('states the rule of the bracket once, under the rows', () => {
+    render(<PlanetHero planet={world()} />);
+    expect(screen.getAllByText(/the bracket under the shield is safe from a raid/)).toHaveLength(1);
   });
 
   it('names the whole store for a screen reader', () => {

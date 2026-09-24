@@ -131,7 +131,8 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
   cihazda (localStorage, try/catch) 3 gün saklanır; saldırı ve öneri kartı saklanmaz. [x]
 - **D · Üs ekonomisi (4, 5, 6).** Kuyrukta başı dışındaki bekleyen siparişlerde geri sayım yok, sarı kum saati +
   "Sırada"; Works satırı yeniden: dolan bir havuz (dolum çubukları + miktar + "Topla"), büyük sayılarda taşmaz,
-  dolunca uyarı; depo çubukları yeniden bölmeli (tırtıklı), korunan bölmeler kalkanlı parantez içinde. [ ]
+  dolunca uyarı; depo çubukları yeniden bölmeli (tırtıklı), korunan bölmeler kalkanlı parantez içinde. Depo 3 tam
+  genişlik satır (kısa sütunda parantez kare görünüyordu); Works kahramanın altında `WorksPool`, cüzdan yalnız depo. [x]
 - **E · İstihbarat (7).** Sonda raporu aralık çubukları: ölçeğin ne olduğu görünür (0 → ölçek, senin değerin çizgisi),
   hizalamanın anlamı okunur. [ ]
 - **F · Yıldız arka planları (2, 3).** Üs kahramanındaki gökyüzü daha soluk; Araştırma takımyıldızında arka plan

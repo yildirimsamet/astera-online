@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COLLECT_THRESHOLD, collectState, type CollectInput } from '../../src/lib/collect.js';
+import { COLLECT_THRESHOLD, collectState, worksOutlook, type CollectInput } from '../../src/lib/collect.js';
 
 /**
  * WHEN THE COLLECT BUBBLE STANDS OVER YOUR WORLD. Spec B13 (docs/ui-v2/gozlemevi.md).
@@ -84,5 +84,34 @@ describe('the works, resource by resource', () => {
       store: { alloy: 10_000, crystal: 0, deuterium: 0 },
     }));
     expect(state.noRoom).toEqual([]);
+  });
+});
+
+/**
+ * WHEN THE WORKS WILL BE FULL (owner, 2026-09-24): the reason to come back is the moment
+ * production stops, so the pool says it — the soonest vessel to reach its rim.
+ */
+describe('the works outlook', () => {
+  const caps = { alloy: 1_000, crystal: 400, deuterium: 0 };
+
+  it('reads each vessel as its share of what it can hold', () => {
+    const { fill } = worksOutlook({ caps, works: { alloy: 500, crystal: 400, deuterium: 0 }, rates: { alloy: 100, crystal: 50, deuterium: 0 } });
+    expect(fill).toEqual({ alloy: 0.5, crystal: 1, deuterium: 0 });
+  });
+
+  it('is full at the soonest rim among the vessels still filling', () => {
+    // Alloy: 500 left at 100/h = 5 h; crystal: 300 left at 50/h = 6 h.
+    const { fullInMinutes } = worksOutlook({ caps, works: { alloy: 500, crystal: 100, deuterium: 0 }, rates: { alloy: 100, crystal: 50, deuterium: 0 } });
+    expect(fullInMinutes).toBe(300);
+  });
+
+  it('skips a vessel already full and one that nothing flows into', () => {
+    const { fullInMinutes } = worksOutlook({ caps, works: { alloy: 1_000, crystal: 100, deuterium: 0 }, rates: { alloy: 100, crystal: 0, deuterium: 20 } });
+    expect(fullInMinutes).toBeNull();
+  });
+
+  it('never divides by a vessel with no capacity', () => {
+    const { fill } = worksOutlook({ caps: { alloy: 0, crystal: 0, deuterium: 0 }, works: { alloy: 5, crystal: 0, deuterium: 0 }, rates: { alloy: 10, crystal: 0, deuterium: 0 } });
+    expect(fill).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
   });
 });

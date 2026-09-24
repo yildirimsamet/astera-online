@@ -125,6 +125,15 @@ describe('the desk outline', () => {
     expect(screen.getByText('12m 00s')).toBeInTheDocument();
   });
 
+  it('shows the running order’s time and "Queued" on the one behind it', () => {
+    const behind = order('o-2', { slot: 1, startedAt: new Date(NOW + 12 * MIN), finishesAt: new Date(NOW + 30 * MIN) });
+    outline({ queues: [{ worldId: 'p-1', world: 'Thistle', lane: 'construction', orders: [order('o-1'), behind] }] });
+    const lane = screen.getByRole('button', { name: /^Construction/ });
+    expect(lane).toHaveTextContent('12m 00s');
+    expect(lane).toHaveTextContent('Queued');
+    expect(lane).not.toHaveTextContent('30m 00s');
+  });
+
   it('marks an idle lane as a gap you can close, with its free slots (warn, not red)', () => {
     outline();
     const yard = screen.getByRole('button', { name: /^Yard/ });

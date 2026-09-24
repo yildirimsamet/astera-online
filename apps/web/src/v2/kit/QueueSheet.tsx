@@ -4,7 +4,7 @@ import type { BuildOrderView } from '../../api/schemas.js';
 import { buildOrderLabel } from '../../lib/orders.js';
 import { clockTime } from '../../lib/time.js';
 import { CancelConfirm } from '../../ui/QueueStrip.js';
-import { OrderName, OrderRing, orderLeft } from './QueueLane.js';
+import { OrderLeft, OrderName, OrderRing } from './QueueLane.js';
 import { Sheet } from './Sheet.js';
 
 type Lanes = Record<'CONSTRUCTION' | 'YARD', readonly BuildOrderView[]>;
@@ -115,7 +115,7 @@ function Lane({
               <OrderRing order={order} now={now} />
               <span className="grid min-w-0 flex-1">
                 <OrderName order={order} />
-                <span className="font-v2-mono text-micro text-v2-ink-2">{orderLeft(order, now)}</span>
+                <span className="font-v2-mono text-micro text-v2-ink-2"><OrderLeft order={order} now={now} /></span>
               </span>
               {order.finishesAt && (
                 <button

@@ -26,7 +26,8 @@ const shapes = (markup: string): string[] =>
 
 describe('the v2 icon set', () => {
   it('has every symbol the spec draws', () => {
-    expect(symbols.length).toBe(40);
+    // 41 since the hourglass on an order waiting its turn (owner, 2026-09-24).
+    expect(symbols.length).toBe(41);
     for (const { id } of symbols) expect(isIconId(id), id).toBe(true);
   });
 

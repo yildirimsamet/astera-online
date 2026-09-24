@@ -83,6 +83,15 @@ describe('the queue sheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the time on the running order and "Queued" on the ones behind it', () => {
+    const lanes = { CONSTRUCTION: [] as BuildOrderView[], YARD: [dart('a', -5, 12), dart('b', 12, 30)] };
+    render(<QueueSheet queues={lanes} now={NOW} onCancel={vi.fn()} onClose={vi.fn()} />);
+    const rows = screen.getAllByRole('listitem');
+    expect(within(rows[0]!).getByText('12m 00s')).toBeInTheDocument();
+    expect(within(rows[1]!).getByText('Queued')).toBeInTheDocument();
+    expect(within(rows[1]!).queryByText('30m 00s')).toBeNull();
+  });
+
   it('offers no cancel on an order the server has not timed yet', () => {
     render(
       <QueueSheet queues={{ CONSTRUCTION: [], YARD: [staged] }} now={NOW} onCancel={vi.fn()} onClose={vi.fn()} />,

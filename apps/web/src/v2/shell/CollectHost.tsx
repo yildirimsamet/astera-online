@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { useCollect, usePlanet } from '../../api/queries.js';
-import { collectState } from '../../lib/collect.js';
+import { collectState, worksOutlook } from '../../lib/collect.js';
 import { compact } from '../../lib/format.js';
 import { haptic } from '../../lib/haptics.js';
 import { useProjected } from '../../lib/projection.js';
 import { describe, useToast } from '../../ui/Toast.js';
 import { CollectBubble } from '../hud/CollectBubble.js';
+import { WorksPool } from '../hud/WorksPool.js';
 
 /**
  * THE COLLECT BUBBLE, WIRED. Spec B13 (docs/ui-v2/gozlemevi.md).
@@ -33,28 +34,41 @@ export function CollectHost({ onOpenBase, place = 'world' }: { onOpenBase: () =>
     storeCaps: { alloy: world.alloyCap, crystal: world.crystalCap, deuterium: world.deuteriumCap },
   });
 
-  return (
-    <CollectBubble
-      state={state}
-      pending={collect.isPending}
-      onOpenBase={onOpenBase}
-      place={place}
-      onCollect={() => {
-        haptic('commit');
-        collect.mutate(undefined, {
-          onSuccess: (result) => {
-            const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
-            const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
-            say(
-              kept > 0
-                ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
-                : t('statusBar.works.collected', { amount: compact(moved) }),
-              kept > 0 ? 'error' : undefined,
-            );
-          },
-          onError: (error) => { say(describe(error), 'error'); },
-        });
-      }}
-    />
-  );
+  const onCollect = (): void => {
+    haptic('commit');
+    collect.mutate(undefined, {
+      onSuccess: (result) => {
+        const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
+        const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
+        say(
+          kept > 0
+            ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
+            : t('statusBar.works.collected', { amount: compact(moved) }),
+          kept > 0 ? 'error' : undefined,
+        );
+      },
+      onError: (error) => { say(describe(error), 'error'); },
+    });
+  };
+
+  // On the base the works are their own row, a pool that fills (owner, 2026-09-24).
+  if (place === 'base') {
+    const outlook = worksOutlook({
+      caps: { alloy: world.bufferAlloyCap, crystal: world.bufferCrystalCap, deuterium: world.bufferDeuteriumCap },
+      works: { alloy: held.bufferAlloy, crystal: held.bufferCrystal, deuterium: held.bufferDeuterium },
+      rates: { alloy: world.alloyPerHour, crystal: world.crystalPerHour, deuterium: world.deuteriumPerHour ?? 0 },
+    });
+    return (
+      <WorksPool
+        state={state}
+        fill={outlook.fill}
+        fullInMinutes={outlook.fullInMinutes}
+        pending={collect.isPending}
+        onCollect={onCollect}
+        onOpenBase={onOpenBase}
+      />
+    );
+  }
+
+  return <CollectBubble state={state} pending={collect.isPending} onOpenBase={onOpenBase} onCollect={onCollect} />;
 }

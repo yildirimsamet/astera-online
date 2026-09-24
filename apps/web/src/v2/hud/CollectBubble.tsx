@@ -12,12 +12,6 @@ export interface CollectBubbleProps {
   onCollect: () => void;
   /** Where a player goes when the store cannot take it: the base, to raise a store. */
   onOpenBase: () => void;
-  /**
-   * `world` (the default) rises at the threshold, over the planet. `base` is there
-   * from the first unit and names the works beside it: the base is where a player
-   * goes looking for them, and below the threshold it was the only place to look.
-   */
-  place?: 'world' | 'base';
 }
 
 /**
@@ -37,10 +31,9 @@ export interface CollectBubbleProps {
  * each waiting resource stands with its icon and its amount, the empty ones left out,
  * and one the store has no room for is a gap to close — yellow (K2), never red.
  */
-export function CollectBubble({ state, pending, onCollect, onOpenBase, place = 'world' }: CollectBubbleProps) {
+export function CollectBubble({ state, pending, onCollect, onOpenBase }: CollectBubbleProps) {
   const { t } = useTranslation();
-  const onBase = place === 'base';
-  if (onBase ? state.waiting < 1 : !state.ripe) return null;
+  if (!state.ripe) return null;
 
   const waiting = WORKS_RESOURCES.filter((resource) => state.each[resource] >= 1);
   const said = waiting
@@ -61,13 +54,8 @@ export function CollectBubble({ state, pending, onCollect, onOpenBase, place = '
     );
   });
 
-  /*
-    THE BASE NAMES WHAT IT IS COLLECTING (owner, 2026-09-24: "Havuz nerede?"). Over
-    the planet the bubble explains itself by where it sits; on the base it sits by
-    the store, and a bare "+1.2k" beside three store figures says nothing about where
-    that 1.2k is. "Works full" is the reason to tap now: production has stopped.
-  */
-  const bubble = state.blocked ? (
+  // On the base the works are their own row (`WorksPool`); this is the one over the world.
+  return state.blocked ? (
     <button
         type="button"
         onClick={onOpenBase}
@@ -91,14 +79,5 @@ export function CollectBubble({ state, pending, onCollect, onOpenBase, place = '
       <Icon id="i-collect" className="size-3.5 text-v2-self" />
       <span className="flex items-center gap-1.5">{parts}</span>
     </button>
-  );
-  if (!onBase) return bubble;
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`max-w-[5.5rem] text-right font-v2-ui text-micro leading-tight ${state.full ? 'text-v2-warn' : 'text-v2-ink-3'}`}>
-        {t(state.full ? 'statusBar.works.labelFull' : 'statusBar.works.label')}
-      </span>
-      {bubble}
-    </span>
   );
 }

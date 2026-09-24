@@ -475,8 +475,10 @@ export function PlanetScreen({
           </div>
         )}
 
-        {!lesson && <div className="px-2 pt-2">
+        {!lesson && <div className="flex flex-col gap-2 px-2 pt-2">
           <PlanetHero planet={data} />
+          {/* The works under the store they empty into (owner, 2026-09-24): a pool that fills. */}
+          <CollectHost place="base" onOpenBase={() => { setTab('grow'); }} />
         </div>}
 
         <div className="flex flex-col gap-2 px-2">
@@ -644,13 +646,12 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
  * then "what am I looking at" — and two separately-pinned bars would eat a third
  * of a phone screen between them.
  *
- * STORAGE ONLY, and the works named separately. What you can spend and what you
+ * STORAGE ONLY; the works are their own row under the store (`WorksPool`). What you can spend and what you
  * are holding are different numbers under D16, and running them together would
  * quietly restore the belief that the collector exists to break.
  */
-function Wallet({ held, onStore }: { held: Projected; onStore: () => void }) {
+function Wallet({ held }: { held: Projected }) {
   const { t } = useTranslation();
-  const lesson = useAcademyLesson();
 
   /*
     `full()` AND NEVER `compact()`. The header's own store already carried that
@@ -675,14 +676,6 @@ function Wallet({ held, onStore }: { held: Projected; onStore: () => void }) {
       >
         <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-4 object-contain" />
         <span className="num text-deuterium">{full(held.deuterium)}</span>
-      </span>
-      {/*
-        THE WORKS, COLLECTED WHERE THEY ARE NAMED (owner, 2026-09-24). This was a
-        caption — "1.2k in the works" — with no way to act on it, and the bubble over
-        the world only rises at a tenth. Not in the Academy: its fetch refuses writes.
-      */}
-      <span className="ml-auto">
-        {lesson ? null : <CollectHost place="base" onOpenBase={onStore} />}
       </span>
     </div>
   );
@@ -1025,7 +1018,7 @@ function Tabs({
   // against a price.
   return (
     <div className="sticky top-0 z-20 border-y border-line-soft bg-deep">
-      <Wallet held={held} onStore={() => { onSelect('grow'); }} />
+      <Wallet held={held} />
       {/*
         `data-tab` is how a surface outside this screen points at a category: the
         onboarding lights the one a beat is working in, because a dimmed screen

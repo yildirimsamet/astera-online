@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { OutlineLaneId, OutlineQueue, OutlineWorld } from '../../lib/outline.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import { Icon } from '../icons.js';
-import { OrderName, OrderRing, orderLeft } from '../kit/QueueLane.js';
+import { OrderLeft, OrderName, OrderRing } from '../kit/QueueLane.js';
 import { FlightRow } from './FleetPage.js';
 
 export type { OutlineQueue, OutlineWorld } from '../../lib/outline.js';
@@ -109,7 +109,7 @@ function LaneRow({ queue, now, onQueue }: { queue: OutlineQueue; now: number; on
           <span className="grid min-w-0 flex-1">
             <OrderName order={order} />
           </span>
-          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{orderLeft(order, now)}</span>
+          <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2"><OrderLeft order={order} now={now} /></span>
         </span>
       ))}
     </button>

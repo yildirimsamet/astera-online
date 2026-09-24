@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { BuildOrderView } from '../../src/api/schemas.js';
-import { orderProgress } from '../../src/lib/orders.js';
+import { orderProgress, orderWaiting } from '../../src/lib/orders.js';
 import { QueueLane } from '../../src/v2/kit/QueueLane.js';
 
 /**
@@ -55,6 +55,27 @@ describe('how far an order has built', () => {
 
   it('draws an order the server has not timed yet as not started', () => {
     expect(orderProgress(optimistic, NOW)).toBe(0);
+  });
+});
+
+/** Owner, 2026-09-24: only the head builds; what is behind it waits, and says so — no countdown. */
+describe('an order waiting its turn', () => {
+  it('is one the server has timed to start later', () => {
+    expect(orderWaiting(hull('head', -15, 45), NOW)).toBe(false);
+    expect(orderWaiting(hull('next', 45, 60), NOW)).toBe(true);
+    expect(orderWaiting(hull('done', -90, -30), NOW)).toBe(false);
+    expect(orderWaiting(optimistic, NOW)).toBe(false);
+  });
+
+  it('shows the running order’s time and an hourglass on the one behind it', () => {
+    render(<QueueLane label="Yard" orders={[hull('a', -15, 45), hull('b', 45, 60)]} now={NOW} onOpen={vi.fn()} />);
+    const [running, waiting] = screen.getAllByRole('button');
+    expect(within(running!).getByText('45m 00s')).toBeInTheDocument();
+    expect(within(waiting!).queryByText(/\d+m \d+s/)).toBeNull();
+    expect(within(waiting!).getByText('Queued')).toBeInTheDocument();
+    expect(waiting!.querySelector('[data-waiting]')).toHaveClass('text-v2-warn');
+    expect(waiting!.querySelector('[data-waiting] svg')).not.toBeNull();
+    expect(waiting).toHaveAccessibleName('Dart · Queued');
   });
 });
 

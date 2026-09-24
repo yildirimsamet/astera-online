@@ -102,6 +102,15 @@ export function researchQueueOrders(queue: readonly ResearchQueueOrderView[]): B
 }
 
 /**
+ * AN ORDER WAITING ITS TURN: paid for and timed by the server, but not started — only
+ * the head of a lane builds (D4). Owner, 2026-09-24: such an order shows no countdown;
+ * a clock that is not running yet read as work already under way.
+ */
+export function orderWaiting(order: BuildOrderView, now: number): boolean {
+  return order.startedAt !== undefined && order.startedAt.getTime() > now;
+}
+
+/**
  * How much of an order is built, 0 to 1, by its own server-timed clock.
  *
  * Only the head of a lane is ever running (D4): an order that has not reached its

@@ -57,42 +57,6 @@ describe('the collect bubble', () => {
 });
 
 /**
- * THE SAME BUBBLE ON THE BASE (owner, 2026-09-24: "Havuz nerede, biriken maddeleri
- * nasıl toplayacağım?"). The world only raises it at a tenth, so below that the
- * works had no door at all — the base said "1.2k in the works" and offered nothing.
- * On the base it is there from the first unit, and it names the works.
- */
-describe('the collect bubble on the base', () => {
-  it('offers the works below the threshold, named as the works', async () => {
-    const onCollect = vi.fn();
-    const { container } = render(<CollectBubble place="base" state={state({ ripe: false, waiting: 1_200, movable: 1_200, each: { alloy: 1_200, crystal: 0, deuterium: 0 } })} pending={false} onCollect={onCollect} onOpenBase={vi.fn()} />);
-    const bubble = screen.getByRole('button', { name: 'Collect 1,200 alloy' });
-    expect(bubble).toHaveTextContent('1.2k');
-    expect(container).toHaveTextContent(/^Works1\.2k$/);
-    await userEvent.click(bubble);
-    expect(onCollect).toHaveBeenCalledTimes(1);
-  });
-
-  /** "Works full" is the reason to collect now: production has stopped. */
-  it('says the works are full, not only pulses', () => {
-    const { container } = render(<CollectBubble place="base" state={state({ full: true })} pending={false} onCollect={vi.fn()} onOpenBase={vi.fn()} />);
-    expect(container).toHaveTextContent(/^Works full2\.0k1\.2k$/);
-  });
-
-  it('stays down while the works are empty', () => {
-    const { container } = render(<CollectBubble place="base" state={state({ ripe: false, waiting: 0.4, movable: 0.4 })} pending={false} onCollect={vi.fn()} onOpenBase={vi.fn()} />);
-    expect(container.innerHTML).toBe('');
-  });
-
-  it('still says a full store before the tap', async () => {
-    const onOpenBase = vi.fn();
-    render(<CollectBubble place="base" state={state({ ripe: false, waiting: 900, blocked: true, movable: 0 })} pending={false} onCollect={vi.fn()} onOpenBase={onOpenBase} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Store full' }));
-    expect(onOpenBase).toHaveBeenCalledTimes(1);
-  });
-});
-
-/**
  * RESOURCE BY RESOURCE (owner, 2026-09-24): a bare "+1.5k" hid which resource was waiting —
  * a faulty refinery stops one, a nearly full store leaves one behind after a collect. The
  * bubble names each with its icon, and the one the store has no room for is a gap to

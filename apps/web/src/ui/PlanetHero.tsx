@@ -18,9 +18,10 @@ import { countdown, duration, useNow } from '../lib/time.js';
 import { SATELLITE_ART, RESOURCE_ART } from './assets.js';
 import { FleetCards } from './FleetCards.js';
 import { Meter } from './kit/index.js';
-import { LockIcon, ShieldIcon } from './icons/index.js';
+import { LockIcon } from './icons/index.js';
 import { PlanetSigil } from './PlanetSigil.js';
 import { StarField } from '../v2/kit/StarField.js';
+import { StoreBar } from '../v2/kit/StoreBar.js';
 
 /**
  * "This is MY planet."
@@ -255,41 +256,36 @@ function OrbitLine({ planet }: { planet: PlanetView }) {
 }
 
 /**
- * ONE COLUMN PER RESOURCE: WHAT COMES IN, HOW FULL THE STORE IS, AND WHAT IS SAFE.
- * E5, the mock's "+1,24b /sa · depo %62 · güvenli %35".
+ * ONE ROW PER RESOURCE: HOW FULL THE STORE IS, WHAT IS SAFE, AND WHAT COMES IN.
+ *
+ * ROWS, AS THE STORE WAS DRAWN BEFORE (owner, 2026-09-24, with the old STORE panel as the
+ * picture). In three narrow columns the bar was a hundred pixels and the Vault's bracket
+ * on it read as a square; a full-width row gives the cells room, so the bracket hugs the
+ * cells it protects. Each row reads left to right: the resource, what the store holds of
+ * what it can, the cells with the safe part bracketed under the shield (`StoreBar`), and
+ * the rate at the end. The rule of the bracket is said once, under the rows.
  *
  * DEUTERIUM IS ALWAYS HERE. Owner instruction, 2026-09-15: *"bu sectionda döteryum
  * üretimi gözükmüyor"* — it is the resource that decides whether a fleet can leave,
  * and ZERO IS A READING, NOT AN ABSENCE: a world with no plant makes none YET, which
- * is the reason to build one. No "per hour" heading either; every rate ends in `/h`.
+ * is the reason to build one.
  *
- * THE SAFE PART IS A BRACKET WITH THE VAULT'S SHIELD ON IT. D190, three rounds of
- * owner reports: players did not believe the Vault raised what the store keeps from
- * a raid, a word could not fix a picture, and a ring on a segmented cell could not be
- * seen at all. So the bar is one continuous fill, the protected part is a line drawn
- * AROUND its share of the bar — a marking, not a second quantity — with the shield
- * above it, and the share is also written beneath: "safe 35%". A third of the width
- * still leaves the Vault's floor (15% of the store) a bracket wide enough to carry it.
- *
- * A FULL STORE IS A GAP YOU CAN CLOSE (H2, K2): the fill pins at the end and the
- * caption says so in yellow — never the red of something happening to you.
+ * A FULL STORE IS A GAP YOU CAN CLOSE (H2, K2): its figures turn yellow and the cells
+ * close with a yellow cap — never the red of something happening to you.
  */
 function ProductionRow({ planet }: { planet: PlanetView }) {
   const { t } = useTranslation();
   const p = planet.planet;
-  const columns = [
-    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy, tone: 'text-alloy', fill: 'bg-alloy' },
-    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal, tone: 'text-crystal', fill: 'bg-crystal' },
-    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium, tone: 'text-deuterium', fill: 'bg-deuterium' },
+  const rows = [
+    { id: 'alloy', rate: p.alloyPerHour, held: p.alloy, cap: p.alloyCap, safe: p.vaultProtected.alloy, tone: 'text-v2-alloy' },
+    { id: 'crystal', rate: p.crystalPerHour, held: p.crystal, cap: p.crystalCap, safe: p.vaultProtected.crystal, tone: 'text-v2-crystal' },
+    { id: 'deuterium', rate: p.deuteriumPerHour ?? 0, held: p.deuterium, cap: p.deuteriumCap, safe: p.vaultProtected.deuterium, tone: 'text-v2-deut' },
   ] as const;
 
   return (
-    <div data-testid="planet-rates" className="grid grid-cols-3 gap-3 px-1 font-v2-ui">
-      {columns.map(({ id, rate, held, cap, safe, tone, fill }) => {
-        const room = Math.max(1, cap);
+    <div data-testid="planet-rates" className="flex flex-col gap-1.5 px-1 font-v2-ui">
+      {rows.map(({ id, rate, held, cap, safe, tone }) => {
         const filled = held >= cap;
-        const share = Math.round(Math.min(1, held / room) * 100);
-        const safeShare = Math.round(Math.min(1, Math.max(0, safe) / room) * 100);
         return (
           <div
             key={id}
@@ -300,45 +296,28 @@ function ProductionRow({ planet }: { planet: PlanetView }) {
               cap: full(cap),
               safe: full(safe),
             })}
-            className="flex min-w-0 flex-col gap-1"
+            className="grid grid-cols-[0.875rem_4.75rem_minmax(0,1fr)_3.5rem] items-end gap-x-2"
           >
+            <img src={RESOURCE_ART[id]} alt="" aria-hidden className="mb-[-1px] size-3.5 object-contain" />
+            <span
+              data-testid={`store-${id}`}
+              className={`truncate font-v2-mono text-caption leading-none tabular-nums ${filled ? 'text-v2-warn' : 'text-v2-ink'}`}
+            >
+              {compact(held)}
+              <span className={filled ? '' : 'text-v2-ink-3'}>/{compact(cap)}</span>
+            </span>
+            <StoreBar value={held} cap={cap} safe={safe} tone={id} />
             <p
               data-testid={`rate-${id}`}
-              className={`flex items-center gap-1 font-v2-mono text-caption font-semibold ${tone}`}
+              className={`truncate text-right font-v2-mono text-caption font-semibold leading-none ${tone}`}
             >
-              <img src={RESOURCE_ART[id]} alt="" aria-hidden className="size-3.5 shrink-0 object-contain" />
               {rate > 0 ? `+${compact(rate)}` : compact(rate)}
               <span className="font-normal text-micro text-v2-ink-3">{t('planetHero.perHourSuffix')}</span>
-            </p>
-            <span className="relative block pt-2.5" aria-hidden>
-              <span className="relative block h-1.5 overflow-hidden rounded-full bg-v2-line">
-                <span data-fill className={`absolute inset-y-0 left-0 rounded-full ${fill}`} style={{ width: `${String(share)}%` }} />
-              </span>
-              {safeShare > 0 && (
-                <>
-                  <span
-                    data-safe
-                    className="pointer-events-none absolute -bottom-[2px] left-[-2px] top-[8px] rounded-cell border border-v2-ink/80"
-                    style={{ width: `${String(safeShare)}%` }}
-                  />
-                  <span
-                    className="pointer-events-none absolute top-0 -translate-x-1/2 text-v2-ink"
-                    style={{ left: `${String(safeShare / 2)}%` }}
-                  >
-                    <ShieldIcon className="size-2.5" />
-                  </span>
-                </>
-              )}
-            </span>
-            <p className="text-micro leading-snug text-v2-ink-3">
-              {filled
-                ? <span className="text-v2-warn">{t('planetHero.storeFull')}</span>
-                : t('planetHero.storeShare', { pct: share })}
-              {safeShare > 0 && <> · {t('planetHero.safeShare', { pct: safeShare })}</>}
             </p>
           </div>
         );
       })}
+      <p className="text-micro leading-snug text-v2-ink-3">{t('planetHero.storeRule')}</p>
     </div>
   );
 }

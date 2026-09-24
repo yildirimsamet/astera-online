@@ -3,13 +3,29 @@ import { useTranslation } from 'react-i18next';
 import { BUILD } from '@astera/rules';
 import type { BuildOrderView } from '../../api/schemas.js';
 import i18n from '../../i18n/index.js';
-import { buildOrderArt, buildOrderLabel, orderProgress } from '../../lib/orders.js';
+import { buildOrderArt, buildOrderLabel, orderProgress, orderWaiting } from '../../lib/orders.js';
 import { countdown } from '../../lib/time.js';
+import { Icon } from '../icons.js';
 
-/** Time until an order is done, or why it has no clock yet. */
+/** Time until an order is done — or, behind the head, that it waits; or why it has no clock yet. */
 export function orderLeft(order: BuildOrderView, now: number): string {
+  if (orderWaiting(order, now)) return i18n.t('planet.queue.waiting');
   if (order.finishesAt) return countdown(order.finishesAt.getTime() - now);
   return i18n.t('optimistic' in order ? 'planet.queue.committing' : 'planet.queue.staged');
+}
+
+/**
+ * `orderLeft` drawn: an order behind the head wears a yellow hourglass and "Queued"
+ * instead of a countdown that is not running (owner, 2026-09-24).
+ */
+export function OrderLeft({ order, now }: { order: BuildOrderView; now: number }) {
+  if (!orderWaiting(order, now)) return <>{orderLeft(order, now)}</>;
+  return (
+    <span data-waiting="" className="inline-flex min-w-0 items-center gap-0.5 text-v2-warn">
+      <Icon id="i-hourglass" className="size-3 shrink-0" />
+      <span className="truncate">{orderLeft(order, now)}</span>
+    </span>
+  );
 }
 
 /** The ring: a conic fill of how far the order has built, its render inside. */
@@ -91,7 +107,7 @@ export function QueueLane({ label, orders, now, onOpen }: QueueLaneProps) {
               <OrderRing order={order} now={now} />
               <span className="grid min-w-0">
                 <OrderName order={order} />
-                <span className="truncate font-v2-mono text-micro text-v2-ink-2">{left}</span>
+                <span className="truncate font-v2-mono text-micro text-v2-ink-2"><OrderLeft order={order} now={now} /></span>
               </span>
             </button>
           );

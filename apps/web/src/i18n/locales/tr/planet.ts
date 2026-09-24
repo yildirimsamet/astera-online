@@ -76,6 +76,7 @@ export const planet = {
 
 
   queue: {
+    waiting: "Sırada",
     ends: "{{time}}’de biter",
     segment: "{{name}} · {{duration}}",
     cancelOne: "{{name}} siparişini iptal et",

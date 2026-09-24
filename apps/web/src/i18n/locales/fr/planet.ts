@@ -75,6 +75,7 @@ export const planet = {
     tacticalQuestion: "Construis et gère ici les outils tactiques.",
   },
   queue: {
+    waiting: "En attente",
     ends: "se termine à {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Annuler la commande {{name}}",

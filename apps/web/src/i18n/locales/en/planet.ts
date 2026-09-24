@@ -75,6 +75,7 @@ export const planet = {
 
   queue: {
     /** The end of all the work in one lane, which no screen used to carry. */
+    waiting: "Queued",
     ends: "ends {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancel {{name}}",
