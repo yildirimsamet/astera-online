@@ -21,6 +21,8 @@ export const meter = {
   reading: '{{resource}}: {{value}} von {{cap}}',
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} von {{cap}}, Lager voll',
+  need: '{{resource}}: {{have}} von {{need}}, {{short}} fehlen',
+  short: '{{amount}} fehlen',
 };
 
 /** B5: das Kräftelineal. */

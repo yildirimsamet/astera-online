@@ -21,6 +21,8 @@ export const meter = {
   reading: '{{resource}} : {{value}} sur {{cap}}',
   /** The same, when the store is full. */
   full: '{{resource}} : {{value}} sur {{cap}}, entrepôt plein',
+  need: '{{resource}} : {{have}} sur {{need}}, il manque {{short}}',
+  short: '{{amount}} manquants',
 };
 
 /** B5 : la règle des forces. */

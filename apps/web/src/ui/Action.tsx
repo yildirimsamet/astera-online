@@ -518,8 +518,7 @@ export function Price({
  * says nothing about which question it answers.
  */
 export function TimeCost({ minutes }: { minutes: number }) {
-  const lesson = useAcademyLesson();
-  const spoken = duration(lesson ? academyOrderSeconds(minutes) / 60 : minutes);
+  const spoken = useOrderDuration(minutes);
   return (
     <span
       data-testid="order-time"
@@ -530,6 +529,12 @@ export function TimeCost({ minutes }: { minutes: number }) {
       {i18n.t('upgradeRow.takes', { duration: spoken })}
     </span>
   );
+}
+
+/** An order's duration as the player will live it: the Academy runs its orders fast. */
+export function useOrderDuration(minutes: number): string {
+  const lesson = useAcademyLesson();
+  return duration(lesson ? academyOrderSeconds(minutes) / 60 : minutes);
 }
 
 /** A resource value, using the same learnt shapes as prices without implying a cost. */

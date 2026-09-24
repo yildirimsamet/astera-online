@@ -1,10 +1,12 @@
-import type {
-  BuildingId,
-  GroundHullId,
-  HullId,
-  InstrumentId,
-  ResearchProjectId,
-  SatelliteId,
+import {
+  HANGAR,
+  INSTRUMENT_MAX_LEVEL,
+  type BuildingId,
+  type GroundHullId,
+  type HullId,
+  type InstrumentId,
+  type ResearchProjectId,
+  type SatelliteId,
 } from '@astera/rules';
 import { noseVector, type CraftPose, type Facing } from '../galaxy/model.js';
 import { FLEET_V2_ASSET_MANIFEST } from './fleet-v2-assets.js';
@@ -29,6 +31,22 @@ const BASE = '/assets/images';
 
 /** L1–2 → tier 1, L3–4 → tier 2, L5+ → tier 3. */
 export const tierOf = (level: number): 1 | 2 | 3 => (level >= 5 ? 3 : level >= 3 ? 2 : 1);
+
+/**
+ * WHERE A LADDER'S THREE RENDERS CHANGE. Owner, 2026-09-24: "ortalama bir şekilde
+ * dağıtmalıyız".
+ *
+ * They changed at L3 and L5 (`tierOf`) and never again, on ladders that climb past
+ * twenty — a Refinery at 18 wore the picture it had at 5. A ladder with a top splits
+ * it in thirds, so its last picture is where its last rungs are (a Hangar of 10:
+ * 1–3, 4–6, 7–10); one without uses the owner's breakpoints, 1–8, 9–14, 15 and up.
+ * `tierOf` stays for the ground guns, whose tier is a COUNT of guns standing.
+ */
+export const artTier = (level: number, max: number | null): 1 | 2 | 3 => {
+  if (max === null) return level >= 15 ? 3 : level >= 9 ? 2 : 1;
+  const tier = Math.ceil((Math.max(1, level) * 3) / max);
+  return tier >= 3 ? 3 : tier === 2 ? 2 : 1;
+};
 
 export const RESOURCE_ART = {
   alloy: `${BASE}/resources/alloy.png`,
@@ -493,7 +511,7 @@ export type DysonModel = (typeof DYSON_MODEL)[number];
  * and with `HULL_ART`, both of which still have honest nulls in them.
  */
 export function instrumentArt(type: InstrumentId, level: number): string | null {
-  const tier = tierOf(level);
+  const tier = artTier(level, INSTRUMENT_MAX_LEVEL[type]);
   switch (type) {
     case 'TELESCOPE':
       return `${BASE}/general/telescope_${String(tier)}.png`;
@@ -513,8 +531,8 @@ export function instrumentArt(type: InstrumentId, level: number): string | null 
  * that only ever shows what you already own is a list of receipts.
  */
 export function nextInstrumentArt(type: InstrumentId, level: number): string | null {
-  if (tierOf(level) === tierOf(level + 1)) return null;
-  return instrumentArt(type, level + 1);
+  const next = instrumentArt(type, level + 1);
+  return next === instrumentArt(type, level) ? null : next;
 }
 
 /**
@@ -532,6 +550,17 @@ export const SATELLITE_ART: Record<SatelliteId, string> = {
   UPLINK: `${BASE}/sattelites/sattelite_type_4.png`,
 };
 
+/** The top of each building's ladder, where it has one: only the Hangar does. */
+export const BUILDING_TOP: Readonly<Record<BuildingId, number | null>> = {
+  CORE: null,
+  REFINERY: null,
+  EXTRACTOR: null,
+  VAULT: null,
+  SHIPYARD: null,
+  DEUTERIUM_PLANT: null,
+  HANGAR: HANGAR.maxLevel,
+};
+
 /**
  * Buildings, at the tier their level puts them in.
  *
@@ -544,7 +573,7 @@ export const SATELLITE_ART: Record<SatelliteId, string> = {
  * The Deuterium Plant has no render yet, so it wears the deuterium it makes.
  */
 export function buildingArt(id: BuildingId, level: number): string | null {
-  const tier = tierOf(level);
+  const tier = artTier(level, BUILDING_TOP[id]);
   switch (id) {
     case 'CORE':
       return `${BASE}/general/command_core_${String(tier)}.png`;

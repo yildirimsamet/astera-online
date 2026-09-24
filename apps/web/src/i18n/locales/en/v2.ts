@@ -24,6 +24,9 @@ export const meter = {
   reading: '{{resource}}: {{value}} of {{cap}}',
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} of {{cap}}, store full',
+  /** A price against what you hold (the need bar). */
+  need: '{{resource}}: {{have}} of {{need}}, {{short}} short',
+  short: '{{amount}} short',
 };
 
 /** B5: the force ruler. */

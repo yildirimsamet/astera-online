@@ -21,6 +21,8 @@ export const meter = {
   reading: '{{resource}}: {{value}} / {{cap}}',
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} / {{cap}}, depo dolu',
+  need: '{{resource}}: {{have}} / {{need}}, {{short}} eksik',
+  short: '{{amount}} eksik',
 };
 
 /** B5: güç cetveli. */

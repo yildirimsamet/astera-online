@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
+import { claimEscape, dragStep, nextDetent, type Detent } from '../../lib/sheet.js';
 import { useOwnPress } from '../../ui/kit/useOwnPress.js';
 import { Icon } from '../icons.js';
 
@@ -12,6 +12,8 @@ import { Icon } from '../icons.js';
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
   half: 'max-h-[55dvh]',
+  /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
+  fit: 'max-h-[92dvh]',
   full: 'h-[92dvh] max-h-full',
 };
 
@@ -71,6 +73,7 @@ export function Sheet({
   const [detent, setDetent] = useState<Detent>(detents[0] ?? 'half');
   const dragged = useRef(false);
   const release = useRef<((event: PointerEvent) => void) | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   const settle = (direction: 'up' | 'down'): void => {
     const next = nextDetent(detents, detent, direction);
@@ -85,7 +88,7 @@ export function Sheet({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (claimEscape(event, panel.current)) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -134,6 +137,7 @@ export function Sheet({
         />
       )}
       <div
+        ref={panel}
         role="dialog"
         aria-modal={modal}
         aria-label={title}

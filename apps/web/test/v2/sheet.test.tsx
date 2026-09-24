@@ -1,8 +1,11 @@
+import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { dragStep, nextDetent } from '../../src/lib/sheet.js';
 import { Sheet } from '../../src/v2/kit/Sheet.js';
+import { Sheet as OldSheet } from '../../src/ui/kit/Sheet.js';
 
 /**
  * THE SHEET THAT OPENS OVER THE GALAXY. Spec B3/gestures (docs/ui-v2/gozlemevi.md).
@@ -123,6 +126,58 @@ describe('the sheet', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  /**
+   * ONE ESCAPE, ONE SHEET. An item sheet opened over the Base page closed the page
+   * with it: every open sheet heard the same key. Only the one on top answers —
+   * whichever kit drew it (the fault sheet is still the old one).
+   */
+  it('closes only the sheet on top on Escape', () => {
+    const page = vi.fn();
+    const item = vi.fn();
+    const fault = vi.fn();
+    const { rerender } = render(
+      <Sheet title="Base" onClose={page}>
+        <Sheet title="Refinery" detents={['fit']} onClose={item}>body</Sheet>
+      </Sheet>,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(item).toHaveBeenCalledOnce();
+    expect(page).not.toHaveBeenCalled();
+
+    rerender(
+      <Sheet title="Base" onClose={page}>
+        <OldSheet title="Refinery outage" onClose={fault}>body</OldSheet>
+      </Sheet>,
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(fault).toHaveBeenCalledOnce();
+    expect(page).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The race seen on the phone: the top sheet's listener ran first, React removed it
+   * before the next listener ran, and the page below then found itself on top.
+   */
+  it('does not let the sheet below take the same Escape once the top one is gone', () => {
+    const page = vi.fn();
+    function Nested() {
+      const [open, setOpen] = useState(true);
+      return (
+        <Sheet title="Base" onClose={page}>
+          {open && (
+            <Sheet title="Refinery" detents={['fit']} onClose={() => { flushSync(() => { setOpen(false); }); }}>
+              body
+            </Sheet>
+          )}
+        </Sheet>
+      );
+    }
+    render(<Nested />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Refinery' })).toBeNull();
+    expect(page).not.toHaveBeenCalled();
+  });
+
   it('leaves the galaxy undimmed and live at peek, and dims it above', async () => {
     const { container } = render(
       <Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half']}>body</Sheet>,
@@ -156,6 +211,21 @@ describe('the sheet', () => {
     expect(screen.getByText('card')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Expand' }));
     expect(screen.getByText('dossier')).toBeInTheDocument();
+  });
+
+  /**
+   * AS TALL AS WHAT IT HOLDS (owner, 2026-09-24): "Content kadar açılabilir, eğer content
+   * sığmazsa sonuna kadar açılır ve scrollable olur." A fit sheet never stands taller than
+   * its content, never taller than a page, and scrolls what does not fit; it is modal.
+   */
+  it('stands as tall as its content at fit, up to a page, and scrolls the rest', () => {
+    render(<Sheet title="Refinery" onClose={vi.fn()} detents={['fit']}>body</Sheet>);
+    const panel = screen.getByRole('dialog', { name: 'Refinery' });
+    expect(panel).toHaveAttribute('data-detent', 'fit');
+    expect(panel).toHaveClass('max-h-[92dvh]');
+    expect(panel.className).not.toMatch(/(^|\s)h-\[92dvh\]/);
+    expect(panel).toHaveAttribute('aria-modal', 'true');
+    expect(document.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');
   });
 
   it('lets a contained body own its own scrolling', () => {

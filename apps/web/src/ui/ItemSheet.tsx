@@ -1,7 +1,11 @@
+import { useState, type CSSProperties } from 'react';
 import {
+  BUILD,
+  INSTRUMENT_MAX_LEVEL,
   buildingCost,
   instrumentCost,
   productionMult,
+  satelliteSlots,
   type BuildingId,
   type InstrumentId,
   type SatelliteId,
@@ -18,42 +22,47 @@ import {
   satelliteDetail,
   satelliteTag,
 } from '../i18n/names.js';
+import { affordWait } from '../lib/afford.js';
 import { compact } from '../lib/format.js';
+import { buildingGain, instrumentGain, satelliteGain, type Gain } from '../lib/gains.js';
+import { orderMinutes } from '../lib/orderTime.js';
 import { projectedQueueState } from '../lib/predict.js';
-import { ActionButton, ResourceAmounts } from './Action.js';
-import {
-  buildingGain, instrumentGain, satelliteGain, type Gain,
-} from '../lib/gains.js';
-import { RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt, nextBuildingArt, tierOf } from './assets.js';
-import { CoreMark, VaultMark } from './marks.js';
-import { SpendBar } from './SpendBar.js';
-import { Tally } from './Tally.js';
-import { Sheet } from './kit/index.js';
+import { duration } from '../lib/time.js';
+import { Icon } from '../v2/icons.js';
+import { NeedBar } from '../v2/kit/NeedBar.js';
+import { Sheet } from '../v2/kit/Sheet.js';
+import { useOrderDuration } from './Action.js';
+import { BUILDING_TOP, RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
 import type { Blocked } from './UpgradeRow.js';
 
 /**
- * WHAT THIS THING BECOMES.
+ * WHAT ONE MORE LEVEL BUYS, AND WHAT THIS THING BECOMES. D1 (docs/ui-v2/design-mocks).
  *
- * The row on the planet screen answers "what does one more level cost and give".
- * This answers the question that actually pulls a player up a tech tree: *where
- * does this end up*. Three levels ahead, each with its number, its price and the
- * art it will be wearing — so a Telescope at L1 is visibly a small dish that
- * becomes an array, and the player can see the array before paying for it.
+ * The card on the planet screen answers "what does one more level cost". This is
+ * the commit surface, and it answers the four questions in the order a player asks
+ * them:
  *
- * It is also the commit surface. Construction is QUEUED (D4) — cost committed at
- * order, three deep, half back on cancel — so a purchase gets its weight from being
- * considered rather than from being waited out: you open the thing, you see the
- * before and the after, you press once, and the order joins the rack on the planet
- * screen. This docblock said "instant" for two decisions after the queue shipped.
+ *   · WHAT IT GIVES — one render of what stands and the gain the next level buys,
+ *     now against next, in the hero. The rule behind it is one tap deeper ("How it
+ *     works"), not a paragraph under every sheet.
+ *   · WHERE IT GOES — the next three levels, each with its gain, its price and its
+ *     time, and the level where the look next changes. That line carries the
+ *     anticipation hook the per-rung pictures used to: "at L9 your refinery becomes
+ *     THAT".
+ *   · HOW FAR OFF — per resource, the price against what you hold, and on the button
+ *     the one figure a short player wants: when it will be enough.
+ *   · WHAT IT JOINS — construction is QUEUED (D4), so the footer says how full the
+ *     queue is before the press, not after.
+ *
+ * Owner, round 2: a sheet opens to its content's height and becomes a page only when
+ * the content does not fit (`fit`).
  */
 
 /**
  * THREE KINDS, AND ONLY TWO OF THEM HAVE A LADDER. D25.
  *
- * Buildings and instruments are levelled, so their sheet is a ladder: this level,
- * the next three, and the art each one wears. A satellite has no levels at all —
- * it is up or it is not — so it gets a different sheet entirely rather than a
- * one-rung ladder pretending to be one.
+ * Buildings and instruments are levelled. A satellite is up or it is not, so it
+ * gets its orbit and its slot instead of a one-rung ladder pretending to be one.
  */
 export type ItemRef =
   | { kind: 'building'; id: BuildingId }
@@ -62,6 +71,14 @@ export type ItemRef =
 
 /** How many levels ahead the ladder shows. Past three, nobody is planning. */
 const HORIZON = 3;
+
+const HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
+
+/** The still sky behind a render: decoration, never a meaning. */
+const SKY: CSSProperties = {
+  backgroundImage:
+    'radial-gradient(70% 90% at 22% 45%, color-mix(in srgb, var(--color-v2-sky-blue) 30%, transparent), transparent 75%)',
+};
 
 export function ItemSheet({
   item,
@@ -89,6 +106,7 @@ export function ItemSheet({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [explained, setExplained] = useState(false);
   const durableLevel = levelOf(planet, item);
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
   const level = item.kind === 'building'
@@ -107,6 +125,11 @@ export function ItemSheet({
     crystal: Math.max(0, cost.crystal - held.crystal),
   };
   const affordable = short.alloy === 0 && short.crystal === 0;
+  const top = topOf(item);
+  const rungs = item.kind === 'satellite' || terminal
+    ? []
+    : Array.from({ length: HORIZON }, (_, i) => level + 1 + i).filter((rung) => top === null || rung <= top);
+  const look = item.kind === 'satellite' || terminal ? null : nextLook(item, level, top);
   const tag = item.kind === 'building'
     ? buildingTag(item.id)
     : item.kind === 'instrument'
@@ -118,210 +141,201 @@ export function ItemSheet({
       ? instrumentDetail(item.id)
       : satelliteDetail(item.id);
 
-  const rungs = Array.from({ length: HORIZON }, (_, i) => level + 1 + i);
-
   return (
     <div data-item-sheet>
-    <Sheet
-      eyebrow={
-        item.kind === 'satellite'
-          ? durableLevel === 0
-            ? t('itemSheet.eyebrowNotInOrbit')
-            : t('itemSheet.eyebrowInOrbit')
-          : durableLevel === 0
-            ? t('itemSheet.eyebrowNotInstalled')
-            : t('itemSheet.eyebrowLevel', { level: durableLevel })
-      }
-      title={name}
-      onClose={onClose}
-      footer={
-        <span data-act className="block">
-        <ActionButton
-          verb={level === 0 ? 'install' : 'raise'}
-          cost={cost}
-          held={held}
-          full
-          pending={pending}
-          {...(terminal ? { completed: terminal } : {})}
-          {...(blocked
-            ? {
-                blocked: {
-                  reason: blocked.reason,
-                  ...(blocked.onFix
-                    ? {
-                        onFix: () => {
-                          blocked.onFix?.();
-                          onClose();
-                        },
-                      }
-                    : {}),
-                },
-              }
-            : {})}
-          label={
-            item.kind === 'satellite'
-              ? level === 0
-                ? t('itemSheet.actPutInOrbit')
-                : t('itemSheet.actAlreadyInOrbit')
-              : level === 0
-                ? t('itemSheet.actInstall')
-                : t('itemSheet.actRaise', { level: level + 1 })
-          }
-          onAct={() => {
-            onAct();
-            onClose();
-          }}
-        />
-        </span>
-      }
-    >
-      <Portrait item={item} level={durableLevel} name={name} />
+      <Sheet
+        detents={['fit']}
+        eyebrow={
+          item.kind === 'satellite'
+            ? durableLevel === 0
+              ? t('itemSheet.eyebrowNotInOrbit')
+              : t('itemSheet.eyebrowInOrbit')
+            : durableLevel === 0
+              ? t('itemSheet.eyebrowNotInstalled')
+              : t('itemSheet.eyebrowLevel', { level: durableLevel })
+        }
+        title={name}
+        onClose={onClose}
+        footer={
+          terminal ? (
+            <span data-act className="block">
+              <p
+                role="status"
+                className="flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-v2-line px-3 text-caption font-semibold text-v2-ink-2"
+              >
+                {!completed && <Icon id="i-clock" className="size-3.5 shrink-0" />}
+                {terminal}
+              </p>
+            </span>
+          ) : (
+            <Commit
+              item={item}
+              planet={planet}
+              level={level}
+              cost={cost}
+              short={short}
+              pending={pending}
+              {...(blocked ? { blocked } : {})}
+              onAct={() => {
+                onAct();
+                onClose();
+              }}
+              onClose={onClose}
+            />
+          )
+        }
+      >
+        <div className="flex flex-col gap-3 pt-1">
+          {item.kind === 'satellite' ? (
+            <OrbitHero id={item.id} orbit={projected.orbit} slots={planet.orbitSlots} tag={tag} />
+          ) : (
+            <Hero item={item} level={durableLevel} name={name} gain={gainFor(item, level, levels, production)} />
+          )}
 
-      {/* Three paragraphs, each one step quieter than the last, with the leading
-         they need to be read rather than the leading of a printed page. */}
-      <div className="mt-3">
-        <p className="legend text-crystal/85">{tag}</p>
-        <p className="mt-1 text-body leading-snug text-dim">{role}</p>
-        <p data-item-detail className="mt-1.5 text-caption leading-snug text-faint">{detail}</p>
-      </div>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-caption leading-snug text-v2-ink-2">
+              {item.kind !== 'satellite' && <span className="font-semibold text-v2-ink">{tag} · </span>}
+              <span>{role}</span>{' '}
+              <button
+                type="button"
+                aria-expanded={explained}
+                onClick={() => {
+                  setExplained((open) => !open);
+                }}
+                className="font-semibold text-v2-self"
+              >
+                {t('itemSheet.howItWorks')} ›
+              </button>
+            </p>
+            {explained && (
+              <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{detail}</p>
+            )}
+          </div>
 
-      {queued && (
-        <p className="mt-3 border border-crystal/30 bg-crystal/10 px-3 py-2 text-caption text-crystal">
-          {queued}
-        </p>
-      )}
+          {queued && !terminal && (
+            <p className="flex items-center gap-1.5 rounded-chip border border-v2-self/30 bg-v2-self/10 px-2.5 py-1.5 text-caption text-v2-self">
+              <Icon id="i-clock" className="size-3.5 shrink-0" />
+              {queued}
+            </p>
+          )}
 
-      {/*
-        A REQUIREMENT IS A DOOR, NOT AN ALARM (interface.md I1). This was the one
-        locked state in the game still painted in threat red, while the row that
-        opened this sheet drew the same fact in amber — one screen giving two
-        answers to "is a prerequisite an attack". Red is reserved for something
-        that can harm the commander; a Shipyard they have not built cannot.
-      */}
-      {blocked && !terminal && (
-        <p className="mt-3 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption text-alloy">
-          {t('itemSheet.lockedNote', { reason: blocked.reason })}
-        </p>
-      )}
-
-      {/*
-        HOW FAR OFF, AS A DISTANCE RATHER THAN AS A DEFICIT. Owner instruction.
-
-        "Short 1.2k alloy and 300 crystal" states the gap and hides the thing a
-        player actually wants, which is how CLOSE they are: eight hundred of a
-        thousand and forty of a thousand are the same sentence and completely
-        different situations — one is worth waiting for and the other is not.
-
-        Two spend bars answer that by drawing the price against the store it has
-        to come out of, so a nearly-full bar with a short red tail reads as "come
-        back after dinner" and a mostly-red one reads as "not this session". The
-        row that opened this sheet already says WHEN in words; this says how far,
-        and the two agree because they are the same two numbers.
-      */}
-      {!blocked && !terminal && !affordable && (
-        <div className="mt-3 flex flex-col gap-2">
-          <SpendBar
-            stock={held.alloy}
-            spend={cost.alloy}
-            tone="alloy"
-            label={t('vocabulary.resource.alloy')}
-          />
-          {cost.crystal > 0 && (
-            <SpendBar
-              stock={held.crystal}
-              spend={cost.crystal}
-              tone="crystal"
-              label={t('vocabulary.resource.crystal')}
+          {item.kind === 'satellite' && (
+            <SlotCard
+              orbit={projected.orbit}
+              slots={planet.orbitSlots}
+              core={projected.buildings.CORE}
+              placing={!terminal && level === 0}
             />
           )}
-        </div>
-      )}
 
-      {item.kind === 'satellite' ? (
-        <Orbital
-          id={item.id}
-          cost={cost}
-          slots={planet.orbitSlots}
-          used={planet.orbit.length}
-        />
-      ) : terminal ? null : (
-        <div className="mt-2">
-          <p className="legend mb-2">{t('itemSheet.ladderHeading')}</p>
-          <div className="plate plate-inset">
-            {rungs.map((rung) => (
-              <Rung
-                key={rung}
-                item={item}
-                level={rung}
-                cost={costFor(planet, item, rung - 1)}
-                next={rung === level + 1}
-                // Several levels of the same instrument sell the same capability,
-                // and printing that sentence three times turns the ladder into
-                // wallpaper. A rung states its unlock only when it is a new one.
-                repeats={rung > level + 1 && gainFor(item, rung - 1, levels, production).unlocks
-                  === gainFor(item, rung - 2, levels, production).unlocks}
-                levels={levels}
-                production={production}
-              />
-            ))}
-          </div>
+          {rungs.length > 0 && (
+            <section className="flex flex-col gap-1.5">
+              <p className={`flex items-center gap-2 ${HEADING}`}>
+                {t('itemSheet.ladderHeading')}
+                <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
+              </p>
+              <ol className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-deep/60">
+                {rungs.map((rung) => (
+                  <Rung
+                    key={rung}
+                    item={item}
+                    level={rung}
+                    first={rung === level + 1}
+                    planet={planet}
+                    // Several levels of the same instrument sell the same capability,
+                    // and printing that sentence three times turns the ladder into
+                    // wallpaper. A rung states its unlock only when it is a new one;
+                    // the first rung's is the hero's, already on screen.
+                    repeats={rung === level + 1 || gainFor(item, rung - 1, levels, production).unlocks
+                      === gainFor(item, rung - 2, levels, production).unlocks}
+                    heroLabel={gainFor(item, level, levels, production).label}
+                    levels={levels}
+                    production={production}
+                  />
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {look && (
+            <p data-next-look className="flex items-center gap-2.5 text-caption text-v2-ink-2">
+              <img src={look.art} alt="" aria-hidden className="size-9 shrink-0 object-contain opacity-80" />
+              {t('itemSheet.nextLook', { level: look.level })}
+            </p>
+          )}
+
+          {/*
+            HOW FAR OFF, AS A DISTANCE RATHER THAN AS A DEFICIT. Owner instruction. It
+            sits last, against the footer's price and its "enough in" — the two read
+            as one answer because they are the same numbers.
+          */}
+          {!blocked && !terminal && !affordable && (
+            <div className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+              {short.alloy > 0 && <NeedBar resource="alloy" have={held.alloy} need={cost.alloy} />}
+              {short.crystal > 0 && <NeedBar resource="crystal" have={held.crystal} need={cost.crystal} />}
+            </div>
+          )}
         </div>
-      )}
-    </Sheet>
+      </Sheet>
     </div>
   );
 }
 
-/** The current tier, at the size the art was drawn for. */
-function Portrait({ item, level, name }: { item: ItemRef; level: number; name: string }) {
+/** What stands, and what the next level buys. */
+function Hero({ item, level, name, gain }: { item: ItemRef; level: number; name: string; gain: Gain }) {
   const art = artFor(item, Math.max(1, level));
-  const mark = markFor(item);
-
   return (
-    /*
-      160px, NOT 192. `visual-design.md` puts a sheet portrait at 96–150px and the
-      art inside this is 144 — the extra 48px was empty frame above and below it,
-      which on a 350-wide phone is a sixth of the screen spent on nothing.
-    */
-    <div className="item-portrait flex h-40 items-center justify-center overflow-hidden">
-      <span aria-hidden className="item-portrait-orbit" />
-      <span aria-hidden className="item-portrait-index num">{String(Math.max(0, level)).padStart(2, '0')}</span>
-      {art ? (
+    <section data-item-hero className="flex items-center gap-3 rounded-control border border-v2-line bg-v2-deep p-3" style={SKY}>
+      {art && (
+        // Grey means "you do not have this", the rule every buyable in the game uses.
         <img
           src={art}
           alt={name}
-          className={`relative z-[1] h-36 object-contain ${level === 0 ? 'opacity-45 grayscale' : ''}`}
+          className={`size-24 shrink-0 object-contain ${level === 0 ? 'opacity-45 grayscale' : ''}`}
         />
-      ) : (
-        <div className={`relative z-[1] ${level === 0 ? 'opacity-45 grayscale' : ''}`}>{mark}</div>
       )}
-    </div>
+      <div className="min-w-0 flex-1">
+        <p className={HEADING}>{gain.label}</p>
+        <p className="mt-0.5 font-v2-mono text-body font-semibold tabular-nums text-v2-ink">
+          {gain.maxed ? gain.now : (
+            <>
+              {gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{gain.next}</span>
+            </>
+          )}
+        </p>
+        {/* A sentence of its own ("Up to 7.3k at the top rung"): the Hangar is the one ladder here with one. */}
+        {gain.ceiling !== undefined && gain.maxed !== true && (
+          <p className="mt-0.5 text-micro text-v2-ink-3">{gain.ceiling}</p>
+        )}
+        {gain.unlocks && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</p>}
+      </div>
+    </section>
   );
 }
 
-/**
- * One level of the ladder.
- *
- * The next one is lit and priced; the two beyond it are dimmer but still fully
- * legible — they are the reason to keep going, not decoration. Art appears only on
- * the rungs where it actually changes, which is what makes those rungs feel like
- * arriving somewhere.
- */
+/** One level of the ladder: what it buys, what it costs, how long it takes. */
 function Rung({
   item,
   level,
-  cost,
-  next,
+  first,
+  planet,
   repeats,
+  heroLabel,
   levels,
   production,
 }: {
   item: ItemRef;
   level: number;
-  cost: { alloy: number; crystal: number };
-  next: boolean;
-  /** True when this rung's unlock line is the same one the rung above already made. */
+  /** The level the button sells; the two beyond it are the reason to keep going. */
+  first: boolean;
+  planet: PlanetView;
+  /** True when this rung's unlock line is already on screen, above it or in the hero. */
   repeats: boolean;
+  /**
+   * What the hero says the next level buys. A rung that buys something else names it:
+   * a Telescope's rungs alternate a slot and range, and bare figures read as nonsense.
+   */
+  heroLabel: string;
   /**
    * The whole building record, because two rows cannot be priced without their
    * siblings: the store's ceiling scales with the Vault, and the Vault's floor is
@@ -331,182 +345,268 @@ function Rung({
   production: number;
 }) {
   const { t } = useTranslation();
+  const cost = costFor(planet, item, level - 1);
   const gain = gainFor(item, level - 1, levels, production);
-  /**
-   * EVERY RUNG WEARS ITS OWN PICTURE.
-   *
-   * Art used to appear only on the rungs where the TIER changed, which for a
-   * ladder starting from nothing meant L1 and L2 were blank and L3 was the first
-   * thing a player ever saw a picture of — so the sheet looked broken and, worse,
-   * implied the first two levels had no hardware. The renders for tier 1 exist and
-   * were simply never asked for.
-   *
-   * The tier change is still marked, as a lit ring rather than as the presence or
-   * absence of the image. That keeps the "at L3 your telescope becomes THAT"
-   * anticipation hook while every level still shows what you are buying.
-   */
-  const art = artFor(item, level);
-  const upgrades = tierChangesAt(item, level);
+  const takes = useOrderDuration(takesFor(planet, item, cost, level));
+  // The Core's gain IS its level, which the rung already names: "L3 · L3" read as a fault.
+  const value = item.kind === 'building' && item.id === 'CORE' ? null : gain.next;
 
   return (
-    <div
-      className={`flex items-start gap-2 border-b border-line-soft p-3 last:border-b-0 ${
-        next ? '' : 'opacity-65'
-      }`}
-    >
-      <div className="w-9 shrink-0 pt-1">
-        <span className={`num text-body ${next ? 'text-crystal' : 'text-faint'}`}>
-          {t('itemSheet.rungLevel', { level })}
-        </span>
-      </div>
-
-      {art && (
-        <div
-          className={`socket size-11 shrink-0 rounded-control ${
-            upgrades ? 'ring-1 ring-crystal/40' : ''
-          }`}
-          title={upgrades ? t('itemSheet.rungNewHardware', { level }) : undefined}
-        >
-          <img
-            src={art}
-            alt=""
-            aria-hidden
-            className={`size-10 object-contain ${
-              upgrades ? 'drop-shadow-[0_0_8px_rgba(111,211,224,0.35)]' : ''
-            }`}
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      <div className="min-w-0 flex-1">
-        <p className="num text-body">
-          <span className="text-faint">{gain.label} </span>
-          {gain.resourcePair
-            ? <ResourceAmounts resources={gain.resourcePair.next} label={gain.next} />
-            : <span className={next ? 'text-bone' : 'text-dim'}>{gain.next}</span>}
-        </p>
-        {gain.unlocks && !repeats && (
-          <p className="mt-1 text-label leading-snug text-crystal/80">{gain.unlocks}</p>
-        )}
-        {/*
-          WHEN CLIMBING STOPS PAYING, one rung at a time. Faz 4.1: the column of these is the curve,
-          so a commander sees the sunset coming rather than working it out on paper.
-        */}
-      </div>
-
-      <span className="num shrink-0 pt-1 text-right text-label text-faint">
-        <span className="flex items-center gap-1">
-          <img
-            src={RESOURCE_ART.alloy}
-            alt={i18n.t('vocabulary.resource.alloy')}
-            className="size-3.5 object-contain"
-          />
-          {compact(cost.alloy)}
-        </span>
-        {cost.crystal > 0 && (
-          <span className="mt-1 flex items-center gap-1 text-crystal/70">
-            <img
-              src={RESOURCE_ART.crystal}
-              alt={i18n.t('vocabulary.resource.crystal')}
-              className="size-3.5 object-contain"
-            />
-            {compact(cost.crystal)}
+    <li data-rung={level} className={`flex items-start gap-2 px-2.5 py-2 ${first ? '' : 'opacity-70'}`}>
+      <span className={`w-10 shrink-0 font-v2-mono text-caption ${first ? 'text-v2-self' : 'text-v2-ink-3'}`}>
+        {t('itemSheet.rungLevel', { level })}
+      </span>
+      <span className="min-w-0 flex-1">
+        {value !== null && (
+          <span className="block font-v2-mono text-caption text-v2-ink">
+            {gain.label !== heroLabel && <span className="font-v2-ui text-v2-ink-3">{gain.label} </span>}
+            {value}
           </span>
+        )}
+        {gain.unlocks && !repeats && (
+          <span className="mt-0.5 block text-micro leading-snug text-v2-ink-2">{gain.unlocks}</span>
+        )}
+      </span>
+      <Cost cost={cost} />
+      <span className="w-12 shrink-0 whitespace-nowrap text-right font-v2-mono text-micro text-v2-ink-3">{takes}</span>
+    </li>
+  );
+}
+
+/** A price in resource marks, quiet: the ladder's column and the footer's line. */
+function Cost({ cost, held }: { cost: { alloy: number; crystal: number }; held?: { alloy: number; crystal: number } }) {
+  const part = (resource: 'alloy' | 'crystal', amount: number, have?: number) => (
+    <span
+      className={`flex items-center gap-1 ${have !== undefined && amount > have ? 'text-v2-warn' : 'text-v2-ink'}`}
+    >
+      <img src={RESOURCE_ART[resource]} alt={i18n.t(`vocabulary.resource.${resource}`)} className="size-3.5 shrink-0 object-contain" />
+      {compact(amount)}
+    </span>
+  );
+  return (
+    <span className="flex shrink-0 items-center gap-2 font-v2-mono text-caption tabular-nums">
+      {part('alloy', cost.alloy, held?.alloy)}
+      {cost.crystal > 0 && part('crystal', cost.crystal, held?.crystal)}
+    </span>
+  );
+}
+
+/**
+ * THE FOOTER: the price and the time of the level being sold, the queue it joins,
+ * and the one press. Short, it says WHEN; blocked, it is the door to the fix.
+ */
+function Commit({
+  item,
+  planet,
+  level,
+  cost,
+  short,
+  blocked,
+  pending,
+  onAct,
+  onClose,
+}: {
+  item: ItemRef;
+  planet: PlanetView;
+  level: number;
+  cost: { alloy: number; crystal: number };
+  short: { alloy: number; crystal: number };
+  blocked?: Blocked;
+  pending: boolean;
+  onAct: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const takes = useOrderDuration(takesFor(planet, item, cost, level + 1));
+  const affordable = short.alloy === 0 && short.crystal === 0;
+  const wait = affordable
+    ? 0
+    : affordWait(short, { alloyPerHour: planet.planet.alloyPerHour, crystalPerHour: planet.planet.crystalPerHour });
+  const used = planet.queues?.CONSTRUCTION.length ?? 0;
+  const label = item.kind === 'satellite'
+    ? t('itemSheet.actPutInOrbit')
+    : level === 0
+      ? t('itemSheet.actInstall')
+      : t('itemSheet.actRaise', { level: level + 1 });
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Cost cost={cost} held={{ alloy: cost.alloy - short.alloy, crystal: cost.crystal - short.crystal }} />
+          <span className="flex items-center gap-1 whitespace-nowrap font-v2-mono text-micro text-v2-ink-2">
+            <Icon id="i-clock" className="size-3 shrink-0" />
+            {takes}
+          </span>
+        </span>
+        <span data-queue-fill className="shrink-0 text-micro text-v2-ink-3">
+          {t('itemSheet.queueFill', { used, total: BUILD.queueDepth })}
+        </span>
+      </div>
+      <span data-act className="block">
+        {blocked ? (
+          // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): warn, and it goes where the fix is.
+          blocked.onFix ? (
+            <button
+              type="button"
+              onClick={() => {
+                blocked.onFix?.();
+                onClose();
+              }}
+              className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-warn/50 px-3 text-caption font-semibold text-v2-warn"
+            >
+              <Icon id="i-lock" className="size-3.5 shrink-0" />
+              {sentence(blocked.reason)} →
+            </button>
+          ) : (
+            <p className="flex min-h-10 items-center justify-center gap-1.5 rounded-control border border-v2-line px-3 text-caption text-v2-ink-2">
+              <Icon id="i-lock" className="size-3.5 shrink-0" />
+              {sentence(blocked.reason)}
+            </p>
+          )
+        ) : (
+          <button
+            type="button"
+            disabled={!affordable || pending}
+            onClick={onAct}
+            className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
+          >
+            {affordable
+              ? label
+              : wait === null
+                ? t('itemSheet.short')
+                : t('itemSheet.affordIn', { duration: duration(wait) })}
+          </button>
         )}
       </span>
     </div>
   );
 }
 
+/** A requirement is written to follow "needs"; on a door of its own it starts a sentence. */
+const sentence = (text: string): string =>
+  text.charAt(0).toLocaleUpperCase(i18n.language) + text.slice(1);
+
+/* ── the satellite ───────────────────────────────────────────── */
+
+/** Every slot the Command Core can ever open. */
+const MOST_SLOTS = satelliteSlots(Number.MAX_SAFE_INTEGER);
+
+type Socket = 'self' | 'taken' | 'target' | 'free' | 'shut';
+
 /**
- * A SATELLITE'S BODY, WHICH IS NOT A LADDER. D25.
- *
- * There is exactly one thing to say — what it does — and exactly one number that
- * costs the player something they cannot get back cheaply: the SLOT. The Command
- * Core opens slots at 1, 3, 5 and 9, so on a young planet putting this up is
- * choosing it over the other three, and the sheet says so in as many words rather
- * than letting the player discover it from a refusal.
+ * THE ORBIT AS SOCKETS. What is up there, the slot this one would take (dashed), the
+ * open ones, and the ones the Core has not opened yet (shut).
  */
-function Orbital({
-  id,
-  cost,
-  slots,
-  used,
-}: {
-  id: SatelliteId;
-  cost: { alloy: number; crystal: number };
-  slots: number;
-  used: number;
-}) {
+function orbitSockets(id: SatelliteId, orbit: readonly SatelliteId[], slots: number): Socket[] {
+  const up = orbit.map((satellite): Socket => (satellite === id ? 'self' : 'taken'));
+  const open = Math.max(0, slots - orbit.length);
+  const placing = !orbit.includes(id);
+  const free = Array.from({ length: open }, (_, i): Socket => (placing && i === 0 ? 'target' : 'free'));
+  const shut = Array.from({ length: Math.max(0, Math.max(MOST_SLOTS, slots) - up.length - free.length) }, (): Socket => 'shut');
+  return [...up, ...free, ...shut];
+}
+
+const SOCKET: Record<Socket, string> = {
+  self: 'border-v2-self bg-v2-self/15',
+  taken: 'border-v2-self/50 bg-v2-panel',
+  target: 'border-dashed border-v2-self bg-v2-self/10',
+  free: 'border-v2-line-hi bg-v2-deep',
+  shut: 'border-v2-line bg-v2-void text-v2-ink-3',
+};
+
+function OrbitHero({ id, orbit, slots, tag }: { id: SatelliteId; orbit: readonly SatelliteId[]; slots: number; tag: string }) {
   const { t } = useTranslation();
-  const free = Math.max(0, slots - used);
   const gain = satelliteGain(id);
+  const sockets = orbitSockets(id, orbit, slots);
 
   return (
-    <div className="mt-2">
-      <p className="legend mb-2">{t('itemSheet.orbitalDoesHeading')}</p>
-      <div className="plate plate-inset p-3">
-        <p className="num text-body">
-          <span className="text-faint">{gain.label} </span>
-          <span className="text-bone">{gain.next}</span>
-        </p>
-        {gain.unlocks && (
-          <p className="mt-1 text-label leading-snug text-crystal/80">{gain.unlocks}</p>
-        )}
-      </div>
-
-      <p className="legend mb-2 mt-2">{t('itemSheet.orbitalCostHeading')}</p>
-      <div className="plate plate-inset p-3">
-        {/*
-          THE ORE PRICE LIVES HERE BECAUSE THERE IS NO RUNG TO PUT IT ON.
-          An instrument's ladder prints a price beside every level. A satellite has
-          no levels, so the sheet showed the slot meter and no figure at all — a
-          commit surface that never says what it charges.
-        */}
-        <div className="flex items-center gap-4 border-b border-line-soft pb-3">
-          <span className="num flex items-center gap-2 text-body text-bone">
-            <img
-              src={RESOURCE_ART.alloy}
-              alt={i18n.t('vocabulary.resource.alloy')}
-              className="size-4 object-contain"
-            />
-            {compact(cost.alloy)}
-          </span>
-          {cost.crystal > 0 && (
-            <span className="num flex items-center gap-2 text-body text-crystal">
-              <img
-                src={RESOURCE_ART.crystal}
-                alt={i18n.t('vocabulary.resource.crystal')}
-                className="size-4 object-contain"
-              />
-              {compact(cost.crystal)}
+    <section data-item-hero className="flex items-center gap-3 rounded-control border border-v2-line bg-v2-deep p-3" style={SKY}>
+      <div aria-hidden="true" className="relative size-28 shrink-0">
+        <span className="absolute inset-3 rounded-full border border-v2-line-hi" />
+        <img src={SATELLITE_ART[id]} alt="" className="absolute inset-0 m-auto size-14 object-contain" />
+        {sockets.map((socket, index) => {
+          const angle = ((-135 + (index * 360) / sockets.length) * Math.PI) / 180;
+          // The sockets start with the orbit, in its order.
+          const other = socket === 'taken' ? orbit[index] : undefined;
+          return (
+            <span
+              key={index}
+              data-socket={socket}
+              className={`absolute grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border ${SOCKET[socket]}`}
+              style={{ left: `${String(50 + 44 * Math.cos(angle))}%`, top: `${String(50 + 44 * Math.sin(angle))}%` }}
+            >
+              {socket === 'shut' && <Icon id="i-lock" className="size-3" />}
+              {other && <img src={SATELLITE_ART[other]} alt="" className="size-4 object-contain" />}
+              {socket === 'self' && <img src={SATELLITE_ART[id]} alt="" className="size-4 object-contain" />}
             </span>
-          )}
-          <span className="text-caption text-faint">{t('itemSheet.orbitalOnce')}</span>
-        </div>
-
-        {/*
-          THE SLOTS ARE A RACK, and the same rack the flight bays and the
-          telescope draw. This was a fourth hand-rolled row of pips that happened
-          to look like the others and could drift from them.
-        */}
-        <div className="flex items-center justify-between gap-2 pt-3">
-          <Tally
-            used={used}
-            total={Math.max(slots, 1)}
-            label={t('itemSheet.orbitalFree', { free, total: slots })}
-          />
-          <span className={`num text-caption ${free > 0 ? 'text-dim' : 'text-alloy'}`}>
-            {free > 0
-              ? t('itemSheet.orbitalFree', { free, total: slots })
-              : t('itemSheet.orbitalNoSlot')}
-          </span>
-        </div>
+          );
+        })}
       </div>
-    </div>
+      <div className="min-w-0 flex-1">
+        <p className={HEADING}>{t('itemSheet.orbitalDoesHeading')}</p>
+        <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">{tag}</p>
+        <p className="mt-1 font-v2-mono text-micro text-v2-ink-2">
+          <span className="font-v2-ui text-v2-ink-3">{gain.label}: </span>
+          {gain.now} <span className="text-v2-ink-3">→</span> <span className="text-v2-self">{gain.next}</span>
+        </p>
+        {gain.unlocks && <p className="mt-1 text-micro leading-snug text-v2-ink-2">{gain.unlocks}</p>}
+        <p className="mt-1 text-micro text-v2-ink-3">{t('itemSheet.orbitalOnce')}</p>
+      </div>
+    </section>
   );
 }
+
+/**
+ * THE SLOT IS THE REAL COST, so the sheet states it before the refusal does: what
+ * placing this leaves, and which Core opens the next one. D25.
+ */
+function SlotCard({
+  orbit,
+  slots,
+  core,
+  placing,
+}: {
+  orbit: readonly SatelliteId[];
+  slots: number;
+  core: number;
+  /** Not up and not ordered: the consequence line is about THIS press. */
+  placing: boolean;
+}) {
+  const { t } = useTranslation();
+  const free = Math.max(0, slots - orbit.length);
+  const opener = nextSlotCore(core);
+
+  return (
+    <section className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+      <p className={`flex items-center justify-between gap-2 ${HEADING}`}>
+        {t('itemSheet.slotHeading')}
+        <span className="font-v2-mono normal-case tracking-normal text-v2-ink-2">
+          {t('itemSheet.orbitalFree', { free, total: slots })}
+        </span>
+      </p>
+      {free === 0 ? (
+        <p className="text-caption leading-snug text-v2-warn">
+          {opener === null ? t('itemSheet.orbitalNoSlotMax') : t('itemSheet.orbitalNoSlot', { level: opener })}
+        </p>
+      ) : placing ? (
+        <p data-slot-after className="text-caption leading-snug text-v2-ink-2">
+          {t('itemSheet.slotAfter', { count: free - 1 })}
+          {free - 1 === 0 && opener !== null && <> {t('itemSheet.nextSlotCore', { level: opener })}</>}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** The Command Core level that opens one more orbit slot, or null past the last. */
+const nextSlotCore = (core: number): number | null => {
+  const now = satelliteSlots(core);
+  for (let level = core + 1; level <= core + 40; level += 1) {
+    if (satelliteSlots(level) > now) return level;
+  }
+  return null;
+};
 
 /* ── the three kinds, in one place ──────────────────────────── */
 
@@ -517,6 +617,14 @@ const levelOf = (planet: PlanetView, item: ItemRef): number => {
   // this sheet reads as "installed".
   return planet.orbit.includes(item.id) ? 1 : 0;
 };
+
+/** The top of a ladder, where it has one: the range tables and the Hangar. Null: none. */
+const topOf = (item: ItemRef): number | null =>
+  item.kind === 'instrument'
+    ? INSTRUMENT_MAX_LEVEL[item.id]
+    : item.kind === 'building'
+      ? BUILDING_TOP[item.id]
+      : 1;
 
 /**
  * The server's own price for the next step, and the rules' price beyond it.
@@ -544,6 +652,19 @@ function costFor(
   return item.kind === 'instrument' ? instrumentCost(item.id, from) : buildingCost(item.id, from);
 }
 
+/** Minutes the order for `level` takes once it starts, as the server will time it. */
+const takesFor = (
+  planet: PlanetView,
+  item: ItemRef,
+  cost: { alloy: number; crystal: number },
+  level: number,
+): number => {
+  const priced = { alloy: cost.alloy, crystal: cost.crystal, deuterium: 0 };
+  if (item.kind === 'building') return orderMinutes('BUILDING', priced, planet, 1, { building: item.id, level });
+  if (item.kind === 'instrument') return orderMinutes('INSTRUMENT', priced, planet);
+  return orderMinutes('SATELLITE', priced, planet, 1, { satellite: item.id });
+};
+
 const gainFor = (
   item: ItemRef,
   level: number,
@@ -562,33 +683,16 @@ function artFor(item: ItemRef, level: number): string | null {
 }
 
 /**
- * Which rungs of the ladder bring NEW hardware rather than another of the same.
- *
- * No longer decides whether art is drawn — every rung shows its own picture now —
- * only whether that picture is marked as an arrival. Instruments re-tier at L3 and
- * L5; a building lights up exactly where its render changes, read off the art
- * itself — a hand-kept list of tiered buildings had already missed the Hangar.
+ * WHERE THE LOOK NEXT CHANGES, read off the renders themselves: a hand-kept list of
+ * tiered buildings had already missed the Hangar once. Null on the last picture, and
+ * for the Deuterium Plant, which wears the same render at every level.
  */
-const tierChangesAt = (item: ItemRef, level: number): boolean =>
-  item.kind === 'instrument'
-    ? tierOf(level) !== tierOf(level - 1)
-    : item.kind === 'building' && nextBuildingArt(item.id, level - 1) !== null;
-
-/**
- * The stand-in for an item with no render.
- *
- * Every instrument and every building has one now, so nothing here is reached in
- * practice — it stays as the well's floor, because an empty art well reads as a
- * broken image rather than as a thing without a picture.
- */
-function markFor(item: ItemRef) {
-  if (item.kind !== 'building') return null;
-  switch (item.id) {
-    case 'CORE':
-      return <CoreMark />;
-    case 'VAULT':
-      return <VaultMark />;
-    default:
-      return null;
+function nextLook(item: ItemRef, level: number, top: number | null): { level: number; art: string } | null {
+  const now = artFor(item, Math.max(1, level));
+  const last = top ?? level + 20;
+  for (let rung = level + 1; rung <= last; rung += 1) {
+    const art = artFor(item, rung);
+    if (art && art !== now) return { level: rung, art };
   }
+  return null;
 }

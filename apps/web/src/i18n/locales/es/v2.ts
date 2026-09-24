@@ -21,6 +21,8 @@ export const meter = {
   reading: '{{resource}}: {{value}} de {{cap}}',
   /** The same, when the store is full. */
   full: '{{resource}}: {{value}} de {{cap}}, almacén lleno',
+  need: '{{resource}}: {{have}} de {{need}}, faltan {{short}}',
+  short: 'faltan {{amount}}',
 };
 
 /** B5: la regla de fuerzas. */

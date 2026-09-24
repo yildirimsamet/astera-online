@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAcademyLesson } from '../../onboarding/lessonScope.js';
 import { IconButton } from './Button.js';
 import { useOwnPress } from './useOwnPress.js';
+import { claimEscape } from '../../lib/sheet.js';
 import { ArrowIcon, CloseIcon } from '../icons/index.js';
 
 /**
@@ -86,9 +87,10 @@ export function Sheet({
 }) {
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
+      if (claimEscape(event, panel.current)) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -117,6 +119,7 @@ export function Sheet({
         className={`absolute inset-0 animate-[fade-in_200ms_var(--ease-hardware)] ${lesson ? 'bg-transparent' : 'bg-void/80'}`}
       />
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}

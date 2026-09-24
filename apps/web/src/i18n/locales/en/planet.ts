@@ -365,14 +365,26 @@ export const itemSheet = {
   actInstall: "Install",
   actRaise: "Raise to L{{level}}",
   lockedNote: "Locked — needs {{reason}}.",
+  /** The explanation, one tap deeper than the role. */
+  howItWorks: "How it works",
   ladderHeading: "What each level buys",
   rungLevel: "L{{level}}",
-  rungNewHardware: "New hardware at L{{level}}",
+  /** Where the render next changes: the anticipation hook. */
+  nextLook: "New look at L{{level}}",
+  /** The construction queue the order joins, as it stands. */
+  queueFill: "Build queue {{used}}/{{total}}",
+  /** The primary, when the price is not met yet. */
+  affordIn: "Enough in ~{{duration}}",
+  short: "Not enough resources",
   orbitalDoesHeading: "What it does",
-  orbitalCostHeading: "What it costs",
-  orbitalOnce: "once — it is never raised",
+  orbitalOnce: "Bought once — never raised",
   orbitalFree: "{{free}} of {{total}} free",
-  orbitalNoSlot: "No free slot — raise the Command Core",
+  slotHeading: "Orbit slot",
+  slotAfter_one: "It takes the dashed slot; {{count}} slot stays free.",
+  slotAfter_other: "It takes the dashed slot; {{count}} slots stay free.",
+  nextSlotCore: "Command Core {{level}} opens another.",
+  orbitalNoSlot: "No free slot — Command Core {{level}} opens the next",
+  orbitalNoSlotMax: "No free slot — every slot the Command Core opens is taken",
 } as const;
 
 /** The row. One decision, presented as a decision. */

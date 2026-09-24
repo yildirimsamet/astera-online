@@ -21,7 +21,7 @@ import {
   nextBuildingArt,
   nextGroundArt,
   nextInstrumentArt,
-  tierOf,
+  artTier,
 } from '../src/ui/assets.js';
 
 /**
@@ -39,20 +39,36 @@ import {
 
 const served = (url: string): string => resolve(process.cwd(), 'public', url.replace(/^\//, ''));
 
-/** Every tier a levelled item can be in, and a level that lands in each of them. */
+/**
+ * Every tier an uncapped ladder can be in, and levels that land in each. The three
+ * renders used to change at L3 and L5 and never again on ladders that climb past
+ * twenty; the owner spread them (2026-09-24): 1–8, 9–14, 15 and up.
+ */
 const LEVELS_PER_TIER: readonly [1 | 2 | 3, number[]][] = [
-  [1, [0, 1, 2]],
-  [2, [3, 4]],
-  [3, [5, 9, 40]],
+  [1, [0, 1, 8]],
+  [2, [9, 14]],
+  [3, [15, 40]],
 ];
 
+/**
+ * WHERE A LADDER'S THREE RENDERS CHANGE. Owner, 2026-09-24: "ortalama bir şekilde
+ * dağıtmalıyız". A ladder with a top splits it in thirds, so the last picture is
+ * reached; one without uses the owner's breakpoints.
+ */
 describe('the tier ladder', () => {
-  it('puts a level in the tier its table says', () => {
+  it('puts an uncapped level in the tier the owner named', () => {
     for (const [tier, levels] of LEVELS_PER_TIER) {
       for (const level of levels) {
-        expect(tierOf(level), `L${String(level)} should be tier ${String(tier)}`).toBe(tier);
+        expect(artTier(level, null), `L${String(level)} should be tier ${String(tier)}`).toBe(tier);
       }
     }
+  });
+
+  it('splits a ladder with a top into thirds, the top in the last', () => {
+    expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => artTier(level, 10))).toEqual([1, 1, 1, 2, 2, 2, 3, 3, 3, 3]);
+    expect([1, 2, 3, 4, 5, 6, 7, 8].map((level) => artTier(level, 8))).toEqual([1, 1, 2, 2, 2, 3, 3, 3]);
+    expect(artTier(0, 10)).toBe(1);
+    expect(artTier(12, 10)).toBe(3);
   });
 });
 
@@ -107,13 +123,19 @@ describe('the building renders', () => {
    * unmarked.
    */
   it('promise the next tier only where the picture actually changes', () => {
-    const tiering: BuildingId[] = ['CORE', 'VAULT', 'SHIPYARD', 'HANGAR', 'REFINERY', 'EXTRACTOR'];
-    for (const id of tiering) {
-      expect(nextBuildingArt(id, 1), `${id} L1→L2 stays inside tier 1`).toBeNull();
-      expect(nextBuildingArt(id, 2), `${id} L2→L3 crosses into tier 2`).toBe(buildingArt(id, 3));
-      expect(nextBuildingArt(id, 4), `${id} L4→L5 crosses into tier 3`).toBe(buildingArt(id, 5));
-      expect(nextBuildingArt(id, 9), `${id} is at the top of its ladder`).toBeNull();
+    const uncapped: BuildingId[] = ['CORE', 'VAULT', 'SHIPYARD', 'REFINERY', 'EXTRACTOR'];
+    for (const id of uncapped) {
+      expect(nextBuildingArt(id, 7), `${id} L7→L8 stays inside tier 1`).toBeNull();
+      expect(nextBuildingArt(id, 8), `${id} L8→L9 crosses into tier 2`).toBe(buildingArt(id, 9));
+      expect(nextBuildingArt(id, 13), `${id} L13→L14 stays inside tier 2`).toBeNull();
+      expect(nextBuildingArt(id, 14), `${id} L14→L15 crosses into tier 3`).toBe(buildingArt(id, 15));
+      expect(nextBuildingArt(id, 20), `${id} is at its last picture`).toBeNull();
     }
+    // The Hangar tops out at 10: its thirds.
+    expect(nextBuildingArt('HANGAR', 2)).toBeNull();
+    expect(nextBuildingArt('HANGAR', 3)).toBe(buildingArt('HANGAR', 4));
+    expect(nextBuildingArt('HANGAR', 6)).toBe(buildingArt('HANGAR', 7));
+    expect(nextBuildingArt('HANGAR', 9)).toBeNull();
     // The one that still wears the resource it produces never promises anything.
     for (const level of [1, 2, 4, 9]) expect(nextBuildingArt('DEUTERIUM_PLANT', level)).toBeNull();
   });
@@ -135,9 +157,9 @@ describe('the instrument renders', () => {
     }
   });
 
-  it('give each instrument three distinct renders', () => {
+  it('give each instrument three distinct renders along its ladder', () => {
     for (const id of INSTRUMENT_IDS) {
-      const seen = new Set(LEVELS_PER_TIER.map(([, levels]) => instrumentArt(id, levels[0] ?? 0)));
+      const seen = new Set(Array.from({ length: 20 }, (_, index) => instrumentArt(id, index + 1)));
       expect(seen.size, `${id} repeats a render across tiers`).toBe(3);
     }
   });
@@ -155,12 +177,18 @@ describe('the instrument renders', () => {
     }
   });
 
+  /** The Telescope and the Radar top out at 8 (their range tables); the Aegis and the Veil do not. */
   it('promise the next tier only where the picture actually changes', () => {
-    for (const id of INSTRUMENT_IDS) {
+    for (const id of ['TELESCOPE', 'RADAR'] as const) {
       expect(nextInstrumentArt(id, 1)).toBeNull();
       expect(nextInstrumentArt(id, 2)).toBe(instrumentArt(id, 3));
-      expect(nextInstrumentArt(id, 4)).toBe(instrumentArt(id, 5));
-      expect(nextInstrumentArt(id, 6)).toBeNull();
+      expect(nextInstrumentArt(id, 5)).toBe(instrumentArt(id, 6));
+      expect(nextInstrumentArt(id, 7)).toBeNull();
+    }
+    for (const id of ['AEGIS', 'VEIL'] as const) {
+      expect(nextInstrumentArt(id, 7)).toBeNull();
+      expect(nextInstrumentArt(id, 8)).toBe(instrumentArt(id, 9));
+      expect(nextInstrumentArt(id, 14)).toBe(instrumentArt(id, 15));
     }
   });
 });
