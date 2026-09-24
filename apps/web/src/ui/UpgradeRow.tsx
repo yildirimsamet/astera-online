@@ -266,7 +266,7 @@ export function UpgradeRow({
       ? <Rungs level={level ?? 0} max={maxLevel} next={!completed} />
       : level !== undefined && level > 0
         ? <span className="font-v2-mono">L{level}</span>
-        : tierMark ?? null;
+        : null;
     return (
       <div
         data-layout="card"
@@ -324,8 +324,20 @@ export function UpgradeRow({
         </div>
         <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-1 px-2 pb-2 pt-1.5">
           {/* THE NAME WHOLE: it wraps, it is never cut. */}
-          <h3 className="v2-name text-caption leading-tight [overflow-wrap:anywhere]">{name}</h3>
-          {nameAside && <span className="font-v2-mono text-micro text-v2-ink-3">{nameAside}</span>}
+          {/*
+            WHAT IT IS AND WHERE IT IS, IN ONE GLANCE (D195c, owner: "Dart (Lv1) - 3 in 4
+            out"): a hull's tier and its holding sit right under its name, as on the row.
+          */}
+          <div data-row-line="name" className="flex flex-col gap-0.5">
+            <h3 className="v2-name text-caption leading-tight [overflow-wrap:anywhere]">{name}</h3>
+            {(tierMark !== undefined || nameAside) && (
+              <p className="font-v2-mono text-micro text-v2-ink-3">
+                {tierMark !== undefined && <span data-testid="hull-tier">{tierMark}</span>}
+                {tierMark !== undefined && nameAside ? ' · ' : null}
+                {nameAside && <span data-testid="hull-where">{nameAside}</span>}
+              </p>
+            )}
+          </div>
           {(nameBadge !== undefined || tag) && (
             <div className="flex flex-wrap items-center gap-1">
               {nameBadge}

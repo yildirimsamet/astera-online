@@ -1321,7 +1321,8 @@ function SatelliteItemRow({
   return (
     <div id={`row-${id}`}>
       <UpgradeRow
-          faulty={!!faults.get(id)}
+        layout="card"
+        faulty={!!faults.get(id)}
         art={SATELLITE_ART[id]}
         name={name}
         tag={satelliteTag(id)}
@@ -1380,7 +1381,8 @@ function InstrumentItemRow({
   return (
     <div id={`row-${id}`}>
       <UpgradeRow
-          faulty={!!faults.get(id)}
+        layout="card"
+        faulty={!!faults.get(id)}
         art={instrumentArt(id, Math.max(1, action.level))}
         {...(next ? { nextArt: next } : {})}
         name={name}
@@ -1479,16 +1481,18 @@ function Defend({
       )}
 
       <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />
-      <InstrumentItemRow
-        id="AEGIS"
-        planet={planet}
-        action={aegis}
-        held={held}
-        income={income}
-        focused={focused}
-        flashed={flashed}
-        onOpen={onOpen}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <InstrumentItemRow
+          id="AEGIS"
+          planet={planet}
+          action={aegis}
+          held={held}
+          income={income}
+          focused={focused}
+          flashed={flashed}
+          onOpen={onOpen}
+        />
+      </div>
 
       {/*
         THREE GUNS COMPLETE THE COUNTER TRIANGLE.
@@ -1515,8 +1519,10 @@ function Defend({
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-2">
       <div id="row-THORN">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('THORN')}
           art={groundArt('THORN', Math.max(1, thornsStanding))}
           nextArt={nextGroundArt('THORN', thornsStanding)}
@@ -1553,6 +1559,7 @@ function Defend({
 
       <div id="row-HARPOON">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('HARPOON')}
           art={groundArt('HARPOON', Math.max(1, harpoonsStanding))}
           nextArt={nextGroundArt('HARPOON', harpoonsStanding)}
@@ -1586,6 +1593,7 @@ function Defend({
 
       <div id="row-BASTION">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('BASTION')}
           art={groundArt('BASTION', Math.max(1, bastionsStanding))}
           nextArt={nextGroundArt('BASTION', bastionsStanding)}
@@ -1627,6 +1635,7 @@ function Defend({
           verb="build"
           onAct={() => { onBuild('BASTION'); }}
         />
+      </div>
       </div>
 
       {/* <Band
@@ -1827,35 +1836,39 @@ function Orbit({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen
         label={t('planet.orbit.networkBand')}
         note={t('planet.orbit.networkNote')}
       />
-      <SatelliteItemRow
-        id="UPLINK"
-        planet={planet}
-        action={orbit('UPLINK', satelliteLabel('UPLINK'), onNeed)}
-        held={held}
-        income={income}
-        focused={focused}
-        flashed={flashed}
-        onOpen={onOpen}
-      />
-
-      <Band
-        label={t('planet.orbit.intelBand')}
-        note={t('planet.orbit.intelNote')}
-      />
-
-      {(['TELESCOPE', 'RADAR', 'VEIL'] as const).map((id) => (
-        <InstrumentItemRow
-          key={id}
-          id={id}
+      <div className="grid grid-cols-2 gap-2">
+        <SatelliteItemRow
+          id="UPLINK"
           planet={planet}
-          action={instrument(id, instrumentLabel(id), onNeed)}
+          action={orbit('UPLINK', satelliteLabel('UPLINK'), onNeed)}
           held={held}
           income={income}
           focused={focused}
           flashed={flashed}
           onOpen={onOpen}
         />
-      ))}
+      </div>
+
+      <Band
+        label={t('planet.orbit.intelBand')}
+        note={t('planet.orbit.intelNote')}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        {(['TELESCOPE', 'RADAR', 'VEIL'] as const).map((id) => (
+          <InstrumentItemRow
+            key={id}
+            id={id}
+            planet={planet}
+            action={instrument(id, instrumentLabel(id), onNeed)}
+            held={held}
+            income={income}
+            focused={focused}
+            flashed={flashed}
+            onOpen={onOpen}
+          />
+        ))}
+      </div>
     </>
   );
 }
@@ -1987,6 +2000,7 @@ function Reach({
           })}
       >
         <UpgradeRow
+          layout="card"
           /*
             THE HULL ROWS NEEDED THIS BY HAND. Every other row on this screen sits in a
             one-line \`<div id="row-…">\` and got its mark in one sweep; this wrapper spreads
@@ -2104,8 +2118,10 @@ function Reach({
 
   return (
     <>
+      <div className="grid grid-cols-2 gap-2">
       <div id="row-SHIPYARD">
         <UpgradeRow
+          layout="card"
           faulty={!!faults.get('SHIPYARD')}
           art={buildingArt('SHIPYARD', Math.max(1, shipyard.level))}
           nextArt={nextBuildingArt('SHIPYARD', shipyard.actionLevel)}
@@ -2155,6 +2171,7 @@ function Reach({
       */}
       <div id="row-HANGAR">
         <UpgradeRow
+          layout="card"
           art={buildingArt('HANGAR', Math.max(1, hangar.level))}
           nextArt={nextBuildingArt('HANGAR', hangar.actionLevel)}
           name={buildingName('HANGAR')}
@@ -2191,6 +2208,7 @@ function Reach({
           highlighted={focused === 'HANGAR'}
           flash={flashed === 'HANGAR'}
         />
+      </div>
       </div>
       <div data-hangar-room className="px-3 py-2">
         <CapacityBar
@@ -2234,13 +2252,13 @@ function Reach({
               open={open}
               onToggle={() => { if (!lesson) families.toggle(family); }}
             />
-            {open ? HULLS_BY_FAMILY[family].map(hull) : null}
+            {open ? <div className="grid grid-cols-2 gap-2">{HULLS_BY_FAMILY[family].map(hull)}</div> : null}
           </section>
         );
       })}
 
       <Band label={t('planet.reach.miningBand')} note={t('planet.reach.miningNote')} />
-      {hull('PROSPECTOR')}
+      <div className="grid grid-cols-2 gap-2">{hull('PROSPECTOR')}</div>
 
       {/*
         THE TWO ORBITAL SATELLITES, LAST, BESIDE THE CRAFT THEY SERVE. D170.
@@ -2253,19 +2271,21 @@ function Reach({
         to it, and a reader arrives here having already passed what they came for.
       */}
       {!lesson && <Band label={t('planet.reach.orbitBand')} note={t('planet.reach.orbitNote')} />}
-      {(['DERRICK', 'BEACON'] as const).map((id) => (
-        <SatelliteItemRow
-          key={id}
-          id={id}
-          planet={planet}
-          action={orbit(id, satelliteLabel(id), onNeed)}
-          held={held}
-          income={income}
-          focused={focused}
-          flashed={flashed}
-          onOpen={onOpen}
-        />
-      ))}
+      <div className="grid grid-cols-2 gap-2">
+        {(['DERRICK', 'BEACON'] as const).map((id) => (
+          <SatelliteItemRow
+            key={id}
+            id={id}
+            planet={planet}
+            action={orbit(id, satelliteLabel(id), onNeed)}
+            held={held}
+            income={income}
+            focused={focused}
+            flashed={flashed}
+            onOpen={onOpen}
+          />
+        ))}
+      </div>
     </>
   );
 }
@@ -2521,16 +2541,18 @@ function Grow({ planet, held, income, focused, flashed, onNeed, onFlash, onOpen 
       </div>
 
       <Band label={t('planet.grow.multiplierBand')} note={t('planet.grow.multiplierNote')} />
-      <SatelliteItemRow
-        id="FOUNDRY"
-        planet={planet}
-        action={orbit('FOUNDRY', satelliteLabel('FOUNDRY'), onNeed)}
-        held={held}
-        income={income}
-        focused={focused}
-        flashed={flashed}
-        onOpen={onOpen}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <SatelliteItemRow
+          id="FOUNDRY"
+          planet={planet}
+          action={orbit('FOUNDRY', satelliteLabel('FOUNDRY'), onNeed)}
+          held={held}
+          income={income}
+          focused={focused}
+          flashed={flashed}
+          onOpen={onOpen}
+        />
+      </div>
     </>
   );
 }

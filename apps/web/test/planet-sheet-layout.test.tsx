@@ -216,6 +216,20 @@ describe('the Base and its Defence tab', () => {
     expect(screen.queryByTestId('planet-firepower')).toBeNull();
   });
 
+  /**
+   * E5: "iki sütun kartlar (render ≥74 px …)" on every tab, not only Production — a
+   * list of ten a commander compares is half the scroll at two to a row.
+   */
+  it.each(['grow', 'orbit', 'defend', 'reach'] as const)('lays the %s tab out as cards, two to a row', (tab) => {
+    show(tab);
+    const rows = [...screen.getByRole('tabpanel').querySelectorAll('[id^="row-"]')];
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.querySelector('[data-layout]'), row.id).toHaveAttribute('data-layout', 'card');
+      expect(row.parentElement, row.id).toHaveClass('grid-cols-2');
+    }
+  });
+
   /** D108's rack became the world's own ring (E5): the sockets are drawn once, above every tab. */
   it('draws the orbit on the world, not as a rack over the tabs', () => {
     show('grow');
