@@ -76,9 +76,9 @@ export const planet = {
     ends: "beendet {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Abbrechen {{name}}",
-    title: "Warteschlangen erstellen",
-    idle: "Es wird nichts gebaut\nJeweils",
-    capacity: "{{count}} Slots",
+    title: "Bauschlangen",
+    idle: "Nichts im Bau",
+    capacity: "je {{count}} Plätze",
     construction: "Konstruktion",
     yard: "Yard",
     slotFree: "Kostenlos",
@@ -454,7 +454,7 @@ export const planetHero = {
   fleetAway: "{{count}} in der Luft",
   shield: "Schild",
   shieldNone: "Keine",
-  shieldNoAegis: "keine Sicherheit",
+  shieldNoAegis: "keine Aegis",
   shieldOffline: "Offline",
   shieldCoreOffline: "Befehlskernausfall · Aegis ist dunkel",
   defenceCoreOffline: "Bodengeschütze offline · Befehlskernausfall",
@@ -473,8 +473,8 @@ export const planetHero = {
   atRisk: "In Gefahr",
   atRiskValue: "{{amount}} ungeschützt",
   /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
-  storeShare: "Lager {{pct}} %",
-  safeShare: "sicher {{pct}} %",
+  storeShare: "Lager {{pct}}\u00a0%",
+  safeShare: "sicher {{pct}}\u00a0%",
   storeFull: "Lager voll",
 } as const;
 

@@ -76,8 +76,8 @@ export const planet = {
     ends: "finaliza {{time}}",
     segment: "{{name}} · {{duration}}",
     cancelOne: "Cancelar {{name}}",
-    title: "Crear colas",
-    idle: "No hay nada en construcción",
+    title: "Colas de construcción",
+    idle: "Nada en construcción",
     capacity: "{{count}} ranuras cada una",
     construction: "Construcción",
     yard: "Yarda",
@@ -454,7 +454,7 @@ export const planetHero = {
   fleetAway: "{{count}} en el aire",
   shield: "Escudo",
   shieldNone: "Ninguno",
-  shieldNoAegis: "sin égida",
+  shieldNoAegis: "sin Aegis",
   shieldOffline: "Sin conexión",
   shieldCoreOffline: "Interrupción del núcleo de comando · Égida está oscuro",
   defenceCoreOffline: "Cañones terrestres fuera de línea · interrupción del núcleo de comando",
@@ -473,8 +473,8 @@ export const planetHero = {
   atRisk: "En riesgo",
   atRiskValue: "{{amount}} expuesto",
   /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
-  storeShare: "almacén {{pct}} %",
-  safeShare: "a salvo {{pct}} %",
+  storeShare: "almacén {{pct}}\u00a0%",
+  safeShare: "a salvo {{pct}}\u00a0%",
   storeFull: "almacén lleno",
 } as const;
 

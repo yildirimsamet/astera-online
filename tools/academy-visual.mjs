@@ -93,9 +93,14 @@ export async function verifyAcademy(out) {
         await page.waitForTimeout(500); continue;
       }
       if (/underway|Siparişin işleniyor/.test(message)) {
-        await page.waitForTimeout(700);
-        const scrolling = await page.locator('[data-sheet-scroll]').evaluateAll((bodies) => bodies.some((body) => body.scrollTop > 1));
-        if (scrolling) throw new Error('A pending build left the menu scrolled below its queue');
+        // The menu scrolls smoothly back to its queue; a card grid puts a hull further down,
+        // so the glide is longer. Wait for it to settle, then require it to have arrived.
+        let arrived = false;
+        for (let tries = 0; tries < 12 && !arrived; tries += 1) {
+          await page.waitForTimeout(250);
+          arrived = await page.locator('[data-sheet-scroll]').evaluateAll((bodies) => bodies.every((body) => body.scrollTop <= 1));
+        }
+        if (!arrived) throw new Error('A pending build left the menu scrolled below its queue');
         continue;
       }
       const tab = { production: 'grow', intel: 'orbit', defend: 'defend', fleet: 'reach' }[id];

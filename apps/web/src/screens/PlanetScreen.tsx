@@ -1517,7 +1517,6 @@ function Defend({
           total={groundCapacity}
           used={groundUsed}
           incoming={0}
-          label={t('planet.defend.groundBand')}
         />
       </div>
 

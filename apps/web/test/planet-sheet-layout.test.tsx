@@ -237,6 +237,12 @@ describe('the Base and its Defence tab', () => {
     expect(screen.queryByRole('region', { name: 'Orbit network' })).toBeNull();
   });
 
+  /** The band already names the ground; its room bar under it does not say it a second time. */
+  it('names the ground band once', () => {
+    show('defend');
+    expect(screen.getAllByText(i18n.t('planet.defend.groundBand').trim())).toHaveLength(1);
+  });
+
   it('leads the Defence tab with firepower, the line, the shield and what a raid can take', () => {
     show('defend');
     for (const id of ['planet-firepower', 'planet-defence', 'planet-shield', 'planet-exposed']) {

@@ -457,8 +457,8 @@ export const planetHero = {
   atRisk: "À risque",
   atRiskValue: "{{amount}} exposés",
   /** E5 production row: how full the store is, and the part the Vault keeps from a raid. */
-  storeShare: "stock {{pct}} %",
-  safeShare: "à l’abri {{pct}} %",
+  storeShare: "stock {{pct}}\u00a0%",
+  safeShare: "à l’abri {{pct}}\u00a0%",
   storeFull: "stock plein",
 } as const;
 export const launch = {
