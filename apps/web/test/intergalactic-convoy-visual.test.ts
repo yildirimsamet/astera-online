@@ -10,10 +10,10 @@ import {
   CONVOY_FORMATION_LENGTH,
   CONVOY_HULL_SCALE,
   CONVOY_HULL_SCALE_MULT,
-  CONVOY_WIND_LAYER_COUNT,
-  CONVOY_WIND_NOSE_OPACITY,
   CONVOY_WIND_OPACITY,
+  CONVOY_WIND_STREAKS,
   convoyLongitudinalOffset,
+  convoyStreaks,
   convoyWindBounds,
 } from '../src/galaxy/IntergalacticConvoy.js';
 
@@ -84,14 +84,32 @@ describe('the Intergalactic Convoy presentation', () => {
     }
   });
 
-  it('keeps the rearward wind field softly layered but bounded', () => {
-    expect(CONVOY_WIND_LAYER_COUNT).toBeGreaterThanOrEqual(3);
-    expect(CONVOY_WIND_LAYER_COUNT).toBeLessThanOrEqual(5);
+  /**
+   * THE WIND IS A FEW SPEED LINES. Owner, 2026-09-24: the silk veil was ugly — "sanki hızla
+   * giden bir araç rüzgarı deliyormuş gibi bir effect olsa yeterli". A handful of thin straight
+   * streaks stream from the nose past the tail, faint, around and between the two lanes.
+   */
+  it('draws a handful of faint speed lines, never a field', () => {
+    expect(CONVOY_WIND_STREAKS).toBeGreaterThanOrEqual(8);
+    expect(CONVOY_WIND_STREAKS).toBeLessThanOrEqual(16);
     expect(CONVOY_WIND_OPACITY).toBeGreaterThan(0);
-    expect(CONVOY_WIND_OPACITY).toBeGreaterThanOrEqual(0.06);
-    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.075);
-    expect(CONVOY_WIND_NOSE_OPACITY).toBeGreaterThanOrEqual(0.2);
-    expect(CONVOY_WIND_NOSE_OPACITY).toBeLessThanOrEqual(0.3);
+    expect(CONVOY_WIND_OPACITY).toBeLessThanOrEqual(0.4);
+  });
+
+  it('lays the lines out the same way every time, beside and between the lanes, each on its own beat', () => {
+    const streaks = convoyStreaks(CONVOY_WIND_STREAKS);
+    expect(convoyStreaks(CONVOY_WIND_STREAKS)).toEqual(streaks);
+    expect(streaks).toHaveLength(CONVOY_WIND_STREAKS);
+    for (const streak of streaks) {
+      expect(Math.abs(streak.lateral)).toBeLessThanOrEqual(1.3);
+      expect(streak.phase).toBeGreaterThanOrEqual(0);
+      expect(streak.phase).toBeLessThan(1);
+      expect(streak.length).toBeGreaterThan(0.1);
+      expect(streak.length).toBeLessThan(0.5);
+    }
+    expect(new Set(streaks.map((streak) => streak.phase.toFixed(3))).size).toBe(streaks.length);
+    expect(streaks.some((streak) => Math.abs(streak.lateral) < 0.4)).toBe(true);
+    expect(streaks.some((streak) => Math.abs(streak.lateral) > 1)).toBe(true);
   });
 
   it('starts the wind 5% behind its former tip and brings its sides closer to the fleet', () => {
@@ -133,17 +151,17 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     expect(source).not.toContain('intergalactic-convoy-pulses');
   });
 
-  it('runs a GPU-instanced, continuously deforming flow veil instead of moving lines', () => {
+  it('runs the speed lines as one GPU-instanced draw, with no noise veil left', () => {
     expect(source).toContain('<ConvoyWind');
     expect(source).toContain('name="intergalactic-convoy-wind"');
     expect(source).toContain('new THREE.InstancedBufferGeometry()');
     expect(source).toContain('new THREE.ShaderMaterial({');
-    expect(source).toContain('attribute vec4 aFlow;');
+    expect(source).toContain('attribute vec4 aStreak;');
     expect(source).toContain('uniform float uTime;');
-    expect(source).toContain('float flowNoise');
-    expect(source).toContain('float flowFbm');
-    expect(source).toContain('mix(uNoseOpacity, 1.0, smoothstep');
-    expect(source).toContain('vFlow = uv.y * 2.8 - uTime');
+    expect(source).toContain('fract(aStreak.z + uTime * uSpeed)');
+    expect(source).not.toContain('float flowNoise');
+    expect(source).not.toContain('float flowFbm');
+    expect(source).not.toContain('aFlow');
     expect(source).toContain('smoothstep');
     expect(source).not.toContain('<lineSegments');
     expect(source).not.toContain('<lineBasicMaterial');

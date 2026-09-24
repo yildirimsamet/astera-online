@@ -21,9 +21,9 @@ export const CONVOY_HULL_SCALE_MULT = 2;
 export const CONVOY_HULL_SCALE = CONVOY_BASE_HULL_SCALE * CONVOY_HULL_SCALE_MULT;
 export const CONVOY_DRIFT_AMPLITUDE =
   (Math.min(...INTERGALACTIC_CONVOY.formation.rankGaps) / SCALE) * 0.12;
-export const CONVOY_WIND_LAYER_COUNT = 4;
-export const CONVOY_WIND_OPACITY = 0.07;
-export const CONVOY_WIND_NOSE_OPACITY = 0.25;
+/** Speed lines streaming past the convoy (owner, 2026-09-24: the silk veil was ugly). */
+export const CONVOY_WIND_STREAKS = 12;
+export const CONVOY_WIND_OPACITY = 0.32;
 
 const FORMATION_VERSION = 1;
 const FOCUS_FOV_RADIANS = Math.PI / 4;
@@ -60,127 +60,69 @@ export const CONVOY_FOCUS_DISTANCE =
 
 const HIT_RADIUS = CONVOY_FORMATION_LENGTH * 0.54;
 
-// phase, speed, lateral offset and veil width; then bend, lift, energy and tone.
-// Each instance covers the full convoy rather than travelling as a rigid object.
-const WIND_LAYERS = [
-  { flow: [0.03, 0.16, -0.08, 1.06], shape: [0.28, 0.030, 0.72, 0.10] },
-  { flow: [0.29, 0.19, 0.07, 0.94], shape: [0.36, 0.052, 0.62, 0.45] },
-  { flow: [0.57, 0.14, -0.02, 1.13], shape: [0.24, 0.074, 0.54, 0.72] },
-  { flow: [0.81, 0.22, 0.03, 0.88], shape: [0.42, 0.096, 0.46, 1.00] },
-] as const;
+/** How fast the air streams past, in convoy spans per second. */
+const WIND_SPEED = 0.55;
 
-const WIND_FLOW_SEGMENTS = 48;
+/** One speed line: across the lanes (in half-widths), its height, its beat, and its length (in spans). */
+export interface ConvoyStreak { lateral: number; lift: number; phase: number; length: number }
+
+/**
+ * WHERE THE LINES RUN, the same every time: spread across and a little outside the two
+ * lanes with a small jitter so they never read as a grid, each on its own beat (golden-ratio
+ * phases) and its own length, so the stream never pulses in step.
+ */
+export function convoyStreaks(count: number): ConvoyStreak[] {
+  return Array.from({ length: count }, (_, index) => {
+    const across = count === 1 ? 0.5 : index / (count - 1);
+    const jitter = (((index * 0.754_877_666) % 1) - 0.5) * 0.12;
+    return {
+      lateral: -1.2 + across * 2.4 + jitter,
+      lift: ((index % 3) - 1) * 0.02,
+      phase: (index * 0.618_033_988_75) % 1,
+      length: 0.18 + ((index * 0.381_966_011) % 1) * 0.22,
+    };
+  });
+}
 
 const WIND_VERTEX_SHADER = `
-  attribute vec4 aFlow;
-  attribute vec4 aShape;
+  attribute vec4 aStreak;
   uniform float uTime;
+  uniform float uSpeed;
   uniform float uFront;
   uniform float uBack;
   uniform float uHalfWidth;
-  varying vec2 vUv;
-  varying float vFlow;
-  varying float vPhase;
-  varying float vEnergy;
-  varying float vTone;
+  uniform float uWidth;
+  varying float vAlong;
+  varying float vAcross;
+  varying float vLife;
 
   void main() {
-    float along = uv.y;
-    float phase = aFlow.x * 6.2831853;
-    // Keeping the sheet anchored while this phase travels toward increasing UV
-    // makes the wind itself flow to local -Z instead of sliding a frozen stroke.
-    vFlow = uv.y * 2.8 - uTime * aFlow.y;
-    float envelope = sin(3.14159265 * along);
-    float primary = sin(vFlow * 3.1 + phase);
-    float secondary = sin(vFlow * 7.3 - phase * 0.67);
-    float bend = (primary * 0.7 + secondary * 0.3) * aShape.x * envelope;
-    float edgeFlutter = sin(vFlow * 9.2 + uv.x * 4.7 + phase) * 0.025 * envelope;
-
-    vec3 veilPosition = vec3(
-      (position.x * aFlow.w + aFlow.z) * uHalfWidth + bend + edgeFlutter,
-      aShape.y + secondary * 0.012 * envelope,
-      mix(uFront, uBack, along)
-    );
-
-    vUv = uv;
-    vPhase = phase;
-    vEnergy = aShape.z;
-    vTone = aShape.w;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(veilPosition, 1.0);
+    float span = uFront - uBack;
+    float reach = aStreak.w * span;
+    float progress = fract(aStreak.z + uTime * uSpeed);
+    // The air streams from the nose (+Z) to the tail (-Z): the head leads, the line trails it.
+    float head = mix(uFront, uBack - reach, progress);
+    vAlong = position.z;
+    vAcross = position.x;
+    vLife = sin(3.14159265 * progress);
+    vec3 line = vec3(aStreak.x * uHalfWidth + position.x * uWidth, aStreak.y, head + position.z * reach);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(line, 1.0);
   }
 `;
 
 const WIND_FRAGMENT_SHADER = `
   uniform float uOpacity;
-  uniform float uNoseOpacity;
-  varying vec2 vUv;
-  varying float vFlow;
-  varying float vPhase;
-  varying float vEnergy;
-  varying float vTone;
-
-  float flowHash(vec2 point) {
-    return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453123);
-  }
-
-  float flowNoise(vec2 point) {
-    vec2 cell = floor(point);
-    vec2 local = fract(point);
-    vec2 curve = local * local * (3.0 - 2.0 * local);
-    return mix(
-      mix(flowHash(cell), flowHash(cell + vec2(1.0, 0.0)), curve.x),
-      mix(flowHash(cell + vec2(0.0, 1.0)), flowHash(cell + vec2(1.0)), curve.x),
-      curve.y
-    );
-  }
-
-  float flowFbm(vec2 point) {
-    float value = 0.0;
-    float weight = 0.5;
-    mat2 turn = mat2(0.80, -0.60, 0.60, 0.80);
-    for (int octave = 0; octave < 4; octave += 1) {
-      value += flowNoise(point) * weight;
-      point = turn * point * 2.03 + vec2(3.1, 1.7);
-      weight *= 0.5;
-    }
-    return value;
-  }
+  varying float vAlong;
+  varying float vAcross;
+  varying float vLife;
 
   void main() {
-    // Domain-warped fBm makes continuous smoky folds. Both noise coordinates
-    // include vFlow, so the folds evolve and travel rearward instead of merely
-    // being translated as an unchanged image.
-    vec2 domain = vec2(vUv.x * 2.15 + vPhase, vFlow);
-    float broadNoise = flowFbm(domain);
-    float crossNoise = flowFbm(domain * 1.73 + vec2(5.2, -3.7));
-    float warpedAcross = vUv.x + (broadNoise - 0.5) * 0.25
-      + sin(vFlow * 2.2 + vPhase) * 0.035;
-
-    float centreA = 0.27 + sin(vFlow * 1.55 + vPhase) * 0.12;
-    float centreB = 0.71 + sin(vFlow * 1.28 - vPhase * 0.7) * 0.14;
-    float distanceA = abs(warpedAcross - centreA);
-    float distanceB = abs(warpedAcross - centreB);
-    float strandA = 1.0 - smoothstep(0.012, 0.072, distanceA);
-    float strandB = 1.0 - smoothstep(0.015, 0.082, distanceB);
-    float threadA = 1.0 - smoothstep(0.004, 0.014, abs(distanceA - 0.043));
-    float threadB = 1.0 - smoothstep(0.004, 0.016, abs(distanceB - 0.050));
-    float filaments = max(strandA, strandB) * (0.52 + crossNoise * 0.34)
-      + max(threadA, threadB) * 0.38;
-
-    float softBody = 1.0 - smoothstep(0.08, 0.52, abs(warpedAcross - 0.5));
-    softBody *= smoothstep(0.42, 0.82, broadNoise) * 0.08;
-    float sideFade = smoothstep(0.0, 0.11, vUv.x)
-      * (1.0 - smoothstep(0.89, 1.0, vUv.x));
-    float noseFade = mix(uNoseOpacity, 1.0, smoothstep(0.0, 0.08, vUv.y));
-    float tailFade = 1.0 - smoothstep(0.78, 1.0, vUv.y);
-    float alpha = (filaments + softBody) * sideFade * noseFade * tailFade
-      * vEnergy * uOpacity;
+    // A sharp head, a long fading tail, soft sides: a streak, not a bar.
+    float taper = smoothstep(0.0, 0.12, vAlong) * (1.0 - smoothstep(0.3, 1.0, vAlong));
+    float edge = 1.0 - smoothstep(0.35, 1.0, abs(vAcross));
+    float alpha = uOpacity * vLife * taper * edge;
     if (alpha < 0.002) discard;
-
-    vec3 edgeColour = mix(vec3(0.15, 0.23, 0.27), vec3(0.19, 0.29, 0.34), vTone);
-    vec3 coreColour = mix(vec3(0.59, 0.70, 0.74), vec3(0.69, 0.78, 0.81), vTone);
-    vec3 colour = mix(edgeColour, coreColour, 0.26 + min(1.0, filaments) * 0.58);
-    gl_FragColor = vec4(colour, alpha);
+    gl_FragColor = vec4(vec3(0.74, 0.85, 0.95), alpha);
   }
 `;
 
@@ -228,13 +170,13 @@ export function convoyWindBounds(slots: readonly VisualSlot[]): {
 }
 
 /**
- * A soft slipstream field passing from the convoy's nose toward its rear.
+ * THE AIR THE CONVOY CUTS THROUGH. Owner, 2026-09-24: the domain-warped silk veil that stood
+ * here was ugly — "sanki hızla giden bir araç rüzgarı deliyormuş gibi bir effect olsa
+ * yeterli". So: a dozen thin straight speed lines streaming from the nose past the tail,
+ * beside and between the lanes, each fading in and out on its own beat.
  *
- * The CPU uploads four static veil variants once. Their subdivided sheets stay
- * anchored over the complete train while the vertex shader sends bends through
- * them and the fragment shader domain-warps flowing noise into silk-like folds.
- * Per frame only `uTime` and focus opacity change. The whole field is one draw
- * call with no texture, per-filament component or dynamic vertex-buffer upload.
+ * One quad per line, all of them one instanced draw; per frame only `uTime` and the focus
+ * opacity change. No texture, no noise, no per-line component.
  */
 function ConvoyWind({ slots, focused }: {
   slots: readonly VisualSlot[];
@@ -243,46 +185,28 @@ function ConvoyWind({ slots, focused }: {
   const bounds = useMemo(() => convoyWindBounds(slots), [slots]);
   const geometry = useMemo(() => {
     const buffer = new THREE.InstancedBufferGeometry();
-    const vertexCount = (WIND_FLOW_SEGMENTS + 1) * 2;
-    const positions = new Float32Array(vertexCount * 3);
-    const uvs = new Float32Array(vertexCount * 2);
-    const indices = new Uint16Array(WIND_FLOW_SEGMENTS * 6);
-    for (let segment = 0; segment <= WIND_FLOW_SEGMENTS; segment += 1) {
-      const along = segment / WIND_FLOW_SEGMENTS;
-      const vertex = segment * 2;
-      positions.set([-1, 0, along, 1, 0, along], vertex * 3);
-      uvs.set([0, along, 1, along], vertex * 2);
-      if (segment === WIND_FLOW_SEGMENTS) continue;
-      const index = segment * 6;
-      indices.set([
-        vertex, vertex + 1, vertex + 2,
-        vertex + 1, vertex + 3, vertex + 2,
-      ], index);
-    }
-
-    const flows = new Float32Array(CONVOY_WIND_LAYER_COUNT * 4);
-    const shapes = new Float32Array(CONVOY_WIND_LAYER_COUNT * 4);
-    WIND_LAYERS.forEach((layer, index) => {
-      flows.set(layer.flow, index * 4);
-      shapes.set(layer.shape, index * 4);
+    buffer.setIndex(new THREE.BufferAttribute(new Uint16Array([0, 1, 2, 1, 3, 2]), 1));
+    buffer.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      -1, 0, 0, 1, 0, 0, -1, 0, 1, 1, 0, 1,
+    ]), 3));
+    const streaks = new Float32Array(CONVOY_WIND_STREAKS * 4);
+    convoyStreaks(CONVOY_WIND_STREAKS).forEach((streak, index) => {
+      streaks.set([streak.lateral, streak.lift, streak.phase, streak.length], index * 4);
     });
-
-    buffer.setIndex(new THREE.BufferAttribute(indices, 1));
-    buffer.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    buffer.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-    buffer.setAttribute('aFlow', new THREE.InstancedBufferAttribute(flows, 4));
-    buffer.setAttribute('aShape', new THREE.InstancedBufferAttribute(shapes, 4));
-    buffer.instanceCount = CONVOY_WIND_LAYER_COUNT;
+    buffer.setAttribute('aStreak', new THREE.InstancedBufferAttribute(streaks, 4));
+    buffer.instanceCount = CONVOY_WIND_STREAKS;
     return buffer;
   }, []);
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
+      uSpeed: { value: WIND_SPEED },
       uFront: { value: bounds.front },
       uBack: { value: bounds.back },
       uHalfWidth: { value: bounds.halfWidth },
+      // A couple of pixels at focus range, sub-pixel from across the disc.
+      uWidth: { value: (bounds.front - bounds.back) * 0.004 },
       uOpacity: { value: CONVOY_WIND_OPACITY },
-      uNoseOpacity: { value: CONVOY_WIND_NOSE_OPACITY },
     },
     vertexShader: WIND_VERTEX_SHADER,
     fragmentShader: WIND_FRAGMENT_SHADER,
@@ -295,10 +219,9 @@ function ConvoyWind({ slots, focused }: {
   }), [bounds]);
 
   useFrame(({ clock }) => {
-    // Positive progress maps from `uFront` (+Z) to `uBack` (-Z) in the shader.
     material.uniforms.uTime!.value = clock.elapsedTime;
     material.uniforms.uOpacity!.value = focused
-      ? CONVOY_WIND_OPACITY * 1.12
+      ? CONVOY_WIND_OPACITY * 1.2
       : CONVOY_WIND_OPACITY;
   });
 

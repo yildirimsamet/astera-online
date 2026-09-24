@@ -258,6 +258,10 @@ export function Hull({
     return clone;
   }, [scene, url]);
 
+  /*
+    THE RIM IS A HINT, NOT A FRAME (owner, 2026-09-24): half as thick as it was (0.035 of
+    the unit hull) and a quarter dimmer, so the craft itself is what the eye lands on.
+  */
   const { outline, outlineMaterials } = useMemo(() => {
     const clone = model.clone(true);
     const owned: THREE.ShaderMaterial[] = [];
@@ -266,7 +270,7 @@ export function Hull({
       const material = new THREE.ShaderMaterial({
         uniforms: {
           uColour: { value: new THREE.Color(glow) },
-          uOpacity: { value: focused ? 0.94 : 0.72 },
+          uOpacity: { value: (focused ? 0.94 : 0.72) * 0.75 },
         },
         transparent: true,
         depthWrite: false,
@@ -275,7 +279,7 @@ export function Hull({
         blending: THREE.AdditiveBlending,
         vertexShader: `
           void main() {
-            vec3 expanded = position + normal * 0.035;
+            vec3 expanded = position + normal * 0.0175;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(expanded, 1.0);
           }
         `,

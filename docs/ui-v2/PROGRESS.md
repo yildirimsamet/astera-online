@@ -139,7 +139,7 @@ Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
 - **F · Yıldız arka planları (2, 3).** Üs kahramanındaki gökyüzü daha soluk; Araştırma takımyıldızında arka plan
   yıldızları küçük/sönük, düğüm yıldızları büyük/parlak, araştırılmış ve araştırılmamış düğümler biraz daha parlak. [x]
 - **G · Galaksi sahnesi (9, 10).** Uçan her şeyin dış çizgisi %50 ince, renk parlaklığı %25 az; galaktik konvoyun
-  rüzgârı yerine sade hız çizgileri ("rüzgârı delen araç"). [ ]
+  rüzgârı yerine sade hız çizgileri ("rüzgârı delen araç"): 12 çizgi, tek instanced draw, gürültü yok. [x]
 
 **F8 · E11 Masaüstü (K10) — yarıda (F8a commit'li).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`.
 Biten (F8a): kırılımlar `v2-split` 700 / `v2-desk` 1100 (`tokens.css`, `lib/media.ts` `DESK_QUERY`); ≥1100 dock üst çubukta
