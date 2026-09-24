@@ -351,6 +351,14 @@ export const planet = {
       "Tu en possèdes {{owned}} sur un maximum de {{max}}. Les unités en mission comptent également.",
     defenceAfter:
       "Une fois terminé, {{count}} unités seront présentes sur ce monde",
+    maxOf: 'Max · {{value}}',
+    byPurse: 'autant que tes ressources le permettent',
+    byHangar: 'autant que le hangar a de place',
+    byGround: 'autant que le sol a de place',
+    byBerth: 'autant que tes postes le permettent',
+    cycle: 'Cycle des classes',
+    yardFill: 'File du chantier {{used}}/{{total}}',
+    standing: '{{value}} en place',
   },
 } as const;
 export const itemSheet = {

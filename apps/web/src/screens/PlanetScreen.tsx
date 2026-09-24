@@ -6,12 +6,15 @@ import {
   ANTI_STRATEGIC,
   FEATURE_FLAGS,
   BUILD,
+  COMBAT,
   HULLS,
   DEATH_STAR,
   FAULT,
   FAULT_KINDS,
   PROSPECTOR,
   buildingCost,
+  counteredBy,
+  counters,
   fleetCount,
   HANGAR,
   groundLoad,
@@ -34,6 +37,7 @@ import {
   fleetEscapeApplies,
   type BuildingId,
   type BuildingLevels,
+  type HullClass,
   type HullId,
   type InstrumentId,
   type SatelliteId,
@@ -56,7 +60,7 @@ import { FaultSheet } from './FaultSheet.js';
 import { FaultProvider, useFaults } from './faultScope.js';
 
 import type { PlanetGroup } from '../lib/directives.js';
-import { full } from '../lib/format.js';
+import { compact, decimal, factor, full } from '../lib/format.js';
 import { serverNow } from '../lib/clock.js';
 import { countdown, duration, untilReady, useNow } from '../lib/time.js';
 import { projectedQueueState, type ProjectedQueueState } from '../lib/predict.js';
@@ -95,6 +99,7 @@ import {
   buildingName,
   buildingRole,
   buildingTag,
+  combatClassLabel,
   hullLabel,
   hullPitch,
   hullDetail,
@@ -107,20 +112,27 @@ import {
   satelliteTag,
   researchName,
 } from '../i18n/names.js';
-import { ActionButton, Price, StatStrip, TimeCost } from '../ui/Action.js';
+import { Price, useOrderDuration } from '../ui/Action.js';
 import { ItemSheet, type ItemRef } from '../ui/ItemSheet.js';
 import { DefenceReadings, PlanetHero } from '../ui/PlanetHero.js';
 import { CapacityBar } from '../ui/CapacityBar.js';
 import { EscapeReadout } from '../ui/EscapeReadout.js';
 import { Band, DecisionGroup, UpgradeRow, type Blocked } from '../ui/UpgradeRow.js';
-import { ClassChip, CounterCycle, CounterLine } from '../ui/CounterMark.js';
+import { ClassChip, CounterCycle } from '../ui/CounterMark.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { useAccordion } from '../lib/accordion.js';
 import { academyGroup, useAcademyLesson } from '../onboarding/lessonScope.js';
 import { describe, useToast } from '../ui/Toast.js';
-import { Sheet } from '../ui/kit/index.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
 import { Button, Segmented } from '../ui/kit/index.js';
+import { affordWait } from '../lib/afford.js';
+import { roomParts } from '../lib/room.js';
+import { Icon } from '../v2/icons.js';
+import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
+import { Cost } from '../v2/kit/Cost.js';
+import { NeedBar } from '../v2/kit/NeedBar.js';
+import { RoomBar } from '../v2/kit/RoomBar.js';
+import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { CollectHost } from '../v2/shell/CollectHost.js';
 import { BaseQueues } from '../v2/shell/BaseQueues.js';
 
@@ -2578,6 +2590,8 @@ function BuildSheet({
   const build = useBuild();
   const say = useToast();
   const lesson = useAcademyLesson();
+  const [explained, setExplained] = useState(false);
+  const [cycle, setCycle] = useState(false);
   // The hand points straight to Build. Offer the authored quantity, not the
   // live game's default of one, which the local lesson correctly refuses.
   const lessonCount = hull === 'DART' && (lesson === 'darts' || lesson === 'reinforcements') ? 2
@@ -2588,14 +2602,11 @@ function BuildSheet({
    *
    * The ceiling is a hard limit on how many a planet may OWN, so it counts craft
    * that are away mining as well as those on the ground — the server does the
-   * same, and this is the only reason `fleetAway` is on the payload. Without it the
-   * picker offered 1 / 5 / 25 / Max for a hull you may hold two of.
+   * same, and this is the only reason `fleetAway` is on the payload.
    *
    * AND IT IS A CEILING THE COMMANDER CAN BUY. D170: the third rung of Prospector
-   * Holds opens a third berth on every world they hold. This read the bare
-   * `PROSPECTOR.max`, so the picker capped at two on the one screen the berth is
-   * spent — `prospectorRoom` and `prospectorCeiling` are the single statement of
-   * the arithmetic (D131) and both this offer and its caption come off them.
+   * Holds opens a third berth on every world they hold; `prospectorRoom` and
+   * `prospectorCeiling` are the single statement of the arithmetic (D131).
    *
    * The server refuses over the cap regardless (Principle 1 — the client never
    * decides an outcome); this exists so the control never offers what will be
@@ -2613,18 +2624,18 @@ function BuildSheet({
     : Number.MAX_SAFE_INTEGER;
   // A ship answers to the Hangar and a gun to the ground; the berth cap is its own.
   const bulk = hullBulk(hull);
-  const poolTotal = spec.ground
-    ? planet.capacity?.ground ?? groundSlots(planet.buildings.CORE ?? 0)
-    : planet.capacity?.hangar ?? hangarCapacity(planet.buildings.HANGAR ?? 0);
-  const poolUsed = spec.ground ? groundLoad(yardProjection.units) : hangarLoad(yardProjection.units);
-  const spaceCap = Math.max(0, Math.floor((poolTotal - poolUsed) / bulk));
+  const room = roomParts(planet, spec.ground);
+  const poolUsed = room.home + room.away + room.queued;
+  const spaceCap = Math.max(0, Math.floor((room.total - poolUsed) / bulk));
   const cap = Math.min(countCap, spaceCap);
   const prospectorCapped = hull === 'PROSPECTOR' && countCap === 0;
   const capacityCapped = spaceCap === 0;
+  const capped = prospectorCapped || capacityCapped;
   const shipyard = planet.buildings.SHIPYARD ?? 0;
   const accessBlock = hullAccessBlock(hull, shipyard, yardProjection, onNeed);
+  const yardOrders = planet.queues?.YARD.length ?? 0;
   const blocked: Blocked | undefined = accessBlock
-    ?? ((planet.queues?.YARD.length ?? 0) >= BUILD.queueDepth
+    ?? (yardOrders >= BUILD.queueDepth
       ? { reason: t('planet.blocked.queueFull') }
       : undefined);
 
@@ -2635,238 +2646,327 @@ function BuildSheet({
       ? Math.floor(held.deuterium / spec.deuterium)
       : Number.MAX_SAFE_INTEGER,
   );
-  const room = Math.min(affordable, cap);
-  const ceiling = Math.max(1, room);
+  const fits = Math.min(affordable, cap);
+  const ceiling = Math.max(1, fits);
+  // What stops Max where it stops: the purse, the berths, or the room.
+  const bound = affordable <= cap
+    ? t('planet.buildSheet.byPurse')
+    : countCap <= spaceCap
+      ? t('planet.buildSheet.byBerth')
+      : spec.ground ? t('planet.buildSheet.byGround') : t('planet.buildSheet.byHangar');
   const [count, setCount] = useState(1);
   const clamped = lessonCount ?? Math.min(count, ceiling);
-  const totalAlloy = spec.alloy * clamped;
-  const totalCrystal = spec.crystal * clamped;
-  const totalDeuterium = spec.deuterium * clamped;
-  const defenceAfterQueue = fleetCount(yardProjection.units);
+  const total = { alloy: spec.alloy * clamped, crystal: spec.crystal * clamped, deuterium: spec.deuterium * clamped };
+  const short = {
+    alloy: Math.max(0, total.alloy - held.alloy),
+    crystal: Math.max(0, total.crystal - held.crystal),
+    deuterium: Math.max(0, total.deuterium - held.deuterium),
+  };
+  const canPay = short.alloy === 0 && short.crystal === 0 && short.deuterium === 0;
+  // Deuterium has no rate on this payload, so a fuel shortfall says so rather than when.
+  const wait = canPay || short.deuterium > 0
+    ? null
+    : affordWait(short, { alloyPerHour: planet.planet.alloyPerHour, crystalPerHour: planet.planet.crystalPerHour });
+  const takes = useOrderDuration(orderMinutes(
+    spec.ground ? 'DEFENCE' : 'HULL',
+    { alloy: spec.alloy, crystal: spec.crystal, deuterium: spec.deuterium },
+    planet,
+    clamped,
+    { hull: spec.id },
+  ));
   /**
-   * The picture at the top of the sheet.
-   *
-   * A ground gun's render is tiered by how many are STANDING rather than by a
-   * level it does not have, so the sheet shows the battery the player already
-   * owns — the same picture the row they tapped was wearing.
+   * The picture at the top of the sheet. A ground gun's render is tiered by how many
+   * are STANDING rather than by a level it does not have, so the sheet shows the
+   * battery the player already owns — the same picture the row they tapped wore.
    */
   const art =
     hull === 'BASTION' || hull === 'HARPOON' || hull === 'THORN'
       ? groundArt(hull, Math.max(1, planet.ground[hull] ?? 0))
       : HULL_ART[hull];
+  const home = spec.ground ? planet.ground[hull] ?? 0 : planet.fleet[hull] ?? 0;
+  const away = planet.fleetAway[hull] ?? 0;
+
+  const commit = (): void => {
+    build.mutate(
+      { hull, count: clamped },
+      {
+        onSuccess: () => {
+          say(t('planet.done.unitsQueued', { count: clamped, name: hullLabel(hull) }));
+          onClose();
+        },
+        onError: (err) => {
+          say(describe(err), 'error');
+        },
+      },
+    );
+  };
 
   return (
-    <Sheet
+    <V2Sheet
+      detents={['fit']}
       eyebrow={
         spec.ground ? t('planet.buildSheet.eyebrowGround') : t('planet.buildSheet.eyebrowMobile')
       }
       title={hullLabel(hull)}
       onClose={onClose}
-      footer={prospectorCapped || capacityCapped ? undefined : (
-        /*
-          `data-commit` is this sheet's own commitment, and `data-ready` appears
-          only once the count is at the ceiling. The onboarding lights the ceiling
-          option first and then moves to here, so the opening grant is spent in one
-          press rather than one ship at a time.
-        */
-        <span data-act data-commit {...(clamped === ceiling ? { 'data-ready': true } : {})}>
-          <ActionButton
-            verb="build"
-            cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
-            held={held}
-            pending={build.isPending}
-            {...(blocked
-              ? {
-                blocked: {
-                  reason: blocked.reason,
-                  ...(blocked.onFix
-                    ? {
-                      onFix: () => {
-                        blocked.onFix?.();
-                        onClose();
-                      },
-                    }
-                    : {}),
-                },
-              }
-              : {})}
-            full
-            label={t('planet.buildSheet.build', { count: clamped })}
-            onAct={() => {
-              build.mutate(
-                { hull, count: clamped },
-                {
-                  onSuccess: () => {
-                    say(t('planet.done.unitsQueued', { count: clamped, name: hullLabel(hull) }));
-                    onClose();
-                  },
-                  onError: (err) => {
-                    say(describe(err), 'error');
-                  },
-                },
-              );
-            }}
-          />
-        </span>
-      )}
-    >
-      <div data-build-art className="art-well relative flex justify-center py-2">
-        {art ? <img src={art} alt={hullLabel(hull)} className="h-28 object-contain mr-[15%] -mt-2 mb-2" /> : null}
-
-        {!prospectorCapped ? (
-          <div data-build-price className="absolute left-1 top-1 flex flex-col items-start gap-1">
-            <Price
-              cost={{ alloy: totalAlloy, crystal: totalCrystal, deuterium: totalDeuterium }}
-              held={held}
-            />
-            {/*
-              AND WHAT THE BATCH COSTS IN TIME. Owner report.
-
-              It moves with the stepper, which is the whole reason it belongs on
-              this sheet rather than only on the row: ten Darts is a different
-              evening from one, and this was the screen where that had to be worked
-              out in the player's head.
-            */}
-            <span data-testid="build-sheet-time">
-              <TimeCost
-                minutes={orderMinutes(
-                  spec.ground ? 'DEFENCE' : 'HULL',
-                  { alloy: spec.alloy, crystal: spec.crystal, deuterium: spec.deuterium },
-                  planet,
-                  clamped,
-                  { hull: spec.id },
-                )}
-              />
+      footer={capped ? undefined : (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span data-build-price className="flex min-w-0 items-center gap-2">
+              <span className="font-v2-mono text-micro text-v2-ink-3">{clamped} ×</span>
+              <Cost cost={total} held={held} />
+              {/*
+                AND WHAT THE BATCH COSTS IN TIME. Owner report. It moves with the
+                stepper: ten Darts is a different evening from one.
+              */}
+              <span
+                data-testid="build-sheet-time"
+                className="flex items-center gap-1 whitespace-nowrap font-v2-mono text-micro text-v2-ink-2"
+                aria-label={t('upgradeRow.takesLabel', { duration: takes })}
+              >
+                <Icon id="i-clock" className="size-3 shrink-0" />
+                {takes}
+              </span>
+            </span>
+            <span data-queue-fill className="shrink-0 text-micro text-v2-ink-3">
+              {t('planet.buildSheet.yardFill', { used: yardOrders, total: BUILD.queueDepth })}
             </span>
           </div>
-        ) : null}
-
-        {!prospectorCapped ? (
-          <div
-            data-build-stats
-            className="absolute right-1 top-1 origin-top-right scale-[60%]"
-          >
-            <StatStrip
-              atk={spec.atk}
-              hp={spec.hp}
-              speed={spec.speed}
-              cargo={spec.cargo}
-              salvage={salvageCapacity({ [hull]: 1 })}
-              fuel={hullFuelRate(hull)}
-              // Every hull spends room: a ship in the Hangar, a gun on the ground.
-              room={bulk}
-              size="card"
-            />
-          </div>) : null}
-      </div>
-
-      <p className="legend text-crystal/85">{hullTag(hull)}</p>
-      <p className="mt-2 text-body leading-relaxed text-dim">{hullPitch(hull)}</p>
-      <p data-item-detail className="mt-2 text-caption leading-relaxed text-faint">
-        {hullDetail(hull)}
-      </p>
-
-      {/*
-        THE WHOLE RULE, ONE TAP DEEPER THAN THE ROW. D124.
-
-        A hull is chosen for good HERE and committed under a clock on the launch
-        sheet, so this is the surface with the attention to spare for the cycle
-        itself. That is the progressive disclosure the interface was missing in both
-        directions at once: the row said nothing about class, and the multipliers
-        existed on exactly one screen in the game — the battle report, after the
-        fleet was already lost.
-
-        `hullDetail` has described these matchups in PROSE since the catalogue was
-        written ("a Lance-class striker that punishes Skirmishers and Thorns"). Prose
-        is not a rule a player can act on at speed; the shapes above it are, and D142
-        says a quantity to be judged is drawn rather than only written.
-      */}
-      <div data-counter-cycle className="mt-2">
-        <p className="legend text-crystal/85">{t('counter.heading')}</p>
-        <div className="mt-2">
-          <CounterLine cls={spec.cls} />
+          {/*
+            `data-commit` is this sheet's own commitment, and `data-ready` appears
+            only once the count is at the ceiling. The onboarding lights the ceiling
+            option first and then moves to here, so the opening grant is spent in one
+            press rather than one ship at a time.
+          */}
+          <span data-act data-commit className="block" {...(clamped === ceiling ? { 'data-ready': true } : {})}>
+            {blocked ? (
+              // A REQUIREMENT IS A DOOR, NOT AN ALARM (I1): warn, and it goes where the fix is.
+              <button
+                type="button"
+                data-lock-state="closed"
+                disabled={!blocked.onFix}
+                onClick={() => {
+                  blocked.onFix?.();
+                  onClose();
+                }}
+                className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-warn/50 px-3 text-caption font-semibold text-v2-warn disabled:border-v2-line disabled:text-v2-ink-2"
+              >
+                <Icon id="i-lock" className="size-3.5 shrink-0" />
+                {blocked.reason}
+                {blocked.onFix && ' →'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!canPay || build.isPending}
+                onClick={commit}
+                className="min-h-10 w-full rounded-control bg-v2-self px-3 text-caption font-semibold text-v2-self-ink disabled:bg-v2-raise disabled:text-v2-ink-2"
+              >
+                {canPay
+                  ? t('planet.buildSheet.build', { count: clamped })
+                  : wait === null
+                    ? t('itemSheet.short')
+                    : t('itemSheet.affordIn', { duration: duration(wait) })}
+              </button>
+            )}
+          </span>
         </div>
-        <div className="mt-3">
-          <CounterCycle highlight={spec.cls} />
-        </div>
-      </div>
-
-      {/*
-        A REQUIREMENT IS A DOOR, NOT AN ALARM (interface.md I1), and this was the
-        build sheet's copy of the same red the item sheet had. Amber is the game's
-        word for a gap the commander can close; red is reserved for something that
-        can harm them.
-      */}
-      {blocked && (
-        <p className="mt-2 border border-alloy/30 bg-alloy/10 px-3 py-2 text-caption leading-snug text-alloy">
-          {t('itemSheet.lockedNote', { reason: blocked.reason })}
-        </p>
       )}
+    >
+      <div className="flex flex-col gap-3 pt-1">
+        <section
+          data-build-art
+          className="relative rounded-control border border-v2-line bg-v2-deep px-3 pb-3 pt-2.5"
+          style={HULL_SKY}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1 rounded-chip border border-v2-line-hi bg-v2-raise/60 px-1.5 py-0.5 text-micro font-semibold text-v2-ink-2">
+              <ClassEmblem cls={spec.cls} decorative />
+              {combatClassLabel(spec.cls)}
+            </span>
+            <span className="font-v2-mono text-micro text-v2-ink-2">
+              {/* A gun never leaves, so it is only ever standing. */}
+              {spec.ground
+                ? t('planet.buildSheet.standing', { value: home })
+                : t('planet.reach.hullLocationCounts', { home, away })}
+            </span>
+          </div>
+          {art && <img src={art} alt={hullLabel(hull)} className="mx-auto mt-1 h-24 w-40 object-contain" />}
+          <p className="text-center text-caption text-v2-ink-2">{hullTag(hull)}</p>
+          <HullStats hull={hull} />
+        </section>
 
-      <div className="mt-6">
-        <p className="legend mb-2">{t('planet.buildSheet.howMany')}</p>
-        {prospectorCapped || capacityCapped ? (
-          /* `text-amber` was not a colour this theme publishes, so a ceiling
-             notice rendered in plain body ink. Alloy is the warm hue here. */
-          <p className="text-body leading-relaxed text-alloy">
-            {prospectorCapped
-              ? t('planet.buildSheet.capped', { count: committed })
-              : spec.ground
-                ? t('planet.capacity.full', { used: poolUsed, total: poolTotal })
-                : t('planet.capacity.hangarFull', { used: poolUsed, total: poolTotal })}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-caption leading-snug text-v2-ink-2">
+            <span>{hullPitch(hull)}</span>{' '}
+            <button
+              type="button"
+              aria-expanded={explained}
+              onClick={() => { setExplained((open) => !open); }}
+              className="font-semibold text-v2-self"
+            >
+              {t('itemSheet.howItWorks')} ›
+            </button>
           </p>
-        ) : (
-          <div className="mb-1">
-            <QuantityStepper
-              value={clamped}
-              min={lessonCount ?? 1}
-              max={lessonCount ?? ceiling}
-              onChange={setCount}
-              decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
-              increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}
-              valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
-              maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
-              maxText={t('planet.buildSheet.maxShort')}
-              resetLabel={t('planet.buildSheet.reset', { name: hullLabel(hull) })}
-              resetText={t('planet.buildSheet.resetShort')}
-            />
+          {explained && <p data-item-detail className="text-caption leading-snug text-v2-ink-3">{hullDetail(hull)}</p>}
+        </div>
+
+        {/*
+          THE RULE WHERE THE HULL IS CHOSEN. D124: the multipliers existed on one
+          screen in the game — the battle report, after the fleet was lost. The line
+          states what this hull beats and what beats it, with the numbers the resolver
+          uses; the whole cycle is one tap deeper.
+        */}
+        <section data-counter-cycle className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+          <p className="flex items-center justify-between gap-2">
+            <span className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('counter.heading')}</span>
+            <button
+              type="button"
+              aria-expanded={cycle}
+              onClick={() => { setCycle((open) => !open); }}
+              className="text-micro font-semibold text-v2-self"
+            >
+              {t('planet.buildSheet.cycle')} ›
+            </button>
+          </p>
+          <HullMatchup cls={spec.cls} />
+          {cycle && <CounterCycle highlight={spec.cls} />}
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <p className="flex items-center gap-2 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
+            {t('planet.buildSheet.howMany')}
+            <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
+          </p>
+          {capped ? (
+            <p className="text-caption leading-snug text-v2-warn">
+              {prospectorCapped
+                ? t('planet.buildSheet.capped', { count: committed })
+                : spec.ground
+                  ? t('planet.capacity.full', { used: poolUsed, total: room.total })
+                  : t('planet.capacity.hangarFull', { used: poolUsed, total: room.total })}
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <QuantityStepper
+                look="v2"
+                value={clamped}
+                min={lessonCount ?? 1}
+                max={lessonCount ?? ceiling}
+                onChange={setCount}
+                decreaseLabel={t('planet.buildSheet.fewer', { name: hullLabel(hull) })}
+                increaseLabel={t('planet.buildSheet.more', { name: hullLabel(hull) })}
+                valueLabel={t('planet.buildSheet.quantity', { name: hullLabel(hull) })}
+                maxLabel={t('planet.buildSheet.max', { name: hullLabel(hull) })}
+                // Max says how many; the line beside it, what stops it there. In a
+                // lesson the authored count is the whole offer, and no reason applies.
+                maxText={lessonCount !== null
+                  ? t('planet.buildSheet.maxOf', { value: lessonCount })
+                  : fits > 0 ? t('planet.buildSheet.maxOf', { value: fits }) : t('planet.buildSheet.maxShort')}
+              />
+              {lessonCount === null && fits > 0 && (
+                <span data-fits className="min-w-0 text-right text-micro leading-snug text-v2-ink-3">{bound}</span>
+              )}
+            </div>
+          )}
+          {hull === 'PROSPECTOR' && fits > 0 && (
+            <p className="text-micro text-v2-ink-3">
+              {t('planet.buildSheet.heldOfMax', { owned: committed, max: prospectorMax })}
+            </p>
+          )}
+        </section>
+
+        {/*
+          THE ROOM, AS A PICTURE, IN YOUR COLOUR. The order's own share moves under
+          the stepper directly above it, so pressing "+" and watching the room go is
+          the rule teaching itself.
+        */}
+        <RoomBar
+          label={t(spec.ground ? 'roomBar.ground' : 'roomBar.hangar')}
+          total={room.total}
+          home={room.home}
+          away={room.away}
+          queued={room.queued}
+          incoming={capped ? 0 : bulk * clamped}
+        />
+
+        {!capped && !blocked && !canPay && (
+          <div className="flex flex-col gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
+            {short.alloy > 0 && <NeedBar resource="alloy" have={held.alloy} need={total.alloy} />}
+            {short.crystal > 0 && <NeedBar resource="crystal" have={held.crystal} need={total.crystal} />}
+            {short.deuterium > 0 && <NeedBar resource="deuterium" have={held.deuterium} need={total.deuterium} />}
           </div>
         )}
-        {cap !== Number.MAX_SAFE_INTEGER && room > 0 && (
-          <p className="mt-2 text-caption text-faint">
-            {t('planet.buildSheet.heldOfMax', { owned: committed, max: prospectorMax })}
-          </p>
-        )}
-        {/*
-          THE ROOM, AS A PICTURE. Owner instruction; the Hangar's room is back (2026-09-18).
-
-          This was one line of small grey text carrying three numbers — what one of
-          these takes, what is used, and the ceiling — and the report was that none
-          of the three questions it answers could be answered from it at a glance.
-          `CapacityBar` draws them instead, and the segment for THIS order moves
-          under the stepper directly above it, so pressing "+" and watching the room
-          go is the rule teaching itself.
-        */}
-        <div className="mt-3">
-          <CapacityBar
-            total={poolTotal}
-            used={poolUsed}
-            incoming={prospectorCapped || capacityCapped ? 0 : bulk * clamped}
-            fits={cap}
-            {...(art ? {
-              icon: (
-                <img src={art} alt="" aria-hidden className="size-8 shrink-0 object-contain" />
-              )
-            } : {})}
-          />
-        </div>
       </div>
+    </V2Sheet>
+  );
+}
 
-      {!prospectorCapped && !capacityCapped && (
-        <p className="num mt-6 text-caption text-faint">
-          {t('planet.buildSheet.defenceAfter', { count: defenceAfterQueue + clamped })}
-        </p>
-      )}
-    </Sheet>
+/** The still sky behind a hull: decoration, never a meaning. */
+const HULL_SKY = {
+  backgroundImage:
+    'radial-gradient(70% 90% at 60% 45%, color-mix(in srgb, var(--color-v2-sky-blue) 30%, transparent), transparent 75%)',
+};
+
+/**
+ * THE SIX FIGURES A HULL IS COMPARED BY, labelled in every cell: attack, durability,
+ * speed, cargo (or salvage), the room it takes and the fuel it burns. A gun never
+ * moves, so its speed says "fixed" and its fuel says nothing, rather than nought.
+ */
+function HullStats({ hull }: { hull: HullId }) {
+  const spec = HULLS[hull];
+  const salvage = salvageCapacity({ [hull]: 1 });
+  const fuel = hullFuelRate(hull);
+  const cells: { id: string; label: string; value: string }[] = [
+    { id: 'attack', label: i18n.t('action.statAttack'), value: compact(spec.atk) },
+    { id: 'hull', label: i18n.t('action.statHull'), value: compact(spec.hp) },
+    { id: 'speed', label: i18n.t('action.statSpeed'), value: spec.speed === 0 ? i18n.t('action.statSpeedFixed') : compact(spec.speed) },
+    salvage > 0
+      ? { id: 'salvage', label: i18n.t('action.statSalvage'), value: compact(salvage) }
+      : { id: 'cargo', label: i18n.t('action.statCargo'), value: spec.cargo === 0 ? i18n.t('action.statCargoNone') : compact(spec.cargo) },
+    { id: 'room', label: i18n.t('action.statRoom'), value: compact(hullBulk(hull)) },
+    {
+      id: 'fuel',
+      label: i18n.t('action.statFuel'),
+      value: fuel <= 0 ? i18n.t('action.statFuelNone') : i18n.t('action.statFuelRate', { value: decimal(fuel) }),
+    },
+  ];
+  return (
+    <dl data-build-stats className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
+      {cells.map((cell) => (
+        <div key={cell.id} data-stat={cell.id} className="min-w-0 text-center">
+          <dt className="truncate text-micro text-v2-ink-3">{cell.label}</dt>
+          <dd className="font-v2-mono text-caption tabular-nums text-v2-ink">{cell.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/**
+ * WHAT THIS HULL BEATS AND WHAT BEATS IT, with the multipliers the resolver applies
+ * to its fire. Strong wears your colour; weak is a gap to plan around, not a threat,
+ * so it is warn and never hostile red (K2). Support is outside the cycle.
+ */
+function HullMatchup({ cls }: { cls: HullClass }) {
+  const { t } = useTranslation();
+  const prey = counters(cls);
+  const predator = counteredBy(cls);
+  if (prey === null || predator === null) {
+    return <p data-testid="counter-support" className="text-caption leading-snug text-v2-ink-2">{t('counter.supportNote')}</p>;
+  }
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption">
+      <span data-testid="counter-strong" className="flex items-center gap-1 text-v2-self">
+        <ClassEmblem cls={prey} decorative />
+        {t('counter.strongVs', { class: combatClassLabel(prey) })}
+        <span className="font-v2-mono">{factor(COMBAT.strongMult)}</span>
+      </span>
+      <span data-testid="counter-weak" className="flex items-center gap-1 text-v2-warn">
+        <ClassEmblem cls={predator} decorative />
+        {t('counter.weakVs', { class: combatClassLabel(predator) })}
+        <span className="font-v2-mono">{factor(COMBAT.weakMult)}</span>
+      </span>
+    </p>
   );
 }

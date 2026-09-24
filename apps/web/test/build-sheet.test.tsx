@@ -3,7 +3,9 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  COMBAT,
   DEATH_STAR,
+  HULLS,
   PROSPECTOR,
   groundSlots,
   hangarCapacity,
@@ -16,6 +18,7 @@ import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import { duration } from '../src/lib/time.js';
+import { factor } from '../src/lib/format.js';
 
 /**
  * HOW MANY, AND THE ONE HULL WHERE THE ANSWER IS NOT "AS MANY AS YOU CAN AFFORD".
@@ -526,6 +529,9 @@ describe('the quantity picker', () => {
     </AcademyLessonContext.Provider></ToastProvider></QueryClientProvider>);
     await userEvent.click(document.querySelector('#row-DART button')!);
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('2');
+    // The lesson's count is the whole offer: Max says two, and no reason pretends otherwise.
+    expect(screen.getByRole('button', { name: /max dart/i })).toHaveTextContent('Max · 2');
+    expect(document.querySelector('[data-fits]')).toBeNull();
     expect(screen.getByRole('button', { name: /fewer dart/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
     await userEvent.click(screen.getByRole('button', { name: /build 2/i }));
@@ -549,7 +555,23 @@ describe('the quantity picker', () => {
     await userEvent.click(screen.getByRole('button', { name: /more dart/i }));
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('2');
     expect(screen.getByRole('button', { name: /more dart/i })).toBeDisabled();
-    expect(document.querySelector('[data-fits]')).toHaveTextContent('2');
+    // Max says how many, and the line beside it what stops it there.
+    expect(screen.getByRole('button', { name: /max dart/i })).toHaveTextContent('Max · 2');
+    expect(document.querySelector('[data-fits]')).toHaveTextContent(/hangar/i);
+  });
+
+  it('says it is the purse that stops Max when the purse is what stops it', async () => {
+    show({}, 'reach', { alloy: HULLS.DART.alloy * 3, crystal: 400_000 });
+    await openSheet('Dart');
+    expect(screen.getByRole('button', { name: /max dart/i })).toHaveTextContent('Max · 3');
+    expect(document.querySelector('[data-fits]')).toHaveTextContent(/resources/i);
+  });
+
+  /** Seen on the phone: a Dart sheet said "14 of 2 held" — the berth line is the Prospector's alone. */
+  it('keeps the berth line to the one hull that has berths', async () => {
+    show({ fleet: { DART: 14 } });
+    await openSheet('Dart');
+    expect(screen.queryByText(/held/i)).toBeNull();
   });
 
   it('says the Hangar is full instead of offering a stepper', async () => {
@@ -568,7 +590,21 @@ describe('the quantity picker', () => {
   it('still draws the room a gun answers to', async () => {
     show({ capacity: { ground: groundSlots(6), groundUsed: 0 } }, 'defend');
     await openSheet('Thorn');
-    expect(document.querySelector('[data-fits]')).not.toBeNull();
+    expect(document.querySelector('[data-room-bar]')).toHaveTextContent(/ground room/i);
+  });
+
+  /** The order's own share of the room moves under the stepper: the rule teaching itself. */
+  it('draws the room this order takes, in your colour', async () => {
+    show({ fleet: { DART: 4 } });
+    await openSheet('Dart');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    await user.click(screen.getByRole('button', { name: /more dart/i }));
+    const room = document.querySelector<HTMLElement>('[data-room-bar]')!;
+    expect(room).toHaveTextContent(/hangar room/i);
+    expect(room.querySelector('[data-part="home"]')).not.toBeNull();
+    expect(room.querySelector('[data-part="incoming"]')).not.toBeNull();
+    expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`this order ${String(3 * hullBulk('DART'))}`);
   });
 
   it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
@@ -710,10 +746,11 @@ describe('the quantity picker', () => {
     );
 
     await openSheet('Dart');
-    // The sheet remains informative while its commitment states the shortfall.
-    const short = screen.getAllByRole('button', { name: /short/i });
-    expect(short.length).toBeGreaterThan(0);
-    expect(short[0]).toBeDisabled();
+    // The sheet remains informative while its commitment says when it will be enough.
+    const primary = document.querySelector<HTMLElement>('[data-build-sheet] [data-commit] button')!;
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveTextContent(/enough/i);
+    expect(document.querySelector('[data-build-sheet] [data-need-bar="alloy"]')).not.toBeNull();
     expect(screen.getByRole('textbox', { name: /quantity/i })).toBeInTheDocument();
   });
 
@@ -742,38 +779,86 @@ describe('the quantity picker', () => {
   });
 });
 
-/** The image carries both comparison overlays: cost left, compact hull facts right. */
-describe('craft facts over the hero art', () => {
-  it('pins the cost to the image top-left without a Costs heading', async () => {
-    show({});
+/**
+ * THE HULL OVER ITS OWN SKY. D1: the class, where the ships are, the art, and the six
+ * figures under it; the price is the batch's, once, beside the commit.
+ */
+describe('the hull hero', () => {
+  it('draws the hull with its class and where its ships are', async () => {
+    show({ fleet: { DART: 14 }, fleetAway: { DART: 2 } });
     await openSheet('Dart');
-    const art = document.querySelector('[data-build-art]');
-    const price = document.querySelector('[data-build-price]');
-
-    expect(art).not.toBeNull();
-    expect(price).not.toBeNull();
-    expect(art).toContainElement(price as HTMLElement);
-    expect(price).toHaveClass('absolute', 'left-1', 'top-1');
-    expect(within(price as HTMLElement).queryByText('Costs')).not.toBeInTheDocument();
+    const hero = document.querySelector<HTMLElement>('[data-build-art]')!;
+    expect(within(hero).getByRole('img', { name: 'Dart' })).toBeInTheDocument();
+    expect(hero).toHaveTextContent(/skirmisher/i);
+    expect(hero).toHaveTextContent('14 in · 2 out');
   });
 
-  it('pins the stat section to the image top-right, scaled down', async () => {
+  /** A gun never leaves, so "0 out" is a line that can only ever say nothing. */
+  it('counts a gun as standing, not as in or out', async () => {
+    show({ ground: { THORN: 3 } }, 'defend');
+    await openSheet('Thorn');
+    const hero = document.querySelector<HTMLElement>('[data-build-art]')!;
+    expect(hero).toHaveTextContent('3 standing');
+    expect(hero).not.toHaveTextContent(/out/);
+  });
+
+  it('lays the six figures under the art', async () => {
     show({});
     await openSheet('Dart');
     const art = document.querySelector('[data-build-art]');
     const stats = document.querySelector('[data-build-stats]');
-
-    expect(art).not.toBeNull();
-    expect(stats).not.toBeNull();
     expect(art).toContainElement(stats as HTMLElement);
-    expect(stats).toHaveClass('absolute', 'right-1', 'top-1', 'origin-top-right', 'scale-[60%]');
+    expect(stats?.querySelectorAll('[data-stat]')).toHaveLength(6);
   });
 
   /** One price per sheet: the figure shown is the one the commit button quotes. */
-  it('shows the order total, and only once', async () => {
+  it('shows the order total once, beside the commit, and moves it with the count', async () => {
     show({});
     await openSheet('Dart');
     expect(document.querySelectorAll('[data-build-price]')).toHaveLength(1);
+    expect(document.querySelector('[data-build-art] [data-build-price]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /more dart/i }));
+    expect(document.querySelector('[data-build-price]')).toHaveTextContent(String(HULLS.DART.alloy * 2));
+  });
+
+  it('says how full the yard queue it joins is', async () => {
+    show({});
+    await openSheet('Dart');
+    expect(document.querySelector('[data-build-sheet] [data-queue-fill]')).toHaveTextContent('0/3');
+  });
+
+  /** Progressive disclosure: the pitch is the fact, the detail one tap deeper. */
+  it('keeps the long explanation one tap deeper', async () => {
+    show({});
+    await openSheet('Dart');
+    expect(document.querySelector('[data-build-sheet] [data-item-detail]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /how it works/i }));
+    expect(document.querySelector('[data-build-sheet] [data-item-detail]')?.textContent.length).toBeGreaterThan(40);
+  });
+});
+
+/**
+ * THE MATCHUP, WITH THE NUMBERS THE RESOLVER USES. D124: a rule taught as a post-mortem
+ * is not decision support, so the multipliers stand where the hull is chosen.
+ */
+describe('the matchup on a hull sheet', () => {
+  it('names what it beats and what beats it, with the multipliers', async () => {
+    show({});
+    await openSheet('Dart');
+    expect(screen.getByTestId('counter-strong')).toHaveTextContent(/bulwark/i);
+    expect(screen.getByTestId('counter-strong')).toHaveTextContent(factor(COMBAT.strongMult));
+    expect(screen.getByTestId('counter-weak')).toHaveTextContent(/lance/i);
+    expect(screen.getByTestId('counter-weak')).toHaveTextContent(factor(COMBAT.weakMult));
+    // Weak is a gap to plan around, not a threat: warn, never hostile red.
+    expect(screen.getByTestId('counter-weak').className).toMatch(/v2-warn/);
+  });
+
+  it('opens the whole cycle on a tap, with this hull lit', async () => {
+    show({});
+    await openSheet('Dart');
+    expect(document.querySelector('[data-counter-cycle] [data-rung]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /class cycle/i }));
+    expect(document.querySelector('[data-counter-cycle] [data-rung="SKIRMISHER"]')).toHaveAttribute('data-current', 'true');
   });
 });
 
@@ -795,7 +880,7 @@ describe('the fuel a craft burns', () => {
     show();
     await openSheet('Dart');
 
-    const fuel = document.querySelector('.stat-fuel');
+    const fuel = document.querySelector('[data-stat="fuel"]');
     expect(fuel, 'the craft sheet says nothing about fuel').not.toBeNull();
     expect(fuel).toHaveTextContent(hullFuelRate('DART').toFixed(1));
     expect(fuel).toHaveTextContent(/fuel/i);
@@ -805,7 +890,7 @@ describe('the fuel a craft burns', () => {
     show();
     await openSheet('Rampart');
 
-    expect(document.querySelector('.stat-fuel'))
+    expect(document.querySelector('[data-stat="fuel"]'))
       .toHaveTextContent(hullFuelRate('RAMPART').toFixed(1));
   });
 
@@ -814,7 +899,7 @@ describe('the fuel a craft burns', () => {
     show({}, 'defend');
     await openSheet('Bastion');
 
-    expect(document.querySelector('.stat-fuel')).toHaveTextContent('—');
+    expect(document.querySelector('[data-stat="fuel"]')).toHaveTextContent('—');
   });
 });
 
@@ -869,24 +954,21 @@ describe('the room figure on a craft sheet', () => {
     show();
     await openSheet('Dart');
 
-    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('DART')));
+    expect(document.querySelector('[data-stat="room"]')).toHaveTextContent(String(hullBulk('DART')));
   });
 
   it('keeps bulk where a ground unit still consumes capacity', async () => {
     show({}, 'defend');
     await openSheet('Bastion');
 
-    expect(document.querySelector('.stat-room')).toHaveTextContent(String(hullBulk('BASTION')));
+    expect(document.querySelector('[data-stat="room"]')).toHaveTextContent(String(hullBulk('BASTION')));
   });
 
   it('leaves six relevant figures on a mobile craft sheet', async () => {
     show();
     await openSheet('Dart');
 
-    const strip = document.querySelector('[data-build-stats] .stats');
-    expect(strip).not.toBeNull();
-    expect(strip).toHaveClass('stats-card');
-    expect(strip?.querySelectorAll('.stat')).toHaveLength(6);
+    expect(document.querySelectorAll('[data-build-stats] [data-stat]')).toHaveLength(6);
   });
 });
 

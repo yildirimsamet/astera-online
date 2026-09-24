@@ -110,6 +110,8 @@ describe('the whole cycle, one tap deeper', () => {
   it('draws all three rungs on a hull sheet, with this hull lit', async () => {
     const view = show();
     await userEvent.click(screen.getByRole('button', { name: /about pike/i }));
+    // The matchup line states the rule; the whole cycle is behind its own tap (D1).
+    await userEvent.click(screen.getByRole('button', { name: /class cycle/i }));
 
     const sheet = view.container.querySelector('[data-counter-cycle]');
     expect(sheet, 'the build sheet draws no counter cycle').not.toBeNull();

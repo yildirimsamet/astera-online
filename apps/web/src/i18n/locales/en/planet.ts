@@ -351,6 +351,14 @@ export const planet = {
       "You already hold {{count}} — the limit. Craft that are out still count, so you cannot build another.",
     heldOfMax: "{{owned}} of {{max}} held. The ones that are out count too.",
     defenceAfter: "Home defence when complete: {{count}} units",
+    maxOf: 'Max · {{value}}',
+    byPurse: 'as far as your resources go',
+    byHangar: 'as far as the Hangar has room',
+    byGround: 'as far as the ground has room',
+    byBerth: 'as far as your berths allow',
+    cycle: 'Class cycle',
+    yardFill: 'Yard queue {{used}}/{{total}}',
+    standing: '{{value}} standing',
   },
 } as const;
 

@@ -23,16 +23,16 @@ import {
   satelliteTag,
 } from '../i18n/names.js';
 import { affordWait } from '../lib/afford.js';
-import { compact } from '../lib/format.js';
 import { buildingGain, instrumentGain, satelliteGain, type Gain } from '../lib/gains.js';
 import { orderMinutes } from '../lib/orderTime.js';
 import { projectedQueueState } from '../lib/predict.js';
 import { duration } from '../lib/time.js';
 import { Icon } from '../v2/icons.js';
+import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { useOrderDuration } from './Action.js';
-import { BUILDING_TOP, RESOURCE_ART, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
+import { BUILDING_TOP, SATELLITE_ART, buildingArt, instrumentArt } from './assets.js';
 import type { Blocked } from './UpgradeRow.js';
 
 /**
@@ -370,24 +370,6 @@ function Rung({
       <Cost cost={cost} />
       <span className="w-12 shrink-0 whitespace-nowrap text-right font-v2-mono text-micro text-v2-ink-3">{takes}</span>
     </li>
-  );
-}
-
-/** A price in resource marks, quiet: the ladder's column and the footer's line. */
-function Cost({ cost, held }: { cost: { alloy: number; crystal: number }; held?: { alloy: number; crystal: number } }) {
-  const part = (resource: 'alloy' | 'crystal', amount: number, have?: number) => (
-    <span
-      className={`flex items-center gap-1 ${have !== undefined && amount > have ? 'text-v2-warn' : 'text-v2-ink'}`}
-    >
-      <img src={RESOURCE_ART[resource]} alt={i18n.t(`vocabulary.resource.${resource}`)} className="size-3.5 shrink-0 object-contain" />
-      {compact(amount)}
-    </span>
-  );
-  return (
-    <span className="flex shrink-0 items-center gap-2 font-v2-mono text-caption tabular-nums">
-      {part('alloy', cost.alloy, held?.alloy)}
-      {cost.crystal > 0 && part('crystal', cost.crystal, held?.crystal)}
-    </span>
   );
 }
 

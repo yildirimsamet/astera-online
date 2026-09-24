@@ -67,6 +67,13 @@ const decimals = (value: number, digits: number): string =>
     maximumFractionDigits: digits,
   });
 
+/**
+ * A MULTIPLIER AS THE RULES STATE IT: every digit it has, none it does not. The counter
+ * cycle's ×0.625 printed as ×0.6 would teach a rule the resolver does not apply.
+ */
+export const factor = (value: number): string =>
+  `×${value.toLocaleString(locale(), { maximumFractionDigits: 3 })}`;
+
 /** A probe report is a range, and it must never be shown as if it were a number. */
 export const range = (low: number, high: number): string =>
   `${compact(low)}${i18n.t('units.rangeJoin')}${compact(high)}`;

@@ -188,3 +188,15 @@ export const researchMap = {
   opensAt: 'Level {{level}} opens',
   opens: 'Opens',
 } as const;
+
+/** D1/D2: a world's room, part by part, in your own colour. */
+export const roomBar = {
+  hangar: 'Hangar room',
+  ground: 'Ground room',
+  home: 'home {{value}}',
+  away: 'away {{value}}',
+  queued: 'queued {{value}}',
+  incoming: 'this order {{value}}',
+  free: 'free {{value}}',
+  reading: '{{label}}: {{used}} of {{total}} taken',
+};

@@ -351,6 +351,14 @@ export const planet = {
       "Sie besitzen bereits {{count}} – das Limit. Fertige Objekte, die nicht mehr verfügbar sind, zählen weiterhin, du kannst also kein weiteres bauen.",
     heldOfMax: "{{owned}} von {{max}} gehalten. Es zählen auch diejenigen, die draußen sind.",
     defenceAfter: "Heimverteidigung nach Fertigstellung: {{count}} Einheiten",
+    maxOf: 'Max · {{value}}',
+    byPurse: 'so weit deine Ressourcen reichen',
+    byHangar: 'so weit der Hangar Platz hat',
+    byGround: 'so weit der Boden Platz hat',
+    byBerth: 'so weit deine Liegeplätze reichen',
+    cycle: 'Klassenzyklus',
+    yardFill: 'Werftschlange {{used}}/{{total}}',
+    standing: '{{value}} stehen',
   },
 } as const;
 

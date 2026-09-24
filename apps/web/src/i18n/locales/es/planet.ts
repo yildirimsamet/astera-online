@@ -351,6 +351,14 @@ export const planet = {
       "Ya tienes {{count}}: el límite. Las naves que están fuera todavía cuentan, por lo que no puedes construir otra.",
     heldOfMax: "{{owned}} de {{max}} retenido. Los que están fuera también cuentan.",
     defenceAfter: "Defensa local cuando esté completa: {{count}} unidades",
+    maxOf: 'Máx · {{value}}',
+    byPurse: 'hasta donde llegan tus recursos',
+    byHangar: 'hasta donde cabe en el hangar',
+    byGround: 'hasta donde cabe en tierra',
+    byBerth: 'hasta donde permiten tus amarres',
+    cycle: 'Ciclo de clases',
+    yardFill: 'Cola del astillero {{used}}/{{total}}',
+    standing: '{{value}} instalados',
   },
 } as const;
 

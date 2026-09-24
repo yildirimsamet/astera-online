@@ -19,7 +19,7 @@ import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { baseSwitch, bell, dock, fleetPage, handle, hold, lane, meter, now, reportScene, researchMap, ruler, slot, topBar, view } from './v2.js';
+import { baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, researchMap, ruler, slot, topBar, view } from './v2.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -97,6 +97,7 @@ export const en = {
   hold,
   lane,
   meter,
+  roomBar,
   ruler,
   handle,
   dock,

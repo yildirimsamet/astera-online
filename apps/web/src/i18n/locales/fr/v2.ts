@@ -184,3 +184,14 @@ export const researchMap = {
   opensAt: 'Le niveau {{level}} ouvre',
   opens: 'Ouvre',
 } as const;
+
+export const roomBar = {
+  hangar: 'Place au hangar',
+  ground: 'Place au sol',
+  home: 'au port {{value}}',
+  away: 'en vol {{value}}',
+  queued: 'en file {{value}}',
+  incoming: 'cette commande {{value}}',
+  free: 'libre {{value}}',
+  reading: '{{label}} : {{used}} sur {{total}} occupés',
+};

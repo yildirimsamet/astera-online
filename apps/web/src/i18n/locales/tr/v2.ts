@@ -184,3 +184,14 @@ export const researchMap = {
   opensAt: '{{level}}. seviye açar',
   opens: 'Açar',
 } as const;
+
+export const roomBar = {
+  hangar: 'Hangar odası',
+  ground: 'Yer odası',
+  home: 'evde {{value}}',
+  away: 'dışarıda {{value}}',
+  queued: 'sırada {{value}}',
+  incoming: 'bu sipariş {{value}}',
+  free: 'boş {{value}}',
+  reading: '{{label}}: {{total}} yerin {{used}} kadarı dolu',
+};

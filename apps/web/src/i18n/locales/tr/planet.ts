@@ -351,6 +351,14 @@ export const planet = {
     heldOfMax:
       "Elinde {{max}} üzerinden {{owned}} var. Dışarıdakiler de sayılıyor.",
     defenceAfter: "Tamamlanınca evde {{count}} birlik olur",
+    maxOf: 'Maks · {{value}}',
+    byPurse: 'kaynağın bu kadarına yetiyor',
+    byHangar: 'Hangarda bu kadar yer var',
+    byGround: 'yerde bu kadar yer var',
+    byBerth: 'yuva sınırın bu kadar',
+    cycle: 'Sınıf döngüsü',
+    yardFill: 'Tersane sırası {{used}}/{{total}}',
+    standing: '{{value}} kurulu',
   },
 } as const;
 
