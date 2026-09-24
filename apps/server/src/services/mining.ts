@@ -978,10 +978,51 @@ export async function resolveMiningArrival(tx: Tx, runId: string, now: Date): Pr
 export interface MiningDelivery {
   runId: string;
   craft: number;
+  /** Where it came down and whose it was; null when there was nobody left to land for. */
+  planetId: string | null;
+  playerId: string | null;
   /** What actually reached the store. */
   delivered: { alloy: number; crystal: number; deuterium: number };
   /** What was mined but would not fit — the store was already full. */
   wasted: { alloy: number; crystal: number; deuterium: number };
+}
+
+/**
+ * WHERE A RUN COMES DOWN, decided under the locks. Owner report, 2026-09-24: a colony
+ * that seceded left its Prospectors in the air for ever ("bir kullanıcıda 6 tane birikmiş").
+ *
+ * The landing read the owner off the launch world, and a world that fell to nobody has
+ * none — `setUnits` threw, the transaction rolled back, the run stayed `returning`, and
+ * the recovery path made the same call and failed the same way.
+ *
+ * The rule is secession's own: a fleet in the air still belongs to its commander and
+ * lands somewhere that is still theirs. So the run comes down on the world it left
+ * while that world has a commander — its own, or the one who TOOK it, who takes its
+ * drills with it (`transferPlanetControl`, tested as "belongs to the current controller
+ * when its launch world changes hands") — and at its commander's capital when the world
+ * went neutral. Null only when there is no commander left to land for.
+ *
+ * Both possible worlds are locked in sorted order, as launches take them, and the
+ * choice is made after the locks: control may change while a return waits its turn.
+ * The capital is read here rather than through `ownership.capitalPlanet` for the same
+ * reason `loyalty.ts` gives: that module's imports lead back through the war code.
+ */
+export async function landRunLocked(
+  tx: Tx,
+  run: Pick<typeof miningRuns.$inferSelect, 'planetId' | 'ownerPlayerId'>,
+): Promise<{ planetId: string; playerId: string } | null> {
+  const [capital] = run.ownerPlayerId === null
+    ? []
+    : await tx.select({ id: planets.id }).from(planets)
+      .where(and(eq(planets.controllerPlayerId, run.ownerPlayerId), eq(planets.kind, 'CAPITAL')));
+  for (const id of [...new Set([run.planetId, ...(capital ? [capital.id] : [])])].sort()) {
+    await tx.select({ id: planets.id }).from(planets).where(eq(planets.id, id)).for('update');
+  }
+  const [origin] = await tx.select({ controller: planets.controllerPlayerId }).from(planets)
+    .where(eq(planets.id, run.planetId));
+  if (origin?.controller) return { planetId: run.planetId, playerId: origin.controller };
+  if (!capital || run.ownerPlayerId === null) return null;
+  return { planetId: capital.id, playerId: run.ownerPlayerId };
 }
 
 /**
@@ -1011,7 +1052,18 @@ export async function resolveMiningReturn(
   /** And again when it lands, for the same reason and on the same claim. D53. */
   await publishShard(tx, run.seasonId, 'mining');
 
-  const planet = await loadLocked(tx, run.planetId, clock);
+  const mined = { alloy: run.minedAlloy, crystal: run.minedCrystal, deuterium: run.minedDeuterium };
+  const landing = await landRunLocked(tx, run);
+  if (!landing) {
+    // Nobody to land for: the craft leave the sky, and no caretaker is handed them.
+    await tx.delete(units)
+      .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
+    return {
+      runId, craft: run.craft, planetId: null, playerId: null,
+      delivered: { alloy: 0, crystal: 0, deuterium: 0 }, wasted: mined,
+    };
+  }
+  const planet = await loadLocked(tx, landing.planetId, clock);
 
   /**
    * ORE COMES HOME INTO THE WORKS, NOT INTO STORAGE. D31.
@@ -1065,7 +1117,7 @@ export async function resolveMiningReturn(
   const gotCrystal = Math.min(run.minedCrystal, roomCrystal);
   const gotDeuterium = Math.min(run.minedDeuterium, roomDeuterium);
 
-  await saveResources(tx, run.planetId, {
+  await saveResources(tx, landing.planetId, {
     alloy: planet.alloy,
     crystal: planet.crystal,
     deuterium: planet.deuterium,
@@ -1082,12 +1134,18 @@ export async function resolveMiningReturn(
     .from(units)
     .where(
       and(
-        eq(units.planetId, run.planetId),
+        eq(units.planetId, landing.planetId),
         eq(units.hull, 'PROSPECTOR'),
         eq(units.location, 'home'),
       ),
     );
-  await setUnits(tx, run.planetId, { PROSPECTOR: (atHome?.count ?? 0) + run.craft }, 'home');
+  await setUnits(
+    tx,
+    landing.planetId,
+    { PROSPECTOR: (atHome?.count ?? 0) + run.craft },
+    'home',
+    landing.playerId,
+  );
   await tx
     .delete(units)
     .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
@@ -1095,6 +1153,8 @@ export async function resolveMiningReturn(
   return {
     runId,
     craft: run.craft,
+    planetId: landing.planetId,
+    playerId: landing.playerId,
     delivered: { alloy: gotAlloy, crystal: gotCrystal, deuterium: gotDeuterium },
     wasted: {
       alloy: run.minedAlloy - gotAlloy,

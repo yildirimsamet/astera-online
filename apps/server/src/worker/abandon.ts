@@ -21,6 +21,7 @@ import { abandonTradeRun } from '../services/trade.js';
 import { abandonIntergalacticConvoyRun } from '../services/intergalacticConvoyRaid.js';
 import { allocateClanLoot } from '../services/clanLoot.js';
 import { capitalPlanet } from '../services/ownership.js';
+import { landRunLocked } from '../services/mining.js';
 import { abandonClanWarLeg, clanWarEscrowPlanetIds } from '../services/clanWar.js';
 
 /**
@@ -235,24 +236,25 @@ async function abandonMiningRun(
       .returning();
     if (!run) return false;
 
-    // This is the same read/merge/write as an ordinary landing. Serialize it
-    // against construction, launches and other returns, or a stale home count
-    // can erase the recalled craft while recovering a failed return event.
-    const [home] = await tx.select({ id: planets.id }).from(planets)
-      .where(eq(planets.id, run.planetId)).for('update');
-    if (!home) throw new Error('mining origin vanished before abandonment');
-    const current = await tx
-      .select()
-      .from(units)
-      .where(and(eq(units.planetId, run.planetId), eq(units.location, 'home')));
-    const merged: Fleet = {};
-    for (const u of current) merged[u.hull] = u.count;
-    merged.PROSPECTOR = (merged.PROSPECTOR ?? 0) + run.craft;
-    await setUnits(tx, run.planetId, merged, 'home');
+    // This is the same read/merge/write as an ordinary landing, on the same world
+    // (`landRunLocked`: the launch world while it has a commander, the commander's
+    // capital once it fell to nobody). Serialized against construction, launches and
+    // other returns, or a stale home count can erase the recalled craft.
+    const landing = await landRunLocked(tx, run);
+    if (landing) {
+      const current = await tx
+        .select()
+        .from(units)
+        .where(and(eq(units.planetId, landing.planetId), eq(units.location, 'home')));
+      const merged: Fleet = {};
+      for (const u of current) merged[u.hull] = u.count;
+      merged.PROSPECTOR = (merged.PROSPECTOR ?? 0) + run.craft;
+      await setUnits(tx, landing.planetId, merged, 'home', landing.playerId);
+    }
     await tx
       .delete(units)
       .where(and(eq(units.planetId, run.planetId), eq(units.location, `mine:${runId}`)));
-    await tellThemItCameBack(tx, run.planetId, run.craft, runId, at);
+    if (landing) await tellThemItCameBack(tx, landing.planetId, run.craft, runId, at);
     /** Same reason: the drill is out of the sky, and the disc has to stop drawing it. */
     await publishShard(tx, run.seasonId, 'mining');
     return true;

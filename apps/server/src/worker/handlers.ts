@@ -1711,10 +1711,9 @@ export const onMiningReturn: Handler = async ({ db, clock }, event) => {
 
     const [run] = await tx.select().from(miningRuns).where(eq(miningRuns.id, runId));
     if (!run) return;
-    const [planet] = await tx.select().from(planets).where(eq(planets.id, run.planetId));
-    if (!planet) return;
-
-    await recomputeWealth(tx, run.planetId);
+    // Where it came down, which is not always where it left (`landRunLocked`).
+    if (delivered.planetId === null || delivered.playerId === null) return;
+    await recomputeWealth(tx, delivered.planetId);
     /**
      * Reuses `fleet_returned` rather than inventing a kind: from the player's side
      * this IS craft coming home with cargo.
@@ -1731,9 +1730,8 @@ export const onMiningReturn: Handler = async ({ db, clock }, event) => {
      * full is exactly the lesson D31 exists to teach, and it was being taught in
      * silence.
      */
-    if (!planet.controllerPlayerId) return;
     await notify(tx, {
-      playerId: planet.controllerPlayerId,
+      playerId: delivered.playerId,
       kind: 'fleet_returned',
       payload: {
         trip: run.recalledAt !== null

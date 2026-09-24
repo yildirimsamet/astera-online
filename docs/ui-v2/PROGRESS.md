@@ -115,6 +115,30 @@ routes" (koloni arızası türleri listede yok — birleşimden önce de kırmı
 **ARA İŞ (sahip, 2026-09-24): 13 maddelik geri bildirim listesi F8'den önce.** Liste ve plan: aşağıdaki "Geri bildirim 3"
 bölümü. Bittiğinde F8'e dönülür.
 
+### Geri bildirim 3 (sahip, 2026-09-24) — 13 madde, gruplu plan
+Durum işaretleri: [ ] bekliyor · [x] bitti (commit).
+- **A · Sunucu hatası (8).** Sadakatle nötre düşen koloninin havadaki Kazıcıları: `resolveMiningReturn` ve
+  `abandonMiningRun` onları `setUnits(origin)` ile sahipsiz indiriyor → nötr dünyada `PLANET_NOT_OWNED` → işlem geri
+  alınıyor → sefer sonsuza dek "dönüyor", kurtarma yolu da aynı hatayla düşüyor (kullanıcıda 6 birikti). Düzeltme:
+  çıkış dünyasının komutanı yoksa (ayrılma) sefer, komutanının hâlâ tuttuğu dünyaya (`safeHomePlanet` → başkent)
+  iner, cevher oranın works'üne; bildirim komutana. Ele geçirmede Kazıcılar yeni sahibe geçer — mevcut, testli kural,
+  dokunulmadı (sahibe soruldu). Canlıdaki takılı seferler `sweepStranded` ile kendiliğinden toplanır. Diğer iniş
+  yolları (görev, transfer, yardım, korsan, ticaret, konvoy) sahipliği zaten yeniden doğruluyor. Açık not: korsan
+  baskınının (`pirate_arrival/return`) hiç `abandon`/stranded ağı yok (gösterilmiş hata değil). [x]
+- **B · HUD ufak (1, 12, 13).** NowLine noktası her zaman nabız; zil rozeti zil ikonuyla birlikte nabız (acil);
+  "Dünyana uç" ile "Görünüm" düğmelerinin yeri değişir (ev üstte). [ ]
+- **C · Galaksi olayı kartı (11).** Kapatılan olay kartı yeniden açılışta dönmesin: kapatılan `event:<id>` anahtarları
+  cihazda (localStorage, try/catch) olay bitene kadar saklanır. [ ]
+- **D · Üs ekonomisi (4, 5, 6).** Kuyrukta başı dışındaki bekleyen siparişlerde geri sayım yok, sarı kum saati +
+  "Sırada"; Works satırı yeniden: dolan bir havuz (dolum çubukları + miktar + "Topla"), büyük sayılarda taşmaz,
+  dolunca uyarı; depo çubukları yeniden bölmeli (tırtıklı), korunan bölmeler kalkanlı parantez içinde. [ ]
+- **E · İstihbarat (7).** Sonda raporu aralık çubukları: ölçeğin ne olduğu görünür (0 → ölçek, senin değerin çizgisi),
+  hizalamanın anlamı okunur. [ ]
+- **F · Yıldız arka planları (2, 3).** Üs kahramanındaki gökyüzü daha soluk; Araştırma takımyıldızında arka plan
+  yıldızları küçük/sönük, düğüm yıldızları büyük/parlak, araştırılmış ve araştırılmamış düğümler biraz daha parlak. [ ]
+- **G · Galaksi sahnesi (9, 10).** Uçan her şeyin dış çizgisi %50 ince, renk parlaklığı %25 az; galaktik konvoyun
+  rüzgârı yerine sade hız çizgileri ("rüzgârı delen araç"). [ ]
+
 **F8 · E11 Masaüstü (K10) — yarıda (F8a commit'li).** Şartname: `grep -n "^#### E11 ·\|^| K10" docs/ui-v2/gozlemevi.md`.
 Biten (F8a): kırılımlar `v2-split` 700 / `v2-desk` 1100 (`tokens.css`, `lib/media.ts` `DESK_QUERY`); ≥1100 dock üst çubukta
 sekme çubuğu (`Dock bar`, 1–5 tuş ipucu), solda 260 px `Outline` (Dünyalar · Havada · Kuyruklar; `lib/outline.ts`,
@@ -503,4 +527,5 @@ typecheck 0 hata · lint 0 hata.
   ~~`surface-vocabulary.test.ts`~~ F5'te (`92dc01d`) yeşile döndü.
 - server (tam paket ölçülmedi; ilgili dosyalarda görülen, HEAD'de de kırmızı): `contract.test.ts` ×4 ("GET /api/planet
   parses" hangar/ground şekli; devre dışı Ölüm Yıldızı/önleyici rotaları 404 yerine 200); `intel-states.test.ts` ×3
-  (klan sensör küresi, teleskop erişimi).
+  (klan sensör küresi, teleskop erişimi). `garbage-collector.test.ts` "is built behind Shipyard 4…" (fiyat 13000 ≠ 10000;
+  kural paketi, 2026-09-24'te görüldü, madencilik düzeltmesiyle ilgisiz).

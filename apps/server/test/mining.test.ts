@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -39,7 +40,8 @@ import {
 import { buildUnits } from '../src/services/build.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { EventWorker } from '../src/worker/loop.js';
-import { abandon, strandedFlightCount } from '../src/worker/abandon.js';
+import { abandon, strandedFlightCount, sweepStranded } from '../src/worker/abandon.js';
+import { secedeColony } from '../src/services/loyalty.js';
 import {
   giveResearch,
   giveUnits,
@@ -1056,6 +1058,115 @@ describe('mining', () => {
    * D121 removed fixed overhead. Empty craft retain normal speed; any positive
    * haul pays the slowdown (owner correction, 2026-09-13).
    */
+  /**
+   * A RUN WHOSE LAUNCH WORLD FELL TO NOBODY. Owner report, 2026-09-24: "Sadakat düştükten
+   * sonra koloni nötr olunca kazıcılar ne oluyor? Bir kullanıcıda 6 tane birikmiş."
+   *
+   * The return landed the craft on the launch world with `setUnits`, which reads the
+   * owner off the world — and a seceded world has none, so the landing threw, the
+   * transaction rolled back and the run stayed `returning` for ever. The recovery path
+   * (`abandonMiningRun`) made the same call and failed the same way. Secession's own rule
+   * is that a fleet in the air still belongs to its commander and lands somewhere that
+   * is still theirs; the drills are no exception. (A world TAKEN by a commander keeps its
+   * drills — "belongs to the current controller when its launch world changes hands".)
+   */
+  describe('a run whose launch world seceded', () => {
+    let colony: string;
+    let capital: string;
+
+    beforeEach(async () => {
+      capital = mine;
+      colony = f.planetIds[2]!;
+      await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[0]! })
+        .where(eq(planets.id, colony));
+      await setLevel(f.db, colony, 'SHIPYARD', 4);
+      await placeAt(f.db, colony, { x: 10 });
+      await giveUnits(f.db, colony, { PROSPECTOR: 1 });
+    });
+
+    const secede = () => f.db.transaction((tx) => secedeColony(tx, colony, f.clock.now(), randomUUID()));
+
+    const prospectorsAt = async (planetId: string): Promise<number> => {
+      const [row] = await f.db.select().from(units).where(and(
+        eq(units.planetId, planetId), eq(units.hull, 'PROSPECTOR'), eq(units.location, 'home'),
+      ));
+      return row?.count ?? 0;
+    };
+
+    it('lands its craft and its ore at the commander’s capital, and closes', async () => {
+      const launched = await launchMining(f.db, colony, waitForRock().index, 1, f.clock);
+      await secede();
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(mid!.status).toBe('returning');
+      const [before] = await f.db.select().from(planets).where(eq(planets.id, capital));
+
+      f.clock.set(mid!.homeAt!);
+      await worker(f).tick();
+
+      const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(run!.status).toBe('done');
+      expect(await prospectorsAt(capital)).toBe(1);
+      expect(await prospectorsAt(colony)).toBe(0);
+      const inFlight = await f.db.select().from(units).where(eq(units.location, `mine:${launched.runId}`));
+      expect(inFlight).toEqual([]);
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, capital));
+      expect(after!.bufferAlloy + after!.bufferCrystal).toBeGreaterThan(before!.bufferAlloy + before!.bufferCrystal);
+      const [told] = await f.db.select().from(notifications).where(and(
+        eq(notifications.refId, launched.runId), eq(notifications.kind, 'fleet_returned'),
+      ));
+      expect(told?.playerId).toBe(f.playerIds[0]);
+    });
+
+    it('leaves nothing for a neutral world: the caretaker is given no craft and no ore', async () => {
+      const launched = await launchMining(f.db, colony, waitForRock().index, 1, f.clock);
+      await secede();
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const [neutral] = await f.db.select().from(planets).where(eq(planets.id, colony));
+      const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      f.clock.set(mid!.homeAt!);
+      await worker(f).tick();
+      const [after] = await f.db.select().from(planets).where(eq(planets.id, colony));
+      expect(after!.bufferAlloy).toBe(neutral!.bufferAlloy);
+      expect(after!.bufferCrystal).toBe(neutral!.bufferCrystal);
+      const onNeutral = await f.db.select().from(units).where(and(eq(units.planetId, colony), eq(units.hull, 'PROSPECTOR')));
+      expect(onNeutral.every((row) => row.count === 0)).toBe(true);
+    });
+
+    it('is recovered by the stranded sweep once its return event is gone — the runs already stuck in a live galaxy', async () => {
+      const launched = await launchMining(f.db, colony, waitForRock().index, 1, f.clock);
+      await secede();
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const [mid] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      // What five failed attempts leave behind: the return event parked as failed.
+      await f.db.update(scheduledEvents).set({ status: 'failed' }).where(and(
+        eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return'),
+      ));
+      f.clock.set(new Date(mid!.homeAt!.getTime() + 10 * 60_000));
+
+      expect(await sweepStranded(f.db, f.clock)).toBe(1);
+      const [run] = await f.db.select().from(miningRuns).where(eq(miningRuns.id, launched.runId));
+      expect(run!.status).toBe('done');
+      expect(await prospectorsAt(capital)).toBe(1);
+      expect(await f.db.select().from(units).where(eq(units.location, `mine:${launched.runId}`))).toEqual([]);
+    });
+
+    it('recovers through the failed-event path too', async () => {
+      const launched = await launchMining(f.db, colony, waitForRock().index, 1, f.clock);
+      await secede();
+      f.clock.set(launched.arriveAt);
+      await worker(f).tick();
+      const [event] = await f.db.select().from(scheduledEvents).where(and(
+        eq(scheduledEvents.refId, launched.runId), eq(scheduledEvents.kind, 'mining_return'),
+      ));
+      expect(await abandon(f.db, event!, f.clock)).toBe(true);
+      expect(await prospectorsAt(capital)).toBe(1);
+    });
+  });
+
   describe('the trip home', () => {
     it.each(['alloy', 'crystal', 'deuterium'] as const)(
       'keeps a partial %s-only haul at laden speed', async (resource) => {
