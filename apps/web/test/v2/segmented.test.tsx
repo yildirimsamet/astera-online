@@ -44,4 +44,22 @@ describe('the segmented switch', () => {
     await userEvent.keyboard('{ArrowRight}');
     expect(onChange.mock.calls.map(([id]) => id as string)).toEqual(['chat', 'signals', 'chronicle']);
   });
+
+  /** WAI-ARIA tabs: Home and End jump to the ends, as the old kit's switch did. */
+  it('jumps to the first and last option with Home and End', async () => {
+    const onChange = vi.fn();
+    render(<Segmented label="Bell" options={options} value="chronicle" onChange={onChange} />);
+    screen.getByRole('tab', { name: 'Chronicle' }).focus();
+    await userEvent.keyboard('{End}');
+    expect(screen.getByRole('tab', { name: /^Chat/ })).toHaveFocus();
+    await userEvent.keyboard('{Home}');
+    expect(screen.getByRole('tab', { name: 'Signals' })).toHaveFocus();
+    expect(onChange.mock.calls.map(([id]) => id as string)).toEqual(['chat', 'signals']);
+  });
+
+  /** A panel below it can name itself after the option that shows it. */
+  it('gives each option an id when asked', () => {
+    render(<Segmented label="Bell" options={options} value="signals" onChange={vi.fn()} tabId={(id) => `bell-${id}`} />);
+    expect(screen.getByRole('tab', { name: 'Signals' })).toHaveAttribute('id', 'bell-signals');
+  });
 });

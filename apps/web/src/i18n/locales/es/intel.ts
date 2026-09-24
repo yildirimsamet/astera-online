@@ -4,6 +4,26 @@
  */
 
 export const intel = {
+  shelf: {
+    label: 'Inteligencia',
+    watch: 'Vigilancia',
+    reports: 'Informes',
+    radar: 'Radar',
+  },
+  rivals: {
+    heading: 'Rivales marcados',
+    none: 'Marca a un rival desde su mundo en la galaxia; la marca lo sigue a cada mundo que tenga.',
+    lost: 'fuera de tu disco',
+  },
+  known: {
+    heading: 'Lo que sabes',
+    legendToggle: 'Nitidez y antigüedad',
+    legend: 'Las barras son la nitidez en vivo de un telescopio. La lectura de una sonda envejece: su imagen se vuelve granulada tras una hora, se desvanece tras un día y dice hace cuánto.',
+    telescope: 'Telescopio',
+    probe: 'Informe de sonda',
+    window: 'Ventana {{duration}}',
+    empty: 'Aún no sabes nada: un telescopio vigila en vivo, una sonda trae una lectura.',
+  },
   openOrbit: 'Órbita abierta',
   tabs: {
     label: 'Informes Intel',
@@ -26,6 +46,7 @@ export const intel = {
   },
 
   watching: {
+    nextSlot: 'Telescopio N{{level}}',
     heading: 'Mirando',
     slotsUsed: '{{used}}/{{total}} ranuras utilizadas',
     slotLabel: 'Ranura {{slot}}',
@@ -41,6 +62,7 @@ export const intel = {
   },
 
   probes: {
+    openDossier: 'Abrir expediente',
     heading: 'Informes de sonda',
     newest: 'más nuevo primero',
     missing: 'Ninguna sonda ha regresado nunca',
@@ -70,6 +92,12 @@ export const intel = {
   },
 
   radar: {
+    glance: 'Radar · últimas 24 h',
+    contacts_one: '{{count}} contacto',
+    contacts_other: '{{count}} contactos',
+    dayAgo: '−24 h',
+    now: 'ahora',
+    day: 'Últimas 24 horas',
     heading: '¿Quién te está mirando?',
     level: 'Radar L{{level}}',
     missing: 'No tienes radar',

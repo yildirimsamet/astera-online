@@ -4,6 +4,26 @@
  */
 
 export const intel = {
+  shelf: {
+    label: 'Intel',
+    watch: 'Watch',
+    reports: 'Reports',
+    radar: 'Radar',
+  },
+  rivals: {
+    heading: 'Marked rivals',
+    none: 'Mark a rival from their world on the galaxy; the mark follows them to every world they hold.',
+    lost: 'off your disc',
+  },
+  known: {
+    heading: 'What you know',
+    legendToggle: 'Clarity and age',
+    legend: 'Bars are a Telescope’s clarity, live. A probe’s reading ages: its picture grains after an hour, fades after a day, and says how long ago.',
+    telescope: 'Telescope',
+    probe: 'Probe report',
+    window: 'Window {{duration}}',
+    empty: 'Nothing known yet: a Telescope watches live, a probe brings back one reading.',
+  },
   openOrbit: 'Open Orbit',
   tabs: {
     label: 'Intel reports',
@@ -26,6 +46,7 @@ export const intel = {
   },
 
   watching: {
+    nextSlot: 'Telescope L{{level}}',
     heading: 'Watching',
     slotsUsed: '{{used}}/{{total}} slots used',
     slotLabel: 'Slot {{slot}}',
@@ -41,6 +62,7 @@ export const intel = {
   },
 
   probes: {
+    openDossier: 'Open dossier',
     heading: 'Probe reports',
     newest: 'newest first',
     missing: 'No probe has ever come back',
@@ -70,6 +92,12 @@ export const intel = {
   },
 
   radar: {
+    glance: 'Radar · last 24 h',
+    contacts_one: '{{count}} contact',
+    contacts_other: '{{count}} contacts',
+    dayAgo: '−24 h',
+    now: 'now',
+    day: 'Last 24 hours',
     heading: 'Who is looking at you',
     level: 'Radar L{{level}}',
     missing: 'You have no Radar',

@@ -1,26 +1,30 @@
 import type { ReactNode } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { radarContactRange, radarRange, telescopeSlots } from '@astera/rules';
+import { RIVAL, radarContactRange, radarRange, telescopeSlots } from '@astera/rules';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
+import { duration, staleness } from '../src/lib/time.js';
 import { IntelScreen } from '../src/screens/IntelScreen.js';
 
 /**
- * COVERAGE MEASURES YOUR EYES, NOT THE GALAXY. Owner-reported bug.
+ * THE INTEL SHEET — A BOOK OF WHAT YOU WATCH. D4 (owner, 2026-09-24) and E7/K11.
  *
- * The panel that leads the intel centre used to read "Watching 2 of 47" against
- * every other world in the galaxy, and drew a forty-seven-cell bar with two cells
- * lit. That is a progress bar toward a goal the game does not have and could not
- * offer: a Telescope tops out at four slots (D18, capped by D36), so the number
- * on the right was unreachable and the bar could never represent full coverage.
- * It told the player they were failing at something nobody had asked
- * them to do — on the screen the whole product is supposed to live on.
+ * Three shelves: WATCH (the Telescope rack, the rivals you marked, and everything you
+ * know — live readings with clarity bars, probe readings with their age as grain),
+ * REPORTS (probes and battles, the two lists this screen always had) and RADAR (the
+ * reach, the day's scans on a timeline, the log).
  *
- * The denominator is now the slot count. The size of the galaxy still appears,
- * but where it belongs: as the REASON a slot is a decision, not as a target.
+ * Kept from before, because they were owner-reported faults:
+ *
+ *   · COVERAGE MEASURES YOUR EYES, NOT THE GALAXY. "Watching 2 of 47" was a progress
+ *     bar toward a goal the game does not have; the denominator is the slot count and
+ *     the size of the galaxy is the reason a slot is a decision.
+ *   · SLOTS BELONG TO A WORLD, WATCHES TO A COMMANDER (D97/D134).
+ *   · THE DOUBT IS THE PRODUCT, SO THE DOUBT IS THE PICTURE (D127).
+ *   · A NOTIFICATION POINTS AT A SHELF, NOT JUST A ROOM (D121).
  */
 
 const harness = () => {
@@ -67,25 +71,33 @@ const report = (low: number, high: number, over: Record<string, unknown> = {}) =
   ...over,
 });
 
+const watch = (slot: number, over: Record<string, unknown> = {}, observerPlanetId = 'p1') => ({
+  observerPlanetId,
+  slot,
+  targetPlanetId: `q${String(slot)}`,
+  targetName: `World ${String(slot)}`,
+  ownerName: 'Someone',
+  assignedAt: new Date().toISOString(),
+  reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
+  ...over,
+});
+
 const intel = (
   watching: number,
   probeReports: unknown[] = [],
   /** Which world's sockets these are. A slot number belongs to a world, not a commander. */
   observerPlanetId = 'p1',
   extra: unknown[] = [],
+  radarLog: unknown[] = [],
+  first: Record<string, unknown> = {},
 ) => ({
-  watching: [...Array.from({ length: watching }, (_, slot) => ({
-    observerPlanetId,
-    slot,
-    targetPlanetId: `q${String(slot)}`,
-    targetName: `World ${String(slot)}`,
-    ownerName: 'Someone',
-    assignedAt: new Date().toISOString(),
-    reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
-  })), ...extra],
+  watching: [
+    ...Array.from({ length: watching }, (_, slot) => watch(slot, slot === 0 ? first : {}, observerPlanetId)),
+    ...extra,
+  ],
   probeReports,
   probeCooldowns: [],
-  radarLog: [],
+  radarLog,
   probeCost: { alloy: 50, crystal: 50 },
 });
 
@@ -109,6 +121,8 @@ const planet = (telescope: number, radar: number) => ({
   fleetAway: {},
 });
 
+interface Rival { planetId: string; slot: number; owner: string; name: string; lost: boolean }
+
 const show = (opts: {
   telescope: number;
   radar?: number;
@@ -119,12 +133,18 @@ const show = (opts: {
   open?: { stop: 'probes' | 'battles'; request: number };
   /** Watches belonging to ANOTHER of the commander's worlds. */
   elsewhere?: unknown[];
+  radarLog?: unknown[];
+  /** Overrides on the first watch. */
+  first?: Record<string, unknown>;
+  rivals?: Rival[];
+  onFocusRival?: (planetId: string) => void;
+  onOpenDossier?: (planetId: string) => void;
 }) => {
   const { wrapper: Wrapper, queries } = harness();
   queries.setQueryData(['galaxy'], galaxy(opts.worlds));
   queries.setQueryData(
     ['intel'],
-    intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? []),
+    intel(opts.watching, opts.probes ?? [], 'p1', opts.elsewhere ?? [], opts.radarLog ?? [], opts.first ?? {}),
   );
   queries.setQueryData(['planet'], planet(opts.telescope, opts.radar ?? 0));
   queries.setQueryData(['reports'], { reports: [] });
@@ -133,19 +153,35 @@ const show = (opts: {
       <IntelScreen
         {...(opts.onOpenOrbit ? { onOpenOrbit: opts.onOpenOrbit } : {})}
         {...(opts.open ? { open: opts.open } : {})}
+        {...(opts.rivals ? { rivals: opts.rivals } : {})}
+        {...(opts.onFocusRival ? { onFocusRival: opts.onFocusRival } : {})}
+        {...(opts.onOpenDossier ? { onOpenDossier: opts.onOpenDossier } : {})}
       />
     </Wrapper>,
   );
 };
 
-describe('the coverage panel', () => {
-  it('shows every Telescope slot with its number, target, and empty state', () => {
+const shelf = async (name: 'Watch' | 'Reports' | 'Radar') => {
+  await userEvent.click(screen.getByRole('tab', { name }));
+};
+const rack = (): HTMLElement => document.querySelector<HTMLElement>('[data-telescope-rack]')!;
+
+describe('three shelves', () => {
+  it('opens on what you are watching, with the reports and the radar a tap away', () => {
+    show({ telescope: 1, watching: 0, worlds: 20 });
+    expect(screen.getByRole('tablist', { name: 'Intel' })).toBeVisible();
+    expect(screen.getByRole('tab', { name: 'Watch' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Radar' })).toHaveAttribute('aria-selected', 'false');
+  });
+});
+
+describe('the watch shelf', () => {
+  it('shows every Telescope slot with its target, or idle', () => {
     show({ telescope: 5, watching: 1, worlds: 47 });
-    expect(screen.getByText('Slot 1')).toBeInTheDocument();
-    expect(screen.getByText('Slot 2')).toBeInTheDocument();
-    expect(screen.getByText('Slot 3')).toBeInTheDocument();
-    expect(screen.getByText('World 0')).toBeInTheDocument();
-    expect(screen.getAllByText('Idle')).toHaveLength(2);
+    expect(rack().querySelectorAll('[data-slot]')).toHaveLength(telescopeSlots(5));
+    expect(within(rack()).getByText('World 0')).toBeInTheDocument();
+    expect(within(rack()).getAllByText('Idle')).toHaveLength(telescopeSlots(5) - 1);
   });
 
   it('counts against the slots you own, never against the galaxy', () => {
@@ -178,28 +214,30 @@ describe('the coverage panel', () => {
     const onOpenOrbit = vi.fn();
     show({ telescope: 0, radar: 0, watching: 0, worlds: 47, onOpenOrbit });
     expect(document.querySelector('[data-instrument-diagram="telescope"]')).not.toBeNull();
-    expect(document.querySelector('[data-instrument-diagram="radar"]')).not.toBeNull();
-    await userEvent.click(screen.getAllByRole('button', { name: 'Open Orbit' })[0]!);
+    await userEvent.click(screen.getByRole('button', { name: 'Open Orbit' }));
     expect(onOpenOrbit).toHaveBeenCalledOnce();
+    await shelf('Radar');
+    expect(document.querySelector('[data-instrument-diagram="radar"]')).not.toBeNull();
   });
 
   /**
-   * The upsell is offered only where the next level genuinely buys a slot. D18
-   * gives slots at L1, L3 and L5, so at L1 the next level buys nothing here and
-   * saying otherwise would be the "unchanged before-and-after" D36 forbids.
+   * The next slot is offered only where the next level genuinely buys one. D18 gives
+   * slots at L1, L3 and L5, so at L1 the next level buys nothing here and saying
+   * otherwise would be the "unchanged before-and-after" D36 forbids.
    */
   it('offers the next slot only on the level that actually adds one', () => {
     show({ telescope: 1, watching: 1, worlds: 47 });
-    expect(screen.queryByText(/would watch one more/i)).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot-next]')).toBeNull();
 
+    cleanup();
     show({ telescope: 2, watching: 1, worlds: 47 });
-    expect(screen.getByText(/telescope l3 would watch one more/i)).toBeInTheDocument();
+    expect(document.querySelector('[data-slot-next]')).toHaveTextContent(/telescope l3/i);
   });
 
   /** "One MORE" than none is not a sentence. With no telescope, sell the first. */
   it('does not offer one more slot to a player who has none', () => {
     show({ telescope: 0, watching: 0, worlds: 47 });
-    expect(screen.queryByText(/would watch one more/i)).not.toBeInTheDocument();
+    expect(document.querySelector('[data-slot-next]')).toBeNull();
   });
 
   it('still says what having no radar costs', () => {
@@ -208,45 +246,15 @@ describe('the coverage panel', () => {
   });
 });
 
-/**
- * WHAT THE RADAR SELLS, IN THE UNIT IT IS ACTUALLY SOLD IN. D49.
- *
- * The note under "Who is looking at you" used to promise a fixed number of
- * minutes, and that figure was never a property of the radar: the same twelve
- * minutes caught a Dart fleet 460 units out and a Bulwark fleet 210. A reach is
- * the thing the defender owns; the warning it buys is what the ATTACKER decides,
- * by choosing what to fly.
- */
-/**
- * TWO SCOPES ON ONE SCREEN. D97/D134.
- *
- * A telescope SLOT belongs to a world — the numbering restarts on each one — while
- * the watch list is the commander's. This screen read one for the denominator and
- * the other for the numerator, and the results were all wrong in different ways: a
- * colony's slot 0 collided with the capital's and hid one of the two watches, the
- * tally printed "3 of 1", and coverage then called that full.
- */
 describe('slots belong to a world, watches to a commander', () => {
-  const colonyWatch = {
-    observerPlanetId: 'colony',
-    slot: 0,
-    targetPlanetId: 'far',
-    targetName: 'Elsewhere',
-    ownerName: 'Somebody',
-    reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'CLEAR', clarity: 1 },
-  };
+  const colonyWatch = watch(0, { targetPlanetId: 'far', targetName: 'Elsewhere', ownerName: 'Somebody' }, 'colony');
 
   it('does not let another world’s slot 0 hide this world’s', () => {
     show({ telescope: 1, watching: 1, worlds: 20, elsewhere: [colonyWatch] });
-    // The active world's own watch is the one on the rack.
-    expect(screen.getByText('World 0')).toBeInTheDocument();
-    expect(screen.queryByText('Elsewhere')).not.toBeInTheDocument();
+    expect(within(rack()).getByText('World 0')).toBeInTheDocument();
+    expect(within(rack()).queryByText('Elsewhere')).not.toBeInTheDocument();
   });
 
-  /**
-   * The tally used to read "2 of 2" here — one watch from this world plus one from
-   * a colony, against this world's two sockets — and coverage then called it full.
-   */
   it('counts only this world’s watches against this world’s sockets', () => {
     show({ telescope: 3, watching: 1, worlds: 20, elsewhere: [colonyWatch] });
     expect(telescopeSlots(3)).toBe(2);
@@ -256,25 +264,136 @@ describe('slots belong to a world, watches to a commander', () => {
 
   it('still shows an idle socket here when another world has spent its own', () => {
     show({ telescope: 3, watching: 0, worlds: 20, elsewhere: [colonyWatch] });
-    expect(telescopeSlots(3)).toBe(2);
-    expect(screen.getAllByText('Idle')).toHaveLength(2);
+    expect(within(rack()).getAllByText('Idle')).toHaveLength(2);
+  });
+
+  /** What you KNOW is the commander's: the colony's watch is still known. */
+  it('lists every world you know, whichever of yours is watching it', () => {
+    show({ telescope: 3, watching: 1, worlds: 20, elsewhere: [colonyWatch] });
+    const known = document.querySelector<HTMLElement>('[data-known-list]')!;
+    expect(known).toHaveTextContent('World 0');
+    expect(known).toHaveTextContent('Elsewhere');
+  });
+});
+
+/** D4: the rivals you marked on the galaxy, where you read what you know about them. */
+describe('the rivals you marked', () => {
+  const rivals: Rival[] = [
+    { planetId: 'q2', slot: 0, owner: 'Vex', name: 'Kestrel', lost: false },
+    { planetId: 'q3', slot: 1, owner: 'Vega', name: 'Orin', lost: false },
+  ];
+
+  it('lists them by slot and takes you to one', async () => {
+    const onFocusRival = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, rivals, onFocusRival });
+    const marks = within(document.querySelector<HTMLElement>('[data-rivals]')!).getAllByRole('button');
+    expect(marks.map((mark) => mark.textContent)).toEqual([
+      expect.stringMatching(/1 · Vex/),
+      expect.stringMatching(/2 · Vega/),
+    ]);
+    await userEvent.click(marks[1]!);
+    expect(onFocusRival).toHaveBeenCalledWith('q3');
+  });
+
+  it('counts the marks against the most there can be', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, rivals });
+    expect(document.querySelector('[data-rivals]')).toHaveTextContent(`2 / ${String(RIVAL.max)}`);
+  });
+
+  it('says how to mark one when there is none', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, rivals: [] });
+    expect(document.querySelector('[data-rivals]')).toHaveTextContent(/mark/i);
+  });
+
+  /** A mark whose commander is off the disc has nowhere to go; it is not a door. */
+  it('keeps a lost mark as a name, not a door', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, rivals: [{ planetId: 'gone', slot: 0, owner: '', name: '', lost: true }] });
+    expect(within(document.querySelector<HTMLElement>('[data-rivals]')!).queryByRole('button', { name: /^1 ·/ })).toBeNull();
+  });
+});
+
+/** B7 and K11: clarity is the bars (live), age is the grain (a snapshot). */
+describe('what you know', () => {
+  it('lists a watched world live, with its clarity as bars and never a ship count', () => {
+    show({ telescope: 3, watching: 1, worlds: 20 });
+    const row = document.querySelector<HTMLElement>('[data-known="watch"]')!;
+    expect(row).toHaveTextContent('Someone');
+    expect(within(row).getByRole('img', { name: /clarity/i })).toBeInTheDocument();
+    // A live reading does not age: its picture carries clarity, never grain.
+    expect(row.querySelector('[data-age]')).toHaveAttribute('data-age', 'fresh');
+  });
+
+  it('lists a probed world with its age, and grains the picture as it ages', () => {
+    const at = new Date(Date.now() - 3 * 60 * 60_000);
+    show({
+      telescope: 1, watching: 0, worlds: 20,
+      probes: [report(100, 400, { at, targetPlanetId: 'q9', targetUsername: 'Nobody', targetName: 'Far' })],
+    });
+    const row = document.querySelector<HTMLElement>('[data-known="probe"]')!;
+    expect(row).toHaveTextContent('Nobody');
+    expect(row).toHaveTextContent(staleness(180));
+    expect(row.querySelector('[data-age]')).toHaveAttribute('data-age', 'aging');
+  });
+
+  it('does not list a world twice when a Telescope already watches it', () => {
+    show({ telescope: 3, watching: 1, worlds: 20, probes: [report(100, 400)] });
+    expect(document.querySelectorAll('[data-known]')).toHaveLength(1);
+  });
+
+  /** E7: an away fleet is an opportunity, and its window is timed only at full clarity. */
+  it('opens a window on a fleet that is away, with the time it has', () => {
+    show({
+      telescope: 3, watching: 1, worlds: 20,
+      first: { reading: { status: 'AWAY', staleMinutes: 0, etaMinutes: 72, state: 'FULL', clarity: 1 } },
+    });
+    expect(document.querySelector('[data-window]')).toHaveTextContent(duration(72));
+  });
+
+  it('explains clarity and age one tap deeper', async () => {
+    show({ telescope: 3, watching: 1, worlds: 20 });
+    const how = screen.getByRole('button', { name: /clarity and age/i });
+    expect(how).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(how);
+    expect(document.querySelector('[data-known-legend]')).toHaveTextContent(/grain/i);
+  });
+});
+
+describe('the radar, glanced from the watch shelf', () => {
+  const scans = [
+    { at: new Date(Date.now() - 60 * 60_000), planetId: 'p1', planetName: 'Home', bearing: 'NW', originPlanetName: 'Kestrel' },
+    { at: new Date(Date.now() - 5 * 60 * 60_000), planetId: 'p1', planetName: 'Home', bearing: null, originPlanetName: null },
+    { at: new Date(Date.now() - 30 * 60 * 60_000), planetId: 'p1', planetName: 'Home', bearing: null, originPlanetName: null },
+  ];
+
+  it('counts the day’s contacts and opens the radar', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans });
+    const glance = screen.getByRole('button', { name: /2 contacts/i });
+    await userEvent.click(glance);
+    expect(screen.getByRole('tab', { name: 'Radar' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('draws nothing to glance at with no radar', () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 0 });
+    expect(document.querySelector('[data-radar-glance]')).toBeNull();
+  });
+
+  it('marks the day’s scans on a timeline and lists every scan', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans });
+    await shelf('Radar');
+    const panel = screen.getByRole('tabpanel', { name: 'Radar' });
+    expect(panel.querySelectorAll('[data-scan-tick]')).toHaveLength(2);
+    expect(panel.querySelectorAll('[data-scan]')).toHaveLength(3);
+    // A scan in the last six hours is a live threat to you: red. An older one is not.
+    const [fresh, , old] = [...panel.querySelectorAll<HTMLElement>('[data-scan] [data-scan-dot]')];
+    expect(fresh).toHaveClass('bg-v2-hostile');
+    expect(old).not.toHaveClass('bg-v2-hostile');
   });
 });
 
 describe('what the radar promises', () => {
-  /**
-   * THE REACH IS DRAWN, AND THE FIGURE CAME WITH IT. D142.
-   *
-   * The sentence that carried the raw units is a circle at its true fraction of
-   * the disc, which is the only form in which those numbers say anything about a
-   * commander's own neighbourhood. The reading survives in full as the diagram's
-   * accessible name — the assertion moved from the prose to the picture.
-   *
-   * IT READS THE TABLES RATHER THAN NAMING FIGURES, so the day the two circles are
-   * split again this keeps testing the same thing.
-   */
-  it('states the radar reach and never invents a countdown', () => {
+  it('states the radar reach and never invents a countdown', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    await shelf('Radar');
     const reach = screen.getByRole('img', {
       name: new RegExp(String(radarContactRange(5)), 'i'),
     });
@@ -282,15 +401,9 @@ describe('what the radar promises', () => {
     expect(screen.queryByText(/minutes before a fleet lands/i)).not.toBeInTheDocument();
   });
 
-  /**
-   * ONE CIRCLE WHILE THE TWO ARE MERGED, TWO WHEN THEY ARE NOT.
-   *
-   * Drawing two identical rings with two captions describing different things
-   * would be the interface inventing a distinction the rules no longer make. The
-   * surface reads the figures, so it is already correct on the day they split.
-   */
-  it('draws one ring while the two radar circles are one number', () => {
+  it('draws one ring while the two radar circles are one number', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    await shelf('Radar');
     const sense = document.querySelector<HTMLElement>('[data-ring="sense"]');
     const warn = document.querySelector<HTMLElement>('[data-ring="warn"]');
     expect(warn, 'the radar circle is never undrawn').not.toBeNull();
@@ -304,47 +417,37 @@ describe('what the radar promises', () => {
     }
   });
 
-  /**
-   * EVERY RUNG THAT DRAWS A CIRCLE SHOWS ITS CIRCLE.
-   *
-   * L1 and L2 used to reach nothing and the screen said so in a sentence. They
-   * reach now — the zeroes were inherited from the pre-D49 minutes ladder — so
-   * what the screen owes them is the same picture, at their own smaller radius.
-   */
-  it('draws the reach at the first rung too, at its own size', () => {
+  it('draws the reach at the first rung too, at its own size', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 1 });
+    await shelf('Radar');
     const small = document.querySelector<HTMLElement>('[data-ring="warn"]');
     expect(small).not.toBeNull();
     const atOne = Number.parseFloat(small!.style.width);
 
     cleanup();
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    await shelf('Radar');
     const large = document.querySelector<HTMLElement>('[data-ring="warn"]');
-    expect(Number.parseFloat(large!.style.width))
-      .toBeGreaterThan(atOne);
+    expect(Number.parseFloat(large!.style.width)).toBeGreaterThan(atOne);
   });
 
-  /** With no radar at all there is no circle to draw and nothing to promise. */
-  it('draws nothing at all with no radar', () => {
+  it('draws nothing at all with no radar', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 0 });
+    await shelf('Radar');
     expect(document.querySelector('[data-radar-reach]')).toBeNull();
   });
 
-  /**
-   * THE HALF THE PICTURE CANNOT CARRY STAYS AS A SENTENCE. The rings are fixed;
-   * how long a fleet sits inside them is the attacker's choice, and no circle
-   * can draw that.
-   */
-  it('says that a slow fleet is seen for longer, because that is the decision', () => {
+  it('says that a slow fleet is seen for longer, because that is the decision', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, radar: 5 });
+    await shelf('Radar');
     expect(screen.getByText(/slow, heavy fleet remains inside Radar reach longer/i)).toBeInTheDocument();
   });
-
 });
 
 describe('report tabs', () => {
-  it('defaults to probe reports and exposes one active panel', () => {
+  it('defaults to probe reports and exposes one active panel', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
+    await shelf('Reports');
     expect(screen.getByRole('tablist', { name: 'Intel reports' })).toBeVisible();
     expect(screen.getByRole('tab', { name: 'Probe reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
@@ -353,6 +456,7 @@ describe('report tabs', () => {
 
   it('opens battle reports with one tap and hides the probe panel', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
+    await shelf('Reports');
     await userEvent.click(screen.getByRole('tab', { name: 'Battle reports' }));
     expect(screen.getByRole('tab', { name: 'Battle reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
@@ -362,6 +466,7 @@ describe('report tabs', () => {
 
   it('moves selection and focus with arrow keys', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
+    await shelf('Reports');
     const probes = screen.getByRole('tab', { name: 'Probe reports' });
     probes.focus();
     await userEvent.keyboard('{ArrowRight}');
@@ -373,6 +478,7 @@ describe('report tabs', () => {
 
   it('wraps both arrow directions at the ends of the tablist', async () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
+    await shelf('Reports');
     const probes = screen.getByRole('tab', { name: 'Probe reports' });
     const battles = screen.getByRole('tab', { name: 'Battle reports' });
     probes.focus();
@@ -385,36 +491,34 @@ describe('report tabs', () => {
   it('uses Turkish tab names without case-folding dotted İ', async () => {
     const i18n = (await import('../src/i18n/index.js')).default;
     await i18n.changeLanguage('tr');
-    show({ telescope: 1, watching: 0, worlds: 20 });
-    expect(screen.getByRole('tablist', { name: 'İstihbarat raporları' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toBeVisible();
-    expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toBeVisible();
+    try {
+      show({ telescope: 1, watching: 0, worlds: 20 });
+      expect(screen.getByRole('tab', { name: 'Gözlem' })).toBeVisible();
+      await userEvent.click(screen.getByRole('tab', { name: 'Raporlar' }));
+      expect(screen.getByRole('tablist', { name: 'İstihbarat raporları' })).toBeVisible();
+      expect(screen.getByRole('tab', { name: 'Sonda raporları' })).toBeVisible();
+      expect(screen.getByRole('tab', { name: 'Savaş raporları' })).toBeVisible();
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 });
 
-/**
- * A NOTIFICATION POINTS AT A SHELF, NOT JUST A ROOM. D121.
- *
- * The Intel centre holds two lists and every reading-shaped notification opened
- * it on the PROBE list — so "you were raided" landed the reader beside the battle
- * report rather than on it. `Signals` names the shelf now; this is the end of that
- * wire, and the counter is what makes a SECOND notification still land after the
- * reader has moved off the tab the first one opened.
- */
 describe('landing on the shelf that was asked for', () => {
-  it('opens on the probe list when nobody has asked for anything', () => {
+  it('opens on the watch shelf when nobody has asked for anything', () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
-    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+    expect(screen.getByRole('tabpanel', { name: 'Watch' })).toBeVisible();
   });
 
   it('opens on the battle reports when the caller named them', () => {
     show({ telescope: 1, watching: 0, worlds: 20, open: { stop: 'battles', request: 1 } });
+    expect(screen.getByRole('tab', { name: 'Reports' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
     expect(screen.queryByRole('tabpanel', { name: 'Probe reports' })).not.toBeInTheDocument();
   });
 
   /**
-   * THE CASE THE COUNTER EXISTS FOR. A reader lands on battles, moves to probes,
+   * THE CASE THE COUNTER EXISTS FOR. A reader lands on battles, moves elsewhere,
    * and a second battle notification arrives. The requested tab has not changed,
    * so only the bumped counter can bring them back.
    */
@@ -431,8 +535,8 @@ describe('landing on the shelf that was asked for', () => {
     );
     expect(screen.getByRole('tabpanel', { name: 'Battle reports' })).toBeVisible();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Probe reports' }));
-    expect(screen.getByRole('tabpanel', { name: 'Probe reports' })).toBeVisible();
+    await userEvent.click(screen.getByRole('tab', { name: 'Watch' }));
+    expect(screen.getByRole('tabpanel', { name: 'Watch' })).toBeVisible();
 
     view.rerender(
       <Wrapper>
@@ -466,66 +570,74 @@ describe('landing on the shelf that was asked for', () => {
 });
 
 /**
- * THE DOUBT IS THE PRODUCT, SO THE DOUBT IS THE PICTURE. D127, D142.
- *
- * A probe report is the one number in the game that is deliberately NOT a number:
- * it is a silhouette, fuzzed at the look and stale from the moment it lands. The
- * screen printed it as `1.2k–3.4k` under a grey label — six figures a reader has
- * to pair up, subtract and then weigh, for the fact the entire information layer
- * is sold on.
- *
- * Each reading is now the span it actually is, so a clean probe of a world with
- * its fleet at home is three narrow blocks and a poor one smears across the card.
- * That comparison is the whole product of raising a Telescope, and it was nowhere
- * on screen.
+ * THE DOUBT IS THE PRODUCT, SO THE DOUBT IS THE PICTURE. D127, D142 — each reading is
+ * the span it is, so a clean probe of a world with its fleet at home is three narrow
+ * blocks and a poor one smears across the card.
  */
 describe('what a probe brought back', () => {
   const bandWidth = (index: number): number => Number.parseFloat(
     document.querySelectorAll<HTMLElement>('[data-part="band"]')[index]!.style.width,
   );
 
-  it('draws a vague reading wider than a sharp one', () => {
+  it('draws a vague reading wider than a sharp one', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(200, 2000)] });
+    await shelf('Reports');
     const vague = bandWidth(0);
     cleanup();
 
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1800, 2000)] });
+    await shelf('Reports');
     expect(bandWidth(0)).toBeLessThan(vague);
   });
 
-  it('draws one band per thing the probe read', () => {
+  it('draws one band per thing the probe read', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Reports');
     expect(document.querySelectorAll('[data-range-band]')).toHaveLength(3);
   });
 
-  it('still carries both ends as digits, under the shape', () => {
+  it('still carries both ends as digits, under the shape', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(1200, 3400)] });
+    await shelf('Reports');
     expect(screen.getAllByText(/1\.2k/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3\.4k/).length).toBeGreaterThan(0);
   });
 
-  /**
-   * HOW GOOD THE READ WAS, IN THE SAME BARS THE TELESCOPE USES. A percentage is a
-   * Signal bars reinforce the visible percentage; they cannot replace it.
-   */
-  it('shows the accuracy as signal strength and says the figure out loud', () => {
+  /** Owner, round 2: no grey bars. Sharp (fleet home) in full colour, blurred (out) lighter. */
+  it('draws the reading in colour, sharper when the fleet was home', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400), report(100, 400, { targetPlanetId: 'q5', fleetHome: false })] });
+    await shelf('Reports');
+    const bands = [...document.querySelectorAll<HTMLElement>('[data-part="band"]')];
+    expect(bands[0]).toHaveClass('bg-v2-self');
+    expect(bands[3]).not.toHaveClass('bg-v2-self');
+    for (const band of bands) expect(band.className).not.toMatch(/bone|grey|gray|white/);
+  });
+
+  it('shows the accuracy as signal strength and says the figure out loud', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)] });
+    await shelf('Reports');
     expect(screen.getByRole('img', { name: /80%.*accuracy/i })).toBeInTheDocument();
     expect(screen.getByText('80% accuracy · fleet was home')).toBeVisible();
     expect(screen.getByText(/These numbers are estimated ranges/)).toBeVisible();
   });
 
-  it('states a lower accuracy and the fleet-away qualification in visible words', () => {
+  it('states a lower accuracy and the fleet-away qualification in visible words', async () => {
     show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { accuracy: 0.55, fleetHome: false })] });
+    await shelf('Reports');
     expect(screen.getByText('55% accuracy · fleet was out')).toBeVisible();
   });
 
-  /** Being caught is the cost of looking, and it stays in threat red. */
-  it('says when the target caught the probe', () => {
-    show({
-      telescope: 1, watching: 0, worlds: 20,
-      probes: [report(100, 400, { detected: true })],
-    });
+  it('says when the target caught the probe', async () => {
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400, { detected: true })] });
+    await shelf('Reports');
     expect(screen.getByText(/they caught it/i)).toBeInTheDocument();
+  });
+
+  it('opens the dossier of the world it read', async () => {
+    const onOpenDossier = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, probes: [report(100, 400)], onOpenDossier });
+    await shelf('Reports');
+    await userEvent.click(screen.getByRole('button', { name: /open dossier/i }));
+    expect(onOpenDossier).toHaveBeenCalledWith('q0');
   });
 });

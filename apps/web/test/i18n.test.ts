@@ -254,6 +254,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'intel.radar.origin',
   // The same shape, naming which of the caller's own worlds was scanned.
   'intel.radar.onWorld',
+  // "Radar" is the Turkish word for the instrument too (D4's third shelf).
+  'intel.shelf.radar',
   'notifications.unlock',
   // Network/provider names, not prose: "USDT · TRC-20", "SOLANA" and "Shopier"
   // are the same proper nouns in every language.

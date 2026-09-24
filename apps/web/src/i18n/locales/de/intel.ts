@@ -4,6 +4,26 @@
  */
 
 export const intel = {
+  shelf: {
+    label: 'Aufklärung',
+    watch: 'Beobachtung',
+    reports: 'Berichte',
+    radar: 'Radar',
+  },
+  rivals: {
+    heading: 'Markierte Rivalen',
+    none: 'Markiere einen Rivalen an seiner Welt in der Galaxie; die Markierung folgt ihm auf jede seiner Welten.',
+    lost: 'nicht auf deiner Scheibe',
+  },
+  known: {
+    heading: 'Was du weißt',
+    legendToggle: 'Klarheit und Alter',
+    legend: 'Balken sind die Live-Klarheit eines Teleskops. Eine Sondenmessung altert: Ihr Bild wird nach einer Stunde körnig, nach einem Tag blass, und sagt, wie alt sie ist.',
+    telescope: 'Teleskop',
+    probe: 'Sondenbericht',
+    window: 'Fenster {{duration}}',
+    empty: 'Noch nichts bekannt: Ein Teleskop beobachtet live, eine Sonde bringt eine Messung zurück.',
+  },
   openOrbit: 'Offener Orbit',
   tabs: {
     label: 'Intel-Berichte',
@@ -26,6 +46,7 @@ export const intel = {
   },
 
   watching: {
+    nextSlot: 'Teleskop L{{level}}',
     heading: 'Zuschauen',
     slotsUsed: '{{used}}/{{total}} Slots verwendet',
     slotLabel: 'Steckplatz {{slot}}',
@@ -41,6 +62,7 @@ export const intel = {
   },
 
   probes: {
+    openDossier: 'Dossier öffnen',
     heading: 'Probe-Berichte',
     newest: 'Neueste zuerst',
     missing: 'Keine Sonde ist jemals zurückgekommen',
@@ -70,6 +92,12 @@ export const intel = {
   },
 
   radar: {
+    glance: 'Radar · letzte 24 h',
+    contacts_one: '{{count}} Kontakt',
+    contacts_other: '{{count}} Kontakte',
+    dayAgo: '−24 h',
+    now: 'jetzt',
+    day: 'Letzte 24 Stunden',
     heading: 'Wer schaut dich an?',
     level: 'Radar L{{level}}',
     missing: 'Du hast kein Radar',

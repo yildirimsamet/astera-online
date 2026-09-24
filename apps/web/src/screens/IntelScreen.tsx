@@ -2,67 +2,112 @@ import { GameActions } from '../session/seasonLock.js';
 import {
   GALAXY,
   PROBE,
+  RIVAL,
   radarDetectsFleets,
   radarRange,
   sensorSphere,
   telescopeSlots,
 } from '@astera/rules';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGalaxy, useIntel, usePlanet } from '../api/queries.js';
-import { full, percent } from '../lib/format.js';
-import { staleness, useNow } from '../lib/time.js';
-import { instrumentArt } from '../ui/assets.js';
-import { BattleReports } from './BattleReports.jsx';
-import { Reading } from '../ui/Clarity.js';
-import { RangeBand } from '../ui/RangeBand.js';
-import { Tally } from '../ui/Tally.js';
-import { Bars, Note, Plate, Section, Segmented, Unreachable, Waiting } from '../ui/kit/index.js';
 import type { IntelView } from '../api/schemas.js';
+import { rivalColour } from '../galaxy/PlanetField.js';
+import { compact, full, percent } from '../lib/format.js';
+import { duration, staleness, useNow } from '../lib/time.js';
+import { instrumentArt, planetArt } from '../ui/assets.js';
+import { Unreachable, Waiting } from '../ui/kit/index.js';
+import { Icon } from '../v2/icons.js';
+import { AgeStamp, AgedThumb, ClarityMark } from '../v2/kit/Freshness.js';
+import { Segmented } from '../v2/kit/Segmented.js';
+import { BattleReports } from './BattleReports.jsx';
 
 /**
- * WHAT YOU KNOW — and, more importantly, what you do not.
+ * WHAT YOU KNOW — AND, MORE IMPORTANTLY, WHAT YOU DO NOT. D4 (owner, 2026-09-24),
+ * spec E7, B7, K11; the mock is `design-mocks/image copy 6.png`, right ("gözlem defteri").
  *
- * The known product risk for this whole game is that the intel layer reads as a
- * boring list. The fix is not decoration: it is that the screen leads with
- * COVERAGE — how much of your neighbourhood you can actually see — so a player
- * with three telescopes and eleven blind neighbours feels the eleven.
+ * Three shelves, because a player comes here with three different questions:
  *
- * Empty states here are the most valuable real estate in the game, because for
- * the first hour they are the entire screen. Each one names the instrument that
- * would fill it and what that instrument would tell them.
+ *   · WATCH — who am I looking at, and what do I know about everyone. The Telescope
+ *     rack as sockets, the rivals marked on the galaxy, then one list of every world
+ *     known: a live reading wears its clarity (bars), a probe reading its age (grain,
+ *     "4h ago") — the two never share a mark (K11). An away fleet is an opportunity,
+ *     so it gets a window chip with the time it has.
+ *   · REPORTS — the probe and battle lists this screen always had.
+ *   · RADAR — who is looking at ME: the reach, the day's scans on a line, the log.
+ *
+ * Empty states stay the most valuable real estate in the game: each names the
+ * instrument that would fill it and what it would tell the player.
  */
+
+type Shelf = 'watch' | 'reports' | 'radar';
+type Stop = 'probes' | 'battles';
+
+/** A marked rival as the menu resolves it (`rivalMenuRows`): the commander, found on the disc. */
+export interface RivalRow {
+  planetId: string;
+  slot: number;
+  owner: string;
+  name: string;
+  /** None of that commander's worlds is on this disc: nowhere to take you. */
+  lost: boolean;
+}
+
+type Watch = IntelView['watching'][number];
+type Probe = IntelView['probeReports'][number];
+type Scan = IntelView['radarLog'][number];
+
+const HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
+const CARD = 'rounded-control border border-v2-line bg-v2-panel';
+const HOUR = 60 * 60_000;
+
+/** The reading as a word, one translated string per state (Turkish reads FİLO EVDE). */
+const FLEET_WORD = {
+  HOME: 'clarity.fleetHome',
+  AWAY: 'clarity.fleetAway',
+  UNKNOWN: 'clarity.unreadable',
+} as const;
+
 export function IntelScreen({
   onOpenOrbit,
   open,
+  rivals = [],
+  onFocusRival,
+  onOpenDossier,
 }: {
   onOpenOrbit?: () => void;
   /**
    * WHICH LIST TO LAND ON, WHEN SOMETHING ELSE ALREADY KNOWS. D121.
    *
-   * A battle-report notification used to open this screen on the PROBE list and
-   * leave the reader to find the tab — the interface pointing at the right room
-   * and then at the wrong shelf in it. `request` is a counter rather than a
-   * boolean so a second notification still lands after the reader has moved off
-   * the tab the first one opened.
+   * A battle-report notification opens the Reports shelf on the battle list. `request`
+   * is a counter rather than a boolean so a second notification still lands after the
+   * reader has moved off the shelf the first one opened.
    */
-  open?: { stop: 'probes' | 'battles'; request: number; reportMissionId?: string };
+  open?: { stop: Stop; request: number; reportMissionId?: string };
+  /** The rivals marked on the galaxy, resolved against the disc. */
+  rivals?: readonly RivalRow[];
+  /** Takes the player to a marked rival on the galaxy. */
+  onFocusRival?: (planetId: string) => void;
+  /** Opens a world's dossier on the galaxy. */
+  onOpenDossier?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
   const intel = useIntel();
   const planet = usePlanet();
   const galaxy = useGalaxy();
   const now = useNow(30_000);
-  const [reportTab, setReportTab] = useState<'probes' | 'battles'>(open?.stop ?? 'probes');
+  const [shelf, setShelf] = useState<Shelf>(open ? 'reports' : 'watch');
+  const [stop, setStop] = useState<Stop>(open?.stop ?? 'probes');
   const requestedStop = open?.stop;
   const request = open?.request;
   useEffect(() => {
-    if (requestedStop) setReportTab(requestedStop);
+    if (!requestedStop) return;
+    setShelf('reports');
+    setStop(requestedStop);
   }, [requestedStop, request]);
 
-
-  // Same distinction as the planet sheet: an error leaves `data` undefined but is
-  // not a load in progress, and a pulse over a dead request is the interface lying.
+  // An error leaves `data` undefined but is not a load in progress, and a pulse over a
+  // dead request is the interface lying.
   if (intel.isError) {
     return (
       <Unreachable
@@ -81,555 +126,674 @@ export function IntelScreen({
   const neighbours = (galaxy.data?.planets ?? []).filter((p) => !p.isSelf).length;
 
   /**
-   * TWO SCOPES ON ONE SCREEN, AND THEY USED TO BE MIXED. D97/D134.
-   *
-   * Telescope slots belong to a WORLD — the numbering restarts on each one — while
-   * the watch list, the radar log and the probe history belong to the COMMANDER.
-   * This screen read `planet.data` for the levels and the commander payload for
-   * the lists, and then compared them:
-   *
-   *   · the rack drew `telescopeSlots(active)` rows and filled them by slot NUMBER,
-   *     so a colony's slot 0 and the capital's slot 0 collided and one of the two
-   *     watches was simply not on screen;
-   *   · the tally read "3 of 1", because the numerator counted every world's
-   *     watches and the denominator counted one world's sockets;
-   *   · and coverage then called that "full", because `slots - seen` went negative.
-   *
-   * The active world's watches are what the rack draws, because a slot is a socket
-   * on a world and the rack is a picture of sockets. Everything else on this screen
-   * stays commander-wide, which is what it has always been.
+   * TWO SCOPES ON ONE SCREEN. D97/D134. A telescope SLOT belongs to a world — the
+   * numbering restarts on each one — so the rack draws the active world's watches.
+   * What you KNOW belongs to the commander, so the list below it is every watch.
    */
   const here = planet.data?.planet.id;
   const mine = watching.filter((w) => w.observerPlanetId === undefined || w.observerPlanetId === here);
-  const seen = mine.length;
   const slots = telescopeSlots(telescope);
 
   /**
-   * AND THE RADAR SECTION ANSWERS FOR EVERY WORLD, because the log now does.
-   *
-   * It was gated on the ACTIVE world's radar level while showing the CAPITAL's
-   * log, so a Radar 5 capital's history could sit behind a "you have no Radar"
-   * card belonging to a colony. `detect` is published per owned world on the
-   * galaxy payload and is above zero exactly when that world has a working radar.
+   * THE RADAR ANSWERS FOR EVERY WORLD, because the log does: `detect` is published per
+   * owned world and is above zero exactly when that world has a working radar.
    */
   const anyRadar = radar > 0 || (galaxy.data?.sensors ?? []).some((post) => post.detect > 0);
 
   return (
     <GameActions>
-      <div className="flex flex-col gap-4 px-2 py-3">
-      <Coverage
-        seen={seen}
-        slots={slots}
-        neighbours={neighbours}
-        telescope={telescope}
-        radar={radar}
-      />
-
-      <Section
-        label={t('intel.watching.heading')}
-        aside={
-          telescope > 0
-            ? (
-              <Tally
-                used={seen}
-                total={slots}
-                size="sm"
-                label={t('intel.watching.slotsUsed', { used: seen, total: slots })}
-              />
-            )
-            : undefined
-        }
-      >
-        {telescope === 0 ? (
-          <Instrument
-            kind="telescope"
-            art={instrumentArt('TELESCOPE', 1)}
-            missing={t('intel.watching.missingNoTelescope')}
-            gives={t('intel.watching.gives')}
-            cost={t('intel.watching.costInstall')}
-            {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
-          />
-        ) : (
-          <TelescopeRack slots={slots} watching={mine} />
-        )}
-        {telescope > 0 && mine.length === 0 && <Note>{t('intel.watching.costPoint')}</Note>}
-        {mine.some((w) => w.reading.state === 'INTERMITTENT') && (
-          <Note>{t('intel.watching.intermittent')}</Note>
-        )}
-      </Section>
-
-      <Segmented
-        role="tablist"
-        label={t('intel.tabs.label')}
-        segments={[
-          { id: 'probes', label: t('intel.probes.heading') },
-          { id: 'battles', label: t('reports.heading') },
-        ]}
-        value={reportTab}
-        onSelect={setReportTab}
-        tabId={(id) => `intel-tab-${id}`}
-        panelId={(id) => `intel-panel-${id}`}
-      />
-
-      <div
-        id="intel-panel-probes"
-        role="tabpanel"
-        aria-labelledby="intel-tab-probes"
-        hidden={reportTab !== 'probes'}
-      >
-        <Section
-          label={t('intel.probes.heading')}
-          aside={probeReports.length > 0 ? t('intel.probes.newest') : undefined}
-        >
-        {probeReports.length === 0 ? (
-          <Instrument
-            kind="probe"
-            art="/assets/images/ships/explorer_ship.png"
-            missing={t('intel.probes.missing')}
-            gives={t('intel.probes.gives')}
-            /*
-              THE PRICE COMES FROM THE RULE, NOT FROM THE SENTENCE. D59.
-
-              This line advertised 220 alloy while the game charged 50 alloy and
-              50 crystal — a figure nothing in the code had ever used. It is the
-              one card that has to persuade a commander to look instead of hit, so
-              a wrong price here is not a typo, it is the argument failing.
-            */
-            cost={t('intel.probes.cost', {
-              alloy: full(PROBE.alloy),
-              crystal: full(PROBE.crystal),
-            })}
-          />
-        ) : (
-          <Plate className="px-3 py-1">
-            {probeReports.map((report) => (
-              <div
-                key={`${report.targetPlanetId}-${String(report.at.getTime())}`}
-                className="border-b border-line-soft py-3 last:border-b-0"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="name text-bone">
-                    {report.targetUsername}
-                  </span>
-                  <span className="truncate text-caption text-faint">{report.targetName}</span>
-                  <span className="num text-label text-faint">
-                    {staleness((now - report.at.getTime()) / 60_000)}
-                  </span>
-                </div>
-                {/*
-                  THE DOUBT IS THE PRODUCT, SO THE DOUBT IS THE PICTURE. D127,
-                  and the owner's instruction.
-
-                  These were three `1.2k–3.4k` strings under three grey labels —
-                  the intel layer's entire output, printed as six figures the
-                  reader has to pair up, subtract and then weigh. `RangeBand` draws
-                  each reading as the span it actually is, so a clean probe of a
-                  world with its fleet at home is three narrow blocks and a poor
-                  one smears across the card. That comparison is what the whole
-                  Telescope ladder is being sold on, and it was nowhere on screen.
-                */}
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <RangeBand
-                    label={t('intel.probes.stock')}
-                    low={report.stock.low}
-                    high={report.stock.high}
-                    tone="alloy"
-                  />
-                  <RangeBand
-                    label={t('intel.probes.defence')}
-                    low={report.defence.low}
-                    high={report.defence.high}
-                    tone="threat"
-                  />
-                  <RangeBand
-                    label={t('intel.probes.ships')}
-                    low={report.fleetSize.low}
-                    high={report.fleetSize.high}
-                  />
-                </div>
-                {/*
-                  HOW GOOD THE READ WAS, IN THE SAME BARS THE TELESCOPE USES.
-
-                  A percentage is a figure about a figure. Signal bars are already
-                  this game's word for "how much is this reading worth" — the
-                  clarity strip on every watched world — so the probe borrows them
-                  rather than inventing a second vocabulary for the same idea. The
-                  percentage stays as the accessible name, where a number is the
-                  only thing that can be said.
-                */}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span
-                    className={report.fleetHome ? 'text-crystal' : 'text-alloy'}
-                    role="img"
-                    aria-label={t(
-                      report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut',
-                      { percent: percent(report.accuracy) },
-                    )}
-                  >
-                    <Bars lit={Math.max(1, Math.round(report.accuracy * 5))} />
-                  </span>
-                  <span className="text-body text-dim">
-                    {t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', { percent: percent(report.accuracy) })}
-                  </span>
-                  {report.detected && (
-                    <span className="ml-auto text-label text-threat">
-                      {t('intel.probes.caught')}
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 text-body leading-relaxed text-dim">{t('intel.probes.estimateNote')}</p>
-              </div>
-            ))}
-          </Plate>
-        )}
-        </Section>
-      </div>
-
-      <div
-        id="intel-panel-battles"
-        role="tabpanel"
-        aria-labelledby="intel-tab-battles"
-        hidden={reportTab !== 'battles'}
-      >
-        <BattleReports
-          {...(open?.reportMissionId
-            ? { open: { missionId: open.reportMissionId, request: open.request } }
-            : {})}
+      <div className="flex flex-col gap-3 px-3 py-3 font-v2-ui">
+        <Segmented
+          label={t('intel.shelf.label')}
+          options={[
+            { id: 'watch', label: t('intel.shelf.watch') },
+            { id: 'reports', label: t('intel.shelf.reports') },
+            { id: 'radar', label: t('intel.shelf.radar') },
+          ]}
+          value={shelf}
+          onChange={setShelf}
+          tabId={(id) => `intel-shelf-${id}`}
         />
-      </div>
 
-      <Section
-        label={t('intel.radar.heading')}
-        aside={radar > 0 ? t('intel.radar.level', { level: radar }) : undefined}
-      >
-        {!anyRadar ? (
-          <Instrument
-            kind="radar"
-            art={instrumentArt('RADAR', 1)}
-            missing={t('intel.radar.missing')}
-            gives={t('intel.radar.gives')}
-            cost={t('intel.radar.cost')}
-            {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
-          />
-        ) : radarLog.length === 0 ? (
-          <Plate className="p-3">
-            <p className="text-body text-dim">{t('intel.radar.quiet', { level: radar })}</p>
-          </Plate>
-        ) : (
-          <Plate className="px-3 py-1">
-            {radarLog.map((scan) => (
-              <div
-                key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`}
-                className="flex items-baseline justify-between gap-2 border-b border-line-soft py-3 last:border-b-0"
-              >
-                <span className="text-body text-bone">
-                  {t('intel.radar.scan')}
-                  {/*
-                    WHICH WORLD WAS SCANNED. The log covers every world a commander
-                    holds now, and "somebody scanned you" without saying WHERE is
-                    unusable the moment there is more than one.
-                  */}
-                  {scan.planetName !== undefined && (
-                    <span className="text-crystal">
-                      {t('intel.radar.onWorld', { planet: scan.planetName })}
-                    </span>
-                  )}
-                  {scan.bearing && (
-                    <span className="text-dim">
-                      {t('intel.radar.bearing', { bearing: scan.bearing })}
-                    </span>
-                  )}
-                  {scan.originPlanetName && (
-                    <span className="text-alloy">
-                      {t('intel.radar.origin', { planet: scan.originPlanetName })}
-                    </span>
-                  )}
-                </span>
-                <span className="num shrink-0 text-label text-faint">
-                  {staleness((now - scan.at.getTime()) / 60_000)}
-                </span>
-              </div>
-            ))}
-          </Plate>
+        {shelf === 'watch' && (
+          <div role="tabpanel" aria-labelledby="intel-shelf-watch" className="flex flex-col gap-3">
+            <TelescopeShelf
+              telescope={telescope}
+              slots={slots}
+              mine={mine}
+              neighbours={neighbours}
+              radar={radar}
+              {...(onOpenOrbit ? { onOpenOrbit } : {})}
+            />
+            <Rivals rivals={rivals} {...(onFocusRival ? { onFocusRival } : {})} />
+            <Known watching={watching} probes={probeReports} now={now} />
+            {anyRadar && (
+              <RadarGlance
+                scans={radarLog}
+                now={now}
+                onOpen={() => {
+                  setShelf('radar');
+                }}
+              />
+            )}
+          </div>
         )}
-        {/*
-          A REACH, NOT A COUNTDOWN — AND NOW A REACH YOU CAN SEE. D49, D126, and
-          principle 10: a rule the player cannot SEE is not a rule.
 
-          This was two sentences carrying three raw figures — "level 4 · senses at
-          1500 · warns at 360" — against a galaxy whose radius is 2000 and appears
-          nowhere. Nobody can turn that into a picture of their own neighbourhood,
-          which is the only form in which those numbers mean anything.
+        {shelf === 'reports' && (
+          <div role="tabpanel" aria-labelledby="intel-shelf-reports" className="flex flex-col gap-3">
+            <Segmented
+              label={t('intel.tabs.label')}
+              options={[
+                { id: 'probes', label: t('intel.probes.heading') },
+                { id: 'battles', label: t('reports.heading') },
+              ]}
+              value={stop}
+              onChange={setStop}
+              tabId={(id) => `intel-tab-${id}`}
+            />
+            <div role="tabpanel" aria-labelledby="intel-tab-probes" hidden={stop !== 'probes'}>
+              <ProbeShelf probes={probeReports} now={now} {...(onOpenDossier ? { onOpenDossier } : {})} />
+            </div>
+            <div role="tabpanel" aria-labelledby="intel-tab-battles" hidden={stop !== 'battles'}>
+              <BattleReports
+                {...(open?.reportMissionId
+                  ? { open: { missionId: open.reportMissionId, request: open.request } }
+                  : {})}
+              />
+            </div>
+          </div>
+        )}
 
-          `RadarReach` derives detection through the authoritative sensor sphere
-          and draws it against the timed-warning radius. They are one circle while
-          D126's provisional merge holds; the component exposes the gap again if
-          the tables are deliberately split.
-        */}
-        {radarDetectsFleets(radar) && (
-          <RadarReach
-            sense={sensorSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect}
-            warn={radarRange(radar)}
-            level={radar}
-          />
+        {shelf === 'radar' && (
+          <div role="tabpanel" aria-labelledby="intel-shelf-radar" className="flex flex-col gap-3">
+            <RadarShelf radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} />
+          </div>
         )}
-        {radar > 0 && (
-          <Note>
-            {radarDetectsFleets(radar) && t('intel.radar.noteSlow')}
-            {radar < 2 && t('intel.radar.noteBearing')}
-            {radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
-          </Note>
-        )}
-      </Section>
       </div>
     </GameActions>
   );
 }
-function TelescopeRack({
+
+/** A heading with its rule and, on the right, a count or a door. */
+function Band({ label, aside }: { label: string; aside?: ReactNode }) {
+  return (
+    <p className={`flex items-center gap-2 ${HEADING}`}>
+      {label}
+      <span aria-hidden="true" className="h-px flex-1 bg-v2-line" />
+      {aside}
+    </p>
+  );
+}
+
+/* ── watch ───────────────────────────────────────────────────── */
+
+/**
+ * THE TELESCOPE AS SOCKETS, MEASURED AGAINST WHAT YOU OWN. Owner-reported: "Watching 2
+ * of 47" was a progress bar toward a goal the game does not have. The denominator is
+ * the slot count; the size of the galaxy is the reason a slot is a decision, said only
+ * once every slot is spent. The next socket is drawn locked where the very next level
+ * adds one (D18 slots at L1, L3, L5; D36: no unchanged before-and-after).
+ */
+function TelescopeShelf({
+  telescope,
   slots,
-  watching,
+  mine,
+  neighbours,
+  radar,
+  onOpenOrbit,
 }: {
+  telescope: number;
   slots: number;
-  watching: IntelView['watching'];
+  mine: readonly Watch[];
+  neighbours: number;
+  radar: number;
+  onOpenOrbit?: () => void;
 }) {
   const { t } = useTranslation();
+  const seen = mine.length;
+  const idle = Math.max(0, slots - seen);
+  const next = slots > 0 && telescopeSlots(telescope + 1) > slots ? telescope + 1 : null;
+
   return (
-    <Plate className="grid gap-2 p-2">
-      {Array.from({ length: slots }, (_, slot) => {
-        const watch = watching.find((item) => item.slot === slot);
-        return (
-          <div
-            key={slot}
-            className={`relative min-h-16 rounded-chip border px-3 py-3 ${ watch ? 'border-crystal/25 bg-crystal/[0.04]' : 'border-dashed border-line bg-void/30' }`}
-          >
-            <span className="num absolute right-2.5 top-2 text-micro text-faint">
-              {t('intel.watching.slotLabel', { slot: slot + 1 })}
-            </span>
-            {watch ? (
-              <>
-                <div className="flex items-baseline gap-2 pr-14">
-                  <span className="name truncate text-bone">
-                    {watch.ownerName}
-                  </span>
-                  <span className="truncate text-label text-faint">{watch.targetName}</span>
-                </div>
-                <div className="mt-2">
-                  <Reading
-                    status={watch.reading.status}
-                    staleMinutes={watch.reading.staleMinutes}
-                    etaMinutes={watch.reading.etaMinutes}
-                    state={watch.reading.state}
-                  />
-                </div>
-                {watch.reading.status === 'AWAY' && (
-                  <p className="mt-1 text-label text-opportunity">{t('intel.watching.away')}</p>
-                )}
-              </>
-            ) : (
-              <div className="flex min-h-11 items-center gap-2 text-faint">
-                <span aria-hidden className="grid size-7 place-items-center rounded-full border border-dashed border-line text-title">+</span>
-                <span className="text-caption">{t('intel.watching.slotEmpty')}</span>
+    <section className="flex flex-col gap-2">
+      <Band
+        label={t('intel.watching.heading')}
+        aside={slots > 0 ? <span className="font-v2-mono normal-case tracking-normal">{`${String(seen)}/${String(slots)}`}</span> : undefined}
+      />
+      {telescope === 0 ? (
+        <Instrument
+          kind="telescope"
+          art={instrumentArt('TELESCOPE', 1)}
+          missing={t('intel.watching.missingNoTelescope')}
+          gives={t('intel.watching.gives')}
+          cost={t('intel.watching.costInstall')}
+          {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
+        />
+      ) : (
+        <div data-telescope-rack className="grid grid-cols-4 gap-1.5">
+          {Array.from({ length: slots }, (_, slot) => {
+            const watch = mine.find((item) => item.slot === slot);
+            const label = t('intel.watching.slotLabel', { slot: slot + 1 });
+            return watch ? (
+              <div
+                key={slot}
+                data-slot={slot + 1}
+                title={label}
+                className={`flex min-w-0 flex-col items-center gap-1 px-1 py-1.5 ${CARD}`}
+              >
+                <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={watch.reading.state} className="size-8" />
+                <span className="w-full truncate text-center text-micro text-v2-ink">{watch.targetName}</span>
               </div>
-            )}
-          </div>
-        );
-      })}
-    </Plate>
+            ) : (
+              <div
+                key={slot}
+                data-slot={slot + 1}
+                title={label}
+                className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-dashed border-v2-line-hi px-1 py-1.5 text-v2-ink-3"
+              >
+                <span aria-hidden="true" className="grid size-8 place-items-center text-body">+</span>
+                <span className="w-full truncate text-center text-micro">{t('intel.watching.slotEmpty')}</span>
+              </div>
+            );
+          })}
+          {next !== null && (
+            <div
+              data-slot-next
+              title={t('intel.coverage.oneMore', { level: next })}
+              className="flex min-w-0 flex-col items-center gap-1 rounded-control border border-v2-line px-1 py-1.5 text-v2-ink-3 opacity-70"
+            >
+              <span className="grid size-8 place-items-center"><Icon id="i-lock" className="size-4" /></span>
+              <span className="w-full truncate text-center text-micro">{t('intel.watching.nextSlot', { level: next })}</span>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex flex-col gap-0.5">
+        <p className="text-caption text-v2-ink">
+          {slots === 0
+            ? t('intel.coverage.blind')
+            : idle > 0
+              ? t('intel.coverage.partial', { seen, count: slots })
+              : t('intel.coverage.full')}
+        </p>
+        <p className="text-micro leading-snug text-v2-ink-3">
+          {slots === 0
+            ? t('intel.coverage.blindHint')
+            : idle > 0
+              ? t('intel.coverage.idleHint', { count: idle })
+              : t('intel.coverage.scarcity', { neighbours, count: slots })}
+        </p>
+        {radar === 0 && <p className="text-micro leading-snug text-v2-warn">{t('intel.coverage.noRadar')}</p>}
+        {mine.some((w) => w.reading.state === 'INTERMITTENT') && (
+          <p className="text-micro leading-snug text-v2-ink-3">{t('intel.watching.intermittent')}</p>
+        )}
+      </div>
+    </section>
   );
 }
 
 /**
- * WHAT YOUR EYES ARE DOING, MEASURED AGAINST WHAT YOU OWN.
- *
- * REWRITTEN ON THE OWNER'S NOTE. It used to read "Watching 2 of 47" against every
- * other planet in the galaxy, and draw a 47-cell bar with two cells lit. That is
- * a progress bar toward a goal the game does not have and could not offer: a
- * telescope tops out at four slots (D18, and D36 caps it), so the number on the
- * right was permanently unreachable. An interface that
- * shows a player a 4% score on a task that cannot be completed is telling them
- * they are failing at something nobody asked them to do.
- *
- * The real question is the one the design actually poses: OF THE EYES YOU HAVE,
- * how many are pointed at somebody — and is the next pair worth buying. So the
- * denominator is the slot count, the bar has one cell per slot, and the size of
- * the galaxy appears where it belongs: as the reason a slot is a decision.
+ * THE RIVALS YOU MARKED ON THE GALAXY, by slot and in the slot's own colour — the same
+ * colour the disc draws their reticle in. A chip takes you to them; a mark whose
+ * commander is off the disc stays a name, because it has nowhere to go.
  */
-function Coverage({
-  seen,
-  slots,
-  neighbours,
-  telescope,
-  radar,
-}: {
-  /** Slots currently pointed at a world. */
-  seen: number;
-  /** Slots this telescope has at all. */
-  slots: number;
-  /** How many other worlds are out there. Context, never a target. */
-  neighbours: number;
-  telescope: number;
-  radar: number;
-}) {
+function Rivals({ rivals, onFocusRival }: { rivals: readonly RivalRow[]; onFocusRival?: (planetId: string) => void }) {
   const { t } = useTranslation();
-  const idle = Math.max(0, slots - seen);
-  // Only where there is a slot to add ONE to. With no telescope at all the line
-  // above is already selling the first one, and "would watch one more" against
-  // zero is arithmetic nobody said out loud.
-  const more = slots > 0 && telescopeSlots(telescope + 1) > slots;
-
   return (
-    <div className="plate mb-2 px-3 py-3">
-      <p className="legend">{t('intel.coverage.label')}</p>
-      {/* A coverage sentence is a STATE, not a headline. 18px made it compete with
-         the screen's own title for a fact that changes with a slot. */}
-      <p className="mt-1 text-body leading-tight text-bone">
-        {slots === 0
-          ? t('intel.coverage.blind')
-          : idle > 0
-            ? t('intel.coverage.partial', { seen, count: slots })
-            : t('intel.coverage.full')}
-      </p>
-
-      {/*
-        THE SAME RACK THE REST OF THE GAME DRAWS. This was a hand-rolled row of
-        cells that happened to look like `Tally` and could drift from it; a
-        telescope's slots, a world's flight bays and a Core's orbit sockets are
-        one fact — places, some of them taken — and they are now one component.
-      */}
-      {slots > 0 && (
-        <div className="mt-3">
-          <Tally
-            used={seen}
-            total={slots}
-            label={t('intel.watching.slotsUsed', { used: seen, total: slots })}
-          />
+    <section data-rivals className="flex flex-col gap-2">
+      <Band
+        label={t('intel.rivals.heading')}
+        aside={<span className="font-v2-mono normal-case tracking-normal">{`${String(rivals.length)} / ${String(RIVAL.max)}`}</span>}
+      />
+      {rivals.length === 0 ? (
+        <p className="text-micro leading-snug text-v2-ink-3">{t('intel.rivals.none')}</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {rivals.map((rival) => {
+            const colour: CSSProperties = { color: rivalColour(rival.slot), borderColor: rivalColour(rival.slot) };
+            const text = `${String(rival.slot + 1)} · ${rival.lost ? t('intel.rivals.lost') : rival.owner || rival.name}`;
+            return rival.lost || !onFocusRival ? (
+              <span key={rival.slot} className="rounded-chip border px-2 py-1 text-micro font-semibold opacity-60" style={colour}>
+                {text}
+              </span>
+            ) : (
+              <button
+                key={rival.slot}
+                type="button"
+                onClick={() => { onFocusRival(rival.planetId); }}
+                className="rounded-chip border px-2 py-1 text-micro font-semibold"
+                style={colour}
+              >
+                {text}
+              </button>
+            );
+          })}
         </div>
       )}
+    </section>
+  );
+}
 
-      <p className="mt-3 text-caption leading-snug text-dim">
-        {slots === 0
-          ? t('intel.coverage.blindHint')
-          : idle > 0
-            ? t('intel.coverage.idleHint', { count: idle })
-            : /*
-                THE SCARCITY IS THE PRODUCT, AND IT IS SAID AS SUCH.
-                Nobody watches a galaxy; you watch the two or three worlds you
-                have decided matter. Naming the size of the disc here is what
-                makes moving a slot feel like a choice rather than a shortfall.
-              */
-              t('intel.coverage.scarcity', { neighbours, count: slots })}
-      </p>
+/**
+ * EVERYTHING YOU KNOW, ONE LIST. Live readings first (clarity bars), then what probes
+ * brought back and no Telescope is watching (age as grain and "Xh ago") — K11: the two
+ * reliabilities never share a mark. The rule is one tap deeper.
+ */
+function Known({ watching, probes, now }: { watching: readonly Watch[]; probes: readonly Probe[]; now: number }) {
+  const { t } = useTranslation();
+  const [legend, setLegend] = useState(false);
+  const watched = new Set(watching.map((w) => w.targetPlanetId));
+  const read = new Set<string>();
+  const probed = probes.filter((report) => {
+    if (watched.has(report.targetPlanetId) || read.has(report.targetPlanetId)) return false;
+    read.add(report.targetPlanetId);
+    return true;
+  });
 
-      {more && (
-        <p className="mt-2 text-caption text-crystal">
-          {t('intel.coverage.oneMore', { level: telescope + 1 })}
+  return (
+    <section className="flex flex-col gap-1.5">
+      <Band
+        label={t('intel.known.heading')}
+        aside={(
+          <button
+            type="button"
+            aria-expanded={legend}
+            onClick={() => { setLegend((shown) => !shown); }}
+            className="normal-case tracking-normal text-v2-self"
+          >
+            {t('intel.known.legendToggle')} ›
+          </button>
+        )}
+      />
+      {legend && <p data-known-legend className="text-micro leading-snug text-v2-ink-2">{t('intel.known.legend')}</p>}
+      {watching.length === 0 && probed.length === 0 ? (
+        <p className="text-micro leading-snug text-v2-ink-3">{t('intel.known.empty')}</p>
+      ) : (
+        <ul data-known-list className="divide-y divide-v2-line">
+          {watching.map((watch) => <KnownWatch key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} />)}
+          {probed.map((report) => (
+            <KnownProbe key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function KnownWatch({ watch }: { watch: Watch }) {
+  const { t } = useTranslation();
+  const { status, state, staleMinutes, etaMinutes } = watch.reading;
+  // E7: an away fleet is the opportunity, and its window is timed only when the reading says so.
+  const window = status === 'AWAY' && etaMinutes !== null;
+  return (
+    <li data-known="watch" className="flex items-center gap-2.5 py-2">
+      <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={state} />
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5">
+          <span className="truncate text-caption font-semibold text-v2-ink">{watch.ownerName}</span>
+          <span className={`shrink-0 text-micro uppercase tracking-wide ${status === 'AWAY' ? 'text-v2-self' : 'text-v2-ink-2'}`}>
+            {t(FLEET_WORD[status])}
+          </span>
         </p>
+        <p className="truncate text-micro text-v2-ink-3">
+          {watch.targetName} · {t('intel.known.telescope')} · {staleness(staleMinutes)}
+        </p>
+      </div>
+      {window ? (
+        <span data-window className="shrink-0 rounded-chip border border-v2-self/60 bg-v2-self/10 px-2 py-0.5 text-micro font-semibold text-v2-self">
+          {t('intel.known.window', { duration: duration(etaMinutes) })}
+        </span>
+      ) : (
+        <ClarityMark state={state} />
       )}
+    </li>
+  );
+}
 
-      {radar === 0 && (
-        <p className="mt-2 text-caption text-alloy">{t('intel.coverage.noRadar')}</p>
-      )}
+function KnownProbe({ report, minutes }: { report: Probe; minutes: number }) {
+  const { t } = useTranslation();
+  return (
+    <li data-known="probe" className="flex items-center gap-2.5 py-2">
+      <AgedThumb src={planetArt(report.targetPlanetId)} alt="" ageMinutes={minutes} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</p>
+        <p className="truncate text-micro text-v2-ink-3">
+          {report.targetName} · {t('intel.known.probe')} · {t(report.fleetHome ? 'intel.probes.homeTag' : 'intel.probes.outTag')}
+        </p>
+      </div>
+      <AgeStamp minutes={minutes} />
+    </li>
+  );
+}
+
+/** The radar, glanced from the watch shelf: the day's contacts on a line, one tap to the log. */
+function RadarGlance({ scans, now, onOpen }: { scans: readonly Scan[]; now: number; onOpen: () => void }) {
+  const { t } = useTranslation();
+  const today = scans.filter((scan) => now - scan.at.getTime() <= 24 * HOUR).length;
+  return (
+    <button type="button" data-radar-glance onClick={onOpen} className={`flex flex-col gap-1.5 px-3 py-2.5 text-left ${CARD}`}>
+      <span className="flex items-center justify-between gap-2">
+        <span className={HEADING}>{t('intel.radar.glance')}</span>
+        <span className="text-micro text-v2-ink-2">{t('intel.radar.contacts', { count: today })} ›</span>
+      </span>
+      <DayLine scans={scans} now={now} />
+    </button>
+  );
+}
+
+/**
+ * THE LAST TWENTY-FOUR HOURS AS A LINE, one tick per scan. A scan in the last six hours
+ * is a live threat to you and is red (K2: red only for what can harm you); an older
+ * one is history.
+ */
+function DayLine({ scans, now }: { scans: readonly Scan[]; now: number }) {
+  const { t } = useTranslation();
+  const start = now - 24 * HOUR;
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span aria-hidden="true" className="relative block h-5">
+        <span className="absolute inset-x-0 top-1/2 h-px bg-v2-line-hi" />
+        {scans
+          .filter((scan) => scan.at.getTime() >= start && scan.at.getTime() <= now)
+          .map((scan) => (
+            <span
+              key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`}
+              data-scan-tick=""
+              className={`absolute top-0.5 h-4 w-0.5 -translate-x-1/2 rounded-full ${fresh(scan, now) ? 'bg-v2-hostile' : 'bg-v2-ink-3'}`}
+              style={{ left: `${String(((scan.at.getTime() - start) / (24 * HOUR)) * 100)}%` }}
+            />
+          ))}
+      </span>
+      <span className="flex justify-between font-v2-mono text-micro text-v2-ink-3">
+        <span>{t('intel.radar.dayAgo')}</span>
+        <span>{t('intel.radar.now')}</span>
+      </span>
+    </span>
+  );
+}
+
+const fresh = (scan: Scan, now: number): boolean => now - scan.at.getTime() < 6 * HOUR;
+
+/* ── reports ─────────────────────────────────────────────────── */
+
+/**
+ * WHAT A PROBE BROUGHT BACK. The doubt is the product, so the doubt is the picture
+ * (D127): each reading is drawn as the span it is. Owner, round 2: no grey bars — a
+ * reading taken with the fleet at home is sharp and wears the full colour; one taken
+ * with the fleet out is lighter, because a fleet away is a fleet not counted.
+ */
+function ProbeShelf({ probes, now, onOpenDossier }: { probes: readonly Probe[]; now: number; onOpenDossier?: (planetId: string) => void }) {
+  const { t } = useTranslation();
+  if (probes.length === 0) {
+    return (
+      <Instrument
+        kind="probe"
+        art="/assets/images/ships/explorer_ship.png"
+        missing={t('intel.probes.missing')}
+        gives={t('intel.probes.gives')}
+        // THE PRICE COMES FROM THE RULE, NOT FROM THE SENTENCE. D59.
+        cost={t('intel.probes.cost', { alloy: full(PROBE.alloy), crystal: full(PROBE.crystal) })}
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-micro leading-snug text-v2-ink-3">{t('intel.probes.estimateNote')}</p>
+      {probes.map((report) => {
+        const minutes = (now - report.at.getTime()) / 60_000;
+        const accuracy = t(report.fleetHome ? 'intel.probes.accuracyHome' : 'intel.probes.accuracyOut', {
+          percent: percent(report.accuracy),
+        });
+        return (
+          <article key={`${report.targetPlanetId}-${String(report.at.getTime())}`} className={`flex flex-col gap-2 p-3 ${CARD}`}>
+            <div className="flex items-center gap-2.5">
+              <AgedThumb src={planetArt(report.targetPlanetId)} alt="" ageMinutes={minutes} />
+              <div className="min-w-0 flex-1">
+                <p className="flex min-w-0 items-baseline gap-1.5">
+                  <span className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</span>
+                  <span className="truncate text-micro text-v2-ink-3">{report.targetName}</span>
+                </p>
+                <p className="text-micro text-v2-ink-2">{accuracy}</p>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-0.5">
+                <SignalBars lit={Math.max(1, Math.round(report.accuracy * 5))} label={accuracy} />
+                <AgeStamp minutes={minutes} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <RangeRow label={t('intel.probes.stock')} low={report.stock.low} high={report.stock.high} sharp={report.fleetHome} />
+              <RangeRow label={t('intel.probes.defence')} low={report.defence.low} high={report.defence.high} sharp={report.fleetHome} />
+              <RangeRow label={t('intel.probes.ships')} low={report.fleetSize.low} high={report.fleetSize.high} sharp={report.fleetHome} />
+            </div>
+            {(report.detected || onOpenDossier) && (
+              <div className="flex items-center justify-between gap-2">
+                {/* Being caught is the cost of looking: a gap to plan around, said in warn. */}
+                <span className="text-micro text-v2-warn">{report.detected ? t('intel.probes.caught') : ''}</span>
+                {onOpenDossier && (
+                  <button
+                    type="button"
+                    onClick={() => { onOpenDossier(report.targetPlanetId); }}
+                    className="text-micro font-semibold text-v2-self"
+                  >
+                    {t('intel.probes.openDossier')} ›
+                  </button>
+                )}
+              </div>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 }
 
+/** How good a read was, in the bars the Telescope uses; the figure is the name. */
+function SignalBars({ lit, label }: { lit: number; label: string }) {
+  return (
+    <span role="img" aria-label={label} className="inline-flex items-end gap-0.5">
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
+          key={i}
+          className={`w-[3px] rounded-cell ${i < lit ? 'bg-v2-self' : 'bg-v2-line'}`}
+          style={{ height: `${String(4 + i * 2)}px` }}
+        />
+      ))}
+    </span>
+  );
+}
+
+const BLURRED: CSSProperties = { backgroundColor: 'color-mix(in srgb, var(--color-v2-self) 42%, transparent)' };
+
 /**
- * THE RADAR VOLUME, AT ITS TRUE SIZE AGAINST THE DISC. D126.
- *
- * Detection and timed warning are provisionally one circle. The code still reads
- * both authoritative products and will draw the detection ring separately if
- * D126 is deliberately split again.
- *
- * SCALED AGAINST THE GALAXY'S RADIUS, which is what makes it worth drawing at
- * all. Radar 5 reaches 2,200 against a radius-2,000 disc and the upper rungs extend
- * beyond the rim; drawing the ring at its real scale makes that reach visible.
- *
- * THE FIGURES STAY, SMALL AND BESIDE THEIR OWN RING. A player planning a defence
- * eventually wants the number; they never want it first.
+ * ONE READING AS THE SPAN IT IS. The scale is the top of the reading — a probe does not
+ * report the world's ceiling — and a band has a floor, because a perfect read is zero
+ * wide and a zero-width band is no picture.
+ */
+function RangeRow({ label, low, high, sharp }: { label: string; low: number; high: number; sharp: boolean }) {
+  const { t } = useTranslation();
+  const top = Math.max(1, high);
+  const start = Math.max(0, Math.min(100, (Math.max(0, low) / top) * 100));
+  const width = Math.max(3, 100 - start);
+  return (
+    <div data-range-band className="grid grid-cols-[5rem_1fr_auto] items-center gap-2">
+      <span className="truncate text-micro text-v2-ink-3">{label}</span>
+      <span
+        role="img"
+        aria-label={t('rangeBand.reading', { label, low: compact(Math.max(0, low)), high: compact(high) })}
+        className="relative block h-1.5 overflow-hidden rounded-full bg-v2-line"
+      >
+        <span
+          data-part="band"
+          className={`absolute inset-y-0 rounded-full ${sharp ? 'bg-v2-self' : ''}`}
+          style={{ left: `${String(start)}%`, width: `${String(width)}%`, ...(sharp ? {} : BLURRED) }}
+        />
+      </span>
+      <span className="font-v2-mono text-micro text-v2-ink-2">{`${compact(Math.max(0, low))}–${compact(high)}`}</span>
+    </div>
+  );
+}
+
+/* ── radar ───────────────────────────────────────────────────── */
+
+function RadarShelf({
+  radar,
+  anyRadar,
+  scans,
+  now,
+  onOpenOrbit,
+}: {
+  radar: number;
+  anyRadar: boolean;
+  scans: readonly Scan[];
+  now: number;
+  onOpenOrbit?: () => void;
+}) {
+  const { t } = useTranslation();
+  if (!anyRadar) {
+    return (
+      <Instrument
+        kind="radar"
+        art={instrumentArt('RADAR', 1)}
+        missing={t('intel.radar.missing')}
+        gives={t('intel.radar.gives')}
+        cost={t('intel.radar.cost')}
+        {...(onOpenOrbit ? { onAct: onOpenOrbit, action: t('intel.openOrbit') } : {})}
+      />
+    );
+  }
+  const today = scans.filter((scan) => now - scan.at.getTime() <= 24 * HOUR).length;
+  return (
+    <>
+      {/*
+        A REACH, NOT A COUNTDOWN — AND A REACH YOU CAN SEE. D49, D126: the rings at their
+        true fraction of the disc; the half no picture can draw (a slow fleet is seen for
+        longer) stays a sentence.
+      */}
+      {radarDetectsFleets(radar) && (
+        <RadarReach
+          sense={sensorSphere({ x: 0, y: 0, z: 0 }, 0, radar).detect}
+          warn={radarRange(radar)}
+          level={radar}
+        />
+      )}
+      {radar > 0 && (
+        <p className="text-micro leading-snug text-v2-ink-2">
+          {radarDetectsFleets(radar) && t('intel.radar.noteSlow')}
+          {radar < 2 && t('intel.radar.noteBearing')}
+          {radar >= 2 && radar < 5 && t('intel.radar.noteOrigin')}
+        </p>
+      )}
+      <section className={`flex flex-col gap-1.5 px-3 py-2.5 ${CARD}`}>
+        <p className="flex items-center justify-between gap-2">
+          <span className={HEADING}>{t('intel.radar.day')}</span>
+          <span className="text-micro text-v2-ink-2">{t('intel.radar.contacts', { count: today })}</span>
+        </p>
+        <DayLine scans={scans} now={now} />
+      </section>
+      {scans.length === 0 ? (
+        <p className="text-caption text-v2-ink-2">{t('intel.radar.quiet', { level: radar })}</p>
+      ) : (
+        <ul className="divide-y divide-v2-line">
+          {scans.map((scan) => (
+            <li key={`${scan.planetId ?? ''}-${String(scan.at.getTime())}`} data-scan className="flex items-center gap-2.5 py-2">
+              <span
+                data-scan-dot=""
+                aria-hidden="true"
+                className={`size-2 shrink-0 rounded-full ${fresh(scan, now) ? 'bg-v2-hostile' : 'bg-v2-ink-3'}`}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-caption text-v2-ink">
+                  {t('intel.radar.scan')}
+                  {/* WHICH WORLD: the log covers every world a commander holds. */}
+                  {scan.planetName !== undefined && (
+                    <span className="text-v2-self">{t('intel.radar.onWorld', { planet: scan.planetName })}</span>
+                  )}
+                </p>
+                {(scan.bearing !== null || scan.originPlanetName !== null) && (
+                  <p className="truncate text-micro text-v2-ink-3">
+                    {scan.bearing && t('intel.radar.bearing', { bearing: scan.bearing })}
+                    {scan.originPlanetName && (
+                      <span className="text-v2-ink">{t('intel.radar.origin', { planet: scan.originPlanetName })}</span>
+                    )}
+                  </p>
+                )}
+              </div>
+              <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">
+                {staleness((now - scan.at.getTime()) / 60_000)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/**
+ * THE RADAR VOLUME, AT ITS TRUE SIZE AGAINST THE DISC. D126. Scaled against the
+ * galaxy's radius, which is what makes it worth drawing at all; one ring while
+ * detection and timed warning are one number, two the day the tables split.
  */
 function RadarReach({ sense, warn, level }: { sense: number; warn: number; level: number }) {
   const { t } = useTranslation();
-  /*
-    THE DISC'S RADIUS IS THE DENOMINATOR, not the widest crossing. A commander
-    sits somewhere in the disc and looks outward from there, so the honest
-    comparison for "how far can I see" is the radius.
-  */
-  const reach = (value: number): number =>
-    Math.max(4, Math.min(100, (value / GALAXY.radius) * 100));
+  const reach = (value: number): number => Math.max(4, Math.min(100, (value / GALAXY.radius) * 100));
   const senseSize = reach(sense);
   const warnSize = reach(warn);
-  /**
-   * ONE CIRCLE OR TWO, DECIDED BY THE TABLES RATHER THAN BY A FLAG.
-   *
-   * The two radar circles are temporarily one number, and drawing two identical
-   * rings on top of each other with two captions describing different things
-   * would be the interface inventing a distinction the rules no longer make.
-   * Reading it off the figures means this surface is already correct on the day
-   * they are split again — no second edit, no chance of forgetting.
-   */
   const merged = sense === warn;
 
   return (
-    <div className="plate flex items-center gap-2 p-3">
+    <div className={`flex items-center gap-3 p-3 ${CARD}`}>
       <div
         data-radar-reach
-        className="socket relative size-[112px] shrink-0 rounded-control"
+        className="relative grid size-[104px] shrink-0 place-items-center rounded-full bg-v2-deep"
         role="img"
-        aria-label={t(
-          merged ? 'intel.radar.noteFleetsOne' : 'intel.radar.noteFleets',
-          { level, sense, warn },
-        )}
+        aria-label={t(merged ? 'intel.radar.noteFleetsOne' : 'intel.radar.noteFleets', { level, sense, warn })}
       >
         {/* THE RIM OF THE GALAXY. Everything else is measured against it. */}
-        <span className="absolute inset-1 rounded-full border border-line" />
+        <span className="absolute inset-0 rounded-full border border-dashed border-v2-line-hi" />
         {!merged && (
           <span
             data-ring="sense"
-            className="absolute rounded-full border border-dashed border-crystal/45"
+            className="absolute rounded-full border border-dashed border-v2-self/45"
             style={{ width: `${String(senseSize)}%`, height: `${String(senseSize)}%` }}
           />
         )}
         <span
           data-ring="warn"
-          className="absolute rounded-full border border-crystal bg-crystal/[0.07] shadow-[0_0_10px_var(--color-crystal-glow)]"
+          className="absolute rounded-full border border-v2-self bg-v2-self/10"
           style={{ width: `${String(warnSize)}%`, height: `${String(warnSize)}%` }}
         />
         {/* YOU, at the centre of both. */}
-        <span className="absolute size-1.5 rounded-full bg-bone shadow-[0_0_6px_var(--color-bone)]" />
+        <span className="absolute size-1.5 rounded-full bg-v2-self" />
       </div>
-
-      {/*
-        TWO LINES, EACH TIED TO ITS OWN RING BY THE SAME MARK THE RING WEARS.
-        The dashed swatch is the dashed circle; the solid one with the clock is
-        the circle with the clock. Nothing here needs the paragraph it replaced.
-      */}
-      <dl className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+      <p className={HEADING}>{t('intel.radar.level', { level })}</p>
+      <dl className="flex flex-col gap-1.5">
         {!merged && (
-        <div className="flex items-center gap-2">
-          <span aria-hidden className="size-3 shrink-0 rounded-full border border-dashed border-crystal/45" />
-          <dt className="min-w-0 flex-1 truncate text-caption text-dim">
-            {t('intel.radar.ringSense')}
-          </dt>
-          <dd className="num shrink-0 text-label text-faint">{sense}</dd>
-        </div>
+          <div className="flex items-center gap-2">
+            <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-dashed border-v2-self/45" />
+            <dt className="min-w-0 flex-1 truncate text-micro text-v2-ink-2">{t('intel.radar.ringSense')}</dt>
+            <dd className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{sense}</dd>
+          </div>
         )}
         <div className="flex items-center gap-2">
-          <span aria-hidden className="size-3 shrink-0 rounded-full border border-crystal bg-crystal/20" />
-          <dt className="min-w-0 flex-1 truncate text-caption text-bone">
+          <span aria-hidden="true" className="size-3 shrink-0 rounded-full border border-v2-self bg-v2-self/20" />
+          <dt className="min-w-0 flex-1 truncate text-micro text-v2-ink">
             {t(merged ? 'intel.radar.ringOne' : 'intel.radar.ringWarn')}
           </dt>
-          <dd className="num shrink-0 text-label text-crystal">{warn}</dd>
+          <dd className="shrink-0 font-v2-mono text-micro text-v2-self">{warn}</dd>
         </div>
       </dl>
+      </div>
     </div>
   );
 }
 
+/* ── an instrument you do not own ────────────────────────────── */
+
 /**
- * An instrument you do not own, sold as a capability.
- *
- * Not a disabled row and not an apology: the art is at full strength, the line
- * says what it would tell you, and the cost is stated plainly. A player should
+ * An instrument you do not own, sold as a capability: the art at full strength, the
+ * line says what it would tell you, and the cost is stated plainly. A player should
  * finish reading it wanting the thing.
  */
 function Instrument({
@@ -642,7 +806,6 @@ function Instrument({
   onAct,
 }: {
   kind: 'telescope' | 'radar' | 'probe';
-  /** null where an instrument has no render of its own — the well just stays empty. */
   art: string | null;
   missing: string;
   gives: string;
@@ -651,64 +814,25 @@ function Instrument({
   onAct?: () => void;
 }) {
   return (
-    <div className="plate group grid grid-cols-[88px_1fr] items-center gap-2 p-3">
-      <InstrumentDiagram kind={kind} art={art} />
-      <div className="min-w-0 flex-1">
-        {/* Three sentences at body size was an essay per instrument. The gap and
-           what closes it stay at reading size; the price is a caption. */}
-        <p className="text-caption text-alloy">{missing}</p>
-        <p className="mt-0.5 text-body leading-snug text-bone">{gives}</p>
-        <p className="mt-1 text-caption leading-snug text-dim">{cost}</p>
+    <div className={`grid grid-cols-[72px_1fr] items-center gap-3 p-3 ${CARD}`}>
+      <div data-instrument-diagram={kind} className="grid size-[72px] place-items-center overflow-hidden rounded-control bg-v2-deep" aria-hidden>
+        {art && <img src={art} alt="" className="size-16 object-contain" />}
+      </div>
+      <div className="min-w-0">
+        <p className="text-micro font-semibold text-v2-warn">{missing}</p>
+        <p className="mt-0.5 text-caption leading-snug text-v2-ink">{gives}</p>
+        <p className="mt-1 text-micro leading-snug text-v2-ink-3">{cost}</p>
         {onAct && action && (
-          <button type="button" className="slab slab-ghost slab-compact mt-2 w-full" onClick={onAct}>
+          <button
+            type="button"
+            onClick={onAct}
+            className="mt-2 min-h-9 w-full rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink"
+          >
             {action}
-            <span aria-hidden>→</span>
+            <span aria-hidden> →</span>
           </button>
         )}
       </div>
-    </div>
-  );
-}
-
-function InstrumentDiagram({
-  kind,
-  art,
-}: {
-  kind: 'telescope' | 'radar' | 'probe';
-  art: string | null;
-}) {
-  return (
-    <div
-      data-instrument-diagram={kind}
-      data-art
-      className="socket relative shrink-0 overflow-hidden rounded-control"
-      aria-hidden
-    >
-      {kind === 'radar' && (
-        <>
-          <span className="absolute size-[88px] rounded-full border border-crystal/20" />
-          <span className="absolute size-[62px] rounded-full border border-crystal/35" />
-          <span className="absolute right-2 top-5 size-2 rotate-45 border border-alloy bg-alloy/35 shadow-[0_0_6px_var(--color-alloy)]" />
-        </>
-      )}
-      {kind === 'telescope' && (
-        <>
-          <span className="absolute left-[54px] top-[18px] h-px w-11 -rotate-[28deg] bg-gradient-to-r from-crystal/70 to-transparent" />
-          <span className="absolute right-2 top-2 size-3 rounded-full border border-crystal/60" />
-          <span className="absolute bottom-2 right-2 flex gap-1">
-            <i className="size-1.5 rounded-full bg-crystal" />
-            <i className="size-1.5 rounded-full border border-crystal/50" />
-            <i className="size-1.5 rounded-full border border-crystal/50" />
-          </span>
-        </>
-      )}
-      {kind === 'probe' && (
-        <>
-          <span className="absolute inset-x-3 top-1/2 border-t border-dashed border-opportunity/40" />
-          <span className="absolute right-2 top-[47px] size-2 rotate-45 border-r border-t border-opportunity" />
-        </>
-      )}
-      {art && <img src={art} alt="" className="relative z-[1] size-[88px] object-contain" />}
     </div>
   );
 }

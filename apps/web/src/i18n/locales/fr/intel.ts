@@ -8,6 +8,26 @@
 * l’appareil manquant et explique ce qu’il permettrait d’apprendre.
   */
 export const intel = {
+  shelf: {
+    label: 'Renseignement',
+    watch: 'Veille',
+    reports: 'Rapports',
+    radar: 'Radar',
+  },
+  rivals: {
+    heading: 'Rivaux marqués',
+    none: 'Marque un rival depuis son monde dans la galaxie ; la marque le suit sur chacun de ses mondes.',
+    lost: 'hors de ton disque',
+  },
+  known: {
+    heading: 'Ce que tu sais',
+    legendToggle: 'Netteté et âge',
+    legend: 'Les barres sont la netteté en direct d’un télescope. Une lecture de sonde vieillit : son image prend du grain après une heure, pâlit après un jour, et dit depuis quand.',
+    telescope: 'Télescope',
+    probe: 'Rapport de sonde',
+    window: 'Fenêtre {{duration}}',
+    empty: 'Rien de connu pour l’instant : un télescope observe en direct, une sonde rapporte une lecture.',
+  },
   openOrbit: "Ouvrir l’orbite",
   tabs: {
     label: "Rapports de renseignement",
@@ -35,6 +55,7 @@ export const intel = {
       "Tu n’as pas non plus de Radar ; impossible de distinguer une menace dirigée contre toi des autres mouvements.",
   },
   watching: {
+    nextSlot: 'Télescope niv. {{level}}',
     heading: "Tes surveillances",
     slotsUsed: "{{used}} emplacements utilisés sur {{total}}",
     slotLabel: "Emplacement {{slot}}",
@@ -51,6 +72,7 @@ export const intel = {
       "Une lecture intermittente se renouvelle au mieux toutes les vingt minutes. Regarder à nouveau avant la prochaine lecture ne changera pas le résultat.",
   },
   probes: {
+    openDossier: 'Ouvrir le dossier',
     heading: "Rapports de sonde",
     newest: "plus récents d’abord",
     missing: "Aucune sonde n’est encore revenue",
@@ -72,6 +94,12 @@ export const intel = {
     outTag: "flotte absente",
   },
   radar: {
+    glance: 'Radar · 24 dernières h',
+    contacts_one: '{{count}} contact',
+    contacts_other: '{{count}} contacts',
+    dayAgo: '−24 h',
+    now: 'maintenant',
+    day: '24 dernières heures',
     heading: "Qui t’observe",
     level: "Radar · niveau {{level}}",
     missing: "Tu n’as pas de Radar",

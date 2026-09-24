@@ -8,6 +8,26 @@
  */
 
 export const intel = {
+  shelf: {
+    label: 'İstihbarat',
+    watch: 'Gözlem',
+    reports: 'Raporlar',
+    radar: 'Radar',
+  },
+  rivals: {
+    heading: 'İşaretli rakipler',
+    none: 'Galakside bir rakibi dünyasından işaretle; işaret onu tuttuğu her dünyada izler.',
+    lost: 'diskinde değil',
+  },
+  known: {
+    heading: 'Bildiklerin',
+    legendToggle: 'Netlik ve yaş',
+    legend: 'Çubuklar teleskobun canlı netliğidir. Sonda bilgisi eskir: resmi bir saatten sonra grenlenir, bir günden sonra solar ve ne kadar önce olduğunu söyler.',
+    telescope: 'Teleskop',
+    probe: 'Sonda raporu',
+    window: 'Pencere {{duration}}',
+    empty: 'Henüz bir şey bilmiyorsun: teleskop canlı izler, sonda tek bir okuma getirir.',
+  },
   openOrbit: 'Yörüngeyi aç',
   tabs: {
     label: 'İstihbarat raporları',
@@ -30,6 +50,7 @@ export const intel = {
   },
 
   watching: {
+    nextSlot: 'Teleskop Sv.{{level}}',
     heading: 'İzlediklerin',
     slotsUsed: '{{total}} yuvadan {{used}} tanesi dolu',
     slotLabel: 'Yuva {{slot}}',
@@ -45,6 +66,7 @@ export const intel = {
   },
 
   probes: {
+    openDossier: 'Dosyayı aç',
     heading: 'Sonda raporları',
     newest: 'en yeni önce',
     missing: 'Henüz geri dönen bir sonda olmadı',
@@ -65,6 +87,12 @@ export const intel = {
   },
 
   radar: {
+    glance: 'Radar · son 24 saat',
+    contacts_one: '{{count}} temas',
+    contacts_other: '{{count}} temas',
+    dayAgo: '−24 sa',
+    now: 'şimdi',
+    day: 'Son 24 saat',
     heading: 'Sana kim bakıyor',
     level: 'Radar · {{level}}. seviye',
     missing: 'Radarın yok',

@@ -3,6 +3,7 @@ import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
 import { createPortal } from 'react-dom';
 import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
+import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
@@ -1851,8 +1852,10 @@ export function GalaxyView({
       )}
 
       {panel === 'intel' && (
-        <Sheet
+        // D4: the Gözlemevi sheet, as tall as its shelf and a page only when it must be.
+        <V2Sheet
           bleed
+          detents={['fit']}
           eyebrow={t('galaxy.panelIntelEyebrow')}
           title={t('galaxy.panelIntelTitle')}
           onClose={() => {
@@ -1861,12 +1864,22 @@ export function GalaxyView({
         >
           <IntelScreen
             {...(panelStop ? { open: panelStop } : {})}
+            rivals={rivalMenuRows(season.data?.rivals ?? [], planets)}
+            onFocusRival={(planetId) => {
+              onPanel(null);
+              focusPlanet(planetId);
+            }}
+            onOpenDossier={(planetId) => {
+              onPanel(null);
+              focusPlanet(planetId);
+              setDetail(true);
+            }}
             onOpenOrbit={() => {
               setRequestedPlanetGroup('orbit');
               onPanel('planet');
             }}
           />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'recap' && recapResult && (

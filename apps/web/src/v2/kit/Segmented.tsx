@@ -15,6 +15,8 @@ export interface SegmentedProps<T extends string> {
   options: readonly SegmentedOption<T>[];
   value: T;
   onChange: (id: T) => void;
+  /** An id per option, so a panel below can be labelled by the tab that shows it. */
+  tabId?: (id: T) => string;
 }
 
 /**
@@ -25,14 +27,16 @@ export interface SegmentedProps<T extends string> {
  * waiting behind it, and the arrow keys move along it — wrapping at the ends —
  * as a tab list does everywhere else.
  */
-export function Segmented<T extends string>({ label, options, value, onChange }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ label, options, value, onChange, tabId }: SegmentedProps<T>) {
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number): void => {
     const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-    if (step === 0) return;
+    // WAI-ARIA tabs: Home and End jump to the ends.
+    const jump = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : null;
+    if (step === 0 && jump === null) return;
     event.preventDefault();
-    const next = (index + step + options.length) % options.length;
+    const next = jump ?? (index + step + options.length) % options.length;
     const option = options[next];
     if (!option) return;
     onChange(option.id);
@@ -52,6 +56,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
             key={option.id}
             ref={(element) => { tabs.current[index] = element; }}
             type="button"
+            {...(tabId ? { id: tabId(option.id) } : {})}
             role="tab"
             aria-selected={on}
             tabIndex={on ? 0 : -1}

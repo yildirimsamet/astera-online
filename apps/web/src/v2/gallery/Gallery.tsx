@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
@@ -7,6 +8,7 @@ import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
+import { IntelScreen } from '../../screens/IntelScreen.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
@@ -184,7 +186,62 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 const reading = { low: 4_000, high: 9_000, source: 'Probe', ageMinutes: 132 };
 const lines = { clears: { low: 20_000, high: 26_000 }, breaks: { low: 31_000, high: 38_000 } };
 
+/**
+ * THE INTEL SHEET WITH SOMETHING IN IT. D4. The live commander the camera signs in as
+ * has no Telescope and no Radar, so this is where the full shelves are photographed.
+ */
+function GalleryIntel() {
+  const client = useQueryClient();
+  useState(() => {
+    const watch = (slot: number, target: string, owner: string, reading: Record<string, unknown>) => ({
+      observerPlanetId: 'p-1', slot, targetPlanetId: target, targetName: target === 'p-orin' ? 'Orin' : 'Kestrel',
+      ownerName: owner, cooldownUntil: null,
+      reading: { status: 'HOME', staleMinutes: 0, etaMinutes: null, state: 'FULL', clarity: 1, ...reading },
+    });
+    const probe = (target: string, name: string, owner: string, hours: number, over: Record<string, unknown> = {}) => ({
+      targetPlanetId: target, targetName: name, targetUsername: owner, at: new Date(NOW - hours * 60 * MIN),
+      accuracy: 0.82, stock: { low: 18_000, high: 26_000 }, deuteriumStock: null,
+      defence: { low: 4_000, high: 7_000 }, fleetSize: { low: 12, high: 20 }, fleetHome: true, detected: false, ...over,
+    });
+    client.setQueryData(['planet'], planetView({ instruments: { TELESCOPE: 4, RADAR: 4 } }, { id: 'p-1' }));
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    client.setQueryData(['intel'], {
+      watching: [
+        watch(0, 'p-kestrel', 'VEX', {}),
+        watch(1, 'p-orin', 'NOVA', { status: 'AWAY', etaMinutes: 72 }),
+      ],
+      probeReports: [
+        probe('p-t206', 'T2-06', 'Neutral', 4),
+        probe('p-hollow', 'Hollow-88', 'Rook', 19, { fleetHome: false, accuracy: 0.55, detected: true, stock: { low: 3_000, high: 14_000 } }),
+      ],
+      probeCooldowns: [],
+      radarLog: [
+        { at: new Date(NOW - 50 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: 'NW', originPlanetName: 'Kestrel' },
+        { at: new Date(NOW - 7 * 60 * MIN), planetId: 'p-1', planetName: 'Hollow', bearing: 'S', originPlanetName: null },
+        { at: new Date(NOW - 26 * 60 * MIN), planetId: 'p-1', planetName: 'Thistle-131', bearing: null, originPlanetName: null },
+      ],
+      probeCost: { alloy: 50, crystal: 50 },
+    });
+    return null;
+  });
+  return (
+    <Sheet title="Intel" eyebrow="What you know" onClose={noop} detents={['full']} bleed>
+      <IntelScreen
+        rivals={[
+          { planetId: 'p-kestrel', slot: 0, owner: 'VEX', name: 'Kestrel', lost: false },
+          { planetId: 'p-vega', slot: 1, owner: 'Vega', name: 'Mira', lost: false },
+        ]}
+        onFocusRival={noop}
+        onOpenDossier={noop}
+        onOpenOrbit={noop}
+      />
+    </Sheet>
+  );
+}
+
 function Views({ view }: { view: string }) {
+  if (view === 'intel') return <GalleryIntel />;
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
