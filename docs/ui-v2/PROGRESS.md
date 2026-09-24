@@ -44,8 +44,8 @@
 | F1 | v2 token, yazı tipi, ikon, kit (B5–B9, B12, v2 Sheet, kaynak ölçeri) | Tamam |
 | F2 | v2 HUD (B1–B4), kabuk, IA | Tamam |
 | F3 | E2 Dosya, E3/B14 Fırlatma, E4 Filo, S1, S2 | Tamam (faz incelemesi `fa16b98`, `e7f062e`) |
-| F4 | E6 Rapor, S4 | Sırada |
-| F5 | E5 Üs + Araştırma (K6, K9) | Bekliyor |
+| F4 | E6 Rapor, S4 | Tamam (`35d7bf6`, `d52bc68`, `aad6e0d`) |
+| F5 | E5 Üs + Araştırma (K6, K9) | Sırada |
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Bekliyor |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
 | F8 | E11 Masaüstü | Bekliyor |
@@ -78,7 +78,23 @@ Her v2 yüzeyi bu görüntülerle karşılaştırılır. Maddeler (hepsi yapıld
     önekli). Kalan fark bilinçli: cetvelin "ne temsil ettiği" satırı yüzeyde kalır (netlik; testi var).
 
 ## Sıradaki iş
-**F4 · E6 Savaş raporu (B15) + S4 ödenen yakıt.** Şartname: `grep -n "^#### B15 ·\|^#### E6 ·\|^| S4" docs/ui-v2/gozlemevi.md`;
+**F5 · E5 Üs + Araştırma segmenti (K6) + takımyıldız (K9).** Şartname: `grep -n "^#### E5 ·\|^| K6\|^| K9" docs/ui-v2/gozlemevi.md`;
+mock `design-mocks/image copy 6.png` sol (Üs) ve `image copy 7.png` sol (Araştırma takımyıldızı). Kod: `screens/PlanetScreen.tsx`
+(Üs; `PlanetHero`, cüzdan, kuyruklar, sekmeler, `UpgradeRow` kartları, `Band`), `screens/ResearchPanel.tsx`. F4'ten devreden:
+paylaşılan `Band` başlığı (UpgradeRow) v2'ye; Üs kahramanında toplama balonu (mock: gezegenin sağ üstü).
+
+**F4 (tamam) · E6 Savaş raporu (B15) + S4.** `35d7bf6` S4: `readBattleReports` saldırana `fuelPaid` (dünya baskını
+`missions.fuel_paid`, ortak savaşta kendi dalgalarının toplamı; savunana, korsana ve kolon öncesi 0'a null); web şeması
+isteğe bağlı okur. `d52bc68` B15: `v2/hud/ReportScene` rapor sayfasının tepesinde (görsel, üst satır, ganimet şeridi +
+"ambar doldu", iki taraf — kendin gönderilen→kalan, karşı taraf saldırana yalnız yok edilenler + "kalanlar gizli" (kural 15),
+savunana saldıran filonun tamamı —, sınıf döngüsünden tek cümle "neden" (`lib/reportScene`), bilanço ganimet·yakıt·kayıp,
+kolonide sadakat kuralı, galaksiden açılınca "Yeniden saldır" → hedefin açık dosyası). `aad6e0d` çatışmasız savaşta tur
+sayısı yazılmaz. Gerçek oyunda dev baskınla doğrulandı (yakıt −4). Açık notlar: tekrar oynatma ve klana paylaşma
+özellikleri yok (şartname "varsa"; paylaşma yeni sunucu işi — sahibe sorulacak); korsan baskını yakıt saklamıyor (göç
+gerekir); eski "Ne oldu" kutusu sahneyle kısmen tekrarlıyor (testleri sahneye taşınarak F10'da birleşecek); savunanın
+kendi kolonisi için sadakat satırı yok (rapor savaş anındaki dünya türünü tutmuyor).
+
+**F4 (eski plan) · E6 Savaş raporu (B15) + S4 ödenen yakıt.** Şartname: `grep -n "^#### B15 ·\|^#### E6 ·\|^| S4" docs/ui-v2/gozlemevi.md`;
 mock `design-mocks/image copy 6.png` orta ("KISMİ ZAFER"). Kod: `screens/BattleReports*`/rapor sayfası (bugünkü görünüm),
 sunucu `services/reports.ts` `viewOf` (S4: `missions.fuel_paid` kalkışta yazılıyor → rapora dön), rapor şeması
 (`api/schemas.ts`). Kural 15 (saldırgana karşı tarafın kalanları asla), taktik geri çekilme metinleri (`BattleReports`).
