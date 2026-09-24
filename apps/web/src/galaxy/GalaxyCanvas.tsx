@@ -19,6 +19,7 @@ import {
   easedCameraRange,
   finishedCameraRange,
   focusIdentity,
+  fovForAspect,
   initialHomeCameraPosition,
   rigAction,
   rigGestureState,
@@ -32,8 +33,7 @@ import {
   Disc,
   Dust,
   Meteors,
-  Nebula,
-  Starfield,
+  Sky,
 } from './Environment.jsx';
 import { useAmbientFrames, useCommittedDemandFrame } from './frames.jsx';
 import { QUALITY_PRESETS, useRenderQuality } from '../lib/quality.js';
@@ -544,7 +544,7 @@ export function GalaxyCanvas({
   return (
     <Canvas
       frameloop="demand"
-      camera={{ position: initialHomeCameraPosition(...home), fov: 45, near: 0.1, far: 600 }}
+      camera={{ position: initialHomeCameraPosition(...home), fov: GALAXY_FOV, near: 0.1, far: 600 }}
       /**
        * A CLAMP, SO THE PRESET CAN ONLY EVER LOWER THE RATIO.
        *
@@ -642,9 +642,8 @@ export function GalaxyCanvas({
       <ambientLight intensity={0.35} />
       <directionalLight position={[-8, 12, 9]} intensity={2.2} />
 
-      <Nebula />
+      <Sky />
       <Core />
-      <Starfield />
       <BrightStars />
       <Dust />
       <Meteors shower={meteorShower} />
@@ -817,6 +816,7 @@ export function GalaxyCanvas({
         composer allocated belonged to the one that died.
       */}
       <RedrawOnRestore epoch={gpu.epoch} />
+      <WideScreenFov />
       {gpu.live && (
       <EffectComposer
         key={`${String(preset.dprCap)}-${String(gpu.epoch)}`}
@@ -1939,6 +1939,30 @@ function RedrawOnRestore({ epoch }: { epoch: number }) {
   useEffect(() => {
     invalidate();
   }, [epoch, invalidate]);
+  return null;
+}
+
+/** The vertical field of view on a portrait screen. Narrowed on wide ones below. */
+const GALAXY_FOV = 45;
+
+/**
+ * THE FIELD FOLLOWS THE SHAPE OF THE SCREEN. See `fovForAspect`: a wide screen or
+ * a phone turned sideways gets a narrower vertical field, so the view across it
+ * never widens to where the edges visibly stretch. Portrait is untouched.
+ */
+function WideScreenFov() {
+  const camera = useThree((state) => state.camera);
+  const width = useThree((state) => state.size.width);
+  const height = useThree((state) => state.size.height);
+  const invalidate = useThree((state) => state.invalidate);
+  useEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const fov = fovForAspect(GALAXY_FOV, width / Math.max(1, height));
+    if (camera.fov === fov) return;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+    invalidate();
+  }, [camera, width, height, invalidate]);
   return null;
 }
 

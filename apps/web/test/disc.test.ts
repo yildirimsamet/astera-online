@@ -106,8 +106,14 @@ describe('the galactic plane', () => {
     expect(advanceDiscRotation(0.4, Number.NaN)).toBe(0.4);
   });
 
-  it('runs the camera-centred starfield twenty-five per cent faster', () => {
-    expect((Math.PI * 2) / STARFIELD_ROTATION_RADIANS_PER_SECOND).toBeCloseTo(9.6 * 60, 8);
+  /**
+   * THE SKY TURNS AT HALF THE PACE IT DID. Owner, 2026-09-25: *"galaksideki arkaplanda
+   * çizdiğin yeni galaksi … çok hızlı dönüyor: %50 oranında daha yavaş dönsün."* The
+   * turn was 9.6 minutes a revolution, which carried a galaxy out of the frame in
+   * about twenty seconds; it is 19.2 now.
+   */
+  it('turns the camera-centred sky once every 19.2 minutes', () => {
+    expect((Math.PI * 2) / STARFIELD_ROTATION_RADIANS_PER_SECOND).toBeCloseTo(19.2 * 60, 8);
     expect(advanceStarfieldRotation(0.4, 1)).toBeCloseTo(
       0.4 + STARFIELD_ROTATION_RADIANS_PER_SECOND,
       8,

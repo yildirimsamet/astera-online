@@ -288,3 +288,65 @@ Final production captures held DPR 2 → 2 → 2 on the 390 × 844 phone and DPR
 40 textures.
 Desktop measured 32 calls and 8,408 triangles. All three runs had zero page errors
 and zero unexpected API writes; visual inspection found no interaction blur.
+
+## The sky, rebuilt · 2026-09-24
+
+Owner brief: *"nasa fotoğraflarındaki gibi olmalı… cihazları öldürme… her yeri neon ile
+doldurma"*, then, on the way: *"yağlı boya tablosunun içinde değil"*, *"gazlar bir kaç tane
+görece daha ufak şekiller… tüm galaksiyi kaplamamalı"*, *"çok fazla yıldız var… oyun alanı
+olan galaksi belirginliğini kaybediyor ve cihazımı kastırıyor"*. The code is `galaxy/sky.ts`
+(data, budgets, shaders) and `Sky` in `galaxy/Environment.tsx`; `test/sky.test.ts` holds the
+rules below.
+
+- **Gas is baked once on the GPU into a cube map** (1024 per face; 512 on `low`), a quarter
+  face per frame over 25 frames, after first paint, fading in; re-baked on a context restore.
+  Drawing it is one cube read per pixel. The old CPU plate was under 3 texels/degree.
+- **Stars are never baked**: 20,000 points (26k high, 12k low) on the camera shell, power-law
+  flux with an asinh stretch, blackbody colour, crowding a tilted Milky Way band and dimmed by
+  the bake's dust channel; ~13% of the brighter ones shimmer gently on uTime (no extra frames).
+  1,200 more stand at real distances (110–400 world units) and carry the parallax.
+- **Composition is computed from the opening camera** (`initialHomeCameraPosition`): the band
+  crosses the first frame behind the player's world, a crisp neighbouring galaxy (its own
+  768² card, tangent to the sky) sits up-right of it and drifts across with the celestial turn.
+- **Gas is a few small shapes** — three emission regions, one reflection nebula, one dark
+  cloud — under 3% of the sky together; diffuse gas is clamped under every bloom threshold.
+- Rejected on sight and removed: a range of lit dust cliffs filling the frame, radial pillar
+  shards, 72,000 stars.
+- **The grid** visible in the dark sky (4×-contrast only, but real) was the galactic core
+  sprite's canvas radial gradient: Chrome dithers gradients with an ordered 4×4 pattern and
+  the sprite magnified it. The core's falloff is computed into a half-float texture now.
+- **Wide screens**: the vertical field narrows so the horizontal never exceeds 64°
+  (`fovForAspect`); a phone turned sideways was 97° across and stretched edge objects.
+  Portrait is unchanged.
+
+Phone capture (visual-baseline, rehearsal): 34 calls, 20 textures (was 31 / 19).
+
+### Follow-up · 2026-09-25
+
+Owner: more small clouds, more galaxies like the hero, a thinner band, better meteors.
+
+- **Clouds**: five emission regions (each with its own oxygen share, stretch and turn —
+  round, oval and drawn-out; the hydrogen-rich ones stay red to the heart) and two
+  reflection nebulae. Still under 3% of the sky; no two clouds or galaxies overlap (tested).
+- **Galaxies**: `SKY_GALAXY_CARDS` — the hero plus a blue face-on starburst spiral and a
+  golden, nearly edge-on disc, each on its own card (~40 texels/degree), each smaller and
+  dimmer than the hero and at least 25° from the opening view.
+- **Band**: 30% fewer stars within ±10° of the band, the rest of the sky unchanged
+  (measured: 11,236 → ~7,900; 4,250 off-band kept).
+- **Meteors** (`galaxy/meteor.ts`): they moved in twelfths of a second, which was the lag;
+  `METEOR_FPS` is 60 now, so a streak moves on every frame the disc already draws and still
+  asks for none. Drawn as a screen-space ribbon (hairline tail, ~2 px head) plus a blooming
+  head point. It never stops: it flares in, burns, then fades over 0.8 s while still flying
+  and is gone only when the fade is (a first version stopped the head where it burnt out,
+  which read as a streak that hit something).
+  The first ribbon produced NaNs (w → 0 near the camera plane, `pow` of a hair-negative
+  interpolant) that bloom smeared into black blocks; both are guarded, and a 270-frame
+  capture found none.
+- **Celestial turn** halved: one revolution every 19.2 minutes (was 9.6); a sky galaxy
+  used to leave the frame in about twenty seconds.
+- **Opening camera** (`initialHomeCameraPosition`): it was one fixed offset for every world,
+  which for most worlds — near the sphere's surface — looked out at empty space. The camera
+  now opens at the same range on the far side of Home from the galaxy's centre, lifted a
+  little, so the first frame is the player's world in front of the galaxy. The sky's
+  composition is anchored to `compositionView()` (a camera looking down 34° at a world)
+  instead of the opening, since the opening now differs per commander.

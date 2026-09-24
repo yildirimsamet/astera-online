@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -11,11 +11,17 @@ import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { sphereInFrustum } from './frustum.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
+import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
+import {
+  PLANET_SKIN_BODY_SCALE,
+  PLANET_SKIN_FULL_ANGULAR_RADIUS,
+  PLANET_SKIN_MODEL_ANGULAR_RADIUS,
+  PLANET_SKIN_SPIN_RATE,
+  planetSkinPhase,
+} from './planetSkinAttachments.js';
 
 type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
-
-const FULL_ANGULAR_RADIUS = 1 / 28;
-const MODEL_ANGULAR_RADIUS = 1 / 90;
 
 export type PlanetSkinLod = 'full' | 'low' | 'billboard';
 export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
@@ -24,8 +30,8 @@ export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
 const UNIT_PLANET_GEOMETRY_CACHE = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
 
 export function planetSkinLod(radius: number, distance: number): PlanetSkinLod {
-  if (radius >= distance * FULL_ANGULAR_RADIUS) return 'full';
-  if (radius >= distance * MODEL_ANGULAR_RADIUS) return 'low';
+  if (radius >= distance * PLANET_SKIN_FULL_ANGULAR_RADIUS) return 'full';
+  if (radius >= distance * PLANET_SKIN_MODEL_ANGULAR_RADIUS) return 'low';
   return 'billboard';
 }
 
@@ -76,12 +82,6 @@ const firstMesh = (scene: THREE.Object3D): THREE.Mesh | null => {
   return found;
 };
 
-const phase = (id: string): number => {
-  let value = 2166136261;
-  for (const char of id) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
-  return ((value >>> 0) / 0x1_0000_0000) * Math.PI * 2;
-};
-
 /** Used by the galaxy and the interactive shop preview. One draw call per look. */
 export function PlanetSkinModel({
   skinId,
@@ -102,6 +102,7 @@ export function PlanetSkinModel({
   return (
     <LoadedPlanetSkinModel
       visual={visual}
+      status={status}
       nodes={nodes}
       onSelect={onSelect}
       galaxyLod={galaxyLod}
@@ -111,11 +112,13 @@ export function PlanetSkinModel({
 
 function LoadedPlanetSkinModel({
   visual,
+  status,
   nodes,
   onSelect,
   galaxyLod,
 }: {
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
+  status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
   galaxyLod: boolean;
@@ -190,8 +193,12 @@ function LoadedPlanetSkinModel({
       if (lod === 'billboard') return;
       if (!sphereInFrustum(frustum, node.position, node.radius)) return;
       helper.position.set(...node.position);
-      helper.rotation.set(0, phase(node.id) + clock.elapsedTime * 0.08, 0);
-      helper.scale.setScalar(node.radius * 0.96);
+      helper.rotation.set(
+        0,
+        planetSkinPhase(node.id) + clock.elapsedTime * PLANET_SKIN_SPIN_RATE,
+        0,
+      );
+      helper.scale.setScalar(node.radius * PLANET_SKIN_BODY_SCALE);
       helper.updateMatrix();
       const mesh = lod === 'full' ? full : low;
       const index = lod === 'full' ? fullCount++ : lowCount++;
@@ -243,6 +250,18 @@ function LoadedPlanetSkinModel({
         frustumCulled={false}
         raycast={() => null}
       />
+      <SkinAssetBoundary fallback={null}>
+        <Suspense fallback={null}>
+          <PlanetSkinAttachments
+            attachments={visual.includedAttachments}
+            finish={visual.finish}
+            planetGeometry={geometry}
+            nodes={nodes}
+            galaxyLod={galaxyLod}
+            avoidFractures={status === 'RECOVERY_SHIELD'}
+          />
+        </Suspense>
+      </SkinAssetBoundary>
       {onSelect && (
         <instancedMesh
           ref={hits}

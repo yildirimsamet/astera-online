@@ -12,6 +12,24 @@ export function cameraEaseStep(remaining: number, duration: number, delta: numbe
   return { fraction: left === 0 || before >= 1 ? 1 : (after - before) / (1 - before), remaining: left, done: left === 0 };
 }
 
+/**
+ * THE WIDEST THE VIEW MAY BE ACROSS, degrees. Owner: *"Ekranı döndürürken ekranın
+ * sağında ve solunda kalan nesneler uzayıp sünüyor."* A fixed 45° vertical field is
+ * ~84° across on a phone turned sideways, and a flat projection stretches a 3D
+ * object at the edge of that by about a third. At 64° the edge stretch is under a
+ * fifth, and every portrait phone is narrower than this already.
+ */
+export const MAX_HORIZONTAL_FOV = 64;
+
+/** The vertical field to use at `aspect` so the horizontal one stays under the ceiling. */
+export function fovForAspect(verticalFov: number, aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) return verticalFov;
+  const across = 2 * Math.atan(Math.tan((verticalFov * Math.PI) / 360) * aspect);
+  const ceiling = (MAX_HORIZONTAL_FOV * Math.PI) / 180;
+  if (across <= ceiling) return verticalFov;
+  return (2 * Math.atan(Math.tan(ceiling / 2) / aspect) * 180) / Math.PI;
+}
+
 /** Full sphere, not a flat disc. Extra room keeps the tutorial coach clear. */
 export function sightCameraDistance(radius: number, verticalFov: number, aspect: number): number {
   const vertical = verticalFov * Math.PI / 360;
@@ -202,20 +220,58 @@ export function finishedCameraRange(
   return exact || current > target ? target : current;
 }
 
+/** How far the first camera stands from Home — the same for every commander. */
+const OPENING_RANGE = Math.hypot(12, 16, 20);
 /**
- * The first camera pose is relative to Home on every axis.
+ * How much the opening rises above the line to the centre, so the galaxy is seen
+ * from a little above. At 0.45 the centre was pushed to the top edge of a portrait
+ * frame; at 0.2 it sits ~11° above Home, the world in front of the galaxy's mass.
+ */
+const OPENING_LIFT = 0.2;
+/** The steepest the opening may look, as |sin| of its elevation: inside the orbit's polar limits. */
+const OPENING_STEEPEST = 0.9;
+
+/**
+ * THE FIRST CAMERA POSE: ON THE FAR SIDE OF HOME FROM THE GALAXY'S CENTRE, LOOKING
+ * IN. Owner, 2026-09-25: *"oyun ilk açıldığında galaksi … bakış açısında olmuyor …
+ * oyuncu ekranı döndürüp galaksiyi bulmak zorunda kalıyor … nerede olursan ol ilk
+ * doğuşta kamerayı galaksinin merkezine doğru başlatsak sorun çözülecek."*
  *
- * A fixed world-space Y made sense only while the galaxy pretended to have a
- * floor. In the real sphere it put the camera below high worlds and far above low
- * ones, so two commanders opened on different angles and ranges despite asking
- * for the same framing.
+ * It used to be one fixed offset, (12, 16, 20), for every world — which was itself
+ * a fix: a fixed world-space height had opened commanders on different ranges. But
+ * worlds sit near the sphere's surface, so for most of them a fixed offset looked
+ * OUT, at empty space. The range is still the same for everyone; the direction now
+ * comes from Home's place in the sphere, so the first frame is the player's world
+ * in front of the galaxy it lives in. A world at the very centre has no "in", and
+ * keeps the old offset.
  */
 export function initialHomeCameraPosition(
   homeX: number,
   homeY: number,
   homeZ: number,
 ): [number, number, number] {
-  return [homeX + 12, homeY + 16, homeZ + 20];
+  const out = Math.hypot(homeX, homeY, homeZ);
+  let d: [number, number, number] =
+    out > 1e-6 ? [homeX / out, homeY / out + OPENING_LIFT, homeZ / out] : [12, 16, 20];
+  const length = Math.hypot(...d);
+  d = [d[0] / length, d[1] / length, d[2] / length];
+
+  if (Math.abs(d[1]) > OPENING_STEEPEST) {
+    // Straight above or below the centre: lean it back inside the polar limits,
+    // toward whatever horizontal it has (or the old offset's, if it has none).
+    let hx = d[0];
+    let hz = d[2];
+    let flat = Math.hypot(hx, hz);
+    if (flat < 1e-6) {
+      hx = 12;
+      hz = 20;
+      flat = Math.hypot(hx, hz);
+    }
+    const across = Math.sqrt(1 - OPENING_STEEPEST ** 2);
+    d = [(hx / flat) * across, Math.sign(d[1]) * OPENING_STEEPEST, (hz / flat) * across];
+  }
+
+  return [homeX + d[0] * OPENING_RANGE, homeY + d[1] * OPENING_RANGE, homeZ + d[2] * OPENING_RANGE];
 }
 
 /**
