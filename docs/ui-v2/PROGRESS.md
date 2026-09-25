@@ -205,6 +205,22 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   derler (`compileAsync`, önbellekteki malzemeyle) ve ev dünyasının 1024 haritalarını boşta yükler. Canlı 5/5 dokunuş,
   konsol hatası yok. Bekleyen (istenmedi): (6) galaksi yoklamasında düğüm kimliği kararlılığı, (8) uzak/orta
   modellerin açılış ön yüklemesine alınması (bütçe kararı sahibin).
+- **ui-v2 tam code review'u (sahip, 2026-09-25) — `8bf578b`.** Doğrulanıp düzeltilen: (1) arka planda saatlerce
+  kalıp yeniden yüklenmeden dönen sekmede canlı tutma sinyali yokluğun hikâyesini anlatmadan pencereyi kapatıyordu →
+  ≥30 dk gizli kalıp dönen sayfa hikâyeyi yeniden ister (`AwayHost`); (2) klan bağışı, oda küçülünce kaydırıcının
+  gösterdiğini değil eski miktarı gönderiyordu (master'daki sınır koruması v2'de düşmüştü) → gösterilen gönderilir;
+  (3) Ölüm Yıldızı basılı tutması `hostile` tonda; (4) sessiz başlıkta geri düğmesi basılabilir (gizli kusur);
+  (5) kodun istediği her sabit çeviri anahtarının sözlükte olduğunu şart koşan test (`i18n-keys-used`). İncelenip
+  hata olmadığı doğrulanan: `lastSeenAt` yalnız dönüş hikâyesinde; canlı tutma `announceUnlocks` bildirim de yazar;
+  saldırı geri çağırma sunucu yolu (worker, trafik, istihbarat, kadro); tüm `HoldButton` kullanımlarında çift gönderim
+  koruması; varış anında `pending` yenilenir; madencilik iniş kilidi; `pace` sözleşmesi.
+- **master birleşmesi (analiz, 2026-09-25):** master'da 2 yeni commit (`8429cf9` performans/gemi LOD, `ccc9cda`
+  gökyüzü + gezegen kaplama ekleri). `git merge-tree` ile 5 metin çakışması: `PlanetSkinModel.tsx` (10 blok),
+  `PlanetField.tsx` (4), `hitboxDebug.tsx`, `hitbox-debug.test.tsx`, `tools/models.mjs`. Çözüm: varsayılan dünyalar
+  ui-v2'nin 3D kademeleri; kaplamalar master'ın LOD'u (tam/alçak/billboard + ekler); seçim görünmezliği master'ın
+  malzeme `visible`'ı; model aracı master'ın yapısı + gezegen varyantları. Master'ın kaplama yolu F9'da düzeltilen
+  dokunma hatasını geri getiriyor (seçim küreleri her kare sıkıştırılıyor, sınırlayıcı küre hiç yeniden
+  hesaplanmıyor) — birleşmede `placePickSpheres` mantığı oraya da taşınmalı.
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 
