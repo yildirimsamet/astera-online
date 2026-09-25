@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Api } from '../src/api/client.js';
 import type { BattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
-import { BattleReportDoor, reportFor } from '../src/screens/BattleReports.js';
+import { BattleReportDoor, BattleReports, reportFor } from '../src/screens/BattleReports.js';
 
 /**
  * A BATTLE NOTIFICATION OPENS THE BATTLE. Owner instruction.
@@ -183,7 +183,7 @@ describe('where a report opens', () => {
     open('mission-b1', [report()]);
     await screen.findByRole('dialog');
     expect(scrollTo).not.toHaveBeenCalled();
-    expect(document.querySelector('[data-sheet-scroll]')?.scrollTop).toBe(0);
+    expect(document.querySelector('[data-sheet-body]')?.scrollTop).toBe(0);
     expect(document.querySelector('[data-battle-verdict]')).not.toBeNull();
   });
 });
@@ -196,7 +196,7 @@ describe('where a report opens', () => {
 describe('the report scene in the sheet', () => {
   const openWith = (
     reports: BattleReport[],
-    props: { onAttackAgain?: (planetId: string) => void; colonyOf?: (planetId: string) => boolean },
+    props: { onAttackAgain?: (planetId: string) => void; colonyOf?: (planetId: string) => boolean; onShare?: (line: string) => void },
   ) => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports });
@@ -223,6 +223,51 @@ describe('the report scene in the sheet', () => {
     const again = await screen.findByRole('button', { name: 'Attack again' });
     again.click();
     expect(onAttackAgain).toHaveBeenCalledWith('p2');
-    expect(document.querySelector('[data-report-colony]')).not.toBeNull();
+    // The loyalty rule, applied to this grade: what the fight took off the colony.
+    expect(document.querySelector('[data-report-intel]')).toHaveTextContent(/colony loyalty −\d+/);
+  });
+
+  it('tells the clan through the door it was given, as a line the reader sends', async () => {
+    const onShare = vi.fn();
+    openWith([report({ attacking: true, opponentPlanetId: 'p2' })], { onShare });
+    (await screen.findByRole('button', { name: /to clan/i })).click();
+    expect(onShare).toHaveBeenCalledWith(expect.stringContaining('Grimhold'));
+  });
+
+  it('takes Watch to the round by round further down the sheet', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { value: scrollIntoView, writable: true, configurable: true });
+    openWith([report({ attacking: true, opponentPlanetId: 'p2' })], {});
+    (await screen.findByRole('button', { name: /^watch$/i })).click();
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toHaveAttribute('data-report-section', 'who');
+  });
+});
+
+/**
+ * THE LIST OPENS THE SAME REPORT (M4). A fight read from Intel's list offered no way back
+ * to the world and no way to tell the clan — the doors only the notification's sheet had.
+ */
+describe('a report opened from the list', () => {
+  it('carries the same doors: raid again, tell the clan', async () => {
+    const reports = [report({ attacking: true, opponentPlanetId: 'p2' })];
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports });
+    const api = { reports: () => Promise.resolve({ reports }) } as unknown as Api;
+    const onAttackAgain = vi.fn();
+    const onShare = vi.fn();
+    render(
+      <QueryClientProvider client={client}>
+        <ApiProvider api={api}>
+          <BattleReports onAttackAgain={onAttackAgain} onShare={onShare} />
+        </ApiProvider>
+      </QueryClientProvider>,
+    );
+    const row = document.querySelector<HTMLElement>('[data-report-row]')!;
+    row.click();
+    (await screen.findByRole('button', { name: 'Attack again' })).click();
+    expect(onAttackAgain).toHaveBeenCalledWith('p2');
+    screen.getByRole('button', { name: /to clan/i }).click();
+    expect(onShare).toHaveBeenCalledTimes(1);
   });
 });

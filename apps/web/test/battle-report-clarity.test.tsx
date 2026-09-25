@@ -73,8 +73,8 @@ describe.each(['tr', 'en'])('battle clarity in %s', language => {
     await i18n.changeLanguage(language);
     const dialog = await open();
     expect(dialog).toHaveTextContent(i18n.t('reports.aegis.brokenUnitsRemain'));
-    expect(dialog.querySelector('[data-aegis-status="roundedZero"]')).toHaveClass('chip-alloy');
-    expect(dialog.querySelector('[data-aegis-status="roundedZero"]')).not.toHaveClass('chip-opportunity');
+    // Neither held nor broken: a neutral chip, never the good-news one.
+    expect(dialog.querySelector('[data-aegis-status="roundedZero"]')).toHaveAttribute('data-tone', 'neutral');
     expect(dialog.querySelector('[data-their-board="floor"]')).toHaveTextContent(i18n.t('reports.theirBoardFloorNote'));
     expect(dialog.querySelector('[data-no-ground]')).toBeNull();
     expect(dialog.querySelector('[data-enemy-round-standing]')).toBeNull();
@@ -108,7 +108,7 @@ describe.each(['tr', 'en'])('battle clarity in %s', language => {
     await i18n.changeLanguage(language);
     const dialog = await open({ grade: 'DECISIVE' });
     expect(dialog).toHaveAttribute('aria-label', i18n.t('reports.verdict.title.attacking.DECISIVE_WIPED'));
-    expect(dialog.querySelector('[data-battle-verdict]')).toHaveClass('plate-threat');
+    expect(dialog.querySelector('[data-battle-verdict]')).toHaveAttribute('data-tone', 'threat');
     expect(dialog.querySelector('[data-verdict-payoff]')).toHaveTextContent('0');
     expect(dialog).toHaveTextContent(i18n.t('reports.verdict.noneReturned'));
     expect(dialog.querySelector('[data-battle-reason]')).toHaveTextContent(
@@ -120,7 +120,7 @@ describe.each(['tr', 'en'])('battle clarity in %s', language => {
     await i18n.changeLanguage(language);
     const dialog = await open({ grade: 'PARTIAL' });
     expect(dialog).toHaveAttribute('aria-label', i18n.t('reports.verdict.title.attacking.PARTIAL_WIPED'));
-    expect(dialog.querySelector('[data-battle-verdict]')).toHaveClass('plate-threat');
+    expect(dialog.querySelector('[data-battle-verdict]')).toHaveAttribute('data-tone', 'threat');
     expect(dialog.querySelector('[data-battle-reason]')).toHaveTextContent(
       i18n.t('reports.why.attacking.PARTIAL_WIPED'),
     );

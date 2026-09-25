@@ -27,6 +27,7 @@ function show(
   onFocusPlanet = vi.fn(),
   initialChannel: 'general' | 'clan' = 'general',
   generalData: unknown = initial,
+  initialClanDraft?: string,
 ) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   vi.spyOn(api, 'markChatRead').mockResolvedValue({ ok: true, readAt: at });
@@ -70,7 +71,7 @@ function show(
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
   );
-  render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} /></Wrapper>);
+  render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} {...(initialClanDraft ? { initialClanDraft } : {})} /></Wrapper>);
   return { api, post, postClan, client, onFocusPlanet };
 }
 
@@ -143,6 +144,16 @@ describe('galaxy chat surface', () => {
     expect(screen.getByText('Rim temiz')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Message your clan' })).toBeEnabled();
     await waitFor(() => { expect(api.markClanChatRead).toHaveBeenCalledWith('clan-one'); });
+  });
+
+  /** A report told to the clan (M4, "Klana") arrives as a draft: the reader sends it, or edits it. */
+  it('opens the clan composer with a draft it was handed, and sends only on the reader’s press', async () => {
+    const { postClan } = show(vi.fn(), 'clan', initial, 'Partial victory at Kestrel');
+    const composer = screen.getByRole('textbox', { name: 'Message your clan' });
+    expect(composer).toHaveValue('Partial victory at Kestrel');
+    expect(postClan).not.toHaveBeenCalled();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(postClan).toHaveBeenCalledWith('Partial victory at Kestrel'); });
   });
 
   it('posts from the selected clan channel', async () => {

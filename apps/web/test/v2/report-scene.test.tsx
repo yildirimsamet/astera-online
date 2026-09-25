@@ -52,12 +52,33 @@ const base: BattleReport = {
 const report = (over: Partial<BattleReport> = {}): BattleReport => ({ ...base, ...over });
 
 describe('the report scene', () => {
-  it('leads with the word, the world, the time and the rounds', () => {
+  /**
+   * THE MOCK'S HERO (M4): the report is headed by the reader's own world, then the word,
+   * large, then when, how long, and against whom — their name as a chip, their world.
+   */
+  it('leads with your world, the word, the time, the rounds and whom', () => {
     render(<ReportScene report={report()} word="Partial victory" />);
-    const scene = document.querySelector<HTMLElement>('[data-report-scene]')!;
-    expect(within(scene).getByText('Partial victory')).toBeInTheDocument();
-    expect(scene).toHaveTextContent('Battle report · Kestrel');
-    expect(scene).toHaveTextContent('3 rounds');
+    const hero = document.querySelector<HTMLElement>('[data-report-hero]')!;
+    expect(within(hero).getByRole('heading', { name: 'Partial victory' })).toBeInTheDocument();
+    expect(hero).toHaveTextContent('Battle report · Bellwether');
+    expect(hero).toHaveTextContent('3 rounds');
+    expect(hero.querySelector('[data-report-opponent]')).toHaveTextContent('VEX');
+    expect(hero).toHaveTextContent('Kestrel');
+  });
+
+  /** A win that cost the whole fleet is a loss to the reader (the sheet's verdict says so too). */
+  it('reddens the word when the attacker lost every ship, whatever the grade', () => {
+    const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
+    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-self');
+    rerender(<ReportScene report={report({ yourLosses: { DART: 23, COURIER: 3 } })} word="Fleet lost" />);
+    expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-hostile');
+  });
+
+  it('wears the rival’s mark on their name when they are marked', () => {
+    const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
+    expect(document.querySelector('[data-report-opponent]')).not.toHaveAttribute('data-rival');
+    rerender(<ReportScene report={report()} word="Partial victory" rivalSlot={1} />);
+    expect(document.querySelector('[data-report-opponent]')).toHaveAttribute('data-rival', '1');
   });
 
   /** A walkover had no rounds; "0 rounds" reads as a bug, so the count is left out. */
@@ -108,6 +129,54 @@ describe('the report scene', () => {
     expect(why).toHaveTextContent(combatClassLabel('SKIRMISHER'));
   });
 
+  /** The mock's "Neden kısmi?": the question is the word's, not a generic "Why?". */
+  it('asks the question the word raises', () => {
+    const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
+    expect(document.querySelector('[data-report-why]')).toHaveTextContent(/^Why partial\?/);
+    rerender(<ReportScene report={report({ grade: 'REPELLED' })} word="Repelled" />);
+    expect(document.querySelector('[data-report-why]')).toHaveTextContent(/^Why repelled\?/);
+    rerender(<ReportScene report={report({ grade: 'DECISIVE' })} word="Decisive victory" />);
+    expect(document.querySelector('[data-report-why]')).toHaveTextContent(/^Where the losses came from/);
+  });
+
+  /**
+   * A REPORT IS NEW INTEL (the core loop): what the fight put on the dossier, dated, and
+   * on a colony what it took off the loyalty — the rule applied, never their value.
+   */
+  it('says what the fight added to the dossier, and what it took off a colony', () => {
+    const { rerender } = render(<ReportScene report={report()} word="Partial victory" colonyTarget />);
+    const intel = document.querySelector<HTMLElement>('[data-report-intel]')!;
+    expect(intel).toHaveTextContent(/Kestrel’s defence is on its dossier as of/);
+    expect(intel).toHaveTextContent(`colony loyalty −${String(FAULT.battleLoyaltyLoss.PARTIAL)}`);
+    rerender(<ReportScene report={report()} word="Partial victory" />);
+    expect(document.querySelector('[data-report-intel]')).not.toHaveTextContent(/loyalty/);
+  });
+
+  it('claims no new intel where nothing of theirs was met, or for the defender', () => {
+    const { rerender } = render(<ReportScene report={report({ theirLosses: {} })} word="Decisive victory" />);
+    expect(document.querySelector('[data-report-intel]')).toBeNull();
+    rerender(<ReportScene report={report({ attacking: false, theirFleet: { DART: 26 } })} word="Raided" />);
+    expect(document.querySelector('[data-report-intel]')).toBeNull();
+  });
+
+  /** The mock's three doors: watch the rounds, tell the clan, raid again. */
+  it('offers to watch the rounds and to tell the clan', async () => {
+    const onWatch = vi.fn();
+    const onShare = vi.fn();
+    render(<ReportScene report={report()} word="Partial victory" onWatch={onWatch} onShare={onShare} />);
+    await userEvent.click(screen.getByRole('button', { name: /watch/i }));
+    expect(onWatch).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: /to clan/i }));
+    expect(onShare).toHaveBeenCalledWith(expect.stringMatching(/Partial victory.*Kestrel/));
+  });
+
+  it('offers no rounds to watch where nobody fought, and no doors it was not given', () => {
+    const { rerender } = render(<ReportScene report={report({ rounds: [] })} word="Decisive victory" onWatch={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /watch/i })).toBeNull();
+    rerender(<ReportScene report={report()} word="Partial victory" />);
+    expect(screen.queryByRole('button', { name: /watch|to clan/i })).toBeNull();
+  });
+
   it('balances loot, fuel and loss on one line', () => {
     render(<ReportScene report={report()} word="Partial victory" />);
     const balance = document.querySelector<HTMLElement>('[data-report-balance]')!;
@@ -121,14 +190,6 @@ describe('the report scene', () => {
     expect(document.querySelector('[data-report-balance]')).not.toHaveTextContent(/fuel/i);
   });
 
-  it('states the colony loyalty rule on a colony, and nowhere else', () => {
-    const { rerender } = render(<ReportScene report={report()} word="Partial victory" colonyTarget />);
-    const rule = document.querySelector<HTMLElement>('[data-report-colony]')!;
-    expect(rule).toHaveTextContent(String(FAULT.battleLoyaltyLoss.DECISIVE));
-    expect(rule).toHaveTextContent(String(FAULT.battleLoyaltyLoss.PARTIAL));
-    rerender(<ReportScene report={report()} word="Partial victory" />);
-    expect(document.querySelector('[data-report-colony]')).toBeNull();
-  });
 
   it('takes the attacker back to the target, and offers the defender no raid', async () => {
     const onAttackAgain = vi.fn();

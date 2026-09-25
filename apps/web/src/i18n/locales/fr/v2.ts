@@ -153,7 +153,9 @@ export const reportScene = {
   you: "Toi",
   destroyed: "{{count}} détruits",
   hidden: "Ce qui leur reste et le reste du terrain restent cachés ; un rapport ne dit que ce que tu as détruit.",
-  whyHeading: "Pourquoi ?",
+  whyDecisive: "D’où viennent les pertes",
+  whyPartial: "Pourquoi partielle ?",
+  whyRepelled: "Pourquoi repoussé ?",
   why: "La plupart de tes pertes étaient des {{lost}} : {{by}} est fort contre eux, et {{bring}} est fort contre {{by}}.",
   balance: "Bilan",
   balanceLoot: "butin {{amount}}",
@@ -161,7 +163,11 @@ export const reportScene = {
   balanceLost: "pertes {{list}}",
   balanceNone: "aucune perte",
   cargoFull: "soute pleine",
-  colonyRule: "Loyauté d’une colonie : une victoire décisive retire {{decisive}}, une partielle {{partial}}.",
+  intel: "La défense de {{planet}} est dans son dossier depuis {{time}}",
+  loyalty: "loyauté de la colonie −{{amount}}",
+  watch: "Revoir",
+  share: "Au clan",
+  shareLine: "{{word}} à {{planet}} · butin {{loot}} · pertes {{lost}}",
   again: "Attaquer à nouveau",
 } as const;
 

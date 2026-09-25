@@ -43,8 +43,11 @@ export interface GameShellProps {
     centerRequest: number;
     clearRequest: number;
     onPanel: ShellRoute;
-    /** Open chat as its own page, on a given room (the war room's "Clan chat", E9). */
-    onOpenChat: (channel?: ChatChannel) => void;
+    /**
+     * Open chat as its own page, on a given room (the war room's "Clan chat", E9) — with a
+     * clan line to start from where one is handed over (a report told to the clan, M4).
+     */
+    onOpenChat: (channel?: ChatChannel, draft?: string) => void;
   }) => ReactNode;
 }
 
@@ -73,6 +76,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   const [fleetOpen, setFleetOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatChannel, setChatChannel] = useState<ChatChannel | undefined>(undefined);
+  const [chatDraft, setChatDraft] = useState<string | undefined>(undefined);
   /** The Now line's timers sheet: closed by every move below, never left under a page. */
   const [nowOpen, setNowOpen] = useState(false);
   const [homeRequest, setHomeRequest] = useState(0);
@@ -114,9 +118,10 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
   };
 
   /** Chat, its own page: on the room asked for, or — with none — on what is unread. */
-  const openChat = (channel?: ChatChannel): void => {
+  const openChat = (channel?: ChatChannel, draft?: string): void => {
     clearPages();
     setChatChannel(channel);
+    setChatDraft(draft);
     setChatOpen(true);
   };
 
@@ -263,6 +268,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
           onClose={() => { setChatOpen(false); }}
           onFocusPlanet={onFocusPlanet}
           {...(chatChannel ? { channel: chatChannel } : {})}
+          {...(chatDraft ? { draft: chatDraft } : {})}
         />
       )}
 

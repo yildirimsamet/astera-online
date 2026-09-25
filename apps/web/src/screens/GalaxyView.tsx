@@ -101,7 +101,7 @@ import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
 import { researchNeedWorld } from '../lib/researchNeed.js';
 import { ResearchPanel } from './ResearchPanel.js';
 import { IntelScreen } from './IntelScreen.jsx';
-import { BattleReportDoor } from './BattleReports.jsx';
+import { BattleReportDoor, type ReportDoors } from './BattleReports.jsx';
 import { RewardsScreen } from './RewardsScreen.jsx';
 import { AnnouncementsScreen } from './AnnouncementsScreen.js';
 import { FeedbackScreen } from './FeedbackScreen.js';
@@ -344,7 +344,7 @@ export function GalaxyView({
   centerRequest?: number;
   clearRequest?: number;
   /** Open chat as its own page on a given room: the war room's "Clan chat" (E9). */
-  onOpenChat?: (channel?: ChatChannel) => void;
+  onOpenChat?: (channel?: ChatChannel, draft?: string) => void;
   /** Hidden in the pre-account rehearsal, where no commander identity exists. */
   showChat?: boolean;
   /** The scripted lesson owns guidance during training. */
@@ -764,6 +764,18 @@ export function GalaxyView({
   }, [intergalacticConvoy, planet.data, season.data, tradeMinute]);
 
   const planets = useMemo(() => planetsWithClanPresence(galaxy.data), [galaxy.data]);
+  /*
+    WHAT A BATTLE REPORT IS HANDED, from a notification or from Intel's list (M4): whether
+    the other side is a colony (its loyalty line), the mark it wears, and — in a clan only —
+    the door that tells the clan: clan chat, opened with the report's line as a draft.
+  */
+  const reportDoors: ReportDoors = {
+    colonyOf: (planetId: string) => planets.find((world) => world.id === planetId)?.kind === 'COLONY',
+    rivalOf: (planetId: string) => season.data?.rivals.find((mark) => mark.planetId === planetId)?.slot ?? null,
+    ...(onOpenChat && clanBadge.data?.membership
+      ? { onShare: (line: string) => { onOpenChat('clan', line); } }
+      : {}),
+  };
   /**
    * CAMERA HOME COMES FROM THE DISC IT MOVES OVER.
    *
@@ -1877,7 +1889,7 @@ export function GalaxyView({
             focusPlanet(planetId);
             setDetail(true);
           }}
-          colonyOf={(planetId) => planets.find((world) => world.id === planetId)?.kind === 'COLONY'}
+          {...reportDoors}
         />
       )}
 
@@ -1895,6 +1907,7 @@ export function GalaxyView({
         >
           <IntelScreen
             {...(panelStop ? { open: panelStop } : {})}
+            {...reportDoors}
             rivals={rivalMenuRows(season.data?.rivals ?? [], planets)}
             onFocusRival={(planetId) => {
               onPanel(null);

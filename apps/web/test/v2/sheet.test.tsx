@@ -49,6 +49,18 @@ describe('where a sheet settles', () => {
 });
 
 describe('the sheet', () => {
+  /**
+   * A PAGE THAT HEADS ITSELF (M4, the report's hero): the title stays the dialog's name
+   * and the header's words stay for a reader, but nothing is drawn twice — the close floats.
+   */
+  it('keeps its name for a reader when the page draws its own heading', () => {
+    render(<Sheet title="Partial victory" eyebrow="Raided Sable" quietTitle onClose={vi.fn()}>body</Sheet>);
+    const dialog = screen.getByRole('dialog', { name: 'Partial victory' });
+    expect(dialog.querySelector('header h2')).toHaveClass('sr-only');
+    expect(dialog.querySelector('header p')).toHaveClass('sr-only');
+    expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
+  });
+
   it('opens at its first height and names itself', () => {
     render(<Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half', 'full']}>body</Sheet>);
     const dialog = screen.getByRole('dialog', { name: 'Kestrel' });

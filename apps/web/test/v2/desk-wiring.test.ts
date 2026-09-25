@@ -39,6 +39,30 @@ describe('the war room wiring', () => {
   });
 });
 
+/**
+ * M4: a report's doors reach it from both ways in — the notification's sheet and Intel's
+ * list: raid again (the dossier), tell the clan (clan chat with the line as a draft, only
+ * in a clan), and the other side's mark.
+ */
+describe('the report doors', () => {
+  const intel = readFileSync('src/screens/IntelScreen.tsx', 'utf8');
+
+  it('hands the report sheet from a notification the clan door and the rival mark', () => {
+    const door = galaxy.slice(galaxy.indexOf('<BattleReportDoor'), galaxy.indexOf('<BattleReportDoor') + 1400);
+    expect(door).toMatch(/\{\.\.\.reportDoors\}/);
+    expect(galaxy).toMatch(/onShare: \(line: string\) => \{ onOpenChat\('clan', line\); \}/);
+    expect(galaxy).toMatch(/membership/);
+  });
+
+  it('hands Intel’s list the same doors', () => {
+    const screen = galaxy.slice(galaxy.indexOf('<IntelScreen'), galaxy.indexOf('<IntelScreen') + 1200);
+    expect(screen).toMatch(/\{\.\.\.reportDoors\}/);
+    const list = intel.slice(intel.indexOf('<BattleReports'), intel.indexOf('<BattleReports') + 600);
+    expect(list).toMatch(/onAttackAgain: onOpenDossier/);
+    expect(list).toMatch(/\{\.\.\.doors\}/);
+  });
+});
+
 describe('Space and Esc on the galaxy', () => {
   it('brings the selection back into frame on Space, or flies home with nothing selected', () => {
     const center = galaxy.slice(galaxy.indexOf('useRequest(centerRequest'), galaxy.indexOf('useRequest(clearRequest'));

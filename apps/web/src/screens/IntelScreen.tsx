@@ -22,7 +22,7 @@ import { Icon } from '../v2/icons.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../v2/kit/Freshness.js';
 import { Segmented } from '../v2/kit/Segmented.js';
 import { SignalBars } from '../v2/kit/SignalBars.js';
-import { BattleReports } from './BattleReports.jsx';
+import { BattleReports, type ReportDoors } from './BattleReports.jsx';
 
 /**
  * WHAT YOU KNOW — AND, MORE IMPORTANTLY, WHAT YOU DO NOT. D4 (owner, 2026-09-24),
@@ -76,6 +76,7 @@ export function IntelScreen({
   rivals = [],
   onFocusRival,
   onOpenDossier,
+  ...doors
 }: {
   onOpenOrbit?: () => void;
   /**
@@ -92,7 +93,7 @@ export function IntelScreen({
   onFocusRival?: (planetId: string) => void;
   /** Opens a world's dossier on the galaxy. */
   onOpenDossier?: (planetId: string) => void;
-}) {
+} & Omit<ReportDoors, 'onAttackAgain'>) {
   const { t } = useTranslation();
   const intel = useIntel();
   const planet = usePlanet();
@@ -206,6 +207,9 @@ export function IntelScreen({
                 {...(open?.reportMissionId
                   ? { open: { missionId: open.reportMissionId, request: open.request } }
                   : {})}
+                /* A report's "Attack again" is the raided world's dossier (E6), as from a notification. */
+                {...(onOpenDossier ? { onAttackAgain: onOpenDossier } : {})}
+                {...doors}
               />
             </div>
           </div>

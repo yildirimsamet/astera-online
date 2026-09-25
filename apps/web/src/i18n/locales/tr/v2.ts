@@ -153,7 +153,9 @@ export const reportScene = {
   you: "Sen",
   destroyed: "{{count}} yok edildi",
   hidden: "Kalanları ve sahaya çıkardığı filo gizli; rapor yalnızca yok ettiğini söyler.",
-  whyHeading: "Neden?",
+  whyDecisive: "Kayıplar nereden geldi",
+  whyPartial: "Neden kısmi?",
+  whyRepelled: "Neden püskürtüldü?",
   why: "Kayıplarının çoğu {{lost}}: {{by}} onlara karşı güçlü, {{bring}} de {{by}} karşısında güçlü.",
   balance: "Bilanço",
   balanceLoot: "ganimet {{amount}}",
@@ -161,7 +163,11 @@ export const reportScene = {
   balanceLost: "kayıp {{list}}",
   balanceNone: "kayıp yok",
   cargoFull: "ambar doldu",
-  colonyRule: "Koloni sadakati: kesin zafer {{decisive}}, kısmi zafer {{partial}} düşürür.",
+  intel: "{{planet}} savunması {{time}} itibarıyla dosyasında",
+  loyalty: "koloni sadakati −{{amount}}",
+  watch: "İzle",
+  share: "Klana",
+  shareLine: "{{planet}}: {{word}} · ganimet {{loot}} · kayıp {{lost}}",
   again: "Yeniden saldır",
 } as const;
 

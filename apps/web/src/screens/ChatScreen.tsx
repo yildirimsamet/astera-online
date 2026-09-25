@@ -49,15 +49,18 @@ export type ChatChannel = 'general' | 'clan';
 export function ChatScreen({
   onFocusPlanet,
   initialChannel = 'general',
+  initialClanDraft = '',
 }: {
   onFocusPlanet: (planetId: string) => void;
   initialChannel?: ChatChannel;
+  /** A line handed in to the clan composer (a report told to the clan, M4); the reader sends it. */
+  initialClanDraft?: string;
 }) {
   const { t } = useTranslation();
   const [channel, setChannel] = useState<ChatChannel>(initialChannel);
   const [chatLanguage, setChatLanguage] = useState<Language>(() => currentLanguage());
   const [generalDrafts, setGeneralDrafts] = useState<Partial<Record<Language, string>>>({});
-  const [clanDraft, setClanDraft] = useState('');
+  const [clanDraft, setClanDraft] = useState(initialClanDraft);
   const badge = useClanBadge();
   const inClan = badge.data?.membership !== null && badge.data?.membership !== undefined;
   const general = useChatMessages(chatLanguage);

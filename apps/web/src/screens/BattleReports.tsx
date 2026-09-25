@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ABUSE, COMBAT, HULLS, fleetCount, fleetEntries, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
@@ -11,8 +11,8 @@ import { HULL_ART, RESOURCE_ART, instrumentArt } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
 import { SurvivorBar } from '../ui/SurvivorBar.js';
 import { EmptyState, Section, Unreachable } from '../ui/kit/index.js';
-import { Sheet } from '../ui/kit/index.js';
 import { ReportScene } from '../v2/hud/ReportScene.js';
+import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import './battle-report.css';
 
 /**
@@ -162,22 +162,29 @@ export const reportFor = (
  * fallback it should always have been. Nothing is drawn while the answer is still
  * unknown, so the reader never sees a flash of the wrong surface.
  */
+/** What the galaxy hands a report: the ways out of it, and what the disc knows of the other side. */
+export interface ReportDoors {
+  /** E6: back to the raided world's dossier. */
+  onAttackAgain?: (planetId: string) => void;
+  /** Whether a world on the disc is a colony, for the scene's loyalty line. */
+  colonyOf?: (planetId: string) => boolean;
+  /** The mark the other side's world wears (D183), for their name's colour. */
+  rivalOf?: (planetId: string) => number | null;
+  /** Tell the clan: clan chat, opened with the report's line as a draft (M4). Offered in a clan only. */
+  onShare?: (line: string) => void;
+}
+
 export function BattleReportDoor({
   missionId,
   onClose,
   onUnavailable,
-  onAttackAgain,
-  colonyOf,
+  ...doors
 }: {
   missionId: string;
   onClose: () => void;
   /** No such report, or the request failed: fall back to the list. */
   onUnavailable: () => void;
-  /** E6: back to the raided world's dossier. The galaxy offers it; a list with no disc does not. */
-  onAttackAgain?: (planetId: string) => void;
-  /** Whether a world on the disc is a colony, for the scene's loyalty rule. */
-  colonyOf?: (planetId: string) => boolean;
-}) {
+} & ReportDoors) {
   const { data, isPending, isError } = useReports();
   const report = data ? reportFor(data.reports, missionId) : undefined;
   const missing = !isPending && !report;
@@ -190,20 +197,16 @@ export function BattleReportDoor({
   return report.kind === 'STRATEGIC'
     ? <StrategicReportSheet report={report} onClose={onClose} />
     : (
-      <ReportSheet
-        report={report}
-        onClose={onClose}
-        {...(onAttackAgain ? { onAttackAgain } : {})}
-        {...(colonyOf ? { colonyOf } : {})}
-      />
+      <ReportSheet report={report} onClose={onClose} {...doors} />
     );
 }
 
 export function BattleReports({
   open: requested,
+  ...doors
 }: {
   open?: { missionId: string; request: number };
-} = {}) {
+} & ReportDoors = {}) {
   const { t } = useTranslation();
   const { data, isPending, isError, refetch } = useReports();
   const [open, setOpen] = useState<Report | null>(null);
@@ -240,7 +243,7 @@ export function BattleReports({
       ) : isPending ? null : reports.length === 0 ? (
         <EmptyState title={t('reports.empty')} />
       ) : (
-        <div className="plate plate-inset">
+        <div className="rounded-control border border-v2-line bg-v2-deep/40">
           {reports.map((report) => {
             if (report.kind === 'STRATEGIC') {
               return (
@@ -257,6 +260,7 @@ export function BattleReports({
               <button
               key={report.id}
               type="button"
+              data-report-row=""
               onClick={() => {
                 setOpen(report);
               }}
@@ -264,12 +268,12 @@ export function BattleReports({
             >
               <GradeMark report={report} />
               <div className="col-span-2 min-w-0">
-                <p className="break-words text-body text-bone">
+                <p className="break-words text-caption text-v2-ink">
                   {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
                   {opponentClan ? (
-                    <span className="mr-1 text-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
+                    <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
                   ) : null}
-                  <span className="text-dim">{opponentOf(report)}</span>
+                  <span className="text-v2-ink-2">{opponentOf(report)}</span>
                 </p>
                 {/*
                   THE SAME EMPTY WORLD, IN THE ROW. A pirate battle has no world on
@@ -277,7 +281,7 @@ export function BattleReports({
                   separator. The world it launched FROM is the one fact of the three
                   that a pirate row can still offer, so it stands in.
                 */}
-                <p className="num mt-1 text-label text-faint">
+                <p className="font-v2-mono tabular-nums mt-1 text-micro text-v2-ink-3">
                   {report.pirate
                     ? report.yourPlanet
                     : report.attacking
@@ -288,8 +292,9 @@ export function BattleReports({
                     : report.attacking
                       ? report.opponentPlanet
                       : report.yourPlanet) !== '' && ' · '}
-                  {staleness((now - report.at.getTime()) / 60_000)} ·{' '}
-                  {t('reports.rounds', { count: report.rounds.length })}
+                  {staleness((now - report.at.getTime()) / 60_000)}
+                  {/* A walkover had no rounds, and "0 rounds" reads as a fault (the scene says the same). */}
+                  {report.rounds.length > 0 && ` · ${t('reports.rounds', { count: report.rounds.length })}`}
                 </p>
               </div>
               {/*
@@ -300,9 +305,9 @@ export function BattleReports({
               */}
               {report.dominion !== null && report.dominion !== 0 && (
                 <span
-                  className={`num col-start-2 row-start-1 text-right text-body ${report.dominion >= 0 ? 'text-opportunity' : 'text-threat-ink'}`}
+                  className={`font-v2-mono tabular-nums col-start-2 row-start-1 text-right text-caption ${report.dominion >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}
                 >
-                  <span className="mb-1 block text-caption text-dim">{t('reports.dominion')}</span>
+                  <span className="mb-1 block text-micro text-v2-ink-2">{t('reports.dominion')}</span>
                   {signed(report.dominion)}
                 </span>
               )}
@@ -316,7 +321,7 @@ export function BattleReports({
         open.kind === 'STRATEGIC' ? (
           <StrategicReportSheet report={open} onClose={() => { setOpen(null); }} />
         ) : (
-          <ReportSheet report={open} onClose={() => { setOpen(null); }} />
+          <ReportSheet report={open} onClose={() => { setOpen(null); }} {...doors} />
         )
       )}
     </Section>
@@ -345,21 +350,21 @@ function StrategicReportRow({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-2 border-b border-line-soft p-3 text-left last:border-b-0"
+      className="flex w-full items-center gap-2 border-b border-v2-line/60 p-3 text-left last:border-b-0"
     >
-      <span className={`chip shrink-0 ${stopped ? 'chip-opportunity' : 'chip-threat'}`}>
+      <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
         {t(STRATEGIC_OUTCOME[report.outcome])}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body text-bone">
+        <p className="truncate text-caption text-v2-ink">
           {t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
-          <span className="text-dim">{report.opponentName}</span>
+          <span className="text-v2-ink-2">{report.opponentName}</span>
         </p>
-        <p className="num mt-1 text-label text-faint">
+        <p className="font-v2-mono tabular-nums mt-1 text-micro text-v2-ink-3">
           {report.opponentPlanet} · {staleness((now - report.at.getTime()) / 60_000)}
         </p>
       </div>
-      {report.damage > 0 ? <span className="num text-body text-threat">{compact(report.damage)}</span> : null}
+      {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
     </button>
   );
 }
@@ -382,7 +387,8 @@ function StrategicReportSheet({
   const emp = report.outcome === 'FIRST_STRIKE' && report.damage === 0;
 
   return (
-    <Sheet
+    <V2Sheet
+      detents={['full']}
       eyebrow={t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy', {
         opponent: report.opponentName,
       })}
@@ -390,74 +396,74 @@ function StrategicReportSheet({
       onClose={onClose}
     >
       {report.yourPlanet ? (
-        <p className="num mb-3 flex items-center gap-2 text-label text-faint">
-          <span className="text-bone">{report.yourPlanet}</span>
+        <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
+          <span className="text-v2-ink">{report.yourPlanet}</span>
           <span aria-hidden>{report.attacking ? '→' : '←'}</span>
           <span>{report.opponentPlanet}</span>
         </p>
       ) : null}
 
       {report.outcome === 'INTERCEPTED' ? (
-        <div className="plate plate-inset p-3">
-          <p className="legend text-opportunity">{t('reports.strategicDestroyedInFlight')}</p>
-          <p className="mt-2 text-body text-dim">
+        <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
+          <p className="text-caption font-semibold text-v2-self">{t('reports.strategicDestroyedInFlight')}</p>
+          <p className="mt-2 text-caption text-v2-ink-2">
             {t(report.trigger === 'TELESCOPE'
               ? 'reports.strategicTelescopeTrigger'
               : 'reports.strategicRadarTrigger')}
           </p>
         </div>
       ) : emp ? (
-        <div className="plate plate-inset p-3 text-body text-bone">
+        <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink">
           {t('reports.strategicEmpEffect')}
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="plate plate-inset grid grid-cols-2 gap-2 p-3">
+          <div className="rounded-control border border-v2-line bg-v2-deep/40 grid grid-cols-2 gap-2 p-3">
             <StrategicMetric label={t('reports.strategicTotalDamage')} value={full(report.damage)} />
             <StrategicMetric label={t('reports.strategicShieldLost')} value={full(report.shieldDestroyed)} />
             <StrategicMetric label={t('reports.strategicResourcesLost')} value={full(resourcesLost)} />
             <StrategicMetric label={t('reports.strategicOrdersLost')} value={full(ordersLost)} />
           </div>
 
-          <div className="plate plate-inset p-3">
-            <p className="legend text-crystal">{t('reports.strategicResourceBreakdown')}</p>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-label text-dim">
-              <span>{t('vocabulary.resource.alloy')} <b className="num text-bone">{full(report.destroyedResources.alloy)}</b></span>
-              <span>{t('vocabulary.resource.crystal')} <b className="num text-bone">{full(report.destroyedResources.crystal)}</b></span>
-              <span>{t('vocabulary.resource.deuterium')} <b className="num text-bone">{full(report.destroyedResources.deuterium)}</b></span>
+          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
+            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicResourceBreakdown')}</p>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-micro text-v2-ink-2">
+              <span>{t('vocabulary.resource.alloy')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.alloy)}</b></span>
+              <span>{t('vocabulary.resource.crystal')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.crystal)}</b></span>
+              <span>{t('vocabulary.resource.deuterium')} <b className="font-v2-mono tabular-nums text-v2-ink">{full(report.destroyedResources.deuterium)}</b></span>
             </div>
           </div>
 
           <Losses
             fleet={report.destroyedFleet}
-            tone="text-threat"
+            tone="text-v2-hostile"
             empty={t('reports.strategicNoFleetLost')}
           />
 
-          <div className="plate plate-inset p-3">
-            <p className="legend text-crystal">{t('reports.strategicLevelLosses')}</p>
+          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
+            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicLevelLosses')}</p>
             {report.levelChanges.length === 0 ? (
-              <p className="mt-2 text-body text-faint">{t('reports.strategicNoLevelLoss')}</p>
+              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoLevelLoss')}</p>
             ) : (
               <div className="mt-2 space-y-1">
                 {report.levelChanges.map((change, index) => (
-                  <p key={`${change.kind}-${change.id}-${index}`} className="flex justify-between text-body text-dim">
+                  <p key={`${change.kind}-${change.id}-${index}`} className="flex justify-between text-caption text-v2-ink-2">
                     <span>{change.id.replaceAll('_', ' ')}</span>
-                    <span className="num text-threat">L{change.before} → L{change.after}</span>
+                    <span className="font-v2-mono tabular-nums text-v2-hostile">L{change.before} → L{change.after}</span>
                   </p>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="plate plate-inset p-3">
-            <p className="legend text-crystal">{t('reports.strategicDestroyedOrders')}</p>
+          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3">
+            <p className="text-caption font-semibold text-v2-ink">{t('reports.strategicDestroyedOrders')}</p>
             {report.destroyedOrders.length === 0 ? (
-              <p className="mt-2 text-body text-faint">{t('reports.strategicNoOrdersLost')}</p>
+              <p className="mt-2 text-caption text-v2-ink-3">{t('reports.strategicNoOrdersLost')}</p>
             ) : report.destroyedOrders.map((order, index) => (
-              <p key={`${order.subject}-${index}`} className="mt-2 flex justify-between text-body text-dim">
+              <p key={`${order.subject}-${index}`} className="mt-2 flex justify-between text-caption text-v2-ink-2">
                 <span>{order.subject.replaceAll('_', ' ')} ×{order.count}</span>
-                <span className="num text-threat">
+                <span className="font-v2-mono tabular-nums text-v2-hostile">
                   {full(order.cost.alloy + order.cost.crystal + order.cost.deuterium)}
                 </span>
               </p>
@@ -465,15 +471,15 @@ function StrategicReportSheet({
           </div>
         </div>
       )}
-    </Sheet>
+    </V2Sheet>
   );
 }
 
 function StrategicMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="legend text-faint">{label}</p>
-      <p className="num mt-1 text-title text-bone">{value}</p>
+      <p className="v2-legend text-v2-ink-3">{label}</p>
+      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{value}</p>
     </div>
   );
 }
@@ -491,7 +497,7 @@ function GradeMark({ report }: { report: OrdinaryReport }) {
     : report.grade === 'REPELLED';
   return (
     <span
-      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-body font-semibold ${won ? 'border-opportunity/30 text-opportunity' : 'border-threat/30 text-threat-ink'}`}
+      className={`w-fit max-w-full rounded-cell border px-2 py-1 text-caption font-semibold ${won ? 'border-v2-self/30 text-v2-self' : 'border-threat/30 text-v2-hostile'}`}
       title={verdictTitle(report)}
     >
       {verdictTitle(report)}
@@ -504,13 +510,15 @@ function ReportSheet({
   onClose,
   onAttackAgain,
   colonyOf,
+  rivalOf,
+  onShare,
 }: {
   report: OrdinaryReport;
   onClose: () => void;
-  onAttackAgain?: (planetId: string) => void;
-  colonyOf?: (planetId: string) => boolean;
-}) {
+} & ReportDoors) {
   const { t } = useTranslation();
+  /** "Watch" (the mock's İzle): the round by round, further down this sheet. */
+  const rounds = useRef<HTMLHeadingElement>(null);
   const target = report.attacking ? report.opponentPlanetId ?? null : null;
   const perspective = report.attacking ? 'attacking' : 'defending';
   const whyGrade = report.grade === 'DECISIVE' && report.rounds.length === 0
@@ -530,7 +538,9 @@ function ReportSheet({
   const theirClan = report.attacking ? report.defenderClan : report.attackerClan;
 
   return (
-    <Sheet
+    <V2Sheet
+      detents={['full']}
+      quietTitle
       eyebrow={report.attacking || report.pirate
         ? t(report.pirate ? 'reports.sheetYouRaidedPirate' : 'reports.sheetYouRaided', {
           opponent: opponentOf(report),
@@ -538,7 +548,6 @@ function ReportSheet({
         })
         : `${t('reports.sheetTheyRaided', { opponent: opponentOf(report) })} · ${t('reports.attackedPlanet', { planet: report.yourPlanet })}`}
       title={verdictTitle(report)}
-      reading
       onClose={onClose}
     >
       <div data-battle-report className="battle-report">
@@ -551,7 +560,11 @@ function ReportSheet({
       <div className="mb-4">
         <ReportScene
           report={report}
+          word={verdictTitle(report)}
           colonyTarget={target !== null && (colonyOf?.(target) ?? false)}
+          rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
+          onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+          {...(onShare ? { onShare } : {})}
           {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
         />
       </div>
@@ -580,16 +593,12 @@ function ReportSheet({
       */}
       <h2
         data-report-section="happened"
-        className="legend mt-1 text-crystal"
+        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
       >
         {t('reports.q.happened')}
       </h2>
       <BattleVerdict report={report} />
-      <time dateTime={report.at.toISOString()} className="mb-2 block text-body text-dim">
-        {new Intl.DateTimeFormat(t('units.numberLocale'), {
-          dateStyle: 'medium', timeStyle: 'short',
-        }).format(report.at)}
-      </time>
+      {/* The date and time are the hero's (the scene above); the route stays, pointing in or out. */}
       {/*
         WHERE IT HAPPENED, IN ONE LINE, BEFORE ANYTHING ELSE.
 
@@ -604,8 +613,8 @@ function ReportSheet({
         the actionable half and is still named.
       */}
       {report.yourPlanet && (
-        <p className="num mb-3 flex items-center gap-2 text-label text-faint">
-          <span className="text-bone">{report.yourPlanet}</span>
+        <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
+          <span className="text-v2-ink">{report.yourPlanet}</span>
           {report.opponentPlanet !== '' && (
             <>
               <span aria-hidden>{report.attacking ? '→' : '←'}</span>
@@ -624,7 +633,7 @@ function ReportSheet({
         what a commander priced the fight with is what the report explains it with.
       */}
       {report.pirate && (
-        <p className="mt-2 border-l border-crystal/60 pl-3 text-caption leading-snug text-crystal">
+        <p className="mt-2 border-l border-v2-line-hi pl-3 text-micro leading-snug text-v2-crystal">
           {t('pirate.damagePenalty', {
             percent: Math.round((1 - report.pirate.damageMult) * 100),
           })}
@@ -640,9 +649,9 @@ function ReportSheet({
         how long the works stay down, so it is the single most consequential word
         on the surface.
       */}
-      <section data-battle-reason className="plate plate-inset mt-3 p-3">
-      <h3 className="text-title font-semibold text-bone">{t('reports.reasonHeading')}</h3>
-      <p className="mt-2 text-body leading-relaxed text-dim">
+      <section data-battle-reason className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3">
+      <h3 className="text-caption font-semibold font-semibold text-v2-ink">{t('reports.reasonHeading')}</h3>
+      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
         {/*
           ONE LINE IN THIRTEEN QUOTES THE THRESHOLD, AND THE TYPES SAY SO.
 
@@ -662,7 +671,7 @@ function ReportSheet({
 
       <h2
         data-report-section="there"
-        className="legend mt-5 text-crystal"
+        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
       >
         {t(
           report.attacking
@@ -698,8 +707,9 @@ function ReportSheet({
       {report.attacking && <ShieldImpact report={report} />}
 
       <h2
+        ref={rounds}
         data-report-section="who"
-        className="legend mt-5 text-crystal"
+        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink scroll-mt-12"
       >
         {t('reports.q.who')}
       </h2>
@@ -715,13 +725,13 @@ function ReportSheet({
         roster is the caller's own board, so it discloses nothing: this is the one
         force in the fight the reader already commanded.
       */}
-      <h3 className="legend mt-4">
+      <h3 className="mt-4 text-caption font-semibold text-v2-ink">
         {t(fleetEntries(report.yourFleet).length > 0 ? 'reports.yourForce' : 'reports.yours')}
       </h3>
       {fleetEntries(report.yourFleet).length > 0 ? (
         <YourForce report={report} />
       ) : (
-        <Losses fleet={report.yourLosses} tone="text-threat-ink" empty={t('reports.yoursEmpty')} />
+        <Losses fleet={report.yourLosses} tone="text-v2-hostile" empty={t('reports.yoursEmpty')} />
       )}
       {/*
         THE WALKOVER, WHICH IS THE MOST COMMON RAID IN THE GAME AND THE ONE THE
@@ -738,24 +748,24 @@ function ReportSheet({
         this and unaffected.
       */}
       {report.rounds.length === 0 ? (
-        <section data-walkover className="plate plate-inset mt-3 px-3 py-2">
-          <p className="legend text-crystal">{t('reports.walkoverHeading')}</p>
-          <p className="mt-2 text-body leading-relaxed text-dim">
+        <section data-walkover className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 px-3 py-2">
+          <p className="text-caption font-semibold text-v2-ink">{t('reports.walkoverHeading')}</p>
+          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
             {t(report.attacking ? 'reports.walkoverBody' : 'reports.walkoverDefendingBody')}
           </p>
         </section>
       ) : (
       <>
-      <h3 className="legend mt-4">{t('reports.howItWent')}</h3>
-      <p className="mt-2 text-body leading-relaxed text-dim">{t('reports.calculation.fireNote')}</p>
-      {!report.pirate ? <p className="mt-1 text-body leading-relaxed text-dim">{t('reports.roundDamageNote')}</p> : null}
-      <div className="plate plate-inset mt-2">
+      <h3 className="mt-4 text-caption font-semibold text-v2-ink">{t('reports.howItWent')}</h3>
+      <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">{t('reports.calculation.fireNote')}</p>
+      {!report.pirate ? <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">{t('reports.roundDamageNote')}</p> : null}
+      <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
         {report.rounds.map((round) => (
           <BattleRound key={round.round} report={report} round={round} />
         ))}
       </div>
       <details className="mt-3">
-        <summary className="cursor-pointer py-3 text-body font-semibold text-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-crystal">
+        <summary className="cursor-pointer py-3 text-caption font-semibold text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
           {t('reports.rulesToggle')}
         </summary>
         <CombatFormula grade={report.grade} pirate={report.pirate != null} />
@@ -765,22 +775,22 @@ function ReportSheet({
 
       <h2
         data-report-section="changed"
-        className="legend mt-5 text-crystal"
+        className="mt-4 border-t border-v2-line pt-3 text-micro font-semibold text-v2-ink"
       >
         {t('reports.q.changed')}
       </h2>
       {/* The opening verdict already states losses, loot and Dominion. This section
           expands only the figures that have more to explain. */}
       {report.dominion !== null ? (
-        <p className="mt-3 text-body leading-relaxed text-dim">{t('reports.dominionReason')}</p>
+        <p className="mt-3 text-caption leading-relaxed text-v2-ink-2">{t('reports.dominionReason')}</p>
       ) : null}
       {report.dominion !== null && report.dominion !== 0 ? (
         <p
           data-dominion-summary
-          className={`mt-3 border-l-2 pl-3 text-body leading-relaxed ${
+          className={`mt-3 border-l-2 pl-3 text-caption leading-relaxed ${
             report.dominion >= 0
-              ? 'border-opportunity text-opportunity'
-              : 'border-threat text-threat-ink'
+              ? 'border-v2-self text-v2-self'
+              : 'border-threat text-v2-hostile'
           }`}
         >
           {t(
@@ -793,41 +803,41 @@ function ReportSheet({
       ) : null}
       {report.dominionBreakdown && (
         <section
-          className="plate plate-inset mt-3 p-3"
+          className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3"
           data-dominion-ruleset={report.dominionBreakdown.ruleVersion}
         >
           <div className="flex items-center justify-between gap-2">
-            <h3 className="legend text-crystal">{t('reports.dominionBreakdown.title')}</h3>
-            <span className="num text-micro text-faint">
+            <h3 className="text-caption font-semibold text-v2-ink">{t('reports.dominionBreakdown.title')}</h3>
+            <span className="font-v2-mono tabular-nums text-micro text-v2-ink-3">
               v{report.dominionBreakdown.ruleVersion}
             </span>
           </div>
-          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-caption">
-            <dt className="text-dim">
+          <dl className="mt-2 grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-micro">
+            <dt className="text-v2-ink-2">
               {t(report.dominionBreakdown.lootValue >= 0
                 ? 'reports.dominionBreakdown.lootGained'
                 : 'reports.dominionBreakdown.lootLost')}
             </dt>
             <dd className={report.dominionBreakdown.lootValue >= 0
-              ? 'num text-alloy'
-              : 'num text-threat'}>
+              ? 'font-v2-mono tabular-nums text-v2-alloy'
+              : 'font-v2-mono tabular-nums text-v2-hostile'}>
               {signed(report.dominionBreakdown.lootValue)}
             </dd>
-            <dt className="text-dim">{t('reports.dominionBreakdown.enemyLosses')}</dt>
-            <dd className="num text-opportunity">
+            <dt className="text-v2-ink-2">{t('reports.dominionBreakdown.enemyLosses')}</dt>
+            <dd className="font-v2-mono tabular-nums text-v2-self">
               {signed(report.dominionBreakdown.enemyPermanentLossValue)}
             </dd>
-            <dt className="text-dim">{t('reports.dominionBreakdown.ownLosses')}</dt>
-            <dd className="num text-threat">
+            <dt className="text-v2-ink-2">{t('reports.dominionBreakdown.ownLosses')}</dt>
+            <dd className="font-v2-mono tabular-nums text-v2-hostile">
               {signed(-report.dominionBreakdown.ownPermanentLossValue)}
             </dd>
-            <dt className="mt-1 border-t border-line-soft pt-2 text-bone">
+            <dt className="mt-1 border-t border-v2-line/60 pt-2 text-v2-ink">
               {t('reports.dominionBreakdown.total')}
             </dt>
-            <dd className={`num mt-1 border-t border-line-soft pt-2 ${
+            <dd className={`font-v2-mono tabular-nums mt-1 border-t border-v2-line/60 pt-2 ${
               report.dominionBreakdown.rawExchange >= 0
-                ? 'text-opportunity'
-                : 'text-threat'
+                ? 'text-v2-self'
+                : 'text-v2-hostile'
             }`}>
               {signed(report.dominionBreakdown.rawExchange)}
             </dd>
@@ -835,11 +845,11 @@ function ReportSheet({
         </section>
       )}
       {looted !== 0 && (
-        <p className="legend mt-2">{t(looted >= 0 ? 'reports.haul' : 'reports.haulLost')}</p>
+        <p className="v2-legend mt-2">{t(looted >= 0 ? 'reports.haul' : 'reports.haulLost')}</p>
       )}
       {looted !== 0 && (
-        <p className="num mt-1 flex items-center gap-2 text-caption">
-          <span className="flex items-center gap-1 text-alloy">
+        <p className="font-v2-mono tabular-nums mt-1 flex items-center gap-2 text-micro">
+          <span className="flex items-center gap-1 text-v2-alloy">
             <img
               src={RESOURCE_ART.alloy}
               alt={t('vocabulary.resource.alloy')}
@@ -847,7 +857,7 @@ function ReportSheet({
             />
             {signed(report.lootAlloy)}
           </span>
-          <span className="flex items-center gap-1 text-crystal">
+          <span className="flex items-center gap-1 text-v2-crystal">
             <img
               src={RESOURCE_ART.crystal}
               alt={t('vocabulary.resource.crystal')}
@@ -856,7 +866,7 @@ function ReportSheet({
             {signed(report.lootCrystal)}
           </span>
           {report.lootDeuterium !== 0 && (
-            <span className="flex items-center gap-1 text-opportunity">
+            <span className="flex items-center gap-1 text-v2-self">
               <img
                 src={RESOURCE_ART.deuterium}
                 alt={t('vocabulary.resource.deuterium')}
@@ -877,9 +887,9 @@ function ReportSheet({
       */}
       {report.attacking && lifted > 0 && salvage && (
         <>
-          <p className="legend mt-2">{t('reports.salvageHaul')}</p>
-          <p data-testid="report-salvage" className="num mt-1 flex items-center gap-2 text-caption">
-            <span className="flex items-center gap-1 text-alloy">
+          <p className="v2-legend mt-2">{t('reports.salvageHaul')}</p>
+          <p data-testid="report-salvage" className="font-v2-mono tabular-nums mt-1 flex items-center gap-2 text-micro">
+            <span className="flex items-center gap-1 text-v2-alloy">
               <img
                 src={RESOURCE_ART.alloy}
                 alt={t('vocabulary.resource.alloy')}
@@ -887,7 +897,7 @@ function ReportSheet({
               />
               {signed(salvage.alloy)}
             </span>
-            <span className="flex items-center gap-1 text-crystal">
+            <span className="flex items-center gap-1 text-v2-crystal">
               <img
                 src={RESOURCE_ART.crystal}
                 alt={t('vocabulary.resource.crystal')}
@@ -896,7 +906,7 @@ function ReportSheet({
               {signed(salvage.crystal)}
             </span>
             {salvage.deuterium !== 0 && (
-              <span className="flex items-center gap-1 text-opportunity">
+              <span className="flex items-center gap-1 text-v2-self">
                 <img
                   src={RESOURCE_ART.deuterium}
                   alt={t('vocabulary.resource.deuterium')}
@@ -920,8 +930,8 @@ function ReportSheet({
       */}
       {report.pirate?.capturedHull && <CapturedHull hull={report.pirate.capturedHull} />}
       {yourClan || theirClan ? (
-        <div className="plate plate-inset mb-2 px-3 py-2">
-          <p className="legend text-crystal">{t('reports.clansAtLaunch')}</p>
+        <div className="rounded-control border border-v2-line bg-v2-deep/40 mb-2 px-3 py-2">
+          <p className="text-caption font-semibold text-v2-ink">{t('reports.clansAtLaunch')}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <ClanAtLaunch label={t('reports.yourClan')} clan={yourClan} />
             <ClanAtLaunch label={t('reports.theirClan')} clan={theirClan} />
@@ -929,7 +939,7 @@ function ReportSheet({
         </div>
       ) : null}
       </div>
-    </Sheet>
+    </V2Sheet>
   );
 }
 
@@ -937,11 +947,11 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
   const { t } = useTranslation();
   const joint = report.jointWar;
   if (!joint) return null;
-  return <section data-joint-war className="plate plate-inset mt-3 p-3">
-    <h3 className="text-title font-semibold text-bone">
+  return <section data-joint-war className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 p-3">
+    <h3 className="text-caption font-semibold font-semibold text-v2-ink">
       {t('clanWar.report.title', { tag: joint.clan.tag })}
     </h3>
-    <p className="mt-1 text-caption text-dim">
+    <p className="mt-1 text-micro text-v2-ink-2">
       {t('clanWar.report.summary', {
         count: joint.attackerCount,
         sent: unitCount(joint.sent),
@@ -949,14 +959,14 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
         returned: unitCount(joint.survivors),
       })}
     </p>
-    <p className="mt-1 text-caption text-faint">
+    <p className="mt-1 text-micro text-v2-ink-3">
       {t('clanWar.report.ratio', {
         attackers: joint.attackerCount,
         defenders: joint.defenderCount,
       })}
     </p>
     {joint.baseExchange !== null && joint.adjustedTransfer !== null && (
-      <p className="mt-1 text-caption text-crystal">
+      <p className="mt-1 text-micro text-v2-crystal">
         {t('clanWar.report.audit', {
           base: signed(joint.baseExchange),
           adjusted: signed(joint.adjustedTransfer),
@@ -964,9 +974,9 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
       </p>
     )}
     {joint.participants.map((participant) => <div key={participant.playerId}
-      className="mt-3 border-t border-white/10 pt-3">
-      <p className="font-semibold text-bone">{participant.name}</p>
-      <p className="mt-1 text-caption text-dim">
+      className="mt-3 border-t border-v2-line pt-3">
+      <p className="font-semibold text-v2-ink">{participant.name}</p>
+      <p className="mt-1 text-micro text-v2-ink-2">
         {t('clanWar.report.participant', {
           sent: unitCount(participant.sent),
           lost: unitCount(participant.losses),
@@ -978,18 +988,18 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
         })}
       </p>
       <ul className="mt-2 space-y-1">
-        {participant.waves.map((wave) => <li key={wave.id} className="text-caption text-faint">
+        {participant.waves.map((wave) => <li key={wave.id} className="text-micro text-v2-ink-3">
           {t('clanWar.report.wave', {
             world: wave.originPlanetName,
             sent: unitCount(wave.sent),
             lost: unitCount(wave.losses),
             returned: unitCount(wave.survivors),
           })}
-          <span className="block text-dim">{t('clanWar.report.waveRewards', {
+          <span className="block text-v2-ink-2">{t('clanWar.report.waveRewards', {
             loot: full(wave.loot.alloy + wave.loot.crystal + wave.loot.deuterium),
             salvage: full(wave.salvage.alloy + wave.salvage.crystal + wave.salvage.deuterium),
           })}</span>
-          <span className="block text-dim">
+          <span className="block text-v2-ink-2">
             {wave.destinationPlanetName
               ? t('clanWar.report.waveState', {
                   status: t(`clanWar.status.${wave.status}`),
@@ -997,7 +1007,7 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
                 })
               : t(`clanWar.status.${wave.status}`)}
           </span>
-          {wave.returnAt && <span className="block text-dim">
+          {wave.returnAt && <span className="block text-v2-ink-2">
             {t('clanWar.report.returnAt', {
               time: new Intl.DateTimeFormat(t('units.numberLocale'), {
                 dateStyle: 'short', timeStyle: 'short',
@@ -1036,17 +1046,17 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   */
   const escape = report.fleetEscape ?? null;
   if (escape?.kind === 'ESCAPED' && report.attacking) {
-    lines.push({ key: 'escape', tone: 'text-alloy', text: t('reports.effects.fled') });
+    lines.push({ key: 'escape', tone: 'text-v2-alloy', text: t('reports.effects.fled') });
   } else if (escape?.kind === 'ESCAPED' && escape.ships !== undefined && escape.fuel !== undefined) {
     lines.push({
       key: 'escape',
-      tone: 'text-opportunity',
+      tone: 'text-v2-self',
       text: t('reports.effects.escaped', { count: fleetCount(escape.ships), fuel: escape.fuel }),
     });
   } else if (escape?.kind === 'STRANDED' && !report.attacking) {
     lines.push({
       key: 'escape',
-      tone: 'text-threat-ink',
+      tone: 'text-v2-hostile',
       text: t('reports.effects.stranded', { fuel: escape.fuel, available: escape.available }),
     });
   }
@@ -1057,7 +1067,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (report.shieldAbsorbed >= 1 && shieldState(report).before === null) {
     lines.push({
       key: 'shield',
-      tone: 'text-crystal',
+      tone: 'text-v2-crystal',
       text: t(report.attacking ? 'reports.effects.shieldTheirs' : 'reports.effects.shieldYours', {
         amount: compact(report.shieldAbsorbed),
       }),
@@ -1066,21 +1076,21 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (report.cargoLimited) {
     lines.push({
       key: 'cargo',
-      tone: 'text-alloy',
+      tone: 'text-v2-alloy',
       text: t('reports.effects.cargoLimited'),
     });
   }
   if (salvaged > 0) {
     lines.push({
       key: 'salvage',
-      tone: 'text-opportunity',
+      tone: 'text-v2-self',
       text: t('reports.effects.salvaged', { count: salvaged }),
     });
   }
   if (report.disruptedMinutes >= 1) {
     lines.push({
       key: 'works',
-      tone: report.attacking ? 'text-opportunity' : 'text-threat-ink',
+      tone: report.attacking ? 'text-v2-self' : 'text-v2-hostile',
       text: t(report.attacking ? 'reports.effects.worksTheirs' : 'reports.effects.worksYours', {
         duration: duration(report.disruptedMinutes),
       }),
@@ -1100,7 +1110,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (!report.attacking && lifted >= 1) {
     lines.push({
       key: 'collected',
-      tone: 'text-alloy',
+      tone: 'text-v2-alloy',
       text: t('reports.effects.salvageTheirs', { amount: compact(lifted) }),
     });
   }
@@ -1120,7 +1130,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     */
     lines.push({
       key: 'wreck',
-      tone: 'text-alloy',
+      tone: 'text-v2-alloy',
       text: report.pirate
         ? t('reports.effects.wreckVoid', { amount: compact(report.wreckValue) })
         : report.attacking
@@ -1148,7 +1158,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (broken.length > 0) {
     lines.push({
       key: 'faults',
-      tone: 'text-threat-ink',
+      tone: 'text-v2-hostile',
       text: t('reports.effects.colonyFaults', {
         planet: report.yourPlanet,
         faults: broken.map((kind) => t(`faults.name.${kind}`)).join(' · '),
@@ -1173,7 +1183,7 @@ function Consequences({ report }: { report: OrdinaryReport }) {
     };
     lines.push({
       key: 'recovery',
-      tone: recovery.shielded ? 'text-opportunity' : 'text-dim',
+      tone: recovery.shielded ? 'text-v2-self' : 'text-v2-ink-2',
       text: recovery.shielded
         ? t('reports.effects.recoveryEarned', values)
         : recovery.lossHours >= ABUSE.recoveryLossHours
@@ -1185,13 +1195,13 @@ function Consequences({ report }: { report: OrdinaryReport }) {
   if (lines.length === 0) return null;
 
   return (
-    <div className="plate plate-inset mt-3 px-3 py-2">
-      <p className="legend">{t('reports.effects.heading')}</p>
+    <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-3 px-3 py-2">
+      <p className="v2-legend">{t('reports.effects.heading')}</p>
       <ul className="mt-2 grid gap-2">
         {lines.map((line) => (
           <li
             key={line.key}
-            className={`text-caption leading-snug ${line.tone}`}
+            className={`text-micro leading-snug ${line.tone}`}
             {...(line.key === 'faults' ? { 'data-colony-faults': '' } : {})}
             {...(line.key === 'escape' ? { 'data-fleet-escape': '' } : {})}
             {...(line.key === 'recovery' ? { 'data-recovery-shield': '' } : {})}
@@ -1244,9 +1254,9 @@ const shieldWasBroken = (report: OrdinaryReport): boolean => {
 function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boolean }) {
   const { t } = useTranslation();
   return (
-    <section data-combat-formula className="plate plate-inset mt-2 px-3 py-2">
-      <p className="legend text-crystal">{t('reports.calculation.formulaHeading')}</p>
-      <ol className="mt-2 grid gap-2 text-caption leading-relaxed text-dim">
+    <section data-combat-formula className="rounded-control border border-v2-line bg-v2-deep/40 mt-2 px-3 py-2">
+      <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.formulaHeading')}</p>
+      <ol className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
         <li>{t('reports.calculation.formulaBase')}</li>
         <li>
           {t('reports.calculation.formulaCounter', {
@@ -1261,18 +1271,18 @@ function CombatFormula({ grade, pirate = false }: { grade: Grade; pirate?: boole
           })}
         </li>
       </ol>
-      <div className="mt-3 grid gap-1 border-t border-line-soft pt-3 text-label leading-relaxed text-faint">
+      <div className="mt-3 grid gap-1 border-t border-v2-line/60 pt-3 text-micro leading-relaxed text-v2-ink-3">
         <p>{t('reports.calculation.formulaHp')}</p>
         <p>{t('reports.calculation.formulaCarry')}</p>
         <p>{t('reports.calculation.formulaSupport')}</p>
       </div>
-      <div className="mt-3 border-t border-line-soft pt-3">
-        <p className="legend text-crystal">{t('reports.calculation.resultHeading')}</p>
-        <ul className="mt-2 grid gap-2 text-label leading-relaxed text-dim">
+      <div className="mt-3 border-t border-v2-line/60 pt-3">
+        <p className="text-caption font-semibold text-v2-ink">{t('reports.calculation.resultHeading')}</p>
+        <ul className="mt-2 grid gap-2 text-micro leading-relaxed text-v2-ink-2">
           {(['DECISIVE', 'PARTIAL', 'REPELLED'] as const).map((result) => (
             <li
               key={result}
-              className={result === grade ? 'text-bone' : undefined}
+              className={result === grade ? 'text-v2-ink' : undefined}
             >
               {t(
                 pirate && result === 'DECISIVE'
@@ -1307,25 +1317,25 @@ function CapturedHull({ hull }: { hull: HullId }) {
   return (
     <section
       data-captured-hull={hull}
-      className="plate plate-inset relative mt-2 overflow-hidden p-3"
+      className="rounded-control border border-v2-line bg-v2-deep/40 relative mt-2 overflow-hidden p-3"
     >
       <span
         aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-opportunity/80 to-transparent"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-v2-self/80 to-transparent"
       />
       <div className="flex items-center gap-2">
-        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-opportunity/25 bg-opportunity/5">
-          <span aria-hidden className="absolute inset-2 rounded-full bg-opportunity/10 blur-lg" />
+        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-v2-self/25 bg-v2-self/5">
+          <span aria-hidden className="absolute inset-2 rounded-full bg-v2-self/10 blur-lg" />
           {art ? (
             <img src={art} alt="" aria-hidden className="relative size-16 object-contain" />
           ) : (
-            <HullMark hull={hull} className="relative size-10 text-opportunity" />
+            <HullMark hull={hull} className="relative size-10 text-v2-self" />
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="legend text-opportunity">{t('reports.pirateCaptured')}</p>
-          <p className="name mt-1 text-title text-bone">{hullLabel(hull)}</p>
-          <p className="mt-2 text-caption leading-relaxed text-dim">
+          <p className="text-caption font-semibold text-v2-self">{t('reports.pirateCaptured')}</p>
+          <p className="name mt-1 text-caption font-semibold text-v2-ink">{hullLabel(hull)}</p>
+          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
             {t('reports.pirateCapturedNote')}
           </p>
         </div>
@@ -1349,14 +1359,14 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
   const defendersRemain = report.grade === 'REPELLED';
 
   return (
-    <section className="plate plate-inset relative mb-2 overflow-hidden p-3 mt-3">
+    <section className="rounded-control border border-v2-line bg-v2-deep/40 relative mb-2 overflow-hidden p-3 mt-3">
       <span
         aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-crystal/80 to-transparent"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-v2-crystal/80 to-transparent"
       />
       <div className="flex items-center gap-2">
-        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-crystal/25 bg-crystal/5">
-          <span aria-hidden className="absolute inset-2 rounded-full bg-crystal/10 blur-lg" />
+        <span className="relative grid size-20 shrink-0 place-items-center overflow-hidden rounded-cell border border-v2-line bg-v2-raise/40">
+          <span aria-hidden className="absolute inset-2 rounded-full bg-v2-raise/60 blur-lg" />
           <img
             src={instrumentArt('AEGIS', 1) ?? ''}
             alt={t('reports.aegis.aria')}
@@ -1368,27 +1378,28 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <p className="text-caption font-semibold text-crystal">
+            <p className="text-micro font-semibold text-v2-crystal">
               {t(report.attacking ? 'reports.aegis.labelTheirs' : 'reports.aegis.labelYours')}
             </p>
             <span
               data-aegis-status={status}
-              className={`chip ${
-                status === 'broken' ? 'chip-threat'
-                  : status === 'held' ? 'chip-opportunity' : 'chip-alloy'
+              data-tone={status === 'broken' ? 'threat' : status === 'held' ? 'good' : 'neutral'}
+              className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold ${
+                status === 'broken' ? 'border-v2-hostile/50 text-v2-hostile'
+                  : status === 'held' ? 'border-v2-self/50 text-v2-self' : 'border-v2-alloy/50 text-v2-alloy'
               }`}
             >
               {t(`reports.aegis.${status}`)}
             </span>
           </div>
-          <p className="mt-2 text-body leading-relaxed text-dim">
+          <p className="mt-2 text-caption leading-relaxed text-v2-ink-2">
             {t('reports.aegis.note')}
           </p>
           {after <= 0 ? (
             <p
               data-aegis-outcome
-              className={`mt-2 text-body font-semibold leading-relaxed ${
-                defendersRemain ? 'text-alloy' : 'text-bone'
+              className={`mt-2 text-caption font-semibold leading-relaxed ${
+                defendersRemain ? 'text-v2-alloy' : 'text-v2-ink'
               }`}
             >
               {t(
@@ -1402,33 +1413,33 @@ function ShieldImpact({ report }: { report: OrdinaryReport }) {
           ) : null}
         </div>
       </div>
-      <div className="relative mt-3 grid grid-cols-2 gap-6 border-t border-line-soft pt-3">
+      <div className="relative mt-3 grid grid-cols-2 gap-6 border-t border-v2-line/60 pt-3">
         <div>
-          <p className="legend text-faint">{t('reports.aegis.before')}</p>
-          <p className="num mt-1 text-title text-bone">{full(before)}</p>
+          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.before')}</p>
+          <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(before)}</p>
         </div>
         <span
           aria-hidden
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 text-caption text-faint"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 text-micro text-v2-ink-3"
         >
           →
         </span>
         <div className="text-right">
-          <p className="legend text-faint">{t('reports.aegis.after')}</p>
-          <p className={`num mt-1 text-title ${after <= 0 ? 'text-threat-ink' : 'text-crystal'}`}>
+          <p className="v2-legend text-v2-ink-3">{t('reports.aegis.after')}</p>
+          <p className={`font-v2-mono tabular-nums mt-1 text-caption font-semibold ${after <= 0 ? 'text-v2-hostile' : 'text-v2-crystal'}`}>
             {full(after)}
           </p>
         </div>
       </div>
       <div className="mt-3">
-        <div className="h-2 overflow-hidden rounded-cell bg-line-soft">
+        <div className="h-2 overflow-hidden rounded-cell bg-v2-line">
           <span
             data-shield-remaining={remaining}
-            className="block h-full bg-gradient-to-r from-crystal/65 to-crystal"
+            className="block h-full bg-gradient-to-r from-v2-crystal/65 to-v2-crystal"
             style={{ width: `${String(remaining)}%` }}
           />
         </div>
-        <p className="num mt-2 text-right text-label text-crystal">
+        <p className="font-v2-mono tabular-nums mt-2 text-right text-micro text-v2-crystal">
           {t('reports.aegis.absorbed', { amount: full(report.shieldAbsorbed) })}
         </p>
       </div>
@@ -1441,10 +1452,10 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
   return (
     <section
       data-combat-round={round.round}
-      className="border-b border-line-soft p-3 last:border-b-0"
+      className="border-b border-v2-line/60 p-3 last:border-b-0"
       aria-label={t('reports.calculation.round', { round: round.round })}
     >
-      <h4 className="mb-3 text-title font-semibold text-bone">
+      <h4 className="mb-3 text-caption font-semibold font-semibold text-v2-ink">
         {t('reports.calculation.round', { round: round.round })}
       </h4>
       <RoundBalance
@@ -1452,7 +1463,7 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
         took={report.attacking ? round.defenderDamage : round.attackerDamage}
       />
       {round.shieldAbsorbed > 0 ? (
-        <p className="mt-2 text-body text-crystal">
+        <p className="mt-2 text-caption text-v2-crystal">
           {t('reports.roundShield', { amount: full(round.shieldAbsorbed) })}
         </p>
       ) : null}
@@ -1462,8 +1473,8 @@ function BattleRound({ report, round }: { report: OrdinaryReport; round: Round }
       />
       <RoundStanding report={report} round={round} />
       {hasCalculationTelemetry(round) ? (
-        <details className="mt-2 border-t border-line-soft">
-          <summary className="cursor-pointer py-3 text-body text-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-crystal">
+        <details className="mt-2 border-t border-v2-line/60">
+          <summary className="cursor-pointer py-3 text-caption text-v2-crystal focus-visible:outline focus-visible:outline-2 focus-visible:outline-v2-self">
             {t('reports.roundCalculationToggle')}
           </summary>
           <RoundCalculation report={report} round={round} />
@@ -1498,8 +1509,8 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
         present, which tells the reader a shield was a thing that might have
         happened here. The step is real and stays; what it reports on is different.
       */}
-      <div className="mt-2 border-t border-line-soft pt-3">
-        <p className="legend text-crystal">
+      <div className="mt-2 border-t border-v2-line/60 pt-3">
+        <p className="text-caption font-semibold text-v2-ink">
           {t(
             report.pirate
               ? 'reports.calculation.openSpace'
@@ -1509,32 +1520,32 @@ function RoundCalculation({ report, round }: { report: OrdinaryReport; round: Ro
           )}
         </p>
         {report.pirate ? (
-          <p className="mt-2 text-caption leading-relaxed text-dim">
+          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
             {t('reports.calculation.openSpaceNote', { amount: full(round.attackerHullDamage!) })}
           </p>
         ) : before > 0 ? (
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <div className="plate px-3 py-2">
-              <p className="legend text-faint">{t('reports.calculation.shieldCharge')}</p>
-              <p className="num mt-1 text-title text-crystal">
-                {full(before)} <span className="text-faint">→</span> {full(after)}
+            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.shieldCharge')}</p>
+              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-crystal">
+                {full(before)} <span className="text-v2-ink-3">→</span> {full(after)}
               </p>
-              <p className="mt-1 text-label text-dim">
+              <p className="mt-1 text-micro text-v2-ink-2">
                 {t('reports.calculation.absorbed', { amount: full(round.shieldAbsorbed) })}
               </p>
             </div>
-            <div className="plate px-3 py-2">
-              <p className="legend text-faint">{t('reports.calculation.reachedHulls')}</p>
-              <p className="num mt-1 text-title text-bone">{full(round.attackerHullDamage!)}</p>
+            <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+              <p className="v2-legend text-v2-ink-3">{t('reports.calculation.reachedHulls')}</p>
+              <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(round.attackerHullDamage!)}</p>
               {round.shieldBreakerDamage > 0 ? (
-                <p className="mt-1 text-label text-deuterium">
+                <p className="mt-1 text-micro text-v2-deut">
                   {t('reports.calculation.shieldBreaker', { amount: full(round.shieldBreakerDamage) })}
                 </p>
               ) : null}
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-caption leading-relaxed text-dim">
+          <p className="mt-2 text-micro leading-relaxed text-v2-ink-2">
             {t('reports.calculation.noAegisNote', { amount: full(round.attackerHullDamage!) })}
           </p>
         )}
@@ -1553,11 +1564,11 @@ function ShotCard({ label, power, roll }: { label: string; power: number; roll: 
       ? 'reports.calculation.negativePercent'
       : 'reports.calculation.neutralPercent';
   return (
-    <div className="plate px-3 py-2">
-      <p className="legend text-faint">{label}</p>
-      <p className="num mt-1 text-title text-bone">{full(power)}</p>
-      <p className={`num mt-1 text-label ${change >= 0 ? 'text-opportunity' : 'text-threat-ink'}`}>
-        <span className="text-faint">{t('reports.calculation.shotChange')} </span>
+    <div className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+      <p className="v2-legend text-v2-ink-3">{label}</p>
+      <p className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-ink">{full(power)}</p>
+      <p className={`font-v2-mono tabular-nums mt-1 text-micro ${change >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}>
+        <span className="text-v2-ink-3">{t('reports.calculation.shotChange')} </span>
         {t(changeKey, { amount: full(Math.abs(change)) })}
       </p>
     </div>
@@ -1596,16 +1607,16 @@ function ForceRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div data-force-row={hull} className="grid gap-2 border-b border-line-soft p-3 last:border-b-0 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
+    <div data-force-row={hull} className="grid gap-2 border-b border-v2-line/60 p-3 last:border-b-0 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
       <span className="flex min-w-0 items-center gap-2">
         {HULL_ART[hull] ? (
           <img src={HULL_ART[hull]} alt="" aria-hidden width={32} height={32} className="size-8 object-contain" />
         ) : (
-          <span aria-hidden className="legend w-6 text-center">GRD</span>
+          <span aria-hidden className="v2-legend w-6 text-center">GRD</span>
         )}
         <span className="min-w-0">
-          <span className="block text-body font-semibold text-bone">{hullLabel(hull)}</span>
-          <span className="mt-1 block text-label text-dim">{t(
+          <span className="block text-caption font-semibold text-v2-ink">{hullLabel(hull)}</span>
+          <span className="mt-1 block text-micro text-v2-ink-2">{t(
             HULLS[hull].ground ? 'reports.force.groundType'
               : HULLS[hull].atk === 0 ? 'reports.force.supportType' : 'reports.force.combatType',
           )}</span>
@@ -1646,7 +1657,7 @@ function YourForce({ report }: { report: OrdinaryReport }) {
   const rebuilt = fleetEntries(report.defenceSalvage).reduce((sum, [, n]) => sum + n, 0);
 
   return (
-    <div className="plate plate-inset mt-2">
+    <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
       {entries.map(([hull, count]) => (
         <ForceRow
           key={hull}
@@ -1661,8 +1672,8 @@ function YourForce({ report }: { report: OrdinaryReport }) {
         THE SAME PICTURE FOR THE WHOLE FORCE, which is the line a player reads
         first and the one the table only ever had as a sentence.
       */}
-      <div className="grid gap-2 border-t border-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-        <span className="text-body font-semibold text-bone">
+      <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
+        <span className="text-caption font-semibold text-v2-ink">
           {t('reports.verdict.total')}
         </span>
         <SurvivorBar sent={brought} lost={lost} rebuilt={rebuilt}
@@ -1694,22 +1705,22 @@ function RoundCasualties({
   const others = fleetEntries(theirs);
   const line = (label: string, entries: ReturnType<typeof fleetEntries>, tone: string) => (
     <div className="min-w-0">
-      <p className="text-body font-semibold text-bone">{label}</p>
+      <p className="text-caption font-semibold text-v2-ink">{label}</p>
       <div className="mt-1 flex flex-wrap gap-1.5">
       {entries.map(([hull, count]) => (
-        <span key={hull} className={`rounded-cell border border-line-soft px-2 py-1 text-body ${tone}`}>
+        <span key={hull} className={`rounded-cell border border-v2-line/60 px-2 py-1 text-caption ${tone}`}>
           {full(count)} {hullLabel(hull)}
         </span>
       ))}
-      {entries.length === 0 ? <span className="text-body text-dim">{t('reports.roundNoCasualties')}</span> : null}
+      {entries.length === 0 ? <span className="text-caption text-v2-ink-2">{t('reports.roundNoCasualties')}</span> : null}
       </div>
     </div>
   );
 
   return (
-    <div data-round-losses className="mt-3 grid gap-3 border-t border-line-soft pt-3 sm:grid-cols-2">
-      {line(t('reports.roundLossesYours'), mine, 'text-threat-ink')}
-      {line(t('reports.roundLossesTheirs'), others, 'text-bone')}
+    <div data-round-losses className="mt-3 grid gap-3 border-t border-v2-line/60 pt-3 sm:grid-cols-2">
+      {line(t('reports.roundLossesYours'), mine, 'text-v2-hostile')}
+      {line(t('reports.roundLossesTheirs'), others, 'text-v2-ink')}
     </div>
   );
 }
@@ -1732,32 +1743,32 @@ function RoundStanding({ report, round }: { report: OrdinaryReport; round: Round
     <div
       data-round-standing={round.round}
       className={`mt-3 border-l-2 pl-3 ${
-        noForce || supportExposed ? 'border-threat' : 'border-line'
+        noForce || supportExposed ? 'border-threat' : 'border-v2-line'
       }`}
     >
-      <p className="text-caption font-semibold text-bone">
+      <p className="text-micro font-semibold text-v2-ink">
         {t('reports.roundStanding.heading', { round: round.round })}
       </p>
-      <p className="mt-1 text-body leading-relaxed text-dim">
+      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
         {standing ? t('reports.roundStanding.summary', {
           combat: full(standing.combat), support: full(standing.support),
         }) : t('reports.roundStanding.unknownOwn')}
       </p>
       {supportExposed ? (
-        <p className="mt-1 text-body font-semibold leading-relaxed text-threat-ink">
+        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
           {t('reports.roundStanding.supportExposed')}
         </p>
       ) : noForce ? (
-        <p className="mt-1 text-body font-semibold leading-relaxed text-threat-ink">
+        <p className="mt-1 text-caption font-semibold leading-relaxed text-v2-hostile">
           {t('reports.roundStanding.noneLeft')}
         </p>
       ) : null}
       {enemy ? (
-        <div data-enemy-round-standing className="mt-2 border-t border-line-soft pt-2">
-          <p className="text-caption font-semibold text-bone">
+        <div data-enemy-round-standing className="mt-2 border-t border-v2-line/60 pt-2">
+          <p className="text-micro font-semibold text-v2-ink">
             {t('reports.roundStanding.enemyHeading', { round: round.round })}
           </p>
-          <p className="mt-1 text-body text-dim">
+          <p className="mt-1 text-caption text-v2-ink-2">
             {t('reports.roundStanding.summary', { combat: full(enemy.combat), support: full(enemy.support) })}
           </p>
         </div>
@@ -1774,7 +1785,7 @@ function CombatTurningPoint({ report }: { report: OrdinaryReport }) {
   const standing = forceAfterRound(report, depleted);
   if (!standing) return null;
   return (
-    <p data-combat-turning-point className="mt-2 text-body font-semibold leading-relaxed text-bone">
+    <p data-combat-turning-point className="mt-2 text-caption font-semibold leading-relaxed text-v2-ink">
       {t(standing.support > 0 ? 'reports.turningPointSupport' : 'reports.turningPointWiped', {
         round: depleted.round,
         support: full(standing.support),
@@ -1793,13 +1804,13 @@ function ClanAtLaunch({
   const { t } = useTranslation();
   return (
     <div className="min-w-0">
-      <p className="legend">{label}</p>
+      <p className="v2-legend">{label}</p>
       {clan ? (
-        <p className="mt-1 truncate text-caption text-bone" title={clan.name}>
-          <span className="text-crystal">[{clan.tag}]</span> {clan.name}
+        <p className="mt-1 truncate text-micro text-v2-ink" title={clan.name}>
+          <span className="text-v2-crystal">[{clan.tag}]</span> {clan.name}
         </p>
       ) : (
-        <p className="mt-1 text-caption text-faint">{t('reports.noClan')}</p>
+        <p className="mt-1 text-micro text-v2-ink-3">{t('reports.noClan')}</p>
       )}
     </div>
   );
@@ -1826,40 +1837,42 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
   return (
     <section
       data-battle-verdict={report.grade}
-      className={`plate relative mb-3 overflow-hidden p-3 mt-2 ${
-        won ? 'plate-opportunity' : 'plate-threat'
+      /* The tone is stated, not implied by a class: a loss is red (K2) whatever else was won. */
+      data-tone={won ? 'good' : 'threat'}
+      className={`relative mb-3 mt-2 overflow-hidden rounded-control border p-3 ${
+        won ? 'border-v2-self/40 bg-v2-self/5' : 'border-v2-hostile/40 bg-v2-hostile/5'
       }`}
       aria-label={title}
     >
       <span
         aria-hidden
         className={`absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent ${
-          won ? 'via-opportunity/80' : 'via-threat/80'
+          won ? 'via-v2-self/80' : 'via-v2-hostile/80'
         } to-transparent`}
       />
 
       <div>
-        <h3 className="text-title font-semibold text-bone">
+        <h3 className="text-caption font-semibold font-semibold text-v2-ink">
           {t(rosterKnown ? 'reports.verdict.yourForce' : 'reports.verdict.yourLosses')}
         </h3>
-        <div className={`mt-3 grid ${rosterKnown ? 'grid-cols-3' : 'grid-cols-1'} divide-x divide-line-soft`}>
+        <div className={`mt-3 grid ${rosterKnown ? 'grid-cols-3' : 'grid-cols-1'} divide-x divide-v2-line`}>
           {rosterKnown ? (
             <BattleMetric
               label={t(report.attacking ? 'reports.verdict.sent' : 'reports.verdict.held')}
               value={starting}
             />
           ) : null}
-          <BattleMetric label={t('reports.verdict.lost')} value={yours} tone="text-threat-ink" />
+          <BattleMetric label={t('reports.verdict.lost')} value={yours} tone="text-v2-hostile" />
           {rosterKnown ? (
             <BattleMetric
               label={t(report.attacking ? 'reports.verdict.returned' : 'reports.verdict.standing')}
               value={remaining}
-              tone={remaining > 0 ? 'text-opportunity' : 'text-threat-ink'}
+              tone={remaining > 0 ? 'text-v2-self' : 'text-v2-hostile'}
             />
           ) : null}
         </div>
         {rosterKnown ? (
-          <div className="mt-3 border-t border-line-soft pt-3">
+          <div className="mt-3 border-t border-v2-line/60 pt-3">
             <SurvivorBar
               sent={starting}
               lost={yours}
@@ -1870,16 +1883,16 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
         ) : null}
       </div>
       {!rosterKnown ? (
-        <p data-own-roster-unknown className="mt-2 text-body leading-relaxed text-alloy">
+        <p data-own-roster-unknown className="mt-2 text-caption leading-relaxed text-v2-alloy">
           {t('reports.verdict.rosterUnknown')}
         </p>
       ) : null}
 
       <div
         data-verdict-summary
-        className={`mt-3 border-l-2 pl-3 ${won ? 'border-opportunity' : 'border-threat'}`}
+        className={`mt-3 border-l-2 pl-3 ${won ? 'border-v2-self' : 'border-threat'}`}
       >
-        <p className="text-body font-semibold leading-relaxed text-bone">
+        <p className="text-caption font-semibold leading-relaxed text-v2-ink">
           {t(report.rounds.length === 0
             ? 'reports.verdict.walkoverSummary'
             : report.pirate && report.grade === 'PARTIAL'
@@ -1887,7 +1900,7 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
               : `reports.verdict.summary.${report.attacking ? 'attacking' : 'defending'}.${report.grade}`)}
         </p>
         {report.attacking && rosterKnown ? (
-          <p className={`mt-1 text-body leading-relaxed ${remaining === 0 ? 'text-threat-ink' : 'text-dim'}`}>
+          <p className={`mt-1 text-caption leading-relaxed ${remaining === 0 ? 'text-v2-hostile' : 'text-v2-ink-2'}`}>
             {t(
               remaining === 0
                 ? 'reports.verdict.noneReturned'
@@ -1897,39 +1910,39 @@ function BattleVerdict({ report }: { report: OrdinaryReport }) {
           </p>
         ) : null}
         {!report.attacking && rebuilt > 0 ? (
-          <p className="mt-2 text-body leading-relaxed text-opportunity">
+          <p className="mt-2 text-caption leading-relaxed text-v2-self">
             {t('reports.force.rebuiltNote', { count: full(rebuilt) })}
           </p>
         ) : null}
       </div>
 
-      <dl data-verdict-payoff className="mt-3 grid grid-cols-2 gap-3 border-t border-line-soft pt-3">
+      <dl data-verdict-payoff className="mt-3 grid grid-cols-2 gap-3 border-t border-v2-line/60 pt-3">
         <div>
-          <dt className="text-body text-dim">{t(report.attacking ? 'reports.verdict.loot' : 'reports.haulLost')}</dt>
-          <dd className="num mt-1 text-title text-alloy">
+          <dt className="text-caption text-v2-ink-2">{t(report.attacking ? 'reports.verdict.loot' : 'reports.haulLost')}</dt>
+          <dd className="font-v2-mono tabular-nums mt-1 text-caption font-semibold text-v2-alloy">
             {full(Math.abs(report.lootAlloy + report.lootCrystal + report.lootDeuterium))}
           </dd>
         </div>
         {report.dominion !== null ? (
           <div>
-            <dt className="text-body text-dim">{t('reports.dominion')}</dt>
-            <dd className={`num mt-1 text-title ${report.dominion < 0 ? 'text-threat-ink' : 'text-bone'}`}>
+            <dt className="text-caption text-v2-ink-2">{t('reports.dominion')}</dt>
+            <dd className={`font-v2-mono tabular-nums mt-1 text-caption font-semibold ${report.dominion < 0 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
               {signed(report.dominion)}
             </dd>
           </div>
         ) : null}
       </dl>
-      <div className="mt-3 border-t border-line-soft pt-3">
+      <div className="mt-3 border-t border-v2-line/60 pt-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-caption font-semibold text-dim">
+          <p className="text-micro font-semibold text-v2-ink-2">
             {t(report.attacking ? 'reports.verdict.enemyDestroyed' : 'reports.verdict.attackerDestroyed')}
           </p>
-          <p className={`num text-title leading-none ${theirs > 0 ? 'text-bone' : 'text-dim'}`}>
+          <p className={`font-v2-mono tabular-nums text-caption font-semibold leading-none ${theirs > 0 ? 'text-v2-ink' : 'text-v2-ink-2'}`}>
             {full(theirs)}
           </p>
         </div>
         {report.attacking && report.grade !== 'DECISIVE' ? (
-          <p className="mt-2 text-body font-semibold leading-relaxed text-alloy">
+          <p className="mt-2 text-caption font-semibold leading-relaxed text-v2-alloy">
             {t(report.grade === 'REPELLED' ? 'reports.verdict.enemySurvivedNote' : 'reports.verdict.enemyUnknownNote')}
           </p>
         ) : null}
@@ -1944,18 +1957,18 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
   return (
     <span className="grid gap-2">
       <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-body text-bone">{t('reports.roundDealt')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-line-soft">
-          <span className="block h-full bg-opportunity" style={{ width: `${String((dealt / top) * 100)}%` }} />
+        <span className="text-caption text-v2-ink">{t('reports.roundDealt')}</span>
+        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
+          <span className="block h-full bg-v2-self" style={{ width: `${String((dealt / top) * 100)}%` }} />
         </span>
-        <span className="num min-w-14 text-right text-body text-bone">{full(dealt)}</span>
+        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(dealt)}</span>
       </span>
       <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        <span className="text-body text-threat-ink">{t('reports.roundTook')}</span>
-        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-line-soft">
-          <span className="block h-full bg-threat" style={{ width: `${String((took / top) * 100)}%` }} />
+        <span className="text-caption text-v2-hostile">{t('reports.roundTook')}</span>
+        <span className="h-1.5 flex-1 overflow-hidden rounded-cell bg-v2-line">
+          <span className="block h-full bg-v2-hostile" style={{ width: `${String((took / top) * 100)}%` }} />
         </span>
-        <span className="num min-w-14 text-right text-body text-bone">{full(took)}</span>
+        <span className="font-v2-mono tabular-nums min-w-14 text-right text-caption text-v2-ink">{full(took)}</span>
       </span>
     </span>
   );
@@ -1964,7 +1977,7 @@ function RoundBalance({ dealt, took }: { dealt: number; took: number }) {
 function BattleMetric({
   label,
   value,
-  tone = 'text-bone',
+  tone = 'text-v2-ink',
 }: {
   label: string;
   value: number;
@@ -1972,8 +1985,8 @@ function BattleMetric({
 }) {
   return (
     <div className="min-w-0 px-2 first:pl-0 last:pr-0">
-      <p className="text-body text-dim">{label}</p>
-      <p className={`num mt-1 text-figure ${tone}`}>{full(value)}</p>
+      <p className="text-caption text-v2-ink-2">{label}</p>
+      <p className={`font-v2-mono tabular-nums mt-1 text-figure ${tone}`}>{full(value)}</p>
     </div>
   );
 }
@@ -1981,21 +1994,21 @@ function BattleMetric({
 function Losses({ fleet, tone, empty }: { fleet: OrdinaryReport['yourLosses']; tone: string; empty: string }) {
   const entries = fleetEntries(fleet);
   if (entries.length === 0) {
-    return <p className="mt-2 text-body text-faint">{empty}</p>;
+    return <p className="mt-2 text-caption text-v2-ink-3">{empty}</p>;
   }
 
   return (
     <div className="mt-2 flex flex-wrap gap-2">
       {entries.map(([hull, count]) => (
-        <div key={hull} className="plate plate-inset flex items-center gap-2 px-3 py-2">
+        <div key={hull} className="rounded-control border border-v2-line bg-v2-deep/40 flex items-center gap-2 px-3 py-2">
           {HULL_ART[hull] ? (
             <img src={HULL_ART[hull]} alt="" aria-hidden className="size-8 object-contain" />
           ) : (
-            <span className="legend">GRD</span>
+            <span className="v2-legend">GRD</span>
           )}
           <div>
-            <p className={`num text-title leading-none ${tone}`}>{full(count)}</p>
-            <p className="legend mt-1">{hullLabel(hull)}</p>
+            <p className={`font-v2-mono tabular-nums text-caption font-semibold leading-none ${tone}`}>{full(count)}</p>
+            <p className="v2-legend mt-1">{hullLabel(hull)}</p>
           </div>
         </div>
       ))}
@@ -2056,14 +2069,14 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
   return (
     <section data-their-board={complete ? 'complete' : 'floor'} className="mt-3">
       <div className={complete ? '' : 'border-l-2 border-alloy pl-3'}>
-        <h3 className="text-body font-semibold text-bone">
+        <h3 className="text-caption font-semibold text-v2-ink">
           {emptyAtStart
             ? t('reports.theirBoardEmptyAtStart')
             : entries.length === 0 && !complete
             ? t('reports.theirBoardNothing')
             : t(complete ? 'reports.theirBoardComplete' : 'reports.theirBoardFloor')}
         </h3>
-        <p className={`mt-1 text-body leading-relaxed ${complete ? 'text-dim' : 'text-alloy'}`}>
+        <p className={`mt-1 text-caption leading-relaxed ${complete ? 'text-v2-ink-2' : 'text-v2-alloy'}`}>
           {t(emptyAtStart ? 'reports.theirBoardEmptyAtStartNote'
             : complete ? 'reports.theirBoardCompleteNote'
             : report.attacking ? 'reports.theirBoardFloorNote' : 'reports.theirBoardMissingRosterNote')}
@@ -2072,24 +2085,24 @@ function TheirBoard({ report }: { report: OrdinaryReport }) {
 
       {ships.length > 0 && (
         <>
-          <p className="legend mt-2 text-crystal/85">{t('reports.shipsHeading')}</p>
-          <Losses fleet={asFleet(ships)} tone="text-bone" empty={t('reports.theirsEmpty')} />
+          <p className="v2-legend mt-2 text-v2-crystal/85">{t('reports.shipsHeading')}</p>
+          <Losses fleet={asFleet(ships)} tone="text-v2-ink" empty={t('reports.theirsEmpty')} />
         </>
       )}
 
       {ground.length > 0 ? (
         <div data-ground-group className="mt-2">
-          <p className="legend text-alloy">{t('reports.groundHeading')}</p>
-          <p className="mt-1 text-body leading-relaxed text-dim">
+          <p className="v2-legend text-v2-alloy">{t('reports.groundHeading')}</p>
+          <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
             {t('reports.groundNote', { percent: full(COMBAT.defenceSalvage * 100) })}
           </p>
-          <Losses fleet={asFleet(ground)} tone="text-alloy" empty={t('reports.theirsEmpty')} />
+          <Losses fleet={asFleet(ground)} tone="text-v2-alloy" empty={t('reports.theirsEmpty')} />
         </div>
       ) : complete && !emptyAtStart ? (
         /* Only a DECISIVE proves a negative. See the docblock. */
-        <div data-no-ground className="mt-2 border-l border-line-soft pl-3">
-          <p className="legend text-faint">{t('reports.noGroundHeading')}</p>
-          <p className="mt-1 text-caption leading-snug text-faint">{t('reports.noGroundNote')}</p>
+        <div data-no-ground className="mt-2 border-l border-v2-line/60 pl-3">
+          <p className="v2-legend text-v2-ink-3">{t('reports.noGroundHeading')}</p>
+          <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('reports.noGroundNote')}</p>
         </div>
       ) : null}
     </section>
@@ -2125,11 +2138,11 @@ function IncomingForce({
 
   return (
     <section data-their-board="arrived" className="mt-3">
-      <h3 className="text-body font-semibold text-bone">{t('reports.theirBoardArrived')}</h3>
-      <p className="mt-1 text-body leading-relaxed text-dim">
+      <h3 className="text-caption font-semibold text-v2-ink">{t('reports.theirBoardArrived')}</h3>
+      <p className="mt-1 text-caption leading-relaxed text-v2-ink-2">
         {t('reports.theirBoardArrivedNote')}
       </p>
-      <div className="plate plate-inset mt-2">
+      <div className="rounded-control border border-v2-line bg-v2-deep/40 mt-2">
         {entries.map(([hull, count]) => (
           <ForceRow
             key={hull}
@@ -2139,8 +2152,8 @@ function IncomingForce({
             side="theirs"
           />
         ))}
-        <div className="grid gap-2 border-t border-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
-          <span className="text-body font-semibold text-bone">{t('reports.verdict.total')}</span>
+        <div className="grid gap-2 border-t border-v2-line p-3 sm:grid-cols-[8rem_1fr] sm:items-center sm:gap-4">
+          <span className="text-caption font-semibold text-v2-ink">{t('reports.verdict.total')}</span>
           <SurvivorBar sent={arrived} lost={destroyed} side="theirs" sentLabel={t('reports.force.arrived')} />
         </div>
       </div>

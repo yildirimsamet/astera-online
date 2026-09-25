@@ -21,7 +21,9 @@ vi.mock('../../src/api/queries.js', async () => {
 });
 
 vi.mock('../../src/screens/ChatScreen.js', () => ({
-  ChatScreen: ({ initialChannel }: { initialChannel?: string }) => <p>chat on {initialChannel}</p>,
+  ChatScreen: ({ initialChannel, initialClanDraft }: { initialChannel?: string; initialClanDraft?: string }) => (
+    <p>chat on {initialChannel}{initialClanDraft ? ` · ${initialClanDraft}` : ''}</p>
+  ),
 }));
 
 beforeEach(() => {
@@ -46,6 +48,11 @@ describe('the chat page', () => {
   it('opens on the channel it is asked for', () => {
     render(<ChatHost channel="clan" onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     expect(screen.getByText('chat on clan')).toBeInTheDocument();
+  });
+
+  it('hands a clan draft to the screen', () => {
+    render(<ChatHost channel="clan" draft="Partial victory at Kestrel" onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    expect(screen.getByText('chat on clan · Partial victory at Kestrel')).toBeInTheDocument();
   });
 
   it('closes through its host', async () => {

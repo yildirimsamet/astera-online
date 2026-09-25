@@ -157,7 +157,9 @@ export const reportScene = {
   you: "You",
   destroyed: "{{count}} destroyed",
   hidden: "What they still have, and the rest of the field, stays hidden; a report only says what you destroyed.",
-  whyHeading: "Why?",
+  whyDecisive: "Where the losses came from",
+  whyPartial: "Why partial?",
+  whyRepelled: "Why repelled?",
   why: "Most of your losses were {{lost}}: {{by}} is strong against them, and {{bring}} is strong against {{by}}.",
   balance: "Balance",
   balanceLoot: "loot {{amount}}",
@@ -165,7 +167,11 @@ export const reportScene = {
   balanceLost: "lost {{list}}",
   balanceNone: "nothing lost",
   cargoFull: "hold full",
-  colonyRule: "Colony loyalty: a decisive win takes {{decisive}}, a partial one {{partial}}.",
+  intel: "{{planet}}’s defence is on its dossier as of {{time}}",
+  loyalty: "colony loyalty −{{amount}}",
+  watch: "Watch",
+  share: "To clan",
+  shareLine: "{{word}} at {{planet}} · loot {{loot}} · lost {{lost}}",
   again: "Attack again",
 } as const;
 

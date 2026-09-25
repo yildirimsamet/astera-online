@@ -153,7 +153,9 @@ export const reportScene = {
   you: "Tú",
   destroyed: "{{count}} destruidos",
   hidden: "Lo que les queda y el resto del campo siguen ocultos; un informe solo dice lo que destruiste.",
-  whyHeading: "¿Por qué?",
+  whyDecisive: "De dónde vienen las pérdidas",
+  whyPartial: "¿Por qué parcial?",
+  whyRepelled: "¿Por qué rechazado?",
   why: "La mayoría de tus pérdidas fueron {{lost}}: {{by}} es fuerte contra ellos, y {{bring}} es fuerte contra {{by}}.",
   balance: "Balance",
   balanceLoot: "botín {{amount}}",
@@ -161,7 +163,11 @@ export const reportScene = {
   balanceLost: "perdido {{list}}",
   balanceNone: "sin pérdidas",
   cargoFull: "bodega llena",
-  colonyRule: "Lealtad de una colonia: una victoria decisiva quita {{decisive}}, una parcial {{partial}}.",
+  intel: "La defensa de {{planet}} está en su expediente desde las {{time}}",
+  loyalty: "lealtad de la colonia −{{amount}}",
+  watch: "Ver",
+  share: "Al clan",
+  shareLine: "{{word}} en {{planet}} · botín {{loot}} · perdido {{lost}}",
   again: "Atacar de nuevo",
 } as const;
 

@@ -47,6 +47,11 @@ export interface SheetProps {
   eyebrow?: string;
   /** What stands before the title on its line: the launch's "→ [owner]" (E3). */
   lead?: ReactNode;
+  /**
+   * The page draws its own heading (a battle report's hero, M4): the title and eyebrow stay
+   * the dialog's words for a reader, nothing is drawn twice, and the close floats over the top.
+   */
+  quietTitle?: boolean;
   onClose: () => void;
   /** Where it was opened from, when that is a surface rather than the galaxy. */
   onBack?: () => void;
@@ -91,6 +96,7 @@ export function Sheet({
   title,
   eyebrow,
   lead,
+  quietTitle = false,
   onClose,
   onBack,
   detents = PAGE,
@@ -194,7 +200,7 @@ export function Sheet({
           >
             <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
           </button>
-          <header className="flex items-start gap-1 px-2 pb-2">
+          <header className={quietTitle ? 'pointer-events-none absolute inset-x-0 top-4 z-10 flex items-start justify-end gap-1 px-2' : 'flex items-start gap-1 px-2 pb-2'}>
             {onBack && (
               <button
                 type="button"
@@ -205,22 +211,22 @@ export function Sheet({
                 <Icon id="i-chev" className="size-4 rotate-180" />
               </button>
             )}
-            <div className="min-w-0 flex-1 px-1 pt-1">
-              {eyebrow && <p className="truncate text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</p>}
+            <div className={quietTitle ? 'contents' : 'min-w-0 flex-1 px-1 pt-1'}>
+              {eyebrow && <p className={quietTitle ? 'sr-only' : 'truncate text-micro uppercase tracking-wide text-v2-ink-3'}>{eyebrow}</p>}
               {lead ? (
                 <h2 className="flex min-w-0 items-center gap-1.5 text-figure font-semibold text-v2-ink">
                   {lead}
                   <span className="truncate">{title}</span>
                 </h2>
               ) : (
-                <h2 className="truncate text-figure font-semibold text-v2-ink">{title}</h2>
+                <h2 className={quietTitle ? 'sr-only' : 'truncate text-figure font-semibold text-v2-ink'}>{title}</h2>
               )}
             </div>
             <button
               type="button"
               aria-label={t('sheet.close')}
               onClick={onClose}
-              className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
+              className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel/70' : ''}`}
             >
               <Icon id="i-close" className="size-4" />
             </button>

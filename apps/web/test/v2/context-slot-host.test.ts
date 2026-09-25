@@ -83,7 +83,9 @@ describe('the report door in the galaxy (E6)', () => {
   it('sends Attack again to the raided world’s open dossier', () => {
     const door = source.slice(source.indexOf('<BattleReportDoor'), source.indexOf("{panel === 'intel' && ("));
     expect(door).toMatch(/onAttackAgain=\{\(planetId\) => \{\s*onPanel\(null\);\s*focusPlanet\(planetId\);\s*setDetail\(true\);/);
-    expect(door).toMatch(/colonyOf=\{\(planetId\) => planets\.find\(\(world\) => world\.id === planetId\)\?\.kind === 'COLONY'\}/);
+    // The colony reading now rides the report's doors, shared with Intel's list (M4).
+    expect(door).toMatch(/\{\.\.\.reportDoors\}/);
+    expect(source).toMatch(/colonyOf: \(planetId: string\) => planets\.find\(\(world\) => world\.id === planetId\)\?\.kind === 'COLONY'/);
   });
 });
 

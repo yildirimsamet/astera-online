@@ -72,8 +72,10 @@ vi.mock('../../src/v2/shell/BellHost.js', () => ({
 }));
 
 vi.mock('../../src/v2/shell/ChatHost.js', () => ({
-  ChatHost: ({ onClose, channel }: { onClose: () => void; channel?: string }) => (
-    <div role="dialog" aria-label={channel ? `chat ${channel}` : 'chat'}><button type="button" onClick={onClose}>close chat</button></div>
+  ChatHost: ({ onClose, channel, draft }: { onClose: () => void; channel?: string; draft?: string }) => (
+    <div role="dialog" aria-label={[channel ? `chat ${channel}` : 'chat', ...(draft ? [draft] : [])].join(' · ')}>
+      <button type="button" onClick={onClose}>close chat</button>
+    </div>
   ),
 }));
 
@@ -112,6 +114,7 @@ const shell = () => render(
         <p>{`center ${String(centerRequest)} clear ${String(clearRequest)}`}</p>
         <button type="button" onClick={() => { route('chat'); }}>galaxy asks for chat</button>
         <button type="button" onClick={() => { onOpenChat('clan'); }}>galaxy asks for clan chat</button>
+        <button type="button" onClick={() => { onOpenChat('clan', 'Partial victory at Kestrel'); }}>galaxy shares a report</button>
       </div>
     )}
   />,
@@ -323,6 +326,17 @@ describe('the v2 shell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for chat' }));
     // The next ordinary open decides by what is unread again.
     expect(screen.getByRole('dialog', { name: 'chat' })).toBeInTheDocument();
+  });
+
+  /** M4: "To clan" on a report opens clan chat with the report's line as a draft. */
+  it('opens clan chat with a draft when a report is shared', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'galaxy shares a report' }));
+    expect(screen.getByRole('dialog', { name: 'chat clan · Partial victory at Kestrel' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'close chat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'galaxy asks for clan chat' }));
+    // A later open carries no stale draft.
+    expect(screen.getByRole('dialog', { name: 'chat clan' })).toBeInTheDocument();
   });
 
   it('closes chat when the dock moves', async () => {

@@ -142,8 +142,18 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   12 sa", `PaceRow brief`); özet 5 hücre: Varış (saat), Dönüş (saat + açıkta süresi), Kargo (+ sondadan "ganimet
   ~X–Y"), Uçuş yuvası ("n / N · bu sefer 1"), Evde kalan (birim + güç, `homePowerAfter`); fiyat satırı
   "{dünya} {süre} zayıf kalır — filo dönene kadar." Galeri `launch` görünümü sonda okumasıyla çizilir.
-- [ ] **M4 Savaş raporu + Sen yokken** (E6, E10): sinematik kahraman, İzle/Klana, istihbarat güncelleme satırı; sen
-  yokken sadakat/arıza satırı, teleskop fırsatı türü (sunucu), kapı biçimi, "Galaksiye dön".
+- [x] **M4a Savaş raporu** (E6) — `ReportScene` sinematik kahraman (büyük dünya görseli kenardan kesik, "Savaş
+  raporu · senin dünyan", büyük sonuç kelimesi — filonun tamamı gittiyse kırmızı —, "tarih · tur · [rakip çipi]
+  dünya"), "Neden kısmi? / Neden püskürtüldü? / Kayıplar nereden geldi", **istihbarat satırı** ("X savunması
+  saat itibarıyla dosyasında · koloni sadakati −15"; eski kural satırının yerine), üç kapı: **İzle** (tur tur
+  bölümüne kaydırır — tekrar oynatma sistemi yok), **Klana** (klan sohbeti rapor satırı **taslak** olarak dolu
+  açılır, oyuncu gönderir; yalnız klandayken; `openChat(channel, draft)` zinciri), **Yeniden saldır** (artık
+  İstihbarat listesinden açılan raporda da). Rapor sayfaları (olağan + stratejik) v2 Sheet'e taşındı
+  (`quietTitle`: başlık yalnız ekran okuyucuya, kapat kahramanın üstünde); alt bölümler v2 sınıflarına çevrildi
+  (eski "okuma boyu" büyütmesi kalktı, bölüm başlıkları ince çizgili), tekrar eden tarih satırı kalktı, listede
+  "0 tur" yazılmıyor; ton sınıf yerine `data-tone`.
+- [ ] **M4b Sen yokken** (E10): sadakat/arıza satırı, teleskop fırsatı türü, kapı biçimi (satır altında metin
+  bağlantısı), "Galaksiye dön", ortalanmış kart.
 - [ ] **M5 Ortak:** rakip renkleri v2 K2 tonlarına, TR süre biçimi (sa/dk), üst çubuk sayfaların üstünde, eski kit
   başlıkları (Üs, Araştırma).
 

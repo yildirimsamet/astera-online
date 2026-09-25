@@ -14,6 +14,7 @@ import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
+import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
@@ -427,11 +428,14 @@ function Views({ view }: { view: string }) {
   }
   if (view === 'report') {
     return (
-      <Sheet title="Kestrel" onClose={noop} detents={['full']}>
+      <Sheet title={i18n.t('reports.verdict.title.attacking.PARTIAL')} quietTitle onClose={noop} detents={['full']}>
         <ReportScene
-          word="Partial victory"
+          word={i18n.t('reports.verdict.title.attacking.PARTIAL')}
           colonyTarget
+          rivalSlot={0}
           onAttackAgain={noop}
+          onWatch={noop}
+          onShare={noop}
           report={{
             id: 'b1', missionId: 'm1', at: new Date(NOW - 20 * MIN), grade: 'PARTIAL', attacking: true,
             opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel', neutral: false, yourPlanet: 'Bellwether',
