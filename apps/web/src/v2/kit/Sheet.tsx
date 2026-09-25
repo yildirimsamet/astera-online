@@ -217,7 +217,8 @@ export function Sheet({
                 type="button"
                 aria-label={t('sheet.back')}
                 onClick={onBack}
-                className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
+                // Pressable in a quiet header too, whose floating row lets presses through.
+                className="pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
               >
                 <Icon id="i-chev" className="size-4 rotate-180" />
               </button>

@@ -121,8 +121,6 @@ export interface Gain {
   maxed?: true;
 }
 
-;
-
 /**
  * WHAT ONE MORE LEVEL ACTUALLY BUYS.
  *

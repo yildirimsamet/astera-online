@@ -164,4 +164,51 @@ describe('the away host', () => {
     const { acknowledge } = host(story({ awayMinutes: 5 }));
     await waitFor(() => { expect(acknowledge.mock.calls.length).toBeGreaterThanOrEqual(3); }, { timeout: 2_000 });
   });
+
+  /**
+   * A HIDDEN PAGE IS NOT A PLAYER WHO IS HERE (review, 2026-09-25). A tab put away for four
+   * hours and shown again without a reload — the usual case on a desktop, common on a phone —
+   * had its first keep-alive move the window to the present, and the four hours' story was
+   * never told. Coming back from a real absence is a return, whether or not the page reloaded.
+   */
+  describe('a page hidden and shown again', () => {
+    const show = (state: 'hidden' | 'visible') => {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, value: state });
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    afterEach(() => {
+      vi.restoreAllMocks();
+      Reflect.deleteProperty(document, 'visibilityState');
+    });
+
+    it('tells the story of a real absence instead of closing the window past it', async () => {
+      const { read, acknowledge } = host(story({ awayMinutes: 5 }));
+      await waitFor(() => { expect(acknowledge).toHaveBeenCalled(); });
+      read.mockResolvedValue(story({ asOf: new Date('2026-09-24T16:00:00Z') }));
+      const start = Date.now();
+      show('hidden');
+      vi.spyOn(Date, 'now').mockReturnValue(start + 4 * 3_600_000);
+      acknowledge.mockClear();
+      show('visible');
+      const sheet = await screen.findByRole('dialog', { name: 'While you were away' });
+      expect(read).toHaveBeenCalledTimes(2);
+      // Several keep-alive periods pass with the story up: nothing closes the window but the player.
+      await new Promise((resolve) => { setTimeout(resolve, 200); });
+      expect(acknowledge).not.toHaveBeenCalled();
+      await userEvent.click(within(sheet).getByRole('button', { name: 'Back to the galaxy' }));
+      expect(acknowledge).toHaveBeenCalledWith(new Date('2026-09-24T16:00:00Z'));
+    });
+
+    it('treats a short look away as presence', async () => {
+      const { read, acknowledge } = host(story({ awayMinutes: 5 }));
+      await waitFor(() => { expect(acknowledge).toHaveBeenCalled(); });
+      const start = Date.now();
+      show('hidden');
+      vi.spyOn(Date, 'now').mockReturnValue(start + 5 * 60_000);
+      show('visible');
+      acknowledge.mockClear();
+      await waitFor(() => { expect(acknowledge).toHaveBeenCalled(); }, { timeout: 2_000 });
+      expect(read).toHaveBeenCalledOnce();
+    });
+  });
 });

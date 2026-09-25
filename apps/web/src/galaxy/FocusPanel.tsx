@@ -1231,7 +1231,7 @@ export function StrikeSheet({
         {/* And what it does NOT do, because D179 took the teeth out and a commander
             about to spend twenty thousand alloy should know what they are buying. */}
         <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
-        <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} />
+        <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} tone="hostile" />
       </div>
     </V2Sheet>,
     document.body,

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApi } from '../../api/context.js';
 import { keys } from '../../api/keys.js';
 import { useIntel } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
 import { serverNow } from '../../lib/clock.js';
-import { shouldShowAway, sightingsOf, worldCare, type AwayDoor } from '../../lib/awayStory.js';
+import { AWAY_THRESHOLD_MINUTES, shouldShowAway, sightingsOf, worldCare, type AwayDoor } from '../../lib/awayStory.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
 
 /**
@@ -21,6 +21,11 @@ import { AwaySheet } from '../hud/AwaySheet.js';
  *       the galaxy never waits for it.
  *   3 · ITS WORDS WERE ENGLISH. The server sends kinds and parameters; `AwaySheet`
  *       words them.
+ *
+ * And one of its own (review, 2026-09-25): a page hidden is not a player who is here. A
+ * tab put away for hours and shown again without a reload had its first keep-alive close
+ * the window past the whole absence, untold. Shown again after a real absence, the page
+ * asks for the story afresh, as a reload would.
  *
  * Reading changes nothing on the server; the dismissal closes the window up to the
  * instant the story was read.
@@ -40,6 +45,7 @@ export function AwayHost({
   keepAliveMs?: number;
 }) {
   const api = useApi();
+  const client = useQueryClient();
   /* What the Telescope sees out now, and the world with faults standing: read live, not stored (M4). */
   const watching = useIntel().data?.watching;
   const { worlds } = useWorld();
@@ -82,6 +88,25 @@ export function AwayHost({
     }, keepAliveMs);
     return () => { clearInterval(timer); };
   }, [data, telling, keepAliveMs]);
+
+  // Shown again after a real absence: that is a return, and its story is asked for afresh.
+  useEffect(() => {
+    let hiddenAt: number | null = null;
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt ??= serverNow();
+        return;
+      }
+      const away = hiddenAt === null ? 0 : serverNow() - hiddenAt;
+      hiddenAt = null;
+      if (away < AWAY_THRESHOLD_MINUTES * 60_000) return;
+      setClosed(false);
+      // Emptied first, so neither the old story nor its keep-alive runs while the new one loads.
+      void client.resetQueries({ queryKey: keys.returnStory });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { document.removeEventListener('visibilitychange', onVisibility); };
+  }, [client]);
 
   if (!telling) return null;
 

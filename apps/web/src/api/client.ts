@@ -658,8 +658,9 @@ export class Api {
       method: 'POST', body: { type: explicitType ?? planetIdOrType as SatelliteId },
     });
 
-  /** May be turned once while it flies: `recallFlight` (K8). */
   /**
+   * A raid may be turned once while it flies: `recallFlight` (K8).
+   *
    * `acknowledgeShieldLoss` is the commander saying they have read what this costs
    * THEM. D183 — a raid launched under the first-day shield spends it, and the
    * server refuses once with `SHIELD_WOULD_DROP` rather than spending it silently.
@@ -864,7 +865,6 @@ export class Api {
 
   /* ── session ──────────────────────────────────────────────── */
 
-  /** Reading this advances `lastSeenAt` server-side. Call it once per session. */
   /** The return story (E10 · S3). Reading it changes nothing on the server. */
   returnPayload = () => this.send('/api/session/return', returnSchema);
   /** The player dismissed the story, or is here now: close the window up to `asOf`. */

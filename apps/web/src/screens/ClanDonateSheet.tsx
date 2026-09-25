@@ -32,7 +32,13 @@ export function ClanDonateSheet({ war, worlds, onClose }: {
   const donor = worlds.find((world) => world.planet.id === donorId) ?? worlds[0];
   const limit = (key: (typeof KEYS)[number]): number =>
     Math.min(war.room?.[key] ?? 0, Math.max(0, Math.floor(donor?.planet[key] ?? 0)));
-  const empty = KEYS.every((key) => gift[key] === 0);
+  /*
+    WHAT IS SENT IS WHAT THE SLIDERS SHOW (review, 2026-09-25). The room shrinks while the sheet
+    is open — a clanmate's gift — and each slider draws its figure within it; the press sends
+    those figures, never an older, larger one the server would refuse.
+  */
+  const shown: Resources = { alloy: Math.min(gift.alloy, limit('alloy')), crystal: Math.min(gift.crystal, limit('crystal')), deuterium: Math.min(gift.deuterium, limit('deuterium')) };
+  const empty = KEYS.every((key) => shown[key] === 0);
 
   return (
     <Sheet
@@ -47,7 +53,7 @@ export function ClanDonateSheet({ war, worlds, onClose }: {
             disabled={!donor || empty || actions.donate.isPending}
             onClick={() => {
               if (!donor) return;
-              actions.donate.mutate({ planetId: donor.planet.id, resources: gift }, {
+              actions.donate.mutate({ planetId: donor.planet.id, resources: shown }, {
                 onSuccess: () => { setGift({ ...ZERO }); onClose(); },
               });
             }}
@@ -70,7 +76,7 @@ export function ClanDonateSheet({ war, worlds, onClose }: {
         )}
         {KEYS.map((key) => {
           const top = limit(key);
-          const value = Math.min(gift[key], top);
+          const value = shown[key];
           const fill = top > 0 ? Math.round((value / top) * 100) : 0;
           return (
             <label key={key} className="flex flex-col gap-1">

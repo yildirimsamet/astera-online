@@ -332,6 +332,8 @@ describe('the focus rail’s two commitments', () => {
 
     const hold = sheet.querySelector<HTMLElement>('[data-hold]')!;
     expect(hold).toHaveTextContent(/launch emp/i);
+    // The strategic weapon is the one launch drawn in the colour of harm (`HoldButton` tones).
+    expect(hold.className).toMatch(/border-v2-hostile/);
     fireEvent.click(hold);
     expect(onDeathStar).not.toHaveBeenCalled();
     fireEvent.keyDown(hold, { key: 'Enter' });

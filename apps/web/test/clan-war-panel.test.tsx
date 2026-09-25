@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import { clanWarSchema } from '../src/api/schemas.js';
+import { ClanDonateSheet } from '../src/screens/ClanDonateSheet.js';
 import { ClanWarPanel, type WarSeatMember } from '../src/screens/ClanWarPanel.js';
 import { planetView } from './fixtures.js';
 
@@ -192,6 +193,32 @@ describe('clan war decision surface', () => {
       planetId: 'origin-a',
       resources: { alloy: 30, crystal: 0, deuterium: 0 },
     }));
+  });
+
+  /**
+   * WHAT IS SENT IS WHAT THE SLIDER SHOWS (review, 2026-09-25). The room a clanmate's gift
+   * leaves shrinks while the sheet is open; the slider drew the smaller figure, and the press
+   * sent the old one — a refusal for an amount nobody chose. Master's button refused an
+   * over-limit gift; the v2 sheet lost that guard.
+   */
+  it('sends the gift as the slider shows it after the room shrinks, and nothing once it is gone', async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
+    const donate = vi.spyOn(api, 'donateClanTreasury').mockReturnValue(new Promise<never>(() => undefined));
+    const sheet = (war: typeof empty) => (
+      <QueryClientProvider client={client}><ApiProvider api={api}>
+        <ClanDonateSheet war={war} worlds={[origin]} onClose={vi.fn()} />
+      </ApiProvider></QueryClientProvider>
+    );
+    const { rerender } = render(sheet(empty));
+    fireEvent.change(screen.getByRole('slider', { name: /alloy/i }), { target: { value: '30' } });
+
+    rerender(sheet({ ...empty, room: { alloy: 12, crystal: 100, deuterium: 10 } }));
+    await userEvent.click(screen.getByRole('button', { name: /^donate/i }));
+    expect(donate).toHaveBeenLastCalledWith(expect.objectContaining({ resources: { alloy: 12, crystal: 0, deuterium: 0 } }));
+
+    rerender(sheet({ ...empty, room: { alloy: 0, crystal: 100, deuterium: 10 } }));
+    expect(screen.getByRole('button', { name: /^donate/i })).toBeDisabled();
   });
 
   it('does not ask an unprotected leader to acknowledge shield loss', () => {
