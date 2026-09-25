@@ -923,7 +923,7 @@ calibration.
 
 A clan is a five-commander seasonal team inside one galaxy. Founding one is a late-opening
 commitment rather than a free menu action: the capital must have Command Core 7 and burns
-5,000 Alloy plus 3,000 Crystal. A 12-hour adaptation period makes recruitment legible and
+7,500 Alloy plus 3,000 Crystal (owner price, 2026-09-25). A 12-hour adaptation period makes recruitment legible and
 closes join/leave exploits while still giving the new member their tag, friendly-fire safety
 and private chat at once.
 

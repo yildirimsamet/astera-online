@@ -72,7 +72,8 @@ describe('monthly economy', () => {
     expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21550, crystal: 10776, deuterium: 894 });
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);
-    expect(CLAN.creationCost.alloy).toBe(Math.ceil(profileIncome(6).alloy * 8));
+    // The clan's founding price is the owner's (2026-09-25), not an income multiple.
+    expect(CLAN.creationCost).toEqual({ alloy: 7500, crystal: 3000, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
     expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });
     expect(START.alloy).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const).reduce((a, b) => a + buildingCost(b, 1).alloy, 600));

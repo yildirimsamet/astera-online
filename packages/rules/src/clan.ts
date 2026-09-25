@@ -2,14 +2,14 @@ import { TRANSFER_CARGO_HULLS } from './strategic.js';
 import { cargoMult } from './tech.js';
 import type { TechLevels } from './tech.js';
 import { ALL_HULLS, HULLS, MOBILE_HULLS, fleetEntries } from './hulls.js';
-import { profileInvoice, profileIncome } from './economy-profile.js';
 import type { Fleet, Resources } from './types.js';
 
 /** The complete, deliberately bounded clan ruleset. D114. */
 export const CLAN = {
   maxMembers: 5,
   founderCoreLevel: 7,
-  creationCost: profileInvoice(profileIncome(6), { alloy: 8, crystal: 8, deuterium: 0 }),
+  /** The owner's price (2026-09-25): 7.5k alloy and 3k crystal, fixed rather than an income multiple. */
+  creationCost: { alloy: 7_500, crystal: 3_000, deuterium: 0 },
   nameMinChars: 3,
   nameMaxChars: 24,
   tagMinChars: 2,

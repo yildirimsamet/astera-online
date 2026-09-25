@@ -38,8 +38,9 @@ describe('D114 clan identity and fixed rules', () => {
   it('locks the approved membership and economy figures', () => {
     expect(CLAN.maxMembers).toBe(5);
     expect(CLAN.founderCoreLevel).toBe(7);
+    // Owner price, 2026-09-25: 7.5k alloy and 3k crystal, fixed rather than derived.
     expect(CLAN.creationCost).toEqual(
-      resources(8217, 4109, 0),
+      resources(7500, 3000, 0),
     );
     expect(CLAN.adaptationMinutes).toBe(720);
     expect(CLAN.attackLimit).toBe(5);

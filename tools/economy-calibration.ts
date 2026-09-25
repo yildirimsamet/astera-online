@@ -873,10 +873,10 @@ function assertShippedCandidate(): void {
     CANDIDATE,
     BASE_DEATH_STAR_COST,
   ))) mismatches.push('deathStar');
-  if (!sameResources(CLAN.creationCost, scaledCost(
-    { alloy: 5000, crystal: 3000, deuterium: 0 },
-    CANDIDATE.flatPriceScale,
-  ))) mismatches.push('clanCreation');
+  // The clan's founding price is the owner's (2026-09-25), not derived from the candidate.
+  if (!sameResources(CLAN.creationCost, { alloy: 7500, crystal: 3000, deuterium: 0 })) {
+    mismatches.push('clanCreation');
+  }
   if (mismatches.length > 0) {
     throw new Error(`Calibration candidate drifted from shipped rules: ${mismatches.join(', ')}`);
   }
