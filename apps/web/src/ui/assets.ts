@@ -607,13 +607,12 @@ export const BUILDING_TOP: Readonly<Record<BuildingId, number | null>> = {
 /**
  * Buildings, at the tier their level puts them in.
  *
- * Every building but the Deuterium Plant ships with three renders. The Core, the
- * Vault and the Shipyard were once wired to `null`, and the Refinery and the
- * Extractor to the alloy rock and the crystal — two resources where the Production
- * tab named two buildings (owner, 2026-09-24). They tier by level, so raising one
- * visibly replaces the structure, which is the anticipation hook this file exists for.
- *
- * The Deuterium Plant has no render yet, so it wears the deuterium it makes.
+ * Every building ships with three renders. The Core, the Vault and the Shipyard were
+ * once wired to `null`, and the producers to the alloy rock, the crystal and the
+ * deuterium they make — resources where the Production tab named buildings (owner,
+ * 2026-09-24; the Deuterium Plant's renders came over from master on 2026-09-25). They
+ * tier by level, so raising one visibly replaces the structure, which is the
+ * anticipation hook this file exists for.
  */
 export function buildingArt(id: BuildingId, level: number): string | null {
   const tier = artTier(level, BUILDING_TOP[id]);
@@ -630,20 +629,17 @@ export function buildingArt(id: BuildingId, level: number): string | null {
       return `${BASE}/general/shipyard_${String(tier)}.png`;
     case 'HANGAR':
       return `${BASE}/general/hangar_${String(tier)}.png`;
-    /** No render of its own yet: it makes deuterium, so it wears deuterium. */
     case 'DEUTERIUM_PLANT':
-      return RESOURCE_ART.deuterium;
+      return `${BASE}/resources/deuterium_refinery_${String(tier)}.webp`;
   }
 }
 
 /**
  * The art one level on, or null when nothing visibly changes.
  *
- * Compares the RENDERS rather than the tiers, which is not the same question here:
- * the Deuterium Plant wears the resource it produces at every level, so a tier
- * check would say "new hardware at L3" and hand back the identical picture. The
- * promise this function makes is "something changes", and the ladder's arrival
- * mark reads it rather than keeping a list of its own.
+ * Compares the RENDERS rather than the tiers: the promise this function makes is
+ * "something changes", and the ladder's next look reads it rather than keeping a list
+ * of its own — so a building that ever wears one picture throughout stays honest.
  */
 export function nextBuildingArt(id: BuildingId, level: number): string | null {
   const next = buildingArt(id, level + 1);
@@ -657,6 +653,6 @@ export const BUILDING_ART: Record<BuildingId, string | null> = {
   EXTRACTOR: `${BASE}/resources/crystal_extractor_1.png`,
   VAULT: `${BASE}/general/vault_1.png`,
   SHIPYARD: `${BASE}/general/shipyard_1.png`,
-  DEUTERIUM_PLANT: RESOURCE_ART.deuterium,
+  DEUTERIUM_PLANT: `${BASE}/resources/deuterium_refinery_1.webp`,
   HANGAR: `${BASE}/general/hangar_1.png`,
 };

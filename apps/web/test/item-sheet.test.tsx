@@ -219,10 +219,10 @@ describe('the level ladder', () => {
  * 2026-09-24): thirds of a ladder with a top, 1–8 / 9–14 / 15+ without.
  */
 describe('a building whose render tiers', () => {
-  const at = (id: 'REFINERY' | 'HANGAR') =>
+  const at = (id: 'REFINERY' | 'HANGAR' | 'DEUTERIUM_PLANT') =>
     show({
       item: { kind: 'building', id },
-      over: { buildings: { CORE: 6, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1, HANGAR: 1 } },
+      over: { buildings: { CORE: 6, REFINERY: 1, EXTRACTOR: 1, VAULT: 1, SHIPYARD: 1, HANGAR: 1, DEUTERIUM_PLANT: 1 } },
     });
 
   it('promises the refinery its second look at L9', () => {
@@ -231,6 +231,15 @@ describe('a building whose render tiers', () => {
     const look = document.querySelector<HTMLElement>('[data-next-look]')!;
     expect(look).toHaveTextContent(/L9/);
     expect(look.querySelector('img')?.getAttribute('src')).toContain('alloy_refinery_2.png');
+  });
+
+  /** Its own renders at last (carried from master's work in progress, 2026-09-25), not the deuterium it makes. */
+  it('shows the deuterium plant as a building, and promises its second look at L9', () => {
+    at('DEUTERIUM_PLANT');
+    expect(heroArt()).toContain('deuterium_refinery_1.webp');
+    const look = document.querySelector<HTMLElement>('[data-next-look]')!;
+    expect(look).toHaveTextContent(/L9/);
+    expect(look.querySelector('img')?.getAttribute('src')).toContain('deuterium_refinery_2.webp');
   });
 
   /** "of Up to 7.3k at the top rung" was on the phone: the ceiling is a sentence of its own. */
