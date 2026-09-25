@@ -47,10 +47,11 @@ describe('the wired dock', () => {
     expect(screen.getByRole('button', { name: 'Intel' })).toBeInTheDocument();
   });
 
-  it('dots the base when the works are worth collecting', () => {
+  /** The works are read and collected on the top bar (owner, 2026-09-25); the Base's dot is for repairs. */
+  it('leaves the base undotted for the works', () => {
     planet = planetView({}, { bufferAlloy: 400 });
     render(<HudDock active="galaxy" onSelect={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /^Base · / })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Base' })).toBeInTheDocument();
   });
 
   it('dots the base for a fault nobody has paid to repair, and not for one being repaired', () => {

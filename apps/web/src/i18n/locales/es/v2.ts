@@ -51,7 +51,7 @@ export const dock = {
   intel: 'Inteligencia',
   clan: 'Clan',
   /** The dot on Base, read aloud. */
-  baseWaiting: 'Algo que recoger o reparar',
+  baseWaiting: 'Algo que reparar',
   /** Beside the Fleet ring: your own craft in the air. */
   airborne: 'En vuelo: {{count}}',
   /** The count on Intel: reports you have not seen. */

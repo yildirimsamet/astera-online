@@ -26,6 +26,7 @@ export function StoreBar({
   safe,
   tone,
   cells = 12,
+  compact = false,
 }: {
   value: number;
   cap: number;
@@ -33,6 +34,12 @@ export function StoreBar({
   safe: number;
   tone: Tone;
   cells?: number;
+  /**
+   * THE TOP BAR'S SIZE (owner, 2026-09-25: its bars and the Base's must match). The same
+   * cells, hues, bracket and cap, a little lower; the shield over the bracket needs a line
+   * of its own and stays on the Base, where the store is explained.
+   */
+  compact?: boolean;
 }) {
   const share = cap <= 0 ? 0 : Math.min(1, Math.max(0, value) / cap);
   // Any stock lights a cell: 169 of 4.5k is not an empty store.
@@ -44,8 +51,8 @@ export function StoreBar({
   const run = (n: number): string => `(${cell} * ${String(n)} + ${String((n - 1) * GAP)}px)`;
 
   return (
-    <span aria-hidden className="relative block pt-3">
-      <span className="relative flex h-1.5 gap-0.5">
+    <span aria-hidden className={`relative block ${compact ? 'pt-[3px]' : 'pt-3'}`}>
+      <span className={`relative flex gap-0.5 ${compact ? 'h-1' : 'h-1.5'}`}>
         {Array.from({ length: cells }, (_, index) => (
           <span
             key={index}
@@ -55,7 +62,10 @@ export function StoreBar({
           />
         ))}
         {full && (
-          <span data-full-cap="" className="absolute -right-1.5 top-1/2 h-3 w-[3px] -translate-y-1/2 rounded-full bg-v2-warn" />
+          <span
+            data-full-cap=""
+            className={`absolute top-1/2 w-[3px] -translate-y-1/2 rounded-full bg-v2-warn ${compact ? '-right-1 h-2.5' : '-right-1.5 h-3'}`}
+          />
         )}
       </span>
       {safeCells > 0 && (
@@ -63,16 +73,20 @@ export function StoreBar({
           <span
             data-safe=""
             data-safe-cells={String(safeCells)}
-            className="pointer-events-none absolute -bottom-[3px] -left-[3px] top-[9px] rounded-cell border border-v2-ink/80"
-            style={{ width: `calc(${run(safeCells)} + 6px)` }}
+            className={`pointer-events-none absolute rounded-cell border ${
+              compact ? '-bottom-[2px] -left-[2px] top-[1px] border-v2-ink/60' : '-bottom-[3px] -left-[3px] top-[9px] border-v2-ink/80'
+            }`}
+            style={{ width: `calc(${run(safeCells)} + ${compact ? '4px' : '6px'})` }}
           />
-          <span
-            data-safe-shield=""
-            className="pointer-events-none absolute top-0 -translate-x-1/2 text-v2-ink"
-            style={{ left: `calc(${run(safeCells)} / 2)` }}
-          >
-            <ShieldIcon className="size-2.5" />
-          </span>
+          {!compact && (
+            <span
+              data-safe-shield=""
+              className="pointer-events-none absolute top-0 -translate-x-1/2 text-v2-ink"
+              style={{ left: `calc(${run(safeCells)} / 2)` }}
+            >
+              <ShieldIcon className="size-2.5" />
+            </span>
+          )}
         </>
       )}
     </span>

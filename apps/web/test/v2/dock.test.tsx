@@ -53,7 +53,7 @@ describe('the dock', () => {
 
   it('dots the base and counts intel and clan', () => {
     render(<Dock active={null} badges={{ ...quiet, base: true, intel: 3, clan: 12 }} onSelect={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Base · Something to collect or repair' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Base · Something to repair' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Intel · New reports: 3' })).toHaveTextContent('3');
     expect(screen.getByRole('button', { name: 'Clan · Waiting for you: 12' })).toHaveTextContent('9+');
   });

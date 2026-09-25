@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { full, stock } from '../../lib/format.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
+import { StoreBar } from './StoreBar.js';
 
 type Resource = keyof typeof RESOURCE_ART;
 
@@ -11,11 +12,6 @@ const LABEL = {
 } as const satisfies Record<Resource, string>;
 
 /** A resource wears its own hue, and only beside its icon. */
-const FILL: Record<Resource, string> = {
-  alloy: 'bg-v2-alloy',
-  crystal: 'bg-v2-crystal',
-  deuterium: 'bg-v2-deut',
-};
 
 export interface ResourceMeterProps {
   resource: Resource;
@@ -26,6 +22,8 @@ export interface ResourceMeterProps {
   onOpen?: () => void;
   /** Production is boosted (the recovery boost): a rising mark beside the figure. */
   boosted?: boolean;
+  /** How much of the store a raid cannot take (the Vault's floor), bracketed as the Base does. */
+  safe?: number;
 }
 
 /**
@@ -53,9 +51,8 @@ function BoostMark() {
  * warn notch and nothing on the meter turns hostile red (H2) — red is reserved for
  * something happening to you.
  */
-export function ResourceMeter({ resource, value, cap, onOpen, boosted = false }: ResourceMeterProps) {
+export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, safe = 0 }: ResourceMeterProps) {
   const { t } = useTranslation();
-  const share = cap > 0 ? Math.max(0, Math.min(1, value / cap)) : 0;
   const isFull = cap > 0 && value >= cap - 0.5;
   const name = t(isFull ? 'meter.full' : 'meter.reading', {
     resource: t(LABEL[resource]),
@@ -70,14 +67,9 @@ export function ResourceMeter({ resource, value, cap, onOpen, boosted = false }:
         <span className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(value)}</span>
         {boosted && <BoostMark />}
       </span>
-      <span className="relative mt-0.5 block h-0.5 w-full rounded-full bg-v2-line">
-        <span
-          data-fill=""
-          className={`absolute inset-y-0 left-0 rounded-full ${FILL[resource]}`}
-          style={{ width: `${String(Math.round(share * 100))}%` }}
-        />
-        {isFull && <span data-full="" className="absolute -top-0.5 right-0 h-1.5 w-0.5 rounded-full bg-v2-warn" />}
-      </span>
+      {/* The Base's own store bar, compact (owner, 2026-09-25: the two did not match). */}
+      {/* Full by the meter's own reading, so the name and the cap never disagree over a fraction. */}
+      <StoreBar compact value={isFull ? cap : value} cap={cap} safe={safe} tone={resource} />
     </>
   );
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
 import { Icon } from '../icons.js';
 import { ResourceMeter } from '../kit/ResourceMeter.js';
+import { WorksLine, type WorksLineProps } from './WorksLine.js';
 import { initials } from './CommanderCard.js';
 
 type Resource = 'alloy' | 'crystal' | 'deuterium';
@@ -16,7 +17,10 @@ export interface TopBarProps {
   /** The active world — only once the commander holds a second one. */
   world: { capital: boolean; name: string } | null;
   /** The active world's stock against its stores (projected). */
-  stock: Record<Resource, { value: number; cap: number }>;
+  /** Each store, and the part of it the Vault keeps from a raid (`safe`). */
+  stock: Record<Resource, { value: number; cap: number; safe?: number }>;
+  /** The works under the stores (owner, 2026-09-25); absent until the world is read. */
+  works?: WorksLineProps;
   /** `bellState(...)`. */
   bell: { unseen: number; urgent: boolean };
   /** Rewards waiting to be claimed behind the commander chip (`useRewards().claimable`). */
@@ -54,6 +58,7 @@ export function TopBar({
   bell,
   rewards,
   boosted,
+  works,
   onCommander,
   onWorld,
   onResource,
@@ -119,17 +124,24 @@ export function TopBar({
       )}
 
       {/* On a desk the meters keep a phone's reach; a 600 px bar would read no better than 160. */}
-      <div className={`grid min-w-0 flex-1 grid-cols-3 gap-2 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
+      {/*
+        THREE COLUMNS, THREE LINES, NO TALLER BAR (owner, 2026-09-25): each store's figure, its
+        cells as the Base draws them, and what its vessel in the works holds — the third line is
+        the one press that collects. The meters used 20 of the bar's 48 px; they use 36 now.
+      */}
+      <div className={`grid min-w-0 flex-1 grid-cols-3 gap-x-2 gap-y-1 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
         {RESOURCES.map((resource) => (
           <ResourceMeter
             key={resource}
             resource={resource}
             value={stock[resource].value}
             cap={stock[resource].cap}
+            safe={stock[resource].safe ?? 0}
             boosted={boosted}
             onOpen={() => { onResource(resource); }}
           />
         ))}
+        {works && <WorksLine {...works} />}
       </div>
 
       {tabs !== undefined && <div className="ml-auto flex h-full shrink-0">{tabs}</div>}

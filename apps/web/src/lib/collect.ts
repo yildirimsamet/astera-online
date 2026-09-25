@@ -33,6 +33,8 @@ export interface CollectState {
   each: Triple;
   /** The resources waiting that the store has no room left for, in store order. */
   noRoom: WorksResource[];
+  /** The resources whose vessel is full, so their production has stopped, in store order. */
+  stopped: WorksResource[];
 }
 
 const KEYS = ['alloy', 'crystal', 'deuterium'] as const;
@@ -49,7 +51,7 @@ export const WORKS_RESOURCES: readonly WorksResource[] = KEYS;
 export function collectState({ caps, works, store, storeCaps }: CollectInput): CollectState {
   const waiting = KEYS.reduce((sum, key) => sum + works[key], 0);
   const capacity = KEYS.reduce((sum, key) => sum + caps[key], 0);
-  const full = KEYS.some((key) => caps[key] > 0 && works[key] >= caps[key] * FULL_AT);
+  const stopped = KEYS.filter((key) => caps[key] > 0 && works[key] >= caps[key] * FULL_AT);
   const movable = KEYS.reduce(
     (sum, key) => sum + Math.min(works[key], Math.max(0, storeCaps[key] - store[key])),
     0,
@@ -57,11 +59,12 @@ export function collectState({ caps, works, store, storeCaps }: CollectInput): C
   return {
     waiting,
     ripe: capacity > 0 && waiting >= capacity * COLLECT_THRESHOLD,
-    full,
+    full: stopped.length > 0,
     movable,
     blocked: waiting >= 1 && movable < 1,
     each: { alloy: works.alloy, crystal: works.crystal, deuterium: works.deuterium },
     noRoom: KEYS.filter((key) => works[key] >= 1 && storeCaps[key] - store[key] < 1),
+    stopped,
   };
 }
 

@@ -133,7 +133,6 @@ import { Cost } from '../v2/kit/Cost.js';
 import { NeedBar } from '../v2/kit/NeedBar.js';
 import { RoomBar } from '../v2/kit/RoomBar.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
-import { CollectHost } from '../v2/shell/CollectHost.js';
 import { BaseQueues } from '../v2/shell/BaseQueues.js';
 
 /**
@@ -486,8 +485,6 @@ export function PlanetScreen({
 
         {!lesson && <div className="flex flex-col gap-2 px-2 pt-2">
           <PlanetHero planet={data} />
-          {/* The works under the store they empty into (owner, 2026-09-24): a pool that fills. */}
-          <CollectHost place="base" onOpenBase={() => { setTab('grow'); }} />
         </div>}
 
         <div className="flex flex-col gap-2 px-2">

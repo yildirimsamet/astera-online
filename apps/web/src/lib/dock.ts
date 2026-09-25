@@ -22,7 +22,6 @@ export interface DockInput {
   threads: readonly PendingThread[];
   runs: readonly MiningRun[];
   /** The works hold enough to be worth collecting (`collectState().ripe`). */
-  collectRipe: boolean;
   /** Broken things on the active world. */
   faults: number;
   unseenReports: number;
@@ -71,7 +70,7 @@ export function dockBadges(input: DockInput): DockBadges {
     : null;
 
   return {
-    base: input.collectRipe || input.faults > 0,
+    base: input.faults > 0,
     fleet: { airborne: own.length, progress },
     intel: input.unseenReports,
     clan: input.clanAttention,

@@ -99,23 +99,3 @@ describe('the View chip in the Academy', () => {
     expect(source).toMatch(/<div data-sensor-toggles className="pointer-events-none">\s*<ViewChip/);
   });
 });
-
-describe('the collect bubble on the world', () => {
-  const canvas = readFileSync('src/galaxy/GalaxyCanvas.tsx', 'utf8');
-
-  it('is anchored to the active world in the scene', () => {
-    expect(canvas).toMatch(/onHomeAnchor && \(\s*<Html position=\{home\}/);
-  });
-
-  /**
-   * THROUGH A PORTAL, NOT INSIDE THE <Html>. Found in the real game: drei's `<Html>`
-   * renders into a React root of its own, and a bubble drawn inside it lost every
-   * provider — "useApi called outside ApiProvider". The scene only lends an anchor
-   * element; the galaxy portals the bubble into it from its own tree.
-   */
-  it('is portalled into that anchor by the galaxy, in the real game only', () => {
-    expect(canvas).not.toMatch(/homeOverlay/);
-    expect(source).toMatch(/showGuidance && season\.data\?\.status === 'live' \? \{ onHomeAnchor: setHomeAnchor \}/);
-    expect(source).toMatch(/createPortal\(\s*<CollectHost\b/);
-  });
-});

@@ -26,7 +26,6 @@ import { planetView } from '../../../test/fixtures.js';
 import type { AirborneItem } from '../../shell/PendingStrip.js';
 import type { DockBadges } from '../../lib/dock.js';
 import { BellSheet } from '../hud/BellSheet.js';
-import { CollectBubble } from '../hud/CollectBubble.js';
 import { ContextSlot, type ContextSlotProps } from '../hud/ContextSlot.js';
 import { FleetPage, type FleetTab } from '../hud/FleetPage.js';
 import { Dock } from '../hud/Dock.js';
@@ -75,16 +74,43 @@ const hull = (id: string, subject: string, from: number, to: number, count: numb
 const construction = [building('c1', 'REFINERY', -30, 12), building('c2', 'VAULT', 12, 95)];
 const yard = [hull('y1', 'DART', -4, 5, 12)];
 
+/** The works as the top bar reads them (owner, 2026-09-25): a gallery shape of `collectState`. */
+const works = (
+  each: { alloy: number; crystal: number; deuterium: number },
+  over: { stopped?: ('alloy' | 'crystal' | 'deuterium')[]; noRoom?: ('alloy' | 'crystal' | 'deuterium')[]; ripe?: boolean; blocked?: boolean } = {},
+): NonNullable<TopBarProps['works']> => {
+  const waiting = each.alloy + each.crystal + each.deuterium;
+  const noRoom = over.noRoom ?? [];
+  const stopped = over.stopped ?? [];
+  return {
+    state: {
+      waiting,
+      ripe: over.ripe ?? waiting > 500,
+      full: stopped.length > 0,
+      movable: over.blocked ? 0 : waiting,
+      blocked: over.blocked ?? false,
+      each,
+      noRoom,
+      stopped,
+    },
+    fullInMinutes: stopped.length > 0 ? null : 140,
+    pending: false,
+    onCollect: noop,
+    onOpenBase: noop,
+  };
+};
+
 const topBar: TopBarProps = {
   commander: 'Samet',
   shield: null,
   now: NOW,
   world: null,
   stock: {
-    alloy: { value: 12_400, cap: 20_000 },
-    crystal: { value: 3_105, cap: 8_000 },
-    deuterium: { value: 860, cap: 4_000 },
+    alloy: { value: 12_400, cap: 20_000, safe: 6_000 },
+    crystal: { value: 3_105, cap: 8_000, safe: 2_400 },
+    deuterium: { value: 860, cap: 4_000, safe: 1_200 },
   },
+  works: works({ alloy: 2_200, crystal: 862, deuterium: 40 }),
   bell: { unseen: 0, urgent: false },
   rewards: 0,
   boosted: false,
@@ -562,11 +588,14 @@ export function Gallery({ view }: { view: string | null }) {
     <div className="mx-auto flex min-h-dvh max-w-xl flex-col gap-5 bg-v2-void pb-10 text-v2-ink">
       <Section title="B1 · top bar">
         <TopBar {...topBar} />
+        <TopBar {...topBar} works={works({ alloy: 60, crystal: 12, deuterium: 0 }, { ripe: false })} />
+        <TopBar {...topBar} works={works({ alloy: 0, crystal: 0, deuterium: 0 }, { ripe: false })} />
         <TopBar
           {...topBar}
           shield={{ until: NOW + 7 * 60 * MIN, kind: 'RECOVERY' }}
           world={{ capital: false, name: 'Hollow' }}
-          stock={{ ...topBar.stock, alloy: { value: 20_000, cap: 20_000 }, crystal: { value: 184_000, cap: 250_000 } }}
+          stock={{ ...topBar.stock, alloy: { value: 20_000, cap: 20_000, safe: 6_000 }, crystal: { value: 184_000, cap: 250_000, safe: 60_000 } }}
+          works={works({ alloy: 4_000, crystal: 9_000, deuterium: 0 }, { stopped: ['crystal'], noRoom: ['alloy'] })}
           bell={{ unseen: 12, urgent: true }}
           rewards={2}
           boosted
@@ -634,16 +663,11 @@ export function Gallery({ view }: { view: string | null }) {
           <HoldButton label="Launch" onCommit={noop} disabledReason="Not enough Deuterium: 240 short" />
         </Section>
 
-        <Section title="resource meter · B13 collect · segmented">
+        <Section title="resource meter · segmented">
           <div className="grid grid-cols-3 gap-2">
-            <ResourceMeter resource="alloy" value={12_400} cap={20_000} />
-            <ResourceMeter resource="crystal" value={8_000} cap={8_000} />
+            <ResourceMeter resource="alloy" value={12_400} cap={20_000} safe={6_000} />
+            <ResourceMeter resource="crystal" value={8_000} cap={8_000} safe={2_400} />
             <ResourceMeter resource="deuterium" value={0} cap={0} />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <CollectBubble state={{ waiting: 3_200, ripe: true, full: false, movable: 3_200, blocked: false, each: { alloy: 2_000, crystal: 1_200, deuterium: 0 }, noRoom: [] }} pending={false} onCollect={noop} onOpenBase={noop} />
-            <CollectBubble state={{ waiting: 9_800, ripe: true, full: true, movable: 9_800, blocked: false, each: { alloy: 6_000, crystal: 3_000, deuterium: 800 }, noRoom: ['crystal'] }} pending={false} onCollect={noop} onOpenBase={noop} />
-            <CollectBubble state={{ waiting: 4_000, ripe: true, full: false, movable: 0, blocked: true, each: { alloy: 4_000, crystal: 0, deuterium: 0 }, noRoom: ['alloy'] }} pending={false} onCollect={noop} onOpenBase={noop} />
           </div>
           <Segmented
             label="Bell"

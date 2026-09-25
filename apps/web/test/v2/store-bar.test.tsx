@@ -62,6 +62,20 @@ describe('the store bar', () => {
     expect(cells(bar({ cap: 0 })).some((cell) => cell.hasAttribute('data-lit'))).toBe(false);
   });
 
+  /**
+   * THE SAME BAR ON THE TOP BAR (owner, 2026-09-25: "Top Status Bar'daki depo bar'larıda benzer
+   * tasarlamalısın"). Compact, it keeps the cells, the hues, the bracket and the cap; only the
+   * shield over the bracket, which needs a line of its own, is left to the Base.
+   */
+  it('keeps its cells, bracket and cap when compact, without the shield line', () => {
+    const root = bar({ compact: true });
+    expect(cells(root)).toHaveLength(12);
+    expect(cells(root).filter((cell) => cell.hasAttribute('data-lit'))).toHaveLength(7);
+    expect(root.querySelector('[data-safe]')).toHaveAttribute('data-safe-cells', '4');
+    expect(root.querySelector('[data-safe-shield]')).toBeNull();
+    expect(bar({ compact: true, value: 1200 }).querySelector('[data-full-cap]')).toHaveClass('bg-v2-warn');
+  });
+
   it('wears each resource’s own hue', () => {
     expect(cells(bar({ tone: 'crystal' }))[0]).toHaveClass('bg-v2-crystal');
     expect(cells(bar({ tone: 'deuterium' }))[0]).toHaveClass('bg-v2-deut');

@@ -78,6 +78,13 @@ describe('the works, resource by resource', () => {
     expect(state.noRoom).toEqual(['alloy']);
   });
 
+  /** The top bar marks the one resource that has stopped, under its own store (owner, 2026-09-25). */
+  it('names the resources whose vessel is full and has stopped', () => {
+    const state = collectState(input({ works: { alloy: 999.6, crystal: 400, deuterium: 0 } }));
+    expect(state.stopped).toEqual(['alloy']);
+    expect(collectState(input({ works: { alloy: 900, crystal: 0, deuterium: 0 } })).stopped).toEqual([]);
+  });
+
   it('names nothing as out of room when nothing of it is waiting', () => {
     const state = collectState(input({
       works: { alloy: 0, crystal: 300, deuterium: 0 },

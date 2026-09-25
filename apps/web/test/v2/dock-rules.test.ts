@@ -42,7 +42,6 @@ const input = (over: Partial<DockInput> = {}): DockInput => ({
   now: NOW,
   threads: [],
   runs: [],
-  collectRipe: false,
   faults: 0,
   unseenReports: 0,
   clanAttention: 0,
@@ -54,9 +53,9 @@ describe('the dock', () => {
     expect(DOCK_TABS).toEqual(['galaxy', 'base', 'fleet', 'intel', 'clan']);
   });
 
-  it('dots the base for something to collect or something broken', () => {
+  /** The works are on the top bar, where they are read (owner, 2026-09-25); the dot is for repairs. */
+  it('dots the base for something broken', () => {
     expect(dockBadges(input()).base).toBe(false);
-    expect(dockBadges(input({ collectRipe: true })).base).toBe(true);
     expect(dockBadges(input({ faults: 1 })).base).toBe(true);
   });
 

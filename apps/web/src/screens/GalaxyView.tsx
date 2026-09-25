@@ -1,6 +1,5 @@
 import { SilentSpaceNotice } from '../shell/SilentSpaceNotice.js';
 import { useReturnStatus, useApplyToReturn } from '../api/returnQueries.js';
-import { createPortal } from 'react-dom';
 import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
@@ -8,7 +7,6 @@ import { ContextSlot } from '../v2/hud/ContextSlot.js';
 import { ChatChip, EventChips, GalaxyReadout, HomeChip } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
-import { CollectHost } from '../v2/shell/CollectHost.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
 import { SeasonLockProvider } from '../session/seasonLock.js';
 import { VIEW } from '@astera/rules';
@@ -635,7 +633,6 @@ export function GalaxyView({
    */
   const [slotDismissed, setSlotDismissed] = useState<ReadonlySet<string>>(() => readDismissed(serverNow()));
   /** The element the scene lends over the active world; the collect bubble is portalled into it. */
-  const [homeAnchor, setHomeAnchor] = useState<HTMLDivElement | null>(null);
 
   /**
    * THE DISC COMES UP UNDER A COVER, NOT AFTER ONE. Owner decision.
@@ -1161,7 +1158,6 @@ export function GalaxyView({
         homeSignal={homeSignal}
         centerSignal={centerSignal}
         openingHome={openingHome}
-        {...(showGuidance && season.data?.status === 'live' ? { onHomeAnchor: setHomeAnchor } : {})}
         aim={aim}
         coachTap={coachTap}
         openWide={openWide ?? false}
@@ -1559,20 +1555,6 @@ export function GalaxyView({
       )}
 
       {/* ── full surfaces, over the live galaxy ─────────────── */}
-
-      {/*
-        THE COLLECT BUBBLE (B13), over the world itself. Portalled from here into the
-        anchor the scene lends, so it keeps this tree's providers (see `onHomeAnchor`).
-      */}
-      {homeAnchor && panel === null && createPortal(
-        <CollectHost
-          onOpenBase={() => {
-            setRequestedPlanetGroup('grow');
-            onPanel('planet');
-          }}
-        />,
-        homeAnchor,
-      )}
 
       {/*
         ── THE CONTEXT SLOT (B3): one card at the foot of the galaxy. ─────────────

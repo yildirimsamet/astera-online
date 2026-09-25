@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
+  useCollect,
   useGalaxyEvents,
   useMining,
   useNotifications,
@@ -11,9 +13,13 @@ import {
 } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
 import { bellState } from '../../lib/bell.js';
+import { collectState, worksOutlook } from '../../lib/collect.js';
+import { compact } from '../../lib/format.js';
+import { haptic } from '../../lib/haptics.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { useProjected } from '../../lib/projection.js';
 import { useNow } from '../../lib/time.js';
+import { describe, useToast } from '../../ui/Toast.js';
 import { NowLine } from '../hud/NowLine.js';
 import { TopBar } from '../hud/TopBar.js';
 
@@ -42,10 +48,14 @@ export interface HudTopProps {
  * between fetches the way the old header's did.
  */
 export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, nowOpen, onNow, tabs }: HudTopProps) {
+  const { t } = useTranslation();
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
   const planet = usePlanet();
-  const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 5_000);
+  // Every second: the works fill while the player watches, and the planet query has no poll.
+  const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 1_000);
+  const collect = useCollect();
+  const say = useToast();
   const season = useSeason().data;
   const notifications = useNotifications().data?.notifications ?? [];
   const rewards = useRewards().data?.claimable ?? 0;
@@ -58,6 +68,48 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, no
   const active = worlds.find((world) => world.planet.id === activePlanetId) ?? null;
   const shieldUntil = season?.shieldUntil ?? null;
   const boostUntil = data?.planet.productionBoostUntil ?? null;
+
+  /*
+    THE WORKS, ON THE TOP BAR (owner, 2026-09-25): the same reading, request and toast the
+    collect bubble and the Base's pool used — both gone, this is where the works are read.
+  */
+  const world = data?.planet;
+  const works = world ? (() => {
+    const caps = { alloy: world.bufferAlloyCap, crystal: world.bufferCrystalCap, deuterium: world.bufferDeuteriumCap };
+    const vessels = { alloy: held.bufferAlloy, crystal: held.bufferCrystal, deuterium: held.bufferDeuterium };
+    return {
+      state: collectState({
+        caps,
+        works: vessels,
+        store: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium },
+        storeCaps: { alloy: world.alloyCap, crystal: world.crystalCap, deuterium: world.deuteriumCap },
+      }),
+      fullInMinutes: worksOutlook({
+        caps,
+        works: vessels,
+        rates: { alloy: world.alloyPerHour, crystal: world.crystalPerHour, deuterium: world.deuteriumPerHour ?? 0 },
+      }).fullInMinutes,
+      pending: collect.isPending,
+      onCollect: () => {
+        haptic('commit');
+        collect.mutate(undefined, {
+          onSuccess: (result) => {
+            const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
+            const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
+            say(
+              kept > 0
+                ? t('statusBar.works.collectedPartly', { moved: compact(moved), held: compact(kept) })
+                : t('statusBar.works.collected', { amount: compact(moved) }),
+              kept > 0 ? 'error' : undefined,
+            );
+          },
+          onError: (error) => { say(describe(error), 'error'); },
+        });
+      },
+      // A store that can take none of it is raised where the Vault is built.
+      onOpenBase: onEconomy,
+    };
+  })() : undefined;
 
   const entries = nowEntries({
     now,
@@ -77,13 +129,14 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, no
         now={now}
         world={worlds.length > 1 && active ? { capital: active.planet.id === capitalPlanetId, name: active.planet.name } : null}
         stock={{
-          alloy: { value: held.alloy, cap: data?.planet.alloyCap ?? 0 },
-          crystal: { value: held.crystal, cap: data?.planet.crystalCap ?? 0 },
-          deuterium: { value: held.deuterium, cap: data?.planet.deuteriumCap ?? 0 },
+          alloy: { value: held.alloy, cap: data?.planet.alloyCap ?? 0, safe: data?.planet.vaultProtected.alloy ?? 0 },
+          crystal: { value: held.crystal, cap: data?.planet.crystalCap ?? 0, safe: data?.planet.vaultProtected.crystal ?? 0 },
+          deuterium: { value: held.deuterium, cap: data?.planet.deuteriumCap ?? 0, safe: data?.planet.vaultProtected.deuterium ?? 0 },
         }}
         bell={bellState(notifications, now)}
         rewards={rewards}
         boosted={boostUntil !== null && boostUntil.getTime() > now}
+        {...(works ? { works } : {})}
         onCommander={onCommander}
         onWorld={onWorlds}
         onResource={onEconomy}
