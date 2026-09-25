@@ -8,6 +8,7 @@ import { Api } from '../../api/client.js';
 import { ApiProvider } from '../../api/context.js';
 import { ToastProvider } from '../../ui/Toast.js';
 import { Gallery } from './Gallery.js';
+import { PlanetCardRender } from './PlanetModelsGallery.js';
 import '../../styles.css';
 
 // As the game does: `<html lang>` follows the language, which is what hyphenation reads.
@@ -24,6 +25,16 @@ if (language) void i18n.changeLanguage(language);
   network has said anything, and nothing here can reach a server.
 */
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+/*
+  `?view=planet-card&n=3` draws one world's card alone on a transparent page, for
+  `tools/planet-cards.mjs` to capture (F9): no chrome, no ground colour behind it.
+*/
+const card = params.get('view') === 'planet-card' ? Number(params.get('n') ?? '1') : null;
+if (card !== null) {
+  document.documentElement.style.background = 'transparent';
+  document.body.style.background = 'transparent';
+}
 const api = new Api({ fetch: () => new Promise<Response>(() => undefined) });
 
 const root = document.getElementById('root');
@@ -34,7 +45,9 @@ if (root) {
         <QueryClientProvider client={client}>
           <ApiProvider api={api}>
             <ToastProvider>
-              <Gallery view={params.get('view')} />
+              {card === null
+                ? <Gallery view={params.get('view')} />
+                : <PlanetCardRender index={card} size={Number(params.get('size') ?? '350')} />}
             </ToastProvider>
           </ApiProvider>
         </QueryClientProvider>

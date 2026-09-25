@@ -99,7 +99,18 @@ const hash = (seed: string): number => {
  * built on remembering who is who.
  */
 export const planetArt = (planetId: string): string =>
-  `${BASE}/planets/planet_${String((hash(planetId) % PLANET_COUNT) + 1)}.png`;
+  `${BASE}/planets/planet_${String(planetLook(planetId))}.png`;
+
+/** Which of the sixteen looks a world is, 1-based: the render and the model share it. */
+export const planetLook = (planetId: string): number => (hash(planetId) % PLANET_COUNT) + 1;
+
+/**
+ * THE SAME WORLD IN 3D (F9 · K7): the look's model, full or light. The light one is what
+ * the disc draws in bulk (`-lod`, `tools/models.mjs`); the full one is for a world the
+ * camera is close to. Same look as `planetArt`, so the card and the disc agree.
+ */
+export const planetModel = (planetId: string, lod: 'lite' | 'full'): string =>
+  `/assets/models/planets/defaults/planet_${String(planetLook(planetId))}${lod === 'lite' ? '-lod' : ''}.glb`;
 
 /**
  * Every world render there is.

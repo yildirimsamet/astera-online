@@ -56,6 +56,7 @@ import {
   strategicInterceptionMissilePosition,
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour } from './PlanetField.jsx';
+import { SCENE_LIGHT } from './planetSurface.js';
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
@@ -650,9 +651,11 @@ export function GalaxyCanvas({
       <fog attach="fog" args={['#070c18', 55, 210]} />
 
       {/* One key light, from the same upper-left the planet renders assume, so the
-          asteroids are shaded consistently with everything else. */}
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[-8, 12, 9]} intensity={2.2} />
+          asteroids are shaded consistently with everything else. RAISED WITH THE 3D
+          WORLDS (F9, owner: "ışığı biraz arttır"): lit surfaces now carry the disc, and
+          at 0.35 the side away from the key read as a hole. */}
+      <ambientLight intensity={SCENE_LIGHT.ambient} />
+      <directionalLight position={[-8, 12, 9]} intensity={SCENE_LIGHT.key} />
 
       <Nebula />
       <Core />

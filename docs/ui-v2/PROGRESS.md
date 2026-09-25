@@ -49,7 +49,7 @@
 | F6 | E7 İstihbarat, E9 Klan, Komutan sayfası | Sırada |
 | F7 | E10 Sen yokken + S3 | Bekliyor |
 | F8 | E11 Masaüstü | Bekliyor |
-| F9 | 3D gezegenler (16 `.glb`, Draco → meshopt, LOD) | Bekliyor |
+| F9 | 3D gezegenler (16 `.glb`, Draco → meshopt, LOD) | Çekirdek bitti (telefon ölçümü açık) |
 | F10 | Temizlik | Bekliyor |
 
 ## Sahip geri bildirimi (2026-09-24) — F3'ün geri kalanından ÖNCE
@@ -169,9 +169,23 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   kırpılmaları (etiket doğal genişlikte, sığmayan kontrol alta; Bildqualität segmenti tam satır; "-Konto" → "Konto").
 **Faz M bitti.** Web tam paket: yalnız bilinen 9 kırmızı.
 
-**Sonra: F9 · 3D gezegenler (K7)** — plan: 16 `.glb` (Draco) → meshopt + düşük LOD (`tools/models.mjs`), Sektör
-ölçeğinde görünür/yakın dünyalar düşük LOD 3D, odak ve Yörünge'de tam model, uzakta PNG billboard kalır; görünüm başına
-1 draw call; hata olursa PNG'ye düşer.
+**F9 · 3D gezegenler (K7) — çekirdek bitti (2026-09-25).**
+- Ana dosyalar (Draco) `assets/source/models/planets/defaults/` altında; `tools/models.mjs` her birinden iki dosya
+  üretir: tam model (meshopt, 10.374 üçgen, 1024 doku, ~200–250 KB) ve `-lod` (1.036 üçgen, 256 doku, ~35 KB).
+- Kademe ekrandaki yarıçaptan (`galaxy/planetLod.ts`): < 6 px PNG billboard (`dot`), ≥ 6 px hafif model, ≥ 70 px
+  tam model; %12 histerezis; ölçüm yalnız görüş değişen karede, kademe değişince bir kare istenir (demand döngüsü).
+  Her kademe görünüm başına bir örneklenmiş çizim; bir görünümün modeli tüm dünyalarına yer ayırır (kademe değişimi
+  sayı değiştirir, mesh değil). Model yüklenemez/yüklenirken dünyalar PNG'de kalır.
+- **Sahip kararı:** 16 model 16 PNG'den farklı görünümler → **kartlar modellerden yeniden render edildi**
+  (`tools/planet-cards.mjs`, galeri `?view=planet-card&n=N`, 350 px, paletli; toplam 908 KB, açılış bütçesi içinde).
+  Kart ile disk aynı dünya: `planetArt` ve `planetModel` aynı `planetLook`.
+- Yüzey (`galaxy/planetSurface.ts`, disk ve kart ortak): mat (metalik değil), gece tarafında kendi renginin %20'si
+  (sahip: "yarısı zifiri karanlık"; taban dünyanın tonuyla birlikte kararır); sahne ışığı ortam 0,35→0,6, anahtar
+  2,2→2,6 (`SCENE_LIGHT`).
+- Vuruş: model dünyanın seçim küresi billboard karesinin alanına eşit (`MODEL_PICK_SCALE` = 2/√π) ve
+  `?hitboxes=1`'de "planet" rengiyle boyanır (ücretli görünümler dahil; önceden boyanmıyordu).
+- Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
+  yana gösterir.
 
 ### Geri bildirim 3 (sahip, 2026-09-24) — 13 madde, gruplu plan
 Durum işaretleri: [ ] bekliyor · [x] bitti (commit).

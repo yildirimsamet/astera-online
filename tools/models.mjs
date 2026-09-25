@@ -120,6 +120,27 @@ const POLICY = {
    * woven cage and a geodesic sphere are told apart by their holes.
    */
   dyson: { texture: 768, simplify: false },
+  /**
+   * THE SIXTEEN DEFAULT WORLDS (F9 · K7), and the one kind that ships TWO files.
+   *
+   * They arrive as Draco exports — one mesh, 10,374 triangles, three 1024px WebP maps
+   * (colour; normal and roughness TILED sixteen times as a surface detail) — and the
+   * client decodes meshopt, not Draco, so every one goes through here.
+   *
+   *   · THE FULL MODEL keeps its geometry and its 1024 plates: it is what a commander
+   *     sees up close, on a focused world or their own, and there are only ever a
+   *     few of those on screen.
+   *   · THE `-lod` MODEL is what every other world in view is drawn with, hundreds at
+   *     once. A world's silhouette is a circle whatever it is made of, so its
+   *     geometry takes the asteroids' kind of cut; its plates drop to 256, because
+   *     the galaxy draws it at a few dozen pixels and uses only its colour map
+   *     (the tiled detail maps are sub-pixel there and are never bound).
+   */
+  planets: {
+    texture: 1024,
+    simplify: false,
+    lod: { suffix: '-lod', texture: 256, simplify: true, ratio: 0.1, error: 0.02 },
+  },
 };
 
 const DEFAULT_POLICY = { texture: 512, simplify: false };
@@ -205,7 +226,8 @@ const inspectOnly = process.argv.includes('--inspect');
 const fleetV2Only = process.argv.includes('--fleet-v2');
 /**
  * `--only=ships/garbage-collector.glb` optimises that one source and nothing else,
- * so adding a hull does not re-encode every approved model beside it.
+ * so adding a hull does not re-encode every approved model beside it. A value ending
+ * in `/` takes a whole folder (`--only=planets/`).
  */
 const onlyPath = process.argv.find((arg) => arg.startsWith('--only='))?.slice('--only='.length);
 
@@ -269,7 +291,38 @@ if (fleetV2Only) {
 }
 
 if (onlyPath !== undefined) {
-  sources = sources.filter((source) => relative(SOURCE, source).replaceAll('\\', '/') === onlyPath);
+  sources = sources.filter((source) => {
+    const rel = relative(SOURCE, source).replaceAll('\\', '/');
+    return onlyPath.endsWith('/') ? rel.startsWith(onlyPath) : rel === onlyPath;
+  });
+}
+
+/** One `gltf-transform optimize` run: meshopt geometry, WebP plates, an optional cut. */
+function optimize(source, target, policy) {
+  execFileSync(
+    'npx',
+    [
+      'gltf-transform',
+      'optimize',
+      source,
+      target,
+      '--texture-size',
+      String(policy.texture),
+      // WebP over KTX2 only because encoding KTX2 needs the `ktx` binary, which is
+      // not a dependency worth adding for one ship. KTX2 stays compressed in VRAM
+      // and is the better answer once there are many models.
+      '--texture-compress',
+      'webp',
+      '--compress',
+      'meshopt',
+      '--simplify',
+      String(policy.simplify),
+      ...(policy.simplify
+        ? ['--simplify-ratio', String(policy.ratio), '--simplify-error', String(policy.error)]
+        : []),
+    ],
+    { stdio: 'pipe' },
+  );
 }
 
 if (sources.length === 0) {
@@ -302,30 +355,7 @@ for (const source of sources) {
     : base;
 
   mkdirSync(dirname(target), { recursive: true });
-  execFileSync(
-    'npx',
-    [
-      'gltf-transform',
-      'optimize',
-      source,
-      target,
-      '--texture-size',
-      String(policy.texture),
-      // WebP over KTX2 only because encoding KTX2 needs the `ktx` binary, which is
-      // not a dependency worth adding for one ship. KTX2 stays compressed in VRAM
-      // and is the better answer once there are many models.
-      '--texture-compress',
-      'webp',
-      '--compress',
-      'meshopt',
-      '--simplify',
-      String(policy.simplify),
-      ...(policy.simplify
-        ? ['--simplify-ratio', String(policy.ratio), '--simplify-error', String(policy.error)]
-        : []),
-    ],
-    { stdio: 'pipe' },
-  );
+  optimize(source, target, policy);
 
   const after = describe(target);
   const shrunk = (before.bytes / after.bytes).toFixed(1);
@@ -333,4 +363,12 @@ for (const source of sources) {
     `${relative(SOURCE, source)}: ${kb(before.bytes)} → ${kb(after.bytes)} (${shrunk}x) · ` +
       `${before.triangles} → ${after.triangles} tris`,
   );
+
+  // A kind drawn both near and in bulk ships a second, lighter file beside the first.
+  if (policy.lod) {
+    const lodTarget = target.replace(/\.glb$/, `${policy.lod.suffix}.glb`);
+    optimize(source, lodTarget, policy.lod);
+    const lod = describe(lodTarget);
+    console.log(`  ${relative(OUT, lodTarget)}: ${kb(lod.bytes)} · ${lod.triangles} tris`);
+  }
 }

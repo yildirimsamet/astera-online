@@ -32,6 +32,8 @@ const source = (path: string): string => readFileSync(path, 'utf8');
 /** Every file that owns a pick volume, and the kind it must paint it with. */
 const HIT_SITES: readonly (readonly [string, string])[] = [
   ['src/galaxy/PlanetField.tsx', 'planet'],
+  // A world drawn as a model (F9, and every skin) is picked by a sphere, not its billboard.
+  ['src/galaxy/PlanetSkinModel.tsx', 'planet'],
   ['src/galaxy/Asteroids.tsx', 'asteroid'],
   ['src/galaxy/MiningFlights.tsx', 'miner'],
   ['src/galaxy/TradeShip.tsx', 'trade'],

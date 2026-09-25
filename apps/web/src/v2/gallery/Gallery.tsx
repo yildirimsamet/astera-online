@@ -17,6 +17,7 @@ import { StrikeSheet } from '../../galaxy/FocusPanel.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
+import { PlanetModelsGallery } from './PlanetModelsGallery.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -427,6 +428,7 @@ function Views({ view }: { view: string }) {
       />
     );
   }
+  if (view === 'planet-models') return <PlanetModelsGallery />;
   if (view === 'away') {
     // The mock's return story: a raid held, a convoy home, a Telescope opening, a world to repair.
     return (

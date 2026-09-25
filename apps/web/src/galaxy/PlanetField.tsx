@@ -1,7 +1,7 @@
-import { Suspense, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { planetArt } from '../ui/assets.js';
+import { planetArt, planetLook } from '../ui/assets.js';
 import { limbTexture, softGlow } from './Environment.jsx';
 import { fireTexture, smokeTexture } from './vfx.js';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
@@ -10,12 +10,20 @@ import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { partitionPlanetSkins } from '../ui/planetSkins.js';
-import { PlanetSkinModel } from './PlanetSkinModel.jsx';
+import { DefaultPlanetModel, PlanetSkinModel } from './PlanetSkinModel.jsx';
+import { groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from './planetLod.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
 
 /**
- * Every world in the disc, in sixteen draw calls.
+ * Every world in the disc, in a draw per look and tier.
+ *
+ * THE WORLDS ARE 3D NOW (F9 · K7), at the cost the disc can pay: a speck is the PNG
+ * billboard below, a world a few dozen pixels across is its look's light model, a
+ * world the camera is close to is the full one — chosen from what it occupies on
+ * screen (`planetLod.ts`), so the thousand-seat galaxy seen whole stays a field of
+ * quads. The history of the billboard follows, because the billboard is still the
+ * speck and the fallback.
  *
  * WHY INSTANCED. The first version built four meshes per planet — a hit target, a
  * glow, the body, a ring. At the design's 200-player shard that is 800 meshes, and
@@ -50,24 +58,48 @@ export function PlanetField({
   rivals: readonly RivalMark[];
   onSelect: (id: string) => void;
 }) {
-  // One bucket per distinct render, so each bucket can be a single instanced draw.
-  const groups = useMemo<Group[]>(() => {
-    const byTexture = new Map<string, PlanetNode[]>();
-    for (const node of partitionPlanetSkins(nodes).png) {
-      const texture = planetArt(node.id);
-      const bucket = byTexture.get(texture);
-      if (bucket) bucket.push(node);
-      else byTexture.set(texture, [node]);
-    }
-    return [...byTexture].map(([texture, group]) => ({ texture, nodes: group }));
-  }, [nodes]);
-  const skinGroups = useMemo(() => partitionPlanetSkins(nodes).models, [nodes]);
+  const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
+  const lods = usePlanetLods(defaults);
+  // Each tier grouped by look, so a tier is one instanced draw per look.
+  const tiers = useMemo(() => groupPlanetsByLod(defaults, (id) => lods.get(id) ?? 'dot'), [defaults, lods]);
+  // Every world of a look: the room a look's model keeps, so a tier change moves a count.
+  const perLook = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const node of defaults) counts.set(planetLook(node.id), (counts.get(planetLook(node.id)) ?? 0) + 1);
+    return counts;
+  }, [defaults]);
+  const modelled = [
+    ...tiers.lite.map((group) => ({ ...group, lite: true })),
+    ...tiers.full.map((group) => ({ ...group, lite: false })),
+  ];
 
   return (
     <>
-      {groups.map((group) => (
+      {tiers.dots.map((group) => (
         <PlanetInstances key={group.texture} group={group} onSelect={onSelect} />
       ))}
+      {modelled.map((group) => {
+        // A model that fails, or is still on its way, leaves these worlds on their render.
+        const render = (
+          <PlanetInstances
+            group={{ texture: planetArt(group.nodes[0]?.id ?? ''), nodes: group.nodes }}
+            onSelect={onSelect}
+          />
+        );
+        return (
+          <SkinAssetBoundary key={group.url} fallback={render}>
+            <Suspense fallback={render}>
+              <DefaultPlanetModel
+                url={group.url}
+                lite={group.lite}
+                nodes={group.nodes}
+                capacity={perLook.get(planetLook(group.nodes[0]?.id ?? '')) ?? group.nodes.length}
+                onSelect={onSelect}
+              />
+            </Suspense>
+          </SkinAssetBoundary>
+        );
+      })}
       {skinGroups.map((group) => (
         <SkinAssetBoundary
           key={`${group.skinId}:${group.status}`}
@@ -105,6 +137,42 @@ export function PlanetField({
       />
     </>
   );
+}
+
+/**
+ * WHICH MODEL EACH DEFAULT WORLD IS DRAWN WITH, FROM WHAT IT OCCUPIES ON SCREEN (F9).
+ *
+ * Measured only in a frame whose view moved (`viewMemo.ts`), and handed back only when a
+ * world actually changed tier — so a still camera costs nothing and a zoom re-renders the
+ * field a handful of times, not every frame. Until the first measurement every world is a
+ * speck, which is the render it always was.
+ */
+function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, PlanetLod> {
+  const camera = useThree((state) => state.camera);
+  const height = useThree((state) => state.size.height);
+  const [lods, setLods] = useState<ReadonlyMap<string, PlanetLod>>(() => new Map());
+  const held = useRef(lods);
+  const memo = useRef(createViewMemo());
+  const at = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    if (!viewChanged(memo.current, camera, nodes, height)) return;
+    const fov = camera instanceof THREE.PerspectiveCamera ? camera.fov : 45;
+    const next = new Map<string, PlanetLod>();
+    let changed = held.current.size !== nodes.length;
+    for (const node of nodes) {
+      at.set(node.position[0], node.position[1], node.position[2]);
+      const before = held.current.get(node.id);
+      const lod = lodFor(screenRadius(node.radius, camera.position.distanceTo(at), fov, height), before);
+      next.set(node.id, lod);
+      if (lod !== before) changed = true;
+    }
+    if (!changed) return;
+    held.current = next;
+    setLods(next);
+  });
+
+  return lods;
 }
 
 /** The one-hour tactical blackout: an electrical cage replaces the Aegis dome. */
@@ -531,6 +599,7 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
   const texture = useLoader(THREE.TextureLoader, group.texture);
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
+  const invalidate = useThree((state) => state.invalidate);
   const count = group.nodes.length;
 
   /**
@@ -602,7 +671,10 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
      * Planets never move, so this runs once per data change rather than per frame.
      */
     mesh.computeBoundingSphere();
-  }, [group.nodes, tint]);
+    // A group whose worlds changed as the camera came to rest (F9's tiers) is faced by
+    // the next frame, and the disc draws on demand: ask for that frame.
+    invalidate();
+  }, [group.nodes, tint, invalidate]);
 
   /**
    * A WORLD'S PICK VOLUME, AND WHY IT IS THE ONE THAT NEEDS A SECOND MESH.
