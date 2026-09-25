@@ -162,7 +162,6 @@ export function ClanWaveSheet({ operation, worlds, onClose, onSent }: {
                     decreaseLabel={t('launch.fewer', { name: hullName(hull) })}
                     increaseLabel={t('launch.more', { name: hullName(hull) })}
                     valueLabel={t('launch.quantity', { name: hullName(hull) })}
-                    editable
                     maxLabel={t('launch.max', { name: hullName(hull) })}
                     maxText={t('launch.maxShort')}
                   />

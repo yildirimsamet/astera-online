@@ -447,7 +447,6 @@ export function TradeSheet({
                   decreaseLabel={t('trade.fewer', { name: hullLabel(id) })}
                   increaseLabel={t('trade.more', { name: hullLabel(id) })}
                   valueLabel={t('trade.quantity', { name: hullLabel(id) })}
-                  editable
                   maxLabel={t('trade.max', { name: hullLabel(id) })}
                   maxText={t('trade.maxShort')}
                 />

@@ -147,6 +147,9 @@ describe('choosing a fleet to attack with', () => {
     expect(quantity).toHaveValue('');
 
     await user.type(quantity, '250');
+    // As typed while the field is held; settled to what is at home once it is left.
+    expect(quantity).toHaveValue('250');
+    await user.tab();
     expect(quantity).toHaveValue('200');
   });
 

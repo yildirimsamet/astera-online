@@ -400,7 +400,6 @@ export function TransferSheet({
                     decreaseLabel={t('launch.fewer', { name: hullName(id) ?? id })}
                     increaseLabel={t('launch.more', { name: hullName(id) ?? id })}
                     valueLabel={t('launch.quantity', { name: hullName(id) ?? id })}
-                    editable
                     maxLabel={t('launch.max', { name: hullName(id) ?? id })}
                     maxText={t('launch.maxShort')}
                   />

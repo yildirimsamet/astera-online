@@ -238,7 +238,6 @@ export function IntergalacticConvoySheet({
                   decreaseLabel={t('convoy.fewer', { name: hullLabel(hull) })}
                   increaseLabel={t('convoy.more', { name: hullLabel(hull) })}
                   valueLabel={t('convoy.quantity', { name: hullLabel(hull) })}
-                  editable
                   maxLabel={t('convoy.max', { name: hullLabel(hull) })}
                   maxText={t('convoy.maxShort')}
                 />

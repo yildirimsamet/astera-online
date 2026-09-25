@@ -618,14 +618,21 @@ describe('the quantity picker', () => {
     expect(room.querySelector('[data-room-legend]')).toHaveTextContent(`this order ${String(3 * hullBulk('DART'))}`);
   });
 
-  it('offers minus, plus and Max around a read-only quantity for a warship', async () => {
+  it('offers minus, plus and Max around a typed quantity for a warship', async () => {
     show();
     await openSheet('Dart');
     expect(screen.getByRole('button', { name: /fewer dart/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /more dart/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /max dart/i })).toBeEnabled();
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('1');
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveAttribute('readonly');
+    const quantity = screen.getByRole('textbox', { name: /dart quantity/i });
+    expect(quantity).toHaveValue('1');
+    // Owner, 2026-09-25: the count is typed as well as stepped.
+    const user = userEvent.setup();
+    await user.clear(quantity);
+    await user.type(quantity, '3');
+    expect(quantity).toHaveValue('3');
+    await user.tab();
+    expect(quantity).toHaveValue('3');
   });
 
   /** THE COMPLAINT, ASSERTED: the ownership cap is also the picker's ceiling. */

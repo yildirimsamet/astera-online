@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { haptic } from '../lib/haptics.js';
 import { Button, IconButton } from './kit/index.js';
 
@@ -10,8 +10,6 @@ interface QuantityStepperProps {
   decreaseLabel: string;
   increaseLabel: string;
   valueLabel: string;
-  /** Allow direct digit entry while keeping the step buttons available. */
-  editable?: boolean;
   /** Accessible name; include the hull when several steppers share a sheet. */
   maxLabel: string;
   /** Short visible copy. Defaults to the accessible label on single steppers. */
@@ -43,7 +41,6 @@ export function QuantityStepper({
   decreaseLabel,
   increaseLabel,
   valueLabel,
-  editable = false,
   maxLabel,
   maxText = maxLabel,
   resetLabel,
@@ -52,31 +49,26 @@ export function QuantityStepper({
 }: QuantityStepperProps) {
   const upper = Math.max(min, max);
   const current = Math.max(min, Math.min(upper, Math.floor(value)));
-  const [draft, setDraft] = useState(() => String(current));
-
-  useEffect(() => {
-    setDraft((held) => held === '' && current === min ? held : String(current));
-  }, [current, min]);
+  /*
+    WHAT IS BEING TYPED, EXACTLY AS TYPED (owner, 2026-09-25: "inputu boşaltıp baştan sayı
+    yazabilmeyi mümkün kıl"). Null while the field is not being written in, when it shows
+    the count. Nothing rewrites it mid-word — not a bound, not the count coming back — so
+    the field can be emptied and written again; it is settled when the player leaves it.
+  */
+  const [draft, setDraft] = useState<string | null>(null);
 
   const commit = (next: number): void => {
-    if (editable) setDraft(String(next));
+    setDraft(null);
     onChange(next);
   };
 
+  /* The count goes out as it is typed, within its bounds, so a press that follows the
+     typing — a hold on Launch before the field has lost focus — sends this number. */
   const enter = (event: ChangeEvent<HTMLInputElement>): void => {
-    const digits = event.currentTarget.value.replace(/\D/g, '');
-    if (digits === '') {
-      setDraft('');
-      onChange(min);
-      return;
-    }
-
-    const parsed = Number.parseInt(digits, 10);
-    const next = Number.isSafeInteger(parsed)
-      ? Math.max(min, Math.min(upper, parsed))
-      : upper;
-    setDraft(String(next));
-    onChange(next);
+    const typed = event.currentTarget.value.replace(/\D/g, '');
+    setDraft(typed);
+    const parsed = Number.parseInt(typed, 10);
+    onChange(typed === '' ? min : Number.isSafeInteger(parsed) ? Math.max(min, Math.min(upper, parsed)) : upper);
   };
 
   const field = (className: string) => (
@@ -85,9 +77,13 @@ export function QuantityStepper({
       inputMode="numeric"
       pattern="[0-9]*"
       aria-label={valueLabel}
-      readOnly={!editable}
-      value={editable ? draft : String(current)}
-      onChange={editable ? enter : undefined}
+      value={draft ?? String(current)}
+      // Entered with the count selected, so the first figure typed replaces it.
+      onFocus={(event) => { event.currentTarget.select(); }}
+      onChange={enter}
+      // Settled on leaving: an empty field is the floor, too many the most there are.
+      onBlur={() => { setDraft(null); }}
+      onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
       className={className}
     />
   );
