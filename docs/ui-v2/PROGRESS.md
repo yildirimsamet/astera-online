@@ -221,6 +221,20 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   malzeme `visible`'ı; model aracı master'ın yapısı + gezegen varyantları. Master'ın kaplama yolu F9'da düzeltilen
   dokunma hatasını geri getiriyor (seçim küreleri her kare sıkıştırılıyor, sınırlayıcı küre hiç yeniden
   hesaplanmıyor) — birleşmede `placePickSpheres` mantığı oraya da taşınmalı.
+- **master birleşti — `0e5b06a` (2026-09-25).** Yukarıdaki kararlarla; kaplama seçim küreleri ve uzak kaplama
+  billboard'ları `planetPick.seat/settleMembers` ile üye değişince yeniden ölçülür; `placeBodies` master'ın dönüş,
+  faz ve gövde ölçeğini okur. Web tam paket yalnız bilinen 9 kırmızı (4395 yeşil), rules bilinen 4, sunucu kaplama
+  testleri bilinen 4 `contract`. Canlı (izdüşümle hedeflenen dokunuşlar): ev dışı 6/6, kaplamalı dünya (lav, yerel
+  veritabanında geçici sahnelenip geri alındı) taze sayfada ve zoom sonrası 2/2, konsol hatası yok. Ana ağaçta izlenmeyen
+  16 `planets/defaults/planet_N.glb` ui-v2'nin `assets/source/...` kopyalarıyla bayt bayt aynı; ui-v2 master'a
+  alınmadan önce silinmeli (aynı yola optimize dosyalar gelir; sahibe söylendi).
+- **İlk tam sunucu ölçümü (2026-09-25, `8bf578b`, 136 dosya):** 42 kırmızı, hiçbiri ui-v2'nin sunucu değişikliklerinde
+  değil; ui-v2'nin kendi sunucu testleri (attack-recall, mining, pending, reports, rewards, session, transfer-recall,
+  clan-war-battle) yeşil. Kırmızılar master'daki kural kaymasının bayat testleri: `snowball-audit` ×15,
+  `fleet-ceiling` ×6 (Hangar geri döndü), `contract` ×4, `intel-states` ×3, `asteroid-fog` ×2, `world-memory` ×2
+  (koloni tavanı, sonda), `build-queue`, `construction-speed`, `event-bus-reconnect` (Uplink), `concurrency` (sonda
+  yuvası), `fault-attack` (Ölüm Yıldızı kapalı), `garbage-collector`, `intergalactic-convoy-schema` (enum sırası),
+  `notifications` (koloni arıza türleri), `onboarding` (Dart kristali 78).
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 
