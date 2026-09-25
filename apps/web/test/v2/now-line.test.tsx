@@ -88,7 +88,7 @@ describe('the Now line', () => {
   it('counts down in the reader’s language', async () => {
     render(<NowLine entries={entries({ threads: [thread('transfer', 252_000)] })} now={NOW} {...closed()} />);
     await act(async () => { await i18n.changeLanguage('tr'); });
-    expect(screen.getByText('4d 12sn')).toBeInTheDocument();
+    expect(screen.getByText('4 dk 12 sn')).toBeInTheDocument();
     await act(async () => { await i18n.changeLanguage('en'); });
   });
 

@@ -27,7 +27,7 @@ describe('galaxy events guide', () => {
     render(<GalaxyEventsGuide onClose={vi.fn()} />);
 
     expect(screen.getByRole('status', { name: 'Sıradaki etkinlik' })).toHaveTextContent(
-      /Asteroid Yağmuru.*30d sonra/i,
+      /Asteroid Yağmuru.*30 dk sonra/i,
     );
     expect(screen.getAllByText(/Yerel/i).length).toBeGreaterThan(0);
     vi.useRealTimers();

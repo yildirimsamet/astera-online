@@ -727,17 +727,26 @@ function SettingRow({
   children,
   below,
   title,
+  stack = false,
 }: {
   label: string;
   children: ReactNode;
   below?: string;
   title?: string;
+  /** The control takes the whole line under its label: three words in a row need the width. */
+  stack?: boolean;
 }) {
   return (
     <div data-setting-row className="px-2 py-2" {...(title === undefined ? {} : { title })}>
-      <div className="flex items-center gap-2">
-        <span className="legend w-16 shrink-0 leading-tight">{label}</span>
-        <div className="min-w-0 flex-1">{children}</div>
+      {/*
+        THE LABEL KEEPS ITS WORD, THE CONTROL ITS ROOM (M5, seen at 350 in German): a
+        64px label column cut "BILDQUALITÄT" and laid "Noch nicht ausgewählt" over
+        "DATENSCHUTZ". The label takes its own width; a control that no longer fits
+        beside it goes under it rather than over it.
+      */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="legend min-w-16 shrink-0 leading-tight">{label}</span>
+        <div className={stack ? 'basis-full' : 'min-w-48 flex-1'}>{children}</div>
       </div>
       {below === undefined ? null : (
         <p className="mt-1.5 text-micro leading-snug text-faint">{below}</p>
@@ -924,7 +933,7 @@ function QualitySetting() {
   }));
 
   return (
-    <SettingRow label={t('menu.qualityLabel')} below={t(`menu.qualityHint.${quality}`)}>
+    <SettingRow stack label={t('menu.qualityLabel')} below={t(`menu.qualityHint.${quality}`)}>
       <Segmented
         size="sm"
         label={t('menu.qualityLabel')}

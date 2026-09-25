@@ -833,19 +833,22 @@ export const CLANMATE_COLOUR = '#5ad39b';
  * NONE OF THEM IS A COLOUR THE DISC ALREADY SPENDS. Green is a clanmate and an
  * open window, blue is the commander's own worlds, and the recovery red is its own
  * alarm — a rival hue that collided with any of those would turn the one control
- * that says "watch this" into a control that says something else. The first is the
- * orange-red the single mark has always been, so a commander who had one before
- * D183 sees it unchanged.
+ * that says "watch this" into a control that says something else.
+ *
+ * THE GÖZLEMEVİ'S MARKS (M5, K2): the five are `--color-v2-rival-1…5`, the
+ * magenta–violet family the chips, reports and dossiers wear, so a mark reads the same
+ * everywhere. The canvas needs hex, so they are written out here; a test holds the two
+ * lists to one.
  *
  * ORDERED BY SLOT because the slot IS the identity of a mark: the first mark a
  * commander places is always the first colour, whatever they clear afterwards.
  */
 export const RIVAL_COLOURS = [
-  '#ff6b43',
-  '#f2c14e',
-  '#c86bff',
-  '#ff5fa2',
-  '#8b8bff',
+  '#f25cd3',
+  '#b07cff',
+  '#ff8fc4',
+  '#d8b4fe',
+  '#c2479e',
 ] as const;
 
 /**

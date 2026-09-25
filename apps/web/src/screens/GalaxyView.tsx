@@ -108,7 +108,7 @@ import { FeedbackScreen } from './FeedbackScreen.js';
 import { DonateScreen } from './DonateScreen.js';
 import { MenuPanel } from '../shell/MenuPanel.jsx';
 import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
-import { Sheet, Waiting } from '../ui/kit/index.js';
+import { Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
@@ -1631,16 +1631,23 @@ export function GalaxyView({
         />
       )}
 
+      {/*
+        THE BASE AND ITS RESEARCH, AS THE MOCKS DRAW THEM (M5): no page header — the switch
+        and the world's hero head the page, the close floats beside the switch, and the page
+        stands under the top bar so the purse stays in sight while it is spent.
+      */}
       {panel === 'planet' && planet.data && (
-        <Sheet
+        <V2Sheet
           bleed
-          eyebrow={planet.data.planet.name}
-          title={commander}
+          detents={['full']}
+          quietTitle
+          eyebrow={commander}
+          title={planet.data.planet.name}
           onClose={() => {
             onPanel(null);
           }}
         >
-          <BaseSwitch value="world" onChange={openBase} />
+          <div className="pr-10"><BaseSwitch value="world" onChange={openBase} /></div>
           <PlanetScreen
             onOpenResearch={(project) => {
               setResearchFocus(project);
@@ -1651,7 +1658,7 @@ export function GalaxyView({
               : {})}
             {...(requestedItem ? { focusItem: requestedItem } : {})}
           />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {eventsGuideOpen ? (
@@ -1665,7 +1672,9 @@ export function GalaxyView({
         Command Core, and the Core is on the planet sheet.
       */}
       {panel === 'research' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
+          quietTitle
           eyebrow={t('research.eyebrow')}
           title={t('research.title')}
           onClose={() => {
@@ -1673,7 +1682,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <BaseSwitch value="research" onChange={openBase} />
+          <div className="pr-10"><BaseSwitch value="research" onChange={openBase} /></div>
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
@@ -1684,7 +1693,7 @@ export function GalaxyView({
               setRequestedPlanetGroup(TAB_OF[id] ?? 'grow');
             }}
           />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {returnStatus.data && <SilentSpaceNotice
@@ -1697,7 +1706,8 @@ export function GalaxyView({
       />}
 
       {panel === 'menu' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           eyebrow={t('galaxy.panelCommanderEyebrow')}
           title={commander}
           onClose={() => {
@@ -1740,11 +1750,12 @@ export function GalaxyView({
             {...(onReplayAcademy ? { onReplayAcademy } : {})}
             isAdmin={isAdmin}
           />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'rewards' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           {...menuBack}
           eyebrow={t('rewards.eyebrow')}
           title={t('rewards.title')}
@@ -1753,11 +1764,12 @@ export function GalaxyView({
           }}
         >
           <RewardsScreen commander={commander} />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'leaderboard' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           bleed
           {...menuBack}
           eyebrow={t('leaderboard.eyebrow')}
@@ -1772,44 +1784,48 @@ export function GalaxyView({
               focusPlanet(planetId);
             }}
           />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'announcements' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           {...menuBack}
           eyebrow={t('community.announcements.eyebrow')}
           title={t('community.announcements.title')}
           onClose={() => { onPanel(null); }}
         >
           <AnnouncementsScreen />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'feedback' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           {...menuBack}
           eyebrow={t('community.feedback.eyebrow')}
           title={t('community.feedback.title')}
           onClose={() => { onPanel(null); }}
         >
           <FeedbackScreen />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'donate' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           {...menuBack}
           eyebrow={t('community.donate.eyebrow')}
           title={t('community.donate.title')}
           onClose={() => { onPanel(null); }}
         >
           <DonateScreen />
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'skin-shop' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           bleed
           {...menuBack}
           eyebrow={t('menu.asteraHeading')}
@@ -1819,11 +1835,12 @@ export function GalaxyView({
           <Suspense fallback={<Waiting>{t('menu.skinsShopLabel')}</Waiting>}>
             <SkinsScreen onOpenInventory={() => { onPanel('skin-inventory'); }} />
           </Suspense>
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'skin-inventory' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           bleed
           {...menuBack}
           eyebrow={t('menu.asteraHeading')}
@@ -1833,11 +1850,12 @@ export function GalaxyView({
           <Suspense fallback={<Waiting>{t('menu.skinsInventoryLabel')}</Waiting>}>
             <SkinInventoryScreen onOpenShop={() => { onPanel('skin-shop'); }} />
           </Suspense>
-        </Sheet>
+        </V2Sheet>
       )}
 
       {isAdmin && panel === 'admin' && (
-        <Sheet
+        <V2Sheet
+          detents={['full']}
           contained
           bleed
           {...menuBack}
@@ -1848,7 +1866,7 @@ export function GalaxyView({
           <Suspense fallback={<Waiting>{t('community.admin.title')}</Waiting>}>
             <AdminPanel />
           </Suspense>
-        </Sheet>
+        </V2Sheet>
       )}
 
       {panel === 'clan' && (

@@ -13,8 +13,9 @@ const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
   half: 'max-h-[55dvh]',
   /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
-  fit: 'max-h-[92dvh]',
-  full: 'h-[92dvh] max-h-full',
+  fit: 'max-h-full',
+  /** The room between the top bar and the dock, and no more: the top bar stays above a page (M5). */
+  full: 'h-full',
 };
 
 /**
@@ -171,7 +172,8 @@ export function Sheet({
   return (
     <div
       className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col ${FRAME[placement].holder}`}
-      style={{ bottom: 'var(--v2-dock-h, 0px)' }}
+      /* From under the top bar (`--v2-top-h`, published by the shell) to above the dock. */
+      style={{ top: 'var(--v2-top-h, 0px)', bottom: 'var(--v2-dock-h, 0px)' }}
     >
       {modal && (
         <button

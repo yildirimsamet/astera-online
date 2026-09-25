@@ -159,8 +159,15 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   dosyası açık getirir (`onFocusPlanet(id, {dossier})`), **sadakat/arıza satırı** (`worldCare(useWorld().worlds)`:
   en çok arızası duran dünya, sadakati düşüyorsa yüzdesi) → "onar" o dünyanın Üs'sünü açar; "Galaksiye dön".
   Galeri `away` görünümü eklendi.
-- [ ] **M5 Ortak:** rakip renkleri v2 K2 tonlarına, TR süre biçimi (sa/dk), üst çubuk sayfaların üstünde, eski kit
-  başlıkları (Üs, Araştırma).
+- [x] **M5 Ortak** — rakip renkleri (`RIVAL_COLOURS`, disk + çipler + raporlar) v2 `--color-v2-rival-1…5`
+  tonlarında (test iki listeyi tek tutar); TR süreleri "1 sa 26 dk · 12 dk 05 sn · 1 g 1 sa" (eski "1s 26d"
+  İngilizce saniye/gün gibi okunuyordu); rapor kahramanında "Bugün/Dün 21:40" (`dayClock`); **üst çubuk her sayfanın
+  üstünde** (v2 Sheet `--v2-top-h`'den dock'a kadar, `full` = o alan); Üs/Araştırma/Komutan ve menü alt sayfaları
+  (sıralama, ödüller, duyurular, geri bildirim, bağış, görünümler, envanter, yönetim) v2 Sheet'e taşındı — Üs ve
+  Araştırma'da maketteki gibi sayfa başlığı yok (eski "THİSTLE-131 / SHELL…" ve "KOMUTAN / ARAŞTIRMA" kalktı), kapat
+  anahtarın yanında yüzer; Üs'teki cüzdan şeridi kalktı (üst çubuk artık hep görünüyor); Komutan ayarlarında DE
+  kırpılmaları (etiket doğal genişlikte, sığmayan kontrol alta; Bildqualität segmenti tam satır; "-Konto" → "Konto").
+**Faz M bitti.** Web tam paket: yalnız bilinen 9 kırmızı.
 
 **Sonra: F9 · 3D gezegenler (K7)** — plan: 16 `.glb` (Draco) → meshopt + düşük LOD (`tools/models.mjs`), Sektör
 ölçeğinde görünür/yakın dünyalar düşük LOD 3D, odak ve Yörünge'de tam model, uzakta PNG billboard kalır; görünüm başına

@@ -74,6 +74,12 @@ describe('the report scene', () => {
     expect(document.querySelector('[data-report-word]')).toHaveClass('text-v2-hostile');
   });
 
+  /** The mock's "Bugün 21:40": a fight from today is dated by the day's word and its clock. */
+  it('dates a fight from today as today', () => {
+    render(<ReportScene report={report({ at: new Date(Date.now() - 5 * 60_000) })} word="Partial victory" />);
+    expect(document.querySelector('[data-report-hero]')).toHaveTextContent(/Today \d/);
+  });
+
   it('wears the rival’s mark on their name when they are marked', () => {
     const { rerender } = render(<ReportScene report={report()} word="Partial victory" />);
     expect(document.querySelector('[data-report-opponent]')).not.toHaveAttribute('data-rival');

@@ -647,6 +647,8 @@ export const units = {
   live: 'live',
   ago: '{{duration}} ago',
   imminent: 'any moment',
+  todayAt: 'Today {{time}}',
+  yesterdayAt: 'Yesterday {{time}}',
   hoursMinutes: '{{h}}h {{m}}m',
   minutesSeconds: '{{m}}m {{s}}s',
   hoursMinutesSeconds: '{{h}}h {{m}}m {{s}}s',

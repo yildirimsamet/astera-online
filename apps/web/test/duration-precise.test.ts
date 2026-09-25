@@ -19,28 +19,28 @@ describe('a precise duration', () => {
     describe(lang, () => {
       it('shows minutes and seconds under an hour', async () => {
         await i18n.changeLanguage(lang);
-        expect(durationPrecise(12 + 41 / 60)).toBe(lang === 'tr' ? '12d 41sn' : '12m 41s');
+        expect(durationPrecise(12 + 41 / 60)).toBe(lang === 'tr' ? '12 dk 41 sn' : '12m 41s');
       });
 
       it('pads the seconds so the figure does not jump width', async () => {
         await i18n.changeLanguage(lang);
-        expect(durationPrecise(12 + 5 / 60)).toBe(lang === 'tr' ? '12d 05sn' : '12m 05s');
+        expect(durationPrecise(12 + 5 / 60)).toBe(lang === 'tr' ? '12 dk 05 sn' : '12m 05s');
       });
 
       it('shows all three units past an hour', async () => {
         await i18n.changeLanguage(lang);
-        expect(durationPrecise(61 + 5 / 60)).toBe(lang === 'tr' ? '1s 01d 05sn' : '1h 01m 05s');
+        expect(durationPrecise(61 + 5 / 60)).toBe(lang === 'tr' ? '1 sa 01 dk 05 sn' : '1h 01m 05s');
       });
 
       it('drops to seconds alone under a minute', async () => {
         await i18n.changeLanguage(lang);
-        expect(durationPrecise(41 / 60)).toBe(lang === 'tr' ? '41sn' : '41s');
+        expect(durationPrecise(41 / 60)).toBe(lang === 'tr' ? '41 sn' : '41s');
       });
 
       /** Unpadded, because this is `duration`'s own shape and it does not pad. */
       it('falls back to days and hours past a day', async () => {
         await i18n.changeLanguage(lang);
-        expect(durationPrecise(25 * 60 + 30)).toBe(lang === 'tr' ? '1g 1s' : '1d 1h');
+        expect(durationPrecise(25 * 60 + 30)).toBe(lang === 'tr' ? '1 g 1 sa' : '1d 1h');
       });
     });
   }

@@ -2,8 +2,10 @@ import { useTranslation } from 'react-i18next';
 import { FAULT, HULLS } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
+import { serverNow } from '../../lib/clock.js';
 import { compact } from '../../lib/format.js';
 import { lossReason, sentAndLeft, type SideRow } from '../../lib/reportScene.js';
+import { dayClock } from '../../lib/time.js';
 import { rivalColour } from '../../galaxy/PlanetField.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
 import { Icon } from '../icons.js';
@@ -131,7 +133,8 @@ export function ReportScene({
     : report.attacking
       ? report.grade === 'REPELLED' ? 'text-v2-ink-2' : 'text-v2-self'
       : report.grade === 'REPELLED' ? 'text-v2-self' : 'text-v2-hostile';
-  const time = new Intl.DateTimeFormat(t('units.numberLocale'), { dateStyle: 'medium', timeStyle: 'short' }).format(report.at);
+  /* The mock's "Bugün 21:40": today and yesterday by their word, anything older by its date. */
+  const time = dayClock(report.at, serverNow());
   const hour = new Intl.DateTimeFormat(t('units.numberLocale'), { timeStyle: 'short' }).format(report.at);
   /*
     WHAT THE FIGHT ADDED TO THE DOSSIER. The attacker's copy of a fight is what the dossier

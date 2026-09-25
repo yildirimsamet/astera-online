@@ -80,7 +80,6 @@ import { useProjected, type Projected } from '../lib/projection.js';
 import {
   HULL_ART,
   RESEARCH_ART,
-  RESOURCE_ART,
   SATELLITE_ART,
   STRATEGIC_ART,
   buildingArt,
@@ -500,7 +499,6 @@ export function PlanetScreen({
         <Tabs
           active={active}
           onSelect={setTab}
-          held={held}
           broken={brokenGroups}
         />
 
@@ -633,54 +631,6 @@ export const TAB_OF: Record<string, GroupId | undefined> = {
  * sections now just points at one. Advice that moves is useful; furniture that
  * moves is not.
  */
-/**
- * THE WALLET TRAVELS WITH THE CATEGORIES.
- *
- * Every row on this screen is a price, and the one number needed to read a price
- * was in the header BEHIND this sheet — so deciding what to build meant closing
- * the sheet, reading the header, and opening it again. The owner hit that
- * immediately, and it is the kind of thing that only shows up in use.
- *
- * It sits in the same sticky block as the categories rather than in a strip of its
- * own, because the two answer the same question in sequence — "what can I afford"
- * then "what am I looking at" — and two separately-pinned bars would eat a third
- * of a phone screen between them.
- *
- * STORAGE ONLY; the works are their own row under the store (`WorksPool`). What you can spend and what you
- * are holding are different numbers under D16, and running them together would
- * quietly restore the belief that the collector exists to break.
- */
-function Wallet({ held }: { held: Projected }) {
-  const { t } = useTranslation();
-
-  /*
-    `full()` AND NEVER `compact()`. The header's own store already carried that
-    rule and its reason — "a store that reads 10k cannot be checked against a
-    price of 9,240" — and this strip, which exists precisely so a price can be
-    checked without closing the sheet, was rendering the same three numbers
-    compacted. Both were on screen at once: 1,303 above and 1.3k below.
-  */
-  return (
-    <div className="flex items-center gap-2 px-2 pb-2 pt-2 text-body">
-      <span className="flex items-center gap-2">
-        <img src={RESOURCE_ART.alloy} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-alloy">{full(held.alloy)}</span>
-      </span>
-      <span className="flex items-center gap-2">
-        <img src={RESOURCE_ART.crystal} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-crystal">{full(held.crystal)}</span>
-      </span>
-      <span
-        className="flex items-center gap-2"
-        aria-label={t('statusBar.deuteriumLabel')}
-      >
-        <img src={RESOURCE_ART.deuterium} alt="" aria-hidden className="size-4 object-contain" />
-        <span className="num text-deuterium">{full(held.deuterium)}</span>
-      </span>
-    </div>
-  );
-}
-
 /** Two independent commitments, kept visible while the player makes the next one. */
 /**
  * ÜÇ ONARIM LANE'İ, AYNI ANDA KOŞAR. Koloni arızaları.
@@ -1002,12 +952,10 @@ function TacticalNeed({ ok, onFix, children }: { ok: boolean; onFix?: () => void
 function Tabs({
   active,
   onSelect,
-  held,
   broken = [],
 }: {
   active: GroupId;
   onSelect: (id: GroupId) => void;
-  held: Projected;
   /** Which categories hold something broken. A FACT, never a ranking — see `Segment.mark`. */
   broken?: readonly GroupId[];
 }) {
@@ -1018,7 +966,12 @@ function Tabs({
   // against a price.
   return (
     <div className="sticky top-0 z-20 border-y border-line-soft bg-deep">
-      <Wallet held={held} />
+      {/*
+        NO WALLET HERE ANY MORE (M5). It rode the categories because the purse was in a
+        header BEHIND this sheet; the page now stands under the top bar, which shows the
+        purse whole to 99,999, and every price already marks the part the purse cannot
+        meet — so a second copy of three numbers was height with no purpose.
+      */}
       {/*
         `data-tab` is how a surface outside this screen points at a category: the
         onboarding lights the one a beat is working in, because a dimmed screen

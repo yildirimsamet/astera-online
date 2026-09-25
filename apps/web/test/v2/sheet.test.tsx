@@ -61,6 +61,19 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
+  /**
+   * THE TOP BAR STAYS ABOVE EVERY PAGE (M5, the mocks): the purse and the bell are read
+   * while a page is open, so a page runs from under the top bar (`--v2-top-h`, which the
+   * shell publishes) down to the dock, and a full page fills that and no more.
+   */
+  it('stands under the top bar, and a full page fills only the room below it', () => {
+    render(<Sheet title="Fleet" detents={['full']} onClose={vi.fn()}>body</Sheet>);
+    const dialog = screen.getByRole('dialog', { name: 'Fleet' });
+    expect(dialog.parentElement!.style.top).toBe('var(--v2-top-h, 0px)');
+    expect(dialog).toHaveClass('h-full');
+    expect(dialog.className).not.toMatch(/h-\[92dvh\]/);
+  });
+
   /** The return story's card (M4): in the middle at every width, and with no handle to pull. */
   it('stands a card in the middle, with nothing to pull', () => {
     render(<Sheet title="While you were away" detents={['fit']} placement="card" onClose={vi.fn()}>body</Sheet>);
@@ -241,7 +254,8 @@ describe('the sheet', () => {
     render(<Sheet title="Refinery" onClose={vi.fn()} detents={['fit']}>body</Sheet>);
     const panel = screen.getByRole('dialog', { name: 'Refinery' });
     expect(panel).toHaveAttribute('data-detent', 'fit');
-    expect(panel).toHaveClass('max-h-[92dvh]');
+    // Up to a page: the room under the top bar (M5), never over it.
+    expect(panel).toHaveClass('max-h-full');
     expect(panel.className).not.toMatch(/(^|\s)h-\[92dvh\]/);
     expect(panel).toHaveAttribute('aria-modal', 'true');
     expect(document.querySelector('[data-sheet-body]')).toHaveClass('overflow-y-auto');

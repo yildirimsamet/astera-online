@@ -197,3 +197,18 @@ export const clockTime = (at: Date): string =>
     hour: '2-digit',
     minute: '2-digit',
   });
+
+/**
+ * WHEN SOMETHING HAPPENED, READ AGAINST TODAY (M5, the report mock's "Bugün 21:40"). A
+ * moment from today or yesterday needs only its clock and the day's word; anything older
+ * keeps its date. Calendar days in the reader's own time zone, like `clockTime`.
+ */
+export function dayClock(at: Date, now: number): string {
+  const locale = i18n.t('units.numberLocale');
+  const time = new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(at);
+  const day = (moment: Date): number => new Date(moment.getFullYear(), moment.getMonth(), moment.getDate()).getTime();
+  const days = Math.round((day(new Date(now)) - day(at)) / 86_400_000);
+  if (days === 0) return i18n.t('units.todayAt', { time });
+  if (days === 1) return i18n.t('units.yesterdayAt', { time });
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(at);
+}

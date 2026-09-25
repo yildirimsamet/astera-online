@@ -122,9 +122,14 @@ describe('the orbit surface', () => {
       .toBeInTheDocument();
   });
 
-  it('keeps Deuterium in the sheet wallet before its research door opens', () => {
+  /**
+   * THE PURSE IS THE TOP BAR'S (M5). The sheet carried a second wallet because the purse
+   * sat behind it; the page now stands under the top bar, which shows Deuterium from the
+   * first minute, so the sheet no longer draws a copy of it.
+   */
+  it('leaves the purse to the top bar rather than drawing a second wallet', () => {
     show({ research: [] });
-    expect(screen.getByLabelText('Deuterium')).toHaveTextContent('0');
+    expect(screen.queryByLabelText('Deuterium')).toBeNull();
   });
 
   it('places every item under the outcome a player is looking for', async () => {

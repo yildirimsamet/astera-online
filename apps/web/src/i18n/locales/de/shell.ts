@@ -266,7 +266,7 @@ export const menu = {
   rivalLostShort: 'Markierung verloren',
   rivalLostHint: 'Diese Welt ist verschwunden. Löschen Sie die Markierung.',
   rivalCleared: 'Der verlorene Rival-Marker wurde gelöscht.',
-  accountHeading: '-Konto',
+  accountHeading: 'Konto',
   soundLabel: 'Ton',
   soundOn: 'Die Partitur wird abgespielt.',
   soundOff: 'Auf diesem Gerät stummgeschaltet.',

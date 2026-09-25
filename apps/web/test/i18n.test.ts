@@ -808,11 +808,13 @@ describe('numbers and clocks follow the language', () => {
     expect(duration(45)).toBe('45m');
     expect(staleness(0.5)).toBe('live');
 
+    // The mocks' "1 sa 26 dk": "1s 04d" read as English seconds and days.
     await i18n.changeLanguage('tr');
-    expect(countdown(3_840_000)).toBe('1s 04d');
-    expect(countdown(18_000)).toBe('18sn');
+    expect(countdown(3_840_000)).toBe('1 sa 04 dk');
+    expect(countdown(18_000)).toBe('18 sn');
     expect(countdown(0)).toBe('şimdi');
-    expect(duration(45)).toBe('45d');
+    expect(duration(45)).toBe('45 dk');
+    expect(duration(25 * 60)).toBe('1 g 1 sa');
     expect(staleness(0.5)).toBe('canlı');
     await i18n.changeLanguage('en');
   });
@@ -838,8 +840,8 @@ describe('numbers and clocks follow the language', () => {
     expect(duration(0.004)).toBe('1s');
 
     await i18n.changeLanguage('tr');
-    expect(duration(0.49)).toBe('29sn');
-    expect(duration(1)).toBe('1d');
+    expect(duration(0.49)).toBe('29 sn');
+    expect(duration(1)).toBe('1 dk');
     await i18n.changeLanguage('en');
   });
 });

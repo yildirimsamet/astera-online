@@ -217,6 +217,18 @@ describe('the three states, as the disc reads them', () => {
     }
   });
 
+  /**
+   * THE DISC WEARS THE GÖZLEMEVİ'S MARKS (M5, K2): the five rival hues are the tokens'
+   * magenta–violet family, so a mark reads the same on the disc, on a chip and in a
+   * report. The canvas needs them as hex; this keeps the two lists one list.
+   */
+  it('draws the five marks in the v2 rival tokens', () => {
+    const tokens = readFileSync('src/v2/tokens.css', 'utf8');
+    const slots = [1, 2, 3, 4, 5].map((slot) =>
+      new RegExp(`--color-v2-rival-${String(slot)}:\\s*(#[0-9a-f]{6})`, 'i').exec(tokens)?.[1]?.toLowerCase());
+    expect(RIVAL_COLOURS.map((colour) => colour.toLowerCase())).toEqual(slots);
+  });
+
   /** A slot past the palette still draws: the colour wraps rather than vanishing. */
   it('never leaves a mark without a colour', () => {
     expect(rivalColour(0)).toBe(RIVAL_COLOURS[0]);
