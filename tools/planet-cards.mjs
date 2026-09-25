@@ -22,6 +22,7 @@
  */
 import { createRequire } from 'node:module';
 import { realpathSync, writeFileSync } from 'node:fs';
+import { writePlanetVersions } from './planet-versions.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -66,3 +67,5 @@ for (const n of cards) {
   console.log(`planet_${String(n)}.png · ${String(Math.round(png.length / 1024))} KB`);
 }
 await browser.close();
+// The cards are asked for by content hash: a new card must be a new URL.
+writePlanetVersions();

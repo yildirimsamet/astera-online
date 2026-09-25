@@ -1,7 +1,8 @@
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { planetArt, planetLook } from '../ui/assets.js';
+import { planetArt, planetLook, planetModel } from '../ui/assets.js';
 import { limbTexture, softGlow } from './Environment.jsx';
 import { fireTexture, smokeTexture } from './vfx.js';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
@@ -18,12 +19,10 @@ import { createViewMemo, viewChanged } from './viewMemo.js';
 /**
  * Every world in the disc, in a draw per look and tier.
  *
- * THE WORLDS ARE 3D NOW (F9 · K7), at the cost the disc can pay: a speck is the PNG
- * billboard below, a world a few dozen pixels across is its look's light model, a
- * world the camera is close to is the full one — chosen from what it occupies on
- * screen (`planetLod.ts`), so the thousand-seat galaxy seen whole stays a field of
- * quads. The history of the billboard follows, because the billboard is still the
- * speck and the fallback.
+ * THE WORLDS ARE 3D NOW (F9 · K7), a model at every distance: a speck is its look's far
+ * model, a world a few dozen pixels across the light one, a world the camera is close to
+ * the full one — chosen from what it occupies on screen (`planetLod.ts`). The billboard
+ * below is only the stand-in while a model loads or if it fails; its history follows.
  *
  * WHY INSTANCED. The first version built four meshes per planet — a hit target, a
  * glow, the body, a ring. At the design's 200-player shard that is 800 meshes, and
@@ -60,38 +59,54 @@ export function PlanetField({
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
   const lods = usePlanetLods(defaults);
-  // Each tier grouped by look, so a tier is one instanced draw per look.
-  const tiers = useMemo(() => groupPlanetsByLod(defaults, (id) => lods.get(id) ?? 'dot'), [defaults, lods]);
+  /*
+    THE FAR AND LIGHT MODEL OF EVERY LOOK ON THE DISC, UP FRONT (~50 KB a look): the
+    models a zoom moves most worlds between are in the cache before the camera asks for
+    them. The full model (a few close worlds, 200 KB each) loads on demand — and while it
+    does, the light one stays up (the tier change is a transition, below).
+  */
+  useEffect(() => {
+    const seen = new Set<number>();
+    for (const node of defaults) {
+      const look = planetLook(node.id);
+      if (seen.has(look)) continue;
+      seen.add(look);
+      useGLTF.preload(planetModel(node.id, 'far'));
+      useGLTF.preload(planetModel(node.id, 'lite'));
+    }
+  }, [defaults]);
+  // Each tier grouped by look, so a tier is one instanced draw per look. Until the first
+  // measurement every world is a speck, the lightest model there is.
+  const tiers = useMemo(() => groupPlanetsByLod(defaults, (id) => lods.get(id) ?? 'far'), [defaults, lods]);
   // Every world of a look: the room a look's model keeps, so a tier change moves a count.
   const perLook = useMemo(() => {
     const counts = new Map<number, number>();
     for (const node of defaults) counts.set(planetLook(node.id), (counts.get(planetLook(node.id)) ?? 0) + 1);
     return counts;
   }, [defaults]);
-  const modelled = [
-    ...tiers.lite.map((group) => ({ ...group, lite: true })),
-    ...tiers.full.map((group) => ({ ...group, lite: false })),
-  ];
 
   return (
     <>
-      {tiers.dots.map((group) => (
-        <PlanetInstances key={group.texture} group={group} onSelect={onSelect} />
-      ))}
-      {modelled.map((group) => {
-        // A model that fails, or is still on its way, leaves these worlds on their render.
+      {tiers.map((group) => {
+        // A model that fails, or is still on its way, leaves these worlds on their card —
+        // rendered from the same model, so the stand-in is the same world.
         const render = (
           <PlanetInstances
             group={{ texture: planetArt(group.nodes[0]?.id ?? ''), nodes: group.nodes }}
             onSelect={onSelect}
           />
         );
+        /*
+          THE STAND-IN'S OWN LOADING STAYS HERE. The card suspends on its texture too, and
+          a fallback that suspends climbs to the scene's one boundary — which hid every
+          world, pin and fleet at once (owner: "gezegenler aslında yok ama çiziliyor mu").
+        */
         return (
-          <SkinAssetBoundary key={group.url} fallback={render}>
-            <Suspense fallback={render}>
+          <SkinAssetBoundary key={group.url} fallback={<Suspense fallback={null}>{render}</Suspense>}>
+            <Suspense fallback={<Suspense fallback={null}>{render}</Suspense>}>
               <DefaultPlanetModel
                 url={group.url}
-                lite={group.lite}
+                lod={group.lod}
                 nodes={group.nodes}
                 capacity={perLook.get(planetLook(group.nodes[0]?.id ?? '')) ?? group.nodes.length}
                 onSelect={onSelect}
@@ -103,20 +118,17 @@ export function PlanetField({
       {skinGroups.map((group) => (
         <SkinAssetBoundary
           key={`${group.skinId}:${group.status}`}
+          // Each stand-in card keeps its own loading to itself, as the default worlds' do.
           fallback={group.nodes.map((node) => (
-            <PlanetInstances
-              key={node.id}
-              group={{ texture: planetArt(node.id), nodes: [node] }}
-              onSelect={onSelect}
-            />
+            <Suspense key={node.id} fallback={null}>
+              <PlanetInstances group={{ texture: planetArt(node.id), nodes: [node] }} onSelect={onSelect} />
+            </Suspense>
           ))}
         >
           <Suspense fallback={group.nodes.map((node) => (
-            <PlanetInstances
-              key={node.id}
-              group={{ texture: planetArt(node.id), nodes: [node] }}
-              onSelect={onSelect}
-            />
+            <Suspense key={node.id} fallback={null}>
+              <PlanetInstances group={{ texture: planetArt(node.id), nodes: [node] }} onSelect={onSelect} />
+            </Suspense>
           ))}>
             <PlanetSkinModel
               skinId={group.skinId}
@@ -169,7 +181,13 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
     }
     if (!changed) return;
     held.current = next;
-    setLods(next);
+    /*
+      A TRANSITION, SO NOTHING BLINKS. A tier change can mount a model not yet loaded;
+      as an urgent update that suspension swapped the world for its stand-in (or worse,
+      see the boundary note above). As a transition React keeps the current models on
+      screen until every new one is ready, then swaps them in one commit.
+    */
+    startTransition(() => { setLods(next); });
   });
 
   return lods;

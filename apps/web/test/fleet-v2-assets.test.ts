@@ -27,7 +27,7 @@ const manifest = (assets as unknown as {
 }).FLEET_V2_ASSET_MANIFEST;
 
 const served = (url: string): string =>
-  resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+  resolve(process.cwd(), 'public', url.replace(/^\//, '').replace(/\?.*$/, ''));
 
 interface GlbDocument {
   readonly extensionsRequired?: readonly string[];

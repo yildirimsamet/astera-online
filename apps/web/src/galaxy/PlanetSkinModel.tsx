@@ -7,7 +7,8 @@ import type { PlanetSkinStatus } from '@astera/rules';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface } from './planetSurface.js';
-import { MODEL_PICK_SCALE } from './planetLod.js';
+import type { PlanetLod } from './planetLod.js';
+import { placePickSpheres } from './planetPick.js';
 import { HitboxMaterial } from './hitboxDebug.jsx';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
@@ -110,22 +111,23 @@ export function PlanetSkinModel({
  */
 export function DefaultPlanetModel({
   url,
-  lite,
+  lod,
   nodes,
   capacity,
   onSelect,
 }: {
   url: string;
-  lite: boolean;
+  lod: PlanetLod;
   nodes: readonly SkinNode[];
   capacity: number;
   onSelect?: (id: string) => void;
 }) {
   return (
     <ModelInstances
-      name={lite ? 'planet-models-lite' : 'planet-models-full'}
+      name={`planet-models-${lod}`}
       modelUrl={url}
-      dress={lite ? dressLite : dressFull}
+      // Only a world the camera is close to binds its detail maps; a speck and a planet do not.
+      dress={lod === 'full' ? dressFull : dressLite}
       nodes={nodes}
       capacity={Math.max(capacity, nodes.length)}
       onSelect={onSelect}
@@ -173,7 +175,8 @@ function ModelInstances({
     if (!mesh) return;
     // Drawn as many as are in this tier now; the mesh holds room for the whole look.
     mesh.count = nodes.length;
-    if (hits.current) hits.current.count = nodes.length;
+    // Placed here, with the members, and measured for the raycaster (`planetPick.ts`).
+    if (hits.current) placePickSpheres(hits.current, nodes);
     nodes.forEach((node, i) => {
       const light = bodyLight(node.stance, node.intel);
       const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
@@ -184,7 +187,8 @@ function ModelInstances({
     // The disc draws on demand: worlds that joined this tier as the camera came to rest
     // are placed by the next frame, so ask for one rather than wait for the next move.
     invalidate();
-  }, [nodes, tint, dressed, invalidate]);
+    // A new capacity or geometry is a new mesh, and a new mesh has to be placed again.
+  }, [nodes, tint, dressed, invalidate, capacity, geometry]);
 
   useFrame(({ clock }) => {
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
@@ -196,13 +200,8 @@ function ModelInstances({
       helper.scale.setScalar(node.radius * 0.96);
       helper.updateMatrix();
       mesh.setMatrixAt(i, helper.matrix);
-      // The pick sphere covers the billboard's square, not the body: the same tap opens it.
-      helper.scale.setScalar(node.radius * MODEL_PICK_SCALE);
-      helper.updateMatrix();
-      hits.current?.setMatrixAt(i, helper.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
-    if (hits.current) hits.current.instanceMatrix.needsUpdate = true;
   });
 
   if (!geometry || !dressed || nodes.length === 0 || capacity === 0) return null;

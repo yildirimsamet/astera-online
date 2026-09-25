@@ -184,6 +184,17 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   2,2→2,6 (`SCENE_LIGHT`).
 - Vuruş: model dünyanın seçim küresi billboard karesinin alanına eşit (`MODEL_PICK_SCALE` = 2/√π) ve
   `?hitboxes=1`'de "planet" rengiyle boyanır (ücretli görünümler dahil; önceden boyanmıyordu).
+- **Sahip düzeltmeleri (aynı gün):** billboard kademesi yok — uzak kademe de model (`-far`, 512 üçgen, 128 doku);
+  tam model 4.000 üçgen; yakın eşiği d/r ≈ 34 (telefon dikey, `PLANET_LOD.full` = 29 px), uzak ≈ 163; PNG kart yalnız
+  model yüklenirken/yüklenemezse. Gezegen dosyaları içerik hash'iyle istenir (`?v=`, `src/ui/planet-assets.json`,
+  `tools/planet-versions.mjs`; nginx `/assets/`'i bir yıl immutable önbellekliyor, adı değişmeyen kart bir yıl eski
+  kalırdı); test manifestin dosyalarla uyuştuğunu şart koşar.
+- **Dokunma hatası (telefon, sahip):** "bazılarına tıklayabiliyorum bazılarına değil / gezegenler yok ama çiziliyor
+  mu". İki kök neden: (1) örnekli vuruş küresinin sınırlayıcı küresi ilk raycast'te bayat matrislerden hesaplanıyordu
+  → `planetPick.ts` üyeler değişince yerleştirip ölçer; (2) kademe değişimi yüklenmemiş model bağlıyor, yedek kartın
+  doku beklemesi sahnenin tek Suspense sınırına tırmanıp bütün dünyaları/etiketleri gizliyordu (R3F gizliyi yine de
+  raycast eder) → kademe `startTransition`, yedek kartın kendi `Suspense`'i, uzak+orta modeller baştan ön yüklenir.
+  Canlı: 5/5 dokunuş, zoom sonrası dahil.
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 

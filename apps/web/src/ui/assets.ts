@@ -1,3 +1,4 @@
+import planetVersions from './planet-assets.json';
 import {
   HANGAR,
   INSTRUMENT_MAX_LEVEL,
@@ -99,18 +100,31 @@ const hash = (seed: string): number => {
  * built on remembering who is who.
  */
 export const planetArt = (planetId: string): string =>
-  `${BASE}/planets/planet_${String(planetLook(planetId))}.png`;
+  planetFile(`images/planets/planet_${String(planetLook(planetId))}.png`);
 
-/** Which of the sixteen looks a world is, 1-based: the render and the model share it. */
+/** Which of the sixteen looks a world is, 1-based: the card and the models share it. */
 export const planetLook = (planetId: string): number => (hash(planetId) % PLANET_COUNT) + 1;
 
 /**
- * THE SAME WORLD IN 3D (F9 · K7): the look's model, full or light. The light one is what
- * the disc draws in bulk (`-lod`, `tools/models.mjs`); the full one is for a world the
- * camera is close to. Same look as `planetArt`, so the card and the disc agree.
+ * A PLANET FILE, ASKED FOR BY ITS CONTENT (F9). Production serves `/assets/` immutable
+ * for a year, and these names never change — so each URL carries the file's hash from
+ * `planet-assets.json` (written by the tools that make the files): a browser keeps a
+ * world's card and models for a year, and a replaced file is a new URL it fetches once.
  */
-export const planetModel = (planetId: string, lod: 'lite' | 'full'): string =>
-  `/assets/models/planets/defaults/planet_${String(planetLook(planetId))}${lod === 'lite' ? '-lod' : ''}.glb`;
+const PLANET_VERSIONS: Readonly<Record<string, string>> = planetVersions;
+function planetFile(path: string): string {
+  return `/assets/${path}?v=${PLANET_VERSIONS[path] ?? '0'}`;
+}
+
+const TIER_SUFFIX = { far: '-far', lite: '-lod', full: '' } as const;
+
+/**
+ * THE SAME WORLD IN 3D (F9 · K7): the look's model at a tier — `far` for a speck, `lite`
+ * for most worlds in view, `full` for one the camera is close to (`tools/models.mjs`).
+ * Same look as `planetArt`, whose card is rendered from the full model.
+ */
+export const planetModel = (planetId: string, tier: keyof typeof TIER_SUFFIX): string =>
+  planetFile(`models/planets/defaults/planet_${String(planetLook(planetId))}${TIER_SUFFIX[tier]}.glb`);
 
 /**
  * Every world render there is.
@@ -122,7 +136,7 @@ export const planetModel = (planetId: string, lod: 'lite' | 'full'): string =>
  */
 export const PLANET_ART: readonly string[] = Array.from(
   { length: PLANET_COUNT },
-  (_, i) => `${BASE}/planets/planet_${String(i + 1)}.png`,
+  (_, i) => planetFile(`images/planets/planet_${String(i + 1)}.png`),
 );
 
 /* ── hulls ──────────────────────────────────────────────────── */

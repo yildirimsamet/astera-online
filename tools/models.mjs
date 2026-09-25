@@ -19,6 +19,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { writePlanetVersions } from './planet-versions.mjs';
 
 const SOURCE = 'assets/source/models';
 const OUT = 'apps/web/public/assets/models';
@@ -121,25 +122,32 @@ const POLICY = {
    */
   dyson: { texture: 768, simplify: false },
   /**
-   * THE SIXTEEN DEFAULT WORLDS (F9 · K7), and the one kind that ships TWO files.
+   * THE SIXTEEN DEFAULT WORLDS (F9 · K7), and the one kind that ships THREE files.
    *
    * They arrive as Draco exports — one mesh, 10,374 triangles, three 1024px WebP maps
    * (colour; normal and roughness TILED sixteen times as a surface detail) — and the
    * client decodes meshopt, not Draco, so every one goes through here.
    *
-   *   · THE FULL MODEL keeps its geometry and its 1024 plates: it is what a commander
-   *     sees up close, on a focused world or their own, and there are only ever a
-   *     few of those on screen.
-   *   · THE `-lod` MODEL is what every other world in view is drawn with, hundreds at
-   *     once. A world's silhouette is a circle whatever it is made of, so its
-   *     geometry takes the asteroids' kind of cut; its plates drop to 256, because
-   *     the galaxy draws it at a few dozen pixels and uses only its colour map
-   *     (the tiled detail maps are sub-pixel there and are never bound).
+   *   · THE FULL MODEL is what a commander sees up close, on a focused world or their
+   *     own — only ever a few on screen. Its 1024 plates stay; its geometry is cut to
+   *     four thousand triangles (owner: "5k yerine 4k"), where the rim stays round
+   *     and the surface detail lives in the normal map anyway.
+   *   · THE `-lod` MODEL is what most worlds in view are drawn with, hundreds at once.
+   *     A world's silhouette is a circle whatever it is made of, so its geometry takes
+   *     the asteroids' kind of cut; its plates drop to 256, because the galaxy draws
+   *     it at a few dozen pixels and uses only its colour map.
+   *   · THE `-far` MODEL is a speck (owner: no billboard, even there): a few hundred
+   *     triangles and a 128 plate, for the whole thousand-seat galaxy seen at once.
    */
   planets: {
     texture: 1024,
-    simplify: false,
-    lod: { suffix: '-lod', texture: 256, simplify: true, ratio: 0.1, error: 0.02 },
+    simplify: true,
+    ratio: 4_000 / 10_374,
+    error: 0.005,
+    variants: [
+      { suffix: '-lod', texture: 256, simplify: true, ratio: 0.1, error: 0.02 },
+      { suffix: '-far', texture: 128, simplify: true, ratio: 0.025, error: 0.05 },
+    ],
   },
 };
 
@@ -364,11 +372,16 @@ for (const source of sources) {
       `${before.triangles} → ${after.triangles} tris`,
   );
 
-  // A kind drawn both near and in bulk ships a second, lighter file beside the first.
-  if (policy.lod) {
-    const lodTarget = target.replace(/\.glb$/, `${policy.lod.suffix}.glb`);
-    optimize(source, lodTarget, policy.lod);
-    const lod = describe(lodTarget);
-    console.log(`  ${relative(OUT, lodTarget)}: ${kb(lod.bytes)} · ${lod.triangles} tris`);
+  // A kind drawn both near and in bulk ships lighter files beside the first.
+  for (const variant of policy.variants ?? []) {
+    const variantTarget = target.replace(/\.glb$/, `${variant.suffix}.glb`);
+    optimize(source, variantTarget, variant);
+    const made = describe(variantTarget);
+    console.log(`  ${relative(OUT, variantTarget)}: ${kb(made.bytes)} · ${made.triangles} tris`);
   }
+}
+
+// The planet files are asked for by content hash: a new file must be a new URL.
+if (sources.some((source) => relative(SOURCE, source).replaceAll('\\', '/').startsWith('planets/'))) {
+  writePlanetVersions();
 }

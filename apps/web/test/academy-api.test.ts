@@ -210,7 +210,8 @@ describe('the worlds the sight lesson shows', () => {
 
 describe('the world the raid lesson attacks', () => {
   it('wears planet_11, which the owner picked', () => {
-    expect(planetArt(ACADEMY_TARGET_ID)).toBe('/assets/images/planets/planet_11.png');
+    // The URL carries the card's content hash (F9); the look is the number before it.
+    expect(planetArt(ACADEMY_TARGET_ID)).toMatch(/^\/assets\/images\/planets\/planet_11\.png\?v=[0-9a-f]+$/);
   });
 });
 
