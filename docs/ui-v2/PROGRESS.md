@@ -246,9 +246,14 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   sarı = dolu/durdu ya da depoda yer yok), satırın tamamı tek "Topla" (dolu depo → ekonomi); üst çubuk depoları Üs'ün
   `StoreBar`'ı (kompakt: 12 hücre, kasa payı çerçeveli, kalkan satırı yok); çubuk 48 px'te kaldı. Galaksi balonu,
   Üs'teki havuz satırı, `CollectHost`/`CollectBubble`/`WorksPool` kalktı; dock'un Üs noktası yalnız onarım.
-  [ ] 8 kaplama mağazası — fiyat ve ödeme yolu sahipten bekleniyor (sunucuda satın alma yok, yalnız yönetici
-  `orderRef` ile verir). Sonra: tüm ui-v2'yi master'a birleştir (sahip isteği; ana ağaçtaki 16 izlenmeyen gezegen
-  dosyası önce silinmeli).
+  [x] 8 `5ca52d9` kaplama mağazası baştan (sahip: ödeme linki, ₺99 / $2.99, 4'lü paket). Canlı 3D model kendi
+  dönüyor; kayan bulutsu, nefes alan hale, yörünge, kıvılcım, parıltı (`v2/store.css`; hareket hep açık, bulanıklık
+  yok, renkler jetondan, bloom yok → şeffaf sahne). Altın fiyat + tek "Satın al", 2×2 koleksiyon, hiç kaplaması
+  olmayana 4'lü paket (₺396 → ₺279 / $11.96 → $8.49), yalnız doğru değer iddiaları, güven notu. `lib/skinStore.ts`:
+  fiyatlar, dil → para birimi, `SKIN_CHECKOUT` (sahibin linkleri; boşken "Satışa çok yakında"; `{commander}` yer
+  tutucusu; yalnız https). Teslim hâlâ yönetici aracıyla (`/api/admin/skins/grant`).
+  Sonra: tüm ui-v2'yi master'a birleştir (sahip isteği) — master ilerlemediği için ileri sarma; ana ağaçta önce 16
+  izlenmeyen gezegen dosyası silinmeli ve çalışma ağacı temiz olmalı.
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 
