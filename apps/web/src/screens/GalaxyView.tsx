@@ -265,7 +265,8 @@ export function GalaxyView({
   /** A notification that names a world, a tab and a row. Koloni arızaları. */
   panelFocus?: PanelFocusRequest | null;
   /** A route from an already-revealed identity back to its world. */
-  focusRequest?: { planetId: string; request: number } | null;
+  /** A world to frame, from outside the galaxy; `dossier` opens its dossier as well (M4). */
+  focusRequest?: { planetId: string; request: number; dossier?: boolean } | null;
   /** A route from the permanent in-flight sheet to a craft already on the disc. */
   craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
@@ -969,6 +970,7 @@ export function GalaxyView({
     if (!planets.some((candidate) => candidate.id === focusRequest.planetId)) return;
     handledFocusRequest.current = focusRequest.request;
     focusPlanet(focusRequest.planetId);
+    if (focusRequest.dossier) setDetail(true);
   }, [focusPlanet, focusRequest, planets]);
 
   /**

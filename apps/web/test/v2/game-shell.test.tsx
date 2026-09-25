@@ -80,10 +80,13 @@ vi.mock('../../src/v2/shell/ChatHost.js', () => ({
 }));
 
 vi.mock('../../src/v2/shell/AwayHost.js', () => ({
-  AwayHost: ({ onDoor, onAll }: { onDoor: (door: string) => void; onAll: () => void }) => (
+  AwayHost: ({ onDoor, onAll }: { onDoor: (door: string, planetId?: string) => void; onAll: () => void }) => (
     <div aria-label="away story">
       {['report', 'intel', 'base', 'orbit', 'signals'].map((door) => (
         <button key={door} type="button" onClick={() => { onDoor(door); }}>{`away ${door}`}</button>
+      ))}
+      {['dossier', 'repair'].map((door) => (
+        <button key={door} type="button" onClick={() => { onDoor(door, 'p9'); }}>{`away ${door}`}</button>
       ))}
       <button type="button" onClick={onAll}>away all</button>
     </div>
@@ -232,6 +235,15 @@ describe('the return story in the shell', () => {
     expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { group: 'grow' });
     await userEvent.click(screen.getByRole('button', { name: 'away orbit' }));
     expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { group: 'orbit' });
+  });
+
+  /** M4: a Telescope sighting opens that world's dossier; a world's faults open its base. */
+  it('opens a sighted world’s dossier, and a broken world’s base', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'away dossier' }));
+    expect(onFocusPlanet).toHaveBeenLastCalledWith('p9', { dossier: true });
+    await userEvent.click(screen.getByRole('button', { name: 'away repair' }));
+    expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { planetId: 'p9' });
   });
 
   it('opens the whole list in Signals', async () => {

@@ -25,18 +25,27 @@ const HEIGHT: Record<Detent, string> = {
  * fits its content: an item, a build, the return story — stands in the middle over
  * the dim, as tall as what it holds. The phone is unchanged.
  */
-type Placement = 'page' | 'dialog';
+type Placement = 'page' | 'dialog' | 'card';
 
+/*
+  A CARD (M4, the return story's mock) stands in the middle at every width, over the dim,
+  as tall as what it holds, and has no handle: there is nothing to pull it to.
+*/
 const FRAME: Record<Placement, { holder: string; scrim: string; panel: string }> = {
   page: {
-    holder: 'v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
+    holder: 'justify-end v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
     scrim: 'v2-split:hidden',
     panel: 'v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
   },
   dialog: {
-    holder: 'v2-split:top-(--v2-top-h) v2-split:items-center v2-split:justify-center v2-split:p-6',
+    holder: 'justify-end v2-split:top-(--v2-top-h) v2-split:items-center v2-split:justify-center v2-split:p-6',
     scrim: '',
     panel: 'v2-split:max-h-full! v2-split:max-w-[32rem]! v2-split:rounded-sheet v2-split:border-b',
+  },
+  card: {
+    holder: 'items-center justify-center px-4 v2-split:top-(--v2-top-h)',
+    scrim: '',
+    panel: 'max-w-sm! rounded-sheet border-b pt-2',
   },
 };
 
@@ -161,7 +170,7 @@ export function Sheet({
 
   return (
     <div
-      className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col justify-end ${FRAME[placement].holder}`}
+      className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col ${FRAME[placement].holder}`}
       style={{ bottom: 'var(--v2-dock-h, 0px)' }}
     >
       {modal && (
@@ -184,8 +193,8 @@ export function Sheet({
         data-sheet-panel=""
         className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
-        <div className="shrink-0 touch-none" onPointerDown={onPull}>
-          <button
+        <div className="shrink-0 touch-none" {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
+          {placement !== 'card' && <button
             type="button"
             aria-label={t(atTop ? 'handle.collapse' : 'handle.expand')}
             onClick={(event) => {
@@ -199,7 +208,7 @@ export function Sheet({
             className={`flex h-4 w-full items-center justify-center ${placement === 'page' ? 'v2-split:invisible' : ''}`}
           >
             <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
-          </button>
+          </button>}
           <header className={quietTitle ? 'pointer-events-none absolute inset-x-0 top-4 z-10 flex items-start justify-end gap-1 px-2' : 'flex items-start gap-1 px-2 pb-2'}>
             {onBack && (
               <button

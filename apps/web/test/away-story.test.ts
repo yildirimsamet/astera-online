@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AWAY_THRESHOLD_MINUTES, awayRows, shouldShowAway } from '../src/lib/awayStory.js';
-import type { ReturnEntry } from '../src/api/schemas.js';
+import { AWAY_THRESHOLD_MINUTES, awayRows, shouldShowAway, sightingsOf, worldCare, type AwayRow } from '../src/lib/awayStory.js';
+import type { IntelView, ReturnEntry } from '../src/api/schemas.js';
+import { planetView } from './fixtures.js';
+
+/** The entry a row tells, or null for a live sighting. */
+const entryOf = (row: AwayRow | undefined) => (row?.kind === 'entry' ? row.entry : null);
 
 /**
  * WHILE YOU WERE AWAY — WHICH THREE LINES, AND WHETHER TO SPEAK AT ALL. E10 · K5.
@@ -41,7 +45,7 @@ describe('the three lines', () => {
   it('leads with the threat, then the gain, then the opportunity', () => {
     const rows = awayRows([accrued, unlock, raided('DECISIVE')]);
     expect(rows.map((row) => row.tone)).toEqual(['alarm', 'gain', 'opportunity']);
-    expect(rows[0]?.entry.kind).toBe('raided');
+    expect(entryOf(rows[0])?.kind).toBe('raided');
   });
 
   it('takes one of each before a second of any', () => {
@@ -61,12 +65,62 @@ describe('the three lines', () => {
 
   it('puts the newest first within a kind', () => {
     const rows = awayRows([raided('PARTIAL', 40), raided('DECISIVE', 5)]);
-    expect(rows[0]?.entry.at.getTime()).toBeGreaterThan(rows[1]!.entry.at.getTime());
+    expect(entryOf(rows[0])!.at.getTime()).toBeGreaterThan(entryOf(rows[1])!.at.getTime());
   });
 
   it('gives every line the one door that answers it', () => {
     const doors = awayRows([raided('DECISIVE', 1), scan, accrued]).map((row) => row.door);
     expect(doors).toEqual(['report', 'intel', 'base']);
     expect(awayRows([unlock])[0]?.door).toBe('orbit');
+  });
+});
+
+/**
+ * THE MOCK'S OPPORTUNITY (M4): "Orin'in filosu ayrıldı · Dönüş ~01:10 · Teleskop gördü".
+ * A world under the Telescope whose fleet is out is the opening the game is about; it is
+ * read live off the Telescope's slots, so no server kind is needed.
+ */
+describe('what the Telescope sees now', () => {
+  const watch = (targetPlanetId: string, status: 'HOME' | 'AWAY', etaMinutes: number | null = null): IntelView['watching'][number] => ({
+    slot: 0, targetPlanetId, targetName: `W-${targetPlanetId}`, ownerName: 'NOVA',
+    reading: { status, staleMinutes: 0, etaMinutes, state: 'CLEAR', clarity: 1 },
+    cooldownUntil: null,
+  });
+
+  it('names the watched worlds whose fleet is out, once each', () => {
+    expect(sightingsOf([watch('a', 'AWAY', 70), watch('b', 'HOME'), watch('a', 'AWAY', 70)])).toEqual([
+      { planetId: 'a', planetName: 'W-a', owner: 'NOVA', etaMinutes: 70 },
+    ]);
+  });
+
+  it('puts a live sighting in the opportunity’s place, before an unlock', () => {
+    const rows = awayRows([raided('DECISIVE'), accrued, unlock], sightingsOf([watch('a', 'AWAY', 70)]));
+    expect(rows.map((row) => row.kind)).toEqual(['entry', 'entry', 'sighting']);
+    expect(rows[2]).toMatchObject({ tone: 'opportunity', door: 'dossier' });
+  });
+});
+
+/** The mock's warn line: "Thistle-88 sadakati %50 · 2 arıza duruyor · onar". */
+describe('the world that needs you', () => {
+  const world = (id: string, faults: number, loyalty: number | null) => planetView({
+    faults: Array.from({ length: faults }, (_, index) => ({
+      id: `${id}-f${String(index)}`, kind: 'REFINERY_OUTAGE' as const, startedAt: new Date(), cost: { alloy: 1, crystal: 1, deuterium: 0 }, repair: null,
+    })),
+    loyalty: loyalty === null ? null : { value: loyalty, minutesLeft: 600 },
+  }, { id, name: `World-${id}` });
+
+  it('names the world with the most faults standing, and its loyalty', () => {
+    expect(worldCare([world('a', 1, 90), world('b', 2, 50), world('c', 0, 100)])).toEqual({
+      planetId: 'b', name: 'World-b', faults: 2, loyalty: 50,
+    });
+  });
+
+  it('says nothing where nothing is broken', () => {
+    expect(worldCare([world('a', 0, 70), world('c', 0, null)])).toBeNull();
+  });
+
+  it('leaves the loyalty out where it is whole or cannot move', () => {
+    expect(worldCare([world('a', 1, null)])?.loyalty).toBeNull();
+    expect(worldCare([world('a', 1, 100)])?.loyalty).toBeNull();
   });
 });

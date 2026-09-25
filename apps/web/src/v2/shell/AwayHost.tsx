@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useApi } from '../../api/context.js';
 import { keys } from '../../api/keys.js';
+import { useIntel } from '../../api/queries.js';
+import { useWorld } from '../../api/world.js';
 import { serverNow } from '../../lib/clock.js';
-import { shouldShowAway, type AwayDoor } from '../../lib/awayStory.js';
+import { shouldShowAway, sightingsOf, worldCare, type AwayDoor } from '../../lib/awayStory.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
 
 /**
@@ -29,7 +31,8 @@ export function AwayHost({
   delayMs = 1_500,
   keepAliveMs = 5 * 60_000,
 }: {
-  onDoor: (door: AwayDoor) => void;
+  /** A line's door; the two that name a world (a sighting's dossier, a world's repairs) carry its id. */
+  onDoor: (door: AwayDoor, planetId?: string) => void;
   onAll: () => void;
   /** How long after the galaxy is up the story is asked for. */
   delayMs?: number;
@@ -37,6 +40,9 @@ export function AwayHost({
   keepAliveMs?: number;
 }) {
   const api = useApi();
+  /* What the Telescope sees out now, and the world with faults standing: read live, not stored (M4). */
+  const watching = useIntel().data?.watching;
+  const { worlds } = useWorld();
   const [armed, setArmed] = useState(delayMs <= 0);
   const [closed, setClosed] = useState(false);
 
@@ -87,14 +93,16 @@ export function AwayHost({
   return (
     <AwaySheet
       story={data}
+      sightings={watching ? sightingsOf(watching) : []}
+      care={worldCare(worlds)}
       onDismiss={dismiss}
       onAll={() => {
         dismiss();
         onAll();
       }}
-      onDoor={(door) => {
+      onDoor={(door, planetId) => {
         dismiss();
-        onDoor(door);
+        onDoor(door, planetId);
       }}
     />
   );

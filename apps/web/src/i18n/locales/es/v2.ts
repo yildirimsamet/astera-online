@@ -210,7 +210,7 @@ export const away = {
   eyebrow: 'Fuera {{duration}}',
   title: 'Mientras no estabas',
   all: 'Todo ({{count}})',
-  done: 'Entendido',
+  done: 'Volver a la galaxia',
   taken: '{{loot}} robado · {{lost}} unidades perdidas',
   held: '{{lost}} unidades perdidas al resistir',
   looted: '+{{loot}} saqueado · {{lost}} naves perdidas',
@@ -224,12 +224,20 @@ export const away = {
   accrued: '+{{alloy}} aleación · +{{crystal}} cristal',
   accruedDetail: 'Producido mientras no estabas',
   door: {
-    report: 'Informe',
-    intel: 'Radar',
-    base: 'Base',
+    report: 'Abrir el informe',
+    intel: 'Abrir el radar',
+    base: 'Ir a la base',
     orbit: 'Instalar',
-    signals: 'Señales',
+    signals: 'Abrir señales',
+    dossier: 'Abrir el expediente',
+    repair: 'reparar',
   },
+  sighting: 'La flota de {{planet}} está fuera',
+  sightingBack: 'Vuelve ~{{time}} · vista por tu telescopio',
+  sightingSeen: 'Vista por tu telescopio',
+  careLoyalty: '{{world}} lealtad {{loyalty}} %',
+  careFaults_one: '{{count}} avería pendiente',
+  careFaults_other: '{{count}} averías pendientes',
 };
 
 export const outline = {

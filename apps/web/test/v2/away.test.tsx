@@ -40,11 +40,43 @@ afterEach(async () => {
 });
 
 describe('the away sheet', () => {
-  const show = (over: Partial<ReturnPayload> = {}) => {
+  const show = (over: Partial<ReturnPayload> = {}, extra: Partial<Parameters<typeof AwaySheet>[0]> = {}) => {
     const handlers = { onDoor: vi.fn(), onAll: vi.fn(), onDismiss: vi.fn() };
-    render(<AwaySheet story={story(over)} {...handlers} />);
+    render(<AwaySheet story={story(over)} {...handlers} {...extra} />);
     return handlers;
   };
+
+  /** The mock's card: in the middle of the screen, over the galaxy, nothing to pull. */
+  it('stands as a card in the middle', () => {
+    show();
+    expect(screen.getByRole('dialog', { name: 'While you were away' })).toHaveAttribute('data-placement', 'card');
+  });
+
+  it('writes each door as a link under its line', () => {
+    show();
+    const first = document.querySelectorAll<HTMLElement>('[data-away-row]')[0]!;
+    expect(within(first).getByRole('button', { name: 'Open the radar →' })).toBeInTheDocument();
+  });
+
+  it('tells a live Telescope sighting as the opportunity, and opens its dossier', async () => {
+    const { onDoor } = show({}, { sightings: [{ planetId: 'p-orin', planetName: 'Orin', owner: 'NOVA', etaMinutes: 70 }] });
+    const rows = document.querySelectorAll<HTMLElement>('[data-away-row]');
+    const sighting = rows[rows.length - 1]!;
+    expect(sighting).toHaveTextContent('NOVA');
+    expect(sighting).toHaveTextContent(/Orin’s fleet is out/);
+    expect(sighting).toHaveTextContent(/seen by your Telescope/);
+    await userEvent.click(within(sighting).getByRole('button', { name: 'Open the dossier →' }));
+    expect(onDoor).toHaveBeenCalledWith('dossier', 'p-orin');
+  });
+
+  it('warns of the world that needs repairs, with the door to them', async () => {
+    const { onDoor } = show({}, { care: { planetId: 'p-88', name: 'Thistle-88', faults: 2, loyalty: 50 } });
+    const care = document.querySelector<HTMLElement>('[data-away-care]')!;
+    expect(care).toHaveTextContent('Thistle-88 loyalty 50%');
+    expect(care).toHaveTextContent('2 faults standing');
+    await userEvent.click(within(care).getByRole('button', { name: 'repair' }));
+    expect(onDoor).toHaveBeenCalledWith('repair', 'p-88');
+  });
 
   it('says how long the player was away and tells at most three things', () => {
     show();
@@ -72,14 +104,14 @@ describe('the away sheet', () => {
     const { onDoor } = show();
     const first = document.querySelectorAll<HTMLElement>('[data-away-row]')[0]!;
     await userEvent.click(within(first).getByRole('button'));
-    expect(onDoor).toHaveBeenCalledWith('intel');
+    expect(onDoor).toHaveBeenCalledWith('intel', undefined);
   });
 
-  it('offers the whole list, and closes on its answer', async () => {
+  it('offers the whole list, and goes back to the galaxy', async () => {
     const { onAll, onDismiss } = show();
     await userEvent.click(screen.getByRole('button', { name: 'All (5)' }));
     expect(onAll).toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Got it' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to the galaxy' }));
     expect(onDismiss).toHaveBeenCalled();
   });
 });
@@ -103,7 +135,7 @@ describe('the away host', () => {
     const { acknowledge } = host(story());
     const sheet = await screen.findByRole('dialog', { name: 'While you were away' });
     expect(acknowledge).not.toHaveBeenCalled();
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Got it' }));
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Back to the galaxy' }));
     expect(acknowledge).toHaveBeenCalledWith(new Date('2026-09-24T12:00:00Z'));
     expect(screen.queryByRole('dialog', { name: 'While you were away' })).toBeNull();
   });
@@ -120,7 +152,7 @@ describe('the away host', () => {
     const sheet = await screen.findByRole('dialog', { name: 'While you were away' });
     const first = sheet.querySelectorAll<HTMLElement>('[data-away-row]')[0]!;
     await userEvent.click(within(first).getByRole('button'));
-    expect(onDoor).toHaveBeenCalledWith('intel');
+    expect(onDoor).toHaveBeenCalledWith('intel', undefined);
     expect(acknowledge).toHaveBeenCalled();
   });
 

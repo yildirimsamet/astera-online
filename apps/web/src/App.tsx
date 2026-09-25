@@ -116,11 +116,15 @@ export function App() {
     setPanelFocus((current) => nextPanelFocus(current, focus));
     setPanel(next);
   };
-  const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number } | null>(null);
+  const [planetFocus, setPlanetFocus] = useState<{ planetId: string; request: number; dossier?: boolean } | null>(null);
   const [craftFocus, setCraftFocus] = useState<{ focus: StripFocus; request: number } | null>(null);
-  const focusPlanet = (planetId: string): void => {
+  const focusPlanet = (planetId: string, options?: { dossier?: boolean }): void => {
     setPanel(null);
-    setPlanetFocus((current) => ({ planetId, request: (current?.request ?? 0) + 1 }));
+    setPlanetFocus((current) => ({
+      planetId,
+      request: (current?.request ?? 0) + 1,
+      ...(options?.dossier ? { dossier: true } : {}),
+    }));
   };
 
   /**

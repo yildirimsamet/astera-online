@@ -16,6 +16,7 @@ import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
 import { StrikeSheet } from '../../galaxy/FocusPanel.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
+import { AwaySheet } from '../hud/AwaySheet.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -423,6 +424,29 @@ function Views({ view }: { view: string }) {
         planet={launchWorld}
         onClose={noop}
         onLaunched={noop}
+      />
+    );
+  }
+  if (view === 'away') {
+    // The mock's return story: a raid held, a convoy home, a Telescope opening, a world to repair.
+    return (
+      <AwaySheet
+        story={{
+          awayMinutes: 432,
+          asOf: new Date(NOW),
+          entries: [
+            { kind: 'raided', params: { grade: 'REPELLED', loot: 0, lost: 3 }, at: new Date(NOW - 90 * MIN) },
+            { kind: 'fleet_returned', params: { ships: 6, resources: 5_300 }, at: new Date(NOW - 40 * MIN) },
+            { kind: 'scan_detected', params: { count: 2 }, at: new Date(NOW - 20 * MIN) },
+          ],
+          pending: [],
+          newUnlocks: [],
+        }}
+        sightings={[{ planetId: 'p-orin', planetName: 'Orin', owner: 'NOVA', etaMinutes: 72 }]}
+        care={{ planetId: 'p-88', name: 'Thistle-88', faults: 2, loyalty: 50 }}
+        onDoor={noop}
+        onAll={noop}
+        onDismiss={noop}
       />
     );
   }

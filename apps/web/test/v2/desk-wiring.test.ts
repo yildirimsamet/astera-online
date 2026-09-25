@@ -63,6 +63,14 @@ describe('the report doors', () => {
   });
 });
 
+/** M4: a Telescope sighting's "Open the dossier" frames the world with its dossier open. */
+describe('a focus that asks for the dossier', () => {
+  it('carries the ask from the app to the galaxy, which opens the dossier', () => {
+    expect(app).toMatch(/options\?\.dossier \? \{ dossier: true \} : \{\}/);
+    expect(galaxy).toMatch(/focusPlanet\(focusRequest\.planetId\);\s*if \(focusRequest\.dossier\) setDetail\(true\);/);
+  });
+});
+
 describe('Space and Esc on the galaxy', () => {
   it('brings the selection back into frame on Space, or flies home with nothing selected', () => {
     const center = galaxy.slice(galaxy.indexOf('useRequest(centerRequest'), galaxy.indexOf('useRequest(clearRequest'));

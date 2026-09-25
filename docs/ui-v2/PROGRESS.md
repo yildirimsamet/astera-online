@@ -152,8 +152,13 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   (`quietTitle`: başlık yalnız ekran okuyucuya, kapat kahramanın üstünde); alt bölümler v2 sınıflarına çevrildi
   (eski "okuma boyu" büyütmesi kalktı, bölüm başlıkları ince çizgili), tekrar eden tarih satırı kalktı, listede
   "0 tur" yazılmıyor; ton sınıf yerine `data-tone`.
-- [ ] **M4b Sen yokken** (E10): sadakat/arıza satırı, teleskop fırsatı türü, kapı biçimi (satır altında metin
-  bağlantısı), "Galaksiye dön", ortalanmış kart.
+- [x] **M4b Sen yokken** (E10) — `AwaySheet` ortada kart (`Sheet placement="card"`: her genişlikte ortada,
+  tutamak yok), satırlar ince çizgiyle ayrılmış, işaret kutusu türüne göre ikonlu (tehdit kırmızı, kazanç turkuaz,
+  fırsat kesik çerçeve), kapı satırın altında metin bağlantısı ("Raporu aç →"), **teleskop fırsatı** canlı okunur
+  (`sightingsOf(intel.watching)`: filosu dışarıda izlenen dünya; sunucu türü gerekmedi) → "Dosyayı aç" dünyayı
+  dosyası açık getirir (`onFocusPlanet(id, {dossier})`), **sadakat/arıza satırı** (`worldCare(useWorld().worlds)`:
+  en çok arızası duran dünya, sadakati düşüyorsa yüzdesi) → "onar" o dünyanın Üs'sünü açar; "Galaksiye dön".
+  Galeri `away` görünümü eklendi.
 - [ ] **M5 Ortak:** rakip renkleri v2 K2 tonlarına, TR süre biçimi (sa/dk), üst çubuk sayfaların üstünde, eski kit
   başlıkları (Üs, Araştırma).
 

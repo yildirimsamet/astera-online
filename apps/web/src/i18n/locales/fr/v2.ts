@@ -210,7 +210,7 @@ export const away = {
   eyebrow: 'Absent {{duration}}',
   title: 'Pendant ton absence',
   all: 'Tout ({{count}})',
-  done: 'Compris',
+  done: 'Retour à la galaxie',
   taken: '{{loot}} pris · {{lost}} unités perdues',
   held: '{{lost}} unités perdues en tenant la ligne',
   looted: '+{{loot}} pillés · {{lost}} vaisseaux perdus',
@@ -224,12 +224,20 @@ export const away = {
   accrued: '+{{alloy}} alliage · +{{crystal}} cristal',
   accruedDetail: 'Produit pendant ton absence',
   door: {
-    report: 'Rapport',
-    intel: 'Radar',
-    base: 'Base',
+    report: 'Ouvrir le rapport',
+    intel: 'Ouvrir le radar',
+    base: 'Aller à la base',
     orbit: 'Installer',
-    signals: 'Signaux',
+    signals: 'Ouvrir les signaux',
+    dossier: 'Ouvrir le dossier',
+    repair: 'réparer',
   },
+  sighting: 'La flotte de {{planet}} est sortie',
+  sightingBack: 'Retour ~{{time}} · vue par ton télescope',
+  sightingSeen: 'Vue par ton télescope',
+  careLoyalty: '{{world}} loyauté {{loyalty}} %',
+  careFaults_one: '{{count}} panne en cours',
+  careFaults_other: '{{count}} pannes en cours',
 };
 
 export const outline = {

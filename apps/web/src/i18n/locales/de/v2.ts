@@ -210,7 +210,7 @@ export const away = {
   eyebrow: '{{duration}} weg',
   title: 'Während du weg warst',
   all: 'Alle ({{count}})',
-  done: 'Verstanden',
+  done: 'Zurück zur Galaxie',
   taken: '{{loot}} geraubt · {{lost}} Einheiten verloren',
   held: '{{lost}} Einheiten beim Halten verloren',
   looted: '+{{loot}} erbeutet · {{lost}} Schiffe verloren',
@@ -224,12 +224,20 @@ export const away = {
   accrued: '+{{alloy}} Legierung · +{{crystal}} Kristall',
   accruedDetail: 'Hergestellt, während du weg warst',
   door: {
-    report: 'Bericht',
-    intel: 'Radar',
-    base: 'Basis',
+    report: 'Bericht öffnen',
+    intel: 'Radar öffnen',
+    base: 'Zur Basis',
     orbit: 'Installieren',
-    signals: 'Signale',
+    signals: 'Signale öffnen',
+    dossier: 'Akte öffnen',
+    repair: 'reparieren',
   },
+  sighting: 'Die Flotte von {{planet}} ist unterwegs',
+  sightingBack: 'Zurück ~{{time}} · vom Teleskop gesehen',
+  sightingSeen: 'Vom Teleskop gesehen',
+  careLoyalty: '{{world}} Loyalität {{loyalty}} %',
+  careFaults_one: '{{count}} Störung offen',
+  careFaults_other: '{{count}} Störungen offen',
 };
 
 export const outline = {

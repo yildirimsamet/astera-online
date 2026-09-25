@@ -210,7 +210,7 @@ export const away = {
   eyebrow: '{{duration}} yoktun',
   title: 'Sen yokken',
   all: 'Tümü ({{count}})',
-  done: 'Tamam',
+  done: 'Galaksiye dön',
   taken: '{{loot}} alındı · {{lost}} birim kaybı',
   held: 'Hattı tutarken {{lost}} birim kaybı',
   looted: '+{{loot}} ganimet · {{lost}} gemi kaybı',
@@ -224,12 +224,20 @@ export const away = {
   accrued: '+{{alloy}} alaşım · +{{crystal}} kristal',
   accruedDetail: 'Sen yokken üretildi',
   door: {
-    report: 'Rapor',
-    intel: 'Radar',
-    base: 'Üs',
+    report: 'Raporu aç',
+    intel: 'Radarı aç',
+    base: 'Üsse git',
     orbit: 'Kur',
-    signals: 'Sinyaller',
+    signals: 'Sinyalleri aç',
+    dossier: 'Dosyayı aç',
+    repair: 'onar',
   },
+  sighting: '{{planet}} filosu dışarıda',
+  sightingBack: 'Dönüş ~{{time}} · Teleskop gördü',
+  sightingSeen: 'Teleskop gördü',
+  careLoyalty: '{{world}} sadakati %{{loyalty}}',
+  careFaults_one: '{{count}} arıza duruyor',
+  careFaults_other: '{{count}} arıza duruyor',
 };
 
 export const outline = {

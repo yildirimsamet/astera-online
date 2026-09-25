@@ -30,7 +30,8 @@ export interface GameShellProps {
   /** The page open over the galaxy, owned by the app. */
   panel: Panel;
   onPanel: ShellRoute;
-  onFocusPlanet: (planetId: string) => void;
+  /** Frame a world on the galaxy; `dossier` opens its dossier too (a sighting's "Open the dossier", M4). */
+  onFocusPlanet: (planetId: string, options?: { dossier?: boolean }) => void;
   /** Frame one of the player's craft (or a contact) from the Fleet page. */
   onFocusCraft: (focus: StripFocus) => void;
   /**
@@ -144,8 +145,8 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
 
   const active: DockTab | null = bell || chatOpen ? null : tabOfPanel(panel, fleetOpen);
 
-  /** Where each line of the return story (E10) takes the player. */
-  const openAway = (door: AwayDoor): void => {
+  /** Where each line of the return story (E10) takes the player; a world's door carries its id. */
+  const openAway = (door: AwayDoor, planetId?: string): void => {
     switch (door) {
       case 'report':
         route('intel', 'battles');
@@ -161,6 +162,15 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         return;
       case 'signals':
         openBell('signals');
+        return;
+      case 'dossier':
+        if (planetId === undefined) return;
+        clearPages();
+        onFocusPlanet(planetId, { dossier: true });
+        return;
+      case 'repair':
+        // The faults lead that world's Base (E5), so its Base is the repair.
+        route('planet', undefined, undefined, planetId === undefined ? undefined : { planetId });
         return;
     }
   };

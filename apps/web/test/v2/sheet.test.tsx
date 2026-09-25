@@ -61,6 +61,13 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
+  /** The return story's card (M4): in the middle at every width, and with no handle to pull. */
+  it('stands a card in the middle, with nothing to pull', () => {
+    render(<Sheet title="While you were away" detents={['fit']} placement="card" onClose={vi.fn()}>body</Sheet>);
+    expect(screen.getByRole('dialog', { name: 'While you were away' })).toHaveAttribute('data-placement', 'card');
+    expect(screen.queryByRole('button', { name: /expand|collapse/i })).toBeNull();
+  });
+
   it('opens at its first height and names itself', () => {
     render(<Sheet title="Kestrel" onClose={vi.fn()} detents={['peek', 'half', 'full']}>body</Sheet>);
     const dialog = screen.getByRole('dialog', { name: 'Kestrel' });
