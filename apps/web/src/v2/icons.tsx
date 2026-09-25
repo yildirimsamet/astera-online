@@ -43,6 +43,10 @@ const SHAPES = {
   'i-collect': <><path d="M12 4v10" /><path d="M8 10l4 4 4-4" /><path d="M5 19h14" /></>,
   'i-share': <><circle cx="6" cy="12" r="2.3" /><circle cx="18" cy="6" r="2.3" /><circle cx="18" cy="18" r="2.3" /><path d="M8.1 11l7.8-3.9M8.1 13l7.8 3.9" /></>,
   'i-spark': <><path d="M12 3v5M12 16v5M3 12h5M16 12h5" /><path d="M12 9.5l2.5 2.5-2.5 2.5-2.5-2.5z" /></>,
+  /* The store (owner, 2026-09-25): turn the model, a look already yours, yours for good. */
+  'i-rotate': <><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v4h-4" /></>,
+  'i-check': <><path d="M5 12.5l4.5 4.5L19 7.5" /></>,
+  'i-infinity': <><path d="M12 12c-1.9-2.6-3.4-3.8-5.2-3.8a3.8 3.8 0 0 0 0 7.6c1.8 0 3.3-1.2 5.2-3.8s3.4-3.8 5.2-3.8a3.8 3.8 0 0 1 0 7.6c-1.8 0-3.3-1.2-5.2-3.8z" /></>,
   'c-sk': <><path d="M12 3l9.5 17.5h-19z" /></>,
   'c-bw': <><path d="M12 2l8.7 5v10L12 22l-8.7-5V7z" /></>,
   'c-ln': <><path d="M12 1.5l6.5 10.5L12 22.5 5.5 12z" /></>,

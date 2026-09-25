@@ -1,10 +1,21 @@
 export const skins = {
-  shopKicker: "ASTERA / COLLECTION PLANÉTAIRE",
-  shopHeadline: "Laisse ta marque dans la galaxie.",
-  shopIntro:
-    "Quatre mondes. Quatre identités. Donne à tes planètes une apparence que la galaxie n’oubliera pas.",
   openInventory: "Ton inventaire · {{count}} apparences",
-  edition: "APPARENCE {{number}} / {{total}}",
+  /** The store sells (owner, 2026-09-25): price, press, the set, and only true claims. */
+  premium: 'Premium',
+  buy: 'Acheter · {{price}}',
+  onSaleSoon: 'Bientôt en vente',
+  wearIt: 'L’appliquer à un monde',
+  oneTime: 'Paiement unique · à toi pour de bon',
+  ownedNote: 'Dans ta collection',
+  bundleKicker: 'Collection complète',
+  bundleTitle: 'Les quatre apparences',
+  bundleSave: 'Économise {{pct}} %',
+  bundleWas: 'Séparément : {{price}}',
+  bundleBuy: 'Acheter les quatre · {{price}}',
+  valueSeen: 'Chaque commandant de la galaxie la voit sur ton monde',
+  valueYours: 'À toi pour de bon — chaque saison, sur chacun de tes mondes',
+  valueLooks: 'Son apparence sous bouclier et ses reliefs de surface sont inclus',
+  trust: 'Le paiement s’ouvre sur une page sécurisée. Une fois payée, l’apparence est ajoutée au commandant {{commander}}.',
   lavaStory:
     "Une croûte sombre fendue par un feu vivant. Une planète impossible à manquer, même de loin.",
   iceStory:
@@ -13,10 +24,6 @@ export const skins = {
     "Une lueur verte instable déchire l’obscurité. Un avertissement visible dans toute la galaxie.",
   desertStory:
     "Pierre brûlée par le soleil et fissures d’ambre. Un monde façonné par la chaleur et le temps.",
-  includedLooks:
-    "Les apparences intacte et sous bouclier de récupération sont incluses dans la même apparence.",
-  allLooksKicker: "COLLECTION",
-  salesComingTitle: "Bientôt dans la boutique",
   inventoryKicker: "TA COLLECTION",
   inventoryHeadline: "Tes planètes. Ton style.",
   openShop: "Découvrir la boutique",
@@ -31,8 +38,6 @@ export const skins = {
     "Une apparence peut être utilisée sur toutes les planètes que tu possèdes. Tu peux choisir une apparence différente pour chaque planète et la changer quand tu veux.",
   inspect: "Examiner le modèle",
   dragHint: "Fais glisser pour faire pivoter",
-  stageLabel: "MODÈLE 3D EN DIRECT",
-  stageGesture: "PIVOTER · ZOOMER",
   modelUnavailable: "Impossible de charger le modèle",
   normal: "Intacte",
   recovery: "Bouclier de récupération (Endommagée)",
@@ -40,9 +45,6 @@ export const skins = {
     "Après une attaque lourde, la planète touchée utilise ce modèle endommagé pendant les huit heures de son bouclier de récupération. Cette apparence est incluse avec le skin.",
   collection: "Collection",
   owned: "Possédée",
-  comingSoon: "Bientôt",
-  comingSoonNote:
-    "Ces apparences rejoindront bientôt la collection. Tu peux déjà les examiner en 3D et choisir ta préférée.",
   worlds: "Tes planètes",
   worldsHint:
     "Choisis une apparence ci-dessus, puis applique-la à l’une des planètes que tu contrôles.",

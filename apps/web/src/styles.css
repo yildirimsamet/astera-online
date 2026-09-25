@@ -8,6 +8,7 @@
 @import './styles/chrome.css';
 @import './v2/tokens.css';
 @import './v2/surfaces.css';
+@import './v2/store.css';
 
 /**
  * TWO SURFACES THAT NO UTILITY CAN REACH.

@@ -210,6 +210,8 @@ const IDENTICAL_ON_PURPOSE = new Set([
   'planet.reach.hullTier',
   // "Hangar" is the Turkish word too (TDK: hangar), not a stand-in.
   'vocabulary.building.HANGAR.name',
+  // "Premium" is how a Turkish storefront names its tier, too — the store's badge (2026-09-25).
+  'skins.premium',
   'fleetPage.hangar',
   // Punctuation and stand-ins for a missing figure. Not words.
   'statusBar.works.idle',

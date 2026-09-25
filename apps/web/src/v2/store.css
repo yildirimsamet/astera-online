@@ -1,0 +1,115 @@
+/**
+ * THE STORE, ALIVE (owner, 2026-09-25: "kımıl kımıl hareketli canlı etkileyici stunning bir
+ * tasarım"). Everything here moves slowly and quietly — a nebula that drifts, the look's own
+ * aura breathing, an orbit turning, embers rising in the look's colour, the stars twinkling,
+ * a light sweeping over the Buy button — so the page is never still and never busy. The
+ * look's colours arrive as `--look` and `--look-glow` on `.v2-store`. Motion is always on in this
+ * game (`no-reduced-motion.test`), and nothing here blurs (`sharpness.test`): soft is a gradient.
+ */
+
+.v2-store-nebula {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 38%, var(--look-glow), transparent 70%),
+    url('/assets/images/skins/galaxy-nebula.webp') center / cover;
+  opacity: 0.55;
+  animation: v2-store-drift 42s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes v2-store-drift {
+  from { transform: scale(1.06) translate3d(-2%, 0, 0); }
+  to { transform: scale(1.14) translate3d(2%, -2%, 0); }
+}
+
+/* The look's own light behind it, breathing. */
+.v2-store-aura {
+  /* Soft by its own falloff — a blur filter would soften the page (the sharpness contract). */
+  background: radial-gradient(circle, var(--look-glow) 0%, color-mix(in srgb, var(--look-glow) 45%, transparent) 30%, transparent 66%);
+  animation: v2-store-breathe 4.8s ease-in-out infinite;
+}
+
+@keyframes v2-store-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(0.93); }
+  50% { opacity: 1; transform: scale(1.07); }
+}
+
+/* An orbit around the world, tilted, one lit arc travelling round it. */
+.v2-store-orbit {
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--look) 22%, transparent);
+  transform: rotate(-14deg);
+}
+
+.v2-store-orbit::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(from 0deg, transparent 0deg, var(--look) 24deg, transparent 60deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 1.5px), black calc(100% - 1px));
+  animation: v2-store-spin 9s linear infinite;
+}
+
+@keyframes v2-store-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Embers rising from the world, in its colour. Each sets its own `--x`, `--delay`, `--dur`. */
+.v2-store-ember {
+  position: absolute;
+  bottom: 18%;
+  left: var(--x);
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--look);
+  box-shadow: 0 0 6px 1px var(--look);
+  opacity: 0;
+  animation: v2-store-rise var(--dur) linear var(--delay) infinite;
+}
+
+@keyframes v2-store-rise {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+  12% { opacity: 0.9; }
+  100% { transform: translate3d(8px, -210px, 0) scale(0.35); opacity: 0; }
+}
+
+.v2-store-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: var(--color-v2-ink);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-v2-crystal) 80%, transparent);
+  animation: v2-store-twinkle var(--dur) ease-in-out var(--delay) infinite;
+}
+
+@keyframes v2-store-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.95; }
+}
+
+/* A light sweeping across a premium press, now and then. */
+.v2-store-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.v2-store-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 32%, color-mix(in srgb, var(--color-v2-ink) 55%, transparent) 50%, transparent 68%);
+  transform: translateX(-130%);
+  animation: v2-store-sweep 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes v2-store-sweep {
+  0%, 58% { transform: translateX(-130%); }
+  100% { transform: translateX(130%); }
+}
+
+/* The chosen card glows in its own colour. */
+.v2-store-chosen {
+  box-shadow: 0 0 0 1px var(--card), 0 0 22px -4px var(--card);
+}

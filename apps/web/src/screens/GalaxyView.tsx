@@ -1815,7 +1815,7 @@ export function GalaxyView({
           onClose={() => { onPanel(null); }}
         >
           <Suspense fallback={<Waiting>{t('menu.skinsShopLabel')}</Waiting>}>
-            <SkinsScreen onOpenInventory={() => { onPanel('skin-inventory'); }} />
+            <SkinsScreen commander={commander} onOpenInventory={() => { onPanel('skin-inventory'); }} />
           </Suspense>
         </V2Sheet>
       )}
