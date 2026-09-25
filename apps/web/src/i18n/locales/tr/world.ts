@@ -325,7 +325,7 @@ export const focus = {
       "Bu komutan senden fazla gelişmiş — akın için gelişim farkı en fazla bir kademe olabilir",
     attackProtected: "Korumalı — bu dünyaya henüz akın edilemez",
     attackProtectedShort: "Korumalı · {{duration}}",
-    attackShort: "Saldır",
+    attackShort: "Saldırı planla",
     probeShort: "Sonda",
     probeCoolingShort: "{{duration}} sonra",
     attack: "Saldırı planla",

@@ -353,7 +353,7 @@ export const focus = {
       "Dieser Kommandant ist weiter entwickelt als du – ein Überfall erstreckt sich höchstens über eine Stufe",
     attackProtected: "Geschützt – diese Welt kann noch nicht überfallen werden",
     attackProtectedShort: "Geschützt · {{duration}}",
-    attackShort: "Angriff",
+    attackShort: "Angriff planen",
     probeShort: "-Sonde",
     probeCoolingShort: "Sonde in {{duration}}",
     attack: "Planen Sie einen Angriff",

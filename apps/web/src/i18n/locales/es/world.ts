@@ -353,7 +353,7 @@ export const focus = {
       "Ese comandante está más desarrollado que tú: una banda abarca como máximo un nivel",
     attackProtected: "Protegido: este mundo aún no puede ser atacado",
     attackProtectedShort: "Protegido · {{duration}}",
-    attackShort: "Ataque",
+    attackShort: "Planear ataque",
     probeShort: "Sonda",
     probeCoolingShort: "Sonda en {{duration}}",
     attack: "Planificar un ataque",

@@ -34,6 +34,11 @@ export interface ForceRulerProps {
   children?: ReactNode;
   /** What the wing is: the fleet being sent (the default) or, in the dossier, what stands home. */
   yoursLabel?: string;
+  /**
+   * The section's own heading, where the page names it (the dossier's "Power"). The ruler
+   * then adds no second one, and its one-line meaning moves into the fold with the rule.
+   */
+  heading?: string;
 }
 
 /**
@@ -61,6 +66,7 @@ export function ForceRuler({
   onProbe,
   children,
   yoursLabel,
+  heading,
 }: ForceRulerProps) {
   const { t } = useTranslation();
   const [explained, setExplained] = useState(false);
@@ -102,7 +108,7 @@ export function ForceRuler({
     >
       <div>
         <div className="flex items-center justify-between gap-2">
-          <p className="text-caption font-semibold text-v2-ink">{t('counter.compareHeading')}</p>
+          <p className="text-caption font-semibold text-v2-ink">{heading ?? t('counter.compareHeading')}</p>
           <button
             type="button"
             aria-expanded={explained}
@@ -112,9 +118,10 @@ export function ForceRuler({
             {t('counter.compareRuleToggle')}
           </button>
         </div>
-        <p className="text-micro text-v2-ink-3">{t('counter.compareMeaning')}</p>
+        {heading === undefined && <p className="text-micro text-v2-ink-3">{t('counter.compareMeaning')}</p>}
         {explained && (
           <div data-testid="ruler-rule" className="mt-1 flex flex-col gap-1 text-caption leading-relaxed text-v2-ink-2">
+            {heading !== undefined && <p>{t('counter.compareMeaning')}</p>}
             <p>{t('counter.compareRule')}</p>
             {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}</p>}
           </div>

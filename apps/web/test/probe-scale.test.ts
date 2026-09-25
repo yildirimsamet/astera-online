@@ -37,6 +37,15 @@ describe('the probe axis', () => {
     expect(axis.start).toBeCloseTo((100 / 440) * 100);
   });
 
+  /** Rows drawn on one line (the dossier's haul): the same hold lands at the same place. */
+  it('draws several rows on one line when it is given the line’s reach', () => {
+    const small = probeAxis(10, 20, 50, 400);
+    const large = probeAxis(100, 400, 50, 400);
+    expect(small.you).toBeCloseTo(large.you!);
+    expect(small.you).toBeCloseTo((50 / 440) * 100);
+    expect(small.start).toBeCloseTo((10 / 440) * 100);
+  });
+
   it('never divides by nothing', () => {
     const axis = probeAxis(0, 0, 0);
     expect(Number.isFinite(axis.start) && Number.isFinite(axis.width) && Number.isFinite(axis.you ?? 0)).toBe(true);

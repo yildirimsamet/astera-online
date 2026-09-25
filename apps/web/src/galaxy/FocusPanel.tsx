@@ -51,8 +51,10 @@ import { launchFault, type LaunchFault } from '../lib/faults.js';
 import { deathStarsOf, readyDeathStar } from '../lib/strategic.js';
 import { commanderLabel } from '../lib/identity.js';
 import {
+  beyondDossier,
   confidenceWord,
   dossier,
+  factId,
   headline,
   isStale,
   sourceLabel,
@@ -312,29 +314,53 @@ function Shell({
 const SOURCE_ORDER: readonly Source[] = ['public', 'telescope', 'probe', 'battle'];
 
 function FactRow({ fact }: { fact: Fact }) {
+  const [noted, setNoted] = useState(false);
   const stale = isStale(fact.ageMinutes);
-  const confidence = confidenceWord(fact.accuracy);
+  const stamp = [
+    fact.ageMinutes === null ? null : staleness(fact.ageMinutes),
+    confidenceWord(fact.accuracy),
+  ].filter((part) => part !== null).join(' · ');
+
+  /*
+    ONE LINE, THE STAMP UNDER IT, THE NOTE ONE TAP DEEPER (M2, the mock's density). The
+    band above already names the source, so the row carries only how old and how sharp;
+    what the figure means is a tap away rather than a paragraph under every row.
+  */
+  const head = (
+    <>
+      <span className="flex items-baseline justify-between gap-3">
+        <span className="shrink-0 text-caption text-v2-ink-2">{fact.label}</span>
+        <span className={`min-w-0 text-right text-caption font-semibold tabular-nums ${fact.opportunity ? 'text-v2-self' : 'text-v2-ink'}`}>
+          {fact.value}
+        </span>
+      </span>
+      {(stamp !== '' || fact.note) && (
+        <span className="mt-0.5 flex items-center gap-1 text-micro">
+          <span className={stale ? 'text-v2-warn' : 'text-v2-ink-3'}>{stamp}</span>
+          {fact.note && (
+            <Icon id="i-chev" className={`ml-auto size-3 shrink-0 text-v2-ink-3 transition-transform ${noted ? '-rotate-90' : 'rotate-90'}`} />
+          )}
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div
-      className={`border-l-2 py-2 pl-3 ${ fact.opportunity ? 'border-v2-self' : stale ? 'border-alloy/40' : 'border-v2-self/40' }`}
+      data-fact={factId(fact)}
+      className={`border-l-2 py-1.5 pl-2.5 ${fact.opportunity ? 'border-v2-self' : 'border-v2-line'}`}
     >
-      <div className="flex items-baseline gap-2">
-        <p className="v2-legend">{fact.label}</p>
-        <span className="v2-legend ml-auto shrink-0">
-          {sourceLabel(fact.source)}
-          {fact.ageMinutes !== null && (
-            <span className={stale ? 'text-v2-warn' : ''}> · {staleness(fact.ageMinutes)}</span>
-          )}
-          {confidence && <span> · {confidence}</span>}
-        </span>
-      </div>
-      <p
-        className={`font-v2-mono mt-1 text-body ${ fact.opportunity ? 'text-v2-self' : 'text-v2-ink' }`}
-      >
-        {fact.value}
-      </p>
-      {fact.note && <p className="mt-1 text-label leading-snug text-v2-ink-3">{fact.note}</p>}
+      {fact.note ? (
+        <button
+          type="button"
+          aria-expanded={noted}
+          onClick={() => { setNoted((open) => !open); }}
+          className="block w-full text-left"
+        >
+          {head}
+        </button>
+      ) : head}
+      {noted && fact.note && <p data-fact-note className="mt-1 text-micro leading-snug text-v2-ink-3">{fact.note}</p>}
     </div>
   );
 }
@@ -373,40 +399,35 @@ function GapRow({
   const { t } = useTranslation();
   const [showWhy, setShowWhy] = useState(false);
 
+  /*
+    THE SAME ROW AS A READING (M2), dashed and in warn because it is a gap you can close
+    (K2): the label and what is missing on one line, "unknown" and the fold under it.
+  */
   return (
-    <div data-gap className="rounded-chip border border-dashed border-v2-line px-3 py-2">
+    <div data-gap className="border-l-2 border-dashed border-v2-warn/50 py-1.5 pl-2.5">
       <button
         type="button"
         aria-expanded={showWhy}
-        className="w-full text-left"
+        className="block w-full text-left"
         onClick={() => { setShowWhy((open) => !open); }}
       >
-        <span className="flex items-baseline gap-2">
-          <span className="v2-legend">{label}</span>
-          <span className="v2-legend ml-auto shrink-0">{t('focus.unknown')}</span>
-          <svg
-            aria-hidden
-            viewBox="0 0 20 20"
-            className={`size-3.5 shrink-0 text-v2-ink-3 transition-transform duration-200 ${
-              showWhy ? 'rotate-90' : ''
-            }`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-          >
-            <path d="M7 4.5 12.5 10 7 15.5" />
-          </svg>
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="shrink-0 text-caption text-v2-ink-2">{label}</span>
+          {/* The FACT is never folded: it is the reading, not the argument. */}
+          <span data-gap-missing className="min-w-0 text-right text-caption font-semibold text-v2-warn">{missing}</span>
         </span>
-        {/* The FACT is never folded: it is the reading, not the argument. */}
-        <span data-gap-missing className="mt-1 block text-body text-v2-warn">{missing}</span>
+        <span className="mt-0.5 flex items-center gap-1 text-micro text-v2-ink-3">
+          {t('focus.unknown')}
+          <Icon id="i-chev" className={`ml-auto size-3 shrink-0 transition-transform ${showWhy ? '-rotate-90' : 'rotate-90'}`} />
+        </span>
       </button>
 
       {showWhy && (
-        <p data-gap-why className="mt-1 text-label leading-snug text-v2-ink-2">{why}</p>
+        <p data-gap-why className="mt-1 text-micro leading-snug text-v2-ink-2">{why}</p>
       )}
       {/* A refusal is not a pitch — it is why the control below will not work. */}
-      {blocked && <p className="mt-1 text-label leading-snug text-v2-warn">{blocked}</p>}
-      {action && <div className="mt-2">{action}</div>}
+      {blocked && <p className="mt-1 text-micro leading-snug text-v2-warn">{blocked}</p>}
+      {action && <div className="mt-1.5">{action}</div>}
     </div>
   );
 }
@@ -599,6 +620,8 @@ export function PlanetFocus({
   }
 
   const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
+  /** What the dossier page above does not already draw (M2: never the page read twice). */
+  const others = beyondDossier(read.facts);
   const away = target.fleet?.status === 'AWAY';
   const known = headline(read, target);
   const originRecovering = Boolean(
@@ -763,6 +786,32 @@ export function PlanetFocus({
   const probeControl = !target.clanmate && (
     <ProbeControl target={target} intel={intel} onLaunched={onLaunched} />
   );
+  /*
+    THE RIVAL MARK, A CHIP IN THE DOSSIER'S HEADER (M2, the mock) rather than a slab among
+    the commitments. AND YOU CANNOT MARK WHAT YOU CANNOT SEE (owner's instruction): an
+    unsurveyed world carries no kind, and `isRivalNode` would refuse to draw the reticle.
+
+    A SECOND PRESS TAKES THE MARK OFF AGAIN (owner, reversing D103): the mark is a bookmark
+    on a disc of three hundred worlds, not a decision the game protects you from. THE SAME
+    WORLD BOTH WAYS (D183): the press is a toggle on the server — `null` empties the whole
+    set and is never sent from here. The chip wears the mark's own colour, as the reticle does.
+  */
+  const rivalControl = !target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL'
+    ? {
+      pending: setRival.isPending,
+      onToggle: () => {
+        setRival.mutate(target.id, {
+          onSuccess: () => {
+            say(t(rivalSlot !== null ? 'focus.planet.rivalCleared' : 'focus.planet.rivalMarked', {
+              commander: target.owner,
+            }));
+          },
+          onError: (error) => { say(describe(error), 'error'); },
+        });
+      },
+    }
+    : null;
+
   /** THE COMMITMENT, drawn in the open dossier and on the closed card alike (the mock). */
   const attackControl = !target.clanmate && (
           <button
@@ -805,7 +854,6 @@ export function PlanetFocus({
               what a thumb recognises before the word is read. `BTN` is already a
               flex row with a gap, so the icon needs no layout of its own.
             */}
-            <AttackIcon className="size-4 shrink-0" />
             {/*
               THE REASON RIDES THE LABEL, and it names the CLOCK rather than the
               rule: "protected for 4h" is a fact a commander can plan against,
@@ -824,6 +872,8 @@ export function PlanetFocus({
                 : colonyPhase === 'NEUTRAL_RACE' || colonyPhase === 'SETTLEMENT_IN_FLIGHT'
                   ? 'focus.planet.attackNeutralAgain'
                   : 'focus.planet.attackShort')}
+            {/* It opens the plan, not the attack: the mock's pointer says there is a step after. */}
+            <Icon id="i-chev" className="size-3.5 shrink-0" />
           </button>
   );
 
@@ -894,45 +944,6 @@ export function PlanetFocus({
             `isRivalNode` then refuses to draw the reticle. A button whose effect
             is invisible is worse than an absent one.
           */}
-          {!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL' && (
-          <button
-            type="button"
-            className={`${BTN_GHOST} min-w-[8rem] flex-1 whitespace-normal`}
-            /*
-              THE CONTROL WEARS THE MARK'S OWN COLOUR. D183 — the reticle on the
-              disc, the dot in the menu and this button are the same hue, so the
-              colour is what tells five marks apart everywhere it appears.
-            */
-            style={rivalSlot !== null ? { color: rivalColour(rivalSlot) } : undefined}
-            disabled={setRival.isPending}
-            onClick={() => {
-              /*
-                THE SAME WORLD BOTH WAYS. D183: the press is a toggle on the server,
-                so marking and clearing send the identical body — `null` is now the
-                gesture that empties the WHOLE set and must never be sent from here.
-              */
-              setRival.mutate(target.id, {
-                onSuccess: () => {
-                  say(t(rivalSlot !== null ? 'focus.planet.rivalCleared' : 'focus.planet.rivalMarked', {
-                    commander: target.owner,
-                  }));
-                },
-                onError: (error) => { say(describe(error), 'error'); },
-              });
-            }}
-          >
-            {/*
-              A SECOND PRESS TAKES THE MARK OFF AGAIN. Owner instruction,
-              reversing D103. The button used to freeze the moment the two
-              commanders had shared a probe, a battle or a strike, and read "Rival
-              fixed" for the rest of the season — so the control that says "watch
-              this one" became one that refused. The mark is a bookmark on a disc
-              of three hundred worlds; changing your mind about who you are
-              watching is not a decision the game needs to protect you from.
-            */}
-            {t(rivalSlot !== null ? 'focus.planet.rivalMarkedAction' : 'focus.planet.markRival')}
-          </button>
-          )}
           {onSettle && settlementBlockReason && (
             (claimActive && colonyPhase !== 'SETTLEMENT_IN_FLIGHT')
             // Before any raid only the colony slot is a reason: the rest belongs to step 3 (D209).
@@ -1063,7 +1074,15 @@ export function PlanetFocus({
         a colony, the loyalty rule. The facts and gaps below are what it was built from.
       */}
       <div className="mb-3">
-        <TargetDossier target={target} planet={planet} intel={intel} reports={reports} rivalSlot={rivalSlot} now={now} />
+        <TargetDossier
+          target={target}
+          planet={planet}
+          intel={intel}
+          reports={reports}
+          rivalSlot={rivalSlot}
+          now={now}
+          {...(rivalControl ? { rival: rivalControl } : {})}
+        />
       </div>
 
       {(rivalSlot !== null || rival) && (
@@ -1087,8 +1106,13 @@ export function PlanetFocus({
         half of a world's dossier they had actually bought, and every reading a
         probe brought home sat at the same weight as the world's public position.
       */}
+      {others.length > 0 && (
+        <h3 className="mb-1.5 border-t border-v2-line pt-3 text-caption font-semibold text-v2-ink">
+          {t('dossier.page.others')}
+        </h3>
+      )}
       {SOURCE_ORDER.map((source) => {
-        const rows = read.facts.filter((fact) => fact.source === source);
+        const rows = others.filter((fact) => fact.source === source);
         if (rows.length === 0) return null;
         return (
           <section key={source} data-fact-source={source} className="mb-2">
@@ -1510,11 +1534,16 @@ function StrategicWorldGuide({
   if (target.kind === 'CAPITAL') {
     const emp = target.state.kind === 'EMP' ? target.state : null;
     return (
-      <div className={`mb-3 rounded-chip border px-3 py-3 ${ emp ? 'border-v2-self/55 bg-v2-self/12' : 'border-v2-self/30 bg-v2-self/8' }`}>
-        <div className="flex items-center gap-2">
-          <span className="grid size-8 shrink-0 place-items-center rounded-full border border-v2-self/45 text-v2-self">◆</span>
+      /*
+        A RULE ABOUT SOMEBODY ELSE'S WORLD, SO NOT IN YOUR COLOUR (K2, M2): teal is you, and
+        a stranger's capital was boxed in it. Neutral and one line tall, as the dossier's
+        other rules are; only the EMP window — an opening for you — keeps the teal edge.
+      */
+      <div className={`mb-3 rounded-control border px-3 py-2 ${emp ? 'border-v2-self/55 bg-v2-self/10' : 'border-v2-line bg-v2-deep/40'}`}>
+        <div className="flex items-start gap-2">
+          <span aria-hidden className={`mt-0.5 shrink-0 text-caption ${emp ? 'text-v2-self' : 'text-v2-ink-3'}`}>◆</span>
           <div className="min-w-0 flex-1">
-            <p className="v2-legend text-v2-self">
+            <p className={`text-caption font-semibold ${emp ? 'text-v2-self' : 'text-v2-ink'}`}>
               {t(emp ? 'focus.planet.capitalEmp' : 'focus.planet.capitalProtected')}
             </p>
             {/*
@@ -1529,7 +1558,7 @@ function StrategicWorldGuide({
               as a rule. The flag-off line states the rule that IS live: raids take
               resources here and control never moves.
             */}
-            <p className="mt-1 text-label text-v2-ink-2">
+            <p className="mt-0.5 text-micro leading-snug text-v2-ink-2">
               {t(!FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED
                 ? 'focus.planet.capitalRaidOnlyHint'
                 : emp
@@ -1538,7 +1567,7 @@ function StrategicWorldGuide({
             </p>
           </div>
           {emp && (
-            <span className="font-v2-mono shrink-0 text-label text-v2-self">
+            <span className="font-v2-mono shrink-0 text-caption text-v2-self">
               {duration((emp.until.getTime() - now) / 60_000)}
             </span>
           )}
@@ -1926,39 +1955,55 @@ function RivalHistory({
           ? t('focus.planet.rivalBehind')
           : t('focus.planet.rivalEven');
 
+  /*
+    A SECTION OF THE DOSSIER, IN ITS LANGUAGE (M2): a hairline, a heading, the story, the
+    counts. It was a warn-tinted box, and warn is a gap you can close (K2) — a history is
+    not one. The mark wears the rival's own colour; the counts sit on one shared row and
+    the dominion, the one pair of figures, gets the line under them.
+  */
+  const cell = (label: string, value: string) => (
+    <div className="flex min-w-0 flex-col">
+      <dt className="truncate text-micro text-v2-ink-3">{label}</dt>
+      <dd className="font-v2-mono text-caption font-semibold text-v2-ink">{value}</dd>
+    </div>
+  );
   return (
     <section
-      className="mb-3 rounded-chip border border-alloy/25 bg-alloy/5 px-3 py-3"
+      className="mb-3 flex flex-col gap-1.5 border-t border-v2-line pt-3"
       aria-label={t('focus.planet.rivalHeading')}
     >
       <div className="flex items-baseline gap-2">
-        <h3 className="v2-legend text-v2-warn">{t('focus.planet.rivalHeading')}</h3>
+        <h3 className="text-caption font-semibold text-v2-ink">{t('focus.planet.rivalHeading')}</h3>
         {marked && (
-          <span className="v2-legend ml-auto text-v2-warn">
+          <span className="rounded-chip border border-v2-rival/60 px-1 text-micro text-v2-rival">
             {t('focus.planet.rivalMarkedBadge')}
           </span>
         )}
+        {lastAt > 0 && (
+          <span className="ml-auto shrink-0 text-micro text-v2-ink-3">
+            {t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) })}
+          </span>
+        )}
       </div>
-      <p className="mt-1 text-caption leading-snug text-v2-ink-2">{story}</p>
-      {marked && <p className="mt-2 text-micro leading-snug text-v2-ink-3">{t('focus.planet.rivalPurpose')}</p>}
+      <p className="text-caption leading-snug text-v2-ink-2">{story}</p>
+      {marked && <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.rivalPurpose')}</p>}
       {summary && (
-        <div className="mt-2 grid grid-cols-4 gap-2">
-          <Figure label={t('focus.planet.rivalEncounters')} value={String(summary.battles)} />
-          <Figure label={t('focus.planet.rivalYourRaids')} value={String(summary.attacks)} />
-          <Figure label={t('focus.planet.rivalTheirRaids')} value={String(summary.defences)} />
-          <Figure
-            label={t('focus.planet.rivalDominion')}
-            value={t('focus.planet.rivalDominionValue', {
-              gained: compact(summary.dominionGained),
-              lost: compact(summary.dominionLost),
-            })}
-          />
-        </div>
-      )}
-      {lastAt > 0 && (
-        <p className="v2-legend mt-2">
-          {t('focus.planet.rivalLastContact', { age: staleness((now - lastAt) / 60_000) })}
-        </p>
+        <dl className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-deep/40 px-2.5 py-2">
+          <div className="grid grid-cols-3 gap-2">
+            {cell(t('focus.planet.rivalEncounters'), String(summary.battles))}
+            {cell(t('focus.planet.rivalYourRaids'), String(summary.attacks))}
+            {cell(t('focus.planet.rivalTheirRaids'), String(summary.defences))}
+          </div>
+          <div className="flex items-baseline justify-between gap-2 border-t border-v2-line/60 pt-1.5">
+            <dt className="text-micro text-v2-ink-3">{t('focus.planet.rivalDominion')}</dt>
+            <dd className="font-v2-mono text-caption font-semibold text-v2-ink">
+              {t('focus.planet.rivalDominionValue', {
+                gained: compact(summary.dominionGained),
+                lost: compact(summary.dominionLost),
+              })}
+            </dd>
+          </div>
+        </dl>
       )}
     </section>
   );
@@ -2022,7 +2067,7 @@ function CloseGap({
   if (gap.closes === 'telescope') {
     if (telescope === 0) {
       return (
-        <button type="button" className={`${BTN_GHOST} w-full`} onClick={onInstallTelescope}>
+        <button type="button" className={BTN_GHOST} onClick={onInstallTelescope}>
           {t('focus.planet.installTelescope')}
         </button>
       );

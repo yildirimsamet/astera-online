@@ -341,7 +341,7 @@ export const focus = {
       "Ce commandant est trop développé par rapport à toi — l’écart maximal autorisé pour un raid est d’un palier",
     attackProtected: "Protégé — ce monde ne peut pas encore être attaqué",
     attackProtectedShort: "Protégé · {{duration}}",
-    attackShort: "Attaquer",
+    attackShort: "Planifier l’attaque",
     probeShort: "Sonde",
     probeCoolingShort: "dans {{duration}}",
     attack: "Préparer une attaque",

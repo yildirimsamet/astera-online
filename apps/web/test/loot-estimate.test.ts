@@ -44,4 +44,17 @@ describe('the loot estimate', () => {
   it('keeps an unread deuterium share unread', () => {
     expect(lootEstimate({ ...report, deuteriumStock: null }, 30_000)!.deuterium).toBeNull();
   });
+
+  /**
+   * THE MOCK'S ROWS ARE PER RESOURCE, AND THE PROBE READS TWO PILES: the whole haul and
+   * the deuterium in it. Alloy and crystal together are the rest — and since both bands
+   * are fuzzed, the rest is widest-honest: the low pile less the high deuterium, the high
+   * pile less the low. Never below zero; unknown where the deuterium was never read.
+   */
+  it('reads alloy and crystal together as the pile less its deuterium', () => {
+    expect(lootEstimate(report, 30_000)!.metal).toEqual({ low: 16_000, high: 23_000 });
+    expect(lootEstimate({ stock: { low: 500, high: 900 }, deuteriumStock: { low: 400, high: 800 } }, 0)!.metal)
+      .toEqual({ low: 0, high: 500 });
+    expect(lootEstimate({ ...report, deuteriumStock: null }, 30_000)!.metal).toBeNull();
+  });
 });

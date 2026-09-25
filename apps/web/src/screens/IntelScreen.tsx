@@ -21,6 +21,7 @@ import { Unreachable, Waiting } from '../ui/kit/index.js';
 import { Icon } from '../v2/icons.js';
 import { AgeStamp, AgedThumb, ClarityMark } from '../v2/kit/Freshness.js';
 import { Segmented } from '../v2/kit/Segmented.js';
+import { SignalBars } from '../v2/kit/SignalBars.js';
 import { BattleReports } from './BattleReports.jsx';
 
 /**
@@ -570,7 +571,7 @@ function ProbeShelf({ probes, now, yours, onOpenDossier }: {
                 <p className="text-micro text-v2-ink-2">{accuracy}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-0.5">
-                <SignalBars lit={Math.max(1, Math.round(report.accuracy * 5))} label={accuracy} />
+                <SignalBars accuracy={report.accuracy} label={accuracy} />
                 <AgeStamp minutes={minutes} />
               </div>
             </div>
@@ -598,21 +599,6 @@ function ProbeShelf({ probes, now, yours, onOpenDossier }: {
         );
       })}
     </div>
-  );
-}
-
-/** How good a read was, in the bars the Telescope uses; the figure is the name. */
-function SignalBars({ lit, label }: { lit: number; label: string }) {
-  return (
-    <span role="img" aria-label={label} className="inline-flex items-end gap-0.5">
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          className={`w-[3px] rounded-cell ${i < lit ? 'bg-v2-self' : 'bg-v2-line'}`}
-          style={{ height: `${String(4 + i * 2)}px` }}
-        />
-      ))}
-    </span>
   );
 }
 

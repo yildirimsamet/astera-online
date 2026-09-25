@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -90,7 +90,9 @@ describe('Rival dossier', () => {
 
   it('marks one rival through the server and updates the existing season cache', async () => {
     const { client, setRival } = show(false);
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Mark rival' }));
+    // The mark is a chip in the dossier's header (the mock), not a slab among the commitments.
+    const header = document.querySelector<HTMLElement>('[data-target-dossier]')!;
+    await userEvent.setup().click(within(header).getByRole('button', { name: 'Mark rival' }));
     await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
     expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals)
       .toEqual([{ planetId: target.id, playerId: 'rival-player', slot: 0 }]);
@@ -105,7 +107,7 @@ describe('Rival dossier', () => {
    */
   it('clears the marker without deleting the encounter history', async () => {
     const { client, setRival } = show(true);
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Rival' }));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Rival 1', pressed: true }));
     await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
     expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals).toEqual([]);
     expect(screen.getByText('4 encounters have made this more than a single raid.')).toBeInTheDocument();

@@ -354,7 +354,7 @@ export const focus = {
       "That commander is further developed than you — a raid spans at most one tier",
     attackProtected: "Protected — this world cannot be raided yet",
     attackProtectedShort: "Protected · {{duration}}",
-    attackShort: "Attack",
+    attackShort: "Plan attack",
     probeShort: "Probe",
     probeCoolingShort: "Probe in {{duration}}",
     attack: "Plan an attack",

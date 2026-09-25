@@ -209,6 +209,64 @@ describe('an unknown fact states itself; its sales pitch waits to be asked for',
   });
 });
 
+/**
+ * THE READINGS THE DOSSIER DID NOT DRAW (M2, owner 2026-09-25). The dossier above already
+ * draws the probe's pile, its deuterium, its defence and its class reading, and the header
+ * names the commander; listing them again below, in larger type, was the page read twice.
+ * What is left is compact: the label and the figure on one line, the source's age under
+ * it, and the note one tap deeper.
+ */
+describe('the readings below the dossier', () => {
+  const probedIntel: IntelView = {
+    ...intel,
+    probeReports: [{
+      targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+      at: new Date(NOW - 3 * 60 * 60_000), accuracy: 0.6, detected: false,
+      stock: { low: 400, high: 900 }, deuteriumStock: { low: 20, high: 50 },
+      defence: { low: 0, high: 0 }, fleetSize: { low: 3, high: 7 }, fleetHome: true,
+      classReading: { kind: 'UNREAD' },
+    }],
+  };
+  const showProbed = () => {
+    const Wrapper = harness();
+    return render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()} planet={commander()} intel={probedIntel} reports={[]} now={NOW}
+          onClose={vi.fn()} onAttack={vi.fn()} onInstallTelescope={vi.fn()} onLaunched={vi.fn()}
+          open onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+  };
+
+  it('does not list again what the dossier already drew', () => {
+    // Every band open, so a row hidden only by a closed band is not mistaken for gone.
+    window.localStorage.setItem('astera.accordion.dossier', JSON.stringify(['public', 'telescope', 'probe', 'battle']));
+    const view = showProbed();
+    const listed = [...view.container.querySelectorAll('[data-fact]')].map((row) => row.getAttribute('data-fact'));
+    expect(listed).toContain('probe:ships');
+    expect(listed).toContain('public:development');
+    for (const drawn of ['public:owner', 'probe:stock', 'probe:deuterium', 'probe:defence', 'probe:shape']) {
+      expect(listed).not.toContain(drawn);
+    }
+  });
+
+  it('folds a reading’s note one tap deeper', async () => {
+    const view = showProbed();
+    const ships = view.container.querySelector<HTMLElement>('[data-fact="probe:ships"]')!;
+    expect(ships).toHaveTextContent(/Ships counted/i);
+    expect(ships.querySelector('[data-fact-note]')).toBeNull();
+    await userEvent.click(ships.querySelector('button')!);
+    expect(ships.querySelector('[data-fact-note]')).toHaveTextContent(/home/i);
+  });
+
+  it('names the attack as what the press does: plan it', () => {
+    const view = showProbed();
+    expect(view.container.querySelector('[data-attack]')).toHaveTextContent('Plan attack');
+  });
+});
+
 describe('the dossier is grouped by what each reading cost', () => {
   /**
    * Owner instruction: *"focus sheet'indeki telescope bilgileri ve sonda bilgileri

@@ -40,10 +40,16 @@ const MIN_WIDTH = 3;
 /**
  * A READING ON A NUMBER LINE FROM ZERO, in percent of the row. The line runs to the larger
  * of the reading's top and yours, so the band's place says "smaller than mine" or "bigger
- * than mine"; `you` is null when there is no world of yours to measure.
+ * than mine"; `you` is null when there is no world of yours to measure. `reach` puts
+ * several rows on one line (the dossier's haul): each is drawn to the same end.
  */
-export function probeAxis(low: number, high: number, mine: number | null): { start: number; width: number; you: number | null } {
-  const top = Math.max(1, high, mine ?? 0) * HEADROOM;
+export function probeAxis(
+  low: number,
+  high: number,
+  mine: number | null,
+  reach = 0,
+): { start: number; width: number; you: number | null } {
+  const top = Math.max(1, high, mine ?? 0, reach) * HEADROOM;
   const from = Math.max(0, Math.min(low, high));
   return {
     start: (from / top) * 100,

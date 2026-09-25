@@ -124,8 +124,15 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   : beş koltuk + katkı çubukları, hat üstünde etiketli dalgalar ve uç etiketleri,
   "Dalga gönder ›" standart fırlatma ekranını açar (hız seçimiyle aynı anda varış), Klan sohbeti düğmesi, kısa kural
   notu; tarayıcı form elemanları (açılır liste, sayı kutusu) kalkar (hazine bağışı dahil); alt bölümler maket dilinde.
-- [ ] **M2 Hedef dosyası** (E2): eski olgu listesi dosyaya katlanır (tekrar yok), kaynak başına ganimet çubukları,
-  sonda satırında sinyal çubukları, güç lejantı tek satır, rakip çipi başlıkta.
+- [x] **M2 Hedef dosyası** (E2) — `TargetDossier`: başlıkta rakip çipi (işaretle/kaldır, `rival` prop'u; eylem
+  satırındaki düğme kalktı), "Sonda raporu · yaş · sinyal çubukları" (kit `SignalBars`, İstihbarat da kullanır), tek
+  "Güç" başlığı (`ForceRuler heading`; anlam satırı "Bu nedir?" katına), yeni **Okunan dağılım** bölümü (tam bölünme
+  paylarıyla, çoğunluk taban + okunmamış tarama, EVEN/UNREAD yalnız cümle, NONE'da bölüm yok; `MatchupLine` onun
+  lejantı), ganimet kaynak başına sayı doğrusu (alaşım+kristal = yığın − döteryum, `lootEstimate.metal`; ortak eksen
+  `probeAxis(…, reach)`, kargo turkuaz çentik), kısmi zafer satırı. Alt bölümler maket dilinde: "Bu sezonki
+  hikâyeniz" ince çizgili bölüm (uyarı rengi kalktı), **Diğer okumalar** yalnız dosyanın çizmediği olgular
+  (`beyondDossier`), olgu satırı tek satır + yaş, not bir dokunuş derinde; boşluk satırları aynı yoğunlukta (kesik
+  uyarı kenarı); yabancı başkent kuralı nötr (turkuaz "sen" rengiydi, K2). Birincil düğme "Saldırı planla ›".
 - [ ] **M3 Fırlatma** (E3): başlık kök → hedef + rakip çipi, tek kanat cetveli + sınıf ipucu, sade gemi satırları,
   özet: Varış/Dönüş/Yakıt/Kargo(ganimet)/Uçuş yuvası/Evde kalan.
 - [ ] **M4 Savaş raporu + Sen yokken** (E6, E10): sinematik kahraman, İzle/Klana, istihbarat güncelleme satırı; sen

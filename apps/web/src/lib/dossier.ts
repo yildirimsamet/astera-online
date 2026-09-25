@@ -109,6 +109,21 @@ const SOURCE_LABEL = {
 
 export const sourceLabel = (source: Source): string => i18n.t(SOURCE_LABEL[source]);
 
+/** A fact's name across sources: `stock` is a probe's pile and a battle's haul, and they differ. */
+export const factId = (fact: Fact): string => `${fact.source}:${fact.key}`;
+
+/**
+ * WHAT THE DOSSIER PAGE (E2, `v2/hud/TargetDossier`) ALREADY DRAWS: the commander in its
+ * header, the probe's pile and its deuterium as the haul, its defence on the ruler, its
+ * class reading as the composition bar. Listed again under it, they were the page read twice.
+ */
+const DRAWN: ReadonlySet<string> = new Set([
+  'public:owner', 'probe:owner', 'probe:stock', 'probe:deuterium', 'probe:defence', 'probe:shape',
+]);
+
+/** The readings the dossier page does not draw, for the list under it. */
+export const beyondDossier = (facts: readonly Fact[]): Fact[] => facts.filter((fact) => !DRAWN.has(factId(fact)));
+
 /**
  * HOW OLD THE RECORD ON A WORLD IS — NULL WHEN THERE IS NO RECORD. D151.
  *

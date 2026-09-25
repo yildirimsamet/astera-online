@@ -9,6 +9,12 @@ export interface LootEstimate {
   partial: Band;
   /** The deuterium inside the decisive band, where the probe read it. */
   deuterium: Band | null;
+  /**
+   * Alloy and crystal together: the pile less its deuterium. Both bands are fuzzed, so the
+   * rest is widest-honest (low pile less high deuterium, high pile less low). Null where
+   * the deuterium was never read, because then the pile cannot be split.
+   */
+  metal: Band | null;
   /** What the wing at home can carry. */
   cargo: number;
   /** What a decisive win would actually bring home: the band, capped by the hold. */
@@ -40,6 +46,12 @@ export function lootEstimate(
     decisive: { low: report.stock.low, high: report.stock.high },
     partial: { low: Math.floor(report.stock.low * share), high: Math.floor(report.stock.high * share) },
     deuterium: report.deuteriumStock ? { low: report.deuteriumStock.low, high: report.deuteriumStock.high } : null,
+    metal: report.deuteriumStock
+      ? {
+        low: Math.max(0, report.stock.low - report.deuteriumStock.high),
+        high: Math.max(0, report.stock.high - report.deuteriumStock.low),
+      }
+      : null,
     cargo: hold,
     carried: { low: Math.min(hold, report.stock.low), high: Math.min(hold, report.stock.high) },
     cargoShort: hold < report.stock.low,

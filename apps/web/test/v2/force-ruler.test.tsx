@@ -155,6 +155,20 @@ describe('what it says about the reading', () => {
     expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/three times/i);
   });
 
+  /**
+   * THE DOSSIER HEADS ITS OWN SECTION (M2): "Power" once, with the ruler under it, as the
+   * mock draws it — so the ruler takes that heading instead of adding a second one, and
+   * its one-line meaning moves into the fold beside it, where the rule already is.
+   */
+  it('takes the heading of the page it sits in, and folds its meaning under the rule', () => {
+    render(<ForceRuler yours={30_000} theirs={reading} heading="Power" />);
+    expect(screen.getByText('Power')).toBeInTheDocument();
+    expect(screen.queryByText('Armed unit value')).toBeNull();
+    expect(screen.queryByText(/Resource cost, not attack damage/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /what is this/i }));
+    expect(screen.getByTestId('ruler-rule')).toHaveTextContent(/Resource cost, not attack damage/);
+  });
+
   it('says what the lines could not see', () => {
     render(<ForceRuler yours={30_000} theirs={reading} lines={lines} notes={['Shield unknown', 'Probe was seen']} />);
     expect(screen.getByText('Shield unknown · Probe was seen')).toBeInTheDocument();
