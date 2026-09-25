@@ -235,6 +235,20 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   (koloni tavanı, sonda), `build-queue`, `construction-speed`, `event-bus-reconnect` (Uplink), `concurrency` (sonda
   yuvası), `fault-attack` (Ölüm Yıldızı kapalı), `garbage-collector`, `intergalactic-convoy-schema` (enum sırası),
   `notifications` (koloni arıza türleri), `onboarding` (Dart kristali 78).
+- **Geri bildirim 4 (sahip, 2026-09-25) — 9 madde.**
+  [x] 9 `39bd32d` her sayı kutusu yazılabilir; yazılan aynen kalır, odak kaybı/Enter'da oturur (boş → taban, fazla →
+  tavan), değer yazarken sınırlı olarak canlı gider (basılı tut eski sayıyı göndermez), odakta sayı seçilir.
+  [x] 4 `18647f2` Üs çubuğu Filo · Üretim · Bilgi · Taktiksel · Savunma; Akademi yapım sırasıyla açar, açtığını çubuk
+  sırasıyla dizer. [x] 5 `7b00933` sessiz başlığın X'i z-30; yapışan kategori çubuğu (`useStuck`) sağında X'e yer açar.
+  [x] 7 `0b8cc8a` kapatılan öneri kartı bu cihazda kalıcı kapalı, sıradaki öneri gelir (olay 3 gün, saldırı hiç).
+  [x] 6 `0ca0c4d` klan kurma 7.500 alaşım + 3.000 kristal (sabit sahip fiyatı; kalibrasyon aracı ve game-design.md).
+  [x] 1·2·3 `d077720` havuz üst çubukta: her deponun altında o kaynağın havuzdaki miktarı (turkuaz = toplamaya değer,
+  sarı = dolu/durdu ya da depoda yer yok), satırın tamamı tek "Topla" (dolu depo → ekonomi); üst çubuk depoları Üs'ün
+  `StoreBar`'ı (kompakt: 12 hücre, kasa payı çerçeveli, kalkan satırı yok); çubuk 48 px'te kaldı. Galaksi balonu,
+  Üs'teki havuz satırı, `CollectHost`/`CollectBubble`/`WorksPool` kalktı; dock'un Üs noktası yalnız onarım.
+  [ ] 8 kaplama mağazası — fiyat ve ödeme yolu sahipten bekleniyor (sunucuda satın alma yok, yalnız yönetici
+  `orderRef` ile verir). Sonra: tüm ui-v2'yi master'a birleştir (sahip isteği; ana ağaçtaki 16 izlenmeyen gezegen
+  dosyası önce silinmeli).
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 
