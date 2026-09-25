@@ -138,8 +138,9 @@ export const hitboxMaterialProps = (kind: HitboxKind, debug: boolean): HitboxMat
   color: HITBOX_COLOURS[kind],
   transparent: true,
   opacity: debug ? HITBOX_OPACITY : 0,
-  // `colorWrite: false` rather than `visible: false`: an invisible object is not
-  // raycast at all, which would leave nothing to press.
+  // `colorWrite: false` keeps one material for both states. (Hiding the MESH would
+  // not stop picking — neither three's raycaster nor R3F's events read `visible`, which
+  // the modelled worlds use to skip drawing their pick spheres: `PlanetSkinModel`.)
   colorWrite: debug,
   depthWrite: false,
   side: debug ? THREE.DoubleSide : THREE.FrontSide,

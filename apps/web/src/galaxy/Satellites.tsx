@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -160,13 +160,15 @@ export function Satellites({ nodes }: { nodes: readonly PlanetNode[] }) {
 
   return (
     <>
+      {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
       {groups.map((group) => (
-        <Ring
-          key={group.key}
-          type={group.type}
-          bodies={group.bodies}
-          dormant={group.dormant}
-        />
+        <Suspense key={group.key} fallback={null}>
+          <Ring
+            type={group.type}
+            bodies={group.bodies}
+            dormant={group.dormant}
+          />
+        </Suspense>
       ))}
     </>
   );

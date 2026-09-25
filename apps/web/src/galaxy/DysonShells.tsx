@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -496,13 +496,15 @@ export function DysonShells({ nodes }: { nodes: readonly PlanetNode[] }) {
 
   return (
     <>
+      {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
       {groups.map((group) => (
-        <Shell
-          key={group.key}
-          index={group.index}
-          wrecked={group.wrecked}
-          planets={group.planets}
-        />
+        <Suspense key={group.key} fallback={null}>
+          <Shell
+            index={group.index}
+            wrecked={group.wrecked}
+            planets={group.planets}
+          />
+        </Suspense>
       ))}
     </>
   );

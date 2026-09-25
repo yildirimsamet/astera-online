@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { MODEL_PICK_SCALE } from '../src/galaxy/planetLod.js';
@@ -56,5 +57,25 @@ describe('a modelled world’s pick spheres', () => {
     placePickSpheres(mesh, [node('a', 0)]);
     // Inside the pick radius, outside the body's.
     expect(tap(mesh, MODEL_PICK_SCALE * 0.98)).toBe(0);
+  });
+});
+
+/**
+ * A PICK SPHERE COSTS NO DRAW (code review, 2026-09-25). An invisible material still made
+ * the GPU walk ~96 triangles a world every frame. Neither three's raycaster nor R3F's
+ * events look at `visible` — the Suspense-hidden worlds that stayed tappable proved it —
+ * so the spheres are hidden unless the pick volumes are being painted, and still tapped.
+ */
+describe('a hidden pick sphere', () => {
+  it('is still tapped', () => {
+    const mesh = pickMesh(1);
+    placePickSpheres(mesh, [node('a', 12)]);
+    mesh.visible = false;
+    expect(tap(mesh, 12)).toBe(0);
+  });
+
+  it('is drawn only while the pick volumes are painted', () => {
+    const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    expect(model).toMatch(/name=\{`\$\{name\}-hits`\}[\s\S]{0,200}visible=\{paintHits\}/);
   });
 });

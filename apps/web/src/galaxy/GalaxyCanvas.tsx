@@ -57,6 +57,9 @@ import {
 } from './StrategicInterception.jsx';
 import { PlanetField, rivalColour } from './PlanetField.jsx';
 import { SCENE_LIGHT } from './planetSurface.js';
+
+/** The rig's per-frame scratch for a tracked subject's drift (never allocated in the loop). */
+const TRACK_DRIFT = new THREE.Vector3();
 import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
@@ -1517,8 +1520,8 @@ function Rig({
     }
 
     if (act.track && at) {
-      const target = new THREE.Vector3(at[0], at[1], at[2]);
-      const drift = target.clone().sub(controls.target);
+      // One scratch vector, not two new ones a frame: a tracked pan made garbage mid-flight.
+      const drift = TRACK_DRIFT.set(at[0], at[1], at[2]).sub(controls.target);
       if (drift.lengthSq() > 1e-10) {
         controls.target.add(drift);
         controls.object.position.add(drift);

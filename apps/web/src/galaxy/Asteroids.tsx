@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -91,14 +91,16 @@ export function Asteroids({
 
   return (
     <>
+      {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
       {buckets.map((bucket) => (
-        <RockBucket
-          key={bucket.url}
-          bucket={bucket}
-          seasonStart={seasonStart}
-          focusedId={focusedId}
-          onSelect={onSelect}
-        />
+        <Suspense key={bucket.url} fallback={null}>
+          <RockBucket
+            bucket={bucket}
+            seasonStart={seasonStart}
+            focusedId={focusedId}
+            onSelect={onSelect}
+          />
+        </Suspense>
       ))}
       <Tails asteroids={asteroids} seasonStart={seasonStart} />
     </>

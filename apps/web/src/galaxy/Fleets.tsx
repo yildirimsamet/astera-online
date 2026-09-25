@@ -205,17 +205,27 @@ useGLTF.preload(MODEL.deathStar, false);
  * this wrong and a ship crabs sideways down its own route, which is the single
  * most obvious way for a scene like this to look unfinished.
  */
-export function Hull({
-  url,
-  scale,
-  glow,
-  focused,
-}: {
+export function Hull(props: HullProps) {
+  /*
+    ITS OWN BOUNDARY, WHEREVER IT IS MOUNTED (six files mount it). A hull whose model is
+    still loading costs itself; it never climbs to the scene's one boundary, which would
+    hide every world, pin and fleet at once while leaving them tappable.
+  */
+  return (
+    <Suspense fallback={null}>
+      <LoadedHull {...props} />
+    </Suspense>
+  );
+}
+
+interface HullProps {
   url: string;
   scale: number;
   glow: string;
   focused: boolean;
-}) {
+}
+
+function LoadedHull({ url, scale, glow, focused }: HullProps) {
   const { scene } = useGLTF(url, false);
 
   const model = useMemo(() => {

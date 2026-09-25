@@ -9,7 +9,7 @@ import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface } from './planetSurface.js';
 import type { PlanetLod } from './planetLod.js';
 import { placePickSpheres } from './planetPick.js';
-import { HitboxMaterial } from './hitboxDebug.jsx';
+import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
@@ -164,6 +164,12 @@ function ModelInstances({
   const helper = useMemo(() => new THREE.Object3D(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
+  /*
+    A PICK SPHERE COSTS NO DRAW unless the volumes are being painted (`?hitboxes=1`).
+    Neither three's raycaster nor R3F's events look at `visible`, so a hidden sphere is
+    still tapped — and an unpainted one no longer walks ~96 triangles a world a frame.
+  */
+  const paintHits = useHitboxDebug();
 
   useEffect(() => () => {
     geometry?.dispose();
@@ -230,6 +236,8 @@ function ModelInstances({
           ref={hits}
           name={`${name}-hits`}
           args={[undefined, undefined, capacity]}
+          // Drawn only while the pick volumes are painted: hidden, it is still raycast.
+          visible={paintHits}
           frustumCulled={false}
           onPointerUp={select}
         >

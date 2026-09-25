@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -158,17 +158,19 @@ export function Wrecks({
 
   return (
     <>
+      {/* Its own boundary: a model still loading costs this group, never the whole disc. */}
       {placed.map(({ w, at, radius }) => (
-        <Wreck
-          key={w.id}
-          wreck={w}
-          at={at}
-          planetRadius={radius}
-          focused={focusedId === w.id}
-          onSelect={() => {
-            onSelect(w.id);
-          }}
-        />
+        <Suspense key={w.id} fallback={null}>
+          <Wreck
+            wreck={w}
+            at={at}
+            planetRadius={radius}
+            focused={focusedId === w.id}
+            onSelect={() => {
+              onSelect(w.id);
+            }}
+          />
+        </Suspense>
       ))}
     </>
   );
