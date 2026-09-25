@@ -160,8 +160,17 @@ import { BaseQueues } from '../v2/shell/BaseQueues.js';
 
 type GroupId = PlanetGroup;
 
-/** Fixed order: the sequence a planet is actually built in. */
-const TABS: GroupId[] = ['grow', 'orbit', 'defend', 'reach', 'tactical'];
+/** The order the Academy reveals them in: the sequence a planet is actually built in. */
+const REVEAL: GroupId[] = ['grow', 'orbit', 'defend', 'reach', 'tactical'];
+
+/** The order on the bar (owner, 2026-09-25: "Fleet en sol'a, Tactical 4. sıraya"). */
+const TABS: GroupId[] = ['reach', 'grow', 'orbit', 'tactical', 'defend'];
+
+/** What a lesson has revealed so far, laid out in the bar's order. */
+const lessonTabs = (group: GroupId): GroupId[] => {
+  const revealed = REVEAL.slice(0, REVEAL.indexOf(group) + 1);
+  return TABS.filter((id) => revealed.includes(id));
+};
 
 /**
  * FIVE PROBLEMS, EACH NAMED BY THE WORRY IT ANSWERS.
@@ -983,7 +992,7 @@ function Tabs({
         marker="tab"
         role="tablist"
         label={t('planet.tabs.label')}
-        segments={(lesson ? TABS.slice(0, TABS.indexOf(academyGroup(lesson)) + 1) : TABS).map((id) => ({
+        segments={(lesson ? lessonTabs(academyGroup(lesson)) : TABS).map((id) => ({
           id,
           label: t(GROUPS[id].problem),
           /*

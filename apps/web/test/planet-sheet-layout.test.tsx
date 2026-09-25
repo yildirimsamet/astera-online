@@ -90,6 +90,30 @@ describe('the fleet tab puts the orbit satellites last', () => {
   });
 });
 
+/**
+ * THE TABS' ORDER ON THE BAR (owner, 2026-09-25): "Fleet en sol'a, Tactical 4. sıraya". The
+ * bar reads Fleet · Production · Intel · Tactical · Defend. The Academy still REVEALS them in
+ * the order a planet is built — a lesson on production shows no fleet tab — and lays what it
+ * has revealed out in the bar's own order.
+ */
+describe('the tab bar', () => {
+  const labels = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+  const name = (id: string) => i18n.t(`planet.tabs.${id}Problem`);
+
+  it('reads Fleet, Production, Intel, Tactical, Defend', () => {
+    show();
+    expect(labels()).toEqual(['reach', 'grow', 'orbit', 'tactical', 'defend'].map(name));
+  });
+
+  it('lays out a lesson’s revealed tabs in the bar’s order', () => {
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><ToastProvider>
+      <AcademyLessonContext.Provider value="courier"><PlanetScreen focusGroup="reach" /></AcademyLessonContext.Provider>
+    </ToastProvider></QueryClientProvider>);
+    expect(labels()).toEqual(['reach', 'grow', 'orbit', 'defend'].map(name));
+  });
+});
+
 describe('the sheet opens on production', () => {
   it('reveals Intel while keeping Production selected for the tab-press lesson', () => {
     const client = new QueryClient();
