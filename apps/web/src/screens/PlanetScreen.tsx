@@ -163,8 +163,8 @@ type GroupId = PlanetGroup;
 /** The order the Academy reveals them in: the sequence a planet is actually built in. */
 const REVEAL: GroupId[] = ['grow', 'orbit', 'defend', 'reach', 'tactical'];
 
-/** The order on the bar (owner, 2026-09-25: "Fleet en sol'a, Tactical 4. sıraya"). */
-const TABS: GroupId[] = ['reach', 'grow', 'orbit', 'tactical', 'defend'];
+/** The order on the bar (owner, 2026-09-25): Production · Intel · Defend · Tactical · Fleet. */
+const TABS: GroupId[] = ['grow', 'orbit', 'defend', 'tactical', 'reach'];
 
 /** What a lesson has revealed so far, laid out in the bar's order. */
 const lessonTabs = (group: GroupId): GroupId[] => {

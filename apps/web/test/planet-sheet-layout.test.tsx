@@ -91,10 +91,9 @@ describe('the fleet tab puts the orbit satellites last', () => {
 });
 
 /**
- * THE TABS' ORDER ON THE BAR (owner, 2026-09-25): "Fleet en sol'a, Tactical 4. sıraya". The
- * bar reads Fleet · Production · Intel · Tactical · Defend. The Academy still REVEALS them in
- * the order a planet is built — a lesson on production shows no fleet tab — and lays what it
- * has revealed out in the bar's own order.
+ * THE TABS' ORDER ON THE BAR (owner, 2026-09-25, corrected the same day): Production · Intel ·
+ * Defend · Tactical · Fleet. The Academy still REVEALS them in the order a planet is built — a
+ * lesson on production shows no fleet tab — and lays what it has revealed out in the bar's order.
  */
 describe('the tab bar', () => {
   const labels = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
@@ -107,9 +106,9 @@ describe('the tab bar', () => {
   } as const;
   const name = (id: keyof typeof NAME) => i18n.t(NAME[id]);
 
-  it('reads Fleet, Production, Intel, Tactical, Defend', () => {
+  it('reads Production, Intel, Defend, Tactical, Fleet', () => {
     show();
-    expect(labels()).toEqual((['reach', 'grow', 'orbit', 'tactical', 'defend'] as const).map(name));
+    expect(labels()).toEqual((['grow', 'orbit', 'defend', 'tactical', 'reach'] as const).map(name));
   });
 
   it('lays out a lesson’s revealed tabs in the bar’s order', () => {
@@ -117,7 +116,7 @@ describe('the tab bar', () => {
     render(<QueryClientProvider client={client}><ToastProvider>
       <AcademyLessonContext.Provider value="courier"><PlanetScreen focusGroup="reach" /></AcademyLessonContext.Provider>
     </ToastProvider></QueryClientProvider>);
-    expect(labels()).toEqual((['reach', 'grow', 'orbit', 'defend'] as const).map(name));
+    expect(labels()).toEqual((['grow', 'orbit', 'defend', 'reach'] as const).map(name));
   });
 });
 

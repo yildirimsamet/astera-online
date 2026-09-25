@@ -238,7 +238,7 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
 - **Geri bildirim 4 (sahip, 2026-09-25) — 9 madde.**
   [x] 9 `39bd32d` her sayı kutusu yazılabilir; yazılan aynen kalır, odak kaybı/Enter'da oturur (boş → taban, fazla →
   tavan), değer yazarken sınırlı olarak canlı gider (basılı tut eski sayıyı göndermez), odakta sayı seçilir.
-  [x] 4 `18647f2` Üs çubuğu Filo · Üretim · Bilgi · Taktiksel · Savunma; Akademi yapım sırasıyla açar, açtığını çubuk
+  [x] 4 `18647f2` → sahip düzeltmesi: Üs çubuğu Üretim · Bilgi · Savunma · Taktiksel · Filo; Akademi yapım sırasıyla açar, açtığını çubuk
   sırasıyla dizer. [x] 5 `7b00933` sessiz başlığın X'i z-30; yapışan kategori çubuğu (`useStuck`) sağında X'e yer açar.
   [x] 7 `0b8cc8a` kapatılan öneri kartı bu cihazda kalıcı kapalı, sıradaki öneri gelir (olay 3 gün, saldırı hiç).
   [x] 6 `0ca0c4d` klan kurma 7.500 alaşım + 3.000 kristal (sabit sahip fiyatı; kalibrasyon aracı ve game-design.md).
