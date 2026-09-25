@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MODEL_PICK_SCALE, PLANET_LOD, groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from '../src/galaxy/planetLod.js';
+import { MODEL_PICK_SCALE, PLANET_LOD, approachingFull, groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from '../src/galaxy/planetLod.js';
 import { planetArt, planetLook, planetModel } from '../src/ui/assets.js';
 
 /**
@@ -103,7 +103,8 @@ describe('the field draws the default worlds by tier', () => {
 
   it('groups the default worlds by the tier the camera puts them in', () => {
     expect(field).toMatch(/groupPlanetsByLod\(defaults,/);
-    expect(field).toMatch(/lodFor\(screenRadius\(/);
+    expect(field).toMatch(/const px = screenRadius\(node\.radius,/);
+    expect(field).toMatch(/lodFor\(px, before\)/);
   });
 
   it('draws every tier as a model, the card only while the model is not there', () => {
@@ -154,8 +155,38 @@ describe('a tier change never empties the disc', () => {
   });
 
   it('loads the far and light models of every look up front, the full ones on demand', () => {
-    expect(field).toMatch(/useGLTF\.preload\(planetModel\(node\.id, 'far'\)\)/);
-    expect(field).toMatch(/useGLTF\.preload\(planetModel\(node\.id, 'lite'\)\)/);
-    expect(field).not.toMatch(/useGLTF\.preload\(planetModel\(node\.id, 'full'\)\)/);
+    const upFront = field.slice(field.indexOf('THE FAR AND LIGHT MODEL OF EVERY LOOK'), field.indexOf('}, [defaults]);'));
+    expect(upFront).toMatch(/useGLTF\.preload\(planetModel\(node\.id, 'far'\)\)/);
+    expect(upFront).toMatch(/useGLTF\.preload\(planetModel\(node\.id, 'lite'\)\)/);
+    expect(upFront).not.toMatch(/'full'/);
+  });
+});
+
+/**
+ * NO HITCH THE FIRST TIME A WORLD COMES CLOSE (code review, 2026-09-25). The first full
+ * model of a look to be drawn compiled a new shader and uploaded three 1024 maps in one
+ * frame — a stall of up to a few hundred milliseconds on a phone, once per look, while
+ * hopping from world to world. Three guards:
+ */
+describe('the full model is ready before it is needed', () => {
+  const field = readFileSync('src/galaxy/PlanetField.tsx', 'utf8');
+  const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+
+  it('fetches a world’s full model once it is approaching the full tier', () => {
+    expect(approachingFull(PLANET_LOD.full * 0.7, 'lite')).toBe(true);
+    expect(approachingFull(PLANET_LOD.full * 0.4, 'lite')).toBe(false);
+    expect(approachingFull(PLANET_LOD.full * 0.9, 'far')).toBe(false);
+    expect(approachingFull(PLANET_LOD.full * 1.5, 'full')).toBe(false);
+    expect(field).toMatch(/approachingFull\(px, lod\)/);
+  });
+
+  it('compiles the planet shaders off the frame, on the materials the worlds will use', () => {
+    expect(model).toMatch(/gl\.compileAsync\(/);
+    expect(model).toMatch(/cachedDress\(/);
+    expect(field).toMatch(/<Suspense fallback=\{null\}>\s*<PlanetWarmup /);
+  });
+
+  it('uploads the home world’s full maps while idle', () => {
+    expect(model).toMatch(/gl\.initTexture\(/);
   });
 });

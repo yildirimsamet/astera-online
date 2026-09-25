@@ -11,8 +11,8 @@ import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { partitionPlanetSkins } from '../ui/planetSkins.js';
-import { DefaultPlanetModel, PlanetSkinModel } from './PlanetSkinModel.jsx';
-import { groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from './planetLod.js';
+import { DefaultPlanetModel, PlanetSkinModel, PlanetWarmup } from './PlanetSkinModel.jsx';
+import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from './planetLod.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
 
@@ -85,8 +85,17 @@ export function PlanetField({
     return counts;
   }, [defaults]);
 
+  // The world whose shaders and maps are warmed first: the commander's own, where the camera starts.
+  const warmId = (defaults.find((node) => node.stance === 'self') ?? defaults[0])?.id;
+
   return (
     <>
+      {warmId !== undefined && (
+        // Its own boundary: warming a model never holds up, or hides, anything drawn.
+        <Suspense fallback={null}>
+          <PlanetWarmup id={warmId} />
+        </Suspense>
+      )}
       {tiers.map((group) => {
         // A model that fails, or is still on its way, leaves these worlds on their card —
         // rendered from the same model, so the stand-in is the same world.
@@ -166,6 +175,8 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
   const held = useRef(lods);
   const memo = useRef(createViewMemo());
   const at = useMemo(() => new THREE.Vector3(), []);
+  /** The looks whose full model has been fetched ahead of the camera. */
+  const fetched = useRef(new Set<string>());
 
   useFrame(() => {
     if (!viewChanged(memo.current, camera, nodes, height)) return;
@@ -175,9 +186,18 @@ function usePlanetLods(nodes: readonly PlanetNode[]): ReadonlyMap<string, Planet
     for (const node of nodes) {
       at.set(node.position[0], node.position[1], node.position[2]);
       const before = held.current.get(node.id);
-      const lod = lodFor(screenRadius(node.radius, camera.position.distanceTo(at), fov, height), before);
+      const px = screenRadius(node.radius, camera.position.distanceTo(at), fov, height);
+      const lod = lodFor(px, before);
       next.set(node.id, lod);
       if (lod !== before) changed = true;
+      // Nearly close enough: fetch the full model now, so the step up waits on nothing.
+      if (approachingFull(px, lod)) {
+        const full = planetModel(node.id, 'full');
+        if (!fetched.current.has(full)) {
+          fetched.current.add(full);
+          useGLTF.preload(full);
+        }
+      }
     }
     if (!changed) return;
     held.current = next;

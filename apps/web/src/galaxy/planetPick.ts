@@ -6,7 +6,40 @@ interface Pickable {
   radius: number;
 }
 
+interface Body extends Pickable {
+  id: string;
+}
+
+/** One scratch transform for every placement: nothing is allocated per world or per frame. */
 const PLACE = new THREE.Object3D();
+
+/** A world's own starting turn, from its id, so neighbours do not spin in step. */
+const phase = (id: string): number => {
+  let value = 2166136261;
+  for (const char of id) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
+  return ((value >>> 0) / 0x1_0000_0000) * Math.PI * 2;
+};
+
+/** How fast a world turns, in radians a second. */
+const TURN = 0.08;
+
+/**
+ * PLACE A GROUP'S BODIES: on their worlds, at 0.96 of their radius, turned by their own
+ * phase and the clock (`seconds`). The turning tiers call it every drawn frame; the far
+ * tier once per change of members — a speck under twelve pixels shows no turn, and a
+ * thousand of them rewritten and uploaded every frame of a pan was the cost of one.
+ */
+export function placeBodies(mesh: THREE.InstancedMesh, nodes: readonly Body[], seconds: number): void {
+  nodes.forEach((node, i) => {
+    PLACE.position.set(node.position[0], node.position[1], node.position[2]);
+    PLACE.rotation.set(0, phase(node.id) + seconds * TURN, 0);
+    PLACE.scale.setScalar(node.radius * 0.96);
+    PLACE.updateMatrix();
+    mesh.setMatrixAt(i, PLACE.matrix);
+  });
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
 
 /**
  * PLACE A GROUP'S PICK SPHERES, ONCE PER CHANGE OF MEMBERS — and measure the bounding
@@ -25,7 +58,7 @@ export function placePickSpheres(mesh: THREE.InstancedMesh, nodes: readonly Pick
   mesh.count = nodes.length;
   nodes.forEach((node, i) => {
     PLACE.position.set(node.position[0], node.position[1], node.position[2]);
-    PLACE.quaternion.identity();
+    PLACE.rotation.set(0, 0, 0);
     PLACE.scale.setScalar(node.radius * MODEL_PICK_SCALE);
     PLACE.updateMatrix();
     mesh.setMatrixAt(i, PLACE.matrix);

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { MODEL_PICK_SCALE } from '../src/galaxy/planetLod.js';
-import { placePickSpheres } from '../src/galaxy/planetPick.js';
+import { placeBodies, placePickSpheres } from '../src/galaxy/planetPick.js';
 
 /**
  * A MODELLED WORLD CAN BE TAPPED WHEREVER IT IS (owner, 2026-09-25, on a phone: "bazı
@@ -77,5 +77,35 @@ describe('a hidden pick sphere', () => {
   it('is drawn only while the pick volumes are painted', () => {
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
     expect(model).toMatch(/name=\{`\$\{name\}-hits`\}[\s\S]{0,200}visible=\{paintHits\}/);
+  });
+});
+
+/**
+ * A SPECK DOES NOT TURN (code review, 2026-09-25). Every drawn frame rewrote and
+ * re-uploaded every world's matrix to turn it — a thousand worlds a frame while the
+ * camera moves — and a world under twelve pixels across shows no turn at all. The far
+ * tier is placed once per change of members; the others turn.
+ */
+describe('a world’s body', () => {
+  it('is placed on its world, at its size, turned by its own phase and the clock', () => {
+    const mesh = pickMesh(2);
+    placeBodies(mesh, [node('a', 7)], 0);
+    const matrix = new THREE.Matrix4();
+    mesh.getMatrixAt(0, matrix);
+    const at = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    matrix.decompose(at, new THREE.Quaternion(), scale);
+    expect(at.x).toBeCloseTo(7);
+    expect(scale.x).toBeCloseTo(0.96);
+    const later = new THREE.Matrix4();
+    placeBodies(mesh, [node('a', 7)], 10);
+    mesh.getMatrixAt(0, later);
+    expect(later.equals(matrix)).toBe(false);
+  });
+
+  it('turns every frame only above the far tier', () => {
+    const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    expect(model).toMatch(/turning=\{lod !== 'far'\}/);
+    expect(model).toMatch(/if \(!turning\) return;/);
   });
 });

@@ -37,6 +37,17 @@ export const MODEL_PICK_SCALE = 2 / Math.sqrt(Math.PI);
 /** How far past a threshold a world must go before it changes model: no flicker while the camera settles. */
 const HYSTERESIS = 0.12;
 
+/**
+ * WHEN A WORLD'S FULL MODEL IS FETCHED: once it is on the light model and at least this
+ * share of the way to the full tier's size — so the file is in the cache by the time the
+ * camera arrives, and the tier change waits on nothing.
+ */
+const PREFETCH_FULL = 0.6;
+
+export function approachingFull(px: number, lod: PlanetLod): boolean {
+  return lod === 'lite' && px >= PLANET_LOD.full * PREFETCH_FULL;
+}
+
 /** A world's radius on screen, in pixels: its radius over the distance, in half-viewport units. */
 export function screenRadius(radius: number, distance: number, fovDegrees: number, viewportHeight: number): number {
   const half = Math.tan((fovDegrees * Math.PI) / 360);

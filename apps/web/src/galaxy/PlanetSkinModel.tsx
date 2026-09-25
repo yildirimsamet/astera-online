@@ -4,11 +4,12 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { PlanetSkinStatus } from '@astera/rules';
+import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface } from './planetSurface.js';
 import type { PlanetLod } from './planetLod.js';
-import { placePickSpheres } from './planetPick.js';
+import { placeBodies, placePickSpheres } from './planetPick.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
@@ -44,6 +45,37 @@ export function unitPlanetGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
   return geometry;
 }
 
+/*
+  A LOOK'S TIER IS BUILT ONCE A SESSION (code review, 2026-09-25). A fast zoom empties a
+  tier's group and fills it again, and each refill remounted it from scratch: the unit
+  geometry copied attribute by attribute, the material cloned. Kept per model file (and per
+  dress), a remount is a count and a few matrices. Bounded by the files there are — sixteen
+  looks at three tiers, and the skins — so nothing here is ever disposed.
+*/
+const GEOMETRY = new Map<string, THREE.BufferGeometry>();
+const DRESSED = new Map<string, Dressed>();
+
+/** A model file's unit geometry, built the first time it is asked for. */
+export function cachedGeometry(url: string, mesh: THREE.Mesh): THREE.BufferGeometry {
+  let geometry = GEOMETRY.get(url);
+  if (!geometry) {
+    geometry = unitPlanetGeometry(mesh);
+    GEOMETRY.set(url, geometry);
+  }
+  return geometry;
+}
+
+/** A model file's material in one dress, dressed the first time it is asked for. */
+export function cachedDress(url: string, key: string, source: THREE.Material, dress: Dress): Dressed {
+  const id = `${url}|${key}`;
+  let dressed = DRESSED.get(id);
+  if (!dressed) {
+    dressed = dress(source);
+    DRESSED.set(id, dressed);
+  }
+  return dressed;
+}
+
 const firstMesh = (scene: THREE.Object3D): THREE.Mesh | null => {
   let found: THREE.Mesh | null = null;
   scene.traverse((node) => {
@@ -52,11 +84,6 @@ const firstMesh = (scene: THREE.Object3D): THREE.Mesh | null => {
   return found;
 };
 
-const phase = (id: string): number => {
-  let value = 2166136261;
-  for (const char of id) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
-  return ((value >>> 0) / 0x1_0000_0000) * Math.PI * 2;
-};
 
 /** What a model's own material becomes on the disc, and the clock a shader finish reads. */
 interface Dressed {
@@ -70,6 +97,65 @@ const dressFull: Dress = (source) => ({ material: planetSurface(source, true), u
 
 /** A default world seen small: the colour map alone, matte, a night floor (`planetSurface`). */
 const dressLite: Dress = (source) => ({ material: planetSurface(source, false), uniforms: null });
+
+/**
+ * THE FIRST CLOSE LOOK COSTS NO FRAME (code review, 2026-09-25). The first world drawn
+ * on its light or full model compiled that dress's shader, and the first full model of a
+ * look uploaded three 1024 maps — both inside one frame, a stall of up to a few hundred
+ * milliseconds on a phone while hopping from world to world.
+ *
+ * So both dresses are compiled up front on one world's own model, with the scene's lights,
+ * off the frame where the browser can (`compileAsync`). A shader is shared by every look
+ * dressed alike, so one world warms them all — and it is the cached material the worlds
+ * will draw with (`cachedDress`). That world's full maps are then uploaded while the page
+ * is idle: the commander's own, where the camera starts.
+ */
+export function PlanetWarmup({ id }: { id: string }) {
+  const liteUrl = planetModel(id, 'lite');
+  const fullUrl = planetModel(id, 'full');
+  const lite = useGLTF(liteUrl, false);
+  const full = useGLTF(fullUrl, false);
+  const gl = useThree((state) => state.gl);
+  const camera = useThree((state) => state.camera);
+  const scene = useThree((state) => state.scene);
+
+  useEffect(() => {
+    const probes = new THREE.Group();
+    const maps: THREE.Texture[] = [];
+    for (const [url, key, dress, model] of [
+      [liteUrl, 'lite', dressLite, lite.scene],
+      [fullUrl, 'full', dressFull, full.scene],
+    ] as const) {
+      const mesh = firstMesh(model);
+      const source = mesh && (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material);
+      if (!mesh || !source) continue;
+      const { material } = cachedDress(url, key, source, dress);
+      // Instanced and coloured as the worlds are, so the program compiled is the one they use.
+      const probe = new THREE.InstancedMesh(cachedGeometry(url, mesh), material, 1);
+      probe.setColorAt(0, new THREE.Color(1, 1, 1));
+      probes.add(probe);
+      if (key === 'full' && material instanceof THREE.MeshStandardMaterial) {
+        for (const map of [material.map, material.normalMap, material.roughnessMap]) if (map) maps.push(map);
+      }
+    }
+    let live = true;
+    let idle = 0;
+    // Safari still has no idle callback; a short timeout is the next best quiet moment.
+    const supportsIdle = 'requestIdleCallback' in window;
+    void gl.compileAsync(probes, camera, scene).then(() => {
+      if (!live) return;
+      const upload = () => { for (const map of maps) gl.initTexture(map); };
+      idle = supportsIdle ? window.requestIdleCallback(upload, { timeout: 2000 }) : window.setTimeout(upload, 200);
+    });
+    return () => {
+      live = false;
+      if (supportsIdle) window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
+  }, [gl, camera, scene, lite.scene, full.scene, liteUrl, fullUrl]);
+
+  return null;
+}
 
 /** Used by the galaxy and the interactive shop preview. One draw call per look. */
 export function PlanetSkinModel({
@@ -97,6 +183,7 @@ export function PlanetSkinModel({
       name="planet-skin-models"
       modelUrl={visual.modelUrl}
       dress={dress}
+      dressKey={`${skinId}:${status}`}
       nodes={nodes}
       capacity={nodes.length}
       onSelect={onSelect}
@@ -128,6 +215,8 @@ export function DefaultPlanetModel({
       modelUrl={url}
       // Only a world the camera is close to binds its detail maps; a speck and a planet do not.
       dress={lod === 'full' ? dressFull : dressLite}
+      dressKey={lod === 'full' ? 'full' : 'lite'}
+      turning={lod !== 'far'}
       nodes={nodes}
       capacity={Math.max(capacity, nodes.length)}
       onSelect={onSelect}
@@ -139,29 +228,34 @@ function ModelInstances({
   name,
   modelUrl,
   dress,
+  dressKey,
   nodes,
   capacity,
   onSelect,
+  turning = true,
 }: {
   name: string;
   modelUrl: string;
   dress: Dress;
+  /** Which dress this is, for the session's material cache (`cachedDress`). */
+  dressKey: string;
+  /** Whether its worlds turn on their axis every frame; a speck does not. */
+  turning?: boolean;
   nodes: readonly SkinNode[];
   capacity: number;
   onSelect?: ((id: string) => void) | undefined;
 }) {
   const { scene } = useGLTF(modelUrl, false);
   const model = useMemo(() => firstMesh(scene), [scene]);
-  const geometry = useMemo(() => model ? unitPlanetGeometry(model) : null, [model]);
+  const geometry = useMemo(() => model ? cachedGeometry(modelUrl, model) : null, [model, modelUrl]);
   const dressed = useMemo(() => {
     if (!model) return null;
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
-    return dress(source);
-  }, [model, dress]);
+    return cachedDress(modelUrl, dressKey, source, dress);
+  }, [model, modelUrl, dressKey, dress]);
   const body = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
-  const helper = useMemo(() => new THREE.Object3D(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
   /*
@@ -171,11 +265,6 @@ function ModelInstances({
   */
   const paintHits = useHitboxDebug();
 
-  useEffect(() => () => {
-    geometry?.dispose();
-    dressed?.material.dispose();
-  }, [geometry, dressed]);
-
   useLayoutEffect(() => {
     const mesh = body.current;
     if (!mesh) return;
@@ -183,6 +272,8 @@ function ModelInstances({
     mesh.count = nodes.length;
     // Placed here, with the members, and measured for the raycaster (`planetPick.ts`).
     if (hits.current) placePickSpheres(hits.current, nodes);
+    // A tier that does not turn is placed here once; a turning one each frame below.
+    if (!turning) placeBodies(mesh, nodes, 0);
     nodes.forEach((node, i) => {
       const light = bodyLight(node.stance, node.intel);
       const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
@@ -194,20 +285,15 @@ function ModelInstances({
     // are placed by the next frame, so ask for one rather than wait for the next move.
     invalidate();
     // A new capacity or geometry is a new mesh, and a new mesh has to be placed again.
-  }, [nodes, tint, dressed, invalidate, capacity, geometry]);
+  }, [nodes, tint, dressed, invalidate, capacity, geometry, turning]);
 
   useFrame(({ clock }) => {
     if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
+    // A speck is placed with its members and never turns (`placeBodies`).
+    if (!turning) return;
     const mesh = body.current;
     if (!mesh) return;
-    nodes.forEach((node, i) => {
-      helper.position.set(...node.position);
-      helper.rotation.set(0, phase(node.id) + clock.elapsedTime * 0.08, 0);
-      helper.scale.setScalar(node.radius * 0.96);
-      helper.updateMatrix();
-      mesh.setMatrixAt(i, helper.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
+    placeBodies(mesh, nodes, clock.elapsedTime);
   });
 
   if (!geometry || !dressed || nodes.length === 0 || capacity === 0) return null;
@@ -228,7 +314,7 @@ function ModelInstances({
         args={[geometry, dressed.material, capacity]}
         frustumCulled={false}
         raycast={() => null}
-        // The geometry and material are this component's (disposed above), not the mesh's.
+        // The geometry and material are the session's (`cachedGeometry`), not the mesh's.
         dispose={null}
       />
       {onSelect && (
