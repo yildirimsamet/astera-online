@@ -98,11 +98,18 @@ describe('the fleet tab puts the orbit satellites last', () => {
  */
 describe('the tab bar', () => {
   const labels = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
-  const name = (id: string) => i18n.t(`planet.tabs.${id}Problem`);
+  const NAME = {
+    reach: 'planet.tabs.reachProblem',
+    grow: 'planet.tabs.growProblem',
+    orbit: 'planet.tabs.orbitProblem',
+    tactical: 'planet.tabs.tacticalProblem',
+    defend: 'planet.tabs.defendProblem',
+  } as const;
+  const name = (id: keyof typeof NAME) => i18n.t(NAME[id]);
 
   it('reads Fleet, Production, Intel, Tactical, Defend', () => {
     show();
-    expect(labels()).toEqual(['reach', 'grow', 'orbit', 'tactical', 'defend'].map(name));
+    expect(labels()).toEqual((['reach', 'grow', 'orbit', 'tactical', 'defend'] as const).map(name));
   });
 
   it('lays out a lesson’s revealed tabs in the bar’s order', () => {
@@ -110,7 +117,7 @@ describe('the tab bar', () => {
     render(<QueryClientProvider client={client}><ToastProvider>
       <AcademyLessonContext.Provider value="courier"><PlanetScreen focusGroup="reach" /></AcademyLessonContext.Provider>
     </ToastProvider></QueryClientProvider>);
-    expect(labels()).toEqual(['reach', 'grow', 'orbit', 'defend'].map(name));
+    expect(labels()).toEqual((['reach', 'grow', 'orbit', 'defend'] as const).map(name));
   });
 });
 
