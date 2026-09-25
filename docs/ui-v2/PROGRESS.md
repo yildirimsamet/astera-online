@@ -195,6 +195,16 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   doku beklemesi sahnenin tek Suspense sınırına tırmanıp bütün dünyaları/etiketleri gizliyordu (R3F gizliyi yine de
   raycast eder) → kademe `startTransition`, yedek kartın kendi `Suspense`'i, uzak+orta modeller baştan ön yüklenir.
   Canlı: 5/5 dokunuş, zoom sonrası dahil.
+- **Performans review'u (sahip: "kasma, donma, gezegenler kısa süre yok olup geri geliyor mu") — uygulanan:**
+  `1a49d6b` (1) her yükleyici (Dyson kabuğu, asteroit kovası, uydu halkası, enkaz, filo gövdesi) kendi
+  `Suspense`'inde, sahnenin tek sınırına tırmanıp her şeyi gizlemiyor; (3) seçim küreleri gizli (`visible` yalnız
+  `?hitboxes=1`, raycast yine çalışır); (7) takip dalında kare başına vektör yok. `966aa53` (5) görünümün birim
+  geometrisi ve giydirilmiş malzemesi dosya başına oturum boyu önbellekte, zoom'da boşalıp dolan kademe yeniden
+  kurulmuyor; (4) uzak kademe dönmez, üyeler değişince bir kez yerleştirilir (kare başına 1000 matris yazımı bitti);
+  (2) dünya tam kademenin %60'ına gelince tam modeli önden iner, `PlanetWarmup` orta+tam shader'ları kare dışında
+  derler (`compileAsync`, önbellekteki malzemeyle) ve ev dünyasının 1024 haritalarını boşta yükler. Canlı 5/5 dokunuş,
+  konsol hatası yok. Bekleyen (istenmedi): (6) galaksi yoklamasında düğüm kimliği kararlılığı, (8) uzak/orta
+  modellerin açılış ön yüklemesine alınması (bütçe kararı sahibin).
 - Açık: gerçek telefonda FPS ve draw call ölçümü (swiftshader ölçmez); galeri `?view=planet-models` görünümleri yan
   yana gösterir.
 
