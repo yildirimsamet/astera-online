@@ -63,11 +63,12 @@ export function contextSlot(input: SlotInput): Slot {
 }
 
 /**
- * The suggestion card: the first directive that is not the incoming attack,
- * which the threat card already carries in full.
+ * The suggestion card: the first directive that is not the incoming attack, which the
+ * threat card already carries in full, and not one the player closed — closing a
+ * suggestion is "never that one again", so the next gap the world has takes its place.
  */
-export const suggestionOf = (list: readonly Directive[]): Directive | null =>
-  list.find((directive) => directive.id !== 'inbound') ?? null;
+export const suggestionOf = (list: readonly Directive[], dismissed: ReadonlySet<string> = new Set()): Directive | null =>
+  list.find((directive) => directive.id !== 'inbound' && !dismissed.has(slotKey('suggestion', directive.id))) ?? null;
 
 /**
  * THE ADVICE THE SLOT MAY OFFER, AND TO WHOM — the rules `SituationGuide` kept.
@@ -78,13 +79,18 @@ export const suggestionOf = (list: readonly Directive[]): Directive | null =>
  * it (H1), and every flight's minutes are recomputed from its absolute landing,
  * so a cached `minutesRemaining` never freezes a warning.
  */
-export function slotSuggestion(situation: Situation, now: number): Directive | null {
+export function slotSuggestion(
+  situation: Situation,
+  now: number,
+  /** The cards the player closed, by `slotKey`. */
+  dismissed: ReadonlySet<string> = new Set(),
+): Directive | null {
   if (situation.planet.academyStep == null) return null;
   return suggestionOf(directives({
     ...situation,
     now,
     pending: situation.pending.map((thread) => ({ ...thread, minutesRemaining: minutesLeft(thread.arriveAt, now) })),
-  }));
+  }), dismissed);
 }
 
 /**

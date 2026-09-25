@@ -1594,7 +1594,7 @@ export function GalaxyView({
           events={activeEvents(galaxyEvents.data?.events ?? [], now)}
           suggestion={slotSuggestion({ planet: planet.data, galaxy: galaxy.data, intel: intel.data,
             pending: threads, held: planet.data.planet,
-            shieldUntil: season.data.shieldUntil }, now)}
+            shieldUntil: season.data.shieldUntil }, now, slotDismissed)}
           onPrepare={(thread) => {
             if (thread.targetPlanetId) selectPlanet(thread.targetPlanetId);
             setRequestedPlanetGroup('defend');

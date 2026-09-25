@@ -7,8 +7,11 @@ import { readDismissed, rememberDismissed, SLOT_MEMORY_KEY } from '../../src/lib
  *
  * The context slot kept what the player closed in memory only, so every reload showed
  * the same running event again. An event has its own id, so closing it is "I have seen
- * this one"; a new event is a new card. An attack card and a suggestion are not kept:
- * an attack is still coming after a reload, and a suggestion changes with the world.
+ * this one"; a new event is a new card. An attack card is not kept: an attack is still
+ * coming after a reload, and the next one is a new card.
+ *
+ * A CLOSED SUGGESTION STAYS CLOSED FOR GOOD. Owner, 2026-09-25: "küçültmek yerine kapatırsam
+ * kapattığım modal bir daha çıkmasın" — folding is "not now", closing is "never again".
  */
 
 const NOW = Date.parse('2026-09-24T12:00:00Z');
@@ -29,9 +32,15 @@ describe('the slot’s memory', () => {
     expect(readDismissed(NOW + 2000)).toEqual(new Set(['event:e-1', 'event:e-2', 'event:e-3']));
   });
 
-  it('never keeps an attack or a suggestion', () => {
-    rememberDismissed(['threat:m-1', 'suggestion:build-refinery', 'event:e-1'], NOW);
+  it('never keeps an attack', () => {
+    rememberDismissed(['threat:m-1', 'event:e-1'], NOW);
     expect(readDismissed(NOW)).toEqual(new Set(['event:e-1']));
+  });
+
+  it('keeps a closed suggestion for good, long after an event would be forgotten', () => {
+    rememberDismissed(['suggestion:undefended'], NOW);
+    rememberDismissed(['event:e-1'], NOW + 400 * DAY);
+    expect(readDismissed(NOW + 400 * DAY)).toEqual(new Set(['suggestion:undefended', 'event:e-1']));
   });
 
   it('forgets after three days — no event runs that long, and the list never grows', () => {

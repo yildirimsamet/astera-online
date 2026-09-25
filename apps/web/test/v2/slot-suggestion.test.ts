@@ -40,6 +40,19 @@ describe('the suggestion', () => {
     expect(slotSuggestion(s, now + 90 * 60_000)?.kind).toBe('threat');
   });
 
+  /**
+   * A CLOSED SUGGESTION MAKES WAY FOR THE NEXT (owner, 2026-09-25): closing one is "never
+   * that one again", not "no advice at all" — the next gap the world has is offered instead.
+   */
+  it('passes over a suggestion the player closed and offers the next', () => {
+    const now = Date.now();
+    const first = slotSuggestion(situation(), now);
+    expect(first).not.toBeNull();
+    const next = slotSuggestion(situation(), now, new Set([`suggestion:${first!.id}`]));
+    expect(next).not.toBeNull();
+    expect(next?.id).not.toBe(first?.id);
+  });
+
   it('leaves the incoming attack to the threat card', () => {
     const now = Date.now();
     const s: Situation = { ...situation(), pending: [{
