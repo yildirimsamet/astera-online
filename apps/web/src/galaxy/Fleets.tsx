@@ -18,11 +18,18 @@ import {
   type HullId,
 } from '@astera/rules';
 import type { Contact, PendingThread } from '../api/schemas.js';
-import { HULL_MODEL, MODEL, MODEL_FACING, MODEL_POSE, hullPoseLift } from '../ui/assets.js';
+import {
+  HULL_LOD_MODEL,
+  HULL_MODEL,
+  MODEL,
+  MODEL_FACING,
+  MODEL_POSE,
+  hullPoseLift,
+} from '../ui/assets.js';
 import { Bombardment, bombardmentIntensity } from './Bombardment.jsx';
 import { returnVolleyFrame } from './volley.js';
 import { softGlow } from './Environment.jsx';
-import { posedCraft } from './model.js';
+import { configureOpaqueTransparentBody, posedCraft } from './model.js';
 import {
   concealedVolley,
   contactPosition,
@@ -61,6 +68,14 @@ import {
 } from './flightVisual.js';
 import { fireTexture } from './vfx.js';
 import { threadKey } from './threadKey.js';
+import {
+  bucketFormationHulls,
+  createFormationHullMatrixScratch,
+  formationHullMatrix,
+  shipLod,
+  type FormationHullMember,
+  type ShipLod,
+} from './formationHullInstances.js';
 
 export { threadKey } from './threadKey.js';
 
@@ -245,8 +260,7 @@ function LoadedHull({ url, scale, glow, focused }: HullProps) {
        * empty depth buffer and bleed through the worlds.
        */
       for (const material of materialsOf(node)) {
-        material.transparent = true;
-        material.depthWrite = true;
+        configureOpaqueTransparentBody(material);
       }
       /**
        * ALWAYS VISIBLE, AND STILL SOLID.
@@ -321,6 +335,241 @@ function LoadedHull({ url, scale, glow, focused }: HullProps) {
       <primitive object={outline} name="craft-silhouette-rim" />
       <primitive object={model} />
     </group>
+  );
+}
+
+interface FormationHullPart {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material | THREE.Material[];
+  matrix: THREE.Matrix4;
+}
+
+function formationHullParts(scene: THREE.Object3D, url: string): FormationHullPart[] {
+  const model = posedCraft(scene, MODEL_FACING[url] ?? '+z', MODEL_POSE[url]);
+  model.updateWorldMatrix(true, true);
+  const parts: FormationHullPart[] = [];
+  model.traverse((node) => {
+    if (!isMesh(node)) return;
+    parts.push({
+      geometry: node.geometry,
+      material: node.material,
+      matrix: node.matrixWorld.clone(),
+    });
+  });
+  return parts;
+}
+
+/** Body and outline are submitted once per hull type inside this formation. */
+function FormationHulls({
+  markers,
+  slots,
+  scale,
+  aimDistance,
+  focused,
+}: {
+  markers: readonly Marker[];
+  slots: readonly Vec3Tuple[];
+  scale: number;
+  aimDistance: RefObject<number>;
+  focused: boolean;
+}) {
+  const buckets = useMemo(() => bucketFormationHulls(markers, slots), [markers, slots]);
+  return (
+    <>
+      {buckets.map((bucket) => (
+        <FormationHullBucket
+          key={bucket.hull}
+          hull={bucket.hull}
+          members={bucket.members}
+          scale={scale}
+          aimDistance={aimDistance}
+          focused={focused}
+        />
+      ))}
+    </>
+  );
+}
+
+function FormationHullBucket({
+  hull,
+  members,
+  scale,
+  aimDistance,
+  focused,
+}: {
+  hull: Marker['hull'];
+  members: readonly FormationHullMember[];
+  scale: number;
+  aimDistance: RefObject<number>;
+  focused: boolean;
+}) {
+  const url = HULL_MODEL[hull];
+  const lowUrl = HULL_LOD_MODEL[hull];
+  const loaded = useGLTF([url, lowUrl], false);
+  const scene = loaded[0]!.scene;
+  const lowScene = loaded[1]!.scene;
+  const fullParts = useMemo(() => formationHullParts(scene, url), [scene, url]);
+  // LOD geometry has the same authored axes and pose as its source model.
+  const lowParts = useMemo(() => formationHullParts(lowScene, url), [lowScene, url]);
+  return (
+    <group name={`formation-hulls-${hull.toLowerCase()}`}>
+      {fullParts.map((part, index) => (
+        <FormationHullPartMesh
+          key={`full:${part.geometry.uuid}:${String(index)}`}
+          part={part}
+          lod="full"
+          members={members}
+          scale={scale}
+          aimDistance={aimDistance}
+          glow={HULL_LIGHT[hull].glow}
+          focused={focused}
+          clearsDepth={index === 0}
+        />
+      ))}
+      {lowParts.map((part, index) => (
+        <FormationHullPartMesh
+          key={`low:${part.geometry.uuid}:${String(index)}`}
+          part={part}
+          lod="low"
+          members={members}
+          scale={scale}
+          aimDistance={aimDistance}
+          glow={HULL_LIGHT[hull].glow}
+          focused={focused}
+          clearsDepth={index === 0}
+        />
+      ))}
+    </group>
+  );
+}
+
+function FormationHullPartMesh({
+  part,
+  lod,
+  members,
+  scale,
+  aimDistance,
+  glow,
+  focused,
+  clearsDepth,
+}: {
+  part: FormationHullPart;
+  lod: ShipLod;
+  members: readonly FormationHullMember[];
+  scale: number;
+  aimDistance: RefObject<number>;
+  glow: string;
+  focused: boolean;
+  clearsDepth: boolean;
+}) {
+  const body = useRef<THREE.InstancedMesh>(null);
+  const outline = useRef<THREE.InstancedMesh>(null);
+  const bodyMaterial = useMemo(() => {
+    const source = Array.isArray(part.material) ? part.material : [part.material];
+    const clones = source.map((material) => {
+      const clone = material.clone();
+      configureOpaqueTransparentBody(clone);
+      return clone;
+    });
+    return Array.isArray(part.material) ? clones : clones[0]!;
+  }, [part.material]);
+  const outlineMaterial = useMemo(() => {
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        uColour: { value: new THREE.Color(glow) },
+        uOpacity: { value: focused ? 0.94 : 0.72 },
+      },
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        void main() {
+          vec4 expanded = vec4(position + normal * 0.035, 1.0);
+          #ifdef USE_INSTANCING
+            expanded = instanceMatrix * expanded;
+          #endif
+          gl_Position = projectionMatrix * modelViewMatrix * expanded;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColour;
+        uniform float uOpacity;
+        void main() { gl_FragColor = vec4(uColour, uOpacity); }
+      `,
+      toneMapped: false,
+    });
+    return material;
+  }, [focused, glow]);
+  const rootMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const instanceMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const worldPoint = useMemo(() => new THREE.Vector3(), []);
+  const scratch = useMemo(createFormationHullMatrixScratch, []);
+
+  useLayoutEffect(() => {
+    body.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    outline.current?.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  }, []);
+
+  useEffect(() => () => {
+    const materials = Array.isArray(bodyMaterial) ? bodyMaterial : [bodyMaterial];
+    materials.forEach((material) => { material.dispose(); });
+    outlineMaterial.dispose();
+  }, [bodyMaterial, outlineMaterial]);
+
+  useFrame(({ camera }) => {
+    const bodies = body.current;
+    const rims = outline.current;
+    if (!bodies || !rims) return;
+    bodies.updateWorldMatrix(true, false);
+    const parentScale = bodies.matrixWorld.getMaxScaleOnAxis();
+    let count = 0;
+    members.forEach((member) => {
+      worldPoint.set(...member.offset).applyMatrix4(bodies.matrixWorld);
+      const radius = hullVisualScale(member.marker.hull, scale) * parentScale * 0.5;
+      if (shipLod(radius, camera.position.distanceTo(worldPoint)) !== lod) return;
+      formationHullMatrix(
+        member.marker,
+        member.offset,
+        scale,
+        aimDistance.current,
+        rootMatrix,
+        scratch,
+      );
+      instanceMatrix.multiplyMatrices(rootMatrix, part.matrix);
+      bodies.setMatrixAt(count, instanceMatrix);
+      rims.setMatrixAt(count, instanceMatrix);
+      count += 1;
+    });
+    bodies.count = count;
+    rims.count = count;
+    bodies.visible = count > 0;
+    rims.visible = count > 0;
+    bodies.instanceMatrix.needsUpdate = true;
+    rims.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <>
+      <instancedMesh
+        ref={outline}
+        args={[part.geometry, outlineMaterial, members.length]}
+        frustumCulled={false}
+        renderOrder={SHIP_ORDER - 1}
+        name={`formation-hull-outlines-${lod}`}
+        raycast={() => null}
+      />
+      <instancedMesh
+        ref={body}
+        args={[part.geometry, bodyMaterial, members.length]}
+        frustumCulled={false}
+        renderOrder={SHIP_ORDER}
+        name={`formation-hull-bodies-${lod}`}
+        raycast={() => null}
+        onBeforeRender={clearsDepth ? (renderer) => { renderer.clearDepth(); } : undefined}
+      />
+    </>
   );
 }
 
@@ -895,17 +1144,13 @@ function Flight({
                 scale={style.scale}
                 aimDistance={formationAim}
               />
-              {markers.map((marker, i) => (
-                <Craft
-                  key={`${marker.hull}-${String(marker.ordinal)}`}
-                  marker={marker}
-                  offset={slots[i] ?? [0, 0, 0]}
-                  scale={style.scale}
-                  aimDistance={formationAim}
-                  focused={focused}
-                  batched
-                />
-              ))}
+              <FormationHulls
+                markers={markers}
+                slots={slots}
+                scale={style.scale}
+                aimDistance={formationAim}
+                focused={focused}
+              />
             </>
           ) : (
             <>
@@ -1008,83 +1253,6 @@ function Flight({
         ) : null}
       </group>
     </>
-  );
-}
-
-/**
- * One drawn model, standing for up to `PER_MODEL` ships, with its count above it.
- *
- * The pips are the honest half of the abstraction. Without them a multi-ship group
- * and a one-ship group are the same picture, and the player is reading a rounded
- * number while believing it exact.
- *
- * THEY BELONG TO SQUADRONS ONLY. Owner decision. A probe and a mining run are one
- * craft each, and five slots above a single object state a capacity it does not
- * have — the reader is being told "one of five" about a thing that can only ever be
- * one. `pips` is therefore a decision the caller makes, not a property of drawing a
- * hull.
- */
-function Craft({
-  marker,
-  offset,
-  scale,
-  aimDistance,
-  focused,
-  pips = true,
-  batched = false,
-}: {
-  marker: Marker;
-  offset: [number, number, number];
-  scale: number;
-  aimDistance?: RefObject<number>;
-  focused: boolean;
-  /** False for anything that is one craft rather than a group of them. */
-  pips?: boolean;
-  /** Formation-wide light and pip buffers replace this craft's individual sprites. */
-  batched?: boolean;
-}) {
-  const light = HULL_LIGHT[marker.hull];
-  const authoredScale = hullVisualScale(marker.hull, scale);
-  const craft = useRef<THREE.Group>(null);
-  const direction = useMemo(() => new THREE.Vector3(), []);
-  const forward = useMemo(() => new THREE.Vector3(0, 0, 1), []);
-  const aimed = useRef<Vec3Tuple>([0, 0, 1]);
-  useFrame(() => {
-    if (!craft.current || !aimDistance) return;
-    formationAimDirection(offset, aimDistance.current, aimed.current);
-    direction.set(...aimed.current);
-    craft.current.quaternion.setFromUnitVectors(forward, direction);
-  });
-  /**
-   * The hull's own lift, so the fire comes out of the ship rather than from a
-   * point under its tail. See `hullPoseLift` — one number, read by both.
-   */
-  const lift = hullPoseLift(marker.hull) * authoredScale;
-
-  return (
-    <group ref={craft} position={offset}>
-      {!batched && (
-        <group position={[0, lift, 0]}>
-          <Wake scale={authoredScale} colour={light.glow} />
-        </group>
-      )}
-      <Hull
-        url={HULL_MODEL[marker.hull]}
-        scale={authoredScale}
-        glow={light.glow}
-        focused={focused}
-      />
-      {!batched && (
-        <group position={[0, lift, -authoredScale * 0.42]}>
-          <Exhaust
-            colour={light.flame}
-            length={authoredScale * 0.8}
-            width={authoredScale * 0.46}
-          />
-        </group>
-      )}
-      {pips && !batched && <Pips filled={marker.filled} scale={authoredScale} lit={focused} />}
-    </group>
   );
 }
 
@@ -1299,14 +1467,7 @@ function FormationPips({
     const sizes = new Float32Array(count);
     const lit = new THREE.Color(focused ? '#7fd4ff' : '#4aa8e8');
     const empty = new THREE.Color('#33404f');
-    /**
-     * WRAPPED AT FIVE, exactly like the sprite tally in `Pips` below.
-     *
-     * This used to lay every pip in ONE row while capping `width` at five of them,
-     * which was invisible while `PER_MODEL` was 5 and became a row running off the
-     * side of the marker the moment it was raised to 10. The two tallies draw the
-     * same thing and have to agree on its shape.
-     */
+    /** Wrapped at five so a larger `PER_MODEL` cannot grow an unreadable strip. */
     const perRow = Math.min(PER_MODEL, 5);
     const rows = Math.ceil(PER_MODEL / perRow);
     let cursor = 0;
@@ -1984,65 +2145,6 @@ export function FormationWakes({
       frustumCulled={false}
       renderOrder={SHIP_ORDER - 2}
     />
-  );
-}
-
-/**
- * Five slots above a model; as many are lit as that model actually carries.
- *
- * FILLED IS BLUE AND EMPTY IS GREY, and that never changes. A focused squadron
- * used to switch its filled pips to white, which read as a different STATE rather
- * than as the same squadron with a highlight on it — the owner saw white pips and
- * asked where the blue had gone. Focus now brightens the same blue instead, so the
- * colour keeps meaning one thing.
- */
-function Pips({ filled, scale, lit }: { filled: number; scale: number; lit: boolean }) {
-  /**
-   * SMALLER AND CLOSER, at owner request.
-   *
-   * The tally was a bank of chunky squares floating well clear of the craft — big
-   * enough to compete with the hull for attention and far enough above it to read
-   * as its own object rather than as a label on one. A readout should be the
-   * quietest thing on the marker.
-   */
-  const size = scale * 0.085;
-  const gap = size * 1.6;
-  /**
-   * UP TO FIVE PIPS IN A ROW, AND AS MANY ROWS AS IT TAKES.
-   *
-   * The pips follow `PER_MODEL` because they are the exact count. Capping the row
-   * at five is what keeps a ten-ship marker readable as two rows of five rather
-   * than one strip nobody can count at a glance.
-   */
-  const perRow = Math.min(PER_MODEL, 5);
-  const rows = Math.ceil(PER_MODEL / perRow);
-  const width = gap * (perRow - 1);
-
-  return (
-    <group position={[0, scale * 0.6, 0]}>
-      {Array.from({ length: PER_MODEL }, (_, i) => (
-        <sprite
-          key={i}
-          position={[
-            (i % perRow) * gap - width / 2,
-            // Top row first, so a partly-filled marker fills left-to-right and
-            // downward — the direction a tally is read.
-            ((rows - 1) / 2 - Math.floor(i / perRow)) * gap,
-            0,
-          ]}
-          scale={[size, size, 1]}
-          renderOrder={SHIP_ORDER + 2}
-        >
-          <spriteMaterial
-            color={i < filled ? (lit ? '#7fd4ff' : '#4aa8e8') : '#33404f'}
-            transparent
-            opacity={i < filled ? 0.95 : 0.35}
-            depthWrite={false}
-            depthTest={false}
-          />
-        </sprite>
-      ))}
-    </group>
   );
 }
 
@@ -2933,18 +3035,13 @@ function Foreign({
                 scale={style.scale}
                 aimDistance={formationAim}
               />
-              {markers.map((marker, i) => (
-                <Craft
-                  key={`${marker.hull}-${String(marker.ordinal)}`}
-                  marker={marker}
-                  offset={slots[i] ?? [0, 0, 0]}
-                  scale={style.scale}
-                  aimDistance={formationAim}
-                  focused={focused}
-                  pips={exactFleet}
-                  batched
-                />
-              ))}
+              <FormationHulls
+                markers={markers}
+                slots={slots}
+                scale={style.scale}
+                aimDistance={formationAim}
+                focused={focused}
+              />
               {contact.kind === 'pirate' && (
                 <PirateMark scale={style.scale} focused={focused} />
               )}

@@ -130,9 +130,10 @@ describe('a modelled world’s pick volume', () => {
 
   it('is placed once per change of members, never in the frame loop (`planetPick.ts`)', () => {
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
-    expect(model).toMatch(/placePickSpheres\(hits\.current, nodes\)/);
-    expect(model).not.toMatch(/hits\.current\?\.setMatrixAt/);
-    expect(model).toMatch(/<HitboxMaterial kind="planet" \/>/);
+    const defaults = model.slice(model.indexOf('function ModelInstances('));
+    expect(defaults).toMatch(/placePickSpheres\(hits\.current, nodes\)/);
+    expect(defaults).not.toMatch(/hits\.current\?\.setMatrixAt/);
+    expect(defaults).toMatch(/<HitboxMaterial kind="planet" \/>/);
   });
 });
 

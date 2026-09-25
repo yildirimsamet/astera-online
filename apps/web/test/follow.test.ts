@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   sightCameraDistance,
+  fovForAspect,
+  MAX_HORIZONTAL_FOV,
   cameraEaseStep,
   easedCameraRange,
   finishedCameraRange,
@@ -78,11 +80,45 @@ describe('camera range intent', () => {
     expect(finishedCameraRange(6, 7, false)).toBe(6);
   });
 
-  it('starts at the same offset from a high world as from every other world', () => {
-    const home: [number, number, number] = [-3.05, 33.95, -20.11];
-    const camera = initialHomeCameraPosition(...home);
+  /**
+   * THE FIRST VIEW LOOKS THROUGH HOME INTO THE GALAXY. Owner, 2026-09-25: *"oyun
+   * ilk açıldığında galaksi … bakış açısında olmuyor … oyuncu ekranı döndürüp
+   * galaksiyi bulmak zorunda kalıyor. … nerede olursan ol ilk doğuşta kamerayı
+   * galaksinin merkezine doğru başlatsak sorun çözülecek."*
+   *
+   * The pose used to be one fixed offset for every world. Worlds sit near the
+   * sphere's surface, so for most commanders that offset looked OUT, at empty
+   * space. The camera now stands on the far side of Home from the centre — at the
+   * same range for everyone, which is what the fixed offset was protecting — so the
+   * first frame is the player's world in front of the galaxy it lives in.
+   */
+  const homes: [number, number, number][] = [
+    [-3.05, 33.95, -20.11], // a high world
+    [18, -30, 22], // a low one
+    [-41, 2, 9], // on the equator
+    [0, 44, 0], // straight above the centre
+    [0, -44, 0], // straight below it
+    [0.4, -0.2, 0.3], // right by the centre
+  ];
 
-    expect(camera.map((value, index) => value - home[index]!)).toEqual([12, 16, 20]);
+  it.each(homes)('opens on the far side of (%f, %f, %f) from the centre, looking in', (x, y, z) => {
+    const camera = initialHomeCameraPosition(x, y, z);
+    const view = [x - camera[0], y - camera[1], z - camera[2]];
+    const range = Math.hypot(view[0]!, view[1]!, view[2]!);
+    // The same range from every world.
+    expect(range).toBeCloseTo(Math.hypot(12, 16, 20), 6);
+    // Looking toward the centre, within the lift that shows the disc from above.
+    const out = Math.hypot(x, y, z);
+    const inward = (view[0]! * -x + view[1]! * -y + view[2]! * -z) / (range * out);
+    expect(inward).toBeGreaterThan(Math.cos((50 * Math.PI) / 180));
+    // And never so steep the orbit controls would snap it.
+    expect(Math.abs(view[1]! / range)).toBeLessThanOrEqual(0.9 + 1e-9);
+  });
+
+  it('opens on a finite pose at the same range from a world at the very centre', () => {
+    const camera = initialHomeCameraPosition(0, 0, 0);
+    expect(camera.every(Number.isFinite)).toBe(true);
+    expect(Math.hypot(...camera)).toBeCloseTo(Math.hypot(12, 16, 20), 6);
   });
 });
 
@@ -401,5 +437,43 @@ describe('touching the camera while something is focused', () => {
   it('enters free-look when no live subject remains', () => {
     expect(rigGestureState(true, false)).toEqual({ mode: 'manual', acquired: false });
     expect(rigGestureState(false, false)).toEqual({ mode: 'manual', acquired: false });
+  });
+});
+
+/**
+ * WIDE SCREENS STRETCH THE EDGES. Owner: *"Ekranı döndürürken ekranın sağında ve
+ * solunda kalan nesneler uzayıp sünüyor."* A fixed 45° vertical field became ~84°
+ * across on a phone turned sideways, and a flat projection stretches a 3D object
+ * at the edge of that by a third. The horizontal field is held to a ceiling; a
+ * portrait phone — narrower than the ceiling already — is untouched.
+ */
+describe('the field of view on a wide screen', () => {
+  const horizontal = (verticalFov: number, aspect: number): number =>
+    (2 * Math.atan(Math.tan((verticalFov * Math.PI) / 360) * aspect) * 180) / Math.PI;
+
+  it('leaves a portrait phone exactly as it was', () => {
+    expect(fovForAspect(45, 350 / 812)).toBe(45);
+    expect(fovForAspect(45, 1)).toBe(45);
+  });
+
+  it.each([1440 / 900, 1920 / 950, 844 / 390, 3440 / 1440])(
+    'holds the horizontal field to the ceiling at aspect %f',
+    (aspect) => {
+      const fov = fovForAspect(45, aspect);
+      expect(fov).toBeLessThanOrEqual(45);
+      expect(horizontal(fov, aspect)).toBeLessThanOrEqual(MAX_HORIZONTAL_FOV + 1e-9);
+    },
+  );
+
+  it('only narrows as far as it must', () => {
+    expect(horizontal(fovForAspect(45, 844 / 390), 844 / 390)).toBeCloseTo(MAX_HORIZONTAL_FOV, 6);
+    expect(MAX_HORIZONTAL_FOV).toBeGreaterThanOrEqual(60);
+    expect(MAX_HORIZONTAL_FOV).toBeLessThanOrEqual(70);
+  });
+
+  it('falls back to the base field on a nonsense aspect', () => {
+    for (const aspect of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(fovForAspect(45, aspect)).toBe(45);
+    }
   });
 });

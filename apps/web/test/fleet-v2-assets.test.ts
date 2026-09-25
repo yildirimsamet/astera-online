@@ -12,6 +12,7 @@ interface FleetAsset {
   readonly card: string;
   readonly icon: string;
   readonly model: string;
+  readonly lodModel: string;
   readonly facing: unknown;
   readonly scale: number;
   readonly pose: {
@@ -33,6 +34,13 @@ interface GlbDocument {
   readonly extensionsRequired?: readonly string[];
   readonly materials?: readonly unknown[];
   readonly images?: readonly { readonly mimeType?: string }[];
+  readonly accessors?: readonly { readonly count?: number }[];
+  readonly meshes?: readonly {
+    readonly primitives?: readonly {
+      readonly indices?: number;
+      readonly attributes?: { readonly POSITION?: number };
+    }[];
+  }[];
 }
 
 const glbJson = (path: string): GlbDocument => {
@@ -50,8 +58,23 @@ const glbJson = (path: string): GlbDocument => {
   throw new Error(`${path} has no GLB JSON chunk`);
 };
 
+const triangleCount = (document: GlbDocument): number =>
+  (document.meshes ?? []).reduce((total, mesh) => total + (mesh.primitives ?? []).reduce(
+    (meshTotal, primitive) => {
+      const accessorIndex = primitive.indices ?? primitive.attributes?.POSITION;
+      if (accessorIndex === undefined) return meshTotal;
+      return meshTotal + (document.accessors?.[accessorIndex]?.count ?? 0) / 3;
+    },
+    0,
+  ), 0);
+
 describe('Fleet V2 canonical assets', () => {
-  it('declares one exhaustive entry for each of the eighteen craftable hulls', () => {
+  it('starts full and low hull requests together instead of waterfalling', () => {
+    const source = readFileSync('src/galaxy/Fleets.tsx', 'utf8');
+    expect(source).toContain('useGLTF([url, lowUrl], false)');
+  });
+
+  it('declares one exhaustive entry for each craftable mobile hull', () => {
     expect(manifest).toBeDefined();
     expect(Object.keys(manifest ?? {}).sort()).toEqual([...FLEET_V2_HULLS].sort());
   });
@@ -62,17 +85,22 @@ describe('Fleet V2 canonical assets', () => {
       expect(asset.card).toMatch(/^\/assets\/images\/ships\/[a-z0-9-]+\.webp$/);
       expect(asset.icon).toMatch(/^\/assets\/images\/ships\/icons\/[a-z0-9-]+\.webp$/);
       expect(asset.model).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+\.glb$/);
-      expect(`${asset.card} ${asset.icon} ${asset.model}`).not.toMatch(/new_test|shiled|lvl_/i);
+      expect(asset.lodModel).toMatch(/^\/assets\/models\/ships\/[a-z0-9-]+_lod\.glb$/);
+      expect(`${asset.card} ${asset.icon} ${asset.model} ${asset.lodModel}`)
+        .not.toMatch(/new_test|shiled|lvl_/i);
     }
     // UNIQUENESS is the claim, so the count is read off the manifest rather than
     // typed: two hulls sharing one card is the bug, not a particular roster size.
     expect(new Set(entries.map(({ card }) => card)).size).toBe(entries.length);
     expect(new Set(entries.map(({ icon }) => icon)).size).toBe(entries.length);
     expect(new Set(entries.map(({ model }) => model)).size).toBe(entries.length);
+    expect(new Set(entries.map(({ lodModel }) => lodModel)).size).toBe(entries.length);
   });
 
   it('resolves every canonical render, icon and model inside mobile transfer budgets', () => {
     for (const [id, asset] of Object.entries(manifest ?? {})) {
+      expect(assets.HULL_LOD_MODEL[id as keyof typeof assets.HULL_LOD_MODEL])
+        .toBe(asset.lodModel);
       for (const [kind, url, minKb, maxKb] of [
         ['card', asset.card, 0, 160],
         ['icon', asset.icon, 0, 40],
@@ -112,6 +140,29 @@ describe('Fleet V2 canonical assets', () => {
       expect(json.images, `${id} texture count`).toHaveLength(3);
       expect(json.images?.every((image) => image.mimeType === 'image/webp'))
         .toBe(true);
+    }
+  });
+
+  it('enforces full and low triangle ceilings for every formation hull', () => {
+    for (const [id, asset] of Object.entries(manifest ?? {})) {
+      const fullPath = served(asset.model);
+      const lowPath = served(asset.lodModel);
+      expect(existsSync(lowPath), `${id} LOD is missing: ${asset.lodModel}`).toBe(true);
+      if (!existsSync(lowPath)) continue;
+
+      const full = glbJson(fullPath);
+      const low = glbJson(lowPath);
+      const fullTriangles = triangleCount(full);
+      const lowTriangles = triangleCount(low);
+      expect(fullTriangles, `${id} full triangle ceiling`).toBeLessThanOrEqual(5_000);
+      expect(lowTriangles, `${id} low triangle ceiling`).toBeLessThanOrEqual(3_000);
+      expect(lowTriangles, `${id} LOD must be cheaper`).toBeLessThan(fullTriangles);
+      expect(low.extensionsRequired, `${id} LOD mesh transport`)
+        .toContain('EXT_meshopt_compression');
+      expect(low.extensionsRequired, `${id} LOD texture transport`).toContain('EXT_texture_webp');
+      expect(low.images, `${id} LOD texture count`).toHaveLength(3);
+      expect(low.images?.every((image) => image.mimeType === 'image/webp')).toBe(true);
+      expect(statSync(lowPath).size / 1024, `${id} LOD transfer`).toBeLessThan(160);
     }
   });
 

@@ -41,7 +41,10 @@ describe('a dressed material', () => {
 
   it('is never disposed with a mesh that goes away', () => {
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
-    expect(model).not.toMatch(/geometry\?\.dispose\(\)/);
-    expect(model).not.toMatch(/dressed\?\.material\.dispose\(\)/);
+    // The default worlds' tiers (a skin's own materials are its own, and go with it).
+    const cached = model.slice(model.indexOf('function ModelInstances('));
+    expect(cached).not.toMatch(/geometry\?\.dispose\(\)/);
+    expect(cached).not.toMatch(/dressed\?\.material\.dispose\(\)/);
+    expect(cached).toMatch(/dispose=\{null\}/);
   });
 });

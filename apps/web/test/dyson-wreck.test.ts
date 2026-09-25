@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { shellGroups, shellLook } from '../src/galaxy/DysonShells.js';
+import * as THREE from 'three';
+import {
+  createDysonLowGeometry,
+  dysonLod,
+  shellGroups,
+  shellLook,
+} from '../src/galaxy/DysonShells.js';
+import { sphereInFrustum } from '../src/galaxy/frustum.js';
 import { isWrecked, planetNodes } from '../src/galaxy/scene.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 
@@ -167,5 +174,39 @@ describe('a dyson shell over a world in recovery', () => {
     ));
     expect(groups).toHaveLength(1);
     expect(groups[0]!.wrecked).toBe(false);
+  });
+});
+
+describe('dyson instance LOD', () => {
+  it('uses full detail nearby, a cheap ring at distance, and nothing below its pixel floor', () => {
+    expect(dysonLod(1, 20)).toBe('full');
+    expect(dysonLod(1, 40)).toBe('low');
+    expect(dysonLod(1, 91)).toBe('hidden');
+  });
+
+  it('uses a silhouette mesh that is dramatically cheaper than the 6,970-triangle source', () => {
+    const geometry = createDysonLowGeometry();
+    const triangles = (geometry.index?.count ?? geometry.getAttribute('position').count) / 3;
+    geometry.computeBoundingSphere();
+
+    expect(triangles).toBeLessThan(500);
+    expect(geometry.boundingSphere?.radius).toBeCloseTo(1, 2);
+    geometry.dispose();
+  });
+
+  it('rejects a shell whose bounding sphere is outside the camera frustum', () => {
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld(true);
+    const projection = new THREE.Matrix4().multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse,
+    );
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
+
+    expect(sphereInFrustum(frustum, [0, 0, 0], 1)).toBe(true);
+    expect(sphereInFrustum(frustum, [50, 0, 0], 1)).toBe(false);
   });
 });

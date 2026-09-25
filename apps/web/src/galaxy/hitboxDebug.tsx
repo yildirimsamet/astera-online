@@ -124,6 +124,7 @@ export interface HitboxMaterialProps {
   readonly transparent: true;
   readonly opacity: number;
   readonly colorWrite: boolean;
+  readonly visible: boolean;
   readonly depthWrite: false;
   readonly side: THREE.Side;
   readonly toneMapped: false;
@@ -131,16 +132,17 @@ export interface HitboxMaterialProps {
 
 /**
  * The props both states share, so the switch never changes anything that would
- * force a shader recompile — `transparent` stays true, only `opacity`,
- * `colorWrite` and `side` move, and Three.js applies all three per draw.
+ * force a shader recompile — `transparent` stays true, while Three applies the
+ * remaining state per draw or excludes the material from the render list.
  */
 export const hitboxMaterialProps = (kind: HitboxKind, debug: boolean): HitboxMaterialProps => ({
   color: HITBOX_COLOURS[kind],
   transparent: true,
   opacity: debug ? HITBOX_OPACITY : 0,
-  // `colorWrite: false` keeps one material for both states. (Hiding the MESH would
-  // not stop picking — neither three's raycaster nor R3F's events read `visible`, which
-  // the modelled worlds use to skip drawing their pick spheres: `PlanetSkinModel`.)
+  // A hidden MATERIAL drops the draw and keeps the press. So would a hidden mesh: neither
+  // three's raycaster nor R3F's events read `visible` (F9 found it on a phone — worlds
+  // hidden by a suspended boundary stayed tappable). This is the one switch for all of them.
+  visible: debug,
   colorWrite: debug,
   depthWrite: false,
   side: debug ? THREE.DoubleSide : THREE.FrontSide,

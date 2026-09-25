@@ -1,4 +1,4 @@
-import { Suspense, startTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -10,11 +10,23 @@ import type { RivalMark } from '../api/schemas.js';
 import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
-import { partitionPlanetSkins } from '../ui/planetSkins.js';
-import { DefaultPlanetModel, PlanetSkinModel, PlanetWarmup } from './PlanetSkinModel.jsx';
+import { partitionPlanetSkins, planetSkinVisual } from '../ui/planetSkins.js';
+import {
+  DefaultPlanetModel,
+  PlanetSkinModel,
+  PlanetWarmup,
+  planetSkinBillboardVisible,
+  planetSkinLod,
+  type PlanetSkinBillboardMode,
+} from './PlanetSkinModel.jsx';
 import { approachingFull, groupPlanetsByLod, lodFor, screenRadius, type PlanetLod } from './planetLod.js';
+import { seat, settleMembers } from './planetPick.js';
 import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
 import { createViewMemo, viewChanged } from './viewMemo.js';
+import {
+  maskOpaquePlanetBillboard,
+  opaquePlanetBillboardProgramKey,
+} from './planetBillboardMaterial.js';
 
 /**
  * Every world in the disc, in a draw per look and tier.
@@ -44,6 +56,7 @@ import { createViewMemo, viewChanged } from './viewMemo.js';
 interface Group {
   texture: string;
   nodes: PlanetNode[];
+  opaquePreview?: boolean;
 }
 
 export function PlanetField({
@@ -58,6 +71,7 @@ export function PlanetField({
   onSelect: (id: string) => void;
 }) {
   const { png: defaults, models: skinGroups } = useMemo(() => partitionPlanetSkins(nodes), [nodes]);
+  const skinNodes = useMemo(() => skinGroups.flatMap((group) => group.nodes), [skinGroups]);
   const lods = usePlanetLods(defaults);
   /*
     THE FAR AND LIGHT MODEL OF EVERY LOOK ON THE DISC, UP FRONT (~50 KB a look): the
@@ -124,26 +138,24 @@ export function PlanetField({
           </SkinAssetBoundary>
         );
       })}
+      {/*
+        A SKIN SEEN SMALL IS ITS CATALOGUE ART (master, 2026-09-24): one far bucket for the whole
+        disc, and the near worlds' cards only while their model loads or if it fails — the two
+        never draw a world twice (`planetSkinBillboardVisible`).
+      */}
+      <SkinBillboards nodes={skinNodes} onSelect={onSelect} mode="far" />
       {skinGroups.map((group) => (
         <SkinAssetBoundary
           key={`${group.skinId}:${group.status}`}
-          // Each stand-in card keeps its own loading to itself, as the default worlds' do.
-          fallback={group.nodes.map((node) => (
-            <Suspense key={node.id} fallback={null}>
-              <PlanetInstances group={{ texture: planetArt(node.id), nodes: [node] }} onSelect={onSelect} />
-            </Suspense>
-          ))}
+          fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}
         >
-          <Suspense fallback={group.nodes.map((node) => (
-            <Suspense key={node.id} fallback={null}>
-              <PlanetInstances group={{ texture: planetArt(node.id), nodes: [node] }} onSelect={onSelect} />
-            </Suspense>
-          ))}>
+          <Suspense fallback={<SkinBillboards nodes={group.nodes} onSelect={onSelect} mode="near" />}>
             <PlanetSkinModel
               skinId={group.skinId}
               status={group.status}
               nodes={group.nodes}
               onSelect={onSelect}
+              galaxyLod
             />
           </Suspense>
         </SkinAssetBoundary>
@@ -633,12 +645,57 @@ function eyeTexture(open: boolean): THREE.Texture {
 
 const FORWARD = new THREE.Vector3(0, 0, 1);
 
-function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: string) => void }) {
+function SkinBillboards({
+  nodes,
+  onSelect,
+  mode,
+}: {
+  nodes: readonly PlanetNode[];
+  onSelect: (id: string) => void;
+  mode: PlanetSkinBillboardMode;
+}) {
+  const groups = useMemo<Group[]>(() => {
+    const byTexture = new Map<string, PlanetNode[]>();
+    for (const node of nodes) {
+      const visual = node.skin ? planetSkinVisual(node.skin.id, node.skin.status) : null;
+      const texture = visual?.billboardUrl ?? planetArt(node.id);
+      const bucket = byTexture.get(texture);
+      if (bucket) bucket.push(node);
+      else byTexture.set(texture, [node]);
+    }
+    return [...byTexture].map(([texture, group]) => ({
+      texture,
+      nodes: group,
+      opaquePreview: true,
+    }));
+  }, [nodes]);
+  // Each bucket loads its art behind its own boundary: a card that suspends must not climb to
+  // the scene's one boundary and hide every world with it (F9, `scene-boundaries`).
+  return groups.map((group) => (
+    <Suspense key={group.texture} fallback={null}>
+      <PlanetInstances group={group} onSelect={onSelect} mode={mode} />
+    </Suspense>
+  ));
+}
+
+function PlanetInstances({
+  group,
+  onSelect,
+  mode = 'all',
+}: {
+  group: Group;
+  onSelect: (id: string) => void;
+  /** Splits model-loading fallback and far LOD without drawing either twice. */
+  mode?: PlanetSkinBillboardMode;
+}) {
   const texture = useLoader(THREE.TextureLoader, group.texture);
   const ref = useRef<THREE.InstancedMesh>(null);
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
   const count = group.nodes.length;
+  const visibleNodes = useRef<PlanetNode[]>([]);
+  const debug = useHitboxDebug();
+  const hitboxes = useRef<THREE.InstancedMesh>(null);
 
   /**
    * Ignorance is literally dark: an unwatched world is dimmed per instance, so the
@@ -650,13 +707,26 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
    * happened: every planet in the galaxy rendered at full brightness and the fog
    * of war was invisible. `setColorAt` allocates the attribute and the material is
    * marked for recompilation here.
-   */
+  */
   const tint = useMemo(() => new THREE.Color(), []);
-  useLayoutEffect(() => {
-    const mesh = ref.current;
-    if (!mesh) return;
-
-    group.nodes.forEach((node, i) => {
+  const writeInstances = useCallback((
+    mesh: THREE.InstancedMesh,
+    painted: THREE.InstancedMesh | null,
+    paintColours: boolean,
+  ): void => {
+    const needsMaterialUpdate = mesh.instanceColor === null;
+    let drawn = 0;
+    let seated = false;
+    for (const node of group.nodes) {
+      if (mode !== 'all') {
+        const distance = Math.hypot(
+          camera.position.x - node.position[0],
+          camera.position.y - node.position[1],
+          camera.position.z - node.position[2],
+        );
+        const lod = planetSkinLod(node.radius, distance);
+        if (!planetSkinBillboardVisible(lod, mode)) continue;
+      }
       /**
        * OUT OF SENSOR REACH IS DIMMER AND COLDER. D126.
        *
@@ -680,39 +750,46 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
       const seen = node.intel === 'RESOLVED';
       const light = bodyLight(node.stance, node.intel);
       const chill = seen ? UNRESOLVED.warm : UNRESOLVED.cool;
-      mesh.setColorAt(i, tint.setRGB(light * chill.r, light * chill.g, light * chill.b));
+      if (paintColours) {
+        mesh.setColorAt(drawn, tint.setRGB(light * chill.r, light * chill.g, light * chill.b));
+      }
 
-      // Place them here as well as in the frame loop, because the bounding sphere
-      // below is computed from these matrices.
       UP.position.set(node.position[0], node.position[1], node.position[2]);
-      UP.quaternion.identity();
+      UP.quaternion.copy(camera.quaternion);
       UP.scale.setScalar(node.radius * 2);
       UP.updateMatrix();
-      mesh.setMatrixAt(i, UP.matrix);
-    });
+      mesh.setMatrixAt(drawn, UP.matrix);
+      painted?.setMatrixAt(drawn, UP.matrix);
+      if (seat(visibleNodes.current, drawn, node)) seated = true;
+      drawn += 1;
+    }
+    // The billboard is its own pick target: measured again whenever its members move (`planetPick`).
+    settleMembers(mesh, visibleNodes.current, drawn, seated);
+    mesh.visible = drawn > 0;
+    if (painted) {
+      painted.count = drawn;
+      painted.visible = drawn > 0;
+      painted.instanceMatrix.needsUpdate = true;
+    }
 
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (paintColours && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.instanceMatrix.needsUpdate = true;
     // `InstancedMesh.material` is typed as one material or an array; this mesh only
     // ever has one, and narrowing beats asserting.
-    if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
+    if (needsMaterialUpdate && mesh.instanceColor && !Array.isArray(mesh.material)) {
+      mesh.material.needsUpdate = true;
+    }
 
-    /**
-     * THE BUG THIS LINE EXISTS FOR.
-     *
-     * Three.js frustum-culls an InstancedMesh using the GEOMETRY's bounding
-     * sphere — here a 1×1 plane at the origin — not the instances. The camera
-     * looks at the player's own planet, which is nowhere near the origin, so the
-     * entire galaxy was culled and every world vanished. Computing the sphere from
-     * the instance matrices makes culling correct instead of switching it off.
-     *
-     * Planets never move, so this runs once per data change rather than per frame.
-     */
-    mesh.computeBoundingSphere();
-    // A group whose worlds changed as the camera came to rest (F9's tiers) is faced by
-    // the next frame, and the disc draws on demand: ask for that frame.
+  }, [camera, group.nodes, mode, tint]);
+
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    writeInstances(mesh, hitboxes.current, true);
+    // A group whose worlds changed as the camera came to rest (F9's tiers) is faced by the next
+    // frame, and the disc draws on demand: ask for that frame.
     invalidate();
-  }, [group.nodes, tint, invalidate]);
+  }, [debug, writeInstances, invalidate]);
 
   /**
    * A WORLD'S PICK VOLUME, AND WHY IT IS THE ONE THAT NEEDS A SECOND MESH.
@@ -731,23 +808,6 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
    * WHAT IT SHOWS, and it is worth knowing: the quad is a SQUARE of side
    * `radius * 2`, while the art inside it is a disc. The corners are tappable.
    */
-  const debug = useHitboxDebug();
-  const hitboxes = useRef<THREE.InstancedMesh>(null);
-  useLayoutEffect(() => {
-    const mesh = hitboxes.current;
-    if (!mesh) return;
-    group.nodes.forEach((node, i) => {
-      UP.position.set(node.position[0], node.position[1], node.position[2]);
-      UP.quaternion.copy(camera.quaternion);
-      UP.scale.setScalar(node.radius * 2);
-      UP.updateMatrix();
-      mesh.setMatrixAt(i, UP.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    // The disc renders on demand, so a switch thrown while nothing is moving has
-    // to place the quads itself rather than wait for the next frame.
-  }, [camera, debug, group.nodes]);
-
   /**
    * Billboarding, once per rendered frame IN WHICH THE VIEW MOVED.
    *
@@ -768,20 +828,8 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
       view.current.primed = false;
     }
     if (!viewChanged(view.current, camera, group.nodes, 0)) return;
-    group.nodes.forEach((node, i) => {
-      UP.position.set(node.position[0], node.position[1], node.position[2]);
-      UP.quaternion.copy(camera.quaternion);
-      UP.scale.setScalar(node.radius * 2);
-      UP.updateMatrix();
-      mesh.setMatrixAt(i, UP.matrix);
-      painted?.setMatrixAt(i, UP.matrix);
-    });
-    mesh.instanceMatrix.needsUpdate = true;
-    if (painted) painted.instanceMatrix.needsUpdate = true;
+    writeInstances(mesh, painted, mode !== 'all');
   });
-
-  // Billboarding rotates each quad in place, so the sphere computed above stays
-  // valid; only a change in positions would need it recomputed.
 
   const pick = (event: ThreeEvent<PointerEvent>): void => {
     // Panning across the disc must not open whatever was under the thumb when the
@@ -791,7 +839,7 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
     event.stopPropagation();
     const index = event.instanceId;
     if (index === undefined) return;
-    const node = group.nodes[index];
+    const node = visibleNodes.current[index];
     if (node) onSelect(node.id);
   };
 
@@ -805,12 +853,9 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
         /**
          * #4 — worlds vanishing at certain angles.
          *
-         * The bounding sphere computed above makes culling correct, but each texture
-         * group spans the whole disc, so a group is either entirely on screen or
-         * entirely off it — and "entirely off" was being decided by a sphere that a
-         * grazing frustum could miss. Even at 351 worlds these remain sixteen
-         * instanced draw groups; culling a whole scattered group wins almost
-         * nothing and can hide selectable worlds.
+         * Each texture group is scattered across the disc. Object-level culling
+         * cannot decide that every instance is outside the camera, so keep it off;
+         * the maximum remains sixteen instanced draw groups for ordinary worlds.
          */
         frustumCulled={false}
       >
@@ -832,6 +877,8 @@ function PlanetInstances({ group, onSelect }: { group: Group; onSelect: (id: str
           alphaToCoverage
           depthWrite
           toneMapped={false}
+          onBeforeCompile={group.opaquePreview ? maskOpaquePlanetBillboard : undefined}
+          customProgramCacheKey={group.opaquePreview ? opaquePlanetBillboardProgramKey : undefined}
         />
       </instancedMesh>
       {debug && (

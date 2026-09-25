@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,16 +9,48 @@ import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface } from './planetSurface.js';
 import type { PlanetLod } from './planetLod.js';
-import { placeBodies, placePickSpheres } from './planetPick.js';
-import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
+import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
 import type { PlanetNode, Vec3Tuple } from './scene.js';
 import { markHit, wasTap } from './tap.js';
+import { HitboxMaterial } from './hitboxDebug.jsx';
+import { sphereInFrustum } from './frustum.js';
+import { SkinAssetBoundary } from './SkinAssetBoundary.jsx';
+import { PlanetSkinAttachments } from './PlanetSkinAttachments.jsx';
+import {
+  PLANET_SKIN_BODY_SCALE,
+  PLANET_SKIN_FULL_ANGULAR_RADIUS,
+  PLANET_SKIN_MODEL_ANGULAR_RADIUS,
+  PLANET_SKIN_SPIN_RATE,
+  planetSkinPhase,
+} from './planetSkinAttachments.js';
 
 type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
 
+export type PlanetSkinLod = 'full' | 'low' | 'billboard';
+export type PlanetSkinBillboardMode = 'all' | 'near' | 'far';
+
+/** Palette/status buckets share the same meshes returned by the GLTF cache. */
+const UNIT_PLANET_GEOMETRY_CACHE = new WeakMap<THREE.Mesh, THREE.BufferGeometry>();
+
+export function planetSkinLod(radius: number, distance: number): PlanetSkinLod {
+  if (radius >= distance * PLANET_SKIN_FULL_ANGULAR_RADIUS) return 'full';
+  if (radius >= distance * PLANET_SKIN_MODEL_ANGULAR_RADIUS) return 'low';
+  return 'billboard';
+}
+
+export function planetSkinBillboardVisible(
+  lod: PlanetSkinLod,
+  mode: PlanetSkinBillboardMode,
+): boolean {
+  if (mode === 'all') return true;
+  return mode === 'far' ? lod === 'billboard' : lod !== 'billboard';
+}
+
 /** gltfpack positions are often quantised integers; bake transforms only in floats. */
 export function unitPlanetGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
+  const cached = UNIT_PLANET_GEOMETRY_CACHE.get(mesh);
+  if (cached) return cached;
   mesh.updateWorldMatrix(true, false);
   const geometry = new THREE.BufferGeometry();
   for (const [name, attribute] of Object.entries(mesh.geometry.attributes)) {
@@ -42,8 +74,17 @@ export function unitPlanetGeometry(mesh: THREE.Mesh): THREE.BufferGeometry {
     geometry.scale(1 / sphere.radius, 1 / sphere.radius, 1 / sphere.radius);
     geometry.computeBoundingSphere();
   }
+  UNIT_PLANET_GEOMETRY_CACHE.set(mesh, geometry);
   return geometry;
 }
+
+const firstMesh = (scene: THREE.Object3D): THREE.Mesh | null => {
+  let found: THREE.Mesh | null = null;
+  scene.traverse((node) => {
+    if (!found && node instanceof THREE.Mesh) found = node;
+  });
+  return found;
+};
 
 /*
   A LOOK'S TIER IS BUILT ONCE A SESSION (code review, 2026-09-25). A fast zoom empties a
@@ -75,15 +116,6 @@ export function cachedDress(url: string, key: string, source: THREE.Material, dr
   }
   return dressed;
 }
-
-const firstMesh = (scene: THREE.Object3D): THREE.Mesh | null => {
-  let found: THREE.Mesh | null = null;
-  scene.traverse((node) => {
-    if (!found && node instanceof THREE.Mesh) found = node;
-  });
-  return found;
-};
-
 
 /** What a model's own material becomes on the disc, and the clock a shader finish reads. */
 interface Dressed {
@@ -163,31 +195,197 @@ export function PlanetSkinModel({
   status,
   nodes,
   onSelect,
+  galaxyLod = false,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
+  /** The shop preview has no billboard peer, so only the galaxy enables switching. */
+  galaxyLod?: boolean;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
-  const dress = useMemo<Dress | null>(() => {
-    if (!visual) return null;
-    const { finish } = visual;
-    return (source) => (finish.kind === 'PALETTE'
-      ? createPlanetSkinMaterial(source, finish)
-      : { material: source.clone(), uniforms: null });
-  }, [visual]);
-  if (!visual || !dress) return null;
+  if (!visual) return null;
   return (
-    <ModelInstances
-      name="planet-skin-models"
-      modelUrl={visual.modelUrl}
-      dress={dress}
-      dressKey={`${skinId}:${status}`}
+    <LoadedPlanetSkinModel
+      visual={visual}
+      status={status}
       nodes={nodes}
-      capacity={nodes.length}
       onSelect={onSelect}
+      galaxyLod={galaxyLod}
     />
+  );
+}
+
+function LoadedPlanetSkinModel({
+  visual,
+  status,
+  nodes,
+  onSelect,
+  galaxyLod,
+}: {
+  visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
+  status: PlanetSkinStatus;
+  nodes: readonly SkinNode[];
+  onSelect?: (id: string) => void;
+  galaxyLod: boolean;
+}) {
+  const loaded = useGLTF(
+    [visual.modelUrl, visual.lowModelUrl],
+    false,
+  );
+  const scene = loaded[0]!.scene;
+  const lowScene = loaded[1]!.scene;
+  const model = useMemo(() => firstMesh(scene), [scene]);
+  const lowModel = useMemo(() => firstMesh(lowScene), [lowScene]);
+  const geometry = useMemo(() => model ? unitPlanetGeometry(model) : null, [model]);
+  const lowGeometry = useMemo(
+    () => lowModel ? unitPlanetGeometry(lowModel) : null,
+    [lowModel],
+  );
+  const dressed = useMemo(() => {
+    if (!model) return null;
+    const source = Array.isArray(model.material) ? model.material[0] : model.material;
+    if (!source) return null;
+    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
+    return { material: source.clone(), uniforms: null };
+  }, [model, visual]);
+  const lowDressed = useMemo(() => {
+    if (!lowModel) return null;
+    const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
+    if (!source) return null;
+    if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
+    return { material: source.clone(), uniforms: null };
+  }, [lowModel, visual]);
+  const fullBody = useRef<THREE.InstancedMesh>(null);
+  const lowBody = useRef<THREE.InstancedMesh>(null);
+  const hits = useRef<THREE.InstancedMesh>(null);
+  const hitNodes = useRef<SkinNode[]>([]);
+  const helper = useMemo(() => new THREE.Object3D(), []);
+  const tint = useMemo(() => new THREE.Color(), []);
+  const projection = useMemo(() => new THREE.Matrix4(), []);
+  const frustum = useMemo(() => new THREE.Frustum(), []);
+
+  useEffect(() => () => {
+    // Geometry is owned by the weak GLTF mesh cache and shared by every look.
+    dressed?.material.dispose();
+    lowDressed?.material.dispose();
+  }, [dressed, lowDressed]);
+
+  useLayoutEffect(() => {
+    for (const mesh of [fullBody.current, lowBody.current, hits.current]) {
+      if (!mesh) continue;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      if (mesh === hits.current) continue;
+      mesh.setColorAt(0, tint.setRGB(1, 1, 1));
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
+    }
+  }, [tint]);
+
+  useFrame(({ camera, clock }) => {
+    if (dressed?.uniforms) dressed.uniforms.time.value = clock.elapsedTime;
+    if (lowDressed?.uniforms) lowDressed.uniforms.time.value = clock.elapsedTime;
+    const full = fullBody.current;
+    const low = lowBody.current;
+    if (!full || !low) return;
+    projection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projection);
+    let fullCount = 0;
+    let lowCount = 0;
+    let hitCount = 0;
+    let seated = false;
+    nodes.forEach((node) => {
+      const distance = camera.position.distanceTo(helper.position.set(...node.position));
+      const lod = galaxyLod ? planetSkinLod(node.radius, distance) : 'full';
+      if (lod === 'billboard') return;
+      if (!sphereInFrustum(frustum, node.position, node.radius)) return;
+      helper.position.set(...node.position);
+      helper.rotation.set(
+        0,
+        planetSkinPhase(node.id) + clock.elapsedTime * PLANET_SKIN_SPIN_RATE,
+        0,
+      );
+      helper.scale.setScalar(node.radius * PLANET_SKIN_BODY_SCALE);
+      helper.updateMatrix();
+      const mesh = lod === 'full' ? full : low;
+      const index = lod === 'full' ? fullCount++ : lowCount++;
+      mesh.setMatrixAt(index, helper.matrix);
+      const light = bodyLight(node.stance, node.intel);
+      const cool = node.intel === 'RESOLVED' ? [1, 1, 1] : [0.72, 0.84, 1];
+      mesh.setColorAt(index, tint.setRGB(light * cool[0]!, light * cool[1]!, light * cool[2]!));
+      hits.current?.setMatrixAt(hitCount, helper.matrix);
+      if (seat(hitNodes.current, hitCount, node)) seated = true;
+      hitCount += 1;
+    });
+    for (const [mesh, count] of [[full, fullCount], [low, lowCount]] as const) {
+      mesh.count = count;
+      mesh.visible = count > 0;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+    /*
+      MEASURED AGAIN WHEN THE MEMBERS MOVE. The spheres are compacted with the bodies, so the
+      bounding sphere three measured at the first raycast went stale as worlds came into range
+      or view — a skinned world could not be tapped (F9's phone fault, on this path).
+    */
+    if (hits.current) {
+      settleMembers(hits.current, hitNodes.current, hitCount, seated);
+      hits.current.visible = hitCount > 0;
+    }
+  });
+
+  if (!geometry || !lowGeometry || !dressed || !lowDressed || nodes.length === 0) return null;
+  const select = (event: ThreeEvent<PointerEvent>) => {
+    if (!wasTap()) return;
+    const node = hitNodes.current[event.instanceId ?? -1];
+    if (!node || !onSelect) return;
+    markHit();
+    event.stopPropagation();
+    onSelect(node.id);
+  };
+
+  return (
+    <>
+      <instancedMesh
+        ref={fullBody}
+        name="planet-skin-models-full"
+        args={[geometry, dressed.material, nodes.length]}
+        frustumCulled={false}
+        raycast={() => null}
+      />
+      <instancedMesh
+        ref={lowBody}
+        name="planet-skin-models-low"
+        args={[lowGeometry, lowDressed.material, nodes.length]}
+        frustumCulled={false}
+        raycast={() => null}
+      />
+      <SkinAssetBoundary fallback={null}>
+        <Suspense fallback={null}>
+          <PlanetSkinAttachments
+            attachments={visual.includedAttachments}
+            finish={visual.finish}
+            planetGeometry={geometry}
+            nodes={nodes}
+            galaxyLod={galaxyLod}
+            avoidFractures={status === 'RECOVERY_SHIELD'}
+          />
+        </Suspense>
+      </SkinAssetBoundary>
+      {onSelect && (
+        <instancedMesh
+          ref={hits}
+          name="planet-skin-hits"
+          args={[undefined, undefined, nodes.length]}
+          frustumCulled={false}
+          onPointerUp={select}
+        >
+          <sphereGeometry args={[1, 12, 8]} />
+          <HitboxMaterial kind="planet" />
+        </instancedMesh>
+      )}
+    </>
   );
 }
 
@@ -258,12 +456,6 @@ function ModelInstances({
   const hits = useRef<THREE.InstancedMesh>(null);
   const tint = useMemo(() => new THREE.Color(), []);
   const invalidate = useThree((state) => state.invalidate);
-  /*
-    A PICK SPHERE COSTS NO DRAW unless the volumes are being painted (`?hitboxes=1`).
-    Neither three's raycaster nor R3F's events look at `visible`, so a hidden sphere is
-    still tapped — and an unpainted one no longer walks ~96 triangles a world a frame.
-  */
-  const paintHits = useHitboxDebug();
 
   useLayoutEffect(() => {
     const mesh = body.current;
@@ -322,13 +514,11 @@ function ModelInstances({
           ref={hits}
           name={`${name}-hits`}
           args={[undefined, undefined, capacity]}
-          // Drawn only while the pick volumes are painted: hidden, it is still raycast.
-          visible={paintHits}
           frustumCulled={false}
           onPointerUp={select}
         >
           <sphereGeometry args={[1, 12, 8]} />
-          {/* Raycast and unseen, and painted when the pick volumes are (`?hitboxes=1`). */}
+          {/* Unpainted, its material is not drawn and it is still raycast (`hitboxMaterialProps`). */}
           <HitboxMaterial kind="planet" />
         </instancedMesh>
       )}

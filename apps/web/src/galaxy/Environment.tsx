@@ -1,83 +1,437 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { paintDiscCanvas, paintNebulaCanvas } from './nebula.js';
+import { paintDiscCanvas } from './nebula.js';
 import { DISC_RADIUS } from './scene.js';
 import { METEOR_CLOCK, meteorStep, type MeteorClock } from './frames.js';
+import {
+  METEOR_HEAD_FRAGMENT,
+  METEOR_HEAD_VERTEX,
+  METEOR_RIBBON_FRAGMENT,
+  METEOR_RIBBON_VERTEX,
+  meteorTrail,
+  type MeteorPath,
+} from './meteor.js';
+import { useRenderQuality } from '../lib/quality.js';
+import {
+  GALACTIC_ACROSS,
+  GALACTIC_CENTRE,
+  MILKY_WAY_POLE,
+  SKY_BAKE_FRAGMENT,
+  SKY_BAKE_SIZE,
+  SKY_BAKE_VERTEX,
+  SKY_FRAGMENT,
+  SKY_GALAXY_CARDS,
+  SKY_LUMINANCE_CEILING,
+  SKY_RADIUS,
+  SKY_SITES,
+  SKY_DEEP_STAR_COUNT,
+  SKY_STAR_COUNT,
+  SKY_VERTEX,
+  STAR_FRAGMENT,
+  STAR_TWINKLE_DEPTH,
+  STAR_VERTEX,
+  DEEP_STAR_VERTEX,
+  GALAXY_BAKE_FRAGMENT,
+  GALAXY_BAKE_VERTEX,
+  HERO_CARD_SPAN,
+  galaxyCardSize,
+  heroCardCorners,
+  skyBakeStep,
+  buildDeepStars,
+  buildSkyStars,
+  type SkyGalaxy,
+  type SkySite,
+} from './sky.js';
 
 /**
  * The space the game happens in.
  *
  * Everything here is atmosphere and none of it is information — which is exactly
- * why it has to be cheap. The nebula is painted once to an offscreen canvas and
- * mapped to a backdrop sphere, so it costs one texture and one draw call forever
- * rather than a full-screen procedural shader every frame. Dust and stars are
- * point clouds. The whole environment is under ten draw calls.
+ * why it has to be cheap. The sky's gas is baked ONCE on the GPU into a cube map
+ * (`sky.ts` has the whole argument) and drawn afterwards as one texture read a
+ * pixel; its stars are point clouds in one draw call each; the disc's dust is a
+ * painted plate. The whole environment is about ten draw calls.
  */
 
-/* ── nebula ─────────────────────────────────────────────────── */
+/* ── the sky ────────────────────────────────────────────────── */
+
+const siteUniform = (site: SkySite): THREE.Vector4 =>
+  new THREE.Vector4(
+    site.direction[0],
+    site.direction[1],
+    site.direction[2],
+    Math.cos((site.radius * Math.PI) / 180),
+  );
+
+const galaxySiteUniform = (galaxy: SkyGalaxy): THREE.Vector4 =>
+  new THREE.Vector4(
+    galaxy.direction[0],
+    galaxy.direction[1],
+    galaxy.direction[2],
+    Math.tan((galaxy.radius * Math.PI) / 180),
+  );
+
+const galaxyShapeUniform = (galaxy: SkyGalaxy): THREE.Vector4 => {
+  const turn = (galaxy.turn * Math.PI) / 180;
+  return new THREE.Vector4(
+    Math.cos(turn),
+    Math.sin(turn),
+    Math.cos((galaxy.tilt * Math.PI) / 180),
+    galaxy.brightness,
+  );
+};
 
 /**
- * The backdrop.
- *
- * Generated rather than painted — see `nebula.ts` for why filaments and dust
- * matter. It is a few hundred milliseconds of CPU, so it is computed AFTER first
- * paint and faded in: the galaxy opens instantly on black and stars, and the gas
- * arrives a moment later. Blocking the first frame on scenery would be the wrong
- * trade in a game people open for four minutes.
+ * A galaxy's own sharp card: a render target it is baked into once, the scene
+ * that bakes it, and the quad on the sky that shows it. See `heroCardCorners`.
  */
-export function Nebula() {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const material = useRef<THREE.MeshBasicMaterial>(null);
+function galaxyCard(galaxy: SkyGalaxy, index: number) {
+  const size = galaxyCardSize(galaxy);
+  const target = new THREE.WebGLRenderTarget(size, size, {
+    type: THREE.UnsignedByteType,
+    generateMipmaps: false,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: false,
+  });
+  target.texture.colorSpace = THREE.SRGBColorSpace;
+  const bakeMaterial = new THREE.ShaderMaterial({
+    vertexShader: GALAXY_BAKE_VERTEX,
+    fragmentShader: GALAXY_BAKE_FRAGMENT,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.NoBlending,
+    uniforms: {
+      uShape: { value: galaxyShapeUniform(galaxy) },
+      uSpan: { value: HERO_CARD_SPAN },
+      uSeed: { value: 3 + index * 7 },
+      uCore: { value: new THREE.Vector3(...galaxy.palette.core) },
+      uArms: { value: new THREE.Vector3(...galaxy.palette.arms) },
+      uKnots: { value: new THREE.Vector3(...galaxy.palette.knots) },
+    },
+  });
+  const quad = new THREE.PlaneGeometry(2, 2);
+  const quadMesh = new THREE.Mesh(quad, bakeMaterial);
+  quadMesh.frustumCulled = false;
+  const scene = new THREE.Scene();
+  scene.add(quadMesh);
+  const camera = new THREE.OrthographicCamera();
 
+  const corners = heroCardCorners(galaxy, SKY_RADIUS * 0.92);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(corners.flat()), 3));
+  geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2));
+  geometry.setIndex([0, 1, 2, 2, 1, 3]);
+  const material = new THREE.MeshBasicMaterial({
+    map: target.texture,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.DoubleSide,
+    fog: false,
+    toneMapped: false,
+  });
+  return { target, bakeMaterial, quad, scene, camera, geometry, material };
+}
+
+/** How long the baked gas takes to arrive once it exists. */
+const SKY_FADE_SECONDS = 1.1;
+
+/**
+ * THE SKY: baked gas and live stars, turning together. See `sky.ts` for why it is
+ * split the way it is.
+ *
+ * ONE FACE A FRAME. The bake is the only expensive thing here and it runs once;
+ * spreading its six faces over six frames keeps any single frame on a slow phone
+ * from stalling behind it. It starts after first paint, and the gas fades in —
+ * the galaxy opens on stars, and the Milky Way arrives a moment later.
+ *
+ * A LOST CONTEXT TAKES THE BAKE WITH IT. Textures are re-uploaded from memory
+ * after a restore; a render target has no memory to come back from. So the sky
+ * listens for the restore itself and bakes again — the landing page has no
+ * `gpuContext` to tell it.
+ *
+ * CAMERA-CENTRED, AS A SKY MUST BE. Gas, stars and diffraction-spiked stars all
+ * ride one shell that follows the eye and turns at the approved celestial rate,
+ * so a star can never drift across the cloud it sits in.
+ */
+export function Sky() {
+  const quality = useRenderQuality();
+  const bakeSize = SKY_BAKE_SIZE[quality];
+  const starCount = SKY_STAR_COUNT[quality];
+  const deepCount = SKY_DEEP_STAR_COUNT[quality];
+  const gl = useThree((state) => state.gl);
+  const invalidate = useThree((state) => state.invalidate);
+  const shell = useRef<THREE.Group>(null);
+  /** The next bake step (`skyBakeStep`); −1 until first paint. */
+  const step = useRef(-1);
+  /** How far the baked gas and the hero card have faded in, 0–1. */
+  const fade = useRef(0);
+
+  const bake = useMemo(() => {
+    const target = new THREE.WebGLCubeRenderTarget(bakeSize, {
+      type: THREE.UnsignedByteType,
+      generateMipmaps: false,
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      depthBuffer: false,
+    });
+    // Stored sRGB-encoded by the hardware, so the near-black end — which is
+    // nearly all of it — keeps its precision instead of banding.
+    target.texture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.ShaderMaterial({
+      vertexShader: SKY_BAKE_VERTEX,
+      fragmentShader: SKY_BAKE_FRAGMENT,
+      side: THREE.BackSide,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.NoBlending,
+      uniforms: {
+        uPole: { value: new THREE.Vector3(...MILKY_WAY_POLE) },
+        uCentre: { value: new THREE.Vector3(...GALACTIC_CENTRE) },
+        uAcross: { value: new THREE.Vector3(...GALACTIC_ACROSS) },
+        uBulge: { value: 1 - Math.cos((SKY_SITES.bulge.radius * Math.PI) / 180) },
+        uEmission: { value: SKY_SITES.emission.map(siteUniform) },
+        uEmissionOxygen: { value: SKY_SITES.emission.map((cloud) => cloud.oxygen) },
+        uEmissionShape: {
+          value: SKY_SITES.emission.map(
+            (cloud) =>
+              new THREE.Vector4(
+                Math.cos((cloud.turn * Math.PI) / 180),
+                Math.sin((cloud.turn * Math.PI) / 180),
+                cloud.stretch,
+                Math.tan((cloud.radius * Math.PI) / 180),
+              ),
+          ),
+        },
+        uReflection: { value: SKY_SITES.reflection.map(siteUniform) },
+        uDark: { value: siteUniform(SKY_SITES.dark) },
+        uGalaxy: { value: SKY_SITES.galaxies.map(galaxySiteUniform) },
+        uGalaxyShape: { value: SKY_SITES.galaxies.map(galaxyShapeUniform) },
+        uGalaxyCore: { value: SKY_SITES.galaxies.map((g) => new THREE.Vector3(...g.palette.core)) },
+        uGalaxyArms: { value: SKY_SITES.galaxies.map((g) => new THREE.Vector3(...g.palette.arms)) },
+        uGalaxyKnots: { value: SKY_SITES.galaxies.map((g) => new THREE.Vector3(...g.palette.knots)) },
+        uCeiling: { value: SKY_LUMINANCE_CEILING },
+      },
+    });
+    const geometry = new THREE.SphereGeometry(1, 48, 24);
+    const scene = new THREE.Scene();
+    scene.add(new THREE.Mesh(geometry, material));
+    const camera = new THREE.CubeCamera(0.01, 10, target);
+    return { target, material, geometry, scene, camera };
+  }, [bakeSize]);
+
+  const cards = useMemo(() => SKY_GALAXY_CARDS.map(galaxyCard), []);
+
+  const gas = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: SKY_VERTEX,
+        fragmentShader: SKY_FRAGMENT,
+        side: THREE.BackSide,
+        depthWrite: false,
+        depthTest: false,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        fog: false,
+        uniforms: {
+          uSky: { value: bake.target.texture },
+          uOpacity: { value: 0 },
+        },
+      }),
+    [bake],
+  );
+
+  const stars = useMemo(() => {
+    const field = buildSkyStars(starCount, 0x5a17f13d);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(field.positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(field.colours, 3));
+    geometry.setAttribute('aFlux', new THREE.BufferAttribute(field.flux, 1));
+    geometry.setAttribute('aTwinkle', new THREE.BufferAttribute(field.twinkle, 2));
+    const material = new THREE.ShaderMaterial({
+      vertexShader: STAR_VERTEX,
+      fragmentShader: STAR_FRAGMENT,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+      uniforms: {
+        uSky: { value: bake.target.texture },
+        uSkyReady: { value: 0 },
+        uPixelRatio: { value: 1 },
+        uTime: { value: 0 },
+        uTwinkleDepth: { value: STAR_TWINKLE_DEPTH },
+      },
+    });
+    return { geometry, material };
+  }, [starCount, bake]);
+
+  const deep = useMemo(() => {
+    const field = buildDeepStars(deepCount, 0x2bd1e6a5);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(field.positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(field.colours, 3));
+    geometry.setAttribute('aFlux', new THREE.BufferAttribute(field.flux, 1));
+    const material = new THREE.ShaderMaterial({
+      vertexShader: DEEP_STAR_VERTEX,
+      fragmentShader: STAR_FRAGMENT,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+      uniforms: { uPixelRatio: { value: 1 } },
+    });
+    return { geometry, material };
+  }, [deepCount]);
+
+  // Start after first paint; restart after a lost context comes back.
   useEffect(() => {
     let cancelled = false;
-    const build = (): void => {
+    const begin = (): void => {
       if (cancelled) return;
-      const map = new THREE.CanvasTexture(paintNebulaCanvas());
-      map.colorSpace = THREE.SRGBColorSpace;
-      map.mapping = THREE.EquirectangularReflectionMapping;
-      // Seamless the whole way round; the generator samples on a cylinder.
-      map.wrapS = THREE.RepeatWrapping;
-      setTexture(map);
+      step.current = 0;
+      fade.current = 0;
+      gas.uniforms.uOpacity!.value = 0;
+      for (const card of cards) card.material.opacity = 0;
+      stars.material.uniforms.uSkyReady!.value = 0;
+      invalidate();
     };
-
-    // Yield to the browser so the first frame is already on screen. Safari still
-    // has no requestIdleCallback, hence the timeout path.
     const supportsIdle = 'requestIdleCallback' in window;
     const handle = supportsIdle
-      ? window.requestIdleCallback(build, { timeout: 900 })
-      : window.setTimeout(build, 60);
-
+      ? window.requestIdleCallback(begin, { timeout: 900 })
+      : window.setTimeout(begin, 60);
+    const canvas = gl.domElement;
+    canvas.addEventListener('webglcontextrestored', begin);
     return () => {
       cancelled = true;
       if (supportsIdle) window.cancelIdleCallback(handle);
       else window.clearTimeout(handle);
+      canvas.removeEventListener('webglcontextrestored', begin);
     };
-  }, []);
+  }, [gl, gas, cards, stars, invalidate]);
 
-  // Fade in, so the gas arrives rather than appearing.
-  useFrame((_, delta) => {
-    const m = material.current;
-    if (!m || !texture) return;
-    if (m.opacity < 1) m.opacity = Math.min(1, m.opacity + delta * 0.9);
+  useEffect(
+    () => () => {
+      bake.target.dispose();
+      bake.material.dispose();
+      bake.geometry.dispose();
+    },
+    [bake],
+  );
+  useEffect(() => () => { gas.dispose(); }, [gas]);
+  useEffect(
+    () => () => {
+      for (const card of cards) {
+        card.target.dispose();
+        card.bakeMaterial.dispose();
+        card.quad.dispose();
+        card.geometry.dispose();
+        card.material.dispose();
+      }
+    },
+    [cards],
+  );
+  useEffect(
+    () => () => {
+      stars.geometry.dispose();
+      stars.material.dispose();
+    },
+    [stars],
+  );
+  useEffect(
+    () => () => {
+      deep.geometry.dispose();
+      deep.material.dispose();
+    },
+    [deep],
+  );
+
+  useFrame(({ camera, clock }, delta) => {
+    if (shell.current) syncStarShell(shell.current, camera, delta);
+    stars.material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
+    // The shimmer rides whatever frames the scene is already drawing; it never
+    // asks for one of its own.
+    stars.material.uniforms.uTime!.value = clock.elapsedTime;
+    deep.material.uniforms.uPixelRatio!.value = gl.getPixelRatio();
+
+    const work = skyBakeStep(step.current, bakeSize);
+    if (work.kind === 'face' || work.kind === 'card') {
+      const previous = gl.getRenderTarget();
+      if (work.kind === 'face') {
+        const cube = bake.camera;
+        if (cube.coordinateSystem !== gl.coordinateSystem) {
+          cube.coordinateSystem = gl.coordinateSystem;
+          cube.updateCoordinateSystem();
+        }
+        // The render target carries its own scissor; three applies it on bind.
+        bake.target.scissor.set(0, work.y, bakeSize, work.rows);
+        bake.target.scissorTest = true;
+        gl.setRenderTarget(bake.target, work.face);
+        gl.render(bake.scene, cube.children[work.face] as THREE.Camera);
+        bake.target.scissorTest = false;
+      } else {
+        const card = cards[work.index];
+        if (card) {
+          gl.setRenderTarget(card.target);
+          gl.render(card.scene, card.camera);
+        }
+        stars.material.uniforms.uSkyReady!.value = 1;
+      }
+      gl.setRenderTarget(previous);
+      step.current += 1;
+      invalidate();
+      return;
+    }
+
+    if (work.kind === 'done' && fade.current < 1) {
+      fade.current = Math.min(1, fade.current + delta / SKY_FADE_SECONDS);
+      gas.uniforms.uOpacity!.value = fade.current;
+      for (const card of cards) card.material.opacity = fade.current;
+      invalidate();
+    }
   });
 
-  if (!texture) return null;
-
   return (
-    <mesh scale={[-1, 1, 1]} renderOrder={-100}>
-      <sphereGeometry args={[DISC_RADIUS * 6, 48, 32]} />
-      <meshBasicMaterial
-        ref={material}
-        map={texture}
-        side={THREE.BackSide}
-        depthWrite={false}
-        fog={false}
-        transparent
-        opacity={0}
+    <>
+    <group ref={shell} name="sky">
+      <mesh scale={SKY_RADIUS} renderOrder={-100} frustumCulled={false} material={gas}>
+        <sphereGeometry args={[1, 48, 24]} />
+      </mesh>
+      {cards.map((card, index) => (
+        <mesh
+          key={index}
+          name={index === 0 ? 'hero-galaxy' : `galaxy-card-${String(index)}`}
+          geometry={card.geometry}
+          material={card.material}
+          renderOrder={-99.5}
+          frustumCulled={false}
+        />
+      ))}
+      <points
+        name="background-starfield"
+        geometry={stars.geometry}
+        material={stars.material}
+        scale={SKY_RADIUS * 0.9}
+        renderOrder={-99}
+        frustumCulled={false}
       />
-    </mesh>
+    </group>
+    {/* In the world, not on the shell: these are the ones that move against the sky. */}
+    <points
+      name="deep-starfield"
+      geometry={deep.geometry}
+      material={deep.material}
+      renderOrder={-98}
+      frustumCulled={false}
+    />
+    </>
   );
 }
 
@@ -209,23 +563,60 @@ export function limbTexture(): THREE.Texture {
  * the game does not have. Now it is a distant brightening, well inside the radius
  * where any planet is placed.
  */
-export function Core() {
-  const texture = useMemo(() => {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-      g.addColorStop(0, 'rgba(255, 242, 220, 0.55)');
-      g.addColorStop(0.16, 'rgba(255, 200, 138, 0.24)');
-      g.addColorStop(0.42, 'rgba(140, 116, 190, 0.08)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, size, size);
+/** The core's colour stops, as they were painted: radius, RGB (0–255), alpha. */
+const CORE_STOPS: readonly (readonly [number, number, number, number, number])[] = [
+  [0, 255, 242, 220, 0.55],
+  [0.16, 255, 200, 138, 0.24],
+  [0.42, 150, 122, 98, 0.07],
+  [1, 0, 0, 0, 0],
+];
+
+/**
+ * The core's falloff at a radius (0 centre, 1 edge): RGB 0–1 and alpha. Eased
+ * between stops rather than linear, so no stop shows as a ring.
+ */
+export function coreProfile(r: number): [number, number, number, number] {
+  if (!(r >= 0)) r = 0;
+  if (r >= 1) return [0, 0, 0, 0];
+  let i = 0;
+  while (i < CORE_STOPS.length - 2 && r > CORE_STOPS[i + 1]![0]) i += 1;
+  const a = CORE_STOPS[i]!;
+  const b = CORE_STOPS[i + 1]!;
+  const t = (r - a[0]) / (b[0] - a[0]);
+  const eased = t * t * (3 - 2 * t);
+  const mixAt = (k: number): number => a[k]! + (b[k]! - a[k]!) * eased;
+  return [mixAt(1) / 255, mixAt(2) / 255, mixAt(3) / 255, mixAt(4)];
+}
+
+/**
+ * THE CORE'S TEXTURE IS COMPUTED, and in half float. It used to be a canvas radial
+ * gradient, which Chrome paints with an ordered 4×4 dither; this sprite magnifies
+ * it enough that the dither showed as a grid of coloured dots across the middle of
+ * the galaxy. Half float also keeps the faint tail from banding into rings.
+ */
+function coreTexture(): THREE.DataTexture {
+  const size = 128;
+  const data = new Uint16Array(size * size * 4);
+  const half = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const r = Math.hypot(x + 0.5 - half, y + 0.5 - half) / half;
+      const texel = coreProfile(r);
+      const p = (y * size + x) * 4;
+      for (let c = 0; c < 4; c++) data[p + c] = THREE.DataUtils.toHalfFloat(texel[c]!);
     }
-    return new THREE.CanvasTexture(canvas);
-  }, []);
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.HalfFloatType);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+export function Core() {
+  const texture = useMemo(coreTexture, []);
+  useEffect(() => () => { texture.dispose(); }, [texture]);
 
   return (
     <sprite scale={[DISC_RADIUS * 0.16, DISC_RADIUS * 0.16, 1]}>
@@ -255,23 +646,17 @@ function randomStream(seed: number): () => number {
 }
 
 /**
- * The starfield.
- *
- * Three things separate a photographed sky from a scatter of white dots, and all
- * three are here:
- *
- *   A POWER LAW. Real skies are overwhelmingly faint stars with a handful of
- *   bright ones. Uniform brightness is the single biggest tell of a fake sky.
- *
- *   TEMPERATURE. Stars run blue-white through yellow to orange. Not a rainbow —
- *   a narrow, physical range.
- *
- *   A GALACTIC BAND. Half the stars are concentrated toward the disc plane, which
- *   is what you see from inside a galaxy, and it ties the sky to the playfield
- *   instead of floating unrelated behind it.
+ * THE CELESTIAL TURN. The whole sky shell — gas, stars, galaxies — turns about the
+ * vertical at one rate, so no star ever drifts across the cloud it sits in. The
+ * starfield itself lives in `Sky` now; `sky.ts` has why it is built the way it is.
  */
-/** Twenty-five per cent above the approved twelve-minute celestial turn. */
-export const STARFIELD_ROTATION_RADIANS_PER_SECOND = ((Math.PI * 2) / (12 * 60)) * 1.25;
+/**
+ * One turn every 19.2 minutes. It was twenty-five per cent above the approved
+ * twelve-minute turn (9.6 minutes); owner, 2026-09-25: *"çok hızlı dönüyor: %50
+ * oranında daha yavaş dönsün"* — a galaxy on the sky was carried out of the frame
+ * in about twenty seconds.
+ */
+export const STARFIELD_ROTATION_RADIANS_PER_SECOND = ((Math.PI * 2) / (12 * 60)) * 1.25 * 0.5;
 
 export function advanceStarfieldRotation(current: number, delta: number): number {
   if (!Number.isFinite(delta) || delta <= 0) return current;
@@ -282,115 +667,6 @@ export function advanceStarfieldRotation(current: number, delta: number): number
 export function syncStarShell(shell: THREE.Object3D, camera: THREE.Camera, delta: number): void {
   shell.position.copy(camera.position);
   shell.rotation.y = advanceStarfieldRotation(shell.rotation.y, delta);
-}
-
-export function Starfield() {
-  const ref = useRef<THREE.Points>(null);
-  const { geometry, material } = useMemo(() => {
-    const random = randomStream(0x5a17f13d);
-    const count = 4200;
-    const positions = new Float32Array(count * 3);
-    const colours = new Float32Array(count * 3);
-    const sizes = new Float32Array(count);
-    const tint = new THREE.Color();
-
-    for (let i = 0; i < count; i++) {
-      const theta = random() * Math.PI * 2;
-      // Half the sky is in the band, half is scattered everywhere.
-      const inBand = random() < 0.5;
-      const phi = inBand
-        ? Math.PI / 2 + (random() - 0.5) * 0.42
-        : Math.acos(2 * random() - 1);
-      const r = DISC_RADIUS * (2.8 + random() * 2.6);
-
-      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      positions[i * 3 + 1] = r * Math.cos(phi);
-      positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-
-      // Magnitude: cubed uniform, so most stars are faint and a few are not.
-      const magnitude = Math.pow(random(), 3);
-      // The floor matters more than the ceiling: a sky whose faint stars vanish
-      // has empty patches, and empty patches read as a black screen rather than
-      // as distance.
-      sizes[i] = 0.058 + magnitude * 0.19;
-
-      // 3000K to 11000K, roughly — orange through white to blue-white.
-      const warmth = random();
-      const hue = warmth < 0.22 ? 0.07 : warmth < 0.55 ? 0.13 : 0.58;
-      const saturation = warmth < 0.55 ? 0.45 : 0.28;
-      tint.setHSL(hue, saturation, 0.66 + magnitude * 0.34);
-      colours.set([tint.r, tint.g, tint.b], i * 3);
-    }
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-    g.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-
-    /**
-     * A tiny shader, for one reason: per-star size.
-     *
-     * `PointsMaterial` has a single size for the whole cloud, which forces every
-     * star to the same brightness and throws away the power law above. Eleven
-     * lines of GLSL buy the entire effect.
-     */
-    const m = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      fog: false,
-      uniforms: { uScale: { value: 700 } },
-      vertexShader: `
-        attribute float size;
-        varying vec3 vColour;
-        uniform float uScale;
-        void main() {
-          vColour = color;
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * uScale / -mv.z;
-          gl_Position = projectionMatrix * mv;
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vColour;
-        void main() {
-          // Round, with a soft falloff — a square star is a dead giveaway.
-          float d = length(gl_PointCoord - vec2(0.5));
-          float alpha = smoothstep(0.5, 0.06, d);
-          gl_FragColor = vec4(vColour, alpha);
-        }
-      `,
-      vertexColors: true,
-    });
-
-    return { geometry: g, material: m };
-  }, []);
-
-  useFrame(({ camera, size, gl }, delta) => {
-    if (ref.current) syncStarShell(ref.current, camera, delta);
-    const perspective = camera as THREE.PerspectiveCamera;
-    const fov = THREE.MathUtils.degToRad(perspective.fov || 45);
-    material.uniforms.uScale!.value =
-      (size.height * gl.getPixelRatio()) / (2 * Math.tan(fov / 2));
-  });
-
-  useEffect(
-    () => () => {
-      geometry.dispose();
-      material.dispose();
-    },
-    [geometry, material],
-  );
-
-  return (
-    <points
-      ref={ref}
-      name="background-starfield"
-      geometry={geometry}
-      material={material}
-      frustumCulled={false}
-    />
-  );
 }
 
 /**
@@ -518,17 +794,11 @@ export const METEOR_SHOWER_MULTIPLIER = 3;
 /** How many streaks the sky carries right now. Back to normal when the event ends. */
 export const meteorPool = (shower: boolean): number =>
   shower ? METEOR_POOL * METEOR_SHOWER_MULTIPLIER : METEOR_POOL;
-/** Seconds a streak is visible. */
-const METEOR_LIFE = 1.15;
 /** Seconds of empty sky between one and the next, per slot. */
 export const METEOR_GAP = [3.5, 13] as const;
 
-interface Meteor {
-  from: THREE.Vector3;
-  direction: THREE.Vector3;
-  speed: number;
-  length: number;
-  /** Seconds until it appears; negative means it is already flying. */
+interface Meteor extends MeteorPath {
+  /** Seconds until it appears. */
   wait: number;
   age: number;
 }
@@ -539,21 +809,22 @@ const spawn = (): Meteor => {
   const theta = Math.random() * Math.PI * 2;
   const radius = DISC_RADIUS * (0.7 + Math.random() * 1.1);
   const height = (Math.random() - 0.5) * DISC_RADIUS * 0.9;
-  const from = new THREE.Vector3(radius * Math.cos(theta), height, radius * Math.sin(theta));
 
   // Mostly across the view rather than toward or away from it, which is what makes
   // the motion legible — a meteor flying at the camera is a dot that grows.
-  const direction = new THREE.Vector3(
-    Math.random() - 0.5,
-    (Math.random() - 0.5) * 0.35,
-    Math.random() - 0.5,
-  ).normalize();
+  const x = Math.random() - 0.5;
+  const y = (Math.random() - 0.5) * 0.35;
+  const z = Math.random() - 0.5;
+  const norm = Math.hypot(x, y, z) || 1;
 
   return {
-    from,
-    direction,
+    from: [radius * Math.cos(theta), height, radius * Math.sin(theta)],
+    direction: [x / norm, y / norm, z / norm],
     speed: DISC_RADIUS * (0.5 + Math.random() * 0.55),
-    length: DISC_RADIUS * (0.05 + Math.random() * 0.06),
+    length: DISC_RADIUS * (0.14 + Math.random() * 0.16),
+    // At full brightness; it then fades over `METEOR_FADE`, still flying, so the
+    // whole streak is on screen for about one and a half seconds.
+    life: 0.35 + Math.random() * 0.4,
     wait: Math.random() * METEOR_GAP[1],
     age: 0,
   };
@@ -572,9 +843,11 @@ const spawn = (): Meteor => {
  * this carries no information, so two players seeing different meteors costs the
  * game nothing and costs the server nothing.
  *
- * ONE DRAW CALL. Every streak lives in a single line buffer, head bright and tail
- * transparent through vertex colours, so the whole effect is two vertices per
- * meteor and no per-object overhead.
+ * A HEAD AND A FADING TRAIL. Owner, 2026-09-25: *"Laglı gibi kayıyorlar. Daha güzel
+ * olsun arkasında sönen ışık bırakıyor gibi olsun."* `meteor.ts` has the path —
+ * a burning head that never stops, fading as it flies — and this only writes it
+ * into two buffers: one ribbon draw for every trail, one point draw for
+ * every head. It moves on every frame the disc draws and asks for none of its own.
  */
 export function Meteors({ shower = false }: { shower?: boolean }) {
   /*
@@ -590,88 +863,132 @@ export function Meteors({ shower = false }: { shower?: boolean }) {
 }
 
 function MeteorField({ pool }: { pool: number }) {
-  const ref = useRef<THREE.LineSegments>(null);
   const meteors = useMemo(() => Array.from({ length: pool }, spawn), [pool]);
 
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pool * 6), 3));
-    const colours = new Float32Array(pool * 6);
-    g.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-    return g;
+  const { ribbon, heads } = useMemo(() => {
+    const vertices = pool * 4;
+    const trail = new THREE.BufferGeometry();
+    trail.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices * 3), 3));
+    trail.setAttribute('aOther', new THREE.BufferAttribute(new Float32Array(vertices * 3), 3));
+    trail.setAttribute('aLight', new THREE.BufferAttribute(new Float32Array(vertices * 2), 2));
+    const along = new Float32Array(vertices);
+    const side = new Float32Array(vertices);
+    const index: number[] = [];
+    for (let i = 0; i < pool; i++) {
+      // Tail left, tail right, head left, head right.
+      along.set([0, 0, 1, 1], i * 4);
+      side.set([-1, 1, -1, 1], i * 4);
+      const o = i * 4;
+      index.push(o, o + 1, o + 2, o + 2, o + 1, o + 3);
+    }
+    trail.setAttribute('aAlong', new THREE.BufferAttribute(along, 1));
+    trail.setAttribute('aSide', new THREE.BufferAttribute(side, 1));
+    trail.setIndex(index);
+    const resolution = new THREE.Vector2(1, 1);
+    const trailMaterial = new THREE.ShaderMaterial({
+      vertexShader: METEOR_RIBBON_VERTEX,
+      fragmentShader: METEOR_RIBBON_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      fog: false,
+      uniforms: { uResolution: { value: resolution }, uPixelRatio: { value: 1 } },
+    });
+
+    const head = new THREE.BufferGeometry();
+    head.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pool * 3), 3));
+    head.setAttribute('aLight', new THREE.BufferAttribute(new Float32Array(pool), 1));
+    const headMaterial = new THREE.ShaderMaterial({
+      vertexShader: METEOR_HEAD_VERTEX,
+      fragmentShader: METEOR_HEAD_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      fog: false,
+      uniforms: { uPixelRatio: { value: 1 } },
+    });
+    return {
+      ribbon: { geometry: trail, material: trailMaterial, resolution },
+      heads: { geometry: head, material: headMaterial },
+    };
   }, [pool]);
 
-  // The buffer used to live as long as the app did. It is rebuilt at each edge of
-  // an Asteroid Shower now, so the old one has to go back explicitly.
-  useEffect(() => () => { geometry.dispose(); }, [geometry]);
+  // The buffers are rebuilt at each edge of an Asteroid Shower, so the old ones
+  // have to go back explicitly.
+  useEffect(
+    () => () => {
+      ribbon.geometry.dispose();
+      ribbon.material.dispose();
+      heads.geometry.dispose();
+      heads.material.dispose();
+    },
+    [ribbon, heads],
+  );
 
   const stepClock = useRef<MeteorClock>(METEOR_CLOCK);
-  useFrame((_state, frameDelta) => {
-    const node = ref.current;
-    if (!node) return;
-    // Twelve steps a second, each spending the whole time since the last one
-    // (owner, 2026-09-19; `meteorStep`). Between steps the streak holds still.
+  useFrame(({ gl, size }, frameDelta) => {
+    const ratio = gl.getPixelRatio();
+    ribbon.resolution.set(size.width * ratio, size.height * ratio);
+    ribbon.material.uniforms.uPixelRatio!.value = ratio;
+    heads.material.uniforms.uPixelRatio!.value = ratio;
+
     const step = meteorStep(stepClock.current, frameDelta);
     stepClock.current = step.clock;
     const delta = step.advance;
     if (delta <= 0) return;
-    const position = node.geometry.getAttribute('position');
-    const colour = node.geometry.getAttribute('color');
+
+    const position = ribbon.geometry.getAttribute('position');
+    const other = ribbon.geometry.getAttribute('aOther');
+    const light = ribbon.geometry.getAttribute('aLight');
+    const headPosition = heads.geometry.getAttribute('position');
+    const headLight = heads.geometry.getAttribute('aLight');
 
     meteors.forEach((meteor, i) => {
+      let trail = null;
       if (meteor.wait > 0) {
         meteor.wait -= delta;
-        // Parked at the origin with black vertices: invisible under additive
-        // blending, and no branch needed in the draw.
-        position.setXYZ(i * 2, 0, 0, 0);
-        position.setXYZ(i * 2 + 1, 0, 0, 0);
-        colour.setXYZ(i * 2, 0, 0, 0);
-        colour.setXYZ(i * 2 + 1, 0, 0, 0);
+      } else {
+        meteor.age += delta;
+        trail = meteorTrail(meteor, meteor.age);
+        if (!trail) {
+          const next = spawn();
+          next.wait = METEOR_GAP[0] + Math.random() * (METEOR_GAP[1] - METEOR_GAP[0]);
+          meteors[i] = next;
+        }
+      }
+      if (!trail) {
+        // Dark under additive blending, so an idle slot needs no branch in the draw.
+        for (let v = 0; v < 4; v++) light.setXY(i * 4 + v, 0, 0);
+        headLight.setX(i, 0);
         return;
       }
-
-      meteor.age += delta;
-      if (meteor.age > METEOR_LIFE) {
-        const next = spawn();
-        next.wait = METEOR_GAP[0] + Math.random() * (METEOR_GAP[1] - METEOR_GAP[0]);
-        meteors[i] = next;
-        return;
-      }
-
-      const t = meteor.age / METEOR_LIFE;
-      // In and out: a streak that pops on and cuts off reads as a rendering fault.
-      const brightness = Math.sin(Math.PI * t) ** 0.7;
-      const travelled = meteor.speed * meteor.age;
-
-      const head = meteor.direction.clone().multiplyScalar(travelled).add(meteor.from);
-      const tail = meteor.direction.clone().multiplyScalar(-meteor.length).add(head);
-
-      position.setXYZ(i * 2, head.x, head.y, head.z);
-      position.setXYZ(i * 2 + 1, tail.x, tail.y, tail.z);
-      colour.setXYZ(i * 2, brightness, brightness * 0.97, brightness * 0.9);
-      colour.setXYZ(i * 2 + 1, 0, 0, 0);
+      const { head, tail } = trail;
+      position.setXYZ(i * 4, ...tail);
+      position.setXYZ(i * 4 + 1, ...tail);
+      position.setXYZ(i * 4 + 2, ...head);
+      position.setXYZ(i * 4 + 3, ...head);
+      other.setXYZ(i * 4, ...head);
+      other.setXYZ(i * 4 + 1, ...head);
+      other.setXYZ(i * 4 + 2, ...tail);
+      other.setXYZ(i * 4 + 3, ...tail);
+      for (let v = 0; v < 4; v++) light.setXY(i * 4 + v, trail.headLight, trail.trailLight);
+      headPosition.setXYZ(i, ...head);
+      headLight.setX(i, trail.headLight);
     });
 
     position.needsUpdate = true;
-    colour.needsUpdate = true;
-
-    // A streak asks for no frames of its own. It used to demand the display's full
-    // rate while in flight — 120 frames a second, bloom and all, for a third of
-    // every session on a 120Hz phone. It rides the disc's rate now and moves in
-    // twelfths of a second (owner, 2026-09-19).
+    other.needsUpdate = true;
+    light.needsUpdate = true;
+    headPosition.needsUpdate = true;
+    headLight.needsUpdate = true;
   });
 
   return (
-    <lineSegments ref={ref} geometry={geometry} frustumCulled={false} renderOrder={-50}>
-      <lineBasicMaterial
-        vertexColors
-        transparent
-        opacity={0.9}
-        depthWrite={false}
-        fog={false}
-        blending={THREE.AdditiveBlending}
-      />
-    </lineSegments>
+    <>
+      <mesh geometry={ribbon.geometry} material={ribbon.material} frustumCulled={false} renderOrder={-50} />
+      <points geometry={heads.geometry} material={heads.material} frustumCulled={false} renderOrder={-49} />
+    </>
   );
 }
 
@@ -882,6 +1199,7 @@ export function Disc() {
                   blending={THREE.AdditiveBlending}
                   fog={false}
                   toneMapped={false}
+                  onBeforeCompile={fadeEdgeOn}
                 />
               </mesh>
             );
@@ -890,6 +1208,28 @@ export function Disc() {
       ))}
     </group>
   );
+}
+
+/**
+ * A PLANE SEEN EDGE-ON IS A LINE, and a line is the one thing a photograph of gas
+ * never has. The three cloud plates crossed the frame as hard diagonal strokes —
+ * an X through the core from overhead — whenever the camera stood in one of their
+ * planes. Each plate fades out as it turns edge-on, so what is left is only ever
+ * seen as the soft sheet it was painted as.
+ */
+function fadeEdgeOn(shader: THREE.WebGLProgramParametersWithUniforms): void {
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying float vFacing;')
+    .replace(
+      '#include <project_vertex>',
+      '#include <project_vertex>\nvFacing = abs(dot(normalize(normalMatrix * vec3(0.0, 0.0, 1.0)), normalize(-mvPosition.xyz)));',
+    );
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vFacing;')
+    .replace(
+      '#include <opaque_fragment>',
+      'diffuseColor.a *= smoothstep(0.08, 0.45, vFacing);\n#include <opaque_fragment>',
+    );
 }
 
 /**

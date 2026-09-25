@@ -94,6 +94,7 @@ describe('the material a pick volume wears', () => {
     const props = hitboxMaterialProps('fleet', false);
     expect(props.opacity).toBe(0);
     expect(props.colorWrite).toBe(false);
+    expect(props.visible).toBe(false);
     // The pick behaviour must not change with the switch: a ray from inside the
     // volume misses it in the real game, so it has to miss it here too.
     expect(props.side).toBe(THREE.FrontSide);
@@ -103,6 +104,7 @@ describe('the material a pick volume wears', () => {
     const props = hitboxMaterialProps('pirate', true);
     expect(props.opacity).toBe(HITBOX_OPACITY);
     expect(props.colorWrite).toBe(true);
+    expect(props.visible).toBe(true);
     expect(props.color).toBe(HITBOX_COLOURS.pirate);
     expect(props.side).toBe(THREE.DoubleSide);
   });
@@ -112,6 +114,23 @@ describe('the material a pick volume wears', () => {
       expect(hitboxMaterialProps('planet', debug).depthWrite).toBe(false);
       expect(hitboxMaterialProps('planet', debug).transparent).toBe(true);
     }
+  });
+
+  it('remains raycastable while its material is excluded from rendering', () => {
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const material = new THREE.MeshBasicMaterial(hitboxMaterialProps('fleet', false));
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.updateMatrixWorld(true);
+    const raycaster = new THREE.Raycaster(
+      new THREE.Vector3(0, 0, 5),
+      new THREE.Vector3(0, 0, -1),
+    );
+
+    expect(material.visible).toBe(false);
+    expect(raycaster.intersectObject(mesh)).not.toHaveLength(0);
+
+    geometry.dispose();
+    material.dispose();
   });
 });
 

@@ -411,16 +411,19 @@ describe('holding a rate while something flies', () => {
 });
 
 /**
- * A METEOR STEPS TWELVE TIMES A SECOND. Owner instruction, 2026-09-19. It no
- * longer raises the disc's rate at all; its streak simply moves in twelfths of a
- * second, whatever rate the disc is being drawn at.
+ * A METEOR MOVES ON EVERY FRAME THE DISC DRAWS, AND STILL RAISES NOTHING.
+ *
+ * Owner, 2026-09-19: a meteor must not ask the disc for frames — so it stepped
+ * twelve times a second. Owner, 2026-09-25: *"Laglı gibi kayıyorlar… fps'ini
+ * arttır."* Twelve was the lag. It moves on every frame the disc already draws
+ * now, up to sixty, and it still asks for none of its own.
  */
 describe('the meteor step', () => {
-  it('is twelve a second', () => {
-    expect(METEOR_FPS).toBe(12);
+  it('keeps up with the disc, to sixty a second', () => {
+    expect(METEOR_FPS).toBe(60);
   });
 
-  it('holds still between steps, keeps twelve a second, and loses no time', () => {
+  it('moves on every frame of a thirty-frame disc and loses no time', () => {
     let clock = METEOR_CLOCK;
     let moved = 0;
     let steps = 0;
@@ -433,9 +436,7 @@ describe('the meteor step', () => {
         moved += step.advance;
       }
     }
-    expect(steps).toBeGreaterThanOrEqual(35);
-    expect(steps).toBeLessThanOrEqual(36);
-    // The steps add up to the time that passed, less what waits for the next one.
+    expect(steps).toBe(90);
     expect(moved + clock.since).toBeCloseTo(3, 9);
   });
 
@@ -443,8 +444,9 @@ describe('the meteor step', () => {
     const step = meteorStep(METEOR_CLOCK, 0.5);
     expect(step.advance).toBeCloseTo(0.5, 9);
     expect(step.clock.since).toBe(0);
-    // And the rhythm does not owe a burst of steps afterwards.
-    expect(meteorStep(step.clock, 1 / 60).advance).toBe(0);
+    // And the rhythm does not owe a burst of steps afterwards: the next frame
+    // moves by its own time and no more.
+    expect(meteorStep(step.clock, 1 / 60).advance).toBeLessThanOrEqual(1 / 60 + 1e-9);
   });
 });
 

@@ -4,6 +4,9 @@ import type { RewardsView } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { academyPlanet, advanceAcademy, beginAcademyOrder, beginAcademyFlight, completeAcademyLesson, type AcademyWorld } from './academyWorld.js';
 import { academyPending, academyMining, academyPirates, academyTarget, academyTraffic, academySightWorlds, atLesson, ACADEMY_ROCK, ACADEMY_TARGET_ID } from './academyViews.js';
+import { applyAcademyVisualFixture } from './academyVisualFixture.js';
+
+const VISUAL_FIXTURE_ENABLED = import.meta.env.DEV || import.meta.env.VITE_VISUAL_TEST === '1';
 
 /** D172. Production screens, private state. There is deliberately no network
  * fallback, even for an unsupported read or a malformed mutation.
@@ -37,7 +40,7 @@ export function academyFetch(
         switch (route) {
           case '/api/planet': return reply(planet);
           case '/api/season': return reply(world.preview.season);
-          case '/api/galaxy': return reply({
+          case '/api/galaxy': return reply(applyAcademyVisualFixture(route, {
             ...world.preview.galaxy,
             sensors: [sensorSphere(world.preview.reserved.position, 0, 0, world.preview.reserved.id)],
             planets: [...world.preview.galaxy.planets.map((p) => p.isSelf ? {
@@ -57,11 +60,15 @@ export function academyFetch(
                 intel: 'RESOLVED', isSelf: false, satellites: [], shielded: false, state: { kind: 'NORMAL' },
               }))
               : [])],
-          });
+          }, VISUAL_FIXTURE_ENABLED));
           // One statement of the lesson's traffic, `engagement` included — built
           // inline here until D183, which is how it came to be missing the field
           // that turns the pirate to face the wing shooting at it.
-          case '/api/galaxy/traffic': return reply({ contacts: academyTraffic(world, time) });
+          case '/api/galaxy/traffic': return reply(applyAcademyVisualFixture(
+            route,
+            { contacts: academyTraffic(world, time) },
+            VISUAL_FIXTURE_ENABLED,
+          ));
           case '/api/session/pending': return reply({ pending: academyPending(world, time) });
           case '/api/rewards': return reply(academyRewards(world));
           case '/api/reports': return reply({ reports: world.reports, rivals: [] });

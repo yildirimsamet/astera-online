@@ -104,18 +104,21 @@ export const FULL_RATE_FPS = 60;
 export const FLIGHT_FPS = 30;
 
 /**
- * A METEOR STEPS TWELVE TIMES A SECOND, AND RAISES NOTHING. Owner instruction,
- * 2026-09-19. It no longer asks the disc for frames at all; its streak simply
- * moves in twelfths of a second at whatever rate the disc is drawn.
+ * A METEOR MOVES ON EVERY FRAME THE DISC DRAWS, AND RAISES NOTHING.
+ *
+ * Owner, 2026-09-19: a meteor must not ask the disc for frames — so it stepped
+ * twelve times a second. Owner, 2026-09-25: *"Laglı gibi kayıyorlar… fps'ini
+ * arttır."* Twelve WAS the lag, and it bought nothing: stepping a streak costs
+ * nothing, asking for frames is what cost. So it keeps up with whatever the disc
+ * already draws, to sixty, and still asks for none of its own.
  */
-export const METEOR_FPS = 12;
+export const METEOR_FPS = 60;
 
 /**
  * How far to move a meteor this frame, and the clock it steps on.
  *
- * `phase` keeps the twelve-a-second rhythm, carrying what is left over past each
- * step so a 30fps disc alternates two- and three-frame steps and still lands on
- * twelve. `since` is the time since the last step, all of which the step spends,
+ * `phase` keeps the rhythm at `METEOR_FPS`, carrying what is left over past each
+ * step, so a display drawing faster than that still steps at that rate. `since` is the time since the last step, all of which the step spends,
  * so the streak keeps its speed and only moves less often. A long frame is one
  * step, never several.
  */

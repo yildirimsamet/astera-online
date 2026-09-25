@@ -107,3 +107,18 @@ export function createPlanetSkinMaterial(source: THREE.Material, finish: Palette
   material.customProgramCacheKey = () => 'planet-skin-palette-v1';
   return { material, uniforms };
 }
+
+/** Preserve each prop's maps and contrast while making it read as part of the host crust. */
+export function createPlanetSkinAttachmentMaterial(
+  source: THREE.Material,
+  finish: PaletteFinish,
+) {
+  const material = source instanceof THREE.MeshStandardMaterial
+    ? source.clone()
+    : new THREE.MeshStandardMaterial({ color: '#ffffff' });
+  material.metalness = Math.min(material.metalness, 0.12);
+  material.roughness = finish.palette.attachment.roughness;
+  const tint = new THREE.Color().setRGB(...finish.palette.attachment.tint);
+  material.color.lerp(tint, finish.palette.attachment.strength);
+  return { material };
+}

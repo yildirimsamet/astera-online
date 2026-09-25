@@ -2,7 +2,15 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { noseBearing, noseVector, orientedCraft, posedCraft, turnOnto } from '../src/galaxy/model.js';
+import {
+  configureOpaqueTransparentBody,
+  noseBearing,
+  noseVector,
+  orientedCraft,
+  posedCraft,
+  turnOnto,
+  unitModel,
+} from '../src/galaxy/model.js';
 import { MOBILE_HULLS } from '@astera/rules';
 import {
   CRAFT_MODELS,
@@ -71,6 +79,46 @@ const AXIS: Record<NamedFacing, THREE.Vector3> = {
   '+z': new THREE.Vector3(0, 0, 1),
   '-z': new THREE.Vector3(0, 0, -1),
 };
+
+describe('opaque bodies drawn in the transparent queue', () => {
+  it('use one pass even when the source asset is double-sided', () => {
+    const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
+
+    configureOpaqueTransparentBody(material);
+
+    expect(material.transparent).toBe(true);
+    expect(material.depthWrite).toBe(true);
+    expect(material.forceSinglePass).toBe(true);
+    expect(material.side).toBe(THREE.DoubleSide);
+  });
+
+  it.each(['src/galaxy/Fleets.tsx', 'src/galaxy/Satellites.tsx'])(
+    'applies the rule to %s',
+    (file) => {
+      expect(readFileSync(file, 'utf8')).toContain('configureOpaqueTransparentBody(material)');
+    },
+  );
+});
+
+describe('normalised instancing geometry cache', () => {
+  it('normalises a cached GLTF scene only once', () => {
+    const scene = new THREE.Group();
+    const sourceGeometry = new THREE.BoxGeometry(2, 1, 1);
+    const sourceMaterial = new THREE.MeshStandardMaterial();
+    scene.add(new THREE.Mesh(sourceGeometry, sourceMaterial));
+
+    const first = unitModel(scene);
+    const second = unitModel(scene);
+
+    expect(first).not.toBeNull();
+    expect(second).toBe(first);
+    expect(second?.geometry).toBe(first?.geometry);
+
+    first?.geometry.dispose();
+    sourceGeometry.dispose();
+    sourceMaterial.dispose();
+  });
+});
 
 /** A craft-shaped object: a long body down `nose`, with a wide wing across it. */
 function craft(nose: NamedFacing, opts: { wingspan?: number } = {}): THREE.Object3D {

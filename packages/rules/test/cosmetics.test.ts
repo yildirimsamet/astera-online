@@ -14,14 +14,23 @@ describe('planet skin catalogue', () => {
     ]);
     expect(Object.keys(PLANET_SKINS).sort()).toEqual([...PLANET_SKIN_IDS].sort());
 
+    const attachments = {
+      'planet-lava': ['lava-arch', 'lava-pillar', 'lava-spikes', 'lava-volcano'],
+      'planet-ice': ['ice-arch', 'ice-cave', 'ice-pillar', 'ice-spikes'],
+      'planet-toxic': ['toxic-eggs', 'toxic-flower', 'toxic-mushroom', 'toxic-spike'],
+      'planet-desert': ['desert-bones', 'desert-hill', 'desert-monument-1', 'desert-monument-2'],
+    } as const;
     const palettes = new Set<string>();
     for (const id of PLANET_SKIN_IDS) {
       const skin = planetSkinById(id);
       expect(skin?.id).toBe(id);
       expect(skin?.target).toBe('PLANET');
-      expect(skin?.recipeVersion).toBe(1);
+      expect(skin?.recipeVersion).toBe(2);
       expect(skin?.recipe.baseModelId).toBe('intact-planet');
-      expect(skin?.recipe.includedAttachments).toEqual([]);
+      expect(skin?.recipe.includedAttachments.map((attachment) => attachment.assetId))
+        .toEqual(attachments[id]);
+      expect(skin?.recipe.includedAttachments.map((attachment) => attachment.placementId))
+        .toEqual(['surface-primary', 'surface-secondary', 'surface-tertiary', 'surface-quaternary']);
       expect(skin?.recipe.finish.kind).toBe('PALETTE');
       expect(skin?.recipe.statusVariants).toEqual({
         RECOVERY_SHIELD: { baseModelId: 'fractured-planet' },

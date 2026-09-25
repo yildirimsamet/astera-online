@@ -5,6 +5,7 @@ export interface FleetV2Asset {
   readonly card: string;
   readonly icon: string;
   readonly model: string;
+  readonly lodModel: string;
   /** Measured in the six-side development viewer, never inferred from bounds. */
   readonly facing: Facing;
   /** Relative world-space presence; geometry is still normalised by orientedCraft. */
@@ -25,6 +26,7 @@ const asset = (id: string, presentation: Presentation, pose: CraftPose): FleetV2
   card: `/assets/images/ships/${id}.webp`,
   icon: `/assets/images/ships/icons/${id}.webp`,
   model: `/assets/models/ships/${id}.glb`,
+  lodModel: `/assets/models/ships/${id}_lod.glb`,
   ...presentation,
   pose,
 });

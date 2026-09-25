@@ -50,40 +50,53 @@ export interface PlanetSkinDefinition {
 
 const RECOVERY_APPEARANCE = { baseModelId: 'fractured-planet' } as const;
 
+const placements = (assetIds: readonly string[]): readonly SkinAttachment[] =>
+  assetIds.map((assetId, index) => ({
+    assetId,
+    placementId: [
+      'surface-primary',
+      'surface-secondary',
+      'surface-tertiary',
+      'surface-quaternary',
+    ][index] ?? 'surface-quaternary',
+  }));
+
 export const PLANET_SKINS = {
   'planet-lava': {
-    id: 'planet-lava', target: 'PLANET', recipeVersion: 1,
+    id: 'planet-lava', target: 'PLANET', recipeVersion: 2,
     recipe: {
       baseModelId: 'intact-planet',
       finish: { kind: 'PALETTE', paletteId: 'lava' },
-      includedAttachments: [],
+      includedAttachments: placements(['lava-arch', 'lava-pillar', 'lava-spikes', 'lava-volcano']),
       statusVariants: { RECOVERY_SHIELD: RECOVERY_APPEARANCE },
     },
   },
   'planet-ice': {
-    id: 'planet-ice', target: 'PLANET', recipeVersion: 1,
+    id: 'planet-ice', target: 'PLANET', recipeVersion: 2,
     recipe: {
       baseModelId: 'intact-planet',
       finish: { kind: 'PALETTE', paletteId: 'ice' },
-      includedAttachments: [],
+      includedAttachments: placements(['ice-arch', 'ice-cave', 'ice-pillar', 'ice-spikes']),
       statusVariants: { RECOVERY_SHIELD: RECOVERY_APPEARANCE },
     },
   },
   'planet-toxic': {
-    id: 'planet-toxic', target: 'PLANET', recipeVersion: 1,
+    id: 'planet-toxic', target: 'PLANET', recipeVersion: 2,
     recipe: {
       baseModelId: 'intact-planet',
       finish: { kind: 'PALETTE', paletteId: 'toxic' },
-      includedAttachments: [],
+      includedAttachments: placements(['toxic-eggs', 'toxic-flower', 'toxic-mushroom', 'toxic-spike']),
       statusVariants: { RECOVERY_SHIELD: RECOVERY_APPEARANCE },
     },
   },
   'planet-desert': {
-    id: 'planet-desert', target: 'PLANET', recipeVersion: 1,
+    id: 'planet-desert', target: 'PLANET', recipeVersion: 2,
     recipe: {
       baseModelId: 'intact-planet',
       finish: { kind: 'PALETTE', paletteId: 'desert' },
-      includedAttachments: [],
+      includedAttachments: placements([
+        'desert-bones', 'desert-hill', 'desert-monument-1', 'desert-monument-2',
+      ]),
       statusVariants: { RECOVERY_SHIELD: RECOVERY_APPEARANCE },
     },
   },

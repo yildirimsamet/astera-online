@@ -322,7 +322,7 @@ The sixteen planet PNGs are **renders, not textures**. They cannot be wrapped on
 | Needed for 3D | Format |
 |---|---|
 | Planet surface maps | Equirectangular colour maps, 2:1, 2048×1024 (4096×2048 master). Optional roughness/normal |
-| Starfield / nebula environment | Equirectangular `.hdr` or `.exr`, 4K master → 2K web |
+| Starfield / nebula environment | None — procedural, baked on the GPU at load (`galaxy/sky.ts`; see `visual-quality.md`, 2026-09-24) |
 | Ship meshes | `.glb`, meshopt-compressed, WebP textures, **≤5k triangles** (`SHIP_TRIANGLE_CEILING`, enforced by `tools/models.mjs`), one LOD below |
 
 Blender is the right tool for all of these, and the same masters can re-render the 2D art.

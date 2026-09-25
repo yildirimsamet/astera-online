@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { hitboxMaterialProps } from '../src/galaxy/hitboxDebug.js';
 import { MODEL_PICK_SCALE } from '../src/galaxy/planetLod.js';
-import { placeBodies, placePickSpheres } from '../src/galaxy/planetPick.js';
+import { placeBodies, placePickSpheres, seat, settleMembers } from '../src/galaxy/planetPick.js';
 
 /**
  * A MODELLED WORLD CAN BE TAPPED WHEREVER IT IS (owner, 2026-09-25, on a phone: "bazı
@@ -61,10 +62,61 @@ describe('a modelled world’s pick spheres', () => {
 });
 
 /**
+ * A GROUP THAT DRAWS ONLY SOME OF ITS WORLDS (the master merge, 2026-09-25). A skin's far
+ * billboards and its near models are compacted each pass — only the worlds in that range,
+ * in view — so their instances are written in the frame loop, and the members of a slot
+ * change as the camera moves. The same stale bounding sphere follows unless the pass
+ * settles its members: record who sits where, and measure again when anyone moved.
+ */
+describe('a compacting group’s members', () => {
+  const write = (mesh: THREE.InstancedMesh, index: number, x: number) => {
+    mesh.setMatrixAt(index, new THREE.Matrix4().makeTranslation(x, 0, 0));
+  };
+
+  it('stay tappable when a pass seats someone new', () => {
+    const mesh = pickMesh(3);
+    const members: string[] = [];
+    let changed = seat(members, 0, 'a');
+    write(mesh, 0, 5);
+    settleMembers(mesh, members, 1, changed);
+    expect(tap(mesh, 5)).toBe(0);
+
+    changed = seat(members, 0, 'c');
+    write(mesh, 0, 55);
+    settleMembers(mesh, members, 1, changed);
+    expect(tap(mesh, 55)).toBe(0);
+    expect(tap(mesh, 5)).toBeUndefined();
+  });
+
+  it('are the only ones drawn and picked when a pass seats fewer', () => {
+    const mesh = pickMesh(3);
+    const members: string[] = [];
+    seat(members, 0, 'a');
+    seat(members, 1, 'b');
+    write(mesh, 0, 5);
+    write(mesh, 1, 25);
+    settleMembers(mesh, members, 2, true);
+    const changed = seat(members, 0, 'a');
+    settleMembers(mesh, members, 1, changed);
+    expect(members).toEqual(['a']);
+    expect(mesh.count).toBe(1);
+    expect(tap(mesh, 25)).toBeUndefined();
+  });
+
+  it('is what both compacting groups settle through', () => {
+    const skins = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
+    const field = readFileSync('src/galaxy/PlanetField.tsx', 'utf8');
+    expect(skins).toMatch(/settleMembers\(hits\.current, hitNodes\.current, hitCount, /);
+    expect(field).toMatch(/settleMembers\(mesh, visibleNodes\.current, drawn, /);
+  });
+});
+
+/**
  * A PICK SPHERE COSTS NO DRAW (code review, 2026-09-25). An invisible material still made
  * the GPU walk ~96 triangles a world every frame. Neither three's raycaster nor R3F's
  * events look at `visible` — the Suspense-hidden worlds that stayed tappable proved it —
- * so the spheres are hidden unless the pick volumes are being painted, and still tapped.
+ * so an unpainted volume's MATERIAL is hidden (master's `hitboxMaterialProps`, taken in the
+ * merge for every pick volume there is), and the sphere is still tapped.
  */
 describe('a hidden pick sphere', () => {
   it('is still tapped', () => {
@@ -75,8 +127,10 @@ describe('a hidden pick sphere', () => {
   });
 
   it('is drawn only while the pick volumes are painted', () => {
+    expect(hitboxMaterialProps('planet', false).visible).toBe(false);
+    expect(hitboxMaterialProps('planet', true).visible).toBe(true);
     const model = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
-    expect(model).toMatch(/name=\{`\$\{name\}-hits`\}[\s\S]{0,200}visible=\{paintHits\}/);
+    expect(model).toMatch(/name=\{`\$\{name\}-hits`\}[\s\S]{0,400}<HitboxMaterial kind="planet" \/>/);
   });
 });
 

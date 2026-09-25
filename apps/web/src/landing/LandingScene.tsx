@@ -11,7 +11,7 @@ import {
   MODEL_POSE,
   SATELLITE_MODEL,
 } from '../ui/assets.js';
-import { BrightStars, Nebula, Starfield, softGlow } from '../galaxy/Environment.jsx';
+import { BrightStars, Sky, softGlow } from '../galaxy/Environment.jsx';
 import { posedCraft, unitModel } from '../galaxy/model.js';
 import { place, placeVector, sizeOf, type Framing } from './layout.js';
 
@@ -96,8 +96,7 @@ export function LandingScene() {
        *
        * The rocks and the craft supply the near-field parallax that dust would have.
        */}
-      <Nebula />
-      <Starfield />
+      <Sky />
       <BrightStars />
 
       <Suspense fallback={null}>

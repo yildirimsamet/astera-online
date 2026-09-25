@@ -4,7 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SATELLITE_IDS, type SatelliteId } from '@astera/rules';
 import { SATELLITE_MODEL, SATELLITE_NEON } from '../ui/assets.js';
-import { unitModel } from './model.js';
+import { configureOpaqueTransparentBody, unitModel } from './model.js';
 import { isWrecked, type PlanetNode, type Vec3Tuple } from './scene.js';
 
 /**
@@ -209,8 +209,7 @@ function Ring({
     // Put the opaque-looking body in the transparent queue after the rim. It then
     // masks the expanded back faces across the interior and leaves colour only on
     // the true outside contour.
-    material.transparent = true;
-    material.depthWrite = true;
+    configureOpaqueTransparentBody(material);
     if (dormant && material instanceof THREE.MeshStandardMaterial) {
       // Texture colour and emissive maps would keep advertising the live hardware
       // kind. A record — or a crater — is a dark physical silhouette, not a
