@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { Api } from '../../src/api/client.js';
 import { ApiProvider } from '../../src/api/context.js';
-import type { GalaxyPlanet, PirateContact } from '../../src/api/schemas.js';
+import type { GalaxyPlanet, IntelView, PirateContact } from '../../src/api/schemas.js';
+import { compact } from '../../src/lib/format.js';
 import { LaunchSheet } from '../../src/screens/LaunchSheet.js';
 import { ToastProvider } from '../../src/ui/Toast.js';
 import { planetView } from '../fixtures.js';
@@ -66,15 +67,27 @@ const wrapper = ({ children }: { children: ReactNode }) => {
 };
 
 const holding = planetView({ fleet: { DART: 12 } }, { deuterium: 500_000 });
-const open = (target: 'world' | 'pirate') => render(
+const open = (target: 'world' | 'pirate', intel?: IntelView) => render(
   <LaunchSheet
     planet={holding}
     target={target === 'world' ? { kind: 'world', world } : { kind: 'pirate', pirate }}
+    {...(intel ? { intel } : {})}
     onClose={vi.fn()}
     onLaunched={vi.fn()}
   />,
   { wrapper },
 );
+
+const probed: IntelView = {
+  watching: [], radarLog: [], probeCooldowns: [],
+  probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
+  probeReports: [{
+    targetPlanetId: 'p2', targetName: 'Tharsis', targetUsername: 'Sable',
+    at: new Date(Date.now() - 60 * 60_000), accuracy: 0.8, detected: false,
+    stock: { low: 13_000, high: 17_000 }, deuteriumStock: { low: 1_000, high: 2_000 },
+    defence: { low: 2_000, high: 4_000 }, fleetSize: { low: 5, high: 9 }, fleetHome: true,
+  }],
+};
 
 const pick = async (count: string): Promise<void> => {
   await userEvent.type(screen.getByRole('textbox', { name: /dart quantity/i }), count);
@@ -107,7 +120,7 @@ describe('the launch composer', () => {
     expect(document.querySelector('[data-launch-warning]')).toBeNull();
     await pick('2');
     const warning = document.querySelector('[data-launch-warning]');
-    expect(warning).toHaveTextContent(/10 units/);
+    expect(warning).toHaveTextContent(/stays thin/);
     expect(document.querySelector('[data-launch-recall]')).toHaveTextContent(/recalled once while in flight/i);
   });
 
@@ -126,14 +139,63 @@ describe('the launch composer', () => {
     expect(document.querySelector('[data-launch-recall]')).toBeNull();
   });
 
-  it('states the flight in figures: the leg, the landing, the exposure, the hold and the bays', async () => {
+  /**
+   * THE MOCK'S SUMMARY (M3): arrival and its clock, when home is covered again, the hold
+   * against the haul the probe read, the flight bay this takes, and what stays home. The
+   * tank stays on the ruler above (D183), so it is not quoted twice.
+   */
+  it('states the flight in figures: arrival, back, cargo, the bay and what stays home', async () => {
     open('world');
     await pick('2');
     const grid = document.querySelector<HTMLElement>('[data-launch-figures]')!;
-    for (const label of [/one way/i, /exposed/i, /cargo/i, /flight bays/i]) {
+    for (const label of [/^arrival$/i, /^back$/i, /^cargo$/i, /^flight bay$/i, /^stays home$/i]) {
       expect(within(grid).getByText(label)).toBeInTheDocument();
     }
     expect(within(grid).getByText(/^at /)).toBeInTheDocument();
+    // Nothing flying yet from three bays: this launch takes the first.
+    expect(within(grid).getByText('1 / 3')).toBeInTheDocument();
+    expect(within(grid).getByText(/this one takes 1/i)).toBeInTheDocument();
+    expect(within(grid).getByText('10 units')).toBeInTheDocument();
+    expect(within(grid).queryByText(/^distance$/i)).toBeNull();
+  });
+
+  it('prices the hold against the haul the probe read', async () => {
+    open('world', probed);
+    await pick('2');
+    const grid = document.querySelector<HTMLElement>('[data-launch-figures]')!;
+    expect(within(grid).getByText(`loot ~${compact(13_000)}–${compact(17_000)}`)).toBeInTheDocument();
+  });
+
+  it('quotes no haul where nobody has looked', async () => {
+    open('world');
+    await pick('2');
+    expect(document.querySelector('[data-launch-figures]')).not.toHaveTextContent(/loot/i);
+  });
+
+  /** The mock's head: the verb, where it flies from and how far, then whose world. */
+  it('heads the sheet with the origin, the range and whose world it is', () => {
+    open('world');
+    expect(screen.getByText(/^Attack · Kestrel-12 · range \d+$/)).toBeInTheDocument();
+    expect(document.querySelector('[data-launch-owner]')).toHaveTextContent('Sable');
+  });
+
+  it('names no owner on a pirate', () => {
+    open('pirate');
+    expect(document.querySelector('[data-launch-owner]')).toBeNull();
+  });
+
+  it('says how long the world stays thin, before the button', async () => {
+    open('world');
+    await pick('2');
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/^Kestrel-12 stays thin for .+, until this fleet is home\.$/);
+  });
+
+  it('keeps the pace rule beside the control, short', async () => {
+    open('world');
+    await pick('2');
+    const pace = document.querySelector<HTMLElement>('[data-launch-pace]')!;
+    expect(pace).toHaveTextContent(/same fuel · 12h at most/i);
+    expect(pace).not.toHaveTextContent(/slower lands later/i);
   });
 
   /* Owner correction D183: the tank travels with the force it buys, inside the sticky ruler. */

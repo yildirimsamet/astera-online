@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   HULLS,
   UNAIDED,
+  combatValue,
   distance,
   exposureMinutes,
   fleetCargo,
   fleetTravelExact,
   missionFuel,
 } from '@astera/rules';
-import { planPirateRoute, planRoute, reachMinutes } from '../src/lib/navigation.js';
+import { homePowerAfter, planPirateRoute, planRoute, reachMinutes } from '../src/lib/navigation.js';
 
 /**
  * The number the whole decision rests on.
@@ -73,6 +74,17 @@ describe('the launch preview', () => {
     expect(route.oneWayMinutes).toBe(0);
     expect(route.exposureMinutes).toBe(0);
     expect(route.homeDefenceAfter).toBe(20);
+  });
+
+  /**
+   * WHAT STAYS HOME, IN THE ONE UNIT A FIGHT IS WEIGHED IN (M3, the launch's "Stays home").
+   * A count says how many; the armed value says how much a raider would meet — ground
+   * guns included, because they never leave, and haulers counting for nothing.
+   */
+  it('weighs what stays home the way a raider would meet it', () => {
+    expect(homePowerAfter({ DART: 20, COURIER: 2 }, { BASTION: 3 }, { DART: 12 }))
+      .toBe(combatValue({ DART: 8, COURIER: 2, BASTION: 3 }));
+    expect(homePowerAfter({ DART: 20 }, {}, { DART: 40 })).toBe(0);
   });
 
   it('has no reach at all with an empty hangar', () => {

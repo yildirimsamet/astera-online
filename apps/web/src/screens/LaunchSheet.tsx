@@ -2,22 +2,19 @@ import { useTranslation } from 'react-i18next';
 import {
   HULLS,
   combatValue,
-  hullFuelRate,
-  hullTech,
   fleetCargo,
-  salvageCapacity,
   type MobileHullId,
 } from '@astera/rules';
 import type { GalaxyPlanet, IntelView, PirateContact, PlanetView, Report } from '../api/schemas.js';
+import { rivalColour } from '../galaxy/PlanetField.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
+import { lootEstimate } from '../lib/lootEstimate.js';
 import { clockTime, duration, durationPrecise, staleness } from '../lib/time.js';
-import { MOBILE } from '../lib/navigation.js';
+import { MOBILE, homePowerAfter } from '../lib/navigation.js';
 import { familyGroups } from '../lib/roster.js';
-import { useAccordion } from '../lib/accordion.js';
 import { useLaunchPlan } from '../lib/useLaunchPlan.js';
 import { serverNow } from '../lib/clock.js';
-import { StatLegend, StatStrip } from '../ui/Action.js';
 import { PaceRow } from '../ui/PaceRow.js';
 import { SpendBar } from '../ui/SpendBar.js';
 import { HULL_ART } from '../ui/assets.js';
@@ -25,11 +22,10 @@ import { HullMark } from '../ui/icons/hulls.js';
 import { SalvageIcon } from '../ui/icons/index.js';
 import { FleetLossWarning } from '../ui/ForceCompare.js';
 import { QuantityStepper } from '../ui/QuantityStepper.js';
-import { Icon } from '../v2/icons.js';
 import { ClassEmblem } from '../v2/kit/ClassEmblem.js';
 import { ForceRuler } from '../v2/kit/ForceRuler.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
-import { Figure } from '../v2/kit/Figure.js';
+import { Figure, Figures } from '../v2/kit/Figure.js';
 import { MatchupLine } from '../v2/kit/MatchupLine.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 
@@ -55,14 +51,18 @@ export type LaunchTarget =
   | { kind: 'pirate'; pirate: PirateContact };
 
 /**
- * THE COMMITMENT, IN THE ONE ANATOMY. Spec B14, E3 (docs/ui-v2/gozlemevi.md).
+ * THE COMMITMENT, IN THE ONE ANATOMY. Spec B14, E3 (docs/ui-v2/gozlemevi.md), drawn as
+ * the mock draws it (M3, owner 2026-09-25).
  *
- * Head (verb and target) · the force ruler with the matchup line and the tank ·
- * the ships · what they carry · the pace · the flight in figures · and under them
- * the price — what stays home, whether it can be turned — written before the
- * button, which is HELD (K4). There is no second screen: the old confirmation
- * step's lines are always here, because a price read after the decision is not
- * decision support.
+ * Head (the verb, where it flies from and how far; then whose world) · the force ruler
+ * with the matchup line and the tank · the ships, one run of rows · what they carry ·
+ * the pace · the flight in five figures — arrival, back, cargo against the haul, the
+ * bay, what stays home · and under them the price — how long the world stays thin,
+ * whether it can be turned — written before the button, which is HELD (K4). There is
+ * no second screen: a price read after the decision is not decision support.
+ *
+ * THE TANK STAYS ON THE RULER (owner correction D183): the two figures a wing is
+ * adjusted against move on the same "+", so the summary does not quote it again.
  *
  * Every rule lives in `useLaunchPlan`; this file only draws it.
  */
@@ -99,28 +99,29 @@ export function LaunchSheet({
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
     paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
-    commit, classReading,
+    commit, classReading, report,
   } = useLaunchPlan({ target, planet, intel, reports, onLaunched, onAim });
 
   /**
-   * ONE HULL'S ROW: the ship, its class, the four numbers it is chosen on, and the
-   * stepper. `available` is what stands here and what the row prints; `roomFor` is
-   * the lesson's ceiling and what the stepper obeys. A hull the lesson does not
-   * want keeps its row with every control dead — owner correction: hiding the
-   * captured Warden made the commander's prize vanish from the one screen that
-   * lists their fleet.
+   * ONE HULL'S ROW, AS THE MOCK DRAWS IT: the ship, its class, how many stand ready,
+   * and the stepper. What a wing is worth here is the ruler's job above, the stats the
+   * shipyard's; a hull that carries rather than fires says what it adds to the hold,
+   * because the hold is what it is sent for. `available` is what stands here; `roomFor`
+   * is the lesson's ceiling and what the stepper obeys. A hull the lesson does not want
+   * keeps its row with every control dead — owner correction: hiding the captured
+   * Warden made the commander's prize vanish from the one screen that lists their fleet.
    */
   const row = (hull: MobileHullId) => {
     const available = planet.fleet[hull] ?? 0;
     if (available === 0) return null;
     const chosen = sending[hull] ?? 0;
-    const tech = hullTech(mods.tech, hull);
     const art = HULL_ART[hull];
+    const carries = HULLS[hull].atk <= 0 ? fleetCargo({ [hull]: 1 }, mods.tech) : 0;
     return (
       <div
         key={hull}
         data-hull-row={hull}
-        className={`grid gap-1 border-b border-v2-line/70 px-1 py-2 last:border-b-0 ${chosen > 0 ? 'bg-v2-self/5' : ''}`}
+        className={`grid gap-1 border-b border-v2-line/70 px-1 py-1.5 last:border-b-0 ${chosen > 0 ? 'bg-v2-self/5' : ''}`}
       >
         <div className="flex items-center gap-2">
           <div data-art className="grid size-8 shrink-0 place-items-center">
@@ -139,7 +140,17 @@ export function LaunchSheet({
               */}
               <ClassEmblem cls={HULLS[hull].cls} className="size-2.5 shrink-0 text-v2-ink-2" />
             </p>
-            <span className="font-v2-mono text-micro text-v2-ink-3">{t('launch.atHome', { count: available })}</span>
+            <span className="truncate font-v2-mono text-micro text-v2-ink-3">
+              {t('launch.atHome', { count: available })}
+              {carries > 0 && (
+                <span className="text-v2-ink-2">
+                  {' · '}
+                  {chosen > 0
+                    ? t('launch.cargoAdds', { amount: compact(carries * chosen) })
+                    : t('launch.cargoEach', { amount: compact(carries) })}
+                </span>
+              )}
+            </span>
           </div>
           <QuantityStepper
             look="v2"
@@ -155,22 +166,15 @@ export function LaunchSheet({
             maxText={t('launch.maxShort')}
           />
         </div>
-        <div className="pl-10 [&_.stat-value]:text-caption! [&_.stat-value]:text-v2-ink-2! [&_.stats]:gap-x-2.5!">
-          <StatStrip
-            atk={HULLS[hull].atk * tech.atk}
-            hp={HULLS[hull].hp * tech.hp}
-            speed={HULLS[hull].speed * tech.speed}
-            cargo={fleetCargo({ [hull]: 1 }, mods.tech)}
-            salvage={salvageCapacity({ [hull]: 1 })}
-            fuel={hullFuelRate(hull)}
-          />
-        </div>
       </div>
     );
   };
 
-  /** The roster's own families, in the shipyard's order; a family with nothing here gets no heading. */
-  const groups = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0));
+  /**
+   * ONE RUN, IN THE SHIPYARD'S ORDER (the roster's families, flattened). The bands that
+   * folded it were for a picker with nothing above it; the mock lists what stands home.
+   */
+  const order = familyGroups(MOBILE.filter((hull) => (planet.fleet[hull] ?? 0) > 0)).flatMap((group) => group.hulls);
 
   /**
    * THE LESSON'S OWN READING ORDER, or null outside a lesson: the kept-back prize
@@ -183,14 +187,6 @@ export function LaunchSheet({
       MOBILE.includes(hull as MobileHullId) && roomFor(hull as MobileHullId) > 0),
   ];
 
-  /**
-   * WHICH BANDS ARE OPEN. One on arrival (the first with anything in it), the rest
-   * folded with their counts, so the shape of a twenty-hull roster arrives in one
-   * screen. Held as a set so opening one never shuts another: comparing a
-   * Skirmisher with a Bulwark needs both on screen.
-   */
-  const families = useAccordion('launch', groups[0] ? [groups[0].family] : []);
-
   const landsAt = route !== null && route.oneWayMinutes > 0
     ? clockTime(new Date(serverNow() + route.oneWayMinutes * 60_000))
     : null;
@@ -198,20 +194,46 @@ export function LaunchSheet({
   const homeAt = route !== null && route.exposureMinutes > 0
     ? clockTime(new Date(serverNow() + route.exposureMinutes * 60_000))
     : null;
+  /** The haul the probe read, against the hold picked (a world only; nobody looked, no figure). */
+  const loot = lootEstimate(report, route?.cargo ?? fleetCargo(sending, mods.tech));
+  /** Whose world, and the mark it wears (D183): the mock's "→ [VEX] Kestrel". */
+  const owned = target.kind === 'world' && target.world.intel !== 'UNKNOWN' && target.world.owner !== ''
+    ? target.world
+    : null;
+  const rivalSlot = owned ? season.data?.rivals.find((mark) => mark.planetId === owned.id)?.slot ?? null : null;
+  const eyebrow = [
+    t('launch.eyebrow'),
+    planet.planet.name,
+    ...(route === null ? [] : [t('launch.range', { d: route.distance.toFixed(0) })]),
+    ...(pirate
+      ? [t('launch.goneIn', { duration: duration(pirate.expiresInMinutes) })]
+      : recordAge === null ? [] : [t('launch.lastSeen', { age: staleness(recordAge) })]),
+  ].join(' · ');
+  const exposure = route !== null && route.exposureMinutes > 0 ? duration(route.exposureMinutes) : null;
 
   return (
     <Sheet
       detents={['full']}
       /*
-        WHAT THIS READING IS, AND HOW OLD. A world's provenance is its record age; a
-        pirate is never remembered (D150), so what belongs here is how long it will
-        still be out there.
+        THE VERB, WHERE FROM AND HOW FAR — then what this reading is and how old. A world's
+        provenance is its record age (D151); a pirate is never remembered (D150), so what
+        belongs here is how long it will still be out there.
       */
-      eyebrow={pirate
-        ? t('launch.eyebrowPirate', { duration: duration(pirate.expiresInMinutes) })
-        : recordAge === null
-          ? t('launch.eyebrow')
-          : t('launch.eyebrowRecord', { age: staleness(recordAge) })}
+      eyebrow={eyebrow}
+      {...(owned ? {
+        lead: (
+          <>
+            <span aria-hidden className="text-v2-ink-3">→</span>
+            <span
+              data-launch-owner
+              className="max-w-[8rem] shrink-0 truncate rounded-chip border border-v2-line px-1.5 py-0.5 text-micro font-semibold text-v2-ink-2"
+              {...(rivalSlot === null ? {} : { style: { color: rivalColour(rivalSlot), borderColor: rivalColour(rivalSlot) } })}
+            >
+              {owned.owner}
+            </span>
+          </>
+        ),
+      } : {})}
       // A world you cannot see has no name to put here (D127): an unsurveyed title, never a blank.
       title={target.kind === 'pirate'
         ? (target.pirate.zone === 'IDENTIFIED' && target.pirate.level !== undefined
@@ -231,8 +253,11 @@ export function LaunchSheet({
           */}
           {total > 0 && (
             <div className="grid gap-1">
+              {/* The mock's "Başkent 2 sa 52 dk zayıf kalır": the world and how long; the count is a figure above. */}
               <p data-launch-warning className="text-caption leading-snug text-v2-warn">
-                {pirate ? t('launch.warningPirate', { count: holding }) : t('launch.warningWorld', { count: holding })}
+                {exposure === null
+                  ? t(pirate ? 'launch.warningPirateOpen' : 'launch.warningWorldOpen', { world: planet.planet.name })
+                  : t(pirate ? 'launch.warningPirate' : 'launch.warningWorld', { world: planet.planet.name, duration: exposure })}
               </p>
               {spendsShield && (
                 <p data-shield-warning className="text-caption leading-snug text-v2-warn">
@@ -270,24 +295,24 @@ export function LaunchSheet({
             loss={loss}
             notes={notes}
             escape={escape}
+            heading={t('dossier.page.power')}
           >
-            {classReading && <MatchupLine wing={sending} reading={classReading} />}
             {route !== null && (
-              <div data-launch-meters className="mt-2">
-                <SpendBar compactSize stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
+              <div data-launch-meters>
+                <SpendBar inline stock={planet.planet.deuterium} spend={route.fuel} tone="deuterium" label={t('launch.fuel')} />
               </div>
             )}
           </ForceRuler>
         </div>
 
+        {/*
+          THE COUNTER CYCLE AGAINST WHAT THE PROBE READ (B6), under the ruler as the mock
+          has it — and out of the sticky header, which keeps only what a "+" moves: the
+          two strips and the tank. The ships scroll under those, not under a paragraph.
+        */}
+        {classReading && <div className="px-1"><MatchupLine wing={sending} reading={classReading} /></div>}
+
         <section data-launch-fleet className="grid gap-1.5">
-          <div className="grid gap-1 px-1">
-            <div className="flex items-baseline justify-between gap-2">
-              <h3 className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('launch.fleetHeading')}</h3>
-              <span className="text-micro text-v2-ink-3">{t('launch.perShipStats')}</span>
-            </div>
-            <StatLegend />
-          </div>
           {/*
             WHAT IS ALREADY IN THE AIR, DRAWN AS THE SHIPS THEMSELVES. Absent and
             accounted for, which is a different thing from gone.
@@ -322,37 +347,8 @@ export function LaunchSheet({
               </span>
             </div>
           )}
-          {/* A lesson reads as one list, in the order the lesson means; the ordinary picker keeps its bands. */}
-          {lessonOrder !== null ? (
-            <div>{lessonOrder.map(row)}</div>
-          ) : (
-            groups.map(({ family, hulls }) => {
-              // A lone band never folds: hiding the only group costs a tap to save nothing.
-              const foldable = groups.length > 1;
-              const open = !foldable || families.isOpen(family);
-              const count = hulls.reduce((sum, hull) => sum + (planet.fleet[hull] ?? 0), 0);
-              const label = t(`planet.reach.family.${family}.label`);
-              return (
-                <section key={family} data-fleet-family={family}>
-                  {foldable ? (
-                    <button
-                      type="button"
-                      aria-expanded={open}
-                      onClick={() => { families.toggle(family); }}
-                      className="flex w-full items-center gap-2 border-b border-v2-line px-1 py-1.5 text-left"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</span>
-                      <span className="font-v2-mono text-micro text-v2-ink-3">{count}</span>
-                      <Icon id="i-chev" className={`size-3 text-v2-ink-3 ${open ? '-rotate-90' : 'rotate-90'}`} />
-                    </button>
-                  ) : (
-                    <p className="border-b border-v2-line px-1 py-1.5 text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</p>
-                  )}
-                  {open && <div>{hulls.map(row)}</div>}
-                </section>
-              );
-            })
-          )}
+          {/* A lesson reads in the order the lesson means; the ordinary picker in the shipyard's. */}
+          <div>{(lessonOrder ?? order).map(row)}</div>
           {atHome === 0 && <p className="px-1 text-caption text-v2-ink-3">{t('launch.noShips')}</p>}
         </section>
 
@@ -374,33 +370,50 @@ export function LaunchSheet({
           two rules a player needs here are on the row: the fuel does not move, and
           nothing may stay up past the ceiling. Hidden when only full speed is legal.
         */}
-        <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace} hint={t('launch.paceHint')} />
+        <PaceRow data-launch-pace paces={paces} pace={pace} onChange={setWantedPace} brief={t('launch.paceBrief')} />
 
         {/*
-          THE FLIGHT IN FIGURES. The one-way leg is the one figure quoted to the second
-          (D182) — a raid lands at an authoritative instant — with the clock it lands at
-          beside it; the exposure is the shape of the bet.
+          THE FLIGHT IN FIGURES (the mock's five). Arrival is the one figure quoted to the
+          second (D182) — a raid lands at an authoritative instant — with the clock beside
+          it; back is when the world is covered again, and how long it is not; the hold
+          stands against the haul the probe read; the bay is counted as it will stand; and
+          what stays home is counted and weighed.
         */}
-        <dl data-launch-figures className="grid grid-cols-3 gap-x-3 gap-y-2.5 rounded-control border border-v2-line bg-v2-deep/40 px-3 py-2.5">
+        <Figures data-launch-figures="">
           <Figure
-            label={t('launch.oneWay')}
+            label={t('launch.arrive')}
             value={route !== null && route.oneWayMinutes > 0 ? durationPrecise(route.oneWayMinutes) : t('launch.oneWayUnknown')}
             {...(landsAt ? { sub: t('now.at', { time: landsAt }) } : {})}
             {...(tooLate ? { tone: 'threat' as const } : {})}
           />
           <Figure
-            label={t('launch.exposed')}
-            value={route !== null && route.exposureMinutes > 0 ? duration(route.exposureMinutes) : t('launch.oneWayUnknown')}
-            {...(homeAt ? { sub: t('launch.backAt', { time: homeAt }) } : {})}
+            label={t('launch.homeLabel')}
+            value={homeAt ?? t('launch.oneWayUnknown')}
+            {...(exposure === null ? {} : { sub: t('launch.exposedShort', { duration: exposure }) })}
           />
-          <Figure label={t('launch.cargo')} value={compact(route?.cargo ?? 0)} />
           <Figure
-            label={t('fleetPage.bays')}
-            value={t('launch.baysFree', { count: baysFree })}
+            label={t('launch.cargo')}
+            value={compact(route?.cargo ?? fleetCargo(sending, mods.tech))}
+            {...(loot ? {
+              sub: t('launch.lootSub', {
+                band: loot.decisive.low === loot.decisive.high
+                  ? compact(loot.decisive.low)
+                  : `${compact(loot.decisive.low)}${t('units.rangeJoin')}${compact(loot.decisive.high)}`,
+              }),
+            } : {})}
+          />
+          <Figure
+            label={t('launch.bay')}
+            value={`${String(Math.min(planet.flight.total, planet.flight.used + (baysFree > 0 ? 1 : 0)))} / ${String(planet.flight.total)}`}
+            sub={baysFree > 0 ? t('launch.bayThis') : t('launch.bayNone')}
             {...(baysFree <= 0 ? { tone: 'threat' as const } : {})}
           />
-          <Figure label={t('launch.distance')} value={route === null ? t('launch.oneWayUnknown') : route.distance.toFixed(0)} />
-        </dl>
+          <Figure
+            label={t('launch.stays')}
+            value={t('launch.staysUnits', { count: holding })}
+            sub={t('launch.staysPower', { value: compact(homePowerAfter(planet.fleet, planet.ground, sending)) })}
+          />
+        </Figures>
       </div>
     </Sheet>
   );

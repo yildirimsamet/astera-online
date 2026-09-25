@@ -504,7 +504,6 @@ export const planetHero = {
 /** The commitment. Everything here is supporting detail for one line. */
 export const launch = {
   /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
-  backAt: "back {{time}}",
   fuel: "Fuel",
   eyebrow: "Attack",
   /**
@@ -516,13 +515,13 @@ export const launch = {
    * dossier had stamped on every fact row for two releases — was absent from the
    * one surface where it decides anything.
    */
-  eyebrowRecord: "Attack · last seen {{age}}",
+  lastSeen: "last seen {{age}}",
   /**
    * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
    * live by definition. What belongs on the line instead is the other clock: how
    * long the thing will still be out there, which is the reason to hurry.
    */
-  eyebrowPirate: "Attack · gone in {{duration}}",
+  goneIn: "gone in {{duration}}",
   back: "Back",
   launching: "Launching",
   commit: "Launch — no recall",
@@ -533,10 +532,8 @@ export const launch = {
   holdWorld_other: "Launch {{count}} ships",
   holdPirate_one: "Launch {{count}} ship — no recall",
   holdPirate_other: "Launch {{count}} ships — no recall",
-  warningWorld: "Your world holds {{count}} units until this fleet is home.",
-  warningPirate: "No recall. Your world holds {{count}} units until this fleet is home.",
-  exposed: "Exposed",
-  baysFree: "{{count}} free",
+  warningWorld: "{{world}} stays thin for {{duration}}, until this fleet is home.",
+  warningPirate: "No recall. {{world}} stays thin for {{duration}}, until this fleet is home.",
   recallNote:
     "Can be recalled once while in flight — it returns in the time already flown. Fuel is not refunded.",
   chooseFleet: "Choose a fleet",
@@ -546,7 +543,6 @@ export const launch = {
   defending: "{{count}} units defending home",
   nothingSent: "Nothing sent yet",
   exposedFor: "Exposed for {{duration}}",
-  oneWay: "One way",
   oneWayUnknown: "—",
   pace: "Flight speed",
   paceHint: "Slower lands later. The fuel is the same, and nothing may stay up past 12h.",
@@ -565,10 +561,7 @@ export const launch = {
   cargo: "Cargo",
   /** A ceiling on a wreck nobody has made yet, and only for collectors that live. D200. */
   salvage: "Your collectors lift up to {{amount}} of the wreck if they survive",
-  distance: "Distance",
-  fleetHeading: "Fleet",
   atHome: "{{count}} home",
-  perShipStats: "Per ship · includes your research",
   away: "{{fleet}} away on a flight. Only ships standing on this world can be sent.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -594,6 +587,23 @@ export const launch = {
   recoveryShieldWarning:
     "This gives up your recovery shield and its +50% output. Once it is gone, other commanders can raid you too.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
+  range: "range {{d}}",
+  arrive: "Arrival",
+  homeLabel: "Back",
+  exposedShort: "exposed {{duration}}",
+  lootSub: "loot ~{{band}}",
+  bay: "Flight bay",
+  bayThis: "this one takes 1",
+  bayNone: "none free",
+  stays: "Stays home",
+  staysUnits_one: "{{count}} unit",
+  staysUnits_other: "{{count}} units",
+  staysPower: "power {{value}}",
+  cargoEach: "{{amount}} cargo each",
+  cargoAdds: "+{{amount}} cargo",
+  paceBrief: "same fuel · 12h at most",
+  warningWorldOpen: "{{world}} stays thin until this fleet is home.",
+  warningPirateOpen: "No recall. {{world}} stays thin until this fleet is home.",
 } as const;
 
 export const transfer = {

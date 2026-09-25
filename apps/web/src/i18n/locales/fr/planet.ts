@@ -482,17 +482,16 @@ export const planetHero = {
 } as const;
 export const launch = {
   /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
-  backAt: "retour {{time}}",
   fuel: "Carburant",
   eyebrow: "Attaque",
   /** Engagement fondé sur un relevé. L’ancienneté de la cible est indiquée ici. D151. */
-  eyebrowRecord: "Attaque · dernière observation il y a {{age}}",
+  lastSeen: "dernière observation il y a {{age}}",
   /**
    * UN PIRATE N’A PAS DE RELEVÉ QUI VIEILLIT — il n’est jamais mémorisé et sa
    * lecture est, par définition, en direct. L’autre horloge est donc plus utile :
    * combien de temps il restera encore là, c’est-à-dire pourquoi il faut se dépêcher.
    */
-  eyebrowPirate: "Attaque · départ dans {{duration}}",
+  goneIn: "départ dans {{duration}}",
   back: "Retour",
   launching: "Décollage",
   commit: "Envoyer — aucun rappel possible",
@@ -503,10 +502,8 @@ export const launch = {
   holdWorld_other: "Lancer {{count}} vaisseaux",
   holdPirate_one: "Lancer {{count}} vaisseau — aucun rappel",
   holdPirate_other: "Lancer {{count}} vaisseaux — aucun rappel",
-  warningWorld: "Ton monde garde {{count}} unités jusqu'au retour de cette flotte.",
-  warningPirate: "Aucun rappel. Ton monde garde {{count}} unités jusqu'au retour de cette flotte.",
-  exposed: "Exposé",
-  baysFree: "{{count}} libres",
+  warningWorld: "{{world}} reste affaibli pendant {{duration}}, jusqu’au retour de cette flotte.",
+  warningPirate: "Aucun rappel. {{world}} reste affaibli pendant {{duration}}, jusqu’au retour de cette flotte.",
   recallNote:
     "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Le carburant n'est pas remboursé.",
   chooseFleet: "Choisis ta flotte",
@@ -517,7 +514,6 @@ export const launch = {
   defending: "{{count}} unités défendent le monde",
   nothingSent: "Tu n’as encore sélectionné aucun vaisseau",
   exposedFor: "Exposé pendant {{duration}}",
-  oneWay: "Aller simple",
   oneWayUnknown: "—",
   pace: "Vitesse de vol",
   paceHint: "Plus lent arrive plus tard. Même carburant, et rien ne reste en vol au-delà de 12 h.",
@@ -536,10 +532,7 @@ export const launch = {
   cargo: "Soute",
   salvage:
     "Si tes Ferrailleurs survivent, ils récupéreront jusqu’à {{amount}} dans les débris",
-  distance: "Distance",
-  fleetHeading: "Flotte",
   atHome: "{{count}} chez toi",
-  perShipStats: "Valeurs par vaisseau · recherches incluses",
   away: "{{fleet}} sont actuellement en vol. Tu ne peux envoyer depuis ici que les vaisseaux présents sur ce monde.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -558,6 +551,23 @@ export const launch = {
     "Ce raid mettra fin à ton bouclier de récupération et au bonus de production de +50 %. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   fleetsave:
     "Les vaisseaux en vol ne peuvent pas être pillés. Ta planète, elle, peut l’être.",
+  range: "distance {{d}}",
+  arrive: "Arrivée",
+  homeLabel: "Retour",
+  exposedShort: "exposé {{duration}}",
+  lootSub: "butin ~{{band}}",
+  bay: "Rampe",
+  bayThis: "celui-ci en prend 1",
+  bayNone: "aucune libre",
+  stays: "Reste au monde",
+  staysUnits_one: "{{count}} unité",
+  staysUnits_other: "{{count}} unités",
+  staysPower: "puissance {{value}}",
+  cargoEach: "{{amount}} de soute chacun",
+  cargoAdds: "+{{amount}} de soute",
+  paceBrief: "même carburant · 12 h max",
+  warningWorldOpen: "{{world}} reste affaibli jusqu’au retour de cette flotte.",
+  warningPirateOpen: "Aucun rappel. {{world}} reste affaibli jusqu’au retour de cette flotte.",
 } as const;
 export const transfer = {
   fuel: "carburant de vol",

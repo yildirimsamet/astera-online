@@ -159,42 +159,36 @@ const launch = (fleet: Record<string, number>) =>
     { wrapper },
   );
 
-describe('the attack sheet bands the ships and folds them', () => {
-  it('opens with the first band expanded and the rest shut', () => {
+/**
+ * THE MOCK'S PICKER (M3, owner 2026-09-25): one list of what stands home, each row the
+ * ship, its class, how many are ready and the stepper. The bands and the per-ship stat
+ * strip were built for a picker without the ruler; now the ruler and the matchup line
+ * above say what a wing is worth against this target, and the shipyard keeps the stats.
+ */
+describe('the attack sheet lists the ships in one run', () => {
+  it('lists every ship at home, with no folds', () => {
     launch({ DART: 4, RAMPART: 2, ATLAS: 1 });
-    // Offensive is first in the roster order, so its rows are the ones on screen.
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: /rampart quantity/i })).toBeNull();
-    expect(screen.queryByRole('textbox', { name: /atlas quantity/i })).toBeNull();
+    for (const name of [/dart quantity/i, /rampart quantity/i, /atlas quantity/i]) {
+      expect(screen.getByRole('textbox', { name })).toBeInTheDocument();
+    }
+    expect(document.querySelector('[data-fleet-family]')).toBeNull();
+    expect(screen.queryByRole('button', { name: /defensive/i })).toBeNull();
   });
 
-  /**
-   * THE COUNT IS SHIPS, NOT ROWS. Two Ramparts is what a commander has to spend;
-   * "one kind of Rampart" is a fact about the catalogue and answers nothing.
-   */
-  it('states how many ships each shut band is holding back', () => {
-    launch({ DART: 4, RAMPART: 2, ATLAS: 1 });
-    const defensive = screen.getByRole('button', { name: /defensive/i });
-    expect(defensive).toHaveAttribute('aria-expanded', 'false');
-    expect(defensive).toHaveTextContent('2');
+  it('writes a row as the ship, its class and how many are ready — no stat strip', () => {
+    const view = launch({ DART: 4 });
+    const row = view.container.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
+    expect(row).toHaveTextContent('4 home');
+    expect(row.querySelector('.stats')).toBeNull();
+    expect(view.container.textContent).not.toMatch(/per ship/i);
   });
 
-  it('opens a band when it is pressed, without shutting the others', async () => {
-    launch({ DART: 4, RAMPART: 2, ATLAS: 1 });
-    await userEvent.click(screen.getByRole('button', { name: /defensive/i }));
-    expect(screen.getByRole('textbox', { name: /rampart quantity/i })).toBeInTheDocument();
-    // The first band stays where the player left it.
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toBeInTheDocument();
-  });
-
-  /**
-   * A SINGLE BAND IS NOT AN ACCORDION. Folding the only group on screen would cost
-   * a tap and hide the entire picker to save nothing.
-   */
-  it('leaves a lone band open, because there is nothing to fold away', () => {
-    launch({ DART: 4, VIPER: 2 });
-    expect(screen.getByRole('textbox', { name: /dart quantity/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /viper quantity/i })).toBeInTheDocument();
+  it('says what a cargo hull adds to the hold', async () => {
+    const view = launch({ DART: 4, COURIER: 2 });
+    const row = view.container.querySelector<HTMLElement>('[data-hull-row="COURIER"]')!;
+    expect(row).toHaveTextContent(/cargo each/i);
+    await userEvent.click(screen.getByRole('button', { name: /more courier/i }));
+    expect(row).toHaveTextContent(/\+[\d.,]+[a-z]* cargo/i);
   });
 });
 
@@ -224,7 +218,8 @@ describe('what the attack sheet no longer spends a plate on', () => {
       at a world cannot be turned), and the fleetsave rule.
     */
     expect(view.container.textContent).not.toMatch(/cannot be recalled/i);
-    expect(view.container.textContent).toMatch(/holds \d+ units until this fleet is home/i);
+    expect(view.container.textContent).toMatch(/stays thin for .+ until this fleet is home/i);
+    expect(view.container.querySelector('[data-launch-figures]')).toHaveTextContent(/\d+ units/);
     expect(view.container.textContent).toMatch(/cannot be raided/i);
   });
 });

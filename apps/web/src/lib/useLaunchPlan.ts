@@ -393,5 +393,7 @@ export function useLaunchPlan({
     lines, matchups, hint, loss, escape, notes, refusal, commit,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */
     classReading: report?.classReading ?? null,
+    /** The probe's reading of this world, for the haul the hold is set against (E3's cargo). */
+    report,
   };
 }

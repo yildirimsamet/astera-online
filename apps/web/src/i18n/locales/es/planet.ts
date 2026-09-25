@@ -500,7 +500,6 @@ export const planetHero = {
 /** The commitment. Everything here is supporting detail for one line. */
 export const launch = {
   /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
-  backAt: "vuelta {{time}}",
   fuel: "Combustible",
   eyebrow: "Ataque",
   /**
@@ -512,13 +511,13 @@ export const launch = {
    * dossier had stamped on every fact row for two releases — was absent from the
    * one surface where it decides anything.
    */
-  eyebrowRecord: "Ataque · visto por última vez {{age}}",
+  lastSeen: "visto por última vez {{age}}",
   /**
    * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
    * live by definition. What belongs on the line instead is the other clock: how
    * long the thing will still be out there, which is the reason to hurry.
    */
-  eyebrowPirate: "Ataque · desaparecido {{duration}}",
+  goneIn: "desaparecido {{duration}}",
   back: "Atrás",
   launching: "Lanzando",
   commit: "Lanzamiento: sin recuperación",
@@ -529,10 +528,8 @@ export const launch = {
   holdWorld_other: "Lanzar {{count}} naves",
   holdPirate_one: "Lanzar {{count}} nave — sin recuperación",
   holdPirate_other: "Lanzar {{count}} naves — sin recuperación",
-  warningWorld: "Tu mundo mantiene {{count}} unidades hasta que esta flota vuelva.",
-  warningPirate: "Sin recuperación. Tu mundo mantiene {{count}} unidades hasta que esta flota vuelva.",
-  exposed: "Expuesto",
-  baysFree: "{{count}} libres",
+  warningWorld: "{{world}} queda débil durante {{duration}}, hasta que vuelva esta flota.",
+  warningPirate: "Sin recuperación. {{world}} queda débil durante {{duration}}, hasta que vuelva esta flota.",
   recallNote:
     "Se puede recuperar una vez en vuelo: vuelve en el tiempo que ya ha volado. El combustible no se reembolsa.",
   chooseFleet: "Elige una flota",
@@ -542,7 +539,6 @@ export const launch = {
   defending: "{{count}} unidades defendiendo casa",
   nothingSent: "Aún no se ha enviado nada",
   exposedFor: "Expuesto para {{duration}}",
-  oneWay: "Solo ida",
   oneWayUnknown: "—",
   pace: "Velocidad de vuelo",
   paceHint: "Más lento llega más tarde. El combustible es el mismo y nada permanece más de 12 h en vuelo.",
@@ -561,10 +557,7 @@ export const launch = {
   cargo: "Carga",
   /** A ceiling on a wreck nobody has made yet, and only for collectors that live. D200. */
   salvage: "Tus recolectores levantan hasta {{amount}} de los restos del naufragio si sobreviven.",
-  distance: "Distancia",
-  fleetHeading: "Flota",
   atHome: "{{count}} en casa",
-  perShipStats: "Por nave · incluye tu investigación",
   away: "{{fleet}} de distancia en un vuelo. Sólo se pueden enviar naves que se encuentren en este mundo.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -590,6 +583,23 @@ export const launch = {
   recoveryShieldWarning:
     "Esto renuncia a tu escudo de recuperación y su +50% de producción. Una vez que desaparezca, otros comandantes también podrán atacarte.",
   fleetsave: "Los naves en vuelo no pueden ser asaltados. Tu planeta puede.",
+  range: "distancia {{d}}",
+  arrive: "Llegada",
+  homeLabel: "Regreso",
+  exposedShort: "expuesto {{duration}}",
+  lootSub: "botín ~{{band}}",
+  bay: "Plataforma",
+  bayThis: "este ocupa 1",
+  bayNone: "ninguna libre",
+  stays: "Se queda",
+  staysUnits_one: "{{count}} unidad",
+  staysUnits_other: "{{count}} unidades",
+  staysPower: "poder {{value}}",
+  cargoEach: "{{amount}} de carga c/u",
+  cargoAdds: "+{{amount}} de carga",
+  paceBrief: "mismo combustible · máx. 12 h",
+  warningWorldOpen: "{{world}} queda débil hasta que vuelva esta flota.",
+  warningPirateOpen: "Sin recuperación. {{world}} queda débil hasta que vuelva esta flota.",
 } as const;
 
 export const transfer = {

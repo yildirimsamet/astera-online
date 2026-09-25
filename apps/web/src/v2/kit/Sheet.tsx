@@ -45,6 +45,8 @@ const PAGE: readonly Detent[] = ['half', 'full'];
 export interface SheetProps {
   title: string;
   eyebrow?: string;
+  /** What stands before the title on its line: the launch's "→ [owner]" (E3). */
+  lead?: ReactNode;
   onClose: () => void;
   /** Where it was opened from, when that is a surface rather than the galaxy. */
   onBack?: () => void;
@@ -88,6 +90,7 @@ export interface SheetProps {
 export function Sheet({
   title,
   eyebrow,
+  lead,
   onClose,
   onBack,
   detents = PAGE,
@@ -204,7 +207,14 @@ export function Sheet({
             )}
             <div className="min-w-0 flex-1 px-1 pt-1">
               {eyebrow && <p className="truncate text-micro uppercase tracking-wide text-v2-ink-3">{eyebrow}</p>}
-              <h2 className="truncate text-figure font-semibold text-v2-ink">{title}</h2>
+              {lead ? (
+                <h2 className="flex min-w-0 items-center gap-1.5 text-figure font-semibold text-v2-ink">
+                  {lead}
+                  <span className="truncate">{title}</span>
+                </h2>
+              ) : (
+                <h2 className="truncate text-figure font-semibold text-v2-ink">{title}</h2>
+              )}
             </div>
             <button
               type="button"

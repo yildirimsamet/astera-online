@@ -4,10 +4,12 @@ import {
   MOBILE_HULLS,
   TRADE,
   TRAVEL,
+  combatValue,
   distance,
   exposureMinutes,
   fleetCargo,
   fleetCount,
+  fleetEntries,
   fleetPace,
   fleetSpeedMult,
   fleetTravelExact,
@@ -76,6 +78,14 @@ export interface Route {
  */
 export const homeDefenceAfter = (homeFleet: Fleet, ground: Fleet, sending: Fleet): number =>
   Math.max(0, fleetCount(homeFleet) - fleetCount(sending)) + fleetCount(ground);
+
+/** The same garrison in the unit a fight is weighed in: the armed value a raider would meet. */
+export function homePowerAfter(homeFleet: Fleet, ground: Fleet, sending: Fleet): number {
+  const stays: Fleet = {};
+  for (const [hull, count] of fleetEntries(homeFleet)) stays[hull] = Math.max(0, count - (sending[hull] ?? 0));
+  for (const [hull, count] of fleetEntries(ground)) stays[hull] = (stays[hull] ?? 0) + count;
+  return combatValue(stays);
+}
 
 /**
  * WHAT THE LAUNCH SHEET PROMISES, AND IT HAS TO BE WHAT THE SERVER WILL DO. D180.

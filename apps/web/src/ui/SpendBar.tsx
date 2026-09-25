@@ -44,6 +44,7 @@ export function SpendBar({
   label,
   readout = 'left',
   compactSize = false,
+  inline = false,
 }: {
   /** What the world holds of this resource right now. */
   stock: number;
@@ -57,6 +58,8 @@ export function SpendBar({
   readout?: 'left' | 'spend';
   /** Half height and no art, for a bar that sits inside a row rather than on a card. */
   compactSize?: boolean;
+  /** One line — the label, the bar, the figure — for a bar riding a sticky header (the launch's tank). */
+  inline?: boolean;
 }) {
   const { t } = useTranslation();
   const short = Math.max(0, spend - stock);
@@ -70,41 +73,25 @@ export function SpendBar({
   const scale = Math.max(1, stock, spend);
   const share = (value: number): number => Math.max(0, Math.min(100, (value / scale) * 100));
 
-  return (
-    <div
-      data-spend-bar
-      data-short={short > 0 ? 'true' : 'false'}
-      className={`flex flex-col w-full ${compactSize ? 'gap-1' : 'gap-2'}`}
-    >
-      <div className="flex items-center gap-2">
-        {!compactSize && (
-          <img
-            src={RESOURCE_ART[tone]}
-            alt=""
-            aria-hidden
-            className="size-4 shrink-0 object-contain"
-          />
-        )}
-        <span className="min-w-0 flex-1 truncate text-caption text-faint">{label}</span>
-        {/* The answer follows the caller's decision: what remains after a cost,
-            or what is being packed when the slider itself chooses the spend. */}
-        {short > 0 ? (
-          <span data-spend-short className="readout shrink-0 text-caption text-threat-ink">
-            &minus;{compact(short)}
-          </span>
-        ) : readout === 'spend' ? (
-          <span data-spend-amount className="readout shrink-0 text-caption text-bone">
-            {compact(spend)}
-          </span>
-        ) : (
-          <span data-spend-left className="readout shrink-0 text-caption text-bone">
-            {compact(left)}
-          </span>
-        )}
-      </div>
+  /* The answer follows the caller's decision: what remains after a cost,
+     or what is being packed when the slider itself chooses the spend. */
+  const figure = short > 0 ? (
+    <span data-spend-short className="readout shrink-0 text-caption text-threat-ink">
+      &minus;{compact(short)}
+    </span>
+  ) : readout === 'spend' ? (
+    <span data-spend-amount className="readout shrink-0 text-caption text-bone">
+      {compact(spend)}
+    </span>
+  ) : (
+    <span data-spend-left className="readout shrink-0 text-caption text-bone">
+      {compact(left)}
+    </span>
+  );
 
+  const bar = (
       <div
-        className={`socket flex w-full overflow-hidden rounded-full ${compactSize ? 'h-1.5' : 'h-2'}`}
+        className={`socket flex overflow-hidden rounded-full ${inline ? 'h-1 min-w-0 flex-1' : `w-full ${compactSize ? 'h-1.5' : 'h-2'}`}`}
         role="img"
         aria-label={
           short > 0
@@ -136,6 +123,37 @@ export function SpendBar({
           </>
         )}
       </div>
+  );
+
+  if (inline) {
+    return (
+      <div data-spend-bar data-short={short > 0 ? 'true' : 'false'} className="flex w-full items-center gap-2">
+        <span className="shrink-0 text-caption text-faint">{label}</span>
+        {bar}
+        {figure}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-spend-bar
+      data-short={short > 0 ? 'true' : 'false'}
+      className={`flex flex-col w-full ${compactSize ? 'gap-1' : 'gap-2'}`}
+    >
+      <div className="flex items-center gap-2">
+        {!compactSize && (
+          <img
+            src={RESOURCE_ART[tone]}
+            alt=""
+            aria-hidden
+            className="size-4 shrink-0 object-contain"
+          />
+        )}
+        <span className="min-w-0 flex-1 truncate text-caption text-faint">{label}</span>
+        {figure}
+      </div>
+      {bar}
     </div>
   );
 }

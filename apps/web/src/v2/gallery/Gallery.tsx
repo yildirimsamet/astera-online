@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { GalaxyPlanet } from '../../api/schemas.js';
+import type { GalaxyPlanet, IntelView } from '../../api/schemas.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
@@ -145,6 +145,16 @@ const launchWorld = planetView(
   { fleet: { DART: 40, TALON: 12, RAMPART: 4, COURIER: 6 }, fleetAway: { DART: 8 } },
   { alloy: 40_000, crystal: 20_000, deuterium: 12_000 },
 );
+/** The probe the mock's launch is drawn against: the band, the shape and the haul. */
+const launchIntel: IntelView = {
+  watching: [], radarLog: [], probeCooldowns: [], probeCost: { alloy: 25, crystal: 25, deuterium: 0 },
+  probeReports: [{
+    targetPlanetId: 'p2', targetName: 'Tharsis', targetUsername: 'Sable', at: new Date(NOW - 2 * 60 * MIN),
+    accuracy: 0.8, detected: false, stock: { low: 13_000, high: 17_000 }, deuteriumStock: { low: 1_000, high: 2_000 },
+    defence: { low: 2_700, high: 5_300 }, fleetSize: { low: 20, high: 40 }, fleetHome: true,
+    classReading: { kind: 'DOMINANT', cls: 'LANCE' },
+  }],
+};
 
 /** The Fleet page with its tab held here, as the host holds it in the game. */
 function GalleryFleet({ first }: { first: FleetTab }) {
@@ -374,6 +384,7 @@ function Views({ view }: { view: string }) {
     return (
       <LaunchSheet
         planet={launchWorld}
+        {...(view === 'launch' ? { intel: launchIntel } : {})}
         target={view === 'launch'
           ? { kind: 'world', world: rival }
           : { kind: 'pirate', pirate: {

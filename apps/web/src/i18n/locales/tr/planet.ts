@@ -484,17 +484,16 @@ export const planetHero = {
 
 export const launch = {
   /** When the world is covered again, under the exposure: the mock's "Dönüş 23:06". */
-  backAt: "dönüş {{time}}",
   fuel: "Yakıt",
   eyebrow: "Saldırı",
   /** Kayda dayanarak yapılan taahhüt. Hedefin ne kadar eski olduğu burada söylenir. D151. */
-  eyebrowRecord: "Saldırı · en son {{age}} görüldü",
+  lastSeen: "en son {{age}} görüldü",
   /**
    * KORSANIN ESKİYECEK BİR KAYDI YOKTUR — hiç hatırlanmaz, okuma tanımı gereği
    * canlıdır. Satıra asıl yakışan öbür saat: daha ne kadar orada olacağı, yani
    * acele etmenin sebebi.
    */
-  eyebrowPirate: "Saldırı · {{duration}} içinde gidiyor",
+  goneIn: "{{duration}} içinde gidiyor",
   back: "Geri",
   launching: "Kalkıyor",
   commit: "Gönder — geri dönüşü yok",
@@ -505,10 +504,8 @@ export const launch = {
   holdWorld_other: "{{count}} gemi gönder",
   holdPirate_one: "{{count}} gemi gönder — geri dönüşü yok",
   holdPirate_other: "{{count}} gemi gönder — geri dönüşü yok",
-  warningWorld: "Bu filo dönene kadar dünyanda {{count}} birim kalır.",
-  warningPirate: "Geri çağrılamaz. Bu filo dönene kadar dünyanda {{count}} birim kalır.",
-  exposed: "Açıkta",
-  baysFree: "{{count}} boş",
+  warningWorld: "{{world}} {{duration}} zayıf kalır — filo dönene kadar.",
+  warningPirate: "Geri çağrılamaz. {{world}} {{duration}} zayıf kalır — filo dönene kadar.",
   recallNote:
     "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yakıt iade edilmez.",
   chooseFleet: "Filonu seç",
@@ -519,7 +516,6 @@ export const launch = {
   defending: "Evi {{count}} birlik savunuyor",
   nothingSent: "Henüz gemi seçmedin",
   exposedFor: "{{duration}} boyunca açıksın",
-  oneWay: "Tek yön",
   oneWayUnknown: "—",
   pace: "Uçuş hızı",
   paceHint: "Yavaş olan geç varır. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
@@ -535,12 +531,9 @@ export const launch = {
   /** Bir dünyaya yapılan akın ateş edebilmeli. Sunucu da bunu reddediyor. */
   noEscort: "Bir savaş gemisi ekle",
   shipyardRevolt: "İsyan var",
-  cargo: "Ambar",
+  cargo: "Kargo",
   salvage: "Hurdacıların sağ kalırsa enkazdan en fazla {{amount}} toplar",
-  distance: "Mesafe",
-  fleetHeading: "Filo",
   atHome: "evde {{count}}",
-  perShipStats: "Bir geminin değerleri · araştırmaların dahil",
   away: "Havada {{fleet}} var. Buradan yalnızca bu dünyada duran gemileri gönderebilirsin.",
   awaySeparator: " · ",
   awayHull: "{{count}} {{name}}",
@@ -558,6 +551,23 @@ export const launch = {
   recoveryShieldWarning:
     "Bu akın toparlanma kalkanını ve +%50 üretimi bitirir. Kalkan kalktığında diğer komutanlar da sana akın edebilir.",
   fleetsave: "Havadaki gemiler yağmalanamaz. Gezegenin yağmalanabilir.",
+  range: "mesafe {{d}}",
+  arrive: "Varış",
+  homeLabel: "Dönüş",
+  exposedShort: "açıkta {{duration}}",
+  lootSub: "ganimet ~{{band}}",
+  bay: "Uçuş yuvası",
+  bayThis: "bu sefer 1",
+  bayNone: "boş yok",
+  stays: "Evde kalan",
+  staysUnits_one: "{{count}} birim",
+  staysUnits_other: "{{count}} birim",
+  staysPower: "güç {{value}}",
+  cargoEach: "{{amount}} kargo/gemi",
+  cargoAdds: "+{{amount}} kargo",
+  paceBrief: "yakıt aynı · en çok 12 sa",
+  warningWorldOpen: "{{world}} filo dönene kadar zayıf kalır.",
+  warningPirateOpen: "Geri çağrılamaz. {{world}} filo dönene kadar zayıf kalır.",
 } as const;
 
 export const transfer = {

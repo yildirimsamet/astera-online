@@ -16,20 +16,27 @@ export function PaceRow({
   pace,
   onChange,
   hint,
+  brief,
   ...data
 }: {
   paces: readonly MissionPace[];
   pace: MissionPace;
   onChange: (pace: MissionPace) => void;
-  hint: string;
+  /** The rule in a sentence, under the row. */
+  hint?: string;
+  /** The rule in a phrase, under the label beside the control (the launch mock's "same fuel · 12h at most"). */
+  brief?: string;
 } & Record<`data-${string}`, boolean>) {
   const { t } = useTranslation();
   if (paces.length <= 1) return null;
   return (
     <div {...data} className="grid gap-1 font-v2-ui">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-caption text-v2-ink-2">{t('launch.pace')}</span>
-        <div role="radiogroup" aria-label={t('launch.pace')} className="flex gap-0.5 rounded-control border border-v2-line bg-v2-panel p-0.5">
+        <span className="flex min-w-0 flex-col">
+          <span className="text-caption text-v2-ink-2">{t('launch.pace')}</span>
+          {brief && <span className="text-micro leading-snug text-v2-ink-3">{brief}</span>}
+        </span>
+        <div role="radiogroup" aria-label={t('launch.pace')} className="flex shrink-0 gap-0.5 rounded-control border border-v2-line bg-v2-panel p-0.5">
           {paces.map((rung) => (
             <button
               key={rung}
@@ -46,7 +53,7 @@ export function PaceRow({
           ))}
         </div>
       </div>
-      <p className="text-micro leading-snug text-v2-ink-3">{hint}</p>
+      {hint && <p className="text-micro leading-snug text-v2-ink-3">{hint}</p>}
     </div>
   );
 }

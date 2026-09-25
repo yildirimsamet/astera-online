@@ -372,9 +372,9 @@ describe('every added language keeps the locale contract', () => {
     Seen on the v2 launch sheet in German: "40 Startseite" (a homepage) for the ships at
     home, and a one-way flight headed "Einbahnstraße" (a one-way street).
   */
-  it('says "at home" and "one way" in German, not a homepage and a street', () => {
+  it('says "at home" and "arrival" in German, not a homepage and a street', () => {
     expect(de.launch.atHome).not.toMatch(/Startseite/);
-    expect(de.launch.oneWay).not.toMatch(/Einbahnstra/);
+    expect(de.launch.arrive).not.toMatch(/Einbahnstra/);
   });
 
   /* The same slip in Spanish, seen at 350 on the v2 launch rows: "40 inicio" (a start page). */

@@ -16,8 +16,6 @@ import { planetView } from './fixtures.js';
 import { AcademyLessonContext } from '../src/onboarding/lessonScope.js';
 import {
   academyLessonFleet,
-  HULLS,
-  hullTech,
   fleetCargo,
   forecastLines,
   forecastLoss,
@@ -92,34 +90,27 @@ describe('choosing a fleet to attack with', () => {
     expect(screen.getByRole('button', { name: /shipyard revolt/i })).toBeDisabled();
   });
 
-  it('labels per-ship values and applies the commander’s actual research', () => {
-    const researched = ['SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION', 'CARGO_HOLDS'];
-    const planet = planetView({ fleet: { DART: 200 }, research: planetView().research.map(project =>
-      researched.includes(project.id) ? { ...project, level: 4, completed: true, available: true } : project,
-    ) });
+  /**
+   * THE COMMANDER'S OWN RESEARCH, WHERE THE SHEET QUOTES A HULL (M3). The per-ship stat
+   * strip is gone with the mock — the ruler weighs the wing, the shipyard keeps the stats
+   * — so the figure a row still quotes, the hold a cargo hull brings, must be the one the
+   * server will load: research included.
+   */
+  it('quotes a cargo hull’s hold with the commander’s actual research', async () => {
+    const planet = planetView({ fleet: { DART: 20, COURIER: 3 }, research: planetView().research.map(project =>
+      project.id === 'CARGO_HOLDS' ? { ...project, level: 4, completed: true, available: true } : project,
+    ) }, { deuterium: 500_000 });
     const tech = flightModifiers(planet).tech;
-    const stats = hullTech(tech, 'DART');
     const view = render(<LaunchSheet target={{ kind: 'world', world: target }} planet={planet}
       onClose={vi.fn()} onLaunched={vi.fn()} />, { wrapper });
-    const row = view.container.querySelector<HTMLElement>('[data-hull-row="DART"]')!;
-    // Said once over the list rather than on every row (compact, B14).
-    expect(screen.getByText('Per ship · includes your research')).toBeVisible();
-    for (const [cls, expected] of [
-      ['attack', HULLS.DART.atk * stats.atk], ['hull', HULLS.DART.hp * stats.hp],
-      ['speed', HULLS.DART.speed * stats.speed], ['cargo', fleetCargo({ DART: 1 }, tech)],
-    ] as const) {
-      expect(row.querySelector(`.stat-${cls} .stat-value`)).toHaveTextContent(compact(expected));
-    }
-    /*
-      THE LABELS ARE ON THE SCREEN, ONCE, BESIDE THE SAME MARKS (D142: no icon is
-      memorised). Per row they either fit in English or truncated to "Ge…" in German;
-      a legend over the list reads in every language and every row names each value.
-    */
-    const legend = view.container.querySelector<HTMLElement>('[data-stat-legend]')!;
-    for (const label of ['Attack', 'Durability', 'Speed', 'Cargo', 'Fuel']) {
-      expect(within(legend).getByText(label)).toBeVisible();
-    }
-    expect(within(row).getByLabelText(/^Attack: /)).toBeInTheDocument();
+    const row = view.container.querySelector<HTMLElement>('[data-hull-row="COURIER"]')!;
+    expect(row).toHaveTextContent(`${compact(fleetCargo({ COURIER: 1 }, tech))} cargo each`);
+    expect(fleetCargo({ COURIER: 1 }, tech)).toBeGreaterThan(fleetCargo({ COURIER: 1 }, flightModifiers(planetView()).tech));
+    await userEvent.setup().click(within(row).getByRole('button', { name: /more courier/i }));
+    expect(row).toHaveTextContent(`+${compact(fleetCargo({ COURIER: 1 }, tech))} cargo`);
+    // No stat strip, no legend: the mock's row.
+    expect(view.container.querySelector('[data-stat-legend]')).toBeNull();
+    expect(row.querySelector('.stats')).toBeNull();
   });
   it('quotes the Academy leg and opens cargo without overwriting live folds', async () => {
     localStorage.setItem('astera.accordion.launch', '[]');
@@ -188,13 +179,16 @@ describe('choosing a fleet to attack with', () => {
  * what a row is FOR before the player reads what it costs, and they are the same
  * four bands, in the same order, as the tab the ships were bought on.
  */
-describe('the picker is banded by what a hull is for', () => {
-  const bandOrder = () =>
-    [...document.querySelectorAll('[data-fleet-family]')].map(
-      (node) => node.getAttribute('data-fleet-family'),
-    );
+describe('the picker runs in the shipyard’s order', () => {
+  /*
+    THE MOCK'S ONE RUN (M3). The bands folded a picker that had nothing above it; the
+    ruler and the matchup line now say what a wing is FOR against this target, so the
+    rows keep the shipyard's order — offensive, defensive, specialist, cargo — unfolded.
+  */
+  const rowOrder = () =>
+    [...document.querySelectorAll('[data-hull-row]')].map((node) => node.getAttribute('data-hull-row'));
 
-  it('bands a world raid Offensive, Defensive, Special, Cargo', () => {
+  it('orders a world raid offensive, defensive, specialist, cargo — with no bands', () => {
     render(
       <LaunchSheet
         target={{ kind: 'world', world: target }}
@@ -208,12 +202,12 @@ describe('the picker is banded by what a hull is for', () => {
       { wrapper },
     );
 
-    expect(bandOrder()).toEqual(['OFFENSIVE', 'DEFENSIVE', 'SPECIALIST', 'CARGO']);
-    expect(screen.getByText('Offensive hulls')).toBeInTheDocument();
-    expect(screen.getByText('Specialist hulls')).toBeInTheDocument();
+    expect(rowOrder()).toEqual(['DART', 'RAMPART', 'NULLIFIER', 'COURIER']);
+    expect(document.querySelector('[data-fleet-family]')).toBeNull();
+    expect(screen.queryByText('Offensive hulls')).toBeNull();
   });
 
-  it('bands a pirate raid the same way, off the same order', () => {
+  it('orders a pirate raid the same way', () => {
     render(
       <LaunchSheet
         target={{
@@ -239,23 +233,7 @@ describe('the picker is banded by what a hull is for', () => {
       { wrapper },
     );
 
-    expect(bandOrder()).toEqual(['OFFENSIVE', 'CARGO']);
-  });
-
-  /** A band is a heading for rows that exist; an empty one is a lie about the fleet. */
-  it('heads no band for a family the world has nothing of', () => {
-    render(
-      <LaunchSheet
-        target={{ kind: 'world', world: target }}
-        planet={planetView({ fleet: { DART: 4 } }, { deuterium: 500_000 })}
-        onClose={vi.fn()}
-        onLaunched={vi.fn()}
-      />,
-      { wrapper },
-    );
-
-    expect(bandOrder()).toEqual(['OFFENSIVE']);
-    expect(screen.queryByText('Cargo hulls')).not.toBeInTheDocument();
+    expect(rowOrder()).toEqual(['DART', 'COURIER']);
   });
 
   /**
@@ -403,8 +381,9 @@ describe('what the launch costs the world it leaves', () => {
     show({ DART: 4 });
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /more dart/i }));
-    // Four at home, one packed: three hold — written before the button, and true since K8.
-    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/holds 3 units until this fleet is home/i);
+    // Four at home, one packed: three hold — counted before the button; the price line says for how long.
+    expect(document.querySelector('[data-launch-figures]')).toHaveTextContent(/3 units/);
+    expect(document.querySelector('[data-launch-warning]')).toHaveTextContent(/stays thin for .+ until this fleet is home/i);
     expect(document.body.textContent).not.toMatch(/cannot be recalled/i);
   });
 
@@ -686,10 +665,9 @@ describe('committing a fleet at a pirate', () => {
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
 
     expect(screen.getByRole('textbox', { name: /dart quantity/i })).toHaveValue('20');
-    // `StatStrip` — attack, hull, speed, cargo, fuel — beside every hull row. It
-    // renders no labels at `row` size, so the shape is what is asserted.
-    expect(document.querySelectorAll('.stats .stat-attack')).toHaveLength(2);
-    expect(document.querySelectorAll('.stats .stat-cargo')).toHaveLength(2);
+    // The same rows a world raid gets (M3: the mock's, with the class on each).
+    expect(document.querySelectorAll('[data-hull-row]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-hull-row] [data-class], [data-hull-row] svg').length).toBeGreaterThan(0);
   });
 
   /**
@@ -708,7 +686,8 @@ describe('committing a fleet at a pirate', () => {
     await user.click(screen.getByRole('button', { name: /max.*dart/i }));
 
     expect(screen.getAllByText(/cargo/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/^900$/)).toBeInTheDocument();
+    // The distance rides the head now, beside where the fleet flies from (the mock).
+    expect(screen.getByText(/· range 900/)).toBeInTheDocument();
     expect(screen.getAllByText(/fuel/i).length).toBeGreaterThan(0);
   });
 

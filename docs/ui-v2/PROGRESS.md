@@ -133,8 +133,15 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   hikâyeniz" ince çizgili bölüm (uyarı rengi kalktı), **Diğer okumalar** yalnız dosyanın çizmediği olgular
   (`beyondDossier`), olgu satırı tek satır + yaş, not bir dokunuş derinde; boşluk satırları aynı yoğunlukta (kesik
   uyarı kenarı); yabancı başkent kuralı nötr (turkuaz "sen" rengiydi, K2). Birincil düğme "Saldırı planla ›".
-- [ ] **M3 Fırlatma** (E3): başlık kök → hedef + rakip çipi, tek kanat cetveli + sınıf ipucu, sade gemi satırları,
-  özet: Varış/Dönüş/Yakıt/Kargo(ganimet)/Uçuş yuvası/Evde kalan.
+- [x] **M3 Fırlatma** (E3) — `LaunchSheet`: başlık "Saldırı · köken · mesafe N (· son görülme / gidiyor)" ve
+  "→ [sahip çipi, rakipse rakip rengi] Hedef" (`Sheet lead` yuvası); cetvel "Güç" başlığıyla (anlam satırı katta);
+  yakıt tek satır (`SpendBar inline`) ve **cetvelle birlikte yapışkan kalır — D183 sahip düzeltmesi maketten önce
+  gelir, bu yüzden özet yakıtı ikinci kez yazmaz**; sınıf satırı yapışkan başlığın dışına (maketteki yeri); gemiler
+  tek sıra, tersane sırasıyla (aileler akordiyonu ve gemi başı istatistik şeridi/lejantı kalktı — maket; statlar
+  tersanede), yük gemisi satırı "N kargo/gemi" / "+N kargo" der; hız satırında kısa kural ("yakıt aynı · en çok
+  12 sa", `PaceRow brief`); özet 5 hücre: Varış (saat), Dönüş (saat + açıkta süresi), Kargo (+ sondadan "ganimet
+  ~X–Y"), Uçuş yuvası ("n / N · bu sefer 1"), Evde kalan (birim + güç, `homePowerAfter`); fiyat satırı
+  "{dünya} {süre} zayıf kalır — filo dönene kadar." Galeri `launch` görünümü sonda okumasıyla çizilir.
 - [ ] **M4 Savaş raporu + Sen yokken** (E6, E10): sinematik kahraman, İzle/Klana, istihbarat güncelleme satırı; sen
   yokken sadakat/arıza satırı, teleskop fırsatı türü (sunucu), kapı biçimi, "Galaksiye dön".
 - [ ] **M5 Ortak:** rakip renkleri v2 K2 tonlarına, TR süre biçimi (sa/dk), üst çubuk sayfaların üstünde, eski kit
