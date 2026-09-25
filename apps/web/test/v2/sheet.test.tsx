@@ -62,6 +62,16 @@ describe('the sheet', () => {
   });
 
   /**
+   * THE FLOATING CLOSE STAYS ON TOP (owner, 2026-09-25: the Base page's X vanished once its
+   * category bar reached the top — a sticky bar at z-20 slid over a header at z-10).
+   */
+  it('floats its close above whatever the page pins to its top', () => {
+    render(<Sheet title="Base" quietTitle onClose={vi.fn()}>body</Sheet>);
+    const header = screen.getByRole('dialog', { name: 'Base' }).querySelector('header');
+    expect(header?.className).toMatch(/\bz-30\b/);
+  });
+
+  /**
    * THE TOP BAR STAYS ABOVE EVERY PAGE (M5, the mocks): the purse and the bell are read
    * while a page is open, so a page runs from under the top bar (`--v2-top-h`, which the
    * shell publishes) down to the dock, and a full page fills that and no more.

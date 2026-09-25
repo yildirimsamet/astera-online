@@ -1,5 +1,6 @@
 import { GameActions } from '../session/seasonLock.js';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useStuck } from '../lib/useStuck.js';
 import { useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
@@ -970,11 +971,24 @@ function Tabs({
 }) {
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
+  /*
+    PINNED, IT MAKES ROOM FOR THE CLOSE (owner, 2026-09-25: the Base page's X vanished once
+    this bar reached the top). The page's close floats at the top right of the sheet; while
+    the bar rides the page it keeps its whole width, and once it is pinned under the close
+    it steps its right edge in, so the two share the row instead of one covering the other.
+  */
+  const { sentinel, stuck } = useStuck<HTMLDivElement>();
   // Opaque, because it is sticky: at 95% the rows scrolling underneath ghosted
   // through the wallet figures, which are the one thing on it a player reads
   // against a price.
   return (
-    <div className="sticky top-0 z-20 border-y border-line-soft bg-deep">
+    <>
+    <div ref={sentinel} aria-hidden="true" className="-mb-px h-px" />
+    <div
+      data-category-bar=""
+      {...(stuck ? { 'data-stuck': '' } : {})}
+      className={`sticky top-0 z-20 border-y border-line-soft bg-deep transition-[padding] duration-200 ${stuck ? 'pr-8' : ''}`}
+    >
       {/*
         NO WALLET HERE ANY MORE (M5). It rode the categories because the purse was in a
         header BEHIND this sheet; the page now stands under the top bar, which shows the
@@ -1015,6 +1029,7 @@ function Tabs({
         panelId={(id) => `planet-panel-${id}`}
       />
     </div>
+    </>
   );
 }
 

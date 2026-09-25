@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -118,6 +118,38 @@ describe('the tab bar', () => {
       <AcademyLessonContext.Provider value="courier"><PlanetScreen focusGroup="reach" /></AcademyLessonContext.Provider>
     </ToastProvider></QueryClientProvider>);
     expect(labels()).toEqual((['reach', 'grow', 'orbit', 'defend'] as const).map(name));
+  });
+});
+
+/**
+ * THE CLOSE IS NEVER UNDER THE CATEGORY BAR (owner, 2026-09-25: "5 tane menü tabı olan
+ * section'ın altına inmeye başlayınca [X] gözükmemeye başlıyor"). Pinned to the top, the bar
+ * makes room on its right for the page's floating close; where it scrolls with the page it
+ * keeps its whole width.
+ */
+describe('the category bar pinned to the top', () => {
+  type Seen = (entries: { boundingClientRect: { top: number }; rootBounds: { top: number } | null }[]) => void;
+  let seen: Seen | null = null;
+  class Observer {
+    constructor(callback: Seen) { seen = callback; }
+    observe(): void { /* the test drives it */ }
+    disconnect(): void { seen = null; }
+  }
+
+  it('makes room for the close only while it is pinned', () => {
+    vi.stubGlobal('IntersectionObserver', Observer);
+    try {
+      show();
+      const bar = document.querySelector<HTMLElement>('[data-category-bar]')!;
+      expect(bar).not.toHaveAttribute('data-stuck');
+      act(() => { seen?.([{ boundingClientRect: { top: -2 }, rootBounds: { top: 0 } }]); });
+      expect(bar).toHaveAttribute('data-stuck');
+      expect(bar.className).toMatch(/\bpr-8\b/);
+      act(() => { seen?.([{ boundingClientRect: { top: 40 }, rootBounds: { top: 0 } }]); });
+      expect(bar).not.toHaveAttribute('data-stuck');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

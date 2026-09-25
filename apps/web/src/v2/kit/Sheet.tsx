@@ -211,7 +211,8 @@ export function Sheet({
           >
             <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
           </button>}
-          <header className={quietTitle ? 'pointer-events-none absolute inset-x-0 top-4 z-10 flex items-start justify-end gap-1 px-2' : 'flex items-start gap-1 px-2 pb-2'}>
+          {/* Quiet, the close floats above whatever the page pins to its top (a sticky bar is z-20). */}
+          <header className={quietTitle ? 'pointer-events-none absolute inset-x-0 top-4 z-30 flex items-start justify-end gap-1 px-2' : 'flex items-start gap-1 px-2 pb-2'}>
             {onBack && (
               <button
                 type="button"
