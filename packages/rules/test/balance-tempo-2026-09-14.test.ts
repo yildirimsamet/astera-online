@@ -20,7 +20,6 @@ import {
   mulberry32,
   prospectorHold,
   prospectorReturnSpeed,
-  prospectorSpeed,
   type InstrumentId,
   type PlannedGalaxyEvent,
 } from '../src/index.js';
@@ -65,9 +64,16 @@ describe('the drill and the rock it meets', () => {
   });
 
   it('comes home at half speed laden, not a third', () => {
+    expect(PROSPECTOR.speed).toBe(618.75);
     expect(PROSPECTOR.returnSpeedFactor).toBe(1 / 2);
-    expect(prospectorReturnSpeed([], true)).toBe(prospectorSpeed([]) / 2);
-    expect(prospectorReturnSpeed([], false)).toBe(prospectorSpeed([]));
+    expect(prospectorReturnSpeed([], true)).toBe(309.375);
+    expect(prospectorReturnSpeed([], false)).toBe(618.75);
+    expect(PROSPECTOR.shortTripMinutes).toBe(4 / 3);
+  });
+
+  it('slows the whole rock band by the same twenty-five percent', () => {
+    expect(GALAXY.asteroidSpeedMin).toBe(262.5);
+    expect(GALAXY.asteroidSpeedMax).toBe(562.5);
   });
 });
 
@@ -175,8 +181,8 @@ describe('instrument prices', () => {
 });
 
 describe('fuel', () => {
-  it('halves the rate a unit of hull value is charged at', () => {
-    expect(FUEL.perValue).toBe(0.0055);
+  it('retains the further ten percent fuel cut after the fleet slowdown', () => {
+    expect(FUEL.perValue).toBe(0.00495);
   });
 
   /**

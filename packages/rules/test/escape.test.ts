@@ -115,7 +115,7 @@ describe('which ships lift off', () => {
 
   it('burns the round trip of the escape distance, the launch formula and nothing else', () => {
     expect(escapeFuel(LINE)).toBe(missionFuel(LINE, ESCAPE.fuelDistance, 2));
-    expect(escapeFuel(LINE)).toBe(52);
+    expect(escapeFuel(LINE)).toBe(46);
     expect(escapeFuel({})).toBe(0);
   });
 });
@@ -133,7 +133,7 @@ describe('resolveRaid', () => {
 
   it('lifts every ship off when the wing fires exactly three times the line', () => {
     const outcome = raid(TRIPLE, LINE);
-    expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 52 });
+    expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 46 });
     // No ship stood in the line, so no ship died — a walkover, as D173 has it.
     expect(mobileIn(outcome.result.defenderLosses)).toBe(0);
     expect(outcome.result.rounds).toEqual([]);
@@ -188,7 +188,7 @@ describe('resolveRaid', () => {
     const wing: Fleet = { VIPER: 75, TALON: 38, SENTINEL: 30 };
     expect(combatValue(wing)).toBeGreaterThanOrEqual(3 * combatValue(line));
     const outcome = raid(wing, line);
-    expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 52 });
+    expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 46 });
     const fought = plain(wing, { BASTION: 4 });
     expect(outcome.result.rounds).toEqual(fought.rounds);
     expect(outcome.result.defenderLosses).toEqual({ BASTION: 4 });
@@ -196,22 +196,22 @@ describe('resolveRaid', () => {
   });
 
   it('strands the fleet when the tank is one drop short, and the fight stands', () => {
-    const outcome = raid(TRIPLE, LINE, { deuterium: 51 });
-    expect(outcome.escape).toEqual({ kind: 'STRANDED', ships: LINE, fuel: 52, available: 51 });
+    const outcome = raid(TRIPLE, LINE, { deuterium: 45 });
+    expect(outcome.escape).toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 45 });
     expect(outcome.result.rounds).toEqual(plain(TRIPLE, LINE).rounds);
     expect(mobileIn(outcome.result.defenderLosses)).toBe(mobileIn(LINE));
   });
 
   it('lifts off on exactly the fuel it needs', () => {
-    expect(raid(TRIPLE, LINE, { deuterium: 52 }).escape?.kind).toBe('ESCAPED');
+    expect(raid(TRIPLE, LINE, { deuterium: 46 }).escape?.kind).toBe('ESCAPED');
   });
 
   it('reads a fraction of a drop as nothing and a corrupt tank as empty', () => {
-    expect(raid(TRIPLE, LINE, { deuterium: 51.99 }).escape)
-      .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 52, available: 51 });
+    expect(raid(TRIPLE, LINE, { deuterium: 45.99 }).escape)
+      .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 45 });
     for (const broken of [Number.NaN, -5, Number.POSITIVE_INFINITY]) {
       expect(raid(TRIPLE, LINE, { deuterium: broken }).escape)
-        .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 52, available: 0 });
+        .toEqual({ kind: 'STRANDED', ships: LINE, fuel: 46, available: 0 });
     }
   });
 

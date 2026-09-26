@@ -234,7 +234,7 @@ incele, maketin diliyle tasarla.** Sıra (sahip onaylı):
   `fleet-ceiling` ×6 (Hangar geri döndü), `contract` ×4, `intel-states` ×3, `asteroid-fog` ×2, `world-memory` ×2
   (koloni tavanı, sonda), `build-queue`, `construction-speed`, `event-bus-reconnect` (Uplink), `concurrency` (sonda
   yuvası), `fault-attack` (Ölüm Yıldızı kapalı), `garbage-collector`, `intergalactic-convoy-schema` (enum sırası),
-  `notifications` (koloni arıza türleri), `onboarding` (Dart kristali 78).
+  `notifications` (koloni arıza türleri).
 - **Geri bildirim 4 (sahip, 2026-09-25) — 9 madde.**
   [x] 9 `39bd32d` her sayı kutusu yazılabilir; yazılan aynen kalır, odak kaybı/Enter'da oturur (boş → taban, fazla →
   tavan), değer yazarken sınırlı olarak canlı gider (basılı tut eski sayıyı göndermez), odakta sayı seçilir.
@@ -666,7 +666,10 @@ Master F3 başında kontrol edildi: branch noktasından (a64b230) beri değişme
 typecheck 0 hata · lint 0 hata.
 - rules (4): `academy.test.ts` "makes the Academy exit whole…"; `economy-profile.test.ts` "links the other purchases…";
   `intergalactic-convoy.test.ts` "uses combat-only firepower…"; `transport-ladder.test.ts` "carries more than it cost…".
-- sim (1): `season.test.ts` "TAX holds its band".
+- sim (baseline): `season.test.ts` "TAX holds its band". After the owner-approved Fleet/Prospector
+  slowdown (#18), the same season gate also reports `informed archetype reaches the top rank` on
+  seed 42 (GRINDER median rank 10 vs TURTLE 9); this is a balance decision, not silently re-labeled
+  as a green test.
 - web (9, 2026-09-24 D3/D4 sonu tam paket): `api-bodies.test.ts` disbandClan; ~~`build-sheet.test.tsx` strategic hardware ×4~~
   (D3'te ocak Taktiksel sekmesine göre yeniden yazıldı, yeşil); `chronicle-screen.test.tsx` capital strike; `locked-rows.test.tsx` research gate (test dünyasında Tersane yok, kapı Tersane'ye
   gidiyor — öncül eskimiş); `predict.test.ts` ×2; `recovery-boost.test.tsx` ×2; `research-gains.test.ts` ×2.

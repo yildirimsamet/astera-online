@@ -112,7 +112,7 @@ describe('the pirate table', () => {
       THE BAND IS THE HULL TABLE'S OWN, AND THAT IS THE WHOLE OF D155.
 
       It used to be 200-420 units per minute, chosen "deliberately under the rocks"
-      — but the craft that chases a rock is a Prospector at 825, and the craft that
+      — but the craft that chases a rock is a Prospector at 618.75, and the craft that
       chases a pirate is a warship at 106-231. On the hull table's scale the old
       band was 240-504: FASTER THAN EVERY SHIP IN THE GAME. So `interceptOrbit`
       answered correctly and the answer was never a lead — it was the far side of
@@ -122,9 +122,9 @@ describe('the pirate table', () => {
       Both ends are read off the catalogue and then multiplied by D203's shared
       0.75, because two separately typed speeds would eventually drift.
 
-        · TOP: three quarters of a Dart's pace. Every Skirmisher outruns the fastest
+        · TOP: 70% of a slowed Dart's pace. Every Skirmisher outruns the fastest
           pirate, so "can I catch it" is never a question about your wallet.
-        · FLOOR: three quarters of a Cataclysm's pace. The Citadel now outruns the
+        · FLOOR: 70% of a slowed Cataclysm's pace. The Citadel now outruns the
           slow end; that is the requested lane-wide reduction, not a second tune.
 
       EVERY COMPARISON HERE IS IN UNITS PER MINUTE, which is the scale a pirate's
@@ -132,8 +132,8 @@ describe('the pirate table', () => {
       `distanceFactor` to reach it, so that division is the comparison — and
       leaving it out is exactly how the two scales came to be confused.
     */
-    expect(PIRATE.speedMax).toBeCloseTo(HULLS.DART.speed * 0.75 / TRAVEL.distanceFactor, 9);
-    expect(PIRATE.speedMin).toBeCloseTo(HULLS.CATACLYSM.speed * 0.75 / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMax).toBeCloseTo(HULLS.DART.speed * 0.70 / TRAVEL.distanceFactor, 9);
+    expect(PIRATE.speedMin).toBeCloseTo(HULLS.CATACLYSM.speed * 0.70 / TRAVEL.distanceFactor, 9);
     expect(PIRATE.speedMin).toBeLessThan(PIRATE.speedMax);
 
     // The hunting class outruns every pirate the lane can draw, at every rung.
@@ -539,7 +539,8 @@ describe('the pirate schedule', () => {
     const field = generatePirateSchedule(mulberry32(7));
 
     // The count is the 300-seat lane's and never moved; the digests below were
-    // re-taken for the radius-3000 orbit band (2026-09-18), a season-boundary change.
+    // re-taken for the radius-4500 orbit band and 30% speed cut (2026-09-25), both
+    // deliberately introduced only with the new-season reset.
     expect(established).toHaveLength(2823);
     // Each stage is a strict prefix of the next, so a staged rollout only ever
     // hides contacts — it can never publish a different one under the same handle.
@@ -568,9 +569,9 @@ describe('the pirate schedule', () => {
       .update(JSON.stringify(field.map(({ hoard: _hoard, ...rest }) => rest)))
       .digest('hex');
     expect(identity(established))
-      .toBe('496162a9cd4508818e94e6d0220c8422ac32a5550b79583843e7e2bf781d3f5e');
+      .toBe('92ec597af89a97125b0020fc991472e051fa9c3a29e518d896a0d2065a688684');
     expect(identity(increased))
-      .toBe('72519a87c9fa7d1979fa6ffc01a662e91742b31db90d77f1dc5f58663711f518');
+      .toBe('59a5ddacb746963f25e417d3dba8865f7a4872de1d00014276ef962a10058d03');
     // And the prize is still deterministic for a given lane, which the roster above pins.
     expect(established[0]!.hoard).toEqual(increased[0]!.hoard);
   });

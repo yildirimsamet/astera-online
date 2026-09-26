@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   UNAIDED,
+  FLEET_SPEED_FACTOR,
   GROUND_HULLS,
   HULLS,
   MOBILE_HULLS,
@@ -16,12 +17,27 @@ import {
   fleetSpeed,
   fleetTravelExact,
   hullTech,
+  profileFlightSpeed,
   researchEffectAt,
 } from '../src/index.js';
 import type { HullId } from '../src/index.js';
 
 /** Base round trips at 1250 units include the ten-second engagement. No research or Beacon. */
 describe('monthly fleet tempo', () => {
+  it('slows every shipyard fleet hull by exactly twenty-five percent', () => {
+    expect(FLEET_SPEED_FACTOR).toBe(0.75);
+    for (const id of MOBILE_HULLS) {
+      const hull = HULLS[id];
+      const authoredRoundTrip = hull.profile === 'TRANSPORT'
+        ? SUPPORT_ROUND_TRIP[hull.tier! - 1]!
+        : hull.profile === 'COLLECTOR' ? 20
+          : hull.cls === 'SKIRMISHER' ? 15 : hull.cls === 'LANCE' ? 20
+            : hull.profile === 'ESCORT' ? 18 : 25;
+      expect(hull.speed, id)
+        .toBeCloseTo(profileFlightSpeed(authoredRoundTrip) * FLEET_SPEED_FACTOR, 9);
+    }
+  });
+
   /**
    * COMBAT ROLES ONLY. A cargo hull's round trip is a rung of `SUPPORT_ROUND_TRIP`
    * rather than a property of its class — it is bought with hold rather than with
@@ -34,21 +50,24 @@ describe('monthly fleet tempo', () => {
       // D207: the Escort reads its profile, not its class — it is the faster Bulwark.
       const expected = hull.cls === 'SKIRMISHER' ? 15 : hull.cls === 'LANCE' ? 20
         : hull.profile === 'ESCORT' ? 18 : 25;
-      expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED) + 10 / 60).toBeCloseTo(expected, 9);
+      const expectedSlowed = (expected - 10 / 60) / FLEET_SPEED_FACTOR + 10 / 60;
+      expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED) + 10 / 60)
+        .toBeCloseTo(expectedSlowed, 9);
     }
   });
 
   it('gives each hold the round trip its rung authors', () => {
     const cargo = ['COURIER', 'WAYFARER', 'ATLAS'] as const;
     cargo.forEach((id, tier) => {
+      const expected = (SUPPORT_ROUND_TRIP[tier]! - 10 / 60) / FLEET_SPEED_FACTOR + 10 / 60;
       expect(2 * fleetTravelExact(1250, { [id]: 1 }, UNAIDED) + 10 / 60)
-        .toBeCloseTo(SUPPORT_ROUND_TRIP[tier]!, 9);
+        .toBeCloseTo(expected, 9);
     });
   });
   it('keeps ground craft stationary and mining independent', () => {
     for (const id of GROUND_HULLS) expect(HULLS[id].speed).toBe(0);
     expect(HULLS.PROSPECTOR.speed).toBe(PROSPECTOR.speed);
-    expect(PROSPECTOR.speed).toBe(825);
+    expect(PROSPECTOR.speed).toBe(618.75);
   });
 });
 
@@ -148,8 +167,9 @@ describe('D153 probe speed', () => {
 
   /** The cut is on the probe alone. Nothing else in the model reads it. */
   it('moves nothing but the probe', () => {
-    expect(PROSPECTOR.speed).toBe(825);
-    expect(fleetTravelExact(1250, { DART: 1 }, UNAIDED)).toBeCloseTo((15 - 1 / 6) / 2);
+    expect(PROSPECTOR.speed).toBe(618.75);
+    expect(fleetTravelExact(1250, { DART: 1 }, UNAIDED))
+      .toBeCloseTo((15 - 1 / 6) / 2 / FLEET_SPEED_FACTOR);
   });
 });
 

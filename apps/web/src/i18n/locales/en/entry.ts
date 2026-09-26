@@ -60,7 +60,7 @@ export const landing = {
     submitLogin: 'Sign in',
     switchToLogin: 'I already have a commander',
     switchToRegister: 'I need a commander',
-    badName: 'Names are 3-16 letters, numbers or underscores.',
+    badName: 'Use 2–32 letters, numbers, underscores or single spaces, in any language.',
     noName: 'Enter your commander name.',
     shortPassword: 'Passwords are at least {{count}} characters.',
     noPassword: 'Enter your password.',

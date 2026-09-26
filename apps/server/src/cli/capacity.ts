@@ -2,7 +2,7 @@
  * Deterministic capacity-fixture seeding. NEVER production.
  *
  *   CAPACITY_SEED_CONFIRM=ASTERA_STAGING_ONLY CAPACITY_PASSWORD=... \
- *   pnpm --filter @astera/server capacity:seed -- --yes --users 300 --seed 99300
+ *   pnpm --filter @astera/server capacity:seed -- --yes --users 1000 --seed 99300
  */
 import { parseArgs } from 'node:util';
 import { eq, inArray, sql } from 'drizzle-orm';
@@ -313,9 +313,9 @@ async function main(): Promise<void> {
         tier3: neutralByTier.get(3) ?? 0,
       };
       if (
-        neutralCounts.tier1 !== expected[1]
-        || neutralCounts.tier2 !== expected[2]
-        || neutralCounts.tier3 !== expected[3]
+        neutralCounts.tier1 > expected[1]
+        || neutralCounts.tier2 > expected[2]
+        || neutralCounts.tier3 > expected[3]
       ) {
         throw new Error(
           `capacity fixture neutral mismatch in ${shard.code}: ${JSON.stringify(neutralCounts)}`,

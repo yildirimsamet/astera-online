@@ -1,3 +1,4 @@
+import { COUNTRY_CODES } from '@astera/rules';
 import { z } from 'zod';
 
 /**
@@ -10,15 +11,11 @@ import { z } from 'zod';
  */
 
 /**
- * Letters, digits and underscore, 3-16.
- *
- * Deliberately narrow. A commander's name is read by other people in battle
- * reports and on the ladder, and the rules that follow from a permissive charset —
- * homoglyph impersonation, right-to-left overrides, zero-width padding — are all
- * problems this game does not need to have solved. Display casing is preserved
- * separately, so `Vantage` still reads as `Vantage`.
+ * Unicode letters, marks and numbers, plus inner single spaces and underscores.
+ * Format controls and padding are excluded so a visible name remains easy to
+ * select and compare. Display casing and script are preserved for other players.
  */
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/;
+export const USERNAME_PATTERN = /^[\p{L}\p{N}]\p{M}*(?:[\p{L}\p{N}]\p{M}*|_+[\p{L}\p{N}]\p{M}*| [\p{L}\p{N}]\p{M}*)+$/u;
 
 /** Names that must never belong to a player, whatever the casing. */
 const RESERVED = new Set([
@@ -29,8 +26,9 @@ const RESERVED = new Set([
 export const usernameSchema = z
   .string()
   .trim()
-  .regex(USERNAME_PATTERN, 'Use 3-16 letters, numbers or underscores')
-  .refine((name) => !RESERVED.has(name.toLowerCase()), 'That name is reserved');
+  .regex(USERNAME_PATTERN, 'Use 2-32 letters, numbers, underscores or single spaces')
+  .refine((name) => Array.from(name).length <= 32, 'At most 32 characters')
+  .refine((name) => !RESERVED.has(normaliseUsername(name)), 'That name is reserved');
 
 /**
  * Eight characters, and an upper bound.
@@ -45,11 +43,14 @@ export const passwordSchema = z
   .max(200, 'At most 200 characters');
 
 /** The stored, indexed form. Comparisons and uniqueness both run on this. */
-export const normaliseUsername = (name: string): string => name.trim().toLowerCase();
+export const normaliseUsername = (name: string): string => name.trim().normalize('NFKC').toLowerCase();
+
+export const countryCodeSchema = z.enum(COUNTRY_CODES);
 
 export const registerBody = z.object({
   username: usernameSchema,
   password: passwordSchema,
+  countryCode: countryCodeSchema.optional(),
 });
 
 /**

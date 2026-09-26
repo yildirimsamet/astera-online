@@ -250,8 +250,8 @@ describe('telescope range and cooldown', () => {
     await giveSatellite(f.db, mine, 'UPLINK');
     await placeAt(f.db, mine, { x: 0 });
     await placeAt(f.db, near, { x: 200 });
-    // Beyond L1's reach of 1,425, inside L3's 1,875 (the ×1.5 ladder, 2026-09-18).
-    await placeAt(f.db, far, { x: 1_600 });
+    // Keep the target between the current L1 and L3 reach after balance changes.
+    await placeAt(f.db, far, { x: Math.round((INTEL.telescopeRange[1]! + INTEL.telescopeRange[3]!) / 2) });
   });
 
   it('refuses a world beyond the telescope reach', async () => {
@@ -264,7 +264,7 @@ describe('telescope range and cooldown', () => {
   it('a bigger telescope reaches further', async () => {
     await giveInstrument(f.db, mine, 'TELESCOPE', 3);
     await expect(assignWatch(f.db, mine, far, 0, f.clock)).resolves.toBeTruthy();
-    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(1_600);
+    expect(INTEL.telescopeRange[3]!).toBeGreaterThan(INTEL.telescopeRange[1]!);
   });
 
   /** Filling an empty slot is free. The price is changing your mind. */
@@ -720,6 +720,13 @@ describe('putting satellites in orbit', () => {
     await expect(installSatellite(f.db, mine, 'UPLINK', f.clock)).rejects.toMatchObject({
       code: 'NO_FREE_SLOT',
     });
+  });
+
+  it('refuses every new satellite at Core 2', async () => {
+    await setLevel(f.db, mine, 'CORE', 2);
+    for (const type of ['UPLINK', 'FOUNDRY', 'DERRICK', 'BEACON'] as const) {
+      await expect(installSatellite(f.db, mine, type, f.clock)).rejects.toMatchObject({ code: 'NO_FREE_SLOT' });
+    }
   });
 
   it('opens slots at Core 6, 9, 12 and 15', async () => {

@@ -14,6 +14,7 @@ interface SessionResponse {
   accountId: string;
   username: string;
   displayName: string;
+  country: string;
   accessToken: string;
 }
 
@@ -56,13 +57,35 @@ describe('auth', () => {
     return raw.split(';')[0]!;
   };
 
-  const register = async (username = 'Vantage', password = PASSWORD) =>
-    app.inject({ method: 'POST', url: '/api/auth/register', payload: { username, password } });
+  const register = async (username = 'Vantage', password = PASSWORD, countryCode?: string) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
+    });
 
   const login = async (username: string, password: string) =>
     app.inject({ method: 'POST', url: '/api/auth/login', payload: { username, password } });
 
   describe('register', () => {
+    it('accepts Unicode names with spaces and signs in using the same folded name', async () => {
+      for (const name of ['李 小龙', 'ليلى أحمد', 'عَلِيّ', 'أحمدُ', 'Ayşe Yıldız']) {
+        const created = await register(name);
+        expect(created.statusCode).toBe(200);
+        expect(created.json<SessionResponse>().displayName).toBe(name);
+        expect((await login(name, PASSWORD)).statusCode).toBe(200);
+      }
+      expect((await register('Ａｙｓ̧ｅ')).statusCode).toBe(200);
+    });
+
+    it('rejects format controls, blank padding and normalized duplicate names', async () => {
+      expect((await register('李 小龙')).statusCode).toBe(200);
+      expect((await register('李  小龙')).statusCode).toBe(400);
+      expect((await register('李\u200b小龙')).statusCode).toBe(400);
+      expect((await register('李\u202e小龙')).statusCode).toBe(400);
+      expect((await register('ＡＤＭＩＮ')).statusCode).toBe(400);
+      expect((await register('李 小龙')).statusCode).toBe(409);
+    });
     it('creates an account and opens a session', async () => {
       const res = await register();
       expect(res.statusCode).toBe(200);
@@ -73,6 +96,24 @@ describe('auth', () => {
       // Folded for the index, preserved for other players to read.
       expect(body.username).toBe('vantage');
       expect(body.displayName).toBe('Vantage');
+      expect(body.country).toBe('TR');
+    });
+
+    it('stores an explicitly selected country', async () => {
+      const body = (await register('Voyager', PASSWORD, 'DE')).json<SessionResponse>();
+      const [row] = await db.select().from(accounts).where(eq(accounts.id, body.accountId));
+
+      expect(body.country).toBe('DE');
+      expect(row?.countryCode).toBe('DE');
+    });
+
+    it('defaults omitted countries to Türkiye and rejects unknown codes', async () => {
+      const body = (await register('Defaulted')).json<SessionResponse>();
+      const [row] = await db.select().from(accounts).where(eq(accounts.id, body.accountId));
+      expect(row?.countryCode).toBe('TR');
+
+      expect((await register('InvalidCountry', PASSWORD, 'XX')).statusCode).toBe(400);
+      expect((await register('LowerCountry', PASSWORD, 'tr')).statusCode).toBe(400);
     });
 
     it('sets an httpOnly refresh cookie', async () => {
@@ -120,9 +161,9 @@ describe('auth', () => {
     });
 
     it.each([
-      ['too short', 'ab'],
-      ['too long', 'x'.repeat(17)],
-      ['a space inside', 'van tage'],
+      ['too short', 'a'],
+      ['too long', 'x'.repeat(33)],
+      ['repeated spaces', 'van  tage'],
       ['punctuation', 'van.tage'],
       ['empty', ''],
       ['reserved', 'admin'],
@@ -235,11 +276,44 @@ describe('auth', () => {
       });
       expect(res.statusCode).toBe(200);
 
-      const me = res.json<{ accountId: string; username: string; placement: unknown }>();
+      const me = res.json<{ accountId: string; username: string; country: string; placement: unknown }>();
       expect(me.accountId).toBe(body.accountId);
       expect(me.username).toBe('vantage');
+      expect(me.country).toBe('TR');
       // Registered but not yet placed: the client sends them to the server list.
       expect(me.placement).toBeNull();
+    });
+
+    it('changes the signed-in account country and returns it from me', async () => {
+      const body = (await register()).json<SessionResponse>();
+      const authorization = `Bearer ${body.accessToken}`;
+
+      const changed = await app.inject({
+        method: 'PUT',
+        url: '/api/auth/me/country',
+        headers: { authorization },
+        payload: { country: 'JP' },
+      });
+      expect(changed.statusCode).toBe(200);
+      expect(changed.json()).toEqual({ country: 'JP' });
+
+      const me = await app.inject({ method: 'GET', url: '/api/auth/me', headers: { authorization } });
+      expect(me.json<{ country: string }>().country).toBe('JP');
+    });
+
+    it('protects and validates the country mutation', async () => {
+      expect((await app.inject({
+        method: 'PUT', url: '/api/auth/me/country', payload: { country: 'DE' },
+      })).statusCode).toBe(401);
+
+      const body = (await register()).json<SessionResponse>();
+      const invalid = await app.inject({
+        method: 'PUT',
+        url: '/api/auth/me/country',
+        headers: { authorization: `Bearer ${body.accessToken}` },
+        payload: { country: 'XX' },
+      });
+      expect(invalid.statusCode).toBe(400);
     });
 
     /**

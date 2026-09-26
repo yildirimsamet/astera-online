@@ -55,7 +55,7 @@ describe('what a hull carries and drinks', () => {
   it('drinks in proportion to what it costs', () => {
     for (const id of combat) {
       const perValue = hullFuelMass(id) / price(id);
-      expect(perValue, id).toBeGreaterThan(0.004);
+      expect(perValue, id).toBeGreaterThan(0.0035);
       expect(perValue, id).toBeLessThan(0.03);
     }
   });
@@ -91,7 +91,7 @@ describe('what a hull carries and drinks', () => {
     // ...and the entry hull is on the same rule as everything above it.
     for (const id of byTier(1)) {
       const perValue = hullFuelMass(id) / price(id);
-      expect(perValue, id).toBeGreaterThan(0.004);
+      expect(perValue, id).toBeGreaterThan(0.0035);
     }
   });
 

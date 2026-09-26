@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ALL_HULLS, ECONOMY_ADJUSTMENT, HULLS, YARD_GATE_TOP, alloyRate, buildingCost, crystalRate,
+  ALL_HULLS, ECONOMY_ADJUSTMENT, HULLS, PLANET_START, YARD_GATE_TOP, alloyRate, buildingCost, crystalRate,
   producerOutputMult, yardThroughput,
 } from '../src/index.js';
 
@@ -54,11 +54,29 @@ describe('the Yard ladder', () => {
     expect(HULLS.CATACLYSM.minShipyard).toBe(LAST_GATE);
   });
 
-  it('leaves every gate rung exactly where it was', () => {
+  it('raises only the two early gate rungs selected by the owner', () => {
     expect(buildingCost('SHIPYARD', 0)).toEqual({ alloy: 143, crystal: 55, deuterium: 0 });
+    expect(buildingCost('SHIPYARD', 1)).toEqual({ alloy: 2293, crystal: 882, deuterium: 0 });
+    expect(buildingCost('SHIPYARD', 2)).toEqual({ alloy: 3500, crystal: 1250, deuterium: 0 });
     expect(buildingCost('SHIPYARD', 3)).toEqual({ alloy: 5662, crystal: 2178, deuterium: 0 });
     expect(buildingCost('SHIPYARD', LAST_GATE - 1))
       .toEqual({ alloy: 32587, crystal: 12534, deuterium: 0 });
+    expect(buildingCost('SHIPYARD', 8)).toEqual({ alloy: 55204, crystal: 21233, deuterium: 0 });
+  });
+
+  it('does not let the starting grant buy both opening Yard levels', () => {
+    const first = buildingCost('SHIPYARD', 0);
+    const second = buildingCost('SHIPYARD', 1);
+    expect(first.alloy + second.alloy).toBeGreaterThan(PLANET_START.alloy);
+    expect(first.crystal + second.crystal).toBeGreaterThan(PLANET_START.crystal);
+  });
+
+  it('keeps every authored Yard rung strictly more expensive than the prior one', () => {
+    for (let level = 1; level <= 21; level++) {
+      const before = buildingCost('SHIPYARD', level - 1);
+      const current = buildingCost('SHIPYARD', level);
+      expect(current.alloy + current.crystal).toBeGreaterThan(before.alloy + before.crystal);
+    }
   });
 
   /**

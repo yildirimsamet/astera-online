@@ -26,7 +26,7 @@ import {
  *
  * A caretaker world is guarded at every tier, a captured world opens on a fixed
  * tier stock instead of whatever the caretaker was holding, colonies arrive at
- * Core 9 / 12 / 15, and the galaxy carries 38 / 19 / 8 of them.
+ * Core 9 / 13 / 16 after the 2026-09-26 pacing pass, and the galaxy carries 76 / 38 / 16 of them.
  */
 describe('D209 neutral garrisons', () => {
   it('guards tier 1 with twelve Darts, six Pikes, one Viper, one Stronghold, one Thorn and Aegis 1', () => {
@@ -116,16 +116,16 @@ describe('D209 capture stock', () => {
 
 describe('D209 colony capacity', () => {
   it.each([
-    [0, 0], [6, 0], [8, 0], [9, 1], [11, 1], [12, 2], [14, 2], [15, 3], [99, 3],
+    [0, 0], [6, 0], [8, 0], [9, 1], [12, 1], [13, 2], [15, 2], [16, 3], [99, 3],
   ])('maps Core %i to %i colony slots', (core, capacity) => {
     expect(colonyCapacity(core)).toBe(capacity);
   });
 
   it('names the Core the next colony opens at, and null past the third', () => {
     expect(nextColonyCore(0)).toBe(9);
-    expect(nextColonyCore(1)).toBe(12);
-    expect(nextColonyCore(1, 1)).toBe(15);
-    expect(nextColonyCore(2)).toBe(15);
+    expect(nextColonyCore(1)).toBe(13);
+    expect(nextColonyCore(1, 1)).toBe(16);
+    expect(nextColonyCore(2)).toBe(16);
     expect(nextColonyCore(3)).toBeNull();
   });
 
@@ -137,9 +137,10 @@ describe('D209 colony capacity', () => {
     expect(hasColonyCapacity(8, 0, 0)).toBe(false);
     expect(hasColonyCapacity(9, 0, 0)).toBe(true);
     expect(hasColonyCapacity(11, 1, 0)).toBe(false);
-    expect(hasColonyCapacity(12, 1, 0)).toBe(true);
-    expect(hasColonyCapacity(14, 2, 0)).toBe(false);
-    expect(hasColonyCapacity(15, 2, 0)).toBe(true);
+    expect(hasColonyCapacity(12, 1, 0)).toBe(false);
+    expect(hasColonyCapacity(13, 1, 0)).toBe(true);
+    expect(hasColonyCapacity(15, 2, 0)).toBe(false);
+    expect(hasColonyCapacity(16, 2, 0)).toBe(true);
   });
 });
 

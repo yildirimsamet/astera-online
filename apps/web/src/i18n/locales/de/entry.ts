@@ -60,7 +60,7 @@ export const landing = {
     submitLogin: 'Anmelden',
     switchToLogin: 'Ich habe schon einen Kommandanten',
     switchToRegister: 'Ich brauche einen Kommandanten',
-    badName: 'Der Name muss 3–16 Buchstaben, Zahlen oder Unterstriche enthalten.',
+    badName: 'Nutze 2–32 Buchstaben, Zahlen, Unterstriche oder einzelne Leerzeichen in jeder Sprache.',
     noName: 'Gib deinen Kommandantennamen ein.',
     shortPassword: 'Passwörter bestehen aus mindestens {{count}} Zeichen.',
     noPassword: 'Gib dein Passwort ein.',

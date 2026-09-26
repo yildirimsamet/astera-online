@@ -17,7 +17,7 @@ describe('transfer event classification', () => {
     expect(transferEventDisposition(kind, 'pending', 101, 100)).toBe('DEFER');
     expect(transferEventDisposition(kind, 'done', 99, 100)).toBe('KEEP');
   });
-  it.each(['season_end', 'season_rollover', 'season_act', 'galaxy_event_start', 'galaxy_event_end'])('keeps galaxy-global %s in its source', (kind) => {
+  it.each(['season_end', 'season_rollover', 'season_act', 'galaxy_event_start', 'galaxy_event_end', 'neutral_census'])('keeps galaxy-global %s in its source', (kind) => {
     expect(transferEventDisposition(kind, 'pending', 101, 100)).toBe('KEEP');
   });
   it('keeps a clan-owned joint war timer where the clan is', () => {

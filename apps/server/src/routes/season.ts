@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
+  accounts,
   botProfiles,
   planets,
   playerRivals,
@@ -166,8 +167,9 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
     }
 
     const rows = await app.db
-      .select()
+      .select({ result: seasonResults, currentCountry: accounts.countryCode })
       .from(seasonResults)
+      .innerJoin(accounts, eq(accounts.id, seasonResults.accountId))
       .where(eq(seasonResults.seasonId, seasonId))
       .orderBy(asc(seasonResults.finalRank));
     return {
@@ -183,13 +185,14 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         endReason: context.season.endReason,
       },
       record: context.season.galaxyRecord,
-      ladder: rows.map((row) => ({
-        resultId: row.publicId,
-        rank: row.finalRank,
-        commanderName: row.recap.commanderName,
-        dominion: row.dominion,
-        title: row.title,
-        self: row.accountId === req.accountId,
+      ladder: rows.map(({ result, currentCountry }) => ({
+        resultId: result.publicId,
+        rank: result.finalRank,
+        commanderName: result.recap.commanderName,
+        country: result.recap.countryCode ?? currentCountry,
+        dominion: result.dominion,
+        title: result.title,
+        self: result.accountId === req.accountId,
         reward: null,
       })),
     };
@@ -198,11 +201,18 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
   app.get('/api/season-archive/results/:resultId', { preHandler: requireAuth }, async (req) => {
     const { resultId } = z.object({ resultId: z.string().uuid() }).parse(req.params);
     const [selected] = await app.db
-      .select({ result: seasonResults, season: seasons, cycle: seasonCycles, shard: shards })
+      .select({
+        result: seasonResults,
+        season: seasons,
+        cycle: seasonCycles,
+        shard: shards,
+        currentCountry: accounts.countryCode,
+      })
       .from(seasonResults)
       .innerJoin(seasons, eq(seasons.id, seasonResults.seasonId))
       .innerJoin(seasonCycles, eq(seasonCycles.id, seasonResults.cycleId))
       .innerJoin(shards, eq(shards.id, seasons.shardId))
+      .innerJoin(accounts, eq(accounts.id, seasonResults.accountId))
       .where(eq(seasonResults.publicId, resultId))
       .limit(1);
     if (!selected) throw new GameError('SEASON_RESULT_NOT_FOUND', 'No such season result', 404);
@@ -293,6 +303,7 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
         closedAt: selected.season.closedAt,
         endReason: selected.season.endReason,
         commanderName: selected.result.recap.commanderName,
+        country: selected.result.recap.countryCode ?? selected.currentCountry,
         planetName: selected.result.recap.planetName,
         rank: selected.result.finalRank,
         /** The size of the field that rank was taken from. */

@@ -167,7 +167,7 @@ describe('what a lesson leaves pressable', () => {
     // and that includes the disc, because the beat is a screen of its own.
     expect(academyGateSelectors(state({ claiming: true }))).toEqual([]);
     expect(academyGateSelectors(state({ intro: true }))).toEqual([]);
-    expect(academyGateSelectors(state({ telescope: true }))).toEqual([]);
+    expect(academyGateSelectors(state({ telescope: true }))).toEqual(['[data-academy-continue]']);
   });
 
   it('still lights the lesson target beside the camera', () => {

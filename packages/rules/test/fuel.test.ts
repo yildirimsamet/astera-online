@@ -102,12 +102,12 @@ describe('mission fuel', () => {
      * the ceiling rung one opens must sustain several ordinary raids a day, or the
      * whole chain ends in a building that does not solve the problem it was sold on.
      */
-    // With the tier surcharge removed, a first-refinery day flies about five.
+    // After the 10% fleet-wide fuel cut, a first-refinery day flies about six.
     it('makes a full raid cadence consume a meaningful first-refinery day', () => {
       const perDay = deuteriumRate(3) * 24;
       const raid = missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-      expect(perDay / raid).toBeGreaterThan(5);
-      expect(perDay / raid).toBeLessThan(6);
+      expect(perDay / raid).toBeGreaterThan(6);
+      expect(perDay / raid).toBeLessThan(7);
     });
 
     /**
@@ -208,6 +208,10 @@ describe('fuel per craft', () => {
  * other; `groundSlots` is its last consumer.
  */
 describe('D195 fuel by hull value', () => {
+  it('reduces the fleet-wide thirst after the 25 percent speed reduction', () => {
+    expect(FUEL.perValue).toBe(0.00495);
+    expect(SALVAGE.fuelMass).toBe(900);
+  });
   const value = (id: MobileHullId): number =>
     resourceValue(HULLS[id]);
 
@@ -309,10 +313,10 @@ describe('D195 fuel by hull value', () => {
    * or the chain the opening teaches ends in a building that does not solve the
    * problem it was sold on.
    */
-  it('spends a first-refinery day on about five tier-2 raids', () => {
+  it('spends a first-refinery day on about six tier-2 raids', () => {
     const perDay = deuteriumRate(3) * 24;
     const raids = perDay / missionFuel({ DART: 60, WAYFARER: 4 }, NEIGHBOUR, 2);
-    expect(raids).toBeGreaterThan(5);
-    expect(raids).toBeLessThan(6);
+    expect(raids).toBeGreaterThan(6);
+    expect(raids).toBeLessThan(7);
   });
 });

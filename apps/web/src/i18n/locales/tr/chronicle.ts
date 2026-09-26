@@ -36,6 +36,8 @@ export const chronicle = {
   dominionLeaderDetail: '{{planet}} artık herkese açık sıralamanın tepesinde.',
   neutralClaim: '{{planet}} üzerinde hak penceresi açıldı · {{tier}}. kademe',
   neutralClaimDetail: 'Kesin bir akın, bu dünya için herkese açık bir yerleşim yarışı başlattı.',
+  neutralOpened: '{{total}} nötr dünya açıldı',
+  neutralOpenedDetail: 'Sınır genişledi · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: '{{planet}} üzerinde Ölüm Yıldızı darbesi',
   deathStarOutcome: {
     FIRST_STRIKE: 'EMP, Aegis canını sıfırladı. Yer savunmaları 1 saat ateş etmez ve hasar almaz.',

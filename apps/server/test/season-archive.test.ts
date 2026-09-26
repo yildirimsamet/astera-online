@@ -274,6 +274,8 @@ describe('completed season archive', () => {
       .update(players)
       .set({ dominionTaken: 700 })
       .where(eq(players.id, fixture.playerIds[1]!));
+    await fixture.db.update(accounts).set({ countryCode: 'DE' })
+      .where(eq(accounts.id, fixture.accountIds[1]!));
     await freeze();
 
     const original = await fixture.db
@@ -283,7 +285,7 @@ describe('completed season archive', () => {
       .orderBy(asc(seasonResults.finalRank));
     await fixture.db
       .update(accounts)
-      .set({ displayName: 'RENAMED AFTER FREEZE' })
+      .set({ displayName: 'RENAMED AFTER FREEZE', countryCode: 'JP' })
       .where(eq(accounts.id, original[0]!.accountId));
 
     const response = await app.inject({
@@ -301,6 +303,7 @@ describe('completed season archive', () => {
         commanderName: string;
         dominion: number;
         title: string;
+        country: string;
         self: boolean;
       }[];
     }>();
@@ -309,11 +312,39 @@ describe('completed season archive', () => {
     expect(body.ladder[0]).toMatchObject({
       commanderName: original[0]!.name,
       dominion: 700,
+      country: 'DE',
     });
     expect(body.ladder[0]!.commanderName).not.toBe('RENAMED AFTER FREEZE');
     expect(body.ladder.filter((row) => row.self)).toHaveLength(1);
     expect(body.ladder.every((row) => row.resultId.length > 0)).toBe(true);
     expect(response.body).not.toContain(original[0]!.accountId);
+  });
+
+  it('falls back to the current account country for a legacy result without a snapshot', async () => {
+    await freeze();
+    const [result] = await fixture.db.select().from(seasonResults)
+      .orderBy(asc(seasonResults.finalRank)).limit(1);
+    if (!result) throw new Error('frozen result missing');
+    const { countryCode: _countryCode, ...legacyRecap } = result.recap;
+    await fixture.db.update(seasonResults).set({ recap: legacyRecap })
+      .where(eq(seasonResults.publicId, result.publicId));
+    await fixture.db.update(accounts).set({ countryCode: 'US' })
+      .where(eq(accounts.id, result.accountId));
+
+    const leaderboard = await app.inject({
+      method: 'GET',
+      url: `/api/season-archive/${fixture.seasonId}/leaderboard`,
+      headers: auth,
+    });
+    expect(leaderboard.json<{ ladder: { resultId: string; country: string }[] }>()
+      .ladder.find((row) => row.resultId === result.publicId)?.country).toBe('US');
+
+    const profile = await app.inject({
+      method: 'GET',
+      url: `/api/season-archive/results/${result.publicId}`,
+      headers: auth,
+    });
+    expect(profile.json<{ selected: { country: string } }>().selected.country).toBe('US');
   });
 
   it('seals the shared galaxy record before volatile battle and Chronicle rows disappear', async () => {

@@ -176,7 +176,7 @@ export function intergalacticConvoySpec(
   };
 }
 
-/** The formation centre on its authored, clamped two-hour diameter transit. */
+/** The formation centre on its authored, clamped three-hour diameter transit. */
 export function intergalacticConvoyPosition(
   spec: Pick<IntergalacticConvoySpec, 'appearsAt' | 'expiresAt' | 'from' | 'to'>,
   minute: number,
@@ -494,10 +494,15 @@ export function quoteIntergalacticConvoyReward(input: {
   const cargo = fleetCargo(fleet, input.launchTech);
   if (!Number.isSafeInteger(cargo) || cargo < 0) throw new RangeError('convoy cargo overflow');
   const cargoFactor = Math.min(1, cargo / Math.max(1, rawTotal));
+  // Keep the proportional floor exact. Multiplying by the floating cargoFactor
+  // can turn an exact 15 into 14.999..., silently losing one unit of cargo.
+  const cargoClampedPile = (raw: number): number => rawTotal <= cargo
+    ? raw
+    : Number((BigInt(raw) * BigInt(cargo)) / BigInt(rawTotal));
   const resourceReward = {
-    alloy: Math.floor(rawResourceReward.alloy * cargoFactor),
-    crystal: Math.floor(rawResourceReward.crystal * cargoFactor),
-    deuterium: Math.floor(rawResourceReward.deuterium * cargoFactor),
+    alloy: cargoClampedPile(rawResourceReward.alloy),
+    crystal: cargoClampedPile(rawResourceReward.crystal),
+    deuterium: cargoClampedPile(rawResourceReward.deuterium),
   };
   return {
     productionCap: { ...input.productionCap },

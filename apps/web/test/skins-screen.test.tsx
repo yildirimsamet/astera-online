@@ -29,6 +29,10 @@ const links = {
   'planet-ice': 'https://buy.example.com/ice?ref={commander}',
   'planet-toxic': 'https://buy.example.com/toxic?ref={commander}',
   'planet-desert': 'https://buy.example.com/desert?ref={commander}',
+  'planet-turkey': 'https://buy.example.com/turkey?ref={commander}',
+  'planet-germany': 'https://buy.example.com/germany?ref={commander}',
+  'planet-france': 'https://buy.example.com/france?ref={commander}',
+  'planet-spain': 'https://buy.example.com/spain?ref={commander}',
   bundle: 'https://buy.example.com/all?ref={commander}',
 };
 const none = { ownedSkinIds: [] as ('planet-lava' | 'planet-ice')[], planets: collection.planets };
@@ -58,6 +62,28 @@ describe('the skin store', () => {
     expect(screen.getByTestId('preview')).toHaveTextContent(/^planet-toxic:/);
   });
 
+  it('separates elemental and country worlds into accessible tabs without mixing their offers', () => {
+    shop({ collection: none });
+    const elemental = screen.getByRole('tab', { name: /elemental worlds/i });
+    const countries = screen.getByRole('tab', { name: /country worlds/i });
+    expect(elemental).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('img', { name: /lava/i })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /turkey/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: i18n.t('skins.bundleTitle') })).toBeInTheDocument();
+
+    fireEvent.click(countries);
+    expect(countries).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('preview')).toHaveTextContent(/^planet-turkey:/);
+    expect(screen.getByRole('img', { name: /turkey/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /spain/i })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /lava/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: i18n.t('skins.bundleTitle') })).toBeNull();
+
+    fireEvent.click(card(/germany/i));
+    expect(screen.getByRole('link', { name: /buy.*\$2\.99/i }))
+      .toHaveAttribute('href', 'https://buy.example.com/germany?ref=Samet');
+  });
+
   it('prices each look the player lacks in the reader’s money, and marks the ones they own', async () => {
     shop();
     expect(card(/toxic/i)).toHaveTextContent('$2.99');
@@ -80,6 +106,12 @@ describe('the skin store', () => {
     shop({ checkout: { ...links, 'planet-toxic': '' } });
     expect(screen.queryByRole('link', { name: /buy/i })).toBeNull();
     expect(screen.getByRole('button', { name: i18n.t('skins.onSaleSoon') })).toBeDisabled();
+  });
+
+  it('does not claim that payment opens while every checkout link is missing', () => {
+    shop({ checkout: Object.fromEntries(Object.keys(links).map((key) => [key, ''])) as typeof links });
+    expect(screen.getByText(i18n.t('skins.trustSoon', { commander: 'Samet' }))).toBeInTheDocument();
+    expect(screen.queryByText(i18n.t('skins.trust', { commander: 'Samet' }))).toBeNull();
   });
 
   it('sends a look the player owns to the collection to put it on', () => {

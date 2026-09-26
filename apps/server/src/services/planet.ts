@@ -11,7 +11,7 @@ import {
   crystalRate,
   deuteriumRate,
   productionMult,
-  satelliteSlots,
+  activeOrbitSlots,
   wealth,
   type BuildingId,
   type BuildingLevels,
@@ -87,7 +87,8 @@ function installedFrom(rows: readonly { type: string; level: number }[]): Instal
 }
 
 /**
- * Installed orbit rows to the effective slots opened by the current Core.
+ * Installed orbit rows to the effective slots opened by the current Core,
+ * including an already fitted first-slot Uplink below Core 6.
  *
  * Keeping this as the one projection matters for reads assembled without
  * `loadLocked` too: a stored satellite in a closed slot must not improve mining
@@ -105,10 +106,10 @@ export function orbitFromRows(
       bySlot.set(row.slot, row.type);
     }
   }
-  return [...bySlot]
+  const stored = [...bySlot]
     .toSorted(([a], [b]) => a - b)
-    .slice(0, satelliteSlots(coreLevel))
     .map(([, type]) => type as SatelliteId);
+  return stored.slice(0, activeOrbitSlots(coreLevel, stored));
 }
 
 /**

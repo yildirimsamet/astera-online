@@ -23,7 +23,7 @@ import {
   instrumentCost,
   productionMult,
   satelliteCost,
-  satelliteSlots,
+  activeOrbitSlots,
   shieldHp,
   storageCap,
   vaultProtects,
@@ -213,7 +213,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
    * THIS WORLD HAS ALREADY SPENT ITS ONE STRIKE AT THE CONVOY THAT IS UP. D201.
    *
    * A world may strike each occurrence exactly once, ever — the DB says so with a
-   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts two hours
+   * unique index on `(planet_id, occurrence_id)` — and a crossing lasts three hours
    * while a round trip rarely lasts one. So the ordinary case is a commander whose
    * fleet is safely home, inside the same window, looking at a control that has
    * nothing left to spend. Publishing only `convoyLaunchLocked` (which clears the
@@ -357,7 +357,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     /** What is in orbit, and how much room there is. D25. */
     orbit: p.storedOrbit,
     effectiveOrbit: p.orbit,
-    orbitSlots: satelliteSlots(p.buildings.CORE),
+    orbitSlots: activeOrbitSlots(p.buildings.CORE, p.storedOrbit),
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
     research: await researchView(tx, p, queuedResearch),

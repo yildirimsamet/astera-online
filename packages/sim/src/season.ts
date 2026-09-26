@@ -9,6 +9,7 @@ import {
   DEUTERIUM,
   HANGAR,
   MULTI_WORLD,
+  NEUTRAL_OPENING,
   SETTLEMENT_CLAIM_MINUTES,
   PROSPECTOR,
   RESEARCH_PROJECT_IDS,
@@ -63,6 +64,9 @@ import {
   missionFuel,
   type TechLevels,
   selectNeutralSlots,
+  neutralDemand,
+  neutralOpeningOrder,
+  neutralOpenings,
   PLANET_START,
   START_BUILDINGS,
   investedInBuilding,
@@ -459,6 +463,38 @@ export interface SimNeutralWorld {
   protectedUntil: number;
 }
 
+function simNeutralWorld(
+  chosen: ReturnType<typeof selectNeutralSlots>[number],
+  openedAt: number,
+): SimNeutralWorld {
+  const template = MULTI_WORLD.neutral[chosen.tier];
+  const alloyPerHour = alloyRate(template.buildings.REFINERY);
+  const crystalPerHour = crystalRate(template.buildings.EXTRACTOR);
+  return {
+    id: chosen.slot.index,
+    tier: chosen.tier,
+    x: chosen.slot.x,
+    y: chosen.slot.y,
+    z: chosen.slot.z,
+    controllerId: null,
+    buildings: { ...template.buildings },
+    aegis: template.instruments.AEGIS,
+    shield: shieldHp(template.instruments.AEGIS),
+    fleet: { ...template.fleet, ...template.ground },
+    alloy: storageCap(alloyPerHour, template.buildings.VAULT),
+    crystal: storageCap(crystalPerHour, template.buildings.VAULT),
+    deuterium: deuteriumStorageCap(0, crystalPerHour, template.buildings.VAULT),
+    lastTick: openedAt,
+    claimUntil: null,
+    nextReinforcement: template.reinforcementMinutes === null
+      ? null
+      : openedAt + template.reinforcementMinutes,
+    recoveryUntil: 0,
+    empUntil: 0,
+    protectedUntil: 0,
+  };
+}
+
 export type StrategicMission =
   | {
       id: number;
@@ -619,6 +655,8 @@ export interface World {
   crystalCapPlayerMinutes: number;
   crystalSpent: Record<CrystalSpendCategory, number>;
   mining: CrystalDiagnostics['mining'];
+  /** Every authored caretaker address, whether materialised yet or not. */
+  neutralCatalog: ReturnType<typeof selectNeutralSlots>;
   neutrals: SimNeutralWorld[];
   strategicMissions: StrategicMission[];
   deathStars: Map<number, { status: 'BUILDING' | 'READY'; readyAt: number }[]>;
@@ -713,37 +751,16 @@ export function buildWorld(cfg: SimConfig): World {
       ? { capitalSlots: cfg.neutralLayout.capitalSlots, botSlots: cfg.neutralLayout.botSlots ?? 0 }
       : undefined,
   );
-  const neutrals: SimNeutralWorld[] = selectNeutralSlots(
+  const neutralCatalog = neutralOpeningOrder(
     cfg.seed,
-    strategicGalaxy.slots,
-    cfg.neutralLayout,
-  )
-    .map((chosen) => {
-      const template = MULTI_WORLD.neutral[chosen.tier];
-      const alloyPerHour = alloyRate(template.buildings.REFINERY);
-      const crystalPerHour = crystalRate(template.buildings.EXTRACTOR);
-      return {
-        id: chosen.slot.index,
-        tier: chosen.tier,
-        x: chosen.slot.x,
-        y: chosen.slot.y,
-        z: chosen.slot.z,
-        controllerId: null,
-        buildings: { ...template.buildings },
-        aegis: template.instruments.AEGIS,
-        shield: shieldHp(template.instruments.AEGIS),
-        fleet: { ...template.fleet, ...template.ground },
-        alloy: storageCap(alloyPerHour, template.buildings.VAULT),
-        crystal: storageCap(crystalPerHour, template.buildings.VAULT),
-        deuterium: deuteriumStorageCap(0, crystalPerHour, template.buildings.VAULT),
-        lastTick: 0,
-        claimUntil: null,
-        nextReinforcement: template.reinforcementMinutes,
-        recoveryUntil: 0,
-        empUntil: 0,
-        protectedUntil: 0,
-      };
-    });
+    selectNeutralSlots(cfg.seed, strategicGalaxy.slots, cfg.neutralLayout),
+  );
+  const neutrals: SimNeutralWorld[] = ([1, 2, 3] as const).flatMap((tier) =>
+    neutralCatalog
+      .filter((chosen) => chosen.tier === tier)
+      .slice(0, NEUTRAL_OPENING.initial[tier])
+      .map((chosen) => simNeutralWorld(chosen, 0)),
+  );
 
   for (const p of players) {
     p.neighbours = players
@@ -785,6 +802,7 @@ export function buildWorld(cfg: SimConfig): World {
       launches: 0, oreClaimed: 0, alloyDelivered: 0, crystalDelivered: 0,
       deuteriumDelivered: 0, overflowLost: 0,
     },
+    neutralCatalog,
     neutrals,
     strategicMissions: [],
     deathStars: new Map(),
@@ -1213,6 +1231,46 @@ function strategicReservations(world: World, playerId: number): number {
     && ((mission.kind === 'settlement' && !mission.returning)
       || (mission.kind === 'death_star' && mission.captureIntent)),
   ).length;
+}
+
+/** Mirror the server's daily demand census without simulating unopened addresses. */
+export function advanceNeutralCensus(
+  world: World,
+  censusAt: number,
+): Record<NeutralTier, number> {
+  const demand = neutralDemand(world.players.map((player) => ({
+    capitalCore: player.buildings.CORE,
+    colonies: coloniesOf(world, player.id).length,
+    reservations: strategicReservations(world, player.id),
+  })));
+  const stillNeutral = { 1: 0, 2: 0, 3: 0 } as Record<NeutralTier, number>;
+  const opened = { 1: 0, 2: 0, 3: 0 } as Record<NeutralTier, number>;
+  const catalogTier = new Map(world.neutralCatalog.map((chosen) => [chosen.slot.index, chosen.tier]));
+  const openedIds = new Set<number>();
+  for (const neutral of world.neutrals) {
+    const tier = catalogTier.get(neutral.id);
+    if (tier === undefined) continue;
+    opened[tier] += 1;
+    openedIds.add(neutral.id);
+    if (neutral.controllerId === null) stillNeutral[tier] += 1;
+  }
+  const wanted = neutralOpenings({
+    demand,
+    stillNeutral,
+    opened,
+    cap: MULTI_WORLD.neutralCounts,
+  });
+  const materialised = { 1: 0, 2: 0, 3: 0 } as Record<NeutralTier, number>;
+  for (const tier of [1, 2, 3] as const) {
+    for (const chosen of world.neutralCatalog) {
+      if (materialised[tier] >= wanted[tier]) break;
+      if (chosen.tier !== tier || openedIds.has(chosen.slot.index)) continue;
+      world.neutrals.push(simNeutralWorld(chosen, censusAt));
+      openedIds.add(chosen.slot.index);
+      materialised[tier] += 1;
+    }
+  }
+  return materialised;
 }
 
 /** Slots count off the capital's Core only, like the server (D209). */
@@ -2903,6 +2961,11 @@ export function runSeason(cfg: SimConfig): { world: World; days: DayReport[]; di
   let stats = freshStats();
 
   for (let t = 0; t <= total; t++) {
+    const firstNeutralCensus = NEUTRAL_OPENING.firstCensusDays * 1440;
+    const neutralCensusInterval = NEUTRAL_OPENING.censusEveryHours * 60;
+    if (t >= firstNeutralCensus && (t - firstNeutralCensus) % neutralCensusInterval === 0) {
+      advanceNeutralCensus(world, t);
+    }
     // Complete at the public instant before any decision or battle at this minute.
     // The queues run through disruption and never wait for the next login.
     advanceBuildQueues(world, t);

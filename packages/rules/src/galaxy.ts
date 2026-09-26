@@ -100,6 +100,8 @@ export interface SlotLayout {
   capitalSlots: number;
   /** The next `botSlots` stand on the bot band; everything after is neutral pool. */
   botSlots: number;
+  /** Exact authored neutral addresses. Omit for small synthetic/custom layouts. */
+  neutralCounts?: Readonly<Record<1 | 2 | 3, number>>;
 }
 
 interface Band {
@@ -111,6 +113,115 @@ function bandOf(index: number, layout: SlotLayout): Band {
   if (index < layout.capitalSlots) return GALAXY.strata.commander;
   if (index < layout.capitalSlots + layout.botSlots) return GALAXY.strata.bot;
   return GALAXY.strata.neutral;
+}
+
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+/**
+ * The 130 neutral worlds are addresses in their own right, not winners drawn from
+ * hundreds of invisible candidates. Build those exact addresses around balanced
+ * Fibonacci directions, then move only a colliding T1 address locally. T2 and T3
+ * have more than one minimum separation of radial clearance from their neighbours;
+ * T1 is the only band close enough to the bot shell to need collision avoidance.
+ */
+function authoredNeutralSlots(
+  seed: number,
+  layout: SlotLayout & { neutralCounts: Readonly<Record<1 | 2 | 3, number>> },
+  obstacles: readonly PlanetSlot[],
+): PlanetSlot[] {
+  const start = layout.capitalSlots + layout.botSlots;
+  const result: PlanetSlot[] = [];
+  const radialOrderRng = seededFrom('neutral-address-radii', seed);
+  const radialKeys = Array.from(
+    { length: layout.neutralCounts[1] },
+    (_, rank) => ({ rank, key: radialOrderRng() }),
+  ).toSorted((a, b) => a.key - b.key || a.rank - b.rank);
+  const radialRank = new Map(radialKeys.map((entry, index) => [entry.rank, index]));
+  let nextIndex = start;
+
+  for (const tier of [1, 2, 3] as const) {
+    const count = layout.neutralCounts[tier];
+    const phase = seededFrom('neutral-address-phase', seed, tier)() * Math.PI * 2;
+    for (let ordinal = 0; ordinal < count; ordinal++) {
+      const vertical = 1 - (2 * (ordinal + 0.5)) / count;
+      const planar = Math.sqrt(1 - vertical * vertical);
+      const angle = phase + ordinal * GOLDEN_ANGLE;
+      const direction = {
+        x: planar * Math.cos(angle),
+        y: vertical,
+        z: planar * Math.sin(angle),
+      };
+      const rng = seededFrom('neutral-address-jitter', seed, tier, ordinal);
+      let accepted: Vec3 | null = null;
+
+      for (let attempt = 0; attempt < 512; attempt++) {
+        let candidateDirection = direction;
+        if (attempt > 0) {
+          const reference = Math.abs(direction.y) < 0.9
+            ? { x: 0, y: 1, z: 0 }
+            : { x: 1, y: 0, z: 0 };
+          const cross = {
+            x: direction.y * reference.z - direction.z * reference.y,
+            y: direction.z * reference.x - direction.x * reference.z,
+            z: direction.x * reference.y - direction.y * reference.x,
+          };
+          const crossLength = Math.hypot(cross.x, cross.y, cross.z);
+          const tangent = {
+            x: cross.x / crossLength,
+            y: cross.y / crossLength,
+            z: cross.z / crossLength,
+          };
+          const bitangent = {
+            x: direction.y * tangent.z - direction.z * tangent.y,
+            y: direction.z * tangent.x - direction.x * tangent.z,
+            z: direction.x * tangent.y - direction.y * tangent.x,
+          };
+          const sweep = rng() * Math.PI * 2;
+          const maxAngle = Math.min(0.65, 0.04 + (attempt / 128) * 0.61);
+          const offset = Math.sqrt(rng()) * maxAngle;
+          const along = Math.cos(offset);
+          const across = Math.sin(offset);
+          candidateDirection = {
+            x: direction.x * along
+              + (tangent.x * Math.cos(sweep) + bitangent.x * Math.sin(sweep)) * across,
+            y: direction.y * along
+              + (tangent.y * Math.cos(sweep) + bitangent.y * Math.sin(sweep)) * across,
+            z: direction.z * along
+              + (tangent.z * Math.cos(sweep) + bitangent.z * Math.sin(sweep)) * across,
+          };
+        }
+
+        const rank = radialRank.get(ordinal) ?? ordinal;
+        const { t1, t2Share, t3Share } = GALAXY.strata;
+        const radialShare = tier === 1
+          ? Math.cbrt(
+            t1.inner ** 3
+            + ((rank + (attempt === 0 ? 0.5 : rng())) / count) * (t1.outer ** 3 - t1.inner ** 3),
+          )
+          : tier === 2 ? t2Share : t3Share;
+        const radius = radialShare * GALAXY.radius;
+        const candidate = {
+          x: candidateDirection.x * radius,
+          y: candidateDirection.y * radius,
+          z: candidateDirection.z * radius,
+        };
+        const clear = [...obstacles, ...result].every(
+          (other) => distance(candidate, other) >= GALAXY.minSeparation,
+        );
+        if (clear) {
+          accepted = candidate;
+          break;
+        }
+      }
+
+      if (accepted === null) {
+        throw new RangeError(`Unable to place neutral tier ${String(tier)} address ${String(ordinal)}`);
+      }
+      result.push({ index: nextIndex, ...accepted });
+      nextIndex += 1;
+    }
+  }
+  return result;
 }
 
 /**
@@ -130,12 +241,23 @@ function bandOf(index: number, layout: SlotLayout): Band {
 export function generateGalaxy(
   seed: number,
   slotCount: number = GALAXY.defaultSlots,
-  layout: SlotLayout = { capitalSlots: MULTI_WORLD.capitalSlots, botSlots: MULTI_WORLD.botSlots },
+  layout: SlotLayout = {
+    capitalSlots: MULTI_WORLD.capitalSlots,
+    botSlots: MULTI_WORLD.botSlots,
+    neutralCounts: MULTI_WORLD.neutralCounts,
+  },
 ): GalaxySpec {
   const rng = mulberry32(seed);
   const slots: PlanetSlot[] = [];
+  const authoredNeutralStart = layout.capitalSlots + layout.botSlots;
+  const authoredNeutralCount = layout.neutralCounts === undefined
+    ? 0
+    : layout.neutralCounts[1] + layout.neutralCounts[2] + layout.neutralCounts[3];
+  const randomSlots = layout.neutralCounts === undefined
+    ? slotCount
+    : Math.min(slotCount, authoredNeutralStart);
 
-  for (let i = 0; i < slotCount; i++) {
+  for (let i = 0; i < randomSlots; i++) {
     let accepted: Vec3 | null = null;
     const band = bandOf(i, layout);
     const innerCubed = band.inner ** 3;
@@ -174,6 +296,21 @@ export function generateGalaxy(
       );
     }
     slots.push({ index: i, x: accepted.x, y: accepted.y, z: accepted.z });
+  }
+
+  if (layout.neutralCounts !== undefined && slotCount > authoredNeutralStart) {
+    const authored = authoredNeutralSlots(
+      seed,
+      { ...layout, neutralCounts: layout.neutralCounts },
+      slots,
+    );
+    slots.push(...authored.slice(0, Math.min(authoredNeutralCount, slotCount - authoredNeutralStart)));
+  }
+
+  if (slots.length < slotCount) {
+    throw new RangeError(
+      `Requested ${String(slotCount)} slots beyond the ${String(slots.length)} authored addresses`,
+    );
   }
 
   /**
@@ -1083,7 +1220,7 @@ export const prospectorSpeed = (orbit: SatelliteSet): number =>
   PROSPECTOR.speed * drillSpeedMult(orbit);
 
 /**
- * Laden craft return at a third of normal speed; empty craft fly at normal speed.
+ * Laden craft return at half normal speed; empty craft fly at normal speed.
  *
  * One definition, because three processes have to agree on it: the server writes
  * `homeAt` from it, every consumer — the owner's craft, the public contact, the

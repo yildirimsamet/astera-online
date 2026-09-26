@@ -4,10 +4,11 @@ import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ACADEMY_STEPS, TUTORIAL_EXIT, OPENING_BONUS, PLANET_START, START, buildingCost, HULLS } from '@astera/rules';
 import { buildApp } from '../src/app.js';
-import { accounts, buildOrders, missions, planets, players, units } from '../src/db/schema.js';
+import { accounts, buildOrders, missions, planets, players, satellites, units } from '../src/db/schema.js';
 import { FixedClock } from '../src/clock.js';
 import { bootstrapServers } from '../src/services/servers.js';
 import { rewardsView, claimReward } from '../src/services/rewards.js';
+import { instrumentLevels } from '../src/services/intel.js';
 import { testDb, testEnv, truncateAll, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
@@ -23,12 +24,15 @@ interface Claim {
   accountId: string;
   username: string;
   displayName: string;
+  country: string;
   accessToken: string;
   placement: { shard: string; shardName: string; planetId: string; planetName: string };
   applied: Applied[];
   planet: {
     planet: { alloy: number; crystal: number; name: string };
     buildings: Record<string, number>;
+    orbitSlots: number;
+    effectiveOrbit: string[];
     queues: {
       CONSTRUCTION: {
         kind: string; subject: string; count: number; startedAt: string; finishesAt: string;
@@ -97,6 +101,20 @@ describe('onboarding claim', () => {
   const claim = (payload: Record<string, unknown>) =>
     app.inject({ method: 'POST', url: '/api/onboarding/claim', payload });
 
+  it('accepts and stores the country selected by the Academy claim', async () => {
+    await openWorld();
+    const response = await claim({
+      username: 'CountryPilot',
+      password: 'correct-horse-battery',
+      countryCode: 'FR',
+      step: 0,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json<Claim>().country).toBe('FR');
+    const [account] = await db.select().from(accounts);
+    expect(account?.countryCode).toBe('FR');
+  });
+
   it('seeds the Academy once and never upgrades a returning commander on retry', async () => {
     await openWorld();
     const payload = { username: 'AcademyPilot', password: 'correct-horse-battery', step: ACADEMY_STEPS.length };
@@ -104,6 +122,10 @@ describe('onboarding claim', () => {
     expect(first.statusCode).toBe(200);
     const body = first.json<Claim>();
     expect(body.planet.buildings).toMatchObject(TUTORIAL_EXIT.buildings);
+    expect(body.planet.orbitSlots).toBe(1);
+    expect(body.planet.effectiveOrbit).toEqual(['UPLINK']);
+    const activeSensors = await instrumentLevels(db, [body.placement.planetId]);
+    expect(activeSensors.get(body.placement.planetId)).toMatchObject({ TELESCOPE: 1, RADAR: 1 });
     expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
     const [row] = await db.select().from(planets).where(eq(planets.id, body.placement.planetId));
     expect(row?.builtEver).toEqual(TUTORIAL_EXIT.builtEver);
@@ -111,6 +133,8 @@ describe('onboarding claim', () => {
     expect(row?.bufferCrystal).toBe(TUTORIAL_EXIT.buffer.crystal);
     const ships = await db.select().from(units).where(eq(units.planetId, body.placement.planetId));
     expect(Object.fromEntries(ships.map((s) => [s.hull, s.count]))).toEqual(TUTORIAL_EXIT.fleet);
+    const sensorKit = await db.select().from(satellites).where(eq(satellites.planetId, body.placement.planetId));
+    expect(sensorKit.map((item) => item.type).sort()).toEqual(['AEGIS', 'RADAR', 'TELESCOPE', 'UPLINK']);
     const rewards = await rewardsView(db, body.placement.planetId, clock);
     expect(rewards.chains.find((c) => c.id === 'PIRATE')?.progress).toBe(1);
     expect(rewards.chains.find((c) => c.id === 'MINE')?.progress).toBe(1);
@@ -121,6 +145,7 @@ describe('onboarding claim', () => {
     expect(again.statusCode).toBe(200);
     expect(again.json<Claim>().placement.planetId).toBe(body.placement.planetId);
     expect(again.json<Claim>().planet.queues).toEqual(body.planet.queues);
+    expect(await db.select().from(satellites).where(eq(satellites.planetId, body.placement.planetId))).toHaveLength(4);
   });
 
   it('leaves a paid Core upgrade after skipping at the welcome without awarding a lesson', async () => {
@@ -129,6 +154,7 @@ describe('onboarding claim', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<Claim>();
     expect(body.planet.buildings.CORE).toBe(1);
+    expect(body.planet.orbitSlots).toBe(0);
     expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
     expect(body.planet.queues.CONSTRUCTION[0]?.subject).toBe('CORE');
     const rewards = await rewardsView(db, body.placement.planetId, clock);
@@ -190,7 +216,7 @@ describe('onboarding claim', () => {
 
     expect(three.crystal + 2 * HULLS.DART.crystal).toBe(START.crystal);
     expect(START.alloy - three.alloy).toBe(HULLS.DART.alloy * 2);
-    expect(HULLS.DART.crystal).toBe(60);
+    expect(HULLS.DART.crystal).toBe(78);
     expect(HULLS.DART.minShipyard).toBe(0);
   });
 
@@ -531,7 +557,7 @@ describe('onboarding claim', () => {
   it('refuses a name or a password the rules do not allow', async () => {
     await openWorld();
 
-    expect((await claim({ username: 'ab', password: 'correct-horse-battery' })).statusCode).toBe(400);
+    expect((await claim({ username: 'a', password: 'correct-horse-battery' })).statusCode).toBe(400);
     expect((await claim({ username: 'kaptan', password: 'short' })).statusCode).toBe(400);
     expect((await claim({ username: 'admin', password: 'correct-horse-battery' })).statusCode).toBe(400);
     expect(await db.select().from(accounts)).toHaveLength(0);

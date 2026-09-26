@@ -1,6 +1,5 @@
 import { GameActions } from '../session/seasonLock.js';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useStuck } from '../lib/useStuck.js';
 import { useTranslation } from 'react-i18next';
 import { Unreachable, Waiting } from '../ui/kit/Surface.js';
 import {
@@ -968,23 +967,14 @@ function Tabs({
 }) {
   const { t } = useTranslation();
   const lesson = useAcademyLesson();
-  /*
-    PINNED, IT MAKES ROOM FOR THE CLOSE (owner, 2026-09-25: the Base page's X vanished once
-    this bar reached the top). The page's close floats at the top right of the sheet; while
-    the bar rides the page it keeps its whole width, and once it is pinned under the close
-    it steps its right edge in, so the two share the row instead of one covering the other.
-  */
-  const { sentinel, stuck } = useStuck<HTMLDivElement>();
   // Opaque, because it is sticky: at 95% the rows scrolling underneath ghosted
   // through the wallet figures, which are the one thing on it a player reads
   // against a price.
   return (
     <>
-    <div ref={sentinel} aria-hidden="true" className="-mb-px h-px" />
     <div
       data-category-bar=""
-      {...(stuck ? { 'data-stuck': '' } : {})}
-      className={`sticky top-0 z-20 border-y border-line-soft bg-deep transition-[padding] duration-200 ${stuck ? 'pr-8' : ''}`}
+      className="sticky top-0 z-20 border-y border-line-soft bg-deep"
     >
       {/*
         NO WALLET HERE ANY MORE (M5). It rode the categories because the purse was in a
@@ -1245,7 +1235,7 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
  * PUTTING ONE OF THE FOUR IN ORBIT. D25.
  *
  * Bought once, never raised, and the only thing that rations it is the SLOT — the
- * Command Core opens one at L1, L3, L5 and L9. So the refusal here is not "you
+ * Command Core opens them at L6, L9, L12 and L15. So the refusal here is not "you
  * cannot have this", it is "not while those are up there", and it points at the
  * Core because raising it is the thing that actually fixes it.
  */
@@ -1253,7 +1243,7 @@ function useOrbitAction(planet: PlanetView, onFlash: (id: string) => void) {
   const install = useInstallSatellite();
   const say = useToast();
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
-  const free = satelliteSlots(projected.buildings.CORE) - projected.orbit.length;
+  const free = Math.max(0, satelliteSlots(projected.buildings.CORE) - projected.orbit.length);
   const orders = planet.queues?.CONSTRUCTION ?? [];
 
   return (id: SatelliteId, name: string, onNeed: (row: string) => void) => {

@@ -514,7 +514,7 @@ function AuthDialog({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          maxLength={16}
+          maxLength={64}
           placeholder={t('landing.form.namePlaceholder')}
         />
 

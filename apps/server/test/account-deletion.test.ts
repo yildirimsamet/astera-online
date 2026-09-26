@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
-import { MULTI_WORLD, SERVERS, generateGalaxy, rewardId, selectNeutralSlots } from '@astera/rules';
+import { MULTI_WORLD, NEUTRAL_OPENING, SERVERS, generateGalaxy, rewardId, selectNeutralSlots } from '@astera/rules';
 import {
   accountRewards,
   accounts,
@@ -117,8 +117,8 @@ afterAll(async () => {
  *      protects. `account_rewards` survives a reclaim because the person is coming
  *      back. It cannot survive the person.
  */
-/** The whole caretaker pool a season is seeded with (D209: 38 / 19 / 8). */
-const NEUTRAL_POOL = MULTI_WORLD.neutralCounts[1] + MULTI_WORLD.neutralCounts[2] + MULTI_WORLD.neutralCounts[3];
+/** The staged caretaker pool a season opens with. */
+const NEUTRAL_POOL = NEUTRAL_OPENING.initial[1] + NEUTRAL_OPENING.initial[2] + NEUTRAL_OPENING.initial[3];
 
 describe('deleting an account at the player’s request', () => {
   let f: Fixture;
@@ -315,8 +315,8 @@ describe('deleting an account at the player’s request', () => {
       .from(neutralPlanetState)
       .innerJoin(planets, eq(planets.id, neutralPlanetState.planetId))
       .where(eq(planets.seasonId, f.seasonId));
-    expect(tiers.filter((r) => r.tier === 1)).toHaveLength(MULTI_WORLD.neutralCounts[1]);
-    expect(tiers.filter((r) => r.tier === 3)).toHaveLength(MULTI_WORLD.neutralCounts[3]);
+    expect(tiers.filter((r) => r.tier === 1)).toHaveLength(NEUTRAL_OPENING.initial[1]);
+    expect(tiers.filter((r) => r.tier === 3)).toHaveLength(NEUTRAL_OPENING.initial[3]);
   });
 
   /**

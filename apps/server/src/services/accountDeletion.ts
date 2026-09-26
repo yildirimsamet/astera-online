@@ -45,6 +45,7 @@ import {
   MULTI_WORLD,
   SERVERS,
   generateGalaxy,
+  neutralOpeningOrder,
   selectNeutralSlots,
   type NeutralTier,
 } from '@astera/rules';
@@ -96,7 +97,10 @@ function originalNeutral(
   seed: number,
   slotIndex: number,
 ): { neutral: ReturnType<typeof selectNeutralSlots>[number]; number: number } | undefined {
-  const selected = selectNeutralSlots(seed, generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots);
+  const selected = neutralOpeningOrder(
+    seed,
+    selectNeutralSlots(seed, generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots),
+  );
   const ordinal = new Map<NeutralTier, number>([[1, 0], [2, 0], [3, 0]]);
   for (const neutral of selected) {
     const number = (ordinal.get(neutral.tier) ?? 0) + 1;

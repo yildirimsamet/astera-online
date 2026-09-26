@@ -145,6 +145,7 @@ import { planetsWithClanPresence } from '../galaxy/clanPresence.js';
 import { GalaxyEventsGuide } from './GalaxyEventsGuide.js';
 import { FpsReadout } from '../ui/FpsReadout.js';
 import { setPerfExtra } from '../lib/perfSession.js';
+import type { CountryCode } from '@astera/rules';
 
 /** Clan command is a large, infrequent room; keep it out of the first galaxy bundle. */
 /**
@@ -224,9 +225,11 @@ export function GalaxyView({
   focusRequest,
   craftFocusRequest,
   commander,
+  country,
   isAdmin = false,
   pastResult,
   onSignOut,
+  onCountryChange,
   onReplayAcademy,
   onPlacementLost,
   onFocused,
@@ -269,11 +272,13 @@ export function GalaxyView({
   craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
+  country?: CountryCode;
   /** Operations access comes from the server's out-of-band username allow-list. */
   isAdmin?: boolean;
   /** The newest permanent record, still readable after its world was wiped. D87. */
   pastResult?: HistoricalSeasonResult | null;
   onSignOut: () => void;
+  onCountryChange?: (country: CountryCode) => Promise<void>;
   onReplayAcademy?: () => void;
   /** Safety net when the rollover broadcast was missed while this tab slept. */
   onPlacementLost?: () => void;
@@ -1629,7 +1634,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <div className="pr-10"><BaseSwitch value="world" onChange={openBase} /></div>
+          <BaseSwitch value="world" onChange={openBase} />
           <PlanetScreen
             onOpenResearch={(project) => {
               setResearchFocus(project);
@@ -1664,7 +1669,7 @@ export function GalaxyView({
             onPanel(null);
           }}
         >
-          <div className="pr-10"><BaseSwitch value="research" onChange={openBase} /></div>
+          <BaseSwitch value="research" onChange={openBase} />
           <ResearchPanel
             {...(researchFocus === null ? {} : { focus: researchFocus })}
             onNeed={(id) => {
@@ -1729,6 +1734,8 @@ export function GalaxyView({
             }}
             onOpen={onPanel}
             onSignOut={onSignOut}
+            country={country}
+            onCountryChange={onCountryChange}
             {...(onReplayAcademy ? { onReplayAcademy } : {})}
             isAdmin={isAdmin}
           />

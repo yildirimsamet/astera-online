@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PLANET_SKIN_IDS, type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
+import { type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
 import type { z } from 'zod';
 import type { skinCollectionSchema } from '../api/schemas.js';
 import { useSkins } from '../api/queries.js';
@@ -13,7 +13,13 @@ import {
   currencyFor,
   priceText,
 } from '../lib/skinStore.js';
-import { PLANET_SKIN_CATALOG, SKIN_EDITION_TOTAL } from '../ui/skinCatalog.js';
+import {
+  PLANET_SKIN_CATALOG,
+  SKIN_COLLECTION_IDS,
+  SKIN_COLLECTIONS,
+  skinEditionTotal,
+  type SkinCollectionId,
+} from '../ui/skinCatalog.js';
 import { Icon } from '../v2/icons.js';
 import { SkinPreview } from './SkinPreview.jsx';
 
@@ -39,10 +45,10 @@ const STARS = [
  *
  * The look is the product, so it leads: the live model turning in its own light, over a
  * backdrop that never stops moving (`store.css`). Under it the price and the one press that
- * buys it — gold, the colour kept for the store alone (K2) — then the four looks to compare,
- * the four together for less (set against the four apart), what a look gives, and how the
- * purchase reaches the commander. Every claim is true of the game: the galaxy shows a look
- * to everyone, it is the account's for good, its shielded look and props come with it.
+ * buys it — gold, the colour kept for the store alone (K2). Elemental and country
+ * collections have separate tabs; only the original elemental four have a set offer.
+ * Every claim is true of the game: the galaxy shows a look to everyone, it is the
+ * account's for good, and its shielded look comes with it.
  * No invented counts, no invented scarcity.
  *
  * `checkout` is the owner's payment links (`SKIN_CHECKOUT`); a missing one says "on sale
@@ -62,10 +68,18 @@ export function SkinShopContent({
 }) {
   const { t, i18n } = useTranslation();
   const owned = new Set(collection.ownedSkinIds);
+  const [activeCollection, setActiveCollection] = useState<SkinCollectionId>('elemental');
+  const collectionIds = SKIN_COLLECTIONS[activeCollection].ids;
   // It opens on something to buy, where there is anything left to buy.
   const [selected, setSelected] = useState<PlanetSkinId>(
-    () => PLANET_SKIN_IDS.find((id) => !owned.has(id)) ?? PLANET_SKIN_IDS[0],
+    () => SKIN_COLLECTIONS.elemental.ids.find((id) => !owned.has(id)) ?? SKIN_COLLECTIONS.elemental.ids[0],
   );
+  const selectCollection = (id: SkinCollectionId): void => {
+    setActiveCollection(id);
+    const ids = SKIN_COLLECTIONS[id].ids;
+    setSelected(ids.find((skinId) => !owned.has(skinId)) ?? ids[0]);
+    setStatus('NORMAL');
+  };
   const [status, setStatus] = useState<PlanetSkinStatus>('NORMAL');
   const currency = currencyFor(i18n.language);
   const locale = t('units.numberLocale');
@@ -75,7 +89,7 @@ export function SkinShopContent({
   const mine = owned.has(selected);
   const buyUrl = checkoutUrl(checkout[selected], commander);
   const bundleUrl = checkoutUrl(checkout.bundle, commander);
-  const offerSet = collection.ownedSkinIds.length === 0;
+  const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
 
   const stageStyle = { '--look': look.accent, '--look-glow': look.glow } as CSSProperties;
   const buyClass = 'v2-store-shimmer flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-control bg-v2-premium px-3 text-caption font-bold text-v2-void';
@@ -99,12 +113,49 @@ export function SkinShopContent({
         <header className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-1.5 rounded-full border border-v2-premium/50 bg-v2-premium/10 px-2 py-0.5 text-micro font-semibold uppercase tracking-wide text-v2-premium">
             <Icon id="i-spark" className="size-3" />
-            {t('skins.premium')} · {look.edition}/{SKIN_EDITION_TOTAL}
+            {t('skins.premium')} · {look.edition}/{skinEditionTotal(activeCollection)}
           </span>
           <button type="button" onClick={onOpenInventory} className="text-caption font-semibold text-v2-ink-2 underline decoration-v2-line-hi underline-offset-4">
             {t('skins.openInventory', { count: collection.ownedSkinIds.length })}
           </button>
         </header>
+
+        <div role="tablist" aria-label={t('skins.collections')} className="mt-3 grid grid-cols-2 gap-2">
+          {SKIN_COLLECTION_IDS.map((id) => {
+            const category = SKIN_COLLECTIONS[id];
+            const active = activeCollection === id;
+            const count = category.ids.filter((skinId) => owned.has(skinId)).length;
+            return (
+              <button
+                key={id}
+                id={`skin-tab-${id}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                aria-controls="skin-collection-panel"
+                tabIndex={active ? 0 : -1}
+                onClick={() => { selectCollection(id); }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                  event.preventDefault();
+                  const next = id === 'elemental' ? 'country' : 'elemental';
+                  selectCollection(next);
+                  document.getElementById(`skin-tab-${next}`)?.focus();
+                }}
+                className={`relative min-h-16 overflow-hidden rounded-control border px-3 py-2 text-left transition-colors ${active
+                  ? 'border-v2-premium/70 bg-v2-premium/15 text-v2-ink'
+                  : 'border-v2-line bg-v2-panel/90 text-v2-ink-2 hover:border-v2-line-hi'}`}
+              >
+                {active && <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-v2-premium" />}
+                <span className="block text-caption font-semibold leading-tight">{t(category.nameKey)}</span>
+                <span className="mt-1 block font-v2-mono text-micro text-v2-ink-3">{count}/{category.ids.length} {t('skins.collected')}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-2 px-0.5 text-micro leading-snug text-v2-ink-3">{t(SKIN_COLLECTIONS[activeCollection].descriptionKey)}</p>
+
+        <div id="skin-collection-panel" role="tabpanel" aria-labelledby={`skin-tab-${activeCollection}`}>
 
         {/* THE STAGE: the look turning in its own light, an orbit round it, embers rising. */}
         <section aria-label={t('skins.inspect')} className="relative">
@@ -167,7 +218,7 @@ export function SkinShopContent({
         <section aria-label={t('skins.collection')} className="mt-5">
           <p className="mb-2 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('skins.collection')}</p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {PLANET_SKIN_IDS.map((id) => {
+            {collectionIds.map((id) => {
               const item = PLANET_SKIN_CATALOG[id];
               const chosen = selected === id;
               const itemName = t(item.nameKey);
@@ -215,7 +266,7 @@ export function SkinShopContent({
             </span>
             <div className="flex items-center gap-3">
               <span aria-hidden className="relative h-14 w-24 shrink-0">
-                {PLANET_SKIN_IDS.map((id, index) => (
+                {SKIN_COLLECTIONS.elemental.ids.map((id, index) => (
                   <img
                     key={id}
                     src={PLANET_SKIN_CATALOG[id].image}
@@ -247,6 +298,7 @@ export function SkinShopContent({
             )}
           </section>
         )}
+        </div>
 
         {/* WHAT A LOOK GIVES — each line true of the game. */}
         <ul className="mt-4 grid gap-2">
@@ -264,7 +316,7 @@ export function SkinShopContent({
 
         <p className="mt-4 flex items-start gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2 text-micro leading-snug text-v2-ink-3">
           <Icon id="i-lock" className="mt-0.5 size-3 shrink-0" />
-          <span>{t('skins.trust', { commander })}</span>
+          <span>{t(buyUrl || bundleUrl ? 'skins.trust' : 'skins.trustSoon', { commander })}</span>
         </p>
       </div>
     </div>

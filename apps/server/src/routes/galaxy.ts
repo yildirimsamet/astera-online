@@ -373,6 +373,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       .select({
         playerId: players.id,
         username: accounts.displayName,
+        country: accounts.countryCode,
         planetId: planets.id,
         planetName: planets.name,
         coreLevel: buildings.level,
@@ -435,6 +436,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         rank: i + 1,
         playerId: entry.playerId,
         username: entry.username,
+        country: entry.country,
         ...visibleWorld,
         score: entry.score,
         clan: entry.clanId && entry.clanName && entry.clanTag

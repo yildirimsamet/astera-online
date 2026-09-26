@@ -34,7 +34,7 @@ describe('settlementBlock', () => {
     expect(settlementBlock({
       ...ready,
       colonies: { colonies: 1, reservations: 1, capacity: 2, capitalCore: 12 },
-    })).toEqual({ code: 'COLONY_CORE', requiredCore: 15, currentCore: 12 });
+    })).toEqual({ code: 'COLONY_CORE', requiredCore: 16, currentCore: 12 });
   });
 
   it('says the ceiling has been reached once every slot the game has is taken', () => {

@@ -84,7 +84,7 @@ describe('the Garbage Collector in the catalogue', () => {
    */
   it('flies at the pivot pace, the middle of the combat triangle', () => {
     expect(hullRoundTrip('GARBAGE_COLLECTOR')).toBe(FUEL.pivotRoundTrip);
-    expect(gc.speed).toBeCloseTo(profileFlightSpeed(FUEL.pivotRoundTrip), 9);
+    expect(gc.speed).toBeCloseTo(profileFlightSpeed(FUEL.pivotRoundTrip) * 0.75, 9);
     expect(gc.speed).toBe(HULLS.PIKE.speed);
     expect(gc.speed).toBeLessThan(HULLS.DART.speed);
     expect(gc.speed).toBeGreaterThan(HULLS.RAMPART.speed);

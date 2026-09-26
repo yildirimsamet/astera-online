@@ -1,7 +1,7 @@
 import { HULLS } from './hulls.js';
 import { GALAXY, MULTI_WORLD } from './constants.js';
 import { cargoMult, type TechLevels } from './tech.js';
-import { UNAIDED, fleetTravelExact } from './travel.js';
+import { UNAIDED, distance, fleetTravelExact } from './travel.js';
 import type { PlanetSlot } from './galaxy.js';
 import type {
   Fleet,
@@ -88,6 +88,58 @@ export const hasColonyCapacity = (
   reservations: number,
 ): boolean => colonies + reservations < colonyCapacity(capitalCore);
 
+/** The staged neutral supply shared by season creation, the worker and the sim. */
+export const NEUTRAL_OPENING = {
+  initial: { 1: 15, 2: 8, 3: 3 },
+  perFreeSlot: 1,
+  firstCensusDays: 3,
+  censusEveryHours: 24,
+} as const;
+
+export interface NeutralCommanderDemand {
+  capitalCore: number;
+  colonies: number;
+  reservations: number;
+}
+
+const emptyTierCounts = (): Record<NeutralTier, number> => ({ 1: 0, 2: 0, 3: 0 });
+
+/** Each unfilled colony right asks for the tier belonging to that ordinal right. */
+export function neutralDemand(
+  commanders: readonly NeutralCommanderDemand[],
+): Record<NeutralTier, number> {
+  const demand = emptyTierCounts();
+  for (const commander of commanders) {
+    const capacity = colonyCapacity(commander.capitalCore);
+    const occupied = Math.max(0, Math.floor(commander.colonies) + Math.floor(commander.reservations));
+    for (let ordinal = occupied + 1; ordinal <= capacity; ordinal++) {
+      const tier = ordinal as NeutralTier;
+      demand[tier] += NEUTRAL_OPENING.perFreeSlot;
+    }
+  }
+  return demand;
+}
+
+export interface NeutralOpeningInput {
+  demand: Readonly<Record<NeutralTier, number>>;
+  /** Every neutral world currently available, including returned colonies. */
+  stillNeutral: Readonly<Record<NeutralTier, number>>;
+  /** Authored selected addresses already materialised, captured or not. */
+  opened: Readonly<Record<NeutralTier, number>>;
+  cap: Readonly<Record<NeutralTier, number>>;
+}
+
+/** Open only supply not already standing, and never beyond an authored tier cap. */
+export function neutralOpenings(input: NeutralOpeningInput): Record<NeutralTier, number> {
+  const openings = emptyTierCounts();
+  for (const tier of [1, 2, 3] as const) {
+    const unmet = Math.max(0, Math.floor(input.demand[tier]) - Math.floor(input.stillNeutral[tier]));
+    const room = Math.max(0, Math.floor(input.cap[tier]) - Math.floor(input.opened[tier]));
+    openings[tier] = Math.min(unmet, room);
+  }
+  return openings;
+}
+
 export function neutralReserve(held: Resources, capacity: Resources): NeutralReserve {
   const total = Math.max(0, held.alloy) + Math.max(0, held.crystal);
   const cap = Math.max(0, capacity.alloy) + Math.max(0, capacity.crystal);
@@ -153,6 +205,54 @@ export interface NeutralLayout {
   /** Server-commander addresses after the capitals; neutrals start past them. Default 0. */
   botSlots?: number;
   neutralCounts: Readonly<Record<NeutralTier, number>>;
+}
+
+/**
+ * Order one tier by repeatedly taking the address furthest from the prefix.
+ * A deterministic profile seed chooses the first point; distance then keeps every
+ * early census spread over the sphere instead of walking down Fibonacci latitude.
+ */
+function farthestNeutralOrder(slots: readonly NeutralSlot[]): NeutralSlot[] {
+  if (slots.length === 0) return [];
+  const remaining = [...slots].toSorted(
+    (a, b) => a.profileSeed - b.profileSeed || a.slot.index - b.slot.index,
+  );
+  const ordered = [remaining.shift()!];
+  while (remaining.length > 0) {
+    let bestIndex = 0;
+    let bestDistance = -1;
+    for (let index = 0; index < remaining.length; index++) {
+      const candidate = remaining[index]!;
+      let nearest = Infinity;
+      for (const opened of ordered) {
+        nearest = Math.min(nearest, distance(candidate.slot, opened.slot));
+      }
+      const best = remaining[bestIndex]!;
+      if (
+        nearest > bestDistance
+        || (nearest === bestDistance && (
+          candidate.profileSeed < best.profileSeed
+          || (candidate.profileSeed === best.profileSeed && candidate.slot.index < best.slot.index)
+        ))
+      ) {
+        bestDistance = nearest;
+        bestIndex = index;
+      }
+    }
+    ordered.push(remaining.splice(bestIndex, 1)[0]!);
+  }
+  return ordered;
+}
+
+/** Stable, balanced materialisation order; tier groups remain independently addressable. */
+export function neutralOpeningOrder(
+  seed: number,
+  selected: readonly NeutralSlot[],
+): NeutralSlot[] {
+  if (!Number.isSafeInteger(seed)) throw new RangeError('Neutral opening seed must be an integer');
+  return ([1, 2, 3] as const).flatMap(
+    (tier) => farthestNeutralOrder(selected.filter((entry) => entry.tier === tier)),
+  );
 }
 
 /** Stable 32-bit profile identity; never consumes the galaxy generator's random stream. */

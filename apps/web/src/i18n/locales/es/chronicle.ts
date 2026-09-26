@@ -36,6 +36,8 @@ export const chronicle = {
   dominionLeaderDetail: '{{planet}} ahora se encuentra en la cima de la escala pública.',
   neutralClaim: 'Ventana de reclamo abierta en {{planet}} · T{{tier}}',
   neutralClaimDetail: 'Una incursión decisiva abrió una carrera de asentamiento público para este mundo.',
+  neutralOpened: '{{total}} mundos neutrales abiertos',
+  neutralOpenedDetail: 'La frontera crece · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Impacto de la Estrella de la Muerte en {{planet}}',
   deathStarOutcome: {
     FIRST_STRIKE: 'El EMP agotó la Égida. Las defensas terrestres no disparan ni reciben daño durante una hora.',

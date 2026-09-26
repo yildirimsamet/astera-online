@@ -20,6 +20,7 @@ export interface GalaxyEventPayloadByKind {
   wreck_exhausted: { planetName: string; commanderName: string };
   dominion_leader: { planetName: string; commanderName: string };
   season_act: { act: 'war' | 'consolidation' | 'sunset' };
+  neutral_opened: { total: number; tiers: Record<1 | 2 | 3, number> };
   neutral_claim: { planetName: string; tier: number; claimUntil: string };
   death_star_impact: {
     planetName: string;

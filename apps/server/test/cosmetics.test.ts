@@ -69,6 +69,22 @@ describe('planet skin ownership and equipment', () => {
       .toEqual(expect.arrayContaining([expect.objectContaining({ id: ownWorld, skinId: 'planet-lava' })]));
   });
 
+  it('grants and equips a country world through the existing cosmetic entitlement flow', async () => {
+    const world = fixture.planetIds[1]!;
+    const grant = await app.inject({ method: 'POST', url: '/api/admin/skins/grant', headers: admin,
+      payload: { username: recipientUsername, skinId: 'planet-turkey', orderRef: 'country-1' },
+    });
+    expect(grant.statusCode).toBe(200);
+    const equip = await app.inject({ method: 'POST', url: `/api/skins/planets/${world}`, headers: player,
+      payload: { skinId: 'planet-turkey' },
+    });
+    expect(equip.statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/skins', headers: player })).json())
+      .toMatchObject({ ownedSkinIds: ['planet-turkey'] });
+    const [publicWorld] = await publicWorlds(fixture.db, fixture.seasonId, fixture.clock.now(), [world]);
+    expect(publicWorld?.skin).toEqual({ id: 'planet-turkey', status: 'NORMAL' });
+  });
+
   it('is idempotent for a verified order, rejects forged products, and allows default again', async () => {
     const body = { username: recipientUsername, skinId: 'planet-ice', orderRef: 'order-9' };
     for (let i = 0; i < 2; i++) {

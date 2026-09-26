@@ -2,7 +2,7 @@ import { pino } from 'pino';
 import { buildApp } from './app.js';
 import { assertSchemaCurrent } from './db/migrate.js';
 import { loadDotEnv, loadEnv } from './env.js';
-import { ensureSeasonActs } from './services/season.js';
+import { ensureNeutralCensusEvents, ensureSeasonActs } from './services/season.js';
 import { ensureGalaxyEventLifecycleEvents } from './services/galaxyEvents.js';
 import { ensureAsteroidHourEvents } from './services/asteroidSpawn.js';
 import { systemClock } from './clock.js';
@@ -46,6 +46,10 @@ async function main(): Promise<void> {
     const asteroidHoursScheduled = await ensureAsteroidHourEvents(db, systemClock.now());
     if (asteroidHoursScheduled > 0) {
       log.info({ asteroidHoursScheduled }, 'scheduled missing asteroid hours');
+    }
+    const neutralCensusesScheduled = await ensureNeutralCensusEvents(db, systemClock.now());
+    if (neutralCensusesScheduled > 0) {
+      log.info({ neutralCensusesScheduled }, 'scheduled missing neutral censuses');
     }
     worker.start();
     log.info('event worker started');

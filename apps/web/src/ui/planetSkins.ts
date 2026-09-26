@@ -7,6 +7,7 @@ import {
   type SkinAttachment,
 } from '@astera/rules';
 import { PLANET_SKIN_CATALOG } from './skinCatalog.js';
+import { skinAsset } from './skinAssets.js';
 
 type Rgb = readonly [number, number, number];
 
@@ -37,15 +38,23 @@ export interface PlanetModelTuning {
 const MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'intact-planet': '/assets/models/test_planet_modal.glb',
   'fractured-planet': '/assets/models/patlamis_gezegen_2.glb',
+  'country-turkey': skinAsset('models/planets/country/planet_turkey.glb'),
+  'country-germany': skinAsset('models/planets/country/planet_germany.glb'),
+  'country-france': skinAsset('models/planets/country/planet_france.glb'),
+  'country-spain': skinAsset('models/planets/country/planet_spain.glb'),
 };
 
 const LOW_MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'intact-planet': '/assets/models/test_planet_modal_lod.glb',
   'fractured-planet': '/assets/models/patlamis_gezegen_2_lod.glb',
+  'country-turkey': skinAsset('models/planets/country/planet_turkey-lod.glb'),
+  'country-germany': skinAsset('models/planets/country/planet_germany-lod.glb'),
+  'country-france': skinAsset('models/planets/country/planet_france-lod.glb'),
+  'country-spain': skinAsset('models/planets/country/planet_spain-lod.glb'),
 };
 
 /** The crack mask is read from each model's own base colour map. */
-const MODEL_TUNING: Record<PlanetBaseModelId, PlanetModelTuning> = {
+const MODEL_TUNING: Record<'intact-planet' | 'fractured-planet', PlanetModelTuning> = {
   'intact-planet': { heat: 2.4, threshold: 0.28, spread: 3, rimStrength: 0.8 },
   'fractured-planet': { heat: 1.6, threshold: 0.5, spread: 1.5, rimStrength: 0.6 },
 };
@@ -91,7 +100,7 @@ export interface PlanetSkinVisual {
   readonly lowModelUrl: string;
   readonly billboardUrl: string;
   readonly finish:
-    | { readonly kind: 'AUTHORED' }
+    | { readonly kind: 'AUTHORED'; readonly damaged: boolean }
     | { readonly kind: 'PALETTE'; readonly palette: PlanetPalette; readonly tuning: PlanetModelTuning };
   readonly includedAttachments: readonly SkinAttachment[];
 }
@@ -102,13 +111,14 @@ export function planetSkinVisual(id: string, status: PlanetSkinStatus = 'NORMAL'
   if (!skin) return null;
   const recipe = planetSkinAppearance(id, status);
   if (!recipe) return null;
-  const tuned = MODEL_TUNING[recipe.baseModelId];
+  const tuned = recipe.baseModelId === 'fractured-planet'
+    ? MODEL_TUNING['fractured-planet'] : MODEL_TUNING['intact-planet'];
   return {
     modelUrl: MODEL_URLS[recipe.baseModelId],
     lowModelUrl: LOW_MODEL_URLS[recipe.baseModelId],
     billboardUrl: PLANET_SKIN_CATALOG[skin.id].image,
     finish: recipe.finish.kind === 'AUTHORED'
-      ? { kind: 'AUTHORED' }
+      ? { kind: 'AUTHORED', damaged: status === 'RECOVERY_SHIELD' }
       : {
           kind: 'PALETTE',
           palette: PALETTES[recipe.finish.paletteId],

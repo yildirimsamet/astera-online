@@ -35,9 +35,9 @@ describe('what a collector lifts, burns and occupies', () => {
   });
 
   /** The card quotes `fuelMass / 10`, which is how the owner states this figure. */
-  it('quotes 100 deuterium on its card, double what it used to', () => {
-    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(100);
-    expect(SALVAGE.fuelMass).toBe(1_000);
+  it('quotes 90 deuterium on its card after the fleet fuel cut', () => {
+    expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(90);
+    expect(SALVAGE.fuelMass).toBe(900);
   });
 
   it('occupies forty of a hangar', () => {

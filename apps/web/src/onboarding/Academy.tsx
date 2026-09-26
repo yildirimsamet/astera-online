@@ -26,12 +26,13 @@ import { AsteroidFocus, type Focus } from '../galaxy/FocusPanel.jsx';
 import type { PiratesView, GalaxyPlanet } from '../api/schemas.js';
 import { academyGroup, AcademyLessonContext } from './lessonScope.js';
 import { clearAcademy, restoreAcademy, saveAcademy } from './academyStorage.js';
+import type { CountryCode } from '@astera/rules';
 
 /** D172. One local cache and API, discarded together on exit. Nothing in this
  * subtree receives the authenticated client or its token, including replay.
  */
 export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
-  onClaim: (username: string, password: string, step: number) => Promise<void>;
+  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode) => Promise<void>;
   onSignIn: () => void;
   onLeave: () => void;
   replay?: boolean;
@@ -58,14 +59,14 @@ export function Academy({ onClaim, onSignIn, onLeave, replay = false }: {
   }, [client, write]);
   return <QueryClientProvider client={client}><ApiProvider api={api}>
     <AcademyScreen world={world} write={write} api={api} replay={replay}
-      onClaim={async (username, password, step) => { await onClaim(username, password, step); if (!replay) clearAcademy(); }}
+      onClaim={async (username, password, step, countryCode) => { await onClaim(username, password, step, countryCode); if (!replay) clearAcademy(); }}
       onSignIn={onSignIn} onLeave={onLeave} />
   </ApiProvider></QueryClientProvider>;
 }
 
 const rows: Partial<Record<AcademyStepId, string>> = {
   core: 'CORE', refinery: 'REFINERY', extractor: 'EXTRACTOR', deuterium: 'DEUTERIUM_PLANT', foundry: 'FOUNDRY',
-  uplink: 'UPLINK', radar: 'RADAR', veil: 'VEIL', vault: 'VAULT', aegis: 'AEGIS', thorn: 'THORN', bastion: 'BASTION',
+  uplink: 'UPLINK', telescope: 'TELESCOPE', radar: 'RADAR', veil: 'VEIL', vault: 'VAULT', aegis: 'AEGIS', thorn: 'THORN', bastion: 'BASTION',
   shipyard: 'SHIPYARD', darts: 'DART', reinforcements: 'DART', prospector: 'PROSPECTOR', courier: 'COURIER',
 };
 const menuFrom: Partial<Record<AcademyStepId, PlanetGroup>> = { production: 'grow', intel: 'grow', defend: 'orbit', fleet: 'defend' };
@@ -117,7 +118,8 @@ export function academyGateSelectors(state: {
   isMenu: boolean;
   row: string | undefined;
 }): readonly string[] {
-  if (state.claiming || state.intro || state.telescope) return [];
+  if (state.claiming || state.intro) return [];
+  if (state.telescope) return ['[data-academy-continue]'];
   if (state.id === 'welcome') return ['canvas', '[data-academy-home]'];
   if (state.busy) return ['canvas'];
   if (state.isMenu) return [`[data-tab="${academyGroup(state.id)}"]`];
@@ -167,7 +169,7 @@ const exercise = new Set<AcademyStepId>(['welcome', 'core', 'refinery', 'extract
 
 export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, replay }: {
   world: AcademyWorld; write: (world: AcademyWorld) => void; api: Api;
-  onClaim: (username: string, password: string, step: number) => Promise<void>;
+  onClaim: (username: string, password: string, step: number, countryCode?: CountryCode) => Promise<void>;
   onSignIn: () => void; onLeave: () => void; replay: boolean;
 }) {
   useSilenceToasts();
@@ -178,6 +180,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
   const [problem, setProblem] = useState<string>();
   const [nudge, setNudge] = useState(0);
   const [telescope, setTelescope] = useState(false);
+  const [sightRevealed, setSightRevealed] = useState(false);
   const [launch, setLaunch] = useState(false);
   /**
    * THE LESSON LOOKS AT THE TARGET BEFORE IT ASKS FOR A FLEET. Owner instruction.
@@ -219,8 +222,13 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
   }, []);
   const handTargets = useCallback((): Element[] => {
     const state = latest.current;
-    if (state.busy || state.claiming || state.telescope) return [];
+    if (state.busy || state.claiming) return [];
+    if (state.telescope) {
+      const continueButton = document.querySelector('[data-academy-continue]');
+      return continueButton ? [continueButton] : [];
+    }
     const selectors = [
+      ...(state.intro ? ['[data-academy-continue]'] : []),
       '[data-academy-tap-target]',
       ...(state.id === 'welcome' ? ['[data-academy-home]'] : []),
       ...(state.isReport && state.panel === 'report' ? ['[data-sheet-panel] > header > button'] : []),
@@ -266,7 +274,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     // Wait for the commit sheet to close and the paid queue to render, then show
     // the queue at the menu's top. Never pull it back on a clock tick.
     const frame = requestAnimationFrame(() => {
-      document.querySelectorAll<HTMLElement>('[data-academy] [data-sheet-scroll]').forEach((body) => {
+      document.querySelectorAll<HTMLElement>('[data-academy] [data-sheet-scroll], [data-academy] [data-sheet-body]').forEach((body) => {
         body.scrollTo({ top: 0, behavior: 'smooth' });
       });
     });
@@ -275,8 +283,9 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
   useEffect(() => {
     setLaunch(false);
     setAimed(false);
-    setPanel('reward' in step ? 'rewards' : row || isMenu ? 'planet' : id === 'research' ? 'research' : null);
+    setPanel('reward' in step ? 'rewards' : id === 'telescope' || id === 'radar' ? null : row || isMenu ? 'planet' : id === 'research' ? 'research' : null);
     setTelescope(false);
+    setSightRevealed(false);
     setStop(null);
   }, [id]);
   useEffect(() => {
@@ -290,7 +299,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     return () => { document.removeEventListener('click', clicked); };
   }, [id]);
   /**
-   * THE SPHERE, THEN SOMETHING INSIDE IT, THEN ON. Owner instruction.
+   * THE SPHERE, THEN SOMETHING INSIDE IT. Owner instruction.
    *
    * A radius on its own is a fact and not a reason. One second after the switch
    * frames the sphere, a world appears inside it — off to the left, unreachable,
@@ -299,23 +308,15 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
    * canvas for this whole beat, so it cannot be tapped, and it is published only
    * while the beat runs.
    *
-   * ONE SECOND AFTER THE WORLDS APPEAR, move on. The camera move and reveal have
-   * already made the point; holding the finished picture for five seconds made
-   * the lesson feel stuck.
+   * The player can inspect the finished picture and moves on with Continue.
    */
   useEffect(() => {
     if (!telescope || id !== 'telescope' || claiming) return;
     const show = window.setTimeout(() => {
       write({ ...latest.current.world, sightDemo: true });
+      setSightRevealed(true);
     }, 1000);
-    const advance = window.setTimeout(() => {
-      const current = latest.current.world;
-      write({
-        ...current, step: current.step + 1,
-        checkpoint: academyCheckpoint(current.step + 1), sightDemo: false,
-      });
-    }, 2000);
-    return () => { window.clearTimeout(show); window.clearTimeout(advance); };
+    return () => { window.clearTimeout(show); };
   }, [telescope, id, claiming, write]);
   const openPanel = (next: Panel, shelf?: PanelStop, reportMissionId?: string) => {
     if (isReport && panel === 'report' && next === null) write(completeAcademyLesson(world, id));
@@ -323,7 +324,9 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     if (shelf) setStop((old) => ({ stop: shelf, request: (old?.request ?? 0) + 1, ...(reportMissionId ? { reportMissionId } : {}) }));
   };
   const next = () => {
-    if (id === 'departure') {
+    if (id === 'telescope' && sightRevealed) {
+      write({ ...world, step: world.step + 1, checkpoint: academyCheckpoint(world.step + 1), sightDemo: false });
+    } else if (id === 'departure') {
       if (replay) onLeave();
       else { write(completeAcademyLesson(world, id)); setClaiming(true); }
     } else write(completeAcademyLesson(world, id));
@@ -364,7 +367,7 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     [aiming, t],
   );
 
-  const showNext = !busy && intro;
+  const showNext = !busy && (intro || (id === 'telescope' && sightRevealed));
   const group = menuFrom[id] ?? academyGroup(id);
   const telescopeStep = ACADEMY_STEPS.findIndex((lesson) => lesson.id === 'telescope');
   const exposedRows = ACADEMY_STEPS.slice(0, world.step + 1).flatMap((s) => rows[s.id] ? [rows[s.id]!] : []);
@@ -383,7 +386,8 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
     <StatusBar commander={t('academy.title')} onOpen={openPanel} onFocusPlanet={() => { setPanel('planet'); }} />
     <main className="relative flex-1">
       <GalaxyView panel={panel} onPanel={openPanel} panelStop={stop} commander={t('academy.title')}
-        frameTelescope={telescope}
+        frameTelescope={telescope || id === 'radar'}
+        clearRequest={id === 'radar' ? world.step : 0}
         coachFocus={coachFocus}
         coachTap={coachTap}
         openingHome={id === 'welcome'}
@@ -401,22 +405,40 @@ export function AcademyScreen({ world, write, api, onClaim, onSignIn, onLeave, r
       onClose={() => { setLaunch(false); setAimed(false); }}
       onSend={(craft) => { void api.mine(ACADEMY_ROCK, craft).catch((e: unknown) => { setProblem(describeError(e)); }); }} />}
     {!claiming && <>
-      <TutorialHand kind={intro ? 'intro' : 'action'} targets={handTargets} bubble={bubble} />
+      <TutorialHand kind={intro && !showNext ? 'intro' : 'action'} targets={handTargets} bubble={bubble} />
       <section ref={bubble} data-beat-card key={nudge} className="plate pointer-events-auto fixed inset-x-2 top-2 z-50 rounded-control p-3 animate-[nudge_360ms_ease-out]" aria-live="polite">
         <div className="flex items-center justify-between gap-2 text-label"><span className="text-crystal">{t('academy.title')}</span><span className="num text-faint">{world.step + 1}/{ACADEMY_STEPS.length}</span></div>
         <p className="my-2 text-caption text-bone">{busy ? t('academy.wait') : aiming ? t('academy.aim') : telescope ? t('academy.sight') : replay && id === 'departure' ? t('academy.replayComplete') : t(`academy.steps.${id}`)}{intro && row ? ` ${t('academy.introOnly')}` : ''}</p>
+        {id === 'radar' && <div data-testid="academy-radar-range" role="img"
+          aria-label={`${t('academy.sensorNearTitle')}: ${t('vocabulary.hull.DART.name')} ×2. ${t('academy.sensorFarTitle')}: ?`}
+          className="mb-2 flex h-10 overflow-hidden rounded-control border border-line-soft text-micro font-bold">
+          <div aria-hidden="true" className="flex w-[68%] items-center justify-between border-r-2 border-dashed border-crystal/70 bg-crystal/10 px-3 text-crystal">
+            <span>●</span><span>••</span>
+          </div>
+          <div aria-hidden="true" className="flex flex-1 items-center justify-center bg-deep text-crystal">?</div>
+        </div>}
+        {id === 'radar' && <div className="mb-2 grid grid-cols-2 gap-2 text-micro">
+          <div className="rounded-control border border-crystal/40 bg-crystal/10 p-2 text-bone">
+            <span className="mb-1 block font-semibold text-bone">{t('vocabulary.hull.DART.name')} ×2</span>
+            <span className="block font-semibold text-crystal">{t('academy.sensorNearTitle')}</span>{t('academy.sensorNearDetail')}
+          </div>
+          <div className="rounded-control border border-line-soft bg-deep p-2 text-bone">
+            <span data-testid="academy-radar-unknown" className="mb-1 block font-bold text-crystal">?</span>
+            <span className="block font-semibold text-crystal">{t('academy.sensorFarTitle')}</span>{t('academy.sensorFarDetail')}
+          </div>
+        </div>}
         {problem && <p role="alert" className="text-caption text-alloy">{problem}</p>}
         <div className="flex items-center justify-between gap-2">
           <button className="text-label text-faint" onClick={replay ? onLeave : onSignIn}>{t(replay ? 'academy.leave' : 'academy.signin')}</button>
           {!busy && !aiming && !launch && (id === 'pirate' || id === 'raid' || id === 'mine') && <button data-academy-target className="text-label text-crystal" onClick={() => { setAim((n) => n + 1); setAimed(true); }}>{t('academy.target')}</button>}
           {isReport && panel !== 'report' && <div data-academy-signals><Signals onOpen={openPanel} onFocusPlanet={() => { setPanel('planet'); }} /></div>}
-          {showNext && <button className="text-label text-crystal animate-[academy-continue_1400ms_ease-in-out_infinite]" onClick={next}>{t(id === 'departure' ? 'academy.finish' : 'academy.next')}</button>}
+          {showNext && <button data-academy-continue className="text-label text-crystal animate-[academy-continue_1400ms_ease-in-out_infinite]" onClick={next}>{t(id === 'departure' ? 'academy.finish' : 'academy.next')}</button>}
           {!replay && <button className="text-micro text-faint" onClick={skip}>{t('academy.skip')}</button>}
         </div>
       </section>
     </>}
     {claiming && <ClaimDialog planetName={world.preview.reserved.name} onSignIn={onSignIn} introduction={t('academy.claim')}
-      onClaim={async (username, password) => { try { await onClaim(username, password, world.step); } catch (e) { setProblem(describeError(e)); throw e; } }}
+      onClaim={async (username, password, countryCode) => { try { await onClaim(username, password, world.step, countryCode); } catch (e) { setProblem(describeError(e)); throw e; } }}
       {...(problem ? { error: problem } : {})} />}
   </div></AcademyLessonContext.Provider>;
 }

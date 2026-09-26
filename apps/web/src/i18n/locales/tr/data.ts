@@ -35,8 +35,8 @@ export const vocabulary = {
     CORE: {
       name: 'Komuta Çekirdeği',
       tag: 'Gezegenin gelişim sınırı',
-      role: 'Bina seviye sınırını ve inşa hızını belirler; ana gezegende 9, 12 ve 15. seviyelerde koloni yuvası açar.',
-      detail: 'Hiçbir bina Komuta Çekirdeğinden daha yüksek seviyeye çıkamaz. Her yükseltme bina sürelerini kısaltır; belirli seviyelerde yeni yörünge yuvaları ve uçuş rampaları açar, yer savunması kapasitesini büyütür. Araştırma sınırı ve hızı yalnız ana gezegenin Çekirdeğine bağlıdır. Yalnız ana gezegendeki Çekirdek 9, 12 ve 15. seviyelerde sırasıyla birinci, ikinci ve üçüncü koloni hakkını verir. Doğrudan kaynak veya savaş gücü üretmez.',
+      role: 'Bina seviye sınırını ve inşa hızını belirler; ana gezegende 9, 13 ve 16. seviyelerde koloni yuvası açar.',
+      detail: 'Hiçbir bina Komuta Çekirdeğinden daha yüksek seviyeye çıkamaz. Her yükseltme bina sürelerini kısaltır; belirli seviyelerde yeni yörünge yuvaları ve uçuş rampaları açar, yer savunması kapasitesini büyütür. Araştırma sınırı ve hızı yalnız ana gezegenin Çekirdeğine bağlıdır. Yalnız ana gezegendeki Çekirdek 9, 13 ve 16. seviyelerde sırasıyla birinci, ikinci ve üçüncü koloni hakkını verir. Doğrudan kaynak veya savaş gücü üretmez.',
     },
     REFINERY: {
       name: 'Alaşım Rafinerisi',
@@ -348,7 +348,7 @@ export const vocabulary = {
       tag: 'Asteroit kazar',
       role: 'Asteroitlerden cevher getirir; taban ambarı 200’dür ve akın filosuna katılamaz.',
       pitch: 'Hareketli bir asteroidi yakalar, taşıyabildiği cevheri üretim havuzuna getirir. Savaş veya transfer görevi yapmaz.',
-      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban hızı 825, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
+      detail: 'Kazıcı yalnız keşfedilmiş asteroitlere ve enkaz sahalarına gönderilir. Taban gidiş ve boş dönüş hızı 619, yüklü dönüş hızı 309, taban ambarı 200’dür; Matkap ve Kazıcı Ambarları araştırması bu değerleri artırabilir. Her dünya başlangıçta en fazla iki Kazıcı tutar; Kazıcı Ambarları III üçüncü araç yuvasını açar. Normal akınlara katılmaz ve ev savunmasında savaşmaz.',
     },
   },
 

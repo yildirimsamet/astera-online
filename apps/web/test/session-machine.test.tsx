@@ -20,6 +20,7 @@ const SESSION = {
   accountId: 'a1',
   username: 'vantage',
   displayName: 'Vantage',
+  country: 'TR',
   accessToken: 'fresh-token',
 };
 

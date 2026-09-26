@@ -9,6 +9,17 @@
  * sistemi anlatmıyor: metin neye bakılacağını söyleyip çekiliyor, çünkü beat
  * ancak o şey gerçekten olduğunda ilerliyor.
  */
+export const country = {
+  label: 'Ülke',
+  choose: 'Ülkeni seç',
+  searchLabel: 'Ülkelerde ara',
+  searchPlaceholder: 'Ülke adıyla ara',
+  list: 'Ülkeler',
+  confirm: 'Ülkeyi onayla',
+  change: 'Değiştir',
+  saved: 'Ülke güncellendi',
+} as const;
+
 export const onboarding = {
   beats: {
     wide: {

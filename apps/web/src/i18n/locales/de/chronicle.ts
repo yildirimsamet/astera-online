@@ -36,6 +36,8 @@ export const chronicle = {
   dominionLeaderDetail: '{{planet}} steht nun an der Spitze der öffentlichen Leiter.',
   neutralClaim: 'Anspruchsfenster geöffnet um {{planet}} · T{{tier}}',
   neutralClaimDetail: 'Ein entscheidender Überfall eröffnete ein öffentliches Siedlungsrennen für diese Welt.',
+  neutralOpened: '{{total}} neutrale Welten geöffnet',
+  neutralOpenedDetail: 'Die Grenze wächst · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Einschlag des Todessterns bei {{planet}}',
   deathStarOutcome: {
     FIRST_STRIKE: 'EMP entlud die Aegis. Bodenverteidigungen feuern eine Stunde lang nicht und erleiden keinen Schaden.',

@@ -1,8 +1,8 @@
 import type { PlanetSkinId } from '@astera/rules';
 
 /**
- * THE SKIN STORE'S TERMS (owner, 2026-09-25). A look is ₺99 or $2.99, the four together about
- * 30% cheaper, and each is bought through a payment link the owner pastes in below; the
+ * THE SKIN STORE'S TERMS (owner, 2026-09-25/26). Every look is ₺99 or $2.99; only the
+ * four elemental looks have a bundle about 30% cheaper. Each is bought through a payment link; the
  * owner then grants it with the admin tool (`/api/admin/skins/grant`, by commander name).
  */
 
@@ -10,11 +10,11 @@ export type Currency = 'TRY' | 'USD';
 
 export const SKIN_PRICE: Readonly<Record<Currency, number>> = { TRY: 99, USD: 2.99 };
 
-/** The four together. Four apart is ₺396 / $11.96. */
+/** The four elemental looks together. Four apart is ₺396 / $11.96. */
 export const BUNDLE_PRICE: Readonly<Record<Currency, number>> = { TRY: 279, USD: 8.49 };
 
 /**
- * EACH LOOK'S PAYMENT LINK, AND THE FOUR TOGETHER. Paste them here (Stripe Payment Link,
+ * EACH LOOK'S PAYMENT LINK, AND THE ELEMENTAL FOUR TOGETHER. Paste them here (Stripe Payment Link,
  * Shopier, Gumroad…); an empty one is "on sale very soon" on the page, never a dead press.
  * `{commander}` in a link becomes the buyer's commander name, so a paid order names the
  * account to grant — for a Stripe link, end it with `?client_reference_id={commander}`.
@@ -24,6 +24,10 @@ export const SKIN_CHECKOUT: Readonly<Record<PlanetSkinId | 'bundle', string>> = 
   'planet-ice': '',
   'planet-toxic': '',
   'planet-desert': '',
+  'planet-turkey': '',
+  'planet-germany': '',
+  'planet-france': '',
+  'planet-spain': '',
   bundle: '',
 };
 

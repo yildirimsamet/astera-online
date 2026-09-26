@@ -1,8 +1,9 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import {
   ECONOMY_PROFILE,
   GALAXY,
   MULTI_WORLD,
+  NEUTRAL_OPENING,
   SEASON,
   SERVERS,
   alloyRate,
@@ -10,6 +11,9 @@ import {
   deuteriumRate,
   deuteriumStorageCap,
   generateGalaxy,
+  neutralDemand,
+  neutralOpeningOrder,
+  neutralOpenings,
   selectNeutralSlots,
   shieldHp,
   storageCap,
@@ -22,6 +26,7 @@ import {
   buildings,
   neutralPlanetState,
   planets,
+  players,
   satellites,
   scheduledEvents,
   seasonResults,
@@ -35,6 +40,10 @@ import { schedule } from '../worker/queue.js';
 import { floorHour, scheduleAsteroidHour } from './asteroidSpawn.js';
 import { seedGalaxyEventCalendar } from './galaxyEvents.js';
 import { CURRENT_SEASON_STATS_VERSION } from './seasonArchive.js';
+import { colonyStandings } from './ownership.js';
+import { isPerson } from './people.js';
+import { publishShard } from '../stream/bus.js';
+import { recordGalaxyEvent } from './chronicle.js';
 
 /**
  * The galaxy is never stored slot by slot — it is regenerated from `seed`
@@ -212,7 +221,25 @@ export async function createSeasonIn(tx: Tx, input: CreateSeasonInput) {
     });
   }
   if (season!.rulesetVersion >= MULTI_WORLD.neutralWorldRulesetVersion) {
-    await createNeutralWorlds(tx, season!.id, input.seed, initializedAt);
+    const staged = season!.rulesetVersion >= MULTI_WORLD.neutralCensusRulesetVersion;
+    await createNeutralWorlds(
+      tx,
+      season!.id,
+      input.seed,
+      initializedAt,
+      staged ? NEUTRAL_OPENING.initial : MULTI_WORLD.neutralCounts,
+    );
+    if (staged) {
+      const firstCensusAt = new Date(
+        season!.startsAt.getTime() + NEUTRAL_OPENING.firstCensusDays * 24 * 60 * 60_000,
+      );
+      if (firstCensusAt < season!.endsAt) {
+        await scheduleNeutralCensus(tx, {
+          seasonId: season!.id,
+          censusAt: firstCensusAt,
+        });
+      }
+    }
   }
   return { shard: shard!, season: season! };
 }
@@ -222,6 +249,7 @@ async function createNeutralWorlds(
   seasonId: string,
   seed: number,
   startsAt: Date,
+  counts: Readonly<Record<NeutralTier, number>>,
 ): Promise<void> {
   const spec = generateGalaxy(seed, MULTI_WORLD.neutralSlotPool);
   const selected = selectNeutralSlots(seed, spec.slots);
@@ -232,14 +260,46 @@ async function createNeutralWorlds(
   if (selected.length !== expected) {
     throw new Error(`neutral slot selection did not produce ${String(expected)} worlds`);
   }
+  await openNeutralWorlds(tx, seasonId, seed, startsAt, counts, selected);
+}
 
-  const ordinal = new Map<NeutralTier, number>([[1, 0], [2, 0], [3, 0]]);
-  for (const neutral of selected) {
-    const tier = neutral.tier;
-    const number = (ordinal.get(tier) ?? 0) + 1;
-    ordinal.set(tier, number);
-    await createNeutralWorld(tx, seasonId, neutral, startsAt, number);
+const emptyNeutralCounts = (): Record<NeutralTier, number> => ({ 1: 0, 2: 0, 3: 0 });
+
+async function openNeutralWorlds(
+  tx: Tx,
+  seasonId: string,
+  seed: number,
+  startsAt: Date,
+  counts: Readonly<Record<NeutralTier, number>>,
+  selectedInput?: readonly ReturnType<typeof selectNeutralSlots>[number][],
+): Promise<Record<NeutralTier, number>> {
+  const selected = selectedInput ?? selectNeutralSlots(
+    seed,
+    generateGalaxy(seed, MULTI_WORLD.neutralSlotPool).slots,
+  );
+  const ordered = neutralOpeningOrder(seed, selected);
+  const existingRows = await tx
+    .select({ slotIndex: planets.slotIndex })
+    .from(planets)
+    .where(eq(planets.seasonId, seasonId));
+  const occupied = new Set(existingRows.map((row) => row.slotIndex));
+  const opened = emptyNeutralCounts();
+  for (const tier of [1, 2, 3] as const) {
+    const tierOrder = ordered.filter((entry) => entry.tier === tier);
+    let remaining = Math.min(
+      Math.max(0, Math.floor(counts[tier])),
+      tierOrder.filter((entry) => !occupied.has(entry.slot.index)).length,
+    );
+    for (const [ordinal, neutral] of tierOrder.entries()) {
+      if (remaining <= 0) break;
+      if (occupied.has(neutral.slot.index)) continue;
+      await createNeutralWorld(tx, seasonId, neutral, startsAt, ordinal + 1);
+      occupied.add(neutral.slot.index);
+      opened[tier] += 1;
+      remaining -= 1;
+    }
   }
+  return opened;
 }
 
 /** Shared seed template for a new galaxy and a colony reset after inactivity. */
@@ -332,6 +392,174 @@ export async function createNeutralWorld(
       resolveAt: nextReinforcementAt,
     });
   }
+}
+
+const NEUTRAL_CENSUS_INTERVAL_MS = NEUTRAL_OPENING.censusEveryHours * 60 * 60_000;
+
+const neutralCensusKey = (seasonId: string, censusAt: Date): string =>
+  `neutral-census:${seasonId}:${censusAt.toISOString()}`;
+
+/** One durable link in the daily census chain. */
+export async function scheduleNeutralCensus(
+  db: Tx | Db,
+  input: { seasonId: string; censusAt: Date; resolveAt?: Date },
+): Promise<void> {
+  await schedule(db, {
+    seasonId: input.seasonId,
+    kind: 'neutral_census',
+    refId: input.seasonId,
+    dedupeKey: neutralCensusKey(input.seasonId, input.censusAt),
+    payload: { censusAt: input.censusAt.toISOString() },
+    resolveAt: input.resolveAt ?? input.censusAt,
+  });
+}
+
+/** Count demand, materialise only the unmet addresses, and publish one public fact. */
+export async function runNeutralCensus(
+  tx: Tx,
+  input: { seasonId: string; censusAt: Date },
+): Promise<Record<NeutralTier, number>> {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`neutral-census:${input.seasonId}`}))`);
+  const [season] = await tx
+    .select()
+    .from(seasons)
+    .where(eq(seasons.id, input.seasonId))
+    .for('update');
+  if (season?.status !== 'live') return emptyNeutralCounts();
+  if (
+    season.rulesetVersion < MULTI_WORLD.neutralCensusRulesetVersion
+    || input.censusAt >= season.endsAt
+  ) return emptyNeutralCounts();
+
+  const commanders = await tx
+    .select({ id: players.id })
+    .from(players)
+    .where(and(eq(players.seasonId, input.seasonId), isPerson));
+  const standings = await colonyStandings(tx, commanders.map((row) => row.id));
+  const demand = neutralDemand([...standings.values()]);
+  const selected = selectNeutralSlots(
+    season.seed,
+    generateGalaxy(season.seed, MULTI_WORLD.neutralSlotPool).slots,
+  );
+  const tierBySelectedSlot = new Map(selected.map((entry) => [entry.slot.index, entry.tier]));
+  const worldRows = await tx
+    .select({
+      slotIndex: planets.slotIndex,
+      kind: planets.kind,
+      tier: neutralPlanetState.tier,
+    })
+    .from(planets)
+    .leftJoin(neutralPlanetState, eq(neutralPlanetState.planetId, planets.id))
+    .where(eq(planets.seasonId, input.seasonId));
+  const stillNeutral = emptyNeutralCounts();
+  const opened = emptyNeutralCounts();
+  for (const world of worldRows) {
+    if (
+      world.kind === 'NEUTRAL'
+      && (world.tier === 1 || world.tier === 2 || world.tier === 3)
+    ) stillNeutral[world.tier] += 1;
+    const selectedTier = tierBySelectedSlot.get(world.slotIndex);
+    if (selectedTier !== undefined) opened[selectedTier] += 1;
+  }
+  const wanted = neutralOpenings({
+    demand,
+    stillNeutral,
+    opened,
+    cap: MULTI_WORLD.neutralCounts,
+  });
+  const materialised = await openNeutralWorlds(
+    tx,
+    input.seasonId,
+    season.seed,
+    input.censusAt,
+    wanted,
+    selected,
+  );
+  const total = materialised[1] + materialised[2] + materialised[3];
+  if (total > 0) {
+    await recordGalaxyEvent(tx, {
+      seasonId: input.seasonId,
+      kind: 'neutral_opened',
+      refId: input.censusAt.toISOString(),
+      subjectPlanetId: null,
+      payload: { total, tiers: materialised },
+      occurredAt: input.censusAt,
+    });
+    await publishShard(tx, input.seasonId, 'world');
+  }
+  return materialised;
+}
+
+/** Resolve once even after downtime, then jump the chain to its next future day. */
+export async function resolveNeutralCensus(
+  tx: Tx,
+  input: { seasonId: string; censusAt: Date; now: Date },
+): Promise<Record<NeutralTier, number>> {
+  const opened = await runNeutralCensus(tx, input);
+  const [season] = await tx
+    .select({ status: seasons.status, endsAt: seasons.endsAt })
+    .from(seasons)
+    .where(eq(seasons.id, input.seasonId));
+  if (season?.status !== 'live') return opened;
+  let next = new Date(input.censusAt.getTime() + NEUTRAL_CENSUS_INTERVAL_MS);
+  while (next <= input.now) next = new Date(next.getTime() + NEUTRAL_CENSUS_INTERVAL_MS);
+  if (next < season.endsAt) {
+    await scheduleNeutralCensus(tx, { seasonId: input.seasonId, censusAt: next });
+  }
+  return opened;
+}
+
+/** Repair a missing daily chain without replaying every census missed during downtime. */
+export async function ensureNeutralCensusEvents(db: Db, now: Date): Promise<number> {
+  const live = await db
+    .select()
+    .from(seasons)
+    .where(and(
+      eq(seasons.status, 'live'),
+      gte(seasons.rulesetVersion, MULTI_WORLD.neutralCensusRulesetVersion),
+    ));
+  let inserted = 0;
+  for (const season of live) {
+    const first = new Date(
+      season.startsAt.getTime() + NEUTRAL_OPENING.firstCensusDays * 24 * 60 * 60_000,
+    );
+    if (first >= season.endsAt || now >= season.endsAt) continue;
+    const [active] = await db
+      .select({ id: scheduledEvents.id })
+      .from(scheduledEvents)
+      .where(and(
+        eq(scheduledEvents.seasonId, season.id),
+        eq(scheduledEvents.kind, 'neutral_census'),
+        inArray(scheduledEvents.status, ['pending', 'processing']),
+      ))
+      .limit(1);
+    if (active) continue;
+
+    let censusAt = first;
+    if (censusAt <= now) {
+      const elapsed = now.getTime() - censusAt.getTime();
+      censusAt = new Date(
+        censusAt.getTime() + Math.floor(elapsed / NEUTRAL_CENSUS_INTERVAL_MS) * NEUTRAL_CENSUS_INTERVAL_MS,
+      );
+    }
+    while (censusAt < season.endsAt) {
+      const [existing] = await db
+        .select({ status: scheduledEvents.status })
+        .from(scheduledEvents)
+        .where(eq(scheduledEvents.dedupeKey, neutralCensusKey(season.id, censusAt)))
+        .limit(1);
+      if (!existing) break;
+      censusAt = new Date(censusAt.getTime() + NEUTRAL_CENSUS_INTERVAL_MS);
+    }
+    if (censusAt >= season.endsAt) continue;
+    await scheduleNeutralCensus(db, {
+      seasonId: season.id,
+      censusAt,
+      resolveAt: censusAt <= now ? now : censusAt,
+    });
+    inserted += 1;
+  }
+  return inserted;
 }
 
 

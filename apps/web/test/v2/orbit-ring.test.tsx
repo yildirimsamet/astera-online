@@ -84,8 +84,15 @@ describe('the orbit on the world', () => {
   });
 
   it('draws the Core’s first socket locked on a world too young for any', () => {
-    render(<PlanetHero planet={planetView({ buildings: { CORE: 3 }, orbit: [] })} />);
+    render(<PlanetHero planet={planetView({ buildings: { CORE: 1 }, orbit: [] })} />);
     expect(slots().every((slot) => slot.getAttribute('data-orbit-slot') === 'locked')).toBe(true);
     expect(screen.getByTestId('orbit-line')).toHaveTextContent('+1 at Core L6');
+  });
+
+  it('shows the gifted Core 2 Uplink without claiming another socket opens at Core 6', () => {
+    render(<PlanetHero planet={planetView({ buildings: { CORE: 2 }, orbit: ['UPLINK'], orbitSlots: 1 })} />);
+    expect(slots().map((slot) => slot.getAttribute('data-orbit-slot'))).toEqual(['held', 'locked', 'locked', 'locked']);
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent('1/1');
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent('+1 at Core L9');
   });
 });

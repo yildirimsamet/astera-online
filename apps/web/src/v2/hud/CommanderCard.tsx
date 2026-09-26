@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { duration } from '../../lib/time.js';
+import type { CountryCode } from '@astera/rules';
+import { Flag } from '../identity/Flag.js';
 
 const DAY_MS = 86_400_000;
 
@@ -24,6 +26,7 @@ export function seasonDay(startsAt: number, now: number): number {
 
 export interface CommanderCardProps {
   name: string;
+  country?: CountryCode;
   clan: { tag: string; name: string } | null;
   /** The galaxy's name (`season.shardName`), when there is one. */
   galaxy: string | null;
@@ -49,8 +52,8 @@ export interface CommanderCardProps {
  * was taken in, the worlds against the most one commander may hold, the shield as
  * the time until you can be attacked. The name is the sheet's title, just above.
  */
-export function CommanderCard({ name, clan, galaxy, seasonDay: day, rank, worlds, shield, now }: CommanderCardProps) {
-  const { t } = useTranslation();
+export function CommanderCard({ name, country, clan, galaxy, seasonDay: day, rank, worlds, shield, now }: CommanderCardProps) {
+  const { t, i18n } = useTranslation();
   const shieldLeft = shield === null ? 0 : shield.until - now;
   const where = [galaxy, day === null ? null : t('menu.profile.seasonDay', { day })]
     .filter((part): part is string => part !== null)
@@ -69,12 +72,16 @@ export function CommanderCard({ name, clan, galaxy, seasonDay: day, rank, worlds
           {initials(name)}
         </span>
         <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {country && <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} />}
+            <span className="truncate text-caption font-medium text-v2-ink">{name}</span>
+          </span>
           {clan === null ? (
             <span className="text-caption text-v2-ink-3">{t('menu.profile.noClan')}</span>
           ) : (
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="shrink-0 rounded-chip border border-v2-ally/60 px-1 font-v2-mono text-micro font-semibold text-v2-ally">{clan.tag}</span>
-              <span className="truncate text-caption font-medium text-v2-ink">{clan.name}</span>
+            <span className="truncate text-caption font-medium text-v2-ink">{clan.name}</span>
             </span>
           )}
           {where.length > 0 && <span className="truncate text-caption text-v2-ink-3">{where}</span>}

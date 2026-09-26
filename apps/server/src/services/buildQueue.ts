@@ -9,7 +9,7 @@ import {
   SATELLITE_IDS,
   cancelRefund,
   coreTier,
-  satelliteSlots,
+  activeOrbitSlots,
   type BuildQueueId,
   type BuildingId,
   type BuildingLevels,
@@ -188,7 +188,7 @@ function projectOrder(state: ProjectedBuildState, order: BuildOrder): void {
 
 /** A Core owns a prefix of physical orbit slots; damage never reorders hardware. */
 function projectEffectiveOrbit(state: ProjectedBuildState): void {
-  state.effectiveOrbit = state.orbit.slice(0, satelliteSlots(state.buildings.CORE));
+  state.effectiveOrbit = state.orbit.slice(0, activeOrbitSlots(state.buildings.CORE, state.orbit));
 }
 
 /**

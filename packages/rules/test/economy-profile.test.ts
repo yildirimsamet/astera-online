@@ -51,6 +51,10 @@ describe('monthly economy', () => {
   });
   it('keeps hull recipes and work independent of calendar length', () => {
     const dart = profileHull(HULLS.DART), atlas = profileHull(HULLS.ATLAS);
+    // `profileHull` returns the authored recipe before the final catalogue-wide
+    // 1.30 metal adjustment. The public `HULLS.DART` value is 78 crystal;
+    // onboarding tests that ship-facing price, while this profile test checks
+    // the pre-adjustment recipe (60).
     expect(dart.alloy).toBe(300); expect(dart.crystal).toBe(60);
     expect(dart.workMinutes).toBe(2); expect(dart.bulk).toBe(3);
     expect(atlas.atk).toBe(0); expect(atlas.cargo).toBe(9500);
@@ -76,10 +80,12 @@ describe('monthly economy', () => {
     expect(CLAN.creationCost).toEqual({ alloy: 7500, crystal: 3000, deuterium: 0 });
     expect(MULTI_WORLD.settlement.cost).toEqual({ alloy: 800, crystal: 400, deuterium: 0 });
     expect(PLANET_START).toEqual({ alloy: 1500, crystal: 400, deuterium: 50 });
-    expect(START.alloy).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const).reduce((a, b) => a + buildingCost(b, 1).alloy, 600));
-    expect(START.crystal).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const).reduce((a, b) => a + buildingCost(b, 1).crystal, 120));
-    expect(PIRATE.speedMin).toBe(HULLS.CATACLYSM.speed * 0.75 / TRAVEL.distanceFactor);
-    expect(PIRATE.speedMax).toBe(HULLS.DART.speed * 0.75 / TRAVEL.distanceFactor);
+    expect(START.alloy).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const)
+      .reduce((sum, id) => sum + buildingCost(id, 1).alloy, 2 * HULLS.DART.alloy));
+    expect(START.crystal).toBe((['CORE', 'REFINERY', 'EXTRACTOR'] as const)
+      .reduce((sum, id) => sum + buildingCost(id, 1).crystal, 2 * HULLS.DART.crystal));
+    expect(PIRATE.speedMin).toBe(HULLS.CATACLYSM.speed * 0.70 / TRAVEL.distanceFactor);
+    expect(PIRATE.speedMax).toBe(HULLS.DART.speed * 0.70 / TRAVEL.distanceFactor);
     // The SLOWEST hold anchors the merchant, never a named hull — D186, and D196
     // moved the anchor from the Atlas to the Argosy without a constant changing.
     expect(TRADE.speed).toBe(HULLS.ARGOSY.speed / TRAVEL.distanceFactor / 2);

@@ -329,7 +329,7 @@ describe('the orbit surface', () => {
  */
 describe('the slot ladder the meter draws', () => {
   it('matches the rules at every Core level it claims to', () => {
-    for (const [core, slots] of [[1, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [14, 3], [15, 4], [20, 4]] as const) {
+    for (const [core, slots] of [[1, 0], [2, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [14, 3], [15, 4], [20, 4]] as const) {
       expect(satelliteSlots(core), `Core ${String(core)}`).toBe(slots);
     }
   });

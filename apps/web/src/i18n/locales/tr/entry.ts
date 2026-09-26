@@ -57,7 +57,7 @@ export const landing = {
     submitLogin: 'Giriş yap',
     switchToLogin: 'Zaten komutanım var',
     switchToRegister: 'Yeni komutan oluşturayım',
-    badName: 'Ad 3-16 karakter olmalı; harf, rakam ve alt çizgi kullanabilirsin.',
+    badName: 'Ad 2–32 karakter olmalı. Her dilde harf, rakam, alt çizgi ve tek boşluk kullanabilirsin.',
     noName: 'Komutan adını yaz.',
     shortPassword: 'Parola en az {{count}} karakter olmalı.',
     noPassword: 'Parolanı yaz.',

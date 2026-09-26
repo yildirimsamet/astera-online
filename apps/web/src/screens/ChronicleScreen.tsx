@@ -117,6 +117,15 @@ export function ChronicleScreen({
                 detail = t('chronicle.neutralClaimDetail');
                 icon = <PlanetIcon className="size-4" />;
                 break;
+              case 'neutral_opened':
+                title = t('chronicle.neutralOpened', { total: event.payload.total });
+                detail = t('chronicle.neutralOpenedDetail', {
+                  t1: event.payload.tiers[1],
+                  t2: event.payload.tiers[2],
+                  t3: event.payload.tiers[3],
+                });
+                icon = <GalaxyIcon className="size-4" />;
+                break;
               case 'death_star_impact':
                 title = t('chronicle.deathStarImpact', { planet: event.payload.planetName });
                 detail = t(`chronicle.deathStarOutcome.${

@@ -1,7 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MIN_PASSWORD, USERNAME_PATTERN } from '../lib/credentials.js';
+import { MIN_PASSWORD, validUsername } from '../lib/credentials.js';
 import { Button } from '../ui/kit/index.js';
+import type { CountryCode } from '@astera/rules';
+import { CountryPicker } from '../v2/identity/CountryPicker.js';
+import { Flag } from '../v2/identity/Flag.js';
+import { countryName, detectCountry } from '../v2/identity/country.js';
 
 /**
  * THE WALL, AT THE ONE MOMENT THE PLAYER WANTS SOMETHING. D56.
@@ -18,7 +22,8 @@ import { Button } from '../ui/kit/index.js';
  * save a credential when the username and the password are submitted together, so
  * two separate forms would silently cost every player the thing that makes an
  * account survive a reinstall. The name field therefore stays mounted for step
- * two, as a readonly line that also happens to confirm what they chose.
+ * two, still editable beside the password so a taken name can be fixed without
+ * retracing a step.
  *
  * IT NEVER TRAPS ANYBODY. "I already have a commander" is on both steps: a
  * returning player who pressed the wrong door must be able to leave from here, not
@@ -32,19 +37,23 @@ export function ClaimDialog({
   introduction,
 }: {
   planetName: string;
-  onClaim: (username: string, password: string) => Promise<void>;
+  onClaim: (username: string, password: string, countryCode?: CountryCode) => Promise<void>;
   onSignIn: () => void;
   /** A refusal from the claim, already translated. */
   error?: string;
   /** The caller describes what will actually be transferred; legacy intents differ. */
   introduction?: string;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [step, setStep] = useState<'name' | 'password'>('name');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
+  const [submittedUsername, setSubmittedUsername] = useState<string | null>(null);
+  const [countryCode, setCountryCode] = useState<CountryCode>(() => detectCountry(navigator));
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
   const nameId = useId();
   const passwordId = useId();
   const nameRef = useRef<HTMLInputElement>(null);
@@ -56,33 +65,43 @@ export function ClaimDialog({
     if (step === 'name') nameRef.current?.focus();
     else passwordRef.current?.focus();
   }, [step]);
+  useEffect(() => {
+    if (error && step === 'password') nameRef.current?.focus();
+  }, [error, step]);
 
   const naming = step === 'name';
   /** What this form got wrong first, then what the server refused. */
-  const complaint = problem ?? error;
+  const complaint = problem ?? (!busy && submittedUsername === username.trim() ? error : undefined);
+  const serverComplaint = !problem && !busy && submittedUsername === username.trim() && !!error;
 
   const submit = (): void => {
     if (busy) return;
 
+    if (!validUsername(username)) {
+      setProblem(t('landing.form.badName'));
+      setProblemField('name');
+      nameRef.current?.focus();
+      return;
+    }
     if (naming) {
-      if (!USERNAME_PATTERN.test(username.trim())) {
-        setProblem(t('landing.form.badName'));
-        return;
-      }
       setProblem(null);
+      setProblemField(null);
       setStep('password');
       return;
     }
 
     if (password.length < MIN_PASSWORD) {
       setProblem(t('landing.form.shortPassword', { count: MIN_PASSWORD }));
+      setProblemField('password');
       return;
     }
     setProblem(null);
+    setProblemField(null);
+    setSubmittedUsername(username.trim());
     setBusy(true);
     void (async () => {
       try {
-        await onClaim(username.trim(), password);
+        await onClaim(username.trim(), password, countryCode);
       } catch {
         // The refusal arrives through `error`; what this owns is letting the
         // player press again without retyping anything.
@@ -121,32 +140,26 @@ export function ClaimDialog({
             : t('onboarding.claim.linePassword')}
         </p>
 
-        {/*
-          MOUNTED ON BOTH STEPS, ALWAYS. On step two it is a readonly line rather
-          than a field — the browser still sees a username submitted beside the
-          password, which is the only way the credential gets offered for saving.
-        */}
-        <label className={`legend mt-6 block ${naming ? '' : 'opacity-60'}`} htmlFor={nameId}>
+        {/* Keep the name editable beside the password so a taken name can be fixed here. */}
+        <label className="legend mt-6 block" htmlFor={nameId}>
           {t('onboarding.claim.nameLabel')}
         </label>
         <input
           id={nameId}
           ref={nameRef}
           name="username"
-          className={`field mt-2 ${problem !== null && naming ? 'field-bad' : ''} ${
-            naming ? '' : 'opacity-60'
-          }`}
+          className={`field mt-2 ${problemField === 'name' || serverComplaint ? 'field-bad' : ''}`}
           value={username}
           onChange={(event) => {
             setUsername(event.target.value);
             setProblem(null);
+            setProblemField(null);
           }}
-          readOnly={!naming}
           autoComplete="username"
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          maxLength={16}
+          maxLength={64}
           placeholder={t('landing.form.namePlaceholder')}
         />
 
@@ -159,17 +172,30 @@ export function ClaimDialog({
               id={passwordId}
               ref={passwordRef}
               name="password"
-              className={`field mt-2 ${problem !== null ? 'field-bad' : ''}`}
+              className={`field mt-2 ${problemField === 'password' ? 'field-bad' : ''}`}
               type="password"
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
                 setProblem(null);
+                setProblemField(null);
               }}
               autoComplete="new-password"
               maxLength={200}
               placeholder={t('landing.form.passwordPlaceholder', { count: MIN_PASSWORD })}
             />
+            <div className="mt-4">
+              <p className="legend">{t('country.label')}</p>
+              <button
+                type="button"
+                className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-control border border-line-soft bg-void/30 px-3 text-left text-caption text-bone"
+                onClick={() => { setCountryPickerOpen(true); }}
+              >
+                <Flag code={countryCode} language={i18n.resolvedLanguage ?? 'en'} />
+                <span className="flex-1">{countryName(countryCode, i18n.resolvedLanguage ?? 'en')}</span>
+                <span className="text-dim">{t('country.change')}</span>
+              </button>
+            </div>
           </>
         )}
 
@@ -201,6 +227,7 @@ export function ClaimDialog({
               className="text-caption text-faint underline-offset-4 hover:underline"
               onClick={() => {
                 setProblem(null);
+                setProblemField(null);
                 setStep('name');
               }}
             >
@@ -209,6 +236,16 @@ export function ClaimDialog({
           )}
         </div>
       </form>
+      {countryPickerOpen && (
+        <CountryPicker
+          value={countryCode}
+          onSelect={(next) => {
+            setCountryCode(next);
+            setCountryPickerOpen(false);
+          }}
+          onClose={() => { setCountryPickerOpen(false); }}
+        />
+      )}
     </div>
   );
 }

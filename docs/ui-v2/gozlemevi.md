@@ -47,7 +47,7 @@ Astera tarayıcıda ve telefonda oynanan, 30 günlük sezonlarla dönen kalıcı
 ### Dünyalar
 
 - 1000 koltuklu katmanlı küre: komutanlar dış kabukta, nötr dünyalar merkeze doğru T1 → T3
-- 1 başkent (ele geçirilemez); koloni yuvaları başkentin Çekirdeği 9, 12 ve 15'te açılır
+- 1 başkent (ele geçirilemez); koloni yuvaları başkentin Çekirdeği 9, 13 ve 16'da açılır
 - Nötr dünya: önce baskın, sonra yerleşim
 - Koloni sadakati: arızalar ve yenilgiler düşürür (kesin −30, kısmi −15); sıfırda koloni binaları ve stokuyla nötre döner
 
@@ -89,7 +89,7 @@ Astera tarayıcıda ve telefonda oynanan, 30 günlük sezonlarla dönen kalıcı
 
 ### Yörünge ve araştırma
 
-- 4 uydu: Anten, Körük, Matkap, Kılavuz; yuvalar Çekirdek 6, 9, 12 ve 15'te açılır
+- 4 uydu: Anten, Körük, Matkap, Kılavuz; yuvalar Çekirdek 2, 9, 12 ve 15'te açılır
 - 16 araştırma projesi; tüm dünyalarına birden uygulanır
 - Ölüm Yıldızı (Çekirdek 12, Tersane 5): 1 saatlik EMP; Aegis'i boşaltır, yer toplarını susturur, hiçbir şeyi yok etmez ve kontrolü değiştirmez
 
@@ -622,7 +622,7 @@ Her satır koddan okundu. Ekrana konan her bilgi bu tabloyla uyuşmak zorunda. �
 | 6 | Saldırı bandı | `coreTier = ceil(Çekirdek / 3)`; iki komutanın en yüksek Çekirdek kademeleri arasındaki fark ≤ 1 (`ABUSE.tierBand`) | `rules/loot.ts` `canAttack`, `coreTier`; web `lib/band.ts` `outOfBandAbove` | Sis altında istemci yalnızca "bandın üstünde"yi kanıtlayabilir. **"Bandında" asla yazılmaz** |
 | 7 | Tekrar saldırı sınırı | Aynı saldırgandan aynı hedefe 12 saatte en fazla 3 saldırı (`ABUSE.bashLimit = 3`, `bashWindowMinutes = 720`) | `loot.ts`; server `services/mission.ts` | Saldırı butonunda ret nedeni |
 | 8 | Kalkanlar | İlk gün kalkanı; ağır yenilgi sonrası toparlanma kalkanı (`earnsRecoveryShield`, eşik `ABUSE.recoveryLossHours` = 4 saatlik net üretim kaybı) | `loot.ts`; `StatusBar` `AttackShield` | Kalkan varken tehdit rengi kullanılmaz ([H1](#hatalar)) |
-| 9 | Koloni | Yuvalar başkent Çekirdeği 9, 12, 15'te (`MULTI_WORLD.colonyCoreThresholds`). Sadakat: yenilgide KESİN −30, KISMİ −15 (`FAULT.battleLoyaltyLoss`); arızalar düşürür; 0'da koloni binaları ve stokuyla nötre döner. Sadakat değeri yalnız sahibine görünür (planet view `loyalty`) | `rules/strategic.ts` `colonyCapacity`; `constants.ts`; server `services/loyalty.ts` | Rakip dosyasında sadakat değeri yok, yalnızca kural |
+| 9 | Koloni | Yuvalar başkent Çekirdeği 9, 13 ve 16'da (`MULTI_WORLD.colonyCoreThresholds`). Sadakat: yenilgide KESİN −30, KISMİ −15 (`FAULT.battleLoyaltyLoss`); arızalar düşürür; 0'da koloni binaları ve stokuyla nötre döner. Sadakat değeri yalnız sahibine görünür (planet view `loyalty`) | `rules/strategic.ts` `colonyCapacity`; `constants.ts`; server `services/loyalty.ts` | Rakip dosyasında sadakat değeri yok, yalnızca kural |
 | 10 | Ölüm Yıldızı | 60 dk EMP: Aegis 0, yer topları susar. Hiçbir şey yok etmez, kontrolü değiştirmez. Çekirdek 12 + Tersane 5. `STRATEGIC_CRAFTING_ENABLED = true`, `STRATEGIC_RESEARCH_ENABLED = false` | `constants.ts` `DEATH_STAR`, `FEATURE_FLAGS`; server `services/strategic.ts` | Koloni ele geçirme dili kullanılmaz |
 | 11 | Teleskop izleme yuvası | Yuva başına: `status` (HOME / AWAY / UNKNOWN), `staleMinutes`, `etaMinutes` (yalnız FULL), `state`. `clarity = teleskop − perde`: ≥2 FULL, 1 CLEAR, 0 INTERMITTENT, −1 DEGRADED, altı BLIND (TR: tam, berrak, kesikli, bozuk, kör) | `rules/intel.ts` `telescopeReading`, `clarityState`; web `intelSchema.watching`; `ui/Clarity.tsx` | İzleme satırı **gemi sayısı göstermez**; dönüş saati yalnız tam netlikte |
 | 12 | Teleskop görüşü (uçan filo) | Teleskop menzilindeki uçan filo: kesin gemi dağılımı (`fleet`). Menzil dışı: `unknown`, konum var tür yok | web `trafficSchema` | Tehdit kartında kesin sayı yalnız gelen filo teleskop menzilindeyse |

@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLeaderboard } from '../api/queries.js';
-import i18n from '../i18n/index.js';
 import { full, signed } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { commanderLabel } from '../lib/identity.js';
 import { PlanetSigil } from '../ui/PlanetSigil.js';
 import { Medal, isPlace } from '../ui/Medal.js';
 import { EmptyState, Unreachable, Waiting } from '../ui/kit/index.js';
+import { Flag } from '../v2/identity/Flag.js';
 
 /** The whole local galaxy, ordered by the server's authoritative Dominion score. */
 export function LeaderboardScreen({ onFocusPlanet }: {
   onFocusPlanet: (planetId: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const board = useLeaderboard();
   const [query, setQuery] = useState('');
 
@@ -61,8 +61,8 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     : [];
 
   return (
-    <div>
-      <div className="sticky top-0 z-10 border-b border-line-soft bg-void px-2 py-3">
+    <div data-v2-leaderboard className="font-v2-ui text-v2-ink">
+      <div className="sticky top-0 z-10 border-b border-v2-line bg-v2-void px-2 py-3">
         <input
           type="search"
           name="leaderboard-search"
@@ -71,16 +71,16 @@ export function LeaderboardScreen({ onFocusPlanet }: {
           onChange={(event) => { setQuery(event.currentTarget.value); }}
           aria-label={t('leaderboard.searchLabel')}
           placeholder={t('leaderboard.searchPlaceholder')}
-          className="field min-h-11 w-full"
+          className="h-10 w-full rounded-control border border-v2-line-hi bg-v2-deep px-3 text-caption text-v2-ink outline-none focus:border-v2-self"
         />
       </div>
       {nearby.length === 0 ? null : (
         <section
           role="region"
           aria-label={t('leaderboard.nearby')}
-          className="border-b border-line-soft bg-raised/45 px-2 py-2"
+          className="border-b border-v2-line bg-v2-raise/45 px-2 py-2"
         >
-          <p className="legend mb-1.5 text-crystal">{t('leaderboard.nearby')}</p>
+          <p className="mb-1.5 text-micro font-semibold uppercase tracking-wide text-v2-self">{t('leaderboard.nearby')}</p>
           <div className="grid gap-1">
             {nearby.map((row) => (
               <NearbyRival
@@ -96,14 +96,14 @@ export function LeaderboardScreen({ onFocusPlanet }: {
       {rows.length === 0 ? (
         <div className="px-2 py-6"><EmptyState title={t('leaderboard.noMatch')} /></div>
       ) : (
-    <ol className="divide-y divide-line-soft" aria-label={t('leaderboard.title')}>
+    <ol className="divide-y divide-v2-line" aria-label={t('leaderboard.title')}>
       {rows.map((row) => {
         const self = row.playerId === mine;
         return (
           <li
             key={row.playerId}
             aria-current={self ? 'true' : undefined}
-            className={`grid grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 ${self ? 'bg-crystal/8' : ''}`}
+            className={`grid grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 ${self ? 'bg-v2-self/8' : ''}`}
             style={{ contentVisibility: 'auto', containIntrinsicSize: '64px' }}
           >
             {/* The podium is an object; everybody else is a numeral. */}
@@ -127,6 +127,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                         [{row.clan.tag}]
                       </span>
                     ) : null}
+                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
                     <span className="truncate">{row.username}</span>
                   </strong>
                 ) : row.planetId !== undefined ? (
@@ -146,6 +147,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                         [{row.clan.tag}]
                       </span>
                     ) : null}
+                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
                     <span className="truncate">{row.username}</span>
                   </button>
                 ) : (
@@ -158,6 +160,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                         [{row.clan.tag}]
                       </span>
                     ) : null}
+                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
                     <span className="truncate">{row.username}</span>
                   </span>
                 )}
@@ -224,10 +227,11 @@ function NearbyRival({
   self: boolean;
   onFocusPlanet: (planetId: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const identity = (
     <>
       {row.clan ? <span className="text-crystal">[{row.clan.tag}]</span> : null}
+      <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
       <span className="truncate">{row.username}</span>
       {self ? <span className="text-crystal">{t('leaderboard.you')}</span> : null}
     </>

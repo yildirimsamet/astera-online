@@ -14,7 +14,7 @@ describe('the owner-selected 32:16:1 resource value', () => {
 
   it('uses the same value for new merchant occurrences and hull calibration', () => {
     expect(TRADE.rate).toEqual(RESOURCE_VALUE);
-    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(5);
+    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(6);
     for (const give of [{ alloy: 32, crystal: 0, deuterium: 0 }, { alloy: 0, crystal: 16, deuterium: 0 }]) {
       expect(quoteTrade(give, { alloy: 0, crystal: 0, deuterium: 1 }, TRADE.rate))
         .toMatchObject({ refusal: null, leftoverUnits: 0, offerUnits: 32, askUnits: 32 });

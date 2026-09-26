@@ -25,15 +25,15 @@ function lesson(world: AcademyWorld, replay = false) {
   return { mine, write, view };
 }
 
-vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ panel, planetGroup, frameTelescope, openingHome, onPanel, onFocused, coachTap, coachFocus }: {
-  panel: string | null; planetGroup: string; frameTelescope?: boolean; openingHome?: boolean;
+vi.mock('../src/screens/GalaxyView.jsx', () => ({ GalaxyView: ({ panel, planetGroup, frameTelescope, openingHome, clearRequest, onPanel, onFocused, coachTap, coachFocus }: {
+  panel: string | null; planetGroup: string; frameTelescope?: boolean; openingHome?: boolean; clearRequest?: number;
   onPanel: (panel: null | 'report') => void; onFocused?: (focus: { kind: 'planet'; id: string }) => void;
   coachTap?: { label: string; onTap: () => void } | null;
   coachFocus?: { focus: { kind: string; id?: string }; request: number } | null;
-}) => <div data-testid="academy-galaxy" data-coach-request={coachFocus?.request} data-coach-kind={coachFocus?.focus.kind} data-panel={panel} data-group={planetGroup} data-framing={frameTelescope} data-opening-home={openingHome}>
+}) => <div data-testid="academy-galaxy" data-coach-request={coachFocus?.request} data-coach-kind={coachFocus?.focus.kind} data-panel={panel} data-group={planetGroup} data-framing={frameTelescope} data-opening-home={openingHome} data-clear-request={clearRequest}>
   {/* The real disc pins this to the focused subject; the stub only has to exist. */}
   {coachTap && <button type="button" data-academy-tap-target aria-label={coachTap.label} onClick={coachTap.onTap} />}
-  <div data-sheet-scroll data-testid="menu-scroll" />
+  <div data-sheet-body data-testid="menu-scroll" />
   <button data-academy-home onClick={() => { onFocused?.({ kind: 'planet', id: 'academy-home' }); }}>Home planet</button>
   <button data-tab="orbit">Intel</button><button data-tab="defend">Defend</button><button data-tab="reach">Fleet</button>
   <button data-sensor-toggle="telescope">Telescope switch</button>
@@ -46,7 +46,7 @@ vi.mock('../src/shell/PendingStrip.js', () => ({ PendingStrip: () => null }));
 vi.mock('../src/onboarding/Gate.jsx', async (original) => ({ ...await original<typeof GateModule>(), useScrollIntoView: () => undefined }));
 
 describe('Academy ownership and progression', () => {
-  it.each(['core', 'extractor', 'aegis', 'darts', 'prospector'] as const)('scrolls the menu to its waiting queue when %s starts', (id) => {
+  it.each(['core', 'extractor', 'aegis', 'darts', 'prospector', 'courier'] as const)('scrolls the menu to its waiting queue when %s starts', (id) => {
     const frames: FrameRequestCallback[] = [];
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((fn) => { frames.push(fn); return frames.length; });
     const now = Date.now();
@@ -106,6 +106,28 @@ describe('Academy ownership and progression', () => {
     const during = Array.from(document.querySelectorAll('style')).map((node) => node.textContent).join('');
     expect(during).not.toContain('[data-academy] [data-sensor-toggles]{display:none}');
   });
+  it('reveals the gifted Telescope row alongside Uplink and Radar in the sensor lesson', () => {
+    const at = ACADEMY_STEPS.findIndex((step) => step.id === 'radar');
+    const view = lesson(openAcademy(Date.now(), at));
+    const styles = Array.from(view.view.container.querySelectorAll('style')).map((node) => node.textContent).join('');
+    expect(styles).toContain(':not(#row-UPLINK):not(#row-TELESCOPE):not(#row-RADAR)');
+  });
+  it('clears the planet sheet for the Radar contact comparison', () => {
+    const step = ACADEMY_STEPS.findIndex((entry) => entry.id === 'radar');
+    lesson(openAcademy(Date.now(), step));
+    expect(screen.getByTestId('academy-galaxy')).not.toHaveAttribute('data-panel');
+    expect(screen.getByTestId('academy-galaxy')).toHaveAttribute('data-framing', 'true');
+    expect(screen.getByTestId('academy-galaxy')).toHaveAttribute('data-clear-request', String(step));
+    expect(screen.getByText('Dart ×2')).toBeInTheDocument();
+    expect(screen.getByTestId('academy-radar-unknown')).toHaveTextContent('?');
+    const range = screen.getByTestId('academy-radar-range');
+    expect(range).toHaveTextContent('••');
+    expect(range).toHaveTextContent('?');
+  });
+  it('clears the planet sheet so the Telescope View control is reachable', () => {
+    lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((step) => step.id === 'telescope')));
+    expect(screen.getByTestId('academy-galaxy')).not.toHaveAttribute('data-panel');
+  });
   it('blocks detail-sheet presses in an introduction but not Continue', () => {
     const world = openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'deuterium'));
     const { write } = lesson(world);
@@ -115,15 +137,23 @@ describe('Academy ownership and progression', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ step: world.step + 1 }));
   });
+  it('points the guide hand at Continue in introduction-only lessons', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((fn) => { frames.push(fn); return frames.length; });
+    lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'radar')));
+    const button = screen.getByRole('button', { name: 'Continue' });
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(new DOMRect(260, 120, 80, 36));
+    act(() => { frames[0]?.(0); });
+    expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')?.parentElement?.style.visibility).toBe('visible');
+  });
   /**
    * THE SPHERE, THEN SOMETHING INSIDE IT, THEN ON. Owner instruction.
    *
    * A radius on its own is a fact, not a reason. One second after the sphere opens
    * a world appears inside it, and only then does the beat mean what it is trying
-   * to say — *this is what sight is for.* The visible result stays for one second
-   * before the lesson continues.
+   * to say — *this is what sight is for.* The player advances after seeing it.
    */
-  it('opens the sphere, puts a world in it a second later, then advances once', () => {
+  it('opens the sphere, reveals a world, and waits for Continue before advancing', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const world = openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === 'telescope'));
     const { write } = lesson(world);
@@ -138,9 +168,9 @@ describe('Academy ownership and progression', () => {
     expect(write).toHaveBeenCalledOnce();
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ sightDemo: true, step: world.step }));
 
-    act(() => { vi.advanceTimersByTime(999); });
+    act(() => { vi.advanceTimersByTime(5_000); });
     expect(write).toHaveBeenCalledOnce();
-    act(() => { vi.advanceTimersByTime(1); });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(write).toHaveBeenCalledTimes(2);
     // And it leaves with the demonstration switched off behind it.
     expect(write).toHaveBeenLastCalledWith(
@@ -156,10 +186,9 @@ describe('Academy ownership and progression', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close report' }));
     expect(write).toHaveBeenCalledWith(expect.objectContaining({ step: world.step + 1 }));
   });
-  it.each(['deuterium', 'foundry', 'uplink', 'radar', 'veil', 'thorn', 'bastion'] as const)('frames %s without a hand and offers a pulsing Continue', (id) => {
+  it.each(['deuterium', 'foundry', 'uplink', 'radar', 'veil', 'thorn', 'bastion'] as const)('points the hand to Continue in %s', (id) => {
     lesson(openAcademy(Date.now(), ACADEMY_STEPS.findIndex((s) => s.id === id)));
-    expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')).toBeNull();
-    expect(document.querySelector('[data-tutorial-intro]')).toBeInTheDocument();
+    expect(document.querySelector('img[src$="tutorial-hand-icon.png"]')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' }).className).toContain('academy-continue');
     expect(screen.getByText(/introduction only/i)).toBeInTheDocument();
   });

@@ -70,7 +70,7 @@ export interface TradeShipSpec extends OrbitElements {
  * A merchant is not a fight and not a race against another commander — it is an
  * appointment — so the only thing worth varying is where it keeps it. One speed
  * also means one honest sentence on the launch screen about whether your convoy
- * leads it, which at half an Atlas is always yes.
+ * leads it, which at half an Argosy is always yes.
  */
 export function tradeShipSpec(
   occurrence: {

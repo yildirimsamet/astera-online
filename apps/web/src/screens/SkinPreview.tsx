@@ -7,6 +7,10 @@ import { PlanetSkinModel, previewSkinNode } from '../galaxy/PlanetSkinModel.jsx'
 import { SkinAssetBoundary } from '../galaxy/SkinAssetBoundary.jsx';
 
 const NODE = [previewSkinNode('shop-preview')];
+const START_ANGLES: Readonly<Record<string, number>> = {
+  'planet-france': -0.65,
+  'planet-spain': 1.5,
+};
 
 /**
  * THE LOOK ITSELF: the exact game asset and palette, turning slowly on its own and turned by
@@ -17,11 +21,14 @@ export function SkinPreview({
   skinId,
   status,
   className = 'h-72',
+  phaseOffset,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
   /** Stage height; a desk gives the live model the room a phone cannot. */
   className?: string;
+  /** Only the shop and derived selection card set a merchandising start angle. */
+  phaseOffset?: number;
 }) {
   const { t } = useTranslation();
   return (
@@ -38,7 +45,8 @@ export function SkinPreview({
         <SkinAssetBoundary key={`${skinId}:${status}`}
           fallback={<Html center><span className="whitespace-nowrap font-v2-ui text-micro uppercase tracking-wide text-v2-ink-2">{t('skins.modelUnavailable')}</span></Html>}>
           <Suspense fallback={<Html center><span className="font-v2-mono text-micro text-v2-ink-3">…</span></Html>}>
-            <PlanetSkinModel skinId={skinId} status={status} nodes={NODE} />
+            <PlanetSkinModel skinId={skinId} status={status} nodes={NODE}
+              previewPhaseOffset={phaseOffset ?? START_ANGLES[skinId] ?? 0} />
           </Suspense>
         </SkinAssetBoundary>
         {/* It turns by itself, so the look is alive before anyone touches it; a drag takes over. */}

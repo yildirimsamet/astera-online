@@ -51,7 +51,7 @@ describe('clarity gradient', () => {
    */
   it('ends at a real distance rather than at infinity', () => {
     expect(Number.isFinite(telescopeRange(8))).toBe(true);
-    expect(telescopeRange(8)).toBe(6_600);
+    expect(telescopeRange(8)).toBe(9_900);
     expect(telescopeRange(8)).toBe(SENSOR.maxRadius);
     expect(telescopeWatchRange(8)).toBe(SENSOR.maxRadius);
     expect(telescopeWatchRange(99)).toBe(SENSOR.maxRadius);
@@ -615,13 +615,13 @@ describe('what the disc itself discloses — D123', () => {
      */
     it('is the ladder the owner set, rung by rung', () => {
       expect([0, 1, 2, 3, 4, 5].map(sensorReach))
-        .toEqual([750, 1425, 1725, 1875, 2175, 2400]);
+        .toEqual([1125, 2137.5, 2587.5, 2812.5, 3262.5, 3600]);
       expect([0, 1, 2, 3, 4, 5].map(radarContactRange))
-        .toEqual([0, 1800, 2175, 2550, 2850, 3300]);
+        .toEqual([0, 2700, 3262.5, 3825, 4275, 4950]);
     });
 
     it('gives a commander with no telescope a live neighbourhood', () => {
-      expect(SENSOR.baseRadius).toBe(750);
+      expect(SENSOR.baseRadius).toBe(1125);
       expect(sensorReach(0)).toBe(SENSOR.baseRadius);
     });
 
@@ -671,7 +671,7 @@ describe('what the disc itself discloses — D123', () => {
      */
     it('reaches the full authored span at the maximum level', () => {
       expect(sensorReach(99)).toBe(SENSOR.maxRadius);
-      expect(sensorReach(99)).toBe(6_600);
+      expect(sensorReach(99)).toBe(9_900);
       expect(sensorReach(99)).toBeGreaterThanOrEqual(GALAXY.radius * 2);
     });
   });

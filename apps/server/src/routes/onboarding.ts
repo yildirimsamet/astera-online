@@ -77,7 +77,7 @@ export function registerOnboardingRoutes(app: FastifyInstance): void {
   app.post('/api/onboarding/claim', { config: { rateLimit: app.limits.signup } }, async (req, reply) => {
     const body = claimBody.parse(req.body ?? {});
 
-    const account = await claimAccount(app, body.username, body.password);
+    const account = await claimAccount(app, body.username, body.password, body.countryCode);
 
     /**
      * The frontier, resolved at CLAIM TIME rather than taken from the client.
@@ -159,9 +159,10 @@ async function claimAccount(
   app: FastifyInstance,
   username: string,
   password: string,
-): Promise<{ id: string; username: string; displayName: string }> {
+  countryCode: z.infer<typeof registerBody>['countryCode'],
+): Promise<Awaited<ReturnType<typeof registerAccount>>> {
   try {
-    return await registerAccount(app.db, { username, password });
+    return await registerAccount(app.db, { username, password, countryCode });
   } catch (err) {
     if (err instanceof GameError && err.code === 'USERNAME_TAKEN') {
       try {

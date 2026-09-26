@@ -11,10 +11,16 @@ export const PLANET_SKIN_IDS = [
   'planet-ice',
   'planet-toxic',
   'planet-desert',
+  'planet-turkey',
+  'planet-germany',
+  'planet-france',
+  'planet-spain',
 ] as const;
 
 export type PlanetSkinId = (typeof PLANET_SKIN_IDS)[number];
-export type PlanetBaseModelId = 'intact-planet' | 'fractured-planet';
+export type PlanetBaseModelId =
+  | 'intact-planet' | 'fractured-planet'
+  | 'country-turkey' | 'country-germany' | 'country-france' | 'country-spain';
 export type PlanetPaletteId = 'lava' | 'ice' | 'toxic' | 'desert';
 export type PlanetSkinStatus = 'NORMAL' | 'RECOVERY_SHIELD';
 
@@ -98,6 +104,42 @@ export const PLANET_SKINS = {
         'desert-bones', 'desert-hill', 'desert-monument-1', 'desert-monument-2',
       ]),
       statusVariants: { RECOVERY_SHIELD: RECOVERY_APPEARANCE },
+    },
+  },
+  'planet-turkey': {
+    id: 'planet-turkey', target: 'PLANET', recipeVersion: 1,
+    recipe: {
+      baseModelId: 'country-turkey',
+      finish: { kind: 'AUTHORED' },
+      includedAttachments: [],
+      statusVariants: {},
+    },
+  },
+  'planet-germany': {
+    id: 'planet-germany', target: 'PLANET', recipeVersion: 1,
+    recipe: {
+      baseModelId: 'country-germany',
+      finish: { kind: 'AUTHORED' },
+      includedAttachments: [],
+      statusVariants: {},
+    },
+  },
+  'planet-france': {
+    id: 'planet-france', target: 'PLANET', recipeVersion: 1,
+    recipe: {
+      baseModelId: 'country-france',
+      finish: { kind: 'AUTHORED' },
+      includedAttachments: [],
+      statusVariants: {},
+    },
+  },
+  'planet-spain': {
+    id: 'planet-spain', target: 'PLANET', recipeVersion: 1,
+    recipe: {
+      baseModelId: 'country-spain',
+      finish: { kind: 'AUTHORED' },
+      includedAttachments: [],
+      statusVariants: {},
     },
   },
 } as const satisfies Record<PlanetSkinId, PlanetSkinDefinition>;

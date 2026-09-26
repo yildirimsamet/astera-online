@@ -18,7 +18,8 @@ export async function verifyAcademy(out) {
   try {
     if (process.env.ACADEMY_BUILD_ONLY === '1') {
       await page.goto(process.env.WEB ?? 'http://localhost:5173');
-      for (const step of [26, 35]) {
+      // Stored steps are zero-based: Darts are lesson 26 and reinforcements lesson 35.
+      for (const step of [25, 34]) {
         // Resume an authored local lesson, never fabricate account resources.
         await page.evaluate((step) => localStorage.setItem('astera.academy.v1', JSON.stringify({
           version: 2, step, startedAt: Date.now(), orderAt: null, flight: null, journeys: [], seenSignals: [],
@@ -35,7 +36,7 @@ export async function verifyAcademy(out) {
         await sheet.locator('[data-commit] button').click();
         await sheet.waitFor({ state: 'detached' });
         await page.waitForTimeout(700);
-        if (await page.locator('[data-sheet-scroll]').evaluateAll((bodies) => bodies.some((body) => body.scrollTop > 1))) throw new Error('Build did not reveal the queue');
+        if (await page.locator('[data-sheet-scroll], [data-sheet-body]').evaluateAll((bodies) => bodies.some((body) => body.scrollTop > 1))) throw new Error('Build did not reveal the queue');
         if (await page.locator('[class*="--toast-lift"]').count()) throw new Error('Academy displayed a toast');
         await page.screenshot({ path: `${out}/academy-build-${step + 1}.png` });
         await page.waitForFunction((step) => JSON.parse(localStorage.getItem('astera.academy.v1')).step > step, step);
@@ -82,8 +83,9 @@ export async function verifyAcademy(out) {
       const next = card.getByRole('button', { name: /^(Continue|Enter my galaxy|Devam|Galaksime geç)$/ });
       if (await next.count()) {
         if (/Introduction only|Şimdilik yalnızca/.test(message)) {
-          if (await page.locator('img[src$="tutorial-hand-icon.png"]').count()) throw new Error('An introduction is asking for a tap');
-          await page.screenshot({ path: `${out}/academy-intro-${message.match(/\d+\/40/)?.[0].replace('/', '-')}.png` });
+          const hand = page.locator('img[src$="tutorial-hand-icon.png"]');
+          if (!(await hand.count())) throw new Error('Continue has no guide hand');
+          await page.screenshot({ path: `${out}/academy-intro-${id}.png` });
         }
         // An infinite scale animation intentionally never passes Playwright's
         // "stable for two frames" check. Press its centre like a real finger.
@@ -98,7 +100,7 @@ export async function verifyAcademy(out) {
         let arrived = false;
         for (let tries = 0; tries < 12 && !arrived; tries += 1) {
           await page.waitForTimeout(250);
-          arrived = await page.locator('[data-sheet-scroll]').evaluateAll((bodies) => bodies.every((body) => body.scrollTop <= 1));
+          arrived = await page.locator('[data-sheet-scroll], [data-sheet-body]').evaluateAll((bodies) => bodies.every((body) => body.scrollTop <= 1));
         }
         if (!arrived) throw new Error('A pending build left the menu scrolled below its queue');
         continue;

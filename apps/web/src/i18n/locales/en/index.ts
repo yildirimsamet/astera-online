@@ -7,7 +7,7 @@ import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
 import { flightBar, rangeBand, spend, counter } from './shapes.js';
-import { onboarding } from './onboarding.js';
+import { country, onboarding } from './onboarding.js';
 import { research } from './research.js';
 import { rewards } from './rewards.js';
 import { skins } from './skins.js';
@@ -84,6 +84,7 @@ export const en = {
   units,
   errors,
   onboarding,
+  country,
   research,
   rewards,
   skins,

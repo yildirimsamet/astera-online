@@ -5,6 +5,7 @@ import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
 import { keys } from '../api/keys.js';
 import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
+import type { CountryCode } from '@astera/rules';
 import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
 import { academyPreview } from '../onboarding/academyWorld.js';
@@ -140,10 +141,10 @@ export function useSession() {
   }, [coldStart]);
 
   const authenticate = useCallback(
-    async (mode: 'login' | 'register', username: string, password: string): Promise<void> => {
+    async (mode: 'login' | 'register', username: string, password: string, countryCode?: CountryCode): Promise<void> => {
       setSession({ phase: 'starting' });
       try {
-        if (mode === 'register') await api.register(username, password);
+        if (mode === 'register') await api.register(username, password, countryCode);
         else await api.login(username, password);
         /**
          * THE FUNNEL, AND IT IS TWO EVENTS BECAUSE THERE ARE TWO WAYS IN.
@@ -230,6 +231,7 @@ export function useSession() {
           username: result.username,
           displayName: result.displayName,
           isAdmin: false,
+          country: result.country,
           placement: {
             shard: result.placement.shard,
             shardName: result.placement.shardName,
@@ -261,8 +263,9 @@ export function useSession() {
       username: string,
       password: string,
       intents: readonly ClaimIntent[] | number,
+      countryCode?: CountryCode,
     ): Promise<void> => {
-      const result = await api.claim(username, password, intents);
+      const result = await api.claim(username, password, intents, countryCode);
       rememberCommander();
       // The other door. A commander who played the rehearsal first and is only now
       // becoming an account — the conversion this whole onboarding exists for.
@@ -271,6 +274,17 @@ export function useSession() {
     },
     [api, settleClaim],
   );
+
+  const updateCountry = useCallback(async (country: CountryCode): Promise<void> => {
+    const updated = await api.updateCountry(country);
+    setSession((current) => {
+      if (current.phase === 'ready' || current.phase === 'servers') {
+        return { ...current, me: { ...current.me, country: updated.country } };
+      }
+      return current;
+    });
+    void queries.invalidateQueries({ queryKey: keys.leaderboard });
+  }, [api, queries]);
 
 
   /**
@@ -323,6 +337,7 @@ export function useSession() {
     leaveRehearsal,
     signInInstead,
     claim,
+    updateCountry,
     rollover,
   };
 }

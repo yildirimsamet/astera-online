@@ -470,8 +470,8 @@ describe('predicting an instrument', () => {
   it('requires an active Uplink and projects a queued Core reopening its slot', () => {
     const damaged = planetView(
       {
-        buildings: { CORE: 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
-        nextCosts: { CORE: upgradeCost(2) },
+        buildings: { CORE: 8, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
+        nextCosts: { CORE: upgradeCost(8) },
         orbit: ['FOUNDRY', 'UPLINK'],
         effectiveOrbit: ['FOUNDRY'],
         orbitSlots: 1,
@@ -510,8 +510,8 @@ describe('predicting an instrument', () => {
       {
         buildings: { CORE: 12, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 },
         orbit: ['UPLINK'],
-        instruments: { TELESCOPE: 5 },
-        instrumentCosts: { TELESCOPE: instrumentCost('TELESCOPE', 5) },
+        instruments: { TELESCOPE: 8 },
+        instrumentCosts: { TELESCOPE: instrumentCost('TELESCOPE', 8) },
       },
       { alloy: 5_000_000, crystal: 5_000_000 },
     );

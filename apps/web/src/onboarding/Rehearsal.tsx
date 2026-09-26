@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api } from '../api/client.js';
 import { ApiProvider } from '../api/context.js';
 import type { ClaimIntent, Preview } from '../api/schemas.js';
+import type { CountryCode } from '@astera/rules';
 import type { Focus } from '../galaxy/FocusPanel.jsx';
 import { describe } from '../ui/Toast.js';
 import { hullLabel } from '../i18n/names.js';
@@ -81,7 +82,7 @@ export function Rehearsal({
    * `REHEARSAL_ONLY` — and even reaching the server through it would leave the
    * access token on a client the game is about to discard.
    */
-  onClaim: (username: string, password: string, intents: readonly ClaimIntent[]) => Promise<void>;
+  onClaim: (username: string, password: string, intents: readonly ClaimIntent[], countryCode?: CountryCode) => Promise<void>;
   /** They already have a commander. The rehearsal is discarded. */
   onSignIn: () => void;
   /** Out, without an account. Back to the front door. */
@@ -283,10 +284,10 @@ export function Rehearsal({
   );
 
   const claim = useCallback(
-    async (username: string, password: string): Promise<void> => {
+    async (username: string, password: string, countryCode?: CountryCode): Promise<void> => {
       setRefusal(undefined);
       try {
-        await onClaim(username, password, worldRef.current.intents);
+        await onClaim(username, password, worldRef.current.intents, countryCode);
       } catch (err) {
         setRefusal(describe(err));
         throw err;

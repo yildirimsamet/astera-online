@@ -226,17 +226,18 @@ describe('the merchant on its orbit', () => {
     expect(TRADE.orbitMax).toBeLessThan(GALAXY.radius);
   });
 
-  it('leaves a rim world a round trip inside the window', () => {
+  it('leaves the slowest hold a launch margin from the worst rim geometry', () => {
     /*
-      THE WORST GEOMETRY THE BAND ALLOWS: a world on the rim at 3,000 and a ship
-      at the far side of its widest orbit, 1,600 out. An Atlas is the slowest
-      cargo hull in the catalogue, so if it fits, the whole class fits.
+      THE WORST GEOMETRY THE BAND ALLOWS: a world on the rim at 4,500 and a ship
+      at the far side of its widest orbit, 1,600 out. Argosy is the slowest cargo
+      hull in the catalogue, so if it reaches the rendezvous, the whole class does.
+      The return may finish after the public appointment closes.
     */
     const worst = GALAXY.radius + TRADE.orbitMax;
-    const oneWay = travelExact(worst, HULLS.ATLAS.speed);
-    expect(worst).toBe(4_600);
-    expect(oneWay).toBeLessThan(60);
-    expect(oneWay * 2).toBeLessThan(TRADE_WINDOW_MINUTES);
+    const oneWay = travelExact(worst, HULLS.ARGOSY.speed);
+    expect(worst).toBe(6_100);
+    expect(oneWay).toBeLessThan(130);
+    expect(TRADE_WINDOW_MINUTES - oneWay).toBeGreaterThan(50);
   });
 
   it('is a pure function of its occurrence and its stream', () => {
@@ -343,7 +344,7 @@ describe('reaching the merchant', () => {
     /*
       THE ROCK LANE'S CEILING SINCE D40/D121, AND THE PIRATE LANE'S SINCE D155: a
       craft that has to wait for another revolution reads as a craft flying
-      somewhere unrelated. An Atlas is exactly twice the merchant's pace, so
+      somewhere unrelated. An Argosy is exactly twice the merchant's pace, so
       `interceptOrbit`'s f is strictly decreasing and the earliest meeting is the
       only one — a lead shot by construction. Measured rather than argued.
     */

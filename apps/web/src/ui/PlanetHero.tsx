@@ -5,6 +5,7 @@ import {
   fleetCount,
   fleetEntries,
   garrisonOf,
+  activeOrbitSlots,
   satelliteSlots,
   unarmedCount,
 } from '@astera/rules';
@@ -184,7 +185,7 @@ const socketOpensAt = (index: number): number => {
 function orbitOf(planet: PlanetView) {
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
   const core = projected.buildings.CORE;
-  const total = satelliteSlots(core);
+  const total = activeOrbitSlots(core, projected.orbit);
   const next = total < MOST_SOCKETS ? socketOpensAt(total) : null;
   return { fitted: projected.orbit, total, next };
 }

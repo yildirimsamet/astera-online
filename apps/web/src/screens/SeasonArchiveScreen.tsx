@@ -29,6 +29,7 @@ import {
 import { LeaderboardScreen } from './LeaderboardScreen.js';
 import { SeasonRewardBoard } from '../ui/SeasonRewardBoard.js';
 import { ArtWell, EmptyState, Section, Segmented, Stat, Unreachable, Waiting } from '../ui/kit/index.js';
+import { Flag } from '../v2/identity/Flag.js';
 
 type ProfileView = 'season' | 'overall';
 
@@ -65,14 +66,16 @@ type SelectedRecord = SeasonCommanderProfile['selected'];
 
 export function SeasonArchiveScreen({
   onFocusPlanet,
+  initialSeasonId = null,
 }: {
   onFocusPlanet: (planetId: string) => void;
+  initialSeasonId?: string | null;
 }) {
   const { t } = useTranslation();
   const archive = useSeasonArchive();
   const season = useSeason();
   const board = useLeaderboard();
-  const [seasonId, setSeasonId] = useState<string | null>(null);
+  const [seasonId, setSeasonId] = useState<string | null>(initialSeasonId);
   const [resultId, setResultId] = useState<string | null>(null);
   /*
     A GALAXY IS NAMED BY ITS CODE HERE, NOT BY ITS DISPLAY NAME. Owner instruction.
@@ -94,7 +97,7 @@ export function SeasonArchiveScreen({
   };
 
   return (
-    <div>
+    <div data-v2-season-archive className="font-v2-ui text-v2-ink">
       <nav
         aria-label={t('leaderboard.archive.selectorLabel')}
         className="border-b border-line-soft bg-void px-2 py-2"
@@ -292,7 +295,10 @@ function ArchivedLeaderboard({
                   <PlanetSigil seed={row.resultId} size={36} />
                 </span>
                 <span className="min-w-0">
-                  <strong className="name block truncate text-bone">{row.commanderName}</strong>
+                  <strong className="name flex items-center gap-1.5 truncate text-bone">
+                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+                    <span className="truncate">{row.commanderName}</span>
+                  </strong>
                   <span className="mt-1 block truncate text-label text-faint">{row.title}</span>
                 </span>
                 <span className="text-right">
@@ -470,7 +476,10 @@ function CommanderProfile({
           <p className="legend mt-3 text-crystal">
             {t('leaderboard.archive.seasonHeading', { ordinal: selected.ordinal, galaxy: selected.shard })}
           </p>
-          <h2 className="headline mt-2 text-title text-bone">{selected.commanderName}</h2>
+          <h2 className="headline mt-2 flex items-center justify-center gap-2 text-title text-bone">
+            <Flag code={selected.country} language={i18n.resolvedLanguage ?? 'en'} />
+            <span>{selected.commanderName}</span>
+          </h2>
           <p className="mt-1 text-label text-faint">{selected.title} · {selected.planetName}</p>
           {/*
             THE LINE A PLAYER QUOTES. A rank without its field is not a boast —

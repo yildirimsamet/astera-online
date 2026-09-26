@@ -12,6 +12,17 @@
 * système : il indique où regarder, puis s’efface, puisque la séquence n’avance
 * que lorsque l’action a réellement été effectuée.
   */
+export const country = {
+  label: 'Pays',
+  choose: 'Choisis ton pays',
+  searchLabel: 'Rechercher des pays',
+  searchPlaceholder: 'Rechercher un pays',
+  list: 'Pays',
+  confirm: 'Confirmer le pays',
+  change: 'Modifier',
+  saved: 'Pays mis à jour',
+} as const;
+
 export const onboarding = {
   beats: {
     wide: {

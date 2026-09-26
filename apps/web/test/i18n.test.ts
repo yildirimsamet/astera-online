@@ -159,6 +159,15 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
     expect(tr.vocabulary.building.CORE.detail).toContain('Yalnız ana gezegendeki');
   });
 
+  it('states the Prospector outbound and laden return speeds in every language', () => {
+    for (const locale of [en, tr, de, fr, es]) {
+      const detail = locale.vocabulary.hull.PROSPECTOR.detail;
+      expect(detail).toContain('619');
+      expect(detail).toContain('309');
+      expect(detail).not.toContain('825');
+    }
+  });
+
   it('includes Argosy everywhere a resource-carrier list is taught', () => {
     for (const [copies, list, name] of [
       [ENGLISH, /Courier.*Wayfarer/, 'Argosy'],

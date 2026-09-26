@@ -26,7 +26,6 @@ import {
   telescopeSeed,
   telescopeSlots,
   telescopeWatchRange,
-  satelliteSlots,
   travelExact,
   withinTelescopeRange,
   seededFrom,
@@ -66,6 +65,7 @@ import {
   economyAt,
   hardwareOf,
   loadLocked,
+  orbitFromRows,
   saveResources,
 } from './planet.js';
 import { neutralStanding } from './neutral.js';
@@ -94,11 +94,8 @@ export async function instrumentLevels(
   const activeUplink = new Set<string>();
   for (const planetId of planetIds) {
     const core = coreByPlanet.get(planetId) ?? 0;
-    const active = rows
-      .filter((row) => row.planetId === planetId && !KNOWN_INSTRUMENTS.has(row.type))
-      .toSorted((a, b) => a.slot - b.slot)
-      .slice(0, satelliteSlots(core));
-    if (active.some((row) => row.type === 'UPLINK')) activeUplink.add(planetId);
+    const active = orbitFromRows(rows.filter((row) => row.planetId === planetId), core);
+    if (active.includes('UPLINK')) activeUplink.add(planetId);
   }
   for (const r of rows) {
     // The table also holds orbit satellites (D25); those carry no level anyone

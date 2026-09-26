@@ -24,10 +24,10 @@ describe('owner requests from 2026-09-20', () => {
    */
   it('quotes the Garbage Collector at its hand-set deuterium thirst', () => {
     expect(hullFuelRate('GARBAGE_COLLECTOR')).toBe(SALVAGE.fuelMass / 10);
-    expect(SALVAGE.fuelMass).toBe(1_000);
+    expect(SALVAGE.fuelMass).toBe(900);
   });
 
-  it('opens satellite slots only at Command Core 6, 9, 12 and 15', () => {
+  it('opens ordinary satellite slots at Core 6, 9, 12 and 15', () => {
     expect(Array.from({ length: 17 }, (_, core) => satelliteSlots(core))).toEqual([
       0, 0, 0, 0, 0, 0,
       1, 1, 1,

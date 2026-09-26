@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   bigint,
+  char,
   index,
   integer,
   jsonb,
@@ -42,6 +43,7 @@ import type {
   PlanetSkinStatus,
   JointWarFuelLeg,
   Vec3,
+  CountryCode,
 } from '@astera/rules';
 import type { ChatLanguage } from '@astera/rules';
 
@@ -130,6 +132,8 @@ export const eventKind = pgEnum('event_kind', [
   'colony_secession',
   /** A clan's marked target reaching the end of its twenty-four hours. 2026-09-20. */
   'clan_war_expiry',
+  /** Daily staged-neutral demand census. Append-only. */
+  'neutral_census',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -230,11 +234,13 @@ export const accounts = pgTable('accounts', {
   /** `scrypt$N$r$p$salt$hash`, all base64url. Never a bare digest. See auth/password.ts. */
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
+  countryCode: char('country_code', { length: 2 }).$type<CountryCode>().notNull().default('TR'),
   lifetime: jsonb('lifetime').$type<Record<string, number>>().notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('accounts_email_idx').on(t.email),
   uniqueIndex('accounts_username_idx').on(t.username),
+  check('accounts_country_code_check', sql`${t.countryCode} ~ '^[A-Z]{2}$'`),
   check(
     'accounts_lifetime_dominion_range_check',
     sql`(NOT (${t.lifetime} ? 'dominionTaken') OR (
@@ -463,6 +469,8 @@ export const seasons = pgTable('seasons', {
 
 export interface SeasonRecap {
   commanderName: string;
+  /** Freeze-time identity; absent only on results created before country support. */
+  countryCode?: CountryCode;
   planetName: string;
   battles: number;
   attacks: number;
@@ -990,6 +998,7 @@ export type GalaxyEventPayload =
     }
   | Record<string, never>
   | { act: 'war' | 'consolidation' | 'sunset' }
+  | { total: number; tiers: Record<1 | 2 | 3, number> }
   | GalaxyEventLifecyclePayload;
 
 /** Public history, not intel. Its intentionally small contract is locked by D89. */

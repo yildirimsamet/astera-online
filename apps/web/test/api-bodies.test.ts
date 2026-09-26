@@ -53,9 +53,10 @@ async function bodyOf(call: (api: Api) => Promise<unknown>): Promise<{
  * is the backstop for the day somebody forgets.
  */
 const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: unknown][] = [
-  ['register', (a) => a.register('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
+  ['register', (a) => a.register('vantage', 'a-long-enough-password', 'DE'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'DE' }],
   ['login', (a) => a.login('vantage', 'a-long-enough-password'), { username: 'vantage', password: 'a-long-enough-password' }],
-  ['claim', (a) => a.claim('vantage', 'a-long-enough-password', []), { username: 'vantage', password: 'a-long-enough-password', intents: [] }],
+  ['claim', (a) => a.claim('vantage', 'a-long-enough-password', [], 'FR'), { username: 'vantage', password: 'a-long-enough-password', countryCode: 'FR', intents: [] }],
+  ['updateCountry', (a) => a.updateCountry('JP'), { country: 'JP' }],
   ['setRival', (a) => a.setRival('p-2'), { planetId: 'p-2' }],
   ['upgrade', (a) => a.upgrade('CORE'), { type: 'CORE' }],
   ['build', (a) => a.build('DART', 4), { hull: 'DART', count: 4 }],
@@ -89,7 +90,7 @@ const WITH_BODY: [name: string, call: (api: Api) => Promise<unknown>, expected: 
     description: 'Bring everyone home.', recruiting: false,
   }],
   ['setClanAidPolicy', (a) => a.setClanAidPolicy(false), { enabled: false }],
-  ['disbandClan', (a) => a.disbandClan(), {}],
+  ['disbandClan', (a) => a.disbandClan(), { acknowledgeTreasuryBurn: false }],
   ['claimClanDepot', (a) => a.claimClanDepot(), {}],
   ['launchClanAid', (a) => a.launchClanAid({
     originPlanetId: 'origin-1', recipientPlayerId: 'player-2', targetPlanetId: 'target-2',

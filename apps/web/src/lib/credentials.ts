@@ -2,7 +2,7 @@
  * What a commander's name and password may be, on the client's side of the wire.
  *
  * MIRRORED FROM `apps/server/src/auth/credentials.ts`, DELIBERATELY, so a player
- * is told about a three-character name without a round trip. The server checks
+ * is told about a too-short name without a round trip. The server checks
  * again regardless and its refusal is what gets shown — including the one this
  * cannot know, that the name is already taken.
  *
@@ -12,7 +12,8 @@
  * that accepts a name the other one refuses.
  */
 
-/** Letters, digits and underscore, 3-16. Reserved names are the server's to refuse. */
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,16}$/;
+/** Unicode visible names, 2–32 code points. Reserved names are the server's to refuse. */
+export const USERNAME_PATTERN = /^[\p{L}\p{N}]\p{M}*(?:[\p{L}\p{N}]\p{M}*|_+[\p{L}\p{N}]\p{M}*| [\p{L}\p{N}]\p{M}*)+$/u;
+export const validUsername = (name: string): boolean => USERNAME_PATTERN.test(name.trim()) && Array.from(name.trim()).length <= 32;
 
 export const MIN_PASSWORD = 8;

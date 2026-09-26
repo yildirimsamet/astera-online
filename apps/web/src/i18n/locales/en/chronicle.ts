@@ -36,6 +36,8 @@ export const chronicle = {
   dominionLeaderDetail: '{{planet}} now stands at the top of the public ladder.',
   neutralClaim: 'Claim window opened at {{planet}} · T{{tier}}',
   neutralClaimDetail: 'A decisive raid opened a public settlement race for this world.',
+  neutralOpened: '{{total}} neutral worlds opened',
+  neutralOpenedDetail: 'The frontier expanded · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
   deathStarImpact: 'Death Star impact at {{planet}}',
   deathStarOutcome: {
     FIRST_STRIKE: 'EMP drained Aegis. Ground defences are offline and cannot take damage for one hour.',

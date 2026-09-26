@@ -42,10 +42,12 @@ export function academyFetch(
           case '/api/season': return reply(world.preview.season);
           case '/api/galaxy': return reply(applyAcademyVisualFixture(route, {
             ...world.preview.galaxy,
-            sensors: [sensorSphere(world.preview.reserved.position, 0, 0, world.preview.reserved.id)],
+            sensors: [sensorSphere(world.preview.reserved.position,
+              world.checkpoint.instruments.TELESCOPE, world.checkpoint.instruments.RADAR,
+              world.preview.reserved.id)],
             planets: [...world.preview.galaxy.planets.map((p) => p.isSelf ? {
               ...p, coreLevel: world.checkpoint.buildings.CORE, coreTier: coreTier(world.checkpoint.buildings.CORE),
-              shielded: planet.planet.shield > 0,
+              shielded: planet.planet.shield > 0, satellites: world.checkpoint.satellites,
             } : p), ...(world.step >= ACADEMY_STEPS.findIndex((s) => s.id === 'raid') ? [{
               id: ACADEMY_TARGET_ID, name: 'Academy II', owner: '', kind: 'NEUTRAL',
               controller: { kind: 'NEUTRAL', tier: 1 }, position: academyTarget(world),

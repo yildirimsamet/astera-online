@@ -27,6 +27,7 @@ const SESSION = {
   accountId: 'a1',
   username: 'vantage',
   displayName: 'Vantage',
+  country: 'TR',
   accessToken: 'fresh-token',
 };
 
@@ -434,7 +435,7 @@ it('stamps subsequent requests with the server placement and rejects delayed old
 it('rejects a delayed me response after a newer reconciliation completed', async () => {
   let finishOld: ((response: Response) => void) | undefined;
   let count = 0;
-  const me = { accountId: 'a1', username: 'vantage', displayName: 'Vantage', placement: null };
+  const me = { accountId: 'a1', username: 'vantage', displayName: 'Vantage', country: 'TR', placement: null };
   const fetch: typeof globalThis.fetch = async () => {
     if (++count === 1) return new Promise<Response>(resolve => { finishOld = resolve; });
     return new Response(JSON.stringify(me), { headers: { 'x-placement': 'commander:2' } });

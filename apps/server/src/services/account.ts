@@ -4,6 +4,7 @@ import { accounts } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { normaliseUsername } from '../auth/credentials.js';
 import { GameError } from './planet.js';
+import type { CountryCode } from '@astera/rules';
 
 /**
  * Accounts with a name and a password. D21.
@@ -18,16 +19,19 @@ export interface AccountRecord {
   id: string;
   username: string;
   displayName: string;
+  country: CountryCode;
 }
 
 const publicShape = (row: {
   id: string;
   username: string;
   displayName: string;
+  countryCode: CountryCode;
 }): AccountRecord => ({
   id: row.id,
   username: row.username,
   displayName: row.displayName,
+  country: row.countryCode,
 });
 
 /**
@@ -41,7 +45,7 @@ const publicShape = (row: {
  */
 export async function registerAccount(
   db: Db,
-  input: { username: string; password: string },
+  input: { username: string; password: string; countryCode?: CountryCode },
 ): Promise<AccountRecord> {
   const username = normaliseUsername(input.username);
   const passwordHash = await hashPassword(input.password);
@@ -53,6 +57,7 @@ export async function registerAccount(
       passwordHash,
       // The typed casing is what other players read; the folded one is the key.
       displayName: input.username.trim(),
+      ...(input.countryCode === undefined ? {} : { countryCode: input.countryCode }),
     })
     .onConflictDoNothing({ target: accounts.username })
     .returning();

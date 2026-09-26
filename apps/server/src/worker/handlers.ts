@@ -171,6 +171,7 @@ import {
 import { resolveClanAid } from '../services/clanAid.js';
 import { processGalaxyEventLifecycle } from '../services/galaxyEvents.js';
 import { isHostileMission } from '../services/flight.js';
+import { resolveNeutralCensus } from '../services/season.js';
 
 export interface HandlerContext {
   db: Db;
@@ -1883,6 +1884,7 @@ async function freezeSeason(
         taken: players.dominionTaken,
         lost: players.dominionLost,
         commanderName: accounts.displayName,
+        countryCode: accounts.countryCode,
         planetName: planets.name,
       })
       .from(players)
@@ -2171,6 +2173,7 @@ async function freezeSeason(
         title,
         recap: {
           commanderName: player.commanderName,
+          countryCode: player.countryCode,
           planetName: player.planetName,
           battles: mine.length,
           attacks,
@@ -2401,6 +2404,25 @@ export const onNeutralReinforce: Handler = async ({ db, clock }, event) => {
       });
       await publishShard(tx, event.seasonId, 'world');
     }
+  });
+};
+
+/** Open only the caretaker worlds justified by the latest commander standings. */
+export const onNeutralCensus: Handler = async ({ db, clock }, event) => {
+  const censusAtRaw = event.payload?.censusAt;
+  if (event.refId !== event.seasonId || typeof censusAtRaw !== 'string') {
+    throw new Error('neutral_census without a valid season reference and censusAt');
+  }
+  const censusAt = new Date(censusAtRaw);
+  if (!Number.isFinite(censusAt.getTime())) {
+    throw new Error('neutral_census with an invalid censusAt');
+  }
+  await db.transaction(async (tx) => {
+    await resolveNeutralCensus(tx, {
+      seasonId: event.seasonId,
+      censusAt,
+      now: clock.now(),
+    });
   });
 };
 
@@ -2670,6 +2692,7 @@ export const HANDLERS: Partial<Record<EventRow['kind'], Handler>> = {
   recovery_end: onRecoveryEnd,
   occupation_end: onOccupationEnd,
   neutral_reinforce: onNeutralReinforce,
+  neutral_census: onNeutralCensus,
   galaxy_event_start: onGalaxyEventStart,
   galaxy_event_end: onGalaxyEventEnd,
   asteroid_hour: onAsteroidHour,

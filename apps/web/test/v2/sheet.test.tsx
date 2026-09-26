@@ -51,7 +51,7 @@ describe('where a sheet settles', () => {
 describe('the sheet', () => {
   /**
    * A PAGE THAT HEADS ITSELF (M4, the report's hero): the title stays the dialog's name
-   * and the header's words stay for a reader, but nothing is drawn twice — the close floats.
+   * and the header's words stay for a reader, but nothing is drawn twice.
    */
   it('keeps its name for a reader when the page draws its own heading', () => {
     render(<Sheet title="Partial victory" eyebrow="Raided Sable" quietTitle onClose={vi.fn()}>body</Sheet>);
@@ -61,14 +61,12 @@ describe('the sheet', () => {
     expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
-  /**
-   * THE FLOATING CLOSE STAYS ON TOP (owner, 2026-09-25: the Base page's X vanished once its
-   * category bar reached the top — a sticky bar at z-20 slid over a header at z-10).
-   */
-  it('floats its close above whatever the page pins to its top', () => {
+  it('keeps the close in its own fixed row above scrolling page content', () => {
     render(<Sheet title="Base" quietTitle onClose={vi.fn()}>body</Sheet>);
     const header = screen.getByRole('dialog', { name: 'Base' }).querySelector('header');
-    expect(header?.className).toMatch(/\bz-30\b/);
+    expect(header).toHaveClass('shrink-0');
+    expect(header).not.toHaveClass('absolute');
+    expect(screen.getByRole('button', { name: /close/i })).toBeVisible();
   });
 
   /**

@@ -153,7 +153,7 @@ export const HULLS: Record<HullId, Hull> = {
    * Star does not. The class still decides what happens to a craft caught out on a
    * run, which is where mining's real exposure lives.
    */
-  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', tier: null, family: 'PRESERVED', profile: 'MINER', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: PROSPECTOR.hold, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: false },
+  PROSPECTOR: { id: 'PROSPECTOR', name: 'Prospector', tier: null, family: 'PRESERVED', profile: 'MINER', cls: 'SUPPORT', atk: 0, hp: 150, speed: PROSPECTOR.speed, cargo: PROSPECTOR.hold, alloy: scalePrice(650, ECONOMY_TEMPO.hullPrice), crystal: scalePrice(200, ECONOMY_TEMPO.hullCrystalPrice), deuterium: 0, minShipyard: 1, requiredResearch: [], ground: false },
 };
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */

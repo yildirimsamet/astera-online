@@ -562,6 +562,21 @@ describe('GET /api/leaderboard', () => {
     expect(body.you.username).toBe('İzci');
   });
 
+  it('carries every commander country on both the ladder and your row', async () => {
+    await f.db.update(accounts).set({ countryCode: 'JP' })
+      .where(eq(accounts.id, f.accountIds[0]!));
+    await f.db.update(accounts).set({ countryCode: 'DE' })
+      .where(eq(accounts.id, f.accountIds[1]!));
+
+    const response = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const body = response.json<{
+      ladder: { playerId: string; country: string }[];
+      you: { country: string };
+    }>();
+    expect(body.you.country).toBe('JP');
+    expect(body.ladder.find((row) => row.playerId === f.playerIds[1])?.country).toBe('DE');
+  });
+
   it('breaks score ties by join time and then player id', async () => {
     const same = new Date('2026-01-01T00:00:00.000Z');
     await f.db.update(players).set({ joinedAt: same, dominionTaken: 100, dominionLost: 0 });

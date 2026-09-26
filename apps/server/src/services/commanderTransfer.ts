@@ -1,7 +1,7 @@
 import { createNeutralWorld } from './season.js';
 import { randomUUID } from 'node:crypto';
 import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
-import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, hashSeed } from '@astera/rules';
+import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans,
@@ -241,14 +241,21 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         await tx.update(planets).set({ seasonId: source.id, slotIndex: former.slotIndex, x: former.x, y: former.y, z: former.z }).where(eq(planets.id, replacements[i]!.id));
       }
       if (!returning && colonies.length > 0) {
-        const originals = selectNeutralSlots(source.seed, generateGalaxy(source.seed, MULTI_WORLD.neutralSlotPool).slots);
+        const originals = neutralOpeningOrder(
+          source.seed,
+          selectNeutralSlots(source.seed, generateGalaxy(source.seed, MULTI_WORLD.neutralSlotPool).slots),
+        );
         for (const colony of colonies) {
           const original = originals.find(neutral => neutral.slot.index === colony.slotIndex);
+          const originalNumber = original
+            ? originals.filter((neutral) => neutral.tier === original.tier)
+              .findIndex((neutral) => neutral.slot.index === original.slot.index) + 1
+            : colony.slotIndex;
           await createNeutralWorld(tx, source.id, {
             tier: original?.tier ?? 1,
             profileSeed: original?.profileSeed ?? (hashSeed(source.seed, colony.slotIndex) & 0x7fffffff),
             slot: { index: colony.slotIndex, x: colony.x, y: colony.y, z: colony.z },
-          }, now, colony.slotIndex);
+          }, now, originalNumber);
         }
       }
       await tx.update(players).set({ seasonId: target.id, homeShardId: player.homeShardId ?? source.shardId,

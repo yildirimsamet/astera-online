@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
@@ -42,6 +42,16 @@ import { QueueSheet } from '../kit/QueueSheet.js';
 import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { Segmented } from '../kit/Segmented.js';
 import { Sheet } from '../kit/Sheet.js';
+import { Api } from '../../api/client.js';
+import { ApiProvider } from '../../api/context.js';
+import { MenuPanel } from '../../shell/MenuPanel.js';
+import { LeaderboardScreen } from '../../screens/LeaderboardScreen.js';
+import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
+import { CountryPicker } from '../identity/CountryPicker.js';
+import { SkinShopContent } from '../../screens/SkinsScreen.js';
+import { SkinPreview } from '../../screens/SkinPreview.js';
+import { PLANET_SKIN_CATALOG } from '../../ui/skinCatalog.js';
+import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 
 /**
  * THE v2 GALLERY — every kit and HUD piece with fixture data, for the camera.
@@ -374,6 +384,105 @@ function GalleryClan({ tab }: { tab: 'overview' | 'strength' | 'members' | 'aid'
   );
 }
 
+/** The commander surface and live ladder, staged together so their v2 density can be inspected. */
+const ARCHIVE_ID = '11111111-1111-4111-8111-111111111111';
+
+function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboard-archive' }) {
+  const [client] = useState(() => {
+    const next = new QueryClient();
+    next.setQueryData(keys.rewards, { chains: [], claimable: 2 });
+    next.setQueryData(keys.announcements, { announcements: [] });
+    next.setQueryData(keys.leaderboard, {
+      ladder: Array.from({ length: 8 }, (_, index) => ({
+        rank: index + 1, playerId: `gallery-${index}`, username: index === 0 ? 'Samet' : `Commander ${index + 1}`,
+        country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${index}`, planetName: `World ${index + 1}`,
+        coreTier: (index % 4) + 1, score: 420 - index * 37, clan: index === 1 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
+      })),
+      you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', coreTier: 1, score: 420, clan: null, isBot: false },
+    });
+    if (page === 'leaderboard-archive') {
+      next.setQueryData(keys.season, {
+        seasonId: ARCHIVE_ID,
+        shard: 'EU-1',
+        shardName: 'Vantage',
+        seed: 11,
+        status: 'frozen',
+        startsAt: new Date(NOW - 14 * 24 * 60 * MIN),
+        endsAt: new Date(NOW - 24 * 60 * MIN),
+        playerCap: 1_000,
+        players: 188,
+        rivals: [],
+        shieldUntil: null,
+        shieldKind: null,
+      });
+      next.setQueryData(keys.seasonArchive, {
+        pages: [{
+          cycles: [{
+            ordinal: 11,
+            startsAt: new Date(NOW - 14 * 24 * 60 * MIN),
+            endsAt: new Date(NOW - 24 * 60 * MIN),
+            status: 'frozen',
+            galaxies: [{ seasonId: ARCHIVE_ID, shard: 'EU-1', shardName: 'Vantage', status: 'frozen' }],
+          }],
+          nextCursor: null,
+        }],
+        pageParams: [undefined],
+      });
+      next.setQueryData(keys.archivedLeaderboard(ARCHIVE_ID), {
+        season: {
+          seasonId: ARCHIVE_ID,
+          ordinal: 11,
+          shard: 'EU-1',
+          shardName: 'Vantage',
+          status: 'frozen',
+          startsAt: new Date(NOW - 14 * 24 * 60 * MIN),
+          endsAt: new Date(NOW - 24 * 60 * MIN),
+          closedAt: new Date(NOW - 24 * 60 * MIN),
+          endReason: 'SCHEDULED_END',
+        },
+        record: null,
+        ladder: Array.from({ length: 8 }, (_, index) => ({
+          resultId: `22222222-2222-4222-8222-${String(index + 1).padStart(12, '0')}`,
+          rank: index + 1,
+          commanderName: index === 0 ? 'Samet' : `Commander ${index + 1}`,
+          country: index % 2 === 0 ? 'TR' : 'DE',
+          dominion: 420 - index * 37,
+          title: index === 0 ? 'The Cartographer' : 'Frontier Hand',
+          self: index === 0,
+          reward: null,
+        })),
+      });
+    }
+    return next;
+  });
+  const [api] = useState(() => new Api());
+  return (
+    <QueryClientProvider client={client}>
+      <ApiProvider api={api}>
+        {page === 'menu' ? (
+          <Sheet title="Commander" eyebrow="Your account" onClose={noop} detents={['full']} bleed>
+            <div className="p-3">
+              <MenuPanel galaxy="Vantage" shard="EU-1" endsAt={new Date(NOW + 11 * 60 * MIN)} country="TR" onOpen={noop} onSignOut={noop} />
+            </div>
+          </Sheet>
+        ) : page === 'leaderboard' ? (
+          <Sheet title="Dominion" eyebrow="Season ladder" onClose={noop} detents={['full']} bleed>
+            <LeaderboardScreen onFocusPlanet={noop} />
+          </Sheet>
+        ) : (
+          <Sheet title="Dominion" eyebrow="Season archive" onClose={noop} detents={['full']} bleed>
+            <SeasonArchiveScreen onFocusPlanet={noop} initialSeasonId={ARCHIVE_ID} />
+          </Sheet>
+        )}
+      </ApiProvider>
+    </QueryClientProvider>
+  );
+}
+
+function GalleryCountryPicker() {
+  return <CountryPicker value="TR" onSelect={noop} onClose={noop} />;
+}
+
 function Views({ view }: { view: string }) {
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
@@ -381,6 +490,13 @@ function Views({ view }: { view: string }) {
   if (view === 'clan-members') return <GalleryClan tab="members" />;
   if (view === 'clan-aid') return <GalleryClan tab="aid" />;
   if (view === 'clan-war') return <GalleryClan tab="war" />;
+  if (view === 'menu') return <GalleryCommander page="menu" />;
+  if (view === 'leaderboard') return <GalleryCommander page="leaderboard" />;
+  if (view === 'leaderboard-archive') return <GalleryCommander page="leaderboard-archive" />;
+  if (view === 'country-picker') return <GalleryCountryPicker />;
+  if (view === 'skin-shop') {
+    return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
+  }
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;
   }
@@ -575,6 +691,20 @@ function Views({ view }: { view: string }) {
 }
 
 export function Gallery({ view }: { view: string | null }) {
+  if (view?.startsWith('skin-card:')) {
+    const skinId = view.slice('skin-card:'.length);
+    if (!PLANET_SKIN_IDS.includes(skinId as PlanetSkinId)) return null;
+    const look = PLANET_SKIN_CATALOG[skinId as PlanetSkinId];
+    return (
+      <div data-skin-card className="relative h-[320px] w-[400px] overflow-hidden bg-v2-deep" style={{ '--look': look.accent, '--look-glow': look.glow } as CSSProperties}>
+        <div aria-hidden className="v2-store-aura absolute inset-[3%] rounded-full" />
+        <SkinPreview skinId={skinId} status="NORMAL" className="h-[320px]"
+          {...(new URLSearchParams(window.location.search).has('offset')
+            ? { phaseOffset: Number(new URLSearchParams(window.location.search).get('offset')) }
+            : {})} />
+      </div>
+    );
+  }
   if (view) {
     return (
       <div className="min-h-dvh bg-v2-void">

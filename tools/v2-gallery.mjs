@@ -18,7 +18,7 @@ import { chromium } from 'playwright';
 const WEB = process.env.WEB ?? 'http://127.0.0.1:5199';
 const OUT = process.argv[2] ?? 'out/v2';
 const LANGUAGES = process.argv.slice(3).length > 0 ? process.argv.slice(3) : ['en'];
-const VIEWS = ['peek', 'queue', 'bell', 'view', 'fleet', 'fleet-home', 'fleet-room', 'launch', 'launch-pirate', 'transfer', 'settlement', 'convoy', 'trade', 'wave', 'strike', 'report'];
+const VIEWS = ['peek', 'queue', 'bell', 'view', 'fleet', 'fleet-home', 'fleet-room', 'launch', 'launch-pirate', 'transfer', 'settlement', 'convoy', 'trade', 'wave', 'strike', 'report', 'menu', 'leaderboard', 'leaderboard-archive', 'country-picker'];
 const SIZES = [
   { name: '350', viewport: { width: 350, height: 812 }, scale: 2 },
   { name: '1280', viewport: { width: 1280, height: 900 }, scale: 1 },

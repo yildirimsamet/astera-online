@@ -158,6 +158,66 @@ export interface ColonyStanding {
 }
 
 /**
+ * One batched statement of colony standing. The settlement guard and the neutral
+ * census both read this function, so a reservation can never count in one place
+ * and disappear in the other.
+ */
+export async function colonyStandings(
+  tx: Queryable,
+  playerIds: readonly string[],
+): Promise<Map<string, ColonyStanding>> {
+  const ids = [...new Set(playerIds)];
+  if (ids.length === 0) return new Map();
+  const controlled = await tx
+    .select({ playerId: planets.controllerPlayerId, planetId: planets.id, kind: planets.kind })
+    .from(planets)
+    .where(inArray(planets.controllerPlayerId, ids));
+  const capitalIds = controlled
+    .filter((world) => world.kind === 'CAPITAL' && world.playerId !== null)
+    .map((world) => world.planetId);
+  const [cores, reserved] = await Promise.all([
+    capitalIds.length === 0
+      ? Promise.resolve([])
+      : tx
+          .select({ planetId: buildings.planetId, level: buildings.level })
+          .from(buildings)
+          .where(and(inArray(buildings.planetId, capitalIds), eq(buildings.type, 'CORE'))),
+    tx
+      .select({ playerId: missions.ownerPlayerId, n: count() })
+      .from(missions)
+      .where(and(
+        inArray(missions.ownerPlayerId, ids),
+        eq(missions.status, 'in_flight'),
+        or(
+          eq(missions.kind, 'settlement'),
+          and(eq(missions.kind, 'death_star'), eq(missions.deathStarCapture, true)),
+        ),
+      ))
+      .groupBy(missions.ownerPlayerId),
+  ]);
+  const coreByPlanet = new Map(cores.map((row) => [row.planetId, row.level]));
+  const reservationsByPlayer = new Map(reserved.map((row) => [row.playerId, row.n]));
+  const worldsByPlayer = new Map<string, typeof controlled>();
+  for (const world of controlled) {
+    if (world.playerId === null) continue;
+    const worlds = worldsByPlayer.get(world.playerId) ?? [];
+    worlds.push(world);
+    worldsByPlayer.set(world.playerId, worlds);
+  }
+  return new Map(ids.map((playerId) => {
+    const worlds = worldsByPlayer.get(playerId) ?? [];
+    const capital = worlds.find((world) => world.kind === 'CAPITAL');
+    const capitalCore = capital === undefined ? 0 : (coreByPlanet.get(capital.planetId) ?? 0);
+    return [playerId, {
+      capitalCore,
+      colonies: worlds.filter((world) => world.kind === 'COLONY').length,
+      reservations: reservationsByPlayer.get(playerId) ?? 0,
+      capacity: colonyCapacity(capitalCore),
+    }];
+  }));
+}
+
+/**
  * HOW MANY COLONIES THIS COMMANDER MAY HOLD, AND HOW MANY THEY DO.
  *
  * Slots are counted off the CAPITAL's Core and nothing else (D209, owner
@@ -166,36 +226,11 @@ export interface ColonyStanding {
  * development nobody built, the same free Core D209 took away from research.
  */
 export async function colonyStanding(tx: Queryable, playerId: string): Promise<ColonyStanding> {
-  const controlled = await tx
-    .select({ planetId: planets.id, kind: planets.kind })
-    .from(planets)
-    .where(eq(planets.controllerPlayerId, playerId));
-  const capital = controlled.find((world) => world.kind === 'CAPITAL');
-  const [[core], [reserved]] = await Promise.all([
-    capital === undefined
-      ? Promise.resolve([{ level: 0 }])
-      : tx
-          .select({ level: buildings.level })
-          .from(buildings)
-          .where(and(eq(buildings.planetId, capital.planetId), eq(buildings.type, 'CORE'))),
-    tx
-      .select({ n: count() })
-      .from(missions)
-      .where(and(
-        eq(missions.ownerPlayerId, playerId),
-        eq(missions.status, 'in_flight'),
-        or(
-          eq(missions.kind, 'settlement'),
-          and(eq(missions.kind, 'death_star'), eq(missions.deathStarCapture, true)),
-        ),
-      )),
-  ]);
-  const capitalCore = core?.level ?? 0;
-  return {
-    capitalCore,
-    colonies: controlled.filter((world) => world.kind === 'COLONY').length,
-    reservations: reserved?.n ?? 0,
-    capacity: colonyCapacity(capitalCore),
+  return (await colonyStandings(tx, [playerId])).get(playerId) ?? {
+    capitalCore: 0,
+    colonies: 0,
+    reservations: 0,
+    capacity: 0,
   };
 }
 

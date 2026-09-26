@@ -8,6 +8,17 @@
  * The house style holds here as hard as anywhere — consequence first, never a
  * system name, and never a paragraph where a clause will do.
  */
+export const country = {
+  label: 'País',
+  choose: 'Elige tu país',
+  searchLabel: 'Buscar países',
+  searchPlaceholder: 'Buscar por país',
+  list: 'Países',
+  confirm: 'Confirmar país',
+  change: 'Cambiar',
+  saved: 'País actualizado',
+} as const;
+
 export const onboarding = {
   /** The one-line caption over the disc while the galaxy is being looked at. */
   beats: {

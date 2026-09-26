@@ -10,6 +10,32 @@ settled by playtest, not by argument.
 comparison. The active tempo profile and its current tables come from `packages/rules/src/tempo.ts`
 and `pnpm balance:economy`; `pnpm balance:goal` validates the fixed progression target.
 
+## Active season profile — 2026-09-26
+
+The following values are the owner-approved profile for the next season boundary. Older sections in
+this document are measurement history; when they disagree with the live constants, the constants
+and this profile win.
+
+- **Galaxy:** radius `4,500`, minimum separation `450`; the address budget is 1,000 player seats,
+  100 bot seats and 130 neutral seats. Neutral addresses open in strata (`T1 76 / T2 38 / T3 16`)
+  under the staged census (`T1 15 / T2 8 / T3 3` initially, then one free colony slot per census),
+  with the T3 target share at `0.13`.
+- **Tempo:** player mobile hulls use `0.75×` their profile speed (including cargo and collectors),
+  pirate fleets use `0.70×`; the Prospector is `618.75` units/minute, its rocks are `262.5–562.5`,
+  and its laden return is `309.375` units/minute. Asteroid lifetime is unchanged.
+- **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
+  slowdown; the Collector's special fuel mass is `900` instead of `1,000`. Chosen travel pace
+  still changes arrival time without an additional fuel discount.
+- **Colonies and first orbit:** capital Core `9 / 13 / 16` opens the three colony slots. Core `2`
+  opens the first satellite slot, so the Academy's gifted Uplink can power its gifted sensors.
+- **Events:** the convoy lasts 180 minutes and crosses the full diameter through the centre; trade
+  ships use 180-minute windows at `01–04`, `07–10`, `15–18` and `21–24` local time.
+- **Early Shipyard:** `1→2` costs `2,293 alloy / 882 crystal`; `2→3` costs `3,500 alloy /
+  1,250 crystal`. Other rungs retain their profiled costs.
+- **Account identity:** new registrations collect an ISO-3166 alpha-2 country; existing accounts
+  default to Türkiye (`TR`) and may change it from Commander settings. Flags are shown in the live
+  and archived leaderboards.
+
 **Where the shapes came from.** OGame's production (`30 · L · 1.1^L`), cost growth near 1.5,
 build time as cost over a throughput, and 30% debris are the genre's proven forms, re-derived here
 for a 14-day round rather than copied. Travian's speed servers supplied the rule that a short round
@@ -146,6 +172,12 @@ The sunset still comes: a Refinery-20 world stops on day ~23.6 of 30. The live s
 change stalled at Refinery 11 on day 5 (median, `build_orders`), with paybacks of 4–7 days at
 L10–15 — the owner's *"3-5 gün saçmalık"*. **If you change the curve, re-run
 `packages/rules/test/producer-curve.test.ts` and the sim's progression by day.**
+
+**Colony timing on the current Core curve (2026-09-26).** A 53-commander, 30-day
+`runSeason` with seed 42 and `by-archetype` activity reaches median Core 9 on day 3,
+Core 13 around day 6 and Core 16 around day 12. The old 9/12/15 ladder reached its second
+slot on day 4 and its third on day 9. The simulation under-models outside income,
+so these are pacing estimates rather than guarantees for live commanders.
 
 ### The crystal share is derived, not chosen
 
@@ -562,7 +594,7 @@ drives the strategic layer directly instead.
 
 ```
 spawn         0.05175 per player per hour — 15.525/h and ~59 rocks visible at 300 players
-orbit         radius 400–1900, closed 3D orbit, constant speed 350–750 units/min
+orbit         radius 900–4500, closed 3D orbit, constant speed 262.5–562.5 units/min
 life          2.5–5 hours, then gone for good
 ore by level  [—, 800, 1600, 2400, 3200, 4000]   dynamic weights [—, .44, .26, .17, .09, .04]
 legacy field  weights [—, .40, .27, .18, .10, .05] (kept deterministic)
@@ -868,13 +900,12 @@ zero, so the zero-sum property `invariants.test.ts` asserts is untouched by the 
 ```
 rate     32 alloy = 16 crystal = 1 deuterium — TRADE.rate = { alloy: 1, crystal: 2, deuterium: 32 } (D208)
          rounded L12 production reference; historical rulesets 5–7 retain D183's 1/2/9
-speed    47 ÷ TRAVEL.distanceFactor (1.2) = 39.17 units/min — half the Atlas's catalogue 94,
-         on the Atlas's own scale, never the rocks' 350–750 (D155's lesson, applied before it
-         could repeat)
+speed    half the slowed Argosy: `24.7797` units/min (`HULLS.ARGOSY.speed /
+         TRAVEL.distanceFactor / 2`), on the catalogue scale, never the rocks' 262.5–562.5
 orbit    radius 600–1,600 — narrower than the rocks'/pirates' 400–2,000, because a public
          position has no sensor opportunity left to equalise, only distance fairness
-window   fixed 01–03, 07–09, 15–17 and 21–23 Türkiye windows in ruleset 8; 120 minutes each
-season   `MULTI_WORLD.rulesetVersion = 8`; rulesets 4–7 keep their frozen random calendars
+window   fixed 01–04, 07–10, 15–18 and 21–24 Türkiye windows in the new-season trade-calendar v6; 180 minutes each
+season   `MULTI_WORLD.rulesetVersion = 12`; rulesets 4–7 keep their frozen random calendars
 dock     10s alongside before the return leg — the same shape as a raid's engagement window
 ```
 

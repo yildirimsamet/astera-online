@@ -8,7 +8,7 @@ import { computeLoot } from './loot.js';
 import { missionFuel } from './fuel.js';
 import { claimOre } from './galaxy.js';
 import { findRewardTier } from './rewards.js';
-import type { BuildingId, Fleet, Resources } from './types.js';
+import type { BuildingId, Fleet, Resources, SatelliteId } from './types.js';
 
 /** D172. Authored checkpoints, not client state. No clock, I/O or ambient RNG.
  * Each action and reward is a separate checkpoint so stopping before Claim
@@ -35,7 +35,8 @@ export type AcademyStepId = (typeof ACADEMY_STEPS)[number]['id'];
 
 export interface AcademyCheckpoint {
   buildings: Record<BuildingId, number>;
-  instruments: { AEGIS: number };
+  instruments: { AEGIS: number; TELESCOPE: number; RADAR: number };
+  satellites: SatelliteId[];
   fleet: Fleet;
   builtEver: Fleet;
   resources: Resources;
@@ -138,7 +139,7 @@ export function academyCheckpoint(completed: number): AcademyCheckpoint {
     throw new RangeError('Unauthored Academy step');
   }
   const state: AcademyCheckpoint = {
-    buildings: { ...START_BUILDINGS }, instruments: { AEGIS: 0 },
+    buildings: { ...START_BUILDINGS }, instruments: { AEGIS: 0, TELESCOPE: 0, RADAR: 0 }, satellites: [],
     fleet: {}, builtEver: {}, resources: { ...OPENING_BONUS }, buffer: { ...empty }, claimedRewards: [],
     progress: { PIRATE: 0, MINE: 0, RAID: 0 }, queue: null,
   };
@@ -174,6 +175,9 @@ export function academyCheckpoint(completed: number): AcademyCheckpoint {
       spend({ alloy: -ref.tier.reward.alloy, crystal: -ref.tier.reward.crystal, deuterium: -ref.tier.reward.deuterium });
     }
     switch (step.id) {
+      // Install the gift when its lesson opens so the Uplink row already shows it in orbit.
+      case 'intel': state.satellites.push('UPLINK'); state.instruments.TELESCOPE = 1; break;
+      case 'telescope': state.instruments.RADAR = 1; break;
       case 'aegis': spend(instrumentCost('AEGIS', 0)); state.instruments.AEGIS = 1; break;
       case 'darts': case 'reinforcements': build('DART', 2); break;
       case 'prospector': build('PROSPECTOR', 1); break;

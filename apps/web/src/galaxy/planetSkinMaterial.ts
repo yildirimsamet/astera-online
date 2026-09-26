@@ -122,3 +122,28 @@ export function createPlanetSkinAttachmentMaterial(
   material.color.lerp(tint, finish.palette.attachment.strength);
   return { material };
 }
+
+/** A struck country world keeps its flag map; thin burnt seams signal the active shield. */
+export function createCountryRecoveryMaterial(source: THREE.Material): THREE.MeshStandardMaterial {
+  const material = source instanceof THREE.MeshStandardMaterial
+    ? source.clone()
+    : new THREE.MeshStandardMaterial({ color: '#ffffff' });
+  material.metalness = 0;
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float countryScar = 0.0;
+        #ifdef USE_MAP
+          vec2 scarUv = vMapUv;
+          float faultA = abs(sin(scarUv.x * 39.0 + sin(scarUv.y * 37.0) * 2.0));
+          float faultB = abs(sin(scarUv.y * 47.0 - sin(scarUv.x * 29.0) * 1.7));
+          float fissure = min(faultA, faultB);
+          countryScar = 1.0 - smoothstep(0.012, 0.055, fissure);
+          diffuseColor.rgb *= mix(0.72, 0.25, countryScar);
+        #endif`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += vec3(0.75, 0.18, 0.035) * countryScar * 0.65;`);
+  };
+  material.customProgramCacheKey = () => 'country-recovery-v1';
+  return material;
+}

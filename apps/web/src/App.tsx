@@ -71,6 +71,7 @@ export function App() {
     leaveRehearsal,
     signInInstead,
     claim,
+    updateCountry,
     rollover,
   } = useSession();
   const ready = session.phase === 'ready';
@@ -221,11 +222,13 @@ export function App() {
             focusRequest={planetFocus}
             craftFocusRequest={craftFocus}
             commander={session.me.displayName}
+            country={session.me.country}
             isAdmin={session.me.isAdmin}
             pastResult={session.me.latestResult}
             onSignOut={() => {
               void signOut();
             }}
+            onCountryChange={updateCountry}
             onPlacementLost={rollover}
             onReplayAcademy={() => { setPanel(null); setAcademyReplay(true); }}
             homeRequest={homeRequest}

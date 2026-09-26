@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -6,6 +7,7 @@ import { PLANET_SKIN_IDS } from '@astera/rules';
 import { planetSkinVisual, partitionPlanetSkins } from '../src/ui/planetSkins.js';
 import {
   createPlanetSkinAttachmentMaterial,
+  createCountryRecoveryMaterial,
   createPlanetSkinMaterial,
 } from '../src/galaxy/planetSkinMaterial.js';
 import { maskOpaquePlanetBillboard } from '../src/galaxy/planetBillboardMaterial.js';
@@ -25,9 +27,9 @@ import {
   unitAttachmentGeometry,
 } from '../src/galaxy/planetSkinAttachments.js';
 import { galaxySchema, skinCollectionSchema } from '../src/api/schemas.js';
-import { PLANET_SKIN_CATALOG } from '../src/ui/skinCatalog.js';
+import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../src/ui/skinCatalog.js';
 
-const served = (url: string): string => resolve(process.cwd(), 'public', url.replace(/^\//, ''));
+const served = (url: string): string => resolve(process.cwd(), 'public', url.replace(/^\//, '').replace(/\?.*$/, ''));
 
 const geometrySchema = z.object({
   accessors: z.array(z.object({ count: z.number() })),
@@ -85,6 +87,10 @@ const webpDimensions = (binary: Buffer, offset: number): readonly [number, numbe
 };
 
 describe('first planet skin visuals', () => {
+  it('places each product in exactly one shop collection', () => {
+    expect([...SKIN_COLLECTIONS.elemental.ids, ...SKIN_COLLECTIONS.country.ids]).toEqual(PLANET_SKIN_IDS);
+  });
+
   it('starts full and low planet requests together instead of waterfalling', () => {
     const source = readFileSync('src/galaxy/PlanetSkinModel.tsx', 'utf8');
     expect(source).toMatch(/useGLTF\(\s*\[visual\.modelUrl, visual\.lowModelUrl\],\s*false,?\s*\)/);
@@ -95,7 +101,7 @@ describe('first planet skin visuals', () => {
     expect(source).toContain('sphereInFrustum(frustum, node.position, node.radius)');
   });
 
-  it('serves four distinct screenshots of the actual looks for selection cards', () => {
+  it('serves eight distinct screenshots of the actual looks for selection cards', () => {
     const images = PLANET_SKIN_IDS.map((id) => {
       const path = served(PLANET_SKIN_CATALOG[id].image);
       expect(existsSync(path), id).toBe(true);
@@ -109,9 +115,9 @@ describe('first planet skin visuals', () => {
     expect(new Set(images).size).toBe(PLANET_SKIN_IDS.length);
   });
 
-  it('resolves every catalogue skin to a served, optimised GLB and its own finish', () => {
+  it('resolves every elemental skin to the existing palette models and props', () => {
     const rampKeys = new Set<string>();
-    for (const id of PLANET_SKIN_IDS) {
+    for (const id of SKIN_COLLECTIONS.elemental.ids) {
       const normal = planetSkinVisual(id, 'NORMAL');
       const struck = planetSkinVisual(id, 'RECOVERY_SHIELD');
       expect(normal?.modelUrl).toBe('/assets/models/test_planet_modal.glb');
@@ -160,7 +166,61 @@ describe('first planet skin visuals', () => {
         expect(visual?.includedAttachments).toHaveLength(4);
       }
     }
-    expect(rampKeys.size).toBe(PLANET_SKIN_IDS.length);
+    expect(rampKeys.size).toBe(SKIN_COLLECTIONS.elemental.ids.length);
+  });
+
+  it('serves all four authored country globes within mobile geometry and texture budgets', () => {
+    for (const country of ['turkey', 'germany', 'france', 'spain'] as const) {
+      const id = `planet-${country}` as const;
+      const visual = planetSkinVisual(id, 'NORMAL');
+      expect(visual?.modelUrl).toMatch(new RegExp(`^/assets/models/planets/country/planet_${country}\\.glb\\?v=[0-9a-f]{10}$`));
+      expect(visual?.lowModelUrl).toMatch(new RegExp(`^/assets/models/planets/country/planet_${country}-lod\\.glb\\?v=[0-9a-f]{10}$`));
+      expect(visual?.billboardUrl).toBe(PLANET_SKIN_CATALOG[id].image);
+      expect(visual?.finish.kind).toBe('AUTHORED');
+      expect(planetSkinVisual(id, 'RECOVERY_SHIELD')?.modelUrl).toBe(visual?.modelUrl);
+      expect(planetSkinVisual(id, 'RECOVERY_SHIELD')?.finish)
+        .toEqual({ kind: 'AUTHORED', damaged: true });
+      expect(visual?.includedAttachments).toEqual([]);
+      for (const [tier, url] of [['full', visual?.modelUrl], ['low', visual?.lowModelUrl]] as const) {
+        const path = served(url ?? '');
+        expect(existsSync(path), id).toBe(true);
+        const binary = readFileSync(path);
+        expect(url?.split('?v=')[1], id).toBe(createHash('sha256').update(binary).digest('hex').slice(0, 10));
+        const gltf = glbJson(binary);
+        expect(gltf.extensionsRequired, id).toContain('EXT_meshopt_compression');
+        expect(gltf.images?.every((image) => image.mimeType === 'image/webp'), id).toBe(true);
+        const binOffset = 28 + binary.readUInt32LE(12);
+        for (const image of gltf.images ?? []) {
+          const view = gltf.bufferViews?.[image.bufferView ?? -1];
+          expect(view, `${id} ${tier} image`).toBeDefined();
+          const [width, height] = webpDimensions(binary, binOffset + (view?.byteOffset ?? 0));
+          expect(Math.max(width, height), `${id} ${tier} texture`).toBeLessThanOrEqual(tier === 'full' ? 1024 : 256);
+        }
+      }
+      const full = readFileSync(served(visual?.modelUrl ?? ''));
+      const low = readFileSync(served(visual?.lowModelUrl ?? ''));
+      expect(full.byteLength, id).toBeLessThan(320 * 1024);
+      expect(low.byteLength, id).toBeLessThan(64 * 1024);
+      expect(glbTriangles(full), id).toBeLessThanOrEqual(6_000);
+      expect(glbTriangles(low), id).toBeLessThanOrEqual(1_500);
+      const card = readFileSync(served(visual?.billboardUrl ?? ''));
+      expect(visual?.billboardUrl.split('?v=')[1], id)
+        .toBe(createHash('sha256').update(card).digest('hex').slice(0, 10));
+    }
+  });
+
+  it('adds visible scars to a struck country world without discarding its flag texture', () => {
+    const map = new THREE.Texture();
+    const source = new THREE.MeshStandardMaterial({ map });
+    const damaged = createCountryRecoveryMaterial(source);
+    const shader = { fragmentShader: '#include <map_fragment>\n#include <emissivemap_fragment>' };
+    damaged.onBeforeCompile(shader as never, {} as never);
+    expect(damaged.map).toBe(map);
+    expect(shader.fragmentShader).toContain('countryScar');
+    expect(shader.fragmentShader).toContain('totalEmissiveRadiance');
+    damaged.dispose();
+    source.dispose();
+    map.dispose();
   });
 
   it('falls back cleanly when a stale or forged skin id is received', () => {
@@ -207,14 +267,14 @@ describe('first planet skin visuals', () => {
     const map = new THREE.Texture();
     const normalMap = new THREE.Texture();
     const source = new THREE.MeshStandardMaterial({ map, normalMap, roughness: 0.35, metalness: 0.7 });
-    const looks = PLANET_SKIN_IDS.map((id) => planetSkinVisual(id)!.finish);
+    const looks = SKIN_COLLECTIONS.elemental.ids.map((id) => planetSkinVisual(id)!.finish);
     const dressed = looks.map((finish) => {
       if (finish.kind !== 'PALETTE') throw new Error('Expected palettes');
       return createPlanetSkinAttachmentMaterial(source, finish);
     });
-    expect(new Set(dressed.map(({ material }) => material))).toHaveLength(PLANET_SKIN_IDS.length);
+    expect(new Set(dressed.map(({ material }) => material))).toHaveLength(SKIN_COLLECTIONS.elemental.ids.length);
     expect(new Set(dressed.map(({ material }) => material.color.getHexString())).size)
-      .toBe(PLANET_SKIN_IDS.length);
+      .toBe(SKIN_COLLECTIONS.elemental.ids.length);
     for (const { material } of dressed) {
       expect(material.map).toBe(map);
       expect(material.normalMap).toBe(normalMap);
@@ -271,7 +331,7 @@ describe('first planet skin visuals', () => {
 
   it('mounts all sixteen matching low-detail surface assets inside mobile budgets', () => {
     const urls = new Set<string>();
-    for (const id of PLANET_SKIN_IDS) {
+    for (const id of SKIN_COLLECTIONS.elemental.ids) {
       const visual = planetSkinVisual(id, 'NORMAL');
       const assets = resolvePlanetSkinAttachments(visual?.includedAttachments ?? []);
       expect(assets).toHaveLength(4);

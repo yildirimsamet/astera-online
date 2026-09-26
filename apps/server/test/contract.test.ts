@@ -736,6 +736,7 @@ describe('every payload the client parses', () => {
       accountId: parsed.accountId,
       username: parsed.username,
       displayName: parsed.displayName,
+      country: parsed.country,
       accessToken: parsed.accessToken,
     });
   });

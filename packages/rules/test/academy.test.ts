@@ -32,6 +32,18 @@ describe('the authored Academy boundary', () => {
     }
     expect(academyExitCheckpoint(ACADEMY_STEPS.length)).toEqual(TUTORIAL_EXIT);
   });
+  it('grants the sensor kit only after each lesson is reached', () => {
+    const at = (id: string) => ACADEMY_STEPS.findIndex((step) => step.id === id);
+    expect(academyCheckpoint(at('intel')).satellites).toEqual([]);
+    expect(academyCheckpoint(at('uplink')).satellites).toContain('UPLINK');
+    expect(academyCheckpoint(at('uplink')).instruments.TELESCOPE).toBe(1);
+    expect(academyCheckpoint(at('telescope')).satellites).toContain('UPLINK');
+    expect(academyCheckpoint(at('telescope')).instruments.TELESCOPE).toBe(1);
+    expect(academyCheckpoint(at('radar')).instruments.TELESCOPE).toBe(1);
+    expect(academyCheckpoint(at('radar')).instruments.RADAR).toBe(1);
+    expect(academyCheckpoint(at('veil')).instruments.RADAR).toBe(1);
+    expect(TUTORIAL_EXIT.satellites).toContain('UPLINK');
+  });
   /**
    * D209 halved every seasonal reward, and the Academy is paid almost entirely in
    * rewards: a graduate left with 295 alloy instead of ~2,500. The owner kept the
@@ -50,9 +62,9 @@ describe('the authored Academy boundary', () => {
       expect(grant, `step ${String(step)}`).toEqual(expected);
     }
     expect(academyExitGrant([])).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
-    // A graduate opens on the first session the Academy was sized for, not on scraps.
+    // Pin the graduate's current opening after the public hull-price adjustment.
     expect(TUTORIAL_EXIT.resources.alloy).toBeGreaterThanOrEqual(2_400);
-    expect(TUTORIAL_EXIT.resources.crystal).toBeGreaterThanOrEqual(1_600);
+    expect(TUTORIAL_EXIT.resources.crystal).toBe(1_461);
     expect(TUTORIAL_EXIT.resources.alloy)
       .toBe(academyExitCheckpointWithoutGrant().alloy + academyExitGrant(TUTORIAL_EXIT.claimedRewards).alloy);
   });

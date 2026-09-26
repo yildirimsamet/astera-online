@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHAT_LANGUAGES, FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
+import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -27,6 +27,7 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 /** Dominion is persisted and transferred as an exact JavaScript-safe integer. */
 const dominionInteger = z.number().int().safe();
+export const countryCode = z.enum(COUNTRY_CODES);
 
 export const hullId = z.enum([
   'DART', 'PIKE', 'RAMPART', 'WARDEN', 'COURIER',
@@ -182,6 +183,7 @@ export const sessionSchema = z.object({
   /** Folded to lower case server-side; this is the key, not the label. */
   username: z.string(),
   displayName: z.string(),
+  country: countryCode,
   accessToken: z.string(),
 });
 
@@ -295,6 +297,7 @@ export const seasonArchiveLeaderboardSchema = z.object({
     resultId: z.string().uuid(),
     rank: z.number().int().positive(),
     commanderName: z.string(),
+    country: countryCode,
     dominion: dominionInteger,
     title: z.string(),
     self: z.boolean(),
@@ -380,6 +383,7 @@ export const seasonCommanderProfileSchema = z.object({
   selected: archivedSeasonContext.extend({
     resultId: z.string().uuid(),
     commanderName: z.string(),
+    country: countryCode,
     planetName: z.string(),
     rank: z.number().int().positive(),
     /** The field this rank was taken from, so a position can be stated. */
@@ -418,6 +422,7 @@ export const meSchema = z.object({
   accountId: z.string(),
   username: z.string(),
   displayName: z.string(),
+  country: countryCode,
   /** Older servers do not know the operations panel and safely default to no access. */
   isAdmin: z.boolean().default(false),
   placement: z
@@ -426,6 +431,8 @@ export const meSchema = z.object({
   /** Added after D85; an older server still opens a session without it. */
   latestResult: historicalSeasonResultSchema.nullable().optional(),
 });
+
+export const countryUpdatedSchema = z.object({ country: countryCode });
 
 /* ── the galaxies you can choose between ────────────────────── */
 
@@ -1240,6 +1247,7 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
+      country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       coreTier: z.number().optional(),
@@ -1252,6 +1260,7 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
+      country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),
       coreTier: z.number().optional(),
@@ -1763,6 +1772,20 @@ const galaxyEventSchema = z.discriminatedUnion('kind', [
       planetName: z.string(),
       tier: z.number().int().min(1).max(3),
       claimUntil: z.string(),
+    }),
+    occurredAt: z.coerce.date(),
+  }),
+  z.object({
+    id: z.string(),
+    kind: z.literal('neutral_opened'),
+    subjectPlanetId: z.null(),
+    payload: z.object({
+      total: z.number().int().nonnegative(),
+      tiers: z.object({
+        1: z.number().int().nonnegative(),
+        2: z.number().int().nonnegative(),
+        3: z.number().int().nonnegative(),
+      }),
     }),
     occurredAt: z.coerce.date(),
   }),

@@ -7,7 +7,7 @@ import { clarity, dossier, intel, reports } from './intel.js';
 import { directives, gains, notifications, units, vocabulary } from './data.js';
 import { errors } from './errors.js';
 import { flightBar, rangeBand, spend, counter } from './shapes.js';
-import { onboarding } from './onboarding.js';
+import { country, onboarding } from './onboarding.js';
 import { research } from './research.js';
 import { rewards } from './rewards.js';
 import { skins } from './skins.js';
@@ -28,6 +28,6 @@ export const de: Resources = {
   statusBar, menu, leaderboard, chat, pendingStrip, signals, sheet, toast, surface, galaxy,
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,
-  vocabulary, gains, directives, notifications, units, errors, onboarding, research, rewards,
+  vocabulary, gains, directives, notifications, units, errors, onboarding, country, research, rewards,
   skins, seasonRecap, chronicle, clan, clanWar, community, trade, convoy, hold, lane, meter, roomBar, away, outline, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage, reportScene, baseSwitch, researchMap,
 };

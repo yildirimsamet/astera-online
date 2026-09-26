@@ -9,7 +9,7 @@
 
 export const vocabulary = {
   building: {
-    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings and construction speed; the capital opens colony slots at levels 9, 12 and 15.', detail: 'No other building can rise above the Command Core. Raising it shortens building time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. Only the capital’s Core sets research ceilings and speed, and grants the first, second and third colony slots at levels 9, 12 and 15. It produces no ore or combat power by itself.' },
+    CORE: { name: 'Command Core', tag: 'Unlocks higher levels', role: 'Sets building ceilings and construction speed; the capital opens colony slots at levels 9, 13 and 16.', detail: 'No other building can rise above the Command Core. Raising it shortens building time, opens more orbit and flight slots at set levels, and expands ground-defence capacity. Only the capital’s Core sets research ceilings and speed, and grants the first, second and third colony slots at levels 9, 13 and 16. It produces no ore or combat power by itself.' },
     REFINERY: { name: 'Alloy Refinery', tag: 'Makes alloy', role: 'Alloy per hour, and alloy storage', detail: 'Each level increases passive alloy income and the amount that can be stored. Alloy pays for most construction and hulls, so this shortens many future waits.' },
     EXTRACTOR: { name: 'Crystal Extractor', tag: 'Makes crystal', role: 'Crystal per hour, and crystal storage', detail: 'Each level increases passive crystal income and storage. Crystal is the rarer half of advanced hardware, instruments and research costs.' },
     VAULT: { name: 'Store', tag: 'Deepens the store', role: 'Expands resource storage and leaves 10% headroom for the next matching alloy and crystal producer upgrades. The bottom 10%, capped at 8 hours of production, is safe from raids.', detail: 'The Store first grows by its authored production-hour ladder. At high levels, if that floor is too small, Store L expands to hold 110% of the Alloy Refinery L→L+1 alloy cost and Crystal Extractor L→L+1 crystal cost; the resulting hour window also applies to Deuterium. A raid cannot reach the lesser of the bottom 10% of the store or 8 hours of that resource’s production. The Store does not fight or reduce incoming damage.' },
@@ -272,7 +272,7 @@ export const vocabulary = {
       tag: 'Mines asteroids',
       role: 'Mines asteroids with a base hold of 200 · cannot join a raid fleet',
       pitch: 'Intercepts a moving asteroid and returns what it can carry to the Works. It cannot raid or transfer.',
-      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base speed is 825 and its base hold is 200; a Derrick and Prospector Holds research can improve them. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
+      detail: 'A Prospector can be sent only to revealed asteroids and debris fields. Its base outbound and empty-return speed is 619; laden return speed is 309. Its base hold is 200; a Derrick and Prospector Holds research can improve these values. Each world starts with room for two; Prospector Holds III opens a third craft slot. It never joins raids or home defence.',
     },
   },
 

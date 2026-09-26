@@ -62,6 +62,7 @@ export const TRANSFER_EVENT_POLICIES = {
   vault_leak_flush: 'WORLD',
   colony_secession: 'WORLD',
   clan_war_expiry: 'CLAN',
+  neutral_census: 'GLOBAL',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

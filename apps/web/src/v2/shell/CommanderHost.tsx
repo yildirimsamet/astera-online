@@ -3,6 +3,7 @@ import { useLeaderboard, useSeason } from '../../api/queries.js';
 import { useWorld } from '../../api/world.js';
 import { useNow } from '../../lib/time.js';
 import { CommanderCard, seasonDay } from '../hud/CommanderCard.js';
+import type { CountryCode } from '@astera/rules';
 
 /** A capital and every colony the game allows (D209). */
 const MOST_WORLDS = 1 + colonyCapacity(Infinity);
@@ -12,7 +13,7 @@ const MOST_WORLDS = 1 + colonyCapacity(Infinity);
  * (the leaderboard page reads the same row, so the two never disagree), the season
  * for the galaxy, the day and the shield, and the worlds this commander holds.
  */
-export function CommanderHost({ name }: { name: string }) {
+export function CommanderHost({ name, country }: { name: string; country?: CountryCode }) {
   const now = useNow(60_000);
   const season = useSeason().data;
   const you = useLeaderboard().data?.you ?? null;
@@ -21,6 +22,7 @@ export function CommanderHost({ name }: { name: string }) {
   return (
     <CommanderCard
       name={name}
+      country={country ?? you?.country}
       clan={you?.clan ?? null}
       galaxy={season?.shardName ?? null}
       seasonDay={season?.status === 'live' ? seasonDay(season.startsAt.getTime(), now) : null}

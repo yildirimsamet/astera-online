@@ -18,6 +18,7 @@ import {
   instrumentMaxed,
   prospectorRoom,
   satelliteSlots,
+  activeOrbitSlots,
   satelliteCost,
   seeingUnlocked,
   type BuildQueueId,
@@ -196,7 +197,7 @@ export function projectedQueueState(
 }
 
 const projectEffectiveOrbit = (state: ProjectedQueueState): void => {
-  state.effectiveOrbit = state.orbit.slice(0, satelliteSlots(state.buildings.CORE));
+  state.effectiveOrbit = state.orbit.slice(0, activeOrbitSlots(state.buildings.CORE, state.orbit));
 };
 
 const queueHasRoom = (view: PlanetView, queue: BuildQueueId): boolean =>

@@ -253,7 +253,7 @@ describe('Fleet V2 catalog contract — D148', () => {
       minShipyard: 0, ground: true,
     });
     expect(HULLS.PROSPECTOR).toMatchObject({
-      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 825, cargo: 200,
+      id: 'PROSPECTOR', cls: 'SUPPORT', atk: 0, hp: 150, speed: 618.75, cargo: 200,
       minShipyard: 1, ground: false,
     });
   });

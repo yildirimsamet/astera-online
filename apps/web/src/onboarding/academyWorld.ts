@@ -5,6 +5,7 @@ import {
   academyFuel, academyPirateBattle, academyPirateLoot, academyRaidBattle, academyRaidLoot,
   ACADEMY_LEG_SECONDS, academyLessonFleet, academyOrderSeconds, fleetEntries, flightSlots, type Fleet,
   RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS, researchAvailable,
+  activeOrbitSlots,
 } from '@astera/rules';
 import type { ServerBuildOrderView, PlanetView, Preview, BattleReport } from '../api/schemas.js';
 import { openWorld, planetOf } from './world.js';
@@ -191,6 +192,10 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
     planet: { ...planet.planet, shield, shieldMax: shield, shieldPerHour: Math.round(shield * SHIELD.regenPerHour),
       bufferAlloy: state.buffer.alloy, bufferCrystal: state.buffer.crystal, bufferDeuterium: state.buffer.deuterium },
     instruments: { ...planet.instruments, ...state.instruments },
+    effectiveInstruments: { ...planet.instruments, ...state.instruments },
+    orbit: state.satellites,
+    effectiveOrbit: state.satellites,
+    orbitSlots: activeOrbitSlots(state.buildings.CORE, state.satellites),
     research: RESEARCH_PROJECT_IDS.map((id) => {
       const project = RESEARCH_PROJECTS[id];
       const discovered = !['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL'].includes(id);
@@ -208,7 +213,7 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
     score: {
       ...planet.score,
       wealth: wealth({
-        buildings: state.buildings, instruments: state.instruments, satellites: [],
+        buildings: state.buildings, instruments: state.instruments, satellites: state.satellites,
         fleet: state.fleet, ground: {},
         alloy: state.resources.alloy + (order?.cost.alloy ?? 0),
         crystal: state.resources.crystal + (order?.cost.crystal ?? 0),

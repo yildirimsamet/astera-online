@@ -459,9 +459,8 @@ describe('the ruleset-8 fixed public-event calendar', () => {
   });
 
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
-    // Ruleset 10 (2026-09-20, Klan Ortak Savaşı) and 11 (2026-09-23, the fleet
-    // escape) keep the fixed calendar.
-    expect(MULTI_WORLD.rulesetVersion).toBe(11);
+    // Ruleset 12 introduces the larger galaxy and its newly-dealt event geometry.
+    expect(MULTI_WORLD.rulesetVersion).toBe(12);
     expect(MULTI_WORLD.rulesetVersion).toBeGreaterThanOrEqual(MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion);
     expect(GALAXY_EVENTS.version).toBe(4);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);
@@ -484,9 +483,9 @@ describe('the ruleset-8 fixed public-event calendar', () => {
    */
   it('versions both reshaped lanes so a dealt row says which calendar it came from', () => {
     expect(GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version).toBe(9);
-    // 2026-09-19: the radius-3000 galaxy lengthened both voyages (180 and 150 min).
-    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(5);
-    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(5);
+    // 2026-09-25: both voyages run 180 minutes in the radius-4500 galaxy.
+    expect(GALAXY_EVENTS.definitions.INTERGALACTIC_CONVOY.version).toBe(6);
+    expect(GALAXY_EVENTS.definitions.TRADE_SHIP.version).toBe(6);
   });
 
   it('deals a weekday: lunch and evening showers, one evening convoy', () => {
@@ -499,17 +498,17 @@ describe('the ruleset-8 fixed public-event calendar', () => {
     }));
 
     expect(rows).toEqual([
-      { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 210,
+      { kind: 'TRADE_SHIP', startsAtMinute: 60, endsAtMinute: 240,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[0].effect },
-      { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 570,
+      { kind: 'TRADE_SHIP', startsAtMinute: 420, endsAtMinute: 600,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[1].effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 750, endsAtMinute: 810,
         effect: { asteroidSpawnMultiplier: 2 } },
-      { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1050,
+      { kind: 'TRADE_SHIP', startsAtMinute: 900, endsAtMinute: 1080,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[2].effect },
       { kind: 'ASTEROID_SHOWER', startsAtMinute: 1200, endsAtMinute: 1260,
         effect: { asteroidSpawnMultiplier: 3 } },
-      { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1410,
+      { kind: 'TRADE_SHIP', startsAtMinute: 1260, endsAtMinute: 1440,
         effect: GALAXY_EVENTS.definitions.TRADE_SHIP.windows[3].effect },
       { kind: 'INTERGALACTIC_CONVOY', startsAtMinute: 1260, endsAtMinute: 1440,
         effect: convoyWindowAt(0).effect },
@@ -769,17 +768,16 @@ describe('Asteroid Shower bonus lane', () => {
       live claim, an in-flight run and a drawn target actually resolve through is
       the index, the orbit and the two instants, and those stay byte-identical.
 
-      2026-09-18: RE-TAKEN FOR RADIUS 3000. The orbit band took the ×1.5 disc, so
-      every radius and period moved while index, appearance and lifetime did not.
-      That ships at a season boundary (the geometry cannot change under a live one).
+      2026-09-25: RE-TAKEN FOR RADIUS 4500 and the 25% rock slowdown. Radius and
+      period move only with the new-season reset; indices, appearances and lives do not.
     */
     const laneShape = (rocks: readonly AsteroidSpec[]): string => createHash('sha256')
       .update(JSON.stringify(rocks.map(({ ore: _ore, ...rest }) => rest)))
       .digest('hex');
     expect(laneShape(base.slice(0, establishedCount)))
-      .toBe('7318a1ae0324286791b2775417743fa09c4666245adae860107fc162d66af904');
+      .toBe('eb3a14767ee42c1001f59105cc17e966302de8be6955469db6bfc2e5a0668a3e');
     expect(laneShape(showered.slice(0, establishedCount + establishedBonus)))
-      .toBe('5d0c8199828bb56aca3afc26de897ab00a8e6b4c545bed0792c28fac5030bff0');
+      .toBe('abe533d4210d24d0df93f154eb7ad35b512de345a06064990bd7344b18ecdf5a');
     expect(showered.length - base.length).toBe(expandedBonus);
     const bonus = [
       ...showered.slice(establishedCount, establishedCount + establishedBonus),

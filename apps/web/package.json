@@ -23,6 +23,7 @@
     "@tiptap/react": "^3.30.5",
     "@tiptap/starter-kit": "^3.30.5",
     "dompurify": "^3.4.14",
+    "flag-icons": "^7.5.0",
     "i18next": "^26.4.0",
     "i18next-browser-languagedetector": "^8.2.1",
     "moment": "^2.30.1",

@@ -564,7 +564,7 @@ export async function abandonIntergalacticConvoyRun(
       This path exists only when the arrival event failed permanently: the wing
       never fired, the reward is zero, and the world is flown home. Leaving the row
       holding the occurrence quota would charge a commander their single shot at a
-      two-hour crossing for a fault of ours. `abandoned_at` drops it out of the
+      three-hour crossing for a fault of ours. `abandoned_at` drops it out of the
       partial unique index and nothing else changes — the row, its history and its
       notification all stay. The FUEL is not refunded: D136 refunds nothing on any
       path, and a launch that could be undone is not a decision.

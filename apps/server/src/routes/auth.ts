@@ -1,10 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { loginBody, registerBody } from '../auth/credentials.js';
+import { z } from 'zod';
+import { countryCodeSchema, loginBody, registerBody } from '../auth/credentials.js';
 import { authenticate, findAccount, registerAccount } from '../services/account.js';
 import { currentPlacement } from '../services/servers.js';
 import { latestSeasonResult } from '../services/season.js';
 import { GameError } from '../services/planet.js';
 import { isAdminAccount } from '../services/admin.js';
+import { accounts } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
+import type { CountryCode } from '@astera/rules';
 
 const REFRESH_COOKIE = 'bs_refresh';
 
@@ -30,11 +34,12 @@ const setRefresh = (reply: FastifyReply, token: string, days: number): void => {
 export async function openSession(
   app: FastifyInstance,
   reply: FastifyReply,
-  account: { id: string; username: string; displayName: string },
+  account: { id: string; username: string; displayName: string; country: CountryCode },
 ): Promise<{
   accountId: string;
   username: string;
   displayName: string;
+  country: CountryCode;
   accessToken: string;
 }> {
   const [access, refresh] = await Promise.all([
@@ -46,6 +51,7 @@ export async function openSession(
     accountId: account.id,
     username: account.username,
     displayName: account.displayName,
+    country: account.country,
     accessToken: access,
   };
 }
@@ -160,6 +166,7 @@ export function registerAuthRoutes(app: FastifyInstance): void {
       accountId: account.id,
       username: account.username,
       displayName: account.displayName,
+      country: account.country,
       isAdmin,
       placement: placement
         ? {
@@ -170,6 +177,17 @@ export function registerAuthRoutes(app: FastifyInstance): void {
         : null,
       latestResult,
     };
+  });
+
+  app.put('/api/auth/me/country', { preHandler: requireAuth }, async (req) => {
+    const { country } = z.object({ country: countryCodeSchema }).strict().parse(req.body ?? {});
+    const [updated] = await app.db
+      .update(accounts)
+      .set({ countryCode: country })
+      .where(eq(accounts.id, req.accountId!))
+      .returning({ country: accounts.countryCode });
+    if (!updated) throw new GameError('BAD_SESSION', 'Session is invalid', 401);
+    return updated;
   });
 }
 

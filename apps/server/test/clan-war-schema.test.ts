@@ -127,12 +127,13 @@ describe('the additive joint war schema', () => {
       'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star',
       'clan_transfer', 'clan_war',
     ]);
-    expect(eventKind.enumValues.at(-1)).toBe('clan_war_expiry');
+    expect(eventKind.enumValues.at(-1)).toBe('neutral_census');
     // The values the joint war was built beside must not have shifted position.
     expect(eventKind.enumValues.indexOf('mission_arrival')).toBe(0);
-    expect(eventKind.enumValues.slice(-5, -1)).toEqual([
+    expect(eventKind.enumValues.slice(-6, -2)).toEqual([
       'fault_spawn', 'fault_repair_complete', 'vault_leak_flush', 'colony_secession',
     ]);
+    expect(eventKind.enumValues.at(-2)).toBe('clan_war_expiry');
   });
 });
 

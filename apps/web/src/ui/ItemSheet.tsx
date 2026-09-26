@@ -557,7 +557,7 @@ function SlotCard({
 }) {
   const { t } = useTranslation();
   const free = Math.max(0, slots - orbit.length);
-  const opener = nextSlotCore(core);
+  const opener = nextSlotCore(core, slots);
 
   return (
     <section className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2.5">
@@ -582,8 +582,7 @@ function SlotCard({
 }
 
 /** The Command Core level that opens one more orbit slot, or null past the last. */
-const nextSlotCore = (core: number): number | null => {
-  const now = satelliteSlots(core);
+const nextSlotCore = (core: number, now: number): number | null => {
   for (let level = core + 1; level <= core + 40; level += 1) {
     if (satelliteSlots(level) > now) return level;
   }

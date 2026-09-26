@@ -73,9 +73,16 @@ describe('the additive convoy schema', () => {
     expect(galaxyEventOccurrenceKind.enumValues).toEqual([
       'ASTEROID_SHOWER', 'TRADE_SHIP', 'INTERGALACTIC_CONVOY',
     ]);
-    // 2026-09-16 appended the dynamic asteroid hour after the convoy's two values.
-    expect(eventKind.enumValues.slice(-3)).toEqual(['convoy_arrival', 'convoy_return', 'asteroid_hour']);
-    expect(notificationKind.enumValues.at(-1)).toBe('convoy_result');
+    // Later migrations append more kinds; the convoy values must keep their
+    // original relative positions inside the PostgreSQL enum.
+    const convoyEvent = eventKind.enumValues.indexOf('convoy_arrival');
+    expect(eventKind.enumValues.slice(convoyEvent, convoyEvent + 3))
+      .toEqual(['convoy_arrival', 'convoy_return', 'asteroid_hour']);
+    expect(eventKind.enumValues.indexOf('neutral_census'))
+      .toBeGreaterThan(eventKind.enumValues.indexOf('clan_war_expiry'));
+    const convoyNotice = notificationKind.enumValues.indexOf('convoy_result');
+    expect(notificationKind.enumValues.slice(convoyNotice, convoyNotice + 3))
+      .toEqual(['convoy_result', 'colony_fault', 'colony_loyalty_warning']);
   });
 
   it('round-trips coordinates at double precision and keeps unresolved rewards null', async () => {

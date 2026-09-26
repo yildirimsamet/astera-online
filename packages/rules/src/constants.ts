@@ -1,4 +1,4 @@
-import { ECONOMY_PROFILE, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
+import { ECONOMY_PROFILE, FLEET_SPEED_FACTOR, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
 import { RESOURCE_VALUE } from './valuation.js';
 import type { BuildingId, FaultKind, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
 import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
@@ -1323,11 +1323,10 @@ export const INTEL = {
    *       7       5,100     5,400     +300
    *       8       6,600     6,600        0
    *
-   * BOTH LADDERS TOOK THE ×1.5 WITH THE RADIUS, 2026-09-18, owner decision: the
-   * disc went 2,000 → 3,000 and L8 had to keep reaching the whole of it. The
-   * margins scaled with them, so the owner's rule above still holds rung by rung.
+   * BOTH LADDERS TAKE THE SAME FACTOR AS THE RADIUS. L8 keeps reaching the full
+   * authored span while the lower rungs retain the same share of the map.
    */
-  radarRange: [0, 1800, 2175, 2550, 2850, 3300, 4350, 5400, 6600] as readonly number[],
+  radarRange: [0, 2700, 3262.5, 3825, 4275, 4950, 6525, 8100, 9900] as readonly number[],
 
   /**
    * HOW FAR A RADAR KNOWS SOMETHING IS COMING FOR YOU. D126, MERGED FOR NOW.
@@ -1350,12 +1349,12 @@ export const INTEL = {
    * editing this one table back to a tighter ladder — nothing else in the codebase
    * assumes they are equal, because both functions are still separate.
    */
-  radarContactRange: [0, 1800, 2175, 2550, 2850, 3300, 4350, 5400, 6600] as readonly number[],
+  radarContactRange: [0, 2700, 3262.5, 3825, 4275, 4950, 6525, 8100, 9900] as readonly number[],
 
   /**
    * PROVISIONAL. How far a telescope can see, in game units, by level. D18.
    *
-   * The galaxy has radius 3,000, so the furthest two worlds can be 6,000 apart.
+   * The galaxy has radius 4,500, so the furthest two worlds can be 9,000 apart.
    * The raw table remains the watch-slot ladder; moving-contact sight is separately
    * floored and capped by `sensorReach` below.
    *
@@ -1382,7 +1381,7 @@ export const INTEL = {
    * spread to reach it, so every rung buys a real step and the table says its own
    * ceiling out loud.
    */
-  telescopeRange: [0, 1425, 1725, 1875, 2175, 2400, 3750, 5100, 6600] as readonly number[],
+  telescopeRange: [0, 2137.5, 2587.5, 2812.5, 3262.5, 3600, 5625, 7650, 9900] as readonly number[],
 
   /**
    * PROVISIONAL. Hours a telescope slot is locked after being RE-POINTED. D18.
@@ -1451,14 +1450,14 @@ export const SENSOR = {
    * a disc that reads as empty, and no test can see that. `node tools/visual.mjs`
    * and a phone are the instruments.
    */
-  baseRadius: 750,
+  baseRadius: 1125,
 
   /**
    * THE AUTHORED FULL-SPAN CEILING. At L8 a commander who could not place a colony
    * on the far side can still earn galaxy-wide moving-contact reach. Watch slots,
    * probes and Veil clarity continue to ration detailed world intelligence.
    */
-  maxRadius: 6600,
+  maxRadius: 9900,
 
 
   /**
@@ -1596,8 +1595,10 @@ export const PROBE = {
  * Shipyard, and the thing that improves it is the DERRICK in orbit — one satellite,
  * owned or not, lifting every craft the planet has at once.
  *
- * SPEED IS THE LOAD-BEARING NUMBER. D74 sets the base to 330 and keeps the
- * Derrick's 1.5x lift, for 495.
+ * SPEED IS THE LOAD-BEARING NUMBER. D74 set the pre-scaling base to 330; the
+ * wider-disc unit change made that 825. The owner's 2026-09-25 fleet pass then
+ * slowed every leg of this craft by 25%, leaving 618.75 before a Derrick and
+ * 928.125 with its 1.5x lift.
  *
  * It was 62 against rocks that run at 140-300, and the mathematics of that were
  * never wrong — a closed orbit means a slower craft still has a meeting, it simply
@@ -1836,8 +1837,8 @@ export const FUEL = {
    * control nobody can use; free would take the decision out of it entirely and make parking the
    * fleet in the air the costless default.
    *
-   * AN ATTACK PAYS THE UNDISCOUNTED RATE AT EVERY PACE. Flying slowly buys arrival time and
-   * nothing else — see `MISSION_PACES`.
+   * AN ATTACK PAYS THE SAME RATE AT EVERY CHOSEN PACE. The September 2026 fleet
+   * slowdown reduced the fleet-wide base rate separately; distance remains priced.
    */
   laneShare: { HOSTILE: 1, HOMEWARD: 0.5 } as const,
   /**
@@ -1877,9 +1878,10 @@ export const FUEL = {
    * `SALVAGE.fuelMass`; leaving that behind would have halved "every ship" except
    * the one hull whose thirst a player complained about first.
    *
-   * This remains the fleet-wide rate after the 2026-09-18 tier surcharge rollback.
+   * The 2026-09-26 fleet-speed pass lowered this rate another 10%, from 0.0055
+   * to 0.00495. The Garbage Collector's hand-set mass moved by the same share.
    */
-  perValue: 0.0055,
+  perValue: 0.00495,
   /**
    * THE ROUND TRIP A FUEL CHARGE IS NEUTRAL AT. D195, owner instruction.
    *
@@ -1920,14 +1922,12 @@ export const PROSPECTOR = {
   /**
    * Game units per minute, before a Derrick.
    *
-   * 330 → 825: the ×2.5 UNIT CHANGE, and it is not optional. This craft's speed is
-   * tied to ROCK speed, not to warship speed — it has to aim ahead of a moving
-   * target — and the rocks took the same factor so that the field still reads as
-   * moving on a disc 2.5 times wider. The orbital period is unchanged because
-   * radius and speed both scaled, so every interception ratio is exactly where it
-   * was.
+   * The wider-disc unit change made the old 330 base 825. Owner instruction on
+   * 2026-09-25 applies the same 25% slowdown to the Prospector and its moving
+   * targets: 825 → 618.75 here, and 350–750 → 262.5–562.5 for rocks. That
+   * keeps the chase relationship while making the whole mining journey slower.
    */
-  speed: 825,
+  speed: 618.75,
   /**
    * HOW MUCH SLOWER A LADEN CRAFT FLIES HOME. Owner's figure: twice, from three
    * (2026-09-14). The brake stays a brake — a full craft is still the slowest
@@ -2009,7 +2009,7 @@ export const PROSPECTOR = {
    * actually chose. ONLY DEBRIS RUNS earn this rest (owner correction, 2026-09-13):
    * an asteroid interception may also be under a minute, but never adds a cooldown.
    */
-  shortTripMinutes: 1,
+  shortTripMinutes: 4 / 3,
   /**
    * AND HOW LONG THE CRAFT ARE HELD FOR HAVING MADE ONE. D183.
    *
@@ -2330,8 +2330,8 @@ export const GALAXY = {
    * of the map. The orbit bands of rocks, pirates and the merchant DID, because
    * they are geometry: left at 2000 no rock would ever cross the commander shell.
    */
-  radius: 3000,
-  minSeparation: 225,
+  radius: 4500,
+  minSeparation: 450,
   defaultSlots: 200,
 
   /**
@@ -2358,7 +2358,7 @@ export const GALAXY = {
     neutral: { inner: 0, outer: 0.56 },
     t1: { inner: 0.4, outer: 0.56 },
     t2Share: 0.28,
-    t3Share: 0.1,
+    t3Share: 0.13,
     /** Where T3's band ends and T2's begins. T2's ends at `t1.inner`. */
     t3Outer: 0.2,
   },
@@ -2405,26 +2405,18 @@ export const GALAXY = {
    * Game units per minute along the orbit, random inside this band and INDEPENDENT
    * OF LEVEL — a rich rock is not automatically a slow one.
    *
-   * Sized for VISIBILITY first, which is now allowed: 140-300 units a minute is
-   * 2.8 to 6 world units on screen, so a rock crosses several planet widths every
-   * minute and the field reads as moving within a second of looking at it, not
-   * after staring. The orbital period follows from this and the radius rather than
-   * being chosen — eight to twenty-eight minutes a revolution.
-   *
-   * DOUBLED FROM 70-150, and the Drill did NOT have to follow. The obvious worry
-   * is that a craft at speed 62 cannot catch a rock at 300, but that is
-   * straight-line thinking: on a closed orbit the rock comes back round to you, so
-   * a faster rock ARRIVES SOONER. Measured over 907 rocks × 40 planets, the
-   * outbound leg at Drill 1 fell from a median of 17.3 to 14.6 minutes and nothing
-   * became unreachable at any level. Mining throughput is therefore unchanged,
-   * which is why this is a visual change and not a balance one.
+   * Owner instruction on 2026-09-25 slowed the established 350–750 band by 25%,
+   * exactly with the Prospector. Richness remains independent from speed and the
+   * period remains derived from radius and speed. The field is sampled through
+   * 90% of every rock's unchanged lifetime in `invariants.test.ts`; expiry near
+   * the final instant remains an ordinary CANNOT_INTERCEPT outcome.
    */
-  asteroidSpeedMin: 350,
-  asteroidSpeedMax: 750,
+  asteroidSpeedMin: 262.5,
+  asteroidSpeedMax: 562.5,
 
   /** How far out they run. The whole tilted orbit stays inside the playable sphere. */
-  asteroidOrbitMin: 600,
-  asteroidOrbitMax: 3000,
+  asteroidOrbitMin: 900,
+  asteroidOrbitMax: 4500,
   /**
    * THE SEAT COUNT THE STATIC FIELD'S ORE BUDGET IS PRICED FOR, pinned at the 300
    * it was balanced at. The static schedule's rock COUNT is a fixed hourly rate, so
@@ -2547,15 +2539,15 @@ export const TRADE = {
   rate: RESOURCE_VALUE,
 
   /**
-   * HALF AN ATLAS'S PACE, ON THE ATLAS'S OWN SCALE. D155's lesson, applied before
+   * HALF AN ARGOSY'S PACE, ON THE ARGOSY'S OWN SCALE. D155's lesson, applied before
    * it could be repeated: a hull's catalogue figure is divided by
    * `TRAVEL.distanceFactor` to reach units per minute, and this number already IS
-   * units per minute. Measured against a rock instead — rocks run 350-750 — the
+   * units per minute. Measured against a rock instead — rocks run 262.5–562.5 — the
    * merchant would outrun every cargo hull in the game, and `interceptOrbit`'s
    * earliest meeting would be a lap of waiting rather than a lead. That is exactly
    * the bug the pirate lane shipped with and D155 removed.
    *
-   * The Atlas is the SLOWEST cargo hull in the catalogue, so anchoring on it means
+   * The Argosy is the SLOWEST cargo hull in the catalogue, so anchoring on it means
    * every hold in the game leads the merchant and the convoy decision is about how
    * much you can carry, never about whether you can catch it.
    *
@@ -2563,7 +2555,8 @@ export const TRADE = {
    * the anchor is written as the conversion rather than as its result, exactly as
    * `PIRATE.speedMin` names a Cataclysm. `trade.test.ts` binds it to `HULLS`.
    */
-  speed: profileFlightSpeed(SUPPORT_ROUND_TRIP.at(-1)!) / TRAVEL.distanceFactor / 2,
+  speed: profileFlightSpeed(SUPPORT_ROUND_TRIP.at(-1)!)
+    * FLEET_SPEED_FACTOR / TRAVEL.distanceFactor / 2,
 
   /**
    * How far out it runs. NARROWER THAN THE ROCKS' 400-2,000 ON PURPOSE.
@@ -2576,16 +2569,13 @@ export const TRADE = {
    * the rim is a free trip for the opposite rim and an expedition for everybody
    * else. Pulling both ends in costs nothing and makes the worst case survivable.
    *
-   * THE WORST CASE, VERIFIED IN `trade.test.ts`: a rim world at 3,000 (the
-   * 2026-09-18 radius) and a ship at 1,600 on the far side is 4,600 units. An Atlas
-   * covers that in about 59 minutes, so the round trip fits the two-hour window.
-   * THE BAND DID NOT TAKE THE RADIUS FACTOR ON PURPOSE: at 2,400 the worst round
-   * trip is ~138 minutes and a far-side commander could not trade at all. Sitting
-   * at the middle ring, the merchant is the same distance from every rim capital.
-   * The inner edge moved 600 → 700 only to stay strictly inside the rocks' band,
-   * whose inner edge took the factor to 600.
+   * THE WORST CASE, VERIFIED IN `trade.test.ts`: a rim world at 4,500 and a ship
+   * at 1,600 on the far side is 6,100 units. The slowed Argosy reaches that
+   * rendezvous in under 130 minutes, leaving more than 50 minutes of the three-hour
+   * window. Only rendezvous must precede expiry; the return may land afterwards.
+   * The band deliberately stays narrow rather than scaling to the outer rim.
    */
-  orbitMin: 700,
+  orbitMin: 1050,
   orbitMax: 1600,
 
   /**
@@ -2601,10 +2591,9 @@ export const TRADE = {
 /** D201's shared convoy clocks and quote limits. Route/reward math lives in rules. */
 export const INTERGALACTIC_CONVOY = {
   /**
-   * 120 → 180 on 2026-09-19, owner instruction, after the radius went 2000 → 3000.
-   * The crossing is `2 × radius` in this many minutes, so three hours puts the
-   * formation back at its pre-growth speed and gives the rim — where every
-   * commander now lives — the extra hour the longer reach to the route costs.
+   * Owner instruction on 2026-09-25: the 4,500-radius galaxy keeps a three-hour
+   * crossing. The formation traverses the complete 9,000-unit diameter at 50
+   * units per minute and passes the centre halfway through the window.
    */
   durationMinutes: 180,
   engagementSeconds: 5,
@@ -2714,20 +2703,19 @@ export const GALAXY_EVENTS = {
     TRADE_SHIP: {
       schedule: 'FIXED_DAILY',
       /**
-       * VERSION 5: every window 2h → 2h30, owner instruction 2026-09-19. At radius
-       * 3000 the worst Atlas round trip (far rim to the far side of the merchant's
-       * orbit) is ~117 minutes, which left a two-hour window no room for a late
-       * launch or the dock. Calendars are dealt at creation, so this reaches new
-       * seasons only.
+       * VERSION 6: every window is three hours, owner instruction 2026-09-25.
+       * At radius 4,500 the slowed Argosy's worst outbound rendezvous remains under
+       * 130 minutes, leaving more than 50 minutes to launch. Calendars are dealt at
+       * creation, so this reaches new seasons only.
        */
-      version: 5,
+      version: 6,
       windows: [
-        { startsAtLocalMinute: 60, endsAtLocalMinute: 3 * 60 + 30, effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 9 * 60 + 30,
+        { startsAtLocalMinute: 60, endsAtLocalMinute: 4 * 60, effect: { rate: TRADE.rate } },
+        { startsAtLocalMinute: 7 * 60, endsAtLocalMinute: 10 * 60,
           effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 15 * 60, endsAtLocalMinute: 17 * 60 + 30,
+        { startsAtLocalMinute: 15 * 60, endsAtLocalMinute: 18 * 60,
           effect: { rate: TRADE.rate } },
-        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 23 * 60 + 30,
+        { startsAtLocalMinute: 21 * 60, endsAtLocalMinute: 24 * 60,
           effect: { rate: TRADE.rate } },
       ],
     },
@@ -2738,15 +2726,15 @@ export const GALAXY_EVENTS = {
        * 2026-09-16: weekdays 21:00–23:00, weekends 12:00–14:00 and 20:00–22:00, and
        * *"artık convoy -> saatlik üretim miktarının 4 katına kadar verecek."*
        *
-       * EVERY WINDOW IS `durationMinutes` LONG (three hours since VERSION 5,
-       * 2026-09-19), and that is the route contract rather than a preference: the
+       * EVERY WINDOW IS `durationMinutes` LONG (three hours in VERSION 6,
+       * 2026-09-25), and that is the route contract rather than a preference: the
        * formation's speed is `2 x GALAXY.radius / durationMinutes`, so it enters one
        * rim as the window opens and clears the far rim as it closes, and
        * `intergalacticConvoySpec` refuses any other duration outright. The weekday
        * crossing now runs 21:00–24:00, which the calendar allows (a window may end
        * exactly at the day boundary).
        */
-      version: 5,
+      version: 6,
       windows: ([
         ['WEEKDAY', 21 * 60],
         ['WEEKEND', 12 * 60],
@@ -2988,12 +2976,11 @@ export const SALVAGE = {
   perCollector: 7_500,
   /**
    * ITS FUEL MASS, SET BY HAND — THE ONE EXCEPTION TO D195. Owner instruction,
-   * 2026-09-20 and raised 2026-09-22: the card must quote **100** deuterium, double the 50 it
-   * quoted before. `hullFuelRate` reads one tenth of this route mass at `FUEL.reference`, so 1,000
-   * is the authored mass behind that visible 100. `hullFuelMass` reads it; nothing else may derive
-   * it from price.
+   * 2026-09-20 and raised 2026-09-22. The 2026-09-26 speed pass reduced it 10%:
+   * `hullFuelRate` reads one tenth of this 900 mass, displaying 90 deuterium.
+   * `hullFuelMass` reads it; nothing else may derive it from price.
    */
-  fuelMass: 1_000,
+  fuelMass: 900,
 } as const;
 
 /**
@@ -3142,7 +3129,7 @@ const PIRATE_SPAWN_PER_SEAT_PER_HOUR = PIRATE_INCREASED_SPAWN_PER_SEAT_PER_HOUR 
  * depends on what you believe is there — moved onto a target that cannot shoot
  * first. The tap itself is a decision.
  */
-const PIRATE_SPEED_MULT = 0.75;
+const PIRATE_SPEED_MULT = 0.70;
 
 export const PIRATE = {
   /**
@@ -3323,8 +3310,8 @@ export const PIRATE = {
    *
    * THIS WAS THE ONE NUMBER IN THE FEATURE THAT WAS MEASURED AGAINST THE WRONG
    * THING. It read 200-420 and called itself "deliberately under the rocks", which
-   * it was — rocks run 350-750. But the craft that chases a rock is a PROSPECTOR
-   * at 825, and the craft that chases a pirate is a WARSHIP at 106-231. A hull's
+   * it was — rocks now run 262.5–562.5. But the craft that chases a rock is a
+   * Prospector at 618.75, and the craft that chases a pirate is a warship. A hull's
    * catalogue figure is divided by `TRAVEL.distanceFactor` to get units per minute
    * and a pirate's speed already IS units per minute, so on one scale the old band
    * was 240-504: faster than every ship in the game, the Dart included.
@@ -3338,12 +3325,13 @@ export const PIRATE = {
    * answered for the rocks — "the craft sets off in an unrelated direction" — and
    * it was live on this lane from the day it shipped.
    *
-   * SO BOTH ENDS ARE READ OFF THE CATALOGUE, then D203 applies one 25% reduction
-   * to the whole band. The multiplier is shared so the range cannot distort:
+   * SO BOTH ENDS ARE READ OFF THE CATALOGUE. The player's catalogue takes the
+   * shared 25% fleet slowdown, then the owner-selected pirate factor removes a
+   * further 30%. The multiplier is shared so the range cannot distort:
    *
-   *   · TOP — three quarters of a Dart's pace. Every Skirmisher outruns the fastest
+   *   · TOP — 70% of the slowed Dart's pace. Every Skirmisher outruns the fastest
    *     pirate, so whether you can catch one is never a question about your wallet.
-   *   · FLOOR — three quarters of a Cataclysm's pace. The Citadel now outruns this
+   *   · FLOOR — 70% of the slowed Cataclysm's pace. The Citadel now outruns this
    *     end as a deliberate consequence of slowing every pirate by the same share.
    *
    * A pirate now moves like the fleet it is rather than like a rock, which is also
@@ -3353,12 +3341,14 @@ export const PIRATE = {
    * the inner edge and two hours thirteen minutes at the outer — and that shortest period is
    * what sets the ceiling on `bearingMs` below.
    */
-  speedMin: profileFlightSpeed(20) * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
-  speedMax: profileFlightSpeed(15) * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
+  speedMin: profileFlightSpeed(20) * FLEET_SPEED_FACTOR
+    * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
+  speedMax: profileFlightSpeed(15) * FLEET_SPEED_FACTOR
+    * PIRATE_SPEED_MULT / TRAVEL.distanceFactor,
 
   /** How far out they run. Same band and same draw as the rocks. */
-  orbitMin: 600,
-  orbitMax: 3000,
+  orbitMin: 900,
+  orbitMax: 4500,
 
   /**
    * HOW FAR AHEAD A PIRATE'S MOTION IS PUBLISHED. Derived, never typed.
@@ -3402,7 +3392,7 @@ export const MULTI_WORLD = {
    * their persisted random calendars; this default affects new seasons only.
    * 10 → 11 on 2026-09-23 with the fleet escape (`fleetEscapeRulesetVersion`).
    */
-  rulesetVersion: 11,
+  rulesetVersion: 12,
   /**
    * TAKTİK GERİ ÇEKİLME ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
    * 2026-09-23. A live season keeps the battle rule it was dealt: a fleet its owner
@@ -3471,6 +3461,8 @@ export const MULTI_WORLD = {
   dynamicAsteroidFieldRulesetVersion: 8,
   /** Neutral worlds and colonies remain the v2 boundary. */
   neutralWorldRulesetVersion: 2,
+  /** Staged neutral supply is dealt only to newly-created seasons. */
+  neutralCensusRulesetVersion: 12,
   /** D114 clan state exists only in a freshly created v3 season. */
   clanRulesetVersion: 3,
   /**
@@ -3492,14 +3484,8 @@ export const MULTI_WORLD = {
    * of them. The owner expects 50–100 at most in a thousand-seat galaxy.
    */
   botSlots: 100,
-  /**
-   * 600 neutral candidates after every capital and bot address. The inner 56% of
-   * the radius holds only so many addresses at `minSeparation`: at 700 some seeds
-   * could not place the pool at all and a season could not open. 600 placed every
-   * one of four hundred seeds, and still gives each tier's own band
-   * (`GALAXY.strata`) its full count.
-   */
-  neutralSlotPool: SERVERS.capacity + 100 + 600,
+  /** Every address corresponds to a world that can really exist this season. */
+  neutralSlotPool: SERVERS.capacity + 100 + 76 + 38 + 16,
   /**
    * Owner instruction, 2026-09-19: doubled for the thousand-seat galaxy. D209's
    * 38/19/8 was sized for three hundred commanders.
@@ -3509,14 +3495,14 @@ export const MULTI_WORLD = {
    * THE COMMAND CORE EACH COLONY SLOT OPENS AT. D209, owner instruction;
    * thresholds revised by the owner on 2026-09-13.
    *
-   * The first colony at Core 9, the second at 12, the third at 15. The prior
+   * The first colony at Core 9, the second at 13, the third at 16. The prior
    * 6 / 9 / 12 ladder still let the first snowball begin before the capital had
    * crossed the opening progression band.
    * `colonyCapacity` counts the thresholds reached and the settle control names the
    * next one, so the number a player reads and the number the server enforces are
    * this one list.
    */
-  colonyCoreThresholds: [9, 12, 15],
+  colonyCoreThresholds: [9, 13, 16],
   /**
    * `claimMinutes` IS NOT HERE, AND MUST NEVER BE TYPED BACK IN.
    *

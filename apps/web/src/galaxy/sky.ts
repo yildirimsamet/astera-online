@@ -1,4 +1,5 @@
 import type { RenderQuality } from '../lib/quality.js';
+import { DISC_RADIUS } from './scene.js';
 
 /**
  * THE SKY, AS A PHOTOGRAPH RATHER THAN A WALLPAPER. Owner instruction:
@@ -505,11 +506,11 @@ export function buildSkyStars(count: number, seed: number): SkyStars {
 
 /**
  * HOW FAR OUT THE DEEP STARS STAND, world units from the galaxy's centre: past the
- * playfield (radius 60), inside the sky sphere. The camera reaches ~250 from the
- * centre, so the near part of this shell is close enough to slide visibly across
- * the far part — and across the sky behind both — on every orbit.
+ * playfield, inside the sky sphere. The inner edge follows the game's radius so
+ * a wider galaxy cannot place stars among the worlds; the far edge stays close
+ * enough to give the camera parallax against the sky behind both layers.
  */
-export const SKY_DEEP_STAR_REACH = [110, 400] as const;
+export const SKY_DEEP_STAR_REACH = [DISC_RADIUS * 1.8, 400] as const;
 
 /** One vertex each; only the ones in the frustum are rasterised. */
 export const SKY_DEEP_STAR_COUNT: Record<RenderQuality, number> = {

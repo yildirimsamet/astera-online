@@ -9,6 +9,7 @@ describe('Dominion API numeric contract', () => {
       rank: 1,
       playerId: 'player-1',
       username: 'Commander',
+      country: 'TR',
       score,
     }],
     you: null,
@@ -18,6 +19,17 @@ describe('Dominion API numeric contract', () => {
     expect(leaderboardSchema.safeParse(response(125_000)).success).toBe(true);
     expect(leaderboardSchema.safeParse(response(0.5)).success).toBe(false);
     expect(leaderboardSchema.safeParse(response(Number.MAX_SAFE_INTEGER + 1)).success).toBe(false);
+  });
+
+  it('requires a real country code on every public commander row', () => {
+    expect(leaderboardSchema.safeParse(response(125_000)).success).toBe(true);
+    expect(leaderboardSchema.safeParse({
+      ...response(125_000),
+      ladder: [{ ...response(125_000).ladder[0], country: 'XX' }],
+    }).success).toBe(false);
+    const withoutCountry = response(125_000);
+    delete (withoutCountry.ladder[0] as { country?: string }).country;
+    expect(leaderboardSchema.safeParse(withoutCountry).success).toBe(false);
   });
 
   it('applies the same contract to persisted raid-result notifications', () => {

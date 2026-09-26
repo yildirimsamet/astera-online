@@ -32,6 +32,17 @@ describe('Academy uses the production API locally', () => {
     expect(galaxy.sensors?.[0]?.identify).toBeGreaterThan(0);
     expect(galaxy.sensors?.[0]?.detect).toBe(0);
   });
+  it('publishes the gifted Radar range around the two lesson contacts', async () => {
+    const f = fixture('radar');
+    const galaxy = await f.api.galaxy();
+    const sensor = galaxy.sensors?.[0];
+    expect(sensor?.detect).toBeGreaterThan(sensor?.identify ?? 0);
+    const contacts = (await f.api.traffic()).contacts;
+    expect(contacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'fleet', fleet: { DART: 2 } }),
+      expect.objectContaining({ kind: 'unknown' }),
+    ]));
+  });
   it('marks only the requested battle signals seen, without touching a live account', async () => {
     const f = fixture('pirate');
     await f.api.raidPirate('academy-pirate', academyLessonFleet('pirate'));

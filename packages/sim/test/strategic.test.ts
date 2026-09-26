@@ -3,6 +3,7 @@ import {
   COMBAT,
   DEATH_STAR,
   MULTI_WORLD,
+  NEUTRAL_OPENING,
   RESEARCH_PROJECTS,
   SHIELD,
   alloyRate,
@@ -17,6 +18,7 @@ import {
 } from '@astera/rules';
 import {
   advanceStrategicLayer,
+  advanceNeutralCensus,
   buildWorld,
   neutralRaidEligible,
   runStrategicSession,
@@ -24,16 +26,16 @@ import {
 } from '../src/season.js';
 
 describe('multi-world strategic simulation', () => {
-  it('builds the same live 76/38/16 shared neutral pool from the same seed', () => {
+  it('builds the same staged 15/8/3 neutral opening from the same seed', () => {
     const first = buildWorld({ players: 50, days: 14, seed: 91273 });
     const second = buildWorld({ players: 50, days: 14, seed: 91273 });
 
     expect(first.neutrals.map((n) => [n.id, n.tier])).toEqual(
       second.neutrals.map((n) => [n.id, n.tier]),
     );
-    expect(first.neutrals.filter((n) => n.tier === 1)).toHaveLength(76);
-    expect(first.neutrals.filter((n) => n.tier === 2)).toHaveLength(38);
-    expect(first.neutrals.filter((n) => n.tier === 3)).toHaveLength(16);
+    expect(first.neutrals.filter((n) => n.tier === 1)).toHaveLength(NEUTRAL_OPENING.initial[1]);
+    expect(first.neutrals.filter((n) => n.tier === 2)).toHaveLength(NEUTRAL_OPENING.initial[2]);
+    expect(first.neutrals.filter((n) => n.tier === 3)).toHaveLength(NEUTRAL_OPENING.initial[3]);
     for (const n of first.neutrals) {
       expect(n.id).toBeGreaterThanOrEqual(MULTI_WORLD.capitalSlots);
       // D209: each dome is its template's own.
@@ -43,6 +45,17 @@ describe('multi-world strategic simulation', () => {
         deuteriumStorageCap(0, crystalRate(n.buildings.EXTRACTOR), n.buildings.VAULT),
       );
     }
+  });
+
+  it('opens only unmet authored supply at the day-three census', () => {
+    const world = buildWorld({ players: 20, days: 14, seed: 91273 });
+    for (const player of world.players.slice(0, 16)) {
+      player.buildings.CORE = MULTI_WORLD.colonyCoreThresholds[0]!;
+    }
+
+    expect(advanceNeutralCensus(world, 3 * 1440)).toEqual({ 1: 1, 2: 0, 3: 0 });
+    expect(world.neutrals.filter((neutral) => neutral.tier === 1)).toHaveLength(16);
+    expect(advanceNeutralCensus(world, 3 * 1440)).toEqual({ 1: 0, 2: 0, 3: 0 });
   });
 
   it('weighs a guarded T1 like a T2, keeps T2 non-automatic, and T3 gated by informed play', () => {

@@ -44,13 +44,13 @@ function epoch(overrides: Partial<SensorEpoch> = {}): SensorEpoch {
 
 describe('asteroid orbit distribution', () => {
   it('keeps the established inner boundary and reaches the true sphere boundary', () => {
-    expect(asteroidOrbitRadius(0)).toBe(600);
-    expect(asteroidOrbitRadius(1)).toBe(3_000);
+    expect(asteroidOrbitRadius(0)).toBe(900);
+    expect(asteroidOrbitRadius(1)).toBe(4_500);
   });
 
   it('uses the measured opportunity-balanced distribution across the full radius', () => {
     const roll = 0.5;
-    const expected = Math.pow(600 ** 4 + roll * (3_000 ** 4 - 600 ** 4), 1 / 4);
+    const expected = Math.pow(900 ** 4 + roll * (4_500 ** 4 - 900 ** 4), 1 / 4);
     expect(asteroidOrbitRadius(roll)).toBeCloseTo(expected, 10);
   });
 

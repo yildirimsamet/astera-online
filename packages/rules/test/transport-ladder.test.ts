@@ -14,7 +14,10 @@ const LINE = SUPPORT_HULLS.filter((id) => HULLS[id].profile === 'TRANSPORT')
   .sort((a, b) => (HULLS[a].tier ?? 0) - (HULLS[b].tier ?? 0));
 
 /**
- * A TRANSPORT MUST CARRY MORE THAN IT COSTS. D195b, owner instruction (option B).
+ * A TRANSPORT'S HOLD MAY NOT EXCEED 1.5 TIMES ITS CURRENT ECONOMIC PRICE.
+ * Owner instruction, 2026-09-26. The catalogue-wide hull-price increase changed
+ * the cost side of this ratio; this ceiling checks the live catalogue rather than
+ * the earlier minimum-capacity target from D195b.
  *
  * Measured before the change: the ladder was 700 / 2,200 / 6,000 against prices of
  * 750 / 1,912 / 4,648, so the COURIER carried 933 units of ore per 1,000 spent — the
@@ -31,9 +34,9 @@ const LINE = SUPPORT_HULLS.filter((id) => HULLS[id].profile === 'TRANSPORT')
  * sat flat at 6-10% however far either commander had developed.
  */
 describe('what a transport carries', () => {
-  it('carries more than it cost, at every rung', () => {
+  it('carries no more than 1.5 times its economic cost, at every rung', () => {
     for (const id of LINE) {
-      expect(HULLS[id].cargo / val(id), id).toBeGreaterThan(1);
+      expect(HULLS[id].cargo / val(id), id).toBeLessThanOrEqual(1.5);
     }
   });
 

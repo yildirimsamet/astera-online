@@ -163,7 +163,7 @@ describe('the authored convoy formation', () => {
 
   /**
    * FEATURE GEOMETRY, NOT AN ECONOMY SIMULATION. The convoy's income remains
-   * excluded from ARR/VFR; this only proves the owner's two-hour fairness claim
+   * excluded from ARR/VFR; this only proves the owner's three-hour fairness claim
    * against every shipped world slot and an isotropic route sample.
    */
   it('is reachable at opening from all 300 world slots by representative tier fleets', () => {
@@ -199,7 +199,7 @@ describe('the authored convoy formation', () => {
         }
       }
     }
-    expect(slowestArrival).toBeLessThanOrEqual(60.5);
+    expect(slowestArrival).toBeLessThanOrEqual(75);
   });
 
   it('does not silently reinterpret an unknown persisted version', () => {
@@ -360,10 +360,11 @@ describe('the immutable convoy reward quote', () => {
       launchTech: {},
       effect,
     });
-    expect(quote.firepower).toBe(360);
-    expect(quote.resourceQualityFactor).toBe(0.5);
-    expect(quote.shipQualityFactor).toBeCloseTo(360 / 5_780, 12);
-    expect(quote.rawResourceReward).toEqual({ alloy: 180, crystal: 120, deuterium: 60 });
+    expect(quote.firepower).toBe(combatValue({ DART: 1 }));
+    expect(quote.firepower).toBe(468);
+    expect(quote.resourceQualityFactor).toBe(0.65);
+    expect(quote.shipQualityFactor).toBeCloseTo(468 / 5_780, 12);
+    expect(quote.rawResourceReward).toEqual({ alloy: 234, crystal: 156, deuterium: 78 });
     expect(quote.cargo).toBe(fleetCargo({ DART: 1, COURIER: 1 }, {}));
     expect(quote.resourceReward).toEqual(quote.rawResourceReward);
 

@@ -36,6 +36,8 @@ dominionLeader: '{{commander}} a pris la tête de la Domination',
 dominionLeaderDetail: '{{planet}} occupe désormais la première place du classement public.',
 neutralClaim: 'Fenêtre de revendication ouverte sur {{planet}} · palier {{tier}}',
 neutralClaimDetail: 'Un raid décisif a déclenché une course publique à la colonisation de ce monde.',
+neutralOpened: '{{total}} mondes neutres ouverts',
+neutralOpenedDetail: 'La frontière s’étend · T1 {{t1}} · T2 {{t2}} · T3 {{t3}}.',
 deathStarImpact: 'Frappe de l’Étoile de la Mort sur {{planet}}',
 deathStarOutcome: {
 FIRST_STRIKE: 'L’EMP a vidé l’Aegis. Les défenses terrestres ne tirent pas et ne subissent aucun dégât pendant une heure.',

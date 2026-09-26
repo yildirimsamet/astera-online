@@ -97,7 +97,7 @@ const TRADE_SHIP_HIT_RADIUS = TRADE_SHIP_SCALE * 1.8;
 /**
  * How far ahead the heading sample looks, in milliseconds.
  *
- * `TRADE.speed` is a slow, deliberate pace (D156: half an Atlas) so a short
+ * `TRADE.speed` is a slow, deliberate pace (D156: half an Argosy) so a short
  * sample is still comfortably clear of `HEADING_EPSILON` at the tightest orbit
  * in the band, and short enough that the sampled heading reads as "now" rather
  * than "in a while".

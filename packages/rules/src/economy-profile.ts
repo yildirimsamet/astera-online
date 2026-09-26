@@ -186,6 +186,12 @@ export function profileInvoice(income: Resources, hours: Resources): Resources {
  */
 export const YARD_GATE_TOP = 6;
 
+/** Exact early Yard invoices selected by the owner; indexed by the rung reached. */
+const YARD_EARLY_COST: Readonly<Partial<Record<number, Resources>>> = {
+  2: { alloy: 2293, crystal: 882, deuterium: 0 },
+  3: { alloy: 3500, crystal: 1250, deuterium: 0 },
+};
+
 // The calibrated monthly curve preserves the first three economic rungs.
 const stretch = (level: number, days: number = ECONOMY_PROFILE.progressionDays) =>
   level <= 3 ? 1 : horizonScale(days);
@@ -310,6 +316,11 @@ export function profileBuilding(
     return { cost: authored, minutes: work, referenceLevel, repaymentHours: h, recipeHours: hours };
   }
 
+  const earlyYard = id === 'SHIPYARD' ? YARD_EARLY_COST[level] : undefined;
+  if (earlyYard) {
+    return { cost: earlyYard, minutes: work, referenceLevel, repaymentHours: h, recipeHours: hours };
+  }
+
   /**
    * PAST THE LAST GATE THE YARD SELLS A STRAIGHT LINE, SO IT COSTS ONE. D185.
    *
@@ -391,6 +402,9 @@ export function profileResearch(id: ResearchProjectId, level: number, days: numb
  * rather than three literals.
  */
 export const SUPPORT_ROUND_TRIP = [17, 22, 32, 38] as const;
+
+/** Owner instruction, 2026-09-25: every shipyard-built fleet hull flies 25% slower. */
+export const FLEET_SPEED_FACTOR = 0.75;
 
 /** Catalogue speed for the full 1250-unit out-and-back trip, including ten seconds of combat. */
 export const profileFlightSpeed = (roundTripMinutes: number): number =>
@@ -536,7 +550,7 @@ export function profileHull(live: Hull): ProfileHull {
   const roundTrip = live.cls === 'SKIRMISHER' ? 15 : live.cls === 'LANCE' ? 20
     : live.profile === 'ESCORT' ? ESCORT_ROUND_TRIP : 25;
   const common = { ...live, ...recipe, atk: Math.round(power * 0.52 * sharp), hp: Math.round(power / 0.52 / sharp),
-    speed: profileFlightSpeed(roundTrip),
+    speed: profileFlightSpeed(roundTrip) * FLEET_SPEED_FACTOR,
     cargo: Math.round((COMBAT_HOLD[tier - 1]! * roundTrip) / PIVOT_ROUND_TRIP),
     bulk: Math.ceil(bulk[tier - 1]! * premium), workMinutes: work[tier - 1]! * premium,
     referenceRoundTrip: roundTrip };
@@ -563,12 +577,12 @@ export function profileHull(live: Hull): ProfileHull {
       costs nothing anybody feels. See `SALVAGE.perCollector` for the measurement.
     */
     bulk: COLLECTOR_BULK[tier - 1]!, referenceRoundTrip: PIVOT_ROUND_TRIP,
-    speed: profileFlightSpeed(PIVOT_ROUND_TRIP) };
+    speed: profileFlightSpeed(PIVOT_ROUND_TRIP) * FLEET_SPEED_FACTOR };
   if (support) return { ...common, atk: 0, hp: Math.round(90 * steps[tier - 1]!),
     alloy: [600, 1500, 3600, 9000][tier - 1]!, crystal: [150, 400, 1000, 2600][tier - 1]!,
     deuterium: [0, 12, 48, 130][tier - 1]!,
     cargo: SUPPORT_HOLD[tier - 1]!, bulk: [3, 6, 14, 30][tier - 1]!,
     referenceRoundTrip: SUPPORT_ROUND_TRIP[tier - 1]!,
-    speed: profileFlightSpeed(SUPPORT_ROUND_TRIP[tier - 1]!) };
+    speed: profileFlightSpeed(SUPPORT_ROUND_TRIP[tier - 1]!) * FLEET_SPEED_FACTOR };
   return common;
 }

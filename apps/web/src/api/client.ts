@@ -10,6 +10,7 @@ import type {
   SatelliteId,
   PlanetSkinId,
   ChatLanguage,
+  CountryCode,
   MissionPace,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
@@ -54,6 +55,7 @@ import {
   clanSettingsSchema,
   clanStrengthSchema,
   collectSchema,
+  countryUpdatedSchema,
   galaxySchema,
   skinCollectionSchema,
   skinEquipSchema,
@@ -150,7 +152,7 @@ export interface ApiDeps {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PUT';
   /**
    * The payload as an OBJECT. `send` serialises it — do not pre-encode.
    *
@@ -348,10 +350,10 @@ export class Api {
    * `retryOnExpiry: false` on all three of these: there is no session to refresh
    * yet, and a 401 from a login is the answer, not a stale token.
    */
-  async register(username: string, password: string) {
+  async register(username: string, password: string, countryCode?: CountryCode) {
     const session = await this.send('/api/auth/register', sessionSchema, {
       method: 'POST',
-      body: { username, password },
+      body: { username, password, ...(countryCode === undefined ? {} : { countryCode }) },
       retryOnExpiry: false,
     });
     this.token = session.accessToken;
@@ -394,6 +396,12 @@ export class Api {
 
   me = () => this.send('/api/auth/me', meSchema);
 
+  updateCountry = (country: CountryCode) => this.send(
+    '/api/auth/me/country',
+    countryUpdatedSchema,
+    { method: 'PUT', body: { country } },
+  );
+
   /* ── announcements and feedback ─────────────────────────── */
 
   announcements = () => this.send('/api/announcements', announcementsPageSchema);
@@ -431,12 +439,22 @@ export class Api {
    * `@astera/rules` the server validates against; this call is where it becomes
    * true, or is refused and says which step and why.
    */
-  async claim(username: string, password: string, progress: readonly ClaimIntent[] | number) {
+  async claim(
+    username: string,
+    password: string,
+    progress: readonly ClaimIntent[] | number,
+    countryCode?: CountryCode,
+  ) {
     const claimed = await this.send('/api/onboarding/claim', claimSchema, {
       method: 'POST',
       // D172: the server authors the checkpoint; no local resources/fleet travel.
       // Arrays remain readable for the previous rehearsal during migration.
-      body: { username, password, ...(typeof progress === 'number' ? { step: progress } : { intents: progress }) },
+      body: {
+        username,
+        password,
+        ...(countryCode === undefined ? {} : { countryCode }),
+        ...(typeof progress === 'number' ? { step: progress } : { intents: progress }),
+      },
       retryOnExpiry: false,
     });
     this.token = claimed.accessToken;

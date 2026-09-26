@@ -5,8 +5,8 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig(
-  // `.dev/` and `out/` are gitignored local scratch output, not build input.
-  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', 'out/**'] },
+  // Local scratch output and pre-existing agent worktrees are not build input.
+  { ignores: ['**/dist/**', '**/node_modules/**', 'legacy/**', '**/drizzle/**', '.dev/**', '.claude/worktrees/**', 'out/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,

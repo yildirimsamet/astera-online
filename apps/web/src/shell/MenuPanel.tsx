@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnnouncements, useRewards } from '../api/queries.js';
 import {
@@ -22,7 +22,8 @@ import {
   useRenderQuality,
   type RenderQuality,
 } from '../lib/quality.js';
-import { Button, Note, Section, SectionHead, Segmented, type Segment } from '../ui/kit/index.js';
+import { Segmented, type Segment } from '../ui/kit/index.js';
+import { Button, Note, Section, SectionHead } from '../v2/kit/Surface.js';
 import {
   ChevronIcon,
   BellIcon,
@@ -43,6 +44,10 @@ import { publisherUrl } from '../lib/publisherPages.js';
 import { openConsentNotice, readConsent, reopenGoogleCmp } from '../lib/consent.js';
 import type { Panel } from '../screens/GalaxyView.jsx';
 import { setFpsMeterEnabled, useFpsMeterEnabled } from '../lib/fpsMeter.js';
+import type { CountryCode } from '@astera/rules';
+import { CountryPicker } from '../v2/identity/CountryPicker.js';
+import { Flag } from '../v2/identity/Flag.js';
+import { countryName } from '../v2/identity/country.js';
 
 /**
  * THE MENU — everything the game has that is not the galaxy.
@@ -126,6 +131,8 @@ export function MenuPanel({
   onSignOut,
   onReplayAcademy,
   isAdmin = false,
+  country = 'TR',
+  onCountryChange,
 }: {
   galaxy: string | null;
   shard: string | null;
@@ -154,6 +161,8 @@ export function MenuPanel({
   onSignOut: () => void;
   onReplayAcademy?: () => void;
   isAdmin?: boolean;
+  country?: CountryCode;
+  onCountryChange?: (country: CountryCode) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
   /**
@@ -170,11 +179,12 @@ export function MenuPanel({
   const waiting = useRewards().data?.claimable ?? 0;
   const announcementData = useAnnouncements().data;
   const announcementWaiting = announcementData?.announcements.filter((row) => !row.seen).length ?? 0;
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-v2-commander-menu className="flex flex-col gap-4 font-v2-ui text-v2-ink">
       {/**
        * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
@@ -449,6 +459,21 @@ export function MenuPanel({
         backwards.
       */}
       <Section label={t('menu.accountHeading')}>
+        {onCountryChange && (
+          <div className="plate divide-y divide-line-soft">
+            <SettingRow label={t('country.label')} title={countryName(country, i18n.resolvedLanguage ?? 'en')}>
+              <button
+                type="button"
+                className="flex items-center gap-2 text-left text-label text-bone focus-visible:outline-2 focus-visible:outline-crystal"
+                onClick={() => { setCountryPickerOpen(true); }}
+              >
+                <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} />
+                <span>{countryName(country, i18n.resolvedLanguage ?? 'en')}</span>
+                <span className="text-faint">{t('country.change')}</span>
+              </button>
+            </SettingRow>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2">
           <div className="plate flex flex-col gap-1 p-2">
             <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
@@ -510,6 +535,16 @@ export function MenuPanel({
           {t('galaxy.commander.signOut')}
         </Button>
       </Section>
+      {countryPickerOpen && onCountryChange && (
+        <CountryPicker
+          value={country}
+          onSelect={(next) => {
+            setCountryPickerOpen(false);
+            void onCountryChange(next);
+          }}
+          onClose={() => { setCountryPickerOpen(false); }}
+        />
+      )}
     </div>
   );
 }

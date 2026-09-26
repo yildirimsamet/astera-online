@@ -176,6 +176,19 @@ export function academyMining(w: AcademyWorld, now: number): MiningView & { isot
  * a field the renderer needs.
  */
 export function academyTraffic(w: AcademyWorld, now: number): Contact[] {
+  if (atLesson(w, 'radar')) {
+    const home = w.preview.reserved.position;
+    const near = { ...home, x: home.x + 430 };
+    const far = { ...home, x: home.x + 2_450 };
+    return [
+      { id: 'academy-telescope-contact', kind: 'fleet', fleet: { DART: 2 },
+        from: near, to: { ...near, z: near.z + 150 },
+        startAt: w.preview.season.startsAt, endAt: w.preview.season.endsAt },
+      { id: 'academy-radar-contact', kind: 'unknown',
+        from: far, to: { ...far, z: far.z + 150 },
+        startAt: w.preview.season.startsAt, endAt: w.preview.season.endsAt },
+    ];
+  }
   if (!targetStanding(w, 'pirate', now)) return [];
   const at = academyTarget(w);
   const flight = w.flight;

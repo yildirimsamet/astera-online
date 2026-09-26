@@ -3,10 +3,26 @@ import { ACADEMY_STEPS, academyCheckpoint, wealth, RESEARCH_PROJECT_IDS } from '
 import { academyPreview, advanceAcademy, beginAcademyOrder, academyPlanet, openAcademy, completeAcademyLesson, beginAcademyFlight } from '../src/onboarding/academyWorld.js';
 import { planetSchema, previewSchema } from '../src/api/schemas.js';
 import { planetArt } from '../src/ui/assets.js';
-import { ACADEMY_TARGET_ID } from '../src/onboarding/academyViews.js';
+import { ACADEMY_TARGET_ID, academyTraffic } from '../src/onboarding/academyViews.js';
 
 describe('the local Academy world', () => {
   const now = 1_800_000_000_000;
+  it('contrasts a telescope-identified fleet with a radar-only contact', () => {
+    const step = ACADEMY_STEPS.findIndex((s) => s.id === 'radar');
+    const contacts = academyTraffic(openAcademy(now, step), now);
+    expect(contacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'fleet', fleet: { DART: 2 } }),
+      expect.objectContaining({ kind: 'unknown' }),
+    ]));
+    expect(contacts.find((contact) => contact.kind === 'unknown')).not.toHaveProperty('fleet');
+  });
+  it('shows the gifted Uplink as the single active orbit slot before Core 6', () => {
+    const step = ACADEMY_STEPS.findIndex((s) => s.id === 'radar');
+    const planet = academyPlanet(openAcademy(now, step));
+    expect(planet.buildings.CORE).toBeLessThan(6);
+    expect(planet.orbit).toEqual(['UPLINK']);
+    expect(planet.orbitSlots).toBe(1);
+  });
   it('introduces the actual research catalogue without granting a project', () => {
     const planet = academyPlanet(openAcademy(now, ACADEMY_STEPS.findIndex((s) => s.id === 'research')));
     expect(planet.research.map((r) => r.id)).toEqual(RESEARCH_PROJECT_IDS);
@@ -44,7 +60,7 @@ describe('the local Academy world', () => {
     const world = openAcademy(now, ACADEMY_STEPS.findIndex((step) => step.id === 'pirate'));
     const state = world.checkpoint;
     expect(academyPlanet(world).score.wealth).toBe(wealth({
-      buildings: state.buildings, instruments: state.instruments, satellites: [],
+      buildings: state.buildings, instruments: state.instruments, satellites: state.satellites,
       fleet: state.fleet, ground: {}, ...state.resources,
     }));
   });

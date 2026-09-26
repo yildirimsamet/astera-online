@@ -46,15 +46,21 @@ function fill(slots: readonly PlanetSlot[], count: number): PlanetSlot[] {
 }
 
 describe('galaxy scale', () => {
-  it('seats a thousand commanders in a sphere of radius 3000', () => {
+  it('seats a thousand commanders in a sphere of radius 4500', () => {
     expect(SERVERS.capacity).toBe(1000);
-    expect(GALAXY.radius).toBe(3000);
+    expect(GALAXY.radius).toBe(4500);
+    expect(GALAXY.minSeparation).toBe(450);
     expect(MULTI_WORLD.capitalSlots).toBe(SERVERS.capacity);
   });
 
-  it('reserves room for up to a hundred server commanders on their own addresses', () => {
+  it('reserves only real commander, bot and neutral addresses', () => {
     expect(MULTI_WORLD.botSlots).toBe(100);
-    expect(MULTI_WORLD.neutralSlotPool).toBe(botEnd + 600);
+    expect(MULTI_WORLD.neutralSlotPool).toBe(
+      botEnd
+      + MULTI_WORLD.neutralCounts[1]
+      + MULTI_WORLD.neutralCounts[2]
+      + MULTI_WORLD.neutralCounts[3],
+    );
   });
 
   it('orders the strata strictly from rim to core with no overlap', () => {
@@ -66,6 +72,7 @@ describe('galaxy scale', () => {
     expect(t1.inner).toBeGreaterThan(GALAXY.strata.t2Share);
     expect(GALAXY.strata.t2Share).toBeGreaterThan(GALAXY.strata.t3Outer);
     expect(GALAXY.strata.t3Outer).toBeGreaterThan(GALAXY.strata.t3Share);
+    expect(GALAXY.strata.t3Share).toBe(0.13);
   });
 
   /** Owner instruction, 2026-09-19: a wider commander shell, everything inside it moved in. */

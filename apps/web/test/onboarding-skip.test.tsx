@@ -80,7 +80,7 @@ describe('skipping the onboarding rehearsal', () => {
       { kind: 'upgrade', building: 'REFINERY' },
       { kind: 'upgrade', building: 'EXTRACTOR' },
       { kind: 'build', hull: 'DART', count: 2 },
-    ]);
+    ], 'US');
   });
 
   it('opens the final commander-credentials step instead of returning to the landing screen', async () => {

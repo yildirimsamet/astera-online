@@ -6,7 +6,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { PlanetSkinStatus } from '@astera/rules';
 import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
-import { createPlanetSkinMaterial } from './planetSkinMaterial.js';
+import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
 import { planetSurface } from './planetSurface.js';
 import type { PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
@@ -196,6 +196,7 @@ export function PlanetSkinModel({
   nodes,
   onSelect,
   galaxyLod = false,
+  previewPhaseOffset = 0,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
@@ -203,6 +204,7 @@ export function PlanetSkinModel({
   onSelect?: (id: string) => void;
   /** The shop preview has no billboard peer, so only the galaxy enables switching. */
   galaxyLod?: boolean;
+  previewPhaseOffset?: number;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
   if (!visual) return null;
@@ -213,6 +215,7 @@ export function PlanetSkinModel({
       nodes={nodes}
       onSelect={onSelect}
       galaxyLod={galaxyLod}
+      previewPhaseOffset={previewPhaseOffset}
     />
   );
 }
@@ -223,12 +226,14 @@ function LoadedPlanetSkinModel({
   nodes,
   onSelect,
   galaxyLod,
+  previewPhaseOffset,
 }: {
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   status: PlanetSkinStatus;
   nodes: readonly SkinNode[];
   onSelect?: (id: string) => void;
   galaxyLod: boolean;
+  previewPhaseOffset: number;
 }) {
   const loaded = useGLTF(
     [visual.modelUrl, visual.lowModelUrl],
@@ -248,14 +253,14 @@ function LoadedPlanetSkinModel({
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
     if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: source.clone(), uniforms: null };
+    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : source.clone(), uniforms: null };
   }, [model, visual]);
   const lowDressed = useMemo(() => {
     if (!lowModel) return null;
     const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
     if (!source) return null;
     if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: source.clone(), uniforms: null };
+    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : source.clone(), uniforms: null };
   }, [lowModel, visual]);
   const fullBody = useRef<THREE.InstancedMesh>(null);
   const lowBody = useRef<THREE.InstancedMesh>(null);
@@ -303,7 +308,7 @@ function LoadedPlanetSkinModel({
       helper.position.set(...node.position);
       helper.rotation.set(
         0,
-        planetSkinPhase(node.id) + clock.elapsedTime * PLANET_SKIN_SPIN_RATE,
+        planetSkinPhase(node.id) + previewPhaseOffset + clock.elapsedTime * PLANET_SKIN_SPIN_RATE,
         0,
       );
       helper.scale.setScalar(node.radius * PLANET_SKIN_BODY_SCALE);

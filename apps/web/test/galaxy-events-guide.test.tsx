@@ -53,7 +53,7 @@ describe('galaxy events guide', () => {
 
     for (const time of [
       '12:30–13:30', '20:00–21:00', '13:00–14:00',
-      '01:00–03:30', '07:00–09:30', '15:00–17:30', '21:00–23:30',
+      '01:00–04:00', '07:00–10:00', '15:00–18:00', '21:00–24:00',
       '21:00–24:00', '12:00–15:00', '20:00–23:00',
     ]) {
       expect(screen.getAllByText(time).length).toBeGreaterThan(0);
@@ -89,7 +89,7 @@ describe('galaxy events guide', () => {
     ]);
     // The small hours still read last, after the evening.
     expect(rowsIn('Ticaret Gemisi')).toEqual([
-      ['Her gün', ['07:00–09:30', '15:00–17:30', '21:00–23:30', '01:00–03:30']],
+      ['Her gün', ['07:00–10:00', '15:00–18:00', '21:00–24:00', '01:00–04:00']],
     ]);
   });
 

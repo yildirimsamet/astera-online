@@ -308,9 +308,14 @@ export async function joinSeason(
             level: academy?.buildings[b.type] ?? b.level })));
 
         if (academy) {
-          if (academy.instruments.AEGIS > 0) await tx.insert(satellites).values({
-            planetId: planet.id, slot: 0, type: 'AEGIS', level: academy.instruments.AEGIS,
-          });
+          const hardware = [
+            ...academy.satellites.map((type) => ({ type, level: 1 })),
+            ...Object.entries(academy.instruments).filter(([, level]) => level > 0)
+              .map(([type, level]) => ({ type, level })),
+          ];
+          if (hardware.length) await tx.insert(satellites).values(hardware.map((item, slot) => ({
+            planetId: planet.id, slot, ...item,
+          })));
           const fleet = fleetEntries(academy.fleet);
           if (fleet.length) await tx.insert(units).values(fleet.map(([hull, count]) => ({
             planetId: planet.id, ownerPlayerId: player.id, hull, count, location: 'home',

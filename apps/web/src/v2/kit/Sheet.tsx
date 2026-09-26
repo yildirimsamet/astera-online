@@ -211,14 +211,14 @@ export function Sheet({
           >
             <span aria-hidden="true" className="h-1 w-9 rounded-full bg-v2-line-hi" />
           </button>}
-          {/* Quiet, the close floats above whatever the page pins to its top (a sticky bar is z-20). */}
-          <header className={quietTitle ? 'pointer-events-none absolute inset-x-0 top-4 z-30 flex items-start justify-end gap-1 px-2' : 'flex items-start gap-1 px-2 pb-2'}>
+          {/* The close owns a stable row; scrolling tabs never need to move around it. */}
+          <header className={quietTitle ? 'flex shrink-0 items-start justify-end gap-1 px-2 pb-1' : 'flex items-start gap-1 px-2 pb-2'}>
             {onBack && (
               <button
                 type="button"
                 aria-label={t('sheet.back')}
                 onClick={onBack}
-                // Pressable in a quiet header too, whose floating row lets presses through.
+                // Pressable in the quiet header's stable row too.
                 className="pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2"
               >
                 <Icon id="i-chev" className="size-4 rotate-180" />
@@ -239,7 +239,7 @@ export function Sheet({
               type="button"
               aria-label={t('sheet.close')}
               onClick={onClose}
-              className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel/70' : ''}`}
+              className={`pointer-events-auto grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 ${quietTitle ? 'border border-v2-line bg-v2-panel' : ''}`}
             >
               <Icon id="i-close" className="size-4" />
             </button>

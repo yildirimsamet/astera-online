@@ -13,6 +13,20 @@ terms: `glossary.md`.
 > galaxy; Fleet V2 preserves those systems while replacing the ordinary space hulls. Public galaxy
 > events and the first Asteroid Shower are implemented for newly created ruleset-v4 seasons.
 
+## Current season geometry and tempo (2026-09-25)
+
+The next season uses a radius-`4,500` galaxy with a `450` minimum pair distance: 1,000 player
+addresses, 100 bot addresses and 130 neutral addresses. Neutrals are staged (`15/8/3` initial
+T1/T2/T3 openings, followed by one opening per free colony slot at the census cadence) while the
+full authored address pool remains deterministic. Player mobile hulls are slowed to `75%` of their
+profile speed and pirate fleets to `70%`; the Prospector travels at `618.75`, returns laden at
+`309.375`, and chases rocks in the `262.5–562.5` range. Asteroid lifetime is unchanged.
+
+The convoy clock is 180 minutes. Trade ships use four 180-minute daily windows: `01–04`, `07–10`,
+`15–18` and `21–24`. These are new-season constants; existing live seasons are not migrated.
+Country is part of the public commander identity: new accounts choose an ISO-3166 alpha-2 country,
+legacy accounts are `TR`, and live/archive leaderboards display its flag.
+
 ## The loop
 
 ```
@@ -49,7 +63,7 @@ without automatically doubling a commander's economy per additional planet. See
 model parameters, not live constants.
 
 One commander per galaxy, with one uncapturable **capital** and up to three captured
-**colonies**. Colony slots open at the capital's Command Core 9, 12 and 15, and only the capital's
+**colonies**. Colony slots open at the capital's Command Core 9, 13 and 16, and only the capital's
 Core counts (D209). Every caretaker world is guarded; a settled world opens on its tier's fixed
 capture stock, never on what the caretaker held (D209). Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
@@ -517,13 +531,16 @@ They are what the information game is made of, and each has a ladder.
 (gates the Telescope and the Radar), the **Foundry** (production), the **Derrick** (mining),
 the **Beacon** (fleet speed).
 
-**The Command Core opens a slot at L1, L3, L5 and L9.** Four satellites against four slots is
+**The Command Core opens a slot at L2, L9, L12 and L15.** Four satellites against four slots is
 not a checklist, because the fourth slot is a Core 15 planet: for the part of a season anybody
 plays, a world runs one, two or three, and **which ones is who it is**.
 
+The Academy grants one Uplink, Telescope L1 and Radar L1 once when a new commander joins. The
+gifted Uplink uses the first Core 2 slot and powers both instruments immediately.
+
 **The Uplink is the one gate in the whole system.** It multiplies nothing and defends nothing;
-it is the only route to the two instruments that SEE. That is what makes a planet's first slot
-a real decision — eyes, or production, or faster drills.
+it is the only route to the two instruments that SEE. On later worlds the first slot is a real
+decision — eyes, or production, or faster drills.
 
 **Hardware in orbit is public; its levels are not (D15).** A dome reads as a dome to everyone,
 because deterrence only works if it is legible. How strong it is still costs a probe.
@@ -569,8 +586,8 @@ compress 1,165 worlds back into the old 50-player picture. At the widest camera 
 sphere remains available as an overview, while ordinary play opens on a readable neighbourhood.
 
 At most two galaxies of 1,000 commander seats, filled strictly in order (D99/D100; 300 → 1,000 on
-2026-09-18). A v2 season also contains 65 neutral worlds: thirty-eight T1, nineteen T2 and eight T3
-(D209). The radius took ×1.5 with the seat count (∛(1000/300) ≈ 1.49), which keeps the rim's neighbour
+2026-09-18). A new season contains 130 authored neutral worlds: seventy-six T1, thirty-eight T2 and
+sixteen T3 (D209). The radius is 4,500, which keeps the rim's neighbour
 spacing close to the 300-seat game. Hull speeds did not scale. Both sensor ladders (Telescope and Radar)
 scaled ×1.5 by owner decision, so L8 still covers the whole galaxy and radar still out-reaches the
 telescope at every rung. The rock and pirate orbit bands scaled too, because they are geometry. The
@@ -852,7 +869,7 @@ to launch tonight; it does not add a second game beside the game.
 
 ### Trade ships — the fourth target class, and the first you deal with (D156)
 
-A trade ship rides a closed orbit for two and a half hours (two until 2026-09-19) at 01:00, 07:00, 15:00 and 21:00 Türkiye time,
+A trade ship rides a closed orbit for three hours at 01:00, 07:00, 15:00 and 21:00 Türkiye time,
 and then it is
 gone. Everything about it is public: unlike a pirate, whose whole value is that nobody else can
 see it coming, the merchant's orbit is broadcast to the entire galaxy from the moment it appears
