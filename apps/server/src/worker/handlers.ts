@@ -26,6 +26,8 @@ import {
   SERVERS,
   seasonRankRewardProgram,
   fleetEscapeApplies,
+  fleetEscapeMinimumApplies,
+  ESCAPE,
   resolveRaid,
   settleWreck,
   soloStack,
@@ -801,6 +803,8 @@ export const onMissionArrival: Handler = async ({ db, clock, adminUsernames = ne
       defender: { tech: defenderTech },
       deuterium: defender.deuterium,
       escape: fleetEscapeApplies(season.rulesetVersion),
+      minimumCombatShips: fleetEscapeMinimumApplies(season.rulesetVersion)
+        ? ESCAPE.minimumCombatShips : 0,
     });
     const result = raid.result;
     const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};

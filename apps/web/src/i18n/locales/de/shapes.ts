@@ -83,10 +83,11 @@ export const counter = {
   /** Taktik geri çekilme im Vergleich: die Aussage und die Regel einen Tipp tiefer. */
   escapeRun: 'Ihre Linie liegt unter einem Drittel deiner Feuerkraft: reicht ihr Tank, heben ihre Schiffe ab und nur die Geschütze kämpfen.',
   escapeStand: 'Ihre Schiffe bleiben und kämpfen: die Messung liegt über einem Drittel deiner Feuerkraft oder über dem, was dieser Flügel räumt.',
-  escapeUnsure: 'Die Messung liegt beiderseits der Fluchtlinie: ihre Schiffe könnten abheben.',
-  escapeAt: 'Ihre Schiffe fliehen unter {{at}}',
+  escapeUnsure: 'Ihre Schiffe könnten abheben; die Messung klärt nicht alle Rückzugsbedingungen.',
+  escapeAt: 'Rückzugsgrenze: {{at}}',
   escapeRule:
     'Taktischer Rückzug: eine Linie, die mindestens der dreifachen eigenen Feuerkraft gegenübersteht und von diesem Angriff ausgelöscht würde, lässt ihre Schiffe abheben statt zu kämpfen, sofern der Tank der Welt einen Hin- und Rückflug von {{distance}} Einheiten bezahlt. Die Geschütze bleiben, und die Lager werden trotzdem geplündert.',
+  escapeMinimumRule: 'Der Verteidiger braucht außerdem mindestens {{count}} Kampfschiffe vor Ort. Eine Sondenmessung zeigt ihre Anzahl nicht.',
   compareRuleToggle: 'Was ist das?',
   compareMeaning: 'Ressourcenkosten, kein Angriffsschaden. Eine größere Flotte allein garantiert keinen Sieg.',
   compareRule:

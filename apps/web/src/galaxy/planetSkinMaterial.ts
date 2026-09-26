@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { PlanetSkinVisual } from '../ui/planetSkins.js';
+import { solidPlanetMaterial } from './planetSurface.js';
 
 type PaletteFinish = Extract<PlanetSkinVisual['finish'], { kind: 'PALETTE' }>;
 
@@ -64,6 +65,7 @@ export function createPlanetSkinMaterial(source: THREE.Material, finish: Palette
   const material = source instanceof THREE.MeshStandardMaterial
     ? source.clone()
     : new THREE.MeshStandardMaterial({ color: '#302e30' });
+  solidPlanetMaterial(material);
   material.metalness = 0;
   material.roughness = finish.palette.roughness;
   material.normalScale.multiplyScalar(1.8);
@@ -128,6 +130,7 @@ export function createCountryRecoveryMaterial(source: THREE.Material): THREE.Mes
   const material = source instanceof THREE.MeshStandardMaterial
     ? source.clone()
     : new THREE.MeshStandardMaterial({ color: '#ffffff' });
+  solidPlanetMaterial(material);
   material.metalness = 0;
   material.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader

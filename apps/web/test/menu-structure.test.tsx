@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
@@ -238,7 +238,7 @@ describe('the menu groups what it offers', () => {
     // Every control that was there before is still there, and still live.
     expect(screen.getByRole('combobox', { name: i18n.t('settings.choose') })).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: i18n.t('menu.volumeLabel') })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
     expect(plate?.querySelector('[data-consent-settings]')).not.toBeNull();
     expect(screen.getByRole('button', { name: new RegExp(i18n.t('menu.fpsLabel')) })).toBeInTheDocument();
   });
@@ -381,5 +381,35 @@ describe('the header control promises only what the menu holds', () => {
     const control = screen.getByRole('button', { name: /commander vantage/i });
     expect(control.querySelector('.bg-opportunity')).toBeNull();
     expect(view.container.textContent).not.toMatch(/clan updates waiting/i);
+  });
+});
+
+describe('claimable rewards in the galaxy header', () => {
+  it('opens rewards directly while a claim is ready and disappears after it is claimed', async () => {
+    const { StatusBar } = await import('../src/shell/StatusBar.js');
+    const { ToastProvider } = await import('../src/ui/Toast.js');
+    const { wrapper: Wrapper, queries } = harness();
+    const onOpen = vi.fn();
+
+    queries.setQueryData(keys.planet, planetView());
+    queries.setQueryData(keys.rewards, { chains: [], claimable: 0 });
+    render(
+      <Wrapper>
+        <ToastProvider>
+          <StatusBar commander="Vantage" onOpen={onOpen} onFocusPlanet={vi.fn()} />
+        </ToastProvider>
+      </Wrapper>,
+    );
+
+    expect(screen.queryByTestId('claimable-rewards')).toBeNull();
+    queries.setQueryData(keys.rewards, { chains: [], claimable: 2 });
+    const gift = await screen.findByTestId('claimable-rewards', {}, { timeout: 5_000 });
+    expect(gift).toHaveAccessibleName(/rewards.*2 ready to claim/i);
+    expect(gift.querySelector('[data-gift-swing]')).toBeInTheDocument();
+    fireEvent.click(gift);
+    expect(onOpen).toHaveBeenCalledWith('rewards');
+
+    queries.setQueryData(keys.rewards, { chains: [], claimable: 0 });
+    await waitFor(() => { expect(screen.queryByTestId('claimable-rewards')).toBeNull(); });
   });
 });

@@ -215,8 +215,8 @@ takes no orbit slot, capped by the Command Core like any building. D25.
 bought once, and has no levels at all. Each changes a different number across the whole
 planet, which is where player identity comes from. D25.
 
-**Orbit slot** — Opened by the Command Core at L1, L3, L5 and L9. Four slots against four
-satellites is not a checklist: the fourth is a Core 15 planet, so most worlds run one, two
+**Orbit slot** — Opened by the Command Core at L1, L9, L15 and L18. Four slots against four
+satellites is not a checklist: the fourth is a Core 18 planet, so most worlds run one, two
 or three all season. The Orbital Ring, which used to sell these, was retired in D22.
 
 **Lazy tick / lazy evaluation** — Continuous state (resources, shields) is computed on read

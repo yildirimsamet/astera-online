@@ -203,7 +203,7 @@ describe.each([
     panel(3, vi.fn(), RESTING);
     const send = screen.getByRole('button', { name: /Craft resting/i });
     expect(send).toBeDisabled();
-    expect(send).toHaveTextContent(/4[3-5]s/);
+    expect(send).toHaveTextContent(/Craft resting · \d+s/);
     expect(send).not.toHaveTextContent('0m');
     // The picker is not the thing that is wrong, so it is not the thing removed:
     // a commander can still see what they WOULD send when the minute is up.

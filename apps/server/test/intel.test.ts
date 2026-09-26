@@ -1131,6 +1131,7 @@ describe('the information layer', () => {
       expect(entry).toBeDefined();
       expect(entry!.bearing).toBeNull();
       expect(entry!.originPlanetName).toBeNull();
+      expect(entry!.originPlanetId).toBeNull();
     });
 
     it('L2 adds a direction but still never names anyone', async () => {
@@ -1138,18 +1139,21 @@ describe('the information layer', () => {
       const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.bearing).toBeTruthy();
       expect(entry!.originPlanetName).toBeNull();
+      expect(entry!.originPlanetId).toBeNull();
     });
 
     it.each([3, 4])('L%i still withholds the origin', async (level) => {
       await giveInstrument(f, theirs, 'RADAR', level);
       const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.originPlanetName).toBeNull();
+      expect(entry!.originPlanetId).toBeNull();
     });
 
     it('only L5 names the scanner', async () => {
       await giveInstrument(f, theirs, 'RADAR', 5);
       const [entry] = await readRadarLog(f.db, [theirs]);
       expect(entry!.originPlanetName).toBeTruthy();
+      expect(entry!.originPlanetId).toBe(mine);
     });
 
     /**

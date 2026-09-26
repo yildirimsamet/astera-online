@@ -227,6 +227,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
       <HudTop
         commander={commander}
         onCommander={() => { route('menu'); }}
+        onRewards={() => { route('rewards'); }}
         onWorlds={() => {
           clearPages();
           setWorldsRequest((n) => n + 1);

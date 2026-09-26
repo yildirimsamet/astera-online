@@ -18,7 +18,6 @@ import {
   instrumentMaxed,
   prospectorRoom,
   satelliteSlots,
-  activeOrbitSlots,
   satelliteCost,
   seeingUnlocked,
   type BuildQueueId,
@@ -197,7 +196,7 @@ export function projectedQueueState(
 }
 
 const projectEffectiveOrbit = (state: ProjectedQueueState): void => {
-  state.effectiveOrbit = state.orbit.slice(0, activeOrbitSlots(state.buildings.CORE, state.orbit));
+  state.effectiveOrbit = state.orbit.slice(0, satelliteSlots(state.buildings.CORE));
 };
 
 const queueHasRoom = (view: PlanetView, queue: BuildQueueId): boolean =>
@@ -348,9 +347,7 @@ export function predictSatellite(view: PlanetView, type: SatelliteId): Predictio
   if (!queueHasRoom(view, 'CONSTRUCTION')) return null;
   const projected = projectedQueueState(view, 'CONSTRUCTION');
   if (projected.orbit.includes(type)) return null;
-  const coreQueued = projected.buildings.CORE !== (view.buildings.CORE ?? 0);
-  const slots = coreQueued ? satelliteSlots(projected.buildings.CORE) : view.orbitSlots;
-  if (projected.orbit.length >= slots) return null;
+  if (projected.orbit.length >= satelliteSlots(projected.buildings.CORE)) return null;
   const cost = satelliteCost(type);
   if (!affordable(view, cost)) return null;
 

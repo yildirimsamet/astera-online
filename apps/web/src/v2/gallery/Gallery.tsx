@@ -125,6 +125,7 @@ const topBar: TopBarProps = {
   rewards: 0,
   boosted: false,
   onCommander: noop,
+  onRewards: noop,
   onWorld: noop,
   onResource: noop,
   onBell: noop,

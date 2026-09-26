@@ -14,6 +14,8 @@ import {
   fleetCount,
   fleetEntries,
   fleetEscapeApplies,
+  fleetEscapeMinimumApplies,
+  ESCAPE,
   garrisonOf,
   raidableStock,
   resolveRaid,
@@ -262,6 +264,8 @@ export async function resolveClanWarBattle(
     defender: { tech: defenderTech },
     deuterium: defender.deuterium,
     escape: fleetEscapeApplies(input.rulesetVersion),
+    minimumCombatShips: fleetEscapeMinimumApplies(input.rulesetVersion)
+      ? ESCAPE.minimumCombatShips : 0,
   });
   const result = raid.result;
   const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};

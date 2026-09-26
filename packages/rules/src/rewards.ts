@@ -195,8 +195,8 @@ const CHAINS: Record<RewardChainId, RewardChain> = {
 
   /**
    * The Core is the ceiling every other structure obeys and the thing that opens
-   * orbit slots at 1, 3, 5 and 9 — so its tiers sit ON those slots wherever they
-   * can. L9 pays 1,600 alloy against an L8→L9 step costing 3,000 alloy.
+   * orbit slots at 1, 9, 15 and 18. The L9 tier coincides with the second slot;
+   * L9 pays 1,600 alloy against an L8→L9 step costing 3,000 alloy.
    */
   CORE: {
     id: 'CORE',

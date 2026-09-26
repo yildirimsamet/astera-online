@@ -47,6 +47,11 @@ describe('the war room wiring', () => {
 describe('the report doors', () => {
   const intel = readFileSync('src/screens/IntelScreen.tsx', 'utf8');
 
+  it('opens the selected world dossier when a report planet is followed', () => {
+    const doors = galaxy.slice(galaxy.indexOf('const reportDoors: ReportDoors'), galaxy.indexOf('const activeWorldPosition'));
+    expect(doors).toMatch(/onFocusPlanet: \(planetId: string\) => \{\s*onPanel\(null\);\s*focusPlanet\(planetId\);\s*setDetail\(true\);/);
+  });
+
   it('hands the report sheet from a notification the clan door and the rival mark', () => {
     const door = galaxy.slice(galaxy.indexOf('<BattleReportDoor'), galaxy.indexOf('<BattleReportDoor') + 1400);
     expect(door).toMatch(/\{\.\.\.reportDoors\}/);

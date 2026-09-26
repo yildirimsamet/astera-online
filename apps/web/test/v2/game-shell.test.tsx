@@ -24,7 +24,7 @@ vi.mock('../../src/api/queries.js', async () => {
 
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
   HudTop: (p: {
-    onCommander: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
+    onCommander: () => void; onRewards: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
     nowOpen: boolean; onNow: (open: boolean) => void; tabs?: ReactNode;
   }) => (
     <div>
@@ -32,6 +32,7 @@ vi.mock('../../src/v2/shell/HudTop.js', () => ({
       <button type="button" onClick={() => { p.onNow(true); }}>now line</button>
       {p.nowOpen && <div role="dialog" aria-label="timers" />}
       <button type="button" onClick={p.onCommander}>chip</button>
+      <button type="button" onClick={p.onRewards}>gift</button>
       <button type="button" onClick={p.onWorlds}>world mark</button>
       <button type="button" onClick={p.onEconomy}>meter</button>
       <button type="button" onClick={p.onBell}>bell</button>
@@ -144,6 +145,11 @@ afterEach(() => { vi.unstubAllGlobals(); });
 
 /** E11 · K10: a desk opens columns instead of scaling the phone up. */
 describe('the shell on a desk', () => {
+  it('opens the rewards page directly from the header gift', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'gift' }));
+    expect(onPanel).toHaveBeenLastCalledWith('rewards', undefined, undefined, undefined);
+  });
   it('keeps the phone layout on a phone: the dock at the foot, no outline', () => {
     desk(false);
     shell();

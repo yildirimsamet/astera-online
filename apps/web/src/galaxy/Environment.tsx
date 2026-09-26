@@ -29,6 +29,7 @@ import {
   SKY_STAR_COUNT,
   SKY_VERTEX,
   STAR_FRAGMENT,
+  STAR_BACKDROP_CLIP,
   STAR_TWINKLE_DEPTH,
   STAR_VERTEX,
   DEEP_STAR_VERTEX,
@@ -55,6 +56,13 @@ import {
  */
 
 /* ── the sky ────────────────────────────────────────────────── */
+
+/** Transparent sky draws after opaque worlds; read their depth so it stays behind them. */
+export function skyBehindPlanets<T extends THREE.Material>(material: T): T {
+  material.depthTest = true;
+  material.depthWrite = false;
+  return material;
+}
 
 const siteUniform = (site: SkySite): THREE.Vector4 =>
   new THREE.Vector4(
@@ -123,17 +131,15 @@ function galaxyCard(galaxy: SkyGalaxy, index: number) {
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(corners.flat()), 3));
   geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2));
   geometry.setIndex([0, 1, 2, 2, 1, 3]);
-  const material = new THREE.MeshBasicMaterial({
+  const material = skyBehindPlanets(new THREE.MeshBasicMaterial({
     map: target.texture,
     transparent: true,
     opacity: 0,
     blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: false,
     side: THREE.DoubleSide,
     fog: false,
     toneMapped: false,
-  });
+  }));
   return { target, bakeMaterial, quad, scene, camera, geometry, material };
 }
 
@@ -228,12 +234,10 @@ export function Sky() {
 
   const gas = useMemo(
     () =>
-      new THREE.ShaderMaterial({
+      skyBehindPlanets(new THREE.ShaderMaterial({
         vertexShader: SKY_VERTEX,
         fragmentShader: SKY_FRAGMENT,
         side: THREE.BackSide,
-        depthWrite: false,
-        depthTest: false,
         transparent: true,
         blending: THREE.AdditiveBlending,
         fog: false,
@@ -241,7 +245,7 @@ export function Sky() {
           uSky: { value: bake.target.texture },
           uOpacity: { value: 0 },
         },
-      }),
+      })),
     [bake],
   );
 
@@ -252,13 +256,11 @@ export function Sky() {
     geometry.setAttribute('color', new THREE.BufferAttribute(field.colours, 3));
     geometry.setAttribute('aFlux', new THREE.BufferAttribute(field.flux, 1));
     geometry.setAttribute('aTwinkle', new THREE.BufferAttribute(field.twinkle, 2));
-    const material = new THREE.ShaderMaterial({
+    const material = skyBehindPlanets(new THREE.ShaderMaterial({
       vertexShader: STAR_VERTEX,
       fragmentShader: STAR_FRAGMENT,
       vertexColors: true,
       transparent: true,
-      depthWrite: false,
-      depthTest: false,
       blending: THREE.AdditiveBlending,
       fog: false,
       uniforms: {
@@ -268,7 +270,7 @@ export function Sky() {
         uTime: { value: 0 },
         uTwinkleDepth: { value: STAR_TWINKLE_DEPTH },
       },
-    });
+    }));
     return { geometry, material };
   }, [starCount, bake]);
 
@@ -278,16 +280,15 @@ export function Sky() {
     geometry.setAttribute('position', new THREE.BufferAttribute(field.positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(field.colours, 3));
     geometry.setAttribute('aFlux', new THREE.BufferAttribute(field.flux, 1));
-    const material = new THREE.ShaderMaterial({
+    const material = skyBehindPlanets(new THREE.ShaderMaterial({
       vertexShader: DEEP_STAR_VERTEX,
       fragmentShader: STAR_FRAGMENT,
       vertexColors: true,
       transparent: true,
-      depthWrite: false,
       blending: THREE.AdditiveBlending,
       fog: false,
       uniforms: { uPixelRatio: { value: 1 } },
-    });
+    }));
     return { geometry, material };
   }, [deepCount]);
 
@@ -480,11 +481,9 @@ export function softGlow(): THREE.Texture {
  *
  * TWO GRADIENTS, AND BOTH ARE LOAD-BEARING.
  *
- *   THE RADIAL ONE puts the peak just INSIDE where the planet's own edge falls,
- *   not outside it. A ring drawn entirely in the space around a world is a halo —
- *   a marker, which this scene already uses for selection and must not be confused
- *   with. Straddling the silhouette makes it read as the world's own atmosphere
- *   catching the light.
+ *   THE RADIAL ONE puts the peak just OUTSIDE the opaque silhouette. The old peak
+ *   was hidden by the body's depth test. Its tail ends well before the selection
+ *   marker, so it reads as edge light rather than a second marker.
  *
  *   THE LINEAR ONE puts more of it toward the upper left, because that is where
  *   every one of the sixteen planet renders is lit from and where the scene's key
@@ -494,6 +493,9 @@ export function softGlow(): THREE.Texture {
  *   fixed direction on screen and the two can never disagree.
  */
 let limb: THREE.Texture | null = null;
+
+/** The brightest part sits just outside the opaque sphere, so it survives depth testing. */
+export const LIMB_PEAK = 0.9;
 
 export function limbTexture(): THREE.Texture {
   if (limb) return limb;
@@ -508,42 +510,37 @@ export function limbTexture(): THREE.Texture {
     /**
      * A BAND, NOT A CLOUD, and this is the number that decides which.
      *
-     * The planet's own edge sits at `1 / LIMB_SCALE` of this quad's half-width —
-     * 0.909 at the scale this is drawn with. The peak goes a hair inside it, so the
-     * brightest part lands ON the world's rim and only its tail reaches past the
-     * silhouette. Photographed first at a peak of 0.71 against a scale of 1.34,
-     * which put a grey cloud half a radius deep around every world and drowned the
-     * selection ring — the same failure, and the same fix, as `BLAST_SIZE`.
+     * The planet's edge sits at `1 / LIMB_SCALE` of this quad's half-width.
+     * The glow is rendered behind the opaque sphere, so a peak inside that edge
+     * was hidden by depth testing. Keep the bright band a few percent outside the
+     * silhouette, with a short tail that stops well before the selection ring.
      */
     const g = ctx.createRadialGradient(c, c, 0, c, c, c);
     g.addColorStop(0, 'rgba(255,255,255,0)');
-    g.addColorStop(0.865, 'rgba(255,255,255,0.015)');
-    g.addColorStop(0.895, 'rgba(255,255,255,0.34)');
-    g.addColorStop(0.908, 'rgba(255,255,255,0.76)');
-    g.addColorStop(0.928, 'rgba(255,255,255,0.28)');
-    g.addColorStop(0.965, 'rgba(255,255,255,0.05)');
+    g.addColorStop(0.84, 'rgba(255,255,255,0)');
+    g.addColorStop(0.875, 'rgba(255,255,255,0.18)');
+    g.addColorStop(LIMB_PEAK, 'rgba(255,255,255,0.72)');
+    g.addColorStop(0.925, 'rgba(255,255,255,0.52)');
+    g.addColorStop(0.965, 'rgba(255,255,255,0.09)');
     g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size, size);
 
     /**
-     * AND THEN NEARLY ALL OF IT IS TAKEN OFF THE DARK SIDE.
+     * THE LIT SIDE LEADS, while a trace remains around the dark side.
      *
      * `destination-in` multiplies the alpha already in the canvas by this one, so
      * the band keeps its shape and only its brightness turns with the light.
      *
-     * THE FALLOFF HAS TO BE BRUTAL, and the first two attempts were not. At
-     * 1 → 0.62 → 0.24 the band survived the whole way round and read as a grey
-     * gasket bolted to the planet, because a ring of even width is a manufactured
-     * object and an atmosphere is not. A real limb is a bright crescent on the lit
-     * side that fades to NOTHING before it reaches the terminator — so the dark
-     * side keeps two per cent, which is under the threshold of being a ring at all.
+     * With the old 1 → 0.3 → 0.015 falloff the dark side vanished entirely.
+     * A narrow, coloured trace on that side keeps the requested neon visible all
+     * around the world without making it look like a selection marker.
      */
     ctx.globalCompositeOperation = 'destination-in';
     const lit = ctx.createLinearGradient(0, 0, size, size);
     lit.addColorStop(0, 'rgba(0,0,0,1)');
-    lit.addColorStop(0.42, 'rgba(0,0,0,0.3)');
-    lit.addColorStop(1, 'rgba(0,0,0,0.015)');
+    lit.addColorStop(0.42, 'rgba(0,0,0,0.55)');
+    lit.addColorStop(1, 'rgba(0,0,0,0.22)');
     ctx.fillStyle = lit;
     ctx.fillRect(0, 0, size, size);
   }
@@ -619,7 +616,8 @@ export function Core() {
   useEffect(() => () => { texture.dispose(); }, [texture]);
 
   return (
-    <sprite scale={[DISC_RADIUS * 0.16, DISC_RADIUS * 0.16, 1]}>
+    // The central glow is 30% of its former diameter, per the owner's 70% reduction.
+    <sprite scale={[DISC_RADIUS * 0.048, DISC_RADIUS * 0.048, 1]}>
       <spriteMaterial
         map={texture}
         transparent
@@ -677,6 +675,19 @@ export function syncStarShell(shell: THREE.Object3D, camera: THREE.Camera, delta
  * that makes an image read as Hubble rather than as a wallpaper. Twenty sprites,
  * so it costs nothing.
  */
+export const BRIGHT_STAR_VERTEX = /* glsl */ `
+  attribute float aSize;
+  varying vec3 vColour;
+  uniform float uScale;
+  void main() {
+    vColour = color;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 2.0, 72.0);
+    gl_Position = projectionMatrix * mv;
+    ${STAR_BACKDROP_CLIP}
+  }
+`;
+
 export function BrightStars() {
   const ref = useRef<THREE.Points>(null);
   const { geometry, material } = useMemo(() => {
@@ -715,17 +726,7 @@ export function BrightStars() {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       fog: false,
-      vertexShader: `
-        attribute float aSize;
-        varying vec3 vColour;
-        uniform float uScale;
-        void main() {
-          vColour = color;
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 2.0, 72.0);
-          gl_Position = projectionMatrix * mv;
-        }
-      `,
+      vertexShader: BRIGHT_STAR_VERTEX,
       fragmentShader: `
         varying vec3 vColour;
         void main() {
@@ -1001,6 +1002,22 @@ function MeteorField({ pool }: { pool: number }) {
 /** Three shared geometries render this many cloud-bound stars each (1,101 total). */
 export const CLOUD_STAR_COUNT = 367;
 
+export const CLOUD_STAR_VERTEX = /* glsl */ `
+  attribute float aSize;
+  attribute float aAlpha;
+  varying vec3 vColour;
+  varying float vAlpha;
+  uniform float uScale;
+  void main() {
+    vColour = color;
+    vAlpha = aAlpha;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 1.0, 7.0);
+    gl_Position = projectionMatrix * mv;
+    ${STAR_BACKDROP_CLIP}
+  }
+`;
+
 export function Dust() {
   const ref = useRef<THREE.Group>(null);
 
@@ -1043,20 +1060,7 @@ export function Dust() {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      vertexShader: `
-        attribute float aSize;
-        attribute float aAlpha;
-        varying vec3 vColour;
-        varying float vAlpha;
-        uniform float uScale;
-        void main() {
-          vColour = color;
-          vAlpha = aAlpha;
-          vec4 mv = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = clamp(aSize * uScale / max(0.01, -mv.z), 1.0, 7.0);
-          gl_Position = projectionMatrix * mv;
-        }
-      `,
+      vertexShader: CLOUD_STAR_VERTEX,
       fragmentShader: `
         varying vec3 vColour;
         varying float vAlpha;

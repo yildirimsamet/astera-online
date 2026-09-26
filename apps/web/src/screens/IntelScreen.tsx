@@ -169,7 +169,7 @@ export function IntelScreen({
               {...(onOpenOrbit ? { onOpenOrbit } : {})}
             />
             <Rivals rivals={rivals} {...(onFocusRival ? { onFocusRival } : {})} />
-            <Known watching={watching} probes={probeReports} now={now} />
+            <Known watching={watching} probes={probeReports} now={now} onFocusPlanet={onOpenDossier} />
             {anyRadar && (
               <RadarGlance
                 scans={radarLog}
@@ -217,7 +217,7 @@ export function IntelScreen({
 
         {shelf === 'radar' && (
           <div role="tabpanel" aria-labelledby="intel-shelf-radar" className="flex flex-col gap-3">
-            <RadarShelf radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} />
+            <RadarShelf radar={radar} anyRadar={anyRadar} scans={radarLog} now={now} {...(onOpenOrbit ? { onOpenOrbit } : {})} {...(onOpenDossier ? { onFocusPlanet: onOpenDossier } : {})} />
           </div>
         )}
       </div>
@@ -390,7 +390,10 @@ function Rivals({ rivals, onFocusRival }: { rivals: readonly RivalRow[]; onFocus
  * brought back and no Telescope is watching (age as grain and "Xh ago") — K11: the two
  * reliabilities never share a mark. The rule is one tap deeper.
  */
-function Known({ watching, probes, now }: { watching: readonly Watch[]; probes: readonly Probe[]; now: number }) {
+function Known({ watching, probes, now, onFocusPlanet }: {
+  watching: readonly Watch[]; probes: readonly Probe[]; now: number;
+  onFocusPlanet?: (planetId: string) => void;
+}) {
   const { t } = useTranslation();
   const [legend, setLegend] = useState(false);
   const watched = new Set(watching.map((w) => w.targetPlanetId));
@@ -421,9 +424,9 @@ function Known({ watching, probes, now }: { watching: readonly Watch[]; probes: 
         <p className="text-micro leading-snug text-v2-ink-3">{t('intel.known.empty')}</p>
       ) : (
         <ul data-known-list className="divide-y divide-v2-line">
-          {watching.map((watch) => <KnownWatch key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} />)}
+          {watching.map((watch) => <KnownWatch key={`${watch.observerPlanetId ?? ''}-${String(watch.slot)}`} watch={watch} onFocusPlanet={onFocusPlanet} />)}
           {probed.map((report) => (
-            <KnownProbe key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} />
+            <KnownProbe key={report.targetPlanetId} report={report} minutes={(now - report.at.getTime()) / 60_000} onFocusPlanet={onFocusPlanet} />
           ))}
         </ul>
       )}
@@ -431,13 +434,13 @@ function Known({ watching, probes, now }: { watching: readonly Watch[]; probes: 
   );
 }
 
-function KnownWatch({ watch }: { watch: Watch }) {
+function KnownWatch({ watch, onFocusPlanet }: { watch: Watch; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   const { status, state, staleMinutes, etaMinutes } = watch.reading;
   // E7: an away fleet is the opportunity, and its window is timed only when the reading says so.
   const window = status === 'AWAY' && etaMinutes !== null;
   return (
-    <li data-known="watch" className="flex items-center gap-2.5 py-2">
+    <li data-known="watch"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(watch.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
       <AgedThumb src={planetArt(watch.targetPlanetId)} alt="" clarity={state} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5">
@@ -457,14 +460,14 @@ function KnownWatch({ watch }: { watch: Watch }) {
       ) : (
         <ClarityMark state={state} />
       )}
-    </li>
+    </button></li>
   );
 }
 
-function KnownProbe({ report, minutes }: { report: Probe; minutes: number }) {
+function KnownProbe({ report, minutes, onFocusPlanet }: { report: Probe; minutes: number; onFocusPlanet?: (planetId: string) => void }) {
   const { t } = useTranslation();
   return (
-    <li data-known="probe" className="flex items-center gap-2.5 py-2">
+    <li data-known="probe"><button type="button" disabled={!onFocusPlanet} onClick={() => { onFocusPlanet?.(report.targetPlanetId); }} className="flex w-full items-center gap-2.5 py-2 text-left enabled:cursor-pointer enabled:hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self">
       <AgedThumb src={planetArt(report.targetPlanetId)} alt="" ageMinutes={minutes} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-caption font-semibold text-v2-ink">{report.targetUsername}</p>
@@ -473,7 +476,7 @@ function KnownProbe({ report, minutes }: { report: Probe; minutes: number }) {
         </p>
       </div>
       <AgeStamp minutes={minutes} />
-    </li>
+    </button></li>
   );
 }
 
@@ -659,12 +662,14 @@ function RadarShelf({
   scans,
   now,
   onOpenOrbit,
+  onFocusPlanet,
 }: {
   radar: number;
   anyRadar: boolean;
   scans: readonly Scan[];
   now: number;
   onOpenOrbit?: () => void;
+  onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
   if (!anyRadar) {
@@ -723,15 +728,21 @@ function RadarShelf({
                 <p className="truncate text-caption text-v2-ink">
                   {t('intel.radar.scan')}
                   {/* WHICH WORLD: the log covers every world a commander holds. */}
-                  {scan.planetName !== undefined && (
-                    <span className="text-v2-self">{t('intel.radar.onWorld', { planet: scan.planetName })}</span>
-                  )}
+                  {scan.planetName !== undefined && (scan.planetId && onFocusPlanet ? (
+                    <button type="button" onClick={() => { if (scan.planetId) onFocusPlanet(scan.planetId); }} className="text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+                      {t('intel.radar.onWorld', { planet: scan.planetName })}
+                    </button>
+                  ) : <span className="text-v2-self">{t('intel.radar.onWorld', { planet: scan.planetName })}</span>)}
                 </p>
                 {(scan.bearing !== null || scan.originPlanetName !== null) && (
                   <p className="truncate text-micro text-v2-ink-3">
                     {scan.bearing && t('intel.radar.bearing', { bearing: scan.bearing })}
                     {scan.originPlanetName && (
-                      <span className="text-v2-ink">{t('intel.radar.origin', { planet: scan.originPlanetName })}</span>
+                      scan.originPlanetId && onFocusPlanet ? (
+                        <button type="button" onClick={() => { if (scan.originPlanetId) onFocusPlanet(scan.originPlanetId); }} className="text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+                          {t('intel.radar.origin', { planet: scan.originPlanetName })}
+                        </button>
+                      ) : <span className="text-v2-ink">{t('intel.radar.origin', { planet: scan.originPlanetName })}</span>
                     )}
                   </p>
                 )}

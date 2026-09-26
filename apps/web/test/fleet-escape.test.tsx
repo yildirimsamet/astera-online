@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MULTI_WORLD, escapeFuel, type Fleet } from '@astera/rules';
+import { MULTI_WORLD, combatValue, escapeFuel, type Fleet } from '@astera/rules';
 import type { Api } from '../src/api/client.js';
 import { reportsSchema, seasonSchema, type BattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -11,6 +11,7 @@ import { BattleReports } from '../src/screens/BattleReports.js';
 import { EscapeReadout } from '../src/ui/EscapeReadout.js';
 import { ForceCompare } from '../src/ui/ForceCompare.js';
 import i18n from '../src/i18n/index.js';
+import { compact } from '../src/lib/format.js';
 
 /**
  * TAKTİK GERİ ÇEKİLME ON THE SCREEN. Owner decision, 2026-09-23.
@@ -214,21 +215,34 @@ describe('the launch sheet’s comparison', () => {
     await userEvent.click(screen.getByRole('button', { name: /what is this/i }));
     expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/three times/i);
   });
+
+  it('explains the five-ship condition for a new season', async () => {
+    render(<ForceCompare yours={30_000} theirs={theirs} lines={lines}
+      escape={{ at: 10_000, verdict: 'UNSURE', minimumCombatShips: 5 }} />);
+    await userEvent.click(screen.getByRole('button', { name: /what is this/i }));
+    expect(screen.getByTestId('compare-escape-rule')).toHaveTextContent(/5 fighting ships/i);
+  });
 });
 
 describe('the defender’s own readout', () => {
+  it('shows progress toward the new minimum instead of promising a one-ship escape', () => {
+    const view = render(<EscapeReadout fleet={{ DART: 1 }} ground={{}} deuterium={500} rulesetVersion={13} />);
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent(/1 of 5/i);
+    expect(screen.getByTestId('escape-readout')).not.toHaveTextContent(/firepower/i);
+    view.rerender(<EscapeReadout fleet={{ DART: 1 }} ground={{}} deuterium={500} rulesetVersion={12} />);
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent(/firepower/i);
+  });
   it('states the firepower their ships run from and whether the tank can pay', () => {
     render(<EscapeReadout fleet={{ ...LINE, PROSPECTOR: 2 }} ground={{}} deuterium={500} />);
     const line = screen.getByTestId('escape-readout');
-    // Three times the line's 9,360 firepower.
-    expect(line).toHaveTextContent('28k');
+    expect(line).toHaveTextContent(compact(3 * combatValue(LINE)));
     expect(line).toHaveTextContent(String(LIFT));
   });
 
   it('counts the guns in the line, because the rule does', () => {
     render(<EscapeReadout fleet={LINE} ground={{ BASTION: 2 }} deuterium={500} />);
-    // (9,360 + 6,000) × 3
-    expect(screen.getByTestId('escape-readout')).toHaveTextContent('46k');
+    expect(screen.getByTestId('escape-readout'))
+      .toHaveTextContent(compact(3 * combatValue({ ...LINE, BASTION: 2 })));
   });
 
   it('warns when the tank cannot pay for the lift', () => {

@@ -4,10 +4,10 @@ import * as THREE from 'three';
  * HOW MUCH OF ITS OWN COLOUR A WORLD KEEPS ON ITS NIGHT SIDE. Owner, 2026-09-25:
  * "gezegenimin bile dibinden bakıyom ama yarısı zifiri karanlık". The scene's ambient
  * light reaches a physically lit surface at a tenth of its albedo, so half of every world
- * read as a hole. A fifth of its colour keeps the night side a darker world — the
- * terminator still reads, the lit side still leads.
+ * read as a hole. Keep enough of its colour on the night side for the solid sphere
+ * to remain visible; the terminator and lit side still read separately.
  */
-export const NIGHT_FLOOR = 0.2;
+export const NIGHT_FLOOR = 0.3;
 
 /**
  * THE DISC'S LIGHT, and the card render's (`tools/planet-cards.mjs` renders under the
@@ -15,6 +15,19 @@ export const NIGHT_FLOOR = 0.2;
  * worlds (owner: "ışığı biraz arttır"): an ambient of 0.35 left the unlit side black.
  */
 export const SCENE_LIGHT = { ambient: 0.6, key: 2.6 } as const;
+
+/** Applied only to owned material clones; props such as rings keep their authored alpha. */
+export function solidPlanetMaterial<T extends THREE.Material>(material: T): T {
+  material.transparent = false;
+  material.opacity = 1;
+  material.alphaTest = 0;
+  material.alphaHash = false;
+  material.alphaToCoverage = false;
+  material.depthTest = true;
+  material.depthWrite = true;
+  if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
+  return material;
+}
 
 /**
  * A DEFAULT WORLD'S SURFACE, ON THE DISC AND ON ITS CARD (F9 · K7). One function so the
@@ -31,7 +44,7 @@ export const SCENE_LIGHT = { ambient: 0.6, key: 2.6 } as const;
  * Works on a clone: the model's own material is the cache's, shared by every user.
  */
 export function planetSurface(source: THREE.Material, detail: boolean): THREE.Material {
-  const material = source.clone();
+  const material = solidPlanetMaterial(source.clone());
   if (!(material instanceof THREE.MeshStandardMaterial)) return material;
   material.metalness = 0;
   material.metalnessMap = null;
@@ -47,7 +60,7 @@ export function planetSurface(source: THREE.Material, detail: boolean): THREE.Ma
   material.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       '#include <emissivemap_fragment>',
-      '#include <emissivemap_fragment>\n#ifdef USE_COLOR\n\ttotalEmissiveRadiance *= vColor.rgb;\n#endif',
+      '#include <emissivemap_fragment>\n#if defined(USE_COLOR) || defined(USE_INSTANCING_COLOR)\n\ttotalEmissiveRadiance *= vColor.rgb;\n#endif',
     );
   };
   // The patch above is the same for every world; one compiled program serves them all.

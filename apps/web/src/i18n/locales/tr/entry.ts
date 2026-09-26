@@ -29,7 +29,7 @@ export const landing = {
   welcomeBack: 'Ana gezegenin bıraktığın yerde duruyor',
   signInPrimary: 'Giriş yap',
   returningHint: 'Aynı komutan, aynı galaksi; hangi tarayıcıdan girersen gir.',
-  newCommander: 'Bunun yerine yeni bir komutan başlat',
+  newCommander: 'Yeni komutan başlat',
   opening: 'Galaksi açılıyor',
   ready: 'Gezegenin hazır',
   cover: 'Gökyüzü açılıyor',

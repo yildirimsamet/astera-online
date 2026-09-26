@@ -27,8 +27,11 @@ describe('country identity', () => {
     expect(screen.getByLabelText('XX')).toHaveTextContent('XX');
   });
 
-  it('infers the first valid browser region and otherwise defaults to Türkiye', () => {
+  it('uses the device primary locale, then a clear language match, otherwise Türkiye', () => {
     expect(detectCountry({ languages: ['de-AT', 'en-US'], language: 'de-AT' })).toBe('AT');
+    expect(detectCountry({ languages: ['en-US', 'tr-TR'], language: 'tr-TR' })).toBe('TR');
+    expect(detectCountry({ languages: ['en-US'], language: 'ja' })).toBe('JP');
+    expect(detectCountry({ languages: ['en-US'], language: 'en' })).toBe('TR');
     expect(detectCountry({ languages: ['tr', 'en'], language: 'tr' })).toBe('TR');
     expect(detectCountry({ languages: ['xx'], language: 'xx' })).toBe('TR');
   });
@@ -80,6 +83,19 @@ describe('the country picker', () => {
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', 'JP');
   });
 
+  it('uses the v2 identity surface and marks a refused field accessibly', async () => {
+    render(<ClaimDialog planetName="Kestrel" onClaim={vi.fn()} onSignIn={vi.fn()} />);
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
+    expect(dialog).toHaveAccessibleName(within(dialog).getByRole('heading').textContent);
+    expect(within(dialog).getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'false');
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue' }));
+    expect(within(dialog).getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'true');
+    await userEvent.setup().type(within(dialog).getByLabelText('Commander name'), 'NewPilot');
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Continue' }));
+    expect(dialog).toHaveAccessibleName(within(dialog).getByRole('heading').textContent);
+  });
+
   it('lets a taken commander name be edited and resubmitted on the password step', async () => {
     const onClaim = vi.fn(() => Promise.reject(new Error('taken')));
     const view = render(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} />);
@@ -89,8 +105,8 @@ describe('the country picker', () => {
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
     await user.click(screen.getByRole('button', { name: /claim/i }));
     view.rerender(<ClaimDialog planetName="Kestrel" onClaim={onClaim} onSignIn={vi.fn()} error="Name taken" />);
-    expect(screen.getByLabelText('Commander name')).toHaveClass('field-bad');
-    expect(screen.getByLabelText('Password')).not.toHaveClass('field-bad');
+    expect(screen.getByLabelText('Commander name')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'false');
     await user.clear(screen.getByLabelText('Commander name'));
     await user.type(screen.getByLabelText('Commander name'), 'عَلِيّ');
     await user.click(screen.getByRole('button', { name: /claim/i }));
@@ -103,14 +119,14 @@ describe('the country picker', () => {
     const name = screen.getByLabelText('Commander name');
     await user.type(name, 'A');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(name).toHaveClass('field-bad');
+    expect(name).toHaveAttribute('aria-invalid', 'true');
     await user.type(name, 'lice');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     const password = screen.getByLabelText('Password');
     await user.type(password, 'short');
     await user.click(screen.getByRole('button', { name: /claim/i }));
-    expect(password).toHaveClass('field-bad');
-    expect(name).not.toHaveClass('field-bad');
+    expect(password).toHaveAttribute('aria-invalid', 'true');
+    expect(name).toHaveAttribute('aria-invalid', 'false');
   });
 
   it('hides the previous name refusal while a corrected claim is pending', async () => {

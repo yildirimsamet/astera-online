@@ -35,6 +35,7 @@ import {
   type LockedPlanet,
 } from './planet.js';
 import { planetView } from './planetView.js';
+import { publishReward } from '../stream/bus.js';
 
 /**
  * WHAT THE PLAYER HAS DONE, AND WHAT THE GAME OWES THEM FOR IT.
@@ -563,6 +564,9 @@ export async function grantReward(
         .values({ accountId: found.accountId, ...values })
         .onConflictDoNothing()
         .returning({ id: accountRewards.rewardId });
+      if (written.length > 0 && found.playerId !== null) {
+        await publishReward(tx, found.playerId);
+      }
       return { player: found.name, already: written.length === 0 };
     }
 
@@ -580,6 +584,8 @@ export async function grantReward(
       .values({ playerId: found.playerId, ...values })
       .onConflictDoNothing()
       .returning({ id: rewardGrants.rewardId });
+
+    if (written.length > 0) await publishReward(tx, found.playerId);
 
     return { player: found.name, already: written.length === 0 };
   });

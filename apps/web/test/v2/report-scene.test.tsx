@@ -52,6 +52,14 @@ const base: BattleReport = {
 const report = (over: Partial<BattleReport> = {}): BattleReport => ({ ...base, ...over });
 
 describe('the report scene', () => {
+  it('takes both attacker and defender to the report world when its name is pressed', async () => {
+    const focus = vi.fn();
+    const view = render(<ReportScene report={report()} onFocusPlanet={focus} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Kestrel' }));
+    view.rerender(<ReportScene report={report({ attacking: false })} onFocusPlanet={focus} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Kestrel' }));
+    expect(focus.mock.calls).toEqual([['p2'], ['p2']]);
+  });
   /**
    * THE MOCK'S HERO (M4): the report is headed by the reader's own world, then the word,
    * large, then when, how long, and against whom — their name as a chip, their world.

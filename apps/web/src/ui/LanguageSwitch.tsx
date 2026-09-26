@@ -13,7 +13,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
       <span className="sr-only">{t('settings.choose')}</span>
       <select
         aria-label={t('settings.choose')}
-        className={`field min-h-9 ${compact ? 'w-auto py-1' : 'w-full'}`}
+        className={`min-h-10 rounded-control border border-v2-line-hi bg-v2-deep px-3 font-v2-ui text-caption text-v2-ink outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${compact ? 'w-auto' : 'w-full'}`}
         value={active}
         onChange={(event) => {
           const next = event.currentTarget.value;

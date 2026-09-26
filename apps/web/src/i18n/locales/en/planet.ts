@@ -146,6 +146,7 @@ export const planet = {
   },
 
   defend: {
+    escapeMinimum: "Tactical retreat needs at least {{minimum}} fighting ships here · {{count}} of {{minimum}} ready",
     strategicBand: "Strategic defence",
     strategicNote:
       "One charge destroys the next Death Star detected by Radar 3 or identified in Telescope sight. The charge is spent when it fires.",
@@ -463,7 +464,7 @@ export const planetHero = {
   /** The one force unit, on the one world the commander knows exactly. D199. */
   firepower: "Firepower",
   perHourSuffix: "/h",
-  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L15". */
   orbit: "Orbit",
   disrupted: "Production stopped · raided · {{countdown}}",
   defence: "Defence",

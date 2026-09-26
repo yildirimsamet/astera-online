@@ -154,7 +154,7 @@ describe('onboarding claim', () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<Claim>();
     expect(body.planet.buildings.CORE).toBe(1);
-    expect(body.planet.orbitSlots).toBe(0);
+    expect(body.planet.orbitSlots).toBe(1);
     expect(body.planet.queues.CONSTRUCTION).toHaveLength(1);
     expect(body.planet.queues.CONSTRUCTION[0]?.subject).toBe('CORE');
     const rewards = await rewardsView(db, body.placement.planetId, clock);

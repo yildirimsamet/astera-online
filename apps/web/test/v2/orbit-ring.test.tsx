@@ -51,7 +51,7 @@ describe('the orbit on the world', () => {
     render(<PlanetHero planet={planetView({ buildings: { CORE: 9 }, orbit: ['DERRICK'] })} />);
     const line = screen.getByTestId('orbit-line');
     expect(line).toHaveTextContent('1/2');
-    expect(line).toHaveTextContent('+1 at Core L12');
+    expect(line).toHaveTextContent('+1 at Core L15');
   });
 
   /** A full orbit is a ceiling the Core raises: a gap in yellow, never a threat's red (K2). */
@@ -83,16 +83,59 @@ describe('the orbit on the world', () => {
     expect(slots().filter((slot) => slot.getAttribute('data-orbit-slot') === 'open')).toHaveLength(2);
   });
 
-  it('draws the Core’s first socket locked on a world too young for any', () => {
+  it('draws the first socket open at Core 1 and names Core 9 for the next', () => {
     render(<PlanetHero planet={planetView({ buildings: { CORE: 1 }, orbit: [] })} />);
-    expect(slots().every((slot) => slot.getAttribute('data-orbit-slot') === 'locked')).toBe(true);
-    expect(screen.getByTestId('orbit-line')).toHaveTextContent('+1 at Core L6');
+    expect(slots().map((slot) => slot.getAttribute('data-orbit-slot'))).toEqual(['open', 'locked', 'locked', 'locked']);
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent('+1 at Core L9');
   });
 
-  it('shows the gifted Core 2 Uplink without claiming another socket opens at Core 6', () => {
+  it('shows the gifted Core 2 Uplink occupying the ordinary first socket', () => {
     render(<PlanetHero planet={planetView({ buildings: { CORE: 2 }, orbit: ['UPLINK'], orbitSlots: 1 })} />);
     expect(slots().map((slot) => slot.getAttribute('data-orbit-slot'))).toEqual(['held', 'locked', 'locked', 'locked']);
     expect(screen.getByTestId('orbit-line')).toHaveTextContent('1/1');
     expect(screen.getByTestId('orbit-line')).toHaveTextContent('+1 at Core L9');
+  });
+
+  it.each([
+    [8, 9],
+    [14, 15],
+    [17, 18],
+  ])('names Core %i’s next orbit slot at Core %i', (core, next) => {
+    render(<PlanetHero planet={planetView({ buildings: { CORE: core }, orbit: [] })} />);
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent(`+1 at Core L${String(next)}`);
+  });
+
+  it('shows a stored fourth satellite as inactive until Core 18', () => {
+    render(<PlanetHero planet={planetView({
+      buildings: { CORE: 17 },
+      orbit: ['UPLINK', 'FOUNDRY', 'DERRICK', 'BEACON'],
+      effectiveOrbit: ['UPLINK', 'FOUNDRY', 'DERRICK'],
+      orbitSlots: 3,
+    })} />);
+    expect(slots().map((slot) => slot.getAttribute('data-orbit-slot')))
+      .toEqual(['held', 'held', 'held', 'inactive']);
+    expect(slots()[3]).toHaveAccessibleName(/Beacon.*Core L18/i);
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent('3/3');
+  });
+
+  it('shows that fourth satellite active when Core 18 is queued', () => {
+    const now = new Date();
+    render(<PlanetHero planet={planetView({
+      buildings: { CORE: 17 },
+      orbit: ['UPLINK', 'FOUNDRY', 'DERRICK', 'BEACON'],
+      effectiveOrbit: ['UPLINK', 'FOUNDRY', 'DERRICK'],
+      orbitSlots: 3,
+      queues: {
+        CONSTRUCTION: [{
+          id: 'core-18', queue: 'CONSTRUCTION', slot: 0, kind: 'BUILDING', subject: 'CORE', count: 1,
+          cost: { alloy: 1, crystal: 0, deuterium: 0 }, startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+        }],
+        YARD: [],
+      },
+    })} />);
+    expect(slots().map((slot) => slot.getAttribute('data-orbit-slot')))
+      .toEqual(['held', 'held', 'held', 'held']);
+    expect(screen.getByTestId('orbit-line')).toHaveTextContent('4/4');
   });
 });

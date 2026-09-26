@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Api } from '../src/api/client.js';
 import type { BattleReport, StrategicBattleReport } from '../src/api/schemas.js';
 import { ApiProvider } from '../src/api/context.js';
@@ -119,12 +119,74 @@ beforeEach(async () => {
 });
 
 describe('what a battle report explains', () => {
+  it('opens the named planet from an ordinary report row', async () => {
+    const focus = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [base] });
+    const api = { reports: () => Promise.resolve({ reports: [base] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports onFocusPlanet={focus} />
+    </ApiProvider></QueryClientProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Grimhold' }));
+    expect(focus).toHaveBeenCalledWith('p2');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('opens the attacked world named on a defender report row', async () => {
+    const focus = vi.fn();
+    const defended = report({ attacking: false, yourPlanetId: 'p1' });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [defended] });
+    const api = { reports: () => Promise.resolve({ reports: [defended] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports onFocusPlanet={focus} />
+    </ApiProvider></QueryClientProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Vantage-3' }));
+    expect(focus).toHaveBeenCalledWith('p1');
+  });
+
+  it('opens the launching world named on a pirate report row', async () => {
+    const focus = vi.fn();
+    const pirate = report({
+      pirate: { level: 2, callsign: 'VEX7', damageMult: 0.65, capturedHull: null },
+      opponentPlanet: '', opponentPlanetId: null, yourPlanetId: 'p1',
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [pirate] });
+    const api = { reports: () => Promise.resolve({ reports: [pirate] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports onFocusPlanet={focus} />
+    </ApiProvider></QueryClientProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Vantage-3' }));
+    expect(focus).toHaveBeenCalledWith('p1');
+  });
+
+  it('opens the named world directly from a strategic report row', async () => {
+    const focus = vi.fn();
+    const strategic: StrategicBattleReport = {
+      kind: 'STRATEGIC', id: 'strike-1', missionId: 'strike-mission-1',
+      at: new Date('2026-08-26T12:00:00.000Z'), attacking: true,
+      opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2',
+      yourPlanet: 'Vantage-3', yourPlanetId: 'p1', outcome: 'FIRST_STRIKE', damage: 0,
+      destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 0, trigger: null,
+    };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [strategic] });
+    const api = { reports: () => Promise.resolve({ reports: [strategic] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports onFocusPlanet={focus} />
+    </ApiProvider></QueryClientProvider>);
+    await userEvent.click(screen.getByRole('button', { name: 'Grimhold' }));
+    expect(focus).toHaveBeenCalledWith('p2');
+  });
   it('shows only the EMP rule for a new non-damaging Death Star report', async () => {
+    const focus = vi.fn();
     const strategic: StrategicBattleReport = {
       kind: 'STRATEGIC', id: 'emp-1', missionId: 'emp-mission-1',
       at: new Date('2026-08-26T12:00:00.000Z'), attacking: false,
       opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2',
-      yourPlanet: 'Vantage-3', outcome: 'FIRST_STRIKE', damage: 0,
+      yourPlanet: 'Vantage-3', yourPlanetId: 'p1', outcome: 'FIRST_STRIKE', damage: 0,
       destroyedFleet: {},
       destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
       levelChanges: [], destroyedOrders: [], shieldDestroyed: 800, trigger: null,
@@ -133,10 +195,12 @@ describe('what a battle report explains', () => {
     client.setQueryData(['reports'], { reports: [strategic] });
     const api = { reports: () => Promise.resolve({ reports: [strategic] }) } as unknown as Api;
     render(<QueryClientProvider client={client}><ApiProvider api={api}>
-      <BattleReports />
+      <BattleReports onFocusPlanet={focus} />
     </ApiProvider></QueryClientProvider>);
 
     await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Vantage-3' }));
+    expect(focus).toHaveBeenCalledWith('p1');
     expect(screen.getByText(/Aegis dropped to zero/)).toBeVisible();
     expect(screen.queryByText('Destroyed resources')).not.toBeInTheDocument();
     expect(screen.queryByText('Construction destroyed')).not.toBeInTheDocument();
@@ -317,7 +381,7 @@ describe('what a battle report explains', () => {
 
   it('names the world a defender was hit at, pointing in', async () => {
     await openSheet(report({ attacking: false, yourPlanet: 'Neutral T1-29' }));
-    expect(screen.getByText('Neutral T1-29')).toBeVisible();
+    expect(within(screen.getByRole('dialog')).getByText('Neutral T1-29')).toBeVisible();
     expect(screen.getByText('←')).toBeVisible();
   });
 

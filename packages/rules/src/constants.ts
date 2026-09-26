@@ -1,7 +1,7 @@
 import { ECONOMY_PROFILE, FLEET_SPEED_FACTOR, SUPPORT_ROUND_TRIP, profileBuilding, profileFlightSpeed, SETTLEMENT_CAPITAL, SETTLEMENT_FEE, SETTLEMENT_CHARGE } from './economy-profile.js';
 import { RESOURCE_VALUE } from './valuation.js';
 import type { BuildingId, FaultKind, InstrumentId, MobileHullId, Resources, SatelliteId } from './types.js';
-import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
+import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, rebalanceHullPrice, scalePrice } from './tempo.js';
 
 /** Public chat is partitioned so a commander can read in the language they choose. */
 export const CHAT_LANGUAGES = ['tr', 'en', 'fr', 'de', 'es'] as const;
@@ -566,10 +566,16 @@ export const START = {
    */
   alloy: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
     .reduce((sum, id) => sum + profileBuilding(id, 2).cost.alloy,
-      2 * Math.ceil(300 * ECONOMY_ADJUSTMENT.hullMetalPrice)),
+      2 * rebalanceHullPrice(
+        Math.ceil(300 * ECONOMY_ADJUSTMENT.hullMetalPrice),
+        Math.ceil(60 * ECONOMY_ADJUSTMENT.hullMetalPrice), 1,
+      ).alloy),
   crystal: (['CORE', 'REFINERY', 'EXTRACTOR'] as const)
     .reduce((sum, id) => sum + profileBuilding(id, 2).cost.crystal,
-      2 * Math.ceil(60 * ECONOMY_ADJUSTMENT.hullMetalPrice)),
+      2 * rebalanceHullPrice(
+        Math.ceil(300 * ECONOMY_ADJUSTMENT.hullMetalPrice),
+        Math.ceil(60 * ECONOMY_ADJUSTMENT.hullMetalPrice), 1,
+      ).crystal),
   deuterium: 0,
 } as const satisfies Resources;
 
@@ -2263,7 +2269,7 @@ export const ABUSE = {
  * in a defending line lift off instead of fighting when the arriving wing fires at
  * least `ratio` times what the line fires, the line would have been wiped out
  * anyway, and the world's tank pays for the lift. The guns and the Aegis stay. The
- * whole rule is `escape.ts`; these are its two dials.
+ * whole rule is `escape.ts`; these are its public dials.
  *
  * NOT A BULLY SWITCH ALONE. Owner, rejecting a commander-wide version: fights at
  * 1–3× between equals stay ordinary, and a raider who keeps sending just under the
@@ -2273,6 +2279,8 @@ export const ABUSE = {
  * killer. The Veil is the defender's lever against that.
  */
 export const ESCAPE = {
+  /** A token garrison is not a fleet to save. Applies from ruleset 13. */
+  minimumCombatShips: 5,
   /**
    * THREE, AND FIXED. Measured 2026-09-23, the engine clears a mirrored line from
    * 1.5× and the counter-built lines tried from 3×, so a 1:2 fight between near-equals
@@ -3391,8 +3399,9 @@ export const MULTI_WORLD = {
    * fixed public-event calendar and Intergalactic Convoy. Older seasons retain
    * their persisted random calendars; this default affects new seasons only.
    * 10 → 11 on 2026-09-23 with the fleet escape (`fleetEscapeRulesetVersion`).
+   * 12 → 13 adds its five-combat-ship floor for newly dealt seasons.
    */
-  rulesetVersion: 12,
+  rulesetVersion: 13,
   /**
    * TAKTİK GERİ ÇEKİLME ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
    * 2026-09-23. A live season keeps the battle rule it was dealt: a fleet its owner
@@ -3400,6 +3409,8 @@ export const MULTI_WORLD = {
    * would now have run. See `ESCAPE` and `escape.ts`.
    */
   fleetEscapeRulesetVersion: 11,
+  /** The five-combat-ship floor is dealt to new seasons only. */
+  fleetEscapeMinimumRulesetVersion: 13,
   /**
    * KLAN ORTAK SAVAŞI, AND ITS OWN BOUNDARY. Owner design, 2026-09-20.
    *

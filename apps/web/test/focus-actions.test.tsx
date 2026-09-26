@@ -916,7 +916,7 @@ describe('the focus rail’s two commitments', () => {
     expect(raidStep).not.toBeNull();
     expect(colonyStep).not.toBeNull();
     expect(raidStep).toHaveAttribute('aria-current', 'step');
-    expect(within(raidStep as HTMLElement).getByText('Raid fleet')).toBeInTheDocument();
+    expect(raidStep).toHaveTextContent(/attack with combat ships/i);
     expect(raidStep).not.toHaveTextContent('2 Couriers');
     expect(raidStep).not.toHaveTextContent(compact(MULTI_WORLD.settlement.charge.crystal));
     expect(raidStep).not.toHaveTextContent('Flight bay');

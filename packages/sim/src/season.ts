@@ -7,6 +7,7 @@ import {
   COMBAT_HULLS as RULE_COMBAT_HULLS,
   DEATH_STAR,
   DEUTERIUM,
+  ESCAPE,
   HANGAR,
   MULTI_WORLD,
   NEUTRAL_OPENING,
@@ -75,8 +76,10 @@ import {
   mulberry32,
   resolveCombat,
   resolveRaid,
+  resourceValue,
   soloStack,
   fleetEscapeApplies,
+  fleetEscapeMinimumApplies,
   strategicStockpile,
   scaleNeutralDeuteriumLoot,
   instrumentCost,
@@ -1744,7 +1747,7 @@ export const GROUND_DEFENCE: Fleet = Object.fromEntries(
 );
 
 /**
- * Damage a hull deals before it dies, per resource spent, against a known defence.
+ * Damage a hull deals before it dies, per economic resource value, against a known defence.
  *
  * BOTH DIRECTIONS OF THE COUNTER MATRIX, because either one alone lies. A Bulwark's
  * raw attack per resource is a sixth of a Wasp's, so an offence-only measure says
@@ -1759,7 +1762,7 @@ export const GROUND_DEFENCE: Fleet = Object.fromEntries(
  */
 export function tradeScore(hull: CombatHullId, defenders: Fleet): number {
   const h = HULLS[hull];
-  const cost = h.alloy + h.crystal + h.deuterium;
+  const cost = resourceValue(h);
   if (cost <= 0 || h.atk <= 0) return 0;
 
   let hpPool = 0;
@@ -2839,6 +2842,8 @@ export function resolveMission(m: Mission, t: number, world: World, stats: DaySt
     defender: { tech: def.tech },
     deuterium: def.deuterium,
     escape: fleetEscapeApplies(MULTI_WORLD.rulesetVersion),
+    minimumCombatShips: fleetEscapeMinimumApplies(MULTI_WORLD.rulesetVersion)
+      ? ESCAPE.minimumCombatShips : 0,
   });
   const r = raid.result;
   const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};

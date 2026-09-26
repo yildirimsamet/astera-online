@@ -52,10 +52,11 @@ export const counter = {
   /** Taktik geri çekilme: karşılaştırmadaki sonuç satırı ve bir dokunuş derindeki kural. */
   escapeRun: 'Hatları ateş gücünün üçte birinin altında: yakıtları yetiyorsa gemileri kaçar, yalnız yer topları savaşır.',
   escapeStand: 'Gemileri kalıp savaşır: okuma ateş gücünün üçte birinden yüksek ya da bu kanadın silebileceğinden fazla.',
-  escapeUnsure: 'Okuma kaçış çizgisinin iki yanına düşüyor: gemileri kaçabilir.',
-  escapeAt: 'Gemileri {{at}} altında kaçar',
+  escapeUnsure: 'Gemileri kaçabilir; okuma geri çekilmenin tüm koşullarını göstermiyor.',
+  escapeAt: 'Kaçış güç çizgisi: {{at}}',
   escapeRule:
     'Taktik geri çekilme: kendi ateş gücünün en az üç katıyla karşılaşan ve o akında silinecek bir hat, dünyanın deposu {{distance}} birimlik gidiş-dönüş yakıtını karşılıyorsa savaşmak yerine gemilerini kaçırır. Yer topları kalır, depo yine yağmalanır.',
+  escapeMinimumRule: 'Savunanın gezegende en az {{count}} savaş gemisi de olmalı. Sonda okuması gemi sayısını göstermez.',
   compareRuleToggle: 'Bu nedir?',
   compareMeaning: 'Kaynak maliyetidir; saldırı hasarı değildir. Büyük filo tek başına zafer garantisi vermez.',
   compareRule:

@@ -57,6 +57,7 @@ const browser = await chromium.launch({
 });
 const page = await browser.newPage({
   viewport: PHONE,
+  locale: 'en-GB',
   deviceScaleFactor: 2,
   isMobile: true,
   hasTouch: true,
@@ -138,11 +139,17 @@ for (let attempt = 0; attempt < 3 && !(await commanderField.isVisible().catch(()
   // Vite may optimise a dependency and reload the first page opened after a code
   // change. Do not let Playwright wait on that dev-only navigation forever; if it
   // resets the front door, this loop simply walks through it again.
-  await trainingDoor.click({ noWaitAfter: true });
-  const skip = page.getByRole('button', { name: /^skip$/i });
-  await skip.waitFor({ timeout: 30_000 });
-  await skip.click({ noWaitAfter: true });
-  await page.waitForTimeout(1500);
+  try {
+    await trainingDoor.click({ noWaitAfter: true, timeout: 10_000 });
+    const skip = page.getByRole('button', { name: /^skip$/i });
+    await skip.waitFor({ timeout: 30_000 });
+    await page.locator('[data-loading-screen]').waitFor({ state: 'hidden', timeout: 40_000 });
+    await skip.click({ noWaitAfter: true, timeout: 10_000 });
+    await page.waitForTimeout(1500);
+  } catch (error) {
+    if (attempt === 2) throw error;
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
 }
 await commanderField.waitFor({ timeout: 20_000 });
 await commanderField.fill(COMMANDER);
@@ -236,7 +243,9 @@ const survey = () =>
     scene.traverse((o) => {
       if (o.isInstancedMesh && o.count > 0) {
         kinds.push(`${o.name || 'unnamed'}×${String(o.count)}`);
-        const into = o.name === 'asteroid-rocks' ? rocks : o.name === 'planet-worlds' ? planets : null;
+        const planetBody = o.name === 'planet-worlds'
+          || /^planet-(skin-)?models-(full|low|lite|far)$/.test(o.name);
+        const into = o.name === 'asteroid-rocks' ? rocks : planetBody ? planets : null;
         if (into) {
           for (let i = 0; i < o.count; i += 1) {
             // Instance matrices are LOCAL to the mesh. Planet batches sit below

@@ -12,10 +12,13 @@ import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 
 /**
- * THE STRUCK WORLD WORKS DOUBLE, AND THE HEADER SAYS SO. Owner instruction,
+ * THE STRUCK WORLD WORKS FASTER, AND THE HEADER SAYS SO. Owner instruction,
  * 2026-09-16: *"bunu frontend'de kaynak menü itemlarının yanında bir ok içeren boost
  * icon animasyonu ile göstermeli ve bir yere ufak bir şekilde koruma süresi boyunca
  * %100 boost yazmalıyız."*
+ *
+ * The live rule now grants 50%; these expectations follow the shared production
+ * multiplier rather than preserving the older 100% request as a promise.
  *
  * Two surfaces and one prediction. The arrows say which figures are moving faster;
  * the note states the rule and until when; and the works vessels must actually fill
@@ -57,19 +60,19 @@ describe('the recovery boost on the wire', () => {
 describe('the works projection under a boost', () => {
   const planet = planetView({}, { bufferAlloy: 0, bufferCrystal: 0 }).planet;
 
-  it('fills twice as fast while the boost lasts', () => {
+  it('fills at the current 50% bonus while the boost lasts', () => {
     const fetchedAt = Date.now();
     const boosted = { ...planet, productionBoostUntil: new Date(fetchedAt + 5 * HOUR) };
     const works = worksAt(boosted, fetchedAt, fetchedAt + HOUR);
-    expect(works.bufferAlloy).toBeCloseTo(planet.alloyPerHour * 2, 1);
-    expect(works.bufferCrystal).toBeCloseTo(planet.crystalPerHour * 2, 1);
+    expect(works.bufferAlloy).toBeCloseTo(planet.alloyPerHour * 1.5, 1);
+    expect(works.bufferCrystal).toBeCloseTo(planet.crystalPerHour * 1.5, 1);
   });
 
   it('returns to the ordinary pace the instant the boost ends', () => {
     const fetchedAt = Date.now();
     const boosted = { ...planet, productionBoostUntil: new Date(fetchedAt + HOUR / 2) };
     expect(worksAt(boosted, fetchedAt, fetchedAt + HOUR).bufferAlloy)
-      .toBeCloseTo(planet.alloyPerHour * 1.5, 1);
+      .toBeCloseTo(planet.alloyPerHour * 1.25, 1);
   });
 
   it('never fills past the same collector ceiling', () => {

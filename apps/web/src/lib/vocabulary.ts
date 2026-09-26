@@ -48,8 +48,8 @@ export const INSTRUMENT_NEEDS_UPLINK: readonly InstrumentId[] = ['TELESCOPE', 'R
  *
  * Each changes a different number across the whole planet, so the interesting
  * question is never "which is best" — it is which two or three you can run at
- * once. The Command Core opens slots at 1, 3, 5 and 9, and four satellites against
- * four slots is not a checklist, because the fourth slot is a Core 15 planet.
+ * once. The Command Core opens slots at 1, 9, 15 and 18, and four satellites against
+ * four slots is not a checklist, because the fourth slot is a Core 18 planet.
  */
 export const SATELLITE_ORDER: readonly SatelliteId[] = [
   'UPLINK',

@@ -16,10 +16,10 @@ describe('the local Academy world', () => {
     ]));
     expect(contacts.find((contact) => contact.kind === 'unknown')).not.toHaveProperty('fleet');
   });
-  it('shows the gifted Uplink as the single active orbit slot before Core 6', () => {
+  it('shows the gifted Uplink occupying the ordinary first slot', () => {
     const step = ACADEMY_STEPS.findIndex((s) => s.id === 'radar');
     const planet = academyPlanet(openAcademy(now, step));
-    expect(planet.buildings.CORE).toBeLessThan(6);
+    expect(planet.buildings.CORE).toBe(2);
     expect(planet.orbit).toEqual(['UPLINK']);
     expect(planet.orbitSlots).toBe(1);
   });

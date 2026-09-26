@@ -171,6 +171,9 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** An entitled commander can now render the eight-second interceptor scene. */
     case 'strategic-sight':
       return [keys.traffic];
+    /** A mission began or an operator granted a reward while this commander was online. */
+    case 'reward':
+      return [keys.rewards];
     /**
      * A CRAFT OF THIS COMMANDER'S REACHED A WORLD AND WROTE DOWN WHAT IT FOUND. D151.
      *

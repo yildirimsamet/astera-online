@@ -5,7 +5,6 @@ import {
   fleetCount,
   fleetEntries,
   garrisonOf,
-  activeOrbitSlots,
   satelliteSlots,
   unarmedCount,
 } from '@astera/rules';
@@ -185,7 +184,7 @@ const socketOpensAt = (index: number): number => {
 function orbitOf(planet: PlanetView) {
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
   const core = projected.buildings.CORE;
-  const total = activeOrbitSlots(core, projected.orbit);
+  const total = satelliteSlots(core);
   const next = total < MOST_SOCKETS ? socketOpensAt(total) : null;
   return { fitted: projected.orbit, total, next };
 }
@@ -197,10 +196,14 @@ function OrbitSockets({ planet }: { planet: PlanetView }) {
     <div role="group" aria-label={t('planet.orbit.rackLabel')} className="pointer-events-none absolute inset-0">
       {Array.from({ length: MOST_SOCKETS }, (_, index) => {
         const satellite = fitted[index];
-        const state = satellite ? 'held' : index < total ? 'open' : 'locked';
+        const state = satellite
+          ? index < total ? 'held' : 'inactive'
+          : index < total ? 'open' : 'locked';
         const angle = SOCKET_ANGLES[index % SOCKET_ANGLES.length] ?? 0;
         const label = satellite
-          ? satelliteLabel(satellite)
+          ? state === 'inactive'
+            ? `${satelliteLabel(satellite)} · ${t('planet.orbit.inactiveSatellite')} · ${t('planet.orbit.slotsNext', { level: socketOpensAt(index) })}`
+            : satelliteLabel(satellite)
           : state === 'open'
             ? t('planet.orbit.slotEmpty')
             : t('planet.orbit.slotsNext', { level: socketOpensAt(index) });
@@ -214,6 +217,8 @@ function OrbitSockets({ planet }: { planet: PlanetView }) {
             className={`absolute left-1/2 top-1/2 grid size-7 place-items-center rounded-full ${
               state === 'held'
                 ? 'border border-v2-self/50 bg-v2-panel'
+                : state === 'inactive'
+                  ? 'border border-v2-line bg-v2-deep/80 text-v2-ink-3'
                 : state === 'open'
                   ? 'border border-dashed border-v2-line-hi bg-v2-deep/60'
                   : 'border border-v2-line bg-v2-deep/80 text-v2-ink-3'
@@ -221,8 +226,15 @@ function OrbitSockets({ planet }: { planet: PlanetView }) {
             style={{ transform: `rotate(${String(angle)}deg) translate(70px) rotate(${String(-angle)}deg) translate(-50%, -50%)` }}
           >
             {satellite && (
-              <img src={SATELLITE_ART[satellite]} alt="" className="size-6 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]" />
+              <img
+                src={SATELLITE_ART[satellite]}
+                alt=""
+                className={state === 'inactive'
+                  ? 'size-6 object-contain opacity-45 grayscale'
+                  : 'size-6 object-contain drop-shadow-[0_0_6px_rgba(46,230,200,0.35)]'}
+              />
             )}
+            {state === 'inactive' && <LockIcon className="absolute -right-1 -top-1 size-2.5" />}
             {state === 'locked' && (
               <>
                 <LockIcon className="size-3" />

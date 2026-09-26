@@ -6,7 +6,11 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { publish, publishShard, type EventBus } from '../src/stream/bus.js';
-import { seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
+import { rewardId } from '@astera/rules';
+import { grantReward } from '../src/services/rewards.js';
+import { launchProbe } from '../src/services/intel.js';
+import { launchAttack } from '../src/services/mission.js';
+import { giveUnits, seedWorld, testDb, testEnv, type Fixture } from './helpers.js';
 
 const silent = pino({ level: 'silent' });
 
@@ -154,6 +158,32 @@ describe('the event stream', () => {
     await connected(f.playerIds[0]!);
     await publish(f.db, f.playerIds[0]!, 'raided');
     await expect(stream.done).resolves.toEqual(['raided']);
+    stream.abort();
+  });
+
+  it('wakes a connected commander when an operator grants a reward', async () => {
+    const stream = listen(1);
+    await connected(f.playerIds[0]!);
+    const [player] = await f.db.select().from(players).where(eq(players.id, f.playerIds[0]!));
+    await grantReward(f.db, player!.name, rewardId('SOCIAL', 1));
+    await expect(stream.done).resolves.toEqual(['private:reward']);
+    stream.abort();
+  });
+
+  it('refreshes rewards on another open device when a probe launches', async () => {
+    const stream = listen(2);
+    await connected(f.playerIds[0]!);
+    await launchProbe(f.db, f.planetIds[0]!, f.planetIds[1]!, f.clock);
+    await expect(stream.done).resolves.toContain('private:reward');
+    stream.abort();
+  });
+
+  it('refreshes rewards on another open device when a raid launches', async () => {
+    const stream = listen(2);
+    await connected(f.playerIds[0]!);
+    await giveUnits(f.db, f.planetIds[0]!, { DART: 5 });
+    await launchAttack(f.db, f.planetIds[0]!, f.planetIds[1]!, { DART: 5 }, f.clock);
+    await expect(stream.done).resolves.toContain('private:reward');
     stream.abort();
   });
 

@@ -63,7 +63,7 @@ export interface Archetype {
    * opened it. It played fourteen days blind, and the season's raid return fell
    * with it.
    *
-   * Order is what the archetype IS. The Core opens orbit slots at 1, 3, 5 and 9, so
+   * Order is what the archetype IS. The Core opens orbit slots at 1, 9, 15 and 18, so
    * the first satellite here is what a planet runs for most of a season and the last
    * is one a casual player may never reach.
    */

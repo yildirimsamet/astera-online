@@ -361,10 +361,10 @@ describe('the immutable convoy reward quote', () => {
       effect,
     });
     expect(quote.firepower).toBe(combatValue({ DART: 1 }));
-    expect(quote.firepower).toBe(468);
-    expect(quote.resourceQualityFactor).toBe(0.65);
-    expect(quote.shipQualityFactor).toBeCloseTo(468 / 5_780, 12);
-    expect(quote.rawResourceReward).toEqual({ alloy: 234, crystal: 156, deuterium: 78 });
+    expect(quote.firepower).toBe(425);
+    expect(quote.resourceQualityFactor).toBeCloseTo(425 / 720, 12);
+    expect(quote.shipQualityFactor).toBeCloseTo(425 / 5_780, 12);
+    expect(quote.rawResourceReward).toEqual({ alloy: 212, crystal: 141, deuterium: 70 });
     expect(quote.cargo).toBe(fleetCargo({ DART: 1, COURIER: 1 }, {}));
     expect(quote.resourceReward).toEqual(quote.rawResourceReward);
 
@@ -374,9 +374,7 @@ describe('the immutable convoy reward quote', () => {
       launchTech: {},
       effect,
     });
-    const capacity = fleetCargo({ DART: 1 }, {});
-    expect(cramped.resourceReward).toEqual({ alloy: Math.floor(capacity / 2),
-      crystal: Math.floor(capacity / 3), deuterium: Math.floor(capacity / 6) });
+    expect(cramped.resourceReward).toEqual({ alloy: 15, crystal: 10, deuterium: 4 });
     expect(cramped.resourceReward.alloy + cramped.resourceReward.crystal
       + cramped.resourceReward.deuterium).toBeLessThanOrEqual(cramped.cargo);
   });

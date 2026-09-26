@@ -1,4 +1,4 @@
-import type { Resources } from './types.js';
+import type { Resources, ShipTier } from './types.js';
 
 /** Owner's post-147deca 30% experiment: replaces 25%, not compounded on top of it. */
 export const ECONOMY_ADJUSTMENT = {
@@ -57,6 +57,20 @@ export const ECONOMY_ADJUSTMENT = {
    */
   buildTime: 0.975,
 } as const;
+
+/** Shift a live hull invoice toward crystal without changing its 1:2 economic value. */
+const HULL_CRYSTAL_MULTIPLIER: Record<ShipTier, number> = {
+  1: 1.55,
+  2: 1.40,
+  3: 1.30,
+  4: 1.25,
+};
+
+export function rebalanceHullPrice(alloy: number, crystal: number, tier: ShipTier | null) {
+  const multiplier = tier === null ? 1.25 : HULL_CRYSTAL_MULTIPLIER[tier];
+  const shiftedCrystal = Math.round(crystal * multiplier);
+  return { alloy: alloy - 2 * (shiftedCrystal - crystal), crystal: shiftedCrystal };
+}
 
 /**
  * THE ECONOMY TEMPO, IN ONE PLACE.

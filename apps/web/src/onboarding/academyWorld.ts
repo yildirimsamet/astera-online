@@ -5,7 +5,7 @@ import {
   academyFuel, academyPirateBattle, academyPirateLoot, academyRaidBattle, academyRaidLoot,
   ACADEMY_LEG_SECONDS, academyLessonFleet, academyOrderSeconds, fleetEntries, flightSlots, type Fleet,
   RESEARCH_PROJECT_IDS, RESEARCH_PROJECTS, researchAvailable,
-  activeOrbitSlots,
+  satelliteSlots,
 } from '@astera/rules';
 import type { ServerBuildOrderView, PlanetView, Preview, BattleReport } from '../api/schemas.js';
 import { openWorld, planetOf } from './world.js';
@@ -195,7 +195,7 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
     effectiveInstruments: { ...planet.instruments, ...state.instruments },
     orbit: state.satellites,
     effectiveOrbit: state.satellites,
-    orbitSlots: activeOrbitSlots(state.buildings.CORE, state.satellites),
+    orbitSlots: satelliteSlots(state.buildings.CORE),
     research: RESEARCH_PROJECT_IDS.map((id) => {
       const project = RESEARCH_PROJECTS[id];
       const discovered = !['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL'].includes(id);

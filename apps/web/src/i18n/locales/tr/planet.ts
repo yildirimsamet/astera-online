@@ -146,6 +146,7 @@ export const planet = {
   },
 
   defend: {
+    escapeMinimum: "Taktik geri çekilme için burada en az {{minimum}} savaş gemisi gerekli · {{count}} / {{minimum}} hazır",
     strategicBand: "Stratejik savunma",
     strategicNote:
       "Yüklü mühimmat, 3. seviye Radarın algıladığı veya Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder; ateşlenince tükenir.",
@@ -444,7 +445,7 @@ export const planetHero = {
   tier: "{{tier}}. kademe",
   firepower: "Ateş gücü",
   perHourSuffix: "/sa",
-  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L15". */
   orbit: "Yörünge",
   disrupted: "Akın yedin, üretim durdu · {{countdown}}",
   defence: "Savunma",

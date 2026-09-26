@@ -421,12 +421,32 @@ describe('a satellite, which has no levels at all', () => {
 
   /** The slot is the real cost, so the sheet states it before the refusal does. */
   it('shows what the orbit has room for', () => {
-    showSat({ orbit: ['UPLINK'], orbitSlots: 2 });
+    showSat({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbit: ['UPLINK'], orbitSlots: 2 });
     expect(screen.getByText(/1 of 2 free/i)).toBeDefined();
   });
 
+  it('shows the slot opened by a queued Core upgrade', () => {
+    const now = new Date();
+    showSat({
+      buildings: { CORE: 8, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
+      orbit: ['UPLINK'],
+      orbitSlots: 1,
+      queues: {
+        CONSTRUCTION: [{
+          id: 'core-9', queue: 'CONSTRUCTION', slot: 0, kind: 'BUILDING', subject: 'CORE', count: 1,
+          cost: { alloy: 1, crystal: 0, deuterium: 0 }, startedAt: now,
+          finishesAt: new Date(now.getTime() + 60_000),
+        }],
+        YARD: [],
+      },
+    });
+    expect(screen.getByText(/1 of 2 free/i)).toBeInTheDocument();
+    expect(document.querySelector('[data-item-hero] [data-socket="target"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot-after]')).toHaveTextContent(/command core 15/i);
+  });
+
   it('draws the orbit as sockets: taken, the one it would take, and the ones still shut', () => {
-    // Core 6 opens one slot of four; the Uplink holds it.
+    // Core 1 opens one slot of four; the Uplink can hold it.
     showSat({ orbit: [], orbitSlots: 1 });
     const sockets = [...document.querySelectorAll<HTMLElement>('[data-socket]')];
     expect(sockets).toHaveLength(4);
@@ -434,25 +454,37 @@ describe('a satellite, which has no levels at all', () => {
   });
 
   it('says what placing it leaves, and which Core opens the next slot', () => {
-    // Core 6: one slot, empty. Putting this up leaves none; Core 9 opens the second.
+    // The first slot is open. Putting this up leaves none; Core 9 opens the second.
     showSat({ orbit: [], orbitSlots: 1 });
     expect(document.querySelector('[data-slot-after]')).toHaveTextContent(/0/);
     expect(document.querySelector('[data-slot-after]')).toHaveTextContent(/command core 9/i);
   });
 
   it('says which building fixes a full orbit, rather than only refusing', () => {
-    showSat({ orbit: ['UPLINK', 'BEACON'], orbitSlots: 2 });
+    showSat({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbit: ['UPLINK', 'BEACON'], orbitSlots: 2 });
     expect(screen.getByText(/no free slot/i)).toBeDefined();
     expect(screen.getByText(/no free slot/i)).toHaveTextContent(/command core/i);
   });
 
   it('reads as done once it is up there', () => {
-    showSat({ orbit: ['FOUNDRY'], orbitSlots: 2 }, 'Already in orbit');
+    showSat({ buildings: { CORE: 9, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbit: ['FOUNDRY'], orbitSlots: 2 }, 'Already in orbit');
     expect(screen.getByText(/^in orbit$/i)).toBeDefined();
     expect(screen.getByRole('status')).toHaveTextContent('Already in orbit');
     expect(screen.queryByRole('button', { name: /already in orbit/i })).toBeNull();
     expect(screen.queryByText(/locked/i)).toBeNull();
     expect([...document.querySelectorAll<HTMLElement>('[data-socket]')].some((socket) => socket.dataset.socket === 'self')).toBe(true);
+  });
+
+  it('marks a stored fourth satellite inactive until Core 18', () => {
+    showSat({
+      buildings: { CORE: 8, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
+      orbit: ['UPLINK', 'DERRICK', 'BEACON', 'FOUNDRY'],
+      effectiveOrbit: ['UPLINK'],
+      orbitSlots: 1,
+    }, 'Already in orbit');
+    expect(document.querySelector('[data-item-hero] [data-socket="inactive"]')).toBeInTheDocument();
+    expect(screen.getByText(/owned, but inactive until the command core/i)).toHaveTextContent(/Core L18/);
+    expect(screen.getByText(/no free slot/i)).toHaveTextContent(/command core 9/i);
   });
 
   it('keeps a queued one-time satellite terminal until it reaches orbit', () => {

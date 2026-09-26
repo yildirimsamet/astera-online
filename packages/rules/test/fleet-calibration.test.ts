@@ -51,7 +51,7 @@ describe('economic fleet progression at 32:16:1', () => {
     const strikers = line('STRIKER');
     const raiders = line('RAIDER');
     const previousProducts = [21 * 75, 63 * 214, 160 * 538, 431 * 1425] as const;
-    const previousPrices = [[390, 78, 0], [975, 234, 2], [2340, 585, 6], [5850, 1560, 20]] as const;
+    const currentPrices = [[304, 121, 0], [787, 328, 2], [1988, 761, 6], [5070, 1950, 20]] as const;
     const firstAttackLedProfile = [[41, 39], [119, 113], [301, 285], [807, 762]] as const;
     const revisedProfile = [[42, 38], [120, 111], [305, 282], [816, 754]] as const;
     expect(strikers).toHaveLength(4);
@@ -62,8 +62,8 @@ describe('economic fleet progression at 32:16:1', () => {
       expect(HULLS[striker].atk, `${striker} compared with its Raider`).toBeGreaterThan(HULLS[raider].atk);
       expect(HULLS[striker].hp, `${striker} compared with its Raider`).toBeLessThan(HULLS[raider].hp);
       expect(cost(striker), `${striker} price`).toBe(cost(raider));
-      expect([HULLS[striker].alloy, HULLS[striker].crystal, HULLS[striker].deuterium], `${striker} unchanged recipe`)
-        .toEqual(previousPrices[index]);
+      expect([HULLS[striker].alloy, HULLS[striker].crystal, HULLS[striker].deuterium], `${striker} recipe`)
+        .toEqual(currentPrices[index]);
       expect(HULLS[striker].atk, `${striker} attack after the second owner adjustment`)
         .toBeGreaterThan(firstAttackLedProfile[index]![0]);
       expect(HULLS[striker].hp, `${striker} hull after the second owner adjustment`)
@@ -91,7 +91,7 @@ describe('economic fleet progression at 32:16:1', () => {
     expect(HULLS.NULLIFIER.hp).toBeLessThan(285);
     expect([HULLS.NULLIFIER.atk, HULLS.NULLIFIER.hp]).toEqual([305, 282]);
     expect([HULLS.NULLIFIER.alloy, HULLS.NULLIFIER.crystal, HULLS.NULLIFIER.deuterium])
-      .toEqual([2691, 674, 7]);
+      .toEqual([2287, 876, 7]);
     expect(Math.abs(HULLS.NULLIFIER.atk * HULLS.NULLIFIER.hp / (160 * 538) - 1))
       .toBeLessThan(0.02);
     const visibleRatios = strikers.map((id) => HULLS[id].atk / HULLS[id].hp);
@@ -129,10 +129,10 @@ describe('economic fleet progression at 32:16:1', () => {
   });
 
   it('preserves the paid opening and specialist identities', () => {
-    expect(HULLS.DART).toMatchObject({ alloy: 390, crystal: 78, deuterium: 0, atk: 21, hp: 77 });
+    expect(HULLS.DART).toMatchObject({ alloy: 304, crystal: 121, deuterium: 0, atk: 21, hp: 77 });
     expect(hullFuelMass('DART')).toBe(4);
     expect(HULLS.GARBAGE_COLLECTOR).toMatchObject({ alloy: 13_000, crystal: 6_500, deuterium: 0, atk: 0, cargo: 0 });
-    expect(HULLS.PROSPECTOR).toMatchObject({ alloy: 780, crystal: 234, deuterium: 0, atk: 0, cargo: 200, speed: 618.75 });
+    expect(HULLS.PROSPECTOR).toMatchObject({ alloy: 662, crystal: 293, deuterium: 0, atk: 0, cargo: 200, speed: 618.75 });
     expect(HULLS.THORN).toMatchObject({ alloy: 600, crystal: 150, atk: 42, hp: 215 });
     expect(HULLS.BASTION).toMatchObject({ alloy: 2400, crystal: 600, atk: 144, hp: 1000 });
   });

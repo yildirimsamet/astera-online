@@ -33,7 +33,7 @@ export const academy = {
     "deuterium": "The Deuterium Refinery produces fuel. Raids pay for the outbound and return trip at launch.",
     "foundry": "The Foundry boosts production from orbit. You do not need to build one now.",
     "intel": "Intel helps you see opportunities and judge risks before launching. Tap the Intel tab.",
-    "uplink": "Your first orbit slot is open. We give you an Uplink satellite and level 1 Telescope. Uplink powers the Telescope; Radar is your next gift. Continue to try your sight.",
+    "uplink": "The Command Core opens your first orbit slot at level 1. We give you an Uplink satellite and level 1 Telescope. Uplink powers the Telescope; Radar is your next gift. Continue to try your sight.",
     "telescope": "Open View and turn on your gifted Telescope's range. Inside it, you see ship types and counts. Outside it, those details are unknown. The next step shows what Radar adds.",
     "radar": "You now have level 1 Radar too. Compare the identified fleet nearby with the distant question mark: Radar finds movement, Telescope shows exact ships. Radar 4 adds rough size; Radar 5 adds type.",
     "veil": "Veil hides information about your world from observers. It does not make your fleet invisible.",

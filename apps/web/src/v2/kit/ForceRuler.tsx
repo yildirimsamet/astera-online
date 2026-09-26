@@ -27,7 +27,7 @@ export interface ForceRulerProps {
    * Null wherever the rule does not apply: a pirate, a caretaker world, a season
    * dealt before it (`fleetEscapeApplies`).
    */
-  escape?: { at: number; verdict: EscapeVerdict | null } | null;
+  escape?: { at: number; verdict: EscapeVerdict | null; minimumCombatShips?: number } | null;
   /** Sends a probe; offered only where the defence was never measured. */
   onProbe?: () => void;
   /** The matchup line (B6) rides under the ruler. */
@@ -123,7 +123,8 @@ export function ForceRuler({
           <div data-testid="ruler-rule" className="mt-1 flex flex-col gap-1 text-caption leading-relaxed text-v2-ink-2">
             {heading !== undefined && <p>{t('counter.compareMeaning')}</p>}
             <p>{t('counter.compareRule')}</p>
-            {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}</p>}
+            {escape && <p>{t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}
+              {escape.minimumCombatShips ? ` ${t('counter.escapeMinimumRule', { count: escape.minimumCombatShips })}` : ''}</p>}
           </div>
         )}
       </div>

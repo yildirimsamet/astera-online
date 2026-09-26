@@ -26,8 +26,8 @@ and this profile win.
 - **Fuel:** the fleet-wide value rate is `0.00495`, 10% below the former `0.0055` rate after the
   slowdown; the Collector's special fuel mass is `900` instead of `1,000`. Chosen travel pace
   still changes arrival time without an additional fuel discount.
-- **Colonies and first orbit:** capital Core `9 / 13 / 16` opens the three colony slots. Core `2`
-  opens the first satellite slot, so the Academy's gifted Uplink can power its gifted sensors.
+- **Colonies and orbit:** capital Core `9 / 13 / 16` opens the three colony slots. Every
+  world gets its first satellite slot at Core `1`; further slots open at `9 / 15 / 18`.
 - **Events:** the convoy lasts 180 minutes and crosses the full diameter through the centre; trade
   ships use 180-minute windows at `01–04`, `07–10`, `15–18` and `21–24` local time.
 - **Early Shipyard:** `1→2` costs `2,293 alloy / 882 crystal`; `2→3` costs `3,500 alloy /
@@ -243,8 +243,18 @@ defenceSalvage 0.60 · lootBufferShare 0.50 · engagementSeconds 10
 ```
 fleet escape (ruleset 11, `ESCAPE`):
   ships run ⇔ combatValue(wing) ≥ 3 × combatValue(line)  ∧  standing fight DECISIVE  ∧  tank ≥ lift
-  lift = missionFuel(ships, 600, 2)   — 52 for a 48k T2 line, 12 for 20 Darts
+  lift = missionFuel(ships, 600, 2)
+  ruleset 13+: defending line must also hold ≥5 fighting ships (transports and guns excluded)
 ```
+
+The live ship catalog now moves alloy into crystal at constant economic value
+(`alloy + 2 × crystal + 32 × deuterium`). Crystal rises by 55% / 40% / 30% / 25%
+across tiers 1–4; alloy falls by twice the crystal increase. The Prospector takes
+the mature 25% shift. The Garbage Collector already costs 2:1 alloy to crystal and
+keeps its recipe. Ground emplacements keep theirs. Combat stats and tier efficiency
+are unchanged; the opening two-Dart budget is re-derived from the new price.
+The simulator's adaptive ship choice uses that same economic value, keeping its
+efficiency comparison stable across the recipe shift.
 
 ### Pre-Fleet V2 executable baseline
 
@@ -506,7 +516,7 @@ step, while Telescope L1 still costs 165 alloy and the door stays open.
 | Derrick | 3,740 | 1,360 | ×2 mining hold, ×1.5 mining speed |
 | Beacon | 5,100 | 1,700 | ×1.3 speed for every fleet that leaves |
 
-Slots come from the Command Core at L1, L3, L5 and L9.
+Slots come from the Command Core at L1, L9, L15 and L18.
 
 **`FOUNDRY.production` stays at 1.06.** It compounds twice — bots buy ground defence as a ratio of the
 stock it raises — so at +8% TURTLE tops the ladder on every gate seed.

@@ -7,6 +7,8 @@ import {
   escapeVerdict,
   fleetCount,
   fleetEscapeApplies,
+  fleetEscapeMinimumApplies,
+  ESCAPE,
   forecastLines,
   forecastLoss,
   matchupsAgainst,
@@ -204,7 +206,9 @@ export function useTargetReading({
    * pirate never run, and a live season keeps the battle it was dealt. The line is a
    * third of this wing's firepower on the enemy axis; the verdict is the rule applied
    * to the reading — outmatched AND cleared — and the tank stays the raider's unknown,
-   * which the copy says rather than the sheet guessing.
+   * which the copy says rather than the sheet guessing. From ruleset 13 the probe
+   * also cannot establish whether five combat ships stand there; an otherwise
+   * certain RUN stays UNSURE until the actual fight.
    */
   const escapeRuled = target.kind === 'world'
     && target.world.kind !== 'NEUTRAL'
@@ -214,11 +218,13 @@ export function useTargetReading({
     const power = combatValue(settled);
     return {
       at: escapeLine(settled),
+      minimumCombatShips: fleetEscapeMinimumApplies(rulesetVersion) ? ESCAPE.minimumCombatShips : 0,
       verdict: opposing !== null && lines !== null
-        ? escapeVerdict(power, { low: opposing.low, high: opposing.high }, lines.clears)
+        ? escapeVerdict(power, { low: opposing.low, high: opposing.high }, lines.clears,
+          fleetEscapeMinimumApplies(rulesetVersion))
         : null,
     };
-  }, [escapeRuled, settled, opposing?.low, opposing?.high, lines]);
+  }, [escapeRuled, settled, opposing?.low, opposing?.high, lines, rulesetVersion]);
 
   /**
    * WHAT THE LINES COULD NOT SEE, AND WHAT THIS COMMANDER ALREADY PAID TO KNOW.

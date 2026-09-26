@@ -23,7 +23,7 @@ import {
   instrumentCost,
   productionMult,
   satelliteCost,
-  activeOrbitSlots,
+  satelliteSlots,
   shieldHp,
   storageCap,
   vaultProtects,
@@ -357,7 +357,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     /** What is in orbit, and how much room there is. D25. */
     orbit: p.storedOrbit,
     effectiveOrbit: p.orbit,
-    orbitSlots: activeOrbitSlots(p.buildings.CORE, p.storedOrbit),
+    orbitSlots: satelliteSlots(p.buildings.CORE),
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
     research: await researchView(tx, p, queuedResearch),

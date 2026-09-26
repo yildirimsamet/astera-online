@@ -26,6 +26,7 @@ const props = (over: Partial<TopBarProps> = {}): TopBarProps => ({
   rewards: 0,
   boosted: false,
   onCommander: vi.fn(),
+  onRewards: vi.fn(),
   onWorld: vi.fn(),
   onResource: vi.fn(),
   onBell: vi.fn(),
@@ -83,13 +84,21 @@ describe('the top bar', () => {
     expect(screen.getByText('9+')).toHaveClass('animate-pulse');
   });
 
-  it('dots the commander chip while rewards wait behind it', () => {
+  it('offers a swinging gift that opens rewards directly while claims wait', async () => {
     const { rerender } = render(<TopBar {...props()} />);
+    expect(screen.queryByTestId('claimable-rewards')).toBeNull();
     expect(screen.getByRole('button', { name: /^Commander Samet/ })).not.toHaveAttribute('data-attention');
-    rerender(<TopBar {...props({ rewards: 2 })} />);
+    const onRewards = vi.fn();
+    rerender(<TopBar {...props({ rewards: 2, onRewards })} />);
     const chip = screen.getByRole('button', { name: /^Commander Samet/ });
-    expect(chip).toHaveAttribute('data-attention');
-    expect(chip).toHaveAccessibleName(/2 rewards waiting/);
+    expect(chip).not.toHaveAttribute('data-attention');
+    const gift = screen.getByTestId('claimable-rewards');
+    expect(gift).toHaveAccessibleName(/rewards.*2 ready to claim/i);
+    expect(gift.querySelector('.claimable-gift-swing')).toBeInTheDocument();
+    await userEvent.click(gift);
+    expect(onRewards).toHaveBeenCalledTimes(1);
+    rerender(<TopBar {...props({ rewards: 0, onRewards })} />);
+    expect(screen.queryByTestId('claimable-rewards')).toBeNull();
   });
 
   it('marks every store while production is boosted', () => {

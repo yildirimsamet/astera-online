@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { describeError } from '../i18n/errors.js';
-import { CloseIcon, RaidedIcon } from './icons/index.js';
+import { Icon } from '../v2/icons.js';
 
 type Tone = 'info' | 'error';
 interface Message {
@@ -98,7 +98,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
            * height as `--toast-lift` while it is mounted; everywhere else the
            * variable is absent and the original offset stands.
            */
-          className="pointer-events-none fixed inset-x-0 top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-50 flex justify-center"
+          className="pointer-events-none fixed inset-x-3 top-[calc(var(--toast-lift,100px)+env(safe-area-inset-top))] z-[90] flex justify-center font-v2-ui"
         >
           {/*
             A REFUSAL LOOKS LIKE A REFUSAL, AND IT USED TO LOOK LIKE THE WEATHER.
@@ -117,26 +117,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={message.id}
             role={message.tone === 'error' ? 'alert' : undefined}
-            className={`plate pointer-events-auto flex max-w-sm items-center gap-1 px-1 py-1 text-body ${
-              message.tone === 'error' ? 'plate-threat text-threat-ink' : 'text-bone'
+            className={`pointer-events-auto flex w-full max-w-sm items-start gap-2 rounded-control border px-3 py-2.5 text-caption leading-snug shadow-[0_16px_36px_rgba(0,0,0,0.42)] ${
+              message.tone === 'error'
+                ? 'border-v2-hostile/55 bg-v2-panel/95 text-v2-ink'
+                : 'border-v2-self/35 bg-v2-panel/95 text-v2-ink'
             }`}
           >
-            {message.tone === 'error' && (
-              <span
-                aria-hidden
-                className="grid size-7 shrink-0 place-items-center rounded-full bg-threat/25 text-threat-ink"
-              >
-                <RaidedIcon className="size-4" />
-              </span>
-            )}
-            <p className="min-w-0 flex-1">{message.text}</p>
+            <span aria-hidden className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-control ${message.tone === 'error' ? 'bg-v2-hostile/12 text-v2-hostile' : 'bg-v2-self/12 text-v2-self'}`}>
+              <Icon id={message.tone === 'error' ? 'i-warn' : 'i-spark'} className="size-4" />
+            </span>
+            <p className="min-w-0 flex-1 py-1">{message.text}</p>
             <button
               type="button"
               aria-label={t('toast.dismiss')}
-              className="flex size-10 shrink-0 items-center justify-center rounded-chip text-current/75 hover:bg-raised hover:text-current"
+              className="grid size-8 shrink-0 place-items-center rounded-control text-v2-ink-2 hover:bg-v2-raise hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
               onClick={() => { setQueue((current) => current.slice(1)); }}
             >
-              <CloseIcon className="size-5" />
+              <Icon id="i-close" className="size-4" />
             </button>
           </div>
         </div>

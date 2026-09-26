@@ -109,6 +109,7 @@ import { SeasonArchiveScreen } from './SeasonArchiveScreen.js';
 import { Waiting } from '../ui/kit/index.js';
 import { describe, useToast } from '../ui/Toast.js';
 import { GALAXY_ASSETS, usePreload } from '../lib/preload.js';
+import { useOpeningCover } from '../lib/openingCover.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
 import { useArrivals } from '../session/useArrivals.js';
 import { HitboxLegend } from '../galaxy/hitboxDebug.jsx';
@@ -225,6 +226,7 @@ export function GalaxyView({
   focusRequest,
   craftFocusRequest,
   commander,
+  resumed = false,
   country,
   isAdmin = false,
   pastResult,
@@ -272,6 +274,8 @@ export function GalaxyView({
   craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
+  /** A backgrounded tab whose page was discarded reopens without the first-entry cover. */
+  resumed?: boolean;
   country?: CountryCode;
   /** Operations access comes from the server's out-of-band username allow-list. */
   isAdmin?: boolean;
@@ -674,7 +678,7 @@ export function GalaxyView({
   const [drawn, setDrawn] = useState(false);
   const dataSettled =
     !galaxy.isPending && !planet.isPending && !season.isPending && !mining.isPending;
-  const covered = !(assets.ready && dataSettled && drawn);
+  const covered = useOpeningCover(assets.ready && dataSettled && drawn, resumed);
 
 
   /**
@@ -773,6 +777,11 @@ export function GalaxyView({
     the door that tells the clan: clan chat, opened with the report's line as a draft.
   */
   const reportDoors: ReportDoors = {
+    onFocusPlanet: (planetId: string) => {
+      onPanel(null);
+      focusPlanet(planetId);
+      setDetail(true);
+    },
     colonyOf: (planetId: string) => planets.find((world) => world.id === planetId)?.kind === 'COLONY',
     rivalOf: (planetId: string) => season.data?.rivals.find((mark) => mark.planetId === planetId)?.slot ?? null,
     ...(onOpenChat && clanBadge.data?.membership

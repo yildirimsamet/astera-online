@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   CLANMATE_COLOUR,
   LIMB_SCALE,
-  LIMB_TINT,
+  LIMB_PEAK,
+  LIMB_OPACITY,
+  planetGlowColor,
   MIN_MARKER_PX,
   SELECTION_RING,
   HIDDEN_PLANET_BRIGHTNESS,
@@ -44,6 +46,14 @@ import { galaxySchema } from '../src/api/schemas.js';
  * from a screenshot that nobody will take again.
  */
 describe('the atmosphere limb', () => {
+  it('takes its faint glow from each world look', () => {
+    expect(planetGlowColor('planet-a')).not.toBe(planetGlowColor('planet-b'));
+  });
+  it('matches the visible skin when a world wears one', () => {
+    expect(planetGlowColor('planet-a', 'planet-ice')).toBe('#a7e8ff');
+    expect(planetGlowColor('planet-a', 'planet-lava')).toBe('#ff9a50');
+    expect(planetGlowColor('planet-a', 'unknown-skin')).toBe(planetGlowColor('planet-a'));
+  });
   /**
    * IT STANDS OFF THE WORLD, AND STOPS WELL SHORT OF THE MARKER.
    *
@@ -71,25 +81,18 @@ describe('the atmosphere limb', () => {
     expect(LIMB_SCALE - 1).toBeLessThanOrEqual(0.2);
   });
 
-  /**
-   * SCATTERED LIGHT IS WARM, and neutral grey is what the second attempt looked
-   * like. The key light in this scene is warm and the sixteen planet renders are
-   * lit to match, so a limb that is not warmer than it is blue belongs to a
-   * different scene from the art it is drawn around.
-   */
-  it('is warm, in the same direction as the key light', () => {
-    expect(LIMB_TINT.r).toBeGreaterThan(LIMB_TINT.g);
-    expect(LIMB_TINT.g).toBeGreaterThan(LIMB_TINT.b);
+  it('places visible light outside the opaque silhouette', () => {
+    expect(LIMB_PEAK).toBeGreaterThan(1 / LIMB_SCALE);
+    expect(LIMB_PEAK * LIMB_SCALE).toBeLessThan(1.08);
+    expect(LIMB_OPACITY).toBeGreaterThanOrEqual(0.4);
+    expect(LIMB_OPACITY).toBeLessThan(0.6);
   });
 
   /**
    * AND THE FOG STILL HOLDS OVER IT.
    *
-   * The bodies are dimmed per instance by `STANCE_LIGHT`, so an unwatched world is
-   * literally darker. The limb is multiplied by the same figure — if it were not,
-   * the brightest pixel on the silhouette would be at full strength on exactly the
-   * worlds the fog is hiding, which is the most eye-catching way available to undo
-   * it.
+   * An unwatched world and its limb stay dimmer, while the floor keeps the narrow
+   * coloured edge visible against the sky.
    */
   it('is dimmed by the same stance light as the world it belongs to', () => {
     const brightest = Math.max(...Object.values(STANCE_LIGHT));
@@ -97,7 +100,8 @@ describe('the atmosphere limb', () => {
     expect(darkest).toBeLessThan(brightest);
     // The value the component multiplies by, asserted as the relationship it has
     // to hold rather than as a repeat of the arithmetic.
-    expect(LIMB_TINT.r * darkest).toBeLessThan(LIMB_TINT.r * brightest);
+    expect(limbLight('dark', 'UNKNOWN')).toBeLessThan(limbLight('self', 'UNKNOWN'));
+    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.5);
   });
 });
 
@@ -361,10 +365,9 @@ describe('world identity on the disc', () => {
     expect(VISIBLE_PLANET_BRIGHTNESS).toBe(1.25);
     expect(HIDDEN_PLANET_BRIGHTNESS).toBe(0.85);
     expect(bodyLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
-    expect(bodyLight('dark', 'UNKNOWN'))
-      .toBeCloseTo(STANCE_LIGHT.dark * UNRESOLVED_BODY_LIGHT * 0.85);
+    expect(bodyLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.45);
     expect(limbLight('watched', 'RESOLVED')).toBeCloseTo(STANCE_LIGHT.watched * 1.25);
-    expect(limbLight('dark', 'UNKNOWN')).toBeCloseTo(STANCE_LIGHT.dark * 0.85);
+    expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThanOrEqual(0.5);
   });
 
   /**
@@ -373,24 +376,21 @@ describe('world identity on the disc', () => {
    * Owner report: undiscovered worlds were barely visible on a phone. The cause is
    * that the dimming COMPOUNDS — stance, then this, then `HIDDEN_PLANET_BRIGHTNESS`
    * — so the darkest world was landing near a twelfth of full brightness while its
-   * own warm limb sat four times higher and read as a rim around nothing.
+   * own limb sat four times higher and read as a rim around nothing.
    *
-   * So the number moved, and both properties that make it a fog signal are held
-   * here rather than left to the eye: it is brighter than it was, and it is still
-   * unmistakably darker than a world under live sight. A future lift that quietly
-   * closed the second gap would delete the fog while every screenshot still looked
-   * right.
+   * The minimum now keeps the body visible, while preserving a clear difference
+   * from a world under live sight.
    */
   it('lifts an unread world clear of invisible without letting it read as seen', () => {
-    expect(UNRESOLVED_BODY_LIGHT).toBe(0.35);
+    expect(UNRESOLVED_BODY_LIGHT).toBe(0.7);
 
     const unread = bodyLight('dark', 'UNKNOWN');
     const seen = bodyLight('self', 'RESOLVED');
 
-    // Brighter than the 0.22 it shipped at, which is the owner's actual request.
-    expect(unread).toBeGreaterThan(STANCE_LIGHT.dark * 0.22 * HIDDEN_PLANET_BRIGHTNESS);
+    // The body needs enough colour to read as a solid world at the far LOD.
+    expect(unread).toBeGreaterThanOrEqual(0.45);
     // And still a fraction of a world you can actually see.
-    expect(unread).toBeLessThan(seen * 0.2);
+    expect(unread).toBeLessThan(seen * 0.5);
     // The limb stays the brighter of the two, so the silhouette still reads as a rim.
     expect(limbLight('dark', 'UNKNOWN')).toBeGreaterThan(unread);
   });

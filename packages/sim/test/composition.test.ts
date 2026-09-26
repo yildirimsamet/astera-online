@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  HULLS, counterMult, fleetValue, hullBuildable, type Fleet, type HullId,
+  HULLS, counterMult, fleetValue, hullBuildable, resourceValue, type Fleet, type HullId,
 } from '@astera/rules';
 import {
   ARCHETYPES, COMBAT_HULLS, GROUND_DEFENCE, adaptiveMix, runSeason, tradeScore,
@@ -28,6 +28,11 @@ function shares(f: Fleet): Record<CombatHullId, number> {
 }
 
 describe('tradeScore ranks hulls by what they trade, not by what they cost', () => {
+  it('uses economic replacement effort so a crystal recipe shift does not change hull efficiency', () => {
+    const dart = HULLS.DART;
+    expect(tradeScore('DART', { DART: 1 }))
+      .toBeCloseTo((dart.atk * dart.hp) / resourceValue(dart), 12);
+  });
   it('prefers the hull that counters the defence it is scored against', () => {
     // Derived, not asserted against a hull name: whichever class the counter
     // matrix favours must come out on top, whatever the hull table says today.

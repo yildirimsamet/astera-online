@@ -19,6 +19,7 @@ let worlds: PlanetView[] = [planet];
 let notifications: NotificationView[] = [];
 let pending: PendingThread[] = [];
 let shieldUntil: Date | null = null;
+let claimable = 0;
 const mutate = vi.fn();
 
 vi.mock('../../src/api/queries.js', async () => {
@@ -28,7 +29,7 @@ vi.mock('../../src/api/queries.js', async () => {
     usePlanet: () => ({ data: planet, dataUpdatedAt: Date.now() }),
     useSeason: () => ({ data: { shieldUntil, shieldKind: shieldUntil ? 'NEWCOMER' : null } }),
     useNotifications: () => ({ data: { notifications } }),
-    useRewards: () => ({ data: { claimable: 0 } }),
+    useRewards: () => ({ data: { claimable } }),
     usePending: () => ({ data: { pending } }),
     useMining: () => ({ data: { runs: [] } }),
     useGalaxyEvents: () => ({ data: { events: [] } }),
@@ -47,7 +48,7 @@ vi.mock('../../src/api/world.js', () => ({
 }));
 
 const handlers = () => ({
-  onCommander: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(), nowOpen: false, onNow: vi.fn(),
+  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(), nowOpen: false, onNow: vi.fn(),
 });
 
 beforeEach(() => {
@@ -56,6 +57,7 @@ beforeEach(() => {
   notifications = [];
   pending = [];
   shieldUntil = null;
+  claimable = 0;
   mutate.mockReset();
 });
 
@@ -97,14 +99,17 @@ describe('the wired top of the shell', () => {
   });
 
   it('routes its controls to the shell', async () => {
+    claimable = 2;
     const on = handlers();
     render(<HudTop commander="Samet" {...on} />, { wrapper: ToastProvider });
     await userEvent.click(screen.getByRole('button', { name: /^Commander Samet/ }));
     await userEvent.click(screen.getByRole('button', { name: /^Alloy/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Signals' }));
+    await userEvent.click(screen.getByTestId('claimable-rewards'));
     expect(on.onCommander).toHaveBeenCalledTimes(1);
     expect(on.onEconomy).toHaveBeenCalledTimes(1);
     expect(on.onBell).toHaveBeenCalledTimes(1);
+    expect(on.onRewards).toHaveBeenCalledTimes(1);
   });
 
   /**

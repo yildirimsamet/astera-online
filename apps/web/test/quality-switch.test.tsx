@@ -54,9 +54,9 @@ describe('the image quality control', () => {
   it('offers all three rungs under one name', () => {
     show();
 
-    expect(screen.getByRole('group', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: i18n.t('menu.qualityLabel') })).toBeInTheDocument();
     for (const rung of ['high', 'balanced', 'low'] as const) {
-      expect(screen.getByRole('button', { name: i18n.t(`menu.quality.${rung}`) }))
+      expect(screen.getByRole('tab', { name: i18n.t(`menu.quality.${rung}`) }))
         .toBeInTheDocument();
     }
   });
@@ -64,22 +64,22 @@ describe('the image quality control', () => {
   it('takes effect on the tap, with no confirm step', () => {
     show();
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.quality.low') }));
+    fireEvent.click(screen.getByRole('tab', { name: i18n.t('menu.quality.low') }));
     expect(renderQuality()).toBe('low');
   });
 
   /**
    * THE STATE IS ANNOUNCED, NOT INFERRED FROM A COLOUR. `Segmented` in `group`
-   * role carries `aria-pressed`, so a screen reader says which rung is on rather
+   * role carries `aria-selected`, so a screen reader says which rung is on rather
    * than leaving it to a lit face nobody can hear.
    */
   it('says which rung is currently in force', () => {
     show();
 
-    expect(screen.getByRole('button', { name: i18n.t('menu.quality.balanced') }))
-      .toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: i18n.t('menu.quality.high') }))
-      .toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('tab', { name: i18n.t('menu.quality.balanced') }))
+      .toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: i18n.t('menu.quality.high') }))
+      .toHaveAttribute('aria-selected', 'false');
   });
 
   /**
@@ -93,7 +93,7 @@ describe('the image quality control', () => {
 
     expect(screen.getByText(i18n.t('menu.qualityHint.balanced'))).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.t('menu.quality.low') }));
+    fireEvent.click(screen.getByRole('tab', { name: i18n.t('menu.quality.low') }));
     expect(screen.getByText(i18n.t('menu.qualityHint.low'))).toBeInTheDocument();
     expect(screen.queryByText(i18n.t('menu.qualityHint.balanced'))).not.toBeInTheDocument();
   });

@@ -109,6 +109,11 @@ export function ItemSheet({
   const [explained, setExplained] = useState(false);
   const durableLevel = levelOf(planet, item);
   const projected = projectedQueueState(planet, 'CONSTRUCTION');
+  const orbitSlots = satelliteSlots(projected.buildings.CORE);
+  const inactiveSatelliteIndex = item.kind === 'satellite' && !projected.effectiveOrbit.includes(item.id)
+    ? planet.orbit.indexOf(item.id)
+    : -1;
+  const inactiveOpensAt = inactiveSatelliteIndex < 0 ? null : nextSlotCore(0, inactiveSatelliteIndex);
   const level = item.kind === 'building'
     ? projected.buildings[item.id]
     : item.kind === 'instrument'
@@ -187,7 +192,7 @@ export function ItemSheet({
       >
         <div className="flex flex-col gap-3 pt-1">
           {item.kind === 'satellite' ? (
-            <OrbitHero id={item.id} orbit={projected.orbit} slots={planet.orbitSlots} tag={tag} />
+            <OrbitHero id={item.id} orbit={projected.orbit} slots={orbitSlots} tag={tag} />
           ) : (
             <Hero item={item} level={durableLevel} name={name} gain={gainFor(item, level, levels, production)} />
           )}
@@ -212,6 +217,12 @@ export function ItemSheet({
             )}
           </div>
 
+          {inactiveOpensAt !== null && (
+            <p role="status" className="text-caption leading-snug text-v2-warn">
+              {t('planet.orbit.inactiveSatellite')} {t('planet.orbit.slotsNext', { level: inactiveOpensAt })}
+            </p>
+          )}
+
           {queued && !terminal && (
             <p className="flex items-center gap-1.5 rounded-chip border border-v2-self/30 bg-v2-self/10 px-2.5 py-1.5 text-caption text-v2-self">
               <Icon id="i-clock" className="size-3.5 shrink-0" />
@@ -222,7 +233,7 @@ export function ItemSheet({
           {item.kind === 'satellite' && (
             <SlotCard
               orbit={projected.orbit}
-              slots={planet.orbitSlots}
+              slots={orbitSlots}
               core={projected.buildings.CORE}
               placing={!terminal && level === 0}
             />
@@ -474,14 +485,15 @@ const sentence = (text: string): string =>
 /** Every slot the Command Core can ever open. */
 const MOST_SLOTS = satelliteSlots(Number.MAX_SAFE_INTEGER);
 
-type Socket = 'self' | 'taken' | 'target' | 'free' | 'shut';
+type Socket = 'self' | 'taken' | 'inactive' | 'target' | 'free' | 'shut';
 
 /**
  * THE ORBIT AS SOCKETS. What is up there, the slot this one would take (dashed), the
  * open ones, and the ones the Core has not opened yet (shut).
  */
 function orbitSockets(id: SatelliteId, orbit: readonly SatelliteId[], slots: number): Socket[] {
-  const up = orbit.map((satellite): Socket => (satellite === id ? 'self' : 'taken'));
+  const up = orbit.map((satellite, index): Socket =>
+    index >= slots ? 'inactive' : satellite === id ? 'self' : 'taken');
   const open = Math.max(0, slots - orbit.length);
   const placing = !orbit.includes(id);
   const free = Array.from({ length: open }, (_, i): Socket => (placing && i === 0 ? 'target' : 'free'));
@@ -492,6 +504,7 @@ function orbitSockets(id: SatelliteId, orbit: readonly SatelliteId[], slots: num
 const SOCKET: Record<Socket, string> = {
   self: 'border-v2-self bg-v2-self/15',
   taken: 'border-v2-self/50 bg-v2-panel',
+  inactive: 'border-v2-line bg-v2-void text-v2-ink-3',
   target: 'border-dashed border-v2-self bg-v2-self/10',
   free: 'border-v2-line-hi bg-v2-deep',
   shut: 'border-v2-line bg-v2-void text-v2-ink-3',
@@ -510,7 +523,7 @@ function OrbitHero({ id, orbit, slots, tag }: { id: SatelliteId; orbit: readonly
         {sockets.map((socket, index) => {
           const angle = ((-135 + (index * 360) / sockets.length) * Math.PI) / 180;
           // The sockets start with the orbit, in its order.
-          const other = socket === 'taken' ? orbit[index] : undefined;
+          const other = socket === 'taken' || socket === 'inactive' ? orbit[index] : undefined;
           return (
             <span
               key={index}
@@ -519,7 +532,8 @@ function OrbitHero({ id, orbit, slots, tag }: { id: SatelliteId; orbit: readonly
               style={{ left: `${String(50 + 44 * Math.cos(angle))}%`, top: `${String(50 + 44 * Math.sin(angle))}%` }}
             >
               {socket === 'shut' && <Icon id="i-lock" className="size-3" />}
-              {other && <img src={SATELLITE_ART[other]} alt="" className="size-4 object-contain" />}
+              {other && <img src={SATELLITE_ART[other]} alt="" className={socket === 'inactive' ? 'size-4 object-contain opacity-45 grayscale' : 'size-4 object-contain'} />}
+              {socket === 'inactive' && <Icon id="i-lock" className="absolute -right-1 -top-1 size-2.5" />}
               {socket === 'self' && <img src={SATELLITE_ART[id]} alt="" className="size-4 object-contain" />}
             </span>
           );

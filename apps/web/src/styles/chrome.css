@@ -34,7 +34,17 @@
  * every frame of the scene the game is actually played in.
  */
 
+@keyframes claimable-gift-swing {
+  0%, 10%, 32%, 100% { transform: rotate(0deg); }
+  15%, 25% { transform: rotate(-15deg); }
+  20%, 30% { transform: rotate(15deg); }
+}
+
 @layer components {
+
+  .claimable-gift-swing {
+    animation: claimable-gift-swing 2.4s ease-in-out infinite;
+  }
 
   /**
    * THE PODIUM IN ONE GLANCE.

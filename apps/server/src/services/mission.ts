@@ -45,7 +45,7 @@ import { assertAttackProtections, assertWorldAttackable } from './attackProtecti
 import { peakCoreLevels } from './player.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
-import { publishShard } from '../stream/bus.js';
+import { publishReward, publishShard } from '../stream/bus.js';
 import { pendingThreads, type PendingThread } from './session.js';
 import { inboundRadarLead } from './radar.js';
 import { planetView, type PlanetView } from './planetView.js';
@@ -527,6 +527,7 @@ export async function launchAttack(
      * fog-enforced query the poll was going to read anyway, sooner.
      */
     await publishShard(tx, origin.seasonId, 'launch');
+    await publishReward(tx, origin.playerId);
     if (fleetChangesWatch(requested)) await publishWatchChanges(tx, [originPlanetId]);
 
     const homeDefenceAfter =

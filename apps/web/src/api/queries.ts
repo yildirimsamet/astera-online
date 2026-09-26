@@ -471,15 +471,13 @@ export function useReports() {
 /**
  * WHAT THE GAME OWES YOU, AND THE ONE READ THAT DOES NOT NEED A TIMER.
  *
- * Everything on this payload moves because YOU moved it — a probe you sent, a
- * level you bought, a run of yours that arrived — so `READ` is the whole policy
- * and a poll would be a request a minute for a number that cannot have changed.
+ * Progress moves when YOU act or when a scheduled result lands. Mission launch
+ * mutations invalidate this query for the probe and raid chains, and private
+ * reward events reach the commander's other open devices. The event stream also
+ * refreshes completed construction, raids, mining and salvage. `READ` needs no polling.
  *
- * The one thing that moves it without a tap is a flight ENDING — a raid
- * resolving, a drill reaching its rock — and that is a player event, which
- * `useEventStream` already invalidates this key for. A hand-written `SOCIAL`
- * grant is not an event at all and is picked up when the panel is opened, which
- * is the only moment it matters.
+ * A hand-written `SOCIAL` grant publishes a private reward event for an online
+ * commander; focus and stream reconnection also resync after any missed event.
  */
 export function useRewards() {
   const api = useApi();
@@ -1679,7 +1677,7 @@ export function useProbe() {
     mutationFn: (targetPlanetId: string) => api.probe(targetPlanetId, activePlanetId ?? undefined),
     onMutate: lane.enter,
     onSuccess: () => {
-      invalidate(keys.planet, keys.intel, keys.pending);
+      invalidate(keys.planet, keys.intel, keys.pending, keys.rewards);
     },
     onSettled: (_data, _error, _targetPlanetId, turn) => { lane.leave(turn); },
   });
@@ -2029,7 +2027,7 @@ export function useLaunch() {
         client.cancelQueries({ queryKey: keys.pending }),
       ]);
       client.setQueryData(keys.pending, { pending: result.pending });
-      invalidate(keys.galaxy, keys.intel);
+      invalidate(keys.galaxy, keys.intel, keys.rewards);
     },
     onSettled: (_data, _error, _vars, turn) => { lane.leave(turn); },
   });

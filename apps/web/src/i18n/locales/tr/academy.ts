@@ -33,7 +33,7 @@ export const academy = {
     "deuterium": "Döteryum Rafinerisi yakıt üretir. Saldırıda gidiş ve dönüş yakıtı kalkışta ödenir.",
     "foundry": "Dökümhane yörüngeden üretimini artırır. Şimdi kurman gerekmiyor.",
     "intel": "İstihbarat, filonu göndermeden önce fırsatları görmeni ve riski tartmanı sağlar. İstihbarat sekmesine dokun.",
-    "uplink": "İlk yörünge yuvan açıldı. Sana Uplink uydusu ve 1. seviye Teleskop verdik. Uplink Teleskop'u çalıştırır; birazdan Radar'ı da vereceğiz. Devam et, görüş alanını dene.",
+    "uplink": "Komuta Çekirdeği 1. seviyede ilk yörünge yuvasını açar. Sana Anten uydusu ve 1. seviye Teleskop verdik. Anten Teleskop'u çalıştırır; birazdan Radar'ı da vereceğiz. Devam et, görüş alanını dene.",
     "telescope": "Görünüm'den hediye Teleskop'un alanını aç. İçindeki gemilerin türünü ve sayısını görürsün. Dışında bu ayrıntılar bilinmez; sıradaki adımda Radar'ın farkını göreceksin.",
     "radar": "1. seviye Radar'ını da aldın. Aşağıdaki iki okumayı karşılaştır: Radar uzaktaki hareketi bulur, Teleskop yakındaki filonun tam gemi listesini verir. Radar 4 kaba büyüklüğü, 5 türü açar.",
     "veil": "Örtü, gezegenin hakkındaki bilgileri gözlemcilerden saklar. Filonu görünmez yapmaz.",

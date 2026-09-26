@@ -364,6 +364,10 @@ describe('what a private clan event asks the client to read', () => {
     expect(readsForPrivateEvent('private:strategic-sight')).toEqual([keys.traffic]);
   });
 
+  it('refreshes only claimable rewards after a hand grant', () => {
+    expect(readsForPrivateEvent('private:reward')).toEqual([keys.rewards]);
+  });
+
   /**
    * The opposite default to the shard table's inert `[]`. A newer server naming a
    * kind this build has never heard of still described something that happened to

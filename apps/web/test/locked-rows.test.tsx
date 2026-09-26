@@ -165,7 +165,8 @@ describe('pressing the reason', () => {
   it('hands a research gate to the host', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const onOpenResearch = vi.fn();
-    current = bare;
+    // Satisfy the earlier Shipyard gate so this row points at research.
+    current = { ...bare, buildings: { ...bare.buildings, SHIPYARD: 4 } };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const view = render(
       <QueryClientProvider client={client}>
@@ -179,6 +180,7 @@ describe('pressing the reason', () => {
     await userEvent.click(fix!);
 
     expect(onOpenResearch).toHaveBeenCalledOnce();
+    expect(onOpenResearch).toHaveBeenCalledWith('STARSHIP_ENGINEERING');
   });
 
   /** And it does NOT open the detail sheet on the way, which the row press does. */

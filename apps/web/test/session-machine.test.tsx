@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
+import type { ClaimResult } from '../src/api/schemas.js';
 import { useSession } from '../src/session/useSession.js';
+import { planetView } from './fixtures.js';
 
 /**
  * WHICH SCREEN OPENS, AND WHY. D21.
@@ -95,6 +97,40 @@ const signedInOnly = {
 describe('the session machine', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.sessionStorage.clear();
+  });
+
+  it('resumes a placed galaxy without a loading phase, then confirms the cookie', async () => {
+    window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
+    const { wrapper, calls } = harness(placed);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    expect(result.current.session.phase).toBe('ready');
+    await waitFor(() => { expect(calls).toContain('GET /api/auth/me'); });
+    expect(result.current.session.phase).toBe('ready');
+  });
+
+  it('removes a stale resumed galaxy if the cookie has expired', async () => {
+    window.sessionStorage.setItem('astera:ready-session', JSON.stringify(placed['/api/auth/me']));
+    const { wrapper } = harness({});
+    const { result } = renderHook(() => useSession(), { wrapper });
+    expect(result.current.session.phase).toBe('ready');
+    await waitFor(() => { expect(result.current.session.phase).toBe('landing'); });
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
+  });
+
+  it('remembers a planet claimed from the rehearsal for the next page restore', async () => {
+    const { wrapper, api } = harness({});
+    vi.spyOn(api, 'claim').mockResolvedValue({
+      ...SESSION,
+      placement: { shard: 'EU-1', shardName: 'Vantage', planetId: 'p1', planetName: 'Kestrel-12' },
+      applied: [],
+      planet: planetView(),
+    } as ClaimResult);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('landing'); });
+    await act(async () => { await result.current.claim('vantage', 'correct-horse-battery', []); });
+    expect(result.current.session.phase).toBe('ready');
+    expect(JSON.parse(window.sessionStorage.getItem('astera:ready-session') ?? 'null')).toMatchObject({ accountId: 'a1' });
   });
 
   it('sends a stranger to the front door', async () => {
@@ -342,6 +378,18 @@ describe('the session machine', () => {
     });
     expect(result.current.session.phase).toBe('landing');
     expect(result.current.session).toMatchObject({ open: 'login' });
+  });
+
+  it('leaves the loading phase if sign-out cannot reach the server', async () => {
+    const { wrapper, api } = harness(placed);
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => { expect(result.current.session.phase).toBe('ready'); });
+    vi.spyOn(api, 'logout').mockRejectedValue(new Error('network down'));
+
+    await act(async () => { await result.current.signOut(); });
+
+    expect(result.current.session.phase).toBe('blocked');
+    expect(window.sessionStorage.getItem('astera:ready-session')).toBeNull();
   });
 
   /**

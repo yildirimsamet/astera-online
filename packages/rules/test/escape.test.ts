@@ -10,6 +10,7 @@ import {
   escapingShips,
   fleetEntries,
   fleetEscapeApplies,
+  fleetEscapeMinimumApplies,
   fleetValue,
   missionFuel,
   mulberry32,
@@ -51,7 +52,7 @@ const TANK = 100_000;
 const raid = (
   wing: Fleet | readonly JointAttackerStack[],
   line: Fleet,
-  options: { shield?: number; deuterium?: number; escape?: boolean } = {},
+  options: { shield?: number; deuterium?: number; escape?: boolean; rulesetVersion?: number } = {},
 ) => resolveRaid({
   stacks: Array.isArray(wing) ? wing : [soloStack(wing as Fleet, NONE)],
   line,
@@ -60,6 +61,8 @@ const raid = (
   defender: NONE,
   deuterium: options.deuterium ?? TANK,
   escape: options.escape ?? true,
+  minimumCombatShips: fleetEscapeMinimumApplies(options.rulesetVersion ?? MULTI_WORLD.rulesetVersion)
+    ? ESCAPE.minimumCombatShips : 0,
 });
 
 const plain = (wing: Fleet, line: Fleet, shield = 0) =>
@@ -80,6 +83,30 @@ describe('the escape rule, as the owner set it', () => {
     expect(fleetEscapeApplies(10)).toBe(false);
     expect(fleetEscapeApplies(11)).toBe(true);
     expect(fleetEscapeApplies(1)).toBe(false);
+    expect(MULTI_WORLD.rulesetVersion).toBeGreaterThanOrEqual(MULTI_WORLD.fleetEscapeMinimumRulesetVersion);
+    expect(fleetEscapeMinimumApplies(12)).toBe(false);
+    expect(fleetEscapeMinimumApplies(13)).toBe(true);
+  });
+
+  it('requires five fighting ships in the defending line', () => {
+    expect(ESCAPE.minimumCombatShips).toBe(5);
+    for (const count of [1, 2, 3, 4]) {
+      const line: Fleet = { DART: count };
+      const wing: Fleet = { DART: count * 4 };
+      expect(plain(wing, line).grade).toBe('DECISIVE');
+      expect(raid(wing, line).escape).toBeNull();
+    }
+    expect(raid({ DART: 20 }, { DART: 5 }).escape?.kind).toBe('ESCAPED');
+  });
+
+  it('does not count transports or ground guns toward the minimum', () => {
+    const line: Fleet = { DART: 4, COURIER: 20, THORN: 10 };
+    expect(raid({ DART: 100 }, line).escape).toBeNull();
+  });
+
+  it('keeps the former escape rule in a season dealt before the minimum', () => {
+    expect(raid({ DART: 4 }, { DART: 1 }, { rulesetVersion: 12 }).escape?.kind)
+      .toBe('ESCAPED');
   });
 
   it('draws its line at a third of what the wing fires', () => {
@@ -185,7 +212,7 @@ describe('resolveRaid', () => {
 
   it('leaves the guns to fight alone when the ships run', () => {
     const line: Fleet = { ...LINE, BASTION: 4 };
-    const wing: Fleet = { VIPER: 75, TALON: 38, SENTINEL: 30 };
+    const wing: Fleet = { VIPER: 80, TALON: 38, SENTINEL: 30 };
     expect(combatValue(wing)).toBeGreaterThanOrEqual(3 * combatValue(line));
     const outcome = raid(wing, line);
     expect(outcome.escape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: 46 });
@@ -283,6 +310,13 @@ describe('resolveRaid', () => {
  * the truth; the tank stays unknown to a raider, so even RUN is "if they can pay".
  */
 describe('escapeVerdict', () => {
+  it('cannot promise retreat from a power reading that does not reveal ship count', () => {
+    const clears = { low: 20_000, high: 30_000 };
+    expect(escapeVerdict(30_000, { low: 4_000, high: 9_000 }, clears, true))
+      .toBe('UNSURE');
+    expect(escapeVerdict(30_000, { low: 10_001, high: 14_000 }, clears, true))
+      .toBe('STAND');
+  });
   const clears = { low: 20_000, high: 30_000 };
 
   it('says they run when the whole band sits under the line and is cleared everywhere', () => {

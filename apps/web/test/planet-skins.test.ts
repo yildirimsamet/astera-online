@@ -223,6 +223,19 @@ describe('first planet skin visuals', () => {
     map.dispose();
   });
 
+  it('keeps palette and country planet bodies opaque when their GLTF material is translucent', () => {
+    const source = new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5, depthWrite: false });
+    const visual = planetSkinVisual('planet-lava')!;
+    if (visual.finish.kind !== 'PALETTE') throw new Error('Expected palette');
+    const palette = createPlanetSkinMaterial(source, visual.finish).material;
+    const country = createCountryRecoveryMaterial(source);
+    for (const material of [palette, country]) {
+      expect(material.transparent).toBe(false);
+      expect(material.opacity).toBe(1);
+      expect(material.depthWrite).toBe(true);
+    }
+  });
+
   it('falls back cleanly when a stale or forged skin id is received', () => {
     expect(planetSkinVisual('planet-unknown', 'NORMAL')).toBeNull();
     expect(planetSkinVisual('__proto__', 'RECOVERY_SHIELD')).toBeNull();

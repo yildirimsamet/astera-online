@@ -1586,8 +1586,8 @@ function StrategicWorldGuide({
     const alloy = planet.planet.alloy >= MULTI_WORLD.settlement.charge.alloy;
     const crystal = planet.planet.crystal >= MULTI_WORLD.settlement.charge.crystal;
     return (
-      <div className={`mb-3 rounded-chip border px-3 py-3 ${
-        claimActive ? 'border-v2-self/50 bg-v2-self/10' : 'border-v2-line/70 bg-deep/65'
+      <div className={`mb-3 rounded-control border px-3 py-2.5 ${
+        claimActive ? 'border-v2-self/40 bg-v2-self/5' : 'border-v2-line bg-v2-panel'
       }`}>
         <div className="flex items-center gap-2">
           <p className={`v2-legend ${ claimActive ? 'text-v2-self' : 'text-v2-ink' }`}>
@@ -1596,7 +1596,7 @@ function StrategicWorldGuide({
               : claimActive ? 'focus.planet.claimOpen' : 'focus.planet.colonyRoute')}
           </p>
         </div>
-        <ol className="mt-2 grid grid-cols-1 items-stretch gap-2 md:grid-cols-3">
+        <ol className="mt-2 flex flex-col gap-1">
           <RouteStep
             status={phase === 'NEUTRAL_PREP' ? 'current' : 'complete'}
             open={isOpen('colony-1', phase === 'NEUTRAL_PREP')}
@@ -1605,15 +1605,7 @@ function StrategicWorldGuide({
             label={t('focus.planet.routeRaid')}
             description={t('focus.planet.routeRaidDetail')}
             dataStep="1"
-          >
-            <Requirement
-              ok={null}
-              label={t('focus.planet.raidFleetBadge')}
-              explanation={t('focus.planet.raidFleetExplain')}
-            >
-              {t('focus.planet.raidFleetBadge')}
-            </Requirement>
-          </RouteStep>
+          />
           <RouteStep
             status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'complete'}
             open={isOpen('colony-2', false)}
@@ -1622,15 +1614,7 @@ function StrategicWorldGuide({
             label={t('focus.planet.routeClaim')}
             description={t('focus.planet.routeClaimDetail')}
             dataStep="2"
-          >
-            <Requirement
-              ok={null}
-              label={t('focus.planet.automaticBadge')}
-              explanation={t('focus.planet.automaticExplain')}
-            >
-              {t('focus.planet.automaticBadge')}
-            </Requirement>
-          </RouteStep>
+          />
           <RouteStep
             status={phase === 'NEUTRAL_PREP' ? 'upcoming' : 'current'}
             open={isOpen('colony-3', phase !== 'NEUTRAL_PREP')}
@@ -1864,10 +1848,10 @@ function RouteStep({
   children?: ReactNode;
 }) {
   const tone = status === 'current'
-    ? danger ? 'border-v2-warn/40 bg-v2-warn/10 text-v2-warn' : 'border-v2-self/45 bg-v2-self/10 text-v2-self'
+    ? danger ? 'border-v2-warn/40 bg-v2-warn/8 text-v2-warn' : 'border-v2-self/40 bg-v2-self/8 text-v2-self'
     : status === 'complete'
-      ? 'border-v2-self/30 bg-v2-self/5 text-v2-self'
-      : 'border-v2-line/70 bg-v2-deep/25 text-v2-ink-3';
+      ? 'border-v2-line bg-v2-deep/50 text-v2-self'
+      : 'border-v2-line bg-v2-deep/35 text-v2-ink-3';
   /**
    * ONLY THE PROSE FOLDS. THE REQUIREMENTS NEVER DO.
    *
@@ -1886,7 +1870,7 @@ function RouteStep({
 
   const header = (
     <span className="flex w-full items-center gap-2 text-left">
-      <span className="grid size-7 shrink-0 place-items-center rounded-full border border-current text-micro">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full border border-current font-v2-mono text-micro">
         {status === 'complete' ? '✓' : number}
       </span>
       <span className="v2-legend block min-w-0 flex-1 leading-tight">{label}</span>
@@ -1907,7 +1891,7 @@ function RouteStep({
 
   return (
     <li
-      className={`relative rounded-chip border px-2 py-2 text-left ${tone}`}
+      className={`relative rounded-control border px-2.5 py-1.5 text-left ${tone}`}
       aria-current={status === 'current' ? 'step' : undefined}
       data-colony-step={dataStep}
       data-open={open ? 'true' : 'false'}
@@ -1919,11 +1903,11 @@ function RouteStep({
       ) : header}
 
       {open && description !== undefined && (
-        <span data-step-detail className="mt-2 block text-label leading-snug text-v2-ink-2">
+        <span data-step-detail className="mt-1.5 block pl-8 text-micro leading-snug text-v2-ink-2">
           {description}
         </span>
       )}
-      {children && <span className="mt-2 flex flex-wrap gap-1.5">{children}</span>}
+      {children && <span className="mt-1.5 flex flex-wrap gap-1 pl-8">{children}</span>}
     </li>
   );
 }

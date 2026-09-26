@@ -609,6 +609,11 @@ export async function publishStrategicSight(tx: Queryable, playerId: string): Pr
   await publish(tx, playerId, `${PRIVATE_PREFIX}strategic-sight`);
 }
 
+/** Reward progress changed while this commander may be watching another device. */
+export async function publishReward(tx: Queryable, playerId: string): Promise<void> {
+  await publish(tx, playerId, `${PRIVATE_PREFIX}reward`);
+}
+
 /**
  * THIS COMMANDER'S RECORD OF ONE WORLD JUST MOVED. D151.
  *

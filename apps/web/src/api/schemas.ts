@@ -1888,6 +1888,7 @@ export const intelSchema = z.object({
       planetName: z.string().optional(),
       bearing: z.string().nullable(),
       originPlanetName: z.string().nullable(),
+      originPlanetId: z.string().nullable().optional(),
     }),
   ),
   probeReports: z.array(
@@ -2260,6 +2261,7 @@ const ordinaryBattleReport = z.object({
       neutral: z.boolean().default(false),
       /** The caller's own world in this battle: launched from, or hit. D121a. */
       yourPlanet: z.string().default(''),
+      yourPlanetId: z.string().nullable().optional(),
       yourLosses: fleet,
       theirLosses: fleet,
       /** The caller's own board at contact. Empty on reports written before D121. */
@@ -2370,6 +2372,7 @@ const strategicBattleReport = z.object({
   opponentPlanet: z.string(),
   opponentPlanetId: z.string().nullable(),
   yourPlanet: z.string(),
+  yourPlanetId: z.string().nullable().optional(),
   outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE', 'INTERCEPTED']),
   damage: z.number(),
   destroyedFleet: fleet,

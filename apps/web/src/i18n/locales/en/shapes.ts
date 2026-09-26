@@ -83,10 +83,11 @@ export const counter = {
   /** Taktik geri çekilme on the comparison: the verdict line and the rule one tap deeper. */
   escapeRun: 'Their line sits under a third of your fire: if their tank can pay, their ships lift off and only the guns fight.',
   escapeStand: 'Their ships stand and fight: the reading is over a third of your fire, or more than this wing clears.',
-  escapeUnsure: 'The reading straddles the escape line: their ships may lift off.',
-  escapeAt: 'Their ships run under {{at}}',
+  escapeUnsure: 'Their ships may lift off; the reading does not settle every retreat condition.',
+  escapeAt: 'Retreat power line: {{at}}',
   escapeRule:
     'Tactical retreat: a line facing at least three times its own firepower, which that raid would wipe out, lifts its ships off instead of fighting, if the world\u2019s tank pays a {{distance}}-unit round trip. The guns stay, and the stores are still raided.',
+  escapeMinimumRule: 'The defender also needs at least {{count}} fighting ships at home. A probe reading does not reveal the count.',
   compareRuleToggle: 'What is this?',
   compareMeaning: 'Resource cost, not attack damage. A bigger fleet alone does not guarantee victory.',
   compareRule:

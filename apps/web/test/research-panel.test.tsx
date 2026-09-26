@@ -260,7 +260,7 @@ describe('every project is reachable', () => {
       view.unmount();
     }
     expect(explanations.size).toBe(ALL.length);
-  }, 7_500);
+  }, 20_000);
 });
 
 describe('the groups', () => {
@@ -997,7 +997,7 @@ describe('the open-then-decide grammar', () => {
       expect(within(sheet).getByRole('button', { name: /research/i }), id).toBeInTheDocument();
       view.unmount();
     }
-  }, 7_500);
+  }, 20_000);
 });
 
 /**

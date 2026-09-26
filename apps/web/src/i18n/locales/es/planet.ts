@@ -146,6 +146,7 @@ export const planet = {
   },
 
   defend: {
+    escapeMinimum: "La retirada táctica requiere al menos {{minimum}} naves de combate aquí · {{count}} de {{minimum}} listas",
     strategicBand: "Defensa estratégica",
     strategicNote:
       "Una carga destruye la siguiente Estrella de la Muerte detectada por el Radar 3 o identificada en la mira del Telescopio. La carga se gasta cuando dispara.",
@@ -459,7 +460,7 @@ export const planetHero = {
   /** The one force unit, on the one world the commander knows exactly. D199. */
   firepower: "Potencia de fuego",
   perHourSuffix: "/h",
-  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L15". */
   orbit: "Órbita",
   disrupted: "Producción detenida · allanada · {{countdown}}",
   defence: "Defensa",

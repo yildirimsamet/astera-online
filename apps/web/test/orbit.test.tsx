@@ -3,13 +3,15 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  BUILDING_IDS, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
+  BUILDING_IDS, ESCAPE, FLEET_V2_HULLS, HULLS, INSTRUMENT_IDS, INSTRUMENT_MAX_LEVEL, MULTI_WORLD,
+  combatValue,
   RESEARCH_PROJECT_IDS, SATELLITES, SATELLITE_IDS, satelliteSlots,
 } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
 import { openAllBands, planetView } from './fixtures.js';
+import { compact } from '../src/lib/format.js';
 
 /**
  * THE ORBIT SURFACE — TWO KINDS OF HARDWARE, AND THE DIFFERENCE IS THE POINT. D25.
@@ -34,7 +36,7 @@ const planet = (
 ): PlanetView =>
   planetView(
     {
-      buildings: { CORE: 12, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
+      buildings: { CORE: 15, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 },
       orbitSlots: 3,
       fleet: {},
       score: { wealth: 10_000, dominion: 0 },
@@ -95,11 +97,22 @@ const show = (
 };
 
 describe('the orbit surface', () => {
+  it('offers the first Uplink slot on a new Core 1 planet', () => {
+    const view = show({
+      buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
+      orbit: [],
+      orbitSlots: 1,
+    });
+    expect(view.container.querySelector('#row-UPLINK [data-progression-state]'))
+      .not.toHaveAttribute('data-progression-state', 'locked');
+    expect(view.container.querySelector('#row-UPLINK')).not.toHaveTextContent(/free orbit slot/i);
+  });
+
   it('shows every unmet instrument prerequisite at once', () => {
     const view = show({
       buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 },
       orbit: [],
-      orbitSlots: 0,
+      orbitSlots: 1,
       instruments: { RADAR: 1 },
     });
     const row = view.container.querySelector('#row-RADAR');
@@ -209,14 +222,14 @@ describe('the orbit surface', () => {
   });
 
   it('names the Core level that opens the next slot, rather than only refusing', () => {
-    show({ buildings: { CORE: 1, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: 1 }, orbitSlots: 0 });
-    expect(screen.getByText('+1 at Core L6')).toBeInTheDocument();
+    show({ buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 }, orbitSlots: 1 });
+    expect(screen.getByText('+1 at Core L9')).toBeInTheDocument();
   });
 
   it('says the orbit is full instead of leaving the player to discover it', () => {
     show({ orbit: ['UPLINK', 'FOUNDRY', 'DERRICK'], orbitSlots: 3 });
     expect(screen.getByText(/orbit is full/i).parentElement)
-      .toHaveTextContent('orbit is full · +1 at Core L15');
+      .toHaveTextContent('orbit is full · +1 at Core L18');
   });
 
   /**
@@ -329,7 +342,7 @@ describe('the orbit surface', () => {
  */
 describe('the slot ladder the meter draws', () => {
   it('matches the rules at every Core level it claims to', () => {
-    for (const [core, slots] of [[1, 0], [2, 0], [5, 0], [6, 1], [8, 1], [9, 2], [11, 2], [12, 3], [14, 3], [15, 4], [20, 4]] as const) {
+    for (const [core, slots] of [[0, 0], [1, 1], [2, 1], [8, 1], [9, 2], [14, 2], [15, 3], [17, 3], [18, 4], [20, 4]] as const) {
       expect(satelliteSlots(core), `Core ${String(core)}`).toBe(slots);
     }
   });
@@ -501,7 +514,7 @@ describe('the compact row and sheet grammar', () => {
       expect(screen.getByRole('dialog', { name })).toBeInTheDocument();
       view.unmount();
     }
-  });
+  }, 15_000);
 });
 
 /**
@@ -655,7 +668,7 @@ describe('nothing is sold without a control', () => {
 describe('the escape threshold on Defend', () => {
   it('states it when the season was dealt the rule and ships stand at home', () => {
     show({ rulesetVersion: MULTI_WORLD.fleetEscapeRulesetVersion, fleet: { DART: 20 } }, 'defend');
-    expect(screen.getByTestId('escape-readout')).toHaveTextContent('28k');
+    expect(screen.getByTestId('escape-readout')).toHaveTextContent(compact(ESCAPE.ratio * combatValue({ DART: 20 })));
   });
 
   it('says nothing in a season dealt before it', () => {

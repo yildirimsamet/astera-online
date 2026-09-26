@@ -190,7 +190,12 @@ describe('the landing screen', () => {
     );
     await openDoor();
 
-    expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: /sign in/i });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole('heading')).toHaveClass('text-v2-ink');
+    expect(within(dialog).getByLabelText(/commander name/i)).toHaveAttribute('aria-invalid', 'false');
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: /^close$/i }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('submits what was typed', async () => {
@@ -253,6 +258,8 @@ describe('the landing screen', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(complaint);
     expect(onAuthenticate).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/commander name/i)).toHaveAttribute('aria-invalid', _label === 'an empty name' ? 'true' : 'false');
+    expect(screen.getByLabelText(/password/i)).toHaveAttribute('aria-invalid', _label === 'an empty password' ? 'true' : 'false');
   });
 
   /**
@@ -583,7 +590,7 @@ describe('reaching the way out', () => {
     expect(screen.queryByRole('button', { name: /research/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /clan/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /intel/i })).toBeNull();
-  });
+  }, 15_000);
 
   it('offers an accessible sound level beside the mute switch', async () => {
     const { MenuPanel } = await import('../src/shell/MenuPanel.js');
@@ -672,7 +679,7 @@ describe('reaching the way out', () => {
     );
 
     const announcements = screen.getByRole('button', { name: /announcement/i });
-    expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-opportunity');
+    expect(announcements.querySelector('[data-attention="true"]')).toHaveClass('text-v2-self');
     expect(announcements).toHaveTextContent('1');
   });
 

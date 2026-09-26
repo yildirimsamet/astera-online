@@ -145,6 +145,7 @@ export const planet = {
       "Aucun bâtiment ne peut dépasser le niveau du Noyau. Le Noyau détermine les limites des bâtiments et leur vitesse de construction.",
   },
   defend: {
+    escapeMinimum: "La retraite tactique exige au moins {{minimum}} vaisseaux de combat ici · {{count}} sur {{minimum}} prêts",
     strategicBand: "Défense stratégique",
     strategicNote:
       "Une munition chargée détruit la première Étoile de la Mort détectée par un Radar de niveau 3 ou identifiée dans le champ de vision d’un Télescope ; elle est consommée lorsqu’elle tire.",
@@ -441,7 +442,7 @@ export const planetHero = {
   tier: "palier {{tier}}",
   firepower: "Puissance de feu",
   perHourSuffix: "/h",
-  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L15". */
   orbit: "Orbite",
   disrupted: "Raid subi, production interrompue · {{countdown}}",
   defence: "Défense",

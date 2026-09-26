@@ -130,7 +130,7 @@ describe('Galaxy Chronicle surface', () => {
         capturable: false,
       },
     }]);
-    expect(screen.getByText(/capital was devastated/i)).toBeInTheDocument();
+    expect(screen.getByText(/EMP drained Aegis/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/may transfer control/i);
   });
 

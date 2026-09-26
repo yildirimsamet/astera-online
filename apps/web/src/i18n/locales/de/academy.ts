@@ -33,7 +33,7 @@ export const academy = {
     deuterium: 'Die Deuteriumraffinerie erzeugt Treibstoff. Bei einem Überfall bezahlst du Hin- und Rückflug schon beim Start.',
     foundry: 'Die Gießerei steigert die Produktion aus dem Orbit. Du musst sie jetzt noch nicht bauen.',
     intel: 'Aufklärung zeigt dir Chancen und hilft dir, vor einem Start Risiken einzuschätzen. Öffne den Reiter „Aufklärung“.',
-    uplink: 'Dein erster Orbitplatz ist frei. Du erhältst einen Uplink-Satelliten und ein Teleskop auf Stufe 1. Der Uplink versorgt das Teleskop; als Nächstes erhältst du Radar. Probiere deine Sicht aus.',
+    uplink: 'Der Kommandokern öffnet deinen ersten Orbitplatz auf Stufe 1. Du erhältst einen Uplink-Satelliten und ein Teleskop auf Stufe 1. Der Uplink versorgt das Teleskop; als Nächstes erhältst du Radar. Probiere deine Sicht aus.',
     telescope: 'Öffne Ansicht und zeige die Reichweite deines geschenkten Teleskops. Darin erkennst du Schiffstypen und Anzahl. Außerhalb bleiben diese Details unbekannt. Als Nächstes siehst du, was Radar ergänzt.',
     radar: 'Du hast nun auch Radar auf Stufe 1. Vergleiche die erkannte Flotte in der Nähe mit dem fernen Fragezeichen: Radar findet Bewegung, Teleskop zeigt genaue Schiffe. Radar 4 zeigt grobe Größe, Radar 5 den Typ.',
     veil: 'Der Schleier verbirgt Informationen über deine Welt vor Beobachtern. Deine Flotten macht er nicht unsichtbar.',

@@ -103,7 +103,7 @@ describe('ordinary build queues', () => {
 
   it('requires the Uplink to occupy an active slot and projects a queued Core reopening it', async () => {
     await grant(f.db, planetId, 100_000, 100_000);
-    await setLevel(f.db, planetId, 'CORE', 2);
+    await setLevel(f.db, planetId, 'CORE', 8);
     await giveSatellite(f.db, planetId, 'FOUNDRY');
     await giveSatellite(f.db, planetId, 'UPLINK');
 
@@ -115,7 +115,7 @@ describe('ordinary build queues', () => {
     });
 
     await expect(upgradeBuilding(f.db, planetId, 'CORE', f.clock)).resolves.toMatchObject({
-      level: 3,
+      level: 9,
     });
     await expect(raiseInstrument(f.db, planetId, 'TELESCOPE', f.clock)).resolves.toMatchObject({
       level: 1,

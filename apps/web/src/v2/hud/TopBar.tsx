@@ -23,11 +23,12 @@ export interface TopBarProps {
   works?: WorksLineProps;
   /** `bellState(...)`. */
   bell: { unseen: number; urgent: boolean };
-  /** Rewards waiting to be claimed behind the commander chip (`useRewards().claimable`). */
+  /** Rewards ready to claim (`useRewards().claimable`). */
   rewards: number;
   /** The recovery boost is running on the active world. */
   boosted: boolean;
   onCommander: () => void;
+  onRewards: () => void;
   onWorld: () => void;
   /** A meter opens the economy detail. */
   onResource: (resource: Resource) => void;
@@ -43,7 +44,7 @@ const RESOURCES: readonly Resource[] = ['alloy', 'crystal', 'deuterium'];
  *
  * One row of 48 px: the commander chip (the Commander page; the attack shield and
  * its time ride it while it holds), the active world's mark once there are two,
- * the three resource meters of that world, and the bell.
+ * the three resource meters of that world, a claimable gift, and the bell.
  *
  * THE BELL COUNTS NEWS, NOT STATES. A full store is not news — it has its warn
  * notch on the meter — and a bell that always moves is a bell nobody reads, so
@@ -60,6 +61,7 @@ export function TopBar({
   boosted,
   works,
   onCommander,
+  onRewards,
   onWorld,
   onResource,
   onBell,
@@ -75,15 +77,12 @@ export function TopBar({
   const shieldShort = shieldMinutes >= 60
     ? t('topBar.hours', { h: Math.floor(shieldMinutes / 60) })
     : t('units.minutes', { m: Math.max(1, shieldMinutes) });
-  // A badge may only promise what the surface behind it can show: the commander
-  // page holds the rewards, so they are the chip's one dot.
   const chipName = [
     t('statusBar.menuHint', { name: commander }),
     ...(shielded
       ? [t(shield.kind === 'RECOVERY' ? 'statusBar.recoveryShield.hint' : 'statusBar.newcomerShield.hint', { duration: shieldTime })]
       : []),
     ...(boosted ? [t('statusBar.recoveryBoost.note')] : []),
-    ...(rewards > 0 ? [t('statusBar.menuWaiting', { count: rewards })] : []),
   ].join(' · ');
 
   return (
@@ -94,15 +93,11 @@ export function TopBar({
         type="button"
         aria-label={chipName}
         {...(shielded ? { 'data-shielded': '' } : {})}
-        {...(rewards > 0 ? { 'data-attention': '' } : {})}
         onClick={onCommander}
         className="flex shrink-0 flex-col items-center"
       >
         <span className="relative grid size-7 place-items-center rounded-control border border-v2-self/70 bg-v2-raise text-caption font-bold text-v2-ink">
           {initials(commander)}
-          {rewards > 0 && (
-            <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-v2-self ring-2 ring-v2-deep" />
-          )}
         </span>
         {shielded && (
           <span aria-hidden="true" className="mt-0.5 flex items-center gap-0.5 text-v2-self">
@@ -145,6 +140,23 @@ export function TopBar({
       </div>
 
       {tabs !== undefined && <div className="ml-auto flex h-full shrink-0">{tabs}</div>}
+
+      {rewards > 0 && (
+        <button
+          type="button"
+          data-testid="claimable-rewards"
+          aria-label={`${t('rewards.title')} · ${t('rewards.waiting', { count: rewards })}`}
+          onClick={onRewards}
+          className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-self/70 bg-v2-self/10 text-v2-self"
+        >
+          <span className="claimable-gift-swing inline-flex origin-top" aria-hidden="true">
+            <Icon id="i-gift" className="size-4" />
+          </span>
+          <span aria-hidden="true" className="absolute -right-1 -top-1 min-w-4 rounded-full bg-v2-self px-0.5 text-center font-v2-mono text-micro font-semibold leading-4 text-v2-deep ring-2 ring-v2-deep">
+            {rewards > 9 ? '9+' : rewards}
+          </span>
+        </button>
+      )}
 
       <button
         type="button"

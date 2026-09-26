@@ -8,13 +8,14 @@ import type { Fleet, Rng } from './types.js';
  * TAKTİK GERİ ÇEKİLME — THE FLEET ESCAPE. Owner decision, 2026-09-23.
  *
  * When a raid lands, the SHIPS in the defending line lift off instead of fighting if
- * all four hold:
+ * all five hold in ruleset 13 onward:
  *
  *   1. there are ships in the line at all (guns never run);
- *   2. the wing fires at least `ESCAPE.ratio` times what the line fires (`combatValue`
+ *   2. at least `ESCAPE.minimumCombatShips` armed ships stand in the line;
+ *   3. the wing fires at least `ESCAPE.ratio` times what the line fires (`combatValue`
  *      on both sides — the axis a probe's defence band and the launch sheet share);
- *   3. the line, standing, would have been wiped out — the full fight grades DECISIVE;
- *   4. the world's tank pays `escapeFuel` for the lift, all of it or none (T6).
+ *   4. the line, standing, would have been wiped out — the full fight grades DECISIVE;
+ *   5. the world's tank pays `escapeFuel` for the lift, all of it or none (T6).
  *
  * The ships stay exactly where they were: nothing moves on the disc. The guns and the
  * Aegis fight the wing alone, re-resolved from the same seed, and every downstream
@@ -36,6 +37,15 @@ import type { Fleet, Rng } from './types.js';
 /** Whether a season was dealt this rule. Never inside a running one. */
 export const fleetEscapeApplies = (rulesetVersion: number): boolean =>
   rulesetVersion >= MULTI_WORLD.fleetEscapeRulesetVersion;
+
+/** A new season keeps token garrisons in combat; old seasons retain their rule. */
+export const fleetEscapeMinimumApplies = (rulesetVersion: number): boolean =>
+  rulesetVersion >= MULTI_WORLD.fleetEscapeMinimumRulesetVersion;
+
+/** Count only armed ships in the defending line: transports and guns do not qualify. */
+export const escapeCombatShipCount = (line: Fleet): number =>
+  fleetEntries(line).reduce((sum, [id, count]) =>
+    sum + (!HULLS[id].ground && HULLS[id].cls !== 'SUPPORT' ? count : 0), 0);
 
 /** The ships in a defending line: everything that is not a ground gun, armed or not. */
 export function escapingShips(line: Fleet): Fleet {
@@ -78,17 +88,19 @@ export type EscapeVerdict = 'RUN' | 'STAND' | 'UNSURE';
  *   · RUN    — every wall the band allows is at or under the line and is cleared;
  *   · UNSURE — anything between.
  *
- * RUN is still conditional, and the copy has to say so: the tank is never known to a
- * raider, and a band made only of guns has no ships to lift.
+ * RUN is still conditional: the tank is never known to a raider. In ruleset 13
+ * the probe also cannot establish the five-ship floor from a power band, so a
+ * power-only RUN becomes UNSURE.
  */
 export function escapeVerdict(
   wingPower: number,
   wall: { low: number; high: number },
   clears: { low: number; high: number },
+  minimumShipRule = false,
 ): EscapeVerdict {
   const at = wingPower / ESCAPE.ratio;
   if (wall.low > at || wall.low >= clears.high) return 'STAND';
-  if (wall.high <= at && wall.high < clears.low) return 'RUN';
+  if (wall.high <= at && wall.high < clears.low) return minimumShipRule ? 'UNSURE' : 'RUN';
   return 'UNSURE';
 }
 
@@ -119,6 +131,8 @@ export interface RaidInput {
   deuterium: number;
   /** `fleetEscapeApplies(season.rulesetVersion)`. */
   escape: boolean;
+  /** Five in ruleset 13 onward, zero for seasons dealt the earlier escape rule. */
+  minimumCombatShips: number;
 }
 
 /** Whole drops only, and a tank the row cannot vouch for is empty. */
@@ -133,6 +147,9 @@ export function resolveRaid(input: RaidInput): RaidResolution {
 
   const ships = escapingShips(input.line);
   if (fleetCount(ships) === 0) return { result: standing, escape: null };
+  if (escapeCombatShipCount(input.line) < input.minimumCombatShips) {
+    return { result: standing, escape: null };
+  }
 
   const power = input.stacks.reduce((sum, stack) => sum + combatValue(stack.fleet), 0);
   if (!outmatches(power, combatValue(input.line)) || standing.grade !== 'DECISIVE') {

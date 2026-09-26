@@ -33,8 +33,13 @@ describe('owner 30% economy experiment against the checkpoint', () => {
     for (const id of ALL_HULLS) {
       const hull = HULLS[id], baseline = checkpointPrices[id];
       const multiplier = hull.ground ? 1 : 1.30;
-      expect(hull.alloy, id).toBe(Math.ceil(baseline[0] * multiplier));
-      expect(hull.crystal, id).toBe(Math.ceil(baseline[1] * multiplier));
+      const oldAlloy = Math.ceil(baseline[0] * multiplier);
+      const oldCrystal = Math.ceil(baseline[1] * multiplier);
+      const crystalFactor = hull.ground || id === 'GARBAGE_COLLECTOR' ? 1
+        : hull.tier === null ? 1.25 : [1.55, 1.40, 1.30, 1.25][hull.tier - 1]!;
+      const crystal = Math.round(oldCrystal * crystalFactor);
+      expect(hull.alloy, id).toBe(oldAlloy - 2 * (crystal - oldCrystal));
+      expect(hull.crystal, id).toBe(crystal);
       expect(hull.deuterium, id).toBe(baseline[2]);
       const hardware = profileHull(hull);
       expect([hull.atk, hull.hp, hull.speed, hull.cargo], id)
@@ -148,7 +153,7 @@ describe('owner 30% economy experiment against the checkpoint', () => {
       piles by ONE factor when the hold is short, so a smaller deuterium pile changes the factor
       and therefore the crystal that comes home. The grant itself was not touched.
     */
-    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2458, crystal: 1461, deuterium: 46 });
+    expect(TUTORIAL_EXIT.resources).toEqual({ alloy: 2458, crystal: 1199, deuterium: 46 });
     expect(TUTORIAL_EXIT.queue?.seconds)
       .toBe(Math.ceil(222 / 60 * ECONOMY_ADJUSTMENT.buildTime * 60));
   });

@@ -1235,7 +1235,7 @@ function useInstrumentAction(planet: PlanetView, onFlash: (id: string) => void) 
  * PUTTING ONE OF THE FOUR IN ORBIT. D25.
  *
  * Bought once, never raised, and the only thing that rations it is the SLOT — the
- * Command Core opens them at L6, L9, L12 and L15. So the refusal here is not "you
+ * Command Core opens them at L1, L9, L15 and L18. So the refusal here is not "you
  * cannot have this", it is "not while those are up there", and it points at the
  * Core because raising it is the thing that actually fixes it.
  */
@@ -1466,7 +1466,8 @@ function Defend({
       {/* What stands here and what a raid could take: the tab's question, answered first (E5). */}
       {!lesson && <DefenceReadings planet={planet} />}
       {escapeRuled && (
-        <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium} />
+        <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
+          rulesetVersion={planet.rulesetVersion ?? 0} />
       )}
 
       <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />

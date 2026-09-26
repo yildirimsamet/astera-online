@@ -2,8 +2,10 @@ import { useTranslation } from 'react-i18next';
 import {
   ESCAPE,
   combatValue,
+  escapeCombatShipCount,
   escapeFuel,
   escapingShips,
+  fleetEscapeMinimumApplies,
   fleetCount,
   garrisonOf,
   type Fleet,
@@ -27,6 +29,8 @@ import { compact } from '../lib/format.js';
  *
  * NOTHING TO SAY WITHOUT SHIPS. Guns never run, and a Prospector never stands in the
  * line, so a world with neither armed nor unarmed ships at home gets no line at all.
+ * In ruleset 13 the row first shows progress to five combat ships; below that
+ * floor it must not promise any escape threshold.
  *
  * A DRY TANK IS A GAP YOU CAN CLOSE (E5 · K2): yellow, never the red of a threat.
  *
@@ -38,17 +42,28 @@ export function EscapeReadout({
   fleet,
   ground,
   deuterium,
+  rulesetVersion = 0,
 }: {
   /** The home fleet — `PlanetView.fleet`. Prospectors are dropped by `garrisonOf`. */
   fleet: Fleet;
   ground: Fleet;
   /** This world's tank: the lift is paid from here, vault share included. */
   deuterium: number;
+  rulesetVersion?: number;
 }) {
   const { t } = useTranslation();
   const line = garrisonOf(fleet, ground);
   const ships = escapingShips(line);
   if (fleetCount(ships) === 0) return null;
+
+  const combatShips = escapeCombatShipCount(line);
+  if (fleetEscapeMinimumApplies(rulesetVersion) && combatShips < ESCAPE.minimumCombatShips) {
+    return (
+      <p data-testid="escape-readout" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
+        {t('planet.defend.escapeMinimum', { count: combatShips, minimum: ESCAPE.minimumCombatShips })}
+      </p>
+    );
+  }
 
   const at = compact(ESCAPE.ratio * combatValue(line));
   const fuel = escapeFuel(ships);

@@ -519,7 +519,7 @@ describe('what may be in the air at once', () => {
  *
  * Ground INSTRUMENTS are levelled, gated by price and by the Command Core, and take
  * no orbit slot. Orbit SATELLITES are bought once at a flat price and take one of
- * the slots the Core opens at levels 6, 9, 12 and 15. Mixing the two rules up is the
+ * the slots the Core opens at levels 1, 9, 15 and 18. Mixing the two rules up is the
  * muddle this decision exists to end, so both are pinned here.
  */
 describe('raising ground instruments', () => {
@@ -529,7 +529,7 @@ describe('raising ground instruments', () => {
   beforeEach(async () => {
     f = await seedWorld(2);
     mine = f.planetIds[0]!;
-    await setLevel(f.db, mine, 'CORE', 6);
+    await setLevel(f.db, mine, 'CORE', 1);
     await grant(f.db, mine, 400_000, 200_000);
     // The two seeing instruments hang off the Uplink; the tests below are about
     // everything except that gate, which has its own case.
@@ -688,8 +688,12 @@ describe('the Uplink gate', () => {
   });
 
   it('opens them the moment the Uplink is up', async () => {
-    await giveSatellite(f.db, mine, 'UPLINK');
+    await installSatellite(f.db, mine, 'UPLINK', f.clock);
+    await settleBuilds(f, mine);
     await expect(raiseInstrument(f.db, mine, 'TELESCOPE', f.clock)).resolves.toMatchObject({
+      level: 1,
+    });
+    await expect(raiseInstrument(f.db, mine, 'RADAR', f.clock)).resolves.toMatchObject({
       level: 1,
     });
   });
@@ -699,7 +703,7 @@ describe('the Uplink gate', () => {
  * SATELLITES ARE RATIONED BY SLOTS, AND THE CORE OPENS THEM. D25.
  *
  * Four satellites and four slots is not a checklist because the fourth slot is a
- * Core 15 planet. For the part of a season anybody actually plays, a world runs one,
+ * Core 18 planet. For the part of a season anybody actually plays, a world runs one,
  * two or three of them, and which ones is who it is.
  */
 describe('putting satellites in orbit', () => {
@@ -712,8 +716,8 @@ describe('putting satellites in orbit', () => {
     await grant(f.db, mine, 400_000, 200_000);
   });
 
-  it('opens the first slot at Core 6', async () => {
-    await setLevel(f.db, mine, 'CORE', 6);
+  it('opens the first slot at Core 1', async () => {
+    await setLevel(f.db, mine, 'CORE', 1);
     await expect(installSatellite(f.db, mine, 'FOUNDRY', f.clock)).resolves.toMatchObject({
       type: 'FOUNDRY',
     });
@@ -722,19 +726,20 @@ describe('putting satellites in orbit', () => {
     });
   });
 
-  it('refuses every new satellite at Core 2', async () => {
+  it('does not open a second slot at Core 2', async () => {
     await setLevel(f.db, mine, 'CORE', 2);
-    for (const type of ['UPLINK', 'FOUNDRY', 'DERRICK', 'BEACON'] as const) {
+    await installSatellite(f.db, mine, 'UPLINK', f.clock);
+    for (const type of ['FOUNDRY', 'DERRICK', 'BEACON'] as const) {
       await expect(installSatellite(f.db, mine, type, f.clock)).rejects.toMatchObject({ code: 'NO_FREE_SLOT' });
     }
   });
 
-  it('opens slots at Core 6, 9, 12 and 15', async () => {
+  it('opens slots at Core 1, 9, 15 and 18', async () => {
     for (const [core, wanted] of [
-      [6, 'FOUNDRY'],
+      [1, 'FOUNDRY'],
       [9, 'UPLINK'],
-      [12, 'DERRICK'],
-      [15, 'BEACON'],
+      [15, 'DERRICK'],
+      [18, 'BEACON'],
     ] as const) {
       await setLevel(f.db, mine, 'CORE', core);
       await expect(installSatellite(f.db, mine, wanted, f.clock)).resolves.toMatchObject({

@@ -36,22 +36,22 @@ describe('what a rung of research buys', () => {
   });
 
   /**
-   * A PERMISSION OPENS A DOOR; EVERYTHING ELSE MOVES A NUMBER.
+   * A PERMISSION OPENS A DOOR; ACTIVE LADDERS MOVE A NUMBER.
    *
    * NAMED RATHER THAN INFERRED FROM `maxLevel`, and that distinction is the point:
-   * `STRATEGIC_STOCKPILE` also has exactly one rung, and it is NOT a door — it
-   * raises how many weapons may stand ready from one to two. Deriving "door" from
-   * the rung count would have drawn a real quantity as a padlock. The five are a
-   * closed set and naming them is the honest version.
+   * `STRATEGIC_STOCKPILE` also has exactly one rung, but its effect was retired
+   * when the default ceiling became two. Deriving "door" from the rung count
+   * would draw that fixed quantity as a padlock. The five active permissions are
+   * a closed set, so name them explicitly.
    */
   const PERMISSIONS = [
     'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
     'DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID',
   ] as const;
 
-  it('moves on every rung of everything that is not a door', () => {
+  it('moves on every rung of each active ladder', () => {
     const ladders = RESEARCH_PROJECT_IDS.filter(
-      (id) => !PERMISSIONS.some((door) => door === id),
+      (id) => id !== 'STRATEGIC_STOCKPILE' && !PERMISSIONS.some((door) => door === id),
     );
     expect(ladders.length).toBeGreaterThan(0);
     for (const id of ladders) {
@@ -71,10 +71,10 @@ describe('what a rung of research buys', () => {
     }
   });
 
-  /** And the one-rung project that is NOT a door still quotes its quantity. */
-  it('quotes the stockpile as a count, not a padlock', () => {
+  /** The retired Stockpile research no longer changes the default two-weapon cap. */
+  it('quotes the fixed stockpile cap as a count, not a padlock', () => {
     const gain = researchGain('STRATEGIC_STOCKPILE', 0);
-    expect(gain.now).toBe('1');
+    expect(gain.now).toBe('2');
     expect(gain.next).toBe('2');
     expect(gain.unlocks).toBeUndefined();
   });

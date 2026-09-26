@@ -2,7 +2,7 @@ import { profileHull } from './economy-profile.js';
 import { COMBAT, PROSPECTOR } from './constants.js';
 import { cargoMult, hullTech } from './tech.js';
 import type { TechLevels } from './tech.js';
-import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, scalePrice } from './tempo.js';
+import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, rebalanceHullPrice, scalePrice } from './tempo.js';
 import type {
   CombatClass,
   Fleet,
@@ -158,14 +158,19 @@ export const HULLS: Record<HullId, Hull> = {
 
 /** What may be put in an attack fleet. A Prospector is deliberately not here. */
 export const ALL_HULLS: readonly HullId[] = Object.keys(HULLS) as HullId[];
-// Price AFTER deriving hardware: the owner asked for dearer ships, not stronger ships.
-// profileHull is also used for workload/bulk metadata; do not scale a live invoice twice there.
+// Derive hardware first; prices do not change attack, armour, work or cargo.
 for (const id of ALL_HULLS) {
   const hull = profileHull(HULLS[id]);
-  HULLS[id] = hull.ground ? hull : {
+  if (hull.ground) { HULLS[id] = hull; continue; }
+  const alloy = Math.ceil(hull.alloy * ECONOMY_ADJUSTMENT.hullMetalPrice);
+  const crystal = Math.ceil(hull.crystal * ECONOMY_ADJUSTMENT.hullMetalPrice);
+  // The Collector is already at the 2:1 production mix. The mining craft has
+  // no combat tier; its small 25% shift follows the mature hulls.
+  const price = id === 'GARBAGE_COLLECTOR' ? { alloy, crystal }
+    : rebalanceHullPrice(alloy, crystal, hull.tier);
+  HULLS[id] = {
     ...hull,
-    alloy: Math.ceil(hull.alloy * ECONOMY_ADJUSTMENT.hullMetalPrice),
-    crystal: Math.ceil(hull.crystal * ECONOMY_ADJUSTMENT.hullMetalPrice),
+    ...price,
   };
 }
 export const MOBILE_HULLS: readonly MobileHullId[] = ALL_HULLS.filter(

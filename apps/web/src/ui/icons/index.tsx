@@ -889,6 +889,16 @@ export function ClaimIcon(props: IconProps) {
   );
 }
 
+/** A wrapped reward waiting to be opened. */
+export function GiftIcon(props: IconProps) {
+  return (
+    <Glyph {...props}>
+      <path d="M3.5 10h17v3.5h-17zM5.5 13.5V20h13v-6.5M12 10v10" />
+      <path d="M12 10H8.8C7.2 10 6 9 6 7.5A2 2 0 0 1 8 5.5c1.6 0 3.2 2 4 4.5ZM12 10h3.2C16.8 10 18 9 18 7.5a2 2 0 0 0-2-2c-1.6 0-3.2 2-4 4.5Z" />
+    </Glyph>
+  );
+}
+
 /** SEND — commit something outward, irreversibly. */
 export function SendIcon(props: IconProps) {
   return (

@@ -590,7 +590,8 @@ function recordMilestones(now: number, state: SimState): void {
  * HOW MANY SATELLITES THE PACKAGE ASKS FOR — never more than its own Core can hold.
  *
  * It asked for all four (`SATELLITE_IDS.every`) while the target Core was 12, and
- * `satelliteSlots(12)` is three; the fourth slot opens at Core 15. `satelliteCandidate` refuses a
+ * `satelliteSlots(12)` is two; the third and fourth open at Core 15 and 18.
+ * `satelliteCandidate` refuses a
  * satellite past the Core's slots, so the checklist could never complete and every run printed a
  * FAIL that measured this file rather than the economy.
  *

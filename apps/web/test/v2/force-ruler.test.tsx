@@ -61,7 +61,7 @@ describe('the two strips', () => {
       <ForceRuler yours={30_000} theirs={reading} lines={lines} escape={{ at: 10_000, verdict: 'RUN' }} />,
     );
     expect(pct(part(container, 'escape-line').style.left)).toBeCloseTo((10_000 / TOP) * 100, 4);
-    expect(screen.getByText(`Their ships run under ${compact(10_000)}`)).toBeInTheDocument();
+    expect(screen.getByText(`Retreat power line: ${compact(10_000)}`)).toBeInTheDocument();
     expect(screen.getByTestId('ruler-verdict')).toHaveTextContent(/lift off/i);
   });
 
@@ -78,7 +78,7 @@ describe('the two strips', () => {
     const { container } = render(<ForceRuler yours={30_000} theirs={reading} lines={lines} />);
     expect(container.querySelector('[data-part="escape-line"]')).toBeNull();
     expect(screen.queryByTestId('ruler-verdict')).toBeNull();
-    expect(screen.queryByText(/Their ships run under/)).toBeNull();
+    expect(screen.queryByText(/Retreat power line/)).toBeNull();
   });
 
   it('draws no marks for a wing with nothing selected', () => {

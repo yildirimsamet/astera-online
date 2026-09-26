@@ -168,6 +168,13 @@ const shelf = async (name: 'Watch' | 'Reports' | 'Radar') => {
 const rack = (): HTMLElement => document.querySelector<HTMLElement>('[data-telescope-rack]')!;
 
 describe('three shelves', () => {
+  it('opens watched and probed worlds directly from the known list', async () => {
+    const focus = vi.fn();
+    show({ telescope: 1, watching: 1, worlds: 2, probes: [report(100, 200, { targetPlanetId: 'q1', targetName: 'World 1' })], onOpenDossier: focus });
+    await userEvent.click(document.querySelector<HTMLButtonElement>('[data-known="watch"] button')!);
+    await userEvent.click(document.querySelector<HTMLButtonElement>('[data-known="probe"] button')!);
+    expect(focus.mock.calls).toEqual([['q0'], ['q1']]);
+  });
   it('opens on what you are watching, with the reports and the radar a tap away', () => {
     show({ telescope: 1, watching: 0, worlds: 20 });
     expect(screen.getByRole('tablist', { name: 'Intel' })).toBeVisible();
@@ -388,6 +395,22 @@ describe('the radar, glanced from the watch shelf', () => {
     const [fresh, , old] = [...panel.querySelectorAll<HTMLElement>('[data-scan] [data-scan-dot]')];
     expect(fresh).toHaveClass('bg-v2-hostile');
     expect(old).not.toHaveClass('bg-v2-hostile');
+  });
+
+  it('opens the named world in a radar report', async () => {
+    const focus = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 3, radarLog: scans, onOpenDossier: focus });
+    await shelf('Radar');
+    await userEvent.click(screen.getAllByRole('button', { name: /Home/ })[0]!);
+    expect(focus).toHaveBeenCalledWith('p1');
+  });
+
+  it('opens a disclosed Radar 5 origin from its name', async () => {
+    const focus = vi.fn();
+    show({ telescope: 1, watching: 0, worlds: 20, radar: 5, radarLog: [{ ...scans[0]!, originPlanetId: 'enemy-world' }], onOpenDossier: focus });
+    await shelf('Radar');
+    await userEvent.click(screen.getByRole('button', { name: /Kestrel/ }));
+    expect(focus).toHaveBeenCalledWith('enemy-world');
   });
 });
 

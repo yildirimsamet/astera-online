@@ -164,6 +164,8 @@ export const reportFor = (
  */
 /** What the galaxy hands a report: the ways out of it, and what the disc knows of the other side. */
 export interface ReportDoors {
+  /** Fly to a world named by a report, from the list or its detail. */
+  onFocusPlanet?: (planetId: string) => void;
   /** E6: back to the raided world's dossier. */
   onAttackAgain?: (planetId: string) => void;
   /** Whether a world on the disc is a colony, for the scene's loyalty line. */
@@ -195,7 +197,7 @@ export function BattleReportDoor({
 
   if (!report) return null;
   return report.kind === 'STRATEGIC'
-    ? <StrategicReportSheet report={report} onClose={onClose} />
+    ? <StrategicReportSheet report={report} onClose={onClose} onFocusPlanet={doors.onFocusPlanet} />
     : (
       <ReportSheet report={report} onClose={onClose} {...doors} />
     );
@@ -252,66 +254,56 @@ export function BattleReports({
                   report={report}
                   now={now}
                   onOpen={() => { setOpen(report); }}
+                  onFocusPlanet={doors.onFocusPlanet}
                 />
               );
             }
             const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
+            const listedPlanetId = report.pirate
+              ? report.yourPlanetId
+              : report.attacking ? report.opponentPlanetId : report.yourPlanetId;
+            const listedPlanet = report.pirate
+              ? report.yourPlanet
+              : report.attacking ? report.opponentPlanet : report.yourPlanet;
             return (
-              <button
-              key={report.id}
-              type="button"
-              data-report-row=""
-              onClick={() => {
-                setOpen(report);
-              }}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-line-soft p-3 text-left last:border-b-0 hover:bg-crystal/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-crystal"
-            >
-              <GradeMark report={report} />
-              <div className="col-span-2 min-w-0">
-                <p className="break-words text-caption text-v2-ink">
-                  {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
-                  {opponentClan ? (
-                    <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
-                  ) : null}
-                  <span className="text-v2-ink-2">{opponentOf(report)}</span>
-                </p>
-                {/*
-                  THE SAME EMPTY WORLD, IN THE ROW. A pirate battle has no world on
-                  the far side, so this opened with a blank and a dangling
-                  separator. The world it launched FROM is the one fact of the three
-                  that a pirate row can still offer, so it stands in.
-                */}
-                <p className="font-v2-mono tabular-nums mt-1 text-micro text-v2-ink-3">
-                  {report.pirate
-                    ? report.yourPlanet
-                    : report.attacking
-                      ? report.opponentPlanet
-                      : t('reports.attackedPlanet', { planet: report.yourPlanet })}
-                  {(report.pirate
-                    ? report.yourPlanet
-                    : report.attacking
-                      ? report.opponentPlanet
-                      : report.yourPlanet) !== '' && ' · '}
-                  {staleness((now - report.at.getTime()) / 60_000)}
-                  {/* A walkover had no rounds, and "0 rounds" reads as a fault (the scene says the same). */}
-                  {report.rounds.length > 0 && ` · ${t('reports.rounds', { count: report.rounds.length })}`}
+              <div key={report.id} className="border-b border-v2-line/60 last:border-b-0">
+                <button
+                  type="button"
+                  data-report-row=""
+                  onClick={() => { setOpen(report); }}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
+                >
+                  <GradeMark report={report} />
+                  <div className="col-span-2 min-w-0">
+                    <p className="break-words text-caption text-v2-ink">
+                      {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
+                      {opponentClan ? (
+                        <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
+                      ) : null}
+                      <span className="text-v2-ink-2">{opponentOf(report)}</span>
+                    </p>
+                  </div>
+                  {/* A swing of zero moves nobody's score, so it has no figure. */}
+                  {report.dominion !== null && report.dominion !== 0 && (
+                    <span
+                      className={`font-v2-mono tabular-nums col-start-2 row-start-1 text-right text-caption ${report.dominion >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}
+                    >
+                      <span className="mb-1 block text-micro text-v2-ink-2">{t('reports.dominion')}</span>
+                      {signed(report.dominion)}
+                    </span>
+                  )}
+                </button>
+                <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
+                {listedPlanet !== '' && (listedPlanetId && doors.onFocusPlanet ? (
+                  <button type="button" data-report-planet onClick={() => { doors.onFocusPlanet?.(listedPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+                    {listedPlanet}
+                  </button>
+                ) : <span>{listedPlanet}</span>)}
+                {listedPlanet !== '' && <span aria-hidden>·</span>}
+                <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
+                {report.rounds.length > 0 && <span>· {t('reports.rounds', { count: report.rounds.length })}</span>}
                 </p>
               </div>
-              {/*
-                A SWING OF ZERO IS NOT A FIGURE. Every raid on a caretaker world
-                moves nobody's score, and so does a raid repelled without losses —
-                so the chip printed "0" on exactly the rows where the ladder had
-                nothing to say. Shown when it moved; omitted when it did not.
-              */}
-              {report.dominion !== null && report.dominion !== 0 && (
-                <span
-                  className={`font-v2-mono tabular-nums col-start-2 row-start-1 text-right text-caption ${report.dominion >= 0 ? 'text-v2-self' : 'text-v2-hostile'}`}
-                >
-                  <span className="mb-1 block text-micro text-v2-ink-2">{t('reports.dominion')}</span>
-                  {signed(report.dominion)}
-                </span>
-              )}
-              </button>
             );
           })}
         </div>
@@ -319,7 +311,7 @@ export function BattleReports({
 
       {open && (
         open.kind === 'STRATEGIC' ? (
-          <StrategicReportSheet report={open} onClose={() => { setOpen(null); }} />
+          <StrategicReportSheet report={open} onClose={() => { setOpen(null); }} onFocusPlanet={doors.onFocusPlanet} />
         ) : (
           <ReportSheet report={open} onClose={() => { setOpen(null); }} {...doors} />
         )
@@ -339,42 +331,54 @@ function StrategicReportRow({
   report,
   now,
   onOpen,
+  onFocusPlanet,
 }: {
   report: StrategicReport;
   now: number;
   onOpen: () => void;
+  onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
   const stopped = report.outcome === 'INTERCEPTED';
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-2 border-b border-v2-line/60 p-3 text-left last:border-b-0"
-    >
-      <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
-        {t(STRATEGIC_OUTCOME[report.outcome])}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-caption text-v2-ink">
-          {t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
-          <span className="text-v2-ink-2">{report.opponentName}</span>
-        </p>
-        <p className="font-v2-mono tabular-nums mt-1 text-micro text-v2-ink-3">
-          {report.opponentPlanet} · {staleness((now - report.at.getTime()) / 60_000)}
-        </p>
-      </div>
-      {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
-    </button>
+    <div className="border-b border-v2-line/60 last:border-b-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center gap-2 px-3 pb-1 pt-3 text-left hover:bg-v2-self/5 focus-visible:outline-2 focus-visible:outline-v2-self"
+      >
+        <span className={`inline-flex items-center rounded-chip border px-1.5 py-0.5 text-micro font-semibold shrink-0 ${stopped ? 'border-v2-self/50 text-v2-self' : 'border-v2-hostile/50 text-v2-hostile'}`}>
+          {t(STRATEGIC_OUTCOME[report.outcome])}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-caption text-v2-ink">
+            {t(report.attacking ? 'reports.strategicYouAttacked' : 'reports.strategicAttackedBy')}
+            <span className="text-v2-ink-2">{report.opponentName}</span>
+          </p>
+        </div>
+        {report.damage > 0 ? <span className="font-v2-mono tabular-nums text-caption text-v2-hostile">{compact(report.damage)}</span> : null}
+      </button>
+      <p className="flex flex-wrap items-center gap-x-1 px-3 pb-2 font-v2-mono tabular-nums text-micro text-v2-ink-3">
+        {report.opponentPlanetId && onFocusPlanet ? (
+          <button type="button" data-report-planet onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="font-v2-ui font-semibold text-v2-self underline decoration-v2-self/40 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+            {report.opponentPlanet}
+          </button>
+        ) : <span>{report.opponentPlanet}</span>}
+        <span aria-hidden>·</span>
+        <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
+      </p>
+    </div>
   );
 }
 
 function StrategicReportSheet({
   report,
   onClose,
+  onFocusPlanet,
 }: {
   report: StrategicReport;
   onClose: () => void;
+  onFocusPlanet?: (planetId: string) => void;
 }) {
   const { t } = useTranslation();
   const resourcesLost = report.destroyedResources.alloy
@@ -397,9 +401,17 @@ function StrategicReportSheet({
     >
       {report.yourPlanet ? (
         <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
-          <span className="text-v2-ink">{report.yourPlanet}</span>
+          {report.yourPlanetId && onFocusPlanet ? (
+            <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
+              {report.yourPlanet}
+            </button>
+          ) : <span className="text-v2-ink">{report.yourPlanet}</span>}
           <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-          <span>{report.opponentPlanet}</span>
+          {report.opponentPlanetId && onFocusPlanet ? (
+            <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
+              {report.opponentPlanet}
+            </button>
+          ) : <span>{report.opponentPlanet}</span>}
         </p>
       ) : null}
 
@@ -509,6 +521,7 @@ function ReportSheet({
   report,
   onClose,
   onAttackAgain,
+  onFocusPlanet,
   colonyOf,
   rivalOf,
   onShare,
@@ -565,6 +578,7 @@ function ReportSheet({
           rivalSlot={report.opponentPlanetId ? rivalOf?.(report.opponentPlanetId) ?? null : null}
           onWatch={() => { rounds.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
           {...(onShare ? { onShare } : {})}
+          {...(onFocusPlanet ? { onFocusPlanet } : {})}
           {...(target !== null && onAttackAgain ? { onAttackAgain: () => { onAttackAgain(target); } } : {})}
         />
       </div>
@@ -614,11 +628,19 @@ function ReportSheet({
       */}
       {report.yourPlanet && (
         <p className="font-v2-mono tabular-nums mb-3 flex items-center gap-2 text-micro text-v2-ink-3">
-          <span className="text-v2-ink">{report.yourPlanet}</span>
+          {report.yourPlanetId && onFocusPlanet ? (
+            <button type="button" onClick={() => { if (report.yourPlanetId) onFocusPlanet(report.yourPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
+              {report.yourPlanet}
+            </button>
+          ) : <span className="text-v2-ink">{report.yourPlanet}</span>}
           {report.opponentPlanet !== '' && (
             <>
               <span aria-hidden>{report.attacking ? '→' : '←'}</span>
-              <span>{report.opponentPlanet}</span>
+              {report.opponentPlanetId && onFocusPlanet ? (
+                <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="text-v2-self underline decoration-v2-self/50 underline-offset-2">
+                  {report.opponentPlanet}
+                </button>
+              ) : <span>{report.opponentPlanet}</span>}
             </>
           )}
         </p>

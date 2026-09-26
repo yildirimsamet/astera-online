@@ -83,10 +83,11 @@ export const counter = {
   /** Taktik geri çekilme en la comparación: la conclusión y la regla un toque más adentro. */
   escapeRun: 'Su línea está por debajo de un tercio de tu fuego: si su depósito alcanza, sus naves despegan y solo luchan los cañones.',
   escapeStand: 'Sus naves se quedan a luchar: la lectura supera un tercio de tu fuego o lo que este ala puede barrer.',
-  escapeUnsure: 'La lectura cae a ambos lados de la línea de huida: sus naves podrían despegar.',
-  escapeAt: 'Sus naves huyen por debajo de {{at}}',
+  escapeUnsure: 'Sus naves podrían despegar; la lectura no resuelve todas las condiciones de retirada.',
+  escapeAt: 'Umbral de retirada: {{at}}',
   escapeRule:
     'Retirada táctica: una línea que enfrenta al menos el triple de su propia potencia de fuego, y a la que ese ataque aniquilaría, hace despegar sus naves en lugar de luchar, si el depósito del mundo paga un viaje de ida y vuelta de {{distance}} unidades. Los cañones se quedan y las reservas se saquean igual.',
+  escapeMinimumRule: 'El defensor también necesita al menos {{count}} naves de combate en casa. La lectura de la sonda no muestra cuántas hay.',
   compareRuleToggle: '¿Qué es esto?',
   compareMeaning: 'Coste de recursos, no daño de ataque. Una flota más grande por sí sola no garantiza la victoria.',
   compareRule:

@@ -20,9 +20,8 @@ import {
   RENDER_QUALITIES,
   setRenderQuality,
   useRenderQuality,
-  type RenderQuality,
 } from '../lib/quality.js';
-import { Segmented, type Segment } from '../ui/kit/index.js';
+import { Segmented } from '../v2/kit/Segmented.js';
 import { Button, Note, Section, SectionHead } from '../v2/kit/Surface.js';
 import {
   ChevronIcon,
@@ -184,7 +183,7 @@ export function MenuPanel({
   const marks = rivals.filter((mark) => (mark.lost ? onClearRival : onFocusRival) !== undefined);
 
   return (
-    <div data-v2-commander-menu className="flex flex-col gap-4 font-v2-ui text-v2-ink">
+    <div data-v2-commander-menu className="flex flex-col gap-5 px-1 pb-3 font-v2-ui text-v2-ink">
       {/**
        * RANK ONE — WHAT IS WAITING ON YOU, and only ever that.
        *
@@ -408,7 +407,7 @@ export function MenuPanel({
        * their state in the control itself.
        */}
       <Section label={t('menu.deviceHeading')}>
-        <div data-device-settings className="plate divide-y divide-line-soft">
+        <div data-device-settings className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
           <SettingRow label={t('settings.sectionLabel')} title={t('settings.hint')}>
             <LanguageSwitch compact />
           </SettingRow>
@@ -438,13 +437,13 @@ export function MenuPanel({
               type="button"
               data-consent-settings
               aria-label={t('consent.menuLabel')}
-              className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-crystal"
+              className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-2 focus-visible:outline-v2-self"
               onClick={() => {
                 if (!reopenGoogleCmp()) openConsentNotice();
               }}
             >
-              <span className="min-w-0 truncate text-label text-bone">{t(consentHint)}</span>
-              <ChevronIcon className="size-4 shrink-0 text-faint" />
+              <span className="min-w-0 truncate text-label text-v2-ink">{t(consentHint)}</span>
+              <ChevronIcon className="size-4 shrink-0 text-v2-ink-3" />
             </button>
           </SettingRow>
         </div>
@@ -460,35 +459,35 @@ export function MenuPanel({
       */}
       <Section label={t('menu.accountHeading')}>
         {onCountryChange && (
-          <div className="plate divide-y divide-line-soft">
+          <div className="divide-y divide-v2-line overflow-hidden rounded-control border border-v2-line bg-v2-panel">
             <SettingRow label={t('country.label')} title={countryName(country, i18n.resolvedLanguage ?? 'en')}>
               <button
                 type="button"
-                className="flex items-center gap-2 text-left text-label text-bone focus-visible:outline-2 focus-visible:outline-crystal"
+                className="flex items-center gap-2 text-left text-label text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                 onClick={() => { setCountryPickerOpen(true); }}
               >
                 <Flag code={country} language={i18n.resolvedLanguage ?? 'en'} />
                 <span>{countryName(country, i18n.resolvedLanguage ?? 'en')}</span>
-                <span className="text-faint">{t('country.change')}</span>
+                <span className="text-v2-ink-3">{t('country.change')}</span>
               </button>
             </SettingRow>
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <div className="plate flex flex-col gap-1 p-2">
-            <p className="legend">{t('galaxy.commander.galaxyLabel')}</p>
-            <p className="name truncate">
+          <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+            <p className="v2-legend">{t('galaxy.commander.galaxyLabel')}</p>
+            <p className="truncate text-caption font-semibold text-v2-ink">
               {galaxy ?? t('galaxy.commander.galaxyUnknown')}
             </p>
             {shard !== null && shard !== galaxy && (
-              <p className="text-label text-faint">{shard}</p>
+              <p className="text-label text-v2-ink-3">{shard}</p>
             )}
           </div>
-          <div className="plate flex flex-col gap-1 p-2">
-            <p className="legend">
+          <div className="flex flex-col gap-1 rounded-control border border-v2-line bg-v2-panel p-3">
+            <p className="v2-legend">
               {ended ? t('seasonRecap.seasonLabel') : t('galaxy.commander.endsLabel')}
             </p>
-            <p className="readout text-figure text-bone">
+            <p className="font-v2-mono text-caption font-semibold text-v2-ink">
               {ended
                 ? t('seasonRecap.ended')
                 : hoursLeft === null
@@ -508,7 +507,7 @@ export function MenuPanel({
         */}
         <Note>{t('galaxy.commander.wipeNote')}</Note>
 
-              <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line-soft pt-3">
+              <nav aria-label={t('landing.publicLinksLabel')} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-v2-line pt-3">
         {(
           [
             ['privacy', 'landing.privacyLink'],
@@ -518,7 +517,7 @@ export function MenuPanel({
         ).map(([page, label]) => (
           <a
             key={page}
-            className="text-caption text-faint underline-offset-4 hover:text-bone hover:underline focus-visible:outline-2 focus-visible:outline-crystal"
+            className="text-caption text-v2-ink-3 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
             href={publisherUrl(page, i18n.resolvedLanguage)}
           >
             {t(label)}
@@ -625,19 +624,19 @@ function MenuTile({
       */
       aria-label={`${label}. ${hint}`}
       data-menu-tile
-      className="plate relative flex flex-col items-start gap-1.5 px-2 py-2 text-left transition-colors hover:bg-bone/[0.03] active:bg-raised/60"
+      className="group relative flex min-h-20 flex-col items-start justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2.5 text-left transition-colors hover:border-v2-line-hi hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self active:bg-v2-raise"
     >
       <span
         data-attention={attention || undefined}
-        className={`socket grid size-8 shrink-0 place-items-center rounded-control transition-colors ${
+        className={`grid size-8 shrink-0 place-items-center rounded-control border transition-colors ${
           attention
-            ? 'border-opportunity/45 bg-opportunity/10 text-opportunity'
-            : 'text-dim'
+            ? 'border-v2-self/45 bg-v2-self/10 text-v2-self'
+            : 'border-v2-line bg-v2-deep text-v2-ink-2 group-hover:text-v2-ink'
         }`}
       >
         {icon}
       </span>
-      <span aria-hidden data-fit="condensed" className="name w-full leading-tight text-bone">
+      <span aria-hidden data-fit="condensed" className="w-full font-v2-ui text-caption font-semibold leading-tight text-v2-ink">
         {label}
       </span>
       {/*
@@ -647,7 +646,7 @@ function MenuTile({
         saying THAT something is waiting.
       */}
       {badge === undefined ? null : (
-        <span className="num absolute right-1.5 top-1.5 rounded-full bg-opportunity/15 px-1.5 py-0.5 text-micro leading-none text-opportunity">
+        <span className="absolute right-2 top-2 rounded-chip bg-v2-self/15 px-1.5 py-0.5 font-v2-mono text-micro leading-none text-v2-self">
           {badge}
         </span>
       )}
@@ -683,16 +682,16 @@ function MenuRow({
         onClick();
       }}
       aria-label={`${label}. ${hint}`}
-      className="plate plate-opportunity flex w-full items-center gap-2 px-3 py-2 text-left transition-colors active:bg-raised/60"
+      className="flex w-full items-center gap-2 rounded-control border border-v2-self/40 bg-v2-self/8 px-3 py-2.5 text-left transition-colors hover:bg-v2-self/12 focus-visible:outline-2 focus-visible:outline-v2-self"
     >
-      <span className="socket grid size-8 shrink-0 place-items-center rounded-control text-opportunity">
+      <span className="grid size-8 shrink-0 place-items-center rounded-control border border-v2-self/30 bg-v2-self/10 text-v2-self">
         {icon}
       </span>
       <span aria-hidden className="min-w-0 flex-1">
-        <span className="name block truncate text-bone">{label}</span>
-        <span className="mt-0.5 block truncate text-micro leading-tight text-dim">{hint}</span>
+        <span className="block truncate text-caption font-semibold text-v2-ink">{label}</span>
+        <span className="mt-0.5 block truncate text-micro leading-tight text-v2-ink-2">{hint}</span>
       </span>
-      <ChevronIcon className="size-4 shrink-0 text-opportunity" />
+      <ChevronIcon className="size-4 shrink-0 text-v2-self" />
     </button>
   );
 }
@@ -731,7 +730,7 @@ function RivalChip({
         haptic('tap');
         onClick();
       }}
-      className={`plate flex min-w-0 max-w-full items-center gap-1.5 rounded-chip px-2 py-1.5 transition-colors active:bg-raised/60 ${
+      className={`flex min-w-0 max-w-full items-center gap-1.5 rounded-chip border border-v2-line-hi bg-v2-panel px-2.5 py-1.5 transition-colors hover:bg-v2-raise focus-visible:outline-2 focus-visible:outline-v2-self ${
         lost ? 'opacity-70' : ''
       }`}
     >
@@ -741,8 +740,8 @@ function RivalChip({
         className="block size-2.5 shrink-0 rounded-full"
         style={{ backgroundColor: rivalColour(slot) }}
       />
-      <span aria-hidden className="name min-w-0 truncate text-label text-bone">{face}</span>
-      {lost && <CloseIcon className="size-3 shrink-0 text-faint" />}
+      <span aria-hidden className="min-w-0 truncate text-label font-semibold text-v2-ink">{face}</span>
+      {lost && <CloseIcon className="size-3 shrink-0 text-v2-ink-3" />}
     </button>
   );
 }
@@ -780,11 +779,11 @@ function SettingRow({
         beside it goes under it rather than over it.
       */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <span className="legend min-w-16 shrink-0 leading-tight">{label}</span>
+        <span className="v2-legend min-w-16 shrink-0 leading-tight">{label}</span>
         <div className={stack ? 'basis-full' : 'min-w-48 flex-1'}>{children}</div>
       </div>
       {below === undefined ? null : (
-        <p className="mt-1.5 text-micro leading-snug text-faint">{below}</p>
+        <p className="mt-1.5 text-micro leading-snug text-v2-ink-3">{below}</p>
       )}
     </div>
   );
@@ -817,8 +816,8 @@ function SoundSetting() {
             haptic('tap');
             setMusicEnabled(!on);
           }}
-          className={`socket grid size-9 shrink-0 place-items-center rounded-control transition-colors ${
-            on ? 'text-crystal' : 'text-faint'
+          className={`grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep transition-colors ${
+            on ? 'text-v2-self' : 'text-v2-ink-3'
           }`}
         >
           {on ? <SpeakerOnIcon className="size-[18px]" /> : <SpeakerOffIcon className="size-[18px]" />}
@@ -830,13 +829,13 @@ function SoundSetting() {
           step={1}
           value={percent}
           aria-label={t('menu.volumeLabel')}
-          style={{ '--slider-fill': `${String(percent)}%` } as CSSProperties}
+          style={{ '--slider-fill': `${String(percent)}%`, '--slider-tone': 'var(--color-v2-self)' } as CSSProperties}
           onChange={(event) => {
             setMusicVolume(event.currentTarget.valueAsNumber / 100);
           }}
-          className="slider slider-crystal min-w-0 flex-1"
+          className="slider min-w-0 flex-1"
         />
-        <output className="num w-8 shrink-0 text-right text-micro text-crystal">
+        <output className="w-8 shrink-0 text-right font-v2-mono text-micro text-v2-self">
           {t('menu.volumeValue', { volume: percent })}
         </output>
       </div>
@@ -896,17 +895,17 @@ function NowPlaying() {
           type="button"
           aria-label={t('menu.trackPrev')}
           onClick={skip(prevTrack)}
-          className="socket grid size-7 shrink-0 place-items-center rounded-control text-faint transition-colors hover:text-bone"
+          className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep text-v2-ink-3 transition-colors hover:text-v2-ink"
         >
           <SkipIcon className="size-3.5 -scale-x-100" />
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <span className={`truncate text-micro ${on ? 'text-bone' : 'text-faint'}`}>
+            <span className={`truncate text-micro ${on ? 'text-v2-ink' : 'text-v2-ink-3'}`}>
               {t('menu.trackLabel', { index: track + 1, total: MUSIC_TRACKS.length })}
             </span>
-            <span data-testid="now-playing-clock" className="num shrink-0 text-micro text-faint">
+            <span data-testid="now-playing-clock" className="shrink-0 font-v2-mono text-micro text-v2-ink-3">
               {t('menu.trackClock', { position: elapsed, duration: total })}
             </span>
           </div>
@@ -919,11 +918,11 @@ function NowPlaying() {
           <div
             data-testid="now-playing-bar"
             aria-hidden
-            className="socket mt-1.5 h-[3px] w-full overflow-hidden rounded-full"
+            className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-v2-deep"
           >
             <div
               className={`h-full rounded-full transition-[width] duration-1000 ease-linear ${
-                on ? 'bg-crystal' : 'bg-line-soft'
+                on ? 'bg-v2-self' : 'bg-v2-line-hi'
               }`}
               style={{ width: `${String(share)}%` }}
             />
@@ -934,7 +933,7 @@ function NowPlaying() {
           type="button"
           aria-label={t('menu.trackNext')}
           onClick={skip(nextTrack)}
-          className="socket grid size-7 shrink-0 place-items-center rounded-control text-faint transition-colors hover:text-bone"
+          className="grid size-7 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-deep text-v2-ink-3 transition-colors hover:text-v2-ink"
         >
           <SkipIcon className="size-3.5" />
         </button>
@@ -962,7 +961,7 @@ function QualitySetting() {
   const { t } = useTranslation();
   const quality = useRenderQuality();
 
-  const segments: readonly Segment<RenderQuality>[] = RENDER_QUALITIES.map((id) => ({
+  const segments = RENDER_QUALITIES.map((id) => ({
     id,
     label: t(`menu.quality.${id}`),
   }));
@@ -970,11 +969,10 @@ function QualitySetting() {
   return (
     <SettingRow stack label={t('menu.qualityLabel')} below={t(`menu.qualityHint.${quality}`)}>
       <Segmented
-        size="sm"
         label={t('menu.qualityLabel')}
-        segments={segments}
+        options={segments}
         value={quality}
-        onSelect={setRenderQuality}
+        onChange={setRenderQuality}
       />
     </SettingRow>
   );
@@ -998,8 +996,8 @@ function FpsSetting() {
           haptic('tap');
           setFpsMeterEnabled(!on);
         }}
-        className={`socket rounded-control px-3 py-1.5 text-micro transition-colors ${
-          on ? 'text-crystal' : 'text-faint'
+        className={`rounded-control border border-v2-line bg-v2-deep px-3 py-1.5 text-micro transition-colors ${
+          on ? 'text-v2-self' : 'text-v2-ink-3'
         }`}
       >
         {on ? t('menu.fpsOn') : t('menu.fpsOff')}

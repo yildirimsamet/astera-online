@@ -59,24 +59,19 @@ export const hasSatellite = (orbit: SatelliteSet, id: SatelliteId): boolean =>
 /**
  * HOW MANY BODIES A PLANET MAY KEEP IN ORBIT. D25.
  *
- * The Command Core opens ordinary slots at levels 6, 9, 12 and 15. Nothing
+ * The Command Core opens slots at levels 1, 9, 15 and 18. Nothing
  * else grants one, and there is no separate building to detour through — capacity
  * arrives as a by-product of the growth every player is doing anyway.
  *
  * FOUR SLOTS AND FOUR SATELLITES IS NOT A CHECKLIST, because the fourth arrives at
- * Core 15. An Academy Uplink already installed at Core 2 remains active through
- * `activeOrbitSlots`; it does not open purchases on other young worlds. Most of
- * the season a planet runs one, two or three of them, so the live question is
+ * Core 18. The first slot is available to every new world, including Academy graduates.
+ * Most of the season a planet runs one, two or three of them, so the live question is
  * WHICH — and answering it is what makes two
  * developed worlds different from each other. Owning the set is a late-game state
  * you work toward, not the state you play in.
  */
 export const satelliteSlots = (coreLevel: number): number =>
-  coreLevel >= 15 ? 4 : coreLevel >= 12 ? 3 : coreLevel >= 9 ? 2 : coreLevel >= 6 ? 1 : 0;
-
-/** Keep an installed first-slot Uplink online while its Core is below six. */
-export const activeOrbitSlots = (coreLevel: number, storedOrbit: SatelliteSet): number =>
-  Math.max(satelliteSlots(coreLevel), coreLevel >= 2 && storedOrbit[0] === 'UPLINK' ? 1 : 0);
+  coreLevel >= 18 ? 4 : coreLevel >= 15 ? 3 : coreLevel >= 9 ? 2 : coreLevel >= 1 ? 1 : 0;
 
 /**
  * HOW MANY CRAFT A PLANET MAY HAVE IN THE AIR AT ONCE. D28.

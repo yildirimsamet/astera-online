@@ -33,7 +33,7 @@ export const academy = {
     "deuterium": "La Raffinerie de Deutérium produit du carburant. Lors d'une attaque, le carburant nécessaire à l'aller et au retour est payé dès le départ.",
     "foundry": "La Fonderie augmente ta production depuis l'orbite. Tu n'as pas besoin de la construire pour l'instant.",
     "intel": "Le Renseignement te permet de repérer les opportunités et d'évaluer les risques avant d'envoyer ta flotte. Appuie sur l'onglet Renseignement.",
-    "uplink": "Ton premier emplacement orbital est ouvert. Tu reçois un satellite Liaison et un Télescope de niveau 1. La Liaison alimente le Télescope ; le Radar sera ton prochain cadeau. Essaie ta vision.",
+    "uplink": "Le Centre de commandement ouvre ton premier emplacement orbital au niveau 1. Tu reçois un satellite Liaison et un Télescope de niveau 1. La Liaison alimente le Télescope ; le Radar sera ton prochain cadeau. Essaie ta vision.",
     "telescope": "Ouvre Vue et affiche la portée du Télescope offert. À l’intérieur, tu vois les types et nombres de vaisseaux. Au-delà, ces détails restent inconnus. L’étape suivante montre ce qu’apporte le Radar.",
     "radar": "Tu as aussi un Radar de niveau 1. Compare la flotte identifiée proche au point d’interrogation lointain : Radar trouve le mouvement, Télescope montre les vaisseaux exacts. Radar 4 donne la taille approximative, Radar 5 le type.",
     "veil": "Le Voile dissimule aux observateurs les informations concernant ta planète. Il ne rend pas ta flotte invisible.",

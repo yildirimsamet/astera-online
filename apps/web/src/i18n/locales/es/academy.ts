@@ -33,7 +33,7 @@ export const academy = {
     deuterium: 'La Refinería de Deuterio produce combustible. Al lanzar una incursión pagas tanto el viaje de ida como el de vuelta.',
     foundry: 'La Fundición aumenta la producción desde la órbita. Por ahora no necesitas construirla.',
     intel: 'La inteligencia te ayuda a descubrir oportunidades y calcular riesgos antes de actuar. Abre la pestaña «Inteligencia».',
-    uplink: 'Tu primera ranura orbital está abierta. Te regalamos un satélite Enlace y un Telescopio de nivel 1. El Enlace alimenta el Telescopio; el Radar será tu próximo regalo. Prueba tu visión.',
+    uplink: 'El Centro de Mando abre tu primera ranura orbital en el nivel 1. Te regalamos un satélite Enlace y un Telescopio de nivel 1. El Enlace alimenta el Telescopio; el Radar será tu próximo regalo. Prueba tu visión.',
     telescope: 'Abre Vista y muestra el alcance de tu Telescopio de regalo. Dentro ves tipos y cantidades de naves. Fuera, esos detalles son desconocidos. El siguiente paso muestra lo que añade el Radar.',
     radar: 'Ya tienes Radar de nivel 1. Compara la flota cercana identificada con el interrogante lejano: Radar detecta movimiento; Telescopio muestra las naves exactas. Radar 4 da tamaño aproximado y Radar 5 el tipo.',
     veil: 'El Velo oculta información sobre tu mundo a quienes te observan. No vuelve invisibles a tus flotas.',

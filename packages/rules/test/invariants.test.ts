@@ -44,7 +44,6 @@ import {
   instrumentCost,
   satelliteCost,
   satelliteSlots,
-  activeOrbitSlots,
   storageCap,
   telescopeCooldownHours,
   telescopeRange,
@@ -1255,27 +1254,18 @@ describe('instrument pricing carries the choice between them', () => {
  * THE ORBIT, AND THE SLOTS THAT RATION IT. D25.
  *
  * Four satellites and four slots would be a checklist rather than a choice, and the
- * thing that stops it being one is WHEN the slots arrive: the fourth is a Core 15
+ * thing that stops it being one is WHEN the slots arrive: the fourth is a Core 18
  * planet, which is most of a season away. For the part of the game anybody actually
  * plays, a world runs one, two or three of them and which ones is who it is.
  */
 describe('satellites in orbit', () => {
-  it('opens ordinary slots at Core 6, 9, 12 and 15', () => {
+  it('opens slots at Core 1, 9, 15 and 18', () => {
     const at = (core: number): number => satelliteSlots(core);
     expect(at(0)).toBe(0);
-    expect([at(1), at(2), at(5)]).toEqual([0, 0, 0]);
-    expect([at(6), at(8)]).toEqual([1, 1]);
-    expect([at(9), at(11)]).toEqual([2, 2]);
-    expect([at(12), at(14)]).toEqual([3, 3]);
-    expect([at(15), at(20)]).toEqual([4, 4]);
-  });
-
-  it('keeps an already installed Uplink working from Core 2 without opening a purchasable slot', () => {
-    expect(activeOrbitSlots(2, [])).toBe(0);
-    expect(activeOrbitSlots(2, ['UPLINK'])).toBe(1);
-    expect(activeOrbitSlots(2, ['FOUNDRY'])).toBe(0);
-    expect(activeOrbitSlots(5, ['UPLINK'])).toBe(1);
-    expect(activeOrbitSlots(6, ['UPLINK'])).toBe(1);
+    expect([at(1), at(2), at(8)]).toEqual([1, 1, 1]);
+    expect([at(9), at(14)]).toEqual([2, 2]);
+    expect([at(15), at(17)]).toEqual([3, 3]);
+    expect([at(18), at(20)]).toEqual([4, 4]);
   });
 
   it('never takes a slot away as the Core goes up', () => {
@@ -1286,7 +1276,8 @@ describe('satellites in orbit', () => {
 
   /** The set has to fit, or one of the four could never be built by anybody. */
   it('has room for every satellite that exists, eventually', () => {
-    expect(satelliteSlots(15)).toBe(SATELLITE_IDS.length);
+    expect(satelliteSlots(18)).toBe(SATELLITE_IDS.length);
+    expect(satelliteSlots(17)).toBeLessThan(SATELLITE_IDS.length);
   });
 
   /**

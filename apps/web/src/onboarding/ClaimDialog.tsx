@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MIN_PASSWORD, validUsername } from '../lib/credentials.js';
-import { Button } from '../ui/kit/index.js';
+import { Button } from '../v2/kit/Surface.js';
 import type { CountryCode } from '@astera/rules';
 import { CountryPicker } from '../v2/identity/CountryPicker.js';
 import { Flag } from '../v2/identity/Flag.js';
@@ -112,43 +112,47 @@ export function ClaimDialog({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center"
+      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={t('onboarding.claim.headingName')}
+      aria-label={naming
+        ? t('onboarding.claim.headingName')
+        : t('onboarding.claim.headingPassword', { name: planetName })}
     >
-      <div className="absolute inset-0 bg-void/70" />
+      <div className="absolute inset-0 bg-v2-void/70" />
 
       <form
-        className="plate plate-cut relative w-full max-w-md p-6 pb-[calc(24px+env(safe-area-inset-bottom))]"
+        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
         }}
       >
-        <p className="legend">
+        <span aria-hidden="true" className="mx-auto mb-4 block h-1 w-9 rounded-full bg-v2-line-hi sm:hidden" />
+        <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
           {naming ? t('onboarding.claim.eyebrowName') : t('onboarding.claim.eyebrowPassword')}
         </p>
-        <h2 className="headline text-figure mt-2 leading-tight text-bone">
+        <h2 className="mt-1 text-figure font-semibold leading-tight text-v2-ink">
           {naming
             ? t('onboarding.claim.headingName')
             : t('onboarding.claim.headingPassword', { name: planetName })}
         </h2>
-        <p className="mt-2 text-body leading-snug text-dim">
+        <p className="mt-2 text-caption leading-snug text-v2-ink-2">
           {naming
             ? introduction ?? t('onboarding.claim.lineName', { name: planetName })
             : t('onboarding.claim.linePassword')}
         </p>
 
         {/* Keep the name editable beside the password so a taken name can be fixed here. */}
-        <label className="legend mt-6 block" htmlFor={nameId}>
+        <label className="mt-5 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={nameId}>
           {t('onboarding.claim.nameLabel')}
         </label>
         <input
           id={nameId}
           ref={nameRef}
           name="username"
-          className={`field mt-2 ${problemField === 'name' || serverComplaint ? 'field-bad' : ''}`}
+          className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'name' || serverComplaint ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+          aria-invalid={problemField === 'name' || serverComplaint}
           value={username}
           onChange={(event) => {
             setUsername(event.target.value);
@@ -165,14 +169,15 @@ export function ClaimDialog({
 
         {!naming && (
           <>
-            <label className="legend mt-2 block" htmlFor={passwordId}>
+            <label className="mt-4 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>
               {t('onboarding.claim.passwordLabel')}
             </label>
             <input
               id={passwordId}
               ref={passwordRef}
               name="password"
-              className={`field mt-2 ${problemField === 'password' ? 'field-bad' : ''}`}
+              className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+              aria-invalid={problemField === 'password'}
               type="password"
               value={password}
               onChange={(event) => {
@@ -185,27 +190,27 @@ export function ClaimDialog({
               placeholder={t('landing.form.passwordPlaceholder', { count: MIN_PASSWORD })}
             />
             <div className="mt-4">
-              <p className="legend">{t('country.label')}</p>
+              <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{t('country.label')}</p>
               <button
                 type="button"
-                className="mt-2 flex min-h-10 w-full items-center gap-2 rounded-control border border-line-soft bg-void/30 px-3 text-left text-caption text-bone"
+                className="mt-1.5 flex min-h-12 w-full items-center gap-2 rounded-control border border-v2-line-hi bg-v2-deep px-3 text-left text-caption text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                 onClick={() => { setCountryPickerOpen(true); }}
               >
                 <Flag code={countryCode} language={i18n.resolvedLanguage ?? 'en'} />
                 <span className="flex-1">{countryName(countryCode, i18n.resolvedLanguage ?? 'en')}</span>
-                <span className="text-dim">{t('country.change')}</span>
+                <span className="text-v2-ink-3">{t('country.change')}</span>
               </button>
             </div>
           </>
         )}
 
         {complaint !== undefined && (
-          <p className="mt-3 text-body text-threat-ink" role="alert">
+          <p className="mt-3 text-caption text-v2-hostile" role="alert">
             {complaint}
           </p>
         )}
 
-        <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-6">
+        <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-5">
           {busy
             ? t('onboarding.claim.working')
             : naming
@@ -213,10 +218,10 @@ export function ClaimDialog({
               : t('onboarding.claim.submit')}
         </Button>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2">
           <button
             type="button"
-            className="text-caption text-faint underline-offset-4 hover:underline"
+            className="min-h-10 text-left text-caption text-v2-ink-2 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
             onClick={onSignIn}
           >
             {t('onboarding.haveAccount')}
@@ -224,7 +229,7 @@ export function ClaimDialog({
           {!naming && (
             <button
               type="button"
-              className="text-caption text-faint underline-offset-4 hover:underline"
+              className="min-h-10 text-right text-caption text-v2-ink-2 underline-offset-4 hover:text-v2-ink hover:underline focus-visible:outline-2 focus-visible:outline-v2-self"
               onClick={() => {
                 setProblem(null);
                 setProblemField(null);

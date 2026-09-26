@@ -27,6 +27,8 @@ export interface HudTopProps {
   commander: string;
   /** The commander chip: the Commander page (today's menu). */
   onCommander: () => void;
+  /** The gift: open claimable rewards directly. */
+  onRewards: () => void;
   /** The world mark: the Worlds sheet. */
   onWorlds: () => void;
   /** A resource meter: the economy detail. */
@@ -47,7 +49,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, nowOpen, onNow, tabs }: HudTopProps) {
+export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, tabs }: HudTopProps) {
   const { t } = useTranslation();
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
@@ -138,6 +140,7 @@ export function HudTop({ commander, onCommander, onWorlds, onEconomy, onBell, no
         boosted={boostUntil !== null && boostUntil.getTime() > now}
         {...(works ? { works } : {})}
         onCommander={onCommander}
+        onRewards={onRewards}
         onWorld={onWorlds}
         onResource={onEconomy}
         onBell={onBell}

@@ -22,7 +22,7 @@ describe('monthly economy', () => {
       crystal: Math.round(engineering.crystal * RESEARCH_CRYSTAL_DISCOUNT),
     });
     expect(collectorCap(100)).toBe(1000);
-    expect(HULLS.DART.alloy).toBe(390); expect(hullBulk('DART')).toBe(3);
+    expect(HULLS.DART.alloy).toBe(304); expect(hullBulk('DART')).toBe(3);
     expect(hullTech({ SHIP_PROPULSION: 4 }, 'DART').speed).toBe(1.5);
   });
   /**

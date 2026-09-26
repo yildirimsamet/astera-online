@@ -384,7 +384,7 @@ Testte bayrak getter'lı `vi.mock` ile çevriliyor (stratejik kapıların testle
    `DefenceReadings` olarak Savunma sekmesinin başında (hiçbir bilgi düşmedi). `PlanetHero`'nun ulaşılmaz tam ekran dalı ve
    `PlanetScreen` `embedded` prop'u silindi.
 2. ~~Uydu yuvaları~~ `c5352f0`: kahramanın yörüngesinde 4 sabit yuva (dolu = uydu, boş = kesikli halka, kilitli = kilit +
-   açılacağı Çekirdek, eşikler `satelliteSlots`'tan), altında "Yörünge 1/2 · Çekirdek 12'de +1"; sekmelerin üstündeki
+   açılacağı Çekirdek, eşikler `satelliteSlots`'tan), altında "Yörünge 1/2 · Çekirdek 15'te +1"; sekmelerin üstündeki
    D108 rafı (`OrbitContext`, `ORBIT_UNLOCKS` kopyası) kalktı. Toplama balonu bilerek cüzdanda (yapışkan, her sekmeden).
 3. ~~Koloni arızaları en üstte~~ `92dc01d` (sadakat satırının hemen üstünde, sarı çerçeve).
 4. ~~EscapeReadout sarı~~ `92dc01d`.

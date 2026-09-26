@@ -54,20 +54,16 @@ describe('what a Hangar rung costs', () => {
     }
   });
 
-  /**
-   * A THIRD, TO THE ROUNDING. Held per resource rather than in alloy-equivalent, because the
-   * authored figure is meant to be the formation's own mix and a single AE total would let alloy
-   * and crystal drift apart inside it.
-   */
-  it('prices every late rung at a third of the fleet it holds', () => {
+  /** Hull recipes now shift alloy into crystal at constant economic value. The authored
+   * Hangar prices stay fixed; they must still cost about a third of that formation's value. */
+  it('keeps every late rung near a third of the fleet value it holds', () => {
     const top: number = HANGAR.maxLevel;
     for (let rung: number = HANGAR.seedTop; rung <= top; rung++) {
       const cost = buildingCost('HANGAR', rung - 1);
       const formation = formationCost(rung);
-      for (const key of ['alloy', 'crystal'] as const) {
-        expect(cost[key], `rung ${String(rung)} ${key}`)
-          .toBeCloseTo(formation[key] / 3, -1);
-      }
+      const priced = cost.alloy + 2 * cost.crystal;
+      const held = formation.alloy + 2 * formation.crystal;
+      expect(priced / held, `rung ${String(rung)}`).toBeCloseTo(1 / 3, 2);
     }
   });
 

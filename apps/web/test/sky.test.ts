@@ -1,9 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import { RENDER_QUALITIES } from '../src/lib/quality.js';
 import { DISC_RADIUS } from '../src/galaxy/scene.js';
-import { coreProfile } from '../src/galaxy/Environment.jsx';
+import {
+  BRIGHT_STAR_VERTEX,
+  CLOUD_STAR_VERTEX,
+  coreProfile,
+  skyBehindPlanets,
+} from '../src/galaxy/Environment.jsx';
 import {
   MILKY_WAY_POLE,
   SKY_BAKE_SIZE,
@@ -18,6 +24,8 @@ import {
   SKY_DEEP_STAR_REACH,
   SKY_RADIUS,
   SKY_STAR_COUNT,
+  STAR_VERTEX,
+  DEEP_STAR_VERTEX,
   STAR_TWINKLE_DEPTH,
   buildDeepStars,
   buildSkyStars,
@@ -40,6 +48,28 @@ const latitudeOf = (x: number, y: number, z: number): number =>
   x * MILKY_WAY_POLE[0] + y * MILKY_WAY_POLE[1] + z * MILKY_WAY_POLE[2];
 
 describe('the baked sky', () => {
+  it('lets a solid world hide stars and gas behind it', () => {
+    for (const material of [
+      new THREE.ShaderMaterial({ depthTest: false, depthWrite: true }),
+      new THREE.MeshBasicMaterial({ depthTest: false, depthWrite: true }),
+    ]) {
+      expect(skyBehindPlanets(material)).toBe(material);
+      expect(material.depthTest).toBe(true);
+      expect(material.depthWrite).toBe(false);
+    }
+  });
+
+  it('keeps even nearby decorative stars behind a planet silhouette', () => {
+    for (const shader of [STAR_VERTEX, DEEP_STAR_VERTEX, BRIGHT_STAR_VERTEX, CLOUD_STAR_VERTEX]) {
+      expect(typeof shader).toBe('string');
+      const source = typeof shader === 'string' ? shader : '';
+      const match = /gl_Position\.z\s*=\s*gl_Position\.w\s*\*\s*([0-9.]+)/.exec(source);
+      expect(match, 'star must keep screen position but move behind solid worlds').not.toBeNull();
+      const clipDepth = Number(match?.[1]);
+      expect(clipDepth).toBeGreaterThan(0.999);
+      expect(clipDepth).toBeLessThan(1);
+    }
+  });
   /**
    * SIX FACES OF RGBA8 IS THE WHOLE BILL, AND IT IS PAID ONCE.
    *

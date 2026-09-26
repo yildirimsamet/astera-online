@@ -89,7 +89,7 @@ Astera tarayıcıda ve telefonda oynanan, 30 günlük sezonlarla dönen kalıcı
 
 ### Yörünge ve araştırma
 
-- 4 uydu: Anten, Körük, Matkap, Kılavuz; yuvalar Çekirdek 2, 9, 12 ve 15'te açılır
+- 4 uydu: Anten, Körük, Matkap, Kılavuz; yuvalar Çekirdek 1, 9, 15 ve 18'de açılır
 - 16 araştırma projesi; tüm dünyalarına birden uygulanır
 - Ölüm Yıldızı (Çekirdek 12, Tersane 5): 1 saatlik EMP; Aegis'i boşaltır, yer toplarını susturur, hiçbir şeyi yok etmez ve kontrolü değiştirmez
 
@@ -396,7 +396,7 @@ HUD
 
 Bugünkü ekranda aynı anda on beşe yakın yüzen parça var. Önerilen HUD'da altı bölge var ve her birinin tek bir işi var. Aşağıdaki örnek, başkente saldırı gelirken ekranın nasıl göründüğünü gösteriyor.
 
-1. **Komutan** Avatar ve sezon günü. Dokununca profil, sıralama, ödüller ve ayarlar açılır. Menü burada, ekranın başka hiçbir yerinde yok.
+1. **Komutan** Avatar ve sezon günü. Dokununca profil, sıralama, ödüller ve ayarlar açılır. Hazır talep edilebilir ödül varsa üst çubukta sallanan hediye belirir; dokununca doğrudan ödüller açılır.
 2. **Kaynaklar** Rakam ve altında 2 px doluluk çizgisi. Depo dolunca çizginin ucunda sarı bir çentik belirir. Dokununca saatlik üretim, depo ve güvenli miktar açılır.
 3. **Şimdi hattı** Oyundaki en acil tek zamanlayıcı. Tehdit varsa kırmızıdır ve her şeyin önüne geçer. Dokununca tüm zamanlayıcılar listelenir.
 4. **Dünya** Ekranın dörtte üçü. Seçmek, yakınlaştırmak ve döndürmek burada yapılır. Olaylar dünyanın içinde gösterilir, üstüne panel olarak konmaz.

@@ -37,7 +37,7 @@ describe('a world’s surface', () => {
     const surface = planetSurface(material, true) as THREE.MeshStandardMaterial;
     expect(surface.emissiveMap).toBe(map);
     expect(surface.emissive.r).toBeCloseTo(NIGHT_FLOOR);
-    expect(NIGHT_FLOOR).toBeGreaterThan(0.1);
+    expect(NIGHT_FLOOR).toBeGreaterThanOrEqual(0.28);
     expect(NIGHT_FLOOR).toBeLessThan(0.4);
   });
 
@@ -47,6 +47,7 @@ describe('a world’s surface', () => {
     const shader = { fragmentShader: '#include <emissivemap_fragment>\n', vertexShader: '', uniforms: {} };
     surface.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms, {} as THREE.WebGLRenderer);
     expect(shader.fragmentShader).toMatch(/totalEmissiveRadiance \*= vColor\.rgb/);
+    expect(shader.fragmentShader).toContain('USE_INSTANCING_COLOR');
   });
 
   it('drops the tiled detail maps when seen small, and keeps them up close', () => {
@@ -63,5 +64,32 @@ describe('a world’s surface', () => {
     planetSurface(material, false);
     expect(material.metalness).toBe(1);
     expect(material.normalMap).not.toBeNull();
+  });
+
+  it('turns an exported translucent surface into a solid depth-writing planet', () => {
+    const source = new THREE.MeshStandardMaterial({
+      transparent: true,
+      opacity: 0.45,
+      alphaTest: 0.3,
+      depthWrite: false,
+      alphaHash: true,
+      alphaToCoverage: true,
+    });
+    const surface = planetSurface(source, true) as THREE.MeshStandardMaterial;
+    expect(surface.transparent).toBe(false);
+    expect(surface.opacity).toBe(1);
+    expect(surface.alphaTest).toBe(0);
+    expect(surface.depthWrite).toBe(true);
+    expect(surface.alphaHash).toBe(false);
+    expect(surface.alphaToCoverage).toBe(false);
+    expect(surface.depthTest).toBe(true);
+    expect(source.transparent).toBe(true);
+  });
+
+  it('removes physical light transmission from a planet body', () => {
+    const source = new THREE.MeshPhysicalMaterial({ transmission: 0.6 });
+    const surface = planetSurface(source, true) as THREE.MeshPhysicalMaterial;
+    expect(surface.transmission).toBe(0);
+    expect(source.transmission).toBe(0.6);
   });
 });

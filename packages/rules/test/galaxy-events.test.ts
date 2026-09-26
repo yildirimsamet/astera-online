@@ -460,7 +460,8 @@ describe('the ruleset-8 fixed public-event calendar', () => {
 
   it('makes the fixed convoy calendar the boundary for newly created seasons', () => {
     // Ruleset 12 introduces the larger galaxy and its newly-dealt event geometry.
-    expect(MULTI_WORLD.rulesetVersion).toBe(12);
+    expect(MULTI_WORLD.rulesetVersion).toBe(13);
+    expect(MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion).toBe(8);
     expect(MULTI_WORLD.rulesetVersion).toBeGreaterThanOrEqual(MULTI_WORLD.fixedGalaxyEventScheduleRulesetVersion);
     expect(GALAXY_EVENTS.version).toBe(4);
     expect(galaxyEventConfigForRuleset(MULTI_WORLD.rulesetVersion)).toBe(GALAXY_EVENTS);

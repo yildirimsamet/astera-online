@@ -3,7 +3,7 @@ import { useGLTF } from '@react-three/drei';
 import { useFrame, useLoader, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { planetArt, planetLook, planetModel } from '../ui/assets.js';
-import { limbTexture, softGlow } from './Environment.jsx';
+import { LIMB_PEAK, limbTexture, softGlow } from './Environment.jsx';
 import { fireTexture, smokeTexture } from './vfx.js';
 import { STANCE_LIGHT, rivalSlotOf, type PlanetNode, type Stance } from './scene.js';
 import type { RivalMark } from '../api/schemas.js';
@@ -11,6 +11,7 @@ import { markHit, wasTap } from './tap.js';
 import { HitboxMaterial, useHitboxDebug } from './hitboxDebug.jsx';
 import { serverNow } from '../lib/clock.js';
 import { partitionPlanetSkins, planetSkinVisual } from '../ui/planetSkins.js';
+import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
 import {
   DefaultPlanetModel,
   PlanetSkinModel,
@@ -401,8 +402,7 @@ function RecoveryScar({ node }: { node: PlanetNode }) {
  * alpha cut, so each one sat on black like a sticker rather than hanging in space.
  *
  * One extra quad per world fixes both: the light a planet scatters at its own
- * limb. See `limbTexture` for what the gradients are doing and why the peak
- * straddles the silhouette rather than sitting outside it.
+ * limb. See `limbTexture` for the narrow gradient just beyond the opaque edge.
  *
  * ONE DRAW CALL FOR THE WHOLE GALAXY. The bodies need one bucket per distinct
  * render because each is its own texture; the limb is the same texture on every
@@ -410,10 +410,12 @@ function RecoveryScar({ node }: { node: PlanetNode }) {
  *
  * NOT A MARKER. `Highlights` already draws a coloured halo, and it means "this one
  * is yours" or "this one is selected" — three or four worlds ever. If the limb read
- * as a halo it would drown that. It is warm, faint, tight to the silhouette, and it
- * never changes with focus.
+ * as a halo it would drown that. It is faint, tight to the silhouette, and it
+ * never changes with focus. Its hue follows the planet's authored look.
  */
-export const LIMB_SCALE = 1.1;
+export const LIMB_SCALE = 1.14;
+export { LIMB_PEAK };
+export const LIMB_OPACITY = 0.45;
 
 /**
  * A breath so slow it is under conscious notice, and the reason it exists at all
@@ -424,15 +426,25 @@ export const LIMB_SCALE = 1.1;
 const LIMB_BREATH_RATE = 0.35;
 const LIMB_BREATH_DEPTH = 0.015;
 
-/** Scattered light, not white: an atmosphere lit by a warm key reads warm. */
-export const LIMB_TINT = { r: 1, g: 0.72, b: 0.42 };
+/** A pale emission close to each of the sixteen authored planet colours. */
+const PLANET_GLOW = [
+  '#db7053', '#83bbd2', '#b9b39d', '#e5a76e',
+  '#a9aaa6', '#4c9acb', '#8dbb53', '#4cbb95',
+  '#a1acd8', '#b2a6a0', '#6f9bdc', '#ad8779',
+  '#b6aa82', '#ad7d9b', '#d4bcb1', '#df7050',
+] as const;
+const SKIN_GLOW = new Map(Object.entries(PLANET_SKIN_CATALOG).map(([id, skin]) => [id, skin.accent]));
+
+export function planetGlowColor(id: string, skinId?: string): string {
+  return (skinId ? SKIN_GLOW.get(skinId) : undefined) ?? PLANET_GLOW[planetLook(id) - 1]!;
+}
 
 /** Requested contrast between worlds inside and outside live Telescope sight. */
 export const VISIBLE_PLANET_BRIGHTNESS = 1.25;
 export const HIDDEN_PLANET_BRIGHTNESS = 0.85;
 
 export function limbLight(stance: Stance, intel: PlanetNode['intel']): number {
-  return STANCE_LIGHT[stance]
+  return Math.max(STANCE_LIGHT[stance], 0.6)
     * (intel === 'RESOLVED' ? VISIBLE_PLANET_BRIGHTNESS : HIDDEN_PLANET_BRIGHTNESS);
 }
 
@@ -446,17 +458,15 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
   /**
    * IGNORANCE IS DARK HERE TOO.
    *
-   * The bodies are dimmed per instance by `STANCE_LIGHT`, so a world the player
-   * cannot see is literally darker. A limb at full brightness on an unwatched world
-   * would light up the exact thing the fog is dimming — and would do it in the most
-   * eye-catching way available, since it is the brightest pixel on the silhouette.
+   * Unwatched bodies are dimmer. Their limb remains dimmer too, with a minimum
+   * intensity so its authored colour does not disappear against the sky.
    */
   useLayoutEffect(() => {
     const mesh = ref.current;
     if (!mesh) return;
     nodes.forEach((node, i) => {
       const light = limbLight(node.stance, node.intel);
-      mesh.setColorAt(i, tint.setRGB(LIMB_TINT.r * light, LIMB_TINT.g * light, LIMB_TINT.b * light));
+      mesh.setColorAt(i, tint.set(planetGlowColor(node.id, node.skin?.id)).multiplyScalar(light));
     });
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     if (!Array.isArray(mesh.material)) mesh.material.needsUpdate = true;
@@ -498,13 +508,11 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
       <planeGeometry args={[1, 1]} />
       {/*
         DEPTH IS READ AND NEVER WRITTEN.
-        
-        Three's default depth function is LessEqual, and this quad is a billboard
-        through the same centre as the body it belongs to — so across the overlap
-        the two have equal depth and the limb passes, which is what puts the bright
-        part of the band ON the planet's edge rather than only beside it. Anything
-        genuinely nearer still occludes it, and writing depth would let a limb hide
-        the craft standing off the world behind it.
+
+        This billboard crosses the body's centre. The opaque sphere is nearer at
+        every pixel inside its silhouette, so its depth hides the inner gradient.
+        The narrow band outside the silhouette remains visible. Writing depth here
+        would let that band hide craft and other objects around the world.
       */}
       <meshBasicMaterial
         map={texture}
@@ -512,7 +520,7 @@ function Atmospheres({ nodes }: { nodes: readonly PlanetNode[] }) {
         depthWrite={false}
         blending={THREE.AdditiveBlending}
         toneMapped={false}
-        opacity={0.4}
+        opacity={LIMB_OPACITY}
       />
     </instancedMesh>
   );
@@ -522,13 +530,15 @@ const UP = new THREE.Object3D();
 /** The axis a cone is spun about to point it down at the world it names. */
 
 /**
- * HOW DARK AN UNREAD WORLD'S BODY IS DRAWN, as its own exported number.
+ * HOW DARK AN UNREAD WORLD'S BODY IS DRAWN, before the visibility floor.
  *
  * Exported so the test that guards it reads the value rather than repeating it: a
  * copy in `planet-visuals.test.ts` is how a deliberate change to this shows up as
  * a failing assertion about a number nobody meant to state twice.
  */
-export const UNRESOLVED_BODY_LIGHT = 0.35;
+export const UNRESOLVED_BODY_LIGHT = 0.7;
+/** A world must remain a readable, solid silhouette even at the darkest stance. */
+export const MIN_PLANET_BODY_LIGHT = 0.45;
 
 /**
  * What losing resolution costs a world. D126.
@@ -547,13 +557,9 @@ const UNRESOLVED = {
    * it. Still well short of invisible: the map is public (D49, D119) and the world
    * must stay findable and tappable at its true public size.
    *
-   * RAISED FROM 0.22 ON THE OWNER'S REPORT: undiscovered worlds were too hard to
-   * see. Compounding is what made it that dark — an unread world is dimmed THREE
-   * times over, by its stance, by this, and by `HIDDEN_PLANET_BRIGHTNESS`, so a
-   * `dark` world was landing at 0.42 × 0.22 × 0.85 ≈ 0.079 of full brightness
-   * while its own warm limb sat at 0.357 and read as a rim around nothing. At 0.35
-   * the body reaches ≈ 0.125 — half again as visible, still a sixth of what a
-   * world under live sight is drawn at, so ignorance is still plainly darkness.
+   * Stance, unread light, and hidden brightness used to compound into a nearly
+   * invisible body. The floor below keeps its silhouette visible without changing
+   * which details intel shows.
    *
    * IT REVEALS NOTHING. The silhouette is public either way (D123/D127); what a
    * probe buys is the detail drawn ON the body, and none of that is lit by this.
@@ -565,8 +571,11 @@ const UNRESOLVED = {
 
 export function bodyLight(stance: Stance, intel: PlanetNode['intel']): number {
   const visible = intel === 'RESOLVED';
-  return STANCE_LIGHT[stance]
-    * (visible ? VISIBLE_PLANET_BRIGHTNESS : UNRESOLVED.light * HIDDEN_PLANET_BRIGHTNESS);
+  if (visible) return STANCE_LIGHT[stance] * VISIBLE_PLANET_BRIGHTNESS;
+  return Math.max(
+    MIN_PLANET_BODY_LIGHT,
+    STANCE_LIGHT[stance] * UNRESOLVED.light * HIDDEN_PLANET_BRIGHTNESS,
+  );
 }
 
 
@@ -867,14 +876,13 @@ function PlanetInstances({
           ORDER decides what covers what — and the order is per instanced group, not
           per planet. The fix is to stop treating these as translucent: the art is
           opaque inside a hard alpha edge, so an alpha test cuts the disc out while
-          still writing depth, and `alphaToCoverage` uses the MSAA samples to keep
-          the rim smooth instead of jagged.
+          still writing depth. Alpha coverage stays off, so the pixels inside the
+          silhouette cannot become partially transparent.
         */}
         <meshBasicMaterial
           map={texture}
           transparent={false}
           alphaTest={0.35}
-          alphaToCoverage
           depthWrite
           toneMapped={false}
           onBeforeCompile={group.opaquePreview ? maskOpaquePlanetBillboard : undefined}

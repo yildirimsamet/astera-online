@@ -938,6 +938,9 @@ void main() {
 }
 `;
 
+/** Point stars keep their parallax, but their light cannot appear on top of a solid world. */
+export const STAR_BACKDROP_CLIP = 'gl_Position.z = gl_Position.w * 0.99999;';
+
 export const STAR_VERTEX = /* glsl */ `
 attribute float aFlux;
 attribute vec2 aTwinkle;
@@ -967,6 +970,7 @@ void main() {
   vAlpha = clamp(stretched * 0.9, 0.0, 1.0) * min(1.0, size * size / (gl_PointSize * gl_PointSize) + 0.3);
   vColour = color;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  ${STAR_BACKDROP_CLIP}
 }
 `;
 
@@ -990,6 +994,7 @@ void main() {
   vAlpha = clamp(stretched * 0.9, 0.0, 1.0) * min(1.0, size * size / (gl_PointSize * gl_PointSize) + 0.3);
   vColour = color;
   gl_Position = projectionMatrix * view;
+  ${STAR_BACKDROP_CLIP}
 }
 `;
 

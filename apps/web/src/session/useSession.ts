@@ -4,7 +4,7 @@ import { useApi } from '../api/context.js';
 import { ApiError } from '../api/client.js';
 import { describeError } from '../i18n/errors.js';
 import { keys } from '../api/keys.js';
-import type { ClaimIntent, ClaimResult, Me, Preview } from '../api/schemas.js';
+import { meSchema, type ClaimIntent, type ClaimResult, type Me, type Preview } from '../api/schemas.js';
 import type { CountryCode } from '@astera/rules';
 import { track } from '../lib/analytics.js';
 import { rememberCommander } from '../lib/returning.js';
@@ -40,6 +40,38 @@ export type Session =
   /** Something is wrong that the player cannot fix by pressing again. */
   | { phase: 'blocked'; message: string };
 
+const READY_SESSION_KEY = 'astera:ready-session';
+
+function rememberReady(me: Me): void {
+  try { window.sessionStorage.setItem(READY_SESSION_KEY, JSON.stringify(me)); } catch { /* Storage may be disabled. */ }
+}
+
+function forgetReady(): void {
+  try { window.sessionStorage.removeItem(READY_SESSION_KEY); } catch { /* Storage may be disabled. */ }
+}
+
+function readReady(): Session {
+  try {
+    const stored = window.sessionStorage.getItem(READY_SESSION_KEY);
+    if (stored) {
+      const parsed = meSchema.safeParse(JSON.parse(stored));
+      if (parsed.success && parsed.data.placement) {
+        const me = parsed.data;
+        const placement = parsed.data.placement;
+        return {
+          phase: 'ready', me,
+          standing: {
+            shard: placement.shard,
+            shardName: placement.shardName,
+            planetName: placement.planetName,
+          },
+        };
+      }
+    }
+  } catch { /* A corrupt or unavailable store is simply a cold start. */ }
+  return { phase: 'starting' };
+}
+
 /**
  * The same catalogue every other refusal goes through — a failed sign-in is a
  * refusal like any other, and it lands on the one screen a player who has not
@@ -71,7 +103,8 @@ const messageOf = (err: unknown): string => describeError(err);
 export function useSession() {
   const api = useApi();
   const queries = useQueryClient();
-  const [session, setSession] = useState<Session>({ phase: 'starting' });
+  const [session, setSession] = useState<Session>(readReady);
+  const [resumed, setResumed] = useState(() => session.phase === 'ready');
   // StrictMode mounts effects twice in development. One restore, not two.
   const started = useRef(false);
 
@@ -99,9 +132,12 @@ export function useSession() {
        */
       rememberCommander();
       if (!me.placement) {
+        forgetReady();
+        setResumed(false);
         setSession({ phase: 'servers', me });
         return;
       }
+      rememberReady(me);
       setSession({
         phase: 'ready',
         me,
@@ -119,11 +155,15 @@ export function useSession() {
   const coldStart = useCallback(async (): Promise<void> => {
     try {
       if (!(await api.restore())) {
+        forgetReady();
+        setResumed(false);
         setSession({ phase: 'landing' });
         return;
       }
       await settle(await api.me());
     } catch (err) {
+      forgetReady();
+      setResumed(false);
       // A cold start that cannot reach the API is not a signed-out player, and
       // showing them the login form would teach them their account was lost.
       if (err instanceof ApiError && err.code === 'UNREACHABLE') {
@@ -142,6 +182,7 @@ export function useSession() {
 
   const authenticate = useCallback(
     async (mode: 'login' | 'register', username: string, password: string, countryCode?: CountryCode): Promise<void> => {
+      setResumed(false);
       setSession({ phase: 'starting' });
       try {
         if (mode === 'register') await api.register(username, password, countryCode);
@@ -183,6 +224,7 @@ export function useSession() {
     async (code: string): Promise<void> => {
       const current = session;
       if (current.phase !== 'servers') return;
+      setResumed(false);
       setSession({ phase: 'starting' });
       try {
         await api.joinServer(code);
@@ -224,20 +266,22 @@ export function useSession() {
     (result: ClaimResult): void => {
       queries.clear();
       queries.setQueryData(keys.planet, result.planet);
+      const me: Me = {
+        accountId: result.accountId,
+        username: result.username,
+        displayName: result.displayName,
+        isAdmin: false,
+        country: result.country,
+        placement: {
+          shard: result.placement.shard,
+          shardName: result.placement.shardName,
+          planetName: result.placement.planetName,
+        },
+      };
+      rememberReady(me);
       setSession({
         phase: 'ready',
-        me: {
-          accountId: result.accountId,
-          username: result.username,
-          displayName: result.displayName,
-          isAdmin: false,
-          country: result.country,
-          placement: {
-            shard: result.placement.shard,
-            shardName: result.placement.shardName,
-            planetName: result.placement.planetName,
-          },
-        },
+        me,
         standing: {
           shard: result.placement.shard,
           shardName: result.placement.shardName,
@@ -302,10 +346,16 @@ export function useSession() {
    * start days later — where a modal on arrival would be wrong.
    */
   const signOut = useCallback(async (): Promise<void> => {
+    forgetReady();
+    setResumed(false);
     setSession({ phase: 'starting' });
-    await api.logout();
-    queries.clear();
-    setSession({ phase: 'landing', open: 'login' });
+    try {
+      await api.logout();
+      queries.clear();
+      setSession({ phase: 'landing', open: 'login' });
+    } catch (err) {
+      setSession({ phase: 'blocked', message: messageOf(err) });
+    }
   }, [api, queries]);
 
   /** For the blocked screen: try the whole cold start again. */
@@ -319,6 +369,8 @@ export function useSession() {
     const current = session;
     if (current.phase !== 'ready') return;
     queries.clear();
+    forgetReady();
+    setResumed(false);
     // The world already committed its successor. Move immediately; `/me` then
     // reconciles the permanent result without putting a loading door in the way.
     setSession({ phase: 'servers', me: { ...current.me, placement: null } });
@@ -329,6 +381,7 @@ export function useSession() {
 
   return {
     session,
+    resumed,
     authenticate,
     chooseServer,
     signOut,

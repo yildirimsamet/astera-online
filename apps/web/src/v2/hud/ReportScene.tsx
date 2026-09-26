@@ -25,6 +25,8 @@ export interface ReportSceneProps {
   rivalSlot?: number | null;
   /** Back to the target's dossier (E6). Offered to the attacker only. */
   onAttackAgain?: () => void;
+  /** The named world on the far side, reachable from either battle perspective. */
+  onFocusPlanet?: (planetId: string) => void;
   /** The round-by-round, further down the sheet (the mock's "İzle"). Only where rounds were fought. */
   onWatch?: () => void;
   /** Tell the clan: a line for the clan chat, which the reader sends themselves (the mock's "Klana"). */
@@ -114,6 +116,7 @@ export function ReportScene({
   colonyTarget = false,
   rivalSlot = null,
   onAttackAgain,
+  onFocusPlanet,
   onWatch,
   onShare,
 }: ReportSceneProps) {
@@ -208,7 +211,11 @@ export function ReportScene({
             >
               {report.opponentName}
             </span>
-            {report.opponentPlanet !== '' && <span className="min-w-0 truncate font-semibold text-v2-ink">{report.opponentPlanet}</span>}
+            {report.opponentPlanet !== '' && (report.opponentPlanetId && onFocusPlanet ? (
+              <button type="button" onClick={() => { if (report.opponentPlanetId) onFocusPlanet(report.opponentPlanetId); }} className="min-w-0 truncate font-semibold text-v2-self underline decoration-v2-self/50 underline-offset-2 focus-visible:outline-2 focus-visible:outline-v2-self">
+                {report.opponentPlanet}
+              </button>
+            ) : <span className="min-w-0 truncate font-semibold text-v2-ink">{report.opponentPlanet}</span>)}
           </p>
         </div>
       </div>

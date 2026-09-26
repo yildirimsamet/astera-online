@@ -66,7 +66,7 @@ const show = (known: boolean, onBegin = vi.fn(() => Promise.resolve())) => {
 };
 
 /** The one control drawn as the page's primary door, whichever it happens to be. */
-const loudDoor = () => document.querySelector('button.enter');
+const loudDoor = () => document.querySelector('[data-testid="landing-primary"]');
 
 afterEach(() => {
   forgetCommander();
@@ -78,6 +78,7 @@ describe('the front door on a device nobody has played on', () => {
 
     const door = loudDoor();
     expect(door?.textContent).toMatch(/check your planet/i);
+    expect(door).toHaveClass('bg-v2-self', 'rounded-control');
 
     await userEvent.setup().click(door!);
     expect(onBegin).toHaveBeenCalled();
@@ -118,7 +119,7 @@ describe('the front door on a device that has held a commander', () => {
   it('gives a new player on a shared device an equally visible training door', async () => {
     const { onBegin } = show(true);
     const door = screen.getByRole('button', { name: /start a new commander/i });
-    expect(door).toHaveClass('enter');
+    expect(door).toHaveClass('border-v2-line-hi', 'rounded-control');
     await userEvent.setup().click(door);
     expect(onBegin).toHaveBeenCalled();
   });

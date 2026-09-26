@@ -85,6 +85,7 @@ interface ReportView {
   theirFleet: Record<string, number>;
   /** The caller's own world in this battle: launched from, or hit. */
   yourPlanet: string;
+  yourPlanetId: string | null;
   lootAlloy: number;
   lootCrystal: number;
   /** Null on reports written before the swing was recorded. */
@@ -794,11 +795,13 @@ describe('battle reports', () => {
       // The attacker launched from their world.
       const [attacker] = await reportsFor(0);
       expect(attacker!.yourPlanet).toBe(mineName!.name);
+      expect(attacker!.yourPlanetId).toBe(mine);
       expect(attacker!.opponentPlanet).toBe(theirName!.name);
 
       // The defender was hit at theirs, and the two are exact opposites.
       const [defender] = await reportsFor(1);
       expect(defender!.yourPlanet).toBe(theirName!.name);
+      expect(defender!.yourPlanetId).toBe(theirs);
       expect(defender!.opponentPlanet).toBe(mineName!.name);
     });
 

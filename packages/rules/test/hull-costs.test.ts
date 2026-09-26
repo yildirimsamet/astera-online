@@ -3,6 +3,8 @@ import { HULLS, MOBILE_HULLS, GROUND_HULLS, combatValue, fleetValue } from '../s
 import { COMBAT } from '../src/constants.js';
 import type { HullId } from '../src/types.js';
 import { resourceValue } from '../src/valuation.js';
+import { profileHull } from '../src/economy-profile.js';
+import { ECONOMY_ADJUSTMENT } from '../src/tempo.js';
 
 /**
  * WHAT THE HULL TABLE IS PRICED ON. Economy v2.
@@ -30,10 +32,30 @@ const power = (id: HullId): number =>
 
 describe('monthly crystal recipes', () => {
   it('charges crystal on every ship, including the opening Dart', () => {
-    expect(HULLS.DART.crystal).toBe(78);
-    expect(HULLS.COURIER.crystal).toBe(195);
-    expect(HULLS.ATLAS.crystal).toBe(1300);
+    expect(HULLS.DART.crystal).toBe(121);
+    expect(HULLS.COURIER.crystal).toBe(302);
+    expect(HULLS.ATLAS.crystal).toBe(1690);
     for (const hull of Object.values(HULLS)) expect(hull.crystal).toBeGreaterThan(0);
+  });
+
+  it('shifts alloy into crystal with a smaller increase at each higher tier, preserving economic value', () => {
+    const increase = [1.55, 1.40, 1.30, 1.25] as const;
+    for (const id of MOBILE_HULLS) {
+      const live = HULLS[id];
+      if (id === 'GARBAGE_COLLECTOR') continue; // Its existing 2:1 recipe already matches income.
+      const before = profileHull(live);
+      const oldAlloy = Math.ceil(before.alloy * ECONOMY_ADJUSTMENT.hullMetalPrice);
+      const oldCrystal = Math.ceil(before.crystal * ECONOMY_ADJUSTMENT.hullMetalPrice);
+      const expectedCrystal = Math.round(oldCrystal * increase[live.tier! - 1]!);
+      expect(live.crystal, id).toBe(expectedCrystal);
+      expect(live.alloy, id).toBe(oldAlloy - 2 * (expectedCrystal - oldCrystal));
+      expect(resourceValue(live), id).toBe(oldAlloy + 2 * oldCrystal + 32 * live.deuterium);
+    }
+    const minerBefore = profileHull(HULLS.PROSPECTOR);
+    expect(HULLS.PROSPECTOR.crystal).toBe(Math.round(
+      Math.ceil(minerBefore.crystal * ECONOMY_ADJUSTMENT.hullMetalPrice) * 1.25,
+    ));
+    expect(HULLS.GARBAGE_COLLECTOR.alloy / HULLS.GARBAGE_COLLECTOR.crystal).toBe(2);
   });
 });
 

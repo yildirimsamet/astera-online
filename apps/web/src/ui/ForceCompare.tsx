@@ -71,7 +71,7 @@ export function ForceCompare({
    * Absent wherever the rule does not apply: a pirate, a caretaker world, a season
    * dealt before it.
    */
-  escape?: { at: number; verdict: EscapeVerdict | null } | null;
+  escape?: { at: number; verdict: EscapeVerdict | null; minimumCombatShips?: number } | null;
   /**
    * WHAT THE LAUNCH COSTS, INSIDE THIS BOX RATHER THAN UNDER IT. D183, owner
    * correction: *"aynı kutunun içinde altında olsun. güç gösteren kutu sticky,
@@ -130,6 +130,7 @@ export function ForceCompare({
         {explained && escape ? (
           <p data-testid="compare-escape-rule" className="mt-2 text-body leading-relaxed text-dim">
             {t('counter.escapeRule', { distance: ESCAPE.fuelDistance })}
+            {escape.minimumCombatShips ? ` ${t('counter.escapeMinimumRule', { count: escape.minimumCombatShips })}` : ''}
           </p>
         ) : null}
       </div>

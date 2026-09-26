@@ -157,6 +157,8 @@ export interface BattleReportView {
    * where that world no longer exists, and the client omits the line.
    */
   yourPlanet: string;
+  /** Current id of that world, when it still exists on the galaxy map. */
+  yourPlanetId: string | null;
   /**
    * True when the other side was an unclaimed world rather than a commander.
    *
@@ -348,6 +350,7 @@ export interface StrategicReportView {
   opponentPlanet: string;
   opponentPlanetId: string | null;
   yourPlanet: string;
+  yourPlanetId: string | null;
   outcome: 'FIRST_STRIKE' | 'CAPTURED' | 'INEFFECTIVE' | 'INTERCEPTED';
   damage: number;
   destroyedFleet: Fleet;
@@ -715,6 +718,16 @@ async function readBattleReportsIn(
           .reduce((sum, wave) => sum + wave.fuelPaid, 0)
         : fuelByMission.get(row.missionId ?? '') ?? 0;
 
+    const ownWorldId = raid
+      ? raid.planetId
+      : attacking
+        ? operation
+          ? jointWaves.find((wave) => wave.operationId === operation.id
+            && wave.playerId === playerId)?.originPlanetId ?? operation.stagingPlanetId
+          : originByMission.get(row.missionId ?? '')
+        : row.targetPlanetId;
+    const yourPlanetId = ownWorldId && targetById.has(ownWorldId) ? ownWorldId : null;
+
     return {
       kind: 'BATTLE',
       id: row.id,
@@ -764,14 +777,8 @@ async function readBattleReportsIn(
           : opponent?.planetId ?? null,
       // Which of the CALLER's worlds this was: the one they launched from, or the
       // one that was hit. Empty only where the world has since ceased to exist.
-      yourPlanet: raid
-        ? targetById.get(raid.planetId) ?? ''
-        : attacking
-          ? operation
-            ? targetById.get(jointWaves.find((wave) => wave.operationId === operation.id
-              && wave.playerId === playerId)?.originPlanetId ?? operation.stagingPlanetId) ?? ''
-            : targetById.get(originByMission.get(row.missionId ?? '') ?? '') ?? ''
-          : targetById.get(row.targetPlanetId ?? '') ?? '',
+      yourPlanet: yourPlanetId ? targetById.get(yourPlanetId) ?? '' : '',
+      yourPlanetId,
       neutral,
       yourLosses,
       theirLosses,
@@ -883,6 +890,8 @@ async function readBattleReportsIn(
     const attacking = impact.attackerPlayerId === playerId;
     const opponentId = attacking ? impact.defenderPlayerId : impact.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
+    const ownWorldId = attacking ? originByMission.get(impact.missionId) : impact.targetPlanetId;
+    const yourPlanetId = ownWorldId && targetById.has(ownWorldId) ? ownWorldId : null;
     return {
       kind: 'STRATEGIC',
       id: impact.id,
@@ -895,9 +904,8 @@ async function readBattleReportsIn(
         : opponent?.planet ?? 'an unknown world',
       opponentPlanetId: spatiallyCurrent(attacking ? impact.targetPlanetId : opponent?.planetId ?? null, impact.createdAt)
         ? attacking ? impact.targetPlanetId : opponent?.planetId ?? null : null,
-      yourPlanet: attacking
-        ? targetById.get(originByMission.get(impact.missionId) ?? '') ?? ''
-        : targetById.get(impact.targetPlanetId) ?? '',
+      yourPlanet: yourPlanetId ? targetById.get(yourPlanetId) ?? '' : '',
+      yourPlanetId,
       outcome: impact.outcome,
       damage: impact.damage,
       destroyedFleet: impact.destroyedFleet,

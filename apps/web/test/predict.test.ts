@@ -521,7 +521,7 @@ describe('predicting an instrument', () => {
 
 describe('predicting a satellite', () => {
   const room = planetView(
-    { buildings: { CORE: 5, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 0 }, orbit: [], orbitSlots: 2 },
+    { buildings: { CORE: 1, REFINERY: 1, EXTRACTOR: 1, VAULT: 0, SHIPYARD: 0 }, orbit: [], orbitSlots: 1 },
     { alloy: 500_000, crystal: 500_000 },
   );
 
@@ -540,10 +540,10 @@ describe('predicting a satellite', () => {
     expect(predictSatellite({ ...room, orbit: ['FOUNDRY'] }, 'FOUNDRY')).toBeNull();
   });
 
-  /** Orbit is rationed by the Command Core: 1, 3, 5 and 9. D25. */
+  /** The first slot opens at Core 1 and the second at Core 9. */
   it('declines with no free slot', () => {
     expect(
-      predictSatellite({ ...room, orbit: ['FOUNDRY', 'UPLINK'], orbitSlots: 2 }, 'DERRICK'),
+      predictSatellite({ ...room, orbit: ['FOUNDRY'], orbitSlots: 1 }, 'DERRICK'),
     ).toBeNull();
   });
 });

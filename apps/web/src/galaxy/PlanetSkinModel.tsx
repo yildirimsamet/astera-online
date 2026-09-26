@@ -7,7 +7,7 @@ import type { PlanetSkinStatus } from '@astera/rules';
 import { planetModel } from '../ui/assets.js';
 import { planetSkinVisual } from '../ui/planetSkins.js';
 import { createCountryRecoveryMaterial, createPlanetSkinMaterial } from './planetSkinMaterial.js';
-import { planetSurface } from './planetSurface.js';
+import { planetSurface, solidPlanetMaterial } from './planetSurface.js';
 import type { PlanetLod } from './planetLod.js';
 import { placeBodies, placePickSpheres, seat, settleMembers } from './planetPick.js';
 import { bodyLight } from './PlanetField.jsx';
@@ -253,14 +253,14 @@ function LoadedPlanetSkinModel({
     const source = Array.isArray(model.material) ? model.material[0] : model.material;
     if (!source) return null;
     if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : source.clone(), uniforms: null };
+    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
   }, [model, visual]);
   const lowDressed = useMemo(() => {
     if (!lowModel) return null;
     const source = Array.isArray(lowModel.material) ? lowModel.material[0] : lowModel.material;
     if (!source) return null;
     if (visual.finish.kind === 'PALETTE') return createPlanetSkinMaterial(source, visual.finish);
-    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : source.clone(), uniforms: null };
+    return { material: visual.finish.damaged ? createCountryRecoveryMaterial(source) : solidPlanetMaterial(source.clone()), uniforms: null };
   }, [lowModel, visual]);
   const fullBody = useRef<THREE.InstancedMesh>(null);
   const lowBody = useRef<THREE.InstancedMesh>(null);

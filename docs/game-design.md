@@ -350,6 +350,12 @@ blind raiding never fails there is nothing for information to reduce.
 
 ### Taktik geri çekilme — the fleet escape (owner decision, 2026-09-23; ruleset 11)
 
+Ruleset 13 adds a minimum of **five fighting ships at home** before this rule can
+trigger. Transports, mining craft and ground guns do not fill the minimum. A season
+dealt under ruleset 11 or 12 keeps its original escape rule. The launch sheet treats
+an otherwise certain retreat as uncertain in a new season because a power reading
+does not reveal the defender's ship count.
+
 **The ships of a defending line lift off instead of fighting when the wing that arrived fires at
 least three times what the line fires AND the line would have been wiped out anyway — if the
 world's tank pays the lift.** OGame's tactical retreat, corrected twice by this engine's numbers
@@ -531,12 +537,12 @@ They are what the information game is made of, and each has a ladder.
 (gates the Telescope and the Radar), the **Foundry** (production), the **Derrick** (mining),
 the **Beacon** (fleet speed).
 
-**The Command Core opens a slot at L2, L9, L12 and L15.** Four satellites against four slots is
-not a checklist, because the fourth slot is a Core 15 planet: for the part of a season anybody
+**The Command Core opens a slot at L1, L9, L15 and L18.** Four satellites against four slots is
+not a checklist, because the fourth slot is a Core 18 planet: for the part of a season anybody
 plays, a world runs one, two or three, and **which ones is who it is**.
 
 The Academy grants one Uplink, Telescope L1 and Radar L1 once when a new commander joins. The
-gifted Uplink uses the first Core 2 slot and powers both instruments immediately.
+gifted Uplink uses the ordinary first slot and powers both instruments immediately.
 
 **The Uplink is the one gate in the whole system.** It multiplies nothing and defends nothing;
 it is the only route to the two instruments that SEE. On later worlds the first slot is a real
@@ -1082,7 +1088,7 @@ No tutorial exists. Each system unlocks at the moment the player feels its absen
 | "Was someone poking at me?" | **Radar** | First incoming scan or attack |
 | "I can't tell if he's rich." | **Explorer** | First ambiguous telescope reading |
 | "I don't want to be seen." | **Veil** | First successful scan against you |
-| "I can't run all of these." | **Orbit slots** | Command Core L3 |
+| "I can't run all of these." | **Orbit slots** | First slot at Core L1; next at L9 |
 
 The telescope unlock fires on the first battle resolving *either way*. Losing your first fleet
 and only then being handed a telescope is the better lesson.

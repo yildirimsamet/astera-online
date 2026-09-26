@@ -6,7 +6,7 @@ import { compact, full } from '../lib/format.js';
 import { haptic } from '../lib/haptics.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import { RESOURCE_ART } from '../ui/assets.js';
-import { ClaimIcon, MenuIcon, ShieldIcon } from '../ui/icons/index.js';
+import { ClaimIcon, GiftIcon, MenuIcon, ShieldIcon } from '../ui/icons/index.js';
 import { Meter } from '../ui/kit/index.js';
 import { Tally } from '../ui/Tally.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -21,18 +21,19 @@ import { countdown, useNow } from '../lib/time.js';
  * What you hold, what is waiting, and how long the season has left.
  *
  * One of only two things left outside the galaxy (D20), so it has to earn every
- * pixel. Four jobs:
+ * pixel. Five jobs:
  *
  *   · WHAT IS SPENDABLE — storage, against its ceiling.
  *   · WHAT IS WAITING — the works (D16). This is the reason to open the game when
  *     nothing is in flight, so it is a control rather than a readout: one tap
  *     empties it, and when it is full it says what that is costing per hour.
  *   · WHAT IS NEW — the signals beacon.
+ *   · READY REWARDS — a direct gift control appears while a claim is available.
  *   · EVERYTHING ELSE — one menu control, holding the season standings, rewards,
  *     the team's announcements, help, and the account: the galaxy you are in, how
  *     long the season has, and the way out. Intel, research and the clan are NOT
  *     behind it — they are marks on the disc — which is what its accessible name
- *     and its attention dot both have to keep saying (`MenuPanel`).
+ *     and its accessible name has to keep saying (`MenuPanel`).
  */
 export function StatusBar({
   commander,
@@ -49,24 +50,8 @@ export function StatusBar({
   const { activePlanetId, capitalPlanetId, worlds, selectPlanet } = useWorld();
   const { data, dataUpdatedAt } = usePlanet();
   const held = useProjected(data?.planet, dataUpdatedAt);
-  /**
-   * The badge, and the only reason the header reads this at all. `READ` policy —
-   * no poll — so it costs one request per session plus whatever the event stream
-   * invalidates.
-   */
+  /** READ policy: refreshes after relevant launches and player events. */
   const waiting = useRewards().data?.claimable ?? 0;
-  /**
-   * THE DOT COUNTS WHAT IS BEHIND THIS CONTROL, AND IT USED TO COUNT THE CLAN.
-   *
-   * The clan is a mark on the disc (`DiscControls`, which already lights it from
-   * the same `attentionCount`) and there has been no clan row in the menu since it
-   * moved. So a clan invite lit an amber dot on the hamburger, the player opened
-   * the sheet, found nothing new in it, and the dot was still there next time —
-   * which is how a player learns to ignore every dot the interface draws.
-   *
-   * A badge may only ever promise something the surface it sits on can show.
-   */
-  const menuAttention = waiting;
   /*
     THE STRUCK WORLD WORKS DOUBLE. Owner instruction, 2026-09-16. The server nulls a
     boost that has passed, but a header left open across the instant must stop
@@ -146,33 +131,26 @@ export function StatusBar({
           />
         </div>
         {!lesson && <div className="flex shrink-0 items-end gap-2 ml-auto">
-          {/**
-           * TWO CONTROLS, AND THERE USED TO BE FOUR. Owner decision.
-           *
-           * The right-hand end of this header had grown a commander button, an
-           * intel button and the beacon, and the rewards panel would have been a
-           * fourth — on a phone, beside three stock columns that the `Stock`
-           * docblock below already records as starved for width at five digits.
-           *
-           * So everything that is not NEWS went behind one control. What is left
-           * is the pair that must be reachable in one tap because both are about
-           * to change your mind: the beacon, which says something happened, and
-           * the way in to everything else.
-           *
-           * D54 IS NOT BEING UNDONE HERE, AND IT WOULD BE EASY TO THINK IT IS.
-           * That decision's finding was not "the commander control must be on the
-           * header" — it was "a control that says SEASON and draws a clock is not
-           * a way out, because nobody presses a readout". The bug was the LABEL.
-           * This control's accessible name still carries the commander's name and
-           * still names what is behind it, and sign-out is still exactly two taps
-           * from the galaxy, the same as before. What it stops doing is spending
-           * seventy-six pixels of a phone's header on a name the player already
-           * knows.
-           *
-           * The season clock moved into the sheet with it. It was a readout, it
-           * was never pressable, and it is one tap from here.
-           */}
           <Signals onOpen={onOpen} onFocusPlanet={onFocusPlanet} />
+          {waiting > 0 && (
+            <button
+              type="button"
+              data-testid="claimable-rewards"
+              aria-label={`${t('rewards.title')} · ${t('rewards.waiting', { count: waiting })}`}
+              onClick={() => {
+                haptic('tap');
+                onOpen('rewards');
+              }}
+              className="relative flex size-9 items-center justify-center rounded-chip border border-opportunity/60 bg-opportunity/10 text-opportunity transition-colors hover:bg-opportunity/20"
+            >
+              <span data-gift-swing className="claimable-gift-swing inline-flex origin-top" aria-hidden="true">
+                <GiftIcon className="size-5" />
+              </span>
+              <span className="num absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-opportunity px-0.5 text-micro font-bold text-void" aria-hidden="true">
+                {waiting > 9 ? '9+' : waiting}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             aria-label={t('statusBar.menuHint', { name: commander })}
@@ -183,22 +161,6 @@ export function StatusBar({
             className="relative flex size-9 items-center justify-center rounded-chip border border-line-soft bg-deep text-dim transition-colors hover:border-line hover:text-bone"
           >
             <MenuIcon className="size-5" />
-            {/*
-              A REWARD WAITING IS A DOT, NOT A PULSE.
-
-              The beacon pulses for unread signals and that is the loudest thing
-              this header is allowed to do. A reward is TRUE rather than NEW — it
-              will still be there tomorrow, and it was earned rather than done to
-              you — so it gets the same treatment `Signals` gives its status ring:
-              present, coloured, and still. Two things competing for the same
-              alarm is how a player learns to ignore both.
-            */}
-            {menuAttention > 0 && (
-              <span
-                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-opportunity shadow-[0_0_5px_var(--color-opportunity)]"
-                aria-hidden="true"
-              />
-            )}
             {waiting > 0 ? (
               <span className="sr-only">{t('statusBar.menuWaiting', { count: waiting })}</span>
             ) : null}

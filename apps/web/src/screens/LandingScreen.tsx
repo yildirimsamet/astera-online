@@ -5,7 +5,9 @@ import { LandingScene } from '../landing/LandingScene.jsx';
 import { full } from '../lib/format.js';
 import { LANDING_ASSETS, usePreload, type Loader } from '../lib/preload.js';
 import { LoadingScreen } from '../shell/LoadingScreen.js';
-import { Button, useOwnPress } from '../ui/kit/index.js';
+import { useOwnPress } from '../ui/kit/index.js';
+import { Button as V2Button } from '../v2/kit/Surface.js';
+import { Icon } from '../v2/icons.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.jsx';
 import { Wordmark } from '../ui/Wordmark.jsx';
 import { commanderKnownHere } from '../lib/returning.js';
@@ -111,7 +113,7 @@ export function LandingScreen({
 
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-void">
+    <main className="relative min-h-dvh overflow-hidden bg-v2-void font-v2-ui">
       <LandingScene />
 
       {/**
@@ -137,7 +139,7 @@ export function LandingScreen({
        * picture first and the sentence second, and the sentence was crowding the
        * picture out.
        */}
-      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_12/0.92)_0%,rgb(4_6_12/0.72)_16%,rgb(4_6_12/0.10)_34%,rgb(4_6_12/0.06)_58%,rgb(4_6_12/0.78)_82%,rgb(4_6_12/0.97)_100%)] px-6 pb-[calc(28px+env(safe-area-inset-bottom))] pt-[calc(30px+env(safe-area-inset-top))]">
+      <div className="relative z-10 flex min-h-dvh flex-col justify-between bg-[linear-gradient(180deg,rgb(4_6_11/0.92)_0%,rgb(4_6_11/0.72)_16%,rgb(4_6_11/0.10)_34%,rgb(4_6_11/0.06)_58%,rgb(4_6_11/0.78)_82%,rgb(4_6_11/0.97)_100%)] px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-[calc(22px+env(safe-area-inset-top))] sm:px-6">
         {/*
           THE SWITCHER IS ON THE FRONT DOOR, not only in the commander sheet: a
           visitor who has landed in the wrong language has no account yet, so the
@@ -190,7 +192,7 @@ export function LandingScreen({
           <Population commanders={commanders} online={online} />
 
           {error !== undefined && mode === null && (
-            <p className="mb-3 text-body text-threat-ink" role="alert">
+            <p className="mb-3 text-caption text-v2-hostile" role="alert">
               {error}
             </p>
           )}
@@ -215,37 +217,36 @@ export function LandingScreen({
            * The flag is a HINT about the device, never proof of identity. See
            * `lib/returning.ts`.
            */}
-          <p className="legend mb-3 text-center text-crystal/90">
+          <p className="mb-3 text-center text-micro font-semibold uppercase tracking-wide text-v2-ink-2">
             {returning ? t('landing.welcomeBack') : t('landing.ready')}
           </p>
 
           {returning ? (
             <>
-              <button
-                type="button"
-                className="enter font-display uppercase"
+              <V2Button
+                testId="landing-primary"
+                variant="primary"
+                size="lg"
+                full
+                className="min-h-12"
                 onClick={() => {
                   setMode('login');
                 }}
               >
-                <span className="enter-orbit" aria-hidden />
-                <span className="text-title tracking-label">
-                  {t('landing.signInPrimary')}
-                </span>
-                <span aria-hidden className="text-title text-crystal">
-                  &rarr;
-                </span>
-              </button>
+                {t('landing.signInPrimary')}
+              </V2Button>
 
-              <p className="mt-3 text-center text-label text-faint">
+              <p className="mt-2 text-center text-micro text-v2-ink-3">
                 {t('landing.returningHint')}
               </p>
 
               <div className="mt-2 text-center">
-                <button
-                  type="button"
+                <V2Button
+                  variant="default"
+                  size="lg"
+                  full
                   disabled={opening}
-                  className="enter font-display uppercase"
+                  className="min-h-12"
                   onClick={() => {
                     if (opening) return;
                     setOpening(true);
@@ -254,20 +255,19 @@ export function LandingScreen({
                     });
                   }}
                 >
-                  <span className="enter-orbit" aria-hidden />
-                  <span className="text-title tracking-label">
-                    {opening ? t('landing.opening') : t('landing.newCommander')}
-                  </span>
-                  <span aria-hidden className="text-title text-crystal">&rarr;</span>
-                </button>
+                  {opening ? t('landing.opening') : t('landing.newCommander')}
+                </V2Button>
               </div>
             </>
           ) : (
             <>
-              <button
-                type="button"
-                className="enter font-display uppercase"
+              <V2Button
+                testId="landing-primary"
+                variant="primary"
+                size="lg"
+                full
                 disabled={opening}
+                className="min-h-12"
                 onClick={() => {
                   if (opening) return;
                   setOpening(true);
@@ -277,23 +277,17 @@ export function LandingScreen({
                   });
                 }}
               >
-                <span className="enter-orbit" aria-hidden />
-                <span className="text-title tracking-label">
-                  {opening ? t('landing.opening') : t('landing.register')}
-                </span>
-                <span aria-hidden className="text-title text-crystal">
-                  &rarr;
-                </span>
-              </button>
+                {opening ? t('landing.opening') : t('landing.register')}
+              </V2Button>
 
-              <p className="mt-3 text-center text-label text-faint">
+              <p className="mt-2 text-center text-micro text-v2-ink-3">
                 {t('landing.reassurance')}
               </p>
 
-              <div className="mt-2 text-center">
+              <div className="mt-1 text-center">
                 <button
                   type="button"
-                  className="text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
+                  className="min-h-10 rounded-control px-2 text-caption text-v2-ink-2 underline decoration-v2-ink-3/50 underline-offset-4 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
                   onClick={() => {
                     setMode('login');
                   }}
@@ -317,7 +311,7 @@ export function LandingScreen({
           */}
           <nav
             aria-label={t('landing.publicLinksLabel')}
-            className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-line-soft pt-3"
+            className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-v2-line pt-3"
           >
             {(
               [
@@ -330,7 +324,7 @@ export function LandingScreen({
             ).map(([page, label]) => (
               <a
                 key={page}
-                className="text-caption text-faint underline decoration-transparent underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-crystal"
+                className="text-micro text-v2-ink-3 underline decoration-transparent underline-offset-4 transition-colors hover:text-v2-ink-2 hover:decoration-v2-ink-3/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-v2-self"
                 href={publisherUrl(page, i18n.resolvedLanguage)}
               >
                 {t(label)}
@@ -370,7 +364,7 @@ export type Mode = 'login';
 function Population({ commanders, online }: { commanders: number | null; online: number | null }) {
   if (commanders === null || commanders === 0) return null;
   return (
-    <p className="mb-2 text-caption text-faint">
+    <p className="mb-2 text-center text-micro text-v2-ink-3">
       {/*
         `Trans` rather than two fragments of a sentence: which side of the figure
         the noun sits on is a property of the language, and splitting the string
@@ -380,7 +374,7 @@ function Population({ commanders, online }: { commanders: number | null; online:
       <Trans
         i18nKey="landing.populationHeld"
         values={{ amount: full(commanders) }}
-        components={[<span key="n" className="text-dim" />]}
+        components={[<span key="n" className="font-v2-mono text-v2-ink-2" />]}
       />
       {online !== null && online > 0 && (
         <>
@@ -388,7 +382,7 @@ function Population({ commanders, online }: { commanders: number | null; online:
           <Trans
             i18nKey="landing.populationOnline"
             values={{ amount: full(online) }}
-            components={[<span key="n" className="text-opportunity" />]}
+            components={[<span key="n" className="font-v2-mono text-v2-self" />]}
           />
         </>
       )}
@@ -416,6 +410,7 @@ function AuthDialog({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
+  const [problemField, setProblemField] = useState<'name' | 'password' | null>(null);
   const [busy, setBusy] = useState(false);
   const nameId = useId();
   const passwordId = useId();
@@ -439,9 +434,9 @@ function AuthDialog({
     };
   }, [onClose]);
 
-  const check = (): string | null => {
-    if (username.trim().length === 0) return t('landing.form.noName');
-    if (password.length === 0) return t('landing.form.noPassword');
+  const check = (): { message: string; field: 'name' | 'password' } | null => {
+    if (username.trim().length === 0) return { message: t('landing.form.noName'), field: 'name' };
+    if (password.length === 0) return { message: t('landing.form.noPassword'), field: 'password' };
     return null;
   };
 
@@ -449,10 +444,12 @@ function AuthDialog({
     if (busy) return;
     const bad = check();
     if (bad) {
-      setProblem(bad);
+      setProblem(bad.message);
+      setProblemField(bad.field);
       return;
     }
     setProblem(null);
+    setProblemField(null);
     setBusy(true);
     void (async () => {
       try {
@@ -461,6 +458,7 @@ function AuthDialog({
         // The session hook has already set the phase back; this is the part the
         // form owns — say what happened without discarding what was typed.
         setProblem(err instanceof Error ? err.message : t('landing.form.failed'));
+        setProblemField(null);
         setBusy(false);
       }
     })();
@@ -472,43 +470,54 @@ function AuthDialog({
 
   return (
     <div
-      className="fixed inset-0 z-30 flex items-end justify-center sm:items-center"
+      className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={t('landing.form.labelLogin')}
     >
       <button
         type="button"
-        aria-label={t('landing.form.close')}
-        className="absolute inset-0 bg-void/70"
+        aria-hidden="true"
+        tabIndex={-1}
+        className="absolute inset-0 bg-v2-void/70"
         {...dismiss}
       />
 
       <form
-        className="plate plate-cut relative w-full max-w-md p-6 pb-[calc(24px+env(safe-area-inset-bottom))]"
+        className="relative max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel px-4 pb-[calc(20px+env(safe-area-inset-bottom))] pt-3 font-v2-ui text-v2-ink shadow-2xl sm:rounded-sheet sm:border-b sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
         }}
       >
-        <p className="legend">
-          {t('landing.form.eyebrowLogin')}
-        </p>
-        <h2 className="headline text-figure mt-2 text-bone">
-          {t('landing.form.headingLogin')}
-        </h2>
+        <span aria-hidden="true" className="mx-auto mb-4 block h-1 w-9 rounded-full bg-v2-line-hi sm:hidden" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-3">
+              {t('landing.form.eyebrowLogin')}
+            </p>
+            <h2 className="mt-1 text-figure font-semibold leading-tight text-v2-ink">
+              {t('landing.form.headingLogin')}
+            </h2>
+          </div>
+          <button type="button" aria-label={t('landing.form.close')} className="grid size-9 shrink-0 place-items-center rounded-control border border-v2-line bg-v2-raise text-v2-ink-2 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self" onClick={onClose}>
+            <Icon id="i-close" className="size-4" />
+          </button>
+        </div>
 
-        <label className="legend mt-6 block" htmlFor={nameId}>
+        <label className="mt-5 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={nameId}>
           {t('landing.form.nameLabel')}
         </label>
         <input
           id={nameId}
           ref={nameRef}
-          className={`field mt-2 ${problem !== null ? 'field-bad' : ''}`}
+          className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink placeholder:text-v2-ink-3 outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'name' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+          aria-invalid={problemField === 'name'}
           value={username}
           onChange={(event) => {
             setUsername(event.target.value);
             setProblem(null);
+            setProblemField(null);
           }}
           autoComplete="username"
           autoCapitalize="none"
@@ -518,24 +527,26 @@ function AuthDialog({
           placeholder={t('landing.form.namePlaceholder')}
         />
 
-        <label className="legend mt-2 block" htmlFor={passwordId}>
+        <label className="mt-4 block text-micro font-semibold uppercase tracking-wide text-v2-ink-2" htmlFor={passwordId}>
           {t('landing.form.passwordLabel')}
         </label>
         <input
           id={passwordId}
-          className={`field mt-2 ${problem !== null ? 'field-bad' : ''}`}
+          className={`mt-1.5 min-h-12 w-full rounded-control border bg-v2-deep px-3 font-v2-ui text-title text-v2-ink outline-none focus-visible:border-v2-self focus-visible:ring-1 focus-visible:ring-v2-self/30 ${problemField === 'password' ? 'border-v2-hostile' : 'border-v2-line-hi'}`}
+          aria-invalid={problemField === 'password'}
           type="password"
           value={password}
           onChange={(event) => {
             setPassword(event.target.value);
             setProblem(null);
+            setProblemField(null);
           }}
           autoComplete="current-password"
           maxLength={200}
         />
 
         {problem !== null && (
-          <p className="mt-3 text-body text-threat-ink" role="alert">
+          <p className="mt-3 text-caption text-v2-hostile" role="alert">
             {problem}
           </p>
         )}
@@ -543,15 +554,15 @@ function AuthDialog({
         {/* No onClick: the form's own submit handler is the single entry point.
             Wiring both would run `submit` twice per press, and the `busy` guard
             cannot stop that — React has not re-rendered between the two calls. */}
-        <Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-6">
+        <V2Button type="submit" variant="primary" size="lg" full disabled={busy} className="mt-5">
           {busy
             ? t('landing.form.submitBusy')
             : t('landing.form.submitLogin')}
-        </Button>
+        </V2Button>
 
         <button
           type="button"
-          className="mt-2 w-full text-center text-caption text-dim underline decoration-dim/40 underline-offset-4 transition-colors hover:text-bone hover:decoration-bone/60"
+          className="mt-3 min-h-10 w-full rounded-control text-center text-caption text-v2-ink-2 underline decoration-v2-ink-3/50 underline-offset-4 hover:text-v2-ink focus-visible:outline-2 focus-visible:outline-v2-self"
           onClick={() => {
             onBegin();
           }}

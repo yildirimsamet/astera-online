@@ -27,11 +27,11 @@ describe('owner requests from 2026-09-20', () => {
     expect(SALVAGE.fuelMass).toBe(900);
   });
 
-  it('opens ordinary satellite slots at Core 6, 9, 12 and 15', () => {
-    expect(Array.from({ length: 17 }, (_, core) => satelliteSlots(core))).toEqual([
-      0, 0, 0, 0, 0, 0,
-      1, 1, 1,
-      2, 2, 2,
+  it('opens satellite slots at Core 1, 9, 15 and 18', () => {
+    expect(Array.from({ length: 20 }, (_, core) => satelliteSlots(core))).toEqual([
+      0,
+      1, 1, 1, 1, 1, 1, 1, 1,
+      2, 2, 2, 2, 2, 2,
       3, 3, 3,
       4, 4,
     ]);

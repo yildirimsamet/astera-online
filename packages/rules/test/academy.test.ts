@@ -64,7 +64,7 @@ describe('the authored Academy boundary', () => {
     expect(academyExitGrant([])).toEqual({ alloy: 0, crystal: 0, deuterium: 0 });
     // Pin the graduate's current opening after the public hull-price adjustment.
     expect(TUTORIAL_EXIT.resources.alloy).toBeGreaterThanOrEqual(2_400);
-    expect(TUTORIAL_EXIT.resources.crystal).toBe(1_461);
+    expect(TUTORIAL_EXIT.resources.crystal).toBe(1_199);
     expect(TUTORIAL_EXIT.resources.alloy)
       .toBe(academyExitCheckpointWithoutGrant().alloy + academyExitGrant(TUTORIAL_EXIT.claimedRewards).alloy);
   });

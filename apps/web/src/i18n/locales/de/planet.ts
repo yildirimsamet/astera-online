@@ -146,6 +146,7 @@ export const planet = {
   },
 
   defend: {
+    escapeMinimum: "Für den taktischen Rückzug sind hier mindestens {{minimum}} Kampfschiffe nötig · {{count}} von {{minimum}} bereit",
     strategicBand: "Strategische Verteidigung",
     strategicNote:
       "Eine Ladung zerstört den nächsten Todesstern, der von Radar 3 entdeckt oder im Visier des Teleskops identifiziert wurde. Die Ladung wird verbraucht, wenn es abgefeuert wird.",
@@ -459,7 +460,7 @@ export const planetHero = {
   /** The one force unit, on the one world the commander knows exactly. D199. */
   firepower: "Feuerkraft",
   perHourSuffix: "/h",
-  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L12". */
+  /** E5: the orbit line under the world — "Orbit 1/2 · +1 at Core L15". */
   orbit: "Orbit",
   disrupted: "Produktion gestoppt · überfallen · {{countdown}}",
   defence: "Verteidigung",

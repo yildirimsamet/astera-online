@@ -54,10 +54,11 @@ export const counter = {
   /** Taktik geri çekilme dans la comparaison : le verdict et la règle un geste plus loin. */
   escapeRun: 'Leur ligne est sous un tiers de ton feu : si leur réservoir suffit, leurs vaisseaux décollent et seuls les canons combattent.',
   escapeStand: 'Leurs vaisseaux restent et combattent : la lecture dépasse un tiers de ton feu ou ce que cette aile balaie.',
-  escapeUnsure: 'La lecture chevauche la ligne de fuite : leurs vaisseaux pourraient décoller.',
-  escapeAt: 'Leurs vaisseaux fuient sous {{at}}',
+  escapeUnsure: 'Leurs vaisseaux pourraient décoller ; la lecture ne précise pas toutes les conditions de retraite.',
+  escapeAt: 'Seuil de retraite : {{at}}',
   escapeRule:
     'Retraite tactique : une ligne face à au moins trois fois sa propre puissance de feu, que ce raid anéantirait, fait décoller ses vaisseaux au lieu de combattre, si le réservoir du monde paie un aller-retour de {{distance}} unités. Les canons restent, et les stocks sont tout de même pillés.',
+  escapeMinimumRule: 'Le défenseur doit aussi avoir au moins {{count}} vaisseaux de combat sur place. Une sonde ne révèle pas leur nombre.',
   compareRuleToggle: "Qu’est-ce que c’est ?",
   compareMeaning:
     "Il s’agit du coût en ressources, pas des dégâts d’attaque. Une grande flotte ne garantit pas à elle seule la victoire.",

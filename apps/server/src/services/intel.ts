@@ -70,7 +70,7 @@ import {
 } from './planet.js';
 import { neutralStanding } from './neutral.js';
 import { schedule } from '../worker/queue.js';
-import { publishShard, publishWorldMemory } from '../stream/bus.js';
+import { publishReward, publishShard, publishWorldMemory } from '../stream/bus.js';
 import { researchLevels } from './researchState.js';
 import { publicWorlds, silhouetteOf } from './publicGalaxy.js';
 import { lockWorlds } from './ownership.js';
@@ -671,6 +671,7 @@ export async function launchProbe(
      * own instruments, never one the disc gives away.
      */
     await publishShard(tx, origin.seasonId, 'launch');
+    await publishReward(tx, origin.playerId);
 
     return { missionId: mission!.id, arriveAt, flightMinutes };
   });
@@ -1174,6 +1175,8 @@ export interface ScanView {
   bearing: Bearing | null;
   /** Only from Radar L5. */
   originPlanetName: string | null;
+  /** Only from Radar L5, alongside the disclosed origin name. */
+  originPlanetId: string | null;
 }
 
 /**
@@ -1230,6 +1233,7 @@ export async function readRadarLog(
       planetName: r.targetName,
       bearing: radarRevealsBearing(radar) ? (r.scan.bearing as Bearing | null) : null,
       originPlanetName: radarRevealsOrigin(radar) ? r.originName : null,
+      originPlanetId: radarRevealsOrigin(radar) ? r.scan.originPlanetId : null,
     };
   });
 }
