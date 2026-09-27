@@ -236,6 +236,7 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         onBell={() => { openBell('signals'); }}
         nowOpen={nowOpen}
         onNow={setNowOpen}
+        onFocusCraft={onFocusCraft}
         {...(desk ? { tabs: dock } : {})}
       />
       </div>

@@ -101,7 +101,7 @@ export function SkinInventoryContent({
           {collection.planets.length === 0 && (
             <p className="rounded-plate border border-white/15 bg-white/[0.04] p-4 text-body text-dim">{t('skins.empty')}</p>
           )}
-          <div className="grid gap-2 md:grid-cols-2">
+          <div className="grid gap-2 md:grid-cols-1">
             {collection.planets.map((planet) => (
               <div key={planet.id} className="rounded-plate border border-white/15 bg-[#101824] p-3">
                 <div className="flex items-center gap-3">

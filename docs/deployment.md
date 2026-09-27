@@ -1082,31 +1082,38 @@ seating any roster account there; production acceptance must report zero joined 
 its live season.
 
 A separate, explicitly authorized owner operation, and deliberately two steps: the roster is
-filled by hand and the switch is thrown afterwards. `BOTS_ENABLED` defaults to `false`, so a
-deploy never starts seating anybody on its own.
+synchronized from the owner's fixed list and the switch is thrown afterwards. `BOTS_ENABLED`
+defaults to `false`, so a deploy never starts seating anybody on its own.
 
-1. **Migrate first.** `bot_profiles` arrives in `0057`; the ordinary rule applies — migrations
+1. **Migrate first.** `bot_profiles` arrives in `0057`; session and retirement columns arrive
+   in `0115`. The ordinary rule applies — migrations
    before the new image (`assertSchemaCurrent` refuses otherwise).
-2. **Name them.** Nothing generates a name, and a short roster warns rather than inventing one.
-   Run this on the VPS, against production, with the real `DATABASE_URL`:
+2. **Name them.** `deploy/deploy.sh` runs `bots sync` after migration and before the worker starts.
+   It applies the 100 names in `services/bots/identities.ts` and their TR/FR/DE/ES country codes
+   to existing bot accounts, keeps their account and player IDs, and creates missing accounts.
+   It is safe to rerun: unchanged accounts stay unchanged. A name held by a human account
+   makes the transaction fail rather than quietly using a different name. To inspect on the VPS:
 
    ```bash
-   pnpm bots add "Kara Şahin" "Yıldız" "Poyraz" ...     # 8 on EU-1; none on EU-2
    pnpm bots list
    ```
 
-   Each line prints a login and a password ONCE. They are never printed again and these
-   commanders never sign in; keep them only if you might want to take one over by hand.
+   The sync creates random, unprinted login passwords for new accounts; these commanders
+   never sign in. Retired accounts stay retired. `bots add` remains for manual additions;
+   if the active pool exceeds the 100 supplied names, the next sync fails rather than
+   assigning a name the owner did not supply.
 3. **Throw the switch.** `BOTS_ENABLED=true` in `.env`, then restart the worker alone — the API
    replicas never read it:
 
    ```bash
    docker compose -f docker-compose.prod.yml up -d worker
    ```
-4. **Confirm.** `/health` reports `checks.bots = { seated, awake }`. `seated` should reach the
-   roster size within a minute; `awake` is zero between 01:00 and 08:00 Türkiye time and between
-   four and eight at every other hour — that is the schedule working, not a fault. `/api/season`
-   `online` should rise to match.
+4. **Confirm.** `/health` reports total `seated` and `awake` plus per-galaxy real-player counts,
+   targets and actual bot counts. For 100 real players, the initial seat target is 25, capped by
+   `BOTS_PER_GALAXY`. At most four new bots join each galaxy per 30 minutes. Awake demand follows
+   real players active in the last five minutes, with a one-hour minimum bot session and gradual
+   reductions. `awake` is zero between 01:00 and 08:00 Türkiye time. `/api/season` `online` counts
+   awake bots alongside active people.
 
 To stop: `BOTS_ENABLED=false` and restart the worker. The worlds stay exactly where they are and
 go quiet. The Silent Space bridge disables destructive inactivity reclaim for humans and bots;

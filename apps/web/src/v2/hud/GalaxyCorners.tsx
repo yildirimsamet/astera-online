@@ -15,7 +15,7 @@ import { Icon, type IconId } from '../icons.js';
  * draws them; and chat stands low on the right, where a thumb reaches it.
  */
 
-const ROUND = 'pointer-events-auto relative grid size-9 place-items-center rounded-full border border-v2-line-hi bg-v2-panel/60 text-v2-ink-2';
+const ROUND = 'pointer-events-auto relative grid size-9 place-items-center rounded-full border border-v2-line-hi bg-v2-panel/10 text-v2-ink-2';
 
 /**
  * WHAT IS OUT THERE, AT A GLANCE. Owner, 2026-09-24: who is in the galaxy and what it
@@ -42,11 +42,11 @@ export function GalaxyReadout({ online, onlineToday, counts }: {
           {onlineToday !== undefined && <span className="text-v2-ink-3">{t('galaxy.onlineToday', { count: onlineToday })}</span>}
         </p>
       )}
-      <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink">
-        {t('galaxy.worlds', { count: counts.worlds })}
+      <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">
+        <span className="text-v2-self" >{t('galaxy.worlds', { count: counts.worlds })}</span>
         {counts.fleetsAway > 0 && <span className="text-v2-self">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
         {counts.rocks > 0 && <span className="text-v2-crystal">{t('galaxy.rocks', { count: counts.rocks })}</span>}
-        {counts.pirates > 0 && <span className="text-v2-hostile">{t('galaxy.pirates', { count: counts.pirates })}</span>}
+        {counts.pirates > 0 && <span className="text-v2-hostile col-start-2">{t('galaxy.pirates', { count: counts.pirates })}</span>}
         {counts.wrecks > 0 && <span className="text-v2-alloy">{t('galaxy.wrecks', { count: counts.wrecks })}</span>}
       </p>
     </div>
@@ -114,11 +114,11 @@ export function EventChips({
             type="button"
             aria-label={`${name} · ${left}`}
             onClick={() => { onOpen(event); }}
-            className="pointer-events-auto flex h-7 items-center gap-1.5 rounded-full border border-v2-line-hi bg-v2-panel/60 px-2.5 font-v2-ui"
+            className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-line-hi bg-v2-panel/60 px-1 font-v2-ui"
           >
             <Icon id={EVENT_ICON[event.kind]} className="size-3.5 text-v2-self" />
-            <span className="text-caption text-v2-ink-2">{name}</span>
-            <span className="font-v2-mono text-caption font-semibold text-v2-ink">{left}</span>
+            <span className="text-micro text-v2-ink-2">{name}</span>
+            <span className="font-v2-mono text-micro font-semibold text-v2-ink">{left}</span>
           </button>
         );
       })}

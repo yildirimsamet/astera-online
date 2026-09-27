@@ -40,6 +40,7 @@ import { registerGalaxyEventRoutes } from './routes/galaxyEvents.js';
 import { registerClanRoutes } from './routes/clan.js';
 import { registerCommunityRoutes } from './routes/community.js';
 import { registerCosmeticRoutes } from './routes/cosmetics.js';
+import { registerPaddleRoutes } from './routes/paddle.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -387,6 +388,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerHealthRoutes(app, {
       streamRequired: opts.env.ROLE === 'api',
       role: opts.env.ROLE,
+      botCap: opts.env.BOTS_PER_GALAXY,
     });
     // A worker exposes only its loopback operations surface. It must never become
     // an accidental fourth public API replica merely because metrics need a port.
@@ -412,6 +414,7 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerClanRoutes(app);
     registerCommunityRoutes(app);
     registerCosmeticRoutes(app);
+    registerPaddleRoutes(app, opts.env);
   });
 
   return {

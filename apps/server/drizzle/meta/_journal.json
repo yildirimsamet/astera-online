@@ -806,6 +806,20 @@
       "when": 1790363730295,
       "tag": "0114_magical_forge",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1790448115244,
+      "tag": "0115_narrow_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1790463251762,
+      "tag": "0116_sparkling_human_torch",
+      "breakpoints": true
     }
   ]
 }

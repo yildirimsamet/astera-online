@@ -248,6 +248,21 @@ export function useSkins() {
   });
 }
 
+export function useSkinShop() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.skinShop, queryFn: api.skinShop, staleTime: 30_000, refetchOnWindowFocus: true });
+}
+
+export function useSkinPricing() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.skinPricing, queryFn: api.skinPricing, staleTime: 60_000, refetchOnWindowFocus: true });
+}
+
+export function usePurchaseSkin() {
+  const api = useApi();
+  return useMutation({ mutationFn: (itemId: PlanetSkinId | 'bundle') => api.purchaseSkin(itemId) });
+}
+
 export function useEquipSkin() {
   const api = useApi();
   const cache = useQueryClient();
@@ -258,6 +273,8 @@ export function useEquipSkin() {
       await Promise.all([
         cache.invalidateQueries({ queryKey: keys.skins }),
         cache.invalidateQueries({ queryKey: keys.galaxy }),
+        cache.invalidateQueries({ queryKey: keys.planet }),
+        cache.invalidateQueries({ queryKey: keys.leaderboard }),
       ]);
     },
   });

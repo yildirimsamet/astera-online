@@ -38,6 +38,8 @@ export const landing = {
   guideLink: 'Nasıl oynanır?',
   privacyLink: 'Gizlilik',
   termsLink: 'Koşullar',
+  refundsLink: 'İade',
+  pricingLink: 'Fiyatlar',
   contactLink: 'İletişim',
 
   form: {

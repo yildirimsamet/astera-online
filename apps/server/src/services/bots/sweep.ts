@@ -1,13 +1,17 @@
-import { and, asc, eq, inArray, lte, notInArray, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, gte, inArray, isNull, lte, notInArray, sql } from 'drizzle-orm';
 import type { FastifyBaseLogger } from 'fastify';
-import { ACADEMY_STEPS, ASTEROID_DYNAMIC, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
+import { ACADEMY_STEPS, ASTEROID_DYNAMIC, MULTI_WORLD, SERVERS, hashSeed, mulberry32 } from '@astera/rules';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
 import { botProfiles, planets, players, seasons, shards } from '../../db/schema.js';
 import { joinSeason } from '../player.js';
 import { GameError } from '../planet.js';
 import { BOTS } from './personas.js';
-import { botsAwakeAt } from './schedule.js';
+import {
+  BOT_ACTIVITY_BUCKET_MS, BOT_SEAT_BATCH, BOT_SEAT_INTERVAL_MS, botAwakeTarget, botQuietAt, botSeatTarget,
+  planBotSessions, type BotSessionCandidate,
+} from './population.js';
+import { isPerson, peopleIn } from '../people.js';
 import { runBotTurn, type BotSeat } from './brain.js';
 
 /**
@@ -18,7 +22,7 @@ import { runBotTurn, type BotSeat } from './brain.js';
  * queue exists for MOMENTS the world is waiting on — a raid settling, a fleet
  * landing — and it earns its enum value, its handler, its abandon branch and its
  * health entry by being unable to be missed. A bot's turn is the opposite: missing
- * one costs a commander one upgrade, and the next sweep is a minute away. Paying
+ * one costs a commander one upgrade, and the next sweep is twenty seconds away. Paying
  * the queue's whole tax for that would be paying for a guarantee nobody needs.
  *
  * Housekeeping may never stop the event queue. The caller wraps this in its
@@ -48,10 +52,14 @@ interface SeatedBot {
   seasonId: string;
   seasonSeed: number;
   nextActionAt: Date;
+  lastActiveAt: Date;
+  sessionPlayerId: string | null;
+  sessionStartedAt: Date | null;
+  sessionUntilAt: Date | null;
 }
 
 /**
- * Seat every commander in the pool that is not yet on a galaxy.
+ * Seat up to the real-player target, admitting at most four per half hour.
  *
  * The target is per galaxy and the pool is global, so a short pool is a WARNING and
  * never a prompt to invent a name — a generated commander beside the owner's own is
@@ -61,8 +69,8 @@ export async function ensureBotSeats(
   db: Db,
   clock: Clock,
   log: FastifyBaseLogger,
-  /** `BOTS_PER_GALAXY`; the code's own roster when nobody configured one. */
-  perGalaxy: number = BOTS.perGalaxy,
+  /** `BOTS_PER_GALAXY` is an upper bound, not an immediate seating quota. */
+  perGalaxy: number = BOTS.maxPerGalaxy,
 ): Promise<number> {
   const live = await db
     .select({ id: seasons.id, code: shards.code })
@@ -76,11 +84,10 @@ export async function ensureBotSeats(
   const profiles = await db
     .select({ accountId: botProfiles.accountId, ordinal: botProfiles.ordinal })
     .from(botProfiles)
+    .where(isNull(botProfiles.retiredAt))
     .orderBy(asc(botProfiles.ordinal));
-  if (profiles.length === 0) return 0;
-
   const placed = await db
-    .select({ accountId: players.accountId, seasonId: players.seasonId })
+    .select({ accountId: players.accountId, seasonId: players.seasonId, joinedAt: players.joinedAt, retiredAt: botProfiles.retiredAt })
     .from(players)
     .innerJoin(botProfiles, eq(botProfiles.accountId, players.accountId));
   const seasonOf = new Map(placed.map((row) => [row.accountId, row.seasonId]));
@@ -89,10 +96,18 @@ export async function ensureBotSeats(
   let free = profiles.filter((profile) => !seasonOf.has(profile.accountId));
 
   for (const season of eligible) {
-    const here = placed.filter((row) => row.seasonId === season.id).length;
-    const need = perGalaxy - here;
+    const hereRows = placed.filter((row) => row.seasonId === season.id);
+    const here = hereRows.filter((row) => row.retiredAt === null).length;
+    const target = botSeatTarget(await peopleIn(db, season.id), perGalaxy);
+    const recent = hereRows.filter((row) => row.joinedAt > new Date(clock.now().getTime() - BOT_SEAT_INTERVAL_MS)).length;
+    const need = Math.min(
+      Math.max(0, target - here),
+      Math.max(0, BOT_SEAT_BATCH - recent),
+      Math.max(0, MULTI_WORLD.botSlots - hereRows.length),
+    );
+    if (free.length < target - here) reportShortRoster(log, season.id, here + free.length, target);
+    else lastShortfall.delete(season.id);
     if (need <= 0) continue;
-    if (free.length < need) reportShortRoster(log, season.id, here + free.length, perGalaxy);
     const taking = free.slice(0, need);
     free = free.slice(taking.length);
     for (const profile of taking) {
@@ -103,7 +118,7 @@ export async function ensureBotSeats(
 
           `joinSeason` stamps `last_active_at` with the instant of the join, which
           is right for a person — they are, by definition, at the controls. A bot
-          seated at 04:00 is not, and twelve of them appearing in the live count in
+          seated at 04:00 is not, and inactive bots appearing in the live count in
           the middle of the quiet hours is precisely the thing the blackout exists
           to prevent. Backdated past the online window, so the only thing that ever
           puts one of these commanders into the population is the presence stamp
@@ -112,8 +127,8 @@ export async function ensureBotSeats(
         await db
           .update(players)
           .set({
-            // Past the asteroid/pirate activity window too: seated is not playing,
-            // and only an awake bot counts toward the hour (`countActiveCommanders`).
+            // Past the asteroid/pirate activity window too: seated is not playing.
+            // Bots never count toward that hour anyway (`countEligibleCommanders`).
             lastActiveAt: new Date(
               clock.now().getTime()
                 - (Math.max(SERVERS.onlineWindowMinutes, ASTEROID_DYNAMIC.activeWindowMinutes) + 1) * 60_000,
@@ -144,8 +159,8 @@ export async function ensureBotSeats(
 /**
  * SAY IT ONCE, AND AGAIN ONLY WHEN IT CHANGES.
  *
- * The sweep runs every sixty seconds for the life of the process, so a shortfall
- * that logs on every pass is 1,440 identical lines a day burying everything else in
+ * The sweep runs every twenty seconds for the life of the process, so a shortfall
+ * that logs on every pass is 4,320 identical lines a day burying everything else in
  * the worker's log — for a condition that has not moved since the first one. What
  * an operator needs to see is the TRANSITION: the roster fell short, or somebody
  * added names and it is now less short.
@@ -154,11 +169,12 @@ export async function ensureBotSeats(
  * process that restarts and says it once more has cost nothing, and a second worker
  * saying it once is not a problem worth a table.
  */
-const lastShortfall = new Map<string, number>();
+const lastShortfall = new Map<string, string>();
 
 function reportShortRoster(log: FastifyBaseLogger, seasonId: string, have: number, want: number): void {
-  if (lastShortfall.get(seasonId) === have) return;
-  lastShortfall.set(seasonId, have);
+  const state = `${String(have)}/${String(want)}`;
+  if (lastShortfall.get(seasonId) === state) return;
+  lastShortfall.set(seasonId, state);
   log.warn(
     { seasonId, want, have },
     'the bot roster is short of names; add more with the bots CLI rather than expecting the sweep to invent them',
@@ -168,8 +184,8 @@ function reportShortRoster(log: FastifyBaseLogger, seasonId: string, have: numbe
 /**
  * Read every seated commander back with the galaxy it is standing in.
  *
- * The season seed is what keys the shift roster, so two galaxies never run the same
- * rota — and the same galaxy runs the same rota on every process that asks.
+ * The season seed supplies each bot's decision context; session state is persisted
+ * on the profile so every worker reads the same activity decision.
  */
 async function seatedBots(db: Db): Promise<SeatedBot[]> {
   return db
@@ -178,6 +194,10 @@ async function seatedBots(db: Db): Promise<SeatedBot[]> {
       ordinal: botProfiles.ordinal,
       persona: botProfiles.persona,
       nextActionAt: botProfiles.nextActionAt,
+      lastActiveAt: players.lastActiveAt,
+      sessionPlayerId: botProfiles.sessionPlayerId,
+      sessionStartedAt: botProfiles.sessionStartedAt,
+      sessionUntilAt: botProfiles.sessionUntilAt,
       playerId: players.id,
       planetId: planets.id,
       seasonId: seasons.id,
@@ -191,45 +211,98 @@ async function seatedBots(db: Db): Promise<SeatedBot[]> {
       eq(planets.controllerPlayerId, players.id),
       eq(planets.kind, 'CAPITAL'),
     ))
-    .where(notInArray(shards.code, [...BOTS.excludedShardCodes]))
+    .where(and(
+      eq(shards.role, 'MAIN'),
+      isNull(botProfiles.retiredAt),
+      notInArray(shards.code, [...BOTS.excludedShardCodes]),
+    ))
     .orderBy(asc(botProfiles.ordinal));
-}
-
-/**
- * WHICH OF THIS GALAXY'S COMMANDERS ARE AWAKE, INDEXED WITHIN THE GALAXY.
- *
- * `ordinal` is global — the roster spans every shard — while the shift curve is
- * about ONE sky. So a galaxy's own bots are ranked by ordinal and the rota is run
- * over that ranking. A galaxy holding six of the twelve gets the same shape scaled
- * to six, rather than whichever six happen to sit low in the global numbering.
- */
-function awakeIn(bots: readonly SeatedBot[], seasonSeed: number, at: Date): Set<string> {
-  const ranked = [...bots].sort((a, b) => a.ordinal - b.ordinal);
-  const awake = botsAwakeAt(ranked.length, seasonSeed, at);
-  const out = new Set<string>();
-  ranked.forEach((bot, index) => {
-    if (awake.has(index)) out.add(bot.accountId);
-  });
-  return out;
 }
 
 /** Every commander at the controls right now, across every live galaxy. */
 function awakeAcross(bots: readonly SeatedBot[], at: Date): SeatedBot[] {
-  const bySeason = new Map<string, SeatedBot[]>();
-  for (const bot of bots) {
-    const galaxy = bySeason.get(bot.seasonId) ?? [];
-    galaxy.push(bot);
-    bySeason.set(bot.seasonId, galaxy);
-  }
-  const awake: SeatedBot[] = [];
-  for (const [, galaxy] of bySeason) {
-    const on = awakeIn(galaxy, galaxy[0]?.seasonSeed ?? 0, at);
-    for (const bot of galaxy) if (on.has(bot.accountId)) awake.push(bot);
-  }
-  return awake;
+  if (botQuietAt(at)) return [];
+  return bots.filter((bot) =>
+    bot.sessionPlayerId === bot.playerId
+    && bot.sessionStartedAt !== null
+    && bot.sessionStartedAt <= at
+    && bot.sessionUntilAt !== null
+    && bot.sessionUntilAt > at);
 }
 
-/** When this commander next does something. Jittered, so twelve of them never move together. */
+/** Each worker recomputes demand once per five-minute bucket, including at boot. */
+const lastActivityBucket = new Map<string, number>();
+
+async function reconcileSessions(db: Db, now: Date): Promise<void> {
+  const live = await db
+    .select({ seasonId: seasons.id, code: shards.code })
+    .from(seasons)
+    .innerJoin(shards, eq(shards.id, seasons.shardId))
+    .where(and(eq(seasons.status, 'live'), eq(shards.role, 'MAIN')));
+  const bucket = Math.floor(now.getTime() / BOT_ACTIVITY_BUCKET_MS);
+  for (const season of live) {
+    if (BOTS.excludedShardCodes.includes(season.code)) continue;
+    if (lastActivityBucket.get(season.seasonId) === bucket) continue;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`bot-session:${season.seasonId}`}))`);
+      const rows = await tx
+        .select({
+          accountId: botProfiles.accountId,
+          ordinal: botProfiles.ordinal,
+          playerId: players.id,
+          nextActionAt: botProfiles.nextActionAt,
+          sessionPlayerId: botProfiles.sessionPlayerId,
+          startedAt: botProfiles.sessionStartedAt,
+          untilAt: botProfiles.sessionUntilAt,
+        })
+        .from(botProfiles)
+        .innerJoin(players, eq(players.accountId, botProfiles.accountId))
+        .where(and(eq(players.seasonId, season.seasonId), isNull(botProfiles.retiredAt)))
+        .orderBy(asc(botProfiles.ordinal));
+      if (rows.length === 0) return;
+      const [active] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(players)
+        .where(and(
+          eq(players.seasonId, season.seasonId),
+          gte(players.lastActiveAt, new Date(now.getTime() - SERVERS.onlineWindowMinutes * 60_000)),
+          isPerson,
+        ));
+      const candidates: BotSessionCandidate[] = rows.map((row) => ({
+        accountId: row.accountId,
+        ordinal: row.ordinal,
+        playerId: row.playerId,
+        sessionPlayerId: row.sessionPlayerId,
+        startedAt: row.startedAt,
+        untilAt: row.untilAt,
+      }));
+      const plan = planBotSessions(candidates, botAwakeTarget(active?.n ?? 0, rows.length), now);
+      if (plan.stop.length > 0) {
+        await tx.update(botProfiles).set({ sessionUntilAt: now })
+          .where(and(inArray(botProfiles.accountId, plan.stop), isNull(botProfiles.retiredAt)));
+      }
+      for (const extension of plan.extend) {
+        await tx.update(botProfiles).set({ sessionUntilAt: extension.untilAt })
+          .where(and(eq(botProfiles.accountId, extension.accountId), isNull(botProfiles.retiredAt)));
+      }
+      const due = new Map(rows.map((row) => [row.accountId, row.nextActionAt]));
+      for (const bot of plan.start) {
+        const rng = mulberry32(hashSeed('astera:bots:first-turn', bot.playerId, now.getTime()));
+        const firstTurn = new Date(now.getTime() + Math.floor(rng() * BOT_ACTIVITY_BUCKET_MS));
+        const existing = due.get(bot.accountId);
+        await tx.update(botProfiles).set({
+          sessionPlayerId: bot.playerId,
+          sessionStartedAt: now,
+          sessionUntilAt: new Date(now.getTime() + 60 * 60_000),
+          nextActionAt: existing && existing < firstTurn ? existing : firstTurn,
+        }).where(and(eq(botProfiles.accountId, bot.accountId), isNull(botProfiles.retiredAt)));
+      }
+    });
+    lastActivityBucket.set(season.seasonId, bucket);
+  }
+}
+
+/** When this commander next does something. Jittered so bots do not move together. */
 const nextTurnAt = (at: Date, playerId: string): Date => {
   const rng = mulberry32(hashSeed('astera:bots:gap', playerId, at.getTime()));
   const { min, max } = BOTS.turnGapMinutes;
@@ -240,10 +313,11 @@ export async function runBotSweep(
   db: Db,
   clock: Clock,
   log: FastifyBaseLogger,
-  perGalaxy: number = BOTS.perGalaxy,
+  perGalaxy: number = BOTS.maxPerGalaxy,
 ): Promise<BotSweepResult> {
   const seated = await ensureBotSeats(db, clock, log, perGalaxy);
   const now = clock.now();
+  await reconcileSessions(db, now);
   const bots = await seatedBots(db);
   if (bots.length === 0) return { seated, awake: 0, turns: 0 };
 
@@ -333,6 +407,10 @@ async function claimTurn(db: Db, bot: SeatedBot, now: Date): Promise<boolean> {
       .where(and(
         eq(botProfiles.accountId, bot.accountId),
         lte(botProfiles.nextActionAt, now),
+        isNull(botProfiles.retiredAt),
+        eq(botProfiles.sessionPlayerId, bot.playerId),
+        lte(botProfiles.sessionStartedAt, now),
+        gt(botProfiles.sessionUntilAt, now),
       ))
       .for('update', { skipLocked: true })
       .limit(1);
@@ -346,10 +424,54 @@ async function claimTurn(db: Db, bot: SeatedBot, now: Date): Promise<boolean> {
 }
 
 /** For `/health`: how many commanders the server is playing, and how many are on. */
-export async function botStatus(db: Db, clock: Clock): Promise<{ seated: number; awake: number }> {
-  const [row] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(botProfiles);
+export async function botStatus(
+  db: Db,
+  clock: Clock,
+  operatorCap: number = BOTS.maxPerGalaxy,
+): Promise<{
+  seated: number;
+  awake: number;
+  galaxies: {
+    seasonId: string;
+    people: number;
+    activePeople: number;
+    targetSeats: number;
+    seated: number;
+    targetAwake: number;
+    awake: number;
+  }[];
+}> {
+  const now = clock.now();
   const bots = await seatedBots(db);
-  return { seated: row?.n ?? 0, awake: awakeAcross(bots, clock.now()).length };
+  // A persisted session can outlive a stopped worker. Presence is the evidence
+  // that it is actually being driven, with the same window as the online count.
+  const awake = awakeAcross(bots, now).filter((bot) =>
+    bot.lastActiveAt >= new Date(now.getTime() - SERVERS.onlineWindowMinutes * 60_000));
+  const live = await db
+    .select({ seasonId: seasons.id, code: shards.code })
+    .from(seasons)
+    .innerJoin(shards, eq(shards.id, seasons.shardId))
+    .where(and(eq(seasons.status, 'live'), eq(shards.role, 'MAIN')));
+  const galaxies = await Promise.all(live.map(async (season) => {
+    const [people, [active]] = await Promise.all([
+      peopleIn(db, season.seasonId),
+      db.select({ n: sql<number>`count(*)::int` }).from(players).where(and(
+        eq(players.seasonId, season.seasonId),
+        gte(players.lastActiveAt, new Date(now.getTime() - SERVERS.onlineWindowMinutes * 60_000)),
+        isPerson,
+      )),
+    ]);
+    const seated = bots.filter((bot) => bot.seasonId === season.seasonId).length;
+    const activePeople = active?.n ?? 0;
+    return {
+      seasonId: season.seasonId,
+      people,
+      activePeople,
+      targetSeats: BOTS.excludedShardCodes.includes(season.code) ? 0 : botSeatTarget(people, operatorCap),
+      seated,
+      targetAwake: botQuietAt(now) ? 0 : botAwakeTarget(activePeople, seated),
+      awake: awake.filter((bot) => bot.seasonId === season.seasonId).length,
+    };
+  }));
+  return { seated: bots.length, awake: awake.length, galaxies };
 }

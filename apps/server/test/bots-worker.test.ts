@@ -68,13 +68,15 @@ describe('bots on the worker tick', () => {
   });
 
   it('seats the roster and reports its turns once it is on', async () => {
+    await f.db.update(players).set({ lastActiveAt: evening })
+      .where(eq(players.id, f.playerIds[0]!));
     const result = await worker(f, true).tick();
     expect(result.botTurns).toBeGreaterThan(0);
     const seated = await f.db
       .select({ n: sql<number>`count(*)::int` })
       .from(botProfiles)
       .innerJoin(players, eq(players.accountId, botProfiles.accountId));
-    expect(seated[0]?.n).toBe(6);
-    expect(await onlineCount(evening)).toBeGreaterThanOrEqual(1);
+    expect(seated[0]?.n).toBe(2);
+    expect(await onlineCount(evening)).toBe(2);
   });
 });

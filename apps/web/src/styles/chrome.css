@@ -1152,6 +1152,13 @@
   }
 }
 
+@keyframes v2-collect-flight {
+  0% { opacity: 0; transform: translate3d(0, 4px, 0) scale(0.6); }
+  20% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(0, -26px, 0) scale(1); }
+}
+
 /* ── recovery boost · the struck world works double ─────────────
    A rising arrow beside each store, in the shield's colour. It bobs rather than
    blinks: the glyph has to stay readable at 8px on a phone, so it never fades out.
@@ -1488,4 +1495,9 @@
 .chat-type {
   --text-body: 14px;
   --text-micro: 11px;
+}
+/* Give the Now line room only while a timer exists. An empty timer row leaves the
+   galaxy readout at the top edge instead of making a blank 48 px band. */
+.v2-shell:has([data-now-line]) [data-galaxy-top-corners] {
+  top: 3rem;
 }

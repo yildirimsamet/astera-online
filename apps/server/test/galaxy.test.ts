@@ -554,6 +554,17 @@ describe('GET /api/leaderboard', () => {
     expect(body.you.score).toBe(0);
   });
 
+  it('publishes equipped capital skins without revealing hidden world data', async () => {
+    await f.db.update(planets).set({ equippedSkinId: 'planet-ice' }).where(eq(planets.id, f.planetIds[1]!));
+    await placeAt(f.db, f.planetIds[1]!, { x: 3_000 });
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const row = res.json<{ ladder: { playerId: string; skinId?: string; planetId?: string; coreTier?: number }[] }>()
+      .ladder.find((entry) => entry.playerId === f.playerIds[1]);
+    expect(row?.skinId).toBe('planet-ice');
+    expect(row).not.toHaveProperty('planetId');
+    expect(row).not.toHaveProperty('coreTier');
+  });
+
   it('uses the canonical account display name on the ladder', async () => {
     await f.db.update(accounts).set({ displayName: 'İzci' }).where(eq(accounts.id, f.accountIds[0]!));
     await f.db.update(players).set({ name: 'STALE-SEASON-NAME' }).where(eq(players.id, f.playerIds[0]!));

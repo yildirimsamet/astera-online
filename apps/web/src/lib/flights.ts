@@ -1,6 +1,18 @@
 import { fleetCount } from '@astera/rules';
 import type { Contact, MiningRun, PendingThread } from '../api/schemas.js';
+import type { Focus } from '../galaxy/FocusPanel.js';
+import type { CraftFocus } from '../galaxy/ownCraft.js';
+import { threadKey } from '../galaxy/threadKey.js';
 import i18n from '../i18n/index.js';
+
+export type FlightFocus = CraftFocus | Extract<Focus, { kind: 'contact' }>;
+
+/** Use the same visible craft target in the Fleet page and the timers sheet. */
+export function flightFocus(thread: PendingThread, index: number, contacts: readonly Contact[]): FlightFocus | undefined {
+  if (thread.path) return { kind: 'thread', key: threadKey(thread, index) };
+  const contact = contactFor(thread, contacts);
+  return contact ? { kind: 'contact', id: contact.id } : undefined;
+}
 
 /**
  * WHAT A CRAFT IN THE AIR IS CALLED, AND WHEN IT LANDS.

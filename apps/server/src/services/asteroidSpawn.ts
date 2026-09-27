@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, isNotNull, lt, lte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   ASTEROID_DYNAMIC,
@@ -22,6 +22,7 @@ import {
 } from '../db/schema.js';
 import { publishShard } from '../stream/bus.js';
 import { schedule } from '../worker/queue.js';
+import { isPerson } from './people.js';
 
 /**
  * THE DYNAMIC ASTEROID FIELD'S CLOCK. Owner instruction, 2026-09-16:
@@ -62,38 +63,19 @@ export async function scheduleAsteroidHour(
 }
 
 /**
- * THE COMMANDERS WHO COUNT FOR THE NEXT HOUR: everybody in this season who played in
- * the last `activeWindowMinutes` — the server's own commanders included since
- * 2026-09-19 (owner, reversing the 2026-09-16 rule that left them out: with few
- * people online the field stayed empty and the bots had nothing to mine or hunt).
+ * WHO PAYS FOR THE SKY: PEOPLE, AND ONLY PEOPLE. Owner instruction, 2026-09-26:
+ * *"Asteroid ve korsan spawn oranları botları hesaba katmasın"* — and the showers
+ * too. This one count sizes the hour's rocks, a shower's multiple of them and the
+ * hour's pirates, so filtering it here filters all three. It reverses 2026-09-19,
+ * which counted awake bots because a quiet galaxy left them nothing to mine or hunt;
+ * the server's commanders now go on duty only while people are playing
+ * (`bots/population.ts`), so the field is never theirs alone. A retired bot keeps
+ * its `bot_profiles` row and stays out with the rest (`isPerson`).
  *
- * A bot counts only while it is awake: the roster stamps `last_active_at` when it
- * is at the controls, and seating backdates it past this window (`sweep.ts`), so a
- * sleeping or freshly seated one is not in the count.
- */
-export async function countActiveCommanders(
-  db: Queryable,
-  seasonId: string,
-  at: Date,
-): Promise<number> {
-  const since = new Date(at.getTime() - ASTEROID_DYNAMIC.activeWindowMinutes * 60_000);
-  const [row] = await db
-    .select({ n: count() })
-    .from(players)
-    .where(and(
-      eq(players.seasonId, seasonId),
-      gte(players.lastActiveAt, since),
-    ));
-  return row?.n ?? 0;
-}
-
-/**
- * WHO PAYS FOR THE SKY. Plan §15.6 — *"Sybil sınırı şart"*.
- *
- * One rock an hour per active commander is the right rule and an open door: `countActiveCommanders`
- * is a raw `lastActiveAt` sweep, so a hundred free accounts logging in bought a hundred rocks an
- * hour for whoever made them. The gate is the two things a fake account does not have — a DAY in
- * the season and a CORE that took real production to raise.
+ * Plan §15.6 — *"Sybil sınırı şart"*. One rock an hour per active commander is the right rule and
+ * an open door: a raw `lastActiveAt` sweep lets a hundred free accounts logging in buy a hundred
+ * rocks an hour for whoever made them. The gate is the two things a fake account does not have — a
+ * DAY in the season and a CORE that took real production to raise.
  *
  * BOTH, NOT EITHER. The plan writes "24 saat / küçük Core eşiği"; read as OR it defends nothing,
  * because a throwaway passes the clock by doing nothing for a day and a script passes a small Core
@@ -138,6 +120,7 @@ export async function countEligibleCommanders(
     .where(and(
       eq(players.seasonId, seasonId),
       gte(players.lastActiveAt, activeSince),
+      isPerson,
     ))
     .groupBy(players.id);
   return rows.filter((row) => row.joinedAt <= foundedBy

@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { BuildOrderView, PendingThread } from '../../src/api/schemas.js';
+import type { BuildOrderView, Contact, MiningRun, PendingThread } from '../../src/api/schemas.js';
 import i18n from '../../src/i18n/index.js';
 import { nowEntries, type NowInput } from '../../src/lib/nowLine.js';
 import { buildOrderLabel } from '../../src/lib/orders.js';
@@ -25,6 +25,29 @@ const thread = (kind: PendingThread['kind'], ms: number): PendingThread => ({
   minutesRemaining: ms / 60_000,
   arriveAt: at(ms),
 });
+
+const flying = (kind: PendingThread['kind'], id: string, ms: number): PendingThread => ({
+  ...thread(kind, ms),
+  id,
+  path: {
+    from: { x: 0, y: 0, z: 0 },
+    to: { x: 1, y: 0, z: 1 },
+    departAt: at(-60_000),
+    arriveAt: at(ms),
+  },
+});
+
+const drill: MiningRun = {
+  id: 'run-1', targetKind: 'asteroid', asteroidId: 'rock-1', debrisFieldId: null,
+  status: 'outbound', craft: 2, departAt: at(-60_000), arriveAt: at(480_000),
+  homeAt: null, intercept: { x: 1, y: 0, z: 1 }, minedAlloy: 0,
+  minedCrystal: 0, minedDeuterium: 0, recalledAt: null,
+};
+
+const visibleContact: Contact = {
+  id: 'mission-9', kind: 'unknown', from: { x: 0, y: 0, z: 0 },
+  to: { x: 1, y: 0, z: 1 }, startAt: at(-60_000), endAt: at(600_000), inbound: true,
+};
 
 const refinery: BuildOrderView = {
   id: 'o-1',
@@ -103,5 +126,43 @@ describe('the Now line', () => {
     const sheet = screen.getByRole('dialog', { name: 'Timers' });
     expect(within(sheet).getAllByRole('listitem')).toHaveLength(3);
     expect(within(sheet).getAllByText(/^at /)).toHaveLength(3);
+  });
+
+  it.each([
+    ['fleet', 'fleet-1', 'Your fleet'],
+    ['probe', 'probe-1', 'Your probe'],
+  ] as const)('focuses an owned %s from the timers sheet', async (kind, id, title) => {
+    const onFocus = vi.fn();
+    const onClose = vi.fn();
+    render(<NowLine entries={entries({ threads: [flying(kind, id, 600_000)] })}
+      now={NOW} {...closed()} open onClose={onClose} onFocus={onFocus} />);
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Timers' })).getByRole('button', { name: new RegExp(title, 'i') }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'thread', key: id });
+  });
+
+  it('focuses an owned drill and leaves a build timer as plain information', async () => {
+    const onFocus = vi.fn();
+    render(<NowLine entries={entries({ runs: [drill], builds: [refinery] })}
+      now={NOW} {...closed()} open onFocus={onFocus} />);
+    const sheet = screen.getByRole('dialog', { name: 'Timers' });
+    await userEvent.click(within(sheet).getByRole('button', { name: /your drills/i }));
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'run', id: 'run-1' });
+    expect(within(sheet).queryByRole('button', { name: /alloy refinery/i })).toBeNull();
+  });
+
+  it('only offers an incoming craft when the galaxy can see its contact', async () => {
+    const incoming = { ...thread('incoming', 600_000), contactId: 'mission-9' };
+    const onFocus = vi.fn();
+    const hidden = render(<NowLine entries={entries({ threads: [incoming] })}
+      now={NOW} {...closed()} open onFocus={onFocus} />);
+    let sheet = screen.getByRole('dialog', { name: 'Timers' });
+    expect(within(sheet).queryByRole('button', { name: /Inbound/ })).toBeNull();
+
+    hidden.rerender(<NowLine entries={entries({ threads: [incoming], contacts: [visibleContact] })}
+      now={NOW} {...closed()} open onFocus={onFocus} />);
+    sheet = screen.getByRole('dialog', { name: 'Timers' });
+    await userEvent.click(within(sheet).getByRole('button', { name: /Inbound/ }));
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'contact', id: 'mission-9' });
   });
 });

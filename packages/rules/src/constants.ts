@@ -1778,8 +1778,7 @@ export const RESEARCH_TECH = {
   propulsionMaxLevel: 4,
 } as const;
 
-/** Temporary release switch: keep the authored strategic system intact while
- * its two crafting doors and direct research permissions are unavailable. */
+/** Release switches: strategic crafting is live; direct research remains unavailable. */
 export const FEATURE_FLAGS: Readonly<Record<
   'STRATEGIC_CRAFTING_ENABLED' | 'STRATEGIC_RESEARCH_ENABLED',
   boolean
@@ -3286,7 +3285,7 @@ export const PIRATE = {
   /**
    * THE DYNAMIC PIRATE FIELD. Owner instruction, 2026-09-19: pirates spawn like the
    * rocks — per commander who actually played, not per seat. Every hour the worker
-   * counts the people active before it opened (`countActiveCommanders`, bots never
+   * counts the people active before it opened (`countEligibleCommanders`, bots never
    * count) and that hour spawns `activePlayers × perActivePlayerPerHour` pirates,
    * and never fewer than `floorPerHour`, so a commander alone at four in the morning
    * still has a target. A 1000-seat galaxy with 200 people on is ~50 an hour; a
@@ -3491,8 +3490,8 @@ export const MULTI_WORLD = {
   capitalSlots: SERVERS.capacity,
   /**
    * Addresses reserved for the server's commanders, right after the capitals and on
-   * `GALAXY.strata.bot`. A ceiling, not a roster: `BOTS.perGalaxy` seats that many
-   * of them. The owner expects 50–100 at most in a thousand-seat galaxy.
+   * `GALAXY.strata.bot`. This is an address ceiling; the bot worker seats toward
+   * real-player demand under its operator limit, never all 100 at once.
    */
   botSlots: 100,
   /** Every address corresponds to a world that can really exist this season. */

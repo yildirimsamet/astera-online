@@ -34,7 +34,7 @@ import { SATELLITE_IDS } from '@astera/rules';
  */
 
 /** Milliseconds after which the door opens whatever is still loading. */
-export const PRELOAD_DEADLINE_MS = 6_000;
+export const PRELOAD_DEADLINE_MS = 5_000;
 
 /**
  * Exactly what `LandingScene` draws, and nothing it does not.
@@ -179,7 +179,7 @@ export interface Preload {
  * run's cleanup as the last thing that had happened: the deadline had been
  * cleared, the guard had been flipped, and nothing was ever going to arm either
  * again. The door simply never opened, and only in development, which is the one
- * environment where nobody looks at the loading screen for six seconds.
+ * environment where nobody looks at the loading screen for five seconds.
  *
  * So the two concerns are separated. THE FETCH runs once, guarded by the ref,
  * because a second pass would double every request. THE DEADLINE is re-armed on

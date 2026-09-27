@@ -114,7 +114,7 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                 {row.rank}
               </span>
             )}
-            <PlanetSigil seed={row.planetId ?? row.playerId} size={40} />
+            <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={40} />
             <span className="min-w-0">
               <span className="flex items-baseline gap-2">
                 {self ? (

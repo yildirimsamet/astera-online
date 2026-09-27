@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   useCollect,
@@ -17,11 +17,12 @@ import { collectState, worksOutlook } from '../../lib/collect.js';
 import { compact } from '../../lib/format.js';
 import { haptic } from '../../lib/haptics.js';
 import { nowEntries } from '../../lib/nowLine.js';
+import type { FlightFocus } from '../../lib/flights.js';
 import { useProjected } from '../../lib/projection.js';
 import { useNow } from '../../lib/time.js';
 import { describe, useToast } from '../../ui/Toast.js';
 import { NowLine } from '../hud/NowLine.js';
-import { TopBar } from '../hud/TopBar.js';
+import { TopBar, type CollectionTransfer } from '../hud/TopBar.js';
 
 export interface HudTopProps {
   commander: string;
@@ -37,6 +38,7 @@ export interface HudTopProps {
   /** The Now line's timers sheet, held by the shell. */
   nowOpen: boolean;
   onNow: (open: boolean) => void;
+  onFocusCraft: (focus: FlightFocus) => void;
   /** E11: the desk tab bar, drawn in the top bar (the shell decides when). */
   tabs?: ReactNode;
 }
@@ -49,7 +51,7 @@ export interface HudTopProps {
  * presentational pieces never fetch. The stores are projected so the meters move
  * between fetches the way the old header's did.
  */
-export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, tabs }: HudTopProps) {
+export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy, onBell, nowOpen, onNow, onFocusCraft, tabs }: HudTopProps) {
   const { t } = useTranslation();
   const now = useNow(1_000);
   const { activePlanetId, capitalPlanetId, worlds } = useWorld();
@@ -57,6 +59,12 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   // Every second: the works fill while the player watches, and the planet query has no poll.
   const held = useProjected(planet.data?.planet, planet.dataUpdatedAt, 1_000);
   const collect = useCollect();
+  const [transfer, setTransfer] = useState<CollectionTransfer | null>(null);
+  useEffect(() => {
+    if (transfer === null) return;
+    const timer = window.setTimeout(() => { setTransfer(null); }, 1_200);
+    return () => { window.clearTimeout(timer); };
+  }, [transfer]);
   const say = useToast();
   const season = useSeason().data;
   const notifications = useNotifications().data?.notifications ?? [];
@@ -79,6 +87,11 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   const works = world ? (() => {
     const caps = { alloy: world.bufferAlloyCap, crystal: world.bufferCrystalCap, deuterium: world.bufferDeuteriumCap };
     const vessels = { alloy: held.bufferAlloy, crystal: held.bufferCrystal, deuterium: held.bufferDeuterium };
+    const outlook = worksOutlook({
+      caps,
+      works: vessels,
+      rates: { alloy: world.alloyPerHour, crystal: world.crystalPerHour, deuterium: world.deuteriumPerHour ?? 0 },
+    });
     return {
       state: collectState({
         caps,
@@ -86,16 +99,21 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
         store: { alloy: held.alloy, crystal: held.crystal, deuterium: held.deuterium },
         storeCaps: { alloy: world.alloyCap, crystal: world.crystalCap, deuterium: world.deuteriumCap },
       }),
-      fullInMinutes: worksOutlook({
-        caps,
-        works: vessels,
-        rates: { alloy: world.alloyPerHour, crystal: world.crystalPerHour, deuterium: world.deuteriumPerHour ?? 0 },
-      }).fullInMinutes,
+      fill: outlook.fill,
+      fullInMinutes: outlook.fullInMinutes,
       pending: collect.isPending,
       onCollect: () => {
         haptic('commit');
         collect.mutate(undefined, {
           onSuccess: (result) => {
+            setTransfer({
+              id: Date.now(),
+              each: {
+                alloy: { from: held.alloy, to: held.alloy + result.moved.alloy },
+                crystal: { from: held.crystal, to: held.crystal + result.moved.crystal },
+                deuterium: { from: held.deuterium, to: held.deuterium + result.moved.deuterium },
+              },
+            });
             const moved = Math.round(result.moved.alloy + result.moved.crystal + result.moved.deuterium);
             const kept = Math.round(result.blocked.alloy + result.blocked.crystal + result.blocked.deuterium);
             say(
@@ -116,6 +134,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   const entries = nowEntries({
     now,
     threads,
+    contacts,
     runs,
     builds: [...(data?.queues?.CONSTRUCTION ?? []), ...(data?.queues?.YARD ?? [])],
     research: data?.researchQueue ?? [],
@@ -124,7 +143,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
   });
 
   return (
-    <div className="shrink-0">
+    <div className="relative shrink-0">
       <TopBar
         commander={commander}
         shield={shieldUntil ? { until: shieldUntil.getTime(), kind: season?.shieldKind ?? 'NEWCOMER' } : null}
@@ -139,6 +158,7 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
         rewards={rewards}
         boosted={boostUntil !== null && boostUntil.getTime() > now}
         {...(works ? { works } : {})}
+        transfer={transfer}
         onCommander={onCommander}
         onRewards={onRewards}
         onWorld={onWorlds}
@@ -147,12 +167,14 @@ export function HudTop({ commander, onCommander, onRewards, onWorlds, onEconomy,
         {...(tabs === undefined ? {} : { tabs })}
       />
       <NowLine
+        floating
         entries={entries}
         now={now}
         contacts={contacts}
         open={nowOpen}
         onOpen={() => { onNow(true); }}
         onClose={() => { onNow(false); }}
+        onFocus={onFocusCraft}
       />
     </div>
   );

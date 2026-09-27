@@ -152,6 +152,13 @@ say "Applying migrations"
 $COMPOSE run --rm --no-deps api1 \
   apps/server/node_modules/.bin/tsx apps/server/src/cli/season.ts migrate
 
+say "Synchronizing commander names and countries"
+# Reconcile the owner's fixed roster before the worker can seat a new account.
+# The command is transactional and safe on every deploy; an occupied human name
+# stops the deployment without partially renaming any commander.
+$COMPOSE run --rm --no-deps api1 \
+  apps/server/node_modules/.bin/tsx apps/server/src/cli/bots.ts sync
+
 say "Starting one worker and three API replicas"
 $COMPOSE up -d --remove-orphans worker api1 api2 api3
 

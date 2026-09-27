@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NotificationView, PendingThread, PlanetView } from '../../src/api/schemas.js';
@@ -48,7 +48,8 @@ vi.mock('../../src/api/world.js', () => ({
 }));
 
 const handlers = () => ({
-  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(), nowOpen: false, onNow: vi.fn(),
+  onCommander: vi.fn(), onRewards: vi.fn(), onWorlds: vi.fn(), onEconomy: vi.fn(), onBell: vi.fn(),
+  nowOpen: false, onNow: vi.fn(), onFocusCraft: vi.fn(),
 });
 
 beforeEach(() => {
@@ -90,6 +91,19 @@ describe('the wired top of the shell', () => {
     pending = [{ kind: 'incoming', targetName: 'Kestrel-12', targetPlanetId: 'p1', minutesRemaining: 9, arriveAt: new Date(Date.now() + 9 * 60_000) }];
     render(<HudTop commander="Samet" {...handlers()} />, { wrapper: ToastProvider });
     expect(screen.getByRole('button', { name: /Most urgent timer/ })).toHaveAttribute('data-tone', 'hostile');
+  });
+
+  it('passes a timer flight to the shell craft focus', async () => {
+    const arriveAt = new Date(Date.now() + 9 * 60_000);
+    pending = [{
+      kind: 'probe', id: 'probe-1', targetName: 'Hollow', minutesRemaining: 9, arriveAt,
+      path: { from: { x: 0, y: 0, z: 0 }, to: { x: 1, y: 0, z: 1 }, departAt: new Date(), arriveAt },
+    }];
+    const on = { ...handlers(), nowOpen: true };
+    render(<HudTop commander="Samet" {...on} />, { wrapper: ToastProvider });
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Timers' })).getByRole('button', { name: /Your probe/ }));
+    expect(on.onNow).toHaveBeenCalledWith(false);
+    expect(on.onFocusCraft).toHaveBeenCalledWith({ kind: 'thread', key: 'probe-1' });
   });
 
   it('wears the shield on the chip while it holds', () => {

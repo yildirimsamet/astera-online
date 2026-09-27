@@ -9,7 +9,7 @@ import type {
 } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { researchName } from '../i18n/names.js';
-import { contactFor, flightTitle, incomingDetail, runArrival, runTitle } from './flights.js';
+import { contactFor, flightFocus, flightTitle, incomingDetail, runArrival, runTitle, type FlightFocus } from './flights.js';
 import { buildOrderLabel } from './orders.js';
 
 const MINUTE = 60_000;
@@ -26,10 +26,10 @@ export const SHIELD_WINDOW_MS = 60 * MINUTE;
 const STRIKES: ReadonlySet<PendingThread['kind']> = new Set(['fleet', 'pirate', 'death_star']);
 
 export type NowEntry =
-  | { tier: 1; kind: 'incoming'; at: number; thread: PendingThread }
-  | { tier: 2; kind: 'strike'; at: number; thread: PendingThread }
-  | { tier: 3; kind: 'flight'; at: number; thread: PendingThread }
-  | { tier: 3; kind: 'run'; at: number; run: MiningRun }
+  | { tier: 1; kind: 'incoming'; at: number; thread: PendingThread; focus?: FlightFocus }
+  | { tier: 2; kind: 'strike'; at: number; thread: PendingThread; focus?: FlightFocus }
+  | { tier: 3; kind: 'flight'; at: number; thread: PendingThread; focus?: FlightFocus }
+  | { tier: 3; kind: 'run'; at: number; run: MiningRun; focus: FlightFocus }
   | { tier: 4; kind: 'build'; at: number; order: BuildOrderView }
   | { tier: 4; kind: 'research'; at: number; order: ResearchQueueOrderView }
   | { tier: 5; kind: 'event'; at: number; event: ActiveGalaxyEvent }
@@ -39,6 +39,7 @@ export interface NowInput {
   /** Server time. */
   now: number;
   threads: readonly PendingThread[];
+  contacts?: readonly Contact[];
   runs: readonly MiningRun[];
   /** Every build order on the active world, both lanes. */
   builds: readonly BuildOrderView[];
@@ -61,18 +62,20 @@ export function nowEntries(input: NowInput): NowEntry[] {
   const within = (at: number, window: number): boolean => at > now && at - now <= window;
   const entries: NowEntry[] = [];
 
-  for (const thread of input.threads) {
+  for (const [index, thread] of input.threads.entries()) {
     const at = thread.arriveAt.getTime();
+    const focus = flightFocus(thread, index, input.contacts ?? []);
+    const target = focus ? { focus } : {};
     if (thread.kind === 'incoming') {
-      entries.push({ tier: 1, kind: 'incoming', at, thread });
+      entries.push({ tier: 1, kind: 'incoming', at, thread, ...target });
     } else if (STRIKES.has(thread.kind) && thread.leg !== 'return' && at - now <= STRIKE_WINDOW_MS) {
-      entries.push({ tier: 2, kind: 'strike', at, thread });
+      entries.push({ tier: 2, kind: 'strike', at, thread, ...target });
     } else {
-      entries.push({ tier: 3, kind: 'flight', at, thread });
+      entries.push({ tier: 3, kind: 'flight', at, thread, ...target });
     }
   }
   for (const run of input.runs) {
-    if (run.status !== 'done') entries.push({ tier: 3, kind: 'run', at: runArrival(run), run });
+    if (run.status !== 'done') entries.push({ tier: 3, kind: 'run', at: runArrival(run), run, focus: { kind: 'run', id: run.id } });
   }
   for (const order of input.builds) {
     const at = order.finishesAt?.getTime();

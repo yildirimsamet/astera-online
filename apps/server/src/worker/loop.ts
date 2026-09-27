@@ -21,7 +21,7 @@ export interface WorkerOptions {
    * process happened to boot would be the wrong default in every direction.
    */
   botsEnabled?: boolean;
-  /** `BOTS_PER_GALAXY`. Absent means the code's own roster, `BOTS.perGalaxy`. */
+  /** `BOTS_PER_GALAXY` is a ceiling over the population-driven seat target. */
   botsPerGalaxy?: number;
   silentSpaceEnabled?: boolean;
   silentSpaceBatch?: number;
@@ -212,7 +212,7 @@ export class EventWorker {
      * stranded sweep above: its own clock, its own `try/catch`, and no claim on the queue.
      *
      * It is the least important thing in this tick — a missed turn costs one
-     * commander one upgrade and the next sweep is a minute away — which is exactly
+     * commander one upgrade and the next sweep is twenty seconds away — which is exactly
      * why it must be incapable of delaying a raid settling. The catch is the whole
      * point of it living here rather than inside `claimDue`'s path.
      */

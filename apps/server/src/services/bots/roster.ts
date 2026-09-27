@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client.js';
 import type { Clock } from '../../clock.js';
 import { accounts, botProfiles } from '../../db/schema.js';
@@ -7,9 +7,10 @@ import { hashPassword } from '../../auth/password.js';
 import { normaliseUsername, USERNAME_PATTERN } from '../../auth/credentials.js';
 import { GameError } from '../planet.js';
 import { personaFor, type BotPersonaId } from './personas.js';
+import type { CountryCode } from '@astera/rules';
 
 /**
- * THE POOL, AND THE OWNER FILLS IT BY HAND. D159.
+ * THE POOL, FILLED FROM THE OWNER'S FIXED LIST ON DEPLOY. D159.
  *
  * The one thing this system must never do is invent a name. A generated roster is
  * the tell — "Commander-07" beside "Kara Şahin" ends the illusion in one glance at
@@ -27,6 +28,7 @@ export interface BotRosterEntry {
   accountId: string;
   displayName: string;
   username: string;
+  country: CountryCode;
   ordinal: number;
   persona: BotPersonaId;
   nextActionAt: Date;
@@ -73,9 +75,9 @@ const TURKISH = /[çğıöşüÇĞİÖŞÜ]/g;
 const sameName = (a: string, b: string): boolean =>
   a.trim().toLocaleLowerCase('tr') === b.trim().toLocaleLowerCase('tr');
 
-const handleFor = (displayName: string): string => {
+export const handleFor = (displayName: string): string => {
   const latin = displayName.replace(TURKISH, (ch) => TRANSLITERATE[ch] ?? ch);
-  const stripped = latin.replace(/[^a-zA-Z0-9_]/g, '');
+  const stripped = latin.replace(/[^a-zA-Z0-9_]/g, '').replace(/^_+|_+$/g, '');
   return normaliseUsername(stripped.slice(0, 16).padEnd(3, '0'));
 };
 
@@ -85,7 +87,7 @@ const handleFor = (displayName: string): string => {
  * `ordinal` is `max + 1` rather than `count`, so retiring one commander can never
  * hand its shift and its habits to a different one. It is the roster's identity.
  */
-export async function addBot(db: Db, displayName: string, clock: Clock): Promise<AddedBot> {
+export async function addBot(db: Db, displayName: string, clock: Clock, country: CountryCode = 'TR'): Promise<AddedBot> {
   const name = displayName.trim();
   if (name.length === 0) throw new GameError('BAD_NAME', 'A commander needs a name', 400);
 
@@ -134,18 +136,19 @@ export async function addBot(db: Db, displayName: string, clock: Clock): Promise
       throw new GameError('USERNAME_TAKEN', `${name} is already flying in this galaxy`, 409);
     }
 
-    let account: { id: string; username: string; displayName: string } | undefined;
+    let account: { id: string; username: string; displayName: string; country: CountryCode } | undefined;
     for (let attempt = 0; attempt < 20 && !account; attempt++) {
       const suffix = attempt === 0 ? '' : String(attempt);
       const username = `${base.slice(0, 16 - suffix.length)}${suffix}`;
       const [created] = await tx
         .insert(accounts)
-        .values({ username, passwordHash, displayName: name })
+        .values({ username, passwordHash, displayName: name, countryCode: country })
         .onConflictDoNothing({ target: accounts.username })
         .returning({
           id: accounts.id,
           username: accounts.username,
           displayName: accounts.displayName,
+          country: accounts.countryCode,
         });
       account = created;
     }
@@ -167,6 +170,7 @@ export async function addBot(db: Db, displayName: string, clock: Clock): Promise
       accountId: account.id,
       displayName: account.displayName,
       username: account.username,
+      country: account.country,
       ordinal: next,
       persona: personaFor(next).id,
       nextActionAt: clock.now(),
@@ -184,9 +188,11 @@ export async function listBots(db: Db): Promise<BotRosterEntry[]> {
       nextActionAt: botProfiles.nextActionAt,
       displayName: accounts.displayName,
       username: accounts.username,
+      country: accounts.countryCode,
     })
     .from(botProfiles)
     .innerJoin(accounts, eq(accounts.id, botProfiles.accountId))
+    .where(isNull(botProfiles.retiredAt))
     .orderBy(asc(botProfiles.ordinal));
   return rows.map((row) => ({ ...row, persona: row.persona as BotPersonaId }));
 }
@@ -194,19 +200,19 @@ export async function listBots(db: Db): Promise<BotRosterEntry[]> {
 /**
  * Take a commander off the roster WITHOUT deleting anything they own.
  *
- * The profile row is the only thing removed. The account, the world, the fleet and
+ * The profile is marked retired, not removed. The account, the world, the fleet and
  * every battle report anybody fought against them stay exactly where they are —
- * retiring only stops the sweep driving them. The Silent Space bridge disables
+ * retiring only stops the sweep driving them. Keeping the profile also preserves
+ * their bot identity in every real-person population query. The bridge disables
  * destructive inactivity reclaim; quiet humans and bots both retain their worlds.
  */
 export async function retireBot(db: Db, displayName: string): Promise<boolean> {
-  const username = normaliseUsername(displayName);
-  const [account] = await db.select({ id: accounts.id })
-    .from(accounts).where(eq(accounts.username, username));
+  const account = (await listBots(db)).find((row) => sameName(row.displayName, displayName));
   if (!account) return false;
   const removed = await db
-    .delete(botProfiles)
-    .where(eq(botProfiles.accountId, account.id))
+    .update(botProfiles)
+    .set({ retiredAt: new Date(), sessionUntilAt: new Date() })
+    .where(and(eq(botProfiles.accountId, account.accountId), isNull(botProfiles.retiredAt)))
     .returning({ ordinal: botProfiles.ordinal });
   return removed.length > 0;
 }

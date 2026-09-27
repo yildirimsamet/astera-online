@@ -331,6 +331,12 @@ export const botProfiles = pgTable('bot_profiles', {
   accountId: uuid('account_id').primaryKey().references(() => accounts.id),
   ordinal: integer('ordinal').notNull(),
   persona: text('persona').notNull(),
+  /** Identity survives retirement; only the worker roster stops using this row. */
+  retiredAt: timestamp('retired_at', { withTimezone: true }),
+  /** A session is tied to a seasonal player, never carried into the next season. */
+  sessionPlayerId: uuid('session_player_id'),
+  sessionStartedAt: timestamp('session_started_at', { withTimezone: true }),
+  sessionUntilAt: timestamp('session_until_at', { withTimezone: true }),
   /**
    * When this commander next does something. The sweep claims rows by this column
    * with `FOR UPDATE SKIP LOCKED`, so two workers can never drive one bot at once
@@ -3486,10 +3492,41 @@ export const cosmeticEntitlements = pgTable('cosmetic_entitlements', {
   orderRef: text('order_ref').notNull(),
   grantedByAccountId: uuid('granted_by_account_id').references(() => accounts.id, { onDelete: 'set null' }),
   grantedAt: timestamp('granted_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
 }, (t) => [
-  uniqueIndex('cosmetic_entitlements_account_cosmetic_idx').on(t.accountId, t.cosmeticId),
+  uniqueIndex('cosmetic_entitlements_account_cosmetic_idx').on(t.accountId, t.cosmeticId).where(sql`${t.revokedAt} IS NULL`),
   uniqueIndex('cosmetic_entitlements_order_idx').on(t.source, t.orderRef),
 ]);
+
+/** Local intent binds a signed Paddle transaction to an account and the chosen offer. */
+export const paddleSkinOrders = pgTable('paddle_skin_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  /** Kept as skin_id for compatibility with the tested, stashed sandbox ledger. */
+  itemId: text('skin_id').notNull(),
+  priceId: text('price_id').notNull(),
+  transactionId: text('transaction_id'),
+  customerId: text('customer_id'),
+  status: text('status').$type<'PENDING' | 'COMPLETED' | 'REVOKED' | 'FAILED'>().notNull().default('PENDING'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('paddle_skin_orders_transaction_idx').on(t.transactionId),
+  uniqueIndex('paddle_skin_orders_pending_idx').on(t.accountId, t.itemId)
+    .where(sql`${t.status} = 'PENDING' AND ${t.accountId} IS NOT NULL`),
+]);
+
+export const paddleWebhookEvents = pgTable('paddle_webhook_events', {
+  id: text('id').primaryKey(),
+  eventType: text('event_type').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** A refund can arrive before a completion; keep its transaction ID permanently. */
+export const paddleReversals = pgTable('paddle_reversals', {
+  transactionId: text('transaction_id').primaryKey(),
+  action: text('action').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 /** Immutable move history also serves as a transactional notification outbox. No live-player FK. */
 export const commanderTransfers = pgTable('commander_transfers', {

@@ -665,35 +665,15 @@ if (anyWhen > 0) {
 }
 
 /* ── 6 · the works fill on their own ──────────────────────────
-   The planet query deliberately has no poll, so the vessels are projected from
-   the clock. If that projection is wrong the panel sits at zero for ever and the
-   Collect button never enables — which is exactly what shipped. */
+   Measure the pill's actual fill instead of its rounded text. Even a small
+   projected gain moves the visual fill before the integer label changes. */
 await dismiss();
-const worksAria = () =>
-  page
-    .locator('button[aria-label^="Collect"], button[aria-label*="full" i]')
-    .first()
-    .getAttribute('aria-label')
-    .catch(() => null);
-
-const first = await worksAria();
-// The opening Refinery can be as low as 88/h. Fifty seconds adds more than one
-// whole displayed unit at that rate; the former 25-second sample added only 0.61
-// and could leave an integer label unchanged even while projection was correct.
-await settle(50_000);
-const second = await worksAria();
-const num = (s) => Number(/(\d[\d,]*)/.exec(s ?? '')?.[1]?.replace(/,/g, '') ?? '0');
-if (first === null && second === null) {
-  // The collect bubble (B13) rises only past its threshold; a fresh commander's
-  // works stay under it for minutes, which leaves nothing on screen to read.
-  console.log('  SKIP  the works fill without a refetch — the collect bubble has not risen yet');
-} else {
-  check(
-    'the works fill without a refetch',
-    num(second) > num(first),
-    `${String(first)} → ${String(second)}`,
-  );
-}
+const alloyFill = () => page.locator('[data-works-resource="alloy"] [data-works-fill]').getAttribute('style');
+const share = (style) => Number(/scaleX\((\d+(?:\.\d+)?)\)/.exec(style ?? '')?.[1] ?? NaN);
+const first = share(await alloyFill());
+await settle(10_000);
+const second = share(await alloyFill());
+check('the works fill without a refetch', Number.isFinite(first) && second > first, `${String(first)} → ${String(second)}`);
 await shot('08-works');
 
 console.log(problems.length ? `\nRUNTIME NOISE:\n  ${problems.slice(0, 8).join('\n  ')}` : '\nno runtime errors');

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { collectState } from '../../src/lib/collect.js';
 import { WorksLine, type WorksLineProps } from '../../src/v2/hud/WorksLine.js';
 
@@ -9,7 +9,7 @@ import { WorksLine, type WorksLineProps } from '../../src/v2/hud/WorksLine.js';
  * taşınmalı. Kullanıcı tek bakışta görebilmeli ... en minimum şekilde büyütmeliyiz").
  *
  * One line under the three stores, each resource's waiting amount under its own store —
- * turquoise once it is worth a tap, yellow where a vessel is full and that resource has
+ * a subtle ring once it is worth a tap, yellow where a vessel is full and that resource has
  * stopped — and the whole line is the one press that collects. A store that can take none
  * of it is said before the press, and the press opens the base where the Vault is raised.
  */
@@ -24,6 +24,7 @@ const props = (
   storeCaps = bigStore,
 ): WorksLineProps => ({
   state: collectState({ caps, works, store, storeCaps }),
+  fill: { alloy: works.alloy / caps.alloy, crystal: works.crystal / caps.crystal, deuterium: works.deuterium / caps.deuterium },
   fullInMinutes: 120,
   pending: false,
   onCollect: vi.fn(),
@@ -33,12 +34,15 @@ const props = (
 
 const cell = (resource: string) => document.querySelector<HTMLElement>(`[data-works-resource="${resource}"]`);
 
+beforeEach(() => { window.localStorage.removeItem('astera:works-tip-v1'); });
+
 describe('the works line', () => {
   it('shows what waits in each vessel under its own store, and nothing for an empty one', () => {
     render(<WorksLine {...props({ alloy: 400, crystal: 30, deuterium: 0 })} />);
     expect(cell('alloy')).toHaveTextContent('400');
     expect(cell('crystal')).toHaveTextContent('30');
     expect(cell('deuterium')).toHaveTextContent('');
+    expect(cell('alloy')?.querySelector('[data-works-fill]')).toHaveAttribute('style', 'transform: scaleX(0.4);');
   });
 
   it('is one press that collects all of it, and names what it holds', async () => {
@@ -49,11 +53,35 @@ describe('the works line', () => {
     expect(all.onCollect).toHaveBeenCalledTimes(1);
   });
 
-  it('wears turquoise once the works are worth a tap, and stays quiet before', () => {
+  it('keeps the resource hue and adds a subtle ring once collection is worthwhile', () => {
     const { rerender } = render(<WorksLine {...props({ alloy: 20, crystal: 0, deuterium: 0 })} />);
-    expect(cell('alloy')?.className).not.toMatch(/text-v2-self/);
+    expect(cell('alloy')?.className).toMatch(/text-v2-alloy/);
+    expect(cell('alloy')?.className).not.toMatch(/ring-current/);
     rerender(<WorksLine {...props({ alloy: 400, crystal: 0, deuterium: 0 })} />);
-    expect(cell('alloy')?.className).toMatch(/text-v2-self/);
+    expect(cell('alloy')?.className).toMatch(/text-v2-alloy/);
+    expect(cell('alloy')?.className).toMatch(/ring-current/);
+  });
+
+  it('draws a source-coloured collection pill with a plus amount and clear action', () => {
+    render(<WorksLine {...props({ alloy: 400, crystal: 30, deuterium: 0 })} />);
+    expect(cell('alloy')).toHaveTextContent('+400');
+    expect(cell('alloy')?.querySelector('img')).toBeInTheDocument();
+    expect(screen.getByRole('note')).toHaveTextContent(/collect/i);
+    expect(cell('deuterium')).toHaveAttribute('data-empty');
+  });
+
+  it('shows the first collection hint once when production appears, even if the player leaves without collecting', () => {
+    const first = render(<WorksLine {...props({ alloy: 0, crystal: 0, deuterium: 0 })} />);
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('astera:works-tip-v1')).toBeNull();
+
+    first.rerender(<WorksLine {...props({ alloy: 4, crystal: 0, deuterium: 0 })} />);
+    expect(screen.getByRole('note')).toHaveTextContent(/collect/i);
+    expect(window.localStorage.getItem('astera:works-tip-v1')).toBe('seen');
+
+    first.unmount();
+    render(<WorksLine {...props({ alloy: 4, crystal: 0, deuterium: 0 })} />);
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 
   it('marks a full vessel in yellow, says production stopped, and beats', () => {

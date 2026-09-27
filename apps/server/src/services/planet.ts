@@ -262,6 +262,7 @@ export interface LockedPlanet {
   /** The rule set the season was dealt, read off the row this lock already holds. */
   rulesetVersion: number;
   name: string;
+  equippedSkinId: string | null;
   x: number; y: number; z: number;
   /**
    * How far this world's commander got through the Academy, or null if it was
@@ -594,6 +595,7 @@ export async function loadLocked(
     seasonEndsAt: season.endsAt,
     rulesetVersion: season.rulesetVersion,
     name: row.name,
+    equippedSkinId: row.equippedSkinId,
     x: row.x, y: row.y, z: row.z,
     academyStep: row.academyStep,
     alloy: advanced.alloy,

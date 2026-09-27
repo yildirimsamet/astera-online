@@ -57,7 +57,7 @@ function hostCpuCounters(): {
 
 export function registerHealthRoutes(
   app: FastifyInstance,
-  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both' },
+  options: { streamRequired: boolean; role: 'api' | 'worker' | 'both'; botCap: number },
 ): void {
   /**
    * EXEMPT FROM THE RATE LIMIT, because this is the one route whose caller is a
@@ -167,7 +167,7 @@ export function registerHealthRoutes(
         questions somebody will ask when the disc looks quiet, and this is where the
         answer belongs.
       */
-      checks.bots = await botStatus(app.db, app.clock);
+      checks.bots = await botStatus(app.db, app.clock, options.botCap);
       if (lag !== null && lag > MAX_QUEUE_LAG_SECONDS) {
         ok = false;
         checks.queue = 'stalled';

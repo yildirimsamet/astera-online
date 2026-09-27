@@ -74,11 +74,12 @@ describe('the sheet', () => {
    * while a page is open, so a page runs from under the top bar (`--v2-top-h`, which the
    * shell publishes) down to the dock, and a full page fills that and no more.
    */
-  it('stands under the top bar, and a full page fills only the room below it', () => {
+  it('can rise to the screen top and fits short content at full', () => {
     render(<Sheet title="Fleet" detents={['full']} onClose={vi.fn()}>body</Sheet>);
     const dialog = screen.getByRole('dialog', { name: 'Fleet' });
-    expect(dialog.parentElement!.style.top).toBe('var(--v2-top-h, 0px)');
-    expect(dialog).toHaveClass('h-full');
+    expect(dialog.parentElement).toHaveClass('top-0');
+    expect(dialog).toHaveClass('max-h-full');
+    expect(dialog).not.toHaveClass('h-full');
     expect(dialog.className).not.toMatch(/h-\[92dvh\]/);
   });
 

@@ -25,12 +25,15 @@ vi.mock('../../src/api/queries.js', async () => {
 vi.mock('../../src/v2/shell/HudTop.js', () => ({
   HudTop: (p: {
     onCommander: () => void; onRewards: () => void; onWorlds: () => void; onEconomy: () => void; onBell: () => void;
-    nowOpen: boolean; onNow: (open: boolean) => void; tabs?: ReactNode;
+    nowOpen: boolean; onNow: (open: boolean) => void;
+    onFocusCraft: (focus: { kind: 'thread'; key: string }) => void; tabs?: ReactNode;
   }) => (
     <div>
       {p.tabs !== undefined && <div aria-label="top tabs">{p.tabs}</div>}
       <button type="button" onClick={() => { p.onNow(true); }}>now line</button>
-      {p.nowOpen && <div role="dialog" aria-label="timers" />}
+      {p.nowOpen && <div role="dialog" aria-label="timers">
+        <button type="button" onClick={() => { p.onNow(false); p.onFocusCraft({ kind: 'thread', key: 'm-1' }); }}>timer flight</button>
+      </div>}
       <button type="button" onClick={p.onCommander}>chip</button>
       <button type="button" onClick={p.onRewards}>gift</button>
       <button type="button" onClick={p.onWorlds}>world mark</button>
@@ -378,6 +381,14 @@ describe('the v2 shell', () => {
       await userEvent.click(screen.getByRole('button', { name: press }));
       expect(screen.queryByRole('dialog', { name: 'timers' }), press).toBeNull();
     }
+  });
+
+  it('hands a timers flight to the same craft focus path as the Fleet page', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'now line' }));
+    await userEvent.click(screen.getByRole('button', { name: 'timer flight' }));
+    expect(onFocusCraft).toHaveBeenCalledWith({ kind: 'thread', key: 'm-1' });
+    expect(screen.queryByRole('dialog', { name: 'timers' })).toBeNull();
   });
 
   it('routes the chip, the world mark and the meters', async () => {

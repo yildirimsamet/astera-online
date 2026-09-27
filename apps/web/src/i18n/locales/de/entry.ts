@@ -41,6 +41,8 @@ export const landing = {
   guideLink: 'Spielanleitung',
   privacyLink: 'Datenschutz',
   termsLink: 'Bedingungen',
+  refundsLink: 'Rückerstattung',
+  pricingLink: 'Preise',
   contactLink: 'Kontakt',
 
   form: {

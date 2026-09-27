@@ -26,7 +26,22 @@ x-api: &api
     DATABASE_URL: postgres://${POSTGRES_USER:-astera}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-astera}
     DB_POOL_MAX: ${API_DB_POOL_MAX:-8}
     JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    PADDLE_CHECKOUT_ENABLED: ${PADDLE_CHECKOUT_ENABLED:-false}
+    PADDLE_ENV: ${PADDLE_ENV:-production}
+    PADDLE_LIVE_API_KEY: ${PADDLE_LIVE_API_KEY:-}
+    PADDLE_CLIENT_SIDE_TOKEN: ${PADDLE_CLIENT_SIDE_TOKEN:-}
+    PADDLE_WEBHOOK_SECRET: ${PADDLE_WEBHOOK_SECRET:-}
+    PADDLE_PRICE_LAVA: ${PADDLE_PRICE_LAVA:-pri_01m3fwr44wjzkbenrjctb9k6dd}
+    PADDLE_PRICE_ICE: ${PADDLE_PRICE_ICE:-pri_01m3fws4ewv6kp2yr4tztk8427}
+    PADDLE_PRICE_TOXIC: ${PADDLE_PRICE_TOXIC:-pri_01m3fwtx8bvz0dbqdv3p18379m}
+    PADDLE_PRICE_DESERT: ${PADDLE_PRICE_DESERT:-pri_01m3fwvmk6eysq56ed05z1828m}
+    PADDLE_PRICE_TURKEY: ${PADDLE_PRICE_TURKEY:-pri_01m3fx4wqpeqpzav659tz16e7t}
+    PADDLE_PRICE_GERMANY: ${PADDLE_PRICE_GERMANY:-pri_01m3fx5v21rxrjaddw764dexe4}
+    PADDLE_PRICE_FRANCE: ${PADDLE_PRICE_FRANCE:-pri_01m3fx6rg3nsn9nd3j179287hg}
+    PADDLE_PRICE_SPAIN: ${PADDLE_PRICE_SPAIN:-pri_01m3fx85a9gb6gpkbbrjjry73p}
+    PADDLE_PRICE_BUNDLE: ${PADDLE_PRICE_BUNDLE:-pri_01m3fx3943k024e12yb67a49r1}
     ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
+    BOTS_PER_GALAXY: ${BOTS_PER_GALAXY:-100}
     TRUST_PROXY: 'true'
     LOG_LEVEL: ${LOG_LEVEL:-info}
     RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-300}
@@ -161,7 +176,7 @@ services:
       WORKER_BATCH: ${WORKER_BATCH:-100}
       # The commanders the server plays. D159. Off unless the .env says otherwise,
       # and only ever here: an API replica never consults it. Names come from
-      # `pnpm bots add` and are never generated.
+      # the owner list synced during deploy or `pnpm bots add`; none are generated.
       BOTS_ENABLED: ${BOTS_ENABLED:-false}
       SILENT_SPACE_ENABLED: ${SILENT_SPACE_ENABLED:-false}
       SILENT_SPACE_BATCH: ${SILENT_SPACE_BATCH:-5}

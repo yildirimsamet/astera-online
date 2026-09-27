@@ -1,13 +1,11 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PIRATE, dynamicPirateHourOf, dynamicPirateIndex } from '@astera/rules';
 import { FixedClock } from '../src/clock.js';
-import { asteroidSpawnHours, players } from '../src/db/schema.js';
+import { asteroidSpawnHours, botProfiles, players } from '../src/db/schema.js';
 import { createSeason } from '../src/services/season.js';
 import { joinSeason } from '../src/services/player.js';
 import { openAsteroidHour } from '../src/services/asteroidSpawn.js';
-import { addBot } from '../src/services/bots/roster.js';
-import { ensureBotSeats } from '../src/services/bots/sweep.js';
 import {
   loadPirateSnapshot,
   pirateId,
@@ -16,7 +14,6 @@ import {
   privatePirateField,
 } from '../src/services/pirateField.js';
 import { makeAccount, testDb, truncateAll } from './helpers.js';
-import { pino } from 'pino';
 
 /**
  * PIRATES PER ACTIVE COMMANDER, HOUR BY HOUR. Owner instruction, 2026-09-19.
@@ -27,7 +24,6 @@ import { pino } from 'pino';
  */
 
 const START = new Date('2026-09-01T21:00:00.000Z');
-const silent = pino({ level: 'silent' });
 
 beforeEach(async () => { await truncateAll((await testDb()).db); });
 afterAll(async () => { await (await testDb()).close(); });
@@ -66,32 +62,19 @@ describe('a ruleset-9 season', () => {
   });
 
   /**
-   * THE SERVER'S COMMANDERS COUNT WHILE THEY ARE AWAKE, AND NOT BEFORE. Owner
-   * instruction, 2026-09-19. Seated is not playing: a bot counts once its roster has
-   * stamped it at the controls.
+   * PIRATES ARE SIZED TO PEOPLE ALONE. Owner instruction, 2026-09-26, reversing
+   * 2026-09-19: a bot at the controls still adds nothing to the hour.
    */
-  it('counts the server’s commanders only once they are awake', async () => {
-    const { db, clock, season } = await seasonWith(1, 9, 'EU-DYN-B');
-    for (const name of ['Bot0', 'Bot1', 'Bot2', 'Bot3', 'Bot4', 'Bot5', 'Bot6', 'Bot7']) {
-      await addBot(db, name, clock);
-    }
-    await ensureBotSeats(db, clock, silent);
+  it('sizes the hour to the people, however many bots are awake', async () => {
+    const { db, clock, season } = await seasonWith(16, 9, 'EU-DYN-G');
+    // Eight of the sixteen are the server's, and joining left every one at the controls.
+    const seated = await db.select({ accountId: players.accountId }).from(players)
+      .where(eq(players.seasonId, season.id)).limit(8);
+    await db.insert(botProfiles).values(seated.map((row, i) => ({
+      accountId: row.accountId, ordinal: i + 1, persona: 'raider', nextActionAt: clock.now(), createdAt: clock.now(),
+    })));
     await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
-    // One person, eight seated but asleep: 0.25 rounds to 0, the floor makes it one.
-    expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 1 });
-  });
-
-  it('sizes the hour to the people and the awake bots together', async () => {
-    const { db, clock, season } = await seasonWith(1, 9, 'EU-DYN-G');
-    for (const name of ['Bot0', 'Bot1', 'Bot2', 'Bot3', 'Bot4', 'Bot5', 'Bot6', 'Bot7']) {
-      await addBot(db, name, clock);
-    }
-    await ensureBotSeats(db, clock, silent);
-    // The roster stamps the awake ones at the controls, as the sweep does.
-    await db.update(players).set({ lastActiveAt: clock.now() })
-      .where(sql`${players.accountId} IN (SELECT account_id FROM bot_profiles)`);
-    await openAsteroidHour(db, { seasonId: season.id, hourStartsAt: START, now: clock.now() });
-    // Nine at the controls: 9 × 0.25 = 2.25 → 2.
+    // Eight people: 8 × 0.25 = 2. Counting the bots it would have been 16 × 0.25 = 4.
     expect(await pirateLaneOf(season.id)).toEqual({ fromMinute: 0, untilMinute: 60, count: 2 });
   });
 

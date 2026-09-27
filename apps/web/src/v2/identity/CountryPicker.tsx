@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { CountryCode } from '@astera/rules';
 import { Button, SectionHead } from '../kit/Surface.js';
@@ -16,8 +17,8 @@ export function CountryPicker({ value, onSelect, onClose }: {
   const language = i18n.resolvedLanguage ?? 'en';
   const options = useMemo(() => countryOptions(language, selected, query), [language, query, selected]);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-v2-void/70 p-2 sm:items-center" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-v2-void/70 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center" role="dialog" aria-modal="true" aria-label={t('country.choose')}>
       <section className="flex max-h-[min(720px,92dvh)] w-full max-w-xl flex-col gap-3 rounded-sheet border border-v2-line bg-v2-panel p-3 font-v2-ui">
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -41,6 +42,7 @@ export function CountryPicker({ value, onSelect, onClose }: {
         </div>
         <Button full variant="primary" onClick={() => { onSelect(selected); }}>{t('country.confirm')}</Button>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

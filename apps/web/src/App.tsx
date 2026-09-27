@@ -63,7 +63,6 @@ export function App() {
   const { t } = useTranslation();
   const {
     session,
-    resumed,
     authenticate,
     chooseServer,
     signOut,
@@ -223,7 +222,6 @@ export function App() {
             focusRequest={planetFocus}
             craftFocusRequest={craftFocus}
             commander={session.me.displayName}
-            resumed={resumed}
             country={session.me.country}
             isAdmin={session.me.isAdmin}
             pastResult={session.me.latestResult}

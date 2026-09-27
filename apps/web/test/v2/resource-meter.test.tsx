@@ -72,4 +72,10 @@ describe('the resource meter', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Alloy: 100 of 1,000' }));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
+
+  it('shows a collection flight toward stock while the value counts up', () => {
+    const { container } = render(<ResourceMeter resource="alloy" value={100} cap={1_000} transfer={{ id: 1, from: 100, to: 186 }} />);
+    expect(container.querySelectorAll('[data-collect-particle]')).toHaveLength(3);
+    expect(container.querySelector('[data-counting]')).toBeInTheDocument();
+  });
 });

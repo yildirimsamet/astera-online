@@ -82,12 +82,12 @@ async function hourRow(f: Fixture, hourStartsAt: Date) {
 
 describe('opening an hour', () => {
   /**
-   * AN AWAKE BOT COUNTS LIKE A PERSON. Owner instruction, 2026-09-19, reversing the
-   * 2026-09-16 rule that left them out: with few people online the field stayed
-   * empty and the server's commanders had nothing to mine or hunt. A bot stamps
-   * `last_active_at` only while its roster has it awake, so a sleeping one is out.
+   * THE SKY IS PAID FOR BY PEOPLE. Owner instruction, 2026-09-26, reversing the
+   * 2026-09-19 rule that counted awake bots: a bot at the controls — `last_active_at`
+   * fresh — still adds nothing. The server's commanders only go on duty while people
+   * are playing, so the field is never left to them alone.
    */
-  it('counts one rock for each commander who played in the last hour, awake bots included', async () => {
+  it('counts one rock for each person who played in the last hour, never a bot', async () => {
     const f = await dynamicWorld(4);
     const hour = f.clock.now();
     // Two people at the controls, one who left over an hour ago, one the server plays.
@@ -101,10 +101,11 @@ describe('opening an hour', () => {
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
 
     const row = await hourRow(f, hour);
-    expect(row?.activePlayers).toBe(3);
+    expect(row?.eligiblePlayers).toBe(2);
+    expect(row?.activePlayers).toBe(2);
     expect(row?.levelWeights).toEqual(ASTEROID_DYNAMIC.levelWeights);
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
-    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour);
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour);
   });
 
   it('multiplies the hour by the shower that covers it', async () => {
@@ -124,6 +125,29 @@ describe('opening an hour', () => {
     await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
     const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
     expect(dynamicRocks(snapshot.asteroids)).toHaveLength(3 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
+  });
+
+  /** Owner, 2026-09-26: a shower multiplies the people who played, never the bots. */
+  it('multiplies only the people under a shower, not the bots awake beside them', async () => {
+    const f = await dynamicWorld(3);
+    const hour = f.clock.now();
+    await f.db.insert(botProfiles).values({
+      accountId: f.accountIds[2]!, ordinal: 1, persona: 'raider', nextActionAt: hour, createdAt: hour,
+    });
+    await f.db.insert(galaxyEventOccurrences).values({
+      seasonId: f.seasonId,
+      sequence: 0,
+      kind: 'ASTEROID_SHOWER',
+      definitionVersion: GALAXY_EVENTS.definitions.ASTEROID_SHOWER.version,
+      startsAt: hour,
+      endsAt: new Date(hour.getTime() + HOUR),
+      effect: { asteroidSpawnMultiplier: 10 },
+      createdAt: hour,
+    });
+
+    await openAsteroidHour(f.db, { seasonId: f.seasonId, hourStartsAt: hour, now: hour });
+    const snapshot = await loadMiningSnapshot(f.db, f.seasonId, new Date(hour.getTime() + HOUR));
+    expect(dynamicRocks(snapshot.asteroids)).toHaveLength(2 * ASTEROID_DYNAMIC.perPlayerPerHour * 10);
   });
 
   it('opens each hour once and queues exactly one next hour', async () => {

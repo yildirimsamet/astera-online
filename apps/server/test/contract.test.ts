@@ -12,7 +12,7 @@ import {
   SENSOR, MULTI_WORLD,
   CLAN, DEATH_STAR, DISRUPTION, GALAXY_EVENTS, REWARD_CHAINS, SHIELD, TRADE, alloyRate, flightSlots,
   groundLoad,
-  groundSlots, rewardId, shieldHp,
+  groundSlots, hangarCapacity, hangarCeiling, hangarLoad, rewardId, shieldHp,
   asteroidPosition,
   vaultProtects,
   TRAFFIC,
@@ -126,6 +126,8 @@ import {
   upgradeSchema,
   watchSchema,
   deathStarLaunchSchema,
+  deathStarBuildSchema,
+  interceptorBuildSchema,
 } from '../../web/src/api/schemas.js';
 import { describeNotification } from '../../web/src/lib/notifications.js';
 import {
@@ -133,7 +135,6 @@ import {
   isShardEvent,
 } from '../../web/src/session/shardEvents.js';
 import { giveInstrument, giveResearch, giveSatellite, giveUnits, grant, levelWorld, placeAt, seedWorld, setLevel, settledAt, testDb, testEnv, type Fixture, giveDebris } from './helpers.js';
-import { buildDeathStar } from '../src/services/strategic.js';
 import { onSeasonEnd } from '../src/worker/handlers.js';
 
 /**
@@ -349,9 +350,13 @@ describe('every payload the client parses', () => {
       design is that they do not share.
     */
     expect(parsed.capacity).toEqual({
+      hangar: hangarCapacity(parsed.buildings.HANGAR ?? 0),
+      hangarUsed: hangarLoad(parsed.fleet),
+      hangarCeiling: hangarCeiling(core ?? 0),
       ground: groundSlots(core ?? 0),
       groundUsed: groundLoad(parsed.ground),
     });
+    expect(parsed.capacity!.hangarUsed).toBeGreaterThan(0);
     expect(parsed.capacity!.groundUsed).toBeGreaterThan(0);
   });
 
@@ -1619,23 +1624,20 @@ describe('every payload the client parses', () => {
     expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
   });
 
-  it('returns 404 from the temporarily disabled Death Star craft route', async () => {
+  it('builds a Death Star through the enabled craft route and launches it', async () => {
     const [origin, target] = f.planetIds as [string, string];
     await setLevel(f.db, origin, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, origin, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
-    await giveResearch(f.db, origin, 'ISOTOPE_SPECTROMETRY');
-    await giveResearch(f.db, origin, 'GRAVITIC_CHARGES');
-    await giveResearch(f.db, origin, 'DEATH_STAR_PROTOCOL');
-    const disabled = await app.inject({
-      method: 'POST', url: `/api/planets/${origin}/death-star/build`, headers: auth, payload: {},
-    });
-    expect(disabled.statusCode).toBe(404);
-    expect(disabled.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
-
-    const built = await buildDeathStar(f.db, origin, f.clock);
+    // The retired research chain cannot be bought; the live build route must work without it.
+    const built = deathStarBuildSchema.parse(await post(`/api/planets/${origin}/death-star/build`, {}));
+    expect(built.planet.planet.id).toBe(origin);
+    expect(built.planet.deathStars).toContainEqual(expect.objectContaining({
+      id: built.assetId,
+      status: 'BUILDING',
+    }));
     await f.db.update(strategicAssets)
       .set({ status: 'READY', readyAt: f.clock.now(), remainingSeconds: 0 })
       .where(eq(strategicAssets.id, built.assetId));
@@ -1647,37 +1649,29 @@ describe('every payload the client parses', () => {
     expect(launched.pending.some((thread) => thread.id === launched.missionId)).toBe(true);
   });
 
-  /**
-   * THE ROUTE T10 NEVER WIRED. T12.
-   *
-   * `buildInterceptor` shipped complete, tested and unreachable: no route, no
-   * client method, no control. The research that authorises it is buyable from the
-   * research menu now, so a commander could pay 33,000 for a permission to build a
-   * thing with no door — which is worse than not having the defence at all.
-   */
-  it('returns 404 from the temporarily disabled interceptor craft route', async () => {
+  /** A reachable interceptor build returns the same parsed asset lifecycle as a weapon. */
+  it('builds an interceptor through the enabled craft route', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
     await giveSatellite(f.db, origin, 'UPLINK');
     await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
-    await giveResearch(f.db, origin, ANTI_STRATEGIC.requiredResearch);
 
-    const disabled = await app.inject({
-      method: 'POST', url: `/api/planets/${origin}/interceptor/build`, headers: auth, payload: {},
-    });
-    expect(disabled.statusCode).toBe(404);
-    expect(disabled.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
+    const built = interceptorBuildSchema.parse(await post(`/api/planets/${origin}/interceptor/build`, {}));
+    expect(built.planet.planet.id).toBe(origin);
+    expect(built.planet.interceptors).toContainEqual(expect.objectContaining({
+      id: built.assetId,
+      status: 'BUILDING',
+    }));
   });
 
-  it('returns the same 404 before checking interceptor prerequisites', async () => {
+  it('refuses an interceptor without its effective Radar requirement', async () => {
     const [origin] = f.planetIds as [string];
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
-    await giveSatellite(f.db, origin, 'UPLINK');
-    await giveInstrument(f.db, origin, 'RADAR', ANTI_STRATEGIC.requiredRadar);
+    // The shared fixture has an Uplink, but no Radar rung that can intercept.
 
     const res = await app.inject({
       method: 'POST',
@@ -1685,8 +1679,8 @@ describe('every payload the client parses', () => {
       headers: auth,
       payload: {},
     });
-    expect(res.statusCode).toBe(404);
-    expect(res.json<{ error?: string }>().error).toBe('STRATEGIC_UNAVAILABLE');
+    expect(res.statusCode).toBe(403);
+    expect(res.json<{ error?: string }>().error).toBe('INTERCEPTOR_LOCKED');
   });
 
   /**

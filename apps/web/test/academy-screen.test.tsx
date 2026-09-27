@@ -10,6 +10,7 @@ import { ACADEMY_STEPS } from '@astera/rules';
 import { saveAcademy } from '../src/onboarding/academyStorage.js';
 import { academyGroup } from '../src/onboarding/lessonScope.js';
 import * as analytics from '../src/lib/analytics.js';
+import i18n from '../src/i18n/index.js';
 import type * as GateModule from '../src/onboarding/Gate.jsx';
 
 afterEach(() => { localStorage.clear(); vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -298,6 +299,15 @@ describe('Academy ownership and progression', () => {
     expect(screen.getByText(/completed Academy progress/i)).toBeInTheDocument();
     expect(onClaim).not.toHaveBeenCalled();
     expect(track).toHaveBeenCalledWith('tutorial_skip', { step: 0, lesson: 'welcome' });
+  });
+  it('labels the Turkish Academy exits with their destinations', async () => {
+    await i18n.changeLanguage('tr');
+    const onSignIn = vi.fn();
+    render(<Academy onClaim={vi.fn()} onSignIn={onSignIn} onLeave={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Giriş Yap (Hesabım Var)' }));
+    expect(onSignIn).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Atla (Direk Kayıt Ol)' }));
+    expect(screen.getByLabelText('Komutan adı')).toBeInTheDocument();
   });
 });
 

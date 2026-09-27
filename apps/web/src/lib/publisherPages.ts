@@ -38,6 +38,8 @@ export type PublisherPage =
   | 'privacy'
   | 'cookies'
   | 'terms'
+  | 'refunds'
+  | 'pricing'
   | 'community'
   | 'contact'
   | 'kvkk';
@@ -52,6 +54,8 @@ const PAGES: Record<PublisherPage, Record<PublisherLanguage, string | null>> = {
   privacy: { en: '/privacy.html', tr: '/gizlilik-politikasi.html' },
   cookies: { en: '/cookies.html', tr: '/cerez-politikasi.html' },
   terms: { en: '/terms.html', tr: '/kullanim-kosullari.html' },
+  refunds: { en: '/refunds.html', tr: '/iade-politikasi.html' },
+  pricing: { en: '/pricing.html', tr: '/fiyatlar.html' },
   community: { en: '/community-guidelines.html', tr: '/topluluk-kurallari.html' },
   contact: { en: '/contact.html', tr: '/iletisim.html' },
   kvkk: { en: null, tr: '/kvkk-aydinlatma-metni.html' },

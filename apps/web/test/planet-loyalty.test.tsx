@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DefenceReadings, PlanetHero } from '../src/ui/PlanetHero.js';
+import { PLANET_SKIN_CATALOG } from '../src/ui/skinCatalog.js';
 import i18n from '../src/i18n/index.js';
 import { planetView } from './fixtures.js';
 
@@ -9,6 +10,10 @@ beforeEach(async () => {
 });
 
 describe('the planet hero states colony loyalty', () => {
+  it('wears the equipped skin in the base portrait', () => {
+    render(<PlanetHero planet={planetView({}, { skinId: 'planet-ice' })} />);
+    expect(document.querySelector('[role="img"] img[src]')).toHaveAttribute('src', PLANET_SKIN_CATALOG['planet-ice'].image);
+  });
   it('shows a full loyalty bar at 100%', () => {
     render(
       <PlanetHero

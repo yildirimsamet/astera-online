@@ -42,6 +42,23 @@ describe('the country picker', () => {
     render(<CountryPicker value="TR" onSelect={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByRole('searchbox')).toHaveClass('min-h-12', 'shrink-0');
   });
+
+  it('opens above the game dock when launched from a sheet', async () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <div className="relative z-40">
+        <CountryPicker value="TR" onSelect={vi.fn()} onClose={onClose} />
+      </div>,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Choose your country' });
+    expect(container).not.toContainElement(dialog);
+    expect(dialog.parentElement).toBe(document.body);
+    expect(dialog).toHaveClass('z-[60]');
+
+    await userEvent.setup().click(within(dialog).getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
   it('keeps the current country first and returns a new selection', async () => {
     const onSelect = vi.fn();
     render(<CountryPicker value="DE" onSelect={onSelect} onClose={vi.fn()} />);

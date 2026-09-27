@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { planetSkinById, type PlanetSkinId } from '@astera/rules';
 import type { Db, Queryable } from '../db/client.js';
 import { accounts, planets, cosmeticEntitlements, players } from '../db/schema.js';
@@ -11,7 +11,7 @@ import { normaliseUsername } from '../auth/credentials.js';
 export async function skinCollection(db: Queryable, accountId: string) {
   const rights = await db.select({ skinId: cosmeticEntitlements.cosmeticId })
     .from(cosmeticEntitlements)
-    .where(eq(cosmeticEntitlements.accountId, accountId));
+    .where(and(eq(cosmeticEntitlements.accountId, accountId), isNull(cosmeticEntitlements.revokedAt)));
   const worlds = await db.select({
     id: planets.id,
     name: planets.name,
@@ -42,6 +42,7 @@ export async function equipPlanetSkin(
         .where(and(
           eq(cosmeticEntitlements.accountId, accountId),
           eq(cosmeticEntitlements.cosmeticId, skinId),
+          isNull(cosmeticEntitlements.revokedAt),
         )).limit(1);
       if (!right) throw new GameError('SKIN_NOT_OWNED', 'You do not own this skin', 403);
     }
@@ -77,6 +78,7 @@ export async function grantPlanetSkin(
       .where(and(
         eq(cosmeticEntitlements.accountId, accountId),
         eq(cosmeticEntitlements.cosmeticId, skinId),
+        isNull(cosmeticEntitlements.revokedAt),
       )).limit(1);
     if (existing) {
       if (existing.source === 'MANUAL' && existing.orderRef === orderRef) return { accountId, skinId, grantedAt: existing.grantedAt };
@@ -93,6 +95,7 @@ export async function grantPlanetSkin(
         .where(and(
           eq(cosmeticEntitlements.accountId, accountId),
           eq(cosmeticEntitlements.cosmeticId, skinId),
+          isNull(cosmeticEntitlements.revokedAt),
         )).limit(1);
       if (committed?.source === 'MANUAL' && committed.orderRef === orderRef) {
         return { accountId, skinId, grantedAt: committed.grantedAt };

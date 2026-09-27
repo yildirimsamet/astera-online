@@ -57,10 +57,12 @@ describe('the top bar', () => {
     expect(all.onBell).toHaveBeenCalledTimes(1);
   });
 
-  /** The mock's avatar: two letters in a square, not one in a circle (owner, 2026-09-24). */
-  it('wears the commander’s initials', () => {
+  it('puts a clear menu icon beside the bell', () => {
     render(<TopBar {...props({ commander: 'Kestrel Sable' })} />);
-    expect(within(screen.getByRole('button', { name: /^Commander Kestrel Sable/ })).getByText('KS')).toBeInTheDocument();
+    const menu = screen.getByRole('button', { name: /^Commander Kestrel Sable/ });
+    expect(menu).toHaveAttribute('data-menu-button');
+    expect(menu.previousElementSibling).toHaveAccessibleName('Signals');
+    expect(menu.querySelector('svg path')).toHaveAttribute('d', 'M4 6h16M4 12h16M4 18h16');
   });
 
   it('draws the world mark only once there is a second world', async () => {

@@ -15,13 +15,15 @@
     "src/**/*.tsx",
     "test/**/*.ts",
     "test/**/*.tsx",
-    /* The three classic scripts in `public/`. They are hand-written browser
+    /* Scripts in `public/` are hand-written browser
        JavaScript rather than build output, so they are linted like the rest of
        the client; without them here the type-aware rules cannot see the file at
        all and eslint fails on the parse rather than on the code. */
     "public/consent-bootstrap.js",
     "public/h5-ads.js",
     "public/guide-back.js",
+    "public/publisher-pricing.js",
+    "public/checkout-page.js",
     "*.ts"
   ]
 }

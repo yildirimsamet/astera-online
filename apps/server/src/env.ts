@@ -19,6 +19,21 @@ const schema = z.object({
    * variable naming "the" shard could only ever be wrong for nine of them.
    */
   JWT_SECRET: z.string().min(16).default('dev-only-secret-do-not-ship-me'),
+  /** Live checkout stays closed until all three secrets are supplied and enabled. */
+  PADDLE_CHECKOUT_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
+  PADDLE_ENV: z.enum(['sandbox', 'production']).default('production'),
+  PADDLE_API_KEY: z.string().default(''),
+  PADDLE_CLIENT_TOKEN: z.string().default(''),
+  PADDLE_WEBHOOK_SECRET: z.string().default(''),
+  PADDLE_PRICE_LAVA: z.string().startsWith('pri_').default('pri_01m3fwr44wjzkbenrjctb9k6dd'),
+  PADDLE_PRICE_ICE: z.string().startsWith('pri_').default('pri_01m3fws4ewv6kp2yr4tztk8427'),
+  PADDLE_PRICE_TOXIC: z.string().startsWith('pri_').default('pri_01m3fwtx8bvz0dbqdv3p18379m'),
+  PADDLE_PRICE_DESERT: z.string().startsWith('pri_').default('pri_01m3fwvmk6eysq56ed05z1828m'),
+  PADDLE_PRICE_TURKEY: z.string().startsWith('pri_').default('pri_01m3fx4wqpeqpzav659tz16e7t'),
+  PADDLE_PRICE_GERMANY: z.string().startsWith('pri_').default('pri_01m3fx5v21rxrjaddw764dexe4'),
+  PADDLE_PRICE_FRANCE: z.string().startsWith('pri_').default('pri_01m3fx6rg3nsn9nd3j179287hg'),
+  PADDLE_PRICE_SPAIN: z.string().startsWith('pri_').default('pri_01m3fx85a9gb6gpkbbrjjry73p'),
+  PADDLE_PRICE_BUNDLE: z.string().startsWith('pri_').default('pri_01m3fx3943k024e12yb67a49r1'),
   ACCESS_TOKEN_MINUTES: z.coerce.number().default(15),
   REFRESH_TOKEN_DAYS: z.coerce.number().default(30),
   /**
@@ -123,11 +138,10 @@ const schema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   /**
-   * HOW MANY OF THEM EACH LIVE GALAXY SEATS. `BOTS.perGalaxy` unless the operator
-   * says otherwise, and never more than the bot band holds (`MULTI_WORLD.botSlots`).
-   * The owner's plan is fifty to a hundred in a thousand-seat galaxy.
+   * Operator ceiling. Real-player demand, staged seating and the authored bot
+   * address pool may all leave a galaxy below this limit.
    */
-  BOTS_PER_GALAXY: z.coerce.number().int().min(1).max(MULTI_WORLD.botSlots).default(BOTS.perGalaxy),
+  BOTS_PER_GALAXY: z.coerce.number().int().min(1).max(MULTI_WORLD.botSlots).default(BOTS.maxPerGalaxy),
   // Explicit rollout switch. Disabling never re-enables destructive reclaim.
   SILENT_SPACE_ENABLED: z.enum(['true', 'false']).default('false').transform(value => value === 'true'),
   SILENT_SPACE_BATCH: z.coerce.number().int().min(1).max(20).default(5),
@@ -177,7 +191,14 @@ export function loadDotEnv(from = process.cwd()): void {
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = schema.safeParse(source);
+  // Accept both the deployment names and the shorter internal names. This keeps
+  // existing production secrets valid while making the expected mapping explicit.
+  const normalized = {
+    ...source,
+    PADDLE_API_KEY: source.PADDLE_API_KEY?.trim() ? source.PADDLE_API_KEY : (source.PADDLE_LIVE_API_KEY ?? ''),
+    PADDLE_CLIENT_TOKEN: source.PADDLE_CLIENT_TOKEN?.trim() ? source.PADDLE_CLIENT_TOKEN : (source.PADDLE_CLIENT_SIDE_TOKEN ?? ''),
+  };
+  const parsed = schema.safeParse(normalized);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment:\n${issues.join('\n')}`);

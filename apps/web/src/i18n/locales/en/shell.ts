@@ -49,6 +49,7 @@ export const statusBar = {
     label: 'Works',
     labelFull: 'Works full',
     collect: 'Collect',
+    firstTip: 'Production gathers here. Tap to collect.',
     fullStopped: 'Full — production stopped',
     fillsIn: 'full in {{time}}',
     gathers: 'Production gathers here until you collect it',

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
-import { coreTier, distance } from '@astera/rules';
+import { coreTier, distance, planetSkinById } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import {
   accounts,
@@ -376,6 +376,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         country: accounts.countryCode,
         planetId: planets.id,
         planetName: planets.name,
+        equippedSkinId: planets.equippedSkinId,
         coreLevel: buildings.level,
         x: planets.x,
         y: planets.y,
@@ -437,6 +438,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         playerId: entry.playerId,
         username: entry.username,
         country: entry.country,
+        skinId: entry.equippedSkinId ? planetSkinById(entry.equippedSkinId)?.id ?? null : null,
         ...visibleWorld,
         score: entry.score,
         clan: entry.clanId && entry.clanName && entry.clanTag

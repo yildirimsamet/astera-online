@@ -22,6 +22,7 @@ import {
   hangarLoad,
   instrumentCost,
   productionMult,
+  planetSkinById,
   satelliteCost,
   satelliteSlots,
   shieldHp,
@@ -246,6 +247,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     planet: {
       id: p.planetId,
       name: p.name,
+      skinId: p.equippedSkinId ? planetSkinById(p.equippedSkinId)?.id ?? null : null,
       kind: p.kind,
       position: { x: p.x, y: p.y, z: p.z },
       alloy: Math.floor(p.alloy),

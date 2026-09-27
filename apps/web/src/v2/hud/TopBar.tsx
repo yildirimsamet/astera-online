@@ -4,9 +4,9 @@ import { duration } from '../../lib/time.js';
 import { Icon } from '../icons.js';
 import { ResourceMeter } from '../kit/ResourceMeter.js';
 import { WorksLine, type WorksLineProps } from './WorksLine.js';
-import { initials } from './CommanderCard.js';
 
 type Resource = 'alloy' | 'crystal' | 'deuterium';
+export interface CollectionTransfer { id: number; each: Record<Resource, { from: number; to: number }> }
 
 export interface TopBarProps {
   commander: string;
@@ -21,6 +21,7 @@ export interface TopBarProps {
   stock: Record<Resource, { value: number; cap: number; safe?: number }>;
   /** The works under the stores (owner, 2026-09-25); absent until the world is read. */
   works?: WorksLineProps;
+  transfer?: CollectionTransfer | null;
   /** `bellState(...)`. */
   bell: { unseen: number; urgent: boolean };
   /** Rewards ready to claim (`useRewards().claimable`). */
@@ -42,7 +43,7 @@ const RESOURCES: readonly Resource[] = ['alloy', 'crystal', 'deuterium'];
 /**
  * THE TOP BAR. Spec B1 (docs/ui-v2/gozlemevi.md).
  *
- * One row of 48 px: the commander chip (the Commander page; the attack shield and
+ * A compact row: the commander menu (the Commander page; the attack shield and
  * its time ride it while it holds), the active world's mark once there are two,
  * the three resource meters of that world, a claimable gift, and the bell.
  *
@@ -60,6 +61,7 @@ export function TopBar({
   rewards,
   boosted,
   works,
+  transfer,
   onCommander,
   onRewards,
   onWorld,
@@ -88,24 +90,7 @@ export function TopBar({
   return (
     // The notch is added to the row, not taken from it: `viewport-fit=cover` makes the
     // inset real on a notched phone, and inside a fixed h-12 it left the row ~1 px.
-    <header className="flex h-[calc(3rem+env(safe-area-inset-top))] items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-3 pt-[env(safe-area-inset-top)] font-v2-ui">
-      <button
-        type="button"
-        aria-label={chipName}
-        {...(shielded ? { 'data-shielded': '' } : {})}
-        onClick={onCommander}
-        className="flex shrink-0 flex-col items-center"
-      >
-        <span className="relative grid size-7 place-items-center rounded-control border border-v2-self/70 bg-v2-raise text-caption font-bold text-v2-ink">
-          {initials(commander)}
-        </span>
-        {shielded && (
-          <span aria-hidden="true" className="mt-0.5 flex items-center gap-0.5 text-v2-self">
-            <Icon id="i-shield" className="size-2.5" />
-            <span className="font-v2-mono text-micro leading-none">{shieldShort}</span>
-          </span>
-        )}
-      </button>
+    <header className="flex h-[calc(3.25rem+env(safe-area-inset-top))] items-center gap-1.5 border-b border-v2-line bg-v2-deep/90 px-2 pt-[env(safe-area-inset-top)] font-v2-ui">
 
       {world && (
         <button
@@ -120,9 +105,9 @@ export function TopBar({
 
       {/* On a desk the meters keep a phone's reach; a 600 px bar would read no better than 160. */}
       {/*
-        THREE COLUMNS, THREE LINES, NO TALLER BAR (owner, 2026-09-25): each store's figure, its
+        THREE COLUMNS, THREE LINES (owner, 2026-09-25): each store's figure, its
         cells as the Base draws them, and what its vessel in the works holds — the third line is
-        the one press that collects. The meters used 20 of the bar's 48 px; they use 36 now.
+        the one press that collects.
       */}
       <div className={`grid min-w-0 flex-1 grid-cols-3 gap-x-2 gap-y-1 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
         {RESOURCES.map((resource) => (
@@ -133,6 +118,7 @@ export function TopBar({
             cap={stock[resource].cap}
             safe={stock[resource].safe ?? 0}
             boosted={boosted}
+            transfer={transfer ? { id: transfer.id, ...transfer.each[resource] } : null}
             onOpen={() => { onResource(resource); }}
           />
         ))}
@@ -178,6 +164,17 @@ export function TopBar({
             {bell.unseen > 9 ? '9+' : bell.unseen}
           </span>
         )}
+      </button>
+      <button
+        type="button"
+        aria-label={chipName}
+        data-menu-button=""
+        {...(shielded ? { 'data-shielded': '' } : {})}
+        onClick={onCommander}
+        className="relative grid size-8 shrink-0 place-items-center rounded-control border border-v2-line-hi bg-v2-panel/70 text-v2-ink"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        {shielded && <span aria-hidden="true" className="absolute -bottom-2 right-0 rounded-full bg-v2-deep px-0.5 font-v2-mono text-micro leading-none text-v2-self"><Icon id="i-shield" className="inline size-2" />{shieldShort}</span>}
       </button>
     </header>
   );

@@ -700,6 +700,7 @@ export const planetSchema = z.object({
   planet: z.object({
     id: z.string(),
     name: z.string(),
+    skinId: z.enum(PLANET_SKIN_IDS).nullable().optional(),
     kind: z.enum(['CAPITAL', 'COLONY']).optional(),
     position: vec3,
     alloy: z.number(),
@@ -1240,6 +1241,15 @@ export const skinCollectionSchema = z.object({
   })),
 });
 export const skinEquipSchema = z.object({ id: z.string(), skinId: planetSkinId.nullable() });
+export const skinShopSchema = z.discriminatedUnion('enabled', [
+  z.object({ enabled: z.literal(false) }),
+  z.object({ enabled: z.literal(true), clientToken: z.string().startsWith('live_'),
+    priceIds: z.record(z.string().startsWith('pri_')),
+    paddleCustomerId: z.string().startsWith('ctm_').nullable() }),
+]);
+export const skinPricingSchema = z.object({ countryCode: z.string().length(2),
+  prices: z.record(z.object({ formatted: z.string(), currencyCode: z.enum(['EUR', 'TRY']) })) });
+export const skinPurchaseSchema = z.object({ transactionId: z.string().startsWith('txn_') });
 
 export const leaderboardSchema = z.object({
   ladder: z.array(
@@ -1247,6 +1257,7 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
+      skinId: planetSkinId.nullable().optional(),
       country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),
@@ -1260,6 +1271,7 @@ export const leaderboardSchema = z.object({
       rank: z.number(),
       playerId: z.string(),
       username: z.string(),
+      skinId: planetSkinId.nullable().optional(),
       country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),

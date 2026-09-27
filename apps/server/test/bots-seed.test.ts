@@ -6,7 +6,6 @@ import { accounts, botProfiles, buildings, planets, players, seasons, shards } f
 import { addBot, listBots, retireBot } from '../src/services/bots/roster.js';
 import { ensureBotSeats, runBotSweep } from '../src/services/bots/sweep.js';
 import { BOTS } from '../src/services/bots/personas.js';
-import { botsAwakeAt } from '../src/services/bots/schedule.js';
 import { GameError } from '../src/services/planet.js';
 import { addMinutes } from '../src/clock.js';
 import { seedWorld, type Fixture } from './helpers.js';
@@ -90,7 +89,7 @@ describe('bot roster', () => {
 describe('seating bots on a live galaxy', () => {
   it('never seats a bot on Kestrel EU-2', async () => {
     await f.db.update(shards).set({ code: 'EU-2', name: 'Kestrel' });
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     expect(await ensureBotSeats(f.db, f.clock, silent)).toBe(0);
     const [seated] = await f.db
       .select({ n: sql<number>`count(*)::int` })
@@ -138,7 +137,7 @@ describe('seating bots on a live galaxy', () => {
    * person is the only thing near a hungry neighbour.
    */
   it('seats bots on their own band, just inside every person', async () => {
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     await ensureBotSeats(f.db, f.clock, silent);
     const rows = await f.db
       .select({ slot: planets.slotIndex, x: planets.x, y: planets.y, z: planets.z, bot: botProfiles.accountId })
@@ -148,7 +147,7 @@ describe('seating bots on a live galaxy', () => {
       .where(eq(planets.kind, 'CAPITAL'));
     const bots = rows.filter((row) => row.bot !== null);
     const people = rows.filter((row) => row.bot === null);
-    expect(bots).toHaveLength(BOTS.perGalaxy);
+    expect(bots).toHaveLength(2);
     expect(people).toHaveLength(2);
 
     const share = (row: { x: number; y: number; z: number }): number =>
@@ -165,20 +164,21 @@ describe('seating bots on a live galaxy', () => {
   });
 
   it('never gives the roster more seats than the galaxy reserves for it', () => {
-    expect(BOTS.perGalaxy).toBeLessThanOrEqual(MULTI_WORLD.botSlots);
+    expect(BOTS.maxPerGalaxy).toBeLessThanOrEqual(MULTI_WORLD.botSlots);
   });
 
   it('seats the whole pool it has and asks for no more', async () => {
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     await ensureBotSeats(f.db, f.clock, silent);
     const [seated] = await f.db
       .select({ n: sql<number>`count(*)::int` })
       .from(botProfiles)
       .innerJoin(players, eq(players.accountId, botProfiles.accountId));
-    expect(seated?.n).toBe(BOTS.perGalaxy);
+    expect(seated?.n).toBe(2);
   });
 
   it('never invents a name to reach the target', async () => {
+    f = await seedWorld(20);
     await fillPool(3);
     const { log, warnings } = countingLog();
     await ensureBotSeats(f.db, f.clock, log);
@@ -189,6 +189,7 @@ describe('seating bots on a live galaxy', () => {
   });
 
   it('says the roster is short once, not once a minute', async () => {
+    f = await seedWorld(20);
     await fillPool(3);
     const { log, warnings } = countingLog();
     // The sweep runs every sixty seconds for the life of the process. A shortfall
@@ -199,6 +200,7 @@ describe('seating bots on a live galaxy', () => {
   });
 
   it('says it again when the shortfall actually moves', async () => {
+    f = await seedWorld(20);
     await fillPool(3);
     const { log, warnings } = countingLog();
     await ensureBotSeats(f.db, f.clock, log);
@@ -233,7 +235,8 @@ describe('seating bots on a live galaxy', () => {
   });
 
   it('is idempotent, and two sweeps at once seat each bot once', async () => {
-    await fillPool(4);
+    f = await seedWorld(20);
+    await fillPool(6);
     await Promise.all([
       ensureBotSeats(f.db, f.clock, silent),
       ensureBotSeats(f.db, f.clock, silent),
@@ -272,21 +275,21 @@ describe('presence', () => {
   };
 
   it('counts an awake bot in the galaxy population', async () => {
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     f.clock.set(busyEvening);
+    await f.db.update(players).set({ lastActiveAt: busyEvening })
+      .where(eq(players.id, f.playerIds[0]!));
     await ensureBotSeats(f.db, f.clock, silent);
 
-    // The two humans this fixture seats joined at the epoch and are long gone.
-    expect(await onlineNow(busyEvening)).toBe(0);
+    expect(await onlineNow(busyEvening)).toBe(1);
 
-    await runBotSweep(f.db, f.clock, silent);
-    const awake = botsAwakeAt(BOTS.perGalaxy, 4242, busyEvening).size;
-    expect(awake).toBeGreaterThanOrEqual(4);
-    expect(await onlineNow(busyEvening)).toBe(awake);
+    const result = await runBotSweep(f.db, f.clock, silent);
+    expect(result.awake).toBe(1);
+    expect(await onlineNow(busyEvening)).toBe(2);
   });
 
   it('leaves the galaxy empty during Türkiye quiet hours', async () => {
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     const deadOfNight = new Date(Date.UTC(2026, 0, 2, 0, 30)); // 03:30 TRT
     f.clock.set(deadOfNight);
     await ensureBotSeats(f.db, f.clock, silent);
@@ -295,49 +298,42 @@ describe('presence', () => {
   });
 
   it('does not take the whole roster\'s turns in one tick', async () => {
-    await fillPool(BOTS.perGalaxy);
+    f = await seedWorld(40);
+    await fillPool(8);
     f.clock.set(busyEvening);
-    // Every commander is seated with the same `nextActionAt`, so the first sweep
-    // after a deploy has the entire roster due at once. `WORKER_POLL_MS` is one
-    // second because visible timing matters (D52) — a tick that stops to play
-    // eight sessions is a tick during which nobody's raid lands.
+    await f.db.update(players).set({ lastActiveAt: busyEvening });
+    await ensureBotSeats(f.db, f.clock, silent);
+    f.clock.advance(30);
+    await f.db.update(players).set({ lastActiveAt: f.clock.now() });
     const result = await runBotSweep(f.db, f.clock, silent);
-    expect(result.awake).toBeGreaterThanOrEqual(4);
+    expect(result.awake).toBe(4);
     expect(result.turns).toBeGreaterThan(0);
     expect(result.turns).toBeLessThanOrEqual(BOTS.turnsPerSweep);
   });
 
   it('clears the backlog rather than starving anybody', async () => {
-    await fillPool(BOTS.perGalaxy);
+    f = await seedWorld(40);
+    await fillPool(8);
     f.clock.set(busyEvening);
-    const continuouslyAwake = botsAwakeAt(BOTS.perGalaxy, 4242, busyEvening);
-    for (let sweep = 0; sweep < 8; sweep++) {
-      const awake = botsAwakeAt(BOTS.perGalaxy, 4242, f.clock.now());
-      for (const ordinal of continuouslyAwake) {
-        if (!awake.has(ordinal)) continuouslyAwake.delete(ordinal);
-      }
+    await f.db.update(players).set({ lastActiveAt: busyEvening });
+    await ensureBotSeats(f.db, f.clock, silent);
+    f.clock.advance(30);
+    await f.db.update(players).set({ lastActiveAt: f.clock.now() });
+    const first = await runBotSweep(f.db, f.clock, silent);
+    expect(first.awake).toBe(4);
+    for (let sweep = 0; sweep < 3; sweep++) {
       await runBotSweep(f.db, f.clock, silent);
       f.clock.advance(1);
     }
-
-    // The budget is a DELAY, not a rationing. After enough sweeps to cover the
-    // roster twice over, nobody who is at the controls is still waiting for a turn.
-    // Asserted this way rather than by counting turns, because the awake set drifts
-    // minute to minute — a commander awake only for the first of those minutes is
-    // legitimately passed over, and counting would call that starvation.
     const rows = await f.db
-      .select({ ordinal: botProfiles.ordinal, nextActionAt: botProfiles.nextActionAt })
+      .select({ nextActionAt: botProfiles.nextActionAt, startedAt: botProfiles.sessionStartedAt })
       .from(botProfiles);
-    // A bot may already have acted and become due again by minute eight. That
-    // is recurring work, not starvation. Check the initial backlog among bots
-    // awake throughout the observed sweeps, not somebody waking on the last edge.
-    expect(continuouslyAwake.size).toBeGreaterThan(0);
-    const starved = rows.filter((row) => continuouslyAwake.has(row.ordinal) && row.nextActionAt <= busyEvening);
+    const starved = rows.filter((row) => row.startedAt !== null && row.nextActionAt <= busyEvening);
     expect(starved).toHaveLength(0);
   });
 
   it('does not act for a bot that is asleep', async () => {
-    await fillPool(BOTS.perGalaxy);
+    await fillPool(2);
     const deadOfNight = new Date(Date.UTC(2026, 0, 2, 0, 30));
     f.clock.set(deadOfNight);
     await ensureBotSeats(f.db, f.clock, silent);

@@ -58,6 +58,9 @@ import {
   countryUpdatedSchema,
   galaxySchema,
   skinCollectionSchema,
+  skinShopSchema,
+  skinPricingSchema,
+  skinPurchaseSchema,
   skinEquipSchema,
   intelSchema,
   miningLaunchSchema,
@@ -494,6 +497,10 @@ export class Api {
    */
   galaxy = gatedRead(() => this.send('/api/galaxy', galaxySchema), BIG_READ_GAP_MS);
   skins = () => this.send('/api/skins', skinCollectionSchema);
+  skinShop = () => this.send('/api/skins/shop', skinShopSchema);
+  skinPricing = () => this.send('/api/skins/pricing', skinPricingSchema);
+  purchaseSkin = (itemId: PlanetSkinId | 'bundle') =>
+    this.send('/api/skins/purchase', skinPurchaseSchema, { method: 'POST', body: { itemId } });
   equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
       method: 'POST', body: { skinId },

@@ -7,15 +7,16 @@ import { planetView } from '../fixtures.js';
 /**
  * THE DOCK, WIRED. Spec B4 (docs/ui-v2/gozlemevi.md).
  *
- * Base dots for works worth collecting or a fault nobody has paid to repair;
- * Intel counts unseen battle and probe reports; Clan carries the clan's own
- * attention count.
+ * Base dots for an unpaid fault. Intel counts unseen battle and probe reports
+ * until opened; Clan carries actionable attention while chat unread stays on Chat.
  */
 
 let planet: PlanetView = planetView();
 let notifications: NotificationView[] = [];
 let clanAttention = 0;
+let clanChatUnread = 0;
 let clanAvailable = true;
+const markSeen = vi.fn();
 
 vi.mock('../../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../src/api/queries.js');
@@ -25,7 +26,8 @@ vi.mock('../../src/api/queries.js', async () => {
     usePending: () => ({ data: { pending: [] } }),
     useMining: () => ({ data: { runs: [] } }),
     useNotifications: () => ({ data: { notifications } }),
-    useClanBadge: () => ({ data: { available: clanAvailable, attentionCount: clanAttention, clanChatUnread: 0 } }),
+    useClanBadge: () => ({ data: { available: clanAvailable, attentionCount: clanAttention, clanChatUnread } }),
+    useMarkSeen: () => ({ mutate: markSeen }),
   };
 });
 
@@ -37,7 +39,9 @@ beforeEach(() => {
   planet = planetView();
   notifications = [];
   clanAttention = 0;
+  clanChatUnread = 0;
   clanAvailable = true;
+  markSeen.mockClear();
 });
 
 describe('the wired dock', () => {
@@ -68,6 +72,45 @@ describe('the wired dock', () => {
     notifications = [note('raid_result'), note('probe_report'), note('probe_report', true), note('fleet_returned')];
     render(<HudDock active="galaxy" onSelect={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Intel · New reports: 2' })).toBeInTheDocument();
+  });
+
+  it('marks only report signals read when Intel is opened, including reports arriving after opening', () => {
+    notifications = [
+      { ...note('probe_report'), id: 'probe-1' },
+      { ...note('fleet_returned'), id: 'flight-1' },
+    ];
+    const { rerender } = render(<HudDock active="galaxy" onSelect={vi.fn()} />);
+    expect(markSeen).not.toHaveBeenCalled();
+
+    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
+    expect(markSeen).toHaveBeenCalledTimes(1);
+    expect(markSeen).toHaveBeenLastCalledWith(['probe-1']);
+    expect(screen.getByRole('button', { name: 'Intel' })).toBeInTheDocument();
+
+    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
+    expect(markSeen).toHaveBeenCalledTimes(1);
+
+    notifications = [...notifications, { ...note('raid_result'), id: 'battle-2' }];
+    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
+    expect(markSeen).toHaveBeenCalledTimes(2);
+    expect(markSeen).toHaveBeenLastCalledWith(['battle-2']);
+
+    // If the server write failed and the query still says unread, opening again retries.
+    rerender(<HudDock active="galaxy" onSelect={vi.fn()} />);
+    rerender(<HudDock active="intel" onSelect={vi.fn()} />);
+    expect(markSeen).toHaveBeenCalledTimes(3);
+    expect(markSeen).toHaveBeenLastCalledWith(['probe-1', 'battle-2']);
+  });
+
+  it('keeps clan chat unread on the chat button instead of duplicating it on Clan', () => {
+    clanAttention = 3;
+    clanChatUnread = 3;
+    const { rerender } = render(<HudDock active="galaxy" onSelect={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Clan' })).toBeInTheDocument();
+
+    clanAttention = 4;
+    rerender(<HudDock active="galaxy" onSelect={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Clan · Waiting for you: 1' })).toBeInTheDocument();
   });
 
   it('leaves Clan inert in a season with no clan layer', () => {

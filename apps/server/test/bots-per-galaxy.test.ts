@@ -13,7 +13,7 @@ import { seedWorld, testDb, type Fixture } from './helpers.js';
 /**
  * HOW MANY COMMANDERS A GALAXY SEATS IS THE OPERATOR'S CALL, NOT A REBUILD.
  * Owner, 2026-09-19: fifty to a hundred in a thousand-seat galaxy is the plan, and
- * a local test galaxy wants the full hundred. `BOTS.perGalaxy` stays the default.
+ * a local test galaxy may choose a lower ceiling. The default is the address cap.
  */
 
 const silent = pino({ level: 'silent' });
@@ -23,7 +23,7 @@ afterAll(async () => { await (await testDb()).close(); });
 
 describe('BOTS_PER_GALAXY', () => {
   it('defaults to the roster the code was written for', () => {
-    expect(loadEnv(base).BOTS_PER_GALAXY).toBe(BOTS.perGalaxy);
+    expect(loadEnv(base).BOTS_PER_GALAXY).toBe(BOTS.maxPerGalaxy);
   });
 
   it('takes any count the galaxy has bot seats for', () => {
@@ -52,8 +52,8 @@ describe('seating to the configured roster', () => {
   });
 
   it('seats only as many as the operator asked for', async () => {
-    expect(await ensureBotSeats(f.db, f.clock, silent, 3)).toBe(3);
-    expect(await seatedCount()).toBe(3);
+    expect(await ensureBotSeats(f.db, f.clock, silent, 3)).toBe(2);
+    expect(await seatedCount()).toBe(2);
   });
 
   it('is what the worker passes on', async () => {
@@ -83,4 +83,3 @@ describe('how often the roster is played', () => {
     expect(perMinute).toBeGreaterThanOrEqual(needed);
   });
 });
-

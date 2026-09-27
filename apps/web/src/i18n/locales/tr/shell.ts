@@ -38,6 +38,7 @@ export const statusBar = {
     label: 'Havuz',
     labelFull: 'Havuz dolu',
     collect: 'Topla',
+    firstTip: 'Üretimin burada birikir. Toplamak için dokun.',
     fullStopped: 'Doldu — üretim durdu',
     fillsIn: '{{time}} sonra dolar',
     gathers: 'Üretim sen toplayana dek burada birikir',

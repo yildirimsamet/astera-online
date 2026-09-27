@@ -71,6 +71,10 @@ const PAGES = [
   { path: '/cerez-politikasi.html', language: 'tr', heading: /çerez politikası/i, pair: '/cookies.html' },
   { path: '/terms.html', language: 'en', heading: /terms of use/i, pair: '/kullanim-kosullari.html' },
   { path: '/kullanim-kosullari.html', language: 'tr', heading: /kullanım koşulları/i, pair: '/terms.html' },
+  { path: '/refunds.html', language: 'en', heading: /refund and cancellation policy/i, pair: '/iade-politikasi.html' },
+  { path: '/iade-politikasi.html', language: 'tr', heading: /İade ve İptal Politikası/u, pair: '/refunds.html' },
+  { path: '/pricing.html', language: 'en', heading: /planet skin pricing/i, pair: '/fiyatlar.html' },
+  { path: '/fiyatlar.html', language: 'tr', heading: /gezegen görünümü fiyatları/i, pair: '/pricing.html' },
   { path: '/community-guidelines.html', language: 'en', heading: /community guidelines/i, pair: '/topluluk-kurallari.html' },
   { path: '/topluluk-kurallari.html', language: 'tr', heading: /topluluk kuralları/i, pair: '/community-guidelines.html' },
   { path: '/contact.html', language: 'en', heading: /contact/i, pair: '/iletisim.html' },
@@ -88,6 +92,8 @@ describe('the publisher page table', () => {
     expect(publisherUrl('privacy', 'en-GB')).toBe('/privacy.html');
     expect(publisherUrl('terms', 'tr-TR')).toBe('/kullanim-kosullari.html');
     expect(publisherUrl('terms', undefined)).toBe('/terms.html');
+    expect(publisherUrl('refunds', 'tr')).toBe('/iade-politikasi.html');
+    expect(publisherUrl('pricing', 'en')).toBe('/pricing.html');
   });
 
   /**
@@ -127,7 +133,7 @@ describe('every page as a document', () => {
       const hrefs = [...(footer?.querySelectorAll('a') ?? [])].map((a) => a.getAttribute('href'));
       const language = page.language === 'tr' ? 'tr' : 'en';
 
-      for (const target of ['privacy', 'cookies', 'terms', 'community', 'contact'] as const) {
+      for (const target of ['privacy', 'cookies', 'terms', 'refunds', 'pricing', 'community', 'contact'] as const) {
         expect(hrefs).toContain(publisherUrl(target, language));
       }
       expect(hrefs).toContain('/');
@@ -161,6 +167,15 @@ describe('the content pages carry real content', () => {
 });
 
 describe('crawl instructions', () => {
+  it('allows the live Paddle script, API and checkout frame on the game document', async () => {
+    const nginx = await readFile(resolve(process.cwd(), '../../deploy/nginx/astera.conf'), 'utf8');
+    const gamePolicy = nginx.split('location = /index.html {')[1]?.split('add_header Content-Security-Policy ')[1]?.split('" always;')[0];
+    expect(gamePolicy).toBeTruthy();
+    expect(gamePolicy).toMatch(/script-src [^;]*https:/);
+    expect(gamePolicy).toMatch(/connect-src [^;]*https:\/\/\*\.paddle\.com/);
+    expect(gamePolicy).toMatch(/frame-src [^;]*https:\/\/\*\.paddle\.com/);
+  });
+
   it('publishes a robots file that points crawlers at the sitemap', async () => {
     const robots = await publicFile('robots.txt');
 
@@ -196,6 +211,76 @@ describe('crawl instructions', () => {
 });
 
 describe('the legal set says what it has to say', () => {
+  it('explains the lifespan of paid skins without waiving refund rights', async () => {
+    for (const path of ['/terms.html', '/kullanim-kosullari.html', '/pricing.html', '/fiyatlar.html']) {
+      const page = await publicFile(path);
+      expect(page).toMatch(/available only while Astera Online|yalnızca Astera Online hizmeti/i);
+      expect(page).toMatch(/refund|iade/i);
+    }
+    for (const path of ['/refunds.html', '/iade-politikasi.html']) {
+      const page = await publicFile(path);
+      expect(page).toMatch(/permanently discontinued|kalıcı olarak sona er/i);
+      expect(page).toMatch(/statutory|yasal/i);
+    }
+  });
+
+  it.each([
+    ['/terms.html', '/refunds.html'],
+    ['/kullanim-kosullari.html', '/iade-politikasi.html'],
+  ])('%s explains paid skins and links its refund policy', async (path, refundPath) => {
+    const page = await publicFile(path);
+    expect(page).toContain('Paddle');
+    expect(page).toContain(refundPath);
+    expect(page).toMatch(/one-time|tek seferlik/i);
+  });
+
+  it.each(['/privacy.html', '/gizlilik-politikasi.html'])(
+    '%s explains what payment data Paddle handles', async (path) => {
+      const page = await publicFile(path);
+      expect(page).toContain('Paddle');
+      expect(page).toMatch(/card details|kart bilgileri/i);
+    },
+  );
+
+  it.each(['/refunds.html', '/iade-politikasi.html'])(
+    '%s explains one-time purchases and gives a real refund route', async (path) => {
+      const page = await publicFile(path);
+      expect(page).toContain('https://paddle.net');
+      expect(page).toContain('https://www.paddle.com/legal/refund-policy');
+      expect(page).toContain('mailto:samety3503@gmail.com');
+      expect(page).toMatch(/one-time|tek seferlik/i);
+      expect(page).toMatch(/not a subscription|abonelik değildir/i);
+      expect(page).toMatch(/statutory|yasal/i);
+    },
+  );
+
+  it.each(['/pricing.html', '/fiyatlar.html'])(
+    '%s explains the live cosmetic catalog and links the buying policies', async (path) => {
+      const page = await publicFile(path);
+      for (const skin of ['Lava', 'Ice', 'Toxic', 'Desert', 'Turkey', 'Germany', 'France', 'Spain']) {
+        expect(page).toMatch(new RegExp(skin, 'i'));
+      }
+      expect(page).toContain('€2.99');
+      expect(page).toContain('€8.49');
+      expect(page).toContain(path === '/pricing.html' ? '/refunds.html' : '/iade-politikasi.html');
+      expect(page).toContain(path === '/pricing.html' ? '/terms.html' : '/kullanim-kosullari.html');
+    },
+  );
+
+  it.each(['/pricing.html', '/fiyatlar.html'])(
+    '%s marks all nine offers for country based Paddle price previews', async (path) => {
+      const page = await parse(path);
+      const offers = [...page.querySelectorAll('[data-paddle-price]')]
+        .map((element) => element.getAttribute('data-paddle-price'));
+      expect(offers).toEqual([
+        'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
+        'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'bundle',
+      ]);
+      expect(page.querySelector('script[src="/publisher-pricing.js"]')).not.toBeNull();
+      expect(page.querySelector('[data-pricing-status]')).not.toBeNull();
+    },
+  );
+
   it('identifies the real data controller in both languages', async () => {
     for (const path of ['/privacy.html', '/gizlilik-politikasi.html', '/kvkk-aydinlatma-metni.html']) {
       const document = await publicFile(path);
@@ -378,6 +463,8 @@ describe('public navigation from the front door', () => {
     expect(screen.getByRole('link', { name: /how to play/i })).toHaveAttribute('href', '/quick-start-guide.html');
     expect(screen.getByRole('link', { name: /privacy/i })).toHaveAttribute('href', '/privacy.html');
     expect(screen.getByRole('link', { name: /terms/i })).toHaveAttribute('href', '/terms.html');
+    expect(screen.getByRole('link', { name: /refund/i })).toHaveAttribute('href', '/refunds.html');
+    expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing.html');
     expect(screen.getByRole('link', { name: /contact/i })).toHaveAttribute('href', '/contact.html');
   });
 
@@ -389,6 +476,8 @@ describe('public navigation from the front door', () => {
     expect(screen.getByRole('link', { name: /nasıl oynanır/i })).toHaveAttribute('href', '/hizli-baslangic-rehberi.html');
     expect(screen.getByRole('link', { name: /gizlilik/i })).toHaveAttribute('href', '/gizlilik-politikasi.html');
     expect(screen.getByRole('link', { name: /koşullar/i })).toHaveAttribute('href', '/kullanim-kosullari.html');
+    expect(screen.getByRole('link', { name: /[İi]ade/u })).toHaveAttribute('href', '/iade-politikasi.html');
+    expect(screen.getByRole('link', { name: /fiyatlar/i })).toHaveAttribute('href', '/fiyatlar.html');
     expect(screen.getByRole('link', { name: /[iİ]let[iİ]ş[iİ]m/u })).toHaveAttribute('href', '/iletisim.html');
   });
 });

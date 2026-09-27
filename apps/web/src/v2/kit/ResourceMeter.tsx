@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { full, stock } from '../../lib/format.js';
 import { RESOURCE_ART } from '../../ui/assets.js';
@@ -24,6 +25,7 @@ export interface ResourceMeterProps {
   boosted?: boolean;
   /** How much of the store a raid cannot take (the Vault's floor), bracketed as the Base does. */
   safe?: number;
+  transfer?: { id: number; from: number; to: number } | null;
 }
 
 /**
@@ -51,8 +53,24 @@ function BoostMark() {
  * warn notch and nothing on the meter turns hostile red (H2) — red is reserved for
  * something happening to you.
  */
-export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, safe = 0 }: ResourceMeterProps) {
+export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, safe = 0, transfer = null }: ResourceMeterProps) {
   const { t } = useTranslation();
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!transfer || transfer.to <= transfer.from) return;
+    let frame = 0;
+    const began = performance.now();
+    setCount(transfer.from);
+    const tick = (now: number): void => {
+      const share = Math.min(1, (now - began) / 700);
+      setCount(Math.round(transfer.from + (transfer.to - transfer.from) * (1 - (1 - share) ** 3)));
+      if (share < 1) frame = requestAnimationFrame(tick);
+      else setCount(null);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(frame); };
+  }, [transfer]);
+  const shown = count ?? (transfer ? Math.max(value, transfer.to) : value);
   const isFull = cap > 0 && value >= cap - 0.5;
   const name = t(isFull ? 'meter.full' : 'meter.reading', {
     resource: t(LABEL[resource]),
@@ -64,16 +82,21 @@ export function ResourceMeter({ resource, value, cap, onOpen, boosted = false, s
     <>
       <span className="flex items-center gap-1">
         <img src={RESOURCE_ART[resource]} alt="" draggable={false} className="size-4 shrink-0 object-contain" />
-        <span className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(value)}</span>
+        <span data-counting={count !== null ? '' : undefined} className="font-v2-mono text-body tabular-nums text-v2-ink">{stock(shown)}</span>
         {boosted && <BoostMark />}
       </span>
       {/* The Base's own store bar, compact (owner, 2026-09-25: the two did not match). */}
       {/* Full by the meter's own reading, so the name and the cap never disagree over a fraction. */}
       <StoreBar compact value={isFull ? cap : value} cap={cap} safe={safe} tone={resource} />
+      {transfer && transfer.to > transfer.from && [0, 1, 2].map((index) => (
+        <img key={`${String(transfer.id)}:${String(index)}`} data-collect-particle="" src={RESOURCE_ART[resource]} alt="" aria-hidden="true"
+          className="pointer-events-none absolute bottom-[-18px] size-2.5 animate-[v2-collect-flight_700ms_ease-out_both] object-contain"
+          style={{ left: `${String(20 + index * 14)}%`, animationDelay: `${String(index * 75)}ms` }} />
+      ))}
     </>
   );
 
-  const frame = 'flex min-w-0 flex-col text-left';
+  const frame = 'relative flex min-w-0 flex-col text-left';
   return onOpen
     ? <button type="button" onClick={onOpen} aria-label={name} className={frame}>{body}</button>
     : <span role="img" aria-label={name} className={frame}>{body}</span>;

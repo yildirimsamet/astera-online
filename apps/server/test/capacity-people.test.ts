@@ -37,9 +37,10 @@ async function galaxyOfTwo() {
 
 describe('the seats a galaxy counts', () => {
   it('never lets a bot take a person’s seat', async () => {
-    const { person, bot } = await galaxyOfTwo();
-    expect(await bot('Poyraz')).toBe(1);
+    const { db, clock, person, bot } = await galaxyOfTwo();
+    expect(await bot('Poyraz')).toBe(0);
     await person('Ada');
+    expect(await ensureBotSeats(db, clock, silent, 8)).toBe(1);
     await person('Bora');
     await expect(person('Cem')).rejects.toSatisfy(
       (err: unknown) => err instanceof GameError && err.code === 'SHARD_FULL',
@@ -55,8 +56,8 @@ describe('the seats a galaxy counts', () => {
 
   it('lists a galaxy by the people in it', async () => {
     const { db, clock, person, bot } = await galaxyOfTwo();
-    await bot('Poyraz');
     await person('Ada');
+    expect(await bot('Poyraz')).toBe(1);
     const [row] = await listServers(db, clock);
     expect(row?.planets).toBe(1);
     expect(row?.status).not.toBe('full');

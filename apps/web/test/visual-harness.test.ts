@@ -27,14 +27,10 @@ describe('the visual verification journey', () => {
     expect(dismiss).toBeLessThan(onboarding.indexOf("name: 'Build defence'"));
   });
 
-  /*
-   * The works are read off the collect bubble now (B13), and the bubble only rises
-   * once the works pass its threshold. A fresh commander's works are below it for
-   * minutes, so "no bubble" is a state the check cannot measure, not a failure.
-   */
-  it('skips the works check while the collect bubble has not risen', () => {
+  it('measures the new top-bar vessel fill directly while production runs', () => {
     const works = harness.slice(harness.indexOf('/* ── 6 ·'));
-    expect(works).toContain('SKIP  the works fill without a refetch');
+    expect(works).toContain('[data-works-resource="alloy"] [data-works-fill]');
+    expect(works).not.toContain('SKIP  the works fill without a refetch');
   });
 
   it('measures camera home with the current shared world transform', () => {

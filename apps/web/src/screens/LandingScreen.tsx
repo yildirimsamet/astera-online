@@ -56,7 +56,7 @@ export function LandingScreen({
    * How one asset is fetched. Overridden only under test.
    *
    * jsdom does not load subresources, so a real `Image` never fires either of its
-   * events there and the door would sit behind the deadline for six seconds in
+   * events there and the door would sit behind the deadline for five seconds in
    * every test that touches this screen. The seam is one function, it defaults to
    * the real thing, and the counting it feeds is covered directly in
    * `preload.test.ts`.
@@ -319,6 +319,8 @@ export function LandingScreen({
                 ['guide', 'landing.guideLink'],
                 ['privacy', 'landing.privacyLink'],
                 ['terms', 'landing.termsLink'],
+                ['refunds', 'landing.refundsLink'],
+                ['pricing', 'landing.pricingLink'],
                 ['contact', 'landing.contactLink'],
               ] as const
             ).map(([page, label]) => (

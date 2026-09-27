@@ -49,6 +49,7 @@ export const statusBar = {
     label: 'Produktionslager',
     labelFull: 'Produktionslager voll',
     collect: 'Abholen',
+    firstTip: 'Produktion sammelt sich hier. Zum Abholen tippen.',
     fullStopped: 'Voll — Produktion gestoppt',
     fillsIn: 'voll in {{time}}',
     gathers: 'Die Produktion sammelt sich hier, bis du sie abholst',

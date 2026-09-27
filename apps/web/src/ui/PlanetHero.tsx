@@ -106,6 +106,7 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
             <div aria-hidden className="absolute size-[140px] rounded-full border border-v2-line-hi/60" />
             <PlanetSigil
               seed={planet.planet.id}
+              skinId={planet.planet.skinId}
               size={104}
               shielded={coreOnline && planet.planet.shield > 0}
             />

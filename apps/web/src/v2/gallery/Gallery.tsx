@@ -103,6 +103,7 @@ const works = (
       noRoom,
       stopped,
     },
+    fill: { alloy: Math.min(1, each.alloy / 1_000), crystal: Math.min(1, each.crystal / 1_000), deuterium: Math.min(1, each.deuterium / 500) },
     fullInMinutes: stopped.length > 0 ? null : 140,
     pending: false,
     onCollect: noop,
@@ -397,9 +398,10 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
       ladder: Array.from({ length: 8 }, (_, index) => ({
         rank: index + 1, playerId: `gallery-${index}`, username: index === 0 ? 'Samet' : `Commander ${index + 1}`,
         country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${index}`, planetName: `World ${index + 1}`,
+        skinId: index === 0 ? 'planet-ice' : index === 1 ? 'planet-lava' : null,
         coreTier: (index % 4) + 1, score: 420 - index * 37, clan: index === 1 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
       })),
-      you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', coreTier: 1, score: 420, clan: null, isBot: false },
+      you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', coreTier: 1, score: 420, clan: null, isBot: false },
     });
     if (page === 'leaderboard-archive') {
       next.setQueryData(keys.season, {

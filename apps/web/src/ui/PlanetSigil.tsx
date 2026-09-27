@@ -1,5 +1,7 @@
 import { planetArt } from './assets.js';
 import i18n from '../i18n/index.js';
+import type { PlanetSkinId } from '@astera/rules';
+import { PLANET_SKIN_CATALOG } from './skinCatalog.js';
 
 /**
  * A planet.
@@ -20,11 +22,13 @@ export function PlanetSigil({
   shielded = false,
   /** Dims the world and drops its glow — used for a planet you cannot see into. */
   dark = false,
+  skinId = null,
 }: {
   seed: string;
   size?: number;
   shielded?: boolean;
   dark?: boolean;
+  skinId?: PlanetSkinId | null;
 }) {
   return (
     <div
@@ -44,14 +48,16 @@ export function PlanetSigil({
         />
       )}
 
-      <img
-        src={planetArt(seed)}
-        alt=""
-        aria-hidden
-        loading="lazy"
-        className="relative size-full object-contain"
-        style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined}
-      />
+      {skinId ? (
+        <span className="absolute inset-0 overflow-hidden rounded-full">
+          <img src={PLANET_SKIN_CATALOG[skinId].image} alt="" aria-hidden loading="lazy"
+            className="size-full scale-[1.18] object-cover"
+            style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined} />
+        </span>
+      ) : (
+        <img src={planetArt(seed)} alt="" aria-hidden loading="lazy" className="relative size-full object-contain"
+          style={dark ? { filter: 'brightness(0.62) saturate(0.72)' } : undefined} />
+      )}
 
       {shielded && (
         <>

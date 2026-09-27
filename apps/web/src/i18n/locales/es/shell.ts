@@ -49,6 +49,7 @@ export const statusBar = {
     label: 'Depósito de producción',
     labelFull: 'Depósito de producción lleno',
     collect: 'Recoger',
+    firstTip: 'La producción se acumula aquí. Toca para recogerla.',
     fullStopped: 'Lleno — producción detenida',
     fillsIn: 'lleno en {{time}}',
     gathers: 'La producción se acumula aquí hasta que la recojas',

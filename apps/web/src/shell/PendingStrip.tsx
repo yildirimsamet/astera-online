@@ -12,13 +12,13 @@ import { threadKey } from '../galaxy/threadKey.js';
 import {
   arrivalOf,
   contactFor,
+  flightFocus,
   flightTitle,
   incomingDetail,
   runArrival,
   runTitle,
+  type FlightFocus,
 } from '../lib/flights.js';
-import type { CraftFocus } from '../galaxy/ownCraft.js';
-import type { Focus } from '../galaxy/FocusPanel.js';
 import { legProgress } from '../lib/fleetPage.js';
 import { countdown, useNow } from '../lib/time.js';
 import { FlightBar } from '../ui/FlightBar.js';
@@ -43,7 +43,7 @@ import { describe, useToast } from '../ui/Toast.js';
  * is not a craft you own, so it is not a `CraftFocus`; it is the same focus state
  * the disc already uses when a player taps a foreign fleet.
  */
-export type StripFocus = CraftFocus | Extract<Focus, { kind: 'contact' }>;
+export type StripFocus = FlightFocus;
 
 /**
  * DESIGN LAW #1, made visible.
@@ -163,48 +163,47 @@ export function useAirborne(): { items: AirborneItem[]; now: number } {
   const seen = traffic.data?.contacts ?? [];
 
   const items: AirborneItem[] = [
-    ...threads.map((thread, index): AirborneItem => ({
-      key: `thread:${threadKey(thread, index)}`,
-      title: flightTitle(thread),
-      detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
-        ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
-        : t('pendingStrip.craftUnknown')),
-      arrival: arrivalOf(thread),
-      leg: thread.leg,
-      ...(thread.pace === undefined ? {} : { pace: thread.pace }),
-      incoming: thread.kind === 'incoming',
-      engages: thread.kind === 'fleet' && thread.leg === 'outbound',
-      mark: thread.kind,
-      /*
-        THE LEG'S OWN TWO INSTANTS, and null for an inbound attack — the server
-        sends no `path` for somebody else's fleet, deliberately (D123), so there
-        is no honest position to draw and `FlightBar` says so with a dashed track
-        rather than inventing one.
-      */
-      span: thread.path
-        ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
-        : null,
-      /*
-        TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
+    ...threads.map((thread, index): AirborneItem => {
+      const focus = flightFocus(thread, index, seen);
+      return {
+        key: `thread:${threadKey(thread, index)}`,
+        title: flightTitle(thread),
+        detail: incomingDetail(thread, contactFor(thread, seen)) ?? (thread.fleet
+          ? t('pendingStrip.craftCount', { count: fleetCount(thread.fleet) })
+          : t('pendingStrip.craftUnknown')),
+        arrival: arrivalOf(thread),
+        leg: thread.leg,
+        ...(thread.pace === undefined ? {} : { pace: thread.pace }),
+        incoming: thread.kind === 'incoming',
+        engages: thread.kind === 'fleet' && thread.leg === 'outbound',
+        mark: thread.kind,
+        /*
+          THE LEG'S OWN TWO INSTANTS, and null for an inbound attack — the server
+          sends no `path` for somebody else's fleet, deliberately (D123), so there
+          is no honest position to draw and `FlightBar` says so with a dashed track
+          rather than inventing one.
+        */
+        span: thread.path
+          ? { from: thread.path.departAt.getTime(), to: thread.path.arriveAt.getTime() }
+          : null,
+        /*
+          TWO WAYS TO LOOK AT A CRAFT, AND AN INBOUND WARNING HAS THE SECOND. D162.
 
-        Your own craft is focused by its thread. A warning has no path — the route
-        is what Radar L5 does not sell — so it is focused through the CONTACT the
-        disc is already drawing, and only when there is one. No contact, no
-        control: the fog is enforced in the contact query, not here.
-      */
-      ...(thread.path
-        ? { focus: { kind: 'thread' as const, key: threadKey(thread, index) } }
-        : contactFor(thread, seen)
-          ? { focus: { kind: 'contact' as const, id: thread.contactId! } }
+          Your own craft is focused by its thread. A warning has no path — the route
+          is what Radar L5 does not sell — so it is focused through the CONTACT the
+          disc is already drawing, and only when there is one. No contact, no
+          control: the fog is enforced in the contact query, not here.
+        */
+        ...(focus ? { focus } : {}),
+        /*
+          THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer or a raid (K8)
+          that is still turnable on this tick, and never twice.
+        */
+        ...(thread.recallable === true && thread.id !== undefined
+          ? { recallMission: { missionId: thread.id } }
           : {}),
-      /*
-        THE SERVER'S WORD, NOT A GUESS. `recallable` is only ever set on a transfer or a raid (K8)
-        that is still turnable on this tick, and never twice.
-      */
-      ...(thread.recallable === true && thread.id !== undefined
-        ? { recallMission: { missionId: thread.id } }
-        : {}),
-    })),
+      };
+    }),
     ...runs.map((run): AirborneItem => ({
       key: `run:${run.id}`,
       title: runTitle(run),

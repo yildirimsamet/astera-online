@@ -303,7 +303,7 @@ export function ContextSlot({
             setLookingAtThreat(true);
             onClearSelection();
           }}
-          className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-hostile/60 bg-v2-hostile/20 px-2.5 font-v2-mono text-caption font-semibold text-v2-ink"
+          className="pointer-events-auto flex h-7 items-center gap-1 rounded-full border border-v2-hostile/60 bg-v2-hostile/20 px-1 font-v2-mono text-caption font-semibold text-v2-ink"
         >
           <Icon id="i-attack" className="size-3.5 text-v2-hostile" />
           {slot.threatPill}
@@ -345,10 +345,10 @@ export function ContextSlot({
         detail={(
           <ul className="flex flex-col gap-1.5">
             {open.map((event) => (
-              <li key={event.id} className="flex items-center gap-2">
+              <li key={event.id} className="flex items-center gap-2 pb-2 mb-1 border-b border-v2-self/15">
                 <span className="min-w-0 flex-1">
-                  {several && <span className="mr-1 font-semibold text-v2-ink">{t(EVENT_NAME[event.kind])}</span>}
-                  <EventDetail event={event} now={now} />
+                  {several && <div className="mb-0.5 font-semibold text-v2-ink">{t(EVENT_NAME[event.kind])}</div>}
+                  <div> <EventDetail event={event} now={now} /></div>
                 </span>
                 {event.kind !== 'ASTEROID_SHOWER' && (
                   <button

@@ -7,15 +7,16 @@ import { Icon } from '../icons.js';
 /**
  * Peek and half are ceilings: a sheet with little in it is only as tall as its
  * content, because empty height is space with no purpose (seen on the gallery: a
- * two-row queue sheet stood half the screen tall). Full is a page, and fills.
+ * two-row queue sheet stood half the screen tall). Full can reach the screen top
+ * when the content needs the room.
  */
 const HEIGHT: Record<Detent, string> = {
   peek: 'max-h-[140px]',
   half: 'max-h-[55dvh]',
   /** As tall as what it holds, up to a page: an item sheet over empty space was the report. */
   fit: 'max-h-full',
-  /** The room between the top bar and the dock, and no more: the top bar stays above a page (M5). */
-  full: 'h-full',
+  /** The room from the screen top to the dock, used only when content needs it. */
+  full: 'max-h-full',
 };
 
 /**
@@ -36,7 +37,7 @@ const FRAME: Record<Placement, { holder: string; scrim: string; panel: string }>
   page: {
     holder: 'justify-end v2-split:left-auto v2-split:top-(--v2-top-h) v2-split:w-[440px] v2-desk:w-[min(720px,50vw)]',
     scrim: 'v2-split:hidden',
-    panel: 'v2-split:h-full! v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
+    panel: 'v2-split:max-h-full! v2-split:max-w-none! v2-split:rounded-none v2-split:border-t-0',
   },
   dialog: {
     holder: 'justify-end v2-split:top-(--v2-top-h) v2-split:items-center v2-split:justify-center v2-split:p-6',
@@ -172,8 +173,8 @@ export function Sheet({
   return (
     <div
       className={`pointer-events-none fixed inset-x-0 top-0 z-40 flex flex-col ${FRAME[placement].holder}`}
-      /* From under the top bar (`--v2-top-h`, published by the shell) to above the dock. */
-      style={{ top: 'var(--v2-top-h, 0px)', bottom: 'var(--v2-dock-h, 0px)' }}
+      /* From the screen top to above the dock; a short page keeps its own height. */
+      style={{ bottom: 'var(--v2-dock-h, 0px)' }}
     >
       {modal && (
         <button
@@ -248,7 +249,7 @@ export function Sheet({
 
         <div
           data-sheet-body=""
-          className={`min-h-0 flex-1 ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
+          className={`min-h-0 flex-auto ${contained ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'} ${bleed ? '' : 'px-3 pb-3'}`}
         >
           {typeof children === 'function' ? children(detent) : children}
         </div>

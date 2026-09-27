@@ -5,6 +5,7 @@ import {
   FLEET_V2_OPENING_ASSETS,
   GALAXY_ASSETS,
   LANDING_ASSETS,
+  PRELOAD_DEADLINE_MS,
   preloadAll,
   usePreload,
   type Loader,
@@ -102,6 +103,9 @@ describe('counting what has loaded', () => {
 });
 
 describe('the hook the door waits on', () => {
+  it('never holds the loading screen for more than five seconds of asset work', () => {
+    expect(PRELOAD_DEADLINE_MS).toBe(5_000);
+  });
   it('opens once everything has settled, at a full bar', async () => {
     const { result } = renderHook(() => usePreload(['a', 'b'], { load: settled() }));
 

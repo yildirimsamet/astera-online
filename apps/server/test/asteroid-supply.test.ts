@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { ASTEROID_DYNAMIC } from '@astera/rules';
-import { asteroidSpawnHours, buildings, planets, players, seasons } from '../src/db/schema.js';
+import { asteroidSpawnHours, botProfiles, buildings, planets, players, seasons } from '../src/db/schema.js';
 import { countEligibleCommanders, openAsteroidHour } from '../src/services/asteroidSpawn.js';
 import { seedWorld, setLevel, testDb, type Fixture } from './helpers.js';
 
@@ -85,6 +85,36 @@ describe('who counts toward the asteroid supply', () => {
       lastActiveAt: new Date(f.clock.now().getTime() - (ASTEROID_DYNAMIC.activeWindowMinutes + 5) * 60_000),
     });
     expect(await countEligibleCommanders(f.db, f.seasonId, f.clock.now())).toBe(0);
+  });
+
+  /**
+   * PEOPLE ONLY. Owner instruction, 2026-09-26, reversing 2026-09-19: the server's own
+   * commanders never pay for the sky — not the rocks, not a shower's multiple of them, not the
+   * pirates — however awake they are and however far they have raised their Core. A retired one
+   * keeps its profile row, so it stays out too.
+   */
+  it('never counts the server’s own commanders, awake or retired', async () => {
+    for (const id of f.playerIds) {
+      await settle(id, ASTEROID_DYNAMIC.supply.graceMinutes + 60, ASTEROID_DYNAMIC.supply.coreLevel);
+    }
+    const now = f.clock.now();
+    await f.db.insert(botProfiles).values([
+      { accountId: f.accountIds[1]!, ordinal: 1, persona: 'raider', nextActionAt: now, createdAt: now },
+      { accountId: f.accountIds[2]!, ordinal: 2, persona: 'raider', nextActionAt: now, createdAt: now, retiredAt: now },
+    ]);
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(1);
+  });
+
+  it('does not wave a bot through as a founder', async () => {
+    await f.db.update(seasons)
+      .set({ startsAt: new Date(f.clock.now().getTime() - 60 * 60_000) })
+      .where(eq(seasons.id, f.seasonId));
+    for (const id of f.playerIds) await settle(id, 0, 1);
+    const now = f.clock.now();
+    await f.db.insert(botProfiles).values({
+      accountId: f.accountIds[0]!, ordinal: 1, persona: 'raider', nextActionAt: now, createdAt: now,
+    });
+    expect(await countEligibleCommanders(f.db, f.seasonId, now)).toBe(2);
   });
 });
 

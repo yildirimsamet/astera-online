@@ -7,7 +7,7 @@ import { Api } from '../src/api/client.js';
 import { ApiProvider } from '../src/api/context.js';
 import i18n from '../src/i18n/index.js';
 import { LeaderboardScreen } from '../src/screens/LeaderboardScreen.js';
-import { planetArt } from '../src/ui/assets.js';
+import { PLANET_SKIN_CATALOG } from '../src/ui/skinCatalog.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 
 const rows = Array.from({ length: 100 }, (_, index) => ({
@@ -16,6 +16,7 @@ const rows = Array.from({ length: 100 }, (_, index) => ({
   username: index === 42 ? 'İzci' : `Commander ${String(index)}`,
   planetId: index === 1 ? undefined : `planet-${String(index)}`,
   planetName: index === 1 ? undefined : `World ${String(index)}`,
+  skinId: index === 1 || index === 42 ? 'planet-ice' : null,
   coreTier: index === 1 ? undefined : (index % 4) + 1,
   score: 50 - index,
   clan: index === 0 ? { id: 'clan-war', name: 'War Fleet', tag: 'WAR' } : null,
@@ -55,7 +56,14 @@ describe('the Dominion leaderboard', () => {
     const ladder = screen.getByRole('list', { name: 'Leaderboard' });
     const mine = within(ladder).getByText('İzci').closest('li');
     expect(mine).toHaveAttribute('aria-current', 'true');
-    expect(mine?.querySelector('img')).toHaveAttribute('src', planetArt('planet-42'));
+    expect(mine?.querySelector('img')).toHaveAttribute('src', PLANET_SKIN_CATALOG['planet-ice'].image);
+  });
+
+  it('shows a skin even when the rival capital remains undiscovered', async () => {
+    await show();
+    const unknown = screen.getByText('Commander 1').closest('li');
+    expect(unknown?.querySelector('img')).toHaveAttribute('src', PLANET_SKIN_CATALOG['planet-ice'].image);
+    expect(unknown).not.toHaveTextContent('World 1');
   });
 
   it('pins one rival above and below a commander who is deep in the ladder', async () => {

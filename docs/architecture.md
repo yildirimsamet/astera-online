@@ -97,7 +97,7 @@ rather than racing a scheduler.
 a stranded flight is housekeeping; landing everybody's fleets is the job.
 
 Three sweeps sit there, each on its own interval and each in its own `try/catch`: the stranded
-flight repair (30s), the idle-seat reclaim (10min) and the bot roster (60s, D159). Only the last
+flight repair (30s), the idle-seat reclaim (10min) and the bot roster (20s, D159). Only the last
 is a FEATURE rather than a repair, and it is the one that most obviously must not be able to
 delay a raid settling: it seats the commanders the server plays, stamps their presence and takes
 at most one turn each. It deliberately owns no `event_kind` — a missed turn costs one commander

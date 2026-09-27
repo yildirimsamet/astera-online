@@ -194,14 +194,8 @@ const isPersonaId = (id: string): id is BotPersonaId =>
 export const BOTS = {
   /** Kestrel is a human-only galaxy. The worker must never seat a bot there. */
   excludedShardCodes: ['EU-2'] as readonly string[],
-
-  /**
-   * HOW MANY COMMANDERS THE SERVER SEATS IN EACH LIVE GALAXY. Owner instruction.
-   *
-   * Per galaxy, not in total: galaxies fill in order and a second one opening
-   * empty is the same problem this exists to solve, one shard along.
-   */
-  perGalaxy: 8,
+  /** Operator ceiling for demand-driven seating, bounded by authored bot addresses. */
+  maxPerGalaxy: 100,
 
   /**
    * THE OPENING CEASEFIRE. D170, owner instruction: *"Botlar server yeni
@@ -225,38 +219,6 @@ export const BOTS = {
    */
   ceasefireMinutes: 12 * 60,
 
-  /**
-   * THE SHIFT ROSTER, AS A TARGET FOR EACH TÜRKIYE HOUR. Owner instruction:
-   * nobody between 01:00 and 08:00, and between four and eight of them awake at
-   * every other hour.
-   *
-   * A FLAT NUMBER WOULD BE THE TELL. Twelve commanders who are all present at
-   * 09:00 and all present at 22:00 describe a cron job, not a population; the
-   * curve is what makes the evening feel like the evening. The floor of four is
-   * the owner's, and it is the number that has to hold at the quietest waking
-   * minute of the day — which is why the schedule proves it rather than aims at it.
-   *
-   * The zeros are a BLACKOUT, not a low-weight band. `GALAXY_EVENTS.calendar`
-   * models Türkiye quiet hours as a weight because a shower nobody sees is merely
-   * wasted; a commander seen raiding at 04:00 every night is a commander somebody
-   * eventually asks about.
-   */
-  awakeByLocalHour: [
-    6, 0, 0, 0, 0, 0, 0, 0, 4, 4, 5, 5,
-    6, 6, 5, 6, 7, 8, 9, 10, 11, 12, 11, 9,
-  ] as readonly number[],
-  /** The roster is re-cut this often. Half an hour is below a session and above a blink. */
-  slotMinutes: 30,
-  /**
-   * How long one commander is PREFERRED to stay in a single sitting.
-   *
-   * A preference and not a guarantee, and the exception is the honest one: at the
-   * evening peak the target IS the whole roster, so everybody is on and nobody can
-   * be rested. Four hours is a long evening rather than an impossible one, and the
-   * alternative — refusing to ever field the full roster — would spend the owner's
-   * stated ceiling to protect a detail nobody can observe.
-   */
-  maxSessionSlots: 8,
   /** How long a commander sits between two things they do. */
   turnGapMinutes: { min: 7, max: 23 },
   /**

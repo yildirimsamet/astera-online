@@ -226,7 +226,6 @@ export function GalaxyView({
   focusRequest,
   craftFocusRequest,
   commander,
-  resumed = false,
   country,
   isAdmin = false,
   pastResult,
@@ -274,8 +273,6 @@ export function GalaxyView({
   craftFocusRequest?: { focus: StripFocus; request: number } | null;
   /** Who is signed in. Shown on the one surface that is about you rather than the world. */
   commander: string;
-  /** A backgrounded tab whose page was discarded reopens without the first-entry cover. */
-  resumed?: boolean;
   country?: CountryCode;
   /** Operations access comes from the server's out-of-band username allow-list. */
   isAdmin?: boolean;
@@ -678,7 +675,7 @@ export function GalaxyView({
   const [drawn, setDrawn] = useState(false);
   const dataSettled =
     !galaxy.isPending && !planet.isPending && !season.isPending && !mining.isPending;
-  const covered = useOpeningCover(assets.ready && dataSettled && drawn, resumed);
+  const covered = useOpeningCover(assets.ready && dataSettled && drawn);
 
 
   /**
@@ -1191,7 +1188,7 @@ export function GalaxyView({
         one chip at top right, which the Academy hides with the sensor switches
         until its Telescope exercise (`data-sensor-toggles`).
       */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
+      <div data-galaxy-top-corners="" className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2">
         <div className="pointer-events-none flex min-w-0 flex-col items-start gap-1">
           {/*
             THE EVENTS RUNNING NOW, with their time left (owner, 2026-09-24): the context card

@@ -20,6 +20,8 @@ export const landing = {
   guideLink: 'Comment jouer',
   privacyLink: 'Confidentialité',
   termsLink: 'Conditions d’utilisation',
+  refundsLink: 'Remboursements',
+  pricingLink: 'Tarifs',
   contactLink: 'Contact',
 
   form: {

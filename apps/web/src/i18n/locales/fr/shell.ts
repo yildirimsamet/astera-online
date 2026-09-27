@@ -40,6 +40,7 @@ export const statusBar = {
     label: "Stock de production",
     labelFull: "Stock de production plein",
     collect: "Collecter",
+    firstTip: "La production s'accumule ici. Touchez pour la collecter.",
     fullStopped: "Plein — production arrêtée",
     fillsIn: "plein dans {{time}}",
     gathers: "La production s’accumule ici jusqu’à ce que tu la collectes",
