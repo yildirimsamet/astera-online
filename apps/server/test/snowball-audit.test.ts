@@ -5,7 +5,7 @@ import {
   ACADEMY_STEPS, ALL_HULLS, BUILDING_IDS, HULLS, MULTI_WORLD, PROBE, PROSPECTOR, RESEARCH_PROJECTS, SHIELD, alloyRate, buildingCost, buildingMinutes,
   claimOre, crystalRate, deuteriumRate, piratePosition, productionMult,
   storageCap, fleetEntries, fleetSpeed, fleetTravelExact, fleetSpeedMult, hullWorkMinutes, interceptOrbit, missionFuel, prospectorHold,
-  prospectorReturnSpeed, prospectorSpeed, researchMinutes, resolveCombat, shieldHp, travelExact,
+  prospectorReturnSpeed, prospectorSpeed, researchMinutes, resolveCombat, shieldHp, travelExact, hangarCapacity, hangarLoad,
   type Fleet, type HullId, type Resources,
 } from '@astera/rules';
 import { TokenService } from '../src/auth/tokens.js';
@@ -15,7 +15,7 @@ import { launchMining, loadMiningSnapshot, prospectorsRestingUntil, resolveMinin
 import { buildUnits, collectWorks, upgradeBuilding } from '../src/services/build.js';
 import { joinSeason } from '../src/services/player.js';
 import { claimReward, rewardsView } from '../src/services/rewards.js';
-import { GameError, loadLocked } from '../src/services/planet.js';
+import { GameError, loadLocked, totalUnitsOf } from '../src/services/planet.js';
 import { createSeason } from '../src/services/season.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -454,6 +454,19 @@ async function soloOpeningPlan(
     console.info(`D209 adaptive army ${JSON.stringify(strategy)}: ${JSON.stringify(plan)}`);
     const plannedWing: Fleet = { ...base };
     for (const [hull, count] of plan.orders) plannedWing[hull] = (plannedWing[hull] ?? 0) + count;
+    const projectedFleet = await totalUnitsOf(f.db, id);
+    for (const [hull, count] of plan.orders) projectedFleet[hull] = (projectedFleet[hull] ?? 0) + count;
+    for (let level = current.buildings.HANGAR; hangarLoad(projectedFleet) > hangarCapacity(level); level++) {
+      // Core and Hangar use the same construction queue. Give the paid capacity
+      // order priority so the selected army can actually be built and housed.
+      capitalCoreGoal = 0;
+      await until(async () => !(await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, id)))
+        .some((order) => order.kind === 'BUILDING' && order.status === 'BUILDING'));
+      await fund(buildingCost('HANGAR', level), 'Hangar expansion');
+      await upgradeBuilding(f.db, id, 'HANGAR', f.clock, joined.playerId);
+      capitalCoreGoal = MULTI_WORLD.colonyCoreThresholds[0];
+      await until(async () => (await state()).buildings.HANGAR > level);
+    }
     deuteriumReserve = plan.orders.reduce((sum, [hull, count]) => sum + HULLS[hull].deuterium * count, 0)
       + missionFuel(plannedWing, Math.hypot(target.x - home.x, target.y - home.y, target.z - home.z), 2);
     // Core is ready and the plan preserves two transports. Let the REAL first
