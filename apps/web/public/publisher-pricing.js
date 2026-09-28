@@ -13,7 +13,7 @@ function validQuote(value) {
 }
 
 /**
- * The server asks Paddle for this visitor's country and checkout currency. The
+ * The server resolves this visitor's country and matches the Polar checkout currency. The
  * static EUR labels stay visible if that request fails or the visitor has JS off.
  * @param {Document} root
  * @param {typeof fetch} fetcher
@@ -22,7 +22,7 @@ export async function hydratePublisherPricing(root = document, fetcher = fetch) 
   const status = root.querySelector('[data-pricing-status]');
   const turkish = root.documentElement.lang === 'tr';
   try {
-    const response = await fetcher('/api/skins/pricing', { credentials: 'omit' });
+    const response = await fetcher('/api/skins/polar-pricing', { credentials: 'omit' });
     if (!response.ok) throw new Error('Price preview unavailable');
     /** @type {unknown} */
     const data = await response.json();
@@ -31,8 +31,8 @@ export async function hydratePublisherPricing(root = document, fetcher = fetch) 
       throw new Error('Invalid price preview');
     }
     let updated = 0;
-    for (const element of root.querySelectorAll('[data-paddle-price]')) {
-      const key = element.getAttribute('data-paddle-price');
+    for (const element of root.querySelectorAll('[data-offer-price]')) {
+      const key = element.getAttribute('data-offer-price');
       if (!key || !PRICE_KEYS.has(key) || !(key in data.prices)) continue;
       const formatted = validQuote(data.prices[key]);
       if (!formatted) continue;
@@ -40,9 +40,11 @@ export async function hydratePublisherPricing(root = document, fetcher = fetch) 
       updated += 1;
     }
     const country = data.countryCode === 'TR' ? (turkish ? 'Türkiye' : 'Turkey') : data.countryCode;
-    if (status && updated > 0) status.textContent = turkish
-      ? `Ülke: ${country}. Fiyatlar konumunuza göre gösterilir; kesin tutar ödeme ekranındadır.`
-      : `Country: ${country}. Prices reflect your location; checkout shows the final amount.`;
+    if (status && updated > 0) status.textContent = country === 'ZZ'
+      ? turkish ? 'EUR taban fiyatları gösteriliyor. Kesin tutar ödeme ekranındadır.'
+        : 'Showing EUR base prices. Checkout shows the final amount.'
+      : turkish ? `Ülke: ${country}. Fiyatlar konumunuza göre gösterilir; kesin tutar ödeme ekranındadır.`
+        : `Country: ${country}. Prices reflect your location; checkout shows the final amount.`;
   } catch {
     if (status) status.textContent = turkish
       ? 'EUR taban fiyatları gösteriliyor. Kesin tutar ödeme ekranındadır.'
@@ -50,6 +52,6 @@ export async function hydratePublisherPricing(root = document, fetcher = fetch) 
   }
 }
 
-if (typeof document !== 'undefined' && document.querySelector('[data-paddle-price]')) {
+if (typeof document !== 'undefined' && document.querySelector('[data-offer-price]')) {
   void hydratePublisherPricing();
 }

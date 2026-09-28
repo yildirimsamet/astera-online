@@ -13,6 +13,7 @@ import {
   CONVOY_WIND_OPACITY,
   CONVOY_WIND_STREAKS,
   convoyLongitudinalOffset,
+  convoyPickBox,
   convoyStreaks,
   convoyWindBounds,
 } from '../src/galaxy/IntergalacticConvoy.js';
@@ -57,6 +58,29 @@ describe('the Intergalactic Convoy presentation', () => {
       CONVOY_FORMATION_LENGTH / 2 / Math.tan(Math.PI / 8) * 2.3,
       9,
     );
+  });
+
+  it('picks the long train with a narrow oriented box that still contains every moving hull', () => {
+    const slots = convoyFormationSlots(1).map((slot) => ({
+      hull: slot.hull,
+      position: [
+        slot.localPosition.x / SCALE,
+        slot.localPosition.y / SCALE,
+        slot.localPosition.z / SCALE,
+      ] as [number, number, number],
+    }));
+    const box = convoyPickBox(slots);
+    expect(box.size[2]).toBeGreaterThan(box.size[0] * 3);
+    expect(box.size[2]).toBeGreaterThan(box.size[1] * 3);
+    for (const [index, slot] of slots.entries()) {
+      const halfHull = CONVOY_HULL_SCALE * FLEET_V2_ASSET_MANIFEST[slot.hull].scale * 0.6;
+      for (const seconds of [0, 3, 11, 29]) {
+        const z = slot.position[2] + convoyLongitudinalOffset(index, seconds);
+        expect(Math.abs(slot.position[0] - box.centre[0]) + halfHull).toBeLessThanOrEqual(box.size[0] / 2);
+        expect(Math.abs(slot.position[1] - box.centre[1]) + halfHull).toBeLessThanOrEqual(box.size[1] / 2);
+        expect(Math.abs(z - box.centre[2]) + halfHull).toBeLessThanOrEqual(box.size[2] / 2);
+      }
+    }
   });
 
   it('gives every craft bounded longitudinal motion without ever swapping rank order', () => {
@@ -175,5 +199,11 @@ describe('IntergalacticConvoy.tsx, by its source', () => {
     expect(canvas).toContain("focus.kind === 'intergalacticConvoy'");
     expect(canvas).toContain('CONVOY_FOCUS_DISTANCE');
     expect(canvas).toContain("exactApproach={coachTap !== null || focus?.kind === 'intergalacticConvoy'}");
+  });
+
+  it('raycasts a long box instead of the old train-sized sphere', () => {
+    expect(source).toContain('<mesh name="intergalactic-convoy-hit"');
+    expect(source).toContain('<boxGeometry args={hitBox.size} />');
+    expect(source).not.toContain('HIT_RADIUS');
   });
 });

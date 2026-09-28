@@ -353,6 +353,109 @@ describe('koloni koptuğunda', () => {
 });
 
 /**
+ * TERK EDİLEN EMRİN OLAYI DA KAPANIR.
+ *
+ * Kopuş emirleri `CANCELLED` yapıyor ama `build_complete` olaylarını bekler bırakıyordu.
+ * Zamanı gelen olay komutansız dünyada `loadLocked`'a çarpıp beş kez düşüyor, ardından
+ * `abandon` da aynı yerde düşüp tick'i fırlatıyordu — aynı batch'teki başka komutanların
+ * olayları `processing`'de kalıp reaper'ı bekliyordu. Emirler burada gerçek yoldan
+ * (`upgradeBuilding`, `buildUnits`) veriliyor, çünkü olayı yazan o yol.
+ */
+describe('kopuşta kuyruğun olayları', () => {
+  let f: Fixture;
+  let colony: string;
+  let capital: string;
+  const worker = () => new EventWorker(f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent);
+
+  const completionEvent = async (orderId: string) => {
+    const [event] = await f.db.select().from(scheduledEvents).where(and(
+      eq(scheduledEvents.kind, 'build_complete'),
+      eq(scheduledEvents.refId, orderId),
+    ));
+    return event!;
+  };
+
+  /** Emirler verildikten SONRA bozulur: arızalar dururken kuyruğa iş eklenemez. */
+  const fallApart = async (): Promise<void> => {
+    await f.db.update(planets).set({ loyalty: 0 }).where(eq(planets.id, colony));
+    for (const kind of FAULT_KINDS) {
+      await f.db.insert(planetFaults).values({ planetId: colony, kind, startedAt: f.clock.now() });
+    }
+    await f.db.transaction((tx) => import('../src/services/loyalty.js')
+      .then((m) => m.scheduleLoyaltyWatch(tx, {
+        seasonId: f.seasonId, planetId: colony, loyalty: 0.0001,
+        activeCount: FAULT_KINDS.length, now: f.clock.now(),
+      })));
+    f.clock.advance(5);
+    await worker().tick();
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(world!.kind).toBe('NEUTRAL');
+  };
+
+  beforeEach(async () => {
+    f = await seedWorld(2);
+    [capital, colony] = [f.planetIds[1]!, f.planetIds[0]!];
+    await f.db.update(planets).set({ kind: 'COLONY', controllerPlayerId: f.playerIds[1]! })
+      .where(eq(planets.id, colony));
+    await setLevel(f.db, colony, 'CORE', 12);
+    await grant(f.db, colony, 1_000_000, 400_000);
+    await grant(f.db, capital, 1_000_000, 400_000);
+  });
+
+  it('iki kuyrukta da iptal edilen emrin tamamlanma olayı kapanır', async () => {
+    const { buildUnits, upgradeBuilding } = await import('../src/services/build.js');
+    await upgradeBuilding(f.db, colony, 'CORE', f.clock);
+    await buildUnits(f.db, colony, 'DART', 20, f.clock);
+    const orders = await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, colony));
+    expect(orders.map((o) => o.queue).toSorted()).toEqual(['CONSTRUCTION', 'YARD']);
+    // Olaylar kopuş anında henüz vadesiz: onları kapatan kopuşun kendisi olmalı.
+    const seceding = f.clock.now().getTime() + 5 * 60_000;
+    for (const order of orders) expect(order.readyAt.getTime()).toBeGreaterThan(seceding);
+
+    await fallApart();
+
+    for (const order of orders) {
+      const [after] = await f.db.select().from(buildOrders).where(eq(buildOrders.id, order.id));
+      expect(after!.status).toBe('CANCELLED');
+      expect((await completionEvent(order.id)).status).toBe('done');
+    }
+
+    // Vakitleri geçince de hiçbir şey uyanmaz: olaylar bir daha hiç talep edilmez, tick
+    // düşmez, başarısız olay kalmaz. Dünyanın seviyeleri burada ölçü değil — tarafsız
+    // dünyayı bakıcı takviyesi de yükseltiyor; ölçü olayın kendisi.
+    const latest = Math.max(...orders.map((o) => o.readyAt.getTime()));
+    f.clock.set(new Date(latest + 60_000));
+    for (let i = 0; i < 6; i++) await worker().tick();
+    const { failedEventCount } = await import('../src/worker/queue.js');
+    expect(await failedEventCount(f.db)).toBe(0);
+    for (const order of orders) {
+      const event = await completionEvent(order.id);
+      expect(event.status).toBe('done');
+      expect(event.attempts).toBe(0);
+      const [after] = await f.db.select().from(buildOrders).where(eq(buildOrders.id, order.id));
+      expect(after!.status).toBe('CANCELLED');
+    }
+  });
+
+  it('kopuşla aynı batch\'te vadesi gelen emir işçiyi düşürmez', async () => {
+    const { upgradeBuilding } = await import('../src/services/build.js');
+    await upgradeBuilding(f.db, colony, 'VAULT', f.clock);
+    const [order] = await f.db.select().from(buildOrders).where(eq(buildOrders.planetId, colony));
+    // Kopuş tick'i bu olayı da aynı batch'te talep eder ve kopuştan SONRA çalıştırır.
+    expect(order!.readyAt.getTime()).toBeLessThan(f.clock.now().getTime() + 5 * 60_000);
+
+    await fallApart();
+
+    const event = await completionEvent(order!.id);
+    expect(event.status).toBe('done');
+    expect(event.lastError).toBeNull();
+    const [vault] = await f.db.select().from(buildings)
+      .where(and(eq(buildings.planetId, colony), eq(buildings.type, 'VAULT')));
+    expect(vault!.level).toBe(0);
+  });
+});
+
+/**
  * CODE REVIEW'DA BULUNAN DÖRT HATA. Hiçbiri bir testin yakaladığı şey değildi —
  * dördü de "bu tabloya kim daha bakıyor" sorusunu sormakla çıktı.
  */

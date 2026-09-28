@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import i18n from '../../src/i18n/index.js';
@@ -40,6 +40,66 @@ describe('the view chip', () => {
  */
 describe('the galaxy readout', () => {
   const counts = { worlds: 212, fleetsAway: 3, rocks: 9, pirates: 0, wrecks: 1 };
+
+  it('opens a compact rock list and focuses the chosen object', async () => {
+    const onFocus = vi.fn();
+    render(<GalaxyReadout counts={counts} targets={[
+      { kind: 'asteroid', id: 'rock-1', label: 'Level 2 rock', detail: '2,400 ore' },
+      { kind: 'debris', id: 'wreck-1', label: 'Wreck 1', detail: '600 resources' },
+    ]} onFocusTarget={onFocus} />);
+
+    const rockCount = screen.getByRole('button', { name: /9 rocks/i });
+    expect(rockCount).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(rockCount);
+    expect(rockCount).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('list', { name: /rocks/i })).toBeInTheDocument();
+    expect(screen.queryByText('Wreck 1')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Level 2 rock/i }));
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'asteroid', id: 'rock-1' });
+    expect(rockCount).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('switches categories and never offers a dead pirate target', async () => {
+    const onFocus = vi.fn();
+    render(<GalaxyReadout counts={{ ...counts, pirates: 1 }} targets={[
+      { kind: 'asteroid', id: 'rock-1', label: 'Level 2 rock', detail: '2,400 ore' },
+      { kind: 'contact', id: 'pirate-1', label: 'Pirate L3-A1', detail: '12m left' },
+    ]} onFocusTarget={onFocus} />);
+    await userEvent.click(screen.getByRole('button', { name: /9 rocks/i }));
+    await userEvent.click(screen.getByRole('button', { name: /1 pirate/i }));
+    expect(screen.queryByText('Level 2 rock')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /Pirate L3-A1/i }));
+    expect(onFocus).toHaveBeenCalledWith({ kind: 'contact', id: 'pirate-1' });
+  });
+
+  it('dismisses the target list when the player returns to the map', async () => {
+    render(<GalaxyReadout counts={counts} targets={[
+      { kind: 'asteroid', id: 'rock-1', label: 'Level 2 rock', detail: '2,400 ore' },
+    ]} onFocusTarget={vi.fn()} />);
+    const rockCount = screen.getByRole('button', { name: /9 rocks/i });
+    await userEvent.click(rockCount);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('list', { name: /rocks/i })).toBeNull();
+    await userEvent.click(rockCount);
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('list', { name: /rocks/i })).toBeNull();
+  });
+
+  it('does not reopen an old category when its targets vanish and later return', async () => {
+    const first = { kind: 'asteroid' as const, id: 'rock-1', label: 'Rock 1', detail: '100 ore' };
+    const second = { kind: 'asteroid' as const, id: 'rock-2', label: 'Rock 2', detail: '200 ore' };
+    const onFocus = vi.fn();
+    const view = render(<GalaxyReadout counts={{ ...counts, rocks: 1 }} targets={[first]} onFocusTarget={onFocus} />);
+    await userEvent.click(screen.getByRole('button', { name: /1 rock/i }));
+    expect(screen.getByRole('list', { name: /rock/i })).toBeInTheDocument();
+
+    view.rerender(<GalaxyReadout counts={{ ...counts, rocks: 0 }} targets={[]} onFocusTarget={onFocus} />);
+    view.rerender(<GalaxyReadout counts={{ ...counts, rocks: 1 }} targets={[second]} onFocusTarget={onFocus} />);
+    const rockCount = within(screen.getByTestId('view-caption')).getByRole('button', { name: /1 rock/i });
+    expect(rockCount).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('list', { name: /rock/i })).toBeNull();
+    expect(rockCount).not.toHaveAttribute('aria-controls');
+  });
 
   it('says who is in it, now and today', () => {
     render(<GalaxyReadout online={6} onlineToday={41} counts={counts} />);

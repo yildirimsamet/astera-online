@@ -15,6 +15,7 @@ import { peopleIn } from './people.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
 import { publish, publishShard, publishSight } from '../stream/bus.js';
+import { notifyDmPeers } from './dm.js';
 
 export type TransferStatus = 'MOVED' | 'ACTIVE' | 'PLACEMENT' | 'SEASON' | 'CAPACITY' | 'FLIGHT' | 'EVENT' | 'EFFECT' | 'UNITS' | 'CONTENTION' | 'APPLICATION';
 class Deferred extends Error { constructor(readonly status: TransferStatus) { super(status); } }
@@ -263,6 +264,7 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
         ...(returning ? { mainEnteredAt: now } : {}),
         ...(membership ? { clanLockedUntil: new Date(Math.max(player.clanLockedUntil?.getTime() ?? 0, now.getTime() + CLAN.membershipLockMinutes * 60_000)) } : {}),
       }).where(eq(players.id, playerId));
+      await notifyDmPeers(tx, playerId);
       /*
         THE RIVAL MARKS DO NOT COME ALONG. D183.
 
@@ -305,6 +307,7 @@ export async function emitTransferOutbox(db: Db): Promise<void> {
     const pending = await tx.select().from(commanderTransfers).where(isNull(commanderTransfers.emittedAt)).limit(25).for('update', { skipLocked: true });
     for (const move of pending) {
       await publish(tx, move.playerId, 'placement_changed');
+      await notifyDmPeers(tx, move.playerId);
       for (const id of [move.sourceSeasonId, move.targetSeasonId]) await publishShard(tx, id, 'world');
       await tx.update(commanderTransfers).set({ emittedAt: move.committedAt }).where(eq(commanderTransfers.id, move.id));
     }

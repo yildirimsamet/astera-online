@@ -39,12 +39,9 @@ import { Sheet } from '../v2/kit/Sheet.js';
  * form — the hull stats a counter cycle is chosen with, the cargo the haul is capped
  * by, the fuel drawn against the tank, the ships already away.
  *
- * THE FOG SHAPE IS THE SAME TOO, which is what makes one component honest rather
- * than merely convenient. A world is RESOLVED or UNKNOWN; a pirate is IDENTIFIED
- * or CONTACT. Either way a commander may commit a fleet at something they cannot
- * read, and either way this screen must refuse to invent the half they were not
- * sold. Everything below that is target-specific is exactly that: the half the
- * reading buys.
+ * A world may be RESOLVED or UNKNOWN when attacked. A pirate must be identified
+ * by Telescope before this commitment surface can open; its reading can then be
+ * remembered beyond the current sensor circle.
  */
 export type LaunchTarget =
   | { kind: 'world'; world: GalaxyPlanet }
@@ -215,8 +212,8 @@ export function LaunchSheet({
       detents={['full']}
       /*
         THE VERB, WHERE FROM AND HOW FAR — then what this reading is and how old. A world's
-        provenance is its record age (D151); a pirate is never remembered (D150), so what
-        belongs here is how long it will still be out there.
+        provenance is its record age (D151); a pirate's orbit and roster are current
+        even after Telescope discovery is remembered, so its deadline leads here.
       */
       eyebrow={eyebrow}
       {...(owned ? {

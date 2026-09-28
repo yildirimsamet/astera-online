@@ -2853,7 +2853,11 @@ export const ASTEROID_DYNAMIC = {
    * still letting a genuine rise arrive, over hours instead of in one.
    */
   supply: {
-    /** Time in the season before a commander adds to the global supply. */
+    /**
+     * Time in the season before a commander adds to the global supply — unless they were there
+     * when it opened, or their account is older than the season (2026-09-27). Also the FOUNDING
+     * DAY: an hour that opens inside it spawns against its own raw count, never the rolling mean.
+     */
     graceMinutes: 24 * 60,
     /** …and the Core they must have reached. Both are required. */
     coreLevel: 3,
@@ -3004,6 +3008,9 @@ export const CHAT = {
   burst: 5,
   windowSeconds: 10,
 } as const;
+
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👏'] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
 export const SEASON = {
   days: ECONOMY_PROFILE.seasonDays,

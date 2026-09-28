@@ -9,7 +9,7 @@ import type { Contact } from '../api/schemas.js';
  * shape of the thing they belong to: a squadron is a padded box round its whole
  * formation, a rock is a sphere at 2.4x its radius with a floor under it, a wreck
  * is a torus that deliberately leaves its own world's centre open, a pirate is one
- * sphere per hull rather than one box across the wedge. Every one of those numbers
+ * slim box per hull rather than one box across the wedge. Every one of those numbers
  * was chosen against a fingertip on a 350px phone, and not one of them can be
  * checked by looking at the game — the volume is invisible, so the only feedback
  * anyone gets is a tap that opened the wrong panel.
@@ -56,11 +56,11 @@ export type HitboxKind =
   | 'miner'
   /** Another commander's craft, identified or not. */
   | 'contact'
-  /** A pirate formation — one sphere per hull, not one box. */
+  /** A pirate formation — one slim box per hull. */
   | 'pirate'
   /** The merchant. */
   | 'trade'
-  /** The intergalactic convoy, whose sphere is sized off the whole train. */
+  /** The intergalactic convoy, with a narrow box along the train. */
   | 'convoy';
 
 export const HITBOX_KINDS = [

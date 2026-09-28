@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS } from '@astera/rules';
+import { CHAT_LANGUAGES, COUNTRY_CODES, FAULT_KINDS, PLANET_SKIN_IDS, REACTION_EMOJIS } from '@astera/rules';
 import type {
   BuildQueueId,
   BuildingId,
@@ -1250,6 +1250,17 @@ export const skinShopSchema = z.discriminatedUnion('enabled', [
 export const skinPricingSchema = z.object({ countryCode: z.string().length(2),
   prices: z.record(z.object({ formatted: z.string(), currencyCode: z.enum(['EUR', 'TRY']) })) });
 export const skinPurchaseSchema = z.object({ transactionId: z.string().startsWith('txn_') });
+export const polarShopSchema = z.object({ enabled: z.boolean() });
+export const polarPricingSchema = z.object({ countryCode: z.string().length(2),
+  prices: z.record(z.object({ formatted: z.string(), currencyCode: z.enum(['EUR', 'TRY']),
+    amount: z.number().int().nonnegative() })) });
+export const polarPurchaseSchema = z.object({ checkoutId: z.string().uuid(),
+  url: z.string().url().refine(value => {
+    const url = new URL(value);
+    return url.protocol === 'https:' && (url.hostname === 'polar.sh' || url.hostname.endsWith('.polar.sh'));
+  }) });
+/** An operator's grant of an externally paid look (a Shopier order). */
+export const skinGrantedSchema = z.object({ accountId: z.string(), skinId: planetSkinId, grantedAt: z.coerce.date() });
 
 export const leaderboardSchema = z.object({
   ladder: z.array(
@@ -1628,7 +1639,14 @@ export const clanAidLaunchSchema = z.object({
   planet: planetSchema,
 });
 
+const messageInteractionSchema = {
+  replyTo: z.object({ id: z.string(), username: z.string(), content: z.string() }).nullable().optional(),
+  reactions: z.array(z.object({ emoji: z.enum(REACTION_EMOJIS), count: z.number().int().positive(), mine: z.boolean() })).optional(),
+};
+export const messageReactionResultSchema = z.object({ reactions: messageInteractionSchema.reactions.unwrap() });
+
 const clanMessageSchema = z.object({
+  ...messageInteractionSchema,
   id: z.string(),
   authorPlayerId: z.string(),
   planetId: z.string(),
@@ -1671,6 +1689,7 @@ export const clanDisbandSchema = z.object({ disbanded: z.literal(true), lockedUn
 export const clanSeenSchema = z.object({ readAt: z.coerce.date() });
 
 const chatMessageSchema = z.object({
+  ...messageInteractionSchema,
   language: z.enum(CHAT_LANGUAGES),
   id: z.string(),
   authorPlayerId: z.string(),
@@ -1698,6 +1717,33 @@ export const chatPageSchema = z.object({
 export const chatPostSchema = z.object({ message: chatMessageSchema });
 export const chatUnreadSchema = z.object({ count: z.number().int().nonnegative() });
 export const chatReadSchema = z.object({ ok: z.literal(true), readAt: z.coerce.date() });
+
+const dmMessageSchema = z.object({
+  ...messageInteractionSchema,
+  id: z.string(), authorPlayerId: z.string(), username: z.string(),
+  content: z.string(), createdAt: z.coerce.date(), self: z.boolean(),
+});
+export const dmContactsSchema = z.object({ contacts: z.array(z.object({
+  playerId: z.string(), username: z.string(), country: z.string(),
+})) });
+export const dmConversationsSchema = z.object({
+  conversations: z.array(z.object({
+    id: z.string(),
+    peer: z.object({ playerId: z.string(), username: z.string(), country: z.string() }),
+    lastMessage: z.object({ id: z.string(), content: z.string(), createdAt: z.coerce.date() }),
+    unreadCount: z.number().int().nonnegative(), blockedByMe: z.boolean(),
+    canSend: z.boolean(), unavailableReason: z.enum(['WAITING', 'BLOCKED', 'SEASON_ENDED']).nullable(),
+  })),
+  totalUnread: z.number().int().nonnegative(),
+});
+export const dmPageSchema = z.object({
+  messages: z.array(dmMessageSchema), nextBefore: z.string().nullable(),
+  canSend: z.boolean(), unavailableReason: z.enum(['WAITING', 'BLOCKED', 'SEASON_ENDED']).nullable(),
+});
+export const dmPostSchema = z.object({ conversationId: z.string(), message: dmMessageSchema });
+export const dmReadSchema = z.object({ readAt: z.coerce.date() });
+export const dmBlockSchema = z.object({ blocked: z.boolean() });
+export type DmPage = z.infer<typeof dmPageSchema>;
 
 /**
  * WHAT A PUBLIC EVENT'S START AND END ROW CARRIES. D149 · D156.
@@ -2652,11 +2698,10 @@ const vec = z.object({ x: z.number(), y: z.number(), z: z.number() });
  * it. What the flag buys is the disc drawing such a craft faded, so a player can
  * tell what they are looking at from what they are only tracking.
  *
- * THE LADDER IS IN THE OPTIONALITY. `zone` says which of the three states this
- * reading is; `level`, `fleet` and `damageMult` arrive with IDENTIFIED — live or
- * remembered — `mass` at Radar L4 and `silhouette` at L5. Nothing here carries an
- * orbit: radius, period and phase ARE the route, and a route is what the fog
- * refuses.
+ * The current server includes only IDENTIFIED pirates in this list. The parser
+ * still accepts CONTACT for an older server during a rolling deploy. Radar-only
+ * contacts remain anonymous in galaxy traffic. Nothing here carries an orbit:
+ * radius, period and phase ARE the route, and a route is what the fog refuses.
  */
 export const piratesSchema = z.object({
   originPlanetId: z.string(),

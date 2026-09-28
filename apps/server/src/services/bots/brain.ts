@@ -977,8 +977,8 @@ async function sendSalvage(
  * A PIRATE, OFFERED TO THE SERVICE AND JUDGED BY IT.
  *
  * Nothing here decides whether this commander can SEE the target: `launchPirateRaid`
- * refuses `PIRATE_OUT_OF_SIGHT` off `pirateZone`, which is the one statement of that
- * rule (D150/D158). Position is used only to order the attempts — asking about the
+ * refuses unobserved targets and Radar-only contacts off `pirateZone`, which is the
+ * one statement of that rule. Position is used only to order the attempts — asking about the
  * nearest three rather than a random three — and ordering an attempt reveals nothing
  * a refusal would not.
  */

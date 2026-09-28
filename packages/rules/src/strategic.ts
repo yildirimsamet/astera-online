@@ -5,6 +5,7 @@ import { UNAIDED, distance, fleetTravelExact } from './travel.js';
 import type { PlanetSlot } from './galaxy.js';
 import type {
   Fleet,
+  HullId,
   NeutralReserve,
   NeutralThreat,
   NeutralTier,
@@ -152,7 +153,9 @@ export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
   tier === 1 ? 'UNGUARDED' : tier === 2 ? 'GUARDED' : 'FORTIFIED';
 
 /**
- * THE ONLY HULLS THAT CARRY ORE BETWEEN OWNED WORLDS.
+ * Dedicated transports. They form the Hauler group in world transfers and are
+ * the only hulls eligible for merchant trade capacity. Other mobile ships with
+ * holds can also carry resources between owned worlds.
  *
  * Exported because the transfer screen has to NAME them. It used to list craft by
  * "what this world has more than none of", so a commander with no transport was shown
@@ -163,13 +166,37 @@ export const neutralThreat = (tier: NeutralTier): NeutralThreat =>
  * transport is priced.
  *
  * NOT the same list as `CLAN_TRANSFERABLE_HULLS`, and not the same as clan aid's
- * carriers (the same three dedicated transports — see `clanTransferCargoCapacity`).
+ * carriers (the same four dedicated transports — see `clanTransferCargoCapacity`).
  */
 export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'] as const;
 
+export type TransferDisposition = 'STAY' | 'RETURN';
+export interface TransferReturnPlan {
+  cargoShips: TransferDisposition;
+  otherShips: TransferDisposition;
+}
+
+/** Ships ordered home after unloading at an owned world. */
+export function transferReturningFleet(fleet: Fleet, plan: TransferReturnPlan): Fleet {
+  const returning: Fleet = {};
+  for (const [id, count] of Object.entries(fleet) as [HullId, number][]) {
+    if (count <= 0) continue;
+    const cargoShip = (TRANSFER_CARGO_HULLS as readonly HullId[]).includes(id);
+    if ((cargoShip ? plan.cargoShips : plan.otherShips) === 'RETURN') returning[id] = count;
+  }
+  return returning;
+}
+
+export function transferStayingFleet(fleet: Fleet, returning: Fleet): Fleet {
+  const staying: Fleet = {};
+  for (const [id, count] of Object.entries(fleet) as [HullId, number][]) {
+    if (count - (returning[id] ?? 0) > 0) staying[id] = count - (returning[id] ?? 0);
+  }
+  return staying;
+}
+
 /**
- * WHAT THIS COMMANDER CAN MOVE BETWEEN THEIR OWN WORLDS — and what a trade convoy
- * is sized by. Only the dedicated transports count.
+ * What a merchant trade convoy can carry. Only dedicated transports count.
  *
  * `CARGO_HOLDS` LIFTS THIS TOO, SINCE D180 (owner instruction). It used to lift
  * `fleetCargo` alone, on the reasoning that a raid's loot ceiling and a logistics
@@ -181,8 +208,8 @@ export const TRANSFER_CARGO_HULLS = ['COURIER', 'WAYFARER', 'ATLAS', 'ARGOSY'] a
  *
  * `tech` IS REQUIRED for the same reason it is required on `fleetSpeed`: an
  * optional one would let the next caller quote an unbuffed hold by omission, and
- * this figure is a REFUSAL as well as a label — `launchTrade` and `launchTransfer`
- * both reject a load above it. One multiplier, `cargoMult`, floored after the
+ * this figure is a REFUSAL as well as a label — `launchTrade` rejects a load above
+ * it. One multiplier, `cargoMult`, floored after the
  * multiply exactly as `fleetCargo` floors it, so the two can never round apart.
  */
 export function transferCargoCapacity(fleet: Fleet, tech: TechLevels): number {

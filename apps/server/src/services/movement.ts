@@ -16,11 +16,14 @@ import {
   TRANSFER_COOLDOWN_MINUTES,
   prospectorRoom,
   resourcesTotal,
-  transferCargoCapacity,
+  fleetCargo,
+  transferReturningFleet,
+  transferStayingFleet,
   type Fleet,
   type HullId,
   type NeutralTier,
   type Resources,
+  type TransferReturnPlan,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -216,6 +219,7 @@ export async function launchTransfer(
    * before the choice existed.
    */
   pace?: number,
+  returnPlan?: TransferReturnPlan,
 ) {
   validateTransferFleet(fleet);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
@@ -231,14 +235,14 @@ export async function launchTransfer(
     THE HOLD IS CHECKED INSIDE THE LOCK, NOT HERE. D180.
 
     It used to be checked in this preamble, which was correct only while a hold was
-    a property of the HULLS alone. `CARGO_HOLDS` now lifts `transferCargoCapacity`,
+    a property of the HULLS alone. `CARGO_HOLDS` now lifts `fleetCargo`,
     so the answer depends on the commander's research — and research is a row that
     another transaction can be completing right now. Read out here it would be read
     before the world is locked and before the economy is advanced, which is the one
     ordering this codebase does not allow (lock → advance → validate → mutate).
 
-    So the two refusals moved down, beside the fuel and resource checks, where
-    `techOf` has already run under the lock.
+    The capacity refusal sits beside the fuel and resource checks, where `techOf`
+    has already run under the lock.
   */
 
   return db.transaction(async (tx) => {
@@ -255,8 +259,7 @@ export async function launchTransfer(
     /*
       THE HOLD, AND IT IS ASKED FIRST OF THE THINGS THAT CAN REFUSE. D181.
 
-      Both refusals are the same two sentences they always were, and they used to
-      sit in the pre-transaction preamble. `CARGO_HOLDS` now lifts the figure, so
+      The capacity check used to sit in the pre-transaction preamble. `CARGO_HOLDS` now lifts the figure, so
       the answer depends on a research row another transaction can be completing —
       which puts it inside the lock, after `techOf`, or the check reads a value it
       does not hold.
@@ -268,13 +271,12 @@ export async function launchTransfer(
       front of them. Dropped to the bottom it read `INSUFFICIENT_RESOURCES` for an
       overloaded convoy.
     */
-    const hold = transferCargoCapacity(fleet, tech);
+    const hold = fleetCargo(fleet, tech);
     if (resourcesTotal(cargo) > hold) {
-      throw new GameError('CARGO_CAPACITY', 'Cargo exceeds dedicated transport capacity', 400);
+      throw new GameError('CARGO_CAPACITY', 'Cargo exceeds fleet capacity', 400);
     }
-    if (resourcesTotal(cargo) > 0 && hold <= 0) {
-      throw new GameError('TRANSFER_NEEDS_CARGO_HULL', 'Resources need a transport hull', 400);
-    }
+    const returning = returnPlan ? transferReturningFleet(fleet, returnPlan) : {};
+    const staying = transferStayingFleet(fleet, returning);
     if (origin.alloy < cargo.alloy || origin.crystal < cargo.crystal || origin.deuterium < cargo.deuterium) {
       throw new GameError('INSUFFICIENT_RESOURCES', 'Not enough resources');
     }
@@ -300,7 +302,7 @@ export async function launchTransfer(
     // by `lockWorlds`, so the counts cannot move under the check. A conflict
     // rather than a bad request: the fleet is legal, the world at the far end is
     // the thing that cannot take it.
-    const blocked = await landingBlock(tx, targetPlanetId, fleet);
+    const blocked = await landingBlock(tx, targetPlanetId, staying);
     if (blocked) throw new GameError(blocked.code, blocked.message, 409, blocked.params);
     const dist = distance(origin, target);
     /*
@@ -322,15 +324,16 @@ export async function launchTransfer(
       );
     }
     /*
-      ONE LEG, AT THE HOMEWARD RATE. T6 + owner decision 2026-09-21.
+      EACH PLANNED LEG AT THE HOMEWARD RATE. T6 + owner decision 2026-09-21.
 
-      One leg because a transfer arrives and stays — the craft become the destination's. Homeward
+      Every craft flies outbound; selected groups fly back after unloading. Homeward
       because both ends are already checked to be this commander's own worlds a few lines up
       (`PLANET_NOT_OWNED` on the origin, the controller check on the target), which is exactly the
       flight the discount is for: it reaches nobody else, so cutting its price cannot cut the price
       of reach. `FUEL.laneShare` states the whole argument.
     */
-    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD');
+    const fuel = missionFuel(fleet, dist, 1, 'HOMEWARD')
+      + (fleetCount(returning) > 0 ? missionFuel(returning, dist, 1, 'HOMEWARD') : 0);
     /*
       THE CARGO IS ALREADY SPOKEN FOR. T6.
 
@@ -345,7 +348,9 @@ export async function launchTransfer(
     const oneWay = fleetTravelExact(dist, fleet, { ...mods, pace: chosenPace });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
-    assertSeasonOpenThrough(origin, arriveAt);
+    const returnMinutes = fleetCount(returning) > 0
+      ? fleetTravelExact(dist, returning, { ...mods, pace: 1 }) : 0;
+    assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
     const [mission] = await tx.insert(missions).values({
       fuelPaid: fuel,
       seasonId: origin.seasonId,
@@ -355,6 +360,7 @@ export async function launchTransfer(
       targetPlanetId,
       fleet,
       cargo,
+      returnFleet: fleetCount(returning) > 0 ? returning : null,
       tech,
       distance: dist,
       pace: chosenPace,
@@ -682,9 +688,8 @@ export async function resolveTransfer(
   now: Date,
 ): Promise<'DELIVERED' | 'REROUTED_CAPACITY' | 'REROUTED_OWNERSHIP'> {
   /*
-   * CARGO IS NOT A RETURN CONDITION. An empty transfer and a loaded transfer are
-   * the same one-way move between the commander's worlds. Only a destination
-   * that became invalid while the fleet was airborne can create a return leg.
+   * Cargo is delivered at the destination before any selected ships fly home.
+   * Older transfer missions have no return fleet and still land all craft there.
    */
   /**
    * A RECALLED FLIGHT LANDS WHERE IT LEFT FROM, AND IT ALWAYS LANDS. Owner decision, 2026-09-21.
@@ -723,13 +728,42 @@ export async function resolveTransfer(
   if (
     mission.parentMissionId === null
     && mission.recalledAt === null
-    && await landingBlock(tx, target.id, mission.fleet)
+    && await landingBlock(tx, target.id, transferStayingFleet(mission.fleet, mission.returnFleet ?? {}))
   ) {
     await rerouteToSafeHome(tx, mission, now);
     return 'REROUTED_CAPACITY';
   }
+  const returning = mission.parentMissionId === null && mission.recalledAt === null
+    ? mission.returnFleet ?? {} : {};
+  const staying = transferStayingFleet(mission.fleet, returning);
+  if (fleetCount(returning) > 0) {
+    const [returnMission] = await tx.insert(missions).values({
+      fuelPaid: 0,
+      seasonId: mission.seasonId,
+      kind: 'transfer',
+      ownerPlayerId: mission.ownerPlayerId,
+      originPlanetId: mission.targetPlanetId,
+      targetPlanetId: mission.originPlanetId,
+      fleet: returning,
+      cargo: EMPTY,
+      tech: mission.tech,
+      distance: mission.distance,
+      departAt: now,
+      arriveAt: addMinutes(now, fleetTravelExact(mission.distance, returning, {
+        boost: fleetSpeedMult(await orbitOf(tx, mission.originPlanetId)), tech: mission.tech ?? {}, pace: 1,
+      })),
+      parentMissionId: mission.id,
+    }).returning();
+    if (!returnMission) throw new Error('transfer return insert returned no row');
+    await tx.update(units).set({ location: returnMission.id }).where(and(
+      eq(units.ownerPlayerId, mission.ownerPlayerId),
+      eq(units.location, mission.id),
+      inArray(units.hull, Object.keys(returning) as HullId[]),
+    ));
+    await schedule(tx, { seasonId: mission.seasonId, kind: 'mission_arrival', refId: returnMission.id, resolveAt: returnMission.arriveAt });
+  }
   await clearReservedFleet(tx, mission);
-  await addUnits(tx, target.id, mission.fleet);
+  if (fleetCount(staying) > 0) await addUnits(tx, target.id, staying);
   /*
     THE SQUADRON IS ON THE GROUND, AND STAYS THERE FOR A MOMENT. Faz 2A.3.
 

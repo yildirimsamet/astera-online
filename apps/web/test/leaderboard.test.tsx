@@ -19,6 +19,7 @@ const rows = Array.from({ length: 100 }, (_, index) => ({
   skinId: index === 1 || index === 42 ? 'planet-ice' : null,
   coreTier: index === 1 ? undefined : (index % 4) + 1,
   score: 50 - index,
+  country: 'TR',
   clan: index === 0 ? { id: 'clan-war', name: 'War Fleet', tag: 'WAR' } : null,
 }));
 
@@ -103,11 +104,38 @@ describe('the Dominion leaderboard', () => {
     expect(onFocusPlanet).not.toHaveBeenCalled();
   });
 
-  it('leads a clan commander identity with its tag', async () => {
+  it('stacks the flag above the clan tag and commander name', async () => {
     await show();
     const identity = screen.getByRole('button', { name: '[WAR] Commander 0' });
-    expect(identity.textContent).toBe('[WAR]Commander 0');
-    expect(identity.firstElementChild).toHaveTextContent('[WAR]');
+    const row = identity.closest('li');
+    const flag = row?.querySelector('img[role="img"], span[role="img"]');
+    expect(flag).toBeInTheDocument();
+    expect(flag && flag.compareDocumentPosition(identity) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(flag?.parentElement).toHaveClass('block');
+    expect(identity).toHaveTextContent('[WAR] Commander 0');
+    expect(identity).toHaveClass('w-full');
+    expect(identity).toHaveClass('line-clamp-2', 'break-words');
+    expect(identity).not.toHaveClass('truncate');
+    expect(row?.querySelector('[data-leaderboard-meta]')).toHaveTextContent('World 0');
+    expect(row?.querySelector('[data-leaderboard-score]')).toHaveTextContent('+50');
+    expect(row?.querySelector('[data-leaderboard-score]')).toHaveTextContent('Dominion');
+    expect(row?.querySelector('[data-leaderboard-score]')).toHaveClass('min-w-24');
+  });
+
+  it('keeps the nearby rival flag above the name', async () => {
+    await show();
+    const nearby = screen.getByRole('region', { name: 'Your closest rivals' });
+    const identity = within(nearby).getByRole('button', { name: 'Commander 41' });
+    const flag = identity.querySelector('[role="img"]');
+    expect(flag).toBeInTheDocument();
+    expect(flag && flag.compareDocumentPosition(within(identity).getByText('Commander 41')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows the localized Dominion label with the score', async () => {
+    await show('fr');
+    const score = screen.getAllByText('Domination')[0];
+    expect(score).toBeVisible();
+    expect(score?.closest('[data-leaderboard-score]')).toHaveTextContent('+50');
   });
 
   it('localises the panel in Turkish without folding dotted İ', async () => {

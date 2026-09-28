@@ -518,9 +518,8 @@ export const launch = {
    */
   lastSeen: "last seen {{age}}",
   /**
-   * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
-   * live by definition. What belongs on the line instead is the other clock: how
-   * long the thing will still be out there, which is the reason to hurry.
+   * A PIRATE'S CREW AND ORBIT ARE CURRENT even after Telescope discovery is
+   * remembered. The urgent clock is how long the target will still be out there.
    */
   goneIn: "gone in {{duration}}",
   back: "Back",
@@ -616,10 +615,17 @@ export const transfer = {
   paceHint: "Slower lands later — ships in flight cannot be raided. Same fuel; nothing stays up past 12h.",
   fuelShort: "short {{short}}",
   eyebrow: "World transfer",
+  returnEta: "Back at origin in {{duration}} · {{time}}",
   eta: "ETA",
   capacity: "Cargo",
   fleet: "Craft",
   homeDefence: "{{ships}} craft remain at origin · {{power}} firepower",
+  afterDelivery: "After delivery",
+  cargoShips: "Haulers",
+  otherShips: "Other ships",
+  stay: "Stay there",
+  return: "Return home",
+  returnHint: "Returning ships unload resources first, then fly back. Return fuel is paid now.",
   cargo: "Resources",
   alloy: "Alloy",
   crystal: "Crystal",
@@ -631,14 +637,12 @@ export const transfer = {
   sending: "Dispatching",
   launched: "Transfer launched · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
-  rules:
-    "Can be recalled once while in flight — it returns in the time already flown. Ground defence cannot move; cargo space comes only from Courier, Wayfarer, Atlas and Argosy.",
+  rules: "Can be recalled once while in flight — it returns in the time already flown. Ground defence cannot move; every ship with a hold can carry resources.",
   hullNone: "None at this world",
-  holdReady: "Courier, Wayfarer, Atlas and Argosy carry the ore. Hold: {{capacity}}.",
+  holdReady: "Selected ships carry resources. Hold: {{capacity}}.",
   destinationLabel: "Destination Hangar",
-  holdNeedsLoad: "Add a Courier, Wayfarer, Atlas or Argosy above to carry ore.",
-  holdNoCarrier:
-    "This world has no Courier, Wayfarer, Atlas or Argosy, so nothing here can carry ore.",
+  holdNeedsLoad: "Select any ship with cargo space above to carry resources.",
+  holdNoCarrier: "This world has no ship with cargo space.",
   /** Caption on the destination's room bar, which draws the figures itself. */
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} of {{held}} {{name}} packed",

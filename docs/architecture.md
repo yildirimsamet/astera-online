@@ -318,7 +318,7 @@ handling for no benefit.
 
 Seasonal and permanent tables, with **nothing storing a value derivable from a formula and a clock**:
 
-`accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` ·
+`accounts` · `shards` · `seasons` · `season_results` · `players` · `chat_messages` · `chat_archive` ·
 `galaxy_events` · `galaxy_event_occurrences` · `planets` · `neutral_planet_state` · `strategic_assets` · `buildings` · `satellites` · `units` · `missions` · `pirate_raids` · `trade_runs` · `intergalactic_convoy_runs` ·
 `build_orders` · `scheduled_events` · `battle_reports` · `scan_events` · `probe_reports` · `probe_world_memories` · `watches` ·
 `sensor_epochs` · `asteroid_claims` · `mining_runs` · `debris_fields` · `notifications` · `reward_grants` ·

@@ -207,6 +207,8 @@ const RESEARCH_DETAIL_KEYS = {
  * that matches its English counterpart is an untranslated string.
  */
 const IDENTICAL_ON_PURPOSE = new Set([
+  // The player explicitly names this channel DM in both languages.
+  'chat.dm.title',
   // The build-time tag is the formatted duration and nothing else — `duration()`
   // is what speaks Turkish here. Its accessible name, `upgradeRow.takesLabel`, is
   // the sentence, and that one IS translated.

@@ -1,15 +1,16 @@
-import { useEffect, useState, type CSSProperties } from 'react';
-import { initializePaddle, type Paddle } from '@paddle/paddle-js';
+import { useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PlanetSkinId, type PlanetSkinStatus } from '@astera/rules';
 import type { z } from 'zod';
-import type { skinCollectionSchema, skinPricingSchema } from '../api/schemas.js';
-import { usePurchaseSkin, useSkinPricing, useSkinShop, useSkins } from '../api/queries.js';
+import type { polarPricingSchema, skinCollectionSchema } from '../api/schemas.js';
+import { usePolarPricing, usePolarShop, usePurchasePolarSkin, useSkins } from '../api/queries.js';
 import {
   BUNDLE_PRICE,
+  SHOPIER_LINKS,
   SKIN_PRICE,
   bundleSaving,
   priceText,
+  type Currency,
 } from '../lib/skinStore.js';
 import {
   PLANET_SKIN_CATALOG,
@@ -19,38 +20,14 @@ import {
   type SkinCollectionId,
 } from '../ui/skinCatalog.js';
 import { Icon } from '../v2/icons.js';
+import { navigateToPolarCheckout } from '../lib/polarCheckout.js';
 import { SkinPreview } from './SkinPreview.jsx';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
-type Pricing = z.infer<typeof skinPricingSchema>;
+type Pricing = z.infer<typeof polarPricingSchema>;
 type ItemId = PlanetSkinId | 'bundle';
-type PriceQuote = Pricing['prices'][string];
+type PriceQuote = Pick<Pricing['prices'][string], 'formatted' | 'currencyCode'>;
 type PriceMap = Partial<Record<ItemId, PriceQuote>>;
-
-let paddlePromise: Promise<Paddle | undefined> | null = null;
-function useLivePaddle(token: string | undefined, customerId: string | null | undefined): { paddle: Paddle | undefined; failed: boolean } {
-  const [paddle, setPaddle] = useState<Paddle>();
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    if (!token) return;
-    paddlePromise ??= Promise.resolve().then(() => initializePaddle({ token, environment: 'production',
-      pwCustomer: customerId ? { id: customerId } : {} })).catch(() => { paddlePromise = null; return undefined; });
-    let mounted = true;
-    void paddlePromise.then((instance) => {
-      if (!mounted) return;
-      if (instance) setPaddle(instance);
-      else setFailed(true);
-    });
-    return () => { mounted = false; };
-  }, [token]);
-  useEffect(() => {
-    if (paddle) {
-      try { paddle.Update({ pwCustomer: customerId ? { id: customerId } : {} }); }
-      catch { setFailed(true); }
-    }
-  }, [customerId, paddle]);
-  return { paddle, failed };
-}
 
 /** Embers rising from the world: where, when and how fast, fixed so a render never reshuffles them. */
 const EMBERS = [
@@ -78,15 +55,16 @@ const STARS = [
  * account's for good, and its shielded look comes with it.
  * No invented counts, no invented scarcity.
  *
- * Paddle creates a trusted transaction through the authenticated server route; the
- * client opens that transaction in Paddle Checkout after the live preview is shown.
+ * Polar creates a hosted checkout through the authenticated server route.
  */
 export function SkinShopContent({
   collection,
   commander,
   onOpenInventory,
   prices = {},
+  countryCode,
   enabled = false,
+  pending = false,
   purchaseError = false,
   onPurchase = () => undefined,
 }: {
@@ -94,7 +72,11 @@ export function SkinShopContent({
   commander: string;
   onOpenInventory: () => void;
   prices?: PriceMap;
+  countryCode?: string;
+  /** Polar checkout is enabled. */
   enabled?: boolean;
+  /** A checkout is being created: its press waits rather than vanishing. */
+  pending?: boolean;
   purchaseError?: boolean;
   onPurchase?: (itemId: ItemId) => void | Promise<void>;
 }) {
@@ -113,12 +95,13 @@ export function SkinShopContent({
     setStatus('NORMAL');
   };
   const [status, setStatus] = useState<PlanetSkinStatus>('NORMAL');
-  const currency = prices['planet-lava']?.currencyCode ?? 'EUR';
   const locale = t('units.numberLocale');
-  const money = (itemId: ItemId, fallback: number): string => {
+  const currency: Currency = prices['planet-lava']?.currencyCode ?? (countryCode ? 'EUR' : 'TRY');
+  const money = (itemId: ItemId, amounts: Readonly<Record<Currency, number>>): string => {
     const quote = prices[itemId];
-    return quote?.formatted ?? priceText(fallback, quote?.currencyCode ?? currency, locale);
+    return quote?.formatted ?? priceText(amounts[quote?.currencyCode ?? currency], quote?.currencyCode ?? currency, locale);
   };
+  const lira = (amount: number): string => priceText(amount, 'TRY', locale);
   const look = PLANET_SKIN_CATALOG[selected];
   const name = t(look.nameKey);
   const mine = owned.has(selected);
@@ -127,6 +110,11 @@ export function SkinShopContent({
   const buy = (): void => { void onPurchase(selected); };
   const bundleBuy = (): void => { void onPurchase('bundle'); };
   const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
+  const shopierAllowed = (itemId: ItemId): boolean => !countryCode
+    || (countryCode === 'TR' && prices[itemId]?.currencyCode === 'TRY');
+  const shopier = mine || !shopierAllowed(selected) ? null : SHOPIER_LINKS[selected];
+  const bundleShopier = shopierAllowed('bundle') ? SHOPIER_LINKS.bundle : null;
+  const canPay = buyReady || bundleReady || shopier !== null || (offerSet && bundleShopier !== null);
 
   const stageStyle = { '--look': look.accent, '--look-glow': look.glow } as CSSProperties;
   const buyClass = 'v2-store-shimmer flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-control bg-v2-premium px-3 text-caption font-bold text-v2-void';
@@ -203,7 +191,7 @@ export function SkinShopContent({
               <span key={x} className="v2-store-ember" style={{ '--x': x, '--delay': delay, '--dur': dur } as CSSProperties} />
             ))}
           </div>
-          <SkinPreview skinId={selected} status={status} className="h-[18rem] md:h-[24rem]" />
+          <SkinPreview skinId={selected} status={status} className="h-[15rem] md:h-[21rem]" />
           <p className="pointer-events-none absolute bottom-1 right-0 flex items-center gap-1 text-micro text-v2-ink-3">
             <Icon id="i-rotate" className="size-3" />
             {t('skins.dragHint')}
@@ -232,7 +220,7 @@ export function SkinShopContent({
         <div className="mt-3 flex items-center gap-3 rounded-control border border-v2-premium/35 bg-v2-panel/95 p-2.5">
           <div className="min-w-0">
             <p className="font-v2-mono text-figure font-semibold text-v2-premium">
-              {mine ? t('skins.owned') : money(selected, SKIN_PRICE[currency])}
+              {mine ? t('skins.owned') : money(selected, SKIN_PRICE)}
             </p>
             <p className="text-micro text-v2-ink-3">{t(mine ? 'skins.ownedNote' : 'skins.oneTime')}</p>
           </div>
@@ -241,15 +229,24 @@ export function SkinShopContent({
               {t('skins.wearIt')}
             </button>
           ) : buyReady ? (
-            <button type="button" onClick={buy} className={buyClass}>
-              {t('skins.buy', { price: money(selected, SKIN_PRICE[currency]) })}
+            <button type="button" onClick={buy} disabled={pending} className={`${buyClass} disabled:opacity-60`}>
+              {t('skins.buy', { price: money(selected, SKIN_PRICE) })}
             </button>
+          ) : shopier ? (
+            <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={buyClass} />
           ) : (
             <button type="button" disabled className="flex h-11 flex-1 items-center justify-center rounded-control border border-v2-line-hi px-3 text-caption font-semibold text-v2-ink-2">
               {t('skins.onSaleSoon')}
             </button>
           )}
         </div>
+        {/* Shopier is a separate manual route, with the name to write in its order. */}
+        {shopier && (
+          <div className="mt-1.5 grid gap-1.5">
+            {buyReady && <ShopierPress href={shopier} price={lira(SKIN_PRICE.TRY)} className={SHOPIER_SECOND} />}
+            <ShopierNote commander={commander} />
+          </div>
+        )}
 
         {/* THE FOUR, TO COMPARE: each in its own colour, its price or that it is already yours. */}
         <section aria-label={t('skins.collection')} className="mt-5">
@@ -264,7 +261,7 @@ export function SkinShopContent({
                   key={id}
                   type="button"
                   aria-pressed={chosen}
-                  aria-label={`${itemName} · ${owned.has(id) ? t('skins.owned') : money(id, SKIN_PRICE[currency])}`}
+                  aria-label={`${itemName} · ${owned.has(id) ? t('skins.owned') : money(id, SKIN_PRICE)}`}
                   onClick={() => { setSelected(id); }}
                   className={`group relative overflow-hidden rounded-control border bg-v2-panel text-left transition-transform duration-300 active:scale-[0.98] ${
                     chosen ? 'v2-store-chosen border-transparent' : 'border-v2-line'
@@ -286,7 +283,7 @@ export function SkinShopContent({
                   <span className="flex items-baseline justify-between gap-1 px-2 py-1.5">
                     <span className="truncate text-caption font-semibold" style={{ color: item.accent }}>{itemName}</span>
                     <span className="shrink-0 font-v2-mono text-micro text-v2-premium">
-                      {owned.has(id) ? '' : money(id, SKIN_PRICE[currency])}
+                      {owned.has(id) ? '' : money(id, SKIN_PRICE)}
                     </span>
                   </span>
                 </button>
@@ -320,19 +317,28 @@ export function SkinShopContent({
                   <s className="text-micro text-v2-ink-3" aria-label={t('skins.bundleWas', { price: priceText(SKIN_PRICE[currency] * 4, currency, locale) })}>
                     {priceText(SKIN_PRICE[currency] * 4, currency, locale)}
                   </s>
-                  <span className="text-body font-semibold text-v2-premium">{money('bundle', BUNDLE_PRICE[currency])}</span>
+                  <span className="text-body font-semibold text-v2-premium">{money('bundle', BUNDLE_PRICE)}</span>
                 </p>
               </div>
             </div>
-            {bundleReady ? (
-              <button type="button" onClick={bundleBuy} className={`${buyClass} mt-3 w-full`}>
-                {t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE[currency]) })}
-              </button>
-            ) : (
-              <button type="button" disabled className="mt-3 flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi text-caption font-semibold text-v2-ink-2">
-                {t('skins.onSaleSoon')}
-              </button>
-            )}
+            <div className="mt-3 grid gap-1.5">
+              {bundleReady ? (
+                <button type="button" onClick={bundleBuy} disabled={pending} className={`${buyClass} w-full disabled:opacity-60`}>
+                  {t('skins.bundleBuy', { price: money('bundle', BUNDLE_PRICE) })}
+                </button>
+              ) : bundleShopier === null ? (
+                <button type="button" disabled className="flex h-11 w-full items-center justify-center rounded-control border border-v2-line-hi text-caption font-semibold text-v2-ink-2">
+                  {t('skins.onSaleSoon')}
+                </button>
+              ) : null}
+              {bundleShopier !== null && (
+                <>
+                  <ShopierPress href={bundleShopier} price={lira(BUNDLE_PRICE.TRY)}
+                    className={bundleReady ? SHOPIER_SECOND : `${buyClass} w-full`} />
+                  <ShopierNote commander={commander} />
+                </>
+              )}
+            </div>
           </section>
         )}
         </div>
@@ -353,7 +359,7 @@ export function SkinShopContent({
 
         <p className="mt-4 flex items-start gap-2 rounded-control border border-v2-line bg-v2-deep/60 px-3 py-2 text-micro leading-snug text-v2-ink-3">
           <Icon id="i-lock" className="mt-0.5 size-3 shrink-0" />
-          <span>{t(buyReady || bundleReady ? 'skins.trust' : 'skins.trustSoon', { commander })}</span>
+          <span>{t(canPay ? 'skins.trust' : 'skins.trustSoon', { commander })}</span>
         </p>
         {purchaseError && <p role="alert" className="mt-2 rounded-control border border-v2-hostile/50 bg-v2-hostile/10 px-3 py-2 text-caption text-v2-ink">
           {t('skins.checkoutError')}
@@ -363,26 +369,53 @@ export function SkinShopContent({
   );
 }
 
+/** Shopier's press when Polar is beside it: the same store gold, drawn as the second way. */
+const SHOPIER_SECOND = 'flex h-10 w-full items-center justify-center gap-1.5 rounded-control border border-v2-premium/55 bg-v2-premium/5 px-3 text-caption font-semibold text-v2-premium transition-colors hover:bg-v2-premium/10';
+
+/** A Shopier product page, in a new tab: it is somewhere else, and the store stays open here. */
+function ShopierPress({ href, price, className }: { href: string; price: string; className: string }) {
+  const { t } = useTranslation();
+  return (
+    <a href={href} target="_blank" rel="noreferrer noopener" className={className}>
+      {t('skins.shopierBuy', { price })}
+    </a>
+  );
+}
+
+/**
+ * WHAT SHOPIER CANNOT KNOW. Its page has no idea which commander is buying, so the look is
+ * granted by hand from the order — and the order is only matched if the note names the
+ * commander. Said where the press is, because a buyer reads nothing after it.
+ */
+function ShopierNote({ commander }: { commander: string }) {
+  const { t } = useTranslation();
+  return (
+    <p className="flex items-start gap-1.5 text-micro leading-snug text-v2-ink-2">
+      <Icon id="i-warn" className="mt-0.5 size-3 shrink-0 text-v2-warn" />
+      <span>{t('skins.shopierNote', { commander })}</span>
+    </p>
+  );
+}
+
 export default function SkinsScreen({ commander, onOpenInventory }: { commander: string; onOpenInventory: () => void }) {
   const { t } = useTranslation();
   const collection = useSkins();
-  const shop = useSkinShop();
-  const pricing = useSkinPricing();
-  const purchase = usePurchaseSkin();
+  const shop = usePolarShop();
+  const pricing = usePolarPricing();
+  const purchase = usePurchasePolarSkin();
   const [checkoutFailed, setCheckoutFailed] = useState(false);
-  const shopData = shop.data?.enabled ? shop.data : undefined;
-  const { paddle, failed: paddleFailed } = useLivePaddle(shopData?.clientToken, shopData?.paddleCustomerId);
   const onPurchase = async (itemId: ItemId): Promise<void> => {
-    if (!paddle || !shopData) return;
+    if (!shop.data?.enabled) return;
     setCheckoutFailed(false);
     try {
       const created = await purchase.mutateAsync(itemId);
-      paddle.Checkout.open({ transactionId: created.transactionId });
+      navigateToPolarCheckout(created.url);
     } catch { setCheckoutFailed(true); }
   };
   if (collection.isPending) return <p className="p-4 text-body text-dim">{t('skins.collection')}…</p>;
   if (!collection.data) return <p className="p-4 text-body text-dim">{t('skins.loadError')}</p>;
   return <SkinShopContent collection={collection.data} commander={commander} onOpenInventory={onOpenInventory}
-    prices={pricing.data?.prices} enabled={Boolean(shopData && paddle) && !purchase.isPending}
-    purchaseError={checkoutFailed || paddleFailed} onPurchase={onPurchase} />;
+    prices={pricing.data?.prices} countryCode={pricing.data?.countryCode ?? 'ZZ'}
+    enabled={Boolean(shop.data?.enabled)} pending={purchase.isPending}
+    purchaseError={checkoutFailed} onPurchase={onPurchase} />;
 }

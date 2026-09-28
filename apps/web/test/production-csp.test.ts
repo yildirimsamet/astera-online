@@ -4,23 +4,23 @@ import { describe, expect, it } from 'vitest';
 
 const nginxConfig = resolve(import.meta.dirname, '../../../deploy/nginx/astera.conf');
 
-const policies = async (): Promise<{ origin: string; document: string }> => {
+const policies = async (): Promise<{ origin: string; checkout: string; document: string }> => {
   const config = await readFile(nginxConfig, 'utf8');
   const headers = config
     .split('\n')
     .filter((line) => line.includes('add_header Content-Security-Policy'));
 
-  // Exactly two, and they are not interchangeable — see the describe below.
-  expect(headers).toHaveLength(2);
-  const [origin, document] = headers;
-  return { origin: origin ?? '', document: document ?? '' };
+  // Publisher, guest checkout, and game each have a separate permission boundary.
+  expect(headers).toHaveLength(3);
+  const [origin, checkout, document] = headers;
+  return { origin: origin ?? '', checkout: checkout ?? '', document: document ?? '' };
 };
 
 const directive = (policy: string, name: string): string =>
   new RegExp(`${name} (?<value>[^;"]*)`, 'u').exec(policy)?.groups?.value ?? '';
 
 /**
- * TWO POLICIES ON ONE ORIGIN, AND THE SPLIT IS THE DESIGN.
+ * THREE POLICIES ON ONE ORIGIN, AND THE SPLIT IS THE DESIGN.
  *
  * The apex serves two completely different kinds of document and they have
  * opposite needs:
@@ -35,6 +35,8 @@ const directive = (policy: string, name: string): string =>
  *     three.js and the announcement renderer. Google does not support
  *     allow-listing AdSense by domain, so it uses their documented per-request
  *     nonce plus `'strict-dynamic'`.
+ *   · GUEST CHECKOUT — `checkout.html`, and only it — loads Paddle.js to open a
+ *     prepared payment. Its policy grants Paddle without the game's ad origins.
  */
 describe('the publisher pages', () => {
   it('are served with no third-party origin whatsoever', async () => {
@@ -61,6 +63,18 @@ describe('the publisher pages', () => {
     // The quick-start guide carries its own inline stylesheet; styles are not
     // executable and this is the one grant that stays.
     expect(directive(origin, 'style-src')).toContain("'unsafe-inline'");
+  });
+});
+
+describe('the guest checkout document', () => {
+  it('allows Paddle without giving payment scripts to publisher pages', async () => {
+    const { origin, checkout } = await policies();
+
+    expect(directive(checkout, 'script-src')).toContain('https://cdn.paddle.com');
+    expect(directive(checkout, 'connect-src')).toContain('https://*.paddle.com');
+    expect(directive(checkout, 'frame-src')).toContain('https://*.paddle.com');
+    expect(origin).not.toContain('paddle.com');
+    expect(checkout).not.toContain('googlesyndication');
   });
 });
 

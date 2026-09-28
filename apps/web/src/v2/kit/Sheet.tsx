@@ -76,6 +76,8 @@ export interface SheetProps {
   bleed?: boolean;
   /** The body does not scroll; its child owns scrolling (a chat log). */
   contained?: boolean;
+  /** Keep a contained conversation panel at a stable height while its log scrolls. */
+  fixedHeight?: boolean;
   /**
    * Wide screens only (E11): a page docks to the right, a dialog stands in the middle.
    * Default: a dialog when it only ever fits its content, a page otherwise.
@@ -116,6 +118,7 @@ export function Sheet({
   footer,
   bleed = false,
   contained = false,
+  fixedHeight = false,
   placement = detents.every((height) => height === 'fit') ? 'dialog' : 'page',
 }: SheetProps) {
   const { t } = useTranslation();
@@ -194,7 +197,7 @@ export function Sheet({
         data-detent={detent}
         data-placement={placement}
         data-sheet-panel=""
-        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${HEIGHT[detent]} ${FRAME[placement].panel}`}
+        className={`pointer-events-auto relative mx-auto flex w-full max-w-xl flex-col overflow-hidden rounded-t-sheet border border-b-0 border-v2-line bg-v2-panel font-v2-ui transition-[height,max-height] duration-300 ease-v2 ${fixedHeight ? 'h-[70dvh] max-h-full' : HEIGHT[detent]} ${FRAME[placement].panel}`}
       >
         <div className="shrink-0 touch-none" {...(placement === 'card' ? {} : { onPointerDown: onPull })}>
           {placement !== 'card' && <button

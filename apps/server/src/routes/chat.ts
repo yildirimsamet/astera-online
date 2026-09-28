@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { CHAT, CHAT_LANGUAGES } from '@astera/rules';
+import { CHAT, CHAT_LANGUAGES, REACTION_EMOJIS } from '@astera/rules';
 import { markChatRead, postChat, readChat, unreadChat } from '../services/chat.js';
+import { setMessageReaction } from '../services/messageReactions.js';
 import { requireAuth } from './auth.js';
 
 const listQuery = z.object({
@@ -10,6 +11,7 @@ const listQuery = z.object({
   language: z.enum(CHAT_LANGUAGES).default('tr'),
 });
 const messageBody = z.object({
+  replyToMessageId: z.string().uuid().optional(),
   content: z.string()
     .transform((value) => value.trim())
     .pipe(z.string().min(1).refine(
@@ -22,6 +24,14 @@ const messageBodyWithLanguage = messageBody.extend({ language: languageBody });
 const readBody = z.object({ messageId: z.string().uuid(), language: languageBody }).strict();
 
 export function registerChatRoutes(app: FastifyInstance): void {
+  app.post('/api/chat/reactions', { preHandler: requireAuth }, async (req) => {
+    const body = z.object({
+      channel: z.enum(['general', 'clan', 'dm']),
+      messageId: z.string().uuid(),
+      emoji: z.enum(REACTION_EMOJIS).nullable(),
+    }).strict().parse(req.body);
+    return setMessageReaction(app.db, req.accountId!, body.channel, body.messageId, body.emoji, app.clock.now());
+  });
   app.get('/api/chat/messages', { preHandler: requireAuth }, async (req) => {
     const query = listQuery.parse(req.query);
     const self = await app.projections.commander(req.accountId!);
@@ -39,7 +49,7 @@ export function registerChatRoutes(app: FastifyInstance): void {
     const body = messageBodyWithLanguage.parse(req.body);
     return {
       message: await postChat(
-        app.db, req.accountId!, body.content, app.clock, body.language, app.adminUsernames,
+        app.db, req.accountId!, body.content, app.clock, body.language, app.adminUsernames, body.replyToMessageId,
       ),
     };
   });

@@ -820,6 +820,41 @@
       "when": 1790463251762,
       "tag": "0116_sparkling_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1790531783127,
+      "tag": "0117_demonic_puck",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1790536441383,
+      "tag": "0118_odd_titanium_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1790537650680,
+      "tag": "0119_sweet_corsair",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1790539884654,
+      "tag": "0120_same_frank_castle",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1790544521724,
+      "tag": "0121_serious_the_hunter",
+      "breakpoints": true
     }
   ]
 }

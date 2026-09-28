@@ -64,6 +64,36 @@ describe('world transfer sheet', () => {
     expect(document.querySelector('[data-hull-row="PROSPECTOR"]')).toBeNull();
   });
 
+  it('uses combat holds and sends separate default return choices for haulers and other ships', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransferSheet
+          target={target}
+          planet={planetView({ fleet: { DART: 1, COURIER: 1 } }, { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+          onClose={vi.fn()}
+          onLaunched={vi.fn()}
+        />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(screen.getByRole('slider', { name: /Alloy/i })).toHaveAttribute('max', String(HULLS.DART.cargo));
+    expect(screen.getByRole('radio', { name: /haulers.*return/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /other ships.*stay/i })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'More Courier' }));
+    expect(document.querySelector('[data-transfer-return-eta]')).toHaveTextContent(/back at origin/i);
+    await user.click(screen.getByRole('radio', { name: /haulers.*stay/i }));
+    expect(document.querySelector('[data-transfer-return-eta]')).toBeNull();
+    await user.click(screen.getByRole('radio', { name: /haulers.*return/i }));
+    await user.click(screen.getByRole('radio', { name: /other ships.*return/i }));
+    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      returnPlan: { cargoShips: 'RETURN', otherShips: 'RETURN' },
+    }), expect.anything());
+  });
+
   it('shows cargo capacity and updates the defence left at origin', async () => {
     const user = userEvent.setup();
     const planet = planetView({
@@ -93,17 +123,17 @@ describe('world transfer sheet', () => {
     expect(screen.getByText(/5 craft remain at origin/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'More Courier' }));
-    expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo)}`, 'i'))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo + HULLS.DART.cargo)}`, 'i'))).toBeInTheDocument();
     const alloy = screen.getByRole('slider', { name: /Alloy/i });
-    // One Courier's hold, off the constant — the slider's ceiling IS the cargo.
-    const hold = String(HULLS.COURIER.cargo);
+    // The selected Courier and Dart holds set the slider's cargo ceiling.
+    const hold = String(HULLS.COURIER.cargo + HULLS.DART.cargo);
     expect(alloy).toHaveAttribute('max', hold);
     fireEvent.change(alloy, { target: { value: hold } });
     expect(alloy).toHaveValue(hold);
     const alloyRow = alloy.closest('label');
     expect(alloyRow).not.toBeNull();
     expect(alloyRow).toHaveTextContent('Sending');
-    expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(HULLS.COURIER.cargo));
+    expect(alloyRow?.querySelector('[data-spend-amount]')).toHaveTextContent(compact(Number(hold)));
     expect(alloyRow).not.toHaveTextContent('stays here');
     expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
@@ -204,10 +234,8 @@ describe('world transfer sheet', () => {
    *
    * The craft list was built from `MOVABLE.filter(count > 0)`, so a commander with
    * no Courier saw no Courier ROW — the cargo readout sat at `0 / 0`, all three
-   * sliders were pinned at zero, and nothing anywhere said why. The server has
-   * refused this for as long as it has existed (`TRANSFER_NEEDS_CARGO_HULL`); the
-   * screen simply never spoke the sentence. Ore carriers are now always listed,
-   * whether or not the world has any.
+   * sliders were pinned at zero, and nothing anywhere said why. The dedicated
+   * haulers are always listed now; other ships with holds can also carry cargo.
    */
   describe('why ore is not moving', () => {
     const render0 = (fleet: Record<string, number>) =>
@@ -236,24 +264,24 @@ describe('world transfer sheet', () => {
         .toBe(TRANSFER_CARGO_HULLS.length);
     });
 
-    it('says a world with no carrier cannot move ore at all', () => {
-      render0({ DART: 2 });
+    it('says a world without ships has no hold', () => {
+      render0({});
 
-      expect(screen.getByText(/no Courier, Wayfarer, Atlas or Argosy/i)).toBeInTheDocument();
+      expect(screen.getByText(/no ship with cargo space/i)).toBeInTheDocument();
       // Never `0 / 0`, which reads as a limit the player is up against when what
       // is true is that there is no hold on this mission at all.
       expect(screen.getByText('Cargo').nextElementSibling).toHaveTextContent('—');
     });
 
-    it('tells a world that owns a carrier to put one in the fleet', () => {
+    it('tells a world that owns a ship with a hold to put one in the fleet', () => {
       render0({ DART: 2, COURIER: 1 });
 
-      expect(screen.getByText(/add a Courier, Wayfarer, Atlas or Argosy/i)).toBeInTheDocument();
-      expect(screen.queryByText(/no Courier, Wayfarer, Atlas or Argosy/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/select any ship with cargo space/i)).toBeInTheDocument();
+      expect(screen.queryByText(/no ship with cargo space/i)).not.toBeInTheDocument();
     });
 
     it('cannot be dragged into a load it will not be allowed to send', () => {
-      render0({ DART: 2 });
+      render0({});
 
       for (const resource of [/Alloy/i, /Crystal/i, /Deuterium/i]) {
         expect(screen.getByRole('slider', { name: resource })).toHaveAttribute('max', '0');
@@ -266,7 +294,7 @@ describe('world transfer sheet', () => {
 
       await user.click(screen.getByRole('button', { name: 'More Courier' }));
 
-      expect(screen.queryByText(/add a Courier, Wayfarer, Atlas or Argosy/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/select any ship with cargo space/i)).not.toBeInTheDocument();
       expect(screen.getByText(new RegExp(`0 / ${compact(HULLS.COURIER.cargo)}`, 'i')))
         .toBeInTheDocument();
     });
@@ -276,7 +304,7 @@ describe('world transfer sheet', () => {
 /**
  * THE COST THIS SHEET NEVER MENTIONED. T6.
  *
- * A transfer burns `missionFuel(fleet, distance, 1)` at launch, and this screen
+ * A transfer burns outbound fuel and any selected return fuel at launch; this screen
  * said nothing about it — while offering a deuterium slider that goes all the way
  * to the tank. Load every drop and press send and the server answers
  * `INSUFFICIENT_FUEL`, because its guard is `held − cargo < fuel`. The raid sheet
@@ -431,7 +459,7 @@ describe('the deuterium a transfer spends twice', () => {
     const slider = screen.getByRole('slider', { name: /Deuterium/i });
     fireEvent.change(slider, { target: { value: '400' } });
     expect(Number((slider as HTMLInputElement).value))
-      .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1));
+      .toBe(400 - missionFuel({ COURIER: 1 }, 100, 1, 'HOMEWARD') * 2);
     expect(document.querySelector('[data-transfer-fuel] [data-spend-bar]'))
       .toHaveAttribute('data-short', 'false');
     expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
@@ -478,7 +506,7 @@ describe('the deuterium a transfer may actually load', () => {
 
     const fuel = flight({ ATLAS: 1 });
     expect(fuel).toBeGreaterThan(0);
-    expect(Number(slider(/Deuterium/i).max)).toBe(5_000 - fuel);
+    expect(Number(slider(/Deuterium/i).max)).toBe(5_000 - fuel * 2);
     // Alloy and crystal do not fly the ship: their ceiling is the store, whole.
     expect(Number(slider(/Alloy/i).max)).toBe(5_000);
   });
@@ -497,10 +525,10 @@ describe('the deuterium a transfer may actually load', () => {
 
     const deuterium = slider(/Deuterium/i);
     fireEvent.change(deuterium, { target: { value: deuterium.max } });
-    expect(Number(deuterium.value)).toBe(5_000 - flight({ ATLAS: 1 }));
+    expect(Number(deuterium.value)).toBe(5_000 - flight({ ATLAS: 1 }) * 2);
 
     await user.click(screen.getByRole('button', { name: 'More Atlas' }));
-    expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }));
+    expect(Number(slider(/Deuterium/i).value)).toBe(5_000 - flight({ ATLAS: 2 }) * 2);
     expect(screen.getByRole('button', { name: /^transfer$/i })).toBeEnabled();
   });
 

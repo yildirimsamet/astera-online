@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { missionFuel } from '@astera/rules';
 import { missions, notifications, planets, scheduledEvents, units } from '../src/db/schema.js';
 import { launchTransfer, recallFlight } from '../src/services/movement.js';
 import { launchAttack } from '../src/services/mission.js';
@@ -94,6 +95,63 @@ describe('recalling a fleet', () => {
     await worker().tick();
     expect(await unitsAt(mine)).toBe(14);
     expect(await unitsAt(colony)).toBe(0);
+  });
+
+  it('delivers cargo, leaves combat ships, and sends selected haulers home', async () => {
+    const launched = await launchTransfer(
+      f.db, f.playerIds[0]!, mine, colony,
+      { COURIER: 2, DART: 2 }, { alloy: 500, crystal: 0, deuterium: 0 }, f.clock, 1,
+      { cargoShips: 'RETURN', otherShips: 'STAY' },
+    );
+    f.clock.set(launched.arriveAt);
+    await worker().tick();
+
+    const [destination] = await f.db.select().from(planets).where(eq(planets.id, colony));
+    expect(destination?.alloy).toBeGreaterThanOrEqual(500);
+    const home = await f.db.select().from(units).where(and(eq(units.planetId, colony), eq(units.location, 'home')));
+    expect(home.find((row) => row.hull === 'DART')?.count).toBe(2);
+    expect(home.find((row) => row.hull === 'COURIER')).toBeUndefined();
+    const [returning] = await f.db.select().from(missions).where(and(eq(missions.parentMissionId, launched.missionId), eq(missions.status, 'in_flight')));
+    expect(returning?.fleet).toEqual({ COURIER: 2 });
+    f.clock.set(returning!.arriveAt);
+    await worker().tick();
+    const originHome = await f.db.select().from(units).where(and(eq(units.planetId, mine), eq(units.location, 'home')));
+    expect(originHome.find((row) => row.hull === 'COURIER')?.count).toBe(4);
+  });
+
+  it('lets a combat ship carry cargo and return independently of haulers', async () => {
+    const launched = await launchTransfer(
+      f.db, f.playerIds[0]!, mine, colony,
+      { DART: 2 }, { alloy: 1, crystal: 0, deuterium: 0 }, f.clock, 1,
+      { cargoShips: 'STAY', otherShips: 'RETURN' },
+    );
+    f.clock.set(launched.arriveAt);
+    await worker().tick();
+    const [returning] = await f.db.select().from(missions).where(and(eq(missions.parentMissionId, launched.missionId), eq(missions.status, 'in_flight')));
+    expect(returning?.fleet).toEqual({ DART: 2 });
+  });
+
+  it('allows an unload-and-return convoy even when the destination Hangar is full', async () => {
+    await setLevel(f.db, colony, 'HANGAR', 0);
+    const launched = await launchTransfer(
+      f.db, f.playerIds[0]!, mine, colony,
+      { COURIER: 1 }, { alloy: 200, crystal: 0, deuterium: 0 }, f.clock, 1,
+      { cargoShips: 'RETURN', otherShips: 'STAY' },
+    );
+    f.clock.set(launched.arriveAt);
+    await worker().tick();
+    const [returning] = await f.db.select().from(missions).where(and(eq(missions.parentMissionId, launched.missionId), eq(missions.status, 'in_flight')));
+    expect(returning?.fleet).toEqual({ COURIER: 1 });
+  });
+
+  it('charges the planned return leg at launch', async () => {
+    const outbound = missionFuel({ COURIER: 1 }, 4_000, 1, 'HOMEWARD');
+    await fuelUp(f.db, mine, outbound);
+    await expect(launchTransfer(
+      f.db, f.playerIds[0]!, mine, colony,
+      { COURIER: 1 }, EMPTY, f.clock, 1,
+      { cargoShips: 'RETURN', otherShips: 'STAY' },
+    )).rejects.toMatchObject({ code: 'INSUFFICIENT_FUEL' });
   });
 
   it('does not let a pre-claimed outbound arrival teleport a recalled fleet home', async () => {

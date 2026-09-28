@@ -69,6 +69,7 @@ import { GameError } from './planet.js';
 import { isPerson } from './people.js';
 import { publishShard } from '../stream/bus.js';
 import { addDominionCounters } from './dominion.js';
+import { archiveSeasonChat } from './chatArchive.js';
 import {
   bindSeasonRankRewardsToSuccessor,
   expireSeasonRankRewardsForCycles,
@@ -563,6 +564,10 @@ export async function wipeAllServers(
     // PERSON has been paid once and for ever — the @JoinAstera bonus — so a wipe
     // clearing it would pay every follower again on the first day of every new
     // galaxy. Its only foreign key is to `accounts`, which this wipe keeps.
+    //
+    // The conversation is kept the same way, and it must be copied FIRST: both chat
+    // tables and the clans they name are deleted below. 2026-09-27.
+    await archiveSeasonChat(tx, clock.now());
     await tx.delete(rewardGrants);
     // Clan rows form their own child graph around missions, players and clans.
     // Personal shares go first; immutable score/event history is kept only until

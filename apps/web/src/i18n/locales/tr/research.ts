@@ -115,7 +115,7 @@ export const research = {
   cargoRole:
     "Akın ganimetini, dünyalar arası transferi ve ticaret konvoyunu birlikte artırır; asteroit madenciliğinin kendi kademesi vardır.",
   cargoDetail:
-    "Her kademe gemilerinin taşıdığını artırır: hareketli filonun akın ganimetini ve dünyaların arasında cevher taşıyan ya da tüccarla ticaret yapan her Kurye, Seyyah, Atlas ve Argosi'nin ambarını. Kazıcıların kendi kademesi Kazıcı Ambarları'dır.",
+    "Her kademe akınlarda ve dünyaların arasındaki aktarımlarda bütün hareketli gemilerin ambarını büyütür. Kurye, Seyyah, Atlas ve Argosi ticaret konvoylarında da daha çok taşır. Kazıcılar için Kazıcı Ambarları gerekir.",
 
   engineeringName: "Yıldız Gemisi Mühendisliği",
   engineeringTag: "Üst seviye gemileri açar",

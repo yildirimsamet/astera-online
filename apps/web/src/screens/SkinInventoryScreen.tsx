@@ -1,137 +1,160 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { PlanetSkinId } from '@astera/rules';
+import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 import type { z } from 'zod';
 import type { skinCollectionSchema } from '../api/schemas.js';
 import { useEquipSkin, useSkins } from '../api/queries.js';
+import { describeError } from '../i18n/errors.js';
 import { planetArt } from '../ui/assets.js';
-import { Button } from '../ui/kit/index.js';
+import { Waiting } from '../ui/kit/index.js';
 import { PLANET_SKIN_CATALOG } from '../ui/skinCatalog.js';
-import { PLANET_SKIN_IDS } from '@astera/rules';
+import { Button, EmptyState, Note, SectionHead } from '../v2/kit/Surface.js';
+import { Icon } from '../v2/icons.js';
 
 type Collection = z.infer<typeof skinCollectionSchema>;
 
-/** The owned shelf and the worlds it can dress; no sales state is mixed in. */
+/**
+ * DRESSING A WORLD IS ONE TAP ON THAT WORLD (owner 2026-09-27: "giydirme ve çıkartma …
+ * user friendly bir şekilde tasarlanmış mı?"). It used to be a shelf to pick from above and a
+ * button per world to apply below — a scroll between the two on a phone, and four primary
+ * presses on one screen. Now each world carries its own choices: the default and every owned
+ * look. The lit chip is what the world wears, so the state and the control are one thing; a
+ * tap on another dresses it at once, and Default takes the look off. Drawn in the Gözlemevi
+ * language; no sales state is mixed in.
+ */
 export function SkinInventoryContent({
   collection,
   onEquip,
-  pendingPlanetId,
+  pending,
+  failure,
   onOpenShop,
 }: {
   collection: Collection;
   onEquip: (planetId: string, skinId: PlanetSkinId | null) => void;
-  pendingPlanetId: string | null;
+  /** The world being dressed, and with what: every choice waits until it lands. */
+  pending: { planetId: string; skinId: PlanetSkinId | null } | null;
+  /** The last dress that failed, and why, said on that world. */
+  failure: { planetId: string; message: string } | null;
   onOpenShop: () => void;
 }) {
   const { t } = useTranslation();
-  const [selected, setSelected] = useState<PlanetSkinId | null>(collection.ownedSkinIds[0] ?? null);
-  useEffect(() => {
-    if (selected !== null && collection.ownedSkinIds.includes(selected)) return;
-    setSelected(collection.ownedSkinIds[0] ?? null);
-  }, [collection.ownedSkinIds, selected]);
+  const owned = collection.ownedSkinIds;
   const name = (id: PlanetSkinId) => t(PLANET_SKIN_CATALOG[id].nameKey);
 
   return (
-    <div className="min-h-full bg-[#080d17] pb-[calc(28px+env(safe-area-inset-bottom))] text-bone">
-      <header className="relative overflow-hidden px-4 pb-5 pt-5">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[url('/assets/images/skins/galaxy-nebula.webp')] bg-cover bg-center opacity-40" />
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#080d17]/35 to-[#080d17]" />
-        <div className="relative mx-auto w-full max-w-6xl lg:flex lg:items-end lg:justify-between lg:gap-8">
-          <div>
-            <p className="legend text-crystal">{t('skins.inventoryKicker')}</p>
-            <h3 className="mt-2 font-display text-hero uppercase text-bone">{t('skins.inventoryHeadline')}</h3>
-            <p className="mt-2 max-w-[36ch] text-body leading-relaxed text-bone/75 lg:max-w-[52ch]">{t('skins.intro')}</p>
-          </div>
-          <button type="button" onClick={onOpenShop}
-            className="mt-3 min-h-10 shrink-0 border-b border-crystal/60 font-display text-label uppercase tracking-label text-crystal transition-colors hover:text-bone">
-            {t('skins.openShop')} <span aria-hidden>↗</span>
-          </button>
-        </div>
-      </header>
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-3 pb-[calc(24px+env(safe-area-inset-bottom))] pt-2 font-v2-ui text-v2-ink">
+      <p className="text-caption leading-snug text-v2-ink-2">{t('skins.intro')}</p>
 
-      {/*
-        A SHELF AND THE WORLDS IT DRESSES. On a desk they sit side by side, so the
-        pick and the apply are one glance apart; the 326px card art stays in a
-        narrow column instead of being blown up across the screen.
-      */}
-      <div className="mx-auto w-full max-w-6xl px-3 lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:px-4">
-        <section role="region" aria-label={t('skins.ownedSkins')} className="lg:sticky lg:top-4">
-          <div className="mb-3 flex items-end justify-between gap-2 px-1">
-            <div>
-              <p className="legend text-crystal">{t('skins.yourLooksKicker')}</p>
-              <h4 className="mt-1 font-display text-title uppercase tracking-wide text-bone">{t('skins.ownedSkins')}</h4>
-            </div>
-            <span className="text-caption text-dim">{collection.ownedSkinIds.length}/{PLANET_SKIN_IDS.length}</span>
-          </div>
-          {collection.ownedSkinIds.length === 0 ? (
-            <div className="rounded-plate border border-white/15 bg-white/[0.04] p-4">
-              <p className="text-body text-bone/75">{t('skins.noOwnedSkins')}</p>
-              <Button size="sm" variant="primary" onClick={onOpenShop} className="mt-3">{t('skins.openShop')}</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-2">
-              {collection.ownedSkinIds.map((id) => {
-                const look = PLANET_SKIN_CATALOG[id];
-                return (
-                  <button key={id} type="button" aria-pressed={selected === id}
-                    onClick={() => { setSelected(id); }}
-                    className={`group overflow-hidden rounded-plate border text-left transition-colors ${selected === id ? 'border-crystal/75 bg-crystal/[0.08]' : 'border-white/15 bg-[#101824] hover:border-white/35'}`}>
-                    <span className="block aspect-[1.3] overflow-hidden bg-[#070d17]">
-                      <img src={look.image} alt={name(id)} loading="lazy" decoding="async"
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    </span>
-                    <span className="flex min-h-10 items-center justify-between px-2 py-2">
-                      <span className="font-display text-label uppercase tracking-label text-bone">{name(id)}</span>
-                      {selected === id && <span aria-hidden className="text-crystal">✓</span>}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {selected !== null && <p className="mt-3 px-1 text-label text-dim">{t('skins.selectedForWorlds', { name: name(selected) })}</p>}
-        </section>
+      {owned.length === 0 ? (
+        <EmptyState
+          icon={<Icon id="i-spark" className="size-6 text-v2-premium" />}
+          title={t('skins.noOwnedSkins')}
+          action={<Button variant="primary" onClick={onOpenShop}>{t('skins.openShop')}</Button>}
+        />
+      ) : (
+        <>
+          {/* WHAT YOU OWN, AT A GLANCE: the looks, how many of the collection, and the way to more. */}
+          <section aria-label={t('skins.ownedSkins')}
+            className="flex items-center gap-2.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+            <span aria-hidden className="flex shrink-0 -space-x-2">
+              {owned.map((id) => (
+                <img key={id} src={PLANET_SKIN_CATALOG[id].image} alt="" loading="lazy" decoding="async"
+                  className="size-7 rounded-full border-2 border-v2-panel object-cover" />
+              ))}
+            </span>
+            <span className="min-w-0 truncate text-caption text-v2-ink-2">{t('skins.ownedSkins')}</span>
+            <span className="font-v2-mono text-caption tabular-nums text-v2-ink">{owned.length}/{PLANET_SKIN_IDS.length}</span>
+            <button type="button" onClick={onOpenShop}
+              className="ml-auto shrink-0 text-caption font-semibold text-v2-premium underline decoration-v2-premium/40 underline-offset-4">
+              {t('skins.openShop')}
+            </button>
+          </section>
 
-        <section aria-label={t('skins.worlds')} className="mt-7 lg:mt-0">
-          <div className="mb-3 px-1">
-            <p className="legend text-crystal">{t('skins.worldsKicker')}</p>
-            <h4 className="mt-1 font-display text-title uppercase tracking-wide text-bone">{t('skins.worlds')}</h4>
-            <p className="mt-2 text-label leading-relaxed text-dim">{t('skins.worldsHint')}</p>
-          </div>
-          {collection.planets.length === 0 && (
-            <p className="rounded-plate border border-white/15 bg-white/[0.04] p-4 text-body text-dim">{t('skins.empty')}</p>
-          )}
-          <div className="grid gap-2 md:grid-cols-1">
+          <section aria-label={t('skins.worlds')} className="flex flex-col gap-2">
+            <SectionHead label={t('skins.worlds')} />
+            <Note>{t('skins.worldsHint')}</Note>
+            {collection.planets.length === 0 && (
+              <p className="rounded-control border border-dashed border-v2-line-hi px-3 py-4 text-center text-caption text-v2-ink-2">{t('skins.empty')}</p>
+            )}
             {collection.planets.map((planet) => (
-              <div key={planet.id} className="rounded-plate border border-white/15 bg-[#101824] p-3">
-                <div className="flex items-center gap-3">
+              <article key={planet.id} aria-label={planet.name} className="rounded-control border border-v2-line bg-v2-panel p-2.5">
+                <div className="flex items-center gap-2.5">
                   <img src={planet.skinId ? PLANET_SKIN_CATALOG[planet.skinId].image : planetArt(planet.id)} alt=""
-                    className="size-14 shrink-0 rounded-control bg-[#070d17] object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-label uppercase tracking-label text-bone">{planet.name}</p>
-                    <p className="mt-1 text-caption text-dim">{t('skins.current', { name: planet.skinId ? name(planet.skinId) : t('skins.default') })}</p>
+                    className="size-11 shrink-0 rounded-full bg-v2-deep object-cover" />
+                  <div className="min-w-0">
+                    <p className="truncate text-body font-semibold text-v2-ink">{planet.name}</p>
+                    <p className="text-micro text-v2-ink-3">
+                      {t('skins.current', { name: planet.skinId ? name(planet.skinId) : t('skins.default') })}
+                    </p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-                  <Button size="sm" variant="primary" full
-                    disabled={selected === null || planet.skinId === selected || pendingPlanetId !== null}
-                    onClick={() => { if (selected !== null) onEquip(planet.id, selected); }}
-                    ariaLabel={t('skins.apply', { name: planet.name })}>
-                    {selected !== null && planet.skinId === selected ? t('skins.equipped') : t('skins.apply', { name: planet.name })}
-                  </Button>
-                  <Button size="sm" variant="ghost"
-                    disabled={planet.skinId === null || pendingPlanetId !== null}
-                    onClick={() => { onEquip(planet.id, null); }}
-                    ariaLabel={t('skins.reset', { name: planet.name })}>
-                    {t('skins.default')}
-                  </Button>
+                <div role="group" aria-label={t('skins.looksFor', { name: planet.name })} className="mt-2.5 flex flex-wrap gap-1">
+                  <LookChip
+                    label={t('skins.reset', { name: planet.name })}
+                    text={t('skins.defaultChip')}
+                    art={planetArt(planet.id)}
+                    worn={planet.skinId === null}
+                    busy={pending?.planetId === planet.id && pending.skinId === null}
+                    waiting={pending !== null}
+                    onPick={() => { onEquip(planet.id, null); }}
+                  />
+                  {owned.map((id) => (
+                    <LookChip
+                      key={id}
+                      label={t('skins.wear', { look: name(id), world: planet.name })}
+                      text={name(id)}
+                      art={PLANET_SKIN_CATALOG[id].image}
+                      worn={planet.skinId === id}
+                      busy={pending?.planetId === planet.id && pending.skinId === id}
+                      waiting={pending !== null}
+                      onPick={() => { onEquip(planet.id, id); }}
+                    />
+                  ))}
                 </div>
-              </div>
+                {failure?.planetId === planet.id && (
+                  <p role="alert" className="mt-2 flex items-start gap-1.5 text-caption text-v2-warn">
+                    <Icon id="i-warn" className="mt-0.5 size-3.5 shrink-0" />
+                    {failure.message}
+                  </p>
+                )}
+              </article>
             ))}
-          </div>
-        </section>
-      </div>
+          </section>
+        </>
+      )}
     </div>
+  );
+}
+
+/**
+ * ONE LOOK A WORLD CAN WEAR. Lit in your colour with a tick when it is the one worn — and then
+ * not pressable, because pressing it again would change nothing. While any world is being
+ * dressed every chip waits, and the one on its way pulses.
+ */
+function LookChip({ label, text, art, worn, busy, waiting, onPick }: {
+  label: string;
+  text: string;
+  art: string;
+  worn: boolean;
+  busy: boolean;
+  waiting: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={worn}
+      aria-busy={busy}
+      disabled={worn || waiting}
+      onClick={onPick}
+      className={`flex h-8 items-center gap-1 rounded-full border pl-0.5 pr-2 text-micro font-semibold transition-colors ${
+        worn ? 'border-v2-self bg-v2-self/10 text-v2-ink' : 'border-v2-line-hi bg-v2-deep text-v2-ink-2 hover:border-v2-ink-3 hover:text-v2-ink'
+      } ${busy ? 'animate-pulse border-v2-self/70 text-v2-ink' : ''} ${waiting && !worn && !busy ? 'opacity-50' : ''}`}
+    >
+      <img src={art} alt="" loading="lazy" decoding="async" className="size-6 rounded-full object-cover" />
+      <span>{text}</span>
+      {worn && <Icon id="i-check" className="size-3 text-v2-self" />}
+    </button>
   );
 }
 
@@ -139,17 +162,15 @@ export default function SkinInventoryScreen({ onOpenShop }: { onOpenShop: () => 
   const { t } = useTranslation();
   const collection = useSkins();
   const equip = useEquipSkin();
-  if (collection.isPending) return <p className="p-4 text-body text-dim">{t('skins.ownedSkins')}…</p>;
-  if (!collection.data) return <p className="p-4 text-body text-dim">{t('skins.loadError')}</p>;
+  if (collection.isPending) return <Waiting>{t('skins.ownedSkins')}</Waiting>;
+  if (!collection.data) return <p className="p-4 text-caption text-v2-ink-2">{t('skins.loadError')}</p>;
   return (
-    <>
-      {equip.isError && <p role="alert" className="px-3 pt-3 text-label text-threat-ink">{t('skins.saveError')}</p>}
-      <SkinInventoryContent
-        collection={collection.data}
-        onEquip={(planetId, skinId) => { equip.mutate({ planetId, skinId }); }}
-        pendingPlanetId={equip.isPending ? equip.variables.planetId : null}
-        onOpenShop={onOpenShop}
-      />
-    </>
+    <SkinInventoryContent
+      collection={collection.data}
+      onEquip={(planetId, skinId) => { equip.mutate({ planetId, skinId }); }}
+      pending={equip.isPending ? equip.variables : null}
+      failure={equip.isError ? { planetId: equip.variables.planetId, message: describeError(equip.error) } : null}
+      onOpenShop={onOpenShop}
+    />
   );
 }

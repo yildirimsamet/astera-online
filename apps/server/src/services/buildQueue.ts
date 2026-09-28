@@ -466,10 +466,15 @@ export async function applyBuildCompletion(
   clock: Clock,
 ): Promise<boolean> {
   const [identity] = await tx
-    .select({ planetId: buildOrders.planetId })
+    .select({ planetId: buildOrders.planetId, status: buildOrders.status })
     .from(buildOrders)
     .where(eq(buildOrders.id, orderId));
-  if (!identity) return false;
+  /*
+    A settled order has nothing to apply, and asked BEFORE the lock: its world may no
+    longer have a commander for `loadLocked` to find. A seceded colony cancels its
+    queue, and a completion already claimed in the same batch still runs after it.
+  */
+  if (identity?.status !== 'BUILDING') return false;
 
   const planet = await loadLocked(tx, identity.planetId, clock, { requireLive: false });
   const queue = await activeQueue(tx, identity.planetId);

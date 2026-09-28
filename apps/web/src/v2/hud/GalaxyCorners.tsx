@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveGalaxyEvent } from '../../api/schemas.js';
+import type { Focus } from '../../galaxy/FocusPanel.jsx';
 import { EVENT_NAME } from '../../lib/nowLine.js';
 import { duration } from '../../lib/time.js';
 import { Icon, type IconId } from '../icons.js';
@@ -24,16 +26,71 @@ const ROUND = 'pointer-events-auto relative grid size-9 place-items-center round
  * and a shadow keeps the words read. Each count wears the colour of what it is (K2);
  * a figure an older server does not send is left out, never printed as zero.
  */
-export function GalaxyReadout({ online, onlineToday, counts }: {
+export interface GalaxyTarget {
+  kind: 'asteroid' | 'contact' | 'debris';
+  id: string;
+  label: string;
+  detail: string;
+}
+
+export function GalaxyReadout({ online, onlineToday, counts, targets = [], onFocusTarget }: {
   online?: number;
   onlineToday?: number;
   counts: { worlds: number; fleetsAway: number; rocks: number; pirates: number; wrecks: number };
+  targets?: readonly GalaxyTarget[];
+  onFocusTarget?: (focus: Focus) => void;
 }) {
   const { t } = useTranslation();
+  const [openKind, setOpenKind] = useState<GalaxyTarget['kind'] | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (openKind === null) return;
+    const dismissOutside = (event: PointerEvent): void => {
+      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpenKind(null);
+    };
+    const dismissEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpenKind(null);
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    document.addEventListener('keydown', dismissEscape);
+    return () => {
+      document.removeEventListener('pointerdown', dismissOutside);
+      document.removeEventListener('keydown', dismissEscape);
+    };
+  }, [openKind]);
+  useEffect(() => {
+    if (openKind !== null && !targets.some((target) => target.kind === openKind)) {
+      setOpenKind(null);
+    }
+  }, [openKind, targets]);
+  const listed = openKind === null ? [] : targets.filter((target) => target.kind === openKind);
+  const countLabel = openKind === 'asteroid'
+    ? t('galaxy.rocks', { count: counts.rocks })
+    : openKind === 'contact'
+      ? t('galaxy.pirates', { count: counts.pirates })
+      : t('galaxy.wrecks', { count: counts.wrecks });
+  const count = (kind: GalaxyTarget['kind'], value: number, label: string, colour: string) => {
+    if (value === 0) return null;
+    if (!onFocusTarget || !targets.some((target) => target.kind === kind)) {
+      return <span className={colour}>{label}</span>;
+    }
+    return (
+      <button
+        type="button"
+        aria-expanded={openKind === kind}
+        aria-controls={openKind === kind ? 'galaxy-target-list' : undefined}
+        onClick={() => { setOpenKind((current) => current === kind ? null : kind); }}
+        className={`pointer-events-auto inline-flex min-h-7 items-center justify-end px-1 text-right underline decoration-dotted underline-offset-2 ${colour}`}
+      >
+        {label}
+      </button>
+    );
+  };
   return (
     <div
+      ref={root}
       data-galaxy-readout
-      className="pointer-events-none flex max-w-[58vw] flex-col items-end gap-0.5 text-right font-v2-ui [text-shadow:0_1px_3px_var(--color-v2-void)]"
+      className="pointer-events-none relative flex max-w-[58vw] flex-col items-end gap-0.5 text-right font-v2-ui [text-shadow:0_1px_3px_var(--color-v2-void)]"
     >
       {online !== undefined && (
         <p className="flex items-center gap-1.5 text-caption text-v2-ink-2">
@@ -43,12 +100,39 @@ export function GalaxyReadout({ online, onlineToday, counts }: {
         </p>
       )}
       <p data-testid="view-caption" className="font-v2-mono text-micro leading-snug text-v2-ink grid grid-cols-2">
-        <span className="text-v2-self" >{t('galaxy.worlds', { count: counts.worlds })}</span>
-        {counts.fleetsAway > 0 && <span className="text-v2-self">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
-        {counts.rocks > 0 && <span className="text-v2-crystal">{t('galaxy.rocks', { count: counts.rocks })}</span>}
-        {counts.pirates > 0 && <span className="text-v2-hostile col-start-2">{t('galaxy.pirates', { count: counts.pirates })}</span>}
-        {counts.wrecks > 0 && <span className="text-v2-alloy">{t('galaxy.wrecks', { count: counts.wrecks })}</span>}
+        <span className="text-v2-self flex items-center" >{t('galaxy.worlds', { count: counts.worlds })}</span>
+        {counts.fleetsAway > 0 && <span className="text-v2-self flex items-center">{t('galaxy.fleetAway', { count: counts.fleetsAway })}</span>}
+        {count('asteroid', counts.rocks, t('galaxy.rocks', { count: counts.rocks }), 'text-v2-crystal flex items-center')}
+        {count('contact', counts.pirates, t('galaxy.pirates', { count: counts.pirates }), 'col-start-2 text-v2-hostile flex items-center')}
+        {count('debris', counts.wrecks, t('galaxy.wrecks', { count: counts.wrecks }), 'text-v2-alloy flex items-center')}
       </p>
+      {openKind !== null && listed.length > 0 && (
+        <ul
+          id="galaxy-target-list"
+          aria-label={countLabel.trim().replace(/^·\s*/, '')}
+          className="pointer-events-auto absolute right-0 top-full z-20 mt-2 max-h-[38vh] w-[min(74vw,17rem)] overflow-y-auto rounded-control border border-v2-line-hi bg-v2-deep p-1 text-left shadow-lg"
+        >
+          {listed.map((target, index) => (
+            <li key={target.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onFocusTarget?.({ kind: target.kind, id: target.id });
+                  setOpenKind(null);
+                }}
+                className="flex min-h-10 w-full items-center gap-2 rounded-chip px-2 py-1 text-left hover:bg-v2-raise focus-visible:bg-v2-raise"
+              >
+                <span className="font-v2-mono text-micro text-v2-ink-3">{String(index + 1).padStart(2, '0')}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-caption text-v2-ink">{target.label}</span>
+                  <span className="block truncate text-micro text-v2-ink-3">{target.detail}</span>
+                </span>
+                <Icon id="i-mark" className="size-3.5 shrink-0 text-v2-self" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

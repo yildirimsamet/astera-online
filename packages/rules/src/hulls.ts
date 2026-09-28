@@ -579,15 +579,14 @@ export function fleetSpeed(fleet: Fleet, tech: TechLevels): number {
 }
 
 /**
- * What this fleet can carry home. T8.
+ * What this fleet can carry as raid loot or between owned worlds. T8.
  *
  * THIS IS THE LOOT CEILING, which is why the research that lifts it is the
  * smallest and dearest of the three economy ladders — it is the only one that
  * moves raid returns directly.
  *
- * Not `transferCargoCapacity`, which counts only dedicated Fleet V2 transports
- * moving ore between a commander's own worlds. Two different ROSTERS — a Dart
- * raises this and not that — but since D180 the same `cargoMult` ladder lifts both.
+ * `transferCargoCapacity` counts only dedicated Fleet V2 transports for merchant
+ * trade. A Dart raises this and not that, but the same `cargoMult` ladder lifts both.
  */
 export function fleetCargo(fleet: Fleet, tech: TechLevels): number {
   let c = 0;

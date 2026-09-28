@@ -1,8 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../src/i18n/index.js';
+import { PLANET_SKIN_IDS } from '@astera/rules';
 import { SkinShopContent } from '../src/screens/SkinsScreen.js';
 import { SkinInventoryContent } from '../src/screens/SkinInventoryScreen.js';
+import { BUNDLE_PRICE, SHOPIER_LINKS, SKIN_PRICE, priceText } from '../src/lib/skinStore.js';
 
 vi.mock('../src/screens/SkinPreview.js', () => ({
   SkinPreview: ({ skinId, status }: { skinId: string; status: string }) =>
@@ -109,15 +111,10 @@ describe('the skin store', () => {
     expect(onPurchase).toHaveBeenCalledWith('planet-desert');
   });
 
-  it('keeps payment closed until live checkout is configured', () => {
-    shop({ enabled: false });
-    expect(screen.getByRole('button', { name: i18n.t('skins.onSaleSoon') })).toBeDisabled();
-  });
-
-  it('does not claim that payment opens while live checkout is disabled', () => {
-    shop({ enabled: false });
-    expect(screen.getByText(i18n.t('skins.trustSoon', { commander: 'Samet' }))).toBeInTheDocument();
-    expect(screen.queryByText(i18n.t('skins.trust', { commander: 'Samet' }))).toBeNull();
+  it('keeps the Paddle press waiting, not vanished, while its checkout is being created', () => {
+    shop({ pending: true });
+    expect(screen.getByRole('button', { name: /buy.*€2\.99/i })).toBeDisabled();
+    expect(shopier()).toBeInTheDocument();
   });
 
   it('sends a look the player owns to the collection to put it on', () => {
@@ -157,6 +154,89 @@ describe('the skin store', () => {
     expect(screen.queryByText(/yours for good/i)).not.toBeInTheDocument();
   });
 
+  /**
+   * SHOPIER BESIDE PADDLE (owner 2026-09-27: "paddle'a alternatif ek olarak"). Shopier is a
+   * page elsewhere that knows nothing of the account, so the look is granted by hand once the
+   * order is seen — which is why the press always comes with the name to write in the order.
+   */
+  const shopierLabel = (amount: number) => i18n.t('skins.shopierBuy', { price: priceText(amount, 'TRY', 'en-US') });
+  const shopier = (amount = SKIN_PRICE.TRY) => screen.getByRole('link', { name: shopierLabel(amount) });
+
+  it('sends every look and the set to its own Shopier product', () => {
+    expect(SHOPIER_LINKS).toEqual({
+      'planet-lava': 'https://www.shopier.com/asteraonline/51278662',
+      'planet-ice': 'https://www.shopier.com/asteraonline/51278677',
+      'planet-toxic': 'https://www.shopier.com/asteraonline/51278683',
+      'planet-desert': 'https://www.shopier.com/asteraonline/51278652',
+      'planet-turkey': 'https://www.shopier.com/asteraonline/51278730',
+      'planet-germany': 'https://www.shopier.com/asteraonline/51278771',
+      'planet-france': 'https://www.shopier.com/asteraonline/51278695',
+      'planet-spain': 'https://www.shopier.com/asteraonline/51278822',
+      bundle: 'https://www.shopier.com/asteraonline/51278911',
+    });
+    expect(Object.keys(SHOPIER_LINKS)).toEqual([...PLANET_SKIN_IDS, 'bundle']);
+  });
+
+  it('sells the desert look through Shopier too', () => {
+    shop();
+    fireEvent.click(card(/desert/i));
+    expect(shopier()).toHaveAttribute('href', 'https://www.shopier.com/asteraonline/51278652');
+  });
+
+  it('offers Shopier beside Paddle for the selected look, in lira, in a new tab', () => {
+    const { onPurchase } = shop();
+    fireEvent.click(card(/toxic/i));
+    const link = shopier();
+    expect(link).toHaveAttribute('href', SHOPIER_LINKS['planet-toxic']);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    expect(screen.getByRole('button', { name: /buy.*€2\.99/i })).toBeEnabled();
+    fireEvent.click(link);
+    expect(onPurchase).not.toHaveBeenCalled();
+  });
+
+  it('follows the selection into the country worlds', () => {
+    shop({ collection: none });
+    fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    fireEvent.click(card(/germany/i));
+    expect(shopier()).toHaveAttribute('href', SHOPIER_LINKS['planet-germany']);
+  });
+
+  it('tells the buyer to write the commander in the Shopier order, where the press is', () => {
+    shop();
+    expect(screen.getByText(i18n.t('skins.shopierNote', { commander: 'Samet' }))).toBeInTheDocument();
+  });
+
+  it('offers no Shopier page for a look already owned', () => {
+    shop();
+    fireEvent.click(card(/lava/i));
+    expect(screen.queryByRole('link', { name: shopierLabel(SKIN_PRICE.TRY) })).toBeNull();
+    expect(screen.queryByText(i18n.t('skins.shopierNote', { commander: 'Samet' }))).toBeNull();
+  });
+
+  it('sells the set through Shopier too', () => {
+    shop({ collection: none });
+    const set = screen.getByRole('region', { name: i18n.t('skins.bundleTitle') });
+    expect(within(set).getByRole('link', { name: shopierLabel(BUNDLE_PRICE.TRY) }))
+      .toHaveAttribute('href', SHOPIER_LINKS.bundle);
+    expect(within(set).getByRole('button', { name: /buy all four/i })).toBeEnabled();
+  });
+
+  it('makes Shopier the way to pay, in lira, while Paddle is closed', () => {
+    shop({ enabled: false, prices: undefined, collection: none });
+    expect(screen.queryByRole('button', { name: /^buy/i })).toBeNull();
+    expect(shopier()).toHaveAttribute('href', SHOPIER_LINKS['planet-lava']);
+    // Intl spaces "TRY 99" with a no-break space; the matcher reads the page's text collapsed.
+    const lira = (amount: number) => priceText(amount, 'TRY', 'en-US').replace(/\s/g, ' ');
+    expect(card(/toxic/i)).toHaveTextContent(lira(SKIN_PRICE.TRY));
+    const set = screen.getByRole('region', { name: i18n.t('skins.bundleTitle') });
+    expect(within(set).queryByRole('button', { name: /buy all four/i })).toBeNull();
+    expect(within(set).getByRole('link', { name: shopierLabel(BUNDLE_PRICE.TRY) })).toBeInTheDocument();
+    expect(set).toHaveTextContent(lira(SKIN_PRICE.TRY * 4));
+    // A way to pay is open, so the page says what happens after paying.
+    expect(screen.getByText(i18n.t('skins.trust', { commander: 'Samet' }))).toBeInTheDocument();
+  });
+
   it('shows Turkish location prices even in English, with country skins still in euros', () => {
     shop({ collection: none, prices: turkishPrices });
     expect(card(/lava/i)).toHaveTextContent('₺99.00');
@@ -164,20 +244,100 @@ describe('the skin store', () => {
     expect(card(/turkey/i)).toHaveTextContent('₺99.00');
     expect(card(/germany/i)).toHaveTextContent('€2.99');
   });
+
+  it('does not offer a TRY-only Shopier checkout when the visitor sees EUR', () => {
+    shop({ collection: none, countryCode: 'DE' });
+    expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+  });
+
+  it('does not offer a TRY-only Shopier checkout for Germany even in Turkey', () => {
+    shop({ collection: none, countryCode: 'TR', prices: turkishPrices });
+    expect(screen.getAllByRole('link', { name: /shopier/i }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    fireEvent.click(card(/germany/i));
+    expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+  });
 });
 
+/**
+ * DRESSING A WORLD IS ONE TAP ON THAT WORLD (owner 2026-09-27: "giydirme ve çıkartma …
+ * user friendly mi?"). Each world carries its own choices — the default and every owned look —
+ * so there is no pick-above-then-scroll-to-apply, and the chip that is lit is what it wears.
+ */
 describe('skin inventory', () => {
-  it('lists owned looks only and equips them per planet in inventory', () => {
-    const equip = vi.fn();
-    render(<SkinInventoryContent collection={collection} onEquip={equip} pendingPlanetId={null} onOpenShop={vi.fn()} />);
-    const owned = screen.getByRole('region', { name: /owned skins/i });
-    expect(within(owned).getByRole('img', { name: /lava/i })).toHaveAttribute('src', '/assets/images/skins/planet-lava.png');
-    expect(within(owned).getByRole('img', { name: /ice/i })).toHaveAttribute('src', '/assets/images/skins/planet-ice.png');
-    expect(within(owned).queryByRole('img', { name: /desert/i })).not.toBeInTheDocument();
-    fireEvent.click(within(owned).getByRole('button', { name: /ice/i }));
-    fireEvent.click(screen.getByRole('button', { name: /apply to orion/i }));
-    expect(equip).toHaveBeenCalledWith('one', 'planet-ice');
-    fireEvent.click(screen.getByRole('button', { name: /use default on vega/i }));
-    expect(equip).toHaveBeenCalledWith('two', null);
+  const inventory = (over: Partial<Parameters<typeof SkinInventoryContent>[0]> = {}) => {
+    const onEquip = vi.fn();
+    const onOpenShop = vi.fn();
+    render(<SkinInventoryContent collection={collection} onEquip={onEquip} pending={null} failure={null}
+      onOpenShop={onOpenShop} {...over} />);
+    return { onEquip, onOpenShop };
+  };
+  const world = (name: string) => screen.getByRole('group', { name: i18n.t('skins.looksFor', { name }) });
+
+  it('offers each world the default and the owned looks only', () => {
+    inventory();
+    const orion = world('Orion');
+    expect(within(orion).getAllByRole('button').map((chip) => chip.getAttribute('aria-label'))).toEqual([
+      i18n.t('skins.reset', { name: 'Orion' }),
+      i18n.t('skins.wear', { look: i18n.t('skins.lava'), world: 'Orion' }),
+      i18n.t('skins.wear', { look: i18n.t('skins.ice'), world: 'Orion' }),
+    ]);
+    expect(screen.getByText(`2/${String(PLANET_SKIN_IDS.length)}`)).toBeInTheDocument();
+  });
+
+  it('puts a look on a world in one tap', () => {
+    const { onEquip } = inventory();
+    fireEvent.click(within(world('Orion')).getByRole('button', { name: i18n.t('skins.wear', { look: i18n.t('skins.ice'), world: 'Orion' }) }));
+    expect(onEquip).toHaveBeenCalledWith('one', 'planet-ice');
+  });
+
+  it('takes a look off with the default choice', () => {
+    const { onEquip } = inventory();
+    fireEvent.click(within(world('Vega')).getByRole('button', { name: i18n.t('skins.reset', { name: 'Vega' }) }));
+    expect(onEquip).toHaveBeenCalledWith('two', null);
+  });
+
+  it('lights what each world wears and never sends it again', () => {
+    const { onEquip } = inventory();
+    const worn = within(world('Vega')).getByRole('button', { name: i18n.t('skins.wear', { look: i18n.t('skins.lava'), world: 'Vega' }) });
+    expect(worn).toHaveAttribute('aria-pressed', 'true');
+    expect(worn).toBeDisabled();
+    const plain = within(world('Orion')).getByRole('button', { name: i18n.t('skins.reset', { name: 'Orion' }) });
+    expect(plain).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(worn);
+    fireEvent.click(plain);
+    expect(onEquip).not.toHaveBeenCalled();
+    expect(within(screen.getByRole('article', { name: 'Vega' })).getByText(i18n.t('skins.current', { name: i18n.t('skins.lava') })))
+      .toBeInTheDocument();
+  });
+
+  it('holds every choice while one world is being dressed, and shows which', () => {
+    const { onEquip } = inventory({ pending: { planetId: 'one', skinId: 'planet-ice' } });
+    const saving = within(world('Orion')).getByRole('button', { name: i18n.t('skins.wear', { look: i18n.t('skins.ice'), world: 'Orion' }) });
+    expect(saving).toHaveAttribute('aria-busy', 'true');
+    for (const chip of screen.getAllByRole('button', { name: /^(put|use default)/i })) expect(chip).toBeDisabled();
+    fireEvent.click(within(world('Vega')).getByRole('button', { name: i18n.t('skins.reset', { name: 'Vega' }) }));
+    expect(onEquip).not.toHaveBeenCalled();
+  });
+
+  it('says why a world could not be dressed, on that world', () => {
+    inventory({ failure: { planetId: 'two', message: 'You do not control that world' } });
+    expect(within(screen.getByRole('article', { name: 'Vega' })).getByRole('alert')).toHaveTextContent('You do not control that world');
+    expect(within(screen.getByRole('article', { name: 'Orion' })).queryByRole('alert')).toBeNull();
+  });
+
+  it('sends a commander with nothing to wear to the shop', () => {
+    const { onOpenShop } = inventory({ collection: { ownedSkinIds: [], planets: collection.planets } });
+    expect(screen.getByText(i18n.t('skins.noOwnedSkins'))).toBeInTheDocument();
+    expect(screen.queryByRole('group')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('skins.openShop') }));
+    expect(onOpenShop).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so when there is no world to dress', () => {
+    inventory({ collection: { ownedSkinIds: ['planet-lava'], planets: [] } });
+    expect(screen.getByText(i18n.t('skins.empty'))).toBeInTheDocument();
   });
 });

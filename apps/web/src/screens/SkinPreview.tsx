@@ -32,7 +32,13 @@ export function SkinPreview({
 }) {
   const { t } = useTranslation();
   return (
-    <div data-skin-stage className={`relative w-full ${className}`} style={{ touchAction: 'pan-y' }}>
+    /*
+      A VERTICAL SWIPE SCROLLS THE PAGE; ONLY A SIDEWAYS DRAG TURNS THE LOOK. OrbitControls
+      writes `touch-action: none` on the element it listens to (R3F's wrapper, inside this
+      stage), which swallowed every scroll that started on the model (owner 2026-09-27). The
+      `!important` rule here outranks that inline style, so the browser keeps vertical pans.
+    */
+    <div data-skin-stage className={`relative w-full [&_*]:touch-pan-y! ${className}`} style={{ touchAction: 'pan-y' }}>
       {/*
         TRANSPARENT, AND NO BLOOM: a bloom pass draws the canvas opaque and boxed the look in a
         dark card over the store's nebula and aura (seen on the page). The glow is the page's.

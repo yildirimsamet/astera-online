@@ -514,9 +514,8 @@ export const launch = {
    */
   lastSeen: "visto por última vez {{age}}",
   /**
-   * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
-   * live by definition. What belongs on the line instead is the other clock: how
-   * long the thing will still be out there, which is the reason to hurry.
+   * A PIRATE'S CREW AND ORBIT ARE CURRENT even after Telescope discovery is
+   * remembered. The urgent clock is how long the target will still be out there.
    */
   goneIn: "desaparecido {{duration}}",
   back: "Atrás",
@@ -612,10 +611,17 @@ export const transfer = {
   paceHint: "Más lento llega más tarde: las naves en vuelo no pueden ser saqueadas. Mismo combustible; nada permanece más de 12 h en vuelo.",
   fuelShort: "corto {{short}}",
   eyebrow: "Transferencia mundial",
+  returnEta: "Regreso al origen en {{duration}} · {{time}}",
   eta: "ETA",
   capacity: "Carga",
   fleet: "Nave",
   homeDefence: "{{ships}} nave permanece en origen · {{power}} potencia de fuego",
+  afterDelivery: "Después de la entrega",
+  cargoShips: "Cargueros",
+  otherShips: "Otras naves",
+  stay: "Quedarse allí",
+  return: "Regresar",
+  returnHint: "Las naves que regresan descargan primero. El combustible de regreso se paga ahora.",
   cargo: "Recursos",
   alloy: "Aleación",
   crystal: "Cristal",
@@ -627,14 +633,12 @@ export const transfer = {
   sending: "Despacho",
   launched: "Transferencia iniciada · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
-  rules:
-    "Se puede recuperar una vez en vuelo: vuelve en el tiempo que ya ha volado. La defensa terrestre no puede moverse; el espacio de carga proviene únicamente de Mensajero, Caminante, Atlas y Argosy.",
+  rules: "Se puede recuperar una vez en vuelo. La defensa terrestre no se mueve; cualquier nave con bodega puede llevar recursos.",
   hullNone: "Ninguno en este mundo",
-  holdReady: "Mensajero, Caminante, Atlas y Argosy llevan el mineral. Mantenga presionado: {{capacity}}.",
+  holdReady: "Las naves seleccionadas llevan recursos. Bodega: {{capacity}}.",
   destinationLabel: "Hangar de destino",
-  holdNeedsLoad: "Agrega un Mensajero, Caminante, Atlas o Argosy arriba para transportar mineral.",
-  holdNoCarrier:
-    "Este mundo no tiene Mensajero, Caminante, Atlas o Argosy, por lo que nada aquí puede transportar mineral.",
+  holdNeedsLoad: "Selecciona arriba una nave con bodega para llevar recursos.",
+  holdNoCarrier: "Este mundo no tiene naves con bodega.",
   /** Caption on the destination's room bar, which draws the figures itself. */
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} de {{held}} {{name}} empaquetado",

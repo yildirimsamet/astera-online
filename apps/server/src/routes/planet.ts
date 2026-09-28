@@ -388,6 +388,10 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       }).strict(),
       /** How fast to fly it. Validated by `allowedPaces`, which knows about THIS flight. */
       pace: z.number().positive().max(1).optional(),
+      returnPlan: z.object({
+        cargoShips: z.enum(['STAY', 'RETURN']),
+        otherShips: z.enum(['STAY', 'RETURN']),
+      }).strict().default({ cargoShips: 'RETURN', otherShips: 'STAY' }),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchTransfer(
@@ -399,6 +403,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       body.cargo,
       app.clock,
       body.pace,
+      body.returnPlan,
     );
   });
 

@@ -8,7 +8,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { TRAFFIC, engagementEndsAt } from '@astera/rules';
-import type { ChatLanguage, MissionPace } from '@astera/rules';
+import type { ChatLanguage, MissionPace, ReactionEmoji, TransferReturnPlan } from '@astera/rules';
 import type {
   Fleet,
   Resources,
@@ -24,6 +24,7 @@ import type { z } from 'zod';
 import type {
   ClanChatPage,
   ChatPage,
+  DmPage,
   AnnouncementsPage,
   Contact,
   MiningFieldView,
@@ -261,6 +262,22 @@ export function useSkinPricing() {
 export function usePurchaseSkin() {
   const api = useApi();
   return useMutation({ mutationFn: (itemId: PlanetSkinId | 'bundle') => api.purchaseSkin(itemId) });
+}
+
+export function usePolarShop() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.polarShop, queryFn: api.polarShop, staleTime: 30_000, refetchOnWindowFocus: true });
+}
+
+export function usePolarPricing() {
+  const api = useApi();
+  return useQuery({ queryKey: keys.polarPricing, queryFn: api.polarPricing,
+    staleTime: 60_000, refetchOnWindowFocus: true });
+}
+
+export function usePurchasePolarSkin() {
+  const api = useApi();
+  return useMutation({ mutationFn: (itemId: PlanetSkinId | 'bundle') => api.purchasePolarSkin(itemId) });
 }
 
 export function useEquipSkin() {
@@ -828,7 +845,8 @@ export function useClanActions() {
     },
   });
   const postChat = useMutation({
-    mutationFn: (body: string) => api.postClanChat(body),
+    mutationFn: (body: string | { content: string; replyToMessageId?: string }) =>
+      typeof body === 'string' ? api.postClanChat(body) : api.postClanChat(body.content, body.replyToMessageId),
     onMutate: async () => {
       await client.cancelQueries({ queryKey: keys.clanChat });
     },
@@ -940,6 +958,100 @@ export function useChatUnread(language: ChatLanguage = currentLanguage(), enable
   });
 }
 
+export function useDmUnread(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.dmUnread, queryFn: api.dmUnread, enabled, ...READ });
+}
+
+export function useDmConversations(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.dmConversations, queryFn: api.dmConversations, enabled, ...READ });
+}
+
+export function useDmContacts(query: string, enabled: boolean) {
+  const api = useApi();
+  return useQuery({
+    queryKey: keys.dmContacts(query), queryFn: () => api.dmContacts(query),
+    enabled, staleTime: 15_000,
+  });
+}
+
+export function useDmMessages(conversationId?: string) {
+  const api = useApi();
+  return useInfiniteQuery({
+    queryKey: keys.dmMessagesFor(conversationId ?? ''),
+    queryFn: ({ pageParam }) => api.dmMessages(conversationId!, pageParam ?? undefined),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextBefore,
+    enabled: conversationId !== undefined,
+    staleTime: 15_000,
+  });
+}
+
+export function usePostDm() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ recipientPlayerId, content, replyToMessageId }: { recipientPlayerId: string; content: string; replyToMessageId?: string }) =>
+      replyToMessageId ? api.postDm(recipientPlayerId, content, replyToMessageId) : api.postDm(recipientPlayerId, content),
+    onSuccess: ({ conversationId, message }) => {
+      client.setQueryData<InfiniteData<DmPage, string | null>>(keys.dmMessagesFor(conversationId), (current) => {
+        if (!current) return {
+          pages: [{ messages: [message], nextBefore: null, canSend: true, unavailableReason: null }],
+          pageParams: [null],
+        };
+        const first = current.pages[0];
+        if (!first || first.messages.some((row) => row.id === message.id)) return current;
+        return { ...current, pages: [{ ...first, messages: [...first.messages, message] }, ...current.pages.slice(1)] };
+      });
+      void client.invalidateQueries({ queryKey: keys.dmConversations });
+      void client.invalidateQueries({ queryKey: keys.dmUnread });
+    },
+  });
+}
+
+export function useMessageReaction() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ channel, messageId, emoji }: {
+      channel: 'general' | 'clan' | 'dm'; messageId: string; emoji: ReactionEmoji | null;
+    }) => api.reactToMessage(channel, messageId, emoji),
+    onSuccess: (_result, { channel }) => {
+      const key = channel === 'general' ? keys.chatMessages
+        : channel === 'clan' ? keys.clanChat : keys.dmMessages;
+      void client.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+export function useMarkDmRead() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ conversationId, messageId }: { conversationId: string; messageId: string }) =>
+      api.markDmRead(conversationId, messageId),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.dmConversations });
+      void client.invalidateQueries({ queryKey: keys.dmUnread });
+    },
+  });
+}
+
+export function useSetDmBlock() {
+  const api = useApi();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ targetPlayerId, blocked }: { targetPlayerId: string; blocked: boolean }) =>
+      blocked ? api.blockDm(targetPlayerId) : api.unblockDm(targetPlayerId),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: keys.dmConversations });
+      void client.invalidateQueries({ queryKey: keys.dmMessages });
+      void client.invalidateQueries({ queryKey: ['dm', 'contacts'] });
+    },
+  });
+}
+
 export function useChronicle() {
   const api = useApi();
   return useInfiniteQuery({
@@ -1012,7 +1124,8 @@ export function usePostChat(language: ChatLanguage = currentLanguage()) {
   const api = useApi();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (content: string) => api.postChat(language, content),
+    mutationFn: (body: string | { content: string; replyToMessageId?: string }) =>
+      typeof body === 'string' ? api.postChat(language, body) : api.postChat(language, body.content, body.replyToMessageId),
     onMutate: async () => {
       // A GET started before Send cannot be allowed to land after the
       // authoritative POST response and erase the new message from the cache.
@@ -1772,9 +1885,9 @@ function useApplyMiningResult(activePlanetId: string | null) {
  * solved from that world's coordinates — reusing another world's answer would put
  * a flight time on the screen that no launch from here could keep.
  *
- * A LIVE SIGHT READING, NOT AN ADDRESS BOOK. Unlike the asteroid field, this list
- * SHRINKS: a pirate that leaves the commander's circles stops existing for them,
- * so nothing here may be cached forward or merged with an earlier read.
+ * A current reading of pirates identified once by Telescope. Discovery persists
+ * after they leave sight, but the roster, rendezvous and deadline keep changing.
+ * A dead pirate leaves the list, so no earlier read may be merged forward.
  */
 export function usePirates() {
   const api = useApi();
@@ -2058,12 +2171,13 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
       pace?: MissionPace;
-    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace),
+      returnPlan: TransferReturnPlan;
+    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace, returnPlan),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

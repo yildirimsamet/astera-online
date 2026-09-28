@@ -15,7 +15,7 @@ import { serverNow } from '../lib/clock.js';
  *
  * EVERY OTHER MOVING THING IN THIS FOLDER IS FOGGED. A fleet is drawn in full
  * only for its owner; a stranger's craft is a `Contact`, sensed and bounded by a
- * sensor circle; a pirate is never remembered once it leaves one. The trade ship
+ * sensor circle; a pirate remains identified after Telescope discovery. The trade ship
  * is none of those, by owner decision: it is an ANNOUNCED public moment, so its
  * whole orbit is on the wire (`ActiveGalaxyEvent`'s `TRADE_SHIP` variant) and it
  * is drawn for every player with no sensor check at all — no zoning helper of
@@ -92,7 +92,7 @@ const TRADE_SHIP_FLAME = '#ffe9b8';
  * `opacity={0}` rather than `visible={false}`: an invisible object is not raycast
  * at all, which would leave nothing to press.
  */
-const TRADE_SHIP_HIT_RADIUS = TRADE_SHIP_SCALE * 1.8;
+export const TRADE_SHIP_HIT_RADIUS = TRADE_SHIP_SCALE * 1.25;
 
 /**
  * How far ahead the heading sample looks, in milliseconds.

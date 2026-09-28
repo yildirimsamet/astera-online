@@ -2662,16 +2662,15 @@ function PirateMark({ scale, focused }: {
   );
 }
 
-/** Half-footprint used by a pirate's per-craft pick sphere. */
-export function formationMarkerHitRadius(hull: HullId, baseScale: number): number {
-  return Math.max(baseScale * 0.65, hullVisualScale(hull, baseScale) * 0.58);
+/** A slim pick volume follows each pirate hull along the formation's heading. */
+export function formationMarkerHitSize(hull: HullId, baseScale: number): Vec3Tuple {
+  const size = hullVisualScale(hull, baseScale);
+  return [size * 0.82, size * 0.68, size * 1.3];
 }
 
 /**
- * A pirate formation contains large empty wedges between its visible hulls. One
- * box around those extrema made all of that empty space clickable, especially at
- * close zoom. Instanced spheres follow the actual craft instead: still one draw
- * and one handler, but no invisible horizontal wall across the galaxy.
+ * A pirate formation contains large empty wedges between its visible hulls.
+ * One narrow box per craft follows those slots without covering the gaps.
  */
 function PirateFormationHitTarget({
   markers,
@@ -2692,11 +2691,12 @@ function PirateFormationHitTarget({
     if (!node) return;
     markers.forEach((marker, index) => {
       transform.position.set(...(slots[index] ?? [0, 0, 0]));
-      transform.scale.setScalar(formationMarkerHitRadius(marker.hull, scale));
+      transform.scale.set(...formationMarkerHitSize(marker.hull, scale));
       transform.updateMatrix();
       node.setMatrixAt(index, transform.matrix);
     });
     node.instanceMatrix.needsUpdate = true;
+    node.computeBoundingSphere();
   }, [markers, scale, slots, transform]);
 
   return (
@@ -2708,7 +2708,7 @@ function PirateFormationHitTarget({
       onPointerUp={onPointerUp}
       renderOrder={-1}
     >
-      <sphereGeometry args={[1, 12, 8]} />
+      <boxGeometry args={[1, 1, 1]} />
       <HitboxMaterial kind="pirate" />
     </instancedMesh>
   );

@@ -35,12 +35,14 @@ import { registerServerRoutes } from './routes/servers.js';
 import { registerPreviewRoutes } from './routes/preview.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerChatRoutes } from './routes/chat.js';
+import { registerDmRoutes } from './routes/dm.js';
 import { registerChronicleRoutes } from './routes/chronicle.js';
 import { registerGalaxyEventRoutes } from './routes/galaxyEvents.js';
 import { registerClanRoutes } from './routes/clan.js';
 import { registerCommunityRoutes } from './routes/community.js';
 import { registerCosmeticRoutes } from './routes/cosmetics.js';
 import { registerPaddleRoutes } from './routes/paddle.js';
+import { registerPolarRoutes } from './routes/polar.js';
 import { Presence } from './services/presence.js';
 import { Projections } from './services/projections.js';
 import { RateLimitBackend } from './services/rateLimitBackend.js';
@@ -409,12 +411,14 @@ export function buildApp(opts: BuildAppOptions): BuiltApp {
     registerSessionRoutes(app);
     registerReturnApplicationRoutes(app);
     registerChatRoutes(app);
+    registerDmRoutes(app);
     registerChronicleRoutes(app);
     registerGalaxyEventRoutes(app);
     registerClanRoutes(app);
     registerCommunityRoutes(app);
     registerCosmeticRoutes(app);
     registerPaddleRoutes(app, opts.env);
+    registerPolarRoutes(app, opts.env);
   });
 
   return {

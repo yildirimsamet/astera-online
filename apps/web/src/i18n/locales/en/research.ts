@@ -126,7 +126,7 @@ export const research = {
   cargoTag: "Every hold carries more",
   cargoRole: "Raises raid loot, world transfers and trade convoys alike · asteroid mining is its own ladder",
   cargoDetail:
-    "Each rung increases what your ships carry: raid loot across the whole mobile fleet, and the hold of every Courier, Wayfarer, Atlas and Argosy moving ore between your worlds or trading with a merchant. Prospectors have their own ladder in Prospector Holds.",
+    "Each rung expands the hold of every mobile ship for raids and transfers between your worlds. Courier, Wayfarer, Atlas and Argosy also carry more in trade convoys. Prospectors use Prospector Holds instead.",
 
   engineeringName: "Starship Engineering",
   engineeringTag: "Opens advanced hull tiers",

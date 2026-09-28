@@ -326,8 +326,21 @@ export async function secedeColony(
     store, and the store went with the world. Paying it back into a capital that never
     held it would make losing a colony profitable on the turn it happened.
   */
-  await tx.update(buildOrders).set({ status: 'CANCELLED' })
-    .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')));
+  const abandoned = await tx.update(buildOrders).set({ status: 'CANCELLED' })
+    .where(and(eq(buildOrders.planetId, planetId), eq(buildOrders.status, 'BUILDING')))
+    .returning({ id: buildOrders.id });
+  /*
+    AND THEIR COMPLETIONS CLOSE WITH THEM, the way `cancelBuildOrder` closes its own. Left
+    live, each one woke on a world with no commander: `loadLocked` refused the handler
+    five times, then refused the abandon, and that throw stranded the rest of the batch.
+  */
+  if (abandoned.length > 0) {
+    await tx.update(scheduledEvents).set({ status: 'done', claimedAt: null }).where(and(
+      eq(scheduledEvents.kind, 'build_complete'),
+      inArray(scheduledEvents.refId, abandoned.map((order) => order.id)),
+      inArray(scheduledEvents.status, ['pending', 'processing']),
+    ));
+  }
 
   const faultRows = await tx.select({ id: planetFaults.id }).from(planetFaults)
     .where(eq(planetFaults.planetId, planetId));

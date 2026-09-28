@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useChatUnread, useClanBadge } from '../../api/queries.js';
+import { useChatUnread, useClanBadge, useDmUnread } from '../../api/queries.js';
 import { ChatScreen, type ChatChannel } from '../../screens/ChatScreen.js';
 import { Sheet } from '../kit/Sheet.js';
 
@@ -8,7 +8,7 @@ import { Sheet } from '../kit/Sheet.js';
  * kaldır" — chat left the bell for its round button on the galaxy, low on the right
  * where a thumb reaches it. People chat live, and it is what keeps them coming back.
  *
- * A full page whose log owns its scrolling. It opens on the channel with something
+ * A fixed-height panel whose log owns its scrolling. It opens on the channel with something
  * unread, as the old launcher did; a world named in a message flies the camera there
  * after the page closes, so the move is seen.
  */
@@ -23,12 +23,13 @@ export function ChatHost({ onClose, onFocusPlanet, channel, draft }: {
   const { t } = useTranslation();
   const generalUnread = useChatUnread().data?.count ?? 0;
   const clanUnread = useClanBadge().data?.clanChatUnread ?? 0;
+  const dmUnread = useDmUnread().data?.count ?? 0;
 
   return (
-    <Sheet title={t('bell.chat')} onClose={onClose} detents={['full']} contained>
+    <Sheet title={t('bell.chat')} onClose={onClose} detents={['full']} contained fixedHeight>
       <div className="min-h-0 flex-1">
         <ChatScreen
-          initialChannel={channel ?? (generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general')}
+          initialChannel={channel ?? (dmUnread > 0 ? 'dm' : generalUnread === 0 && clanUnread > 0 ? 'clan' : 'general')}
           {...(draft ? { initialClanDraft: draft } : {})}
           onFocusPlanet={(planetId) => {
             onClose();

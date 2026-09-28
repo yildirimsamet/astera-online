@@ -1222,8 +1222,9 @@ frozen. Never delete that work to force the deadline.
 
 After rollover require: two new live ruleset-v4 seasons; old seasons `wiped`; no live missions/builds from
 the old world; no failed/processing lifecycle events; one pending end, one pending rollover and
-the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity
-and season results survive; disposable player/world rows do not.
+the expected season-act events per successor; and the 300 + 30/15/6 query above. Account identity,
+season results and `chat_archive` (both chat channels, copied by the wipe before it clears them —
+2026-09-27) survive; disposable player/world rows do not.
 
 ### Owner-authorized emergency wipe
 

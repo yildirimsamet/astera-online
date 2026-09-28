@@ -20,6 +20,7 @@
     "@astera/rules": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/rate-limit": "^11.2.0",
+    "@polar-sh/sdk": "1.0.0-alpha.22",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.0",
     "ioredis": "^6.0.0",

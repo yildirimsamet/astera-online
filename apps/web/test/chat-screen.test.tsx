@@ -44,6 +44,7 @@ function show(
       content: 'Klan hazır', createdAt: new Date(at.getTime() + 3000), self: true,
     },
   });
+  vi.spyOn(api, 'reactToMessage').mockResolvedValue({ reactions: [{ emoji: '👍', count: 1, mine: true }] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const language = currentLanguage();
   client.setQueryData(keys.chatMessagesFor(language), generalData);
@@ -84,6 +85,99 @@ afterEach(async () => {
 });
 
 describe('galaxy chat surface', () => {
+  it('keeps reaction controls outside the message bubble and omits redundant initials', async () => {
+    show();
+    const bubble = document.querySelector('[data-chat-message="one"]')!;
+    expect(screen.queryByText('İZ')).not.toBeInTheDocument();
+    fireEvent.contextMenu(bubble);
+    const addReaction = screen.getByRole('button', { name: 'Add emoji reaction' });
+    expect(bubble).not.toContainElement(addReaction);
+    await userEvent.setup().click(addReaction);
+    const picker = screen.getByRole('group', { name: 'Choose an emoji' });
+    expect(bubble).not.toContainElement(picker);
+    expect(picker.querySelectorAll('button')).toHaveLength(6);
+  });
+
+  it('keeps the empty composer compact and reveals the character count near its limit', () => {
+    show();
+    expect(screen.queryByText('280 characters left')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message the galaxy' }), { target: { value: 'a'.repeat(280) } });
+    expect(screen.getByText('0 characters left')).toBeInTheDocument();
+  });
+
+  it('closes the previous emoji picker when opening actions on another message', async () => {
+    show();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add emoji reaction' }));
+    expect(screen.getByRole('group', { name: 'Choose an emoji' })).toBeInTheDocument();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="hidden"]')!);
+    expect(screen.queryByRole('group', { name: 'Choose an emoji' })).not.toBeInTheDocument();
+  });
+
+  it('closes message actions when clicking outside the action bar', async () => {
+    show();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    expect(document.querySelector('[data-chat-message-actions]')).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('textbox', { name: 'Message the galaxy' }));
+    expect(document.querySelector('[data-chat-message-actions]')).not.toBeInTheDocument();
+  });
+
+  it('closes the emoji picker and message actions on an outside click', async () => {
+    show();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add emoji reaction' }));
+    const picker = screen.getByRole('group', { name: 'Choose an emoji' });
+    fireEvent.pointerDown(picker);
+    expect(picker).toBeInTheDocument();
+
+    await userEvent.setup().click(document.body);
+    expect(screen.queryByRole('group', { name: 'Choose an emoji' })).not.toBeInTheDocument();
+    expect(document.querySelector('[data-chat-message-actions]')).not.toBeInTheDocument();
+  });
+
+  it('opens actions by long press and sends a quoted General reply', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    const bubble = document.querySelector('[data-chat-message="one"]')!;
+    fireEvent.pointerDown(bubble);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    fireEvent.pointerUp(bubble);
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    expect(screen.getByText('Replying to İzci')).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'I agree');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'I agree', 'one'); });
+  });
+
+  it('keeps keyboard activation of a commander link separate from message actions', () => {
+    show();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'İzci' }), { key: 'Enter' });
+    expect(screen.queryByRole('button', { name: 'Add emoji reaction' })).not.toBeInTheDocument();
+  });
+
+  it('keeps a quoted reply with its channel when switching tabs', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Still replying');
+    await user.click(screen.getByRole('tab', { name: /Clan/ }));
+    await user.click(screen.getByRole('tab', { name: /General/ }));
+    expect(screen.getByText('Replying to İzci')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Still replying', 'one'); });
+  });
+
+  it('sends a Clan reaction from the shared message actions', async () => {
+    const { api } = show(vi.fn(), 'clan');
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="clan-one"]')!);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Add emoji reaction' }));
+    await user.click(screen.getByRole('button', { name: 'React with 👍' }));
+    await waitFor(() => { expect(api.reactToMessage).toHaveBeenCalledWith('clan', 'clan-one', '👍'); });
+  });
+
   it('opens the public chat in the application language', async () => {
     await i18n.changeLanguage('fr');
     show();

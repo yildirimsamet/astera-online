@@ -45,7 +45,7 @@ import type {
   Vec3,
   CountryCode,
 } from '@astera/rules';
-import type { ChatLanguage } from '@astera/rules';
+import type { ChatLanguage, ReactionEmoji } from '@astera/rules';
 
 /**
  * Seasonal and permanent tables. Nothing here stores a value that can be derived from a formula
@@ -907,6 +907,7 @@ export const clanMessages = pgTable('clan_messages', {
   clanId: uuid('clan_id').notNull().references(() => clans.id),
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
   content: text('content').notNull(),
+  replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => clanMessages.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 }, (t) => [
   index('clan_messages_cursor_idx').on(t.clanId, t.createdAt, t.id),
@@ -932,7 +933,8 @@ export const clanEvents = pgTable('clan_events', {
  * THE GALAXY'S CONVERSATION. D77.
  *
  * Seasonal by construction: authors and readers are season players, and wipe removes
- * these rows before either parent. The account display name is joined when reading so a
+ * these rows before either parent — after copying them into `chat_archive`, which outlives
+ * the season. The account display name is joined when reading so a
  * message cannot preserve stale `players.name` identity and cannot accept a client name.
  */
 export const chatMessages = pgTable('chat_messages', {
@@ -941,10 +943,42 @@ export const chatMessages = pgTable('chat_messages', {
   authorPlayerId: uuid('author_player_id').notNull().references(() => players.id),
   language: text('language').$type<ChatLanguage>().notNull().default('tr'),
   content: text('content').notNull(),
+  replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => chatMessages.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('chat_messages_season_language_cursor_idx').on(t.seasonId, t.language, t.createdAt, t.id),
   index('chat_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
+]);
+
+/**
+ * EVERY SEASON'S CONVERSATION, KEPT. Owner instruction, 2026-09-27: *"Sezon bitimlerinde force
+ * wipe bile olsa chat saklanmalı silinmemeli. Bizim için geriye dönük veri."*
+ *
+ * `chat_messages` and `clan_messages` hang off `players`, which every wipe deletes, so the wipe
+ * copies both channels here first (`archiveSeasonChat`) and then clears them as before. Nothing
+ * here points at a player or a clan: the author is the permanent account plus the name they wore,
+ * and a clan is the tag and name it had. `id` is the live message's id, so a repeated copy is a
+ * no-op. Operator data only — no route reads it. Erasing a person erases their rows
+ * (`forgetAccount`), which is what the foreign key to `accounts` enforces.
+ */
+export const chatArchive = pgTable('chat_archive', {
+  id: uuid('id').primaryKey(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  channel: text('channel').$type<'GALAXY' | 'CLAN'>().notNull(),
+  /** The public chat language; null on a clan message. */
+  language: text('language').$type<ChatLanguage>(),
+  clanId: uuid('clan_id'),
+  clanTag: text('clan_tag'),
+  clanName: text('clan_name'),
+  authorAccountId: uuid('author_account_id').notNull().references(() => accounts.id),
+  authorName: text('author_name').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('chat_archive_season_idx').on(t.seasonId, t.channel, t.createdAt),
+  index('chat_archive_author_idx').on(t.authorAccountId),
+  check('chat_archive_channel_check', sql`${t.channel} IN ('GALAXY', 'CLAN')`),
 ]);
 
 /** One independent read marker per commander and public chat language. */
@@ -955,6 +989,81 @@ export const chatReadMarkers = pgTable('chat_read_markers', {
 }, (t) => [
   primaryKey({ columns: [t.playerId, t.language] }),
   index('chat_read_markers_player_idx').on(t.playerId),
+]);
+
+/** A season-local pair. The same two commanders keep one conversation after a Silent Space return. */
+export const dmConversations = pgTable('dm_conversations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  playerLowId: uuid('player_low_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  playerHighId: uuid('player_high_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+}, (t) => [
+  uniqueIndex('dm_conversations_pair_idx').on(t.seasonId, t.playerLowId, t.playerHighId),
+  index('dm_conversations_high_idx').on(t.playerHighId),
+  check('dm_conversations_order_check', sql`${t.playerLowId} < ${t.playerHighId}`),
+]);
+
+export const dmMessages = pgTable('dm_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  conversationId: uuid('conversation_id').notNull().references(() => dmConversations.id, { onDelete: 'cascade' }),
+  authorPlayerId: uuid('author_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => dmMessages.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('dm_messages_cursor_idx').on(t.conversationId, t.createdAt, t.id),
+  index('dm_messages_author_rate_idx').on(t.authorPlayerId, t.createdAt),
+  check('dm_messages_content_check', sql`char_length(btrim(${t.content})) BETWEEN 1 AND 280`),
+]);
+
+export const dmReadMarkers = pgTable('dm_read_markers', {
+  conversationId: uuid('conversation_id').notNull().references(() => dmConversations.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  readAt: timestamp('read_at', { withTimezone: true }).notNull(),
+}, (t) => [primaryKey({ columns: [t.conversationId, t.playerId] })]);
+
+/** One current emoji per player per message, with the message's own FK handling removal. */
+export const messageReactions = pgTable('message_reactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  chatMessageId: uuid('chat_message_id').references(() => chatMessages.id, { onDelete: 'cascade' }),
+  clanMessageId: uuid('clan_message_id').references(() => clanMessages.id, { onDelete: 'cascade' }),
+  dmMessageId: uuid('dm_message_id').references(() => dmMessages.id, { onDelete: 'cascade' }),
+  playerId: uuid('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  emoji: text('emoji').$type<ReactionEmoji>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex('message_reactions_chat_player_idx').on(t.chatMessageId, t.playerId),
+  uniqueIndex('message_reactions_clan_player_idx').on(t.clanMessageId, t.playerId),
+  uniqueIndex('message_reactions_dm_player_idx').on(t.dmMessageId, t.playerId),
+  check('message_reactions_target_check', sql`num_nonnulls(${t.chatMessageId}, ${t.clanMessageId}, ${t.dmMessageId}) = 1`),
+]);
+
+/** A block belongs to its owner; either participant's block closes sending both ways. */
+export const dmBlocks = pgTable('dm_blocks', {
+  blockerPlayerId: uuid('blocker_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  targetPlayerId: uuid('target_player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.blockerPlayerId, t.targetPlayerId] }),
+  index('dm_blocks_target_idx').on(t.targetPlayerId),
+  check('dm_blocks_distinct_check', sql`${t.blockerPlayerId} <> ${t.targetPlayerId}`),
+]);
+
+/** Operator history survives a wipe; the player-facing DM history does not. */
+export const dmArchive = pgTable('dm_archive', {
+  id: uuid('id').primaryKey(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  senderAccountId: uuid('sender_account_id').notNull().references(() => accounts.id),
+  recipientAccountId: uuid('recipient_account_id').notNull().references(() => accounts.id),
+  senderName: text('sender_name').notNull(),
+  recipientName: text('recipient_name').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('dm_archive_season_idx').on(t.seasonId, t.createdAt),
+  index('dm_archive_sender_idx').on(t.senderAccountId),
+  index('dm_archive_recipient_idx').on(t.recipientAccountId),
 ]);
 
 /**
@@ -1450,6 +1559,8 @@ export const missions = pgTable('missions', {
    */
   salvage: jsonb('salvage').$type<Resources>(),
   cargo: jsonb('cargo').$type<Resources>(),
+  /** Transfer-only outbound choice; null keeps older one-way missions unchanged. */
+  returnFleet: jsonb('return_fleet').$type<Fleet>(),
   /** Founding fee held until success; returned on failure. Null on older missions. */
   settlementEscrow: jsonb('settlement_escrow').$type<Resources>(),
     /**
@@ -3525,6 +3636,38 @@ export const paddleWebhookEvents = pgTable('paddle_webhook_events', {
 export const paddleReversals = pgTable('paddle_reversals', {
   transactionId: text('transaction_id').primaryKey(),
   action: text('action').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Polar checkout intent. Kept separate from the historical Paddle ledger. */
+export const polarSkinOrders = pgTable('polar_skin_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  itemId: text('item_id').notNull(),
+  productId: uuid('product_id').notNull(),
+  checkoutId: uuid('checkout_id'),
+  checkoutUrl: text('checkout_url'),
+  orderId: uuid('order_id'),
+  status: text('status').$type<'PENDING' | 'COMPLETED' | 'REVOKED' | 'FAILED'>().notNull().default('PENDING'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('polar_skin_orders_checkout_idx').on(t.checkoutId),
+  uniqueIndex('polar_skin_orders_order_idx').on(t.orderId),
+  uniqueIndex('polar_skin_orders_pending_idx').on(t.accountId, t.itemId)
+    .where(sql`${t.status} = 'PENDING' AND ${t.accountId} IS NOT NULL`),
+]);
+
+/** Polar identifies deliveries in the webhook-id header, independent of order ID. */
+export const polarWebhookEvents = pgTable('polar_webhook_events', {
+  id: text('id').primaryKey(),
+  eventType: text('event_type').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Persist full refunds even if their paid event has not arrived yet. */
+export const polarReversals = pgTable('polar_reversals', {
+  orderId: uuid('order_id').primaryKey(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

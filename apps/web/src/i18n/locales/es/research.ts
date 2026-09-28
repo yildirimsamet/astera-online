@@ -126,7 +126,7 @@ export const research = {
   cargoTag: "Cada bodega lleva más",
   cargoRole: "Aumenta el botín de incursiones, las transferencias mundiales y los convoyes comerciales por igual · La minería de asteroides es su propia escalera",
   cargoDetail:
-    "Cada peldaño aumenta lo que transportan tus naves: botín de incursión en toda la flota móvil y el control de cada Mensajero, Caminante, Atlas y Argosy que mueve mineral entre tus mundos o comercia con un comerciante. Los prospectores tienen su propia escalera en Prospector Holds.",
+    "Cada nivel amplía la bodega de todas las naves móviles para incursiones y transferencias entre tus mundos. Mensajero, Caminante, Atlas y Argosy también llevan más en convoyes comerciales. Los prospectores usan su propia investigación.",
 
   engineeringName: "Ingeniería de naves estelares",
   engineeringTag: "Abre niveles avanzados de casco.",

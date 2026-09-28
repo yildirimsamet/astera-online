@@ -45,7 +45,7 @@ const raidBody = z.object({
 /**
  * PIRATES — the third target class. D150.
  *
- * `GET` answers with the pirates this commander can see, and nothing else: no
+ * `GET` answers with pirates this commander has identified by Telescope, and nothing else: no
  * orbital elements, no raw lane index, no hoard figure. The fog is applied in the
  * query through `pirateZone` — live sight off `sensorZone`, floored at IDENTIFIED
  * by D158/D160's discovery memory — so what this route hands over is exactly what
@@ -148,14 +148,14 @@ export function registerPirateRoutes(app: FastifyInstance): void {
     const pirates = snapshot.standing(now).flatMap((spec) => {
       const at = piratePosition(spec, nowMinutes);
       const zone = pirateZone(sensors, spec, at, epochs, nowMinutes);
-      if (zone === 'NONE') return [];
+      // Radar-only returns stay anonymous in galaxy traffic. This named list must
+      // never join their opaque handle to a callsign, location or launch quote.
+      if (zone !== 'IDENTIFIED') return [];
       /** Nothing of this commander's covers it right now: the reading is frozen. */
       const remembered = sensorZone(sensors, at) === 'NONE';
       const crew = snapshot.livingRosterOf(spec.index);
       if (fleetCount(crew) === 0) return [];
 
-      const reveal = sensors.filter((post) => distance(post.at, at) <= post.detect);
-      const identified = zone === 'IDENTIFIED';
       /*
         SOLVED PER DISTINCT SPEED, PUBLISHED PER HULL.
 
@@ -240,19 +240,10 @@ export function registerPirateRoutes(app: FastifyInstance): void {
           (soonest, e) => (soonest === null || e.minutes < soonest ? e.minutes : soonest),
           null,
         ),
-        // Everything below is the disclosure ladder, and IDENTIFIED is what buys
-        // the two facts that price the fight: the crew, and the level.
-        ...(identified
-          ? {
-              level: spec.level,
-              fleet: crew,
-              mass: massClass(crew),
-              damageMult: PIRATE.damageMult[spec.level],
-            }
-          : {
-              ...(reveal.some((post) => post.revealsSize) ? { mass: massClass(crew) } : {}),
-              ...(reveal.some((post) => post.revealsKind) ? { silhouette: 'pirate' as const } : {}),
-            }),
+        level: spec.level,
+        fleet: crew,
+        mass: massClass(crew),
+        damageMult: PIRATE.damageMult[spec.level],
       }];
     });
 

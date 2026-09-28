@@ -66,6 +66,7 @@ const settingsBody = z.object({
 const aidPolicyBody = z.object({ enabled: z.boolean() }).strict();
 const messageBody = z.object({
   content: z.string().transform((value) => value.trim()).pipe(z.string().min(1).max(560)),
+  replyToMessageId: z.string().uuid().optional(),
 }).strict();
 const chatReadBody = z.object({ messageId: z.string().uuid() }).strict();
 const emptyBody = z.object({}).strict();
@@ -553,7 +554,8 @@ export function registerClanRoutes(app: FastifyInstance): void {
       key: idempotencyKey(req),
       body,
       now,
-    }, (tx) => postClanChat(tx, { playerId: actor.playerId, content: body.content, now }))
+    }, (tx) => postClanChat(tx, { playerId: actor.playerId, content: body.content, now,
+      replyToMessageId: body.replyToMessageId }))
       .then((message) => ({ message }));
   });
 

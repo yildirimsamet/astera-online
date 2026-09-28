@@ -6,6 +6,7 @@ import {
   TRADE_SHIP_BASE_SCALE,
   TRADE_SHIP_SCALE,
   TRADE_SHIP_SCALE_MULT,
+  TRADE_SHIP_HIT_RADIUS,
 } from '../src/galaxy/TradeShip.js';
 
 /**
@@ -73,6 +74,10 @@ describe('tradeShipWorldPosition', () => {
 });
 
 describe('TRADE_SHIP_SCALE', () => {
+  it('keeps the merchant pick sphere close to its drawn hull', () => {
+    expect(TRADE_SHIP_HIT_RADIUS).toBeLessThanOrEqual(TRADE_SHIP_SCALE * 1.3);
+    expect(TRADE_SHIP_HIT_RADIUS).toBeGreaterThan(TRADE_SHIP_SCALE);
+  });
   it('is exactly four times the base craft scale', () => {
     expect(TRADE_SHIP_SCALE_MULT).toBe(4);
     expect(TRADE_SHIP_SCALE).toBeCloseTo(TRADE_SHIP_BASE_SCALE * TRADE_SHIP_SCALE_MULT, 9);

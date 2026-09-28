@@ -109,7 +109,7 @@ export function SeasonArchiveScreen({
           and on a horizontal rail the gesture IS the request.
         */}
         <div
-          className="flex gap-2 overflow-x-auto pb-1"
+          className="flex gap-2 overflow-x-auto pb-1.5"
           onScroll={(event) => {
             const strip = event.currentTarget;
             const remaining = strip.scrollWidth - strip.scrollLeft - strip.clientWidth;

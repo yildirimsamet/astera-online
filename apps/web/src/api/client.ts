@@ -10,12 +10,15 @@ import type {
   SatelliteId,
   PlanetSkinId,
   ChatLanguage,
+  ReactionEmoji,
   CountryCode,
   MissionPace,
+  TransferReturnPlan,
 } from '@astera/rules';
 import { noteServerTime } from '../lib/clock.js';
 import {
   adminFeedbackPageSchema,
+  skinGrantedSchema,
   activeGalaxyEventsSchema,
   announcementPublishedSchema,
   announcementsPageSchema,
@@ -61,6 +64,9 @@ import {
   skinShopSchema,
   skinPricingSchema,
   skinPurchaseSchema,
+  polarShopSchema,
+  polarPricingSchema,
+  polarPurchaseSchema,
   skinEquipSchema,
   intelSchema,
   miningLaunchSchema,
@@ -78,8 +84,15 @@ import {
   seasonCommanderProfileSchema,
   chatPageSchema,
   chatPostSchema,
+  messageReactionResultSchema,
   chatReadSchema,
   chatUnreadSchema,
+  dmContactsSchema,
+  dmConversationsSchema,
+  dmPageSchema,
+  dmPostSchema,
+  dmReadSchema,
+  dmBlockSchema,
   chroniclePageSchema,
   meSchema,
   notificationsSchema,
@@ -155,7 +168,7 @@ export interface ApiDeps {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /**
    * The payload as an OBJECT. `send` serialises it — do not pre-encode.
    *
@@ -415,6 +428,12 @@ export class Api {
   adminFeedback = () => this.send('/api/admin/feedback', adminFeedbackPageSchema);
   postPerfSession = (session: PerfPayload) =>
     this.send('/api/admin/perf', perfSessionSavedSchema, { method: 'POST', body: { ...session } });
+  /** Records a look paid for elsewhere; the same order again is a harmless replay. */
+  grantSkin = (username: string, skinId: PlanetSkinId, orderRef: string) =>
+    this.send('/api/admin/skins/grant', skinGrantedSchema, {
+      method: 'POST',
+      body: { username, skinId, orderRef },
+    });
   publishAnnouncement = (title: string, bodyHtml: string) =>
     this.send('/api/admin/announcements', announcementPublishedSchema, {
       method: 'POST',
@@ -501,6 +520,10 @@ export class Api {
   skinPricing = () => this.send('/api/skins/pricing', skinPricingSchema);
   purchaseSkin = (itemId: PlanetSkinId | 'bundle') =>
     this.send('/api/skins/purchase', skinPurchaseSchema, { method: 'POST', body: { itemId } });
+  polarShop = () => this.send('/api/skins/polar-shop', polarShopSchema);
+  polarPricing = () => this.send('/api/skins/polar-pricing', polarPricingSchema);
+  purchasePolarSkin = (itemId: PlanetSkinId | 'bundle') =>
+    this.send('/api/skins/polar-purchase', polarPurchaseSchema, { method: 'POST', body: { itemId } });
   equipSkin = (planetId: string, skinId: PlanetSkinId | null) =>
     this.send(`/api/skins/planets/${encodeURIComponent(planetId)}`, skinEquipSchema, {
       method: 'POST', body: { skinId },
@@ -615,19 +638,41 @@ export class Api {
   claimClanDepot = () => this.clanMutation('/api/clan/depot/claim', clanDepotClaimSchema);
   launchClanAid = (input: ClanAidInput) =>
     this.clanMutation('/api/clan/aid/launch', clanAidLaunchSchema, { ...input });
-  postClanChat = (content: string) =>
-    this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content });
+  postClanChat = (content: string, replyToMessageId?: string) =>
+    this.clanMutation('/api/clan/chat/messages', clanChatPostSchema, { content, ...(replyToMessageId ? { replyToMessageId } : {}) });
   markClanChatRead = (messageId: string) =>
     this.clanMutation('/api/clan/chat/read', clanChatReadSchema, { messageId });
   markClanSeen = () => this.clanMutation('/api/clan/read', clanSeenSchema);
 
   chatMessages = (language: ChatLanguage, before?: string) =>
     this.send(`/api/chat/messages?language=${language}&limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`, chatPageSchema);
-  postChat = (language: ChatLanguage, content: string) =>
-    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content, language } });
+  postChat = (language: ChatLanguage, content: string, replyToMessageId?: string) =>
+    this.send('/api/chat/messages', chatPostSchema, { method: 'POST', body: { content, language, ...(replyToMessageId ? { replyToMessageId } : {}) } });
+  reactToMessage = (channel: 'general' | 'clan' | 'dm', messageId: string, emoji: ReactionEmoji | null) =>
+    this.send('/api/chat/reactions', messageReactionResultSchema, { method: 'POST', body: { channel, messageId, emoji } });
   chatUnread = (language: ChatLanguage) => this.send(`/api/chat/unread?language=${language}`, chatUnreadSchema);
   markChatRead = (language: ChatLanguage, messageId: string) =>
     this.send('/api/chat/read', chatReadSchema, { method: 'POST', body: { messageId, language } });
+  dmContacts = (query: string) => this.send(`/api/dm/contacts?q=${encodeURIComponent(query)}`, dmContactsSchema);
+  dmConversations = () => this.send('/api/dm/conversations', dmConversationsSchema);
+  dmUnread = () => this.send('/api/dm/unread', chatUnreadSchema);
+  dmMessages = (conversationId: string, before?: string) => this.send(
+    `/api/dm/conversations/${encodeURIComponent(conversationId)}/messages?limit=50${before ? `&before=${encodeURIComponent(before)}` : ''}`,
+    dmPageSchema,
+  );
+  postDm = (recipientPlayerId: string, content: string, replyToMessageId?: string) => this.send('/api/dm/messages', dmPostSchema, {
+    method: 'POST', body: { recipientPlayerId, content, ...(replyToMessageId ? { replyToMessageId } : {}) },
+  });
+  markDmRead = (conversationId: string, messageId: string) => this.send(
+    `/api/dm/conversations/${encodeURIComponent(conversationId)}/read`, dmReadSchema,
+    { method: 'POST', body: { messageId } },
+  );
+  blockDm = (targetPlayerId: string) => this.send('/api/dm/blocks', dmBlockSchema, {
+    method: 'POST', body: { targetPlayerId },
+  });
+  unblockDm = (targetPlayerId: string) => this.send(
+    `/api/dm/blocks/${encodeURIComponent(targetPlayerId)}`, dmBlockSchema, { method: 'DELETE' },
+  );
   chronicle = (before?: string) =>
     this.send(`/api/chronicle?limit=30${before ? `&before=${encodeURIComponent(before)}` : ''}`, chroniclePageSchema);
   intel = () => this.send('/api/intel', intelSchema);
@@ -730,11 +775,12 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
         originPlanetId, targetPlanetId, fleet, cargo,
+        ...(returnPlan ? { returnPlan } : {}),
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
       },
     });

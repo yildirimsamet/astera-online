@@ -4,7 +4,7 @@ import { useRequest } from '../lib/useRequest.js';
 import { ViewChip, ViewSheet } from '../v2/hud/ViewSheet.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { ContextSlot } from '../v2/hud/ContextSlot.js';
-import { ChatChip, EventChips, GalaxyReadout, HomeChip } from '../v2/hud/GalaxyCorners.js';
+import { ChatChip, EventChips, GalaxyReadout, HomeChip, type GalaxyTarget } from '../v2/hud/GalaxyCorners.js';
 import { CommanderHost } from '../v2/shell/CommanderHost.js';
 import { BaseSwitch, type BaseView } from '../v2/hud/BaseSwitch.js';
 import { activeEvents, slotSuggestion } from '../lib/contextSlot.js';
@@ -27,6 +27,7 @@ import {
   usePirates,
   usePlanet,
   useChatUnread,
+  useDmUnread,
   useClanBadge,
   useClanWar,
   useClanWarActions,
@@ -67,6 +68,8 @@ import { serverNow } from '../lib/clock.js';
 import { readDismissed, rememberDismissed } from '../lib/slotMemory.js';
 import type { ChatChannel } from './ChatScreen.js';
 import { activeTradeShip } from '../lib/trade.js';
+import { compact } from '../lib/format.js';
+import { knownPirateContacts, pirateTargetName } from '../lib/galaxyTargets.js';
 import { activeIntergalacticConvoy } from '../lib/intergalacticConvoy.js';
 import {
   flightModifiers,
@@ -380,6 +383,7 @@ export function GalaxyView({
   // and whether anything is waiting inside it. Same read the menu row used.
   const clanBadge = useClanBadge();
   const chatUnread = useChatUnread().data?.count ?? 0;
+  const dmUnread = useDmUnread().data?.count ?? 0;
   const say = useToast();
   const now = useNow(5_000);
   /**
@@ -555,12 +559,9 @@ export function GalaxyView({
   /**
    * Which pirate the commitment sheet is open against. D150.
    *
-   * Held by ID rather than by the contact itself, because a pirate is a LIVE
-   * reading and never a remembered one: `/api/pirates` refetches on a timer and the
-   * list shrinks as well as grows. Keeping the object would leave the sheet open
-   * over a target that has left the caller's circles — a commitment surface for
-   * something that no longer exists for them, and a launch the server would refuse
-   * with `PIRATE_OUT_OF_SIGHT`.
+   * Held by ID rather than by the contact itself because the pirate's roster,
+   * deadline and rendezvous keep changing. The list can also shrink when a
+   * pirate dies, so the sheet always reads the current server entry.
    */
   const [attackingPirateId, setAttackingPirateId] = useState<string | null>(null);
   /**
@@ -807,15 +808,39 @@ export function GalaxyView({
   const wrecks = miningScene.debris;
   const threads = useMemo(() => pending.data?.pending ?? [], [pending.data]);
   const contacts = useMemo(() => traffic.data?.contacts ?? [], [traffic.data]);
-  /*
-    HOW MANY PIRATES THIS COMMANDER CAN SEE. D150.
-
-    Read from `/api/pirates` rather than counted off `contacts`, because the two
-    are different questions: a contact list carries anonymous Radar returns as
-    `unknown`, so counting pirates there would silently drop every one a commander
-    has detected but not identified — which is most of them at the low rungs.
-  */
-  const visiblePirates = pirateList.data?.pirates.length ?? 0;
+  /* The corner lists pirates the Telescope has identified, including remembered ones.
+     Radar-only returns stay anonymous on the disc and outside this named tally. */
+  const knownPirates = useMemo(() => knownPirateContacts(contacts), [contacts]);
+  const findableTargets = useMemo<GalaxyTarget[]>(() => [
+      ...asteroids.map((rock, index) => ({
+        kind: 'asteroid' as const,
+        id: rock.id,
+        label: `${t('focus.run.targetRock', { level: rock.level })} #${String(index + 1)}`,
+        detail: t('galaxy.targetOre', { amount: compact(rock.oreRemaining) }),
+      })),
+      ...knownPirates.map((contact) => {
+        const pirate = pirateList.data?.pirates.find((candidate) => candidate.id === contact.id);
+        const name = pirate ? pirateTargetName(pirate) : null;
+        return {
+          kind: 'contact' as const,
+          id: contact.id,
+          label: name?.key === 'pirate.name'
+            ? t(name.key, { level: name.level, callsign: name.callsign })
+            : t('focus.contact.titlePirate'),
+          detail: pirate
+            ? t('galaxy.targetMinutes', { count: Math.ceil(pirate.expiresInMinutes) })
+            : contact.level === undefined ? '' : t('pirate.eyebrow', { level: contact.level }),
+        };
+      }),
+      ...wrecks.map((field) => ({
+        kind: 'debris' as const,
+        id: field.id,
+        label: field.planetId === null
+          ? t('focus.debris.titleUnknown')
+          : t('focus.debris.titleOver', { planet: planets.find((world) => world.id === field.planetId)?.name ?? '' }),
+        detail: t('galaxy.targetResources', { amount: compact(field.alloy + field.crystal + field.deuterium) }),
+      })),
+    ], [asteroids, knownPirates, pirateList.data?.pirates, planets, t, wrecks]);
   const interceptions = useMemo(() => traffic.data?.interceptions ?? [], [traffic.data]);
   const interceptionImpacts = useMemo(
     () => traffic.data?.interceptionImpacts ?? [],
@@ -1103,7 +1128,7 @@ export function GalaxyView({
    * context slot's corner so it stands above a card and never under one.
    */
   const chatButton = showGuidance && showChat
-    ? <ChatChip unread={chatUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
+    ? <ChatChip unread={chatUnread + dmUnread + (clanBadge.data?.clanChatUnread ?? 0)} onOpen={() => { onPanel('chat'); }} />
     : null;
   /** The galaxy's readout: who is in it and what it holds (top right). */
   const galaxyReadout = {
@@ -1113,7 +1138,7 @@ export function GalaxyView({
       worlds: planets.length,
       fleetsAway: windowsOpen(planets),
       rocks: asteroids.length,
-      pirates: visiblePirates,
+      pirates: knownPirates.length,
       wrecks: wrecks.length,
     },
   };
@@ -1222,7 +1247,7 @@ export function GalaxyView({
         */}
         <div className="pointer-events-none flex flex-col items-end gap-1.5">
           {/* What is out there, at a glance (owner, 2026-09-24): back at the top right. */}
-          {showGuidance && <GalaxyReadout {...galaxyReadout} />}
+          {showGuidance && <GalaxyReadout {...galaxyReadout} targets={findableTargets} onFocusTarget={onFocus} />}
           {/* Home, back in plain sight and first in the stack (owner, 2026-09-24): never under a card or a rail. */}
           {showGuidance && <HomeChip onHome={flyHome} />}
           <div data-sensor-toggles className="pointer-events-none">
@@ -1980,9 +2005,9 @@ export function GalaxyView({
       {/*
         THE SAME SHEET, AGAINST THE OTHER KIND OF TARGET. D150.
 
-        Rendered from the LIVE list rather than from a captured object, so a pirate
-        that leaves the commander's circles takes its own commitment surface with
-        it — which is the honest behaviour for a reading that is never remembered.
+        Rendered from the current list rather than from a captured object, so a
+        destroyed or expired pirate takes its commitment surface with it. A pirate
+        already discovered by Telescope stays on this list outside live sight.
       */}
       {panel !== 'recap' && attackingPirateId !== null && planet.data && (() => {
         const target = pirateList.data?.pirates

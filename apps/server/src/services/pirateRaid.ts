@@ -93,10 +93,9 @@ import {
  *   · NO CHRONICLE ENTRY. D96 records transitions that were legitimately public
  *     at the moment they happened, and a pirate dying in empty space is not.
  *
- * THE FOG GATE IS LIVE SIGHT AND NOT MEMORY. A rock is remembered once found
- * (D143); a pirate is a craft, and a craft outside your circles does not exist for
- * you (D123). You cannot aim at one you are merely remembering — which is what
- * makes a sensor upgrade buy opportunities rather than a bigger address book.
+ * THE FOG GATE IS IDENTIFICATION. Radar sees an anonymous question mark, but a
+ * commander can raid only after Telescope sight has identified that pirate once.
+ * Discovery memory then keeps the target actionable for the rest of its life.
  */
 
 export type PirateRaidRow = typeof pirateRaids.$inferSelect;
@@ -233,7 +232,7 @@ export async function launchPirateRaid(
     }
 
     /**
-     * THE FOG GATE. You may only aim at a pirate that is on your disc.
+     * THE FOG GATE. You may only aim at a pirate you have identified.
      *
      * Tested through `pirateZone`, which is live `sensorZone` — the one statement
      * of the three zones — floored at IDENTIFIED by D158/D160's discovery memory.
@@ -247,14 +246,17 @@ export async function launchPirateRaid(
      * not a decision. D160 then made what memory hands back the reading the
      * commander already paid for — the epoch's reach IS the telescope's.
      *
-     * CONTACT is enough. You do not have to identify a pirate to fly at it; that
-     * is what makes a Radar-only commander able to gamble on a question mark, and
-     * what the Telescope sells is knowing what you are gambling against.
+     * CONTACT stays an anonymous Radar mark. IDENTIFIED can come from live
+     * Telescope sight or from the same Telescope discovery memory rocks use.
      */
     const spheres = await sensorPosts(tx, await ownWorldIds(tx, origin.playerId));
     const epochs = await sensorHistoryForPlayer(tx, origin.playerId, origin.seasonId);
-    if (pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes) === 'NONE') {
+    const zone = pirateZone(spheres, spec, piratePosition(spec, nowMinutes), epochs, nowMinutes);
+    if (zone === 'NONE') {
       throw new GameError('PIRATE_OUT_OF_SIGHT', 'That pirate is not on your sensors', 403);
+    }
+    if (zone !== 'IDENTIFIED') {
+      throw new GameError('PIRATE_NOT_IDENTIFIED', 'Identify this pirate with a Telescope before attacking', 403);
     }
 
     const tech = await techOf(tx, origin.playerId);

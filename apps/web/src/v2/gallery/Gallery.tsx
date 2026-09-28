@@ -49,7 +49,11 @@ import { LeaderboardScreen } from '../../screens/LeaderboardScreen.js';
 import { SeasonArchiveScreen } from '../../screens/SeasonArchiveScreen.js';
 import { CountryPicker } from '../identity/CountryPicker.js';
 import { SkinShopContent } from '../../screens/SkinsScreen.js';
+import { useTranslation } from 'react-i18next';
 import { SkinPreview } from '../../screens/SkinPreview.js';
+import { DonateScreen } from '../../screens/DonateScreen.js';
+import { SkinInventoryContent } from '../../screens/SkinInventoryScreen.js';
+import AdminPanel from '../../screens/AdminPanel.js';
 import { PLANET_SKIN_CATALOG } from '../../ui/skinCatalog.js';
 import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 
@@ -487,6 +491,7 @@ function GalleryCountryPicker() {
 }
 
 function Views({ view }: { view: string }) {
+  const { t } = useTranslation();
   if (view === 'intel') return <GalleryIntel />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
@@ -499,6 +504,42 @@ function Views({ view }: { view: string }) {
   if (view === 'country-picker') return <GalleryCountryPicker />;
   if (view === 'skin-shop') {
     return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
+  }
+  if (view === 'skin-shop-live') {
+    const quote = { formatted: '₺99', currencyCode: 'TRY' as const };
+    return (
+      <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
+        onPurchase={noop} prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, quote])), bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+    );
+  }
+  if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
+    const owned = view === 'skin-inventory' ? (['planet-lava', 'planet-ice', 'planet-turkey'] as const) : [];
+    return (
+      <Sheet detents={['full']} bleed eyebrow={t('menu.asteraHeading')} title={t('menu.skinsInventoryLabel')} onClose={noop}>
+        <SkinInventoryContent onEquip={noop} onOpenShop={noop}
+          collection={{ ownedSkinIds: [...owned], planets: [
+            { id: 'p-home', name: 'Kestrel', skinId: owned.length > 0 ? 'planet-lava' : null },
+            { id: 'p-two', name: 'Vega', skinId: null },
+            { id: 'p-three', name: 'Orion', skinId: owned.length > 0 ? 'planet-turkey' : null },
+          ] }}
+          pending={owned.length > 0 ? { planetId: 'p-two', skinId: 'planet-ice' } : null}
+          failure={owned.length > 0 ? { planetId: 'p-three', message: t('errors.PLANET_NOT_OWNED') } : null} />
+      </Sheet>
+    );
+  }
+  if (view === 'donate') {
+    return (
+      <Sheet detents={['full']} eyebrow={t('community.donate.eyebrow')} title={t('community.donate.title')} onClose={noop}>
+        <DonateScreen />
+      </Sheet>
+    );
+  }
+  if (view === 'admin') {
+    return (
+      <Sheet detents={['full']} contained bleed eyebrow={t('community.admin.eyebrow')} title={t('community.admin.title')} onClose={noop}>
+        <AdminPanel />
+      </Sheet>
+    );
   }
   if (view === 'queue') {
     return <QueueSheet queues={{ CONSTRUCTION: construction, YARD: yard }} now={NOW} onCancel={noop} onClose={noop} />;

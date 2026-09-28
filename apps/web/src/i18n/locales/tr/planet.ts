@@ -490,9 +490,8 @@ export const launch = {
   /** Kayda dayanarak yapılan taahhüt. Hedefin ne kadar eski olduğu burada söylenir. D151. */
   lastSeen: "en son {{age}} görüldü",
   /**
-   * KORSANIN ESKİYECEK BİR KAYDI YOKTUR — hiç hatırlanmaz, okuma tanımı gereği
-   * canlıdır. Satıra asıl yakışan öbür saat: daha ne kadar orada olacağı, yani
-   * acele etmenin sebebi.
+   * Teleskop keşfi hatırlansa da korsanın filosu ve yörüngesi günceldir.
+   * Acil olan, hedefin ne kadar süre daha orada kalacağıdır.
    */
   goneIn: "{{duration}} içinde gidiyor",
   back: "Geri",
@@ -579,10 +578,17 @@ export const transfer = {
   paceHint: "Yavaş olan geç varır — havadaki gemi yağmalanamaz. Yakıt aynı; hiçbir filo 12 saatten fazla havada kalamaz.",
   fuelShort: "{{short}} eksik",
   eyebrow: "Dünyalar arası transfer",
+  returnEta: "Çıkışa dönüş {{duration}} sonra · {{time}}",
   eta: "Varış",
   capacity: "Yük",
   fleet: "Gemiler",
   homeDefence: "Çıkış dünyasında {{ships}} gemi kalır · {{power}} ateş gücü",
+  afterDelivery: "Teslimattan sonra",
+  cargoShips: "Yük gemileri",
+  otherShips: "Diğer gemiler",
+  stay: "Gittiği yerde kalsın",
+  return: "Geri dönsün",
+  returnHint: "Geri dönecek gemiler önce kaynağı bırakır. Dönüş yakıtı şimdi ödenir.",
   cargo: "Kaynaklar",
   alloy: "Alaşım",
   crystal: "Kristal",
@@ -594,14 +600,12 @@ export const transfer = {
   sending: "Yola çıkıyor",
   launched: "Transfer yola çıktı · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
-  rules:
-    "Yoldayken bir kez geri çağrılabilir — uçtuğu süre kadar sürede döner. Yer savunması taşınamaz; yük kapasitesini yalnız Kurye, Seyyah, Atlas ve Argosi sağlar.",
+  rules: "Yoldayken bir kez geri çağrılabilir; uçtuğu süre kadar sürede döner. Yer savunması taşınamaz; ambarı olan tüm gemiler kaynak taşıyabilir.",
   hullNone: "Bu dünyada yok",
-  holdReady: "Madeni Kurye, Seyyah, Atlas ve Argosi taşır. Ambar: {{capacity}}.",
+  holdReady: "Seçilen gemiler kaynak taşır. Ambar: {{capacity}}.",
   destinationLabel: "Hedef Hangarı",
-  holdNeedsLoad: "Maden taşımak için yukarıdan Kurye, Seyyah, Atlas veya Argosi ekle.",
-  holdNoCarrier:
-    "Bu dünyada kaynak taşıyabilecek Kurye, Seyyah, Atlas veya Argosi yok.",
+  holdNeedsLoad: "Kaynak taşımak için yukarıdan ambarı olan bir gemi seç.",
+  holdNoCarrier: "Bu dünyada ambarı olan gemi yok.",
   /** Hedefin yer çubuğunun altyazısı; sayıları çubuğun kendisi çiziyor. */
   /** Gemi sayısını gösteren işaretlerin ekran okuyucu karşılığı. */
   hullPacked: "{{held}} {{name}} içinden {{packed}} tanesi yüklendi",

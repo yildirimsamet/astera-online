@@ -10,6 +10,7 @@ import { ChatHost } from '../../src/v2/shell/ChatHost.js';
  */
 let generalUnread = 0;
 let clanChatUnread = 0;
+let dmUnread = 0;
 
 vi.mock('../../src/api/queries.js', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../src/api/queries.js');
@@ -17,6 +18,7 @@ vi.mock('../../src/api/queries.js', async () => {
     ...actual,
     useChatUnread: () => ({ data: { count: generalUnread } }),
     useClanBadge: () => ({ data: { available: true, attentionCount: 0, clanChatUnread } }),
+    useDmUnread: () => ({ data: { count: dmUnread } }),
   };
 });
 
@@ -29,9 +31,17 @@ vi.mock('../../src/screens/ChatScreen.js', () => ({
 beforeEach(() => {
   generalUnread = 0;
   clanChatUnread = 0;
+  dmUnread = 0;
 });
 
 describe('the chat page', () => {
+  it('keeps a fixed-height panel while the message history owns scrolling', () => {
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    const panel = screen.getByRole('dialog', { name: 'Chat' });
+    expect(panel).toHaveClass('h-[70dvh]');
+    expect(panel.querySelector('[data-sheet-body]')).toHaveClass('overflow-hidden');
+  });
+
   it('opens on the general channel by default', () => {
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Chat' })).toBeInTheDocument();
@@ -42,6 +52,12 @@ describe('the chat page', () => {
     clanChatUnread = 2;
     render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
     expect(screen.getByText('chat on clan')).toBeInTheDocument();
+  });
+
+  it('opens on DM when a private message is unread', () => {
+    dmUnread = 1;
+    render(<ChatHost onClose={vi.fn()} onFocusPlanet={vi.fn()} />);
+    expect(screen.getByText('chat on dm')).toBeInTheDocument();
   });
 
   /** The war room's "Clan chat" (E9) opens the clan channel whatever is unread. */

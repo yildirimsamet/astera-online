@@ -488,7 +488,7 @@ describe('current multi-world ruleset', () => {
       .toHaveLength(0);
   });
 
-  it('rejects ground transfers and cargo that dedicated transports cannot carry', async () => {
+  it('rejects ground transfers and cargo above the fleet hold', async () => {
     const f = await setup();
     const target = f.neutrals.find((row) => row.state.tier === 1)!;
     await f.db.update(planets).set({
@@ -513,7 +513,7 @@ describe('current multi-world ruleset', () => {
       f.joined.planetId,
       target.world.id,
       { DART: 1 },
-      { alloy: 1, crystal: 0, deuterium: 0 },
+      { alloy: HULLS.DART.cargo + 1, crystal: 0, deuterium: 0 },
       f.clock,
     )).rejects.toMatchObject({ code: 'CARGO_CAPACITY' });
     await expect(launchTransfer(

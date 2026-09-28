@@ -283,17 +283,10 @@ it('opens the return application from the menu only for Silent Space', () => {
  * colour. A tinted glyph is the compact answer: no second line, no shouting.
  */
 /*
-  PARKED WITH THE ROW ITSELF. The support row is commented out in `MenuPanel.tsx`
-  behind *"TODO: for now its closed. Ödeme linkleri eklenince açılacak."* — the
-  owner's decision to hold it until the Shopier addresses exist, so that the door
-  and what is behind it open together.
-
-  SKIPPED RATHER THAN DELETED, because the contract it states is the one that will
-  be wanted the moment the row comes back: reachable, opens the donate sheet, and
-  wearing this menu's own `attention` accent so it is findable without shouting.
-  Uncomment the row and drop the `.skip`.
+  OPEN WITH ITS SHOPIER PAGES (owner 2026-09-27). The row was held until the payment
+  addresses existed, so that the door and what is behind it open together.
 */
-describe.skip('the support row', () => {
+describe('the support row', () => {
   it('is reachable and opens the donate sheet', () => {
     const { wrapper } = harness();
     const open = vi.fn();

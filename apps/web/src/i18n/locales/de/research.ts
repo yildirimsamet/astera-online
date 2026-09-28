@@ -126,7 +126,7 @@ export const research = {
   cargoTag: "Jeder Laderaum trägt mehr",
   cargoRole: "Erhöht Überfall-Beute, Welttransfers und Handelskonvois gleichermaßen. Der Asteroidenabbau ist eine eigene Leiter",
   cargoDetail:
-    "Mit jeder Sprosse erhöht sich die Ladung Ihrer Schiffe: Überfallen Sie Beute in der gesamten mobilen Flotte und im Laderaum jedes Kuriers, Wanderers, Atlas und Argosy, der Erz zwischen Ihren Welten transportiert oder mit einem Händler handelt. Prospektoren haben in den Prospektor-Festungen ihre eigene Leiter.",
+    "Jede Stufe vergrößert den Laderaum aller mobilen Schiffe für Überfälle und Transfers zwischen eigenen Welten. Kurier, Wanderer, Atlas und Argosy tragen auch in Handelskonvois mehr. Prospektoren nutzen ihre eigene Forschung.",
 
   engineeringName: "Raumschifftechnik",
   engineeringTag: "Öffnet erweiterte Rumpfstufen",

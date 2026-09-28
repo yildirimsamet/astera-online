@@ -204,7 +204,7 @@ makes the same axis an *economic* one.
 
 **Full fuel or no launch, and it is paid before the ships leave.** A one-way budget is not a
 cheaper raid, it is a stranded fleet, and a raid that is turned around (see recall below) keeps
-none of it back. A raid pays both legs at launch; a transfer (at the half HOMEWARD rate, see below), a settlement and an empty-hold
+none of it back. A raid pays both legs at launch; a transfer pays its outbound leg and any selected return legs (at the half HOMEWARD rate, see below). A settlement and an empty-hold
 clan ship gift pay one leg, while a
 resource-carrying clan transport pays its planned outbound and return legs. Deuterium loaded
 as cargo is already spent as far as the flight is concerned — the guard reads the sum. No system
@@ -580,6 +580,9 @@ reset continues. Activation status and measured acceptance are recorded in deplo
   five minutes (`TRANSFER_COOLDOWN_MINUTES`). Attacks are not held by it; a recall is never caught.
 - **Homeward fuel.** A transfer between a commander's own worlds pays half the hostile rate
   (`FUEL.laneShare.HOMEWARD`); raids pay full at every pace.
+- **World transfer cargo and return.** Every mobile ship with a hold can carry resources between
+  owned worlds. Haulers and other ships each choose independently whether to stay at the target or
+  return after unloading. The default sends Haulers home and leaves other ships at the target.
 
 **One true sphere**, radius 3000 and therefore a maximum point-to-point crossing of 6000. Every
 gameplay coordinate — not merely its horizontal projection — lies inside that sphere. The three
@@ -849,6 +852,11 @@ towed home. Those are the Telescope's product: a Radar contact is a moving quest
 its top rungs, adds a mass and a silhouette. **A commander who can see more raids better**, which
 is the first time the sensor ladder pays out in TARGETS rather than in warnings.
 
+A Radar-only pirate remains a question mark on the galaxy and does not enter the named pirate
+count or list. It cannot be attacked until a Telescope has identified it once. From then on it
+stays identified, listed and raidable for the rest of its life, even outside current Telescope
+reach, just as a discovered asteroid remains available.
+
 **Winning can grow the fleet itself.** On a decisive win there is a level-weighted chance that one
 hull from the pirate's own roster comes home with you. Today a fleet has exactly one way to grow —
 wait for the economy, buy hulls — and this is the second door. It is also the only place in the
@@ -949,6 +957,10 @@ commitment rather than a free menu action: the capital must have Command Core 7 
 7,500 Alloy plus 3,000 Crystal (owner price, 2026-09-25). A 12-hour adaptation period makes recruitment legible and
 closes join/leave exploits while still giving the new member their tag, friendly-fire safety
 and private chat at once.
+General, clan, and direct messages support one emoji reaction per commander per message and
+quoted replies. Reactions are counted by emoji; replacing a reaction removes the previous one.
+Replies can only target a message visible in the same room. Direct message history and its
+reactions are cleared for players at season reset.
 
 The cooperation has three concrete answers to “why join?” First, members can send physical
 ship gifts or Hauler resource deliveries with a 10% travel bonus and one aid-only flight bay.
@@ -977,8 +989,11 @@ aggregate limit per target commander per 12 hours. Both are launch commitments, 
 worlds or membership cannot erase them.
 
 The social surface is deliberately bounded: applications and invitations expire in 24 hours,
-only the leader manages seats, and clan chat is seasonal plain text with no direct messages or
-attachments. Seasons before ruleset 10 have no clan levels or joint war. Ruleset 10 adds a
+only the leader manages seats, and clan chat is seasonal plain text without attachments.
+The separate DM channel lets commanders in the same live galaxy and season exchange private
+plain-text messages. Either can block the other. If one enters Silent Space, their shared
+history stays readable and sending pauses until they return to their home galaxy. A new season
+clears player-facing DM history. Seasons before ruleset 10 have no clan levels or joint war. Ruleset 10 adds a
 ten-rung Clan Hangar and one joint operation per clan; it does not add officers, clan technology,
 shared radar or diplomacy.
 

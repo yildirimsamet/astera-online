@@ -87,9 +87,7 @@ describe('community surfaces', () => {
     render(<Wrapper><AdminPanel /></Wrapper>);
     expect(screen.getByRole('toolbar', { name: 'Announcement formatting' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Content' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Announcement' })).toHaveAttribute(
-      'aria-controls', 'admin-compose-panel',
-    );
+    expect(screen.getByRole('tab', { name: 'Announcement' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveAttribute(
       'aria-labelledby', 'admin-compose-tab',
     );
@@ -131,13 +129,39 @@ describe('community surfaces', () => {
     expect(await screen.findByRole('button', { name: 'USDT · TRC-20 address copied' }))
       .toBeInTheDocument();
 
-    // The Shopier links do not exist yet, so every card is a stated intention
-    // rather than a control that silently does nothing when pressed.
+    // Every card goes to its own Shopier page, in a new tab.
     for (const card of SUPPORT_CARDS) {
       // The exact label, never a loose number: /49/ also matches the 499 card.
       const label = i18n.t('community.donate.cardLabel', { amount: card.amount });
-      expect(screen.getByRole('button', { name: label })).toBeDisabled();
+      const link = screen.getByRole('link', { name: label });
+      expect(link).toHaveAttribute('href', card.href);
+      expect(link).toHaveAttribute('target', '_blank');
     }
+  });
+
+  /**
+   * THE FOUR SHOPIER PAGES, EACH TO ITS OWN AMOUNT (owner 2026-09-27). A card sending 49 ₺
+   * to the 499 ₺ page is the one mistake here a player would pay for.
+   */
+  it('sends each card to the Shopier page of its own amount', () => {
+    expect(Object.fromEntries(SUPPORT_CARDS.map((card) => [card.amount, card.href]))).toEqual({
+      49: 'https://www.shopier.com/asteraonline/51278327',
+      99: 'https://www.shopier.com/asteraonline/51278343',
+      199: 'https://www.shopier.com/asteraonline/51278354',
+      499: 'https://www.shopier.com/asteraonline/51278360',
+    });
+  });
+
+  /*
+    THE WAY MOST PLAYERS GIVE COMES FIRST. A card needs nothing but a tap; a wallet
+    needs a wallet. With the cards live, they lead and the addresses follow.
+  */
+  it('puts the card payments before the wallet addresses', () => {
+    render(<DonateScreen />);
+    const cards = screen.getByRole('heading', { name: i18n.t('community.donate.cardHeading') });
+    const crypto = screen.getByRole('heading', { name: i18n.t('community.donate.cryptoHeading') });
+    expect(cards.compareDocumentPosition(crypto) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(i18n.t('community.donate.cardNote'))).toBeInTheDocument();
   });
 
   /**

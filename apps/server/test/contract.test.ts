@@ -24,6 +24,7 @@ import {
   galaxyEventOccurrences,
   galaxyEvents,
   miningRuns,
+  missions,
   neutralPlanetState,
   notifications,
   pirateRaids,
@@ -40,7 +41,7 @@ import { launchAttack } from '../src/services/mission.js';
 import { launchProbe } from '../src/services/intel.js';
 import { launchMining } from '../src/services/mining.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
-import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
+import { refreshSensorEpoch, sensorHistoryForPlayer } from '../src/services/sensorHistory.js';
 import { buildApp } from '../src/app.js';
 import { nextPublicGalaxyEvent } from '../src/services/galaxyEvents.js';
 import { SHARD_PREFIX } from '../src/stream/bus.js';
@@ -1010,6 +1011,32 @@ describe('every payload the client parses', () => {
     }
   });
 
+  it('keeps a Radar-only pirate anonymous on the disc and out of the named pirate list', async () => {
+    const { pirateActive, piratePosition, pirateZone, sensorSphere } = await import('@astera/rules');
+    const mine = f.planetIds[0]!;
+    await giveInstrument(f.db, mine, 'RADAR', 5);
+    await refreshSensorEpoch(f.db, mine, f.clock.now());
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 2, 5, mine);
+    const epochs = await sensorHistoryForPlayer(f.db, f.playerIds[0]!, f.seasonId);
+    const currentMinute = (f.clock.now().getTime() - season!.startsAt.getTime()) / 60_000;
+    const target = privatePirateField(season!.asteroidKey).find((spec) => {
+      const minute = Math.ceil(spec.appearsAt) + 1;
+      return spec.appearsAt > currentMinute
+        && pirateActive(spec, minute)
+        && pirateZone([eye], spec, piratePosition(spec, minute), epochs, minute) === 'CONTACT';
+    });
+    expect(target).toBeDefined();
+    f.clock.set(new Date(season!.startsAt.getTime() + (Math.ceil(target!.appearsAt) + 1) * 60_000));
+
+    const id = pirateId(season!.asteroidKey, target!.index);
+    const traffic = trafficSchema.parse(await get('/api/galaxy/traffic'));
+    expect(traffic.contacts.find((contact) => contact.id === id)?.kind).toBe('unknown');
+    const list = piratesSchema.parse(await get('/api/pirates'));
+    expect(list.pirates.some((pirate) => pirate.id === id)).toBe(false);
+  });
+
   /**
    * THE POINT THE FLEET IS ACTUALLY AIMED AT, ON THE WIRE. D155.
    *
@@ -1595,11 +1622,13 @@ describe('every payload the client parses', () => {
     const parsed = movementLaunchSchema.parse(await post('/api/fleet/transfer', {
       originPlanetId: origin,
       targetPlanetId: colony,
-      fleet: { DART: 1 },
-      cargo: { alloy: 0, crystal: 0, deuterium: 0 },
+      fleet: { DART: 1, COURIER: 1 },
+      cargo: { alloy: 1, crystal: 0, deuterium: 0 },
     }));
     expect(parsed.pending.some((thread) => thread.id === parsed.missionId)).toBe(true);
     expect(parsed.planet.planet.id).toBe(origin);
+    const [mission] = await f.db.select().from(missions).where(eq(missions.id, parsed.missionId));
+    expect(mission?.returnFleet).toEqual({ COURIER: 1 });
   });
 
   it('POST /api/fleet/settle parses the shared movement contract', async () => {

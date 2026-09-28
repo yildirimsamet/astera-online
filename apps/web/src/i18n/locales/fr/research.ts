@@ -111,7 +111,7 @@ export const research = {
   cargoRole:
     "Augmente à la fois le butin des raids, les transferts entre mondes et les convois commerciaux ; l’exploitation des astéroïdes possède sa propre recherche.",
   cargoDetail:
-    "Chaque palier augmente la capacité de transport de tes vaisseaux : le butin des flottes de raid ainsi que la soute de tous les Cargos, Voyageurs, Atlas et Argosi transportant des ressources entre tes mondes ou commerçant avec le Marchand. Les Prospecteurs utilisent leur propre recherche, Soutes de Prospecteur.",
+    "Chaque palier agrandit la soute de tous les vaisseaux mobiles pour les raids et les transferts entre tes mondes. Cargo, Voyageur, Atlas et Argosi transportent aussi plus dans les convois marchands. Les Prospecteurs utilisent leur propre recherche.",
   engineeringName: "Ingénierie Stellaire",
   engineeringTag: "Débloque les vaisseaux de haut palier",
   engineeringRole:

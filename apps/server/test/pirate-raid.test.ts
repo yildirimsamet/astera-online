@@ -12,8 +12,10 @@ import {
   gradeMultiplier,
   fleetEntries,
   flightSlots,
+  interceptOrbit,
   pirateActive,
   piratePosition,
+  pirateZone,
   sensorSphere,
   sensorZone,
   surfaceStandoff,
@@ -37,6 +39,7 @@ import {
 import { buildApp } from '../src/app.js';
 import { TokenService } from '../src/auth/tokens.js';
 import { launchPirateRaid } from '../src/services/pirateRaid.js';
+import { refreshSensorEpoch, sensorHistoryForPlayer } from '../src/services/sensorHistory.js';
 import { privatePirateField, pirateId } from '../src/services/pirateField.js';
 import { transferPlanetControl } from '../src/services/ownership.js';
 import { baysInUse } from '../src/services/flight.js';
@@ -254,11 +257,9 @@ describe('a raid at a pirate', () => {
 
   it('refuses a pirate outside the world\'s own sensors', async () => {
     /*
-      LIVE SIGHT, NEVER MEMORY. A rock is remembered once found (D143); a pirate is
-      a craft and stops existing for you the moment it leaves your circles (D123).
-      Aiming at a remembered one would turn a sensor upgrade into a permanent
-      address book, which is the opposite of what the instrument sells.
-    */
+      A target never discovered by Telescope and outside every current sensor
+      circle has no address this commander is allowed to attack.
+     */
     const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
     const field = privatePirateField(season!.asteroidKey);
     const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
@@ -279,6 +280,62 @@ describe('a raid at a pirate', () => {
     await expect(
       launchPirateRaid(f.db, mine, pirateId(season!.asteroidKey, hidden!.index), fleet, f.clock),
     ).rejects.toMatchObject({ code: 'PIRATE_OUT_OF_SIGHT' });
+  });
+
+  it('refuses a Radar-only question mark until a Telescope has identified it', async () => {
+    await giveSatellite(f.db, mine, 'UPLINK');
+    await giveInstrument(f.db, mine, 'RADAR', 5);
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const eye = sensorSphere({ x: world!.x, y: world!.y, z: world!.z }, 0, 5, mine);
+    const epochs = await sensorHistoryForPlayer(f.db, f.playerIds[0]!, f.seasonId);
+    const field = privatePirateField(season!.asteroidKey);
+    const target = field.find((spec) => {
+      const minute = Math.ceil(spec.appearsAt) + 1;
+      return pirateActive(spec, minute)
+        && pirateZone([eye], spec, piratePosition(spec, minute), epochs, minute) === 'CONTACT';
+    });
+    expect(target).toBeDefined();
+    const minute = Math.ceil(target!.appearsAt) + 1;
+    f.clock.set(new Date(season!.startsAt.getTime() + minute * 60_000));
+    const fleet = await armed({ DART: 30 });
+
+    await expect(
+      launchPirateRaid(f.db, mine, pirateId(season!.asteroidKey, target!.index), fleet, f.clock),
+    ).rejects.toMatchObject({ code: 'PIRATE_NOT_IDENTIFIED' });
+    expect(await baysInUse(f.db, mine)).toBe(0);
+  });
+
+  it('still accepts a pirate identified earlier by Telescope after it leaves live sight', async () => {
+    // The fixture's capital is at the orbit centre; move it onto the lane so a
+    // pirate can cross into its Telescope circle and later leave it.
+    await placeAt(f.db, mine, { x: 1600 });
+    await refreshSensorEpoch(f.db, mine, f.clock.now());
+    const [season] = await f.db.select().from(seasons).where(eq(seasons.id, f.seasonId));
+    const [world] = await f.db.select().from(planets).where(eq(planets.id, mine));
+    const home = { x: world!.x, y: world!.y, z: world!.z };
+    const eye = sensorSphere(home, 0, 0, mine);
+    const epochs = await sensorHistoryForPlayer(f.db, f.playerIds[0]!, f.seasonId);
+    const seasonMinutes = (season!.endsAt.getTime() - season!.startsAt.getTime()) / 60_000;
+    let remembered: { spec: PirateSpec; minute: number } | null = null;
+    for (const spec of privatePirateField(season!.asteroidKey)) {
+      for (let minute = Math.ceil(spec.appearsAt) + 1;
+        minute < Math.min(spec.expiresAt, seasonMinutes) && remembered === null; minute += 1) {
+        const at = piratePosition(spec, minute);
+        if (sensorZone([eye], at) !== 'NONE') continue;
+        if (pirateZone([eye], spec, at, epochs, minute) !== 'IDENTIFIED') continue;
+        if (!interceptOrbit(home, HULLS.DART.speed, spec, spec.expiresAt, minute)) continue;
+        remembered = { spec, minute };
+      }
+      if (remembered !== null) break;
+    }
+    expect(remembered).not.toBeNull();
+    f.clock.set(new Date(season!.startsAt.getTime() + remembered!.minute * 60_000));
+    const fleet = await armed({ DART: 30 });
+    const raid = await launchPirateRaid(
+      f.db, mine, pirateId(season!.asteroidKey, remembered!.spec.index), fleet, f.clock,
+    );
+    expect(raid.raidId).toBeTypeOf('string');
   });
 
   it('refuses a second raid at the same pirate from the same world', async () => {

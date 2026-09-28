@@ -99,12 +99,13 @@ export function LeaderboardScreen({ onFocusPlanet }: {
     <ol className="divide-y divide-v2-line" aria-label={t('leaderboard.title')}>
       {rows.map((row) => {
         const self = row.playerId === mine;
+        const identity = <>{row.clan ? <span className="text-crystal" title={row.clan.name}>[{row.clan.tag}]</span> : null}{row.clan ? ' ' : null}{row.username}</>;
         return (
           <li
             key={row.playerId}
             aria-current={self ? 'true' : undefined}
-            className={`grid grid-cols-[2.25rem_2.5rem_minmax(0,1fr)_auto] items-center gap-2 px-2 py-3 ${self ? 'bg-v2-self/8' : ''}`}
-            style={{ contentVisibility: 'auto', containIntrinsicSize: '64px' }}
+            className={`grid grid-cols-[2rem_2.5rem_minmax(0,1fr)] items-center gap-2 px-2 py-2 ${self ? 'bg-v2-self/8' : ''}`}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '88px' }}
           >
             {/* The podium is an object; everybody else is a numeral. */}
             {isPlace(row.rank) ? (
@@ -115,20 +116,17 @@ export function LeaderboardScreen({ onFocusPlanet }: {
               </span>
             )}
             <PlanetSigil seed={row.planetId ?? row.playerId} skinId={row.skinId} size={40} />
-            <span className="min-w-0">
-              <span className="flex items-baseline gap-2">
+            <span className="block min-w-0">
+              <span className="mb-1 block leading-none">
+                <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
+              </span>
+              <span className="flex min-w-0 items-baseline gap-1.5">
                 {self ? (
                   <strong
-                    className="name flex min-w-0 items-baseline gap-2 text-bone"
+                    className="name min-w-0 flex-1 line-clamp-2 break-words text-bone"
                     aria-label={commanderLabel(row.username, row.clan?.tag)}
                   >
-                    {row.clan ? (
-                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
-                        [{row.clan.tag}]
-                      </span>
-                    ) : null}
-                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-                    <span className="truncate">{row.username}</span>
+                    {identity}
                   </strong>
                 ) : row.planetId !== undefined ? (
                   <button
@@ -140,70 +138,42 @@ export function LeaderboardScreen({ onFocusPlanet }: {
                       haptic('tap');
                       onFocusPlanet(planetId);
                     }}
-                    className="name flex min-w-0 items-baseline gap-2 text-bone underline decoration-bone/35 underline-offset-2"
+                    className="name w-full min-w-0 flex-1 line-clamp-2 break-words text-left text-bone underline decoration-bone/35 underline-offset-2"
                   >
-                    {row.clan ? (
-                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
-                        [{row.clan.tag}]
-                      </span>
-                    ) : null}
-                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-                    <span className="truncate">{row.username}</span>
+                    {identity}
                   </button>
                 ) : (
                   <span
-                    className="name flex min-w-0 items-baseline gap-2 text-bone"
+                    className="name min-w-0 flex-1 line-clamp-2 break-words text-bone"
                     aria-label={commanderLabel(row.username, row.clan?.tag)}
                   >
-                    {row.clan ? (
-                      <span className="legend shrink-0 text-crystal" title={row.clan.name}>
-                        [{row.clan.tag}]
-                      </span>
-                    ) : null}
-                    <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-                    <span className="truncate">{row.username}</span>
+                    {identity}
                   </span>
                 )}
-                {self ? <span className="legend text-crystal">{t('leaderboard.you')}</span> : null}
+                {self ? <span className="legend shrink-0 text-crystal">{t('leaderboard.you')}</span> : null}
               </span>
-              {row.planetName !== undefined && row.coreTier !== undefined ? (
-                <span className="mt-1 block truncate text-label text-faint">
-                  {row.planetName} · {t('leaderboard.tier', { tier: row.coreTier })}
+              <span className="mt-1 flex min-w-0 items-center gap-1.5">
+                <span data-leaderboard-meta className="flex min-w-0 flex-1 items-center gap-1.5 text-micro text-faint">
+                  {row.planetName !== undefined && row.coreTier !== undefined ? (
+                    <span className="truncate">{row.planetName} · {t('leaderboard.tier', { tier: row.coreTier })}</span>
+                  ) : null}
                 </span>
-              ) : null}
-            </span>
-            {/*
-              A LADDER IS A COMPARISON, SO IT IS DRAWN AS ONE. Owner instruction.
-
-              Three hundred signed figures in a column is a table a reader has to
-              sort in their head to answer the question they opened it holding:
-              how far ahead is the leader, and how far behind am I. A bar off a
-              centre line answers it without being read — length is the gap and
-              the SIDE is whether the season has gone your way — and it makes the
-              shape of the whole galaxy legible by scrolling.
-
-              World detail is present only when current sight or frozen probe
-              memory earned it. UNKNOWN rows remain identities and scores only.
-            */}
-            <span className="flex shrink-0 items-center gap-2 text-right">
-              <span
-                aria-hidden
-                className="relative block h-2 w-12 shrink-0 overflow-hidden rounded-full bg-line/50"
-              >
-                <span
-                  data-score-bar
-                  className={`absolute inset-y-0 ${
-                    row.score < 0 ? 'right-1/2 bg-threat/70' : 'left-1/2 bg-opportunity/70'
-                  }`}
-                  style={{ width: `${String((Math.abs(row.score) / widest) * 50)}%` }}
-                />
-                <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
-              </span>
-              <span>
-                <span className={`num block text-body ${row.score > 0 ? 'text-opportunity' : row.score < 0 ? 'text-threat' : 'text-dim'}`}>
-                  {row.score === 0 ? full(0) : signed(row.score)}
+                <span data-leaderboard-score className="flex min-w-24 shrink-0 flex-col items-end text-right">
+                  <span className="flex items-center gap-1.5">
+                    <span aria-hidden className="relative block h-1.5 w-10 overflow-hidden rounded-full bg-line/50">
+                      <span
+                        data-score-bar
+                        className={`absolute inset-y-0 ${row.score < 0 ? 'right-1/2 bg-threat/70' : 'left-1/2 bg-opportunity/70'}`}
+                        style={{ width: `${String((Math.abs(row.score) / widest) * 50)}%` }}
+                      />
+                      <span className="absolute inset-y-0 left-1/2 w-px bg-bone/40" />
+                    </span>
+                    <span className={`num text-caption ${row.score > 0 ? 'text-opportunity' : row.score < 0 ? 'text-threat' : 'text-dim'}`}>
+                      {row.score === 0 ? full(0) : signed(row.score)}
+                    </span>
+                  </span>
+                  <span className="legend block">{t('leaderboard.score')}</span>
                 </span>
-                <span className="legend block">{t('leaderboard.score')}</span>
               </span>
             </span>
           </li>
@@ -229,12 +199,14 @@ function NearbyRival({
 }) {
   const { t, i18n } = useTranslation();
   const identity = (
-    <>
-      {row.clan ? <span className="text-crystal">[{row.clan.tag}]</span> : null}
-      <Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} />
-      <span className="truncate">{row.username}</span>
-      {self ? <span className="text-crystal">{t('leaderboard.you')}</span> : null}
-    </>
+    <span className="flex min-w-0 flex-col">
+      <span className="block leading-none"><Flag code={row.country} language={i18n.resolvedLanguage ?? 'en'} /></span>
+      <span className="mt-1 line-clamp-2 break-words">
+        {row.clan ? <span className="text-crystal">[{row.clan.tag}]</span> : null}
+        {row.clan ? ' ' : null}{row.username}
+        {self ? <span className="ml-1.5 text-crystal">{t('leaderboard.you')}</span> : null}
+      </span>
+    </span>
   );
 
   return (
@@ -248,14 +220,14 @@ function NearbyRival({
         {row.rank}
       </span>
       {self || row.planetId === undefined ? (
-        <span className="name flex min-w-0 items-baseline gap-1.5 text-label text-bone">
+        <span className="name min-w-0 text-label text-bone">
           {identity}
         </span>
       ) : (
         <button
           type="button"
           aria-label={commanderLabel(row.username, row.clan?.tag)}
-          className="name flex min-w-0 items-baseline gap-1.5 text-left text-label text-bone underline decoration-bone/35 underline-offset-2"
+          className="name min-w-0 text-left text-label text-bone underline decoration-bone/35 underline-offset-2"
           onClick={() => {
             haptic('tap');
             onFocusPlanet(row.planetId!);

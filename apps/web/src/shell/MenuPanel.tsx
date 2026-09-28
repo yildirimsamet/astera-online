@@ -36,7 +36,7 @@ import {
   SkipIcon,
   SpeakerOnIcon,
   GuideIcon,
-  // HeartIcon,
+  HeartIcon,
 } from '../ui/icons/index.js';
 import { LanguageSwitch } from '../ui/LanguageSwitch.js';
 import { publisherUrl } from '../lib/publisherPages.js';
@@ -337,8 +337,8 @@ export function MenuPanel({
             onOpen('feedback');
           }}
         />
-        {/* TODO: for now its closed. Ödeme linkleri eklenince açılacak. */}
-        {/* <MenuTile
+        {/* Open since its Shopier pages went live (owner 2026-09-27). */}
+        <MenuTile
           icon={<HeartIcon className="size-5" />}
           label={t('community.donate.menuLabel')}
           hint={t('community.donate.menuHint')}
@@ -346,7 +346,7 @@ export function MenuPanel({
           onClick={() => {
             onOpen('donate');
           }}
-        /> */}
+        />
         {isAdmin && (
           <MenuTile
             icon={<LockIcon className="size-5" />}

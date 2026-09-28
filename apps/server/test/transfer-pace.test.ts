@@ -73,7 +73,8 @@ describe('the pace a transfer is flown at', () => {
     const departedAt = f.clock.now().getTime();
     const launched = await send(0.5);
     const minutes = (launched.arriveAt.getTime() - departedAt) / 60_000;
-    expect(minutes).toBeCloseTo(fleetTravelExact(dist, { DART: 10 }, UNAIDED) * 2, 5);
+    // Date stores whole milliseconds, so the flight duration can differ by less than 1 ms.
+    expect(Math.abs(minutes - fleetTravelExact(dist, { DART: 10 }, UNAIDED) * 2)).toBeLessThan(1 / 60_000);
     const [row] = await f.db.select().from(missions).where(eq(missions.id, launched.missionId));
     expect(row?.pace).toBe(0.5);
   });

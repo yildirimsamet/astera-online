@@ -109,7 +109,7 @@ export function TopBar({
         cells as the Base draws them, and what its vessel in the works holds — the third line is
         the one press that collects.
       */}
-      <div className={`grid min-w-0 flex-1 grid-cols-3 gap-x-2 gap-y-1 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
+      <div className={`grid min-w-0 flex-1 grid-cols-3 gap-x-2 gap-y-1.5 ${tabs === undefined ? '' : 'max-w-[34rem]'}`}>
         {RESOURCES.map((resource) => (
           <ResourceMeter
             key={resource}

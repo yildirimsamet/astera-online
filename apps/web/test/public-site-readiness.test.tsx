@@ -229,7 +229,7 @@ describe('the legal set says what it has to say', () => {
     ['/kullanim-kosullari.html', '/iade-politikasi.html'],
   ])('%s explains paid skins and links its refund policy', async (path, refundPath) => {
     const page = await publicFile(path);
-    expect(page).toContain('Paddle');
+    expect(page).toContain('Polar');
     expect(page).toContain(refundPath);
     expect(page).toMatch(/one-time|tek seferlik/i);
   });
@@ -245,8 +245,8 @@ describe('the legal set says what it has to say', () => {
   it.each(['/refunds.html', '/iade-politikasi.html'])(
     '%s explains one-time purchases and gives a real refund route', async (path) => {
       const page = await publicFile(path);
-      expect(page).toContain('https://paddle.net');
-      expect(page).toContain('https://www.paddle.com/legal/refund-policy');
+      expect(page).toContain('https://polar.sh/legal/checkout-buyer-terms');
+      expect(page).toContain('support@polar.sh');
       expect(page).toContain('mailto:samety3503@gmail.com');
       expect(page).toMatch(/one-time|tek seferlik/i);
       expect(page).toMatch(/not a subscription|abonelik değildir/i);
@@ -268,10 +268,10 @@ describe('the legal set says what it has to say', () => {
   );
 
   it.each(['/pricing.html', '/fiyatlar.html'])(
-    '%s marks all nine offers for country based Paddle price previews', async (path) => {
+    '%s marks all nine offers for country based Polar price previews', async (path) => {
       const page = await parse(path);
-      const offers = [...page.querySelectorAll('[data-paddle-price]')]
-        .map((element) => element.getAttribute('data-paddle-price'));
+      const offers = [...page.querySelectorAll('[data-offer-price]')]
+        .map((element) => element.getAttribute('data-offer-price'));
       expect(offers).toEqual([
         'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
         'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'bundle',
@@ -290,6 +290,14 @@ describe('the legal set says what it has to say', () => {
       expect(document).toMatch(/hesap.*sil|delete.*account|account deletion/is);
     }
   });
+
+  it.each(['/privacy.html', '/gizlilik-politikasi.html'])(
+    '%s discloses Polar payment data and IP-based country pricing', async (path) => {
+      const page = await publicFile(path);
+      expect(page).toContain('https://polar.sh/legal/privacy-policy');
+      expect(page).toContain('https://country.is/');
+    },
+  );
 
   /**
    * AdSense's own privacy-policy requirements: say that third-party vendors

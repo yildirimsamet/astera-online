@@ -6,6 +6,7 @@ import { accounts, chatMessages, chatReadMarkers, clanMemberships, clans, planet
 import { GameError } from './planet.js';
 import { locationIsKnown, type LocationSight } from './locationSight.js';
 import { publishShard } from '../stream/bus.js';
+import { messageDecorations, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ChatMessageView {
   id: string;
@@ -17,6 +18,8 @@ export interface ChatMessageView {
   language: ChatLanguage;
   createdAt: Date;
   self: boolean;
+  replyTo: ReplyPreview | null;
+  reactions: ReactionView[];
   /**
    * THE AUTHOR SPEAKS WITH ADMIN AUTHORITY. Owner instruction.
    *
@@ -92,6 +95,7 @@ export async function readChat(
       clanTag: clans.tag,
       login: accounts.username,
       content: chatMessages.content,
+      replyToMessageId: chatMessages.replyToMessageId,
       language: chatMessages.language,
       createdAt: chatMessages.createdAt,
     })
@@ -118,16 +122,18 @@ export async function readChat(
 
   const page = rows.slice(0, limit);
   const nextBefore = rows.length > limit ? (page.at(-1)?.id ?? null) : null;
+  const decorations = await messageDecorations(db, 'general', page, me.player.id);
   return {
     messages: page.reverse().map((row) => {
       const self = row.authorPlayerId === me.player.id;
-      const { x, y, z, planetId, login, ...message } = row;
+      const { x, y, z, planetId, login, replyToMessageId: _replyToMessageId, ...message } = row;
       const canLocate = locationIsKnown(planetId, { x, y, z }, self, sight);
       return {
         ...message,
         ...(canLocate ? { planetId } : {}),
         self,
         admin: adminUsernames.has(login),
+        ...(decorations.get(row.id) ?? { replyTo: null, reactions: [] }),
       };
     }),
     nextBefore,
@@ -149,11 +155,20 @@ export async function postChat(
   language: ChatLanguage = 'tr',
   /** Same boundary resolution as `readChat`, so the sender sees their own mark. */
   adminUsernames: ReadonlySet<string> = new Set(),
+  replyToMessageId?: string,
 ): Promise<ChatMessageView> {
   const me = await chatPlayer(db, accountId);
   const requestedAt = clock.now();
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`chat:${me.player.seasonId}`}))`);
+    const [replyTo] = replyToMessageId ? await tx.select({
+      id: chatMessages.id, content: chatMessages.content, username: accounts.displayName,
+    }).from(chatMessages)
+      .innerJoin(players, eq(players.id, chatMessages.authorPlayerId))
+      .innerJoin(accounts, eq(accounts.id, players.accountId))
+      .where(and(eq(chatMessages.id, replyToMessageId), eq(chatMessages.seasonId, me.player.seasonId),
+        eq(chatMessages.language, language))).limit(1) : [];
+    if (replyToMessageId && !replyTo) throw new GameError('CHAT_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
     const [latest] = await tx
       .select({ createdAt: chatMessages.createdAt })
       .from(chatMessages)
@@ -184,6 +199,7 @@ export async function postChat(
         authorPlayerId: me.player.id,
         language,
         content,
+        replyToMessageId: replyToMessageId ?? null,
         createdAt,
       })
       .returning({
@@ -199,6 +215,7 @@ export async function postChat(
     return {
       ...message, planetId: me.planetId, username: me.username, clanTag: me.clanTag, self: true,
       admin: adminUsernames.has(me.login),
+      replyTo: replyTo ?? null, reactions: [],
     };
   });
 }

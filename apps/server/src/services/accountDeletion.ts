@@ -40,7 +40,7 @@
  * hang off, and a queued return application whose CHECK forbids the null this
  * deletion would write. Every one is answered before a single row is removed.
  */
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, or } from 'drizzle-orm';
 import {
   MULTI_WORLD,
   SERVERS,
@@ -59,8 +59,11 @@ import {
   announcementReads,
   announcements,
   botProfiles,
+  chatArchive,
+  dmArchive,
   commanderTransfers,
   feedbackEntries,
+  perfSessions,
   planets,
   players,
   returnApplications,
@@ -118,6 +121,14 @@ async function forgetAccount(tx: Tx, accountId: string): Promise<void> {
   await tx.delete(seasonRewardEntitlements)
     .where(eq(seasonRewardEntitlements.accountId, accountId));
   await tx.delete(seasonResults).where(eq(seasonResults.accountId, accountId));
+  // Public messages by this account and private conversations involving it are removed.
+  await tx.delete(chatArchive).where(eq(chatArchive.authorAccountId, accountId));
+  await tx.delete(dmArchive).where(or(
+    eq(dmArchive.senderAccountId, accountId), eq(dmArchive.recipientAccountId, accountId),
+  ));
+  // 0100's recordings reference the account with no cascade: left here, the
+  // delete below failed on the key and the person could not be erased at all.
+  await tx.delete(perfSessions).where(eq(perfSessions.accountId, accountId));
   await tx.delete(accounts).where(eq(accounts.id, accountId));
 }
 

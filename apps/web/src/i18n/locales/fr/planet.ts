@@ -488,9 +488,8 @@ export const launch = {
   /** Engagement fondé sur un relevé. L’ancienneté de la cible est indiquée ici. D151. */
   lastSeen: "dernière observation il y a {{age}}",
   /**
-   * UN PIRATE N’A PAS DE RELEVÉ QUI VIEILLIT — il n’est jamais mémorisé et sa
-   * lecture est, par définition, en direct. L’autre horloge est donc plus utile :
-   * combien de temps il restera encore là, c’est-à-dire pourquoi il faut se dépêcher.
+   * L’équipage et l’orbite restent à jour même après la mémorisation d’une
+   * découverte au télescope. L’urgence vient du temps qu’il lui reste.
    */
   goneIn: "départ dans {{duration}}",
   back: "Retour",
@@ -578,11 +577,18 @@ export const transfer = {
   paceHint: "Plus lent arrive plus tard — les vaisseaux en vol ne peuvent pas être pillés. Même carburant ; rien ne reste en vol au-delà de 12 h.",
   fuelShort: "{{short}} manquants",
   eyebrow: "Transfert interplanétaire",
+  returnEta: "Retour au départ dans {{duration}} · {{time}}",
   eta: "Arrivée",
   capacity: "Cargaison",
   fleet: "Vaisseaux",
   homeDefence:
     "{{ships}} vaisseaux resteront sur le monde de départ · {{power}} de puissance de feu",
+  afterDelivery: "Après la livraison",
+  cargoShips: "Cargos",
+  otherShips: "Autres vaisseaux",
+  stay: "Rester sur place",
+  return: "Revenir",
+  returnHint: "Les vaisseaux de retour déchargent d’abord. Le carburant du retour est payé maintenant.",
   cargo: "Ressources",
   alloy: "Alliage",
   crystal: "Cristal",
@@ -594,16 +600,12 @@ export const transfer = {
   sending: "Départ en cours",
   launched: "Transfert lancé · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
-  rules:
-    "Rappelable une fois en vol — le retour dure autant que le trajet déjà effectué. Les défenses terrestres ne peuvent pas être transférées ; seuls les Cargos, Voyageurs, Atlas et Argosi apportent de la capacité de transport.",
+  rules: "Rappelable une fois en vol. Les défenses terrestres ne bougent pas ; tout vaisseau doté d’une soute peut transporter des ressources.",
   hullNone: "Aucun sur ce monde",
-  holdReady:
-    "Les ressources sont transportées par les Cargos, Voyageurs, Atlas et Argosi. Soute : {{capacity}}.",
+  holdReady: "Les vaisseaux choisis transportent les ressources. Soute : {{capacity}}.",
   destinationLabel: "Hangar de destination",
-  holdNeedsLoad:
-    "Ajoute un Cargo, un Voyageur, un Atlas ou un Argosi ci-dessus pour transporter des ressources.",
-  holdNoCarrier:
-    "Aucun Cargo, Voyageur, Atlas ou Argosi capable de transporter des ressources n’est présent sur ce monde.",
+  holdNeedsLoad: "Choisis ci-dessus un vaisseau doté d’une soute.",
+  holdNoCarrier: "Ce monde ne possède aucun vaisseau doté d’une soute.",
   /** Sous-titre de la barre d’espace de la cible ; les valeurs sont dessinées par la barre elle-même. */
   /** Équivalent lecteur d’écran des marqueurs indiquant le nombre de vaisseaux. */
   hullPacked: "{{packed}} {{name}} chargés sur {{held}} disponibles",

@@ -514,9 +514,8 @@ export const launch = {
    */
   lastSeen: "zuletzt gesehen {{age}}",
   /**
-   * A PIRATE HAS NO RECORD TO BE STALE — it is never remembered, so the reading is
-   * live by definition. What belongs on the line instead is the other clock: how
-   * long the thing will still be out there, which is the reason to hurry.
+   * A PIRATE'S CREW AND ORBIT ARE CURRENT even after Telescope discovery is
+   * remembered. The urgent clock is how long the target will still be out there.
    */
   goneIn: "verschwunden in {{duration}}",
   back: "Zurück",
@@ -612,10 +611,17 @@ export const transfer = {
   paceHint: "Langsamer landet später – Schiffe im Flug können nicht überfallen werden. Gleicher Treibstoff; nichts bleibt über 12 Std. in der Luft.",
   fuelShort: "kurz {{short}}",
   eyebrow: "Welttransfer",
+  returnEta: "Zurück am Start in {{duration}} · {{time}}",
   eta: "ETA",
   capacity: "Fracht",
   fleet: "Schiff",
   homeDefence: "{{ships}} Raumschiff bleibt am Ursprung · {{power}} Feuerkraft",
+  afterDelivery: "Nach der Lieferung",
+  cargoShips: "Frachter",
+  otherShips: "Andere Schiffe",
+  stay: "Dort bleiben",
+  return: "Zurückkehren",
+  returnHint: "Rückkehrende Schiffe entladen zuerst. Der Rückflug wird jetzt bezahlt.",
   cargo: "Ressourcen",
   alloy: "Legierung",
   crystal: "Kristall",
@@ -627,14 +633,12 @@ export const transfer = {
   sending: "Versand",
   launched: "Übertragung gestartet · {{duration}}",
   /** The recall rule and the two limits on what moves. Faz 2A.4 made "one way" false. */
-  rules:
-    "Im Flug einmal rückrufbar – der Rückweg dauert so lange wie der bisherige Flug. Die Bodenverteidigung kann sich nicht bewegen; Laderaum stammt nur von Kurier, Wanderer, Atlas und Argosy.",
+  rules: "Im Flug einmal rückrufbar. Bodenverteidigung kann nicht fliegen; jedes Schiff mit Laderaum kann Ressourcen transportieren.",
   hullNone: "Keine auf dieser Welt",
-  holdReady: "Kurier, Wanderer, Atlas und Argosy tragen das Erz. Halten: {{capacity}}.",
+  holdReady: "Ausgewählte Schiffe transportieren Ressourcen. Laderaum: {{capacity}}.",
   destinationLabel: "Zielhangar",
-  holdNeedsLoad: "Fügen Sie oben einen Kurier, Wanderer, Atlas oder Argosy hinzu, um Erz zu transportieren.",
-  holdNoCarrier:
-    "Diese Welt hat keinen Kurier, Wanderer, Atlas oder Argosy, daher kann hier nichts Erz transportieren.",
+  holdNeedsLoad: "Wählen Sie oben ein Schiff mit Laderaum aus.",
+  holdNoCarrier: "Diese Welt hat kein Schiff mit Laderaum.",
   /** Caption on the destination's room bar, which draws the figures itself. */
   /** Screen-reader sentence for the pips beside a hull. */
   hullPacked: "{{packed}} von {{held}} {{name}} gepackt",

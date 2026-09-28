@@ -170,7 +170,7 @@ Focus is a two-tap spatial interaction for every object, including the commander
 colonies. The first tap selects and zooms/follows it; a second tap on that same object expands its
 detail. On a controlled world that second tap instead opens planet management. Tapping a
 different object always starts again collapsed. Focusing a controlled destination makes it active
-but preserves the previously active world as the source of a dedicated one-way transfer route.
+but preserves the previously active world as the source of a dedicated transfer route.
 That owned-world detail names origin and target and leads directly to craft/resource selection;
 it is not the hostile intelligence dossier. If the controlled world was already active, the first
 tap still focuses it but the bottom rail stays entirely hidden because source and destination
@@ -434,6 +434,19 @@ at the bottom follows it automatically. While the panel is open, `shard:chat`
 keeps it live and the newest visible message advances the durable read marker. While it is
 closed, the same event refreshes the unread count; a small red dot appears on the Galaxy
 chat control itself. The player's own posts never light the dot.
+
+The chat sheet stays at 70% of the viewport height; its message log scrolls inside it while the
+composer remains visible. It has General, Clan, and DM channels. DM opens a horizontally scrollable row of
+conversation tabs with a fixed `+` control for finding a commander in the same live galaxy.
+Unread messages mark both the channel and its conversation tab. Blocking closes sending in
+both directions without hiding the existing history. A commander in Silent Space remains in
+their existing conversation, with the composer disabled until they return to their home server.
+Private events refresh the conversation, unread count, and send availability for both players.
+In General, Clan, and DM, holding a message opens emoji and reply actions beneath it. Six
+emoji choices are available; the count appears under the message, and choosing another emoji
+replaces the commander's previous reaction. Reply quotes the original author and message in
+the composer and in the sent bubble. A DM in Silent Space or blocked state disables these
+actions along with sending.
 
 **A way in labelled as something else is not a way in.** The commander control — the account, the
 galaxy, the season, and sign-out — was that same permanent header button for a long time, and it

@@ -7,6 +7,7 @@ import { publishPrivate } from '../stream/bus.js';
 import { activeClanMembership, activeClanPlayerIds, lockClanPlayers } from './clanCombat.js';
 import { clanActor } from './clan.js';
 import { GameError, lockSeason } from './planet.js';
+import { messageDecorations, type ReactionView, type ReplyPreview } from './messageDecorations.js';
 
 export interface ClanMessageView {
   id: string;
@@ -17,6 +18,8 @@ export interface ClanMessageView {
   content: string;
   createdAt: string;
   self: boolean;
+  replyTo: ReplyPreview | null;
+  reactions: ReactionView[];
 }
 
 export async function readClanChat(
@@ -47,6 +50,7 @@ export async function readClanChat(
     username: accounts.displayName,
     clanTag: clans.tag,
     content: clanMessages.content,
+    replyToMessageId: clanMessages.replyToMessageId,
     createdAt: clanMessages.createdAt,
   }).from(clanMessages)
     .innerJoin(players, eq(clanMessages.authorPlayerId, players.id))
@@ -71,11 +75,13 @@ export async function readClanChat(
     .limit(input.limit + 1);
   const page = rows.slice(0, input.limit);
   const nextBefore = rows.length > input.limit ? page.at(-1)?.id ?? null : null;
+  const decorations = await messageDecorations(db, 'clan', page, actor.playerId, membership.joinedAt);
   return {
-    messages: [...page].reverse().map((message) => ({
+    messages: [...page].reverse().map(({ replyToMessageId: _replyToMessageId, ...message }) => ({
       ...message,
       createdAt: message.createdAt.toISOString(),
       self: message.authorPlayerId === actor.playerId,
+      ...(decorations.get(message.id) ?? { replyTo: null, reactions: [] }),
     })),
     nextBefore,
   };
@@ -95,7 +101,7 @@ function assertClanChatOpen(
 
 export async function postClanChat(
   tx: Tx,
-  input: { playerId: string; content: string; now: Date },
+  input: { playerId: string; content: string; now: Date; replyToMessageId?: string },
 ): Promise<ClanMessageView> {
   const content = input.content.trim();
   if (!clanChatMessageIsValid(content)) {
@@ -107,6 +113,14 @@ export async function postClanChat(
   await lockClanPlayers(tx, [input.playerId]);
   const membership = await activeClanMembership(tx, input.playerId);
   if (!membership) throw new GameError('NOT_IN_CLAN', 'You do not belong to a clan', 403);
+  const [replyTo] = input.replyToMessageId ? await tx.select({
+    id: clanMessages.id, content: clanMessages.content, username: accounts.displayName,
+  }).from(clanMessages)
+    .innerJoin(players, eq(players.id, clanMessages.authorPlayerId))
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
+    .where(and(eq(clanMessages.id, input.replyToMessageId), eq(clanMessages.clanId, membership.clanId),
+      gte(clanMessages.createdAt, membership.joinedAt))).limit(1) : [];
+  if (input.replyToMessageId && !replyTo) throw new GameError('CLAN_MESSAGE_NOT_VISIBLE', 'That message is not visible', 404);
   const [clan] = await tx.select({ tag: clans.tag }).from(clans)
     .where(and(eq(clans.id, membership.clanId), isNull(clans.disbandedAt)));
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`clan-chat:${membership.clanId}`}))`);
@@ -132,6 +146,7 @@ export async function postClanChat(
     clanId: membership.clanId,
     authorPlayerId: input.playerId,
     content,
+    replyToMessageId: input.replyToMessageId ?? null,
     createdAt,
   }).returning({
     id: clanMessages.id,
@@ -150,6 +165,7 @@ export async function postClanChat(
     clanTag: clan?.tag ?? null,
     createdAt: message.createdAt.toISOString(),
     self: true,
+    replyTo: replyTo ?? null, reactions: [],
   };
 }
 

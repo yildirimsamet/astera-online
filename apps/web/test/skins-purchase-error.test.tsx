@@ -5,47 +5,41 @@ import SkinsScreen from '../src/screens/SkinsScreen.js';
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
-  checkoutOpen: vi.fn(),
-  update: vi.fn(),
-  customerId: '',
+  navigate: vi.fn(),
 }));
 
-vi.mock('@paddle/paddle-js', () => ({ initializePaddle: () => Promise.resolve({
-  Checkout: { open: mocks.checkoutOpen }, Update: mocks.update,
-}) }));
+vi.mock('../src/lib/polarCheckout.js', () => ({ navigateToPolarCheckout: mocks.navigate }));
 vi.mock('../src/screens/SkinPreview.js', () => ({ SkinPreview: () => <div>Skin preview</div> }));
 vi.mock('../src/api/queries.js', () => ({
   useSkins: () => ({ data: { ownedSkinIds: [], planets: [] }, isPending: false }),
-  useSkinShop: () => ({ data: { enabled: true, clientToken: 'live_test', priceIds: {}, paddleCustomerId: mocks.customerId || null } }),
-  useSkinPricing: () => ({ data: { prices: { 'planet-lava': { formatted: '€2.99', currencyCode: 'EUR' } } } }),
-  usePurchaseSkin: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
+  usePolarShop: () => ({ data: { enabled: true } }),
+  usePolarPricing: () => ({ data: { prices: { 'planet-lava': { formatted: '€2.99', currencyCode: 'EUR', amount: 299 } } } }),
+  usePurchasePolarSkin: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
 }));
 
 beforeEach(async () => {
   await i18n.changeLanguage('en');
   mocks.mutateAsync.mockReset();
-  mocks.checkoutOpen.mockReset();
-  mocks.update.mockReset();
-  mocks.customerId = '';
+  mocks.navigate.mockReset();
 });
 
 describe('checkout failure', () => {
   it('shows a retryable error when the transaction cannot be created', async () => {
-    mocks.mutateAsync.mockRejectedValueOnce(new Error('Paddle unavailable'));
+    mocks.mutateAsync.mockRejectedValueOnce(new Error('Polar unavailable'));
     render(<SkinsScreen commander="Samet" onOpenInventory={vi.fn()} />);
     const buy = await screen.findByRole('button', { name: /Buy · €2\.99/i });
     fireEvent.click(buy);
 
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/checkout could not start/i));
-    expect(mocks.checkoutOpen).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it('clears Retain identity when a different signed-in account has no Paddle customer', async () => {
-    mocks.customerId = 'ctm_01m3fxlive000000000000000';
-    const view = render(<SkinsScreen commander="First" onOpenInventory={vi.fn()} />);
-    await waitFor(() => { expect(mocks.update).toHaveBeenCalledWith({ pwCustomer: { id: mocks.customerId } }); });
-    mocks.customerId = '';
-    view.rerender(<SkinsScreen commander="Second" onOpenInventory={vi.fn()} />);
-    await waitFor(() => { expect(mocks.update).toHaveBeenLastCalledWith({ pwCustomer: {} }); });
+  it('opens the authenticated Polar checkout URL for the selected skin', async () => {
+    mocks.mutateAsync.mockResolvedValueOnce({ checkoutId: '9a046305-84df-4892-8e1f-6869479b9783',
+      url: 'https://sandbox.polar.sh/checkout/9a046305-84df-4892-8e1f-6869479b9783' });
+    render(<SkinsScreen commander="Samet" onOpenInventory={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Buy · €2\.99/i }));
+    await waitFor(() => { expect(mocks.mutateAsync).toHaveBeenCalledWith('planet-lava'); });
+    expect(mocks.navigate).toHaveBeenCalledWith('https://sandbox.polar.sh/checkout/9a046305-84df-4892-8e1f-6869479b9783');
   });
 });

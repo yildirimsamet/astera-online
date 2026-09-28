@@ -157,6 +157,60 @@ describe('event worker', () => {
       expect(after!.status).toBe('failed');
     });
 
+    /**
+     * A REPAIR THAT CANNOT RUN MUST NOT TAKE THE BATCH WITH IT.
+     *
+     * `abandon` runs inside the handler's catch. When it threw as well — a build order
+     * still `BUILDING` on a world nobody commands, which `loadLocked` refuses on both
+     * paths — the throw escaped `tick()`, and every event claimed after it in the same
+     * batch sat in `processing` until the reaper, however unrelated it was.
+     */
+    it('an abandon that throws does not strand the rest of the batch', async () => {
+      const { upgradeBuilding } = await import('../src/services/build.js');
+      const { buildOrders } = await import('../src/db/schema.js');
+      const [healthyWorld, orphanWorld] = f.planetIds as [string, string];
+      await grant(f.db, healthyWorld, 1_000_000, 400_000);
+
+      // Corrupt on purpose: a live order on a world that has no commander.
+      await f.db.update(planets).set({ kind: 'NEUTRAL', controllerPlayerId: null, statsOwnerPlayerId: null })
+        .where(eq(planets.id, orphanWorld));
+      const readyAt = new Date(f.clock.now().getTime() + 60_000);
+      const [orphan] = await f.db.insert(buildOrders).values({
+        planetId: orphanWorld, queue: 'CONSTRUCTION', slot: 0, kind: 'BUILDING', subject: 'VAULT',
+        startedAt: f.clock.now(), readyAt, remainingSeconds: 60,
+        cost: { alloy: 100, crystal: 0, deuterium: 0 },
+      }).returning();
+      await schedule(f.db, {
+        seasonId: f.seasonId, kind: 'build_complete', refId: orphan!.id,
+        payload: { expectedReadyAt: readyAt.toISOString() }, resolveAt: readyAt,
+      });
+      // One attempt left: this tick's failure exhausts it and runs `abandon`.
+      await f.db.update(scheduledEvents).set({ attempts: 4 })
+        .where(eq(scheduledEvents.refId, orphan!.id));
+
+      // A healthy order that lands LATER, so it is claimed behind the orphan.
+      await upgradeBuilding(f.db, healthyWorld, 'VAULT', f.clock);
+      const [healthy] = await f.db.select().from(buildOrders)
+        .where(eq(buildOrders.planetId, healthyWorld));
+      expect(healthy!.readyAt.getTime()).toBeGreaterThan(readyAt.getTime());
+
+      f.clock.set(new Date(healthy!.readyAt.getTime() + 1_000));
+      const result = await makeWorker(f).tick();
+
+      expect(result.claimed).toBe(2);
+      expect(result.failed).toBe(1);
+      expect(result.processed).toBe(1);
+      const [orphanEvent] = await f.db.select().from(scheduledEvents)
+        .where(eq(scheduledEvents.refId, orphan!.id));
+      expect(orphanEvent!.status).toBe('failed');
+      const [healthyEvent] = await f.db.select().from(scheduledEvents)
+        .where(eq(scheduledEvents.refId, healthy!.id));
+      expect(healthyEvent!.status).toBe('done');
+      const [healthyAfter] = await f.db.select().from(buildOrders)
+        .where(eq(buildOrders.id, healthy!.id));
+      expect(healthyAfter!.status).toBe('COMPLETED');
+    });
+
     it('an unknown event kind is completed, not retried forever', async () => {
       await schedule(f.db, { seasonId: f.seasonId, kind: 'asteroid_impact', resolveAt: f.clock.now() });
       const result = await makeWorker(f).tick();

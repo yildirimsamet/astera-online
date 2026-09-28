@@ -266,7 +266,19 @@ export class EventWorker {
           // event was going to resolve has to be released here or it is stranded
           // for the rest of the season — holding a flight bay, its units parked
           // off-planet, and blocking its origin-target pair. D28.
-          const released = await abandon(this.db, event, this.clock);
+          //
+          // Guarded for the sweep's reason above: this runs inside the handler's
+          // catch, so a throw here escaped `tick()` and left every event claimed
+          // after it in `processing` until the reaper — other commanders' battles.
+          let released = false;
+          try {
+            released = await abandon(this.db, event, this.clock);
+          } catch (abandonError) {
+            this.log.error(
+              { err: abandonError, id: event.id, kind: event.kind, refId: event.refId },
+              'abandoning an exhausted event failed; the batch carries on regardless',
+            );
+          }
           this.log.error(
             { id: event.id, kind: event.kind, refId: event.refId, released },
             'event abandoned after exhausting retries',

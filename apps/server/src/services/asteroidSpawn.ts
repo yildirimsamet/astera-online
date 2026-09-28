@@ -12,6 +12,7 @@ import {
 import { minutesSince } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
 import {
+  accounts,
   buildings,
   planets,
   asteroidSpawnHours,
@@ -88,6 +89,11 @@ export async function scheduleAsteroidHour(
  * chat-log analysis is about. So a founder counts from the first hour, and a late arrival serves
  * the day and raises the Core.
  *
+ * NOR IS AN ACCOUNT OLDER THAN THE SEASON. Owner instruction, 2026-09-27: *"Var olan eski
+ * userlar legit sayılmalı."* An account that existed before the doors opened was made for an
+ * earlier galaxy, not to inflate this one, so a veteran who comes back on day five counts from the
+ * hour they play. Only accounts opened after the season started serve the day and the Core.
+ *
  * A NEW COMMANDER IS NOT LOCKED OUT OF ANYTHING EITHER WAY — they fly at the same field. This
  * decides only what they ADD to it.
  *
@@ -112,9 +118,11 @@ export async function countEligibleCommanders(
     .select({
       playerId: players.id,
       joinedAt: players.joinedAt,
+      accountCreatedAt: accounts.createdAt,
       peak: sql<number>`max(${buildings.level})::int`,
     })
     .from(players)
+    .innerJoin(accounts, eq(accounts.id, players.accountId))
     .innerJoin(planets, eq(planets.controllerPlayerId, players.id))
     .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
     .where(and(
@@ -122,8 +130,9 @@ export async function countEligibleCommanders(
       gte(players.lastActiveAt, activeSince),
       isPerson,
     ))
-    .groupBy(players.id);
-  return rows.filter((row) => row.joinedAt <= foundedBy
+    .groupBy(players.id, accounts.createdAt);
+  return rows.filter((row) => row.accountCreatedAt < season.startsAt
+    || row.joinedAt <= foundedBy
     || (row.joinedAt <= joinedBefore && row.peak >= ASTEROID_DYNAMIC.supply.coreLevel)).length;
 }
 
@@ -133,18 +142,27 @@ export async function countEligibleCommanders(
  * The window reads the RAW counts each hour recorded, never the smoothed figures they produced:
  * averaging its own output filters twice and a genuine rise would crawl toward the truth without
  * ever arriving. See `supplyPopulation`.
+ *
+ * NOT DURING THE FOUNDING DAY. Owner decision, 2026-09-27. A new season's first hour opens before
+ * anybody has joined it and is written at zero; averaged in, that zero held back ~40% of the rocks
+ * of the next five hours exactly while the galaxy was filling. The founders are the baseline
+ * population (see `countEligibleCommanders`), not a spike to damp, so for the season's first
+ * `graceMinutes` an hour spawns against its own count. The window reads those raw counts as usual
+ * afterwards, so day two starts from what day one really held.
  */
 async function rollingSupply(
   db: Queryable,
-  seasonId: string,
+  season: { id: string; startsAt: Date },
   hourStart: Date,
   eligibleNow: number,
 ): Promise<number> {
+  const foundingEnds = season.startsAt.getTime() + ASTEROID_DYNAMIC.supply.graceMinutes * 60_000;
+  if (hourStart.getTime() < foundingEnds) return eligibleNow;
   const rows = await db
     .select({ eligible: asteroidSpawnHours.eligiblePlayers })
     .from(asteroidSpawnHours)
     .where(and(
-      eq(asteroidSpawnHours.seasonId, seasonId),
+      eq(asteroidSpawnHours.seasonId, season.id),
       lt(asteroidSpawnHours.hourStartsAt, hourStart),
     ))
     .orderBy(desc(asteroidSpawnHours.hourStartsAt))
@@ -210,7 +228,7 @@ export async function openAsteroidHour(
     */
     const countAt = input.now > hourStart ? input.now : hourStart;
     const eligiblePlayers = await countEligibleCommanders(tx, season.id, countAt);
-    const activePlayers = await rollingSupply(tx, season.id, hourStart, eligiblePlayers);
+    const activePlayers = await rollingSupply(tx, season, hourStart, eligiblePlayers);
     const showerRows = await tx.select().from(galaxyEventOccurrences).where(and(
       eq(galaxyEventOccurrences.seasonId, season.id),
       eq(galaxyEventOccurrences.kind, 'ASTEROID_SHOWER'),

@@ -1243,7 +1243,7 @@ export function StrikeSheet({
  *
  * Reusing the hostile-world detail here buried the only relevant action below
  * public facts, telescope gaps and attack language. This surface names both ends
- * of the one-way transfer, shows whether craft can make the trip, and leads into
+ * of the owned-world transfer, shows whether craft can make the trip, and leads into
  * the actual picker. The irreversible Send remains inside that picker.
  */
 function OwnedPlanetFocus({

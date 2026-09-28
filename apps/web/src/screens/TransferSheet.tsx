@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import {
   HULLS,
   TRANSFER_CARGO_HULLS,
+  fleetCargo,
+  transferReturningFleet,
+  transferStayingFleet,
   allowedPaces,
   distance,
   missionFuel,
@@ -13,11 +16,11 @@ import {
   hangarCapacity,
   hangarLoad,
   resourcesTotal,
-  transferCargoCapacity,
   type Fleet,
   type HullId,
   type MissionPace,
   type Vec3,
+  type TransferReturnPlan,
 } from '@astera/rules';
 import { useTransfer } from '../api/queries.js';
 import type { PlanetView } from '../api/schemas.js';
@@ -41,8 +44,8 @@ import { describe, useToast } from '../ui/Toast.js';
 const MOVABLE = (Object.keys(HULLS) as HullId[]).filter(
   (id) => !HULLS[id].ground && id !== 'PROSPECTOR',
 );
-/** Off the rule, never off a literal — see `TRANSFER_CARGO_HULLS`. */
-const CARRIES_ORE = (id: HullId): boolean =>
+/** The dedicated transport group; other mobile hulls may still have cargo space. */
+const IS_HAULER = (id: HullId): boolean =>
   (TRANSFER_CARGO_HULLS as readonly HullId[]).includes(id);
 const RESOURCE_ORDER = ['alloy', 'crystal', 'deuterium'] as const;
 
@@ -162,6 +165,7 @@ export function TransferSheet({
   const cooling = cooldownUntil !== null && cooldownUntil.getTime() > now;
   const [fleet, setFleet] = useState<Fleet>({});
   const [cargo, setCargo] = useState({ alloy: 0, crystal: 0, deuterium: 0 });
+  const [returnPlan, setReturnPlan] = useState<TransferReturnPlan>({ cargoShips: 'RETURN', otherShips: 'STAY' });
   /**
    * THE ORIGIN'S OWN MODIFIERS — the ladder and the Beacon. D180.
    *
@@ -170,10 +174,11 @@ export function TransferSheet({
    * applied both. One value so a screen cannot pick up one and miss the other.
    */
   const mods = flightModifiers(planet);
-  const capacity = transferCargoCapacity(fleet, mods.tech);
+  const capacity = fleetCargo(fleet, mods.tech);
   const loaded = resourcesTotal(cargo);
-  /** Does this world own an ore carrier at all — a different problem from not loading one. */
-  const ownsCarrier = transferCargoCapacity(planet.fleet, mods.tech) > 0;
+  const ownsHold = fleetCargo(planet.fleet, mods.tech) > 0;
+  const returningFleet = transferReturningFleet(fleet, returnPlan);
+  const stayingFleet = transferStayingFleet(fleet, returningFleet);
   const remainingFleet = useMemo<Fleet>(() => Object.fromEntries(
     (Object.keys(planet.fleet) as HullId[]).map((id) => [
       id,
@@ -201,11 +206,13 @@ export function TransferSheet({
     () => fleetCount(fleet) > 0 ? fleetTravelExact(span, fleet, { ...mods, pace }) : 0,
     [fleet, span, mods, pace],
   );
+  const returnMinutes = fleetCount(returningFleet) > 0
+    ? fleetTravelExact(span, returningFleet, { ...mods, pace: 1 }) : 0;
   /**
    * WHAT THE FLIGHT ITSELF BURNS, AND IT WAS NOWHERE ON THIS SCREEN. T6.
    *
-   * One leg — a transfer arrives and stays — which is the same call `movement.ts`
-   * makes before it charges. The raid sheet has quoted its fuel since T6; this is
+   * The outbound leg always flies. Selected ships also fly home, and both legs
+   * are paid at launch. The raid sheet has quoted its fuel since T6; this is
    * the same launch through a different door and it quoted nothing, while offering
    * a deuterium slider that runs all the way to the tank. Fill the hold and press
    * send and the server answers `INSUFFICIENT_FUEL`, because its guard is on the
@@ -214,10 +221,10 @@ export function TransferSheet({
    * Without the figure there is no way to know how much to leave behind, which is
    * the worse half — a screen causing a refusal it cannot explain.
    */
-  const fuel = useMemo(
-    () => fleetCount(fleet) > 0 ? missionFuel(fleet, span, 1, 'HOMEWARD') : 0,
-    [fleet, span],
-  );
+  const fuel = fleetCount(fleet) > 0
+    ? missionFuel(fleet, span, 1, 'HOMEWARD')
+      + (fleetCount(returningFleet) > 0 ? missionFuel(returningFleet, span, 1, 'HOMEWARD') : 0)
+    : 0;
   const spendableDeuterium = planet.planet.deuterium - cargo.deuterium;
   const fuelled = spendableDeuterium >= fuel;
   /*
@@ -232,7 +239,7 @@ export function TransferSheet({
     ? targetPlanet.capacity?.hangarUsed
       ?? hangarLoad({ ...targetPlanet.fleet, ...targetPlanet.fleetAway })
     : undefined;
-  const incomingRoom = hangarLoad(fleet);
+  const incomingRoom = hangarLoad(stayingFleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
     || destinationUsed + incomingRoom <= destinationTotal;
 
@@ -246,11 +253,23 @@ export function TransferSheet({
       into the state the ceiling exists to remove — a screen offering a launch the
       server will refuse — because the flight got dearer after the load was set.
     */
-    const room = Math.max(0, planet.planet.deuterium - missionFuel(next, span, 1, 'HOMEWARD'));
+    const nextReturning = transferReturningFleet(next, returnPlan);
+    const nextFuel = missionFuel(next, span, 1, 'HOMEWARD')
+      + (fleetCount(nextReturning) > 0 ? missionFuel(nextReturning, span, 1, 'HOMEWARD') : 0);
+    const room = Math.max(0, planet.planet.deuterium - nextFuel);
     setCargo((current) => fitCargo(
       { ...current, deuterium: Math.min(current.deuterium, room) },
-      transferCargoCapacity(next, mods.tech),
+      fleetCargo(next, mods.tech),
     ));
+  };
+
+  const setReturnChoice = (group: keyof TransferReturnPlan, choice: TransferReturnPlan[typeof group]) => {
+    const next = { ...returnPlan, [group]: choice };
+    setReturnPlan(next);
+    const nextReturning = transferReturningFleet(fleet, next);
+    const nextFuel = missionFuel(fleet, span, 1, 'HOMEWARD')
+      + (fleetCount(nextReturning) > 0 ? missionFuel(nextReturning, span, 1, 'HOMEWARD') : 0);
+    setCargo((current) => ({ ...current, deuterium: Math.min(current.deuterium, Math.max(0, planet.planet.deuterium - nextFuel)) }));
   };
 
   /**
@@ -274,6 +293,8 @@ export function TransferSheet({
               ? t('launch.noFuel')
               : null;
   const landsAt = eta > 0 ? clockTime(new Date(serverNow() + eta * 60_000)) : null;
+  const homeAt = returnMinutes > 0 && eta > 0
+    ? clockTime(new Date(serverNow() + (eta + returnMinutes) * 60_000)) : null;
   const holdsLine = t('transfer.homeDefence', {
     ships: fleetCount(remainingFleet) + fleetCount(planet.ground),
     power: compact(homeDefence),
@@ -293,7 +314,7 @@ export function TransferSheet({
             label={t('transfer.commit')}
             disabledReason={transfer.isPending ? t('transfer.sending') : refusal}
             onCommit={() => {
-              transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace }, {
+              transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace, returnPlan }, {
                 onSuccess: () => {
                   say(t('transfer.launched', { duration: duration(eta) }));
                   onLaunched();
@@ -335,11 +356,11 @@ export function TransferSheet({
         <section className="grid gap-1.5">
           <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.fleet')}</h3>
           {/*
-            THE ORE CARRIERS ARE ALWAYS LISTED, whether or not this world owns one: a row at zero with
+            THE HAULERS ARE ALWAYS LISTED, whether or not this world owns one: a row at zero with
             its reason beside it is the sentence the server's refusal never had on screen.
           */}
           <div>
-            {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || CARRIES_ORE(id)).map((id) => {
+            {MOVABLE.filter((id) => (planet.fleet[id] ?? 0) > 0 || IS_HAULER(id)).map((id) => {
               const held = planet.fleet[id] ?? 0;
               const art = HULL_ART[id];
               return (
@@ -410,6 +431,32 @@ export function TransferSheet({
           </div>
         </section>
 
+        <section className="grid gap-2" data-transfer-return-plan>
+          <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.afterDelivery')}</h3>
+          {(['cargoShips', 'otherShips'] as const).map((group) => (
+            <fieldset key={group} className="grid gap-1 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+              <legend className="px-1 text-caption font-semibold text-v2-ink">{t(`transfer.${group}`)}</legend>
+              <div className="grid grid-cols-2 gap-1">
+                {(['STAY', 'RETURN'] as const).map((choice) => (
+                  <label key={choice} className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-control border px-2 py-1.5 text-caption ${returnPlan[group] === choice ? 'border-v2-self bg-v2-self/10 text-v2-ink' : 'border-v2-line text-v2-ink-2'}`}>
+                    <input
+                      type="radio"
+                      name={`transfer-${group}`}
+                      value={choice}
+                      checked={returnPlan[group] === choice}
+                      onChange={() => { setReturnChoice(group, choice); }}
+                      aria-label={`${t(`transfer.${group}`)} ${t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return')}`}
+                      className="accent-v2-self"
+                    />
+                    {t(choice === 'STAY' ? 'transfer.stay' : 'transfer.return')}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+          <p className="px-1 text-micro text-v2-ink-3">{t('transfer.returnHint')}</p>
+        </section>
+
         <section className="grid gap-1.5">
           <h3 className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('transfer.cargo')}</h3>
           {/*
@@ -419,7 +466,7 @@ export function TransferSheet({
           <p className={`px-1 text-caption ${capacity > 0 ? 'text-v2-ink-2' : 'text-v2-warn'}`}>
             {capacity > 0
               ? t('transfer.holdReady', { capacity: compact(capacity) })
-              : ownsCarrier
+              : ownsHold
                 ? t('transfer.holdNeedsLoad')
                 : t('transfer.holdNoCarrier')}
           </p>
@@ -473,6 +520,11 @@ export function TransferSheet({
             <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.eta')}</dt>
             <dd className="mt-0.5 font-v2-mono text-caption text-v2-ink">{eta > 0 ? duration(eta) : '—'}</dd>
             {landsAt && <dd className="font-v2-mono text-micro text-v2-ink-3">{t('now.at', { time: landsAt })}</dd>}
+            {homeAt && (
+              <dd data-transfer-return-eta className="mt-1 text-micro text-v2-self">
+                {t('transfer.returnEta', { duration: duration(eta + returnMinutes), time: homeAt })}
+              </dd>
+            )}
           </div>
           <div className="rounded-control border border-v2-line bg-v2-panel px-2 py-1.5">
             <dt className="text-micro uppercase tracking-wide text-v2-ink-3">{t('transfer.capacity')}</dt>

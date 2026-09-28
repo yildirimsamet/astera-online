@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Note, Section } from '../ui/kit/index.js';
-import { CheckIcon, CopyIcon } from '../ui/icons/index.js';
+import { Button, Note, Section } from '../v2/kit/Surface.js';
+import { Icon } from '../v2/icons.js';
 import { copyText } from '../lib/clipboard.js';
 import { haptic } from '../lib/haptics.js';
 
@@ -20,10 +20,8 @@ import { haptic } from '../lib/haptics.js';
  * shortens this to an address and a button, the surface has become a checkout and
  * `community-screens.test.tsx` will say so.
  *
- * Two ways to give, because they suit different people: an address to copy for
- * anyone already holding crypto, and the Shopier cards for anyone who is not. A
- * card with no address yet is DISABLED on purpose — a live-looking button that
- * does nothing when pressed is worse than one that says it is not ready.
+ * Two ways to give, the cards first (owner 2026-09-27, the Shopier pages are live): a
+ * card needs nothing but a tap, a wallet needs a wallet. Drawn in the Gözlemevi language.
  */
 
 const CRYPTO = [
@@ -35,7 +33,7 @@ export interface SupportCard {
   /** Turkish lira, and the only place the figure is written rather than drawn. */
   readonly amount: number;
   readonly art: string;
-  /** The payment page. `null` until there is one; see `SupportCardButton`. */
+  /** The payment page. `null` while there is none; see `SupportCardButton`. */
   readonly href: string | null;
 }
 
@@ -48,55 +46,41 @@ export interface SupportCard {
  * is not also written. The only string these owe is the accessible name, because
  * the amount exists solely as pixels.
  *
- * `href` IS THE WHOLE SWITCH. It is `null` because the payment links do not exist
- * yet; filling one in turns that card into a real link with no other edit, and a
- * card without one is not pressable at all. That is this screen's oldest rule and
- * the reason the retired `$1/$5/$10/$20` row was disabled too: a live-looking
- * button that does nothing when pressed is worse than one that says it is not
- * ready.
+ * `href` IS THE WHOLE SWITCH: a card with one is a link to its Shopier page, a card
+ * without one is not pressable at all — a live-looking button that does nothing when
+ * pressed is worse than one that says it is not ready.
  */
 export const SUPPORT_CARDS: readonly SupportCard[] = [
-  { amount: 49, art: '/assets/images/general/49-tl-destek.png', href: null },
-  { amount: 99, art: '/assets/images/general/99-tl-destek.png', href: null },
-  { amount: 199, art: '/assets/images/general/199-tl-destek.png', href: null },
-  { amount: 499, art: '/assets/images/general/499-tl-destek.png', href: null },
+  { amount: 49, art: '/assets/images/general/49-tl-destek.png', href: 'https://www.shopier.com/asteraonline/51278327' },
+  { amount: 99, art: '/assets/images/general/99-tl-destek.png', href: 'https://www.shopier.com/asteraonline/51278343' },
+  { amount: 199, art: '/assets/images/general/199-tl-destek.png', href: 'https://www.shopier.com/asteraonline/51278354' },
+  { amount: 499, art: '/assets/images/general/499-tl-destek.png', href: 'https://www.shopier.com/asteraonline/51278360' },
 ];
 
 export function DonateScreen({ cards = SUPPORT_CARDS }: { cards?: readonly SupportCard[] } = {}) {
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-col gap-6 pb-6 pt-3">
+    <div className="mx-auto flex w-full max-w-xl flex-col gap-5 px-1 pb-6 pt-2 font-v2-ui">
       {/*
-        One block, tight gaps: four paragraphs that are one argument, not four
-        notices. The appeal is the only line in `text-bone` — it is the sentence
-        the whole sheet exists to say, and the rest is the case for it.
+        One block, tight gaps: four paragraphs that are one argument, not four notices.
+        The appeal is the sentence the whole sheet exists to say, so it alone is set in
+        full ink and weight; the case around it is the second ink.
       */}
-      <div className="flex flex-col gap-2">
-        <p className="text-body leading-relaxed text-bone">{t('community.donate.intro')}</p>
-        <p className="text-body leading-relaxed text-dim">{t('community.donate.costs')}</p>
-        <p className="text-body leading-relaxed text-bone">{t('community.donate.appeal')}</p>
-        <p className="text-body leading-relaxed text-dim">{t('community.donate.impact')}</p>
+      <div className="flex flex-col gap-2.5 text-body leading-relaxed">
+        <p className="text-v2-ink">{t('community.donate.intro')}</p>
+        <p className="text-v2-ink-2">{t('community.donate.costs')}</p>
+        <p className="font-semibold text-v2-ink">{t('community.donate.appeal')}</p>
+        <p className="text-v2-ink-2">{t('community.donate.impact')}</p>
       </div>
 
-      <p className="text-body leading-relaxed text-bone">{t('community.donate.supportLead')}</p>
-
-      <Section label={t('community.donate.cryptoHeading')}>
-        <div className="flex flex-col gap-2">
-          {CRYPTO.map((row) => (
-            <AddressRow key={row.id} label={t(`community.donate.${row.labelKey}`)} address={row.address} />
-          ))}
-        </div>
-      </Section>
+      <p className="text-caption font-semibold text-v2-ink">{t('community.donate.supportLead')}</p>
 
       {/*
-        FOUR ACROSS, AND SMALL. Owner report: two columns drew them "kocaman".
-
-        The art is almost entirely frame and one large numeral, so it survives
-        being small far better than a photograph would — at a quarter of a 350px
-        sheet each card is about seventy-five pixels wide and the figure still
-        reads. Four across also states the choice as ONE row of options rather
-        than a two-by-two block that dominates the sheet it is asking from.
+        FOUR ACROSS, AND SMALL. Owner report: two columns drew them "kocaman". The art is
+        almost entirely frame and one large numeral, so it survives being small — at a
+        quarter of a 350px sheet each card is about seventy-five pixels wide and the figure
+        still reads — and one row states the choice as four options, not a block.
       */}
       <Section label={t('community.donate.cardHeading')}>
         <div className="grid grid-cols-4 gap-1.5">
@@ -105,6 +89,14 @@ export function DonateScreen({ cards = SUPPORT_CARDS }: { cards?: readonly Suppo
           ))}
         </div>
         <Note>{t('community.donate.cardNote')}</Note>
+      </Section>
+
+      <Section label={t('community.donate.cryptoHeading')}>
+        <div className="flex flex-col gap-1.5">
+          {CRYPTO.map((row) => (
+            <AddressRow key={row.id} label={t(`community.donate.${row.labelKey}`)} address={row.address} />
+          ))}
+        </div>
       </Section>
 
       <Note>{t('community.donate.noPressure')}</Note>
@@ -128,6 +120,9 @@ export function DonateScreen({ cards = SUPPORT_CARDS }: { cards?: readonly Suppo
  *     that rule's own escape hatch — it also restores `-webkit-touch-callout`, so
  *     iOS long-press gives back the native Copy menu.
  *
+ * One row: the network and the press on one line, the address under them — the copy
+ * press no longer takes a full-width line of its own.
+ *
  * The accessible name names the NETWORK and the state, because two buttons that
  * both read "Copy" are one button to a screen reader, and a confirmation only the
  * sighted can read is not a confirmation.
@@ -144,44 +139,41 @@ function AddressRow({ label, address }: { label: string; address: string }) {
   }, []);
 
   return (
-    <div className="plate flex flex-col gap-2 p-3">
-      <p className="legend">{label}</p>
-      <p className="selectable break-all text-label leading-relaxed text-bone">{address}</p>
-      {/*
-        THE PRESS ANSWERS, VISIBLY. Owner instruction.
-
-        Three things move at once — the glyph becomes a tick, the slab takes the
-        affirmative weight, and the word changes — because a button whose only
-        change is one word is a button a player pressing it on a phone, with a
-        thumb over the label, cannot tell they have pressed. The accessible name
-        changes with them, so the confirmation is not a sighted-only fact.
-      */}
-      <Button
-        size="md"
-        full
-        variant={copied ? 'primary' : 'default'}
-        icon={copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
-        ariaLabel={
-          copied
-            ? t('community.donate.copiedLabel', { label })
-            : t('community.donate.copyLabel', { label })
-        }
-        onClick={() => {
-          void (async () => {
-            // False means every path was refused — an insecure context AND no
-            // legacy copy. The address is on screen and selectable, which is the
-            // way out; claiming "Copied" over an empty clipboard would send a
-            // player away believing they had it.
-            if (!(await copyText(address))) return;
-            haptic('tap');
-            setCopied(true);
-            if (settle.current !== null) clearTimeout(settle.current);
-            settle.current = setTimeout(() => { setCopied(false); }, 2_000);
-          })();
-        }}
-      >
-        {copied ? t('community.donate.copied') : t('community.donate.copy')}
-      </Button>
+    <div className="flex flex-col gap-1.5 rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-micro font-semibold uppercase tracking-wide text-v2-ink-2">{label}</p>
+        {/*
+          THE PRESS ANSWERS, VISIBLY. Owner instruction: the glyph becomes a tick, the
+          slab takes your colour, and the word changes — three changes at once, because a
+          thumb over the label hides a one-word change. The name changes with them.
+        */}
+        <Button
+          size="sm"
+          variant={copied ? 'primary' : 'default'}
+          icon={copied ? <Icon id="i-check" className="size-3.5" /> : undefined}
+          ariaLabel={
+            copied
+              ? t('community.donate.copiedLabel', { label })
+              : t('community.donate.copyLabel', { label })
+          }
+          onClick={() => {
+            void (async () => {
+              // False means every path was refused — an insecure context AND no
+              // legacy copy. The address is on screen and selectable, which is the
+              // way out; claiming "Copied" over an empty clipboard would send a
+              // player away believing they had it.
+              if (!(await copyText(address))) return;
+              haptic('tap');
+              setCopied(true);
+              if (settle.current !== null) clearTimeout(settle.current);
+              settle.current = setTimeout(() => { setCopied(false); }, 2_000);
+            })();
+          }}
+        >
+          {copied ? t('community.donate.copied') : t('community.donate.copy')}
+        </Button>
+      </div>
+      <p className="selectable break-all font-v2-mono text-caption leading-snug text-v2-ink">{address}</p>
     </div>
   );
 }
@@ -195,12 +187,16 @@ function AddressRow({ label, address }: { label: string; address: string }) {
  * `noopener` because it opens a third-party page in a new tab.
  *
  * Without one it is a DISABLED BUTTON: still drawn, still legible, and visibly
- * not ready. The art is dimmed rather than hidden, because a player has to be
- * able to see what is coming; `Note` under the grid says why.
+ * not ready.
  */
 function SupportCardButton({ card }: { card: SupportCard }) {
   const { t } = useTranslation();
   const label = t('community.donate.cardLabel', { amount: card.amount });
+  /*
+    FULL BRIGHTNESS EITHER WAY. Owner instruction: *"opacity verme, aydınlık parlak
+    olsun."* The card is lit artwork and dimming it made the one hopeful thing on
+    the sheet look switched off.
+  */
   const art = (
     <img
       src={card.art}
@@ -210,15 +206,9 @@ function SupportCardButton({ card }: { card: SupportCard }) {
     />
   );
 
-  /*
-    FULL BRIGHTNESS EITHER WAY. Owner instruction: *"opacity verme, aydınlık parlak
-    olsun."* The card is lit artwork and dimming it made the one hopeful thing on
-    the sheet look switched off. Readiness is carried by the `Note` under the grid
-    and by the press simply not being offered — never by greying out the art.
-  */
   if (card.href === null) {
     return (
-      <button type="button" disabled aria-label={label} className="rounded-chip">
+      <button type="button" disabled aria-label={label} className="rounded-control">
         {art}
       </button>
     );
@@ -229,7 +219,7 @@ function SupportCardButton({ card }: { card: SupportCard }) {
       target="_blank"
       rel="noreferrer noopener"
       aria-label={label}
-      className="rounded-chip transition-transform active:scale-[0.97]"
+      className="rounded-control transition-transform duration-150 ease-v2 hover:-translate-y-0.5 active:scale-[0.97]"
       onClick={() => { haptic('tap'); }}
     >
       {art}

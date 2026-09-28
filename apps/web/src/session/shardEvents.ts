@@ -207,6 +207,8 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
     /** Somebody spoke. The badge carries the unread count the beacon is drawn from. */
     case 'clan-chat':
       return [keys.clanBadge, keys.clanChat];
+    case 'dm':
+      return [keys.dmConversations, keys.dmMessages, keys.dmUnread];
     /** A share was credited or claimed; the outside view carries the depot too. */
     case 'clan-depot':
       return [keys.clanBadge, keys.clanDepot, keys.clanHome];
