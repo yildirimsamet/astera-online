@@ -35,6 +35,7 @@ const prices = {
   'planet-germany': { formatted: '€2.99', currencyCode: 'EUR' },
   'planet-france': { formatted: '€2.99', currencyCode: 'EUR' },
   'planet-spain': { formatted: '€2.99', currencyCode: 'EUR' },
+  'planet-japan': { formatted: '€2.99', currencyCode: 'EUR' },
   bundle: { formatted: '€8.49', currencyCode: 'EUR' },
 } as const;
 const turkishPrices = { ...prices,
@@ -88,6 +89,7 @@ describe('the skin store', () => {
     expect(screen.getByTestId('preview')).toHaveTextContent(/^planet-turkey:/);
     expect(screen.getByRole('img', { name: /turkey/i })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /spain/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /japan/i })).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: /lava/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: i18n.t('skins.bundleTitle') })).toBeNull();
 
@@ -109,6 +111,15 @@ describe('the skin store', () => {
     fireEvent.click(card(/desert/i));
     fireEvent.click(screen.getByRole('button', { name: /buy.*€2\.99/i }));
     expect(onPurchase).toHaveBeenCalledWith('planet-desert');
+  });
+
+  it('sells Japan at the country price through the authenticated checkout action', () => {
+    const { onPurchase } = shop({ collection: none });
+    fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    fireEvent.click(card(/japan/i));
+    expect(screen.getByTestId('preview')).toHaveTextContent(/^planet-japan:/);
+    fireEvent.click(screen.getByRole('button', { name: /buy.*€2\.99/i }));
+    expect(onPurchase).toHaveBeenCalledWith('planet-japan');
   });
 
   it('keeps the Paddle press waiting, not vanished, while its checkout is being created', () => {
@@ -162,16 +173,17 @@ describe('the skin store', () => {
   const shopierLabel = (amount: number) => i18n.t('skins.shopierBuy', { price: priceText(amount, 'TRY', 'en-US') });
   const shopier = (amount = SKIN_PRICE.TRY) => screen.getByRole('link', { name: shopierLabel(amount) });
 
-  it('sends every look and the set to its own Shopier product', () => {
+  it('links only TRY-eligible looks and the set to Shopier products', () => {
     expect(SHOPIER_LINKS).toEqual({
       'planet-lava': 'https://www.shopier.com/asteraonline/51278662',
       'planet-ice': 'https://www.shopier.com/asteraonline/51278677',
       'planet-toxic': 'https://www.shopier.com/asteraonline/51278683',
       'planet-desert': 'https://www.shopier.com/asteraonline/51278652',
       'planet-turkey': 'https://www.shopier.com/asteraonline/51278730',
-      'planet-germany': 'https://www.shopier.com/asteraonline/51278771',
-      'planet-france': 'https://www.shopier.com/asteraonline/51278695',
-      'planet-spain': 'https://www.shopier.com/asteraonline/51278822',
+      'planet-germany': null,
+      'planet-france': null,
+      'planet-spain': null,
+      'planet-japan': null,
       bundle: 'https://www.shopier.com/asteraonline/51278911',
     });
     expect(Object.keys(SHOPIER_LINKS)).toEqual([...PLANET_SKIN_IDS, 'bundle']);
@@ -195,11 +207,12 @@ describe('the skin store', () => {
     expect(onPurchase).not.toHaveBeenCalled();
   });
 
-  it('follows the selection into the country worlds', () => {
-    shop({ collection: none });
+  it('offers Shopier for Turkey while keeping the other country worlds EUR-only', () => {
+    shop({ collection: none, countryCode: 'TR', prices: turkishPrices });
     fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    expect(shopier()).toHaveAttribute('href', SHOPIER_LINKS['planet-turkey']);
     fireEvent.click(card(/germany/i));
-    expect(shopier()).toHaveAttribute('href', SHOPIER_LINKS['planet-germany']);
+    expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
   });
 
   it('tells the buyer to write the commander in the Shopier order, where the press is', () => {
@@ -258,6 +271,16 @@ describe('the skin store', () => {
     fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
     fireEvent.click(card(/germany/i));
     expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+  });
+
+  it('keeps every non-Turkey country look in EUR when location pricing is unavailable', () => {
+    shop({ collection: none, prices: {}, enabled: false });
+    fireEvent.click(screen.getByRole('tab', { name: /country worlds/i }));
+    for (const name of ['Germany', 'France', 'Spain', 'Japan']) {
+      fireEvent.click(card(new RegExp(name, 'i')));
+      expect(screen.getByRole('button', { name: new RegExp(`${name}.*€2\\.99`, 'i') })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /shopier/i })).toBeNull();
+    }
   });
 });
 

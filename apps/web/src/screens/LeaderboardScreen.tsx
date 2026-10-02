@@ -154,9 +154,9 @@ export function LeaderboardScreen({ onFocusPlanet }: {
               </span>
               <span className="mt-1 flex min-w-0 items-center gap-1.5">
                 <span data-leaderboard-meta className="flex min-w-0 flex-1 items-center gap-1.5 text-micro text-faint">
-                  {row.planetName !== undefined && row.coreTier !== undefined ? (
-                    <span className="truncate">{row.planetName} · {t('leaderboard.tier', { tier: row.coreTier })}</span>
-                  ) : null}
+                  {/* The world, never its tier: the raid band reads a commander's MOST
+                      developed world, and a capital's tier here invited the wrong comparison. */}
+                  {row.planetName !== undefined ? <span className="truncate">{row.planetName}</span> : null}
                 </span>
                 <span data-leaderboard-score className="flex min-w-24 shrink-0 flex-col items-end text-right">
                   <span className="flex items-center gap-1.5">

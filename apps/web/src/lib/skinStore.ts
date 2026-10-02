@@ -28,15 +28,16 @@ export const bundleSaving = (currency: Currency): number =>
  * Shopier charges the lira prices above and knows nothing of the account: the buyer writes
  * the commander in the order note and the owner grants the look from the admin panel.
  */
-/** `null` for a look whose Shopier product does not exist yet: it then shows no Shopier press. */
+/** `null` for looks without a TRY checkout: the shop then shows no Shopier press. */
 export const SHOPIER_LINKS: Readonly<Record<PlanetSkinId | 'bundle', string | null>> = {
   'planet-lava': 'https://www.shopier.com/asteraonline/51278662',
   'planet-ice': 'https://www.shopier.com/asteraonline/51278677',
   'planet-toxic': 'https://www.shopier.com/asteraonline/51278683',
   'planet-desert': 'https://www.shopier.com/asteraonline/51278652',
   'planet-turkey': 'https://www.shopier.com/asteraonline/51278730',
-  'planet-germany': 'https://www.shopier.com/asteraonline/51278771',
-  'planet-france': 'https://www.shopier.com/asteraonline/51278695',
-  'planet-spain': 'https://www.shopier.com/asteraonline/51278822',
+  'planet-germany': null,
+  'planet-france': null,
+  'planet-spain': null,
+  'planet-japan': null,
   bundle: 'https://www.shopier.com/asteraonline/51278911',
 };

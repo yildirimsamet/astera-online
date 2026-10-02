@@ -545,7 +545,20 @@ describe('GET /api/leaderboard', () => {
     expect(body.ladder.map((e) => e.rank)).toEqual([1, 2, 3]);
     expect(body.you!.score).toBe(-700);
     expect(body.you!.planetId).toBe(f.planetIds[0]!);
-    expect(body.you!.coreTier).toBeGreaterThan(0);
+    expect(body.you).not.toHaveProperty('coreTier');
+  });
+
+  /**
+   * A RIVAL IN SIGHT IS NAMED, NEVER TIERED. Owner, 2026-10-01: the ladder printed the
+   * capital's tier, the raid band reads each commander's most developed world, and
+   * players compared the wrong two numbers. Development is the dossier's business.
+   */
+  it('names a rival capital in sight but publishes no development tier', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/leaderboard', headers: auth });
+    const seen = res.json<{ ladder: { playerId: string; planetId?: string; coreTier?: number }[] }>()
+      .ladder.find((row) => row.playerId === f.playerIds[1]);
+    expect(seen?.planetId).toBe(f.planetIds[1]);
+    expect(seen).not.toHaveProperty('coreTier');
   });
 
   it('a player who has never fought sits at exactly zero', async () => {

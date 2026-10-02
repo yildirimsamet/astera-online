@@ -360,16 +360,23 @@ describe('the joint Dominion ratio', () => {
     expect(adjustJointDominion(0, 3, 1)).toBe(0);
   });
 
-  it('never rewards a numerically inferior attacking side', () => {
-    // Fewer attackers than defenders: the base transfer stands as it is.
-    expect(adjustJointDominion(9_000, 1, 3)).toBe(9_000);
+  it('prices the defenders’ head-count too, since Klan Savunma Desteği', () => {
+    // Owner K5, 2026-10-01: the rule works both ways. One raider beating a line of three
+    // takes three times the transfer; the three repelling one take a third.
+    expect(adjustJointDominion(9_000, 1, 3)).toBe(27_000);
+    expect(adjustJointDominion(-9_000, 1, 3)).toBe(-3_000);
+    // Equal heads: nothing to correct.
+    expect(adjustJointDominion(9_000, 3, 3)).toBe(9_000);
   });
 
   it('refuses nonsense counts and unsafe bases', () => {
     expect(() => adjustJointDominion(100, 0, 1)).toThrow(RangeError);
     expect(() => adjustJointDominion(100, 1, 0)).toThrow(RangeError);
     expect(() => adjustJointDominion(1.5, 1, 1)).toThrow(RangeError);
-    expect(() => adjustJointDominion(Number.MAX_SAFE_INTEGER, 1, 3)).not.toThrow();
+    // A discount can never leave the safe range; an amplification can, and is refused.
+    expect(() => adjustJointDominion(Number.MAX_SAFE_INTEGER, 3, 1)).not.toThrow();
+    expect(() => adjustJointDominion(-Number.MAX_SAFE_INTEGER, 1, 3)).not.toThrow();
+    expect(() => adjustJointDominion(Number.MAX_SAFE_INTEGER, 1, 3)).toThrow(RangeError);
   });
 });
 

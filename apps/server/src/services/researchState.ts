@@ -6,6 +6,8 @@ import {
   researchAvailable,
   type ResearchProjectId,
   type TechLevels,
+  researchPrerequisiteMet,
+  shipDamageApplies,
 } from '@astera/rules';
 import { atMinute } from '../clock.js';
 import type { Queryable } from '../db/client.js';
@@ -159,9 +161,9 @@ export async function researchView(
   ): boolean => {
     const done = (project: ResearchProjectId): boolean => (levels.get(project) ?? 0) > 0;
     /*
-      DISCOVERY IS A FRONTIER CONCEPT, AND ONLY THE FRONTIER FOUR HAVE ONE.
+      DISCOVERY IS A FRONTIER CONCEPT, AND ONLY THE FRONTIER THREE HAVE ONE.
 
-      The four are FOUND — by the season clock, by a cargo-limited raid, by a shield
+      The three are FOUND — by the season clock, by a cargo-limited raid, by a shield
       that held — which is the mechanism that keeps research attached to PvP.
       Everything else is simply THERE, and what stands in front of it is its own
       declared `prerequisite` and `availableAtMinutes`, checked separately below.
@@ -177,7 +179,7 @@ export async function researchView(
 
       The strategic pair is DISCOVERED and still shut, which is a different sentence
       from "not discovered" and the one its card has to be able to say: the War act
-      has not opened, or the weapon it answers has not been researched.
+      has not opened, or Gravitic Charges is not held yet.
     */
     switch (id) {
       case 'ISOTOPE_SPECTROMETRY':
@@ -186,14 +188,18 @@ export async function researchView(
         return done('ISOTOPE_SPECTROMETRY') && cargoInsight.length > 0;
       case 'GRAVITIC_CHARGES':
         return done('ISOTOPE_SPECTROMETRY') && graviticInsight;
-      case 'DEATH_STAR_PROTOCOL':
-        return done('GRAVITIC_CHARGES') && researchAvailable(id, planet.nowMinutes);
       default:
         return true;
     }
   };
 
-  return RESEARCH_PROJECT_IDS.map((id) => {
+  /*
+    INDUSTRIAL MAKES THE REPAIR STATION CHEAPER, AND A SEASON DEALT BEFORE THE STATION
+    HAS NONE. It is not listed there at all, so it can be neither shown nor bought.
+  */
+  const offered = RESEARCH_PROJECT_IDS.filter((id) =>
+    id !== 'INDUSTRIAL' || shipDamageApplies(planet.rulesetVersion));
+  return offered.map((id) => {
     const project = RESEARCH_PROJECTS[id];
     const level = held.get(id) ?? 0;
     const queuedLevel = queued.get(id) ?? 0;
@@ -202,11 +208,9 @@ export async function researchView(
     // exactly what the four seasonal projects did before they had levels.
     const completed = level >= project.maxLevel;
     const discovered = discoveredWith(id, held);
-    const prerequisiteMet = project.prerequisite === null
-      || (held.get(project.prerequisite) ?? 0) > 0;
+    const prerequisiteMet = researchPrerequisiteMet(project, (other) => held.get(other) ?? 0);
     const queueDiscovered = discoveredWith(id, queued);
-    const queuePrerequisiteMet = project.prerequisite === null
-      || (queued.get(project.prerequisite) ?? 0) > 0;
+    const queuePrerequisiteMet = researchPrerequisiteMet(project, (other) => queued.get(other) ?? 0);
 
     return {
       id,

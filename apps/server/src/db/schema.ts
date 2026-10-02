@@ -22,6 +22,7 @@ import {
 import type {
   CombatRound,
   BuildQueueId,
+  DamageLot,
   ClassReading,
   EscapeOutcome,
   FaultKind,
@@ -42,6 +43,7 @@ import type {
   PlanetSkinId,
   PlanetSkinStatus,
   JointWarFuelLeg,
+  DefencePosture,
   Vec3,
   CountryCode,
 } from '@astera/rules';
@@ -70,6 +72,12 @@ export const missionKind = pgEnum('mission_kind', [
    * identity in Postgres.
    */
   'clan_war',
+  /**
+   * BOTH LEGS OF A CLANMATE'S SUPPORT WAVE — out to the host world and home again.
+   * Klan Savunma Desteği, 2026-10-01. Which leg a row is reads off `clan_support_waves`
+   * (`outbound_mission_id` / `return_mission_id`); appended last for the same reason.
+   */
+  'clan_support',
 ]);
 export const missionStatus = pgEnum('mission_status', ['in_flight', 'resolved', 'cancelled']);
 export const eventStatus = pgEnum('event_status', ['pending', 'processing', 'done', 'failed']);
@@ -134,6 +142,8 @@ export const eventKind = pgEnum('event_kind', [
   'clan_war_expiry',
   /** Daily staged-neutral demand census. Append-only. */
   'neutral_census',
+  /** A stationed support wave reaching the end of its twelve hours. 2026-10-01. */
+  'clan_support_expiry',
 ]);
 /**
  * APPEND-ONLY, AND THE ORDER IS THE ENUM'S PHYSICAL IDENTITY.
@@ -211,6 +221,23 @@ export const notificationKind = pgEnum('notification_kind', [
    */
   'colony_fault',
   'colony_loyalty_warning',
+  /**
+   * A CLOUD FINISHED SHIPS IN FLIGHT. Radyasyon (plan F9).
+   *
+   * Told only to the commander who flew them; nobody else saw it happen. A raid whose
+   * whole wing died on the way in never struck, and this is the only word of it.
+   */
+  'radiation_lost',
+  /**
+   * KLAN SAVUNMA DESTEĞİ, 2026-10-01. A clanmate sent ships to stand at one of your
+   * worlds (host, with the arrival time); a wave left a world (host and sender, with the
+   * reason); a wave you stationed fought (sender, to the report); and a world dropped
+   * back to the retreat because its commander left the clan.
+   */
+  'clan_support_inbound',
+  'clan_support_departed',
+  'clan_support_result',
+  'defence_posture_reset',
 ]);
 export type NotificationKind = (typeof notificationKind.enumValues)[number];
 
@@ -1329,6 +1356,15 @@ export const planets = pgTable('planets', {
   pendingLeakDeuterium: real('pending_leak_deuterium').notNull().default(0),
   /** D172: immutable authored start, not live progress; NULL is a legacy world. */
   academyStep: integer('academy_step'),
+  /**
+   * THIS WORLD'S DEFENCE POSTURE. Klan Savunma Desteği, owner K4, 2026-10-01.
+   *
+   * Two toggles on the Hangar page — the tactical retreat and accepting clan support —
+   * that can never both be on, stored as the one value they make: ESCAPE (the default,
+   * and the only rule any season before 15 knows), SUPPORT, or HOLD. Never read in a
+   * season dealt before `clanDefenseRulesetVersion`.
+   */
+  defencePosture: text('defence_posture').$type<DefencePosture>().notNull().default('ESCAPE'),
 }, (t) => [
   uniqueIndex('planets_capital_player_idx')
     .on(t.controllerPlayerId)
@@ -1338,6 +1374,10 @@ export const planets = pgTable('planets', {
   index('planets_controller_idx').on(t.controllerPlayerId),
   // D172: versioned authored checkpoints, mirrored by migration 0059.
   check('planets_academy_step_check', sql`${t.academyStep} IS NULL OR ${t.academyStep} BETWEEN 0 AND 40`),
+  check(
+    'planets_defence_posture_check',
+    sql`${t.defencePosture} IN ('ESCAPE', 'SUPPORT', 'HOLD')`,
+  ),
   check(
     'planets_controller_kind_check',
     sql`(${t.kind} = 'NEUTRAL' AND ${t.controllerPlayerId} IS NULL)
@@ -1646,6 +1686,15 @@ export const missions = pgTable('missions', {
    * research at all — exactly what those commanders had.
    */
   tech: jsonb('tech').$type<Partial<Record<ResearchProjectId, number>>>(),
+  /**
+   * WHAT THE SHIPS ON THIS LEG ARE CARRYING IN DAMAGE. Kalıcı gemi hasarı, ruleset 14.
+   *
+   * A raid's survivors fly home as they came out of the battle; radiation adds to it on
+   * the way. Null means every ship aboard is whole, which is every leg written before the
+   * rule and every leg in an older season. The Repair Station judges it on landing
+   * (`landShips`), never in the air.
+   */
+  damage: jsonb('damage').$type<DamageLot[]>(),
 }, (t) => [
   index('missions_status_arrive_idx').on(t.status, t.arriveAt),
   index('missions_origin_idx').on(t.originPlanetId),
@@ -1861,7 +1910,7 @@ export const strategicAssets = pgTable('strategic_assets', {
   check('strategic_assets_type_check', sql`${t.type} IN ('DEATH_STAR', 'INTERCEPTOR')`),
 ]);
 
-export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH';
+export type BuildOrderKind = 'BUILDING' | 'HULL' | 'INSTRUMENT' | 'SATELLITE' | 'RESEARCH' | 'REPAIR';
 export type BuildOrderStatus = 'BUILDING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 /**
@@ -1893,10 +1942,10 @@ export const buildOrders = pgTable('build_orders', {
     .on(t.planetId, t.queue, t.slot)
     .where(sql`${t.status} = 'BUILDING'`),
   index('build_orders_planet_status_idx').on(t.planetId, t.status),
-  check('build_orders_queue_check', sql`${t.queue} IN ('CONSTRUCTION', 'YARD')`),
+  check('build_orders_queue_check', sql`${t.queue} IN ('CONSTRUCTION', 'YARD', 'REPAIR')`),
   check(
     'build_orders_kind_check',
-    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH')`,
+    sql`${t.kind} IN ('BUILDING', 'HULL', 'INSTRUMENT', 'SATELLITE', 'RESEARCH', 'REPAIR')`,
   ),
   check(
     'build_orders_status_check',
@@ -1905,6 +1954,76 @@ export const buildOrders = pgTable('build_orders', {
   check('build_orders_slot_check', sql`${t.slot} BETWEEN 0 AND 2`),
   check('build_orders_count_check', sql`${t.count} > 0`),
   check('build_orders_remaining_check', sql`${t.remainingSeconds} >= 0`),
+]);
+
+/**
+ * THE REPAIR STATION'S DOCK. Kalıcı gemi hasarı, owner decision 2026-09-29 (`plan.md`).
+ *
+ * One row per landing's worth of equally damaged ships of one hull, above the owner's
+ * twenty percent. The SHIPS are in `units` at `dock:<id>`, and that row is the only
+ * record of how many there are and whose they are: this one says how damaged they are
+ * and which repair order, if any, is working on them. So a capture that hands a world's
+ * `units` to a new commander, or a transfer that moves the world to another season, has
+ * nothing here to keep in step.
+ *
+ * A REPAIR IS RUNNING EXACTLY WHILE `repair_order_id` NAMES A `BUILDING` ORDER. It is not
+ * a status of its own: a cancellation, an abandonment or a secession that settles the
+ * order returns every lot on it to waiting, with nothing else to remember.
+ */
+export const shipDamageLots = pgTable('ship_damage_lots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  planetId: uuid('planet_id').notNull().references(() => planets.id),
+  hull: text('hull').$type<HullId>().notNull(),
+  damageBp: integer('damage_bp').notNull(),
+  repairOrderId: uuid('repair_order_id').references(() => buildOrders.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (t) => [
+  index('ship_damage_lots_planet_idx').on(t.planetId),
+  index('ship_damage_lots_repair_order_idx').on(t.repairOrderId),
+  /** At or under the line a ship is patched on landing; at a full hull it is gone. */
+  check('ship_damage_lots_damage_check', sql`${t.damageBp} BETWEEN 2001 AND 9999`),
+]);
+
+/**
+ * A RADIATION SOURCE. Owner decisions K3 · K4, 2026-09-29 (`plan.md` F9).
+ *
+ * A sphere that doses every ship flying through it (EMIT) or cancels every cloud inside
+ * it (SHELTER), live from `active_from` until `active_until`. The dose itself is
+ * `packages/rules/src/radiation.ts`; this row is only its data.
+ *
+ * NEVER DELETED IN A LIVE SEASON, ONLY ENDED. A flight settles over its whole path at
+ * its arrival, so a cloud that stood while the ships flew through it must still be
+ * read after it is gone. Ending one writes `active_until`.
+ *
+ * THE POSITION IS STORED, NOT LOOKED UP. A `PLANET` source is placed on a world's
+ * centre when it is made and stays there (plan §3.5.8); `anchor_id` names the world
+ * for the operator and is deliberately not a foreign key, so the world can be reset or
+ * moved without the source vanishing from under a flight that already crossed it.
+ *
+ * v1: made only by the operator's CLI, for tests. No live season has one (K4).
+ */
+export const radiationSources = pgTable('radiation_sources', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  anchorKind: text('anchor_kind').$type<'ZONE' | 'PLANET'>().notNull(),
+  anchorId: uuid('anchor_id'),
+  x: doublePrecision('x').notNull(),
+  y: doublePrecision('y').notNull(),
+  z: doublePrecision('z').notNull(),
+  radius: doublePrecision('radius').notNull(),
+  intensityPctPerMinute: doublePrecision('intensity_pct_per_minute').notNull(),
+  mode: text('mode').$type<'EMIT' | 'SHELTER'>().notNull(),
+  activeFrom: timestamp('active_from', { withTimezone: true }).notNull(),
+  activeUntil: timestamp('active_until', { withTimezone: true }),
+  label: text('label').notNull().default(''),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index('radiation_sources_season_idx').on(t.seasonId),
+  check('radiation_sources_radius_check', sql`${t.radius} > 0`),
+  check('radiation_sources_intensity_check', sql`${t.intensityPctPerMinute} >= 0`),
+  check('radiation_sources_mode_check', sql`${t.mode} IN ('EMIT', 'SHELTER')`),
+  check('radiation_sources_anchor_check', sql`(${t.anchorKind} = 'ZONE' AND ${t.anchorId} IS NULL)
+    OR (${t.anchorKind} = 'PLANET' AND ${t.anchorId} IS NOT NULL)`),
 ]);
 
 /**
@@ -2041,6 +2160,15 @@ export const battleReports = pgTable('battle_reports', {
    * the loss legible was computed, applied and thrown away.
    */
   defenceSalvage: jsonb('defence_salvage').$type<Fleet>().notNull().default({}),
+  /**
+   * WHAT EACH SIDE'S SURVIVORS CARRIED OUT OF THE FIGHT. Kalıcı gemi hasarı.
+   *
+   * The attacker's lots are judged when the wing lands; the defender's were judged on
+   * the spot, and the report shows which went to the Repair Station. Each side reads only
+   * its own. Empty on every report before ruleset 14.
+   */
+  attackerDamage: jsonb('attacker_damage').$type<DamageLot[]>().notNull().default([]),
+  defenderDamage: jsonb('defender_damage').$type<DamageLot[]>().notNull().default([]),
   /** Historical compatibility field. New battle reports always write zero. */
   disruptedMinutes: real('disrupted_minutes').notNull().default(0),
   /**
@@ -2146,6 +2274,15 @@ export const battleReports = pgTable('battle_reports', {
    * never that a tank was dry.
    */
   fleetEscape: jsonb('fleet_escape').$type<EscapeOutcome>(),
+  /**
+   * HOW MANY COMMANDERS HELD THE DEFENDING LINE. Klan Savunma Desteği, 2026-10-01.
+   *
+   * One on every report written before ruleset 15 and on every battle nobody supported.
+   * Above one, `defender_*` columns are the WHOLE line and each commander's part lives in
+   * `clan_support_battle_results`; the Dominion swing is the head-count-corrected
+   * transfer (`adjustJointDominion`), which is the second documented exemption below.
+   */
+  defenderCount: integer('defender_count').notNull().default(1),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('reports_defender_idx').on(t.defenderPlayerId, t.createdAt),
@@ -2174,6 +2311,10 @@ export const battleReports = pgTable('battle_reports', {
    * is deliberately a fraction or a multiple of the raw figure and BOTH are
    * stored so the correction can be audited. The exemption is keyed on the
    * operation binder rather than on a flag, so nothing else can claim it.
+   *
+   * A SUPPORTED LINE IS THE SECOND (Klan Savunma Desteği): several defenders correct
+   * the same way, keyed on `defender_count > 1`. Added NOT VALID and validated apart
+   * in migration 0126, so the relaxation never holds the table locked.
    */
   check(
     'battle_reports_dominion_audit_check',
@@ -2202,8 +2343,10 @@ export const battleReports = pgTable('battle_reports', {
           AND ${t.dominionSwing} IS NOT NULL
           AND (${t.dominionRuleVersion} < 7
             OR ${t.clanWarOperationId} IS NOT NULL
+            OR ${t.defenderCount} > 1
             OR ${t.dominionRawExchange} = ${t.dominionSwing}))`,
   ),
+  check('battle_reports_defender_count_check', sql`${t.defenderCount} >= 1`),
   check(
     'battle_reports_dominion_range_check',
     sql`(${t.dominionSwing} IS NULL
@@ -2221,6 +2364,196 @@ export const battleReports = pgTable('battle_reports', {
   uniqueIndex('battle_reports_clan_war_operation_idx')
     .on(t.clanWarOperationId)
     .where(sql`${t.clanWarOperationId} IS NOT NULL`),
+]);
+
+/* ── klan savunma desteği ───────────────────────────────────── */
+
+/**
+ * WHAT A PROBE READ OF THE CLANMATES' SHIPS STANDING AT A WORLD. Owner K9.
+ *
+ * The supporter count is exact — who has parked at a world is visible from orbit — and
+ * the bands are fuzzed by the same accuracy the home fleet's are, on streams of their
+ * own so the home fleet's bands did not move when this was added.
+ */
+export interface ProbeSupportReading {
+  supporters: number;
+  defence: { low: number; high: number };
+  fleetSize: { low: number; high: number };
+  classReading: ClassReading | null;
+}
+
+export type ClanSupportWaveStatus = 'OUTBOUND' | 'STATIONED' | 'RETURNING' | 'HOME' | 'LOST';
+export type ClanSupportReturnReason =
+  | 'RECALLED'
+  | 'SENT_BACK'
+  | 'HOST_CLOSED'
+  | 'EXPIRED'
+  | 'BAND'
+  | 'MEMBERSHIP'
+  | 'WORLD_CHANGED'
+  | 'FREEZE';
+
+/**
+ * ONE CLANMATE'S WAVE STANDING AT ANOTHER MEMBER'S WORLD. Klan Savunma Desteği,
+ * owner decisions 2026-10-01 (`docs/clan-defense-support-plan.md`).
+ *
+ * The ships never move rows: like a joint war contribution they stay on the ORIGIN
+ * world under their owner, in a location of their own, so they keep counting in the
+ * sender's personal Hangar and never in the host's — and the host's `home` reader never
+ * sees them. Where the wave IS lives here: flying out, standing at the host, flying
+ * back, home, or lost. Each send is its own row with its own fuel and its own bay.
+ */
+export const clanSupportWaves = pgTable('clan_support_waves', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  /** The clan the two shared at dispatch. A snapshot; membership is re-checked live. */
+  clanId: uuid('clan_id').notNull().references(() => clans.id),
+  senderPlayerId: uuid('sender_player_id').notNull().references(() => players.id),
+  hostPlayerId: uuid('host_player_id').notNull().references(() => players.id),
+  /** Where the ships' rows live and where they are owed a landing. Re-anchored to the
+   *  sender's capital if this world changes hands while the wave is out. */
+  originPlanetId: uuid('origin_planet_id').notNull().references(() => planets.id),
+  hostPlanetId: uuid('host_planet_id').notNull().references(() => planets.id),
+  /** `support:<uuid>` — the `units.location` this wave's ships sit in for its whole life. */
+  unitLocation: text('unit_location').notNull(),
+  /** The wave as it was sent. Never edited; a bigger wave is a second row. */
+  fleet: jsonb('fleet').$type<Fleet>().notNull(),
+  /** Damage the wave's ships carry — from a flight leg or a battle at the host. */
+  damage: jsonb('damage').$type<DamageLot[]>(),
+  /** Room this wave takes in the host's support bay while OUTBOUND or STATIONED. Bulk. */
+  reservedBulk: real('reserved_bulk').notNull(),
+  /** Deuterium paid once, up front, for the way out and the way back. */
+  fuelPaid: real('fuel_paid').notNull(),
+  status: text('status').$type<ClanSupportWaveStatus>().notNull().default('OUTBOUND'),
+  returnReason: text('return_reason').$type<ClanSupportReturnReason>(),
+  outboundMissionId: uuid('outbound_mission_id').notNull().references(() => missions.id),
+  /** The flight home from the host. NULL while out, and for a wave turned in flight
+   *  (the outbound mission itself turns, as every recall in the game does). */
+  returnMissionId: uuid('return_mission_id').references(() => missions.id),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  arriveAt: timestamp('arrive_at', { withTimezone: true }).notNull(),
+  stationedAt: timestamp('stationed_at', { withTimezone: true }),
+  /** Arrival plus twelve hours, clipped so the flight home still lands inside the season. */
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  returnAt: timestamp('return_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  /** Battles this wave has stood in at the host. */
+  battles: integer('battles').notNull().default(0),
+}, (t) => [
+  uniqueIndex('clan_support_waves_unit_location_idx').on(t.unitLocation),
+  uniqueIndex('clan_support_waves_outbound_idx').on(t.outboundMissionId),
+  uniqueIndex('clan_support_waves_return_idx').on(t.returnMissionId),
+  index('clan_support_waves_host_idx').on(t.hostPlanetId, t.status),
+  index('clan_support_waves_sender_idx').on(t.senderPlayerId, t.status),
+  index('clan_support_waves_origin_idx').on(t.originPlanetId, t.status),
+  index('clan_support_waves_host_player_idx').on(t.hostPlayerId, t.status),
+  index('clan_support_waves_season_idx').on(t.seasonId),
+  check(
+    'clan_support_waves_status_check',
+    sql`${t.status} IN ('OUTBOUND', 'STATIONED', 'RETURNING', 'HOME', 'LOST')`,
+  ),
+  check(
+    'clan_support_waves_reason_check',
+    sql`${t.returnReason} IS NULL OR ${t.returnReason} IN ('RECALLED', 'SENT_BACK',
+      'HOST_CLOSED', 'EXPIRED', 'BAND', 'MEMBERSHIP', 'WORLD_CHANGED', 'FREEZE')`,
+  ),
+  check('clan_support_waves_self_check', sql`${t.senderPlayerId} <> ${t.hostPlayerId}`),
+  check(
+    'clan_support_waves_amounts_check',
+    sql`${t.reservedBulk} >= 0 AND ${t.fuelPaid} >= 0 AND ${t.battles} >= 0`,
+  ),
+  check(
+    'clan_support_waves_lifecycle_check',
+    sql`(${t.status} <> 'STATIONED'
+          OR (${t.stationedAt} IS NOT NULL AND ${t.expiresAt} IS NOT NULL))
+      AND (${t.status} <> 'RETURNING'
+          OR (${t.returnAt} IS NOT NULL AND ${t.returnReason} IS NOT NULL))
+      AND (${t.status} NOT IN ('HOME', 'LOST') OR ${t.resolvedAt} IS NOT NULL)
+      AND (${t.expiresAt} IS NULL OR ${t.stationedAt} IS NULL
+          OR ${t.expiresAt} >= ${t.stationedAt})`,
+  ),
+]);
+
+/**
+ * ONE COMMANDER'S PART IN ONE SUPPORTED BATTLE — the host and each supporter, their
+ * waves summed. Written only when a wave stood in the line (`defender_count > 1`).
+ *
+ * What the report projects each defender's share from, what grants a supporter READ
+ * access to the report, and what the season's statistics and the recovery lookback read
+ * the HOST's own losses from — `battle_reports.defender_losses` is the whole line's.
+ */
+export const clanSupportBattleResults = pgTable('clan_support_battle_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  reportId: uuid('report_id').notNull().references(() => battleReports.id),
+  /** A snapshot, deliberately without a foreign key: a reclaimed seat must not erase history. */
+  playerId: uuid('player_id').notNull(),
+  role: text('role').$type<'HOST' | 'SUPPORT'>().notNull(),
+  sent: jsonb('sent').$type<Fleet>().notNull(),
+  losses: jsonb('losses').$type<Fleet>().notNull(),
+  survivors: jsonb('survivors').$type<Fleet>().notNull(),
+  /** `combatValue` this commander brought to the line — the Dominion weight (K6). */
+  power: bigint('power', { mode: 'number' }).notNull().default(0),
+  /** This commander's permanent loss value, net of salvage for the host. */
+  lossValue: bigint('loss_value', { mode: 'number' }).notNull().default(0),
+  damage: jsonb('damage').$type<DamageLot[]>().notNull().default([]),
+  /** The stores the raid took. The host's alone: a wave carries no cargo. */
+  lootLost: jsonb('loot_lost').$type<Resources>(),
+  dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('clan_support_battle_results_report_player_idx').on(t.reportId, t.playerId),
+  index('clan_support_battle_results_player_idx').on(t.playerId, t.createdAt),
+  check('clan_support_battle_results_role_check', sql`${t.role} IN ('HOST', 'SUPPORT')`),
+  check(
+    'clan_support_battle_results_loot_check',
+    sql`${t.role} = 'HOST' OR ${t.lootLost} IS NULL`,
+  ),
+  check(
+    'clan_support_battle_results_amounts_check',
+    sql`${t.power} >= 0 AND ${t.lossValue} >= 0`,
+  ),
+]);
+
+/**
+ * THE SCORE JOURNAL OF A SUPPORTED ORDINARY RAID. Klan Savunma Desteği.
+ *
+ * `dominion_events` insists the transfer IS the raw exchange; a supported raid corrects it
+ * for the support (`defendedTransfer`: the host's own fight × line power ÷ host power, the
+ * supporters' losses at face value — owner, 2026-10-02). So it writes here instead: the
+ * attacker's row and the host's, the only defender whose ledger moves, and the season's
+ * ledger audit reads both tables. `defender_count` is the line's head count, kept for the
+ * report. A joint war against a supported world writes its rows to
+ * `clan_war_dominion_events`, never here. No foreign keys, like `dominion_events`.
+ */
+export const clanSupportDominionEvents = pgTable('clan_support_dominion_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  seasonId: uuid('season_id').notNull().references(() => seasons.id),
+  missionId: uuid('mission_id').notNull(),
+  reportId: uuid('report_id'),
+  playerId: uuid('player_id').notNull(),
+  role: text('role').$type<'ATTACKER' | 'DEFENDER'>().notNull(),
+  rulesetVersion: integer('ruleset_version').notNull(),
+  attackerCount: integer('attacker_count').notNull(),
+  defenderCount: integer('defender_count').notNull(),
+  baseExchange: bigint('base_exchange', { mode: 'number' }).notNull(),
+  adjustedTransfer: bigint('adjusted_transfer', { mode: 'number' }).notNull(),
+  delta: bigint('delta', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('clan_support_dominion_events_idx').on(t.missionId, t.playerId, t.role),
+  index('clan_support_dominion_events_season_idx').on(t.seasonId),
+  check('clan_support_dominion_events_role_check', sql`${t.role} IN ('ATTACKER', 'DEFENDER')`),
+  check(
+    'clan_support_dominion_events_counts_check',
+    sql`${t.attackerCount} >= 1 AND ${t.defenderCount} >= 2 AND ${t.rulesetVersion} > 0`,
+  ),
+  check(
+    'clan_support_dominion_events_range_check',
+    sql`${t.baseExchange} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.adjustedTransfer} BETWEEN -9007199254740991 AND 9007199254740991
+      AND ${t.delta} BETWEEN -9007199254740991 AND 9007199254740991`,
+  ),
 ]);
 
 /* ── klan ortak savaşı ──────────────────────────────────────── */
@@ -2400,6 +2733,8 @@ export const clanWarContributions = pgTable('clan_war_contributions', {
    * Hangar and out of the staging world's defence.
    */
   unitLocation: text('unit_location').notNull(),
+  /** Damage this wave's ships carry across its legs (`missions.damage`, per wave). */
+  damage: jsonb('damage').$type<DamageLot[]>(),
   /** Room taken out of the Klan Hangarı while this wave is live. `hangarLoad` units. */
   reservedBulk: real('reserved_bulk').notNull(),
   /** Deuterium taken once, up front, for every leg this wave will ever fly. */
@@ -2495,6 +2830,8 @@ export const clanWarParticipantResults = pgTable('clan_war_participant_results',
   loot: jsonb('loot').$type<Resources>().notNull(),
   salvage: jsonb('salvage').$type<Resources>().notNull(),
   hullDamage: real('hull_damage').notNull().default(0),
+  /** This commander's damaged survivors as they left the battle. Kalıcı gemi hasarı. */
+  damage: jsonb('damage').$type<DamageLot[]>().notNull().default([]),
   /** The unnormalised score this commander earned, and the transfer it became. */
   dominionRaw: bigint('dominion_raw', { mode: 'number' }).notNull().default(0),
   dominionDelta: bigint('dominion_delta', { mode: 'number' }).notNull().default(0),
@@ -2655,6 +2992,15 @@ export const strategicImpacts = pgTable('strategic_impacts', {
   levelChanges: jsonb('level_changes').$type<StrategicLevelChange[]>().notNull().default([]),
   destroyedOrders: jsonb('destroyed_orders').$type<StrategicDestroyedOrder[]>().notNull().default([]),
   shieldDestroyed: real('shield_destroyed').notNull().default(0),
+  /**
+   * WHAT THE HIT DID TO A COLONY'S LOYALTY. Owner, 2026-10-01.
+   *
+   * Both null on a capital, a caretaker world and an impact that did nothing — only a
+   * colony has loyalty to lose. `loyaltyAfter` at zero is the hit that took the world:
+   * the secession it books turns it NEUTRAL a moment later.
+   */
+  loyaltyBefore: real('loyalty_before'),
+  loyaltyAfter: real('loyalty_after'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   uniqueIndex('strategic_impacts_mission_idx').on(t.missionId),
@@ -2743,6 +3089,14 @@ export const probeReports = pgTable('probe_reports', {
   shield: jsonb('shield').$type<{ low: number; high: number }>(),
   unarmed: jsonb('unarmed').$type<{ low: number; high: number }>(),
   fleetHome: boolean('fleet_home').notNull(),
+  /**
+   * KLAN SAVUNMA DESTEĞİ, 2026-10-01 (owner K9). The world's defence posture, exact —
+   * a setting is outside, not inside — and the clanmates' waves standing there as a
+   * reading of their own, fuzzed like the home fleet's. Null on every report from a
+   * season without the feature; `support` null on a world nobody supported.
+   */
+  posture: text('posture').$type<DefencePosture>(),
+  support: jsonb('support').$type<ProbeSupportReading>(),
   strategicStatus: text('strategic_status').$type<'READY' | 'BUILDING' | 'NONE' | 'UNKNOWN'>(),
   /** Whether the target's radar caught it — the observer learns this too. */
   detected: boolean('detected').notNull(),
@@ -2788,16 +3142,20 @@ export const probeReports = pgTable('probe_reports', {
      */
     doctrines?: Partial<Record<ResearchProjectId, number>>;
     /**
-     * WHETHER THIS WORLD CAN SHOOT A DEATH STAR DOWN. T10.
+     * HOW MANY DEATH STARS THIS WORLD CAN SHOOT DOWN. T10 · owner, 2026-10-01.
      *
-     * The single most valuable thing a probe can bring home once the war act
-     * opens, and it is what turns a strategic strike from a pure resource decision
-     * into an INTELLIGENCE one: 33,000 resources and an hour, spent on a world
-     * that may simply delete them. Never public — `/api/galaxy` says nothing about
-     * it — so the only way to know is to have looked, which is the whole argument
-     * for the feature.
+     * The READY charges on the pad at the look — one charge downs one weapon — and
+     * what turns a strategic strike from a pure resource decision into an
+     * INTELLIGENCE one. Never public, so the only way to know is to have looked.
+     * Reports written before the count carried an `interceptor` flag instead; they
+     * read as never measured.
      */
-    interceptor?: boolean;
+    interceptors?: number;
+    /**
+     * A COLONY'S LOYALTY AT THE LOOK, rounded up. Owner, 2026-10-01: a Death Star takes
+     * twenty and a colony at twenty or less goes NEUTRAL. Absent on capitals and neutrals.
+     */
+    loyalty?: number;
   }>(),
   /**
    * When the probe got home with it. NULL means still in the air.
@@ -2820,6 +3178,10 @@ export const probeReports = pgTable('probe_reports', {
    */
   index('probe_reports_memory_idx').on(t.observerPlayerId, t.deliveredAt),
   uniqueIndex('probe_reports_mission_idx').on(t.missionId),
+  check(
+    'probe_reports_posture_check',
+    sql`${t.posture} IS NULL OR ${t.posture} IN ('ESCAPE', 'SUPPORT', 'HOLD')`,
+  ),
 ]);
 
 /**
@@ -2870,7 +3232,8 @@ export const probeWorldMemories = pgTable('probe_world_memories', {
     satellites: string[];
     shielded: boolean;
     doctrines?: Partial<Record<ResearchProjectId, number>>;
-    interceptor?: boolean;
+    interceptors?: number;
+    loyalty?: number;
   }>().notNull(),
   seenAt: timestamp('seen_at', { withTimezone: true }).notNull(),
 }, (t) => [
@@ -3169,6 +3532,8 @@ export const pirateRaids = pgTable('pirate_raids', {
   salvage: jsonb('salvage').$type<Resources>(),
   /** One hull towed home from a DECISIVE win, or NULL. */
   capturedHull: text('captured_hull').$type<HullId>(),
+  /** Damage the hunting fleet carries home (`missions.damage`). Null: all whole. */
+  damage: jsonb('damage').$type<DamageLot[]>(),
 }, (t) => [
   index('pirate_raids_planet_idx').on(t.planetId, t.status),
   index('pirate_raids_season_idx').on(t.seasonId, t.status),

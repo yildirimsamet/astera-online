@@ -1006,12 +1006,16 @@ describe('what is open from the first minute', () => {
     await expect(completeResearch(f.db, mine, 'CARGO_HOLDS', f.clock)).resolves.toBeTruthy();
   });
 
-  /** The Frontier four are unchanged: they are still found rather than opened. */
+  /** The Frontier three are unchanged: they are still found rather than opened. */
   it('leaves the Frontier chain exactly where it was', async () => {
-    for (const id of ['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
-      'DEATH_STAR_PROTOCOL'] as const) {
+    for (const id of ['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES'] as const) {
       expect((await stateOf(id)).discovered, id).toBe(false);
     }
+  });
+
+  /** Owner, 2026-10-01: the weapon never needed it after the EMP rework. */
+  it('no longer offers the Death Star Protocol at all', async () => {
+    expect((await view()).map((row) => row.id)).not.toContain('DEATH_STAR_PROTOCOL');
   });
 
   /**
@@ -1028,16 +1032,29 @@ describe('what is open from the first minute', () => {
     }
   });
 
-  it('keeps the stockpile behind the weapon it stockpiles', async () => {
-    expect(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.prerequisite).toBe('DEATH_STAR_PROTOCOL');
+  it('keeps the stockpile behind Gravitic Charges, where the protocol used to stand', async () => {
+    expect(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.prerequisite).toBe('GRAVITIC_CHARGES');
     expect((await stateOf('STRATEGIC_STOCKPILE')).available).toBe(false);
   });
 
-  it('refuses all three retired strategic projects through the direct API', async () => {
-    for (const id of ['DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
-      await expect(completeResearch(f.db, mine, id, f.clock))
-        .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
+  /**
+   * THE PAIR IS LIVE RESEARCH NOW. Owner, 2026-10-01: they were shut behind a release
+   * switch while the capacities they sold were handed out for free.
+   */
+  it('lets the strategic pair be bought once the War act and Gravitic Charges allow', async () => {
+    f.clock.advance(RESEARCH_PROJECTS.INTERCEPTION_GRID.availableAtMinutes + 1);
+    await giveResearch(f.db, mine, 'GRAVITIC_CHARGES');
+    for (const id of ['INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
+      await expect(completeResearch(f.db, mine, id, f.clock), id).resolves.toBeTruthy();
     }
+  });
+
+  it('still keeps the stockpile behind the weapon’s own Core', async () => {
+    f.clock.advance(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.availableAtMinutes + 1);
+    await giveResearch(f.db, mine, 'GRAVITIC_CHARGES');
+    await setLevel(f.db, mine, 'CORE', 11);
+    await expect(completeResearch(f.db, mine, 'STRATEGIC_STOCKPILE', f.clock))
+      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
   });
 });
 

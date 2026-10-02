@@ -38,6 +38,7 @@ import {
 import { GameError } from '../planet.js';
 import { buildUnits, collectWorks, installSatellite, raiseInstrument, upgradeBuilding } from '../build.js';
 import { completeResearch } from '../research.js';
+import { startRepair } from '../repair.js';
 import { launchAttack } from '../mission.js';
 import { launchProbe, rememberedWorlds } from '../intel.js';
 import { launchHarvest, launchMining, loadMiningSnapshot, projectVisibleDebris } from '../mining.js';
@@ -134,6 +135,7 @@ export async function runBotTurn(
     return { did };
   }
 
+  await repairDocked(db, clock, seat, view, did, log);
   await buyGroundDefence(db, clock, seat, persona, view, did, log);
   await raiseOneBuilding(db, clock, seat, persona, view, did, log);
   await buyOneInstrument(db, clock, seat, persona, view, did, log);
@@ -160,6 +162,43 @@ const affordable = (view: PlanetView, cost: { alloy: number; crystal: number; de
 
 /** The alloy a bot's buildings and instruments never spend. See `BOTS.stockReserveHours`. */
 const storeReserve = (view: PlanetView): number => view.planet.alloyPerHour * BOTS.stockReserveHours;
+
+/**
+ * THE DOCK BEFORE ANYTHING ELSE. Kalıcı gemi hasarı (`plan.md` F7).
+ *
+ * A repair costs the damaged share of a new ship, so a hull in the Repair Station is
+ * the cheapest hull there is — and while it waits it neither flies nor defends, so it
+ * is the cheapest defence too. It goes first because it is the one step read off a
+ * fresh store: every step after this one decides on the turn's opening view.
+ *
+ * Cheapest lots first, as many as the store pays for in full. A lot the store cannot
+ * pay for waits for a richer turn; one job carries them all through the phone's door.
+ */
+async function repairDocked(
+  db: Db, clock: Clock, seat: BotSeat,
+  view: PlanetView, did: string[], log: FastifyBaseLogger,
+): Promise<void> {
+  if (view.queues.REPAIR.length >= BUILD.queueDepth) return;
+  const price = (cost: Resources): number => cost.alloy + cost.crystal + cost.deuterium;
+  const waiting = view.dock.lots
+    .filter((lot) => !lot.repairing)
+    .sort((a, b) => price(a.cost) - price(b.cost));
+  const chosen: string[] = [];
+  let bill: Resources = { alloy: 0, crystal: 0, deuterium: 0 };
+  for (const lot of waiting) {
+    const next = {
+      alloy: bill.alloy + lot.cost.alloy,
+      crystal: bill.crystal + lot.cost.crystal,
+      deuterium: bill.deuterium + lot.cost.deuterium,
+    };
+    if (!affordable(view, next)) continue;
+    chosen.push(lot.id);
+    bill = next;
+  }
+  if (chosen.length === 0) return;
+  await attempt(did, 'repair', log, () =>
+    startRepair(db, seat.planetId, { lotIds: chosen }, clock, seat.playerId));
+}
 
 /**
  * INSURANCE, BOUGHT FIRST AND NOT FROM WHAT IS LEFT OVER.
@@ -321,7 +360,8 @@ async function buyShips(
 ): Promise<void> {
   if (view.queues.YARD.length >= BUILD.queueDepth) return;
 
-  const owned = fleetValue(view.fleet) + fleetValue(view.fleetAway);
+  // A ship in the Repair Station is still this commander's: it comes back repaired.
+  const owned = fleetValue(view.fleet) + fleetValue(view.fleetAway) + fleetValue(view.fleetDocked);
   // The Hangar is the brake a player feels, so the bot sizes its order to the room
   // left after what is already in the yard rather than meeting the refusal.
   // Summed batch by batch: two orders of one hull are two orders, not one record.
@@ -333,7 +373,7 @@ async function buyShips(
 
   // A rock needs a craft, and this is the only thing that buys one.
   const prospectors = (view.fleet.PROSPECTOR ?? 0) + (view.fleetAway.PROSPECTOR ?? 0)
-    + queuedCount(view, 'YARD', 'PROSPECTOR');
+    + (view.fleetDocked.PROSPECTOR ?? 0) + queuedCount(view, 'YARD', 'PROSPECTOR');
   if (prospectors < persona.prospectorTarget && view.buildings.SHIPYARD >= HULLS.PROSPECTOR.minShipyard
     && room >= hullBulk('PROSPECTOR')) {
     if (await attempt(did, 'ship:PROSPECTOR', log, () =>
@@ -345,7 +385,7 @@ async function buyShips(
     couple of cargo hulls on the pad, and `raidingWing` takes them along.
   */
   const couriers = (view.fleet.COURIER ?? 0) + (view.fleetAway.COURIER ?? 0)
-    + queuedCount(view, 'YARD', 'COURIER');
+    + (view.fleetDocked.COURIER ?? 0) + queuedCount(view, 'YARD', 'COURIER');
   const courierWant = Math.min(BOTS.courierTarget - couriers, Math.floor(room / hullBulk('COURIER')));
   if (courierWant > 0 && view.buildings.SHIPYARD >= HULLS.COURIER.minShipyard) {
     if (await attempt(did, 'ship:COURIER', log, () =>
@@ -799,6 +839,7 @@ async function readingsOf(
       shield: probeReports.shield,
       unarmed: probeReports.unarmed,
       classReading: probeReports.classReading,
+      support: probeReports.support,
       fleetHome: probeReports.fleetHome,
       seenAt: probeWorldMemories.seenAt,
     })
@@ -820,6 +861,7 @@ async function readingsOf(
       classReading: row.classReading,
       doctrines: row.silhouette.doctrines ?? {},
       domeCeiling: row.silhouette.shielded ? shieldHp(row.silhouette.coreLevel) : 0,
+      support: row.support?.defence ?? null,
     });
   }
   return out;

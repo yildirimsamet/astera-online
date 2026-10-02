@@ -14,6 +14,7 @@ const ids = {
   POLAR_PRODUCT_GERMANY: 'f557093b-eba9-499c-9788-a41c35eb3ad9',
   POLAR_PRODUCT_FRANCE: '468d0d5e-1b7b-42cc-9a50-8951292f177e',
   POLAR_PRODUCT_SPAIN: '2851d8bb-6017-4fc3-a3b3-3eae0ea85314',
+  POLAR_PRODUCT_JAPAN: '0ec62d42-711e-4f7b-90ed-ef92d07a8bdb',
   POLAR_PRODUCT_BUNDLE: '9840aaf4-7e11-4aba-8234-6ab4f9379dcb',
 };
 const liveIds = {
@@ -25,11 +26,12 @@ const liveIds = {
   POLAR_PRODUCT_GERMANY: '648b85c1-b04b-47bc-b742-b2ef73b91458',
   POLAR_PRODUCT_FRANCE: '63bcf9e6-d0fc-4cc2-aaa6-533ca6b51f48',
   POLAR_PRODUCT_SPAIN: 'ab2d4302-5d25-4cb2-9007-c41ee5bdb0d9',
+  POLAR_PRODUCT_JAPAN: '82b25098-29bb-4b98-a8f4-11cb78ee2e7b',
   POLAR_PRODUCT_BUNDLE: '34dcfb16-e875-43da-9a9d-e12ee4b5f335',
 };
 
 describe('Polar environment gate', () => {
-  it('ships sandbox and live templates with distinct nine-product catalogs, sales disabled and no secrets', async () => {
+  it('ships sandbox and live templates with distinct ten-product catalogs, sales disabled and no secrets', async () => {
     for (const [template, products, mode] of [
       ['.env.example', ids, 'sandbox'], ['.env.production.example', liveIds, 'production'],
     ] as const) {
@@ -44,7 +46,7 @@ describe('Polar environment gate', () => {
     }
   });
 
-  it('keeps Polar disabled until all nine products and both secrets are present', () => {
+  it('keeps Polar disabled until all ten products and both secrets are present', () => {
     expect(polarReady(loadEnv({ ...base }))).toBe(false);
     expect(polarReady(loadEnv({ ...base, POLAR_CHECKOUT_ENABLED: 'true',
       POLAR_ACCESS_TOKEN: 'test-token', POLAR_WEBHOOK_SECRET: 'test-secret', ...ids,
@@ -64,6 +66,7 @@ describe('Polar environment gate', () => {
       'planet-germany': ids.POLAR_PRODUCT_GERMANY,
       'planet-france': ids.POLAR_PRODUCT_FRANCE,
       'planet-spain': ids.POLAR_PRODUCT_SPAIN,
+      'planet-japan': ids.POLAR_PRODUCT_JAPAN,
       bundle: ids.POLAR_PRODUCT_BUNDLE,
     });
   });

@@ -452,9 +452,10 @@ function fromExact(value: bigint, label: string): number {
  * three-on-one defeat pays the defender three times over. Dominion is a claim
  * about skill, and outnumbering somebody is not one.
  *
- * ONLY WHEN THE ATTACKERS ARE THE MANY. A clan that sends two commanders against
- * a defender who somehow fielded three is not penalised for it — the correction
- * exists to price an advantage, not to invent one.
+ * BOTH WAYS in form, though only the attackers are ever the many here: a joint war's
+ * defender is one commander. A line HELD BY SEVERAL (Klan Savunma Desteği) is priced by
+ * power, not heads — `adjustDefendedDominion` with the support factor, which equals this
+ * function whenever that factor is a whole number.
  *
  * TRUNCATED TOWARD ZERO, in exact integer arithmetic. Rounding could turn a
  * transfer of two into a transfer of one where the rule says three attackers share
@@ -474,7 +475,7 @@ export function adjustJointDominion(
   if (!Number.isSafeInteger(defenders) || defenders < 1) {
     throw new RangeError('joint Dominion needs at least one defending commander');
   }
-  if (base === 0 || attackers <= defenders) return base;
+  if (base === 0 || attackers === defenders) return base;
 
   const exact = base > 0
     ? (BigInt(base) * BigInt(defenders)) / BigInt(attackers)

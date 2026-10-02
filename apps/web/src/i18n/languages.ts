@@ -1,17 +1,17 @@
 /**
- * THE FIVE LANGUAGES, AND HOW A DEVICE IS ASKED WHICH ONE IT WANTS.
+ * THE SUPPORTED LANGUAGES, AND HOW A DEVICE IS ASKED WHICH ONE IT WANTS.
  *
  * Kept out of `index.ts` so the detector and the language switcher can both read
  * it without importing the i18next instance — a module that pulls in the whole
  * resource tree is a bad dependency for a button.
  *
  * TURKISH IS THE FALLBACK, ENGLISH IS NOT. Owner decision. Fallback here means
- * "what a device that asked for neither gets", so a phone set to German lands on
- * Turkish rather than on English. A device that asks for English still gets
- * English — detection runs first and the fallback only catches what it misses.
+ * "what a device that asked for no supported language gets", so a phone set to
+ * Korean lands on Turkish. A device that asks for Japanese gets Japanese —
+ * detection runs first and the fallback only catches what it misses.
  */
 
-export const LANGUAGES = ['tr', 'en', 'fr', 'de', 'es'] as const;
+export const LANGUAGES = ['tr', 'en', 'fr', 'de', 'es', 'ja'] as const;
 export type Language = (typeof LANGUAGES)[number];
 
 /** What the switcher prints for each. Each language names itself, in itself. */
@@ -21,6 +21,7 @@ export const LANGUAGE_LABEL: Record<Language, string> = {
   fr: 'Français',
   de: 'Deutsch',
   es: 'Español',
+  ja: '日本語',
 };
 
 /** The two-letter code on the chip in the header. */
@@ -30,6 +31,7 @@ export const LANGUAGE_SHORT: Record<Language, string> = {
   fr: 'FR',
   de: 'DE',
   es: 'ES',
+  ja: 'JA',
 };
 
 export const FALLBACK_LANGUAGE: Language = 'tr';
@@ -44,7 +46,7 @@ export const isLanguage = (value: unknown): value is Language =>
  * Narrow a BCP-47 tag down to one of ours. `tr-TR` is Turkish; `en-GB` is English.
  *
  * Anything else returns null rather than the fallback, because the caller needs to
- * know the difference: a device asking for German has NOT asked for Turkish, and
+ * know the difference: a device asking for Korean has NOT asked for Turkish, and
  * conflating the two here would make the stored-preference branch unreachable.
  */
 export function matchLanguage(tag: string | undefined | null): Language | null {

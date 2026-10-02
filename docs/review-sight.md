@@ -278,6 +278,13 @@ tek şey. İki dilde düzeltildi: filo uyarısı hâlâ "hiç yok", sondalar iç
    sunumları `sensorSphere`'a geçirildi; Telescope watch mesafesi ayrı ürün olduğu
    için `telescopeWatchRange` olarak kaldı. Üretim kodunda doğrudan `sensorReach(`
    veya `radarContactRange(` çağrısı kalmadığı tarandı.
+9. **Klan Savunma Desteği (ruleset 15) sondaya iki okuma ekledi.** `resolveProbe`
+   dünyanın **savunma duruşunu** (`ESCAPE | SUPPORT | HOLD`) kesin yazar ve bant içi,
+   nöbetteki destek dalgalarını ev filosundan **ayrı** bir "Klan desteği" okuması olarak
+   bulanıklaştırır (`probe_reports.support`, kendi `seededFrom` tuzlarıyla — mevcut bantlar
+   bit düzeyinde aynı). Bant dışı dalga okumaya girmez. Telescope v1'de ne duruşu ne
+   desteği gösterir. Destek uçuşu dost trafiktir; kimseye radar uyarısı üretmez ve gelen
+   saldırı uyarısı klana ya da destekçiye paylaşılmaz ("klanlarda ortak radar yok").
 
 ---
 

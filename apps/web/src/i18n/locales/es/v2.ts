@@ -147,6 +147,11 @@ export const fleetPage = {
 
 /** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
 export const reportScene = {
+  damageTitle: "Salieron dañadas",
+  damageLot: "{{name}} ×{{count}} · {{pct}} % de daño",
+  toDock: "a la Estación de Reparación",
+  patched: "reparada gratis",
+  landing: "Se evalúan al aterrizar: más del 20 % espera reparación, el resto se repara gratis.",
   eyebrow: "Informe de batalla · {{planet}}",
   rounds_one: "{{count}} ronda",
   rounds_other: "{{count}} rondas",
@@ -181,9 +186,7 @@ export const baseSwitch = {
 /** E8 · K9: the research constellation. */
 export const researchMap = {
   label: 'Mapa de investigación',
-  closed: '{{group}} · cerrado',
   /** The strategic three while their release switch is off: the server refuses them. */
-  shut: 'Cerrado por ahora',
   /** A prerequisite already held, said on the card. */
   needs: 'Requiere {{name}}',
   /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
@@ -252,4 +255,58 @@ export const outline = {
   filled: '{{count}} de {{total}}',
   threat_one: '{{count}} ataque en camino',
   threat_other: '{{count}} ataques en camino',
+};
+
+/** The Repair Station (Kalıcı gemi hasarı, `plan.md` F4/F6). */
+export const repairStation = {
+  order: "Reparación · {{name}}",
+  all: "naves mixtas",
+  title: "Estación de Reparación",
+  role: "Las naves dañadas esperan aquí hasta ser reparadas.",
+  tagline: "Devuelve las naves dañadas a la flota.",
+  idle: "No hay naves dañadas en este mundo.",
+  waitingShips_one: "{{count}} nave en espera",
+  waitingShips_other: "{{count}} naves en espera",
+  repairingShips_one: "{{count}} en reparación",
+  repairingShips_other: "{{count}} en reparación",
+  queueFill: "Cola {{used}}/{{total}}",
+  statWaiting: "En espera",
+  statRepairing: "En reparación",
+  statQueue: "Cola",
+  outOfAction: "Una nave con más del 20 % de daño espera aquí: no puede volar ni defender hasta ser reparada.",
+  howItWorks: "Cómo funciona",
+  ruleFree: "El daño del 20 % o menos, de una batalla o de la radiación, se repara gratis.",
+  rulePrice: "Precio: la parte dañada de una nave nueva. Una nave dañada al 40 % cuesta el 40 % de una nueva.",
+  ruleTime: "Tiempo: la misma parte de su tiempo de construcción. Los niveles de {{shipyard}} y {{automation}} lo acortan.",
+  ruleIndustrial: "La investigación {{industrial}} reduce precio y tiempo al 75 %, y luego al 50 %.",
+  youPay: "Ahora pagas el {{pct}} %.",
+  ruleQueue: "Los trabajos van uno tras otro, hasta {{depth}} en cola, aparte de la cola del Astillero.",
+  ruleCancel: "Cancelar devuelve la mitad del precio; las naves vuelven a esperar.",
+  industrialChip: "{{industrial}} −{{off}} %",
+  damagedHeading: "Naves dañadas",
+  selectAll: "Elegir todas",
+  selectNone: "Vaciar",
+  choose: "Reparar {{name}} ×{{count}}",
+  noneWaiting: "Ninguna nave espera reparación.",
+  damaged: "{{pct}} % dañada",
+  share: "{{pct}} % de una nave nueva",
+  queueHeading: "Cola de reparación",
+  queueEmpty: "Nada en reparación.",
+  finishing: "Terminando…",
+  startsIn: "empieza en {{time}}",
+  ends: "lista en {{time}}",
+  selected_one: "{{count}} nave elegida",
+  selected_other: "{{count}} naves elegidas",
+  afterQueue: "Empieza tras la cola, en {{time}}",
+  repairSelected_one: "Reparar {{count}} nave",
+  repairSelected_other: "Reparar {{count}} naves",
+  pick: "Elige naves para reparar",
+  queueFullShort: "Cola llena · {{used}}/{{total}}",
+  tooMany: "Elige como máximo {{max}} filas o todas",
+  starting: "Iniciando…",
+  cancel: "Cancelar",
+  docked_one: "{{count}} en reparación",
+  docked_other: "{{count}} en reparación",
+  started: "Reparación iniciada",
+  queue: "Estación de Reparación",
 };

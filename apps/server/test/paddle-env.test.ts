@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { loadEnv } from '../src/env.js';
-import { paddleReady, priceIdsFor } from '../src/services/paddleLive.js';
+import { paddleItemIds, paddleReady, priceIdsFor } from '../src/services/paddleLive.js';
 
 describe('live Paddle environment aliases', () => {
   const base = { DATABASE_URL: 'postgres://test', JWT_SECRET: 'test-secret-that-is-long-enough' };
@@ -53,6 +53,10 @@ describe('live Paddle environment aliases', () => {
       'planet-france': 'pri_custom_france', 'planet-spain': 'pri_custom_spain',
       bundle: 'pri_custom_bundle',
     });
+  });
+
+  it('does not accept Japan through Paddle without a configured Paddle price', () => {
+    expect(paddleItemIds).not.toContain('planet-japan');
   });
 
   it('requires the webhook signing secret before checkout can open', () => {

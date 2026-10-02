@@ -92,6 +92,21 @@ destroyed. Loot 70% / 35% / 0% of raidable stock, still bounded by survivor carg
 fighting when the raid fires at least three times the line and would wipe it out, if the tank pays
 the lift. `ESCAPED` or `STRANDED` on the report; guns never run. Ruleset 11 onward.
 
+**Damage (bp)** — A ship's persistent damage in basis points of its full hull (ruleset 14). A
+fight leaves at most one part-hit ship per side per hull; a cloud adds the same dose to every
+ship. At or under 2,000 bp it is patched free on landing; at 10,000 it is destroyed.
+
+**Lot** — Ships that landed with the same damage in one landing, docked together and repaired
+together. Lots from different landings never merge.
+
+**Tamirhane (Repair Station)** — Where a ship over 20% damaged waits. One per world, free, gated
+by nothing; a repair costs the damaged share of the ship's price and build time. Its own serial
+queue, three deep. **Industrial** research cuts both to 75% / 50%.
+
+**Radyasyon (radiation)** — A sphere that takes a share of every ship's full hull per minute
+spent inside it; exact to the segment, no tick. **SHELTER** is the inverse: a sphere where no cloud
+doses. v1: operator test clouds only.
+
 **Salvage** — The 60% of destroyed ground defence that rebuilds free. It exists so that
 blind raiding can actually fail.
 
@@ -268,6 +283,29 @@ Support standing at the leader's capital is escrow and does not defend that worl
 battle. Multiple waves still count as one participant. A fleetless leader is the coordinator:
 they spend launch quota and protection and may read the report, but do not enter loot, participant
 Dominion or attacker head count.
+
+**Klan Desteği / clan defence support** — Ruleset 15+. A mature clanmate's combat ships stationed
+at a world whose posture is SUPPORT. They fight in that world's defending line against any raid,
+keep counting in the sender's own Hangar, stay at most 12 h and fly home when recalled, sent back,
+expired, out of the tier band or when the clan changes. `clan_support_waves`, mission kind
+`clan_support`.
+
+**Support bay (Destek bölmesi)** — A world's room for support waves, as large as its own Hangar
+room. Outbound and standing waves use it; it never takes the host's own room.
+
+**Defence posture (Savunma duruşu)** — A world's `ESCAPE | SUPPORT | HOLD`, set by two mutually
+exclusive toggles: tactical retreat on (default), clan support on (never retreats), or both off
+(always fights). The probe reads it exactly.
+
+**Support factor (D)** — What clan support multiplies the host's own Dominion movement by:
+line power ÷ host power (the host's ships and the guns that fire), at most ×5. The host loses
+×D or gains ÷D; supporters' lost ships count at their value once; no supporter's Dominion moves.
+
+**Send back (Geri gönder)** — The host's control that turns one support wave home. No fuel returns.
+
+**Defending line** — Every stack in a defence: the host first, then each standing wave
+(`DefenderStack[]` in `resolveBattle`). A report with more than one commander in it carries
+`defender_count > 1` and a `defenseLine` projection.
 
 
 ## Design vocabulary

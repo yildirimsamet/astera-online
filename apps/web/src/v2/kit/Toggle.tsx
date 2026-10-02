@@ -6,20 +6,27 @@ import type { ReactNode } from 'react';
  * small switch to the eye, with the sentence it agrees to beside it. `tone` is the colour
  * of what is being agreed to: warn for a gap, hostile for a threat to you (K2).
  */
-export function Toggle({ checked, onChange, children, tone = 'warn' }: {
+export function Toggle({ checked, onChange, children, tone = 'warn', disabled = false }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
   children: ReactNode;
-  tone?: 'warn' | 'hostile';
+  /** `self` is a setting of your own (the defence posture), neither a gap nor a threat. */
+  tone?: 'warn' | 'hostile' | 'self';
+  /** Greyed and inert; the sentence beside it should say why. */
+  disabled?: boolean;
 }) {
-  const on = tone === 'hostile' ? 'border-v2-hostile bg-v2-hostile/80' : 'border-v2-warn bg-v2-warn/80';
+  const on = tone === 'hostile'
+    ? 'border-v2-hostile bg-v2-hostile/80'
+    : tone === 'self' ? 'border-v2-self bg-v2-self/80' : 'border-v2-warn bg-v2-warn/80';
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={checked}
-      onClick={() => { onChange(!checked); }}
-      className="flex w-full items-start gap-2.5 rounded-control px-1 py-1 text-left font-v2-ui text-caption text-v2-ink"
+      aria-disabled={disabled || undefined}
+      onClick={() => { if (!disabled) onChange(!checked); }}
+      className={`flex w-full items-start gap-2.5 rounded-control px-1 py-1 text-left font-v2-ui text-caption text-v2-ink ${
+        disabled ? 'cursor-not-allowed opacity-50' : ''}`}
     >
       <span
         aria-hidden="true"

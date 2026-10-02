@@ -24,7 +24,7 @@ import { openAllBands, planetView } from './fixtures.js';
  * are.
  *
  * ITS REQUIREMENTS ARE STATED AND NOT DISCOVERED. `buildInterceptor` refuses on
- * three counts — the research, an EFFECTIVE Radar rung, and an operational world —
+ * three counts — a full pad, an EFFECTIVE Radar rung, and an operational world —
  * and the effective rung is the subtle one: a Radar 5 with no Uplink draws no
  * circle at all, so a grid installed there could never fire and its owner would
  * have no way of learning why.
@@ -54,20 +54,22 @@ vi.mock('../src/api/queries.js', async () => {
   };
 });
 
-/** A world that meets every requirement: the grid held, an Uplink up, Radar 3. */
+/** The commander's Interception Grid, held. */
+const withGrid = (): PlanetView['research'] =>
+  planetView().research.map((project) => project.id === 'INTERCEPTION_GRID'
+    ? { ...project, level: 1, discovered: true, completed: true, available: false }
+    : project);
+
+/** A world that meets every requirement: an Uplink up and Radar 3. No research needed. */
 const armed = (
   over: Partial<Omit<PlanetView, 'planet'>> = {},
   stock: Partial<PlanetView['planet']> = {},
 ): PlanetView => {
-  const base = planetView();
   return planetView(
     {
       buildings: { CORE: 9, REFINERY: 4, EXTRACTOR: 4, VAULT: 2, SHIPYARD: 3 },
       instruments: { RADAR: ANTI_STRATEGIC.requiredRadar },
       orbit: ['UPLINK'],
-      research: base.research.map((project) => project.id === ANTI_STRATEGIC.requiredResearch
-        ? { ...project, level: 1, discovered: true, completed: true, available: false }
-        : project),
       ...over,
     },
     {
@@ -213,8 +215,8 @@ describe('the charge itself', () => {
     expect(stateOf(view)).toBe('BUILDING');
   });
 
-  it('shows one of two charges in a Tally and offers the second', () => {
-    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
+  it('shows one of two charges in a Tally and offers the second, with no research', () => {
+    expect(ANTI_STRATEGIC.charges.base).toBe(2);
     const view = show(armed({
       interceptor: { id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 },
       interceptors: [{ id: 'a1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
@@ -223,6 +225,66 @@ describe('the charge itself', () => {
     expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-used', '1');
     expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
     expect(button(view)).toBeEnabled();
+  });
+
+  /**
+   * WHY A COLONY WANTS ONE. Owner, 2026-10-01: every Death Star that lands costs a colony
+   * 20 loyalty and takes it at 20 or less — the battery is what stands between the two.
+   * A capital has no loyalty, so its battery says nothing of the kind.
+   */
+  it('tells a colony what every weapon that lands costs it', () => {
+    const view = show(armed({}, { kind: 'COLONY' }));
+    expect(block(view)).toHaveTextContent(/20 loyalty/i);
+  });
+
+  it('says nothing about loyalty on a capital', () => {
+    const view = show(armed({}, { kind: 'CAPITAL' }));
+    expect(block(view)).not.toHaveTextContent(/loyalty/i);
+  });
+
+  /** A pad holds two to four now, so the headline counts what is loaded rather than saying "one". */
+  it('counts the loaded charges in its headline', () => {
+    const two = [
+      { id: 'a1', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+      { id: 'a2', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+    ];
+    const view = show(armed({ interceptor: two[0]!, interceptors: two }));
+    expect(block(view)).toHaveTextContent(/Charges loaded: 2/);
+    expect(block(view)).not.toHaveTextContent(/One charge loaded/);
+  });
+
+  /** Owner, 2026-10-01: the Interception Grid takes the pad from two to four. */
+  it('holds four once the Grid is researched', () => {
+    const two = [
+      { id: 'a1', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+      { id: 'a2', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+    ];
+    const view = show(armed({ research: withGrid(), interceptor: two[0]!, interceptors: two }));
+    expect(block(view).querySelector('[data-tally]')).toHaveAttribute('data-total', '4');
+    expect(button(view)).toBeEnabled();
+  });
+
+  /** A full pad at two names the research that makes it four, and opens it. */
+  it('points a full pad at the Interception Grid', async () => {
+    const two = [
+      { id: 'a1', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+      { id: 'a2', status: 'READY' as const, readyAt: null, remainingSeconds: 0 },
+    ];
+    current = armed({ interceptor: two[0]!, interceptors: two });
+    const onOpenResearch = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <PlanetScreen focusGroup="defend" onOpenResearch={onOpenResearch} />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    expect(button(view)).toBeNull();
+    const next = within(block(view)).getByRole('button', { name: /interception grid/i });
+    expect(next).toHaveTextContent('4');
+    await userEvent.click(next);
+    expect(onOpenResearch).toHaveBeenCalledWith('INTERCEPTION_GRID');
   });
 
   /**

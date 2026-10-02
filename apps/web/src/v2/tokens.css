@@ -50,6 +50,9 @@
   --color-v2-crystal: #7fd0ff;
   --color-v2-deut: #a8ea4c;
   --color-v2-warn: #ffcc4d;
+  /* Radyasyon: the haze on the disc and the words about it. Yellower than deuterium's
+     green so a cloud is never read as a fuel reading. */
+  --color-v2-radiation: #d8f04a;
   --color-v2-premium: #e6c77e;
 
   /* ── sky ─ decoration only, never a meaning: the still sky behind the world and the
@@ -72,4 +75,9 @@
 
   /* ── motion ─ one curve: fast out, settles without bounce */
   --ease-v2: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html:lang(ja) {
+  --font-v2-ui: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --font-v2-mono: 'IBM Plex Mono', 'Noto Sans CJK JP', 'Yu Gothic', Meiryo, monospace;
 }

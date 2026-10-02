@@ -4,7 +4,6 @@ import {
   BUILD,
   DEUTERIUM,
   RESEARCH_PROJECTS,
-  FEATURE_FLAGS,
   type HullId,
   type ResearchProjectId,
 } from '@astera/rules';
@@ -54,18 +53,6 @@ import { Sheet, Unreachable, Waiting } from '../ui/kit/index.js';
  * in view only pays the cost and supplies its Core level; its Construction and
  * Yard queues remain independent.
  */
-
-/**
- * THE THREE PROJECTS THAT BELONG TO THE WEAPON, AND ONE PLACE THAT SAYS SO.
- *
- * `STRATEGIC_RESEARCH_ENABLED` is a release switch, not a deletion. While it is off
- * the server refuses these three (`services/research.ts`), so they stay on the map,
- * dim, and their card says closed before anything else: nothing below that door can
- * open them, which makes it the widest refusal `doorOf` has.
- */
-const strategicOnly = (id: ResearchProjectId): boolean =>
-  !FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED
-  && (id === 'DEATH_STAR_PROTOCOL' || id === 'INTERCEPTION_GRID' || id === 'STRATEGIC_STOCKPILE');
 
 interface SheetSpec {
   id: ResearchProjectId;
@@ -198,13 +185,6 @@ export function ResearchPanel({ onNeed, focus }: {
           role: t('research.graviticRole', { share: graviticShare }),
           detail: t('research.graviticDetail'),
         };
-      case 'DEATH_STAR_PROTOCOL':
-        return {
-          name: t('research.deathStarName'),
-          tag: t('research.deathStarTag'),
-          role: t('research.deathStarRole'),
-          detail: t('research.deathStarDetail'),
-        };
       case 'DEUTERIUM_SYNTHESIS':
         return {
           name: t('research.synthesisName'),
@@ -239,6 +219,13 @@ export function ResearchPanel({ onNeed, focus }: {
           tag: t('research.cargoTag'),
           role: t('research.cargoRole'),
           detail: t('research.cargoDetail'),
+        };
+      case 'INDUSTRIAL':
+        return {
+          name: t('research.industrialName'),
+          tag: t('research.industrialTag'),
+          role: t('research.industrialRole'),
+          detail: t('research.industrialDetail'),
         };
       case 'SHIP_POWER':
         return {
@@ -306,7 +293,6 @@ export function ResearchPanel({ onNeed, focus }: {
    * Ordered from the widest refusal to the narrowest, because a card should say the
    * thing that would still be true after everything else was solved.
    *
-   *   0. the release switch is off — the server refuses the project outright
    *   1. the commander Research queue is full
    *   2. the season has not opened this act yet — no amount of building fixes it
    *   3. the discovery has not happened — a condition to play out, not to buy
@@ -323,7 +309,6 @@ export function ResearchPanel({ onNeed, focus }: {
     completed: boolean,
   ): Blocked | undefined => {
     if (completed) return undefined;
-    if (strategicOnly(id)) return { reason: t('researchMap.shut') };
     /*
       A PROJECT ALREADY ON THE QUEUE HAS NO DOOR LEFT. D183, owner report:
       *"Que'da olan bir araştırma menü item'da 'birazdan sonra araştırılabilir'
@@ -345,26 +330,11 @@ export function ResearchPanel({ onNeed, focus }: {
       const isotope = planet.research.find(
         (project) => project.id === 'ISOTOPE_SPECTROMETRY',
       );
-      const gravitic = planet.research.find((project) => project.id === 'GRAVITIC_CHARGES');
       const untilOpen = untilReady((state.availableAt.getTime() - serverNow()) / 60_000);
-      /*
-        THE ACT CLOCK FIRST, AND FOR THE PROTOCOL SPECIFICALLY. D113: once Gravitic
-        Charges is held, "research Gravitic Charges first" is a false sentence, and
-        the true one is that the War act has not opened.
-      */
-      if (id === 'DEATH_STAR_PROTOCOL' && (gravitic?.completed ?? false)) {
-        return { reason: t('research.warAt', { duration: untilOpen }) };
-      }
       if (id === 'ISOTOPE_SPECTROMETRY') {
         return { reason: t('research.at', { duration: untilOpen }) };
       }
       if (!state.discovered || !(state.queueDiscovered ?? state.discovered)) {
-        if (id === 'DEATH_STAR_PROTOCOL') {
-          return {
-            reason: t('research.graviticFirst'),
-            onFix: () => { setPicked('GRAVITIC_CHARGES'); },
-          };
-        }
         if (!(isotope?.completed ?? false)) {
           return {
             reason: t('research.isotopeFirst'),
@@ -399,8 +369,12 @@ export function ResearchPanel({ onNeed, focus }: {
       */
       const behind = state.prerequisite;
       if (behind !== null && !(state.queuePrerequisiteMet ?? state.prerequisiteMet ?? true)) {
+        // Industrial waits for a rung, not merely a project: say which one.
+        const rung = RESEARCH_PROJECTS[id].prerequisiteLevel;
         return {
-          reason: t('research.prerequisiteFirst', { name: copy(behind).name }),
+          reason: rung === undefined
+            ? t('research.prerequisiteFirst', { name: copy(behind).name })
+            : t('research.prerequisiteLevelFirst', { name: copy(behind).name, level: rung }),
           onFix: () => { setPicked(behind); },
         };
       }
@@ -504,7 +478,6 @@ export function ResearchPanel({ onNeed, focus }: {
         stars={stars}
         selected={chosen}
         onSelect={setPicked}
-        dimStrategic={!FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED}
       />
       {chosenSpec && (
         <ConstellationCard
@@ -513,7 +486,14 @@ export function ResearchPanel({ onNeed, focus }: {
           takes={orderMinutes('RESEARCH', chosenSpec.state.cost, planet, 1, { research: chosen, level: chosenSpec.level + 1 })}
           held={held}
           pending={research.isPending}
-          prerequisite={behind !== null && behindHeld ? copy(behind).name : null}
+          prerequisite={behind !== null && behindHeld
+            ? RESEARCH_PROJECTS[chosen].prerequisiteLevel === undefined
+              ? copy(behind).name
+              : t('research.nameAtLevel', {
+                name: copy(behind).name,
+                level: RESEARCH_PROJECTS[chosen].prerequisiteLevel,
+              })
+            : null}
           opens={opens === null ? null : { ...opens, permission: chosenSpec.maxLevel === 1 }}
           onOpen={() => { setSheet(chosenSpec.spec); }}
           onAct={() => { buy(chosen, chosenSpec.name); }}

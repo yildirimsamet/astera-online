@@ -201,23 +201,50 @@ describe('what a probe brings home', () => {
     });
   });
 
-  /** T10. Without this a Death Star is 33,000 resources spent blind. */
+  /**
+   * T10, and a COUNT since 2026-10-01. One charge downs one weapon, so the reading has
+   * to say how many weapons arriving together it takes to get one through.
+   */
   describe('strategic defence', () => {
-    it('reports a loaded interceptor charge', () => {
-      const found = fact(report({ interceptor: true }), 'interceptor');
+    it('counts the loaded charges and says what beats them', () => {
+      const found = fact(report({ interceptors: 3 }), 'interceptor');
       expect(found).toBeDefined();
-      expect(found!.value).toMatch(/loaded/i);
-      expect(found!.note).toMatch(/destroyed/i);
+      expect(found!.value).toMatch(/3 charges/i);
+      expect(found!.note).toMatch(/\b4\b/);
     });
 
-    it('reports an empty tube as its own answer', () => {
-      const found = fact(report({ interceptor: false }), 'interceptor');
+    it('reports an empty pad as its own answer', () => {
+      const found = fact(report({ interceptors: 0 }), 'interceptor');
       expect(found).toBeDefined();
       expect(found!.value).toMatch(/no charge/i);
     });
 
     it('says nothing when the reading was never taken', () => {
       expect(fact(report(), 'interceptor')).toBeUndefined();
+    });
+  });
+
+  /**
+   * A COLONY'S LOYALTY, because a Death Star takes twenty of it and a colony at twenty or
+   * less goes NEUTRAL (owner, 2026-10-01). The note turns the figure into hits.
+   */
+  describe('colony loyalty', () => {
+    it('prints it and how many hits would take the colony', () => {
+      const found = fact(report({ loyalty: 64 }), 'loyalty');
+      expect(found).toBeDefined();
+      expect(found!.value).toMatch(/64/);
+      expect(found!.note).toMatch(/4 hits/i);
+      expect(found!.opportunity).toBeFalsy();
+    });
+
+    it('flags a colony a single hit would take', () => {
+      const found = fact(report({ loyalty: 20 }), 'loyalty');
+      expect(found!.note).toMatch(/one hit/i);
+      expect(found!.opportunity).toBe(true);
+    });
+
+    it('says nothing about a world that has no loyalty', () => {
+      expect(fact(report(), 'loyalty')).toBeUndefined();
     });
   });
 
@@ -264,11 +291,12 @@ describe('what a probe brings home', () => {
   it('dates every reading it prints', () => {
     const full = read(report({
       doctrines: { SHIP_POWER: 1 },
-      interceptor: true,
+      interceptors: 2,
+      loyalty: 50,
       deathStar: 'READY',
       deuteriumStock: { low: 1, high: 2 },
     }));
-    for (const key of ['doctrines', 'interceptor', 'strategic', 'deuterium']) {
+    for (const key of ['doctrines', 'interceptor', 'loyalty', 'strategic', 'deuterium']) {
       const found = full.facts.find((f) => f.key === key);
       expect(found, key).toBeDefined();
       expect(found!.ageMinutes, key).toBeCloseTo(30, 0);

@@ -1,6 +1,7 @@
 import { ABUSE, COMBAT, MULTI_WORLD } from './constants.js';
 import type { Grade, NeutralTier, Resources } from './types.js';
 import { RESOURCE_VALUE } from './valuation.js';
+import { CORE_TOP_LEVEL } from './view.js';
 
 export const gradeMultiplier = (grade: Grade): number =>
   grade === 'DECISIVE'
@@ -217,6 +218,21 @@ export const coreTier = (coreLevel: number): number => Math.max(1, Math.ceil(cor
  */
 export const withinTierBand = (peakCoreA: number, peakCoreB: number): boolean =>
   Math.abs(coreTier(peakCoreA) - coreTier(peakCoreB)) <= ABUSE.tierBand;
+
+/**
+ * THE SAME BAND READ FROM ONE SIDE: the tiers a commander at this peak may raid,
+ * inclusive. The dossier prints it beside every rival world, because a player
+ * cannot use a rule whose inputs they never see (D124). Clipped to the ladder at
+ * both ends, so nobody is told about a tier 0 or a tier above the Core's top.
+ */
+export const tierBandReach = (peakCore: number): { tier: number; low: number; high: number } => {
+  const tier = coreTier(peakCore);
+  return {
+    tier,
+    low: Math.max(1, tier - ABUSE.tierBand),
+    high: Math.min(coreTier(CORE_TOP_LEVEL), tier + ABUSE.tierBand),
+  };
+};
 
 /**
  * THE DEVELOPMENT BAND CAME BACK, NARROWER AND ON THE COMMANDER. D168.

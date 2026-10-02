@@ -131,7 +131,6 @@ const BASE_RESEARCH_COSTS: Record<ResearchProjectId, Resources> = {
   ISOTOPE_SPECTROMETRY: { alloy: 0, crystal: 900, deuterium: 0 },
   DENSE_FUEL_CELLS: { alloy: 0, crystal: 1400, deuterium: 150 },
   GRAVITIC_CHARGES: { alloy: 0, crystal: 1900, deuterium: 350 },
-  DEATH_STAR_PROTOCOL: { alloy: 11_000, crystal: 3600, deuterium: 900 },
   DEUTERIUM_SYNTHESIS: { alloy: 400, crystal: 700, deuterium: 0 },
   YARD_AUTOMATION: { alloy: 900, crystal: 500, deuterium: 0 },
   AI_ROBOTS: { alloy: 1050, crystal: 580, deuterium: 0 },

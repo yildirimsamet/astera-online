@@ -19,8 +19,6 @@ export interface ResearchConstellationProps {
   stars: readonly StarState[];
   selected: ResearchProjectId | null;
   onSelect: (id: ResearchProjectId) => void;
-  /** The strategic group is behind its release flag: drawn, dimmed and said closed. */
-  dimStrategic?: boolean;
 }
 
 /**
@@ -48,7 +46,7 @@ const LABEL_SIDE: Record<ResearchGroupId, 'left' | 'right'> = {
  * are: the card under the map carries the whole one. The star in the research lane pulses; the selected
  * one is ringed, and the card under the map is the decision.
  */
-export function ResearchConstellation({ stars, selected, onSelect, dimStrategic = false }: ResearchConstellationProps) {
+export function ResearchConstellation({ stars, selected, onSelect }: ResearchConstellationProps) {
   const { t } = useTranslation();
   const layout = useMemo(() => constellationLayout(RESEARCH_GROUPS, (id) => RESEARCH_PROJECTS[id].prerequisite), []);
   const byId = new Map(stars.map((star) => [star.id, star]));
@@ -66,12 +64,11 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
       {layout.regions.map((region) => {
         const group = RESEARCH_GROUPS.find((candidate) => candidate.id === region.group);
         if (!group) return null;
-        const dim = dimStrategic && region.group === 'strategic';
         return (
           <p
             key={region.group}
             data-region={region.group}
-            className={`absolute text-micro font-semibold uppercase tracking-wide ${dim ? 'text-v2-ink-3/60' : 'text-v2-ink-3'}`}
+            className="absolute text-micro font-semibold uppercase tracking-wide text-v2-ink-3"
             style={{
               top: `${String(region.y * 100 + 0.5)}%`,
               ...(LABEL_SIDE[region.group] === 'left'
@@ -79,7 +76,7 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
                 : { right: `${String((1 - region.x - region.w) * 100 + 2)}%` }),
             }}
           >
-            {dim ? t('researchMap.closed', { group: t(group.label) }) : t(group.label)}
+            {t(group.label)}
           </p>
         );
       })}
@@ -88,7 +85,8 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
         {layout.edges.map((edge) => {
           const from = at.get(edge.from);
           const to = at.get(edge.to);
-          if (!from || !to) return null;
+          // A project this season was not dealt has no star, so nothing leads to its spot.
+          if (!from || !to || !byId.has(edge.from) || !byId.has(edge.to)) return null;
           const lit = (byId.get(edge.from)?.level ?? 0) > 0 && (byId.get(edge.to)?.level ?? 0) > 0;
           return (
             <line
@@ -108,7 +106,6 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
       {layout.nodes.map((node) => {
         const star = byId.get(node.id);
         if (!star) return null;
-        const dim = dimStrategic && node.group === 'strategic';
         const share = star.maxLevel > 0 ? star.level / star.maxLevel : 0;
         const on = selected === node.id;
         const outside = node.outside === null ? null : byId.get(node.outside)?.name ?? null;
@@ -124,7 +121,7 @@ export function ResearchConstellation({ stars, selected, onSelect, dimStrategic 
             aria-pressed={on}
             aria-label={`${star.name} · ${String(star.level)}/${String(star.maxLevel)}`}
             onClick={() => { onSelect(node.id); }}
-            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${dim || star.locked ? 'opacity-60' : ''}`}
+            className={`absolute flex w-[76px] -translate-x-1/2 flex-col items-center gap-1 ${star.locked ? 'opacity-60' : ''}`}
             style={{ left: `${String(node.x * 100)}%`, top: `calc(${String(node.y * 100)}% - 6px)` }}
           >
             {/*

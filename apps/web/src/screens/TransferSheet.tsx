@@ -22,7 +22,10 @@ import {
   type Vec3,
   type TransferReturnPlan,
 } from '@astera/rules';
-import { useTransfer } from '../api/queries.js';
+import { useGalaxy, useTransfer } from '../api/queries.js';
+import {
+  lethalAfterRefusal, radiationRefusalCount, routeRadiation, toRadiationSources, type RadiationRefusal,
+} from '../lib/radiation.js';
 import type { PlanetView } from '../api/schemas.js';
 import { hullName } from '../i18n/names.js';
 import { compact } from '../lib/format.js';
@@ -40,6 +43,7 @@ import { serverNow } from '../lib/clock.js';
 import { HoldButton } from '../v2/kit/HoldButton.js';
 import { Sheet } from '../v2/kit/Sheet.js';
 import { describe, useToast } from '../ui/Toast.js';
+import { sumFleets } from '../lib/fleetPage.js';
 
 const MOVABLE = (Object.keys(HULLS) as HullId[]).filter(
   (id) => !HULLS[id].ground && id !== 'PROSPECTOR',
@@ -209,6 +213,20 @@ export function TransferSheet({
   const returnMinutes = fleetCount(returningFleet) > 0
     ? fleetTravelExact(span, returningFleet, { ...mods, pace: 1 }) : 0;
   /**
+   * RADYASYON ON THE WAY OUT, quoted before the press (plan D10): the dose the server
+   * settles at the landing, and a lethal route's hold is the acknowledgement it asks for.
+   */
+  const clouds = useGalaxy().data?.radiation;
+  const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
+  const departMs = serverNow();
+  // A server refusal for this same selection outranks the quote (see `lethalAfterRefusal`).
+  const [refused, setRefused] = useState<RadiationRefusal | null>(null);
+  const radiation = eta > 0
+    ? lethalAfterRefusal(routeRadiation({
+        fleet, from: planet.planet.position, to: target.position, departMs, arriveMs: departMs + eta * 60_000,
+      }, sources), refused, fleet)
+    : null;
+  /**
    * WHAT THE FLIGHT ITSELF BURNS, AND IT WAS NOWHERE ON THIS SCREEN. T6.
    *
    * The outbound leg always flies. Selected ships also fly home, and both legs
@@ -237,7 +255,8 @@ export function TransferSheet({
     : undefined;
   const destinationUsed = targetPlanet
     ? targetPlanet.capacity?.hangarUsed
-      ?? hangarLoad({ ...targetPlanet.fleet, ...targetPlanet.fleetAway })
+      // Summed rather than spread: the same hull at home and away is two berths, not one.
+      ?? hangarLoad(sumFleets(targetPlanet.fleet, targetPlanet.fleetAway, targetPlanet.fleetDocked ?? {}))
     : undefined;
   const incomingRoom = hangarLoad(stayingFleet);
   const destinationFits = destinationTotal === undefined || destinationUsed === undefined
@@ -310,16 +329,33 @@ export function TransferSheet({
         <div data-transfer-commit className="grid gap-2">
           {/* THE RULE, BEFORE THE BUTTON: it turns once; what the origin keeps heads the sheet. */}
           <p className="text-micro leading-snug text-v2-ink-3">{t('transfer.rules')}</p>
+          {radiation && (
+            <p
+              data-radiation-warning
+              className={`text-caption leading-snug ${radiation.destroyed > 0 ? 'text-v2-hostile' : 'text-v2-warn'}`}
+            >
+              {radiation.destroyed > 0
+                ? t('launch.radiationLethal', { count: radiation.destroyed })
+                : t(radiation.docks ? 'launch.radiationDock' : 'launch.radiationPatched', { pct: radiation.pct })}
+            </p>
+          )}
           <HoldButton
             label={t('transfer.commit')}
             disabledReason={transfer.isPending ? t('transfer.sending') : refusal}
             onCommit={() => {
-              transfer.mutate({ targetPlanetId: target.id, fleet, cargo, pace, returnPlan }, {
+              transfer.mutate({
+                targetPlanetId: target.id, fleet, cargo, pace, returnPlan,
+                ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
+              }, {
                 onSuccess: () => {
                   say(t('transfer.launched', { duration: duration(eta) }));
                   onLaunched();
                 },
-                onError: (error) => { say(describe(error), 'error'); },
+                onError: (error) => {
+                  say(describe(error), 'error');
+                  const count = radiationRefusalCount(error);
+                  if (count !== null) setRefused({ count, fleet });
+                },
               });
             }}
           />

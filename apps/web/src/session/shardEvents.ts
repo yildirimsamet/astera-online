@@ -200,6 +200,7 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
         keys.clanEvents,
         keys.galaxy,
         keys.leaderboard,
+        keys.season,
       ];
     /** An application or invitation was raised, withdrawn, rejected or expired. */
     case 'clan-request':
@@ -224,6 +225,15 @@ export function readsForPrivateEvent(kind: string): readonly (readonly string[])
       return [keys.clanWar, keys.pending, keys.planet, keys.planets, keys.traffic, keys.reports];
     case 'clan-treasury':
       return [keys.clanWar, keys.planet, keys.planets, keys.leaderboard, keys.clanLeaderboard];
+    /**
+     * KLAN SAVUNMA DESTEĞİ: a wave this commander sent, or one at their world, moved —
+     * dispatched, landed, turned, fought or came home. Both worlds and the strip move.
+     */
+    case 'clan-support':
+      return [keys.clanSupport, keys.planet, keys.planets, keys.pending, keys.traffic, keys.reports];
+    /** A clanmate's world opened or closed to clan support: the door on its Focus rail. */
+    case 'clan-posture':
+      return [keys.galaxy];
     default:
       return null;
   }

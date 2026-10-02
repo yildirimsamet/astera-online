@@ -21,14 +21,24 @@ const stars: StarState[] = RESEARCH_PROJECT_IDS.map((id: ResearchProjectId) => (
 }));
 
 const show = (selected: ResearchProjectId | null = 'SHIP_POWER', onSelect = vi.fn()) =>
-  render(<ResearchConstellation stars={stars} selected={selected} onSelect={onSelect} dimStrategic />);
+  render(<ResearchConstellation stars={stars} selected={selected} onSelect={onSelect} />);
 
 describe('the research constellation', () => {
   it('draws a star for every project and rings the selected one', () => {
     show();
-    expect(document.querySelectorAll('[data-star]')).toHaveLength(16);
+    expect(document.querySelectorAll('[data-star]')).toHaveLength(stars.length);
     expect(document.querySelector('[data-star="SHIP_POWER"]')).toHaveAttribute('aria-pressed', 'true');
     expect(document.querySelector('[data-star="SHIP_ARMOR"]')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  /** A season dealt before a project has no star for it, and no line running to its empty spot. */
+  it('draws no line to a project the season does not have', () => {
+    const { unmount } = show();
+    const all = document.querySelectorAll('[data-constellation] line').length;
+    unmount();
+    render(<ResearchConstellation stars={stars.filter((star) => star.id !== 'INDUSTRIAL')} selected={null} onSelect={vi.fn()} />);
+    expect(document.querySelector('[data-star="INDUSTRIAL"]')).toBeNull();
+    expect(document.querySelectorAll('[data-constellation] line')).toHaveLength(all - 1);
   });
 
   it('draws the level, the lock and the lane on the star itself', () => {

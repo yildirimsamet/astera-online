@@ -47,13 +47,16 @@ import { HULL_ART } from './assets.js';
 export function FleetCards({
   fleet,
   fleetAway,
+  fleetDocked = {},
 }: {
   fleet: Partial<Record<string, number>>;
   fleetAway: Partial<Record<string, number>>;
+  /** Waiting in the Repair Station: owned, neither home nor away (Kalıcı gemi hasarı). */
+  fleetDocked?: Partial<Record<string, number>>;
 }) {
   const { t } = useTranslation();
 
-  const owned = (id: MobileHullId) => (fleet[id] ?? 0) + (fleetAway[id] ?? 0);
+  const owned = (id: MobileHullId) => (fleet[id] ?? 0) + (fleetAway[id] ?? 0) + (fleetDocked[id] ?? 0);
   const groups = familyGroups(MOBILE_HULLS.filter((id) => owned(id) > 0));
   /*
     ONE OPEN, THE REST SHUT AND COUNTED — the shape the Fleet tab and the launch
@@ -97,6 +100,7 @@ export function FleetCards({
                 {hulls.map((id) => {
                   const home = fleet[id] ?? 0;
                   const away = fleetAway[id] ?? 0;
+                  const docked = fleetDocked[id] ?? 0;
                   const art = HULL_ART[id];
                   return (
                     <span
@@ -131,6 +135,16 @@ export function FleetCards({
                           title={t('planetHero.fleetAway', { count: away })}
                         >
                           ↗{away}
+                        </span>
+                      )}
+                      {/* Waiting for repair: the reason the home figure is short. */}
+                      {docked > 0 && (
+                        <span
+                          data-testid={`fleet-docked-${id}`}
+                          className="num text-micro leading-none text-threat-ink"
+                          title={t('repairStation.docked', { count: docked })}
+                        >
+                          ⚒{docked}
                         </span>
                       )}
                     </span>

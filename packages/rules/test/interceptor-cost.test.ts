@@ -18,12 +18,12 @@ describe('the strategic battery price', () => {
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
   });
 
-  /** Still under the weapon, at D203's deliberately wider defensive margin. */
+  /** Still under the weapon; owner 2026-10-01 cheapened the weapon, so about 38%. */
   it('stays below what a Death Star costs', () => {
     const total = (c: { alloy: number; crystal: number; deuterium: number }) =>
       c.alloy + c.crystal + c.deuterium;
     const share = total(ANTI_STRATEGIC.cost) / total(DEATH_STAR.cost);
-    expect(share).toBeGreaterThan(0.29);
-    expect(share).toBeLessThan(0.31);
+    expect(share).toBeGreaterThan(0.37);
+    expect(share).toBeLessThan(0.39);
   });
 });

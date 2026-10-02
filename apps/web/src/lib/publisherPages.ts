@@ -28,7 +28,7 @@
  * because an English "translation of a Turkish legal notice" is not the notice.
  */
 
-/** The languages the publisher site is written in. Matches the i18n tree. */
+/** The standalone publisher pages have English and Turkish editions. */
 export type PublisherLanguage = 'en' | 'tr';
 
 /** Every standalone page, named by what it is rather than by its filename. */
@@ -69,8 +69,8 @@ export const PUBLISHER_ORIGIN = 'https://asteraonline.space';
  *
  * The language argument is whatever `i18next` resolved, which is a full tag on
  * some browsers (`tr-TR`, `en-GB`), so it is narrowed here rather than at every
- * call site. Anything that is not Turkish gets the English page: the game has
- * two languages and English is the fallback everywhere else in the client.
+ * call site. Anything that is not Turkish gets the English publisher page;
+ * the standalone site currently has these two editions.
  */
 export function publisherUrl(page: PublisherPage, language: string | undefined): string {
   const lang: PublisherLanguage = language?.toLowerCase().startsWith('tr') ? 'tr' : 'en';

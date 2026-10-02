@@ -1,7 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   BUILD,
-  FEATURE_FLAGS,
   RESEARCH_PROJECTS,
   researchMinutes,
   type ResearchProjectId,
@@ -33,12 +32,6 @@ export interface CompleteResearchResult {
   planet: PlanetView;
 }
 
-const STRATEGIC_PROJECTS = new Set<ResearchProjectId>([
-  'DEATH_STAR_PROTOCOL',
-  'INTERCEPTION_GRID',
-  'STRATEGIC_STOCKPILE',
-]);
-
 /**
  * Commit one project to the commander's own research queue.
  *
@@ -53,9 +46,6 @@ export async function completeResearch(
   clock: Clock,
   expectedPlayerId?: string,
 ): Promise<CompleteResearchResult> {
-  if (!FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED && STRATEGIC_PROJECTS.has(projectId)) {
-    throw new GameError('RESEARCH_UNAVAILABLE', 'This research project is not available', 403);
-  }
   return db.transaction(async (tx) => {
     const [world] = await tx
       .select({ playerId: planets.controllerPlayerId })
@@ -188,7 +178,16 @@ export async function completeResearch(
 function researchDependsOn(later: typeof researchOrders.$inferSelect, earlier: typeof researchOrders.$inferSelect): boolean {
   if (later.slot <= earlier.slot) return false;
   if (later.projectId === earlier.projectId && later.level > earlier.level) return true;
-  let prerequisite = RESEARCH_PROJECTS[later.projectId].prerequisite;
+  /*
+    A PROJECT THAT NAMES A RUNG needs only the orders up to that rung: Industrial stands
+    on Shipyard Automation 2, so a third rung queued ahead of it is not its foundation.
+    Every other project still stands on any order of its prerequisite, as it always did.
+  */
+  const needs = RESEARCH_PROJECTS[later.projectId];
+  if (needs.prerequisite === earlier.projectId && needs.prerequisiteLevel !== undefined) {
+    return earlier.level <= needs.prerequisiteLevel;
+  }
+  let prerequisite = needs.prerequisite;
   while (prerequisite !== null) {
     if (prerequisite === earlier.projectId) return true;
     prerequisite = RESEARCH_PROJECTS[prerequisite].prerequisite;

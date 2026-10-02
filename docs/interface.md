@@ -222,11 +222,13 @@ rack remains visible above the category content, names every occupied socket and
 satellite consumes one of the same scarce slots. This preserves the identity choice without
 making a player learn that an Aegis shield is somehow an orbital concern.
 
-**Temporary strategic hiding (D206).** The Death Star forge, anti-strategic battery,
-Death Star Protocol, Interception Grid and Strategic Stockpile remain mounted/authored but use
-`display: none` while `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED` is false. With every project in
-the Strategic research band unavailable, the empty band is hidden too. This is a release switch,
-not a deletion of their rules.
+**Strategic hardware and its two capacities (D206, owner 2026-10-01).** The Death Star forge and
+the anti-strategic battery use `display: none` only while `FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED`
+is false; it is on. The Death Star Protocol is retired — Core 12 and Shipyard 5 are the weapon's
+whole door. The Strategic band holds the two capacities as ordinary research: the Stockpile takes a
+world's pad from one weapon to two, the Interception Grid from two charges to four. A full pad does
+not go quiet: it names the research that raises it and opens it on the map. The strike sheet reads
+the newest probe — ready charges ("N must arrive together") and, on a colony, loyalty as hits.
 
 **Nothing on the bar gives advice.** A pip used to mark whichever problem the situation engine
 ranked highest, and it was removed by owner decision (D56a): the tabs say what they ARE and the
@@ -420,9 +422,13 @@ that predates the shard name omits the room label instead of inventing one, and 
 truncate before they can push the live count off a portrait screen.
 
 Leaderboard is a permanent commander-menu surface. It shows the whole local galaxy in
-authoritative Dominion order: rank, commander username, planet, public Core tier and score.
-The caller's row is highlighted. A score broadcast refreshes an open ladder immediately;
-a public world update refreshes it too because Core tier is part of every row.
+authoritative Dominion order: rank, commander username, planet (only where the caller can
+already locate it) and score. **It prints no development tier** (owner, 2026-10-01): the row
+used to carry the capital's tier while the raid band reads each commander's most developed
+world, so players compared the wrong two numbers. That comparison lives on the target
+dossier, against the caller's real peak. The caller's row is highlighted. A score broadcast
+refreshes an open ladder immediately; a public world update refreshes it too, because which
+capitals the caller can place on the map changes with it.
 
 Galaxy Chat belongs directly to the disc and identifies people only by commander username.
 Its permanent way in is a compact control at the lower-right of the Galaxy viewport, not a
@@ -541,6 +547,31 @@ All text lives independently in Turkish and English locale trees. Existing `plat
 `socket`, type roles and spacing remain the visual language; targets are at least 44 px and sheets
 trap focus and close with Back/Escape.
 
+### I5c · Clan defence support lives where its decision is made (ruleset 15)
+
+`docs/clan-defense-support-plan.md`. Five surfaces, each stating the rule where it is used:
+
+- **Hangar page.** Under `HangarRoom`: the *Savunma duruşu* card — two toggles (Taktik geri
+  çekilme, Klan desteği kabul), one line under each saying what it does, a "both off: always
+  fights" warning, a compact Save that is live only with a change, and an inline confirmation
+  when saving would send waves home. Outside a clan the support toggle is disabled with the
+  reason. Below it the *Klan desteği* bay: one bar on the world's own Hangar scale (standing
+  solid, inbound pale), the Dominion factor the standing in-band support sets ("×2 · lose ×2,
+  win ÷2") with its rule, a row per wave (sender, hulls, ships · room · time left / arrival,
+  Damaged and out-of-band badges) with an inline-confirmed Send back; more than three fold.
+- **Defend tab.** Under SUPPORT/HOLD the retreat readout says the fleet never retreats and
+  names the Hangar control instead of a threshold the battle would never use.
+- **Galaxy Focus → Send support** on a clanmate's world only, opening the send sheet: origin
+  chips, hull steppers (no mining craft), then fuel (no refund), arrival, host room after the
+  wave and flight bays as figures, and the binding rules as lines (12 h stay or season clip,
+  tier band, no retreat for the host, the sender's Dominion never moving). The first refusal is the hold
+  button's face.
+- **Fleet page.** A *Klan desteği* group in the air tab: where each of my waves stands and how
+  long it has, Recall after it lands and Turn back (with its rule) while it flies.
+- **Probe surfaces.** The dossier lists the exact posture and the *Klan desteği* reading; the
+  launch sheet's enemy bar is host + support, its notes say how many supporters it holds, and
+  a world that cannot retreat draws no retreat line.
+
 ### I6 · A readout measures what the player owns, never what exists
 
 A progress bar toward an unreachable total tells a player they are failing at something nobody
@@ -603,6 +634,26 @@ Anything that protects unlike resources by unlike amounts is rendered **per reso
 Vault shows how much alloy, crystal and deuterium in the present stock is safe, including a real
 zero. A combined safe/risk total may lead as the verdict, but it may never be the only figure;
 otherwise the interface erases the asymmetric rule the player must make decisions against.
+
+### I6c · A cost the press will charge is quoted beside the press (ship damage, radiation)
+
+What a commitment will take is stated where it is committed, not in the report after. The launch
+and transfer sheets quote a route's radiation — the share of hull each ship loses and whether it
+lands needing the Repair Station — above the hold, with the lethal case in threat red and the
+hold as the acknowledgement. A world's focus sheet states the cloud it stands in and the 20% line.
+Each world's **Repair Station** sits in its Base, on the Fleet tab, as a card across both columns
+under the Shipyard and the Hangar (owner, 2026-09-30). The card states how many ships wait, how
+many are under repair and how full the queue is; it has no ladder, so pressing it opens the
+station itself. There every waiting lot shows its damage, its price against a new ship, its cost
+and its time, and is chosen until left out; the choice's total stands beside the commit; the queue
+shows each job's ships and clock, and a cancel names its refund; the rules (the 20% line, the
+price and time formula, Industrial's share, the serial queue) are one tap deeper; behind a busy
+lane the footer says when a job ordered now would start. A damage figure reads **rounded up and at
+most 99%** everywhere it is shown (dock, queue, battle report, radiation quote — `damagePct`), so a
+docked ship never reads at the 20% free line and a survivor never reads as destroyed. The Fleet page
+has no station of its own: a world's dock count there opens that world's station. The Defence
+verdict says how many ships are in the Repair Station and do not defend, so a count lower than the
+ships owned is never unexplained.
 
 ### I7 · A string in a component is a string that exists in one language
 

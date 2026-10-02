@@ -18,6 +18,7 @@ export function planetsWithClanPresence(
     playerId: string;
     username: string;
     name: string;
+    supportOpen: boolean | undefined;
   }>();
   for (const member of presence.members) {
     if (member.playerId === galaxy.you.playerId) continue;
@@ -26,6 +27,7 @@ export function planetsWithClanPresence(
         playerId: member.playerId,
         username: member.username,
         name: world.name,
+        supportOpen: world.supportOpen,
       });
     }
   }
@@ -45,6 +47,7 @@ export function planetsWithClanPresence(
       },
       clan: presence.clan,
       clanmate: true,
+      ...(clanmate.supportOpen === undefined ? {} : { supportOpen: clanmate.supportOpen }),
     };
   });
 }

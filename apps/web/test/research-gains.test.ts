@@ -25,6 +25,17 @@ import { percent } from '../src/lib/format.js';
  * against a number typed here — a copy of the arithmetic would go stale the first
  * time `RESEARCH_TECH` moved, which is the failure this file exists to prevent.
  */
+describe('Industrial, the Repair Station\'s ladder', () => {
+  it('reads the share it takes off a repair — a quarter, then half', () => {
+    const none = researchGain('INDUSTRIAL', 0);
+    expect(none.now).toBe(percent(0));
+    expect(none.next).toBe(percent(0.25));
+    expect(none.ceiling).toBe(percent(0.5));
+    expect(researchGain('INDUSTRIAL', 2).maxed).toBe(true);
+    expect(none.unlocks).toBeTruthy();
+  });
+});
+
 describe('what a rung of research buys', () => {
   it('has a figure for every project, with no gaps', () => {
     for (const id of RESEARCH_PROJECT_IDS) {
@@ -36,22 +47,20 @@ describe('what a rung of research buys', () => {
   });
 
   /**
-   * A PERMISSION OPENS A DOOR; ACTIVE LADDERS MOVE A NUMBER.
+   * A PERMISSION OPENS A DOOR; LADDERS AND CAPACITIES MOVE A NUMBER.
    *
    * NAMED RATHER THAN INFERRED FROM `maxLevel`, and that distinction is the point:
-   * `STRATEGIC_STOCKPILE` also has exactly one rung, but its effect was retired
-   * when the default ceiling became two. Deriving "door" from the rung count
-   * would draw that fixed quantity as a padlock. The five active permissions are
-   * a closed set, so name them explicitly.
+   * the Stockpile and the Grid also have exactly one rung, but each moves a count
+   * (1 → 2 weapons, 2 → 4 charges), and deriving "door" from the rung count would
+   * draw that quantity as a padlock. The three permissions are a closed set.
    */
   const PERMISSIONS = [
     'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
-    'DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID',
   ] as const;
 
   it('moves on every rung of each active ladder', () => {
     const ladders = RESEARCH_PROJECT_IDS.filter(
-      (id) => id !== 'STRATEGIC_STOCKPILE' && !PERMISSIONS.some((door) => door === id),
+      (id) => !PERMISSIONS.some((door) => door === id),
     );
     expect(ladders.length).toBeGreaterThan(0);
     for (const id of ladders) {
@@ -71,12 +80,14 @@ describe('what a rung of research buys', () => {
     }
   });
 
-  /** The retired Stockpile research no longer changes the default two-weapon cap. */
-  it('quotes the fixed stockpile cap as a count, not a padlock', () => {
-    const gain = researchGain('STRATEGIC_STOCKPILE', 0);
-    expect(gain.now).toBe('2');
-    expect(gain.next).toBe('2');
-    expect(gain.unlocks).toBeUndefined();
+  /** Owner, 2026-10-01: the two strategic projects are capacities, quoted as counts. */
+  it('quotes the strategic capacities as counts, not padlocks', () => {
+    const stock = researchGain('STRATEGIC_STOCKPILE', 0);
+    expect([stock.now, stock.next]).toEqual(['1', '2']);
+    expect(stock.unlocks).toBeUndefined();
+    const grid = researchGain('INTERCEPTION_GRID', 0);
+    expect([grid.now, grid.next]).toEqual(['2', '4']);
+    expect(grid.unlocks).toBeUndefined();
   });
 
   /** D36: a maxed ladder must not offer a step it cannot sell. */

@@ -6,6 +6,7 @@
 export const planet = {
   recovery: "Wiederherstellung läuft · Systeme kehren in {{duration}} zurück",
   empActive: "EMP · Aegis bei null und für {{duration}} ohne Regeneration; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
+  capacityNext: "Mit {{name}}: {{total}} pro Welt",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -19,16 +20,16 @@ export const planet = {
     none: "Keine Gebühr geladen",
     building: "wird geladen · {{duration}}",
     paused: "Der Ladevorgang wurde während der Wiederherstellung angehalten",
-    ready: "Eine Ladung geladen",
+    ready: "Geladene Ladungen: {{count}}",
     noRadar: "Geladen · Radarring ist offline",
     build: "Ladung laden",
     started: "Ladung wird geladen",
     hint: "Zerstört den ersten Todesstern, der in den zeitgesteuerten Radarring eintritt oder im Sichtfeld des Teleskops identifiziert wird. Wird ausgegeben, wenn es feuert.",
+    colonyHint: "Jeder Todesstern, der durchkommt, kostet diese Kolonie {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab.",
     readyHint:
       "Bewaffnet. Es zerstört den nächsten Todesstern, der in den Radar-Abfangring eintritt oder im Sichtfeld des Teleskops identifiziert wird.",
     noRadarHint:
       "Die Ladung bleibt geladen, aber diese Welt hat keinen Radar-Abfangring. Stellen Sie Uplink und Radar 3 wieder her. Ein Teleskopblick aus einer anderen Welt kann es immer noch auslösen.",
-    needResearch: "Abfanggitter",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink im Orbit",
     needOperational: "Welt betriebsbereit",
@@ -46,11 +47,9 @@ export const planet = {
     stock: "{{ready}} bereit · {{building}} Gebäude · {{held}}/{{capacity}}",
     build: "Build",
     started: "Der Bau des Todessterns hat begonnen",
-    dangerHint:
-      "EMP: Die Aegis fällt auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.",
+    dangerHint: "EMP: Die Aegis fällt auf null und regeneriert sich 1 Stunde lang nicht. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden. Eine Kolonie verliert zudem {{loss}} Loyalität; bei {{loss}} oder weniger fällt sie ab und wird neutral.",
     readyHint:
       "Bereit: Die Aegis des Ziels fällt auf null und regeneriert sich 1 Stunde lang nicht; Bodenverteidigungen feuern nicht und erleiden keinen Schaden.",
-    needProtocol: "-Protokoll",
     needCore: "Kern L{{level}}",
     needShipyard: "Werft L{{level}}",
     needOperational: "Welt betriebsbereit",
@@ -84,6 +83,7 @@ export const planet = {
     capacity: "je {{count}} Plätze",
     construction: "Konstruktion",
     yard: "Yard",
+    repair: "Reparatur",
     slotFree: "Kostenlos",
     empty: "Keine Arbeit festgeschrieben",
     committing: "begeht…",
@@ -471,6 +471,8 @@ export const planetHero = {
   defenceGuns_other: "{{count}} Waffen",
   defenceUnarmed_one: "{{count}} Transport in der Zeile",
   defenceUnarmed_other: "{{count}} transportiert in der Zeile",
+  defenceDocked_one: "{{count}} in der Reparaturstation · verteidigt nicht",
+  defenceDocked_other: "{{count}} in der Reparaturstation · verteidigen nicht",
   fleetAway: "{{count}} in der Luft",
   shield: "Schild",
   shieldNone: "Keine",
@@ -582,6 +584,10 @@ export const launch = {
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "Dadurch wird Ihr Wiederherstellungsschild und dessen +50 % Leistung aufgegeben. Sobald es weg ist, können auch andere Kommandeure Sie überfallen.",
+  radiationLethal_one: "Strahlung auf dieser Route zerstört {{count}} Schiff vor der Ankunft. Halten schickt es trotzdem.",
+  radiationLethal_other: "Strahlung auf dieser Route zerstört {{count}} Schiffe vor der Ankunft. Halten schickt sie trotzdem.",
+  radiationDock: "Die Route kreuzt Strahlung: Jedes Schiff verliert ~{{pct}} % seiner Hülle. Über 20 % wartet in der Reparaturstation.",
+  radiationPatched: "Die Route kreuzt Strahlung: Jedes Schiff verliert ~{{pct}} % seiner Hülle, bei der Landung kostenlos repariert.",
   fleetsave: "Schiffe im Flug können nicht überfallen werden. Ihr Planet kann.",
   range: "Entfernung {{d}}",
   arrive: "Ankunft",
@@ -716,7 +722,7 @@ export const faults = {
   },
   loyalty: {
     title: "Die Loyalität dieser Welt",
-    battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30",
+    battleLoss: "Teilniederlage −15 · entscheidende Niederlage −30 · Todesstern −{{strike}}",
     line: "{{value}} % – fällt, während {{count}} Dinge kaputt sind. Bei dieser Rate erreicht es in {{time}} Null und die Kolonie erklärt sich für unabhängig.",
     bar: "Treue {{value}}%",
     left: "{{time}} übrig",

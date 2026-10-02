@@ -32,8 +32,7 @@ export const research = {
   doctrineNote:
     "Üst seviye gemileri açar; saldırı, zırh ve itki değerlerini ayrı ve sınırlı basamaklarda geliştirir. Savaş seviyeleri sonda raporlarında görünür.",
   strategicBand: "Stratejik",
-  strategicNote:
-    "Ölüm Yıldızı’nı, onu durduran Önleme Ağını ve ikinci silah kapasitesini açar.",
+  strategicNote: "Her dünyanın tutabileceği Ölüm Yıldızı ve önleyici şarj sayısını artırır.",
 
   act: "Araştır",
   details: "Ayrıntılar",
@@ -46,11 +45,11 @@ export const research = {
   queueFull:
     "Sırada zaten 3 araştırma var. Yenisini eklemek için birinin bitmesini bekle.",
   at: "{{duration}} sonra araştırılabilir",
-  warAt: "Savaş dönemi {{duration}} sonra başlar",
   isotopeFirst: "Önce İzotop Spektrometrisi’ni araştır",
   /* Ek almayan bir kalıp: her proje adı bu cümleye eksiz oturur. */
   prerequisiteFirst: "Önce {{name}} araştırmasını tamamla",
-  graviticFirst: "Önce Gravitik Yükler’i araştır",
+  prerequisiteLevelFirst: "Önce {{name}} araştırmasını {{level}}. seviyeye çıkar",
+  nameAtLevel: "{{name}} {{level}}. seviye",
   cargoInsight: "Bir akında ambarını doldur; hedefte ganimet kalsın",
   shieldInsight: "Aegis akın hasarının en az {{share}}’ini emsin",
 
@@ -79,12 +78,6 @@ export const research = {
     "Açmak için savunması ve aktif Aegis’i olan bir dünyaya saldır; kalkan hasarın en az {{share}}’ini emsin. Bir Ok bile yeter, kazanman gerekmez. Söndürücü aktif kalkana beş kat etki eder.",
   graviticDetail:
     "Tamamlandığında Söndürücünün uzman araştırma koşulunu kalıcı olarak karşılar. Söndürücü aktif Aegis’e verilen özel bir cevaptır; genel hasar yükseltmesi değildir ve artan kalkan hasarı gemilere ya da yer toplarına taşmaz.",
-  deathStarName: "Ölüm Yıldızı Protokolü",
-  deathStarTag: "Ölüm Yıldızı’nı açar",
-  deathStarRole:
-    "Ölüm Yıldızı artık bu araştırma olmadan üretilir; bu proje kapalıdır.",
-  deathStarDetail:
-    "EMP darbesi Aegis canını sıfırlar ve 1 saat yenilenmesini durdurur. Yer savunmaları bu sürede ateş etmez ve hasar almaz. Üretim sürer; dünya el değiştirmez.",
 
   synthesisName: "Döteryum Sentezi",
   synthesisTag: "Rafineri seviye sınırını yükseltir",
@@ -104,6 +97,12 @@ export const research = {
     "İnşaat sırasına giren her şeyin süresini kısaltır; gemileri ve yer savunmalarını etkilemez.",
   robotsDetail:
     "Her kademe bütün dünyalarında İnşaat sırasına vereceğin her siparişi daha çabuk bitirir: binalar, enstrümanlar ve uydular. Gemileri hızlandırmaz — o Tersane Otomasyonu'nun işidir; kaynak bedelini düşürmez ve sıraya yeni yuva eklemez.",
+  industrialName: "Endüstri",
+  industrialTag: "Gemileri daha ucuza ve hızlı onarır",
+  industrialRole:
+    "Tamirhanedeki her işin bedelini ve süresini kısaltır",
+  industrialDetail:
+    "Her kademe, tüm dünyalarında hasarlı bir gemiyi onarmanın bedelinden ve süresinden dörtte bir düşer: 1. seviyede %75, 2. seviyede %50. Gemileri daha hızlı üretmez — o Tersane Otomasyonu'nun işidir — ve savaştan sonra %20 ya da daha az hasar alan gemi zaten ücretsiz onarılır.",
   holdsName: "Kazıcı Ambarları",
   holdsTag: "Kazıcılar daha çok taşır",
   holdsRole:
@@ -149,15 +148,11 @@ export const research = {
     "Bütün dünyalarındaki Tabya ve Kirpileri güçlendirir. Yer kapasitesi ve enkazdan geri kurulum kuralı değişmez; savunmada çatışma anındaki kademe kullanılır.",
 
   gridName: "Önleme Ağı",
-  gridTag: "Ölüm Yıldızı’nı düşürür",
-  gridRole:
-    "Yüklü bir önleyici, stratejik silahı 3. seviye Radar önleme çemberinde veya dünyalarından birinin Teleskop görüşünde otomatik olarak imha eder.",
-  gridDetail:
-    "Önleyici mühimmatına erişim verir. Mühimmatı kurmak için hedef dünyada Anten ve en az 3. seviye Radar gerekir. Yüklü mühimmat, zamanlı Radar önleme çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımlanan ilk stratejik silahı otomatik imha eder ve sonra tükenir.",
+  gridTag: "Dünya başına dört önleyici şarj",
+  gridRole: "Her dünyanın tutabileceği önleyici şarj sayısını 2'den 4'e çıkarır.",
+  gridDetail: "Araştırma olmadan her dünya 2 önleyici şarj yükleyebilir; bu araştırma sınırı her dünyada 4'e çıkarır. Şarj için o dünyada Anten ve Radar 3 gerekir. Yüklü şarj, zamanlı Radar önleme çemberine giren veya dünyalarından birinin Teleskop görüşünde tanımlanan ilk Ölüm Yıldızı’nı imha eder ve tükenir. Bir şarj bir silahı durdurur; dolu bir dünya ancak şarjından fazla silah aynı anda gelirse vurulur.",
   stockpileName: "Stratejik Stok",
-  stockpileTag: "Rampada ikinci silah",
-  stockpileRole:
-    "Her dünyanın hazır tutabileceği Ölüm Yıldızı sayısını birden ikiye çıkarır; ikinci silah, birincinin üretimi bittikten sonra başlar.",
-  stockpileDetail:
-    "Ölüm Yıldızı stok sınırını komutan genelinde değil, sahip olduğun her dünya için birden ikiye çıkarır. İkinci silah da tam bedelini ve tam yapım süresini ister; sıraya alınabilir ama birinciyle aynı anda üretilmez. Atış yine silahı tüketir.",
+  stockpileTag: "Dünya başına iki Ölüm Yıldızı",
+  stockpileRole: "Her dünyanın tutabileceği Ölüm Yıldızı sayısını 1'den 2'ye çıkarır; ikincisi birincinin üretimi bitince başlar.",
+  stockpileDetail: "Araştırma olmadan her dünya 1 Ölüm Yıldızı tutar; bu araştırma sınırı komutan genelinde değil, her dünya için 2'ye çıkarır. İkinci silah da tam bedelini ve tam yapım süresini ister ve birinciden sonra üretilir. Birkaç dünyadan aynı anda vurmak, savunmacının şarjlarını aşmanın yoludur.",
 } as const;

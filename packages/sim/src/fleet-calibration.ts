@@ -1,7 +1,8 @@
 /** Seeded, economic-budget fleet audit. Uses live hulls and the live combat resolver; no substitute combat model. */
 import {
   ALL_HULLS, COMBAT_HULLS, DEBRIS, HULLS, RESEARCH_TECH, computeLoot, counterMult, fleetCargo, fleetCount, fleetEntries,
-  missionFuel, mulberry32, resolveCombat, resourceValue, settleWreck, type Fleet, type HullId, type Resources, type TechLevels,
+  missionFuel, mulberry32, needsDock, resolveCombat, resourceValue, settleWreck, shipRepairCost,
+  type DamageLots, type Fleet, type HullId, type Resources, type TechLevels,
 } from '@astera/rules';
 
 export const economicFleetValue = (fleet: Fleet): number =>
@@ -47,6 +48,10 @@ export interface BattleMeasureOptions {
   raid?: { store: Resources; buffer: Resources; protected: Resources; distance: number };
 }
 
+/** The Repair Station's full-price bill for the survivors a fight left over 20% damaged. */
+const repairBill = (damage: DamageLots): number =>
+  resourceValue(shipRepairCost(damage.filter((lot) => needsDock(lot.damageBp)), 100));
+
 /** Permanent economic loss, not raw-resource Dominion, and never a victory-conditioned zero for a failed raid. */
 export function measureFleetBattle(attacker: Fleet, defender: Fleet, options: BattleMeasureOptions = {}) {
   const samples = options.samples ?? 64;
@@ -56,6 +61,7 @@ export function measureFleetBattle(attacker: Fleet, defender: Fleet, options: Ba
   let victories = 0, mutual = 0, defeated = 0, winningLoss = 0;
   let meanExchange = 0, meanAttackerRetained = 0, meanDefenderRetained = 0, roundsMean = 0;
   let meanShieldBonus = 0, meanShieldLeft = 0;
+  let meanAttackerRepair = 0, meanDefenderRepair = 0;
   const fuel = options.raid ? missionFuel(attacker, options.raid.distance, 2) : 0;
   const meanLoot: Resources | null = options.raid ? { alloy: 0, crystal: 0, deuterium: 0 } : null;
   let meanNet = options.raid ? -resourceValue({ alloy: 0, crystal: 0, deuterium: fuel }) : null;
@@ -90,11 +96,13 @@ export function measureFleetBattle(attacker: Fleet, defender: Fleet, options: Ba
     roundsMean += result.rounds.length / samples;
     meanShieldBonus += result.rounds.reduce((sum, round) => sum + round.shieldBreakerDamage, 0) / samples;
     meanShieldLeft += result.shieldLeft / samples;
+    meanAttackerRepair += repairBill(result.attackerDamage) / samples;
+    meanDefenderRepair += repairBill(result.defenderDamage) / samples;
   }
   return { samples, defended: fleetCount(defender) > 0, grades, victories, mutual, defeated,
     meanWinningLoss: victories > 0 ? winningLoss / victories : null,
     meanExchange, meanAttackerRetained, meanDefenderRetained, roundsMean, meanShieldBonus, meanShieldLeft,
-    fuel, meanLoot, meanNet };
+    fuel, meanLoot, meanNet, meanAttackerRepair, meanDefenderRepair };
 }
 
 export const MAX_FLEET_TECH: TechLevels = {

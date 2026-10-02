@@ -12,6 +12,7 @@ const products = {
   POLAR_PRODUCT_GERMANY: 'f557093b-eba9-499c-9788-a41c35eb3ad9',
   POLAR_PRODUCT_FRANCE: '468d0d5e-1b7b-42cc-9a50-8951292f177e',
   POLAR_PRODUCT_SPAIN: '2851d8bb-6017-4fc3-a3b3-3eae0ea85314',
+  POLAR_PRODUCT_JAPAN: '0ec62d42-711e-4f7b-90ed-ef92d07a8bdb',
   POLAR_PRODUCT_BUNDLE: '9840aaf4-7e11-4aba-8234-6ab4f9379dcb',
 };
 const env = () => testEnv({ POLAR_ENV: 'sandbox', POLAR_CHECKOUT_ENABLED: 'true',
@@ -49,6 +50,22 @@ describe('Polar checkout API boundary', () => {
       success_url: 'http://localhost:5173/', return_url: 'http://localhost:5173/',
     });
     expect(result).toMatchObject({ checkoutId, currency: 'TRY', totalAmount: 9900 });
+  });
+
+  it('sends the Japan product to Polar in EUR at the country price', async () => {
+    const checkoutId = randomUUID();
+    const calls: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => {
+      calls.push(parseBody(init.body));
+      return Promise.resolve(new Response(JSON.stringify({ id: checkoutId,
+        url: `https://sandbox.polar.sh/checkout/${checkoutId}`,
+        expires_at: '2026-10-01T00:00:00Z', currency: 'eur', total_amount: 299 }), { status: 201 }));
+    }));
+    await createPolarCheckoutSession(env(), {
+      accountId: randomUUID(), orderId: randomUUID(), itemId: 'planet-japan',
+      ip: '127.0.0.1', currency: 'EUR', expectedAmount: 299,
+    });
+    expect(calls[0]).toMatchObject({ products: [products.POLAR_PRODUCT_JAPAN], currency: 'eur' });
   });
 
   it('uses the live API only for production and refuses a checkout URL outside Polar', async () => {

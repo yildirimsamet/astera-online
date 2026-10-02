@@ -1,7 +1,7 @@
 import { profileResearch } from './economy-profile.js';
-import { DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
+import { ANTI_STRATEGIC, DEATH_STAR, DEUTERIUM, RESEARCH_TECH, SEASON } from './constants.js';
 import { ECONOMY_TEMPO, scalePrice } from './tempo.js';
-import { cargoMult, hullTech, prospectorHoldMult, robotSpeedMult, yardSpeedMult } from './tech.js';
+import { cargoMult, hullTech, prospectorHoldMult, repairPct, robotSpeedMult, yardSpeedMult } from './tech.js';
 import { RESEARCH_PROJECT_IDS, type ResearchProjectId, type Resources } from './types.js';
 
 export interface ResearchProject {
@@ -24,26 +24,48 @@ export interface ResearchProject {
   costAt: (level: number) => Resources;
   availableAtMinutes: number;
   prerequisite: ResearchProjectId | null;
+  /**
+   * THE RUNG OF THE PREREQUISITE THIS PROJECT NEEDS. Absent means any rung at all, which
+   * is what every project before Industrial asked for. Read only through
+   * `researchPrerequisiteMet`, so the server, the simulator and the screen agree.
+   */
+  prerequisiteLevel?: number;
   requiredCore?: number;
 }
 
-/*
-  THE TWO EFFECTS THAT ARE NOT IN `tech.ts`, HOISTED ABOVE THEIR READER.
+/** Whether `levelOf` (held, or held-plus-queued) clears this project's prerequisite. */
+export const researchPrerequisiteMet = (
+  project: Pick<ResearchProject, 'prerequisite' | 'prerequisiteLevel'>,
+  levelOf: (id: ResearchProjectId) => number,
+): boolean => project.prerequisite === null
+  || levelOf(project.prerequisite) >= (project.prerequisiteLevel ?? 1);
 
-  Both belong beside the project rather than with the multipliers — one limits a
-  building, one counts weapons on a pad — and both are read by the ceiling walk
+/*
+  THE THREE EFFECTS THAT ARE NOT IN `tech.ts`, HOISTED ABOVE THEIR READER.
+
+  They belong beside the project rather than with the multipliers — one limits a
+  building, two count assets on a pad — and all are read by the ceiling walk
   below, which runs at module evaluation. A `const` arrow declared after it is in
   the temporal dead zone at exactly that moment, so the order here is load-bearing
   rather than tidy.
 */
 /**
- * HOW MANY STRATEGIC WEAPONS ONE WORLD MAY HOLD AT ONCE. T11.
+ * HOW MANY DEATH STARS ONE WORLD MAY HOLD AT ONCE, from the Stockpile rung. Owner, 2026-10-01.
  *
- * Two is the default ceiling, independent of the retired Stockpile research.
- * Each weapon is still built and paid for separately; the anti-battery likewise
- * holds two charges by default.
+ * One by default, two with the research. Each weapon is still built and paid for
+ * separately, one after the other.
  */
-export const strategicStockpile = (_stockpileLevel: number): number => 2;
+export const strategicStockpile = (stockpileLevel: number): number =>
+  stockpileLevel >= 1 ? DEATH_STAR.perWorld.researched : DEATH_STAR.perWorld.base;
+
+/**
+ * HOW MANY INTERCEPTION CHARGES ONE WORLD MAY HOLD, from the Grid rung. Owner, 2026-10-01.
+ *
+ * Two by default — Radar 3 is the only door to the battery itself — and four with the
+ * research. The defence holds more than the weapon at every rung.
+ */
+export const interceptorCapacity = (gridLevel: number): number =>
+  gridLevel >= 1 ? ANTI_STRATEGIC.charges.researched : ANTI_STRATEGIC.charges.base;
 
 /**
  * THE HIGHEST DEUTERIUM PLANT A COMMANDER MAY STAND, from their research rung.
@@ -105,16 +127,17 @@ export function researchEffectAt(id: ResearchProjectId, level: number): number {
       return hullTech({ EMPLACEMENT_DOCTRINE: rung }, 'BASTION').atk;
     case 'STRATEGIC_STOCKPILE':
       return strategicStockpile(rung);
+    case 'INTERCEPTION_GRID':
+      return interceptorCapacity(rung);
+    case 'INDUSTRIAL':
+      return repairPct({ INDUSTRIAL: rung });
     /*
       THE PERMISSIONS. Each opens a door and opening it twice opens nothing: the
-      isotope reveals the rocks, dense cells and gravitic charges each unlock a
-      hull, the protocol authorises the weapon, the grid authorises the charge.
+      isotope reveals the rocks, dense cells and gravitic charges each unlock a hull.
     */
     case 'ISOTOPE_SPECTROMETRY':
     case 'DENSE_FUEL_CELLS':
     case 'GRAVITIC_CHARGES':
-    case 'DEATH_STAR_PROTOCOL':
-    case 'INTERCEPTION_GRID':
       return rung > 0 ? 1 : 0;
   }
 }
@@ -414,23 +437,6 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
     availableAtMinutes: DEUTERIUM.frontierStartsAtMinutes,
     prerequisite: 'ISOTOPE_SPECTROMETRY',
   },
-  DEATH_STAR_PROTOCOL: {
-    id: 'DEATH_STAR_PROTOCOL',
-    maxLevel: RESEARCH_MAX_LEVEL.DEATH_STAR_PROTOCOL,
-    costAt: flat({
-      alloy: scalePrice(11_000, ECONOMY_TEMPO.fixedPrice),
-      crystal: scalePrice(3600, ECONOMY_TEMPO.fixedPrice),
-      deuterium: scalePrice(900, ECONOMY_TEMPO.deuteriumPrice),
-    }),
-    availableAtMinutes: RESEARCH_PROJECTS_WAR_OPENS,
-    prerequisite: 'GRAVITIC_CHARGES',
-    /**
-     * ONE FIGURE, READ FROM THE WEAPON IT AUTHORISES (D113). Permission and
-     * capability moved together on the owner's instruction; typed twice they
-     * would drift the first time only one of them was edited.
-     */
-    requiredCore: DEATH_STAR.requiredCore,
-  },
   /**
    * THE FUEL CHAIN'S FIRST LINK, AND THE FIRST LADDER IN THE GAME. T5.
    *
@@ -505,6 +511,21 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
    * while they play.
    */
   AI_ROBOTS: priced('AI_ROBOTS'),
+  /**
+   * THE REPAIR STATION'S LADDER. Kalıcı gemi hasarı, owner K6 (2026-09-29).
+   *
+   * Behind Shipyard Automation 2 — the yard's own know-how, taken one step further —
+   * and priced like that ladder's first two rungs (`researchWork`). The authored figure
+   * here is the profile's own quote, so a reader of this row sees the real price.
+   */
+  INDUSTRIAL: {
+    id: 'INDUSTRIAL',
+    maxLevel: RESEARCH_MAX_LEVEL.INDUSTRIAL,
+    costAt: (level: number) => profileResearch('INDUSTRIAL', Math.max(1, Math.floor(level))).cost,
+    availableAtMinutes: 0,
+    prerequisite: 'YARD_AUTOMATION',
+    prerequisiteLevel: 2,
+  },
   PROSPECTOR_HOLDS: priced('PROSPECTOR_HOLDS'),
   /**
    * Dearest of the three, because it is the only one that moves ARR: `fleetCargo`
@@ -529,12 +550,12 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
   EMPLACEMENT_DOCTRINE: priced('EMPLACEMENT_DOCTRINE'),
 
   /**
-   * THE TWO STRATEGIC PROJECTS, AND THEY ARE EACH OTHER'S ANSWER. T10 · T11.
+   * THE TWO STRATEGIC CAPACITIES, AND THEY ARE EACH OTHER'S ANSWER. Owner, 2026-10-01.
    *
-   * Both are permissions rather than ladders: you can stop a weapon or you cannot,
-   * and you keep a second on the pad or you do not. Both sit in the war act with
-   * the weapon itself, because a defence that arrived before the thing it defends
-   * against would be a solution looking for its problem.
+   * One rung each: the Grid takes a world's charges from two to four, the Stockpile
+   * its weapons from one to two. Both sit in the war act with the weapon itself,
+   * because a defence that arrived before the thing it defends against would be a
+   * solution looking for its problem.
    */
   INTERCEPTION_GRID: {
     id: 'INTERCEPTION_GRID',
@@ -549,8 +570,9 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
     prerequisite: 'GRAVITIC_CHARGES',
   },
   /**
-   * Behind the weapon it stockpiles: there is nothing to keep a second of until
-   * you can build the first.
+   * AT THE WEAPON'S OWN CORE: there is nothing to keep a second of until you can
+   * build the first. It stood behind the Death Star Protocol until the owner retired
+   * that project (2026-10-01), and now stands behind the protocol's own prerequisite.
    */
   STRATEGIC_STOCKPILE: {
     id: 'STRATEGIC_STOCKPILE',
@@ -561,7 +583,7 @@ export const RESEARCH_PROJECTS: Record<ResearchProjectId, ResearchProject> = wit
       deuterium: scalePrice(1400, ECONOMY_TEMPO.deuteriumPrice),
     }),
     availableAtMinutes: RESEARCH_PROJECTS_WAR_OPENS,
-    prerequisite: 'DEATH_STAR_PROTOCOL',
+    prerequisite: 'GRAVITIC_CHARGES',
     requiredCore: DEATH_STAR.requiredCore,
   },
 });

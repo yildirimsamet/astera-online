@@ -93,7 +93,7 @@ export function LaunchSheet({
 }) {
   const { t } = useTranslation();
   const {
-    sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
+    sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods, radiation,
     paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
     holding, away, atHome, recordAge, opposing, lines, loss, escape, notes, refusal,
     commit, classReading, report,
@@ -258,6 +258,17 @@ export function LaunchSheet({
               {spendsShield && (
                 <p data-shield-warning className="text-caption leading-snug text-v2-warn">
                   {season.data?.shieldKind === 'RECOVERY' ? t('launch.recoveryShieldWarning') : t('launch.shieldWarning')}
+                </p>
+              )}
+              {/* Radyasyon (D10): what the route takes from every ship, or how many it finishes. */}
+              {radiation && (
+                <p
+                  data-radiation-warning
+                  className={`text-caption leading-snug ${radiation.destroyed > 0 ? 'text-v2-hostile' : 'text-v2-warn'}`}
+                >
+                  {radiation.destroyed > 0
+                    ? t('launch.radiationLethal', { count: radiation.destroyed })
+                    : t(radiation.docks ? 'launch.radiationDock' : 'launch.radiationPatched', { pct: radiation.pct })}
                 </p>
               )}
               <p className="text-micro leading-snug text-v2-ink-3">

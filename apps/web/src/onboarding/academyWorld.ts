@@ -136,7 +136,7 @@ export function advanceAcademy(w: AcademyWorld, now: number): AcademyWorld {
         yourLosses: battle.attackerLosses, theirLosses: battle.defenderLosses,
         yourFleet: flight.fleet, theirFleet: {}, lootAlloy: loot.alloy, lootCrystal: loot.crystal,
         lootDeuterium: loot.deuterium, dominion: 0, shieldAbsorbed: 0, cargoLimited: false,
-        defenceSalvage: {}, disruptedMinutes: 0, wreckValue: 0,
+        defenceSalvage: {}, yourDamage: [], disruptedMinutes: 0, wreckValue: 0,
       });
     }
     return { ...w, step: w.step + 1, checkpoint: academyCheckpoint(w.step + 1),
@@ -198,7 +198,7 @@ export function academyPlanet(w: AcademyWorld): PlanetView {
     orbitSlots: satelliteSlots(state.buildings.CORE),
     research: RESEARCH_PROJECT_IDS.map((id) => {
       const project = RESEARCH_PROJECTS[id];
-      const discovered = !['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL'].includes(id);
+      const discovered = !['ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES'].includes(id);
       return { id, level: 0, nextLevel: 1, maxLevel: project.maxLevel, cost: project.costAt(1),
         completed: false, completedAt: null, discovered,
         available: discovered && project.prerequisite === null && researchAvailable(id, 0),

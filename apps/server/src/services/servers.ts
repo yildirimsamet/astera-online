@@ -23,6 +23,9 @@ import {
   clanScoreEvents,
   clanTreasuryEvents,
   clanWarContributions,
+  clanSupportBattleResults,
+  clanSupportDominionEvents,
+  clanSupportWaves,
   clanWarDominionEvents,
   clanWarMissions,
   clanWarOperations,
@@ -63,6 +66,8 @@ import {
   strategicImpacts,
   strategicInterceptions,
   watches,
+  radiationSources,
+  shipDamageLots,
 } from '../db/schema.js';
 import { createSeasonIn } from './season.js';
 import { GameError } from './planet.js';
@@ -592,6 +597,10 @@ export async function wipeAllServers(
     await tx.delete(clanWarParticipantResults);
     await tx.delete(clanWarMissions);
     await tx.delete(clanWarContributions);
+    // Klan Savunma Desteği: results point at reports, waves at missions and clans.
+    await tx.delete(clanSupportBattleResults);
+    await tx.delete(clanSupportDominionEvents);
+    await tx.delete(clanSupportWaves);
     await tx.delete(battleReports);
     await tx.delete(clanWarOperations);
     await tx.delete(clanTreasuryEvents);
@@ -649,6 +658,10 @@ export async function wipeAllServers(
     await tx.delete(pirateRaids);
     await tx.delete(pirateState);
     await tx.delete(scheduledEvents);
+    // A dock lot points at the repair order working on it, so it goes first.
+    await tx.delete(shipDamageLots);
+    // Test clouds die with the galaxy they were placed in (K4); nothing references them.
+    await tx.delete(radiationSources);
     await tx.delete(buildOrders);
     await tx.delete(strategicAssets);
     await tx.delete(missions);

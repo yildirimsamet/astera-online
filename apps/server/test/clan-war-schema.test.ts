@@ -123,17 +123,20 @@ async function makeMission(): Promise<string> {
 
 describe('the additive joint war schema', () => {
   it('appends every enum value without moving an existing one', () => {
-    expect(missionKind.enumValues).toEqual([
+    // Later features append after these (Klan Savunma Desteği added `clan_support`);
+    // what this suite guards is that nothing the joint war relies on ever moves.
+    expect(missionKind.enumValues.slice(0, 8)).toEqual([
       'attack', 'probe', 'return', 'transfer', 'settlement', 'death_star',
       'clan_transfer', 'clan_war',
     ]);
-    expect(eventKind.enumValues.at(-1)).toBe('neutral_census');
+    const events = eventKind.enumValues;
+    const expiry = events.indexOf('clan_war_expiry');
     // The values the joint war was built beside must not have shifted position.
-    expect(eventKind.enumValues.indexOf('mission_arrival')).toBe(0);
-    expect(eventKind.enumValues.slice(-6, -2)).toEqual([
+    expect(events.indexOf('mission_arrival')).toBe(0);
+    expect(events.slice(expiry - 4, expiry)).toEqual([
       'fault_spawn', 'fault_repair_complete', 'vault_leak_flush', 'colony_secession',
     ]);
-    expect(eventKind.enumValues.at(-2)).toBe('clan_war_expiry');
+    expect(events[expiry + 1]).toBe('neutral_census');
   });
 });
 

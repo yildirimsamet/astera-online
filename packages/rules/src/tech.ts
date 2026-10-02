@@ -44,6 +44,18 @@ export const yardSpeedMult = (tech: TechLevels): number =>
   ladderAt(RESEARCH_TECH.yardSpeedLadder, tech.YARD_AUTOMATION ?? 0);
 
 /**
+ * WHAT INDUSTRIAL LEAVES OF A REPAIR, IN WHOLE PERCENT: 100, 75, 50. Kalıcı gemi hasarı.
+ *
+ * One share for the bill and the time alike, and nothing else reads it: Industrial
+ * makes the Repair Station cheaper and quicker, never the yard.
+ */
+export const repairPct = (tech: TechLevels): number => {
+  const ladder = RESEARCH_TECH.repairLadder;
+  const rung = Math.max(0, Math.min(ladder.length, Math.floor(tech.INDUSTRIAL ?? 0)));
+  return rung === 0 ? 100 : ladder[rung - 1] ?? 100;
+};
+
+/**
  * HOW MUCH FASTER THE SURFACE BUILDS. D198, owner instruction.
  *
  * THE RULE IS THE QUEUE, NOT A LIST OF STRUCTURES. Everything ordered into

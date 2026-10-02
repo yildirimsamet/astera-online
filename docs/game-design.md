@@ -68,9 +68,11 @@ Core counts (D209). Every caretaker world is guarded; a settled world opens on i
 capture stock, never on what the caretaker held (D209). Every controlled world is named, fixed in 3D and runs the complete planetary
 economy. Ordinary raids are structurally non-destructive; only a Death Star can apply the
 specific permanent level loss in D97/D98. A capital may be devastated but never captured.
-Under D179 a Death Star transfers or releases no ownership: every world keeps its controller
-through the two-hour outage. This supersedes both the former second-impact transfer and D167's
-temporary release deadline.
+Under D179 a Death Star transfers no ownership: it is a one-hour EMP, and no world is ever handed
+to the attacker. The one way it can end an ownership is LOYALTY (owner, 2026-10-01): every hit on a
+colony costs 20 loyalty, and a colony at 20 or less secedes through the ordinary loyalty path —
+NEUTRAL, fleet home, nobody credited. Capitals have no loyalty. This supersedes both the former
+second-impact transfer and D167's temporary release deadline.
 
 Ownership is public spatial structure as well as a label (D122). The galaxy always joins the
 caller's capital and colonies with faint white filaments. Focusing another commander's
@@ -382,6 +384,14 @@ disc: the ships are simply still at home afterwards.
   launch sheet draws the line on the enemy axis with a verdict from the reading; the report tells
   the defender what ran and what it burned (or why it could not), and the raider only that the
   ships ran. No public galaxy event.
+- **The defence posture (ruleset 15, owner decision K4, 2026-10-01).** Each world has two
+  toggles, *Taktik geri çekilme* and *Klan desteği kabul*, stored as one posture: `ESCAPE`
+  (the default — this rule as above), `SUPPORT` (clanmates may station ships; the line never
+  runs, even before help arrives) or `HOLD` (both off; the line always fights). Turning one on
+  turns the other off; a change is saved with a button and holds from the next battle. Support
+  stays switched off outside a clan. Leaving a clan, or a world changing hands, drops it back
+  to `ESCAPE`. The probe reads the posture exactly, and a world that cannot run draws no
+  retreat line on the raider's launch sheet.
 
 ### Disruption
 
@@ -400,6 +410,45 @@ anybody can harvest it (D32, D37). A private fight becomes a public, timed, cont
 event — and somebody who is not at war gets a reason to watch other people's. An attacking
 Garbage Collector that lives through the fight lifts its share first, at the instant the battle
 resolves; the public field is what it leaves (D200). Salvage is Wealth, never Dominion or loot.
+
+### Kalıcı gemi hasarı — the Repair Station (owner decisions K1–K6, 2026-09-29; ruleset 14)
+
+**A fight's part-hit ship keeps its damage.** The combat math is unchanged (kills, grade, loot and
+Dominion are bit-identical); what used to be thrown away between rounds — the resolver's `carry`,
+one part-hit ship per side per hull — now survives the battle as a damage figure in basis points
+of the full hull. Ground guns and NPC crews carry nothing (D1).
+
+- **At or under 20% it is patched free** when the ship lands (the defender's at once, after the
+  fight). **Over 20% it waits in the world's Repair Station** and can neither fly nor defend. It
+  is still the world's: it counts in the Hangar and in Wealth, it changes hands with the world,
+  and intel never sees it (D6–D8).
+- **The Repair Station is free, one per world, gated by nothing** (not the Shipyard, not
+  research, not a revolt). A repair costs the damaged share of the ship's price and of its build
+  time, read when the job starts; a separate serial queue, three deep; a cancel refunds half.
+- **Industrial** (research, max level 2, needs Shipyard Automation 2, priced like Automation
+  L1–L2) cuts repair cost and time to 75% / 50%.
+- **Why.** A won raid used to be free after the losses; now the part-hit ship is a bill, so a
+  fight's cost is felt the day after too — without adding a system to manage between fights.
+
+### Radyasyon — clouds on the map (owner decisions K3–K4; ruleset 14)
+
+**A cloud takes a fixed share of every ship's full hull per minute spent inside it.** There is no
+tick: a flight is straight segments at constant speed, the time in each sphere is solved exactly,
+clouds that overlap add, and a SHELTER cancels every cloud for the time it covers. A ship that
+reaches a full hull is destroyed: no wreck, no Dominion, and what it carried is cut to the holds
+that survive (D9). A wing leaves home whole, so on the way out a cloud finishes all of it or none
+of it; only a wing carrying battle damage home can lose some and land the rest.
+
+- **The dose is taken where the ships arrive,** before a battle or a landing. A raid a cloud
+  finished never struck: its strike is given back and the world it flew at is told nothing (D13).
+- **Asked, never silent (D10).** A route that would destroy ships is refused until the commander
+  acknowledges it; the launch and transfer sheets quote the dose (and whether the ships will need
+  the dock) before the press. The commander's own wing fades on the disc at the moment it dies
+  (D15); a rival's route stays fogged.
+- **v1 scope.** No live season has a cloud: the operator places test clouds (`pnpm radiation`).
+  Raids, returns, recalls, transfers, settlements, clan aid and every clan-war leg take the dose;
+  mining, pirate raids, trade and convoys do not yet (plan F11). Monuments — holding a fleet in a
+  cloud for a reward — will be a stationary segment plus one threshold event (K3a).
 
 ## The information layer — this is the game
 
@@ -653,8 +702,16 @@ raider FINDING a beginner and does nothing once one is found. The price is D49's
 with peak development unpublished this is a rule the player cannot fully check before choosing a
 target — so the refusal costs nothing (no fuel, no bay, no ships off the stack), names which side of the band the
 target is on (`TIER_BAND` above, `TIER_BAND_WEAK` below), and is reported ahead of the bash limit. `ABUSE.bashLimit` still caps
-repetition inside the band; pirates, Death Star strikes, transfers and neutral worlds are outside
-it entirely.
+repetition inside the band. **A Death Star strike at a commander answers to the same band** (owner, 2026-10-01): the
+weapon's Core gate is the first level of tier 4, and while the strike sat outside the band a tier 4 commander could hit a
+tier 6 one who was refused a raid back. Pirates, transfers and neutral worlds — a Death Star at a neutral world included —
+are outside it entirely. The check is made at launch only; a fleet already in the air is not turned back when either
+commander's tier moves.
+
+The player sees the band's inputs where they choose a target: the dossier header sets their own tier (their most
+developed world, never fogged) beside the world's, and one tap opens the rule and the range it reaches. It never states a
+verdict, because the world in view may not be its owner's most developed; the launch control is held only when the disc
+already proves the target too developed (`lib/band.ts`).
 
 **Asteroids orbit analytically** — position is a pure function of the clock, never stored,
 never simulated. A rock carries a level that sets its ore, and interception is solved in
@@ -759,7 +816,7 @@ spent rather than paused: a shield that came back after one shot would make the 
 strike.
 
 **It is public, and it has to be.** Every world its commander holds reads as `PROTECTED` on the
-disc, for the same reason the development band still owes a surface (D124/D168): a raider who
+disc, for the same reason the development band is drawn on the dossier (D124/D168): a raider who
 cannot tell a shielded commander from a reachable one discovers the rule by committing a fleet and
 being refused, which is an error message rather than a rule. It stops raids, not SIGHT — a probe
 flies as it always did, because a newcomer nobody can read is a newcomer nobody can decide about.
@@ -1012,9 +1069,46 @@ contains a combat hull. A new target remains locked until every survivor or reca
 Joint war shares the existing combat rules. It pays participants directly through surviving cargo,
 so the ordinary 10% clan loot share does not apply. A head-count advantage changes only Dominion:
 an outnumbering win is discounted and an outnumbering loss is amplified, while combat itself is
-unchanged. The target mark shares no sensor reading, and the combined fleet exposes the clan tag
+unchanged. A target held by a clan-supported line is priced by power rather than heads: the
+support factor stands on the defending side (see Klan Savunma Desteği below). The target mark shares no sensor reading, and the combined fleet exposes the clan tag
 only at the same exact-identity sensor threshold that would reveal an ordinary fleet. The system
 creates five-person stories without creating a second technology or diplomacy game.
+
+### Klan Savunma Desteği — the defending line (ruleset 15, owner decisions 2026-10-01)
+
+The counter to the joint war. A clanmate whose world stands at `SUPPORT` can receive **support
+waves**: a mature member (12 h) outside the newcomer shield sends combat ships from one of their
+worlds, and the ships fight in the host's line against any raid — a single raider or a clan's
+joint strike. Full rules: `docs/clan-defense-support-plan.md`.
+
+- **Room.** Each world has a *Klan desteği* bay beside its Hangar, as large as that world's own
+  Hangar room. Outbound and standing waves use it. The ships keep counting in the SENDER's
+  personal Hangar and never in the host's (K1, K2).
+- **Who may stand there.** The sender must sit within the host's ±1 tier band, checked at
+  dispatch and again at the battle; a wave that drifted out goes home untouched before the
+  fight (K3). Membership is checked at dispatch, arrival and battle.
+- **Cost and time.** Round-trip fuel up front with no refund, the clan aid lane's 10% speed
+  bonus, and a normal flight bay held until the wave is home (K8). A wave stays at most 12 h
+  (clipped to the season) and then flies home on its own.
+- **Control.** The sender turns it back in flight (the normal recall rule) or calls it home any
+  time after it lands; the host sends any wave back; closing `SUPPORT` sends every wave home after
+  an inline confirmation (K7). Leaving or being removed from the clan sends a commander's waves
+  home, both directions.
+- **The battle.** Every supporter fights with their own live research and damage lots; the
+  host's guns and Aegis cover the whole line. The host's home fleet, dock, recovery shield and
+  stores are read from the host's own stack only.
+- **Dominion (owner, 2026-10-02).** Only the host's Dominion moves; a supporter's never does.
+  The support multiplies the host's OWN fight (its loot, its own losses, the attackers' losses)
+  by `D = line power ÷ host power` (the host's ships and the guns that fire), capped at ×5: a
+  host who loses loses ×D, a host who wins gains ÷D, and a wave of transports leaves D at 1.
+  The supporters' lost ships are written at their value, once — never multiplied — so the
+  attacker is paid for everything destroyed and the host pays for its guests' losses only once. Against a joint war the attackers' head count stays on the other side.
+  The host's bay shows the factor its standing support sets, the raider's launch sheet estimates
+  it from the probe, and the report states it. Season stats count each defender's own losses.
+- **Information.** The probe shows the posture exactly and a separate *Klan desteği* reading
+  (supporters, power band, ship band); the raider's launch sheet adds it to the enemy bar.
+  Incoming-attack warnings are never shared with the clan or the supporters (K10). Battle
+  reports show the defending line; the raider reads names and losses only.
 
 ## Competition — Dominion
 

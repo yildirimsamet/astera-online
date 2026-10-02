@@ -65,6 +65,7 @@ const base: BattleReport = {
   shieldAbsorbed: 100,
   cargoLimited: false,
   defenceSalvage: {},
+  yourDamage: [],
   disruptedMinutes: 0,
   wreckValue: 0,
 };
@@ -169,7 +170,7 @@ describe('what a battle report explains', () => {
       opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2',
       yourPlanet: 'Vantage-3', yourPlanetId: 'p1', outcome: 'FIRST_STRIKE', damage: 0,
       destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
-      levelChanges: [], destroyedOrders: [], shieldDestroyed: 0, trigger: null,
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 0, trigger: null, loyalty: null,
     };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [strategic] });
@@ -189,7 +190,7 @@ describe('what a battle report explains', () => {
       yourPlanet: 'Vantage-3', yourPlanetId: 'p1', outcome: 'FIRST_STRIKE', damage: 0,
       destroyedFleet: {},
       destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
-      levelChanges: [], destroyedOrders: [], shieldDestroyed: 800, trigger: null,
+      levelChanges: [], destroyedOrders: [], shieldDestroyed: 800, trigger: null, loyalty: null,
     };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [strategic] });
@@ -204,6 +205,41 @@ describe('what a battle report explains', () => {
     expect(screen.getByText(/Aegis dropped to zero/)).toBeVisible();
     expect(screen.queryByText('Destroyed resources')).not.toBeInTheDocument();
     expect(screen.queryByText('Construction destroyed')).not.toBeInTheDocument();
+  });
+
+  /**
+   * WHAT A HIT DID TO A COLONY. Owner, 2026-10-01: twenty loyalty per hit, and a colony at
+   * twenty or less goes NEUTRAL. Both sides read the two figures; the fall says so in words.
+   */
+  const colonyStrike = (loyalty: { before: number; after: number }, attacking: boolean): StrategicBattleReport => ({
+    kind: 'STRATEGIC', id: 'emp-colony', missionId: 'emp-colony-mission',
+    at: new Date('2026-08-26T12:00:00.000Z'), attacking,
+    opponentName: 'Sable', opponentPlanet: 'Grimhold', opponentPlanetId: 'p2',
+    yourPlanet: 'Vantage-3', yourPlanetId: 'p1', outcome: 'FIRST_STRIKE', damage: 0,
+    destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+    levelChanges: [], destroyedOrders: [], shieldDestroyed: 800, trigger: null, loyalty,
+  });
+  const openStrike = async (strategic: StrategicBattleReport) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(['reports'], { reports: [strategic] });
+    const api = { reports: () => Promise.resolve({ reports: [strategic] }) } as unknown as Api;
+    render(<QueryClientProvider client={client}><ApiProvider api={api}>
+      <BattleReports />
+    </ApiProvider></QueryClientProvider>);
+    await userEvent.click(screen.getByRole('button', { name: /Sable/ }));
+  };
+
+  it('shows the loyalty a colony strike took, and what one more would do', async () => {
+    await openStrike(colonyStrike({ before: 60, after: 40 }, false));
+    expect(screen.getByText('60% → 40%')).toBeVisible();
+    expect(screen.queryByText(/seceded/i)).not.toBeInTheDocument();
+  });
+
+  it('says a colony struck to zero seceded and went neutral', async () => {
+    await openStrike(colonyStrike({ before: 18.2, after: 0 }, true));
+    expect(screen.getByText('19% → 0%')).toBeVisible();
+    expect(screen.getAllByText(/seceded/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/neutral/i).length).toBeGreaterThan(0);
   });
 
   it('shows every durable Death Star consequence to both report sides', async () => {
@@ -233,6 +269,7 @@ describe('what a battle report explains', () => {
       }],
       shieldDestroyed: 800,
       trigger: null,
+      loyalty: null,
     };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [strategic] });
@@ -273,6 +310,7 @@ describe('what a battle report explains', () => {
       destroyedOrders: [],
       shieldDestroyed: 0,
       trigger: 'TELESCOPE',
+      loyalty: null,
     };
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     client.setQueryData(['reports'], { reports: [intercepted] });

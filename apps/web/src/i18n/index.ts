@@ -4,6 +4,7 @@ import { de } from './locales/de/index.js';
 import { en } from './locales/en/index.js';
 import { es } from './locales/es/index.js';
 import { fr } from './locales/fr/index.js';
+import { ja } from './locales/ja/index.js';
 import { tr } from './locales/tr/index.js';
 import { FALLBACK_LANGUAGE, detectLanguage, isLanguage, type Language } from './languages.js';
 
@@ -17,7 +18,7 @@ export const NS = 'game';
  * over HTTP, and every version of that has the same shape: the first render has
  * no strings, so either the app suspends or it paints the keys and then corrects
  * itself. Principle 10 rules out both — "never a spinner where a decision should
- * be", and a flash of `landing.premise` is worse than a spinner. All five locale
+ * be", and a flash of `landing.premise` is worse than a spinner. All locale
  * trees load with the game so the first screen is already in the chosen language.
  *
  * DETECTION IS OURS RATHER THAN THE PLUGIN'S. `i18next-browser-languagedetector`
@@ -52,6 +53,7 @@ const resources = {
   fr: { [NS]: fr },
   de: { [NS]: de },
   es: { [NS]: es },
+  ja: { [NS]: ja },
 } as const;
 
 void i18n.use(initReactI18next).init({

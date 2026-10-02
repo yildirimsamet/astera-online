@@ -15,8 +15,9 @@ import {
   hangarCapacity,
 } from '@astera/rules';
 import { buildingGain, instrumentGain, satelliteGain } from '../src/lib/gains.js';
+import { LANGUAGES } from '../src/i18n/languages.js';
 
-const LOCALES = ['en', 'tr', 'de', 'es', 'fr'] as const;
+const LOCALES = LANGUAGES;
 
 /**
  * AN UPGRADE ROW MUST NEVER SAY "X -> X".

@@ -427,7 +427,6 @@ describe('Fleet V2 research identity contract', () => {
       'ISOTOPE_SPECTROMETRY',
       'DENSE_FUEL_CELLS',
       'GRAVITIC_CHARGES',
-      'DEATH_STAR_PROTOCOL',
       'DEUTERIUM_SYNTHESIS',
       'YARD_AUTOMATION',
       'PROSPECTOR_HOLDS',
@@ -441,12 +440,16 @@ describe('Fleet V2 research identity contract', () => {
       'STRATEGIC_STOCKPILE',
       // The surface's own build-speed ladder. D198.
       'AI_ROBOTS',
+      // The Repair Station's ladder. Kalıcı gemi hasarı, owner K6 (2026-09-29).
+      'INDUSTRIAL',
     ];
 
     expect([...RESEARCH_PROJECT_IDS].sort()).toEqual(expected.sort());
     expect(RESEARCH_PROJECT_IDS).toContain('EMPLACEMENT_DOCTRINE');
     for (const retired of [
       'WASP_DOCTRINE', 'LANCE_DOCTRINE', 'BULWARK_DOCTRINE', 'WEAPONS_GENERAL',
+      // Owner, 2026-10-01: the weapon never needed it after the EMP rework.
+      'DEATH_STAR_PROTOCOL',
     ]) {
       expect(RESEARCH_PROJECT_IDS, retired).not.toContain(retired);
     }

@@ -21,7 +21,7 @@ import {
 } from '../packages/rules/src/economy.js';
 import { HULLS } from '../packages/rules/src/hulls.js';
 import { hullFuelMass } from '../packages/rules/src/fuel.js';
-import { RESEARCH_PROJECTS } from '../packages/rules/src/research.js';
+import { RESEARCH_PROJECTS, interceptorCapacity, strategicStockpile } from '../packages/rules/src/research.js';
 import { cargoMult, yardSpeedMult, robotSpeedMult, prospectorHoldMult, hullTech } from '../packages/rules/src/tech.js';
 import {
   telescopeRange, telescopeWatchRange, telescopeSlots, telescopeCooldownHours,
@@ -128,7 +128,7 @@ for (const id of SATELLITE_IDS) {
 
 const RESEARCH_TR: Record<string, string> = {
   ISOTOPE_SPECTROMETRY: 'İzotop Spektrometrisi', DENSE_FUEL_CELLS: 'Yoğun Yakıt Hücreleri',
-  GRAVITIC_CHARGES: 'Gravitik Yükler', DEATH_STAR_PROTOCOL: 'Ölüm Yıldızı Protokolü',
+  GRAVITIC_CHARGES: 'Gravitik Yükler',
   DEUTERIUM_SYNTHESIS: 'Deuterium Sentezi', YARD_AUTOMATION: 'Tersane Otomasyonu',
   AI_ROBOTS: 'Yapay Zekâ Robotları',
   PROSPECTOR_HOLDS: 'Madenci Ambarları', CARGO_HOLDS: 'Kargo Ambarları',
@@ -183,9 +183,8 @@ const researchEffect = (id: string, lvl: number): [string, Cell] => {
     case 'ISOTOPE_SPECTROMETRY': return ['izin: izotop madenciliği', 'açar'];
     case 'DENSE_FUEL_CELLS': return ['izin: yoğun yakıt', 'açar'];
     case 'GRAVITIC_CHARGES': return ['izin: gravitik yük', 'açar'];
-    case 'DEATH_STAR_PROTOCOL': return ['izin: stratejik silah', 'açar'];
-    case 'INTERCEPTION_GRID': return ['izin: önleme bataryası', 'açar'];
-    case 'STRATEGIC_STOCKPILE': return ['pad üzerindeki silah sayısı', lvl > 0 ? 2 : 1];
+    case 'INTERCEPTION_GRID': return ['pad üzerindeki şarj sayısı', interceptorCapacity(lvl)];
+    case 'STRATEGIC_STOCKPILE': return ['pad üzerindeki silah sayısı', strategicStockpile(lvl)];
     default: return ['', ''];
   }
 };
@@ -211,11 +210,11 @@ const strategic: Cell[][] = [['Varlık', 'Alloy', 'Crystal', 'Deuterium', 'Topla
 strategic.push(['Ölüm Yıldızı (Death Star)', DEATH_STAR.cost.alloy, DEATH_STAR.cost.crystal,
   DEATH_STAR.cost.deuterium, DEATH_STAR.cost.alloy + DEATH_STAR.cost.crystal + DEATH_STAR.cost.deuterium,
   DEATH_STAR.buildMinutes, DEATH_STAR.requiredCore, DEATH_STAR.requiredShipyard,
-  DEATH_STAR.requiredResearch, 'Tek kullanımlık; 2 saat kesinti, dünya el değiştirmez']);
+  '-', `Tek kullanımlık; 1 saat EMP; koloniden ${String(DEATH_STAR.colonyLoyaltyLoss)} sadakat, ${String(DEATH_STAR.colonyLoyaltyLoss)} veya altıysa kopar; pad'de ${String(DEATH_STAR.perWorld.base)}, Stratejik Stok ile ${String(DEATH_STAR.perWorld.researched)}`]);
 strategic.push(['Önleme Bataryası (Anti-Strategic)', ANTI_STRATEGIC.cost.alloy, ANTI_STRATEGIC.cost.crystal,
   ANTI_STRATEGIC.cost.deuterium, ANTI_STRATEGIC.cost.alloy + ANTI_STRATEGIC.cost.crystal + ANTI_STRATEGIC.cost.deuterium,
-  ANTI_STRATEGIC.buildMinutes, '-', '-', ANTI_STRATEGIC.requiredResearch,
-  `Radar ${String(ANTI_STRATEGIC.requiredRadar)}+ gerekir; pad'de ${String(ANTI_STRATEGIC.maxCharges)} şarj`]);
+  ANTI_STRATEGIC.buildMinutes, '-', '-', '-',
+  `Radar ${String(ANTI_STRATEGIC.requiredRadar)}+ gerekir; pad'de ${String(ANTI_STRATEGIC.charges.base)}, Önleme Ağı ile ${String(ANTI_STRATEGIC.charges.researched)} şarj`]);
 
 /* ---------------- OKUMA NOTU ---------------- */
 const notes: Cell[][] = [

@@ -1271,6 +1271,7 @@ describe('how much of a wall the wing takes', () => {
       shieldAbsorbed: 0,
       cargoLimited: false,
       defenceSalvage: {},
+      yourDamage: [],
       disruptedMinutes: 0,
       wreckValue: 0,
     } as const satisfies BattleReport;

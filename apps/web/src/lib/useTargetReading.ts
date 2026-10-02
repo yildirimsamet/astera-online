@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  clanDefenseApplies,
   combatValue,
   dominantClass,
   escapeLine,
@@ -23,6 +24,7 @@ import { combatClassLabel } from '../i18n/names.js';
 import { serverNow } from './clock.js';
 import { fieldedAtLeast, sourceLabel } from './dossier.js';
 import { matchupHint } from './matchup.js';
+import { factorLabel, raiderFactorCeiling } from './supportFactor.js';
 import type { ForceReading } from '../ui/ForceCompare.js';
 import type { LaunchTarget } from '../screens/LaunchSheet.js';
 
@@ -96,9 +98,11 @@ export function useTargetReading({
       return { low: exact, high: exact, source: sourceLabel('public'), ageMinutes: null };
     }
     if (!report) return null;
+    // KLAN SAVUNMA DESTEĞİ (K9): the raid meets the whole line, so the bar is host + support.
+    const support = report.support;
     return {
-      low: report.defence.low,
-      high: report.defence.high,
+      low: report.defence.low + (support?.defence.low ?? 0),
+      high: report.defence.high + (support?.defence.high ?? 0),
       source: sourceLabel('probe'),
       ageMinutes: Math.max(0, (serverNow() - report.at.getTime()) / 60_000),
     };
@@ -210,9 +214,18 @@ export function useTargetReading({
    * also cannot establish whether five combat ships stand there; an otherwise
    * certain RUN stays UNSURE until the actual fight.
    */
+  /*
+    A WORLD THAT CANNOT RETREAT DRAWS NO RETREAT LINE (K4). From ruleset 15 the probe
+    reads the posture exactly; SUPPORT and HOLD never lift off, so the tick would mark a
+    power at which nothing happens. A report that never read a posture keeps the line.
+  */
+  const held = clanDefenseApplies(rulesetVersion) && report?.posture != null && report.posture !== 'ESCAPE'
+    ? report.posture
+    : null;
   const escapeRuled = target.kind === 'world'
     && target.world.kind !== 'NEUTRAL'
-    && fleetEscapeApplies(rulesetVersion);
+    && fleetEscapeApplies(rulesetVersion)
+    && held === null;
   const escape = useMemo(() => {
     if (!escapeRuled || fleetCount(settled) === 0) return null;
     const power = combatValue(settled);
@@ -248,6 +261,14 @@ export function useTargetReading({
         notes.push(t('counter.noteUnarmed', {
           count: high,
           band: low === high ? String(high) : `${String(low)}${t('units.rangeJoin')}${String(high)}`,
+        }));
+      }
+      if (held !== null) notes.push(t(`clanSupport.postureRead.${held}`));
+      if (report.support && report.support.supporters > 0) {
+        notes.push(t('clanSupport.noteSupport', { count: report.support.supporters }));
+        // The most a win here could be multiplied by (owner, 2026-10-02): a ceiling, since the probe sees no guns.
+        notes.push(t('clanSupport.noteFactor', {
+          factor: factorLabel(raiderFactorCeiling(report.defence, report.support.defence)),
         }));
       }
       if (report.detected) notes.push(t('counter.noteSeen'));

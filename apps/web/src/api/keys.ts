@@ -40,6 +40,8 @@ export const keys = {
   clanDepot: ['clan', 'depot'],
   clanAid: ['clan', 'aid'],
   clanWar: ['clan', 'war'],
+  /** My clan support waves still out — the Fleet page's group. Klan Savunma Desteği. */
+  clanSupport: ['clan', 'support'],
   clanChat: ['clan', 'chat'],
   chatMessages: ['chat', 'messages'],
   chatMessagesFor: (language: ChatLanguage) => ['chat', 'messages', language] as const,

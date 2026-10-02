@@ -132,8 +132,10 @@ describe('research prices', () => {
         rungs += 1;
       }
     }
+    // Industrial (owner K6, 2026-09-29) added the seventeenth project and its two rungs;
+    // the Death Star Protocol's retirement (owner, 2026-10-01) took one project and one rung.
     expect(RESEARCH_PROJECT_IDS.length).toBe(16);
-    expect(rungs).toBe(52);
+    expect(rungs).toBe(53);
   });
 
   it('still charges whole positive resources at every rung', () => {

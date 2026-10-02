@@ -151,6 +151,11 @@ export const fleetPage = {
 
 /** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
 export const reportScene = {
+  damageTitle: "Came out damaged",
+  damageLot: "{{name}} ×{{count}} · {{pct}}% damage",
+  toDock: "to the Repair Station",
+  patched: "patched free",
+  landing: "Judged when they land: over 20% waits for repair, the rest is patched free.",
   eyebrow: "Battle report · {{planet}}",
   rounds_one: "{{count}} round",
   rounds_other: "{{count}} rounds",
@@ -185,9 +190,7 @@ export const baseSwitch = {
 /** E8 · K9: the research constellation. */
 export const researchMap = {
   label: 'Research map',
-  closed: '{{group}} · closed',
   /** The strategic three while their release switch is off: the server refuses them. */
-  shut: 'Closed for now',
   /** A prerequisite already held, said on the card. */
   needs: 'Needs {{name}}',
   /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
@@ -259,4 +262,58 @@ export const outline = {
   filled: '{{count}} of {{total}}',
   threat_one: '{{count}} attack coming',
   threat_other: '{{count}} attacks coming',
+};
+
+/** The Repair Station (Kalıcı gemi hasarı, `plan.md` F4/F6). */
+export const repairStation = {
+  order: "Repair · {{name}}",
+  all: "mixed ships",
+  title: "Repair Station",
+  role: "Damaged ships wait here until they are repaired.",
+  tagline: "Brings damaged ships back to the fleet.",
+  idle: "No damaged ships at this world.",
+  waitingShips_one: "{{count}} ship waiting",
+  waitingShips_other: "{{count}} ships waiting",
+  repairingShips_one: "{{count}} under repair",
+  repairingShips_other: "{{count}} under repair",
+  queueFill: "Queue {{used}}/{{total}}",
+  statWaiting: "Waiting",
+  statRepairing: "Under repair",
+  statQueue: "Queue",
+  outOfAction: "A ship more than 20% damaged waits here: it cannot fly or defend until it is repaired.",
+  howItWorks: "How it works",
+  ruleFree: "Damage of 20% or less, from a battle or radiation, is patched free.",
+  rulePrice: "Price: the damaged share of a new ship. A ship 40% damaged costs 40% of a new one.",
+  ruleTime: "Time: the same share of its build time. {{shipyard}} levels and {{automation}} shorten it.",
+  ruleIndustrial: "{{industrial}} research cuts price and time to 75%, then to 50%.",
+  youPay: "You pay {{pct}}% now.",
+  ruleQueue: "Jobs run one after another, up to {{depth}} in the queue, apart from the Shipyard's own queue.",
+  ruleCancel: "A cancel gives back half the price; the ships wait again.",
+  industrialChip: "{{industrial}} −{{off}}%",
+  damagedHeading: "Damaged ships",
+  selectAll: "Select all",
+  selectNone: "Clear",
+  choose: "Repair {{name}} ×{{count}}",
+  noneWaiting: "No ship is waiting for a repair.",
+  damaged: "{{pct}}% damaged",
+  share: "{{pct}}% of a new ship",
+  queueHeading: "Repair queue",
+  queueEmpty: "Nothing under repair.",
+  finishing: "Finishing…",
+  startsIn: "starts in {{time}}",
+  ends: "done in {{time}}",
+  selected_one: "{{count}} ship chosen",
+  selected_other: "{{count}} ships chosen",
+  afterQueue: "Starts after the queue, in {{time}}",
+  repairSelected_one: "Repair {{count}} ship",
+  repairSelected_other: "Repair {{count}} ships",
+  pick: "Choose ships to repair",
+  queueFullShort: "Queue full · {{used}}/{{total}}",
+  tooMany: "Choose at most {{max}} rows, or select all",
+  starting: "Starting…",
+  cancel: "Cancel",
+  docked_one: "{{count}} in repair",
+  docked_other: "{{count}} in repair",
+  started: "Repair started",
+  queue: "Repair Station",
 };

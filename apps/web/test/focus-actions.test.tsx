@@ -294,6 +294,42 @@ describe('the focus rail’s two commitments', () => {
   });
 
   /**
+   * THE STRIKE ANSWERS TO THE BAND TOO. Owner report 2026-10-01: a tier 4 commander
+   * could strike a tier 6 one who was refused a raid the other way. The server now
+   * refuses it, so a target the disc already proves too developed may not offer it.
+   */
+  it('holds the strike on a target the band already refuses', async () => {
+    const i18n = (await import('../src/i18n/index.js')).default;
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target()}
+          planet={{
+            ...mine,
+            deathStars: [{ id: 'weapon-ready', status: 'READY' as const, readyAt: new Date(NOW), remainingSeconds: 0 }],
+          }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          outOfBand
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onDeathStar={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    const strike = document.querySelector('[data-death-star]');
+    expect(strike).toBeDisabled();
+    expect(strike).toHaveTextContent(i18n.t('focus.planet.deathStarOutOfBand'));
+  });
+
+  /**
    * A LAUNCH IS HELD (K4, B9): "tüm fırlatmalar ve Ölüm Yıldızı". The press opens a
    * sheet that names the world and what the strike spends; a tap on its commit does
    * nothing, a hold fires, and there is no second "hold fire" button — the sheet's
@@ -339,6 +375,145 @@ describe('the focus rail’s two commitments', () => {
     fireEvent.keyDown(hold, { key: 'Enter' });
     fireEvent.keyDown(hold, { key: 'Enter' });
     expect(onDeathStar).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * WHAT THE HIT WILL COST THIS WORLD, FROM THE LAST LOOK. Owner, 2026-10-01: a colony
+   * loses twenty loyalty per hit and goes neutral at twenty or less, and a charge downs
+   * one weapon. The sheet reads the newest probe so the commander can form the
+   * expectation — and be wrong about it — before holding fire.
+   */
+  /**
+   * THE GUIDE SAYS WHAT A HIT DOES TO A COLONY BEFORE ANYONE PRESSES ANYTHING. Owner,
+   * 2026-10-01: −20 loyalty, and NEUTRAL at 20 or less. A capital has no loyalty to lose.
+   */
+  it('tells the colony route what a hit costs its loyalty, and the capital route nothing', () => {
+    show({}, { kind: 'COLONY' });
+    expect(screen.getByText(/loses 20 loyalty/i)).toBeInTheDocument();
+  });
+
+  it('puts no loyalty on a capital’s route', () => {
+    show({}, { kind: 'CAPITAL' });
+    expect(screen.queryByText(/loses 20 loyalty/i)).not.toBeInTheDocument();
+  });
+
+  describe('the strike sheet reads the last probe', () => {
+    const probe = (over: Partial<IntelView['probeReports'][number]> = {}): IntelView['probeReports'][number] => ({
+      targetPlanetId: 'p2', targetName: 'Grimhold', targetUsername: 'Sable',
+      at: new Date(NOW - 12 * 60_000), accuracy: 0.8, detected: false,
+      stock: { low: 100, high: 200 }, deuteriumStock: null,
+      defence: { low: 20, high: 50 }, fleetSize: { low: 2, high: 5 }, fleetHome: true,
+      ...over,
+    });
+    const openSheet = (world: Partial<GalaxyPlanet>, reports: IntelView['probeReports']) => {
+      const Wrapper = harness();
+      render(
+        <Wrapper>
+          <PlanetFocus
+            target={target(world)}
+            planet={{
+              ...mine,
+              deathStars: [{ id: 'weapon-ready', status: 'READY' as const, readyAt: new Date(NOW), remainingSeconds: 0 }],
+            }}
+            intel={{ ...intel, probeReports: reports }}
+            reports={[]}
+            now={NOW}
+            onClose={vi.fn()}
+            onAttack={vi.fn()}
+            onDeathStar={vi.fn()}
+            onInstallTelescope={vi.fn()}
+            onLaunched={vi.fn()}
+            open
+            onToggle={vi.fn()}
+          />
+        </Wrapper>,
+      );
+      fireEvent.click(document.querySelector<HTMLElement>('[data-death-star]')!);
+      return document.querySelector<HTMLElement>('[data-strike-sheet]')!;
+    };
+
+    it('states the colony rule and says one hit takes a colony read at twenty or less', () => {
+      const sheet = openSheet({ kind: 'COLONY' }, [probe({ loyalty: 18 })]);
+      expect(sheet).toHaveTextContent(/20 loyalty/i);
+      const row = sheet.querySelector<HTMLElement>('[data-strike-loyalty]')!;
+      expect(row).toHaveTextContent('18%');
+      expect(row).toHaveTextContent(/this hit takes it/i);
+    });
+
+    it('counts the hits a loyal colony needs', () => {
+      const row = openSheet({ kind: 'COLONY' }, [probe({ loyalty: 64 })])
+        .querySelector<HTMLElement>('[data-strike-loyalty]')!;
+      expect(row).toHaveTextContent('64%');
+      expect(row).toHaveTextContent(/4 hits/i);
+    });
+
+    it('asks for a probe when the colony’s loyalty was never read', () => {
+      const row = openSheet({ kind: 'COLONY' }, []).querySelector<HTMLElement>('[data-strike-loyalty]')!;
+      expect(row).toHaveTextContent(/unknown/i);
+    });
+
+    it('puts no loyalty on a capital, which has none', () => {
+      expect(openSheet({ kind: 'CAPITAL' }, [probe()]).querySelector('[data-strike-loyalty]')).toBeNull();
+    });
+
+    it('says how many charges wait for the weapon', () => {
+      const row = openSheet({ kind: 'CAPITAL' }, [probe({ interceptors: 3 })])
+        .querySelector<HTMLElement>('[data-strike-charges]')!;
+      expect(row).toHaveTextContent(/3 charges/i);
+      expect(row).toHaveTextContent(/\b4\b/);
+    });
+  });
+
+  /* KLAN SAVUNMA DESTEĞİ: a clanmate's world is where support goes, from ruleset 15. */
+  const clanmateFocus = (rulesetVersion: number, onSendSupport = vi.fn(), supportOpen?: boolean) => {
+    const Wrapper = harness();
+    render(
+      <Wrapper>
+        <PlanetFocus
+          target={target({ clanmate: true, clan: { id: 'clan-1', name: 'Nova', tag: 'NVA' },
+            ...(supportOpen === undefined ? {} : { supportOpen }) })}
+          planet={{ ...mine, rulesetVersion }}
+          intel={intel}
+          reports={[]}
+          now={NOW}
+          onClose={vi.fn()}
+          onAttack={vi.fn()}
+          onInstallTelescope={vi.fn()}
+          onLaunched={vi.fn()}
+          onSendSupport={onSendSupport}
+          open
+          onToggle={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    return onSendSupport;
+  };
+
+  it('offers clan support at a clanmate’s world, with what it does beside it', () => {
+    const onSendSupport = clanmateFocus(15);
+    expect(screen.getByText(/station ships at this clanmate/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /send support/i }));
+    expect(onSendSupport).toHaveBeenCalledTimes(1);
+  });
+
+  it('says before any ship is picked that a clanmate’s world is closed to support', () => {
+    const onSendSupport = clanmateFocus(15, vi.fn(), false);
+    const button = screen.getByRole('button', { name: /send support/i });
+    expect(button).toBeDisabled();
+    expect(screen.getByText(/not taking clan support on this world/i)).toBeInTheDocument();
+    fireEvent.click(button);
+    expect(onSendSupport).not.toHaveBeenCalled();
+  });
+
+  it('opens the sheet at a clanmate’s world that takes support', () => {
+    const onSendSupport = clanmateFocus(15, vi.fn(), true);
+    fireEvent.click(screen.getByRole('button', { name: /send support/i }));
+    expect(onSendSupport).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no clan support in a season dealt before it', () => {
+    clanmateFocus(14);
+    expect(screen.queryByRole('button', { name: /send support/i })).toBeNull();
   });
 
   it('shows a current clanmate identity without offering hostile controls', () => {

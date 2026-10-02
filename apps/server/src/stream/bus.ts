@@ -90,7 +90,11 @@ export const GLOBAL_PREFIX = 'global:';
  * `treasury` and `war` arrived with Klan Ortak Savaşı, 2026-09-20.
  */
 export type ClanPrivateEventKind =
-  | 'membership' | 'request' | 'chat' | 'depot' | 'aid' | 'treasury' | 'war';
+  | 'membership' | 'request' | 'chat' | 'depot' | 'aid' | 'treasury' | 'war'
+  /** Klan Savunma Desteği: a wave this commander sent, or one standing at their world, moved. */
+  | 'support'
+  /** Klan Savunma Desteği: a clanmate's world opened or closed its support door. */
+  | 'posture';
 
 /** `JSON.parse` throws on malformed input; the schema handles everything else. */
 function safeJson(raw: string): unknown {

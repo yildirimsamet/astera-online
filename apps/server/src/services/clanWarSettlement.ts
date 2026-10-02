@@ -3,7 +3,7 @@ import {
   DEBRIS,
   FAULT,
   NON_COMBATANT_HULLS,
-  adjustJointDominion,
+  defendedTransfer,
   allocateJointDefenderLoss,
   allocateJointDominion,
   allocateJointLoot,
@@ -13,7 +13,8 @@ import {
   fleetCargo,
   fleetCount,
   fleetEntries,
-  fleetEscapeApplies,
+  combatValue,
+  escapeAllowed,
   fleetEscapeMinimumApplies,
   ESCAPE,
   garrisonOf,
@@ -26,7 +27,12 @@ import {
   type Fleet,
   type JointAttackerStack,
   type Resources,
+  normalizeLots,
+  shipDamageApplies,
+  type DamageLot,
 } from '@astera/rules';
+import { dockDamaged, dockNotice, shipsIn } from './shipDamage.js';
+import { settleWaveRadiation, tellRadiationLoss } from './radiation.js';
 import type { Clock } from '../clock.js';
 import type { Tx } from '../db/client.js';
 import {
@@ -48,11 +54,24 @@ import {
   flyingCrystal,
   flyingDeuterium,
   flyingValue,
+  applyDelta,
   identityOfPlanet,
   lockLedgers,
   saveLedger,
 } from './battleSettlement.js';
 import { addDominionCounters } from './dominion.js';
+import {
+  defenderCountOf,
+  lineOf,
+  lockStationsAt,
+  notifySupporters,
+  settleStations,
+  standStations,
+  supportFactorOf,
+  supportLossOf,
+  supporterIdsOf,
+  writeDefenderResults,
+} from './defenderLine.js';
 import { breakFaults, defenceOnline } from './faults.js';
 import { rescheduleLoyaltyWatch } from './loyalty.js';
 import { notify, announceUnlocks } from './notifications.js';
@@ -155,7 +174,7 @@ export async function resolveClanWarBattle(
   const { mission, operation } = input;
   const now = input.clock.now();
 
-  const waves = await tx
+  const fighting = await tx
     .select()
     .from(clanWarContributions)
     .where(and(
@@ -163,6 +182,19 @@ export async function resolveClanWarBattle(
       eq(clanWarContributions.status, 'IN_BATTLE'),
     ))
     .for('update');
+  /*
+    RADYASYON FIRST (plan §3.5.4). The pool flies the strike leg as one wing, so every wave
+    takes the same dose over it before anything else happens here — before the target is
+    even looked at. A wave it finished has nothing left to fight with and is lost the way
+    a wiped wave is; a pool it finished whole never fights (`stacks.length === 0` below).
+  */
+  const waves: typeof fighting = [];
+  for (const row of fighting) {
+    const dosed = await settleWaveRadiation(tx, row, mission, input.rulesetVersion);
+    await tellRadiationLoss(tx, { playerId: row.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
+      dosed, now);
+    waves.push(dosed.wave);
+  }
   if (waves.length === 0) {
     await closeOperation(tx, { operation, reason: 'FAILED', now });
     return;
@@ -219,6 +251,8 @@ export async function resolveClanWarBattle(
       playerId: wave.playerId,
       fleet,
       tech: { tech: wave.tech },
+      // What the wave arrived with in damage (radiation on its legs); null when whole.
+      ...(wave.damage ? { damage: wave.damage } : {}),
     });
   }
   if (stacks.length === 0) {
@@ -227,18 +261,30 @@ export async function resolveClanWarBattle(
   }
 
   const participantIds = [...new Set(stacks.map((stack) => stack.playerId))].sort();
+  /*
+    KLAN SAVUNMA DESTEĞİ: the defending clan's waves standing at the target, locked after
+    the worlds and before any clan or player row (`defenderLine.ts`).
+  */
+  const stationWaves = await lockStationsAt(tx, {
+    hostPlanetId: mission.targetPlanetId,
+    rulesetVersion: input.rulesetVersion,
+  });
+  const supporterIds = supporterIdsOf(stationWaves);
   const adminPlayerIds = await adminPlayerIdsInSeason(
     tx,
     mission.seasonId,
     input.adminUsernames,
   );
   const scoreEligible = !adminPlayerIds.has(defenderPlayerId)
-    && participantIds.every((playerId) => !adminPlayerIds.has(playerId));
+    && participantIds.every((playerId) => !adminPlayerIds.has(playerId))
+    && supporterIds.every((playerId) => !adminPlayerIds.has(playerId));
 
   // Clan management owns clan rows before player rows. Settlement must take the
   // same order or a concurrent management write can form clan→player / player→clan.
   if (scoreEligible) await lockJointWarScoreClans(tx, operation);
-  const ledgers = await lockLedgers(tx, [...participantIds, defenderPlayerId]);
+  // A supporter's ledger never moves (owner, 2026-10-02), but `settleStations` writes their
+  // row (wealth): it is taken here, in the one id order, never late after the others.
+  const ledgers = await lockLedgers(tx, [...participantIds, defenderPlayerId, ...supporterIds]);
   const defender = await loadLocked(tx, mission.targetPlanetId, input.clock, {
     requireLive: false,
   });
@@ -256,6 +302,12 @@ export async function resolveClanWarBattle(
     arrive as one wing, so they are weighed together against the line — and a raid
     the ships ran from is re-resolved from this same seed against the guns alone.
   */
+  const stations = await standStations(tx, {
+    waves: stationWaves,
+    host: defender,
+    rulesetVersion: input.rulesetVersion,
+    now: defender.now,
+  });
   const raid = resolveRaid({
     stacks,
     line: defenders,
@@ -263,11 +315,16 @@ export async function resolveClanWarBattle(
     rng: () => seededFrom(mission.id),
     defender: { tech: defenderTech },
     deuterium: defender.deuterium,
-    escape: fleetEscapeApplies(input.rulesetVersion),
+    // From ruleset 15 the world's posture decides; before it, the season's rule.
+    escape: escapeAllowed(input.rulesetVersion, defender.defencePosture),
     minimumCombatShips: fleetEscapeMinimumApplies(input.rulesetVersion)
       ? ESCAPE.minimumCombatShips : 0,
+    support: stations.map((station) => station.stack),
+    hostPlayerId: defender.playerId,
   });
   const result = raid.result;
+  // The host's own part of the line; the waves' survivors go back to their own rows.
+  const hostOutcome = result.defenders[0]!;
   const escaped: Fleet = raid.escape?.kind === 'ESCAPED' ? raid.escape.ships : {};
   const liftFuel = raid.escape?.kind === 'ESCAPED' ? raid.escape.fuel : 0;
   const stood: Fleet = {};
@@ -282,14 +339,30 @@ export async function resolveClanWarBattle(
     // A ship that lifted off is as absent from the survivors as a Prospector.
     defenderHome[hull] = NON_COMBATANT_HULLS.includes(hull) || (escaped[hull] ?? 0) > 0
       ? standing
-      : result.defenderSurvivors[hull] ?? 0;
+      : hostOutcome.survivors[hull] ?? 0;
   }
   for (const [hull, standing] of fleetEntries(defender.ground)) {
     defenderHome[hull] = defenceDark
       ? standing
-      : (result.defenderSurvivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
+      : (hostOutcome.survivors[hull] ?? 0) + (result.defenceSalvage[hull] ?? 0);
   }
   await setUnits(tx, defender.planetId, defenderHome, 'home');
+  /*
+    KALICI GEMİ HASARI, as in the raid lane: the defender's part-hit ships are judged on
+    the spot, each wave carries its own home on its own return leg.
+  */
+  const damageRule = shipDamageApplies(input.rulesetVersion);
+  const attackerDamage = damageRule ? result.attackerDamage : [];
+  const defenderDamage = damageRule ? result.defenderDamage : [];
+  const waveDamage = (outcome: { survivorDamage: DamageLot[] }): DamageLot[] =>
+    (damageRule ? outcome.survivorDamage : []);
+  const defenderDock = await dockDamaged(tx, {
+    planetId: defender.planetId,
+    ownerPlayerId: defender.playerId,
+    lots: damageRule ? hostOutcome.survivorDamage : [],
+    at: defender.now,
+  });
+  await settleStations(tx, { stations, outcomes: result.defenders, damageRule, now: defender.now });
 
   // The lift burned before anything reached a hold (see the raid lane).
   const exposedStock = {
@@ -349,7 +422,8 @@ export async function resolveClanWarBattle(
     shield: result.shieldLeft,
   });
 
-  const fleetLost = permanentFleetCost(result.defenderLosses, result.defenceSalvage);
+  // The host's own permanent loss: a clanmate's wave dying does not shield the host.
+  const fleetLost = permanentFleetCost(hostOutcome.losses, result.defenceSalvage);
   const recovery = await grantRecoveryShield(tx, {
     playerId: defender.playerId,
     planetId: defender.planetId,
@@ -427,15 +501,23 @@ export async function resolveClanWarBattle(
     stored anyway so the audit reads the same when that stops being true.
   */
   const attackerCount = participantIds.length;
-  const defenderCount = 1;
+  // One for the host, plus every clanmate who stood a ship in the line (Klan Savunma Desteği).
+  const defenderCount = defenderCountOf(stations);
   const base = scoreEligible
     ? dominionTransfer(
       lootUnits + result.defenderLossValue - result.attackerLossValue,
       input.rulesetVersion,
     )
     : 0;
+  /*
+    KLAN SAVUNMA DESTEĞİ (owner, 2026-10-02): the attackers' head count against the factor
+    the defending line's support brings — line power ÷ host power, at most ×5 — on the host's
+    own fight, with the supporters' lost ships added at face value (`defendedTransfer`). With
+    nobody supporting, the factor is 1 and this is the head-count rule exactly as it was.
+  */
+  const hostPower = combatValue(defenders);
   const adjusted = scoreEligible
-    ? adjustJointDominion(base, attackerCount, defenderCount)
+    ? defendedTransfer(base, supportLossOf(stations, result.defenders), attackerCount, supportFactorOf(hostPower, stations))
     : 0;
 
   /*
@@ -495,6 +577,8 @@ export async function resolveClanWarBattle(
   const shares = scoreEligible
     ? allocateJointDominion(adjusted, weights)
     : participantIds.map((playerId) => ({ playerId, delta: 0 }));
+  /* THE DEFENDING SIDE: the host alone takes the whole opposite of the attackers' transfer. */
+  const defenderShares = [{ playerId: defenderPlayerId, delta: -adjusted }];
   const deltaByPlayer = new Map(shares.map((row) => [row.playerId, row.delta]));
 
   if (scoreEligible) {
@@ -504,10 +588,12 @@ export async function resolveClanWarBattle(
       applyDelta(ledger, deltaByPlayer.get(playerId) ?? 0);
       await saveLedger(tx, ledger);
     }
-    const defenderLedger = ledgers.get(defenderPlayerId);
-    if (!defenderLedger) throw new Error('joint war defender vanished before settlement');
-    applyDelta(defenderLedger, -adjusted);
-    await saveLedger(tx, defenderLedger);
+    for (const share of defenderShares) {
+      const ledger = ledgers.get(share.playerId);
+      if (!ledger) throw new Error('joint war defender vanished before settlement');
+      applyDelta(ledger, share.delta);
+      await saveLedger(tx, ledger);
+    }
     await recordClanScore(tx, {
       seasonId: mission.seasonId,
       missionId: mission.id,
@@ -540,8 +626,12 @@ export async function resolveClanWarBattle(
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
     attackerFleet: aggregateOf(stacks),
-    defenderFleet: stood,
+    // The whole line that stood — the host's and every clanmate wave's.
+    defenderFleet: lineOf(stood, stations),
+    defenderCount,
     defenceSalvage: result.defenceSalvage,
+    attackerDamage,
+    defenderDamage,
     colonyFaults,
     fleetEscape: raid.escape,
     disruptedMinutes: 0,
@@ -573,7 +663,12 @@ export async function resolveClanWarBattle(
   const survivedByPlayer = new Map<string, Fleet>();
   const lootByPlayer = new Map<string, Resources>();
   const salvageByPlayer = new Map<string, Resources>();
+  const carriedByPlayer = new Map<string, DamageLot[]>();
   for (const outcome of result.contributions) {
+    carriedByPlayer.set(outcome.playerId, [
+      ...(carriedByPlayer.get(outcome.playerId) ?? []),
+      ...waveDamage(outcome),
+    ]);
     mergeInto(sentByPlayer, outcome.playerId, outcome.sent);
     mergeInto(lostByPlayer, outcome.playerId, outcome.losses);
     mergeInto(survivedByPlayer, outcome.playerId, outcome.survivors);
@@ -598,6 +693,7 @@ export async function resolveClanWarBattle(
     loot: lootByPlayer.get(playerId) ?? { ...NOTHING },
     salvage: salvageByPlayer.get(playerId) ?? { ...NOTHING },
     hullDamage: damageByPlayer.get(playerId) ?? 0,
+    damage: normalizeLots(carriedByPlayer.get(playerId)),
     dominionRaw: weights.find((weight) => weight.playerId === playerId)?.raw ?? 0,
     dominionDelta: deltaByPlayer.get(playerId) ?? 0,
     createdAt: now,
@@ -619,22 +715,48 @@ export async function resolveClanWarBattle(
         delta: deltaByPlayer.get(playerId) ?? 0,
         createdAt: now,
       })),
-      {
+      ...defenderShares.map((share) => ({
         seasonId: mission.seasonId,
         operationId: operation.id,
         reportId: report.id,
-        playerId: defenderPlayerId,
+        playerId: share.playerId,
         role: 'DEFENDER' as const,
         rulesetVersion: input.rulesetVersion,
         attackerCount,
         defenderCount,
         baseExchange: base,
         adjustedTransfer: adjusted,
-        delta: -adjusted,
+        delta: share.delta,
         createdAt: now,
-      },
+      })),
     ];
     await tx.insert(clanWarDominionEvents).values(audit);
+  }
+  if (defenderCount > 1) {
+    await writeDefenderResults(tx, {
+      seasonId: mission.seasonId,
+      reportId: report.id,
+      host: {
+        playerId: defenderPlayerId,
+        outcome: hostOutcome,
+        power: hostPower,
+        lootLost: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
+      },
+      stations,
+      outcomes: result.defenders,
+      hostDelta: -adjusted,
+      now,
+    });
+    await notifySupporters(tx, {
+      missionId: mission.id,
+      reportId: report.id,
+      grade: result.grade,
+      hostPlanetId: defender.planetId,
+      hostPlanetName: defender.name,
+      stations,
+      outcomes: result.defenders,
+      now,
+    });
   }
 
   let wreckFieldId: string | null = null;
@@ -665,6 +787,7 @@ export async function resolveClanWarBattle(
       loot: lootByContribution.get(outcome.contributionId) ?? { ...NOTHING },
       salvage: salvageByContribution.get(outcome.contributionId) ?? { ...NOTHING },
       hullDamage: outcome.hullDamage,
+      damage: waveDamage(outcome).length > 0 ? waveDamage(outcome) : null,
       battleAt: now,
     }).where(eq(clanWarContributions.id, wave.id));
     await planContributionReturn(tx, {
@@ -735,12 +858,13 @@ export async function resolveClanWarBattle(
       lootAlloy: loot.alloy,
       lootCrystal: loot.crystal,
       lootDeuterium: loot.deuterium,
-      unitsLost: fleetCount(result.defenderLosses),
+      unitsLost: fleetCount(hostOutcome.losses),
       theirLosses: fleetCount(result.attackerLosses),
       attackers: attackerCount,
       ...(raid.escape
         ? { escape: raid.escape.kind, escapeShips: fleetCount(raid.escape.ships) }
         : {}),
+      ...dockNotice(defenderDock),
       disruptedMinutes: 0,
     },
     at: defender.now,
@@ -765,6 +889,10 @@ export async function resolveClanWarBattle(
         shipsHome: fleetCount(survivedByPlayer.get(playerId) ?? {}),
         dominion: deltaByPlayer.get(playerId) ?? 0,
         ...(raid.escape?.kind === 'ESCAPED' ? { targetFled: true } : {}),
+        // Flying home damaged; the Repair Station judges them where each wave lands.
+        ...(shipsIn(carriedByPlayer.get(playerId) ?? []) > 0
+          ? { damaged: shipsIn(carriedByPlayer.get(playerId) ?? []) }
+          : {}),
       },
       at: defender.now,
       refId: mission.id,
@@ -836,13 +964,6 @@ const aggregateOf = (stacks: readonly JointAttackerStack[]): Fleet => {
   return total;
 };
 
-function applyDelta(ledger: { taken: number; lost: number }, delta: number): void {
-  if (delta >= 0) {
-    ledger.taken = addDominionCounters(ledger.taken, delta, 'Joint war Dominion');
-  } else {
-    ledger.lost = addDominionCounters(ledger.lost, -delta, 'Joint war Dominion');
-  }
-}
 
 /** The pool turns round without a shot: no loot, no score, no report. */
 async function returnPoolUntouched(

@@ -4,6 +4,7 @@ import { hydratePublisherPricing } from '../public/publisher-pricing.js';
 const markup = `<!doctype html><html lang="tr"><body>
   <span data-offer-price="planet-lava">€2.99</span>
   <span data-offer-price="planet-germany">€2.99</span>
+  <span data-offer-price="planet-japan">€2.99</span>
   <strong data-offer-price="bundle">€8.49</strong>
   <p data-pricing-status>Konum fiyatı yükleniyor.</p>
 </body></html>`;
@@ -17,6 +18,7 @@ describe('publisher pricing from the live catalog', () => {
       countryCode: 'TR', prices: {
         'planet-lava': { formatted: '₺99', currencyCode: 'TRY' },
         'planet-germany': { formatted: '€2.99', currencyCode: 'EUR' },
+        'planet-japan': { formatted: '€2.99', currencyCode: 'EUR' },
         bundle: { formatted: '₺279', currencyCode: 'TRY' },
       },
     }), { status: 200 })));
@@ -26,6 +28,7 @@ describe('publisher pricing from the live catalog', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/skins/polar-pricing', { credentials: 'omit' });
     expect(document.querySelector('[data-offer-price="planet-lava"]')?.textContent).toBe('₺99');
     expect(document.querySelector('[data-offer-price="planet-germany"]')?.textContent).toBe('€2.99');
+    expect(document.querySelector('[data-offer-price="planet-japan"]')?.textContent).toBe('€2.99');
     expect(document.querySelector('[data-offer-price="bundle"]')?.textContent).toBe('₺279');
     expect(document.querySelector('[data-pricing-status]')?.textContent).toMatch(/türkiye/i);
   });

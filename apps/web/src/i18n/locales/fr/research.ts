@@ -31,8 +31,7 @@ export const research = {
   doctrineNote:
     "Débloque les vaisseaux de haut palier et améliore séparément l’attaque, le blindage et la propulsion par étapes limitées. Les niveaux de combat apparaissent dans les rapports de sonde.",
   strategicBand: "Stratégique",
-  strategicNote:
-    "Débloque l’Étoile de la Mort, le Réseau d’Interception qui peut l’arrêter et la capacité d’une deuxième arme.",
+  strategicNote: "Augmente le nombre d’Étoiles de la Mort et de charges d’interception que chacun de tes mondes peut détenir.",
   act: "Rechercher",
   details: "Détails",
   cannotAfford: "Ressources insuffisantes",
@@ -44,11 +43,11 @@ export const research = {
   queueFull:
     "Il y a déjà 3 recherches dans la file. Attends que l’une d’elles se termine avant d’en ajouter une nouvelle.",
   at: "disponible dans {{duration}}",
-  warAt: "La phase de guerre commence dans {{duration}}",
   isotopeFirst: "Recherche d’abord la Spectrométrie Isotopique",
   /* Forme sans accord particulier : tous les noms de projet peuvent s’y insérer directement. */
   prerequisiteFirst: "Termine d’abord la recherche {{name}}",
-  graviticFirst: "Recherche d’abord les Charges Gravitiques",
+  prerequisiteLevelFirst: "Monte d’abord {{name}} au niveau {{level}}",
+  nameAtLevel: "{{name}} N{{level}}",
   cargoInsight:
     "Remplis ta soute pendant un raid tout en laissant du butin sur la cible",
   shieldInsight: "L’Aegis doit absorber au moins {{share}} des dégâts du raid",
@@ -76,12 +75,6 @@ export const research = {
     "Pour la débloquer, attaque un monde disposant de défenses et d’un Aegis actif ; le bouclier doit absorber au moins {{share}} des dégâts. Une seule Flèche suffit, et tu n’as pas besoin de gagner. Le Dissipateur est cinq fois plus efficace contre un bouclier actif.",
   graviticDetail:
     "Une fois terminée, cette recherche remplit définitivement la condition spécialisée du Dissipateur. Le Dissipateur est une réponse spécifique aux Aegis actifs : ce n’est pas une amélioration générale des dégâts et son bonus contre le bouclier ne se reporte ni sur les vaisseaux ni sur les canons terrestres.",
-  deathStarName: "Protocole de l’Étoile de la Mort",
-  deathStarTag: "Débloque l’Étoile de la Mort",
-  deathStarRole:
-    "L’Étoile de la Mort se construit désormais sans cette recherche ; ce projet est indisponible.",
-  deathStarDetail:
-    "Une frappe EMP vide l’Aegis et bloque sa régénération pendant une heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant cette période.",
   synthesisName: "Synthèse du Deutérium",
   synthesisTag: "Augmente le niveau maximal de la Raffinerie",
   synthesisRole:
@@ -100,6 +93,12 @@ export const research = {
     "Réduit le temps de tout ce qui entre dans la file de Construction ; n’affecte ni les vaisseaux ni les défenses terrestres.",
   robotsDetail:
     "Chaque palier accélère toutes les futures commandes placées dans la file de Construction sur tous tes mondes : bâtiments, instruments et satellites. Il n’accélère pas les vaisseaux — c’est le rôle de l’Automatisation du Chantier Spatial —, ne réduit pas le coût en ressources et n’ajoute aucun emplacement à la file.",
+  industrialName: "Industrie",
+  industrialTag: "Répare les vaisseaux moins cher et plus vite",
+  industrialRole:
+    "Réduit le coût et la durée de chaque réparation à la Station de réparation",
+  industrialDetail:
+    "Chaque palier retire un quart du coût et de la durée de réparation d’un vaisseau endommagé sur tous tes mondes : 75 % au niveau 1, 50 % au niveau 2. Il ne construit pas les vaisseaux plus vite \u2014 c’est le rôle de l’Automatisation du Chantier Spatial \u2014 et un vaisseau endommagé à 20 % ou moins après une bataille est de toute façon réparé gratuitement.",
   holdsName: "Soutes de Prospecteur",
   holdsTag: "Les Prospecteurs transportent davantage",
   holdsRole:
@@ -143,15 +142,11 @@ export const research = {
   groundDoctrineDetail:
     "Renforce les Bastions et Hérissons de tous tes mondes. La capacité terrestre et la règle de reconstruction depuis les débris restent inchangées ; la défense utilise le palier possédé au moment du combat.",
   gridName: "Réseau d’Interception",
-  gridTag: "Détruit l’Étoile de la Mort",
-  gridRole:
-    "Un intercepteur chargé détruit automatiquement une arme stratégique dans le rayon d’interception d’un Radar de niveau 3 ou lorsqu’elle est identifiée dans le champ de vision d’un Télescope appartenant à l’un de tes mondes.",
-  gridDetail:
-    "Donne accès aux munitions d’interception. Pour installer une munition, le monde concerné doit disposer d’une Antenne et d’un Radar de niveau 3 au minimum. Une munition chargée détruit automatiquement la première arme stratégique entrant dans le rayon Radar temporisé ou identifiée dans le champ de vision d’un Télescope appartenant à l’un de tes mondes, puis elle est consommée.",
+  gridTag: "Quatre charges d’interception par monde",
+  gridRole: "Fait passer de 2 à 4 les charges d’interception que chacun de tes mondes peut détenir.",
+  gridDetail: "Sans recherche, chaque monde peut charger 2 charges d’interception ; cette recherche porte la limite à 4 sur chaque monde. Une charge exige une Antenne et un Radar 3 sur son monde. Une charge prête détruit la première Étoile de la Mort qui franchit son anneau d’interception radar ou qui est identifiée dans le champ d’un Télescope de l’un de tes mondes, puis elle est consommée. Une charge arrête une arme : un monde chargé ne tombe que si plus d’armes arrivent ensemble qu’il n’a de charges.",
   stockpileName: "Réserve Stratégique",
-  stockpileTag: "Une deuxième arme sur la rampe",
-  stockpileRole:
-    "Fait passer de une à deux le nombre d’Étoiles de la Mort que chaque monde peut maintenir prêtes ; la seconde commence sa construction une fois la première terminée.",
-  stockpileDetail:
-    "Augmente de une à deux la limite d’Étoiles de la Mort pour chacun de tes mondes, et non pour ton commandant dans son ensemble. La seconde arme exige son coût complet et son temps de construction complet ; elle peut être mise en file mais n’est pas construite en parallèle avec la première. Chaque tir consomme toujours l’arme.",
+  stockpileTag: "Deux Étoiles de la Mort par monde",
+  stockpileRole: "Fait passer de 1 à 2 les Étoiles de la Mort que chacun de tes mondes peut détenir. La seconde commence quand la première est terminée.",
+  stockpileDetail: "Sans recherche, chaque monde détient 1 Étoile de la Mort ; cette recherche la porte à 2 sur chaque monde, pas sur tout ton empire. La seconde coûte le prix complet et le temps de construction complet, et se construit après la première. Frapper depuis plusieurs mondes à la fois est le moyen de dépasser les charges d’un défenseur.",
 } as const;

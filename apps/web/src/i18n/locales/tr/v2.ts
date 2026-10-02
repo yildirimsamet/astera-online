@@ -147,6 +147,11 @@ export const fleetPage = {
 
 /** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
 export const reportScene = {
+  damageTitle: "Hasarlı çıkanlar",
+  damageLot: "{{name}} ×{{count}} · %{{pct}} hasar",
+  toDock: "Tamirhaneye",
+  patched: "ücretsiz onarıldı",
+  landing: "Eve inince değerlendirilir: %20'yi aşan onarım bekler, gerisi ücretsiz onarılır.",
   eyebrow: "Savaş raporu · {{planet}}",
   rounds_one: "{{count}} tur",
   rounds_other: "{{count}} tur",
@@ -181,9 +186,7 @@ export const baseSwitch = {
 /** E8 · K9: the research constellation. */
 export const researchMap = {
   label: 'Araştırma haritası',
-  closed: '{{group}} · kapalı',
   /** The strategic three while their release switch is off: the server refuses them. */
-  shut: 'Şimdilik kapalı',
   /** A prerequisite already held, said on the card. */
   needs: 'Önkoşul: {{name}}',
   /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
@@ -252,4 +255,58 @@ export const outline = {
   filled: '{{count}} / {{total}}',
   threat_one: '{{count}} saldırı geliyor',
   threat_other: '{{count}} saldırı geliyor',
+};
+
+/** The Repair Station (Kalıcı gemi hasarı, `plan.md` F4/F6). */
+export const repairStation = {
+  order: "Onarım · {{name}}",
+  all: "karışık gemiler",
+  title: "Tamirhane",
+  role: "Hasarlı gemiler onarılana kadar burada bekler.",
+  tagline: "Hasarlı gemileri filoya geri kazandırır.",
+  idle: "Bu dünyada hasarlı gemi yok.",
+  waitingShips_one: "{{count}} gemi bekliyor",
+  waitingShips_other: "{{count}} gemi bekliyor",
+  repairingShips_one: "{{count}} onarımda",
+  repairingShips_other: "{{count}} onarımda",
+  queueFill: "Kuyruk {{used}}/{{total}}",
+  statWaiting: "Bekliyor",
+  statRepairing: "Onarımda",
+  statQueue: "Kuyruk",
+  outOfAction: "%20'den fazla hasar alan gemi burada bekler: onarılana kadar uçamaz, savunmaya katılamaz.",
+  howItWorks: "Nasıl çalışır",
+  ruleFree: "Savaştan ya da radyasyondan gelen %20 ve altı hasar ücretsiz onarılır.",
+  rulePrice: "Fiyat: yeni geminin hasar oranı kadarı. %40 hasarlı bir gemi, yenisinin %40'ı kadar tutar.",
+  ruleTime: "Süre: üretim süresinin aynı oranı. {{shipyard}} seviyesi ve {{automation}} bu süreyi kısaltır.",
+  ruleIndustrial: "{{industrial}} araştırması fiyatı ve süreyi önce %75'e, sonra %50'ye indirir.",
+  youPay: "Şu an %{{pct}} ödüyorsun.",
+  ruleQueue: "İşler sırayla yapılır; kuyrukta en fazla {{depth}} iş olur ve Tersane kuyruğundan bağımsızdır.",
+  ruleCancel: "İptal edersen bedelin yarısı geri döner; gemiler yeniden beklemeye geçer.",
+  industrialChip: "{{industrial}} −%{{off}}",
+  damagedHeading: "Hasarlı gemiler",
+  selectAll: "Tümünü seç",
+  selectNone: "Temizle",
+  choose: "{{name}} ×{{count}} onar",
+  noneWaiting: "Onarım bekleyen gemi yok.",
+  damaged: "%{{pct}} hasarlı",
+  share: "yeni geminin %{{pct}} kadarı",
+  queueHeading: "Onarım kuyruğu",
+  queueEmpty: "Onarımda gemi yok.",
+  finishing: "Bitiyor…",
+  startsIn: "{{time}} sonra başlar",
+  ends: "{{time}} içinde biter",
+  selected_one: "{{count}} gemi seçili",
+  selected_other: "{{count}} gemi seçili",
+  afterQueue: "Kuyruk bitince başlar · {{time}} sonra",
+  repairSelected_one: "{{count}} gemiyi onar",
+  repairSelected_other: "{{count}} gemiyi onar",
+  pick: "Onarılacak gemileri seç",
+  queueFullShort: "Kuyruk dolu · {{used}}/{{total}}",
+  tooMany: "En fazla {{max}} satır seç ya da tümünü seç",
+  starting: "Başlıyor…",
+  cancel: "İptal",
+  docked_one: "{{count}} tamirde",
+  docked_other: "{{count}} tamirde",
+  started: "Onarım başladı",
+  queue: "Tamirhane",
 };

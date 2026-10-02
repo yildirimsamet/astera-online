@@ -193,6 +193,10 @@ describe('galaxy chat surface', () => {
     await user.selectOptions(select, 'fr');
     expect(select).toHaveValue('fr');
     expect(i18n.resolvedLanguage).toBe('en');
+
+    await user.selectOptions(select, 'ja');
+    expect(select).toHaveValue('ja');
+    expect(i18n.resolvedLanguage).toBe('en');
   });
 
   it('keeps each language’s history and unsent draft in its own chat', async () => {

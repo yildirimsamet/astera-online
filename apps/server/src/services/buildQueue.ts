@@ -54,6 +54,7 @@ import {
 } from './planet.js';
 import { planetView, type PlanetView } from './planetView.js';
 import { researchLevels } from './researchState.js';
+import { releaseRepairedLots } from './shipDamage.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 
 type BuildOrder = typeof buildOrders.$inferSelect;
@@ -689,6 +690,14 @@ async function applyOrderEffect(tx: Tx, planet: LockedPlanet, order: BuildOrder)
         await wakeStrategicInterceptions(tx, planet.planetId, planet.now);
       }
       await publishShard(tx, planet.seasonId, 'world');
+      return;
+    case 'REPAIR':
+      // Kalıcı gemi hasarı: the Repair Station's job is done; the ships stand at home, whole.
+      await releaseRepairedLots(tx, {
+        planetId: planet.planetId,
+        ownerPlayerId: planet.playerId,
+        orderId: order.id,
+      });
       return;
     case 'RESEARCH':
       if (!isResearch(order.subject)) throw new Error(`unknown research ${order.subject}`);

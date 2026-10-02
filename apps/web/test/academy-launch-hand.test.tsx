@@ -7,6 +7,7 @@ import { de } from '../src/i18n/locales/de/index.js';
 import { en } from '../src/i18n/locales/en/index.js';
 import { es } from '../src/i18n/locales/es/index.js';
 import { fr } from '../src/i18n/locales/fr/index.js';
+import { ja } from '../src/i18n/locales/ja/index.js';
 import { tr } from '../src/i18n/locales/tr/index.js';
 import { LAUNCH_HAND_SELECTORS, academyGateSelectors, handPick } from '../src/onboarding/Academy.jsx';
 import { QuantityStepper } from '../src/ui/QuantityStepper.js';
@@ -222,16 +223,17 @@ describe('the two launch lessons are the same lesson', () => {
       de: /eine gestartete flotte/i,
       fr: /une flotte déjà lancée/i,
       es: /una vez lanzada/i,
+      ja: /発進した艦隊は呼び戻せない/u,
     };
-    for (const [lng, words] of Object.entries({ en, tr, de, es, fr })) {
+    for (const [lng, words] of Object.entries({ en, tr, de, es, fr, ja })) {
       expect(words.academy.steps.pirate, lng).not.toMatch(generic[lng as keyof typeof generic]);
     }
   });
 
   it('asks the raid for every Dart, not a count the picker will not fill', () => {
     expect(academyLessonFleet('raid').DART).toBeGreaterThan(2);
-    const two = { en: /\btwo\b/i, tr: /\biki\b/i, de: /\bzwei\b/i, es: /\bdos\b/i, fr: /\bdeux\b/i };
-    for (const [lng, words] of Object.entries({ en, tr, de, es, fr })) {
+    const two = { en: /\btwo\b/i, tr: /\biki\b/i, de: /\bzwei\b/i, es: /\bdos\b/i, fr: /\bdeux\b/i, ja: /(?:2|二)隻/u };
+    for (const [lng, words] of Object.entries({ en, tr, de, es, fr, ja })) {
       expect(words.academy.steps.raid, lng).not.toMatch(two[lng as keyof typeof two]);
     }
   });

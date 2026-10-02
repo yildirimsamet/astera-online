@@ -1,11 +1,11 @@
 import { createNeutralWorld } from './season.js';
 import { randomUUID } from 'node:crypto';
-import { and, asc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
-import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
+import { and, asc, eq, gt, inArray, isNull, ne, notInArray, notLike, or, sql } from 'drizzle-orm';
+import { CLAN, DEBRIS, INACTIVITY_MS, MULTI_WORLD, dockLocation, generateGalaxy, inactivityEligible, waitingColonySlots, selectNeutralSlots, neutralOpeningOrder, hashSeed } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db } from '../db/client.js';
 import { accounts, buildOrders, clanMemberships, clanRequests, clans,
-  clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
+  clanSupportWaves, clanWarContributions, clanWarOperations, commanderTransfers, debrisFields, mainVacancies,
   miningRuns, missions, planets, playerRivals, players, probeWorldMemories, researchOrders, returnApplications,
   scheduledEvents, seasons, shards, strategicAssets, strategicInterceptions, units, watches, pirateRaids, tradeRuns,
   intergalacticConvoyRuns } from '../db/schema.js';
@@ -121,6 +121,12 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
           .for('update', { noWait: true });
         defer('FLIGHT');
       }
+      // Klan Savunma Desteği: a wave sent or hosted ties two worlds together for its life.
+      const [support] = await tx.select({ id: clanSupportWaves.id }).from(clanSupportWaves).where(and(
+        inArray(clanSupportWaves.status, ['OUTBOUND', 'STATIONED', 'RETURNING']),
+        or(eq(clanSupportWaves.senderPlayerId, playerId), eq(clanSupportWaves.hostPlayerId, playerId),
+          inArray(clanSupportWaves.originPlanetId, ids), inArray(clanSupportWaves.hostPlanetId, ids)))).limit(1);
+      if (support) defer('FLIGHT');
       // Others can still attack an inactive commander. Neither cancel nor teleport a launched fleet.
       const [flight] = await tx.select({ id: missions.id }).from(missions).where(and(eq(missions.status, 'in_flight'),
         or(eq(missions.ownerPlayerId, playerId), inArray(missions.originPlanetId, ids), inArray(missions.targetPlanetId, ids)))).limit(1);
@@ -131,7 +137,11 @@ export async function transferCommander(db: Db, playerId: string, targetSeasonId
       const [convoy] = await tx.select({ id: intergalacticConvoyRuns.id }).from(intergalacticConvoyRuns).where(and(ne(intergalacticConvoyRuns.status, 'done'), or(eq(intergalacticConvoyRuns.ownerPlayerId, playerId), inArray(intergalacticConvoyRuns.planetId, ids)))).limit(1);
       if (mining || pirate || trade || convoy) defer('FLIGHT');
       const [foreign] = await tx.select({ id: units.planetId }).from(units).where(and(gt(units.count, 0), or(
-        and(inArray(units.planetId, ids), or(ne(units.ownerPlayerId, playerId), ne(units.location, 'home'))),
+        // A docked ship stands on its world and moves with it: it is not away (Kalıcı gemi hasarı).
+        and(inArray(units.planetId, ids), or(
+          ne(units.ownerPlayerId, playerId),
+          and(ne(units.location, 'home'), notLike(units.location, dockLocation('%'))),
+        )),
         and(eq(units.ownerPlayerId, playerId), notInArray(units.planetId, ids)),
       ))).limit(1);
       if (foreign) defer('UNITS');

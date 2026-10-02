@@ -60,8 +60,10 @@ export const skins = {
   germany: 'Deutschland',
   france: 'Frankreich',
   spain: 'Spanien',
+  japan: 'Japan',
   turkeyStory: 'Die Farben der Türkei im Orbit. Ein vertrautes Zeichen auf jeder deiner Welten.',
   germanyStory: 'Eine Welt in den Farben Deutschlands, sichtbar in der ganzen Galaxie.',
   franceStory: 'Die Farben Frankreichs umhüllen eine Welt, die dir gehört.',
   spainStory: 'Trage Spaniens Farben zu den Sternen, Welt für Welt.',
+  japanStory: 'Trage Japans Farben durch die Galaxie, auf jeder Welt deiner Wahl.',
 } as const;

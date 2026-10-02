@@ -5,6 +5,7 @@ import { RIVAL, SERVERS, seasonRankRewardProgram } from '@astera/rules';
 import {
   accounts,
   botProfiles,
+  clanMemberships,
   planets,
   playerRivals,
   players,
@@ -633,6 +634,19 @@ export function registerSeasonRoutes(app: FastifyInstance): void {
           eq(playerRivals.targetPlayerId, target.playerId),
         ));
         return { rivals: await rivalsOf(tx, me.playerId) };
+      }
+
+      const memberships = await tx
+        .select({ playerId: clanMemberships.playerId, clanId: clanMemberships.clanId })
+        .from(clanMemberships)
+        .where(and(
+          inArray(clanMemberships.playerId, [me.playerId, target.playerId]),
+          sql`${clanMemberships.leftAt} IS NULL`,
+        ));
+      const myClan = memberships.find((membership) => membership.playerId === me.playerId)?.clanId;
+      if (myClan && memberships.some((membership) =>
+        membership.playerId === target.playerId && membership.clanId === myClan)) {
+        throw new GameError('RIVAL_CLANMATE', 'You cannot mark a clanmate as a rival', 400);
       }
 
       if (held.length >= RIVAL.max) {

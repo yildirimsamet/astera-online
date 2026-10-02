@@ -309,7 +309,6 @@ export const leaderboard = {
   title: 'Bestenliste',
   empty: 'Bisher sind noch keine Kommandeure dieser Galaxie beigetreten.',
   rank: 'Rang {{rank}}',
-  tier: 'Stufe {{tier}}',
   score: 'Dominion',
   you: 'Du',
   nearby: 'Deine nächsten Rivalen',

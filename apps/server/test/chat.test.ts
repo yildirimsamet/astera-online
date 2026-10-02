@@ -219,8 +219,10 @@ describe('galaxy chat', () => {
   it('keeps histories and read markers separate for each chat language', async () => {
     const german = (await post(0, 'Guten Abend', 'de')).json<{ message: { id: string; language: string } }>().message;
     const french = (await post(1, 'Bonsoir', 'fr')).json<{ message: { id: string; language: string } }>().message;
+    const japanese = (await post(0, 'こんにちは', 'ja')).json<{ message: { id: string; language: string } }>().message;
     expect(german.language).toBe('de');
     expect(french.language).toBe('fr');
+    expect(japanese.language).toBe('ja');
 
     const germanList = await app.inject({
       method: 'GET', url: '/api/chat/messages?language=de', headers: auth[1],
@@ -232,6 +234,11 @@ describe('galaxy chat', () => {
       .toEqual(['Guten Abend']);
     expect(frenchList.json<{ messages: { content: string }[] }>().messages.map((m) => m.content))
       .toEqual(['Bonsoir']);
+    const japaneseList = await app.inject({
+      method: 'GET', url: '/api/chat/messages?language=ja', headers: auth[1],
+    });
+    expect(japaneseList.json<{ messages: { content: string }[] }>().messages.map((m) => m.content))
+      .toEqual(['こんにちは']);
     const crossLanguageCursor = await app.inject({
       method: 'GET', url: `/api/chat/messages?language=fr&before=${german.id}`, headers: auth[0],
     });
@@ -278,7 +285,7 @@ describe('galaxy chat', () => {
     for (const language of ['tr', 'en', 'fr', 'de', 'es']) {
       expect((await post(0, `Message in ${language}`, language)).statusCode).toBe(200);
     }
-    expect((await post(0, 'Sixth message', 'tr')).statusCode).toBe(429);
+    expect((await post(0, 'Sixth message', 'ja')).statusCode).toBe(429);
   });
 
   it('rejects unread markers outside the caller season and malformed page limits', async () => {

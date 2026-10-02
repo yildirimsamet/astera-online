@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   UNAIDED,
   ABUSE,
+  CORE_TOP_LEVEL,
   ALL_HULLS,
   BUILDING_IDS,
   DEBRIS,
@@ -42,6 +43,7 @@ import {
   seeingUnlocked,
   shieldHp,
   upgradeCost,
+  tierBandReach,
   withinTierBand,
   type Fleet,
   type Grade,
@@ -177,6 +179,30 @@ describe('canAttack', () => {
         expect(withinTierBand(a, b)).toBe(withinTierBand(b, a));
       }),
       { numRuns: 200 },
+    );
+  });
+
+  /**
+   * THE BAND READ FROM ONE SIDE, for the surface that tells a commander which tiers
+   * they may raid. It is the same rule as `withinTierBand`, never a second opinion.
+   */
+  it('states the tiers a commander may reach, exactly as the gate answers', () => {
+    expect(tierBandReach(12)).toEqual({ tier: 4, low: 3, high: 5 });
+    expect(tierBandReach(1)).toEqual({ tier: 1, low: 1, high: 2 }); // no tier 0
+    const top = coreTier(CORE_TOP_LEVEL);
+    expect(tierBandReach(CORE_TOP_LEVEL)).toEqual({ tier: top, low: top - 1, high: top }); // no tier above the ladder
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: CORE_TOP_LEVEL }),
+        fc.integer({ min: 0, max: CORE_TOP_LEVEL }),
+        (a, b) => {
+          const reach = tierBandReach(a);
+          expect(reach.tier).toBe(coreTier(a));
+          const inside = coreTier(b) >= reach.low && coreTier(b) <= reach.high;
+          expect(inside).toBe(withinTierBand(a, b));
+        },
+      ),
+      { numRuns: 300 },
     );
   });
 

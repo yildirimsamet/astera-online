@@ -12,6 +12,7 @@ import {
   recomputeWealth,
   setUnits,
 } from '../services/planet.js';
+import { landShips } from '../services/shipDamage.js';
 import { publishShard } from '../stream/bus.js';
 import { fleetChangesWatch, publishWatchChanges } from '../services/watchEvents.js';
 import { abandonBuildOrder } from '../services/buildQueue.js';
@@ -23,6 +24,7 @@ import { allocateClanLoot } from '../services/clanLoot.js';
 import { capitalPlanet } from '../services/ownership.js';
 import { landRunLocked } from '../services/mining.js';
 import { abandonClanWarLeg, clanWarEscrowPlanetIds } from '../services/clanWar.js';
+import { abandonClanSupportLeg } from '../services/clanSupport.js';
 
 /**
  * WHAT HAPPENS WHEN AN EVENT GIVES UP FOR GOOD. D28.
@@ -128,6 +130,16 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
       return true;
     }
 
+    if (mission.kind === 'clan_support') {
+      const capital = await capitalPlanet(tx, mission.ownerPlayerId);
+      for (const planetId of [...new Set([mission.originPlanetId, mission.targetPlanetId, capital.id])].sort()) {
+        await tx.select({ id: planets.id }).from(planets).where(eq(planets.id, planetId)).for('update');
+      }
+      await abandonClanSupportLeg(tx, mission, at);
+      await publishShard(tx, mission.seasonId, 'arrival');
+      return true;
+    }
+
     const storagePlanetId = ownerOf(mission);
     const capital = await capitalPlanet(tx, mission.ownerPlayerId);
     // A recall is the same read/merge/write as a normal landing. Without these
@@ -155,15 +167,16 @@ async function abandonMission(db: Db, missionId: string, at: Date): Promise<bool
     const destinationPlanetId = preferred?.id ?? capital.id;
     const stranded = await fleetOfMission(tx, storagePlanetId, mission.id);
     if (fleetEntries(stranded).length > 0) {
-      const current = await tx
-        .select()
-        .from(units)
-        .where(and(eq(units.planetId, destinationPlanetId), eq(units.location, 'home')));
-      const merged: Fleet = {};
-      for (const u of current) merged[u.hull] = u.count;
-      for (const [hull, n] of fleetEntries(stranded)) merged[hull] = (merged[hull] ?? 0) + n;
       await clearMissionUnits(tx, storagePlanetId, mission.id);
-      await setUnits(tx, destinationPlanetId, merged, 'home', mission.ownerPlayerId);
+      // A leg the server gives up on is still a landing: the damage aboard is judged,
+      // never dropped — dropping it would be a free repair. Kalıcı gemi hasarı.
+      await landShips(tx, {
+        planetId: destinationPlanetId,
+        ownerPlayerId: mission.ownerPlayerId,
+        fleet: stranded,
+        damage: mission.damage,
+        at,
+      });
     }
     // A return leg carries loot that was already removed from the defender and
     // priced into Dominion. A server-side abandonment is still a safe landing:

@@ -8,10 +8,10 @@ import {
 } from '../src/index.js';
 
 describe('planet skin catalogue', () => {
-  it('publishes eight stable planet products in elemental and country collections', () => {
+  it('publishes nine stable planet products in elemental and country collections', () => {
     expect(PLANET_SKIN_IDS).toEqual([
       'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
-      'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain',
+      'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan',
     ]);
     expect(Object.keys(PLANET_SKINS).sort()).toEqual([...PLANET_SKIN_IDS].sort());
 
@@ -49,7 +49,7 @@ describe('planet skin catalogue', () => {
   });
 
   it('keeps each authored country look as a distinct equipable product', () => {
-    for (const country of ['turkey', 'germany', 'france', 'spain'] as const) {
+    for (const country of ['turkey', 'germany', 'france', 'spain', 'japan'] as const) {
       const id = `planet-${country}` as const;
       const skin = planetSkinById(id);
       expect(skin?.id).toBe(id);

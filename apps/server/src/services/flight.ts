@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql } fro
 import { clanBayAvailable, flightSlots, hasFault, type FaultSet } from '@astera/rules';
 import type { Queryable } from '../db/client.js';
 import {
+  clanSupportWaves,
   clanWarContributions,
   clanWarMissions,
   intergalacticConvoyRuns,
@@ -75,6 +76,8 @@ const minesOf = (planetId: string) =>
     // They remain visible and pending, but never consume an ordinary flight bay.
     ne(missions.kind, 'probe'),
     not(isClanWarLeg),
+    // A clan support wave is counted once, by its own row below, for its whole life.
+    ne(missions.kind, 'clan_support'),
     or(
       and(isOutboundLeg, eq(missions.originPlanetId, planetId)),
       and(isReturnLeg, eq(missions.targetPlanetId, planetId)),
@@ -216,12 +219,28 @@ export async function baysInUse(tx: Queryable, planetId: string): Promise<number
       notInArray(clanWarContributions.status, ['HOME', 'LOST']),
     ));
 
+  /**
+   * A CLAN SUPPORT WAVE IS ONE BAY AT THE WORLD IT LEFT, FOR ITS WHOLE LIFE. Owner K8.
+   *
+   * Out, standing at the host, and on the way back are one commitment: those ships are
+   * away. Counting the wave rather than its missions keeps the stay itself in the bay —
+   * a parked wave has no mission in the air — and never counts a leg twice.
+   */
+  const [supporting] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(clanSupportWaves)
+    .where(and(
+      eq(clanSupportWaves.originPlanetId, planetId),
+      notInArray(clanSupportWaves.status, ['HOME', 'LOST']),
+    ));
+
   return (flights?.n ?? 0)
     + (mining?.n ?? 0)
     + (pirate?.n ?? 0)
     + (trade?.n ?? 0)
     + (convoy?.n ?? 0)
-    + (contributed?.n ?? 0);
+    + (contributed?.n ?? 0)
+    + (supporting?.n ?? 0);
 }
 
 export interface BayCount {

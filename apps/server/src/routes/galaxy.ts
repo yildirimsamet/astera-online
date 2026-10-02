@@ -4,7 +4,6 @@ import type { FastifyInstance } from 'fastify';
 import {
   accounts,
   botProfiles,
-  buildings,
   clanMemberships,
   clans,
   planetFaults,
@@ -28,6 +27,7 @@ import {
   dominionPodium,
   playerDominionSql,
 } from '../services/dominion.js';
+import { radiationForGalaxy } from '../services/radiation.js';
 import { requireAuth } from './auth.js';
 
 /**
@@ -53,7 +53,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
     const self = await app.projections.commander(req.accountId!);
     const now = app.clock.now();
 
-    const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows] = await Promise.all([
+    const [allWorlds, watching, sensors, remembered, clanPresence, adminPlayerIds, ownFaultRows, radiation] = await Promise.all([
       app.projections.worlds(self.seasonId, now),
       readTelescopes(app.db, self.playerId, app.clock),
       app.projections.sensorsFor(self.playerId, self.planetIds),
@@ -64,6 +64,7 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         ? Promise.resolve([])
         : app.db.select({ planetId: planetFaults.planetId }).from(planetFaults)
           .where(inArray(planetFaults.planetId, self.planetIds)),
+      radiationForGalaxy(app.db, self.seasonId, now),
     ]);
     // An operator still needs their own world to enter and test the game, but no
     // other admin-owned world is part of a commander's public galaxy.
@@ -102,6 +103,8 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
       || sensors.some((post) => distance(post.at, world.position) <= post.identify);
 
     return {
+      /** Radyasyon (plan F9): public, like the worlds — every commander flies through the same sky. */
+      radiation,
       you: {
         planetId: self.capitalPlanetId,
         playerId: self.playerId,
@@ -377,7 +380,6 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         planetId: planets.id,
         planetName: planets.name,
         equippedSkinId: planets.equippedSkinId,
-        coreLevel: buildings.level,
         x: planets.x,
         y: planets.y,
         z: planets.z,
@@ -392,7 +394,6 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         planets,
         and(eq(planets.controllerPlayerId, players.id), eq(planets.kind, 'CAPITAL')),
       )
-      .innerJoin(buildings, and(eq(buildings.planetId, planets.id), eq(buildings.type, 'CORE')))
       .leftJoin(
         clanMemberships,
         and(eq(clanMemberships.playerId, players.id), isNull(clanMemberships.leftAt)),
@@ -418,21 +419,18 @@ export function registerGalaxyRoutes(app: FastifyInstance): void {
         isSelf,
         { sensors, remembered },
       );
-      const visibleWorld = resolved
-        ? {
-            planetId: entry.planetId,
-            planetName: entry.planetName,
-            coreTier: coreTier(entry.coreLevel),
-          }
-        : located && memory
-          ? {
-              planetId: entry.planetId,
-              planetName: entry.planetName,
-              // A remembered ladder row must freeze with the probe. Publishing
-              // the current tier here would bypass D127 through a side channel.
-              coreTier: coreTier(memory.silhouette.coreLevel),
-            }
-          : {};
+      /*
+        WHERE THE CAPITAL IS, NEVER HOW DEVELOPED. Owner, 2026-10-01.
+
+        The row used to carry the capital's tier, and the raid band (D168) reads each
+        commander's MOST developed world — so players set two capitals side by side
+        and reported the band as lopsided. The comparison that decides a launch is
+        drawn on the target dossier against the caller's real peak; the ladder ranks
+        Dominion and points at a world the caller can already find.
+      */
+      const visibleWorld = resolved || (located && memory)
+        ? { planetId: entry.planetId, planetName: entry.planetName }
+        : {};
       return {
         rank: i + 1,
         playerId: entry.playerId,

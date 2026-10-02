@@ -63,6 +63,15 @@ describe('the fleet cards on the planet sheet', () => {
     expect(card).toHaveTextContent('3');
   });
 
+  /** Kalıcı gemi hasarı: a ship waiting for repair is owned, neither home nor away. */
+  it('keeps a chip for a hull whose ships all wait in the Repair Station, and marks them', () => {
+    render(<FleetCards fleet={{}} fleetAway={{}} fleetDocked={{ BALLISTA: 2 }} />);
+    openEveryBand();
+    expect(screen.getByTestId('fleet-card-BALLISTA')).toBeInTheDocument();
+    expect(screen.getByTestId('fleet-docked-BALLISTA')).toHaveTextContent('2');
+    expect(screen.getByTestId('fleet-home-BALLISTA')).toHaveTextContent('0');
+  });
+
   it('states home and away as separate figures, never one total', () => {
     render(<FleetCards fleet={fleet} fleetAway={away} />);
     openEveryBand();

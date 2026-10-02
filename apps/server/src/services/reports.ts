@@ -6,7 +6,10 @@ import {
   MULTI_WORLD,
   PIRATE,
   deuteriumOf,
+  factorValue,
+  supportFactor,
   type CombatRound,
+  type DamageLot,
   type Fleet,
   type Grade,
   type HullId,
@@ -22,6 +25,7 @@ import {
   clanWarDominionEvents,
   clanWarMissions,
   clanWarOperations,
+  clanSupportBattleResults,
   clanWarParticipantResults,
   clans,
   missions,
@@ -239,6 +243,15 @@ export interface BattleReportView {
    */
   defenceSalvage: Fleet;
   /**
+   * THE READER'S OWN SHIPS THAT CAME OUT OF THE FIGHT DAMAGED. Kalıcı gemi hasarı.
+   *
+   * A defender's were judged on the spot — at or under the owner's twenty percent
+   * patched, above it in the Repair Station. An attacker's fly home and are judged on
+   * landing. Each side sees its own and never the other's; a joint-war commander sees
+   * their personal share. Empty on every report before ruleset 14.
+   */
+  yourDamage: DamageLot[];
+  /**
    * WHAT THIS DEFEAT BROKE ON THE READER'S COLONY. DEFENDER ONLY — empty for an attacker.
    *
    * Owner decision: the faults a heavy raid leaves are told here, on the page that names
@@ -290,6 +303,37 @@ export interface BattleReportView {
   /** Public identities frozen when the attack left, not mutable current membership. */
   attackerClan: { id: string; name: string; tag: string } | null;
   defenderClan: { id: string; name: string; tag: string } | null;
+  /**
+   * THE DEFENDING LINE, WHEN IT WAS MORE THAN ONE COMMANDER. Klan Savunma Desteği.
+   *
+   * Absent on every battle nobody supported. Each member says who they were, what they
+   * lost and their Dominion share. `sent` and `survivors` are the defending side's own
+   * business: the raider gets null there — what died is proven, what stood and what is
+   * still standing is not, and a probe is what sells that.
+   */
+  /**
+   * WHERE A SUPPORTER'S SHIPS STOOD, AND WHOSE LINE IT WAS. Klan Savunma Desteği. Present on
+   * a supporter's report only: the battle was at a clanmate's world, not one of theirs, so
+   * `yourPlanet` is empty and the report names the line instead.
+   */
+  supportedAt?: { planetId: string; planetName: string; hostName: string };
+  defenseLine?: {
+    defenderCount: number;
+    /**
+     * What the support multiplied the host's Dominion by: line power ÷ host power, at most
+     * ×5 (owner, 2026-10-02). The host lost ×this or gained ÷this; no supporter moved.
+     */
+    dominionFactor: number;
+    members: {
+      playerId: string;
+      name: string;
+      role: 'HOST' | 'SUPPORT';
+      losses: Fleet;
+      sent: Fleet | null;
+      survivors: Fleet | null;
+      dominion: number;
+    }[];
+  };
   jointWar?: {
     operationId: string;
     clan: { id: string; name: string; tag: string };
@@ -358,6 +402,12 @@ export interface StrategicReportView {
   levelChanges: StrategicLevelChange[];
   destroyedOrders: StrategicDestroyedOrder[];
   shieldDestroyed: number;
+  /**
+   * What the hit did to a colony's loyalty, told to both sides. Owner, 2026-10-01.
+   * Null on a capital, a caretaker world, and an impact that never landed.
+   * `after` at zero is the hit that took the colony out of its commander's hands.
+   */
+  loyalty: { before: number; after: number } | null;
   trigger: 'RADAR' | 'TELESCOPE' | null;
   attackerClan: null;
   defenderClan: null;
@@ -403,10 +453,17 @@ async function readBattleReportsIn(
   const participantReportIds = ownJointResults
     .map((result) => result.reportId)
     .filter((id): id is string => id !== null);
+  // Klan Savunma Desteği: a supporter reads the battle their wave stood in.
+  const supportedReportIds = (await tx
+    .select({ reportId: clanSupportBattleResults.reportId })
+    .from(clanSupportBattleResults)
+    .where(and(eq(clanSupportBattleResults.playerId, playerId), eq(clanSupportBattleResults.role, 'SUPPORT'))))
+    .map((row) => row.reportId);
   const mine = or(
     eq(battleReports.attackerPlayerId, playerId),
     eq(battleReports.defenderPlayerId, playerId),
     ...(participantReportIds.length > 0 ? [inArray(battleReports.id, participantReportIds)] : []),
+    ...(supportedReportIds.length > 0 ? [inArray(battleReports.id, supportedReportIds)] : []),
   );
   const impactMine = or(
     eq(strategicImpacts.attackerPlayerId, playerId),
@@ -429,6 +486,7 @@ async function readBattleReportsIn(
         defenderPlayerId: battleReports.defenderPlayerId,
         attackerLosses: battleReports.attackerLosses,
         defenderLosses: battleReports.defenderLosses,
+        defenderCount: battleReports.defenderCount,
         dominionSwing: battleReports.dominionSwing,
         createdAt: battleReports.createdAt,
       })
@@ -443,6 +501,18 @@ async function readBattleReportsIn(
   ]);
 
   if (history.length === 0 && impacts.length === 0) return { reports: [], rivals: [] };
+
+  /* The per-commander rows of every supported battle in reach — the page and the rivals. */
+  const supportedIds = history.filter((row) => row.defenderCount > 1).map((row) => row.id);
+  const lineRows = supportedIds.length === 0 ? [] : await tx.select().from(clanSupportBattleResults)
+    .where(inArray(clanSupportBattleResults.reportId, supportedIds));
+  const lineByReport = new Map<string, typeof lineRows>();
+  for (const line of lineRows) lineByReport.set(line.reportId, [...(lineByReport.get(line.reportId) ?? []), line]);
+  /** This reader's own row in a supported battle, if they stood in its line. */
+  const lineShare = (reportId: string) => (lineByReport.get(reportId) ?? []).find((line) => line.playerId === playerId);
+  /** What the HOST alone lost — the floor on their own fleet, never a clanmate's. */
+  const hostLosses = (reportId: string, whole: Fleet): Fleet =>
+    (lineByReport.get(reportId) ?? []).find((line) => line.role === 'HOST')?.losses ?? whole;
 
   const operationIds = [...new Set(history.map((row) => row.clanWarOperationId)
     .filter((id): id is string => id !== null))];
@@ -514,6 +584,7 @@ async function readBattleReportsIn(
     .concat(impacts.map((r) =>
       r.attackerPlayerId === playerId ? r.defenderPlayerId : r.attackerPlayerId))
     .concat(jointResults.map((result) => result.playerId))
+    .concat(lineRows.map((line) => line.playerId))
     .filter((id): id is string => id !== null);
   const opponents = await tx
     .select({ id: players.id, name: accounts.displayName, planet: planets.name, planetId: planets.id })
@@ -630,9 +701,14 @@ async function readBattleReportsIn(
       ? undefined : operationById.get(row.clanWarOperationId);
     const personal = row.clanWarOperationId === null
       ? undefined : (resultByReport.get(row.id) ?? []).find((result) => result.playerId === playerId);
-    const attacking = operation
-      ? row.defenderPlayerId !== playerId
-      : row.attackerPlayerId === playerId;
+    // Klan Savunma Desteği: this reader's own part of a supported line, host or supporter.
+    const share = row.defenderCount > 1 ? lineShare(row.id) : undefined;
+    const supporting = share?.role === 'SUPPORT';
+    const attacking = supporting
+      ? false
+      : operation
+        ? row.defenderPlayerId !== playerId
+        : row.attackerPlayerId === playerId;
     const opponentId = attacking ? row.defenderPlayerId
       : operation?.leaderPlayerId ?? row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
@@ -646,7 +722,7 @@ async function readBattleReportsIn(
 
     const yourLosses = attacking
       ? operation ? personal?.losses ?? {} : row.attackerLosses
-      : row.defenderLosses;
+      : share?.losses ?? row.defenderLosses;
     const theirLosses = attacking ? row.defenderLosses : row.attackerLosses;
     /**
      * Dominion, read from the report rather than derived.
@@ -659,7 +735,9 @@ async function readBattleReportsIn(
      */
     const dominion = operation && attacking
       ? personal?.dominionDelta ?? 0
-      : row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
+      : share
+        ? share.dominionDelta
+        : row.dominionSwing === null ? null : attacking ? row.dominionSwing : -row.dominionSwing;
     const hasDominionAudit =
       row.dominionRuleVersion !== null
       && row.dominionRuleVersion >= MULTI_WORLD.dominionLinearRulesetVersion
@@ -667,7 +745,7 @@ async function readBattleReportsIn(
       && row.dominionAttackerLossValue !== null
       && row.dominionDefenderLossValue !== null
       && row.dominionRawExchange !== null;
-    const dominionBreakdown = operation ? null : hasDominionAudit
+    const dominionBreakdown = operation || row.defenderCount > 1 ? null : hasDominionAudit
       ? attacking
         ? {
             ruleVersion: row.dominionRuleVersion!,
@@ -725,8 +803,9 @@ async function readBattleReportsIn(
           ? jointWaves.find((wave) => wave.operationId === operation.id
             && wave.playerId === playerId)?.originPlanetId ?? operation.stagingPlanetId
           : originByMission.get(row.missionId ?? '')
-        : row.targetPlanetId;
+        : supporting ? null : row.targetPlanetId;
     const yourPlanetId = ownWorldId && targetById.has(ownWorldId) ? ownWorldId : null;
+    const lineMembers = row.defenderCount > 1 ? lineByReport.get(row.id) ?? [] : [];
 
     return {
       kind: 'BATTLE',
@@ -779,17 +858,26 @@ async function readBattleReportsIn(
       // one that was hit. Empty only where the world has since ceased to exist.
       yourPlanet: yourPlanetId ? targetById.get(yourPlanetId) ?? '' : '',
       yourPlanetId,
+      // A supporter has no world in this fight: name the clanmate's line their ships stood in.
+      ...(supporting && row.targetPlanetId !== null ? { supportedAt: {
+        planetId: row.targetPlanetId,
+        planetName: targetById.get(row.targetPlanetId) ?? '',
+        hostName: row.defenderPlayerId === null ? '' : byId.get(row.defenderPlayerId)?.name ?? '',
+      } } : {}),
       neutral,
       yourLosses,
       theirLosses,
-      yourFleet: attacking ? operation ? personal?.sent ?? {} : row.attackerFleet : row.defenderFleet,
+      yourFleet: attacking ? operation ? personal?.sent ?? {} : row.attackerFleet : share?.sent ?? row.defenderFleet,
       // What arrived over the reader's own world — see the field. One direction:
       // the attacker learns nothing here about what was standing at the target.
       theirFleet: attacking ? {} : row.attackerFleet,
       // Signed from the caller's side: what you took, or what was taken.
-      lootAlloy: attacking ? operation ? personal?.loot.alloy ?? 0 : row.loot.alloy : -row.loot.alloy,
-      lootCrystal: attacking ? operation ? personal?.loot.crystal ?? 0 : row.loot.crystal : -row.loot.crystal,
-      lootDeuterium: attacking ? operation ? personal?.loot.deuterium ?? 0 : deuteriumOf(row.loot) : -deuteriumOf(row.loot),
+      // A supporter lost ships, never stores: the raid emptied the host's.
+      lootAlloy: attacking ? operation ? personal?.loot.alloy ?? 0 : row.loot.alloy : supporting ? 0 : -row.loot.alloy,
+      lootCrystal: attacking ? operation ? personal?.loot.crystal ?? 0 : row.loot.crystal : supporting ? 0 : -row.loot.crystal,
+      lootDeuterium: attacking
+        ? operation ? personal?.loot.deuterium ?? 0 : deuteriumOf(row.loot)
+        : supporting ? 0 : -deuteriumOf(row.loot),
       dominion,
       dominionBreakdown,
       shieldAbsorbed: row.shieldAbsorbed,
@@ -798,12 +886,15 @@ async function readBattleReportsIn(
       // Two facts that belong to ONE side, so the other is told nothing rather
       // than handed a figure about somebody else's fleet or somebody else's guns.
       cargoLimited: attacking && row.cargoLimited,
-      defenceSalvage: attacking ? {} : row.defenceSalvage,
-      colonyFaults: attacking ? [] : row.colonyFaults,
+      defenceSalvage: attacking || supporting ? {} : row.defenceSalvage,
+      yourDamage: attacking
+        ? operation ? personal?.damage ?? [] : row.attackerDamage
+        : share?.damage ?? row.defenderDamage,
+      colonyFaults: attacking || supporting ? [] : row.colonyFaults,
       fleetEscape: attacking
         ? row.fleetEscape?.kind === 'ESCAPED' ? { kind: 'ESCAPED' } : null
-        : row.fleetEscape,
-      recovery: attacking || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
+        : supporting ? null : row.fleetEscape,
+      recovery: attacking || supporting || row.targetKind !== 'PLAYER' || row.recoveryLossHours === null
         ? null
         : {
           lossHours: Math.min(row.recoveryLossHours, RECOVERY_HOURS_CAP),
@@ -833,6 +924,24 @@ async function readBattleReportsIn(
         : commitment?.defenderClanId
         ? clanById.get(commitment.defenderClanId) ?? null
         : null,
+      ...(lineMembers.length > 0 ? { defenseLine: {
+        defenderCount: row.defenderCount,
+        dominionFactor: factorValue(supportFactor({
+          hostPower: lineMembers.find((line) => line.role === 'HOST')?.power ?? 0,
+          supportPower: lineMembers.filter((line) => line.role === 'SUPPORT').reduce((sum, line) => sum + line.power, 0),
+        })),
+        members: lineMembers
+          .toSorted((a, b) => (a.role === b.role ? a.playerId.localeCompare(b.playerId) : a.role === 'HOST' ? -1 : 1))
+          .map((line) => ({
+            playerId: line.playerId,
+            name: byId.get(line.playerId)?.name ?? 'Former commander',
+            role: line.role,
+            losses: line.losses,
+            sent: attacking ? null : line.sent,
+            survivors: attacking ? null : line.survivors,
+            dominion: line.dominionDelta,
+          })),
+      } } : {}),
       ...(operation ? { jointWar: {
         operationId: operation.id,
         clan: { id: operation.clanId, name: operation.clanName, tag: operation.clanTag },
@@ -841,7 +950,7 @@ async function readBattleReportsIn(
           name: operation.targetPlanetName, x: operation.targetX, y: operation.targetY,
           z: operation.targetZ },
         attackerCount: (resultByReport.get(row.id) ?? []).length,
-        defenderCount: 1,
+        defenderCount: row.defenderCount,
         baseExchange: jointAudit.find((audit) => audit.operationId === operation.id)?.baseExchange ?? null,
         adjustedTransfer: jointAudit.find((audit) => audit.operationId === operation.id)?.adjustedTransfer ?? null,
         sent: row.attackerFleet,
@@ -913,6 +1022,9 @@ async function readBattleReportsIn(
       levelChanges: impact.levelChanges,
       destroyedOrders: impact.destroyedOrders,
       shieldDestroyed: impact.shieldDestroyed,
+      loyalty: impact.loyaltyBefore === null || impact.loyaltyAfter === null
+        ? null
+        : { before: impact.loyaltyBefore, after: impact.loyaltyAfter },
       trigger: triggerByMission.get(impact.missionId) ?? null,
       attackerClan: null,
       defenderClan: null,
@@ -923,21 +1035,30 @@ async function readBattleReportsIn(
   for (const row of history) {
     const operation = row.clanWarOperationId === null
       ? undefined : operationById.get(row.clanWarOperationId);
-    const attacking = operation
-      ? row.defenderPlayerId !== playerId
-      : row.attackerPlayerId === playerId;
+    const supportingRow = row.defenderCount > 1 && lineShare(row.id)?.role === 'SUPPORT';
+    const attacking = supportingRow
+      ? false
+      : operation
+        ? row.defenderPlayerId !== playerId
+        : row.attackerPlayerId === playerId;
     const personal = operation ? resultForViewer.get(row.id) : undefined;
+    const share = row.defenderCount > 1 ? lineShare(row.id) : undefined;
     // A coordinator who launched no hulls sees the report but did not establish
     // a personal rivalry or earn a share of the team's Dominion.
-    if (operation && attacking && !personal) continue;
+    if (operation && attacking && !personal && share?.role !== 'SUPPORT') continue;
     const opponentId = attacking ? row.defenderPlayerId
       : operation?.leaderPlayerId ?? row.attackerPlayerId;
     const opponent = opponentId === null ? undefined : byId.get(opponentId);
     if (!opponent || !spatiallyCurrent(opponent.planetId, row.createdAt)) continue;
     const signed = operation && attacking
       ? personal?.dominionDelta ?? 0
-      : row.dominionSwing === null ? 0 : attacking ? row.dominionSwing : -row.dominionSwing;
-    const theirs = attacking ? row.defenderLosses : row.attackerLosses;
+      : share
+        ? share.dominionDelta
+        : row.dominionSwing === null ? 0 : attacking ? row.dominionSwing : -row.dominionSwing;
+    // A supported line's losses are not all the host's: the floor on THEIR fleet is theirs.
+    const theirs = attacking
+      ? (row.defenderCount > 1 ? hostLosses(row.id, row.defenderLosses) : row.defenderLosses)
+      : row.attackerLosses;
     const hasKnownFleet = Object.values(theirs).some((count) => count > 0);
     const current = rivals.get(opponent.planetId);
     if (!current) {

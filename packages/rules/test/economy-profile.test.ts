@@ -72,7 +72,7 @@ describe('monthly economy', () => {
     expect(purse.deuterium).toBe(0);
   });
   it('links the other purchases and moving targets to the same economy', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 71831, crystal: 35916, deuterium: 2976 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 50_000, crystal: 35_000, deuterium: 3_000 });
     expect(DEATH_STAR.buildMinutes).toBeCloseTo(60 * ECONOMY_ADJUSTMENT.buildTime, 9);
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21550, crystal: 10776, deuterium: 894 });
     expect(ANTI_STRATEGIC.buildMinutes).toBeCloseTo(30 * ECONOMY_ADJUSTMENT.buildTime, 9);

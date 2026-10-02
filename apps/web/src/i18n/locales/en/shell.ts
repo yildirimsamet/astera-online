@@ -310,7 +310,6 @@ export const leaderboard = {
   title: 'Leaderboard',
   empty: 'No commanders have joined this galaxy yet.',
   rank: 'Rank {{rank}}',
-  tier: 'Tier {{tier}}',
   score: 'Dominion',
   you: 'You',
   nearby: 'Your closest rivals',

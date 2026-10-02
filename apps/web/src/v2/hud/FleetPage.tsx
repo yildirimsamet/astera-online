@@ -1,6 +1,7 @@
-import { HULLS, type Fleet } from '@astera/rules';
+import { HULLS, fleetEntries, type Fleet } from '@astera/rules';
 import { useTranslation } from 'react-i18next';
-import { hullLabel } from '../../i18n/names.js';
+import type { ClanSupportWave } from '../../api/schemas.js';
+import { hullLabel, hullName } from '../../i18n/names.js';
 import { garrisonOf, legProgress, paceShown, recallPreview, type roomOf } from '../../lib/fleetPage.js';
 import { full } from '../../lib/format.js';
 import { clockTime, countdown } from '../../lib/time.js';
@@ -23,6 +24,8 @@ export interface FleetWorld {
   /** How many of its craft are off the world. */
   away: number;
   room: ReturnType<typeof roomOf>;
+  /** Ships held in the Repair Station: owned, neither home nor away. */
+  docked: number;
 }
 
 export interface FleetPageProps {
@@ -40,6 +43,20 @@ export interface FleetPageProps {
   recalling: string | null;
   onFocus: (item: AirborneItem) => void;
   onRecall: (item: AirborneItem) => void;
+  /**
+   * THE DOCK COUNT IS A DOOR (2026-09-30): the Repair Station lives in each world's Base,
+   * under its Shipyard and Hangar, and this opens the one the ships are held at.
+   */
+  onOpenRepairStation: (worldId: string) => void;
+  /**
+   * KLAN SAVUNMA DESTEĞİ: my waves still out, and the one control each may carry —
+   * recall (standing) or turn back (in flight). Absent before the feature loads.
+   */
+  support?: {
+    waves: readonly ClanSupportWave[];
+    recalling: string | null;
+    onRecall: (waveId: string) => void;
+  };
   onClose: () => void;
 }
 
@@ -177,8 +194,67 @@ export function FlightRow({
   );
 }
 
+/**
+ * MY SUPPORT WAVES. Where each stands, what is in it, how long it has — and, beside it,
+ * the one way home: Recall once it stands, Turn back while it flies (the K8 price said
+ * in words), nothing once it is already coming home.
+ */
+function SupportGroup({ support, now }: { support: NonNullable<FleetPageProps['support']>; now: number }) {
+  const { t } = useTranslation();
+  return (
+    <section aria-label={t('clanSupport.groupTitle')} data-support-group="" className="flex flex-col gap-1.5">
+      <p className="px-1 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('clanSupport.groupTitle')}</p>
+      <ul className="flex flex-col gap-1.5">
+        {support.waves.map((wave) => {
+          const flying = wave.status === 'OUTBOUND';
+          const landing = flying && wave.arriveAt.getTime() <= now;
+          const status = flying
+            ? t('clanSupport.statusOutbound', { world: wave.hostPlanetName })
+            : wave.status === 'STATIONED'
+              ? t('clanSupport.statusStationed', { world: wave.hostPlanetName })
+              : t('clanSupport.statusReturning', { world: wave.hostPlanetName });
+          const when = flying
+            ? t('clanSupport.arriving', { time: countdown(wave.arriveAt.getTime() - now) })
+            : wave.status === 'STATIONED' && wave.expiresAt
+              ? t('clanSupport.leftFor', { time: countdown(wave.expiresAt.getTime() - now) })
+              : wave.returnAt ? t('now.at', { time: clockTime(wave.returnAt) }) : '';
+          const control = wave.status === 'STATIONED' ? t('clanSupport.recall')
+            : flying && !landing ? t('clanSupport.recallFlight') : null;
+          return (
+            <li key={wave.id} data-support-wave={wave.id} className="rounded-control border border-v2-line bg-v2-panel px-2.5 py-2">
+              <div className="flex items-center gap-2">
+                <Icon id="i-transfer" className="size-3.5 shrink-0 text-v2-self" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-caption font-semibold text-v2-ink">{status}</span>
+                  <span className="block truncate text-micro text-v2-ink-2">
+                    {fleetEntries(wave.fleet).map(([hull, n]) => `${String(n)} ${hullName(hull)}`).join(' · ')}
+                    {when && <> · {when}</>}
+                  </span>
+                </span>
+                {control !== null && (
+                  <button
+                    type="button"
+                    disabled={support.recalling === wave.id}
+                    onClick={() => { support.onRecall(wave.id); }}
+                    className="min-h-8 shrink-0 rounded-control border border-v2-line px-2 text-micro text-v2-ink disabled:opacity-60"
+                  >
+                    {control}
+                  </button>
+                )}
+              </div>
+              {flying && !landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.recallFlightRule')}</p>}
+              {landing && <p className="mt-1 text-micro text-v2-ink-3">{t('clanSupport.landing')}</p>}
+              {wave.outOfBand && <p className="mt-1 text-micro text-v2-warn">{t('clanSupport.outOfBand')}</p>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 /** A world's ships at home, by hull, with its class shape. */
-function Garrison({ world }: { world: FleetWorld }) {
+function Garrison({ world, onOpenRepairStation }: { world: FleetWorld; onOpenRepairStation: () => void }) {
   const { t } = useTranslation();
   const rows = garrisonOf(world.fleet);
   const total = rows.reduce((n, row) => n + row.count, 0);
@@ -189,6 +265,16 @@ function Garrison({ world }: { world: FleetWorld }) {
         <span className="min-w-0 flex-1 truncate text-caption font-semibold text-v2-ink">{world.name}</span>
         {total > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-2">{t('fleetPage.shipsHome', { count: total })}</span>}
         {world.away > 0 && <span className="shrink-0 font-v2-mono text-micro text-v2-ink-3">{t('fleetPage.away', { count: world.away })}</span>}
+        {/* Why the count is lower than the ships owned: they wait for repair, and one tap opens that station. */}
+        {world.docked > 0 && (
+          <button
+            type="button"
+            onClick={onOpenRepairStation}
+            className="shrink-0 rounded-chip border border-v2-warn/50 px-1.5 py-0.5 font-v2-mono text-micro text-v2-warn"
+          >
+            {t('repairStation.docked', { count: world.docked })}
+          </button>
+        )}
       </div>
       {rows.length === 0 ? (
         <p className="mt-1 text-micro text-v2-ink-3">{t('fleetPage.noShips')}</p>
@@ -269,6 +355,8 @@ export function FleetPage({
   recalling,
   onFocus,
   onRecall,
+  onOpenRepairStation,
+  support,
   onClose,
 }: FleetPageProps) {
   const { t } = useTranslation();
@@ -308,9 +396,12 @@ export function FleetPage({
             ))}
           </ul>
         ))}
+        {tab === 'air' && support && support.waves.length > 0 && <SupportGroup support={support} now={now} />}
         {tab === 'home' && (
           <ul className="flex flex-col gap-1.5">
-            {worlds.map((world) => <Garrison key={world.id} world={world} />)}
+            {worlds.map((world) => (
+              <Garrison key={world.id} world={world} onOpenRepairStation={() => { onOpenRepairStation(world.id); }} />
+            ))}
           </ul>
         )}
         {tab === 'room' && (

@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  REPAIR_LOT_NOT_FOUND: "Those damaged ships are no longer waiting here.",
+  REPAIR_LOT_BUSY: "Those ships are already being repaired.",
+  REPAIR_NOTHING_WAITING: "No damaged ship is waiting to be repaired here.",
+  SHIP_DAMAGE_UNAVAILABLE: "This galaxy has no Repair Station: ships are not damaged here.",
+  RADIATION_LETHAL: "Radiation on this route would destroy {{count}} ships before they arrive. Confirm to send them anyway.",
   /** The movement package's refusals. Self-review 2026-09-23, R4. */
   BAD_PACE: 'That is not one of the flight speeds',
   PACE_TOO_SLOW: 'At that speed the fleet would stay in the air past the 12-hour limit. Pick a faster speed',
@@ -35,6 +40,8 @@ export const errors = {
   DEATH_STAR_EXISTS: 'This world has reached its Death Star capacity',
   DEATH_STAR_NOT_READY: 'No Death Star is ready on this world',
   DEATH_STAR_LOCKED: 'Death Star prerequisites are not met',
+  INTERCEPTOR_LOADED: "This world's pad is full: {{max}} charges",
+  INTERCEPTOR_LOCKED: "Raise the Radar to level {{requiredRadar}} first, with an Uplink in orbit",
   RECOVERY_WINDOW_TOO_SHORT: 'The recovery or claim window closes before arrival',
   /** What is shown when nothing else is known. */
   unknown: 'Something went wrong',
@@ -73,8 +80,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 research projects are already queued. Wait for one to finish before adding another.',
   BUILD_ORDER_NOT_FOUND: 'No active build order by that id',
   BASH_LIMIT: 'You have hit this planet too many times recently',
-  TIER_BAND: "That commander's total strength is far above your own",
-  TIER_BAND_WEAK: "That commander's total strength is far below your own",
+  TIER_BAND: "That commander is more than one tier above you — attacks compare each side's most developed world",
+  TIER_BAND_WEAK: "That commander is more than one tier below you — attacks compare each side's most developed world",
   CANNOT_INTERCEPT: 'It will leave the disc before your craft could reach it',
   PIRATE_NOT_IDENTIFIED: 'Identify this pirate with a Telescope before attacking',
   CONVOY_ALREADY_RAIDED: 'This world already struck this intergalactic convoy',
@@ -219,6 +226,7 @@ export const errors = {
   RESEARCH_UNAVAILABLE: 'That research is not available yet',
   RIVAL_NOT_VISIBLE: 'That world is not in your galaxy',
   RIVAL_SELF: 'You cannot mark your own world as a rival',
+  RIVAL_CLANMATE: 'You cannot mark a clanmate as a rival',
   REHEARSAL_ONLY: 'Not until this world is yours',
   SEASON_ENDS_BEFORE_RETURN: 'That squadron cannot return before the season ends',
   SEASON_ENDS_BEFORE_BUILD: 'That order cannot finish before the season ends',
@@ -242,4 +250,21 @@ export const errors = {
   UNAUTHENTICATED: 'Sign in first',
   UNKNOWN: 'Something went wrong',
   USERNAME_TAKEN: 'That name is already flying',
+  /** Klan Savunma Desteği. */
+  SHIELDED_SENDER_ships: 'While your newcomer shield lasts, your ships cannot stand at another commander’s world',
+  CLAN_SUPPORT_UNAVAILABLE: 'Clan defence arrives with a new season',
+  POSTURE_CONFLICT: 'Tactical retreat and clan support cannot both be on',
+  CLAN_SUPPORT_NONCOMBATANT: 'A support wave is a fighting line: {{hull}} cannot go',
+  CLAN_SUPPORT_SELF: 'Support goes to a clanmate, not to your own worlds',
+  CLAN_SUPPORT_TARGET: 'Choose a world a clanmate holds',
+  CLAN_SUPPORT_MEMBERSHIP: 'Support is only for current clanmates',
+  CLAN_SUPPORT_MEMBER_IMMATURE: 'Your clan membership is still settling in. Support opens 12 h after joining',
+  CLAN_SUPPORT_CLOSED: 'That world is not taking clan support',
+  CLAN_SUPPORT_TIER_BAND: 'Support stays inside the host’s tier band: you are tier {{mine}}, the host tier {{theirs}}',
+  CLAN_SUPPORT_ROOM_FULL: 'That world’s support bay is full: {{used}} of {{total}} room taken',
+  CLAN_SUPPORT_SEASON_TOO_SHORT: 'This galaxy ends before that wave could get home',
+  CLAN_SUPPORT_NOT_FOUND: 'That support wave no longer exists',
+  CLAN_SUPPORT_NOT_OWNED: 'That wave is not yours',
+  CLAN_SUPPORT_LANDING: 'That wave is landing. Try again once it stands',
+  CLAN_SUPPORT_NOT_HOST: 'Only the world’s commander can send a wave back',
 } as const;

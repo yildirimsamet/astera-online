@@ -13,6 +13,7 @@ export function productIdsFor(env: Env) {
     'planet-germany': env.POLAR_PRODUCT_GERMANY,
     'planet-france': env.POLAR_PRODUCT_FRANCE,
     'planet-spain': env.POLAR_PRODUCT_SPAIN,
+    'planet-japan': env.POLAR_PRODUCT_JAPAN,
     bundle: env.POLAR_PRODUCT_BUNDLE,
   } as const;
 }
@@ -29,7 +30,7 @@ export type PolarItemId = keyof ReturnType<typeof productIdsFor>;
 const euroPrices: Record<PolarItemId, number> = {
   'planet-lava': 299, 'planet-ice': 299, 'planet-toxic': 299, 'planet-desert': 299,
   'planet-turkey': 299, 'planet-germany': 299, 'planet-france': 299,
-  'planet-spain': 299, bundle: 849,
+  'planet-spain': 299, 'planet-japan': 299, bundle: 849,
 };
 const liraPrices: Partial<Record<PolarItemId, number>> = {
   'planet-lava': 9900, 'planet-ice': 9900, 'planet-toxic': 9900,

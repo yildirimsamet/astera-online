@@ -300,6 +300,8 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   incoming_fleet: { panel: 'planet' },
   strategic_incoming: { panel: 'planet' },
   fleet_returned: { panel: 'planet' },
+  // Ships a cloud finished: the flight board is where what is left of the fleet is.
+  radiation_lost: { panel: 'planet' },
   // The trip is spent and the craft are on their way back; the flight board is
   // where the commander sees them and decides what the next launch is aimed at.
   target_gone: { panel: 'planet' },
@@ -315,6 +317,12 @@ export const DESTINATION: Record<string, { panel: Panel; stop?: PanelStop }> = {
   */
   raided: { panel: 'report', stop: 'battles' },
   raid_result: { panel: 'report', stop: 'battles' },
+  // Klan Savunma Desteği: the fight a supporter's ships stood in is a report like any
+  // other; who is coming, who left and the posture reset are all on the world's sheet.
+  clan_support_result: { panel: 'report', stop: 'battles' },
+  clan_support_inbound: { panel: 'planet' },
+  clan_support_departed: { panel: 'planet' },
+  defence_posture_reset: { panel: 'planet' },
   death_star_result: { panel: 'report', stop: 'battles' },
   strategic_intercepted: { panel: 'report', stop: 'battles' },
   // Everything else that is a READING goes where readings live — the radar log

@@ -48,6 +48,7 @@ const schema = z.object({
   POLAR_PRODUCT_GERMANY: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_FRANCE: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_SPAIN: z.string().uuid().or(z.literal('')).default(''),
+  POLAR_PRODUCT_JAPAN: z.string().uuid().or(z.literal('')).default(''),
   POLAR_PRODUCT_BUNDLE: z.string().uuid().or(z.literal('')).default(''),
   ACCESS_TOKEN_MINUTES: z.coerce.number().default(15),
   REFRESH_TOKEN_DAYS: z.coerce.number().default(30),

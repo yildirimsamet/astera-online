@@ -9,7 +9,6 @@ import { pendingThreads } from '../src/services/session.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   fuelUp,
-  giveResearch,
   giveUnits,
   grant,
   placeAt,
@@ -133,7 +132,6 @@ describe('a raid lands while my own fleet is still outbound', () => {
   it('keeps a Death Star in flight when its own world is raided', async () => {
     await giveUnits(f.db, mine, { DART: 8 });
     await giveUnits(f.db, theirs, { DART: 120 });
-    await giveResearch(f.db, mine, 'DEATH_STAR_PROTOCOL');
     await f.db.insert(strategicAssets).values({
       planetId: mine,
       status: 'READY',

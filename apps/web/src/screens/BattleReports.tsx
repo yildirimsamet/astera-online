@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ABUSE, COMBAT, HULLS, fleetCount, fleetEntries, type Grade, type HullId } from '@astera/rules';
+import { ABUSE, COMBAT, DEATH_STAR, HULLS, fleetCount, fleetEntries, type Grade, type HullId } from '@astera/rules';
 import { useReports } from '../api/queries.js';
 import type { BattleReport, Report, StrategicBattleReport } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
 import { hullLabel } from '../i18n/names.js';
 import { compact, decimal, full, signed } from '../lib/format.js';
+import { factorLabel } from '../lib/supportFactor.js';
 import { duration, staleness, useNow } from '../lib/time.js';
 import { HULL_ART, RESOURCE_ART, instrumentArt } from '../ui/assets.js';
 import { HullMark } from '../ui/icons/hulls.js';
@@ -62,6 +63,8 @@ const verdictTitle = (report: BattleReport): string => {
       return i18n.t('reports.verdict.title.attacking.PARTIAL_WIPED');
     }
   }
+  // A supporter stood in a clanmate's line: the verdict is the line's, never "your defence".
+  if (report.supportedAt) return i18n.t(`clanSupport.verdict.${report.grade}`);
   return i18n.t(VERDICT_TITLE[report.attacking ? 'attacking' : 'defending'][report.grade]);
 };
 
@@ -259,12 +262,13 @@ export function BattleReports({
               );
             }
             const opponentClan = report.attacking ? report.defenderClan : report.attackerClan;
-            const listedPlanetId = report.pirate
+            // A supporter's row names the clanmate's world their ships stood at.
+            const listedPlanetId = report.supportedAt?.planetId ?? (report.pirate
               ? report.yourPlanetId
-              : report.attacking ? report.opponentPlanetId : report.yourPlanetId;
-            const listedPlanet = report.pirate
+              : report.attacking ? report.opponentPlanetId : report.yourPlanetId);
+            const listedPlanet = report.supportedAt?.planetName ?? (report.pirate
               ? report.yourPlanet
-              : report.attacking ? report.opponentPlanet : report.yourPlanet;
+              : report.attacking ? report.opponentPlanet : report.yourPlanet);
             return (
               <div key={report.id} className="border-b border-v2-line/60 last:border-b-0">
                 <button
@@ -276,7 +280,9 @@ export function BattleReports({
                   <GradeMark report={report} />
                   <div className="col-span-2 min-w-0">
                     <p className="break-words text-caption text-v2-ink">
-                      {t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
+                      {report.supportedAt
+                        ? t('clanSupport.rowRaidedBy', { host: report.supportedAt.hostName })
+                        : t(report.attacking ? 'reports.youRaided' : 'reports.raidedBy')}
                       {opponentClan ? (
                         <span className="mr-1 text-v2-crystal" title={opponentClan.name}>[{opponentClan.tag}]</span>
                       ) : null}
@@ -366,12 +372,52 @@ function StrategicReportRow({
         ) : <span>{report.opponentPlanet}</span>}
         <span aria-hidden>·</span>
         <span>{staleness((now - report.at.getTime()) / 60_000)}</span>
+        {report.loyalty?.after === 0 && (
+          <>
+            <span aria-hidden>·</span>
+            <span className="font-v2-ui text-v2-hostile">{t('reports.strategicSecededShort')}</span>
+          </>
+        )}
       </p>
     </div>
   );
 }
 
-function StrategicReportSheet({
+/**
+ * WHAT THE HIT DID TO A COLONY'S LOYALTY. Owner, 2026-10-01.
+ *
+ * Rounded up, like every loyalty figure a player reads, so "20%" always means a colony
+ * one hit takes. Below the figures the one sentence that makes them a decision: it fell,
+ * or how close the next hit brings it.
+ */
+function LoyaltyHit({ loyalty, attacking }: {
+  loyalty: { before: number; after: number };
+  attacking: boolean;
+}) {
+  const { t } = useTranslation();
+  const seceded = loyalty.after <= 0;
+  return (
+    <div data-report-loyalty className="mt-2 rounded-control border border-v2-line bg-v2-deep/40 p-3">
+      <p className="flex items-baseline justify-between gap-2 text-caption">
+        <span className="text-v2-ink-2">{t('reports.strategicLoyalty')}</span>
+        <span className="font-v2-mono tabular-nums text-v2-hostile">
+          {t('reports.strategicLoyaltyChange', {
+            before: Math.ceil(loyalty.before),
+            after: Math.ceil(Math.max(0, loyalty.after)),
+          })}
+        </span>
+      </p>
+      <p className={`mt-1 text-micro leading-snug ${seceded ? 'font-semibold text-v2-hostile' : 'text-v2-ink-3'}`}>
+        {seceded
+          ? t(attacking ? 'reports.strategicSecededAttacker' : 'reports.strategicSecededDefender')
+          : t('reports.strategicLoyaltyNext', { loss: DEATH_STAR.colonyLoyaltyLoss })}
+      </p>
+    </div>
+  );
+}
+
+/** Exported for the v2 gallery's camera, as `StrikeSheet` is. */
+export function StrategicReportSheet({
   report,
   onClose,
   onFocusPlanet,
@@ -425,9 +471,12 @@ function StrategicReportSheet({
           </p>
         </div>
       ) : emp ? (
-        <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink">
-          {t('reports.strategicEmpEffect')}
-        </div>
+        <>
+          <div className="rounded-control border border-v2-line bg-v2-deep/40 p-3 text-caption text-v2-ink">
+            {t('reports.strategicEmpEffect')}
+          </div>
+          {report.loyalty && <LoyaltyHit loyalty={report.loyalty} attacking={report.attacking} />}
+        </>
       ) : (
         <div className="space-y-3">
           <div className="rounded-control border border-v2-line bg-v2-deep/40 grid grid-cols-2 gap-2 p-3">
@@ -554,7 +603,13 @@ function ReportSheet({
     <V2Sheet
       detents={['full']}
       quietTitle
-      eyebrow={report.attacking || report.pirate
+      eyebrow={report.supportedAt
+        ? t('clanSupport.reportEyebrow', {
+          opponent: opponentOf(report),
+          host: report.supportedAt.hostName,
+          world: report.supportedAt.planetName,
+        })
+        : report.attacking || report.pirate
         ? t(report.pirate ? 'reports.sheetYouRaidedPirate' : 'reports.sheetYouRaided', {
           opponent: opponentOf(report),
           planet: report.opponentPlanet,
@@ -736,6 +791,7 @@ function ReportSheet({
         {t('reports.q.who')}
       </h2>
       {report.jointWar && <JointWarForces report={report} />}
+      {report.defenseLine && <DefenseLineForces report={report} />}
       {/* Defending, the Aegis is part of the reader's own board — see above. */}
       {!report.attacking && <ShieldImpact report={report} />}
 
@@ -984,7 +1040,9 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
     <p className="mt-1 text-micro text-v2-ink-3">
       {t('clanWar.report.ratio', {
         attackers: joint.attackerCount,
-        defenders: joint.defenderCount,
+        // Only the host's Dominion moves against a supported line (owner, 2026-10-02): the
+        // support is priced by power in the defending line's section, never as heads here.
+        defenders: report.defenseLine ? 1 : joint.defenderCount,
       })}
     </p>
     {joint.baseExchange !== null && joint.adjustedTransfer !== null && (
@@ -1040,6 +1098,70 @@ function JointWarForces({ report }: { report: OrdinaryReport }) {
       </ul>
     </div>)}
   </section>;
+}
+
+/**
+ * KLAN SAVUNMA DESTEĞİ — THE DEFENDING LINE, ONE ROW PER COMMANDER IN IT.
+ *
+ * The host first, then each clanmate whose ships stood there: what each lost, what each
+ * kept, and the Dominion each carried, with the split rule under the rows so the host's
+ * larger share reads as the rule rather than as a mistake. The raider is sent names and
+ * losses only — `survivors` arrives null — and the row says no more than it was sent.
+ */
+function DefenseLineForces({ report }: { report: OrdinaryReport }) {
+  const { t } = useTranslation();
+  const line = report.defenseLine;
+  if (!line) return null;
+  /*
+    THE FACTOR, WITH NO DIRECTION ON IT. It multiplies the host's OWN fight; the total the host
+    moved also carries the supporters' losses at face value, so its sign can belong to them —
+    a host who won its own fight can still end down. The rule underneath says which way each
+    part goes. A support with nothing that fires changed nothing.
+  */
+  const factor = line.dominionFactor;
+  const factorLine = factor === undefined
+    ? null
+    : factor === 1
+      ? t('clanSupport.lineFactorFlat')
+      : t('clanSupport.lineFactor', { factor: factorLabel(factor) });
+  return (
+    <section data-defense-line aria-label={t('clanSupport.lineTitle')}
+      className="mt-3 rounded-control border border-v2-line bg-v2-deep/40 p-3">
+      <h3 className="flex items-baseline justify-between gap-2 text-caption font-semibold text-v2-ink">
+        {t('clanSupport.lineTitle')}
+        <span className="font-v2-mono text-micro font-normal text-v2-ink-3">
+          {t('clanSupport.lineCount', { count: line.defenderCount })}
+        </span>
+      </h3>
+      <ul className="mt-1 divide-y divide-v2-line/70">
+        {line.members.map((member) => (
+          <li key={member.playerId} className="flex items-center gap-2 py-1.5">
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5">
+                <span className="truncate text-caption font-semibold text-v2-ink">{member.name}</span>
+                <span className={`shrink-0 rounded-cell border px-1 text-micro ${member.role === 'HOST'
+                  ? 'border-v2-ink-3 text-v2-ink' : 'border-v2-line text-v2-ink-2'}`}>
+                  {t(member.role === 'HOST' ? 'clanSupport.lineHost' : 'clanSupport.lineSupport')}
+                </span>
+              </span>
+              <span className="block font-v2-mono text-micro text-v2-ink-2">
+                {t('clanSupport.lineLost', { count: unitCount(member.losses) })}
+                {member.survivors !== null && ` · ${t('clanSupport.lineKept', { count: unitCount(member.survivors) })}`}
+              </span>
+            </span>
+            {/* Only the host's Dominion moves (owner, 2026-10-02): a supporter's row carries none. */}
+            {member.role === 'HOST' && (
+              <span className="shrink-0 font-v2-mono text-micro text-v2-ink">
+                {t('clanSupport.lineDominion', { value: signed(member.dominion) })}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      {factorLine && <p className="mt-1 text-micro font-semibold leading-snug text-v2-ink">{factorLine}</p>}
+      <p className="mt-1 text-micro leading-snug text-v2-ink-3">{t('clanSupport.lineRule')}</p>
+    </section>
+  );
 }
 
 /**

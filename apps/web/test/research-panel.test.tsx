@@ -9,7 +9,6 @@ import {
   RESEARCH_PROJECT_IDS,
   type ResearchProjectId,
 } from '@astera/rules';
-import type * as Rules from '@astera/rules';
 import { ResearchPanel } from '../src/screens/ResearchPanel.js';
 import i18n from '../src/i18n/index.js';
 import { ToastProvider } from '../src/ui/Toast.js';
@@ -36,25 +35,6 @@ import { planetView } from './fixtures.js';
  *    With one research queue shared across a commander's worlds, a row that is
  *    merely un-pressable teaches nothing.
  */
-
-/**
- * THE STRATEGIC RELEASE SWITCH, TURNED PER TEST. `STRATEGIC_RESEARCH_ENABLED` is off this
- * season and the server refuses the three projects behind it, so their card says
- * closed before anything else. Their other doors — the War clock, the Core, the
- * project in front — are written for the day it opens, and are tested with it open.
- */
-const flags = vi.hoisted(() => ({ strategicResearch: false }));
-vi.mock('@astera/rules', async () => {
-  const actual = await vi.importActual<typeof Rules>('@astera/rules');
-  return {
-    ...actual,
-    FEATURE_FLAGS: {
-      ...actual.FEATURE_FLAGS,
-      get STRATEGIC_RESEARCH_ENABLED() { return flags.strategicResearch; },
-    },
-  };
-});
-const openStrategicResearch = (): void => { flags.strategicResearch = true; };
 
 const ALL = RESEARCH_PROJECT_IDS;
 const GROUPS = ['frontier', 'industry', 'doctrine', 'strategic'] as const;
@@ -193,7 +173,6 @@ const act = (sheet: HTMLElement): HTMLElement | null =>
 
 beforeEach(async () => {
   mutate.mockClear();
-  flags.strategicResearch = false;
   // jsdom has no layout, so it has no `scrollIntoView`. `chat-screen.test.tsx`
   // stubs it the same way; the component calls it unguarded, as `PlanetScreen`
   // has since it gained the same "go to the thing blocking you" behaviour.
@@ -203,26 +182,21 @@ beforeEach(async () => {
 
 describe('every project is reachable', () => {
   /**
-   * THE WEAPON'S THREE PROJECTS STAY ON THE MAP, SHUT, while the switch is off: the
-   * spec draws the strategic group dim rather than cutting it (E8), and the server
-   * refuses them (`services/research.ts`), so no card offers what cannot be bought.
+   * THE STRATEGIC PAIR IS LIVE RESEARCH. Owner, 2026-10-01: the Grid and the Stockpile
+   * are capacities that change an outcome, not a dim corner of the map that never opens.
    */
-  it('keeps every Death Star-only project shut while strategic research is off', () => {
+  it('offers the strategic pair like any other project', () => {
     const view = show();
-    for (const id of ['DEATH_STAR_PROTOCOL', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
-      expect(star(view, id), id).toHaveAttribute('data-locked', '');
-      expect(reason(view, id), id).toMatch(/closed for now/i);
-      expect(within(pick(view, id)).queryByRole('button', { name: /^research$/i }), id).toBeNull();
+    for (const id of ['INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE'] as const) {
+      expect(star(view, id), id).not.toHaveAttribute('data-locked');
+      expect(reason(view, id), id).toBe('');
+      expect(within(pick(view, id)).getByRole('button', { name: /^research$/i }), id).toBeEnabled();
     }
-    expect(star(view, 'GRAVITIC_CHARGES')).not.toHaveAttribute('data-locked');
-    expect(view.container.querySelector('[data-region="strategic"]')).toHaveTextContent(/closed/i);
+    expect(view.container.querySelector('[data-region="strategic"]')).not.toHaveTextContent(/closed/i);
   });
 
-  it('opens them like any other once the switch is on', () => {
-    openStrategicResearch();
-    const view = show();
-    expect(reason(view, 'INTERCEPTION_GRID')).toBe('');
-    expect(within(pick(view, 'INTERCEPTION_GRID')).getByRole('button', { name: /^research$/i })).toBeEnabled();
+  it('no longer draws the Death Star Protocol', () => {
+    expect(show().container.querySelector('[data-star="DEATH_STAR_PROTOCOL"]')).toBeNull();
   });
 
   it('draws a star for every project, and each opens its card', () => {
@@ -281,7 +255,6 @@ describe('the groups', () => {
       ISOTOPE_SPECTROMETRY: 'frontier',
       DENSE_FUEL_CELLS: 'frontier',
       GRAVITIC_CHARGES: 'frontier',
-      DEATH_STAR_PROTOCOL: 'frontier',
       DEUTERIUM_SYNTHESIS: 'industry',
       YARD_AUTOMATION: 'industry',
       AI_ROBOTS: 'industry',
@@ -294,6 +267,7 @@ describe('the groups', () => {
       STARSHIP_ENGINEERING: 'doctrine',
       INTERCEPTION_GRID: 'strategic',
       STRATEGIC_STOCKPILE: 'strategic',
+      INDUSTRIAL: 'industry',
     };
     for (const id of ALL) expect(groupOf(view, id), id).toBe(expected[id]);
   });
@@ -467,32 +441,13 @@ describe('a closed door states its reason', () => {
     expect(pick(view, 'DENSE_FUEL_CELLS')).toHaveTextContent(/Isotope Spectrometry first/i);
   });
 
-  /** D113's ordering: an act clock is not something you can fix by building. */
-  it('names the War clock on the Protocol rather than claiming Gravitic is missing', () => {
-    openStrategicResearch();
-    const view = show({
-      research: allOpen({
-        GRAVITIC_CHARGES: { level: 1, completed: true, available: false },
-        DEATH_STAR_PROTOCOL: {
-          discovered: false, available: false,
-          queueDiscovered: false, queueAvailable: false,
-          availableAt: new Date(Date.now() + 7_200_000),
-        },
-      }),
-    });
-    const protocol = pick(view, 'DEATH_STAR_PROTOCOL');
-    expect(protocol).toHaveTextContent(/War act opens in/i);
-    expect(protocol).not.toHaveTextContent(/Gravitic Charges first/i);
-  });
-
   it('names the Core level a project still needs', () => {
-    openStrategicResearch();
-    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const need = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore ?? 0;
     expect(need).toBeGreaterThan(1);
     const view = show({
       buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
-    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'STRATEGIC_STOCKPILE'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
@@ -502,15 +457,14 @@ describe('a closed door states its reason', () => {
    * the REASON still shows and only the shortcut is missing.
    */
   it('offers the Core as a fix when the host can take it', async () => {
-    openStrategicResearch();
     const onNeed = vi.fn();
-    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const need = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore ?? 0;
     const view = show(
       { buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 } },
       {},
       { onNeed },
     );
-    const fix = act(await open(view, 'DEATH_STAR_PROTOCOL'));
+    const fix = act(await open(view, 'STRATEGIC_STOCKPILE'));
     expect(fix).not.toBeNull();
     await userEvent.click(fix!);
     expect(onNeed).toHaveBeenCalledWith('CORE');
@@ -518,23 +472,21 @@ describe('a closed door states its reason', () => {
 
   /** D209: the Core that gates research is the capital's, read on every world. */
   it('gates a project on the capital Core, however tall the world showing it', () => {
-    openStrategicResearch();
-    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const need = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore ?? 0;
     const view = show({
       buildings: { CORE: need + 3, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
       researchCore: need - 1,
     });
-    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'STRATEGIC_STOCKPILE'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
   it('still states the Core reason with no host to take the fix', () => {
-    openStrategicResearch();
-    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
+    const need = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore ?? 0;
     const view = show({
       buildings: { CORE: need - 1, REFINERY: 6, EXTRACTOR: 6, VAULT: 3, SHIPYARD: 6 },
     });
-    expect(pick(view, 'DEATH_STAR_PROTOCOL'))
+    expect(pick(view, 'STRATEGIC_STOCKPILE'))
       .toHaveTextContent(new RegExp(`Command Core to L${String(need)}`, 'i'));
   });
 
@@ -583,21 +535,6 @@ describe('a closed door states its reason', () => {
     expect(star(view, 'ISOTOPE_SPECTROMETRY')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('points the Protocol at Gravitic Charges the same way', async () => {
-    openStrategicResearch();
-    const view = show({
-      research: allOpen({
-        DEATH_STAR_PROTOCOL: {
-          discovered: false, available: false,
-          queueDiscovered: false, queueAvailable: false,
-        },
-      }),
-    });
-    expect(reason(view, 'DEATH_STAR_PROTOCOL')).toMatch(/Gravitic Charges first/i);
-    await userEvent.click(act(await open(view, 'DEATH_STAR_PROTOCOL'))!);
-    expect(star(view, 'GRAVITIC_CHARGES')).toHaveAttribute('aria-pressed', 'true');
-  });
-
   /**
    * A PREREQUISITE IS A DOOR, AND THE CARD USED TO BLAME THE CLOCK FOR IT.
    *
@@ -632,19 +569,24 @@ describe('a closed door states its reason', () => {
     expect(power).not.toHaveTextContent(/Researchable in/i);
   });
 
+  it('names the rung Industrial waits for, not just the project', () => {
+    const view = show({ research: allOpen(behindProject('INDUSTRIAL')) });
+    const industrial = pick(view, 'INDUSTRIAL');
+    expect(industrial).toHaveTextContent(/Yard Automation to level 2 first/i);
+  });
+
   it('names Gravitic Charges behind the Interception Grid', () => {
-    openStrategicResearch();
     const view = show({ research: allOpen(behindProject('INTERCEPTION_GRID')) });
     const grid = pick(view, 'INTERCEPTION_GRID');
     expect(grid).toHaveTextContent(/Gravitic Charges first/i);
     expect(grid).not.toHaveTextContent(/Researchable in/i);
   });
 
-  it('names the Protocol behind the Stockpile', () => {
-    openStrategicResearch();
+  it('names Gravitic Charges behind the Stockpile, where the Protocol used to stand', async () => {
     const view = show({ research: allOpen(behindProject('STRATEGIC_STOCKPILE')) });
-    expect(pick(view, 'STRATEGIC_STOCKPILE'))
-      .toHaveTextContent(/Death Star Protocol first/i);
+    expect(pick(view, 'STRATEGIC_STOCKPILE')).toHaveTextContent(/Gravitic Charges first/i);
+    await userEvent.click(act(await open(view, 'STRATEGIC_STOCKPILE'))!);
+    expect(star(view, 'GRAVITIC_CHARGES')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('selects the prerequisite it named', async () => {
@@ -658,10 +600,9 @@ describe('a closed door states its reason', () => {
   /**
    * THE WIDEST REFUSAL STILL WINS. An act that has not opened is not fixable by
    * research, so while the clock is genuinely ahead it keeps the sentence — the
-   * same ordering D113 gave the Protocol.
+   * same ordering D113 gave the act clock.
    */
   it('keeps a clock that has not run out ahead of the prerequisite', () => {
-    openStrategicResearch();
     const view = show({
       research: allOpen(behindProject('INTERCEPTION_GRID', {
         availableAt: new Date(Date.now() + 7_200_000),
@@ -951,7 +892,6 @@ describe('in Turkish', () => {
    * countdown was never the refusal; the prerequisite was.
    */
   it('names the prerequisite instead of a countdown of none', () => {
-    openStrategicResearch();
     const view = show({
       research: allOpen({
         INTERCEPTION_GRID: {
@@ -988,7 +928,6 @@ describe('in Turkish', () => {
 describe('the open-then-decide grammar', () => {
   it('opens every project before it offers a commitment', async () => {
     // The grammar, not the doors: every project purchasable, the weapon's three too.
-    openStrategicResearch();
     for (const id of ALL) {
       const view = show();
       pick(view, id);
@@ -1070,7 +1009,7 @@ describe('the sheet portrait', () => {
 describe('the research constellation', () => {
   it('opens on a map of every project with one card under it, and no list', () => {
     const view = show();
-    expect(view.container.querySelectorAll('[data-constellation] [data-star]')).toHaveLength(16);
+    expect(view.container.querySelectorAll('[data-constellation] [data-star]')).toHaveLength(ALL.length);
     expect(view.container.querySelectorAll('[data-constellation-card]')).toHaveLength(1);
     expect(view.container.querySelector('[data-band]')).toBeNull();
     expect(view.container.querySelector('[id^="row-"]')).toBeNull();

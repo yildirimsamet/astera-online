@@ -44,6 +44,7 @@ const base: BattleReport = {
   shieldAbsorbed: 0,
   cargoLimited: true,
   defenceSalvage: {},
+  yourDamage: [],
   disruptedMinutes: 0,
   wreckValue: 0,
   fuelPaid: 320,
@@ -214,5 +215,48 @@ describe('the report scene', () => {
     expect(onAttackAgain).toHaveBeenCalledTimes(1);
     rerender(<ReportScene report={report({ attacking: false })} word="Raided" onAttackAgain={onAttackAgain} />);
     expect(screen.queryByRole('button', { name: 'Attack again' })).toBeNull();
+  });
+});
+
+/**
+ * KALICI GEMİ HASARI ON THE REPORT. `plan.md` F6.
+ *
+ * The reader's own part-hit ships, and what they mean: a defender's were judged on the
+ * spot (the dock, or patched free); a raider's fly home and are judged on landing.
+ */
+describe('the report scene\'s damage', () => {
+  it('tells a defender which ships went to the Repair Station and which were patched', () => {
+    render(<ReportScene report={report({
+      attacking: false,
+      yourDamage: [{ hull: 'STRONGHOLD', count: 1, damageBp: 6400 }, { hull: 'TALON', count: 1, damageBp: 1200 }],
+    })} />);
+    const block = document.querySelector<HTMLElement>('[data-report-damage]')!;
+    expect(block).toHaveTextContent(/Stronghold ×1 · 64% damage/);
+    expect(block).toHaveTextContent(/Repair Station/);
+    expect(block).toHaveTextContent(/Talon ×1 · 12% damage/);
+    expect(block).toHaveTextContent(/patched free/);
+  });
+
+  /** One row docked and one patched must never read the same percentage (`damagePct`). */
+  it('never reads a docked ship and a patched one at the same twenty percent', () => {
+    render(<ReportScene report={report({
+      attacking: false,
+      yourDamage: [{ hull: 'STRONGHOLD', count: 1, damageBp: 2001 }, { hull: 'TALON', count: 1, damageBp: 2000 }],
+    })} />);
+    const block = document.querySelector<HTMLElement>('[data-report-damage]')!;
+    expect(block).toHaveTextContent(/Stronghold ×1 · 21% damage/);
+    expect(block).toHaveTextContent(/Talon ×1 · 20% damage/);
+  });
+
+  it('tells a raider its damaged ships are judged when they land', () => {
+    render(<ReportScene report={report({ yourDamage: [{ hull: 'DART', count: 1, damageBp: 7000 }] })} />);
+    const block = document.querySelector<HTMLElement>('[data-report-damage]')!;
+    expect(block).toHaveTextContent(/Dart ×1 · 70% damage/);
+    expect(block).toHaveTextContent(/when they land/i);
+  });
+
+  it('draws nothing when nothing came out damaged', () => {
+    render(<ReportScene report={report()} />);
+    expect(document.querySelector('[data-report-damage]')).toBeNull();
   });
 });

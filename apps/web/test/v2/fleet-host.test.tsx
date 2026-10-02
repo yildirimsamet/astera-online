@@ -1,3 +1,4 @@
+import { MULTI_WORLD } from '@astera/rules';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,6 +27,14 @@ const withRoom = {
   flight: { used: 1, total: 4 },
   fleetAway: { DART: 6 },
   capacity: { hangar: 80, hangarUsed: 54, hangarCeiling: 180, ground: 20, groundUsed: 4 },
+  // A season dealt the Repair Station (ruleset 14), with two Ballistas waiting in it.
+  rulesetVersion: MULTI_WORLD.shipDamageRulesetVersion,
+  fleetDocked: { BALLISTA: 2 },
+  dock: {
+    lots: [{ id: 'lot-1', hull: 'BALLISTA' as const, count: 2, damageBp: 6400, repairing: false, orderId: null, cost: { alloy: 10, crystal: 5, deuterium: 0 }, minutes: 3 }],
+    waiting: { cost: { alloy: 10, crystal: 5, deuterium: 0 }, minutes: 3 },
+    pct: 100,
+  },
 };
 
 vi.mock('../../src/api/queries.js', async () => {
@@ -38,6 +47,8 @@ vi.mock('../../src/api/queries.js', async () => {
     usePlanet: () => ({ data: withRoom }),
     useRecallMining: () => ({ mutate: recallMining, isPending: false }),
     useRecallFlight: () => ({ mutate: recallFlight, isPending: false }),
+    useMySupport: () => ({ data: { waves: [] } }),
+    useClanSupportActions: () => ({ recall: { mutate: vi.fn(), isPending: false } }),
   };
 });
 
@@ -63,9 +74,9 @@ const raid: PendingThread = {
   },
 };
 
-const host = (onFocus = vi.fn(), onClose = vi.fn()) => render(
+const host = (onFocus = vi.fn(), onClose = vi.fn(), onOpenRepairStation = vi.fn()) => render(
   <ToastProvider>
-    <FleetHost onFocus={onFocus} onClose={onClose} />
+    <FleetHost onFocus={onFocus} onClose={onClose} onOpenRepairStation={onOpenRepairStation} />
   </ToastProvider>,
 );
 
@@ -137,5 +148,14 @@ describe('the wired Fleet page', () => {
     await userEvent.click(screen.getByRole('tab', { name: /at home/i }));
     expect(screen.getByText('Thistle')).toBeInTheDocument();
     expect(screen.getByText('6 away')).toBeInTheDocument();
+  });
+
+  /** The count is the door to that world's station, which lives in its Base (2026-09-30). */
+  it('opens the Repair Station of the world whose ships wait there', async () => {
+    const onOpenRepairStation = vi.fn();
+    host(vi.fn(), vi.fn(), onOpenRepairStation);
+    await userEvent.click(screen.getByRole('tab', { name: /at home/i }));
+    await userEvent.click(screen.getByRole('button', { name: /2 in repair/i }));
+    expect(onOpenRepairStation).toHaveBeenCalledWith('p-1');
   });
 });

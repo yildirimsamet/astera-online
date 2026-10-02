@@ -1,6 +1,26 @@
 import { ABUSE, coreTier } from '@astera/rules';
 import type { GalaxyPlanet } from '../api/schemas.js';
 
+/** A world the caller holds: the capital (`isSelf`) or any colony (`isOwned`). */
+const isMine = (world: GalaxyPlanet): boolean => world.isSelf || world.isOwned === true;
+
+/**
+ * THE CALLER'S OWN PEAK, AS THE BAND READS IT: the tallest Core across every world
+ * they hold. Never fogged, so it is exact. A Core LEVEL rather than a tier, because
+ * the rules package states the band on levels (`withinTierBand`, `tierBandReach`).
+ *
+ * NULL, NOT 1, WHEN NOTHING OF THEIRS IS ON THE DISC. That is a payload that has
+ * not arrived; a tier 1 answer would flash a wrong range and a refusal across every
+ * surface for the frame before the galaxy loads.
+ */
+export function ownPeakCore(planets: readonly GalaxyPlanet[]): number | null {
+  let peak = 0;
+  for (const world of planets) {
+    if (isMine(world)) peak = Math.max(peak, world.coreLevel);
+  }
+  return peak === 0 ? null : peak;
+}
+
 /**
  * THE HALF OF THE ATTACK BAND THE CLIENT IS ALLOWED TO STATE. D168 · D127.
  *
@@ -16,7 +36,9 @@ import type { GalaxyPlanet } from '../api/schemas.js';
  * and a position — no `coreLevel`, no controller. So what the client can read of
  * ANOTHER commander's peak is a LOWER BOUND; they may hold a taller Core somewhere
  * nobody has looked. The caller's own peak is exact, because their own worlds
- * always resolve.
+ * always resolve — ALL of them: the capital arrives as `isSelf`, every colony as
+ * `isOwned`, and reading only the first once told a commander whose colony had
+ * out-built their capital that a legal target was "too developed".
  *
  * That asymmetry decides what may be drawn, and it is soundness rather than taste:
  *
@@ -43,25 +65,18 @@ export function outOfBandAbove(
 ): boolean {
   // A neutral world, a redacted one and a rock have no commander to measure.
   if (target.controller?.kind !== 'PLAYER') return false;
-  if (target.isSelf) return false;
+  if (isMine(target)) return false;
+
+  const mine = ownPeakCore(planets);
+  if (mine === null) return false;
 
   const them = target.controller.playerId;
-  let mine = 0;
   let theirs = 0;
   for (const world of planets) {
-    if (world.isSelf) {
-      mine = Math.max(mine, world.coreLevel);
-    } else if (world.controller?.kind === 'PLAYER' && world.controller.playerId === them) {
+    if (world.controller?.kind === 'PLAYER' && world.controller.playerId === them) {
       theirs = Math.max(theirs, world.coreLevel);
     }
   }
-
-  /*
-    NOTHING OF THE CALLER'S OWN ON THE DISC IS NOT A TIER 1 CALLER. It is a payload
-    that has not arrived, and answering from it would flash a refusal across every
-    control for the frame before the galaxy loads.
-  */
-  if (mine === 0) return false;
 
   return coreTier(theirs) - coreTier(mine) > ABUSE.tierBand;
 }

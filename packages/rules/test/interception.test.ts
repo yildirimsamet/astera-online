@@ -9,6 +9,7 @@ import {
   resourcesTotal,
   pointAlong,
   sphereEntryFraction,
+  interceptorCapacity,
   strategicStockpile,
 } from '../src/index.js';
 
@@ -60,15 +61,14 @@ describe('the interception grid', () => {
   });
 
   /**
-   * ONE SHOT IN THE TUBE, AND THAT NUMBER IS THE WHOLE INTERLOCK.
+   * MORE CHARGES THAN WEAPONS AT EVERY RUNG, AND THE VOLUME IS THE ANSWER. Owner, 2026-10-01.
    *
-   * At two charges a fully-loaded defender is immune to a commander who may only
-   * stockpile two weapons, and the Death Star stops existing. At one, the answer
-   * is on the board: send the first as bait, land the second. Each feature is the
-   * other's cost.
+   * The pad limit is per WORLD and a charge only fires from the target's pad, so the
+   * attacker's reply to a loaded world is several worlds striking at once.
    */
-  it('holds two charges by default', () => {
-    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
+  it('holds two charges by default and four with the Grid', () => {
+    expect(ANTI_STRATEGIC.charges).toEqual({ base: 2, researched: 4 });
+    expect(DEATH_STAR.perWorld).toEqual({ base: 1, researched: 2 });
   });
 
   it('costs a real share of what it destroys, and never more', () => {
@@ -81,12 +81,14 @@ describe('the interception grid', () => {
     expect(ANTI_STRATEGIC.buildMinutes).toBeLessThan(DEATH_STAR.buildMinutes);
   });
 
-  it('is earned through the same war chain the weapon is', () => {
-    const grid = RESEARCH_PROJECTS[ANTI_STRATEGIC.requiredResearch];
+  it('doubles its capacity through the war chain, one rung deep', () => {
+    const grid = RESEARCH_PROJECTS.INTERCEPTION_GRID;
     expect(grid.maxLevel).toBe(1);
     expect(grid.prerequisite).toBe('GRAVITIC_CHARGES');
     expect(grid.availableAtMinutes)
-      .toBe(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes);
+      .toBe(RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.availableAtMinutes);
+    expect(interceptorCapacity(0)).toBe(2);
+    expect(interceptorCapacity(1)).toBe(4);
   });
 
   it('solves the exact Telescope entry point on a moving leg', () => {
@@ -116,8 +118,8 @@ describe('the interception grid', () => {
  * turns two hits inside a recovery window into a colony changing hands.
  */
 describe('the strategic stockpile', () => {
-  it('allows two weapons without the retired research', () => {
-    expect(strategicStockpile(0)).toBe(2);
+  it('allows one weapon without research and two with it', () => {
+    expect(strategicStockpile(0)).toBe(1);
     expect(strategicStockpile(1)).toBe(2);
   });
 
@@ -125,9 +127,14 @@ describe('the strategic stockpile', () => {
     expect(strategicStockpile(99)).toBe(2);
   });
 
-  it('is gated behind the weapon it stockpiles', () => {
+  /**
+   * The protocol it used to stand behind is gone (owner, 2026-10-01), so it stands
+   * behind the protocol's own prerequisite, at the Core the weapon itself asks for.
+   */
+  it('stands behind Gravitic Charges at the weapon’s own Core', () => {
     const project = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE;
     expect(project.maxLevel).toBe(1);
-    expect(project.prerequisite).toBe('DEATH_STAR_PROTOCOL');
+    expect(project.prerequisite).toBe('GRAVITIC_CHARGES');
+    expect(project.requiredCore).toBe(DEATH_STAR.requiredCore);
   });
 });

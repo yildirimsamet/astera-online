@@ -98,8 +98,11 @@ vi.mock('../../src/v2/shell/AwayHost.js', () => ({
 }));
 
 vi.mock('../../src/v2/shell/FleetHost.js', () => ({
-  FleetHost: ({ onClose }: { onClose: () => void }) => (
-    <div role="dialog" aria-label="fleet"><button type="button" onClick={onClose}>close fleet</button></div>
+  FleetHost: ({ onClose, onOpenRepairStation }: { onClose: () => void; onOpenRepairStation: (planetId: string) => void }) => (
+    <div role="dialog" aria-label="fleet">
+      <button type="button" onClick={onClose}>close fleet</button>
+      <button type="button" onClick={() => { onOpenRepairStation('p9'); }}>fleet repair station</button>
+    </div>
   ),
 }));
 
@@ -253,6 +256,18 @@ describe('the return story in the shell', () => {
     expect(onFocusPlanet).toHaveBeenLastCalledWith('p9', { dossier: true });
     await userEvent.click(screen.getByRole('button', { name: 'away repair' }));
     expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { planetId: 'p9' });
+  });
+
+  /**
+   * THE FLEET PAGE'S DOCK COUNT OPENS THAT WORLD'S STATION (2026-09-30): the world, its
+   * Base on the Fleet tab, and the Repair Station open on it — three moves in one press.
+   */
+  it('opens a world’s Repair Station from the Fleet page, leaving the page', async () => {
+    shell();
+    await userEvent.click(screen.getByRole('button', { name: 'tab fleet' }));
+    await userEvent.click(screen.getByRole('button', { name: 'fleet repair station' }));
+    expect(onPanel).toHaveBeenLastCalledWith('planet', undefined, undefined, { planetId: 'p9', group: 'reach', itemId: 'REPAIR_STATION' });
+    expect(screen.queryByRole('dialog', { name: 'fleet' })).toBeNull();
   });
 
   it('opens the whole list in Signals', async () => {

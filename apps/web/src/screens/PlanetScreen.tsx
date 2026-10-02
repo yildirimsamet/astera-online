@@ -33,8 +33,10 @@ import {
   prospectorRoom,
   satelliteSlots,
   satelliteCost,
+  interceptorCapacity,
   strategicStockpile,
   fleetEscapeApplies,
+  shipDamageApplies,
   type BuildingId,
   type BuildingLevels,
   type HullClass,
@@ -79,7 +81,6 @@ import { buildingGain, instrumentGain, satelliteGain } from '../lib/gains.js';
 import { useProjected, type Projected } from '../lib/projection.js';
 import {
   HULL_ART,
-  RESEARCH_ART,
   SATELLITE_ART,
   STRATEGIC_ART,
   buildingArt,
@@ -133,6 +134,9 @@ import { NeedBar } from '../v2/kit/NeedBar.js';
 import { RoomBar } from '../v2/kit/RoomBar.js';
 import { Sheet as V2Sheet } from '../v2/kit/Sheet.js';
 import { BaseQueues } from '../v2/shell/BaseQueues.js';
+import { REPAIR_STATION_ITEM } from '../lib/repairStation.js';
+import { RepairStationCard, RepairStationSheet } from './RepairStation.js';
+import { ClanSupportBay, DefencePostureCard } from './ClanSupportBay.js';
 
 /**
  * MY PLANET.
@@ -231,6 +235,8 @@ export function PlanetScreen({
   const [building, setBuilding] = useState<HullId | null>(null);
   const [sheet, setSheet] = useState<SheetSpec | null>(null);
   const [faultSheet, setFaultSheet] = useState<string | null>(null);
+  /** The Repair Station's menu (Kalıcı gemi hasarı): a door, not a ladder. */
+  const [station, setStation] = useState(false);
   const [tab, setTab] = useState<GroupId | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
   // Set for a moment after a purchase lands, so the row can acknowledge it.
@@ -253,8 +259,9 @@ export function PlanetScreen({
   // Private strategic readiness and recovery are both server-authoritative, but
   // their payload already names the exact instant. Wake there even if SSE is late.
   useEffect(() => {
+    // A repair's end brings its ships home, so it wakes the screen like any other lane.
     const queueInstants = data?.queues
-      ? [...data.queues.CONSTRUCTION, ...data.queues.YARD].map((order) => order.finishesAt)
+      ? [...data.queues.CONSTRUCTION, ...data.queues.YARD, ...(data.queues.REPAIR ?? [])].map((order) => order.finishesAt)
       : [];
     const strategicInstants = data
       ? [...deathStarsOf(data), ...interceptorsOf(data)]
@@ -323,6 +330,8 @@ export function PlanetScreen({
   */
   useEffect(() => {
     if (focusItem) setFocused(focusItem);
+    // The Repair Station is a door: named from outside (the Fleet page's dock count), it opens.
+    if (focusItem === REPAIR_STATION_ITEM) setStation(true);
   }, [focusItem]);
 
   // Sending the player to the thing that is blocking them is only useful if they
@@ -519,7 +528,7 @@ export function PlanetScreen({
             <DecisionGroup problem={t(GROUPS[active].problem)} question={t(GROUPS[active].question)}>
               {active === 'defend' && <Defend {...shared} onBuild={openBuild} />}
               {active === 'orbit' && <Orbit {...shared} />}
-              {active === 'reach' && <Reach {...shared} onBuild={openBuild} />}
+              {active === 'reach' && <Reach {...shared} onBuild={openBuild} onStation={() => { setStation(true); }} />}
               {active === 'grow' && <Grow {...shared} />}
               {!lesson && active === 'tactical' && (
                 <DeathStarForge planet={data} held={held} recovering={recovering} onNeed={goToNeed} />
@@ -552,6 +561,10 @@ export function PlanetScreen({
               setSheet(null);
             }}
           />
+        )}
+
+        {station && shipDamageApplies(data.rulesetVersion ?? 0) && (
+          <RepairStationSheet planet={data} held={held} onClose={() => { setStation(false); }} />
         )}
 
         {building && (
@@ -778,7 +791,11 @@ function DeathStarForge({
   const now = useNow(1000);
   const weapons = deathStarsOf(planet);
   const primary = weapons[0];
-  const stockpile = strategicStockpile(0);
+  // One per world, two with the commander's Stockpile (owner, 2026-10-01).
+  const stockpileLevel = researchLevel(planet, 'STRATEGIC_STOCKPILE');
+  const stockpile = strategicStockpile(stockpileLevel);
+  // A captured pad can hold more than its new owner may build; the tally counts what stands.
+  const pad = Math.max(stockpile, weapons.length);
   const readyCount = weapons.filter((asset) => asset.status === 'READY').length;
   const buildingCount = weapons.filter((asset) => asset.status !== 'READY').length;
   const activeBuild = weapons.find((asset) => asset.status === 'BUILDING');
@@ -812,7 +829,7 @@ function DeathStarForge({
     >
       <div className="flex items-start gap-3">
         <img
-          src={RESEARCH_ART.DEATH_STAR_PROTOCOL}
+          src={STRATEGIC_ART.deathStar}
           alt=""
           aria-hidden
           className={`size-[70px] shrink-0 object-contain ${live ? '' : 'opacity-60 grayscale'}`}
@@ -823,8 +840,8 @@ function DeathStarForge({
             <ChargeTally
               ready={readyCount}
               loading={buildingCount}
-              total={stockpile}
-              label={t('planet.deathStar.tally', { used: weapons.length, total: stockpile })}
+              total={pad}
+              label={t('planet.deathStar.tally', { used: weapons.length, total: pad })}
             />
           </p>
           <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
@@ -846,17 +863,26 @@ function DeathStarForge({
                 ready: readyCount,
                 building: buildingCount,
                 held: weapons.length,
-                capacity: stockpile,
+                capacity: pad,
               })}
             </p>
           )}
           {progress !== null && <ChargeProgress share={progress} mark="data-strategic-progress" />}
           <p className="mt-1 text-caption leading-snug text-v2-ink-2">
-            {t(readyCount > 0 ? 'planet.deathStar.readyHint' : 'planet.deathStar.dangerHint')}
+            {t(readyCount > 0 ? 'planet.deathStar.readyHint' : 'planet.deathStar.dangerHint', {
+              loss: DEATH_STAR.colonyLoyaltyLoss,
+            })}
           </p>
         </div>
       </div>
 
+      {!room && stockpileLevel < 1 && (
+        <CapacityNext
+          project="STRATEGIC_STOCKPILE"
+          total={strategicStockpile(1)}
+          onOpen={() => { onNeed('STRATEGIC_STOCKPILE'); }}
+        />
+      )}
       {room && (
         <>
           <ul className="flex flex-wrap gap-1.5">
@@ -890,6 +916,36 @@ function DeathStarForge({
 }
 
 const TACTICAL_HEADING = 'text-micro font-semibold uppercase tracking-wide text-v2-ink-3';
+
+/** The commander's rung of one research project, as this world's view reports it. */
+const researchLevel = (planet: PlanetView, id: ResearchProjectId): number =>
+  planet.research.find((project) => project.id === id)?.level ?? 0;
+
+/**
+ * A FULL PAD, AND THE RESEARCH THAT MAKES IT BIGGER. Owner, 2026-10-01.
+ *
+ * Said where the limit is met rather than on the research map: the commander who has
+ * just filled the pad is the one asking "how do I hold more", and a quiet full panel
+ * does not answer it. Neutral rather than warn — nothing is wrong, there is a next step.
+ */
+function CapacityNext({ project, total, onOpen }: {
+  project: ResearchProjectId;
+  total: number;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      data-capacity-next={project}
+      onClick={onOpen}
+      className="flex min-h-9 w-full items-center justify-between gap-2 rounded-control border border-v2-line bg-v2-deep/40 px-2.5 text-left text-caption text-v2-ink-2"
+    >
+      <span>{t('planet.capacityNext', { name: researchName(project), total })}</span>
+      <span aria-hidden="true" className="text-v2-ink-3">›</span>
+    </button>
+  );
+}
 
 /** What a purse that cannot pay says in place of the commit: when, or that it cannot tell. */
 function shortfall(
@@ -1467,7 +1523,7 @@ function Defend({
       {!lesson && <DefenceReadings planet={planet} />}
       {escapeRuled && (
         <EscapeReadout fleet={planet.fleet} ground={planet.ground} deuterium={planet.planet.deuterium}
-          rulesetVersion={planet.rulesetVersion ?? 0} />
+          rulesetVersion={planet.rulesetVersion ?? 0} posture={planet.defencePosture?.posture} />
       )}
 
       <Band label={t('planet.defend.shieldBand')} note={t('planet.defend.shieldNote')} />
@@ -1668,7 +1724,11 @@ function InterceptorBattery({
   const charge = charges[0] ?? null;
   const loaded = charges.filter((asset) => asset.status === 'READY').length;
   const loading = charges.find((asset) => asset.status !== 'READY');
-  const room = charges.length < ANTI_STRATEGIC.maxCharges;
+  // Two per world, four with the commander's Grid (owner, 2026-10-01).
+  const gridLevel = researchLevel(planet, 'INTERCEPTION_GRID');
+  const capacity = interceptorCapacity(gridLevel);
+  const pad = Math.max(capacity, charges.length);
+  const room = charges.length < capacity;
   const uplink = projected.effectiveOrbit.includes('UPLINK');
   const radar = uplink
     ? Math.min(projected.instruments.RADAR ?? 0, projected.buildings.CORE)
@@ -1729,15 +1789,15 @@ function InterceptorBattery({
             <ChargeTally
               ready={loaded}
               loading={charges.length - loaded}
-              total={ANTI_STRATEGIC.maxCharges}
-              label={t('planet.interceptor.tally', { used: charges.length, total: ANTI_STRATEGIC.maxCharges })}
+              total={pad}
+              label={t('planet.interceptor.tally', { used: charges.length, total: pad })}
             />
           </p>
           <p className="mt-0.5 text-body font-semibold leading-snug text-v2-ink">
             {noRadarProtection
               ? t('planet.interceptor.noRadar')
               : charge?.status === 'READY'
-                ? t('planet.interceptor.ready')
+                ? t('planet.interceptor.ready', { count: loaded })
                 : charge?.status === 'PAUSED'
                   ? t('planet.interceptor.paused')
                   : charge?.status === 'BUILDING'
@@ -1758,6 +1818,12 @@ function InterceptorBattery({
                 ? 'planet.interceptor.readyHint'
                 : 'planet.interceptor.hint')}
           </p>
+          {/* Why a colony wants one: what every weapon that gets through costs it. */}
+          {planet.planet.kind === 'COLONY' && (
+            <p data-interceptor-colony className="mt-1 text-micro leading-snug text-v2-ink-3">
+              {t('planet.interceptor.colonyHint', { loss: DEATH_STAR.colonyLoyaltyLoss })}
+            </p>
+          )}
         </div>
       </div>
 
@@ -1766,6 +1832,13 @@ function InterceptorBattery({
         rather than an alarm: the Uplink and the Radar both point at the row that
         would close them. A loaded charge whose ring went dark shows them again.
       */}
+      {!room && gridLevel < 1 && (
+        <CapacityNext
+          project="INTERCEPTION_GRID"
+          total={interceptorCapacity(1)}
+          onOpen={() => { onNeed('INTERCEPTION_GRID'); }}
+        />
+      )}
       {room && !noRadarProtection && (
         <>
           {needs}
@@ -1912,7 +1985,8 @@ function Reach({
   onFlash,
   onOpen,
   onBuild,
-}: GroupProps & { onBuild: (hull: HullId) => void }) {
+  onStation,
+}: GroupProps & { onBuild: (hull: HullId) => void; onStation: () => void }) {
   const faults = useFaults();
   const { t } = useTranslation();
   /**
@@ -2198,8 +2272,29 @@ function Reach({
           flash={flashed === 'HANGAR'}
         />
       </div>
+
+      {/*
+        THE REPAIR STATION, ACROSS BOTH COLUMNS UNDER THE YARD AND THE HANGAR. Owner
+        instruction, 2026-09-30. It has no ladder, so the card opens the station itself.
+        A season dealt before ship damage has none, and the card is not drawn.
+      */}
+      {shipDamageApplies(planet.rulesetVersion ?? 0) && (
+        <RepairStationCard
+          dock={planet.dock}
+          repairs={planet.queues?.REPAIR ?? []}
+          highlighted={focused === REPAIR_STATION_ITEM}
+          onOpen={onStation}
+        />
+      )}
       </div>
       <HangarRoom planet={planet} />
+      {/*
+        KLAN SAVUNMA DESTEĞİ (K1 · K4): the retreat-or-support toggles and the support bay,
+        under the Hangar because the bay is the Hangar's own second room. Neither draws in
+        a season dealt before the rule.
+      */}
+      <DefencePostureCard planet={planet} />
+      <ClanSupportBay planet={planet} />
 
       {/*
         THE CATALOGUE FOLDS. Owner instruction.

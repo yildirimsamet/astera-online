@@ -781,15 +781,23 @@ describe('a raid on an unclaimed world', () => {
 describe('the kinds of news the server can send', () => {
   it('is the list the client routes, and nothing has been added quietly', () => {
     expect([...notificationKind.enumValues].sort()).toEqual([
+      // Klan Savunma Desteği (ruleset 15): who is coming, who left, what the ships did.
+      'clan_support_departed',
+      'clan_support_inbound',
+      'clan_support_result',
       'colony_captured',
       'colony_lost',
       'convoy_result',
       'death_star_result',
+      // Klan Savunma Desteği: leaving a clan drops a SUPPORT world back to the retreat.
+      'defence_posture_reset',
       'fleet_returned',
       'galaxy_event_ended',
       'galaxy_event_started',
       'incoming_fleet',
       'probe_report',
+      // Radyasyon (plan F9): ships a cloud finished; the client routes it to the fleet board.
+      'radiation_lost',
       'raid_result',
       'raided',
       'scan_detected',

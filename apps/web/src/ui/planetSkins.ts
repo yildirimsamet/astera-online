@@ -42,6 +42,7 @@ const MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'country-germany': skinAsset('models/planets/country/planet_germany.glb'),
   'country-france': skinAsset('models/planets/country/planet_france.glb'),
   'country-spain': skinAsset('models/planets/country/planet_spain.glb'),
+  'country-japan': skinAsset('models/planets/country/planet_japan.glb'),
 };
 
 const LOW_MODEL_URLS: Record<PlanetBaseModelId, string> = {
@@ -51,6 +52,7 @@ const LOW_MODEL_URLS: Record<PlanetBaseModelId, string> = {
   'country-germany': skinAsset('models/planets/country/planet_germany-lod.glb'),
   'country-france': skinAsset('models/planets/country/planet_france-lod.glb'),
   'country-spain': skinAsset('models/planets/country/planet_spain-lod.glb'),
+  'country-japan': skinAsset('models/planets/country/planet_japan-lod.glb'),
 };
 
 /** The crack mask is read from each model's own base colour map. */

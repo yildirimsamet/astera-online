@@ -492,6 +492,14 @@
   --ease-press: cubic-bezier(0.3, 0, 0.2, 1);
 }
 
+/* Japanese glyphs need a CJK face at the same hierarchy and mobile sizes. */
+html:lang(ja) {
+  --font-display: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --font-sans: 'Noto Sans CJK JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Noto Sans CJK JP', 'Yu Gothic', Meiryo, monospace;
+  --tracking-label: 0.04em;
+}
+
 /**
  * CHANNELS, GEOMETRY AND ELEVATION. Plain custom properties rather than
  * `@theme` entries — these are consumed by chrome.css, not by utilities.

@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  REPAIR_LOT_NOT_FOUND: "Esas naves dañadas ya no esperan aquí.",
+  REPAIR_LOT_BUSY: "Esas naves ya se están reparando.",
+  REPAIR_NOTHING_WAITING: "Aquí no hay ninguna nave dañada esperando reparación.",
+  SHIP_DAMAGE_UNAVAILABLE: "Esta galaxia no tiene Estación de Reparación: aquí las naves no sufren daños.",
+  RADIATION_LETHAL: "La radiación de esta ruta destruiría {{count}} naves antes de llegar. Confirma para enviarlas igualmente.",
   /** The movement package's refusals. Self-review 2026-09-23, R4. */
   BAD_PACE: 'Esa no es una de las velocidades de vuelo',
   PACE_TOO_SLOW: 'A esa velocidad la flota seguiría en vuelo más allá del límite de 12 h. Elige una más rápida',
@@ -35,6 +40,8 @@ export const errors = {
   DEATH_STAR_EXISTS: 'Este mundo ha alcanzado su capacidad de Estrella de la Muerte',
   DEATH_STAR_NOT_READY: 'Ninguna Estrella de la Muerte está lista en este mundo',
   DEATH_STAR_LOCKED: 'No se cumplen los requisitos previos de la Estrella de la Muerte',
+  INTERCEPTOR_LOADED: "La plataforma de este mundo está llena: {{max}} cargas",
+  INTERCEPTOR_LOCKED: "Primero sube el Radar al nivel {{requiredRadar}}, con un enlace ascendente en órbita",
   RECOVERY_WINDOW_TOO_SHORT: 'La ventana de recuperación o reclamación se cierra antes de la llegada.',
   /** What is shown when nothing else is known. */
   unknown: 'Algo salió mal',
@@ -73,8 +80,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 proyectos de investigación ya están en cola. Espere a que termine uno antes de agregar otro.',
   BUILD_ORDER_NOT_FOUND: 'No hay orden de compilación activa para esa identificación',
   BASH_LIMIT: 'Has golpeado este planeta demasiadas veces recientemente.',
-  TIER_BAND: "La fuerza total de ese comandante está muy por encima de la tuya.",
-  TIER_BAND_WEAK: "La fuerza total de ese comandante está muy por debajo de la tuya.",
+  TIER_BAND: "Ese comandante está más de un nivel por encima de ti: se compara el mundo más desarrollado de cada lado.",
+  TIER_BAND_WEAK: "Ese comandante está más de un nivel por debajo de ti: se compara el mundo más desarrollado de cada lado.",
   CANNOT_INTERCEPT: 'Saldrá del disco antes de que tu nave pueda alcanzarlo.',
   PIRATE_NOT_IDENTIFIED: 'Identifica a este pirata con un telescopio antes de atacar',
   CONVOY_ALREADY_RAIDED: 'Este mundo ya chocó contra este convoy intergaláctico',
@@ -219,6 +226,7 @@ export const errors = {
   RESEARCH_UNAVAILABLE: 'Esa investigación aún no está disponible',
   RIVAL_NOT_VISIBLE: 'Ese mundo no está en tu galaxia.',
   RIVAL_SELF: 'No puedes marcar tu propio mundo como rival',
+  RIVAL_CLANMATE: 'No puedes marcar a un compañero de clan como rival',
   REHEARSAL_ONLY: 'No hasta que este mundo sea tuyo',
   SEASON_ENDS_BEFORE_RETURN: 'Ese escuadrón no puede regresar antes de que termine la temporada',
   SEASON_ENDS_BEFORE_BUILD: 'Ese pedido no puede finalizar antes de que termine la temporada.',
@@ -242,4 +250,21 @@ export const errors = {
   UNAUTHENTICATED: 'Inicia sesión primero',
   UNKNOWN: 'Algo salió mal',
   USERNAME_TAKEN: 'Ese nombre ya vuela',
+  /** Klan Savunma Desteği. */
+  SHIELDED_SENDER_ships: 'Mientras dure tu escudo de novato, tus naves no pueden apostarse en el mundo de otro comandante',
+  CLAN_SUPPORT_UNAVAILABLE: 'La defensa de clan llega con una nueva temporada',
+  POSTURE_CONFLICT: 'La retirada táctica y el apoyo de clan no pueden estar activos a la vez',
+  CLAN_SUPPORT_NONCOMBATANT: 'Una oleada de apoyo es una línea de combate: {{hull}} no puede ir',
+  CLAN_SUPPORT_SELF: 'El apoyo va a un compañero de clan, no a tus propios mundos',
+  CLAN_SUPPORT_TARGET: 'Elige un mundo que controle un compañero de clan',
+  CLAN_SUPPORT_MEMBERSHIP: 'El apoyo es solo para compañeros de clan actuales',
+  CLAN_SUPPORT_MEMBER_IMMATURE: 'Tu membresía en el clan aún se está asentando. El apoyo se abre 12 h después de unirte',
+  CLAN_SUPPORT_CLOSED: 'Ese mundo no acepta apoyo de clan',
+  CLAN_SUPPORT_TIER_BAND: 'El apoyo se queda dentro de la banda de nivel del anfitrión: tú eres nivel {{mine}}, el anfitrión nivel {{theirs}}',
+  CLAN_SUPPORT_ROOM_FULL: 'La bahía de apoyo de ese mundo está llena: {{used}} de {{total}} de espacio ocupado',
+  CLAN_SUPPORT_SEASON_TOO_SHORT: 'Esta galaxia termina antes de que la oleada pueda volver a casa',
+  CLAN_SUPPORT_NOT_FOUND: 'Esa oleada de apoyo ya no existe',
+  CLAN_SUPPORT_NOT_OWNED: 'Esa oleada no es tuya',
+  CLAN_SUPPORT_LANDING: 'La oleada está aterrizando. Inténtalo de nuevo cuando esté apostada',
+  CLAN_SUPPORT_NOT_HOST: 'Solo el comandante del mundo puede devolver una oleada',
 } as const;

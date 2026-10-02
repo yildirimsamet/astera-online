@@ -57,6 +57,7 @@ import { reinforceNeutral } from '../src/services/neutral.js';
 import { colonyStanding } from '../src/services/ownership.js';
 import { refreshSensorEpoch } from '../src/services/sensorHistory.js';
 import { listServers } from '../src/services/servers.js';
+import { dockLotsOf } from '../src/services/shipDamage.js';
 import { EventWorker } from '../src/worker/loop.js';
 import {
   FixedClock,
@@ -325,6 +326,34 @@ describe('current multi-world ruleset', () => {
       ownerPlayerId: f.joined.playerId,
       count: MULTI_WORLD.settlement.transports,
     });
+  });
+
+  it('lands a settlement\'s damaged transports in the new colony\'s dock', async () => {
+    const f = await setup();
+    const target = f.neutrals.find((row) => row.state.tier === 1)!;
+    await f.db.update(planets).set({ x: 40, y: 0, z: 0 }).where(eq(planets.id, target.world.id));
+    await f.db.update(planets).set({ x: 0, y: 0, z: 0, alloy: 10_000, crystal: 5_000 })
+      .where(eq(planets.id, f.joined.planetId));
+    await setLevel(f.db, f.joined.planetId, 'CORE', COLONY_CORE);
+    await giveUnits(f.db, f.joined.planetId, { COURIER: MULTI_WORLD.settlement.transports });
+    await f.db.update(neutralPlanetState)
+      .set({ claimUntil: new Date(f.clock.now().getTime() + 30 * 60_000) })
+      .where(eq(neutralPlanetState.planetId, target.world.id));
+
+    const launched = await launchSettlement(f.db, f.joined.playerId, f.joined.planetId, target.world.id, f.clock);
+    // Radiation's work (plan F9), written straight onto the leg.
+    await f.db.update(missions).set({ damage: [{ hull: 'COURIER', count: 1, damageBp: 6000 }] })
+      .where(eq(missions.id, launched.missionId));
+    f.clock.set(launched.arriveAt);
+    await workerFor(f.db, f.clock).tick();
+
+    const [captured] = await f.db.select().from(planets).where(eq(planets.id, target.world.id));
+    expect(captured?.controllerPlayerId).toBe(f.joined.playerId);
+    expect(await dockLotsOf(f.db, target.world.id)).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
+    const [hauler] = await f.db.select().from(units).where(and(
+      eq(units.planetId, target.world.id), eq(units.hull, 'COURIER'), eq(units.location, 'home'),
+    ));
+    expect(hauler?.count).toBe(MULTI_WORLD.settlement.transports - 1);
   });
 
   it('serializes two settlement arrivals so one captures and the loser returns intact', async () => {
@@ -814,7 +843,6 @@ describe('current multi-world ruleset', () => {
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await giveResearch(f.db, capital, 'GRAVITIC_CHARGES');
-    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     const worker = workerFor(f.db, f.clock);
 
     for (let round = 0; round < 2; round += 1) {
@@ -858,7 +886,8 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
-    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
+    // Two on the pad needs the Stockpile (owner, 2026-10-01).
+    await giveResearch(f.db, capital, 'STRATEGIC_STOCKPILE');
 
     const results = await Promise.allSettled([
       buildDeathStar(f.db, capital, f.clock),
@@ -885,7 +914,6 @@ describe('current multi-world ruleset', () => {
     await f.db.update(planets).set(purse).where(eq(planets.id, capital));
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
-    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     await f.db
       .update(seasons)
       .set({ endsAt: new Date(f.clock.now().getTime() + DEATH_STAR.buildMinutes * 60_000) })
@@ -1082,7 +1110,9 @@ describe('current multi-world ruleset', () => {
     }).where(eq(planets.id, defender.planetId));
     await setLevel(f.db, defender.planetId, 'CORE', 8);
     await setLevel(f.db, defender.planetId, 'REFINERY', 7);
-    await setLevel(f.db, f.joined.planetId, 'CORE', 2);
+    // A striker who could have built the weapon, inside the defender's development
+    // band — D168: a Death Star strike answers to the same development band as a raid.
+    await setLevel(f.db, f.joined.planetId, 'CORE', DEATH_STAR.requiredCore);
 
     // Two orders in one queue: a Refinery that would land ON the old ceiling, and
     // a research order that has no Core level and must survive.
@@ -1517,6 +1547,9 @@ describe('current multi-world ruleset', () => {
       .where(eq(planets.id, f.joined.planetId));
     await f.db.update(planets).set({ x: 40, y: 0, z: 0, protectedUntil: null })
       .where(eq(planets.id, victim.planetId));
+    // D168: a Death Star strike answers to the same development band as a raid; `strike` arms the
+    // striker at the weapon's Core gate, so the victim stands at it too.
+    await setLevel(f.db, victim.planetId, 'CORE', DEATH_STAR.requiredCore);
 
     const first = await strike(f, f.joined.planetId, victim.planetId);
     const [dark] = await f.db.select().from(planets).where(eq(planets.id, victim.planetId));

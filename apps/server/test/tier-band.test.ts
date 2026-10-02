@@ -1,8 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { planets } from '../src/db/schema.js';
+import { missions, planets, strategicAssets } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { peakCoreLevels } from '../src/services/player.js';
+import { launchDeathStar } from '../src/services/strategic.js';
 import {
   fuelUp,
   giveUnits,
@@ -175,6 +176,78 @@ describe('the development band at launch', () => {
 
     it('asks nothing of the database for an empty list', async () => {
       await expect(peakCoreLevels(f.db, [])).resolves.toEqual(new Map());
+    });
+  });
+
+  /**
+   * THE HEAVIEST WEAPON IS INSIDE THE SAME BAND. Owner report, 2026-10-01.
+   *
+   * The strike used to be outside D168 entirely, and the weapon's own gate is Core 12
+   * — the first level of tier 4. So a tier 4 commander could put a Death Star on a
+   * tier 6 one who was refused a raid back the other way, which is exactly the
+   * "four can hit six, six cannot hit four" players reported. A strike is reaching
+   * out like a raid is, so it answers to the same two commanders' peaks.
+   */
+  describe('a Death Star strike', () => {
+    const arm = async (planetId: string): Promise<void> => {
+      await f.db.insert(strategicAssets).values({
+        planetId,
+        type: 'DEATH_STAR',
+        status: 'READY',
+        startedAt: f.clock.now(),
+        remainingSeconds: 0,
+      });
+    };
+
+    const strikesFrom = async (planetId: string) => f.db
+      .select()
+      .from(missions)
+      .where(and(eq(missions.originPlanetId, planetId), eq(missions.kind, 'death_star')));
+
+    it('refuses a target two tiers up, and the weapon stays on the pad', async () => {
+      await setLevel(f.db, attacker, 'CORE', 12); // tier 4 — the weapon's own gate
+      await setLevel(f.db, defender, 'CORE', 16); // tier 6
+      await arm(attacker);
+
+      await expect(
+        launchDeathStar(f.db, attacker, defender, f.clock),
+      ).rejects.toMatchObject({ code: 'TIER_BAND' });
+
+      const [weapon] = await f.db.select().from(strategicAssets)
+        .where(eq(strategicAssets.planetId, attacker));
+      expect(weapon?.status).toBe('READY');
+      expect(await strikesFrom(attacker)).toEqual([]);
+    });
+
+    it('refuses a target two tiers down', async () => {
+      await setLevel(f.db, attacker, 'CORE', 16); // tier 6
+      await setLevel(f.db, defender, 'CORE', 12); // tier 4
+      await arm(attacker);
+
+      await expect(
+        launchDeathStar(f.db, attacker, defender, f.clock),
+      ).rejects.toMatchObject({ code: 'TIER_BAND_WEAK' });
+    });
+
+    it('lets a strike one tier apart through', async () => {
+      await setLevel(f.db, attacker, 'CORE', 12); // tier 4
+      await setLevel(f.db, defender, 'CORE', 15); // tier 5
+      await arm(attacker);
+
+      await expect(launchDeathStar(f.db, attacker, defender, f.clock)).resolves.toBeTruthy();
+      expect(await strikesFrom(attacker)).toHaveLength(1);
+    });
+
+    it('measures the commander behind a small colony, not the colony struck', async () => {
+      await setLevel(f.db, attacker, 'CORE', 12); // tier 4
+      await colonyFor(spare, 1);
+      await setLevel(f.db, spare, 'CORE', 3); // the colony reads tier 1…
+      await setLevel(f.db, defender, 'CORE', 18); // …its owner is tier 6
+      await arm(attacker);
+
+      await expect(
+        launchDeathStar(f.db, attacker, spare, f.clock),
+      ).rejects.toMatchObject({ code: 'TIER_BAND' });
     });
   });
 });

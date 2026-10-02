@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, eq, inArray, like, ne, sql } from 'drizzle-orm';
 import {
   FAULT,
   HULLS,
@@ -9,6 +9,7 @@ import {
   minutesUntilLoyalty,
   minutesUntilLoyaltyZero,
   nextLoyaltyMilestone,
+  dockLocation,
 } from '@astera/rules';
 import type { Queryable, Tx } from '../db/client.js';
 import {
@@ -20,11 +21,13 @@ import {
   scheduledEvents,
   seasonTelemetrySegments,
   units,
+  shipDamageLots,
 } from '../db/schema.js';
 import { schedule } from '../worker/queue.js';
 import type { Handler } from '../worker/handlers.js';
 import { loadLocked } from './planet.js';
 import { revalidateClanWarTargetPlanet } from './clanWar.js';
+import { releaseSupportForWorldChange } from './clanSupport.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { notify } from './notifications.js';
 
@@ -249,6 +252,25 @@ export async function secedeColony(
       inArray(units.hull, mobile.map((row) => row.hull)),
     ));
   }
+  /*
+    THE REPAIR STATION GOES WITH THE FLEET. Kalıcı gemi hasarı (plan D7): a damaged ship
+    waiting for repair is the commander's fleet too, so it lands in their capital's dock
+    with its damage — never left behind for the caretaker. A repair running here is
+    cancelled below with the rest of the world's queue, and the lot simply waits again.
+  */
+  const docked = await tx.select({ location: units.location }).from(units)
+    .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
+  if (docked.length > 0) {
+    const [home] = await tx.select({ id: planets.id }).from(planets)
+      .where(and(eq(planets.controllerPlayerId, owner), eq(planets.kind, 'CAPITAL')));
+    if (!home) return false;
+    await tx.update(units).set({ planetId: home.id })
+      .where(and(eq(units.planetId, planetId), like(units.location, dockLocation('%'))));
+    // Waiting again, and tied to no order of the world left behind: a link kept to this
+    // world's (cancelled) order would block the day its queue is cleared.
+    await tx.update(shipDamageLots).set({ planetId: home.id, repairOrderId: null })
+      .where(eq(shipDamageLots.planetId, planetId));
+  }
   await tx.update(units).set({ ownerPlayerId: null })
     .where(and(eq(units.planetId, planetId), eq(units.location, 'home')));
 
@@ -379,5 +401,7 @@ export async function secedeColony(
     nobody. Same rule as a capture: only an operation that has not launched yet.
   */
   await revalidateClanWarTargetPlanet(tx, planetId, now);
+  // Klan Savunma Desteği: nobody is left to defend; waves from here re-anchor.
+  await releaseSupportForWorldChange(tx, { planetId, now });
   return true;
 }

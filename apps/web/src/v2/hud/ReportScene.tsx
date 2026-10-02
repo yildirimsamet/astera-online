@@ -1,10 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { FAULT, HULLS } from '@astera/rules';
+import { FAULT, HULLS, needsDock } from '@astera/rules';
 import type { BattleReport } from '../../api/schemas.js';
 import { combatClassLabel, hullLabel } from '../../i18n/names.js';
 import { serverNow } from '../../lib/clock.js';
 import { compact } from '../../lib/format.js';
 import { lossReason, sentAndLeft, type SideRow } from '../../lib/reportScene.js';
+import { damagePct } from '../../lib/repairStation.js';
 import { dayClock } from '../../lib/time.js';
 import { rivalColour } from '../../galaxy/PlanetField.js';
 import { RESOURCE_ART, planetArt } from '../../ui/assets.js';
@@ -184,7 +185,7 @@ export function ReportScene({
         <div className="relative flex min-w-0 flex-col gap-0.5">
           <p className="flex items-center gap-1.5 truncate text-micro text-v2-ink-2">
             {word === undefined && <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full bg-current ${tone}`} />}
-            {t('reportScene.eyebrow', { planet: report.yourPlanet })}
+            {t('reportScene.eyebrow', { planet: report.supportedAt?.planetName ?? report.yourPlanet })}
           </p>
           {word !== undefined && (
             <h2
@@ -250,6 +251,28 @@ export function ReportScene({
           {...(report.attacking ? { note: t('reportScene.hidden') } : {})}
         />
       </div>
+
+      {report.yourDamage.length > 0 && (
+        <div data-report-damage className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+          <p className="text-caption font-semibold text-v2-ink">{t('reportScene.damageTitle')}</p>
+          <ul className="mt-0.5">
+            {report.yourDamage.map((lot) => (
+              <li key={`${lot.hull}:${String(lot.damageBp)}`} className="flex items-baseline gap-2 text-caption text-v2-ink-2">
+                <span className="min-w-0 flex-1 truncate">
+                  {t('reportScene.damageLot', { name: hullLabel(lot.hull), count: lot.count, pct: damagePct(lot.damageBp) })}
+                </span>
+                {/* A defender's were judged at the fight; a raider's wait for the landing. */}
+                {!report.attacking && (
+                  <span className={`shrink-0 text-micro ${needsDock(lot.damageBp) ? 'text-v2-warn' : 'text-v2-self'}`}>
+                    {t(needsDock(lot.damageBp) ? 'reportScene.toDock' : 'reportScene.patched')}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {report.attacking && <p className="mt-0.5 text-micro leading-snug text-v2-ink-3">{t('reportScene.landing')}</p>}
+        </div>
+      )}
 
       {reason && (
         <div data-report-why className="rounded-control border border-v2-line bg-v2-panel px-3 py-2">

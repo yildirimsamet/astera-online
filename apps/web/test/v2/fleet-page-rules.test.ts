@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { garrisonOf, legProgress, paceShown, recallPreview, roomOf } from '../../src/lib/fleetPage.js';
+import { garrisonOf, legProgress, paceShown, recallPreview, roomOf, sumFleets } from '../../src/lib/fleetPage.js';
 
 /**
  * THE FLEET PAGE'S ARITHMETIC. Spec E4, B11 (docs/ui-v2/gozlemevi.md).
@@ -70,5 +70,12 @@ describe('a world’s room', () => {
   it('has no Hangar reading from a server that predates it', () => {
     expect(roomOf({ ground: 20, groundUsed: 4 }).hangar).toBeNull();
     expect(roomOf(undefined)).toEqual({ hangar: null, ground: null });
+  });
+});
+
+describe('sumFleets', () => {
+  it('adds the same hull across piles instead of keeping the last count', () => {
+    expect(sumFleets({ DART: 3 }, { DART: 2, PIKE: 1 }, { BALLISTA: 2 })).toEqual({ DART: 5, PIKE: 1, BALLISTA: 2 });
+    expect(sumFleets()).toEqual({});
   });
 });

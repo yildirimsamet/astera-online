@@ -30,6 +30,13 @@ import { hullName, instrumentName } from './names.js';
 
 const CATALOGUE = en.errors;
 
+/** The queue names a `QUEUE_FULL` refusal carries, as the screens call them. */
+const QUEUE_NAME: Record<string, 'planet.queue.construction' | 'planet.queue.yard' | 'repairStation.queue'> = {
+  construction: 'planet.queue.construction',
+  yard: 'planet.queue.yard',
+  repair: 'repairStation.queue',
+};
+
 /** The three entries that are not server codes. */
 const NOT_A_CODE = new Set(['unknown', 'unreachable', 'streamFailed']);
 
@@ -50,6 +57,11 @@ function resolve(params: Record<string, string | number>): Record<string, string
   if (typeof out.hull === 'string') out.hull = hullName(out.hull) ?? out.hull;
   if (typeof out.instrument === 'string') {
     out.instrument = instrumentName(out.instrument) ?? out.instrument;
+  }
+  // A full queue is named in words; the server sends its lower-cased id.
+  if (typeof out.queue === 'string') {
+    const lane = QUEUE_NAME[out.queue];
+    if (lane) out.queue = i18n.t(lane);
   }
   return out;
 }

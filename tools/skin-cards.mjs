@@ -9,7 +9,7 @@ import { writePlanetVersions } from './planet-versions.mjs';
 
 const WEB = process.env.WEB ?? 'http://127.0.0.1:5199';
 const OUT = 'apps/web/public/assets/images/skins';
-const COUNTRIES = ['turkey', 'germany', 'france', 'spain'];
+const COUNTRIES = ['turkey', 'germany', 'france', 'spain', 'japan'];
 
 await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch();
@@ -23,9 +23,13 @@ try {
     });
     const id = `planet-${country}`;
     await page.goto(`${WEB}/v2-gallery.html?view=skin-card:${id}`, { waitUntil: 'networkidle' });
-    await page.locator('[data-skin-card] canvas').waitFor();
-    // GLB parsing and the first WebGL frame occur after the canvas mounts.
-    await page.waitForTimeout(1_200);
+    await page.locator('[data-skin-card] [data-skin-stage][data-skin-ready="true"]')
+      .waitFor({ timeout: 20_000 });
+    // The model is mounted and has updated its instance matrix. Let the browser
+    // paint that frame before capturing the fixed-angle card.
+    await page.evaluate(() => new Promise((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(resolve));
+    }));
     if (errors.length > 0) throw new Error(`${id}: ${errors.join('; ')}`);
     await page.locator('[data-skin-card]').screenshot({ path: `${OUT}/${id}.png` });
     await page.close();

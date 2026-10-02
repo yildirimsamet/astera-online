@@ -92,6 +92,21 @@ describe('a raid on a world', () => {
     expect(planWorldRaid({ ...input, nerve: bold })).not.toBeNull();
   });
 
+  /**
+   * KLAN SAVUNMA DESTEĞİ: the raid meets the host AND the clanmates standing there, so the
+   * probe's separate support reading joins the wall — the same sum the launch sheet draws.
+   */
+  it('counts the clan support standing at the world into the wall', () => {
+    const full = raidingWing(fleet, BOTS.wingShares.at(-1)!);
+    const lines = forecastLines(full, { attackerTech: {}, defenderTech: {}, shield: { low: 0, high: 0 },
+      unarmed: { low: 0, high: 0 }, wall: { kind: 'UNKNOWN' } });
+    const half = (lines.clears.low / BOTS.wallMargin) * 0.6;
+    const alone = reading({ defence: { low: half, high: half } });
+    expect(planWorldRaid({ ...base, reading: alone, nerve: careful })).not.toBeNull();
+    const supported = reading({ defence: { low: half, high: half }, support: { low: half, high: half } });
+    expect(planWorldRaid({ ...base, reading: supported, nerve: careful })).toBeNull();
+  });
+
   it('refuses a fight that costs more of the wing than the habit pays', () => {
     const defended = reading({ defence: { low: 2_000, high: 2_500 } });
     expect(planWorldRaid({ ...base, reading: defended, nerve: bold })).not.toBeNull();

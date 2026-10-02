@@ -41,8 +41,7 @@ export const research = {
   doctrineNote:
     "Abre niveles avanzados de casco y mejora el ataque, el blindaje o la propulsión en escaleras delimitadas separadas. Los niveles de combate son visibles mediante sonda.",
   strategicBand: "Estratégico",
-  strategicNote:
-    "Desbloquea el arma más destructiva de la galaxia, su respuesta defensiva y capacidad de almacenamiento adicional.",
+  strategicNote: "Aumenta cuántas Estrellas de la Muerte y cargas interceptoras puede tener cada uno de tus mundos.",
 
   act: "Investigación",
   details: "Detalles",
@@ -61,10 +60,10 @@ export const research = {
   needCore: "Aumenta el núcleo de mando de tu capital a L{{level}}",
   queueFull: "3 proyectos de investigación ya están en cola. Espere a que termine uno antes de agregar otro.",
   at: "Investigable en {{duration}}",
-  warAt: "El acto de guerra se abre en {{duration}}",
   isotopeFirst: "Primero investiga la espectrometría de isótopos",
   prerequisiteFirst: "Investiga {{name}} primero",
-  graviticFirst: "Investiga primero las cargas gravíticas",
+  prerequisiteLevelFirst: "Sube {{name}} al nivel {{level}} primero",
+  nameAtLevel: "{{name}} N{{level}}",
   cargoInsight: "Llena tu carga en una incursión mientras quede el botín",
   shieldInsight: "Haz que una Égida absorba al menos {{share}} del daño de tu banda.",
 
@@ -92,12 +91,6 @@ export const research = {
     "Para desbloquearlo, ataca un mundo defendido con una Égida activa; el escudo debe absorber al menos {{share}} de tu daño. Un solo Dardo puede calificar; no necesitas ganar. El Anulador golpea los escudos activos cinco veces más fuerte.",
   graviticDetail:
     "Completarlo permanentemente satisface la parte de investigación especializada de la puerta Nulificadora. El Anulador es una respuesta a una Égida activa, no una mejora de daño general; su daño adicional de escudo nunca se extiende a naves o cañones terrestres.",
-  deathStarName: "Protocolo de la Estrella de la Muerte",
-  deathStarTag: "Desbloquea la Estrella de la Muerte",
-  deathStarRole:
-    "La Estrella de la Muerte ahora se construye sin esta investigación; el proyecto no está disponible.",
-  deathStarDetail:
-    "Un ataque EMP vacía la Égida e impide su regeneración durante una hora. Las defensas terrestres no disparan ni reciben daño durante ese tiempo.",
 
   synthesisName: "Síntesis de deuterio",
   synthesisTag: "Eleva el techo de la Refinería",
@@ -117,6 +110,12 @@ export const research = {
     "Acorta todo lo que hay en la cola de construcción sin afectar a los naves ni a los cañones terrestres.",
   robotsDetail:
     "Cada peldaño finaliza antes todos los pedidos de construcción futuros en tus mundos: edificios, instrumentos y satélites por igual. No acelera los naves (eso es Yard Automation) y no reduce los precios de los recursos ni agrega espacios en la cola.",
+  industrialName: "Industrial",
+  industrialTag: "Repara naves más barato y más rápido",
+  industrialRole:
+    "Reduce el coste y el tiempo de cada trabajo de la Estación de Reparación",
+  industrialDetail:
+    "Cada peldaño reduce en un cuarto lo que cuesta y lo que tarda reparar una nave dañada en todos tus mundos: 75 % en el nivel 1 y 50 % en el nivel 2. No construye naves más rápido \u2014 eso es Yard Automation \u2014 y una nave con un 20 % de daño o menos tras una batalla se repara gratis de todos modos.",
   holdsName: "Retenciones del prospector",
   holdsTag: "Las naves mineras llevan más",
   holdsRole: "Aumenta todas las reservas del Prospector; La bonificación por capacidad de la torre de perforación se aplica en la parte superior.",
@@ -160,15 +159,11 @@ export const research = {
     "Mejora el ataque y el casco de Bastions and Thorns en todos los mundos. Cambia la fuerza de combate, no la capacidad terrestre o el salvamento; Los defensores usan el peldaño que se sostiene cuando comienza la batalla.",
 
   gridName: "Cuadrícula de intercepción",
-  gridTag: "Derriba una Estrella de la Muerte",
-  gridRole:
-    "Un interceptor cargado destruye un arma estratégica en el anillo de intercepción del radar o en la mira del telescopio.",
-  gridDetail:
-    "Otorga acceso a la carga interceptora. Construir uno requiere un enlace ascendente y un radar 3 en el mundo objetivo. Una carga cargada destruye automáticamente la primera arma estratégica que ingresa a su anillo de interceptación de radar cronometrado o que se identifica en la mira del telescopio desde cualquier mundo que tengas y luego se gasta.",
+  gridTag: "Cuatro cargas interceptoras por mundo",
+  gridRole: "Aumenta de 2 a 4 las cargas interceptoras que puede tener cada uno de tus mundos.",
+  gridDetail: "Sin investigación, cada mundo puede cargar 2 cargas interceptoras; esta investigación eleva el límite a 4 en cada mundo. Una carga necesita un enlace ascendente y Radar 3 en su mundo. Una carga lista destruye la primera Estrella de la Muerte que cruza su anillo de intercepción del radar o que es identificada en la mira del telescopio de cualquiera de tus mundos, y luego se gasta. Una carga detiene un arma: un mundo cargado solo cae si llegan a la vez más armas que cargas tiene.",
   stockpileName: "Reserva estratégica",
-  stockpileTag: "Mantén una segunda arma en la plataforma.",
-  stockpileRole:
-    "Cada mundo puede contener dos Estrellas de la Muerte; el segundo comienza después de que termina el primero",
-  stockpileDetail:
-    "Aumenta el límite de la Estrella de la Muerte de uno a dos en cada mundo, no en todo el comandante. El segundo se puede poner en cola, pero comienza solo después de que finaliza el primero y aún cuesta el precio y el tiempo completos. Un golpe todavía consume su arma.",
+  stockpileTag: "Dos Estrellas de la Muerte por mundo",
+  stockpileRole: "Aumenta de 1 a 2 las Estrellas de la Muerte que puede tener cada uno de tus mundos. La segunda empieza cuando termina la primera.",
+  stockpileDetail: "Sin investigación, cada mundo tiene 1 Estrella de la Muerte; esta investigación la eleva a 2 en cada mundo, no en todo tu imperio. La segunda cuesta el precio completo y el tiempo de construcción completo, y se construye después de la primera. Atacar desde varios mundos a la vez es la forma de superar las cargas de un defensor.",
 } as const;

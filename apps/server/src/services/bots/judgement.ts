@@ -66,6 +66,11 @@ export interface WallReading {
   readonly doctrines: TechLevels;
   /** The most Aegis a raised dome could hold, used only when `shield` is unmeasured. */
   readonly domeCeiling: number;
+  /**
+   * Klan Savunma Desteği: the clanmates' ships standing there, as the probe read them
+   * apart from the home fleet. They fight in the same line, so they join the wall.
+   */
+  readonly support?: ForecastSpan | null;
 }
 
 export interface RaidPlan {
@@ -178,8 +183,8 @@ export function planWorldRaid(
     wall: wallKnowledgeOf(reading.classReading ?? undefined),
   };
   const wall = {
-    low: reading.defence.low,
-    high: reading.defence.high * BOTS.wallMargin,
+    low: reading.defence.low + (reading.support?.low ?? 0),
+    high: (reading.defence.high + (reading.support?.high ?? 0)) * BOTS.wallMargin,
   };
   return smallestWing(input, forecast, wall, Math.max(0, reading.stock.low), budget);
 }

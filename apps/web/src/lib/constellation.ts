@@ -18,7 +18,7 @@ export const RESEARCH_GROUPS = [
     label: 'research.frontierBand',
     note: 'research.frontierNote',
     projects: [
-      'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
+      'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
     ],
   },
   {
@@ -28,6 +28,9 @@ export const RESEARCH_GROUPS = [
     /** The two build queues sit side by side: what flies, then what stands. D198. */
     projects: [
       'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'AI_ROBOTS',
+      // The Repair Station's ladder grows out of the yard, and stands straight under it
+      // so the line between them crosses no other star. Kalıcı gemi hasarı.
+      'INDUSTRIAL',
       'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
     ],
   },
@@ -96,6 +99,8 @@ const SPOTS: Record<number, readonly (readonly [number, number])[]> = {
   3: [[LEFT, 0.2], [RIGHT, 0.4], [LEFT, 0.62]],
   4: [[LEFT, 0.16], [RIGHT, 0.3], [LEFT, 0.5], [RIGHT, 0.66]],
   5: [[LEFT, 0.14], [RIGHT, 0.26], [LEFT, 0.44], [RIGHT, 0.58], [LEFT, 0.74]],
+  // Industry since Industrial: three a column, the tightest the label height allows.
+  6: [[LEFT, 0.14], [RIGHT, 0.2], [LEFT, 0.41], [RIGHT, 0.47], [LEFT, 0.68], [RIGHT, 0.74]],
 };
 
 /**
@@ -116,7 +121,7 @@ export function constellationLayout(
   const edges: Constellation['edges'] = [];
   for (const group of groups) {
     const quarter = QUARTER[group.id];
-    const spots = SPOTS[group.projects.length] ?? SPOTS[5] ?? [];
+    const spots = SPOTS[group.projects.length] ?? SPOTS[6] ?? [];
     group.projects.forEach((id, index) => {
       const [sx, sy] = spots[index] ?? [0.5, 0.5];
       const before = prerequisiteOf(id);

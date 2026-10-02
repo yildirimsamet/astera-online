@@ -7,6 +7,8 @@ import {
   accounts,
   attackCommitments,
   battleReports,
+  clanSupportBattleResults,
+  clanSupportWaves,
   buildOrders,
   buildings,
   chatMessages,
@@ -54,6 +56,7 @@ import {
   tradeRuns,
   units,
   watches,
+  shipDamageLots,
 } from '../db/schema.js';
 import { reconcileClanPlayerReclaim } from './clan.js';
 import { addDominionCounters } from './dominion.js';
@@ -315,6 +318,26 @@ export async function busy(
     .limit(1);
   if (jointWar) return true;
 
+  /*
+    KLAN SAVUNMA DESTEĞİ. A wave standing at a world has no mission in the air, and its
+    ships' rows sit under the sender's world: taking either seat would delete a fleet or
+    strand one. A wave lives at most twelve hours, so this costs a sweep or two.
+  */
+  const [support] = await tx
+    .select({ id: clanSupportWaves.id })
+    .from(clanSupportWaves)
+    .where(and(
+      inArray(clanSupportWaves.status, ['OUTBOUND', 'STATIONED', 'RETURNING']),
+      or(
+        eq(clanSupportWaves.senderPlayerId, playerId),
+        eq(clanSupportWaves.hostPlayerId, playerId),
+        inArray(clanSupportWaves.originPlanetId, planetIds),
+        inArray(clanSupportWaves.hostPlanetId, planetIds),
+      ),
+    ))
+    .limit(1);
+  if (support) return true;
+
   if (rows.raidIds.length > 0) {
     // A world with a raid in the air is never reclaimed: the fleet is real, and
     // taking the seat would delete it mid-flight.
@@ -449,10 +472,43 @@ export async function demolish(
       .where(inArray(clanWarMissions.operationId, operationIds));
     await tx.delete(clanWarContributions)
       .where(inArray(clanWarContributions.operationId, operationIds));
+    // A joint war against a supported world also wrote per-defender rows on its report.
+    await tx.delete(clanSupportBattleResults).where(inArray(
+      clanSupportBattleResults.reportId,
+      tx.select({ id: battleReports.id }).from(battleReports)
+        .where(inArray(battleReports.clanWarOperationId, operationIds)),
+    ));
     await tx.delete(battleReports)
       .where(inArray(battleReports.clanWarOperationId, operationIds));
     await tx.delete(clanWarOperations)
       .where(inArray(clanWarOperations.id, operationIds));
+  }
+
+  /*
+    TERMINAL SUPPORT WAVES, AND THE REPORT ROWS THAT NAME THIS SEAT. Live waves were
+    refused by `busy`. The waves go before the missions they point at; the per-commander
+    results go before the reports this function deletes. The score journal stays, like
+    `dominion_events`.
+  */
+  const relatedWaves = await tx
+    .select({
+      id: clanSupportWaves.id,
+      outbound: clanSupportWaves.outboundMissionId,
+      homeward: clanSupportWaves.returnMissionId,
+    })
+    .from(clanSupportWaves)
+    .where(or(
+      eq(clanSupportWaves.senderPlayerId, playerId),
+      eq(clanSupportWaves.hostPlayerId, playerId),
+      inArray(clanSupportWaves.originPlanetId, planetIds),
+      inArray(clanSupportWaves.hostPlanetId, planetIds),
+    ));
+  if (relatedWaves.length > 0) {
+    missionIds = [...new Set([
+      ...missionIds,
+      ...relatedWaves.flatMap((wave) => [wave.outbound, ...(wave.homeward ? [wave.homeward] : [])]),
+    ])];
+    await tx.delete(clanSupportWaves).where(inArray(clanSupportWaves.id, relatedWaves.map((wave) => wave.id)));
   }
 
   /**
@@ -544,16 +600,19 @@ export async function demolish(
    * and the seat can never be reclaimed again. Found on the live EU-1 database:
    * three reports of that exact shape stood over one commander's colony.
    */
+  const reportScope = or(
+    eq(battleReports.attackerPlayerId, playerId),
+    eq(battleReports.defenderPlayerId, playerId),
+    inArray(battleReports.targetPlanetId, planetIds),
+    ...(missionIds.length > 0 ? [inArray(battleReports.missionId, missionIds)] : []),
+  );
+  await tx.delete(clanSupportBattleResults).where(inArray(
+    clanSupportBattleResults.reportId,
+    tx.select({ id: battleReports.id }).from(battleReports).where(reportScope),
+  ));
   await tx
     .delete(battleReports)
-    .where(
-      or(
-        eq(battleReports.attackerPlayerId, playerId),
-        eq(battleReports.defenderPlayerId, playerId),
-        inArray(battleReports.targetPlanetId, planetIds),
-        ...(missionIds.length > 0 ? [inArray(battleReports.missionId, missionIds)] : []),
-      ),
-    );
+    .where(reportScope);
   await tx.delete(chatMessages).where(eq(chatMessages.authorPlayerId, playerId));
 
   /**
@@ -608,6 +667,8 @@ export async function demolish(
     .set({ destroyedByPlayerId: null })
     .where(eq(pirateState.destroyedByPlayerId, playerId));
   if (assetIds.length > 0) await tx.delete(strategicAssets).where(inArray(strategicAssets.id, assetIds));
+  // A dock lot points at the repair order working on it, so it goes before the orders.
+  await tx.delete(shipDamageLots).where(inArray(shipDamageLots.planetId, planetIds));
   if (buildOrderIds.length > 0) {
     await tx.delete(buildOrders).where(inArray(buildOrders.id, buildOrderIds));
   }

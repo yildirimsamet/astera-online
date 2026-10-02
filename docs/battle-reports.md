@@ -45,6 +45,15 @@ waves are grouped under their player and retain origin, sent, losses, survivors,
 personal Dominion and return destination/status. The immutable report is the fallback for return
 status; a live operation read may show a later status while ships are still coming home.
 
+A **supported defence** (ruleset 15, `defender_count > 1`) is an A1/A4 battle with an optional
+`defenseLine`: one row per commander in the defending line — host first — with losses and the
+Dominion movement (the host's only — a supporter's never moves) and `dominionFactor`, the ×D
+the support set (owner, 2026-10-02), and for defenders also sent and survivors. The host and every supporter
+can open the report; a supporter's `yourFleet`/`yourLosses` are their own wave and they see no
+loot, salvage, faults or recovery (those are the host's). The raider receives the rows with
+`sent`/`survivors` null: names and proven losses only. The dossier floor on the host's fleet
+(`fieldedAtLeast`) reads the HOST row, never the line's total.
+
 ### Joint-war access and fog
 
 | Viewer | Access | Full attacker waves | Full defender start/survivors | Personal result |

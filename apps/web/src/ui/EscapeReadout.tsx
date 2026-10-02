@@ -8,6 +8,7 @@ import {
   fleetEscapeMinimumApplies,
   fleetCount,
   garrisonOf,
+  type DefencePosture,
   type Fleet,
 } from '@astera/rules';
 import { compact } from '../lib/format.js';
@@ -34,6 +35,10 @@ import { compact } from '../lib/format.js';
  *
  * A DRY TANK IS A GAP YOU CAN CLOSE (E5 · K2): yellow, never the red of a threat.
  *
+ * A POSTURE THAT FORBIDS THE RETREAT REPLACES THE FIGURE (Klan Savunma Desteği, K4). Under
+ * SUPPORT or HOLD no firepower makes these ships run, so a threshold would be a promise the
+ * battle never keeps; the line says what the posture does and where it is changed.
+ *
  * THE GUNS ARE COUNTED AS IF ONLINE. An outage or an EMP takes them out of the line
  * and lowers the real threshold; the readout states the ordinary rule rather than
  * tracking a fault clock the Defend tab already shows beside it.
@@ -43,6 +48,7 @@ export function EscapeReadout({
   ground,
   deuterium,
   rulesetVersion = 0,
+  posture,
 }: {
   /** The home fleet — `PlanetView.fleet`. Prospectors are dropped by `garrisonOf`. */
   fleet: Fleet;
@@ -50,11 +56,20 @@ export function EscapeReadout({
   /** This world's tank: the lift is paid from here, vault share included. */
   deuterium: number;
   rulesetVersion?: number;
+  /** The world's defence posture from ruleset 15; absent before it. */
+  posture?: DefencePosture | undefined;
 }) {
   const { t } = useTranslation();
   const line = garrisonOf(fleet, ground);
   const ships = escapingShips(line);
   if (fleetCount(ships) === 0) return null;
+  if (posture === 'SUPPORT' || posture === 'HOLD') {
+    return (
+      <p data-testid="escape-readout" data-held="" className="px-3 py-2 text-caption leading-snug text-v2-ink-2">
+        {t(`clanSupport.defendOff.${posture}`)}
+      </p>
+    );
+  }
 
   const combatShips = escapeCombatShipCount(line);
   if (fleetEscapeMinimumApplies(rulesetVersion) && combatShips < ESCAPE.minimumCombatShips) {

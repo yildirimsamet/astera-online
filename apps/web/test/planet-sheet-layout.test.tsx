@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { DEATH_STAR } from '@astera/rules';
 import { PlanetScreen } from '../src/screens/PlanetScreen.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import type { PlanetView } from '../src/api/schemas.js';
@@ -187,11 +188,12 @@ describe('the sheet opens on production', () => {
 });
 
 describe('what a Death Star strike actually does', () => {
-  it('lives only in the Tactical tab and shows its two-charge tally', () => {
+  // One weapon per world until the Stockpile is researched (owner, 2026-10-01).
+  it('lives only in the Tactical tab and shows its one-weapon tally', () => {
     const tactical = show('tactical');
     const forge = tactical.container.querySelector('[data-strategic-state]');
     expect(forge).not.toBeNull();
-    expect(forge?.querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
+    expect(forge?.querySelector('[data-tally]')).toHaveAttribute('data-total', '1');
     tactical.unmount();
 
     const fleet = show('reach');
@@ -226,7 +228,7 @@ describe('what a Death Star strike actually does', () => {
    */
   it('states the deadline rather than a capture', () => {
     show('tactical');
-    const hint = screen.getByText(i18n.t('planet.deathStar.dangerHint'));
+    const hint = screen.getByText(i18n.t('planet.deathStar.dangerHint', { loss: DEATH_STAR.colonyLoyaltyLoss }));
     expect(hint).toBeInTheDocument();
     for (const forbidden of ['ele geçir', 'capture']) {
       expect(i18n.t('planet.deathStar.dangerHint').toLowerCase()).not.toContain(forbidden);
@@ -236,7 +238,7 @@ describe('what a Death Star strike actually does', () => {
 
   it('states the complete EMP rule directly without a redundant effects panel', () => {
     show('tactical');
-    const copy = i18n.t('planet.deathStar.dangerHint');
+    const copy = i18n.t('planet.deathStar.dangerHint', { loss: DEATH_STAR.colonyLoyaltyLoss });
     expect(copy).toMatch(/Aegis/i);
     expect(copy).toMatch(/1|hour|saat/i);
     expect(copy).toMatch(/savunma|defence/i);

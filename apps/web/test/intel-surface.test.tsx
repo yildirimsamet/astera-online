@@ -96,6 +96,7 @@ const fought = (minutesAgo: number): BattleReport => ({
   shieldAbsorbed: 0,
   cargoLimited: false,
   defenceSalvage: {},
+  yourDamage: [],
   disruptedMinutes: 0,
   wreckValue: 0,
 });
@@ -114,41 +115,69 @@ const read = (over: {
   });
 
 /**
- * WHETHER YOU ARE ALLOWED TO FIGHT THEM — AND SINCE D127, DEVELOPMENT DOES NOT
- * DECIDE.
+ * WHETHER YOU ARE ALLOWED TO FIGHT THEM. D168 · owner report 2026-10-01.
  *
- * These used to hold D49's ±2 tier band: the dossier pre-checked it because tier
- * was public and the panel could say WHY a launch was unavailable. D127 made
- * development private and retired the band with it, so there is nothing here to
- * pre-check and no reason to explain. What is left is that the figure still
- * appears as a fact when it has been earned, with no permission attached.
+ * D127 retired the band and this row went quiet with it. D168 brought the band
+ * back on the COMMANDER — each side read on their most developed world — and the
+ * row stayed quiet, so players compared the one tier they could see on a world
+ * against their own capital and concluded the rule was lopsided.
+ *
+ * The row now carries the input the player is missing: their OWN tier, which is
+ * never fogged. The note one tap deeper carries the rule and the range it gives
+ * them. What it must never carry is a verdict, because the visible tier is a lower
+ * bound on the owner's peak (`lib/band.ts`): the player forms the expectation, the
+ * launch confirms it.
  */
-describe('what development still says, now that it decides nothing', () => {
-  it('reports the tier as a plain fact, with no band note attached', () => {
-    const read = dossier({
-      target: target({ coreTier: 4 }),
-      planet: mine,
-      intel: intelWith(),
-      reports: [],
-      now: NOW,
-    });
-    const development = read.facts.find((f) => f.key === 'development');
-    expect(development).toBeDefined();
-    expect(development?.note).toBeUndefined();
+describe('development, read against your own tier', () => {
+  const owned = (coreTier: number) => target({
+    coreTier,
+    controller: { kind: 'PLAYER', playerId: 'them', displayName: 'Sable' },
+  });
+  const development = (over: Partial<Parameters<typeof dossier>[0]>) => dossier({
+    target: owned(4),
+    planet: mine,
+    intel: intelWith(),
+    reports: [],
+    now: NOW,
+    ...over,
+  }).facts.find((f) => f.key === 'development');
+
+  it('puts your own tier beside theirs', () => {
+    const fact = development({ ownPeakCore: 14 /* tier 5 */ });
+    expect(fact?.value).toContain('4');
+    expect(fact?.value).toContain('5');
   });
 
-  /** However far apart, the dossier no longer has an opinion about permission. */
+  it('states the rule and the tiers you can raid, one tap deeper', () => {
+    const note = development({ ownPeakCore: 14 /* tier 5 */ })?.note ?? '';
+    expect(note).toContain('4–6');
+    expect(note).toMatch(/most developed world/i);
+  });
+
+  it('clips the range at the bottom of the ladder', () => {
+    expect(development({ ownPeakCore: 2 })?.note).toContain('1–2');
+  });
+
+  /** A visible tier is a lower bound; the row may not turn it into a verdict. */
   it('says the same thing about a world far above and far below', () => {
-    for (const tier of [1, 5, 9]) {
-      const read = dossier({
-        target: target({ coreTier: tier }),
-        planet: mine,
-        intel: intelWith(),
-        reports: [],
-        now: NOW,
-      });
-      expect(read.facts.find((f) => f.key === 'development')?.note).toBeUndefined();
-    }
+    const notes = [1, 4, 8].map((tier) => development({ target: owned(tier), ownPeakCore: 12 })?.note);
+    expect(new Set(notes).size).toBe(1);
+  });
+
+  it('attaches no band to a neutral world — there is no commander to measure', () => {
+    const fact = development({
+      target: target({ coreTier: 2, controller: { kind: 'NEUTRAL', tier: 2 } }),
+      ownPeakCore: 14, // tier 5
+    });
+    expect(fact).toBeDefined();
+    expect(fact?.note).toBeUndefined();
+  });
+
+  /** Before the caller's worlds arrive there is no tier of theirs to compare. */
+  it('falls back to the plain figure while your own tier is unknown', () => {
+    const fact = development({ ownPeakCore: null });
+    expect(fact?.note).toBeUndefined();
+    expect(fact?.value).not.toContain('·');
   });
 });
 

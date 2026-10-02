@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, ne, notLike, or, sql } from 'drizzle-orm';
 import {
   BUILDING_IDS,
   INSTRUMENT_IDS,
@@ -13,8 +13,10 @@ import {
   productionMult,
   satelliteSlots,
   wealth,
+  dockLocation,
   type BuildingId,
   type BuildingLevels,
+  type DefencePosture,
   type FaultKind,
   type FaultSet,
   type Fleet,
@@ -287,6 +289,8 @@ export interface LockedPlanet {
   recoveryBoostUntil: Date | null;
   /** When this world may send a transfer out again. Faz 2A.3; see `planets.transferReadyAt`. */
   transferReadyAt: Date | null;
+  /** Klan Savunma Desteği: ESCAPE / SUPPORT / HOLD. Read only from ruleset 15. */
+  defencePosture: DefencePosture;
   buildings: BuildingLevels;
   /** Ground installations, with their levels. */
   instruments: InstrumentLevels;
@@ -347,6 +351,29 @@ export class GameError extends Error {
     super(message);
     this.name = 'GameError';
   }
+}
+
+/**
+ * A WORLD'S LOYALTY AT `now`, as the tick would write it. The one reading of it:
+ * `loadLocked` advances with this, and a probe reads a colony through it (2026-10-01),
+ * so what a scout brings home is what the world would hold if it were touched.
+ *
+ * Capitals have no loyalty and read the maximum. Faults only count where a world can
+ * break at all; below the gate a colony still recovers on the same clock.
+ */
+export function loyaltyAt(
+  row: { kind: 'CAPITAL' | 'COLONY' | 'NEUTRAL'; loyalty: number; lastTickAt: Date },
+  levels: { CORE: number; DEUTERIUM_PLANT: number },
+  faultCount: number,
+  now: Date,
+): number {
+  if (row.kind !== 'COLONY') return FAULT.loyaltyMax;
+  const active = faultsPossible({
+    kind: row.kind,
+    coreLevel: levels.CORE,
+    plantLevel: levels.DEUTERIUM_PLANT,
+  }) ? faultCount : 0;
+  return advanceLoyalty(row.loyalty, active, (now.getTime() - row.lastTickAt.getTime()) / 60_000);
 }
 
 /** Mutations and launches stop for the whole exact recovery window. */
@@ -504,14 +531,7 @@ export async function loadLocked(
     Capitals have no loyalty, while colonies below the fault gate can still lose
     it in battle and recover it on the same clock as every other colony.
   */
-  const activeLoyaltyFaults = faultsPossible({
-    kind: row.kind,
-    coreLevel: levels.CORE,
-    plantLevel: levels.DEUTERIUM_PLANT,
-  }) ? faults.length : 0;
-  const loyalty = row.kind === 'COLONY'
-    ? advanceLoyalty(row.loyalty, activeLoyaltyFaults, (now.getTime() - row.lastTickAt.getTime()) / 60_000)
-    : FAULT.loyaltyMax;
+  const loyalty = loyaltyAt(row, levels, faults.length, now);
 
   if (advanced.lastTickMinutes !== minutesSince(season.startsAt, row.lastTickAt)) {
     /*
@@ -611,6 +631,7 @@ export async function loadLocked(
     protectedUntil: row.protectedUntil,
     recoveryBoostUntil: row.recoveryBoostUntil,
     transferReadyAt: row.transferReadyAt,
+    defencePosture: row.defencePosture,
     buildings: levels,
     instruments,
     effectiveInstruments,
@@ -911,15 +932,23 @@ export async function totalUnitsOf(tx: Queryable, planetId: string): Promise<Fle
  * ownership — `PROSPECTOR.max` — has to read the second one or a player empties
  * the cap simply by having their craft in the air.
  */
-export async function awayFleet(tx: Tx, planetId: string): Promise<Fleet> {
+export async function awayFleet(tx: Queryable, planetId: string): Promise<Fleet> {
   const rows = await tx
     .select()
     .from(units)
-    .where(and(eq(units.planetId, planetId), ne(units.location, 'home')));
+    .where(and(
+      eq(units.planetId, planetId),
+      ne(units.location, 'home'),
+      // A docked ship is on the world, just not fit to fly: `dockLotsOf` reads those.
+      notLike(units.location, DOCK_PATTERN),
+    ));
   const out: Fleet = {};
   for (const r of rows) if (r.count > 0) out[r.hull] = (out[r.hull] ?? 0) + r.count;
   return out;
 }
+
+const DOCK_PATTERN = dockLocation('%');
+
 
 /**
  * What is in a planet's orbit, without taking a lock. D25.

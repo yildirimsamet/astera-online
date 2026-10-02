@@ -19,11 +19,14 @@ import {
   fleetCargo,
   transferReturningFleet,
   transferStayingFleet,
+  capLoadToSurvivors,
+  fleetEntries,
   type Fleet,
   type HullId,
   type NeutralTier,
   type Resources,
   type TransferReturnPlan,
+  lotsWithin,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
@@ -50,7 +53,6 @@ import {
 } from './ownership.js';
 import {
   GameError,
-  addUnits,
   assertSeasonOpenThrough,
   assertWorldOperational,
   loadLocked,
@@ -60,6 +62,8 @@ import {
   setUnits,
   totalUnitsOf,
 } from './planet.js';
+import { landShips } from './shipDamage.js';
+import { assertRadiationSafe, flightWitness, settleMissionRadiation, tellRadiationLoss } from './radiation.js';
 import { planetView } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { techOf } from './researchState.js';
@@ -220,6 +224,8 @@ export async function launchTransfer(
    */
   pace?: number,
   returnPlan?: TransferReturnPlan,
+  /** The commander has read what radiation on this route would take (plan D10). */
+  acknowledgeRadiation = false,
 ) {
   validateTransferFleet(fleet);
   if ((fleet.PROSPECTOR ?? 0) > 0) {
@@ -348,6 +354,10 @@ export async function launchTransfer(
     const oneWay = fleetTravelExact(dist, fleet, { ...mods, pace: chosenPace });
     if (!Number.isFinite(oneWay)) throw new GameError('IMMOBILE_FLEET', 'That fleet cannot travel');
     const arriveAt = addMinutes(origin.now, oneWay);
+    await assertRadiationSafe(tx, {
+      seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
+      fleet, acknowledged: acknowledgeRadiation,
+    });
     const returnMinutes = fleetCount(returning) > 0
       ? fleetTravelExact(dist, returning, { ...mods, pace: 1 }) : 0;
     assertSeasonOpenThrough(origin, addMinutes(arriveAt, returnMinutes));
@@ -557,6 +567,8 @@ async function rerouteToSafeHome(
     fleet: mission.fleet,
     cargo: mission.cargo ?? EMPTY,
     settlementEscrow: mission.settlementEscrow,
+    // The ships keep what they carry; the Repair Station judges it where they land.
+    damage: mission.damage,
     tech: mission.tech,
     distance: dist,
     departAt: now,
@@ -602,6 +614,17 @@ async function rerouteToSafeHome(
  * air has no access to a store to be charged from — the same rule every other leg in this file
  * obeys.
  */
+/**
+ * A RAID THAT NEVER LANDED WAS NEVER A STRIKE. K8 · plan D13.
+ *
+ * The repeat-attack limit and the clan's roster count hits; a raid called back (K8) or
+ * finished by a cloud on the way in (D13) hit nothing, so both give their entry back.
+ */
+export async function releaseStrike(tx: Tx, missionId: string): Promise<void> {
+  await tx.delete(clanRaidRoster).where(eq(clanRaidRoster.missionId, missionId));
+  await tx.delete(attackCommitments).where(eq(attackCommitments.missionId, missionId));
+}
+
 export async function recallFlight(
   db: Db,
   missionId: string,
@@ -638,55 +661,102 @@ export async function recallFlight(
       throw new GameError('NOT_RECALLABLE', 'That flight cannot be called back', 409);
     }
 
-    const [from] = await tx.select().from(planets).where(eq(planets.id, mission.originPlanetId));
-    const [to] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
-    if (!from || !to) throw new Error('recall endpoint vanished');
-
-    // Where it actually is, on the true centres — the standoff is a drawing detail the disc adds.
-    const turnedAt = interpolatePosition(
-      from, to, mission.departAt.getTime(), mission.arriveAt.getTime(), now.getTime(),
-    );
-    const flownMinutes = (now.getTime() - mission.departAt.getTime()) / 60_000;
-    const arriveAt = addMinutes(now, flownMinutes);
-
-    await tx
-      .update(missions)
-      .set({ recalledAt: now, recallFrom: turnedAt, arriveAt })
-      .where(eq(missions.id, mission.id));
-    /*
-      THE LANDING MOVES WITH IT, EVEN AFTER A WORKER CLAIMED THE OLD ROW. Updating a pending row is
-      insufficient: a processing worker keeps that row in memory and `complete()` runs after its
-      handler. Delete-and-replace gives the return its own durable event; completing the deleted
-      row becomes a no-op, while the handler's mission-ETA guard makes its stale in-memory copy
-      inert.
-    */
-    await tx
-      .delete(scheduledEvents)
-      .where(and(
-        eq(scheduledEvents.refId, mission.id),
-        eq(scheduledEvents.kind, 'mission_arrival'),
-        inArray(scheduledEvents.status, ['pending', 'processing']),
-      ));
-    await schedule(tx, {
-      seasonId: mission.seasonId,
-      kind: 'mission_arrival',
-      refId: mission.id,
-      resolveAt: arriveAt,
-    });
-    if (mission.kind === 'attack') {
-      await tx.delete(clanRaidRoster).where(eq(clanRaidRoster.missionId, mission.id));
-      await tx.delete(attackCommitments).where(eq(attackCommitments.missionId, mission.id));
-    }
-    await publishShard(tx, mission.seasonId, 'launch');
+    const arriveAt = await turnMissionHome(tx, mission, now);
+    if (mission.kind === 'attack') await releaseStrike(tx, mission.id);
     return { missionId: mission.id, arriveAt };
   });
 }
 
-export async function resolveTransfer(
+/**
+ * TURN ONE OUTBOUND LEG FOR HOME, NOW. The single statement of the recall rule (K8):
+ * the way home takes exactly as long as was already flown, from wherever the craft
+ * actually is, and the landing event moves with it. Returns the new landing instant.
+ *
+ * The caller has already decided the turn is allowed — a transfer or raid in
+ * `recallFlight`, a clan support wave in `clanSupport.ts` — and holds the mission row.
+ */
+export async function turnMissionHome(
   tx: Tx,
   mission: typeof missions.$inferSelect,
   now: Date,
-): Promise<'DELIVERED' | 'REROUTED_CAPACITY' | 'REROUTED_OWNERSHIP'> {
+): Promise<Date> {
+  const [from] = await tx.select().from(planets).where(eq(planets.id, mission.originPlanetId));
+  const [to] = await tx.select().from(planets).where(eq(planets.id, mission.targetPlanetId));
+  if (!from || !to) throw new Error('recall endpoint vanished');
+
+  // Where it actually is, on the true centres — the standoff is a drawing detail the disc adds.
+  const turnedAt = interpolatePosition(
+    from, to, mission.departAt.getTime(), mission.arriveAt.getTime(), now.getTime(),
+  );
+  const flownMinutes = (now.getTime() - mission.departAt.getTime()) / 60_000;
+  const arriveAt = addMinutes(now, flownMinutes);
+
+  await tx
+    .update(missions)
+    .set({ recalledAt: now, recallFrom: turnedAt, arriveAt })
+    .where(eq(missions.id, mission.id));
+  /*
+    THE LANDING MOVES WITH IT, EVEN AFTER A WORKER CLAIMED THE OLD ROW. Updating a pending row is
+    insufficient: a processing worker keeps that row in memory and `complete()` runs after its
+    handler. Delete-and-replace gives the return its own durable event; completing the deleted
+    row becomes a no-op, while the handler's mission-ETA guard makes its stale in-memory copy
+    inert.
+  */
+  await tx
+    .delete(scheduledEvents)
+    .where(and(
+      eq(scheduledEvents.refId, mission.id),
+      eq(scheduledEvents.kind, 'mission_arrival'),
+      inArray(scheduledEvents.status, ['pending', 'processing']),
+    ));
+  await schedule(tx, {
+    seasonId: mission.seasonId,
+    kind: 'mission_arrival',
+    refId: mission.id,
+    resolveAt: arriveAt,
+  });
+  await publishShard(tx, mission.seasonId, 'launch');
+  return arriveAt;
+}
+
+/**
+ * A TRANSFER'S HOLD, CUT TO THE SHIPS A CLOUD LEFT. Plan D9.
+ *
+ * The cargo and a settlement's returning fee ride in the same holds and land in the
+ * same store, so they are cut as one load and land as cargo. A hull flying home on a
+ * round trip flies home with the ships of it that are left.
+ */
+function cutToSurvivors(mission: typeof missions.$inferSelect, survivors: Fleet): typeof missions.$inferSelect {
+  const stock = mission.cargo ?? EMPTY;
+  const escrow = mission.settlementEscrow ?? EMPTY;
+  const load: Resources = {
+    alloy: stock.alloy + escrow.alloy,
+    crystal: stock.crystal + escrow.crystal,
+    deuterium: stock.deuterium + escrow.deuterium,
+  };
+  const kept = capLoadToSurvivors({ loot: load, salvage: null }, survivors, mission.tech ?? {}).loot ?? EMPTY;
+  const returnFleet = mission.returnFleet === null ? null : Object.fromEntries(
+    fleetEntries(mission.returnFleet)
+      .map(([hull]) => [hull, survivors[hull] ?? 0] as const)
+      .filter(([, count]) => count > 0),
+  );
+  return { ...mission, cargo: kept, settlementEscrow: null, returnFleet };
+}
+
+export async function resolveTransfer(
+  tx: Tx,
+  arriving: typeof missions.$inferSelect,
+  now: Date,
+  rulesetVersion: number,
+): Promise<'DELIVERED' | 'REROUTED_CAPACITY' | 'REROUTED_OWNERSHIP' | 'LOST'> {
+  /*
+    RADYASYON FIRST: the dose over the whole leg, then whatever is left lands (plan §3.5).
+    The last ship takes the cargo with it — there is nothing to land and nobody to reroute.
+  */
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  await tellRadiationLoss(tx, flightWitness(dosed.mission), dosed, now);
+  if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) return 'LOST';
+  const mission = fleetCount(dosed.destroyed) > 0 ? cutToSurvivors(dosed.mission, dosed.fleet) : dosed.mission;
   /*
    * Cargo is delivered at the destination before any selected ships fly home.
    * Older transfer missions have no return fleet and still land all craft there.
@@ -736,6 +806,8 @@ export async function resolveTransfer(
   const returning = mission.parentMissionId === null && mission.recalledAt === null
     ? mission.returnFleet ?? {} : {};
   const staying = transferStayingFleet(mission.fleet, returning);
+  // Whole hull types stay or go, so each part takes the damage of its own hulls.
+  const returningDamage = lotsWithin(mission.damage, returning);
   if (fleetCount(returning) > 0) {
     const [returnMission] = await tx.insert(missions).values({
       fuelPaid: 0,
@@ -746,6 +818,7 @@ export async function resolveTransfer(
       targetPlanetId: mission.originPlanetId,
       fleet: returning,
       cargo: EMPTY,
+      damage: returningDamage.length > 0 ? returningDamage : null,
       tech: mission.tech,
       distance: mission.distance,
       departAt: now,
@@ -763,7 +836,15 @@ export async function resolveTransfer(
     await schedule(tx, { seasonId: mission.seasonId, kind: 'mission_arrival', refId: returnMission.id, resolveAt: returnMission.arriveAt });
   }
   await clearReservedFleet(tx, mission);
-  if (fleetCount(staying) > 0) await addUnits(tx, target.id, staying);
+  if (fleetCount(staying) > 0) {
+    await landShips(tx, {
+      planetId: target.id,
+      ownerPlayerId: mission.ownerPlayerId,
+      fleet: staying,
+      damage: lotsWithin(mission.damage, staying),
+      at: now,
+    });
+  }
   /*
     THE SQUADRON IS ON THE GROUND, AND STAYS THERE FOR A MOMENT. Faz 2A.3.
 
@@ -796,9 +877,29 @@ export async function resolveTransfer(
 
 export async function resolveSettlement(
   tx: Tx,
-  mission: typeof missions.$inferSelect,
+  arriving: typeof missions.$inferSelect,
   now: Date,
-): Promise<'CAPTURED' | 'REROUTED'> {
+  rulesetVersion: number,
+): Promise<'CAPTURED' | 'REROUTED' | 'LOST'> {
+  /*
+    RADYASYON FIRST (plan §3.5.5). Settlers a cloud finished never reach the rock, and the
+    settlement fails as a lost race does: the founding charge comes back. No ship is left
+    to fly it home, so it is refunded where the commander now lives.
+  */
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  const mission = dosed.mission;
+  await tellRadiationLoss(tx, flightWitness(mission), dosed, now);
+  if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) {
+    const homeId = await safeHomePlanet(tx, mission.ownerPlayerId, mission.originPlanetId);
+    const stock = mission.cargo ?? EMPTY;
+    const escrow = mission.settlementEscrow ?? EMPTY;
+    await tx.update(planets).set({
+      alloy: sql`${planets.alloy} + ${stock.alloy + escrow.alloy}`,
+      crystal: sql`${planets.crystal} + ${stock.crystal + escrow.crystal}`,
+      deuterium: sql`${planets.deuterium} + ${stock.deuterium + escrow.deuterium}`,
+    }).where(eq(planets.id, homeId));
+    return 'LOST';
+  }
   const [target] = await tx
     .select({ world: planets, state: neutralPlanetState })
     .from(planets)
@@ -817,7 +918,13 @@ export async function resolveSettlement(
     protectedUntil: addMinutes(now, MULTI_WORLD.occupationMinutes),
   });
   await clearReservedFleet(tx, mission);
-  await addUnits(tx, target.world.id, mission.fleet);
+  await landShips(tx, {
+    planetId: target.world.id,
+    ownerPlayerId: mission.ownerPlayerId,
+    fleet: mission.fleet,
+    damage: mission.damage,
+    at: now,
+  });
   /*
     A SETTLED WORLD OPENS ON ITS TIER'S CAPTURE STOCK, AND ON NOTHING ELSE. D209.
 

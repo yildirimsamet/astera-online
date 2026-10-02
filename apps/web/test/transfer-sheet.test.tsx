@@ -2,12 +2,13 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HULLS, TRANSFER_CARGO_HULLS, combatValue, garrisonOf, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
+import { ApiError } from '../src/api/client.js';
 import { compact } from '../src/lib/format.js';
 import { TransferSheet } from '../src/screens/TransferSheet.js';
 import { ToastProvider } from '../src/ui/Toast.js';
 import { planetView } from './fixtures.js';
 
-const { mutate, useTransfer } = vi.hoisted(() => {
+const { mutate, useTransfer, sky } = vi.hoisted(() => {
   const transferMutation = vi.fn();
   return {
     mutate: transferMutation,
@@ -15,10 +16,13 @@ const { mutate, useTransfer } = vi.hoisted(() => {
       mutate: transferMutation,
       isPending: false,
     })),
+    /** The galaxy's clouds, which the sheet quotes the route against (radiation, D10). */
+    sky: { radiation: [] as unknown[] },
   };
 });
 vi.mock('../src/api/queries.js', () => ({
   useTransfer,
+  useGalaxy: () => ({ data: { radiation: sky.radiation } }),
 }));
 
 const target = {
@@ -43,6 +47,71 @@ describe('world transfer sheet', () => {
   beforeEach(() => {
     mutate.mockReset();
     useTransfer.mockClear();
+    sky.radiation = [];
+  });
+
+  /** Radyasyon (plan D10): a route that would finish ships says so, and the hold is the answer. */
+  it('names the ships a lethal route finishes, and the hold carries the acknowledgement', async () => {
+    sky.radiation = [{
+      id: 'storm', mode: 'EMIT', center: { x: 50, y: 0, z: 0 }, radius: 100_000,
+      intensityPctPerMinute: 500, activeFrom: new Date(0), activeUntil: null,
+    }];
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransferSheet target={target}
+          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+          onClose={vi.fn()} onLaunched={vi.fn()} />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
+    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({ acknowledgeRadiation: true }), expect.anything());
+  });
+
+  it('takes the server\'s lethal refusal as the question, and the next hold answers it', async () => {
+    mutate.mockImplementationOnce((_vars: unknown, options: { onError: (error: unknown) => void }) => {
+      options.onError(new ApiError('RADIATION_LETHAL', 'lethal', 409, { count: 1 }));
+    });
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransferSheet target={target}
+          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+          onClose={vi.fn()} onLaunched={vi.fn()} />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    const commit = () => {
+      const button = screen.getByRole('button', { name: /^transfer$/i });
+      fireEvent.keyDown(button, { key: 'Enter' });
+      fireEvent.keyDown(button, { key: 'Enter' });
+    };
+    commit();
+    expect(mutate.mock.calls[0]?.[0]).not.toHaveProperty('acknowledgeRadiation');
+    expect(document.querySelector('[data-radiation-warning]')).toHaveTextContent(/destroys 1 ship/);
+    commit();
+    expect(mutate.mock.calls[1]?.[0]).toMatchObject({ acknowledgeRadiation: true });
+  });
+
+  it('says nothing and asks nothing where no cloud stands', async () => {
+    const user = userEvent.setup();
+    render(
+      <ToastProvider>
+        <TransferSheet target={target}
+          planet={planetView({ fleet: { DART: 1 } }, { id: 'capital-1', alloy: 10_000, deuterium: 10_000 })}
+          onClose={vi.fn()} onLaunched={vi.fn()} />
+      </ToastProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'More Dart' }));
+    expect(document.querySelector('[data-radiation-warning]')).toBeNull();
+    const commit = screen.getByRole('button', { name: /^transfer$/i });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    fireEvent.keyDown(commit, { key: 'Enter' });
+    expect(mutate.mock.calls[0]?.[0]).not.toHaveProperty('acknowledgeRadiation');
   });
 
   it('does not list Prospectors in the interplanetary transfer section', () => {

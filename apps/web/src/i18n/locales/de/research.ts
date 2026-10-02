@@ -41,8 +41,7 @@ export const research = {
   doctrineNote:
     "Öffnet erweiterte Rumpfstufen und verbessert Angriff, Panzerung oder Antrieb auf separaten begrenzten Leitern. Die Kampfstufen sind per Sonde sichtbar.",
   strategicBand: "Strategisch",
-  strategicNote:
-    "Schaltet die zerstörerischste Waffe der Galaxie, ihre defensive Antwort und zusätzliche Lagerkapazität frei.",
+  strategicNote: "Erhöht, wie viele Todessterne und Abfangladungen jede deiner Welten halten kann.",
 
   act: "Forschung",
   details: "Details",
@@ -61,10 +60,10 @@ export const research = {
   needCore: "Hebe den Kommandokern deiner Hauptstadt auf L{{level}}",
   queueFull: "3 Forschungsprojekte stehen bereits in der Warteschlange. Warte, bis eines fertig ist, bevor du ein weiteres hinzufügst.",
   at: "Erforschbar in {{duration}}",
-  warAt: "Kriegshandlung wird in {{duration}} eröffnet",
   isotopeFirst: "Forschungsisotopenspektrometrie zuerst",
   prerequisiteFirst: "Erforsche zuerst {{name}}",
-  graviticFirst: "Erforsche zuerst Gravitische Ladungen",
+  prerequisiteLevelFirst: "Bringe {{name}} zuerst auf Stufe {{level}}",
+  nameAtLevel: "{{name}} L{{level}}",
   cargoInsight: "Fülle in einem Überfall deinen Frachtraum, solange Beute übrig bleibt",
   shieldInsight: "Lass eine Aegis mindestens {{share}} deines Überfallschadens absorbieren",
 
@@ -92,12 +91,6 @@ export const research = {
     "Um es freizuschalten, greife eine verteidigte Welt mit einer aktiven Aegis an; Der Schild muss mindestens {{share}} deines Schadens absorbieren. Ein einzelner Dart kann sich qualifizieren; Du musst nicht gewinnen. Der Nullifier trifft aktive Schilde fünfmal stärker.",
   graviticDetail:
     "Durch den Abschluss wird der Fachforschungsteil des Nullifier-Tors dauerhaft erfüllt. Der Nullifier ist eine Antwort auf eine aktive Aegis, keine allgemeine Schadensverbesserung; Sein zusätzlicher Schildschaden wirkt sich niemals auf Schiffe oder Bodengeschütze aus.",
-  deathStarName: "Todesstern-Protokoll",
-  deathStarTag: "Schaltet den Todesstern frei",
-  deathStarRole:
-    "Der Todesstern wird jetzt ohne diese Forschung gebaut; dieses Projekt ist nicht verfügbar.",
-  deathStarDetail:
-    "Ein EMP-Angriff entlädt die Aegis und verhindert eine Stunde lang ihre Regeneration. Bodenverteidigungen feuern in dieser Zeit nicht und erleiden keinen Schaden.",
 
   synthesisName: "Deuteriumsynthese",
   synthesisTag: "Erhöht die Raffinerie-Obergrenze",
@@ -117,6 +110,12 @@ export const research = {
     "Verkürzt alles in der Bauwarteschlange, ohne Schiffe oder Bodengeschütze zu beeinträchtigen",
   robotsDetail:
     "Mit jeder Sprosse wird jeder zukünftige Bauauftrag auf Ihren Welten schneller abgeschlossen: Gebäude, Instrumente und Satelliten gleichermaßen. Es beschleunigt Schiffe nicht – das ist Yard Automation – und es senkt weder die Ressourcenpreise noch fügt es Warteschlangenplätze hinzu.",
+  industrialName: "Industrie",
+  industrialTag: "Repariert Schiffe billiger und schneller",
+  industrialRole:
+    "Senkt Kosten und Dauer jedes Auftrags der Reparaturstation",
+  industrialDetail:
+    "Jede Stufe senkt Kosten und Dauer der Reparatur eines beschädigten Schiffs auf all deinen Welten um ein Viertel: 75 % auf Stufe 1, 50 % auf Stufe 2. Schiffe werden dadurch nicht schneller gebaut \u2014 das macht Yard Automation \u2014 und ein Schiff mit höchstens 20 % Schaden wird nach einem Kampf ohnehin kostenlos repariert.",
   holdsName: "Prospektor hält",
   holdsTag: "Bergbauschiffe transportieren mehr",
   holdsRole: "Erhöht jeden Prospektor-Hold; Zusätzlich gilt der Kapazitätsbonus des Derricks",
@@ -160,15 +159,11 @@ export const research = {
     "Verbessert den Angriff und die Hülle von Bastionen und Dornen auf jeder Welt. Es verändert die Kampfstärke, nicht die Bodenkapazität oder die Bergung; Verteidiger nutzen die Sprosse, die sie zu Beginn des Kampfes halten.",
 
   gridName: "Abfanggitter",
-  gridTag: "Schießt einen Todesstern ab",
-  gridRole:
-    "Ein geladener Abfangjäger zerstört eine strategische Waffe auf dem Radar-Abfangring oder in Sichtweite des Teleskops",
-  gridDetail:
-    "Es gewährt Zugriff auf die Abfangjägerladung. Für den Aufbau sind ein Uplink und Radar 3 auf der Zielwelt erforderlich. Eine geladene Ladung zerstört automatisch die erste strategische Waffe, die in ihren zeitgesteuerten Radar-Abfangring gelangt oder im Teleskop-Sichtfeld einer beliebigen von Ihnen gehaltenen Welt identifiziert wird, und wird dann verbraucht.",
+  gridTag: "Vier Abfangladungen pro Welt",
+  gridRole: "Erhöht die Abfangladungen, die jede deiner Welten halten kann, von 2 auf 4.",
+  gridDetail: "Ohne Forschung kann jede Welt 2 Abfangladungen laden; diese Forschung hebt das Limit auf jeder Welt auf 4. Eine Ladung braucht auf ihrer Welt einen Uplink und Radar 3. Eine geladene Ladung zerstört den ersten Todesstern, der ihren zeitlichen Radar-Abfangring kreuzt oder in der Teleskopsicht einer deiner Welten erkannt wird, und ist dann verbraucht. Eine Ladung stoppt eine Waffe – eine geladene Welt fällt nur, wenn mehr Waffen gleichzeitig ankommen, als sie Ladungen hat.",
   stockpileName: "Strategischer Vorrat",
-  stockpileTag: "Behalten Sie eine zweite Waffe auf dem Pad",
-  stockpileRole:
-    "Jede Welt kann zwei Todessterne enthalten; der zweite beginnt, nachdem der erste beendet ist",
-  stockpileDetail:
-    "Erhöht das Todesstern-Limit von eins auf zwei auf jeder Welt, nicht für den gesamten Kommandanten. Der zweite kann in die Warteschlange gestellt werden, beginnt aber erst, nachdem der erste fertig ist, und kostet trotzdem den vollen Preis und die volle Zeit. Ein Schlag verbraucht immer noch seine Waffe.",
+  stockpileTag: "Zwei Todessterne pro Welt",
+  stockpileRole: "Erhöht die Todessterne, die jede deiner Welten halten kann, von 1 auf 2. Der zweite beginnt, sobald der erste fertig ist.",
+  stockpileDetail: "Ohne Forschung hält jede Welt 1 Todesstern; diese Forschung macht daraus 2 auf jeder Welt, nicht im ganzen Reich. Der zweite kostet den vollen Preis und die volle Bauzeit und wird nach dem ersten gebaut. Aus mehreren Welten gleichzeitig zuzuschlagen ist der Weg an den Ladungen eines Verteidigers vorbei.",
 } as const;

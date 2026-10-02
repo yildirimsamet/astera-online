@@ -625,7 +625,9 @@ describe('the recovery shield', () => {
 
   it('does not boost production on an EMP-struck world', async () => {
     await grant(f.db, theirs, 200_000, 50_000);
-    await setLevel(f.db, mine, 'CORE', 5);
+    // D168: a Death Star strike answers to the same development band as a raid; `grant` raised the
+    // target's Core, so the striker comes up to it.
+    await levelWorld(f.db, [mine, theirs]);
     await f.db.insert(strategicAssets).values({
       planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
     });

@@ -3,6 +3,7 @@ import {
   hangarCapacity,
   robotSpeedMult,
   yardSpeedMult,
+  interceptorCapacity,
   strategicStockpile,
   prospectorHoldMult,
   plantCeiling,
@@ -32,6 +33,7 @@ import {
   type SatelliteId,
   type HullId,
   type ResearchProjectId,
+  repairPct,
 } from '@astera/rules';
 import type { PlanetView } from '../api/schemas.js';
 import i18n from '../i18n/index.js';
@@ -593,6 +595,13 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         (rung) => cargoMult({ CARGO_HOLDS: rung }) - 1,
         i18n.t('gains.research.cargoScope'),
       );
+    /** The Repair Station's ladder: the share it takes off a repair's bill and time. */
+    case 'INDUSTRIAL':
+      return step(
+        i18n.t('gains.research.industrialLabel'),
+        (rung) => 1 - repairPct({ INDUSTRIAL: rung }) / 100,
+        i18n.t('gains.research.industrialScope'),
+      );
 
     /**
      * A LADDER THAT RAISES A CEILING ELSEWHERE, so the figure is that ceiling in
@@ -606,7 +615,7 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         ...(maxed ? { maxed: true as const } : {}),
       };
 
-    /** How many strategic weapons may stand ready at once. T11. */
+    /** How many Death Stars one world's pad holds: 1 → 2. Owner, 2026-10-01. */
     case 'STRATEGIC_STOCKPILE':
       return {
         label: i18n.t('gains.research.stockpileLabel'),
@@ -615,16 +624,21 @@ export function researchGain(id: ResearchProjectId, level: number): Gain {
         ...(maxed ? { maxed: true as const } : {}),
       };
 
-    /* ── the five permissions ───────────────────────────────── */
+    /** How many interceptor charges one world's pad holds: 2 → 4. Owner, 2026-10-01. */
+    case 'INTERCEPTION_GRID':
+      return {
+        label: i18n.t('gains.research.gridLabel'),
+        now: String(interceptorCapacity(level)),
+        next: String(interceptorCapacity(show)),
+        ...(maxed ? { maxed: true as const } : {}),
+      };
+
+    /* ── the three permissions ──────────────────────────────── */
     case 'ISOTOPE_SPECTROMETRY':
       return permission(i18n.t('gains.research.isotopeOpens'));
     case 'DENSE_FUEL_CELLS':
       return permission(i18n.t('gains.research.denseOpens'));
     case 'GRAVITIC_CHARGES':
       return permission(i18n.t('gains.research.graviticOpens'));
-    case 'DEATH_STAR_PROTOCOL':
-      return permission(i18n.t('gains.research.protocolOpens'));
-    case 'INTERCEPTION_GRID':
-      return permission(i18n.t('gains.research.gridOpens'));
   }
 }

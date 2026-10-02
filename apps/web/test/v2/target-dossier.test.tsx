@@ -211,3 +211,44 @@ describe('the target dossier, as the mock draws it', () => {
     expect(screen.getByRole('button', { name: /Rival 1/ })).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+/**
+ * THE BAND AT A GLANCE. D168 · owner report 2026-10-01.
+ *
+ * Players compared the one tier they could see on a world with their own capital and
+ * reported the raid rule as lopsided. The header now sets the caller's own tier — read
+ * on every world they hold, never fogged — beside the world's, and one tap opens the
+ * rule and the range it gives them. It never states a verdict: the world in front of
+ * them may not be its owner's most developed.
+ */
+describe('the development band in the header', () => {
+  const commander = world({ coreTier: 6, controller: { kind: 'PLAYER', playerId: 'vex', displayName: 'VEX' } });
+
+  it('sets your tier beside theirs', () => {
+    show({ target: commander, ownPeakCore: 12 });
+    const chip = document.querySelector<HTMLElement>('[data-dossier-band]')!;
+    expect(chip).toHaveTextContent('Tier 6 · you 4');
+  });
+
+  it('opens the rule and your range on a tap, and closes it on a second', async () => {
+    const user = userEvent.setup();
+    show({ target: commander, ownPeakCore: 12 });
+    const chip = document.querySelector<HTMLElement>('[data-dossier-band]')!;
+    expect(document.querySelector('[data-dossier-band-note]')).toBeNull();
+    await user.click(chip);
+    expect(chip).toHaveAttribute('aria-expanded', 'true');
+    expect(document.querySelector('[data-dossier-band-note]')).toHaveTextContent(/tiers 3–5/);
+    await user.click(chip);
+    expect(document.querySelector('[data-dossier-band-note]')).toBeNull();
+  });
+
+  it('draws nothing for a neutral world — there is no commander to measure', () => {
+    show({ target: world({ controller: { kind: 'NEUTRAL', tier: 2 } }), ownPeakCore: 12 });
+    expect(document.querySelector('[data-dossier-band]')).toBeNull();
+  });
+
+  it('draws nothing while your own worlds have not arrived', () => {
+    show({ target: commander, ownPeakCore: null });
+    expect(document.querySelector('[data-dossier-band]')).toBeNull();
+  });
+});

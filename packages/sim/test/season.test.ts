@@ -157,17 +157,19 @@ describe('pooled across all five seeds', () => {
   /**
    * THE DESIGN'S CENTRAL CLAIM, and the reason the whole simulator exists.
    *
-   * Pooled rather than per-seed because a median rank over six GRINDERs is noisy,
-   * but demanded on EVERY seed rather than on a majority: if the informed player
-   * fails to top the ladder in a fifty-world galaxy, that is a finding about the
-   * design and not about the sample.
+   * Pooled rather than per-seed because a median rank over six GRINDERs is noisy.
+   * It was demanded on EVERY seed until ruleset 14: the Repair Station bills the
+   * informed raider for the ships its fights wear down, and it now tops the ladder on
+   * three of the five seeds (42 and 4242 miss). The owner accepted that as the price of
+   * persistent damage (2026-09-30), so the claim is held to a majority — which is
+   * exactly where it stands, so any further slide still fails.
    */
-  it('the informed archetype reaches the top rank on every seed, including a tie', () => {
+  it('the informed archetype reaches the top rank on a majority of seeds, including a tie', () => {
     const failures = RUNS.filter((r) => !informedArchetypeWins(r.world.players)).map((r) => ({
       seed: r.seed,
       board: ladderByArchetype(r.world.players),
     }));
-    expect(failures, JSON.stringify(failures, null, 1)).toHaveLength(0);
+    expect(failures.length, JSON.stringify(failures, null, 1)).toBeLessThanOrEqual(Math.floor(SEEDS.length / 2));
   });
 
   it('keeps PvP raid volume within 15% of the unchanged baseline on every seed', () => {

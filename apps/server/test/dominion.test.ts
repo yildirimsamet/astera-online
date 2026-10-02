@@ -67,6 +67,32 @@ describe('Dominion settlement audit', () => {
     ); }).not.toThrow();
   });
 
+  /*
+    A JOINT WAR KEEPS ITS OWN JOURNAL. Klan Ortak Savaşı books every participant's share and
+    the defender's loss straight into the ledgers and records them in
+    `clan_war_dominion_events`, not in `dominion_events`. An audit that read only the second
+    refused to close any season a clan had won a war in (found wiping a local galaxy,
+    2026-09-30): the season could never end.
+  */
+  it('reproduces a joint war\'s shares from their own journal', () => {
+    const roster = [
+      { playerId: 'lead', taken: 1559, lost: 0 },
+      { playerId: 'wing', taken: 2003, lost: 0 },
+      { playerId: 'defender', taken: 0, lost: 3562 },
+    ];
+    const joint = [
+      { playerId: 'lead', delta: 1559 },
+      { playerId: 'wing', delta: 2003 },
+      { playerId: 'defender', delta: -3562 },
+    ];
+    expect(() => { assertDominionLedgers(roster, [], MULTI_WORLD.dominionLinearRulesetVersion, joint); })
+      .not.toThrow();
+    expect(() => { assertDominionLedgers(roster, [], MULTI_WORLD.dominionLinearRulesetVersion); })
+      .toThrow(/ledger does not match journal/);
+    expect(() => { assertDominionLedgers(roster, [], MULTI_WORLD.dominionLinearRulesetVersion, joint.slice(1)); })
+      .toThrow(/ledger does not match journal/);
+  });
+
   it('reproduces a surviving opponent after the other seat was reclaimed', () => {
     expect(() => { assertDominionLedgers(
       [{ playerId: 'defender', taken: 0, lost: 70 }],

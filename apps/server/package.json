@@ -9,6 +9,7 @@
     "migrate": "tsx src/cli/migrate.ts",
     "season": "tsx src/cli/season.ts",
     "bots": "tsx src/cli/bots.ts",
+    "radiation": "tsx src/cli/radiation.ts",
     "capacity:seed": "tsx src/cli/capacity.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

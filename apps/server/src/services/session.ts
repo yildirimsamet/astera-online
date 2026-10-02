@@ -17,6 +17,7 @@ import {
   type Grade,
   type MassClass,
   type PirateLevel,
+  type RadiationSource,
 } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable } from '../db/client.js';
@@ -44,6 +45,7 @@ import { instrumentLevels, levelOf } from './intel.js';
 import { inboundRadarLead, LEAD_TOLERANCE } from './radar.js';
 import { dockEndsAt } from './trade.js';
 import { isHostileMission } from './flight.js';
+import { flightFadeAt, liveRadiationFor } from './radiation.js';
 
 /* ── the unlock cascade ─────────────────────────────────────── */
 
@@ -157,6 +159,8 @@ export type ReturnEntry =
 export interface PendingThread {
   /** The mission's own id — YOUR OWN CRAFT ONLY. Absent on `incoming`. See below. */
   id?: string;
+  /** Klan Savunma Desteği: this `transfer` is a support wave's leg, named for what it is. */
+  clanSupport?: true;
   /**
    * Set only on an outbound transfer or raid that may still be turned around — the same facts
    * `recallFlight` checks. Owner decisions 2026-09-21 (transfers) and 2026-09-23 (raids, K8).
@@ -299,6 +303,12 @@ export interface PendingThread {
     departAt: Date;
     arriveAt: Date;
   };
+  /**
+   * WHEN A CLOUD FINISHES THIS WING IN THE AIR (D15). Own flights only, and only when it
+   * will: the disc fades the craft at this moment instead of flying it to a landing that
+   * never happens. Absent on every flight that lands.
+   */
+  fadeAt?: Date;
   engagementPath?: {
     from: { x: number; y: number; z: number };
     to: { x: number; y: number; z: number };
@@ -644,6 +654,7 @@ export async function pendingThreads(
   const radarByPlanet = new Map(ownedIds.map((id) => [id, levelOf(levels, id, 'RADAR')]));
   const pending: PendingThread[] = [];
 
+  const radiation = new Map<string, RadiationSource[]>();
   for (const row of inFlight) {
     const m = row.mission;
     const minutes = Math.max(0, Math.round((m.arriveAt.getTime() - now.getTime()) / 60_000));
@@ -752,6 +763,13 @@ export async function pendingThreads(
     // Stored backwards (origin = the far world): a return leg and a rerouted leg. A turned raid is
     // stored forwards, so it is named after the world it turned back from like a return leg, K8.
     const backwards = m.kind === 'return' || m.parentMissionId !== null;
+    // Radyasyon (D15): when a cloud finishes this wing. Probes and Death Stars are not ships.
+    const fadeAt = m.kind === 'probe' || m.kind === 'death_star'
+      ? null
+      : flightFadeAt(m, {
+          origin: { x: row.originX, y: row.originY, z: row.originZ },
+          target: { x: row.targetX, y: row.targetY, z: row.targetZ },
+        }, await liveRadiationFor(db, m.seasonId, radiation));
     pending.push({
       /**
        * THE MISSION'S OWN ID, ON YOUR OWN CRAFT ONLY. D52.
@@ -771,7 +789,9 @@ export async function pendingThreads(
         ? 'probe'
         : m.kind === 'transfer' || m.kind === 'settlement' || m.kind === 'death_star'
           ? m.kind
-          : 'fleet',
+          // Klan Savunma Desteği: a friendly flight, never a raid — no bombardment where it lands.
+          : m.kind === 'clan_support' ? 'transfer' : 'fleet',
+      ...(m.kind === 'clan_support' ? { clanSupport: true as const } : {}),
       /*
         A TRANSFER IS NAMED AFTER WHERE IT IS GOING — the strip reads it as "Transfer → X". Its
         rows are not swapped like a return leg's: a rerouted leg already targets the safe world, and
@@ -835,6 +855,7 @@ export async function pendingThreads(
             departAt: m.departAt,
             arriveAt: m.arriveAt,
           },
+      ...(fadeAt === null ? {} : { fadeAt }),
     });
   }
 

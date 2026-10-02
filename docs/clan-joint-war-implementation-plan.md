@@ -1373,7 +1373,8 @@ Geliştirme başka agent tarafından tamamlandıktan sonra final reviewer şu s�
 
 ## 16. Bilinçli Olarak Kapsam Dışı
 
-- Ortak savunma veya birden fazla defender oyuncu.
+- Ortak savunma veya birden fazla defender oyuncu. *(Artık ayrı bir özellik: Klan Savunma
+  Desteği, ruleset 15 — `docs/clan-defense-support-plan.md`.)*
 - Birden fazla eşzamanlı klan hedefi.
 - Hedef değiştirme; mevcut operasyon iptal edilmelidir.
 - Klanlar arası diplomasi/savaş ilanı/ittifak sistemi.

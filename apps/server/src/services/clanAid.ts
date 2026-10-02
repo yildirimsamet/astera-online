@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, gt, inArray, or, sql } from 'drizzle-orm';
 import {
   CLAN,
+  claimDebris,
+  fleetCount,
   clanAidAllowance,
   clanBayAvailable,
   clanAidRemaining,
@@ -42,7 +44,6 @@ import { landingBlock } from './movement.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
 import {
   GameError,
-  addUnits,
   assertSeasonOpenThrough,
   assertWorldOperational,
   loadLocked,
@@ -51,6 +52,8 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
+import { landShips } from './shipDamage.js';
+import { flightWitness, settleMissionRadiation, tellRadiationLoss } from './radiation.js';
 import { planetView } from './planetView.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
 import { hullProductionAccessible } from './hullAccess.js';
@@ -172,7 +175,7 @@ const assertAidPayload = (fleet: Fleet, cargo: Resources): void => {
  * newcomer's ore flowing out while they still stand behind the shield that protects them. The
  * moment the shield lapses they may send like anybody else.
  */
-async function senderShieldUntil(
+export async function senderShieldUntil(
   db: Queryable,
   senderPlayerId: string,
   now: Date,
@@ -616,6 +619,7 @@ async function startAidReturn(
     targetPlanetId: destination.id,
     fleet: mission.fleet,
     cargo,
+    damage: mission.damage,
     tech: mission.tech,
     distance: distance(from, destination),
     departAt: now,
@@ -642,13 +646,42 @@ async function startAidReturn(
 
 export async function resolveClanAid(
   tx: Tx,
-  mission: typeof missions.$inferSelect,
+  arriving: typeof missions.$inferSelect,
   now: Date,
+  rulesetVersion: number,
 ): Promise<'DELIVERED' | 'RETURNING' | 'RETURNED'> {
-  const rootMissionId = mission.parentMissionId ?? mission.id;
+  const rootMissionId = arriving.parentMissionId ?? arriving.id;
   const [commitment] = await tx.select().from(clanAidCommitments)
     .where(eq(clanAidCommitments.missionId, rootMissionId)).for('update');
   if (!commitment) throw new Error(`clan aid ${rootMissionId} has no commitment`);
+
+  /*
+    RADYASYON FIRST (plan §3.5). An aid flight fights nothing, so a cloud is the only thing
+    that can hurt it. The last ship takes the load with it and the commitment ends where
+    it stood: delivered if the outbound leg had already landed, otherwise undelivered.
+  */
+  const dosed = await settleMissionRadiation(tx, arriving, { rulesetVersion });
+  await tellRadiationLoss(tx, flightWitness(dosed.mission), dosed, now);
+  if (fleetCount(dosed.destroyed) > 0 && fleetCount(dosed.fleet) === 0) {
+    const delivered = commitment.resolvedAt !== null;
+    await tx.update(clanAidCommitments).set(delivered
+      ? { status: 'DELIVERED' }
+      : { status: 'RETURNED', resolvedAt: now })
+      .where(eq(clanAidCommitments.missionId, rootMissionId));
+    await recomputePlayerWealth(tx, commitment.senderPlayerId);
+    await publishPrivate(tx, commitment.senderPlayerId, 'aid');
+    await publishPrivate(tx, commitment.recipientPlayerId, 'aid');
+    return delivered ? 'DELIVERED' : 'RETURNED';
+  }
+  // What is left carries what its holds can (D9), measured as the launch measured it.
+  const held = dosed.mission.cargo ?? ZERO;
+  const mission = fleetCount(dosed.destroyed) > 0
+    ? {
+        ...dosed.mission,
+        cargo: claimDebris(held.alloy, held.crystal, held.deuterium,
+          clanTransferCargoCapacity(dosed.fleet, dosed.mission.tech ?? {})),
+      }
+    : dosed.mission;
 
   if (mission.parentMissionId) {
     const [plannedTarget] = await tx.select().from(planets).where(and(
@@ -660,7 +693,13 @@ export async function resolveClanAid(
     // protected current capital is the safe ownership fallback.
     const target = plannedTarget ?? await capitalPlanet(tx, commitment.senderPlayerId);
     await clearAidUnits(tx, commitment.senderPlayerId, mission.id);
-    await addUnits(tx, target.id, mission.fleet);
+    await landShips(tx, {
+      planetId: target.id,
+      ownerPlayerId: commitment.senderPlayerId,
+      fleet: mission.fleet,
+      damage: mission.damage,
+      at: now,
+    });
     const cargo = mission.cargo ?? ZERO;
     await tx.update(planets).set({
       alloy: sql`${planets.alloy} + ${cargo.alloy}`,
@@ -709,7 +748,14 @@ export async function resolveClanAid(
       return 'RETURNING';
     }
     await clearAidUnits(tx, commitment.senderPlayerId, mission.id);
-    await addUnits(tx, target.id, mission.fleet);
+    // A gift lands as the recipient's, damage and all.
+    await landShips(tx, {
+      planetId: target.id,
+      ownerPlayerId: commitment.recipientPlayerId,
+      fleet: mission.fleet,
+      damage: mission.damage,
+      at: now,
+    });
     await tx.update(clanAidCommitments).set({ status: 'DELIVERED', resolvedAt: now })
       .where(eq(clanAidCommitments.missionId, rootMissionId));
     await recomputePlayerWealth(tx, commitment.senderPlayerId);

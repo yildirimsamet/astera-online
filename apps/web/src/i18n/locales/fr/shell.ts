@@ -253,7 +253,6 @@ export const leaderboard = {
   title: "Classement",
   empty: "Aucun commandant n’a encore rejoint cette galaxie.",
   rank: "{{rank}}e place",
-  tier: "palier {{tier}}",
   score: "Domination",
   you: "Toi",
   nearby: "Tes rivaux les plus proches",

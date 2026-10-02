@@ -7,6 +7,7 @@ import {
   missions,
   notifications,
   planets,
+  playerResearch,
   scheduledEvents,
   strategicAssets,
   strategicImpacts,
@@ -70,7 +71,6 @@ describe('the interception grid', () => {
     await setLevel(f.db, attacker, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, attacker, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await grant(f.db, attacker, 400_000, 200_000);
-    await giveResearch(f.db, attacker, 'DEATH_STAR_PROTOCOL');
     await f.db.insert(strategicAssets).values({
       planetId: attacker,
       status: 'READY',
@@ -83,7 +83,6 @@ describe('the interception grid', () => {
     // An Uplink gates the Radar, so a grid needs one before its ring exists at all.
     await giveSatellite(f.db, defender, 'UPLINK');
     await giveInstrument(f.db, defender, 'RADAR', radar);
-    await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
     await f.db.insert(strategicAssets).values({
       planetId: defender,
       type: 'INTERCEPTOR',
@@ -276,7 +275,6 @@ describe('the interception grid', () => {
      */
     it('reads the Radar rung at the moment of the shot', async () => {
       await armAttacker();
-      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
       await f.db.insert(strategicAssets).values({
         planetId: defender,
         type: 'INTERCEPTOR',
@@ -297,7 +295,6 @@ describe('the interception grid', () => {
       await armAttacker();
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', 5);
-      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
 
       // A 31-minute leg puts the normal Radar crossing before the 30-minute
       // charge completion, leaving one minute for the newly ready grid to react.
@@ -521,7 +518,6 @@ describe('the interception grid', () => {
       await armAttacker();
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
-      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
       const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
       await workerFor(f).tick();
       const crossing = await ringCheck(launched.missionId);
@@ -581,7 +577,6 @@ describe('the interception grid', () => {
       await armAttacker();
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
-      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
       const launched = await launchDeathStar(f.db, attacker, defender, f.clock);
       const readyAt = new Date(launched.arriveAt.getTime() + 10_000);
       await f.db.insert(strategicAssets).values({
@@ -601,7 +596,7 @@ describe('the interception grid', () => {
   });
 
   describe('what it takes to have one', () => {
-    it('can be built without the retired research', async () => {
+    it('needs no research for the first two charges', async () => {
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
       await expect(buildInterceptor(f.db, defender, f.clock))
@@ -609,7 +604,6 @@ describe('the interception grid', () => {
     });
 
     it('cannot be built on a world with no circle to fire along', async () => {
-      await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
       await giveSatellite(f.db, defender, 'UPLINK');
       await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar - 1);
       await expect(buildInterceptor(f.db, defender, f.clock))
@@ -618,11 +612,25 @@ describe('the interception grid', () => {
         } });
     });
 
-    it('allows a second charge but refuses a third', async () => {
+    it('allows a second charge but refuses a third without the Grid', async () => {
       await armDefender();
       await expect(buildInterceptor(f.db, defender, f.clock)).resolves.toBeTruthy();
       await expect(buildInterceptor(f.db, defender, f.clock))
-        .rejects.toMatchObject({ code: 'INTERCEPTOR_LOADED' });
+        .rejects.toMatchObject({ code: 'INTERCEPTOR_LOADED', params: { max: 2 } });
+    });
+
+    /** Owner, 2026-10-01: the Interception Grid takes a world's pad from two to four. */
+    it('holds four once the commander has researched the Grid, and never a fifth', async () => {
+      await armDefender();
+      await giveResearch(f.db, defender, 'INTERCEPTION_GRID');
+      await grant(f.db, defender, 400_000, 200_000);
+      await f.db.update(planets).set({ deuterium: 50_000 }).where(eq(planets.id, defender));
+      for (let charge = 2; charge <= 4; charge++) {
+        await expect(buildInterceptor(f.db, defender, f.clock), `charge ${String(charge)}`)
+          .resolves.toBeTruthy();
+      }
+      await expect(buildInterceptor(f.db, defender, f.clock))
+        .rejects.toMatchObject({ code: 'INTERCEPTOR_LOADED', params: { max: 4 } });
     });
 
     it('can be reloaded once it has been spent', async () => {
@@ -696,14 +704,19 @@ describe('stockpiling a second Death Star', () => {
     await setLevel(f.db, capital, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, capital, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await grant(f.db, capital, 800_000, 400_000);
-    await giveResearch(f.db, capital, 'DEATH_STAR_PROTOCOL');
     f.clock.advance(250);
   });
 
-  it('allows two by default without the retired stockpile research', async () => {
-    await buildDeathStar(f.db, capital, f.clock);
+  /** Owner, 2026-10-01: one weapon per world until the Stockpile is researched. */
+  it('allows one by default and refuses a second without the Stockpile', async () => {
+    await expect(buildDeathStar(f.db, capital, f.clock)).resolves.toBeTruthy();
     await expect(buildDeathStar(f.db, capital, f.clock))
-      .resolves.toBeTruthy();
+      .rejects.toMatchObject({ code: 'DEATH_STAR_EXISTS', params: { held: 1, allowed: 1 } });
+  });
+
+  it('needs no research at all for the first weapon', async () => {
+    expect(await f.db.select().from(playerResearch)).toHaveLength(0);
+    await expect(buildDeathStar(f.db, capital, f.clock)).resolves.toBeTruthy();
   });
 
   it('allows a second once the research is held', async () => {
@@ -717,7 +730,7 @@ describe('stockpiling a second Death Star', () => {
     await buildDeathStar(f.db, capital, f.clock);
     await buildDeathStar(f.db, capital, f.clock);
     await expect(buildDeathStar(f.db, capital, f.clock))
-      .rejects.toMatchObject({ code: 'DEATH_STAR_EXISTS' });
+      .rejects.toMatchObject({ code: 'DEATH_STAR_EXISTS', params: { held: 2, allowed: 2 } });
   });
 
   /**
@@ -772,6 +785,8 @@ describe('stockpiling a second Death Star', () => {
   /** Back to back, and each one holds a flight bay while it flies. */
   it('launches both, one after the other', async () => {
     const target = f.planetIds[1]!;
+    // D168: a Death Star strike answers to the same development band as a raid; `grant` raised the pad's Core.
+    await levelWorld(f.db, [capital, target]);
     await giveResearch(f.db, capital, 'STRATEGIC_STOCKPILE');
     for (let i = 0; i < 2; i++) {
       await f.db.insert(strategicAssets).values({
@@ -810,7 +825,6 @@ describe('the grid needs the ring to actually exist', () => {
     world = f.planetIds[0]!;
     await setLevel(f.db, world, 'CORE', 8);
     await grant(f.db, world, 200_000, 80_000);
-    await giveResearch(f.db, world, ANTI_STRATEGIC.requiredResearch);
     await giveInstrument(f.db, world, 'RADAR', 5);
   });
 
@@ -847,11 +861,13 @@ describe('what a probe brings home about a grid', () => {
     f.clock.advance(250);
   });
 
-  const probeAndRead = async () => {
+  /** `atArrival` runs with the clock on the probe's arrival, just before it looks. */
+  const probeAndRead = async (atArrival?: () => Promise<unknown>) => {
     const { launchProbe } = await import('../src/services/intel.js');
     const { probeReports } = await import('../src/db/schema.js');
     const probe = await launchProbe(f.db, mine, target, f.clock);
     f.clock.set(probe.arriveAt);
+    await atArrival?.();
     await workerFor(f).tick();
     f.clock.advance(600);
     await workerFor(f).tick();
@@ -859,22 +875,26 @@ describe('what a probe brings home about a grid', () => {
     return report;
   };
 
-  it('says so when the world is loaded', async () => {
+  /**
+   * HOW MANY, NOT WHETHER. Owner, 2026-10-01: a pad holds two or four, and one charge
+   * stops one weapon, so the count is exactly how many worlds a strike has to come from.
+   */
+  it('counts the ready charges on a loaded world', async () => {
     await giveSatellite(f.db, target, 'UPLINK');
     await giveInstrument(f.db, target, 'RADAR', ANTI_STRATEGIC.requiredRadar);
-    await f.db.insert(strategicAssets).values({
+    await f.db.insert(strategicAssets).values([1, 2, 3].map(() => ({
       planetId: target,
-      type: 'INTERCEPTOR',
-      status: 'READY',
+      type: 'INTERCEPTOR' as const,
+      status: 'READY' as const,
       startedAt: f.clock.now(),
       remainingSeconds: 0,
-    });
+    })));
 
-    expect((await probeAndRead())?.silhouette?.interceptor).toBe(true);
+    expect((await probeAndRead())?.silhouette?.interceptors).toBe(3);
   });
 
-  it('says so when it is not', async () => {
-    expect((await probeAndRead())?.silhouette?.interceptor).toBe(false);
+  it('says zero when it is not loaded', async () => {
+    expect((await probeAndRead())?.silhouette?.interceptors).toBe(0);
   });
 
   /**
@@ -891,9 +911,9 @@ describe('what a probe brings home about a grid', () => {
   it('does not report a loading charge as a Death Star under construction', async () => {
     /*
       A PROBE ONLY REPORTS THE STRATEGIC FIELD ABOVE `probeVisibilityAccuracy`, and
-      accuracy comes off the Shipyard against the target's Veil. The three tests
-      above read `silhouette.interceptor`, which has no such gate, so the harness
-      never needed one.
+      accuracy comes off the Shipyard against the target's Veil. The tests above
+      read `silhouette.interceptors`, which has no such gate, so the harness never
+      needed one.
     */
     await setLevel(f.db, mine, 'SHIPYARD', 4);
     await giveSatellite(f.db, target, 'UPLINK');
@@ -909,15 +929,15 @@ describe('what a probe brings home about a grid', () => {
 
     const report = await probeAndRead();
     expect(report?.strategicStatus).toBe('NONE');
-    expect(report?.silhouette?.interceptor).toBe(false);
+    expect(report?.silhouette?.interceptors).toBe(0);
   });
 
   it('still reports a real weapon standing beside a charge', async () => {
     /*
       A PROBE ONLY REPORTS THE STRATEGIC FIELD ABOVE `probeVisibilityAccuracy`, and
-      accuracy comes off the Shipyard against the target's Veil. The three tests
-      above read `silhouette.interceptor`, which has no such gate, so the harness
-      never needed one.
+      accuracy comes off the Shipyard against the target's Veil. The tests above
+      read `silhouette.interceptors`, which has no such gate, so the harness never
+      needed one.
     */
     await setLevel(f.db, mine, 'SHIPYARD', 4);
     await f.db.insert(strategicAssets).values([
@@ -980,7 +1000,39 @@ describe('what a probe brings home about a grid', () => {
       remainingSeconds: 0,
     });
 
-    expect((await probeAndRead())?.silhouette?.interceptor).toBe(false);
+    expect((await probeAndRead())?.silhouette?.interceptors).toBe(0);
+  });
+
+  /**
+   * AND A COLONY'S LOYALTY, because a Death Star now costs a colony twenty points of it
+   * and takes the world at twenty or less. Owner, 2026-10-01: the attacker sees it.
+   */
+  it('reads a colony’s loyalty as it stands at the look', async () => {
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, target));
+
+    const report = await probeAndRead(() => f.db.update(planets)
+      .set({ loyalty: 43, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, target)));
+
+    expect(report?.silhouette?.loyalty).toBe(43);
+  });
+
+  /**
+   * ROUNDED UP, so the figure is an honest reading of the rule it serves: a colony shown
+   * at twenty or less really is at twenty or less, and a hit really does take it.
+   */
+  it('rounds a fractional loyalty up rather than towards the threshold', async () => {
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, target));
+
+    const report = await probeAndRead(() => f.db.update(planets)
+      .set({ loyalty: 20.3, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, target)));
+
+    expect(report?.silhouette?.loyalty).toBe(21);
+  });
+
+  it('brings home no loyalty from a capital, which has none', async () => {
+    expect((await probeAndRead())?.silhouette?.loyalty).toBeUndefined();
   });
 });
 
@@ -1011,7 +1063,6 @@ describe('two weapons against one charge', () => {
 
     await giveSatellite(f.db, defender, 'UPLINK');
     await giveInstrument(f.db, defender, 'RADAR', ANTI_STRATEGIC.requiredRadar);
-    await giveResearch(f.db, defender, ANTI_STRATEGIC.requiredResearch);
     await f.db.insert(strategicAssets).values({
       planetId: defender,
       type: 'INTERCEPTOR',
@@ -1024,7 +1075,6 @@ describe('two weapons against one charge', () => {
       await setLevel(f.db, world, 'CORE', DEATH_STAR.requiredCore);
       await setLevel(f.db, world, 'SHIPYARD', DEATH_STAR.requiredShipyard);
       await grant(f.db, world, 400_000, 200_000);
-      await giveResearch(f.db, world, 'DEATH_STAR_PROTOCOL');
       await f.db.insert(strategicAssets).values({
         planetId: world,
         status: 'READY',
@@ -1262,8 +1312,6 @@ describe('a strategic build that gives up', () => {
     await setLevel(f.db, world, 'CORE', DEATH_STAR.requiredCore);
     await setLevel(f.db, world, 'SHIPYARD', DEATH_STAR.requiredShipyard);
     await grant(f.db, world, 400_000, 200_000);
-    await giveResearch(f.db, world, 'DEATH_STAR_PROTOCOL');
-    await giveResearch(f.db, world, ANTI_STRATEGIC.requiredResearch);
     await giveSatellite(f.db, world, 'UPLINK');
     await giveInstrument(f.db, world, 'RADAR', ANTI_STRATEGIC.requiredRadar);
   });

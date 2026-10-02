@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ApiError } from '../src/api/client.js';
 import { describeError } from '../src/i18n/errors.js';
 import i18n from '../src/i18n/index.js';
+import { LANGUAGES } from '../src/i18n/languages.js';
 
 /**
  * EVERY REFUSAL THE MOVEMENT PACKAGE ADDED, IN THE PLAYER'S LANGUAGE. Self-review 2026-09-23, R4.
@@ -11,7 +12,7 @@ import i18n from '../src/i18n/index.js';
  * called back". Each one is asserted to come back in Turkish, with its figures, and NOT as the
  * server's sentence.
  */
-const LOCALES = ['en', 'tr', 'de', 'es', 'fr'] as const;
+const LOCALES = LANGUAGES;
 const CODES = [
   ['BAD_PACE', {}],
   ['PACE_TOO_SLOW', {}],

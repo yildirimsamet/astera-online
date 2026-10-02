@@ -27,7 +27,9 @@ export function BaseQueues({ planet }: { planet: PlanetView }) {
   const say = useToast();
   const [open, setOpen] = useState(false);
   const queues = planet.queues ?? { CONSTRUCTION: [], YARD: [] };
-  const working = queues.CONSTRUCTION.length + queues.YARD.length;
+  // The Repair Station's lane shows only while it works (Kalıcı gemi hasarı).
+  const repairs = queues.REPAIR ?? [];
+  const working = queues.CONSTRUCTION.length + queues.YARD.length + repairs.length;
 
   if (working === 0) {
     return (
@@ -61,6 +63,9 @@ export function BaseQueues({ planet }: { planet: PlanetView }) {
     <section aria-label={t('planet.queue.title')} className="flex flex-col gap-2">
       <QueueLane label={t('planet.queue.construction')} orders={queues.CONSTRUCTION} now={now} onOpen={() => { setOpen(true); }} />
       <QueueLane label={t('planet.queue.yard')} orders={queues.YARD} now={now} onOpen={() => { setOpen(true); }} />
+      {repairs.length > 0 && (
+        <QueueLane label={t('planet.queue.repair')} orders={repairs} now={now} onOpen={() => { setOpen(true); }} />
+      )}
       {open && (
         <QueueSheet
           queues={queues}

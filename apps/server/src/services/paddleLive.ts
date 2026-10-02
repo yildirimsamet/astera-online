@@ -2,12 +2,21 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
 import { and, desc, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { z } from 'zod';
-import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
+import type { PlanetSkinId } from '@astera/rules';
 import type { Db } from '../db/client.js';
 import { accounts, cosmeticEntitlements, paddleReversals, paddleSkinOrders, paddleWebhookEvents, planets, players } from '../db/schema.js';
 import type { Env } from '../env.js';
 import { GameError } from './planet.js';
 import { publishShard } from '../stream/bus.js';
+
+// The Paddle catalog has no Japan price. Keep that dormant checkout route on
+// the offers it can actually fulfill; Japan uses the live Polar product.
+export const paddleItemIds = [
+  'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
+  'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain',
+  'bundle',
+] as const satisfies readonly (PlanetSkinId | 'bundle')[];
+export type PaddleItemId = (typeof paddleItemIds)[number];
 
 export const LIVE_PRICE_IDS = {
   'planet-lava': 'pri_01m3fwr44wjzkbenrjctb9k6dd',
@@ -19,9 +28,9 @@ export const LIVE_PRICE_IDS = {
   'planet-france': 'pri_01m3fx6rg3nsn9nd3j179287hg',
   'planet-spain': 'pri_01m3fx85a9gb6gpkbbrjjry73p',
   bundle: 'pri_01m3fx3943k024e12yb67a49r1',
-} as const satisfies Record<PlanetSkinId | 'bundle', string>;
+} as const satisfies Record<PaddleItemId, string>;
 
-export function priceIdsFor(env: Env): Record<PlanetSkinId | 'bundle', string> {
+export function priceIdsFor(env: Env): Record<PaddleItemId, string> {
   return {
     'planet-lava': env.PADDLE_PRICE_LAVA,
     'planet-ice': env.PADDLE_PRICE_ICE,
@@ -35,8 +44,6 @@ export function priceIdsFor(env: Env): Record<PlanetSkinId | 'bundle', string> {
   };
 }
 
-export type PaddleItemId = keyof typeof LIVE_PRICE_IDS;
-export const paddleItemIds = [...PLANET_SKIN_IDS, 'bundle'] as const;
 export const bundleSkinIds = ['planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert'] as const;
 const skinsFor = (itemId: PaddleItemId): readonly PlanetSkinId[] => itemId === 'bundle' ? bundleSkinIds : [itemId];
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { COMBAT_HULLS, HULLS, fleetEntries, missionFuel } from '@astera/rules';
+import {
+  COMBAT_HULLS, HULLS, fleetEntries, missionFuel, mulberry32, needsDock, resolveCombat, resourceValue, shipRepairCost,
+} from '@astera/rules';
 import { economicFleetValue, fleetAtEconomicBudget, fleetAtWallet, measureFleetBattle, runFleetCalibration } from '../src/fleet-calibration.js';
 
 /**
@@ -142,5 +144,33 @@ describe('economic fleet calibration uses the real resolver', () => {
       expect(row.result.meanExchange, `${row.higher} against ${row.lower}`).toBeGreaterThan(0);
       expect(row.result.meanAttackerRetained).toBeGreaterThan(row.result.meanDefenderRetained);
     }
+  });
+
+  /*
+    KALICI GEMİ HASARI, PRICED. `plan.md` F7.
+
+    A survivor carried out over 20% damaged waits in the Repair Station, and its repair
+    is a bill the fight left behind. Measured at full price (no Industrial), for both
+    sides, from the resolver's own damage lists — so the calibration can say whether
+    that bill moves any exchange it reports.
+  */
+  it('prices the Repair Station bill each side carries out of a fight', () => {
+    const attacker = { DART: 2 }, defender = { STRONGHOLD: 1 };
+    const r = measureFleetBattle(attacker, defender, { samples: 16 });
+    let a = 0, d = 0;
+    for (let seed = 1; seed <= 16; seed++) {
+      const fight = resolveCombat(attacker, defender, 0, mulberry32(seed), { attacker: { tech: {} }, defender: { tech: {} } });
+      a += resourceValue(shipRepairCost(fight.attackerDamage.filter((lot) => needsDock(lot.damageBp)), 100)) / 16;
+      d += resourceValue(shipRepairCost(fight.defenderDamage.filter((lot) => needsDock(lot.damageBp)), 100)) / 16;
+    }
+    expect(a).toBeGreaterThan(0);
+    expect(d).toBeGreaterThan(0);
+    expect(r.meanAttackerRepair).toBeCloseTo(a, 6);
+    expect(r.meanDefenderRepair).toBeCloseTo(d, 6);
+  });
+
+  it('bills nothing for a walkover, and nothing for guns on the ground', () => {
+    expect(measureFleetBattle({ DART: 3 }, {}, { samples: 8 }).meanAttackerRepair).toBe(0);
+    expect(measureFleetBattle({ DART: 1 }, { THORN: 4 }, { samples: 8 }).meanDefenderRepair).toBe(0);
   });
 });

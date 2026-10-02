@@ -147,6 +147,11 @@ export const fleetPage = {
 
 /** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
 export const reportScene = {
+  damageTitle: "Sortis endommagés",
+  damageLot: "{{name}} ×{{count}} · {{pct}} % de dégâts",
+  toDock: "à la Station de réparation",
+  patched: "réparé gratuitement",
+  landing: "Évalués à l’atterrissage : au-delà de 20 %, ils attendent une réparation ; le reste est réparé gratuitement.",
   eyebrow: "Rapport de combat · {{planet}}",
   rounds_one: "{{count}} tour",
   rounds_other: "{{count}} tours",
@@ -181,9 +186,7 @@ export const baseSwitch = {
 /** E8 · K9: the research constellation. */
 export const researchMap = {
   label: 'Carte de recherche',
-  closed: '{{group}} · fermé',
   /** The strategic three while their release switch is off: the server refuses them. */
-  shut: 'Fermé pour l’instant',
   /** A prerequisite already held, said on the card. */
   needs: 'Requiert {{name}}',
   /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
@@ -252,4 +255,58 @@ export const outline = {
   filled: '{{count}} sur {{total}}',
   threat_one: '{{count}} attaque en approche',
   threat_other: '{{count}} attaques en approche',
+};
+
+/** The Repair Station (Kalıcı gemi hasarı, `plan.md` F4/F6). */
+export const repairStation = {
+  order: "Réparation · {{name}}",
+  all: "vaisseaux mixtes",
+  title: "Station de réparation",
+  role: "Les vaisseaux endommagés attendent ici jusqu’à leur réparation.",
+  tagline: "Rend les vaisseaux endommagés à la flotte.",
+  idle: "Aucun vaisseau endommagé sur ce monde.",
+  waitingShips_one: "{{count}} vaisseau en attente",
+  waitingShips_other: "{{count}} vaisseaux en attente",
+  repairingShips_one: "{{count}} en réparation",
+  repairingShips_other: "{{count}} en réparation",
+  queueFill: "File {{used}}/{{total}}",
+  statWaiting: "En attente",
+  statRepairing: "En réparation",
+  statQueue: "File",
+  outOfAction: "Un vaisseau endommagé à plus de 20 % attend ici : il ne peut ni voler ni défendre avant d’être réparé.",
+  howItWorks: "Comment ça marche",
+  ruleFree: "Les dégâts de 20 % ou moins, d’une bataille ou de la radiation, sont réparés gratuitement.",
+  rulePrice: "Prix : la part endommagée d’un vaisseau neuf. Un vaisseau endommagé à 40 % coûte 40 % d’un neuf.",
+  ruleTime: "Durée : la même part de son temps de construction. Les niveaux de {{shipyard}} et {{automation}} la raccourcissent.",
+  ruleIndustrial: "La recherche {{industrial}} réduit prix et durée à 75 %, puis à 50 %.",
+  youPay: "Tu paies {{pct}} % maintenant.",
+  ruleQueue: "Les travaux se suivent, jusqu’à {{depth}} en file, à part de la file du Chantier naval.",
+  ruleCancel: "Une annulation rend la moitié du prix ; les vaisseaux attendent à nouveau.",
+  industrialChip: "{{industrial}} −{{off}} %",
+  damagedHeading: "Vaisseaux endommagés",
+  selectAll: "Tout choisir",
+  selectNone: "Vider",
+  choose: "Réparer {{name}} ×{{count}}",
+  noneWaiting: "Aucun vaisseau n’attend de réparation.",
+  damaged: "{{pct}} % endommagé",
+  share: "{{pct}} % d’un vaisseau neuf",
+  queueHeading: "File de réparation",
+  queueEmpty: "Rien en réparation.",
+  finishing: "Se termine…",
+  startsIn: "commence dans {{time}}",
+  ends: "terminé dans {{time}}",
+  selected_one: "{{count}} vaisseau choisi",
+  selected_other: "{{count}} vaisseaux choisis",
+  afterQueue: "Commence après la file, dans {{time}}",
+  repairSelected_one: "Réparer {{count}} vaisseau",
+  repairSelected_other: "Réparer {{count}} vaisseaux",
+  pick: "Choisis les vaisseaux à réparer",
+  queueFullShort: "File pleine · {{used}}/{{total}}",
+  tooMany: "Choisis au plus {{max}} lignes, ou tout",
+  starting: "Démarrage…",
+  cancel: "Annuler",
+  docked_one: "{{count}} en réparation",
+  docked_other: "{{count}} en réparation",
+  started: "Réparation lancée",
+  queue: "Station de réparation",
 };

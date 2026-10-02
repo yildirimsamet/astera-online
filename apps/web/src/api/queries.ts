@@ -737,6 +737,59 @@ export function useClanWarActions() {
   };
 }
 
+/* ── klan savunma desteği ─────────────────────────────────────── */
+
+/** My waves still out — the Fleet page's "Klan desteği" group. */
+export function useMySupport(enabled = true) {
+  const api = useApi();
+  return useQuery({ queryKey: keys.clanSupport, queryFn: api.mySupport, enabled, ...READ });
+}
+
+/**
+ * EVERY CLAN SUPPORT WRITE. A send answers with the origin world, written straight into
+ * the cache (D53); a turn changes the host's bay and the sender's list, which the private
+ * `clan-support` event also refetches on the other commander's screen.
+ */
+export function useClanSupportActions() {
+  const api = useApi();
+  const client = useQueryClient();
+  const applyPlanet = useApplyPlanet();
+  const refresh = (): void => {
+    void client.invalidateQueries({ queryKey: keys.clanSupport });
+    void client.invalidateQueries({ queryKey: keys.planet });
+    void client.invalidateQueries({ queryKey: keys.planets });
+    void client.invalidateQueries({ queryKey: keys.pending });
+  };
+  return {
+    quote: useMutation({ mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+      api.quoteClanSupport(input) }),
+    send: useMutation({
+      mutationFn: (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) => api.sendClanSupport(input),
+      onSuccess: async (result) => {
+        await applyPlanet(result.planet);
+        refresh();
+      },
+    }),
+    recall: useMutation({ mutationFn: (waveId: string) => api.recallClanSupport(waveId), onSuccess: refresh }),
+    sendBack: useMutation({ mutationFn: (waveId: string) => api.sendBackClanSupport(waveId), onSuccess: refresh }),
+  };
+}
+
+/** Kaydet on the Hangar page's two toggles; the answer is the whole world. */
+export function useSetDefencePosture() {
+  const api = useApi();
+  const client = useQueryClient();
+  const applyPlanet = useApplyPlanet();
+  return useMutation({
+    mutationFn: ({ planetId, escape, support }: { planetId: string; escape: boolean; support: boolean }) =>
+      api.setDefencePosture(planetId, { escape, support }),
+    onSuccess: async (result) => {
+      await applyPlanet(result.planet);
+      if (result.returnedWaves > 0) void client.invalidateQueries({ queryKey: keys.clanSupport });
+    },
+  });
+}
+
 export function useClanEvents(enabled = true) {
   const api = useApi();
   return useInfiniteQuery({
@@ -776,6 +829,7 @@ export function useClanActions() {
     refreshClan();
     void client.invalidateQueries({ queryKey: keys.galaxy });
     void client.invalidateQueries({ queryKey: keys.leaderboard });
+    void client.invalidateQueries({ queryKey: keys.season });
   };
 
   const create = useMutation({
@@ -1707,6 +1761,32 @@ export function useCancelBuildOrder() {
   });
 }
 
+/**
+ * THE REPAIR STATION, at any world the commander holds — the dock a fight left damaged
+ * ships in is as often a colony as the capital. Authoritative rather than predicted: the
+ * price is the server's, and the answer is the whole world, applied where it belongs.
+ */
+export function useStartRepair() {
+  const api = useApi();
+  const apply = useApplyPlanet();
+  return useMutation({
+    mutationFn: ({ planetId, request }: { planetId: string; request: { lotIds: string[] } | { all: true } }) =>
+      api.startRepair(planetId, request),
+    onSuccess: async (result) => { await apply(result.planet, false); },
+  });
+}
+
+/** A repair job cancelled from the Repair Station, at the world it runs at: half back, floored. */
+export function useCancelRepair() {
+  const api = useApi();
+  const apply = useApplyPlanet();
+  return useMutation({
+    mutationFn: ({ planetId, orderId }: { planetId: string; orderId: string }) =>
+      api.cancelBuildOrder(planetId, orderId),
+    onSuccess: async (result) => { await apply(result.planet, false); },
+  });
+}
+
 /** Discovery is history-derived, so only placement of an already-visible project is predicted. */
 export function useCompleteResearch() {
   const api = useApi();
@@ -2128,12 +2208,15 @@ export function useLaunch() {
   return useMutation({
     scope: lane.scope,
     mutationFn: (
-      { targetPlanetId, fleet, acknowledgeShieldLoss, pace }:
-      { targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace },
+      { targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation }:
+      {
+        targetPlanetId: string; fleet: Fleet; acknowledgeShieldLoss?: boolean; pace?: MissionPace;
+        acknowledgeRadiation?: boolean;
+      },
     ) =>
       activePlanetId
-        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace)
-        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace),
+        ? api.launch(activePlanetId, targetPlanetId, fleet, acknowledgeShieldLoss, pace, acknowledgeRadiation)
+        : api.launch(targetPlanetId, fleet, undefined, acknowledgeShieldLoss, pace, acknowledgeRadiation),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       /**
@@ -2171,13 +2254,15 @@ export function useTransfer(originPlanetId: string) {
   const lane = usePlanetMutationLane(originPlanetId);
   return useMutation({
     scope: lane.scope,
-    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan }: {
+    mutationFn: ({ targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation }: {
       targetPlanetId: string;
       fleet: Fleet;
       cargo: { alloy: number; crystal: number; deuterium: number };
       pace?: MissionPace;
       returnPlan: TransferReturnPlan;
-    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace, returnPlan),
+      /** The commander has read what radiation on this route would take (plan D10). */
+      acknowledgeRadiation?: boolean;
+    }) => api.transfer(originPlanetId, targetPlanetId, fleet, cargo, pace, returnPlan, acknowledgeRadiation),
     onMutate: lane.enter,
     onSuccess: async (result) => {
       await Promise.all([

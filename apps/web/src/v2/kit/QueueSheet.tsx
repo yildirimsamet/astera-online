@@ -7,11 +7,15 @@ import { CancelConfirm } from '../../ui/QueueStrip.js';
 import { OrderLeft, OrderName, OrderRing } from './QueueLane.js';
 import { Sheet } from './Sheet.js';
 
-type Lanes = Record<'CONSTRUCTION' | 'YARD', readonly BuildOrderView[]>;
+type Lanes = Record<'CONSTRUCTION' | 'YARD', readonly BuildOrderView[]> & {
+  /** The Repair Station's lane, listed only while it works. */
+  REPAIR?: readonly BuildOrderView[];
+};
 
 const LANES = [
   ['CONSTRUCTION', 'planet.queue.construction'],
   ['YARD', 'planet.queue.yard'],
+  ['REPAIR', 'planet.queue.repair'],
 ] as const;
 
 export interface QueueSheetProps {
@@ -48,11 +52,11 @@ export function QueueSheet({ queues, now, cancelling, onCancel, onClose }: Queue
         }}
       >
         <div className="flex flex-col gap-3">
-          {LANES.map(([lane, label]) => (
+          {LANES.filter(([lane]) => lane !== 'REPAIR' || (queues.REPAIR?.length ?? 0) > 0).map(([lane, label]) => (
             <Lane
               key={lane}
               label={t(label)}
-              orders={queues[lane]}
+              orders={queues[lane] ?? []}
               now={now}
               cancelling={cancelling}
               onAsk={setAsking}

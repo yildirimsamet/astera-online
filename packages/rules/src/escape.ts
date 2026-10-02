@@ -1,4 +1,11 @@
-import { resolveJointCombat, type CombatSide, type JointAttackerStack, type JointCombatResult } from './combat.js';
+import {
+  resolveBattle,
+  type BattleResult,
+  type CombatSide,
+  type DefenderStack,
+  type JointAttackerStack,
+} from './combat.js';
+import type { DefencePosture } from './clanSupport.js';
 import { ESCAPE, MULTI_WORLD } from './constants.js';
 import { missionFuel } from './fuel.js';
 import { HULLS, combatValue, fleetCount, fleetEntries } from './hulls.js';
@@ -91,13 +98,19 @@ export type EscapeVerdict = 'RUN' | 'STAND' | 'UNSURE';
  * RUN is still conditional: the tank is never known to a raider. In ruleset 13
  * the probe also cannot establish the five-ship floor from a power band, so a
  * power-only RUN becomes UNSURE.
+ *
+ * `posture` is the world's defence posture as the probe read it (Klan Savunma Desteği,
+ * ruleset 15). A SUPPORT or HOLD world has switched the retreat off, so its line
+ * always STANDs; absent means a season without postures, where the rule decides.
  */
 export function escapeVerdict(
   wingPower: number,
   wall: { low: number; high: number },
   clears: { low: number; high: number },
   minimumShipRule = false,
+  posture?: DefencePosture,
 ): EscapeVerdict {
+  if (posture !== undefined && posture !== 'ESCAPE') return 'STAND';
   const at = wingPower / ESCAPE.ratio;
   if (wall.low > at || wall.low >= clears.high) return 'STAND';
   if (wall.high <= at && wall.high < clears.low) return minimumShipRule ? 'UNSURE' : 'RUN';
@@ -111,7 +124,8 @@ export type EscapeOutcome =
   | { kind: 'STRANDED'; ships: Fleet; fuel: number; available: number };
 
 export interface RaidResolution {
-  result: JointCombatResult;
+  /** The battle, with `defenders[0]` the host and any further stack a stationed wave. */
+  result: BattleResult;
   /** Null when the rule never came into it: off, nothing to lift, or not outmatched and wiped. */
   escape: EscapeOutcome | null;
 }
@@ -133,6 +147,14 @@ export interface RaidInput {
   escape: boolean;
   /** Five in ruleset 13 onward, zero for seasons dealt the earlier escape rule. */
   minimumCombatShips: number;
+  /**
+   * CLANMATES' STATIONED WAVES IN THIS LINE (Klan Savunma Desteği). A supported world's
+   * posture is SUPPORT, which never lifts — so `escape` must be false when any wave is
+   * here, and asking otherwise is a caller bug, refused rather than guessed at.
+   */
+  support?: readonly DefenderStack[];
+  /** Who the host is, for the outcome rows. Empty where nobody asks. */
+  hostPlayerId?: string;
 }
 
 /** Whole drops only, and a tank the row cannot vouch for is empty. */
@@ -140,9 +162,17 @@ const tankOf = (deuterium: number): number =>
   Number.isFinite(deuterium) ? Math.floor(Math.max(0, deuterium)) : 0;
 
 export function resolveRaid(input: RaidInput): RaidResolution {
-  const standing = resolveJointCombat(
-    input.stacks, input.line, input.shield, input.rng(), input.defender,
-  );
+  const host = (line: Fleet): DefenderStack =>
+    ({ stackId: 'host', playerId: input.hostPlayerId ?? '', fleet: line, tech: input.defender });
+  const support = input.support ?? [];
+  if (support.length > 0) {
+    if (input.escape) throw new RangeError('a line holding clan support never lifts');
+    return {
+      result: resolveBattle(input.stacks, [host(input.line), ...support], input.shield, input.rng()),
+      escape: null,
+    };
+  }
+  const standing = resolveBattle(input.stacks, [host(input.line)], input.shield, input.rng());
   if (!input.escape) return { result: standing, escape: null };
 
   const ships = escapingShips(input.line);
@@ -166,6 +196,6 @@ export function resolveRaid(input: RaidInput): RaidResolution {
   for (const [id, count] of fleetEntries(input.line)) {
     if (HULLS[id].ground) guns[id] = count;
   }
-  const result = resolveJointCombat(input.stacks, guns, input.shield, input.rng(), input.defender);
+  const result = resolveBattle(input.stacks, [host(guns)], input.shield, input.rng());
   return { result, escape: { kind: 'ESCAPED', ships, fuel } };
 }

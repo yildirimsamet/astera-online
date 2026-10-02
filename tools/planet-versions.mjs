@@ -25,7 +25,7 @@ export function writePlanetVersions() {
   for (const folder of FOLDERS) {
     for (const name of readdirSync(join(PUBLIC, folder)).sort()) {
       const defaultWorld = /^planet_\d+(-lod|-far)?\.(png|glb)$/.test(name);
-      const countryWorld = /^planet[-_](turkey|germany|france|spain)(-lod)?\.(png|glb)$/.test(name);
+      const countryWorld = /^planet[-_](turkey|germany|france|spain|japan)(-lod)?\.(png|glb)$/.test(name);
       if (!defaultWorld && !countryWorld) continue;
       const bytes = readFileSync(join(PUBLIC, folder, name));
       versions[`${folder}/${name}`] = createHash('sha256').update(bytes).digest('hex').slice(0, 10);

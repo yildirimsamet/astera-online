@@ -1405,8 +1405,32 @@ describe('every payload the client parses', () => {
     expect(report, 'the delivered report never reached the payload').toBeDefined();
     expect(report?.doctrines, 'the doctrine reading was dropped on the way out')
       .toEqual({ SHIP_POWER: 2 });
-    expect(report?.interceptor, 'the interceptor reading was dropped on the way out')
-      .toBe(true);
+    expect(report?.interceptors, 'the interceptor count was dropped on the way out')
+      .toBe(1);
+    // A capital has no loyalty, so the reading is absent rather than invented.
+    expect(report?.loyalty).toBeUndefined();
+  });
+
+  /** A colony's loyalty travels too: a Death Star takes a colony at twenty or less. */
+  it('GET /api/intel delivers the loyalty a probe read off a colony', async () => {
+    const [mine, theirs] = f.planetIds as [string, string];
+    await f.db.update(planets).set({ kind: 'COLONY' }).where(eq(planets.id, theirs));
+    await grant(f.db, mine, 20_000, 5_000);
+
+    const launch = await launchProbe(f.db, mine, theirs, f.clock);
+    const worker = new EventWorker(
+      f.db, f.clock, { pollMs: 1000, batch: 100, staleMinutes: 5 }, silent,
+    );
+    f.clock.set(launch.arriveAt);
+    await f.db.update(planets).set({ loyalty: 37, lastTickAt: f.clock.now() })
+      .where(eq(planets.id, theirs));
+    await worker.tick();
+    f.clock.advance(launch.flightMinutes * 3);
+    await worker.tick();
+
+    const parsed = intelSchema.parse(await get('/api/intel'));
+    const report = parsed.probeReports.find((r) => r.targetPlanetId === theirs);
+    expect(report?.loyalty).toBe(37);
   });
 
   /**
@@ -1660,6 +1684,8 @@ describe('every payload the client parses', () => {
     await f.db.update(planets)
       .set({ alloy: 400_000, crystal: 200_000, deuterium: 40_000 })
       .where(eq(planets.id, origin));
+    // D168: a Death Star strike answers to the same development band as a raid.
+    await levelWorld(f.db, f.planetIds);
     // The retired research chain cannot be bought; the live build route must work without it.
     const built = deathStarBuildSchema.parse(await post(`/api/planets/${origin}/death-star/build`, {}));
     expect(built.planet.planet.id).toBe(origin);

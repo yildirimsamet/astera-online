@@ -28,6 +28,9 @@ type Pricing = z.infer<typeof polarPricingSchema>;
 type ItemId = PlanetSkinId | 'bundle';
 type PriceQuote = Pick<Pricing['prices'][string], 'formatted' | 'currencyCode'>;
 type PriceMap = Partial<Record<ItemId, PriceQuote>>;
+const EUR_ONLY_COUNTRY_SKINS = new Set<ItemId>(
+  SKIN_COLLECTIONS.country.ids.filter((id) => id !== 'planet-turkey'),
+);
 
 /** Embers rising from the world: where, when and how fast, fixed so a render never reshuffles them. */
 const EMBERS = [
@@ -97,21 +100,26 @@ export function SkinShopContent({
   const [status, setStatus] = useState<PlanetSkinStatus>('NORMAL');
   const locale = t('units.numberLocale');
   const currency: Currency = prices['planet-lava']?.currencyCode ?? (countryCode ? 'EUR' : 'TRY');
-  const money = (itemId: ItemId, amounts: Readonly<Record<Currency, number>>): string => {
+  const quoteFor = (itemId: ItemId): PriceQuote | undefined => {
     const quote = prices[itemId];
-    return quote?.formatted ?? priceText(amounts[quote?.currencyCode ?? currency], quote?.currencyCode ?? currency, locale);
+    return EUR_ONLY_COUNTRY_SKINS.has(itemId) && quote?.currencyCode !== 'EUR' ? undefined : quote;
+  };
+  const money = (itemId: ItemId, amounts: Readonly<Record<Currency, number>>): string => {
+    const quote = quoteFor(itemId);
+    const fallbackCurrency = EUR_ONLY_COUNTRY_SKINS.has(itemId) ? 'EUR' : currency;
+    return quote?.formatted ?? priceText(amounts[fallbackCurrency], fallbackCurrency, locale);
   };
   const lira = (amount: number): string => priceText(amount, 'TRY', locale);
   const look = PLANET_SKIN_CATALOG[selected];
   const name = t(look.nameKey);
   const mine = owned.has(selected);
-  const buyReady = enabled && Boolean(prices[selected]) && Boolean(onPurchase);
+  const buyReady = enabled && Boolean(quoteFor(selected)) && Boolean(onPurchase);
   const bundleReady = enabled && Boolean(prices.bundle) && Boolean(onPurchase);
   const buy = (): void => { void onPurchase(selected); };
   const bundleBuy = (): void => { void onPurchase('bundle'); };
   const offerSet = activeCollection === 'elemental' && SKIN_COLLECTIONS.elemental.ids.every((id) => !owned.has(id));
-  const shopierAllowed = (itemId: ItemId): boolean => !countryCode
-    || (countryCode === 'TR' && prices[itemId]?.currencyCode === 'TRY');
+  const shopierAllowed = (itemId: ItemId): boolean => !EUR_ONLY_COUNTRY_SKINS.has(itemId)
+    && (!countryCode || (countryCode === 'TR' && prices[itemId]?.currencyCode === 'TRY'));
   const shopier = mine || !shopierAllowed(selected) ? null : SHOPIER_LINKS[selected];
   const bundleShopier = shopierAllowed('bundle') ? SHOPIER_LINKS.bundle : null;
   const canPay = buyReady || bundleReady || shopier !== null || (offerSet && bundleShopier !== null);
@@ -248,10 +256,10 @@ export function SkinShopContent({
           </div>
         )}
 
-        {/* THE FOUR, TO COMPARE: each in its own colour, its price or that it is already yours. */}
+        {/* The collection is visible together so players can compare looks and ownership. */}
         <section aria-label={t('skins.collection')} className="mt-5">
           <p className="mb-2 text-micro font-semibold uppercase tracking-wide text-v2-ink-3">{t('skins.collection')}</p>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-2 ${activeCollection === 'country' ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
             {collectionIds.map((id) => {
               const item = PLANET_SKIN_CATALOG[id];
               const chosen = selected === id;

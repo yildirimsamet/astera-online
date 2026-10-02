@@ -244,7 +244,7 @@ describe('world identity on the disc', () => {
           },
           {
             playerId: 'ally', username: 'Ada',
-            worlds: [{ planetId: 'hidden', name: 'Lantern', position: { x: 1800, y: 0, z: 0 } }],
+            worlds: [{ planetId: 'hidden', name: 'Lantern', position: { x: 1800, y: 0, z: 0 }, supportOpen: true }],
           },
         ],
       },
@@ -266,6 +266,8 @@ describe('world identity on the disc', () => {
       name: 'Lantern',
       owner: 'Ada',
       clanmate: true,
+      // Klan Savunma Desteği: whether this clanmate world takes support, known before the sheet.
+      supportOpen: true,
       controller: { kind: 'PLAYER', playerId: 'ally' },
       coreLevel: 0,
       satellites: [],

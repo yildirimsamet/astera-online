@@ -220,12 +220,14 @@ removing an order would change the meaning of a later one; Research cannot be ca
 
 ## Combat
 
-**The Death Star is hand-priced (D203).** 143,661 alloy · 71,832 crystal · 5,952
-deuterium, exactly three times the preceding 47,887 / 23,944 / 1,984 table. It is
-written out rather than run through `scalePrice`; tempo changes do not move it. The
-Interception Grid charge is 43,100 / 21,551 / 1,787, a 50% component-wise increase
-with nearest-integer rounding. The battery totals 66,438 against the weapon's 221,445
-(30.0%) and remains strictly cheaper. Build times remain 60 and 30 minutes.
+**The Death Star is hand-priced (owner, 2026-10-01).** 50,000 alloy · 35,000 crystal ·
+3,000 deuterium, written out rather than run through `scalePrice`; tempo changes do not
+move it. The interceptor charge stays at 21,550 / 10,776 / 894: 33,220 against the
+weapon's 88,000 (37.8%, up from 30% — the owner called the old gap unfair), still strictly
+cheaper. Build times remain 60 and 30 minutes. One charge downs one weapon and fires only
+from the target's pad; a pad holds 1 weapon (2 with the Stockpile) and 2 charges (4 with
+the Grid), so a loaded world falls to several worlds striking together. A hit costs a
+colony 20 loyalty; at 20 or less it secedes to NEUTRAL.
 
 ```
 3 rounds · simultaneous fire · ±8% variance
@@ -533,11 +535,11 @@ disruption    20 / 7 / 0 min, cap 25 pending          [PROVISIONAL]
 abuse         bash 3 per attacker per target per 12 h
 season        14 days · investment horizon 0.70 · acts at 4/14, 8/14, 12/14
 opening       START 870/78 · OPENING_BONUS 407/146 · PLANET_START 1,277/224
-strategic     settlement 2 Couriers + 3,400/1,700 · Death Star 143,661/71,832/5,952, 60 min
-              Interception Grid 43,100/21,551/1,787, 30 min
-              both Death Star gates Core 12 · Shipyard 5 · recovery 2 h
+strategic     settlement 2 Couriers + 3,400/1,700 · Death Star 50,000/35,000/3,000, 60 min
+              interceptor charge 21,550/10,776/894, 30 min
+              Death Star gates Core 12 · Shipyard 5 · EMP 1 h · colony −20 loyalty
+              pad 1 weapon (Stockpile 2) · 2 charges (Grid 4)
 research      Isotope 1,530 C · Dense Fuel 2,380 C + 195 D · Gravitic 3,230 C + 455 D
-              Death Star Protocol 18,700 A + 6,120 C + 1,170 D
 clan          5 seats · Core 7 · create 8,500 A + 5,100 C · adapt 12 h
               aid ×1.10, +1 aid-only bay · receiver limit 4 h A/C + 20% D cap / 24 h
               raid share 10% · purse 2 h A/C + 10% D cap · protected ceiling 49%
@@ -545,6 +547,14 @@ clan          5 seats · Core 7 · create 8,500 A + 5,100 C · adapt 12 h
 joint war     ruleset 10+ · target 24 h · mature members · one open operation
               Clan Hangar L1–10: 160/360/940/1,620/3,100/4,580/6,500/8,800/11,480/14,540
               each upgrade costs the matching personal Hangar rung; treasury cap = next cost
+              A:D Dominion ratio both ways from ruleset 15 (host always counted in D)
+clan defence  ruleset 15+ · posture ESCAPE (default) | SUPPORT | HOLD per world
+              support bay = host world's own Hangar room (hangarCapacity(HANGAR))
+              sender mature 12 h, no newcomer shield, host's ±1 tier band (dispatch + battle)
+              fuel missionFuel(fleet, d, 2) up front, no refund · lane ×1.10 · normal bay held
+              stay ≤ 12 h (clipped to season) · supporters' Dominion never moves
+              host's own fight × D on a loss, ÷ D on a win · D = line ÷ host power (guns in), ≤ ×5
+              supporters' lost ships added at face value (never × D)
 ```
 
 **The clan economy is bounded at both entry and receipt (D114).** Creation removes the
@@ -1620,3 +1630,64 @@ is the intended result: the old ceiling is gone without changing the underlying 
 The simulator suite still reports D196's already-recorded four VFR lows and the seed-42 informed
 archetype miss. Those readings predate this cutover, remain open, and were deliberately not tuned
 away as part of Dominion.
+
+## Kalıcı gemi hasarı · the Repair Station's bill, measured (2026-09-30)
+
+Ruleset 14 (`MULTI_WORLD.shipDamageRulesetVersion`). A survivor the resolver carries out over
+20% damaged waits in the Repair Station, and its repair costs the damaged share of its price
+(Industrial 1/2: 75% / 50%). By K1 a fight leaves at most one damaged ship per side per hull.
+
+**The rule as priced** (`packages/rules/src/damage.ts`, owner decision K6 for Industrial):
+
+- Repair cost, per resource: `ceil(unit price × count × damageBp × pct / (10000 × 100))`, in
+  integer arithmetic; `pct` is 100 / 75 / 50 with Industrial 0 / 1 / 2. A cancel refunds half,
+  floored. Repair time: `hullWorkMinutes(hull, count, Shipyard, research) × damageBp / 10000 ×
+  pct / 100`, read when the job starts.
+- Industrial is priced exactly as Shipyard Automation L1–L2 (profile `{ stage: 6, hours: 3,
+  growth: 1.8, fuel: 0 }`): **L1 7,897 alloy / 4,860 crystal; L2 14,214 / 8,747**. It needs
+  Automation 2.
+- Radiation adds no price: it adds damage, which the same repair then prices. v1 has no live
+  cloud (K4), so nothing below measures it.
+
+**Per fight** (`packages/sim/src/fleet-calibration.ts`, `meanAttackerRepair`, full price, 32
+seeds per ordered combat pair at equal economic budget, neutral and maximum research):
+
+| budget | pairs | attacker bill ÷ attacker loss | defender bill ÷ defender loss | worst pair, bill ÷ spend |
+|---:|---:|---:|---:|---:|
+| 2,000 | 128 | 54.1% | 53.1% | 90.9% |
+| 10,000 | 450 | 17.2% | 16.8% | 80.4% |
+| 50,000 | 578 | 4.4% | 4.4% | 21.5% |
+| 240,000 | 578 | 0.88% | 0.87% | 2.9% |
+| 1,000,000 | 578 | 0.21% | 0.21% | 0.7% |
+
+Under 1% at the two calibration budgets, so the calibration's exchanges stand as they were. It is
+not under 1% where fleets are a handful of ships — one damaged Ballista in a wing of two is half
+the wing — so the season simulator pays it (`payRepairs` in `season.ts`) rather than noting it
+away: both sides of a PvP raid and the raider of a neutral world, after the loot, from the store,
+never below zero. The simulator has no dock, so the repair's time is not modelled and a commander
+too poor to pay is modelled as repaired for what the store held — an optimistic floor.
+
+**Per season** (50 players, 30 days, `rulesetVersion` 13 against 14):
+
+| seed | repair ÷ all fleet losses | week 1 | loot, v13 → v14 |
+|---:|---:|---:|---:|
+| 42 | 4.4% | 8.6% | 5.43M → 4.99M |
+| 4242 | 4.5% | 11.3% | 7.11M → 5.71M |
+
+The loot drop is two seeds of a chaotic system and is recorded as a signal, not a finding.
+
+**The standard suite at ruleset 14 (default since plan F13), five seeds, 14 days:**
+
+| | ruleset 13 | ruleset 14 |
+|---|---:|---:|
+| TAX, pooled median | 0.0445 | 0.0382 |
+| informed archetype tops the ladder | 5 / 5 seeds | 3 / 5 (42 and 4242 miss) |
+
+**Owner decision, 2026-09-30: accepted as the price of persistent damage, not tuned away.** The
+TAX floor moved from 0.04 to 0.035 and the informed-archetype claim from every seed to a majority;
+both sit just under the measurement, so a further fall still fails.
+
+**D14 — deliberately unaffected.** The repair bill does not enter `raidLedger` (Dominion is the
+realised exchange of the fight, and a repair is a later purchase, like rebuilding), and in v1
+radiation losses do not enter the season's `shipsLost`. Both are revisited when radiation goes
+live.

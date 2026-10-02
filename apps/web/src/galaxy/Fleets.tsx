@@ -998,6 +998,8 @@ function Flight({
    * drew the weapon hovering over the world it had just detonated on.
    */
   const spent = useStrikeConsumed(isDeathStar && path ? path.arriveAt.getTime() : null);
+  // A cloud finished this wing (D15): it leaves the disc where it died, not at a landing.
+  const perished = useStrikeConsumed(thread.fadeAt ? thread.fadeAt.getTime() : null);
 
   /**
    * THE ROUTE IS ONLY EVER WHAT IS LEFT TO FLY.
@@ -1079,7 +1081,7 @@ function Flight({
     points.needsUpdate = true;
   });
 
-  if (!path || spent) return null;
+  if (!path || spent || perished) return null;
 
   return (
     <>

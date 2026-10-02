@@ -216,25 +216,20 @@ const LOD_VARIANTS = {
 const UNCAPPED_CRAFT = new Set(['ships/trade_ship.glb']);
 
 const PATH_POLICY = {
-  // Country skins arrive from different exporters. France is already a 960-triangle
-  // sphere; Germany is 18k, while Türkiye and Spain are nearly two million each.
-  // They render at the same physical size as a default world, so the latter two
-  // must not keep their source topology in the galaxy.
-  'planets/country/planet_france.glb': {
-    texture: 1024, simplify: false,
-    variants: [{ suffix: '-lod', texture: 256, simplify: true, ratio: 0.2, error: 0.05 }],
-  },
-  'planets/country/planet_germany.glb': {
-    texture: 1024, simplify: true, ratio: 0.24, error: 0.02,
-    variants: [{ suffix: '-lod', texture: 256, simplify: true, ratio: 0.025, error: 0.08 }],
-  },
-  ...Object.fromEntries(['turkey', 'spain'].map((country) => [
+  // The new Germany, France, Spain and Japan masters are 960-triangle unit
+  // spheres. Preserve their already light full geometry and spend the galaxy
+  // budget on a smaller texture and an approximately 200-triangle distant tier.
+  ...Object.fromEntries(['germany', 'france', 'spain', 'japan'].map((country) => [
     `planets/country/planet_${country}.glb`,
     {
-      texture: 1024, simplify: true, ratio: 0.003, error: 0.05,
-      variants: [{ suffix: '-lod', texture: 256, simplify: true, ratio: 0.0005, error: 0.12 }],
+      texture: 1024, simplify: false,
+      variants: [{ suffix: '-lod', texture: 256, simplify: true, ratio: 0.2, error: 0.05 }],
     },
   ])),
+  'planets/country/planet_turkey.glb': {
+    texture: 1024, simplify: true, ratio: 0.003, error: 0.05,
+    variants: [{ suffix: '-lod', texture: 256, simplify: true, ratio: 0.0005, error: 0.12 }],
+  },
   // The strategic craft is shown larger than a normal hull, but its raw Tripo
   // sphere spends 17k triangles and a 4K plate on grooves that collapse below a
   // pixel in flight. Keep the silhouette and a 512px plate; simplify the surface.

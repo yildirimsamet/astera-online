@@ -314,6 +314,18 @@ fails at 3am.
 Isolation is READ COMMITTED with explicit row locks. Serializable would work but costs retry
 handling for no benefit.
 
+### Klan Savunma Desteği — the lock order and the journal (ruleset 15)
+
+Every path that touches a support wave locks **season → planets (by id) →
+`clan_support_waves` (by id) → clans → players (by id) → missions**. The membership hook
+(`releaseClanSupport`) runs before leave/kick/disband take their clan and player locks. Wave
+ships live in `units(origin_planet_id, hull, 'support:<uuid>')` owned by the sender, like the
+joint war's escrow, so the sender's Hangar counts them and the host's never sees them. A
+supported ordinary raid (`defender_count > 1`) writes no `dominion_events` row — that table
+demands `raw = transfer` — and journals to `clan_support_dominion_events` instead; the freeze
+audit `assertDominionLedgers` reads it beside the joint-war journal. The host's home fleet, dock
+and recovery are written from the host stack's outcome only, never the line's aggregate.
+
 ## Data model
 
 Seasonal and permanent tables, with **nothing storing a value derivable from a formula and a clock**:

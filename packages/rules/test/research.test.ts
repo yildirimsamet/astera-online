@@ -46,10 +46,9 @@ describe('research resource mix', () => {
   });
 });
 
-describe('the two-project frontier', () => {
+describe('the frontier price', () => {
   it('prices the monthly frontier permissions', () => {
     expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 2869, deuterium: 0 });
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 37760, deuterium: 3000 });
   });
 
   it('opens spectroscopy on the shared season clock, never on a private timer', () => {
@@ -164,14 +163,14 @@ describe('the levelled research model', () => {
   });
 
   /**
-   * The FRONTIER four, named rather than swept up by iteration. They are
+   * The FRONTIER three, named rather than swept up by iteration. They are
    * permissions and must stay permissions: a second purchase of Dense Fuel Cells
    * would buy nothing, and giving one a ladder is a design change, not a tuning.
    * `DEUTERIUM_SYNTHESIS` is deliberately not in this list — it is the ladder.
    */
-  it('leaves the four seasonal projects as one-off permissions', () => {
+  it('leaves the three seasonal projects as one-off permissions', () => {
     for (const id of [
-      'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
+      'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
     ] as const) {
       expect(RESEARCH_PROJECTS[id].maxLevel, id).toBe(1);
     }
@@ -179,7 +178,6 @@ describe('the levelled research model', () => {
 
   it('prices the monthly frontier permissions', () => {
     expect(RESEARCH_PROJECTS.ISOTOPE_SPECTROMETRY.costAt(1)).toEqual({ alloy: 4662, crystal: 2869, deuterium: 0 });
-    expect(RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.costAt(1)).toEqual({ alloy: 61360, crystal: 37760, deuterium: 3000 });
   });
 
   /** A price is asked for by TARGET level, so level one is what an unowned project costs. */

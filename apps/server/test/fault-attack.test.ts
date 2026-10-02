@@ -327,7 +327,9 @@ describe('ağır bir saldırı', () => {
   /** Death Star'ın ilk vuruşu kalkanı koşulsuz veriyor — koloniyi de bozuyor. */
   it('Death Star ilk vuruşu koloniye iki arıza bırakır', async () => {
     await grant(f.db, colony, 200_000, 50_000);
-    await setLevel(f.db, mine, 'CORE', 5);
+    // D168: a Death Star strike answers to the same development band as a raid; `grant` raised the
+    // colony's Core, so the striker comes up to it.
+    await levelWorld(f.db, [mine, colony]);
     await f.db.insert(strategicAssets).values({
       planetId: mine, status: 'READY', startedAt: f.clock.now(), remainingSeconds: 0,
     });

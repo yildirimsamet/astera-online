@@ -35,8 +35,11 @@ import type { Tx } from '../db/client.js';
 import { buildOrders, galaxyEventOccurrences, intergalacticConvoyRuns, planetFaults, players, strategicAssets } from '../db/schema.js';
 import { baysOf } from './flight.js';
 import { awayFleet, loadLocked, totalUnitsOf } from './planet.js';
-import { researchCoreLevel, researchView } from './researchState.js';
+import { asTech, researchCoreLevel, researchView } from './researchState.js';
+import { dockLotsOf, dockView, shipsOfLots } from './shipDamage.js';
 import { colonyStanding } from './ownership.js';
+import { defencePostureView } from './defencePosture.js';
+import { clanSupportBayView } from './clanSupportView.js';
 import {
   activeResearchOrders,
   projectedResearchLevels,
@@ -243,6 +246,9 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
   // Every craft this world owns, home or away — both ceilings are ownership rules.
   const owned = await totalUnitsOf(tx, planetId);
 
+  const research = await researchView(tx, p, queuedResearch);
+  // Read once: the ships in the dock are the lots' ships (plan I2), so both fields come from it.
+  const dockLots = await dockLotsOf(tx, planetId);
   return {
     planet: {
       id: p.planetId,
@@ -362,7 +368,7 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
     orbitSlots: satelliteSlots(p.buildings.CORE),
     satelliteCosts: Object.fromEntries(SATELLITE_IDS.map((sat) => [sat, satelliteCost(sat)])),
     /** Two immediate seasonal projects; discovery is derived, never stored. D93/D94. */
-    research: await researchView(tx, p, queuedResearch),
+    research,
     /** The Core that gates and times research on EVERY world: the capital's. D209. */
     researchCore: await researchCoreLevel(tx, p.playerId),
     /** One commander lane, identical whichever controlled world funded the view. */
@@ -422,6 +428,8 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
         .filter((order) => order.queue === 'CONSTRUCTION' && order.kind !== 'RESEARCH')
         .map(buildOrderView),
       YARD: queued.filter((order) => order.queue === 'YARD').map(buildOrderView),
+      /** The Repair Station's own lane, beside the yard. Kalıcı gemi hasarı. */
+      REPAIR: queued.filter((order) => order.queue === 'REPAIR').map(buildOrderView),
     },
     /** The head of `deathStars`: the weapon that can fly soonest. */
     strategic: pad[0] ? strategicView(pad[0]) : null,
@@ -445,6 +453,20 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * Yours only, and no fog question arises — it is your own planet's units.
      */
     fleetAway: await awayFleet(tx, planetId),
+    /**
+     * Your own ships waiting in the Repair Station. Kalıcı gemi hasarı.
+     *
+     * Owned, so every ownership count on the client (the Hangar room, the Prospector
+     * cap) must add them — but neither standing at home nor away, so they are in
+     * neither of the two fields above.
+     */
+    fleetDocked: shipsOfLots(dockLots),
+    /**
+     * THE REPAIR STATION: what waits in the dock and what repairing it costs. Priced
+     * here, like the fault repairs above, so the screen never quotes a figure the repair
+     * endpoint would refuse.
+     */
+    dock: dockView(dockLots, p.buildings.SHIPYARD, asTech(new Map(research.map((row) => [row.id, row.level])))),
     /**
      * How much this planet has in the air, and how much it may. D28.
      *
@@ -497,6 +519,23 @@ export async function planetView(tx: Tx, planetId: string, clock: Clock) {
      * second payload the planet screen otherwise never needs.
      */
     rulesetVersion: p.rulesetVersion,
+    /**
+     * THE TWO DEFENCE TOGGLES. Klan Savunma Desteği, owner K4 · 2026-10-01.
+     *
+     * Null in a season dealt before the rule — the retreat there is automatic and
+     * there is nothing to choose. `supportLocked` says why the support toggle is
+     * greyed, so the page can tell the commander rather than just refuse.
+     */
+    defencePosture: await defencePostureView(tx, {
+      playerId: p.playerId,
+      posture: p.defencePosture,
+      rulesetVersion: p.rulesetVersion,
+    }),
+    /**
+     * THE HANGAR'S "KLAN DESTEĞİ" BAY: what clanmates have standing here or flying in,
+     * and the room it has (the world's own Hangar room, owner K1). Null before ruleset 15.
+     */
+    clanSupport: await clanSupportBayView(tx, { planetId, rulesetVersion: p.rulesetVersion }),
     score: {
       wealth: player?.wealth ?? 0,
       dominion: dominion({

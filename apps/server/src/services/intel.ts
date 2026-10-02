@@ -1,12 +1,15 @@
 import { spatialHistory } from './spatialHistory.js';
-import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { isNull, and, desc, eq, gt, inArray, isNotNull, ne, notLike, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
   COMBAT_RESEARCH_PROJECTS,
   FEATURE_FLAGS,
   PROBE,
+  dockLocation,
+  isDockLocation,
   DEATH_STAR,
   bearingBetween,
+  clanDefenseApplies,
   detectChance,
   fuzzBand,
   computeLoot,
@@ -55,7 +58,9 @@ import {
   strategicAssets,
   units,
   watches,
+  type ProbeSupportReading,
 } from '../db/schema.js';
+import { standingSupportAt } from './clanSupportView.js';
 import { announceUnlocks } from './notifications.js';
 import {
   assertSeasonOpenThrough,
@@ -65,6 +70,7 @@ import {
   economyAt,
   hardwareOf,
   loadLocked,
+  loyaltyAt,
   orbitFromRows,
   saveResources,
 } from './planet.js';
@@ -161,6 +167,14 @@ export async function fleetTruthFor(
          * signal in the game would quietly become approximate.
          */
         ne(units.hull, 'PROSPECTOR'),
+        /**
+         * NOR IS A SHIP IN THE REPAIR STATION. Kalıcı gemi hasarı.
+         *
+         * It has not left: it is on the world and cannot fly. Counting it would make a
+         * world whose whole garrison stands at home read AWAY because one damaged hull
+         * waits for repair — the same lie the Prospector line above exists to prevent.
+         */
+        notLike(units.location, dockLocation('%')),
       ),
     )
     .groupBy(units.planetId);
@@ -894,7 +908,8 @@ export async function resolveProbe(
   for (const u of unitRows) {
     if (u.count <= 0) continue;
     if (u.location === 'home') home[u.hull] = (home[u.hull] ?? 0) + u.count;
-    else anyAway = true;
+    // A docked ship has not left the world (see `fleetTruthFor`).
+    else if (!isDockLocation(u.location)) anyAway = true;
   }
   const homeFleet = home as Partial<Record<HullId, number>>;
 
@@ -1013,6 +1028,31 @@ export async function resolveProbe(
   const shield = fuzzBand(standing.shield, accuracy, seededFrom(mission.id, 0x5e1d_0a));
   const unarmed = fuzzBand(unarmedCount(line), accuracy, seededFrom(mission.id, 0x0a4_3ed));
   /*
+    KLAN SAVUNMA DESTEĞİ (owner K9). The posture is a setting, read exactly; the clanmates'
+    ships standing there are a reading of their own beside the home fleet's, fuzzed by the
+    same accuracy on streams of their own, so not one band above moved when this arrived.
+    Only a SUPPORT world can hold any, so every other posture reports none.
+  */
+  const [targetSeason] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
+    .where(eq(seasons.id, target.seasonId));
+  const postureRead = target.kind !== 'NEUTRAL' && target.controllerPlayerId !== null
+    && clanDefenseApplies(targetSeason?.rulesetVersion ?? 0)
+    ? target.defencePosture
+    : null;
+  let supportRead: ProbeSupportReading | null = null;
+  if (postureRead === 'SUPPORT' && target.controllerPlayerId !== null) {
+    const standingSupport = await standingSupportAt(tx, {
+      hostPlanetId: target.id,
+      hostPlayerId: target.controllerPlayerId,
+    });
+    supportRead = {
+      supporters: standingSupport.supporters,
+      defence: fuzzBand(combatValue(standingSupport.fleet), accuracy, seededFrom(mission.id, 0x5a9_d1e)),
+      fleetSize: fuzzBand(fleetCount(standingSupport.fleet), accuracy, seededFrom(mission.id, 0x5a9_517)),
+      classReading: standingSupport.supporters > 0 ? classReading(standingSupport.fleet, accuracy) : null,
+    };
+  }
+  /*
     THE WEAPON, AND ONLY THE WEAPON. T12.
 
     This read predates the interception charge sharing the table, and untyped it
@@ -1089,27 +1129,44 @@ export async function resolveProbe(
         .filter(([, level]) => level > 0),
     );
   /*
-    AND WHETHER IT CAN SHOOT ONE DOWN. T10.
+    AND HOW MANY WEAPONS IT CAN SHOOT DOWN. T10 · owner, 2026-10-01.
 
     Read at the look and frozen with the rest of the record, like everything else
     D127 put here. It is the reading that turns a strategic strike into an
     intelligence decision rather than a purchase — and it is never public, so the
-    only way to hold it is to have flown there.
+    only way to hold it is to have flown there. A COUNT, not a flag: one charge
+    downs one weapon and a pad holds two or four, so the number is how many worlds
+    a strike has to come from. Only READY charges: one still loading fires nothing.
   */
-  const [charge] = owner === null ? [] : await tx
+  const charges = owner === null ? [] : await tx
     .select({ id: strategicAssets.id })
     .from(strategicAssets)
     .where(and(
       eq(strategicAssets.planetId, target.id),
       eq(strategicAssets.type, 'INTERCEPTOR'),
       eq(strategicAssets.status, 'READY'),
+    ));
+  /*
+    AND A COLONY'S LOYALTY. Owner, 2026-10-01: a Death Star costs a colony twenty points
+    and takes it at twenty or less, so the attacker is entitled to the number that rule
+    reads. As the tick would write it at this instant, and ROUNDED UP: a colony shown at
+    twenty or less really is there, so the reading never promises a fall that won't come.
+  */
+  const loyalty = owner !== null && target.kind === 'COLONY'
+    ? Math.ceil(loyaltyAt(
+      target,
+      await buildingLevelsOf(tx, target.id),
+      (await tx.select({ id: planetFaults.id }).from(planetFaults)
+        .where(eq(planetFaults.planetId, target.id))).length,
+      now,
     ))
-    .limit(1);
+    : undefined;
   const silhouette = outside
     ? {
       ...silhouetteOf(outside),
       ...(doctrines === undefined ? {} : { doctrines }),
-      ...(owner === null ? {} : { interceptor: charge !== undefined }),
+      ...(owner === null ? {} : { interceptors: charges.length }),
+      ...(loyalty === undefined ? {} : { loyalty }),
     }
     : null;
 
@@ -1128,6 +1185,8 @@ export async function resolveProbe(
     shield: { low: shield.low, high: shield.high },
     unarmed: { low: unarmed.low, high: unarmed.high },
     fleetHome: !anyAway,
+    posture: postureRead,
+    support: supportRead,
     strategicStatus,
     /**
      * WHAT THE CRAFT COULD SIMPLY SEE. D127.

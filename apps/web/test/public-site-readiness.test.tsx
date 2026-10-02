@@ -257,7 +257,8 @@ describe('the legal set says what it has to say', () => {
   it.each(['/pricing.html', '/fiyatlar.html'])(
     '%s explains the live cosmetic catalog and links the buying policies', async (path) => {
       const page = await publicFile(path);
-      for (const skin of ['Lava', 'Ice', 'Toxic', 'Desert', 'Turkey', 'Germany', 'France', 'Spain']) {
+      for (const skin of ['Lava', 'Ice', 'Toxic', 'Desert', 'Turkey', 'Germany', 'France', 'Spain',
+        path === '/pricing.html' ? 'Japan' : 'Japonya']) {
         expect(page).toMatch(new RegExp(skin, 'i'));
       }
       expect(page).toContain('€2.99');
@@ -268,13 +269,13 @@ describe('the legal set says what it has to say', () => {
   );
 
   it.each(['/pricing.html', '/fiyatlar.html'])(
-    '%s marks all nine offers for country based Polar price previews', async (path) => {
+    '%s marks all ten offers for country based Polar price previews', async (path) => {
       const page = await parse(path);
       const offers = [...page.querySelectorAll('[data-offer-price]')]
         .map((element) => element.getAttribute('data-offer-price'));
       expect(offers).toEqual([
         'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
-        'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'bundle',
+        'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
       ]);
       expect(page.querySelector('script[src="/publisher-pricing.js"]')).not.toBeNull();
       expect(page.querySelector('[data-pricing-status]')).not.toBeNull();

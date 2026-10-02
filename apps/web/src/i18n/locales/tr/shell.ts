@@ -247,7 +247,6 @@ export const leaderboard = {
   title: 'Liderlik tablosu',
   empty: 'Bu galaksiye henüz bir komutan katılmadı.',
   rank: '{{rank}}. sıra',
-  tier: '{{tier}}. kademe',
   score: 'Hâkimiyet',
   you: 'Sen',
   nearby: 'En yakın rakiplerin',

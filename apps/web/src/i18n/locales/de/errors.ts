@@ -14,6 +14,11 @@
  */
 
 export const errors = {
+  REPAIR_LOT_NOT_FOUND: "Diese beschädigten Schiffe warten hier nicht mehr.",
+  REPAIR_LOT_BUSY: "Diese Schiffe werden bereits repariert.",
+  REPAIR_NOTHING_WAITING: "Hier wartet kein beschädigtes Schiff auf Reparatur.",
+  SHIP_DAMAGE_UNAVAILABLE: "Diese Galaxie hat keine Reparaturstation: Schiffe werden hier nicht beschädigt.",
+  RADIATION_LETHAL: "Strahlung auf dieser Route würde {{count}} Schiffe vor der Ankunft zerstören. Bestätige, um sie trotzdem zu schicken.",
   /** The movement package's refusals. Self-review 2026-09-23, R4. */
   BAD_PACE: 'Das ist keine der Fluggeschwindigkeiten',
   PACE_TOO_SLOW: 'Bei diesem Tempo bliebe die Flotte über das 12-Stunden-Limit in der Luft. Wähle ein schnelleres',
@@ -35,6 +40,8 @@ export const errors = {
   DEATH_STAR_EXISTS: 'Diese Welt hat ihre Todessternkapazität erreicht',
   DEATH_STAR_NOT_READY: 'Auf dieser Welt ist kein Todesstern bereit',
   DEATH_STAR_LOCKED: 'Todesstern-Voraussetzungen sind nicht erfüllt',
+  INTERCEPTOR_LOADED: "Die Rampe dieser Welt ist voll: {{max}} Ladungen",
+  INTERCEPTOR_LOCKED: "Zuerst das Radar auf Stufe {{requiredRadar}} bringen, mit einem Uplink im Orbit",
   RECOVERY_WINDOW_TOO_SHORT: 'Das Wiederherstellungs- oder Anspruchsfenster wird vor dem Eintreffen geschlossen',
   /** What is shown when nothing else is known. */
   unknown: 'Etwas ist schief gelaufen',
@@ -73,8 +80,8 @@ export const errors = {
   RESEARCH_QUEUE_FULL: '3 Forschungsprojekte stehen bereits in der Warteschlange. Warten Sie, bis einer fertig ist, bevor Sie einen weiteren hinzufügen.',
   BUILD_ORDER_NOT_FOUND: 'Kein aktiver Buildauftrag mit dieser ID',
   BASH_LIMIT: 'Du bist in letzter Zeit zu oft auf diesem Planeten gelandet',
-  TIER_BAND: "Die Gesamtstärke dieses Kommandanten liegt weit über Ihrer eigenen",
-  TIER_BAND_WEAK: "Die Gesamtstärke dieses Kommandanten liegt weit unter Ihrer eigenen",
+  TIER_BAND: "Dieser Kommandant liegt mehr als eine Stufe über Ihnen – verglichen wird die am weitesten entwickelte Welt beider Seiten",
+  TIER_BAND_WEAK: "Dieser Kommandant liegt mehr als eine Stufe unter Ihnen – verglichen wird die am weitesten entwickelte Welt beider Seiten",
   CANNOT_INTERCEPT: 'Es wird die Scheibe verlassen, bevor Ihr Fahrzeug sie erreichen kann',
   PIRATE_NOT_IDENTIFIED: 'Entdecke diesen Piraten vor dem Angriff mit einem Teleskop',
   CONVOY_ALREADY_RAIDED: 'Diese Welt hat diesen intergalaktischen Konvoi bereits getroffen',
@@ -219,6 +226,7 @@ export const errors = {
   RESEARCH_UNAVAILABLE: 'Diese Forschung ist noch nicht verfügbar',
   RIVAL_NOT_VISIBLE: 'Diese Welt ist nicht in Ihrer Galaxie',
   RIVAL_SELF: 'Sie können Ihre eigene Welt nicht als Rivalen markieren',
+  RIVAL_CLANMATE: 'Du kannst ein Clanmitglied nicht als Rivalen markieren',
   REHEARSAL_ONLY: 'Nicht, bis diese Welt dir gehört',
   SEASON_ENDS_BEFORE_RETURN: 'Diese Staffel kann nicht vor Saisonende zurückkehren',
   SEASON_ENDS_BEFORE_BUILD: 'Dieser Auftrag kann nicht vor Ende der Saison abgeschlossen werden',
@@ -242,4 +250,21 @@ export const errors = {
   UNAUTHENTICATED: 'Melden Sie sich zuerst an',
   UNKNOWN: 'Etwas ist schief gelaufen',
   USERNAME_TAKEN: 'Dieser Name fliegt bereits',
+  /** Klan Savunma Desteği. */
+  SHIELDED_SENDER_ships: 'Solange dein Neulingsschild aktiv ist, können deine Schiffe nicht auf der Welt eines anderen Kommandanten stehen',
+  CLAN_SUPPORT_UNAVAILABLE: 'Clanverteidigung kommt mit einer neuen Saison',
+  POSTURE_CONFLICT: 'Taktischer Rückzug und Clan-Unterstützung können nicht beide an sein',
+  CLAN_SUPPORT_NONCOMBATANT: 'Eine Unterstützungswelle ist eine Kampflinie: {{hull}} kann nicht mit',
+  CLAN_SUPPORT_SELF: 'Unterstützung geht an ein Clanmitglied, nicht an deine eigenen Welten',
+  CLAN_SUPPORT_TARGET: 'Wähle eine Welt, die ein Clanmitglied hält',
+  CLAN_SUPPORT_MEMBERSHIP: 'Unterstützung gibt es nur für aktuelle Clanmitglieder',
+  CLAN_SUPPORT_MEMBER_IMMATURE: 'Deine Clanmitgliedschaft ist noch frisch. Unterstützung öffnet 12 h nach dem Beitritt',
+  CLAN_SUPPORT_CLOSED: 'Diese Welt nimmt keine Clan-Unterstützung an',
+  CLAN_SUPPORT_TIER_BAND: 'Unterstützung bleibt im Stufenband des Gastgebers: du bist Stufe {{mine}}, der Gastgeber Stufe {{theirs}}',
+  CLAN_SUPPORT_ROOM_FULL: 'Die Unterstützungsbucht dieser Welt ist voll: {{used}} von {{total}} Platz belegt',
+  CLAN_SUPPORT_SEASON_TOO_SHORT: 'Diese Galaxie endet, bevor die Welle heimkehren könnte',
+  CLAN_SUPPORT_NOT_FOUND: 'Diese Unterstützungswelle gibt es nicht mehr',
+  CLAN_SUPPORT_NOT_OWNED: 'Diese Welle gehört dir nicht',
+  CLAN_SUPPORT_LANDING: 'Die Welle landet gerade. Versuche es erneut, sobald sie steht',
+  CLAN_SUPPORT_NOT_HOST: 'Nur der Kommandant der Welt kann eine Welle zurückschicken',
 } as const;

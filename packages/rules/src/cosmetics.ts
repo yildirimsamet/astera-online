@@ -15,12 +15,13 @@ export const PLANET_SKIN_IDS = [
   'planet-germany',
   'planet-france',
   'planet-spain',
+  'planet-japan',
 ] as const;
 
 export type PlanetSkinId = (typeof PLANET_SKIN_IDS)[number];
 export type PlanetBaseModelId =
   | 'intact-planet' | 'fractured-planet'
-  | 'country-turkey' | 'country-germany' | 'country-france' | 'country-spain';
+  | 'country-turkey' | 'country-germany' | 'country-france' | 'country-spain' | 'country-japan';
 export type PlanetPaletteId = 'lava' | 'ice' | 'toxic' | 'desert';
 export type PlanetSkinStatus = 'NORMAL' | 'RECOVERY_SHIELD';
 
@@ -137,6 +138,15 @@ export const PLANET_SKINS = {
     id: 'planet-spain', target: 'PLANET', recipeVersion: 1,
     recipe: {
       baseModelId: 'country-spain',
+      finish: { kind: 'AUTHORED' },
+      includedAttachments: [],
+      statusVariants: {},
+    },
+  },
+  'planet-japan': {
+    id: 'planet-japan', target: 'PLANET', recipeVersion: 1,
+    recipe: {
+      baseModelId: 'country-japan',
       finish: { kind: 'AUTHORED' },
       includedAttachments: [],
       statusVariants: {},

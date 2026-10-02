@@ -1,5 +1,5 @@
 import { GameActions } from '../session/seasonLock.js';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -9,6 +9,7 @@ import {
   MULTI_WORLD,
   SETTLEMENT_CLAIM_MINUTES,
   PROBE,
+  clanDefenseApplies,
   combatValue,
   prospectorAvailability,
   distance,
@@ -35,11 +36,12 @@ import type {
   Report,
   RivalSummary,
 } from '../api/schemas.js';
-import { useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { useGalaxy, useProbe, useSetRival, useWatch } from '../api/queries.js';
+import { radiationAt, toRadiationSources } from '../lib/radiation.js';
 import { rivalColour } from './PlanetField.jsx';
 import type { TargetMiningRun } from './scene.js';
 import { hullLabel, hullName, satelliteLabel } from '../i18n/names.js';
-import { compact, full } from '../lib/format.js';
+import { compact, decimal, full } from '../lib/format.js';
 import {
   colonizationPhase,
   settlementBlock,
@@ -492,6 +494,7 @@ export function PlanetFocus({
   rivalSlot = null,
   now,
   outOfBand = false,
+  ownPeakCore = null,
   onClose,
   onAttack,
   onSettle,
@@ -503,6 +506,7 @@ export function PlanetFocus({
   clanTargetReason = null,
   clanTargetPending = false,
   onMarkClanTarget,
+  onSendSupport,
   settlementInFlight = false,
   open,
   onToggle,
@@ -531,6 +535,11 @@ export function PlanetFocus({
    * pure and testable away from a panel with thirty hooks.
    */
   outOfBand?: boolean;
+  /**
+   * The caller's tallest Core across every world they hold (`lib/band.ts`), so the
+   * dossier's development row can set their own tier beside this world's. D168.
+   */
+  ownPeakCore?: number | null;
   onClose: () => void;
   onAttack: () => void;
   onSettle?: () => void;
@@ -544,6 +553,8 @@ export function PlanetFocus({
   clanTargetReason?: string | null;
   clanTargetPending?: boolean;
   onMarkClanTarget?: () => void;
+  /** Klan Savunma Desteği: open the send sheet for this clanmate's world. */
+  onSendSupport?: () => void;
   /** An outbound colony mission already targets this world. */
   settlementInFlight?: boolean;
   open: boolean;
@@ -599,6 +610,18 @@ export function PlanetFocus({
    * payload re-parses and a fresh `target` for the same world is an ordinary
    * refetch, not a change of subject.
    */
+  /*
+    THE SKY THIS WORLD STANDS IN. Radyasyon (plan F10): the dose a minute and the one rule
+    that makes it a decision, on the world a route would be planned to — before a fleet
+    is picked, not in the report after it landed.
+    Above the owned-world return, like every hook here: `focus-hook-order.test.tsx`.
+  */
+  const clouds = useGalaxy().data?.radiation;
+  const radiation = useMemo(
+    () => radiationAt(target.position, toRadiationSources(clouds ?? []), now),
+    [clouds, target.position, now],
+  );
+
   const askedAbout = useRef(target.id);
   if (askedAbout.current !== target.id) {
     askedAbout.current = target.id;
@@ -619,7 +642,7 @@ export function PlanetFocus({
     );
   }
 
-  const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), now });
+  const read = dossier({ target, planet, intel, reports, ...(rival ? { rival } : {}), ownPeakCore, now });
   /** What the dossier page above does not already draw (M2: never the page read twice). */
   const others = beyondDossier(read.facts);
   const away = target.fleet?.status === 'AWAY';
@@ -755,6 +778,13 @@ export function PlanetFocus({
     ? t('focus.planet.deathStarUnavailable')
     : originShipyardRevolt
       ? t('faults.launchBlock.SHIPYARD_REVOLT')
+    /*
+      THE STRIKE ANSWERS TO THE BAND TOO (D168, owner report 2026-10-01), and the band
+      is ordered before the shield for the attack button's reason: a shield expires,
+      a development gap does not.
+    */
+    : outOfBand
+      ? t('focus.planet.deathStarOutOfBand')
     : shieldedUntil !== null
       ? t('focus.planet.deathStarProtected')
       : originRecovering
@@ -788,15 +818,16 @@ export function PlanetFocus({
   );
   /*
     THE RIVAL MARK, A CHIP IN THE DOSSIER'S HEADER (M2, the mock) rather than a slab among
-    the commitments. AND YOU CANNOT MARK WHAT YOU CANNOT SEE (owner's instruction): an
-    unsurveyed world carries no kind, and `isRivalNode` would refuse to draw the reticle.
+    the commitments. A new mark needs a surveyed, non-neutral, non-clanmate world.
+    An existing mark may always be removed, even if the world leaves sight or its
+    commander has since joined the clan.
 
     A SECOND PRESS TAKES THE MARK OFF AGAIN (owner, reversing D103): the mark is a bookmark
     on a disc of three hundred worlds, not a decision the game protects you from. THE SAME
     WORLD BOTH WAYS (D183): the press is a toggle on the server — `null` empties the whole
     set and is never sent from here. The chip wears the mark's own colour, as the reticle does.
   */
-  const rivalControl = !target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL'
+  const rivalControl = rivalSlot !== null || (!target.clanmate && !unsurveyed && target.kind !== 'NEUTRAL')
     ? {
       pending: setRival.isPending,
       onToggle: () => {
@@ -1022,6 +1053,24 @@ export function PlanetFocus({
             else, so both are hidden there rather than offered and refused.
           */}
           {probeControl}
+          {/*
+            KLAN SAVUNMA DESTEĞİ. A clanmate's world is the one place a fleet can be sent to
+            stand in somebody else's line; the sentence says what that means before the tap.
+          */}
+          {target.clanmate && onSendSupport && clanDefenseApplies(planet.rulesetVersion ?? 0) && (
+            <div className="basis-full">
+              {/* A world closed to support says so here, before a ship is picked on the sheet. */}
+              <button type="button" data-send-support className={`${BTN_GHOST} w-full`}
+                disabled={target.supportOpen === false} onClick={onSendSupport}>
+                {t('clanSupport.sendAction')}
+              </button>
+              <p className="mt-1 text-caption text-v2-ink-2">
+                {target.supportOpen === false
+                  ? t('clanSupport.closedHint', { name: target.owner })
+                  : t('clanSupport.sendActionHint')}
+              </p>
+            </div>
+          )}
           {showClanTargetAction && <div className="basis-full">
             <button type="button" className={`${BTN_GHOST} w-full`}
               disabled={clanTargetReason !== null || clanTargetPending}
@@ -1067,6 +1116,21 @@ export function PlanetFocus({
           {t('focus.planet.windowOpen')}
         </p>
       )}
+      {radiation && (
+        <p
+          data-radiation-here
+          className={`mb-3 rounded-chip border px-3 py-2 text-caption leading-snug ${radiation.sheltered
+            ? 'border-v2-line text-v2-ink-2'
+            : 'border-v2-radiation/50 bg-v2-radiation/10 text-v2-radiation'}`}
+        >
+          {radiation.sheltered
+            ? t('focus.planet.radiationShelter')
+            : t('focus.planet.radiationHere', {
+                // In the player's own notation, and no ",0" on a whole figure.
+                pct: Number.isInteger(radiation.pctPerMinute) ? full(radiation.pctPerMinute) : decimal(radiation.pctPerMinute),
+              })}
+        </p>
+      )}
 
       {/*
         THE DOSSIER (E2): the mark, the range and the flight; the reading's source and age;
@@ -1081,6 +1145,7 @@ export function PlanetFocus({
           reports={reports}
           rivalSlot={rivalSlot}
           now={now}
+          ownPeakCore={ownPeakCore}
           {...(rivalControl ? { rival: rivalControl } : {})}
         />
       </div>
@@ -1176,6 +1241,7 @@ export function PlanetFocus({
       {striking && onDeathStar && (
         <StrikeSheet
           target={target}
+          report={intel?.probeReports.find((report) => report.spatiallyCurrent !== false && report.targetPlanetId === target.id)}
           onClose={() => { setStriking(false); }}
           onConfirm={() => {
             setStriking(false);
@@ -1201,10 +1267,13 @@ export function PlanetFocus({
  */
 export function StrikeSheet({
   target,
+  report,
   onConfirm,
   onClose,
 }: {
   target: GalaxyPlanet;
+  /** The newest probe of this world, if any: what its pad and its loyalty looked like. */
+  report?: IntelView['probeReports'][number] | undefined;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -1212,6 +1281,17 @@ export function StrikeSheet({
   const world = target.intel === 'UNKNOWN'
     ? t('focus.planet.unsurveyedTitle')
     : target.name;
+  /*
+    THE TWO READINGS THIS HIT IS DECIDED BY, FROM THE LAST LOOK. Owner, 2026-10-01.
+
+    A colony loses `colonyLoyaltyLoss` per hit and goes neutral at that or less, and a
+    ready charge downs one weapon. Both figures are the probe's, dated, so the commander
+    forms an expectation before the hold — and the age says how far to trust it.
+  */
+  const loss = DEATH_STAR.colonyLoyaltyLoss;
+  const colony = target.kind === 'COLONY';
+  const hits = report?.loyalty === undefined ? null : Math.max(1, Math.ceil(report.loyalty / loss));
+  const age = report ? staleness((Date.now() - report.at.getTime()) / 60_000) : null;
 
   // THROUGH A PORTAL: the focus shell is `absolute z-20`, a stacking context that would
   // paint the strip and the toasts over this sheet's scrim (the confirm's old fault).
@@ -1228,9 +1308,41 @@ export function StrikeSheet({
           <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.outage')}</span>
           <span className="font-v2-mono text-caption font-semibold text-v2-ink">{duration(DEATH_STAR.empMinutes)}</span>
         </div>
+        {colony && (
+          <div data-strike-loyalty className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+            <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.loyalty')}</span>
+            <span className={`text-right text-caption font-semibold ${hits === 1 ? 'text-v2-hostile' : 'text-v2-ink'}`}>
+              {report?.loyalty === undefined || hits === null
+                ? t('focus.planet.strikeConfirm.loyaltyUnknown')
+                : t('focus.planet.strikeConfirm.loyaltyRead', {
+                  value: report.loyalty,
+                  hits: t('focus.planet.strikeConfirm.hits', { count: hits }),
+                })}
+            </span>
+          </div>
+        )}
+        {report?.interceptors !== undefined && (
+          <div data-strike-charges className="flex items-baseline justify-between gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
+            <span className="text-micro text-v2-ink-3">{t('focus.planet.strikeConfirm.charges')}</span>
+            <span className="text-right text-caption font-semibold text-v2-ink">
+              {report.interceptors > 0
+                ? t('focus.planet.strikeConfirm.chargesRead', {
+                  count: report.interceptors,
+                  needed: report.interceptors + 1,
+                })
+                : t('focus.planet.strikeConfirm.chargesNone')}
+            </span>
+          </div>
+        )}
+        {/* Both readings come from one look, so its age is said once, under them. */}
+        {age !== null && ((colony && report?.loyalty !== undefined) || report?.interceptors !== undefined) && (
+          <p data-strike-probe-age className="-mt-1 text-right text-micro text-v2-ink-3">
+            {t('focus.planet.strikeConfirm.probeAge', { age })}
+          </p>
+        )}
         {/* And what it does NOT do, because D179 took the teeth out and a commander
             about to spend twenty thousand alloy should know what they are buying. */}
-        <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps')}</p>
+        <p className="text-micro leading-snug text-v2-ink-3">{t('focus.planet.strikeConfirm.keeps', { loss })}</p>
         <HoldButton label={t('focus.planet.strikeConfirm.commit')} onCommit={onConfirm} tone="hostile" />
       </div>
     </V2Sheet>,
@@ -1778,6 +1890,10 @@ function StrategicWorldGuide({
             label={t('focus.planet.firstImpact', {
               duration: duration(DEATH_STAR.empMinutes),
             })}
+            // A colony also pays in loyalty (owner, 2026-10-01); a capital has none to lose.
+            {...(target.kind === 'COLONY'
+              ? { description: t('focus.planet.firstImpactColony', { loss: DEATH_STAR.colonyLoyaltyLoss }) }
+              : {})}
             danger
           />
           <RouteStep

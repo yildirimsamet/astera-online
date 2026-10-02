@@ -12,6 +12,7 @@ import {
   UNAIDED,
   canAttack,
   distance,
+  capLoadToSurvivors,
   fleetCount,
   fleetSpeed,
   fleetSpeedMult,
@@ -65,6 +66,8 @@ import {
   totalUnitsOf,
   type LockedPlanet,
 } from './planet.js';
+import { dockNotice, landShips, type DockReport } from './shipDamage.js';
+import { settleWaveRadiation, tellRadiationLoss } from './radiation.js';
 import { safeHomePlanet } from './ownership.js';
 import { notify } from './notifications.js';
 import { assertDeparturesAllowed, baysOf } from './flight.js';
@@ -85,6 +88,7 @@ import {
 import {
   assertAttackProtections,
   assertTargetReachable,
+  assertTierBand,
   assertWorldAttackable,
   protectionFrom,
 } from './attackProtection.js';
@@ -815,21 +819,7 @@ export async function markClanWarTarget(
     the band, and it cannot mark a target its own leader could not raid. Both
     halves matter; this is the first.
   */
-  const peaks = await peakCoreLevels(tx, [input.actor.playerId, targetPlayerId]);
-  const band = canAttack(
-    { playerId: input.actor.playerId, peakCoreLevel: peaks.get(input.actor.playerId) ?? 1 },
-    { playerId: targetPlayerId, peakCoreLevel: peaks.get(targetPlayerId) ?? 1 },
-    0,
-  );
-  if (!band.ok) {
-    throw new GameError(
-      band.reason ?? 'CLAN_WAR_TARGET_INVALID',
-      band.reason === 'TIER_BAND_WEAK'
-        ? "That commander's total strength is far below your own"
-        : "That commander's total strength is far above your own",
-      403,
-    );
-  }
+  await assertTierBand(tx, input.actor.playerId, targetPlayerId);
 
   /*
     THE STAGING WORLD IS SNAPSHOTTED, NOT LOOKED UP LATER. Owner decision.
@@ -1601,14 +1591,17 @@ async function orbitOfPlanet(
   return orbitFromRows(rows, core[0]?.level ?? 0);
 }
 
-/** Put a wave's surviving ships back on the home stack of the world they land at. */
+/**
+ * Put a wave's surviving ships back on the world they land at. What they carried out of
+ * the battle (or its legs) is judged here by the Repair Station. Kalıcı gemi hasarı.
+ */
 async function landContribution(
   tx: Tx,
   contribution: typeof clanWarContributions.$inferSelect,
   fleet: Fleet,
   destinationPlanetId: string,
   now: Date,
-): Promise<void> {
+): Promise<DockReport> {
   // Free when the caller already holds it, which every path is arranged to do.
   await lockWarWorlds(tx, [destinationPlanetId]);
   await tx.delete(units).where(and(
@@ -1616,20 +1609,18 @@ async function landContribution(
     eq(units.location, contribution.unitLocation),
   ));
 
-  const home = await tx
-    .select()
-    .from(units)
-    .where(and(eq(units.planetId, destinationPlanetId), eq(units.location, 'home')));
-  const merged: Fleet = {};
-  for (const row of home) merged[row.hull] = (merged[row.hull] ?? 0) + row.count;
-  for (const [hull, n] of Object.entries(fleet) as [HullId, number][]) {
-    merged[hull] = (merged[hull] ?? 0) + n;
-  }
-  await setUnits(tx, destinationPlanetId, merged, 'home');
+  const report = await landShips(tx, {
+    planetId: destinationPlanetId,
+    ownerPlayerId: contribution.playerId,
+    fleet,
+    damage: contribution.damage,
+    at: now,
+  });
   await tx.update(clanWarContributions)
     .set({ status: 'HOME', resolvedAt: now })
     .where(eq(clanWarContributions.id, contribution.id));
   if (fleetChangesWatch(fleet)) await publishWatchChanges(tx, [destinationPlanetId]);
+  return report;
 }
 
 /**
@@ -2496,13 +2487,19 @@ export async function resolveClanWarLeg(
     .where(eq(clanWarMissions.missionId, mission.id))
     .limit(1);
   if (!leg) throw new Error(`clan war mission ${mission.id} has no leg`);
+  const [season] = await tx
+    .select({ rulesetVersion: seasons.rulesetVersion })
+    .from(seasons)
+    .where(eq(seasons.id, mission.seasonId))
+    .limit(1);
+  const rulesetVersion = season?.rulesetVersion ?? MULTI_WORLD.rulesetVersion;
 
   if (leg.leg === 'SUPPORT_OUT') {
-    await resolveSupportArrival(tx, leg.contributionId, now);
+    await resolveSupportArrival(tx, leg.contributionId, mission, now, rulesetVersion);
     return;
   }
   if (leg.leg === 'SUPPORT_RETURN' || leg.leg === 'BATTLE_RETURN') {
-    await resolveReturnArrival(tx, leg.contributionId, mission, now, leg.leg);
+    await resolveReturnArrival(tx, leg.contributionId, mission, now, leg.leg, rulesetVersion);
     return;
   }
   const [operation] = await tx
@@ -2512,15 +2509,10 @@ export async function resolveClanWarLeg(
     .for('update');
   if (!operation) throw new Error(`clan war mission ${mission.id} has no operation`);
   if (operation.status !== 'ATTACKING') return;
-  const [season] = await tx
-    .select({ rulesetVersion: seasons.rulesetVersion })
-    .from(seasons)
-    .where(eq(seasons.id, mission.seasonId))
-    .limit(1);
   await resolveClanWarBattle(tx, {
     mission,
     operation,
-    rulesetVersion: season?.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
+    rulesetVersion,
     clock: { now: () => now },
     adminUsernames,
   });
@@ -2534,10 +2526,25 @@ export async function resolveClanWarLeg(
  * Wealth, and out of the staging world's defence — the escrow the owner asked
  * for. What changes is the wave's STATUS, which is what the pool is read from.
  */
+/**
+ * A WAVE A CLOUD FINISHED ON ONE OF ITS LEGS IS LOST, the way a wave wiped in battle is,
+ * and the operation checks whether it is now settled. Radyasyon (plan F9).
+ */
+async function loseWave(tx: Tx, wave: typeof clanWarContributions.$inferSelect, now: Date): Promise<void> {
+  await tx.update(clanWarContributions).set({ status: 'LOST', resolvedAt: now })
+    .where(eq(clanWarContributions.id, wave.id));
+  const [operation] = await tx.select().from(clanWarOperations)
+    .where(eq(clanWarOperations.id, wave.operationId)).for('update');
+  if (operation) await completeIfSettled(tx, operation, now);
+  await publishWar(tx, wave.clanId);
+}
+
 async function resolveSupportArrival(
   tx: Tx,
   contributionId: string | null,
+  mission: typeof missions.$inferSelect,
   now: Date,
+  rulesetVersion: number,
 ): Promise<void> {
   if (!contributionId) throw new Error('support leg without a contribution');
   const [contribution] = await tx
@@ -2547,6 +2554,15 @@ async function resolveSupportArrival(
     .for('update');
   if (!contribution) return;
   if (!['OUTBOUND', 'RECALL_ORDERED'].includes(contribution.status)) return;
+
+  // The dose on the way to the staging world, before the wave counts in the pool.
+  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion);
+  await tellRadiationLoss(tx, { playerId: contribution.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
+    dosed, now);
+  if (fleetCount(dosed.fleet) === 0 && fleetCount(dosed.destroyed) > 0) {
+    await loseWave(tx, contribution, now);
+    return;
+  }
 
   await tx.update(clanWarContributions)
     .set({ status: 'STAGED', stagedAt: now })
@@ -2567,13 +2583,13 @@ async function resolveSupportArrival(
     .where(eq(clanWarOperations.id, contribution.operationId))
     .for('update');
   if (!operation) return;
-  const staged = { ...contribution, status: 'STAGED' as const, stagedAt: now };
+  const staged = { ...dosed.wave, status: 'STAGED' as const, stagedAt: now };
   if (contribution.status === 'RECALL_ORDERED' || operation.status !== 'ASSEMBLING') {
     await planContributionReturn(tx, {
       contribution: staged,
       operation,
       fromPlanetId: operation.stagingPlanetId,
-      fleet: contribution.fleet,
+      fleet: dosed.wave.fleet,
       now,
     });
     await completeIfSettled(tx, operation, now);
@@ -2595,6 +2611,7 @@ async function resolveReturnArrival(
   mission: typeof missions.$inferSelect,
   now: Date,
   leg: 'SUPPORT_RETURN' | 'BATTLE_RETURN',
+  rulesetVersion: number,
 ): Promise<void> {
   if (!contributionId) throw new Error('return leg without a contribution');
   const [contribution] = await tx
@@ -2605,16 +2622,34 @@ async function resolveReturnArrival(
   if (!contribution) return;
   if (contribution.status === 'HOME' || contribution.status === 'LOST') return;
 
+  /*
+    THE DOSE ON THE WAY HOME, then the landing (plan §3.5, D9): the last ship takes the
+    haul with it, and what survives carries only what its holds can.
+  */
+  const dosed = await settleWaveRadiation(tx, contribution, mission, rulesetVersion);
+  await tellRadiationLoss(tx, { playerId: contribution.playerId, refId: mission.id, toPlanetId: mission.targetPlanetId },
+    dosed, now);
+  if (fleetCount(dosed.fleet) === 0 && fleetCount(dosed.destroyed) > 0) {
+    await loseWave(tx, contribution, now);
+    return;
+  }
+  const wave = fleetCount(dosed.destroyed) > 0
+    ? {
+        ...dosed.wave,
+        ...capLoadToSurvivors({ loot: dosed.wave.loot, salvage: dosed.wave.salvage }, dosed.fleet, dosed.wave.tech),
+      }
+    : dosed.wave;
+
   const destinationPlanetId = await safeHomePlanet(
     tx, contribution.playerId, mission.targetPlanetId,
   );
-  await landContribution(tx, contribution, mission.fleet, destinationPlanetId, now);
+  const landed = await landContribution(tx, wave, dosed.fleet, destinationPlanetId, now);
   // The battle wrote immutable per-wave shares, but the ships physically carry
   // them until this return lands. A terminal wave is skipped above, so a repeated
   // arrival cannot credit the haul twice. Joint loot never enters the ordinary
   // clan raid share path.
-  const loot = contribution.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
-  const salvage = contribution.salvage ?? { alloy: 0, crystal: 0, deuterium: 0 };
+  const loot = wave.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
+  const salvage = wave.salvage ?? { alloy: 0, crystal: 0, deuterium: 0 };
   if (loot.alloy + loot.crystal + loot.deuterium
     + salvage.alloy + salvage.crystal + salvage.deuterium > 0) {
     await tx.update(planets).set({
@@ -2635,7 +2670,7 @@ async function resolveReturnArrival(
     payload: leg === 'BATTLE_RETURN'
       ? {
           trip: 'raid',
-          ships: fleetCount(mission.fleet),
+          ships: fleetCount(dosed.fleet),
           fromPlanetId: mission.originPlanetId,
           fromPlanetName: operation?.targetPlanetName ?? null,
           lootAlloy: loot.alloy,
@@ -2644,8 +2679,9 @@ async function resolveReturnArrival(
           salvageAlloy: salvage.alloy,
           salvageCrystal: salvage.crystal,
           salvageDeuterium: salvage.deuterium,
+          ...dockNotice(landed),
         }
-      : { trip: 'recalled', craft: fleetCount(mission.fleet), craftKind: 'fleet' },
+      : { trip: 'recalled', craft: fleetCount(dosed.fleet), craftKind: 'fleet', ...dockNotice(landed) },
     at: now,
     refId: mission.id,
   });
@@ -2692,7 +2728,11 @@ export async function abandonClanWarLeg(
     await publishWar(tx, operation.clanId);
     return;
   }
-  await resolveReturnArrival(tx, contribution.id, mission, now, leg.leg);
+  // The ships flew the leg the worker gave up on, so the dose they took is theirs.
+  const [season] = await tx.select({ rulesetVersion: seasons.rulesetVersion }).from(seasons)
+    .where(eq(seasons.id, mission.seasonId)).limit(1);
+  await resolveReturnArrival(tx, contribution.id, mission, now, leg.leg,
+    season?.rulesetVersion ?? MULTI_WORLD.rulesetVersion);
 }
 
 /* ── streams ────────────────────────────────────────────────────── */

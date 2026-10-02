@@ -1,7 +1,7 @@
 /* global document */
 const PRICE_KEYS = new Set([
   'planet-lava', 'planet-ice', 'planet-toxic', 'planet-desert',
-  'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'bundle',
+  'planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan', 'bundle',
 ]);
 
 /** @param {unknown} value */

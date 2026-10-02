@@ -9,6 +9,7 @@ import {
 import { keys } from '../src/api/keys.js';
 import { readsForPrivateEvent } from '../src/session/shardEvents.js';
 import i18n from '../src/i18n/index.js';
+import { LANGUAGES } from '../src/i18n/languages.js';
 
 describe('clan joint war wire contract', () => {
   it('parses the one private war view and its live operation', () => {
@@ -57,7 +58,7 @@ describe('clan joint war wire contract', () => {
 
   it('gives each quoted fuel leg a distinct player-facing route name in every language', () => {
     const legs = new Set([...JOINT_WAR_PHYSICAL_LEGS, ...JOINT_WAR_STAGING_LEGS]);
-    for (const language of ['en', 'tr', 'fr', 'de', 'es']) {
+    for (const language of LANGUAGES) {
       const t = i18n.getFixedT(language);
       const names = [...legs].map((leg) => t(`clanWar.fuelLegName.${leg}`));
       expect(new Set(names).size, language).toBe(legs.size);
@@ -69,7 +70,7 @@ describe('clan joint war wire contract', () => {
   });
 
   it('keeps all five clan sections identifiable in a narrow mobile tab bar', () => {
-    for (const language of ['en', 'tr', 'fr', 'de', 'es']) {
+    for (const language of LANGUAGES) {
       const t = i18n.getFixedT(language);
       const names = (['overview', 'strength', 'members', 'aid'] as const)
         .map((id) => t(`clan.tabs.compact.${id}`));

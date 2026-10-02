@@ -54,6 +54,18 @@ describe('the Base queues', () => {
     expect(document.querySelectorAll('[data-free-slot]').length).toBeGreaterThan(0);
   });
 
+  it('adds the Repair Station\'s lane beside the other two while a repair runs', () => {
+    const repair = order({ id: 'r1', queue: 'REPAIR', kind: 'REPAIR', subject: 'BALLISTA', count: 2 });
+    render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [], YARD: [], REPAIR: [repair] } })} />, { wrapper: wrap });
+    expect(screen.getAllByRole('group')).toHaveLength(3);
+    expect(screen.getByRole('group', { name: /repair/i })).toBeInTheDocument();
+  });
+
+  it('keeps two lanes when nothing is being repaired', () => {
+    render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [], REPAIR: [] } })} />, { wrapper: wrap });
+    expect(screen.getAllByRole('group')).toHaveLength(2);
+  });
+
   it('opens the queue sheet on a tap, and cancels only after Confirm', async () => {
     render(<BaseQueues planet={planetView({ queues: { CONSTRUCTION: [order()], YARD: [] } })} />, { wrapper: wrap });
     const user = userEvent.setup();

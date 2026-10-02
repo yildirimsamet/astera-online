@@ -4,6 +4,7 @@ import {
   DEATH_STAR,
   ECONOMY_ADJUSTMENT,
   FEATURE_FLAGS,
+  interceptorCapacity,
   strategicStockpile,
 } from '../src/index.js';
 
@@ -35,18 +36,38 @@ const total = (r: { alloy: number; crystal: number; deuterium: number }): number
  * longer describe this owner-set balance.
  */
 describe('the tactical EMP contract', () => {
-  it('keeps the weapon enabled while its retired research projects stay closed', () => {
+  it('keeps the weapon enabled with no research release switch left', () => {
     expect(FEATURE_FLAGS.STRATEGIC_CRAFTING_ENABLED).toBe(true);
-    expect(FEATURE_FLAGS.STRATEGIC_RESEARCH_ENABLED).toBe(false);
+    expect(Object.keys(FEATURE_FLAGS)).toEqual(['STRATEGIC_CRAFTING_ENABLED']);
   });
 
   it('disables Aegis regeneration and ground defence for exactly one hour', () => {
     expect(DEATH_STAR.empMinutes).toBe(60);
   });
 
-  it('holds two weapons and two anti-battery charges without research', () => {
-    expect(strategicStockpile(0)).toBe(2);
-    expect(ANTI_STRATEGIC.maxCharges).toBe(2);
+  /**
+   * OWNER, 2026-10-01: one weapon and two charges by default; the Stockpile makes it
+   * two weapons, the Grid four charges. Defence holds more at every rung, and each
+   * research changes an outcome: two weapons from two worlds beat two charges.
+   */
+  it('holds one weapon and two charges by default, two and four when researched', () => {
+    expect(strategicStockpile(0)).toBe(1);
+    expect(strategicStockpile(1)).toBe(2);
+    expect(interceptorCapacity(0)).toBe(2);
+    expect(interceptorCapacity(1)).toBe(4);
+  });
+
+  it('never grows past its researched ceiling', () => {
+    expect(strategicStockpile(99)).toBe(2);
+    expect(interceptorCapacity(99)).toBe(4);
+  });
+
+  /**
+   * OWNER, 2026-10-01: *"her ölüm yıldızı vuruşunda %20 sadakat puanı düşer"*. A colony
+   * at 20 or less falls to zero on the hit and secedes through the ordinary loyalty path.
+   */
+  it('cuts a struck colony’s loyalty by twenty points', () => {
+    expect(DEATH_STAR.colonyLoyaltyLoss).toBe(20);
   });
 });
 
@@ -58,7 +79,7 @@ describe('the tactical EMP contract', () => {
  */
 describe('what the strategic pair costs', () => {
   it('carries the owner’s figures exactly', () => {
-    expect(DEATH_STAR.cost).toEqual({ alloy: 71_831, crystal: 35_916, deuterium: 2_976 });
+    expect(DEATH_STAR.cost).toEqual({ alloy: 50_000, crystal: 35_000, deuterium: 3_000 });
     expect(ANTI_STRATEGIC.cost).toEqual({ alloy: 21_550, crystal: 10_776, deuterium: 894 });
   });
 
@@ -67,13 +88,14 @@ describe('what the strategic pair costs', () => {
   });
 
   /**
-   * D203 triples the weapon and raises the battery by half, taking the pair from
-   * roughly 60% to roughly 30%. The narrow band allows only component rounding.
+   * OWNER, 2026-10-01: the weapon falls to 88,000 and the charge stays at 33,220, so
+   * one shot is about 38% of what it stops — up from 30%, the gap the owner called
+   * unfair. The narrow band allows only component rounding.
    */
   it('keeps the battery a real share of the weapon it answers', () => {
     const share = total(ANTI_STRATEGIC.cost) / total(DEATH_STAR.cost);
-    expect(share).toBeGreaterThan(0.29);
-    expect(share).toBeLessThan(0.31);
+    expect(share).toBeGreaterThan(0.37);
+    expect(share).toBeLessThan(0.39);
   });
 
   /**

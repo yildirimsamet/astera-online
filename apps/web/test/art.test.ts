@@ -295,10 +295,10 @@ describe('the research renders', () => {
    * TWO ROWS WITH ONE PICTURE ARE TWO ROWS THE EYE CANNOT TELL APART.
    *
    * Three projects used to share the Death Star render and five more wore hull or
-   * building art belonging to another screen. Only the protocol may wear the
-   * weapon now, because the weapon IS what it authorises.
+   * building art belonging to another screen. The protocol that wore the weapon is
+   * gone (2026-10-01), and the weapon's picture now lives with the weapon.
    */
-  it('give each project its own render, bar the one that wears its subject', () => {
+  it('give each project its own render', () => {
     const shared = new Map<string, string[]>();
     for (const id of RESEARCH_PROJECT_IDS) {
       shared.set(RESEARCH_ART[id], [...(shared.get(RESEARCH_ART[id]) ?? []), id]);
@@ -309,9 +309,9 @@ describe('the research renders', () => {
   });
 
   /** And the lab renders come from the lab, not from a hull or a resource table. */
-  it('draws the twelve lab projects from the lab folder', () => {
+  it('draws every research project from the lab folder', () => {
     const borrowed = RESEARCH_PROJECT_IDS.filter((id) => !RESEARCH_ART[id].includes('/lab/'));
-    expect(borrowed).toEqual(['DEATH_STAR_PROTOCOL']);
+    expect(borrowed).toEqual([]);
   });
 });
 

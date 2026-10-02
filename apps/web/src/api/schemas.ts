@@ -55,11 +55,11 @@ export const massClass = z.enum(['LIGHT', 'MEDIUM', 'HEAVY']);
 export const clarityState = z.enum(['FULL', 'CLEAR', 'INTERMITTENT', 'DEGRADED', 'BLIND']);
 export const grade = z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']);
 export const researchProjectId = z.enum([
-  'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES', 'DEATH_STAR_PROTOCOL',
+  'ISOTOPE_SPECTROMETRY', 'DENSE_FUEL_CELLS', 'GRAVITIC_CHARGES',
   'DEUTERIUM_SYNTHESIS', 'YARD_AUTOMATION', 'PROSPECTOR_HOLDS', 'CARGO_HOLDS',
   'STARSHIP_ENGINEERING', 'SHIP_POWER', 'SHIP_ARMOR', 'SHIP_PROPULSION',
   'EMPLACEMENT_DOCTRINE', 'INTERCEPTION_GRID', 'STRATEGIC_STOCKPILE',
-  'AI_ROBOTS',
+  'AI_ROBOTS', 'INDUSTRIAL',
 ]);
 
 // If any of these stop compiling, the rules changed and this file has not.
@@ -137,6 +137,19 @@ const timedYardOrder = z.object({
   queue: z.literal('YARD'),
   slot: z.number().int().min(0),
   kind: z.literal('HULL'),
+  subject: z.string(),
+  count: z.number().int().min(1),
+  startedAt: z.coerce.date(),
+  finishesAt: z.coerce.date(),
+  cost: resources,
+});
+
+/** A Repair Station job (Kalıcı gemi hasarı): one hull, or `ALL` for a mixed "repair all". */
+const timedRepairOrder = z.object({
+  id: z.string(),
+  queue: z.literal('REPAIR'),
+  slot: z.number().int().min(0),
+  kind: z.literal('REPAIR'),
   subject: z.string(),
   count: z.number().int().min(1),
   startedAt: z.coerce.date(),
@@ -696,6 +709,70 @@ const strategicAsset = z.object({
   remainingSeconds: z.number().nullable(),
 });
 
+/* ── klan savunma desteği ─────────────────────────────────────── */
+
+export const defencePostureSchema = z.object({
+  posture: z.enum(['ESCAPE', 'SUPPORT', 'HOLD']),
+  escape: z.boolean(),
+  support: z.boolean(),
+  supportLocked: z.enum(['NOT_IN_CLAN']).nullable(),
+});
+export type DefencePostureView = z.infer<typeof defencePostureSchema>;
+
+const supportRoomSchema = z.object({
+  used: z.number().nonnegative(),
+  reserved: z.number().nonnegative(),
+  total: z.number().nonnegative(),
+});
+
+export const clanSupportWaveSchema = z.object({
+  id: z.string(),
+  status: z.enum(['OUTBOUND', 'STATIONED', 'RETURNING', 'HOME', 'LOST']),
+  sender: z.object({ playerId: z.string(), name: z.string() }),
+  host: z.object({ playerId: z.string(), name: z.string() }),
+  originPlanetId: z.string(),
+  hostPlanetId: z.string(),
+  hostPlanetName: z.string(),
+  fleet,
+  bulk: z.number().nonnegative(),
+  damaged: z.boolean(),
+  sentAt: z.coerce.date(),
+  arriveAt: z.coerce.date(),
+  stationedAt: z.coerce.date().nullable(),
+  expiresAt: z.coerce.date().nullable(),
+  returnAt: z.coerce.date().nullable(),
+  returnReason: z.enum([
+    'RECALLED', 'SENT_BACK', 'HOST_CLOSED', 'EXPIRED', 'BAND', 'MEMBERSHIP', 'WORLD_CHANGED', 'FREEZE',
+  ]).nullable(),
+  outOfBand: z.boolean(),
+  battles: z.number().int().nonnegative(),
+});
+export type ClanSupportWave = z.infer<typeof clanSupportWaveSchema>;
+
+export const mySupportSchema = z.object({ waves: z.array(clanSupportWaveSchema) });
+
+export const clanSupportQuoteSchema = z.object({
+  refusals: z.array(z.object({
+    code: z.string(),
+    message: z.string(),
+    params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  })),
+  arriveAt: z.coerce.date(),
+  travelMinutes: z.number().nonnegative(),
+  returnMinutes: z.number().nonnegative(),
+  fuel: z.number().nonnegative(),
+  bays: z.object({ used: z.number(), total: z.number() }),
+  hostRoom: supportRoomSchema.extend({ after: z.number().nonnegative() }),
+  band: z.object({ ok: z.boolean(), mine: z.number(), theirs: z.number() }),
+  stationUntil: z.coerce.date(),
+  seasonClipped: z.boolean(),
+  personalHangar: z.object({ used: z.number(), total: z.number() }),
+  senderShieldUntil: z.coerce.date().nullable(),
+});
+export type ClanSupportQuote = z.infer<typeof clanSupportQuoteSchema>;
+
+export const clanSupportWaveAnswerSchema = z.object({ wave: clanSupportWaveSchema });
+
 export const planetSchema = z.object({
   planet: z.object({
     id: z.string(),
@@ -832,6 +909,8 @@ export const planetSchema = z.object({
   queues: z.object({
     CONSTRUCTION: z.array(z.union([timedConstructionOrder, stagedConstructionOrder])),
     YARD: z.array(z.union([timedYardOrder, stagedYardOrder])),
+    /** Optional only for a rolling deploy against an older server. */
+    REPAIR: z.array(timedRepairOrder).optional(),
   }).optional(),
   /** The head of `deathStars`: the weapon that can fly soonest. */
   strategic: strategicAsset.nullable().optional(),
@@ -907,6 +986,27 @@ export const planetSchema = z.object({
   ground: fleet,
   /** Your own craft that are off the planet right now. Ownership, not readiness. */
   fleetAway: fleet,
+  /**
+   * Your own ships waiting in the Repair Station (Kalıcı gemi hasarı): owned, so every
+   * ownership count adds them, but neither at home nor away. Optional for a rolling deploy.
+   */
+  fleetDocked: fleet.optional(),
+  /** The Repair Station's dock, priced by the server. Optional for a rolling deploy. */
+  dock: z.object({
+    lots: z.array(z.object({
+      id: z.string(),
+      hull: hullId,
+      count: z.number().int().min(1),
+      damageBp: z.number().int().min(1).max(9999),
+      repairing: z.boolean(),
+      /** The job repairing it, so a job holding several hulls can list them. Null while it waits. */
+      orderId: z.string().nullable().default(null),
+      cost: resources,
+      minutes: z.number().min(0),
+    })),
+    waiting: z.object({ cost: resources, minutes: z.number().min(0) }),
+    pct: z.number(),
+  }).optional(),
   /** Craft in the air, and how many bays the Command Core has opened. D28. */
   flight: z.object({ used: z.number(), total: z.number() }),
   convoyLaunchLocked: z.boolean().optional(),
@@ -933,6 +1033,16 @@ export const planetSchema = z.object({
    * Defend tab reads it through `fleetEscapeApplies`, never by hand.
    */
   rulesetVersion: z.number().int().positive().optional(),
+  /**
+   * KLAN SAVUNMA DESTEĞİ. The world's two defence toggles (null before ruleset 15),
+   * and the Hangar's support bay: who stands here or is flying in, and the room. Both
+   * optional for a rolling deploy.
+   */
+  defencePosture: defencePostureSchema.nullable().optional(),
+  clanSupport: z.object({
+    room: supportRoomSchema,
+    waves: z.array(clanSupportWaveSchema),
+  }).nullable().optional(),
 });
 
 export const planetsSchema = z.object({
@@ -956,6 +1066,11 @@ export const planetsSchema = z.object({
  * cannot, and it is what the toast and the flash on the row read.
  */
 const withPlanet = { planet: planetSchema };
+
+/** Saving the two defence toggles answers with the world and the waves it sent home. */
+export const defencePostureResultSchema = z.object({ ...withPlanet, returnedWaves: z.number().int().nonnegative() });
+/** Sending a wave answers with the wave and the origin world it left. */
+export const clanSupportSendSchema = z.object({ ...withPlanet, wave: clanSupportWaveSchema });
 
 export const upgradeSchema = z.object({
   type: buildingId,
@@ -995,6 +1110,12 @@ export const satelliteInstallSchema = z.object({
 export const buildCancelSchema = z.object({
   orderId: z.string(),
   refund: resources,
+  ...withPlanet,
+});
+
+/** A Repair Station job started (Kalıcı gemi hasarı): its order, and the whole world after. */
+export const repairStartSchema = z.object({
+  orderId: z.string(),
   ...withPlanet,
 });
 
@@ -1059,7 +1180,28 @@ export const rewardClaimSchema = z.object({
 
 /* ── the galaxy, at the tier of detail you have earned ──────── */
 
+/**
+ * A RADIATION CLOUD, OR A SHELTER FROM THEM. Owner decision K3 (`plan.md` F10).
+ *
+ * Public, like the worlds: everyone flies through the same sky. The galaxy carries every
+ * one a flight could still be crossing — lit, not yet lit, or ended within the longest a
+ * flight can be up — so the launch quote and the fade on the disc read the same windows
+ * the server settles with.
+ */
+export const radiationSourceSchema = z.object({
+  id: z.string(),
+  mode: z.enum(['EMIT', 'SHELTER']),
+  center: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  radius: z.number().positive(),
+  intensityPctPerMinute: z.number().nonnegative(),
+  activeFrom: z.coerce.date(),
+  activeUntil: z.coerce.date().nullable(),
+});
+export type RadiationSourceView = z.infer<typeof radiationSourceSchema>;
+
 export const galaxySchema = z.object({
+  /** Empty before ruleset 14; absent on every server that predates it. */
+  radiation: z.array(radiationSourceSchema).optional(),
   you: z.object({
     planetId: z.string(),
     playerId: z.string(),
@@ -1115,6 +1257,8 @@ export const galaxySchema = z.object({
         planetId: z.string(),
         name: z.string(),
         position: vec3,
+        /** Klan Savunma Desteği: whether the world takes clan support. Optional for a rolling deploy. */
+        supportOpen: z.boolean().optional(),
       })),
     })),
   }).nullable().optional(),
@@ -1188,6 +1332,8 @@ export const galaxySchema = z.object({
       isCapital: z.boolean().optional(),
       /** Client-derived from current `clanPresence`; never inferred from stale intel. */
       clanmate: z.boolean().optional(),
+      /** Client-derived from `clanPresence`: a clanmate world's clan support door. Absent: unknown. */
+      supportOpen: z.boolean().optional(),
       state: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('NORMAL') }),
         z.object({ kind: z.literal('EMP'), until: z.coerce.date() }),
@@ -1272,7 +1418,6 @@ export const leaderboardSchema = z.object({
       country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),
-      coreTier: z.number().optional(),
       score: dominionInteger,
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
     }),
@@ -1286,7 +1431,6 @@ export const leaderboardSchema = z.object({
       country: countryCode,
       planetId: z.string().optional(),
       planetName: z.string().optional(),
-      coreTier: z.number().optional(),
       score: dominionInteger,
       clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       isBot: z.boolean().default(false),
@@ -1973,13 +2117,18 @@ export const intelSchema = z.object({
        */
       doctrines: z.record(z.string(), z.number()).optional(),
       /**
-       * WHETHER THAT WORLD CAN SHOOT A STRATEGIC WEAPON DOWN. T10.
+       * HOW MANY STRATEGIC WEAPONS THAT WORLD CAN SHOOT DOWN. T10 · owner, 2026-10-01.
        *
-       * The single most valuable thing a probe brings home once the war act opens:
-       * it is what turns a Death Star from a purchase into an intelligence
-       * decision. Never public — the only way to hold it is to have flown there.
+       * The ready charges at the look; one downs one Death Star. It is what turns a
+       * strike from a purchase into an intelligence decision. Never public — the only
+       * way to hold it is to have flown there. Absent means never measured.
        */
-      interceptor: z.boolean().optional(),
+      interceptors: z.number().int().nonnegative().optional(),
+      /**
+       * A COLONY'S LOYALTY AT THE LOOK, rounded up. A Death Star takes twenty and a
+       * colony at twenty or less goes NEUTRAL. Absent on capitals and caretaker worlds.
+       */
+      loyalty: z.number().nonnegative().optional(),
       /**
        * THE THREE READINGS D199 ADDED: the shape of what fires, the Aegis charge at
        * arrival and the hulls in the line that fire nothing. Absent on a report
@@ -1988,6 +2137,18 @@ export const intelSchema = z.object({
       classReading: classReading.optional(),
       shield: band.optional(),
       unarmed: band.optional(),
+      /**
+       * KLAN SAVUNMA DESTEĞİ (owner K9). The world's posture, exact, and the clanmates'
+       * ships standing there as a reading of their own. Null/absent before ruleset 15;
+       * `support` null where the posture cannot hold any.
+       */
+      posture: z.enum(['ESCAPE', 'SUPPORT', 'HOLD']).nullable().optional(),
+      support: z.object({
+        supporters: z.number().int().nonnegative(),
+        defence: band,
+        fleetSize: band,
+        classReading: classReading.nullable(),
+      }).nullable().optional(),
       detected: z.boolean(),
     }),
   ),
@@ -2035,6 +2196,8 @@ export const probeSchema = z.object({
 export const unlockable = z.enum(['TELESCOPE', 'RADAR', 'EXPLORER', 'VEIL']);
 
 const pendingThread = z.object({
+  /** Klan Savunma Desteği: a `transfer` that is a support wave's leg. Optional for a rolling deploy. */
+  clanSupport: z.boolean().optional(),
   /**
    * The mission's own id. YOUR OWN CRAFT ONLY — an inbound thread has none.
    *
@@ -2149,6 +2312,12 @@ const pendingThread = z.object({
       arriveAt: z.coerce.date(),
     })
     .optional(),
+  /**
+   * WHEN A CLOUD FINISHES THIS WING IN THE AIR (radiation, D15). Own flights only and only
+   * when it will; the disc takes the craft off at this moment rather than flying it to a
+   * landing that never happens. The server works it out: it holds the whole path.
+   */
+  fadeAt: z.coerce.date().optional(),
   /** The convoy continues along its diameter during the five-second volley. */
   engagementPath: z
     .object({
@@ -2360,6 +2529,15 @@ const ordinaryBattleReport = z.object({
       /** Defender only: ground guns that walked back out of their own wreckage. */
       defenceSalvage: fleet.default({}),
       /**
+       * The reader's own ships that came out damaged (Kalıcı gemi hasarı). A defender's
+       * were judged on the spot; a raider's are judged when they land. Empty on older reports.
+       */
+      yourDamage: z.array(z.object({
+        hull: hullId,
+        count: z.number().int().min(1),
+        damageBp: z.number().int().min(1).max(9999),
+      })).default([]),
+      /**
        * Defender only: what this defeat broke on the colony. Koloni arızaları.
        * Optional for a rolling deploy, like `salvage`: a server that predates the column
        * sends nothing and the report simply has no line for it.
@@ -2393,6 +2571,29 @@ const ordinaryBattleReport = z.object({
       /** Launch-time clan identities; they do not rewrite when somebody later leaves. */
       attackerClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
       defenderClan: z.object({ id: z.string(), name: z.string(), tag: z.string() }).nullable().optional(),
+      /**
+       * KLAN SAVUNMA DESTEĞİ: the defending line when it was more than one commander.
+       * The raider reads names and losses only — `sent`/`survivors` arrive null.
+       */
+      /**
+       * Klan Savunma Desteği: on a supporter's report only — the clanmate's world their ships
+       * stood at, and whose line it was. Optional for a rolling deploy.
+       */
+      supportedAt: z.object({ planetId: z.string(), planetName: z.string(), hostName: z.string() }).optional(),
+      defenseLine: z.object({
+        defenderCount: z.number().int().min(2),
+        /** What the support multiplied the host's Dominion by (owner, 2026-10-02). Optional for a rolling deploy. */
+        dominionFactor: z.number().min(1).optional(),
+        members: z.array(z.object({
+          playerId: z.string(),
+          name: z.string(),
+          role: z.enum(['HOST', 'SUPPORT']),
+          losses: fleet,
+          sent: fleet.nullable(),
+          survivors: fleet.nullable(),
+          dominion: z.number(),
+        })),
+      }).optional(),
       jointWar: z.object({
         operationId: z.string(),
         clan: z.object({ id: z.string(), name: z.string(), tag: z.string() }),
@@ -2448,6 +2649,8 @@ const strategicBattleReport = z.object({
     cost: resources,
   })),
   shieldDestroyed: z.number().nonnegative(),
+  /** What the hit did to a colony's loyalty; null off a colony. Owner, 2026-10-01. */
+  loyalty: z.object({ before: z.number(), after: z.number() }).nullable(),
   trigger: z.enum(['RADAR', 'TELESCOPE']).nullable(),
   attackerClan: z.null().optional(),
   defenderClan: z.null().optional(),
@@ -3167,7 +3370,7 @@ type ParsedPlanetView = z.infer<typeof planetSchema>;
 /** One broken thing on one world, as the repair surfaces read it. */
 export type FaultView = NonNullable<ParsedPlanetView['faults']>[number];
 type ParsedQueues = NonNullable<ParsedPlanetView['queues']>;
-export type ServerBuildOrderView = ParsedQueues[keyof ParsedQueues][number];
+export type ServerBuildOrderView = NonNullable<ParsedQueues[keyof ParsedQueues]>[number];
 export type ResearchOrderView = NonNullable<ParsedPlanetView['researchQueue']>[number];
 
 export interface OptimisticResearchOrderView {
@@ -3202,6 +3405,8 @@ export type PlanetView = Omit<ParsedPlanetView, 'queues' | 'researchQueue'> & {
   queues?: {
     CONSTRUCTION: BuildOrderView[];
     YARD: BuildOrderView[];
+    /** The Repair Station's lane; absent from an older server. */
+    REPAIR?: BuildOrderView[];
   };
   researchQueue?: ResearchQueueOrderView[];
 };

@@ -1,5 +1,5 @@
-import { and, count, eq, inArray, isNull, or } from 'drizzle-orm';
-import { FAULT, colonyCapacity } from '@astera/rules';
+import { and, count, eq, inArray, isNull, like, or } from 'drizzle-orm';
+import { FAULT, colonyCapacity, dockLocation } from '@astera/rules';
 import type { Clock } from '../clock.js';
 import type { Db, Queryable, Tx } from '../db/client.js';
 import {
@@ -15,6 +15,7 @@ import {
 import { GameError, lockSeason } from './planet.js';
 import { refreshSensorEpoch } from './sensorHistory.js';
 import { revalidateClanWarTargetPlanet } from './clanWar.js';
+import { releaseSupportForWorldChange } from './clanSupport.js';
 import { armFaults } from './faults.js';
 
 export interface CommanderWorld {
@@ -378,7 +379,8 @@ export async function transferPlanetControl(
     .set({ ownerPlayerId: input.newPlayerId })
     .where(and(
       eq(units.planetId, input.targetPlanetId),
-      or(eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR')),
+      // A ship waiting in the Repair Station stands on the world like any other. Kalıcı gemi hasarı.
+      or(eq(units.location, 'home'), eq(units.hull, 'PROSPECTOR'), like(units.location, dockLocation('%'))),
     ));
   /*
     THE OLD OWNER'S COUNTDOWN IS THEIRS AND DIES WITH THE HANDOVER, and the new owner's
@@ -412,6 +414,8 @@ export async function transferPlanetControl(
     a target that cannot be hit.
   */
   await revalidateClanWarTargetPlanet(tx, input.targetPlanetId, input.now);
+  // Klan Savunma Desteği: the waves there go home, the waves from there re-anchor.
+  await releaseSupportForWorldChange(tx, { planetId: input.targetPlanetId, now: input.now });
   return { previousPlayerId: input.expectedControllerPlayerId, planetId: input.targetPlanetId };
 }
 

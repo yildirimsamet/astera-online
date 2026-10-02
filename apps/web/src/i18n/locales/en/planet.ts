@@ -6,6 +6,7 @@
 export const planet = {
   recovery: "Recovery in progress · systems return in {{duration}}",
   empActive: "EMP · Aegis at zero and unable to regenerate; ground defences cannot fire or take damage for {{duration}}.",
+  capacityNext: "With {{name}}: {{total}} per world",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -19,16 +20,16 @@ export const planet = {
     none: "No charge loaded",
     building: "Loading · {{duration}}",
     paused: "Loading paused during recovery",
-    ready: "One charge loaded",
+    ready: "Charges loaded: {{count}}",
     noRadar: "Loaded · Radar ring is offline",
     build: "Load charge",
     started: "Charge loading",
     hint: "Destroys the first Death Star that enters the timed Radar ring or is identified in Telescope sight. Spent when it fires.",
+    colonyHint: "Every Death Star that gets through costs this colony {{loss}} loyalty; at {{loss}} or less it secedes.",
     readyHint:
       "Armed. It destroys the next Death Star that enters the Radar interception ring or is identified in Telescope sight.",
     noRadarHint:
       "The charge remains loaded, but this world has no Radar interception ring. Restore its Uplink and Radar 3; Telescope sight from another world can still trigger it.",
-    needResearch: "Interception Grid",
     needRadar: "Radar L{{level}}",
     needUplink: "Uplink in orbit",
     needOperational: "World operational",
@@ -46,11 +47,9 @@ export const planet = {
     stock: "{{ready}} ready · {{building}} building · {{held}}/{{capacity}}",
     build: "Build",
     started: "Death Star construction started",
-    dangerHint:
-      "EMP: Aegis drops to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour.",
+    dangerHint: "EMP: Aegis drops to zero and cannot regenerate for 1 hour. Ground defences cannot fire or take damage during that hour. A colony also loses {{loss}} loyalty, and at {{loss}} or less it secedes and turns neutral.",
     readyHint:
       "Ready: drain an enemy Aegis and disable its ground defences for 1 hour. The defences cannot fire or take damage.",
-    needProtocol: "Protocol",
     needCore: "Core L{{level}}",
     needShipyard: "Shipyard L{{level}}",
     needOperational: "World operational",
@@ -84,6 +83,7 @@ export const planet = {
     capacity: "{{count}} slots each",
     construction: "Construction",
     yard: "Yard",
+    repair: "Repairs",
     slotFree: "Free",
     empty: "No work committed",
     committing: "committing…",
@@ -475,6 +475,8 @@ export const planetHero = {
   defenceGuns_other: "{{count}} guns",
   defenceUnarmed_one: "{{count}} transport in the line",
   defenceUnarmed_other: "{{count}} transports in the line",
+  defenceDocked_one: "{{count}} in the Repair Station · doesn't defend",
+  defenceDocked_other: "{{count}} in the Repair Station · don't defend",
   fleetAway: "{{count}} in the air",
   shield: "Shield",
   shieldNone: "None",
@@ -586,6 +588,10 @@ export const launch = {
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "This gives up your recovery shield and its +50% output. Once it is gone, other commanders can raid you too.",
+  radiationLethal_one: "Radiation on this route destroys {{count}} ship before it arrives. Holding sends it anyway.",
+  radiationLethal_other: "Radiation on this route destroys {{count}} ships before they arrive. Holding sends them anyway.",
+  radiationDock: "The route crosses radiation: each ship takes ~{{pct}}% of its hull. Over 20% waits in the Repair Station.",
+  radiationPatched: "The route crosses radiation: each ship takes ~{{pct}}% of its hull, patched free on landing.",
   fleetsave: "Ships in flight cannot be raided. Your planet can.",
   range: "range {{d}}",
   arrive: "Arrival",
@@ -720,7 +726,7 @@ export const faults = {
   },
   loyalty: {
     title: "This world's loyalty",
-    battleLoss: "Partial defeat −15 · decisive defeat −30",
+    battleLoss: "Partial defeat −15 · decisive defeat −30 · Death Star −{{strike}}",
     line: "{{value}}% — falling while {{count}} things are broken. At this rate it reaches zero in {{time}}, and the colony declares itself independent.",
     bar: "Loyalty {{value}}%",
     left: "{{time}} left",

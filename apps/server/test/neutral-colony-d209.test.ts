@@ -384,22 +384,23 @@ describe('D209 research reads the capital Core', () => {
     expect(order?.remainingSeconds).toBe(Math.ceil(researchMinutes(project.costAt(1), 2) * 60));
   });
 
-  it('keeps the retired Death Star research closed regardless of the capital Core', async () => {
-    const project = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL;
+  it('gates the Stockpile’s Core on the capital, whichever world pays', async () => {
+    const project = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE;
     const requiredCore = project.requiredCore!;
     f.clock.advance(project.availableAtMinutes + 1);
     await giveResearch(f.db, capital, 'ISOTOPE_SPECTROMETRY');
     await giveResearch(f.db, capital, 'GRAVITIC_CHARGES');
     await setLevel(f.db, capital, 'CORE', requiredCore - 1);
     await setLevel(f.db, colony, 'CORE', requiredCore);
+    await grant(f.db, colony, 200_000, 100_000);
+    await f.db.update(planets).set({ deuterium: 50_000 }).where(eq(planets.id, colony));
 
-    await expect(completeResearch(f.db, colony, 'DEATH_STAR_PROTOCOL', f.clock))
+    await expect(completeResearch(f.db, colony, 'STRATEGIC_STOCKPILE', f.clock))
       .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
 
     await setLevel(f.db, capital, 'CORE', requiredCore);
     await setLevel(f.db, colony, 'CORE', 1);
-    await expect(completeResearch(f.db, colony, 'DEATH_STAR_PROTOCOL', f.clock))
-      .rejects.toMatchObject({ code: 'RESEARCH_UNAVAILABLE' });
+    await expect(completeResearch(f.db, colony, 'STRATEGIC_STOCKPILE', f.clock)).resolves.toBeTruthy();
   });
 
   it('reports the capital Core on the research menu of every world', async () => {

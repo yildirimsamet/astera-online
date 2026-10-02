@@ -63,6 +63,8 @@ export const TRANSFER_EVENT_POLICIES = {
   colony_secession: 'WORLD',
   clan_war_expiry: 'CLAN',
   neutral_census: 'GLOBAL',
+  // A live support wave blocks a commander transfer on either end (plan §Üyelik).
+  clan_support_expiry: 'BLOCKER',
 } as const satisfies Record<EventKind, Policy>;
 
 /**

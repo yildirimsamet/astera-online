@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { SENSOR } from '@astera/rules';
+import { SENSOR, telescopeRange } from '@astera/rules';
 import type { FastifyInstance } from 'fastify';
 import { pino } from 'pino';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -65,6 +65,14 @@ describe('the three intel states', () => {
   let near: string;
   /** Far outside any reach this fixture can buy. */
   let far: string;
+
+  /**
+   * PAST THE NAKED EYE, INSIDE TELESCOPE 5. Read off the ladder rather than written
+   * as a fraction of `maxRadius`: that fraction held while Telescope 5 was the top
+   * rung and reached `maxRadius`, and silently stopped holding when the ladder grew
+   * to eight rungs — the world sat beyond the instrument and never resolved.
+   */
+  const insideTelescopeOnly = (SENSOR.baseRadius + telescopeRange(5)) / 2;
 
   const silent = pino({ level: 'silent' });
   const worker = () =>
@@ -261,6 +269,13 @@ describe('the three intel states', () => {
       ).issueAccess(f.accountIds[2]!)}`,
     };
     const thirdWorldId = f.planetIds[3]!;
+    /*
+      INSIDE THE CLANMATE'S NAKED EYE, measured from their world rather than as a
+      fraction of `maxRadius`. The fixture's 1.4× / 1.6× spacing was 320 units when
+      this was written (maxRadius 1600, naked eye 750); the sensor ladder has grown
+      since and the gap with it, so the clanmate stopped seeing their own neighbour.
+    */
+    await placeAt(f.db, thirdWorldId, { x: SENSOR.maxRadius * 1.4 + SENSOR.baseRadius * 0.5 });
     const minePayload = await rawGalaxy();
     const clanmatePayload = await rawGalaxy(clanmateAuth);
 
@@ -409,7 +424,7 @@ describe('the three intel states', () => {
 
     await giveSatellite(f.db, mine, 'UPLINK');
     await giveInstrument(f.db, mine, 'TELESCOPE', 5);
-    await placeAt(f.db, far, { x: SENSOR.maxRadius * 0.5 });
+    await placeAt(f.db, far, { x: insideTelescopeOnly });
 
     expect((await world(far)).intel).toBe('RESOLVED');
   });
@@ -422,7 +437,7 @@ describe('the three intel states', () => {
   it('falls back to remembered when the reach goes away', async () => {
     await giveSatellite(f.db, mine, 'UPLINK');
     await giveInstrument(f.db, mine, 'TELESCOPE', 5);
-    await placeAt(f.db, far, { x: SENSOR.maxRadius * 0.5 });
+    await placeAt(f.db, far, { x: insideTelescopeOnly });
     await probe(far);
     expect((await world(far)).intel).toBe('RESOLVED');
 

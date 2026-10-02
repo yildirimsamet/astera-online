@@ -15,11 +15,12 @@ import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
 import { clanWar } from './clanWar.js';
+import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, researchMap, ruler, slot, topBar, view } from './v2.js';
+import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 import type { Resources } from '../en/index.js';
 
 /** DE — translated from the English resource tree. */
@@ -29,5 +30,5 @@ export const de: Resources = {
   focus, pirate, worlds, planet, faults, capacity, spend, rangeBand, flightBar, counter,
   itemSheet, upgradeRow, action, planetHero, launch, transfer, intel, reports, clarity, dossier,
   vocabulary, gains, directives, notifications, units, errors, onboarding, country, research, rewards,
-  skins, seasonRecap, chronicle, clan, clanWar, community, trade, convoy, hold, lane, meter, roomBar, away, outline, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage, reportScene, baseSwitch, researchMap,
+  skins, seasonRecap, chronicle, clan, clanWar, clanSupport, community, trade, convoy, hold, lane, meter, roomBar, away, outline, ruler, handle, dock, now, bell, topBar, view, slot, fleetPage, reportScene, repairStation, baseSwitch, researchMap,
 };

@@ -68,8 +68,13 @@ export const BANDS = {
   /** The owner accepts current returns; only a 2x-or-higher exchange is unhealthy. */
   RR: [0, 2],
   SV: [0.1, 0.3],
-  /** Fleet V2 five-seed pooled baseline is 0.060; 0.04 retains one-third margin. */
-  TAX: [0.04, 0.45],
+  /**
+   * Fleet V2 five-seed pooled baseline was 0.060, with the floor at 0.04 for one-third margin.
+   * Ruleset 14 (owner decision, 2026-09-30): the Repair Station's bill lowers the pooled
+   * median from 0.0445 to 0.0382, and the owner accepted that as the design's price rather
+   * than tuning it away. The floor sits just under it, so a further fall still fails.
+   */
+  TAX: [0.035, 0.45],
 } as const;
 
 export type InvariantKey = keyof typeof BANDS;

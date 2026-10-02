@@ -50,9 +50,6 @@ describe('the derived research ceiling', () => {
    */
   it('changes its effect at every rung up to the ceiling', () => {
     for (const id of RESEARCH_PROJECT_IDS) {
-      // The retired Stockpile project is closed; both the unresearched and old
-      // researched states now hold the same default two weapons.
-      if (id === 'STRATEGIC_STOCKPILE') continue;
       for (let level = 1; level <= RESEARCH_MAX_LEVEL[id]; level++) {
         expect(
           researchEffectAt(id, level),
@@ -97,7 +94,6 @@ describe('what each kind of project turns out to be', () => {
     'ISOTOPE_SPECTROMETRY',
     'DENSE_FUEL_CELLS',
     'GRAVITIC_CHARGES',
-    'DEATH_STAR_PROTOCOL',
     'INTERCEPTION_GRID',
     'STRATEGIC_STOCKPILE',
   ];

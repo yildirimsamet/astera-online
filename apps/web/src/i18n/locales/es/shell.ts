@@ -309,7 +309,6 @@ export const leaderboard = {
   title: 'Tabla de clasificación',
   empty: 'Ningún comandante se ha unido a esta galaxia todavía.',
   rank: 'Clasificación {{rank}}',
-  tier: 'Nivel {{tier}}',
   score: 'Dominio',
   you: 'Tú',
   nearby: 'Tus rivales más cercanos',

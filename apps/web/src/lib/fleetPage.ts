@@ -66,3 +66,18 @@ export function roomOf(capacity: {
     ground: { used: capacity.groundUsed, total: capacity.ground, full: capacity.groundUsed >= capacity.ground },
   };
 }
+
+/**
+ * SEVERAL PILES OF SHIPS AS ONE, SUMMED HULL BY HULL. Spreading one fleet over another
+ * keeps the last count of a hull instead of adding them — a Dart at home and a Dart away
+ * are two berths, not one.
+ */
+export function sumFleets(...fleets: readonly Fleet[]): Fleet {
+  const out: Fleet = {};
+  for (const fleet of fleets) {
+    for (const [hull, count] of Object.entries(fleet) as [HullId, number][]) {
+      if (count > 0) out[hull] = (out[hull] ?? 0) + count;
+    }
+  }
+  return out;
+}

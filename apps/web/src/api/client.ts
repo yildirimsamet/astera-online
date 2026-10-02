@@ -28,8 +28,13 @@ import {
   clanAidPolicySchema,
   clanAidQuoteSchema,
   clanAidSchema,
+  clanSupportQuoteSchema,
+  clanSupportSendSchema,
+  clanSupportWaveAnswerSchema,
   clanWarSchema,
   clanWarQuoteSchema,
+  defencePostureResultSchema,
+  mySupportSchema,
   clanWarTargetResultSchema,
   clanWarStartResultSchema,
   clanWarRecallResultSchema,
@@ -123,6 +128,7 @@ import {
   sessionSchema,
   trafficSchema,
   buildSchema,
+  repairStartSchema,
   buildCancelSchema,
   markedSchema,
   unlocksSchema,
@@ -597,6 +603,16 @@ export class Api {
   recallClanWar = (contributionId: string) =>
     this.clanMutation(`/api/clan/war/contributions/${encodeURIComponent(contributionId)}/recall`,
       clanWarRecallResultSchema);
+  /* Klan Savunma Desteği. */
+  mySupport = () => this.send('/api/clan/support', mySupportSchema);
+  quoteClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+    this.send('/api/clan/support/quote', clanSupportQuoteSchema, { method: 'POST', body: { ...input } });
+  sendClanSupport = (input: { originPlanetId: string; hostPlanetId: string; fleet: Fleet }) =>
+    this.clanMutation('/api/clan/support', clanSupportSendSchema, input);
+  recallClanSupport = (waveId: string) =>
+    this.clanMutation(`/api/clan/support/${encodeURIComponent(waveId)}/recall`, clanSupportWaveAnswerSchema);
+  sendBackClanSupport = (waveId: string) =>
+    this.clanMutation(`/api/clan/support/${encodeURIComponent(waveId)}/send-back`, clanSupportWaveAnswerSchema);
   donateClanTreasury = (input: { planetId: string; resources: Resources }) =>
     this.clanMutation('/api/clan/treasury/donate', clanTreasuryResultSchema, input);
   upgradeClanLevel = (expectedLevel: number) =>
@@ -704,6 +720,15 @@ export class Api {
     return this.send(path, buildCancelSchema, { method: 'POST' });
   };
 
+  /**
+   * START A REPAIR STATION JOB at a named world, on the lots named or on everything waiting.
+   * Cancelling is the yard's own door (`cancelBuildOrder`); the order is a queue row there.
+   */
+  startRepair = (planetId: string, request: { lotIds: string[] } | { all: true }) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/repairs`, repairStartSchema, {
+      method: 'POST', body: request,
+    });
+
   completeResearch = (planetIdOrProject: string, explicitProject?: ResearchProjectId) =>
     this.send(explicitProject
       ? `/api/planets/${encodeURIComponent(planetIdOrProject)}/research`
@@ -742,6 +767,8 @@ export class Api {
     acknowledgeShieldLoss?: boolean,
     /** How fast to fly it. Omitted is full speed, which is what every launch flew before D-pace. */
     pace?: MissionPace,
+    /** The commander has read what radiation on this route would take (plan D10). */
+    acknowledgeRadiation?: boolean,
   ) =>
     this.send('/api/fleet/launch', launchSchema, {
       method: 'POST',
@@ -751,6 +778,7 @@ export class Api {
           : { targetPlanetId: originOrTargetPlanetId, fleet: targetOrFleet }),
         ...(acknowledgeShieldLoss ? { acknowledgeShieldLoss: true } : {}),
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
+        ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
       },
     });
 
@@ -775,13 +803,14 @@ export class Api {
     { method: 'POST' },
   );
 
-  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan) =>
+  transfer = (originPlanetId: string, targetPlanetId: string, fleet: Fleet, cargo: { alloy: number; crystal: number; deuterium: number }, pace?: MissionPace, returnPlan?: TransferReturnPlan, acknowledgeRadiation?: boolean) =>
     this.send('/api/fleet/transfer', movementLaunchSchema, {
       method: 'POST',
       body: {
         originPlanetId, targetPlanetId, fleet, cargo,
         ...(returnPlan ? { returnPlan } : {}),
         ...(pace !== undefined && pace !== 1 ? { pace } : {}),
+        ...(acknowledgeRadiation ? { acknowledgeRadiation: true } : {}),
       },
     });
 
@@ -795,6 +824,12 @@ export class Api {
       method: 'POST', body: {},
     });
 
+  /** Save a world's two defence toggles (Klan Savunma Desteği, K4). Idempotent by nature. */
+  setDefencePosture = (planetId: string, toggles: { escape: boolean; support: boolean }) =>
+    this.send(`/api/planets/${encodeURIComponent(planetId)}/defence-posture`, defencePostureResultSchema, {
+      method: 'POST',
+      body: toggles,
+    });
   buildInterceptor = (planetId: string) =>
     this.send(`/api/planets/${encodeURIComponent(planetId)}/interceptor/build`, interceptorBuildSchema, {
       method: 'POST', body: {},

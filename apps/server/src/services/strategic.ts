@@ -3,6 +3,7 @@ import {
   ANTI_STRATEGIC,
   DEATH_STAR,
   interceptionRange,
+  interceptorCapacity,
   strategicStockpile,
   distance,
   maxRadarRange,
@@ -25,7 +26,7 @@ import { schedule } from '../worker/queue.js';
 import { assertFreeBay } from './flight.js';
 import { advanceNeutralEconomy } from './neutral.js';
 import { capitalPlanet, lockWorlds } from './ownership.js';
-import { assertAttackProtections } from './attackProtection.js';
+import { assertAttackProtections, assertTierBand } from './attackProtection.js';
 import {
   GameError,
   assertSeasonOpenThrough,
@@ -38,6 +39,8 @@ import { planetView } from './planetView.js';
 import { pendingThreads } from './session.js';
 import { inboundRadarLead } from './radar.js';
 import { assertClanHostilityAllowed, lockClanPlayers } from './clanCombat.js';
+import { researchLevels } from './researchState.js';
+import { rescheduleLoyaltyWatch } from './loyalty.js';
 
 export async function buildDeathStar(db: Db, planetId: string, clock: Clock, expectedPlayerId?: string) {
   return db.transaction(async (tx) => {
@@ -58,7 +61,10 @@ export async function buildDeathStar(db: Db, planetId: string, clock: Clock, exp
         eq(strategicAssets.type, 'DEATH_STAR'),
         inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
       ));
-    const allowed = strategicStockpile(0);
+    /* One per world, two once the commander holds the Stockpile (owner, 2026-10-01). */
+    const allowed = strategicStockpile(
+      (await researchLevels(tx, planet.playerId)).get('STRATEGIC_STOCKPILE') ?? 0,
+    );
     if (live.length >= allowed) {
       throw new GameError('DEATH_STAR_EXISTS', 'This world has reached its Death Star capacity', 409, {
         held: live.length,
@@ -163,9 +169,13 @@ export async function buildInterceptor(
         eq(strategicAssets.type, 'INTERCEPTOR'),
         inArray(strategicAssets.status, ['BUILDING', 'PAUSED', 'READY']),
       ));
-    if (live.length >= ANTI_STRATEGIC.maxCharges) {
+    /* Two per world, four once the commander holds the Grid (owner, 2026-10-01). */
+    const max = interceptorCapacity(
+      (await researchLevels(tx, planet.playerId)).get('INTERCEPTION_GRID') ?? 0,
+    );
+    if (live.length >= max) {
       throw new GameError('INTERCEPTOR_LOADED', 'That world has reached its interceptor capacity', 409, {
-        max: ANTI_STRATEGIC.maxCharges,
+        max,
       });
     }
     if (
@@ -281,6 +291,19 @@ export async function launchDeathStar(
       now: origin.now,
       acknowledgeShieldLoss: acknowledgeShieldLoss ?? false,
     });
+
+    /**
+     * AND THE SAME DEVELOPMENT BAND AS A RAID. D168 · owner report 2026-10-01.
+     *
+     * The strike used to sit outside it, and the weapon's gate is Core 12 — the
+     * first level of tier 4 — so a tier 4 commander could strike a tier 6 one who
+     * was refused a raid back. Ordered exactly as `launchAttack` orders it: after
+     * the shields, before the weapon is read, so a refusal spends nothing. A
+     * neutral world has no commander to measure.
+     */
+    if (target.controllerPlayerId) {
+      await assertTierBand(tx, origin.playerId, target.controllerPlayerId);
+    }
 
     /** A strike never changes control; hitting an EMP-active world restarts the hour. */
     /*
@@ -408,6 +431,8 @@ export async function applyDeathStarStrike(
   levelChanges: StrategicLevelChange[];
   destroyedOrders: StrategicDestroyedOrder[];
   shieldDestroyed: number;
+  loyaltyBefore: number | null;
+  loyaltyAfter: number | null;
 }> {
   const empty = (previousPlayerId: string | null, outcome: 'FIRST_STRIKE' | 'INEFFECTIVE') => ({
     outcome,
@@ -418,6 +443,8 @@ export async function applyDeathStarStrike(
     levelChanges: [],
     destroyedOrders: [],
     shieldDestroyed: 0,
+    loyaltyBefore: null,
+    loyaltyAfter: null,
   });
   const [target] = await tx
     .select()
@@ -445,15 +472,38 @@ export async function applyDeathStarStrike(
     : null;
   const shieldDestroyed = owned?.shield ?? neutral?.shield ?? target.shield;
   const empUntil = addMinutes(now, DEATH_STAR.empMinutes);
+  /*
+    AND A COLONY PAYS IN LOYALTY. Owner, 2026-10-01.
+
+    Off the figure `loadLocked` just brought to this instant — faults drain it and a quiet
+    colony climbs back while the weapon flies, so the value last written is not the one
+    the hit meets. Every colony, like a battle loss. At zero the re-booked watch fires
+    `colony_secession` now, and the world goes NEUTRAL through the one path that already
+    knows how: fleet home, guns to the caretaker, nobody credited.
+  */
+  const loyaltyBefore = owned?.kind === 'COLONY' ? owned.loyalty : null;
+  const loyaltyAfter = loyaltyBefore === null
+    ? null
+    : Math.max(0, loyaltyBefore - DEATH_STAR.colonyLoyaltyLoss);
 
   await tx
     .update(planets)
-    .set({ shield: 0, empUntil, lastTickAt: now })
+    .set({
+      shield: 0,
+      empUntil,
+      lastTickAt: now,
+      ...(loyaltyAfter === null ? {} : { loyalty: loyaltyAfter }),
+    })
     .where(eq(planets.id, target.id));
+  if (loyaltyAfter !== null) {
+    await rescheduleLoyaltyWatch(tx, { seasonId: target.seasonId, planetId: target.id, now });
+  }
 
   return {
     ...empty(target.controllerPlayerId, 'FIRST_STRIKE'),
     shieldDestroyed,
+    loyaltyBefore,
+    loyaltyAfter,
   };
 }
 async function resumePausedAsset(

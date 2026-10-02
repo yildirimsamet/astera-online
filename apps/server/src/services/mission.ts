@@ -41,8 +41,12 @@ import {
   saveResources,
   setUnits,
 } from './planet.js';
-import { assertAttackProtections, assertWorldAttackable } from './attackProtection.js';
-import { peakCoreLevels } from './player.js';
+import {
+  TIER_BAND_REFUSAL,
+  assertAttackProtections,
+  assertTierBand,
+  assertWorldAttackable,
+} from './attackProtection.js';
 import { techOf } from './researchState.js';
 import { schedule } from '../worker/queue.js';
 import { publishReward, publishShard } from '../stream/bus.js';
@@ -52,6 +56,7 @@ import { planetView, type PlanetView } from './planetView.js';
 import { lockWorlds } from './ownership.js';
 import { prepareClanAttack, recordClanAttack } from './clanCombat.js';
 import { fleetChangesWatch, publishWatchChanges } from './watchEvents.js';
+import { assertRadiationSafe } from './radiation.js';
 
 export interface LaunchResult {
   missionId: string;
@@ -113,6 +118,8 @@ export async function launchAttack(
    * for a world across the disc.
    */
   pace?: number,
+  /** The commander has read what radiation on this route would take (plan D10). */
+  acknowledgeRadiation = false,
 ): Promise<LaunchResult> {
   if (originPlanetId === targetPlanetId) {
     throw new GameError('SELF_ATTACK', 'You cannot attack your own planet');
@@ -285,22 +292,13 @@ export async function launchAttack(
      * private, so this is a rule the player cannot fully check before committing.
      * The refusal is therefore raised BEFORE anything is spent — no fuel is
      * debited, no bay is taken, no ships leave the stack — and the client is told
-     * which rule refused. D168 in `decisions.md` carries the surface work still
-     * owed.
+     * which rule refused. The surface half lives in the client: the dossier's
+     * development row states the caller's own tier and the range it reaches, and
+     * `lib/band.ts` disables the launch when the disc already proves the refusal.
      */
     let preparedClanAttack: Awaited<ReturnType<typeof prepareClanAttack>> | null = null;
     if (target.kind !== 'NEUTRAL' && them) {
-      const peaks = await peakCoreLevels(tx, [me.id, them.id]);
-      const attackerPeak = peaks.get(me.id) ?? 1;
-      const defenderPeak = peaks.get(them.id) ?? 1;
-      const band = canAttack(
-        { playerId: me.id, peakCoreLevel: attackerPeak },
-        { playerId: them.id, peakCoreLevel: defenderPeak },
-        0,
-      );
-      if (!band.ok) {
-        throw new GameError(band.reason ?? 'FORBIDDEN', describeRefusal(band.reason), 403);
-      }
+      const { attackerPeak, defenderPeak } = await assertTierBand(tx, me.id, them.id);
 
       const [ruleset] = await tx.select({ version: seasons.rulesetVersion })
         .from(seasons).where(eq(seasons.id, origin.seasonId));
@@ -387,6 +385,10 @@ export async function launchAttack(
     const tech = mods.tech;
     const oneWay = fleetTravelExact(dist, requested, { ...mods, pace: chosenPace });
     const arriveAt = addMinutes(origin.now, oneWay);
+    await assertRadiationSafe(tx, {
+      seasonId: origin.seasonId, from: origin, to: target, departAt: origin.now, arriveAt,
+      fleet: requested, acknowledged: acknowledgeRadiation,
+    });
     /**
      * THE ENGAGEMENT. D44.
      *
@@ -558,9 +560,8 @@ function describeRefusal(reason?: string): string {
     case 'SELF':
       return 'You cannot attack your own planet';
     case 'TIER_BAND':
-      return "That commander's total strength is far above your own";
     case 'TIER_BAND_WEAK':
-      return "That commander's total strength is far below your own";
+      return TIER_BAND_REFUSAL[reason];
     default:
       return 'You cannot attack that planet';
   }

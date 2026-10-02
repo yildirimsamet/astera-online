@@ -23,6 +23,7 @@ import {
   planPlanetSkinAttachments,
   planetSkinAttachmentsVisible,
   planetSurfaceProbes,
+  planetSkinRotation,
   resolvePlanetSkinAttachments,
   unitAttachmentGeometry,
 } from '../src/galaxy/planetSkinAttachments.js';
@@ -87,6 +88,12 @@ const webpDimensions = (binary: Buffer, offset: number): readonly [number, numbe
 };
 
 describe('first planet skin visuals', () => {
+  it('holds a selection card at one planet angle while keeping the live preview in motion', () => {
+    const cardStart = planetSkinRotation('shop-preview', 2.5, 0, true);
+    expect(planetSkinRotation('shop-preview', 2.5, 5, true)).toBe(cardStart);
+    expect(planetSkinRotation('shop-preview', 2.5, 5, false)).not.toBe(cardStart);
+  });
+
   it('places each product in exactly one shop collection', () => {
     expect([...SKIN_COLLECTIONS.elemental.ids, ...SKIN_COLLECTIONS.country.ids]).toEqual(PLANET_SKIN_IDS);
   });
@@ -101,7 +108,7 @@ describe('first planet skin visuals', () => {
     expect(source).toContain('sphereInFrustum(frustum, node.position, node.radius)');
   });
 
-  it('serves eight distinct screenshots of the actual looks for selection cards', () => {
+  it('serves nine distinct screenshots of the actual looks for selection cards', () => {
     const images = PLANET_SKIN_IDS.map((id) => {
       const path = served(PLANET_SKIN_CATALOG[id].image);
       expect(existsSync(path), id).toBe(true);
@@ -169,8 +176,8 @@ describe('first planet skin visuals', () => {
     expect(rampKeys.size).toBe(SKIN_COLLECTIONS.elemental.ids.length);
   });
 
-  it('serves all four authored country globes within mobile geometry and texture budgets', () => {
-    for (const country of ['turkey', 'germany', 'france', 'spain'] as const) {
+  it('serves all five authored country globes within mobile geometry and texture budgets', () => {
+    for (const country of ['turkey', 'germany', 'france', 'spain', 'japan'] as const) {
       const id = `planet-${country}` as const;
       const visual = planetSkinVisual(id, 'NORMAL');
       expect(visual?.modelUrl).toMatch(new RegExp(`^/assets/models/planets/country/planet_${country}\\.glb\\?v=[0-9a-f]{10}$`));
@@ -201,8 +208,8 @@ describe('first planet skin visuals', () => {
       const low = readFileSync(served(visual?.lowModelUrl ?? ''));
       expect(full.byteLength, id).toBeLessThan(320 * 1024);
       expect(low.byteLength, id).toBeLessThan(64 * 1024);
-      expect(glbTriangles(full), id).toBeLessThanOrEqual(6_000);
-      expect(glbTriangles(low), id).toBeLessThanOrEqual(1_500);
+      expect(glbTriangles(full), id).toBeLessThanOrEqual(country === 'turkey' ? 6_000 : 3_000);
+      expect(glbTriangles(low), id).toBeLessThanOrEqual(country === 'turkey' ? 1_500 : 500);
       const card = readFileSync(served(visual?.billboardUrl ?? ''));
       expect(visual?.billboardUrl.split('?v=')[1], id)
         .toBe(createHash('sha256').update(card).digest('hex').slice(0, 10));

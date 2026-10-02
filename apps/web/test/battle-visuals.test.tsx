@@ -40,6 +40,7 @@ const report: BattleReport = {
   shieldAbsorbed: 100,
   cargoLimited: false,
   defenceSalvage: {},
+  yourDamage: [],
   disruptedMinutes: 60,
   wreckValue: 900,
 };

@@ -35,7 +35,10 @@ import {
   type PirateSpec,
   type Resources,
   type Vec3,
+  shipDamageApplies,
+  type DamageLots,
 } from '@astera/rules';
+import { dockNotice, landShips, shipsIn } from './shipDamage.js';
 import type { Db, Tx } from '../db/client.js';
 import type { Clock } from '../clock.js';
 import { addMinutes, atMinute, minutesSince } from '../clock.js';
@@ -454,7 +457,7 @@ export async function resolvePirateArrival(
       callsign: pirateCallsign(key, raid.pirateIndex),
       ships: fleetCount(attacking),
     }, origin.now);
-    await turnForHome(tx, raid, attacking, origin, null, null, null);
+    await turnForHome(tx, raid, attacking, origin, null, null, null, raid.damage);
     return;
   }
 
@@ -519,7 +522,7 @@ async function settleArrival(
       level: spec.level,
       ships: fleetCount(attacking),
     }, now);
-    await turnForHome(tx, raid, attacking, origin, null, null, null);
+    await turnForHome(tx, raid, attacking, origin, null, null, null, raid.damage);
     return;
   }
 
@@ -532,7 +535,12 @@ async function settleArrival(
   const result = resolveCombat(attacking, crew, 0, seededFrom(raid.id), {
     attacker: { tech: raid.tech ?? {} },
     defender: { tech: {}, damageMult: pirateStats(spec.level).damageMult },
-  });
+  }, raid.damage ?? undefined);
+  /*
+    KALICI GEMİ HASARI. The hunters carry their part-hit ships home to be judged on
+    landing; the crew is nobody's and carries nothing (plan D1).
+  */
+  const attackerDamage = shipDamageApplies(origin.rulesetVersion) ? result.attackerDamage : [];
 
   const losses: Fleet = { ...(state?.losses ?? {}) };
   for (const [hull, count] of fleetEntries(result.defenderLosses)) {
@@ -668,6 +676,7 @@ async function settleArrival(
       : { alloy: 0, crystal: 0, deuterium: 0 },
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
+    attackerDamage,
     attackerFleet: attacking,
     defenderFleet: crew,
     defenceSalvage: {},
@@ -709,6 +718,7 @@ async function settleArrival(
         : {}),
       unitsLost: fleetCount(result.attackerLosses),
       shipsHome: fleetCount(result.attackerSurvivors),
+      ...(attackerDamage.length > 0 ? { damaged: shipsIn(attackerDamage) } : {}),
       ...(captured ? { capturedHull: captured } : {}),
       dominion: 0,
     },
@@ -724,6 +734,7 @@ async function settleArrival(
     loot ? { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium } : null,
     captured,
     lifted ? salvage : null,
+    attackerDamage,
   );
 }
 
@@ -910,6 +921,8 @@ async function turnForHome(
   captured: HullId | null,
   /** What its Garbage Collectors lifted at the rendezvous, or null. D200. */
   salvage: Resources | null,
+  /** What the survivors carry home to the Repair Station. Kalıcı gemi hasarı. */
+  damage: DamageLots | null,
 ): Promise<void> {
   if (fleetCount(survivors) === 0) {
     await clearRaidUnits(tx, raid.planetId, raid.id);
@@ -936,7 +949,7 @@ async function turnForHome(
 
   await tx
     .update(pirateRaids)
-    .set({ loot, salvage, capturedHull: captured, homeAt })
+    .set({ loot, salvage, capturedHull: captured, homeAt, damage: damage && damage.length > 0 ? [...damage] : null })
     .where(eq(pirateRaids.id, raid.id));
 
   await schedule(tx, {
@@ -1002,15 +1015,17 @@ export async function resolvePirateReturn(
   const destinationPlanetId = await safeHomePlanet(tx, raid.ownerPlayerId, storagePlanetId);
   const home = await loadLocked(tx, destinationPlanetId, clock);
   const returning = await fleetOfRaid(tx, storagePlanetId, raidId);
-  const merged: Fleet = { ...home.homeFleet };
-  for (const [hull, count] of fleetEntries(returning)) {
-    merged[hull] = (merged[hull] ?? 0) + count;
-  }
-  if (raid.capturedHull) {
-    merged[raid.capturedHull] = (merged[raid.capturedHull] ?? 0) + 1;
-  }
+  // The towed hull comes home whole: it was the pirate's, and its damage was the pirate's.
+  const landing: Fleet = { ...returning };
+  if (raid.capturedHull) landing[raid.capturedHull] = (landing[raid.capturedHull] ?? 0) + 1;
   await clearRaidUnits(tx, storagePlanetId, raidId);
-  await setUnits(tx, destinationPlanetId, merged, 'home', raid.ownerPlayerId);
+  const dockReport = await landShips(tx, {
+    planetId: destinationPlanetId,
+    ownerPlayerId: raid.ownerPlayerId,
+    fleet: landing,
+    damage: raid.damage,
+    at: home.now,
+  });
 
   const loot = raid.loot ?? { alloy: 0, crystal: 0, deuterium: 0 };
   // The wreck its collectors lifted lands beside the hoard, whole. D200.
@@ -1046,6 +1061,7 @@ export async function resolvePirateReturn(
           }
         : {}),
       ...(raid.capturedHull ? { capturedHull: raid.capturedHull } : {}),
+      ...dockNotice(dockReport),
     },
     at: home.now,
     refId: raid.id,

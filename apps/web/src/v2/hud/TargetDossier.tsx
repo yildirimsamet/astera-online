@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FAULT,
@@ -41,10 +41,15 @@ export interface TargetDossierProps {
   now: number;
   /**
    * The rival mark as a control in the header (the mock's chip): a press marks the world,
-   * a second press clears it. Absent where a mark cannot be drawn (an unsurveyed world, a
-   * clanmate), and the chip is then only a statement.
+   * a second press clears it. Absent where a new mark cannot be drawn. An existing
+   * mark remains removable when its commander joins the clan or the world leaves sight.
    */
   rival?: { pending: boolean; onToggle: () => void };
+  /**
+   * The caller's tallest Core across every world they hold (`lib/band.ts`), or null
+   * while their worlds have not arrived. Feeds the development band chip (D168).
+   */
+  ownPeakCore?: number | null;
 }
 
 const SECTION = 'flex flex-col gap-1.5 border-t border-v2-line pt-3';
@@ -69,8 +74,9 @@ const marked = (slot: number): CSSProperties => ({ color: rivalColour(slot), bor
  * The readings come from the same hook the launch uses (`useTargetReading`), so what
  * this page promises and what the launch then draws cannot disagree.
  */
-export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, rival }: TargetDossierProps) {
+export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, rival, ownPeakCore = null }: TargetDossierProps) {
   const { t } = useTranslation();
+  const [bandOpen, setBandOpen] = useState(false);
   const mods = flightModifiers(planet);
   const wing = planet.fleet;
   const reading = useTargetReading({
@@ -81,7 +87,16 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
     wing,
     rulesetVersion: 0,
   });
-  const read = dossier({ target, planet, intel, reports, now });
+  const read = dossier({ target, planet, intel, reports, ownPeakCore, now });
+  /*
+    THE BAND AT A GLANCE (D168, owner report 2026-10-01). The dossier's development row
+    carries a note only when it is set against the caller's own tier — another
+    commander's world, the caller's worlds loaded — and that row lives two taps deep in
+    the "public" band. The comparison is what decides whether a launch is worth trying,
+    so it rides the header; the rule behind it is one tap more.
+  */
+  const development = read.facts.find((fact) => fact.key === 'development');
+  const tierBand = development?.note === undefined ? null : { value: development.value, note: development.note };
   const range = Math.round(distance(planet.planet.position, target.position));
   const reach = fleetCount(wing) > 0 ? reachMinutes(planet.planet.position, target.position, wing, mods) : null;
   const loot = lootEstimate(reading.report, fleetCargo(wing, mods.tech));
@@ -117,7 +132,7 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
             className={`${CHIP} ${rivalSlot === null ? 'text-v2-ink-3' : ''} disabled:opacity-60`}
             {...(rivalSlot === null ? {} : { style: marked(rivalSlot) })}
           >
-            <Icon id="i-mark" className="size-3 shrink-0" />
+            <Icon id={rivalSlot === null ? 'i-mark' : 'i-close'} className="size-3 shrink-0" />
             {rivalSlot === null ? t('focus.planet.markRival') : t('dossier.page.rival', { n: rivalSlot + 1 })}
           </button>
         ) : rivalSlot !== null && (
@@ -128,7 +143,22 @@ export function TargetDossier({ target, planet, intel, reports, rivalSlot, now, 
         <span className={CHIP}>{t('dossier.page.range', { d: range })}</span>
         <span className={CHIP}>{reach === null ? t('dossier.page.unreachable') : t('dossier.page.flight', { time: duration(reach) })}</span>
         <span className={CHIP}>{t('dossier.page.known', { have: read.facts.length, total: read.facts.length + read.gaps.length })}</span>
+        {tierBand && (
+          <button
+            type="button"
+            data-dossier-band
+            aria-expanded={bandOpen}
+            onClick={() => { setBandOpen((open) => !open); }}
+            className={CHIP}
+          >
+            {tierBand.value}
+            <Icon id="i-chev" className={`size-3 shrink-0 transition-transform ${bandOpen ? '-rotate-90' : 'rotate-90'}`} />
+          </button>
+        )}
       </div>
+      {tierBand && bandOpen && (
+        <p data-dossier-band-note className="-mt-1.5 text-micro leading-snug text-v2-ink-3">{tierBand.note}</p>
+      )}
 
       {/* WHAT BOUGHT THE READING, HOW OLD IT IS AND HOW SHARP: most of the fact, in an information game. */}
       <div data-dossier-look className="flex items-center gap-2 rounded-control border border-v2-line bg-v2-panel px-3 py-2">
@@ -306,4 +336,3 @@ function ShareBar({ wing, reading }: { wing: Fleet; reading: ClassReading }) {
     </div>
   );
 }
-

@@ -1,6 +1,7 @@
 import {
   ALL_HULLS,
   COMBAT_CLASSES,
+  DEATH_STAR,
   combatValue,
   distance,
   garrisonOf,
@@ -9,6 +10,7 @@ import {
   withinTelescopeRange,
   type Fleet,
   type ResearchProjectId,
+  tierBandReach,
 } from '@astera/rules';
 import type {
   GalaxyPlanet,
@@ -83,15 +85,13 @@ export interface Dossier {
   gaps: Gap[];
   /** Distance in game units. */
   range: number;
-  /**
-   * `inBand` AND `band` ARE GONE. D127.
-   *
-   * They carried D49's development band — the one rule a commitment surface could
-   * check before the server did, because tier was public and the player could see
-   * the reason. D127 made development private and retired the band with it: there
-   * is no longer a development answer to "may I fight them", so there is nothing
-   * for this surface to pre-check and nothing to explain when it says no.
-   */
+  /*
+    NO `inBand` HERE, ON PURPOSE. D168 brought the development band back on the
+    COMMANDER, and the dossier can only see a lower bound on the owner's peak, so it
+    never answers "may I fight them". The development row carries the inputs — their
+    world's tier, yours, and the range yours reaches — and `lib/band.ts` states the
+    one refusal fog can prove.
+  */
 }
 
 /**
@@ -211,7 +211,9 @@ export function fieldedAtLeast(reports: readonly Report[], planetId: string): {
   for (const report of reports) {
     if (report.kind === 'STRATEGIC') continue;
     if (report.opponentPlanetId !== planetId) continue;
-    const theirs = report.theirLosses;
+    // A supported line's losses are partly clanmates' ships; the floor is the HOST's own.
+    const host = report.defenseLine?.members.find((member) => member.role === 'HOST');
+    const theirs = host?.losses ?? report.theirLosses;
     const total = ALL_HULLS.reduce((s, id) => s + (theirs[id] ?? 0), 0);
     if (total === 0) continue;
     if (!best || report.at.getTime() > best.at) {
@@ -228,6 +230,12 @@ export interface DossierInput {
   intel: IntelView | undefined;
   reports: readonly Report[];
   rival?: RivalSummary;
+  /**
+   * The caller's tallest Core across every world they hold (`ownPeakCore`), or null
+   * while their worlds have not arrived. Optional so a surface that only counts
+   * facts need not compute it.
+   */
+  ownPeakCore?: number | null;
   /** Epoch millis. Passed in so this stays pure. */
   now: number;
 }
@@ -239,7 +247,7 @@ export interface DossierInput {
  * arrives with no `fleet` key at all, and probe bands are stored pre-fuzzed. This
  * only ARRANGES what came back; it never infers a value the payload withheld.
  */
-export function dossier({ target, planet, intel, reports, rival, now }: DossierInput): Dossier {
+export function dossier({ target, planet, intel, reports, rival, ownPeakCore = null, now }: DossierInput): Dossier {
   const facts: Fact[] = [];
   const gaps: Gap[] = [];
   const range = distance(planet.planet.position, target.position);
@@ -291,25 +299,36 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
   }
 
   /**
-   * DEVELOPMENT — AND IT IS NO LONGER FREE, NOR A PERMISSION. D127.
+   * DEVELOPMENT — EARNED, AND READ AGAINST YOUR OWN. D127 · D168.
    *
-   * D49 made this line carry the attack band: tier was the one public, always-live
-   * fact on every world, so a player could read "may I fight them" off the map
-   * before packing a fleet. D127 made development private and retired the band
-   * with it — permission no longer depends on it, and the figure itself is now
-   * something the reader has EARNED, either live through a Telescope or frozen
-   * through a probe.
+   * The figure is not free: D127 made it something the reader earned, live through
+   * a Telescope or frozen through a probe. D168 then brought the raid band back on
+   * the COMMANDER — each side read on their most developed world — and this row
+   * stayed silent about it, so players set the one tier they could see against
+   * their own capital and reported the rule as lopsided (owner, 2026-10-01).
    *
-   * So the note goes. There is no band to be in or out of, and a dossier that
-   * still explained one would be describing a rule the server stopped enforcing.
+   * So on another commander's world the row carries what the player is missing:
+   * their OWN tier, which is never fogged, beside the one they are looking at; and
+   * one tap deeper, the rule and the range it gives them. NEVER A VERDICT: what is
+   * visible is a lower bound on the owner's peak (`lib/band.ts`), so the note is
+   * the same sentence whether this world reads above or below — the player forms
+   * the expectation and the launch confirms it.
    */
   if (target.intel !== 'UNKNOWN') {
+    const banded = ownPeakCore !== null && target.controller?.kind === 'PLAYER'
+      && !target.isSelf && target.isOwned !== true;
+    const reach = banded ? tierBandReach(ownPeakCore) : null;
     facts.push({
       key: 'development',
       label: i18n.t('dossier.developmentLabel'),
-      value: i18n.t('dossier.developmentValue', { tier: target.coreTier }),
+      value: reach
+        ? i18n.t('dossier.developmentVersus', { tier: target.coreTier, mine: reach.tier })
+        : i18n.t('dossier.developmentValue', { tier: target.coreTier }),
       source: surface,
       ageMinutes: surfaceAge,
+      ...(reach
+        ? { note: i18n.t('dossier.developmentBandNote', { mine: reach.tier, low: reach.low, high: reach.high }) }
+        : {}),
     });
   }
 
@@ -492,6 +511,43 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       note: report.fleetHome ? i18n.t('dossier.shipsAllHome') : i18n.t('dossier.shipsSomeOut'),
     });
 
+    /*
+      KLAN SAVUNMA DESTEĞİ (owner K9). The posture is exact — it decides whether the
+      world retreats at all — and the clanmates standing there are a reading of their
+      own beside the world's fleet, never folded into it. A report from before the rule
+      carries neither and prints neither; a world that cannot hold support prints no
+      support row, because "none" would claim a look into a bay that does not exist.
+    */
+    if (report.posture) {
+      facts.push({
+        key: 'posture',
+        label: i18n.t('clanSupport.postureLabel'),
+        value: i18n.t(`clanSupport.postureRead.${report.posture}`),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t('clanSupport.postureNote'),
+      });
+    }
+    if (report.posture === 'SUPPORT') {
+      const support = report.support;
+      facts.push({
+        key: 'support',
+        label: i18n.t('clanSupport.supportLabel2'),
+        // The server writes an empty bay as zero supporters: that is "nobody", not "0 of them".
+        value: support && support.supporters > 0
+          ? i18n.t('clanSupport.supportRead', {
+            count: support.supporters,
+            power: band(support.defence.low, support.defence.high),
+            ships: band(support.fleetSize.low, support.fleetSize.high),
+          })
+          : i18n.t('clanSupport.supportNone'),
+        source: 'probe',
+        ageMinutes: age,
+        accuracy: report.accuracy,
+        note: i18n.t('clanSupport.supportNote'),
+      });
+    }
+
     /**
      * THE FOUR READINGS THE PROBE TOOK AND NOTHING EVER PRINTED.
      *
@@ -547,18 +603,43 @@ export function dossier({ target, planet, intel, reports, rival, now }: DossierI
       });
     }
 
-    if (report.interceptor !== undefined) {
+    /*
+      HOW MANY, AND WHAT BEATS THEM. One charge downs one Death Star and fires only from
+      this world's pad (owner, 2026-10-01), so the note turns the count into the number
+      of weapons that must arrive together — the figure the attacker plans with.
+    */
+    if (report.interceptors !== undefined) {
+      const charges = report.interceptors;
       facts.push({
         key: 'interceptor',
         label: i18n.t('dossier.interceptorLabel'),
-        value: i18n.t(report.interceptor
-          ? 'dossier.interceptorLoaded'
-          : 'dossier.interceptorEmpty'),
+        value: charges > 0
+          ? i18n.t('dossier.interceptorCount', { count: charges })
+          : i18n.t('dossier.interceptorEmpty'),
         source: 'probe',
         ageMinutes: age,
-        note: i18n.t(report.interceptor
-          ? 'dossier.interceptorLoadedNote'
-          : 'dossier.interceptorEmptyNote'),
+        note: charges > 0
+          ? i18n.t('dossier.interceptorCountNote', { needed: charges + 1 })
+          : i18n.t('dossier.interceptorEmptyNote'),
+      });
+    }
+
+    /*
+      A COLONY'S LOYALTY, AS HITS. A Death Star takes `colonyLoyaltyLoss` and a colony at
+      that or less goes NEUTRAL (owner, 2026-10-01). A percentage alone does not say what
+      to do; "two hits" does. It is the loyalty AT THE LOOK — it climbs back while the
+      colony has nothing broken, which the note says rather than hides.
+    */
+    if (report.loyalty !== undefined) {
+      const hits = Math.max(1, Math.ceil(report.loyalty / DEATH_STAR.colonyLoyaltyLoss));
+      facts.push({
+        key: 'loyalty',
+        label: i18n.t('dossier.loyaltyLabel'),
+        value: i18n.t('dossier.loyaltyValue', { value: report.loyalty }),
+        source: 'probe',
+        ageMinutes: age,
+        note: i18n.t('dossier.loyaltyNote', { count: hits, loss: DEATH_STAR.colonyLoyaltyLoss }),
+        opportunity: hits === 1,
       });
     }
 

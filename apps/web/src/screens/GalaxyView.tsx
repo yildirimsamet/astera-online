@@ -76,7 +76,7 @@ import {
   planIntergalacticConvoyRoute,
   planTradeRoute,
 } from '../lib/navigation.js';
-import { outOfBandAbove } from '../lib/band.js';
+import { outOfBandAbove, ownPeakCore } from '../lib/band.js';
 import { clanTargetDecision } from '../lib/clanTarget.js';
 import { launchFault } from '../lib/faults.js';
 import { minuteTick, minutesLeft, useNow } from '../lib/time.js';
@@ -97,6 +97,7 @@ import { LaunchSheet } from './LaunchSheet.jsx';
 import { TradeSheet } from './TradeSheet.jsx';
 import { SettlementSheet } from './SettlementSheet.js';
 import { TransferSheet } from './TransferSheet.js';
+import { ClanSupportSheet, type SupportHost } from './ClanSupportSheet.js';
 import { WorldsPanel } from './WorldsPanel.js';
 import { PlanetScreen, TAB_OF } from './PlanetScreen.jsx';
 import { researchNeedWorld } from '../lib/researchNeed.js';
@@ -506,6 +507,8 @@ export function GalaxyView({
     && focus?.kind === 'planet');
   const clanWarActions = useClanWarActions();
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
+  /** Klan Savunma Desteği: the clanmate world the send sheet is open for. */
+  const [supportHost, setSupportHost] = useState<SupportHost | null>(null);
   /** The world that was active before focusing another controlled world. */
   const [transferOriginId, setTransferOriginId] = useState<string | null>(null);
   const [worldsOpen, setWorldsOpen] = useState(false);
@@ -1181,6 +1184,7 @@ export function GalaxyView({
         tradeShip={tradeShip}
         intergalacticConvoy={intergalacticConvoy}
         sensors={sensors}
+        {...(galaxy.data?.radiation ? { radiation: galaxy.data.radiation } : {})}
         showTelescopeReach={showTelescopeReach}
         showRadarReach={showRadarReach}
         {...(activeWorldPosition ? { homePosition: activeWorldPosition } : { homePosition: undefined })}
@@ -1314,6 +1318,9 @@ export function GalaxyView({
             });
           }}
           settlementInFlight={settlementInFlight}
+          onSendSupport={() => {
+            setSupportHost({ planetId: selected.id, planetName: selected.name, ownerName: selected.owner });
+          }}
           onClose={close}
           onLaunched={() => {
             close();
@@ -1345,6 +1352,7 @@ export function GalaxyView({
             other direction is unprovable through fog and stays with the server.
           */
           outOfBand={outOfBandAbove(planets, selected)}
+          ownPeakCore={ownPeakCore(planets)}
           onDeathStar={() => {
             deathStar.mutate(selected.id, {
               onSuccess: () => {
@@ -2159,6 +2167,19 @@ export function GalaxyView({
           />
         ) : null;
       })()}
+
+      {panel !== 'recap' && supportHost && (
+        <ClanSupportSheet
+          host={supportHost}
+          worlds={worlds}
+          onClose={() => { setSupportHost(null); }}
+          onSent={(world) => {
+            setSupportHost(null);
+            close();
+            say(t('clanSupport.sent', { world }), 'info');
+          }}
+        />
+      )}
 
       {covered && (
         <LoadingScreen

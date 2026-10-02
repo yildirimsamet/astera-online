@@ -28,8 +28,10 @@ import {
   type HullId,
   type NeutralTier,
   type Resources,
+  shipDamageApplies,
 } from '@astera/rules';
 import { addMinutes, type Clock } from '../clock.js';
+import { shipsIn } from './shipDamage.js';
 import type { Tx } from '../db/client.js';
 import {
   battleReports,
@@ -204,6 +206,7 @@ export async function resolveNeutralBattle(
   tx: Tx,
   mission: typeof missions.$inferSelect,
   clock: Clock,
+  rulesetVersion: number,
 ): Promise<void> {
   const neutral = await advanceNeutralEconomy(tx, mission.targetPlanetId, clock.now());
   if (!neutral) throw new Error('neutral mission target changed before resolution');
@@ -227,7 +230,13 @@ export async function resolveNeutralBattle(
     attackingFleet, defenders, defenceDark ? 0 : neutral.shield, seededFrom(mission.id),
     // A caretaker world researches nothing; the raider's doctrines still count. T9.
     { attacker: { tech: mission.tech ?? {} }, defender: { tech: {} } },
+    mission.damage ?? undefined,
   );
+  /*
+    KALICI GEMİ HASARI. The raider carries its part-hit ships home to be judged on
+    landing; a caretaker's garrison is nobody's and carries nothing (plan D1).
+  */
+  const attackerDamage = shipDamageApplies(rulesetVersion) ? result.attackerDamage : [];
   const survivors: Fleet = { ...result.defenderSurvivors };
   if (defenceDark) {
     for (const [hull, count] of fleetEntries(ground)) survivors[hull] = count;
@@ -338,6 +347,7 @@ export async function resolveNeutralBattle(
     loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
     attackerLosses: result.attackerLosses,
     defenderLosses: result.defenderLosses,
+    attackerDamage,
     // The rosters that met. The garrison is the caretaker's, so nothing here is
     // anybody's private board — but the reader is still only ever shown its own.
     attackerFleet: attackingFleet,
@@ -391,6 +401,7 @@ export async function resolveNeutralBattle(
         : {}),
       unitsLost: fleetCount(result.attackerLosses),
       shipsHome: fleetCount(result.attackerSurvivors),
+      ...(attackerDamage.length > 0 ? { damaged: shipsIn(attackerDamage) } : {}),
       // A caretaker world is outside the ladder: taking one moves nobody's score.
       dominion: 0,
     },
@@ -418,6 +429,7 @@ export async function resolveNeutralBattle(
       fleet: result.attackerSurvivors,
       loot: { alloy: loot.alloy, crystal: loot.crystal, deuterium: loot.deuterium },
       salvage: lifted ? salvage : null,
+      damage: attackerDamage.length > 0 ? attackerDamage : null,
       tech: mission.tech,
       distance: mission.distance,
       departAt: clock.now(),
@@ -471,6 +483,8 @@ export async function returnAttackUntouched(
     targetPlanetId: mission.originPlanetId,
     fleet,
     loot: { alloy: 0, crystal: 0, deuterium: 0 },
+    // Whatever the wing already carried (radiation) goes home with it.
+    damage: mission.damage,
     tech: mission.tech,
     distance: mission.distance,
     departAt: clock.now(),

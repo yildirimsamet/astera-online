@@ -9,7 +9,7 @@ import {
   type Fleet,
   type MobileHullId,
 } from '@astera/rules';
-import { useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
+import { useGalaxy, useLaunch, useRaidPirate, useSeason } from '../api/queries.js';
 import type { IntelView, PlanetView, Report } from '../api/schemas.js';
 import { serverNow } from '../lib/clock.js';
 import { recordAgeMinutes } from '../lib/dossier.js';
@@ -23,6 +23,9 @@ import {
 } from '../lib/navigation.js';
 import { useAcademyLesson } from '../onboarding/lessonScope.js';
 import { useTargetReading } from './useTargetReading.js';
+import {
+  lethalAfterRefusal, radiationRefusalCount, routeRadiation, toRadiationSources, type RadiationRefusal,
+} from './radiation.js';
 import { ACADEMY_LEG_SECONDS, academyLessonFleet } from '@astera/rules';
 import type { LaunchTarget } from '../screens/LaunchSheet.js';
 import { describe, useToast } from '../ui/Toast.js';
@@ -163,6 +166,33 @@ export function useLaunchPlan({
   }, [onAim, aim?.x, aim?.y, aim?.z]);
 
   const total = fleetCount(sending);
+  /**
+   * RADYASYON ON THE WAY OUT, QUOTED BEFORE THE PRESS. Plan D10 · F10.
+   *
+   * The same dose the server settles at the landing, fed the galaxy's clouds and this leg.
+   * World targets only: a pirate raid takes no dose in v1, and the Academy's pinned leg is
+   * not the flight the clouds would see. A route that would finish ships makes the hold
+   * the commander's acknowledgement, which the server refuses to fly without.
+   */
+  const galaxy = useGalaxy();
+  const clouds = galaxy.data?.radiation;
+  const sources = useMemo(() => toRadiationSources(clouds ?? []), [clouds]);
+  const departMs = serverNow();
+  /*
+    THE SERVER'S REFUSAL IS A FORECAST TOO. At a window's edge, or for a cloud about to light,
+    the server can find lethal a route this sheet quoted as safe; its count is kept against the
+    selection it refused, so the next hold is the acknowledgement it asked for.
+  */
+  const [refused, setRefused] = useState<RadiationRefusal | null>(null);
+  const radiation = target.kind === 'world' && route !== null && !lesson
+    ? lethalAfterRefusal(routeRadiation({
+        fleet: sending,
+        from: planet.planet.position,
+        to: target.world.position,
+        departMs,
+        arriveMs: departMs + route.oneWayMinutes * 60_000,
+      }, sources), refused, sending)
+    : null;
   /** Wreck the chosen collectors can lift, if they come through the fight. D200. */
   const salvageRoom = salvageCapacity(sending);
   /**
@@ -372,6 +402,8 @@ export function useLaunchPlan({
         */
         ...(spendsShield ? { acknowledgeShieldLoss: true } : {}),
         pace,
+        // The hold on a lethal route is the answer the server asks for (D10).
+        ...(radiation !== null && radiation.destroyed > 0 ? { acknowledgeRadiation: true } : {}),
       },
       {
         onSuccess: (result) => {
@@ -380,6 +412,8 @@ export function useLaunchPlan({
         },
         onError: (err) => {
           say(describe(err), 'error');
+          const count = radiationRefusalCount(err);
+          if (count !== null) setRefused({ count, fleet: sending });
           onRefused();
         },
       },
@@ -388,7 +422,7 @@ export function useLaunchPlan({
 
   return {
     sending, set, roomFor, allowance, lesson, season, spendsShield, pirate, mods,
-    paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy,
+    paces, pace, setWantedPace, route, total, salvageRoom, baysFree, tooLate, busy, radiation,
     shipyardRevolt, holding, needsWarship, canSend, away, atHome, recordAge, opposing,
     lines, matchups, hint, loss, escape, notes, refusal, commit,
     /** What the probe read of the wall, for the matchup line (B6); null where nobody looked. */

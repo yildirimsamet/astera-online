@@ -14,6 +14,7 @@ import type {
   RivalMark,
   StrategicInterception,
   StrategicInterceptionImpact,
+  RadiationSourceView,
 } from '../api/schemas.js';
 import type { Focus } from './FocusPanel.js';
 import {
@@ -64,6 +65,7 @@ import { DysonShells } from './DysonShells.jsx';
 import { Satellites, Shields } from './Satellites.jsx';
 import { MiningFlights } from './MiningFlights.jsx';
 import { OwnershipFilaments } from './OwnershipFilaments.jsx';
+import { RadiationHaze } from './RadiationHaze.js';
 import { SensorRings, type ReachRing } from './SensorRings.jsx';
 import {
   DISC_RADIUS,
@@ -206,6 +208,8 @@ export interface GalaxyCanvasProps {
    * (D124). Absent draws nothing, which is right for a client ahead of its server.
    */
   sensors?: readonly ReachRing[];
+  /** Radiation clouds (K3, F10). Public, like the worlds; absent draws nothing. */
+  radiation?: readonly RadiationSourceView[];
   /**
    * Whether each instrument's boundaries are drawn AT ALL. Owner instruction.
    *
@@ -306,6 +310,7 @@ export function GalaxyCanvas({
   intergalacticConvoy = null,
   meteorShower = false,
   sensors,
+  radiation,
   showTelescopeReach = false,
   showRadarReach = false,
   homePosition,
@@ -711,6 +716,8 @@ export function GalaxyCanvas({
           THE BOUNDARIES, DRAWN. D125/D126. Before the worlds, so the rings sit
           behind the things they are about rather than over them.
         */}
+        {/* Radiation (K3): a haze where the dose is, behind the worlds it may wrap. */}
+        {radiation && radiation.length > 0 && <RadiationHaze clouds={radiation} />}
         {sensors && sensors.length > 0 && (
           <SensorRings
             posts={sensors}

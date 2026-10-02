@@ -327,6 +327,7 @@ describe('what a private clan event asks the client to read', () => {
         keys.clanEvents,
         keys.galaxy,
         keys.leaderboard,
+        keys.season,
       ]);
   });
 

@@ -2,6 +2,7 @@ import { and, eq, gt, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import {
   ABUSE,
   alloyRate,
+  canAttack,
   crystalRate,
   deuteriumRate,
   earnsRecoveryShield,
@@ -23,6 +24,7 @@ import {
   buildings,
   clanWarContributions,
   clanWarOperations,
+  clanSupportBattleResults,
   clanWarParticipantResults,
   missions,
   planets,
@@ -30,6 +32,7 @@ import {
   satellites,
 } from '../db/schema.js';
 import { GameError, orbitFromRows } from './planet.js';
+import { peakCoreLevels } from './player.js';
 
 /**
  * WHO MAY BE ATTACKED, AND WHAT A DEFEAT BUYS. D183 · owner instruction 2026-09-14.
@@ -80,6 +83,57 @@ export const protectionFrom = (
   recoveryShieldEnabled() ? recoveryUntil?.getTime() ?? null : null,
   now.getTime(),
 );
+
+/**
+ * WHAT THE BAND MEASURES, IN THE SENTENCE A REFUSAL CARRIES. D168.
+ *
+ * It said "total strength" once, and the band has never read strength: it compares
+ * the development tier of each commander's most developed world. A commander told
+ * the wrong quantity goes and compares fleets, and comes back with "four can hit six
+ * but six cannot hit four".
+ */
+export const TIER_BAND_REFUSAL = {
+  TIER_BAND: "That commander's most developed world is more than one tier above yours",
+  TIER_BAND_WEAK: "That commander's most developed world is more than one tier below yours",
+} as const;
+
+/**
+ * THE DEVELOPMENT BAND FOR ONE LAUNCH, ON THE TWO COMMANDERS. D168.
+ *
+ * One reading for every lane that reaches out at another commander — a raid and a
+ * Death Star strike — so the two cannot drift into the asymmetry the owner was
+ * shown on 2026-10-01: the strike sat outside the band while its own Core gate is
+ * the first level of tier 4, so a tier 4 commander could strike a tier 6 one who
+ * was refused a raid back. Raised before anything is spent; the peaks come back
+ * for a caller that asks `canAttack` again with a bash count.
+ *
+ * Unlocked on purpose: see `peakCoreLevels` for why a race with a Core upgrade
+ * landing in the same instant does not justify locking another commander's worlds.
+ */
+export async function assertTierBand(
+  tx: Tx,
+  attackerPlayerId: string,
+  defenderPlayerId: string,
+): Promise<{ attackerPeak: number; defenderPeak: number }> {
+  const peaks = await peakCoreLevels(tx, [attackerPlayerId, defenderPlayerId]);
+  const attackerPeak = peaks.get(attackerPlayerId) ?? 1;
+  const defenderPeak = peaks.get(defenderPlayerId) ?? 1;
+  const band = canAttack(
+    { playerId: attackerPlayerId, peakCoreLevel: attackerPeak },
+    { playerId: defenderPlayerId, peakCoreLevel: defenderPeak },
+    0,
+  );
+  if (band.ok) return { attackerPeak, defenderPeak };
+  const reason = band.reason ?? 'FORBIDDEN';
+  throw new GameError(
+    reason,
+    reason === 'TIER_BAND' || reason === 'TIER_BAND_WEAK'
+      ? TIER_BAND_REFUSAL[reason]
+      // A raid aimed at one of the caller's own colonies reaches here as SELF.
+      : reason === 'SELF' ? 'You cannot attack your own planet' : 'You cannot attack that commander',
+    403,
+  );
+}
 
 /** The world-level occupation/recovery gate shared by every PvP launch lane. */
 export function assertWorldAttackable(
@@ -210,8 +264,10 @@ async function lookbackLedger(
   now: Date,
 ): Promise<{ defeats: RecoveryLedgerEntry[]; raids: RecoveryLedgerEntry[] }> {
   const since = new Date(now.getTime() - ABUSE.recoveryLookbackHours * 3_600_000);
-  const [rows, jointRaids] = await Promise.all([db
+  const [rows, jointRaids, hostShares] = await Promise.all([db
     .select({
+      id: battleReports.id,
+      defenderCount: battleReports.defenderCount,
       clanWarOperationId: battleReports.clanWarOperationId,
       attackerPlayerId: battleReports.attackerPlayerId,
       defenderPlayerId: battleReports.defenderPlayerId,
@@ -241,14 +297,32 @@ async function lookbackLedger(
         gt(battleReports.createdAt, since),
         lte(battleReports.createdAt, now),
       )),
+    /*
+      A SUPPORTED LINE'S LOSSES ARE NOT ALL THE HOST'S (Klan Savunma Desteği). The report
+      holds the whole line; the host's own part is its result row.
+    */
+    db
+      .select({ reportId: clanSupportBattleResults.reportId, losses: clanSupportBattleResults.losses })
+      .from(clanSupportBattleResults)
+      .innerJoin(battleReports, eq(battleReports.id, clanSupportBattleResults.reportId))
+      .where(and(
+        eq(clanSupportBattleResults.playerId, playerId),
+        eq(clanSupportBattleResults.role, 'HOST'),
+        gt(battleReports.createdAt, since),
+        lte(battleReports.createdAt, now),
+      )),
   ]);
+  const hostLosses = new Map(hostShares.map((row) => [row.reportId, row.losses]));
   const defeats: RecoveryLedgerEntry[] = [];
   const raids: RecoveryLedgerEntry[] = [];
   for (const row of rows) {
     if (row.defenderPlayerId === playerId && row.attackerPlayerId !== playerId) {
       defeats.push({
         loot: row.loot,
-        fleetLost: permanentFleetCost(row.defenderLosses, row.defenceSalvage),
+        fleetLost: permanentFleetCost(
+          row.defenderCount > 1 ? hostLosses.get(row.id) ?? row.defenderLosses : row.defenderLosses,
+          row.defenceSalvage,
+        ),
       });
     } else if (row.clanWarOperationId === null
       && row.attackerPlayerId === playerId && row.defenderPlayerId !== playerId) {

@@ -24,7 +24,7 @@ const trInstrument: Record<InstrumentId, string> = {
 };
 const trResearch: Record<ResearchProjectId, string> = {
   ISOTOPE_SPECTROMETRY: 'İzotop Spektrometrisi', DENSE_FUEL_CELLS: 'Yoğun Yakıt Hücreleri',
-  GRAVITIC_CHARGES: 'Gravitik Yükler', DEATH_STAR_PROTOCOL: 'Ölüm Yıldızı Protokolü',
+  GRAVITIC_CHARGES: 'Gravitik Yükler',
   DEUTERIUM_SYNTHESIS: 'Döteryum Sentezi', YARD_AUTOMATION: 'Tersane Otomasyonu',
   AI_ROBOTS: 'Yapay Zekâ Robotları',
   PROSPECTOR_HOLDS: 'Kazıcı Ambarları', CARGO_HOLDS: 'Gemi Ambarları',
@@ -63,11 +63,12 @@ const researchEffect = (id: ResearchProjectId, level: number): string => {
   if (id === 'DEUTERIUM_SYNTHESIS') return `Döteryum Rafinerisi tavanı ${value}`;
   if (id === 'STARSHIP_ENGINEERING') return `En yüksek izinli gemi kademesi ${value + 2}`;
   if (id === 'STRATEGIC_STOCKPILE') return `Dünya başına hazır Ölüm Yıldızı kapasitesi ${value}`;
+  if (id === 'INTERCEPTION_GRID') return `Dünya başına önleyici şarj kapasitesi ${value}`;
   return value ? 'İzin/özellik açıldı' : 'Henüz açılmadı';
 };
 const instrumentEffect = (id: InstrumentId, level: number): string => {
   if (id === 'TELESCOPE') return `Tanımlama menzili ${sensorReach(level)}; izleme yuvası ${telescopeSlots(level)}; yenileme ${telescopeCooldownHours(level)} sa.`;
-  if (id === 'RADAR') return `Algılama menzili ${radarRange(level)}${level >= 2 ? '; yön' : ''}${level >= 3 ? '; Önleme Ağını etkinleştirir' : ''}${level >= 4 ? '; yaklaşık güç' : ''}${level >= 5 ? '; çıkış + filo dökümü' : ''}`;
+  if (id === 'RADAR') return `Algılama menzili ${radarRange(level)}${level >= 2 ? '; yön' : ''}${level >= 3 ? '; önleyici şarj kurulabilir' : ''}${level >= 4 ? '; yaklaşık güç' : ''}${level >= 5 ? '; çıkış + filo dökümü' : ''}`;
   if (id === 'AEGIS') return `Kalkan dayanımı ${f.format(shieldHp(level))}; saatte %35 yenilenir`;
   return `Rakip Teleskop netliği −${level}; eşit Tersane sondası doğruluğu düşer`;
 };
@@ -104,8 +105,8 @@ export function buildEconomyReportXml(): string {
     units.push([id, trHull[id] ?? h.name, h.ground ? 'Yer savunması' : id === 'PROSPECTOR' ? 'Madenci' : 'Gemi', h.tier ?? 'Özel', ...res(cost), Number((h.ground ? defenceMinutes(cost, h.minShipyard) : shipMinutes(cost, h.minShipyard, {})).toFixed(2)), `Saldırı ${h.atk}; dayanım ${h.hp}; hız ${h.speed}; ambar ${h.cargo}; Hangar alanı ${h.ground ? 0 : hullBulk(id)}`, `Tersane ≥ ${h.minShipyard}${h.requiredResearch.length ? `; ${h.requiredResearch.map((x) => `${trResearch[x.project]} ${x.level}`).join(', ')}` : ''}`]);
   }
   units.push(['PROBE', 'Sonda', 'Tüketilen keşif aracı', '—', PROBE.alloy, PROBE.crystal, 0, 'Üretim yok', `Hız ${PROBE.speed}; tek keşif uçuşunda harcanır`, 'Tersane gerektirmez; genel uçuş rampası kullanır']);
-  units.push(['DEATH_STAR', 'Ölüm Yıldızı', 'Stratejik silah', '—', ...res(DEATH_STAR.cost), DEATH_STAR.buildMinutes, `Hız ${DEATH_STAR.speed}; atışta tüketilir`, `Komuta Çekirdeği ≥ ${DEATH_STAR.requiredCore}; Tersane ≥ ${DEATH_STAR.requiredShipyard}; ${trResearch.DEATH_STAR_PROTOCOL}`]);
-  units.push(['INTERCEPTOR', 'Önleyici mühimmat', 'Stratejik savunma', '—', ...res(ANTI_STRATEGIC.cost), ANTI_STRATEGIC.buildMinutes, 'İlk görünür Ölüm Yıldızını imha eder; kullanımdan sonra tükenir', `Radar ≥ ${ANTI_STRATEGIC.requiredRadar}; ${trResearch.INTERCEPTION_GRID}; dünya başına en çok ${ANTI_STRATEGIC.maxCharges}`]);
+  units.push(['DEATH_STAR', 'Ölüm Yıldızı', 'Stratejik silah', '—', ...res(DEATH_STAR.cost), DEATH_STAR.buildMinutes, `Hız ${DEATH_STAR.speed}; atışta tüketilir`, `Komuta Çekirdeği ≥ ${DEATH_STAR.requiredCore}; Tersane ≥ ${DEATH_STAR.requiredShipyard}; dünya başına ${DEATH_STAR.perWorld.base}, ${trResearch.STRATEGIC_STOCKPILE} ile ${DEATH_STAR.perWorld.researched}`]);
+  units.push(['INTERCEPTOR', 'Önleyici mühimmat', 'Stratejik savunma', '—', ...res(ANTI_STRATEGIC.cost), ANTI_STRATEGIC.buildMinutes, 'İlk görünür Ölüm Yıldızını imha eder; kullanımdan sonra tükenir', `Radar ≥ ${ANTI_STRATEGIC.requiredRadar}; dünya başına ${ANTI_STRATEGIC.charges.base}, ${trResearch.INTERCEPTION_GRID} ile ${ANTI_STRATEGIC.charges.researched}`]);
   const satellites: Cell[][] = [['Kod', 'Yörünge varlığı', 'Seviye', 'Alaşım', 'Kristal', 'Döteryum', 'Referans süre (dk)', 'Sağladığı', 'Koşul/not']];
   for (const id of SATELLITE_IDS) {
     const c = satelliteCost(id); const d = id === 'FOUNDRY' ? 'Bu dünyanın üç üretimini %6 artırır' : id === 'UPLINK' ? 'Teleskop ve Radarı açar' : id === 'DERRICK' ? 'Kazıcı ambarı ×2,6; hızı ×1,5' : 'Bu dünyadan kalkan filoların hızı ×1,3';

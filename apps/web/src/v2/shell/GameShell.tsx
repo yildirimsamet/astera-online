@@ -13,6 +13,7 @@ import { AwayHost } from './AwayHost.js';
 import { BellHost } from './BellHost.js';
 import { ChatHost } from './ChatHost.js';
 import { FleetHost } from './FleetHost.js';
+import { REPAIR_STATION_ITEM } from '../../lib/repairStation.js';
 import { HudDock } from './HudDock.js';
 import { HudTop } from './HudTop.js';
 import { OutlineHost } from './OutlineHost.js';
@@ -272,6 +273,10 @@ export function GameShell({ commander, panel, onPanel, onFocusPlanet, onFocusCra
         <FleetHost
           onFocus={(focus) => { onFocusCraft(focus); }}
           onClose={() => { setFleetOpen(false); }}
+          // The world, its Base on the Fleet tab, and the station open on it: one press.
+          onOpenRepairStation={(planetId) => {
+            route('planet', undefined, undefined, { planetId, group: 'reach', itemId: REPAIR_STATION_ITEM });
+          }}
         />
       )}
 

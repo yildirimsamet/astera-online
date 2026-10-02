@@ -181,8 +181,14 @@ export function loyaltyRatePerHour(activeCount: number): number {
 /**
  * Advance loyalty across a span. Clamped at both ends, and a span that does not move
  * forward moves nothing — the planet's tick may be replayed and must be idempotent.
+ *
+ * ZERO IS TERMINAL. It is the secession boundary, and `colony_secession` is booked for
+ * that instant — but a worker claims it a moment late, and a colony with no fault
+ * standing would already be climbing back, so the secession would quietly not happen.
+ * A fault-free battle loss or a Death Star hit (2026-10-01) lands exactly there.
  */
 export function advanceLoyalty(loyalty: number, activeCount: number, minutes: number): number {
+  if (loyalty <= 0) return 0;
   if (!(minutes > 0)) return loyalty;
   const next = loyalty + loyaltyRatePerHour(activeCount) * (minutes / 60);
   return Math.max(0, Math.min(FAULT.loyaltyMax, next));

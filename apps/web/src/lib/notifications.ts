@@ -105,6 +105,43 @@ const salvageFields = {
   salvageDeuterium: z.number().default(0),
 };
 
+/**
+ * WHAT THE REPAIR STATION DID WITH SHIPS THAT CAME OUT DAMAGED. Kalıcı gemi hasarı.
+ *
+ * Present only when it happened, so every payload written before the dock existed —
+ * and every fight that left nobody scratched — reads exactly as it always did.
+ */
+const dockFields = {
+  docked: z.number().int().nonnegative().optional(),
+  autoRepaired: z.number().int().nonnegative().optional(),
+};
+
+/*
+  KLAN SAVUNMA DESTEĞİ. The names are frozen into the payload when it is written, like
+  every other notice's; `role` says which side of a departure this reader stood on.
+*/
+const RETURN_REASONS = ['RECALLED', 'SENT_BACK', 'HOST_CLOSED', 'EXPIRED', 'BAND', 'MEMBERSHIP', 'WORLD_CHANGED', 'FREEZE'] as const;
+const supportInbound = z.object({
+  senderName: z.string(),
+  hostPlanetName: z.string(),
+  fleet,
+  arriveAt: z.coerce.date(),
+});
+const supportDeparted = z.object({
+  reason: z.enum(RETURN_REASONS),
+  role: z.enum(['SENDER', 'HOST']),
+  senderName: z.string(),
+  hostPlanetName: z.string(),
+});
+const supportResult = z.object({
+  /** The raid's grade, which is the raider's: REPELLED is the line holding. */
+  grade: z.enum(['DECISIVE', 'PARTIAL', 'REPELLED']),
+  hostPlanetName: z.string(),
+  lost: z.number(),
+  survived: z.number(),
+});
+const postureReset = z.object({ planetNames: z.array(z.string()) });
+
 
 const raided = z.object({
   originPlanetId: z.string().optional(),
@@ -122,6 +159,7 @@ const raided = z.object({
   /** Taktik geri çekilme: the ships ran, or would have and the tank was dry. */
   escape: z.enum(['ESCAPED', 'STRANDED']).optional(),
   escapeShips: z.number().int().nonnegative().optional(),
+  ...dockFields,
 });
 
 const raidResult = z.object({
@@ -154,6 +192,16 @@ const raidResult = z.object({
   dominion: z.number().int().safe().optional(),
   /** The line emptied in front of the raid. Nothing about what it held. */
   targetFled: z.boolean().optional(),
+  /** Survivors flying home damaged; the Repair Station judges them when they land. */
+  damaged: z.number().int().nonnegative().optional(),
+});
+
+/** Ships a cloud finished in flight. Radyasyon (plan F9/F10). Only their commander hears. */
+const radiationLost = z.object({
+  lost: z.number().int().positive(),
+  left: z.number().int().nonnegative(),
+  toPlanetId: z.string(),
+  toPlanetName: z.string().nullable().optional(),
 });
 
 /**
@@ -179,6 +227,7 @@ const returned = z.discriminatedUnion('trip', [
     lootCrystal: z.number(),
     lootDeuterium: z.number().default(0),
     ...salvageFields,
+    ...dockFields,
   }),
   z.object({
     trip: z.enum(['mining', 'harvest']),
@@ -210,6 +259,13 @@ const returned = z.discriminatedUnion('trip', [
     trip: z.literal('recalled'),
     craft: z.number(),
     craftKind: z.enum(['fleet', 'probe']).optional(),
+    ...dockFields,
+  }),
+  /** A clan support wave landed back at its sender's world. */
+  z.object({
+    trip: z.literal('support'),
+    craft: z.number(),
+    ...dockFields,
   }),
   z.object({
     trip: z.literal('transfer_rerouted'),
@@ -258,6 +314,7 @@ const returned = z.discriminatedUnion('trip', [
     ...salvageFields,
     /** `resolvePirateReturn` puts it here; a capture is fleet, not ore. */
     capturedHull: z.string().optional(),
+    ...dockFields,
   }),
   z.object({
     trip: z.literal('intergalactic_convoy'),
@@ -330,9 +387,14 @@ const unlocked = z.object({
 const strategicResult = z.object({
   outcome: z.enum(['FIRST_STRIKE', 'CAPTURED', 'INEFFECTIVE']),
   targetPlanetId: z.string(),
+  /** A colony's loyalty before and after the hit (owner, 2026-10-01); absent off a colony. */
+  loyalty: z.object({ before: z.number(), after: z.number() }).optional(),
 });
 
 const colonyEvent = z.object({ targetPlanetId: z.string() });
+
+/** A secession (`loyalty.ts`) names the world it lost; older rows may not. */
+const colonySeceded = z.object({ planetName: z.string().optional() });
 
 /**
  * ONE BROKEN THING, NAMED. Koloni arızaları.
@@ -431,6 +493,18 @@ const salvageClause = (trip: {
 /** A homecoming line with the salvage clause on the end, when there is one. */
 const withSalvage = (line: string, clause: string | null): string =>
   clause === null ? line : `${line}${JOIN()}${clause}`;
+
+/** "2 ships to the Repair Station · 1 patched free", each said only when it happened. */
+const dockClauses = (dock: { docked?: number | undefined; autoRepaired?: number | undefined }): string[] => [
+  ...(dock.docked !== undefined && dock.docked > 0
+    ? [i18n.t('notifications.dockedClause', { count: dock.docked })] : []),
+  ...(dock.autoRepaired !== undefined && dock.autoRepaired > 0
+    ? [i18n.t('notifications.patchedClause', { count: dock.autoRepaired })] : []),
+];
+
+/** A landing line with what the Repair Station did on the end. */
+const withDock = (line: string, dock: { docked?: number | undefined; autoRepaired?: number | undefined }): string =>
+  [line, ...dockClauses(dock)].join(JOIN());
 
 /**
  * DECISIVE, PARTIAL or REPELLED, in the player's language.
@@ -678,6 +752,7 @@ export function describeNotification(notification: NotificationView, now: number
         if (theirLosses !== undefined && theirLosses > 0) {
           cost.push(i18n.t('notifications.repelledTheirs', { count: theirLosses }));
         }
+        cost.push(...dockClauses(parsed.data));
         return `${raider}${i18n.t('notifications.repelledHead', { cost: cost.join(JOIN()) })}`;
       }
       /**
@@ -717,6 +792,7 @@ export function describeNotification(notification: NotificationView, now: number
       if (unitsLost > 0) {
         clauses.push(i18n.t('notifications.raidedLost', { count: unitsLost }));
       }
+      clauses.push(...dockClauses(parsed.data));
       /**
        * A raid that genuinely cost nothing — repelled by the vault floor with no
        * defenders to lose and, on an older row, no works figure to report. Saying
@@ -724,6 +800,18 @@ export function describeNotification(notification: NotificationView, now: number
        */
       if (clauses.length === 0) return `${raider}${i18n.t('notifications.raidedNothing')}`;
       return `${raider}${i18n.t('notifications.raided', { detail: clauses.join(JOIN()) })}`;
+    }
+
+    case 'radiation_lost': {
+      const parsed = radiationLost.safeParse(notification.payload);
+      if (!parsed.success) return null;
+      const { lost, left, toPlanetName } = parsed.data;
+      const way = toPlanetName
+        ? i18n.t('notifications.radiationWayTo', { name: toPlanetName })
+        : i18n.t('notifications.radiationWay');
+      return left === 0
+        ? i18n.t('notifications.radiationLostAll', { count: lost, way })
+        : i18n.t('notifications.radiationLost', { count: lost, left, way });
     }
 
     case 'raid_result': {
@@ -764,7 +852,11 @@ export function describeNotification(notification: NotificationView, now: number
       }
       // The line emptied in front of the raid: said first, because it is why nothing died.
       if (parsed.data.targetFled === true) took.unshift(i18n.t('notifications.raidTargetFled'));
-      const detail = took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing');
+      const { damaged } = parsed.data;
+      const detail = [
+        took.length > 0 ? took.join(JOIN()) : i18n.t('notifications.raidNothing'),
+        ...(damaged !== undefined && damaged > 0 ? [i18n.t('notifications.damagedClause', { count: damaged })] : []),
+      ].join(JOIN());
       return i18n.t('notifications.raidResult', {
         grade: gradeWord(grade),
         target,
@@ -811,9 +903,12 @@ export function describeNotification(notification: NotificationView, now: number
           { target: trip.targetPlanetName },
         );
       }
+      if (trip.trip === 'support') {
+        return withDock(i18n.t('clanSupport.noticeHome', { count: trip.craft }), trip);
+      }
       if (trip.trip === 'recalled') {
         if (trip.craftKind === 'probe') return i18n.t('notifications.probeLost');
-        return i18n.t('notifications.recalled', { count: trip.craft });
+        return withDock(i18n.t('notifications.recalled', { count: trip.craft }), trip);
       }
       if (trip.trip === 'trade') {
         /*
@@ -863,12 +958,12 @@ export function describeNotification(notification: NotificationView, now: number
         const towed = trip.capturedHull === undefined ? null : hullName(trip.capturedHull);
         const lifted = salvageClause(trip);
         if (towed !== null) {
-          return withSalvage(i18n.t('notifications.pirateHomeTowed', {
+          return withDock(withSalvage(i18n.t('notifications.pirateHomeTowed', {
             count: trip.ships,
             hull: towed,
             ...(loot > 0 ? { amount: compact(loot) } : {}),
             context: loot > 0 ? 'looted' : 'empty',
-          }), lifted);
+          }), lifted), trip);
         }
         /*
           SALVAGE IS NOT AN EMPTY HAND EITHER. A squadron whose holds came home empty
@@ -876,12 +971,12 @@ export function describeNotification(notification: NotificationView, now: number
           "empty-handed" would state that as a falsehood — the towed-hull reasoning
           above, for the D200 hull.
         */
-        return withSalvage(i18n.t(
+        return withDock(withSalvage(i18n.t(
           loot > 0
             ? 'notifications.pirateHome'
             : lifted !== null ? 'notifications.pirateHomeBare' : 'notifications.pirateHomeEmpty',
           { count: trip.ships, amount: compact(loot) },
-        ), lifted);
+        ), lifted), trip);
       }
       if (trip.trip === 'raid') {
         const origin = identity(
@@ -899,12 +994,12 @@ export function describeNotification(notification: NotificationView, now: number
         }
         const loot = trip.lootAlloy + trip.lootCrystal + trip.lootDeuterium;
         const lifted = salvageClause(trip);
-        return withSalvage(i18n.t(
+        return withDock(withSalvage(i18n.t(
           loot > 0
             ? 'notifications.fleetHomeLooted'
             : lifted !== null ? 'notifications.fleetHomeBare' : 'notifications.fleetHomeEmpty',
           { where, count: trip.ships, amount: compact(loot) },
-        ), lifted);
+        ), lifted), trip);
       }
       if (trip.trip === 'mining_recalled') {
         return i18n.t('notifications.miningRecalledHome', { count: trip.craft });
@@ -990,6 +1085,19 @@ export function describeNotification(notification: NotificationView, now: number
     case 'death_star_result': {
       const parsed = strategicResult.safeParse(notification.payload);
       if (!parsed.success) return i18n.t('notifications.deathStarFallback');
+      /*
+        A HIT ON A COLONY SAYS WHAT IT TOOK. Rounded up like every loyalty figure, so a
+        colony reported at 20% is one a hit really takes; at zero it says the colony is gone.
+      */
+      const loyalty = parsed.data.loyalty;
+      if (parsed.data.outcome === 'FIRST_STRIKE' && loyalty) {
+        return loyalty.after <= 0
+          ? i18n.t('notifications.deathStarSeceded')
+          : i18n.t('notifications.deathStarColony', {
+            before: Math.ceil(loyalty.before),
+            after: Math.ceil(loyalty.after),
+          });
+      }
       return i18n.t(`notifications.deathStar.${parsed.data.outcome}`);
     }
 
@@ -1000,10 +1108,16 @@ export function describeNotification(notification: NotificationView, now: number
       return i18n.t('notifications.colonyCaptured');
     }
 
+    /*
+      ONLY A SECESSION SENDS THIS NOW, whether neglect or a Death Star brought loyalty to
+      zero. It used to blame "a strategic strike" for a colony its own commander let fall.
+    */
     case 'colony_lost': {
-      const parsed = colonyEvent.safeParse(notification.payload);
-      void parsed;
-      return i18n.t('notifications.colonyLost');
+      const parsed = colonySeceded.safeParse(notification.payload);
+      const planet = parsed.success ? parsed.data.planetName : undefined;
+      return planet
+        ? i18n.t('notifications.colonyLost', { planet })
+        : i18n.t('notifications.colonyLostUnnamed');
     }
 
     case 'settlement_lost': {
@@ -1072,6 +1186,40 @@ export function describeNotification(notification: NotificationView, now: number
           : i18n.t('notifications.asteroidShowerEnded');
     }
 
+    /* KLAN SAVUNMA DESTEĞİ: who is coming, who left and why, what the ships did. */
+    case 'clan_support_inbound': {
+      const parsed = supportInbound.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
+      const { senderName, hostPlanetName, fleet: ships, arriveAt } = parsed.data;
+      const count = Object.values(ships).reduce((sum, n) => sum + n, 0);
+      return arriveAt.getTime() <= now
+        ? i18n.t('clanSupport.noticeStanding', { name: senderName, count, world: hostPlanetName })
+        : i18n.t('clanSupport.noticeInbound', {
+          name: senderName, count, world: hostPlanetName,
+          time: duration((arriveAt.getTime() - now) / 60_000),
+        });
+    }
+    case 'clan_support_departed': {
+      const parsed = supportDeparted.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
+      const { role, reason, senderName, hostPlanetName } = parsed.data;
+      return i18n.t(role === 'SENDER' ? 'clanSupport.noticeLeavingSender' : 'clanSupport.noticeLeftHost', {
+        name: senderName, world: hostPlanetName, reason: i18n.t(`clanSupport.reason.${reason}`),
+      });
+    }
+    case 'clan_support_result': {
+      const parsed = supportResult.safeParse(notification.payload);
+      if (!parsed.success) return i18n.t('clanSupport.noticeFallback');
+      const { hostPlanetName, lost, survived } = parsed.data;
+      return i18n.t('clanSupport.noticeResult', { world: hostPlanetName, lost, kept: survived });
+    }
+    case 'defence_posture_reset': {
+      const parsed = postureReset.safeParse(notification.payload);
+      return i18n.t('clanSupport.noticeReset', {
+        worlds: parsed.success ? parsed.data.planetNames.join(', ') : '',
+      });
+    }
+
     /**
      * A kind this build does not know.
      *
@@ -1112,6 +1260,7 @@ export const isAlarming = (notification: NotificationView): boolean => {
   if (
     notification.kind === 'incoming_fleet'
     || notification.kind === 'strategic_incoming'
+    || notification.kind === 'radiation_lost'
     || notification.kind === 'colony_lost'
     || notification.kind === 'raided'
   ) return true;
@@ -1185,6 +1334,7 @@ export function signalFamily(notification: NotificationView): SignalFamily {
     case 'colony_lost':
     case 'settlement_lost':
     case 'colony_loyalty_warning':
+    case 'radiation_lost':
       return 'threat';
     /*
       A FAULT IS NOT AN ATTACK, and the ink says so. Threat red in this game means
@@ -1196,6 +1346,21 @@ export function signalFamily(notification: NotificationView): SignalFamily {
       return 'watch';
     case 'scan_detected':
       return 'watch';
+    /*
+      KLAN SAVUNMA DESTEĞİ. Help on its way is good news; a wave leaving and a posture
+      reset change the defence without costing anything yet; a fight the supporter's
+      ships stood in reads by what it did to their Dominion.
+    */
+    case 'clan_support_inbound':
+      return 'gain';
+    case 'clan_support_departed':
+    case 'defence_posture_reset':
+      return 'watch';
+    case 'clan_support_result': {
+      const parsed = supportResult.safeParse(notification.payload);
+      if (!parsed.success) return 'watch';
+      return parsed.data.grade === 'REPELLED' ? 'gain' : 'threat';
+    }
     case 'strategic_intercepted': {
       const parsed = intercepted.safeParse(notification.payload);
       // An unreadable payload is the fallback sentence, which says a weapon was
@@ -1339,10 +1504,14 @@ export function signalGlyph(notification: NotificationView): SignalGlyph {
       return 'strategic';
     case 'raided':
     case 'raid_result':
+    case 'clan_support_result':
       return 'raided';
+    case 'clan_support_inbound':
+    case 'clan_support_departed':
     case 'fleet_returned':
     case 'target_gone':
     case 'convoy_result':
+    case 'radiation_lost':
       return 'returned';
     /**
      * AN EYE FOR YOUR PROBE, A PING FOR SOMEBODY ELSE'S. See `EyeIcon`.

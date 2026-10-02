@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { HULLS, fleetEntries, type Fleet, type Ledger } from '@astera/rules';
 import type { Tx } from '../db/client.js';
 import { accounts, clanMemberships, clans, planets, players } from '../db/schema.js';
+import { addDominionCounters } from './dominion.js';
 
 /**
  * THE PRIMITIVES EVERY BATTLE SETTLEMENT SHARES, whoever is doing the fighting.
@@ -36,6 +37,19 @@ export async function lockLedgers(
     .for('update');
   if (rows.length !== ids.length) throw new Error('mission player vanished before arrival');
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+/**
+ * MOVE ONE LEDGER BY A SIGNED DELTA. A battle with several commanders on a side — a
+ * clan's joint war, a supported line — books each of them on their own row; the two
+ * counters only ever grow, so a gain is taken and a loss is lost.
+ */
+export function applyDelta(ledger: { taken: number; lost: number }, delta: number, label = 'Battle Dominion'): void {
+  if (delta >= 0) {
+    ledger.taken = addDominionCounters(ledger.taken, delta, label);
+  } else {
+    ledger.lost = addDominionCounters(ledger.lost, -delta, label);
+  }
 }
 
 export async function saveLedger(tx: Tx, ledger: Ledger & { id: string }): Promise<void> {

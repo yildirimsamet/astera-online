@@ -13,22 +13,23 @@
 export const planet = {
   recovery: "Récupération en cours · systèmes disponibles dans {{duration}}",
   empActive: "EMP · Aegis à zéro et sans régénération pendant {{duration}} ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
+  capacityNext: "Avec {{name}} : {{total}} par monde",
   interceptor: {
     eyebrow: "Batterie de défense stratégique",
     tally: "{{used}} munitions sur {{total}} chargées",
     none: "Aucune munition chargée",
     building: "Chargement · {{duration}}",
     paused: "Chargement interrompu pendant la récupération",
-    ready: "Une munition chargée",
+    ready: "Charges prêtes : {{count}}",
     noRadar: "Chargée · rayon Radar désactivé",
     build: "Charger une munition",
     started: "Chargement de la munition",
     hint: "Détruit la première Étoile de la Mort entrant dans le rayon Radar temporisé ou identifiée dans le champ de vision d’un Télescope appartenant à l’un de tes mondes. La munition est consommée lorsqu’elle tire.",
+    colonyHint: "Chaque Étoile de la Mort qui passe coûte {{loss}} de loyauté à cette colonie ; à {{loss}} ou moins, elle fait sécession.",
     readyHint:
       "Prête. Détruit la première Étoile de la Mort entrant dans le rayon d’interception Radar ou identifiée dans le champ de vision d’un Télescope.",
     noRadarHint:
       "La munition reste chargée, mais ce monde ne dispose plus de rayon d’interception Radar. Réactive l’Antenne et un Radar de niveau 3 ; le champ de vision d’un Télescope sur un autre de tes mondes peut toujours déclencher le tir.",
-    needResearch: "Réseau d’Interception",
     needRadar: "Radar niveau {{level}}",
     needUplink: "Antenne en orbite",
     needOperational: "Monde opérationnel",
@@ -46,11 +47,9 @@ export const planet = {
       "{{ready}} prêtes · {{building}} en construction · {{held}}/{{capacity}}",
     build: "Construire",
     started: "Construction de l’Étoile de la Mort lancée",
-    dangerHint:
-      "EMP : l’Aegis tombe à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps.",
+    dangerHint: "EMP : l’Aegis tombe à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps. Une colonie perd aussi {{loss}} de loyauté ; à {{loss}} ou moins, elle fait sécession et devient neutre.",
     readyHint:
       "Prête : l’Aegis de la cible tombe à zéro et ne se régénère pas pendant 1 heure ; les défenses terrestres ne tirent pas et ne subissent aucun dégât.",
-    needProtocol: "Protocole",
     needCore: "Noyau niveau {{level}}",
     needShipyard: "Chantier Spatial niveau {{level}}",
     needOperational: "Monde opérationnel",
@@ -84,6 +83,7 @@ export const planet = {
     capacity: "{{count}} places chacune",
     construction: "Construction",
     yard: "Chantier Spatial",
+    repair: "Réparations",
     slotFree: "Libre",
     empty: "Aucun travail assigné",
     committing: "traitement…",
@@ -453,6 +453,8 @@ export const planetHero = {
   defenceGuns_other: "{{count}} canons",
   defenceUnarmed_one: "dont {{count}} cargo sans armes",
   defenceUnarmed_other: "dont {{count}} cargos sans armes",
+  defenceDocked_one: "{{count}} à la Station de réparation · ne défend pas",
+  defenceDocked_other: "{{count}} à la Station de réparation · ne défendent pas",
   fleetAway: "{{count}} en vol",
   shield: "Bouclier",
   shieldNone: "Aucun",
@@ -549,6 +551,10 @@ export const launch = {
     "Ce raid fera tomber ton bouclier de premier jour. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
   recoveryShieldWarning:
     "Ce raid mettra fin à ton bouclier de récupération et au bonus de production de +50 %. Une fois la protection levée, les autres commandants pourront eux aussi t’attaquer.",
+  radiationLethal_one: "La radiation sur cette route détruit {{count}} vaisseau avant l’arrivée. Maintenir l’envoie quand même.",
+  radiationLethal_other: "La radiation sur cette route détruit {{count}} vaisseaux avant l’arrivée. Maintenir les envoie quand même.",
+  radiationDock: "La route traverse une radiation : chaque vaisseau perd ~{{pct}} % de sa coque. Au-delà de 20 %, il attend à la Station de réparation.",
+  radiationPatched: "La route traverse une radiation : chaque vaisseau perd ~{{pct}} % de sa coque, réparée gratuitement à l’atterrissage.",
   fleetsave:
     "Les vaisseaux en vol ne peuvent pas être pillés. Ta planète, elle, peut l’être.",
   range: "distance {{d}}",
@@ -680,7 +686,7 @@ export const faults = {
   },
   loyalty: {
     title: "Loyauté de ce monde",
-    battleLoss: "Défaite légère −15 · défaite lourde −30",
+    battleLoss: "Défaite légère −15 · défaite lourde −30 · Étoile de la Mort −{{strike}}",
     line: "%{{value}} — diminue tant que {{count}} éléments sont en panne. À ce rythme, elle atteindra zéro dans {{time}} et la colonie déclarera son indépendance.",
     bar: "Loyauté %{{value}}",
     left: "{{time}} restantes",

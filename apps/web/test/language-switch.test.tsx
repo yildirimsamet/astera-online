@@ -16,10 +16,14 @@ describe('language switch', () => {
 
     const select = screen.getByRole('combobox', { name: 'Choose a language' });
     expect(select).toHaveValue('en');
-    expect(screen.getAllByRole('option')).toHaveLength(5);
+    expect(screen.getAllByRole('option')).toHaveLength(6);
 
     await user.selectOptions(select, 'de');
     expect(select).toHaveValue('de');
     expect(i18n.resolvedLanguage).toBe('de');
+
+    await user.selectOptions(select, 'ja');
+    expect(select).toHaveValue('ja');
+    expect(i18n.resolvedLanguage).toBe('ja');
   });
 });

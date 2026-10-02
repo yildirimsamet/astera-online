@@ -359,7 +359,6 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   ISOTOPE_SPECTROMETRY: { stage: 4, hours: 3, growth: 1, fuel: 0 },
   DENSE_FUEL_CELLS: { stage: 5, hours: 4, growth: 1, fuel: 2 },
   GRAVITIC_CHARGES: { stage: 6, hours: 5, growth: 1, fuel: 3 },
-  DEATH_STAR_PROTOCOL: { stage: 10, hours: 12, growth: 1, fuel: 12 },
   DEUTERIUM_SYNTHESIS: { stage: 1, hours: 2, growth: 3, fuel: 0 },
   YARD_AUTOMATION: { stage: 6, hours: 3, growth: 1.8, fuel: 0 },
   AI_ROBOTS: { stage: 6, hours: 3.5, growth: 1.8, fuel: 0 },
@@ -372,6 +371,8 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   EMPLACEMENT_DOCTRINE: { stage: 4, hours: 2, growth: 2.1, fuel: 0.5 },
   INTERCEPTION_GRID: { stage: 9, hours: 8, growth: 1, fuel: 8 },
   STRATEGIC_STOCKPILE: { stage: 11, hours: 12, growth: 1, fuel: 12 },
+  /** Owner K6, 2026-09-29: Yard Automation's own first two rungs. */
+  INDUSTRIAL: { stage: 6, hours: 3, growth: 1.8, fuel: 0 },
 };
 
 export function profileResearch(id: ResearchProjectId, level: number, days: number = ECONOMY_PROFILE.progressionDays) {

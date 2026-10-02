@@ -186,7 +186,6 @@ export type ResearchProjectId =
   | 'ISOTOPE_SPECTROMETRY'
   | 'DENSE_FUEL_CELLS'
   | 'GRAVITIC_CHARGES'
-  | 'DEATH_STAR_PROTOCOL'
   | 'DEUTERIUM_SYNTHESIS'
   | 'YARD_AUTOMATION'
   | 'PROSPECTOR_HOLDS'
@@ -198,12 +197,17 @@ export type ResearchProjectId =
   | 'EMPLACEMENT_DOCTRINE'
   | 'INTERCEPTION_GRID'
   | 'STRATEGIC_STOCKPILE'
-  | 'AI_ROBOTS';
+  | 'AI_ROBOTS'
+  | 'INDUSTRIAL';
 export const RESEARCH_PROJECT_IDS = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
   'GRAVITIC_CHARGES',
-  'DEATH_STAR_PROTOCOL',
+  /*
+    'DEATH_STAR_PROTOCOL' STOOD HERE, and the owner retired it on 2026-10-01: after the
+    EMP rework the weapon's own gate — Core 12 and Shipyard 5 — was the whole door, and
+    a permission that authorised nothing was a locked star on the map that never opened.
+  */
   /**
    * THE FIRST LEVELLED PROJECT, and the reason T7 built a ladder into the model.
    * Appended, never inserted: a stored `project_id` is a string, but an id list
@@ -221,11 +225,13 @@ export const RESEARCH_PROJECT_IDS = [
   'SHIP_PROPULSION',
   /** Ground progression remains separate from mobile-fleet research. */
   'EMPLACEMENT_DOCTRINE',
-  /** The two strategic projects: one stops a weapon, one keeps a second on the pad. T10/T11. */
+  /** The two strategic capacities: the Grid doubles the charges, the Stockpile the weapons. */
   'INTERCEPTION_GRID',
   'STRATEGIC_STOCKPILE',
   /** The surface's own build-speed ladder, and the Yard's opposite number. D198. */
   'AI_ROBOTS',
+  /** The Repair Station's ladder. Kalıcı gemi hasarı, owner K6 (2026-09-29). */
+  'INDUSTRIAL',
 ] as const;
 
 export interface ResearchRequirement {

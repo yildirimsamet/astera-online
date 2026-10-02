@@ -1,4 +1,5 @@
 import {
+  DEATH_STAR,
   HULLS,
   combatValue,
   coreTier,
@@ -81,7 +82,9 @@ export function PlanetHero({ planet }: { planet: PlanetView }) {
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-micro text-v2-ink-3">{t('faults.loyalty.battleLoss')}</p>
+          <p className="mt-0.5 text-micro text-v2-ink-3">
+            {t('faults.loyalty.battleLoss', { strike: DEATH_STAR.colonyLoyaltyLoss })}
+          </p>
         </div>
       )}
       {/*
@@ -402,6 +405,8 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
   const ships = fleetEntries(planet.fleet).reduce((sum, [id, n]) => sum + (HULLS[id].atk > 0 ? n : 0), 0);
   const guns = coreOnline ? fleetCount(planet.ground) : 0;
   const unarmed = unarmedCount(line);
+  // Kalıcı gemi hasarı: this world's, but waiting in the Repair Station — not in the line.
+  const docked = fleetCount(planet.fleetDocked ?? {});
   const standing = [
     ships > 0 ? t('planetHero.defenceShips', { count: ships }) : null,
     guns > 0 ? t('planetHero.defenceGuns', { count: guns }) : null,
@@ -413,9 +418,12 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
         testId="planet-defence"
         label={t('planetHero.defence')}
         value={armed ? standing : t('planetHero.defenceNone')}
-        detail={!coreOnline
-          ? t('planetHero.defenceCoreOffline')
-          : unarmed > 0 ? t('planetHero.defenceUnarmed', { count: unarmed }) : undefined}
+        detail={[
+          !coreOnline
+            ? t('planetHero.defenceCoreOffline')
+            : unarmed > 0 ? t('planetHero.defenceUnarmed', { count: unarmed }) : null,
+          docked > 0 ? t('planetHero.defenceDocked', { count: docked }) : null,
+        ].filter((part): part is string => part !== null).join(' · ') || undefined}
         tone={armed ? 'neutral' : 'gap'}
       />
       <Verdict
@@ -463,7 +471,7 @@ export function DefenceReadings({ planet }: { planet: PlanetView }) {
         `FleetCards` draws nothing when there is nothing to draw.
       */}
       <div className="col-span-2">
-        <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} />
+        <FleetCards fleet={planet.fleet} fleetAway={planet.fleetAway} fleetDocked={planet.fleetDocked ?? {}} />
       </div>
     </div>
   );

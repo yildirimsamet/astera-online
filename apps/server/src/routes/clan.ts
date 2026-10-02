@@ -36,6 +36,13 @@ import { claimClanLoot, readClanDepot } from '../services/clanLoot.js';
 import { markClanChatRead, postClanChat, readClanChat } from '../services/clanChat.js';
 import { launchClanAid, quoteClanAid, readClanAid } from '../services/clanAid.js';
 import { readClanStrength } from '../services/clanStrength.js';
+import {
+  quoteClanSupport,
+  recallClanSupport,
+  sendBackClanSupport,
+  sendClanSupport,
+} from '../services/clanSupport.js';
+import { readMySupport } from '../services/clanSupportView.js';
 import { requireAuth } from './auth.js';
 import { mobileFleetSchema } from '../schemas/fleet.js';
 
@@ -117,6 +124,13 @@ const warQuoteBody = z.object({
   originPlanetId: z.string().uuid(),
   fleet: mobileFleetSchema,
 }).strict();
+/** Klan Savunma Desteği: which world sends, which clanmate world receives, and the ships. */
+const supportBody = z.object({
+  originPlanetId: z.string().uuid(),
+  hostPlanetId: z.string().uuid(),
+  fleet: mobileFleetSchema,
+}).strict();
+const waveParam = z.object({ waveId: z.string().uuid() }).strict();
 const warContributionBody = z.object({
   originPlanetId: z.string().uuid(),
   fleet: mobileFleetSchema,
@@ -177,6 +191,71 @@ export function registerClanRoutes(app: FastifyInstance): void {
   app.get('/api/clan/war', { preHandler: requireAuth }, async (req) => {
     const actor = await clanActor(app.db, req.accountId!);
     return readClanWar(app.db, actor, app.clock.now());
+  });
+
+  /** My support waves still out — the Fleet page's "Klan desteği" group. */
+  app.get('/api/clan/support', { preHandler: requireAuth }, async (req) => {
+    const actor = await clanActor(app.db, req.accountId!);
+    return readMySupport(app.db, actor.playerId);
+  });
+
+  /** Decides nothing: the send recomputes every figure under its own locks. */
+  app.post('/api/clan/support/quote', { preHandler: requireAuth }, async (req) => {
+    const body = supportBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return quoteClanSupport(app.db, {
+      senderPlayerId: actor.playerId,
+      ...body,
+      clock: { now: () => now },
+    });
+  });
+
+  app.post('/api/clan/support', { preHandler: requireAuth }, async (req) => {
+    const body = supportBody.parse(req.body);
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.support.send',
+      key: idempotencyKey(req),
+      body,
+      now,
+    }, (tx) => sendClanSupport(tx, {
+      senderPlayerId: actor.playerId,
+      ...body,
+      clock: { now: () => now },
+    }));
+  });
+
+  /** The sender turns their wave — in flight (normal recall) or standing at the host. */
+  app.post('/api/clan/support/:waveId/recall', { preHandler: requireAuth }, async (req) => {
+    const { waveId } = waveParam.parse(req.params);
+    emptyBody.parse(req.body ?? {});
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.support.recall',
+      key: idempotencyKey(req),
+      body: { waveId },
+      now,
+    }, (tx) => recallClanSupport(tx, { playerId: actor.playerId, waveId, clock: { now: () => now } }));
+  });
+
+  /** The host sends a wave back — "Geri gönder" on the Hangar page. */
+  app.post('/api/clan/support/:waveId/send-back', { preHandler: requireAuth }, async (req) => {
+    const { waveId } = waveParam.parse(req.params);
+    emptyBody.parse(req.body ?? {});
+    const actor = await clanActor(app.db, req.accountId!);
+    const now = app.clock.now();
+    return idempotentMutation(app.db, {
+      playerId: actor.playerId,
+      operation: 'clan.support.sendBack',
+      key: idempotencyKey(req),
+      body: { waveId },
+      now,
+    }, (tx) => sendBackClanSupport(tx, { playerId: actor.playerId, waveId, clock: { now: () => now } }));
   });
 
   app.get('/api/clans', { preHandler: requireAuth }, async (req) =>

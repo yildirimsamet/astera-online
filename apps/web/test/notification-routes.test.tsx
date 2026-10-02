@@ -33,6 +33,9 @@ import { keepsPlanetGroup, nextPanelStop, rivalMenuRows } from '../src/shell/pan
  * Adding a kind fails there first, and its message names this file.
  */
 const EVERY_KIND = [
+  'clan_support_departed',
+  'clan_support_inbound',
+  'clan_support_result',
   'colony_captured',
   'colony_fault',
   'colony_loyalty_warning',
@@ -43,6 +46,7 @@ const EVERY_KIND = [
   'galaxy_event_started',
   'incoming_fleet',
   'probe_report',
+  'radiation_lost',
   'raid_result',
   'raided',
   'scan_detected',
@@ -52,10 +56,23 @@ const EVERY_KIND = [
   'strategic_intercepted',
   'target_gone',
   'unlock',
+  'defence_posture_reset',
 ] as const;
 
 /** A payload each kind's parser will actually accept, so a row really renders. */
 const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
+  clan_support_inbound: {
+    waveId: 'w', senderPlayerId: 's', senderName: 'Ali', hostPlanetId: 'p9', hostPlanetName: 'Vantage',
+    fleet: { DART: 4 }, arriveAt: '2026-08-26T12:20:00.000Z',
+  },
+  clan_support_departed: {
+    waveId: 'w', reason: 'EXPIRED', senderPlayerId: 's', senderName: 'Ali', hostPlayerId: 'h', hostName: 'Zeynep',
+    hostPlanetId: 'p9', hostPlanetName: 'Vantage', returnAt: '2026-08-26T12:40:00.000Z', role: 'HOST',
+  },
+  clan_support_result: {
+    reportId: 'r', grade: 'PARTIAL', hostPlanetId: 'p9', hostPlanetName: 'Vantage', lost: 2, survived: 3,
+  },
+  defence_posture_reset: { planetIds: ['p9'], planetNames: ['Vantage'] },
   colony_captured: { targetPlanetId: 'p9' },
   colony_fault: {
     planetId: 'p9', planetName: 'Vantage', fault: 'SHIPYARD_REVOLT',
@@ -67,6 +84,7 @@ const PAYLOAD: Record<(typeof EVERY_KIND)[number], Record<string, unknown>> = {
   colony_lost: { targetPlanetId: 'p9' },
   death_star_result: { outcome: 'FIRST_STRIKE', targetPlanetId: 'p9' },
   fleet_returned: { trip: 'raid', ships: 4, lootAlloy: 10, lootCrystal: 0 },
+  radiation_lost: { lost: 3, left: 0, toPlanetId: 'p9', toPlanetName: 'Vantage' },
   galaxy_event_ended: {
     eventKind: 'ASTEROID_SHOWER',
     startsAt: '2026-08-26T11:00:00.000Z',
@@ -216,7 +234,7 @@ describe('where a notification takes you', () => {
     for (const [kind, where] of Object.entries(DESTINATION)) {
       if (where.panel !== 'report') continue;
       expect(
-        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted'],
+        ['raided', 'raid_result', 'death_star_result', 'strategic_intercepted', 'clan_support_result'],
         `${kind} is not a fight`,
       ).toContain(kind);
       expect(where.stop, `${kind} has no list to fall back to`).toBe('battles');

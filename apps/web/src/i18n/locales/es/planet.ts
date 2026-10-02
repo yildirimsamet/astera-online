@@ -6,6 +6,7 @@
 export const planet = {
   recovery: "Recuperación en curso · los sistemas regresan en {{duration}}",
   empActive: "EMP · Égida a cero y sin regeneración durante {{duration}}; las defensas terrestres no disparan ni reciben daño.",
+  capacityNext: "Con {{name}}: {{total}} por mundo",
   /**
    * THE COUNTER TO THE THING ABOVE. T10 · T12.
    *
@@ -19,16 +20,16 @@ export const planet = {
     none: "Sin cargo cargado",
     building: "Cargando · {{duration}}",
     paused: "Carga pausada durante la recuperación",
-    ready: "Una carga cargada",
+    ready: "Cargas listas: {{count}}",
     noRadar: "Cargado · El anillo de radar está fuera de línea",
     build: "Cargo de carga",
     started: "Cargando carga",
     hint: "Destruye la primera Estrella de la Muerte que ingresa al anillo del radar cronometrado o se identifica en la mira del telescopio. Gastado cuando se dispara.",
+    colonyHint: "Cada Estrella de la Muerte que pasa le quita {{loss}} de lealtad a esta colonia; con {{loss}} o menos se separa.",
     readyHint:
       "Armado. Destruye la próxima Estrella de la Muerte que ingresa al anillo de intercepción del radar o es identificada en la mira del telescopio.",
     noRadarHint:
       "La carga sigue cargada, pero este mundo no tiene anillo de interceptación de radar. Restaurar su enlace ascendente y radar 3; La vista telescópica de otro mundo todavía puede activarlo.",
-    needResearch: "Cuadrícula de intercepción",
     needRadar: "Radar L{{level}}",
     needUplink: "Enlace ascendente en órbita",
     needOperational: "Operativo mundial",
@@ -46,11 +47,9 @@ export const planet = {
     stock: "{{ready}} listo · {{building}} edificio · {{held}}/{{capacity}}",
     build: "Construir",
     started: "Comenzó la construcción de la Estrella de la Muerte",
-    dangerHint:
-      "EMP: la Égida cae a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo.",
+    dangerHint: "EMP: la Égida cae a cero y no se regenera durante 1 hora. Las defensas terrestres no disparan ni reciben daño en ese tiempo. Una colonia además pierde {{loss}} de lealtad; con {{loss}} o menos se separa y queda neutral.",
     readyHint:
       "Preparada: la Égida del objetivo cae a cero y no se regenera durante 1 hora; las defensas terrestres no disparan ni reciben daño.",
-    needProtocol: "Protocolo",
     needCore: "Núcleo L{{level}}",
     needShipyard: "Astillero L{{level}}",
     needOperational: "Operativo mundial",
@@ -84,6 +83,7 @@ export const planet = {
     capacity: "{{count}} ranuras cada una",
     construction: "Construcción",
     yard: "Yarda",
+    repair: "Reparaciones",
     slotFree: "Gratis",
     empty: "No hay trabajo comprometido",
     committing: "confirmando…",
@@ -471,6 +471,8 @@ export const planetHero = {
   defenceGuns_other: "{{count}} pistolas",
   defenceUnarmed_one: "{{count}} transporte en la línea",
   defenceUnarmed_other: "{{count}} transportes en la línea",
+  defenceDocked_one: "{{count}} en la Estación de Reparación · no defiende",
+  defenceDocked_other: "{{count}} en la Estación de Reparación · no defienden",
   fleetAway: "{{count}} en el aire",
   shield: "Escudo",
   shieldNone: "Ninguno",
@@ -582,6 +584,10 @@ export const launch = {
   /** The same price, on the window a heavy defeat bought rather than on the first day. */
   recoveryShieldWarning:
     "Esto renuncia a tu escudo de recuperación y su +50% de producción. Una vez que desaparezca, otros comandantes también podrán atacarte.",
+  radiationLethal_one: "La radiación de esta ruta destruye {{count}} nave antes de llegar. Mantener la envía igualmente.",
+  radiationLethal_other: "La radiación de esta ruta destruye {{count}} naves antes de llegar. Mantener las envía igualmente.",
+  radiationDock: "La ruta cruza radiación: cada nave pierde ~{{pct}} % de su casco. Más del 20 % espera en la Estación de Reparación.",
+  radiationPatched: "La ruta cruza radiación: cada nave pierde ~{{pct}} % de su casco, reparada gratis al aterrizar.",
   fleetsave: "Los naves en vuelo no pueden ser asaltados. Tu planeta puede.",
   range: "distancia {{d}}",
   arrive: "Llegada",
@@ -716,7 +722,7 @@ export const faults = {
   },
   loyalty: {
     title: "La lealtad de este mundo",
-    battleLoss: "Derrota parcial −15 · derrota decisiva −30",
+    battleLoss: "Derrota parcial −15 · derrota decisiva −30 · Estrella de la Muerte −{{strike}}",
     line: "{{value}}%: cae mientras {{count}} las cosas están rotas. A este ritmo llega a cero en {{time}} y la colonia se declara independiente.",
     bar: "Lealtad {{value}}%",
     left: "Quedan {{time}}",

@@ -6,12 +6,14 @@ import {
   INSTRUMENT_IDS,
   RESEARCH_PROJECT_IDS,
   SATELLITE_IDS,
+  SHIP_DAMAGE,
   FEATURE_FLAGS,
   type HullId,
 } from '@astera/rules';
 import { and, asc, eq } from 'drizzle-orm';
 import { planets } from '../db/schema.js';
 import { startFaultRepair } from '../services/faultRepair.js';
+import { startRepair } from '../services/repair.js';
 import { planetView } from '../services/planetView.js';
 import {
   buildUnits,
@@ -26,6 +28,7 @@ import { completeResearch } from '../services/research.js';
 import { capitalPlanet, commanderForAccount, ownedPlanet } from '../services/ownership.js';
 import { GameError } from '../services/planet.js';
 import { buildDeathStar, buildInterceptor, launchDeathStar } from '../services/strategic.js';
+import { setDefencePosture } from '../services/clanSupport.js';
 import { launchSettlement, launchTransfer, recallFlight } from '../services/movement.js';
 import { cancelBuildOrder } from '../services/buildQueue.js';
 
@@ -91,6 +94,8 @@ const launchBody = z.object({
    * player did not choose to spend.
    */
   acknowledgeShieldLoss: z.boolean().optional(),
+  /** The commander has read what radiation on this route would take. Plan D10. */
+  acknowledgeRadiation: z.boolean().optional(),
   /**
    * HOW FAST TO FLY IT. Owner decision, 2026-09-21.
    *
@@ -315,6 +320,24 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   /**
+   * SAVE A WORLD'S TWO DEFENCE TOGGLES. Klan Savunma Desteği, owner K4 · 2026-10-01.
+   *
+   * The Hangar page drafts both switches and sends them together on Kaydet. Setting the
+   * posture a world already has is a no-op, so a retried press changes nothing; the
+   * answer carries the world and how many clan waves went home because of it.
+   */
+  app.post('/api/planets/:planetId/defence-posture', { preHandler: requireAuth }, async (req) => {
+    const toggles = z.object({ escape: z.boolean(), support: z.boolean() }).strict().parse(req.body);
+    const owner = await explicitPlanet(req.accountId!, req.params);
+    return app.db.transaction((tx) => setDefencePosture(tx, {
+      planetId: owner.planetId,
+      playerId: owner.playerId,
+      toggles,
+      clock: app.clock,
+    }));
+  });
+
+  /**
    * PUT ONE FAULT RIGHT. Koloni arızaları.
    *
    * THERE IS NO CANCEL ROUTE AND THERE IS NOT GOING TO BE ONE. Owner instruction:
@@ -337,6 +360,23 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
   });
 
   /**
+   * THE REPAIR STATION. Kalıcı gemi hasarı (`plan.md` F4).
+   *
+   * The world is named in the path, as a fault repair names it: the dock a commander
+   * opens is usually the colony a fight happened at. The body is exactly one of the two
+   * shapes; a cancel is the yard's own `build-orders/:orderId/cancel` door.
+   */
+  app.post('/api/planets/:planetId/repairs', { preHandler: requireAuth }, async (req) => {
+    const { planetId } = z.object({ planetId: z.string().uuid() }).strict().parse(req.params);
+    const request = z.union([
+      z.object({ lotIds: z.array(z.string().uuid()).min(1).max(SHIP_DAMAGE.repairLotsPerOrder) }).strict(),
+      z.object({ all: z.literal(true) }).strict(),
+    ]).parse(req.body ?? {});
+    const owner = await ownedPlanet(app.db, req.accountId!, planetId);
+    return startRepair(app.db, owner.planetId, request, app.clock, owner.playerId);
+  });
+
+  /**
    * Launch an attack. It may be turned once while it flies (`/api/fleet/:missionId/recall`, K8).
    *
    * The response leads with the exposure window because that is the line the UI
@@ -355,6 +395,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       owner.playerId,
       body.acknowledgeShieldLoss ?? false,
       body.pace,
+      body.acknowledgeRadiation ?? false,
     );
   });
 
@@ -392,6 +433,8 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
         cargoShips: z.enum(['STAY', 'RETURN']),
         otherShips: z.enum(['STAY', 'RETURN']),
       }).strict().default({ cargoShips: 'RETURN', otherShips: 'STAY' }),
+      /** The commander has read what radiation on this route would take. Plan D10. */
+      acknowledgeRadiation: z.boolean().optional(),
     }).strict().parse(req.body);
     const origin = await ownedPlanet(app.db, req.accountId!, body.originPlanetId);
     return launchTransfer(
@@ -404,6 +447,7 @@ export function registerPlanetRoutes(app: FastifyInstance): void {
       app.clock,
       body.pace,
       body.returnPlan,
+      body.acknowledgeRadiation ?? false,
     );
   });
 

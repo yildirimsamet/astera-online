@@ -105,6 +105,9 @@ export const flightTitle = (thread: PendingThread): string => {
   if (thread.kind === 'probe') return i18n.t('pendingStrip.probe', { target: thread.targetName });
   if (thread.kind === 'death_star') return i18n.t('pendingStrip.deathStar', { target: thread.targetName });
   if (thread.kind === 'settlement') return i18n.t('pendingStrip.settlement', { target: thread.targetName });
+  if (thread.kind === 'transfer' && thread.clanSupport === true) {
+    return i18n.t(thread.leg === 'return' ? 'clanSupport.flightHome' : 'clanSupport.flight', { target: thread.targetName });
+  }
   if (thread.kind === 'transfer') return i18n.t('pendingStrip.transfer', { target: thread.targetName });
   /*
     THE MERCHANT IS NAMED FROM THE LOCALE FILES, never from `targetName`. D156.

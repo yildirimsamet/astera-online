@@ -159,7 +159,9 @@ export function projectedQueueState(
         const hull = id as HullId;
         return [
           hull,
-          (view.fleet[hull] ?? 0) + (view.ground[hull] ?? 0) + (view.fleetAway[hull] ?? 0),
+          (view.fleet[hull] ?? 0) + (view.ground[hull] ?? 0) + (view.fleetAway[hull] ?? 0)
+            // A ship in the Repair Station still holds its berth (Kalıcı gemi hasarı).
+            + (view.fleetDocked?.[hull] ?? 0),
         ];
       }),
     ),

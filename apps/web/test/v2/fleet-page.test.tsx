@@ -40,6 +40,7 @@ const world = (over: Partial<FleetWorld> = {}): FleetWorld => ({
   fleet: { DART: 12, COURIER: 1 },
   away: 6,
   room: roomOf({ hangar: 80, hangarUsed: 54, hangarCeiling: 180, ground: 20, groundUsed: 4 }),
+  docked: 0,
   ...over,
 });
 
@@ -54,6 +55,7 @@ const props = (over: Partial<FleetPageProps> = {}): FleetPageProps => ({
   recalling: null,
   onFocus: vi.fn(),
   onRecall: vi.fn(),
+  onOpenRepairStation: vi.fn(),
   onClose: vi.fn(),
   ...over,
 });
@@ -188,5 +190,37 @@ describe('the Fleet page', () => {
     render(<FleetPage {...props({ onTab })} />);
     await userEvent.click(screen.getByRole('tab', { name: /at home/i }));
     expect(onTab).toHaveBeenCalledWith('home');
+  });
+});
+
+/* ── the Repair Station ─────────────────────────────────────────── */
+
+/**
+ * THE REPAIR STATION LIVES IN THE BASE. Owner instruction, 2026-09-30: the station sits
+ * under the Shipyard and the Hangar on the Base's Fleet tab, and has one home. This page
+ * keeps what it always said — how many of a world's ships are held there — and that count
+ * is the door to that world's station.
+ */
+describe('the Repair Station from the Fleet page', () => {
+  it('offers no Repair Station tab of its own', () => {
+    render(<FleetPage {...props({ worlds: [world({ docked: 2 })] })} />);
+    expect(screen.queryByRole('tab', { name: /repair/i })).toBeNull();
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+  });
+
+  it('counts a world\'s ships held in the Repair Station, and opens that world\'s station', async () => {
+    const onOpenRepairStation = vi.fn();
+    render(<FleetPage {...props({
+      tab: 'home',
+      worlds: [world({ id: 'p-2', name: 'Hollow', capital: false, docked: 2 })],
+      onOpenRepairStation,
+    })} />);
+    await userEvent.click(screen.getByRole('button', { name: /2 in repair/i }));
+    expect(onOpenRepairStation).toHaveBeenCalledWith('p-2');
+  });
+
+  it('says nothing about the station for a world with nothing in it', () => {
+    render(<FleetPage {...props({ tab: 'home' })} />);
+    expect(screen.queryByRole('button', { name: /in repair/i })).toBeNull();
   });
 });

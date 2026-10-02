@@ -15,11 +15,12 @@ import { seasonRecap } from './season.js';
 import { chronicle } from './chronicle.js';
 import { clan } from './clan.js';
 import { clanWar } from './clanWar.js';
+import { clanSupport } from './clanSupport.js';
 import { community } from './community.js';
 import { trade } from './trade.js';
 import { academy } from './academy.js';
 import { convoy } from './convoy.js';
-import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, researchMap, ruler, slot, topBar, view } from './v2.js';
+import { away, outline, baseSwitch, bell, roomBar, dock, fleetPage, handle, hold, lane, meter, now, reportScene, repairStation, researchMap, ruler, slot, topBar, view } from './v2.js';
 
 /**
  * ENGLISH, AND IT IS THE SHAPE EVERY OTHER LANGUAGE IS CHECKED AGAINST.
@@ -92,6 +93,7 @@ export const en = {
   chronicle,
   clan,
   clanWar,
+  clanSupport,
   community,
   trade,
   convoy,
@@ -111,6 +113,7 @@ export const en = {
   slot,
   fleetPage,
   reportScene,
+  repairStation,
   baseSwitch,
   researchMap,
 } as const;

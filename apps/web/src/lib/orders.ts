@@ -8,6 +8,7 @@ import {
   type SatelliteId,
 } from '@astera/rules';
 import type { BuildOrderView, ResearchQueueOrderView } from '../api/schemas.js';
+import i18n from '../i18n/index.js';
 import {
   buildingName,
   hullLabel,
@@ -50,6 +51,11 @@ export function buildOrderLabel(order: BuildOrderView): string {
       return Object.hasOwn(RESEARCH_PROJECTS, order.subject)
         ? researchName(order.subject as ResearchProjectId)
         : order.subject;
+    /** A Repair Station job: one hull, or every damaged ship at once. Kalıcı gemi hasarı. */
+    case 'REPAIR':
+      return i18n.t('repairStation.order', {
+        name: Object.hasOwn(HULLS, order.subject) ? hullLabel(order.subject as HullId) : i18n.t('repairStation.all'),
+      });
   }
 }
 
@@ -78,6 +84,8 @@ export function buildOrderArt(order: BuildOrderView): string | null {
       return Object.hasOwn(RESEARCH_PROJECTS, order.subject)
         ? RESEARCH_ART[order.subject as ResearchProjectId]
         : null;
+    case 'REPAIR':
+      return Object.hasOwn(HULLS, order.subject) ? HULL_ART[order.subject as HullId] ?? null : null;
   }
 }
 

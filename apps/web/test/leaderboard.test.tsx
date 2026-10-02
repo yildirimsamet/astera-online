@@ -17,7 +17,6 @@ const rows = Array.from({ length: 100 }, (_, index) => ({
   planetId: index === 1 ? undefined : `planet-${String(index)}`,
   planetName: index === 1 ? undefined : `World ${String(index)}`,
   skinId: index === 1 || index === 42 ? 'planet-ice' : null,
-  coreTier: index === 1 ? undefined : (index % 4) + 1,
   score: 50 - index,
   country: 'TR',
   clan: index === 0 ? { id: 'clan-war', name: 'War Fleet', tag: 'WAR' } : null,
@@ -43,13 +42,26 @@ afterEach(async () => {
 });
 
 describe('the Dominion leaderboard', () => {
-  it('renders a hundred rows with identity, planet, tier and score', async () => {
+  it('renders a hundred rows with identity, planet and score', async () => {
     await show();
     const ladder = screen.getByRole('list', { name: 'Leaderboard' });
     expect(screen.getAllByRole('listitem')).toHaveLength(100);
     expect(within(ladder).getByText('İzci')).toBeInTheDocument();
-    expect(screen.getByText(/World 42 · Tier 3/)).toBeInTheDocument();
+    expect(within(ladder).getAllByText('World 42').length).toBeGreaterThan(0);
     expect(within(ladder).getByText('+8')).toBeInTheDocument();
+  });
+
+  /**
+   * NO DEVELOPMENT TIER ON THE LADDER. Owner, 2026-10-01.
+   *
+   * The row printed the CAPITAL's tier, and the raid band reads each commander's most
+   * developed world — so players set two capitals side by side and reported the band
+   * as lopsided. The comparison that decides a launch lives on the target dossier
+   * (`data-dossier-band`), against the caller's real peak; the ladder ranks Dominion.
+   */
+  it('prints no development tier on any row', async () => {
+    await show();
+    expect(screen.getByRole('list', { name: 'Leaderboard' })).not.toHaveTextContent(/Tier \d/);
   });
 
   it('highlights the caller and seeds its sigil from planetId', async () => {
@@ -143,7 +155,8 @@ describe('the Dominion leaderboard', () => {
     const ladder = screen.getByRole('list', { name: 'Liderlik tablosu' });
     expect(ladder).toBeInTheDocument();
     expect(within(ladder).getByText('İzci')).toBeInTheDocument();
-    expect(screen.getByText(/World 42 · 3\. kademe/)).toBeInTheDocument();
+    expect(within(ladder).getAllByText('World 42').length).toBeGreaterThan(0);
+    expect(ladder).not.toHaveTextContent(/kademe/);
 
     const user = userEvent.setup();
     await user.type(screen.getByRole('searchbox'), 'izci');

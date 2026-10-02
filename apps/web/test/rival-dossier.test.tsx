@@ -48,7 +48,7 @@ const rival: RivalSummary = {
   lastKnownAt: new Date(NOW.getTime() - 90 * 60_000),
 };
 
-function show(isRival = false) {
+function show(isRival = false, clanmate = false, sight: GalaxyPlanet['intel'] = target.intel) {
   const api = new Api({ fetch: vi.fn() as unknown as typeof globalThis.fetch });
   /*
     THE SERVER TOGGLES AND ANSWERS WITH THE WHOLE SET. D183 — the press sends the
@@ -69,7 +69,7 @@ function show(isRival = false) {
   render(
     <Wrapper>
       <PlanetFocus
-        target={target} planet={mine} intel={intel} reports={[]} rival={rival}
+        target={{ ...target, clanmate, intel: sight }} planet={mine} intel={intel} reports={[]} rival={rival}
         rivalSlot={isRival ? 0 : null}
         now={NOW.getTime()} onClose={vi.fn()} onAttack={vi.fn()} onInstallTelescope={vi.fn()}
         onLaunched={vi.fn()} open onToggle={vi.fn()}
@@ -111,5 +111,23 @@ describe('Rival dossier', () => {
     await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
     expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals).toEqual([]);
     expect(screen.getByText('4 encounters have made this more than a single raid.')).toBeInTheDocument();
+  });
+
+  it('lets a clanmate remove a mark left from before joining', async () => {
+    const { client, setRival } = show(true, true);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Rival 1', pressed: true }));
+    await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
+    expect(client.getQueryData<{ rivals: RivalMark[] }>(keys.season)?.rivals).toEqual([]);
+  });
+
+  it('does not offer marking a clanmate as a new rival', () => {
+    show(false, true);
+    expect(screen.queryByRole('button', { name: 'Mark rival' })).not.toBeInTheDocument();
+  });
+
+  it('can clear a stale clanmate mark even after the world leaves sight', async () => {
+    const { setRival } = show(true, true, 'UNKNOWN');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Rival 1', pressed: true }));
+    await waitFor(() => { expect(setRival).toHaveBeenCalledWith(target.id); });
   });
 });

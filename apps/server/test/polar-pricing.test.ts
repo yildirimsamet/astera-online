@@ -10,7 +10,9 @@ describe('Polar country pricing', () => {
     const quote = await polarPricingForIp('198.51.100.1');
     expect(quote.countryCode).toBe('TR');
     expect(quote.prices['planet-lava']).toEqual({ currencyCode: 'TRY', formatted: '₺99', amount: 9900 });
-    expect(quote.prices['planet-germany']).toEqual({ currencyCode: 'EUR', formatted: '€2.99', amount: 299 });
+    for (const country of ['germany', 'france', 'spain', 'japan'] as const) {
+      expect(quote.prices[`planet-${country}`]).toEqual({ currencyCode: 'EUR', formatted: '€2.99', amount: 299 });
+    }
     expect(quote.prices.bundle).toEqual({ currencyCode: 'TRY', formatted: '₺279', amount: 27900 });
     expect(lookup).toHaveBeenCalledWith('https://api.country.is/198.51.100.1', expect.any(Object));
   });

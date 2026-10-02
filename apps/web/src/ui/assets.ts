@@ -58,7 +58,12 @@ export const RESOURCE_ART = {
 /** Owner-supplied renders for the two strategic decisions. */
 export const STRATEGIC_ART = {
   interceptor: `${BASE}/general/anti-strategic-battery.png`,
+  /** The weapon itself. It wore the Death Star Protocol's row until that retired (2026-10-01). */
+  deathStar: `${BASE}/ships/death_star.png`,
 } as const;
+
+/** The Repair Station (Kalıcı gemi hasarı): owner-supplied, one render, no ladder. */
+export const REPAIR_STATION_ART = `${BASE}/general/repair_station_1.png`;
 
 /**
  * The identity, in the two forms it is ever used in.
@@ -208,14 +213,12 @@ export const RESEARCH_ART: Record<ResearchProjectId, string> = {
   INTERCEPTION_GRID: `${BASE}/lab/interception_grind.png`,
   STRATEGIC_STOCKPILE: `${BASE}/lab/strategic_stockpile.png`,
   /**
-   * THE ONE ROW STILL WEARING SOMETHING ELSE, and it is the right one to leave.
-   *
-   * No lab render was commissioned for the protocol, and what it authorises IS the
-   * Death Star — the picture is the subject rather than a stand-in. It is also the
-   * only Death Star on the screen now that the grid and the stockpile have their
-   * own, so it no longer collides with anything.
+   * NO LAB RENDER HAS BEEN COMMISSIONED FOR INDUSTRIAL YET (Kalıcı gemi hasarı, 2026-09-30).
+   * The laboratory itself stands in, rather than Yard Automation's render: the two sit
+   * side by side in the industry band, and two identical pictures there would read as
+   * one project twice.
    */
-  DEATH_STAR_PROTOCOL: `${BASE}/ships/death_star.png`,
+  INDUSTRIAL: `${BASE}/lab/lab.png`,
 };
 
 export const PROBE_ART = `${BASE}/ships/explorer_ship.png`;

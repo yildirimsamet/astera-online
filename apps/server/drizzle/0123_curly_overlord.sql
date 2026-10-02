@@ -1,0 +1,1 @@
+ALTER TABLE "clan_war_participant_results" ADD COLUMN "damage" jsonb DEFAULT '[]'::jsonb NOT NULL;

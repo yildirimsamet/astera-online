@@ -116,6 +116,12 @@ const show = (
   );
 };
 
+/** The commander's Strategic Stockpile, held. */
+const withStockpile = (base: PlanetView): PlanetView['research'] =>
+  base.research.map((project) => project.id === 'STRATEGIC_STOCKPILE'
+    ? { ...project, level: 1, discovered: true, completed: true, available: false }
+    : project);
+
 describe('strategic hardware hierarchy', () => {
   const tactical = async () => { await userEvent.click(screen.getByRole('tab', { name: 'Tactical' })); };
   const forgeOf = (view: ReturnType<typeof show>): HTMLElement => {
@@ -170,10 +176,7 @@ describe('strategic hardware hierarchy', () => {
     const view = show(
       {
         buildings: { CORE: DEATH_STAR.requiredCore, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: DEATH_STAR.requiredShipyard },
-        research: base.research.map((project) =>
-          project.id === 'DEATH_STAR_PROTOCOL' || project.id === 'STRATEGIC_STOCKPILE'
-            ? { ...project, level: 1, discovered: true, completed: true, available: false }
-            : project),
+        research: withStockpile(base),
         strategic: ready,
         deathStars: [ready],
       },
@@ -202,6 +205,53 @@ describe('strategic hardware hierarchy', () => {
   });
 
   /**
+   * ONE PER WORLD UNTIL THE STOCKPILE IS HELD. Owner, 2026-10-01. A full pad does not
+   * go quiet: it names the research that makes it two and opens it (the fourth question —
+   * the next step is where the limit is met, not on another screen).
+   */
+  it('holds one weapon without the Stockpile and points at the research for a second', async () => {
+    const ready = { id: 'asset-ready', status: 'READY' as const, readyAt: new Date(), remainingSeconds: 0 };
+    const onOpenResearch = vi.fn();
+    current = rich(
+      {
+        buildings: { CORE: DEATH_STAR.requiredCore, REFINERY: 3, EXTRACTOR: 3, VAULT: 1, SHIPYARD: DEATH_STAR.requiredShipyard },
+        strategic: ready,
+        deathStars: [ready],
+      },
+      { deuterium: DEATH_STAR.cost.deuterium * 2, deuteriumCap: DEATH_STAR.cost.deuterium * 4 },
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <PlanetScreen focusGroup="reach" onOpenResearch={onOpenResearch} />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+    await tactical();
+
+    const forge = forgeOf(view);
+    expect(forge).toHaveAttribute('data-strategic-capacity', '1');
+    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+    const next = within(forge).getByRole('button', { name: /strategic stockpile/i });
+    expect(next).toHaveTextContent('2');
+    await userEvent.click(next);
+    expect(onOpenResearch).toHaveBeenCalledWith('STRATEGIC_STOCKPILE');
+  });
+
+  /** A captured world keeps its pad (T10), so a pad can hold more than its new owner may build. */
+  it('counts an inherited pad above the owner’s capacity as it stands', async () => {
+    const ready = { id: 'a', status: 'READY' as const, readyAt: new Date(), remainingSeconds: 0 };
+    const second = { id: 'b', status: 'READY' as const, readyAt: new Date(), remainingSeconds: 0 };
+    const view = show({ strategic: ready, deathStars: [ready, second] });
+    await tactical();
+
+    const forge = forgeOf(view);
+    expect(forge.querySelector('[data-tally]')).toHaveAttribute('data-total', '2');
+    expect(within(forge).queryByRole('button', { name: 'Build' })).toBeNull();
+  });
+
+  /**
    * A READY FIRST WEAPON MUST NOT HIDE THE SECOND ONE STILL BEING BUILT, and the build
    * reads the live clock: halfway through draws halfway, not two percent.
    */
@@ -219,7 +269,7 @@ describe('strategic hardware hierarchy', () => {
       // Deliberately frozen at the full duration, exactly as the server stores it.
       remainingSeconds: DEATH_STAR.buildMinutes * 60,
     };
-    const view = show({ strategic: ready, deathStars: [ready, building] });
+    const view = show({ strategic: ready, deathStars: [ready, building], research: withStockpile(rich()) });
     await tactical();
 
     const forge = forgeOf(view);

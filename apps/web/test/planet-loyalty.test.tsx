@@ -23,7 +23,8 @@ describe('the planet hero states colony loyalty', () => {
 
     const line = screen.getByTestId('loyalty-line');
     expect(line).toHaveTextContent('100%');
-    expect(line).toHaveTextContent('Partial defeat −15 · decisive defeat −30');
+    // Every way a colony loses loyalty at once, the Death Star included (owner, 2026-10-01).
+    expect(line).toHaveTextContent('Partial defeat −15 · decisive defeat −30 · Death Star −20');
     expect(line.querySelector('[data-loyalty-bar]')).toHaveStyle({ width: '100%' });
   });
 

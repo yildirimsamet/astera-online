@@ -388,6 +388,12 @@ export const reports = {
   gradeRepelled: "REPOUSSÉ",
   strategicFirstStrike: "IMPACT",
   strategicEmpEffect: "L’Aegis est tombée à zéro et ne se régénère pas pendant 1 heure. Les défenses terrestres ne tirent pas et ne subissent aucun dégât durant ce temps.",
+  strategicLoyalty: "Loyauté de la colonie",
+  strategicLoyaltyChange: "{{before}} % → {{after}} %",
+  strategicLoyaltyNext: "À {{loss}} % ou moins, le prochain tir emporte la colonie.",
+  strategicSecededAttacker: "La colonie a fait sécession et est devenue neutre : elle n’appartient plus à personne.",
+  strategicSecededDefender: "Ta colonie a fait sécession et est devenue neutre.",
+  strategicSecededShort: "colonie perdue",
   strategicCaptured: "CAPTURÉ",
   strategicIneffective: "INEFFICACE",
   strategicIntercepted: "DÉTRUIT EN VOL",
@@ -588,6 +594,9 @@ export const dossier = {
     "Identité relevée par la sonde. Le monde a pu changer de mains depuis.",
   developmentLabel: "Développement",
   developmentValue: "palier {{tier}}",
+  developmentVersus: "palier {{tier}} · toi {{mine}}",
+  developmentBandNote:
+    "Raids et frappes d’Étoile de la Mort ne sont permis qu’entre commandants séparés d’au plus un palier, chacun mesuré sur son monde le plus développé. Le tien est au palier {{mine}} : tu peux atteindre les paliers {{low}}–{{high}}. Ce monde n’est peut-être pas son plus développé.",
   hardwareLabel: "Satellites en orbite",
   hardwareNote:
     "Tu vois le matériel. Une sonde suffit pour découvrir ce qu’il permet.",
@@ -653,12 +662,16 @@ export const dossier = {
   strategicUnknownNote:
     "La sonde n’était pas assez précise pour déterminer son état d’avancement.",
   interceptorLabel: "Défense stratégique",
-  interceptorLoaded: "Charge prête",
+  interceptorCount_one: "{{count}} charge prête",
+  interceptorCount_other: "{{count}} charges prêtes",
+  interceptorCountNote: "Chaque charge détruit une Étoile de la Mort. Il en faut {{needed}} arrivant ensemble pour qu’une passe. Des charges ont pu être ajoutées depuis.",
   interceptorEmpty: "Aucune charge",
-  interceptorLoadedNote:
-    "Une munition chargée détruit la première arme stratégique détectée dans le rayon d’un Radar de niveau 3 ou supérieur, ou identifiée dans le champ de vision d’un Télescope appartenant à l’un de tes mondes.",
   interceptorEmptyNote:
     "Aucun intercepteur chargé au moment du passage de la sonde. Des munitions ont pu être ajoutées depuis.",
+  loyaltyLabel: "Loyauté de la colonie",
+  loyaltyValue: "{{value}} %",
+  loyaltyNote_one: "Une Étoile de la Mort retire {{loss}} de loyauté et une colonie à {{loss}} ou moins fait sécession : un seul tir suffirait.",
+  loyaltyNote_other: "Une Étoile de la Mort retire {{loss}} de loyauté et une colonie à {{loss}} ou moins fait sécession : il faudrait {{count}} tirs. Elle remonte tant que rien n’est en panne.",
   doctrinesLabel: "Doctrine de combat",
   doctrinesNone: "Aucune recherche terminée",
   doctrinesNote:

@@ -195,9 +195,6 @@ describe('multi-world strategic simulation', () => {
     attacker.buildings.CORE = DEATH_STAR.requiredCore;
     attacker.buildings.SHIPYARD = DEATH_STAR.requiredShipyard;
     attacker.graviticCharges = true;
-    // This case starts after the ordinary Construction queue has completed the
-    // protocol; build-queue.test.ts owns the research timing itself.
-    // The retired protocol is deliberately not researched.
     /*
       FUNDED OFF THE PRICE RATHER THAN OFF A LITERAL. D203 tripled `DEATH_STAR.cost`
       and this purse stayed at its old figure, so the attacker could no longer
@@ -211,7 +208,7 @@ describe('multi-world strategic simulation', () => {
       attacker.deuterium = DEATH_STAR.cost.deuterium * 2;
     };
     fund();
-    const war = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes;
+    const war = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.availableAtMinutes;
     const stockBefore = target.alloy + target.crystal + target.deuterium;
     const aegisBefore = target.aegis;
 
@@ -251,7 +248,8 @@ describe('multi-world strategic simulation', () => {
     });
   });
 
-  it('holds at most two Death Stars at once in the balance simulation', () => {
+  /** Owner, 2026-10-01: one on the pad by default, two once the Stockpile is held. */
+  it('holds one Death Star without the Stockpile and two with it', () => {
     const world = buildWorld({ players: 2, days: 14, seed: 5154 });
     const attacker = world.players[0]!;
     attacker.buildings.CORE = DEATH_STAR.requiredCore;
@@ -259,15 +257,21 @@ describe('multi-world strategic simulation', () => {
     attacker.alloy = DEATH_STAR.cost.alloy * 3;
     attacker.crystal = DEATH_STAR.cost.crystal * 3;
     attacker.deuterium = DEATH_STAR.cost.deuterium * 3;
-    const time = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.availableAtMinutes;
+    const time = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.availableAtMinutes;
 
     tryDeathStar(attacker, time, world);
+    const paidOnce = attacker.alloy;
     tryDeathStar(attacker, time, world);
-    const paid = attacker.alloy;
+    expect(world.deathStars.get(attacker.id)).toHaveLength(1);
+    expect(attacker.alloy).toBe(paidOnce);
+
+    attacker.tech.STRATEGIC_STOCKPILE = 1;
+    tryDeathStar(attacker, time, world);
+    const paidTwice = attacker.alloy;
     tryDeathStar(attacker, time, world);
 
     expect(world.deathStars.get(attacker.id)).toHaveLength(2);
-    expect(attacker.alloy).toBe(paid);
+    expect(attacker.alloy).toBe(paidTwice);
     expect(world.strategic.deathStar.builds).toBe(2);
   });
 

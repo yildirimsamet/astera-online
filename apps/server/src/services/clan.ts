@@ -36,6 +36,7 @@ import {
   clanRequests,
   clans,
   planets,
+  playerRivals,
   players,
   seasons,
   type ClanMembershipRole,
@@ -64,6 +65,7 @@ import {
   assertClanWarMembershipUnlocked,
   revalidateClanWarTargetMembership,
 } from './clanWar.js';
+import { releaseClanSupport } from './clanSupport.js';
 
 export interface ClanActor {
   playerId: string;
@@ -121,6 +123,7 @@ export async function readClanPresence(db: Queryable, playerId: string) {
       y: planets.y,
       z: planets.z,
       planetSlot: planets.slotIndex,
+      defencePosture: planets.defencePosture,
     })
     .from(clanMemberships)
     .innerJoin(players, eq(players.id, clanMemberships.playerId))
@@ -135,7 +138,17 @@ export async function readClanPresence(db: Queryable, playerId: string) {
   const members = new Map<string, {
     playerId: string;
     username: string;
-    worlds: { planetId: string; name: string; position: { x: number; y: number; z: number } }[];
+    worlds: {
+      planetId: string;
+      name: string;
+      position: { x: number; y: number; z: number };
+      /**
+       * Klan Savunma Desteği: whether the world takes clan support. A defence setting, not
+       * sight — an enemy probe reads it exactly — told to the clan so the send sheet's door
+       * can say "closed" before a ship is picked.
+       */
+      supportOpen: boolean;
+    }[];
   }>();
   for (const row of rows) {
     const member = members.get(row.playerId) ?? {
@@ -147,6 +160,7 @@ export async function readClanPresence(db: Queryable, playerId: string) {
       planetId: row.planetId,
       name: row.planetName,
       position: { x: row.x, y: row.y, z: row.z },
+      supportOpen: row.defencePosture === 'SUPPORT',
     });
     members.set(row.playerId, member);
   }
@@ -1063,6 +1077,11 @@ export async function acceptClanRequest(
     matureAt: addMinutes(input.now, CLAN.adaptationMinutes),
     aidPolicyChangedAt: input.now,
   });
+  const teammateIds = members.map((member) => member.playerId);
+  await tx.delete(playerRivals).where(or(
+    and(eq(playerRivals.playerId, candidate.id), inArray(playerRivals.targetPlayerId, teammateIds)),
+    and(inArray(playerRivals.playerId, teammateIds), eq(playerRivals.targetPlayerId, candidate.id)),
+  ));
   await bindOpenAttacksToClan(tx, candidate.id, clan.id, input.now);
   /*
     THE NEW MEMBER MIGHT BE THE CLAN'S OWN TARGET. Klan Ortak Savaşı, 2026-09-20.
@@ -1225,6 +1244,8 @@ export async function leaveClan(tx: Tx, input: { actor: ClanActor; now: Date }) 
   if (membership.role === 'LEADER') {
     throw new GameError('CLAN_LEADER_MUST_TRANSFER', 'Transfer leadership or disband the clan first', 409);
   }
+  // Klan Savunma Desteği: worlds and waves settle BEFORE the clan and player locks.
+  await releaseClanSupport(tx, { playerIds: [input.actor.playerId], now: input.now });
   await lockClan(tx, membership.clanId, input.actor.seasonId);
   const members = await activeMemberRows(tx, membership.clanId);
   await lockClanPlayers(tx, members.map((member) => member.playerId));
@@ -1257,10 +1278,20 @@ export async function kickClanMember(
   input: { actor: ClanActor; playerId: string; now: Date },
 ) {
   await lockSeason(tx, input.actor.seasonId);
-  const { membership: leader } = await lockLedClan(tx, input.actor);
   if (input.playerId === input.actor.playerId) {
     throw new GameError('CLAN_LEADER_MUST_TRANSFER', 'Transfer leadership or disband the clan first', 409);
   }
+  /*
+    KLAN SAVUNMA DESTEĞİ, BEFORE THE CLAN LOCK. The kicked commander's worlds and waves
+    take planet and wave locks, which come before the clan's in the one lock order. A
+    refusal further down rolls this back with everything else.
+  */
+  const kicker = await activeClanMembership(tx, input.actor.playerId);
+  const kicked = await activeClanMembership(tx, input.playerId);
+  if (kicker !== null && kicked !== null && kicker.clanId === kicked.clanId) {
+    await releaseClanSupport(tx, { playerIds: [input.playerId], now: input.now });
+  }
+  const { membership: leader } = await lockLedClan(tx, input.actor);
   const members = await activeMemberRows(tx, leader.clanId);
   await lockClanPlayers(tx, members.map((member) => member.playerId));
   const target = members.find((member) => member.playerId === input.playerId);
@@ -1342,6 +1373,12 @@ export async function disbandClan(
   },
 ) {
   await lockSeason(tx, input.actor.seasonId);
+  // Klan Savunma Desteği: every member's worlds and waves, before the clan lock.
+  const dissolving = await activeClanMembership(tx, input.actor.playerId);
+  if (dissolving !== null && dissolving.role === 'LEADER') {
+    const everyone = await activeMemberRows(tx, dissolving.clanId);
+    await releaseClanSupport(tx, { playerIds: everyone.map((member) => member.playerId), now: input.now });
+  }
   const { clan, membership: leader } = await lockLedClan(tx, input.actor);
   // Dissolving the clan mid-operation would strand every wave in its pool.
   await assertClanWarMembershipUnlocked(tx, { clanId: leader.clanId });
@@ -1481,6 +1518,24 @@ export async function reconcileClanPlayerReclaim(
     ))
     .limit(1);
   if (!initial) return;
+
+  /*
+    KLAN SAVUNMA DESTEĞİ, BEFORE THE CLAN LOCK. A reclaimed leader with no active member to
+    succeed them takes the clan with them below, and that end must settle support exactly
+    as a leader's own disband does (owner K4): every member's SUPPORT world back to the
+    retreat, told once, every wave home. Its planet and wave locks come before the clan's in
+    the one order, so the outcome is read here unlocked with the same successor rule; a
+    member waking in this very instant would cost them their posture, never a lock cycle.
+  */
+  if (initial.role === 'LEADER') {
+    const peers = await tx
+      .select({ playerId: clanMemberships.playerId, lastActiveAt: players.lastActiveAt })
+      .from(clanMemberships)
+      .innerJoin(players, eq(clanMemberships.playerId, players.id))
+      .where(and(eq(clanMemberships.clanId, initial.clanId), isNull(clanMemberships.leftAt)));
+    const successor = peers.some((peer) => peer.playerId !== input.playerId && peer.lastActiveAt >= input.activeCutoff);
+    if (!successor) await releaseClanSupport(tx, { playerIds: peers.map((peer) => peer.playerId), now: input.now });
+  }
 
   const clan = await lockClan(tx, initial.clanId, input.seasonId);
   const members = await tx

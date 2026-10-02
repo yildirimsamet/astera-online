@@ -15,6 +15,7 @@ import { de } from '../src/i18n/locales/de/index.js';
 import { en } from '../src/i18n/locales/en/index.js';
 import { es } from '../src/i18n/locales/es/index.js';
 import { fr } from '../src/i18n/locales/fr/index.js';
+import { ja } from '../src/i18n/locales/ja/index.js';
 import { tr } from '../src/i18n/locales/tr/index.js';
 import {
   FALLBACK_LANGUAGE,
@@ -71,8 +72,8 @@ const tags = (text: string): Set<string> =>
 
 const ENGLISH = flatten(en);
 const TURKISH = flatten(tr);
-const LOCALES = { en, tr, fr, de, es } as const;
-const TRANSLATED_LOCALES = { fr, de, es } as const;
+const LOCALES = { en, tr, fr, de, es, ja } as const;
+const TRANSLATED_LOCALES = { fr, de, es, ja } as const;
 
 describe('the Store protection promise', () => {
   it('states the live ten-percent, eight-hour rule on both decision surfaces', () => {
@@ -160,7 +161,7 @@ describe('Vocabulary describes the calibrated catalogue, not its retired stats',
   });
 
   it('states the Prospector outbound and laden return speeds in every language', () => {
-    for (const locale of [en, tr, de, fr, es]) {
+    for (const locale of [en, tr, de, fr, es, ja]) {
       const detail = locale.vocabulary.hull.PROSPECTOR.detail;
       expect(detail).toContain('619');
       expect(detail).toContain('309');
@@ -184,7 +185,6 @@ const RESEARCH_DETAIL_KEYS = {
   ISOTOPE_SPECTROMETRY: 'isotopeDetail',
   DENSE_FUEL_CELLS: 'denseDetail',
   GRAVITIC_CHARGES: 'graviticDetail',
-  DEATH_STAR_PROTOCOL: 'deathStarDetail',
   DEUTERIUM_SYNTHESIS: 'synthesisDetail',
   YARD_AUTOMATION: 'yardDetail',
   AI_ROBOTS: 'robotsDetail',
@@ -197,6 +197,7 @@ const RESEARCH_DETAIL_KEYS = {
   STARSHIP_ENGINEERING: 'engineeringDetail',
   INTERCEPTION_GRID: 'gridDetail',
   STRATEGIC_STOCKPILE: 'stockpileDetail',
+  INDUSTRIAL: 'industrialDetail',
 } as const satisfies Record<ResearchProjectId, keyof typeof en.research>;
 
 /**
@@ -520,26 +521,36 @@ describe('decision sheets explain every item', () => {
     expect(en.research.robotsDetail).toContain('does not speed up ships');
     expect(tr.research.robotsDetail).toContain('Gemileri hızlandırmaz');
 
-    // Strategic stock is capped independently on every world.
+    // Strategic stock is capped independently on every world, and both capacities
+    // name their real figures (owner, 2026-10-01): 1 → 2 weapons, 2 → 4 charges.
     expect(en.research.stockpileDetail).toContain('on each world');
     expect(tr.research.stockpileDetail).toContain('her dünya için');
+    expect(en.research.stockpileRole).toMatch(/1 to 2/);
+    expect(tr.research.stockpileRole).toMatch(/1'den 2'ye/);
+    expect(en.research.gridRole).toMatch(/2 to 4/);
+    expect(tr.research.gridRole).toMatch(/2'den 4'e/);
+    // The Grid no longer "grants access": the first two charges need no research.
+    expect(en.research.gridDetail).not.toMatch(/grants access/i);
+    expect(tr.research.gridDetail).not.toMatch(/erişim verir/i);
 
     // Build duration comes from the rule, never from a translated literal.
     expect(en.planet.deathStar.buildTime).toContain('{{duration}}');
     expect(tr.planet.deathStar.buildTime).toContain('{{duration}}');
 
-    // The weapon itself is consumed; there is no separately built charge.
-    expect(en.research.deathStarDetail).not.toContain('separate charge');
-    // D179 retired fleet destruction and capture. The project must not sell either old effect.
-    expect(en.research.deathStarDetail).not.toMatch(/destroys every fleet|capture/i);
-    expect(tr.research.deathStarDetail).not.toMatch(/tüm filoyu|ele geçir/i);
-    expect(en.research.deathStarDetail).toContain('never changes hands');
-    expect(tr.research.deathStarDetail).toContain('el değiştirmez');
-    expect(tr.research.deathStarDetail).not.toContain('ayrı hazırlanan');
-    expect(en.research.deathStarDetail).toContain('one hour');
-    expect(tr.research.deathStarDetail).toContain('1 saat');
-    expect(en.research.deathStarDetail).toContain('Production continues');
-    expect(tr.research.deathStarDetail).toContain('Üretim sürer');
+    // What a hit does, where the weapon is built and where it is fired. D179 retired
+    // fleet destruction and capture; the colony loyalty cost is the owner's 2026-10-01 rule.
+    for (const copy of [en.planet.deathStar.dangerHint, en.focus.planet.strikeConfirm.keeps]) {
+      expect(copy).not.toMatch(/destroys every fleet|capture/i);
+      expect(copy).toMatch(/1 hour|one hour/);
+      expect(copy).toMatch(/{{loss}} loyalty/);
+      expect(copy).toMatch(/neutral/i);
+    }
+    for (const copy of [tr.planet.deathStar.dangerHint, tr.focus.planet.strikeConfirm.keeps]) {
+      expect(copy).not.toMatch(/tüm filoyu|ele geçir/i);
+      expect(copy).toContain('1 saat');
+      expect(copy).toMatch(/{{loss}} sadakat/);
+      expect(copy).toMatch(/tarafsız/i);
+    }
   });
 });
 
@@ -661,6 +672,7 @@ describe('which language a device lands in', () => {
     ['fr-FR', 'fr'],
     ['de-DE', 'de'],
     ['es-ES', 'es'],
+    ['ja-JP', 'ja'],
   ] as const)('takes %s when the browser asks for it', (tag, language) => {
     expect(detectLanguage(nav(tag))).toBe(language);
   });
@@ -671,16 +683,16 @@ describe('which language a device lands in', () => {
    * and dropped a `de, en` device onto the fallback rather than onto English.
    */
   it('reads past the first entry rather than giving up on it', () => {
-    expect(detectLanguage(nav('ja-JP', 'de-DE', 'en-US'))).toBe('de');
+    expect(detectLanguage(nav('ko-KR', 'de-DE', 'en-US'))).toBe('de');
   });
 
   it('falls back to Turkish for a language this build does not have', () => {
-    expect(detectLanguage(nav('ja-JP', 'ko-KR'))).toBe(FALLBACK_LANGUAGE);
+    expect(detectLanguage(nav('ko-KR', 'zh-CN'))).toBe(FALLBACK_LANGUAGE);
     expect(FALLBACK_LANGUAGE).toBe('tr');
   });
 
   it('does not mistake an unknown tag for the fallback', () => {
-    expect(matchLanguage('ja-JP')).toBeNull();
+    expect(matchLanguage('ko-KR')).toBeNull();
     expect(matchLanguage(undefined)).toBeNull();
     expect(matchLanguage('TR')).toBe('tr');
   });

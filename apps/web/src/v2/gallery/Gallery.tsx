@@ -3,21 +3,24 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import type { BuildOrderView, PendingThread } from '../../api/schemas.js';
 import { nowEntries } from '../../lib/nowLine.js';
 import { roomOf } from '../../lib/fleetPage.js';
-import type { GalaxyPlanet, IntelView } from '../../api/schemas.js';
+import type { GalaxyPlanet, IntelView, PlanetView } from '../../api/schemas.js';
 import { LaunchSheet } from '../../screens/LaunchSheet.js';
 import { SettlementSheet } from '../../screens/SettlementSheet.js';
 import { IntergalacticConvoySheet } from '../../screens/IntergalacticConvoySheet.js';
 import { TransferSheet } from '../../screens/TransferSheet.js';
 import { IntelScreen } from '../../screens/IntelScreen.js';
+import { PlanetScreen } from '../../screens/PlanetScreen.js';
 import { ClanScreen } from '../../screens/ClanScreen.js';
 import { keys } from '../../api/keys.js';
 import { TradeSheet } from '../../screens/TradeSheet.js';
 import { ClanWarPanel } from '../../screens/ClanWarPanel.js';
-import { StrikeSheet } from '../../galaxy/FocusPanel.js';
+import { PlanetFocus, StrikeSheet } from '../../galaxy/FocusPanel.js';
+import { StrategicReportSheet } from '../../screens/BattleReports.js';
 import i18n from '../../i18n/index.js';
 import { ReportScene } from '../hud/ReportScene.js';
 import { AwaySheet } from '../hud/AwaySheet.js';
 import { PlanetModelsGallery } from './PlanetModelsGallery.js';
+import { GallerySupport } from './GallerySupport.js';
 import { WorldProvider } from '../../api/world.js';
 import { clanWarSchema } from '../../api/schemas.js';
 import { TRADE } from '@astera/rules';
@@ -54,7 +57,7 @@ import { SkinPreview } from '../../screens/SkinPreview.js';
 import { DonateScreen } from '../../screens/DonateScreen.js';
 import { SkinInventoryContent } from '../../screens/SkinInventoryScreen.js';
 import AdminPanel from '../../screens/AdminPanel.js';
-import { PLANET_SKIN_CATALOG } from '../../ui/skinCatalog.js';
+import { PLANET_SKIN_CATALOG, SKIN_COLLECTIONS } from '../../ui/skinCatalog.js';
 import { PLANET_SKIN_IDS, type PlanetSkinId } from '@astera/rules';
 
 /**
@@ -201,6 +204,75 @@ const launchIntel: IntelView = {
   }],
 };
 
+/**
+ * THE BASE'S FLEET TAB WITH A BUSY REPAIR STATION (Kalıcı gemi hasarı). The camera's
+ * commander has no damaged ship, so the card and its sheet are photographed here.
+ * `empty` draws the station with nothing in it; `open` names the row the sheet opens on.
+ */
+function GalleryBase({ empty = false, open = false }: { empty?: boolean; open?: boolean }) {
+  const client = useQueryClient();
+  useState(() => {
+    const order = (id: string, slot: number, subject: string, count: number, from: number, to: number) => ({
+      id, queue: 'REPAIR' as const, slot, kind: 'REPAIR' as const, subject, count,
+      startedAt: new Date(NOW + from * MIN), finishesAt: new Date(NOW + to * MIN),
+      cost: { alloy: 1_273, crystal: 488, deuterium: 4 },
+    });
+    client.setQueryData(['planet'], planetView({
+      buildings: { CORE: 6, REFINERY: 5, EXTRACTOR: 5, VAULT: 2, SHIPYARD: 4, HANGAR: 3 },
+      fleet: { DART: 40, TALON: 10, WARDEN: 2 },
+      rulesetVersion: 14,
+      ...(empty ? {} : {
+        fleetDocked: { BALLISTA: 1, TALON: 2, WARDEN: 1, DART: 3 },
+        dock: {
+          lots: [
+            { id: 'lot-1', hull: 'BALLISTA', count: 1, damageBp: 6400, repairing: true, orderId: 'r-1', cost: { alloy: 1_273, crystal: 488, deuterium: 4 }, minutes: 5.1 },
+            { id: 'lot-4', hull: 'DART', count: 3, damageBp: 2600, repairing: true, orderId: 'r-2', cost: { alloy: 94, crystal: 31, deuterium: 0 }, minutes: 0.9 },
+            { id: 'lot-2', hull: 'TALON', count: 2, damageBp: 3500, repairing: false, orderId: null, cost: { alloy: 551, crystal: 230, deuterium: 2 }, minutes: 2.3 },
+            { id: 'lot-3', hull: 'WARDEN', count: 1, damageBp: 8800, repairing: false, orderId: null, cost: { alloy: 335, crystal: 134, deuterium: 0 }, minutes: 1.5 },
+          ],
+          waiting: { cost: { alloy: 886, crystal: 364, deuterium: 2 }, minutes: 3.8 },
+          pct: 75,
+        },
+        queues: { CONSTRUCTION: [], YARD: [], REPAIR: [order('r-1', 0, 'BALLISTA', 1, -2, 3.1), order('r-2', 1, 'DART', 3, 3.1, 4)] },
+      }),
+    }, { id: 'p-1', alloy: 40_000, crystal: 300, deuterium: 900, alloyPerHour: 900, crystalPerHour: 300 }));
+    return null;
+  });
+  return (
+    <Sheet title="Thistle" eyebrow="Samet" quietTitle onClose={noop} detents={['full']} bleed>
+      <PlanetScreen focusGroup="reach" {...(open ? { focusItem: 'REPAIR_STATION' } : {})} />
+    </Sheet>
+  );
+}
+
+/**
+ * THE STRATEGIC PAIR WITH FULL PADS AND NO RESEARCH (owner, 2026-10-01): one Death Star and
+ * two charges, each panel naming the research that raises it. `tab` picks the panel.
+ */
+function GalleryStrategic({ tab }: { tab: 'tactical' | 'defend' }) {
+  const client = useQueryClient();
+  useState(() => {
+    const ready = (id: string) => ({ id, status: 'READY' as const, readyAt: null, remainingSeconds: 0 });
+    client.setQueryData(['planet'], planetView({
+      buildings: { CORE: 12, REFINERY: 10, EXTRACTOR: 10, VAULT: 6, SHIPYARD: 5, HANGAR: 3 },
+      instruments: { RADAR: 3, TELESCOPE: 2 },
+      orbit: ['UPLINK'],
+      strategic: ready('ds-1'),
+      deathStars: [ready('ds-1')],
+      interceptor: ready('ic-1'),
+      interceptors: [ready('ic-1'), ready('ic-2')],
+      // A colony, so the battery's loyalty line and the hero's loss line are drawn too.
+      loyalty: { value: 64, minutesLeft: null },
+    }, { id: 'p-1', kind: 'COLONY', alloy: 120_000, crystal: 60_000, deuterium: 9_000, alloyPerHour: 900, crystalPerHour: 300 }));
+    return null;
+  });
+  return (
+    <Sheet title="Thistle" eyebrow="Samet" quietTitle onClose={noop} detents={['full']} bleed>
+      <PlanetScreen focusGroup={tab} />
+    </Sheet>
+  );
+}
+
 /** The Fleet page with its tab held here, as the host holds it in the game. */
 function GalleryFleet({ first }: { first: FleetTab }) {
   const [tab, setTab] = useState<FleetTab>(first);
@@ -217,16 +289,20 @@ function GalleryFleet({ first }: { first: FleetTab }) {
           id: 'p-1', name: 'Thistle', capital: true, active: true,
           fleet: { DART: 40, TALON: 12, COURIER: 6, WARDEN: 2 }, away: 36,
           room: roomOf({ hangar: 810, hangarUsed: 612, hangarCeiling: 1550, ground: 60, groundUsed: 48 }),
+          // Held in the Repair Station, which the Base draws (`base-fleet`, `repair-station`).
+          docked: 4,
         },
         {
           id: 'p-2', name: 'Hollow', capital: false, active: false,
           fleet: {}, away: 12,
           room: roomOf({ hangar: 180, hangarUsed: 180, hangarCeiling: 470, ground: 20, groundUsed: 4 }),
+          docked: 0,
         },
       ]}
       recalling={null}
       onFocus={noop}
       onRecall={noop}
+      onOpenRepairStation={noop}
       onClose={noop}
     />
   );
@@ -403,9 +479,9 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
         rank: index + 1, playerId: `gallery-${index}`, username: index === 0 ? 'Samet' : `Commander ${index + 1}`,
         country: index % 2 === 0 ? 'TR' : 'DE', planetId: `gallery-planet-${index}`, planetName: `World ${index + 1}`,
         skinId: index === 0 ? 'planet-ice' : index === 1 ? 'planet-lava' : null,
-        coreTier: (index % 4) + 1, score: 420 - index * 37, clan: index === 1 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
+        score: 420 - index * 37, clan: index === 1 ? { id: 'c1', name: 'Nova', tag: 'NOVA' } : null,
       })),
-      you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', coreTier: 1, score: 420, clan: null, isBot: false },
+      you: { rank: 1, playerId: 'gallery-0', username: 'Samet', country: 'TR', planetId: 'gallery-planet-0', planetName: 'World 1', skinId: 'planet-ice', score: 420, clan: null, isBot: false },
     });
     if (page === 'leaderboard-archive') {
       next.setQueryData(keys.season, {
@@ -486,13 +562,92 @@ function GalleryCommander({ page }: { page: 'menu' | 'leaderboard' | 'leaderboar
   );
 }
 
+/**
+ * RADYASYON ON THE SURFACES THAT QUOTE IT (plan F10): a cloud seeded into the galaxy the
+ * sheets read, so the launch line, its lethal form, the transfer line and the focus
+ * sheet's line can be photographed. The sheets say nothing until a ship is picked, so
+ * the three sheet views need a press of "More Dart" before the shot; `focus-radiation`
+ * is in the camera's list. The 3D haze lives on the disc, not here.
+ */
+function GalleryRadiation({ surface }: { surface: 'launch' | 'launch-lethal' | 'transfer' | 'focus' }) {
+  const client = useQueryClient();
+  useState(() => {
+    const cloud = surface === 'focus'
+      ? { center: rival.position, radius: 60, intensityPctPerMinute: 1.5 }
+      : { center: { x: 60, y: 0, z: 40 }, radius: 5_000, intensityPctPerMinute: surface === 'launch-lethal' ? 300 : 20 };
+    client.setQueryData(['galaxy'], {
+      you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [],
+      radiation: [{ id: 'storm', mode: 'EMIT', activeFrom: new Date(0), activeUntil: null, ...cloud }],
+    });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  if (surface === 'transfer') {
+    return (
+      <TransferSheet target={{ id: 'p-9', name: 'Hollow', position: { x: 600, y: 0, z: 200 } }}
+        planet={launchWorld} onClose={noop} onLaunched={noop} />
+    );
+  }
+  if (surface === 'focus') {
+    return (
+      <PlanetFocus target={rival} planet={launchWorld} intel={launchIntel} reports={[]} now={NOW}
+        onClose={noop} onAttack={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+    );
+  }
+  return (
+    <LaunchSheet planet={launchWorld} intel={launchIntel} target={{ kind: 'world', world: rival }}
+      onClose={noop} onLaunched={noop} />
+  );
+}
+
 function GalleryCountryPicker() {
   return <CountryPicker value="TR" onSelect={noop} onClose={noop} />;
 }
 
+/**
+ * THE DEVELOPMENT BAND ON THE FOCUS RAIL (D168, owner report 2026-10-01): a rival
+ * commander's tier 6 world against a tier 4 caller holding a ready Death Star. The
+ * attack and the strike are both held "too developed", and the dossier's development
+ * row sets the caller's own tier beside the world's — its note, one tap deeper, is
+ * the rule and the range.
+ */
+function GalleryBand() {
+  const client = useQueryClient();
+  useState(() => {
+    client.setQueryData(['galaxy'], { you: { planetId: 'p-1', playerId: 'me' }, planets: [], sensors: [], radiation: [] });
+    client.setQueryData(['reports'], { reports: [], rivals: [] });
+    return null;
+  });
+  const commander: GalaxyPlanet = {
+    ...rival, kind: 'CAPITAL', coreTier: 6, coreLevel: 16,
+    controller: { kind: 'PLAYER', playerId: 'sable', displayName: 'Sable' },
+  };
+  const armed: PlanetView = {
+    ...launchWorld,
+    deathStars: [{ id: 'ds-1', status: 'READY', readyAt: null, remainingSeconds: 0 }],
+  };
+  return (
+    <PlanetFocus target={commander} planet={armed} intel={launchIntel} reports={[]} now={NOW}
+      outOfBand ownPeakCore={12} onDeathStar={noop}
+      onClose={noop} onAttack={noop} onInstallTelescope={noop} onLaunched={noop} open onToggle={noop} />
+  );
+}
+
 function Views({ view }: { view: string }) {
   const { t } = useTranslation();
+  if (view.startsWith('support-')) return <GallerySupport view={view} />;
   if (view === 'intel') return <GalleryIntel />;
+  if (view === 'base-fleet') return <GalleryBase />;
+  if (view === 'base-fleet-empty') return <GalleryBase empty />;
+  if (view === 'repair-station') return <GalleryBase open />;
+  if (view === 'strategic-forge') return <GalleryStrategic tab="tactical" />;
+  if (view === 'strategic-battery') return <GalleryStrategic tab="defend" />;
+  if (view === 'repair-station-empty') return <GalleryBase empty open />;
+  if (view === 'launch-radiation') return <GalleryRadiation surface="launch" />;
+  if (view === 'launch-radiation-lethal') return <GalleryRadiation surface="launch-lethal" />;
+  if (view === 'transfer-radiation') return <GalleryRadiation surface="transfer" />;
+  if (view === 'focus-radiation') return <GalleryRadiation surface="focus" />;
+  if (view === 'focus-band') return <GalleryBand />;
   if (view === 'clan') return <GalleryClan tab="overview" />;
   if (view === 'clan-strength') return <GalleryClan tab="strength" />;
   if (view === 'clan-members') return <GalleryClan tab="members" />;
@@ -506,10 +661,14 @@ function Views({ view }: { view: string }) {
     return <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} />;
   }
   if (view === 'skin-shop-live') {
-    const quote = { formatted: '₺99', currencyCode: 'TRY' as const };
+    const liraQuote = { formatted: '₺99', currencyCode: 'TRY' as const };
+    const euroQuote = { formatted: '€2.99', currencyCode: 'EUR' as const };
+    const euroCountries = new Set<PlanetSkinId>(SKIN_COLLECTIONS.country.ids.filter((id) => id !== 'planet-turkey'));
     return (
       <SkinShopContent collection={{ ownedSkinIds: [], planets: [] }} commander="Samet" onOpenInventory={noop} enabled
-        onPurchase={noop} prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, quote])), bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
+        onPurchase={noop} countryCode="TR"
+        prices={{ ...Object.fromEntries(PLANET_SKIN_IDS.map((id) => [id, euroCountries.has(id) ? euroQuote : liraQuote])),
+          bundle: { formatted: '₺279', currencyCode: 'TRY' } }} />
     );
   }
   if (view === 'skin-inventory' || view === 'skin-inventory-empty') {
@@ -638,18 +797,20 @@ function Views({ view }: { view: string }) {
       />
     );
   }
-  if (view === 'report') {
+  if (view === 'report' || view === 'report-defend') {
+    const defending = view === 'report-defend';
+    const word = i18n.t(defending ? 'reports.verdict.title.defending.PARTIAL' : 'reports.verdict.title.attacking.PARTIAL');
     return (
-      <Sheet title={i18n.t('reports.verdict.title.attacking.PARTIAL')} quietTitle onClose={noop} detents={['full']}>
+      <Sheet title={word} quietTitle onClose={noop} detents={['full']}>
         <ReportScene
-          word={i18n.t('reports.verdict.title.attacking.PARTIAL')}
+          word={word}
           colonyTarget
           rivalSlot={0}
           onAttackAgain={noop}
           onWatch={noop}
           onShare={noop}
           report={{
-            id: 'b1', missionId: 'm1', at: new Date(NOW - 20 * MIN), grade: 'PARTIAL', attacking: true,
+            id: 'b1', missionId: 'm1', at: new Date(NOW - 20 * MIN), grade: 'PARTIAL', attacking: !defending,
             opponentName: 'VEX', opponentPlanet: 'Kestrel', opponentPlanetId: 'p-kestrel', neutral: false, yourPlanet: 'Bellwether',
             rounds: [
               { round: 1, attackerDamage: 800, defenderDamage: 300, shieldAbsorbed: 0, shieldBreakerDamage: 0, attackerLosses: { DART: 6 }, defenderLosses: { PIKE: 10 } },
@@ -663,13 +824,33 @@ function Views({ view }: { view: string }) {
             lootAlloy: 3_100, lootCrystal: 1_000, lootDeuterium: 240,
             dominion: 120, dominionBreakdown: null, shieldAbsorbed: 0, cargoLimited: true,
             defenceSalvage: {}, disruptedMinutes: 0, wreckValue: 0, fuelPaid: 320,
+            // Kalıcı gemi hasarı: a raider's are judged on landing, a defender's on the spot.
+            yourDamage: defending
+              ? [{ hull: 'RAMPART', count: 1, damageBp: 6400 }, { hull: 'TALON', count: 1, damageBp: 1200 }]
+              : [{ hull: 'TALON', count: 1, damageBp: 3400 }, { hull: 'DART', count: 1, damageBp: 900 }],
           }}
         />
       </Sheet>
     );
   }
+  if (view === 'report-strike-colony') {
+    return (
+      <StrategicReportSheet
+        onClose={noop}
+        report={{
+          kind: 'STRATEGIC', id: 's-colony', missionId: 'm-colony', at: new Date(NOW - 5 * MIN), attacking: true,
+          opponentName: 'Sable', opponentPlanet: 'Tharsis', opponentPlanetId: 'p2', yourPlanet: 'Thistle', yourPlanetId: 'p-1',
+          outcome: 'FIRST_STRIKE', damage: 0, destroyedFleet: {}, destroyedResources: { alloy: 0, crystal: 0, deuterium: 0 },
+          levelChanges: [], destroyedOrders: [], shieldDestroyed: 1_800, trigger: null, loyalty: { before: 18, after: 0 },
+        }}
+      />
+    );
+  }
   if (view === 'strike') {
-    return <StrikeSheet target={rival} onConfirm={noop} onClose={noop} />;
+    // A colony read by a probe: the two readings the hit is decided by (owner, 2026-10-01).
+    const colony: GalaxyPlanet = { ...rival, kind: 'COLONY' };
+    const read = { ...launchIntel.probeReports[0]!, targetPlanetId: colony.id, loyalty: 38, interceptors: 2 };
+    return <StrikeSheet target={colony} report={read} onConfirm={noop} onClose={noop} />;
   }
   if (view === 'wave') {
     const war = clanWarSchema.parse({
@@ -722,7 +903,9 @@ function Views({ view }: { view: string }) {
     );
   }
   if (view === 'fleet' || view === 'fleet-home' || view === 'fleet-room') {
-    return <GalleryFleet first={view === 'fleet-home' ? 'home' : view === 'fleet-room' ? 'room' : 'air'} />;
+    const first: FleetTab = view === 'fleet-home' ? 'home'
+      : view === 'fleet-room' ? 'room' : 'air';
+    return <GalleryFleet first={first} />;
   }
   if (view === 'peek') {
     return (
@@ -742,7 +925,7 @@ export function Gallery({ view }: { view: string | null }) {
     return (
       <div data-skin-card className="relative h-[320px] w-[400px] overflow-hidden bg-v2-deep" style={{ '--look': look.accent, '--look-glow': look.glow } as CSSProperties}>
         <div aria-hidden className="v2-store-aura absolute inset-[3%] rounded-full" />
-        <SkinPreview skinId={skinId} status="NORMAL" className="h-[320px]"
+        <SkinPreview skinId={skinId} status="NORMAL" className="h-[320px]" still
           {...(new URLSearchParams(window.location.search).has('offset')
             ? { phaseOffset: Number(new URLSearchParams(window.location.search).get('offset')) }
             : {})} />

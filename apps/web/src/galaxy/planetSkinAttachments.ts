@@ -21,6 +21,9 @@ export const planetSkinPhase = (id: string): number => {
   return ((value >>> 0) / 0x1_0000_0000) * Math.PI * 2;
 };
 
+export const planetSkinRotation = (id: string, offset: number, elapsedTime: number, still: boolean): number =>
+  planetSkinPhase(id) + offset + (still ? 0 : elapsedTime * PLANET_SKIN_SPIN_RATE);
+
 const asset = (
   assetId: string,
   palette: PlanetPaletteId,

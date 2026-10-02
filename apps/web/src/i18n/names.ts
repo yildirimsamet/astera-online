@@ -140,7 +140,6 @@ const RESEARCH_NAME_KEY = {
   ISOTOPE_SPECTROMETRY: 'research.isotopeName',
   DENSE_FUEL_CELLS: 'research.denseName',
   GRAVITIC_CHARGES: 'research.graviticName',
-  DEATH_STAR_PROTOCOL: 'research.deathStarName',
   DEUTERIUM_SYNTHESIS: 'research.synthesisName',
   YARD_AUTOMATION: 'research.yardName',
   AI_ROBOTS: 'research.robotsName',
@@ -153,6 +152,7 @@ const RESEARCH_NAME_KEY = {
   EMPLACEMENT_DOCTRINE: 'research.groundDoctrineName',
   INTERCEPTION_GRID: 'research.gridName',
   STRATEGIC_STOCKPILE: 'research.stockpileName',
+  INDUSTRIAL: 'research.industrialName',
 } as const satisfies Record<ResearchProjectId, string>;
 
 export const researchName = (id: ResearchProjectId): string =>

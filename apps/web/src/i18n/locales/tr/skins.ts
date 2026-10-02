@@ -60,8 +60,10 @@ export const skins = {
   germany: 'Almanya',
   france: 'Fransa',
   spain: 'İspanya',
+  japan: 'Japonya',
   turkeyStory: 'Türkiye’nin renkleri yörüngede. Sahip olduğun her dünyada tanıdık bir iz.',
   germanyStory: 'Almanya’nın renklerini taşıyan bir dünya, galaksinin her köşesinden görünür.',
   franceStory: 'Fransa’nın renkleri artık sana ait bir dünyanın etrafında.',
   spainStory: 'İspanya’nın renklerini yıldızlara taşı, dünya dünya yay.',
+  japanStory: 'Japonya’nın renklerini seçtiğin her dünyayla galaksiye taşı.',
 } as const;

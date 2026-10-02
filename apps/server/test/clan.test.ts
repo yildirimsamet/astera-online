@@ -1,7 +1,8 @@
 import { pino } from 'pino';
 import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
-import { CLAN, HULLS, SEASON, distance, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
+import { CLAN, HULLS, MULTI_WORLD, SEASON, distance, hangarCapacity, hullBulk, missionFuel } from '@astera/rules';
+import { addRadiationSource } from '../src/services/radiation.js';
 import {
   attackCommitments,
   battleReports,
@@ -12,7 +13,9 @@ import {
   clanRaidRoster,
   clans,
   missions,
+  notifications,
   planets,
+  playerRivals,
   players,
   seasonResults,
   seasons,
@@ -48,6 +51,7 @@ import {
   recordClanBattleScore,
 } from '../src/services/clanLoot.js';
 import { launchAttack } from '../src/services/mission.js';
+import { dockLotsOf } from '../src/services/shipDamage.js';
 import { readBattleReports } from '../src/services/reports.js';
 import { launchProbe } from '../src/services/intel.js';
 import { prepareClanAttack } from '../src/services/clanCombat.js';
@@ -131,6 +135,47 @@ const workerFor = (fixture: Fixture) => new EventWorker(
 );
 
 describe('ruleset-v3 clans', () => {
+  it('clears mutual rival marks when a commander joins, preserving unrelated marks', async () => {
+    const f = await setup(3);
+    const { result } = await foundClan(f);
+    await f.db.insert(playerRivals).values([
+      { playerId: f.playerIds[0]!, targetPlayerId: f.playerIds[1]!, planetId: f.planetIds[1]!, slot: 0 },
+      { playerId: f.playerIds[1]!, targetPlayerId: f.playerIds[0]!, planetId: f.planetIds[0]!, slot: 0 },
+      { playerId: f.playerIds[0]!, targetPlayerId: f.playerIds[2]!, planetId: f.planetIds[2]!, slot: 1 },
+    ]);
+
+    await joinClan(f, result.clanId, 0, 1);
+
+    expect(await f.db.select().from(playerRivals)).toMatchObject([
+      { playerId: f.playerIds[0], targetPlayerId: f.playerIds[2], slot: 1 },
+    ]);
+  });
+
+  it('lets a clanmate clear a stale rival mark but prevents a new one', async () => {
+    const f = await setup(2);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    await f.db.insert(playerRivals).values({
+      playerId: f.playerIds[0]!, targetPlayerId: f.playerIds[1]!,
+      planetId: f.planetIds[1]!, slot: 0,
+    });
+    const built = buildApp({ env: testEnv(), logger: silent, db: f.db, clock: f.clock });
+    await built.app.ready();
+    try {
+      const tokens = new TokenService('test-secret-that-is-long-enough', 15, 30);
+      const headers = { authorization: `Bearer ${await tokens.issueAccess(f.accountIds[0]!)}` };
+      const toggle = () => built.app.inject({
+        method: 'POST', url: '/api/rival', headers, payload: { planetId: f.planetIds[1] },
+      });
+      expect((await toggle()).json()).toMatchObject({ rivals: [] });
+      const rejected = await toggle();
+      expect(rejected.statusCode).toBe(400);
+      expect(rejected.json()).toMatchObject({ error: 'RIVAL_CLANMATE' });
+    } finally {
+      await built.close();
+    }
+  });
+
   it('requires Core 7, normalises identity and burns the founding cost exactly once', async () => {
     const f = await setup(2);
     await setLevel(f.db, f.planetIds[0]!, 'CORE', 6);
@@ -505,6 +550,110 @@ describe('ruleset-v3 clans', () => {
     expect(gifted?.count).toBe(1);
     expect(await f.db.select().from(missions).where(eq(missions.parentMissionId, launch.missionId)))
       .toHaveLength(0);
+  });
+
+  /**
+   * KALICI GEMİ HASARI. Only radiation damages an aid flight (it fights nothing), so
+   * the damage is written straight onto the leg here. A gift lands in the RECIPIENT's
+   * Repair Station; a hauler carries its damage home and lands in the sender's.
+   */
+  it('lands a damaged gift in the recipient\'s dock', async () => {
+    const f = await setup(3);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    f.clock.advance(CLAN.adaptationMinutes);
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
+    const launch = await f.db.transaction((tx) => launchClanAid(tx, {
+      senderPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      recipientPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { COURIER: 2 },
+      cargo: { alloy: 0, crystal: 0, deuterium: 0 },
+      clock: f.clock,
+    }));
+    await f.db.update(missions).set({ damage: [{ hull: 'COURIER', count: 1, damageBp: 6000 }] })
+      .where(eq(missions.id, launch.missionId));
+    f.clock.set(new Date(launch.arriveAt));
+    await workerFor(f).tick();
+
+    const docked = await dockLotsOf(f.db, f.planetIds[1]!);
+    expect(docked).toMatchObject([{ hull: 'COURIER', count: 1, damageBp: 6000 }]);
+    const [row] = await f.db.select().from(units).where(eq(units.location, `dock:${docked[0]!.id}`));
+    expect(row?.ownerPlayerId).toBe(f.playerIds[1]);
+  });
+
+  it('flies a damaged hauler home with its damage and docks it at the sender', async () => {
+    const f = await setup(3);
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    f.clock.advance(CLAN.adaptationMinutes);
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
+    const launch = await f.db.transaction((tx) => launchClanAid(tx, {
+      senderPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      recipientPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { COURIER: 1 },
+      cargo: { alloy: 100, crystal: 50, deuterium: 0 },
+      clock: f.clock,
+    }));
+    const lots = [{ hull: 'COURIER' as const, count: 1, damageBp: 7000 }];
+    await f.db.update(missions).set({ damage: lots }).where(eq(missions.id, launch.missionId));
+    f.clock.set(new Date(launch.arriveAt));
+    await workerFor(f).tick();
+
+    const [back] = await f.db.select().from(missions).where(and(
+      eq(missions.parentMissionId, launch.missionId),
+      eq(missions.status, 'in_flight'),
+    ));
+    expect(back?.damage).toEqual(lots);
+    f.clock.set(back!.arriveAt);
+    await workerFor(f).tick();
+    expect(await dockLotsOf(f.db, f.planetIds[0]!)).toMatchObject(lots);
+  });
+
+  /** Radyasyon (plan F9): an aid flight a cloud finished delivers nothing and ends. */
+  it('loses an aid flight a cloud finished, and the commitment ends undelivered', async () => {
+    const f = await setup(3);
+    await f.db.update(seasons).set({ rulesetVersion: MULTI_WORLD.shipDamageRulesetVersion })
+      .where(eq(seasons.id, f.seasonId));
+    const { result } = await foundClan(f);
+    await joinClan(f, result.clanId, 0, 1);
+    f.clock.advance(CLAN.adaptationMinutes);
+    await giveUnits(f.db, f.planetIds[0]!, { COURIER: 2 });
+    const [before] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
+    const launch = await f.db.transaction((tx) => launchClanAid(tx, {
+      senderPlayerId: f.playerIds[0]!,
+      originPlanetId: f.planetIds[0]!,
+      recipientPlayerId: f.playerIds[1]!,
+      targetPlanetId: f.planetIds[1]!,
+      fleet: { COURIER: 1 },
+      cargo: { alloy: 100, crystal: 50, deuterium: 0 },
+      clock: f.clock,
+    }));
+    const [flight] = await f.db.select().from(missions).where(eq(missions.id, launch.missionId));
+    const minutes = (flight!.arriveAt.getTime() - flight!.departAt.getTime()) / 60_000;
+    const [from] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[0]!));
+    await addRadiationSource(f.db, {
+      seasonId: f.seasonId, anchor: { kind: 'ZONE', at: { x: from!.x, y: from!.y, z: from!.z } },
+      radius: 100_000, intensityPctPerMinute: 150 / minutes, mode: 'EMIT', label: 'aid lane',
+    }, f.clock);
+    f.clock.set(new Date(launch.arriveAt));
+    await workerFor(f).tick();
+
+    const [after] = await f.db.select().from(planets).where(eq(planets.id, f.planetIds[1]!));
+    expect(after!.alloy).toBeCloseTo(before!.alloy, 0);
+    const [commitment] = await f.db.select().from(clanAidCommitments)
+      .where(eq(clanAidCommitments.missionId, launch.missionId));
+    expect(commitment?.status).toBe('RETURNED');
+    expect(await f.db.select().from(missions).where(and(
+      eq(missions.parentMissionId, launch.missionId), eq(missions.status, 'in_flight'),
+    ))).toEqual([]);
+    const word = await f.db.select().from(notifications).where(and(
+      eq(notifications.playerId, f.playerIds[0]!), eq(notifications.kind, 'radiation_lost'),
+    ));
+    expect(word[0]?.payload).toMatchObject({ lost: 1, left: 0 });
   });
 
   it('returns a successful resource transport to the colony it launched from', async () => {

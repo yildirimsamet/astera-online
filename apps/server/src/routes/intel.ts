@@ -92,10 +92,12 @@ export function registerIntelRoutes(app: FastifyInstance): void {
          *     worth up to a 56% combat multiplier (D169), and `CLAUDE.md` requires in as
          *     many words that combat-relevant doctrine be PROBE-VISIBLE (D137). It
          *     was probe-collected and invisible, which is the opposite.
-         *   · `interceptor` is whether that world can shoot a strategic weapon down
-         *     (T10). Without it a Death Star is 33,000 resources and an hour spent
+         *   · `interceptors` is how many strategic weapons that world can shoot
+         *     down (T10; a count since 2026-10-01). Without it a Death Star is spent
          *     blind — the feature's whole argument is that scouting turns the strike
          *     into an intelligence decision, and there was nothing to scout WITH.
+         *   · `loyalty` is a colony's, because a Death Star takes twenty of it and a
+         *     colony at twenty or less goes NEUTRAL (owner, 2026-10-01).
          *
          * Both are frozen at the look, like everything else in the silhouette, and
          * the client prints their age beside them for exactly that reason.
@@ -107,9 +109,12 @@ export function registerIntelRoutes(app: FastifyInstance): void {
         ...(r.report.silhouette?.doctrines
           ? { doctrines: r.report.silhouette.doctrines }
           : {}),
-        ...(r.report.silhouette?.interceptor === undefined
+        ...(r.report.silhouette?.interceptors === undefined
           ? {}
-          : { interceptor: r.report.silhouette.interceptor }),
+          : { interceptors: r.report.silhouette.interceptors }),
+        ...(r.report.silhouette?.loyalty === undefined
+          ? {}
+          : { loyalty: r.report.silhouette.loyalty }),
         /*
           THE THREE READINGS D199 ADDED — the shape of what fires, the Aegis charge
           and the unarmed hulls in the line. ABSENT on a report written before them,

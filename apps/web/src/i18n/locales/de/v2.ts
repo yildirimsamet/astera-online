@@ -147,6 +147,11 @@ export const fleetPage = {
 
 /** The battle report scene (B15), the mock's "KISMİ ZAFER" page. */
 export const reportScene = {
+  damageTitle: "Beschädigt davongekommen",
+  damageLot: "{{name}} ×{{count}} · {{pct}} % Schaden",
+  toDock: "zur Reparaturstation",
+  patched: "kostenlos repariert",
+  landing: "Beurteilt bei der Landung: über 20 % wartet auf Reparatur, der Rest wird kostenlos repariert.",
   eyebrow: "Kampfbericht · {{planet}}",
   rounds_one: "{{count}} Runde",
   rounds_other: "{{count}} Runden",
@@ -181,9 +186,7 @@ export const baseSwitch = {
 /** E8 · K9: the research constellation. */
 export const researchMap = {
   label: 'Forschungskarte',
-  closed: '{{group}} · geschlossen',
   /** The strategic three while their release switch is off: the server refuses them. */
-  shut: 'Vorerst geschlossen',
   /** A prerequisite already held, said on the card. */
   needs: 'Braucht {{name}}',
   /** The next rung of a ladder that opens a hull, and the one rung of a permission. */
@@ -252,4 +255,58 @@ export const outline = {
   filled: '{{count}} von {{total}}',
   threat_one: '{{count}} Angriff unterwegs',
   threat_other: '{{count}} Angriffe unterwegs',
+};
+
+/** The Repair Station (Kalıcı gemi hasarı, `plan.md` F4/F6). */
+export const repairStation = {
+  order: "Reparatur · {{name}}",
+  all: "gemischte Schiffe",
+  title: "Reparaturstation",
+  role: "Beschädigte Schiffe warten hier, bis sie repariert sind.",
+  tagline: "Bringt beschädigte Schiffe zurück in die Flotte.",
+  idle: "Keine beschädigten Schiffe auf dieser Welt.",
+  waitingShips_one: "{{count}} Schiff wartet",
+  waitingShips_other: "{{count}} Schiffe warten",
+  repairingShips_one: "{{count}} in Reparatur",
+  repairingShips_other: "{{count}} in Reparatur",
+  queueFill: "Warteschlange {{used}}/{{total}}",
+  statWaiting: "Wartend",
+  statRepairing: "In Reparatur",
+  statQueue: "Warteschlange",
+  outOfAction: "Ein Schiff mit mehr als 20 % Schaden wartet hier: Es kann weder fliegen noch verteidigen, bis es repariert ist.",
+  howItWorks: "So funktioniert’s",
+  ruleFree: "Schaden bis 20 %, aus einem Kampf oder durch Strahlung, wird kostenlos behoben.",
+  rulePrice: "Preis: der beschädigte Anteil eines neuen Schiffs. Ein zu 40 % beschädigtes Schiff kostet 40 % eines neuen.",
+  ruleTime: "Zeit: derselbe Anteil seiner Bauzeit. {{shipyard}}-Stufen und {{automation}} verkürzen sie.",
+  ruleIndustrial: "Die Forschung {{industrial}} senkt Preis und Zeit auf 75 %, dann auf 50 %.",
+  youPay: "Du zahlst jetzt {{pct}} %.",
+  ruleQueue: "Aufträge laufen nacheinander, bis zu {{depth}} in der Warteschlange, getrennt von der Werft-Warteschlange.",
+  ruleCancel: "Ein Abbruch erstattet den halben Preis; die Schiffe warten wieder.",
+  industrialChip: "{{industrial}} −{{off}} %",
+  damagedHeading: "Beschädigte Schiffe",
+  selectAll: "Alle wählen",
+  selectNone: "Leeren",
+  choose: "{{name}} ×{{count}} reparieren",
+  noneWaiting: "Kein Schiff wartet auf eine Reparatur.",
+  damaged: "{{pct}} % beschädigt",
+  share: "{{pct}} % eines neuen Schiffs",
+  queueHeading: "Reparatur-Warteschlange",
+  queueEmpty: "Nichts in Reparatur.",
+  finishing: "Wird abgeschlossen…",
+  startsIn: "beginnt in {{time}}",
+  ends: "fertig in {{time}}",
+  selected_one: "{{count}} Schiff gewählt",
+  selected_other: "{{count}} Schiffe gewählt",
+  afterQueue: "Beginnt nach der Warteschlange, in {{time}}",
+  repairSelected_one: "{{count}} Schiff reparieren",
+  repairSelected_other: "{{count}} Schiffe reparieren",
+  pick: "Schiffe zur Reparatur wählen",
+  queueFullShort: "Warteschlange voll · {{used}}/{{total}}",
+  tooMany: "Wähle höchstens {{max}} Zeilen oder alle",
+  starting: "Startet…",
+  cancel: "Abbrechen",
+  docked_one: "{{count}} in Reparatur",
+  docked_other: "{{count}} in Reparatur",
+  started: "Reparatur gestartet",
+  queue: "Reparaturstation",
 };

@@ -78,6 +78,27 @@ describe('the defence verdict states what stands, never a judgement it cannot ma
     expect(defence).toHaveTextContent('4 ships · 3 guns');
     expect(defence).toHaveTextContent('2 transports in the line');
   });
+
+  /**
+   * Kalıcı gemi hasarı: the ships waiting in the Repair Station are this world's and
+   * are not in its line. Without a word the count reads lower than the ships owned
+   * with nothing to say why, and a commander counts on a defence that is not there.
+   */
+  it('says the ships in the Repair Station do not defend', () => {
+    render(<DefenceReadings planet={planetView({ fleet: { DART: 4 }, fleetDocked: { DART: 1, BALLISTA: 2 } })} />);
+    const defence = screen.getByTestId('planet-defence');
+    expect(defence).toHaveTextContent('4 ships');
+    expect(defence).toHaveTextContent("3 in the Repair Station · don't defend");
+  });
+
+  it('says it beside the transports, and says nothing when the dock is empty', () => {
+    const { unmount } = render(<DefenceReadings planet={planetView({ fleet: { DART: 4, ATLAS: 2 }, fleetDocked: { DART: 1 } })} />);
+    expect(screen.getByTestId('planet-defence')).toHaveTextContent('2 transports in the line');
+    expect(screen.getByTestId('planet-defence')).toHaveTextContent("1 in the Repair Station · doesn't defend");
+    unmount();
+    render(<DefenceReadings planet={planetView({ fleet: { DART: 4 }, fleetDocked: {} })} />);
+    expect(screen.getByTestId('planet-defence').textContent).not.toMatch(/Repair Station/);
+  });
 });
 
 /**

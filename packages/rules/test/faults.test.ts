@@ -154,8 +154,20 @@ describe('sadakat', () => {
 
   it('arıza yokken dolar, dolunca durur', () => {
     expect(loyaltyRatePerHour(0)).toBeGreaterThan(0);
-    expect(advanceLoyalty(0, 0, FAULT.loyaltyRecoverHours * 60)).toBe(FAULT.loyaltyMax);
+    expect(advanceLoyalty(1, 0, FAULT.loyaltyRecoverHours * 60)).toBe(FAULT.loyaltyMax);
     expect(advanceLoyalty(FAULT.loyaltyMax, 0, 10_000)).toBe(FAULT.loyaltyMax);
+  });
+
+  /**
+   * SIFIR SON DURAKTIR. Sıfırda koloni kopar ve `colony_secession` bunu hemen yapar; ama
+   * işçi olayı bir an geç alırsa, arızası olmayan bir koloni o anda dolmaya başlamış olur
+   * ve kopuş sessizce iptal edilir. Arızasız bir savaş kaybı ya da Ölüm Yıldızı isabeti
+   * (2026-10-01) koloniyi tam böyle sıfıra indirir, bu yüzden sıfırdan geri dönüş yok.
+   */
+  it('sıfırdan geri dolmaz — kopuşun bir anlık gecikmesi onu iptal etmez', () => {
+    expect(advanceLoyalty(0, 0, 1 / 60)).toBe(0);
+    expect(advanceLoyalty(0, 0, FAULT.loyaltyRecoverHours * 60)).toBe(0);
+    expect(advanceLoyalty(0, 3, 60)).toBe(0);
   });
 
   it('sekiz arıza tam olarak on iki saatte sıfırlar', () => {

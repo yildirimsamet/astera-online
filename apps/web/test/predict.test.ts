@@ -551,8 +551,8 @@ describe('predicting a satellite', () => {
 describe('predicting research', () => {
   /** D209: a colony's own Core never lets it predict a project the capital cannot order. */
   it('refuses to predict a Core-gated project the capital Core does not reach', () => {
-    const need = RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore ?? 0;
-    const open = planetView().research.map((project) => project.id === 'DEATH_STAR_PROTOCOL'
+    const need = RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore ?? 0;
+    const open = planetView().research.map((project) => project.id === 'STRATEGIC_STOCKPILE'
       ? { ...project, discovered: true, available: true, queueAvailable: true }
       : project);
     const stock = { alloy: 5_000_000, crystal: 5_000_000, deuterium: 5_000_000 };
@@ -560,8 +560,8 @@ describe('predicting research', () => {
       { buildings: { CORE: need + 2, REFINERY: 2, EXTRACTOR: 2, VAULT: 0, SHIPYARD: 4 }, research: open, researchCore: need - 1 },
       stock,
     );
-    expect(predictResearch(colony, 'DEATH_STAR_PROTOCOL')).toBeNull();
-    expect(predictResearch({ ...colony, researchCore: need }, 'DEATH_STAR_PROTOCOL')).not.toBeNull();
+    expect(predictResearch(colony, 'STRATEGIC_STOCKPILE')).toBeNull();
+    expect(predictResearch({ ...colony, researchCore: need }, 'STRATEGIC_STOCKPILE')).not.toBeNull();
   });
 
   it('queues an available project without marking it complete', () => {
@@ -830,5 +830,19 @@ describe('every predictor', () => {
     predictCollect(view);
 
     expect(view).toEqual(before);
+  });
+});
+
+/**
+ * KALICI GEMİ HASARI. A ship waiting in the Repair Station is owned: it fills a Hangar
+ * berth and counts against the Prospector cap exactly as the server counts it
+ * (`totalUnitsOf`), or the build sheet would offer room the server refuses.
+ */
+describe('the Repair Station in the projected state', () => {
+  it('counts docked ships among the world\'s units', () => {
+    const view = planetView({ fleet: { DART: 3 }, fleetAway: {}, fleetDocked: { BALLISTA: 2, DART: 1 } });
+    const units = projectedQueueState(view, 'YARD').units;
+    expect(units.BALLISTA).toBe(2);
+    expect(units.DART).toBe(4);
   });
 });

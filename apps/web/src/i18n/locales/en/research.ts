@@ -41,8 +41,7 @@ export const research = {
   doctrineNote:
     "Opens advanced hull tiers and improves attack, armour or propulsion on separate bounded ladders. Combat levels are probe-visible.",
   strategicBand: "Strategic",
-  strategicNote:
-    "Unlocks the galaxy’s most destructive weapon, its defensive answer and additional stock capacity.",
+  strategicNote: "Raises how many Death Stars and interceptor charges each of your worlds can hold.",
 
   act: "Research",
   details: "Details",
@@ -61,10 +60,10 @@ export const research = {
   needCore: "Raise your capital’s Command Core to L{{level}}",
   queueFull: "3 research projects are already queued. Wait for one to finish before adding another.",
   at: "Researchable in {{duration}}",
-  warAt: "War act opens in {{duration}}",
   isotopeFirst: "Research Isotope Spectrometry first",
   prerequisiteFirst: "Research {{name}} first",
-  graviticFirst: "Research Gravitic Charges first",
+  prerequisiteLevelFirst: "Raise {{name}} to level {{level}} first",
+  nameAtLevel: "{{name}} L{{level}}",
   cargoInsight: "Fill your cargo in one raid while loot remains",
   shieldInsight: "Have an Aegis absorb at least {{share}} of your raid damage",
 
@@ -92,12 +91,6 @@ export const research = {
     "To unlock it, attack a defended world with an active Aegis; the shield must absorb at least {{share}} of your damage. A single Dart can qualify; you do not need to win. The Nullifier hits active shields five times harder.",
   graviticDetail:
     "Completing it permanently satisfies the specialist-research part of the Nullifier gate. The Nullifier is an answer to an active Aegis, not a general damage upgrade; its bonus shield damage never spills into ships or ground guns.",
-  deathStarName: "Death Star Protocol",
-  deathStarTag: "Unlocks the Death Star",
-  deathStarRole:
-    "The Death Star now builds without this research; this project is unavailable.",
-  deathStarDetail:
-    "An EMP strike drains Aegis to zero and prevents regeneration for one hour. Ground defences cannot fire or take damage during that hour. Production continues, and the world never changes hands.",
 
   synthesisName: "Deuterium Synthesis",
   synthesisTag: "Raises the Refinery ceiling",
@@ -117,6 +110,12 @@ export const research = {
     "Shortens everything in the Construction queue without affecting ships or ground guns",
   robotsDetail:
     "Each rung finishes every future Construction order across your worlds sooner: buildings, instruments and satellites alike. It does not speed up ships \u2014 that is Yard Automation \u2014 and it neither reduces resource prices nor adds queue slots.",
+  industrialName: "Industrial",
+  industrialTag: "Repairs ships cheaper and faster",
+  industrialRole:
+    "Cuts the bill and the time of every Repair Station job",
+  industrialDetail:
+    "Each rung takes a quarter off what repairing a damaged ship costs and how long it takes, on every world you hold: 75% at level 1, 50% at level 2. It does not build ships faster \u2014 that is Yard Automation \u2014 and a ship damaged 20% or less after a battle is repaired free anyway.",
   holdsName: "Prospector Holds",
   holdsTag: "Mining craft carry more",
   holdsRole: "Raises every Prospector hold; the Derrick’s capacity bonus applies on top",
@@ -160,15 +159,11 @@ export const research = {
     "Improves the attack and hull of Bastions and Thorns on every world. It changes combat strength, not ground capacity or salvage; defenders use the rung held when battle begins.",
 
   gridName: "Interception Grid",
-  gridTag: "Shoots down a Death Star",
-  gridRole:
-    "A loaded interceptor destroys one strategic weapon on the Radar interception ring or in Telescope sight",
-  gridDetail:
-    "It grants access to the interceptor charge. Building one requires an Uplink and Radar 3 on the target world. A loaded charge automatically destroys the first strategic weapon that enters its timed Radar interception ring or is identified in Telescope sight from any world you hold, then is spent.",
+  gridTag: "Four interceptor charges per world",
+  gridRole: "Raises the interceptor charges each of your worlds can hold from 2 to 4.",
+  gridDetail: "Without research every world can load 2 interceptor charges; this raises the limit to 4 on each world. A charge needs an Uplink and Radar 3 on its world. A loaded charge destroys the first Death Star that crosses its timed Radar interception ring or is identified in Telescope sight from any world you hold, then is spent. One charge stops one weapon, so a loaded world falls only to more weapons arriving together than it holds charges.",
   stockpileName: "Strategic Stockpile",
-  stockpileTag: "Keep a second weapon on the pad",
-  stockpileRole:
-    "Each world may hold two Death Stars; the second begins after the first finishes",
-  stockpileDetail:
-    "Raises the Death Star limit from one to two on each world, not across the commander as a whole. The second can be queued but starts only after the first finishes, and still costs the full price and time. A strike still consumes its weapon.",
+  stockpileTag: "Two Death Stars per world",
+  stockpileRole: "Raises the Death Stars each of your worlds can hold from 1 to 2. The second starts once the first is finished.",
+  stockpileDetail: "Without research every world holds 1 Death Star; this makes it 2 on each world, not across your whole empire. The second costs the full price and the full build time, and is built after the first. Striking from several worlds at once is how a strike gets past a defender's charges.",
 } as const;

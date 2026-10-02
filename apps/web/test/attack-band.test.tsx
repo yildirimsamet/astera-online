@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ABUSE, coreTier } from '@astera/rules';
-import { outOfBandAbove } from '../src/lib/band.js';
+import { outOfBandAbove, ownPeakCore } from '../src/lib/band.js';
 import type { GalaxyPlanet } from '../src/api/schemas.js';
 
 /**
@@ -56,6 +56,20 @@ const theirs = (playerId: string, coreLevel: number, id = `t-${playerId}-${Strin
 const mine = (coreLevel: number, id = `m-${String(coreLevel)}`) =>
   world({ id, coreLevel, coreTier: coreTier(coreLevel), isSelf: true });
 
+/**
+ * A colony of the caller's, IN THE SHAPE THE SERVER SENDS IT. `routes/galaxy.ts`
+ * sets `isSelf` on the capital alone; every other world the caller holds arrives
+ * with `isSelf: false`, `isOwned: true` and the caller as its controller.
+ */
+const myColony = (coreLevel: number, id = `mc-${String(coreLevel)}`) =>
+  world({
+    id,
+    coreLevel,
+    coreTier: coreTier(coreLevel),
+    isOwned: true,
+    controller: { kind: 'PLAYER', playerId: 'me', displayName: 'Me' },
+  });
+
 describe('the certain half of the band', () => {
   it('refuses a target whose visible world is already two tiers up', () => {
     const target = theirs('them', 13);           // tier 5
@@ -84,6 +98,35 @@ describe('the certain half of the band', () => {
     const target = theirs('them', 13);           // tier 5
     // A tier 2 capital alone would refuse; the tier 4 colony makes it legal.
     expect(outOfBandAbove([mine(4, 'cap'), mine(12, 'colony'), target], target)).toBe(false);
+  });
+});
+
+describe('the caller, measured on every world they hold', () => {
+  /**
+   * THE BUG THIS PINS. The capital was the only world read as the caller's, so a
+   * commander whose colony out-built their capital was told "too developed" about a
+   * target the server would have let them raid.
+   */
+  it('counts a colony the way the server sends it', () => {
+    const target = theirs('them', 16);           // tier 6
+    // The tier 4 capital alone would refuse; the tier 5 colony makes it legal.
+    expect(outOfBandAbove([mine(12, 'cap'), myColony(13), target], target)).toBe(false);
+  });
+
+  it('says nothing about the caller’s own colony', () => {
+    const target = myColony(18, 'tall');
+    expect(outOfBandAbove([mine(1), target], target)).toBe(false);
+  });
+
+  it('reads the caller’s peak across capital and colonies, and never a rival’s', () => {
+    expect(ownPeakCore([mine(4), myColony(13), theirs('them', 20)])).toBe(13);
+    expect(ownPeakCore([mine(16), myColony(2)])).toBe(16);
+  });
+
+  /** Nothing of the caller's own on the disc is a payload still loading, not tier 1. */
+  it('has no peak to state before the caller’s worlds arrive', () => {
+    expect(ownPeakCore([theirs('them', 9)])).toBeNull();
+    expect(ownPeakCore([])).toBeNull();
   });
 });
 
@@ -177,5 +220,40 @@ describe('the control carries it', () => {
   it('states it on the label and in the accessible name', () => {
     expect(source).toContain('focus.planet.attackOutOfBandShort');
     expect(source).toContain('focus.planet.attackOutOfBand');
+  });
+
+  /** The strike answers to the same band on the server, so its control says so too. */
+  it('blocks the Death Star strike on the same reading', () => {
+    expect(source).toContain('focus.planet.deathStarOutOfBand');
+  });
+});
+
+describe('the refusal names what it measured', () => {
+  /**
+   * The server's refusal used to read "that commander's total strength is far above
+   * your own". The band never measures strength — it compares the development tier
+   * of each commander's most developed world — so a commander told that went
+   * looking at fleets. The refusal has to use the word the dossier puts on the
+   * figure it actually compares.
+   */
+  const WORD: Record<string, RegExp> = {
+    en: /tier/i,
+    tr: /kademe/i,
+    de: /stufe/i,
+    es: /nivel/i,
+    fr: /palier/i,
+    ja: /ティア/,
+  };
+
+  it.each(Object.keys(WORD))('speaks in development tiers, not strength (%s)', async (lang) => {
+    const i18n = (await import('../src/i18n/index.js')).default;
+    await i18n.changeLanguage(lang);
+    for (const code of ['TIER_BAND', 'TIER_BAND_WEAK'] as const) {
+      const text = i18n.t(`errors.${code}`);
+      expect(text, `${lang} ${code}: "${text}"`).toMatch(WORD[lang]!);
+      expect(text).not.toMatch(/strength|gücü|Stärke|fuerza|puissance|総合力/i);
+    }
+    expect(i18n.t('focus.planet.deathStarOutOfBand')).not.toBe('focus.planet.deathStarOutOfBand');
+    await i18n.changeLanguage('en');
   });
 });

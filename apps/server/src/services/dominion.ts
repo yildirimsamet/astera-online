@@ -163,6 +163,13 @@ export function assertDominionLedgers(
   roster: readonly DominionLedgerRow[],
   events: readonly DominionEventRow[],
   rulesetVersion: number,
+  /**
+   * A JOINT WAR'S SHARES, FROM THEIR OWN JOURNAL (`clan_war_dominion_events`). Klan Ortak
+   * Savaşı books each participant's `delta` and the defender's `-adjusted` straight into
+   * the ledgers, by the same sign rule as below; leaving them out made every season a
+   * clan had won a war in impossible to close.
+   */
+  jointWarEvents: readonly { playerId: string; delta: number }[] = [],
 ): void {
   if (rulesetVersion < MULTI_WORLD.dominionLinearRulesetVersion) return;
 
@@ -231,6 +238,14 @@ export function assertDominionLedgers(
 
     if (attacker) addMovement(attacker, swing);
     if (defender) addMovement(defender, -swing);
+  }
+
+  for (const event of jointWarEvents) {
+    if (!Number.isSafeInteger(event.delta)) {
+      throw new Error('Dominion audit failed: a joint war share is not a whole figure');
+    }
+    const ledger = expected.get(event.playerId);
+    if (ledger) addMovement(ledger, event.delta);
   }
 
   for (const player of roster) {

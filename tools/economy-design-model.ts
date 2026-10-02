@@ -66,7 +66,6 @@ const researchWork: Record<ResearchProjectId, { stage: number; hours: number; gr
   ISOTOPE_SPECTROMETRY: { stage: 4, hours: 3, growth: 1, fuel: 0 },
   DENSE_FUEL_CELLS: { stage: 5, hours: 4, growth: 1, fuel: 2 },
   GRAVITIC_CHARGES: { stage: 6, hours: 5, growth: 1, fuel: 3 },
-  DEATH_STAR_PROTOCOL: { stage: 10, hours: 12, growth: 1, fuel: 12 },
   DEUTERIUM_SYNTHESIS: { stage: 1, hours: 2, growth: 3, fuel: 0 },
   YARD_AUTOMATION: { stage: 6, hours: 3, growth: 1.8, fuel: 0 },
   AI_ROBOTS: { stage: 6, hours: 3.5, growth: 1.8, fuel: 0 },

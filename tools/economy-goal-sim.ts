@@ -63,7 +63,6 @@ const RESEARCH_ORDER: readonly ResearchProjectId[] = [
   'ISOTOPE_SPECTROMETRY',
   'DENSE_FUEL_CELLS',
   'GRAVITIC_CHARGES',
-  'DEATH_STAR_PROTOCOL',
 ];
 
 export const TARGET_BUILDINGS = {
@@ -764,10 +763,10 @@ function printScenarioTable(): SimResult {
 
 function printMiningSensitivity(activity: ActivityProfile): void {
   console.log('\nSPECIAL-MATERIAL SENSITIVITY — 8h route, building rewards claimed');
-  console.log('net delivered/day  finish          Death Star research');
+  console.log('net delivered/day  finish          Gravitic Charges');
   for (const rate of [150, 200, 250, 300, 375, 450, 600]) {
     const result = bestFoundryTier(activity, true, rate);
-    const protocol = result.state.milestones.get('Research: DEATH_STAR_PROTOCOL') ?? null;
+    const protocol = result.state.milestones.get('Research: GRAVITIC_CHARGES') ?? null;
     console.log(
       `${formatNumber(rate).padStart(17)}  ${formatDuration(result.reachedAt).padEnd(15)}`
       + ` ${formatDuration(protocol)}`,

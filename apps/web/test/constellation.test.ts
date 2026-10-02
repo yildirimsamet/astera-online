@@ -13,10 +13,16 @@ import { constellationLayout, hullDoor, RESEARCH_GROUPS } from '../src/lib/const
 const layout = constellationLayout(RESEARCH_GROUPS, (id) => RESEARCH_PROJECTS[id].prerequisite);
 
 describe('the research constellation', () => {
+  // Sixteen since the Death Star Protocol retired (owner, 2026-10-01).
   it('draws every project once, sixteen stars', () => {
     const ids = layout.nodes.map((node) => node.id);
     expect(ids).toHaveLength(16);
     expect(new Set(ids)).toEqual(new Set(RESEARCH_PROJECT_IDS));
+  });
+
+  it('puts Industrial beside the yard it grows out of, joined by a line', () => {
+    expect(layout.nodes.find((node) => node.id === 'INDUSTRIAL')?.group).toBe('industry');
+    expect(layout.edges.some((edge) => edge.from === 'YARD_AUTOMATION' && edge.to === 'INDUSTRIAL')).toBe(true);
   });
 
   it('draws exactly the prerequisites that sit in the same group, and says the rest', () => {

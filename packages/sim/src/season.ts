@@ -15,6 +15,7 @@ import {
   PROSPECTOR,
   RESEARCH_PROJECT_IDS,
   RESEARCH_PROJECTS,
+  researchPrerequisiteMet,
   SHIELD,
   activeAsteroids,
   asteroidPosition,
@@ -75,6 +76,11 @@ import {
   instrumentMaxed,
   mulberry32,
   resolveCombat,
+  needsDock,
+  repairPct,
+  shipDamageApplies,
+  shipRepairCost,
+  type DamageLots,
   resolveRaid,
   resourceValue,
   soloStack,
@@ -566,6 +572,8 @@ export interface DayStats {
   attackerLossValue: number;
   defenderLossValue: number;
   disruptedMinutes: number;
+  /** What the Repair Station billed both sides of each raid (raw resources). */
+  repairValue: number;
   byGrade: Record<'DECISIVE' | 'PARTIAL' | 'REPELLED', number>;
   scoutedAttacks: number; scoutedGain: number; scoutedLoss: number;
   blindAttacks: number; blindGain: number; blindLoss: number;
@@ -575,6 +583,7 @@ export const freshStats = (): DayStats => ({
   attacks: 0, dominionVolume: 0, largestDominionSwing: 0,
   lootValue: 0, attackerLossValue: 0, defenderLossValue: 0,
   disruptedMinutes: 0,
+  repairValue: 0,
   byGrade: { DECISIVE: 0, PARTIAL: 0, REPELLED: 0 },
   scoutedAttacks: 0, scoutedGain: 0, scoutedLoss: 0,
   blindAttacks: 0, blindGain: 0, blindLoss: 0,
@@ -611,6 +620,12 @@ export interface SimConfig {
    * season is a different season, because every bot's sunset reads the time left.
    */
   onDay?: (day: number, world: World) => void;
+  /**
+   * Balance-lab override only; omitted models the ruleset a new season is created at.
+   * Read by the rules added after it existed (the Repair Station); older gates still
+   * read `MULTI_WORLD.rulesetVersion` directly, and the two agree when it is omitted.
+   */
+  rulesetVersion?: number;
 }
 
 export type CrystalSpendCategory =
@@ -652,6 +667,8 @@ export interface World {
   miningRng: Rng;
   /** How long the whole season runs. Bots need it to know when to stop building. */
   totalMinutes: number;
+  /** The ruleset this season is dealt. `SimConfig.rulesetVersion`. */
+  rulesetVersion: number;
   hullCrystalShare?: SimConfig['hullCrystalShare'];
   spectrometryCrystalCost: number;
   isotopes: boolean;
@@ -663,7 +680,6 @@ export interface World {
   neutrals: SimNeutralWorld[];
   strategicMissions: StrategicMission[];
   deathStars: Map<number, { status: 'BUILDING' | 'READY'; readyAt: number }[]>;
-  deathStarProtocol: Set<number>;
   neutralRaiders: Set<number>;
   nextStrategicMissionId: number;
   strategicRng: Rng;
@@ -774,6 +790,7 @@ export function buildWorld(cfg: SimConfig): World {
   }
 
   return {
+    rulesetVersion: cfg.rulesetVersion ?? MULTI_WORLD.rulesetVersion,
     players,
     missions: [],
     miningRuns: [],
@@ -809,7 +826,6 @@ export function buildWorld(cfg: SimConfig): World {
     neutrals,
     strategicMissions: [],
     deathStars: new Map(),
-    deathStarProtocol: new Set(),
     neutralRaiders: new Set(),
     nextStrategicMissionId: 1,
     strategicRng: mulberry32((cfg.seed ^ 0xd34db33f) >>> 0),
@@ -852,12 +868,11 @@ function spendCrystal(world: World, category: CrystalSpendCategory, amount: numb
   world.crystalSpent[category] += amount;
 }
 
-const completedResearchOf = (p: SimPlayer, world: World): TechLevels => {
+const completedResearchOf = (p: SimPlayer): TechLevels => {
   const completed: TechLevels = { ...p.tech };
   if (p.isotopeSpectrometry) completed.ISOTOPE_SPECTROMETRY = 1;
   if (p.denseFuelCells) completed.DENSE_FUEL_CELLS = 1;
   if (p.graviticCharges) completed.GRAVITIC_CHARGES = 1;
-  if (world.deathStarProtocol.has(p.id)) completed.DEATH_STAR_PROTOCOL = 1;
   return completed;
 };
 
@@ -871,7 +886,7 @@ export function projectedBuildState(
     buildings: { ...p.buildings },
     instruments: { ...p.instruments },
     orbit: [...p.orbit],
-    research: completedResearchOf(p, world),
+    research: completedResearchOf(p),
   };
   for (const order of p.queues[queue]) {
     if (order.kind === 'BUILDING') {
@@ -960,7 +975,7 @@ function nextSimBuildReadyAt(
   return (p.queues[queue].at(-1)?.readyAt ?? t) + roundedMinutes;
 }
 
-function applySimBuild(p: SimPlayer, order: SimBuildOrder, world: World): void {
+function applySimBuild(p: SimPlayer, order: SimBuildOrder): void {
   if (order.kind === 'BUILDING') {
     const id = order.subject as BuildingId;
     p.buildings[id] += 1;
@@ -990,7 +1005,7 @@ function applySimBuild(p: SimPlayer, order: SimBuildOrder, world: World): void {
   // The order's `count` is its target rung, exactly as the server reads it.
   else if (id === 'DEUTERIUM_SYNTHESIS') {
     p.deuteriumSynthesis = Math.max(p.deuteriumSynthesis, order.count);
-  } else if (id === 'DEATH_STAR_PROTOCOL') world.deathStarProtocol.add(p.id);
+  }
   p.tech[id] = Math.max(p.tech[id] ?? 0, order.count);
 }
 
@@ -1063,7 +1078,7 @@ export function advanceBuildQueues(world: World, t: number): void {
     for (const order of due) {
       // Settle production and shield recovery under the old hardware first.
       sync(p, order.readyAt);
-      applySimBuild(p, order, world);
+      applySimBuild(p, order);
     }
     p.queues.CONSTRUCTION = p.queues.CONSTRUCTION.filter((order) => !completed.has(order));
     p.queues.YARD = p.queues.YARD.filter((order) => !completed.has(order));
@@ -1428,7 +1443,8 @@ export function tryDeathStar(p: SimPlayer, t: number, world: World): void {
     world.strategic.deathStar.launches++;
     return;
   }
-  if (existing.length >= strategicStockpile(0)) return;
+  // One on the pad, two once the Stockpile is held (owner, 2026-10-01).
+  if (existing.length >= strategicStockpile(p.tech.STRATEGIC_STOCKPILE ?? 0)) return;
   if (
     p.buildings.CORE < DEATH_STAR.requiredCore
     || p.buildings.SHIPYARD < DEATH_STAR.requiredShipyard
@@ -1448,6 +1464,28 @@ function applyStrategicEmp(n: SimNeutralWorld, t: number): void {
   n.shield = 0;
   n.empUntil = t + DEATH_STAR.empMinutes;
   n.lastTick = t;
+}
+
+/**
+ * THE REPAIR STATION'S BILL, PAID WHERE THE SHIPS STAND. Kalıcı gemi hasarı (`plan.md` F7).
+ *
+ * The simulator has no dock. A survivor carried out over the line is repaired on the
+ * spot and its bill — the damaged share of its price, less Industrial — leaves the
+ * store at once, never below zero: a commander too poor to pay is modelled as repaired
+ * for what the store held, an optimistic floor the live dock does not grant. The time
+ * in the dock is not modelled either. Returns what was paid, in raw resources.
+ */
+export function payRepairs(p: { alloy: number; crystal: number; deuterium: number; tech: TechLevels },
+  damage: DamageLots, rulesetVersion: number): number {
+  if (!shipDamageApplies(rulesetVersion)) return 0;
+  const bill = shipRepairCost(damage.filter((lot) => needsDock(lot.damageBp)), repairPct(p.tech));
+  const alloy = Math.min(p.alloy, bill.alloy);
+  const crystal = Math.min(p.crystal, bill.crystal);
+  const deuterium = Math.min(p.deuterium, bill.deuterium);
+  p.alloy -= alloy;
+  p.crystal -= crystal;
+  p.deuterium -= deuterium;
+  return alloy + crystal + deuterium;
 }
 
 function resolveStrategicMission(mission: StrategicMission, t: number, world: World): void {
@@ -1505,6 +1543,8 @@ function resolveStrategicMission(mission: StrategicMission, t: number, world: Wo
     target.alloy -= loot.fromStock.alloy;
     target.crystal -= loot.fromStock.crystal;
     target.deuterium -= loot.fromStock.deuterium;
+    // A caretaker's guard carries nothing forward (plan D1); the raider's survivors do.
+    payRepairs(p, result.attackerDamage, world.rulesetVersion);
     const taken = loot.alloy + loot.crystal + loot.deuterium;
     world.strategic.neutralTaken[target.tier] += taken;
     world.strategic.neutralRaids++;
@@ -2080,7 +2120,8 @@ function tryResearch(p: SimPlayer, t: number, world: World): void {
     const projected = projectedBuildState(p, world, 'RESEARCH');
     const held = Math.floor(projected.research[id] ?? 0);
     if (held >= target) continue;
-    if (project.prerequisite && (projected.research[project.prerequisite] ?? 0) < 1) continue;
+    // The one reading of a prerequisite, rung and all (Industrial needs Yard Automation 2).
+    if (!researchPrerequisiteMet(project, (id) => projected.research[id] ?? 0)) continue;
     if (projected.buildings.CORE < (project.requiredCore ?? 0)) continue;
 
     // Seasonal discoveries remain behavioral gates; the new fleet ladders are
@@ -2126,7 +2167,8 @@ function researchDeuteriumReserve(p: SimPlayer, t: number, world: World): number
     const target = Math.min(project.maxLevel, Math.floor(archetype.researchTargets[id] ?? 0));
     const held = Math.floor(projected.research[id] ?? 0);
     if (held >= target || t < project.availableAtMinutes) continue;
-    if (project.prerequisite && (projected.research[project.prerequisite] ?? 0) < 1) continue;
+    // The one reading of a prerequisite, rung and all (Industrial needs Yard Automation 2).
+    if (!researchPrerequisiteMet(project, (id) => projected.research[id] ?? 0)) continue;
     if (projected.buildings.CORE < (project.requiredCore ?? 0)) continue;
     if (id === 'ISOTOPE_SPECTROMETRY'
       && (!world.isotopes || !archetype.researchesIsotopes
@@ -2881,6 +2923,9 @@ export function resolveMission(m: Mission, t: number, world: World, stats: DaySt
   def.bufferAlloy -= loot.fromBuffer.alloy;
   def.bufferCrystal -= loot.fromBuffer.crystal;
   def.bufferDeuterium -= loot.fromBuffer.deuterium;
+  // After the loot, as the live dock is paid from what the raid left.
+  stats.repairValue += payRepairs(def, r.defenderDamage, world.rulesetVersion)
+    + payRepairs(atk, r.attackerDamage, world.rulesetVersion);
 
   /** History-derived Dense Fuel discovery: the hold filled and value remained. */
   const survivingCargo = fleetCargo(r.attackerSurvivors, atk.tech);

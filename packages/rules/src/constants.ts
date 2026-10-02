@@ -4,7 +4,7 @@ import type { BuildingId, FaultKind, InstrumentId, MobileHullId, Resources, Sate
 import { ECONOMY_ADJUSTMENT, ECONOMY_TEMPO, rebalanceHullPrice, scalePrice } from './tempo.js';
 
 /** Public chat is partitioned so a commander can read in the language they choose. */
-export const CHAT_LANGUAGES = ['tr', 'en', 'fr', 'de', 'es'] as const;
+export const CHAT_LANGUAGES = ['tr', 'en', 'fr', 'de', 'es', 'ja'] as const;
 export type ChatLanguage = (typeof CHAT_LANGUAGES)[number];
 
 /**
@@ -1718,6 +1718,12 @@ const ladderTop = (ladder: readonly number[]): number => ladder[ladder.length - 
 /** Build time left on the yard, by rung. Three tenths off at the top. */
 const YARD_SPEED_LADDER = [0.90, 0.85, 0.80, 0.75, 0.70] as const;
 /**
+ * INDUSTRIAL: THE SHARE OF A REPAIR'S BILL AND TIME THAT IS LEFT, IN WHOLE PERCENT.
+ * Owner table, 2026-09-29: level 1 is 75%, level 2 is 50%. Whole numbers because the
+ * repair invoice is ceiled in integers (`shipRepairInvoice`).
+ */
+const REPAIR_LADDER = [75, 50] as const;
+/**
  * Build time left on the SURFACE, by rung. A quarter off at the top. D198.
  *
  * The Yard's opposite number, and deliberately the shallower of the two. It
@@ -1752,6 +1758,7 @@ export const RESEARCH_TECH = {
   cargoLadder: CARGO_LADDER,
   fleetStatLadder: FLEET_STAT_LADDER,
   doctrineLadder: DOCTRINE_LADDER,
+  repairLadder: REPAIR_LADDER,
   /**
    * FOUR PROPULSION RUNGS ADD A QUARTER EACH, AND THE FOURTH DOUBLES THE FLEET.
    * D152, owner instruction. Existing arrival timestamps never move.
@@ -1778,22 +1785,23 @@ export const RESEARCH_TECH = {
   propulsionMaxLevel: 4,
 } as const;
 
-/** Release switches: strategic crafting is live; direct research remains unavailable. */
-export const FEATURE_FLAGS: Readonly<Record<
-  'STRATEGIC_CRAFTING_ENABLED' | 'STRATEGIC_RESEARCH_ENABLED',
-  boolean
->> = {
+/**
+ * Release switch for the strategic pair's forge and battery.
+ *
+ * `STRATEGIC_RESEARCH_ENABLED` stood beside it until 2026-10-01 and kept three
+ * research projects closed that no longer gated anything. The protocol is gone and the
+ * two capacities are live research, so there is nothing left for it to hold shut.
+ */
+export const FEATURE_FLAGS: Readonly<Record<'STRATEGIC_CRAFTING_ENABLED', boolean>> = {
   STRATEGIC_CRAFTING_ENABLED: true,
-  STRATEGIC_RESEARCH_ENABLED: false,
 };
 
 /**
  * THE WEAPON THAT ANSWERS THE WEAPON. T10.
  *
- * A Death Star is 221,445 resources, an hour of build, a Command Core of twelve, a
- * Shipyard of five and the whole Frontier chain. An interceptor that stopped it
- * cheaply would throw every bit of D113's work away, so the two are priced against
- * each other rather than separately.
+ * A Death Star is 88,000 resources, an hour of build, a Command Core of twelve and a
+ * Shipyard of five. An interceptor that stopped it cheaply would throw every bit of
+ * D113's work away, so the two are priced against each other rather than separately.
  *
  * IT FIRES ON THE RADAR CIRCLE, AND THAT IS THE DESIGN. A check at arrival would be
  * an INVISIBLE rule — you would only ever meet its result, which D124 forbids in as
@@ -1802,7 +1810,11 @@ export const FEATURE_FLAGS: Readonly<Record<
  * ring, beside the world; the Radar rung suddenly buys something enormous; and an
  * attacker who scouts can read the reach and price the risk before launching.
  *
- * Two charges can be loaded by default, matching the weapon's two-asset cap.
+ * MORE CHARGES THAN WEAPONS, AT EVERY RUNG. Owner, 2026-10-01: *"bu tarz oyunlarda
+ * savunma şarjları hep daha fazla oluyor"*. One charge downs one weapon, and it fires
+ * only from the TARGET world's pad — while each of the attacker's worlds keeps a pad
+ * of its own. So a loaded world is broken by volume from several worlds, or a clan,
+ * and the probe that counts the charges is what tells an attacker how many.
  */
 export const ANTI_STRATEGIC = {
   /**
@@ -1814,8 +1826,13 @@ export const ANTI_STRATEGIC = {
    * expensive thing and it never went off" trap, stated as a build refusal.
    */
   requiredRadar: 3,
-  requiredResearch: 'INTERCEPTION_GRID',
-  maxCharges: 2,
+  /**
+   * HOW MANY CHARGES ONE WORLD'S PAD HOLDS. Owner, 2026-10-01.
+   *
+   * Two with no research at all — Radar 3 is the whole door to the battery — and four
+   * once the commander holds the Interception Grid. Read through `interceptorCapacity`.
+   */
+  charges: { base: 2, researched: 4 },
   /** Immediate launch, with enough screen time for every entitled client to join the scene. */
   flightSeconds: 8,
   /** Half-price owner retune; still cheaper and faster than the weapon it stops. */
@@ -2277,6 +2294,23 @@ export const ABUSE = {
  * inside the window every time, so this rule stops blind overkill, not a careful
  * killer. The Veil is the defender's lever against that.
  */
+/**
+ * KALICI GEMİ HASARI — HOW MUCH OF A HULL IS GONE, AND WHAT THAT MEANS. Owner
+ * decision, 2026-09-29 (`plan.md` K1–K5). See `damage.ts`.
+ *
+ * Damage is a share of the ship's maximum hull in whole basis points, so a SHIP_ARMOR
+ * rung finished while a ship waits in the dock changes nothing about how damaged it is.
+ * Up to `autoRepairMaxBp` — exactly twenty percent included, the owner's line — a ship
+ * is patched for free the moment it is judged. Above it the ship waits in the Repair
+ * Station until its commander pays. At `destroyedBp` it no longer exists.
+ */
+export const SHIP_DAMAGE = {
+  autoRepairMaxBp: 2000,
+  destroyedBp: 10_000,
+  /** The most lots one hand-picked repair may name; "repair all" is its own request. */
+  repairLotsPerOrder: 50,
+} as const;
+
 export const ESCAPE = {
   /** A token garrison is not a fleet to save. Applies from ruleset 13. */
   minimumCombatShips: 5,
@@ -3406,8 +3440,12 @@ export const MULTI_WORLD = {
    * their persisted random calendars; this default affects new seasons only.
    * 10 → 11 on 2026-09-23 with the fleet escape (`fleetEscapeRulesetVersion`).
    * 12 → 13 adds its five-combat-ship floor for newly dealt seasons.
+   * 13 → 14 on 2026-09-30: persistent ship damage, the Repair Station, Industrial and
+   * radiation (`shipDamageRulesetVersion`, owner decision K5 — with the next season).
+   * 14 → 15 on 2026-10-02: Klan Savunma Desteği and the defence posture
+   * (`clanDefenseRulesetVersion`, owner decision K11 — with the next season).
    */
-  rulesetVersion: 13,
+  rulesetVersion: 15,
   /**
    * TAKTİK GERİ ÇEKİLME ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
    * 2026-09-23. A live season keeps the battle rule it was dealt: a fleet its owner
@@ -3418,6 +3456,13 @@ export const MULTI_WORLD = {
   /** The five-combat-ship floor is dealt to new seasons only. */
   fleetEscapeMinimumRulesetVersion: 13,
   /**
+   * KALICI GEMİ HASARI ARRIVES WITH A SEASON, NEVER INSIDE ONE. Owner decision,
+   * 2026-09-29 (`plan.md` K5). Persistent damage, the Repair Station, Industrial and
+   * radiation all read this one boundary. `rulesetVersion` itself is raised to meet it
+   * only once the whole feature is in (`plan.md` F13), so no season is dealt half of it.
+   */
+  shipDamageRulesetVersion: 14,
+  /**
    * KLAN ORTAK SAVAŞI, AND ITS OWN BOUNDARY. Owner design, 2026-09-20.
    *
    * Clan level, the clan treasury and the joint war operation exist only in a
@@ -3426,6 +3471,16 @@ export const MULTI_WORLD = {
    * its Dominion, reports and raid loot semantics stay exactly as they were dealt.
    */
   clanJointWarRulesetVersion: 10,
+  /**
+   * KLAN SAVUNMA DESTEĞİ, AND ITS OWN BOUNDARY. Owner decisions, 2026-10-01
+   * (`docs/clan-defense-support-plan.md`).
+   *
+   * Clanmates' support waves, the per-world defence posture (escape / support /
+   * hold) and the multi-defender battle exist only in a season dealt at or above
+   * this ruleset. Below it the posture is never read and the fleet escape stays
+   * the automatic rule the season was dealt.
+   */
+  clanDefenseRulesetVersion: 15,
   /**
    * 9 · 2026-09-19: pirates spawn per ACTIVE commander, hour by hour (`PIRATE.dynamic`),
    * instead of the per-seat lane derived from the key. A season created below this
@@ -3620,23 +3675,34 @@ export const MULTI_WORLD = {
  *
  * The tactical payload drains Aegis charge and disables ground defences for one
  * hour. It changes no levels, destroys no units or resources, and does not stop
- * production. A second hit restarts the one-hour EMP window.
+ * production. A second hit restarts the one-hour EMP window. On a colony it also
+ * costs loyalty (`colonyLoyaltyLoss`), which is the one way it can end an ownership.
  */
 export const DEATH_STAR = {
   type: 'DEATH_STAR',
   /**
-   * BOTH GATES ARE CORE 12 (D113) — the research and the weapon alike.
+   * THE WEAPON'S CORE GATE (D113), and the Stockpile research reads the same figure.
    *
    * Measured on the five gate seeds: every simulated commander finishes at Core
    * 17-18 and 41 of 50 also hold Shipyard 5, so this is a late gate rather than
-   * dead content. `RESEARCH_PROJECTS.DEATH_STAR_PROTOCOL.requiredCore` carries
-   * the same figure and reads it from here.
+   * dead content. `RESEARCH_PROJECTS.STRATEGIC_STOCKPILE.requiredCore` reads it
+   * from here.
    */
   requiredCore: 12,
   requiredShipyard: 5,
-  requiredResearch: 'DEATH_STAR_PROTOCOL',
-  /** Half-price owner retune, kept as an explicit final price. */
-  cost: { alloy: 71_831, crystal: 35_916, deuterium: 2_976 },
+  /**
+   * HOW MANY WEAPONS ONE WORLD'S PAD HOLDS. Owner, 2026-10-01.
+   *
+   * One with no research; two once the commander holds the Strategic Stockpile. The
+   * Death Star Protocol that used to authorise the weapon is gone — Core 12 and
+   * Shipyard 5 are the whole door. Read through `strategicStockpile`.
+   */
+  perWorld: { base: 1, researched: 2 },
+  /**
+   * OWNER FIGURES, 2026-10-01, kept as an explicit final price: 88,000 in all, so the
+   * 33,220 charge that stops it is about 38% of it rather than 30%.
+   */
+  cost: { alloy: 50_000, crystal: 35_000, deuterium: 3_000 },
   /**
    * ONE HOUR. Owner instruction, 2026-09-11: *"ölüm yıldızı üretim süresi 1 saat
    * olmalı"*. The economy table had taken it to four; `ANTI_STRATEGIC.buildMinutes`
@@ -3647,6 +3713,15 @@ export const DEATH_STAR = {
   speed: 1_250,
   /** EMP blackout duration: Aegis cannot regenerate and ground guns stay offline. */
   empMinutes: 60,
+  /**
+   * WHAT A HIT TAKES FROM A COLONY'S LOYALTY. Owner, 2026-10-01: *"her ölüm yıldızı
+   * vuruşunda %20 sadakat puanı düşer"*.
+   *
+   * Every colony, like `FAULT.battleLoyaltyLoss`, whatever its Core. A colony at twenty
+   * or less reaches zero and secedes through the ordinary loyalty path — the world goes
+   * NEUTRAL, not to the attacker. Capitals have no loyalty and lose none.
+   */
+  colonyLoyaltyLoss: 20,
   /** Recent resolved impacts remain public this long so reconnecting tabs see the event. */
   impactSeconds: 8,
   probeVisibilityAccuracy: 0.75,

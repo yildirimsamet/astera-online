@@ -701,8 +701,11 @@ export const cancelRefund = (cost: Resources): Resources => ({
   deuterium: Math.floor(cost.deuterium * BUILD.cancelRefund),
 });
 
-/** Which of the two queues a thing is built in. They run independently. */
-export type BuildQueueId = 'CONSTRUCTION' | 'YARD';
+/**
+ * Which queue a thing is built in. They run independently. The Repair Station's own
+ * lane (Kalıcı gemi hasarı, owner K2) follows the yard's rules beside it, never in it.
+ */
+export type BuildQueueId = 'CONSTRUCTION' | 'YARD' | 'REPAIR';
 
 /**
  * One pending order, as the rules see it.

@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import { useTranslation } from 'react-i18next';
@@ -8,8 +8,10 @@ import { SkinAssetBoundary } from '../galaxy/SkinAssetBoundary.jsx';
 
 const NODE = [previewSkinNode('shop-preview')];
 const START_ANGLES: Readonly<Record<string, number>> = {
+  'planet-turkey': 1,
   'planet-france': -0.65,
-  'planet-spain': 1.5,
+  'planet-spain': 2.5,
+  'planet-japan': -0.7,
 };
 
 /**
@@ -22,6 +24,7 @@ export function SkinPreview({
   status,
   className = 'h-72',
   phaseOffset,
+  still = false,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
@@ -29,8 +32,13 @@ export function SkinPreview({
   className?: string;
   /** Only the shop and derived selection card set a merchandising start angle. */
   phaseOffset?: number;
+  /** Capture a fixed, fully rendered frame for a selection card. */
+  still?: boolean;
 }) {
   const { t } = useTranslation();
+  const renderKey = `${skinId}:${status}`;
+  const [readyKey, setReadyKey] = useState<string | null>(null);
+  const markRendered = useCallback(() => { setReadyKey(renderKey); }, [renderKey]);
   return (
     /*
       A VERTICAL SWIPE SCROLLS THE PAGE; ONLY A SIDEWAYS DRAG TURNS THE LOOK. OrbitControls
@@ -38,7 +46,8 @@ export function SkinPreview({
       stage), which swallowed every scroll that started on the model (owner 2026-09-27). The
       `!important` rule here outranks that inline style, so the browser keeps vertical pans.
     */
-    <div data-skin-stage className={`relative w-full [&_*]:touch-pan-y! ${className}`} style={{ touchAction: 'pan-y' }}>
+    <div data-skin-stage data-skin-ready={still ? String(readyKey === renderKey) : undefined}
+      className={`relative w-full [&_*]:touch-pan-y! ${className}`} style={{ touchAction: 'pan-y' }}>
       {/*
         TRANSPARENT, AND NO BLOOM: a bloom pass draws the canvas opaque and boxed the look in a
         dark card over the store's nebula and aura (seen on the page). The glow is the page's.
@@ -52,11 +61,12 @@ export function SkinPreview({
           fallback={<Html center><span className="whitespace-nowrap font-v2-ui text-micro uppercase tracking-wide text-v2-ink-2">{t('skins.modelUnavailable')}</span></Html>}>
           <Suspense fallback={<Html center><span className="font-v2-mono text-micro text-v2-ink-3">…</span></Html>}>
             <PlanetSkinModel skinId={skinId} status={status} nodes={NODE}
-              previewPhaseOffset={phaseOffset ?? START_ANGLES[skinId] ?? 0} />
+              previewPhaseOffset={phaseOffset ?? START_ANGLES[skinId] ?? 0}
+              freezeRotation={still} onRendered={still ? markRendered : undefined} />
           </Suspense>
         </SkinAssetBoundary>
         {/* It turns by itself, so the look is alive before anyone touches it; a drag takes over. */}
-        <OrbitControls enablePan={false} enableDamping autoRotate autoRotateSpeed={0.9} minDistance={2.5} maxDistance={7.5} />
+        <OrbitControls enablePan={false} enableDamping autoRotate={!still} autoRotateSpeed={0.9} minDistance={2.5} maxDistance={7.5} />
       </Canvas>
     </div>
   );

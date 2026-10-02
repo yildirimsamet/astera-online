@@ -9,7 +9,7 @@ export const SKIN_COLLECTIONS = {
     descriptionKey: 'skins.elementalDescription',
   },
   country: {
-    ids: ['planet-turkey', 'planet-germany', 'planet-france', 'planet-spain'],
+    ids: ['planet-turkey', 'planet-germany', 'planet-france', 'planet-spain', 'planet-japan'],
     nameKey: 'skins.countryWorlds',
     descriptionKey: 'skins.countryDescription',
   },
@@ -82,6 +82,14 @@ export const PLANET_SKIN_CATALOG = {
     accent: '#f3bb6d',
     glow: 'rgba(226, 142, 59, 0.29)',
     edition: '04',
+  },
+  'planet-japan': {
+    image: skinAsset('images/skins/planet-japan.png'),
+    nameKey: 'skins.japan',
+    storyKey: 'skins.japanStory',
+    accent: '#f3a9a9',
+    glow: 'rgba(231, 73, 86, 0.29)',
+    edition: '05',
   },
 } as const satisfies Record<PlanetSkinId, {
   image: string;

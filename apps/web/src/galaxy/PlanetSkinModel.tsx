@@ -21,8 +21,7 @@ import {
   PLANET_SKIN_BODY_SCALE,
   PLANET_SKIN_FULL_ANGULAR_RADIUS,
   PLANET_SKIN_MODEL_ANGULAR_RADIUS,
-  PLANET_SKIN_SPIN_RATE,
-  planetSkinPhase,
+  planetSkinRotation,
 } from './planetSkinAttachments.js';
 
 type SkinNode = Pick<PlanetNode, 'id' | 'position' | 'radius' | 'stance' | 'intel'>;
@@ -197,6 +196,8 @@ export function PlanetSkinModel({
   onSelect,
   galaxyLod = false,
   previewPhaseOffset = 0,
+  freezeRotation = false,
+  onRendered,
 }: {
   skinId: string;
   status: PlanetSkinStatus;
@@ -205,6 +206,8 @@ export function PlanetSkinModel({
   /** The shop preview has no billboard peer, so only the galaxy enables switching. */
   galaxyLod?: boolean;
   previewPhaseOffset?: number;
+  freezeRotation?: boolean;
+  onRendered?: () => void;
 }) {
   const visual = useMemo(() => planetSkinVisual(skinId, status), [skinId, status]);
   if (!visual) return null;
@@ -216,6 +219,8 @@ export function PlanetSkinModel({
       onSelect={onSelect}
       galaxyLod={galaxyLod}
       previewPhaseOffset={previewPhaseOffset}
+      freezeRotation={freezeRotation}
+      onRendered={onRendered}
     />
   );
 }
@@ -227,6 +232,8 @@ function LoadedPlanetSkinModel({
   onSelect,
   galaxyLod,
   previewPhaseOffset,
+  freezeRotation,
+  onRendered,
 }: {
   visual: NonNullable<ReturnType<typeof planetSkinVisual>>;
   status: PlanetSkinStatus;
@@ -234,6 +241,8 @@ function LoadedPlanetSkinModel({
   onSelect?: (id: string) => void;
   galaxyLod: boolean;
   previewPhaseOffset: number;
+  freezeRotation: boolean;
+  onRendered?: () => void;
 }) {
   const loaded = useGLTF(
     [visual.modelUrl, visual.lowModelUrl],
@@ -266,6 +275,7 @@ function LoadedPlanetSkinModel({
   const lowBody = useRef<THREE.InstancedMesh>(null);
   const hits = useRef<THREE.InstancedMesh>(null);
   const hitNodes = useRef<SkinNode[]>([]);
+  const reportedRender = useRef(false);
   const helper = useMemo(() => new THREE.Object3D(), []);
   const tint = useMemo(() => new THREE.Color(), []);
   const projection = useMemo(() => new THREE.Matrix4(), []);
@@ -308,7 +318,7 @@ function LoadedPlanetSkinModel({
       helper.position.set(...node.position);
       helper.rotation.set(
         0,
-        planetSkinPhase(node.id) + previewPhaseOffset + clock.elapsedTime * PLANET_SKIN_SPIN_RATE,
+        planetSkinRotation(node.id, previewPhaseOffset, clock.elapsedTime, freezeRotation),
         0,
       );
       helper.scale.setScalar(node.radius * PLANET_SKIN_BODY_SCALE);
@@ -337,6 +347,10 @@ function LoadedPlanetSkinModel({
     if (hits.current) {
       settleMembers(hits.current, hitNodes.current, hitCount, seated);
       hits.current.visible = hitCount > 0;
+    }
+    if (onRendered && fullCount > 0 && !reportedRender.current) {
+      reportedRender.current = true;
+      onRendered();
     }
   });
 
