@@ -760,6 +760,12 @@ function ChannelPanel({
               onChange={(event) => {
                 onDraft(Array.from(event.currentTarget.value).slice(0, maxChars).join(''));
               }}
+              onKeyDown={(event) => {
+                // Enter selects IME text too; Safari can report that selection only as 229.
+                if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+                event.preventDefault();
+                if (!event.repeat) event.currentTarget.form?.requestSubmit();
+              }}
               className="block h-10 w-full resize-none rounded-pill border border-v2-line-hi bg-v2-deep px-4 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self"
             />
           </label>

@@ -358,6 +358,118 @@ describe('galaxy chat surface', () => {
     expect(composer).toHaveValue('');
   });
 
+  it.each(['general', 'clan'] as const)('sends %s with Enter and keeps focus in the cleared composer', async (channel) => {
+    const { post, postClan } = show(vi.fn(), channel);
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: channel === 'general' ? 'Message the galaxy' : 'Message your clan' });
+    await user.type(composer, '  Ready  ');
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      if (channel === 'general') expect(post).toHaveBeenCalledWith('en', 'Ready');
+      else expect(postClan).toHaveBeenCalledWith('Ready');
+    });
+    expect(composer).toHaveValue('');
+    expect(composer).toHaveFocus();
+  });
+
+  it('keeps Shift+Enter as a newline and sends both lines with Enter', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.type(composer, 'First line');
+    await user.keyboard('{Shift>}{Enter}{/Shift}Second line');
+    expect(composer).toHaveValue('First line\nSecond line');
+    expect(post).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'First line\nSecond line'); });
+  });
+
+  it('sends Enter in the selected language without changing another language’s draft', async () => {
+    const { post, client } = show();
+    client.setQueryData(keys.chatMessagesFor('tr'), initial);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'English draft');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Merhaba');
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('tr', 'Merhaba'); });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'en');
+    expect(screen.getByRole('textbox', { name: 'Message the galaxy' })).toHaveValue('English draft');
+  });
+
+  it('preserves a quoted reply when sending with Enter', async () => {
+    const { post } = show();
+    const user = userEvent.setup();
+    fireEvent.contextMenu(document.querySelector('[data-chat-message="one"]')!);
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    await user.type(screen.getByRole('textbox', { name: 'Message the galaxy' }), 'Agreed');
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Agreed', 'one'); });
+    expect(screen.queryByText('Replying to İzci')).not.toBeInTheDocument();
+  });
+
+  it.each(['', '   '])('ignores Enter for an empty or whitespace-only draft %j without inserting a newline', async (draft) => {
+    const { post } = show();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.change(composer, { target: { value: draft } });
+    const user = userEvent.setup();
+    await user.click(composer);
+    await user.keyboard('{Enter}');
+    expect(post).not.toHaveBeenCalled();
+    expect(composer).toHaveValue(draft);
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])('does not send Enter while an IME is selecting text (%j)', async (ime) => {
+    const { post } = show();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.change(composer, { target: { value: 'こんにちは' } });
+    fireEvent.keyDown(composer, { key: 'Enter', ...ime });
+    expect(post).not.toHaveBeenCalled();
+    expect(composer).toHaveValue('こんにちは');
+    const user = userEvent.setup();
+    await user.click(composer);
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'こんにちは'); });
+  });
+
+  it('ignores held Enter repeats without inserting a newline', () => {
+    const { post } = show();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    fireEvent.change(composer, { target: { value: 'Ready' } });
+    expect(fireEvent.keyDown(composer, { key: 'Enter', repeat: true })).toBe(false);
+    expect(post).not.toHaveBeenCalled();
+    expect(composer).toHaveValue('Ready');
+  });
+
+  it('keeps the draft after a failed Enter send', async () => {
+    const { post } = show();
+    post.mockRejectedValueOnce(new Error('Network unavailable'));
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.type(composer, 'Keep this draft');
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(post).toHaveBeenCalledWith('en', 'Keep this draft'); });
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled(); });
+    expect(composer).toHaveValue('Keep this draft');
+  });
+
+  it('does not send again while the first Enter request is pending', async () => {
+    const { post } = show();
+    let finish: ((value: Awaited<ReturnType<Api['postChat']>>) => void) | undefined;
+    post.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const user = userEvent.setup();
+    const composer = screen.getByRole('textbox', { name: 'Message the galaxy' });
+    await user.type(composer, 'One request');
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled(); });
+    await user.keyboard('{Enter}{Enter}');
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(composer).toHaveValue('One request');
+    if (!finish) throw new Error('Post did not start');
+    finish({ message: { id: 'posted', authorPlayerId: 'mine', username: 'Vantage', content: 'One request', language: 'en', createdAt: at, self: true } });
+    await waitFor(() => { expect(composer).toHaveValue(''); });
+  });
+
   it('scrolls only the message history after posting, never the page viewport', async () => {
     const { post } = show();
     const history = screen.getByRole('log', { name: 'Galaxy messages' });

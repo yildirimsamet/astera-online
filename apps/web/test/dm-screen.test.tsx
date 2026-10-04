@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Api, ApiError } from '../src/api/client.js';
@@ -58,6 +58,36 @@ function show() {
 afterEach(async () => { await i18n.changeLanguage('en'); });
 
 describe('direct messages in chat', () => {
+  it('sends a DM with Enter while Shift+Enter keeps a newline', async () => {
+    const { postDm } = show();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
+    const composer = screen.getByRole('textbox', { name: 'Message Commander Atlas' });
+    await user.type(composer, 'First');
+    await user.keyboard('{Shift>}{Enter}{/Shift}Second');
+    expect(composer).toHaveValue('First\nSecond');
+    expect(postDm).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    await waitFor(() => { expect(postDm).toHaveBeenCalledWith('peer-1', 'First\nSecond'); });
+    expect(composer).toHaveValue('');
+    expect(composer).toHaveFocus();
+  });
+
+  it('does not send with Enter when the peer cannot receive messages', async () => {
+    const { postDm, client } = show();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /DM.*1 unread/i }));
+    const composer = screen.getByRole('textbox', { name: 'Message Commander Atlas' });
+    await user.type(composer, 'Wait for Atlas');
+    act(() => {
+      client.setQueryData(keys.dmConversations, { conversations: [{ ...conversation, canSend: false, unavailableReason: 'WAITING' }], totalUnread: 1 });
+    });
+    await waitFor(() => { expect(composer).toBeDisabled(); });
+    fireEvent.keyDown(composer, { key: 'Enter' });
+    expect(postDm).not.toHaveBeenCalled();
+    expect(composer).toHaveValue('Wait for Atlas');
+  });
+
   it('explains DM send refusals in the player’s language', async () => {
     await i18n.changeLanguage('tr');
     expect(describeError(new ApiError('DM_UNAVAILABLE', 'Both commanders must be in the same live galaxy', 409))).toMatch(/galaksi/i);
