@@ -74,6 +74,11 @@ describe('skipping the onboarding rehearsal', () => {
     await user.type(screen.getByLabelText('Commander name'), 'NewPilot');
     await user.click(screen.getByRole('button', { name: 'Continue' }));
     await user.type(screen.getByLabelText('Password'), 'a-real-password');
+    // Pick the asserted country explicitly: the default follows the browser's
+    // timezone and must not depend on which machine runs this rehearsal test.
+    await user.click(screen.getByRole('button', { name: /Change$/ }));
+    await user.click(screen.getByRole('button', { name: 'United States' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm country' }));
     await user.click(screen.getByRole('button', { name: /claim/i }));
     expect(onClaim).toHaveBeenCalledWith('NewPilot', 'a-real-password', [
       { kind: 'upgrade', building: 'CORE' },

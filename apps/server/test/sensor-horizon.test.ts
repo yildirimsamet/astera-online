@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEATH_STAR,
+  GALAXY,
   SENSOR,
   asteroidPosition,
   engagementEndsAt,
@@ -58,7 +59,7 @@ describe('the durable sensor-history backfill', () => {
         : `WHEN "e"."level" = ${String(level)} THEN ${String(reach)}`;
       expect(migration).toContain(predicate);
     });
-    expect(migration).toContain(`ELSE ${String(SENSOR.baseRadius)}`);
+    expect(migration).toContain('ELSE 750');
   };
 
   it('backfilled on the finite Telescope ladder of its day', () => {
@@ -129,16 +130,12 @@ describe('the sensor horizon', () => {
     /**
      * The caller at the origin; the fight a long way off along +x.
      *
-     * The default pair sits at 2,400 → 2,850, so its midpoint at 2,625 is BEYOND
-     * the Telescope 5 reach (2,400) and INSIDE Radar 5 (3,300) — the ×1.5 ladder of
-     * 2026-09-18, and the same relation the 1,600 → 1,900 pair held before it. That is
-     * the CONTACT band, and it is also the proof that no amount of Telescope
-     * erases the spherical horizon. `raidBetween` moves the pair for the tests
-     * that need one of the other two zones.
+     * The pair lies in the outer shell beyond Telescope 5 (80% of the galaxy)
+     * but inside Radar 5. `raidBetween` moves it for tests of the other zones.
      */
     await placeAt(f.db, mine, { x: 0 });
-    await placeAt(f.db, a, { x: 2400 });
-    await placeAt(f.db, b, { x: 2850 });
+    await placeAt(f.db, a, { x: GALAXY.radius * 0.9 });
+    await placeAt(f.db, b, { x: GALAXY.radius * 0.95 });
 
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 8);
     await giveSatellite(f.db, mine, 'UPLINK');
@@ -215,7 +212,7 @@ describe('the sensor horizon', () => {
   it('still shows nothing with a maxed telescope and no radar', async () => {
     await eyes(5, 0);
     await distantRaid();
-    // 2,625 units out: past Telescope 5, and nothing detects it.
+    // The outer shell is past Telescope 5, and nothing detects it.
     expect(await contacts()).toEqual([]);
   });
 
@@ -249,7 +246,7 @@ describe('the sensor horizon', () => {
    */
   it('identifies the same craft once the telescope reaches it', async () => {
     await eyes(5, 5);
-    // Brought inside the 2,400 reach: midpoint 1,150.
+    // Brought inside Telescope reach: midpoint 1,150.
     await raidBetween(1000, 1300);
 
     const seen = await contacts();
@@ -437,7 +434,7 @@ describe('the sensor horizon', () => {
 
   it('shows a Radar contact beside the public bombardment, without a hull', async () => {
     await eyes(0, 3);
-    const launch = await raidBetween(800, 1000);
+    const launch = await raidBetween(SENSOR.baseRadius + 325, SENSOR.baseRadius + 575);
     f.clock.set(new Date(launch.arriveAt.getTime() + 1));
 
     const seen = await contacts();
@@ -520,7 +517,7 @@ describe('the sensor horizon', () => {
     expect(seen[0]?.silhouette).toBeUndefined();
     expect(seen[0]).not.toHaveProperty('fleet');
 
-    await placeAt(f.db, mine, { x: 500 });
+    await placeAt(f.db, mine, { x: GALAXY.radius / 3 });
     await eyes(5, 0);
     const inSight = await contacts();
     expect(inSight.map((c) => c.kind)).toEqual(['death_star']);
@@ -753,19 +750,19 @@ describe('the radar’s long circle', () => {
 
   /**
    * DERIVED, BECAUSE IT WENT STALE. This was the literal `1100`, so the whole
-   * suite failed the day the ladder moved — for a reason that had nothing to do
-   * with what any of it was testing. What the tests actually need is a radius
-   * SHORTER than the 3,000-unit leg, and that is asserted instead.
+   * suite failed the day the ladder moved. The leg must begin outside Radar 3;
+   * at 10% it is still outside, and at 65% it is inside but beyond naked sight.
    */
   const SENSE_AT_L3 = radarContactRange(3);
+  const LEG_LENGTH = SENSE_AT_L3 * 1.15;
 
   beforeEach(async () => {
     f = await seedWorld(4);
     [home, far, other] = f.planetIds as [string, string, string];
 
     await placeAt(f.db, home, { x: 0 });
-    await placeAt(f.db, far, { x: 3000 });
-    await placeAt(f.db, other, { x: 3200 });
+    await placeAt(f.db, far, { x: LEG_LENGTH });
+    await placeAt(f.db, other, { x: LEG_LENGTH + 50 });
 
     for (const id of f.planetIds) await setLevel(f.db, id, 'CORE', 8);
     // The Uplink is the gate on both instruments that see (D25), so without it
@@ -775,7 +772,9 @@ describe('the radar’s long circle', () => {
     await setLevel(f.db, far, 'SHIPYARD', 3);
     await grant(f.db, far, 20_000, 5_000);
     await levelWorld(f.db, f.planetIds);
-    expect(SENSE_AT_L3, 'the leg must outrun the radius').toBeLessThan(3000);
+    expect(SENSE_AT_L3, 'the leg must outrun the radius').toBeLessThan(LEG_LENGTH * 0.9);
+    expect(LEG_LENGTH * 0.35).toBeGreaterThan(SENSOR.baseRadius);
+    expect(LEG_LENGTH + 50).toBeLessThanOrEqual(GALAXY.radius);
   });
 
   const seen = async () =>
@@ -791,10 +790,8 @@ describe('the radar’s long circle', () => {
   };
 
   /**
-   * THE HALF THE OLD EXPRESSION COULD NEVER REACH. The leg is 3,000 long and the
-   * radius is shorter than the 3,000-unit leg, so `mission.distance <= sense`
-   * was false for the whole
-   * flight — the defender got nothing while the fleet closed on them.
+   * THE HALF THE OLD EXPRESSION COULD NEVER REACH. The leg begins outside the
+   * radius, so `mission.distance <= sense` was false for the whole flight.
    */
   it('senses a raid from beyond the radius once it comes inside it', async () => {
     await raidTo(far, home, 0.8);
@@ -884,11 +881,9 @@ describe('the radar’s long circle', () => {
    */
   it('at L3 carries no arrival, no size and no roster', async () => {
     /**
-     * INSIDE THE CIRCLE AND OUTSIDE THE EYES. The leg is 3,000 long, so at 65%
-     * the craft stands about 1,050 out — past `SENSOR.baseRadius` of 750, which
-     * would identify it and hand over `mass` for a different and legitimate
-     * reason, and inside the derived L3 Radar reach. That gap is the place the
-     * public contact product can be read on its own.
+     * INSIDE THE CIRCLE AND OUTSIDE THE EYES. At 65% the craft has 35% of its
+     * leg left: beyond naked sight, but inside Radar 3. The setup checks both
+     * boundaries so a balance change cannot silently turn this into sight.
      */
     await raidTo(far, home, 0.65);
     const contact = (await seen())[0];

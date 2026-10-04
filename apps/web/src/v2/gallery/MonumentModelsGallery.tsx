@@ -73,6 +73,10 @@ function Ready({ ordinal }: { ordinal: number }) {
 /** Development model review: the actual runtime body beside the trade-ship size anchor. */
 export function MonumentModelsGallery() {
   const [ordinal, setOrdinal] = useState(1);
+  const colours = useMemo(() => {
+    const styles = getComputedStyle(document.documentElement);
+    return { background: styles.getPropertyValue('--color-v2-void').trim(), light: styles.getPropertyValue('--color-v2-crystal').trim() };
+  }, []);
   return (
     <main className="min-h-dvh bg-v2-void text-v2-ink">
       <header className="space-y-2 p-3">
@@ -90,10 +94,10 @@ export function MonumentModelsGallery() {
       </header>
       <div className="h-[min(70vh,580px)]" data-monument-view="">
         <Canvas orthographic camera={{ position: [0, 7, 20], near: 0.1, far: 100 }} gl={{ antialias: true, preserveDrawingBuffer: true }}>
-          <color attach="background" args={['#040911']} />
+          <color attach="background" args={[colours.background]} />
           <ambientLight intensity={1.3} />
           <directionalLight position={[-5, 8, 6]} intensity={2.8} />
-          <directionalLight position={[7, 0, -5]} intensity={1.2} color="#9dc9ff" />
+          <directionalLight position={[7, 0, -5]} intensity={1.2} color={colours.light} />
           <Camera />
           <Suspense fallback={null}>
             <group key={ordinal}>

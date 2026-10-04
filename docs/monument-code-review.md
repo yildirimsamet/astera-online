@@ -153,3 +153,9 @@ Local smoke: `/health` 200, DB 141/141 migration, `MONUMENT-LOCAL` live/ruleset 
 ### Genel doğrulama
 
 Kod, plan ve manuel inceleme tamamlandıktan sonra `pnpm verify --exclude-sims` çalıştırılacaktır. Sonuç, başarısızlıkların etkisi ve teslim kararı bu bölüme eklenir. Production deployment bu inceleme sırasında yapılmadı.
+
+İlk son-kapı koşusunda workspace typecheck/lint ve **rules 107 dosya / 1.976 test** geçti. Aynı makinede ikinci bir `verify` aynı sunucu test DB'sine geçeceği için bu incelemenin sunucu süreci kontrollü durduruldu; bu koşu komple PASS diye kaydedilmez. Bütün sunucu testleri ayrı `astera_monument_handoff_2050_test` veritabanında, snowball hariç tekrar başlatıldı. Local oyun DB'si değiştirilmedi.
+
+Web koşusu iki ek eksiği gösterdi: development model galerisindeki hardcoded renkler v2 token sözleşmesini kırıyordu; onboarding skip testi yeni browser timezone ülke varsayılanını sabit ABD sanıyordu. İlki tema token'larına bağlandı, ikincisi oyuncunun açık ülke seçimini doğrulayacak şekilde sabitlendi. İlgili **28/28 test** ve iki dosyanın lint'i geçti. Galeri değişikliği gerçek 350 px browser'da yeniden görüldü: tema renkleri boş değil, 4.998 üçgen, model/referans oranı 3,00, browser error yok (`mobile-gallery-tokens.png`). Production web build son değişiklikle tekrar geçti. Bu ek değişiklikler sahibin ilk push'undan sonradır; final toplu sonuç ayrıca kaydedilir.
+
+Web'in son tam tekrarı: **368 dosya PASS / 1 dosya SKIP; 5.035 test PASS / 29 SKIP**. Log: `/tmp/astera-monument-final-web.log`. Model reprojection araç testi ayrıca **8/8 PASS** (`/tmp/astera-monument-final-textures.log`). Sunucunun izole tam koşusu henüz tamamlanmadığından tüm kapı yeşil diye raporlanmaz.

@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
-import { INTEL, SENSOR } from '@astera/rules';
 import { sensorEpochs } from '../src/db/schema.js';
 import { seedWorld, testDb } from './helpers.js';
 
@@ -24,6 +23,7 @@ async function runMigration(db: Awaited<ReturnType<typeof seedWorld>>['db']): Pr
  * ladder. Every telescope rung on the old ladder is exactly two thirds of its new
  * value and the naked-eye floor did not move, which is what lets the migration
  * rescale the stored reach instead of re-deriving every world's instruments.
+ * These are the values of 0097's day, independent of later runtime ladders.
  */
 it('reopens every open sensor epoch on the ×1.5 ladder and keeps the old interval', async () => {
   const f = await seedWorld(3);
@@ -33,7 +33,7 @@ it('reopens every open sensor epoch on the ×1.5 ladder and keeps the old interv
       .where(and(eq(sensorEpochs.planetId, planetId), isNull(sensorEpochs.endsAt)));
   };
   await setReach(a, 950);
-  await setReach(b, SENSOR.baseRadius);
+  await setReach(b, 750);
   await setReach(c, 4400);
 
   await runMigration(f.db);
@@ -42,9 +42,9 @@ it('reopens every open sensor epoch on the ×1.5 ladder and keeps the old interv
   const open = (planetId: string) => rows.filter((r) => r.planetId === planetId && r.endsAt === null);
   const closed = (planetId: string) => rows.filter((r) => r.planetId === planetId && r.endsAt !== null);
 
-  expect(open(a).map((r) => r.reach)).toEqual([INTEL.telescopeRange[1]]);
-  expect(open(b).map((r) => r.reach)).toEqual([SENSOR.baseRadius]);
-  expect(open(c).map((r) => r.reach)).toEqual([INTEL.telescopeRange[8]]);
+  expect(open(a).map((r) => r.reach)).toEqual([950 * 1.5]);
+  expect(open(b).map((r) => r.reach)).toEqual([750]);
+  expect(open(c).map((r) => r.reach)).toEqual([4400 * 1.5]);
   expect(closed(a).map((r) => r.reach)).toContain(950);
   expect(closed(c).map((r) => r.reach)).toContain(4400);
 
