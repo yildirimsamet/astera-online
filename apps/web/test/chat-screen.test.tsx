@@ -72,8 +72,8 @@ function show(
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}><ApiProvider api={api}>{children}</ApiProvider></QueryClientProvider>
   );
-  render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} {...(initialClanDraft ? { initialClanDraft } : {})} /></Wrapper>);
-  return { api, post, postClan, client, onFocusPlanet };
+  const { unmount } = render(<Wrapper><ChatScreen initialChannel={initialChannel} onFocusPlanet={onFocusPlanet} {...(initialClanDraft ? { initialClanDraft } : {})} /></Wrapper>);
+  return { api, post, postClan, client, onFocusPlanet, unmount };
 }
 
 beforeAll(() => {
@@ -81,6 +81,7 @@ beforeAll(() => {
 });
 
 afterEach(async () => {
+  localStorage.removeItem('astera.chat.language.v1');
   await i18n.changeLanguage('en');
 });
 
@@ -182,6 +183,50 @@ describe('galaxy chat surface', () => {
     await i18n.changeLanguage('fr');
     show();
     expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+  });
+
+  it('reopens on the last chosen chat language while the application stays English', async () => {
+    const { unmount } = show();
+    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    unmount();
+
+    show();
+    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('tr');
+    expect(i18n.resolvedLanguage).toBe('en');
+  });
+
+  it('keeps the saved chat language when the application language changes', async () => {
+    const { unmount } = show();
+    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Chat language' }), 'tr');
+    unmount();
+
+    await i18n.changeLanguage('fr');
+    show();
+    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('tr');
+    expect(i18n.resolvedLanguage).toBe('fr');
+  });
+
+  it('restores a valid saved chat language on a fresh screen', () => {
+    localStorage.setItem('astera.chat.language.v1', 'ja');
+    show();
+    expect(screen.getByRole('combobox', { name: 'Chat language' })).toHaveValue('ja');
+  });
+
+  it('falls back to the application language for an unsupported saved chat language', async () => {
+    localStorage.setItem('astera.chat.language.v1', 'invalid');
+    await i18n.changeLanguage('fr');
+    show();
+    expect(screen.getByRole('combobox', { name: 'Langue du chat' })).toHaveValue('fr');
+  });
+
+  it('can still open and switch chat languages when browser storage is blocked', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    show();
+    const select = screen.getByRole('combobox', { name: 'Chat language' });
+    expect(select).toHaveValue('en');
+    await userEvent.setup().selectOptions(select, 'tr');
+    expect(select).toHaveValue('tr');
   });
 
   it('switches the public chat language without changing the app language', async () => {

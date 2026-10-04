@@ -56,6 +56,18 @@ interface MessageRow {
 /** Which room: the galaxy's general channel or the commander's clan. */
 export type ChatChannel = 'general' | 'clan' | 'dm';
 
+const CHAT_LANGUAGE_STORAGE_KEY = 'astera.chat.language.v1';
+
+function initialChatLanguage(): Language {
+  try {
+    const stored = localStorage.getItem(CHAT_LANGUAGE_STORAGE_KEY);
+    if (isLanguage(stored)) return stored;
+  } catch {
+    // A blocked preference store must not prevent the chat from opening.
+  }
+  return currentLanguage();
+}
+
 export function ChatScreen({
   onFocusPlanet,
   initialChannel = 'general',
@@ -68,7 +80,7 @@ export function ChatScreen({
 }) {
   const { t } = useTranslation();
   const [channel, setChannel] = useState<ChatChannel>(initialChannel);
-  const [chatLanguage, setChatLanguage] = useState<Language>(() => currentLanguage());
+  const [chatLanguage, setChatLanguage] = useState<Language>(initialChatLanguage);
   const [generalDrafts, setGeneralDrafts] = useState<Partial<Record<Language, string>>>({});
   const [generalReplies, setGeneralReplies] = useState<Partial<Record<Language, MessageRow | null>>>({});
   const [clanDraft, setClanDraft] = useState(initialClanDraft);
@@ -146,7 +158,13 @@ export function ChatScreen({
               value={chatLanguage}
               onChange={(event) => {
                 const next = event.currentTarget.value;
-                if (isLanguage(next)) setChatLanguage(next);
+                if (!isLanguage(next)) return;
+                setChatLanguage(next);
+                try {
+                  localStorage.setItem(CHAT_LANGUAGE_STORAGE_KEY, next);
+                } catch {
+                  // Keep the current selection usable when storage is blocked or full.
+                }
               }}
             >
               {LANGUAGES.map((language) => (

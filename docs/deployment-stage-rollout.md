@@ -259,3 +259,52 @@ Dosya bazında birleşik sunucu kanıtı `/tmp/astera-final-server-coverage-2026
 release SHA'sıyla sunucudaki backup klasörüne de alınır. VPS'teki ek disposable CI
 koşusu performans nedeniyle durduruldu ve PASS olarak sayılmadı. Production/stage
 DB'si test veritabanı olarak kullanılmadı.
+
+## Production uygulama kaydı — 4 Ekim 2026
+
+- Sunucu ve ilk web release'i `856cbf66189fc8515a89a38bbe0ae8669b1b2338`;
+  dört sunucu container'ının image ID'si
+  `sha256:31cead1947ac08b85e31ac6a1aa1615a3bdd732810388273e3c63442291ebbf5`.
+- Production bakım penceresi 18:48:39–18:56:50 UTC (21:48:39–21:56:50 TRT),
+  yaklaşık sekiz dakika. Stage yayını bakım sırasında erişilebilir kaldı.
+- Dört production writer durduktan sonra alınan son dump checksum ile doğrulandı;
+  aynı release'le ayrı disposable DB'de restore, 44 migration ve force wipe
+  provası geçti. Sonra production'a aynı migration ve wipe uygulandı; journal 141/141.
+- 941 hesap, kimlik/parola kayıtları, 400 eski sezon sonucu ve 95 kalıcı sosyal
+  ödül korundu. 288 lifetime fold doğrulandı; 287 admin dışı kapanış sonucu
+  eklendi. 10.761 sohbet kaydı arşivlendi. Eski üç sezon `FORCED_WIPE` ile mühürlendi.
+- Yeni production cycle: `11578e87-07c4-42db-9da3-afc93ed265cf`. EU-1 ve EU-2
+  ruleset 16, 1000 kapasite, beşer anıt ve beşer HP bulutuyla açıldı. Başlangıç
+  4 Ekim 18:56:16 UTC; mevcut doğal bitiş 3 Kasım 18:56:16 UTC.
+- Kapanışta altı ödül hakkı successor cycle'a `PENDING` olarak bağlandı. Trafik
+  açıldıktan sonraki kontrolde iki gerçek oyuncunun hakkı `DELIVERED` oldu;
+  dört hak bekliyor. İki receipt'in teslim zamanı ve yeni cycle'daki sezonu doğrulandı.
+  Bu sayılar 4 Ekim 19:00 UTC civarındaki gözlemdir; güncel durum DB'den okunur.
+- Son dump, eski env/image/web/nginx, kalıcı kayıt karşılaştırmaları ve kapanış
+  snapshot'ları izinleri kısıtlı `/home/yildirim/backups/astera-production-20261004`
+  klasöründe saklandı. `snapshots/season-results-cutoff.csv` 287 katılımcının
+  kapanış kaydını, `snapshots/season-reward-delivery.csv` altı hak sahibini,
+  miktarları ve gözlem anındaki teslim durumunu içerir. Dosyalar checksum'landı;
+  yerel kopyalar git dışındaki `out/deployment-20261004` altındadır.
+- Production `.env` aynen korundu. Üç API ve worker health, event kuyruğu/SSE,
+  HTTPS sertifikası, nginx syntax, CSP nonce, static release ve public API geçti.
+  350 px gerçek tarayıcıda ilk ekran, 43 asset ve public server listesi geçti;
+  page error veya başarısız same-origin istek yoktu. Üçüncü taraf reklam/analytics
+  istekleri bu tarayıcı smoke'unda engellendi. Post-deploy failed/stale processing
+  event ve log error sayısı sıfırdı.
+- Son prova için oluşturulan disposable PostgreSQL container/network/volume
+  başarılı geçişten sonra kaldırıldı; dump ve karşılaştırma kanıtları saklandı.
+  Ekonomi simülasyonları ve snowball audit çalıştırılmadı.
+
+### Chat dili takibi
+
+Production sonrası sahibi, genel chat dilinin pencere kapatılınca uygulama diline
+döndüğünü bildirdi. Gereksinim: seçilen chat dili aynı tarayıcıda kapanış/açılış ve
+yenileme boyunca hatırlanmalı; uygulama dili bağımsız kalmalı. İlk seçim yoksa
+uygulama dili kullanılır, geçersiz/eski değer yok sayılır, storage hatası chat'i
+kapatmaz. Mesaj/query/draft ayrımı ve clan/DM kanal seçimi aynı kalır.
+
+Kapat/aç, uygulama dili değişimi ve kayıtlı tercihle fresh mount senaryoları mevcut
+kodda üç ayrı FAIL olarak üretildi. Tercihi lazy initializer'da okumak ve yalnız
+dil seçiminde saklamak düzeltmeyi sağlar; ilgili chat/host/language/type-scale
+regresyonları 44/44 PASS. Bu arayüz takibi yeni season wipe gerektirmez.
