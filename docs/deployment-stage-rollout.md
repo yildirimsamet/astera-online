@@ -1,7 +1,7 @@
 # Stage provası ve production geçişi
 
 Hazırlık incelemesi: 2026-10-04. Ana işletim kılavuzu: [deployment.md](deployment.md).
-Bu belge hazırlık planıdır; deploy, migration veya wipe yapıldığı anlamına gelmez.
+Hazırlık planını ve aşağıdaki tarihli uygulama kayıtlarını birlikte içerir.
 
 ## Sahibin talimatı ve başlangıç sınırı
 
@@ -218,3 +218,26 @@ erişimi, `x-server-time`, cookie refresh, SSE buffering/reconnect, proxy IP/rat
 eski açık sekmelerin lazy chunk erişimi stage'de kontrol edilir; production'da kısa smoke
 tekrarlanır. Mevcut nginx testinde görülen HoofyWood server-name uyarıları bu release'e ait
 değildir; başka sitelerin vhost'ları bu deploy kapsamında değiştirilmez.
+
+## Stage uygulama kaydı — 4 Ekim 2026
+
+- İlk prova release'i `e77fd31aedad230d09b4f4cacbb8c6026e51f3c1`; ayrı
+  `/home/yildirim/astera-stage` checkout'u ve `astera-stage` Compose projesi kullanıldı.
+- Tutarlı production dump'ı checksum ve restore envanteriyle doğrulandı. Kaynak dump,
+  kalıcı kayıt karşılaştırmaları, kapanış sonuçları ve ödül JSON'ları sunucudaki erişimi
+  kısıtlı `/home/yildirim/backups/astera-stage-20261004` klasöründedir.
+- 44 migration yaklaşık 14 saniyede uygulandı; journal 141/141 oldu. Ruleset 16 ile
+  force wipe yaklaşık 189 saniyede tamamlandı. Eski üç sezon mühürlendi; iki MAIN
+  yeni ortak cycle, 1000 kapasite, beşer anıt ve beşer HP bulutuyla açıldı.
+- 941 hesabın kimliği/parolası, 400 eski sezon sonucu ve 95 kalıcı sosyal ödül aynen
+  korundu. 287 yeni (admin dışı) kapanış sonucu eklendi. 288 oyuncunun lifetime
+  birikimi doğrulandı; 10.759 chat kaydı arşivlendi. Eski fault/world kayıtları temizlendi.
+- Kapanışta altı ödül hakkı oluştu. Stage'deki gerçek bir hak sahibi yeni sezona
+  katıldığında başlangıç stokuna tam ödül eklendi; tekrar join aynı gezegen ve stokla
+  döndü. Provada beş `PENDING`, bir `DELIVERED` receipt ve teslim zamanı kaydedildi.
+- Stage'e özel geçerli TLS sertifikası ve aynı origin API/SSE nginx yayını açıldı.
+  Üç API ve worker health, cookie refresh, authenticated SSE, 150 statik asset ve
+  350 px tarayıcıda Galaxy/Base/Fleet/Intel/Clan akışı geçti. Canlı ödeme kapalıdır.
+- Sahip stage'i test edip production geçişini onayladı; son local değişikliklerin de
+  push edilip release'e alınmasını istedi. Production geçişinin kendi son dump'ı ve
+  kendi kapanış snapshot'ı kullanılacak; stage verisi production'a geri yazılmayacak.

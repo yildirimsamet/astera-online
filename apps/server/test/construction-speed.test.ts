@@ -4,6 +4,7 @@ import {
   buildingMinutes,
   instrumentCost,
   satelliteCost,
+  satelliteMinutes,
   hullWorkMinutes,
 } from '@astera/rules';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -102,7 +103,8 @@ describe('the surface build ladder, through the real queue', () => {
     await giveResearch(f.db, planetId, 'AI_ROBOTS', 3);
     await installSatellite(f.db, planetId, 'UPLINK', f.clock);
 
-    expect(await queuedSeconds(f, planetId)).toBe(asStored(5 * 0.85));
+    expect(await queuedSeconds(f, planetId)).toBe(asStored(satelliteMinutes('UPLINK', CORE, { AI_ROBOTS: 3 })));
+    expect(await queuedSeconds(f, planetId)).toBeLessThan(asStored(satelliteMinutes('UPLINK', CORE, {})));
     const [after] = await f.db.select().from(planets).where(eq(planets.id, planetId));
     expect(before!.alloy - after!.alloy).toBeCloseTo(1_000, 0);
     expect(before!.crystal - after!.crystal).toBeCloseTo(500, 0);

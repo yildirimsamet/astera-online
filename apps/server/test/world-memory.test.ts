@@ -202,6 +202,9 @@ describe('a fleet refreshes what its owner remembers', () => {
       .update(planets)
       .set({ kind: 'NEUTRAL', controllerPlayerId: null })
       .where(eq(planets.id, far));
+    await f.db.insert(neutralPlanetState).values({
+      planetId: far, tier: 1, profileSeed: 3, economyAnchorAt: f.clock.now(),
+    });
     await probe(far);
     expect((await world(far)).kind).toBe('NEUTRAL');
 
@@ -363,6 +366,7 @@ describe('a fleet refreshes what its owner remembers', () => {
     });
     expect((await world(far)).intel).toBe('UNKNOWN');
 
+    await setLevel(f.db, mine, 'CORE', MULTI_WORLD.colonyCoreThresholds[0]);
     await giveUnits(f.db, mine, { COURIER: MULTI_WORLD.settlement.transports });
     const launch = await launchSettlement(f.db, f.playerIds[0]!, mine, far, f.clock);
     // The window shuts while they are in the air, which is the case under test:

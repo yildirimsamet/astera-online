@@ -159,3 +159,15 @@ Kod, plan ve manuel inceleme tamamlandıktan sonra `pnpm verify --exclude-sims` 
 Web koşusu iki ek eksiği gösterdi: development model galerisindeki hardcoded renkler v2 token sözleşmesini kırıyordu; onboarding skip testi yeni browser timezone ülke varsayılanını sabit ABD sanıyordu. İlki tema token'larına bağlandı, ikincisi oyuncunun açık ülke seçimini doğrulayacak şekilde sabitlendi. İlgili **28/28 test** ve iki dosyanın lint'i geçti. Galeri değişikliği gerçek 350 px browser'da yeniden görüldü: tema renkleri boş değil, 4.998 üçgen, model/referans oranı 3,00, browser error yok (`mobile-gallery-tokens.png`). Production web build son değişiklikle tekrar geçti. Bu ek değişiklikler sahibin ilk push'undan sonradır; final toplu sonuç ayrıca kaydedilir.
 
 Web'in son tam tekrarı: **368 dosya PASS / 1 dosya SKIP; 5.035 test PASS / 29 SKIP**. Log: `/tmp/astera-monument-final-web.log`. Model reprojection araç testi ayrıca **8/8 PASS** (`/tmp/astera-monument-final-textures.log`). Sunucunun izole tam koşusu henüz tamamlanmadığından tüm kapı yeşil diye raporlanmaz.
+
+Push sonrası eski sunucu testlerinin ikinci kontrolü:
+
+- Sensör fixture'ları bugünkü dış/Telescope/Radar bantlarına taşındı; 0043/0045/0097 beklentileri migration'ın tarihsel 750 tabanını kullanır. Uygulanmış SQL ve oyun menzilleri değiştirilmedi. **35/35 PASS** (`/tmp/astera-monument-handoff-sensor.log`).
+- Collector fiyat kontrolü güncel hull fiyatını; Uplink queue kontrolü mevcut tempo ve robot indirimini; colony slot kontrolü onaylı 9/13/16 eşiklerini kullanır. Sabit eski fiyatlar/eşikler oyun kuralı değildir.
+- Flight bay yarışı artık iki farklı hedefe gerçek raid gönderir; loser'ın `NO_FREE_BAY` olması ayrıca doğrulanır. Paid probe'un muafiyetini kaldırmak çözüm değildir.
+- World-memory fixture'ına gerçek neutral state ve settlement için gerekli capital Core eklendi. Polar sandbox fixture kataloğuna eksik Japonya ürünü eklendi; production satış kapısı açılmadı.
+- Pirate kimlik digest'i, pure rules testinde zaten kayıtlı olan 2026-09-25 yeni-sezon radius/speed değişimine eşlendi; HMAC, RNG, lane sırası ve prefix kontrolleri korunur.
+- Yeni oyuncunun sonraki gerçek Yard siparişi güncel Academy mezuniyetinden test edilir. Eski legacy açılış grant'ı veya hull fiyatı bu test için değiştirilmedi.
+- `fleet-ceiling` içindeki altı eski D184 “Hangar yok/sınırsız filo” assertion'ı, Hangar'ın geri getirildiği T4 kuralıyla çelişiyordu. Üç geçerli ground-ceiling testi korundu; ship build, transfer, overflow ve client kapasite sözleşmelerinin kapsamlı karşılıkları `hangar.test.ts` içinde yeniden çalıştırılır. Geçerli bir kapasite kapısı kaldırılmadı.
+
+Bu grubun mevcut kodda önce **22 FAIL / 119 PASS** sonucu alındı. Düzeltmelerden sonraki hedefli koşunun sonucu aşağıya eklenecektir; eski full-suite sonucu otomatik olarak yeşil kabul edilmez.

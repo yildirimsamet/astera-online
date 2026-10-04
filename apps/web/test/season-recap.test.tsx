@@ -106,6 +106,7 @@ describe('the personal season ending', () => {
         result={result()}
         galaxy="Vantage"
         players={50}
+        endsAt={new Date('2026-11-03T18:00:00Z')}
         showPrimaryAction={false}
         onClose={vi.fn()}
       />,
@@ -113,6 +114,7 @@ describe('the personal season ending', () => {
 
     expect(screen.queryByRole('button', { name: 'Explore the final galaxy' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Close' })).toHaveLength(1);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('gives the always-available close control a visible surface and keyboard focus state', () => {

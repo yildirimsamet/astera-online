@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { MULTI_WORLD, escapeFuel, type Fleet } from '@astera/rules';
+import { ESCAPE, MULTI_WORLD, combatValue, escapeFuel, type Fleet } from '@astera/rules';
 import { battleReports, missions, notifications, planets, seasons, units } from '../src/db/schema.js';
 import { launchAttack } from '../src/services/mission.js';
 import { planetView } from '../src/services/planetView.js';
@@ -149,7 +149,10 @@ describe('the fleet escape on a raid', () => {
 
   it('leaves the guns to fight the raid alone when the ships run', async () => {
     await giveUnits(f.db, target, { BASTION: 2 });
-    const report = await raid({ DART: 100, COURIER: 20 });
+    // Outmatch the complete line, including the guns. Their current firepower
+    // makes the old fixed wing too weak to trigger a retreat.
+    const darts = Math.ceil(2 * ESCAPE.ratio * combatValue({ ...LINE, BASTION: 2 }) / combatValue({ DART: 1 }));
+    const report = await raid({ DART: darts, COURIER: 20 });
     expect(report.fleetEscape).toEqual({ kind: 'ESCAPED', ships: LINE, fuel: LIFT });
     expect(report.defenderFleet).toEqual({ BASTION: 2 });
     expect(report.defenderLosses).toEqual({ BASTION: 2 });

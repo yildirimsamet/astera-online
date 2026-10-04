@@ -358,8 +358,8 @@ describe('a Garbage Collector in a raid on a commander', () => {
     const built = await buildUnits(f.db, mine, 'GARBAGE_COLLECTOR', 1, f.clock);
     expect(built.built).toBe(1);
     const [after] = await f.db.select().from(planets).where(eq(planets.id, mine));
-    expect(before!.alloy - after!.alloy).toBeCloseTo(10_000, 0);
-    expect(before!.crystal - after!.crystal).toBeCloseTo(5_000, 0);
+    expect(before!.alloy - after!.alloy).toBeCloseTo(HULLS.GARBAGE_COLLECTOR.alloy, 0);
+    expect(before!.crystal - after!.crystal).toBeCloseTo(HULLS.GARBAGE_COLLECTOR.crystal, 0);
   });
 });
 

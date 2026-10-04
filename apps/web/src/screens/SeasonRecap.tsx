@@ -244,7 +244,7 @@ export function SeasonRecap({
           </div>
         )}
 
-        <NextSeason endsAt={endsAt} className="mt-6" />
+        {showPrimaryAction && <NextSeason endsAt={endsAt} className="mt-6" />}
 
         {showPrimaryAction ? (
           <button type="button" className="slab slab-primary mt-auto w-full pt-2" onClick={close}>

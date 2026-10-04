@@ -216,7 +216,6 @@ describe('onboarding claim', () => {
 
     expect(three.crystal + 2 * HULLS.DART.crystal).toBe(START.crystal);
     expect(START.alloy - three.alloy).toBe(HULLS.DART.alloy * 2);
-    expect(HULLS.DART.crystal).toBe(78);
     expect(HULLS.DART.minShipyard).toBe(0);
   });
 
@@ -476,19 +475,16 @@ describe('onboarding claim', () => {
   });
 
   /**
-   * THE POINT OF THE CUSHION, ASSERTED AS A CONSEQUENCE RATHER THAN AS A NUMBER.
-   *
-   * Construction is full with the three taught orders, but Yard still has room.
-   * Prove the cushion creates a real fifth decision through the ordinary endpoint,
-   * rather than merely comparing it with a price in this test.
+   * The current Academy exit leaves the commander able to place a real Yard
+   * order. Legacy opening invoices no longer define the Academy's exit state.
    */
-  it('leaves a freshly onboarded commander able to act', async () => {
+  it('leaves a commander who completed the Academy able to order another Dart', async () => {
     await openWorld();
 
     const body = (await claim({
       username: 'kaptan',
       password: 'correct-horse-battery',
-      intents: OPENING(),
+      step: ACADEMY_STEPS.length,
     })).json<Claim>();
 
     const action = await app.inject({
@@ -497,10 +493,10 @@ describe('onboarding claim', () => {
       headers: { authorization: `Bearer ${body.accessToken}` },
       payload: { hull: 'DART', count: 1 },
     });
-    expect(action.statusCode).toBe(200);
+    expect(action.statusCode, action.body).toBe(200);
     const queued = await db.select().from(buildOrders)
       .where(eq(buildOrders.planetId, body.placement.planetId));
-    expect(queued.filter((order) => order.queue === 'YARD')).toHaveLength(2);
+    expect(queued.filter((order) => order.queue === 'YARD')).toHaveLength(1);
   });
 
   /** Nothing to replay is a real claim, not a malformed one. */

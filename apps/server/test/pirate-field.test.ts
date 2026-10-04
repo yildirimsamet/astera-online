@@ -47,8 +47,9 @@ describe('the private pirate field', () => {
    * next, which is what makes a staged rollout able to hide contacts without ever
    * publishing a different one under the same handle — a pirate's id is an HMAC of
    * its lane index, so a renumbering silently re-aims every claim and every raid
-   * already in the air. The digest is the original lane's, unchanged from when it
-   * was the whole field.
+   * already in the air. The digest uses the radius-4500 orbit band and 30% speed
+   * cut introduced with the 2026-09-25 new-season reset, matching the pure rules
+   * test's historical boundary.
    */
   it('appends each denser lane after every established opaque target', () => {
     // The derived lane is priced for the 300 seats it serves (`PIRATE.legacySeats`).
@@ -81,7 +82,7 @@ describe('the private pirate field', () => {
       .update(JSON.stringify(lane.map(({ hoard: _hoard, ...rest }) => rest)))
       .digest('hex');
     expect(identity(field.slice(0, establishedLength)))
-      .toBe('f73b4262a8f902ce3111f0159e6a05eca16d8aee831d0f4728bc35070fca4429');
+      .toBe('3fdfc07f7ac59694fcb0c38ff282a2671f7a6b15666b91b686467798282750aa');
   });
 
   it('can retain the complete established lane during a rolling activation', () => {

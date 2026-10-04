@@ -5,8 +5,8 @@ import { buildings, planets } from '../src/db/schema.js';
 import { loadLocked, withTwoPlanetLock } from '../src/services/planet.js';
 import { buildUnits, upgradeBuilding } from '../src/services/build.js';
 import { baysInUse } from '../src/services/flight.js';
-import { launchProbe } from '../src/services/intel.js';
-import { grant, seedWorld, settleBuilds, setLevel, testDb, type Fixture } from './helpers.js';
+import { launchAttack } from '../src/services/mission.js';
+import { giveUnits, grant, seedWorld, settleBuilds, setLevel, testDb, type Fixture } from './helpers.js';
 
 /**
  * ACCEPTANCE CRITERION (build plan, phase 1):
@@ -125,27 +125,30 @@ describe('concurrency', () => {
    */
   describe('flight bays', () => {
     it('two simultaneous launches into one free bay: exactly one wins', async () => {
-      const f = await seedWorld(4);
-      const [mine, a, b, c] = f.planetIds as [string, string, string, string];
+      const f = await seedWorld(5);
+      const [mine, a, b, c, d] = f.planetIds as [string, string, string, string, string];
       for (const id of f.planetIds) {
-        await setLevel(f.db, id, 'CORE', 1);
         await grant(f.db, id, 200_000, 20_000);
+        await setLevel(f.db, id, 'CORE', 1);
       }
+      await giveUnits(f.db, mine, { DART: 16 });
       f.clock.advance(600);
 
-      // Fill every bay but one.
+      // Paid probes do not occupy bays. Ordinary raids do.
       expect(flightSlots(1)).toBe(3);
-      await launchProbe(f.db, mine, a, f.clock);
-      await launchProbe(f.db, mine, b, f.clock);
+      await launchAttack(f.db, mine, a, { DART: 4 }, f.clock);
+      await launchAttack(f.db, mine, b, { DART: 4 }, f.clock);
 
-      // Two launches race for the last bay, at two different targets so the
-      // one-probe-per-target rule cannot be what refuses either of them.
+      // Different targets ensure the losing request is refused by the bay
+      // check, rather than by the one-fleet-per-target rule.
       const results = await Promise.allSettled([
-        launchProbe(f.db, mine, c, f.clock),
-        launchProbe(f.db, mine, c, f.clock),
+        launchAttack(f.db, mine, c, { DART: 4 }, f.clock),
+        launchAttack(f.db, mine, d, { DART: 4 }, f.clock),
       ]);
       const won = results.filter((r) => r.status === 'fulfilled').length;
       expect(won, 'both launches got the same bay').toBe(1);
+      expect(results.find((result) => result.status === 'rejected')?.reason)
+        .toMatchObject({ code: 'NO_FREE_BAY' });
 
       const inAir = await baysInUse(f.db, mine);
       expect(inAir).toBe(flightSlots(1));

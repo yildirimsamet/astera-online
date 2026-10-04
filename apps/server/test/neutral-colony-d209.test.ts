@@ -325,7 +325,7 @@ describe('D209 colony capacity reads the capital Core', () => {
       .where(eq(planets.id, colony!.world.id));
     await setLevel(g.db, colony!.world.id, 'CORE', 12);
     for (const [capitalCore, capacity] of [
-      [8, 0], [9, 1], [11, 1], [12, 2], [14, 2], [15, 3],
+      [8, 0], [9, 1], [12, 1], [13, 2], [15, 2], [16, 3],
     ] as const) {
       await setLevel(g.db, g.joined.planetId, 'CORE', capitalCore);
       expect(await colonyStanding(g.db, g.joined.playerId), `capital Core ${String(capitalCore)}`)
