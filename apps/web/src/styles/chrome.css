@@ -1496,6 +1496,25 @@
   --text-body: 14px;
   --text-micro: 11px;
 }
+
+/* Room colour stays visible while composing, so Clan cannot be mistaken for General. */
+.chat-type[data-chat-room='clan'] {
+  background-color: #102d22;
+}
+.chat-type[data-chat-room='dm'] {
+  background-color: #231d38;
+}
+
+/* iOS zooms focused small controls. Keep the chat copy compact and its controls legible. */
+.chat-type :is(input, textarea, select) {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.chat-type[data-chat-room='clan'] :is(input, textarea) {
+  background-color: #0a2118;
+  border-color: #315541;
+}
 /* Give the Now line room only while a timer exists. An empty timer row leaves the
    galaxy readout at the top edge instead of making a blank 48 px band. */
 .v2-shell:has([data-now-line]) [data-galaxy-top-corners] {

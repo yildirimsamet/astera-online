@@ -2,7 +2,7 @@
 
 ## Hedef
 
-Astera Online'daki dokuz sabit fiyatlı gezegen görünümünü Polar üzerinden otomatik
+Astera Online'daki on sabit fiyatlı görünüm teklifini Polar üzerinden otomatik
 teslim etmek. Polar, Paddle'ın yeni otomatik ödemeler için yerini alacak. Shopier'in
 mevcut manuel satış ve hak verme yolu korunacak. Mevcut Paddle siparişleri ve
 kozmetik hak kayıtları silinmeyecek.
@@ -10,7 +10,7 @@ kozmetik hak kayıtları silinmeyecek.
 | Ürün | Türkiye | Türkiye dışı |
 | --- | ---: | ---: |
 | Lava, Ice, Toxic, Desert, Turkey | ₺99 | €2,99 |
-| Germany, France, Spain | €2,99 | €2,99 |
+| Germany, France, Spain, Japan | €2,99 | €2,99 |
 | Dörtlü element paketi | ₺279 | €8,49 |
 
 ## Senin yapacakların
@@ -41,9 +41,9 @@ kozmetik hak kayıtları silinmeyecek.
    sohbete, kaynak koda veya bu dosyaya yazma. MCP yoksa dokuz Polar ürününün
    kimliklerini ve webhook imza anahtarını `.env` üzerinden sağlayabiliriz.
 3. **Fiyat ayarı:** Polar organizasyonunun varsayılan ödeme para birimini **EUR**
-   seç. Dokuz ürünün her birini tek seferlik sabit fiyatlı oluştur. Lava, Ice,
+   seç. On ürünün her birini tek seferlik sabit fiyatlı oluştur. Lava, Ice,
    Toxic, Desert, Turkey ve pakete ayrıca TRY fiyatı ekle; Germany, France, Spain
-   yalnız EUR kalsın. Çoklu para birimi fiyatları ürünün **Pricing** bölümündedir;
+   ve Japan yalnız EUR kalsın. Çoklu para birimi fiyatları ürünün **Pricing** bölümündedir;
    ayrı bir “regional pricing” menüsü aranmaz. Dokuz ürünün fiyatları artık ürün
    düzeyinde **inclusive** ayarlı; genel vergi ayarını değiştirmek gerekmiyor.
    Gerçek checkout toplamını sandbox'ta doğrulayacağız.
@@ -57,7 +57,7 @@ kozmetik hak kayıtları silinmeyecek.
 
 1. **Mevcut akışı koruyarak ayır:** Paddle checkout, sipariş ve webhook kodunu;
    Shopier bağlantılarını; kozmetik haklarını ve güncel çalışma ağacını denetle.
-2. **Polar katalog ve ortamı:** Dokuz ürünü sandbox ve canlıda karşılaştırıp eksikleri
+2. **Polar katalog ve ortamı:** On ürünü sandbox ve canlıda karşılaştırıp eksikleri
    oluştur; EUR varsayılan, uygun ürünlerde TRY fiyatı ve vergi dahil tutarı doğrula.
    Polar kimliklerini ve ayrı sandbox/canlı sırlarını ortam değişkenlerine bağla.
 3. **Sunucu:** Kimliği doğrulanmış oyuncu için Polar checkout oturumu oluştur;
@@ -71,18 +71,19 @@ kozmetik hak kayıtları silinmeyecek.
 5. **Herkese açık sayfalar:** Türkçe/İngilizce fiyat, şartlar, gizlilik ve iade
    sayfalarındaki Paddle'a özgü ödeme anlatımını Polar'a göre güncelle.
 6. **Doğrulama:** Önce ilgili testleri yazıp başarısız olduklarını gör; uygulamadan
-   sonra ilgili testleri ve `pnpm verify` komutunu çalıştır. Polar sandbox'ta dokuz
+   sonra ilgili testleri ve `pnpm verify --exclude-sims` komutunu çalıştır. Polar sandbox'ta on
    ürün, iki bölge, webhook tekrarı, paket, iade ve gerçek kullanıcı akışını test
    et. Üretim dağıtımını `docs/deployment.md` kurallarına göre hazırla.
 
 ## Sıra ve kapılar
 
 1. [x] Kod/hesap envanteri ve Polar ürün eşlemesi.
-2. [x] Sandbox ve canlı katalog tamam; sandbox API erişimi doğrulandı.
+2. [x] Sandbox ve canlı on ürünlük katalog tamam; API erişimi doğrulandı.
 3. [x] Testlerle sunucu entegrasyonu ve ayrı Polar sipariş kayıtları.
 4. [x] Mağaza, fiyat sayfaları ve politikalar yerel kodda Polar'a bağlandı.
-5. [ ] Tam sandbox satın alma/iade testleri ve proje doğrulaması.
-6. [ ] Canlı ürün, sır ve webhook doğrulaması; satış kapalı dağıtım.
+5. [ ] Tam sandbox satın alma/iade matrisi (tekli TRY, paket ve Japan dahil).
+6. [x] Proje doğrulaması, canlı katalog/sır kontrolü ve satış kapalı production dağıtımı.
+   Canlı sağlayıcıdan gelen imzalı başarılı ödeme/iade teslimi ayrıca doğrulanacak.
 7. [x] Polar hesap incelemesi ve ödeme hesabı.
 8. [ ] Onay ve son kontrollerden sonra canlı satışın açılması.
 
@@ -145,7 +146,43 @@ kozmetik hak kayıtları silinmeyecek.
 | Germany | `f557093b-eba9-499c-9788-a41c35eb3ad9` | `648b85c1-b04b-47bc-b742-b2ef73b91458` |
 | France | `468d0d5e-1b7b-42cc-9a50-8951292f177e` | `63bcf9e6-d0fc-4cc2-aaa6-533ca6b51f48` |
 | Spain | `2851d8bb-6017-4fc3-a3b3-3eae0ea85314` | `ab2d4302-5d25-4cb2-9007-c41ee5bdb0d9` |
+| Japan | `0ec62d42-711e-4f7b-90ed-ef92d07a8bdb` | `82b25098-29bb-4b98-a8f4-11cb78ee2e7b` |
 | Element paketi | `9840aaf4-7e11-4aba-8234-6ab4f9379dcb` | `34dcfb16-e875-43da-9a9d-e12ee4b5f335` |
+
+## Production kontrolü — 4 Ekim 2026
+
+- Entegrasyon kodu production'a dağıtıldı; üç API ve worker `POLAR_ENV=production`,
+  on canlı ürün kimliği, canlı token ve webhook anahtarını alıyor.
+  `POLAR_CHECKOUT_ENABLED=false`; public `/api/skins/polar-shop` da `enabled:false`.
+- Canlı organizasyon MCP üzerinden yeniden okundu: `status=active`; checkout,
+  payout, refund ve API erişimi yetkileri açık. İki ortamda da on aktif ürün,
+  beklenen EUR/TRY tutarları ve inclusive vergi fiyatları doğrulandı.
+- Mevcut canlı webhook endpoint'i açık, RAW formatında ve `order.paid`,
+  `order.refunded`, `checkout.expired` olaylarına abone. Yeniden oluşturulmadı.
+  İmza anahtarı ve tüm ürün eşlemeleri dört production container'ıyla eşleşiyor.
+- HTTPS webhook URL'si artık 404 değil; imzasız JSON POST 401 veriyor. Gerçek
+  Node runtime'ından canlı checkout API GET 200, ürün içermeyen POST 422 döndü;
+  token'ın yazma yetkisi doğrulandı, canlı checkout/sipariş/ödeme oluşturulmadı.
+  Host'taki Python urllib denemesi Cloudflare 1010 aldı; bu, uygulamanın Node
+  erişimiyle aynı sonuç değildir. İlk Node bağlantı zaman aşımından sonraki
+  kontroller yaklaşık 0,5 saniyede geçti.
+- Sandbox'ta kayıtlı gerçek Lava EUR satın alımı ve tam iadesi sağlayıcıdan tekrar
+  doğrulandı: toplam 299 cent, iade 251 + 48 vergi cent. Paket, TRY ve Japan için
+  tamamlanmış ödeme/iade kanıtı henüz yok. Birim testlerinde imza, retry,
+  idempotency, yanlış hesap/ürün, paket çakışması ve iade akışı release kontrolüne dahil.
+- Canlı endpoint'in delivery listesi ve production Polar order/webhook/entitlement
+  tabloları henüz boş. Erişilebilir 401 cevabı pozitif imzalı delivery kanıtı sayılmaz.
+
+**Satış açılışında kalanlar:** temsilî sandbox TRY/paket/Japan akışları, ardından
+ayrı bir kontrollü canlı satın alım/tam iade ve sağlayıcı delivery kaydıyla doğru
+hesaba bir kez skin verilmesi/geri alınması. Son kabulden sonra satış bayrağı
+açılıp API'lere aktarılır; frontend runtime shop durumunu okuduğu için yeni build
+gerektirmez. Canlı işlem insanın kart/onay adımını gerektirir; hesap incelemesinin
+yeniden beklenmesi gerekmiyor. Bu incelemede satış açılmadı.
+
+Sağlayıcı doğrulaması ve yeniden teslim davranışı:
+[webhook delivery](https://polar.sh/docs/integrate/webhooks/delivery),
+[ayrı sandbox ödeme ortamı](https://polar.sh/docs/integrate/sandbox).
 
 **Çıkış ölçütü:** Polar checkout'ta gösterilen tutar mağazayla eşleşir; ödeme
 doğrulanmadan skin verilmez; başarılı ödeme skini yalnız doğru hesaba bir kez verir;

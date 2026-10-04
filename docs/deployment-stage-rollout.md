@@ -308,3 +308,45 @@ Kapat/aç, uygulama dili değişimi ve kayıtlı tercihle fresh mount senaryolar
 kodda üç ayrı FAIL olarak üretildi. Tercihi lazy initializer'da okumak ve yalnız
 dil seçiminde saklamak düzeltmeyi sağlar; ilgili chat/host/language/type-scale
 regresyonları 44/44 PASS. Bu arayüz takibi yeni season wipe gerektirmez.
+
+Sahibin sonraki isteğiyle Klan odası yeşil, DM mor zemin aldı; Genel'in zemini
+korundu. 10 px chat composer ve DM arama kontrolleri iOS odak zoom'u için 16 px
+yapıldı; textarea'nın satır/padding'i mevcut 40 px yüksekliğe sığdırıldı. 350 px
+gerçek Chromium render'ında üç oda, 16 px computed font, taşma olmaması ve dilin
+kapat/aç/yenilemede korunması doğrulandı. Bu render sahte API verisiyle yapılan
+yerel UI provasıdır; fiziksel iPhone klavyesi denenmedi. İlgili son 68 test ve
+typecheck/lint geçti; dil fix'inden sonraki tüm web koşusu 5.040 PASS / 29 SKIP.
+
+## Doğal sezon kapanışı incelemesi — 4 Ekim 2026
+
+Production'ın iki canlı MAIN sezonunda `season_end` 3 Kasım 18:56:16 UTC,
+`season_rollover` 19:01:16 UTC olarak birer kez `pending` durumda kayıtlıdır.
+İlk işlem sezonu dondurup snapshot alır; ikinci işlem tüm sezonlar frozen ise
+beş dakika afterglow ardından world cleanup, lifetime fold ve successor açılışını
+tek transaction'da yapar. Eski handler docblock'undaki “15 dakika” güncel sabit
+değildir; `SEASON.afterglowMinutes=5` ve gerçek event zamanı esas alınır.
+
+Yeni uçuş, mining, pirate, trade, convoy, destek ve grup savaş işlerinde dönüşü
+deadline'a sığdıran admission kontrolleri vardır. Anıt OUTBOUND/HOLD/RETURNING
+filoları bitiş anına kadar hesaplanıp doğrudan evlerine teslim edilir; kapanış
+bunların uçuşta kalmasını beklemez. Normal son-sezon trafiği sonsuz yeni uçuş
+üreterek bitişi uzatamaz.
+
+**Bulgu:** diğer devam eden işler için `freezeSeason` bir saniyelik retry yapar;
+üst bekleme sınırı yoktur. Flight/mining/build/research/strategic/pirate/trade/
+convoy/clan-war/support kayıtlarından biri kalıcı olarak tamamlanmazsa freeze ve
+rollover ertelenmeye devam eder. Kuyruk recovery mekanizmaları bu riski azaltır;
+bitişe bağlı zorunlu bir sonlandırma sınırı sağlamaz.
+
+Güncel ruleset 16 ile ayrı local test DB'de doğal kapanış ve +5 dakika rollover
+tamamlandı: iki successor, toplam on anıt, korunmuş lifetime. Kalıcı orphan flight
+ve eski PAUSED strategic row senaryolarında +5 dakika, +1 saat ve +24 saat
+kontrolünde status hâlâ live ve her iki retry +1 saniyeydi. Bu son iki prova yalnız
+handler'ın kalıcı blocker karşısındaki politikasını ölçer; worker abandonment
+recovery'si çağrılmadı. Kanıt git dışındaki
+`out/deployment-20261004/automatic-wipe-audit.json`; sadece prova DB'si kaldırıldı.
+
+Önerilen takip: bitiş anına kadar deterministik reconciliation ve sınırlı grace
+penceresi, ardından idempotent snapshot/cleanup; geç kalan veya bozuk state'in
+istatistik/ödül kaybı üretmeden kapanması testlenmeli. Sezon/PvP kuralı bu incelemede
+değiştirilmedi; `CLAUDE.md` core season değişikliklerini sahibin kararına bağlar.

@@ -134,7 +134,7 @@ export function ChatScreen({
   ];
 
   return (
-    <div className="chat-type flex h-full min-h-0 flex-col">
+    <div data-chat-room={channel} className="chat-type flex h-full min-h-0 flex-col">
       {/*
         D6: the two rooms and, for the galaxy's room, its language — one row, the
         language a small select at the end rather than a page-wide field.
@@ -760,7 +760,7 @@ function ChannelPanel({
               onChange={(event) => {
                 onDraft(Array.from(event.currentTarget.value).slice(0, maxChars).join(''));
               }}
-              className="block h-10 w-full resize-none rounded-pill border border-v2-line-hi bg-v2-deep px-4 py-2.5 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self"
+              className="block h-10 w-full resize-none rounded-pill border border-v2-line-hi bg-v2-deep px-4 py-2 text-caption text-v2-ink placeholder:text-v2-ink-3 outline-none focus:border-v2-self"
             />
           </label>
           <button
